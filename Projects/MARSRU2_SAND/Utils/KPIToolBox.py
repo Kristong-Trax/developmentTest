@@ -78,9 +78,9 @@ class MARSRU2_SANDKPIToolBox:
         self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         self.session_info = SessionInfo(data_provider)
         self.store_id = self.data_provider[Data.STORE_FK]
-        self.own_manufacturer_id = int(self.data_provider.own_manufacturer[
-            self.data_provider.own_manufacturer['param_name'] == 'manufacturer_id'][
-            'param_value'].tolist()[0])
+        self.own_manufacturer_id = int(
+            self.data_provider[Data.OWN_MANUFACTURER][
+                self.data_provider[Data.OWN_MANUFACTURER]['param_name'] == 'manufacturer_id']['param_value'].tolist()[0])
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
         try:
             self.scif['sub_brand'] = self.scif['Sub Brand']  # the sub_brand column is empty
@@ -347,16 +347,25 @@ class MARSRU2_SANDKPIToolBox:
                 values_list = str(params.get('Values')).split(', *')
             else:
                 values_list = str(params.get('Values')).split(', ')
+
         if not formula:
             formula = params.get('Formula')
+
         if not scenes:
             scenes = self.get_relevant_scenes(params)
+
+        if params.get("Manufacturer"):
+            manufacturers = [str(manufacturer)
+                             for manufacturer in params.get("Manufacturer").split(", ")]
+        else:
+            manufacturers = []
 
         if params.get("Form Factor to include"):
             form_factors = [str(form_factor)
                             for form_factor in params.get("Form Factor to include").split(", ")]
         else:
             form_factors = []
+
         if params.get("Form Factor to exclude"):
             form_factors_to_exclude = [str(form_factor) for form_factor in
                                        params.get("Form Factor to exclude").split(", ")]
@@ -394,7 +403,9 @@ class MARSRU2_SANDKPIToolBox:
             availability_type = params.get('Type')
 
         object_facings = self.kpi_fetcher.get_object_facings(scenes, values_list, availability_type,
-                                                             formula=formula, form_factor=form_factors,
+                                                             formula=formula,
+                                                             form_factor=form_factors,
+                                                             manufacturers=manufacturers,
                                                              sub_brands=sub_brands,
                                                              sub_brands_to_exclude=sub_brands_to_exclude,
                                                              cl_sub_cats=cl_sub_cats,

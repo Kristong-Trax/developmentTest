@@ -88,7 +88,7 @@ class ResultUploader():
     def insert_into_values(self, result):
         query = '''
         Insert Into static.kpi_result_value 
-        Values ({}, '{}', {})
+        Values ({}, "{}", {})
         '''.format(self.ps_result_pk, result, self.ps_type_pk)
         self.cur.execute(query)
 

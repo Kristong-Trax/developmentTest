@@ -50,10 +50,10 @@ class SceneToolBox:
         
         # filter df include OSD when needed
         shelfs_to_include = row[Const.OSD_NUMBER_OF_SHELVES].values[0]
-        if row[Const.STORAGE_EXCLUSION_PRICE_TAG].values[0] == Const.NO:
-            if shelfs_to_include != "":
-                shelfs_to_include = int(shelfs_to_include)
-                results_list.append(df[df['shelf_number_from_bottom'] >= shelfs_to_include])
+        if shelfs_to_include != "":
+            shelfs_to_include = int(shelfs_to_include)
+            results_list.append(df[df['shelf_number_from_bottom'] >= shelfs_to_include])
+            df = df[df['shelf_number_from_bottom'] < shelfs_to_include]
 
         # if no osd rule is applied
         if row[Const.HAS_OSD].values[0] == Const.NO:
@@ -62,6 +62,8 @@ class SceneToolBox:
         # filter df to have only shelves with given ean code
         if row[Const.HAS_OSD].values[0] == Const.YES:
             products_to_filter = row[Const.POSM_EAN_CODE].values[0].split(",")
+            if products_to_filter != "":
+                products_to_filter = [item.strip() for item in products_to_filter]
             products_df = df[df['product_ean_code'].isin(products_to_filter)][['scene_fk', 'shelf_number']]
             products_df = products_df.drop_duplicates()
             if not products_df.empty:
@@ -71,7 +73,9 @@ class SceneToolBox:
                     results_list.append(scene_df)
 
         if row[Const.HAS_HOTSPOT].values[0] == Const.YES:
-            products_to_filter = row[Const.POSM_EAN_CODE_HOTSPOT]
+            products_to_filter = row[Const.POSM_EAN_CODE_HOTSPOT].values[0].split(",")
+            if products_to_filter != "":
+                products_to_filter = [item.strip() for item in products_to_filter]
             products_df = const_scene_df[const_scene_df['product_ean_code'].isin(products_to_filter)][['scene_fk',
                                                                                            'bay_number',
                                                                                            'shelf_number']]
@@ -94,22 +98,8 @@ class SceneToolBox:
             template_fk = -1
         self.common.write_to_db_result(fk=kpi_fk, numerator_id=self.store_id, result=1, by_scene=True,
                                        denominator_id=template_fk)
-        if len(results_list) > 1:
-            df = pd.concat(results_list).drop_duplicates()
-        else:
-            df = results_list[0]
-        self.save_df_to_smart_attribute(df)
 
     def find_row_osd(self, s):
-        rows = self.osd_rules_sheet[self.osd_rules_sheet[Const.SCENE_TYPE] == s]
+        rows = self.osd_rules_sheet[self.osd_rules_sheet[Const.SCENE_TYPE].str.encode("utf8") == s.encode("utf8")]
         row = rows[rows[Const.RETAILER] == self.store_info['retailer_name'].values[0]]
         return row
-
-    def save_df_to_smart_attribute(self,df):
-        query = "INSERT INTO  probedata.match_product_in_probe_state_value (match_product_in_probe_fk, " \
-                "match_product_in_probe_state_fk) VALUES "
-        for i in set(df['probe_match_fk']):
-            query += "(" + str(i) + ", 3), "
-        query = query[:-2] + ";"
-        # self.common.execute_custom_query(query)
-

@@ -69,6 +69,10 @@ class PngcnSceneKpis(object):
     def process_scene(self):
         try:
             self.save_nlsos_to_custom_scif()
+        except Exception as e:
+            Log.error('nlsos to custom scif failed for scene: \'{0}\' error: {1}'.format(self.scene_id, str(e)))
+            raise e
+        try:
             Log.debug(self.log_prefix + ' Retrieving data')
             self.match_display_in_scene = self._get_match_display_in_scene_data()
             # if there are no display tags there's no need to retrieve the rest of the data.
@@ -665,7 +669,7 @@ class PngcnSceneKpis(object):
 
     def save_nlsos_to_custom_scif(self):
         matches = self.matches_from_data_provider.copy()
-        if matches.empty:
+        if matches.empty or self.scif.empty:
             return
         mask = (matches.status != 2) & (matches.bay_number != -1) & (matches.shelf_number != -1) & \
                (matches.stacking_layer != -1) & (matches.facing_sequence_number != -1)

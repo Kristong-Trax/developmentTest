@@ -1,5 +1,5 @@
-# coding=utf-8
-# import numpy as np
+# -*- coding: utf-8 -*-
+import numpy as np
 import pandas as pd
 from datetime import datetime
 import os
@@ -117,6 +117,7 @@ class BATRUToolBox:
         self.session_uid = self.data_provider.session_uid
 
         self.products = self.data_provider[Data.PRODUCTS]
+        self.products.loc[self.products['substitution_product_fk'].isnull(), 'substitution_product_fk'] = np.nan
         self.products = self.products\
             .merge(self.products[['product_fk', 'product_ean_code', 'product_name']],
                    how='left', left_on='substitution_product_fk', right_on='product_fk', suffixes=['', '_lead'])
@@ -128,6 +129,7 @@ class BATRUToolBox:
         ), 'product_fk_lead'] = self.products['product_fk']
 
         self.all_products = self.data_provider[Data.ALL_PRODUCTS]
+        self.all_products.loc[self.all_products['substitution_product_fk'].isnull(), 'substitution_product_fk'] = np.nan
         self.all_products = self.all_products\
             .merge(self.all_products[['product_fk', 'product_ean_code', 'product_name']],
                    how='left', left_on='substitution_product_fk', right_on='product_fk', suffixes=['', '_lead'])
@@ -139,6 +141,8 @@ class BATRUToolBox:
         ), 'product_fk_lead'] = self.all_products['product_fk']
 
         self.templates = self.data_provider[Data.ALL_TEMPLATES]
+        self.templates['template_name'] = self.templates['template_name']\
+            .apply(lambda x: x.encode('utf-8'))
 
         self.match_product_in_scene = self.data_provider[Data.MATCHES]
         self.visit_date = self.data_provider[Data.VISIT_DATE]
@@ -146,9 +150,17 @@ class BATRUToolBox:
         self.scene_info = self.data_provider[Data.SCENES_INFO]\
             .merge(self.templates[['template_fk', 'template_name']], how='left', on='template_fk')
         self.store_id = self.data_provider[Data.STORE_FK]
+
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
+        self.scif['template_group'] = self.scif['template_group']\
+            .apply(lambda x: x.encode('utf-8'))
+
         self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
+
         self.merged_additional_data = self.get_additional_product_data()
+        self.merged_additional_data['template_name'] = self.merged_additional_data['template_name']\
+            .apply(lambda x: x.encode('utf-8'))
+
         self.tools = BATRUGENERALToolBox(self.data_provider, self.output, rds_conn=self.rds_conn)
         self.match_display_in_scene = self.tools.get_match_display()
         # self.tools.upload_store_assortment_file(P1_PATH)
@@ -348,7 +360,7 @@ class BATRUToolBox:
         contracted_products = self.tools.get_store_assortment_for_store(self.store_id).values()
         for template_group in [EXIT_TEMPLATE_GROUP, ENTRY_TEMPLATE_GROUP]:
             session_product_fks = self.scif.loc[(self.scif['dist_sc'] == 1) &
-                                                (self.scif['template_group'] == template_group)][
+                                                (self.scif['template_group'] == template_group.encode('utf-8'))][
                 'product_fk'].unique().tolist()
             session_products = self.all_products[self.all_products['product_fk'].isin(session_product_fks)][
                 'product_ean_code'].unique().tolist()
@@ -790,7 +802,7 @@ class BATRUToolBox:
         monitored_sku = self.get_sku_monitored(self.state)
         if not self.merged_additional_data.empty:
             self.merged_additional_data = self.merged_additional_data.loc[
-                self.merged_additional_data['template_name'] == EFFICIENCY_TEMPLATE_NAME]
+                self.merged_additional_data['template_name'] == EFFICIENCY_TEMPLATE_NAME.encode('utf-8')]
             if not self.merged_additional_data.empty:
                 score = self.calculate_fulfilment(monitored_sku['product_ean_code_lead'])
                 efficiency_score = self.calculate_efficiency()
@@ -873,7 +885,7 @@ class BATRUToolBox:
         gets all the products that are monitored and calculates the percentage of those recognized.
         """
         num_of_all_monitor = len(monitored_skus)
-        scif = self.scif[self.scif['template_name'] == EFFICIENCY_TEMPLATE_NAME]\
+        scif = self.scif[self.scif['template_name'] == EFFICIENCY_TEMPLATE_NAME.encode('utf-8')]\
             .merge(self.all_products, how='left', left_on='product_fk', right_on='product_fk', suffixes=['', '_all_products'])
         num_of_recognized_monitor = scif[scif['product_ean_code_lead'].isin(monitored_skus)]['product_ean_code_lead']\
             .drop_duplicates().count()
@@ -886,18 +898,18 @@ class BATRUToolBox:
         """
         calculates the percentage of recognized skus out of all skus by facings
         """
-        facing_of_all = self.scif.loc[(self.scif['template_name'] == EFFICIENCY_TEMPLATE_NAME) &
+        facing_of_all = self.scif.loc[(self.scif['template_name'] == EFFICIENCY_TEMPLATE_NAME.encode('utf-8')) &
                                       (self.scif['product_type'].isin([OTHER, SKU, POSM]))]['facings'].sum()
         products_eans_with_leads = \
             self.merged_additional_data.loc[
-                (self.merged_additional_data['template_name'] == EFFICIENCY_TEMPLATE_NAME) &
+                (self.merged_additional_data['template_name'] == EFFICIENCY_TEMPLATE_NAME.encode('utf-8')) &
                 (~self.merged_additional_data['fixed_date'].isnull())][
                 'product_ean_code'].unique().tolist() +\
             self.merged_additional_data.loc[
-                (self.merged_additional_data['template_name'] == EFFICIENCY_TEMPLATE_NAME) &
+                (self.merged_additional_data['template_name'] == EFFICIENCY_TEMPLATE_NAME.encode('utf-8')) &
                 (~self.merged_additional_data['fixed_date'].isnull())][
                 'product_ean_code_lead'].unique().tolist()
-        facing_of_recognized = self.scif[(self.scif['template_name'] == EFFICIENCY_TEMPLATE_NAME) &
+        facing_of_recognized = self.scif[(self.scif['template_name'] == EFFICIENCY_TEMPLATE_NAME.encode('utf-8')) &
                                          (self.scif['product_ean_code'].isin(products_eans_with_leads))]['facings'].sum()
         return (facing_of_recognized / float(facing_of_all)) * 100 if facing_of_all else 0
 
@@ -1062,8 +1074,8 @@ class BATRUToolBox:
                     product_ean_code))
 
         # priorities_template_data = parse_template(P3_PATH, 'Share priority')\
-        priorities_template_data = self.get_relevant_template_sheet(P3_TEMPLATE, 'Share priority') \
-                .merge(self.all_products, how='left', on='product_ean_code', suffixes=['', '_all_products'])
+        priorities_template_data = self.get_relevant_template_sheet(P3_TEMPLATE, 'Share priority')\
+            .merge(self.all_products, how='left', on='product_ean_code', suffixes=['', '_all_products'])
         priorities_template_data['Index (Duplications priority)'] = \
             priorities_template_data['Index (Duplications priority)'].astype(float)
         # check product ean codes from the template
@@ -1089,14 +1101,15 @@ class BATRUToolBox:
 
         for scene in scenes:
 
-            if not self.scif.loc[self.scif['scene_fk'] == scene]['template_group'].values[0] == EXIT_TEMPLATE_GROUP:
+            if not self.scif.loc[self.scif['scene_fk'] == scene][
+                       'template_group'].values[0] == EXIT_TEMPLATE_GROUP.encode('utf-8'):
                 continue
 
             self.sas_zones_scores_dict = {}
             sections_statuses = {}
             template_name = self.scif[self.scif['scene_fk'] == scene]['template_name'].values[0]
             fixture = self.templates.loc[self.templates['template_name']
-                                         == template_name]['additional_attribute_1'].values[0]
+                                         == template_name.encode('utf-8')]['additional_attribute_1'].values[0]
             if fixture not in sections_template_data['fixture'].unique().tolist():
                 continue
 
@@ -1182,8 +1195,8 @@ class BATRUToolBox:
                                 (outside_shelf_data[shelf_number].between(start_shelf, end_shelf))
                             ) &
                             (
-                                (outside_shelf_data['template_name'].str.contains(EXIT_TEMPLATE_NAME)) |
-                                (outside_shelf_data['template_name'] == EXIT_STOCK_NAME)
+                                (outside_shelf_data['template_name'].str.contains(EXIT_TEMPLATE_NAME.encode('utf-8'))) |
+                                (outside_shelf_data['template_name'] == EXIT_STOCK_NAME.encode('utf-8'))
                             )]\
                             .merge(self.all_products, how='left', left_on='product_fk', right_on='product_fk', suffixes=['', '_all_products'])\
                             .append(section_shelf_data_all.loc[~(section_shelf_data_all['sequence'].between(start_sequence, end_sequence))], ignore_index=True)
@@ -1700,7 +1713,7 @@ class BATRUToolBox:
                 equipment_template = posm_template.loc[posm_template['KPI Display Name'] == equipment]
                 scene_type = equipment_template['Template Group'].values[0]
                 scenes = self.scif.loc[(self.scif['additional_attribute_1'] == equipment) &
-                                       (self.scif['template_group'] == scene_type)]['scene_id'].unique()
+                                       (self.scif['template_group'] == scene_type.encode('utf-8'))]['scene_id'].unique()
                 for scene in scenes:
                     equipment_in_store += 1
                     # this will change the display name for the db according to instances:
