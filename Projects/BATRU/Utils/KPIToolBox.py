@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# import numpy as np
+import numpy as np
 import pandas as pd
 from datetime import datetime
 import os
@@ -117,6 +117,7 @@ class BATRUToolBox:
         self.session_uid = self.data_provider.session_uid
 
         self.products = self.data_provider[Data.PRODUCTS]
+        self.products.loc[self.products['substitution_product_fk'].isnull(), 'substitution_product_fk'] = np.nan
         self.products = self.products\
             .merge(self.products[['product_fk', 'product_ean_code', 'product_name']],
                    how='left', left_on='substitution_product_fk', right_on='product_fk', suffixes=['', '_lead'])
@@ -128,6 +129,7 @@ class BATRUToolBox:
         ), 'product_fk_lead'] = self.products['product_fk']
 
         self.all_products = self.data_provider[Data.ALL_PRODUCTS]
+        self.all_products.loc[self.all_products['substitution_product_fk'].isnull(), 'substitution_product_fk'] = np.nan
         self.all_products = self.all_products\
             .merge(self.all_products[['product_fk', 'product_ean_code', 'product_name']],
                    how='left', left_on='substitution_product_fk', right_on='product_fk', suffixes=['', '_lead'])

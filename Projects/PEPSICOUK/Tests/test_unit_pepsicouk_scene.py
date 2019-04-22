@@ -189,7 +189,7 @@ class Test_PEPSICOUKScene(MockingTestCase):
         scene_tb.calculate_number_of_bays_and_shelves()
         expected_list = []
         expected_list.append({'kpi_fk': 323, 'numerator': 2, 'result': 2})
-        expected_list.append({'kpi_fk': 324, 'numerator': 2, 'result': 9})
+        expected_list.append({'kpi_fk': 324, 'numerator': 2, 'result': 6})
         test_result_list = []
         for expected_result in expected_list:
             test_result_list.append(self.check_kpi_results(scene_tb.kpi_results, expected_result) == 1)

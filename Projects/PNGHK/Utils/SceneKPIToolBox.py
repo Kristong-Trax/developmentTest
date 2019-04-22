@@ -50,10 +50,10 @@ class SceneToolBox:
         
         # filter df include OSD when needed
         shelfs_to_include = row[Const.OSD_NUMBER_OF_SHELVES].values[0]
-        if row[Const.STORAGE_EXCLUSION_PRICE_TAG].values[0] == Const.NO:
-            if shelfs_to_include != "":
-                shelfs_to_include = int(shelfs_to_include)
-                results_list.append(df[df['shelf_number_from_bottom'] >= shelfs_to_include])
+        if shelfs_to_include != "":
+            shelfs_to_include = int(shelfs_to_include)
+            results_list.append(df[df['shelf_number_from_bottom'] >= shelfs_to_include])
+            df = df[df['shelf_number_from_bottom'] < shelfs_to_include]
 
         # if no osd rule is applied
         if row[Const.HAS_OSD].values[0] == Const.NO:
@@ -100,6 +100,6 @@ class SceneToolBox:
                                        denominator_id=template_fk)
 
     def find_row_osd(self, s):
-        rows = self.osd_rules_sheet[self.osd_rules_sheet[Const.SCENE_TYPE] == s]
+        rows = self.osd_rules_sheet[self.osd_rules_sheet[Const.SCENE_TYPE].str.encode("utf8") == s.encode("utf8")]
         row = rows[rows[Const.RETAILER] == self.store_info['retailer_name'].values[0]]
         return row

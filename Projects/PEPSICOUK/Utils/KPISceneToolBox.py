@@ -101,8 +101,8 @@ class PEPSICOUKSceneToolBox:
         self.scene_bay_shelf_product = self.commontools.scene_bay_shelf_product
         self.external_targets = self.commontools.external_targets
         self.own_manuf_fk = self.all_products[self.all_products['manufacturer_name'] == self.PEPSICO]['manufacturer_fk'].values[0]
-        self.block = Block(self.data_provider)
-        self.adjacency = Adjancency(self.data_provider)
+        self.block = Block(self.data_provider, custom_scif=self.filtered_scif, custom_matches=self.filtered_matches)
+        self.adjacency = Adjancency(self.data_provider, custom_scif=self.filtered_scif, custom_matches=self.filtered_matches)
         self.block_results = pd.DataFrame(columns=['Group Name', 'Score'])
         self.kpi_results = pd.DataFrame(columns=['kpi_fk', 'numerator', 'denominator', 'result', 'score'])
 
@@ -199,7 +199,7 @@ class PEPSICOUKSceneToolBox:
 
     @staticmethod
     def update_facings_for_cardboard_boxes(row):
-        facings = row['facings'] * 3 if row['form_factor'] == 'cardboard box' else row['facings']
+        facings = row['facings'] * 3 if row['att1'] == 'display cardboard box' else row['facings']
         return facings
 
     def calculate_number_of_bays_and_shelves(self):
@@ -209,8 +209,9 @@ class PEPSICOUKSceneToolBox:
 
         bays_in_scene = matches['bay_number'].unique().tolist()
         bays_num = len(bays_in_scene)
-        bay_shelf = matches.drop_duplicates(subset=['bay_number', 'shelf_number'])
-        shelf_num = len(bay_shelf)
+        # bay_shelf = matches.drop_duplicates(subset=['bay_number', 'shelf_number'])
+        # shelf_num = len(bay_shelf)
+        shelf_num = matches['shelf_number'].max()
         self.common.write_to_db_result(fk=bays_kpi_fk, numerator_id=self.own_manuf_fk, result=bays_num,
                                        denominator_id=self.store_id, by_scene=True)
         self.common.write_to_db_result(fk=shelves_kpi_fk, numerator_id=self.own_manuf_fk, result=shelf_num,
@@ -318,7 +319,7 @@ class PEPSICOUKSceneToolBox:
                     score = self.commontools.get_kpi_result_value_pk_by_value(orientation.upper())
             self.common.write_to_db_result(fk=kpi_fk, numerator_id=group_fk, denominator_id=self.store_id,
                                            numerator_result=max_ratio * 100,
-                                           score=score, result=result, target=target * 100, by_scene=True)
+                                           score=score, result=result, target=target, by_scene=True)
 
             self.block_results = self.block_results.append(pd.DataFrame([{'Group Name': row['Group Name'],
                                                                           'Score': result_df['is_block'].values[0] if not result_df.empty else False}]))
@@ -408,6 +409,8 @@ class PEPSICOUKSceneToolBox:
             ['bay_number', self.RELEVANT_SHELVES_TEMPL_COLUMN]].drop_duplicates()
         bay_all_relevant_shelves['shelves_all_placements'] = bay_all_relevant_shelves.groupby('bay_number') \
             [self.RELEVANT_SHELVES_TEMPL_COLUMN].apply(lambda x: (x + ',').cumsum().str.strip())
+        if 'bay_number' in bay_all_relevant_shelves.index.names:
+            bay_all_relevant_shelves.index.names = ['custom_ind']
         bay_all_relevant_shelves = bay_all_relevant_shelves.drop_duplicates(subset=['bay_number'], keep='last') \
             [['bay_number', 'shelves_all_placements']]
         bay_all_relevant_shelves['shelves_all_placements'] = bay_all_relevant_shelves['shelves_all_placements']. \

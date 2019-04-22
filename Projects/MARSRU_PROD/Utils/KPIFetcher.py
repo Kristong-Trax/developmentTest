@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import numpy as np
 import pandas as pd
 
 from Trax.Cloud.Services.Connector.Keys import DbUsers
@@ -51,9 +52,10 @@ class MARSRU_PRODKPIFetcher:
         return True
 
     def get_object_facings(self, scenes, objects, object_type, formula, form_factor=[], shelves=None,
-                           brand_category=None, sub_brands=[], sub_brands_to_exclude=[],
+                           manufacturers=None, brand_category=None, sub_brands=[], sub_brands_to_exclude=[],
                            cl_sub_cats=[], cl_sub_cats_to_exclude=[], include_stacking=False,
                            form_factor_to_exclude=[], linear=False):
+
         object_type_conversion = {'SKUs': 'product_ean_code',
                                   'BRAND': 'brand_name',
                                   'BRAND in CAT': 'brand_name',
@@ -62,16 +64,16 @@ class MARSRU_PRODKPIFetcher:
                                   'MAN': 'manufacturer_name',
                                   'SCENE_TYPE': 'template_name'}
         object_field = object_type_conversion[object_type]
+
+        if not manufacturers:
+            manufacturers = self.scif['manufacturer_name'].unique().tolist()
+
         if object_type == 'MAN in CAT':
             initial_result = self.scif.loc[(self.scif['scene_id'].isin(scenes)) &
                                            (self.scif[object_field].isin(objects)) &
                                            (self.scif['facings'] > 0) & (self.scif['rlv_dist_sc'] == 1) &
-                                           (self.scif['manufacturer_name'] == MARS) &
+                                           (self.scif['manufacturer_name'].isin(manufacturers)) &
                                            (~self.scif['product_type'].isin([OTHER, EMPTY]))]
-            merged_dfs = initial_result.merge(
-                self.matches, on=['product_fk', 'scene_fk'], suffixes=['', '_1'])
-            merged_filter = merged_dfs.loc[merged_dfs['stacking_layer'] == 1]
-            final_result = merged_filter.drop_duplicates(subset=['product_fk', 'scene_fk'])
         elif object_type == 'BRAND in CAT':
             if type(brand_category) is not list:
                 brand_category = [brand_category]
@@ -80,36 +82,33 @@ class MARSRU_PRODKPIFetcher:
                                            (self.scif['facings'] > 0) & (self.scif['rlv_dist_sc'] == 1) &
                                            (self.scif['category'].isin(brand_category)) &
                                            (~self.scif['product_type'].isin([OTHER, EMPTY]))]
-            merged_dfs = initial_result.merge(
-                self.matches, on=['product_fk', 'scene_fk'], suffixes=['', '_1'])
-            merged_filter = merged_dfs.loc[merged_dfs['stacking_layer'] == 1]
-            final_result = merged_filter.drop_duplicates(subset=['product_fk', 'scene_fk'])
         else:
             initial_result = self.scif.loc[(self.scif['scene_id'].isin(scenes)) &
                                            (self.scif[object_field].isin(objects)) &
                                            (self.scif['facings'] > 0) & (self.scif['rlv_dist_sc'] == 1) &
                                            (~self.scif['product_type'].isin([OTHER, EMPTY]))]
-            merged_dfs = initial_result.merge(self.matches, how='left', on=['product_fk', 'scene_fk'],
-                                              suffixes=['', '_1'])
-            merged_filter = merged_dfs.loc[merged_dfs['stacking_layer'] == 1]
-            final_result = merged_filter.drop_duplicates(subset=['product_fk', 'scene_fk'])
+
+        if initial_result.empty:
+            return 0
+
+        merged_dfs = initial_result.merge(self.matches, how='left', on=['product_fk', 'scene_fk'], suffixes=['', '_1'])
+        merged_filter = merged_dfs.loc[merged_dfs['stacking_layer'] == 1]
+        final_result = merged_filter.drop_duplicates(subset=['product_fk', 'scene_fk'])
+
         if include_stacking:
-            # merged_dfs = pd.merge(final_result, self.matches, on=['product_fk', 'product_fk'])
-            # merged_filter = merged_dfs.loc[~merged_dfs['stacking_layer'] == 1]
-            # final_result = merged_filter
             final_result = initial_result
+
         if form_factor:
             final_result = final_result[final_result['form_factor'].isin(form_factor)]
         if form_factor_to_exclude:
             final_result = final_result[~final_result['form_factor'].isin(form_factor_to_exclude)]
-        # if size:
-        #     final_result = final_result[final_result['size'].isin(size)]
         if shelves:
-            merged_dfs = pd.merge(final_result, self.matches, on=[
-                                  'product_fk'], suffixes=['', '_1'])
+            merged_dfs = pd.merge(final_result, self.matches, on=['product_fk'], suffixes=['', '_1'])
             shelves_list = [int(shelf) for shelf in shelves.split(',')]
             merged_filter = merged_dfs.loc[merged_dfs['shelf_number_x'].isin(shelves_list)]
             final_result = merged_filter
+        if manufacturers:
+            final_result = final_result[final_result['manufacturer_name'].isin(manufacturers)]
         if sub_brands:
             final_result = final_result[final_result['sub_brand'].isin(sub_brands)]
         if sub_brands_to_exclude:
@@ -135,6 +134,7 @@ class MARSRU_PRODKPIFetcher:
                     object_facings = final_result['facings'].sum()
         except IndexError:
             object_facings = 0
+
         return object_facings
 
     @staticmethod

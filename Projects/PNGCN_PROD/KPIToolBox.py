@@ -1,6 +1,7 @@
 
 import pandas as pd
 import os
+import numpy as np
 from datetime import datetime
 from KPIUtils_v2.DB.CommonV2 import Common
 from Trax.Algo.Calculations.Core.DataProvider import Data
@@ -164,9 +165,12 @@ class PNGToolBox:
                                      (self.scif['rlv_sos_sc'] == 1) &
                                      (self.scif['location_type'] == PRIMARY_SHELF) &
                                      (self.scif['facings'] > 0)]
-
+        relevant_facings = relevant_facings.fillna("")
         sets_to_save = set()
         for category in self.empty_spaces.keys():
+            # if np.nan in self.empty_spaces[category]:
+            #     self.empty_spaces[category][None] = self.empty_spaces[category][np.nan]
+            #     del self.empty_spaces[category][np.nan]
             for sub_category in self.empty_spaces[category].keys():
                 kpi_dict = {}
                 empty_spaces = self.empty_spaces[category][sub_category]
@@ -260,7 +264,7 @@ class PNGToolBox:
         if anchor_facing['product_type'] != self.IRRELEVANT and anchor_facing['rlv_sos_sc'] == 1:
             anchor_category = anchor_facing['category_local_name']
             anchor_sub_category = anchor_facing['sub_category']
-            if not anchor_sub_category:
+            if not anchor_sub_category or np.nan in [anchor_sub_category]:
                 anchor_sub_category = '{} Other'.format(anchor_category.split('_')[0])
             anchor_manufacturer = anchor_facing['manufacturer_fk']
             if anchor_category in self.empty_spaces.keys():
@@ -412,7 +416,7 @@ class PNGToolBox:
         return attributes.to_dict()
 
     def insert_sub_category_kpi(self, category, sub_category):
-        set_data = self.kpi_static_data[self.kpi_static_data['kpi_set_name'] == category + SUB_CATEGORY_SETS_SUFFIX]
+        set_data = self.kpi_static_data[self.kpi_static_data['kpi_set_name'].str.encode("utf8)") == (category + SUB_CATEGORY_SETS_SUFFIX).encode("utf8")]
         if sub_category not in set_data['kpi_name'].tolist():
             cur = self.rds_conn.db.cursor()
             kpi_query = PNGQueries.get_insert_kpi_query(set_data['kpi_set_fk'].values[0], sub_category)
