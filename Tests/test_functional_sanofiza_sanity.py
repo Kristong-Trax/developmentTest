@@ -13,16 +13,11 @@ from Tests.Data.TestData.test_data_sanofiza_sanity import ProjectsSanityData
 from Projects.SANOFIZA.Calculations import SANOFIZACalculations
 from Trax.Apps.Core.Testing.BaseCase import TestFunctionalCase
 
-from Tests.TestUtils import remove_cache_and_storage
 
-__author__ = 'yoava'
+__author__ = 'jasmineg'
 
 
 class TestKEngineOutOfTheBox(TestFunctionalCase):
-
-    def set_up(self):
-        super(TestKEngineOutOfTheBox, self).set_up()
-        remove_cache_and_storage()
 
     @property
     def import_path(self):
@@ -38,7 +33,7 @@ class TestKEngineOutOfTheBox(TestFunctionalCase):
         connector = PSProjectConnector(TestProjectsNames().TEST_PROJECT_1, DbUsers.Docker)
         cursor = connector.db.cursor(MySQLdb.cursors.DictCursor)
         cursor.execute('''
-        SELECT * FROM report.kpi_results
+        SELECT * FROM report.kpi_level_2_results
         ''')
         kpi_results = cursor.fetchall()
         self.assertNotEquals(len(kpi_results), 0)
@@ -48,7 +43,7 @@ class TestKEngineOutOfTheBox(TestFunctionalCase):
     def test_sanofiza_sanity(self):
         project_name = ProjectsSanityData.project_name
         data_provider = KEngineDataProvider(project_name)
-        sessions = ['1FF212F9-54FE-4864-A939-205756C73996']
+        sessions = ['3282973E-0374-4674-B6BC-2185C5ADA43C']
         for session in sessions:
             data_provider.load_session_data(session)
             output = Output()
