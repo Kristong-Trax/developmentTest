@@ -6,6 +6,7 @@ from Trax.Utils.Conf.Configuration import Config
 from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
 from mock import MagicMock
 from Projects.CCUS.SceneKpis.SceneCalculations import SceneCalculations
+from Projects.CCUS.Pillars.SceneKpis.SceneCalculations import SceneCalculations as PillarsSceneCalculations
 
 __author__ = 'ortal_shivi'
 
@@ -29,9 +30,10 @@ if __name__ == '__main__':
         "A0905E92-8BB7-4849-82B3-7E1F5487433F":	[2346],
     }
     for session in session_and_scenes.keys():
-        # for scene in session_and_scenes[session]:
-        #     data_provider.load_scene_data(session, scene)
-        #     SceneCalculations(data_provider).calculate_kpis()
+        for scene in session_and_scenes[session]:
+            data_provider.load_scene_data(session, scene)
+            SceneCalculations(data_provider).calculate_kpis()
+            PillarsSceneCalculations(data_provider)
 
         data_provider.load_session_data(session)
         output = Output()
