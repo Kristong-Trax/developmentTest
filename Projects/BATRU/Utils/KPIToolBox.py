@@ -154,12 +154,12 @@ class BATRUToolBox:
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
         self.scif['template_group'] = self.scif['template_group']\
             .apply(lambda x: x.encode('utf-8'))
+        self.scif['template_name'] = self.scif['template_name']\
+            .apply(lambda x: x.encode('utf-8'))
 
         self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
 
         self.merged_additional_data = self.get_additional_product_data()
-        self.merged_additional_data['template_name'] = self.merged_additional_data['template_name']\
-            .apply(lambda x: x.encode('utf-8'))
 
         self.tools = BATRUGENERALToolBox(self.data_provider, self.output, rds_conn=self.rds_conn)
         self.match_display_in_scene = self.tools.get_match_display()
