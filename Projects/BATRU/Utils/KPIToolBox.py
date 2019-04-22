@@ -1109,7 +1109,7 @@ class BATRUToolBox:
             sections_statuses = {}
             template_name = self.scif[self.scif['scene_fk'] == scene]['template_name'].values[0]
             fixture = self.templates.loc[self.templates['template_name']
-                                         == template_name.encode('utf-8')]['additional_attribute_1'].values[0]
+                                         == template_name]['additional_attribute_1'].values[0]
             if fixture not in sections_template_data['fixture'].unique().tolist():
                 continue
 
