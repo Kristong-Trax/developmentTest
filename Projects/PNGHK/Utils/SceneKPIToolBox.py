@@ -33,6 +33,8 @@ class SceneToolBox:
         """
         This function calculates the KPI results.
         """
+        if self.match_product_in_scene.empty or self.products.empty:
+            return
         df = pd.merge(self.match_product_in_scene, self.products, on="product_fk", how="left")
         distinct_session_fk = self.scif[['scene_fk', 'template_name', 'template_fk']].drop_duplicates()
         df = pd.merge(df, distinct_session_fk, on="scene_fk", how="left")
