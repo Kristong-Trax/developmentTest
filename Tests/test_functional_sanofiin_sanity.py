@@ -9,8 +9,8 @@ from Trax.Cloud.Services.Connector.Keys import DbUsers
 from Trax.Data.Testing.TestProjects import TestProjectsNames
 from Trax.Utils.Testing.Case import MockingTestCase
 
-from Tests.Data.TestData.test_data_sanofieg_sanity import ProjectsSanityData
-from Projects.SANOFIEG.Calculations import SANOFIEGCalculations
+from Tests.Data.TestData.test_data_sanofiin_sanity import ProjectsSanityData
+from Projects.SANOFIIN.Calculations import SANOFIINCalculations
 from Trax.Apps.Core.Testing.BaseCase import TestFunctionalCase
 
 
@@ -39,13 +39,13 @@ class TestKEngineOutOfTheBox(TestFunctionalCase):
         self.assertNotEquals(len(kpi_results), 0)
         connector.disconnect_rds()
     
-    @seeder.seed(["sanofieg_seed"], ProjectsSanityData())
-    def test_sanofieg_sanity(self):
+    @seeder.seed(["sanofiin_seed"], ProjectsSanityData())
+    def test_sanofiin_sanity(self):
         project_name = ProjectsSanityData.project_name
         data_provider = KEngineDataProvider(project_name)
-        sessions = ['FEA90D77-FA56-4AE9-96FF-790F0A487FDD']
+        sessions = ['b85d1929-ceb1-4460-b865-3fa8684a64db']
         for session in sessions:
             data_provider.load_session_data(session)
             output = Output()
-            SANOFIEGCalculations(data_provider, output).run_project_calculations()
+            SANOFIINCalculations(data_provider, output).run_project_calculations()
             self._assert_kpi_results_filled()
