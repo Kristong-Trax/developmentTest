@@ -151,7 +151,8 @@ class CCRUKPIToolBox:
                      'scene_uid': None,
                      'level': int(param.get('level')) if param.get('level') else 1,
                      'parent': parent,
-                     'additional_level': None}
+                     'additional_level': None,
+                     'sort_order': param.get('Sorting')}
             self.kpi_scores_and_results[self.kpi_set_type][kpi_id].update(kpi_scores_and_results)
 
     def rds_connection(self):
@@ -2267,7 +2268,8 @@ class CCRUKPIToolBox:
                     {'KPI ID': kf.get('id'),
                      'KPI name Eng': kf.get('name'),
                      'KPI name Rus': kf.get('name'),
-                     'Parent': 0},
+                     'Parent': 0,
+                     'Sorting': 0},
                     {'scene_uid': kf.get('scene_uid'),
                      'scene_id': kf.get('scene_id'),
                      'result': result_formatted,
@@ -2308,7 +2310,8 @@ class CCRUKPIToolBox:
             {'KPI ID': 0,
              'KPI name Eng': kpi_set_name,
              'KPI name Rus': kpi_set_name,
-             'Parent': 'root'},
+             'Parent': 'root',
+             'Sorting': 0},
             {'level': 0})
 
         return
@@ -2642,6 +2645,7 @@ class CCRUKPIToolBox:
                         category_local = kpi['Gap Category Rus']
                         group_local = kpi['Gap Group Rus']
                         subgroup_local = kpi['Gap Subgroup Rus']
+                        sort_order = kpi['Sorting']
                         score = self.kpi_scores_and_results[POS][kpi_id].get('weighted_score')
                         target = self.kpi_scores_and_results[POS][kpi_id].get('weight') * 100
 
@@ -2657,7 +2661,8 @@ class CCRUKPIToolBox:
                                     {'KPI ID': counter,
                                      'KPI name Eng': kpi_name,
                                      'KPI name Rus': kpi_name_local,
-                                     'Parent': subgroup_counter},
+                                     'Parent': subgroup_counter,
+                                     'Sorting': sort_order},
                                     {'threshold': 0,
                                      'result': result,
                                      'format': 'STR',
@@ -2672,7 +2677,8 @@ class CCRUKPIToolBox:
                             {'KPI ID': subgroup_counter,
                              'KPI name Eng': subgroup,
                              'KPI name Rus': subgroup_local,
-                             'Parent': group_counter},
+                             'Parent': group_counter,
+                             'Sorting': subgroup_counter},
                             {'threshold': 0,
                              'result': result,
                              'format': 'STR',
@@ -2687,7 +2693,8 @@ class CCRUKPIToolBox:
                         {'KPI ID': group_counter,
                          'KPI name Eng': group,
                          'KPI name Rus': group_local,
-                         'Parent': category_counter},
+                         'Parent': category_counter,
+                         'Sorting': group_counter},
                         {'threshold': 0,
                          'result': result,
                          'format': 'STR',
@@ -2702,7 +2709,8 @@ class CCRUKPIToolBox:
                     {'KPI ID': category_counter,
                      'KPI name Eng': category,
                      'KPI name Rus': category_local,
-                     'Parent': 0},
+                     'Parent': 0,
+                     'Sorting': category_counter},
                     {'threshold': 0,
                      'result': result,
                      'format': 'STR',
@@ -2716,7 +2724,8 @@ class CCRUKPIToolBox:
             {'KPI ID': 0,
              'KPI name Eng': kpi_set_name,
              'KPI name Rus': kpi_set_name,
-             'Parent': 'root'},
+             'Parent': 'root',
+             'Sorting': 0},
             {'threshold': 0,
              'result': result,
              'format': 'STR',
