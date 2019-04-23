@@ -75,19 +75,20 @@ class SINGHATHToolBox:
         self.kpi_template = pd.ExcelFile(self.templates_path)
 
     def get_products_price_for_ean_codes(self, ean_codes, session_fk):
+        # https://jira.trax-cloud.com/browse/TOHA-2024 to have this in data provider
         self.rds_conn.connect_rds()
         query = """
-                select 
-                value as price, is_promotion,
-                product_fk, name, ean_code, category_fk, brand_fk, type as product_type,
-                sub_category_fk
-                from probedata.manual_collection_price mcp
-                join static_new.product prod on mcp.product_fk=prod.pk
-                where mcp.value is not null
-                and prod.is_active =1
-                and session_fk={session_fk}
-                and ean_code in {ean_codes};
-                """
+                    select 
+                    value as price, is_promotion,
+                    product_fk, name, ean_code, category_fk, brand_fk, type as product_type,
+                    sub_category_fk
+                    from probedata.manual_collection_price mcp
+                    join static_new.product prod on mcp.product_fk=prod.pk
+                    where mcp.value is not null
+                    and prod.is_active =1
+                    and session_fk={session_fk}
+                    and ean_code in {ean_codes};
+                    """
         df = pd.read_sql_query(query.format(ean_codes=ean_codes,
                                             session_fk=session_fk,
                                             ), self.rds_conn.db)
@@ -109,7 +110,7 @@ class SINGHATHToolBox:
                     print("KPI :{} deactivated in sheet.".format(kpi_sheet_row[KPI_NAME_COL]))
                     continue
             if not is_nan(kpi_sheet_row[KPI_SHEET_STORE_TYPES_COL]):
-                if bool(kpi_sheet_row[KPI_SHEET_STORE_TYPES_COL].strip()) and\
+                if bool(kpi_sheet_row[KPI_SHEET_STORE_TYPES_COL].strip()) and \
                         kpi_sheet_row[KPI_SHEET_STORE_TYPES_COL].strip().lower() != 'all':
                     print "Check the store types in excel..."
                     permitted_store_types = [x.strip() for x in
@@ -182,9 +183,11 @@ class SINGHATHToolBox:
                 presence = 0
                 if product_df.empty:
                     # This should not happen
-                    raise Exception("KPI {kpi_name}: The product with EAN {ean} in template is not in DB.".format(
+                    raise Exception("KPI {kpi_name}: The product with EAN {ean} and type {type}"
+                                    " in template is not in DB.".format(
                         kpi_name=kpi[KPI_TYPE_COL].iloc[0],
-                        ean=each_ean
+                        ean=each_ean,
+                        type=DUMP_DISPLAY_POS_TYPE,
                     ))
             self.common.write_to_db_result(
                 fk=kpi['pk'].iloc[0],
@@ -224,7 +227,7 @@ class SINGHATHToolBox:
                 ))['template_fk'].values.tolist()
                 template_scif = self.scif.query('template_fk in {}'.format(allowed_template_fks))
                 if template_scif.empty:
-                    print "kpi: {kpi} Template/Scene Type: {template} is not present in session {sess}"\
+                    print "kpi: {kpi} Template/Scene Type: {template} is not present in session {sess}" \
                         .format(kpi=kpi[KPI_TYPE_COL].iloc[0],
                                 template=set_scene_types,
                                 sess=self.session_uid)
@@ -243,8 +246,8 @@ class SINGHATHToolBox:
                     facings_count = 0
                     prod_scif_with_ean = scene_data.query(
                         'product_ean_code in {all_skus} and category_fk=="{category_fk}"'
-                        .format(all_skus=all_pos_ean_codes,
-                                category_fk=category_fk))
+                            .format(all_skus=all_pos_ean_codes,
+                                    category_fk=category_fk))
                     if not prod_scif_with_ean.empty:
                         facings_count = int(prod_scif_with_ean['facings'].iloc[0])
                     if facings_count < int(prod_data[DUMP_DISPLAY_COUNT_COL].iloc[0]):
