@@ -406,8 +406,8 @@ class CCRUKPIToolBox:
         return set_total_res
 
     def calculate_availability(self, params, scenes=None, all_params=None):
-        values_list = [unicode(x).strip()
-                       for x in unicode(params.get('Values')).strip().split(', ')]
+        values_list = \
+            [unicode(x).strip() for x in unicode(params.get('Values')).strip().split(', ')]
         if not scenes:
             if params.get('depends on'):
                 depends_on_kpi_name = params.get('depends on')
@@ -845,10 +845,12 @@ class CCRUKPIToolBox:
 
                 if not scenes:
                     return 0
-            else:
-                scenes = self.get_relevant_scenes(params)
+        #     else:
+        #         scenes = self.get_relevant_scenes(params)
+        #
+        # relevant_scenes = scenes
 
-        relevant_scenes = scenes
+        relevant_scenes = list(set(scenes if scenes else []).intersection(self.get_relevant_scenes(params)))
 
         if params.get('Manufacturer'):
             manufacturers = \
