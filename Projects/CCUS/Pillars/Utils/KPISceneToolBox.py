@@ -27,8 +27,9 @@ class PillarsSceneToolBox:
         self.scene_info = self.data_provider[Data.SCENES_INFO]
         self.template_fk = self.templates['template_fk'].iloc[0]
         self.scene_id = self.scene_info['scene_fk'][0]
+        self.store_id = self.data_provider[Data.STORE_INFO]['store_fk'][0]
         # self.kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.POC)
-        self.poc_number = 1
+        self.all_brand = self.all_products[['brand_name', 'brand_fk']].set_index(u'brand_name').to_dict()
 
     def is_scene_belong_to_program(self):
         relevant_programs = self.get_programs()
@@ -46,9 +47,13 @@ class PillarsSceneToolBox:
                     or self.found_scene_program_by_survey(survey_question_for_program, program_as_survey_answer) \
                     or self.found_scene_program_by_display(display_id):
                 score = 1
-            print score
 
-    #           write to db scene and score
+            kpi_fk = self.common.get_kpi_fk_by_kpi_name(kpi_name=Const.KPI_NAME)
+            self.common.write_to_db_result(fk=kpi_fk, numerator_id=self.get_brand_fk_from_name(program_as_brand),
+                                           result=score, by_scene=True, denominator_id=self.store_id)
+
+    def get_brand_fk_from_name(self, brand_name):
+        return self.all_brand[brand_name]
 
     def get_programs(self):
         programs = pd.read_excel(self.PROGRAM_TEMPLATE_PATH)
@@ -56,17 +61,9 @@ class PillarsSceneToolBox:
         # Get only relevant programs to check
         relevant_programs = programs.loc[(programs['start_date'].dt.date <= self.visit_date) &
                                          (programs['end_date'].dt.date >= self.visit_date)]
-        relevant_programs = relevant_programs[Const.PROGRAM_NAME_FIELD].unique()
-
+        # relevant_programs = relevant_programs[Const.PROGRAM_NAME_FIELD].unique()
 
         return relevant_programs
-
-    def update_old_kpi_static(self, atomic_list):
-        old_kpis = self.common_old.get_kpi_static_data()
-        old_kpis = old_kpis.loc[old_kpis['kpi_set_name'] == Const.KPI_SET]
-        for atomic in atomic_list:
-            pass
-
 
     def found_program_products_by_brand(self, brand_name):
         # checks if the scene's program was discovered by trax according to its products

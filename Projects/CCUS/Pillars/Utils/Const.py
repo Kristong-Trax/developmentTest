@@ -16,4 +16,4 @@ class Const(object):
     SET_NAME = 'Pillars Scene KPI'
 
     # New KPI
-    KPI_NAME = 'Program Scene KPI'
+    KPI_NAME = 'Pillars Scene KPI'
