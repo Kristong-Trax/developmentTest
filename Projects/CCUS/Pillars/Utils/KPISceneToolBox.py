@@ -48,7 +48,7 @@ class PillarsSceneToolBox:
                     or self.found_scene_program_by_display(display_id):
                 score = 1
 
-            kpi_fk = self.common.get_kpi_fk_by_kpi_name(kpi_name=Const.KPI_NAME)
+            kpi_fk = self.common.get_kpi_fk_by_kpi_name(kpi_name=Const.SCENE_KPI_NAME)
             self.common.write_to_db_result(fk=kpi_fk, numerator_id=self.get_brand_fk_from_name(program_as_brand),
                                            result=score, by_scene=True, denominator_id=self.store_id)
 
