@@ -845,12 +845,11 @@ class CCRUKPIToolBox:
 
                 if not scenes:
                     return 0
-        #     else:
-        #         scenes = self.get_relevant_scenes(params)
-        #
-        # relevant_scenes = scenes
+            else:
+                scenes = self.get_relevant_scenes(params)
 
-        relevant_scenes = list(set(scenes if scenes else []).intersection(self.get_relevant_scenes(params)))
+        # relevant_scenes = scenes
+        relevant_scenes = list(set(scenes).intersection(self.get_relevant_scenes(params)))
 
         if params.get('Manufacturer'):
             manufacturers = \
