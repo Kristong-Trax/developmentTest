@@ -19,12 +19,12 @@ if __name__ == '__main__':
     # session = '58272289-5f9a-4fb6-b8e0-a7f3bfa2e07c' # session with DF error on _set_scif
     # session = '8699c793-8a71-4a18-b24c-3785146075c4'
     # session = 'aa9d2ad8-61d5-4167-a4f1-e753ef366b39'
-    session = '00ee13bb-19c5-4dc8-a7b5-6e9c7fb3fd2a'
+    session = '94707e52-8611-4901-b935-6c2fc655c3d1'
     data_provider.load_session_data(session)
     # output = Output()
     # PEPSICOUKCalculations(data_provider, output).run_project_calculations()
-    # scenes = data_provider.scenes_info.scene_fk.tolist()
-    scenes = [4449]
+    scenes = data_provider.scenes_info.scene_fk.tolist()
+    # scenes = [10023]
     for scene in scenes:
         data_provider.load_scene_data(session, scene)
         # output = VanillaOutput()
