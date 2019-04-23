@@ -3453,7 +3453,7 @@ class CCRUKPIToolBox:
             kpis = self.kpi_scores_and_results.get(kpi_set_type)
             if kpis:
                 kpis = pd.DataFrame(kpis.values())
-                kpis = kpis.where((pd.notnull(kpis)), None)
+                kpis = kpis.where((pd.notnull(kpis)), None).sort_values(by=['sort_order'])
                 if kpi_set_type in [EQUIPMENT, TOPSKU]:
                     identifier_parent = self.common.get_dictionary(set=CONTRACT, level=0, kpi=CONTRACT)
                 else:
@@ -3468,7 +3468,10 @@ class CCRUKPIToolBox:
     def write_kpi_tree(self, kpi_set_type, kpis, parent='root', identifier_parent=None):
         group_score = 0
         group_weight = 0
+        sort_order = 0
         for i, kpi in kpis[kpis['parent'] == parent].iterrows():
+
+            sort_order += 1
 
             kpi_name = (kpi_set_type + '_' + str(int(kpi['level']))
                         + (('_' + kpi['format']) if kpi['format'] else '')
@@ -3526,6 +3529,7 @@ class CCRUKPIToolBox:
 
             self.common.write_to_db_result(fk=kpi_fk,
                                            numerator_id=numerator_id,
+                                           numerator_result=sort_order,
                                            denominator_id=denominator_id,
                                            context_id=context_id,
                                            target=target,

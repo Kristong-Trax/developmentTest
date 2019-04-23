@@ -197,9 +197,13 @@ class CCRU_SANDContract:
                         target_data += [data_cur]
                 target_data += [data_new]
 
-                with open(self.temp_path, 'wb') as f:
-                    f.write(json.dumps(target_data))
-                self.amz_conn.save_file(self.cloud_path, str(store_id), self.temp_path)
+                try:
+                    with open(self.temp_path, 'wb') as f:
+                        f.write(json.dumps(target_data))
+                    self.amz_conn.save_file(self.cloud_path, str(store_id), self.temp_path)
+                except Exception as e:
+                    Log.error("Store Seq/ID/Number: {}/{}/{}. Error: {}".format(x, store_id, store_number, e))
+                    Log.error("target_data: {}".format(target_data))
 
             count_stores_processed = x + 1
             self.stores_processed += [store_number]
