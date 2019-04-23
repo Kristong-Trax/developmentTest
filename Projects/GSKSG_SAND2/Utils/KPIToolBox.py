@@ -122,17 +122,43 @@ class GSKSGToolBox:
         This function calculates the KPI results.
         """
 
-        linear_sos_dict = self.gsk_generator.gsk_global_linear_sos_function()
+        linear_sos_dict = self.gsk_generator.gsk_global_facings_sos_whole_store_function()
         if linear_sos_dict is None:
             Log.warning('Scene item facts is empty for this session')
         else:
             self.common.save_json_to_new_tables(linear_sos_dict)
-        self.common.commit_results_data()
+        linear_sos_dict = self.gsk_generator.gsk_global_linear_sos_whole_store_function()
+        if linear_sos_dict is None:
+            Log.warning('Scene item facts is empty for this session')
+        else:
+            self.common.save_json_to_new_tables(linear_sos_dict)
+        linear_sos_dict = self.gsk_generator.gsk_global_linear_sos_by_sub_category_function()
+        if linear_sos_dict is None:
+            Log.warning('Scene item facts is empty for this session')
+        else:
+            self.common.save_json_to_new_tables(linear_sos_dict)
+        linear_sos_dict = self.gsk_generator.gsk_global_facings_by_sub_category_function()
+        if linear_sos_dict is None:
+            Log.warning('Scene item facts is empty for this session')
+        else:
+            self.common.save_json_to_new_tables(linear_sos_dict)
+
+        linear_sos_dict = self.gsk_generator.gsk_global_facings_sos_by_category_function()
+        if linear_sos_dict is None:
+            Log.warning('Scene item facts is empty for this session')
+        else:
+            self.common.save_json_to_new_tables(linear_sos_dict)
+        linear_sos_dict = self.gsk_generator.gsk_global_linear_sos_by_category_function()
+        if linear_sos_dict is None:
+            Log.warning('Scene item facts is empty for this session')
+        else:
+            self.common.save_json_to_new_tables(linear_sos_dict)
 
         # template = self.get_relevant_calculations()
         # self.handle_calculation(template)
         # self.common_old_tables.commit_results_data()
         # self.common.commit_results_data()
+        self.common.commit_results_data()
 
         score = 0
         return score
