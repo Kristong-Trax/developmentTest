@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 
 import os
 import pandas as pd
@@ -54,13 +55,15 @@ class INBEVTRADMXToolBox:
         self.kpi_static_data = self.common.get_kpi_static_data()
         self.kpi_results_queries = []
         self.templates_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data')
-        self.excel_file_path = os.path.join(self.templates_path, 'inbevtradmx_template_5.xlsx')
+        self.excel_file_path = os.path.join(self.templates_path, 'inbevtradmx_template_6.xlsx')
         self.availability = Availability(self.data_provider)
         self.survey_response = self.data_provider[Data.SURVEY_RESPONSES]
         self.geo = GeoLocation.INBEVTRADMX_SANDGeo(self.rds_conn, self.session_uid, self.data_provider,
-                                                   self.kpi_static_data, self.common, self.common2)
+                                              self.kpi_static_data, self.common, self.common2)
+        self.new_static_data = self.common2.kpi_static_data
+        self.manufacturer_fk = 1
 
-# init functions:
+    # init functions:
 
     def parse_template(self):
         """
@@ -89,7 +92,7 @@ class INBEVTRADMXToolBox:
         else:
             return True
 
-# calculation:
+    # calculation:
 
     def main_calculation(self):
         # calculate geo
@@ -147,7 +150,7 @@ class INBEVTRADMXToolBox:
         if additional_attribute_13:
             sets = template[(template['Store Additional Attribute 4'].str.contains(additional_attribute_4)) &
                             ((template['Store Additional Attribute 13'].str.contains(additional_attribute_13)) |
-                            (template['Store Additional Attribute 13'] == ''))]
+                             (template['Store Additional Attribute 13'] == ''))]
         else:
             sets = template[(template['Store Additional Attribute 4'].str.contains(additional_attribute_4)) &
                             (template['Store Additional Attribute 13'] == '')]
@@ -196,7 +199,7 @@ class INBEVTRADMXToolBox:
         :param set_df: kpi set df
         :return: kpi level 2 score
         """
-        kpi_df = set_df[set_df['KPI Level 2 Name'] == kpi_name]
+        kpi_df = set_df[set_df['KPI Level 2 Name'].str.encode('utf8') == kpi_name.encode('utf-8')]
         kpi_score = 0
         # iterate the all related atomic kpis
         for i, row in kpi_df.iterrows():
@@ -208,6 +211,8 @@ class INBEVTRADMXToolBox:
             kpi_score += atomic_kpi_score
         write_to_all_levels = False
         if len(kpi_df) > 1:  # if there is just one atomic we don't need two levels
+            write_to_all_levels = True
+        elif kpi_df['KPI Level 3 Name'].iloc[0] != kpi_df['KPI Level 2 Name'].iloc[0]:
             write_to_all_levels = True
         self.write_kpi_score_to_db(kpi_name, set_name, kpi_score, write_to_all_levels)
         return kpi_score
@@ -230,7 +235,7 @@ class INBEVTRADMXToolBox:
             curr_weight = row['weights']
             # figure out what type of calculation need to be done
             if row['KPI type'] == 'Product Availability':
-                if kpi_level_3_name == 'URBAN':  # this might need to be removed now...
+                if kpi_level_3_name == 'URBAN':
                     score = self.calculate_weigthed_availability_score(row, relevant_columns)
                     if score:
                         atomic_kpi_score = score
@@ -252,7 +257,7 @@ class INBEVTRADMXToolBox:
             if is_kpi_passed == 1:
                 atomic_kpi_score += curr_weight
             # write result to DB
-                # the customer asked for this specific KPI will write 100 in DB if it passed even if the weight is 0
+            # the customer asked for this specific KPI will write 100 in DB if it passed even if the weight is 0
             if kpi_level_3_name == 'Sin Espacios Vacios' and curr_weight == 0 and is_kpi_passed == 1:
                 # atomic_kpi_score = 100
                 self.write_atomic_to_db(kpi_level_3_name, 100, kpi_name, set_name, is_kpi_passed, curr_weight)
@@ -261,7 +266,7 @@ class INBEVTRADMXToolBox:
                                         curr_weight)
         return atomic_kpi_score
 
-# sos
+    # sos
 
     def calculate_sos_score(self, row, relevant_columns):
         """
@@ -319,12 +324,12 @@ class INBEVTRADMXToolBox:
         self.handle_exclude_skus(filters_dict, relevant_columns, row)
         # fill the dictionary
         for column_value in relevant_columns:
-            if column_value == 'Store Additional Attribute 4' or column_value == 'store_type':
+            if column_value in ['Store Additional Attribute 4', 'Store Additional Attribute 13'] or column_value == 'store_type':
                 continue
             filters_dict[column_value] = map(str.strip, str(row.loc[column_value]).split(','))
         return filters_dict
 
-# availability:
+    # availability:
 
     def calculate_weigthed_availability_score(self, row, relevant_columns):
         """
@@ -427,12 +432,13 @@ class INBEVTRADMXToolBox:
                     return availability_score > 1
                 elif row['KPI Level 2 Name'] == 'Pop Interior':
                     return availability_score > 1
-            elif row['KPI Level 1 Name'] == 'Set Self Execution' and row['KPI Level 3 Name'] == 'Hay o no hay # frentes':
+            elif row['KPI Level 1 Name'] == 'Set Self Execution' and row[
+                'KPI Level 3 Name'] == 'Hay o no hay # frentes':
                 return availability_score > 24
             else:
                 return True
 
-# surveys:
+    # surveys:
 
     def calculate_survey_score(self, row):
         """
@@ -453,7 +459,7 @@ class INBEVTRADMXToolBox:
         else:
             return False
 
-# help functions:
+    # help functions:
 
     def handle_exclude_skus(self, filters_dict, relevant_columns, row):
         """
@@ -475,7 +481,7 @@ class INBEVTRADMXToolBox:
         if 'exclude skus' in row.to_dict().keys() and 'exclude skus' in relevant_columns:
             relevant_columns.remove('exclude skus')
 
-# db functions:
+    # db functions:
 
     def write_kpi_set_score_to_db(self, set_name, set_score):
         """
@@ -484,10 +490,11 @@ class INBEVTRADMXToolBox:
         :param set_score: set score
         :return: None
         """
-        kpi_set_fk = self.kpi_static_data.kpi_set_fk[self.kpi_static_data.kpi_set_name == set_name].unique()[0]
-        self.common.write_to_db_result(kpi_set_fk, self.LEVEL1, set_score)
+        # kpi_set_fk = self.kpi_static_data.kpi_set_fk[self.kpi_static_data.kpi_set_name == set_name].unique()[0]
+        # self.common.write_to_db_result(kpi_set_fk, self.LEVEL1, set_score)
         new_kpi_set_fk = self.common2.get_kpi_fk_by_kpi_name(set_name)
         self.common2.write_to_db_result(fk=new_kpi_set_fk, result=set_score,
+                                        numerator_id=self.manufacturer_fk , denominator_id=self.store_id,
                                         identifier_result=self.common2.get_dictionary(name=set_name))
 
     def write_kpi_score_to_db(self, kpi_name, set_name, kpi_score, write_to_all_levels):
@@ -498,13 +505,14 @@ class INBEVTRADMXToolBox:
         :param kpi_score: the score
         :return: None
         """
-        kpi_fk = \
-            self.kpi_static_data.kpi_fk[(self.kpi_static_data.kpi_name == kpi_name) &
-                                        (self.kpi_static_data.kpi_set_name == set_name)].values[0]
-        self.common.write_to_db_result(kpi_fk, self.LEVEL2, kpi_score)
+        # kpi_fk = \
+        #     self.kpi_static_data.kpi_fk[(self.kpi_static_data.kpi_name == kpi_name) &
+        #                                 (self.kpi_static_data.kpi_set_name == set_name)].values[0]
+        # self.common.write_to_db_result(kpi_fk, self.LEVEL2, kpi_score)
         if write_to_all_levels:
             new_kpi_fk = self.common2.get_kpi_fk_by_kpi_name(kpi_name)
             self.common2.write_to_db_result(fk=new_kpi_fk, result=kpi_score, should_enter=True,
+                                            numerator_id=self.manufacturer_fk , denominator_id=self.store_id,
                                             identifier_parent=self.common2.get_dictionary(name=set_name),
                                             identifier_result=self.common2.get_dictionary(name=kpi_name))
 
@@ -519,19 +527,27 @@ class INBEVTRADMXToolBox:
         :param set_name: name of related set
         :return:
         """
-        atomic_kpi_fk = \
-            self.kpi_static_data.atomic_kpi_fk[(self.kpi_static_data.atomic_kpi_name == atomic_name) &
-                                               (self.kpi_static_data.kpi_name == kpi_name) &
-                                               (self.kpi_static_data.kpi_set_name == set_name)].values[0]
-        attrs = self.common.create_attributes_dict(fk=atomic_kpi_fk, score=is_kpi_passed, level=self.LEVEL3)
-        attrs['result'] = {0: atomic_score}
-        attrs['kpi_weight'] = {0: curr_weight}
-        query = insert(attrs, self.common.KPI_RESULT)
-        self.common.kpi_results_queries.append(query)
+        # atomic_kpi_fk = \
+        #     self.kpi_static_data.atomic_kpi_fk[(self.kpi_static_data.atomic_kpi_name == atomic_name) &
+        #                                        (self.kpi_static_data.kpi_name == kpi_name) &
+        #                                        (self.kpi_static_data.kpi_set_name == set_name)].values[0]
+        # attrs = self.common.create_attributes_dict(fk=atomic_kpi_fk, score=is_kpi_passed, level=self.LEVEL3)
+        # attrs['result'] = {0: atomic_score}
+        # attrs['kpi_weight'] = {0: curr_weight}
+        # query = insert(attrs, self.common.KPI_RESULT)
+        # self.common.kpi_results_queries.append(query)
         identifier_parent = self.common2.get_dictionary(name=kpi_name)
         if atomic_name == kpi_name:
             identifier_parent = self.common2.get_dictionary(name=set_name)
+
         new_atomic_fk = self.common2.get_kpi_fk_by_kpi_name(atomic_name)
+
+        # new_atomic_fk = \
+        # self.new_static_data[self.new_static_data['client_name'].str.encode('utf-8') == atomic_name.encode('utf-8')][
+        #     'pk'].values[0]
         self.common2.write_to_db_result(
-            fk=new_atomic_fk, result=atomic_score, weight=curr_weight, should_enter=True, score=is_kpi_passed,
+            fk=new_atomic_fk, result=atomic_score, numerator_id= self.manufacturer_fk  , denominator_id= self.store_id, weight=curr_weight, should_enter=True, score=is_kpi_passed,
             identifier_parent=identifier_parent)
+
+
+
