@@ -73,9 +73,15 @@ class CCRUKPIToolBox:
         self.survey_response = self.data_provider[Data.SURVEY_RESPONSES]
 
         self.products = self.data_provider[Data.ALL_PRODUCTS]
+
         self.templates = self.data_provider[Data.ALL_TEMPLATES]
+        self.templates['template_name'] = self.templates['template_name'].apply(lambda x: x.encode('utf-8'))
+
         self.scenes_info = self.data_provider[Data.SCENES_INFO]
+
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
+        self.scif['template_name'] = self.scif['template_name'].apply(lambda x: x.encode('utf-8'))
+
         self.matches = self.data_provider[Data.MATCHES].merge(self.products, on='product_fk')
 
         self.pos_kpi_set_name = self.get_pos_kpi_set_name()
@@ -400,8 +406,8 @@ class CCRUKPIToolBox:
         return set_total_res
 
     def calculate_availability(self, params, scenes=None, all_params=None):
-        values_list = [unicode(x).strip()
-                       for x in unicode(params.get('Values')).strip().split(', ')]
+        values_list = \
+            [unicode(x).strip() for x in unicode(params.get('Values')).strip().split(', ')]
         if not scenes:
             if params.get('depends on'):
                 depends_on_kpi_name = params.get('depends on')
@@ -842,7 +848,8 @@ class CCRUKPIToolBox:
             else:
                 scenes = self.get_relevant_scenes(params)
 
-        relevant_scenes = scenes
+        # relevant_scenes = scenes
+        relevant_scenes = list(set(scenes).intersection(self.get_relevant_scenes(params)))
 
         if params.get('Manufacturer'):
             manufacturers = \

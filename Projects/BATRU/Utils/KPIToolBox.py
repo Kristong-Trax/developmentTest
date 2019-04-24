@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# import numpy as np
+import numpy as np
 import pandas as pd
 from datetime import datetime
 import os
@@ -117,6 +117,7 @@ class BATRUToolBox:
         self.session_uid = self.data_provider.session_uid
 
         self.products = self.data_provider[Data.PRODUCTS]
+        self.products.loc[self.products['substitution_product_fk'].isnull(), 'substitution_product_fk'] = np.nan
         self.products = self.products\
             .merge(self.products[['product_fk', 'product_ean_code', 'product_name']],
                    how='left', left_on='substitution_product_fk', right_on='product_fk', suffixes=['', '_lead'])
@@ -128,6 +129,7 @@ class BATRUToolBox:
         ), 'product_fk_lead'] = self.products['product_fk']
 
         self.all_products = self.data_provider[Data.ALL_PRODUCTS]
+        self.all_products.loc[self.all_products['substitution_product_fk'].isnull(), 'substitution_product_fk'] = np.nan
         self.all_products = self.all_products\
             .merge(self.all_products[['product_fk', 'product_ean_code', 'product_name']],
                    how='left', left_on='substitution_product_fk', right_on='product_fk', suffixes=['', '_lead'])
@@ -152,12 +154,12 @@ class BATRUToolBox:
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
         self.scif['template_group'] = self.scif['template_group']\
             .apply(lambda x: x.encode('utf-8'))
+        self.scif['template_name'] = self.scif['template_name']\
+            .apply(lambda x: x.encode('utf-8'))
 
         self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
 
         self.merged_additional_data = self.get_additional_product_data()
-        self.merged_additional_data['template_name'] = self.merged_additional_data['template_name']\
-            .apply(lambda x: x.encode('utf-8'))
 
         self.tools = BATRUGENERALToolBox(self.data_provider, self.output, rds_conn=self.rds_conn)
         self.match_display_in_scene = self.tools.get_match_display()
@@ -1107,7 +1109,7 @@ class BATRUToolBox:
             sections_statuses = {}
             template_name = self.scif[self.scif['scene_fk'] == scene]['template_name'].values[0]
             fixture = self.templates.loc[self.templates['template_name']
-                                         == template_name.encode('utf-8')]['additional_attribute_1'].values[0]
+                                         == template_name]['additional_attribute_1'].values[0]
             if fixture not in sections_template_data['fixture'].unique().tolist():
                 continue
 
