@@ -2349,7 +2349,7 @@ class CCRUKPIToolBox:
                                                    'weight': param.get('KPI Weight'),
                                                    # 'result': score,
                                                    'score': round(score),
-                                                   'weighted_score': score * (param.get('KPI Weight') if param.get('KPI Weight') else 1)})
+                                                   'weighted_score': round(score) * (param.get('KPI Weight') if param.get('KPI Weight') else 1)})
 
         return attributes_for_table2
 
@@ -2429,7 +2429,7 @@ class CCRUKPIToolBox:
                                                    'weight': param.get('KPI Weight'),
                                                    'result': result,
                                                    'score': round(score),
-                                                   'weighted_score': round(score * (param.get('KPI Weight') if param.get('KPI Weight') else 1), 2),
+                                                   'weighted_score': round(round(score) * (param.get('KPI Weight') if param.get('KPI Weight') else 1), 2),
                                                    'additional_level': additional_level})
 
         return attributes_for_table3
