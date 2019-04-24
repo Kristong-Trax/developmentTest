@@ -181,7 +181,8 @@ class SOVIToolBox:
         manufacturer_df = self.scif[(self.scif['template_group'] == template_group) &
                                     (self.scif['att4'] == att4) &
                                     (self.scif['category'] == category) &
-                                    (self.scif['manufacturer_name'] == manufacturer_name)]
+                                    (self.scif['manufacturer_name'].str.encode("utf8") == manufacturer_name.encode(
+                                        "utf-8"))]
 
         brand_name_list = manufacturer_df.brand_name.unique().tolist()
         category_id = manufacturer_df.category_fk.unique()[0]
@@ -218,8 +219,8 @@ class SOVIToolBox:
         brand_df = self.scif[(self.scif['template_group'] == template_group) &
                              (self.scif['att4'] == att4) &
                              (self.scif['category'] == category) &
-                             (self.scif['manufacturer_name'] == manufacturer_name) &
-                             (self.scif['brand_name'] == brand_name) &
+                             (self.scif['manufacturer_name'].str.encode("utf-8") == manufacturer_name.encode("utf-8")) &
+                             (self.scif['brand_name'].str.encode("utf-8") == brand_name.encode("utf-8")) &
                              (self.scif['product_type'] != 'Empty')]
 
         product_name_list = brand_df.product_name.unique().tolist()
@@ -261,9 +262,10 @@ class SOVIToolBox:
         product_df = self.scif[(self.scif['template_group'] == template_group) &
                                (self.scif['att4'] == att4) &
                                (self.scif['category'] == category) &
-                               (self.scif['manufacturer_name'] == manufacturer_name) &
-                               (self.scif['brand_name'] == brand_name) &
-                               (self.scif['product_name'] == product_name)]
+                               (self.scif['manufacturer_name'].str.encode("utf-8") == manufacturer_name.encode(
+                                   "utf-8")) &
+                               (self.scif['brand_name'].str.encode("utf-8") == brand_name.encode("utf-8")) &
+                               (self.scif['product_name'].str.encode("utf-8") == product_name.encode("utf-8"))]
 
         product_id = product_df.product_fk.unique()[0]
         brand_id = product_df.brand_fk.unique()[0]
