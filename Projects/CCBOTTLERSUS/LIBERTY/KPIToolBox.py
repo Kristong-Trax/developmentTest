@@ -49,6 +49,8 @@ class LIBERTYToolBox:
             This function gets all the scene results from the SceneKPI, after that calculates every session's KPI,
             and in the end it calls "filter results" to choose every KPI and scene and write the results in DB.
         """
+        if self.region != 'Liberty':
+            return
         red_score = 0
         main_template = self.templates[Const.KPIS]
         for i, main_line in main_template.iterrows():
