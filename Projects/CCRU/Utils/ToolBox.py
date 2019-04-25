@@ -789,6 +789,8 @@ class CCRUKPIToolBox:
             if p.get('Type') in ('MAN in CAT', 'MAN', 'BRAND', 'BRAND_IN_CAT', 'SUB_BRAND_IN_CAT') and \
                     p.get('Formula').strip() in ['sos', 'SOS', 'sos with empty']:
                 ratio = self.calculate_facings_sos(p)
+                if ratio is None:
+                    ratio = 0
             else:
                 continue
             if p.get('depends on'):
@@ -850,6 +852,8 @@ class CCRUKPIToolBox:
 
         # relevant_scenes = scenes
         relevant_scenes = list(set(scenes).intersection(self.get_relevant_scenes(params)))
+        if not relevant_scenes:
+            return None
 
         if params.get('Manufacturer'):
             manufacturers = \
@@ -1872,6 +1876,8 @@ class CCRUKPIToolBox:
                         atomic_res = self.calculate_facings_sos(c, scenes=scenes, all_params=params)
                     elif c.get("Formula").strip() == "DUMMY":
                         atomic_res = 0
+                    if atomic_res is None:
+                        continue
                     if atomic_res == -1:
                         atomic_score = 0
                     else:
@@ -2447,6 +2453,8 @@ class CCRUKPIToolBox:
             for c in params.values()[0]:
                 if c.get("KPI ID") in children and c.get("Formula").strip() == "atomic sos":
                     first_atomic_res = self.calculate_facings_sos(c)
+                    if first_atomic_res is None:
+                        first_atomic_res =0
                     first_atomic_score = self.calculate_score(first_atomic_res, c)
                     # write to DB
                     attributes_for_level3 = self.create_attributes_for_level3_df(
