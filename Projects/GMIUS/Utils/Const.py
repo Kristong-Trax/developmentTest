@@ -7,6 +7,8 @@ class Const(object):
 
     DICTIONARY_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), 'Data',
                                    'Dictionary.xlsx')
+    TMB_MAP_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), 'Data',
+                                   'TopMiddleBottom_Map.xlsx')
 
     ''' Sheets '''
     KPIS = 'KPIs'

@@ -13,7 +13,7 @@ __author__ = 'Sam'
 class Generator:
     # SUPER_CATS = ['Yogurt', 'RBG', 'Mexican', 'Soup']
     SUPER_CATS = ['Yogurt', 'RBG', 'Soup']
-    # SUPER_CATS = ['Yogurt'] # Overwriting for testing purposes
+    SUPER_CATS = ['Yogurt', 'Soup'] # Overwriting for testing purposes
 
     def __init__(self, data_provider, output):
         self.data_provider = data_provider
@@ -30,9 +30,9 @@ class Generator:
         else:
             for cat in self.SUPER_CATS:
                 template_path = self.find_template(cat)
-                # ru = ResultUploader(self.project_name, template_path)
-                # eu = EntityUploader(self.project_name, template_path)
-                # af = AtomicFarse(self.project_name, template_path)
+                ru = ResultUploader(self.project_name, template_path)
+                eu = EntityUploader(self.project_name, template_path)
+                af = AtomicFarse(self.project_name, template_path)
                 self.tool_box.main_calculation(template_path)
             self.common.commit_results_data()
 
