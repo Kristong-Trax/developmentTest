@@ -36,10 +36,11 @@ EQUIPMENT = 'EQUIPMENT'
 INTEGRATION = 'INTEGRATION'
 TOPSKU = 'TOPSKU'
 KPI_CONVERSION = 'KPI_CONVERSION'
+BENCHMARK = 'BENCHMARK'
 
 SKIP_OLD_CCRUKPIS_FROM_WRITING = [TARGET, MARKETING]
 SKIP_NEW_CCRUKPIS_FROM_WRITING = [TARGET, MARKETING]
-NEW_CCRUKPIS_TO_WRITE_TO_DB = [POS, INTEGRATION, GAPS, SPIRITS, TOPSKU, EQUIPMENT, CONTRACT]
+NEW_CCRUKPIS_TO_WRITE_TO_DB = [POS, INTEGRATION, GAPS, SPIRITS, TOPSKU, EQUIPMENT, CONTRACT, BENCHMARK]
 
 BINARY = 'BINARY'
 PROPORTIONAL = 'PROPORTIONAL'
@@ -72,9 +73,15 @@ class CCRUKPIToolBox:
         self.survey_response = self.data_provider[Data.SURVEY_RESPONSES]
 
         self.products = self.data_provider[Data.ALL_PRODUCTS]
+
         self.templates = self.data_provider[Data.ALL_TEMPLATES]
+        self.templates['template_name'] = self.templates['template_name'].apply(lambda x: x.encode('utf-8'))
+
         self.scenes_info = self.data_provider[Data.SCENES_INFO]
+
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
+        self.scif['template_name'] = self.scif['template_name'].apply(lambda x: x.encode('utf-8'))
+
         self.matches = self.data_provider[Data.MATCHES].merge(self.products, on='product_fk')
 
         self.pos_kpi_set_name = self.get_pos_kpi_set_name()
@@ -399,8 +406,8 @@ class CCRUKPIToolBox:
         return set_total_res
 
     def calculate_availability(self, params, scenes=None, all_params=None):
-        values_list = [unicode(x).strip()
-                       for x in unicode(params.get('Values')).strip().split(', ')]
+        values_list = \
+            [unicode(x).strip() for x in unicode(params.get('Values')).strip().split(', ')]
         if not scenes:
             if params.get('depends on'):
                 depends_on_kpi_name = params.get('depends on')
@@ -841,7 +848,8 @@ class CCRUKPIToolBox:
             else:
                 scenes = self.get_relevant_scenes(params)
 
-        relevant_scenes = scenes
+        # relevant_scenes = scenes
+        relevant_scenes = list(set(scenes).intersection(self.get_relevant_scenes(params)))
 
         if params.get('Manufacturer'):
             manufacturers = \
@@ -2341,7 +2349,7 @@ class CCRUKPIToolBox:
                                                    'weight': param.get('KPI Weight'),
                                                    # 'result': score,
                                                    'score': round(score),
-                                                   'weighted_score': score * (param.get('KPI Weight') if param.get('KPI Weight') else 1)})
+                                                   'weighted_score': round(score) * (param.get('KPI Weight') if param.get('KPI Weight') else 1)})
 
         return attributes_for_table2
 
@@ -2421,7 +2429,7 @@ class CCRUKPIToolBox:
                                                    'weight': param.get('KPI Weight'),
                                                    'result': result,
                                                    'score': round(score),
-                                                   'weighted_score': round(score * (param.get('KPI Weight') if param.get('KPI Weight') else 1), 2),
+                                                   'weighted_score': round(round(score) * (param.get('KPI Weight') if param.get('KPI Weight') else 1), 2),
                                                    'additional_level': additional_level})
 
         return attributes_for_table3
@@ -2711,6 +2719,105 @@ class CCRUKPIToolBox:
             {'threshold': 0,
              'result': result,
              'format': 'STR',
+             'level': 0})
+
+        return
+
+    @kpi_runtime()
+    def calculate_benchmark(self, params, kpi_set_name):
+        kpi_set_fk = self.kpi_fetcher.get_kpi_set_fk()
+        total_score = 0
+        for param in params:
+            if param.get('Value Type') != 'POS KPI':
+                continue
+
+            kpi_name = param.get('KPI Name')
+            kpi_id = param.get('KPI Code')
+            kpi_fk = self.kpi_fetcher.get_kpi_fk(kpi_name)
+            # atomic_kpi_fk = self.kpi_fetcher.get_atomic_kpi_fk(kpi_name, kpi_fk)
+            score = 0
+            for pos_kpi_name in str(param.get("Values")).replace(", ", ",").replace(",", "\n").replace("\n\n", "\n").split("\n"):
+                pos_kpi_id = self.kpi_name_to_id[POS].get(pos_kpi_name)
+                if pos_kpi_id is None:
+                    Log.warning('Benchmark POS KPI is not found in POS KPI set : {}'.format(pos_kpi_name))
+                else:
+
+                    score += self.kpi_scores_and_results[POS][pos_kpi_id].get('weighted_score') \
+                        if self.kpi_scores_and_results[POS][pos_kpi_id].get('weighted_score') else 0
+
+            score = round(score*param.get('K'), 2)
+            total_score += score
+
+            # attributes_for_table3 = pd.DataFrame([(kpi_name,
+            #                                        self.session_uid,
+            #                                        kpi_set_name,
+            #                                        self.store_id,
+            #                                        self.visit_date.isoformat(),
+            #                                        dt.datetime.utcnow().isoformat(),
+            #                                        score,
+            #                                        kpi_fk,
+            #                                        atomic_kpi_fk,
+            #                                        None,
+            #                                        score,
+            #                                        kpi_name)],
+            #                                      columns=['display_text',
+            #                                               'session_uid',
+            #                                               'kps_name',
+            #                                               'store_fk',
+            #                                               'visit_date',
+            #                                               'calculation_time',
+            #                                               'score',
+            #                                               'kpi_fk',
+            #                                               'atomic_kpi_fk',
+            #                                               'threshold',
+            #                                               'result',
+            #                                               'name'])
+            # self.write_to_kpi_results_old(attributes_for_table3, 'level3')
+
+            attributes_for_table2 = pd.DataFrame([(self.session_uid,
+                                                   self.store_id,
+                                                   self.visit_date.isoformat(),
+                                                   kpi_fk,
+                                                   kpi_name,
+                                                   score)],
+                                                 columns=['session_uid',
+                                                          'store_fk',
+                                                          'visit_date',
+                                                          'kpi_fk',
+                                                          'kpk_name',
+                                                          'score_2'])
+            self.write_to_kpi_results_old(attributes_for_table2, 'level2')
+
+            self.update_kpi_scores_and_results(
+                {'KPI ID': kpi_id,
+                 'KPI name Eng': kpi_name,
+                 'KPI name Rus': kpi_name,
+                 'Parent': 0},
+                {'result': score,
+                 'score': score,
+                 'level': 1})
+
+        attributes_for_table1 = pd.DataFrame([(kpi_set_name,
+                                               self.session_uid,
+                                               self.store_id,
+                                               self.visit_date.isoformat(),
+                                               total_score,
+                                               kpi_set_fk)],
+                                             columns=['kps_name',
+                                                      'session_uid',
+                                                      'store_fk',
+                                                      'visit_date',
+                                                      'score_1',
+                                                      'kpi_set_fk'])
+        self.write_to_kpi_results_old(attributes_for_table1, 'level1')
+
+        self.update_kpi_scores_and_results(
+            {'KPI ID': 0,
+             'KPI name Eng': kpi_set_name,
+             'KPI name Rus': kpi_set_name,
+             'Parent': 'root'},
+            {'result': total_score,
+             'score': total_score,
              'level': 0})
 
         return
@@ -3339,8 +3446,7 @@ class CCRUKPIToolBox:
                 kpis = pd.DataFrame(kpis.values())
                 kpis = kpis.where((pd.notnull(kpis)), None)
                 if kpi_set_type in [EQUIPMENT, TOPSKU]:
-                    identifier_parent = self.common.get_dictionary(
-                        set=CONTRACT, level=0, kpi=CONTRACT)
+                    identifier_parent = self.common.get_dictionary(set=CONTRACT, level=0, kpi=CONTRACT)
                 else:
                     identifier_parent = None
                 # try:

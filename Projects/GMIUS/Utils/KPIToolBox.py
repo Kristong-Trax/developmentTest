@@ -30,6 +30,16 @@ class ToolBox:
         self.common = common
         self.output = output
         self.data_provider = data_provider
+
+        # ----------- fix for nan types in dataprovider -----------
+        all_products = self.data_provider._static_data_provider.all_products.where(
+            (pd.notnull(self.data_provider._static_data_provider.all_products)), None)
+        self.data_provider._set_all_products(all_products)
+        self.data_provider._init_session_data(None, True)
+        self.data_provider._init_report_data(self.data_provider.session_uid)
+        self.data_provider._init_reporting_data(self.data_provider.session_id)
+        # ----------- fix for nan types in dataprovider -----------
+
         self.block = Block(self.data_provider)
         self.project_name = self.data_provider.project_name
         self.session_uid = self.data_provider.session_uid
@@ -101,11 +111,17 @@ class ToolBox:
             return
 
         # print(kpi_name)
-        if kpi_type == Const.AGGREGATION:
+        # if kpi_name != 'In the MSL for Yogurt, which of the following is adjacent to the Probiotic Segment?':
+        #     return
+
+        # if kpi_type == Const.AGGREGATION:
         # if kpi_type:
-        # if kpi_type in[Const.SET_COUNT]: # Const.COUNT_SHELVES:
-        # if kpi_type in[Const.BASE_MEASURE, Const.BLOCKING, Const.AGGREGATION]: # Const.COUNT_SHELVES:
-        # if kpi_type in[Const.PRESENCE_WITHIN_BAY]: # Const.COUNT_SHELVES:
+        if (self.super_cat in ['RBG', 'YOGURT']) or (kpi_type in[Const.BASE_MEASURE, Const.BLOCKING, Const.AGGREGATION]):
+        # if kpi_name == 'How is RTS Progresso blocked?':
+        # if kpi_type in[Const.COUNT_SHELVES]: # Const.COUNT_SHELVES:
+        # if kpi_type in[Const.BASE_MEASURE, Const.SET_COUNT]: # Const.COUNT_SHELVES:
+        # if kpi_type in[Const.BLOCKING]: # Const.COUNT_SHELVES:
+        #     print(kpi_name)
 
 
             dependent_kpis = self.read_cell_from_line(main_line, Const.DEPENDENT)
@@ -120,12 +136,15 @@ class ToolBox:
             function = self.get_kpi_function(kpi_type, kpi_line[Const.RESULT])
             try:
                all_kwargs = function(kpi_name, kpi_line, relevant_scif, general_filters)
-            except:
-                Log.error('kpi "{}" failed to calculate in super category "{}"'.format(kpi_name, self.super_cat))
+            except Exception as e:
                 if self.global_fail:
                     all_kwargs = [{'score': 0, 'result': "Not Applicable", 'failed': 0}]
+                    Log.warning('kpi "{}" failed to calculate in super category "{}"'.format(kpi_name, self.super_cat))
+
                 else:
                     all_kwargs = [{'score': 0, 'result': None, 'failed': 1}]
+                    Log.error('kpi "{}" failed in super category "{}," error: "{}"'.format(kpi_name, self.super_cat, e))
+
             finally:
                 if not isinstance(all_kwargs, list):
                     all_kwargs = [all_kwargs]
@@ -143,7 +162,7 @@ class ToolBox:
     def calculate_sos(self, kpi_name, kpi_line, relevant_scif, general_filters):
         super_cats = relevant_scif['Super Category'].unique().tolist()
         for super_cat in super_cats:
-            if not super_cat:
+            if not super_cat or pd.isnull(super_cat):
                 continue
             den_id = self.entity_dict[super_cat.lower()]
             levels = self.read_cell_from_line(kpi_line, Const.AGGREGATION_LEVELS)
@@ -184,12 +203,15 @@ class ToolBox:
         grouped_mpis = mpis.set_index('bay_number').groupby(level=0)
 
         for bay, shelves in grouped_mpis:
+            if bay_max_shelf[bay] not in map:
+                Log.warning('bay "{}" is a problem in kpi "{}" in session "{}"'.format(bay, kpi_name, self.session_uid))
+                continue
             sub_map = map[bay_max_shelf[bay]]
-            shelf_with_most = shelves.groupby('shelf_number_from_bottom')[shelves.columns[0]].count()\
-                .sort_values().index[-1]
-            locations.add(sub_map[shelf_with_most])
-            # for shelf in shelves:
-            #     locations.add(sub_map[shelf])
+            # shelf_with_most = shelves.groupby('shelf_number_from_bottom')[shelves.columns[0]].count()\
+            #     .sort_values().index[-1]
+            # locations.add(sub_map[shelf_with_most])
+            for shelf in shelves['shelf_number'].unique():
+                locations.add(sub_map[shelf])
             if len(locations) == 3:
                 break
 
@@ -236,6 +258,8 @@ class ToolBox:
         filters.update(general_filters)
         full_mpis = self.filter_df(self.mpis, general_filters)
         mpis = self.filter_df(full_mpis, filters)
+        if mpis.empty:
+            return
         # mpis = self.mpis.copy()
         sections = mpis.groupby(['scene_fk', 'bay_number']).count().sort_values('product_fk', ascending=False)
         section_filters = {sections.index.names[i]: lvl for i, lvl in enumerate(sections.index[0])}
@@ -332,24 +356,26 @@ class ToolBox:
             result_fk = result
 
     def base_adj_graph(self, scene, kpi_line, general_filters, use_allowed=0, gmi_only=0, super_cat_only=0,
-                       additional_attributes=None):
+                       additional_attributes=None, item_filters={}):
         product_attributes = ['rect_x', 'rect_y']
         if additional_attributes is not None:
             product_attributes = product_attributes + additional_attributes
         filters = self.get_kpi_line_filters(kpi_line)
         filters.update(general_filters)
-        mpis_filter = {'scene_fk': scene}
+        mpis_filter = {'scene_fk': scene, 'stacking_layer': 1}
         if super_cat_only:
             mpis_filter.update({'Super Category': self.super_cat})
         if gmi_only:
             mpis_filter.update({'manufacturer_name': 'GENERAL MILLS'})
         mpis = self.filter_df(self.mpis, mpis_filter)
         items = self.filter_df(mpis, filters)
+        items = self.filter_df(items, item_filters)
         if items.empty:
             return None, None, None, None
         items = set(items['scene_match_fk'].values)
         if use_allowed:
-            allowed = Const.ALLOWED_FILTERS
+            # allowed = Const.ALLOWED_FILTERS
+            allowed = {'product_type': ['Empty']}
             allowed_items = set(self.filter_df(mpis, allowed)['scene_match_fk'].values)
             items.update(allowed_items)
         all_graph = AdjacencyGraph(mpis, None, self.products,
@@ -420,7 +446,7 @@ class ToolBox:
         return
 
     def base_adjacency(self, kpi_name, kpi_line, relevant_scif, general_filters, limit_potential=1, use_allowed=1,
-                       col_list=Const.REF_COLS):
+                       item_filters={}, col_list=['brand_name']):
         allowed_edges = self.read_cell_from_line(kpi_line, Const.EDGES)
         scenes = relevant_scif.scene_fk.unique()
         if self.read_cell_from_line(kpi_line, 'MSL'):
@@ -428,9 +454,11 @@ class ToolBox:
         all_results = {}
         for scene in scenes:
             items, mpis, all_graph, filters = self.base_adj_graph(scene, kpi_line, general_filters,
-                                                                  use_allowed=use_allowed, gmi_only=0)
+                                                                  item_filters=item_filters, use_allowed=use_allowed,
+                                                                  gmi_only=0)
             if not items:
                 continue
+            z_debug = mpis[mpis['scene_match_fk'].isin(items)]
             for edge_dir in allowed_edges:
                 g = self.prune_edges(all_graph.base_adjacency_graph.copy(), [edge_dir])
 
@@ -441,12 +469,45 @@ class ToolBox:
                 adjacent_items = edge_matches - items
                 adj_mpis = mpis[(mpis['scene_match_fk'].isin(adjacent_items)) &
                                 (~mpis['product_type'].isin(Const.SOS_EXCLUDE_FILTERS))]
-                adjacent_sections = set(sum([list(adj_mpis[col].unique()) for col in col_list], []))
+
+                adjacent_sections = list(set(sum([list(adj_mpis[col].unique()) for col in col_list], [])))
+
                 if limit_potential:
-                    potential_results = set(self.get_results_value(kpi_line))
-                    adjacent_sections = list(adjacent_sections & potential_results)
+                    adjacent_sections = self.results_contorter(adj_mpis, kpi_line)
+                #     potential_results = set(self.get_results_value(kpi_line))
+                #     adjacent_sections = list(adjacent_sections & potential_results)
                 all_results[edge_dir] = [adjacent_sections, len(adjacent_items)/float(len(items))]
         return all_results
+
+    def results_contorter(self, df, kpi_line):
+        found_results = []
+        raw_results = self.get_results_value(kpi_line)
+        for res in raw_results:
+            filters = self.att_dict[res.lower()]
+            sub_df = self.filter_df(df, filters)
+            if not sub_df.empty:
+                found_results.append(res)
+        return found_results
+
+    def calculate_adjacency_list(self, kpi_name, kpi_line, relevant_scif, general_filters):
+        res_col = self.read_cell_from_line(kpi_line, Const.RESULT_TYPE)
+        max_block = self.read_cell_from_line(kpi_line, Const.MAX_BLOCK)
+        item_filters = {}
+
+        if max_block:
+            _, _, _, _, blocks = self.base_block(kpi_name, kpi_line, relevant_scif, general_filters, check_orient=False)
+            block = blocks.sort_values('facing_percentage').reset_index().iloc[-1, :]['cluster']
+            ids = sum([node['group_attributes']['match_fk_list'] for i, node in block.node(data=True)], [])
+            item_filters = {'scene_match_fk': ids}
+
+        all_results = self.base_adjacency(kpi_name, kpi_line, relevant_scif, general_filters, item_filters=item_filters)
+        kwargs_list = []
+        for result in sum([x for x, y in all_results.values()], []):
+            if not result and max_block:
+                result = Const.END_OF_CAT
+            # result_fk = self.result_values_dict[result]
+            kwargs_list.append({'score': 1, 'result': result, 'target': 1})
+        return kwargs_list
 
     def calculate_adjacency(self, kpi_name, kpi_line, relevant_scif, general_filters):
         res_col = self.read_cell_from_line(kpi_line, Const.RESULT_TYPE)
@@ -458,7 +519,7 @@ class ToolBox:
             if not result and kpi_line[Const.TYPE] == Const.ANCHOR_LIST:
                 result = Const.END_OF_CAT
             # result_fk = self.result_values_dict[result]
-            ret_values.append({'denominator_id': result, 'score': 1, 'result': result, 'target': 0})
+            ret_values.append({'score': 1, 'result': result, 'target': 0})
         return ret_values
 
     def calculate_anchor(self, kpi_name, kpi_line, relevant_scif, general_filters):
@@ -467,13 +528,15 @@ class ToolBox:
         potential_ends = self.get_kpi_line_filters(kpi_line)
         potential_ends = [{key: val} for key, vals in potential_ends.items() for val in vals]
         sub_filters = dict(general_filters)
+        res_dict = {}
         for potential_end in potential_ends:
             sub_filters = dict(general_filters)
             sub_filters.update(potential_end)
             mod_kpi_line = kpi_line[[col for col in kpi_line.index if 'param' not in col.lower() and
                                             'value' not in col.lower()]]
-            all_results = self.base_adjacency(kpi_name, mod_kpi_line, relevant_scif, sub_filters, use_allowed=0)
-            res_dict = {}
+            all_results = self.base_adjacency(kpi_name, mod_kpi_line, relevant_scif, sub_filters, use_allowed=0,
+                                              limit_potential=0)
+
             for _, ratio in all_results.values():
                 pass_fail = 0
                 if ratio <= .25:
@@ -486,7 +549,7 @@ class ToolBox:
             total = sum(res_dict.values())
             if total == 2:
                 result = 'YES both Kid and ASH anchor'
-            elif res_dict[[x for x in res_dict.keys() if 'ash' in x.lower()][0]] == 1:
+            elif 'TTL VS PROBIOTICS' in res_dict and res_dict['TTL VS PROBIOTICS'] == 1:
                 result = 'Only ASH Anchors'
             elif total == 1:
                 result = 'Only Kid Anchors'
@@ -532,47 +595,54 @@ class ToolBox:
                            and col != Const.RESULT])
         comp_dict = {}
         for ind, row in self.template[Const.YOGURT_MAP].set_index('Result').iterrows():
-            comp_dict[tuple([1 if not pd.isnull(i) else 0 for i in row])] = ind
+            comp_dict[ind] = tuple([1 if not pd.isnull(i) else 0 for i in row])
         results_list = [0 for i in xrange(max_criteria)]
-        for i in xrange(1, max_criteria + 1):
-            level = 'Criteria {}'.format(i)
-            mod_kpi_line = kpi_line[[col for col in kpi_line.index if 'Type' not in col]]
-            mod_kpi_line = mod_kpi_line[list([col for col in mod_kpi_line.index if level in col])
-                                        + [Const.KPI_NAME, Const.RESULT]]
-            mod_kpi_line.index = [col.replace(level, '').strip() for col in mod_kpi_line.index]
-            sub_func = self.read_cell_from_line(kpi_line, '{} Type'.format(level))[0]
+        for result in self.template[Const.YOGURT_MAP]['Result']:
+            key = comp_dict[result]
+            req_score = sum(key)
+            total_score = 0
+            for i in range(1, max_criteria + 1):
+                if not key[i-1]:
+                    continue
+                level = 'Criteria {}'.format(i)
+                mod_kpi_line = kpi_line[[col for col in kpi_line.index if 'Type' not in col]]
+                mod_kpi_line = mod_kpi_line[list([col for col in mod_kpi_line.index if level in col])
+                                            + [Const.KPI_NAME, Const.RESULT]]
+                mod_kpi_line.index = [col.replace(level, '').strip() for col in mod_kpi_line.index]
+                sub_func = self.read_cell_from_line(kpi_line, '{} Type'.format(level))[0]
 
-            if sub_func == Const.BLOCKING:
-                score, _, _, _, _ = self.base_block(kpi_name, mod_kpi_line, relevant_scif, {})
-            elif sub_func == 'Distribution':
-                score = self.distribution(mod_kpi_line)
-
-            results_list[i-1] = score
-            if sum(results_list) > 0 and tuple(results_list) in comp_dict:
+                try:
+                    if sub_func == Const.BLOCKING:
+                        score, _, _, _, _ = self.base_block(kpi_name, mod_kpi_line, relevant_scif, {})
+                    elif sub_func == 'Distribution':
+                        score = self.distribution(mod_kpi_line)
+                except:
+                    score = 0
+                total_score += score
+            if total_score == req_score:
                 break
 
-        result = comp_dict[tuple(results_list)]
-        # result_fk = self.result_values_dict[result]
-        kwargs = {'score': 1, 'result': result, 'target': 0}
+        kwargs = {'score': score, 'result': result, 'target': 0}
         return kwargs
 
     def distribution(self, kpi_line):
         filters = self.get_kpi_line_filters(kpi_line)
-        filters.update(Const.IGN_STACKING)
+        # filters.update(Const.IGN_STACKING)
         scenes = self.scif.scene_fk.unique()
         if self.read_cell_from_line(kpi_line, 'MSL'):
             scenes = self.find_MSL(self.scif)
         score = 0
         for scene in scenes:
-            sub_filters = filters.copy().update({'scene_fk': scene})
-            df = self.filter_df(self.scif, filters)
+            sub_filters = filters.copy()
+            sub_filters.update({'scene_fk': scene})
+            df = self.filter_df(self.scif, sub_filters)
             if not df.empty:
                 score = 1
         return score
 
 
-    def base_block(self, kpi_name, kpi_line, relevant_scif, general_filters):
-        score = 0
+    def base_block(self, kpi_name, kpi_line, relevant_scif, general_filters_base, check_orient=True):
+        general_filters = dict(general_filters_base)
         blocks = pd.DataFrame()
         result = pd.DataFrame()
         orientation = 'Not Blocked'
@@ -583,12 +653,14 @@ class ToolBox:
         if self.read_cell_from_line(kpi_line, 'MSL'):
             scenes = self.find_MSL(relevant_scif)
         for scene in scenes:
+            score = 0
             scene_filter = {'scene_fk': scene}
             filters = self.get_kpi_line_filters(kpi_line)
             filters.update(general_filters)
             # mpis is only here for debugging purposes
             mpis = self.filter_df(self.mpis, scene_filter)
             mpis = self.filter_df(mpis, filters)
+            mpis = self.filter_df(mpis, {'stacking_layer': 1})
             mpis_dict[scene] = mpis
             if mpis.empty:
                 score = -1
@@ -598,7 +670,8 @@ class ToolBox:
                                                                      # 'allowed_products_filters': Const.ALLOWED_FILTERS,
                                                                      'allowed_products_filters': {'product_type': 'Empty'},
                                                                      'include_stacking': False,
-                                                                     'check_vertical_horizontal': True})
+                                                                     'check_vertical_horizontal': check_orient,
+                                                                     'minimum_facing_for_block': 1})
             blocks = result[result['is_block'] == True]
             if not blocks.empty:
                 score = 1
@@ -620,7 +693,7 @@ class ToolBox:
         score, orientation, mpis_dict, _, _ = self.base_block(kpi_name, kpi_line, relevant_scif, general_filters)
         potential_results = self.get_results_value(kpi_line)
         if score:
-            result = [x for x in potential_results if x.lower() in orientation.lower()][0]
+            result = [x for x in potential_results if orientation.lower() in x.lower()][0]
         else:
             msl_mpis = mpis_dict[self.find_MSL(relevant_scif)[0]]
             all_mpis = pd.concat(list(mpis_dict.values()))
@@ -660,6 +733,22 @@ class ToolBox:
             result = 'Not Blocked'
 
         kwargs = {'numerator_result': score, 'score': score, 'result': result, 'target': 1}
+        return kwargs
+
+    def calculate_blocking_all_shelves(self, kpi_name, kpi_line, relevant_scif, general_filters):
+        score, orientation, mpis_dict, blocks, _ = self.base_block(kpi_name, kpi_line, self.scif, general_filters)
+        filters = self.get_kpi_line_filters(kpi_line)
+        result = orientation
+        if score:
+            mpis = self.filter_df(self.full_mpis, general_filters)
+            mpis = self.filter_df(mpis, Const.IGN_STACKING)
+            bays = mpis.groupby(['scene_fk', 'bay_number'])
+            for (scene, bay), df in bays:
+                df = self.filter_df(df, filters, exclude=1)
+                if df.empty:
+                    result = 'Block covering all shelves'
+
+        kwargs = {'score': score, 'result': result}
         return kwargs
 
     def calculate_vertical_block_adjacencies(self, kpi_name, kpi_line, relevant_scif, general_filters):
@@ -789,12 +878,21 @@ class ToolBox:
         return kwargs
 
     def calculate_count_of_shelves(self, kpi_name, kpi_line, relevant_scif, general_filters):
-        mpis = self.filter_df(self.full_mpis, general_filters)
-        num_shelves = int(len(mpis.groupby(['scene_fk', 'bay_number', 'shelf_number'])))
-        potential_results = self.get_results_value(kpi_line)
-        result = self.semi_numerical_results(num_shelves, potential_results, form='{} Shelves')
-        # result_fk = self.result_values_dict[result]
-        kwargs = {'numerator_result': num_shelves, 'score': 1, 'result': result,
+        filters = self.get_kpi_line_filters(kpi_line)
+        filters.update(general_filters)
+        filters.update({'stacking_layer': 1})
+        mpis = self.filter_df(self.mpis, filters)
+        if mpis.empty:
+            return
+        bay_filter = mpis.groupby(['scene_fk', 'bay_number'])['scene_match_fk'].count().reset_index()\
+                         .sort_values('scene_match_fk').iloc[-1, :].drop('scene_match_fk').to_dict()
+        shelves = self.filter_df(self.full_mpis, bay_filter)['shelf_number'].max()
+
+
+        # num_shelves = int(len(mpis.groupby(['scene_fk', 'bay_number', 'shelf_number'])))
+        potential_results = [res.replace(' Shelves', '') for res in self.get_results_value(kpi_line)]
+        result = self.semi_numerical_results(shelves, potential_results, form='{} Shelves')
+        kwargs = {'numerator_result': shelves, 'score': 1, 'result': result,
                   'target': None}
         return kwargs
 
@@ -859,9 +957,10 @@ class ToolBox:
         scif = scif[scif['facings_ign_stack'] >= min]
         if 'Allowed' in kpi_line.index:
             allowed = set(self.read_cell_from_line(kpi_line, 'Allowed'))
-            scif = scif[scif[count_col].isin(allowed)]
+            if allowed:
+                scif = scif[scif[count_col].isin(allowed)]
         if scif.empty:
-            return {}
+            return 0
         count = len(scif[count_col[0]].unique())
         return count
 
@@ -873,8 +972,58 @@ class ToolBox:
         kwargs = {'numerator_result': count, 'score': 1, 'result': result, 'target': 0}
         return kwargs
 
+    def calculate_count_of_format(self, kpi_name, kpi_line, relevant_scif, general_filters):
+        count = self.base_count(kpi_name, kpi_line, relevant_scif, general_filters)
+        potential_results = self.get_results_value(kpi_line)
+        num_results = [res.split('format(s)')[0].strip() for res in potential_results]
+        base = potential_results[0].split('format(s)')[-1].strip()
+        result = '{} {} {}'.format(self.semi_numerical_results(count, num_results), 'format(s)', base)
+        kwargs = {'numerator_result': count, 'score': 1, 'result': result, 'target': 0}
+        return kwargs
+
+    def calculate_count_of_variety(self, kpi_name, kpi_line, relevant_scif, general_filters):
+        ss_filters = self.get_kpi_line_filters(kpi_line, 'SS')
+        mpk_filters = self.get_kpi_line_filters(kpi_line, 'MPK')
+        ss_filters.update(general_filters)
+        mpk_filters.update(general_filters)
+        ss_count = self.base_count(kpi_name, kpi_line, relevant_scif, ss_filters)
+        mpk_count = self.base_count(kpi_name, kpi_line, relevant_scif, mpk_filters)
+
+        result = self.ss_mpk_results(ss_count, mpk_count, kpi_line)
+        kwargs = {'numerator_result': ss_count, 'numerator_result': mpk_count, 'score': 1, 'result': result}
+        return kwargs
+
+    def ss_mpk_results(self, ss_count, mpk_count, kpi_line):
+        ss_po_res, mpk_po_res = zip(*[res.split(', ') for res in self.get_results_value(kpi_line)])
+        ss_po_res = [res.replace(' SS', '') for res in set(ss_po_res)]
+        mpk_po_res = [res.replace(' MPK', '') for res in set(mpk_po_res)]
+        ss_res = '{} {}'.format(self.ss_mpk_matching(ss_count, ss_po_res), 'SS')
+        mpk_res = '{} {}'.format(self.ss_mpk_matching(mpk_count, mpk_po_res), 'MPK')
+        return ', '.join([ss_res, mpk_res])
+
+    def ss_mpk_matching(self, count, results):
+        for res in results:
+            if '-' in res:
+                a, b = res.split('-')
+                ineq = '{} <= {} <= {}'.format(a, count, b)
+            elif '+' in res:
+                a = res.replace('+', '')
+                ineq = '{} >= {}'.format(count, a)
+            else:
+                try:
+                    a = int(res)
+                except:
+                    a = 0
+                finally:
+                    ineq = '{} == {}'.format(count, a)
+            if eval(ineq):
+                break
+        return res
+
     def calculate_set_count(self, kpi_name, kpi_line, relevant_scif, general_filters):
         min = self.read_cell_from_line(kpi_line, 'Min')
+        if isinstance(min, list):
+            min = min[0]
         count = self.base_count(kpi_name, kpi_line, relevant_scif, general_filters, min=min)
         den = 0
         result = count
@@ -921,16 +1070,16 @@ class ToolBox:
             filters.update(Const.IGN_STACKING)
         return self.filter_df(self.mpis, filters)
 
-    def prune_edges(self, g, allowed_edges, keep_or_cut='keep'):
+    def prune_edges(self, g, action_edges, keep_or_cut='keep'):
         for node in g.nodes():
             for edge_id, edge in g[node].items():
                 for edge_dir in edge.values():
                     if keep_or_cut == 'keep':
-                        if edge_dir not in allowed_edges:
-                            del g[node][edge_id]
+                        if edge_dir not in action_edges:
+                            g.remove_edge(node, edge_id)
                     else:
-                        if edge_dir in allowed_edges:
-                            del g[node][edge_id]
+                        if edge_dir in action_edges:
+                            g.remove_edge(node, edge_id)
         return g
 
     def find_caps(self, potential_results):
@@ -1121,9 +1270,9 @@ class ToolBox:
         elif kpi_type == Const.TMB:
             return self.calculate_topmiddlebottom
         elif kpi_type == Const.ADJACENCY:
-            return self.calculate_adjacency
+            return self.calculate_adjacency_list
         elif kpi_type == Const.ANCHOR_LIST:
-            return self.calculate_adjacency
+            return self.calculate_adjacency_list
         elif kpi_type == Const.ANCHOR:
             return self.calculate_anchor
         elif kpi_type == Const.IADJACENCY:
@@ -1139,6 +1288,8 @@ class ToolBox:
                 return self.calculate_yogurt_block
             elif result.lower() == 'basic block':
                 return self.calculate_basic_block
+            elif result.lower() == 'blocking covers':
+                return self.calculate_blocking_all_shelves
         elif kpi_type == Const.BASE_MEASURE:
             return self.calculate_base_measure
         elif kpi_type == Const.ORIENT:
@@ -1146,7 +1297,12 @@ class ToolBox:
         elif kpi_type == Const.COUNT_SHELVES:
             return self.calculate_count_of_shelves
         elif kpi_type == Const.COUNT:
-            return self.calculate_count_of
+            if result.lower() == 'count of':
+                return self.calculate_count_of
+            if result.lower() == 'format':
+                return self.calculate_count_of_format
+        elif kpi_type == Const.VARIETY_COUNT:
+            return self.calculate_count_of_variety
         elif kpi_type == Const.SET_COUNT:
             return self.calculate_set_count
         elif kpi_type == Const.ORIENT:
@@ -1168,7 +1324,7 @@ class ToolBox:
     def make_att_dict(self):
         df = pd.read_excel(Const.DICTIONARY_PATH)
         df = df[(df['unknown'] != 'Y') & (df['not_final'] != 'Y')].set_index('Name')
-        params = {key: self.get_kpi_line_filters(row) for key, row in df.iterrows()}
+        params = {key.lower(): self.get_kpi_line_filters(row) for key, row in df.iterrows()}
         return params
 
     def create_special_scif(self, scif, fake_cat=0):
@@ -1232,4 +1388,5 @@ class ToolBox:
 
         self.common.write_to_db_result(fk=kpi_fk, score=score, result=result, should_enter=True, target=target,
                                        numerator_result=numerator_result, denominator_result=denominator_result,
-                                       numerator_id=numerator_id, denominator_id=denominator_id)
+                                       numerator_id=numerator_id, denominator_id=denominator_id,
+                                       parent_fk=self.entity_dict[self.super_cat.lower()])

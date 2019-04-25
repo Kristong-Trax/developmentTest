@@ -7,12 +7,12 @@ from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Algo.Calculations.Core.Shortcuts import BaseCalculationsGroup
 from Trax.Utils.Logging.Logger import Log
 
-from Projects.INBEVCI_SAND.Utils.PositionGraph import INBEVCIPositionGraphs
+from Projects.INBEVCI_SAND.Utils.PositionGraph import INBEVCISANDPositionGraphs
 
 __author__ = 'Nimrod'
 
 
-class INBEVCIGENERALToolBox:
+class INBEVCISANDGENERALToolBox:
 
     EXCLUDE_FILTER = 0
     INCLUDE_FILTER = 1
@@ -49,7 +49,7 @@ class INBEVCIGENERALToolBox:
     @property
     def position_graphs(self):
         if not hasattr(self, '_position_graphs'):
-            self._position_graphs = INBEVCIPositionGraphs(self.data_provider, rds_conn=self.rds_conn)
+            self._position_graphs = INBEVCISANDPositionGraphs(self.data_provider, rds_conn=self.rds_conn)
         return self._position_graphs
 
     @property
@@ -280,7 +280,8 @@ class INBEVCIGENERALToolBox:
             else:
                 Log.error('Eye-level configurations are not set up')
                 return False
-        number_of_products = len(self.all_products[self.get_filter_condition(self.all_products, **filters)]['product_ean_code'])
+        number_of_products = len(
+            self.all_products[self.get_filter_condition(self.all_products, **filters)]['product_ean_code'])
         min_shelf, max_shelf, min_ignore, max_ignore = eye_level_configurations.columns
         number_of_eye_level_scenes = 0
         for scene in relevant_scenes:
@@ -307,7 +308,7 @@ class INBEVCIGENERALToolBox:
                 number_of_eye_level_scenes += 1
         return number_of_eye_level_scenes, len(relevant_scenes)
 
-    def shelf_level_assortment(self, min_number_of_products ,shelf_target, strict=True, **filters):
+    def shelf_level_assortment(self, min_number_of_products, shelf_target, **filters):
         filters, relevant_scenes = self.separate_location_filters_from_product_filters(**filters)
         if len(relevant_scenes) == 0:
             relevant_scenes = self.scif['scene_fk'].unique().tolist()
@@ -357,7 +358,8 @@ class INBEVCIGENERALToolBox:
             filtered_scif = self.scif[self.get_filter_condition(self.scif, **general_filters)]
             scenes = set(filtered_scif['scene_id'].unique())
             for filters in sequence_filters:
-                scene_for_filters = filtered_scif[self.get_filter_condition(filtered_scif, **filters)]['scene_id'].unique()
+                scene_for_filters = filtered_scif[self.get_filter_condition(filtered_scif, **filters)][
+                    'scene_id'].unique()
                 scenes = scenes.intersection(scene_for_filters)
                 if not scenes:
                     Log.debug('None of the scenes include products from all types relevant for sequence')
@@ -365,7 +367,8 @@ class INBEVCIGENERALToolBox:
 
             for scene in scenes:
                 scene_graph = self.position_graphs.get(scene)
-                scene_passes, scene_rejects = self.calculate_sequence_for_graph(scene_graph, sequence_filters, direction,
+                scene_passes, scene_rejects = self.calculate_sequence_for_graph(scene_graph, sequence_filters,
+                                                                                direction,
                                                                                 empties_allowed, irrelevant_allowed)
                 pass_counter += scene_passes
                 reject_counter += scene_rejects
@@ -650,7 +653,8 @@ class INBEVCIGENERALToolBox:
                                  minimum_block_ratio=1, result_by_scene=False, vertical=False, **filters):
         """
         :param vertical: if needed to check vertical block by average shelf
-        :param allowed_products_filters: These are the parameters which are allowed to corrupt the block without failing it.
+        :param allowed_products_filters: These are the parameters which are allowed to corrupt the block without
+        failing it.
         :param include_empty: This parameter dictates whether or not to discard Empty-typed products.
         :param minimum_block_ratio: The minimum (block number of facings / total number of relevant facings) ratio
                                     in order for KPI to pass (if ratio=1, then only one block is allowed).
@@ -670,7 +674,8 @@ class INBEVCIGENERALToolBox:
         cluster_ratios = []
         for scene in relevant_scenes:
             scene_graph = self.position_graphs.get(scene).copy()
-            clusters, scene_graph = self.get_scene_blocks(scene_graph, allowed_products_filters=allowed_products_filters,
+            clusters, scene_graph = self.get_scene_blocks(scene_graph,
+                                                          allowed_products_filters=allowed_products_filters,
                                                           include_empty=include_empty, **filters)
 
             new_relevant_vertices = self.filter_vertices_from_graph(scene_graph, **filters)
@@ -807,7 +812,8 @@ class INBEVCIGENERALToolBox:
                     bottom = max(range1[2], range2[2])
                     left = min(range1[3], range2[3])
 
-                    number_of_others = self.get_number_of_others_in_block_range(filters, scene_id, top, right, bottom, left)
+                    number_of_others = self.get_number_of_others_in_block_range(filters, scene_id, top, right, bottom,
+                                                                                left)
                     previous_others = previous1 + previous2
 
                     if number_of_others <= number_of_allowed_others + previous_others:
@@ -883,9 +889,9 @@ class INBEVCIGENERALToolBox:
         """
         :param df: The data frame to be filters.
         :param filters: These are the parameters which the data frame is filtered by.
-                       Every parameter would be a tuple of the value and an include/exclude flag.
-                       INPUT EXAMPLE (1):   manufacturer_name = ('Diageo', DIAGEOAUINBEVCIGENERALToolBox.INCLUDE_FILTER)
-                       INPUT EXAMPLE (2):   manufacturer_name = 'Diageo'
+                Every parameter would be a tuple of the value and an include/exclude flag.
+                INPUT EXAMPLE (1):   manufacturer_name = ('Diageo', DIAGEOAUINBEVCIINBEVCIGENERALToolBox.INCLUDE_FILTER)
+                INPUT EXAMPLE (2):   manufacturer_name = 'Diageo'
         :return: a filtered Scene Item Facts data frame.
         """
         if not filters:

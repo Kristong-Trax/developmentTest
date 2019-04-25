@@ -11,18 +11,13 @@ from Trax.Utils.Testing.Case import MockingTestCase
 
 from Tests.Data.TestData.test_data_sanofitr_sanity import ProjectsSanityData
 from Projects.SANOFITR.Calculations import SANOFITRCalculations
-from Trax.Apps.Core.Testing.BaseCase import TestMockingFunctionalCase
-
-from Tests.TestUtils import remove_cache_and_storage
-
-__author__ = 'yoava'
+from Trax.Apps.Core.Testing.BaseCase import TestFunctionalCase
 
 
-class TestKEngineOutOfTheBox(TestMockingFunctionalCase):
+__author__ = 'jasmineg'
 
-    def set_up(self):
-        super(TestKEngineOutOfTheBox, self).set_up()
-        remove_cache_and_storage()
+
+class TestKEngineOutOfTheBox(TestFunctionalCase):
 
     @property
     def import_path(self):
@@ -38,7 +33,7 @@ class TestKEngineOutOfTheBox(TestMockingFunctionalCase):
         connector = PSProjectConnector(TestProjectsNames().TEST_PROJECT_1, DbUsers.Docker)
         cursor = connector.db.cursor(MySQLdb.cursors.DictCursor)
         cursor.execute('''
-        SELECT * FROM report.kpi_results
+        SELECT * FROM report.kpi_level_2_results
         ''')
         kpi_results = cursor.fetchall()
         self.assertNotEquals(len(kpi_results), 0)
@@ -48,7 +43,7 @@ class TestKEngineOutOfTheBox(TestMockingFunctionalCase):
     def test_sanofitr_sanity(self):
         project_name = ProjectsSanityData.project_name
         data_provider = KEngineDataProvider(project_name)
-        sessions = ['4CB6F7A6-D993-4170-A63B-D94D1FDE2D05']
+        sessions = ['F0889AAE-2A4A-4957-9885-5A9FF6D0E5C3']
         for session in sessions:
             data_provider.load_session_data(session)
             output = Output()

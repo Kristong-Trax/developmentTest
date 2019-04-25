@@ -68,6 +68,8 @@ class Const(object):
     MM_TO_FT = 304.8
     COMMA_SPACE = ', '
     COMMA = ','
+    KEEP = 'keep'
+    MAX_BLOCK = 'max_block'
     INTEGRATED = 'Fully Integrated'
     ADJACENT = 'Adjacent Section'
     SAME_AISLE = 'Same Aisle, Not Adjacent'

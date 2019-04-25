@@ -167,7 +167,7 @@ class PNGJPToolBox(PNGJPConsts):
         scene_types = self.scene_types.copy()
         category_scene_types = {self.PRIMARY_SHELF: []}
         for category in scene_types[self.CATEGORY].unique():
-            data = scene_types[scene_types[self.CATEGORY] == category]
+            data = scene_types[scene_types[self.CATEGORY].str.encode("utf8") == category.encode("utf8")]
             types = data[self.SCENE_TYPES].unique().tolist()
             category_scene_types[category] = types
             if category != self.DISPLAY:

@@ -38,7 +38,7 @@ class NESTLETHSceneToolBox:
 
     def main_function(self):
         shelf_placement_template = pd.read_excel(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data',
-                                                              'Placement.xlsx'), sheetname='Minimum Shelf',
+                                                              'Placement.xlsx'), sheetname='Minimum Shelf', skiprows=1,
                                                  keep_default_na=False)
         shelf_placement_dict = self.nestle_generator.nestle_global_shelf_placement_function(shelf_placement_template)
         if shelf_placement_dict == self.ERROR_LOC:
@@ -46,5 +46,9 @@ class NESTLETHSceneToolBox:
                         "Match product in scene doesnt contain Nestle product in layer 1 ".format(self.scene_info['scene_fk'].iloc[0]))
             return 0
         self.common.save_json_to_new_tables(shelf_placement_dict)
+
+        scene_availability_dict = self.nestle_generator.nestle_scene_availability_function()
+        self.common.save_json_to_new_tables(scene_availability_dict)
+
         self.common.commit_results_data(result_entity='scene')
         return 0

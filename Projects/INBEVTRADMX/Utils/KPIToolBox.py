@@ -196,7 +196,7 @@ class INBEVTRADMXToolBox:
         :param set_df: kpi set df
         :return: kpi level 2 score
         """
-        kpi_df = set_df[set_df['KPI Level 2 Name'] == kpi_name]
+        kpi_df = set_df[set_df['KPI Level 2 Name'].str.encode('utf-8') == kpi_name.encode('utf-8')]
         kpi_score = 0
         # iterate the all related atomic kpis
         for i, row in kpi_df.iterrows():
@@ -500,8 +500,9 @@ class INBEVTRADMXToolBox:
         :return: None
         """
         kpi_fk = \
-            self.kpi_static_data.kpi_fk[(self.kpi_static_data.kpi_name == kpi_name) &
-                                        (self.kpi_static_data.kpi_set_name == set_name)].values[0]
+            self.kpi_static_data.kpi_fk[
+                (self.kpi_static_data.kpi_name.str.encode('utf-8') == kpi_name.encode('utf-8')) &
+                (self.kpi_static_data.kpi_set_name == set_name)].values[0]
         self.common.write_to_db_result(kpi_fk, self.LEVEL2, kpi_score)
         if write_to_all_levels:
             new_kpi_fk = self.common2.get_kpi_fk_by_kpi_name(kpi_name)
@@ -521,9 +522,10 @@ class INBEVTRADMXToolBox:
         :return:
         """
         atomic_kpi_fk = \
-            self.kpi_static_data.atomic_kpi_fk[(self.kpi_static_data.atomic_kpi_name == atomic_name) &
-                                               (self.kpi_static_data.kpi_name == kpi_name) &
-                                               (self.kpi_static_data.kpi_set_name == set_name)].values[0]
+            self.kpi_static_data.atomic_kpi_fk[
+                (self.kpi_static_data.atomic_kpi_name.str.encode('utf-8') == atomic_name.encode('utf-8')) &
+                (self.kpi_static_data.kpi_name.str.encode('utf-8') == kpi_name.encode('utf-8')) &
+                (self.kpi_static_data.kpi_set_name.str.encode('utf-8') == set_name.encode('utf-8'))].values[0]
         attrs = self.common.create_attributes_dict(fk=atomic_kpi_fk, score=is_kpi_passed, level=self.LEVEL3)
         attrs['result'] = {0: atomic_score}
         attrs['kpi_weight'] = {0: curr_weight}

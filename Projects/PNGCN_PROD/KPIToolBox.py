@@ -1,6 +1,7 @@
 
 import pandas as pd
 import os
+import numpy as np
 from datetime import datetime
 from KPIUtils_v2.DB.CommonV2 import Common
 from Trax.Algo.Calculations.Core.DataProvider import Data
@@ -148,12 +149,12 @@ class PNGToolBox:
         total_display_count = pd.read_sql_query(query, self.rds_conn.db)
         display_template = pd.read_excel(DISPLAY_COUNT_PATH)
         for i in xrange(len(total_display_count)):
-            row = total_display_count.iloc(i)
+            row = total_display_count.iloc[i]
             try:
-                count = display_template.loc[display_template['name'] == row[i].values[0]]['count'].values[0]
-                display_counter += count*row[i].values[1]
+                count = display_template.loc[display_template['name'] == row['display_name']]['count'].values[0]
+                display_counter += count*row['display_count']
             except IndexError:
-                Log.warning('The display:{} does not exist in the template.'.format(row[i].values[0]))
+                Log.warning('The display:{} does not exist in the template.'.format(row['display_name']))
         self.handle_db_total_number_of_display(display_counter)
 
 
@@ -164,20 +165,23 @@ class PNGToolBox:
                                      (self.scif['rlv_sos_sc'] == 1) &
                                      (self.scif['location_type'] == PRIMARY_SHELF) &
                                      (self.scif['facings'] > 0)]
-
+        relevant_facings = relevant_facings.fillna("")
         sets_to_save = set()
         for category in self.empty_spaces.keys():
+            # if np.nan in self.empty_spaces[category]:
+            #     self.empty_spaces[category][None] = self.empty_spaces[category][np.nan]
+            #     del self.empty_spaces[category][np.nan]
             for sub_category in self.empty_spaces[category].keys():
                 kpi_dict = {}
                 empty_spaces = self.empty_spaces[category][sub_category]
                 main_category = True
-                category_facings = relevant_facings[relevant_facings['category_local_name'] == category]
+                category_facings = relevant_facings[relevant_facings['category_local_name'].str.encode("utf8") == category.encode("utf8")]
                 if sub_category != category:
                     main_category = False
                     if sub_category == '{} Other'.format(category.split('_')[0]):
                         category_facings = category_facings[~category_facings['sub_category'].apply(bool)]
                     else:
-                        category_facings = category_facings[category_facings['sub_category'] == sub_category]
+                        category_facings = category_facings[category_facings['sub_category'].str.encode("utf8") == sub_category.encode("utf8")]
                 kpi_dict['PNG_Empty'] = empty_spaces['png']
                 kpi_dict['Total_Empty'] = empty_spaces['png'] + empty_spaces['other']
                 png_facings = category_facings[category_facings['manufacturer_fk'] == PNG_MANUFACTURER_FK]
@@ -195,14 +199,16 @@ class PNGToolBox:
                     kpi_dict['Category_Empty_Rate%'] = 0
 
                 if not main_category:
-                    sub_category_data = self.kpi_static_data[(self.kpi_static_data['kpi_set_name'] ==
-                                                              category + SUB_CATEGORY_SETS_SUFFIX) &
-                                                             (self.kpi_static_data['kpi_name'] == sub_category)]
+                    sub_category_data = self.kpi_static_data[(self.kpi_static_data['kpi_set_name'].str.encode("utf8")
+                                                              == (category + SUB_CATEGORY_SETS_SUFFIX).encode("utf8")) &
+                                                             (self.kpi_static_data['kpi_name'].str.encode("utf8")
+                                                              == sub_category.encode("utf8"))]
                     if sub_category_data.empty:
                         self.insert_sub_category_kpi(category, sub_category)
-                        sub_category_data = self.kpi_static_data[(self.kpi_static_data['kpi_set_name'] ==
-                                                                  category + SUB_CATEGORY_SETS_SUFFIX) &
-                                                                 (self.kpi_static_data['kpi_name'] == sub_category)]
+                        sub_category_data = self.kpi_static_data[(self.kpi_static_data['kpi_set_name'].str.encode("utf8") ==
+                                                            (category + SUB_CATEGORY_SETS_SUFFIX).encode("utf8")) &
+                                                            (self.kpi_static_data['kpi_name'].str.encode("utf8")
+                                                             == sub_category.encode("utf8"))]
                     sets_to_save.add(sub_category_data['kpi_set_fk'].values[0])
                     kpi_fk = sub_category_data['kpi_fk'].values[0]
                     self.write_to_db_result(kpi_fk, 100, self.LEVEL2)
@@ -215,7 +221,8 @@ class PNGToolBox:
                         # else:
                         #     self.write_to_db_result(atomic_kpi_fk, kpi_dict[kpi], self.LEVEL3)
                 else:
-                    category_data = self.kpi_static_data[self.kpi_static_data['kpi_set_name'] == category]
+                    category_data = self.kpi_static_data[self.kpi_static_data['kpi_set_name'].str.encode("utf8")
+                                                         == category.encode("utf8")]
                     sets_to_save.add(category_data['kpi_set_fk'].values[0])
                     for kpi in kpi_dict:
                         kpi_fk = category_data[category_data['kpi_name'] == kpi]['kpi_fk'].values[0]
@@ -257,7 +264,7 @@ class PNGToolBox:
         if anchor_facing['product_type'] != self.IRRELEVANT and anchor_facing['rlv_sos_sc'] == 1:
             anchor_category = anchor_facing['category_local_name']
             anchor_sub_category = anchor_facing['sub_category']
-            if not anchor_sub_category:
+            if not anchor_sub_category or np.nan in [anchor_sub_category]:
                 anchor_sub_category = '{} Other'.format(anchor_category.split('_')[0])
             anchor_manufacturer = anchor_facing['manufacturer_fk']
             if anchor_category in self.empty_spaces.keys():
@@ -409,7 +416,7 @@ class PNGToolBox:
         return attributes.to_dict()
 
     def insert_sub_category_kpi(self, category, sub_category):
-        set_data = self.kpi_static_data[self.kpi_static_data['kpi_set_name'] == category + SUB_CATEGORY_SETS_SUFFIX]
+        set_data = self.kpi_static_data[self.kpi_static_data['kpi_set_name'].str.encode("utf8)") == (category + SUB_CATEGORY_SETS_SUFFIX).encode("utf8")]
         if sub_category not in set_data['kpi_name'].tolist():
             cur = self.rds_conn.db.cursor()
             kpi_query = PNGQueries.get_insert_kpi_query(set_data['kpi_set_fk'].values[0], sub_category)

@@ -1,4 +1,5 @@
 from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScript
+from Trax.Utils.Logging.Logger import Log
 from KPIUtils_v2.Utils.Decorators.Decorators import log_runtime
 
 from Projects.MARSRU2_SAND.Utils.KPIToolBox import MARSRU2_SANDKPIToolBox
@@ -21,6 +22,7 @@ class MARSRU2_SANDCalculations(BaseCalculationsScript):
             kpi_set_name = ('MARS KPIs 2017', 'MARS KPIs')
             # [file name, key, sheet name]
             kpi_template = ['2018/MARS KPIs.xlsx', 'kpi_data', 'KPI']
+            kpi_channels = None
             kpi_golden_shelves = ['2018/MARS KPIs.xlsx', 'golden_shelves', 'golden_shelves']
             kpi_answers_translation = ['2018/MARS KPIs.xlsx',
                                        'survey_answers_translation', 'survey_answers_translation']
@@ -30,14 +32,35 @@ class MARSRU2_SANDCalculations(BaseCalculationsScript):
             kpi_set_name = 'MARS KPIs'  # Old KPI Set Name == New KPI Level 0 Definition for API and Report
             # [file name, key, sheet name]
             kpi_template = ['2019/MARS KPIs.xlsx', 'kpi_data', 'KPI']
+            kpi_channels = ['2019/MARS KPIs.xlsx', 'channels', 'channels']
             kpi_golden_shelves = ['2019/MARS KPIs.xlsx', 'golden_shelves', 'golden_shelves']
             kpi_answers_translation = ['2019/MARS KPIs.xlsx',
                                        'survey_answers_translation', 'survey_answers_translation']
-            kpi_must_range_targets = ['2019/MARS KPIs.xlsx', 'must_range_skus', [4317, 4254]]
+            kpi_must_range_targets = ['2019/MARS KPIs.xlsx',
+                                      'must_range_skus', [4317, 4650, 4254, 4388, 4389]]
 
         jg = MARSRU2_SANDJSONGenerator(project_name)
-        jg.create_template_json(kpi_template[0], kpi_template[1], kpi_template[2])
-        jg.create_template_json(kpi_golden_shelves[0], kpi_golden_shelves[1], kpi_golden_shelves[2])
+
+        kpis_sheet_name = None
+        if kpi_channels:
+            jg.create_template_json(kpi_channels[0], kpi_channels[1], kpi_channels[2])
+            store_types = jg.project_kpi_dict.get('channels')
+            for store_type in store_types:
+                if store_type['Store type'] == self.data_provider.store_type:
+                    kpis_sheet_name = store_type['KPIs_Channel']
+                    break
+        else:
+            kpis_sheet_name = 'KPI'
+
+        if not kpis_sheet_name:
+            Log.warning("Error: Store channel is not defined for Store ID [{}] with Store type [{}]"
+                        "".format(self.data_provider.store_fk, self.data_provider.store_type.encode('utf-8')))
+            return
+
+        jg.create_template_json(
+            kpi_template[0], kpi_template[1], kpis_sheet_name)
+        jg.create_template_json(
+            kpi_golden_shelves[0], kpi_golden_shelves[1], kpi_golden_shelves[2])
         jg.create_template_json(
             kpi_answers_translation[0], kpi_answers_translation[1], kpi_answers_translation[2])
         jg.create_template_json(
@@ -47,6 +70,7 @@ class MARSRU2_SANDCalculations(BaseCalculationsScript):
         tool_box = MARSRU2_SANDKPIToolBox(
             kpi_templates, self.data_provider, self.output, kpi_set_name)
 
+        # Todo - Uncomment the OSA before deploying!!!
         tool_box.handle_update_custom_scif()
         tool_box.calculate_osa()
 

@@ -4,7 +4,7 @@ from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScrip
 # from Trax.Utils.Conf.Configuration import Config
 # from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
 import os
-from KPIUtils.GlobalProjects.SANOFI.KPIGenerator import SANOFIGenerator
+from KPIUtils.GlobalProjects.SANOFI_2.KPIGenerator import SANOFIGenerator
 
 
 __author__ = 'Shani'
@@ -27,7 +27,7 @@ class BIPHCalculations(BaseCalculationsScript):
 #     Config.init()
 #     project_name = 'biph'
 #     data_provider = KEngineDataProvider(project_name)
-#     session = '22cfdee3-6bac-498b-b630-a472ebb4bcc6'
+#     session = '714cf05f-6fca-47e4-b598-eb8c95107b7f'
 #     data_provider.load_session_data(session)
 #     output = Output()
 #     BIPHCalculations(data_provider, output).run_project_calculations()
