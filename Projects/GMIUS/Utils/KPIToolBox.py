@@ -114,8 +114,8 @@ class ToolBox:
         print(kpi_name)
         # if kpi_name != 'Do Kid AND ASH Both Anchor End of Category?':
         # if kpi_name != 'In the MSL for Yogurt, which of the following is adjacent to Kite Hill?':
-        # if kpi_name not in ('If not blocked, where is RTS Private Label stocked?', 'How is RTS Private Label blocked?'):
-        #     return
+        if kpi_name not in ('What is the sequence of Soup segments?'):
+            return
 
         # if kpi_type == Const.AGGREGATION:
         # if kpi_type:
@@ -442,7 +442,7 @@ class ToolBox:
         # order the max_block dataframe by x_coordinate and return an ordered list
         ordered_list = max_blocks.sort_values('x_coordinate', ascending=True)[sequence_attribute].tolist()
         result = ' --> '.join(ordered_list)
-        if result not in self.result_values_dict:
+        if result not in self.get_results_value(kpi_line):
             result = 'Other'
 
         kwargs = {'result': result, 'score': 1}
