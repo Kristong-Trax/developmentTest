@@ -218,7 +218,7 @@ class CCRUKPIToolBox:
         else:
             if params.get('Scenes to include'):
                 scenes_to_include = \
-                    [unicode(x).strip()
+                    [unicode(x).strip().encode('utf-8')
                      for x in unicode(params.get('Scenes to include')).split(', ')]
                 for scene in scenes_to_include:
                     if scene in scenes_data.keys():
@@ -1925,7 +1925,7 @@ class CCRUKPIToolBox:
         scenes_info = pd.merge(self.scenes_info, self.templates, on='template_fk')
         if level == 3:
             if params.get('Scenes to include'):
-                values_list = [unicode(x).strip()
+                values_list = [unicode(x).strip().encode('utf-8')
                                for x in params.get('Scenes to include').split(', ')]
                 number_relevant_scenes = scenes_info['template_name'].isin(values_list).sum()
                 return number_relevant_scenes
@@ -1955,7 +1955,7 @@ class CCRUKPIToolBox:
                         flag = 0
                         final_scenes = scenes_info
                         if p.get('Scenes to include'):
-                            scenes_values_list = [unicode(x).strip()
+                            scenes_values_list = [unicode(x).strip().encode('utf-8')
                                                   for x in p.get('Scenes to include').split(', ')]
                             final_scenes = scenes_info['template_name'].isin(scenes_values_list)
                             flag = 1
@@ -1972,7 +1972,7 @@ class CCRUKPIToolBox:
                         number_relevant_scenes = final_scenes.sum()
                 else:
                     if p.get('Scenes to include'):
-                        values_list = [unicode(x).strip()
+                        values_list = [unicode(x).strip().encode('utf-8')
                                        for x in p.get('Scenes to include').split(', ')]
                         number_relevant_scenes = scenes_info['template_name'].isin(
                             values_list).sum()
