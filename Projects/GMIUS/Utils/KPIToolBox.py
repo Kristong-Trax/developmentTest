@@ -114,7 +114,7 @@ class ToolBox:
         print(kpi_name)
         # if kpi_name != 'Do Kid AND ASH Both Anchor End of Category?':
         # if kpi_name != 'In the MSL for Yogurt, which of the following is adjacent to Kite Hill?':
-        # if kpi_name not in ('"What is the sequence of Soup segments?'):
+        # if kpi_name not in ('What is the sequence of Soup segments?'):
         #     return
 
         # if kpi_type == Const.AGGREGATION:
@@ -443,7 +443,8 @@ class ToolBox:
             # order the max_block dataframe by x_coordinate and return an ordered list
             ordered_list = max_blocks.sort_values('x_coordinate', ascending=True)[sequence_attribute].tolist()
             result = ' --> '.join(ordered_list)
-            if result not in self.get_results_value(kpi_line):
+            potential_results = self.get_results_value(kpi_line)
+            if result not in potential_results and ' --> '.join(ordered_list[::-1]) not in potential_results:
                 result = 'Other'
 
             kwargs_list.append({'result': result, 'score': 1})
@@ -529,7 +530,7 @@ class ToolBox:
         elif num_res == 0:
             result = 'Adjacent to Neither Progresso or Campbells'
         else:
-            result = unique_results[0]
+            result = unique_results.pop()
 
         kwargs = {'score': 1, 'result': result, 'target': 1}
 
@@ -932,14 +933,15 @@ class ToolBox:
         filters.update({'stacking_layer': 1})
         mpis = self.filter_df(self.mpis, filters)
         full_mpis = self.filter_df(self.full_mpis, filters)
-        if mpis.empty:
-            return
+
         cmpis = mpis.groupby(['scene_fk', 'bay_number'])['scene_match_fk'].count()
         cfull_mpis = full_mpis.groupby(['scene_fk', 'bay_number'])['scene_match_fk'].count()
         agg = pd.concat([cmpis, cfull_mpis], axis=1)
         agg.columns = ['A', 'B']
         agg['C'] = agg['A'] / agg['B']
         agg = agg[agg['C'] >= .9].reset_index().drop(['A', 'B', 'C'], axis=1)
+        if agg.empty:
+            return
         bay_filters = {'scene_fk': list(agg['scene_fk'].unique()), 'bay_number': list(agg['bay_number'].unique())}
 
         shelves = int(round(self.filter_df(self.full_mpis, bay_filters).groupby(['scene_fk', 'bay_number'])
