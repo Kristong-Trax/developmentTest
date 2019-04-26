@@ -65,7 +65,7 @@ class CCBRToolBox:
         self.group_count_sheet = pd.read_excel(PATH, Const.GROUP_COUNT).fillna("")
         self.survey_sheet = pd.read_excel(PATH, Const.SURVEY).fillna("")
         #Fixes encoding issue
-        self.common_db.New_kpi_static_data['client_name'] = self.common_db.New_kpi_static_data['client_name'].str.encode('utf8')
+        # self.common_db.New_kpi_static_data['client_name'] = self.common_db.New_kpi_static_data['client_name'].str.encode('utf8')
     def main_calculation(self):
         """
         This function calculates the KPI results.
@@ -182,7 +182,7 @@ class CCBRToolBox:
             survey_result = 1 if answer else -1
 
         try:
-            atomic_pk = self.common_db.get_kpi_fk_by_kpi_name_new_tables(atomic_name.encode("utf8"))
+            atomic_pk = self.common_db.get_kpi_fk_by_kpi_name_new_tables(atomic_name)
         except IndexError:
             Log.warning("There is no matching Kpi fk for kpi name: " + atomic_name)
             return
@@ -204,7 +204,7 @@ class CCBRToolBox:
             return
 
         try:
-            atomic_pk = self.common_db.get_kpi_fk_by_kpi_name_new_tables(atomic_name.encode("utf8"))
+            atomic_pk = self.common_db.get_kpi_fk_by_kpi_name_new_tables(atomic_name)
         except IndexError:
             Log.warning("There is no matching Kpi fk for kpi name: " + atomic_name)
             return
@@ -234,7 +234,7 @@ class CCBRToolBox:
             return
 
         try:
-            atomic_pk = self.common_db.get_kpi_fk_by_kpi_name_new_tables(atomic_name.encode("utf8"))
+            atomic_pk = self.common_db.get_kpi_fk_by_kpi_name_new_tables(atomic_name)
         except IndexError:
             Log.warning("There is no matching Kpi fk for kpi name: " + atomic_name)
             return
