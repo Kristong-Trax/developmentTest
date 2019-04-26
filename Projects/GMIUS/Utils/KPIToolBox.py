@@ -111,7 +111,7 @@ class ToolBox:
         if relevant_scif.empty:
             return
 
-        print(kpi_name)
+        # print(kpi_name)
         # if kpi_name != 'Do Kid AND ASH Both Anchor End of Category?':
         # if kpi_name != 'In the MSL for Yogurt, which of the following is adjacent to Kite Hill?':
         # if kpi_name not in ('What is the sequence of Soup segments?'):
@@ -442,10 +442,12 @@ class ToolBox:
 
             # order the max_block dataframe by x_coordinate and return an ordered list
             ordered_list = max_blocks.sort_values('x_coordinate', ascending=True)[sequence_attribute].tolist()
-            result = ' --> '.join(ordered_list)
             potential_results = self.get_results_value(kpi_line)
-            if result not in potential_results and ' --> '.join(ordered_list[::-1]) not in potential_results:
-                result = 'Other'
+            result = ' --> '.join(ordered_list)
+            if result not in potential_results:
+                result = ' --> '.join(ordered_list[::-1])
+                if result not in potential_results:
+                    result = 'Other'
 
             kwargs_list.append({'result': result, 'score': 1})
         return kwargs_list
