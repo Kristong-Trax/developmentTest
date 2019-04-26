@@ -167,8 +167,10 @@ class DIAGEOBEERUSToolBox:
         mpa_identifier = self.common.get_dictionary(name=Const.MPA)
         for result_dict in result_dict_list:
             if result_dict['fk'] == mpa_fk:
+                score = result_dict['result'] * weight
                 result_dict.update({'identifier_parent': total_identifier, 'should_enter': True,
-                                    'weight': weight * 100, 'identifier_result': mpa_identifier})
+                                    'weight': weight * 100, 'identifier_result': mpa_identifier,
+                                    'score': score})
             if result_dict['fk'] == mpa_sku_fk:
                 total_skus = total_skus + 1
                 if result_dict['result'] == 100:
@@ -658,7 +660,7 @@ class DIAGEOBEERUSToolBox:
         score = 1 if result > target else 0
         self.common.write_to_db_result(
             fk=total_kpi_fk, numerator_id=self.manufacturer_fk, numerator_result=diageo_facings,
-            denominator_result=den_res, result=score * 100, score=result * 100, weight=weight * 100,
+            denominator_result=den_res, result=score * 100, score=score * weight * 100, weight=weight * 100,
             identifier_result=self.common.get_dictionary(kpi_fk=total_kpi_fk), target=target,
             identifier_parent=self.common.get_dictionary(name=Const.TOTAL), should_enter=True)
         return score * weight * 100
