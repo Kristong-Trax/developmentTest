@@ -114,8 +114,8 @@ class ToolBox:
         print(kpi_name)
         # if kpi_name != 'Do Kid AND ASH Both Anchor End of Category?':
         # if kpi_name != 'In the MSL for Yogurt, which of the following is adjacent to Kite Hill?':
-        if kpi_name not in ('What is the sequence of Soup segments?'):
-            return
+        # if kpi_name not in ('"What is the sequence of Soup segments?'):
+        #     return
 
         # if kpi_type == Const.AGGREGATION:
         # if kpi_type:
@@ -392,61 +392,62 @@ class ToolBox:
 
         # this might affect the max number of facings in each block, not sure - needs testing
         use_allowed = 1
-        if relevant_scif.empty:
-            return
-        scene = relevant_scif.scene_fk.unique()[0]
-        # create a master adjacency graph of all relevant products in the scene
-        items, mpis, all_graph, filters = self.base_adj_graph(scene, kpi_line, general_filters,
-                                                              use_allowed=use_allowed, gmi_only=0,
-                                                              additional_attributes=[sequence_attribute])
+        kwargs_list = []
+        for scene in relevant_scif.scene_fk.unique():
+            # create a master adjacency graph of all relevant products in the scene
+            items, mpis, all_graph, filters = self.base_adj_graph(scene, kpi_line, general_filters,
+                                                                  use_allowed=use_allowed, gmi_only=0,
+                                                                  additional_attributes=[sequence_attribute])
 
-        # make a dataframe of matching (filtered) mpis data
-        scene_items = self.filter_df(mpis, filters)
+            # make a dataframe of matching (filtered) mpis data
+            if not items:
+                continue
+            scene_items = self.filter_df(mpis, filters)
 
-        # get a list of unique values for the sequence attribute
-        # this should come from the template eventually, too
-        sequence_values = scene_items[sequence_attribute].unique().tolist()
+            # get a list of unique values for the sequence attribute
+            # this should come from the template eventually, too
+            sequence_values = scene_items[sequence_attribute].unique().tolist()
 
-        # generate block components
-        condensed_graph_sku = all_graph.build_adjacency_graph_from_base_graph_by_level(sequence_attribute)
-        condensed_graph_sku = condensed_graph_sku.to_undirected()
-        components = list(nx.connected_component_subgraphs(condensed_graph_sku))
+            # generate block components
+            condensed_graph_sku = all_graph.build_adjacency_graph_from_base_graph_by_level(sequence_attribute)
+            condensed_graph_sku = condensed_graph_sku.to_undirected()
+            components = list(nx.connected_component_subgraphs(condensed_graph_sku))
 
-        # create a dataframe to hold the block results
-        blocks = pd.DataFrame(columns=[sequence_attribute, 'facings', 'x_coordinate',
-                                       'y_coordinate', 'node_object'])
+            # create a dataframe to hold the block results
+            blocks = pd.DataFrame(columns=[sequence_attribute, 'facings', 'x_coordinate',
+                                           'y_coordinate', 'node_object'])
 
-        # create blocks for every unique sequence attribute value
-        for attribute_value in sequence_values:
-            # get relevant product_fks for the current attribute_value
-            relevant_items = self.filter_df(scene_items, {sequence_attribute: attribute_value})
-            relevant_product_fks = relevant_items['product_fk'].unique().tolist()
+            # create blocks for every unique sequence attribute value
+            for attribute_value in sequence_values:
+                # get relevant product_fks for the current attribute_value
+                relevant_items = self.filter_df(scene_items, {sequence_attribute: attribute_value})
+                relevant_product_fks = relevant_items['product_fk'].unique().tolist()
 
-            for component in components:
-                for i, n in component.nodes(data=True):
+                for component in components:
+                    for i, n in component.nodes(data=True):
 
-                    # check if the node is a valid product for the current attribute_value
-                    if not set(n['group_attributes']['product_fk_list']).isdisjoint(relevant_product_fks):
-                        # get facings
-                        facings = n['group_attributes']['facings']
-                        # get shelf(scene) position coordinates
-                        center = n['group_attributes']['center']
-                        # save block result
-                        blocks = blocks.append(pd.DataFrame(columns=[sequence_attribute, 'facings', 'x_coordinate',
-                                                                     'y_coordinate', 'node_object'],
-                                                            data=[[attribute_value, facings, center.x, center.y, n]]
-                                                            ))
-        # get the max blocks (most facings) from each sequence attribute value in the passing block dataframe
-        max_blocks = blocks.sort_values('facings', ascending=False).groupby(sequence_attribute, as_index=False).first()
+                        # check if the node is a valid product for the current attribute_value
+                        if not set(n['group_attributes']['product_fk_list']).isdisjoint(relevant_product_fks):
+                            # get facings
+                            facings = n['group_attributes']['facings']
+                            # get shelf(scene) position coordinates
+                            center = n['group_attributes']['center']
+                            # save block result
+                            blocks = blocks.append(pd.DataFrame(columns=[sequence_attribute, 'facings', 'x_coordinate',
+                                                                         'y_coordinate', 'node_object'],
+                                                                data=[[attribute_value, facings, center.x, center.y, n]]
+                                                                ))
+            # get the max blocks (most facings) from each sequence attribute value in the passing block dataframe
+            max_blocks = blocks.sort_values('facings', ascending=False).groupby(sequence_attribute, as_index=False).first()
 
-        # order the max_block dataframe by x_coordinate and return an ordered list
-        ordered_list = max_blocks.sort_values('x_coordinate', ascending=True)[sequence_attribute].tolist()
-        result = ' --> '.join(ordered_list)
-        if result not in self.get_results_value(kpi_line):
-            result = 'Other'
+            # order the max_block dataframe by x_coordinate and return an ordered list
+            ordered_list = max_blocks.sort_values('x_coordinate', ascending=True)[sequence_attribute].tolist()
+            result = ' --> '.join(ordered_list)
+            if result not in self.get_results_value(kpi_line):
+                result = 'Other'
 
-        kwargs = {'result': result, 'score': 1}
-        return kwargs
+            kwargs_list.append({'result': result, 'score': 1})
+        return kwargs_list
 
     def base_adjacency(self, kpi_name, kpi_line, relevant_scif, general_filters, limit_potential=1, use_allowed=1,
                        item_filters={}, col_list=['brand_name']):
