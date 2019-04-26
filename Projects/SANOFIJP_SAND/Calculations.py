@@ -23,7 +23,13 @@ class SANOFIJP_SANDCalculations(BaseCalculationsScript):
 #     Config.init()
 #     project_name = 'sanofijp-sand'
 #     data_provider = KEngineDataProvider(project_name)
-#     session = '31eb50cd-e799-4798-a27f-dc5ea557ccc7'
-#     data_provider.load_session_data(session)
-#     output = Output()
-#     SANOFIJP_SANDCalculations(data_provider, output).run_project_calculations()
+#     sessions = [
+#         "F2089166-6702-4311-9BAB-A550E48B6681",
+#         "F7E70CBC-1BAD-4B20-AFC7-9BD13AD17E5F",
+#         "FE163E25-6015-42D1-B458-934D3BDBA064",
+#         ]
+#     for session in sessions:
+#         print "Running for session ", session
+#         data_provider.load_session_data(session)
+#         output = Output()
+#         SANOFIJP_SANDCalculations(data_provider, output).run_project_calculations()

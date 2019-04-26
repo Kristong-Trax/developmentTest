@@ -226,7 +226,7 @@ class DIAGEOBEERUSToolBox:
                 fk=manufacturer_kpi_fk, numerator_id=manufacturer, numerator_result=num_res,
                 target=target_manufacturer,
                 denominator_result=den_res, result=result, identifier_parent=total_dict,
-                identifier_result=result_dict)
+                identifier_result=result_dict, should_enter=True)
         if den_res == 0:
             score = 0
         else:
@@ -253,7 +253,7 @@ class DIAGEOBEERUSToolBox:
             return None
         self.common.write_to_db_result(
             fk=sku_kpi_fk, numerator_id=product_fk,
-            result=sum_scenes_passed, identifier_parent=parent_dict)
+            result=sum_scenes_passed, identifier_parent=parent_dict, should_enter=True)
         product_result = {Const.PRODUCT_FK: product_fk, Const.PASSED: sum_scenes_passed,
                           Const.MANUFACTURER: manufacturer}
         return product_result
@@ -362,9 +362,12 @@ class DIAGEOBEERUSToolBox:
         elif our_price > range_price[1]:
             result = range_price[1] - our_price
         brand, sub_brand = self.get_product_details(product_fk)
+        sub_brand_level_kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.DB_OFF_NAMES[Const.MSRP][Const.SUB_BRAND])
+        identifier_parent = self.common.get_dictionary(kpi_fk=sub_brand_level_kpi_fk,
+                                                       brand_fk=brand, sub_brand_fk=sub_brand)
         self.common.write_to_db_result(
-            fk=kpi_fk, numerator_id=product_fk, result=result,  # should_enter=True,
-            identifier_parent=self.common.get_dictionary(kpi_fk=total_kpi_fk), identifier_result=result_dict)
+            fk=kpi_fk, numerator_id=product_fk, result=result, should_enter=True,
+            identifier_parent=identifier_parent, identifier_result=result_dict)
         product_result = {Const.PRODUCT_FK: product_fk, Const.PASSED: (result == 0) * 1,
                           Const.BRAND: brand, Const.SUB_BRAND: sub_brand}
         return product_result
@@ -630,10 +633,12 @@ class DIAGEOBEERUSToolBox:
             num_res = relevant_scif[relevant_scif['brand_fk'] == brand_fk]['facings'].sum()
             # result = self.get_score(num_res, den_res) # for % share of menu
             result = num_res  # for number of appearances
+            identifier_parent = self.common.get_dictionary(kpi_fk=total_kpi_fk,
+                                                           manufacturer_fk=products.manufacturer_fk)
             self.common.write_to_db_result(
                 fk=brand_kpi_fk, numerator_id=brand_fk, numerator_result=num_res,
                 denominator_id=products.manufacturer_fk, denominator_result=den_res,
-                result=result, identifier_parent=self.common.get_dictionary(kpi_fk=total_kpi_fk))
+                result=result, identifier_parent=identifier_parent, should_enter=True)
         for manufacturer_fk in all_manufacturers:
             num_res = relevant_scif[relevant_scif['manufacturer_fk'] == manufacturer_fk]['facings'].sum()
             manufacturer_target = None
@@ -644,10 +649,11 @@ class DIAGEOBEERUSToolBox:
             result = num_res  # for number of appearances
             if manufacturer_fk == 0:
                 continue
+            identifier_result = self.common.get_dictionary(kpi_fk=total_kpi_fk, manufacturer_fk=manufacturer_fk)
             self.common.write_to_db_result(
                 fk=manufacturer_kpi_fk, numerator_id=manufacturer_fk, numerator_result=num_res, result=result,
                 denominator_result=den_res, identifier_parent=self.common.get_dictionary(kpi_fk=total_kpi_fk),
-                target=manufacturer_target)
+                identifier_result=identifier_result, should_enter=True, target=manufacturer_target)
         result = self.get_score(diageo_facings, den_res)
         score = 1 if result > target else 0
         self.common.write_to_db_result(
