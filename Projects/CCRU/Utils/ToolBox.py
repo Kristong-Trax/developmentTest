@@ -218,7 +218,7 @@ class CCRUKPIToolBox:
         else:
             if params.get('Scenes to include'):
                 scenes_to_include = \
-                    [unicode(x).strip()
+                    [unicode(x).strip().encode('utf-8')
                      for x in unicode(params.get('Scenes to include')).split(', ')]
                 for scene in scenes_to_include:
                     if scene in scenes_data.keys():
@@ -789,6 +789,8 @@ class CCRUKPIToolBox:
             if p.get('Type') in ('MAN in CAT', 'MAN', 'BRAND', 'BRAND_IN_CAT', 'SUB_BRAND_IN_CAT') and \
                     p.get('Formula').strip() in ['sos', 'SOS', 'sos with empty']:
                 ratio = self.calculate_facings_sos(p)
+                if ratio is None:
+                    ratio = 0
             else:
                 continue
             if p.get('depends on'):
@@ -850,6 +852,8 @@ class CCRUKPIToolBox:
 
         # relevant_scenes = scenes
         relevant_scenes = list(set(scenes).intersection(self.get_relevant_scenes(params)))
+        if not relevant_scenes:
+            return None
 
         if params.get('Manufacturer'):
             manufacturers = \
@@ -1872,6 +1876,8 @@ class CCRUKPIToolBox:
                         atomic_res = self.calculate_facings_sos(c, scenes=scenes, all_params=params)
                     elif c.get("Formula").strip() == "DUMMY":
                         atomic_res = 0
+                    if atomic_res is None:
+                        continue
                     if atomic_res == -1:
                         atomic_score = 0
                     else:
@@ -1919,7 +1925,7 @@ class CCRUKPIToolBox:
         scenes_info = pd.merge(self.scenes_info, self.templates, on='template_fk')
         if level == 3:
             if params.get('Scenes to include'):
-                values_list = [unicode(x).strip()
+                values_list = [unicode(x).strip().encode('utf-8')
                                for x in params.get('Scenes to include').split(', ')]
                 number_relevant_scenes = scenes_info['template_name'].isin(values_list).sum()
                 return number_relevant_scenes
@@ -1949,7 +1955,7 @@ class CCRUKPIToolBox:
                         flag = 0
                         final_scenes = scenes_info
                         if p.get('Scenes to include'):
-                            scenes_values_list = [unicode(x).strip()
+                            scenes_values_list = [unicode(x).strip().encode('utf-8')
                                                   for x in p.get('Scenes to include').split(', ')]
                             final_scenes = scenes_info['template_name'].isin(scenes_values_list)
                             flag = 1
@@ -1966,7 +1972,7 @@ class CCRUKPIToolBox:
                         number_relevant_scenes = final_scenes.sum()
                 else:
                     if p.get('Scenes to include'):
-                        values_list = [unicode(x).strip()
+                        values_list = [unicode(x).strip().encode('utf-8')
                                        for x in p.get('Scenes to include').split(', ')]
                         number_relevant_scenes = scenes_info['template_name'].isin(
                             values_list).sum()
@@ -2349,7 +2355,7 @@ class CCRUKPIToolBox:
                                                    'weight': param.get('KPI Weight'),
                                                    # 'result': score,
                                                    'score': round(score),
-                                                   'weighted_score': score * (param.get('KPI Weight') if param.get('KPI Weight') else 1)})
+                                                   'weighted_score': round(score) * (param.get('KPI Weight') if param.get('KPI Weight') else 1)})
 
         return attributes_for_table2
 
@@ -2429,7 +2435,7 @@ class CCRUKPIToolBox:
                                                    'weight': param.get('KPI Weight'),
                                                    'result': result,
                                                    'score': round(score),
-                                                   'weighted_score': round(score * (param.get('KPI Weight') if param.get('KPI Weight') else 1), 2),
+                                                   'weighted_score': round(round(score) * (param.get('KPI Weight') if param.get('KPI Weight') else 1), 2),
                                                    'additional_level': additional_level})
 
         return attributes_for_table3
@@ -2447,6 +2453,8 @@ class CCRUKPIToolBox:
             for c in params.values()[0]:
                 if c.get("KPI ID") in children and c.get("Formula").strip() == "atomic sos":
                     first_atomic_res = self.calculate_facings_sos(c)
+                    if first_atomic_res is None:
+                        first_atomic_res =0
                     first_atomic_score = self.calculate_score(first_atomic_res, c)
                     # write to DB
                     attributes_for_level3 = self.create_attributes_for_level3_df(
