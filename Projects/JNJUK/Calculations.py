@@ -47,7 +47,7 @@ class JNJUKCalculations(BaseCalculationsScript):
 #     Config.init()
 #     project_name = 'jnjuk'
 #     data_provider = KEngineDataProvider(project_name)
-#     session = 'ac4a24cc-7874-41bd-a161-06d6b79fffa3' # very long session
+#     session = 'ac4a24cc-7874-41bd-a161-06d6b79fffa3'
 #     # session = 'f850397b-6b79-47e9-897b-9edb2632efda' # 60 sec for promocalc
 #     data_provider.load_session_data(session)
 #     output = Output()
