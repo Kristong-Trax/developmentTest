@@ -1,0 +1,3 @@
+INSERT INTO static.kpi_level_2
+(pk, kpi_level_1_fk, type, client_name, kpi_family_fk, version, numerator_type_fk, denominator_type_fk, valid_from, valid_until, initiated_by, context_type_fk, kpi_result_type_fk, kpi_score_type_fk)
+VALUES (10000, null, 'COOLERSCREENS_OOS_PRODUCT_BY_SESSION', 'COOLERSCREENS_OOS_PRODUCT_BY_SESSION', 1, '1.0.0', 1, null, '1990-01-01', '2100-01-01', 'COOLERSCREENS', null, null, null);
