@@ -27,7 +27,7 @@ class COOLERSCREENSUSKGenerator:
             if prev_product_id is not None:
                 kpi_result = 0 if len(self._data_provider.matches[self._data_provider.matches['product_fk'] == prev_product_id]) == 0 else 1
                 self._common.write_to_db_result_new_tables(fk=10000,
-                                                           numerator_id=kpi_result,
+                                                           numerator_id=prev_product_id,
                                                            numerator_result=kpi_result,
                                                            result=kpi_result)
 
