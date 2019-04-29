@@ -8,7 +8,7 @@ __author__ = 'jasmineg'
 
 class ProjectsSanityData(BaseSeedData):
     project_name = TestProjectsNames().TEST_PROJECT_1
-    bikr_seed = {DATA_TYPE: BaseSeedData.MYSQL,
-                        FILES_RELATIVE_PATH: ['Data/Seeds/bikr_seed.sql.gz'],
+    sanofike_seed = {DATA_TYPE: BaseSeedData.MYSQL,
+                        FILES_RELATIVE_PATH: ['Data/Seeds/sanofike_seed.sql.gz'],
                         PROJECT_NAME: project_name
                         } 
