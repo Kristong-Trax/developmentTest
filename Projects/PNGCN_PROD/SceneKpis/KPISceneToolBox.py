@@ -71,6 +71,7 @@ class PngcnSceneKpis(object):
         self.matches_from_data_provider = self.data_provider[Data.MATCHES]
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
         self.store_id = self.data_provider[Data.SESSION_INFO].store_fk.values[0]
+        self.all_products = self.data_provider[Data.ALL_PRODUCTS]
         self.png_manufacturer_fk = self.get_png_manufacturer_fk()
 
     def process_scene(self):
@@ -732,8 +733,8 @@ class PngcnSceneKpis(object):
             Log.error("Couldn't write new results to custom_scene_item_facts and deleted the old results")
 
     def get_png_manufacturer_fk(self):
-        return self.scif[self.scif['manufacturer_name'].str.encode("utf8") ==
-                         PNG_MANUFACTURER.encode("utf8")]['manufacturer_fk'].values[0]
+        return self.all_products[self.all_products['manufacturer_name'].str.encode("utf8") ==
+                                 PNG_MANUFACTURER]['manufacturer_fk'].values[0]
 
     def calculate_display_size(self):
         """
@@ -759,7 +760,7 @@ class PngcnSceneKpis(object):
         calculate P&G manufacture linear length percentage
         """
         kpi_fk = self.common.get_kpi_fk_by_kpi_name(LINEAR_SOS_MANUFACTURER_IN_SCENE)
-        filters = {'manufacturer_fk': [4]}
+        filters = {'manufacturer_fk': [self.png_manufacturer_fk]}
         sos = SOS(self.data_provider)
         score, numerator, denominator = \
             sos.calculate_linear_share_of_shelf_with_numerator_denominator(filters, {})
