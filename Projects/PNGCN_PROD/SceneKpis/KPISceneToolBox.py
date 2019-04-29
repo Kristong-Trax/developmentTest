@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 import os
 import numpy as np
 from Trax.Algo.Calculations.Core.DataProvider import Data
@@ -39,10 +41,11 @@ PROMOTION_WALL_DISPLAYS = ['Product Strip']
 TABLE_DISPLAYS = ['Table']
 TABLE_TOTAL_DISPLAYS = ['Table Display']
 DISPLAY_SIZE_KPI_NAME = 'DISPLAY_SIZE_PER_SKU_IN_SCENE'
-PNG_MANUFACTURER_FK = 4
+PNG_MANUFACTURER = 'P&G宝洁'
 DISPLAY_SIZE_PER_SCENE = 'DISPLAY_SIZE_PER_SCENE'
 LINEAR_SOS_MANUFACTURER_IN_SCENE = 'LINEAR_SOS_MANUFACTURER_IN_SCENE'
 PRESIZE_LINEAR_LENGTH_PER_LENGTH = 'PRESIZE_LINEAR_LENGTH_PER_LENGTH'
+
 
 class PngcnSceneKpis(object):
     def __init__(self, project_connector, common, scene_id, data_provider=None):
@@ -58,7 +61,7 @@ class PngcnSceneKpis(object):
             # self.data_provider = PNGCN_SANDShareOfDisplayDataProvider(project_connector, self.session_uid)
         self.cur = self.project_connector.db.cursor()
         self.log_prefix = 'Share_of_display for scene: {}, project {}'.format(self.scene_id,
-                                                                            self.project_connector.project_name)
+                                                                              self.project_connector.project_name)
         Log.info(self.log_prefix + ' Starting calculation')
         self.match_display_in_scene = pd.DataFrame({})
         self.match_product_in_scene = pd.DataFrame({})
@@ -68,6 +71,7 @@ class PngcnSceneKpis(object):
         self.matches_from_data_provider = self.data_provider[Data.MATCHES]
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
         self.store_id = self.data_provider[Data.SESSION_INFO].store_fk.values[0]
+        self.png_manufacturer_fk = self.get_png_manufacturer_fk()
 
     def process_scene(self):
         try:
@@ -727,6 +731,10 @@ class PngcnSceneKpis(object):
         except:
             Log.error("Couldn't write new results to custom_scene_item_facts and deleted the old results")
 
+    def get_png_manufacturer_fk(self):
+        return self.scif[self.scif['manufacturer_name'].str.encode("utf8") ==
+                         PNG_MANUFACTURER.encode("utf8")]['manufacturer_fk'].values[0]
+
     def calculate_display_size(self):
         """
         calculate P&G manufacture percentage
@@ -734,12 +742,13 @@ class PngcnSceneKpis(object):
         kpi_fk = self.common.get_kpi_fk_by_kpi_name(DISPLAY_SIZE_PER_SCENE)
         if kpi_fk:
             denominator = self.scif.facings.sum()  # get all products from scene
-            numerator = self.scif[self.scif['manufacturer_fk'] == PNG_MANUFACTURER_FK]['facings'].sum()  # get P&G products from scene
+            numerator = self.scif[self.scif['manufacturer_fk'] ==
+                                  self.png_manufacturer_fk]['facings'].sum()  # get P&G products from scene
             if denominator:
                 score = numerator / denominator  # get the percentage of P&G products from all products
             else:
                 score = 0
-            self.common.write_to_db_result(fk=kpi_fk, numerator_id=PNG_MANUFACTURER_FK, numerator_result=numerator,
+            self.common.write_to_db_result(fk=kpi_fk, numerator_id=self.png_manufacturer_fk, numerator_result=numerator,
                                            denominator_id=self.store_id, denominator_result=denominator, result=score,
                                            score=score, by_scene=True)
         else:
@@ -754,7 +763,7 @@ class PngcnSceneKpis(object):
         sos = SOS(self.data_provider)
         score, numerator, denominator = \
             sos.calculate_linear_share_of_shelf_with_numerator_denominator(filters, {})
-        self.common.write_to_db_result(fk=kpi_fk, numerator_id=PNG_MANUFACTURER_FK, numerator_result=numerator,
+        self.common.write_to_db_result(fk=kpi_fk, numerator_id=self.png_manufacturer_fk, numerator_result=numerator,
                                        denominator_id=self.store_id, denominator_result=denominator, result=score,
                                        score=score, by_scene=True)
         return 0
@@ -768,7 +777,7 @@ class PngcnSceneKpis(object):
         denominator = self.matches_from_data_provider.width_mm.sum() # get the width of all products in scene
         if denominator:
             score = numerator / denominator  # get the percentage of P&G products from all products
-            self.common.write_to_db_result(fk=kpi_fk, numerator_id=PNG_MANUFACTURER_FK, numerator_result=numerator,
+            self.common.write_to_db_result(fk=kpi_fk, numerator_id=self.png_manufacturer_fk, numerator_result=numerator,
                                            denominator_id=self.store_id, denominator_result=denominator, result=score,
                                            score=score, by_scene=True)
         return 0
