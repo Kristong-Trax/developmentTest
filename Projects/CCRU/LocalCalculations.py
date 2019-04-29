@@ -11,7 +11,7 @@ if __name__ == '__main__':
     project_name = 'ccru'
     data_provider = KEngineDataProvider(project_name)
     session_uids = [
-        '30535D0E-B8D3-455D-BBF6-E31E38404108'
+        '9B7FC67F-67AA-4130-A743-C69BDF12D576'
     ]
     for session in session_uids:
         data_provider.load_session_data(session)

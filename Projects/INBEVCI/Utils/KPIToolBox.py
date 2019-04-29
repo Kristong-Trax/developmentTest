@@ -21,7 +21,8 @@ __author__ = 'Elyashiv'
 TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'Template.xlsx')
 
 # ASSORTMENT_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'Assortment.xlsx')
-ASSORTMENT_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data/just for local calculation', 'Assortment.xlsx')
+ASSORTMENT_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data/just for local calculation',
+                               'Assortment.xlsx')
 
 
 def log_runtime(description, log_start=False):
@@ -34,7 +35,9 @@ def log_runtime(description, log_start=False):
             calc_end_time = datetime.utcnow()
             Log.info('{} took {}'.format(description, calc_end_time - calc_start_time))
             return result
+
         return wrapper
+
     return decorator
 
 
@@ -414,7 +417,7 @@ class INBEVCIINBEVCIToolBox:
                 shelves_result_dict = {}
                 bay_data = self.match_product_in_scene[
                     (self.match_product_in_scene['scene_fk'] == scene) & (
-                        self.match_product_in_scene['bay_number'] == bay)]
+                            self.match_product_in_scene['bay_number'] == bay)]
                 if scene_recognition_flag:
                     bay_match_display_in_scene = self.match_display_in_scene[
                         (self.match_display_in_scene['scene_fk'] == scene) &
@@ -584,9 +587,9 @@ class INBEVCIINBEVCIToolBox:
                                                  (self.store_sos_policies['target_validity_end_date'] >= visit_date)]
 
                 stores_with_no_end_date = self.store_sos_policies[
-                                                 (self.store_sos_policies['store_policy'] == row.store_policy) &
-                                                 (self.store_sos_policies['target_validity_start_date'] <= visit_date) &
-                                                 (self.store_sos_policies['target_validity_end_date'].isnull())]
+                    (self.store_sos_policies['store_policy'] == row.store_policy) &
+                    (self.store_sos_policies['target_validity_start_date'] <= visit_date) &
+                    (self.store_sos_policies['target_validity_end_date'].isnull())]
                 stores = stores.append(stores_with_no_end_date)
                 if stores.empty:
                     relevant_stores = stores
@@ -594,6 +597,7 @@ class INBEVCIINBEVCIToolBox:
                     relevant_stores = relevant_stores.append(stores, ignore_index=True)
         relevant_stores = relevant_stores.drop_duplicates(subset=['kpi', 'sku_name', 'target', 'sos_policy'],
                                                           keep='last')
+        primary_shelves_scif = self.scif.loc[self.scif[Const.LOCATION_TYPE_FK] == Const.PRIMARY_SHELF_FK]
         for row in relevant_stores.itertuples():
             sos_policy = json.loads(row.sos_policy)
             numerator_key = sos_policy[Const.NUMERATOR].keys()[0]
@@ -602,19 +606,21 @@ class INBEVCIINBEVCIToolBox:
             denominator_val = sos_policy[Const.DENOMINATOR][denominator_key]
             if numerator_key == 'manufacturer':
                 numerator_key += '_local_name'
-            numerator = self.scif[(self.scif[numerator_key].str.upper() == numerator_val.upper()) &
-                                  (self.scif[denominator_key].str.upper() == denominator_val.upper())][
+            numerator = primary_shelves_scif[
+                (primary_shelves_scif[numerator_key].str.upper() == numerator_val.upper()) & (
+                        primary_shelves_scif[denominator_key].str.upper() == denominator_val.upper())][
                 'gross_len_ign_stack'].sum()
-            denominator = self.scif[self.scif[denominator_key].str.upper() == denominator_val.upper()][
-                'gross_len_ign_stack'].sum()
+            denominator = \
+                primary_shelves_scif[primary_shelves_scif[denominator_key].str.upper() == denominator_val.upper()][
+                    'gross_len_ign_stack'].sum()
             if self.all_products[
                 self.all_products[numerator_key].str.upper() == numerator_val.upper()].empty and \
                     numerator_val.upper() == "CCC":
                 numerator_val = "ABI Inbev"
             if (self.all_products[
-                        self.all_products[numerator_key].str.upper() == numerator_val.upper()].empty) or (
+                self.all_products[numerator_key].str.upper() == numerator_val.upper()].empty) or (
                     self.all_products[self.all_products[
-                        denominator_key].str.upper() == denominator_val.upper()].empty):
+                                          denominator_key].str.upper() == denominator_val.upper()].empty):
                 Log.error("the DB does not match the template of SOS")
                 continue
             numerator_id = self.all_products[self.all_products[numerator_key].str.upper() ==
