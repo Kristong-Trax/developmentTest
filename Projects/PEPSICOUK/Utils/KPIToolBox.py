@@ -641,8 +641,11 @@ class PEPSICOUKToolBox:
     def calculate_brand_out_of_category_sos_vs_target(self, sos_targets):
         sos_targets = sos_targets[sos_targets['type'] == self.BRAND_SPACE_TO_SALES_INDEX]
         session_brands_list = self.filtered_scif['brand_fk'].unique().tolist()
+        brands_to_exclude = self.all_products[self.all_products['brand_name'].isin(['General'])]['brand_fk'].unique().tolist()
         session_brands_list = filter(lambda v: v == v, session_brands_list)
         session_brands_list = filter(lambda v: v is not None, session_brands_list)
+        session_brands_list = filter(lambda v: v != 0, session_brands_list)
+        session_brands_list = filter(lambda v: v not in brands_to_exclude, session_brands_list)
         targets_brand_list = sos_targets['numerator_value'].values.tolist()
         additional_brands = list(set(session_brands_list) - set(targets_brand_list))
         category_fk = self.all_products[self.all_products['category'] == 'CSN']['category_fk'].values[0]

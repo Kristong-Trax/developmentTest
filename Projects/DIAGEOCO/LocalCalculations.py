@@ -11,7 +11,7 @@ if __name__ == '__main__':
     project_name = 'diageoco'
     sessions = [# 'D8A8183F-3494-44C6-B3DB-D7650B625759',
                # 'dac74549-89f5-48da-beaf-cba548b8698e',
-               'DB5EF07D-CB8B-4727-AD37-52FE9E44AF0B']
+               '0292f227-ebfb-49d5-852a-e9fb76cacb54']
 
     for session in sessions:
         data_provider = KEngineDataProvider(project_name)

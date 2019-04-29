@@ -51,9 +51,12 @@ class CCBOTTLERSUSWAREHOUSEJUICEToolBox:
         if self.retailer in Const.RETAILERS:
             self.calculate_assortment()
 
+        if Const.DRINK_JUICE_TEA not in self.completed_scene_types.keys():
+            Log.info('The Drink/Juice/Tea scene type was not found - no assortment exceptions were generated')
+
     # set size functions
     def calculate_set_size(self, relevant_scif):
-        threshold = 0.75
+        threshold = 0.50
         relevant_scenes = self.get_relevant_scenes(relevant_scif)
 
         for scene in relevant_scenes:
@@ -62,15 +65,16 @@ class CCBOTTLERSUSWAREHOUSEJUICEToolBox:
             if scene_type in self.completed_scene_types.iterkeys():
                 continue
 
-            scene_mpis = self.mpis[self.mpis['scene_fk'] == scene]
+            scene_mpis = self.mpis[(self.mpis['scene_fk'] == scene) &
+                                   (self.mpis['stacking_layer'] == 1)]
             bays_in_scene = scene_mpis['bay_number'].unique().tolist()
 
             for bay in bays_in_scene:
                 bay_mpis = scene_mpis[scene_mpis['bay_number'] == bay]
-                total_space = bay_mpis['width_mm'].sum()
+                total_space = bay_mpis['width_mm_advance'].sum()
                 tested_group_skus = self.get_product_fks_from_relevant_filters(Const.RELEVANT_FILTERS[scene_type])
                 if tested_group_skus:
-                    tested_group_space = bay_mpis[bay_mpis['product_fk'].isin(tested_group_skus)]['width_mm'].sum()
+                    tested_group_space = bay_mpis[bay_mpis['product_fk'].isin(tested_group_skus)]['width_mm_advance'].sum()
                 else:
                     tested_group_space = 0
                 if tested_group_space / float(total_space) > threshold:
@@ -83,9 +87,6 @@ class CCBOTTLERSUSWAREHOUSEJUICEToolBox:
             kpi_fk = self.get_kpi_fk_from_kpi_name(Const.SET_SIZE_KPI_NAME)
             template_fk = self.get_template_fk(scene_type)
 
-            # self.common_db.write_to_db_result_new_tables(kpi_fk, template_fk, set_size, set_size,
-            #                                              denominator_id=self.store_id, denominator_result=1,
-            #                                              score=set_size)
             self.common_v2.write_to_db_result(kpi_fk, numerator_id=template_fk, numerator_result=set_size,
                                               denominator_id=self.store_id, denominator_result=1, result=set_size,
                                               score=scene)
@@ -117,6 +118,7 @@ class CCBOTTLERSUSWAREHOUSEJUICEToolBox:
             return
         kpi_fk = self.get_kpi_fk_from_kpi_name(Const.ASSORTMENT_KPI_NAME)
         for scene_type, set_size in self.set_size.iteritems():
+            passing_products = 0
             if scene_type != Const.DRINK_JUICE_TEA:
                 continue
             scene_id = self.completed_scene_types[scene_type]
@@ -133,12 +135,15 @@ class CCBOTTLERSUSWAREHOUSEJUICEToolBox:
                     Log.warning('UPC {} for {} does not exist in the database'.format(upc, self.retailer))
                     continue
                 result = 2 if product_fk in products_in_scene else 1
-                # self.common_db.write_to_db_result_new_tables(kpi_fk, product_fk, result, result,
-                #                                              denominator_id=template_fk, denominator_result=1,
-                #                                              score=scene_id)
+                if result == 2:
+                    passing_products += 1
+
                 self.common_v2.write_to_db_result(kpi_fk, numerator_id=product_fk, numerator_result=result,
                                                   denominator_id=template_fk, denominator_result=1, result=result,
                                                   score=scene_id)
+
+            if passing_products == len(products_in_scene):
+                Log.info('All assortment products were found in the {} scene type'.format(scene_type))
 
     # helpers
     def get_kpi_fk_from_kpi_name(self, kpi_name):

@@ -22,8 +22,9 @@ class DIAGEOIN_SANDCalculations(BaseCalculationsScript):
 #         project_name = 'diageoin-sand'
 #         data_provider = KEngineDataProvider(project_name)
 #         sessions = [
-#             '8a1164b9-5634-478d-a30a-b31f10d52cb8',
-#             '6fe43ddf-2603-49a4-aad8-e6f5c8da399b'
+#             'fc4035b8-1ecd-4b1a-b7f5-dc594001d957',
+#             # '8a1164b9-5634-478d-a30a-b31f10d52cb8',
+#             # '6fe43ddf-2603-49a4-aad8-e6f5c8da399b',
 #         ]
 #         for session in sessions:
 #             data_provider.load_session_data(session)

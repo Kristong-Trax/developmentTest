@@ -310,7 +310,8 @@ class PEPSICOUKSceneToolBox:
             score = max_ratio = 0
             result = self.commontools.get_yes_no_result(0)
             if not result_df.empty:
-                result_df = result_df[result_df['is_block'] == True]
+                max_ratio = result_df['facing_percentage'].max()
+                result_df = result_df[result_df['is_block']==True]
                 if not result_df.empty:
                     max_ratio = result_df['facing_percentage'].max()
                     result_df = result_df[result_df['facing_percentage'] == max_ratio]
