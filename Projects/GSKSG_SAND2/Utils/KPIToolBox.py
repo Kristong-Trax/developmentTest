@@ -127,7 +127,7 @@ class GSKSGToolBox:
         This function calculates the KPI results.
         # """
 
-        # assortment_dict = self.gsk_generator.assortment_function()
+        assortment_dict = self.gsk_generator.assortment_function()
 
         facings_sos_dict = self.gsk_generator.gsk_global_facings_sos_whole_store_function()
         if facings_sos_dict is None:
