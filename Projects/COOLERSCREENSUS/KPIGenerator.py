@@ -2,7 +2,7 @@ from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Trax.Cloud.Services.Connector.Keys import DbUsers
 
 
-class COOLERSCREENSUSKGenerator(object):
+class COOLERSCREENSUSKGenerator:
     def __init__(self, data_provider, output, common):
         """
 
