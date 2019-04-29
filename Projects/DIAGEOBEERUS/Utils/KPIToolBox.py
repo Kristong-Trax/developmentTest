@@ -450,7 +450,8 @@ class DIAGEOBEERUSToolBox:
                 target = 0
             else:
                 comp_facings = self.calculate_shelf_facings_of_sub_brand(comp_sub_brands, relevant_scenes,
-                                                                         result_identifier, kpi_db_names=kpi_db_names)
+                                                                         result_identifier, kpi_db_names=kpi_db_names,
+                                                                         diageo_sub_brand_fk=sub_brand_fk)
                 bench_value = competition[Const.BENCH_VALUE]
                 if type(bench_value) in (unicode, str):
                     bench_value = float(bench_value.replace("%", "")) / 100
@@ -471,10 +472,10 @@ class DIAGEOBEERUSToolBox:
         return product_result
 
     def calculate_shelf_facings_of_sub_brand(self, sub_brand_names, relevant_scenes, parent_identifier, target=None,
-                                             diageo_product=False, kpi_db_names=None, weight=None):
+                                             diageo_product=False, kpi_db_names=None, weight=None,
+                                             diageo_sub_brand_fk=None):
         amount_of_facings = None
         kpi_fk = self.common.get_kpi_fk_by_kpi_name(kpi_db_names[Const.VARIANT])
-        denominator_id = self.manufacturer_fk if diageo_product else None
         for sub_brand in sub_brand_names:
             amount_of_facings = 0
             sub_brand_scif = self.scif_without_empties[self.scif_without_empties['sub_brand'] == sub_brand]
@@ -490,6 +491,10 @@ class DIAGEOBEERUSToolBox:
             else:
                 brand_fk = sub_brand_scif['brand_fk'].values[0]
             sub_brand_fk = self.get_sub_brand_fk(sub_brand, brand_fk)
+            if diageo_sub_brand_fk:
+                denominator_id = diageo_sub_brand_fk
+            elif diageo_product:
+                denominator_id = sub_brand_fk
             self.common.write_to_db_result(
                 fk=kpi_fk, numerator_id=sub_brand_fk, result=sub_brand_facing, denominator_id=denominator_id,
                 should_enter=True, identifier_parent=parent_identifier, target=target, weight=weight)
@@ -552,7 +557,8 @@ class DIAGEOBEERUSToolBox:
                 target = 0
             else:
                 comp_facings = self.calculate_displays_of_sub_brand(comp_sub_brands, relevant_scenes, result_identifier,
-                                                                    kpi_db_names=kpi_db_names)
+                                                                    kpi_db_names=kpi_db_names,
+                                                                    diageo_sub_brand_fk=sub_brand_fk)
                 bench_value = competition[Const.BENCH_VALUE]
                 if type(bench_value) in (unicode, str):
                     bench_value = float(bench_value.replace("%", "")) / 100
@@ -571,10 +577,9 @@ class DIAGEOBEERUSToolBox:
         return product_result
 
     def calculate_displays_of_sub_brand(self, sub_brand_names, relevant_scenes, parent_identifier, target=None,
-                                        diageo_product=False, kpi_db_names=None):
+                                        diageo_product=False, kpi_db_names=None, diageo_sub_brand_fk=None):
         number_of_displays = None
         kpi_fk = self.common.get_kpi_fk_by_kpi_name(kpi_db_names[Const.VARIANT])
-        denominator_id = self.manufacturer_fk if diageo_product else None
         for sub_brand in sub_brand_names:
             number_of_displays = 0
             sub_brand_scif = self.scif_without_empties[self.scif_without_empties['sub_brand'] == sub_brand]
@@ -595,6 +600,10 @@ class DIAGEOBEERUSToolBox:
             else:
                 brand_fk = sub_brand_scif['brand_fk'].values[0]
             sub_brand_fk = self.get_sub_brand_fk(sub_brand, brand_fk)
+            if diageo_sub_brand_fk:
+                denominator_id = diageo_sub_brand_fk
+            elif diageo_product:
+                denominator_id = sub_brand_fk
             self.common.write_to_db_result(
                 fk=kpi_fk, numerator_id=sub_brand_fk, result=number_of_displays, denominator_id=denominator_id,
                 should_enter=True, identifier_parent=parent_identifier, target=target)
