@@ -4,7 +4,7 @@ from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
 from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
 from Trax.Utils.Conf.Configuration import Config
 
-from Projects.COOLERSCREENSUS.KPIGenerator import COOLERSCREENSUSKGenerator
+from Projects.COOLERSCREENSUS.Utils.KPIGenerator import COOLERSCREENSUSKGenerator
 
 
 class COOLERSCREENSUSCalculations(BaseCalculationsScript):
