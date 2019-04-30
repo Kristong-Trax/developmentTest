@@ -74,10 +74,10 @@ class PlanogramCompliance(PlanogramComplianceBaseClass):
                     FROM static.match_product_in_planogram mpip
                     LEFT JOIN static_new.product p on p.pk = mpip.product_fk
                     WHERE mpip.planogram_fk =:planogram_fk
-                """.format(self._data_provider.planogram_fk)
+                """
 
         return self._data_provider._perform_query(query,
-                                                  **{'planogram_fk': self.planogram_fk})
+                                                  **{'planogram_fk': self._data_provider.planogram_fk})
 
     def _get_matches(self):
         query = """SELECT 
@@ -88,7 +88,7 @@ class PlanogramCompliance(PlanogramComplianceBaseClass):
                      FROM probedata.match_product_in_scene mpis
                      JOIN static_new.product p ON mpis.product_fk = p.pk
                      WHERE mpis.scene_fk =:scene_id
-                """.format(scene_fk)
+                """
         return self._data_provider._perform_query(query,
                                                   **{'scene_id': self._data_provider._scene_id})
 
