@@ -11,7 +11,7 @@ from KPIUtils_v2.Calculations.CalculationsUtils.GENERALToolBoxCalculations impor
 
 __author__ = 'ilays'
 
-PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', '06_PNGHK_template_2019_15_04.xlsx')
+PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', Const.TEMPLATE_PATH)
 
 
 class PNGHKToolBox:

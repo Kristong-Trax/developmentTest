@@ -35,7 +35,7 @@ class COOLERSCREENSUSKGenerator:
 
         Log.info('Commiting the results of COOLERSCREENSUS kpi')
         self._common.commit_results_data_to_new_tables()
-        Log.info('Commited the results of COOLERSCREENSUS kpi')
+        Log.info('Commited the results of COOLERSCREENSUS kpi NEW VERSION')
 
     def _find_prev_product(self, project_connector, match):
         cur = project_connector.execute("""
