@@ -9,7 +9,7 @@ from Trax.Utils.Logging.Logger import Log
 
 __author__ = 'ilays'
 
-PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', '06_PNGHK_template_2019_08_03.xlsx')
+PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', Const.TEMPLATE_PATH)
 
 class SceneToolBox:
 
