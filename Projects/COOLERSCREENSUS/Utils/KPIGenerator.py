@@ -1,8 +1,9 @@
 from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Trax.Cloud.Services.Connector.Keys import DbUsers
+from Trax.Utils.Logging.Logger import Log
 
 
-class COOLERSCREENSUSKGenerator(object):
+class COOLERSCREENSUSKGenerator:
     def __init__(self, data_provider, output, common):
         """
 
@@ -26,12 +27,15 @@ class COOLERSCREENSUSKGenerator(object):
             prev_product_id = self._find_prev_product(project_connector, match)
             if prev_product_id is not None:
                 kpi_result = 0 if len(self._data_provider.matches[self._data_provider.matches['product_fk'] == prev_product_id]) == 0 else 1
+                Log.info('Calculated COOLERSCREENSUS kpi for product {} the result is {}'.format(prev_product_id, kpi_result))
                 self._common.write_to_db_result_new_tables(fk=10000,
-                                                           numerator_id=kpi_result,
+                                                           numerator_id=prev_product_id,
                                                            numerator_result=kpi_result,
                                                            result=kpi_result)
 
+        Log.info('Commiting the results of COOLERSCREENSUS kpi')
         self._common.commit_results_data_to_new_tables()
+        Log.info('Commited the results of COOLERSCREENSUS kpi NEW VERSION')
 
     def _find_prev_product(self, project_connector, match):
         cur = project_connector.execute("""
