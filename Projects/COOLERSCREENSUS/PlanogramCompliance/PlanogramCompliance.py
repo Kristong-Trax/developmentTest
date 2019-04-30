@@ -36,11 +36,7 @@ class PlanogramCompliance(PlanogramComplianceBaseClass):
             tag_compliance = self.local_get_tag_planogram_compliance(self.scene_matches, planogram_products)
         except Exception as e:
             Log.error("Calculated compliance has failed: " + e.message)
-            try:
-                tag_compliance = get_tag_planogram_compliance(self.scene_matches, self.planogram_matches)
-            except Exception as er:
-                Log.error("Calculated compliance has failed: " + er.message)
-        return tag_compliance
+        return tag_compliance[[Keys.MATCH_FK, Keys.COMPLIANCE_STATUS_FK]]
 
     def local_get_tag_planogram_compliance(self, scene_planogram_data, planogram_products):
         matches = set()
