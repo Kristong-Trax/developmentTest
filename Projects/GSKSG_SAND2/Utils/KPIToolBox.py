@@ -127,7 +127,14 @@ class GSKSGToolBox:
         This function calculates the KPI results.
         # """
 
-        assortment_dict = self.gsk_generator.assortment_function()
+        assortment_store_dict = self.gsk_generator.availability_store_function()
+        self.common.save_json_to_new_tables(assortment_store_dict)
+
+        assortment_category_dict = self.gsk_generator.availability_category_function()
+        self.common.save_json_to_new_tables(assortment_category_dict)
+
+        assortment_subcategory_dict = self.gsk_generator.availability_subcategory_function()
+        self.common.save_json_to_new_tables(assortment_subcategory_dict)
 
         facings_sos_dict = self.gsk_generator.gsk_global_facings_sos_whole_store_function()
         if facings_sos_dict is None:
