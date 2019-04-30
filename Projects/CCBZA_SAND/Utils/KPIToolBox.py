@@ -23,7 +23,7 @@ from Projects.CCBZA_SAND.Utils.Common_TEMP import Common
 
 from Projects.CCBZA_SAND.Utils.Fetcher import CCBZA_SAND_Queries
 from Projects.CCBZA_SAND.Utils.ParseTemplates import parse_template
-from Projects.CCBZA_SAND.Utils.GeneralToolBox import CCBZA_SAND_GENERALToolBox
+from Projects.CCBZA_SAND.Utils.GeneralToolBox import CCBZASAND_GENERALToolBox
 from Projects.CCBZA_SAND.Utils.Errors import DataError
 from KPIUtils_v2.GlobalDataProvider.PsDataProvider import PsDataProvider
 

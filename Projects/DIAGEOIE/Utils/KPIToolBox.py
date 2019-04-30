@@ -106,21 +106,25 @@ class DIAGEOIEToolBox:
 
         for set_name in set_names:
             set_score = 0
+            # comment this to remove Secondary Displays KPI from mobile configuration
+            #
+            #
             # Global Secondary Displays
-            if set_name in ('Secondary Displays', 'Secondary'):
-                # Global function
-                res_json = self.diageo_generator.diageo_global_secondary_display_secondary_function()
-                if res_json:
-                    # Saving to new tables
-                    self.commonV2.write_to_db_result(fk=res_json['fk'], numerator_id=1, denominator_id=self.store_id,
-                                                     result=res_json['result'])
-
-                # Saving to old tables
-                set_score = self.tools.calculate_number_of_scenes(location_type='Secondary')
-                self.save_level2_and_level3(set_name, set_name, set_score)
+            # if set_name in ('Secondary Displays', 'Secondary'):
+            #     # Global function
+            #     res_json = self.diageo_generator.diageo_global_secondary_display_secondary_function()
+            #     if res_json:
+            #         # Saving to new tables
+            #         self.commonV2.write_to_db_result(fk=res_json['fk'], numerator_id=1, denominator_id=self.store_id,
+            #                                          result=res_json['result'])
+            #
+            #     # Saving to old tables
+            #     set_score = self.tools.calculate_number_of_scenes(location_type='Secondary')
+            #     self.save_level2_and_level3(set_name, set_name, set_score)
 
             # Global Visible to Consumer
-            elif set_name in ('Visible to Customer', 'Visible to Consumer %'):
+            # elif set_name in ('Visible to Customer', 'Visible to Consumer %'):
+            if set_name in ('Visible to Customer', 'Visible to Consumer %'):
                 # Global function
                 sku_list = filter(None, self.scif[self.scif['product_type'] == 'SKU'].product_ean_code.tolist())
                 res_dict = self.diageo_generator.diageo_global_visible_percentage(sku_list)
@@ -256,6 +260,8 @@ class DIAGEOIEToolBox:
         """
         This function writes all KPI results to the DB, and commits the changes.
         """
+        self.rds_conn.disconnect_rds()
+        self.rds_conn.connect_rds()
         cur = self.rds_conn.db.cursor()
         delete_queries = DIAGEOQueries.get_delete_session_results_query_old_tables(self.session_uid)
         for query in delete_queries:
@@ -263,3 +269,5 @@ class DIAGEOIEToolBox:
         for query in self.kpi_results_queries:
             cur.execute(query)
         self.rds_conn.db.commit()
+
+

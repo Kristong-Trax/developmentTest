@@ -12,7 +12,7 @@ from mock import patch
 
 from Tests.Data.TestData.test_data_diageoie_sand_sanity import ProjectsSanityData
 from Projects.DIAGEOIE.Calculations import DIAGEOIECalculations
-from Trax.Apps.Core.Testing.BaseCase import TestMockingFunctionalCase
+from Trax.Apps.Core.Testing.BaseCase import TestFunctionalCase
 
 from Tests.Data.Templates.diageoie.MPA import mpa
 from Tests.Data.Templates.diageoie.NewProducts import products
@@ -22,7 +22,7 @@ from Tests.TestUtils import remove_cache_and_storage
 __author__ = 'jasmineg'
 
 
-class TestKEngineOutOfTheBox(TestMockingFunctionalCase):
+class TestKEngineOutOfTheBox(TestFunctionalCase):
 
     def set_up(self):
         super(TestKEngineOutOfTheBox, self).set_up()

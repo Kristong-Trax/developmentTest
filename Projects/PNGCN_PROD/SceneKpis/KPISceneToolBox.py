@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 import os
 import numpy as np
 from Trax.Algo.Calculations.Core.DataProvider import Data
@@ -7,6 +9,7 @@ from Trax.Utils.Logging.Logger import Log
 from Projects.PNGCN_PROD.ShareOfDisplay.ExcludeDataProvider import ShareOfDisplayDataProvider, Fields
 from Trax.Utils.Logging.Logger import Log
 import pandas as pd
+from KPIUtils_v2.Calculations.SOSCalculations import SOS
 # from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
 # from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
 # from KPIUtils_v2.Calculations.AvailabilityCalculations import Availability
@@ -26,6 +29,7 @@ NON_BRANDED_CUBE = 'Non branded cube'
 CUBE_DISPLAYS = [CUBE, NON_BRANDED_CUBE]
 CUBE_FK = 1
 NON_BRANDED_CUBE_FK = 5
+NEW_LSOS_KPI = 'LINEAR_GROSS_NSOS_IN_SCENE'
 CUBE_TOTAL_DISPLAYS = ['Total 1 cube', 'Total 2 cubes', 'Total 3 cubes', 'Total 4 cubes', 'Total 5 cubes',
                        'Total 6 cubes', 'Total 7 cubes', 'Total 8 cubes', 'Total 9 cubes', 'Total 10 cubes',
                        'Total 11 cubes', 'Total 12 cubes', 'Total 13 cubes', 'Total 14 cubes', 'Total 15 cubes']
@@ -37,6 +41,10 @@ PROMOTION_WALL_DISPLAYS = ['Product Strip']
 TABLE_DISPLAYS = ['Table']
 TABLE_TOTAL_DISPLAYS = ['Table Display']
 DISPLAY_SIZE_KPI_NAME = 'DISPLAY_SIZE_PER_SKU_IN_SCENE'
+PNG_MANUFACTURER = 'P&G宝洁'
+DISPLAY_SIZE_PER_SCENE = 'DISPLAY_SIZE_PER_SCENE'
+LINEAR_SOS_MANUFACTURER_IN_SCENE = 'LINEAR_SOS_MANUFACTURER_IN_SCENE'
+PRESIZE_LINEAR_LENGTH_PER_LENGTH = 'PRESIZE_LINEAR_LENGTH_PER_LENGTH'
 
 
 class PngcnSceneKpis(object):
@@ -62,18 +70,27 @@ class PngcnSceneKpis(object):
         self.common = common
         self.matches_from_data_provider = self.data_provider[Data.MATCHES]
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
-
+        self.store_id = self.data_provider[Data.SESSION_INFO].store_fk.values[0]
+        self.all_products = self.data_provider[Data.ALL_PRODUCTS]
+        self.png_manufacturer_fk = self.get_png_manufacturer_fk()
 
     def process_scene(self):
         try:
             self.save_nlsos_to_custom_scif()
+        except Exception as e:
+            Log.error('nlsos to custom scif failed for scene: \'{0}\' error: {1}'.format(self.scene_id, str(e)))
+            raise e
+        try:
             Log.debug(self.log_prefix + ' Retrieving data')
+            self.calculate_display_size()
+            self.calculate_linear_length()
+            self.calculate_presize_linear_length()
             self.match_display_in_scene = self._get_match_display_in_scene_data()
             # if there are no display tags there's no need to retrieve the rest of the data.
             if self.match_display_in_scene.empty:
                 Log.debug(self.log_prefix + ' No display tags')
                 self._delete_previous_data()
-
+                self.common.commit_results_data(result_entity='scene')
             else:
                 self.displays = self._get_displays_data()
                 self.match_product_in_scene = self._get_match_product_in_scene_data()
@@ -662,6 +679,8 @@ class PngcnSceneKpis(object):
 
     def save_nlsos_to_custom_scif(self):
         matches = self.matches_from_data_provider.copy()
+        if matches.empty or self.scif.empty:
+            return
         mask = (matches.status != 2) & (matches.bay_number != -1) & (matches.shelf_number != -1) & \
                (matches.stacking_layer != -1) & (matches.facing_sequence_number != -1)
         matches_reduced = matches[mask]
@@ -678,12 +697,25 @@ class PngcnSceneKpis(object):
                                 'width_mm_advance']].groupby(by=['product_fk','scene_fk']).sum().reset_index()
         new_scif = pd.merge(self.scif, new_scif_gross_split, how='left',on=['scene_fk','product_fk'])
         new_scif = new_scif.fillna(0)
+        self.save_nlsos_as_kpi_results(new_scif)
         self.insert_data_into_custom_scif(new_scif)
+
+    def save_nlsos_as_kpi_results(self, new_scif):
+        kpi_fk = self.common.get_kpi_fk_by_kpi_name(NEW_LSOS_KPI)
+        if kpi_fk is None:
+            Log.warning("There is no matching Kpi fk for kpi name: " + NEW_LSOS_KPI)
+            return
+        new_scif = new_scif[~new_scif['product_fk'].isnull()]
+        for i, row in new_scif.iterrows():
+            self.common.write_to_db_result(fk=kpi_fk, numerator_id=row['product_fk'], denominator_id=self.store_id,
+                                           result=row['gross_len_split_stack_new'],
+                                           score=row['gross_len_split_stack_new'], by_scene=True)
 
     def insert_data_into_custom_scif(self, new_scif):
         session_id = self.data_provider.session_id
         new_scif['session_id'] = session_id
-        delete_query = """DELETE FROM pservice.custom_scene_item_facts WHERE scene_fk = {}""".format(self.scene_id)
+        delete_query = """DELETE FROM pservice.custom_scene_item_facts WHERE session_fk = {} and 
+                                                        scene_fk = {}""".format(session_id, self.scene_id)
         insert_query = """INSERT INTO pservice.custom_scene_item_facts \
                             (session_fk, scene_fk, product_fk, in_assortment_osa, length_mm_custom) VALUES """
         for i, row in new_scif.iterrows():
@@ -699,6 +731,57 @@ class PngcnSceneKpis(object):
             self.common.execute_custom_query(insert_query)
         except:
             Log.error("Couldn't write new results to custom_scene_item_facts and deleted the old results")
+
+    def get_png_manufacturer_fk(self):
+        return self.all_products[self.all_products['manufacturer_name'].str.encode("utf8") ==
+                                 PNG_MANUFACTURER]['manufacturer_fk'].values[0]
+
+    def calculate_display_size(self):
+        """
+        calculate P&G manufacture percentage
+        """
+        kpi_fk = self.common.get_kpi_fk_by_kpi_name(DISPLAY_SIZE_PER_SCENE)
+        if kpi_fk:
+            denominator = self.scif.facings.sum()  # get all products from scene
+            numerator = self.scif[self.scif['manufacturer_fk'] ==
+                                  self.png_manufacturer_fk]['facings'].sum()  # get P&G products from scene
+            if denominator:
+                score = numerator / denominator  # get the percentage of P&G products from all products
+            else:
+                score = 0
+            self.common.write_to_db_result(fk=kpi_fk, numerator_id=self.png_manufacturer_fk, numerator_result=numerator,
+                                           denominator_id=self.store_id, denominator_result=denominator, result=score,
+                                           score=score, by_scene=True)
+        else:
+            print 'the kpi is not configured in db'
+
+    def calculate_linear_length(self):
+        """
+        calculate P&G manufacture linear length percentage
+        """
+        kpi_fk = self.common.get_kpi_fk_by_kpi_name(LINEAR_SOS_MANUFACTURER_IN_SCENE)
+        filters = {'manufacturer_fk': [self.png_manufacturer_fk]}
+        sos = SOS(self.data_provider)
+        score, numerator, denominator = \
+            sos.calculate_linear_share_of_shelf_with_numerator_denominator(filters, {})
+        self.common.write_to_db_result(fk=kpi_fk, numerator_id=self.png_manufacturer_fk, numerator_result=numerator,
+                                       denominator_id=self.store_id, denominator_result=denominator, result=score,
+                                       score=score, by_scene=True)
+        return 0
+
+    def calculate_presize_linear_length(self):
+        """
+        used instead of calculating P&G manufacture products presize out off all products in scene
+        """
+        kpi_fk = self.common.get_kpi_fk_by_kpi_name(PRESIZE_LINEAR_LENGTH_PER_LENGTH)
+        numerator = self.scif.width_mm.sum()  # get the width of P&G products in scene
+        denominator = self.matches_from_data_provider.width_mm.sum() # get the width of all products in scene
+        if denominator:
+            score = numerator / denominator  # get the percentage of P&G products from all products
+            self.common.write_to_db_result(fk=kpi_fk, numerator_id=self.png_manufacturer_fk, numerator_result=numerator,
+                                           denominator_id=self.store_id, denominator_result=denominator, result=score,
+                                           score=score, by_scene=True)
+        return 0
 
 #
 # if __name__ == '__main__':

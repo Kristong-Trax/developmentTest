@@ -29,7 +29,7 @@ class Const(object):
     # relevant filters by scene type
     RELEVANT_FILTERS = {
         DRINK_JUICE_TEA: {
-            CLIENT_CATEGORY: ['Juice', 'TEA']
+            CLIENT_CATEGORY: ['Juice', 'Tea']
         },
         MILK: {
             CLIENT_CATEGORY: ['Dairy']

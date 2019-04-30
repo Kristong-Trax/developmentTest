@@ -7,6 +7,8 @@ import pandas as pd
 import os
 
 from KPIUtils_v2.DB.CommonV2 import Common
+from KPIUtils_v2.DB.Common import Common as CommonV1
+from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
 # from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
 from KPIUtils_v2.Calculations.AvailabilityCalculations import Availability
 # from KPIUtils_v2.Calculations.NumberOfScenesCalculations import NumberOfScenes
@@ -46,6 +48,7 @@ class NESTLEUSToolBox:
         self.output = output
         self.data_provider = data_provider
         self.common = Common(self.data_provider)
+        self.common_v1 = CommonV1(self.data_provider)
         self.project_name = self.data_provider.project_name
         self.session_uid = self.data_provider.session_uid
         self.products = self.data_provider[Data.PRODUCTS]
@@ -66,6 +69,7 @@ class NESTLEUSToolBox:
         self.facings_field = 'facings' if not self.ignore_stacking else 'facings_ign_stack'
         self.MM_TO_FEET_CONVERSION = 0.0032808399
         self.match_product_in_scene = self.match_product_in_scene[self.match_product_in_scene['stacking_layer'] == 1]
+        self.assortment = Assortment(self.data_provider, common=self.common_v1)
 
     def main_calculation(self, *args, **kwargs):
         """
@@ -133,6 +137,21 @@ class NESTLEUSToolBox:
             self.match_product_in_scene[self.get_filter_condition(self.match_product_in_scene, **filters)]
         space_length = filtered_matches['width_mm_advance'].sum()
         return space_length
+
+    def calculate_assortment(self):
+        # filter scif to get rid of scene types other than 'Waters'
+        self.scif = self.scif[self.scif['template_name'] == 'Water Aisle']
+        # if there are no Waters scenes, we don't need assortment
+        if self.scif.empty:
+            return
+
+        self.assortment.main_assortment_calculation()
+
+    def commit_assortment_results_without_delete(self):
+        self.common_v1.commit_results_data_without_delete_version2()
+
+    def commit_assortment_results(self):
+        self.common_v1.commit_results_data_to_new_tables()
 
     def get_filter_condition(self, df, **filters):
         """

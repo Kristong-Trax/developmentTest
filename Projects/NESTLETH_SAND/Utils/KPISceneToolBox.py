@@ -38,7 +38,7 @@ class NESTLETHSceneToolBox:
 
     def main_function(self):
         shelf_placement_template = pd.read_excel(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data',
-                                                              'Placement.xlsx'), sheetname='Minimum Shelf',
+                                                              'Placement.xlsx'), sheetname='Minimum Shelf',skiprows=1,
                                                  keep_default_na=False)
         shelf_placement_dict = self.nestle_generator.nestle_global_shelf_placement_function(shelf_placement_template)
         if shelf_placement_dict == self.ERROR_LOC:

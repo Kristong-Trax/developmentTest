@@ -1,6 +1,6 @@
 import pandas as pd
 from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
-from Trax.Apps.Core.Testing.BaseCase import TestMockingFunctionalCase
+from Trax.Apps.Core.Testing.BaseCase import TestFunctionalCase
 from Trax.Data.Testing.SeedNew import Seeder
 from Projects.DIAGEOTW.Calculations import DIAGEOTWCalculations
 from Projects.DIAGEOTW.Tests.Data.test_data_diageotw import ProjectsSanityData
@@ -9,7 +9,7 @@ from Projects.DIAGEOTW.Utils.KPIToolBox import DIAGEOTWToolBox
 __author__ = 'yoava'
 
 
-class TestDiageotw(TestMockingFunctionalCase):
+class TestDiageotw(TestFunctionalCase):
     seeder = Seeder()
 
     def set_up(self):
