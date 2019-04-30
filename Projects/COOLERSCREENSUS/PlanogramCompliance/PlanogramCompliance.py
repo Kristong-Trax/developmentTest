@@ -25,7 +25,7 @@ class PlanogramCompliance(PlanogramComplianceBaseClass):
             self.planogram_matches = self._get_planogram_data() if manual_planogram_data is \
                                                                            None else manual_planogram_data
             self.scene_matches = self._get_matches() if manual_scene_data is None else manual_scene_data
-            self.planogram_matches = self.planogram_matches[planogram_data[Keys.STACKING_LAYER] == 1]
+            self.planogram_matches = self.planogram_matches[self.planogram_matches[Keys.STACKING_LAYER] == 1]
             self.planogram_matches = self.planogram_matches[
                 [Keys.BAY_NUMBER, Keys.SHELF_NUMBER_FROM_BOTTOM, Keys.FACING_SEQUENCE_NUMBER, Keys.BRAND_FK,
                  Keys.PRODUCT_FK]]
