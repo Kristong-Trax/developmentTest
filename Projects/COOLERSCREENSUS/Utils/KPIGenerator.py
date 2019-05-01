@@ -26,7 +26,7 @@ class COOLERSCREENSUSKGenerator:
         for _, match in empty_matches.iterrows():
             prev_product_id = self._find_prev_product(project_connector, match)
             if prev_product_id is not None:
-                kpi_result = 0 if len(self._data_provider.matches[self._data_provider.matches['product_fk'] == prev_product_id]) == 0 else 1
+                kpi_result = 100 if len(self._data_provider.matches[self._data_provider.matches['product_fk'] == prev_product_id]) == 0 else 101
                 Log.info('Calculated COOLERSCREENSUS kpi for product {} the result is {}'.format(prev_product_id, kpi_result))
                 self._common.write_to_db_result_new_tables(fk=10000,
                                                            numerator_id=prev_product_id,
