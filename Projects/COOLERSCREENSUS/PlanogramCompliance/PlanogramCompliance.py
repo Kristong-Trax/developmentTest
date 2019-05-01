@@ -25,7 +25,7 @@ class PlanogramCompliance(PlanogramComplianceBaseClass):
             self.planogram_matches = self._get_planogram_data() if manual_planogram_data is \
                                                                            None else manual_planogram_data
             self.scene_matches = self._get_matches() if manual_scene_data is None else manual_scene_data
-            self.planogram_matches = self.planogram_matches[planogram_data[Keys.STACKING_LAYER] == 1]
+            self.planogram_matches = self.planogram_matches[self.planogram_matches[Keys.STACKING_LAYER] == 1]
             self.planogram_matches = self.planogram_matches[
                 [Keys.BAY_NUMBER, Keys.SHELF_NUMBER_FROM_BOTTOM, Keys.FACING_SEQUENCE_NUMBER, Keys.BRAND_FK,
                  Keys.PRODUCT_FK]]
@@ -36,11 +36,7 @@ class PlanogramCompliance(PlanogramComplianceBaseClass):
             tag_compliance = self.local_get_tag_planogram_compliance(self.scene_matches, planogram_products)
         except Exception as e:
             Log.error("Calculated compliance has failed: " + e.message)
-            try:
-                tag_compliance = get_tag_planogram_compliance(self.scene_matches, self.planogram_matches)
-            except Exception as er:
-                Log.error("Calculated compliance has failed: " + er.message)
-        return tag_compliance
+        return tag_compliance[[Keys.MATCH_FK, Keys.COMPLIANCE_STATUS_FK]]
 
     def local_get_tag_planogram_compliance(self, scene_planogram_data, planogram_products):
         matches = set()
@@ -74,10 +70,10 @@ class PlanogramCompliance(PlanogramComplianceBaseClass):
                     FROM static.match_product_in_planogram mpip
                     LEFT JOIN static_new.product p on p.pk = mpip.product_fk
                     WHERE mpip.planogram_fk =:planogram_fk
-                """.format(self._data_provider.planogram_fk)
+                """
 
         return self._data_provider._perform_query(query,
-                                                  **{'planogram_fk': self.planogram_fk})
+                                                  **{'planogram_fk': self._data_provider.planogram_fk})
 
     def _get_matches(self):
         query = """SELECT 
@@ -88,7 +84,7 @@ class PlanogramCompliance(PlanogramComplianceBaseClass):
                      FROM probedata.match_product_in_scene mpis
                      JOIN static_new.product p ON mpis.product_fk = p.pk
                      WHERE mpis.scene_fk =:scene_id
-                """.format(scene_fk)
+                """
         return self._data_provider._perform_query(query,
                                                   **{'scene_id': self._data_provider._scene_id})
 
