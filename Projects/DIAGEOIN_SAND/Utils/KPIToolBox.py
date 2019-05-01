@@ -1,7 +1,6 @@
 
 import pandas as pd
 from datetime import datetime
-from OutOfTheBox.Calculations.BrandSOS import BrandFacingsSOSPerSubCategoryInStore
 from OutOfTheBox.Calculations.ManufacturerSOS import ManufacturerFacingsSOSInWholeStore, \
     ManufacturerFacingsSOSPerSubCategoryInStore
 from OutOfTheBox.Calculations.SubCategorySOS import SubCategoryFacingsSOSPerCategory
@@ -105,7 +104,7 @@ class DIAGEOIN_SANDToolBox:
         This function calculates the KPI results.
         """
         # # SOS Out Of The Box kpis
-        # self.activate_ootb_kpis()
+        self.activate_ootb_kpis()
 
         # Global assortment kpis
         assortment_res_dict = self.diageo_generator.diageo_global_assortment_function_v3()
@@ -191,7 +190,7 @@ class DIAGEOIN_SANDToolBox:
             data_provider=self.data_provider, kpi_definition_fk=sos_man_out_of_sub_cat_fk).calculate()
 
         # FACINGS_SOS_BRAND_OUT_OF_SUB_CATEGORY_IN_WHOLE_STORE - level 5
-        sos_brand_out_of_sub_cat_fk = self.commonV2.get_kpi_fk_by_kpi_name('SOS BRAND OUT OF MANUFACTURER')
+        sos_brand_out_of_sub_cat_fk = self.commonV2.get_kpi_fk_by_kpi_name('SOS BRAND OUT OF SUB CATEGORY')
         sos_brand_out_of_sub_cat = self.calculate_sos_of_brand_out_of_manufacturer_in_sub_cat(
             sos_brand_out_of_sub_cat_fk)
 
@@ -200,7 +199,6 @@ class DIAGEOIN_SANDToolBox:
                             sos_brand_out_of_sub_cat)
 
     def calculate_sos_of_brand_out_of_manufacturer_in_sub_cat(self, kpi_fk):
-        pass
         res_list = []
         res_dict = dict()
         # Get rid of Irrelevant and Empty types and keep only facings > 1
@@ -320,7 +318,6 @@ class DIAGEOIN_SANDToolBox:
                                              score=res['result'],
                                              identifier_result=kpi_identifier, identifier_parent=parent_identifier,
                                              should_enter=True)
-
 
     def save_level2_and_level3(self, set_name, kpi_name, score):
         """

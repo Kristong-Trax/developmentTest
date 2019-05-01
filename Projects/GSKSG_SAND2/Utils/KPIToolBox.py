@@ -17,6 +17,8 @@ from KPIUtils_v2.Calculations.SequenceCalculations import Sequence
 from KPIUtils_v2.Calculations.SurveyCalculations import Survey
 
 from KPIUtils_v2.Calculations.CalculationsUtils.GENERALToolBoxCalculations import GENERALToolBox
+from KPIUtils.GlobalProjects.GSK.KPIGenerator import GSKGenerator
+
 
 __author__ = 'jasmine'
 
@@ -113,14 +115,60 @@ class GSKSGToolBox:
         self.survey = Survey(data_provider, self.output)
         self.toolbox = GENERALToolBox(self.data_provider)
 
+        # adding data to templates
+        self.set_up_template = pd.read_excel(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data',
+                                                              'gsk_set_up.xlsx'), sheet_name='Functional KPIs',keep_default_na=False)
+
+        self.gsk_generator = GSKGenerator(self.data_provider, self.output, self.common, self.set_up_template)
+
 
     def main_calculation(self):
         """
         This function calculates the KPI results.
-        """
-        template = self.get_relevant_calculations()
-        self.handle_calculation(template)
-        self.common_old_tables.commit_results_data()
+        # """
+
+        # assortment_dict = self.gsk_generator.assortment_function()
+
+        facings_sos_dict = self.gsk_generator.gsk_global_facings_sos_whole_store_function()
+        if facings_sos_dict is None:
+            Log.warning('Scene item facts is empty for this session')
+        else:
+            self.common.save_json_to_new_tables(facings_sos_dict)
+
+        linear_sos_dict = self.gsk_generator.gsk_global_linear_sos_whole_store_function()
+        if linear_sos_dict is None:
+            Log.warning('Scene item facts is empty for this session')
+        else:
+            self.common.save_json_to_new_tables(linear_sos_dict)
+
+        linear_sos_dict = self.gsk_generator.gsk_global_linear_sos_by_sub_category_function()
+        if linear_sos_dict is None:
+            Log.warning('Scene item facts is empty for this session')
+        else:
+            self.common.save_json_to_new_tables(linear_sos_dict)
+
+        facings_sos_dict = self.gsk_generator.gsk_global_facings_by_sub_category_function()
+        if facings_sos_dict is None:
+            Log.warning('Scene item facts is empty for this session')
+        else:
+            self.common.save_json_to_new_tables(facings_sos_dict)
+
+        facings_sos_dict = self.gsk_generator.gsk_global_facings_sos_by_category_function()
+        if facings_sos_dict is None:
+            Log.warning('Scene item facts is empty for this session')
+        else:
+            self.common.save_json_to_new_tables(facings_sos_dict)
+
+        linear_sos_dict = self.gsk_generator.gsk_global_linear_sos_by_category_function()
+        if linear_sos_dict is None:
+            Log.warning('Scene item facts is empty for this session')
+        else:
+            self.common.save_json_to_new_tables(linear_sos_dict)
+
+        # template = self.get_relevant_calculations()
+        # self.handle_calculation(template)
+        # self.common_old_tables.commit_results_data()
+        # self.common.commit_results_data()
         self.common.commit_results_data()
 
         score = 0

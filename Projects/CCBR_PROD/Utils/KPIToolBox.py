@@ -24,7 +24,7 @@ KPI_RESULT = 'report.kpi_results'
 KPK_RESULT = 'report.kpk_results'
 KPS_RESULT = 'report.kps_results'
 KPI_NEW_TABLE = 'report.kpi_level_2_results'
-PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'Femsa template 2019 - KENGINE_DCH v8.0.xlsx')
+PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'Femsa template 2019 - KENGINE_DCH v8.2.xlsx')
 
 def log_runtime(description, log_start=False):
     def decorator(func):
@@ -64,7 +64,8 @@ class CCBRToolBox:
         self.count_sheet = pd.read_excel(PATH, Const.COUNT).fillna("")
         self.group_count_sheet = pd.read_excel(PATH, Const.GROUP_COUNT).fillna("")
         self.survey_sheet = pd.read_excel(PATH, Const.SURVEY).fillna("")
-
+        #Fixes encoding issue
+        # self.common_db.New_kpi_static_data['client_name'] = self.common_db.New_kpi_static_data['client_name'].str.encode('utf8')
     def main_calculation(self):
         """
         This function calculates the KPI results.
@@ -144,7 +145,7 @@ class CCBRToolBox:
         :param atomic_name: the name of the kpi
         :return: only if the survey filters aren't satisfied
         """
-        row = self.survey_sheet.loc[self.survey_sheet[Const.ENGLISH_KPI_NAME] == atomic_name]
+        row = self.survey_sheet.loc[self.survey_sheet[Const.ENGLISH_KPI_NAME].str.encode("utf8") == atomic_name.encode("utf8")]
         if row.empty:
             Log.warning("Dataframe is empty, wrong kpi name: " + atomic_name)
             return
@@ -197,7 +198,7 @@ class CCBRToolBox:
         sum_of_count = 0
         target = 0
         count_result = 0
-        row = self.count_sheet.loc[self.count_sheet[Const.ENGLISH_KPI_NAME] == atomic_name]
+        row = self.count_sheet.loc[self.count_sheet[Const.ENGLISH_KPI_NAME].str.encode("utf8") == atomic_name.encode("utf8")]
         if row.empty:
             Log.warning("Dataframe is empty, wrong kpi name: " + atomic_name)
             return
@@ -221,7 +222,7 @@ class CCBRToolBox:
         handle group count kpis (different from count in or and and conditions), used in consolidada report
         :param atomic_name: the name of the kpi to calculate
         """
-        rows = self.group_count_sheet.loc[self.group_count_sheet[Const.GROUP_KPI_NAME] == atomic_name]
+        rows = self.group_count_sheet.loc[self.group_count_sheet[Const.GROUP_KPI_NAME].str.encode("utf8") == atomic_name.encode("utf8")]
         group_weight = 0
         group_result = 0
         group_target = 0

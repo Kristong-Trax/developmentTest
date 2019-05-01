@@ -8,7 +8,7 @@ from Trax.Utils.Conf.Keys import DbUsers
 from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Trax.Data.Testing.SeedNew import Seeder
 from Trax.Data.Testing.TestProjects import TestProjectsNames
-from Trax.Apps.Core.Testing.BaseCase import TestMockingFunctionalCase
+from Trax.Apps.Core.Testing.BaseCase import TestFunctionalCase
 
 # from Projects.RIPETCAREUK_PROD.Calculation import MarsUkCalculations
 # from Projects.DIAGEOZA.Calculations import DIAGEOZACalculations as diageoza_calc
@@ -32,7 +32,7 @@ from Tests.TestUtils import remove_cache_and_storage
 __author__ = 'idanr'
 
 
-class TestKEngineOutOfTheBox(TestMockingFunctionalCase):
+class TestKEngineOutOfTheBox(TestFunctionalCase):
     
     def set_up(self):
         super(TestKEngineOutOfTheBox, self).set_up()

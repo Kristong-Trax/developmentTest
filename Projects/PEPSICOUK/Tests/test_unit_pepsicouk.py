@@ -1,25 +1,3 @@
-#
-# from Trax.Utils.Conf.Configuration import Config
-# from Trax.Utils.Testing.Case import TestCase
-# from mock import MagicMock, mock
-# import pandas as pd
-# from Projects.PEPSICOUK.Utils.KPIToolBox import PEPSICOUKToolBox
-#
-#
-# __author__ = 'natalyak'
-#
-#
-# class TestPEPSICOUK(TestCase):
-#
-#     @mock.patch('Projects.PEPSICOUK.Utils.KPIToolBox.ProjectConnector')
-#     def setUp(self, x):
-#         Config.init('')
-#         self.data_provider_mock = MagicMock()
-#         self.data_provider_mock.project_name = 'pepsicouk'
-#         self.data_provider_mock.rds_conn = MagicMock()
-#         self.output = MagicMock()
-#         self.tool_box = PEPSICOUKToolBox(self.data_provider_mock, MagicMock())
-
 from Trax.Utils.Testing.Case import TestCase, MockingTestCase
 from Trax.Data.Testing.SeedNew import Seeder
 from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
@@ -30,6 +8,7 @@ from Trax.Algo.Calculations.Core.DataProvider import Output
 from mock import patch
 import os
 import pandas as pd
+from pandas.util.testing import assert_frame_equal
 
 __author__ = 'natalya'
 
@@ -73,6 +52,7 @@ class Test_PEPSICOUK(MockingTestCase):
         self.kpi_scores_values_mock = self.mock_kpi_score_value_table()
         # self.assortment_mock = self.mock_assortment_object()
         self.lvl3_ass_result_mock = self.mock_lvl3_ass_result()
+        self.lvl3_ass_base_mock = self.mock_lvl2_ass_base_df()
         self.mock_all_products()
         self.mock_all_templates()
         self.mock_position_graph()
@@ -81,22 +61,15 @@ class Test_PEPSICOUK(MockingTestCase):
         self.mock_object('PositionGraphs', path='KPIUtils_v2.Calculations.AssortmentCalculations')
 
     def mock_lvl3_ass_result(self):
-        probe_group = self.mock_object('Assortment.calculate_lvl3_assortment', path='KPIUtils_v2.Calculations.AssortmentCalculations')
-        probe_group.return_value = DataTestUnitPEPSICOUK.test_case_1_ass_result
-        return probe_group.return_value
+        ass_res = self.mock_object('Assortment.calculate_lvl3_assortment', path='KPIUtils_v2.Calculations.AssortmentCalculations')
+        ass_res.return_value = DataTestUnitPEPSICOUK.test_case_1_ass_result
+        return ass_res.return_value
 
-    # @classmethod
-    # def setUpClass(cls):
-    #     """ get_some_resource() is slow, to avoid calling it for each test use setUpClass()
-    #         and store the result as class variable
-    #     """
-    #     super(Test_PEPSICOUK, cls).setUpClass()
-    #     cls.template_df_mock = cls.get_exclusion_template_df_all_tests()
-    #
-    # @classmethod
-    # def get_exclusion_template_df_all_tests(cls):
-    #     template_df = pd.read_excel(DataTestUnitPEPSICOUK.exclusion_template_path)
-    #     return template_df
+    def mock_lvl2_ass_base_df(self):
+        ass_res = self.mock_object('Assortment.get_lvl3_relevant_ass',
+                                       path='KPIUtils_v2.Calculations.AssortmentCalculations')
+        ass_res.return_value = DataTestUnitPEPSICOUK.test_case_1_ass_base_extended
+        return ass_res.return_value
 
     def mock_all_products(self):
         self.data_provider_data_mock['all_products'] = pd.read_excel(DataTestUnitPEPSICOUK.test_case_1,
@@ -236,15 +209,37 @@ class Test_PEPSICOUK(MockingTestCase):
     #     print tool_box.lvl3_ass_result
     #     print tool_box.scene_kpi_results
     #     print tool_box.scene_info
-    #
-    # def test_assortment(self):
-    #     self.mock_scene_item_facts(pd.read_excel(DataTestUnitPEPSICOUK.test_case_1, sheetname='scif'))
-    #     self.mock_match_product_in_scene(pd.read_excel(DataTestUnitPEPSICOUK.test_case_1, sheetname='matches'))
-    #     self.mock_scene_info(DataTestUnitPEPSICOUK.scene_info)
-    #     self.mock_scene_kpi_results(DataTestUnitPEPSICOUK.scene_kpi_results_test_case_1)
-    #     tool_box = PEPSICOUKToolBox(self.data_provider_mock, self.output)
-    #     # tool_box.calculate_assortment() # complete mock data later
-    #     print tool_box.kpi_results
+
+    def test_assortment_result_is_calculated(self):
+        self.mock_scene_item_facts(pd.read_excel(DataTestUnitPEPSICOUK.test_case_1, sheetname='scif'))
+        self.mock_match_product_in_scene(pd.read_excel(DataTestUnitPEPSICOUK.test_case_1, sheetname='matches'))
+        self.mock_scene_info(DataTestUnitPEPSICOUK.scene_info)
+        self.mock_scene_kpi_results(DataTestUnitPEPSICOUK.scene_kpi_results_test_case_1)
+        tool_box = PEPSICOUKToolBox(self.data_provider_mock, self.output)
+        # tool_box.calculate_assortment() # complete mock data later
+        expected_result = pd.DataFrame.from_records([
+            {'in_store': 1, 'product_fk': 1}, {'in_store': 1, 'product_fk': 2}, {'in_store': 0, 'product_fk': 5}
+        ])
+        assert_frame_equal(expected_result, tool_box.lvl3_ass_result[['in_store', 'product_fk']])
+
+    def test_assortment_kpi_is_calculated_correctly(self):
+        self.mock_scene_item_facts(pd.read_excel(DataTestUnitPEPSICOUK.test_case_1, sheetname='scif'))
+        self.mock_match_product_in_scene(pd.read_excel(DataTestUnitPEPSICOUK.test_case_1, sheetname='matches'))
+        self.mock_scene_info(DataTestUnitPEPSICOUK.scene_info)
+        self.mock_scene_kpi_results(DataTestUnitPEPSICOUK.scene_kpi_results_test_case_1)
+        tool_box = PEPSICOUKToolBox(self.data_provider_mock, self.output)
+        tool_box.calculate_assortment()
+        expected_list = []
+        expected_list.append({'kpi_fk': 290, 'numerator': 1, 'result': 4, 'score': 100})
+        expected_list.append({'kpi_fk': 290, 'numerator': 2, 'result': 4, 'score': 100})
+        expected_list.append({'kpi_fk': 290, 'numerator': 5, 'result': 5, 'score': 0})
+        expected_list.append({'kpi_fk': 289, 'numerator': 2, 'result': round(2.0 / 3 * 100, 5), 'score': 0})
+        kpi_results = tool_box.kpi_results_check
+        kpi_results['result'] = kpi_results['result'].apply(lambda x: round(x, 5))
+        test_result_list = []
+        for expected_result in expected_list:
+            test_result_list.append(self.check_kpi_results(kpi_results, expected_result) == 1)
+        self.assertTrue(all(test_result_list))
 
     def test_calculate_hero_shelf_placement_horizontal(self):
         self.mock_scene_item_facts(pd.read_excel(DataTestUnitPEPSICOUK.test_case_1, sheetname='scif'))
@@ -254,17 +249,17 @@ class Test_PEPSICOUK(MockingTestCase):
         tool_box = PEPSICOUKToolBox(self.data_provider_mock, self.output)
         tool_box.calculate_shelf_placement_hero_skus()
         expected_list = []
-        expected_list.append({'kpi_fk': 311, 'numerator': 1, 'result': round(7.0 / 12, 5)})
-        expected_list.append({'kpi_fk': 312, 'numerator': 1, 'result': round(3.0 / 12, 5)})
-        expected_list.append({'kpi_fk': 314, 'numerator': 1, 'result': round(2.0 / 12, 5)})
-        expected_list.append({'kpi_fk': 314, 'numerator': 2, 'result': round(2.0 / 12, 5)})
-        expected_list.append({'kpi_fk': 313, 'numerator': 2, 'result': round(2.0 / 12, 5)})
-        expected_list.append({'kpi_fk': 312, 'numerator': 2, 'result': round(8.0 / 12, 5)})
-        expected_list.append({'kpi_fk': 310, 'numerator': 1, 'result': 1})
-        expected_list.append({'kpi_fk': 310, 'numerator': 2, 'result': 1})
+        expected_list.append({'kpi_fk': 311, 'numerator': 1, 'result': round(7.0*100 / 12, 5)})
+        expected_list.append({'kpi_fk': 312, 'numerator': 1, 'result': round(3.0*100 / 12, 5)})
+        expected_list.append({'kpi_fk': 314, 'numerator': 1, 'result': round(2.0*100 / 12, 5)})
+        expected_list.append({'kpi_fk': 314, 'numerator': 2, 'result': round(2.0*100 / 12, 5)})
+        expected_list.append({'kpi_fk': 313, 'numerator': 2, 'result': round(2.0*100 / 12, 5)})
+        expected_list.append({'kpi_fk': 312, 'numerator': 2, 'result': round(8.0*100 / 12, 5)})
+        expected_list.append({'kpi_fk': 310, 'numerator': 1, 'result': 1*100})
+        expected_list.append({'kpi_fk': 310, 'numerator': 2, 'result': 1*100})
         expected_list.append({'kpi_fk': 309, 'numerator': 2, 'result': 2})
 
-        kpi_results = tool_box.kpi_results
+        kpi_results = tool_box.kpi_results_check
         kpi_results['result'] = kpi_results['result'].apply(lambda x: round(x, 5))
         test_result_list = []
         for expected_result in expected_list:
@@ -285,15 +280,15 @@ class Test_PEPSICOUK(MockingTestCase):
         expected_list.append({'kpi_fk': 327, 'numerator': 168, 'score': 0})
         test_result_list = []
         for expected_result in expected_list:
-            test_result_list.append(self.check_kpi_results(tool_box.kpi_results, expected_result) == 1)
+            test_result_list.append(self.check_kpi_results(tool_box.kpi_results_check, expected_result) == 1)
         self.assertTrue(all(test_result_list))
-        self.assertTrue(len(tool_box.kpi_results), 4)
+        self.assertTrue(len(tool_box.kpi_results_check), 4)
 
     def test_calculate_brand_full_bay_calculates_no_kpi_results_if_no_relevant_scenes_in_session(self):
         matches, scif = self.create_scif_matches_data_mocks_selected_scenes(DataTestUnitPEPSICOUK.test_case_1, [3])
         tool_box = PEPSICOUKToolBox(self.data_provider_mock, self.output)
         tool_box.calculate_brand_full_bay()
-        self.assertTrue(tool_box.kpi_results.empty)
+        self.assertTrue(tool_box.kpi_results_check.empty)
         self.assertFalse(tool_box.match_product_in_scene.empty)
 
     def test_calculate_hero_sku_stacking_by_sequence_number(self):
@@ -302,14 +297,14 @@ class Test_PEPSICOUK(MockingTestCase):
         tool_box = PEPSICOUKToolBox(self.data_provider_mock, self.output)
         tool_box.calculate_hero_sku_stacking_by_sequence_number()
         expected_skus_in_results = [1, 2]
-        self.assertItemsEqual(tool_box.kpi_results['numerator'].unique().tolist(), expected_skus_in_results)
-        self.assertEquals(len(tool_box.kpi_results), 2)
+        self.assertItemsEqual(tool_box.kpi_results_check['numerator'].unique().tolist(), expected_skus_in_results)
+        self.assertEquals(len(tool_box.kpi_results_check), 2)
         expected_list = list()
-        expected_list.append({'kpi_fk': 315, 'numerator': 1, 'result': 1, 'score': 1})
-        expected_list.append({'kpi_fk': 315, 'numerator': 2, 'result': 1, 'score': 1})
+        expected_list.append({'kpi_fk': 315, 'numerator': 1, 'result': 4, 'score': 1})
+        expected_list.append({'kpi_fk': 315, 'numerator': 2, 'result': 4, 'score': 1})
         test_result_list = []
         for expected_result in expected_list:
-            test_result_list.append(self.check_kpi_results(tool_box.kpi_results, expected_result) == 1)
+            test_result_list.append(self.check_kpi_results(tool_box.kpi_results_check, expected_result) == 1)
         self.assertTrue(all(test_result_list))
 
     def test_calculate_hero_sku_stacking_by_sequence_number_returns_zero_results_if_no_stacked_products(self):
@@ -317,14 +312,14 @@ class Test_PEPSICOUK(MockingTestCase):
         tool_box = PEPSICOUKToolBox(self.data_provider_mock, self.output)
         tool_box.calculate_hero_sku_stacking_by_sequence_number()
         expected_skus_in_results = [1, 2]
-        self.assertItemsEqual(tool_box.kpi_results['numerator'].unique().tolist(), expected_skus_in_results)
-        self.assertEquals(len(tool_box.kpi_results), 2)
+        self.assertItemsEqual(tool_box.kpi_results_check['numerator'].unique().tolist(), expected_skus_in_results)
+        self.assertEquals(len(tool_box.kpi_results_check), 2)
         expected_list = list()
-        expected_list.append({'kpi_fk': 315, 'numerator': 1, 'result': 0, 'score': 0})
-        expected_list.append({'kpi_fk': 315, 'numerator': 2, 'result': 0, 'score': 0})
+        expected_list.append({'kpi_fk': 315, 'numerator': 1, 'result': 5, 'score': 0})
+        expected_list.append({'kpi_fk': 315, 'numerator': 2, 'result': 5, 'score': 0})
         test_result_list = []
         for expected_result in expected_list:
-            test_result_list.append(self.check_kpi_results(tool_box.kpi_results, expected_result) == 1)
+            test_result_list.append(self.check_kpi_results(tool_box.kpi_results_check, expected_result) == 1)
         self.assertTrue(all(test_result_list))
 
     def test_calculate_hero_sku_information_kpis_returns_correct_price_info(self):
@@ -333,8 +328,8 @@ class Test_PEPSICOUK(MockingTestCase):
         tool_box = PEPSICOUKToolBox(self.data_provider_mock, self.output)
         tool_box.calculate_hero_sku_information_kpis()
         expected_skus_in_results = [1, 2]
-        self.assertItemsEqual(tool_box.kpi_results['numerator'].unique().tolist(), expected_skus_in_results)
-        self.assertEquals(len(tool_box.kpi_results), 4)
+        self.assertItemsEqual(tool_box.kpi_results_check['numerator'].unique().tolist(), expected_skus_in_results)
+        self.assertEquals(len(tool_box.kpi_results_check), 4)
         expected_list = list()
         expected_list.append({'kpi_fk': 317, 'numerator': 1, 'result': 9})
         expected_list.append({'kpi_fk': 318, 'numerator': 1, 'result': 1})
@@ -342,7 +337,7 @@ class Test_PEPSICOUK(MockingTestCase):
         expected_list.append({'kpi_fk': 318, 'numerator': 2, 'result': 0})
         test_result_list = []
         for expected_result in expected_list:
-            test_result_list.append(self.check_kpi_results(tool_box.kpi_results, expected_result) == 1)
+            test_result_list.append(self.check_kpi_results(tool_box.kpi_results_check, expected_result) == 1)
         self.assertTrue(all(test_result_list))
 
     def test_calculate_hero_sku_stacking_width(self):
@@ -355,7 +350,7 @@ class Test_PEPSICOUK(MockingTestCase):
         expected_list.append({'kpi_fk': 315, 'numerator': 1, 'result': 1, 'score': 1})
         test_result_list = []
         for expected_result in expected_list:
-            test_result_list.append(self.check_kpi_results(tool_box.kpi_results, expected_result) == 1)
+            test_result_list.append(self.check_kpi_results(tool_box.kpi_results_check, expected_result) == 1)
         self.assertTrue(all(test_result_list))
 
     def test_calculate_hero_sku_stacking_layer_more_than_one_if_sku_stacked(self):
@@ -368,7 +363,7 @@ class Test_PEPSICOUK(MockingTestCase):
         expected_list.append({'kpi_fk': 315, 'numerator': 2, 'result': 1, 'score': 1})
         test_result_list = []
         for expected_result in expected_list:
-            test_result_list.append(self.check_kpi_results(tool_box.kpi_results, expected_result) == 1)
+            test_result_list.append(self.check_kpi_results(tool_box.kpi_results_check, expected_result) == 1)
         self.assertTrue(all(test_result_list))
 
     def test_calculate_hero_sku_stacking_layer_more_than_one_if_sku_not_stacked(self):
@@ -381,7 +376,7 @@ class Test_PEPSICOUK(MockingTestCase):
         expected_list.append({'kpi_fk': 315, 'numerator': 2, 'result': 0, 'score': 0})
         test_result_list = []
         for expected_result in expected_list:
-            test_result_list.append(self.check_kpi_results(tool_box.kpi_results, expected_result) == 1)
+            test_result_list.append(self.check_kpi_results(tool_box.kpi_results_check, expected_result) == 1)
         self.assertTrue(all(test_result_list))
 
     @staticmethod
@@ -432,30 +427,30 @@ class Test_PEPSICOUK(MockingTestCase):
         expected_list.append({'kpi_fk': 302, 'numerator': 136, 'denominator': 189, 'score':
                                                                                         round((float(60)/195)/(float(135)/195), 5)})
         expected_list.append({'kpi_fk': 303, 'numerator': 2, 'score': 1})
-        kpi_results = tool_box.kpi_results
+        kpi_results = tool_box.kpi_results_check
         kpi_results['score'] = kpi_results['score'].apply(lambda x: round(x, 5))
         test_result_list = []
         for expected_result in expected_list:
             test_result_list.append(self.check_kpi_results(kpi_results, expected_result) == 1)
         self.assertTrue(all(test_result_list))
 
-    def test_sos_vs_target(self):
-        self.mock_scene_item_facts(pd.read_excel(DataTestUnitPEPSICOUK.test_case_1, sheetname='scif'))
-        self.mock_match_product_in_scene(pd.read_excel(DataTestUnitPEPSICOUK.test_case_1, sheetname='matches'))
-        tool_box = PEPSICOUKToolBox(self.data_provider_mock, self.output)
-        tool_box.calculate_sos_vs_target_kpis()
-        expected_list = list()
-        expected_list.append({'kpi_fk': 296, 'numerator': 2, 'denominator': 11, 'result': round(float(135)/float(255), 5),
-                              'score': round(float(135)/float(255)/0.9, 5)})
-        expected_list.append({'kpi_fk': 294, 'numerator': 10, 'denominator': 2, 'result': round(float(120)/float(435), 5), 'score':
-            round(float(120) / float(435)/0.02, 5)})
-        expected_list.append({'kpi_fk': 295, 'numerator': 2, 'denominator': 8, 'result': 0, 'score': 0})
-        expected_list.append({'kpi_fk': 293, 'numerator': 155, 'denominator': 2, 'result': 0, 'score': 0})
-        expected_list.append({'kpi_fk': 287, 'numerator': 1515, 'denominator': 2, 'result': 0, 'score': 0})
-        kpi_results = tool_box.kpi_results
-        kpi_results['score'] = kpi_results['score'].apply(lambda x: round(x, 5))
-        kpi_results['result'] = kpi_results['result'].apply(lambda x: round(x, 5) if x else x)
-        test_result_list = []
-        for expected_result in expected_list:
-            test_result_list.append(self.check_kpi_results(kpi_results, expected_result) == 1)
-        self.assertTrue(all(test_result_list))
+    # def test_sos_vs_target(self):
+    #     self.mock_scene_item_facts(pd.read_excel(DataTestUnitPEPSICOUK.test_case_1, sheetname='scif'))
+    #     self.mock_match_product_in_scene(pd.read_excel(DataTestUnitPEPSICOUK.test_case_1, sheetname='matches'))
+    #     tool_box = PEPSICOUKToolBox(self.data_provider_mock, self.output)
+    #     tool_box.calculate_sos_vs_target_kpis()
+    #     expected_list = list()
+    #     expected_list.append({'kpi_fk': 296, 'numerator': 2, 'denominator': 11, 'result': round(float(135)/float(255)*100, 5),
+    #                           'score': round(float(135)/float(255)/0.9, 5)})
+    #     expected_list.append({'kpi_fk': 294, 'numerator': 10, 'denominator': 2, 'result': round(float(120)/float(435)*100, 5), 'score':
+    #         round(float(120) / float(435)/0.02, 5)})
+    #     expected_list.append({'kpi_fk': 295, 'numerator': 2, 'denominator': 8, 'result': 0, 'score': 0})
+    #     expected_list.append({'kpi_fk': 293, 'numerator': 155, 'denominator': 2, 'result': 0, 'score': 0})
+    #     expected_list.append({'kpi_fk': 287, 'numerator': 1515, 'denominator': 2, 'result': 0, 'score': 0})
+    #     kpi_results = tool_box.kpi_results_check
+    #     kpi_results['score'] = kpi_results['score'].apply(lambda x: round(x, 5))
+    #     kpi_results['result'] = kpi_results['result'].apply(lambda x: round(x, 5) if x else x)
+    #     test_result_list = []
+    #     for expected_result in expected_list:
+    #         test_result_list.append(self.check_kpi_results(kpi_results, expected_result) == 1)
+    #     self.assertTrue(all(test_result_list))

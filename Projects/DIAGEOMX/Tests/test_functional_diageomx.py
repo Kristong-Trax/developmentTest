@@ -1,6 +1,6 @@
 import os
 from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
-from Trax.Apps.Core.Testing.BaseCase import TestMockingFunctionalCase
+from Trax.Apps.Core.Testing.BaseCase import TestFunctionalCase
 from Trax.Data.Testing.SeedNew import Seeder
 from Projects.DIAGEOMX.Tests.Data.test_data_diageomx import ProjectsSanityData
 from Projects.DIAGEOMX.Utils.KPIToolBox import DIAGEOMXToolBox
@@ -9,7 +9,7 @@ import pandas as pd
 __author__ = 'yoava'
 
 
-class TestDiageomx(TestMockingFunctionalCase):
+class TestDiageomx(TestFunctionalCase):
     seeder = Seeder()
 
     def set_up(self):

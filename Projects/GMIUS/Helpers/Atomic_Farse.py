@@ -190,7 +190,7 @@ class AtomicFarse():
 	    (pk, type, client_name, kpi_family_fk, version, numerator_type_fk, denominator_type_fk, kpi_result_type_fk,
 	    valid_from, valid_until, initiated_by, kpi_calculation_stage_fk, session_relevance, scene_relevance)
         VALUES      
-        ('{}', '{}', '{}', '{}', '1.0.0', '{}', '{}', {}, '1990-01-01', '2150-10-15', 'samk', '3', '{}', '{}')
+        ('{}', "{}", "{}", '{}', '1.0.0', '{}', '{}', {}, '1990-01-01', '2150-10-15', 'samk', '3', '{}', '{}')
 
         '''.format(pk, kpi, kpi, family_fk, num_fk, den_fk, result_fk, session, scene)
         print(query)

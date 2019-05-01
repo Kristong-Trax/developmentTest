@@ -73,6 +73,7 @@ class Const(object):
     ZIP = 'Zip'
 
     # market_share columns
+    ADDITIONAL_ATTRIBUTE_4 = 'additional_attribute_4'
     RETAILER = 'retailer_name'
     BRANCH = 'branch_name'
     SSD_AND_STILL = 'Total_SSD_and_Still'

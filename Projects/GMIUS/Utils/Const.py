@@ -7,6 +7,8 @@ class Const(object):
 
     DICTIONARY_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), 'Data',
                                    'Dictionary.xlsx')
+    TMB_MAP_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), 'Data',
+                                   'TopMiddleBottom_Map.xlsx')
 
     ''' Sheets '''
     KPIS = 'KPIs'
@@ -68,6 +70,8 @@ class Const(object):
     MM_TO_FT = 304.8
     COMMA_SPACE = ', '
     COMMA = ','
+    KEEP = 'keep'
+    MAX_BLOCK = 'max_block'
     INTEGRATED = 'Fully Integrated'
     ADJACENT = 'Adjacent Section'
     SAME_AISLE = 'Same Aisle, Not Adjacent'

@@ -198,7 +198,9 @@ class INBEVTRADMXToolBox:
         :param set_df: kpi set df
         :return: kpi level 2 score
         """
+
         kpi_df = set_df[set_df['KPI Level 2 Name'].str.encode('utf8') == kpi_name.encode('utf-8')]
+
         kpi_score = 0
         # iterate the all related atomic kpis
         for i, row in kpi_df.iterrows():
@@ -503,10 +505,13 @@ class INBEVTRADMXToolBox:
         :param kpi_score: the score
         :return: None
         """
+
         # kpi_fk = \
-        #     self.kpi_static_data.kpi_fk[(self.kpi_static_data.kpi_name == kpi_name) &
-        #                                 (self.kpi_static_data.kpi_set_name == set_name)].values[0]
+        #     self.kpi_static_data.kpi_fk[
+        #         (self.kpi_static_data.kpi_name.str.encode('utf-8') == kpi_name.encode('utf-8')) &
+        #         (self.kpi_static_data.kpi_set_name == set_name)].values[0]
         # self.common.write_to_db_result(kpi_fk, self.LEVEL2, kpi_score)
+
         if write_to_all_levels:
             new_kpi_fk = self.common2.get_kpi_fk_by_kpi_name(kpi_name)
             self.common2.write_to_db_result(fk=new_kpi_fk, result=kpi_score, should_enter=True,
@@ -524,6 +529,7 @@ class INBEVTRADMXToolBox:
         :param set_name: name of related set
         :return:
         """
+
         # atomic_kpi_fk = \
         #     self.kpi_static_data.atomic_kpi_fk[(self.kpi_static_data.atomic_kpi_name == atomic_name) &
         #                                        (self.kpi_static_data.kpi_name == kpi_name) &
@@ -533,6 +539,7 @@ class INBEVTRADMXToolBox:
         # attrs['kpi_weight'] = {0: curr_weight}
         # query = insert(attrs, self.common.KPI_RESULT)
         # self.common.kpi_results_queries.append(query)
+
         identifier_parent = self.common2.get_dictionary(name=kpi_name)
         if atomic_name == kpi_name:
             identifier_parent = self.common2.get_dictionary(name=set_name)
