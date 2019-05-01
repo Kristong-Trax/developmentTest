@@ -249,19 +249,6 @@ class PlanogramCompliance(PlanogramComplianceBaseClass):
         self.all_combinations_scores = self.all_combinations_scores.drop(pog_bay, axis=1)
         self.all_combinations_matches = self.all_combinations_matches.drop(pog_bay, axis=1)
 
-    # def _get_final_compliance2(self):
-    #     # couples = []
-    #     final_compliance_tag = pd.DataFrame()
-    #     for pog_bay in self.pog_bays:
-    #         pog_matches = self.all_combinations_scores[pog_bay].sort_values(ascending=False)
-    #         # match_score = pog_matches.iloc[0]
-    #         scene_bay = pog_matches.index[0]
-    #         self.all_combinations_scores.drop(scene_bay)
-    #         final_compliance_tag = final_compliance_tag.append(self.all_combinations_compliances[pog_bay][scene_bay],
-    #                                                            ignore_index=True)
-    #         # couples.append((pog_bay, scene_bay))
-    #     return final_compliance_tag
-
     @staticmethod
     def _local_get_tag_planogram_compliance(scene_data, planogram_data):
         """
@@ -283,6 +270,8 @@ class PlanogramCompliance(PlanogramComplianceBaseClass):
                 if temp_score > score:
                     score = temp_score
                     tag_compliance = temp_tag_compliance
+        if Keys.COMPLIANCE_STATUS_FK not in tag_compliance.columns:
+            tag_compliance[Keys.COMPLIANCE_STATUS_FK] = None
         return tag_compliance, score
 
     def _get_iterated_position_full_solution(self):
