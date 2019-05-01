@@ -21,7 +21,7 @@ from KPIUtils_v2.Calculations.AvailabilityCalculations import Availability
 # from KPIUtils_v2.Calculations.SurveyCalculations import Survey
 # from KPIUtils_v2.Calculations.CalculationsUtils import GENERALToolBoxCalculations
 
-from Projects.INBEVTRADMX_SAND.Utils import GeoLocation
+from Projects.INBEVTRADMX.Utils import GeoLocation
 
 __author__ = 'yoava_Jasmine_Elyashiv'
 
