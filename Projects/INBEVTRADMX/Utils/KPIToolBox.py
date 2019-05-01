@@ -30,7 +30,7 @@ KPK_RESULT = 'report.kpk_results'
 KPS_RESULT = 'report.kps_results'
 
 
-class INBEVTRADMX_SAND_ToolBox:
+class INBEVTRADMXToolBox:
     LEVEL1 = 1
     LEVEL2 = 2
     LEVEL3 = 3
