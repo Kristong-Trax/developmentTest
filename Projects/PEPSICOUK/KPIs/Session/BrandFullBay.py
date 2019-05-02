@@ -6,9 +6,9 @@ import numpy as np
 
 class BrandFullBayKpi(UnifiedCalculationsScript):
 
-    def __init__(self, data_provider):
-        super(BrandFullBayKpi, self).__init__(data_provider)
-        self.util = PepsicoUtil()
+    def __init__(self, data_provider, config_params=None):
+        super(BrandFullBayKpi, self).__init__(data_provider, config_params=config_params)
+        self.util = PepsicoUtil(None, data_provider)
 
     def kpi_type(self):
         pass
@@ -39,13 +39,15 @@ class BrandFullBayKpi(UnifiedCalculationsScript):
                         {'count': np.sum})
                     result_df = result_df.merge(scene_bay, on=['scene_fk', 'bay_number'], how='left')
                     result_df['ratio'] = result_df['count'] / result_df['total_facings']
-                    result_100 = len(result_df[result_df['ratio'] >= 1])
-                    result_90 = len(result_df[result_df['ratio'] >= 0.9])
-                    self.write_to_db_result(fk=row['kpi_level_2_fk'], numerator_id=row['group_fk'],
-                                                   score=result_100)
-                    kpi_90_fk = self.util.common.get_kpi_fk_by_kpi_type('Brand Full Bay_90')
-                    self.write_to_db_result(fk=kpi_90_fk, numerator_id=row['group_fk'], score=result_90)
-
-                    self.util.add_kpi_result_to_kpi_results_df(
-                        [row['kpi_level_2_fk'], row['group_fk'], None, None, result_100])
-                    self.util.add_kpi_result_to_kpi_results_df([kpi_90_fk, row['group_fk'], None, None, result_90])
+                    target_ratio = int(float(self._config_params['ratio'])*100)
+                    if target_ratio == 100:
+                        result = len(result_df[result_df['ratio'] >= 1])
+                        self.write_to_db_result(fk=row['kpi_level_2_fk'], numerator_id=row['group_fk'],
+                                                score=result)
+                        self.util.add_kpi_result_to_kpi_results_df(
+                            [row['kpi_level_2_fk'], row['group_fk'], None, None, result])
+                    else:
+                        result = len(result_df[result_df['ratio'] >= (target_ratio/100.00)])
+                        kpi_fk = self.util.common.get_kpi_fk_by_kpi_type('Brand Full Bay_{}'.format(target_ratio))
+                        self.write_to_db_result(fk=kpi_fk, numerator_id=row['group_fk'], score=result)
+                        self.util.add_kpi_result_to_kpi_results_df([kpi_fk, row['group_fk'], None, None, result])
