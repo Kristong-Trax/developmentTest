@@ -88,6 +88,7 @@ class CCRU_SANDKPIToolBox:
         self.kpi_set_name = kpi_set_name if kpi_set_name else self.pos_kpi_set_name
         self.kpi_set_type = kpi_set_type if kpi_set_type else POS
         self.kpi_name_to_id = {kpi_set_type: {}}
+        self.kpi_children = {kpi_set_type: {}}
         self.kpi_scores_and_results = {kpi_set_type: {}}
 
         self.kpi_fetcher = CCRU_SANDCCHKPIFetcher(self.project_name)
@@ -127,6 +128,7 @@ class CCRU_SANDKPIToolBox:
         self.kpi_fetcher.kpi_static_data = self.kpi_fetcher.get_static_kpi_data(kpi_set_name)
         if empty_kpi_scores_and_results:
             self.kpi_name_to_id[kpi_set_type] = {}
+            self.kpi_children[kpi_set_type] = {}
             self.kpi_scores_and_results[kpi_set_type] = {}
 
     def update_kpi_scores_and_results(self, param, kpi_scores_and_results):
@@ -134,6 +136,8 @@ class CCRU_SANDKPIToolBox:
             kpi_id = str(param.get('KPI ID'))
             parent = str(param.get('Parent')).split('.')[0] if param.get('Parent') else '0'
             self.kpi_name_to_id[self.kpi_set_type][param.get('KPI name Eng')] = kpi_id
+            self.kpi_children[self.kpi_set_type][parent] = list(set(self.kpi_children[self.kpi_set_type][parent] + [kpi_id]))\
+                if self.kpi_children[self.kpi_set_type].get(parent) else [kpi_id]
             if not self.kpi_scores_and_results[self.kpi_set_type].get(kpi_id):
                 self.kpi_scores_and_results[self.kpi_set_type][kpi_id] = \
                     {'kpi_id': kpi_id,
@@ -219,7 +223,7 @@ class CCRU_SANDKPIToolBox:
         else:
             if params.get('Scenes to include'):
                 scenes_to_include = \
-                    [unicode(x).strip()
+                    [unicode(x).strip().encode('utf-8')
                      for x in unicode(params.get('Scenes to include')).split(', ')]
                 for scene in scenes_to_include:
                     if scene in scenes_data.keys():
@@ -790,6 +794,8 @@ class CCRU_SANDKPIToolBox:
             if p.get('Type') in ('MAN in CAT', 'MAN', 'BRAND', 'BRAND_IN_CAT', 'SUB_BRAND_IN_CAT') and \
                     p.get('Formula').strip() in ['sos', 'SOS', 'sos with empty']:
                 ratio = self.calculate_facings_sos(p)
+                if ratio is None:
+                    ratio = 0
             else:
                 continue
             if p.get('depends on'):
@@ -851,6 +857,8 @@ class CCRU_SANDKPIToolBox:
 
         # relevant_scenes = scenes
         relevant_scenes = list(set(scenes).intersection(self.get_relevant_scenes(params)))
+        if not relevant_scenes:
+            return None
 
         if params.get('Manufacturer'):
             manufacturers = \
@@ -1873,6 +1881,8 @@ class CCRU_SANDKPIToolBox:
                         atomic_res = self.calculate_facings_sos(c, scenes=scenes, all_params=params)
                     elif c.get("Formula").strip() == "DUMMY":
                         atomic_res = 0
+                    if atomic_res is None:
+                        continue
                     if atomic_res == -1:
                         atomic_score = 0
                     else:
@@ -1920,7 +1930,7 @@ class CCRU_SANDKPIToolBox:
         scenes_info = pd.merge(self.scenes_info, self.templates, on='template_fk')
         if level == 3:
             if params.get('Scenes to include'):
-                values_list = [unicode(x).strip()
+                values_list = [unicode(x).strip().encode('utf-8')
                                for x in params.get('Scenes to include').split(', ')]
                 number_relevant_scenes = scenes_info['template_name'].isin(values_list).sum()
                 return number_relevant_scenes
@@ -1950,7 +1960,7 @@ class CCRU_SANDKPIToolBox:
                         flag = 0
                         final_scenes = scenes_info
                         if p.get('Scenes to include'):
-                            scenes_values_list = [unicode(x).strip()
+                            scenes_values_list = [unicode(x).strip().encode('utf-8')
                                                   for x in p.get('Scenes to include').split(', ')]
                             final_scenes = scenes_info['template_name'].isin(scenes_values_list)
                             flag = 1
@@ -1967,7 +1977,7 @@ class CCRU_SANDKPIToolBox:
                         number_relevant_scenes = final_scenes.sum()
                 else:
                     if p.get('Scenes to include'):
-                        values_list = [unicode(x).strip()
+                        values_list = [unicode(x).strip().encode('utf-8')
                                        for x in p.get('Scenes to include').split(', ')]
                         number_relevant_scenes = scenes_info['template_name'].isin(
                             values_list).sum()
@@ -2352,7 +2362,7 @@ class CCRU_SANDKPIToolBox:
                                                    'weight': param.get('KPI Weight'),
                                                    # 'result': score,
                                                    'score': round(score),
-                                                   'weighted_score': score * (param.get('KPI Weight') if param.get('KPI Weight') else 1)})
+                                                   'weighted_score': round(score) * (param.get('KPI Weight') if param.get('KPI Weight') else 1)})
 
         return attributes_for_table2
 
@@ -2432,7 +2442,7 @@ class CCRU_SANDKPIToolBox:
                                                    'weight': param.get('KPI Weight'),
                                                    'result': result,
                                                    'score': round(score),
-                                                   'weighted_score': round(score * (param.get('KPI Weight') if param.get('KPI Weight') else 1), 2),
+                                                   'weighted_score': round(round(score) * (param.get('KPI Weight') if param.get('KPI Weight') else 1), 2),
                                                    'additional_level': additional_level})
 
         return attributes_for_table3
@@ -2450,6 +2460,8 @@ class CCRU_SANDKPIToolBox:
             for c in params.values()[0]:
                 if c.get("KPI ID") in children and c.get("Formula").strip() == "atomic sos":
                     first_atomic_res = self.calculate_facings_sos(c)
+                    if first_atomic_res is None:
+                        first_atomic_res =0
                     first_atomic_score = self.calculate_score(first_atomic_res, c)
                     # write to DB
                     attributes_for_level3 = self.create_attributes_for_level3_df(
@@ -2666,7 +2678,40 @@ class CCRU_SANDKPIToolBox:
                                      'result': result,
                                      'format': 'STR',
                                      'level': 4})
+
                                 subgroup_gap += gap
+
+                                # appending relevant atomics to the structure
+                                atomics = self.kpi_children[POS].get(kpi_id)
+                                if atomics:
+                                    for atomic_id in atomics:
+                                        self.update_kpi_scores_and_results(
+                                            {'KPI ID': str(counter) + '_' + atomic_id,
+                                             'KPI name Eng': self.kpi_scores_and_results[POS][atomic_id].get('eng_name'),
+                                             'KPI name Rus': self.kpi_scores_and_results[POS][atomic_id].get('rus_name'),
+                                             'Parent': counter,
+                                             'Sorting': self.kpi_scores_and_results[POS][atomic_id].get('sort_order')},
+                                            {'threshold': self.kpi_scores_and_results[POS][atomic_id].get('threshold'),
+                                             'result': self.kpi_scores_and_results[POS][atomic_id].get('result'),
+                                             'score': self.kpi_scores_and_results[POS][atomic_id].get('score'),
+                                             'format': self.kpi_scores_and_results[POS][atomic_id].get('format'),
+                                             'level': 5})
+
+                                        # appending relevant sub-atomics to the structure
+                                        sub_atomics = self.kpi_children[POS].get(atomic_id)
+                                        if sub_atomics:
+                                            for sub_atomic_id in sub_atomics:
+                                                self.update_kpi_scores_and_results(
+                                                    {'KPI ID': str(counter) + '_' + sub_atomic_id,
+                                                     'KPI name Eng': self.kpi_scores_and_results[POS][sub_atomic_id].get('eng_name'),
+                                                     'KPI name Rus': self.kpi_scores_and_results[POS][sub_atomic_id].get('rus_name'),
+                                                     'Parent': str(counter) + '_' + atomic_id,
+                                                     'Sorting': self.kpi_scores_and_results[POS][sub_atomic_id].get('sort_order')},
+                                                    {'threshold': self.kpi_scores_and_results[POS][sub_atomic_id].get('threshold'),
+                                                     'result': self.kpi_scores_and_results[POS][sub_atomic_id].get('result'),
+                                                     'score': self.kpi_scores_and_results[POS][sub_atomic_id].get('score'),
+                                                     'format': self.kpi_scores_and_results[POS][sub_atomic_id].get('format'),
+                                                     'level': 6})
 
                     if subgroup_gap > 0:
                         result = "+ " + format(subgroup_gap, ".1f")

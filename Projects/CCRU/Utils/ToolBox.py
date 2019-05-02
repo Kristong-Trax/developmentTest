@@ -88,6 +88,7 @@ class CCRUKPIToolBox:
         self.kpi_set_name = kpi_set_name if kpi_set_name else self.pos_kpi_set_name
         self.kpi_set_type = kpi_set_type if kpi_set_type else POS
         self.kpi_name_to_id = {kpi_set_type: {}}
+        self.kpi_children = {kpi_set_type: {}}
         self.kpi_scores_and_results = {kpi_set_type: {}}
 
         self.kpi_fetcher = CCRUCCHKPIFetcher(self.project_name)
@@ -127,6 +128,7 @@ class CCRUKPIToolBox:
         self.kpi_fetcher.kpi_static_data = self.kpi_fetcher.get_static_kpi_data(kpi_set_name)
         if empty_kpi_scores_and_results:
             self.kpi_name_to_id[kpi_set_type] = {}
+            self.kpi_children[kpi_set_type] = {}
             self.kpi_scores_and_results[kpi_set_type] = {}
 
     def update_kpi_scores_and_results(self, param, kpi_scores_and_results):
@@ -134,6 +136,8 @@ class CCRUKPIToolBox:
             kpi_id = str(param.get('KPI ID'))
             parent = str(param.get('Parent')).split('.')[0] if param.get('Parent') else '0'
             self.kpi_name_to_id[self.kpi_set_type][param.get('KPI name Eng')] = kpi_id
+            self.kpi_children[self.kpi_set_type][parent] = list(set(self.kpi_children[self.kpi_set_type][parent] + [kpi_id]))\
+                if self.kpi_children[self.kpi_set_type].get(parent) else [kpi_id]
             if not self.kpi_scores_and_results[self.kpi_set_type].get(kpi_id):
                 self.kpi_scores_and_results[self.kpi_set_type][kpi_id] = \
                     {'kpi_id': kpi_id,
@@ -2674,7 +2678,40 @@ class CCRUKPIToolBox:
                                      'result': result,
                                      'format': 'STR',
                                      'level': 4})
+
                                 subgroup_gap += gap
+
+                                # appending relevant atomics to the structure
+                                atomics = self.kpi_children[POS].get(kpi_id)
+                                if atomics:
+                                    for atomic_id in atomics:
+                                        self.update_kpi_scores_and_results(
+                                            {'KPI ID': str(counter) + '_' + atomic_id,
+                                             'KPI name Eng': self.kpi_scores_and_results[POS][atomic_id].get('eng_name'),
+                                             'KPI name Rus': self.kpi_scores_and_results[POS][atomic_id].get('rus_name'),
+                                             'Parent': counter,
+                                             'Sorting': self.kpi_scores_and_results[POS][atomic_id].get('sort_order')},
+                                            {'threshold': self.kpi_scores_and_results[POS][atomic_id].get('threshold'),
+                                             'result': self.kpi_scores_and_results[POS][atomic_id].get('result'),
+                                             'score': self.kpi_scores_and_results[POS][atomic_id].get('score'),
+                                             'format': self.kpi_scores_and_results[POS][atomic_id].get('format'),
+                                             'level': 5})
+
+                                        # appending relevant sub-atomics to the structure
+                                        sub_atomics = self.kpi_children[POS].get(atomic_id)
+                                        if sub_atomics:
+                                            for sub_atomic_id in sub_atomics:
+                                                self.update_kpi_scores_and_results(
+                                                    {'KPI ID': str(counter) + '_' + sub_atomic_id,
+                                                     'KPI name Eng': self.kpi_scores_and_results[POS][sub_atomic_id].get('eng_name'),
+                                                     'KPI name Rus': self.kpi_scores_and_results[POS][sub_atomic_id].get('rus_name'),
+                                                     'Parent': str(counter) + '_' + atomic_id,
+                                                     'Sorting': self.kpi_scores_and_results[POS][sub_atomic_id].get('sort_order')},
+                                                    {'threshold': self.kpi_scores_and_results[POS][sub_atomic_id].get('threshold'),
+                                                     'result': self.kpi_scores_and_results[POS][sub_atomic_id].get('result'),
+                                                     'score': self.kpi_scores_and_results[POS][sub_atomic_id].get('score'),
+                                                     'format': self.kpi_scores_and_results[POS][sub_atomic_id].get('format'),
+                                                     'level': 6})
 
                     if subgroup_gap > 0:
                         result = "+ " + format(subgroup_gap, ".1f")
