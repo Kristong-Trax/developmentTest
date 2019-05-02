@@ -28,43 +28,44 @@ class ShelfPlacementHeroSkusKpi(UnifiedCalculationsScript):
                     # hero_results['parent_type'] = hero_results['KPI Parent'].apply(self.get_kpi_type_by_pk)
                     hero_results['parent_type'] = hero_results['KPI Parent']
                     hero_results = hero_results[hero_results['type'] == self._config_params['level']]
-                    hero_results['type'] = hero_results['type'].apply(lambda x: '{} {}'.format(self.util.HERO_PREFIX, x))
-                    hero_results['parent_type'] = hero_results['parent_type'].apply(lambda x: '{} {}'.format(self.util.HERO_PREFIX, x))
-                    hero_results['kpi_level_2_fk'] = hero_results['type'].apply(self.util.common.get_kpi_fk_by_kpi_type)
-                    hero_results['KPI Parent'] = hero_results['parent_type'].apply(self.util.common.get_kpi_fk_by_kpi_type)
-                    hero_results['identifier_parent'] = hero_results.apply(self.construct_hero_identifier_dict, axis=1)
+                    if not hero_results.empty:
+                        hero_results['type'] = hero_results['type'].apply(lambda x: '{} {}'.format(self.util.HERO_PREFIX, x))
+                        hero_results['parent_type'] = hero_results['parent_type'].apply(lambda x: '{} {}'.format(self.util.HERO_PREFIX, x))
+                        hero_results['kpi_level_2_fk'] = hero_results['type'].apply(self.util.common.get_kpi_fk_by_kpi_type)
+                        hero_results['KPI Parent'] = hero_results['parent_type'].apply(self.util.common.get_kpi_fk_by_kpi_type)
+                        hero_results['identifier_parent'] = hero_results.apply(self.construct_hero_identifier_dict, axis=1)
 
-                    for i, row in hero_results.iterrows():
-                        # self.write_to_db_result(fk=row['kpi_level_2_fk'], numerator_id=row['numerator_id'],
-                        #                                denominator_id=row['numerator_id'], denominator_result=row['denominator_result'],
-                        #                                numerator_result=row['numerator_result'], result=row['ratio'],
-                        #                                score=row['ratio'], identifier_parent=row['identifier_parent'],
-                        #                                should_enter=True)
-                        self.write_to_db_result(fk=row['kpi_level_2_fk'], numerator_id=row['numerator_id'],
-                                                denominator_id=row['numerator_id'],
-                                                denominator_result=row['denominator_result'],
-                                                numerator_result=row['numerator_result'], result=row['ratio'],
-                                                score=row['ratio'])
-                        self.util.add_kpi_result_to_kpi_results_df([row.kpi_level_2_fk, row.numerator_id, row['numerator_id'], row['ratio'],
-                                                               row['ratio']])
-                    # writes to hierarchy
-                    # hero_parent_results = hero_results.groupby(['numerator_id', 'KPI Parent'], as_index=False).agg({'ratio': np.sum})
-                    # hero_parent_results['identifier_parent'] = hero_parent_results.apply(self.construct_hero_identifier_dict, axis=1)
-                    #
-                    # top_sku_parent = self.util.common.get_kpi_fk_by_kpi_type(self.util.HERO_PLACEMENT)
-                    # top_parent_identifier_par = self.util.common.get_dictionary(kpi_fk=top_sku_parent)
-                    # for i, row in hero_parent_results.iterrows():
-                    #     self.write_to_db_result(fk=row['KPI Parent'], numerator_id=row['numerator_id'], result=row['ratio'],
-                    #                                    score=row['ratio'], identifier_result=row['identifier_parent'],
-                    #                                    identifier_parent=top_parent_identifier_par, denominator_id=self.util.store_id,
-                    #                                    should_enter=True)
-                    #     self.util.add_kpi_result_to_kpi_results_df([row['KPI Parent'], row.numerator_id, self.util.store_id, row['ratio'],
-                    #                                             row['ratio']])
-                    # self.write_to_db_result(fk=top_sku_parent, numerator_id=self.util.own_manuf_fk, denominator_id=self.util.store_id,
-                    #                                result=len(hero_parent_results), score=len(hero_parent_results),
-                    #                                identifier_result=top_parent_identifier_par, should_enter=True)
-                    # self.util.add_kpi_result_to_kpi_results_df([top_sku_parent, self.util.own_manuf_fk, self.util.store_id, len(hero_parent_results),
-                    #                                        len(hero_parent_results)])
+                        for i, row in hero_results.iterrows():
+                            # self.write_to_db_result(fk=row['kpi_level_2_fk'], numerator_id=row['numerator_id'],
+                            #                                denominator_id=row['numerator_id'], denominator_result=row['denominator_result'],
+                            #                                numerator_result=row['numerator_result'], result=row['ratio'],
+                            #                                score=row['ratio'], identifier_parent=row['identifier_parent'],
+                            #                                should_enter=True)
+                            self.write_to_db_result(fk=row['kpi_level_2_fk'], numerator_id=row['numerator_id'],
+                                                    denominator_id=row['numerator_id'],
+                                                    denominator_result=row['denominator_result'],
+                                                    numerator_result=row['numerator_result'], result=row['ratio'],
+                                                    score=row['ratio'])
+                            self.util.add_kpi_result_to_kpi_results_df([row.kpi_level_2_fk, row.numerator_id, row['numerator_id'], row['ratio'],
+                                                                   row['ratio']])
+                        # writes to hierarchy
+                        # hero_parent_results = hero_results.groupby(['numerator_id', 'KPI Parent'], as_index=False).agg({'ratio': np.sum})
+                        # hero_parent_results['identifier_parent'] = hero_parent_results.apply(self.construct_hero_identifier_dict, axis=1)
+                        #
+                        # top_sku_parent = self.util.common.get_kpi_fk_by_kpi_type(self.util.HERO_PLACEMENT)
+                        # top_parent_identifier_par = self.util.common.get_dictionary(kpi_fk=top_sku_parent)
+                        # for i, row in hero_parent_results.iterrows():
+                        #     self.write_to_db_result(fk=row['KPI Parent'], numerator_id=row['numerator_id'], result=row['ratio'],
+                        #                                    score=row['ratio'], identifier_result=row['identifier_parent'],
+                        #                                    identifier_parent=top_parent_identifier_par, denominator_id=self.util.store_id,
+                        #                                    should_enter=True)
+                        #     self.util.add_kpi_result_to_kpi_results_df([row['KPI Parent'], row.numerator_id, self.util.store_id, row['ratio'],
+                        #                                             row['ratio']])
+                        # self.write_to_db_result(fk=top_sku_parent, numerator_id=self.util.own_manuf_fk, denominator_id=self.util.store_id,
+                        #                                result=len(hero_parent_results), score=len(hero_parent_results),
+                        #                                identifier_result=top_parent_identifier_par, should_enter=True)
+                        # self.util.add_kpi_result_to_kpi_results_df([top_sku_parent, self.util.own_manuf_fk, self.util.store_id, len(hero_parent_results),
+                        #                                        len(hero_parent_results)])
 
     def get_hero_results_df(self, scene_placement_results):
         kpi_results = scene_placement_results.groupby(['kpi_level_2_fk', 'numerator_id'], as_index=False).agg(
