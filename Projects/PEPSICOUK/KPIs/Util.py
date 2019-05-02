@@ -96,6 +96,7 @@ class PepsicoUtil:
 
         self.scene_kpi_results = self.get_results_of_scene_level_kpis()
         self.kpi_results_check = pd.DataFrame(columns=['kpi_fk', 'numerator', 'denominator', 'result', 'score'])
+        self.sos_vs_target_targets = self.construct_sos_vs_target_base_df()
 
     @staticmethod
     def get_full_bay_and_positional_filters(parameters): # get a function from ccbza
@@ -120,6 +121,22 @@ class PepsicoUtil:
     @staticmethod
     def split_and_strip(value):
         return map(lambda x: x.strip(), str(value).split(','))
+
+    def construct_sos_vs_target_base_df(self):
+        sos_targets = self.get_relevant_sos_vs_target_kpi_targets()
+        sos_targets = sos_targets.drop_duplicates(
+            subset=['kpi_operation_type_fk', 'kpi_level_2_fk', 'numerator_value', 'denominator_value',
+                    'type'], keep='first')
+        sos_targets = sos_targets.drop(['key_json', 'data_json', 'start_date', 'end_date'], axis=1)
+        if not sos_targets.empty:
+            sos_targets['numerator_id'] = sos_targets.apply(self.retrieve_relevant_item_pks, axis=1,
+                                                            args=('numerator_type', 'numerator_value'))
+            sos_targets['denominator_id'] = sos_targets.apply(self.retrieve_relevant_item_pks, axis=1,
+                                                              args=('denominator_type', 'denominator_value'))
+            sos_targets['identifier_parent'] = sos_targets['KPI Parent'].apply(lambda x:
+                                                                               self.common.get_dictionary(
+                                                                                   kpi_fk=int(float(x))))
+        return sos_targets
 
     def get_relevant_sos_vs_target_kpi_targets(self, brand_vs_brand=False):
         sos_vs_target_kpis = self.external_targets[self.external_targets['operation_type'] == self.SOS_VS_TARGET]
