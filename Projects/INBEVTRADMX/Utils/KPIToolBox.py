@@ -61,6 +61,7 @@ class INBEVTRADMXToolBox:
         self.geo = GeoLocation.INBEVTRADMXGeo(self.rds_conn, self.session_uid, self.data_provider,
                                               self.kpi_static_data, self.common, self.common2)
         self.new_static_data = self.common2.kpi_static_data
+        self.manufacturer_fk = 1
 
     # init functions:
 
@@ -198,9 +199,7 @@ class INBEVTRADMXToolBox:
         :param set_df: kpi set df
         :return: kpi level 2 score
         """
-
         kpi_df = set_df[set_df['KPI Level 2 Name'].str.encode('utf8') == kpi_name.encode('utf-8')]
-
         kpi_score = 0
         # iterate the all related atomic kpis
         for i, row in kpi_df.iterrows():
@@ -285,8 +284,6 @@ class INBEVTRADMXToolBox:
             return 0
         # create dictionary for calculating
         filters_dict = self.create_sos_filtered_dictionary(relevant_columns, row)
-
-
         # reduce the df only to relevant columns
         df = df[filters_dict.keys()]
         # check if it's invasion KPI for the special case
@@ -512,6 +509,7 @@ class INBEVTRADMXToolBox:
         # self.common.write_to_db_result(kpi_set_fk, self.LEVEL1, set_score)
         new_kpi_set_fk = self.common2.get_kpi_fk_by_kpi_name(set_name)
         self.common2.write_to_db_result(fk=new_kpi_set_fk, result=set_score,
+                                        numerator_id=self.manufacturer_fk, denominator_id=self.store_id,
                                         identifier_result=self.common2.get_dictionary(name=set_name))
 
     def write_kpi_score_to_db(self, kpi_name, set_name, kpi_score, write_to_all_levels):
@@ -522,13 +520,11 @@ class INBEVTRADMXToolBox:
         :param kpi_score: the score
         :return: None
         """
-
         # kpi_fk = \
         #     self.kpi_static_data.kpi_fk[
         #         (self.kpi_static_data.kpi_name.str.encode('utf-8') == kpi_name.encode('utf-8')) &
         #         (self.kpi_static_data.kpi_set_name == set_name)].values[0]
         # self.common.write_to_db_result(kpi_fk, self.LEVEL2, kpi_score)
-
         if write_to_all_levels:
             new_kpi_fk = self.common2.get_kpi_fk_by_kpi_name(kpi_name)
             self.common2.write_to_db_result(fk=new_kpi_fk, result=kpi_score, should_enter=True,
@@ -546,7 +542,6 @@ class INBEVTRADMXToolBox:
         :param set_name: name of related set
         :return:
         """
-
         # atomic_kpi_fk = \
         #     self.kpi_static_data.atomic_kpi_fk[(self.kpi_static_data.atomic_kpi_name == atomic_name) &
         #                                        (self.kpi_static_data.kpi_name == kpi_name) &
@@ -556,17 +551,18 @@ class INBEVTRADMXToolBox:
         # attrs['kpi_weight'] = {0: curr_weight}
         # query = insert(attrs, self.common.KPI_RESULT)
         # self.common.kpi_results_queries.append(query)
-
         identifier_parent = self.common2.get_dictionary(name=kpi_name)
         if atomic_name == kpi_name:
             identifier_parent = self.common2.get_dictionary(name=set_name)
+
         new_atomic_fk = self.common2.get_kpi_fk_by_kpi_name(atomic_name)
 
         # kpi_fk = \
         # self.new_static_data[self.new_static_data['client_name'].str.encode('utf-8') == kpi_name.encode('utf-8')][
         #     'pk'].values[0]
         self.common2.write_to_db_result(
-            fk=new_atomic_fk, result=atomic_score, weight=curr_weight, should_enter=True, score=is_kpi_passed,
+            fk=new_atomic_fk, result=atomic_score, numerator_id=self.manufacturer_fk, denominator_id=self.store_id,
+            weight=curr_weight, should_enter=True, score=is_kpi_passed,
             identifier_parent=identifier_parent)
 
 

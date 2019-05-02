@@ -293,6 +293,17 @@ class INBEVTRADMXToolBox:
 
     def calculate_sos_ratio(self, df, filters_dict, inv):
         ratio = 0
+
+
+        if 'manufacturer_name' in df.columns.tolist():
+            filter_out =  df[(df['product_type'] ==('Empty')) & (df['manufacturer_name'] == 'General')].index
+            df.drop(filter_out, inplace=True)
+
+        for key in filters_dict:
+            delete = [key for value in filters_dict[key] if value in ['nan']]
+        for key in delete:
+            del filters_dict[key]
+
         # iterate the data frame
         for i, df_row in df.iterrows():
             # initialize the boolean variable
@@ -385,6 +396,10 @@ class INBEVTRADMXToolBox:
         """
         # create filtered dictionary
         filters_dict = self.create_availability_filtered_dictionary(relevant_columns, row)
+        for key in filters_dict:
+            delete = [key for value in filters_dict[key] if value in ['nan']]
+        for key in delete:
+            del filters_dict[key]
         # call the generic method from KPIUtils_v2
         availability_score = self.availability.calculate_availability(**filters_dict)
         # check if this score should pass or fail
@@ -546,7 +561,8 @@ class INBEVTRADMXToolBox:
         # self.new_static_data[self.new_static_data['client_name'].str.encode('utf-8') == atomic_name.encode('utf-8')][
         #     'pk'].values[0]
         self.common2.write_to_db_result(
-            fk=new_atomic_fk, result=atomic_score, numerator_id= self.manufacturer_fk  , denominator_id= self.store_id, weight=curr_weight, should_enter=True, score=is_kpi_passed,
+            fk=new_atomic_fk, result=atomic_score, numerator_id= self.manufacturer_fk  , denominator_id= self.store_id,
+            weight=curr_weight, should_enter=True, score=is_kpi_passed,
             identifier_parent=identifier_parent)
 
 
