@@ -16,7 +16,7 @@ class SosVsTargetBrandKpi(UnifiedCalculationsScript):
 
     def calculate(self):
         sos_targets = self.util.sos_vs_target_targets.copy()
-        sos_targets = sos_targets[sos_targets['type'] == self._config_params['kpi_type']]
+        # sos_targets = sos_targets[sos_targets['type'] == self._config_params['kpi_type']]
         self.calculate_brand_out_of_category_sos_vs_target(sos_targets)
 
     def calculate_brand_out_of_category_sos_vs_target(self, sos_targets):

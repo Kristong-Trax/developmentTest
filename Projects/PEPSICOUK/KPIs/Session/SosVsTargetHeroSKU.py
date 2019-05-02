@@ -16,7 +16,7 @@ class SosVsTargetHeroSkuKpi(UnifiedCalculationsScript):
 
     def calculate(self):
         sos_targets = self.util.sos_vs_target_targets.copy()
-        sos_targets = sos_targets[sos_targets['type'] == self._config_params['kpi_type']]
+        # sos_targets = sos_targets[sos_targets['type'] == self._config_params['kpi_type']]
         self.calculate_hero_sku_sos_vs_target(sos_targets)
 
     def calculate_hero_sku_sos_vs_target(self, sos_targets):
