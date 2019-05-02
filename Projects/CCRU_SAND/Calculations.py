@@ -28,6 +28,8 @@ EQUIPMENT = 'EQUIPMENT'
 INTEGRATION = 'INTEGRATION'
 TOPSKU = 'TOPSKU'
 KPI_CONVERSION = 'KPI_CONVERSION'
+BENCHMARK = 'BENCHMARK'
+
 ALLOWED_POS_SETS = (
     'Pos 2018 - Canteen',
     'Pos 2018 - FT',
@@ -114,8 +116,8 @@ class CCRU_SANDProjectCalculations:
         kpi_source_json = self.json.project_kpi_dict.get('kpi_source')
         kpi_source = {}
         for row in kpi_source_json:
+            # Log.info('SOURCE: {}'.format(row.get(SOURCE)))
             kpi_source[row.pop(SOURCE)] = row
-
         if kpi_source:
             pass
 
@@ -133,7 +135,7 @@ class CCRU_SANDProjectCalculations:
                         .format(self.pos_kpi_set_name, self.store_id))
             return
 
-        kpi_sets_types_to_calculate = [POS, TARGET, MARKETING, SPIRITS]
+        kpi_sets_types_to_calculate = [POS, TARGET, SPIRITS]
         for kpi_set_type in kpi_sets_types_to_calculate:
             if not kpi_source[kpi_set_type][SET]:
                 continue
@@ -141,8 +143,8 @@ class CCRU_SANDProjectCalculations:
             Log.debug('KPI calculation stage: {}'.format(kpi_source[kpi_set_type][SET]))
             self.tool_box.set_kpi_set(kpi_source[kpi_set_type][SET], kpi_set_type)
             self.json.project_kpi_dict['kpi_data'] = []
-            self.json.create_kpi_data_json(
-                'kpi_data', kpi_source[kpi_set_type][FILE], sheet_name=kpi_source[kpi_set_type][SHEET])
+            self.json.create_kpi_data_json('kpi_data', kpi_source[kpi_set_type][FILE],
+                                           sheet_name=kpi_source[kpi_set_type][SHEET])
             kpi_data = self.json.project_kpi_dict.get('kpi_data')[0]
             score = 0
             score += self.tool_box.check_availability(kpi_data)
@@ -199,6 +201,14 @@ class CCRU_SANDProjectCalculations:
             self.tool_box.calculate_gaps_old(self.json.project_kpi_dict.get('gaps'))
             self.tool_box.calculate_gaps_new(self.json.project_kpi_dict.get('gaps'),
                                              kpi_source[GAPS][SET])
+
+        if kpi_source[BENCHMARK][SET]:
+            Log.debug('KPI calculation stage: {}'.format(kpi_source[BENCHMARK][SET]))
+            self.tool_box.set_kpi_set(kpi_source[BENCHMARK][SET], BENCHMARK)
+            self.json.create_kpi_data_json(
+                'benchmark', kpi_source[BENCHMARK][FILE], sheet_name=kpi_source[BENCHMARK][SHEET])
+            self.tool_box.calculate_benchmark(self.json.project_kpi_dict.get('benchmark'),
+                                              kpi_source[BENCHMARK][SET])
 
         if kpi_source[CONTRACT][FILE]:
             Log.debug('Importing Contract Execution template')

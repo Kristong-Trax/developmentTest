@@ -4,6 +4,9 @@ __author__ = 'nidhinb'
 
 class Const(object):
 
+    # template path
+    TEMPLATE_PATH = '07_PNGHK_template_2019_30_04.xlsx'
+
     # sheet names
     KPIS = 'KPIS'
     OSD_RULES = 'OSD_RULES'
