@@ -285,6 +285,8 @@ class INBEVTRADMXToolBox:
             return 0
         # create dictionary for calculating
         filters_dict = self.create_sos_filtered_dictionary(relevant_columns, row)
+
+
         # reduce the df only to relevant columns
         df = df[filters_dict.keys()]
         # check if it's invasion KPI for the special case
@@ -294,6 +296,17 @@ class INBEVTRADMXToolBox:
 
     def calculate_sos_ratio(self, df, filters_dict, inv):
         ratio = 0
+
+
+        if 'manufacturer_name' in df.columns.tolist():
+            filter_out =  df[(df['product_type'] ==('Empty')) & (df['manufacturer_name'] == 'General')].index
+            df.drop(filter_out, inplace=True)
+
+        for key in filters_dict:
+            delete = [key for value in filters_dict[key] if value in ['nan']]
+        for key in delete:
+            del filters_dict[key]
+
         # iterate the data frame
         for i, df_row in df.iterrows():
             # initialize the boolean variable
@@ -386,6 +399,10 @@ class INBEVTRADMXToolBox:
         """
         # create filtered dictionary
         filters_dict = self.create_availability_filtered_dictionary(relevant_columns, row)
+        for key in filters_dict:
+            delete = [key for value in filters_dict[key] if value in ['nan']]
+        for key in delete:
+            del filters_dict[key]
         # call the generic method from KPIUtils_v2
         availability_score = self.availability.calculate_availability(**filters_dict)
         # check if this score should pass or fail
