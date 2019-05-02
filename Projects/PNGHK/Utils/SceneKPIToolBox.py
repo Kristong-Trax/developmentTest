@@ -1,6 +1,5 @@
 import pandas as pd
 import os
-
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from KPIUtils_v2.Calculations.CalculationsUtils.GENERALToolBoxCalculations import GENERALToolBox
 from Projects.PNGHK.Data.Const import Const
