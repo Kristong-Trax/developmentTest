@@ -68,7 +68,7 @@ class MILLERCOORSToolBox:
         self.kpi_results_queries = []
         self.templates = {}
         for sheet in Const.SHEETS:
-            self.templates[sheet] = pd.read_excel(TEMPLATE_PATH, sheetname=sheet).fillna('')
+            self.templates[sheet] = pd.read_excel(TEMPLATE_PATH, sheet_name=sheet).fillna('')
         self.store_info = self.data_provider[Data.STORE_INFO]
         self.store_type = self.store_info['store_type'].iloc[0]
         # main_template = self.templates[Const.KPIS]
