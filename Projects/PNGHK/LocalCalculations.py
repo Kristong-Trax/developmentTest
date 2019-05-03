@@ -26,9 +26,8 @@ if __name__ == '__main__':
     project_name = 'pnghk'
     data_provider = KEngineDataProvider(project_name)
     sessions = [
-        '97C3A087-9330-4D79-92C5-BF786BFFE2FB'
-        # 'bd812815-649d-4553-8fee-e3e39a9174f7',
-        # '5a7faa1c-3a69-47a8-aac4-19133bb64549',
+        'bd812815-649d-4553-8fee-e3e39a9174f7',
+        '5a7faa1c-3a69-47a8-aac4-19133bb64549',
         #
         # 'bd812815-649d-4553-8fee-e3e39a9174f7',
         # 'aefaf595-d0ac-40a8-8fa5-1f4b1763ed2a',
@@ -45,14 +44,14 @@ if __name__ == '__main__':
     ]
     for session in sessions:
         print "Running for {}".format(session)
-        # for scene in [127079,127084,127092,127094]:
-        #     print('Calculating scene id: ' + str(scene))
-        #     data_provider = KEngineDataProvider(project_name)
-        #     data_provider.load_scene_data(session, scene)
-        #     output = VanillaOutput()
-        #     SceneVanillaCalculations(data_provider, output).run_project_calculations()
-        #     save_scene_item_facts_to_data_provider(data_provider, output)
-        #     SceneCalculations(data_provider).calculate_kpis()
+        for scene in [50479]:
+            print('Calculating scene id: ' + str(scene))
+            data_provider = KEngineDataProvider(project_name)
+            data_provider.load_scene_data(session, scene)
+            output = VanillaOutput()
+            SceneVanillaCalculations(data_provider, output).run_project_calculations()
+            save_scene_item_facts_to_data_provider(data_provider, output)
+            SceneCalculations(data_provider).calculate_kpis()
         data_provider.load_session_data(session)
         output = Output()
         Calculations(data_provider, output).run_project_calculations()
