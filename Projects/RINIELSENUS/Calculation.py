@@ -40,11 +40,11 @@ class MarsUsCalculations(BaseCalculationsScript):
 #         # 'd4391ffb-78a2-4f70-be3c-a0309f47b1ea',
 #         # 'b3970bc2-de98-4dc5-9289-75cf9255e8d0',
 #         # '63a38dae-84da-4214-95b3-6cdd33c27869'
-#         'c768c2fb-d616-4bd6-81d1-b283039b8133'
+#         '00471ecc-4bed-4d13-ade2-01ca204d7fad'
 #     ]
 #
 #     # sessions = pd.read_csv('/home/Ilan/Documents/projects/marus/0612_batch_300.csv')['session_uid'].tolist()[:25]
-#     sessions = ['c5ef379f-54d6-45b3-b907-303a81fc1876']
+#     sessions = ['00471ecc-4bed-4d13-ade2-01ca204d7fad']
 #     for session in sessions:
 #         print('*******************************************************************')
 #         print('--------------{}-------------'.format(session))
