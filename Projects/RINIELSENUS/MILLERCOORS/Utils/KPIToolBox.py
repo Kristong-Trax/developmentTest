@@ -92,6 +92,16 @@ class MILLERCOORSToolBox:
             if scene_types:
                 relevant_scif = self.scif[self.scif['template_name'].isin(scene_types)]
                 if relevant_scif.empty:
+                    if main_line[Const.WRITE_NA] == 'Y':
+                        # we need to save a N/A result if the KPI is not going to run
+                        # it's easier to implement the logic here rather than in each KPI
+                        result_dict = self.build_dictionary_for_db_insert(kpi_name=kpi_name,
+                                                                          numerator_id=999,
+                                                                          numerator_result=2,
+                                                                          result=2,
+                                                                          denominator_id=0,
+                                                                          denominator_result=2)
+                        self.common.write_to_db_result(**result_dict)
                     continue
 
             relevant_template = self.templates[kpi_type]
