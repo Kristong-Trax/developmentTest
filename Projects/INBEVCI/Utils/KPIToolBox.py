@@ -173,6 +173,8 @@ class INBEVCIINBEVCIToolBox:
         manufacturer_scene_majority = {el: 0 for el in manufacturers_list}
         for scene_fk in relevant_scenes:
             sos_per_manufacturer = self.check_inbev_linear_sos_majority_by_location_type([scene_fk])
+            if not sos_per_manufacturer:
+                continue
             manufacturer_majority = max(sos_per_manufacturer, key=sos_per_manufacturer.get)
             manufacturer_scene_majority[manufacturer_majority] += 1
         return manufacturer_scene_majority
@@ -184,9 +186,6 @@ class INBEVCIINBEVCIToolBox:
         """
         filtered_scif = self.scif.loc[self.scif[Const.SCENE_FK].isin(relevant_scenes)]
         manufacturers_list = filtered_scif[Const.MANUFACTURER_FK].unique().tolist()
-        # Removing the "General" manufacturer
-        if 0 in manufacturers_list:
-            manufacturers_list.remove(0)
         return manufacturers_list
 
     def calculate_manufacturer_displays_count_per_location_type(self, displays_count_set_fk, location_type_fk):
