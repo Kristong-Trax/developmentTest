@@ -12,6 +12,7 @@ class Const(object):
     SOS = "SOS_manufacturer_category"
     SOS_VS_TARGET = "SOS vs Target"
     MANUFACTURER_DISPLAY_COUNT = "Manufacturer Displays Count"
+    SOS_PER_MANUFACTURER_AND_LOCATION_TYPE = "SOS per Manufacturer and Location Type"
 
     # level 2:
 
