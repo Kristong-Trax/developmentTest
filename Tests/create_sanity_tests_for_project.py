@@ -227,10 +227,10 @@ class ProjectsSanityData(BaseSeedData):
 if __name__ == '__main__':
     LoggerInitializer.init('')
     Config.init()
-    project_to_test = 'sanofikz'
+    project_to_test = 'sanoficm'
     creator = SeedCreator(project_to_test)
     creator.activate_exporter(specific_sessions=
-                              ['778B8153-D300-4FB4-9D8B-6A1802714F82'])
+                              ['306F715C-E37F-4144-AC0B-97A9DC564B04'])
     creator.rds_conn.disconnect_rds()
     data_class = CreateTestDataProjectSanity(project_to_test)
     data_class.create_data_class()
