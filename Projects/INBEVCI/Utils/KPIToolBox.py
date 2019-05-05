@@ -132,8 +132,8 @@ class INBEVCIINBEVCIToolBox:
         :param loc_type_fk: The relevant location_type_fk that is been calculated.
         :param parent_set_fk: The relevant parent kpi set if necessary.
         :param relevant_scenes: The relevant scenes for the calculation.
-        :return: A tuple which includes Inbev score,  All of the products' score and pass / failed which depends if
-        Inbev is the majority. E.g: (1001, 2000, 100).
+        :return: A dictionary which keys = manufacturer_fks and values = linear sos for the manufacturer in the relevant
+        scenes.
         """
         kpi_level_2_fk = self.common.get_kpi_fk_by_kpi_type(Const.SOS_PER_MANUFACTURER_AND_LOCATION_TYPE)
         manufacturer_list = self.get_all_the_manufacturers_by_filters(relevant_scenes)
