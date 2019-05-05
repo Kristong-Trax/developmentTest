@@ -293,9 +293,9 @@ class PlanogramCompliance(PlanogramComplianceBaseClass):
             scene_bay, pog_bay = combination
             scene_bay_data = self._get_df_of_bay(self.scene_matches, scene_bay)
             pog_bay_data = self._get_df_of_bay(self.planogram_matches, pog_bay)
-            can_match = self.can_match(pog_bay_data=pog_bay_data, scene_bay_data=scene_bay_data)
-            if not can_match:
-                continue
+            # can_match = self.can_match(pog_bay_data=pog_bay_data, scene_bay_data=scene_bay_data)
+            # if not can_match:
+            #     continue
             tag_compliance, score = self._local_get_tag_planogram_compliance(scene_bay_data, pog_bay_data)
             all_combinations = all_combinations.append(
                 {BAYS_COUPLE: (scene_bay, pog_bay), SCORE: score, TAG_COMPLIANCE: tag_compliance},
@@ -347,9 +347,9 @@ class PlanogramCompliance(PlanogramComplianceBaseClass):
 # if __name__ == '__main__':
 #     LoggerInitializer.init('POG compliance test')
 #     Config.init()
-#     path = "/home/elyashiv/Desktop/backup/POGs/test2/"
-#     planogram_data = pd.read_csv(path + "pog 2.csv")
-#     scene_data = pd.read_csv(path + "scene 2.csv")
+#     path = "/home/elyashiv/Desktop/backup/POGs/batmx/"
+#     planogram_data = pd.read_csv(path + "pog.csv")
+#     scene_data = pd.read_csv(path + "scene.csv")
 #     pog = PlanogramCompliance(data_provider=None)
 #     compliances = pog.get_compliance(manual_planogram_data=planogram_data, manual_scene_data=scene_data)
 #     print compliances
