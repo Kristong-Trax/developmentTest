@@ -19,7 +19,7 @@ if __name__ == '__main__':
     # session = '58272289-5f9a-4fb6-b8e0-a7f3bfa2e07c' # session with DF error on _set_scif
     # session = '8699c793-8a71-4a18-b24c-3785146075c4'
     # session = 'aa9d2ad8-61d5-4167-a4f1-e753ef366b39'
-    session = '3f87366f-0ae9-4e8a-88d7-299b55b1b795'
+    session = 'b1b84bdd-ea58-4469-b19d-ef916fac9469'
     data_provider.load_session_data(session)
     output = Output()
     PEPSICOUKCalculations(data_provider, output).run_project_calculations()
