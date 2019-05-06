@@ -436,6 +436,8 @@ class CBCILCBCIL_ToolBox(object):
     def calculate_survey(self, **general_filters):
         params = general_filters['filters']
         filters = params['2'].copy()
+        if not params['All']['scene_id']:
+            return None
         try:
             survey_question = str(int(filters.get('question_id')[0]))
         except:

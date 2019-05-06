@@ -26,7 +26,7 @@ class COOLERSCREENSUSKGenerator:
         for _, match in empty_matches.iterrows():
             prev_product_id = self._find_prev_product(project_connector, match)
             if prev_product_id is not None:
-                kpi_result = 0 if len(self._data_provider.matches[self._data_provider.matches['product_fk'] == prev_product_id]) == 0 else 1
+                kpi_result = 100 if len(self._data_provider.matches[self._data_provider.matches['product_fk'] == prev_product_id]) == 0 else 101
                 Log.info('Calculated COOLERSCREENSUS kpi for product {} the result is {}'.format(prev_product_id, kpi_result))
                 self._common.write_to_db_result_new_tables(fk=10000,
                                                            numerator_id=prev_product_id,
@@ -40,14 +40,16 @@ class COOLERSCREENSUSKGenerator:
     def _find_prev_product(self, project_connector, match):
         cur = project_connector.execute("""
         SELECT product_fk
-        FROM probedata.match_product_in_scene
-        WHERE creation_time < %(creation_time)s AND bay_number = %(bay_number)s AND shelf_number = %(shelf_number)s
-            AND facing_sequence_number = %(facing_sequence_number)s AND product_fk <> %(product_fk)s 
-        ORDER BY creation_time DESC
+        FROM probedata.match_product_in_scene mpis JOIN probedata.scene sc on sc.pk = mpis.scene_fk
+        WHERE sc.creation_time < %(creation_time)s AND bay_number = %(bay_number)s AND shelf_number = %(shelf_number)s
+            AND facing_sequence_number = %(facing_sequence_number)s AND product_fk <> %(product_fk)s AND 
+            sc.store_fk = %(store_fk)s AND sc.template_fk =%(template_fk)s
+        ORDER BY sc.creation_time DESC
         LIMIT 1
         """, {'product_fk': match['product_fk'], 'bay_number': match['bay_number'],
               'shelf_number': match['shelf_number'],
-              'facing_sequence_number': match['facing_sequence_number'], 'creation_time': match['creation_time']})
+              'facing_sequence_number': match['facing_sequence_number'], 'creation_time': match['creation_time'],
+              'store_fk': self._data_provider.store_fk, 'template_fk': int(self._data_provider.templates['template_fk'])})
 
         for row in cur:
             return row[0]

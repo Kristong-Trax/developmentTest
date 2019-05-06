@@ -1,15 +1,14 @@
 import pandas as pd
 import os
-
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from KPIUtils_v2.Calculations.CalculationsUtils.GENERALToolBoxCalculations import GENERALToolBox
 from Projects.PNGHK.Data.Const import Const
 from Trax.Utils.Logging.Logger import Log
-
+from KPIUtils_v2.GlobalDataProvider.PsDataProvider import PsDataProvider
 
 __author__ = 'ilays'
 
-PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', '06_PNGHK_template_2019_08_03.xlsx')
+PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', Const.TEMPLATE_PATH)
 
 class SceneToolBox:
 
@@ -28,6 +27,8 @@ class SceneToolBox:
         self.tools = GENERALToolBox(data_provider)
         self.osd_rules_sheet = pd.read_excel(PATH, Const.OSD_RULES).fillna("")
         self.store_info = self.data_provider[Data.STORE_INFO]
+        self.psdataprovider = PsDataProvider(self.data_provider)
+        self.match_product_in_probe_state_reporting = self.psdataprovider.get_match_product_in_probe_state_reporting()
 
     def main_calculation(self):
         """
@@ -100,6 +101,15 @@ class SceneToolBox:
             template_fk = -1
         self.common.write_to_db_result(fk=kpi_fk, numerator_id=self.store_id, result=1, by_scene=True,
                                        denominator_id=template_fk)
+        if len(results_list) > 1:
+            df = pd.concat(results_list).drop_duplicates()
+        else:
+            df = results_list[0]
+        osd_pk = self.match_product_in_probe_state_reporting[self.match_product_in_probe_state_reporting['name']
+                                         == 'OSD']['match_product_in_probe_state_reporting_fk'].values[0]
+        self.common.match_product_in_probe_state_values[Const.MATCH_PRODUCT_IN_PROBE_FK] = \
+                                                                            df['probe_match_fk'].drop_duplicates()
+        self.common.match_product_in_probe_state_values[Const.MATCH_PRODUCT_IN_PROBE_STATE_REPORTING_FK] = osd_pk
 
     def find_row_osd(self, s):
         rows = self.osd_rules_sheet[self.osd_rules_sheet[Const.SCENE_TYPE].str.encode("utf8") == s.encode("utf8")]

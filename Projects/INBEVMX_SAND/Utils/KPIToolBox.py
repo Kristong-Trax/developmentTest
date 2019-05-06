@@ -21,7 +21,7 @@ __author__ = 'ilays'
 
 KPI_NEW_TABLE = 'report.kpi_level_2_results'
 PATH_SURVEY_AND_SOS_TARGET = os.path.join(os.path.dirname(os.path.realpath(__file__)),
-                                          '..', 'Data', 'inbevmx_template_v3.5.xlsx')
+                                          '..', 'Data', 'inbevmx_template_v3.6.xlsx')
 
 
 class INBEVMXToolBox:
@@ -95,7 +95,7 @@ class INBEVMXToolBox:
         rows_stores_filter = self.oos_sheet[
             temp.apply(lambda r: self.store_type_filter in [item.strip() for item in r.split(",")])]
         if rows_stores_filter.empty:
-            weight = 15
+            weight = 0
         else:
             weight = rows_stores_filter[Const.TEMPLATE_SCORE].values[0]
         all_data = pd.merge(self.scif[["store_id","product_fk","facings","template_name"]], self.store_info, left_on="store_id",right_on="store_fk")
@@ -137,7 +137,7 @@ class INBEVMXToolBox:
             self.common_v2.write_to_db_result(fk=atomic_pk_sku, numerator_id=row['product_fk'],
                                         numerator_result=row['facings'], denominator_id=self.store_id,
                                         result=result, score=result, identifier_parent=Const.OOS_KPI,
-                                        should_enter=True ,parent_fk=3)
+                                        should_enter=True, parent_fk=3)
 
         not_existing_products_len = len(products_df[products_df['facings'] == 0])
         result = not_existing_products_len / float(len(products_to_check))
