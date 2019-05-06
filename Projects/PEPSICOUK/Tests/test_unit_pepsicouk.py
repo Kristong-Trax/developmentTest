@@ -20,7 +20,7 @@ def get_exclusion_template_df_all_tests():
 
 class Test_PEPSICOUK(MockingTestCase):
     # seeder = Seeder()
-    template_df_mock = get_exclusion_template_df_all_tests()
+    # template_df_mock = get_exclusion_template_df_all_tests()
 
     @property
     def import_path(self):
@@ -46,6 +46,7 @@ class Test_PEPSICOUK(MockingTestCase):
         self.on_display_products_mock = self.mock_on_display_products()
 
         self.exclusion_template_mock = self.mock_template_data()
+        self.store_policy_template_mock = self.mock_store_policy_exclusion_template_data()
         self.output = MagicMock()
         self.external_targets_mock = self.mock_kpi_external_targets_data()
         self.kpi_result_values_mock = self.mock_kpi_result_value_table()
@@ -56,6 +57,11 @@ class Test_PEPSICOUK(MockingTestCase):
         self.mock_all_products()
         self.mock_all_templates()
         self.mock_position_graph()
+
+    def mock_store_data(self):
+        store_data = self.mock_object('PEPSICOUKCommonToolBox.get_store_data_by_store_id')
+        store_data.return_value = DataTestUnitPEPSICOUK.store_data
+        return store_data.return_value
 
     def mock_position_graph(self):
         self.mock_object('PositionGraphs', path='KPIUtils_v2.Calculations.AssortmentCalculations')
@@ -169,14 +175,23 @@ class Test_PEPSICOUK(MockingTestCase):
     #     # static_kpi.return_value = DataTestUnitCCBZA_SAND.static_data
     #     return static_kpi.return_value
 
-    def mock_store_data(self):
-        store_data = self.mock_object('PEPSICOUKToolBox.get_store_data_by_store_id')
-        store_data.return_value = DataTestUnitPEPSICOUK.store_data
-        return store_data.return_value
+    # def mock_store_data(self):
+    #     store_data = self.mock_object('PEPSICOUKToolBox.get_store_data_by_store_id')
+    #     store_data.return_value = DataTestUnitPEPSICOUK.store_data
+    #     return store_data.return_value
+
+    def mock_store_policy_exclusion_template_data(self):
+        template_df = pd.read_excel(DataTestUnitPEPSICOUK.exclusion_template_path, sheet_name='store_policy')
+        template_df = template_df.fillna('ALL')
+        template_data_mock = self.mock_object('PEPSICOUKCommonToolBox.get_store_policy_data_for_exclusion_template',
+                                              path='Projects.PEPSICOUK.Utils.CommonToolBox')
+        template_data_mock.return_value = template_df
+        return template_data_mock.return_value
 
     def mock_template_data(self):
-        # template_df = pd.read_excel(DataTestUnitPEPSICOUK.exclusion_template_path)
-        template_df = Test_PEPSICOUK.template_df_mock
+        template_df = pd.read_excel(DataTestUnitPEPSICOUK.exclusion_template_path, sheet_name='exclusion_rules')
+        template_df = template_df.fillna('')
+        # template_df = Test_PEPSICOUK.template_df_mock
         template_data_mock = self.mock_object('PEPSICOUKCommonToolBox.get_exclusion_template_data',
                                               path='Projects.PEPSICOUK.Utils.CommonToolBox')
         template_data_mock.return_value = template_df
@@ -454,3 +469,25 @@ class Test_PEPSICOUK(MockingTestCase):
     #     for expected_result in expected_list:
     #         test_result_list.append(self.check_kpi_results(kpi_results, expected_result) == 1)
     #     self.assertTrue(all(test_result_list))
+
+    def test_reset_filtered_scif_and_matches_to_exclusion_all_state(self):
+        self.mock_scene_item_facts(pd.read_excel(DataTestUnitPEPSICOUK.test_case_1, sheetname='scif'))
+        self.mock_match_product_in_scene(pd.read_excel(DataTestUnitPEPSICOUK.test_case_1, sheetname='matches'))
+        tool_box = PEPSICOUKToolBox(self.data_provider_mock, self.output)
+        initial_filtered_matches_l = len(tool_box.filtered_matches)
+        initial_filtered_scif_l = len(tool_box.filtered_scif)
+        tool_box.filtered_scif, tool_box.filtered_matches = \
+            tool_box.commontools.set_filtered_scif_and_matches_for_specific_kpi(tool_box.filtered_scif, tool_box.filtered_matches,
+                                                                                'Brand Space to Sales Index')
+        kpi_filtered_matches_l = len(tool_box.filtered_matches)
+        kpi_filtered_scif_l = len(tool_box.filtered_scif)
+        tool_box.reset_filtered_scif_and_matches_to_exclusion_all_state()
+        reset_to_initial_filtered_matches_l = len(tool_box.filtered_matches)
+        reset_to_initial_filtered_scif_l = len(tool_box.filtered_scif)
+
+        self.assertEquals(kpi_filtered_matches_l, 30)
+        self.assertEquals(initial_filtered_matches_l, reset_to_initial_filtered_matches_l)
+        self.assertEquals(reset_to_initial_filtered_matches_l, 39)
+        self.assertEquals(kpi_filtered_scif_l, 5)
+        self.assertEquals(initial_filtered_scif_l, reset_to_initial_filtered_scif_l)
+        self.assertEquals(reset_to_initial_filtered_scif_l, 7)
