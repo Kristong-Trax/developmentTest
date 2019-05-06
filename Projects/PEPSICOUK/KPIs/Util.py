@@ -57,6 +57,27 @@ class PepsicoUtil:
     PEPSICO_SUB_SEGMENT_SPACE_TO_SALES_INDEX = 'PepsiCo Sub Segment Space to Sales Index'
     PEPSICO_SUB_SEGMENT_SOS_VS_TARGET = 'PepsiCo Sub Segment SOS vs Target'
 
+    PLACEMENT_BY_SHELF_NUMBERS_TOP = 'Placement by shelf numbers_Top'
+    TOTAL_LINEAR_SPACE = 'Total Linear Space'
+    NUMBER_OF_FACINGS = 'Number of Facings'
+    NUMBER_OF_BAYS = 'Number of bays'
+    NUMBER_OF_SHELVES = 'Number of shelves'
+    PRODUCT_BLOCKING = 'Product Blocking'
+    PRODUCT_BLOCKING_ADJACENCY = 'Product Blocking Adjacency'
+    SHELF_PLACEMENT_VERTICAL_LEFT = 'Shelf Placement Vertical_Left'
+    SHELF_PLACEMENT_VERTICAL_CENTER = 'Shelf Placement Vertical_Center'
+    SHELF_PLACEMENT_VERTICAL_RIGHT = 'Shelf Placement Vertical_Right'
+    NUMBER_OF_SHELVES_TEMPL_COLUMN = 'No of Shelves in Fixture (per bay) (key)'
+    RELEVANT_SHELVES_TEMPL_COLUMN = 'Shelves From Bottom To Include (data)'
+    SHELF_PLC_TARGETS_COLUMNS = ['kpi_operation_type_fk', 'operation_type', 'kpi_level_2_fk', 'type',
+                                 NUMBER_OF_SHELVES_TEMPL_COLUMN, RELEVANT_SHELVES_TEMPL_COLUMN, 'KPI Parent']
+    SHELF_PLC_TARGET_COL_RENAME = {'kpi_operation_type_fk_x': 'kpi_operation_type_fk',
+                                   'operation_type_x': 'operation_type', 'kpi_level_2_fk_x': 'kpi_level_2_fk',
+                                   'type_x': 'type',
+                                   NUMBER_OF_SHELVES_TEMPL_COLUMN + '_x': NUMBER_OF_SHELVES_TEMPL_COLUMN,
+                                   RELEVANT_SHELVES_TEMPL_COLUMN + '_x': RELEVANT_SHELVES_TEMPL_COLUMN,
+                                   'KPI Parent_x': 'KPI Parent'}
+
     def __init__(self, output, data_provider):
         self.output = output
         self.data_provider = data_provider
@@ -66,15 +87,20 @@ class PepsicoUtil:
         self.session_uid = self.data_provider.session_uid
         self.products = self.data_provider[Data.PRODUCTS]
         self.all_products = self.data_provider[Data.ALL_PRODUCTS]
-        self.match_product_in_scene = self.data_provider[Data.MATCHES] # initial matches
+        self.match_product_in_scene = self.data_provider[Data.MATCHES]
         self.visit_date = self.data_provider[Data.VISIT_DATE]
         self.session_info = self.data_provider[Data.SESSION_INFO]
         self.scene_info = self.data_provider[Data.SCENES_INFO]
-        self.store_id = self.data_provider[Data.STORE_FK]
-        self.scif = self.data_provider[Data.SCENE_ITEM_FACTS] # initial scif
+        self.store_id = self.data_provider[Data.STORE_FK] if self.data_provider[Data.STORE_FK] is not None \
+                                                            else self.session_info['store_fk'].values[0]
+        self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
         self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         self.kpi_static_data = self.common.get_kpi_static_data()
         self.kpi_results_queries = []
+
+        self.probe_groups = self.get_probe_group()
+        self.match_product_in_scene = self.match_product_in_scene.merge(self.probe_groups, on='probe_match_fk',
+                                                                        how='left')
 
         self.toolbox = GENERALToolBox(self.data_provider)
         self.commontools = PEPSICOUKCommonToolBox(self.data_provider, self.rds_conn)
@@ -82,8 +108,8 @@ class PepsicoUtil:
         self.custom_entities = self.commontools.custom_entities
         self.on_display_products = self.commontools.on_display_products
         self.exclusion_template = self.commontools.exclusion_template
-        self.filtered_scif = self.commontools.filtered_scif
-        self.filtered_matches = self.commontools.filtered_matches
+        self.filtered_scif = self.commontools.filtered_scif.copy()
+        self.filtered_matches = self.commontools.filtered_matches.copy()
 
         self.scene_bay_shelf_product = self.get_facings_scene_bay_shelf_product()
         self.ps_data = PsDataProvider(self.data_provider, self.output)
@@ -97,6 +123,14 @@ class PepsicoUtil:
         self.scene_kpi_results = self.get_results_of_scene_level_kpis()
         self.kpi_results_check = pd.DataFrame(columns=['kpi_fk', 'numerator', 'denominator', 'result', 'score'])
         self.sos_vs_target_targets = self.construct_sos_vs_target_base_df()
+
+        self.all_targets_unpacked = self.commontools.all_targets_unpacked.copy()
+        self.block_results = pd.DataFrame(columns=['Group Name', 'Score'])
+
+    def get_probe_group(self):
+        query = PEPSICOUK_Queries.get_probe_group(self.session_uid)
+        probe_group = pd.read_sql_query(query, self.rds_conn.db)
+        return probe_group
 
     @staticmethod
     def get_full_bay_and_positional_filters(parameters): # get a function from ccbza
@@ -218,3 +252,12 @@ class PepsicoUtil:
         products_in_session = self.filtered_scif.loc[self.filtered_scif['facings'] > 0]['product_fk'].values
         assortment_result.loc[assortment_result['product_fk'].isin(products_in_session), 'in_store'] = 1
         return assortment_result
+
+    @staticmethod
+    def get_block_and_adjacency_filters(target_series):
+        filters = {target_series['Parameter 1']: target_series['Value 1']}
+        if target_series['Parameter 2']:
+            filters.update({target_series['Parameter 2']: target_series['Value 2']})
+        if target_series['Parameter 3']:
+            filters.update({target_series['Parameter 3']: target_series['Value 3']})
+        return filters
