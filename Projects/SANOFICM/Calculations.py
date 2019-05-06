@@ -10,7 +10,7 @@ from KPIUtils.GlobalProjects.SANOFI.KPIGenerator import SANOFIGenerator
 __author__ = 'Shani'
 
 
-class SANOFIAUCalculations(BaseCalculationsScript):
+class SANOFICMCalculations(BaseCalculationsScript):
     def run_project_calculations(self):
         self.timer.start()
         TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), 'SANOFICM', 'Data', 'Template.xlsx')
