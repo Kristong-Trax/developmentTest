@@ -476,7 +476,8 @@ class ToolBox:
                 adjacent_items = edge_matches - items
                 adj_mpis = mpis[(mpis['scene_match_fk'].isin(adjacent_items))]
                 adj_mpis = self.filter_df(adj_mpis, Const.SOS_EXCLUDE_FILTERS, exclude=1)
-                adj_mpis = self.filter_df(adj_mpis, Const.ALLOWED_FILTERS, exclude=1)
+                adj_mpis = self.filter_df(adj_mpis, {'product_type': 'Empty'}, exclude=1)
+                # adj_mpis = self.filter_df(adj_mpis, Const.ALLOWED_FILTERS, exclude=1)
 
                 adjacent_sections = list(set(sum([list(adj_mpis[col].unique()) for col in col_list], [])))
 
@@ -514,7 +515,7 @@ class ToolBox:
             anchor_filters = item_filters if item_filters else self.get_kpi_line_filters(kpi_line)
             anchor = self.anchor_base(general_filters, anchor_filters, relevant_scif['scene_fk'].unique(), 1)
             if sum(anchor.values()) > 0:
-                kwargs_list.append({'score': 1, 'result': Const.END_OF_CAT, 'target': 1})
+                kwargs_list.append({'score': 1, 'resu@huntlt': Const.END_OF_CAT, 'target': 1})
 
         all_results = self.base_adjacency(kpi_name, kpi_line, relevant_scif, general_filters, item_filters=item_filters)
         for result in sum([x for x, y in all_results.values()], []):
