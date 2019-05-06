@@ -361,9 +361,9 @@ class CCZAToolBox:
                     Const.column_key2].values[0]
             elif kpi_level == self.common.LEVEL3:
                 return self.kpi_static_data[
-                    (self.kpi_static_data[Const.column_name1] == kpi_names[Const.column_name1]) &
-                    (self.kpi_static_data[Const.column_name2] == kpi_names[Const.column_name2]) &
-                    (self.kpi_static_data[Const.column_name3] == kpi_names[Const.column_name3])][
+                    (self.kpi_static_data[Const.column_name1].str.encode('utf8') == kpi_names[Const.column_name1].encode('utf8')) &
+                    (self.kpi_static_data[Const.column_name2].str.encode('utf8') == kpi_names[Const.column_name2].encode('utf8')) &
+                    (self.kpi_static_data[Const.column_name3].str.encode('utf8') == kpi_names[Const.column_name3].encode('utf8'))][
                     Const.column_key3].values[0]
             else:
                 raise ValueError, 'invalid level'
