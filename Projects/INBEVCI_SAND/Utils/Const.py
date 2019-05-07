@@ -12,6 +12,7 @@ class INBEVCISANDConst(object):
     SOS = "SOS_manufacturer_category"
     SOS_VS_TARGET = "SOS vs Target"
     MANUFACTURER_DISPLAY_COUNT = "Manufacturer Displays Count"
+    SOS_PER_MANUFACTURER_AND_LOCATION_TYPE = "SOS per Manufacturer and Location Type"
 
     # level 2:
     BRAND_BLOCK = "Brand Block"
@@ -41,6 +42,7 @@ class INBEVCISANDConst(object):
     MANUFACTURER_FK = 'manufacturer_fk'
     EXCLUDE_FILTER = 0
     EMPTY = 'Empty'
+    IRRELEVANT = 'irrelevant'
     PRODUCT_TYPE = 'product_type'
     CATEGORY_FK = 'category_fk'
     BEER_CATEGORY_FK = 1

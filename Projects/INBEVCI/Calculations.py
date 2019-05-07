@@ -20,7 +20,7 @@ class INBEVCIINBEVCICalculations(BaseCalculationsScript):
 #     LoggerInitializer.init('inbevci calculations')
 #     Config.init()
 #     project_name = 'inbevci'
-#     sessions = ['7c66abe2-599a-4c72-b41f-e68505f71504']
+#     sessions = ['52031109-0a29-4ae1-9f79-7a9b709b0f37']
 #     for session in sessions:
 #         data_provider = KEngineDataProvider(project_name)
 #         data_provider.load_session_data(session)

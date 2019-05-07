@@ -88,6 +88,7 @@ class CCRUKPIToolBox:
         self.kpi_set_name = kpi_set_name if kpi_set_name else self.pos_kpi_set_name
         self.kpi_set_type = kpi_set_type if kpi_set_type else POS
         self.kpi_name_to_id = {kpi_set_type: {}}
+        self.kpi_children = {kpi_set_type: {}}
         self.kpi_scores_and_results = {kpi_set_type: {}}
 
         self.kpi_fetcher = CCRUCCHKPIFetcher(self.project_name)
@@ -127,6 +128,7 @@ class CCRUKPIToolBox:
         self.kpi_fetcher.kpi_static_data = self.kpi_fetcher.get_static_kpi_data(kpi_set_name)
         if empty_kpi_scores_and_results:
             self.kpi_name_to_id[kpi_set_type] = {}
+            self.kpi_children[kpi_set_type] = {}
             self.kpi_scores_and_results[kpi_set_type] = {}
 
     def update_kpi_scores_and_results(self, param, kpi_scores_and_results):
@@ -134,6 +136,8 @@ class CCRUKPIToolBox:
             kpi_id = str(param.get('KPI ID'))
             parent = str(param.get('Parent')).split('.')[0] if param.get('Parent') else '0'
             self.kpi_name_to_id[self.kpi_set_type][param.get('KPI name Eng')] = kpi_id
+            self.kpi_children[self.kpi_set_type][parent] = list(set(self.kpi_children[self.kpi_set_type][parent] + [kpi_id]))\
+                if self.kpi_children[self.kpi_set_type].get(parent) else [kpi_id]
             if not self.kpi_scores_and_results[self.kpi_set_type].get(kpi_id):
                 self.kpi_scores_and_results[self.kpi_set_type][kpi_id] = \
                     {'kpi_id': kpi_id,
@@ -151,7 +155,8 @@ class CCRUKPIToolBox:
                      'scene_uid': None,
                      'level': int(param.get('level')) if param.get('level') else 1,
                      'parent': parent,
-                     'additional_level': None}
+                     'additional_level': None,
+                     'sort_order': param.get('Sorting')}
             self.kpi_scores_and_results[self.kpi_set_type][kpi_id].update(kpi_scores_and_results)
 
     def rds_connection(self):
@@ -2272,7 +2277,8 @@ class CCRUKPIToolBox:
                     {'KPI ID': kf.get('id'),
                      'KPI name Eng': kf.get('name'),
                      'KPI name Rus': kf.get('name'),
-                     'Parent': 0},
+                     'Parent': 0,
+                     'Sorting': 0},
                     {'scene_uid': kf.get('scene_uid'),
                      'scene_id': kf.get('scene_id'),
                      'result': result_formatted,
@@ -2313,7 +2319,8 @@ class CCRUKPIToolBox:
             {'KPI ID': 0,
              'KPI name Eng': kpi_set_name,
              'KPI name Rus': kpi_set_name,
-             'Parent': 'root'},
+             'Parent': 'root',
+             'Sorting': 0},
             {'level': 0})
 
         return
@@ -2649,6 +2656,7 @@ class CCRUKPIToolBox:
                         category_local = kpi['Gap Category Rus']
                         group_local = kpi['Gap Group Rus']
                         subgroup_local = kpi['Gap Subgroup Rus']
+                        sort_order = kpi['Sorting']
                         score = self.kpi_scores_and_results[POS][kpi_id].get('weighted_score')
                         target = self.kpi_scores_and_results[POS][kpi_id].get('weight') * 100
 
@@ -2664,12 +2672,46 @@ class CCRUKPIToolBox:
                                     {'KPI ID': counter,
                                      'KPI name Eng': kpi_name,
                                      'KPI name Rus': kpi_name_local,
-                                     'Parent': subgroup_counter},
+                                     'Parent': subgroup_counter,
+                                     'Sorting': sort_order},
                                     {'threshold': 0,
                                      'result': result,
                                      'format': 'STR',
                                      'level': 4})
+
                                 subgroup_gap += gap
+
+                                # appending relevant atomics to the structure
+                                atomics = self.kpi_children[POS].get(kpi_id)
+                                if atomics:
+                                    for atomic_id in atomics:
+                                        self.update_kpi_scores_and_results(
+                                            {'KPI ID': str(counter) + '_' + atomic_id,
+                                             'KPI name Eng': self.kpi_scores_and_results[POS][atomic_id].get('eng_name'),
+                                             'KPI name Rus': self.kpi_scores_and_results[POS][atomic_id].get('rus_name'),
+                                             'Parent': counter,
+                                             'Sorting': self.kpi_scores_and_results[POS][atomic_id].get('sort_order')},
+                                            {'threshold': self.kpi_scores_and_results[POS][atomic_id].get('threshold'),
+                                             'result': self.kpi_scores_and_results[POS][atomic_id].get('result'),
+                                             'score': self.kpi_scores_and_results[POS][atomic_id].get('score'),
+                                             'format': self.kpi_scores_and_results[POS][atomic_id].get('format'),
+                                             'level': 5})
+
+                                        # appending relevant sub-atomics to the structure
+                                        sub_atomics = self.kpi_children[POS].get(atomic_id)
+                                        if sub_atomics:
+                                            for sub_atomic_id in sub_atomics:
+                                                self.update_kpi_scores_and_results(
+                                                    {'KPI ID': str(counter) + '_' + sub_atomic_id,
+                                                     'KPI name Eng': self.kpi_scores_and_results[POS][sub_atomic_id].get('eng_name'),
+                                                     'KPI name Rus': self.kpi_scores_and_results[POS][sub_atomic_id].get('rus_name'),
+                                                     'Parent': str(counter) + '_' + atomic_id,
+                                                     'Sorting': self.kpi_scores_and_results[POS][sub_atomic_id].get('sort_order')},
+                                                    {'threshold': self.kpi_scores_and_results[POS][sub_atomic_id].get('threshold'),
+                                                     'result': self.kpi_scores_and_results[POS][sub_atomic_id].get('result'),
+                                                     'score': self.kpi_scores_and_results[POS][sub_atomic_id].get('score'),
+                                                     'format': self.kpi_scores_and_results[POS][sub_atomic_id].get('format'),
+                                                     'level': 6})
 
                     if subgroup_gap > 0:
                         result = "+ " + format(subgroup_gap, ".1f")
@@ -2679,7 +2721,8 @@ class CCRUKPIToolBox:
                             {'KPI ID': subgroup_counter,
                              'KPI name Eng': subgroup,
                              'KPI name Rus': subgroup_local,
-                             'Parent': group_counter},
+                             'Parent': group_counter,
+                             'Sorting': subgroup_counter},
                             {'threshold': 0,
                              'result': result,
                              'format': 'STR',
@@ -2694,7 +2737,8 @@ class CCRUKPIToolBox:
                         {'KPI ID': group_counter,
                          'KPI name Eng': group,
                          'KPI name Rus': group_local,
-                         'Parent': category_counter},
+                         'Parent': category_counter,
+                         'Sorting': group_counter},
                         {'threshold': 0,
                          'result': result,
                          'format': 'STR',
@@ -2709,7 +2753,8 @@ class CCRUKPIToolBox:
                     {'KPI ID': category_counter,
                      'KPI name Eng': category,
                      'KPI name Rus': category_local,
-                     'Parent': 0},
+                     'Parent': 0,
+                     'Sorting': category_counter},
                     {'threshold': 0,
                      'result': result,
                      'format': 'STR',
@@ -2723,7 +2768,8 @@ class CCRUKPIToolBox:
             {'KPI ID': 0,
              'KPI name Eng': kpi_set_name,
              'KPI name Rus': kpi_set_name,
-             'Parent': 'root'},
+             'Parent': 'root',
+             'Sorting': 0},
             {'threshold': 0,
              'result': result,
              'format': 'STR',
@@ -3452,7 +3498,7 @@ class CCRUKPIToolBox:
             kpis = self.kpi_scores_and_results.get(kpi_set_type)
             if kpis:
                 kpis = pd.DataFrame(kpis.values())
-                kpis = kpis.where((pd.notnull(kpis)), None)
+                kpis = kpis.where((pd.notnull(kpis)), None).sort_values(by=['sort_order'])
                 if kpi_set_type in [EQUIPMENT, TOPSKU]:
                     identifier_parent = self.common.get_dictionary(set=CONTRACT, level=0, kpi=CONTRACT)
                 else:
@@ -3467,7 +3513,10 @@ class CCRUKPIToolBox:
     def write_kpi_tree(self, kpi_set_type, kpis, parent='root', identifier_parent=None):
         group_score = 0
         group_weight = 0
+        sort_order = 0
         for i, kpi in kpis[kpis['parent'] == parent].iterrows():
+
+            sort_order += 1
 
             kpi_name = (kpi_set_type + '_' + str(int(kpi['level']))
                         + (('_' + kpi['format']) if kpi['format'] else '')
@@ -3525,6 +3574,7 @@ class CCRUKPIToolBox:
 
             self.common.write_to_db_result(fk=kpi_fk,
                                            numerator_id=numerator_id,
+                                           numerator_result=sort_order,
                                            denominator_id=denominator_id,
                                            context_id=context_id,
                                            target=target,
