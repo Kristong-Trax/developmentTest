@@ -11,8 +11,8 @@ from Trax.Cloud.Services.Connector.Keys import DbUsers
 from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Trax.Utils.Logging.Logger import Log
 from KPIUtils_v2.DB.CommonV2 import Common as Common_V2, log_runtime
-from Projects.INBEVMX_SAND.Data.Const import Const
-from Projects.INBEVMX_SAND.Utils.Fetcher import INBEVMXQueries
+from Projects.INBEVMX.Data.Const import Const
+from Projects.INBEVMX.Utils.Fetcher import INBEVMXQueries
 from KPIUtils_v2.Calculations.SurveyCalculations import Survey
 from KPIUtils_v2.Calculations.CalculationsUtils.GENERALToolBoxCalculations import GENERALToolBox
 
