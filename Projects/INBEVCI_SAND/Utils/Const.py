@@ -42,6 +42,7 @@ class INBEVCISANDConst(object):
     MANUFACTURER_FK = 'manufacturer_fk'
     EXCLUDE_FILTER = 0
     EMPTY = 'Empty'
+    IRRELEVANT = 'irrelevant'
     PRODUCT_TYPE = 'product_type'
     CATEGORY_FK = 'category_fk'
     BEER_CATEGORY_FK = 1
