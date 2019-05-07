@@ -160,6 +160,7 @@ class SINGHATHToolBox:
                 continue
             own_manufacturer_price = own_manufacturer['price'].iloc[0]
             competitive_manufacturer_price = competitive_manufacturer['price'].iloc[0]
+            # if the `calculated price difference` <= `given price difference` then only it is a pass
             if float(own_manufacturer_price - competitive_manufacturer_price) > \
                     float(each_row.get(PRICE_SHEET_PRICE_DIFFERENCE_COL, 0)):
                 result = 0
@@ -210,62 +211,68 @@ class SINGHATHToolBox:
                                                   .format(category=category_name))['category_fk'].iloc[0]
             # iterate through rows for each category
             presence = 0
-            group_any_condition_success = False
-            group_any_condition_fail = False
             # handling single logic -- either `and` or `or`
             logic = dump_display_data[DUMP_DISPLAY_LOGIC_COL].iloc[0].strip().lower()
-            for idx, each_entry in dump_display_data.iterrows():
-                if group_any_condition_fail and logic == 'and':
-                    break
-                if group_any_condition_success and logic == 'or':
+            # get the applicable scene types -- start
+            set_scene_types = set()
+            scene_type_list = list(dump_display_data[DUMP_DISPLAY_SCENE_TYPE_COL].values.ravel('F'))
+            for each_list in scene_type_list:
+                set_scene_types.update(tuple(str(each.strip()) for each in each_list.split(',')))
+            # get the applicable scene types -- end
+            # make template name case-insensitive search -- start
+            self.templates["template_name"] = self.templates["template_name"].str.lower()
+            _scene_types = map(str.lower, list(set_scene_types))
+            # make template name case-insensitive search -- start
+            allowed_template_fks = self.templates.query("template_name in {allowed_templates}".format(
+                allowed_templates=_scene_types
+            ))['template_fk'].values.tolist()
+            template_scif = self.scif.query('template_fk in {}'.format(allowed_template_fks))
+            if template_scif.empty:
+                print "kpi: {kpi}: Template/Scene Types: {templates} are not present in session {sess}" \
+                    .format(kpi=kpi[DF_KPI_TYPE_COL].iloc[0],
+                            templates=_scene_types,
+                            sess=self.session_uid)
+                continue
+            template_scif_by_scene_id = template_scif.groupby('scene_id')
+            row_truths = []  # to check if all items in the category is true
+            for scene_id, scene_data in template_scif_by_scene_id:
+                if row_truths and all(row_truths):
+                    # in the sessions; at least one scene has satisfied
                     presence = 1
                     break
-                # get the applicable scene types -- start
-                set_scene_types = set()
-                scene_type_list = list(dump_display_data[DUMP_DISPLAY_SCENE_TYPE_COL].values.ravel('F'))
-                for each_list in scene_type_list:
-                    set_scene_types.update(tuple(str(each.strip()) for each in each_list.split(',')))
-                # get the applicable scene types -- end
-                # make template name case-insensitive search -- start
-                self.templates["template_name"] = self.templates["template_name"].str.lower()
-                _scene_types = map(str.lower, list(set_scene_types))
-                # make template name case-insensitive search -- start
-                allowed_template_fks = self.templates.query("template_name in {allowed_templates}".format(
-                    allowed_templates=_scene_types
-                ))['template_fk'].values.tolist()
-                template_scif = self.scif.query('template_fk in {}'.format(allowed_template_fks))
-                if template_scif.empty:
-                    print "kpi: {kpi}: Template/Scene Types: {templates} are not present in session {sess}" \
-                        .format(kpi=kpi[DF_KPI_TYPE_COL].iloc[0],
-                                templates=_scene_types,
-                                sess=self.session_uid)
-                    continue
-                # get the ean codes from template and query in dataframe - starts
-                prod_type = DUMP_DISPLAY_PROD_TYPE_MAP[each_entry[DUMP_DISPLAY_PROD_TYPE_COL].lower().strip()]
-                prod_data = dump_display_data.query("{key}=='{value}'".format(key=DUMP_DISPLAY_PROD_TYPE_COL,
-                                                                              value=prod_type))
-                if prod_data.empty:
-                    continue
-                _pos_codes = str(prod_data[DUMP_DISPLAY_EAN_CODE_COL].iloc[0])
-                all_pos_ean_codes = tuple(map(str, [x.strip() for x in _pos_codes.split(',') if x]))
-                # get the ean codes from template and query in dataframe - ends
-                template_scif_by_scene_id = template_scif.groupby('scene_id')
-                for scene_id, scene_data in template_scif_by_scene_id:
+                else:
+                    if row_truths and logic == 'and':
+                        # its an and logic and one of the prod type is not found
+                        # in this scene; check next scene
+                        continue
+                if any(row_truths) and logic == 'or':
+                    # in the session, either sku or pos is found
+                    presence = 1
+                    break
+                for idx, each_entry in dump_display_data.iterrows():
+                    # get the ean codes from template and query in dataframe - starts
+                    prod_type = DUMP_DISPLAY_PROD_TYPE_MAP[each_entry[DUMP_DISPLAY_PROD_TYPE_COL].lower().strip()]
+                    prod_data = dump_display_data.query("{key}=='{value}'".format(key=DUMP_DISPLAY_PROD_TYPE_COL,
+                                                                                  value=prod_type))
+                    if prod_data.empty:
+                        continue
+                    _pos_codes = str(prod_data[DUMP_DISPLAY_EAN_CODE_COL].iloc[0])
+                    all_pos_ean_codes = tuple(map(str, [x.strip() for x in _pos_codes.split(',') if x]))
+                    # get the ean codes from template and query in dataframe - ends
                     facings_count = 0
                     prod_scif_with_ean = scene_data.query(
                         'product_ean_code in {all_skus} and category_fk=="{category_fk}"'
-                        .format(all_skus=all_pos_ean_codes,
-                                category_fk=category_fk))
+                            .format(all_skus=all_pos_ean_codes,
+                                    category_fk=category_fk))
                     if not prod_scif_with_ean.empty:
                         facings_count = int(prod_scif_with_ean['facings'].iloc[0])
                     if facings_count < int(prod_data[DUMP_DISPLAY_COUNT_COL].iloc[0]):
-                        presence = 0
-                        group_any_condition_fail = True
+                        row_truths.append(False)
                         if logic == 'and':
+                            # one prod type didn't satisfy; try next scene.
                             break
                     else:
-                        presence = 1
-                        group_any_condition_success = True
+                        row_truths.append(True)
             # save for each category
             self.common.write_to_db_result(
                 fk=int(kpi['pk'].iloc[0]),
