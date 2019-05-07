@@ -113,7 +113,8 @@ class PepsicoUtil:
 
         self.scene_bay_shelf_product = self.get_facings_scene_bay_shelf_product()
         self.ps_data = PsDataProvider(self.data_provider, self.output)
-        self.full_store_info = self.get_store_data_by_store_id()
+        # self.full_store_info = self.get_store_data_by_store_id()
+        self.full_store_info = self.commontools.full_store_info.copy()
         self.external_targets = self.commontools.external_targets
         self.assortment = Assortment(self.commontools.data_provider, self.output)
         # self.lvl3_ass_result = self.assortment.calculate_lvl3_assortment()
@@ -261,3 +262,7 @@ class PepsicoUtil:
         if target_series['Parameter 3']:
             filters.update({target_series['Parameter 3']: target_series['Value 3']})
         return filters
+
+    def reset_filtered_scif_and_matches_to_exclusion_all_state(self):
+        self.filtered_scif = self.commontools.filtered_scif.copy()
+        self.filtered_matches = self.commontools.filtered_matches.copy()

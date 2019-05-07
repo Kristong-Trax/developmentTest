@@ -17,10 +17,18 @@ class SosVsTargetHeroSkuKpi(UnifiedCalculationsScript):
     def calculate(self):
         sos_targets = self.util.sos_vs_target_targets.copy()
         # sos_targets = sos_targets[sos_targets['type'] == self._config_params['kpi_type']]
+        self.util.filtered_scif, self.util.filtered_matches = \
+            self.util.commontools.set_filtered_scif_and_matches_for_specific_kpi(self.util.filtered_scif,
+                                                                                 self.util.filtered_matches,
+                                                                                 self.util.HERO_SKU_SPACE_TO_SALES_INDEX)
         self.calculate_hero_sku_sos_vs_target(sos_targets)
+        self.util.reset_filtered_scif_and_matches_to_exclusion_all_state()
 
     def calculate_hero_sku_sos_vs_target(self, sos_targets):
+        kpi_filtered_products = self.util.filtered_scif['product_fk'].unique().tolist()
         hero_list = self.util.lvl3_ass_result[self.util.lvl3_ass_result['in_store'] == 1]['product_fk'].unique().tolist()
+        hero_list = filter(lambda x: x in kpi_filtered_products, hero_list)
+
         sos_targets = sos_targets[sos_targets['type'] == self.util.HERO_SKU_SPACE_TO_SALES_INDEX]
         sos_targets_hero_list = sos_targets['numerator_value'].values.tolist()
         additional_skus = list(set(hero_list) - set(sos_targets_hero_list))
