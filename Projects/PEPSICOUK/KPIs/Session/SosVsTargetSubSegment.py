@@ -7,8 +7,8 @@ import numpy as np
 
 class SosVsTargetSubSegmentKpi(UnifiedCalculationsScript):
 
-    def __init__(self, data_provider, config_params=None):
-        super(SosVsTargetSubSegmentKpi, self).__init__(data_provider, config_params=config_params)
+    def __init__(self, data_provider, config_params=None, **kwargs):
+        super(SosVsTargetSubSegmentKpi, self).__init__(data_provider, config_params=config_params, **kwargs)
         self.util = PepsicoUtil(None, data_provider)
 
     def kpi_type(self):

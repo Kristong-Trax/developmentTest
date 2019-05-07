@@ -5,8 +5,8 @@ from Trax.Utils.Logging.Logger import Log
 
 class LinearBrandVsBrandIndexKpi(UnifiedCalculationsScript):
 
-    def __init__(self, data_provider, config_params=None):
-        super(LinearBrandVsBrandIndexKpi, self).__init__(data_provider, config_params=config_params)
+    def __init__(self, data_provider, config_params=None, **kwargs):
+        super(LinearBrandVsBrandIndexKpi, self).__init__(data_provider, config_params=config_params, **kwargs)
         self.util = PepsicoUtil(None, data_provider)
 
     def kpi_type(self):

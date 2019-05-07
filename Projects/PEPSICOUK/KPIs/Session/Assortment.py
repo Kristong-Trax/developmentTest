@@ -7,8 +7,8 @@ from Trax.Utils.Logging.Logger import Log
 
 class AssortmentKpi(UnifiedCalculationsScript):
 
-    def __init__(self, data_provider):
-        super(AssortmentKpi, self).__init__(data_provider)
+    def __init__(self, data_provider, config_params=None, **kwargs):
+        super(AssortmentKpi, self).__init__(data_provider, config_params=config_params, **kwargs)
         self.util = PepsicoUtil()
 
     def calculate(self):

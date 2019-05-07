@@ -6,8 +6,8 @@ from Trax.Utils.Logging.Logger import Log
 
 class HeroSkuStackingBySequenceNumberKpi(UnifiedCalculationsScript):
 
-    def __init__(self, data_provider, config_params=None):
-        super(HeroSkuStackingBySequenceNumberKpi, self).__init__(data_provider, config_params=config_params)
+    def __init__(self, data_provider, config_params=None, **kwargs):
+        super(HeroSkuStackingBySequenceNumberKpi, self).__init__(data_provider, config_params=config_params, **kwargs)
         self.util = PepsicoUtil(None, data_provider)
 
     def kpi_type(self):
