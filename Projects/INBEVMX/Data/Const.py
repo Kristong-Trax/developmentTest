@@ -15,6 +15,7 @@ class Const(object):
     SCENES = 'scene'
 
     # kpis
+    OOS_RESULT_KPI = 'OOS RESULT'
     OOS_KPI = 'OOS'
     OOS_SKU_KPI = 'OOS - SKU'
 
