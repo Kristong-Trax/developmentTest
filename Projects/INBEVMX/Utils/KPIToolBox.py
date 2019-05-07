@@ -60,16 +60,16 @@ class INBEVMXToolBox:
         try:
             self.store_type_filter = self.store_info['store_type'].values[0].strip()
         except:
-            Log.warning("There is no store type in the db for store_fk: {}").format(str(self.store_id))
+            Log.warning("There is no store type in the db for store_fk: {}".format(str(self.store_id)))
         try:
             self.region_name_filter = self.store_info['region_name'].values[0].strip()
             self.region_fk = self.store_info['region_fk'].values[0]
         except:
-            Log.warning("There is no region in the db for store_fk: {}").format(str(self.store_id))
+            Log.warning("There is no region in the db for store_fk: {}".format(str(self.store_id)))
         try:
             self.att6_filter = self.store_info['additional_attribute_6'].values[0].strip()
         except:
-            Log.warning("There is no additional attribute 6 in the db for store_fk: {}").format(str(self.store_id))
+            Log.warning("There is no additional attribute 6 in the db for store_fk: {}".format(str(self.store_id)))
 
     def get_policies(self):
         query = INBEVMXQueries.get_policies()
