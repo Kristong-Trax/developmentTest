@@ -78,9 +78,7 @@ class PERNODUSToolBox:
         self.availability = Availability(self.data_provider)
         self.blocking_calc = Block(self.data_provider)
         self.linear_calc = SOS(self.data_provider)
-        self.mpis = self.match_product_in_scene.merge(self.products, on='product_fk', suffixes=['', '_p']) \
-            .merge(self.scene_info, on='scene_fk', suffixes=['', '_s']) \
-            .merge(self.templates, on=Const.template_fk, suffixes=['', '_t'])
+        self.mpis = self.check_mpis()
         self.minimum_facings = 2
 
     def main_calculation(self, *args, **kwargs):
@@ -957,5 +955,15 @@ class PERNODUSToolBox:
         return True
 
 
+    def check_mpis(self):
 
+
+        if self.scif.empty:
+            return None
+        else:
+            mpis = self.match_product_in_scene.merge(self.products, on='product_fk', suffixes=['', '_p']) \
+            .merge(self.scene_info, on='scene_fk', suffixes=['', '_s']) \
+            .merge(self.templates, on=Const.template_fk, suffixes=['', '_t'])
+
+            return mpis
 

@@ -129,8 +129,8 @@ class INBEVCISANDToolBox:
         :param loc_type_fk: The relevant location_type_fk that is been calculated.
         :param parent_set_fk: The relevant parent kpi set if necessary.
         :param relevant_scenes: The relevant scenes for the calculation.
-        :return: A tuple which includes Inbev score,  All of the products' score and pass / failed which depends if
-        Inbev is the majority. E.g: (1001, 2000, 100).
+        :return: A dictionary which keys = manufacturer_fks and values = linear sos for the manufacturer in the relevant
+        scenes.
         """
         kpi_level_2_fk = self.common.get_kpi_fk_by_kpi_type(Const.SOS_PER_MANUFACTURER_AND_LOCATION_TYPE)
         manufacturer_list = self.get_all_the_manufacturers_by_filters(relevant_scenes)
@@ -143,7 +143,7 @@ class INBEVCISANDToolBox:
 
         # Calculating the rest of the manufacturers' linear space
         for manufacturer in manufacturer_list:
-            sos_filters = {Const.MANUFACTURER_FK: manufacturer}
+            sos_filters = {Const.MANUFACTURER_FK: [manufacturer]}
             manufacturer_sos_res = self.calculate_sos_by_scif(**dict(sos_filters, **general_filters))
             sos_per_manufacturer[manufacturer] = manufacturer_sos_res
             if parent_set_fk:
@@ -170,6 +170,8 @@ class INBEVCISANDToolBox:
         manufacturer_scene_majority = {el: 0 for el in manufacturers_list}
         for scene_fk in relevant_scenes:
             sos_per_manufacturer = self.check_inbev_linear_sos_majority_by_location_type([scene_fk])
+            if not sos_per_manufacturer:
+                continue
             manufacturer_majority = max(sos_per_manufacturer, key=sos_per_manufacturer.get)
             manufacturer_scene_majority[manufacturer_majority] += 1
         return manufacturer_scene_majority
@@ -179,11 +181,9 @@ class INBEVCISANDToolBox:
         This function returns a list of all the manufacturers in the session per location type and scene (if relevant).
         :return: List of manufacturers' fks.
         """
-        filtered_scif = self.scif.loc[self.scif[Const.SCENE_FK].isin(relevant_scenes)]
+        filtered_scif = self.scif.loc[(self.scif[Const.SCENE_FK].isin(relevant_scenes)) & (
+            ~self.scif[Const.PRODUCT_TYPE].isin([Const.EMPTY, Const.IRRELEVANT]))]
         manufacturers_list = filtered_scif[Const.MANUFACTURER_FK].unique().tolist()
-        # Removing the "General" manufacturer
-        if 0 in manufacturers_list:
-            manufacturers_list.remove(0)
         return manufacturers_list
 
     def calculate_manufacturer_displays_count_per_location_type(self, displays_count_set_fk, location_type_fk):
