@@ -146,7 +146,7 @@ class INBEVCIINBEVCIToolBox:
 
         # Calculating the rest of the manufacturers' linear space
         for manufacturer in manufacturer_list:
-            sos_filters = {Const.MANUFACTURER_FK: manufacturer}
+            sos_filters = {Const.MANUFACTURER_FK: [manufacturer]}
             manufacturer_sos_res = self.calculate_sos_by_scif(**dict(sos_filters, **general_filters))
             sos_per_manufacturer[manufacturer] = manufacturer_sos_res
             if parent_set_fk:
@@ -184,7 +184,8 @@ class INBEVCIINBEVCIToolBox:
         This function returns a list of all the manufacturers in the session per location type and scene (if relevant).
         :return: List of manufacturers' fks.
         """
-        filtered_scif = self.scif.loc[self.scif[Const.SCENE_FK].isin(relevant_scenes)]
+        filtered_scif = self.scif.loc[(self.scif[Const.SCENE_FK].isin(relevant_scenes)) & (
+            ~self.scif[Const.PRODUCT_TYPE].isin([Const.EMPTY, Const.IRRELEVANT]))]
         manufacturers_list = filtered_scif[Const.MANUFACTURER_FK].unique().tolist()
         return manufacturers_list
 
