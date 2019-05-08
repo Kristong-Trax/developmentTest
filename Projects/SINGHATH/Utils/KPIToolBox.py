@@ -38,12 +38,7 @@ DUMP_DISPLAY_SCENE_TYPE_COL = 'SCENE_TYPE'
 DUMP_DISPLAY_LOGIC_COL = 'LOGIC'
 DUMP_DISPLAY_SKU_TYPE = 'SKU'
 DUMP_DISPLAY_POS_TYPE = 'POS'
-DUMP_DISPLAY_PROD_TYPE_MAP = {
-    'sku': 'SKU',
-    'pos': 'POS',
-    'other': 'Other',
-    'irrelevant': 'Irrelevant'
-}
+DUMP_DISPLAY_PROD_TYPE_LIST = [DUMP_DISPLAY_SKU_TYPE, DUMP_DISPLAY_POS_TYPE]
 # This should match the category name in DB.
 DUMP_CATEGORY_MAP = {
     'water_dump': 'Water',
@@ -173,8 +168,8 @@ class SINGHATHToolBox:
                 score=result,
             )
 
-    def write_pos_presence(self, kpi, price_sheet_data_frame):
-        for each_ean in price_sheet_data_frame[POS_PRESENCE_EAN_COL]:
+    def write_pos_presence(self, kpi, pos_data_frame):
+        for each_ean in pos_data_frame[POS_PRESENCE_EAN_COL]:
             presence = 1
             product_df = self.scif.query("product_ean_code=='{each_ean}' and product_type=='{type}'".format(
                 each_ean=each_ean,
@@ -188,12 +183,14 @@ class SINGHATHToolBox:
                 presence = 0
                 if product_df.empty:
                     # This should not happen
-                    raise Exception("KPI {kpi_name}: The product with EAN {ean} and type {type}"
-                                    " in template is not in DB.".format(
-                                        kpi_name=kpi[DF_KPI_TYPE_COL].iloc[0],
-                                        ean=each_ean,
-                                        type=DUMP_DISPLAY_POS_TYPE,
-                                    ))
+                    # This means the POS ean code is not in the product master data
+                    continue
+                    # raise Exception("KPI {kpi_name}: The product with EAN {ean} and type {type}"
+                    #                 " in template is not in DB.".format(
+                    #                     kpi_name=kpi[DF_KPI_TYPE_COL].iloc[0],
+                    #                     ean=each_ean,
+                    #                     type=DUMP_DISPLAY_POS_TYPE,
+                    #                 ))
             self.common.write_to_db_result(
                 fk=kpi['pk'].iloc[0],
                 numerator_id=int(product_df['product_fk'].iloc[0]),
@@ -203,16 +200,14 @@ class SINGHATHToolBox:
                 score=presence,
             )
 
-    def write_dump_display_presence(self, kpi, price_sheet_data_frame):
-        dump_display_data_group = price_sheet_data_frame.groupby(DUMP_DISPLAY_CATEGORY_COL)
+    def write_dump_display_presence(self, kpi, dump_display_data_frame):
+        dump_display_data_group = dump_display_data_frame.groupby(DUMP_DISPLAY_CATEGORY_COL)
         for category, dump_display_data in dump_display_data_group:
+            presence = 0
+            # iterate through rows for each category
             category_name = DUMP_CATEGORY_MAP[category]
             category_fk = self.all_products.query("category=='{category}'"
                                                   .format(category=category_name))['category_fk'].iloc[0]
-            # iterate through rows for each category
-            presence = 0
-            # handling single logic -- either `and` or `or`
-            logic = dump_display_data[DUMP_DISPLAY_LOGIC_COL].iloc[0].strip().lower()
             # get the applicable scene types -- start
             set_scene_types = set()
             scene_type_list = list(dump_display_data[DUMP_DISPLAY_SCENE_TYPE_COL].values.ravel('F'))
@@ -236,43 +231,31 @@ class SINGHATHToolBox:
             template_scif_by_scene_id = template_scif.groupby('scene_id')
             row_truths = []  # to check if all items in the category is true
             for scene_id, scene_data in template_scif_by_scene_id:
-                if row_truths and all(row_truths):
-                    # in the sessions; at least one scene has satisfied
+                dump_display_product_group = dump_display_data.groupby(DUMP_DISPLAY_PROD_TYPE_COL)
+                if row_truths and all([ech in row_truths for ech in DUMP_DISPLAY_PROD_TYPE_LIST]):
+                    # dump display is found, break out and save presence for this category
                     presence = 1
                     break
-                else:
-                    if row_truths and logic == 'and':
-                        # its an and logic and one of the prod type is not found
-                        # in this scene; check next scene
-                        continue
-                if any(row_truths) and logic == 'or':
-                    # in the session, either sku or pos is found
-                    presence = 1
-                    break
-                for idx, each_entry in dump_display_data.iterrows():
-                    # get the ean codes from template and query in dataframe - starts
-                    prod_type = DUMP_DISPLAY_PROD_TYPE_MAP[each_entry[DUMP_DISPLAY_PROD_TYPE_COL].lower().strip()]
-                    prod_data = dump_display_data.query("{key}=='{value}'".format(key=DUMP_DISPLAY_PROD_TYPE_COL,
-                                                                                  value=prod_type))
-                    if prod_data.empty:
-                        continue
-                    _pos_codes = str(prod_data[DUMP_DISPLAY_EAN_CODE_COL].iloc[0])
-                    all_pos_ean_codes = tuple(map(str, [x.strip() for x in _pos_codes.split(',') if x]))
-                    # get the ean codes from template and query in dataframe - ends
-                    facings_count = 0
-                    prod_scif_with_ean = scene_data.query(
-                        'product_ean_code in {all_skus} and category_fk=="{category_fk}"'
-                            .format(all_skus=all_pos_ean_codes,
-                                    category_fk=category_fk))
-                    if not prod_scif_with_ean.empty:
-                        facings_count = int(prod_scif_with_ean['facings'].iloc[0])
-                    if facings_count < int(prod_data[DUMP_DISPLAY_COUNT_COL].iloc[0]):
-                        row_truths.append(False)
-                        if logic == 'and':
-                            # one prod type didn't satisfy; try next scene.
-                            break
-                    else:
-                        row_truths.append(True)
+                for prod_type, product_items in dump_display_product_group:
+                    logic = product_items[DUMP_DISPLAY_LOGIC_COL].iloc[0].strip().lower()
+
+                    for idx, each_prod_entry in product_items.iterrows():
+                        _pos_codes = str(each_prod_entry[DUMP_DISPLAY_EAN_CODE_COL])
+                        all_pos_ean_codes = tuple(map(str, [x.strip() for x in _pos_codes.split(',') if x]))
+                        facings_count = 0
+                        prod_scif_with_ean = scene_data.query(
+                            'product_ean_code in {all_skus} and category_fk=="{category_fk}"'
+                                .format(all_skus=all_pos_ean_codes,
+                                        category_fk=category_fk))
+                        if not prod_scif_with_ean.empty:
+                            facings_count = int(prod_scif_with_ean['facings'].iloc[0])
+                        if facings_count < int(each_prod_entry[DUMP_DISPLAY_COUNT_COL]):
+                            if logic == 'and':
+                                # one prod type didn't satisfy; try next scene.
+                                break
+                        else:
+                            row_truths.append(prod_type)
+
             # save for each category
             self.common.write_to_db_result(
                 fk=int(kpi['pk'].iloc[0]),
