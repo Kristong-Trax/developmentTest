@@ -7,8 +7,8 @@ from KPIUtils_v2.Calculations.AdjacencyCalculations import Adjancency
 
 class BlocksAdjacencyKpi(UnifiedCalculationsScript):
 
-    def __init__(self, data_provider, config_params=None):
-        super(BlocksAdjacencyKpi, self).__init__(data_provider, config_params=config_params)
+    def __init__(self, data_provider, config_params=None, **kwargs):
+        super(BlocksAdjacencyKpi, self).__init__(data_provider, config_params=config_params, **kwargs)
         self.util = PepsicoUtil(None, data_provider)
         self.adjacency = Adjancency(self.data_provider, custom_scif=self.util.filtered_scif,
                                     custom_matches=self.util.filtered_matches)
