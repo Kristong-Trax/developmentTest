@@ -183,12 +183,14 @@ class SINGHATHToolBox:
                 presence = 0
                 if product_df.empty:
                     # This should not happen
-                    raise Exception("KPI {kpi_name}: The product with EAN {ean} and type {type}"
-                                    " in template is not in DB.".format(
-                                        kpi_name=kpi[DF_KPI_TYPE_COL].iloc[0],
-                                        ean=each_ean,
-                                        type=DUMP_DISPLAY_POS_TYPE,
-                                    ))
+                    # This means the POS ean code is not in the product master data
+                    continue
+                    # raise Exception("KPI {kpi_name}: The product with EAN {ean} and type {type}"
+                    #                 " in template is not in DB.".format(
+                    #                     kpi_name=kpi[DF_KPI_TYPE_COL].iloc[0],
+                    #                     ean=each_ean,
+                    #                     type=DUMP_DISPLAY_POS_TYPE,
+                    #                 ))
             self.common.write_to_db_result(
                 fk=kpi['pk'].iloc[0],
                 numerator_id=int(product_df['product_fk'].iloc[0]),
