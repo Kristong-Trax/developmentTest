@@ -10,8 +10,7 @@
 #     project_name = 'singhath'
 #     data_provider = KEngineDataProvider(project_name)
 #     sessions = [
-#         '0b2bc3c7-9e9d-4de2-8ef9-4b31bcfc03ed',
-#         'b1c87d1b-3661-4dcf-b18d-fe8c827a1fa2',
+#         'dc692d9f-1a94-4efb-af47-178b354e3183',
 #     ]
 #     for session in sessions:
 #         print "Running session >>", session

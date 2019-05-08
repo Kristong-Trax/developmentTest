@@ -232,13 +232,11 @@ class SINGHATHToolBox:
             row_truths = []  # to check if all items in the category is true
             for scene_id, scene_data in template_scif_by_scene_id:
                 dump_display_product_group = dump_display_data.groupby(DUMP_DISPLAY_PROD_TYPE_COL)
-                if row_truths and all([ech in row_truths for ech in DUMP_DISPLAY_PROD_TYPE_LIST]):
-                    # dump display is found, break out and save presence for this category
-                    presence = 1
-                    break
+                one_condition_fail = False
                 for prod_type, product_items in dump_display_product_group:
+                    if one_condition_fail:
+                        continue
                     logic = product_items[DUMP_DISPLAY_LOGIC_COL].iloc[0].strip().lower()
-
                     for idx, each_prod_entry in product_items.iterrows():
                         _pos_codes = str(each_prod_entry[DUMP_DISPLAY_EAN_CODE_COL])
                         all_pos_ean_codes = tuple(map(str, [x.strip() for x in _pos_codes.split(',') if x]))
@@ -252,9 +250,16 @@ class SINGHATHToolBox:
                         if facings_count < int(each_prod_entry[DUMP_DISPLAY_COUNT_COL]):
                             if logic == 'and':
                                 # one prod type didn't satisfy; try next scene.
+                                one_condition_fail = True
                                 break
                         else:
                             row_truths.append(prod_type)
+                if row_truths and all([ech in row_truths for ech in DUMP_DISPLAY_PROD_TYPE_LIST]):
+                    # dump display is found, break out and save presence for this category
+                    presence = 1
+                    break
+                else:
+                    row_truths = []
 
             # save for each category
             self.common.write_to_db_result(
