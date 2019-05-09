@@ -1,4 +1,5 @@
 import pandas as pd
+import numpy as np
 from Trax.Utils.Logging.Logger import Log
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Projects.CCBOTTLERSUS.LIBERTY.Data.Const import Const
@@ -26,10 +27,8 @@ class LIBERTYToolBox:
         self.store_info = self.ps_data_provider.get_ps_store_info(self.data_provider[Data.STORE_INFO])
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
         self.scif = self.scif[self.scif['product_type'] != "Irrelevant"]
-        self.templates = {}
         self.result_values = self.ps_data_provider.get_result_values()
-        for sheet in Const.SHEETS:
-            self.templates[sheet] = pd.read_excel(Const.TEMPLATE_PATH, sheetname=sheet).fillna('')
+        self.templates = self.read_templates()
         self.common_db = common_db
         self.survey = Survey(self.data_provider, output=self.output, ps_data_provider=self.ps_data_provider,
                              common=self.common_db)
@@ -41,6 +40,18 @@ class LIBERTYToolBox:
         self.additional_attribute_4 = self.store_info['additional_attribute_4'].iloc[0]
         self.additional_attribute_7 = self.store_info['additional_attribute_7'].iloc[0]
         self.body_armor_delivered = self.get_body_armor_delivery_status()
+        self.convert_base_size_and_multi_pack()
+
+    def read_templates(self):
+        templates = {}
+        for sheet in Const.SHEETS:
+            converters = None
+            if sheet == Const.MINIMUM_FACINGS:
+                converters = {Const.BASE_SIZE_MIN: self.convert_base_size_values,
+                              Const.BASE_SIZE_MAX: self.convert_base_size_values}
+            templates[sheet] = \
+                pd.read_excel(Const.TEMPLATE_PATH, sheetname=sheet, converters=converters).fillna('')
+        return templates
 
     # main functions:
 
@@ -59,7 +70,7 @@ class LIBERTYToolBox:
                 continue
             result = self.calculate_main_kpi(main_line)
             if result:
-                red_score += main_line[Const.WEIGHT]
+                red_score += main_line[Const.WEIGHT] * result
 
         if len(self.common_db.kpi_results) > 0:
             kpi_fk = self.common_db.get_kpi_fk_by_kpi_type(Const.RED_SCORE_PARENT)
@@ -129,18 +140,27 @@ class LIBERTYToolBox:
         if not market_share_target:
             market_share_target = 0
 
+        denominator_facings = relevant_scif['facings'].sum()
+
+        filtered_scif = relevant_scif
+
         manufacturer = self.does_exist(kpi_line, Const.MANUFACTURER)
         if manufacturer:
-            relevant_scif = relevant_scif[relevant_scif['manufacturer_name'].isin(manufacturer)]
+            filtered_scif = relevant_scif[relevant_scif['manufacturer_name'].isin(manufacturer)]
 
-        number_of_facings = relevant_scif['facings'].sum()
-        result = 1 if number_of_facings > market_share_target else 0
+        if self.does_exist(kpi_line, Const.INCLUDE_BODY_ARMOR) and self.body_armor_delivered:
+            body_armor_scif = relevant_scif[relevant_scif['brand_fk'] == Const.BODY_ARMOR_BRAND_FK]
+            filtered_scif = filtered_scif.append(body_armor_scif, sort=False)
+
+        numerator_facings = filtered_scif['facings'].sum()
+        result = 1 if (numerator_facings / float(denominator_facings)) > market_share_target else 0
 
         parent_kpi_name = kpi_line[Const.KPI_NAME] + Const.LIBERTY
         kpi_fk = self.common_db.get_kpi_fk_by_kpi_type(parent_kpi_name + Const.DRILLDOWN)
-        self.common_db.write_to_db_result(kpi_fk, numerator_id=self.manufacturer_fk, numerator_result=0,
-                                          denominator_id=self.store_id, denominator_result=0, weight=weight,
-                                          result=number_of_facings, target=market_share_target,
+        self.common_db.write_to_db_result(kpi_fk, numerator_id=self.manufacturer_fk, numerator_result=numerator_facings,
+                                          denominator_id=self.store_id, denominator_result=denominator_facings,
+                                          weight=weight,
+                                          result=numerator_facings, target=market_share_target,
                                           identifier_parent=parent_kpi_name, should_enter=True)
 
         return result
@@ -221,7 +241,7 @@ class LIBERTYToolBox:
                 filtered_scif = filtered_scif[filtered_scif['number_of_sub_packages'].isin([int(i) for i in sub_packages])]
 
         if self.does_exist(kpi_line, Const.MINIMUM_FACINGS_REQUIRED):
-            number_of_passing_displays = self.get_number_of_passing_displays(filtered_scif)
+            number_of_passing_displays, _ = self.get_number_of_passing_displays(filtered_scif)
 
             parent_kpi_name = kpi_line[Const.KPI_NAME] + Const.LIBERTY
             kpi_fk = self.common_db.get_kpi_fk_by_kpi_type(parent_kpi_name + Const.DRILLDOWN)
@@ -229,7 +249,7 @@ class LIBERTYToolBox:
                                               denominator_id=self.store_id, denominator_result=0, weight=weight,
                                               result=number_of_passing_displays,
                                               identifier_parent=parent_kpi_name, should_enter=True)
-            return 1 if number_of_passing_displays > 0 else 0
+            return number_of_passing_displays
         else:
             return 0
 
@@ -237,13 +257,16 @@ class LIBERTYToolBox:
     def calculate_share_of_display(self, kpi_line, relevant_scif, weight):
         filtered_scif = relevant_scif
 
-        manufacturer = self.does_exist(kpi_line, Const.MANUFACTURER)
-        if manufacturer:
-            filtered_scif = relevant_scif[relevant_scif['manufacturer_name'].isin(manufacturer)]
-
         ssd_still = self.does_exist(kpi_line, Const.ATT4)
         if ssd_still:
             filtered_scif = filtered_scif[filtered_scif['att4'].isin(ssd_still)]
+
+        denominator_passing_displays, denominator_facings_of_passing_displays = \
+            self.get_number_of_passing_displays(filtered_scif)
+
+        manufacturer = self.does_exist(kpi_line, Const.MANUFACTURER)
+        if manufacturer:
+            filtered_scif = relevant_scif[relevant_scif['manufacturer_name'].isin(manufacturer)]
 
         if self.does_exist(kpi_line, Const.MARKET_SHARE_TARGET):
             market_share_target = self.get_market_share_target(ssd_still=ssd_still)
@@ -255,15 +278,24 @@ class LIBERTYToolBox:
             filtered_scif = filtered_scif.append(body_armor_scif, sort=False)
 
         if self.does_exist(kpi_line, Const.MINIMUM_FACINGS_REQUIRED):
-            number_of_passing_displays = self.get_number_of_passing_displays(filtered_scif)
+            numerator_passing_displays, numerator_facings_of_passing_displays = \
+                self.get_number_of_passing_displays(filtered_scif)
 
-            result = 1 if number_of_passing_displays > market_share_target else 0
+            if denominator_facings_of_passing_displays != 0:
+                share_of_displays = \
+                    numerator_facings_of_passing_displays / float(denominator_facings_of_passing_displays)
+            else:
+                share_of_displays = 0
+
+            result = 1 if share_of_displays > market_share_target else 0
 
             parent_kpi_name = kpi_line[Const.KPI_NAME] + Const.LIBERTY
             kpi_fk = self.common_db.get_kpi_fk_by_kpi_type(parent_kpi_name + Const.DRILLDOWN)
-            self.common_db.write_to_db_result(kpi_fk, numerator_id=self.manufacturer_fk, numerator_result=0,
-                                              denominator_id=self.store_id, denominator_result=0, weight=weight,
-                                              result=number_of_passing_displays, target=market_share_target,
+            self.common_db.write_to_db_result(kpi_fk, numerator_id=self.manufacturer_fk,
+                                              numerator_result=numerator_passing_displays,
+                                              denominator_id=self.store_id,
+                                              denominator_result=denominator_passing_displays, weight=weight,
+                                              result=share_of_displays, target=market_share_target,
                                               identifier_parent=parent_kpi_name, should_enter=True)
 
             return result
@@ -272,27 +304,89 @@ class LIBERTYToolBox:
 
     def get_number_of_passing_displays(self, filtered_scif):
         if filtered_scif.empty:
-            return 0
+            return 0, 0
 
         filtered_scif['passed_displays'] = \
             filtered_scif.apply(lambda row: self._calculate_pass_status_of_display(row), axis=1)
 
-        return filtered_scif['passed_displays'].sum()
+        number_of_displays = filtered_scif['passed_displays'].sum()
+        facings_of_displays = filtered_scif[filtered_scif['passed_displays'] == 1]['facings'].sum()
+
+        return number_of_displays, facings_of_displays
 
     def _calculate_pass_status_of_display(self, row):  # need to move to external KPI targets
         template = self.templates[Const.MINIMUM_FACINGS]
-        package_category = (row['size'], row['number_of_sub_packages'], row['size_unit'])
-        relevant_template = template[pd.Series(zip(template['size'],
-                                                   template['subpackages_num'],
-                                                   template['unit_of_measure'])) == package_category]
+        relevant_template = template[(template[Const.BASE_SIZE_MIN] <= row['Base Size']) &
+                                     (template[Const.BASE_SIZE_MAX] >= row['Base Size']) &
+                                     (template[Const.MULTI_PACK_SIZE] == row['Multi-Pack Size'])]
+        if relevant_template.empty:
+            return 0
         minimum_facings = relevant_template[Const.MINIMUM_FACINGS_REQUIRED_FOR_DISPLAY].min()
         return 1 if row['facings'] > minimum_facings else 0
+
+    # Share of Cooler functions
+
+    def calculate_share_of_coolers(self, kpi_line, relevant_scif, weight):
+        denominator_results = relevant_scif.groupby('scene_id', as_index=False)[
+            ['facings']].sum().rename(columns={'facings': 'denominator_result'})
+
+        numerator_result = relevant_scif.groupby(['scene_id', 'manufacturer_name'], as_index=False)[
+            ['facings']].sum().rename(columns={'facings': 'numerator_result'})
+
+        results = numerator_result.merge(denominator_results)
+        results['result'] = (results['numerator_result'] / results['denominator_result'])
+        results['result'].fillna(0, inplace=True)
+
+        denominator_facings = denominator_results['denominator_result'].sum()
+        if denominator_facings == 0:
+            return 0
+
+        if self.does_exist(kpi_line, Const.MARKET_SHARE_TARGET):
+            market_share_target = self.get_market_share_target()
+        else:
+            market_share_target = 0
+
+        coke_facings_threshold = self.does_exist(kpi_line, Const.COKE_FACINGS_THRESHOLD)
+        if coke_facings_threshold:
+            results = results[results['result'] >= float(coke_facings_threshold[0])]
+
+        manufacturer = self.does_exist(kpi_line, Const.MANUFACTURER)
+        if manufacturer:
+            results = results[relevant_scif['manufacturer_name'].isin(manufacturer)]
+
+        valid_coke_facings = results['numerator_result'].sum()
+
+        coke_market_share = valid_coke_facings / float(denominator_facings)
+
+        parent_kpi_name = kpi_line[Const.KPI_NAME] + Const.LIBERTY
+        kpi_fk = self.common_db.get_kpi_fk_by_kpi_type(parent_kpi_name + Const.DRILLDOWN)
+        self.common_db.write_to_db_result(kpi_fk, numerator_id=self.manufacturer_fk,
+                                          numerator_result=valid_coke_facings,
+                                          denominator_id=self.store_id,
+                                          denominator_result=denominator_facings, weight=weight,
+                                          result=coke_market_share, target=market_share_target,
+                                          identifier_parent=parent_kpi_name, should_enter=True)
+
+        return 1 if coke_market_share > market_share_target else 0
 
     # Survey functions
     def calculate_survey(self, kpi_line, relevant_scif, weight):
         return 1 if self.survey.check_survey_answer(kpi_line[Const.QUESTION_TEXT], 'Yes') else 0
 
     # helper functions
+    def convert_base_size_and_multi_pack(self):
+        self.scif['Base Size'] = self.scif['Base Size'].apply(self.convert_base_size_values)
+        self.scif['Multi-Pack Size'] = self.scif['Multi-Pack Size'].apply(lambda x: int(x) if x is not None else None)
+
+    @staticmethod
+    def convert_base_size_values(value):
+        try:
+            new_value = float(value.split()[0]) if value not in [None, ''] else None
+        except IndexError:
+            Log.error('Could not convert base size value for {}'.format(value))
+            new_value = None
+        return new_value
+
     def get_market_share_target(self, ssd_still=None):  # need to move to external KPI targets
         template = self.templates[Const.MARKET_SHARE]
         relevant_template = template[(template[Const.ADDITIONAL_ATTRIBUTE_4] == self.additional_attribute_4) &
@@ -339,6 +433,8 @@ class LIBERTYToolBox:
             return self.calculate_count_of_display
         elif kpi_type == Const.SHARE_OF_DISPLAY:
             return self.calculate_share_of_display
+        elif kpi_type == Const.SHARE_OF_COOLERS:
+            return self.calculate_share_of_coolers
         elif kpi_type == Const.SURVEY:
             return self.calculate_survey
         else:
@@ -356,7 +452,7 @@ class LIBERTYToolBox:
         """
         if column_name in kpi_line.keys() and kpi_line[column_name] != "":
             cell = kpi_line[column_name]
-            if type(cell) in [int, float]:
+            if type(cell) in [int, float, np.float64]:
                 return [cell]
             elif type(cell) in [unicode, str]:
                 return [x.strip() for x in cell.split(",")]
