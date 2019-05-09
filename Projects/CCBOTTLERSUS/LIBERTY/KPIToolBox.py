@@ -1,4 +1,5 @@
 import pandas as pd
+import numpy as np
 from Trax.Utils.Logging.Logger import Log
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Projects.CCBOTTLERSUS.LIBERTY.Data.Const import Const
@@ -329,14 +330,14 @@ class LIBERTYToolBox:
         denominator_results = relevant_scif.groupby('scene_id', as_index=False)[
             ['facings']].sum().rename(columns={'facings': 'denominator_result'})
 
-        numerator_result = relevant_scif.groupby(['scene_id', 'manufacturer_fk'], as_index=False)[
+        numerator_result = relevant_scif.groupby(['scene_id', 'manufacturer_name'], as_index=False)[
             ['facings']].sum().rename(columns={'facings': 'numerator_result'})
 
         results = numerator_result.merge(denominator_results)
         results['result'] = (results['numerator_result'] / results['denominator_result'])
         results['result'].fillna(0, inplace=True)
 
-        denominator_facings = results['denominator_result'].sum()
+        denominator_facings = denominator_results['denominator_result'].sum()
         if denominator_facings == 0:
             return 0
 
@@ -451,7 +452,7 @@ class LIBERTYToolBox:
         """
         if column_name in kpi_line.keys() and kpi_line[column_name] != "":
             cell = kpi_line[column_name]
-            if type(cell) in [int, float]:
+            if type(cell) in [int, float, np.float64]:
                 return [cell]
             elif type(cell) in [unicode, str]:
                 return [x.strip() for x in cell.split(",")]
