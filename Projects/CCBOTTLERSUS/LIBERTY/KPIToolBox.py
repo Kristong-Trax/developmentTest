@@ -341,8 +341,8 @@ class LIBERTYToolBox:
         results['result'] = (results['numerator_result'] / results['denominator_result'])
         results['result'].fillna(0, inplace=True)
 
-        denominator_facings = denominator_results['denominator_result'].sum()
-        if denominator_facings == 0:
+        total_coolers = denominator_results['denominator_result'].count()
+        if total_coolers == 0:
             return 0
 
         if self.does_exist(kpi_line, Const.MARKET_SHARE_TARGET):
@@ -358,17 +358,17 @@ class LIBERTYToolBox:
         if manufacturer:
             results = results[relevant_scif['manufacturer_name'].isin(manufacturer)]
 
-        valid_coke_facings = results['numerator_result'].sum()
+        passing_coolers = results['numerator_result'].count()
 
-        coke_market_share = valid_coke_facings / float(denominator_facings)
+        coke_market_share = passing_coolers / float(total_coolers)
         result = 1 if coke_market_share > market_share_target else 0
 
         parent_kpi_name = kpi_line[Const.KPI_NAME] + Const.LIBERTY
         kpi_fk = self.common_db.get_kpi_fk_by_kpi_type(parent_kpi_name + Const.DRILLDOWN)
         self.common_db.write_to_db_result(kpi_fk, numerator_id=self.manufacturer_fk,
-                                          numerator_result=valid_coke_facings,
+                                          numerator_result=passing_coolers,
                                           denominator_id=self.store_id,
-                                          denominator_result=denominator_facings, weight=weight,
+                                          denominator_result=total_coolers, weight=weight,
                                           result=coke_market_share * 100, target=market_share_target * 100,
                                           score=result * weight,
                                           identifier_parent=parent_kpi_name, should_enter=True)
