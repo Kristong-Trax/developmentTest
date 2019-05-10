@@ -153,14 +153,15 @@ class LIBERTYToolBox:
             filtered_scif = filtered_scif.append(body_armor_scif, sort=False)
 
         numerator_facings = filtered_scif['facings'].sum()
-        result = 1 if (numerator_facings / float(denominator_facings)) > market_share_target else 0
+        sos_value = numerator_facings / float(denominator_facings)
+        result = 1 if sos_value > market_share_target else 0
 
         parent_kpi_name = kpi_line[Const.KPI_NAME] + Const.LIBERTY
         kpi_fk = self.common_db.get_kpi_fk_by_kpi_type(parent_kpi_name + Const.DRILLDOWN)
         self.common_db.write_to_db_result(kpi_fk, numerator_id=self.manufacturer_fk, numerator_result=numerator_facings,
                                           denominator_id=self.store_id, denominator_result=denominator_facings,
-                                          weight=weight,
-                                          result=numerator_facings, target=market_share_target,
+                                          weight=weight, score=result * weight,
+                                          result=sos_value * 100, target=market_share_target * 100,
                                           identifier_parent=parent_kpi_name, should_enter=True)
 
         return result
@@ -197,6 +198,7 @@ class LIBERTYToolBox:
         self.common_db.write_to_db_result(kpi_fk, numerator_id=self.manufacturer_fk, numerator_result=0,
                                           denominator_id=self.store_id, denominator_result=0, weight=weight,
                                           result=length_of_unique_skus, target=minimum_number_of_skus,
+                                          score=result* weight,
                                           identifier_parent=parent_kpi_name, should_enter=True)
 
         return result
@@ -248,6 +250,7 @@ class LIBERTYToolBox:
             self.common_db.write_to_db_result(kpi_fk, numerator_id=self.manufacturer_fk, numerator_result=0,
                                               denominator_id=self.store_id, denominator_result=0, weight=weight,
                                               result=number_of_passing_displays,
+                                              score=number_of_passing_displays * weight,
                                               identifier_parent=parent_kpi_name, should_enter=True)
             return number_of_passing_displays
         else:
@@ -295,7 +298,8 @@ class LIBERTYToolBox:
                                               numerator_result=numerator_passing_displays,
                                               denominator_id=self.store_id,
                                               denominator_result=denominator_passing_displays, weight=weight,
-                                              result=share_of_displays, target=market_share_target,
+                                              result=share_of_displays * 100, target=market_share_target * 100,
+                                              score=result * weight,
                                               identifier_parent=parent_kpi_name, should_enter=True)
 
             return result
@@ -357,6 +361,7 @@ class LIBERTYToolBox:
         valid_coke_facings = results['numerator_result'].sum()
 
         coke_market_share = valid_coke_facings / float(denominator_facings)
+        result = 1 if coke_market_share > market_share_target else 0
 
         parent_kpi_name = kpi_line[Const.KPI_NAME] + Const.LIBERTY
         kpi_fk = self.common_db.get_kpi_fk_by_kpi_type(parent_kpi_name + Const.DRILLDOWN)
@@ -364,10 +369,11 @@ class LIBERTYToolBox:
                                           numerator_result=valid_coke_facings,
                                           denominator_id=self.store_id,
                                           denominator_result=denominator_facings, weight=weight,
-                                          result=coke_market_share, target=market_share_target,
+                                          result=coke_market_share * 100, target=market_share_target * 100,
+                                          score=result * weight,
                                           identifier_parent=parent_kpi_name, should_enter=True)
 
-        return 1 if coke_market_share > market_share_target else 0
+        return result
 
     # Survey functions
     def calculate_survey(self, kpi_line, relevant_scif, weight):
