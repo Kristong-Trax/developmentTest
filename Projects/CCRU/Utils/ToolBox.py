@@ -145,7 +145,7 @@ class CCRUKPIToolBox:
                      'eng_name': param.get('KPI name Eng'),
                      'rus_name': param.get('KPI name Rus'),
                      'score_func': param.get('score_func'),
-                     'threshold': None,
+                     'target': None,
                      'weight': param.get('KPI Weight'),
                      'result': None,
                      'format': None,
@@ -935,12 +935,12 @@ class CCRUKPIToolBox:
                 score = 0
                 if kpi_total_res < params.get('target_min', 0):
                     self.update_kpi_scores_and_results(
-                        params, {'threshold': params.get('target_min')})
+                        params, {'target': params.get('target_min')})
                 else:
                     self.update_kpi_scores_and_results(
-                        params, {'threshold': params.get('target_max')})
+                        params, {'target': params.get('target_max')})
             else:
-                self.update_kpi_scores_and_results(params, {'threshold': params.get('target_min')})
+                self.update_kpi_scores_and_results(params, {'target': params.get('target_min')})
                 numerator = kpi_total_res - params.get('target_min', 0)
                 denominator = params.get('target_max', 1) - params.get('target_min', 0)
                 score = (numerator / float(denominator)) * 100
@@ -951,7 +951,7 @@ class CCRUKPIToolBox:
                 params.get('Values'), self.store_id)
         else:
             target = params.get('Target')
-        self.update_kpi_scores_and_results(params, {'threshold': target})
+        self.update_kpi_scores_and_results(params, {'target': target})
         target = float(target)
         if not target:
             score = 0
@@ -2358,9 +2358,9 @@ class CCRUKPIToolBox:
                                                       'score'])
 
         self.update_kpi_scores_and_results(param, {'level': level,
-                                                   'threshold': 100 * (param.get('KPI Weight') if param.get('KPI Weight') else 1),
+                                                   'target': 100 * (param.get('KPI Weight') if param.get('KPI Weight') else 1),
                                                    'weight': param.get('KPI Weight'),
-                                                   # 'result': score,
+                                                   # 'result': round(score),
                                                    'score': round(score),
                                                    'weighted_score': round(score) * (param.get('KPI Weight') if param.get('KPI Weight') else 1)})
 
@@ -2380,7 +2380,7 @@ class CCRUKPIToolBox:
         result = self.kpi_scores_and_results[self.kpi_set_type][str(param.get("KPI ID"))].get('result')\
             if result is None else result
         result = result if result else 0
-        threshold = self.kpi_scores_and_results[self.kpi_set_type][str(param.get("KPI ID"))].get('threshold')\
+        threshold = self.kpi_scores_and_results[self.kpi_set_type][str(param.get("KPI ID"))].get('target')\
             if threshold is None else threshold
         threshold = threshold if threshold else 0
 
@@ -2438,7 +2438,7 @@ class CCRUKPIToolBox:
                                                           'name'])
 
         self.update_kpi_scores_and_results(param, {'level': level if additional_level is None else additional_level,
-                                                   'threshold': threshold,
+                                                   'target': threshold,
                                                    'weight': param.get('KPI Weight'),
                                                    'result': result,
                                                    'score': round(score),
@@ -2674,7 +2674,7 @@ class CCRUKPIToolBox:
                                      'KPI name Rus': kpi_name_local,
                                      'Parent': subgroup_counter,
                                      'Sorting': sort_order},
-                                    {'threshold': 0,
+                                    {'target': 0,
                                      'result': result,
                                      'format': 'STR',
                                      'level': 4})
@@ -2691,7 +2691,7 @@ class CCRUKPIToolBox:
                                              'KPI name Rus': self.kpi_scores_and_results[POS][atomic_id].get('rus_name'),
                                              'Parent': counter,
                                              'Sorting': self.kpi_scores_and_results[POS][atomic_id].get('sort_order')},
-                                            {'threshold': self.kpi_scores_and_results[POS][atomic_id].get('threshold'),
+                                            {'target': self.kpi_scores_and_results[POS][atomic_id].get('target'),
                                              'result': self.kpi_scores_and_results[POS][atomic_id].get('result'),
                                              'score': self.kpi_scores_and_results[POS][atomic_id].get('score'),
                                              'format': self.kpi_scores_and_results[POS][atomic_id].get('format'),
@@ -2707,7 +2707,7 @@ class CCRUKPIToolBox:
                                                      'KPI name Rus': self.kpi_scores_and_results[POS][sub_atomic_id].get('rus_name'),
                                                      'Parent': str(counter) + '_' + atomic_id,
                                                      'Sorting': self.kpi_scores_and_results[POS][sub_atomic_id].get('sort_order')},
-                                                    {'threshold': self.kpi_scores_and_results[POS][sub_atomic_id].get('threshold'),
+                                                    {'target': self.kpi_scores_and_results[POS][sub_atomic_id].get('target'),
                                                      'result': self.kpi_scores_and_results[POS][sub_atomic_id].get('result'),
                                                      'score': self.kpi_scores_and_results[POS][sub_atomic_id].get('score'),
                                                      'format': self.kpi_scores_and_results[POS][sub_atomic_id].get('format'),
@@ -2723,7 +2723,7 @@ class CCRUKPIToolBox:
                              'KPI name Rus': subgroup_local,
                              'Parent': group_counter,
                              'Sorting': subgroup_counter},
-                            {'threshold': 0,
+                            {'target': 0,
                              'result': result,
                              'format': 'STR',
                              'level': 3})
@@ -2739,7 +2739,7 @@ class CCRUKPIToolBox:
                          'KPI name Rus': group_local,
                          'Parent': category_counter,
                          'Sorting': group_counter},
-                        {'threshold': 0,
+                        {'target': 0,
                          'result': result,
                          'format': 'STR',
                          'level': 2})
@@ -2755,7 +2755,7 @@ class CCRUKPIToolBox:
                      'KPI name Rus': category_local,
                      'Parent': 0,
                      'Sorting': category_counter},
-                    {'threshold': 0,
+                    {'target': 0,
                      'result': result,
                      'format': 'STR',
                      'level': 1})
@@ -2770,7 +2770,7 @@ class CCRUKPIToolBox:
              'KPI name Rus': kpi_set_name,
              'Parent': 'root',
              'Sorting': 0},
-            {'threshold': 0,
+            {'target': 0,
              'result': result,
              'format': 'STR',
              'level': 0})
@@ -2989,12 +2989,19 @@ class CCRUKPIToolBox:
                      'KPI name Eng': kpi_set_name,
                      'KPI name Rus': kpi_set_name,
                      'Parent': 'root'},
-                    {'threshold': 100,
+                    {'target': 100,
                      'weight': 1,
                      'result': score,
                      'score': score,
                      'weighted_score': score,
                      'level': 0})
+
+                for kpi_id in self.kpi_scores_and_results[EQUIPMENT].keys():
+                    if self.kpi_scores_and_results[EQUIPMENT][kpi_id]['level'] == 2:
+                        self.kpi_scores_and_results[EQUIPMENT][kpi_id]['weight'] /= float(total_weight)
+                        self.kpi_scores_and_results[EQUIPMENT][kpi_id]['target'] = self.kpi_scores_and_results[EQUIPMENT][kpi_id]['weight'] * 100
+                        self.kpi_scores_and_results[EQUIPMENT][kpi_id]['weighted_score'] = \
+                            self.kpi_scores_and_results[EQUIPMENT][kpi_id]['score'] * self.kpi_scores_and_results[EQUIPMENT][kpi_id]['weight']
 
                 self.equipment_execution_score = score
 
@@ -3072,7 +3079,7 @@ class CCRUKPIToolBox:
                         #      'kpi_name': kpi_name,
                         #      'eng_name': param.get('KPI name Eng'),
                         #      'rus_name': param.get('KPI name Eng'),
-                        #      'threshold': kpi_weight * 100,
+                        #      'target': kpi_weight * 100,
                         #      'weight': kpi_weight,
                         #      'result': result,
                         #      'score': score,
@@ -3106,7 +3113,7 @@ class CCRUKPIToolBox:
                      'KPI name Eng': kpi_set_name,
                      'KPI name Rus': kpi_set_name,
                      'Parent': 'root'},
-                    {'threshold': 100,
+                    {'target': 100,
                      'weight': 1,
                      'result': score,
                      'score': score,
@@ -3367,7 +3374,7 @@ class CCRUKPIToolBox:
                  'KPI name Eng': kpi_set_name,
                  'KPI name Rus': kpi_set_name,
                  'Parent': 'root'},
-                {'threshold': 100,
+                {'target': 100,
                  'weight': 1,
                  'result': score,
                  'score': score,
@@ -3549,14 +3556,14 @@ class CCRUKPIToolBox:
             else:
                 score = weight = 0
 
-            if kpi_set_type in [POS]:
+            if kpi_set_type in [POS, EQUIPMENT, SPIRITS]:
                 score = score if kpi['weighted_score'] is None else kpi['weighted_score']
                 weight = weight if kpi['weight'] is None else kpi['weight']
-                target = weight*100 if kpi['threshold'] is None and weight else kpi['threshold']
+                target = weight*100 if kpi['target'] is None and weight else kpi['target']
             else:
                 score = score if kpi['score'] is None else kpi['score']
                 weight = kpi['weight']
-                target = kpi['threshold']
+                target = kpi['target']
 
             if kpi['format'] == 'STR':
                 result = kpi['result']
@@ -3567,7 +3574,13 @@ class CCRUKPIToolBox:
                                                     (self.kpi_result_values['result_value'] == result)][
                         'result_value_fk'].values[0]
             else:
-                result = kpi['result'] if kpi['level'] == 3 else kpi['score']
+                if kpi_set_type in [POS, EQUIPMENT, SPIRITS] and kpi['level'] in (1, 2):
+                    result = round(score/weight) if score and weight \
+                        else score
+                else:
+                    result = kpi['result'] if kpi['result'] is not None \
+                        else (kpi['score'] if kpi['score'] is not None
+                                else score)
 
             group_score += score if score else 0
             group_weight += weight if weight else 0
