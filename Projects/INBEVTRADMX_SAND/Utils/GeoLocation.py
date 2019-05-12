@@ -25,7 +25,7 @@ __author__ = 'yoava'
 
 class INBEVTRADMX_SANDGeo:
 
-    GEO_THRESHOLD = 100
+    GEO_THRESHOLD = 70
     LEVEL1 = 1
     LEVEL2 = 2
     LEVEL3 = 3
