@@ -260,13 +260,17 @@ class PlanogramCompliance(PlanogramComplianceBaseClass):
             score = float(len(
                 tag_compliance[tag_compliance[Keys.COMPLIANCE_STATUS_FK] == PlanogramTagCompliance.CORRECTLY_POSITIONED]
                     )) / len(tag_compliance)
-            if score < 1 and scene_data[Keys.SHELF_NUMBER_FROM_BOTTOM].max() < planogram_data[
-                Keys.SHELF_NUMBER_FROM_BOTTOM].max():
-                scene_data[Keys.SHELF_NUMBER_FROM_BOTTOM] += 1
+            if score < 1:
+                if scene_data[Keys.SHELF_NUMBER_FROM_BOTTOM].max() < \
+                        planogram_data[Keys.SHELF_NUMBER_FROM_BOTTOM].max():
+                    scene_data[Keys.SHELF_NUMBER_FROM_BOTTOM] += 1
+                elif scene_data[Keys.SHELF_NUMBER_FROM_BOTTOM].max() > \
+                        planogram_data[Keys.SHELF_NUMBER_FROM_BOTTOM].max():
+                    planogram_data[Keys.SHELF_NUMBER_FROM_BOTTOM] += 1
                 temp_tag_compliance = get_tag_planogram_compliance(scene_data, planogram_data)
-                temp_score = float(len(
-                    tag_compliance[tag_compliance[Keys.COMPLIANCE_STATUS_FK] == PlanogramTagCompliance.CORRECTLY_POSITIONED]
-                )) / len(tag_compliance)
+                temp_score = float(len(temp_tag_compliance[temp_tag_compliance[
+                                            Keys.COMPLIANCE_STATUS_FK] == PlanogramTagCompliance.CORRECTLY_POSITIONED])
+                                   ) / len(temp_tag_compliance)
                 if temp_score > score:
                     score = temp_score
                     tag_compliance = temp_tag_compliance
@@ -338,9 +342,9 @@ class PlanogramCompliance(PlanogramComplianceBaseClass):
 # if __name__ == '__main__':
 #     LoggerInitializer.init('POG compliance test')
 #     Config.init()
-#     path = "/home/elyashiv/Desktop/backup/POGs/test2/"
-#     planogram_data = pd.read_csv(path + "pog 2.csv")
-#     scene_data = pd.read_csv(path + "scene 2.csv")
+#     path = "/home/elyashiv/Desktop/backup/POGs/12/"
+#     planogram_data = pd.read_csv(path + "pog.csv")
+#     scene_data = pd.read_csv(path + "scene.csv")
 #     pog = PlanogramCompliance(data_provider=None)
 #     compliances = pog.get_compliance(manual_planogram_data=planogram_data, manual_scene_data=scene_data)
 #     print compliances
