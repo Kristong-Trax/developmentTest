@@ -46,7 +46,7 @@ class ProductBlockingKpi(UnifiedCalculationsScript):
                     result = self.util.commontools.get_yes_no_result(1)
                     orientation = result_df['orientation'].values[0]
                     score = self.util.commontools.get_kpi_result_value_pk_by_value(orientation.upper())
-            self.util.common.write_to_db_result(fk=kpi_fk, numerator_id=group_fk, denominator_id=self.util.store_id,
+            self.write_to_db_result(fk=kpi_fk, numerator_id=group_fk, denominator_id=self.util.store_id,
                                                 numerator_result=max_ratio * 100,
                                                 score=score, result=result, target=target, by_scene=True)
 

@@ -50,7 +50,7 @@ class BlocksAdjacencyKpi(UnifiedCalculationsScript):
                 if not result_df.empty:
                     score = 1 if result_df['is_adj'].values[0] else 0
                     result = self.util.commontools.get_yes_no_result(score)
-                self.util.common.write_to_db_result(fk=kpi_fk, numerator_id=group_1_fk, denominator_id=group_2_fk,
+                self.write_to_db_result(fk=kpi_fk, numerator_id=group_1_fk, denominator_id=group_2_fk,
                                                     result=result, score=score, by_scene=True)
 
     def get_group_pairs(self):

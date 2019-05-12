@@ -39,10 +39,10 @@ class ShelfPlacementVerticalKpi(UnifiedCalculationsScript):
         result_df = self.get_vertical_placement_kpi_result_df(resulting_matches)
         result_df = result_df[result_df['position'] == self._config_params['kpi_type']]
         for i, row in result_df.iterrows():
-            self.util.common.write_to_db_result(fk=row['kpi_fk'], numerator_id=row['product_fk'],
-                                                denominator_id=row['product_fk'],
-                                                numerator_result=row['count'], denominator_result=row['total_facings'],
-                                                result=row['ratio'], score=row['ratio'], by_scene=True)
+            self.write_to_db_result(fk=row['kpi_fk'], numerator_id=row['product_fk'],
+                                    denominator_id=row['product_fk'],
+                                    numerator_result=row['count'], denominator_result=row['total_facings'],
+                                    result=row['ratio'], score=row['ratio'], by_scene=True)
             self.util.add_kpi_result_to_kpi_results_df([row['kpi_fk'], row['product_fk'], row['product_fk'], row['ratio'],
                                                         row['ratio']])
 

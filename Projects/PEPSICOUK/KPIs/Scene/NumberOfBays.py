@@ -17,7 +17,7 @@ class NumberOfBaysKpi(UnifiedCalculationsScript):
             matches = self.util.match_product_in_scene[~(self.util.match_product_in_scene['bay_number'] == -1)]
             bays_in_scene = matches['bay_number'].unique().tolist()
             bays_num = len(bays_in_scene)
-            self.util.common.write_to_db_result(fk=bays_kpi_fk, numerator_id=self.util.own_manuf_fk, result=bays_num,
+            self.write_to_db_result(fk=bays_kpi_fk, numerator_id=self.util.own_manuf_fk, result=bays_num,
                                                 denominator_id=self.util.store_id, by_scene=True)
             self.util.add_kpi_result_to_kpi_results_df([bays_kpi_fk, self.util.own_manuf_fk,
                                                         self.util.store_id, bays_num, None])

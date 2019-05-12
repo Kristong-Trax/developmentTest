@@ -33,7 +33,7 @@ class ShelfPlacementHorizontalKpi(UnifiedCalculationsScript):
                 kpi_results = self.get_kpi_results_df(relevant_matches, bay_max_shelves)
                 kpi_results = kpi_results[kpi_results['type'] == self._config_params['kpi_type']]
                 for i, result in kpi_results.iterrows():
-                    self.util.common.write_to_db_result(fk=result['kpi_level_2_fk'], numerator_id=result['product_fk'],
+                    self.write_to_db_result(fk=result['kpi_level_2_fk'], numerator_id=result['product_fk'],
                                                         denominator_id=result['product_fk'],
                                                         denominator_result=result['total_facings'],
                                                         numerator_result=result['count'], result=result['ratio'],

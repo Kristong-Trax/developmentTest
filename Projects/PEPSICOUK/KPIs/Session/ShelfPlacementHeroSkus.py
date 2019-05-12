@@ -14,7 +14,8 @@ class ShelfPlacementHeroSkusKpi(UnifiedCalculationsScript):
         pass
 
     def calculate(self):
-        if not self.util.lvl3_ass_result.empty:
+        # if not self.util.lvl3_ass_result.empty:
+        if not self.dependencies_data[self.dependencies_data['kpi_type'] == self.util.HERO_SKU_AVAILABILITY_SKU].empty:
             external_targets = self.util.commontools.all_targets_unpacked
             shelf_placmnt_targets = external_targets[external_targets['operation_type'] == self.util.SHELF_PLACEMENT]
             kpi_fks = shelf_placmnt_targets['kpi_level_2_fk'].unique().tolist()
@@ -75,6 +76,7 @@ class ShelfPlacementHeroSkusKpi(UnifiedCalculationsScript):
         products_df.rename(columns={'numerator_result': 'denominator_result'}, inplace=True)
         kpi_results = kpi_results.merge(products_df, on='numerator_id', how='left')
         hero_skus = self.util.lvl3_ass_result[self.util.lvl3_ass_result['in_store'] == 1]['product_fk'].values.tolist()
+        hero_skus = self.util.get_available_hero_sku_list(self.dependencies_data)
         hero_results = kpi_results[kpi_results['numerator_id'].isin(hero_skus)]
         kpi_parent = self.util.commontools.all_targets_unpacked.drop_duplicates(subset=['kpi_level_2_fk', 'KPI Parent'])[['kpi_level_2_fk', 'KPI Parent']]
         hero_results = hero_results.merge(kpi_parent, on='kpi_level_2_fk')

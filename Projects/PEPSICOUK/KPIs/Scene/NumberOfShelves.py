@@ -18,7 +18,7 @@ class NumberOfShelvesKpi(UnifiedCalculationsScript):
             # bay_shelf = matches.drop_duplicates(subset=['bay_number', 'shelf_number'])
             # shelf_num = len(bay_shelf)
             shelf_num = matches['shelf_number'].max()
-            self.util.common.write_to_db_result(fk=kpi_fk, numerator_id=self.util.own_manuf_fk, result=shelf_num,
+            self.write_to_db_result(fk=kpi_fk, numerator_id=self.util.own_manuf_fk, result=shelf_num,
                                                 denominator_id=self.util.store_id, by_scene=True)
             self.util.add_kpi_result_to_kpi_results_df(
                 [kpi_fk, self.util.own_manuf_fk, self.util.store_id, shelf_num, None])

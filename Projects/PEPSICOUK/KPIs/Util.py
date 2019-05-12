@@ -77,6 +77,8 @@ class PepsicoUtil:
                                    NUMBER_OF_SHELVES_TEMPL_COLUMN + '_x': NUMBER_OF_SHELVES_TEMPL_COLUMN,
                                    RELEVANT_SHELVES_TEMPL_COLUMN + '_x': RELEVANT_SHELVES_TEMPL_COLUMN,
                                    'KPI Parent_x': 'KPI Parent'}
+    HERO_SKU_AVAILABILITY_SKU = 'Hero SKU Availability - SKU'
+    HERO_SKU_PLACEMENT_BY_SHELF_NUMBERS = 'Hero SKU Placement by shelf numbers'
 
     def __init__(self, output, data_provider):
         self.output = output
@@ -111,7 +113,7 @@ class PepsicoUtil:
         self.filtered_scif = self.commontools.filtered_scif.copy()
         self.filtered_matches = self.commontools.filtered_matches.copy()
 
-        self.scene_bay_shelf_product = self.get_facings_scene_bay_shelf_product()
+        self.scene_bay_shelf_product = self.commontools.scene_bay_shelf_product
         self.ps_data = PsDataProvider(self.data_provider, self.output)
         # self.full_store_info = self.get_store_data_by_store_id()
         self.full_store_info = self.commontools.full_store_info.copy()
@@ -266,3 +268,8 @@ class PepsicoUtil:
     def reset_filtered_scif_and_matches_to_exclusion_all_state(self):
         self.filtered_scif = self.commontools.filtered_scif.copy()
         self.filtered_matches = self.commontools.filtered_matches.copy()
+
+    def get_available_hero_sku_list(self, dependencies_df):
+        hero_list = dependencies_df[(dependencies_df['kpi_type'] == self.HERO_SKU_AVAILABILITY_SKU) &
+                                    (dependencies_df['numerator_result'] == 1)]['numerator_id'].unique().tolist()
+        return hero_list

@@ -15,13 +15,14 @@ class SosVsTargetParentKpi(UnifiedCalculationsScript):
         pass
 
     def calculate(self):
-        # get dependencies for the kpi
-        # filter kpi results to get the kpis from dependencies
-        kpi_results = pd.DataFrame() # to be replaced with real kpi results df
-        if not kpi_results.empty:
-            kpi_results['count'] = 1
-            kpi_results['KPI Parent'] = self._config_params['kpi_type']
-            kpi_results = kpi_results.groupby(['KPI Parent'], as_index=False).agg({'count': np.sum})
+        # in DB the config parameters should have 'child_kpi' and kpi_type
+        # check what I will get as a dependency (all results or only relevant results?)
+        child_kpi_results = self.dependencies_data[self.dependencies_data['kpi_type'] ==
+                                                        self._config_params['child_kpi']]
+        if not child_kpi_results.empty:
+            child_kpi_results['count'] = 1
+            child_kpi_results['KPI Parent'] = self._config_params['kpi_type']
+            kpi_results = child_kpi_results.groupby(['KPI Parent'], as_index=False).agg({'count': np.sum})
             kpi_results['identifier_parent'] = kpi_results['KPI Parent'].apply(lambda x:
                                                                                      self.util.common.get_dictionary(
                                                                                          kpi_fk=int(float(x))))

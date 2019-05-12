@@ -15,7 +15,7 @@ class LinearSpaceKpi(UnifiedCalculationsScript):
         if not self.util.filtered_matches.empty:
             kpi_fk = self.util.common.get_kpi_fk_by_kpi_type(self.util.TOTAL_LINEAR_SPACE)
             for i, row in self.util.filtered_scif.iterrows():
-                self.util.common.write_to_db_result(fk=kpi_fk, numerator_id=row['product_fk'],
+                self.write_to_db_result(fk=kpi_fk, numerator_id=row['product_fk'],
                                                     denominator_id=self.util.store_id,
                                                     result=row['gross_len_add_stack'], by_scene=True)
                 self.util.add_kpi_result_to_kpi_results_df(
