@@ -182,7 +182,7 @@ class CCRU_SANDProjectCalculations:
                  'KPI name Eng': kpi_source[kpi_set_type][SET],
                  'KPI name Rus': kpi_source[kpi_set_type][SET],
                  'Parent': 'root'},
-                {'threshold': 100,
+                {'target': 100,
                  'weight': None,
                  'result': score,
                  'score': score,
