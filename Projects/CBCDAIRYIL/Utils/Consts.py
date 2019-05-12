@@ -1,3 +1,4 @@
+# coding=utf-8
 import os
 
 
@@ -27,6 +28,26 @@ class Consts(object):
     TARGET = 'Target'
     SPLIT_SCORE = 'Split Score'
 
+    # KPIs
+    SOS = 'SOS'
+    SOS_COOLER = 'SOS Cooler'
+    AVAILABILITY_FROM_TOP = 'Availability from top'
+    AVAILABILITY = 'Availability'
+    AVAILABILITY_FROM_MID_AND_UP = 'Availability from mid and up'
+    AVAILABILITY_BY_TOP_SHELF = 'Availability by top shelf'
+    AVAILABILITY_BY_SEQUENCE = 'Availability by sequence'
+    AVAILABILITY_FROM_BOTTOM = 'Availability from bottom'
+    MIN_2_AVAILABILITY = 'Min 2 Availability'
+    BLOCK_BY_SHELF = 'Block by shelf'
+    BLOCK_BY_TOP_SHELF = 'Block by top shelf'
+    BLOCK_BY_BOTTOM_SHELF = 'Block by bottom shelf'
+    SURVEY = 'Survey'
+
+    # General Attributes
+    CODE = 'code'
+    QUESTION_ID = 'question_id'
+    SHELF_NUM_FROM_BOTTOM = 'shelf_number_from_bottom'
+
     # Store attributes
     ADDITIONAL_ATTRIBUTE_1 = 'additional_attribute_1'
     STORE_TYPE = 'store_type'
@@ -35,5 +56,13 @@ class Consts(object):
     SCENE_FK = 'scene_fk'
     SCENE_ID = 'scene_id'
 
-    # P&B data
+    # Filters
+    FILTERS = 'filters'
+    FILTER_PARAM_1 = 'param1'
+    FILTER_PARAM_2 = 'param2'
+    FILTER_PARAM_3 = 'param3'
+
+    # CBC data
     CBCIL_MANUFACTURER = 1  # todo todo todo CHECK FOR THE RELEVANT ONE!!!!!!!
+    CBC_COOLERS = u'מקרר חברה מרכזית'
+    COMPETITOR_COOLERS = [u'מקרר מתחרה', u'מקרר קמעונאי']

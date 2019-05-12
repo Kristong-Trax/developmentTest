@@ -12,11 +12,11 @@ from Projects.CBCDAIRYIL.Utils.Consts import Consts
 # from KPIUtils_v2.Calculations.AvailabilityCalculations import Availability
 # from KPIUtils_v2.Calculations.NumberOfScenesCalculations import NumberOfScenes
 # from KPIUtils_v2.Calculations.PositionGraphsCalculations import PositionGraphs
-# from KPIUtils_v2.Calculations.SOSCalculations import SOS
+from KPIUtils_v2.Calculations.SOSCalculations import SOS
 # from KPIUtils_v2.Calculations.SequenceCalculations import Sequence
 from KPIUtils_v2.Calculations.SurveyCalculations import Survey
 
-# from KPIUtils_v2.Calculations.CalculationsUtils import GENERALToolBoxCalculations
+from KPIUtils_v2.Calculations.CalculationsUtils import GENERALToolBoxCalculations
 
 __author__ = 'idanr'
 
@@ -50,7 +50,8 @@ class CBCDAIRYILToolBox:
         self.store_additional_attr_1 = self.get_store_attribute(Consts.ADDITIONAL_ATTRIBUTE_1)
         self.store_type = self.get_store_attribute(Consts.STORE_TYPE)
 
-
+        self.sos = SOS(self.data_provider)
+        self.survey = Survey(self.data_provider)
 
         # self.match_display_in_scene = self.get_match_display()
         # self.match_stores_by_retailer = self.get_match_stores_by_retailer()
@@ -125,29 +126,40 @@ class CBCDAIRYILToolBox:
         """
         This function returns the relevant KPI filters according to the template.
         :param params: The Atomic KPI row in the template
-        :return:
+        :return: A dictionary with the relevant filters.
         """
         template_name = params[Consts.TEMPLATE_NAME].split(Consts.SEPARATOR)
         template_group = params[Consts.TEMPLATE_GROUP].split(Consts.SEPARATOR)
         relevant_scenes = self.get_relevant_scenes_by_params(template_name, template_group)
         params1 = params2 = params3 = []
+        if params[Consts.PARAMS_VALUE_1]:
+            params1 = map(unicode.strip, params[Consts.PARAMS_VALUE_1].split(Consts.SEPARATOR))
         if params[Consts.PARAMS_VALUE_2]:
-            params1 = map(unicode.strip, params[Consts.PARAMS_VALUE_1].split(','))
-        if params[Consts.PARAMS_VALUE_2]:
-            params2 = map(float, params[Consts.PARAMS_VALUE_2].split(','))
+            params2 = map(float, params[Consts.PARAMS_VALUE_2].split(Consts.SEPARATOR))
         if params[Consts.PARAMS_VALUE_3]:
-            params3 = map(float, params[Consts.PARAMS_VALUE_3].split(','))
+            params3 = map(float, params[Consts.PARAMS_VALUE_3].split(Consts.SEPARATOR))
 
         result = {Consts.TARGET: params[Consts.TARGET],
                   Consts.SPLIT_SCORE: params[Consts.SPLIT_SCORE],
                   Consts.SCENE_ID: relevant_scenes,
-                  'filters': {
-                      '1': {params[Consts.PARAMS_TYPE_1]: params1},
-                      '2': {params[Consts.PARAMS_TYPE_2]: params2},
-                      '3': {params[Consts.PARAMS_TYPE_3]: params3},
+                  Consts.FILTERS: {
+                      Consts.FILTER_PARAM_1: {params[Consts.PARAMS_TYPE_1]: params1},
+                      Consts.FILTER_PARAM_2: {params[Consts.PARAMS_TYPE_2]: params2},
+                      Consts.FILTER_PARAM_3: {params[Consts.PARAMS_TYPE_3]: params3},
                   }
                   }
         return result
+
+    @staticmethod
+    def validate_atomic_kpi(**filters):
+        """
+        TODO TODO TODO TODO TODO ?????
+        :param filters: A dictionary with the relevant filters for the KPI.
+        :return: True if everything is valid.
+        """
+        if filters.get(Consts.SPLIT_SCORE, 0) and not filters[Consts.SCENE_ID]:
+            return False
+        return True
 
     def main_calculation(self):
         """
@@ -160,16 +172,117 @@ class CBCDAIRYILToolBox:
         for kpi in kpis_list:
             atomics_df = self.get_atomics_to_calculate(kpi)
             for i in atomics_df.index:
+                atomic_score = None
                 kpi_type = atomics_df.at[i, Consts.KPI_TYPE]        # TODO: CHECK FOR SINGLE ATOMIC
                 general_filters = self.get_general_filters(atomics_df.iloc[i])
-
-
-
-
-
-
+                if not self.validate_atomic_kpi(**general_filters):
+                    continue
+                if kpi_type == Consts.BLOCK_BY_TOP_SHELF:
+                    shelf_number = int(general_filters.get(Consts.TARGET, 1))
+                    general_filters['filters']['All'].update({'shelf_number': range(shelf_number + 1)[1:]})
+                    atomic_score = self.calculate_block_by_shelf(**general_filters)
+                elif kpi_type == Consts.SOS:
+                    atomic_score = self.calculate_sos(**general_filters)
+                elif kpi_type == Consts.SOS_COOLER:
+                    atomic_score = self.calculate_sos_cooler(**general_filters)
+                elif kpi_type == Consts.AVAILABILITY:
+                    atomic_score = self.calculate_availability(**general_filters)
+                elif kpi_type == Consts.AVAILABILITY_FROM_MID_AND_UP:
+                    atomic_score = self.calculate_availability(**general_filters)
+                elif kpi_type == Consts.AVAILABILITY_BY_SEQUENCE:
+                    atomic_score = self.calculate_availability_by_sequence(**general_filters)
+                elif kpi_type == Consts.AVAILABILITY_BY_TOP_SHELF:
+                    atomic_score = self.calculate_availability_by_top_shelf(**general_filters)
+                elif kpi_type == Consts.AVAILABILITY_FROM_BOTTOM:
+                    shelf_number = int(general_filters.get(Consts.TARGET, 1))
+                    general_filters['filters']['All'].update({'shelf_number_from_bottom': range(shelf_number + 1)[1:]})
+                    atomic_score = self.calculate_availability(**general_filters)
+                elif kpi_type == Consts.MIN_2_AVAILABILITY:
+                    atomic_score = self.calculate_min_2_availability(**general_filters)
+                elif kpi_type == Consts.SURVEY:
+                    atomic_score = self.calculate_survey(**general_filters)
+                else:
+                    Log.warning("KPI of type '{}' is not supported".format(kpi_type))
+                    continue
 
         score = 0
         return score
 
+    def calculate_sos_cooler(self, general_filters):
+        """
+
+        :param general_filters:
+        :return:
+        """
+        cbc_coolers, competitor_coolers, cbc_scenes = self.get_coolers(Consts.CBC_COOLERS, Consts.COMPETITOR_COOLERS)
+        params = general_filters[Consts.FILTERS]
+        if general_filters[Consts.SCENE_ID]:
+            numerator_filters = params[Consts.FILTER_PARAM_1].copy()
+            numerator_filters.update(params[Consts.FILTER_PARAM_2])
+
+            set_scores = []
+            for scene in cbc_scenes:
+                current_scene_filters = {'scene_fk': scene}
+                ratio = self.sos.calculate_linear_share_of_shelf(numerator_filters, **current_scene_filters)
+                set_scores.append(ratio)
+            set_scores.sort()
+
+            if competitor_coolers > 0 and cbc_coolers > 0:
+                return sum(set_scores) / len(set_scores)*100
+            elif cbc_coolers > 1:
+                if all(score < 0.8 for score in set_scores):
+                    set_scores.sort(reverse=True)
+                return (min(set_scores[0] / 0.8, 1) + sum(set_scores[1:])) / len(set_scores) * 100
+            elif cbc_coolers == 1:
+                return set_scores[0]/0.8*100 if set_scores[0] < 0.8 else 100
+        return 0
+
+    def get_coolers(self, cbc_cooler, competitor_cooler):
+        """
+
+        :param cbc_cooler:
+        :param competitor_cooler:
+        :return:
+        """
+        cbc = self.scif[self.scif['template_name'].str.encode('utf-8') == cbc_cooler][Consts.SCENE_FK].unique().tolist()
+        competitor = self.scif[self.scif['template_name'].str.encode('utf-8').isin(competitor_cooler)][
+            Consts.SCENE_FK].unique()
+        return len(cbc), len(competitor), cbc
+
+    def calculate_sos(self, **general_filters):
+        """
+        TODO TODO TODO TODO TODO ????????????????????
+        :param param:
+        :return:
+        """
+        if general_filters[Consts.SCENE_ID]:
+            params = general_filters[Consts.FILTERS]
+            numerator_filters = params[Consts.PARAMS_VALUE_1].copy()
+            numerator_filters.update(params[Consts.PARAMS_VALUE_2])
+            numerator_filters.update(params[Consts.PARAMS_VALUE_3])
+            ratio = self.sos.calculate_linear_share_of_shelf(numerator_filters,
+                                                             include_empty=True,
+                                                             **params['All'])
+
+            if ratio >= float(general_filters[Consts.TARGET]):
+                return 100
+        return 0
+
+    def calculate_survey(self, **general_filters):
+        """
+
+        :param general_filters:
+        :return:
+        """
+        if not general_filters[Consts.SCENE_ID]:
+            return None
+        params = general_filters[Consts.FILTERS]
+        filters = params[Consts.PARAMS_VALUE_2].copy()
+        survey_question = str(int(filters.get(Consts.QUESTION_ID)[0]))
+        target_answers = general_filters[Consts.TARGET].split(Consts.SEPARATOR)
+        survey_answer = self.survey.get_survey_answer((Consts.CODE, [survey_question]))
+        if survey_answer:
+            return 100 if survey_answer.strip() in target_answers else False
+        else:
+            return 0
 
