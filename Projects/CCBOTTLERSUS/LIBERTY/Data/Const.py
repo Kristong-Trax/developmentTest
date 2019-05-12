@@ -4,7 +4,7 @@ __author__ = 'hunter'
 
 
 class Const(object):
-    TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'Liberty_bottlers_Template_Final_Final_Final.xlsx')
+    TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'Liberty_bottlers_Template_2019_05_09.xlsx')
     LIBERTY = ' - Liberty'
     DRILLDOWN = ' - Drilldown'
     RED_SCORE_PARENT = 'RED SCORE - Liberty'
@@ -17,15 +17,15 @@ class Const(object):
     AVAILABILITY = 'Availability'
     COUNT_OF_DISPLAY = 'Count of Display'
     SHARE_OF_DISPLAY = 'Share of Display'
+    SHARE_OF_COOLERS = 'Share of Coolers'
     SURVEY = 'Survey'
     MINIMUM_FACINGS = 'minimum_facings'
     SURVEY_QUESTION_SKUS = 'Survey_Question_SKUs'
     MARKET_SHARE = 'market_share'
-    BODY_ARMOR = 'Body_Armor_Zip'
 
 
     SHEETS = [KPIS, SOS, AVAILABILITY, COUNT_OF_DISPLAY, SHARE_OF_DISPLAY, SURVEY, MINIMUM_FACINGS,
-              SURVEY_QUESTION_SKUS, MARKET_SHARE, BODY_ARMOR]
+              SURVEY_QUESTION_SKUS, MARKET_SHARE, SHARE_OF_COOLERS]
 
     # KPIs columns
     KPI_NAME = 'KPI Name'
@@ -56,7 +56,10 @@ class Const(object):
     MINIMUM_FACINGS_REQUIRED = 'facings_threshold'
 
     # Share of Display columns
-    INCLUDE_BODY_ARMOR = 'include_body_armor'
+    INCLUDE_BODY_ARMOR = 'body_armor_delivered'
+
+    # Share of Coolers columns
+    COKE_FACINGS_THRESHOLD = 'cooler_facings_threshold'
 
     # Survey columns
     QUESTION_TEXT = 'question_text'
@@ -65,12 +68,12 @@ class Const(object):
     SIZE = 'size'
     UNIT_OF_MEASURE = 'unit_of_measure'
     MINIMUM_FACINGS_REQUIRED_FOR_DISPLAY = 'Facings_Required_for_Display'
+    BASE_SIZE_MIN = 'Base Size Min'
+    BASE_SIZE_MAX = 'Base Size Max'
+    MULTI_PACK_SIZE = 'Multi-Pack Size'
 
     # Survey_Question_SKUs columns
     EAN_CODE = 'ean_code'
-
-    # Body_Armor_Zip
-    ZIP = 'Zip'
 
     # market_share columns
     ADDITIONAL_ATTRIBUTE_4 = 'additional_attribute_4'
