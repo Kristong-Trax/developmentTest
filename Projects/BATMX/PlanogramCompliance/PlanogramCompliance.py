@@ -37,7 +37,7 @@ class PlanogramCompliance(PlanogramComplianceBaseClass):
             self.pog_bays = self.planogram_matches[Keys.BAY_NUMBER].unique().tolist()
             if len(self.scene_bays) == 1 and len(self.pog_bays) == 1:
                 if self.scene_bays != self.pog_bays:
-                    scene_bay_data = self._get_df_of_bay(self.scene_matches, self.pog_bays[0])
+                    scene_bay_data = self._get_df_of_bay(self.scene_matches, self.scene_bays[0])
                     pog_bay_data = self._get_df_of_bay(self.planogram_matches, self.pog_bays[0])
                 else:
                     scene_bay_data = self.scene_matches
