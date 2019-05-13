@@ -263,9 +263,21 @@ class INBEVCISANDToolBox:
             if set_name == Const.BRAND_FACING_TARGET:
                 if self.attr5 not in params[Const.ATTR5].split(', '):
                     continue
-                start_date = datetime.strptime(params["Start date"], '%Y-%m-%d  %H:%M:%S').date()
-                end_date = '' if params["End date"] == '' else datetime.strptime(params["End date"],
-                                                                                 '%Y-%m-%d  %H:%M:%S').date()
+                    # Handling date format issues:
+                try:
+                    start_date = datetime.strptime(params["Start date"], '%Y-%m-%d  %H:%M:%S').date()
+                except ValueError:
+                    start_date = datetime.strptime("{} {}".format(params["Start date"], "00:00:00"),
+                                                   '%Y-%m-%d  %H:%M:%S').date()
+                if params["End date"] == '':
+                    end_date = ''
+                else:
+                    try:
+                        end_date = datetime.strptime(params["End date"], '%Y-%m-%d  %H:%M:%S').date()
+                    except ValueError:
+                        end_date = datetime.strptime("{} {}".format(params["End date"], "00:00:00"),
+                                                     '%Y-%m-%d  %H:%M:%S').date()
+
                 if self.visit_date < start_date or (end_date != '' and self.visit_date > end_date):
                     continue
                 result_dict = self.calculate_brand_facing(params)
@@ -606,7 +618,7 @@ class INBEVCISANDToolBox:
             denominator_key = sos_policy[Const.DENOMINATOR].keys()[0]
             numerator_val = sos_policy[Const.NUMERATOR][numerator_key]
             denominator_val = sos_policy[Const.DENOMINATOR][denominator_key]
-            if numerator_key == 'manufacturer':
+            if numerator_key == 'manufacturer':  # i think it should be name
                 numerator_key += '_local_name'
             numerator = filtered_scif[(filtered_scif[numerator_key].str.upper() == numerator_val.upper()) &
                                       (filtered_scif[denominator_key].str.upper() == denominator_val.upper())][
@@ -623,6 +635,10 @@ class INBEVCISANDToolBox:
                                           denominator_key].str.upper() == denominator_val.upper()].empty):
                 Log.error("the DB does not match the template of SOS")
                 continue
+            # # my function - check tomorrow
+            # self.sos_calculation_all_manufacturers(numerator_key, numerator_val, denominator_key, denominator_val,
+            #                                        filtered_scif, row.kpi)
+
             numerator_id = self.all_products[self.all_products[numerator_key].str.upper() ==
                                              numerator_val.upper()][numerator_key.split('_')[0] + '_fk'].values[0]
             denominator_id = self.all_products[self.all_products[denominator_key].str.upper() ==
@@ -637,6 +653,26 @@ class INBEVCISANDToolBox:
                                            denominator_id=denominator_id, denominator_result=denominator,
                                            target=target,
                                            denominator_result_after_actions=target)
+
+    # def sos_calculation_all_manufacturers(self, numerator_key, numerator_value, denominator_key, denominator_value,
+    #                                       filtered_scif, kpi):
+    #     if numerator_key == 'manufacturer_local_name' and denominator_key in ['category', 'sub_category']:
+    #         other_manufacturers = set(filtered_scif['manufacturer_local_name'].values.tolist()) - {numerator_value}
+    #         denominator = filtered_scif[filtered_scif[denominator_key].str.upper() == denominator_value.upper()][
+    #             'gross_len_ign_stack'].sum()
+    #         denominator_id = self.all_products[self.all_products[denominator_key].str.upper() ==
+    #                                            denominator_value.upper()][denominator_key + '_fk'].values[0]
+    #         for manufacturer in other_manufacturers:
+    #             numerator = filtered_scif[(filtered_scif['manufacturer_local_name'] == manufacturer) &
+    #                                       (filtered_scif[denominator_key].str.upper() == denominator_value.upper())][
+    #                 'gross_len_ign_stack'].sum()
+    #             numerator_id = self.all_products[self.all_products['manufacturer_local_name']==manufacturer]['manufacturer_fk'].values[0]
+    #             sos = 0
+    #             if numerator and denominator:
+    #                 sos = round(np.divide(float(numerator), float(denominator)) * 100, 2)
+    #             self.common.write_to_db_result(fk=kpi, result=sos, score=sos,
+    #                                            numerator_result=numerator, numerator_id=numerator_id,
+    #                                            denominator_id=denominator_id, denominator_result=denominator)
 
     def validate_groups_exist(self):
         groups_template = self.template_sheet[Const.TOP_BRAND_BLOCK][Const.ATOMIC_NAME].unique().tolist()
