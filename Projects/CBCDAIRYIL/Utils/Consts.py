@@ -27,6 +27,7 @@ class Consts(object):
     PARAMS_VALUE_3 = 'Param (3) Values'
     TARGET = 'Target'
     SPLIT_SCORE = 'Split Score'
+    WEIGHT = 'Weight'
 
     # KPIs
     SOS = 'SOS'
