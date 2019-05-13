@@ -47,6 +47,9 @@ class Consts(object):
     CODE = 'code'
     QUESTION_ID = 'question_id'
     SHELF_NUM_FROM_BOTTOM = 'shelf_number_from_bottom'
+    MIN_BLOCK_RATIO = 0.75
+    PRODUCT_TYPE = 'product_type'
+    OTHER = 'Other'
 
     # Store attributes
     ADDITIONAL_ATTRIBUTE_1 = 'additional_attribute_1'

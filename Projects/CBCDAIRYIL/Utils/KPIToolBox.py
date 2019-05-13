@@ -13,9 +13,9 @@ from Projects.CBCDAIRYIL.Utils.Consts import Consts
 # from KPIUtils_v2.Calculations.NumberOfScenesCalculations import NumberOfScenes
 # from KPIUtils_v2.Calculations.PositionGraphsCalculations import PositionGraphs
 from KPIUtils_v2.Calculations.SOSCalculations import SOS
-# from KPIUtils_v2.Calculations.SequenceCalculations import Sequence
+from KPIUtils_v2.Calculations.SequenceCalculations import Sequence
 from KPIUtils_v2.Calculations.SurveyCalculations import Survey
-
+from KPIUtils_v2.Calculations.BlockCalculations import Block
 from KPIUtils_v2.Calculations.CalculationsUtils import GENERALToolBoxCalculations
 
 __author__ = 'idanr'
@@ -52,6 +52,7 @@ class CBCDAIRYILToolBox:
 
         self.sos = SOS(self.data_provider)
         self.survey = Survey(self.data_provider)
+        self.block = Block(self.data_provider)
 
         # self.match_display_in_scene = self.get_match_display()
         # self.match_stores_by_retailer = self.get_match_stores_by_retailer()
@@ -184,9 +185,7 @@ class CBCDAIRYILToolBox:
                     atomic_score = self.calculate_sos(**general_filters)
                 elif kpi_type == Consts.SOS_COOLER:
                     atomic_score = self.calculate_sos_cooler(**general_filters)
-                elif kpi_type == Consts.AVAILABILITY:
-                    atomic_score = self.calculate_availability(**general_filters)
-                elif kpi_type == Consts.AVAILABILITY_FROM_MID_AND_UP:
+                elif kpi_type in [Consts.AVAILABILITY or Consts.AVAILABILITY_FROM_MID_AND_UP]:
                     atomic_score = self.calculate_availability(**general_filters)
                 elif kpi_type == Consts.AVAILABILITY_BY_SEQUENCE:
                     atomic_score = self.calculate_availability_by_sequence(**general_filters)
@@ -206,6 +205,30 @@ class CBCDAIRYILToolBox:
 
         score = 0
         return score
+
+    def calculate_block_by_shelf(self, **general_filters):
+        params = general_filters['filters']
+        if params['All']['scene_id']:
+            filters = params['1'].copy()
+            filters.update(params['2'])
+            filters.update(params['3'])
+            filters.update(params['All'])
+            for scene in params['All']['scene_id']:
+                filters.update({'scene_id': scene})
+                try:
+                    filters.pop('')
+                except:
+                    pass
+                block = self.block.calculate_block_together(include_empty=False,
+                                                            minimum_block_ratio=Consts.MIN_BLOCK_RATIO,
+                                                            allowed_products_filters={
+                                                                Consts.PRODUCT_TYPE: Consts.OTHER},
+                                                            vertical=True, **filters)
+                if not isinstance(block, dict):
+                    return 0
+                elif float(len(block['shelves'])) >= float(general_filters[Consts.TARGET]):
+                    return 100
+        return 0
 
     def calculate_sos_cooler(self, general_filters):
         """
