@@ -111,10 +111,10 @@ class ToolBox:
         if relevant_scif.empty:
             return
 
-        print(kpi_name)
+        # print(kpi_name)
         # if kpi_name != 'Do Kid AND ASH Both Anchor End of Category?':
         # if kpi_name != 'In the MSL for Yogurt, which of the following is adjacent to Kite Hill?':
-        # if kpi_name not in ('What is stocked in the same section as Enchilada Sauce?'):
+        # if kpi_name not in ('How many brands of Taco Sauce are present?'):
         #     return
 
         # if kpi_type == Const.AGGREGATION:
