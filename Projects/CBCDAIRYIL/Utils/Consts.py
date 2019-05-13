@@ -58,6 +58,7 @@ class Consts(object):
 
     # Filters
     FILTERS = 'filters'
+    ALL = 'All'
     FILTER_PARAM_1 = 'param1'
     FILTER_PARAM_2 = 'param2'
     FILTER_PARAM_3 = 'param3'

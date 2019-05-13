@@ -141,7 +141,6 @@ class CBCDAIRYILToolBox:
 
         result = {Consts.TARGET: params[Consts.TARGET],
                   Consts.SPLIT_SCORE: params[Consts.SPLIT_SCORE],
-                  Consts.SCENE_ID: relevant_scenes,
                   Consts.FILTERS: {
                       Consts.FILTER_PARAM_1: {params[Consts.PARAMS_TYPE_1]: params1},
                       Consts.FILTER_PARAM_2: {params[Consts.PARAMS_TYPE_2]: params2},
