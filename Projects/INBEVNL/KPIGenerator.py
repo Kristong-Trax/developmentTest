@@ -30,19 +30,18 @@ class INBEVNLINBEVBEGenerator:
         This is the main KPI calculation function.
         It calculates the score for every KPI set and saves it to the DB.
         """
-        # if self.tool_box.scif.empty:
-        #     Log.warning('Scene item facts is empty for this session')
-        # self.tool_box.tools.update_templates()
-        # set_names = ['Product Blocking', 'Linear Share of Shelf',
-        #              'OSA', 'Pallet Presence', 'Share of Assortment', 'Product Stacking']
-        # for kpi_set_name in set_names:
-        #     self.tool_box.main_calculation(set_name=kpi_set_name)
-        # self.tool_box.main_calculation(set_name='Shelf Level')
-        # self.tool_box.main_calculation(set_name='Linear Share of Shelf vs. Target')
-        # self.tool_box.main_calculation(set_name='Shelf Impact Score')
-        # self.tool_box.save_custom_scene_item_facts_results()
-        # self.tool_box.save_linear_length_results()
-        # Log.info('Downloading templates took {}'.format(self.tool_box.download_time))
-        # self.tool_box.commit_results_data()
+        if self.tool_box.scif.empty:
+            Log.warning('Scene item facts is empty for this session')
+        self.tool_box.tools.update_templates()
+        set_names = ['Product Blocking', 'Linear Share of Shelf',
+                     'OSA', 'Pallet Presence', 'Share of Assortment', 'Product Stacking']
+        for kpi_set_name in set_names:
+            self.tool_box.main_calculation(set_name=kpi_set_name)
+        self.tool_box.main_calculation(set_name='Shelf Level')
+        self.tool_box.main_calculation(set_name='Linear Share of Shelf vs. Target')
+        self.tool_box.main_calculation(set_name='Shelf Impact Score')
+        self.tool_box.save_custom_scene_item_facts_results()
+        self.tool_box.save_linear_length_results()
+        Log.info('Downloading templates took {}'.format(self.tool_box.download_time))
+        self.tool_box.commit_results_data()
         self.tool_box.main_calculation_poce()
-        # self.tool_box.common.commit_results_data()
