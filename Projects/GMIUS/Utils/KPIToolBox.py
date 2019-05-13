@@ -114,7 +114,7 @@ class ToolBox:
         # print(kpi_name)
         # if kpi_name != 'Do Kid AND ASH Both Anchor End of Category?':
         # if kpi_name != 'In the MSL for Yogurt, which of the following is adjacent to Kite Hill?':
-        # if kpi_name not in ('How many brands of Taco Sauce are present?'):
+        # if kpi_name not in ('Are all sauces grouped together?'):
         #     return
 
         # if kpi_type == Const.AGGREGATION:
@@ -732,7 +732,9 @@ class ToolBox:
         return score
 
 
-    def base_block(self, kpi_name, kpi_line, relevant_scif, general_filters_base, check_orient=1, other=0, filters={}):
+    def base_block(self, kpi_name, kpi_line, relevant_scif, general_filters_base, check_orient=1, other=0, filters={},
+                   multi=0):
+        result = pd.DataFrame()
         general_filters = dict(general_filters_base)
         blocks = pd.DataFrame()
         result = pd.DataFrame()
@@ -760,14 +762,14 @@ class ToolBox:
             allowed_filter = Const.ALLOWED_FILTERS
             if not other:
                 allowed_filter = {'product_type': 'Empty'}
-            result = self.block.network_x_block_together(filters, location=scene_filter,
+            result = pd.concat([result, self.block.network_x_block_together(filters, location=scene_filter,
                                                          additional={
                                                                      'allowed_products_filters': allowed_filter,
                                                                      'include_stacking': False,
                                                                      'check_vertical_horizontal': check_orient,
-                                                                     'minimum_facing_for_block': 1})
+                                                                     'minimum_facing_for_block': 1})])
             blocks = result[result['is_block'] == True]
-            if not blocks.empty:
+            if not blocks.empty and not multi:
                 score = 1
                 orientation = blocks.loc[0, 'orientation']
                 break
@@ -846,7 +848,8 @@ class ToolBox:
         return kwargs
 
     def calculate_multi_block(self, kpi_name, kpi_line, relevant_scif, general_filters):
-        score, orientation, mpis_dict, blocks, results = self.base_block(kpi_name, kpi_line, self.scif, general_filters)
+        score, orientation, mpis_dict, blocks, results = self.base_block(kpi_name, kpi_line, self.scif, general_filters,
+                                                                         multi=1)
         segs = self.get_kpi_line_filters(kpi_line)['GMI_SEGMENT']
         seg_count = {}
         seg_count = {seg: self.mpis[self.mpis['GMI_SEGMENT'] == seg].shape[0] for seg in segs}
@@ -855,7 +858,7 @@ class ToolBox:
             block = row.cluster
             items = {seg: 0 for seg in seg_count.keys()}
             for i, node in block.nodes(data=True):
-                if node['group_attributes']['group_name']:
+                if node['group_attributes']['group_name'] in segs:
                     items[node['group_attributes']['group_name']] += len(node['group_attributes']['match_fk_list'])
             row.segments += [seg for seg in segs if seg_count[seg] > 0 and float(items[seg]) / seg_count[seg] >= .75]
         results['seg_count'] = [len(stuff) if stuff else 0 for stuff in results.segments]
@@ -865,11 +868,11 @@ class ToolBox:
             result = 'Taco, Enchilada Sauce and Cooking Sauce together'
         elif len(together) == 2:
             if 'TACO SAUCE/HOT SAUCE' not in together:
-                result = 'Enchilada and Cookie sauce together, not taco sauce'
+                result = 'Enchilada & Cooking Sauce together, not Taco Sauce'
             elif 'ENCHILADA SAUCE' not in together:
-                result = 'Taco and cooking sauce together, not enchilada sauce'
+                result = 'Taco & Cooking Sauce together, not Enchilada Sauce'
             elif 'COOKING SAUCE/MARINADE' not in together:
-                result = 'Taco and enchilada sauce together, not cooking sauce'
+                result = 'Taco & Enchilada Sauce together, not Cooking Sauce'
         kwargs = {'score': 1, 'result': result}
         return kwargs
 
