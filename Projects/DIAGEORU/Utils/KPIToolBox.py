@@ -99,7 +99,7 @@ class DIAGEORUToolBox:
         """
         This function calculates the KPI results.
         """
-        # # SOS Out Of The Box kpis
+        # SOS Out Of The Box kpis
         self.activate_ootb_kpis()
 
         log_runtime('Updating templates')
@@ -255,14 +255,11 @@ class DIAGEORUToolBox:
                             sos_brand_out_of_sub_cat)
 
     def calculate_sos_of_brand_out_of_manufacturer_in_sub_cat(self, kpi_fk):
-        pass
         res_list = []
         res_dict = dict()
         # Get rid of Irrelevant and Empty types and keep only facings > 1
         filtered_scif = self.scif[
             ~self.scif['product_type'].isin(['Irrelevant', 'Empty']) & self.scif['facings_ign_stack'] > 0]
-
-        # Filter by each Sub Category and Manufacturer
         sub_cat_fk_list = filtered_scif['sub_category_fk'].unique().tolist()
         for sub_cat in sub_cat_fk_list:
             filtered_scif_by_sub_cat = filtered_scif[filtered_scif['sub_category_fk'] == sub_cat]
