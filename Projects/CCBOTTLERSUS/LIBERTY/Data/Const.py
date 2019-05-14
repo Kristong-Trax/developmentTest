@@ -47,6 +47,7 @@ class Const(object):
     CATEGORY = 'category'
     EXCLUDED_BRAND = 'Excluded_Brand'
     MINIMUM_NUMBER_OF_SKUS = 'number_required_SKUS'
+    SECONDARY_MINIMUM_NUMBER_OF_SKUS = 'number_required_SKUS - secondary'
     SURVEY_QUESTION_SKUS_REQUIRED = 'Survey_Question_SKUs_required'
 
     # Count of Display columns
@@ -74,6 +75,7 @@ class Const(object):
 
     # Survey_Question_SKUs columns
     EAN_CODE = 'ean_code'
+    SECONDARY_GROUP = 'secondary_group'
 
     # market_share columns
     ADDITIONAL_ATTRIBUTE_4 = 'additional_attribute_4'
