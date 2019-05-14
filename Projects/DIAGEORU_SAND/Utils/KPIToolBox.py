@@ -489,6 +489,8 @@ class DIAGEORUToolBox:
         """
         This function writes all KPI results to the DB, and commits the changes.
         """
+        self.rds_conn.disconnect_rds()
+        self.rds_conn.connect_rds()
         cur = self.rds_conn.db.cursor()
         delete_queries = DIAGEOQueries.get_delete_session_results_query_old_tables(self.session_uid)
         for query in delete_queries:
