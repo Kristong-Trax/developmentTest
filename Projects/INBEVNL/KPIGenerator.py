@@ -12,7 +12,7 @@ __author__ = 'urid'
 
 
 class INBEVNLINBEVBEGenerator:
-    def __init__(self, data_provider, output):
+    def __init__(self, data_provider, output, template=None):
         self.k_engine = BaseCalculationsGroup(data_provider, output)
         self.data_provider = data_provider
         self.project_name = data_provider.project_name
@@ -22,7 +22,7 @@ class INBEVNLINBEVBEGenerator:
         self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         self.session_info = SessionInfo(data_provider)
         self.store_id = self.data_provider[Data.STORE_FK]
-        self.tool_box = INBEVToolBox(self.data_provider, self.output)
+        self.tool_box = INBEVToolBox(self.data_provider, self.output, template)
 
     @log_runtime('Total Calculations', log_start=True)
     def main_function(self):
@@ -32,7 +32,6 @@ class INBEVNLINBEVBEGenerator:
         """
         if self.tool_box.scif.empty:
             Log.warning('Scene item facts is empty for this session')
-        # set_names = self.tool_box.kpi_static_data['kpi_set_name'].unique().tolist()
         self.tool_box.tools.update_templates()
         set_names = ['Product Blocking', 'Linear Share of Shelf',
                      'OSA', 'Pallet Presence', 'Share of Assortment', 'Product Stacking']
@@ -45,5 +44,4 @@ class INBEVNLINBEVBEGenerator:
         self.tool_box.save_linear_length_results()
         Log.info('Downloading templates took {}'.format(self.tool_box.download_time))
         self.tool_box.commit_results_data()
-        self.tool_box.common.commit_results_data()
-
+        self.tool_box.main_calculation_poce()
