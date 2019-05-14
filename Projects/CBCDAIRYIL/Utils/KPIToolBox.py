@@ -279,8 +279,8 @@ class CBCDAIRYILToolBox:
         for kpi_name in kpis_list:
             kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_name)
             atomics_df = self.get_atomics_to_calculate(kpi_name)
-            atomic_results = self.calculate_atomic_results(kpi_fk, atomics_df)
-            kpi_results = self.calculate_kpi_result(kpi_name, atomic_results)
+            atomic_results = self.calculate_atomic_results(kpi_fk, atomics_df)  # Atomic level
+            kpi_results = self.calculate_kpi_result(kpi_name, atomic_results)   # KPI level
             total_set_scores.append(self.get_kpi_details(kpi_set, kpi_fk, kpi_name, kpi_results))
 
         score = 0
