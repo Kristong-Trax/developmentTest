@@ -51,28 +51,25 @@ class INBEVMXToolBox:
         self.oos_policies = self.get_policies()
         self.result_dict = {}
         self.hierarchy_dict = {}
-
-        try:
-            self.store_type_filter = self.store_info['store_type'].values[0].strip()
-        except:
-            Log.error("there is no store type in the db")
-            return
-        try:
-            self.region_name_filter = self.store_info['region_name'].values[0].strip()
-            self.region_fk = self.store_info['region_fk'].values[0]
-        except:
-            Log.error("there is no region in the db")
-            return
-        try:
-            self.att6_filter = self.store_info['additional_attribute_6'].values[0].strip()
-        except:
-            Log.error("there is no additional attribute 6 in the db")
-            return
         self.sos_target_sheet = pd.read_excel(
             PATH_SURVEY_AND_SOS_TARGET, Const.SOS_TARGET).fillna("")
         self.survey_sheet = pd.read_excel(PATH_SURVEY_AND_SOS_TARGET, Const.SURVEY).fillna("")
         self.survey_combo_sheet = pd.read_excel(PATH_SURVEY_AND_SOS_TARGET, Const.SURVEY_COMBO).fillna("")
         self.oos_sheet = pd.read_excel(PATH_SURVEY_AND_SOS_TARGET, Const.OOS_KPI).fillna("")
+
+        try:
+            self.store_type_filter = self.store_info['store_type'].values[0].strip()
+        except:
+            Log.warning("There is no store type in the db for store_fk: {}".format(str(self.store_id)))
+        try:
+            self.region_name_filter = self.store_info['region_name'].values[0].strip()
+            self.region_fk = self.store_info['region_fk'].values[0]
+        except:
+            Log.warning("There is no region in the db for store_fk: {}".format(str(self.store_id)))
+        try:
+            self.att6_filter = self.store_info['additional_attribute_6'].values[0].strip()
+        except:
+            Log.warning("There is no additional attribute 6 in the db for store_fk: {}".format(str(self.store_id)))
 
     def get_policies(self):
         query = INBEVMXQueries.get_policies()
