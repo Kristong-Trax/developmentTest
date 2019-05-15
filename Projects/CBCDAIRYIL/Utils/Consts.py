@@ -30,31 +30,29 @@ class Consts(object):
     WEIGHT = 'Weight'
 
     # KPIs
-    SOS = 'SOS'
-    SOS_COOLER = 'SOS Cooler'
-    AVAILABILITY_FROM_TOP = 'Availability from top'
     AVAILABILITY = 'Availability'
-    AVAILABILITY_FROM_MID_AND_UP = 'Availability from mid and up'
-    AVAILABILITY_BY_TOP_SHELF = 'Availability by top shelf'
-    AVAILABILITY_BY_SEQUENCE = 'Availability by sequence'
     AVAILABILITY_FROM_BOTTOM = 'Availability from bottom'
     MIN_2_AVAILABILITY = 'Min 2 Availability'
-    BLOCK_BY_SHELF = 'Block by shelf'
-    BLOCK_BY_TOP_SHELF = 'Block by top shelf'
-    BLOCK_BY_BOTTOM_SHELF = 'Block by bottom shelf'
+    BRAND_BLOCK = 'Brand Block'
+    EYE_LEVEL = 'Eye Level'
     SURVEY = 'Survey'
 
     # General Attributes
     CODE = 'code'
     QUESTION_ID = 'question_id'
     SHELF_NUM_FROM_BOTTOM = 'shelf_number_from_bottom'
-    MIN_BLOCK_RATIO = 0.75
+    MIN_BLOCK_RATIO = 0.8
+    MIN_FACINGS_IN_BLOCK = 3
     PRODUCT_TYPE = 'product_type'
     OTHER = 'Other'
+    PRODUCT_FK = 'product_fk'
 
     # Store attributes
     ADDITIONAL_ATTRIBUTE_1 = 'additional_attribute_1'
+    ADDITIONAL_ATTRIBUTE_2 = 'additional_attribute_2'
+    ADDITIONAL_ATTRIBUTE_3 = 'additional_attribute_3'
     STORE_TYPE = 'store_type'
+    STORE_ATTRIBUTES_TO_FILTER_BY = [STORE_TYPE, ADDITIONAL_ATTRIBUTE_1, ADDITIONAL_ATTRIBUTE_2, ADDITIONAL_ATTRIBUTE_3]
 
     # Session attributes
     SCENE_FK = 'scene_fk'

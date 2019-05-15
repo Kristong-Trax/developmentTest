@@ -9,7 +9,6 @@ from KPIUtils.ParseTemplates import parse_template
 from KPIUtils_v2.DB.CommonV2 import Common
 from Projects.CBCDAIRYIL.Utils.Consts import Consts
 # from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
-from KPIUtils_v2.Calculations.AvailabilityCalculations import Availability
 # from KPIUtils_v2.Calculations.NumberOfScenesCalculations import NumberOfScenes
 # from KPIUtils_v2.Calculations.PositionGraphsCalculations import PositionGraphs
 from KPIUtils_v2.Calculations.SOSCalculations import SOS
@@ -17,14 +16,13 @@ from KPIUtils_v2.Calculations.SequenceCalculations import Sequence
 from KPIUtils_v2.Calculations.SurveyCalculations import Survey
 from KPIUtils_v2.Calculations.BlockCalculations import Block
 from KPIUtils_v2.Calculations.CalculationsUtils.GENERALToolBoxCalculations import GENERALToolBox
+from KPIUtils_v2.Calculations.AvailabilityCalculations import Availability
+from KPIUtils_v2.Calculations.EyeLevelCalculations import calculate_eye_level
 
 __author__ = 'idanr'
 
 
 class CBCDAIRYILToolBox:
-    LEVEL1 = 1
-    LEVEL2 = 2
-    LEVEL3 = 3
 
     def __init__(self, data_provider, output):
         self.output = output
@@ -47,8 +45,6 @@ class CBCDAIRYILToolBox:
         self.template_data = self.filter_template_data()
         self.store_info = self.data_provider[Data.STORE_INFO]
         self.store_id = self.data_provider[Data.STORE_FK]
-        self.store_additional_attr_1 = self.get_store_attribute(Consts.ADDITIONAL_ATTRIBUTE_1)
-        self.store_type = self.get_store_attribute(Consts.STORE_TYPE)
 
         self.sos = SOS(self.data_provider)
         self.survey = Survey(self.data_provider)
@@ -66,29 +62,67 @@ class CBCDAIRYILToolBox:
         # self.gaps_queries = []
         # self.cbcil_id = self.get_own_manufacturer_pk()
 
-    def get_store_attribute(self, attribute_name):
+    def main_calculation(self):
         """
-        This function encodes and returns the relevant store attribute.
-        :param attribute_name: Attribute name from the data_provider[Data.STORE_INFO].
-        :return: The relevant attribute with encode (if necessary).
+        This function calculates the KPI results.
+        At first it fetches the relevant Sets (according to the stores attributes) and go over all of the relevant
+        Atomic KPIs based on the project's template.
+        Than, It aggregates the result per KPI using the weights and at last aggregates for the set level.
         """
-        store_att = self.store_info.at[0, attribute_name]
-        if not store_att:
-            Log.warning("The store attribute {} doesn't exist for store fk = {}".format(attribute_name, self.store_id))
-            return None
-        if isinstance(store_att, (unicode, str)):
-            store_att = store_att.encode('utf-8')
-        return store_att
+        if self.template_data.empty:
+            Log.warning("There isn't relevant data in the template for store fk = {}! Exiting...".format(self.store_id))
+            return
+        kpi_set, kpis_list = self.get_relevant_kpis_for_calculation()
+        total_set_scores = list()
+        for kpi_name in kpis_list:
+            kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_name)
+            atomics_df = self.get_atomics_to_calculate(kpi_name)
+            atomic_results = self.calculate_atomic_results(kpi_fk, atomics_df)  # Atomic level
+            kpi_results = self.calculate_kpi_result(kpi_name, atomic_results)   # KPI level
+            total_set_scores.append(self.get_kpi_details(kpi_set, kpi_fk, kpi_name, kpi_results))
 
-    def filter_template_data(self):
+    def calculate_atomic_results(self, kpi_fk, atomics_df):
         """
-        This function responsible to handle the encoding issue we have in the template because of the Hebrew language.
-        :return: Same template data with encoding.
+        This method calculates the result for every atomic KPI (the lowest level) that are relevant for the kpi_fk.
+        :param kpi_fk: The KPI FK that the atomic "belongs" too.
+        :param atomics_df: The relevant Atomic KPIs from the project's template.
+        :return: A list of results and weights tuples: [(score1, weight1), (score2, weight2) ... ].
         """
-        relevant_data = self.kpis_data[(self.kpis_data[Consts.STORE_TYPE].str.encode('utf-8').isin(self.store_type)) &
-                                       (self.kpis_data[Consts.ADDITIONAL_ATTRIBUTE_1].str.encode('utf-8').isin(
-                                           self.store_additional_attr_1))]
-        return relevant_data
+        # identifier_result_kpi = self.get_identifier_result_kpi_by_name(kpi)
+        scores = list()
+        for i in atomics_df.index:
+            current_atomic = atomics_df.iloc[i]
+            kpi_type = current_atomic.get(Consts.KPI_TYPE)  # TODO: CHECK FOR SINGLE ATOMIC
+            general_filters = self.get_general_filters(current_atomic)
+            atomic_weight = float(current_atomic.get(Consts.WEIGHT)) if current_atomic.get(Consts.WEIGHT) else None
+            if not self.validate_atomic_kpi(**general_filters):
+                continue
+            elif kpi_type in [Consts.AVAILABILITY]:
+                atomic_score = self.calculate_availability(**general_filters)
+            elif kpi_type == Consts.AVAILABILITY_FROM_BOTTOM:
+                atomic_score = self.calculate_availability_from_bottom(**general_filters)
+            elif kpi_type == Consts.MIN_2_AVAILABILITY:
+                atomic_score = self.calculate_min_2_availability(**general_filters)
+            elif kpi_type == Consts.SURVEY:
+                atomic_score = self.calculate_survey(**general_filters)
+            elif kpi_type == Consts.BRAND_BLOCK:
+                atomic_score = self.calculate_brand_block(**general_filters)
+            elif kpi_type == Consts.EYE_LEVEL:
+                atomic_score = self.calculate_eye_level(**general_filters)
+            else:
+                Log.warning("KPI of type '{}' is not supported".format(kpi_type))
+                continue
+
+            if atomic_score == 0:
+                self.add_gap(current_atomic)
+            scores.append((atomic_score, atomic_weight))
+
+            atomic_fk_lvl_2 = self.common.get_kpi_fk_by_kpi_type(current_atomic[Consts.KPI_ATOMIC_NAME])
+            self.common.write_to_db_result(fk=atomic_fk_lvl_2, numerator_id=Consts.CBCIL_MANUFACTURER,
+                                           denominator_id=self.store_id,
+                                           identifier_parent=kpi_fk,
+                                           result=atomic_score, score=atomic_score, should_enter=True)
+        return scores
 
     def get_relevant_kpis_for_calculation(self):
         """
@@ -102,13 +136,38 @@ class CBCDAIRYILToolBox:
 
     def get_atomics_to_calculate(self, kpi_name):
         """
-
-        :param kpi_name:
-        :return:
+        This method filters the KPIs data to the relevant atomics in order to calculate the relevant atomic level
+        for the current KPI.
+        :param kpi_name: The hebrew KPI name from the template.
+        :return: A DataFrame that contains data about the relevant Atomic KPIs.
         """
-        atomics = self.template_data[self.template_data[Consts.KPI_NAME].str.encode('utf-8') ==
-                                     kpi_name.encode('utf-8')]
+        atomics = self.template_data[
+            self.template_data[Consts.KPI_NAME].str.encode('utf-8') == kpi_name.encode('utf-8')]
         return atomics
+
+    def get_store_attributes(self, attributes_names):
+        """
+        This function encodes and returns the relevant store attribute.
+        :param attributes_names: List of requeted store attributes to return.
+        :return: A dictionary relevant attribute after encoding (if necessary).
+        """
+        # Filter store attributes
+        store_info_dict = self.store_info.iloc[0].to_dict()
+        filtered_store_info = {store_att: store_info_dict[store_att] for store_att in attributes_names}
+        # Encode the attributes if necessary
+        for attr in attributes_names:
+            if isinstance(filtered_store_info[attr], (unicode, str)):
+                filtered_store_info[attr] = [filtered_store_info[attr].encode('utf-8')]
+        return filtered_store_info
+
+    def filter_template_data(self):
+        """
+        This function responsible to filter the relevant template data..
+        :return: A DataFrame with filtered Data by store attributes.
+        """
+        relevant_store_info = self.get_store_attributes(Consts.STORE_ATTRIBUTES_TO_FILTER_BY)
+        relevant_data = self.template_data[self.template_data.isin(relevant_store_info)]
+        return relevant_data
 
     def get_relevant_scenes_by_params(self, template_names, template_groups):
         """
@@ -201,58 +260,25 @@ class CBCDAIRYILToolBox:
         kpi_details['kpi_weight'] = self.get_kpi_weight(kpi, kpi_set)
         return kpi_details
 
-    def calculate_atomic_results(self, kpi_fk, atomics_df):
+    def calculate_eye_level(self, **general_filters):
         """
-        This method calculates the result for every atomic KPI (the lowest level) that are relevant for the kpi_fk.
-        :param atomics_df: The relevant Atomic KPIs from the project's template.
-        :return: A list of results and weights tuples: [(score1, weight1), (score2, weight2) ... ].
+
+        :param general_filters:
+        :return:
         """
-        # identifier_result_kpi = self.get_identifier_result_kpi_by_name(kpi)
-        scores = list()
-        for i in atomics_df.index:
-            current_atomic = atomics_df.iloc[i]
-            kpi_type = current_atomic.get(Consts.KPI_TYPE)  # TODO: CHECK FOR SINGLE ATOMIC
-            general_filters = self.get_general_filters(current_atomic)
-            atomic_weight = float(float(current_atomic.get(Consts.WEIGHT))) if current_atomic.get(
-                Consts.WEIGHT) else None
-            if not self.validate_atomic_kpi(**general_filters):
-                continue
-            if kpi_type == Consts.BLOCK_BY_TOP_SHELF:
-                shelf_number = int(general_filters.get(Consts.TARGET, 1))
-                general_filters['filters']['All'].update({'shelf_number': range(shelf_number + 1)[1:]})
-                atomic_score = self.calculate_block_by_shelf(**general_filters)
-            elif kpi_type == Consts.SOS:
-                atomic_score = self.calculate_sos(**general_filters)
-            elif kpi_type == Consts.SOS_COOLER:
-                atomic_score = self.calculate_sos_cooler(**general_filters)
-            elif kpi_type in [Consts.AVAILABILITY or Consts.AVAILABILITY_FROM_MID_AND_UP]:
-                atomic_score = self.calculate_availability(**general_filters)
-            elif kpi_type == Consts.AVAILABILITY_BY_SEQUENCE:
-                atomic_score = self.calculate_availability_by_sequence(**general_filters)
-            elif kpi_type == Consts.AVAILABILITY_BY_TOP_SHELF:
-                atomic_score = self.calculate_availability_by_top_shelf(**general_filters)
-            elif kpi_type == Consts.AVAILABILITY_FROM_BOTTOM:
-                shelf_number = int(general_filters.get(Consts.TARGET, 1))
-                general_filters['filters']['All'].update({'shelf_number_from_bottom': range(shelf_number + 1)[1:]})
-                atomic_score = self.calculate_availability(**general_filters)
-            elif kpi_type == Consts.MIN_2_AVAILABILITY:
-                atomic_score = self.calculate_min_2_availability(**general_filters)
-            elif kpi_type == Consts.SURVEY:
-                atomic_score = self.calculate_survey(**general_filters)
-            else:
-                Log.warning("KPI of type '{}' is not supported".format(kpi_type))
-                continue
 
-            if atomic_score == 0:
-                self.add_gap(current_atomic)
-            scores.append((atomic_score, atomic_weight))
+        return 100
 
-            atomic_fk_lvl_2 = self.common.get_kpi_fk_by_kpi_type(current_atomic[Consts.KPI_ATOMIC_NAME])
-            self.common.write_to_db_result(fk=atomic_fk_lvl_2, numerator_id=Consts.CBCIL_MANUFACTURER,
-                                           denominator_id=self.store_id,
-                                           identifier_parent=identifier_result_kpi,
-                                           result=atomic_score, score=atomic_score, should_enter=True)
-        return scores
+    def calculate_availability_from_bottom(self, **general_filters):
+        """
+
+        :param general_filters:
+        :return:
+        """
+        shelf_number = int(general_filters.get(Consts.TARGET, 1))
+        general_filters['filters']['All'].update({'shelf_number_from_bottom': range(shelf_number + 1)[1:]})
+        score = self.calculate_availability(**general_filters)
+        return score
 
     def calculate_kpi_result(self, kpi, atomic_results):
         """
@@ -264,174 +290,36 @@ class CBCDAIRYILToolBox:
         scores = []
         return scores
 
-    def main_calculation(self):
+    def calculate_brand_block(self, **general_filters):
         """
-        This function calculates the KPI results.
-        At first it fetches the relevant Sets (according to the stores attributes) and go over all of the relevant
-        Atomic KPIs based on the project's template.
-        Than, It aggregates the result per KPI using the weights and at last aggregates for the set level.
-        """
-        if self.template_data.empty:
-            Log.warning("No relevant data in the template for store fk = {}! Exiting...".format(self.store_id))
-            return
-        kpi_set, kpis_list = self.get_relevant_kpis_for_calculation()
-        total_set_scores = list()
-        for kpi_name in kpis_list:
-            kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_name)
-            atomics_df = self.get_atomics_to_calculate(kpi_name)
-            atomic_results = self.calculate_atomic_results(kpi_fk, atomics_df)  # Atomic level
-            kpi_results = self.calculate_kpi_result(kpi_name, atomic_results)   # KPI level
-            total_set_scores.append(self.get_kpi_details(kpi_set, kpi_fk, kpi_name, kpi_results))
-
-        score = 0
-        return score
-
-    def calculate_availability_by_top_shelf(self, **general_filters):
-        """
-
+        This function calculates the brand block KPI. It filters and excluded products according to the template and
+        than checks if at least one scene has a block.
         :param general_filters:
-        :return:
+        :return: 100 if at least one scene has a block, 0 otherwise.
         """
-        params = general_filters['filters']
-        if params['All'][Consts.SCENE_ID]:
-            shelf_number = int(general_filters.get(Consts.TARGET, 1))
-            shelf_numbers = range(shelf_number + 1)[1:]
-            if shelf_numbers:
-                session_results = []
-                for scene in params['All'][Consts.SCENE_ID]:
-                    scene_result = 0
-                    scif_filters = {'scene_fk': scene}
-                    scif_filters.update(params[Consts.PARAMS_VALUE_1])
-                    scif_filters.update(params[Consts.PARAMS_VALUE_2])
-                    scif = self.scif.copy()
-                    scene_skus = scif[self.general_toolbox.get_filter_condition(scif, **scif_filters)][
-                        'product_fk'].unique().tolist()
-                    if scene_skus:
-                        matches_filters = {'scene_fk': scene}
-                        matches_filters.update({'product_fk': scene_skus})
-                        matches_filters.update({'shelf_number': shelf_numbers})
-                        matches = self.match_product_in_scene.copy()
-                        result = matches[self.general_toolbox.get_filter_condition(matches, **matches_filters)]
-                        if not result.empty:
-                            shelf_facings_result = result.groupby('shelf_number')['scene_fk'].count().values.tolist()
-                            if len(shelf_facings_result) == len(shelf_numbers):
-                                target_facings_per_shelf = params[Consts.PARAMS_VALUE_3]['facings'][0]
-                                scene_result = 100 if all([facing >= target_facings_per_shelf
-                                                           for facing in shelf_facings_result]) else 0
-                    session_results.append(scene_result)
-                return 100 if any(session_results) else 0
-        return 0
+        allowed_products_dict = self.get_allowed_product_by_params(general_filters['filters'])
+        block_result = self.block.calculate_block_together(allowed_products_filters=allowed_products_dict,
+                                                           include_empty=False, result_by_scene=False,
+                                                           minimum_block_ratio=Consts.MIN_BLOCK_RATIO,
+                                                           min_facings_in_block=Consts.MIN_FACINGS_IN_BLOCK)
+        return 100 if block_result else 0
 
-    def calculate_availability_by_sequence(self, **general_filters):
+    def get_allowed_product_by_params(self, filters):
         """
-
-        :param general_filters:
-        :return:
+        This function include the relevant products for the block together KPI and exclude the ones that needs to be
+        excluded by the template.
+        :param filters: Atomic KPI filters.
+        :return: A Dictionary with the relevant products. E.g: {'product_fk': [1,2,3,4,5]}.
         """
-        params = general_filters['filters']
-        if params['All'][Consts.SCENE_ID]:
-            filters = params[Consts.PARAMS_VALUE_1].copy()
-            filters.update(params[Consts.PARAMS_VALUE_2])
-            filters.update(params['All'])
-            matches = self.match_product_in_scene.merge(self.scif, on='product_fk')
-            result = matches[self.general_toolbox.get_filter_condition(matches, **filters)]
-            if not result.empty:
-                result = result['shelf_number'].unique().tolist()
-                result.sort()
-            if len(result) >= 4:
-                for i in range(len(result) - 3):
-                    if result[i] == result[i + 1] - 1 == result[i + 2] - 2 == result[i + 3] - 3:
-                        return 100
-        return 0
-
-    def calculate_block_by_shelf(self, **general_filters):
-        """
-
-        :param general_filters:
-        :return:
-        """
-        params = general_filters['filters']
-        if params['All'][Consts.SCENE_ID]:
-            filters = params[Consts.PARAMS_VALUE_1].copy()
-            filters.update(params[Consts.PARAMS_VALUE_2])
-            filters.update(params[Consts.PARAMS_VALUE_3])
-            filters.update(params['All'])
-            for scene in params['All'][Consts.SCENE_ID]:
-                filters.update({Consts.SCENE_ID: scene})
-                try:
-                    filters.pop('')
-                except:     # todo todo todo: FIX! understand the exception!
-                    pass
-                block = self.block.calculate_block_together(include_empty=False,
-                                                            minimum_block_ratio=Consts.MIN_BLOCK_RATIO,
-                                                            allowed_products_filters={
-                                                                Consts.PRODUCT_TYPE: Consts.OTHER},
-                                                            vertical=True, **filters)
-                if not isinstance(block, dict):
-                    return 0
-                elif float(len(block['shelves'])) >= float(general_filters[Consts.TARGET]):
-                    return 100
-        return 0
-
-    def calculate_sos_cooler(self, general_filters):
-        """
-
-        :param general_filters:
-        :return:
-        """
-        cbc_coolers, competitor_coolers, cbc_scenes = self.get_coolers(Consts.CBC_COOLERS, Consts.COMPETITOR_COOLERS)
-        params = general_filters[Consts.FILTERS]
-        if general_filters[Consts.SCENE_ID]:
-            numerator_filters = params[Consts.FILTER_PARAM_1].copy()
-            numerator_filters.update(params[Consts.FILTER_PARAM_2])
-
-            set_scores = []
-            for scene in cbc_scenes:
-                current_scene_filters = {Consts.SCENE_FK: scene}
-                ratio = self.sos.calculate_linear_share_of_shelf(numerator_filters, **current_scene_filters)
-                set_scores.append(ratio)
-            set_scores.sort()
-
-            if competitor_coolers > 0 and cbc_coolers > 0:
-                return sum(set_scores) / len(set_scores)*100
-            elif cbc_coolers > 1:
-                if all(score < 0.8 for score in set_scores):
-                    set_scores.sort(reverse=True)
-                return (min(set_scores[0] / 0.8, 1) + sum(set_scores[1:])) / len(set_scores) * 100
-            elif cbc_coolers == 1:
-                return set_scores[0]/0.8*100 if set_scores[0] < 0.8 else 100
-        return 0
-
-    def get_coolers(self, cbc_cooler, competitor_cooler):
-        """
-
-        :param cbc_cooler:
-        :param competitor_cooler:
-        :return:
-        """
-        cbc = self.scif[self.scif['template_name'].str.encode('utf-8') == cbc_cooler][Consts.SCENE_FK].unique().tolist()
-        competitor = self.scif[self.scif['template_name'].str.encode('utf-8').isin(competitor_cooler)][
-            Consts.SCENE_FK].unique()
-        return len(cbc), len(competitor), cbc
-
-    def calculate_sos(self, **general_filters):
-        """
-        TODO TODO TODO TODO TODO ????????????????????
-        :param general_filters:
-        :return:
-        """
-        if general_filters[Consts.SCENE_ID]:
-            params = general_filters[Consts.FILTERS]
-            numerator_filters = params[Consts.PARAMS_VALUE_1].copy()
-            numerator_filters.update(params[Consts.PARAMS_VALUE_2])
-            numerator_filters.update(params[Consts.PARAMS_VALUE_3])
-            ratio = self.sos.calculate_linear_share_of_shelf(numerator_filters,
-                                                             include_empty=True,
-                                                             **params['All'])
-
-            if ratio >= float(general_filters[Consts.TARGET]):
-                return 100
-        return 0
+        allowed_product = dict([Consts.PRODUCT_FK, []])
+        include_filter_key, include_filter_value = filters[Consts.FILTER_PARAM_1], filters[Consts.PARAMS_VALUE_1]
+        exclude_filter_key, exclude_filter_value = filters[Consts.FILTER_PARAM_3], filters[Consts.PARAMS_VALUE_3]
+        # TODO: FIX FILTERS
+        filtered_scif = self.scif.loc[
+            (self.scif[include_filter_key]).isin([include_filter_value]) & ~(self.scif[exclude_filter_key]).isin(
+                [exclude_filter_value])]
+        allowed_product[Consts.PRODUCT_FK] = filtered_scif[Consts.PRODUCT_FK].unique().tolist()
+        return allowed_product
 
     def calculate_survey(self, **general_filters):
         """
@@ -464,3 +352,6 @@ class CBCDAIRYILToolBox:
             if self.availability.calculate_availability(**filters) >= 1:
                 return 100
         return 0
+
+
+
