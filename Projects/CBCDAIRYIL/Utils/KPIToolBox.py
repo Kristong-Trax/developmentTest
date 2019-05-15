@@ -11,13 +11,13 @@ from Projects.CBCDAIRYIL.Utils.Consts import Consts
 # from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
 # from KPIUtils_v2.Calculations.NumberOfScenesCalculations import NumberOfScenes
 # from KPIUtils_v2.Calculations.PositionGraphsCalculations import PositionGraphs
+# from KPIUtils_v2.Calculations.EyeLevelCalculations import calculate_eye_level
+# from KPIUtils_v2.Calculations.SequenceCalculations import Sequence
 from KPIUtils_v2.Calculations.SOSCalculations import SOS
-from KPIUtils_v2.Calculations.SequenceCalculations import Sequence
 from KPIUtils_v2.Calculations.SurveyCalculations import Survey
 from KPIUtils_v2.Calculations.BlockCalculations import Block
 from KPIUtils_v2.Calculations.CalculationsUtils.GENERALToolBoxCalculations import GENERALToolBox
 from KPIUtils_v2.Calculations.AvailabilityCalculations import Availability
-from KPIUtils_v2.Calculations.EyeLevelCalculations import calculate_eye_level
 
 __author__ = 'idanr'
 
@@ -55,12 +55,10 @@ class CBCDAIRYILToolBox:
         # self.match_display_in_scene = self.get_match_display()
         # self.match_stores_by_retailer = self.get_match_stores_by_retailer()
         # self.match_template_fk_by_category_fk = self.get_template_fk_by_category_fk()
-        # self.tools = CBCILCBCIL_GENERALToolBox(self.data_provider, self.output, rds_conn=self.rds_conn)
         # self.kpi_static_data = self.get_kpi_static_data()
         # self.kpi_results_queries = []
         # self.gaps = pd.DataFrame(columns=[self.KPI_NAME, self.KPI_ATOMIC_NAME, self.GAPS])
         # self.gaps_queries = []
-        # self.cbcil_id = self.get_own_manufacturer_pk()
 
     def main_calculation(self):
         """
@@ -73,13 +71,31 @@ class CBCDAIRYILToolBox:
             Log.warning("There isn't relevant data in the template for store fk = {}! Exiting...".format(self.store_id))
             return
         kpi_set, kpis_list = self.get_relevant_kpis_for_calculation()
+        kpi_set_fk = self.common.get_kpi_fk_by_kpi_type(kpi_set)
         total_set_scores = list()
         for kpi_name in kpis_list:
             kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_name)
             atomics_df = self.get_atomics_to_calculate(kpi_name)
             atomic_results = self.calculate_atomic_results(kpi_fk, atomics_df)  # Atomic level
-            kpi_results = self.calculate_kpi_result(kpi_name, atomic_results)   # KPI level
-            total_set_scores.append(self.get_kpi_details(kpi_set, kpi_fk, kpi_name, kpi_results))
+            kpi_results = self.calculate_kpi_result_by_weight(atomic_results, kpi_fk, kpi_set_fk)   # KPI level
+            kpi_weight = self.get_kpi_weight(kpi_name, kpi_set)
+            total_set_scores.append((kpi_results, kpi_weight))
+        self.calculate_kpi_result_by_weight(total_set_scores, kpi_set_fk)   # Set level
+
+    def calculate_kpi_result_by_weight(self, kpi_results, kpi_fk, parent_fk=None):
+        """
+        This function aggregates the KPI results by scores and weights and saves the results to the DB.
+        :param parent_fk: The KPI SET FK that the KPI "belongs" too if exist.
+        :param kpi_fk: The relevant KPI fk.
+        :param kpi_results: A list of results and weights tuples: [(score1, weight1), (score2, weight2) ... ].
+        :return: The aggregated KPI score.
+        """
+        kpi_score = sum([score * weight for score, weight in kpi_results])
+        self.common.write_to_db_result(fk=kpi_fk, numerator_id=Consts.CBCIL_MANUFACTURER,
+                                       denominator_id=self.store_id,
+                                       identifier_parent=parent_fk,
+                                       result=kpi_score, score=kpi_score, should_enter=True)
+        return kpi_score
 
     def calculate_atomic_results(self, kpi_fk, atomics_df):
         """
@@ -89,7 +105,7 @@ class CBCDAIRYILToolBox:
         :return: A list of results and weights tuples: [(score1, weight1), (score2, weight2) ... ].
         """
         # identifier_result_kpi = self.get_identifier_result_kpi_by_name(kpi)
-        scores = list()
+        total_scores = list()
         for i in atomics_df.index:
             current_atomic = atomics_df.iloc[i]
             kpi_type = current_atomic.get(Consts.KPI_TYPE)  # TODO: CHECK FOR SINGLE ATOMIC
@@ -112,17 +128,18 @@ class CBCDAIRYILToolBox:
             else:
                 Log.warning("KPI of type '{}' is not supported".format(kpi_type))
                 continue
-
-            if atomic_score == 0:
-                self.add_gap(current_atomic)
-            scores.append((atomic_score, atomic_weight))
+            if atomic_score is None:    # In cases that we need to ignore the KPI and divide it's weight
+                continue
+            elif atomic_score == 0:               # TODO TODO TODO
+                self.add_gap(current_atomic)    # TODO TODO TODO
+            total_scores.append((atomic_score, atomic_weight))
 
             atomic_fk_lvl_2 = self.common.get_kpi_fk_by_kpi_type(current_atomic[Consts.KPI_ATOMIC_NAME])
             self.common.write_to_db_result(fk=atomic_fk_lvl_2, numerator_id=Consts.CBCIL_MANUFACTURER,
                                            denominator_id=self.store_id,
                                            identifier_parent=kpi_fk,
                                            result=atomic_score, score=atomic_score, should_enter=True)
-        return scores
+        return total_scores
 
     def get_relevant_kpis_for_calculation(self):
         """
@@ -176,13 +193,13 @@ class CBCDAIRYILToolBox:
         :param template_groups: The relevant template group from the template.
         :return: List of scene fks.
         """
-        filtered_scif = self.scif[['scene_fk', 'template_name', 'template_group']]
+        filtered_scif = self.scif[[Consts.SCENE_ID, 'template_name', 'template_group']]
         if template_names:
             filtered_scif = filtered_scif[filtered_scif['template_name'].isin(template_names)]
         if template_groups:
             filtered_scif = filtered_scif[filtered_scif['template_group'].isin(template_groups)]
 
-        return filtered_scif[Consts.SCENE_FK].unique().tolist()
+        return filtered_scif[Consts.SCENE_ID].unique().tolist()
 
     def get_general_filters(self, params):
         """
@@ -266,8 +283,8 @@ class CBCDAIRYILToolBox:
         :param general_filters:
         :return:
         """
-
-        return 100
+        score = 0
+        return 100 if score >= 0.75 else score
 
     def calculate_availability_from_bottom(self, **general_filters):
         """
@@ -279,16 +296,6 @@ class CBCDAIRYILToolBox:
         general_filters['filters']['All'].update({'shelf_number_from_bottom': range(shelf_number + 1)[1:]})
         score = self.calculate_availability(**general_filters)
         return score
-
-    def calculate_kpi_result(self, kpi, atomic_results):
-        """
-
-        :param kpi:
-        :param atomic_results: A list of results and weights tuples: [(score1, weight1), (score2, weight2) ... ].
-        :return:
-        """
-        scores = []
-        return scores
 
     def calculate_brand_block(self, **general_filters):
         """
@@ -334,7 +341,9 @@ class CBCDAIRYILToolBox:
         survey_question = str(int(filters.get(Consts.QUESTION_ID)[0]))
         target_answers = general_filters[Consts.TARGET].split(Consts.SEPARATOR)
         survey_answer = self.survey.get_survey_answer((Consts.CODE, [survey_question]))
-        if survey_answer:
+        if survey_answer in Consts.SURVEY_ANSWERS_TO_IGNORE:
+            return None
+        elif survey_answer:     # TODO TODO TODO TODO TODO
             return 100 if survey_answer.strip() in target_answers else False
         else:
             return 0
@@ -352,6 +361,3 @@ class CBCDAIRYILToolBox:
             if self.availability.calculate_availability(**filters) >= 1:
                 return 100
         return 0
-
-
-
