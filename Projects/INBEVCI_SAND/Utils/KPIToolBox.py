@@ -163,12 +163,19 @@ class INBEVCISANDToolBox:
                            Const.CATEGORY_FK: Const.BEER_CATEGORY_FK, Const.SCENE_FK: relevant_scenes}
 
         # Calculating the total linear space
-        total_res = self.calculate_sos_by_scif(**general_filters)
+        location_type = self.scif[self.scif['scene_fk'].isin(relevant_scenes)]['location_type'].values[0] if relevant_scenes else None
+        if location_type is None:
+            total_res = self.calculate_sos_by_scif(**general_filters)
+        else:
+            total_res = self.calculate_length_location_specific(location_type, self.scif, **general_filters)
 
         # Calculating the rest of the manufacturers' linear space
         for manufacturer in manufacturer_list:
             sos_filters = {Const.MANUFACTURER_FK: [manufacturer]}
-            manufacturer_sos_res = self.calculate_sos_by_scif(**dict(sos_filters, **general_filters))
+            if location_type is None:
+                manufacturer_sos_res = self.calculate_sos_by_scif(**dict(sos_filters, **general_filters))
+            else:
+                manufacturer_sos_res = self.calculate_length_location_specific(location_type, self.scif, **dict(sos_filters, **general_filters))
             sos_per_manufacturer[manufacturer] = manufacturer_sos_res
             if parent_set_fk:
                 sos_score = (manufacturer_sos_res / float(total_res)) * 100
@@ -190,24 +197,29 @@ class INBEVCISANDToolBox:
                                                   Const.LOCATION_TYPE_FK], as_index=False).agg({'gross_len_ign_stack': np.sum,
                                                                                                 'gross_len_add_stack': np.sum})
         # option 1
+        t0 = datetime.now()
         if not calculation_scif.empty:
-            category_location_df = filtered_scif.groupby([Const.CATEGORY_FK, Const.LOCATION_TYPE_FK]).agg({'gross_len_ign_stack': np.sum,
-                                                                                                           'gross_len_add_stack': np.sum})
-            category_location_df.rename({'gross_len_ign_stack': 'gross_len_ign_stack_total_location',
-                                         'gross_len_add_stack': 'gross_len_add_stack_total_location'}, inplace=True)
+            category_location_df = filtered_scif.groupby([Const.CATEGORY_FK, Const.LOCATION_TYPE_FK], as_index=False).agg({'gross_len_ign_stack': np.sum,
+                                                                                                                           'gross_len_add_stack': np.sum})
+            category_location_df.rename(columns={'gross_len_ign_stack': 'gross_len_ign_stack_total_location',
+                                                 'gross_len_add_stack': 'gross_len_add_stack_total_location'}, inplace=True)
             calculation_scif = calculation_scif.merge(category_location_df, on=[Const.CATEGORY_FK, Const.LOCATION_TYPE_FK], how='left')
             calculation_scif['numerator_result'] = calculation_scif.apply(self.define_length_based_on_location, args=('numerator',),
                                                                           axis=1)
             calculation_scif['denominator_result'] = calculation_scif.apply(self.define_length_based_on_location,
                                                                             args=('denominator',), axis=1)
             calculation_scif['sos'] = calculation_scif.apply(self.calculate_sos, axis=1)
+            scif_to_compare = calculation_scif.copy()
             for i, row in calculation_scif.iterrows():
                 self.common.write_to_db_result(fk=kpi_fk, numerator_id=row['product_fk'],
                                                denominator_id=row[Const.LOCATION_TYPE_FK], numerator_result=row['numerator_result'],
                                                denominator_result=row['denominator_result'],
                                                context_id=row[Const.CATEGORY_FK], result=row['sos'], score=row['sos'])
+        t1 = datetime.now()
+        print 'Option 1 ran {}'.format(t1 - t0)
 
         #option 2
+        t0 = datetime.now()
         if not calculation_scif.empty:
             calculation_scif['denom_filters'] = calculation_scif.apply(self.construct_denom_filters_sku_sos, axis=1)
             calculation_scif['num_filters'] = calculation_scif.apply(self.construct_numer_filters_sku_sos, axis=1)
@@ -220,6 +232,9 @@ class INBEVCISANDToolBox:
                 self.common.write_to_db_result(fk=kpi_fk, numerator_id=row['product_fk'], denominator_id=row[Const.LOCATION_TYPE_FK],
                                                numerator_result=numerator_res, denominator_result=denominator_res,
                                                context_id=row[Const.CATEGORY_FK], result=score, score=score)
+        t1 = datetime.now()
+        print 'Option 2 ran {}'.format(t1 - t0)
+        print 'end'
 
     @staticmethod
     def calculate_sos(row):
@@ -233,7 +248,8 @@ class INBEVCISANDToolBox:
             length_field = Const.STACK_PER_LOCATION[location_type]
         else:
             length_field = Const.STACK_PER_LOCATION_TOTAL[location_type]
-        return length_field
+        length_value = row[length_field]
+        return length_value
 
     def calculate_length_location_specific(self, location_type, scif, filters):
         length_field = Const.STACK_PER_LOCATION[location_type]
@@ -354,12 +370,15 @@ class INBEVCISANDToolBox:
                            Const.PRICE_GROUP: price_group}
 
         # Calculating the total linear space
-        total_res = self.calculate_sos_by_scif(**general_filters)
+        # total_res = self.calculate_sos_by_scif(**general_filters)
+        total_res = self.calculate_length_location_specific(Const.SECONDARY_SHELF, self.scif, **general_filters)
 
         # Calculating the rest of the manufacturers' linear space
         for manufacturer in manufacturer_list:
             sos_filters = {Const.MANUFACTURER_FK: [manufacturer]}
-            manufacturer_sos_res = self.calculate_sos_by_scif(**dict(sos_filters, **general_filters))
+            # manufacturer_sos_res = self.calculate_sos_by_scif(**dict(sos_filters, **general_filters))
+            manufacturer_sos_res = self.calculate_length_location_specific(Const.SECONDARY_SHELF, self.scif,
+                                                                           **dict(sos_filters, **general_filters))
             sos_per_manufacturer[manufacturer] = manufacturer_sos_res
             sos_score = (manufacturer_sos_res / float(total_res)) * 100
             self.common.write_to_db_result(fk=kpi_level_2_fk, numerator_id=manufacturer,
@@ -815,12 +834,13 @@ class INBEVCISANDToolBox:
     def sos_calculation_all_manufacturers(self, numerator_key, denominator_key, denominator_value, filtered_scif,
                                           identifier_parent):
         if numerator_key == 'manufacturer_local_name' and denominator_key in ['category', 'sub_category']:
-            all_manufacturers = filtered_scif['manufacturer_fk'].values.tolist()
+            all_manufacturers = filtered_scif['manufacturer_fk'].unique().tolist()
             denominator = filtered_scif[filtered_scif[denominator_key].str.upper() == denominator_value.upper()][
                 'gross_len_ign_stack'].sum()
             denominator_id = self.all_products[self.all_products[denominator_key].str.upper() ==
                                                denominator_value.upper()][denominator_key + '_fk'].values[0]
-            kpi = '{}_all'.format(identifier_parent['kpi_fk'])
+            parent_kpi_name = self.new_kpi_static_data[self.new_kpi_static_data['pk'] == float(identifier_parent['kpi_fk'])]['type'].values[0]
+            kpi = self.common.get_kpi_fk_by_kpi_type('{}_all'.format(parent_kpi_name))
             for manufacturer in all_manufacturers:
                 numerator = filtered_scif[(filtered_scif['manufacturer_fk'] == manufacturer) &
                                           (filtered_scif[denominator_key].str.upper() == denominator_value.upper())][
