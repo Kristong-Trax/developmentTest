@@ -114,8 +114,8 @@ class ToolBox:
         # print(kpi_name)
         # if kpi_name != 'Do Kid AND ASH Both Anchor End of Category?':
         # if kpi_name != 'In the MSL for Yogurt, which of the following is adjacent to Kite Hill?':
-        if kpi_name not in ('What is stocked in the same section as Dry Seasoning?'):
-            return
+        # if kpi_name not in ('Are all sauces grouped together?'):
+        #     return
 
         # if kpi_type == Const.AGGREGATION:
         # if kpi_type:
@@ -850,9 +850,10 @@ class ToolBox:
     def calculate_multi_block(self, kpi_name, kpi_line, relevant_scif, general_filters):
         score, orientation, mpis_dict, blocks, results = self.base_block(kpi_name, kpi_line, self.scif, general_filters,
                                                                          multi=1)
+        mpis = self.mpis[self.mpis['stacking_layer'] == 1]
         segs = self.get_kpi_line_filters(kpi_line)['GMI_SEGMENT']
         seg_count = {}
-        seg_count = {seg: self.mpis[self.mpis['GMI_SEGMENT'] == seg].shape[0] for seg in segs}
+        seg_count = {seg: mpis[mpis['GMI_SEGMENT'] == seg].shape[0] for seg in segs}
         results['segments'] = [[] for i in range(results.shape[0])]
         for i, row in results.iterrows():
             block = row.cluster
@@ -860,6 +861,7 @@ class ToolBox:
             for i, node in block.nodes(data=True):
                 if node['group_attributes']['group_name'] in segs:
                     items[node['group_attributes']['group_name']] += len(node['group_attributes']['match_fk_list'])
+            print(items)
             row.segments += [seg for seg in segs if seg_count[seg] > 0 and float(items[seg]) / seg_count[seg] >= .75]
         results['seg_count'] = [len(stuff) if stuff else 0 for stuff in results.segments]
         together = results.sort_values('seg_count', ascending=False).reset_index().segments
