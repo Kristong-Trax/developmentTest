@@ -7,12 +7,12 @@ from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Algo.Calculations.Core.Shortcuts import BaseCalculationsGroup
 from Trax.Utils.Logging.Logger import Log
 
-from Projects.DIAGEOGTR.Utils.PositionGraph import DIAGEOGTRDIAGEOGTRPositionGraphs
+from Projects.DIAGEOGTR.Utils.PositionGraph import DIAGEOGTRPositionGraphs
 
 __author__ = 'Nimrod'
 
 
-class DIAGEOGTRDIAGEOGTRGENERALToolBox:
+class DIAGEOGTRGENERALToolBox:
 
     EXCLUDE_FILTER = 0
     INCLUDE_FILTER = 1
@@ -49,7 +49,7 @@ class DIAGEOGTRDIAGEOGTRGENERALToolBox:
     @property
     def position_graphs(self):
         if not hasattr(self, '_position_graphs'):
-            self._position_graphs = DIAGEOGTRDIAGEOGTRPositionGraphs(self.data_provider, rds_conn=self.rds_conn)
+            self._position_graphs = DIAGEOGTRPositionGraphs(self.data_provider, rds_conn=self.rds_conn)
         return self._position_graphs
 
     @property
@@ -873,7 +873,7 @@ class DIAGEOGTRDIAGEOGTRGENERALToolBox:
         :param df: The data frame to be filters.
         :param filters: These are the parameters which the data frame is filtered by.
                        Every parameter would be a tuple of the value and an include/exclude flag.
-                       INPUT EXAMPLE (1):   manufacturer_name = ('Diageo', DIAGEOAUDIAGEOGTRDIAGEOGTRGENERALToolBox.INCLUDE_FILTER)
+                       INPUT EXAMPLE (1):   manufacturer_name = ('Diageo', DIAGEOAUDIAGEOGTRGENERALToolBox.INCLUDE_FILTER)
                        INPUT EXAMPLE (2):   manufacturer_name = 'Diageo'
         :return: a filtered Scene Item Facts data frame.
         """
