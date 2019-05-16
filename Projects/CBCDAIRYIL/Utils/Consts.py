@@ -5,7 +5,7 @@ import os
 class Consts(object):
     # Template consts
     PROJECT_TEMPLATE_NAME = 'Template.xlsx'
-    TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), 'CBCDAIRYIL', 'Data',
+    TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), 'Data',
                                  PROJECT_TEMPLATE_NAME)
     KPI_SHEET = 'KPI'
     KPI_WEIGHT = 'kpi weights'
@@ -46,6 +46,9 @@ class Consts(object):
     PRODUCT_TYPE = 'product_type'
     OTHER = 'Other'
     PRODUCT_FK = 'product_fk'
+    FACINGS = 'facings'
+    FACINGS_IGN_STACK = 'facings_ign_stack'
+    EAN_CODE = 'product_ean_code'
 
     # Store attributes
     ADDITIONAL_ATTRIBUTE_1 = 'additional_attribute_1'
@@ -59,14 +62,17 @@ class Consts(object):
     SCENE_ID = 'scene_id'
 
     # Filters
-    FILTERS = 'filters'
+    KPI_FILTERS = 'filters'
     ALL = 'All'
     FILTER_PARAM_1 = 'param1'
     FILTER_PARAM_2 = 'param2'
     FILTER_PARAM_3 = 'param3'
 
     # CBC data
-    CBCIL_MANUFACTURER = 1  # todo todo todo CHECK FOR THE RELEVANT ONE!!!!!!!
+    CBCIL_MANUFACTURER = 45
     CBC_COOLERS = u'מקרר חברה מרכזית'
     COMPETITOR_COOLERS = [u'מקרר מתחרה', u'מקרר קמעונאי']
     SURVEY_ANSWERS_TO_IGNORE = [u'הסידור אינו קטגוריאלי', u'אין מותגים אחרים']
+    HEBREW_YES = u'כן'
+    GOLDEN_SHELVES = [3, 4]
+    LOWEST_SHELF = 1
