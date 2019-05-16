@@ -861,7 +861,6 @@ class ToolBox:
             for i, node in block.nodes(data=True):
                 if node['group_attributes']['group_name'] in segs:
                     items[node['group_attributes']['group_name']] += len(node['group_attributes']['match_fk_list'])
-            print(items)
             row.segments += [seg for seg in segs if seg_count[seg] > 0 and float(items[seg]) / seg_count[seg] >= .75]
         results['seg_count'] = [len(stuff) if stuff else 0 for stuff in results.segments]
         together = results.sort_values('seg_count', ascending=False).reset_index().segments
