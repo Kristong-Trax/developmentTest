@@ -318,7 +318,7 @@ class CCZAToolBox:
             :return: 100 if it's fine, 0 otherwise.
         """
         progression_list = ['COCA-COLA', 'COCA-COLA Life', 'COKE ZERO', 'COKE LIGHT', 'TAB', 'SPRITE',
-                            'Sprite Zero', 'FANTA ORANGE', 'FANTA ZERO']
+                            'SPRITE ZERO', 'FANTA ORANGE', 'FANTA ZERO']
 
         filtered_scif = self.scif[
             (self.scif['location_type'] != "Pricing Scene Types") &
