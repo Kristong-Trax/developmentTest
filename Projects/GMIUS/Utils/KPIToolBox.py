@@ -197,6 +197,7 @@ class ToolBox:
         locations = set()
         filters = self.get_kpi_line_filters(kpi_line)
         relevant_scif = self.filter_df(relevant_scif, {'stacking_layer': 1})
+        filters.update(general_filters)
         for scene in relevant_scif.scene_fk.unique():
             filters['scene_fk'] = scene
             general_filters['scene_fk'] = scene
