@@ -114,7 +114,7 @@ class ToolBox:
         # print(kpi_name)
         # if kpi_name != 'Do Kid AND ASH Both Anchor End of Category?':
         # if kpi_name != 'In the MSL for Yogurt, which of the following is adjacent to Kite Hill?':
-        # if kpi_name not in ('In the MSL for Yogurt, which of the following is adjacent to the Simply Better Segment?'):
+        # if kpi_name not in ('Where are Chilies/Peppers shelved?'):
         #     return
 
         # if kpi_type == Const.AGGREGATION:
@@ -196,28 +196,38 @@ class ToolBox:
     def calculate_topmiddlebottom(self, kpi_name, kpi_line, relevant_scif, general_filters):
         locations = set()
         filters = self.get_kpi_line_filters(kpi_line)
+        relevant_scif = self.filter_df(relevant_scif, {'stacking_layer': 1})
         filters.update(general_filters)
+        for scene in relevant_scif.scene_fk.unique():
+            filters['scene_fk'] = scene
+            general_filters['scene_fk'] = scene
 
-        bay_max_shelf = self.filter_df(self.full_mpis, general_filters).set_index('bay_number')\
-                                                                  .groupby(level=0)['shelf_number'].max().to_dict()
-        mpis = self.filter_df(self.mpis, filters)
-        mpis = self.filter_df(mpis, {'stacking_layer': 1})
-        if mpis.empty:
-            return
-        grouped_mpis = mpis.set_index('bay_number').groupby(level=0)
+            bay_shelf = self.filter_df(self.full_mpis, general_filters).set_index('bay_number')\
+                                          .groupby(level=0)[['shelf_number', 'shelf_number_from_bottom']].max()
+            bay_max_shelf = bay_shelf['shelf_number'].to_dict()
+            bay_shelf['shelf_offset'] = bay_shelf['shelf_number_from_bottom'] - bay_shelf['shelf_number']
+            shelf_offset = bay_shelf['shelf_offset'].to_dict()
 
-        for bay, shelves in grouped_mpis:
-            if bay_max_shelf[bay] not in self.tmb_map:
-                Log.warning('bay "{}" is a problem in kpi "{}" in session "{}"'.format(bay, kpi_name, self.session_uid))
-                continue
-            sub_map = self.tmb_map[bay_max_shelf[bay]]
-            # shelf_with_most = shelves.groupby('shelf_number_from_bottom')[shelves.columns[0]].count()\
-            #     .sort_values().index[-1]
-            # locations.add(sub_map[shelf_with_most])
-            for shelf in shelves['shelf_number_from_bottom'].unique():
-                locations.add(sub_map[shelf])
-            if len(locations) == 3:
-                break
+            mpis = self.filter_df(self.mpis, filters)
+            mpis = self.filter_df(mpis, {'stacking_layer': 1})
+            if mpis.empty:
+                return
+            grouped_mpis = mpis.set_index('bay_number').groupby(level=0)
+
+            for bay, shelves in grouped_mpis:
+                shelf_no = bay_max_shelf[bay] + shelf_offset[bay] if shelf_offset[bay] < 0 else bay_max_shelf[bay]
+                if shelf_no not in self.tmb_map:
+                    Log.warning('bay "{}" is a problem in kpi "{}" in session "{}"'.format(bay, kpi_name, self.session_uid))
+                    continue
+                sub_map = self.tmb_map[shelf_no]
+                # shelf_with_most = shelves.groupby('shelf_number_from_bottom')[shelves.columns[0]].count()\
+                #     .sort_values().index[-1]
+                # locations.add(sub_map[shelf_with_most])
+                for shelf in shelves['shelf_number_from_bottom'].unique():
+                    shelf = shelf - shelf_offset[bay] if shelf_offset[bay] > 0 else shelf
+                    locations.add(sub_map[shelf])
+                if len(locations) == 3:
+                    break
 
         locations = sorted(list(locations))[::-1]
         ordered_result = '-'.join(locations)
