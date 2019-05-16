@@ -28,7 +28,7 @@ GROUP_NAME = 'Group Name'
 PRODUCT_NAME = 'Product Name'
 
 
-class DIAGEOGTRDIAGEOConsts(object):
+class DIAGEOConsts(object):
 
     EXCLUDE_FILTER = 0
     INCLUDE_FILTER = 1
@@ -103,7 +103,7 @@ class DIAGEOGTRDIAGEOConsts(object):
     KPI_NAME = KPI_NAME
 
 
-class DIAGEOGTRDIAGEOGTRDIAGEOToolBox(DIAGEOGTRDIAGEOConsts):
+class DIAGEOGTRDIAGEOToolBox(DIAGEOConsts):
 
     ACTIVATION_STANDARD = 'Activation Standard'
 

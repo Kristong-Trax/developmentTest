@@ -183,7 +183,8 @@ class PNGJPToolBox(PNGJPConsts):
                                                (scene_types['Store Type'] == 'All')]
         category_scene_types = {}
         for category in relevant_scene_types[self.CATEGORY].unique():
-            data = relevant_scene_types[relevant_scene_types[self.CATEGORY] == category]
+            data = relevant_scene_types[
+                relevant_scene_types[self.CATEGORY].str.encode('utf-8') == category.encode('utf-8')]
             category_scene_types[category] = data[self.SCENE_TYPES].unique().tolist()
         return category_scene_types
 
@@ -223,7 +224,8 @@ class PNGJPToolBox(PNGJPConsts):
         target = None
         targets_data = self.get_template('Targets')
         targets_data = targets_data[
-            (targets_data[self.KPI_NAME] == kpi_name) & (targets_data[self.CATEGORY] == category)]
+            (targets_data[self.KPI_NAME] == kpi_name) & (
+                    targets_data[self.CATEGORY].str.encode('utf-8') == category.encode('utf-8'))]
         if not targets_data.empty:
             targets_data = targets_data.iloc[0]
             if self.store_type in targets_data.keys():
@@ -233,7 +235,7 @@ class PNGJPToolBox(PNGJPConsts):
                     target = targets_data[self.store_type]
         return target
 
-    @kpi_runtime(kpi_desc='category_calculation')
+    # @kpi_runtime(kpi_desc='category_calculation')
     def category_calculation(self, category):
 
         self.calculation_per_entity(category)
@@ -258,7 +260,8 @@ class PNGJPToolBox(PNGJPConsts):
         except KeyError as e:
             # In case there is no display data
             if 'brand' in params[self.KPI_NAME]:
-                brands_to_write = self.scif.loc[self.scif[self.CATEGORY_LOCAL_NAME] == category][
+                brands_to_write = \
+                self.scif.loc[self.scif[self.CATEGORY_LOCAL_NAME].str.encode('utf-8') == category.encode('utf-8')][
                     self.BRAND_LOCAL_NAME].unique().tolist()
                 for brand in brands_to_write:
                     kpi_name = params[self.KPI_NAME].format(category=category, brand=brand)
@@ -278,7 +281,7 @@ class PNGJPToolBox(PNGJPConsts):
                 parsed_item = item.split(self.UNICODE_DASH)
                 brand = parsed_item[1][6:]
                 if ((self.all_products[self.MANUFACTURER_NAME].isin(params[self.MANUFACTURERS].split(self.SEPARATOR))) &
-                        (self.all_products[self.BRAND_LOCAL_NAME] == brand)).any():
+                        (self.all_products[self.BRAND_LOCAL_NAME].str.encode('utf-8') == brand.encode('utf-8'))).any():
                     numerator += self.atomic_results[reference_kpi_name][item]
             result = 0 if denominator == 0 else 100 * (round((numerator / float(denominator)) * 100, 2))
             kpi_name = params[self.KPI_NAME].format(category=category)
@@ -305,7 +308,7 @@ class PNGJPToolBox(PNGJPConsts):
         template_data = self.get_template(params[self.CUSTOM_SHEET])
         if template_data.empty:  # while not all 'Assortment' sheets are filled by the client
             return None
-        template_data = template_data[template_data[self.CATEGORY] == category]
+        template_data = template_data[template_data[self.CATEGORY].str.encode('utf-8') == category.encode('utf-8')]
         if template_data.empty or self.store_type not in template_data.keys():
             return None
         posm_items = template_data[template_data[self.store_type].apply(bool)][self.POSM_NAME].tolist()
@@ -326,16 +329,18 @@ class PNGJPToolBox(PNGJPConsts):
             if custom_template.empty:  # while not all 'Assortment' sheets are filled by the client
                 return
             try:
-                distribution_products = custom_template[(custom_template[self.CATEGORY] == category) &
-                                                        (custom_template[self.store_type].apply(bool))]
+                distribution_products = custom_template[
+                    (custom_template[self.CATEGORY].str.encode('utf-8') == category.encode('utf-8')) &
+                    (custom_template[self.store_type].apply(bool))]
                 distribution_products = distribution_products.rename(columns={self.PRODUCT_EAN: 'product_ean_code',
                                                                               self.PRODUCT_NAME: 'product_name'})
                 distribution_products = distribution_products['product_ean_code'].dropna().unique().tolist()
             except KeyError as e:
                 distribution_products = []
         else:
-            distribution_products = self.scif[(self.scif[self.CATEGORY_LOCAL_NAME] == category) &
-                                            (self.scif['dist_sc'] == 1)]['product_ean_code'].dropna().unique().tolist()
+            distribution_products = \
+            self.scif[(self.scif[self.CATEGORY_LOCAL_NAME].str.encode('utf-8') == category.encode('utf-8')) &
+                      (self.scif['dist_sc'] == 1)]['product_ean_code'].dropna().unique().tolist()
 
         scenes_filters = self.get_scenes_filters(params, category)
         for product_ean_code in distribution_products:
@@ -364,15 +369,17 @@ class PNGJPToolBox(PNGJPConsts):
             if custom_template.empty:  # while not all 'Assortment' sheets are filled by the client
                 return
             try:
-                distribution_products = custom_template[(custom_template[self.CATEGORY] == category) &
-                                                        (custom_template[self.store_type].apply(bool))]
+                distribution_products = custom_template[
+                    (custom_template[self.CATEGORY].str.encode('utf-8') == category.encode('utf-8')) &
+                    (custom_template[self.store_type].apply(bool))]
                 distribution_products = distribution_products.rename(columns={self.PRODUCT_EAN: 'product_ean_code',
                                                                               self.PRODUCT_NAME: 'product_name'})
             except KeyError as e:
                 distribution_products = []
         else:
             distribution_products = self.scif[
-                (self.scif[self.CATEGORY_LOCAL_NAME] == category) & (self.scif['dist_sc'] == 1)]
+                (self.scif[self.CATEGORY_LOCAL_NAME].str.encode('utf-8') == category.encode('utf-8')) & (
+                        self.scif['dist_sc'] == 1)]
         scenes_filters = self.get_scenes_filters(params, category)
         for product_ean_code in distribution_products['product_ean_code'].dropna().unique().tolist():
             product_brand, manufacturer = self.all_products.loc[self.all_products['product_ean_code'] ==
@@ -405,7 +412,8 @@ class PNGJPToolBox(PNGJPConsts):
             total_calculated = 0
             if aggregation_type and self.atomic_results.get(params[self.REFERENCE_KPI]):
                 reference_results = self.convert_results_to_df(params[self.REFERENCE_KPI])
-                reference_results = reference_results[reference_results['category'] == category]
+                reference_results = reference_results[
+                    reference_results['category'].str.encode('utf-8') == category.encode('utf-8')]
                 total_calculated = len(reference_results)
 
                 number_of_failed = len(reference_results[reference_results['result'] == 0])
@@ -468,7 +476,9 @@ class PNGJPToolBox(PNGJPConsts):
                 custom_sheet = self.get_template(entity_kpis[self.CUSTOM_SHEET].values[0])
                 if custom_sheet.empty:  # while not all 'Assortment' sheets are filled by the client
                     continue
-                entity_items = custom_sheet[custom_sheet[self.CATEGORY] == category][sub_entity].unique().tolist()
+                entity_items = \
+                    custom_sheet[custom_sheet[self.CATEGORY].str.encode('utf-8') == category.encode('utf-8')][
+                        sub_entity].unique().tolist()
 
             for item in entity_items:
                 score = None
@@ -512,7 +522,8 @@ class PNGJPToolBox(PNGJPConsts):
                         if sub_entity == self.BRAND_LOCAL_NAME:
                             brand = item
                             score = None
-                            manufacturer = self.all_products.loc[self.all_products[self.BRAND_LOCAL_NAME] == brand][
+                            manufacturer = self.all_products.loc[
+                                self.all_products[self.BRAND_LOCAL_NAME].str.encode('utf-8') == brand.encode('utf-8')][
                                 self.MANUFACTURER_NAME].values[0]
                         elif sub_entity == 'product_ean_code':
                             brand, manufacturer = \
@@ -624,7 +635,8 @@ class PNGJPToolBox(PNGJPConsts):
                     elif kpi_type == self.SHELF_SPACE_LENGTH_BY_SCENE:
                         brand = item
                         template_kpi_filters = scenes_filters['template_name']
-                        manufacturer = self.all_products.loc[self.all_products[self.BRAND_LOCAL_NAME] == brand][
+                        manufacturer = self.all_products.loc[
+                            self.all_products[self.BRAND_LOCAL_NAME].str.encode('utf-8') == brand.encode('utf-8')][
                             self.MANUFACTURER_NAME].values[0]
 
                         update_scif = self.scif[self.tools.get_filter_condition(self.scif, **kpi_filters)]
@@ -667,8 +679,9 @@ class PNGJPToolBox(PNGJPConsts):
                             kpi_name = params[self.KPI_NAME].format(category=category, brand=item)
                         elif set_name == 'Display Raw Data':
                             old_kpi_filters = scenes_filters['template_name']
-                            scenes_to_check = self.scif.loc[(self.scif[self.CATEGORY_LOCAL_NAME] == category) &
-                                                            (self.scif[sub_entity] == item)][
+                            scenes_to_check = self.scif.loc[
+                                (self.scif[self.CATEGORY_LOCAL_NAME].str.encode('utf-8') == category.encode('utf-8')) &
+                                (self.scif[sub_entity].str.encode('utf-8') == item.encode('utf-8'))][
                                 'scene_fk'].unique().tolist()
                             display_types = \
                                 self.match_display_in_scene.loc[self.match_display_in_scene['scene_fk'].isin(
@@ -693,7 +706,8 @@ class PNGJPToolBox(PNGJPConsts):
                         score = None
                         threshold = None
                         brand = item
-                        manufacturer = self.all_products.loc[self.all_products[self.BRAND_LOCAL_NAME] == brand][
+                        manufacturer = self.all_products.loc[
+                            self.all_products[self.BRAND_LOCAL_NAME].str.encode('utf-8') == brand.encode('utf-8')][
                             self.MANUFACTURER_NAME].values[0]
 
                         for scene_type in template_kpi_filters:
@@ -713,7 +727,8 @@ class PNGJPToolBox(PNGJPConsts):
                                 custom_sheet = self.get_template('Solution Center POSM')
                             posm_items = custom_sheet[(custom_sheet[sub_entity] == item) &
                                                       (custom_sheet[self.store_type].apply(bool)) &
-                                                      (custom_sheet['Category'] == category)]['POSM Name'].values
+                                                      (custom_sheet['Category'].str.encode('utf-8') == category.encode(
+                                                          'utf-8'))]['POSM Name'].values
                             for posm in posm_items:
                                 kpi_name = params[self.KPI_NAME].format(category=category, display_type=item,
                                                                         display=posm)
@@ -725,7 +740,8 @@ class PNGJPToolBox(PNGJPConsts):
                             else:
                                 custom_sheet = self.get_template('POSM Assortment')
                             posm_items = custom_sheet[(custom_sheet[self.store_type].apply(bool)) & (
-                                custom_sheet['Category'] == category)]['POSM Name'].values
+                                    custom_sheet['Category'].str.encode('utf-8') == category.encode('utf-8'))][
+                                'POSM Name'].values
                             kpi_name = params[self.KPI_NAME].format(category=category)
                             result = len(match_display[match_display['display_name'].isin(posm_items)])
                         else:
@@ -910,7 +926,7 @@ class PNGJPToolBox(PNGJPConsts):
                 filters['template_name'] = template_names
         return filters
 
-    @kpi_runtime(kpi_desc='update_custom_scene_item_facts')
+    # @kpi_runtime(kpi_desc='update_custom_scene_item_facts')
     def hadle_update_custom_scif(self):
         """
         This function updates the custom scif of PS with oos and assortment values for each product in each scene.
