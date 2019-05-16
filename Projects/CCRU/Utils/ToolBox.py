@@ -36,10 +36,11 @@ EQUIPMENT = 'EQUIPMENT'
 INTEGRATION = 'INTEGRATION'
 TOPSKU = 'TOPSKU'
 KPI_CONVERSION = 'KPI_CONVERSION'
+BENCHMARK = 'BENCHMARK'
 
 SKIP_OLD_CCRUKPIS_FROM_WRITING = [TARGET, MARKETING]
 SKIP_NEW_CCRUKPIS_FROM_WRITING = [TARGET, MARKETING]
-NEW_CCRUKPIS_TO_WRITE_TO_DB = [POS, INTEGRATION, GAPS, SPIRITS, TOPSKU, EQUIPMENT, CONTRACT]
+NEW_CCRUKPIS_TO_WRITE_TO_DB = [POS, INTEGRATION, GAPS, SPIRITS, TOPSKU, EQUIPMENT, CONTRACT, BENCHMARK]
 
 BINARY = 'BINARY'
 PROPORTIONAL = 'PROPORTIONAL'
@@ -72,15 +73,22 @@ class CCRUKPIToolBox:
         self.survey_response = self.data_provider[Data.SURVEY_RESPONSES]
 
         self.products = self.data_provider[Data.ALL_PRODUCTS]
+
         self.templates = self.data_provider[Data.ALL_TEMPLATES]
+        self.templates['template_name'] = self.templates['template_name'].apply(lambda x: x.encode('utf-8'))
+
         self.scenes_info = self.data_provider[Data.SCENES_INFO]
+
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
+        self.scif['template_name'] = self.scif['template_name'].apply(lambda x: x.encode('utf-8'))
+
         self.matches = self.data_provider[Data.MATCHES].merge(self.products, on='product_fk')
 
         self.pos_kpi_set_name = self.get_pos_kpi_set_name()
         self.kpi_set_name = kpi_set_name if kpi_set_name else self.pos_kpi_set_name
         self.kpi_set_type = kpi_set_type if kpi_set_type else POS
         self.kpi_name_to_id = {kpi_set_type: {}}
+        self.kpi_children = {kpi_set_type: {}}
         self.kpi_scores_and_results = {kpi_set_type: {}}
 
         self.kpi_fetcher = CCRUCCHKPIFetcher(self.project_name)
@@ -120,6 +128,7 @@ class CCRUKPIToolBox:
         self.kpi_fetcher.kpi_static_data = self.kpi_fetcher.get_static_kpi_data(kpi_set_name)
         if empty_kpi_scores_and_results:
             self.kpi_name_to_id[kpi_set_type] = {}
+            self.kpi_children[kpi_set_type] = {}
             self.kpi_scores_and_results[kpi_set_type] = {}
 
     def update_kpi_scores_and_results(self, param, kpi_scores_and_results):
@@ -127,6 +136,8 @@ class CCRUKPIToolBox:
             kpi_id = str(param.get('KPI ID'))
             parent = str(param.get('Parent')).split('.')[0] if param.get('Parent') else '0'
             self.kpi_name_to_id[self.kpi_set_type][param.get('KPI name Eng')] = kpi_id
+            self.kpi_children[self.kpi_set_type][parent] = list(set(self.kpi_children[self.kpi_set_type][parent] + [kpi_id]))\
+                if self.kpi_children[self.kpi_set_type].get(parent) else [kpi_id]
             if not self.kpi_scores_and_results[self.kpi_set_type].get(kpi_id):
                 self.kpi_scores_and_results[self.kpi_set_type][kpi_id] = \
                     {'kpi_id': kpi_id,
@@ -134,7 +145,7 @@ class CCRUKPIToolBox:
                      'eng_name': param.get('KPI name Eng'),
                      'rus_name': param.get('KPI name Rus'),
                      'score_func': param.get('score_func'),
-                     'threshold': None,
+                     'target': None,
                      'weight': param.get('KPI Weight'),
                      'result': None,
                      'format': None,
@@ -144,7 +155,8 @@ class CCRUKPIToolBox:
                      'scene_uid': None,
                      'level': int(param.get('level')) if param.get('level') else 1,
                      'parent': parent,
-                     'additional_level': None}
+                     'additional_level': None,
+                     'sort_order': param.get('Sorting')}
             self.kpi_scores_and_results[self.kpi_set_type][kpi_id].update(kpi_scores_and_results)
 
     def rds_connection(self):
@@ -211,7 +223,7 @@ class CCRUKPIToolBox:
         else:
             if params.get('Scenes to include'):
                 scenes_to_include = \
-                    [unicode(x).strip()
+                    [unicode(x).strip().encode('utf-8')
                      for x in unicode(params.get('Scenes to include')).split(', ')]
                 for scene in scenes_to_include:
                     if scene in scenes_data.keys():
@@ -399,8 +411,8 @@ class CCRUKPIToolBox:
         return set_total_res
 
     def calculate_availability(self, params, scenes=None, all_params=None):
-        values_list = [unicode(x).strip()
-                       for x in unicode(params.get('Values')).strip().split(', ')]
+        values_list = \
+            [unicode(x).strip() for x in unicode(params.get('Values')).strip().split(', ')]
         if not scenes:
             if params.get('depends on'):
                 depends_on_kpi_name = params.get('depends on')
@@ -782,6 +794,8 @@ class CCRUKPIToolBox:
             if p.get('Type') in ('MAN in CAT', 'MAN', 'BRAND', 'BRAND_IN_CAT', 'SUB_BRAND_IN_CAT') and \
                     p.get('Formula').strip() in ['sos', 'SOS', 'sos with empty']:
                 ratio = self.calculate_facings_sos(p)
+                if ratio is None:
+                    ratio = 0
             else:
                 continue
             if p.get('depends on'):
@@ -841,7 +855,10 @@ class CCRUKPIToolBox:
             else:
                 scenes = self.get_relevant_scenes(params)
 
-        relevant_scenes = scenes
+        # relevant_scenes = scenes
+        relevant_scenes = list(set(scenes).intersection(self.get_relevant_scenes(params)))
+        if not relevant_scenes:
+            return None
 
         if params.get('Manufacturer'):
             manufacturers = \
@@ -918,12 +935,12 @@ class CCRUKPIToolBox:
                 score = 0
                 if kpi_total_res < params.get('target_min', 0):
                     self.update_kpi_scores_and_results(
-                        params, {'threshold': params.get('target_min')})
+                        params, {'target': params.get('target_min')})
                 else:
                     self.update_kpi_scores_and_results(
-                        params, {'threshold': params.get('target_max')})
+                        params, {'target': params.get('target_max')})
             else:
-                self.update_kpi_scores_and_results(params, {'threshold': params.get('target_min')})
+                self.update_kpi_scores_and_results(params, {'target': params.get('target_min')})
                 numerator = kpi_total_res - params.get('target_min', 0)
                 denominator = params.get('target_max', 1) - params.get('target_min', 0)
                 score = (numerator / float(denominator)) * 100
@@ -934,7 +951,7 @@ class CCRUKPIToolBox:
                 params.get('Values'), self.store_id)
         else:
             target = params.get('Target')
-        self.update_kpi_scores_and_results(params, {'threshold': target})
+        self.update_kpi_scores_and_results(params, {'target': target})
         target = float(target)
         if not target:
             score = 0
@@ -1864,6 +1881,8 @@ class CCRUKPIToolBox:
                         atomic_res = self.calculate_facings_sos(c, scenes=scenes, all_params=params)
                     elif c.get("Formula").strip() == "DUMMY":
                         atomic_res = 0
+                    if atomic_res is None:
+                        continue
                     if atomic_res == -1:
                         atomic_score = 0
                     else:
@@ -1911,7 +1930,7 @@ class CCRUKPIToolBox:
         scenes_info = pd.merge(self.scenes_info, self.templates, on='template_fk')
         if level == 3:
             if params.get('Scenes to include'):
-                values_list = [unicode(x).strip()
+                values_list = [unicode(x).strip().encode('utf-8')
                                for x in params.get('Scenes to include').split(', ')]
                 number_relevant_scenes = scenes_info['template_name'].isin(values_list).sum()
                 return number_relevant_scenes
@@ -1941,7 +1960,7 @@ class CCRUKPIToolBox:
                         flag = 0
                         final_scenes = scenes_info
                         if p.get('Scenes to include'):
-                            scenes_values_list = [unicode(x).strip()
+                            scenes_values_list = [unicode(x).strip().encode('utf-8')
                                                   for x in p.get('Scenes to include').split(', ')]
                             final_scenes = scenes_info['template_name'].isin(scenes_values_list)
                             flag = 1
@@ -1958,7 +1977,7 @@ class CCRUKPIToolBox:
                         number_relevant_scenes = final_scenes.sum()
                 else:
                     if p.get('Scenes to include'):
-                        values_list = [unicode(x).strip()
+                        values_list = [unicode(x).strip().encode('utf-8')
                                        for x in p.get('Scenes to include').split(', ')]
                         number_relevant_scenes = scenes_info['template_name'].isin(
                             values_list).sum()
@@ -2258,7 +2277,8 @@ class CCRUKPIToolBox:
                     {'KPI ID': kf.get('id'),
                      'KPI name Eng': kf.get('name'),
                      'KPI name Rus': kf.get('name'),
-                     'Parent': 0},
+                     'Parent': 0,
+                     'Sorting': 0},
                     {'scene_uid': kf.get('scene_uid'),
                      'scene_id': kf.get('scene_id'),
                      'result': result_formatted,
@@ -2299,7 +2319,8 @@ class CCRUKPIToolBox:
             {'KPI ID': 0,
              'KPI name Eng': kpi_set_name,
              'KPI name Rus': kpi_set_name,
-             'Parent': 'root'},
+             'Parent': 'root',
+             'Sorting': 0},
             {'level': 0})
 
         return
@@ -2337,11 +2358,11 @@ class CCRUKPIToolBox:
                                                       'score'])
 
         self.update_kpi_scores_and_results(param, {'level': level,
-                                                   'threshold': 100 * (param.get('KPI Weight') if param.get('KPI Weight') else 1),
+                                                   'target': 100 * (param.get('KPI Weight') if param.get('KPI Weight') else 1),
                                                    'weight': param.get('KPI Weight'),
-                                                   # 'result': score,
+                                                   # 'result': round(score),
                                                    'score': round(score),
-                                                   'weighted_score': score * (param.get('KPI Weight') if param.get('KPI Weight') else 1)})
+                                                   'weighted_score': round(score) * (param.get('KPI Weight') if param.get('KPI Weight') else 1)})
 
         return attributes_for_table2
 
@@ -2359,7 +2380,7 @@ class CCRUKPIToolBox:
         result = self.kpi_scores_and_results[self.kpi_set_type][str(param.get("KPI ID"))].get('result')\
             if result is None else result
         result = result if result else 0
-        threshold = self.kpi_scores_and_results[self.kpi_set_type][str(param.get("KPI ID"))].get('threshold')\
+        threshold = self.kpi_scores_and_results[self.kpi_set_type][str(param.get("KPI ID"))].get('target')\
             if threshold is None else threshold
         threshold = threshold if threshold else 0
 
@@ -2417,11 +2438,11 @@ class CCRUKPIToolBox:
                                                           'name'])
 
         self.update_kpi_scores_and_results(param, {'level': level if additional_level is None else additional_level,
-                                                   'threshold': threshold,
+                                                   'target': threshold,
                                                    'weight': param.get('KPI Weight'),
                                                    'result': result,
                                                    'score': round(score),
-                                                   'weighted_score': round(score * (param.get('KPI Weight') if param.get('KPI Weight') else 1), 2),
+                                                   'weighted_score': round(round(score) * (param.get('KPI Weight') if param.get('KPI Weight') else 1), 2),
                                                    'additional_level': additional_level})
 
         return attributes_for_table3
@@ -2439,6 +2460,8 @@ class CCRUKPIToolBox:
             for c in params.values()[0]:
                 if c.get("KPI ID") in children and c.get("Formula").strip() == "atomic sos":
                     first_atomic_res = self.calculate_facings_sos(c)
+                    if first_atomic_res is None:
+                        first_atomic_res =0
                     first_atomic_score = self.calculate_score(first_atomic_res, c)
                     # write to DB
                     attributes_for_level3 = self.create_attributes_for_level3_df(
@@ -2633,6 +2656,7 @@ class CCRUKPIToolBox:
                         category_local = kpi['Gap Category Rus']
                         group_local = kpi['Gap Group Rus']
                         subgroup_local = kpi['Gap Subgroup Rus']
+                        sort_order = kpi['Sorting']
                         score = self.kpi_scores_and_results[POS][kpi_id].get('weighted_score')
                         target = self.kpi_scores_and_results[POS][kpi_id].get('weight') * 100
 
@@ -2648,12 +2672,46 @@ class CCRUKPIToolBox:
                                     {'KPI ID': counter,
                                      'KPI name Eng': kpi_name,
                                      'KPI name Rus': kpi_name_local,
-                                     'Parent': subgroup_counter},
-                                    {'threshold': 0,
+                                     'Parent': subgroup_counter,
+                                     'Sorting': sort_order},
+                                    {'target': 0,
                                      'result': result,
                                      'format': 'STR',
                                      'level': 4})
+
                                 subgroup_gap += gap
+
+                                # appending relevant atomics to the structure
+                                atomics = self.kpi_children[POS].get(kpi_id)
+                                if atomics:
+                                    for atomic_id in atomics:
+                                        self.update_kpi_scores_and_results(
+                                            {'KPI ID': str(counter) + '_' + atomic_id,
+                                             'KPI name Eng': self.kpi_scores_and_results[POS][atomic_id].get('eng_name'),
+                                             'KPI name Rus': self.kpi_scores_and_results[POS][atomic_id].get('rus_name'),
+                                             'Parent': counter,
+                                             'Sorting': self.kpi_scores_and_results[POS][atomic_id].get('sort_order')},
+                                            {'target': self.kpi_scores_and_results[POS][atomic_id].get('target'),
+                                             'result': self.kpi_scores_and_results[POS][atomic_id].get('result'),
+                                             'score': self.kpi_scores_and_results[POS][atomic_id].get('score'),
+                                             'format': self.kpi_scores_and_results[POS][atomic_id].get('format'),
+                                             'level': 5})
+
+                                        # appending relevant sub-atomics to the structure
+                                        sub_atomics = self.kpi_children[POS].get(atomic_id)
+                                        if sub_atomics:
+                                            for sub_atomic_id in sub_atomics:
+                                                self.update_kpi_scores_and_results(
+                                                    {'KPI ID': str(counter) + '_' + sub_atomic_id,
+                                                     'KPI name Eng': self.kpi_scores_and_results[POS][sub_atomic_id].get('eng_name'),
+                                                     'KPI name Rus': self.kpi_scores_and_results[POS][sub_atomic_id].get('rus_name'),
+                                                     'Parent': str(counter) + '_' + atomic_id,
+                                                     'Sorting': self.kpi_scores_and_results[POS][sub_atomic_id].get('sort_order')},
+                                                    {'target': self.kpi_scores_and_results[POS][sub_atomic_id].get('target'),
+                                                     'result': self.kpi_scores_and_results[POS][sub_atomic_id].get('result'),
+                                                     'score': self.kpi_scores_and_results[POS][sub_atomic_id].get('score'),
+                                                     'format': self.kpi_scores_and_results[POS][sub_atomic_id].get('format'),
+                                                     'level': 6})
 
                     if subgroup_gap > 0:
                         result = "+ " + format(subgroup_gap, ".1f")
@@ -2663,8 +2721,9 @@ class CCRUKPIToolBox:
                             {'KPI ID': subgroup_counter,
                              'KPI name Eng': subgroup,
                              'KPI name Rus': subgroup_local,
-                             'Parent': group_counter},
-                            {'threshold': 0,
+                             'Parent': group_counter,
+                             'Sorting': subgroup_counter},
+                            {'target': 0,
                              'result': result,
                              'format': 'STR',
                              'level': 3})
@@ -2678,8 +2737,9 @@ class CCRUKPIToolBox:
                         {'KPI ID': group_counter,
                          'KPI name Eng': group,
                          'KPI name Rus': group_local,
-                         'Parent': category_counter},
-                        {'threshold': 0,
+                         'Parent': category_counter,
+                         'Sorting': group_counter},
+                        {'target': 0,
                          'result': result,
                          'format': 'STR',
                          'level': 2})
@@ -2693,8 +2753,9 @@ class CCRUKPIToolBox:
                     {'KPI ID': category_counter,
                      'KPI name Eng': category,
                      'KPI name Rus': category_local,
-                     'Parent': 0},
-                    {'threshold': 0,
+                     'Parent': 0,
+                     'Sorting': category_counter},
+                    {'target': 0,
                      'result': result,
                      'format': 'STR',
                      'level': 1})
@@ -2707,10 +2768,110 @@ class CCRUKPIToolBox:
             {'KPI ID': 0,
              'KPI name Eng': kpi_set_name,
              'KPI name Rus': kpi_set_name,
-             'Parent': 'root'},
-            {'threshold': 0,
+             'Parent': 'root',
+             'Sorting': 0},
+            {'target': 0,
              'result': result,
              'format': 'STR',
+             'level': 0})
+
+        return
+
+    @kpi_runtime()
+    def calculate_benchmark(self, params, kpi_set_name):
+        kpi_set_fk = self.kpi_fetcher.get_kpi_set_fk()
+        total_score = 0
+        for param in params:
+            if param.get('Value Type') != 'POS KPI':
+                continue
+
+            kpi_name = param.get('KPI Name')
+            kpi_id = param.get('KPI Code')
+            kpi_fk = self.kpi_fetcher.get_kpi_fk(kpi_name)
+            # atomic_kpi_fk = self.kpi_fetcher.get_atomic_kpi_fk(kpi_name, kpi_fk)
+            score = 0
+            for pos_kpi_name in str(param.get("Values")).replace(", ", ",").replace(",", "\n").replace("\n\n", "\n").split("\n"):
+                pos_kpi_id = self.kpi_name_to_id[POS].get(pos_kpi_name)
+                if pos_kpi_id is None:
+                    Log.warning('Benchmark POS KPI is not found in POS KPI set : {}'.format(pos_kpi_name))
+                else:
+
+                    score += self.kpi_scores_and_results[POS][pos_kpi_id].get('weighted_score') \
+                        if self.kpi_scores_and_results[POS][pos_kpi_id].get('weighted_score') else 0
+
+            score = round(score*param.get('K'), 2)
+            total_score += score
+
+            # attributes_for_table3 = pd.DataFrame([(kpi_name,
+            #                                        self.session_uid,
+            #                                        kpi_set_name,
+            #                                        self.store_id,
+            #                                        self.visit_date.isoformat(),
+            #                                        dt.datetime.utcnow().isoformat(),
+            #                                        score,
+            #                                        kpi_fk,
+            #                                        atomic_kpi_fk,
+            #                                        None,
+            #                                        score,
+            #                                        kpi_name)],
+            #                                      columns=['display_text',
+            #                                               'session_uid',
+            #                                               'kps_name',
+            #                                               'store_fk',
+            #                                               'visit_date',
+            #                                               'calculation_time',
+            #                                               'score',
+            #                                               'kpi_fk',
+            #                                               'atomic_kpi_fk',
+            #                                               'threshold',
+            #                                               'result',
+            #                                               'name'])
+            # self.write_to_kpi_results_old(attributes_for_table3, 'level3')
+
+            attributes_for_table2 = pd.DataFrame([(self.session_uid,
+                                                   self.store_id,
+                                                   self.visit_date.isoformat(),
+                                                   kpi_fk,
+                                                   kpi_name,
+                                                   score)],
+                                                 columns=['session_uid',
+                                                          'store_fk',
+                                                          'visit_date',
+                                                          'kpi_fk',
+                                                          'kpk_name',
+                                                          'score_2'])
+            self.write_to_kpi_results_old(attributes_for_table2, 'level2')
+
+            self.update_kpi_scores_and_results(
+                {'KPI ID': kpi_id,
+                 'KPI name Eng': kpi_name,
+                 'KPI name Rus': kpi_name,
+                 'Parent': 0},
+                {'result': score,
+                 'score': score,
+                 'level': 1})
+
+        attributes_for_table1 = pd.DataFrame([(kpi_set_name,
+                                               self.session_uid,
+                                               self.store_id,
+                                               self.visit_date.isoformat(),
+                                               total_score,
+                                               kpi_set_fk)],
+                                             columns=['kps_name',
+                                                      'session_uid',
+                                                      'store_fk',
+                                                      'visit_date',
+                                                      'score_1',
+                                                      'kpi_set_fk'])
+        self.write_to_kpi_results_old(attributes_for_table1, 'level1')
+
+        self.update_kpi_scores_and_results(
+            {'KPI ID': 0,
+             'KPI name Eng': kpi_set_name,
+             'KPI name Rus': kpi_set_name,
+             'Parent': 'root'},
+            {'result': total_score,
+             'score': total_score,
              'level': 0})
 
         return
@@ -2828,12 +2989,19 @@ class CCRUKPIToolBox:
                      'KPI name Eng': kpi_set_name,
                      'KPI name Rus': kpi_set_name,
                      'Parent': 'root'},
-                    {'threshold': 100,
+                    {'target': 100,
                      'weight': 1,
                      'result': score,
                      'score': score,
                      'weighted_score': score,
                      'level': 0})
+
+                for kpi_id in self.kpi_scores_and_results[EQUIPMENT].keys():
+                    if self.kpi_scores_and_results[EQUIPMENT][kpi_id]['level'] == 2:
+                        self.kpi_scores_and_results[EQUIPMENT][kpi_id]['weight'] /= float(total_weight)
+                        self.kpi_scores_and_results[EQUIPMENT][kpi_id]['target'] = self.kpi_scores_and_results[EQUIPMENT][kpi_id]['weight'] * 100
+                        self.kpi_scores_and_results[EQUIPMENT][kpi_id]['weighted_score'] = \
+                            self.kpi_scores_and_results[EQUIPMENT][kpi_id]['score'] * self.kpi_scores_and_results[EQUIPMENT][kpi_id]['weight']
 
                 self.equipment_execution_score = score
 
@@ -2911,7 +3079,7 @@ class CCRUKPIToolBox:
                         #      'kpi_name': kpi_name,
                         #      'eng_name': param.get('KPI name Eng'),
                         #      'rus_name': param.get('KPI name Eng'),
-                        #      'threshold': kpi_weight * 100,
+                        #      'target': kpi_weight * 100,
                         #      'weight': kpi_weight,
                         #      'result': result,
                         #      'score': score,
@@ -2945,7 +3113,7 @@ class CCRUKPIToolBox:
                      'KPI name Eng': kpi_set_name,
                      'KPI name Rus': kpi_set_name,
                      'Parent': 'root'},
-                    {'threshold': 100,
+                    {'target': 100,
                      'weight': 1,
                      'result': score,
                      'score': score,
@@ -3206,7 +3374,7 @@ class CCRUKPIToolBox:
                  'KPI name Eng': kpi_set_name,
                  'KPI name Rus': kpi_set_name,
                  'Parent': 'root'},
-                {'threshold': 100,
+                {'target': 100,
                  'weight': 1,
                  'result': score,
                  'score': score,
@@ -3337,10 +3505,9 @@ class CCRUKPIToolBox:
             kpis = self.kpi_scores_and_results.get(kpi_set_type)
             if kpis:
                 kpis = pd.DataFrame(kpis.values())
-                kpis = kpis.where((pd.notnull(kpis)), None)
+                kpis = kpis.where((pd.notnull(kpis)), None).sort_values(by=['sort_order'])
                 if kpi_set_type in [EQUIPMENT, TOPSKU]:
-                    identifier_parent = self.common.get_dictionary(
-                        set=CONTRACT, level=0, kpi=CONTRACT)
+                    identifier_parent = self.common.get_dictionary(set=CONTRACT, level=0, kpi=CONTRACT)
                 else:
                     identifier_parent = None
                 # try:
@@ -3353,7 +3520,10 @@ class CCRUKPIToolBox:
     def write_kpi_tree(self, kpi_set_type, kpis, parent='root', identifier_parent=None):
         group_score = 0
         group_weight = 0
+        sort_order = 0
         for i, kpi in kpis[kpis['parent'] == parent].iterrows():
+
+            sort_order += 1
 
             kpi_name = (kpi_set_type + '_' + str(int(kpi['level']))
                         + (('_' + kpi['format']) if kpi['format'] else '')
@@ -3386,14 +3556,14 @@ class CCRUKPIToolBox:
             else:
                 score = weight = 0
 
-            if kpi_set_type in [POS]:
+            if kpi_set_type in [POS, EQUIPMENT, SPIRITS]:
                 score = score if kpi['weighted_score'] is None else kpi['weighted_score']
                 weight = weight if kpi['weight'] is None else kpi['weight']
-                target = weight*100 if kpi['threshold'] is None and weight else kpi['threshold']
+                target = weight*100 if kpi['target'] is None and weight else kpi['target']
             else:
                 score = score if kpi['score'] is None else kpi['score']
                 weight = kpi['weight']
-                target = kpi['threshold']
+                target = kpi['target']
 
             if kpi['format'] == 'STR':
                 result = kpi['result']
@@ -3404,13 +3574,20 @@ class CCRUKPIToolBox:
                                                     (self.kpi_result_values['result_value'] == result)][
                         'result_value_fk'].values[0]
             else:
-                result = kpi['result'] if kpi['level'] == 3 else kpi['score']
+                if kpi_set_type in [POS, EQUIPMENT, SPIRITS] and kpi['level'] in (1, 2):
+                    result = round(score/weight) if score and weight \
+                        else score
+                else:
+                    result = kpi['result'] if kpi['result'] is not None \
+                        else (kpi['score'] if kpi['score'] is not None
+                                else score)
 
             group_score += score if score else 0
             group_weight += weight if weight else 0
 
             self.common.write_to_db_result(fk=kpi_fk,
                                            numerator_id=numerator_id,
+                                           numerator_result=sort_order,
                                            denominator_id=denominator_id,
                                            context_id=context_id,
                                            target=target,

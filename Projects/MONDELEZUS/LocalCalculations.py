@@ -13,8 +13,7 @@
 #     project_name = 'mondelezus'
 #
 #     sessions = [
-#         'ff2f7e32-7126-4084-b0a1-8da135994001',
-#         '4018ac2a-6ff5-4180-ae45-87d7fbdbe75a',
+#         'fcf02287-2bdf-4a2e-8460-e70006a05803'
 #
 #                 ]
 #

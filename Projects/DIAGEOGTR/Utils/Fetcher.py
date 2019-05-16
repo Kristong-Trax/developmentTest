@@ -2,7 +2,7 @@
 __author__ = 'Yasmin'
 
 
-class DIAGEOGTRDIAGEOGTRQueries(object):
+class DIAGEOGTRQueries(object):
 
     @staticmethod
     def get_all_kpi_data():

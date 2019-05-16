@@ -10,6 +10,9 @@ class Const(object):
     BRAND_VARIANT_GROUP = 'Brand Variant ASSORTMENT GROUP'
     ASSORTMENT = "Must have ASSORTMENT GROUP"
     SOS = "SOS_manufacturer_category"
+    SOS_VS_TARGET = "SOS vs Target"
+    MANUFACTURER_DISPLAY_COUNT = "Manufacturer Displays Count"
+    SOS_PER_MANUFACTURER_AND_LOCATION_TYPE = "SOS per Manufacturer and Location Type"
 
     # level 2:
 
@@ -37,6 +40,19 @@ class Const(object):
     BRAND = "brand"
     TARGET = "target"
     ATOMIC_NAME = "Atomic Name"
+    SCENE_FK = 'scene_fk'
+    LOCATION_TYPE_FK = 'location_type_fk'
+    MANUFACTURER_FK = 'manufacturer_fk'
+    EXCLUDE_FILTER = 0
+    EMPTY = 'Empty'
+    IRRELEVANT = 'Irrelevant'
+    PRODUCT_TYPE = 'product_type'
+    CATEGORY_FK = 'category_fk'
+    BEER_CATEGORY_FK = 1
+    ABINBEV_MAN_FK = 7
+    COOLER_FK = 3
+    SECONDARY_DISPLAY_FK = 2
+    PRIMARY_SHELF_FK = 1
 
     ASSORTMENT_TYPE = "Assortment type"
     GRANULAR_GROUP_NAME = "Granular Group Name"
@@ -59,6 +75,8 @@ class Const(object):
         BRAND_FACING_TARGET,
         SOS,
         ASSORTMENT,
+        SOS_VS_TARGET,
+        MANUFACTURER_DISPLAY_COUNT
     ]
 
     # eye levels:

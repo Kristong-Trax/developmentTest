@@ -1,11 +1,11 @@
 from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScript
-from KPIUtils.GlobalProjects.GOOGLE.KPIGenerator import Generator
+from KPIUtils.GlobalProjects.GOOGLE2.KPIGenerator import Generator
 import os
 
 __author__ = 'Eli_Shivi_Sam'
 
 FIXTURE_TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'Data',
-                                     'Google Fixture Targets 201901_updated_df_V.6_including_Lawson_Test_Stores.xlsx')
+                                     'Google Fixture Targets 201901_updated_April Visists.xlsx')
 
 
 class Calculations(BaseCalculationsScript):

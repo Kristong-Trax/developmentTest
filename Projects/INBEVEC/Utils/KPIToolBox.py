@@ -209,9 +209,10 @@ class INBEVECToolBox:
     def get_kpi_fk_by_kpi_name(self, kpi_name):
         assert isinstance(kpi_name, unicode), "name is not a string: %r" % kpi_name
         try:
-            return self.kpi_static_data[self.kpi_static_data['atomic_kpi_name'] == kpi_name]['atomic_kpi_fk'].values[0]
+            return self.kpi_static_data[self.kpi_static_data['atomic_kpi_name'].str.encode('utf-8') ==
+                                        kpi_name.encode('utf-8')]['atomic_kpi_fk'].values[0]
         except IndexError:
-            Log.info('Kpi name: {}, isnt equal to any kpi name in static table'.format(kpi_name))
+            Log.info(u'Kpi name: {}, isnt equal to any kpi name in static table'.format(kpi_name))
             return None
 
     def write_to_db_result(self, fk, score, level):

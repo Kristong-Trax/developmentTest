@@ -86,6 +86,8 @@ class GOOGLEUS_SANDToolBox:
     def get_custom_template(self, name):
         if name not in self.custom_templates.keys():
             template = parse_template(TEMPLATE_PATH, sheet_name=name)
+            if 'Unnamed: 0' in template.columns:
+                template = parse_template(TEMPLATE_PATH, name, 1)
             if template.empty:
                 template = parse_template(TEMPLATE_PATH, name, 2)
             self.custom_templates[name] = template
@@ -156,8 +158,10 @@ class GOOGLEUS_SANDToolBox:
     def calculate_availability(self, kpi_name, tab, set_name):
         atomic_scores = 0
         availability_template = self.get_custom_template(tab)
-        availability_template = availability_template.loc[(availability_template['KPI Set'] == set_name)]
-        availability_template = availability_template.loc[(availability_template['KPI Display Name'] == kpi_name)]
+        availability_template = availability_template.loc[(availability_template['KPI Set'].str.encode('utf-8') ==
+                                                           set_name.encode('utf-8'))]
+        availability_template = availability_template.loc[(availability_template['KPI Display Name'].str.encode('utf-8')
+                                                           == kpi_name.encode('utf-8'))]
         if not pd.isnull(availability_template['Template_name'].iloc[0]):
             for index, row in availability_template.iterrows():
                 atomic_name = row['Atomic KPI Name']
