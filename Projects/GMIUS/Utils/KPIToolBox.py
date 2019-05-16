@@ -114,7 +114,7 @@ class ToolBox:
         # print(kpi_name)
         # if kpi_name != 'Do Kid AND ASH Both Anchor End of Category?':
         # if kpi_name != 'In the MSL for Yogurt, which of the following is adjacent to Kite Hill?':
-        # if kpi_name not in ('Are all sauces grouped together?'):
+        # if kpi_name not in ('In the MSL for Yogurt, which of the following is adjacent to the Simply Better Segment?'):
         #     return
 
         # if kpi_type == Const.AGGREGATION:
@@ -214,7 +214,7 @@ class ToolBox:
             # shelf_with_most = shelves.groupby('shelf_number_from_bottom')[shelves.columns[0]].count()\
             #     .sort_values().index[-1]
             # locations.add(sub_map[shelf_with_most])
-            for shelf in shelves['shelf_number'].unique():
+            for shelf in shelves['shelf_number_from_bottom'].unique():
                 locations.add(sub_map[shelf])
             if len(locations) == 3:
                 break
@@ -862,8 +862,9 @@ class ToolBox:
                 if node['group_attributes']['group_name'] in segs:
                     items[node['group_attributes']['group_name']] += len(node['group_attributes']['match_fk_list'])
             row.segments += [seg for seg in segs if seg_count[seg] > 0 and float(items[seg]) / seg_count[seg] >= .75]
+            print(items)
         results['seg_count'] = [len(stuff) if stuff else 0 for stuff in results.segments]
-        together = results.sort_values('seg_count', ascending=False).reset_index().segments
+        together = results.sort_values('seg_count', ascending=False).reset_index().segments[0]
         result = 'None shelved together'
         if len(together) == 3:
             result = 'Taco, Enchilada Sauce and Cooking Sauce together'
@@ -1094,7 +1095,7 @@ class ToolBox:
                 scif = scif[scif[count_col].isin(allowed)]
         if scif.empty:
             return 0
-        count = len(scif[count_col[0]].unique())
+        count = len([x for x in scif[count_col[0]].unique() if x])
         return count
 
     def calculate_count_of(self, kpi_name, kpi_line, relevant_scif, general_filters):
