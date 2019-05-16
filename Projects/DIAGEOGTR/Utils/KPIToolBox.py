@@ -661,8 +661,6 @@ class DIAGEOGTRToolBox:
         if kpi_static_new.empty and kpi_static.empty:
             return None
 
-        print (self.product_attribute_price_data.columns)
-
         if kpi_name == PRICE_PROMOTION_BRAND_SKU:
             df_count = pd.DataFrame(
                 self.product_attribute_price_data.groupby([entity_key_1, entity_key_2]).size().reset_index(
@@ -675,7 +673,10 @@ class DIAGEOGTRToolBox:
             print ("kpi_name is not found in DB{}".format(kpi_name))
 
         if df_count.empty:
-            print ("No promotion price for entity:{}".format(entity_keys))
+            if kpi_name == PRICE_PROMOTION_BRAND_SKU:
+                print ("No promotion price for entities:{},{}".format(entity_key_1, entity_key_2))
+            elif kpi_name == PRICE_PROMOTION_SCENE_BRAND_SKU:
+                print ("No promotion price for entities:{},{},{}".format(entity_key_1, entity_key_2, entity_key_3))
         else:
             for row_count, row_data in df_count.iterrows():
                 price_promotion_count = row_data['count']
@@ -683,32 +684,23 @@ class DIAGEOGTRToolBox:
                 if kpi_name == PRICE_PROMOTION_BRAND_SKU:
 
                     df_count = pd.DataFrame(
-
                         self.product_attribute_price_data.groupby([entity_key_1, entity_key_2]).size().reset_index(
-
                             name="count"))
 
                     numerator_id = row_data[entity_key_2]
-
                     denominator_id = row_data[entity_key_1]
-
                     context_id = self.store_id
 
                 elif kpi_name == PRICE_PROMOTION_SCENE_BRAND_SKU:
 
                     df_count = pd.DataFrame(
-
                         self.product_attribute_price_data.groupby(
                             [entity_key_1, entity_key_2, entity_key_3]).size().reset_index(
-
                             name="count"))
 
                     numerator_id = row_data[entity_key_3]
-
                     denominator_id = row_data[entity_key_2]
-
                     context_id = row_data[entity_key_1]
-
 
                 self.common.write_to_db_result_new_tables(fk=kpi_level_2_fk,
                                                           numerator_id=numerator_id,
