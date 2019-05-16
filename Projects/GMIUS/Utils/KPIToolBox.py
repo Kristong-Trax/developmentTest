@@ -196,7 +196,7 @@ class ToolBox:
     def calculate_topmiddlebottom(self, kpi_name, kpi_line, relevant_scif, general_filters):
         locations = set()
         filters = self.get_kpi_line_filters(kpi_line)
-        filters.update(general_filters)
+        relevant_scif = self.filter_df(relevant_scif, {'stacking_layer': 1})
         for scene in relevant_scif.scene_fk.unique():
             filters['scene_fk'] = scene
             general_filters['scene_fk'] = scene
