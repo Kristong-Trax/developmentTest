@@ -114,7 +114,7 @@ class ToolBox:
         # print(kpi_name)
         # if kpi_name != 'Do Kid AND ASH Both Anchor End of Category?':
         # if kpi_name != 'In the MSL for Yogurt, which of the following is adjacent to Kite Hill?':
-        # if kpi_name not in ('Where are Chilies/Peppers shelved?'):
+        # if kpi_name not in ('Are all sauces grouped together?'):
         #     return
 
         # if kpi_type == Const.AGGREGATION:
@@ -850,9 +850,10 @@ class ToolBox:
     def calculate_multi_block(self, kpi_name, kpi_line, relevant_scif, general_filters):
         score, orientation, mpis_dict, blocks, results = self.base_block(kpi_name, kpi_line, self.scif, general_filters,
                                                                          multi=1)
+        mpis = self.mpis[self.mpis['stacking_layer'] == 1]
         segs = self.get_kpi_line_filters(kpi_line)['GMI_SEGMENT']
         seg_count = {}
-        seg_count = {seg: self.mpis[self.mpis['GMI_SEGMENT'] == seg].shape[0] for seg in segs}
+        seg_count = {seg: mpis[mpis['GMI_SEGMENT'] == seg].shape[0] for seg in segs}
         results['segments'] = [[] for i in range(results.shape[0])]
         for i, row in results.iterrows():
             block = row.cluster
