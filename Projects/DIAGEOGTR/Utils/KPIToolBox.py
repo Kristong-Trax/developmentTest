@@ -443,7 +443,7 @@ class DIAGEOGTRToolBox:
                     print "Number of bays is zero"
                     continue
 
-                total_num_of_displays = df_max_bay['bay_number'].iloc[0]
+                total_num_of_displays_2 = df_max_bay['bay_number'].iloc[0]
 
                 for bay_number in range(1, total_num_of_displays + 1):
                     df_bay = df_scene[df_scene['bay_number'] == bay_number][[entity_keys]]
@@ -470,7 +470,7 @@ class DIAGEOGTRToolBox:
                     else:
                         kpi_result['num_of_displays'] = 1
 
-                    kpi_result['total_num_of_displays'] = total_num_of_displays
+                    kpi_result['total_num_of_displays'] = total_num_of_displays_2
                     kpi_results[entity_key_pk]= kpi_result
 
             for key, kpi_result in kpi_results.items():
