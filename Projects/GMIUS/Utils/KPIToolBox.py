@@ -114,7 +114,7 @@ class ToolBox:
         # print(kpi_name)
         # if kpi_name != 'Do Kid AND ASH Both Anchor End of Category?':
         # if kpi_name != 'In the MSL for Yogurt, which of the following is adjacent to Kite Hill?':
-        # if kpi_name not in ('Where are Chilies/Peppers shelved?'):
+        # if kpi_name not in ('Where are Progresso RTS Light facings shelved?'):
         #     return
 
         # if kpi_type == Const.AGGREGATION:
@@ -196,9 +196,12 @@ class ToolBox:
     def calculate_topmiddlebottom(self, kpi_name, kpi_line, relevant_scif, general_filters):
         locations = set()
         filters = self.get_kpi_line_filters(kpi_line)
-        relevant_scif = self.filter_df(relevant_scif, {'stacking_layer': 1})
+        relevant_scif = self.filter_df(relevant_scif, filters)
+        relevant_scif = relevant_scif[relevant_scif['facings_ign_stack'] >= 1]
+        if relevant_scif.empty:
+            return
         filters.update(general_filters)
-        for scene in relevant_scif.scene_fk.unique():
+        for scene in relevant_scif.scene_id.unique():
             filters['scene_fk'] = scene
             general_filters['scene_fk'] = scene
 
@@ -211,7 +214,7 @@ class ToolBox:
             mpis = self.filter_df(self.mpis, filters)
             mpis = self.filter_df(mpis, {'stacking_layer': 1})
             if mpis.empty:
-                return
+                continue
             grouped_mpis = mpis.set_index('bay_number').groupby(level=0)
 
             for bay, shelves in grouped_mpis:
