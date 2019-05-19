@@ -16,7 +16,7 @@ class SceneGenerator:
         self.session_uid = self.data_provider.session_uid
         self.common = Common(data_provider)
         self.scene_tool_box = CCUSSceneToolBox(self.data_provider, self.output, self.common)
-        self.pillar_scene_tool_box = PillarsSceneToolBox(self.data_provider, self.common)
+        self.pillar_scene_tool_box = PillarsSceneToolBox(self.data_provider, self.output, self.common)
 
     @log_runtime('Total Calculations', log_start=True)
     def scene_score(self):

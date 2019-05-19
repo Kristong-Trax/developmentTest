@@ -78,7 +78,8 @@ class PillarsPROGRAMSToolBox:
 
         # By scene kpi logic, each program in the relevant date will show in result
         # (with score 0 for all scenes it was not found at visit at all.)
-        programs = self.scenes_result['numerator_id'].unique()
+        programs = self.scenes_result.loc[self.scenes_result['type'] == Const.SCENE_KPI_NAME]
+        programs = programs['numerator_id'].unique()
 
         for current_program_id in programs:
             scene_count = self.count_specific_program_scenes(current_program_id)

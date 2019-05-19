@@ -1,5 +1,7 @@
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Projects.CCUS.Pillars.Utils.Const import Const
+from KPIUtils_v2.GlobalDataProvider.PsDataProvider import PsDataProvider
+
 
 import os
 import pandas as pd
@@ -11,7 +13,7 @@ class PillarsSceneToolBox:
     PROGRAM_TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))),
                                          'Data', 'Template.xlsx')
 
-    def __init__(self, data_provider, common):
+    def __init__(self, data_provider,output, common):
         self.data_provider = data_provider
         self.common = common
         self.project_name = self.data_provider.project_name
@@ -30,9 +32,10 @@ class PillarsSceneToolBox:
         # self.kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.POC)
         self.all_brand = self.all_products[['brand_name', 'brand_fk']].drop_duplicates().set_index(u'brand_name')
         self.displays_in_scene = self.data_provider.match_display_in_scene
+        self.ps_data_provider = PsDataProvider(self.data_provider, output)
 
     def is_scene_belong_to_program(self):
-        # Get template
+        # Get template (from file or from external targets)
         relevant_programs = self.get_programs()
 
         for i in xrange(len(relevant_programs)):
@@ -61,6 +64,27 @@ class PillarsSceneToolBox:
                                            result=score, score=score, by_scene=True, denominator_id=self.store_id)
 
 
+    def get_programs(self, template=False):
+        """
+        This function gets the relevant programs from template/ external targets list.
+        :param template: if True takes the template from Data folder in project.
+                Else, takes the kpi's external targets.
+        :return:
+        """
+        if template:
+            programs = pd.read_excel(self.PROGRAM_TEMPLATE_PATH)
+        else:
+            programs = self.ps_data_provider.get_kpi_external_targets(["Pillars Programs KPI"])
+
+        if programs.empty:
+            return programs
+
+        # Get only relevant programs to check
+        relevant_programs = programs.loc[(programs['start_date'].dt.date <= self.visit_date) &
+                                         (programs['end_date'].dt.date >= self.visit_date)]
+
+        return relevant_programs
+
     def get_brand_fk_from_name(self, brand_name):
         if pd.isnull(brand_name):
             return
@@ -71,14 +95,6 @@ class PillarsSceneToolBox:
             fk = None
         return fk
 
-    def get_programs(self):
-        programs = pd.read_excel(self.PROGRAM_TEMPLATE_PATH)
-
-        # Get only relevant programs to check
-        relevant_programs = programs.loc[(programs['start_date'].dt.date <= self.visit_date) &
-                                         (programs['end_date'].dt.date >= self.visit_date)]
-
-        return relevant_programs
 
     def found_program_products_by_brand(self, brand_fk=None, brand_name=None):
         """
