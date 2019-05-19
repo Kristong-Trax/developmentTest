@@ -11,10 +11,9 @@ class PillarsSceneToolBox:
     PROGRAM_TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))),
                                          'Data', 'Template.xlsx')
 
-    def __init__(self, data_provider, common, common_old):
+    def __init__(self, data_provider, common):
         self.data_provider = data_provider
         self.common = common
-        self.common_old = common_old
         self.project_name = self.data_provider.project_name
         self.session_uid = self.data_provider.session_uid
         self.templates = self.data_provider[Data.TEMPLATES]
@@ -29,31 +28,48 @@ class PillarsSceneToolBox:
         self.scene_id = self.scene_info['scene_fk'][0]
         self.store_id = self.data_provider[Data.STORE_INFO]['store_fk'][0]
         # self.kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.POC)
-        self.all_brand = self.all_products[['brand_name', 'brand_fk']].set_index(u'brand_name').to_dict()
+        self.all_brand = self.all_products[['brand_name', 'brand_fk']].drop_duplicates().set_index(u'brand_name')
+        self.displays_in_scene = self.data_provider.match_display_in_scene
 
     def is_scene_belong_to_program(self):
+        # Get template
         relevant_programs = self.get_programs()
+
         for i in xrange(len(relevant_programs)):
+
+            # Get data for program from template:
             current_program_data = relevant_programs.iloc[i]
+            program_name = current_program_data[Const.PROGRAM_NAME_FIELD] # assumed to always be brand name!
+            program_brand_name_fk = self.get_brand_fk_from_name(program_name)
             program_as_brand = current_program_data[Const.PROGRAM_NAME_BY_BRAND]
+            program_as_brand_fk = self.get_brand_fk_from_name(program_as_brand)
+            program_as_display_brand = current_program_data[Const.PROGRAM_NAME_BY_DISPLAY]
             program_as_template = current_program_data[Const.PROGRAM_NAME_BY_TEMPLATE]
             survey_question_for_program = current_program_data[Const.PROGRAM_NAME_BY_SURVEY_QUESTION]
             program_as_survey_answer = current_program_data[Const.PROGRAM_NAME_BY_SURVEY_ANSWER]
-            display_id = current_program_data[Const.PROGRAM_NAME_BY_DISPLAY_ID]
             score = 0
 
-            if self.found_program_products_by_brand(program_as_brand) \
+            # Checks if the scene was recognized as relevant program in one of possible recognition options:
+            if self.found_program_products_by_brand(program_as_brand_fk) \
                     or self.found_scene_program_by_quri(program_as_template) \
                     or self.found_scene_program_by_survey(survey_question_for_program, program_as_survey_answer) \
-                    or self.found_scene_program_by_display(display_id):
+                    or self.found_scene_program_by_display_brand(program_as_display_brand):
                 score = 1
 
-            kpi_fk = self.common.get_kpi_fk_by_kpi_name(kpi_name=Const.SCENE_KPI_NAME)
-            self.common.write_to_db_result(fk=kpi_fk, numerator_id=self.get_brand_fk_from_name(program_as_brand),
-                                           result=score, by_scene=True, denominator_id=self.store_id)
+            scene_kpi_fk = self.common.get_kpi_fk_by_kpi_name(kpi_name=Const.SCENE_KPI_NAME)
+            self.common.write_to_db_result(fk=scene_kpi_fk, numerator_id=program_brand_name_fk,
+                                           result=score, score=score, by_scene=True, denominator_id=self.store_id)
+
 
     def get_brand_fk_from_name(self, brand_name):
-        return self.all_brand[brand_name]
+        if pd.isnull(brand_name):
+            return
+        fk = self.all_brand.loc[brand_name]
+        if not fk.empty:
+            fk = fk.values[0]
+        else:
+            fk = None
+        return fk
 
     def get_programs(self):
         programs = pd.read_excel(self.PROGRAM_TEMPLATE_PATH)
@@ -65,12 +81,22 @@ class PillarsSceneToolBox:
 
         return relevant_programs
 
-    def found_program_products_by_brand(self, brand_name):
-        # checks if the scene's program was discovered by trax according to its products
-        if pd.isnull(brand_name):
+    def found_program_products_by_brand(self, brand_fk=None, brand_name=None):
+        """
+        This function can get brand either by fk or by name, with the assumption that in the
+        'customer' template there is brand name and in the db targets there is pk.
+        If none of the option was used, return False.
+        Otherwise return if there were product in this scene with the brand given.
+        """
+        # checks if the scene's program was discovered by trax according to brand's recognized products
+        if pd.isnull(brand_name) and pd.isnull(brand_fk):
             return False
+
+        brand_id = 'brand_fk' if brand_fk else 'brand_name'
+        brand_value = brand_fk if brand_fk else brand_name
+
         pos_products_in_brand = self.all_products[(self.all_products['product_type'] == 'POS') &
-                                                  (self.all_products['brand_name'] == brand_name)
+                                                  (self.all_products[brand_id] == brand_value)
                                                   ]['product_fk'].unique().tolist()
         program_products_in_scene = self.match_product_in_scene[
             (self.match_product_in_scene['product_fk'].isin(pos_products_in_brand))]
@@ -88,18 +114,24 @@ class PillarsSceneToolBox:
         return template_name in self.templates['template_name'].values
 
     def found_scene_program_by_survey(self, survey_question, survey_answer):  # TODO- complete after survey created
+
         # Cannot complete until found relevant tables
 
-        if pd.isnull(survey_question) or pd.isnull(survey_question):
+        if pd.isnull(survey_question) or pd.isnull(survey_answer):
             return False
+
         pass
 
-    def found_scene_program_by_display(self, display_id):
+    def found_scene_program_by_display_brand(self, brand_name):
         # checks if the scene's program was discovered by scene recognition
 
-        if pd.isnull(display_id):
+        if pd.isnull(brand_name):
             return False
 
         if self.data_provider.match_display_in_scene.empty:
             return False
-        return display_id in self.data_provider.match_display_in_scene['display_fk']
+        display_in_brand = len(self.data_provider.match_display_in_scene.loc[
+            self.data_provider.match_display_in_scene['display_brand_name'] == brand_name])
+
+        return display_in_brand > 0
+

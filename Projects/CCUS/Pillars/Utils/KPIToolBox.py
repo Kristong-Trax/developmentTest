@@ -64,22 +64,31 @@ class PillarsPROGRAMSToolBox:
         self.ps_data_provider = PsDataProvider(self.data_provider, self.output)
         self.store_areas = self.ps_data_provider.get_store_area_df()
         self.all_brand = self.all_products[['brand_name', 'brand_fk']].set_index(u'brand_fk').to_dict()
+        # Get Pillars KPI Scene's result
         self.scenes_result = self.data_provider.scene_kpi_results
         self.scenes_result = self.scenes_result.loc[self.scenes_result['type'] == Const.SCENE_KPI_NAME]
 
     def main_calculation(self):
         """
-        This function calculates the KPI results.
+        This function calculates the KPI Pillars.
         """
+        # if no scenes with result were found- there are no scenes or programs. should do nothing.
         if self.scenes_result.empty:
-            return  # if no scenes with result- there are no scenes or programs. should do nothing.
+            return
+
+        # By scene kpi logic, each program in the relevant date will show in result
+        # (with score 0 for all scenes it was not found at visit at all.)
         programs = self.scenes_result['numerator_id'].unique()
+
         for current_program_id in programs:
             scene_count = self.count_specific_program_scenes(current_program_id)
 
             kpi_fk = self.common.get_kpi_fk_by_kpi_name(kpi_name=Const.SESSION_KPI_NAME)
             self.common.write_to_db_result(fk=kpi_fk, numerator_id=current_program_id,
-                                           result=scene_count, by_scene=False, denominator_id=self.store_id)
+                                           result=scene_count, by_scene=False, denominator_id=self.store_id,
+                                           score=1 if scene_count > 0 else 0)
+
+        self.common.commit_results_data()
 
     def count_specific_program_scenes(self, program_id):
         current_program_result = self.scenes_result.loc[self.scenes_result['numerator_id'] == program_id]
