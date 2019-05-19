@@ -14,13 +14,13 @@ class INBEVCISANDCalculations(BaseCalculationsScript):
         INBEVCISANDGenerator(self.data_provider, self.output).main_function()
         self.timer.stop('KPIGenerator.run_project_calculations')
 
-#
+
 # if __name__ == '__main__':
 #     LoggerInitializer.init('inbevci-sand calculations')
 #     Config.init()
 #     project_name = 'inbevci-sand'
-#     sessions = ['fc314c82-bc68-4786-92a4-f55765593779']
-#     # sessions = ['7d602b07-cccd-443d-bd71-ca5484bd41de']
+#     # sessions = ['fc314c82-bc68-4786-92a4-f55765593779']
+#     sessions = ['7d602b07-cccd-443d-bd71-ca5484bd41de']
 #     for session in sessions:
 #         data_provider = KEngineDataProvider(project_name)
 #         data_provider.load_session_data(session)
