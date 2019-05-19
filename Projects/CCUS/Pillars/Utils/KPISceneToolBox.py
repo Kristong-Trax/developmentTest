@@ -77,7 +77,6 @@ class PillarsSceneToolBox:
         # Get only relevant programs to check
         relevant_programs = programs.loc[(programs['start_date'].dt.date <= self.visit_date) &
                                          (programs['end_date'].dt.date >= self.visit_date)]
-        # relevant_programs = relevant_programs[Const.PROGRAM_NAME_FIELD].unique()
 
         return relevant_programs
 
