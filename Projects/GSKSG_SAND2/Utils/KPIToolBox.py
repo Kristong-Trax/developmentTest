@@ -114,24 +114,47 @@ class GSKSGToolBox:
         self.sos = SOS(data_provider, self.output)
         self.survey = Survey(data_provider, self.output)
         self.toolbox = GENERALToolBox(self.data_provider)
-        self.gsk_generator = GSKGenerator(self.data_provider, self.output, self.common)
+
+        # adding data to templates
+        self.set_up_template = pd.read_excel(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data',
+                                                              'gsk_set_up.xlsx'), sheet_name='Functional KPIs',keep_default_na=False)
+
+        self.gsk_generator = GSKGenerator(self.data_provider, self.output, self.common, self.set_up_template)
 
 
     def main_calculation(self):
         """
         This function calculates the KPI results.
-        """
+        # """
 
-        linear_sos_dict = self.gsk_generator.gsk_global_linear_sos_function()
-        if linear_sos_dict is None:
-            Log.warning('Scene item facts is empty for this session')
+        assortment_store_dict = self.gsk_generator.availability_store_function()
+        self.common.save_json_to_new_tables(assortment_store_dict)
+
+        assortment_category_dict = self.gsk_generator.availability_category_function()
+        self.common.save_json_to_new_tables(assortment_category_dict)
+
+        assortment_subcategory_dict = self.gsk_generator.availability_subcategory_function()
+        self.common.save_json_to_new_tables(assortment_subcategory_dict)
+
+        facings_sos_dict = self.gsk_generator.gsk_global_facings_sos_whole_store_function()
+        self.common.save_json_to_new_tables(facings_sos_dict)
+
+        linear_sos_dict = self.gsk_generator.gsk_global_linear_sos_whole_store_function()
         self.common.save_json_to_new_tables(linear_sos_dict)
-        self.common.commit_results_data()
 
-        # template = self.get_relevant_calculations()
-        # self.handle_calculation(template)
-        # self.common_old_tables.commit_results_data()
-        # self.common.commit_results_data()
+        linear_sos_dict = self.gsk_generator.gsk_global_linear_sos_by_sub_category_function()
+        self.common.save_json_to_new_tables(linear_sos_dict)
+
+        facings_sos_dict = self.gsk_generator.gsk_global_facings_by_sub_category_function()
+        self.common.save_json_to_new_tables(facings_sos_dict)
+
+        facings_sos_dict = self.gsk_generator.gsk_global_facings_sos_by_category_function()
+        self.common.save_json_to_new_tables(facings_sos_dict)
+
+        linear_sos_dict = self.gsk_generator.gsk_global_linear_sos_by_category_function()
+        self.common.save_json_to_new_tables(linear_sos_dict)
+
+        self.common.commit_results_data()
 
         score = 0
         return score

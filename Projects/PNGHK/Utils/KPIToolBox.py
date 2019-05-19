@@ -4,6 +4,7 @@ import os
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Cloud.Services.Connector.Keys import DbUsers
 from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
+from KPIUtils_v2.GlobalDataProvider.PsDataProvider import PsDataProvider
 from Projects.PNGHK.Data.Const import Const
 from KPIUtils_v2.DB.CommonV2 import Common
 from Trax.Utils.Logging.Logger import Log
@@ -11,7 +12,7 @@ from KPIUtils_v2.Calculations.CalculationsUtils.GENERALToolBoxCalculations impor
 
 __author__ = 'ilays'
 
-PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', '06_PNGHK_template_2019_15_04.xlsx')
+PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', Const.TEMPLATE_PATH)
 
 
 class PNGHKToolBox:
@@ -44,12 +45,19 @@ class PNGHKToolBox:
         self.df = pd.DataFrame()
         self.tools = GENERALToolBox(self.data_provider)
         self.templates = self.data_provider[Data.ALL_TEMPLATES]
+        self.psdataprovider = PsDataProvider(self.data_provider)
 
     def main_calculation(self, *args, **kwargs):
         """
         This function calculates the KPI results.
         """
+        if self.match_product_in_scene.empty or self.products.empty:
+            return
         df = pd.merge(self.match_product_in_scene, self.products, on="product_fk", how="left")
+        exclude_products = self.psdataprovider.get_exclude_products_from_reporting_configuration()
+        exclude_products = exclude_products[exclude_products['exclude_include_set_fk'] == 1]
+        exclude_products_list = exclude_products['product_fk'].tolist()
+        df = df[~df['product_fk'].isin(exclude_products_list)]
         distinct_session_fk = self.scif[['scene_fk', 'template_name', 'template_fk']].drop_duplicates()
         self.df = pd.merge(df, distinct_session_fk, on="scene_fk", how="left")
         kpi_ids = self.kpis_sheet[Const.KPI_ID].drop_duplicates().tolist()

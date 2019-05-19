@@ -4,13 +4,13 @@ from Trax.Utils.Conf.Configuration import Config
 from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
 from Projects.GSKSG_SAND2.Calculations import Calculations
 
-#
+
 # if __name__ == '__main__':
 #     LoggerInitializer.init('gsksg calculations')
 #     Config.init()
 #     project_name = 'gsksg-sand2'
 #     data_provider = KEngineDataProvider(project_name)
-#     session = '2a3a70b4-31df-4090-9e14-3b4775fdf0a6'
+#     session = '20524C0E-7C18-4F4C-843C-873163C6B9F4'
 #     # session = 'fdae28d2-6e49-45d2-b357-cd9ca7a13de6'
 #     data_provider.load_session_data(session)
 #     output = Output()

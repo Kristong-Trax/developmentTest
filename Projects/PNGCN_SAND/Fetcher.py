@@ -5,7 +5,7 @@ KPI_NAMES = ['PNG_Empty', 'Total_Empty', 'PG_non-Empty_Facing', 'Total_non-Empty
              'Category_Empty_Rate%']
 
 
-class PNGCN_SANDPNGQueries(object):
+class PNGQueries(object):
 
     @staticmethod
     def get_all_kpi_data():
@@ -55,6 +55,7 @@ class PNGCN_SANDPNGQueries(object):
             join probedata.scene s on s.pk = m.scene_fk
             join static.display d on d.pk = m.display_fk
             where s.session_uid = '{}' AND d.is_physical = 1 GROUP BY display_name;"""
+
 
     @staticmethod
     def get_ean_code():

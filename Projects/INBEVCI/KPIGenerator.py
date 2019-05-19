@@ -28,4 +28,4 @@ class INBEVCIINBEVCIGenerator:
             return
         for set_name in Const.SET_NAMES:
             self.tool_box.main_calculation(set_name=set_name)
-        self.tool_box.common.commit_results_data_to_new_tables()
+        self.tool_box.common.commit_results_data()

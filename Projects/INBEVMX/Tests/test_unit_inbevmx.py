@@ -9,7 +9,7 @@ from Projects.INBEVMX.Utils.KPIToolBox import INBEVMXToolBox
 __author__ = 'ilays'
 
 
-class TestINBEVMX(TestCase):
+class TestINBEVMX_SAND(TestCase):
 
     @mock.patch('Projects.INBEVMX.Utils.KPIToolBox.ProjectConnector')
     def setUp(self, x):

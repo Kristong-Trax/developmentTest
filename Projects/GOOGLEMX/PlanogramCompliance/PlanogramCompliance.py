@@ -37,7 +37,7 @@ class PlanogramCompliance(PlanogramComplianceBaseClass):
             self.pog_bays = self.planogram_matches[Keys.BAY_NUMBER].unique().tolist()
             if len(self.scene_bays) == 1 and len(self.pog_bays) == 1:
                 if self.scene_bays != self.pog_bays:
-                    scene_bay_data = self._get_df_of_bay(self.scene_matches, self.pog_bays[0])
+                    scene_bay_data = self._get_df_of_bay(self.scene_matches, self.scene_bays[0])
                     pog_bay_data = self._get_df_of_bay(self.planogram_matches, self.pog_bays[0])
                 else:
                     scene_bay_data = self.scene_matches
@@ -249,19 +249,6 @@ class PlanogramCompliance(PlanogramComplianceBaseClass):
         self.all_combinations_scores = self.all_combinations_scores.drop(pog_bay, axis=1)
         self.all_combinations_matches = self.all_combinations_matches.drop(pog_bay, axis=1)
 
-    # def _get_final_compliance2(self):
-    #     # couples = []
-    #     final_compliance_tag = pd.DataFrame()
-    #     for pog_bay in self.pog_bays:
-    #         pog_matches = self.all_combinations_scores[pog_bay].sort_values(ascending=False)
-    #         # match_score = pog_matches.iloc[0]
-    #         scene_bay = pog_matches.index[0]
-    #         self.all_combinations_scores.drop(scene_bay)
-    #         final_compliance_tag = final_compliance_tag.append(self.all_combinations_compliances[pog_bay][scene_bay],
-    #                                                            ignore_index=True)
-    #         # couples.append((pog_bay, scene_bay))
-    #     return final_compliance_tag
-
     @staticmethod
     def _local_get_tag_planogram_compliance(scene_data, planogram_data):
         """
@@ -273,16 +260,22 @@ class PlanogramCompliance(PlanogramComplianceBaseClass):
             score = float(len(
                 tag_compliance[tag_compliance[Keys.COMPLIANCE_STATUS_FK] == PlanogramTagCompliance.CORRECTLY_POSITIONED]
                     )) / len(tag_compliance)
-            if score < 1 and scene_data[Keys.SHELF_NUMBER_FROM_BOTTOM].max() < planogram_data[
-                Keys.SHELF_NUMBER_FROM_BOTTOM].max():
-                scene_data[Keys.SHELF_NUMBER_FROM_BOTTOM] += 1
+            if score < 1:
+                if scene_data[Keys.SHELF_NUMBER_FROM_BOTTOM].max() < \
+                        planogram_data[Keys.SHELF_NUMBER_FROM_BOTTOM].max():
+                    scene_data[Keys.SHELF_NUMBER_FROM_BOTTOM] += 1
+                elif scene_data[Keys.SHELF_NUMBER_FROM_BOTTOM].max() > \
+                        planogram_data[Keys.SHELF_NUMBER_FROM_BOTTOM].max():
+                    planogram_data[Keys.SHELF_NUMBER_FROM_BOTTOM] += 1
                 temp_tag_compliance = get_tag_planogram_compliance(scene_data, planogram_data)
-                temp_score = float(len(
-                    tag_compliance[tag_compliance[Keys.COMPLIANCE_STATUS_FK] == PlanogramTagCompliance.CORRECTLY_POSITIONED]
-                )) / len(tag_compliance)
+                temp_score = float(len(temp_tag_compliance[temp_tag_compliance[
+                                            Keys.COMPLIANCE_STATUS_FK] == PlanogramTagCompliance.CORRECTLY_POSITIONED])
+                                   ) / len(temp_tag_compliance)
                 if temp_score > score:
                     score = temp_score
                     tag_compliance = temp_tag_compliance
+        if Keys.COMPLIANCE_STATUS_FK not in tag_compliance.columns:
+            tag_compliance[Keys.COMPLIANCE_STATUS_FK] = None
         return tag_compliance, score
 
     def _get_iterated_position_full_solution(self):
@@ -349,9 +342,9 @@ class PlanogramCompliance(PlanogramComplianceBaseClass):
 # if __name__ == '__main__':
 #     LoggerInitializer.init('POG compliance test')
 #     Config.init()
-#     path = "/home/elyashiv/Desktop/backup/POGs/test2/"
-#     planogram_data = pd.read_csv(path + "pog 2.csv")
-#     scene_data = pd.read_csv(path + "scene 2.csv")
+#     path = "/home/elyashiv/Desktop/backup/POGs/12/"
+#     planogram_data = pd.read_csv(path + "pog.csv")
+#     scene_data = pd.read_csv(path + "scene.csv")
 #     pog = PlanogramCompliance(data_provider=None)
 #     compliances = pog.get_compliance(manual_planogram_data=planogram_data, manual_scene_data=scene_data)
 #     print compliances

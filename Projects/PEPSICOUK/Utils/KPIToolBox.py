@@ -93,13 +93,14 @@ class PEPSICOUKToolBox:
 
         self.custom_entities = self.commontools.custom_entities
         self.on_display_products = self.commontools.on_display_products
-        self.exclusion_template = self.commontools.exclusion_template
-        self.filtered_scif = self.commontools.filtered_scif
-        self.filtered_matches = self.commontools.filtered_matches
+        self.exclusion_template = self.commontools.exclusion_template.copy()
+        self.filtered_scif = self.commontools.filtered_scif.copy()
+        self.filtered_matches = self.commontools.filtered_matches.copy()
 
         self.scene_bay_shelf_product = self.get_facings_scene_bay_shelf_product()
         self.ps_data = PsDataProvider(self.data_provider, self.output)
-        self.full_store_info = self.get_store_data_by_store_id()
+        # self.full_store_info = self.get_store_data_by_store_id()
+        self.full_store_info = self.commontools.full_store_info.copy()
         self.external_targets = self.commontools.external_targets
         self.assortment = Assortment(self.commontools.data_provider, self.output)
         # self.lvl3_ass_result = self.assortment.calculate_lvl3_assortment()
@@ -121,11 +122,11 @@ class PEPSICOUKToolBox:
             scene_kpi_results = self.ps_data.get_scene_results(self.scene_info['scene_fk'].drop_duplicates().values)
         return scene_kpi_results
 
-    def get_store_data_by_store_id(self):
-        store_id = self.store_id if self.store_id else self.session_info['store_fk'].values[0]
-        query = PEPSICOUK_Queries.get_store_data_by_store_id(store_id)
-        query_result = pd.read_sql_query(query, self.rds_conn.db)
-        return query_result
+    # def get_store_data_by_store_id(self):
+    #     store_id = self.store_id if self.store_id else self.session_info['store_fk'].values[0]
+    #     query = PEPSICOUK_Queries.get_store_data_by_store_id(store_id)
+    #     query_result = pd.read_sql_query(query, self.rds_conn.db)
+    #     return query_result
 
     def get_facings_scene_bay_shelf_product(self):
         self.filtered_matches['count'] = 1
@@ -140,6 +141,10 @@ class PEPSICOUKToolBox:
 
     def add_kpi_result_to_kpi_results_df(self, result_list):
         self.kpi_results_check.loc[len(self.kpi_results_check)] = result_list
+
+    def reset_filtered_scif_and_matches_to_exclusion_all_state(self):
+        self.filtered_scif = self.commontools.filtered_scif.copy()
+        self.filtered_matches = self.commontools.filtered_matches.copy()
 
 #------------------main project calculations------
 
@@ -583,7 +588,14 @@ class PEPSICOUKToolBox:
             self.calculate_pepsico_sub_segment_space_sos_vs_target(sos_targets)
 
     def calculate_hero_sku_sos_vs_target(self, sos_targets):
+        self.filtered_scif,\
+            self.filtered_matches = self.commontools.set_filtered_scif_and_matches_for_specific_kpi(self.filtered_scif,
+                                                                                                    self.filtered_matches,
+                                                                                                    self.HERO_SKU_SPACE_TO_SALES_INDEX)
+        kpi_filtered_products = self.filtered_scif['product_fk'].unique().tolist()
         hero_list = self.lvl3_ass_result[self.lvl3_ass_result['in_store'] == 1]['product_fk'].unique().tolist()
+        hero_list = filter(lambda x: x in kpi_filtered_products, hero_list)
+
         sos_targets = sos_targets[sos_targets['type'] == self.HERO_SKU_SPACE_TO_SALES_INDEX]
         sos_targets_hero_list = sos_targets['numerator_value'].values.tolist()
         additional_skus = list(set(hero_list) - set(sos_targets_hero_list))
@@ -594,7 +606,7 @@ class PEPSICOUKToolBox:
         for sku in additional_skus:
             values_to_append = {'numerator_id': sku, 'numerator_type': 'product_fk', 'numerator_value': sku, 'denominator_type': 'category_fk',
                                 'denominator_value': category_fk, 'Target': None, 'denominator_id': category_fk,
-                                'kpi_level_2_fk': hero_kpi_fk, 'KPI Parent': kpi_hero_parent,
+                                'kpi_level_2_fk': hero_kpi_fk, 'KPI Parent': kpi_hero_parent, 'type': self.HERO_SKU_SPACE_TO_SALES_INDEX,
                                 'identifier_parent': self.common.get_dictionary(kpi_fk=int(float(kpi_hero_parent)))}
             additional_rows.append(values_to_append)
         df_to_append = pd.DataFrame.from_records(additional_rows)
@@ -602,6 +614,8 @@ class PEPSICOUKToolBox:
 
         sos_targets = sos_targets[sos_targets['numerator_value'].isin(hero_list)]
         self.calculate_and_write_to_db_sos_vs_target_kpi_results(sos_targets)
+
+        self.reset_filtered_scif_and_matches_to_exclusion_all_state()
 
     def calculate_and_write_to_db_sos_vs_target_kpi_results(self, sos_targets):
         for i, row in sos_targets.iterrows():
@@ -639,10 +653,17 @@ class PEPSICOUKToolBox:
                                                    row['count']])
 
     def calculate_brand_out_of_category_sos_vs_target(self, sos_targets):
+        self.filtered_scif, \
+        self.filtered_matches = self.commontools.set_filtered_scif_and_matches_for_specific_kpi(self.filtered_scif,
+                                                                                                self.filtered_matches,
+                                                                                                self.BRAND_SPACE_TO_SALES_INDEX)
         sos_targets = sos_targets[sos_targets['type'] == self.BRAND_SPACE_TO_SALES_INDEX]
         session_brands_list = self.filtered_scif['brand_fk'].unique().tolist()
+        brands_to_exclude = self.all_products[self.all_products['brand_name'].isin(['General'])]['brand_fk'].unique().tolist()
         session_brands_list = filter(lambda v: v == v, session_brands_list)
         session_brands_list = filter(lambda v: v is not None, session_brands_list)
+        session_brands_list = filter(lambda v: v != 0, session_brands_list)
+        session_brands_list = filter(lambda v: v not in brands_to_exclude, session_brands_list)
         targets_brand_list = sos_targets['numerator_value'].values.tolist()
         additional_brands = list(set(session_brands_list) - set(targets_brand_list))
         category_fk = self.all_products[self.all_products['category'] == 'CSN']['category_fk'].values[0]
@@ -653,7 +674,7 @@ class PEPSICOUKToolBox:
             values_to_append = {'numerator_id': brand, 'numerator_type': 'brand_fk', 'numerator_value': brand,
                                 'denominator_type': 'category_fk',
                                 'denominator_value': category_fk, 'Target': None, 'denominator_id': category_fk,
-                                'kpi_level_2_fk': kpi_fk, 'KPI Parent': kpi_parent,
+                                'kpi_level_2_fk': kpi_fk, 'KPI Parent': kpi_parent, 'type': self.BRAND_SPACE_TO_SALES_INDEX,
                                 'identifier_parent': self.common.get_dictionary(kpi_fk=int(float(kpi_parent)))}
             additional_rows.append(values_to_append)
         df_to_append = pd.DataFrame.from_records(additional_rows)
@@ -661,8 +682,13 @@ class PEPSICOUKToolBox:
 
         sos_targets = sos_targets[sos_targets['numerator_value'].isin(session_brands_list)]
         self.calculate_and_write_to_db_sos_vs_target_kpi_results(sos_targets)
+        self.reset_filtered_scif_and_matches_to_exclusion_all_state()
 
     def calculate_sub_brand_sos_vs_target(self, sos_targets):
+        self.filtered_scif, \
+        self.filtered_matches = self.commontools.set_filtered_scif_and_matches_for_specific_kpi(self.filtered_scif,
+                                                                                                self.filtered_matches,
+                                                                                                self.SUB_BRAND_SPACE_TO_SALES_INDEX)
         sos_targets = sos_targets[sos_targets['type'] == self.SUB_BRAND_SPACE_TO_SALES_INDEX]
         session_sub_brands = self.filtered_scif['sub_brand'].unique().tolist()
         session_sub_brands = filter(lambda v: v == v, session_sub_brands)
@@ -683,7 +709,7 @@ class PEPSICOUKToolBox:
                 values_to_append = {'numerator_id': sub_brand_fk, 'numerator_type': 'sub_brand', 'numerator_value': sub_brand,
                                     'denominator_type': 'category_fk',
                                     'denominator_value': category_fk, 'Target': None, 'denominator_id': category_fk,
-                                    'kpi_level_2_fk': kpi_fk, 'KPI Parent': kpi_parent,
+                                    'kpi_level_2_fk': kpi_fk, 'KPI Parent': kpi_parent, 'type': self.SUB_BRAND_SPACE_TO_SALES_INDEX,
                                     'identifier_parent': self.common.get_dictionary(kpi_fk=int(float(kpi_parent)))}
                 additional_rows.append(values_to_append)
 
@@ -692,8 +718,13 @@ class PEPSICOUKToolBox:
 
         sos_targets = sos_targets[sos_targets['numerator_value'].isin(session_sub_brands)]
         self.calculate_and_write_to_db_sos_vs_target_kpi_results(sos_targets)
+        self.reset_filtered_scif_and_matches_to_exclusion_all_state()
 
     def calculate_pepsico_segment_space_sos_vs_target(self, sos_targets):
+        self.filtered_scif, \
+        self.filtered_matches = self.commontools.set_filtered_scif_and_matches_for_specific_kpi(self.filtered_scif,
+                                                                                                self.filtered_matches,
+                                                                                                self.PEPSICO_SEGMENT_SPACE_TO_SALES_INDEX)
         sos_targets = sos_targets[sos_targets['type'] == self.PEPSICO_SEGMENT_SPACE_TO_SALES_INDEX]
         session_sub_category_list = self.filtered_scif['sub_category_fk'].unique().tolist()
         session_sub_category_list = filter(lambda v: v == v, session_sub_category_list)
@@ -708,7 +739,7 @@ class PEPSICOUKToolBox:
             values_to_append = {'numerator_id': self.own_manuf_fk, 'numerator_type': 'manufacturer_fk',
                                 'numerator_value': self.own_manuf_fk, 'denominator_type': 'sub_category_fk',
                                 'denominator_value': sub_category, 'Target': None, 'denominator_id': sub_category,
-                                'kpi_level_2_fk': kpi_fk, 'KPI Parent': kpi_parent,
+                                'kpi_level_2_fk': kpi_fk, 'KPI Parent': kpi_parent, 'type': self.PEPSICO_SEGMENT_SPACE_TO_SALES_INDEX,
                                 'identifier_parent': self.common.get_dictionary(kpi_fk=int(float(kpi_parent)))}
             additional_rows.append(values_to_append)
         df_to_append = pd.DataFrame.from_records(additional_rows)
@@ -716,8 +747,13 @@ class PEPSICOUKToolBox:
 
         sos_targets = sos_targets[sos_targets['denominator_value'].isin(session_sub_category_list)]
         self.calculate_and_write_to_db_sos_vs_target_kpi_results(sos_targets)
+        self.reset_filtered_scif_and_matches_to_exclusion_all_state()
 
     def calculate_pepsico_sub_segment_space_sos_vs_target(self, sos_targets):
+        self.filtered_scif, \
+        self.filtered_matches = self.commontools.set_filtered_scif_and_matches_for_specific_kpi(self.filtered_scif,
+                                                                                                self.filtered_matches,
+                                                                                                self.PEPSICO_SUB_SEGMENT_SPACE_TO_SALES_INDEX)
         sos_targets = sos_targets[sos_targets['type'] == self.PEPSICO_SUB_SEGMENT_SPACE_TO_SALES_INDEX]
         session_sub_segments = self.filtered_scif['PDH Sub-segment'].unique().tolist()
         session_sub_segments = filter(lambda v: v == v, session_sub_segments)
@@ -737,7 +773,7 @@ class PEPSICOUKToolBox:
                 values_to_append = {'numerator_id': self.own_manuf_fk, 'numerator_type': 'manufacturer_fk',
                                     'numerator_value': self.own_manuf_fk, 'denominator_type': 'PDH Sub-segment',
                                     'denominator_value': sub_segment, 'Target': None, 'denominator_id': sub_segment_fk,
-                                    'kpi_level_2_fk': kpi_fk, 'KPI Parent': kpi_parent,
+                                    'kpi_level_2_fk': kpi_fk, 'KPI Parent': kpi_parent, 'type': self.PEPSICO_SUB_SEGMENT_SPACE_TO_SALES_INDEX,
                                     'identifier_parent': self.common.get_dictionary(kpi_fk=int(float(kpi_parent)))}
                 additional_rows.append(values_to_append)
         df_to_append = pd.DataFrame.from_records(additional_rows)
@@ -745,6 +781,7 @@ class PEPSICOUKToolBox:
 
         sos_targets = sos_targets[sos_targets['denominator_value'].isin(session_sub_segments)]
         self.calculate_and_write_to_db_sos_vs_target_kpi_results(sos_targets)
+        self.reset_filtered_scif_and_matches_to_exclusion_all_state()
 
     def get_relevant_sos_vs_target_kpi_targets(self, brand_vs_brand=False):
         sos_vs_target_kpis = self.external_targets[self.external_targets['operation_type'] == self.SOS_VS_TARGET]

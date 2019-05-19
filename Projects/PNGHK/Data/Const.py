@@ -1,8 +1,8 @@
 
-__author__ = 'nidhinb'
-
-
 class Const(object):
+
+    # template path
+    TEMPLATE_PATH = '08_PNGHK_template_2019_05_14.xlsx'
 
     # sheet names
     KPIS = 'KPIS'
@@ -68,3 +68,5 @@ class Const(object):
     DB_HANGER_NAME = 'additional display'
 
     OSD_KPI = 'OSD'
+    MATCH_PRODUCT_IN_PROBE_FK = 'match_product_in_probe_fk'
+    MATCH_PRODUCT_IN_PROBE_STATE_REPORTING_FK = 'match_product_in_probe_state_reporting_fk'

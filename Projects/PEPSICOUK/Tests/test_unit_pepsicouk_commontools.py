@@ -30,11 +30,13 @@ class Test_PEPSICOUKCommon(MockingTestCase):
         self.mock_common_project_connector_mock = self.mock_common_project_connector()
         self.static_kpi_mock = self.mock_static_kpi()
         self.session_info_mock = self.mock_session_info()
+        self.full_store_data_mock = self.mock_store_data()
 
         self.custom_entity_data_mock = self.mock_custom_entity_data()
         self.on_display_products_mock = self.mock_on_display_products()
 
         self.exclusion_template_mock = self.mock_template_data()
+        self.store_policy_template_mock = self.mock_store_policy_exclusion_template_data()
         self.output = MagicMock()
         self.session_info_mock = self.mock_session_info()
         self.external_targets_mock = self.mock_kpi_external_targets_data()
@@ -69,7 +71,6 @@ class Test_PEPSICOUKCommon(MockingTestCase):
         custom_entities = self.mock_object('PEPSICOUKCommonToolBox.get_custom_entity_data')
         custom_entities.return_value = DataTestUnitPEPSICOUK.custom_entity
         return custom_entities.return_value
-        # return custom_entities
 
     def mock_common_project_connector(self):
         return self.mock_object('PSProjectConnector', path='KPIUtils_v2.DB.CommonV2')
@@ -82,6 +83,11 @@ class Test_PEPSICOUKCommon(MockingTestCase):
         static_kpi.return_value = DataTestUnitPEPSICOUK.kpi_static_data
         return static_kpi.return_value
         # return static_kpi
+
+    def mock_store_data(self):
+        store_data = self.mock_object('PEPSICOUKCommonToolBox.get_store_data_by_store_id')
+        store_data.return_value = DataTestUnitPEPSICOUK.store_data
+        return store_data.return_value
 
     def mock_data_provider(self):
         self.data_provider_mock = MagicMock()
@@ -96,8 +102,17 @@ class Test_PEPSICOUKCommon(MockingTestCase):
     def mock_project_connector(self):
         return self.mock_object('PSProjectConnector')
 
+    def mock_store_policy_exclusion_template_data(self):
+        template_df = pd.read_excel(DataTestUnitPEPSICOUK.exclusion_template_path, sheet_name='store_policy')
+        template_df = template_df.fillna('ALL')
+        template_data_mock = self.mock_object('PEPSICOUKCommonToolBox.get_store_policy_data_for_exclusion_template',
+                                              path='Projects.PEPSICOUK.Utils.CommonToolBox')
+        template_data_mock.return_value = template_df
+        return template_data_mock.return_value
+
     def mock_template_data(self):
-        template_df = pd.read_excel(DataTestUnitPEPSICOUK.exclusion_template_path)
+        template_df = pd.read_excel(DataTestUnitPEPSICOUK.exclusion_template_path, sheet_name='exclusion_rules')
+        template_df = template_df.fillna('')
         template_data_mock = self.mock_object('PEPSICOUKCommonToolBox.get_exclusion_template_data',
                                               path='Projects.PEPSICOUK.Utils.CommonToolBox')
         template_data_mock.return_value = template_df
@@ -189,7 +204,8 @@ class Test_PEPSICOUKCommon(MockingTestCase):
         expected_result = {'smart_attribute_state': (['additional display'], 0),
                            'location_type': ['Primary Shelf'],
                            'product_name': (['General Empty'], 0)}
-        template_filters = tool_box.get_filters_dictionary(tool_box.exclusion_template)
+        excl_template_all_kpis = tool_box.exclusion_template[tool_box.exclusion_template['KPI'].str.upper() == 'ALL']
+        template_filters = tool_box.get_filters_dictionary(excl_template_all_kpis)
         self.assertDictEqual(expected_result, template_filters)
 
     def test_filters_for_scif_and_matches_return_empty_dict_if_template_empty(self):
@@ -210,7 +226,8 @@ class Test_PEPSICOUKCommon(MockingTestCase):
         self.mock_scene_item_facts(pd.read_excel(DataTestUnitPEPSICOUK.test_case_1, sheetname='scif'))
         self.mock_match_product_in_scene(pd.read_excel(DataTestUnitPEPSICOUK.test_case_1, sheetname='matches'))
         tool_box = PEPSICOUKCommonToolBox(self.data_provider_mock, self.output)
-        template_filters = tool_box.get_filters_dictionary(tool_box.exclusion_template)
+        excl_template_all_kpis = tool_box.exclusion_template[tool_box.exclusion_template['KPI'].str.upper() == 'ALL']
+        template_filters = tool_box.get_filters_dictionary(excl_template_all_kpis)
         filters = tool_box.get_filters_for_scif_and_matches(template_filters)
         expected_result = {'scene_fk': [1, 2], 'product_fk': [1, 2, 3, 4, 5]}
         self.assertDictEqual(filters, expected_result)
@@ -279,9 +296,69 @@ class Test_PEPSICOUKCommon(MockingTestCase):
         self.assertTrue(tool_box.filtered_matches.empty)
         self.assertTrue(tool_box.filtered_scif.empty)
 
+    def test_do_exclusion_rules_apply_to_store_returns_true_if_kpi_not_in_store_policy_tab(self):
+        self.mock_scene_item_facts(pd.read_excel(DataTestUnitPEPSICOUK.test_case_1, sheetname='scif'))
+        self.mock_match_product_in_scene(pd.read_excel(DataTestUnitPEPSICOUK.test_case_1, sheetname='matches'))
+        tool_box = PEPSICOUKCommonToolBox(self.data_provider_mock, self.output)
+        result = tool_box.do_exclusion_rules_apply_to_store('ALL')
+        self.assertTrue(result)
+
+    def test_do_exclusion_rules_apply_to_store_returns_true_if_kpi_in_store_policy_tab_and_store_attributes_comply(self):
+        self.mock_scene_item_facts(pd.read_excel(DataTestUnitPEPSICOUK.test_case_1, sheetname='scif'))
+        self.mock_match_product_in_scene(pd.read_excel(DataTestUnitPEPSICOUK.test_case_1, sheetname='matches'))
+        tool_box = PEPSICOUKCommonToolBox(self.data_provider_mock, self.output)
+        result = tool_box.do_exclusion_rules_apply_to_store('Sub Brand Space to Sales Index')
+        self.assertTrue(result)
+
+    def test_do_exclusion_rules_apply_to_store_returns_false_if_kpi_in_store_policy_tab_and_store_attr_do_not_match_policy(self):
+        self.mock_scene_item_facts(pd.read_excel(DataTestUnitPEPSICOUK.test_case_1, sheetname='scif'))
+        self.mock_match_product_in_scene(pd.read_excel(DataTestUnitPEPSICOUK.test_case_1, sheetname='matches'))
+        tool_box = PEPSICOUKCommonToolBox(self.data_provider_mock, self.output)
+        result = tool_box.do_exclusion_rules_apply_to_store('PepsiCo Segment Space to Sales Index')
+        self.assertFalse(result)
+
+    def test_do_exclusion_rules_apply_to_store_returns_true_if_kpi_in_store_policy_tab_and_store_attributes_comply_and_values_with_comma(self):
+        self.mock_scene_item_facts(pd.read_excel(DataTestUnitPEPSICOUK.test_case_1, sheetname='scif'))
+        self.mock_match_product_in_scene(pd.read_excel(DataTestUnitPEPSICOUK.test_case_1, sheetname='matches'))
+        tool_box = PEPSICOUKCommonToolBox(self.data_provider_mock, self.output)
+        result = tool_box.do_exclusion_rules_apply_to_store('PepsiCo Sub Segment Space to Sales Index')
+        self.assertTrue(result)
+
+    def test_set_filtered_scif_and_matches_for_specific_kpi_additionally_filter_scif_and_matches(self):
+        self.mock_scene_item_facts(pd.read_excel(DataTestUnitPEPSICOUK.test_case_1, sheetname='scif'))
+        self.mock_match_product_in_scene(pd.read_excel(DataTestUnitPEPSICOUK.test_case_1, sheetname='matches'))
+        tool_box = PEPSICOUKCommonToolBox(self.data_provider_mock, self.output)
+        scif, matches = tool_box.set_filtered_scif_and_matches_for_specific_kpi(tool_box.filtered_scif, tool_box.filtered_matches,
+                                                                                'Brand Space to Sales Index')
+        matches_excluded_kpi_specific = set(tool_box.filtered_matches['probe_match_fk'].values.tolist()) - \
+                                            set(matches['probe_match_fk'].values.tolist())
+        self.assertEquals(len(matches), 30)
+        self.assertNotEqual(len(matches), len(tool_box.filtered_matches))
+        included_matches_expected = [3, 4, 5, 6, 7, 8, 14, 15, 17, 18, 19, 21, 22, 23, 24, 25, 26, 27, 28, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43]
+        excluded_matches_expected = [11, 12, 13, 20, 29, 30, 31, 32, 44]
+        self.assertItemsEqual(matches_excluded_kpi_specific, excluded_matches_expected)
+        matches_positive_check = tool_box.filtered_matches[tool_box.filtered_matches['probe_match_fk']. \
+            isin(included_matches_expected)]
+        self.assertItemsEqual(included_matches_expected, matches_positive_check['probe_match_fk'].values.tolist())
+        self.assertEquals(len(scif), 5)
+        self.assertNotEqual(len(scif), len(tool_box.filtered_scif))
+
+    def test_set_filtered_scif_and_matches_for_specific_kpi_does_not_change_filtered_scif_and_matches_if_no_policy_applies(self):
+        self.mock_scene_item_facts(pd.read_excel(DataTestUnitPEPSICOUK.test_case_1, sheetname='scif'))
+        self.mock_match_product_in_scene(pd.read_excel(DataTestUnitPEPSICOUK.test_case_1, sheetname='matches'))
+        tool_box = PEPSICOUKCommonToolBox(self.data_provider_mock, self.output)
+        scif, matches = tool_box.set_filtered_scif_and_matches_for_specific_kpi(tool_box.filtered_scif,
+                                                                                tool_box.filtered_matches,
+                                                                                'PepsiCo Segment Space to Sales Index')
+        self.assertEquals(len(matches), len(tool_box.filtered_matches))
+        self.assertEquals(len(scif), len(tool_box.filtered_scif))
+        assert_frame_equal(scif, tool_box.filtered_scif)
+        assert_frame_equal(matches, tool_box.filtered_matches)
+
     # def test_whatever(self):
     #     self.mock_scene_item_facts(pd.read_excel(DataTestUnitPEPSICOUK.test_case_1, sheetname='scif'))
     #     self.mock_match_product_in_scene(pd.read_excel(DataTestUnitPEPSICOUK.test_case_1, sheetname='matches'))
     #     tool_box = PEPSICOUKCommonToolBox(self.data_provider_mock, self.output)
-    #     print tool_box.all_templates
+    #     print tool_box.exclusion_template
+
 

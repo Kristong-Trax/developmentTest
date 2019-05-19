@@ -37,6 +37,7 @@ class Test_PEPSICOUKScene(MockingTestCase):
 
         self.custom_entity_data_mock = self.mock_custom_entity_data()
         self.on_display_products_mock = self.mock_on_display_products()
+        self.full_store_info = self.mock_store_data()
 
         self.exclusion_template_mock = self.mock_template_data()
         self.output = MagicMock()
@@ -48,6 +49,11 @@ class Test_PEPSICOUKScene(MockingTestCase):
         self.mock_all_templates()
         self.mock_block()
         self.mock_adjacency()
+
+    def mock_store_data(self):
+        store_data = self.mock_object('PEPSICOUKCommonToolBox.get_store_data_by_store_id')
+        store_data.return_value = DataTestUnitPEPSICOUK.store_data
+        return store_data.return_value
 
     def mock_block(self):
         self.mock_object('Block')
