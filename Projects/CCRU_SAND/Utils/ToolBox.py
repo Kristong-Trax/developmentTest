@@ -3147,10 +3147,11 @@ class CCRU_SANDKPIToolBox:
                 distributed = False
                 for product_fk in top_skus['product_fks'][anchor_product_fk].split(','):
                     product_fk = int(product_fk)
-                    if product_fk in facings_data.keys():
-                        facings = facings_data[product_fk]
-                    else:
-                        facings = 0
+                    facings = facings_data.pop(product_fk, 0)
+                    # if product_fk in facings_data.keys():
+                    #     facings = facings_data[product_fk]
+                    # else:
+                    #     facings = 0
                     if facings >= min_facings:
                         distributed = True
                     top_sku_products = top_sku_products.append({'anchor_product_fk': anchor_product_fk,
@@ -3158,24 +3159,62 @@ class CCRU_SANDKPIToolBox:
                                                                 'facings': facings,
                                                                 'min_facings': min_facings,
                                                                 'in_assortment': 1,
-                                                                'distributed': 1 if distributed else 0},
+                                                                'distributed': 1 if distributed else 0,
+                                                                'distributed_extra': 0},
                                                                ignore_index=True)
+
                 query = self.top_sku.get_custom_scif_query(
                     self.session_fk, scene_fk, int(anchor_product_fk), in_assortment, distributed)
                 self.top_sku_queries.append(query)
 
+            if facings_data:
+                for product_fk in facings_data.keys():
+                    facings = facings_data[product_fk] if facings_data[product_fk] else 0
+                    if facings:
+                        top_sku_products = top_sku_products.append({'anchor_product_fk': product_fk,
+                                                                    'product_fk': product_fk,
+                                                                    'facings': facings,
+                                                                    'min_facings': 0,
+                                                                    'in_assortment': 0,
+                                                                    'distributed': 0,
+                                                                    'distributed_extra': 1},
+                                                                   ignore_index=True)
+
         if not top_sku_products.empty:
             top_sku_products = top_sku_products\
-                .merge(self.products[['product_fk', 'category_fk']], on='product_fk')\
+                .merge(self.products[['product_fk', 'product_name', 'category_fk', 'category']], on='product_fk')\
+                .merge(self.products[['product_fk', 'product_name']], left_on='anchor_product_fk', right_on='product_fk', suffixes=('', '_anchor'))\
                 .groupby(['category_fk',
+                          'category',
                           'anchor_product_fk',
-                          'product_fk'])\
+                          'product_fk',
+                          'product_name',
+                          'product_name_anchor'])\
                 .agg({'facings': 'sum',
                       'min_facings': 'max',
                       'in_assortment': 'max',
-                      'distributed': 'max'})\
+                      'distributed': 'max',
+                      'distributed_extra': 'max'}) \
+                .sort_values(by=['category',
+                                 'product_name_anchor',
+                                 'product_name',
+                                 'in_assortment',
+                                 'distributed'],
+                             ascending=[True,
+                                        True,
+                                        True,
+                                        False,
+                                        True])\
                 .reset_index()
+
+            product_name_anchor = None
             for i, row in top_sku_products.iterrows():
+
+                if product_name_anchor != row['product_name_anchor']:
+                    product_name_anchor = row['product_name_anchor']
+                    sort_order = 1
+                else:
+                    sort_order += 1
 
                 identifier_result = self.common.get_dictionary(
                     set=self.kpi_set_type, level=3, kpi=row['product_fk'])
@@ -3194,10 +3233,10 @@ class CCRU_SANDKPIToolBox:
                 numerator_result = row['facings']
                 denominator_result = row['min_facings']
 
-                score = 100 if row['distributed'] else 0
-                weight = None
-                target = 100
-                result = 'DISTRIBUTED' if row['distributed'] else 'OOS'
+                score = 100 if row['distributed'] or row['distributed_extra'] else 0
+                weight = sort_order
+                target = 100 if not row['distributed_extra'] else 0
+                result = 'DISTRIBUTED' if row['distributed'] else ('EXTRA' if row['distributed_extra'] else 'OOS')
                 kpi_result_type_fk = self.common.kpi_static_data[
                     self.common.kpi_static_data['pk'] == kpi_fk]['kpi_result_type_fk'].values[0]
                 if kpi_result_type_fk:
@@ -3221,14 +3260,33 @@ class CCRU_SANDKPIToolBox:
 
             top_sku_anchor_products = top_sku_products\
                 .groupby(['category_fk',
-                          'anchor_product_fk'])\
+                          'category',
+                          'anchor_product_fk',
+                          'product_name_anchor'])\
                 .agg({'product_fk': 'count',
                       'facings': 'sum',
                       'min_facings': 'max',
                       'in_assortment': 'max',
-                      'distributed': 'max'})\
+                      'distributed': 'max',
+                      'distributed_extra': 'max'})\
+                .sort_values(by=['category',
+                                 'in_assortment',
+                                 'distributed',
+                                 'product_name_anchor'],
+                             ascending=[True,
+                                        False,
+                                        True,
+                                        True])\
                 .reset_index()
+
+            category = None
             for i, row in top_sku_anchor_products.iterrows():
+
+                if category != row['category']:
+                    category = row['category']
+                    sort_order = 1
+                else:
+                    sort_order += 1
 
                 identifier_result = self.common.get_dictionary(
                     set=self.kpi_set_type, level=2, kpi=row['anchor_product_fk'])
@@ -3258,10 +3316,10 @@ class CCRU_SANDKPIToolBox:
                 numerator_result = row['facings']
                 denominator_result = None if row['product_fk'] == 1 else row['product_fk']
 
-                score = 100 if row['distributed'] else 0
-                weight = None
-                target = 100
-                result = 'DISTRIBUTED' if row['distributed'] else 'OOS'
+                score = 100 if row['distributed'] or row['distributed_extra'] else 0
+                weight = sort_order
+                target = 100 if not row['distributed_extra'] else 0
+                result = 'DISTRIBUTED' if row['distributed'] else ('EXTRA' if row['distributed_extra'] else 'OOS')
                 kpi_result_type_fk = self.common.kpi_static_data[
                     self.common.kpi_static_data['pk'] == kpi_fk]['kpi_result_type_fk'].values[0]
                 if kpi_result_type_fk:
@@ -3284,11 +3342,20 @@ class CCRU_SANDKPIToolBox:
                                                should_enter=True)
 
             top_sku_categories = top_sku_anchor_products\
-                .groupby(['category_fk'])\
+                .groupby(['category_fk',
+                          'category'])\
                 .agg({'in_assortment': 'sum',
-                      'distributed': 'sum'})\
+                      'distributed': 'sum',
+                      'distributed_extra': 'sum'})
+            top_sku_categories['sos'] = top_sku_categories[top_sku_categories['in_assortment'] > 0]['distributed'] / \
+                                        top_sku_categories[top_sku_categories['in_assortment'] > 0]['in_assortment']
+            top_sku_categories = top_sku_categories\
+                .sort_values(by=['sos', 'category'])\
                 .reset_index()
+
             for i, row in top_sku_categories.iterrows():
+
+                sort_order = i+1
 
                 identifier_result = self.common.get_dictionary(
                     set=self.kpi_set_type, level=1, kpi=row['category_fk'])
@@ -3307,10 +3374,10 @@ class CCRU_SANDKPIToolBox:
                 numerator_result = row['distributed']
                 denominator_result = row['in_assortment']
 
-                result = round(numerator_result / float(denominator_result) * 100, 2)
+                result = round(numerator_result / float(denominator_result) * 100, 2) if denominator_result else 0
                 score = result
-                weight = None
-                target = 100
+                weight = sort_order
+                target = 100 if denominator_result else 0
 
                 self.common.write_to_db_result(fk=kpi_fk,
                                                numerator_id=numerator_id,
@@ -3349,10 +3416,10 @@ class CCRU_SANDKPIToolBox:
         denominator_id = self.store_id
         context_id = None
 
-        result = round(numerator_result / float(denominator_result) * 100, 2)
+        result = round(numerator_result / float(denominator_result) * 100, 2) if denominator_result else 0
         score = result
-        weight = None
-        target = 100
+        weight = 1
+        target = 100 if denominator_result else 0
 
         if not include_to_contract:
             self.common.write_to_db_result(fk=kpi_fk,
@@ -3374,9 +3441,9 @@ class CCRU_SANDKPIToolBox:
                  'KPI name Eng': kpi_set_name,
                  'KPI name Rus': kpi_set_name,
                  'Parent': 'root'},
-                {'target': 100,
-                 'weight': 1,
-                 'result': score,
+                {'target': target,
+                 'weight': weight,
+                 'result': result,
                  'score': score,
                  'weighted_score': score,
                  'level': 0})
