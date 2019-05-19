@@ -49,16 +49,26 @@ class CBCDAIRYILToolBox:
 
         self.kpis_data = parse_template(Consts.TEMPLATE_PATH, Consts.KPI_SHEET, lower_headers_row_index=1)
         self.kpi_weights = parse_template(Consts.TEMPLATE_PATH, Consts.KPI_WEIGHT, lower_headers_row_index=0)
-        self.gap_data = parse_template(Consts.TEMPLATE_PATH, Consts.KPI_GAP, lower_headers_row_index=0)
+        self.gap_data = self.get_gap_data()
         self.template_data = self.filter_template_data()
-
+        self.kpis_gaps = list()
         # self.match_display_in_scene = self.get_match_display()
         # self.match_stores_by_retailer = self.get_match_stores_by_retailer()
         # self.match_template_fk_by_category_fk = self.get_template_fk_by_category_fk()
         # self.kpi_static_data = self.get_kpi_static_data()
-        # self.kpi_results_queries = []
         # self.gaps = pd.DataFrame(columns=[self.KPI_NAME, self.KPI_ATOMIC_NAME, self.GAPS])
         # self.gaps_queries = []
+
+    @staticmethod
+    def get_gap_data():
+        """
+        This function parse the gap data template and returns the gap priorities.
+        :return: A dict with the priorities according to kpi_names. E.g: {kpi_name1: 1, kpi_name2: 2 ...}
+        """
+        gap_sheet = parse_template(Consts.TEMPLATE_PATH, Consts.KPI_GAP, lower_headers_row_index=0)
+        gap_data = zip(gap_sheet[Consts.KPI_NAME], gap_sheet[Consts.ORDER])
+        gap_data = {kpi_name: int(order) for kpi_name, order in gap_data}
+        return gap_data
 
     def main_calculation(self):
         """
@@ -71,33 +81,90 @@ class CBCDAIRYILToolBox:
             Log.warning("There isn't relevant data in the template for store fk = {}! Exiting...".format(self.store_id))
             return
         kpi_set, kpis_list = self.get_relevant_kpis_for_calculation()
-        kpi_set_fk = self.common.get_kpi_fk_by_kpi_type(kpi_set)
+        kpi_set_fk = self.common.get_kpi_fk_by_kpi_type(Consts.TOTAL_SCORE)
         total_set_scores = list()
         for kpi_name in kpis_list:
             kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_name)
             atomics_df = self.get_atomics_to_calculate(kpi_name)
             atomic_results = self.calculate_atomic_results(kpi_fk, atomics_df)  # Atomic level
-            kpi_results = self.calculate_kpi_result_by_weight(atomic_results, kpi_fk, kpi_set_fk)  # KPI level
+            kpi_results = self.calculate_kpis_and_save_to_db(atomic_results, kpi_fk, kpi_set_fk)  # KPI level
             kpi_weight = self.get_kpi_weight(kpi_name, kpi_set)
             total_set_scores.append((kpi_results, kpi_weight))
-        self.calculate_kpi_result_by_weight(total_set_scores, kpi_set_fk)  # Set level
+        self.calculate_kpis_and_save_to_db(total_set_scores, kpi_set_fk)  # Set level
+        self.handle_gaps()
 
-    def calculate_kpi_result_by_weight(self, kpi_results, kpi_fk, parent_fk=None):
+    def add_gap(self, atomic_kpi, score):
         """
-        This function aggregates the KPI results by scores and weights and saves the results to the DB.
-        :param parent_fk: The KPI SET FK that the KPI "belongs" too if exist.
-        :param kpi_fk: The relevant KPI fk.
+
+        :param score:
+        :param atomic_kpi:
+        :return:
+        """
+        current_gap_dict = dict()
+        current_gap_dict[Consts.KPI_NAME] = atomic_kpi[Consts.KPI_NAME]
+        current_gap_dict[Consts.KPI_ATOMIC_NAME] = atomic_kpi[Consts.KPI_ATOMIC_NAME]
+        current_gap_dict[Consts.PRIORITY] = self.gap_data[atomic_kpi[Consts.KPI_NAME]]
+        current_gap_dict[Consts.SCORE] = score
+        self.kpis_gaps.append(current_gap_dict)
+
+    @staticmethod
+    def sort_by_priority(gap_dict):
+        """ This is a util function for the kpi's gaps sorting by priorities"""
+        return gap_dict[Consts.PRIORITY], gap_dict[Consts.SCORE]
+
+    def handle_gaps(self):
+        """
+        This function takes the top 5 gaps (by priority) and saves it to the DB (pservice.custom_gaps table).
+        :return:
+        """
+        self.kpis_gaps.sort(key=self.sort_by_priority)
+        for gap in self.kpis_gaps[:5]:
+            kpi_name, atomic_name, priority = gap[Consts.KPI_NAME], gap[Consts.KPI_ATOMIC_NAME], gap[Consts.PRIORITY]
+            gap_query = Consts.GAPS_QUERY.format(self.session_fk, kpi_name, atomic_name, priority)
+            # TODO TODO TODO
+            # DECISION: 5 EXECUTIONS OR VALUES (),(),()...
+
+    def calculate_kpis_and_save_to_db(self,  kpi_results, kpi_fk, parent_fk=None):
+        """
+        This KPI aggregates the score by weights and saves the results to the DB.
         :param kpi_results: A list of results and weights tuples: [(score1, weight1), (score2, weight2) ... ].
-        :return: The aggregated KPI score.
+        :param kpi_fk: The relevant KPI fk.
+        :param parent_fk: The KPI SET FK that the KPI "belongs" too if exist.
         """
-        if None in map(lambda res: res[1], kpi_results):  # No weights at all - dividing equally by length!
-            kpi_score = sum(map(lambda res: res[0], kpi_results)) / len(kpi_results)
-        else:
-            kpi_score = sum([score * weight for score, weight in kpi_results])
+        kpi_score = self.calculate_kpi_result_by_weight(kpi_results)
         self.common.write_to_db_result(fk=kpi_fk, numerator_id=Consts.CBCIL_MANUFACTURER,
                                        denominator_id=self.store_id,
                                        identifier_parent=parent_fk,
                                        result=kpi_score, score=kpi_score, should_enter=True)
+        return kpi_score
+
+    def calculate_kpi_result_by_weight(self, kpi_results):
+        """
+        This function aggregates the KPI results by scores and weights.
+        :param kpi_results: A list of results and weights tuples: [(score1, weight1), (score2, weight2) ... ].
+        :return: The aggregated KPI score.
+        """
+        weights_list = map(lambda res: res[1], kpi_results)
+        if None in weights_list:  # No weights at all - dividing equally by length!
+            kpi_score = sum(map(lambda res: res[0], kpi_results)) / len(kpi_results)
+        elif sum(weights_list) < 1:  # Missing weights that needs to be divided among the kpis
+            kpi_score = self.divide_missing_percentage(kpi_results, sum(weights_list))
+        else:
+            kpi_score = sum([score * weight for score, weight in kpi_results])
+        return kpi_score
+
+    @staticmethod
+    def divide_missing_percentage(kpi_results, total_weights):
+        """
+        This function is been activated in case the total number of KPI weights doesn't equal to 100%.
+        It divides the missing percentage among the other KPI and calculates the score.
+        :param total_weights: The total number of weights that were calculated earlier.
+        :param kpi_results: A list of results and weights tuples: [(score1, weight1), (score2, weight2) ... ].
+        :return: KPI aggregated score.
+        """
+        missing_weight = 1 - total_weights
+        weight_addition = missing_weight / len(kpi_results) if kpi_results else 0
+        kpi_score = sum([score * (weight+weight_addition) for score, weight in kpi_results])
         return kpi_score
 
     def calculate_atomic_results(self, kpi_fk, atomics_df):
@@ -109,13 +176,14 @@ class CBCDAIRYILToolBox:
         """
         total_scores = list()
         for i in atomics_df.index:
-            current_atomic = atomics_df.iloc[i]
+            current_atomic = atomics_df.loc[i]
             kpi_type = current_atomic.get(Consts.KPI_TYPE)  # TODO: CHECK FOR SINGLE ATOMIC
             general_filters = self.get_general_filters(current_atomic)
             atomic_weight = float(current_atomic.get(Consts.WEIGHT)) if current_atomic.get(Consts.WEIGHT) else None
             if general_filters is None:
-                continue
-            elif kpi_type in [Consts.AVAILABILITY]:
+                print ":)"
+                # continue   # todo !!! Needs to be continue
+            if kpi_type in [Consts.AVAILABILITY]:       # TODO TODO NEEDS TO BE ELIF
                 atomic_score = self.calculate_availability(**general_filters)
             elif kpi_type == Consts.AVAILABILITY_FROM_BOTTOM:
                 atomic_score = self.calculate_availability_from_bottom(**general_filters)
@@ -132,8 +200,8 @@ class CBCDAIRYILToolBox:
                 continue
             if atomic_score is None:  # In cases that we need to ignore the KPI and divide it's weight
                 continue
-            elif atomic_score == 0:  # TODO TODO TODO
-                self.add_gap(current_atomic)  # TODO TODO TODO
+            elif atomic_score < 100:  # TODO TODO TODO
+                self.add_gap(current_atomic, atomic_score)  # TODO TODO TODO
             total_scores.append((atomic_score, atomic_weight))
 
             atomic_fk_lvl_2 = self.common.get_kpi_fk_by_kpi_type(current_atomic[Consts.KPI_ATOMIC_NAME])
@@ -155,8 +223,7 @@ class CBCDAIRYILToolBox:
 
     def get_atomics_to_calculate(self, kpi_name):
         """
-        This method filters the KPIs data to the relevant atomics in order to calculate the relevant atomic level
-        for the current KPI.
+        This method filters the KPIs data to be the relevant atomic KPIs.
         :param kpi_name: The hebrew KPI name from the template.
         :return: A DataFrame that contains data about the relevant Atomic KPIs.
         """
@@ -167,16 +234,13 @@ class CBCDAIRYILToolBox:
     def get_store_attributes(self, attributes_names):
         """
         This function encodes and returns the relevant store attribute.
-        :param attributes_names: List of requeted store attributes to return.
-        :return: A dictionary relevant attribute after encoding (if necessary).
+        :param attributes_names: List of requested store attributes to return.
+        :return: A dictionary with the requested attributes, E.g: {attr_name: attr_val, ...}
         """
         # Filter store attributes
         store_info_dict = self.store_info.iloc[0].to_dict()
         filtered_store_info = {store_att: store_info_dict[store_att] for store_att in attributes_names}
-        # Encode the attributes if necessary
-        for attr in attributes_names:
-            if isinstance(filtered_store_info[attr], (unicode, str)):
-                filtered_store_info[attr] = [filtered_store_info[attr].encode('utf-8')]
+
         return filtered_store_info
 
     def filter_template_data(self):
@@ -185,7 +249,9 @@ class CBCDAIRYILToolBox:
         :return: A DataFrame with filtered Data by store attributes.
         """
         relevant_store_info = self.get_store_attributes(Consts.STORE_ATTRIBUTES_TO_FILTER_BY)
-        relevant_data = self.template_data[self.template_data.isin(relevant_store_info)]
+        relevant_data = self.kpis_data.copy()
+        for store_att, store_val in relevant_store_info.iteritems():
+            relevant_data = relevant_data[relevant_data[store_att].str.encode('utf-8') == store_val.encode('utf-8')]
         return relevant_data
 
     def get_relevant_scenes_by_params(self, params):

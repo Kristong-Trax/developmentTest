@@ -28,8 +28,10 @@ class Consts(object):
     TARGET = 'Target'
     SPLIT_SCORE = 'Split Score'
     WEIGHT = 'Weight'
+    ORDER = 'Order'
 
     # KPIs
+    TOTAL_SCORE = 'Total Score'
     AVAILABILITY = 'Availability'
     AVAILABILITY_FROM_BOTTOM = 'Availability from bottom'
     MIN_2_AVAILABILITY = 'Min 2 Availability'
@@ -76,3 +78,8 @@ class Consts(object):
     HEBREW_YES = u'כן'
     GOLDEN_SHELVES = [3, 4]
     LOWEST_SHELF = 1
+
+    # Gaps
+    GAPS_QUERY = "insert into pservice.custom_gaps (session_fk, gap_category, name, priority) values ({},{},{},{})"
+    PRIORITY = 'priority'
+    SCORE = 'score'
