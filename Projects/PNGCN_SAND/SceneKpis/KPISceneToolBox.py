@@ -1,4 +1,5 @@
-# -*- coding: utf-8 -*-
+#!/usr/bin/env python
+# -*- coding: utf-8 -*
 
 import os
 import numpy as np
@@ -10,6 +11,7 @@ from Projects.PNGCN_SAND.ShareOfDisplay.ExcludeDataProvider import ShareOfDispla
 from Trax.Utils.Logging.Logger import Log
 import pandas as pd
 from KPIUtils_v2.Calculations.SOSCalculations import SOS
+from KPIUtils_v2.Calculations.CalculationsUtils.GENERALToolBoxCalculations import GENERALToolBox
 # from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
 # from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
 # from KPIUtils_v2.Calculations.AvailabilityCalculations import Availability
@@ -19,7 +21,6 @@ from KPIUtils_v2.Calculations.SOSCalculations import SOS
 # from KPIUtils_v2.Calculations.SequenceCalculations import Sequence
 # from KPIUtils_v2.Calculations.SurveyCalculations import Survey
 #
-# from KPIUtils_v2.Calculations.CalculationsUtils import GENERALToolBoxCalculations
 
 
 __Author__ = 'Dudi_s'
@@ -46,6 +47,37 @@ DISPLAY_SIZE_PER_SCENE = 'DISPLAY_SIZE_PER_SCENE'
 LINEAR_SOS_MANUFACTURER_IN_SCENE = 'LINEAR_SOS_MANUFACTURER_IN_SCENE'
 PRESIZE_LINEAR_LENGTH_PER_LENGTH = 'PRESIZE_LINEAR_LENGTH_PER_LENGTH'
 
+# Eye level KPI
+OLAY_BRAND = 'Olay'
+SAFEGUARD_BRAND = 'Safeguard'
+PCC_CATEGORY = 'Personal Cleaning Care'
+HANDWASH_SUB_CATEGORY = 'Handwash'
+BODYWASH_SUB_CATEGORY = 'Bodywash'
+OTHER_SUB_CATEGORY = 'Other'
+PCC_BAR_SUB_CATEGORY = 'PCC-Bar'
+PCC_FILTERS = {
+'SFG Bodywash': {'manufacturer_name': PNG_MANUFACTURER, "brand_name": SAFEGUARD_BRAND,
+                 "category": PCC_CATEGORY, 'sub_category': BODYWASH_SUB_CATEGORY},
+'SFG Handwash': {'manufacturer_name': PNG_MANUFACTURER, "brand_name": SAFEGUARD_BRAND,
+                 "category": PCC_CATEGORY, 'sub_category': HANDWASH_SUB_CATEGORY},
+'SFG Other': {'manufacturer_name': PNG_MANUFACTURER, "brand_name": SAFEGUARD_BRAND,
+                 "category": PCC_CATEGORY, 'sub_category': OTHER_SUB_CATEGORY},
+'SFG PCCBAR': {'manufacturer_name': PNG_MANUFACTURER, "brand_name": SAFEGUARD_BRAND,
+                 "category": PCC_CATEGORY, 'sub_category': PCC_BAR_SUB_CATEGORY},
+'OLAY Bodywash': {'manufacturer_name': PNG_MANUFACTURER, "brand_name": OLAY_BRAND,
+                 "category": PCC_CATEGORY, 'sub_category': BODYWASH_SUB_CATEGORY},
+'OLAY Handwash': {'manufacturer_name': PNG_MANUFACTURER, "brand_name": OLAY_BRAND,
+                 "category": PCC_CATEGORY, 'sub_category': HANDWASH_SUB_CATEGORY},
+'OLAY Other': {'manufacturer_name': PNG_MANUFACTURER, "brand_name": OLAY_BRAND,
+                 "category": PCC_CATEGORY, 'sub_category': OTHER_SUB_CATEGORY},
+'OLAY PCCBAR': {'manufacturer_name': PNG_MANUFACTURER, "brand_name": OLAY_BRAND,
+                 "category": PCC_CATEGORY, 'sub_category': PCC_BAR_SUB_CATEGORY},
+'Compatitor PCC': {'manufacturer_name': (PNG_MANUFACTURER, 0), "category": PCC_CATEGORY},
+'PNGOTHER': {'manufacturer_name': PNG_MANUFACTURER,
+                 "category": (PCC_CATEGORY, 0), 'sub_category': OTHER_SUB_CATEGORY},
+'Competitor Other': {'manufacturer_name': (PNG_MANUFACTURER, 0),
+                 "category": (PCC_CATEGORY, 0), 'sub_category': OTHER_SUB_CATEGORY}
+}
 
 class PngcnSceneKpis(object):
     def __init__(self, project_connector, common, scene_id, data_provider=None):
@@ -59,6 +91,8 @@ class PngcnSceneKpis(object):
         else:
             self.on_ace = False
             # self.data_provider = PNGCN_SANDShareOfDisplayDataProvider(project_connector, self.session_uid)
+
+        self.tools = GENERALToolBox(self.data_provider)
         self.cur = self.project_connector.db.cursor()
         self.log_prefix = 'Share_of_display for scene: {}, project {}'.format(self.scene_id,
                                                                               self.project_connector.project_name)
@@ -115,11 +149,31 @@ class PngcnSceneKpis(object):
             raise e
 
     def calculate_eye_level_kpi(self):
-        df = self.get_eye_level_shelves(self.scif)
+        entity_df = self.common.get_custom_entities_df('eye_level_fragments')
+        # if entity_df.empty:
+        #     return
+        df = self.get_eye_level_shelves(self.matches_from_data_provider)
+        full_df = pd.merge(df,self.all_products,on="product_fk")
+        for key in PCC_FILTERS.keys():
+            frag_df = full_df[self.tools.get_filter_condition(full_df, **PCC_FILTERS[key])]
+            for i, row in frag_df.iterrows():
+                entity_fk = entity_df[entity_df['entity_name'] == key]['entity_fk'].values[0]
+
         return 0
 
     def get_eye_level_shelves(self, df):
-        return 0
+        if df.empty:
+            return df
+        highest_shelf = int(df['shelf_number'].max())
+        if highest_shelf <= 6:
+            shelves_to_choose = [1, 2]
+        elif highest_shelf == 7:
+            shelves_to_choose = [2, 3]
+        elif highest_shelf == 8:
+            shelves_to_choose = [3, 4]
+        else:
+            shelves_to_choose = [4, 5]
+        return df[df['shelf_number'].isin(shelves_to_choose)]
 
     def _handle_rest_display(self):
         """
