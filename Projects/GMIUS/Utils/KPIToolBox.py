@@ -114,12 +114,13 @@ class ToolBox:
         # print(kpi_name)
         # if kpi_name != 'Do Kid AND ASH Both Anchor End of Category?':
         # if kpi_name != 'In the MSL for Yogurt, which of the following is adjacent to Kite Hill?':
-        # if kpi_name not in ('What is the sequence of Soup segments?'):
+        # if kpi_name not in ('Where are Progresso RTS Light facings shelved?'):
         #     return
 
         # if kpi_type == Const.AGGREGATION:
         # if kpi_type:
-        if (self.super_cat in ['RBG', 'YOGURT', 'SOUP']) or (kpi_type in[Const.BASE_MEASURE, Const.BLOCKING, Const.AGGREGATION]):
+        if (self.super_cat in ['RBG', 'YOGURT', 'SOUP', 'MEXICAN']) or (kpi_type in[Const.BASE_MEASURE, Const.BLOCKING, Const.AGGREGATION]):
+        # if (self.super_cat in ['MEXICAN']) or (kpi_type in[Const.BASE_MEASURE, Const.BLOCKING, Const.AGGREGATION]):
         # if kpi_name == 'How is RTS Progresso blocked?':
         # if kpi_type in[Const.COUNT_SHELVES]: # Const.COUNT_SHELVES:
         # if kpi_type in[Const.BASE_MEASURE, Const.SET_COUNT]: # Const.COUNT_SHELVES:
@@ -195,28 +196,41 @@ class ToolBox:
     def calculate_topmiddlebottom(self, kpi_name, kpi_line, relevant_scif, general_filters):
         locations = set()
         filters = self.get_kpi_line_filters(kpi_line)
-        filters.update(general_filters)
-
-        bay_max_shelf = self.filter_df(self.full_mpis, general_filters).set_index('bay_number')\
-                                                                  .groupby(level=0)['shelf_number'].max().to_dict()
-        mpis = self.filter_df(self.mpis, filters)
-        mpis = self.filter_df(mpis, {'stacking_layer': 1})
-        if mpis.empty:
+        relevant_scif = self.filter_df(relevant_scif, filters)
+        relevant_scif = relevant_scif[relevant_scif['facings_ign_stack'] >= 1]
+        if relevant_scif.empty:
             return
-        grouped_mpis = mpis.set_index('bay_number').groupby(level=0)
+        filters.update(general_filters)
+        for scene in relevant_scif.scene_id.unique():
+            filters['scene_fk'] = scene
+            general_filters['scene_fk'] = scene
 
-        for bay, shelves in grouped_mpis:
-            if bay_max_shelf[bay] not in self.tmb_map:
-                Log.warning('bay "{}" is a problem in kpi "{}" in session "{}"'.format(bay, kpi_name, self.session_uid))
+            bay_shelf = self.filter_df(self.full_mpis, general_filters).set_index('bay_number')\
+                                          .groupby(level=0)[['shelf_number', 'shelf_number_from_bottom']].max()
+            bay_max_shelf = bay_shelf['shelf_number'].to_dict()
+            bay_shelf['shelf_offset'] = bay_shelf['shelf_number_from_bottom'] - bay_shelf['shelf_number']
+            shelf_offset = bay_shelf['shelf_offset'].to_dict()
+
+            mpis = self.filter_df(self.mpis, filters)
+            mpis = self.filter_df(mpis, {'stacking_layer': 1})
+            if mpis.empty:
                 continue
-            sub_map = self.tmb_map[bay_max_shelf[bay]]
-            # shelf_with_most = shelves.groupby('shelf_number_from_bottom')[shelves.columns[0]].count()\
-            #     .sort_values().index[-1]
-            # locations.add(sub_map[shelf_with_most])
-            for shelf in shelves['shelf_number'].unique():
-                locations.add(sub_map[shelf])
-            if len(locations) == 3:
-                break
+            grouped_mpis = mpis.set_index('bay_number').groupby(level=0)
+
+            for bay, shelves in grouped_mpis:
+                shelf_no = bay_max_shelf[bay] + shelf_offset[bay] if shelf_offset[bay] < 0 else bay_max_shelf[bay]
+                if shelf_no not in self.tmb_map:
+                    Log.warning('bay "{}" is a problem in kpi "{}" in session "{}"'.format(bay, kpi_name, self.session_uid))
+                    continue
+                sub_map = self.tmb_map[shelf_no]
+                # shelf_with_most = shelves.groupby('shelf_number_from_bottom')[shelves.columns[0]].count()\
+                #     .sort_values().index[-1]
+                # locations.add(sub_map[shelf_with_most])
+                for shelf in shelves['shelf_number_from_bottom'].unique():
+                    shelf = shelf - shelf_offset[bay] if shelf_offset[bay] > 0 else shelf
+                    locations.add(sub_map[shelf])
+                if len(locations) == 3:
+                    break
 
         locations = sorted(list(locations))[::-1]
         ordered_result = '-'.join(locations)
@@ -293,6 +307,23 @@ class ToolBox:
         result = self.inequality_results(ratio, potential_results, kpi_name)
 
         return {'score': ratio, 'result': result, 'numerator_result': num, 'denominator_result': den}
+
+    def calculate_presence_within_bay_mex(self, kpi_name, kpi_line, relevant_scif, general_filters):
+        filters = self.get_kpi_line_filters(kpi_line)
+        mpis = self.mpis[self.mpis['stacking_layer'] == 1]
+        num_df = self.filter_df(mpis, filters)
+        if num_df.empty:
+            return
+        num_df = num_df.groupby(['scene_fk', 'bay_number'])['scene_match_fk'].count()\
+            .sort_values(ascending=False)
+        bay_filters = dict(zip(num_df.index.names, num_df.index.values[0]))
+        bay_df = self.filter_df(mpis, bay_filters)
+        kwargs_list = []
+        for res in self.get_results_value(kpi_line):
+            res_df = self.filter_df(bay_df, self.att_dict[res.lower()])
+            if not res_df.empty:
+                kwargs_list.append({'score': 1, 'result': res})
+        return kwargs_list
 
     def integrated_adjacency(self, kpi_name, kpi_line, relevant_scif, general_filters):
         ''' I think this should be a scene level kpi, i will need to move it to scene_kpi_toolbox '''
@@ -476,7 +507,8 @@ class ToolBox:
                 adjacent_items = edge_matches - items
                 adj_mpis = mpis[(mpis['scene_match_fk'].isin(adjacent_items))]
                 adj_mpis = self.filter_df(adj_mpis, Const.SOS_EXCLUDE_FILTERS, exclude=1)
-                adj_mpis = self.filter_df(adj_mpis, Const.ALLOWED_FILTERS, exclude=1)
+                adj_mpis = self.filter_df(adj_mpis, {'product_type': 'Empty'}, exclude=1)
+                # adj_mpis = self.filter_df(adj_mpis, Const.ALLOWED_FILTERS, exclude=1)
 
                 adjacent_sections = list(set(sum([list(adj_mpis[col].unique()) for col in col_list], [])))
 
@@ -535,7 +567,6 @@ class ToolBox:
             result = unique_results.pop()
 
         kwargs = {'score': 1, 'result': result, 'target': 1}
-
         return kwargs
 
 
@@ -551,6 +582,30 @@ class ToolBox:
             # result_fk = self.result_values_dict[result]
             ret_values.append({'score': 1, 'result': result, 'target': 0})
         return ret_values
+
+    def calculate_adjacency_mix(self, kpi_name, kpi_line, relevant_scif, general_filters):
+        all_results = self.base_adjacency(kpi_name, kpi_line, relevant_scif, general_filters)
+        mpis = self.mpis[self.mpis['stacking_layer'] == 1]
+        mpis['scene_bay'] = mpis['scene_fk'].astype(str) + '_' + mpis['bay_number'].astype(str)
+        A_filters = self.get_kpi_line_filters(kpi_line)
+        B_filters = self.att_dict[self.get_results_value(kpi_line)[0].lower()]
+        A_mpis = self.filter_df(mpis, A_filters)
+        B_mpis = self.filter_df(mpis, B_filters)
+        A_bays = set(A_mpis['scene_bay'].unique())
+        B_bays = set(B_mpis['scene_bay'].unique())
+
+        same_bay = A_bays & B_bays
+        adj = len(set(sum([x for x, y in all_results.values()], [])))
+        result = 'Not adjacent - Not same sections'
+        if same_bay and adj:
+            result = 'Adjacent - same section'
+        elif adj and not same_bay:
+            result = 'Adjacent - separate section'
+        elif not adj and same_bay:
+            result = 'Not Adjacent - Same 4ft section'
+
+        kwargs = {'score': 1, 'result': result}
+        return kwargs
 
     def anchor_base(self, general_filters, potential_end, scenes, min_shelves):
         results = {}
@@ -690,7 +745,9 @@ class ToolBox:
         return score
 
 
-    def base_block(self, kpi_name, kpi_line, relevant_scif, general_filters_base, check_orient=1, other=0, filters={}):
+    def base_block(self, kpi_name, kpi_line, relevant_scif, general_filters_base, check_orient=1, other=0, filters={},
+                   multi=0):
+        result = pd.DataFrame()
         general_filters = dict(general_filters_base)
         blocks = pd.DataFrame()
         result = pd.DataFrame()
@@ -718,14 +775,14 @@ class ToolBox:
             allowed_filter = Const.ALLOWED_FILTERS
             if not other:
                 allowed_filter = {'product_type': 'Empty'}
-            result = self.block.network_x_block_together(filters, location=scene_filter,
+            result = pd.concat([result, self.block.network_x_block_together(filters, location=scene_filter,
                                                          additional={
                                                                      'allowed_products_filters': allowed_filter,
                                                                      'include_stacking': False,
                                                                      'check_vertical_horizontal': check_orient,
-                                                                     'minimum_facing_for_block': 1})
+                                                                     'minimum_facing_for_block': 1})])
             blocks = result[result['is_block'] == True]
-            if not blocks.empty:
+            if not blocks.empty and not multi:
                 score = 1
                 orientation = blocks.loc[0, 'orientation']
                 break
@@ -801,6 +858,36 @@ class ToolBox:
                     result = 'Block covering all shelves'
 
         kwargs = {'score': score, 'result': result}
+        return kwargs
+
+    def calculate_multi_block(self, kpi_name, kpi_line, relevant_scif, general_filters):
+        score, orientation, mpis_dict, blocks, results = self.base_block(kpi_name, kpi_line, self.scif, general_filters,
+                                                                         multi=1)
+        mpis = self.mpis[self.mpis['stacking_layer'] == 1]
+        segs = self.get_kpi_line_filters(kpi_line)['GMI_SEGMENT']
+        seg_count = {}
+        seg_count = {seg: mpis[mpis['GMI_SEGMENT'] == seg].shape[0] for seg in segs}
+        results['segments'] = [[] for i in range(results.shape[0])]
+        for i, row in results.iterrows():
+            block = row.cluster
+            items = {seg: 0 for seg in seg_count.keys()}
+            for i, node in block.nodes(data=True):
+                if node['group_attributes']['group_name'] in segs:
+                    items[node['group_attributes']['group_name']] += len(node['group_attributes']['match_fk_list'])
+            row.segments += [seg for seg in segs if seg_count[seg] > 0 and float(items[seg]) / seg_count[seg] >= .75]
+        results['seg_count'] = [len(stuff) if stuff else 0 for stuff in results.segments]
+        together = results.sort_values('seg_count', ascending=False).reset_index().segments[0]
+        result = 'None shelved together'
+        if len(together) == 3:
+            result = 'Taco, Enchilada Sauce and Cooking Sauce together'
+        elif len(together) == 2:
+            if 'TACO SAUCE/HOT SAUCE' not in together:
+                result = 'Enchilada & Cooking Sauce together, not Taco Sauce'
+            elif 'ENCHILADA SAUCE' not in together:
+                result = 'Taco & Cooking Sauce together, not Enchilada Sauce'
+            elif 'COOKING SAUCE/MARINADE' not in together:
+                result = 'Taco & Enchilada Sauce together, not Cooking Sauce'
+        kwargs = {'score': 1, 'result': result}
         return kwargs
 
     def calculate_vertical_block_adjacencies(self, kpi_name, kpi_line, relevant_scif, general_filters):
@@ -1020,7 +1107,7 @@ class ToolBox:
                 scif = scif[scif[count_col].isin(allowed)]
         if scif.empty:
             return 0
-        count = len(scif[count_col[0]].unique())
+        count = len([x for x in scif[count_col[0]].unique() if x])
         return count
 
     def calculate_count_of(self, kpi_name, kpi_line, relevant_scif, general_filters):
@@ -1333,6 +1420,8 @@ class ToolBox:
                 return self.calculate_adjacency_both
             else:
                 return self.calculate_adjacency_list
+        elif kpi_type == Const.ADJACENCY_MIX:
+            return self.calculate_adjacency_mix
         elif kpi_type == Const.ANCHOR_LIST:
             return self.calculate_adjacency_list
         elif kpi_type == Const.ANCHOR:
@@ -1352,6 +1441,8 @@ class ToolBox:
                 return self.calculate_basic_block
             elif result.lower() == 'blocking covers':
                 return self.calculate_blocking_all_shelves
+            elif result.lower() == 'multi-block':
+                return self.calculate_multi_block
         elif kpi_type == Const.BASE_MEASURE:
             return self.calculate_base_measure
         elif kpi_type == Const.ORIENT:
@@ -1373,6 +1464,8 @@ class ToolBox:
             return self.calculate_presence
         elif kpi_type == Const.PRESENCE_WITHIN_BAY:
             return self.calculate_presence_within_bay
+        elif kpi_type == Const.PRESENCE_WITHIN_BAY_MEX:
+            return self.calculate_presence_within_bay_mex
         elif kpi_type == Const.PERCENT:
             return self.calculate_sos_percent
         elif kpi_type == Const.SEQUENCE:

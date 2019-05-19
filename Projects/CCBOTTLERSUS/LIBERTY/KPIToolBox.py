@@ -170,10 +170,19 @@ class LIBERTYToolBox:
     def calculate_availability(self, kpi_line, relevant_scif, weight):
         survey_question_skus_required = self.does_exist(kpi_line, Const.SURVEY_QUESTION_SKUS_REQUIRED)
         if survey_question_skus_required:
-            survey_question_skus = self.get_relevant_product_assortment_by_kpi_name(kpi_line[Const.KPI_NAME])
+            survey_question_skus, secondary_survey_question_skus = \
+                self.get_relevant_product_assortment_by_kpi_name(kpi_line[Const.KPI_NAME])
             unique_skus = \
                 relevant_scif[relevant_scif['product_fk'].isin(survey_question_skus)]['product_fk'].unique().tolist()
+            if secondary_survey_question_skus:
+                secondary_unique_skus = \
+                    relevant_scif[relevant_scif['product_fk'].isin(secondary_survey_question_skus)][
+                        'product_fk'].unique().tolist()
+            else:
+                secondary_unique_skus = None
+
         else:
+            secondary_unique_skus = None
             manufacturer = self.does_exist(kpi_line, Const.MANUFACTURER)
             if manufacturer:
                 relevant_scif = relevant_scif[relevant_scif['manufacturer_name'].isin(manufacturer)]
@@ -191,14 +200,22 @@ class LIBERTYToolBox:
         length_of_unique_skus = len(unique_skus)
         minimum_number_of_skus = kpi_line[Const.MINIMUM_NUMBER_OF_SKUS]
 
-        result = 1 if length_of_unique_skus >= minimum_number_of_skus else 0
+        if length_of_unique_skus >= minimum_number_of_skus:
+            if secondary_unique_skus:
+                length_of_unique_skus = len(secondary_unique_skus)
+                minimum_number_of_skus = kpi_line[Const.SECONDARY_MINIMUM_NUMBER_OF_SKUS]
+                result = 1 if length_of_unique_skus > minimum_number_of_skus else 0
+            else:
+                result = 1
+        else:
+            result = 0
 
         parent_kpi_name = kpi_line[Const.KPI_NAME] + Const.LIBERTY
         kpi_fk = self.common_db.get_kpi_fk_by_kpi_type(parent_kpi_name + Const.DRILLDOWN)
         self.common_db.write_to_db_result(kpi_fk, numerator_id=self.manufacturer_fk, numerator_result=0,
                                           denominator_id=self.store_id, denominator_result=0, weight=weight,
                                           result=length_of_unique_skus, target=minimum_number_of_skus,
-                                          score=result* weight,
+                                          score=result * weight,
                                           identifier_parent=parent_kpi_name, should_enter=True)
 
         return result
@@ -206,10 +223,21 @@ class LIBERTYToolBox:
     def get_relevant_product_assortment_by_kpi_name(self, kpi_name):
         template = self.templates[Const.SURVEY_QUESTION_SKUS]
         relevant_template = template[template[Const.KPI_NAME] == kpi_name]
-        relevant_ean_codes = relevant_template[Const.EAN_CODE].unique().tolist()
-        relevant_ean_codes = [str(int(x)) for x in relevant_ean_codes if x != '']  # we need this to fix dumb template
-        relevant_products = self.all_products[self.all_products['product_ean_code'].isin(relevant_ean_codes)]
-        return relevant_products['product_fk'].unique().tolist()
+        # we need this to fix dumb template
+        relevant_template[Const.EAN_CODE] = \
+            relevant_template[Const.EAN_CODE].apply(lambda x: str(int(x)) if x != '' else None)
+        primary_ean_codes = \
+            relevant_template[relevant_template[Const.SECONDARY_GROUP] != 'Y'][Const.EAN_CODE].unique().tolist()
+        primary_products = self.all_products[self.all_products['product_ean_code'].isin(primary_ean_codes)]
+        primary_product_pks = primary_products['product_fk'].unique().tolist()
+        secondary_ean_codes = \
+            relevant_template[relevant_template[Const.SECONDARY_GROUP] == 'Y'][Const.EAN_CODE].unique().tolist()
+        if secondary_ean_codes:
+            secondary_products = self.all_products[self.all_products['product_ean_code'].isin(secondary_ean_codes)]
+            secondary_product_pks = secondary_products['product_fk'].unique().tolist()
+        else:
+            secondary_product_pks = None
+        return primary_product_pks, secondary_product_pks
 
     # Count of Display functions
     def calculate_count_of_display(self, kpi_line, relevant_scif, weight):

@@ -1,25 +1,28 @@
 import pandas as pd
 from Trax.Apps.Services.KEngine.Handlers.Utils.Scripts import SceneBaseClass
 from Projects.PNGCN_SAND.KPISceneGenerator import SceneGenerator
-# from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
-# from Trax.Utils.Conf.Configuration import Config
-# from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
-# from Trax.Algo.Calculations.Core.Vanilla.Output import VanillaOutput
+from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
+from Trax.Utils.Conf.Configuration import Config
+from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
+from Trax.Algo.Calculations.Core.Vanilla.Output import VanillaOutput
 from Trax.Algo.Calculations.Core.Constants import Keys, Fields, SCENE_ITEM_FACTS_COLUMNS
-# from Trax.Algo.Calculations.Core.Vanilla.Calculations import SceneVanillaCalculations
+from Trax.Algo.Calculations.Core.Vanilla.Calculations import SceneVanillaCalculations
+from KPIUtils_v2.DB.CommonV2 import Common
+from Trax.Algo.Calculations.Core.DataProvider import Data
 
 
 
 class SceneCalculations(SceneBaseClass):
     def __init__(self, data_provider):
         super(SceneCalculations, self).__init__(data_provider)
+        self.data_provider = data_provider
         self.scene_generator = SceneGenerator(self._data_provider)
         # self._monitor = None
         # self.timer = self._monitor.Timer('Perform', 'Init Session')
 
     def calculate_kpis(self):
         # self.timer.start()
-        self.scene_generator.scene_share_of_display()
+        self.scene_generator.PngcnSceneKpis()
         # self.timer.stop('KPIGenerator.run_project_calculations')
 
 def save_scene_item_facts_to_data_provider(data_provider, output):
@@ -31,15 +34,14 @@ def save_scene_item_facts_to_data_provider(data_provider, output):
     scene_item_facts.rename(columns={Fields.PRODUCT_FK: 'item_id', Fields.SCENE_FK: 'scene_id'}, inplace=True)
     data_provider.set_scene_item_facts(scene_item_facts)
 
-
 # if __name__ == '__main__':
-#     LoggerInitializer.init('pngcn-sand calculations')
+#     LoggerInitializer.init('pngcn calculations')
 #     Config.init()
 #     project_name = 'pngcn-sand'
 #     data_provider = KEngineDataProvider(project_name)
-#     session = 'b7b0f0c2-6ee6-438a-982e-d62a80a583df'
+#     session = 'ebebc629-6b82-4be8-a872-0caa248ea248'
 #
-#     scenes = [5006071]
+#     scenes = [16588190]
 #     for scene in scenes:
 #         data_provider.load_scene_data(session, scene)
 #         output = VanillaOutput()

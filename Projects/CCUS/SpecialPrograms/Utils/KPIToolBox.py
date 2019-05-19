@@ -23,7 +23,7 @@ ATT_5_LIST = ['National-Meals', 'Customer-Meals', 'Local-Meals', 'No POP', 'Nati
           'Customer-Refreshment', 'National-HomeMediaLeisure', 'Cutomer-HomeMediaLeisure', 'Local-HomeMediaLeisure',
           'All Other-Hydration']
 STORE_TYPE_LIST=['LS','CR','Drug','Value']
-TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'TemplateV4.xlsx')
+TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'TemplateV5.xlsx')
 
 
 def log_runtime(description, log_start=False):
