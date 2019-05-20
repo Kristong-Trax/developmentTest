@@ -7,16 +7,9 @@ import os
 from KPIUtils.ParseTemplates import parse_template
 from KPIUtils_v2.DB.CommonV2 import Common
 from Projects.CBCDAIRYIL.Utils.Consts import Consts
-# from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
-# from KPIUtils_v2.Calculations.NumberOfScenesCalculations import NumberOfScenes
-# from KPIUtils_v2.Calculations.PositionGraphsCalculations import PositionGraphs
-from KPIUtils_v2.Calculations.EyeLevelCalculations import calculate_eye_level
-# from KPIUtils_v2.Calculations.SequenceCalculations import Sequence
-from KPIUtils_v2.Calculations.SOSCalculations import SOS
 from KPIUtils_v2.Calculations.SurveyCalculations import Survey
 from KPIUtils_v2.Calculations.BlockCalculations import Block
 from KPIUtils_v2.Calculations.CalculationsUtils.GENERALToolBoxCalculations import GENERALToolBox
-from KPIUtils_v2.Calculations.AvailabilityCalculations import Availability
 
 __author__ = 'idanr'
 
@@ -49,6 +42,7 @@ class CBCDAIRYILToolBox:
         self.kpi_weights = parse_template(Consts.TEMPLATE_PATH, Consts.KPI_WEIGHT, lower_headers_row_index=0)
         self.template_data = self.parse_template_data()
         self.kpis_gaps = list()
+        self.passed_availability = []
         # self.match_display_in_scene = self.get_match_display()
         # self.match_stores_by_retailer = self.get_match_stores_by_retailer()
         # self.match_template_fk_by_category_fk = self.get_template_fk_by_category_fk()
@@ -117,8 +111,8 @@ class CBCDAIRYILToolBox:
         for gap in self.kpis_gaps[:5]:
             kpi_name, atomic_name, priority = gap[Consts.KPI_NAME], gap[Consts.KPI_ATOMIC_NAME], gap[Consts.PRIORITY]
             gap_query = Consts.GAPS_QUERY.format(self.session_fk, kpi_name, atomic_name, priority)
-            # TODO TODO TODO
-            # DECISION: 5 EXECUTIONS OR VALUES (),(),()...
+            self.common.execute_custom_query(gap_query)
+            # Todo: Optional: change to one query with values?
 
     def calculate_kpis_and_save_to_db(self,  kpi_results, kpi_fk, parent_fk=None):
         """
@@ -179,12 +173,13 @@ class CBCDAIRYILToolBox:
             if general_filters is None:
                 print ":)"
                 # continue   # todo !!! Needs to be continue
+            num_result = denominator_result = 0
             if kpi_type in [Consts.AVAILABILITY]:       # TODO TODO NEEDS TO BE ELIF
                 atomic_score = self.calculate_availability(**general_filters)
             elif kpi_type == Consts.AVAILABILITY_FROM_BOTTOM:
                 atomic_score = self.calculate_availability_from_bottom(**general_filters)
             elif kpi_type == Consts.MIN_2_AVAILABILITY:
-                atomic_score = self.calculate_min_2_availability(**general_filters)
+                num_result, denominator_result, atomic_score = self.calculate_min_2_availability(**general_filters)
             elif kpi_type == Consts.SURVEY:
                 atomic_score = self.calculate_survey(**general_filters)
             elif kpi_type == Consts.BRAND_BLOCK:
@@ -196,14 +191,14 @@ class CBCDAIRYILToolBox:
                 continue
             if atomic_score is None:  # In cases that we need to ignore the KPI and divide it's weight
                 continue
-            elif atomic_score < 100:  # TODO TODO TODO
-                self.add_gap(current_atomic, atomic_score)  # TODO TODO TODO
+            elif atomic_score < 100:
+                self.add_gap(current_atomic, atomic_score)
             total_scores.append((atomic_score, atomic_weight))
 
             atomic_fk_lvl_2 = self.common.get_kpi_fk_by_kpi_type(current_atomic[Consts.KPI_ATOMIC_NAME])
             self.common.write_to_db_result(fk=atomic_fk_lvl_2, numerator_id=Consts.CBCIL_MANUFACTURER,
-                                           denominator_id=self.store_id,
-                                           identifier_parent=kpi_fk,
+                                           numerator_result=num_result, denominator_id=self.store_id,
+                                           denominator_result=denominator_result, identifier_parent=kpi_fk,
                                            result=atomic_score, score=atomic_score, should_enter=True)
         return total_scores
 
@@ -292,13 +287,16 @@ class CBCDAIRYILToolBox:
             general_filters[Consts.KPI_FILTERS][Consts.SCENE_FK] = relevant_scenes
         if params[Consts.PARAMS_VALUE_1]:
             params1 = map(unicode.strip, params[Consts.PARAMS_VALUE_1].split(Consts.SEPARATOR))
-            general_filters[Consts.KPI_FILTERS][Consts.PARAMS_TYPE_1] = params1
+            param_type = params[Consts.PARAMS_TYPE_1]
+            general_filters[Consts.KPI_FILTERS][param_type] = params1
         if params[Consts.PARAMS_VALUE_2]:
             params2 = map(float, params[Consts.PARAMS_VALUE_2].split(Consts.SEPARATOR))
-            general_filters[Consts.KPI_FILTERS][Consts.PARAMS_TYPE_2] = params2
-        if params[Consts.PARAMS_VALUE_3]:
+            param_type = params[Consts.PARAMS_TYPE_2]
+            general_filters[Consts.KPI_FILTERS][param_type] = params2
+        if params[Consts.PARAMS_VALUE_3]:   # Params 3 are for Exclusion only!
             params3 = map(float, params[Consts.PARAMS_VALUE_3].split(Consts.SEPARATOR))
-            general_filters[Consts.KPI_FILTERS][Consts.PARAMS_TYPE_3] = params3
+            param_type = params[Consts.PARAMS_TYPE_2]
+            general_filters[Consts.EXCLUDE][param_type] = (params3, Consts.EXCLUDE_VALUE)
 
         return general_filters
 
@@ -361,70 +359,71 @@ class CBCDAIRYILToolBox:
         :param general_filters: A dictionary with the relevant KPI filters.
         :return: 100 if at least one scene has a block, 0 otherwise.
         """
-        allowed_products_dict = self.get_allowed_product_by_params(general_filters['filters'])
+        allowed_products_dict = self.get_allowed_product_by_params(**general_filters)
         block_result = self.block.calculate_block_together(allowed_products_filters=allowed_products_dict,
                                                            include_empty=False, result_by_scene=False,
                                                            minimum_block_ratio=Consts.MIN_BLOCK_RATIO,
                                                            min_facings_in_block=Consts.MIN_FACINGS_IN_BLOCK)
         return 100 if block_result else 0
 
-    def get_allowed_product_by_params(self, filters):
+    def get_allowed_product_by_params(self, **filters):
         """
-        This function include the relevant products for the block together KPI and exclude the ones that needs to be
+        This function filters the relevant products for the block together KPI and exclude the ones that needs to be
         excluded by the template.
         :param filters: Atomic KPI filters.
         :return: A Dictionary with the relevant products. E.g: {'product_fk': [1,2,3,4,5]}.
         """
-        allowed_product = dict([Consts.PRODUCT_FK, []])
-        include_filter_key, include_filter_value = filters[Consts.FILTER_PARAM_1], filters[Consts.PARAMS_VALUE_1]
-        exclude_filter_key, exclude_filter_value = filters[Consts.FILTER_PARAM_3], filters[Consts.PARAMS_VALUE_3]
-        # TODO: FIX FILTERS
-        filtered_scif = self.scif.loc[
-            (self.scif[include_filter_key]).isin([include_filter_value]) & ~(self.scif[exclude_filter_key]).isin(
-                [exclude_filter_value])]
+        allowed_product = dict()
+        include_filters, exclude_filters = filters[Consts.KPI_FILTERS], filters[Consts.EXCLUDE]
+        filtered_scif = self.calculate_availability(return_df=True, **dict(include_filters, **exclude_filters))
         allowed_product[Consts.PRODUCT_FK] = filtered_scif[Consts.PRODUCT_FK].unique().tolist()
         return allowed_product
 
     def calculate_survey(self, **general_filters):
         """
-
+        This function calculates the result for Survey KPI.
         :param general_filters: A dictionary with the relevant KPI filters.
-        :return:
+        :return: 100 if the answer is yes, else 0.
         """
         survey_question = general_filters[Consts.KPI_FILTERS].get(Consts.QUESTION_ID)
-        target_answers = general_filters[Consts.KPI_FILTERS][Consts.TARGET]
+        target_answer = general_filters[Consts.TARGET]
         survey_answer = self.survey.get_survey_answer(([survey_question], Consts.CODE))
         if survey_answer in Consts.SURVEY_ANSWERS_TO_IGNORE:
             return None
-        elif survey_answer:  # TODO TODO TODO TODO TODO
-            return 100 if survey_answer.strip() in target_answers else False
-        else:
-            return 0
+        elif survey_answer:
+            return 100 if survey_answer.strip() == target_answer else 0
+        return 0
 
     def calculate_availability(self, return_df=False, **general_filters):
         """
-
-        :param return_df: If True, the function returns the filtered scene item facts, else, return the score.
+        This functions checks for availability by filters.
+        During the calculation, if the KPI was passed, the results is being saved for future usage of
+        "MIN 2 AVAILABILITY KPI".
+        :param return_df: If True, the function returns the filtered scene item facts, else, returns the score.
         :param general_filters: A dictionary with the relevant KPI filters.
         :return: See @param return_df.
         """
         filtered_scif = self.general_toolbox.get_filter_condition(self.scif, **general_filters[Consts.KPI_FILTERS])
         if return_df:
             return filtered_scif
-        return 100 if not filtered_scif.empty else 0
+        if not filtered_scif.empty:
+            tests_products = general_filters[Consts.KPI_FILTERS][Consts.EAN_CODE]
+            self.passed_availability.append(tests_products)
+            return 100
+        return 0
 
     def calculate_min_2_availability(self, **general_filters):
         """
-
+        This KPI checks for all of the Availability Atomics KPIs that passed, if the tested products have at least
+        2 facings in case of IGNORE STACKING!
         :param general_filters: A dictionary with the relevant KPI filters.
-        :return:
+        :return: numerator result, denominator result and total_score
         """
-        # TODO TODO TODO TODO TODO
-        #  CLARIFY WITH DANA
-        # TODO TODO TODO TODO TODO
-        # First, get the availability for the relevant filters
+        score = 0
         filtered_df = self.calculate_availability(return_df=True, **general_filters)
-        products_to_check = filtered_df[Consts.EAN_CODE].unique().tolist()
         filtered_df = filtered_df[filtered_df[Consts.FACINGS_IGN_STACK] > 1]
-        products_that_passed = filtered_df[Consts.EAN_CODE].unique().tolist()
-        return len(products_that_passed) / float(len(products_to_check)) if products_to_check else 0
+        passed_products_list = filtered_df[Consts.EAN_CODE].unique().tolist()
+        for products in self.passed_availability:
+            score += 1 if (all(x in passed_products_list for x in products)) else 0
+        total_score = score / float(len(self.passed_availability)) if self.passed_availability else 0
+        return score, float(len(self.passed_availability)), total_score

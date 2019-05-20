@@ -1,13 +1,20 @@
+# coding=utf-8
 import os
 from Trax.Utils.Conf.Configuration import Config
 from Trax.Utils.Testing.Case import TestCase, MockingTestCase
 from mock import MagicMock, mock
 import pandas as pd
+import numpy as np
 from Projects.CBCDAIRYIL.Utils.KPIToolBox import CBCDAIRYILToolBox, Consts
 from KPIUtils.ParseTemplates import parse_template
 
 
 __author__ = 'idanr'
+
+
+class TestConsts(object):
+    RETAILER_FRIDGE = u'מקרר קמעונאי'
+    OUT_CAT_FRIDGE = u'מקרר חוץ קטגוריה'
 
 
 class TestCBCDAIRYIL(MockingTestCase):
@@ -27,8 +34,17 @@ class TestCBCDAIRYIL(MockingTestCase):
         self.rds_conn = MagicMock()
         self.survey = self.mock_survey()
         self.block = self.mock_block()
+        self.scif = self.mock_scif()
         self.general_toolbox = self.mock_general_toolbox()
         self.tool_box = CBCDAIRYILToolBox(self.data_provider_mock, MagicMock())
+
+    def mock_scif(self):
+        d = {'scene_id': [1, 2, 3, 4],
+             'template_name': [TestConsts.OUT_CAT_FRIDGE, TestConsts.OUT_CAT_FRIDGE, TestConsts.RETAILER_FRIDGE,
+                               'SOME_TEMPLATE'], 'template_group': ['', '', '', '']}
+        df = pd.DataFrame(data=d)
+        return df
+
 
     def mock_project_connector(self):
         return self.mock_object('PSProjectConnector')
@@ -89,3 +105,15 @@ class TestCBCDAIRYIL(MockingTestCase):
         for test_values, expected_result in test_cases_list:
             filtered_template = self.tool_box.filter_template_by_store_att(kpis_sheet, test_values)
             self.assertEqual(len(filtered_template),  expected_result)
+
+    def test_scif_scenes_filters(self):
+        """This test checks the scene filters by template_name and template_group"""
+        params_1 = (pd.Series([TestConsts.RETAILER_FRIDGE, ''], index=['template_name', 'template_group']), [3])
+        params_2 = (pd.Series([TestConsts.OUT_CAT_FRIDGE, ''], index=['template_name', 'template_group']), [1.2])
+        params_3 = (pd.Series(['', ''], index=['template_name', 'template_group']), [1, 2, 3, 4])
+        params_4 = (pd.Series(['', TestConsts.RETAILER_FRIDGE], index=['template_name', 'template_group']), [])
+        test_cases = [params_1, params_2, params_3, params_4]
+        for test_case_params, expected_result in test_cases:
+            scenes_list = self.tool_box.get_relevant_scenes_by_params(test_case_params)
+            self.assertEqual(scenes_list, expected_result)
+

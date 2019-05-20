@@ -69,6 +69,8 @@ class Consts(object):
     FILTER_PARAM_1 = 'param1'
     FILTER_PARAM_2 = 'param2'
     FILTER_PARAM_3 = 'param3'
+    EXCLUDE = 'exclude'
+    EXCLUDE_VALUE = 0
 
     # CBC data
     CBCIL_MANUFACTURER = 45
