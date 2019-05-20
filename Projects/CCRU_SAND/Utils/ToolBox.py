@@ -115,8 +115,9 @@ class CCRU_SANDKPIToolBox:
         self.kpi_results_queries = []
         self.gaps_dict = {}
         self.gaps_queries = []
-        self.gap_groups_limit = {'Availability': 2,
-                                 'Cooler/Cold Availability': 1, 'Shelf/Displays/Activation': 3}
+        self.gap_groups_limit = {'Availability': 3,
+                                 'Cooler/Cold Availability': 2,
+                                 'Shelf/Displays/Activation': 4}
         self.top_sku_queries = []
         self.equipment_execution_score = None
         self.top_sku_score = None
