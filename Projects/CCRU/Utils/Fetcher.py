@@ -75,8 +75,8 @@ class CCRUCCHKPIFetcher:
         if not kpi_fk.empty:
             return kpi_fk.values[0]
         else:
-            Log.error('KPI Name <{}> is not found for KPI Set <{}>'
-                      ''.format(kpi_name, self.kpi_set_name))
+            # Log.error('KPI Name <{}> is not found for KPI Set <{}>'
+            #           ''.format(kpi_name, self.kpi_set_name))
             return None
 
     def get_atomic_kpi_fk(self, atomic_kpi_name, kpi_fk=None):
@@ -96,8 +96,8 @@ class CCRUCCHKPIFetcher:
         if not atomic_kpi_fk.empty:
             return atomic_kpi_fk.values[0]
         else:
-            Log.error('Atomic KPI Name <{}> is not found for KPI <{}>, KPI Set <{}>'
-                      ''.format(atomic_kpi_name, kpi_fk, self.kpi_set_name))
+            # Log.error('Atomic KPI Name <{}> is not found for KPI <{}>, KPI Set <{}>'
+            #           ''.format(atomic_kpi_name, kpi_fk, self.kpi_set_name))
             return None
 
     def get_category_target_by_region(self, category, store_id):
