@@ -337,18 +337,19 @@ class INBEVCISANDToolBox:
                                                                                                         location_type_fk,
                                                                                                         sos_set_fk,
                                                                                                         price_group)
-        total_res = sum(sos_per_manufacturer_dict.values())
-        # Check if Inbev has the majority
-        kpi_total_score = (max(sos_per_manufacturer_dict,
-                               key=sos_per_manufacturer_dict.get) == Const.ABINBEV_MAN_FK) * 100
-        numerator_res = sos_per_manufacturer_dict[
-            Const.ABINBEV_MAN_FK] if Const.ABINBEV_MAN_FK in sos_per_manufacturer_dict else 0
-        # Saving to DB
-        self.common.write_to_db_result(fk=sos_set_fk, numerator_id=Const.ABINBEV_MAN_FK,
-                                       numerator_result=numerator_res, denominator_id=location_type_fk,
-                                       denominator_result=total_res, context_id=self.store_id,
-                                       identifier_result=(sos_set_fk, location_type_fk), result=kpi_total_score,
-                                       score=kpi_total_score, identifier_parent=identifier_parent, should_enter=True)
+        if sos_per_manufacturer_dict:
+            total_res = sum(sos_per_manufacturer_dict.values())
+            # Check if Inbev has the majority
+            kpi_total_score = (max(sos_per_manufacturer_dict,
+                                   key=sos_per_manufacturer_dict.get) == Const.ABINBEV_MAN_FK) * 100
+            numerator_res = sos_per_manufacturer_dict[
+                Const.ABINBEV_MAN_FK] if Const.ABINBEV_MAN_FK in sos_per_manufacturer_dict else 0
+            # Saving to DB
+            self.common.write_to_db_result(fk=sos_set_fk, numerator_id=Const.ABINBEV_MAN_FK,
+                                           numerator_result=numerator_res, denominator_id=location_type_fk,
+                                           denominator_result=total_res, context_id=self.store_id,
+                                           identifier_result=(sos_set_fk, location_type_fk), result=kpi_total_score,
+                                           score=kpi_total_score, identifier_parent=identifier_parent, should_enter=True)
 
     def inbev_linear_sos_majority_by_location_type_and_price_group(self, relevant_scenes, loc_type_fk, parent_set_fk, price_group):
         """
@@ -362,30 +363,35 @@ class INBEVCISANDToolBox:
         """
         kpi_type = 'SOS vs Target Secondary Shelf {} Products Manufacturer out of Category'.format(price_group)
         kpi_level_2_fk = self.common.get_kpi_fk_by_kpi_type(kpi_type)
-        manufacturer_list = self.get_all_the_manufacturers_by_filters(relevant_scenes)
-        sos_per_manufacturer = {el: 0 for el in manufacturer_list}
-        general_filters = {Const.PRODUCT_TYPE: (Const.EMPTY, Const.EXCLUDE_FILTER),
-                           Const.CATEGORY_FK: Const.BEER_CATEGORY_FK, Const.SCENE_FK: relevant_scenes,
-                           Const.PRICE_GROUP: price_group}
+        # manufacturer_list = self.get_all_the_manufacturers_by_filters(relevant_scenes)
+        manufacturer_list = self.scif.loc[(self.scif[Const.SCENE_FK].isin(relevant_scenes)) &
+                                          (~self.scif[Const.PRODUCT_TYPE].isin([Const.EMPTY, Const.IRRELEVANT])) &
+                                          (self.scif[Const.PRICE_GROUP] == price_group)][Const.MANUFACTURER_FK].unique().tolist()
+        if manufacturer_list:
+            sos_per_manufacturer = {el: 0 for el in manufacturer_list}
+            general_filters = {Const.PRODUCT_TYPE: (Const.EMPTY, Const.EXCLUDE_FILTER),
+                               Const.CATEGORY_FK: Const.BEER_CATEGORY_FK, Const.SCENE_FK: relevant_scenes,
+                               Const.PRICE_GROUP: price_group}
 
-        # Calculating the total linear space
-        # total_res = self.calculate_sos_by_scif(**general_filters)
-        total_res = self.calculate_length_location_specific(Const.SECONDARY_SHELF, self.scif, general_filters)
+            # Calculating the total linear space
+            # total_res = self.calculate_sos_by_scif(**general_filters)
+            total_res = self.calculate_length_location_specific(Const.SECONDARY_SHELF, self.scif, general_filters)
 
-        # Calculating the rest of the manufacturers' linear space
-        for manufacturer in manufacturer_list:
-            sos_filters = {Const.MANUFACTURER_FK: [manufacturer]}
-            # manufacturer_sos_res = self.calculate_sos_by_scif(**dict(sos_filters, **general_filters))
-            manufacturer_sos_res = self.calculate_length_location_specific(Const.SECONDARY_SHELF, self.scif,
-                                                                           dict(sos_filters, **general_filters))
-            sos_per_manufacturer[manufacturer] = manufacturer_sos_res
-            sos_score = (manufacturer_sos_res / float(total_res)) * 100
-            self.common.write_to_db_result(fk=kpi_level_2_fk, numerator_id=manufacturer,
-                                           numerator_result=manufacturer_sos_res, denominator_id=Const.BEER_CATEGORY_FK,
-                                           denominator_result=total_res, context_id=loc_type_fk,
-                                           identifier_parent=(parent_set_fk, loc_type_fk), result=sos_score,
-                                           score=sos_score, should_enter=True)
-
+            # Calculating the rest of the manufacturers' linear space
+            for manufacturer in manufacturer_list:
+                sos_filters = {Const.MANUFACTURER_FK: [manufacturer]}
+                # manufacturer_sos_res = self.calculate_sos_by_scif(**dict(sos_filters, **general_filters))
+                manufacturer_sos_res = self.calculate_length_location_specific(Const.SECONDARY_SHELF, self.scif,
+                                                                               dict(sos_filters, **general_filters))
+                sos_per_manufacturer[manufacturer] = manufacturer_sos_res
+                sos_score = (manufacturer_sos_res / float(total_res)) * 100
+                self.common.write_to_db_result(fk=kpi_level_2_fk, numerator_id=manufacturer,
+                                               numerator_result=manufacturer_sos_res, denominator_id=Const.BEER_CATEGORY_FK,
+                                               denominator_result=total_res, context_id=loc_type_fk,
+                                               identifier_parent=(parent_set_fk, loc_type_fk), result=sos_score,
+                                               score=sos_score, should_enter=True)
+        else:
+            sos_per_manufacturer = {}
         return sos_per_manufacturer
 
 
