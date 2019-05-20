@@ -41,16 +41,13 @@ class CBCDAIRYILToolBox:
         self.store_info = self.data_provider[Data.STORE_INFO]
         self.store_id = self.data_provider[Data.STORE_FK]
 
-        self.sos = SOS(self.data_provider)
         self.survey = Survey(self.data_provider)
         self.block = Block(self.data_provider)
-        self.availability = Availability(self.data_provider)
         self.general_toolbox = GENERALToolBox(self.data_provider)
 
-        self.kpis_data = parse_template(Consts.TEMPLATE_PATH, Consts.KPI_SHEET, lower_headers_row_index=1)
-        self.kpi_weights = parse_template(Consts.TEMPLATE_PATH, Consts.KPI_WEIGHT, lower_headers_row_index=0)
         self.gap_data = self.get_gap_data()
-        self.template_data = self.filter_template_data()
+        self.kpi_weights = parse_template(Consts.TEMPLATE_PATH, Consts.KPI_WEIGHT, lower_headers_row_index=0)
+        self.template_data = self.parse_template_data()
         self.kpis_gaps = list()
         # self.match_display_in_scene = self.get_match_display()
         # self.match_stores_by_retailer = self.get_match_stores_by_retailer()
@@ -95,10 +92,9 @@ class CBCDAIRYILToolBox:
 
     def add_gap(self, atomic_kpi, score):
         """
-
-        :param score:
-        :param atomic_kpi:
-        :return:
+        In case the score is not perfect the gap is added to the gap list.
+        :param score: Atomic KPI score.
+        :param atomic_kpi: A Series with data about the Atomic KPI.
         """
         current_gap_dict = dict()
         current_gap_dict[Consts.KPI_NAME] = atomic_kpi[Consts.KPI_NAME]
@@ -240,19 +236,29 @@ class CBCDAIRYILToolBox:
         # Filter store attributes
         store_info_dict = self.store_info.iloc[0].to_dict()
         filtered_store_info = {store_att: store_info_dict[store_att] for store_att in attributes_names}
-
         return filtered_store_info
 
-    def filter_template_data(self):
+    def parse_template_data(self):
         """
         This function responsible to filter the relevant template data..
         :return: A DataFrame with filtered Data by store attributes.
         """
+        kpis_template = parse_template(Consts.TEMPLATE_PATH, Consts.KPI_SHEET, lower_headers_row_index=1)
         relevant_store_info = self.get_store_attributes(Consts.STORE_ATTRIBUTES_TO_FILTER_BY)
-        relevant_data = self.kpis_data.copy()
-        for store_att, store_val in relevant_store_info.iteritems():
-            relevant_data = relevant_data[relevant_data[store_att].str.encode('utf-8') == store_val.encode('utf-8')]
-        return relevant_data
+        filtered_data = self.filter_template_by_store_att(kpis_template, relevant_store_info)
+        return filtered_data
+
+    @staticmethod
+    def filter_template_by_store_att(kpis_template, store_attributes):
+        """
+        This function gets a dictionary with store type, additional attribute 1, 2 and 3 and filters the template by it.
+        :param kpis_template: KPI sheet of the project's template.
+        :param store_attributes: {store_type: X, additional_attribute_1: Y, ... }.
+        :return: A filtered DataFrame.
+        """
+        for store_att, store_val in store_attributes.iteritems():
+            kpis_template = kpis_template[kpis_template[store_att].str.encode('utf-8') == store_val.encode('utf-8')]
+        return kpis_template
 
     def get_relevant_scenes_by_params(self, params):
         """
