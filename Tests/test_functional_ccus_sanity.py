@@ -1,27 +1,23 @@
 
 import os
+import MySQLdb
+
 from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Trax.Data.Testing.SeedNew import Seeder
-import MySQLdb
 from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
 from Trax.Cloud.Services.Connector.Keys import DbUsers
 from Trax.Data.Testing.TestProjects import TestProjectsNames
 from Trax.Utils.Testing.Case import MockingTestCase
 
-from Tests.Data.TestData.test_data_googleus_sand_sanity import ProjectsSanityData
-from Projects.GOOGLEUS_SAND.Calculations import GOOGLEUS_SANDCalculations
+from Tests.Data.TestData.test_data_ccus_sanity import ProjectsSanityData
+from Projects.CCUS.Calculations import CCUSCalculations
 from Trax.Apps.Core.Testing.BaseCase import TestFunctionalCase
 
-from Tests.TestUtils import remove_cache_and_storage
 
-__author__ = 'yoava'
+__author__ = 'jasmineg'
 
 
 class TestKEngineOutOfTheBox(TestFunctionalCase):
-
-    def set_up(self):
-        super(TestKEngineOutOfTheBox, self).set_up()
-        remove_cache_and_storage()
 
     @property
     def import_path(self):
@@ -37,19 +33,19 @@ class TestKEngineOutOfTheBox(TestFunctionalCase):
         connector = PSProjectConnector(TestProjectsNames().TEST_PROJECT_1, DbUsers.Docker)
         cursor = connector.db.cursor(MySQLdb.cursors.DictCursor)
         cursor.execute('''
-        SELECT * FROM report.kpi_results
+        SELECT * FROM report.kpi_level_2_results
         ''')
         kpi_results = cursor.fetchall()
         self.assertNotEquals(len(kpi_results), 0)
         connector.disconnect_rds()
     
-    @seeder.seed(["googleus_sand_seed"], ProjectsSanityData())
-    def test_googleus_sand_sanity(self):
+    @seeder.seed(["ccus_seed"], ProjectsSanityData())
+    def test_ccus_sanity(self):
         project_name = ProjectsSanityData.project_name
         data_provider = KEngineDataProvider(project_name)
-        sessions = ['C5FDDD14-1D53-483A-9FFF-47AEBEA4098E']
+        sessions = ['8395fc95-465b-47c2-ad65-6d10de13cd75']
         for session in sessions:
             data_provider.load_session_data(session)
             output = Output()
-            GOOGLEUS_SANDCalculations(data_provider, output).run_project_calculations()
+            CCUSCalculations(data_provider, output).run_project_calculations()
             self._assert_kpi_results_filled()
