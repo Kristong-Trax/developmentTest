@@ -1,7 +1,7 @@
-from KPIUtils.GlobalProjects.GOOGLE.SceneKPIGenerator import SceneGenerator
+from Projects.CCUS.SceneKpis.SceneCalculations import SceneGenerator
 from Trax.Apps.Services.KEngine.Handlers.Utils.Scripts import SceneBaseClass
 
-__author__ = 'Eli_Shivi_Sam'
+__author__ = 'Jasmine'
 
 
 class SceneCalculations(SceneBaseClass):
@@ -10,4 +10,4 @@ class SceneCalculations(SceneBaseClass):
         self.scene_generator = SceneGenerator(self._data_provider)
 
     def calculate_kpis(self):
-        self.scene_generator.main_function()
+        self.scene_generator.scene_score()
