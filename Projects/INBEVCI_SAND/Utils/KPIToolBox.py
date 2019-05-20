@@ -844,13 +844,13 @@ class INBEVCISANDToolBox:
                 numerator = filtered_scif[(filtered_scif['manufacturer_fk'] == manufacturer) &
                                           (filtered_scif[denominator_key].str.upper() == denominator_value.upper())][
                     'gross_len_ign_stack'].sum()
-                sos = 0
+                # sos = 0
                 if numerator and denominator:
                     sos = round(np.divide(float(numerator), float(denominator)) * 100, 2)
-                self.common.write_to_db_result(fk=kpi, result=sos, score=sos,
-                                               numerator_result=numerator, numerator_id=manufacturer,
-                                               denominator_id=denominator_id, denominator_result=denominator,
-                                               identifier_parent=identifier_parent, should_enter=True)
+                    self.common.write_to_db_result(fk=kpi, result=sos, score=sos,
+                                                   numerator_result=numerator, numerator_id=manufacturer,
+                                                   denominator_id=denominator_id, denominator_result=denominator,
+                                                   identifier_parent=identifier_parent, should_enter=True)
 
     def validate_groups_exist(self):
         groups_template = self.template_sheet[Const.TOP_BRAND_BLOCK][Const.ATOMIC_NAME].unique().tolist()
