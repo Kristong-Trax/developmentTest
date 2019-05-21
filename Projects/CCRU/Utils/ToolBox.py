@@ -1899,8 +1899,7 @@ class CCRUKPIToolBox:
                             kpi_total_weight += 1
 
                     # write to DB
-                    atomic_kpi_fk = self.kpi_fetcher.get_atomic_kpi_fk(
-                        c.get('KPI name Eng'), kpi_fk)
+                    atomic_kpi_fk = self.kpi_fetcher.get_atomic_kpi_fk(c.get('KPI name Eng'), kpi_fk)
                     if c.get("Formula").strip() == "each SKU hits facings target":
                         attributes_for_level3 = self.create_attributes_for_level3_df(c, (atomic_score, atomic_res, 100),
                                                                                      kpi_fk, atomic_kpi_fk)
