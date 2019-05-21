@@ -178,8 +178,9 @@ class PngcnSceneKpis(object):
                 entity_fk = entity_df[entity_df['entity_name'] == key]['entity_fk'].values[0]
                 product_fk = row['product_fk']
                 facing_sequence_number = row['facing_sequence_number']
+                shelf_number = row['shelf_number']
                 self.common.write_to_db_result(fk=kpi_fk, numerator_id=product_fk, result=facing_sequence_number,
-                           denominator_id=entity_fk, score=0, context_id=template_fk, target=None, by_scene=True)
+                           denominator_id=entity_fk, score=shelf_number, context_id=template_fk, target=None, by_scene=True)
 
         return 0
 
