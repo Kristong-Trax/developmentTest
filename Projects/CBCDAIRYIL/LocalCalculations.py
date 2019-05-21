@@ -10,7 +10,7 @@ if __name__ == '__main__':
     Config.init()
     project_name = 'cbcdairyil'
     data_provider = KEngineDataProvider(project_name)
-    session = '43c325ff-01c3-40be-90e3-99c1ea467743'
+    session = 'ae2eccd5-26f9-49ac-b294-a82508c958e7'
     data_provider.load_session_data(session)
     output = Output()
     Calculations(data_provider, output).run_project_calculations()

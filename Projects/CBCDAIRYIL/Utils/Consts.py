@@ -91,3 +91,8 @@ class Consts(object):
     GAPS_QUERY = "insert into pservice.custom_gaps (session_fk, gap_category, name, priority) values ({},{},{},{})"
     PRIORITY = 'priority'
     SCORE = 'score'
+
+    # Logs
+    MISSING_QUESTION_LOG = "Missing question ID field! Please check the template"
+    EMPTY_TEMPLATE_DATA_LOG = "There isn't relevant data in the template for store fk = {}! Exiting..."
+    UNSUPPORTED_KPI_LOG = "KPI of type '{}' is not supported"

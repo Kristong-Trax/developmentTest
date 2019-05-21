@@ -43,12 +43,6 @@ class CBCDAIRYILToolBox:
         self.template_data = self.parse_template_data()
         self.kpis_gaps = list()
         self.passed_availability = []
-        # self.match_display_in_scene = self.get_match_display()
-        # self.match_stores_by_retailer = self.get_match_stores_by_retailer()
-        # self.match_template_fk_by_category_fk = self.get_template_fk_by_category_fk()
-        # self.kpi_static_data = self.get_kpi_static_data()
-        # self.gaps = pd.DataFrame(columns=[self.KPI_NAME, self.KPI_ATOMIC_NAME, self.GAPS])
-        # self.gaps_queries = []
 
     @staticmethod
     def get_gap_data():
@@ -69,7 +63,7 @@ class CBCDAIRYILToolBox:
         Than, It aggregates the result per KPI using the weights and at last aggregates for the set level.
         """
         if self.template_data.empty:
-            Log.warning("There isn't relevant data in the template for store fk = {}! Exiting...".format(self.store_id))
+            Log.warning(Consts.EMPTY_TEMPLATE_DATA_LOG.format(self.store_id))
             return
         kpi_set, kpis_list = self.get_relevant_kpis_for_calculation()
         kpi_set_fk = self.common.get_kpi_fk_by_kpi_type(Consts.TOTAL_SCORE)
@@ -167,14 +161,13 @@ class CBCDAIRYILToolBox:
         total_scores = list()
         for i in atomics_df.index:
             current_atomic = atomics_df.loc[i]
-            kpi_type = current_atomic.get(Consts.KPI_TYPE)  # TODO: CHECK FOR SINGLE ATOMIC
+            kpi_type = current_atomic.get(Consts.KPI_TYPE)
             general_filters = self.get_general_filters(current_atomic)
             atomic_weight = float(current_atomic.get(Consts.WEIGHT)) if current_atomic.get(Consts.WEIGHT) else None
-            if general_filters is None:
-                print ":)"
-                # continue   # todo !!! Needs to be continue
             num_result = denominator_result = 0
-            if kpi_type in [Consts.AVAILABILITY]:       # TODO TODO NEEDS TO BE ELIF
+            if general_filters is None:
+                continue
+            elif kpi_type in [Consts.AVAILABILITY]:
                 atomic_score = self.calculate_availability(**general_filters)
             elif kpi_type == Consts.AVAILABILITY_FROM_BOTTOM:
                 atomic_score = self.calculate_availability_from_bottom(**general_filters)
@@ -187,7 +180,7 @@ class CBCDAIRYILToolBox:
             elif kpi_type == Consts.EYE_LEVEL:
                 atomic_score = self.calculate_eye_level(**general_filters)
             else:
-                Log.warning("KPI of type '{}' is not supported".format(kpi_type))
+                Log.warning(Consts.UNSUPPORTED_KPI_LOG.format(kpi_type))
                 continue
             if atomic_score is None:  # In cases that we need to ignore the KPI and divide it's weight
                 continue
@@ -195,7 +188,7 @@ class CBCDAIRYILToolBox:
                 self.add_gap(current_atomic, atomic_score)
             total_scores.append((atomic_score, atomic_weight))
 
-            atomic_fk_lvl_2 = self.common.get_kpi_fk_by_kpi_type(current_atomic[Consts.KPI_ATOMIC_NAME])
+            atomic_fk_lvl_2 = self.common.get_kpi_fk_by_kpi_type(current_atomic[Consts.KPI_ATOMIC_NAME].strip())
             self.common.write_to_db_result(fk=atomic_fk_lvl_2, numerator_id=Consts.CBCIL_MANUFACTURER,
                                            numerator_result=num_result, denominator_id=self.store_id,
                                            denominator_result=denominator_result, identifier_parent=kpi_fk,
@@ -264,11 +257,10 @@ class CBCDAIRYILToolBox:
         template_names = params[Consts.TEMPLATE_NAME].split(Consts.SEPARATOR)
         template_groups = params[Consts.TEMPLATE_GROUP].split(Consts.SEPARATOR)
         filtered_scif = self.scif[[Consts.SCENE_ID, 'template_name', 'template_group']]
-        if template_names:
+        if template_names and any(template_names):
             filtered_scif = filtered_scif[filtered_scif['template_name'].isin(template_names)]
-        if template_groups:
+        if template_groups and any(template_groups):
             filtered_scif = filtered_scif[filtered_scif['template_group'].isin(template_groups)]
-
         return filtered_scif[Consts.SCENE_ID].unique().tolist()
 
     def get_general_filters(self, params):
@@ -385,6 +377,9 @@ class CBCDAIRYILToolBox:
         :param general_filters: A dictionary with the relevant KPI filters.
         :return: 100 if the answer is yes, else 0.
         """
+        if Consts.QUESTION_ID not in general_filters[Consts.KPI_FILTERS].keys():
+            Log.warning(Consts.MISSING_QUESTION_LOG)
+            return 0
         survey_question = general_filters[Consts.KPI_FILTERS].get(Consts.QUESTION_ID)
         target_answer = general_filters[Consts.TARGET]
         survey_answer = self.survey.get_survey_answer(([survey_question], Consts.CODE))
@@ -403,12 +398,13 @@ class CBCDAIRYILToolBox:
         :param general_filters: A dictionary with the relevant KPI filters.
         :return: See @param return_df.
         """
-        filtered_scif = self.general_toolbox.get_filter_condition(self.scif, **general_filters[Consts.KPI_FILTERS])
+        filtered_scif = self.scif[
+            self.general_toolbox.get_filter_condition(self.scif, **general_filters[Consts.KPI_FILTERS])]
         if return_df:
             return filtered_scif
         if not filtered_scif.empty:
-            tests_products = general_filters[Consts.KPI_FILTERS][Consts.EAN_CODE]
-            self.passed_availability.append(tests_products)
+            tested_products = general_filters[Consts.KPI_FILTERS][Consts.EAN_CODE]
+            self.passed_availability.append(tested_products)
             return 100
         return 0
 
