@@ -49,8 +49,39 @@ HANDWASH_SUB_CATEGORY = 'Handwash'
 BODYWASH_SUB_CATEGORY = 'Bodywash'
 OTHER_SUB_CATEGORY = 'Other'
 PCC_BAR_SUB_CATEGORY = 'PCC-Bar'
+# PCC_FILTERS = {
+# 'SFG Bodywash': {'manufacturer_name': PNG_MANUFACTURER, "brand_name": SAFEGUARD_BRAND,
+#                  "category": PCC_CATEGORY, 'sub_category': BODYWASH_SUB_CATEGORY},
+# 'SFG Handwash': {'manufacturer_name': PNG_MANUFACTURER, "brand_name": SAFEGUARD_BRAND,
+#                  "category": PCC_CATEGORY, 'sub_category': HANDWASH_SUB_CATEGORY},
+# 'SFG Other': {'manufacturer_name': PNG_MANUFACTURER, "brand_name": SAFEGUARD_BRAND,
+#                  "category": PCC_CATEGORY, 'sub_category': OTHER_SUB_CATEGORY},
+# 'SFG PCCBAR': {'manufacturer_name': PNG_MANUFACTURER, "brand_name": SAFEGUARD_BRAND,
+#                  "category": PCC_CATEGORY, 'sub_category': PCC_BAR_SUB_CATEGORY},
+# 'OLAY Bodywash': {'manufacturer_name': PNG_MANUFACTURER, "brand_name": OLAY_BRAND,
+#                  "category": PCC_CATEGORY, 'sub_category': BODYWASH_SUB_CATEGORY},
+# 'OLAY Handwash': {'manufacturer_name': PNG_MANUFACTURER, "brand_name": OLAY_BRAND,
+#                  "category": PCC_CATEGORY, 'sub_category': HANDWASH_SUB_CATEGORY},
+# 'OLAY Other': {'manufacturer_name': PNG_MANUFACTURER, "brand_name": OLAY_BRAND,
+#                  "category": PCC_CATEGORY, 'sub_category': OTHER_SUB_CATEGORY},
+# 'OLAY PCCBAR': {'manufacturer_name': PNG_MANUFACTURER, "brand_name": OLAY_BRAND,
+#                  "category": PCC_CATEGORY, 'sub_category': PCC_BAR_SUB_CATEGORY},
+# 'Compatitor PCC': {'manufacturer_name': (PNG_MANUFACTURER, 0), "category": PCC_CATEGORY},
+# 'PNGOTHER': {'manufacturer_name': PNG_MANUFACTURER,
+#                  "category": (PCC_CATEGORY, 0)},
+# 'Competitor Other': {'manufacturer_name': (PNG_MANUFACTURER, 0),
+#                  "category": (PCC_CATEGORY, 0)}
+
+# dic = {'include': [{'sub_category': ['Laundry Liquid']}],
+#        'exclude': {'manufacturer_name': [PNG_MANUFACTURER], 'category': ['Laundry']},
+#        'include_operator': 'and'}
+
 PCC_FILTERS = {
-'SFG Bodywash': {'manufacturer_name': PNG_MANUFACTURER, "brand_name": SAFEGUARD_BRAND,
+'SFG Bodywash': {'include': [{"manufacturer_name": [PNG_MANUFACTURER],"category": [PCC_CATEGORY],
+                              "brand_name": [SAFEGUARD_BRAND], 'sub_category': [BODYWASH_SUB_CATEGORY]}],
+                   'exclude': {, 'category': ['Laundry']},
+                   'include_operator': 'and'}
+        {'manufacturer_name': PNG_MANUFACTURER, "brand_name": SAFEGUARD_BRAND,
                  "category": PCC_CATEGORY, 'sub_category': BODYWASH_SUB_CATEGORY},
 'SFG Handwash': {'manufacturer_name': PNG_MANUFACTURER, "brand_name": SAFEGUARD_BRAND,
                  "category": PCC_CATEGORY, 'sub_category': HANDWASH_SUB_CATEGORY},
@@ -71,6 +102,7 @@ PCC_FILTERS = {
                  "category": (PCC_CATEGORY, 0)},
 'Competitor Other': {'manufacturer_name': (PNG_MANUFACTURER, 0),
                  "category": (PCC_CATEGORY, 0)}
+
 # 'PNGOTHER': {'manufacturer_name': PNG_MANUFACTURER,
 #                  "category": (PCC_CATEGORY, 0)},
 # 'Competitor Other': {'manufacturer_name': (PNG_MANUFACTURER, 0),
@@ -153,21 +185,21 @@ class PngcnSceneKpis(object):
         relevant_templates = self.psdataprovider.get_scene_category_data(PCC_CATEGORY)['template_fk'].tolist()
         try:
             template_fk = self.data_provider.scenes_info['template_fk'].values[0]
-            # if template_fk not in relevant_templates:
-            #     return
+            if template_fk not in relevant_templates:
+                return
         except:
             Log.error("Couldn't find scene type for scene number {}".format(str(self.scene_id)))
             return
         entity_df = self.psdataprovider.get_custom_entities_df('eye_level_fragments')
-        # if entity_df.empty:
-        #     return
+        if entity_df.empty:
+            return
         df = self.get_eye_level_shelves(self.matches_from_data_provider)
         full_df = pd.merge(df,self.all_products,on="product_fk")
 
         # dic = {'include': [{'sub_category': ['Laundry Liquid']}],
         #        'exclude': {'manufacturer_name': [PNG_MANUFACTURER], 'category': ['Laundry']},
         #        'include_operator': 'and'}
-        # frag_df = self.parser._filter_df_by_population(dic, full_df)
+        # frag_df = self.parser.filter_df(dic, full_df)
 
         kpi_fk = self.common.get_kpi_fk_by_kpi_name(EYE_LEVEL_KPI)
         for key in PCC_FILTERS.keys():
@@ -178,9 +210,11 @@ class PngcnSceneKpis(object):
                 entity_fk = entity_df[entity_df['entity_name'] == key]['entity_fk'].values[0]
                 product_fk = row['product_fk']
                 facing_sequence_number = row['facing_sequence_number']
+                bay_number = row['bay_number']
                 shelf_number = row['shelf_number']
                 self.common.write_to_db_result(fk=kpi_fk, numerator_id=product_fk, result=facing_sequence_number,
-                           denominator_id=entity_fk, score=shelf_number, context_id=template_fk, target=None, by_scene=True)
+                            numerator_result=bay_number, denominator_result=shelf_number,
+                            denominator_id=entity_fk, score=0, context_id=template_fk, target=None, by_scene=True)
 
         return 0
 
@@ -196,6 +230,7 @@ class PngcnSceneKpis(object):
             shelves_to_choose = [3, 4]
         else:
             shelves_to_choose = [4, 5]
+        df = df[df['stacking_layer'] == 1]
         return df[df['shelf_number'].isin(shelves_to_choose)]
 
     def _handle_rest_display(self):
