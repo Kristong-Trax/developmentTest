@@ -2249,6 +2249,12 @@ class CCRUKPIToolBox:
                     result_format = 'STR'
                     result_formatted = str(kf.get("result"))
 
+                atomic_kpi_name = kf.get("name")
+                atomic_kpi_fk = kf.get("atomic_kpi_fk")
+                if not atomic_kpi_fk and self.kpi_set_type not in SKIP_OLD_CCRUKPIS_FROM_WRITING:
+                    Log.error(
+                        'Atomic KPI Name <{}> is not found for KPI FK <{}> of KPI Set <{}> in static.atomic_kpi table'
+                        ''.format(atomic_kpi_name, kpi_fk, self.kpi_set_name))
                 attributes_for_table3 = pd.DataFrame([(kf.get("display_text"),
                                                        self.session_uid,
                                                        kpi_set_name,
@@ -2257,10 +2263,10 @@ class CCRUKPIToolBox:
                                                        dt.datetime.utcnow().isoformat(),
                                                        None,
                                                        kpi_fk,
-                                                       kf.get("atomic_kpi_fk"),
+                                                       atomic_kpi_fk,
                                                        None,
                                                        result_formatted,
-                                                       kf.get("name"))],
+                                                       atomic_kpi_name)],
                                                      columns=['display_text',
                                                               'session_uid',
                                                               'kps_name',
@@ -2288,6 +2294,9 @@ class CCRUKPIToolBox:
 
                 # table3 = table3.append(attributes_for_table3)  # for debugging
 
+        if not kpi_fk and self.kpi_set_type not in SKIP_OLD_CCRUKPIS_FROM_WRITING:
+            Log.error('KPI Name <{}> is not found for KPI Set <{}> in static.kpi table'
+                      ''.format(kpi_name, self.kpi_set_name))
         attributes_for_table2 = pd.DataFrame([(self.session_uid,
                                                self.store_id,
                                                self.visit_date.isoformat(),
@@ -2302,6 +2311,9 @@ class CCRUKPIToolBox:
                                                       'score'])
         self.write_to_kpi_results_old(attributes_for_table2, 'level2')
 
+        if not kpi_set_fk and self.kpi_set_type not in SKIP_OLD_CCRUKPIS_FROM_WRITING:
+            Log.error('KPI Set <{}> is not found in static.kpi_set table'
+                      ''.format(self.kpi_set_name))
         attributes_for_table1 = pd.DataFrame([(kpi_set_name,
                                                self.session_uid,
                                                self.store_id,
@@ -2345,6 +2357,13 @@ class CCRUKPIToolBox:
 
         """
         # score = round(score)
+
+        kpi_name = param.get('KPI name Eng')
+
+        if not kpi_fk and self.kpi_set_type not in SKIP_OLD_CCRUKPIS_FROM_WRITING:
+            Log.error('KPI Name <{}> is not found for KPI Set <{}> in static.kpi table'
+                      ''.format(kpi_name, self.kpi_set_name))
+
         attributes_for_table2 = pd.DataFrame([(self.session_uid,
                                                self.store_id,
                                                self.visit_date.isoformat(),
@@ -2385,8 +2404,14 @@ class CCRUKPIToolBox:
             if threshold is None else threshold
         threshold = threshold if threshold else 0
 
-        atomic_kpi_fk = self.kpi_fetcher.get_atomic_kpi_fk(param.get('KPI name Eng'))\
+        atomic_kpi_name = param.get('KPI name Eng')
+        atomic_kpi_fk = self.kpi_fetcher.get_atomic_kpi_fk(atomic_kpi_name, kpi_fk)\
             if atomic_kpi_fk is None else atomic_kpi_fk
+
+        if not atomic_kpi_fk and self.kpi_set_type not in SKIP_OLD_CCRUKPIS_FROM_WRITING:
+            Log.error('Atomic KPI Name <{}> is not found for KPI FK <{}> of KPI Set <{}> in static.atomic_kpi table'
+                      ''.format(atomic_kpi_name, kpi_fk, self.kpi_set_name))
+
         if param.get('KPI name Rus'):
             attributes_for_table3 = pd.DataFrame([(param.get('KPI name Rus').encode('utf-8').replace("'", "\\'"),
                                                    self.session_uid,
@@ -2803,6 +2828,10 @@ class CCRUKPIToolBox:
             score = round(score*param.get('K'), 2)
             total_score += score
 
+            # if not atomic_kpi_fk and self.kpi_set_type not in SKIP_OLD_CCRUKPIS_FROM_WRITING:
+            #     Log.error(
+            #         'Atomic KPI Name <{}> is not found for KPI FK <{}> of KPI Set <{}> in static.atomic_kpi table'
+            #         ''.format(kpi_name, kpi_fk, self.kpi_set_name))
             # attributes_for_table3 = pd.DataFrame([(kpi_name,
             #                                        self.session_uid,
             #                                        kpi_set_name,
@@ -2829,6 +2858,9 @@ class CCRUKPIToolBox:
             #                                               'name'])
             # self.write_to_kpi_results_old(attributes_for_table3, 'level3')
 
+            if not kpi_fk and self.kpi_set_type not in SKIP_OLD_CCRUKPIS_FROM_WRITING:
+                Log.error('KPI Name <{}> is not found for KPI Set <{}> in static.kpi table'
+                          ''.format(kpi_name, self.kpi_set_name))
             attributes_for_table2 = pd.DataFrame([(self.session_uid,
                                                    self.store_id,
                                                    self.visit_date.isoformat(),
@@ -2852,6 +2884,9 @@ class CCRUKPIToolBox:
                  'score': score,
                  'level': 1})
 
+        if not kpi_set_fk and self.kpi_set_type not in SKIP_OLD_CCRUKPIS_FROM_WRITING:
+            Log.error('KPI Set <{}> is not found static.kpi_set table'
+                      ''.format(self.kpi_set_name))
         attributes_for_table1 = pd.DataFrame([(kpi_set_name,
                                                self.session_uid,
                                                self.store_id,
