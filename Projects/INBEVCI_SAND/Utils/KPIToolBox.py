@@ -367,31 +367,28 @@ class INBEVCISANDToolBox:
         manufacturer_list = self.scif.loc[(self.scif[Const.SCENE_FK].isin(relevant_scenes)) &
                                           (~self.scif[Const.PRODUCT_TYPE].isin([Const.EMPTY, Const.IRRELEVANT])) &
                                           (self.scif[Const.PRICE_GROUP] == price_group)][Const.MANUFACTURER_FK].unique().tolist()
-        if manufacturer_list:
-            sos_per_manufacturer = {el: 0 for el in manufacturer_list}
-            general_filters = {Const.PRODUCT_TYPE: (Const.EMPTY, Const.EXCLUDE_FILTER),
-                               Const.CATEGORY_FK: Const.BEER_CATEGORY_FK, Const.SCENE_FK: relevant_scenes,
-                               Const.PRICE_GROUP: price_group}
+        sos_per_manufacturer = {el: 0 for el in manufacturer_list}
+        general_filters = {Const.PRODUCT_TYPE: (Const.EMPTY, Const.EXCLUDE_FILTER),
+                           Const.CATEGORY_FK: Const.BEER_CATEGORY_FK, Const.SCENE_FK: relevant_scenes,
+                           Const.PRICE_GROUP: price_group}
 
-            # Calculating the total linear space
-            # total_res = self.calculate_sos_by_scif(**general_filters)
-            total_res = self.calculate_length_location_specific(Const.SECONDARY_SHELF, self.scif, general_filters)
+        # Calculating the total linear space
+        # total_res = self.calculate_sos_by_scif(**general_filters)
+        total_res = self.calculate_length_location_specific(Const.SECONDARY_SHELF, self.scif, general_filters)
 
-            # Calculating the rest of the manufacturers' linear space
-            for manufacturer in manufacturer_list:
-                sos_filters = {Const.MANUFACTURER_FK: [manufacturer]}
-                # manufacturer_sos_res = self.calculate_sos_by_scif(**dict(sos_filters, **general_filters))
-                manufacturer_sos_res = self.calculate_length_location_specific(Const.SECONDARY_SHELF, self.scif,
-                                                                               dict(sos_filters, **general_filters))
-                sos_per_manufacturer[manufacturer] = manufacturer_sos_res
-                sos_score = (manufacturer_sos_res / float(total_res)) * 100
-                self.common.write_to_db_result(fk=kpi_level_2_fk, numerator_id=manufacturer,
-                                               numerator_result=manufacturer_sos_res, denominator_id=Const.BEER_CATEGORY_FK,
-                                               denominator_result=total_res, context_id=loc_type_fk,
-                                               identifier_parent=(parent_set_fk, loc_type_fk), result=sos_score,
-                                               score=sos_score, should_enter=True)
-        else:
-            sos_per_manufacturer = {}
+        # Calculating the rest of the manufacturers' linear space
+        for manufacturer in manufacturer_list:
+            sos_filters = {Const.MANUFACTURER_FK: [manufacturer]}
+            # manufacturer_sos_res = self.calculate_sos_by_scif(**dict(sos_filters, **general_filters))
+            manufacturer_sos_res = self.calculate_length_location_specific(Const.SECONDARY_SHELF, self.scif,
+                                                                           dict(sos_filters, **general_filters))
+            sos_per_manufacturer[manufacturer] = manufacturer_sos_res
+            sos_score = (manufacturer_sos_res / float(total_res)) * 100
+            self.common.write_to_db_result(fk=kpi_level_2_fk, numerator_id=manufacturer,
+                                           numerator_result=manufacturer_sos_res, denominator_id=Const.BEER_CATEGORY_FK,
+                                           denominator_result=total_res, context_id=loc_type_fk,
+                                           identifier_parent=(parent_set_fk, loc_type_fk), result=sos_score,
+                                           score=sos_score, should_enter=True)
         return sos_per_manufacturer
 
 
@@ -420,8 +417,8 @@ class INBEVCISANDToolBox:
         core_kpi_fk = self.common.get_kpi_fk_by_kpi_type(Const.SOS_VS_TARGET_SECONDARY_CORE)
         self.calculate_sos_vs_target_per_location_type(core_kpi_fk, Const.SECONDARY_DISPLAY_FK, identifier_parent, Const.CORE)
         # High End Products Secondary Displays
-        core_kpi_fk = self.common.get_kpi_fk_by_kpi_type(Const.SOS_VS_TARGET_SECONDARY_HIGH_END)
-        self.calculate_sos_vs_target_per_location_type(core_kpi_fk, Const.SECONDARY_DISPLAY_FK, identifier_parent,
+        he_kpi_fk = self.common.get_kpi_fk_by_kpi_type(Const.SOS_VS_TARGET_SECONDARY_HIGH_END)
+        self.calculate_sos_vs_target_per_location_type(he_kpi_fk, Const.SECONDARY_DISPLAY_FK, identifier_parent,
                                                        Const.HIGH_END)
 
     def calculate_kpi_level_1(self, set_name):
@@ -640,6 +637,8 @@ class INBEVCISANDToolBox:
         This function calculates the KPI results.
         """
         lvl3_result = self.assortment.calculate_lvl3_assortment()
+        # lvl3_result['identifier_parent_lvl2'] = lvl3_result['kpi_fk_lvl2'].apply(lambda x: {'kpi_fk': x})
+
         if lvl3_result.empty:
             return
         eye_level_sku_fk = self.get_kpi_fk_by_kpi_name(Const.EYE_LEVEL_SKU)
@@ -661,10 +660,14 @@ class INBEVCISANDToolBox:
                                            numerator_id=result.product_fk, denominator_result=1,
                                            numerator_result=numerator_res,
                                            denominator_id=result.assortment_group_fk)
+                                           # identifier_parent=result['identifier_parent_lvl2'], should_enter=True)
+
         must_have_results = lvl3_result[lvl3_result['kpi_fk_lvl3'] == must_have_fk]
         self.calculate_oos(must_have_results)
 
         lvl2_result = self.assortment.calculate_lvl2_assortment(lvl3_result)
+        # lvl2_result['identifier_parent_lvl2'] = lvl2_result['kpi_fk_lvl2'].apply(lambda x: {'kpi_fk': x})
+        # lvl2_result['identifier_parent_lvl1'] = lvl2_result['kpi_fk_lvl1'].apply(lambda x: {'kpi_fk': x})
         for result in lvl2_result.itertuples():
             super_group_fk = result.assortment_super_group_fk
             denominator_after_action = None
@@ -736,13 +739,19 @@ class INBEVCISANDToolBox:
         gets a dataframe with all the results of must have, and write all the OOS ones
         :param must_have_results: dataframe
         """
+        oos_mr_kpi_fk = self.common.get_kpi_fk_by_kpi_type(Const.OOS_MR)
+        oos_mr_ident_parent = {'kpi_fk': oos_mr_kpi_fk}
+
         oos_fk = self.get_kpi_fk_by_kpi_name(Const.OOS_KPI)
+        oos_identifier_parent = {'kpi_fk': oos_fk}
+
         oos_sku_fk = self.get_kpi_fk_by_kpi_name(Const.OOS_SKU_KPI)
         for res in must_have_results.itertuples():
             result = 1 if not res.in_store else 0
             self.common.write_to_db_result(fk=oos_sku_fk, result=result, score=result * 100,
                                            denominator_id=oos_fk, denominator_result=1,
-                                           numerator_id=res.product_fk, numerator_result=result)
+                                           numerator_id=res.product_fk, numerator_result=result,
+                                           identifier_parent=oos_identifier_parent, should_enter=True)
         oos_numerator = len(must_have_results[must_have_results['in_store'] == 0])
         denominator = len(must_have_results['in_store'])
         oos_res = 0
@@ -750,7 +759,13 @@ class INBEVCISANDToolBox:
             oos_res = np.divide(float(oos_numerator), float(denominator)) * 100
         self.common.write_to_db_result(fk=oos_fk, result=oos_res, score=oos_res,
                                        denominator_result=denominator, numerator_result=oos_numerator,
-                                       numerator_id=oos_fk)
+                                       numerator_id=oos_fk, identifier_parent=oos_mr_ident_parent,
+                                       identifier_result=oos_identifier_parent,
+                                       should_enter=True)
+        self.common.write_to_db_result(fk=oos_mr_kpi_fk, result=oos_res, score=oos_res,
+                                       denominator_result=denominator, numerator_result=oos_numerator,
+                                       numerator_id=self.own_manuf_fk, denominator_id=self.store_id,
+                                       identifier_result=oos_mr_ident_parent, should_enter=True)
 
     def main_sos_calculation(self, identifier_parent):
         """
