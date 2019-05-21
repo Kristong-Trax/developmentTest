@@ -148,6 +148,48 @@ class PngcnSceneKpis(object):
                 self.scene_id, str(e)))
             raise e
 
+
+    def calculate_eye_level_kpi(self):
+        relevant_templates = self.psdataprovider.get_scene_category_data(PCC_CATEGORY)['template_fk'].tolist()
+        try:
+            template_fk = self.data_provider.scenes_info['template_fk'].values[0]
+            # if template_fk not in relevant_templates:
+            #     return
+        except:
+            Log.error("Couldn't find scene type for scene number {}".format(str(self.scene_id)))
+            return
+        entity_df = self.psdataprovider.get_custom_entities_df('eye_level_fragments')
+        # if entity_df.empty:
+        #     return
+        df = self.get_eye_level_shelves(self.matches_from_data_provider)
+        full_df = pd.merge(df,self.all_products,on="product_fk")
+
+
+        # dic = {'include': [{'sub_category': ['Laundry Liquid']}],
+        #        'exclude': {'manufacturer_name': [PNG_MANUFACTURER], 'category': ['Laundry']},
+        #        'include_operator': 'and'}
+        # frag_df = self.parser._filter_df_by_population(dic, full_df)
+
+        for key in PCC_FILTERS.keys():
+
+            dic = {'manufacturer_name': PNG_MANUFACTURER,
+                 "category": 'Laundry', 'sub_category': 'Laundry Powder'}
+            frag_df = full_df[self.tools.get_filter_condition(full_df, **dic)]
+            dic = {'manufacturer_name': (PNG_MANUFACTURER,0),
+                   "category": 'Laundry', 'sub_category': 'Laundry Liquid'}
+            frag_df = full_df[self.tools.get_filter_condition(full_df, **dic)]
+            for i, row in frag_df.iterrows():
+                entity_fk = entity_df[entity_df['entity_name'] == key]['entity_fk'].values[0]
+                product_fk = row['product_fk']
+                facing_sequence_number = row['facing_sequence_number']
+                self.common.write_to_db_result(numerator_id=product_fk, result=facing_sequence_number,
+                           denominator_id=entity_fk, score=0,
+                           context_id=template_fk, target=None, by_scene=True)
+
+        return 0
+
+
+
     def calculate_eye_level_kpi(self):
         entity_df = self.common.get_custom_entities_df('eye_level_fragments')
         # if entity_df.empty:
