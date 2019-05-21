@@ -117,3 +117,22 @@ class TestCBCDAIRYIL(MockingTestCase):
             scenes_list = self.tool_box.get_relevant_scenes_by_params(test_case_params)
             self.assertEqual(scenes_list, expected_result)
 
+    # def validate_template(self):
+    #     problem = []
+    #     atomics_df = parse_template(Consts.TEMPLATE_PATH, Consts.KPI_SHEET, lower_headers_row_index=1)
+    #     for i in atomics_df.index:
+    #         current_atomic = atomics_df.loc[i]
+    #         key = current_atomic[Consts.PARAMS_TYPE_1]
+    #         if key in ['product_ean_code', 'brand_name', 'category']:
+    #             value = current_atomic[Consts.PARAMS_VALUE_1]
+    #             value = map(unicode.strip, value.split(Consts.SEPARATOR))
+    #             for v in value:
+    #                 filtered_df = self.all_products[self.all_products[key] == v]
+    #                 if filtered_df.empty:
+    #                     print "NO SUCH {} = {}".format(key, v)
+    #                     problem.append(v)
+    #         else:
+    #             continue
+    #     print problem
+    #     return problem
+

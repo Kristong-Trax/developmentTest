@@ -2,8 +2,6 @@ from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Cloud.Services.Connector.Keys import DbUsers
 from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Trax.Utils.Logging.Logger import Log
-import pandas as pd
-import os
 from KPIUtils.ParseTemplates import parse_template
 from KPIUtils_v2.DB.CommonV2 import Common
 from Projects.CBCDAIRYIL.Utils.Consts import Consts
@@ -55,6 +53,25 @@ class CBCDAIRYILToolBox:
         gap_data = {kpi_name: int(order) for kpi_name, order in gap_data}
         return gap_data
 
+    def validate_template(self):
+        problem = []
+        atomics_df = parse_template(Consts.TEMPLATE_PATH, Consts.KPI_SHEET, lower_headers_row_index=1)
+        for i in atomics_df.index:
+            current_atomic = atomics_df.loc[i]
+            key = current_atomic[Consts.PARAMS_TYPE_1]
+            if key in ['product_ean_code', 'brand_name', 'category']:
+                value = current_atomic[Consts.PARAMS_VALUE_1]
+                value = map(unicode.strip, value.split(Consts.SEPARATOR))
+                for v in value:
+                    filtered_df = self.all_products[self.all_products[key] == v]
+                    if filtered_df.empty:
+                        print "NO SUCH {} = {}".format(key, v)
+                        problem.append(v)
+            else:
+                continue
+        print problem
+        return problem
+
     def main_calculation(self):
         """
         This function calculates the KPI results.
@@ -62,6 +79,7 @@ class CBCDAIRYILToolBox:
         Atomic KPIs based on the project's template.
         Than, It aggregates the result per KPI using the weights and at last aggregates for the set level.
         """
+        # r = self.validate_template()
         if self.template_data.empty:
             Log.warning(Consts.EMPTY_TEMPLATE_DATA_LOG.format(self.store_id))
             return
@@ -148,7 +166,7 @@ class CBCDAIRYILToolBox:
         """
         missing_weight = 1 - total_weights
         weight_addition = missing_weight / len(kpi_results) if kpi_results else 0
-        kpi_score = sum([score * (weight+weight_addition) for score, weight in kpi_results])
+        kpi_score = sum([score * (weight + weight_addition) for score, weight in kpi_results])
         return kpi_score
 
     def calculate_atomic_results(self, kpi_fk, atomics_df):
@@ -232,6 +250,7 @@ class CBCDAIRYILToolBox:
         :return: A DataFrame with filtered Data by store attributes.
         """
         kpis_template = parse_template(Consts.TEMPLATE_PATH, Consts.KPI_SHEET, lower_headers_row_index=1)
+        # return kpis_template # TODO TODO TODO REMOVE
         relevant_store_info = self.get_store_attributes(Consts.STORE_ATTRIBUTES_TO_FILTER_BY)
         filtered_data = self.filter_template_by_store_att(kpis_template, relevant_store_info)
         return filtered_data
@@ -266,6 +285,7 @@ class CBCDAIRYILToolBox:
     def get_general_filters(self, params):
         """
         This function returns the relevant KPI filters according to the template.
+        Filter params 1 & 2 are included and param 3 is for exclusion.
         :param params: The Atomic KPI row in the template
         :return: A dictionary with the relevant filters.
         """
@@ -277,20 +297,26 @@ class CBCDAIRYILToolBox:
             return None
         else:
             general_filters[Consts.KPI_FILTERS][Consts.SCENE_FK] = relevant_scenes
-        if params[Consts.PARAMS_VALUE_1]:
-            params1 = map(unicode.strip, params[Consts.PARAMS_VALUE_1].split(Consts.SEPARATOR))
-            param_type = params[Consts.PARAMS_TYPE_1]
-            general_filters[Consts.KPI_FILTERS][param_type] = params1
-        if params[Consts.PARAMS_VALUE_2]:
-            params2 = map(float, params[Consts.PARAMS_VALUE_2].split(Consts.SEPARATOR))
-            param_type = params[Consts.PARAMS_TYPE_2]
-            general_filters[Consts.KPI_FILTERS][param_type] = params2
-        if params[Consts.PARAMS_VALUE_3]:   # Params 3 are for Exclusion only!
-            params3 = map(float, params[Consts.PARAMS_VALUE_3].split(Consts.SEPARATOR))
-            param_type = params[Consts.PARAMS_TYPE_2]
-            general_filters[Consts.EXCLUDE][param_type] = (params3, Consts.EXCLUDE_VALUE)
+        for type_col, value_col in Consts.KPI_FILTER_VALUE_LIST:
+            if params[value_col]:       # CHANGE TO type_col?? TODO TODO TODO TODO TODO TODO
+                should_included = Consts.INCLUDE_VAL if value_col != Consts.PARAMS_VALUE_3 else Consts.EXCLUDE_VAL
+                param_type, param_value = params[type_col], params[value_col]
+                filter_param = self.handle_param_values(param_type, param_value)
+                general_filters[Consts.KPI_FILTERS][param_type] = (filter_param, should_included)
 
         return general_filters
+
+    @staticmethod
+    def handle_param_values(param_type, param_value):
+        """
+        :param param_type: The param type to filter by. E.g: product_ean code or brand_name
+        :param param_value: The value to filter by.
+        :return: list of param values.
+        """
+        values_list = param_value.split(Consts.SEPARATOR)
+        params = map(lambda val: float(val) if unicode.isdigit(val) and param_type != Consts.EAN_CODE else val.strip(),
+                     values_list)
+        return params
 
     def get_kpi_weight(self, kpi, kpi_set):
         """
@@ -302,7 +328,7 @@ class CBCDAIRYILToolBox:
         row = self.kpi_weights[(self.kpi_weights[Consts.KPI_SET].str.encode('utf-8') == kpi_set.encode('utf-8')) &
                                (self.kpi_weights[Consts.KPI_NAME].str.encode('utf-8') == kpi.encode('utf-8'))]
         weight = row.get(Consts.WEIGHT)
-        return weight.values[0] if not weight.empty else None
+        return float(weight.values[0]) if not weight.empty else None
 
     def calculate_eye_level(self, **general_filters):
         """
@@ -330,15 +356,17 @@ class CBCDAIRYILToolBox:
         return filtered_matches
 
     def calculate_availability_from_bottom(self, **general_filters):
-        """
+        """        allowed_products_dict = self.get_allowed_product_by_params(**general_filters)
         This function checks if *all* of the relevant products are in the lowest shelf.
         :param general_filters: A dictionary with the relevant KPI filters.
         :return:
         """
-        filtered_matches = self.get_filtered_matches(**general_filters)
-        shelves_in_filtered_matches = filtered_matches[Consts.SHELF_NUM_FROM_BOTTOM].unique().tolist()
+        allowed_products_dict = self.get_allowed_product_by_params(**general_filters)
+        filtered_matches = self.match_product_in_scene[
+            self.match_product_in_scene[Consts.PRODUCT_FK].isin(allowed_products_dict[Consts.PRODUCT_FK])]
+        relevant_shelves_to_check = filtered_matches[Consts.SHELF_NUM_FROM_BOTTOM].unique().tolist()
         # Check bottom shelf condition
-        if not all(shelf == Consts.LOWEST_SHELF for shelf in shelves_in_filtered_matches):
+        if relevant_shelves_to_check and not all([shelf == Consts.LOWEST_SHELF for shelf in relevant_shelves_to_check]):
             return 0
         products_filtered_matches = filtered_matches[Consts.EAN_CODE].unique().tolist()
         products_to_check = general_filters[Consts.KPI_FILTERS][Consts.PARAMS_TYPE_1]
@@ -366,8 +394,7 @@ class CBCDAIRYILToolBox:
         :return: A Dictionary with the relevant products. E.g: {'product_fk': [1,2,3,4,5]}.
         """
         allowed_product = dict()
-        include_filters, exclude_filters = filters[Consts.KPI_FILTERS], filters[Consts.EXCLUDE]
-        filtered_scif = self.calculate_availability(return_df=True, **dict(include_filters, **exclude_filters))
+        filtered_scif = self.calculate_availability(return_df=True, **filters)
         allowed_product[Consts.PRODUCT_FK] = filtered_scif[Consts.PRODUCT_FK].unique().tolist()
         return allowed_product
 
@@ -403,10 +430,24 @@ class CBCDAIRYILToolBox:
         if return_df:
             return filtered_scif
         if not filtered_scif.empty:
-            tested_products = general_filters[Consts.KPI_FILTERS][Consts.EAN_CODE]
+            tested_products = general_filters[Consts.KPI_FILTERS][Consts.EAN_CODE][0]
             self.passed_availability.append(tested_products)
             return 100
         return 0
+
+    @staticmethod
+    def get_number_of_facings_per_product_dict(df, ignore_stack=False):
+        """
+        This function gets a Dataframe and returns a dictionary with number of facings per products.
+        :param df: Pandas.DataFrame with 'product_ean_code' and 'facings' / 'facings_ign_stack' fields.
+        :param ignore_stack: If True will use 'facings_ign_stack' field, else 'facings' field.
+        :return: E.g: {ean_code1: 10, ean_code2: 5, ean_code3: 1...}
+        """
+        stacking_field = Consts.FACINGS_IGN_STACK if ignore_stack else Consts.FACINGS
+        df = df[[Consts.EAN_CODE, stacking_field]].dropna()
+        df = df[df[stacking_field] > 0]
+        facings_dict = dict(zip(df[Consts.EAN_CODE], df[stacking_field]))
+        return facings_dict
 
     def calculate_min_2_availability(self, **general_filters):
         """
@@ -417,9 +458,9 @@ class CBCDAIRYILToolBox:
         """
         score = 0
         filtered_df = self.calculate_availability(return_df=True, **general_filters)
-        filtered_df = filtered_df[filtered_df[Consts.FACINGS_IGN_STACK] > 1]
-        passed_products_list = filtered_df[Consts.EAN_CODE].unique().tolist()
+        facings_counter = self.get_number_of_facings_per_product_dict(filtered_df, ignore_stack=True)
         for products in self.passed_availability:
-            score += 1 if (all(x in passed_products_list for x in products)) else 0
+            score += 1 if sum([facings_counter[product] for product in products]) > 1 else 0
         total_score = score / float(len(self.passed_availability)) if self.passed_availability else 0
-        return score, float(len(self.passed_availability)), total_score
+        return score, len(self.passed_availability), total_score
+    ### todo : check !!!!!!!!!!!!

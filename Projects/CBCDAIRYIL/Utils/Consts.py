@@ -29,6 +29,8 @@ class Consts(object):
     SPLIT_SCORE = 'Split Score'
     WEIGHT = 'Weight'
     ORDER = 'Order'
+    KPI_FILTER_VALUE_LIST = [(PARAMS_TYPE_1, PARAMS_VALUE_1), (PARAMS_TYPE_2, PARAMS_VALUE_2),
+                             (PARAMS_TYPE_3, PARAMS_VALUE_3)]
 
     # KPIs
     TOTAL_SCORE = 'Total Score'
@@ -69,8 +71,8 @@ class Consts(object):
     FILTER_PARAM_1 = 'param1'
     FILTER_PARAM_2 = 'param2'
     FILTER_PARAM_3 = 'param3'
-    EXCLUDE = 'exclude'
-    EXCLUDE_VALUE = 0
+    EXCLUDE_VAL = 0
+    INCLUDE_VAL = 1
 
     # CBC data
     CBCIL_MANUFACTURER = 45
