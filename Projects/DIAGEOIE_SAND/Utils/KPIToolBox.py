@@ -181,7 +181,6 @@ class DIAGEOIESandToolBox:
                             sos_brand_out_of_sub_cat)
 
     def calculate_sos_of_brand_out_of_manufacturer_in_sub_cat(self, kpi_fk):
-        pass
         res_list = []
         res_dict = dict()
         # Get rid of Irrelevant and Empty types and keep only facings > 1

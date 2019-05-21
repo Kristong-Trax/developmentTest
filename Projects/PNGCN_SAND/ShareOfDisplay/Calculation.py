@@ -1,6 +1,6 @@
-# from Trax.Analytics.Calculation.PNGCN_PROD.EmptySpacesKpi import EmptySpaceKpiGenerator
-# from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
-from Projects.PNGCN_SAND.ShareOfDisplay.ExcludeDataProvider import PNGCN_SANDShareOfDisplayDataProvider, PNGCN_SANDFields
+# from Trax.Analytics.Calculation.PNGCN_SAND.EmptySpacesKpi import EmptySpaceKpiGenerator
+#from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
+from Projects.PNGCN_SAND.ShareOfDisplay.ExcludeDataProvider import ShareOfDisplayDataProvider, Fields
 from Trax.Utils.Logging.Logger import Log
 import pandas as pd
 import numpy as np
@@ -24,7 +24,7 @@ PROMOTION_WALL_DISPLAYS = ['Product Strip']
 TABLE_DISPLAYS = ['Table']
 TABLE_TOTAL_DISPLAYS = ['Table Display']
 
-class PNGCN_SANDPNGShareOfDisplay(object):
+class PNGShareOfDisplay(object):
     def __init__(self, project_connector, session_uid, data_provider=None):
         self.session_uid = session_uid
         self.project_connector = project_connector
@@ -34,7 +34,7 @@ class PNGCN_SANDPNGShareOfDisplay(object):
             self.on_ace = True
         else:
             self.on_ace = False
-            self.data_provider = PNGCN_SANDShareOfDisplayDataProvider(project_connector, self.session_uid)
+            self.data_provider = ShareOfDisplayDataProvider(project_connector, self.session_uid)
         self.cur = self.project_connector.db.cursor()
         self.log_prefix = 'Share_of_display for session: {}, project {}'.format(self.session_uid,
                                                                                 self.project_connector.project_name)
@@ -79,8 +79,8 @@ class PNGCN_SANDPNGShareOfDisplay(object):
         # filtering all rest displays tags
         display_non_cube_non_promotion_wall_with_bays = \
             self.match_display_in_scene[~self.match_display_in_scene['display_name'].isin(CUBE_DISPLAYS +
-                                                                                        CUBE_TOTAL_DISPLAYS +
-                                                                                        PROMOTION_WALL_DISPLAYS +
+                                                                                          CUBE_TOTAL_DISPLAYS +
+                                                                                          PROMOTION_WALL_DISPLAYS +
                                                                                           TABLE_DISPLAYS +
                                                                                           TABLE_TOTAL_DISPLAYS +
                                                                                           FOUR_SIDED +
@@ -246,6 +246,14 @@ class PNGCN_SANDPNGShareOfDisplay(object):
         res = pd.read_sql_query(query, self.project_connector.db)
         return res
 
+    def get_display_group(self, display_group):
+        query = '''select pk
+                    from static.custom_entity
+                        where name = '{}';'''.format(display_group)
+
+        display_group_fk = pd.read_sql_query(query, self.project_connector.db)
+        return display_group_fk.pk[0]
+
     def _calculate_share_of_display(self, display_with_id_and_bays, all_skus=1):
         """
         Cross information between display and bays to match_product_in_scene.
@@ -325,20 +333,17 @@ class PNGCN_SANDPNGShareOfDisplay(object):
                 # This will check which products are a part of brands that have more then 2 facing in the display
 
                 displays = display_visit_summary['display_surface_fk'].unique()
-                display_data_for_sum = display_visit_by_display_product_enrich_sos_type.drop(['linear', 'tot_linear',
-                        'tot_facings', 'display_size', 'sos_type_fk', 'template_fk', 'in_sos', 'display_fk', ], axis=1)
                 brands = self.get_products_brand()
-                merged_displays = display_data_for_sum.merge(brands, how='left', on='product_fk')
+                merged_displays = display_facings_for_product.merge(brands, how='left', on='product_fk')
                 for current_display in displays:
                     self.valid_facing_product[current_display] = []
                     current_display_products = merged_displays[
-                    merged_displays['display_surface_fk'] == current_display]
+                        merged_displays['display_surface_fk'] == current_display]
                     brands_in_display = current_display_products['brand_name'].unique()
                     for brand in brands_in_display:
                         if current_display_products[current_display_products['brand_name'] == brand]['facings'].sum() > 2:
                             self.valid_facing_product[current_display].extend(
                                 current_display_products[current_display_products['brand_name'] == brand]['product_fk'])
-
 
                 display_visit_summary = display_facings_for_product.merge(display_visit_summary, how='left',
                                                                           on=['display_surface_fk', 'product_fk'])
@@ -371,13 +376,13 @@ class PNGCN_SANDPNGShareOfDisplay(object):
         :return:
         """
         Log.debug(self.log_prefix + ' calculating in_sos')
-        excluded_templates = self.data_provider._data[PNGCN_SANDFields.SOS_EXCLUDED_TEMPLATES]
+        excluded_templates = self.data_provider._data[Fields.SOS_EXCLUDED_TEMPLATES]
         excluded_templates['excluded_templates'] = 1
 
-        excluded_template_products = self.data_provider._data[PNGCN_SANDFields.SOS_EXCLUDED_TEMPLATE_PRODUCTS]
+        excluded_template_products = self.data_provider._data[Fields.SOS_EXCLUDED_TEMPLATE_PRODUCTS]
         excluded_template_products['excluded_template_products'] = 1
 
-        excluded_products = self.data_provider._data[PNGCN_SANDFields.SOS_EXCLUDED_PRODUCTS]
+        excluded_products = self.data_provider._data[Fields.SOS_EXCLUDED_PRODUCTS]
         excluded_products['excluded_products'] = 1
 
         df = df.merge(excluded_templates, how='left', on='template_fk') \
@@ -391,7 +396,6 @@ class PNGCN_SANDPNGShareOfDisplay(object):
 
         df.loc[condition, 'in_sos'] = 0
         df.loc[~condition, 'in_sos'] = 1
-
         return df
 
     def _insert_into_display_visit_summary(self, display_visit_summary_list_of_dict):
@@ -571,7 +575,7 @@ class PNGCN_SANDPNGShareOfDisplay(object):
 
 
 def calculate_share_of_display(project_conn, session, data_provider=None):
-    PNGCN_SANDPNGShareOfDisplay(project_conn, session, data_provider).process_session()
+    PNGShareOfDisplay(project_conn, session, data_provider).process_session()
 
 # if __name__ == '__main__':
 #     # Config.init()

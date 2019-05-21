@@ -73,7 +73,7 @@ class LIBERTYToolBox:
                 red_score += main_line[Const.WEIGHT] * result
 
         if len(self.common_db.kpi_results) > 0:
-            kpi_fk = self.common_db.get_kpi_fk_by_kpi_name(Const.RED_SCORE_PARENT)
+            kpi_fk = self.common_db.get_kpi_fk_by_kpi_type(Const.RED_SCORE_PARENT)
             self.common_db.write_to_db_result(kpi_fk, numerator_id=1, denominator_id=self.store_id, result=red_score,
                                               identifier_result=Const.RED_SCORE_PARENT, should_enter=True)
         return
@@ -121,7 +121,7 @@ class LIBERTYToolBox:
             Const.PASS) if result > 0 else self.ps_data_provider.get_pks_of_result(Const.FAIL)
 
         kpi_name = kpi_line[Const.KPI_NAME] + Const.LIBERTY
-        kpi_fk = self.common_db.get_kpi_fk_by_kpi_name(kpi_name)
+        kpi_fk = self.common_db.get_kpi_fk_by_kpi_type(kpi_name)
         self.common_db.write_to_db_result(kpi_fk, numerator_id=self.manufacturer_fk, numerator_result=0,
                                           denominator_id=self.store_id, denominator_result=0, weight=weight,
                                           result=result_type_fk, identifier_parent=Const.RED_SCORE_PARENT,
@@ -157,7 +157,7 @@ class LIBERTYToolBox:
         result = 1 if sos_value > market_share_target else 0
 
         parent_kpi_name = kpi_line[Const.KPI_NAME] + Const.LIBERTY
-        kpi_fk = self.common_db.get_kpi_fk_by_kpi_name(parent_kpi_name + Const.DRILLDOWN)
+        kpi_fk = self.common_db.get_kpi_fk_by_kpi_type(parent_kpi_name + Const.DRILLDOWN)
         self.common_db.write_to_db_result(kpi_fk, numerator_id=self.manufacturer_fk, numerator_result=numerator_facings,
                                           denominator_id=self.store_id, denominator_result=denominator_facings,
                                           weight=weight, score=result * weight,
@@ -211,7 +211,7 @@ class LIBERTYToolBox:
             result = 0
 
         parent_kpi_name = kpi_line[Const.KPI_NAME] + Const.LIBERTY
-        kpi_fk = self.common_db.get_kpi_fk_by_kpi_name(parent_kpi_name + Const.DRILLDOWN)
+        kpi_fk = self.common_db.get_kpi_fk_by_kpi_type(parent_kpi_name + Const.DRILLDOWN)
         self.common_db.write_to_db_result(kpi_fk, numerator_id=self.manufacturer_fk, numerator_result=0,
                                           denominator_id=self.store_id, denominator_result=0, weight=weight,
                                           result=length_of_unique_skus, target=minimum_number_of_skus,
@@ -274,7 +274,7 @@ class LIBERTYToolBox:
             number_of_passing_displays, _ = self.get_number_of_passing_displays(filtered_scif)
 
             parent_kpi_name = kpi_line[Const.KPI_NAME] + Const.LIBERTY
-            kpi_fk = self.common_db.get_kpi_fk_by_kpi_name(parent_kpi_name + Const.DRILLDOWN)
+            kpi_fk = self.common_db.get_kpi_fk_by_kpi_type(parent_kpi_name + Const.DRILLDOWN)
             self.common_db.write_to_db_result(kpi_fk, numerator_id=self.manufacturer_fk, numerator_result=0,
                                               denominator_id=self.store_id, denominator_result=0, weight=weight,
                                               result=number_of_passing_displays,
@@ -321,7 +321,7 @@ class LIBERTYToolBox:
             result = 1 if share_of_displays > market_share_target else 0
 
             parent_kpi_name = kpi_line[Const.KPI_NAME] + Const.LIBERTY
-            kpi_fk = self.common_db.get_kpi_fk_by_kpi_name(parent_kpi_name + Const.DRILLDOWN)
+            kpi_fk = self.common_db.get_kpi_fk_by_kpi_type(parent_kpi_name + Const.DRILLDOWN)
             self.common_db.write_to_db_result(kpi_fk, numerator_id=self.manufacturer_fk,
                                               numerator_result=numerator_passing_displays,
                                               denominator_id=self.store_id,
@@ -392,7 +392,7 @@ class LIBERTYToolBox:
         result = 1 if coke_market_share > market_share_target else 0
 
         parent_kpi_name = kpi_line[Const.KPI_NAME] + Const.LIBERTY
-        kpi_fk = self.common_db.get_kpi_fk_by_kpi_name(parent_kpi_name + Const.DRILLDOWN)
+        kpi_fk = self.common_db.get_kpi_fk_by_kpi_type(parent_kpi_name + Const.DRILLDOWN)
         self.common_db.write_to_db_result(kpi_fk, numerator_id=self.manufacturer_fk,
                                           numerator_result=passing_coolers,
                                           denominator_id=self.store_id,
