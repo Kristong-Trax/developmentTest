@@ -3,25 +3,18 @@
 
 import os
 import numpy as np
+import pandas as pd
+
+from KPIUtils_v2.GlobalDataProvider.PsDataProvider import PsDataProvider
 from Trax.Algo.Calculations.Core.DataProvider import Data
+from Projects.PNGCN_SAND.ShareOfDisplay.ExcludeDataProvider import ShareOfDisplayDataProvider, Fields
+from KPIUtils_v2.Calculations.SOSCalculations import SOS
+from KPIUtils_v2.Calculations.CalculationsUtils.GENERALToolBoxCalculations import GENERALToolBox
+import KPIUtils_v2.Utils.Parsers.ParseInputKPI as Parser
+from Trax.Utils.Logging.Logger import Log
 from Trax.Cloud.Services.Connector.Keys import DbUsers
 from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Trax.Utils.Logging.Logger import Log
-from Projects.PNGCN_SAND.ShareOfDisplay.ExcludeDataProvider import ShareOfDisplayDataProvider, Fields
-from Trax.Utils.Logging.Logger import Log
-import pandas as pd
-from KPIUtils_v2.Calculations.SOSCalculations import SOS
-from KPIUtils_v2.Calculations.CalculationsUtils.GENERALToolBoxCalculations import GENERALToolBox
-# from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
-# from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
-# from KPIUtils_v2.Calculations.AvailabilityCalculations import Availability
-# from KPIUtils_v2.Calculations.NumberOfScenesCalculations import NumberOfScenes
-# from KPIUtils_v2.Calculations.PositionGraphsCalculations import PositionGraphs
-# from KPIUtils_v2.Calculations.SOSCalculations import SOS
-# from KPIUtils_v2.Calculations.SequenceCalculations import Sequence
-# from KPIUtils_v2.Calculations.SurveyCalculations import Survey
-#
-
 
 __Author__ = 'Dudi_s'
 
@@ -48,6 +41,7 @@ LINEAR_SOS_MANUFACTURER_IN_SCENE = 'LINEAR_SOS_MANUFACTURER_IN_SCENE'
 PRESIZE_LINEAR_LENGTH_PER_LENGTH = 'PRESIZE_LINEAR_LENGTH_PER_LENGTH'
 
 # Eye level KPI
+EYE_LEVEL_KPI = "Eye_level_kpi_PER_SCENE"
 OLAY_BRAND = 'Olay'
 SAFEGUARD_BRAND = 'Safeguard'
 PCC_CATEGORY = 'Personal Cleaning Care'
@@ -74,9 +68,13 @@ PCC_FILTERS = {
                  "category": PCC_CATEGORY, 'sub_category': PCC_BAR_SUB_CATEGORY},
 'Compatitor PCC': {'manufacturer_name': (PNG_MANUFACTURER, 0), "category": PCC_CATEGORY},
 'PNGOTHER': {'manufacturer_name': PNG_MANUFACTURER,
-                 "category": (PCC_CATEGORY, 0), 'sub_category': OTHER_SUB_CATEGORY},
+                 "category": (PCC_CATEGORY, 0)},
 'Competitor Other': {'manufacturer_name': (PNG_MANUFACTURER, 0),
-                 "category": (PCC_CATEGORY, 0), 'sub_category': OTHER_SUB_CATEGORY}
+                 "category": (PCC_CATEGORY, 0)}
+# 'PNGOTHER': {'manufacturer_name': PNG_MANUFACTURER,
+#                  "category": (PCC_CATEGORY, 0)},
+# 'Competitor Other': {'manufacturer_name': (PNG_MANUFACTURER, 0),
+#                  "category": (PCC_CATEGORY, 0)}
 }
 
 class PngcnSceneKpis(object):
@@ -107,6 +105,8 @@ class PngcnSceneKpis(object):
         self.store_id = self.data_provider[Data.SESSION_INFO].store_fk.values[0]
         self.all_products = self.data_provider[Data.ALL_PRODUCTS]
         self.png_manufacturer_fk = self.get_png_manufacturer_fk()
+        self.psdataprovider = PsDataProvider(data_provider=self.data_provider)
+        self.parser = Parser
 
     def process_scene(self):
         try:
@@ -164,27 +164,22 @@ class PngcnSceneKpis(object):
         df = self.get_eye_level_shelves(self.matches_from_data_provider)
         full_df = pd.merge(df,self.all_products,on="product_fk")
 
-
         # dic = {'include': [{'sub_category': ['Laundry Liquid']}],
         #        'exclude': {'manufacturer_name': [PNG_MANUFACTURER], 'category': ['Laundry']},
         #        'include_operator': 'and'}
         # frag_df = self.parser._filter_df_by_population(dic, full_df)
 
+        kpi_fk = self.common.get_kpi_fk_by_kpi_name(EYE_LEVEL_KPI)
         for key in PCC_FILTERS.keys():
-
-            dic = {'manufacturer_name': PNG_MANUFACTURER,
-                 "category": 'Laundry', 'sub_category': 'Laundry Powder'}
-            frag_df = full_df[self.tools.get_filter_condition(full_df, **dic)]
-            dic = {'manufacturer_name': (PNG_MANUFACTURER,0),
-                   "category": 'Laundry', 'sub_category': 'Laundry Liquid'}
-            frag_df = full_df[self.tools.get_filter_condition(full_df, **dic)]
+            filter_frag = self.tools.get_filter_condition(full_df, **PCC_FILTERS[key])
+            frag_df = full_df[filter_frag]
+            full_df = full_df[~filter_frag]
             for i, row in frag_df.iterrows():
                 entity_fk = entity_df[entity_df['entity_name'] == key]['entity_fk'].values[0]
                 product_fk = row['product_fk']
                 facing_sequence_number = row['facing_sequence_number']
-                self.common.write_to_db_result(numerator_id=product_fk, result=facing_sequence_number,
-                           denominator_id=entity_fk, score=0,
-                           context_id=template_fk, target=None, by_scene=True)
+                self.common.write_to_db_result(fk=kpi_fk, numerator_id=product_fk, result=facing_sequence_number,
+                           denominator_id=entity_fk, score=0, context_id=template_fk, target=None, by_scene=True)
 
         return 0
 
