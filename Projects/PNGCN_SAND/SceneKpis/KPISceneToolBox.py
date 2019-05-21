@@ -188,21 +188,6 @@ class PngcnSceneKpis(object):
 
         return 0
 
-
-
-    def calculate_eye_level_kpi(self):
-        entity_df = self.common.get_custom_entities_df('eye_level_fragments')
-        # if entity_df.empty:
-        #     return
-        df = self.get_eye_level_shelves(self.matches_from_data_provider)
-        full_df = pd.merge(df,self.all_products,on="product_fk")
-        for key in PCC_FILTERS.keys():
-            frag_df = full_df[self.tools.get_filter_condition(full_df, **PCC_FILTERS[key])]
-            for i, row in frag_df.iterrows():
-                entity_fk = entity_df[entity_df['entity_name'] == key]['entity_fk'].values[0]
-
-        return 0
-
     def get_eye_level_shelves(self, df):
         if df.empty:
             return df
