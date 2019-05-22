@@ -424,6 +424,7 @@ class INBEVCISANDToolBox:
     def calculate_kpi_level_1(self, set_name):
         sum_of_total, sum_of_passed = 0, 0
         set_fk = self.get_kpi_fk_by_kpi_name(set_name)
+        mr_set_fk = self.common.get_kpi_fk_by_kpi_type('{} MR'.format(self.get_kpi_type_by_pk(set_fk)))
         for i in xrange(len(self.template_sheet[set_name])):
             params = self.template_sheet[set_name].iloc[i]
             if set_name == Const.BRAND_FACING_TARGET:
@@ -446,7 +447,7 @@ class INBEVCISANDToolBox:
 
                 if self.visit_date < start_date or (end_date != '' and self.visit_date > end_date):
                     continue
-                result_dict = self.calculate_brand_facing(params)
+                result_dict = self.calculate_brand_facing(params, mr_set_fk)
             elif set_name == Const.BRAND_COMPARISON:
                 result_dict = self.calculate_brand_comparison(params)
             sum_of_passed += result_dict['score'] / 100
@@ -456,13 +457,20 @@ class INBEVCISANDToolBox:
                 numerator_result=result_dict['numerator_result'], denominator_result=result_dict['denominator_result'],
                 numerator_id=result_dict['numerator_id'], denominator_id=0,
                 target=result_dict["denominator_result_after_actions"],
-                denominator_result_after_actions=result_dict["denominator_result_after_actions"])
+                denominator_result_after_actions=result_dict["denominator_result_after_actions"],
+                identifier_parent=result_dict.get("identifier_parent"),
+                should_enter=result_dict.get("should_enter") if result_dict.get("should_enter") is not None else False)
         if sum_of_total == 0:
             return 0
         percentage = round(sum_of_passed / float(sum_of_total), 4) * 100
         set_score = (percentage >= 100) * 100
         self.common.write_to_db_result(fk=set_fk, result=percentage, score=set_score, numerator_id=0,
                                        numerator_result=sum_of_passed, denominator_result=sum_of_total)
+        if mr_set_fk is not None:
+            self.common.write_to_db_result(fk=mr_set_fk, result=percentage, score=set_score, numerator_id=self.own_manuf_fk,
+                                           denominator_id=self.store_id, numerator_result=sum_of_passed,
+                                           denominator_result=sum_of_total, identifier_result={"kpi_fk": mr_set_fk},
+                                           should_enter=True)
 
     def calculate_brand_comparison(self, params):
         """
@@ -486,7 +494,7 @@ class INBEVCISANDToolBox:
                        "numerator_id": inbev_brand_fk, "denominator_result_after_actions": comp_brand_fk}
         return result_dict
 
-    def calculate_brand_facing(self, params):
+    def calculate_brand_facing(self, params, mr_set_fk):
         """
         getting a list of brands and a target for each brand, and:
         for each line, write if it passed the target.
@@ -503,7 +511,9 @@ class INBEVCISANDToolBox:
         result = round(facings / float(target), 4) * 100
         result_dict = {"fk": atomic_fk, "result": result, "score": atomic_score, "numerator_result": facings,
                        "denominator_result": target, "numerator_id": brand_fk,
-                       "denominator_result_after_actions": target}
+                       "denominator_result_after_actions": target,
+                       "identifier_parent": {"kpi_fk": mr_set_fk},
+                       "should_enter": True}
         return result_dict
 
     def get_skus_and_brand_fk(self, name, params):
@@ -632,12 +642,39 @@ class INBEVCISANDToolBox:
                 break
         return is_eye_level
 
+    def get_identifier_parent_assortment_lvl2(self, row):
+        kpi_lvl2_name = self.get_kpi_type_by_pk(row['kpi_fk_lvl2'])
+        kpi_fk = self.common.get_kpi_fk_by_kpi_type('{} MR'.format(kpi_lvl2_name)) if np.isnan(row['kpi_fk_lvl1']) or row['kpi_fk_lvl1'] is None \
+                                                                                        else row['kpi_fk_lvl2']
+        identifier_parent = {'kpi_fk': kpi_fk}
+        return identifier_parent
+
+    def get_identifier_parent_assortment_lvl1(self, row):
+        kpi_lvl1_name = self.get_kpi_type_by_pk(row['kpi_fk_lvl1']) if not (np.isnan(row['kpi_fk_lvl1']) or row['kpi_fk_lvl1'] is None) else None
+        kpi_fk = self.common.get_kpi_fk_by_kpi_type('{} MR'.format(kpi_lvl1_name))
+        identifier_parent = {'kpi_fk': kpi_fk} if kpi_fk is not None else None
+        return identifier_parent
+
+    def get_mobile_report_assortment_lvl2_kpi_fk(self, row):
+        if np.isnan(row['kpi_fk_lvl1']) or row['kpi_fk_lvl1'] is None:
+            mr_kpi_fk = self.common.get_kpi_fk_by_kpi_type('{} MR'.format(self.get_kpi_type_by_pk(row['kpi_fk_lvl2'])))
+        else:
+            mr_kpi_fk = row['kpi_fk_lvl2']
+        return mr_kpi_fk
+
+    def get_numerator_or_denominator_mobile_report_kpi_lvl2(self, row, field):
+        if np.isnan(row['kpi_fk_lvl1']) or row['kpi_fk_lvl1'] is None:
+            entity_fk = self.own_manuf_fk if field == 'numerator' else self.store_id
+        else:
+            entity_fk = row['assortment_group_fk'] if field == 'numerator' else row['assortment_super_group_fk']
+        return entity_fk
+
     def main_assortment_calculation(self):
         """
         This function calculates the KPI results.
         """
         lvl3_result = self.assortment.calculate_lvl3_assortment()
-        # lvl3_result['identifier_parent_lvl2'] = lvl3_result['kpi_fk_lvl2'].apply(lambda x: {'kpi_fk': x})
+        lvl3_result['identifier_parent_lvl2'] = lvl3_result.apply(self.get_identifier_parent_assortment_lvl2, axis=1)
 
         if lvl3_result.empty:
             return
@@ -659,15 +696,21 @@ class INBEVCISANDToolBox:
             self.common.write_to_db_result(fk=result.kpi_fk_lvl3, result=score, score=score,
                                            numerator_id=result.product_fk, denominator_result=1,
                                            numerator_result=numerator_res,
-                                           denominator_id=result.assortment_group_fk)
-                                           # identifier_parent=result['identifier_parent_lvl2'], should_enter=True)
+                                           denominator_id=result.assortment_group_fk,
+                                           identifier_parent=result.identifier_parent_lvl2, should_enter=True)
 
         must_have_results = lvl3_result[lvl3_result['kpi_fk_lvl3'] == must_have_fk]
         self.calculate_oos(must_have_results)
 
         lvl2_result = self.assortment.calculate_lvl2_assortment(lvl3_result)
-        # lvl2_result['identifier_parent_lvl2'] = lvl2_result['kpi_fk_lvl2'].apply(lambda x: {'kpi_fk': x})
-        # lvl2_result['identifier_parent_lvl1'] = lvl2_result['kpi_fk_lvl1'].apply(lambda x: {'kpi_fk': x})
+        lvl2_result['identifier_parent_lvl2'] = lvl2_result.apply(self.get_identifier_parent_assortment_lvl2, axis=1)
+        lvl2_result['mr_lvl2_parent_fk'] = lvl2_result.apply(self.get_mobile_report_assortment_lvl2_kpi_fk, axis=1)
+        lvl2_result['mr_numerator_id'] = lvl2_result.apply(self.get_numerator_or_denominator_mobile_report_kpi_lvl2,
+                                                           args=('numerator',), axis=1)
+        lvl2_result['mr_denominator_id'] = lvl2_result.apply(self.get_numerator_or_denominator_mobile_report_kpi_lvl2,
+                                                             args=('denominator',), axis=1)
+        lvl2_result['identifier_parent_lvl1'] = lvl2_result.apply(self.get_identifier_parent_assortment_lvl1, axis=1)
+
         for result in lvl2_result.itertuples():
             super_group_fk = result.assortment_super_group_fk
             denominator_after_action = None
@@ -697,10 +740,23 @@ class INBEVCISANDToolBox:
                                            denominator_id=super_group_fk, denominator_result=denominator_res,
                                            target=denominator_after_action,
                                            denominator_result_after_actions=denominator_after_action)
+            self.common.write_to_db_result(fk=result.mr_lvl2_parent_fk, result=res, score=score,
+                                           numerator_id=result.mr_numerator_id,
+                                           numerator_result=numerator_res,
+                                           denominator_id=result.mr_denominator_id, denominator_result=denominator_res,
+                                           target=denominator_after_action,
+                                           denominator_result_after_actions=denominator_after_action,
+                                           identifier_result=result.identifier_parent_lvl2,
+                                           identifier_parent=result.identifier_parent_lvl1,
+                                           should_enter=True)
+
         if lvl2_result.empty:
             return
         lvl1_result = self.assortment.calculate_lvl1_assortment(lvl2_result)
         lvl1_result = self.update_targets(lvl1_result)
+        lvl1_result['mr_lvl1_parent_fk'] = lvl1_result['kpi_fk_lvl1'].apply(lambda x: \
+                                                        self.common.get_kpi_fk_by_kpi_type('{} MR'.format(self.get_kpi_type_by_pk(x))))
+        lvl1_result['identifier_parent_lvl1'] = lvl1_result['mr_lvl1_parent_fk'].apply(lambda x: {'kpi_fk': x})
         for result in lvl1_result.itertuples():
             denominator_res = result.total
             numerator_res = result.passes
@@ -717,6 +773,22 @@ class INBEVCISANDToolBox:
                                            numerator_id=result.assortment_super_group_fk,
                                            target=denominator_after_action,
                                            denominator_result_after_actions=denominator_after_action)
+            self.common.write_to_db_result(fk=result.mr_lvl1_parent_fk, result=res, score=score,
+                                           numerator_result=numerator_res,
+                                           denominator_result=denominator_res,
+                                           numerator_id=self.own_manuf_fk, denominator_id=self.store_id,
+                                           target=denominator_after_action,
+                                           denominator_result_after_actions=denominator_after_action,
+                                           identifier_result=result.identifier_parent_lvl1,
+                                           should_enter=True)
+
+    def get_kpi_type_by_pk(self, kpi_fk):
+        try:
+            kpi_fk = int(float(kpi_fk))
+            return self.new_kpi_static_data[self.new_kpi_static_data['pk'] == kpi_fk]['type'].values[0]
+        except IndexError:
+            Log.info("Kpi pk: {} is not equal to any kpi in static table".format(kpi_fk))
+            return None
 
     def update_targets(self, lvl1_result):
         """
