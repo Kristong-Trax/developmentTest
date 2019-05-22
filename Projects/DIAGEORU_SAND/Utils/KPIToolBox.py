@@ -102,9 +102,13 @@ class DIAGEORUToolBox:
         log_runtime('Updating templates')
         self.tools.update_templates()
 
-        # Global assortment kpis
-        assortment_res_dict = self.diageo_generator.diageo_global_assortment_function_v3()
-        self.commonV2.save_json_to_new_tables(assortment_res_dict)
+        # Global assortment kpis - v2 for API use
+        assortment_res_dict_v2 = self.diageo_generator.diageo_global_assortment_function_v2()
+        self.commonV2.save_json_to_new_tables(assortment_res_dict_v2)
+
+        # Global assortment kpis - v3 for NEW MOBILE REPORTS use
+        assortment_res_dict_v3 = self.diageo_generator.diageo_global_assortment_function_v3()
+        self.commonV2.save_json_to_new_tables(assortment_res_dict_v3)
 
         for set_name in set_names:
             set_score = 0
@@ -252,7 +256,6 @@ class DIAGEORUToolBox:
                             sos_brand_out_of_sub_cat)
 
     def calculate_sos_of_brand_out_of_manufacturer_in_sub_cat(self, kpi_fk):
-        pass
         res_list = []
         res_dict = dict()
         # Get rid of Irrelevant and Empty types and keep only facings > 1
@@ -485,6 +488,8 @@ class DIAGEORUToolBox:
         """
         This function writes all KPI results to the DB, and commits the changes.
         """
+        self.rds_conn.disconnect_rds()
+        self.rds_conn.connect_rds()
         cur = self.rds_conn.db.cursor()
         delete_queries = DIAGEOQueries.get_delete_session_results_query_old_tables(self.session_uid)
         for query in delete_queries:

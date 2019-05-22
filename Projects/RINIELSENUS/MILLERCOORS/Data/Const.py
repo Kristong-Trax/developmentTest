@@ -21,6 +21,7 @@ class Const(object):
     # columns of KPIs
     STORE_POLICY = 'Store Policy'
     STORE_LOCATION = 'Store Location'
+    WRITE_NA = 'Write N/A'
 
     # columns of Block Adjacency
     ANCHOR_PARAM = 'anchor_param'

@@ -44,7 +44,7 @@ if __name__ == '__main__':
     ]
     for session in sessions:
         print "Running for {}".format(session)
-        for scene in [65604]:
+        for scene in [50479]:
             print('Calculating scene id: ' + str(scene))
             data_provider = KEngineDataProvider(project_name)
             data_provider.load_scene_data(session, scene)

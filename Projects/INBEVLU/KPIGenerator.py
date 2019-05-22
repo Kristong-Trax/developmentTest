@@ -42,6 +42,5 @@ class INBEVLUINBEVBEGenerator:
         self.tool_box.main_calculation(set_name='Shelf Impact Score')
         self.tool_box.save_custom_scene_item_facts_results()
         self.tool_box.save_linear_length_results()
-        # self.tool_box.test_new_bundles()
         Log.info('Downloading templates took {}'.format(self.tool_box.download_time))
         self.tool_box.commit_results_data()

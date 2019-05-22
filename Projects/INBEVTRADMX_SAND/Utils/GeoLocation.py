@@ -2,7 +2,7 @@ from Trax.Utils.Logging.Logger import Log
 from haversine import haversine
 import pandas as pd
 from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
-
+from Trax.Algo.Calculations.Core.DataProvider import Data
 
 # from math import radians, cos, sin, asin, sqrt
 
@@ -25,7 +25,7 @@ __author__ = 'yoava'
 
 class INBEVTRADMX_SANDGeo:
 
-    GEO_THRESHOLD = 100
+    GEO_THRESHOLD = 70
     LEVEL1 = 1
     LEVEL2 = 2
     LEVEL3 = 3
@@ -37,6 +37,8 @@ class INBEVTRADMX_SANDGeo:
         self.common = common
         self.common2 = common2
         self.kpi_static_data = kpi_static_data
+        self.manufacturer_fk = 1
+        self.store_id = self.data_provider[Data.STORE_FK]
 
     @staticmethod
     def calculate_distance_between_two_points(first_point, second_point):
@@ -122,7 +124,8 @@ class INBEVTRADMX_SANDGeo:
         geo_score = self.get_geo_score(geo_result)
         self.common.write_to_db_result(atomic_kpi_fk, self.LEVEL3, geo_score, **basic_dict)
         new_kpi_fk = self.common2.get_kpi_fk_by_kpi_name(kpi_name)
-        self.common2.write_to_db_result(fk=new_kpi_fk, result=geo_result, target=self.GEO_THRESHOLD, score=geo_score)
+        self.common2.write_to_db_result(fk=new_kpi_fk, numerator_id= self.manufacturer_fk, denominator_id=self.store_id,
+                                        result=geo_result, target=self.GEO_THRESHOLD, score=geo_score)
 
     def create_kpi_insert_attributes(self, fk, geo_result, geo_score, level):
         """

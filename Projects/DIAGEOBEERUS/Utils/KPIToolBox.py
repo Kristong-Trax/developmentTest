@@ -167,8 +167,10 @@ class DIAGEOBEERUSToolBox:
         mpa_identifier = self.common.get_dictionary(name=Const.MPA)
         for result_dict in result_dict_list:
             if result_dict['fk'] == mpa_fk:
+                score = result_dict['result'] * weight
                 result_dict.update({'identifier_parent': total_identifier, 'should_enter': True,
-                                    'weight': weight * 100, 'identifier_result': mpa_identifier})
+                                    'weight': weight * 100, 'identifier_result': mpa_identifier,
+                                    'score': score})
             if result_dict['fk'] == mpa_sku_fk:
                 total_skus = total_skus + 1
                 if result_dict['result'] == 100:
@@ -226,7 +228,7 @@ class DIAGEOBEERUSToolBox:
                 fk=manufacturer_kpi_fk, numerator_id=manufacturer, numerator_result=num_res,
                 target=target_manufacturer,
                 denominator_result=den_res, result=result, identifier_parent=total_dict,
-                identifier_result=result_dict)
+                identifier_result=result_dict, should_enter=True)
         if den_res == 0:
             score = 0
         else:
@@ -253,7 +255,7 @@ class DIAGEOBEERUSToolBox:
             return None
         self.common.write_to_db_result(
             fk=sku_kpi_fk, numerator_id=product_fk,
-            result=sum_scenes_passed, identifier_parent=parent_dict)
+            result=sum_scenes_passed, identifier_parent=parent_dict, should_enter=True)
         product_result = {Const.PRODUCT_FK: product_fk, Const.PASSED: sum_scenes_passed,
                           Const.MANUFACTURER: manufacturer}
         return product_result
@@ -362,9 +364,12 @@ class DIAGEOBEERUSToolBox:
         elif our_price > range_price[1]:
             result = range_price[1] - our_price
         brand, sub_brand = self.get_product_details(product_fk)
+        sub_brand_level_kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.DB_OFF_NAMES[Const.MSRP][Const.SUB_BRAND])
+        identifier_parent = self.common.get_dictionary(kpi_fk=sub_brand_level_kpi_fk,
+                                                       brand_fk=brand, sub_brand_fk=sub_brand)
         self.common.write_to_db_result(
-            fk=kpi_fk, numerator_id=product_fk, result=result,  # should_enter=True,
-            identifier_parent=self.common.get_dictionary(kpi_fk=total_kpi_fk), identifier_result=result_dict)
+            fk=kpi_fk, numerator_id=product_fk, result=result, should_enter=True,
+            identifier_parent=identifier_parent, identifier_result=result_dict)
         product_result = {Const.PRODUCT_FK: product_fk, Const.PASSED: (result == 0) * 1,
                           Const.BRAND: brand, Const.SUB_BRAND: sub_brand}
         return product_result
@@ -445,7 +450,8 @@ class DIAGEOBEERUSToolBox:
                 target = 0
             else:
                 comp_facings = self.calculate_shelf_facings_of_sub_brand(comp_sub_brands, relevant_scenes,
-                                                                         result_identifier, kpi_db_names=kpi_db_names)
+                                                                         result_identifier, kpi_db_names=kpi_db_names,
+                                                                         diageo_sub_brand_fk=sub_brand_fk)
                 bench_value = competition[Const.BENCH_VALUE]
                 if type(bench_value) in (unicode, str):
                     bench_value = float(bench_value.replace("%", "")) / 100
@@ -466,10 +472,10 @@ class DIAGEOBEERUSToolBox:
         return product_result
 
     def calculate_shelf_facings_of_sub_brand(self, sub_brand_names, relevant_scenes, parent_identifier, target=None,
-                                             diageo_product=False, kpi_db_names=None, weight=None):
+                                             diageo_product=False, kpi_db_names=None, weight=None,
+                                             diageo_sub_brand_fk=None):
         amount_of_facings = None
         kpi_fk = self.common.get_kpi_fk_by_kpi_name(kpi_db_names[Const.VARIANT])
-        denominator_id = self.manufacturer_fk if diageo_product else None
         for sub_brand in sub_brand_names:
             amount_of_facings = 0
             sub_brand_scif = self.scif_without_empties[self.scif_without_empties['sub_brand'] == sub_brand]
@@ -485,6 +491,10 @@ class DIAGEOBEERUSToolBox:
             else:
                 brand_fk = sub_brand_scif['brand_fk'].values[0]
             sub_brand_fk = self.get_sub_brand_fk(sub_brand, brand_fk)
+            if diageo_sub_brand_fk:
+                denominator_id = diageo_sub_brand_fk
+            elif diageo_product:
+                denominator_id = sub_brand_fk
             self.common.write_to_db_result(
                 fk=kpi_fk, numerator_id=sub_brand_fk, result=sub_brand_facing, denominator_id=denominator_id,
                 should_enter=True, identifier_parent=parent_identifier, target=target, weight=weight)
@@ -547,7 +557,8 @@ class DIAGEOBEERUSToolBox:
                 target = 0
             else:
                 comp_facings = self.calculate_displays_of_sub_brand(comp_sub_brands, relevant_scenes, result_identifier,
-                                                                    kpi_db_names=kpi_db_names)
+                                                                    kpi_db_names=kpi_db_names,
+                                                                    diageo_sub_brand_fk=sub_brand_fk)
                 bench_value = competition[Const.BENCH_VALUE]
                 if type(bench_value) in (unicode, str):
                     bench_value = float(bench_value.replace("%", "")) / 100
@@ -566,10 +577,9 @@ class DIAGEOBEERUSToolBox:
         return product_result
 
     def calculate_displays_of_sub_brand(self, sub_brand_names, relevant_scenes, parent_identifier, target=None,
-                                        diageo_product=False, kpi_db_names=None):
+                                        diageo_product=False, kpi_db_names=None, diageo_sub_brand_fk=None):
         number_of_displays = None
         kpi_fk = self.common.get_kpi_fk_by_kpi_name(kpi_db_names[Const.VARIANT])
-        denominator_id = self.manufacturer_fk if diageo_product else None
         for sub_brand in sub_brand_names:
             number_of_displays = 0
             sub_brand_scif = self.scif_without_empties[self.scif_without_empties['sub_brand'] == sub_brand]
@@ -590,6 +600,10 @@ class DIAGEOBEERUSToolBox:
             else:
                 brand_fk = sub_brand_scif['brand_fk'].values[0]
             sub_brand_fk = self.get_sub_brand_fk(sub_brand, brand_fk)
+            if diageo_sub_brand_fk:
+                denominator_id = diageo_sub_brand_fk
+            elif diageo_product:
+                denominator_id = sub_brand_fk
             self.common.write_to_db_result(
                 fk=kpi_fk, numerator_id=sub_brand_fk, result=number_of_displays, denominator_id=denominator_id,
                 should_enter=True, identifier_parent=parent_identifier, target=target)
@@ -630,10 +644,12 @@ class DIAGEOBEERUSToolBox:
             num_res = relevant_scif[relevant_scif['brand_fk'] == brand_fk]['facings'].sum()
             # result = self.get_score(num_res, den_res) # for % share of menu
             result = num_res  # for number of appearances
+            identifier_parent = self.common.get_dictionary(kpi_fk=total_kpi_fk,
+                                                           manufacturer_fk=products.manufacturer_fk)
             self.common.write_to_db_result(
                 fk=brand_kpi_fk, numerator_id=brand_fk, numerator_result=num_res,
                 denominator_id=products.manufacturer_fk, denominator_result=den_res,
-                result=result, identifier_parent=self.common.get_dictionary(kpi_fk=total_kpi_fk))
+                result=result, identifier_parent=identifier_parent, should_enter=True)
         for manufacturer_fk in all_manufacturers:
             num_res = relevant_scif[relevant_scif['manufacturer_fk'] == manufacturer_fk]['facings'].sum()
             manufacturer_target = None
@@ -644,15 +660,16 @@ class DIAGEOBEERUSToolBox:
             result = num_res  # for number of appearances
             if manufacturer_fk == 0:
                 continue
+            identifier_result = self.common.get_dictionary(kpi_fk=total_kpi_fk, manufacturer_fk=manufacturer_fk)
             self.common.write_to_db_result(
                 fk=manufacturer_kpi_fk, numerator_id=manufacturer_fk, numerator_result=num_res, result=result,
                 denominator_result=den_res, identifier_parent=self.common.get_dictionary(kpi_fk=total_kpi_fk),
-                target=manufacturer_target)
+                identifier_result=identifier_result, should_enter=True, target=manufacturer_target)
         result = self.get_score(diageo_facings, den_res)
         score = 1 if result > target else 0
         self.common.write_to_db_result(
             fk=total_kpi_fk, numerator_id=self.manufacturer_fk, numerator_result=diageo_facings,
-            denominator_result=den_res, result=score * 100, score=result * 100, weight=weight * 100,
+            denominator_result=den_res, result=score * 100, score=score * weight * 100, weight=weight * 100,
             identifier_result=self.common.get_dictionary(kpi_fk=total_kpi_fk), target=target,
             identifier_parent=self.common.get_dictionary(name=Const.TOTAL), should_enter=True)
         return score * weight * 100

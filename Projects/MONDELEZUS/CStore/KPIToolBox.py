@@ -32,6 +32,7 @@ class CSTOREToolBox:
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
         self.scif['store_fk'] = self.store_id
         self.scif = self.scif[~(self.scif['product_type'].isin([Const.IRRELEVANT, Const.EMPTY]))]
+        self.scif = self.scif[self.scif['facings'] > 0]
         self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         self.kpis = self.load_kpis()
         self.results_values = self.load_results_values()

@@ -1,8 +1,8 @@
 
 from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScript
-from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
-from Trax.Utils.Conf.Configuration import Config
-from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
+# from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
+# from Trax.Utils.Conf.Configuration import Config
+# from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
 
 from Projects.PNGJP.KPIGenerator import PNGJPGenerator
 
@@ -15,12 +15,13 @@ class PNGJPCalculations(BaseCalculationsScript):
         PNGJPGenerator(self.data_provider, self.output).main_function()
         self.timer.stop('KPIGenerator.run_project_calculations')
 
+
 # if __name__ == '__main__':
 #     LoggerInitializer.init('pngjp calculations')
 #     Config.init()
 #     project_name = 'pngjp'
 #     data_provider = KEngineDataProvider(project_name)
-#     session = '0D44720E-DE19-4EAF-AA69-4F6C033B72C8'
+#     session = '1DA27BCD-049C-4EEE-9B3B-DADD2E000A98'
 #     data_provider.load_session_data(session)
 #     output = Output()
 #     PNGJPCalculations(data_provider, output).run_project_calculations()

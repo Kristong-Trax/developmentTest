@@ -84,7 +84,7 @@ class SceneToolBox:
         status_kpi_fk = self.common.get_kpi_fk_by_kpi_name(kpi_names[Const.STATUS_LEVEL])
         all_facings = len(pog_matches)
         fixture_kpi_fk = self.common.get_kpi_fk_by_kpi_name(kpi_names[Const.FIXTURE_LEVEL])
-        for compliance_status_fk in [3, 1, 2, 4]:  # the order is important!!! 3 has to be before 1!
+        for compliance_status_fk in [3, 1, 2, 4]:  # the order is important!!! 3 has to be before 2!
             identifier_result = self.common.get_dictionary(compliance_fk=compliance_status_fk, kpi_fk=status_kpi_fk)
             status_products, rog_matches = self.get_status_products(
                 compliance_status_fk, rog_matches, pog_matches, kpi_names)
@@ -116,7 +116,7 @@ class SceneToolBox:
                 if match_product_facings > planogram_facings:
                     difference = match_product_facings - planogram_facings
                     remain_pks = match_products[-int(difference):]['scene_match_fk'].tolist()
-                    rog_matches.loc[rog_matches['scene_match_fk'].isin(remain_pks), 'compliance_status_fk'] = 1
+                    rog_matches.loc[rog_matches['scene_match_fk'].isin(remain_pks), 'compliance_status_fk'] = 2
                     status_products = rog_matches[rog_matches['compliance_status_fk'] == compliance_status_fk]
                     match_product_facings = len(rog_matches[
                                                     (rog_matches['compliance_status_fk'] == compliance_status_fk) &

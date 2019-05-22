@@ -53,6 +53,7 @@ class PEPSICOUKCommonToolBox:
     HERO_SKU_PRICE = 'Hero SKU Price'
     HERO_SKU_PROMO_PRICE = 'Hero SKU Promo Price'
     BRAND_FULL_BAY_KPIS = ['Brand Full Bay 90', 'Brand Full Bay 100']
+    ALL = 'ALL'
 
     def __init__(self, data_provider, rds_conn=None):
         self.data_provider = data_provider
@@ -72,19 +73,32 @@ class PEPSICOUKCommonToolBox:
         self.kpi_static_data = self.common.get_kpi_static_data()
         self.kpi_results_queries = []
 
+        self.full_store_info = self.get_store_data_by_store_id()
+        self.store_info_dict = self.full_store_info.to_dict('records')[0]
+        self.store_policy_exclusion_template = self.get_store_policy_data_for_exclusion_template()
+
         self.toolbox = GENERALToolBox(data_provider)
         self.custom_entities = self.get_custom_entity_data()
         self.on_display_products = self.get_on_display_products()
         self.exclusion_template = self.get_exclusion_template_data()
         self.filtered_scif = self.scif # filtered scif acording to exclusion template
         self.filtered_matches = self.match_product_in_scene # filtered scif according to exclusion template
-        self.set_filtered_scif_and_matches_for_all_kpis(self.scif, self.match_product_in_scene) # also sets scif and matches in data provider
+        self.set_filtered_scif_and_matches_for_all_kpis(self.scif, self.match_product_in_scene)
 
         self.scene_bay_shelf_product = self.get_facings_scene_bay_shelf_product()
         self.external_targets = self.get_all_kpi_external_targets()
         self.all_targets_unpacked = self.unpack_all_external_targets()
         self.kpi_result_values = self.get_kpi_result_values_df()
         self.kpi_score_values = self.get_kpi_score_values_df()
+
+    @staticmethod
+    def split_and_strip(value):
+        return map(lambda x: x.strip(), str(value).split(','))
+
+    def get_store_policy_data_for_exclusion_template(self):
+        store_policy = pd.read_excel(self.EXCLUSION_TEMPLATE_PATH, sheet_name='store_policy')
+        store_policy = store_policy.fillna('ALL')
+        return store_policy
 
     def get_kpi_result_values_df(self):
         query = PEPSICOUK_Queries.get_kpi_result_values()
@@ -93,6 +107,12 @@ class PEPSICOUKCommonToolBox:
 
     def get_kpi_score_values_df(self):
         query = PEPSICOUK_Queries.get_kpi_score_values()
+        query_result = pd.read_sql_query(query, self.rds_conn.db)
+        return query_result
+
+    def get_store_data_by_store_id(self):
+        store_id = self.store_id if self.store_id else self.session_info['store_fk'].values[0]
+        query = PEPSICOUK_Queries.get_store_data_by_store_id(store_id)
         query_result = pd.read_sql_query(query, self.rds_conn.db)
         return query_result
 
@@ -127,14 +147,37 @@ class PEPSICOUKCommonToolBox:
         return excl_templ
 
     def set_filtered_scif_and_matches_for_all_kpis(self, scif, matches):
-        excl_template_all_kpis = self.exclusion_template[self.exclusion_template['KPI'].str.upper() == 'ALL']
-        if not excl_template_all_kpis.empty:
-            template_filters = self.get_filters_dictionary(excl_template_all_kpis)
-            scif, matches = self.filter_scif_and_matches_for_scene_and_product_filters(template_filters, scif, matches)
-            scif, matches = self.update_scif_and_matches_for_smart_attributes(scif, matches)
-            self.filtered_scif = scif
-            self.filtered_matches = matches
-            # self.set_scif_and_matches_in_data_provider(scif, matches)
+        if self.do_exclusion_rules_apply_to_store('ALL'):
+            excl_template_all_kpis = self.exclusion_template[self.exclusion_template['KPI'].str.upper() == 'ALL']
+            if not excl_template_all_kpis.empty:
+                template_filters = self.get_filters_dictionary(excl_template_all_kpis)
+                scif, matches = self.filter_scif_and_matches_for_scene_and_product_filters(template_filters, scif, matches)
+                scif, matches = self.update_scif_and_matches_for_smart_attributes(scif, matches)
+                self.filtered_scif = scif
+                self.filtered_matches = matches
+
+    def do_exclusion_rules_apply_to_store(self, kpi):
+        exclusion_flag = True
+        policy_template = self.store_policy_exclusion_template.copy()
+        if kpi == 'ALL':
+            policy_template['KPI'] = policy_template['KPI'].apply(lambda x: str(x).upper())
+        relevant_policy = policy_template[policy_template['KPI'] == kpi]
+        if not relevant_policy.empty:
+            relevant_policy = relevant_policy.drop(columns='KPI')
+            policy_columns = relevant_policy.columns.values.tolist()
+            for column in policy_columns:
+                store_att_value = self.store_info_dict.get(column)
+                mask = relevant_policy.apply(self.get_masking_filter, args=(column, store_att_value), axis=1)
+                relevant_policy = relevant_policy[mask]
+            if relevant_policy.empty:
+                exclusion_flag = False
+        return exclusion_flag
+
+    def get_masking_filter(self, row, column, store_att_value):
+        if store_att_value in self.split_and_strip(row[column]) or row[column] == self.ALL:
+            return True
+        else:
+            return False
 
     # def set_scif_and_matches_in_data_provider(self, scif, matches):
     #     self.data_provider._set_scene_item_facts(scif)
@@ -152,10 +195,6 @@ class PEPSICOUKCommonToolBox:
             else:
                 Log.warning('Exclusion template: filter in row {} has no action will be omitted'.format(i+1))
         return filters
-
-    @staticmethod
-    def split_and_strip(value):
-        return map(lambda x: x.strip(), str(value).split(','))
 
     def filter_scif_and_matches_for_scene_and_product_filters(self, template_filters, scif, matches):
         filters = self.get_filters_for_scif_and_matches(template_filters)
@@ -223,7 +262,6 @@ class PEPSICOUKCommonToolBox:
     @staticmethod
     def aggregate_matches(matches):
         matches = matches[~(matches['bay_number'] == -1)]
-        # ask about oos equivalent in matches - should not exist for the project
         matches['facings_matches'] = 1
         aggregated_df = matches.groupby(['scene_fk', 'product_fk'], as_index=False).agg({'width_mm_advance': np.sum,
                                                                                          'facings_matches': np.sum})
@@ -295,3 +333,25 @@ class PEPSICOUKCommonToolBox:
         value = 'NO' if not result else 'YES'
         custom_score = self.get_kpi_result_value_pk_by_value(value)
         return custom_score
+
+    def set_filtered_scif_and_matches_for_specific_kpi(self, scif, matches, kpi):
+        try:
+            kpi = int(float(kpi))
+        except ValueError:
+            kpi = kpi
+        if isinstance(kpi, int):
+            kpi = self.get_kpi_type_by_pk(kpi)
+        if self.do_exclusion_rules_apply_to_store(kpi):
+            excl_template_for_kpi = self.exclusion_template[self.exclusion_template['KPI'] == kpi]
+            if not excl_template_for_kpi.empty:
+                template_filters = self.get_filters_dictionary(excl_template_for_kpi)
+                scif, matches = self.filter_scif_and_matches_for_scene_and_product_filters(template_filters, scif, matches)
+        return scif, matches
+
+    def get_kpi_type_by_pk(self, kpi_fk):
+        try:
+            kpi_fk = int(float(kpi_fk))
+            return self.kpi_static_data[self.kpi_static_data['pk'] == kpi_fk]['type'].values[0]
+        except IndexError:
+            Log.info("Kpi name: {} is not equal to any kpi name in static table".format(kpi_fk))
+            return None
