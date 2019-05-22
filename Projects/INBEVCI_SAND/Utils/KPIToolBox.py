@@ -411,8 +411,8 @@ class INBEVCISANDToolBox:
         sos_vs_target_fk = self.common.get_kpi_fk_by_kpi_name(Const.SOS_VS_TARGET)
         # Coolers
         self.calculate_sos_vs_target_per_location_type(sos_vs_target_fk, Const.COOLER_FK, identifier_parent)
-        # Secondary Displays
-        self.calculate_sos_vs_target_per_location_type(sos_vs_target_fk, Const.SECONDARY_DISPLAY_FK, identifier_parent)
+        # Secondary Displays - commented out as we do not need it
+        # self.calculate_sos_vs_target_per_location_type(sos_vs_target_fk, Const.SECONDARY_DISPLAY_FK, identifier_parent)
         # Core Products Secondary Displays
         core_kpi_fk = self.common.get_kpi_fk_by_kpi_type(Const.SOS_VS_TARGET_SECONDARY_CORE)
         self.calculate_sos_vs_target_per_location_type(core_kpi_fk, Const.SECONDARY_DISPLAY_FK, identifier_parent, Const.CORE)
