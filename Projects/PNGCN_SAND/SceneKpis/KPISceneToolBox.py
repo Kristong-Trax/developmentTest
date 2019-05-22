@@ -50,73 +50,58 @@ BODYWASH_SUB_CATEGORY = 'Bodywash'
 OTHER_SUB_CATEGORY = 'Other'
 PCC_BAR_SUB_CATEGORY = 'PCC-Bar'
 PCC_FILTERS = {
-'SFG Bodywash': {'manufacturer_name': PNG_MANUFACTURER, "brand_name": SAFEGUARD_BRAND,
-                 "category": PCC_CATEGORY, 'sub_category': BODYWASH_SUB_CATEGORY},
-'SFG Handwash': {'manufacturer_name': PNG_MANUFACTURER, "brand_name": SAFEGUARD_BRAND,
-                 "category": PCC_CATEGORY, 'sub_category': HANDWASH_SUB_CATEGORY},
-'SFG Other': {'manufacturer_name': PNG_MANUFACTURER, "brand_name": SAFEGUARD_BRAND,
-                 "category": PCC_CATEGORY, 'sub_category': OTHER_SUB_CATEGORY},
-'SFG PCCBAR': {'manufacturer_name': PNG_MANUFACTURER, "brand_name": SAFEGUARD_BRAND,
-                 "category": PCC_CATEGORY, 'sub_category': PCC_BAR_SUB_CATEGORY},
-'OLAY Bodywash': {'manufacturer_name': PNG_MANUFACTURER, "brand_name": OLAY_BRAND,
-                 "category": PCC_CATEGORY, 'sub_category': BODYWASH_SUB_CATEGORY},
-'OLAY Handwash': {'manufacturer_name': PNG_MANUFACTURER, "brand_name": OLAY_BRAND,
-                 "category": PCC_CATEGORY, 'sub_category': HANDWASH_SUB_CATEGORY},
-'OLAY Other': {'manufacturer_name': PNG_MANUFACTURER, "brand_name": OLAY_BRAND,
-                 "category": PCC_CATEGORY, 'sub_category': OTHER_SUB_CATEGORY},
-'OLAY PCCBAR': {'manufacturer_name': PNG_MANUFACTURER, "brand_name": OLAY_BRAND,
-                 "category": PCC_CATEGORY, 'sub_category': PCC_BAR_SUB_CATEGORY},
-'Compatitor PCC': {'manufacturer_name': (PNG_MANUFACTURER, 0), "category": PCC_CATEGORY},
-'PNGOTHER': {'manufacturer_name': PNG_MANUFACTURER,
-                 "category": (PCC_CATEGORY, 0)},
-'Competitor Other': {'manufacturer_name': (PNG_MANUFACTURER, 0),
-                 "category": (PCC_CATEGORY, 0)}
+'SFG Bodywash':  {'population':
+                {'include': [{"manufacturer_name": [PNG_MANUFACTURER],"category": [PCC_CATEGORY],
+                              "brand_name": [SAFEGUARD_BRAND], 'sub_category': [BODYWASH_SUB_CATEGORY]}],
+                 'exclude': {},
+                 'include_operator': 'and'}},
+'SFG Handwash':  {'population':
+                {'include': [{"manufacturer_name": [PNG_MANUFACTURER],"category": [PCC_CATEGORY],
+                              "brand_name": [SAFEGUARD_BRAND], 'sub_category': [HANDWASH_SUB_CATEGORY]}],
+                 'exclude': {},
+                 'include_operator': 'and'}},
+'SFG Other':     {'population':
+                {'include': [{"manufacturer_name": [PNG_MANUFACTURER],"category": [PCC_CATEGORY],
+                              "brand_name": [SAFEGUARD_BRAND], 'sub_category': [OTHER_SUB_CATEGORY]}],
+                 'exclude': {},
+                 'include_operator': 'and'}},
+'SFG PCCBAR':    {'population':
+                {'include': [{"manufacturer_name": [PNG_MANUFACTURER],"category": [PCC_CATEGORY],
+                              "brand_name": [SAFEGUARD_BRAND], 'sub_category': [PCC_BAR_SUB_CATEGORY]}],
+                 'exclude': {},
+                 'include_operator': 'and'}},
+'OLAY Bodywash': {'population':
+                {'include': [{"manufacturer_name": [PNG_MANUFACTURER],"category": [PCC_CATEGORY],
+                              "brand_name": [OLAY_BRAND], 'sub_category': [BODYWASH_SUB_CATEGORY]}],
+                 'exclude': {},
+                 'include_operator': 'and'}},
+'OLAY Handwash':  {'population':
+                {'include': [{"manufacturer_name": [PNG_MANUFACTURER],"category": [PCC_CATEGORY],
+                              "brand_name": [OLAY_BRAND], 'sub_category': [HANDWASH_SUB_CATEGORY]}],
+                 'exclude': {},
+                 'include_operator': 'and'}},
+'OLAY Other':     {'population':
+                {'include': [{"manufacturer_name": [PNG_MANUFACTURER],"category": [PCC_CATEGORY],
+                              "brand_name": [OLAY_BRAND], 'sub_category': [OTHER_SUB_CATEGORY]}],
+                 'exclude': {},
+                 'include_operator': 'and'}},
+'OLAY PCCBAR':    {'population':
+                {'include': [{"manufacturer_name": [PNG_MANUFACTURER],"category": [PCC_CATEGORY],
+                              "brand_name": [OLAY_BRAND], 'sub_category': [PCC_BAR_SUB_CATEGORY]}],
+                 'exclude': {},
+                 'include_operator': 'and'}},
+'Compatitor PCC': {'population': {'include': [{"category": [PCC_CATEGORY]}],
+                 'exclude': {"manufacturer_name": [PNG_MANUFACTURER]},
+                 'include_operator': 'and'}},
+'PNGOTHER':       {'population':
+                {'include': [{"manufacturer_name": [PNG_MANUFACTURER]}],
+                 'exclude': {"category": [PCC_CATEGORY]},
+                 'include_operator': 'and'}},
+'Competitor Other':  {'population':
+                {'include': [{}],
+                 'exclude': {"manufacturer_name": [PNG_MANUFACTURER], "category": [PCC_CATEGORY]},
+                 'include_operator': 'and'}}
 }
-
-
-# PCC_FILTERS = {
-# 'SFG Bodywash': {'include': [{"manufacturer_name": [PNG_MANUFACTURER],"category": [PCC_CATEGORY],
-#                               "brand_name": [SAFEGUARD_BRAND], 'sub_category': [BODYWASH_SUB_CATEGORY]}],
-#                  'exclude': {},
-#                  'include_operator': 'and'},
-# 'SFG Handwash': {'include': [{"manufacturer_name": [PNG_MANUFACTURER],"category": [PCC_CATEGORY],
-#                               "brand_name": [SAFEGUARD_BRAND], 'sub_category': [HANDWASH_SUB_CATEGORY]}],
-#                  'exclude': {},
-#                  'include_operator': 'and'},
-# 'SFG Other':    {'include': [{"manufacturer_name": [PNG_MANUFACTURER],"category": [PCC_CATEGORY],
-#                               "brand_name": [SAFEGUARD_BRAND], 'sub_category': [OTHER_SUB_CATEGORY]}],
-#                  'exclude': {},
-#                  'include_operator': 'and'},
-# 'SFG PCCBAR':   {'include': [{"manufacturer_name": [PNG_MANUFACTURER],"category": [PCC_CATEGORY],
-#                               "brand_name": [SAFEGUARD_BRAND], 'sub_category': [PCC_BAR_SUB_CATEGORY]}],
-#                  'exclude': {},
-#                  'include_operator': 'and'},
-# 'OLAY Bodywash': {'include': [{"manufacturer_name": [PNG_MANUFACTURER],"category": [PCC_CATEGORY],
-#                               "brand_name": [OLAY_BRAND], 'sub_category': [BODYWASH_SUB_CATEGORY]}],
-#                  'exclude': {},
-#                  'include_operator': 'and'},
-# 'OLAY Handwash': {'include': [{"manufacturer_name": [PNG_MANUFACTURER],"category": [PCC_CATEGORY],
-#                               "brand_name": [OLAY_BRAND], 'sub_category': [HANDWASH_SUB_CATEGORY]}],
-#                  'exclude': {},
-#                  'include_operator': 'and'},
-# 'OLAY Other':    {'include': [{"manufacturer_name": [PNG_MANUFACTURER],"category": [PCC_CATEGORY],
-#                               "brand_name": [OLAY_BRAND], 'sub_category': [OTHER_SUB_CATEGORY]}],
-#                  'exclude': {},
-#                  'include_operator': 'and'},
-# 'OLAY PCCBAR':   {'include': [{"manufacturer_name": [PNG_MANUFACTURER],"category": [PCC_CATEGORY],
-#                               "brand_name": [OLAY_BRAND], 'sub_category': [PCC_BAR_SUB_CATEGORY]}],
-#                  'exclude': {},
-#                  'include_operator': 'and'},
-# 'Compatitor PCC':{'include': [{"category": [PCC_CATEGORY]}],
-#                  'exclude': {"manufacturer_name": [PNG_MANUFACTURER]},
-#                  'include_operator': 'and'},
-# 'PNGOTHER':      {'include': [{"manufacturer_name": [PNG_MANUFACTURER]}],
-#                  'exclude': {"category": [PCC_CATEGORY]},
-#                  'include_operator': 'and'},
-# 'Competitor Other': {'include': [{}],
-#                  'exclude': {"manufacturer_name": [PNG_MANUFACTURER], "category": [PCC_CATEGORY]},
-#                  'include_operator': 'and'}
-# }
 
 class PngcnSceneKpis(object):
     def __init__(self, project_connector, common, scene_id, data_provider=None):
@@ -207,10 +192,8 @@ class PngcnSceneKpis(object):
 
         kpi_fk = self.common.get_kpi_fk_by_kpi_name(EYE_LEVEL_KPI)
         for key in PCC_FILTERS.keys():
-            # filter_frag = self.parser.filter_df(PCC_FILTERS[key], full_df)
-            filter_frag = self.tools.get_filter_condition(full_df, **PCC_FILTERS[key])
-            frag_df = full_df[filter_frag]
-            full_df = full_df[~filter_frag]
+            frag_df = self.parser.filter_df(PCC_FILTERS[key], full_df)
+            full_df.drop(frag_df.index, axis=0, inplace=True)
             for i, row in frag_df.iterrows():
                 entity_fk = entity_df[entity_df['entity_name'] == key]['entity_fk'].values[0]
                 product_fk = row['product_fk']
@@ -221,8 +204,6 @@ class PngcnSceneKpis(object):
                 self.common.write_to_db_result(fk=kpi_fk, numerator_id=product_fk, result=facing_sequence_number,
                             numerator_result=bay_number, denominator_result=shelf_number,
                             denominator_id=entity_fk, score=0, context_id=category_fk, target=None, by_scene=True)
-
-        return 0
 
     def get_eye_level_shelves(self, df):
         if df.empty:
