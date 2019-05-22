@@ -7,7 +7,9 @@ from KPIUtils_v2.DB.CommonV2 import Common
 from Projects.CBCDAIRYIL.Utils.Consts import Consts
 from KPIUtils_v2.Calculations.SurveyCalculations import Survey
 from KPIUtils_v2.Calculations.BlockCalculations import Block
+from KPIUtils_v2.Calculations.EyeLevelCalculations import calculate_eye_level, filter_df_by_shelves
 from KPIUtils_v2.Calculations.CalculationsUtils.GENERALToolBoxCalculations import GENERALToolBox
+import pandas as pd
 
 __author__ = 'idanr'
 
@@ -94,7 +96,7 @@ class CBCDAIRYILToolBox:
             kpi_weight = self.get_kpi_weight(kpi_name, kpi_set)
             total_set_scores.append((kpi_results, kpi_weight))
         self.calculate_kpis_and_save_to_db(total_set_scores, kpi_set_fk)  # Set level
-        self.handle_gaps()
+        # self.handle_gaps()    # TODO TODO TODO
 
     def add_gap(self, atomic_kpi, score):
         """
@@ -135,7 +137,7 @@ class CBCDAIRYILToolBox:
         """
         kpi_score = self.calculate_kpi_result_by_weight(kpi_results)
         self.common.write_to_db_result(fk=kpi_fk, numerator_id=Consts.CBCIL_MANUFACTURER,
-                                       denominator_id=self.store_id,
+                                       denominator_id=self.store_id, identifier_result=kpi_fk,
                                        identifier_parent=parent_fk,
                                        result=kpi_score, score=kpi_score, should_enter=True)
         return kpi_score
@@ -185,20 +187,20 @@ class CBCDAIRYILToolBox:
             num_result = denominator_result = 0
             if general_filters is None:
                 continue
-            elif kpi_type in [Consts.AVAILABILITY]:
-                atomic_score = self.calculate_availability(**general_filters)
-            elif kpi_type == Consts.AVAILABILITY_FROM_BOTTOM:
-                atomic_score = self.calculate_availability_from_bottom(**general_filters)
-            elif kpi_type == Consts.MIN_2_AVAILABILITY:
-                num_result, denominator_result, atomic_score = self.calculate_min_2_availability(**general_filters)
-            elif kpi_type == Consts.SURVEY:
-                atomic_score = self.calculate_survey(**general_filters)
-            elif kpi_type == Consts.BRAND_BLOCK:
-                atomic_score = self.calculate_brand_block(**general_filters)
+            # elif kpi_type in [Consts.AVAILABILITY]:
+            #     atomic_score = self.calculate_availability(**general_filters)
+            # elif kpi_type == Consts.AVAILABILITY_FROM_BOTTOM:
+            #     atomic_score = self.calculate_availability_from_bottom(**general_filters)
+            # elif kpi_type == Consts.MIN_2_AVAILABILITY:
+            #     num_result, denominator_result, atomic_score = self.calculate_min_2_availability(**general_filters)
+            # elif kpi_type == Consts.SURVEY:
+            #     atomic_score = self.calculate_survey(**general_filters)
+            # elif kpi_type == Consts.BRAND_BLOCK:
+            #     atomic_score = self.calculate_brand_block(**general_filters)
             elif kpi_type == Consts.EYE_LEVEL:
                 atomic_score = self.calculate_eye_level(**general_filters)
             else:
-                Log.warning(Consts.UNSUPPORTED_KPI_LOG.format(kpi_type))
+                # Log.warning(Consts.UNSUPPORTED_KPI_LOG.format(kpi_type))
                 continue
             if atomic_score is None:  # In cases that we need to ignore the KPI and divide it's weight
                 continue
@@ -296,7 +298,7 @@ class CBCDAIRYILToolBox:
         if not relevant_scenes:
             return None
         else:
-            general_filters[Consts.KPI_FILTERS][Consts.SCENE_FK] = relevant_scenes
+            general_filters[Consts.KPI_FILTERS][Consts.SCENE_ID] = relevant_scenes
         for type_col, value_col in Consts.KPI_FILTER_VALUE_LIST:
             if params[value_col]:       # CHANGE TO type_col?? TODO TODO TODO TODO TODO TODO
                 should_included = Consts.INCLUDE_VAL if value_col != Consts.PARAMS_VALUE_3 else Consts.EXCLUDE_VAL
@@ -318,6 +320,7 @@ class CBCDAIRYILToolBox:
                      values_list)
         return params
 
+
     def get_kpi_weight(self, kpi, kpi_set):
         """
         This method returns the KPI weight according to the project's template.
@@ -330,19 +333,34 @@ class CBCDAIRYILToolBox:
         weight = row.get(Consts.WEIGHT)
         return float(weight.values[0]) if not weight.empty else None
 
-    def calculate_eye_level(self, **general_filters):
+    def merge_and_filter_scif_and_matches_for_eye_level(self, **kpi_filters):
         """
 
-        :param general_filters: A dictionary with the relevant KPI filters.
         :return:
         """
-        filtered_scif = self.calculate_availability(return_df=True, **general_filters)
-        total_number_of_facings = filtered_scif[Consts.FACINGS].sum()
-        # Adding Golden Shelves filters
-        general_filters[Consts.KPI_FILTERS].update({Consts.SHELF_NUM_FROM_BOTTOM: Consts.GOLDEN_SHELVES})
-        golden_shelves_matches = self.get_filtered_matches(**general_filters)
-        score = len(golden_shelves_matches) / float(total_number_of_facings) if total_number_of_facings else 0
-        return 100 if score >= 0.75 else score
+        scif_matches_diff = self.match_product_in_scene[['scene_fk', 'product_fk'] +
+                                                        list(self.match_product_in_scene.keys().difference(
+                                                            self.scif.keys()))]
+        merged_df = pd.merge(self.scif[self.scif.facings != 0], scif_matches_diff, how='outer',
+                             left_on=['scene_id', 'item_id'], right_on=[Consts.SCENE_FK, Consts.PRODUCT_FK])
+        # merged_df = merged_df[self.general_toolbox.get_filter_condition(merged_df, **kpi_filters)] # TODO TODO TODO TODO TODO TODO TODO this is fine!
+        merged_df = merged_df[(merged_df['scene_id'].isin([331])) & (merged_df['brand_name'] == 'Terra')]
+        return merged_df
+
+    def calculate_eye_level(self, **general_filters):
+        """
+        This function calculates the Eye level KPI. It filters and products according to the template and
+        returns a Tuple: (eye_level_facings / total_facings, score).
+        :param general_filters: A dictionary with the relevant KPI filters.
+        :return: E.g: (10, 20, 50) or (8, 10, 100) - score >= 75 turns to 100.
+        """
+        merged_df = self.merge_and_filter_scif_and_matches_for_eye_level(**general_filters[Consts.KPI_FILTERS])
+        total_number_of_facings = len(merged_df)
+        merged_df = filter_df_by_shelves(merged_df, Consts.EYE_LEVEL_PER_SHELF)
+        eye_level_facings = len(merged_df)
+        total_score = eye_level_facings / float(total_number_of_facings) if total_number_of_facings else 0
+        total_score = 100 if total_score >= 0.75 else total_score
+        return eye_level_facings, total_number_of_facings, total_score
 
     def get_filtered_matches(self, **general_filters):
         """
@@ -356,7 +374,7 @@ class CBCDAIRYILToolBox:
         return filtered_matches
 
     def calculate_availability_from_bottom(self, **general_filters):
-        """        allowed_products_dict = self.get_allowed_product_by_params(**general_filters)
+        """
         This function checks if *all* of the relevant products are in the lowest shelf.
         :param general_filters: A dictionary with the relevant KPI filters.
         :return:
@@ -369,7 +387,7 @@ class CBCDAIRYILToolBox:
         if relevant_shelves_to_check and not all([shelf == Consts.LOWEST_SHELF for shelf in relevant_shelves_to_check]):
             return 0
         products_filtered_matches = filtered_matches[Consts.EAN_CODE].unique().tolist()
-        products_to_check = general_filters[Consts.KPI_FILTERS][Consts.PARAMS_TYPE_1]
+        products_to_check = general_filters[Consts.KPI_FILTERS][Consts.EA]
         return 100 if len(products_to_check) == len(products_filtered_matches) else 0
 
     def calculate_brand_block(self, **general_filters):
@@ -460,7 +478,19 @@ class CBCDAIRYILToolBox:
         filtered_df = self.calculate_availability(return_df=True, **general_filters)
         facings_counter = self.get_number_of_facings_per_product_dict(filtered_df, ignore_stack=True)
         for products in self.passed_availability:
-            score += 1 if sum([facings_counter[product] for product in products]) > 1 else 0
+            score += 1 if sum(
+                [facings_counter[product] for product in products if product in facings_counter]) > 1 else 0
         total_score = score / float(len(self.passed_availability)) if self.passed_availability else 0
         return score, len(self.passed_availability), total_score
     ### todo : check !!!!!!!!!!!!
+
+    def handle_empty_sessions(self):
+        """
+        In case there aren't any scenes at all - only one question should be saved.
+        """
+        for question_code in Consts.QUESTION_CODES_FOR_EMPTY_SESSIONS:
+            answer = self.survey.get_survey_answer((Consts.CODE, question_code))
+            # self.common.write_to_db_result(fk=kpi_fk, numerator_id=Consts.CBCIL_MANUFACTURER,
+            #                                denominator_id=self.store_id, result=kpi_score, score=kpi_score)
+            # TODO : WHERE SHOULD IT BE SAVED ???
+

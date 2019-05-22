@@ -67,12 +67,12 @@ class Consts(object):
 
     # Filters
     KPI_FILTERS = 'filters'
-    ALL = 'All'
-    FILTER_PARAM_1 = 'param1'
-    FILTER_PARAM_2 = 'param2'
-    FILTER_PARAM_3 = 'param3'
     EXCLUDE_VAL = 0
     INCLUDE_VAL = 1
+
+    # Eye level calculation
+    EYE_LEVEL_PER_SHELF = [{'min': 3, 'max': 4, 'top': 0, 'bottom': 1}, {'min': 5, 'max': 6, 'top': 1, 'bottom': 2},
+                           {'min': 7, 'max': 100, 'top': 1, 'bottom': 2}]
 
     # CBC data
     CBCIL_MANUFACTURER = 45
@@ -88,6 +88,7 @@ class Consts(object):
     GENERAL = u'כללי'
     ARAB = u'ערבי'
     ORTHODOX = u'חרדי'
+    QUESTION_CODES_FOR_EMPTY_SESSIONS = [9]
 
     # Gaps
     GAPS_QUERY = "insert into pservice.custom_gaps (session_fk, gap_category, name, priority) values ({},{},{},{})"
