@@ -646,7 +646,8 @@ class INBEVCISANDToolBox:
         kpi_lvl2_name = self.get_kpi_type_by_pk(row['kpi_fk_lvl2'])
         kpi_fk = self.common.get_kpi_fk_by_kpi_type('{} MR'.format(kpi_lvl2_name)) if np.isnan(row['kpi_fk_lvl1']) or row['kpi_fk_lvl1'] is None \
                                                                                         else row['kpi_fk_lvl2']
-        identifier_parent = {'kpi_fk': kpi_fk}
+        identifier_parent = {'kpi_fk': kpi_fk} if np.isnan(row['kpi_fk_lvl1']) or row['kpi_fk_lvl1'] is None \
+            else {'kpi_fk': kpi_fk, 'ass_group':row['assortment_group_fk']}
         return identifier_parent
 
     def get_identifier_parent_assortment_lvl1(self, row):
@@ -756,7 +757,8 @@ class INBEVCISANDToolBox:
         lvl1_result = self.update_targets(lvl1_result)
         lvl1_result['mr_lvl1_parent_fk'] = lvl1_result['kpi_fk_lvl1'].apply(lambda x: \
                                                         self.common.get_kpi_fk_by_kpi_type('{} MR'.format(self.get_kpi_type_by_pk(x))))
-        lvl1_result['identifier_parent_lvl1'] = lvl1_result['mr_lvl1_parent_fk'].apply(lambda x: {'kpi_fk': x})
+        # lvl1_result['identifier_parent_lvl1'] = lvl1_result['mr_lvl1_parent_fk'].apply(lambda x: {'kpi_fk': x})
+        lvl1_result['identifier_parent_lvl1'] = lvl1_result.apply(self.get_identifier_parent_assortment_lvl1, axis=1)
         for result in lvl1_result.itertuples():
             denominator_res = result.total
             numerator_res = result.passes
@@ -823,7 +825,7 @@ class INBEVCISANDToolBox:
             self.common.write_to_db_result(fk=oos_sku_fk, result=result, score=result * 100,
                                            denominator_id=oos_fk, denominator_result=1,
                                            numerator_id=res.product_fk, numerator_result=result,
-                                           identifier_parent=oos_identifier_parent, should_enter=True)
+                                           identifier_parent=oos_mr_ident_parent, should_enter=True)
         oos_numerator = len(must_have_results[must_have_results['in_store'] == 0])
         denominator = len(must_have_results['in_store'])
         oos_res = 0
@@ -831,9 +833,10 @@ class INBEVCISANDToolBox:
             oos_res = np.divide(float(oos_numerator), float(denominator)) * 100
         self.common.write_to_db_result(fk=oos_fk, result=oos_res, score=oos_res,
                                        denominator_result=denominator, numerator_result=oos_numerator,
-                                       numerator_id=oos_fk, identifier_parent=oos_mr_ident_parent,
-                                       identifier_result=oos_identifier_parent,
-                                       should_enter=True)
+                                       numerator_id=oos_fk)
+                                       #  identifier_parent=oos_mr_ident_parent,
+                                       # identifier_result=oos_identifier_parent,
+                                       # should_enter=True)
         self.common.write_to_db_result(fk=oos_mr_kpi_fk, result=oos_res, score=oos_res,
                                        denominator_result=denominator, numerator_result=oos_numerator,
                                        numerator_id=self.own_manuf_fk, denominator_id=self.store_id,
