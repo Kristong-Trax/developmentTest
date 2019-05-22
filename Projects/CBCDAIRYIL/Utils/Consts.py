@@ -44,6 +44,7 @@ class Consts(object):
     # General Attributes
     CODE = 'code'
     QUESTION_ID = 'question_id'
+    QUESTION_FK = 'question_fk'
     SHELF_NUM_FROM_BOTTOM = 'shelf_number_from_bottom'
     MIN_BLOCK_RATIO = 0.8
     MIN_FACINGS_IN_BLOCK = 3
@@ -81,17 +82,16 @@ class Consts(object):
     SURVEY_ANSWERS_TO_IGNORE = [u'הסידור אינו קטגוריאלי', u'אין מותגים אחרים']
     HEBREW_YES = u'כן'
     HEBREW_NO = u'לא'
-    GOLDEN_SHELVES = [3, 4]
     LOWEST_SHELF = 1
     DYNAMO = u'דינמי פרטי'
     MINI_MARKET = u'מינימרקט'
     GENERAL = u'כללי'
     ARAB = u'ערבי'
     ORTHODOX = u'חרדי'
-    QUESTION_CODES_FOR_EMPTY_SESSIONS = [9]
+    QUESTION_IDS_FOR_EMPTY_SESSIONS = [9]
 
     # Gaps
-    GAPS_QUERY = "insert into pservice.custom_gaps (session_fk, gap_category, name, priority) values ({},{},{},{})"
+    GAPS_QUERY = """insert into pservice.custom_gaps (session_fk, gap_category, name, priority) values (%s,%s,%s,%s)"""
     PRIORITY = 'priority'
     SCORE = 'score'
 

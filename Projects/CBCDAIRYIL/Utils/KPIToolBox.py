@@ -96,7 +96,7 @@ class CBCDAIRYILToolBox:
             kpi_weight = self.get_kpi_weight(kpi_name, kpi_set)
             total_set_scores.append((kpi_results, kpi_weight))
         self.calculate_kpis_and_save_to_db(total_set_scores, kpi_set_fk)  # Set level
-        # self.handle_gaps()    # TODO TODO TODO
+        self.handle_gaps()    # TODO TODO TODO
 
     def add_gap(self, atomic_kpi, score):
         """
@@ -124,7 +124,7 @@ class CBCDAIRYILToolBox:
         self.kpis_gaps.sort(key=self.sort_by_priority)
         for gap in self.kpis_gaps[:5]:
             kpi_name, atomic_name, priority = gap[Consts.KPI_NAME], gap[Consts.KPI_ATOMIC_NAME], gap[Consts.PRIORITY]
-            gap_query = Consts.GAPS_QUERY.format(self.session_fk, kpi_name, atomic_name, priority)
+            gap_query = Consts.GAPS_QUERY % (self.session_fk, kpi_name, atomic_name, priority)
             self.common.execute_custom_query(gap_query)
             # Todo: Optional: change to one query with values?
 
@@ -187,20 +187,20 @@ class CBCDAIRYILToolBox:
             num_result = denominator_result = 0
             if general_filters is None:
                 continue
-            # elif kpi_type in [Consts.AVAILABILITY]:
-            #     atomic_score = self.calculate_availability(**general_filters)
-            # elif kpi_type == Consts.AVAILABILITY_FROM_BOTTOM:
-            #     atomic_score = self.calculate_availability_from_bottom(**general_filters)
-            # elif kpi_type == Consts.MIN_2_AVAILABILITY:
-            #     num_result, denominator_result, atomic_score = self.calculate_min_2_availability(**general_filters)
-            # elif kpi_type == Consts.SURVEY:
-            #     atomic_score = self.calculate_survey(**general_filters)
-            # elif kpi_type == Consts.BRAND_BLOCK:
-            #     atomic_score = self.calculate_brand_block(**general_filters)
+            elif kpi_type in [Consts.AVAILABILITY]:
+                atomic_score = self.calculate_availability(**general_filters)
+            elif kpi_type == Consts.AVAILABILITY_FROM_BOTTOM:
+                atomic_score = self.calculate_availability_from_bottom(**general_filters)
+            elif kpi_type == Consts.MIN_2_AVAILABILITY:
+                num_result, denominator_result, atomic_score = self.calculate_min_2_availability(**general_filters)
+            elif kpi_type == Consts.SURVEY:
+                atomic_score = self.calculate_survey(**general_filters)
+            elif kpi_type == Consts.BRAND_BLOCK:
+                atomic_score = self.calculate_brand_block(**general_filters)
             elif kpi_type == Consts.EYE_LEVEL:
-                atomic_score = self.calculate_eye_level(**general_filters)
+                num_result, denominator_result, atomic_score = self.calculate_eye_level(**general_filters)
             else:
-                # Log.warning(Consts.UNSUPPORTED_KPI_LOG.format(kpi_type))
+                Log.warning(Consts.UNSUPPORTED_KPI_LOG.format(kpi_type))
                 continue
             if atomic_score is None:  # In cases that we need to ignore the KPI and divide it's weight
                 continue
@@ -343,8 +343,8 @@ class CBCDAIRYILToolBox:
                                                             self.scif.keys()))]
         merged_df = pd.merge(self.scif[self.scif.facings != 0], scif_matches_diff, how='outer',
                              left_on=['scene_id', 'item_id'], right_on=[Consts.SCENE_FK, Consts.PRODUCT_FK])
-        # merged_df = merged_df[self.general_toolbox.get_filter_condition(merged_df, **kpi_filters)] # TODO TODO TODO TODO TODO TODO TODO this is fine!
-        merged_df = merged_df[(merged_df['scene_id'].isin([331])) & (merged_df['brand_name'] == 'Terra')]
+        # merged_df = merged_df[self.general_toolbox.get_filter_condition(merged_df, **kpi_filters)]    # TODO TODO TODO TODO TODO TODO TODO this is fine!
+        merged_df = merged_df[(merged_df['scene_id'].isin([339])) & (merged_df['brand_name'].isin(['Terra', 'Muller Prof']))]
         return merged_df
 
     def calculate_eye_level(self, **general_filters):
@@ -352,7 +352,7 @@ class CBCDAIRYILToolBox:
         This function calculates the Eye level KPI. It filters and products according to the template and
         returns a Tuple: (eye_level_facings / total_facings, score).
         :param general_filters: A dictionary with the relevant KPI filters.
-        :return: E.g: (10, 20, 50) or (8, 10, 100) - score >= 75 turns to 100.
+        :return: E.g: (10, 20, 50) or (8, 10, 100) --> score >= 75 turns to 100.
         """
         merged_df = self.merge_and_filter_scif_and_matches_for_eye_level(**general_filters[Consts.KPI_FILTERS])
         total_number_of_facings = len(merged_df)
@@ -382,13 +382,9 @@ class CBCDAIRYILToolBox:
         allowed_products_dict = self.get_allowed_product_by_params(**general_filters)
         filtered_matches = self.match_product_in_scene[
             self.match_product_in_scene[Consts.PRODUCT_FK].isin(allowed_products_dict[Consts.PRODUCT_FK])]
-        relevant_shelves_to_check = filtered_matches[Consts.SHELF_NUM_FROM_BOTTOM].unique().tolist()
+        relevant_shelves_to_check = set(filtered_matches[Consts.SHELF_NUM_FROM_BOTTOM].unique().tolist())
         # Check bottom shelf condition
-        if relevant_shelves_to_check and not all([shelf == Consts.LOWEST_SHELF for shelf in relevant_shelves_to_check]):
-            return 0
-        products_filtered_matches = filtered_matches[Consts.EAN_CODE].unique().tolist()
-        products_to_check = general_filters[Consts.KPI_FILTERS][Consts.EA]
-        return 100 if len(products_to_check) == len(products_filtered_matches) else 0
+        return 0 if len(relevant_shelves_to_check) != 1 or Consts.LOWEST_SHELF not in relevant_shelves_to_check else 100
 
     def calculate_brand_block(self, **general_filters):
         """
@@ -488,8 +484,8 @@ class CBCDAIRYILToolBox:
         """
         In case there aren't any scenes at all - only one question should be saved.
         """
-        for question_code in Consts.QUESTION_CODES_FOR_EMPTY_SESSIONS:
-            answer = self.survey.get_survey_answer((Consts.CODE, question_code))
+        for question_fk in Consts.QUESTION_IDS_FOR_EMPTY_SESSIONS:
+            answer = self.survey.get_survey_answer((Consts.QUESTION_FK, question_fk))
             # self.common.write_to_db_result(fk=kpi_fk, numerator_id=Consts.CBCIL_MANUFACTURER,
             #                                denominator_id=self.store_id, result=kpi_score, score=kpi_score)
             # TODO : WHERE SHOULD IT BE SAVED ???
