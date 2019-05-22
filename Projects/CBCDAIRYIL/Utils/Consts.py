@@ -91,7 +91,8 @@ class Consts(object):
     QUESTION_IDS_FOR_EMPTY_SESSIONS = [9]
 
     # Gaps
-    GAPS_QUERY = """insert into pservice.custom_gaps (session_fk, gap_category, name, priority) values (%s,%s,%s,%s)"""
+    GAPS_QUERY = """insert into pservice.custom_gaps (session_fk, gap_category, name, priority)
+        values ({},'{}','{}','{}')"""
     PRIORITY = 'priority'
     SCORE = 'score'
 

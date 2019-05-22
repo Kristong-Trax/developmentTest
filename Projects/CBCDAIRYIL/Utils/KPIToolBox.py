@@ -124,9 +124,15 @@ class CBCDAIRYILToolBox:
         self.kpis_gaps.sort(key=self.sort_by_priority)
         for gap in self.kpis_gaps[:5]:
             kpi_name, atomic_name, priority = gap[Consts.KPI_NAME], gap[Consts.KPI_ATOMIC_NAME], gap[Consts.PRIORITY]
-            gap_query = Consts.GAPS_QUERY % (self.session_fk, kpi_name, atomic_name, priority)
+            kpi_name = (unicode(kpi_name).replace("'", "\\'").encode('utf-8'))
+            atomic_name = (unicode(atomic_name).replace("'", "\\'").encode('utf-8'))
+            gap_query = Consts.GAPS_QUERY.format(self.session_fk, kpi_name, atomic_name, priority)
             self.common.execute_custom_query(gap_query)
             # Todo: Optional: change to one query with values?
+
+            x = (unicode(kpi_name).replace("'", "\\'").encode('utf-8'))
+            y = (unicode(atomic_name).replace("'", "\\'").encode('utf-8'))
+            gap_query = Consts.GAPS_QUERY.format(self.session_fk, x, y, priority)
 
     def calculate_kpis_and_save_to_db(self,  kpi_results, kpi_fk, parent_fk=None):
         """
