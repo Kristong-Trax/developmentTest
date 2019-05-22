@@ -23,7 +23,7 @@ ATT_5_LIST = ['National-Meals', 'Customer-Meals', 'Local-Meals', 'No POP', 'Nati
           'Customer-Refreshment', 'National-HomeMediaLeisure', 'Cutomer-HomeMediaLeisure', 'Local-HomeMediaLeisure',
           'All Other-Hydration']
 STORE_TYPE_LIST=['LS','CR','Drug','Value']
-TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'TemplateV4.xlsx')
+TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'TemplateV5.xlsx')
 
 
 def log_runtime(description, log_start=False):
@@ -84,7 +84,9 @@ class SpecialProgramsToolBox:
         """
         This function calculates the KPI results.
         """
-        if str(self.visit_date)>='2018-01-14' and str(self.visit_date)<='2018-02-15':
+        if (str(self.visit_date)>='2018-01-14' and str(self.visit_date)<='2018-02-15') or \
+                (str(self.visit_date) >= '2019-03-02' and str(self.visit_date) <= '2019-04-01') or \
+                (str(self.visit_date) >= '2019-01-12' and str(self.visit_date) <= '2019-02-05'):
             scenes = self.scif['scene_id'].unique().tolist()
             if scenes:
                 for scene in scenes:

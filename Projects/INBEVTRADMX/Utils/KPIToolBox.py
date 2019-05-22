@@ -28,7 +28,8 @@ __author__ = 'yoava_Jasmine_Elyashiv'
 KPI_RESULT = 'report.kpi_results'
 KPK_RESULT = 'report.kpk_results'
 KPS_RESULT = 'report.kps_results'
-
+DISPLAY_KPI = 'DISPLAY_IN_SESSION'
+POSM_KPI = 'POSM_PRODUCTS'
 
 class INBEVTRADMXToolBox:
     LEVEL1 = 1
@@ -62,6 +63,7 @@ class INBEVTRADMXToolBox:
                                               self.kpi_static_data, self.common, self.common2)
         self.new_static_data = self.common2.kpi_static_data
         self.manufacturer_fk = 1
+        self.match_displays_in_scene = self.data_provider.match_display_in_scene
 
     # init functions:
 
@@ -101,6 +103,7 @@ class INBEVTRADMXToolBox:
 
         # calculate from template
         self.calculate_kpi_set_from_template()
+        self.calculate_posm_displays()
         self.common.commit_results_data()
         self.common2.commit_results_data()
 
@@ -294,7 +297,6 @@ class INBEVTRADMXToolBox:
     def calculate_sos_ratio(self, df, filters_dict, inv):
         ratio = 0
 
-
         if 'manufacturer_name' in df.columns.tolist():
             filter_out =  df[(df['product_type'] ==('Empty')) & (df['manufacturer_name'] == 'General')].index
             df.drop(filter_out, inplace=True)
@@ -475,6 +477,19 @@ class INBEVTRADMXToolBox:
             return False
 
     # help functions:
+
+    def calculate_posm_displays(self):
+        new_kpi_set_fk = self.common2.get_kpi_fk_by_kpi_name(DISPLAY_KPI)
+        for display_fk in self.match_displays_in_scene['display_fk'].to_list():
+            self.common2.write_to_db_result(fk=new_kpi_set_fk, result=0,
+                                            numerator_id=self.manufacturer_fk, denominator_id=display_fk)
+
+        new_kpi_set_fk = self.common2.get_kpi_fk_by_kpi_name(POSM_KPI)
+        for product_fk in self.scif['product_fk'][self.scif['location_type'] == 'POSM'].to_list():
+            self.common2.write_to_db_result(fk=new_kpi_set_fk, result=0,
+                                            numerator_id=self.manufacturer_fk, denominator_id=product_fk)
+
+
 
     def handle_exclude_skus(self, filters_dict, relevant_columns, row):
         """

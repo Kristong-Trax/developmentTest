@@ -25,6 +25,7 @@ class INBEVCISANDGenerator:
         if self.tool_box.scif.empty:
             Log.warning('Scene item facts is empty for this session: {}'.format(self.session_uid))
             return
-        for set_name in Const.SET_NAMES:
-            self.tool_box.main_calculation(set_name=set_name)
+        self.tool_box.main_calculation()
+        # for set_name in Const.SET_NAMES:
+        #     self.tool_box.main_calculation(set_name=set_name)
         self.tool_box.common.commit_results_data()
