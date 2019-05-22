@@ -7,7 +7,7 @@ from KPIUtils_v2.DB.CommonV2 import Common
 from Projects.CBCDAIRYIL.Utils.Consts import Consts
 from KPIUtils_v2.Calculations.SurveyCalculations import Survey
 from KPIUtils_v2.Calculations.BlockCalculations import Block
-from KPIUtils_v2.Calculations.EyeLevelCalculations import calculate_eye_level, filter_df_by_shelves
+from KPIUtils_v2.Calculations.EyeLevelCalculations import filter_df_by_shelves
 from KPIUtils_v2.Calculations.CalculationsUtils.GENERALToolBoxCalculations import GENERALToolBox
 import pandas as pd
 
@@ -136,10 +136,10 @@ class CBCDAIRYILToolBox:
         :param parent_fk: The KPI SET FK that the KPI "belongs" too if exist.
         """
         kpi_score = self.calculate_kpi_result_by_weight(kpi_results)
-        self.common.write_to_db_result(fk=kpi_fk, numerator_id=Consts.CBCIL_MANUFACTURER,
-                                       denominator_id=self.store_id, identifier_result=kpi_fk,
-                                       identifier_parent=parent_fk,
-                                       result=kpi_score, score=kpi_score, should_enter=True)
+        self.common.write_to_db_result(fk=kpi_fk, numerator_id=Consts.CBCIL_MANUFACTURER, numerator_result=kpi_score,
+                                       denominator_id=self.store_id, denominator_result=100, identifier_result=kpi_fk,
+                                       identifier_parent=parent_fk, result=kpi_score, score=kpi_score,
+                                       should_enter=True)
         return kpi_score
 
     def calculate_kpi_result_by_weight(self, kpi_results):
@@ -252,7 +252,6 @@ class CBCDAIRYILToolBox:
         :return: A DataFrame with filtered Data by store attributes.
         """
         kpis_template = parse_template(Consts.TEMPLATE_PATH, Consts.KPI_SHEET, lower_headers_row_index=1)
-        # return kpis_template # TODO TODO TODO REMOVE
         relevant_store_info = self.get_store_attributes(Consts.STORE_ATTRIBUTES_TO_FILTER_BY)
         filtered_data = self.filter_template_by_store_att(kpis_template, relevant_store_info)
         return filtered_data
@@ -300,7 +299,7 @@ class CBCDAIRYILToolBox:
         else:
             general_filters[Consts.KPI_FILTERS][Consts.SCENE_ID] = relevant_scenes
         for type_col, value_col in Consts.KPI_FILTER_VALUE_LIST:
-            if params[value_col]:       # CHANGE TO type_col?? TODO TODO TODO TODO TODO TODO
+            if params[value_col]:
                 should_included = Consts.INCLUDE_VAL if value_col != Consts.PARAMS_VALUE_3 else Consts.EXCLUDE_VAL
                 param_type, param_value = params[type_col], params[value_col]
                 filter_param = self.handle_param_values(param_type, param_value)
@@ -319,7 +318,6 @@ class CBCDAIRYILToolBox:
         params = map(lambda val: float(val) if unicode.isdigit(val) and param_type != Consts.EAN_CODE else val.strip(),
                      values_list)
         return params
-
 
     def get_kpi_weight(self, kpi, kpi_set):
         """
@@ -343,8 +341,7 @@ class CBCDAIRYILToolBox:
                                                             self.scif.keys()))]
         merged_df = pd.merge(self.scif[self.scif.facings != 0], scif_matches_diff, how='outer',
                              left_on=['scene_id', 'item_id'], right_on=[Consts.SCENE_FK, Consts.PRODUCT_FK])
-        # merged_df = merged_df[self.general_toolbox.get_filter_condition(merged_df, **kpi_filters)]    # TODO TODO TODO TODO TODO TODO TODO this is fine!
-        merged_df = merged_df[(merged_df['scene_id'].isin([339])) & (merged_df['brand_name'].isin(['Terra', 'Muller Prof']))]
+        merged_df = merged_df[self.general_toolbox.get_filter_condition(merged_df, **kpi_filters)]
         return merged_df
 
     def calculate_eye_level(self, **general_filters):
@@ -478,15 +475,16 @@ class CBCDAIRYILToolBox:
                 [facings_counter[product] for product in products if product in facings_counter]) > 1 else 0
         total_score = score / float(len(self.passed_availability)) if self.passed_availability else 0
         return score, len(self.passed_availability), total_score
-    ### todo : check !!!!!!!!!!!!
+        # todo : check !!!!!!!!!!!!
 
     def handle_empty_sessions(self):
         """
         In case there aren't any scenes at all - only one question should be saved.
         """
-        for question_fk in Consts.QUESTION_IDS_FOR_EMPTY_SESSIONS:
-            answer = self.survey.get_survey_answer((Consts.QUESTION_FK, question_fk))
-            # self.common.write_to_db_result(fk=kpi_fk, numerator_id=Consts.CBCIL_MANUFACTURER,
-            #                                denominator_id=self.store_id, result=kpi_score, score=kpi_score)
-            # TODO : WHERE SHOULD IT BE SAVED ???
-
+        # return
+        # for question_fk in Consts.QUESTION_IDS_FOR_EMPTY_SESSIONS:
+        #     # answer = self.survey.get_survey_answer((Consts.QUESTION_FK, question_fk))
+        #     # self.common.write_to_db_result(fk=kpi_fk, numerator_id=Consts.CBCIL_MANUFACTURER,
+        #     #                                denominator_id=self.store_id, result=kpi_score, score=kpi_score)
+        #     # TODO : WHERE SHOULD IT BE SAVED ???
+        #
