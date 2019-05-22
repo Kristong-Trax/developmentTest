@@ -39,7 +39,7 @@ class MarsUsDogMainMealWet(object):
                                                      'products&brands', 'allowed_products', 'kpi_pass'])
 
     def get_store_att15(self, store_fk):
-        query = MarsUsQueries.get_store_attribute(15, store_fk)
+        query = MarsUsQueries.get_store_attribute(6, store_fk)
         att15 = pd.read_sql_query(query, self.rds_conn.db)
         return att15.values[0][0]
 

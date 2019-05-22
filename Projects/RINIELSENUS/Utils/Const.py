@@ -97,6 +97,7 @@ IRRELEVANT_FIELDS = ['Score Card Name', 'KPI name', 'Tested Group Type', 'Target
 NOT_SEPARATE_FIELDS = ['Question Text;A']
 
 DENOMINATOR_FILTER_FIELDS = [TEMPLATE_NAME, SUB_SECTION, SECTION, SEGMENT_SPT]
+ALLOWED = {'product_type': ['Empty', 'Other']}
 
 
 FILTER_NAMING_DICT = {
