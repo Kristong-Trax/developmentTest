@@ -217,9 +217,10 @@ class PngcnSceneKpis(object):
                 facing_sequence_number = row['facing_sequence_number']
                 bay_number = row['bay_number']
                 shelf_number = row['shelf_number']
+                category_fk = row['category_fk']
                 self.common.write_to_db_result(fk=kpi_fk, numerator_id=product_fk, result=facing_sequence_number,
                             numerator_result=bay_number, denominator_result=shelf_number,
-                            denominator_id=entity_fk, score=0, context_id=template_fk, target=None, by_scene=True)
+                            denominator_id=entity_fk, score=0, context_id=category_fk, target=None, by_scene=True)
 
         return 0
 

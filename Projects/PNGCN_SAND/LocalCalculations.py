@@ -22,7 +22,7 @@ if __name__ == '__main__':
     data_provider = KEngineDataProvider(project_name)
     output = Output()
     sessions = [
-                '6a08a4d4-118e-4629-ac1a-1e2abadf5767'
+                'd16a0359-4d0f-4fed-bfe4-0afecca6843e'
         # 'b8d2cc45-59c5-44c6-a69d-cbf813aec6fd',
                 ]
                 # '786d8a10-8016-4c2c-ade6-72385bd62782',
@@ -34,7 +34,7 @@ if __name__ == '__main__':
                 # 'cb2cc33d-de43-4c35-a25b-ce538730037e']
     for session in sessions:
         print "Running for {}".format(session)
-        for scene in [14429897]:
+        for scene in [14431215, 14431231, 14431239]:
             print('Calculating scene id: ' + str(scene))
             data_provider = KEngineDataProvider(project_name)
             data_provider.load_scene_data(session, scene)
