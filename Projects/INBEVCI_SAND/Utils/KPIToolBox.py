@@ -817,7 +817,7 @@ class INBEVCISANDToolBox:
         oos_mr_ident_parent = {'kpi_fk': oos_mr_kpi_fk}
 
         oos_fk = self.get_kpi_fk_by_kpi_name(Const.OOS_KPI)
-        oos_identifier_parent = {'kpi_fk': oos_fk}
+        # oos_identifier_parent = {'kpi_fk': oos_fk}
 
         oos_sku_fk = self.get_kpi_fk_by_kpi_name(Const.OOS_SKU_KPI)
         for res in must_have_results.itertuples():
