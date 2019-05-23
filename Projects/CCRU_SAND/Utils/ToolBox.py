@@ -3633,6 +3633,9 @@ class CCRU_SANDKPIToolBox:
             kpi_name = kpi_name.strip().replace("  ", " ").replace(",", ".").upper()
             kpi_fk = self.common.kpi_static_data[self.common.kpi_static_data['type']
                                                  == kpi_name]['pk'].values[0]
+            if not kpi_fk:
+                Log.error('KPI Name <{}> is not found in static.kpi_level_2 table'
+                          ''.format(kpi_name))
 
             scene_id = int(kpi['scene_id']) if kpi['scene_id'] else None
 
@@ -3699,6 +3702,7 @@ class CCRU_SANDKPIToolBox:
                                            identifier_result=identifier_result,
                                            identifier_parent=identifier_parent,
                                            should_enter=True)
+
 
         return group_score, group_weight
 
