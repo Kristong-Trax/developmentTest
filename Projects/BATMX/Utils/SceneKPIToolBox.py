@@ -93,7 +93,7 @@ class SceneToolBox:
                 fk=status_kpi_fk, numerator_id=compliance_status_fk, numerator_result=status_products,
                 denominator_result=all_facings, should_enter=True, identifier_result=identifier_result,
                 score=ratio, by_scene=True, identifier_parent=self.common.get_dictionary(kpi_fk=fixture_kpi_fk),
-                denominator_id=self.planogram_id)
+                denominator_id=self.planogram_id, result=ratio)
             if compliance_status_fk == 3:
                 numerator_result = status_products
         return numerator_result
@@ -123,7 +123,8 @@ class SceneToolBox:
                                                     (rog_matches['product_fk'] == product_fk)])
             self.common.write_to_db_result(
                 fk=kpi_fk, numerator_id=product_fk, result=match_product_facings, denominator_id=compliance_status_fk,
-                by_scene=True, identifier_parent=identifier_parent, should_enter=True, context_id=self.planogram_id)
+                by_scene=True, identifier_parent=identifier_parent, should_enter=True, context_id=self.planogram_id,
+                score=match_product_facings)
         return len(status_products), rog_matches
 
     def calculate_sos(self):
@@ -135,7 +136,7 @@ class SceneToolBox:
         all_matches = len(matches)
         score = self.get_percentage_score(bat_matches, all_matches)
         self.common.write_to_db_result(
-            fk=fixture_kpi_fk, numerator_id=self.manufacturer_fk, numerator_result=bat_matches,
+            fk=fixture_kpi_fk, numerator_id=self.manufacturer_fk, numerator_result=bat_matches, result=score,
             denominator_result=all_matches, denominator_id=self.store_id, score=score, by_scene=True)
 
     def calculate_oos(self):
@@ -150,13 +151,13 @@ class SceneToolBox:
             result = 0 if product_fk in oos_list else 1
             self.common.write_to_db_result(
                 fk=sku_kpi_fk, numerator_id=product_fk, denominator_id=self.store_id, result=result, by_scene=True,
-                identifier_parent=identifier, should_enter=True)
+                identifier_parent=identifier, should_enter=True, score=result)
         oos_amount, all_amount = len(oos_list), len(assortment_list)
         score = self.get_percentage_score(oos_amount, all_amount)
         self.common.write_to_db_result(
             fk=fixture_kpi_fk, numerator_id=self.manufacturer_fk, numerator_result=oos_amount,
             denominator_result=all_amount, denominator_id=self.store_id, score=score, by_scene=True,
-            identifier_result=identifier)
+            identifier_result=identifier, result=score)
 
     @staticmethod
     def get_percentage_score(num, den):
