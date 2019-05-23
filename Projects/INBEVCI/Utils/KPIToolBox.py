@@ -381,7 +381,7 @@ class INBEVCIINBEVCIToolBox:
         """
         This function calculates the SOS vs Target KPI for both Coolers and Secondary Displays.
         """
-        sos_vs_target_fk = self.common.get_kpi_fk_by_kpi_name(Const.SOS_VS_TARGET)
+        sos_vs_target_fk = self.common.get_kpi_fk_by_kpi_type(Const.SOS_VS_TARGET)
         # Coolers
         self.calculate_sos_vs_target_per_location_type(sos_vs_target_fk, Const.COOLER_FK, identifier_parent)
         # Secondary Displays
@@ -706,21 +706,33 @@ class INBEVCIINBEVCIToolBox:
                         result.total)) * 100, 2)
             res = round(np.divide(float(numerator_res), float(denominator_res)) * 100, 2)
             score = 100 * (res >= denominator_after_action) if denominator_after_action else 100 * (res >= 100)
-            self.common.write_to_db_result(fk=result.kpi_fk_lvl2, result=res, score=score,
-                                           numerator_id=result.assortment_group_fk,
-                                           numerator_result=numerator_res,
-                                           denominator_id=super_group_fk, denominator_result=denominator_res,
-                                           target=denominator_after_action,
-                                           denominator_result_after_actions=denominator_after_action)
-            self.common.write_to_db_result(fk=result.mr_lvl2_parent_fk, result=res, score=score,
-                                           numerator_id=result.mr_numerator_id,
-                                           numerator_result=numerator_res,
-                                           denominator_id=result.mr_denominator_id, denominator_result=denominator_res,
-                                           target=denominator_after_action,
-                                           denominator_result_after_actions=denominator_after_action,
-                                           identifier_result=result.identifier_parent_lvl2,
-                                           identifier_parent=result.identifier_parent_lvl1,
-                                           should_enter=True)
+            if result.kpi_fk_lvl2 == result.mr_lvl2_parent_fk:
+                self.common.write_to_db_result(fk=result.mr_lvl2_parent_fk, result=res, score=score,
+                                               numerator_id=result.mr_numerator_id,
+                                               numerator_result=numerator_res,
+                                               denominator_id=result.mr_denominator_id,
+                                               denominator_result=denominator_res,
+                                               target=denominator_after_action,
+                                               denominator_result_after_actions=denominator_after_action,
+                                               identifier_result=result.identifier_parent_lvl2,
+                                               identifier_parent=result.identifier_parent_lvl1,
+                                               should_enter=True)
+            else:
+                self.common.write_to_db_result(fk=result.kpi_fk_lvl2, result=res, score=score,
+                                               numerator_id=result.assortment_group_fk,
+                                               numerator_result=numerator_res,
+                                               denominator_id=super_group_fk, denominator_result=denominator_res,
+                                               target=denominator_after_action,
+                                               denominator_result_after_actions=denominator_after_action)
+                self.common.write_to_db_result(fk=result.mr_lvl2_parent_fk, result=res, score=score,
+                                               numerator_id=result.mr_numerator_id,
+                                               numerator_result=numerator_res,
+                                               denominator_id=result.mr_denominator_id, denominator_result=denominator_res,
+                                               target=denominator_after_action,
+                                               denominator_result_after_actions=denominator_after_action,
+                                               identifier_result=result.identifier_parent_lvl2,
+                                               identifier_parent=result.identifier_parent_lvl1,
+                                               should_enter=True)
         if lvl2_result.empty:
             return
         lvl1_result = self.assortment.calculate_lvl1_assortment(lvl2_result)
