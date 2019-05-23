@@ -408,7 +408,7 @@ class INBEVCISANDToolBox:
         """
         This function calculates the SOS vs Target KPI for both Coolers and Secondary Displays.
         """
-        sos_vs_target_fk = self.common.get_kpi_fk_by_kpi_name(Const.SOS_VS_TARGET)
+        sos_vs_target_fk = self.common.get_kpi_fk_by_kpi_type(Const.SOS_VS_TARGET)
         # Coolers
         self.calculate_sos_vs_target_per_location_type(sos_vs_target_fk, Const.COOLER_FK, identifier_parent)
         # Secondary Displays - commented out as we do not need it
@@ -652,7 +652,7 @@ class INBEVCISANDToolBox:
 
     def get_identifier_parent_assortment_lvl1(self, row):
         kpi_lvl1_name = self.get_kpi_type_by_pk(row['kpi_fk_lvl1']) if not (np.isnan(row['kpi_fk_lvl1']) or row['kpi_fk_lvl1'] is None) else None
-        kpi_fk = self.common.get_kpi_fk_by_kpi_type('{} MR'.format(kpi_lvl1_name))
+        kpi_fk = self.common.get_kpi_fk_by_kpi_type('{} MR'.format(kpi_lvl1_name)) if kpi_lvl1_name is not None else None
         identifier_parent = {'kpi_fk': kpi_fk} if kpi_fk is not None else None
         return identifier_parent
 
@@ -735,21 +735,33 @@ class INBEVCISANDToolBox:
                         result.total)) * 100, 2)
             res = round(np.divide(float(numerator_res), float(denominator_res)) * 100, 2)
             score = 100 * (res >= denominator_after_action) if denominator_after_action else 100 * (res >= 100)
-            self.common.write_to_db_result(fk=result.kpi_fk_lvl2, result=res, score=score,
-                                           numerator_id=result.assortment_group_fk,
-                                           numerator_result=numerator_res,
-                                           denominator_id=super_group_fk, denominator_result=denominator_res,
-                                           target=denominator_after_action,
-                                           denominator_result_after_actions=denominator_after_action)
-            self.common.write_to_db_result(fk=result.mr_lvl2_parent_fk, result=res, score=score,
-                                           numerator_id=result.mr_numerator_id,
-                                           numerator_result=numerator_res,
-                                           denominator_id=result.mr_denominator_id, denominator_result=denominator_res,
-                                           target=denominator_after_action,
-                                           denominator_result_after_actions=denominator_after_action,
-                                           identifier_result=result.identifier_parent_lvl2,
-                                           identifier_parent=result.identifier_parent_lvl1,
-                                           should_enter=True)
+            if result.kpi_fk_lvl2 == result.mr_lvl2_parent_fk:
+                self.common.write_to_db_result(fk=result.mr_lvl2_parent_fk, result=res, score=score,
+                                               numerator_id=result.mr_numerator_id,
+                                               numerator_result=numerator_res,
+                                               denominator_id=result.mr_denominator_id,
+                                               denominator_result=denominator_res,
+                                               target=denominator_after_action,
+                                               denominator_result_after_actions=denominator_after_action,
+                                               identifier_result=result.identifier_parent_lvl2,
+                                               identifier_parent=result.identifier_parent_lvl1,
+                                               should_enter=True)
+            else:
+                self.common.write_to_db_result(fk=result.kpi_fk_lvl2, result=res, score=score,
+                                               numerator_id=result.assortment_group_fk,
+                                               numerator_result=numerator_res,
+                                               denominator_id=super_group_fk, denominator_result=denominator_res,
+                                               target=denominator_after_action,
+                                               denominator_result_after_actions=denominator_after_action)
+                self.common.write_to_db_result(fk=result.mr_lvl2_parent_fk, result=res, score=score,
+                                               numerator_id=result.mr_numerator_id,
+                                               numerator_result=numerator_res,
+                                               denominator_id=result.mr_denominator_id, denominator_result=denominator_res,
+                                               target=denominator_after_action,
+                                               denominator_result_after_actions=denominator_after_action,
+                                               identifier_result=result.identifier_parent_lvl2,
+                                               identifier_parent=result.identifier_parent_lvl1,
+                                               should_enter=True)
 
         if lvl2_result.empty:
             return
