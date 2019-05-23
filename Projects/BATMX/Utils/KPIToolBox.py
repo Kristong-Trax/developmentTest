@@ -113,9 +113,10 @@ class BATMXToolBox:
         if entry_results.empty:
             return
         else:
+            score = self.get_average(entry_results, 'score')
             self.common.write_to_db_result(
                 fk=visit_kpi_fk, numerator_id=self.manufacturer_fk, denominator_id=self.store_id,
-                score=self.get_average(entry_results, 'score'), identifier_result=identifier,
+                score=score, result=score, identifier_result=identifier,
                 numerator_result=self.get_average(entry_results, 'numerator_result'),
                 denominator_result=self.get_average(entry_results, 'denominator_result'))
             fixture_results_pk = entry_results['pk'].tolist() + self.exit_results[
