@@ -1,162 +1,230 @@
 pipeline {
-  agent any
+   agent {
+        docker {
+            label 'ec2-asg-jenkins'
+            image '619597279328.dkr.ecr.us-east-1.amazonaws.com/garage:jenkins_slave_base'
+            args ' --name kif_test -u root -v /var/run/docker.sock:/var/run/docker.sock -v /dev/log:/dev/log -v \
+                  /root/engineCache/TestResults:/root/engineCache/TestResults --log-driver=syslog'
+        }
+    }
+    triggers {
+      bitbucketPush()
+    }
+
+
+    options {
+      timestamps()
+      timeout(time: 5, unit: 'HOURS')
+      checkoutToSubdirectory('kpi_factory')
+      buildDiscarder(logRotator(numToKeepStr: '50'))
+    }
+    environment {
+        CONDA_BIN = "/root/miniconda/bin"
+        FAILED_STAGE = "Init"
+        owenr_mail = 'ilanp@traxretail.com'
+        TEAM = 'kif@Trax-Tech.com'
+        mail_from = 'TraxReports@traxretail.com'
+
+
+
+    }
+
   stages {
+            stage('Start') {
+            steps {
+                bitbucketStatusNotify(buildState: 'INPROGRESS')
+                script {
+                    env.FAILED_STAGE = "${env.STAGE_NAME}"
+                    sh 'printenv'
+                    sh 'docker system info'
+                    sh '/root/miniconda/bin/conda info'
+                    def commiters = emailextrecipients([developers()])
+
+                    echo "${commiters}"
+                    def payload = "${env.BITBUCKET_PAYLOAD}"
+                    echo "${payload}"
+                }
+            }
+        }
+        stage('Build Environment') {
+            steps {
+                script {
+                    env.FAILED_STAGE = "${env.STAGE_NAME}"
+                }
+
+               dir(path: 'theGarage') {
+                      git(url: 'https://ilanpinto@bitbucket.org/traxtechnology/trax_dev_garage.git', branch: 'master', changelog: true, poll: true, credentialsId: 'ilanp')
+                }
+
+                sh '''#!/bin/bash
+                    export PATH=$CONDA_BIN:$PATH
+                    cd theGarage
+                    echo Cleaning repository...
+                    git clean -xdf
+                    conda env update -n garage -f ./Trax/Deployment/conda/garage.yml
+                    exit_code=$?
+                    exit $exit_code
+                '''
+            }
+        }
+
     stage('perp') {
       steps {
-        dir(path: 'kpi_factory') {
-          git(url: 'git@bitbucket.org:traxtechnology/kpi_factory.git', branch: 'master', changelog: true, poll: true)
-        }
-
         dir(path: 'sdk_factory') {
-          git(url: 'git@bitbucket.org:traxtechnology/sdk_factory.git', branch: 'master', changelog: true, poll: true)
+          git(url: 'https://ilanpinto@bitbucket.org/traxtechnology/sdk_factory.git', branch: 'master', changelog: true, poll: true, credentialsId: 'ilanp')
         }
 
-        dir(path: 'theGarage') {
-          git(url: 'https://ilanpinto@bitbucket.org/traxtechnology/trax_dev_garage.git', branch: 'master', changelog: true, credentialsId: 'ilan')
+        dir(path: 'trax_ace_live') {
+          git(url: 'https://ilanpinto@bitbucket.org/traxtechnology/trax_ace_live.git', branch: 'master', changelog: true, poll: true, credentialsId: 'ilanp')
         }
+
+
+
+
+        sh '''#!/bin/bash
+        ## set testing env
+        export PYTHONPATH=:$PWD/theGarage:$PWD/trax_ace_live
+        source ~/miniconda/bin/activate garage
+        cp -r kpi_factory/Tests trax_ace_live/Tests
+        export PROJECT_HOME=$PWD
+        docker network create --driver=bridge --subnet=10.3.3.0/24 --ip-range=10.3.3.0/24 --gateway=10.3.3.1 trax_test
+        docker network connect trax_test kif_test
+        $(aws ecr get-login --region us-east-1 --no-include-email)
+
+
+                '''
 
       }
     }
 
-    stage('Tests') {
-      parallel {
-        stage('unit test') {
+    stage('SDK factory Tests') {
           steps {
             sh '''#!/bin/bash
-        ## set testing env
+            source ~/miniconda/bin/activate garage
+            $(aws ecr get-login --region us-east-1 --no-include-email)
+            export PYTHONPATH=:$PWD/sdk_factory:$PWD/theGarage:$PWD/trax_ace_live:$PWD/OutOfTheBox
+            python -m unittest discover -s sdk_factory/KPIUtils/Calculations/tests
+            python -m unittest discover -s sdk_factory/KPIUtils_v2/Calculations
+            python -m unittest discover -s sdk_factory/OutOfTheBox
+        '''
 
-        theGarage/Trax/Deployment/conda/DockerMinicondaInstallation.sh
-
-        export PATH="$HOME/miniconda/bin:$PATH"
-        conda config --add channels https://conda.anaconda.org/trax
-        export PROJECT_ROOT=$PWD/theGarage
-        export PYTHONPATH=:$PWD/theGarage
-
-
-
-        CONDA=$HOME/miniconda/bin/conda
-        dependencies_file=$PROJECT_ROOT/Trax/Deployment/conda/garage.yml
-        environment=garage
-        recreate_environment=0
-        environment_exists=$(${CONDA} info --envs | grep ${environment} | wc -l)
-
-        if [ ${recreate_environment} -eq 1 ]
-        then
-            echo "Removing old conda $environment environment"
-            ${CONDA} env remove -n ${environment}
-        fi
-
-        if [ ${environment_exists} -eq 1 ]
-        then
-            echo "Updating $environment environment"
-            ${CONDA} env update -n ${environment} -f ${dependencies_file}
-        else
-            echo "Creating $environment environment"
-            ${CONDA} env create -n ${environment} -f ${dependencies_file}
-        fi
-
-
-        source /var/jenkins_home/miniconda/bin/activate garage
-        xargs apt-get install -y --fix-missing < /root/dev/theGarage/Trax/Deployment/conda/requirements.txt
-        export PYTHONPATH=:$PWD/theGarage:$PWD/sdk_factory:$PWD/kpi_factory
-        pip install awscli
-        eval $(aws ecr get-login --no-include-email)'''
           }
         }
-        stage('KPI Util Unit Test') {
-          steps {
-            sh '''#!/bin/bash
-        source /var/jenkins_home/miniconda/bin/activate garage
-        export PYTHONPATH=:$PWD/theGarage:$PWD/sdk_factory:$PWD/kpi_factory
-        python -m unittest discover -s sdk_factory/KPIUtils/Calculations/tests'''
-          }
-        }
-        stage('Projects Unit Test') {
-          steps {
-            sh '''#!/bin/bash
-        source /var/jenkins_home/miniconda/bin/activate garage
-        export PYTHONPATH=:$PWD/theGarage:$PWD/sdk_factory:$PWD/kpi_factory
-        python -m unittest discover -s kpi_factory/Projects '''
-          }
-        }
-        stage('Projects Regression') {
-        when { branch "master" }
-           steps {
-            sh '''#!/bin/bash
-        source /var/jenkins_home/miniconda/bin/activate garage
-        export PYTHONPATH=:$PWD/theGarage:$PWD/sdk_factory:$PWD/kpi_factory
-        python -m unittest discover -s kpi_factory/Tests'''
-          }
+
+
+
+
+        stage('Factory Projects Unit Test') {
+
+            steps {
+                script {
+                    env.FAILED_STAGE = "${env.STAGE_NAME}"
+                }
+                sh '''#!/bin/bash
+                    export PYTHONPATH=$PWD
+                    export PROJECT_ROOT=$PWD
+                    export PYTHONPATH=:$PWD/theGarage:$PWD/kpi_factory:$PWD/sdk_factory
+                    export PATH=$CONDA_BIN:$PATH
+                    source activate garage
+                    $(aws ecr get-login --region us-east-1 --no-include-email)
+                    python -u theGarage/Trax/Tools/Testing/Runners/UnitTestsRunner.py -p test_unit_*.py -f ./Trax/Tools/Testing/Log/log.txt -iu=True -tp $PWD/kpi_factory/Projects,$PWD/kpi_factory,$PWD/sdk_factory
+                    tests_exit_code=$?
+                    echo "Completed running tests with exit value: " $tests_exit_code.
+                    exit $tests_exit_code
+                '''
+            }
+            post {
+                always {
+                    sh 'mv -f ${WORKSPACE}/theGarage/Trax/Tools/Testing/Runners/Results/recent-test-results.html \
+                              ${WORKSPACE}/kpi_and_sdk_unit-tests-results.html'
+                    archiveArtifacts 'kpi_and_sdk_unit-tests-results.html'
+                }
+            }
          }
 
-	  stage('Check Imports') {
-		steps {
-			sh '''#!/bin/bash
-			source /var/jenkins_home/miniconda/bin/activate garage
-			export PYTHONPATH=:$PWD/theGarage:$PWD/sdk_factory:$PWD/kpi_factory
-			export PROJECT=$PWD/kpi_factory/Projects
-			pwd
-			cd kpi_factory/Deployment/Jenkins
-			python ImportValidator.py --projects_path $PROJECT '''
-		  }
-		}
-
-       stage('Static Code Analsys') {
-        steps {
-         dir('kpi_factory/DevloperTools') {
-
-        sh '''#!/bin/bash
-            pip install -r requirements.txt
-        '''
+      stage('Factory Projects Functional Test') {
+          steps {
+            sh '''#!/bin/bash
+            docker network rm trax_test
+            export PROJECT_ROOT=$PWD
+            export PYTHONPATH=:$PWD/theGarage:$PWD/kpi_factory:$PWD/sdk_factory
+            source ~/miniconda/bin/activate garage
+            $(aws ecr get-login --region us-east-1 --no-include-email)
+            docker pull 619597279328.dkr.ecr.us-east-1.amazonaws.com/garage:mongo_3_6
+            docker pull 619597279328.dkr.ecr.us-east-1.amazonaws.com/garage:redis_3_0
+            docker pull 619597279328.dkr.ecr.us-east-1.amazonaws.com/traxdatabase/db:latest
+            python -u theGarage/Trax/Tools/Testing/Runners/UnitTestsRunner.py -p test_functional_*.py -f ./Trax/Tools/Testing/Log/log.txt -iu=True -tp=$PWD/kpi_factory/Projects,$PWD/kpi_factory,$PWD/sdk_factory
+            tests_exit_code=$?
+            echo "Completed running tests with exit value: " $tests_exit_code.
+            exit $tests_exit_code
+            '''
+          }
+          post {
+                always {
+                    sh 'mv -f ${WORKSPACE}/theGarage/Trax/Tools/Testing/Runners/Results/recent-test-results.html \
+                              ${WORKSPACE}/factory_unit-tests-results.html'
+                    archiveArtifacts 'factory_unit-tests-results.html'
+                }
+            }
         }
 
-		echo getChangeString()
-			dir('kpi_factory') {
-			echo codeLint()
-			}
 
 
+ }
 
-		}
-	   }
-
-	   }
-	 }
-  }
-
- environment {
-    owenr_mail = 'ilanp@traxretail.com'
-    team = 'ps_sw_team@Trax-Tech.com'
-    mail_from = 'TraxReports@traxretail.com'
-  }
 
 
   post{
-	  always {
-          slackSend color: 'good', message: "  ${JOB_NAME} - ${BUILD_NUMBER} completed successfully . co log: ${env.BUILD_URL}"
+     cleanup {
+            sh '''#!/bin/bash
+                echo "Before cleanup"
+                docker images
+                docker ps
 
-		  sh'''#!/bin/bash
-            # fix docker issue
-            docker stop test_mysql_test_project_1
-            docker rm test_mysql_test_project_1
-            rm Miniconda-latest-Linux-x86_64.*
+                cd master
+                export PATH=$CONDA_BIN:$PATH
+                export PROJECT_ROOT=$PWD
+                export PYTHONPATH=$PWD
+                source activate garage
+                python -u Trax/Deployment/Remote/SlaveCleaner.py
+
+                echo "After cleanup"
+                docker images
+                docker ps
             '''
-
             cleanWs()
+        }
 
-     	}
+       success {
+            bitbucketStatusNotify(buildState: 'SUCCESSFUL')
+            slackSend channel:"#kif_alert", color: "good", message: "  ${JOB_NAME} - ${BUILD_NUMBER} completed successfully . co log: ${env.BUILD_URL}"
+        }
+
 
        failure {
-		sendFailMail()
+	   script {
+            env.DEPLOY_STATUS = "$currentBuild.currentResult"
+            env.START_TIME = "$currentBuild.startTimeInMillis"
+            env.DURATION = "$currentBuild.duration"
+            sh '''#!/bin/bash
+                cd theGarage
+                export PATH=$CONDA_BIN:$PATH
+                export PYTHONPATH=$PWD
+                export PROJECT_ROOT=$PWD
+                source activate garage
+                git remote set-url origin git@bitbucket.org:traxtechnology/trax_dev_garage.git
+                python -u Trax/Deployment/Tools/BuildReport.py --failed_step="$FAILED_STAGE" \
+                    --result=$DEPLOY_STATUS --start_time=$START_TIME --duration=$DURATION --job_name=$JOB_NAME \
+                    --build_number=$BUILD_DISPLAY_NAME --url=$RUN_DISPLAY_URL
+            '''
+            }
 
        }
 
     }
 
 
-  options {
-    timeout(unit: 'MINUTES', time: 20)
-  }
+
 }
 
 
@@ -221,36 +289,21 @@ def codeLint() {
 
 
 def sendFailMail(){
-	def branch = sh (returnStdout: true, script:'''#!/bin/bash
-                                                         git rev-parse --abbrev-ref HEAD || true
-                                                          ''')
 
-    echo "branch: ${branch}"
-
-	if (branch != "master") {
-            def email_git = sh (returnStdout: true, script:'''#!/bin/bash
-                                                         git log --pretty=format:"%ce" HEAD^..HEAD || true
-                                                          ''')
-            def email = email_git.split()[0]
-
-			echo "sending mail to ${email}"
-
-			mail body: "${JOB_NAME} build failed maybe it is your code ? /n plz check the log: error log: ${env.BUILD_URL}" ,
-            from: "${mail_from}",
-            subject: "[action required] build failed!! pipeline ${JOB_NAME} - ${BUILD_NUMBER}",
-            to: "${email}"
-            error "${err}"
+           def committers = emailextrecipients([developers()])
 
 
-	}
-	else {
-			mail body: "${JOB_NAME} build failed maybe it is your code ? /n plz check the log: error log: ${env.BUILD_URL}" ,
-            from: "${mail_from}",
-            subject: "[action required] build failed!! pipeline ${JOB_NAME} - ${BUILD_NUMBER}",
-            to: "${team}"
-            error "${err}"
+            slackSend channel:"#kif_alert", color: "bad", message: "${JOB_NAME} - ${env.BUILD_NUMBER} completed unsuccessfully committer list: ${committers}.log: ${env.BUILD_URL}"
+            slackSend channel:"#ps_alerts", color: "bad", message: "${JOB_NAME} - ${env.BUILD_NUMBER} completed unsuccessfully committer list: ${committers}.log: ${env.BUILD_URL}"
+            bitbucketStatusNotify(buildState: 'FAILED')
 
-		}
-
+            emailext (
+                to: "ilanp@traxretail.com",
+                recipientProviders: [[$class: 'DevelopersRecipientProvider']],
+                subject: "[Build Failed] ${JOB_NAME}",
+                mimeType: 'text/html',
+                attachmentsPattern: '*.html',
+                body: '${SCRIPT, template="fail-email.template"}'
+            )
 
 }
