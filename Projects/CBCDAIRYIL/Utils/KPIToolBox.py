@@ -98,17 +98,18 @@ class CBCDAIRYILToolBox:
         self.calculate_kpis_and_save_to_db(total_set_scores, kpi_set_fk)  # Set level
         self.handle_gaps()    # TODO TODO TODO
 
-    def add_gap(self, atomic_kpi, score):
+    def add_gap(self, atomic_kpi, score, atomic_weight):
         """
         In case the score is not perfect the gap is added to the gap list.
+        :param atomic_weight: The Atomic KPI's weight.
         :param score: Atomic KPI score.
         :param atomic_kpi: A Series with data about the Atomic KPI.
         """
-        current_gap_dict = dict()
-        current_gap_dict[Consts.KPI_NAME] = atomic_kpi[Consts.KPI_NAME]
-        current_gap_dict[Consts.KPI_ATOMIC_NAME] = atomic_kpi[Consts.KPI_ATOMIC_NAME]
-        current_gap_dict[Consts.PRIORITY] = self.gap_data[atomic_kpi[Consts.KPI_NAME]]
-        current_gap_dict[Consts.SCORE] = score
+        parent_kpi_name = atomic_kpi[Consts.KPI_NAME]
+        atomic_name = atomic_kpi[Consts.KPI_ATOMIC_NAME]
+        atomic_fk = self.common.get_kpi_fk_by_kpi_type(atomic_name)
+        current_gap_dict = {Consts.ATOMIC_FK: atomic_fk, Consts.PRIORITY: self.gap_data[parent_kpi_name],
+                            Consts.SCORE: score, Consts.WEIGHT: atomic_weight}
         self.kpis_gaps.append(current_gap_dict)
 
     @staticmethod
@@ -122,17 +123,22 @@ class CBCDAIRYILToolBox:
         :return:
         """
         self.kpis_gaps.sort(key=self.sort_by_priority)
+        gaps_total_score = 0
+        gaps_per_kpi_fk = self.common.get_kpi_fk_by_kpi_type(Consts.GAP_PER_ATOMIC_KPI)
+        gaps_total_score_kpi_fk = self.common.get_kpi_fk_by_kpi_type(Consts.GAPS_TOTAL_SCORE_KPI)
         for gap in self.kpis_gaps[:5]:
-            kpi_name, atomic_name, priority = gap[Consts.KPI_NAME], gap[Consts.KPI_ATOMIC_NAME], gap[Consts.PRIORITY]
-            kpi_name = (unicode(kpi_name).replace("'", "\\'").encode('utf-8'))
-            atomic_name = (unicode(atomic_name).replace("'", "\\'").encode('utf-8'))
-            gap_query = Consts.GAPS_QUERY.format(self.session_fk, kpi_name, atomic_name, priority)
-            self.common.execute_custom_query(gap_query)
-            # Todo: Optional: change to one query with values?
+            gaps_total_score += gap[Consts.SCORE] * gap[Consts.WEIGHT]
+            self.insert_gap_results(gaps_per_kpi_fk, gap[Consts.ATOMIC_FK], gap[Consts.SCORE], gap[Consts.WEIGHT],
+                                    gaps_total_score_kpi_fk)
+        self.insert_gap_results(gaps_total_score_kpi_fk, gaps_total_score)
 
-            x = (unicode(kpi_name).replace("'", "\\'").encode('utf-8'))
-            y = (unicode(atomic_name).replace("'", "\\'").encode('utf-8'))
-            gap_query = Consts.GAPS_QUERY.format(self.session_fk, x, y, priority)
+    def insert_gap_results(self, gap_kpi_fk, score, weight=999, numerator_id=Consts.CBC_MANU, parent_fk=None):
+        """ This is a utility function that insert results to the DB for the GAP """
+        should_enter = True if parent_fk else False
+        self.common.write_to_db_result(fk=gap_kpi_fk, numerator_id=numerator_id, numerator_result=score,
+                                       denominator_id=self.store_id, denominator_result=weight,
+                                       identifier_result=gap_kpi_fk, identifier_parent=parent_fk, result=score,
+                                       score=score, should_enter=should_enter)
 
     def calculate_kpis_and_save_to_db(self,  kpi_results, kpi_fk, parent_fk=None):
         """
@@ -141,11 +147,12 @@ class CBCDAIRYILToolBox:
         :param kpi_fk: The relevant KPI fk.
         :param parent_fk: The KPI SET FK that the KPI "belongs" too if exist.
         """
+        should_enter = True if parent_fk else False
         kpi_score = self.calculate_kpi_result_by_weight(kpi_results)
-        self.common.write_to_db_result(fk=kpi_fk, numerator_id=Consts.CBCIL_MANUFACTURER, numerator_result=kpi_score,
+        self.common.write_to_db_result(fk=kpi_fk, numerator_id=Consts.CBC_MANU, numerator_result=kpi_score,
                                        denominator_id=self.store_id, denominator_result=100, identifier_result=kpi_fk,
                                        identifier_parent=parent_fk, result=kpi_score, score=kpi_score,
-                                       should_enter=True)
+                                       should_enter=should_enter)
         return kpi_score
 
     def calculate_kpi_result_by_weight(self, kpi_results):
@@ -199,8 +206,8 @@ class CBCDAIRYILToolBox:
                 atomic_score = self.calculate_availability_from_bottom(**general_filters)
             elif kpi_type == Consts.MIN_2_AVAILABILITY:
                 num_result, denominator_result, atomic_score = self.calculate_min_2_availability(**general_filters)
-            elif kpi_type == Consts.SURVEY:
-                atomic_score = self.calculate_survey(**general_filters)
+            # elif kpi_type == Consts.SURVEY:
+            #     atomic_score = self.calculate_survey(**general_filters)
             elif kpi_type == Consts.BRAND_BLOCK:
                 atomic_score = self.calculate_brand_block(**general_filters)
             elif kpi_type == Consts.EYE_LEVEL:
@@ -211,11 +218,11 @@ class CBCDAIRYILToolBox:
             if atomic_score is None:  # In cases that we need to ignore the KPI and divide it's weight
                 continue
             elif atomic_score < 100:
-                self.add_gap(current_atomic, atomic_score)
+                self.add_gap(current_atomic, atomic_score, atomic_weight)
             total_scores.append((atomic_score, atomic_weight))
 
             atomic_fk_lvl_2 = self.common.get_kpi_fk_by_kpi_type(current_atomic[Consts.KPI_ATOMIC_NAME].strip())
-            self.common.write_to_db_result(fk=atomic_fk_lvl_2, numerator_id=Consts.CBCIL_MANUFACTURER,
+            self.common.write_to_db_result(fk=atomic_fk_lvl_2, numerator_id=Consts.CBC_MANU,
                                            numerator_result=num_result, denominator_id=self.store_id,
                                            denominator_result=denominator_result, identifier_parent=kpi_fk,
                                            result=atomic_score, score=atomic_score, should_enter=True)

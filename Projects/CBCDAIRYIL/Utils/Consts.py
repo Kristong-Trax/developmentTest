@@ -73,10 +73,10 @@ class Consts(object):
 
     # Eye level calculation
     EYE_LEVEL_PER_SHELF = [{'min': 3, 'max': 4, 'top': 0, 'bottom': 1}, {'min': 5, 'max': 6, 'top': 1, 'bottom': 2},
-                           {'min': 7, 'max': 100, 'top': 1, 'bottom': 2}]
+                           {'min': 7, 'max': 100, 'top': 2, 'bottom': 2}]
 
     # CBC data
-    CBCIL_MANUFACTURER = 45
+    CBC_MANU = 45
     CBC_COOLERS = u'מקרר חברה מרכזית'
     COMPETITOR_COOLERS = [u'מקרר מתחרה', u'מקרר קמעונאי']
     SURVEY_ANSWERS_TO_IGNORE = [u'הסידור אינו קטגוריאלי', u'אין מותגים אחרים']
@@ -91,10 +91,11 @@ class Consts(object):
     QUESTION_IDS_FOR_EMPTY_SESSIONS = [9]
 
     # Gaps
-    GAPS_QUERY = """insert into pservice.custom_gaps (session_fk, gap_category, name, priority)
-        values ({},'{}','{}','{}')"""
     PRIORITY = 'priority'
     SCORE = 'score'
+    ATOMIC_FK = 'atomic_fk'
+    GAPS_TOTAL_SCORE_KPI = 'gaps_total_score'
+    GAP_PER_ATOMIC_KPI = 'gaps_per_kpi'
 
     # Logs
     MISSING_QUESTION_LOG = "Missing question ID field! Please check the template"
