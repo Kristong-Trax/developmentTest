@@ -1,8 +1,8 @@
 
 from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScript
-# from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
-# from Trax.Utils.Conf.Configuration import Config
-# from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
+from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
+from Trax.Utils.Conf.Configuration import Config
+from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
 
 from Projects.INBEVCI.KPIGenerator import INBEVCIINBEVCIGenerator
 
@@ -20,7 +20,7 @@ class INBEVCIINBEVCICalculations(BaseCalculationsScript):
 #     LoggerInitializer.init('inbevci calculations')
 #     Config.init()
 #     project_name = 'inbevci'
-#     sessions = ['7d602b07-cccd-443d-bd71-ca5484bd41de', '31f63bc0-19d6-41df-9a24-c62a2f4f822d']
+#     sessions = ['7d602b07-cccd-443d-bd71-ca5484bd41de']
 #     for session in sessions:
 #         data_provider = KEngineDataProvider(project_name)
 #         data_provider.load_session_data(session)
