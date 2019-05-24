@@ -179,7 +179,7 @@ class DIAGEOGTRToolBox:
 
         return product_attr_survey_sku_len
 
-    def get_product_attribute_length_data_old(self):
+    def get_product_attribute_length_data_with_scene(self):
         """
         This function extracts promotion price details from probedata.manual_collection_price table.
         """
@@ -1200,7 +1200,10 @@ class DIAGEOGTRToolBox:
             entity_key_2 = entities[entity_2] if entity_2 in entities.keys() else None
             entity_key_3 = entities[entity_3] if entity_3 in entities.keys() else None
 
-            self.calculate_share_of_wall_bay_entity(kpi_set_name, kpi_name)
+            if kpi_name == 'SHARE_OF_WALL_BAY_LENGTH':
+                self.calculate_share_of_wall_bay_entity(kpi_set_name, kpi_name)
+            else:
+                self.calculate_share_of_wall_bay_entity_with_scene(kpi_set_name, kpi_name,template_names,entity_key_1)
 
     def calculate_share_of_wall_bay_entity(self, kpi_set_name, kpi_name):
         total_length = 0
@@ -1250,7 +1253,7 @@ class DIAGEOGTRToolBox:
 
         #self.write_to_db_result(atomic_kpi_fk, (total_num_of_shelfs, total_num_of_shelfs, 0), level=self.LEVEL3)
 
-    def calculate_share_of_wall_bay_entity_old(self, kpi_set_name, kpi_name, template_names, entity_key_1,entity_key_2,entity_key_3):
+    def calculate_share_of_wall_bay_entity_with_scene(self, kpi_set_name, kpi_name, template_names, entity_key_1):
         total_length = 0
         total_num_of_displays = 0
         num_of_other_displays = 0
