@@ -139,9 +139,13 @@ class DIAGEOGTRToolBox:
         self.kpi_static_data = self.get_kpi_static_data()
         self.kpi_static_data_new = self.common.get_new_kpi_static_data()
         self.output = output
+
         self.product_attribute_price_data = self.get_product_attribute_price_data()
         self.product_atrribute_length_data = self.get_product_attribute_length_data()
-        self.product_attribute_price_data_with_scene =  self.get_product_attribute_price_data_with_scene()
+
+        self.product_attribute_price_with_scene_data =  self.get_product_attribute_price_with_scene_data()
+        self.product_attribute_length_with_scene_data = self.get_product_attribute_length_with_scene_data()
+
         self.common = Common(self.data_provider)
         self.commonV2 = CommonV2(self.data_provider)
         self.tools = DIAGEOToolBox(self.data_provider, output,
@@ -175,11 +179,11 @@ class DIAGEOGTRToolBox:
             length_in_meters
         """.format(self.session_uid)
 
-        product_attr_survey_sku_len = pd.read_sql_query(query, self.rds_conn.db)
+        product_attribute_length_data = pd.read_sql_query(query, self.rds_conn.db)
 
-        return product_attr_survey_sku_len
+        return product_attribute_length_data
 
-    def get_product_attribute_length_data_with_scene(self):
+    def get_product_attribute_length_with_scene_data(self):
         """
         This function extracts promotion price details from probedata.manual_collection_price table.
         """
@@ -228,9 +232,9 @@ class DIAGEOGTRToolBox:
         ON (scif.session_id = bskulen.session_id AND p.brand_fk = bskulen.brand_fk)
         """.format(self.session_uid)
 
-        product_attr_survey_sku_len = pd.read_sql_query(query, self.rds_conn.db)
+        df_result = pd.read_sql_query(query, self.rds_conn.db)
 
-        return product_attr_survey_sku_len
+        return df_result
 
     def get_product_attribute_price_data(self):
         query="""
@@ -262,7 +266,7 @@ class DIAGEOGTRToolBox:
 
         return product_attribute_price_data;
 
-    def get_product_attribute_price_data_with_scene(self):
+    def get_product_attribute_price_with_scene_data(self):
         """
         This function extracts promotion price details from probedata.manual_collection_price table.
         """
@@ -286,9 +290,9 @@ class DIAGEOGTRToolBox:
         WHERE mcp.deleted_time IS NULL 
         AND mcp.session_fk=(SELECT pk FROM probedata.session ses WHERE ses.session_uid='{}')""".format(self.session_uid)
 
-        product_attribute_price_data_with_scene = pd.read_sql_query(query, self.rds_conn.db)
+        product_attribute_price_with_scene_data = pd.read_sql_query(query, self.rds_conn.db)
 
-        return product_attribute_price_data_with_scene
+        return product_attribute_price_with_scene_data
 
     def get_kpi_static_data(self):
         """
@@ -953,13 +957,13 @@ class DIAGEOGTRToolBox:
             template_names = [scene.strip().encode(DIAGEOGTRConsts.UTF_8) for scene in template]
 
             if kpi_name == PRICE_PROMOTION_BRAND:
-                self.price_attribute_report(kpi_set_name, kpi_name, entity_1,
+                self.calculate_number_of_price_promotion_entity(kpi_set_name, kpi_name, entity_1,
                                                                 entity_2, entity_3)
             else:
-                self.calculate_number_of_price_promotion_entity(kpi_set_name, kpi_name, template_names, entity_1,
+                self.calculate_number_of_price_promotion_entity_with_scene(kpi_set_name, kpi_name, template_names, entity_1,
                                                                 entity_2, entity_3)
 
-    def calculate_number_of_price_promotion_entity(self, kpi_set_name, kpi_name, template_names, entity_key_1,entity_key_2=None,entity_key_3=None):
+    def calculate_number_of_price_promotion_entity_with_scene(self, kpi_set_name, kpi_name, template_names, entity_key_1,entity_key_2=None,entity_key_3=None):
 
         kpi_static = self.kpi_static_data[
             (self.kpi_static_data[DIAGEOGTRConsts.KPI_SET_NAME] == kpi_set_name) &
@@ -986,11 +990,11 @@ class DIAGEOGTRToolBox:
 
         if kpi_name == PRICE_PROMOTION_BRAND_SKU:
             df_count = pd.DataFrame(
-                self.product_attribute_price_data_with_scene.groupby([entity_key_1, entity_key_2]).size().reset_index(
+                self.product_attribute_price_with_scene_data.groupby([entity_key_1, entity_key_2]).size().reset_index(
                     name="count"))
         elif kpi_name == PRICE_PROMOTION_SCENE_BRAND_SKU:
             df_count = pd.DataFrame(
-                self.product_attribute_price_data_with_scene.groupby([entity_key_1, entity_key_2, entity_key_3]).size().reset_index(
+                self.product_attribute_price_with_scene_data.groupby([entity_key_1, entity_key_2, entity_key_3]).size().reset_index(
                     name="count"))
         else:
             print ("kpi_name is not found in DB{}".format(kpi_name))
@@ -1007,7 +1011,7 @@ class DIAGEOGTRToolBox:
                 if kpi_name == PRICE_PROMOTION_BRAND_SKU:
 
                     df_count = pd.DataFrame(
-                        self.product_attribute_price_data_with_scene.groupby([entity_key_1, entity_key_2]).size().reset_index(
+                        self.product_attribute_price_with_scene_data.groupby([entity_key_1, entity_key_2]).size().reset_index(
                             name="count"))
 
                     numerator_id = row_data[entity_key_2]
@@ -1017,7 +1021,7 @@ class DIAGEOGTRToolBox:
                 elif kpi_name == PRICE_PROMOTION_SCENE_BRAND_SKU:
 
                     df_count = pd.DataFrame(
-                        self.product_attribute_price_data_with_scene.groupby(
+                        self.product_attribute_price_with_scene_data.groupby(
                             [entity_key_1, entity_key_2, entity_key_3]).size().reset_index(
                             name="count"))
 
@@ -1035,7 +1039,7 @@ class DIAGEOGTRToolBox:
                 # self.write_to_db_result(atomic_kpi_fk,(price_promotion_count, price_promotion_count, 0),
                 #                         level=self.LEVEL3)
 
-    def price_attribute_report(self,kpi_set_name,kpi_name,entity_key_1,entity_key_2,entity_key_3):
+    def calculate_number_of_price_promotion_entity(self,kpi_set_name,kpi_name,entity_key_1,entity_key_2,entity_key_3):
         kpi_static = self.kpi_static_data[
             (self.kpi_static_data[DIAGEOGTRConsts.KPI_SET_NAME] == kpi_set_name) &
             (self.kpi_static_data[DIAGEOGTRConsts.KPI_ATOMIC_NAME] == kpi_name)]
@@ -1280,7 +1284,7 @@ class DIAGEOGTRToolBox:
 
         print "atomic_kpi_fk={}, kpi_level_2_fk={}".format(atomic_kpi_fk, kpi_level_2_fk)
 
-        df_total_length = pd.DataFrame(self.product_atrribute_length_data.groupby('session_id')['length_in_mm'].sum().reset_index())
+        df_total_length = pd.DataFrame(self.product_attribute_length_with_scene_data.groupby('session_id')['length_in_mm'].sum().reset_index())
 
         if df_total_length.empty:
             print("total length is empty")
@@ -1288,7 +1292,7 @@ class DIAGEOGTRToolBox:
 
         entity_total_length = df_total_length.iloc[0].length_in_mm
 
-        df_sowb = pd.DataFrame(self.product_atrribute_length_data.groupby(entity_key_1)['length_in_mm'].sum().reset_index())
+        df_sowb = pd.DataFrame(self.product_attribute_length_with_scene_data.groupby(entity_key_1)['length_in_mm'].sum().reset_index())
 
         if df_sowb.empty:
             print "entity={} mismatch".format(entity_key_1)
