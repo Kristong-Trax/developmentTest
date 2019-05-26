@@ -1,7 +1,7 @@
 
 from Trax.Utils.Conf.Configuration import Config
 from Trax.Utils.Testing.Case import TestCase
-from mock import MagicMock, mock
+from mock import MagicMock, Mock
 import pandas as pd
 from Projects.GSKJP.Utils.KPIToolBox import GSKJPToolBox
 
@@ -11,7 +11,7 @@ __author__ = 'limorc'
 
 class TestGSKJP(TestCase):
 
-    @mock.patch('Projects.GSKJP.Utils.KPIToolBox.ProjectConnector')
+    @Mock.patch('Projects.GSKJP.Utils.KPIToolBox.ProjectConnector')
     def setUp(self, x):
         Config.init('')
         self.data_provider_mock = MagicMock()
