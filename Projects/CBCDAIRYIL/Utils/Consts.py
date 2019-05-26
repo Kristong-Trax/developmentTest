@@ -40,6 +40,7 @@ class Consts(object):
     BRAND_BLOCK = 'Brand Block'
     EYE_LEVEL = 'Eye Level'
     SURVEY = 'Survey'
+    PLANOGRAM_KPI = u'פלנוגרמה'
 
     # General Attributes
     CODE = 'code'
@@ -72,6 +73,10 @@ class Consts(object):
     INCLUDE_VAL = 1
 
     # Eye level calculation
+    BOTTOM = 'bottom'
+    TOP = 'top'
+    MAX = 'max'
+    MIN = 'min'
     EYE_LEVEL_PER_SHELF = [{'min': 3, 'max': 4, 'top': 0, 'bottom': 1}, {'min': 5, 'max': 6, 'top': 1, 'bottom': 2},
                            {'min': 7, 'max': 100, 'top': 2, 'bottom': 2}]
 
@@ -94,8 +99,8 @@ class Consts(object):
     PRIORITY = 'priority'
     SCORE = 'score'
     ATOMIC_FK = 'atomic_fk'
-    GAPS_TOTAL_SCORE_KPI = 'gaps_total_score'
-    GAP_PER_ATOMIC_KPI = 'gaps_per_kpi'
+    GAPS_TOTAL_SCORE_KPI = 'Gaps Total Score'
+    GAP_PER_ATOMIC_KPI = 'Gaps Per KPI'
 
     # Logs
     MISSING_QUESTION_LOG = "Missing question ID field! Please check the template"

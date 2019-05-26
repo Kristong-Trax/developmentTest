@@ -26,7 +26,6 @@ class Generator:
         """
         if self.tool_box.scif.empty:
             Log.warning('Scene item facts is empty for this session')
-            self.tool_box.handle_empty_sessions()
-        else:
-            self.tool_box.main_calculation()
+            return
+        self.tool_box.main_calculation()
         self.tool_box.common.commit_results_data()

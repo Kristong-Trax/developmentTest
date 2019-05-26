@@ -1,5 +1,8 @@
 # coding=utf-8
 import os
+
+from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
+from Trax.Cloud.Services.Connector.Keys import DbUsers
 from Trax.Utils.Conf.Configuration import Config
 from Trax.Utils.Testing.Case import TestCase, MockingTestCase
 from mock import MagicMock, mock
@@ -34,17 +37,17 @@ class TestCBCDAIRYIL(MockingTestCase):
         self.rds_conn = MagicMock()
         self.survey = self.mock_survey()
         self.block = self.mock_block()
-        self.scif = self.mock_scif()
+        self.scif = self.get_made_up_scif()
         self.general_toolbox = self.mock_general_toolbox()
         self.tool_box = CBCDAIRYILToolBox(self.data_provider_mock, MagicMock())
 
-    def mock_scif(self):
+    @staticmethod
+    def get_made_up_scif():
         d = {'scene_id': [1, 2, 3, 4],
              'template_name': [TestConsts.OUT_CAT_FRIDGE, TestConsts.OUT_CAT_FRIDGE, TestConsts.RETAILER_FRIDGE,
                                'SOME_TEMPLATE'], 'template_group': ['', '', '', '']}
         df = pd.DataFrame(data=d)
         return df
-
 
     def mock_project_connector(self):
         return self.mock_object('PSProjectConnector')
@@ -62,9 +65,7 @@ class TestCBCDAIRYIL(MockingTestCase):
         return self.mock_object('GENERALToolBox')
 
     def test_kpi_percentage_games(self):
-        """
-
-        """
+        """ This is a test for the weights' games in Tara"""
         regular_percentage_1 = ([(100, 0.3), (100, 0.4), (0, 0.3)], 70)
         regular_percentage_2 = ([(50, 0.2), (10, 0.4), (0, 0.1), (0, 0.3)],  14)
         missing_percentage_1 = ([(100, 0.5), (0, 0.3)], 60)
@@ -75,7 +76,7 @@ class TestCBCDAIRYIL(MockingTestCase):
         test_cases_list = [regular_percentage_1, regular_percentage_2, missing_percentage_1, missing_percentage_2,
                            missing_percentage_3, percentage_with_nones_1, percentage_with_nones_2]
         for test_values, expected_result in test_cases_list:
-            self.assertEqual(self.tool_box.calculate_kpi_result_by_weight(test_values),  expected_result)
+            self.assertEqual(self.tool_box.calculate_kpi_result_by_weight(test_values, 100),  expected_result)
 
     def test_template_filters(self):
         """
@@ -108,31 +109,26 @@ class TestCBCDAIRYIL(MockingTestCase):
 
     def test_scif_scenes_filters(self):
         """This test checks the scene filters by template_name and template_group"""
-        params_1 = (pd.Series([TestConsts.RETAILER_FRIDGE, ''], index=['template_name', 'template_group']), [3])
-        params_2 = (pd.Series([TestConsts.OUT_CAT_FRIDGE, ''], index=['template_name', 'template_group']), [1.2])
-        params_3 = (pd.Series(['', ''], index=['template_name', 'template_group']), [1, 2, 3, 4])
-        params_4 = (pd.Series(['', TestConsts.RETAILER_FRIDGE], index=['template_name', 'template_group']), [])
+        params_1 = (
+            pd.Series([TestConsts.RETAILER_FRIDGE, ''], index=[Consts.TEMPLATE_NAME, Consts.TEMPLATE_GROUP]), [3])
+        params_2 = (
+            pd.Series([TestConsts.OUT_CAT_FRIDGE, ''], index=[Consts.TEMPLATE_NAME, Consts.TEMPLATE_GROUP]), [1, 2])
+        params_3 = (pd.Series(['', ''], index=[Consts.TEMPLATE_NAME, Consts.TEMPLATE_GROUP]), [1, 2, 3, 4])
+        params_4 = (
+            pd.Series(['', TestConsts.RETAILER_FRIDGE], index=[Consts.TEMPLATE_NAME, Consts.TEMPLATE_GROUP]), [])
         test_cases = [params_1, params_2, params_3, params_4]
         for test_case_params, expected_result in test_cases:
+            self.tool_box.scif = self.get_made_up_scif()
             scenes_list = self.tool_box.get_relevant_scenes_by_params(test_case_params)
             self.assertEqual(scenes_list, expected_result)
 
-    # def validate_template(self):
-    #     problem = []
-    #     atomics_df = parse_template(Consts.TEMPLATE_PATH, Consts.KPI_SHEET, lower_headers_row_index=1)
-    #     for i in atomics_df.index:
-    #         current_atomic = atomics_df.loc[i]
-    #         key = current_atomic[Consts.PARAMS_TYPE_1]
-    #         if key in ['product_ean_code', 'brand_name', 'category']:
-    #             value = current_atomic[Consts.PARAMS_VALUE_1]
-    #             value = map(unicode.strip, value.split(Consts.SEPARATOR))
-    #             for v in value:
-    #                 filtered_df = self.all_products[self.all_products[key] == v]
-    #                 if filtered_df.empty:
-    #                     print "NO SUCH {} = {}".format(key, v)
-    #                     problem.append(v)
-    #         else:
-    #             continue
-    #     print problem
-    #     return problem
-
+    def test_get_number_of_facings_per_product_dict(self):
+        """ This is a test for get_number_of_facings_per_product_dict function"""
+        my_df = {Consts.EAN_CODE: [1, 2, 3, 4], Consts.FACINGS: [2, 2, 3, 3], Consts.FACINGS_IGN_STACK: [1, 1, 0, 0]}
+        my_df = pd.DataFrame(data=my_df)
+        dict_add_stack = self.tool_box.get_number_of_facings_per_product_dict(my_df, ignore_stack=False)
+        dict_ignore_stack = self.tool_box.get_number_of_facings_per_product_dict(my_df, ignore_stack=True)
+        self.assertEqual(len(dict_add_stack), 4)
+        self.assertEqual(len(dict_ignore_stack), 2)
+        self.assertEqual(dict_add_stack.keys(), [1, 2, 3, 4])
+        self.assertEqual(dict_ignore_stack.keys(), [1, 2])
