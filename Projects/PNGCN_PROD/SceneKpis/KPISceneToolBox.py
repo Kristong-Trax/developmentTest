@@ -44,7 +44,7 @@ DISPLAY_SIZE_KPI_NAME = 'DISPLAY_SIZE_PER_SKU_IN_SCENE'
 PNG_MANUFACTURER = 'P&G宝洁'
 DISPLAY_SIZE_PER_SCENE = 'DISPLAY_SIZE_PER_SCENE'
 LINEAR_SOS_MANUFACTURER_IN_SCENE = 'LINEAR_SOS_MANUFACTURER_IN_SCENE'
-PRESIZE_LINEAR_LENGTH_PER_LENGTH = 'PRESIZE_LINEAR_LENGTH_PER_LENGTH'
+PRESIZE_LINEAR_SOS_MANUFACTURER_IN_SCENE = 'PRESIZE_LINEAR_SOS_MANUFACTURER_IN_SCENE'
 
 
 class PngcnSceneKpis(object):
@@ -716,7 +716,7 @@ class PngcnSceneKpis(object):
         for i, row in new_scif.iterrows():
             self.common.write_to_db_result(fk=kpi_fk,
                                            numerator_id=row['product_fk'],
-                                           denominator_id=row['scene_id'],
+                                           denominator_id=self.store_id,
                                            denominator_result=denominator_result,
                                            numerator_result=row['width_mm_advance'],
                                            result=self.calculate_result(row['width_mm_advance'], denominator_result),
@@ -785,7 +785,7 @@ class PngcnSceneKpis(object):
         """
         used instead of calculating P&G manufacture products presize out off all products in scene
         """
-        kpi_fk = self.common.get_kpi_fk_by_kpi_name(PRESIZE_LINEAR_LENGTH_PER_LENGTH)
+        kpi_fk = self.common.get_kpi_fk_by_kpi_name(PRESIZE_LINEAR_SOS_MANUFACTURER_IN_SCENE)
         numerator = self.scif.width_mm.sum()  # get the width of P&G products in scene
         denominator = self.matches_from_data_provider.width_mm.sum() # get the width of all products in scene
         if denominator:
