@@ -76,7 +76,7 @@ class TestCBCDAIRYIL(MockingTestCase):
         test_cases_list = [regular_percentage_1, regular_percentage_2, missing_percentage_1, missing_percentage_2,
                            missing_percentage_3, percentage_with_nones_1, percentage_with_nones_2]
         for test_values, expected_result in test_cases_list:
-            self.assertEqual(self.tool_box.calculate_kpi_result_by_weight(test_values, 100),  expected_result)
+            self.assertEqual(expected_result, self.tool_box.calculate_kpi_result_by_weight(test_values, 100))
 
     def test_template_filters(self):
         """
@@ -105,7 +105,7 @@ class TestCBCDAIRYIL(MockingTestCase):
                            store_attr_test_5]
         for test_values, expected_result in test_cases_list:
             filtered_template = self.tool_box.filter_template_by_store_att(kpis_sheet, test_values)
-            self.assertEqual(len(filtered_template),  expected_result)
+            self.assertEqual(expected_result, len(filtered_template))
 
     def test_scif_scenes_filters(self):
         """This test checks the scene filters by template_name and template_group"""
@@ -132,3 +132,29 @@ class TestCBCDAIRYIL(MockingTestCase):
         self.assertEqual(len(dict_ignore_stack), 2)
         self.assertEqual(dict_add_stack.keys(), [1, 2, 3, 4])
         self.assertEqual(dict_ignore_stack.keys(), [1, 2])
+
+    def test_filter_df_by_shelves(self):
+        df_3_shelves = {Consts.SCENE_FK: [1, 1, 2, 2, 2, 3, 3, 4, 4, 4],
+                        Consts.SHELF_NUM_FROM_BOTTOM: [1, 1, 2, 2, 2, 3, 3, 4, 4, 4]}
+        df_4_shelves = {Consts.SCENE_FK: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2],
+                        Consts.SHELF_NUM_FROM_BOTTOM: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 4]}
+        df_5_shelves = {Consts.SCENE_FK: [1, 2, 3, 4, 5],
+                        Consts.SHELF_NUM_FROM_BOTTOM: [5, 4, 3, 2, 1]}
+        df_6_shelves = {Consts.SCENE_FK: [1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6],
+                        Consts.SHELF_NUM_FROM_BOTTOM: [6, 5, 4, 4, 3, 3, 3, 2, 2, 3, 2, 1]}
+        df_7_shelves = {Consts.SCENE_FK: [1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6],
+                        Consts.SHELF_NUM_FROM_BOTTOM: [7, 6, 6, 7, 3, 3, 4, 4, 5, 5, 1, 2]}
+        df_15_shelves = {Consts.SCENE_FK: [1, 1, 1, 2, 2, 2, 3, 3, 3, 4, 4, 4, 5, 5, 5, 6, 6, 6, 7, 7, 7],
+                         Consts.SHELF_NUM_FROM_BOTTOM: [15, 14, 14, 12, 13, 14, 13, 13, 14, 5, 3, 2, 5, 5, 5, 1, 2, 2,
+                                                        1, 1, 2]}
+        df_2_shelves = {Consts.SCENE_FK: [1, 1, 2, 2],
+                        Consts.SHELF_NUM_FROM_BOTTOM: [1, 2, 1, 2]}
+        potential_dfs_list = [(df_3_shelves, [2, 3, 4]), (df_4_shelves, [2]), (df_5_shelves, [2, 3]),
+                              (df_6_shelves, [1, 2, 3, 4, 5]),
+                              (df_7_shelves, [3, 4, 5]),
+                              (df_15_shelves, [2, 3, 4, 5]), (df_2_shelves, [1, 2])]   # todo: check 2 shelves eye lvl
+        for d, expected in potential_dfs_list:
+            df = pd.DataFrame(data=d)
+            filtered_df = self.tool_box.filter_df_by_shelves(df, Consts.EYE_LEVEL_PER_SHELF)
+            scenes = filtered_df['scene_fk'].unique().tolist()
+            self.assertEqual(expected, scenes)
