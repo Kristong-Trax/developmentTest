@@ -1089,9 +1089,6 @@ class DIAGEOGTRToolBox:
                                                       result=result,
                                                       score=score)
 
-    def calculate_share_of_wall_bay_entity(self, kpi_set_name):
-        pass
-
     def validate_kpi(self, kpi_data):
         validation = True
         store_types = kpi_data[DIAGEOGTRConsts.STORE_TYPE]
