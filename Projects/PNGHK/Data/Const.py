@@ -1,11 +1,8 @@
 
-__author__ = 'nidhinb'
-
-
 class Const(object):
 
     # template path
-    TEMPLATE_PATH = '07_PNGHK_template_2019_30_04.xlsx'
+    TEMPLATE_PATH = '08_PNGHK_template_2019_05_14.xlsx'
 
     # sheet names
     KPIS = 'KPIS'

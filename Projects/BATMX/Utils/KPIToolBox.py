@@ -97,8 +97,11 @@ class BATMXToolBox:
         avg_exit = self.get_averages(exit_results)
         avg_entry = self.get_averages(entry_results)
         delta = avg_exit - avg_entry if avg_entry else avg_exit
+        # May 23, 2019: changed per Rifka's request to include 'score' as 'result' - may need to be revised
+        # self.common.write_to_db_result(fk=visit_kpi_fk, numerator_id=self.manufacturer_fk, denominator_id=self.store_id,
+        #                                score=avg_exit, result=delta, identifier_result=identifier)
         self.common.write_to_db_result(fk=visit_kpi_fk, numerator_id=self.manufacturer_fk, denominator_id=self.store_id,
-                                       score=avg_exit, result=delta, identifier_result=identifier)
+                                       score=avg_exit, result=avg_exit, identifier_result=identifier)
         fixture_results_pk = exit_results['pk'].tolist() + entry_results['pk'].tolist()
         for scene_result_fk in fixture_results_pk:
             self.common.write_to_db_result(
@@ -113,9 +116,10 @@ class BATMXToolBox:
         if entry_results.empty:
             return
         else:
+            score = self.get_average(entry_results, 'score')
             self.common.write_to_db_result(
                 fk=visit_kpi_fk, numerator_id=self.manufacturer_fk, denominator_id=self.store_id,
-                score=self.get_average(entry_results, 'score'), identifier_result=identifier,
+                score=score, result=score, identifier_result=identifier,
                 numerator_result=self.get_average(entry_results, 'numerator_result'),
                 denominator_result=self.get_average(entry_results, 'denominator_result'))
             fixture_results_pk = entry_results['pk'].tolist() + self.exit_results[

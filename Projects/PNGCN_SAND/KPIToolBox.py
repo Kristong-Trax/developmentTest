@@ -1,16 +1,16 @@
 
 import pandas as pd
 import os
+import numpy as np
 from datetime import datetime
-
+from KPIUtils_v2.DB.CommonV2 import Common
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScript
 from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
 from Trax.Utils.Conf.Keys import DbUsers
 from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Trax.Utils.Logging.Logger import Log
-
-from Projects.PNGCN_SAND.Fetcher import PNGCN_SANDPNGQueries
+from Projects.PNGCN_SAND.Fetcher import PNGQueries
 from Projects.PNGCN_SAND.ShareOfDisplay.Calculation import calculate_share_of_display
 
 __author__ = 'nimrodp'
@@ -28,7 +28,6 @@ DISPLAY_COUNT_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '
 TOTAL_DISPLAY_COUNT = 'Total_display_count'
 KPS_WITH_SUB_CATEGORY = 'Fem'
 
-
 def log_runtime(description, log_start=False):
     def decorator(func):
         def wrapper(*args, **kwargs):
@@ -43,7 +42,7 @@ def log_runtime(description, log_start=False):
     return decorator
 
 
-class PNGCN_SANDPNGToolBox:
+class PNGToolBox:
 
     IRRELEVANT = 'Irrelevant'
     EMPTY = 'Empty'
@@ -72,6 +71,7 @@ class PNGCN_SANDPNGToolBox:
         self.empty_spaces = {self.get_category_name(category): {} for category in RELEVANT_CATEGORIES
                              if self.check_validation_of_category(category)}
         self.irrelevant_empties = 0
+        self.common = Common(self.data_provider)
 
     def get_category_name(self, category_fk):
         return self.all_products[self.all_products['category_fk'] == category_fk]['category_local_name'].values[0]
@@ -116,12 +116,12 @@ class PNGCN_SANDPNGToolBox:
         return False
 
     def get_kpi_static_data(self):
-        query = PNGCN_SANDPNGQueries.get_all_kpi_data()
+        query = PNGQueries.get_all_kpi_data()
         kpi_static_data = pd.read_sql_query(query, self.rds_conn.db)
         return kpi_static_data
 
     def get_session_categories_data(self):
-        query = PNGCN_SANDPNGQueries.get_session_categories_query().format(self.session_uid)
+        query = PNGQueries.get_session_categories_query().format(self.session_uid)
         session_categories_data = pd.read_sql_query(query, self.rds_conn.db)
         return session_categories_data
 
@@ -145,17 +145,18 @@ class PNGCN_SANDPNGToolBox:
         It checks Data/display_to_count.xlsx and counts according to it each display that defined 'isPhysical'.
         """
         display_counter = 0
-        query = PNGCN_SANDPNGQueries.get_display_count_per_name().format(self.session_uid)
+        query = PNGQueries.get_display_count_per_name().format(self.session_uid)
         total_display_count = pd.read_sql_query(query, self.rds_conn.db)
         display_template = pd.read_excel(DISPLAY_COUNT_PATH)
         for i in xrange(len(total_display_count)):
-            row = total_display_count.iloc(i)
+            row = total_display_count.iloc[i]
             try:
-                count = display_template.loc[display_template['name'] == row[i].values[0]]['count'].values[0]
-                display_counter += count*row[i].values[1]
+                count = display_template.loc[display_template['name'] == row['display_name']]['count'].values[0]
+                display_counter += count*row['display_count']
             except IndexError:
-                Log.warning('The display:{} does not exist in the template.'.format(row[i].values[0]))
+                Log.warning('The display:{} does not exist in the template.'.format(row['display_name']))
         self.handle_db_total_number_of_display(display_counter)
+
 
     def main_calculation(self):
         self.calculate_total_number_of_display()
@@ -164,20 +165,23 @@ class PNGCN_SANDPNGToolBox:
                                      (self.scif['rlv_sos_sc'] == 1) &
                                      (self.scif['location_type'] == PRIMARY_SHELF) &
                                      (self.scif['facings'] > 0)]
-
+        relevant_facings = relevant_facings.fillna("")
         sets_to_save = set()
         for category in self.empty_spaces.keys():
+            # if np.nan in self.empty_spaces[category]:
+            #     self.empty_spaces[category][None] = self.empty_spaces[category][np.nan]
+            #     del self.empty_spaces[category][np.nan]
             for sub_category in self.empty_spaces[category].keys():
                 kpi_dict = {}
                 empty_spaces = self.empty_spaces[category][sub_category]
                 main_category = True
-                category_facings = relevant_facings[relevant_facings['category_local_name'] == category]
+                category_facings = relevant_facings[relevant_facings['category_local_name'].str.encode("utf8") == category.encode("utf8")]
                 if sub_category != category:
                     main_category = False
                     if sub_category == '{} Other'.format(category.split('_')[0]):
                         category_facings = category_facings[~category_facings['sub_category'].apply(bool)]
                     else:
-                        category_facings = category_facings[category_facings['sub_category'] == sub_category]
+                        category_facings = category_facings[category_facings['sub_category'].str.encode("utf8") == sub_category.encode("utf8")]
                 kpi_dict['PNG_Empty'] = empty_spaces['png']
                 kpi_dict['Total_Empty'] = empty_spaces['png'] + empty_spaces['other']
                 png_facings = category_facings[category_facings['manufacturer_fk'] == PNG_MANUFACTURER_FK]
@@ -195,37 +199,38 @@ class PNGCN_SANDPNGToolBox:
                     kpi_dict['Category_Empty_Rate%'] = 0
 
                 if not main_category:
-                    sub_category_data = self.kpi_static_data[(self.kpi_static_data['kpi_set_name'] ==
-                                                              category + SUB_CATEGORY_SETS_SUFFIX) &
-                                                             (self.kpi_static_data['kpi_name'] == sub_category)]
+                    sub_category_data = self.kpi_static_data[(self.kpi_static_data['kpi_set_name'].str.encode("utf8")
+                                                              == (category + SUB_CATEGORY_SETS_SUFFIX).encode("utf8")) &
+                                                             (self.kpi_static_data['kpi_name'].str.encode("utf8")
+                                                              == sub_category.encode("utf8"))]
                     if sub_category_data.empty:
                         self.insert_sub_category_kpi(category, sub_category)
-                        sub_category_data = self.kpi_static_data[(self.kpi_static_data['kpi_set_name'] ==
-                                                                  category + SUB_CATEGORY_SETS_SUFFIX) &
-                                                                 (self.kpi_static_data['kpi_name'] == sub_category)]
+                        sub_category_data = self.kpi_static_data[(self.kpi_static_data['kpi_set_name'].str.encode("utf8") ==
+                                                            (category + SUB_CATEGORY_SETS_SUFFIX).encode("utf8")) &
+                                                            (self.kpi_static_data['kpi_name'].str.encode("utf8")
+                                                             == sub_category.encode("utf8"))]
                     sets_to_save.add(sub_category_data['kpi_set_fk'].values[0])
                     kpi_fk = sub_category_data['kpi_fk'].values[0]
-
                     self.write_to_db_result(kpi_fk, 100, self.LEVEL2)
                     for kpi in kpi_dict.keys():
                         atomic_kpi_fk = sub_category_data[sub_category_data['atomic_kpi_name'] ==
                                                           kpi]['atomic_kpi_fk'].values[0]
                         # if KPS_WITH_SUB_CATEGORY in str(sub_category_data[sub_category_data['atomic_kpi_name'] ==
                         #                                   kpi]['kpi_set_name']):
-                        self.write_to_db_result(atomic_kpi_fk, kpi_dict[kpi], self.LEVEL3,(sub_category).encode('utf-8').strip())
+                        self.write_to_db_result(atomic_kpi_fk, kpi_dict[kpi], self.LEVEL3, (sub_category).encode('utf-8').strip())
                         # else:
                         #     self.write_to_db_result(atomic_kpi_fk, kpi_dict[kpi], self.LEVEL3)
                 else:
-                    category_data = self.kpi_static_data[self.kpi_static_data['kpi_set_name'] == category]
+                    category_data = self.kpi_static_data[self.kpi_static_data['kpi_set_name'].str.encode("utf8")
+                                                         == category.encode("utf8")]
                     sets_to_save.add(category_data['kpi_set_fk'].values[0])
                     for kpi in kpi_dict:
                         kpi_fk = category_data[category_data['kpi_name'] == kpi]['kpi_fk'].values[0]
                         atomic_kpi_fk = category_data[category_data['atomic_kpi_name'] == kpi]['atomic_kpi_fk'].values[0]
                         self.write_to_db_result(kpi_fk, kpi_dict[kpi], self.LEVEL2)
-                        # if KPS_WITH_SUB_CATEGORY in str(
-                        #         category_data[category_data['kpi_name'] == kpi]['kpi_set_name']):
-                        self.write_to_db_result(atomic_kpi_fk, kpi_dict[kpi], self.LEVEL3,(sub_category).encode('utf-8').strip())
-                        # else:
+                        # if KPS_WITH_SUB_CATEGORY in str(category_data[category_data['kpi_name'] == kpi]['kpi_set_name']):
+                        self.write_to_db_result(atomic_kpi_fk, kpi_dict[kpi], self.LEVEL3, (sub_category).encode('utf-8').strip())
+                        # else :
                         #     self.write_to_db_result(atomic_kpi_fk, kpi_dict[kpi], self.LEVEL3)
         for set_fk in sets_to_save:
             self.write_to_db_result(set_fk, 100, self.LEVEL1)
@@ -259,7 +264,7 @@ class PNGCN_SANDPNGToolBox:
         if anchor_facing['product_type'] != self.IRRELEVANT and anchor_facing['rlv_sos_sc'] == 1:
             anchor_category = anchor_facing['category_local_name']
             anchor_sub_category = anchor_facing['sub_category']
-            if not anchor_sub_category:
+            if not anchor_sub_category or np.nan in [anchor_sub_category]:
                 anchor_sub_category = '{} Other'.format(anchor_category.split('_')[0])
             anchor_manufacturer = anchor_facing['manufacturer_fk']
             if anchor_category in self.empty_spaces.keys():
@@ -354,13 +359,13 @@ class PNGCN_SANDPNGToolBox:
             number_of_shelves = max_shelf
         return False
 
-    def write_to_db_result(self, fk, score, level,sub_cat=None):
+    def write_to_db_result(self, fk, score, level ,sub_cat=None):
         """
         This function the result data frame of every KPI (atomic KPI/KPI/KPI set),
         and appends the insert SQL query into the queries' list, later to be written to the DB.
         """
         if sub_cat:
-            attributes = self.create_attributes_dict(fk, score, level, sub_cat)
+            attributes = self.create_attributes_dict(fk, score, level,sub_cat)
         else:
             attributes = self.create_attributes_dict(fk, score, level)
 
@@ -399,24 +404,24 @@ class PNGCN_SANDPNGToolBox:
             kpi_fk = data['kpi_fk'].values[0]
             kpi_set_name = self.kpi_static_data[self.kpi_static_data['atomic_kpi_fk'] == fk]['kpi_set_name'].values[0]
             if sub_cat:
-                        atomic_kpi_name = (atomic_kpi_name + " " + sub_cat.decode('utf-8')).encode('utf-8')
+                atomic_kpi_name = (atomic_kpi_name +" " +sub_cat.decode('utf-8')).encode('utf-8')
             attributes = pd.DataFrame([(atomic_kpi_name, self.session_uid, kpi_set_name, self.store_id,
                                         self.visit_date.isoformat(), datetime.utcnow().isoformat(),
-                                        score, kpi_fk, fk, None, score)],
+                                        score, kpi_fk, fk, None,score)],
                                       columns=['display_text', 'session_uid', 'kps_name', 'store_fk', 'visit_date',
-                                               'calculation_time', 'score', 'kpi_fk', 'atomic_kpi_fk', 'threshold',
+                                               'calculation_time','score', 'kpi_fk', 'atomic_kpi_fk', 'threshold',
                                                'result'])
         else:
             attributes = pd.DataFrame()
         return attributes.to_dict()
 
     def insert_sub_category_kpi(self, category, sub_category):
-        set_data = self.kpi_static_data[self.kpi_static_data['kpi_set_name'] == category + SUB_CATEGORY_SETS_SUFFIX]
+        set_data = self.kpi_static_data[self.kpi_static_data['kpi_set_name'].str.encode("utf8)") == (category + SUB_CATEGORY_SETS_SUFFIX).encode("utf8")]
         if sub_category not in set_data['kpi_name'].tolist():
             cur = self.rds_conn.db.cursor()
-            kpi_query = PNGCN_SANDPNGQueries.get_insert_kpi_query(set_data['kpi_set_fk'].values[0], sub_category)
+            kpi_query = PNGQueries.get_insert_kpi_query(set_data['kpi_set_fk'].values[0], sub_category)
             cur.execute(kpi_query)
-            atomic_queries = PNGCN_SANDPNGQueries.get_insert_atomic_query(cur.lastrowid)
+            atomic_queries = PNGQueries.get_insert_atomic_query(cur.lastrowid)
             for query in atomic_queries:
                 cur.execute(query)
             self.rds_conn.db.commit()
@@ -429,7 +434,7 @@ class PNGCN_SANDPNGToolBox:
         This function writes all KPI results to the DB, and commits the changes.
         """
         cur = self.rds_conn.db.cursor()
-        delete_queries = PNGCN_SANDPNGQueries.get_delete_session_results_query(self.session_uid)
+        delete_queries = PNGQueries.get_delete_session_results_query(self.session_uid)
         for query in delete_queries:
             cur.execute(query)
         for query in self.kpi_results_queries:

@@ -60,6 +60,7 @@ class DIAGEOUSToolBox:
         else:
             Log.error("The store for this session has no attribute6. Set temporary as Off-premise, fix ASAP")
             self.on_off = Const.OFF
+        self.template_path = TEMPLATE_PATH
         self.templates = {}
         self.get_templates()
         self.kpi_results_queries = []
@@ -104,15 +105,15 @@ class DIAGEOUSToolBox:
             if sheet in ([Const.SHELF_FACING_SHEET, Const.PRICING_SHEET]):
                 converters = {Const.OUR_EAN_CODE: lambda x: str(x).replace(".0", ""),
                               Const.COMP_EAN_CODE: lambda x: str(x).replace(".0", "")}
-                self.templates[sheet] = pd.read_excel(TEMPLATE_PATH, sheetname=sheet,
+                self.templates[sheet] = pd.read_excel(self.template_path, sheetname=sheet,
                                                       converters=converters, keep_default_na=False)
             elif sheet == Const.SHELF_PLACMENTS_SHEET:
                 converters = {Const.PRODUCT_EAN_CODE: lambda x: str(x).replace(".0", "")}
-                self.templates[sheet] = pd.read_excel(TEMPLATE_PATH, sheetname=sheet,
+                self.templates[sheet] = pd.read_excel(self.template_path, sheetname=sheet,
                                                       converters=converters, keep_default_na=False)
             else:
                 self.templates[sheet] = pd.read_excel(
-                    TEMPLATE_PATH, sheetname=sheet, keep_default_na=False)
+                    self.template_path, sheetname=sheet, keep_default_na=False)
 
     # main functions:
 
