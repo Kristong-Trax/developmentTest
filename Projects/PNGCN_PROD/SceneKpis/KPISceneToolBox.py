@@ -700,16 +700,28 @@ class PngcnSceneKpis(object):
         self.save_nlsos_as_kpi_results(new_scif)
         self.insert_data_into_custom_scif(new_scif)
 
+    def calculate_result(self, num, den):
+        if den:
+            return num/float(den)
+        else:
+            return 0
+
     def save_nlsos_as_kpi_results(self, new_scif):
         kpi_fk = self.common.get_kpi_fk_by_kpi_name(NEW_LSOS_KPI)
         if kpi_fk is None:
             Log.warning("There is no matching Kpi fk for kpi name: " + NEW_LSOS_KPI)
             return
         new_scif = new_scif[~new_scif['product_fk'].isnull()]
+        denominator_result = new_scif.width_mm_advance.sum()
         for i, row in new_scif.iterrows():
-            self.common.write_to_db_result(fk=kpi_fk, numerator_id=row['product_fk'], denominator_id=self.store_id,
-                                           result=row['gross_len_split_stack_new'],
-                                           score=row['gross_len_split_stack_new'], by_scene=True)
+            self.common.write_to_db_result(fk=kpi_fk,
+                                           numerator_id=row['product_fk'],
+                                           denominator_id=row['scene_id'],
+                                           denominator_result=denominator_result,
+                                           numerator_result=row['width_mm_advance'],
+                                           result=self.calculate_result(row['width_mm_advance'], denominator_result),
+                                           score=self.calculate_result(row['width_mm_advance'], denominator_result),
+                                           by_scene=True)
 
     def insert_data_into_custom_scif(self, new_scif):
         session_id = self.data_provider.session_id
