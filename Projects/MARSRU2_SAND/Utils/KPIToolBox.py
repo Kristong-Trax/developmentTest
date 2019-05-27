@@ -55,7 +55,7 @@ class MARSRU2_SANDKPIToolBox:
     INCLUDE_FILTER = 1
     CONTAIN_FILTER = 2
 
-    def __init__(self, kpi_templates, data_provider, output, set_name=None, ignore_stacking=True):
+    def __init__(self, kpi_templates, data_provider, output, ignore_stacking=True):
         self.kpi_templates = kpi_templates
         self.data_provider = data_provider
         self.output = output
@@ -86,13 +86,8 @@ class MARSRU2_SANDKPIToolBox:
             self.scif['sub_brand'] = self.scif['Sub Brand']  # the sub_brand column is empty
         except:
             pass
-        if type(set_name) is tuple:
-            self.set_name, self.kpi_level_0_name = set_name
-        else:
-            self.set_name = self.kpi_level_0_name = set_name
         self.kpi_fetcher = MARSRU2_SANDKPIFetcher(self.project_name, self.kpi_templates, self.scif, self.match_product_in_scene,
-                                                 self.set_name, self.products, self.session_uid)
-        self.kpi_set_fk = self.kpi_fetcher.get_kpi_set_fk()
+                                                  self.products, self.session_uid)
         self.survey_response = self.data_provider[Data.SURVEY_RESPONSES]
         self.sales_rep_fk = self.data_provider[Data.SESSION_INFO]['s_sales_rep_fk'].iloc[0]
         self.session_fk = self.data_provider[Data.SESSION_INFO]['pk'].iloc[0]
@@ -119,7 +114,7 @@ class MARSRU2_SANDKPIToolBox:
                                        'MAN': 'manufacturer_name'}
         self.common = Common(self.data_provider)
         self.osa_kpi_dict = {}
-        self.kpi_count = 0
+        self.kpi_count = {}
 
         self.assortment = Assortment(self.data_provider, self.output, common=self.common)
         self.block = Block(self.data_provider, rds_conn=self.rds_conn)
@@ -186,7 +181,7 @@ class MARSRU2_SANDKPIToolBox:
 
             if golden_shelves_filtered_df.empty:
                 Log.debug("In the session {} there are not shelves that stands in the "
-                         "criteria for availability_on_golden_shelves KPI".format(self.session_uid))
+                          "criteria for availability_on_golden_shelves KPI".format(self.session_uid))
                 result = 'FALSE'
             else:
                 sku_list = p.get('Values').split()
@@ -305,18 +300,18 @@ class MARSRU2_SANDKPIToolBox:
         Log.debug("Done updating PS Custom SCIF... ")
         self.commit_custom_scif()
 
-    def get_static_list(self, type):
+    def get_static_list(self, object_type):
         object_static_list = []
-        if type == 'SKUs':
+        if object_type == 'SKUs':
             object_static_list = self.products['product_ean_code'].values.tolist()
-        elif type == 'CAT' or type == 'MAN in CAT':
+        elif object_type == 'CAT' or object_type == 'MAN in CAT':
             object_static_list = self.products['category'].values.tolist()
-        elif type == 'BRAND':
+        elif object_type == 'BRAND':
             object_static_list = self.products['brand_name'].values.tolist()
-        elif type == 'MAN':
+        elif object_type == 'MAN':
             object_static_list = self.products['manufacturer_name'].values.tolist()
         else:
-            Log.debug('The type {} does not exist in the data base'.format(type))
+            Log.debug('The type {} does not exist in the data base'.format(object_type))
         return object_static_list
 
     @kpi_runtime()
@@ -332,6 +327,9 @@ class MARSRU2_SANDKPIToolBox:
                 continue
 
             result = self.calculate_availability(p)
+
+            if p.get('#Mars KPI NAME') in (1012, 1014):
+                self.dict_for_planogram[p.get('#Mars KPI NAME')] = float(result)
 
             self.store_results_and_scores(result, p)
 
@@ -733,7 +731,7 @@ class MARSRU2_SANDKPIToolBox:
 
             result = round(linear_size, 1)
 
-            if p.get('#Mars KPI NAME') in (2261, 2265, 4261, 4265, 4269, 4271, 4270, 4272):
+            if p.get('#Mars KPI NAME') in (2261, 2265, 4261, 4265, 4269, 4271, 4270, 4272, 1010, 1011):
                 self.dict_for_planogram[p.get('#Mars KPI NAME')] = float(result)
 
             self.store_results_and_scores(result, p)
@@ -1451,6 +1449,39 @@ class MARSRU2_SANDKPIToolBox:
     @kpi_runtime()
     def must_range_skus(self, params):
         for p in params:
+            if p.get('Formula') != 'kpi_results':
+                continue
+
+            if p.get('#Mars KPI NAME') == 1013:  # Share of Shelf Nestle in Mars = (((1010+1011)/(4261+4265))/0.5)*0.5
+                k1 = 0.5
+                k2 = 0.5
+                kpi_part_1 = self.dict_for_planogram[1010] + self.dict_for_planogram[1011]
+                kpi_part_2 = self.dict_for_planogram[4261] + self.dict_for_planogram[4265]
+                result = ((kpi_part_1/kpi_part_2)/k1)*k2 if kpi_part_2 else 0
+
+            elif p.get('#Mars KPI NAME') == 1015:  # Nestle in Mars = ((1012/1014)/0.5)*0.5
+                k1 = 0.5
+                k2 = 0.5
+                kpi_part_1 = self.dict_for_planogram[1012]
+                kpi_part_2 = self.dict_for_planogram[1014]
+                result = ((kpi_part_1/kpi_part_2)/k1)*k2 if kpi_part_2 else 0
+
+            elif p.get('#Mars KPI NAME') == 1016:  # PSS Nestle = 1013+1015
+                kpi_part_1 = self.dict_for_planogram[1013]
+                kpi_part_2 = self.dict_for_planogram[1015]
+                result = kpi_part_1 + kpi_part_2
+
+            else:
+                result = None
+
+            self.store_results_and_scores(result, p)
+
+            self.store_to_old_kpi_tables(p)
+            self.store_to_new_kpi_tables(p)
+
+    @kpi_runtime()
+    def must_range_skus(self, params):
+        for p in params:
             if p.get('Formula') != 'custom_mars_7':
                 continue
 
@@ -1994,7 +2025,13 @@ class MARSRU2_SANDKPIToolBox:
 
         score_value = None if result_value is None else (
             100 if result_value and result_value != 'FALSE' else 0)
-        self.results_and_scores[str(params.get('#Mars KPI NAME'))] = {
+
+        kpi_set = (params.get('#Mars KPI SET Old'), params.get('#Mars KPI SET New'))
+
+        if not self.results_and_scores.get(kpi_set):
+            self.results_and_scores[kpi_set] = {}
+
+        self.results_and_scores[kpi_set][str(params.get('#Mars KPI NAME'))] = {
             'result': result_value, 'score': score_value}
 
     def transform_result(self, result, params):
@@ -2059,13 +2096,19 @@ class MARSRU2_SANDKPIToolBox:
         self.writing_to_db_time += dt.datetime.utcnow() - start_time
         return cur.lastrowid
 
-    def write_to_db_result_level1(self):
-        attributes_for_table1 = pd.DataFrame([(self.set_name,
+    def write_to_db_result_level1(self, kpi_set_name):
+        kpi_set_fk = self.kpi_fetcher.get_kpi_set_fk(kpi_set_name)
+
+        if not kpi_set_fk:
+            Log.error('KPI set <{0}> is not found in static.kpi_set table'
+                      ''.format(kpi_set_name))
+
+        attributes_for_table1 = pd.DataFrame([(kpi_set_name,
                                                self.session_uid,
                                                self.store_id,
                                                self.visit_date.isoformat(),
                                                100,
-                                               self.kpi_set_fk)],
+                                               kpi_set_fk)],
                                              columns=['kps_name',
                                                       'session_uid',
                                                       'store_fk',
@@ -2079,12 +2122,19 @@ class MARSRU2_SANDKPIToolBox:
         This function creates a data frame with all attributes needed for saving in level 2 tables
 
         """
-        kpi_fk = self.kpi_fetcher.get_kpi_fk(params.get('#Mars KPI NAME'))
+        kpi_fk = self.kpi_fetcher.get_kpi_fk(params.get('#Mars KPI SET Old'),
+                                             params.get('#Mars KPI NAME'))
 
-        if self.results_and_scores.get(str(params.get('#Mars KPI NAME'))):
-            score = self.results_and_scores[str(params.get('#Mars KPI NAME'))]['score']
+        kpi_set = (params.get('#Mars KPI SET Old'), params.get('#Mars KPI SET New'))
+
+        if self.results_and_scores[kpi_set].get(str(params.get('#Mars KPI NAME'))):
+            score = self.results_and_scores[kpi_set][str(params.get('#Mars KPI NAME'))]['score']
         else:
             score = None
+
+        if not kpi_fk:
+            Log.error('KPI name <{0}> is not found for KPI set <{1}> in static.kpi table'
+                      ''.format(params.get('#Mars KPI NAME'), params.get('#Mars KPI SET Old')))
 
         attributes_for_table2 = pd.DataFrame([(self.session_uid,
                                                self.store_id,
@@ -2106,8 +2156,11 @@ class MARSRU2_SANDKPIToolBox:
         This function creates a data frame with all attributes needed for saving in level 3 tables
 
         """
-        kpi_fk = self.kpi_fetcher.get_kpi_fk(params.get('#Mars KPI NAME'))
-        atomic_kpi_fk = self.kpi_fetcher.get_atomic_kpi_fk(params.get('#Mars KPI NAME'))
+        kpi_fk = self.kpi_fetcher.get_kpi_fk(params.get('#Mars KPI SET Old'),
+                                             params.get('#Mars KPI NAME'))
+        atomic_kpi_fk = self.kpi_fetcher.get_atomic_kpi_fk(params.get('#Mars KPI SET Old'),
+                                                           params.get('#Mars KPI NAME'),
+                                                           params.get('#Mars KPI NAME'))
 
         if self.results_and_scores.get(str(params.get('#Mars KPI NAME'))):
             result = self.results_and_scores[str(params.get('#Mars KPI NAME'))]['result']
@@ -2116,9 +2169,13 @@ class MARSRU2_SANDKPIToolBox:
             result = None
             score = None
 
+        if not atomic_kpi_fk:
+            Log.error('Atomic KPI name <{0}> is not found for KPI <{0}> of KPI set <{1}> in static.atomic_kpi table'
+                      ''.format(params.get('#Mars KPI NAME'), params.get('#Mars KPI SET Old')))
+
         attributes_for_table3 = pd.DataFrame([(params.get('KPI Display name RU').encode('utf-8').replace("'", "''"),
                                                self.session_uid,
-                                               self.set_name,
+                                               params.get('#Mars KPI SET Old'),
                                                self.store_id,
                                                self.visit_date.isoformat(),
                                                dt.datetime.utcnow().isoformat(),
@@ -2162,13 +2219,18 @@ class MARSRU2_SANDKPIToolBox:
     def store_to_new_kpi_tables(self, p):
         # API KPIs
         kpi_fk = self.common.get_kpi_fk_by_kpi_type(str(p.get('#Mars KPI NAME')))
-        parent_fk = self.common.get_kpi_fk_by_kpi_type(self.kpi_level_0_name + ' API')
+        parent_fk = self.common.get_kpi_fk_by_kpi_type(str(p.get('#Mars KPI SET New')) + ' API')
         numerator_id = self.own_manufacturer_id
         denominator_id = self.store_id
         identifier_result = self.common.get_dictionary(kpi_fk=kpi_fk)
         identifier_parent = self.common.get_dictionary(kpi_fk=parent_fk)
         result = self.transform_result(
             self.results_and_scores[str(p.get('#Mars KPI NAME'))]['result'], p)
+
+        if not kpi_fk:
+            Log.error('KPI name <{0}> is not found in static.kpi_level_2 table'
+                      ''.format(str(p.get('#Mars KPI NAME'))))
+
         self.common.write_to_db_result(fk=kpi_fk,
                                        numerator_id=numerator_id,
                                        numerator_result=0,
@@ -2182,13 +2244,18 @@ class MARSRU2_SANDKPIToolBox:
 
         # Report KPIs
         kpi_fk = self.common.get_kpi_fk_by_kpi_type(str(p.get('#Mars KPI NAME')) + '-RUS')
-        parent_fk = self.common.get_kpi_fk_by_kpi_type(self.kpi_level_0_name + ' RUS')
+        parent_fk = self.common.get_kpi_fk_by_kpi_type(str(p.get('#Mars KPI SET New')) + ' RUS')
         numerator_id = self.own_manufacturer_id
         denominator_id = self.store_id
         identifier_result = self.common.get_dictionary(kpi_fk=kpi_fk)
         identifier_parent = self.common.get_dictionary(kpi_fk=parent_fk)
         result = self.transform_result(
             self.results_and_scores[str(p.get('#Mars KPI NAME'))]['result'], p)
+
+        if not kpi_fk:
+            Log.error('KPI name <{0}> is not found in static.kpi_level_2 table'
+                      ''.format(str(p.get('#Mars KPI NAME')) + '-RUS'))
+
         self.common.write_to_db_result(fk=kpi_fk,
                                        numerator_id=numerator_id,
                                        numerator_result=0,
@@ -2200,7 +2267,9 @@ class MARSRU2_SANDKPIToolBox:
                                        identifier_parent=identifier_parent,
                                        should_enter=True)
 
-        self.kpi_count += 1
+        if not self.kpi_count.get(str(p.get('#Mars KPI SET New'))):
+            self.kpi_count[str(p.get('#Mars KPI SET New'))] = 0
+        self.kpi_count[str(p.get('#Mars KPI SET New'))] += 1
 
     def store_to_new_kpi_tables_level0(self, kpi_level_0_name):
         # API KPIs
@@ -2211,6 +2280,11 @@ class MARSRU2_SANDKPIToolBox:
         identifier_result = self.common.get_dictionary(kpi_fk=kpi_fk)
         identifier_parent = self.common.get_dictionary(kpi_fk=parent_fk)
         result = None
+
+        if not kpi_fk:
+            Log.error('KPI name <{0}> is not found in static.kpi_level_2 table'
+                      ''.format(kpi_level_0_name + ' API'))
+
         self.common.write_to_db_result(fk=kpi_fk,
                                        numerator_id=numerator_id,
                                        numerator_result=0,
@@ -2229,7 +2303,12 @@ class MARSRU2_SANDKPIToolBox:
         denominator_id = self.store_id
         identifier_result = self.common.get_dictionary(kpi_fk=kpi_fk)
         identifier_parent = self.common.get_dictionary(kpi_fk=parent_fk)
-        result = self.kpi_count
+        result = self.kpi_count[kpi_level_0_name]
+
+        if not kpi_fk:
+            Log.error('KPI name <{0}> is not found in static.kpi_level_2 table'
+                      ''.format(kpi_level_0_name + ' RUS'))
+
         self.common.write_to_db_result(fk=kpi_fk,
                                        numerator_id=numerator_id,
                                        numerator_result=0,

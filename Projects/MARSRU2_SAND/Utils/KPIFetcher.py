@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-import numpy as np
+# import numpy as np
 import pandas as pd
 
 from Trax.Cloud.Services.Connector.Keys import DbUsers
@@ -27,13 +27,12 @@ class MARSRU2_SANDKPIFetcher:
     LEFT = 'shelf_px_left'
     RIGHT = 'shelf_px_right'
 
-    def __init__(self, project_name, kpi_templates, scif, matches, set_name, products, session_uid):
+    def __init__(self, project_name, kpi_templates, scif, matches, products, session_uid):
         self.rds_conn = PSProjectConnector(project_name, DbUsers.CalculationEng)
         self.project = project_name
         self.kpi_templates = kpi_templates
         self.scif = scif
         self.matches = matches
-        self.set_name = set_name
         self.kpi_static_data = self.get_static_kpi_data()
         self.kpi_result_values = self.get_kpi_result_values()
         self.products = products
@@ -137,151 +136,8 @@ class MARSRU2_SANDKPIFetcher:
 
         return object_facings
 
-    @staticmethod
-    def get_kpi_results_data():
-
-        return '''
-            select api.pk as atomic_kpi_fk
-            from
-            static.atomic_kpi api
-            left join static.kpi kpi on kpi.pk = api.kpi_fk
-            join static.kpi_set kps on kps.pk = kpi.kpi_set_fk
-            where api.name = '{}' and kps.name = '{}'
-            limit 1
-                   '''
-
-    @staticmethod
-    def get_kpk_results_data():
-        return '''
-
-            select k.pk as kpi_fk
-            from static.kpi k
-            left join static.kpi_set kp on kp.pk = k.kpi_set_fk
-            where k.display_text = '{}' and kp.name = '{}'
-            limit 1
-                       '''
-
-    @staticmethod
-    def get_kps_results_data():
-        return '''
-                select kps.pk
-    from static.kpi_set kps
-            where kps.name = '{}'
-            limit 1
-                       '''
-
-    # def get_kpi_fk(self, kpi_name, kps_name):
-    #     query = self.get_kpk_results_data().format(kpi_name, kps_name)
-    #     level2 = pd.read_sql_query(query, self.rds_conn.db)
-    #     kpi_fk = level2['kpi_fk']
-    #
-    #     return kpi_fk
-
-    def get_atomic_fk(self, kpi_fk):
-        query = self.get_kpi_results_data().format(kpi_fk)
-        level3 = pd.read_sql_query(query, self.rds_conn.db)
-        atomic_fk = level3['atomic_kpi_fk']
-        return atomic_fk
-
-    def get_kps_fk(self, kps_name):
-        query = self.get_kpi_results_data().format(kps_name)
-        level1 = pd.read_sql_query(query, self.rds_conn.db)
-        kpi_set_fk = level1['kpi_set_fk']
-        return kpi_set_fk
-
-    def get_session_set(self, session_uid):
-        query = """
-                select ss.pk , ss.additional_attribute_12
-                from static.stores ss
-                join probedata.session ps on ps.store_fk=ss.pk
-                where ss.delete_date is null and ps.session_uid = '{}';
-                """.format(session_uid)
-
-        cur = self.rds_conn.db.cursor()
-        cur.execute(query)
-        res = cur.fetchall()
-
-        df = pd.DataFrame(list(res), columns=['store_fk', 'additional_attribute_12'])
-
-        return df
-
-    @staticmethod
-    def get_table_update_query(entries, table, condition):
-        if table == 'report.kpi_results':
-            entries_to_overwrite = ["score", "display_text", "kps_name", "kpi_fk", "result", "threshold",
-                                    "calculation_time"]
-        elif table == 'report.kpk_results':
-            entries_to_overwrite = ["score"]
-        elif table == 'report.kps_results':
-            entries_to_overwrite = ["score_1", "kps_name"]
-        else:
-            entries_to_overwrite = ["score"]
-        updated_values = []
-        for key in entries.keys():
-            if key in entries_to_overwrite:
-                updated_values.append("{} = '{}'".format(key, entries[key][0]))
-
-        query = "UPDATE {} SET {} WHERE {}".format(table, ", ".join(updated_values), condition)
-
-        return query
-
-    def get_atomic_kpi_fk_to_overwrite(self, session_uid, atomic_kpi_fk):
-        query = """
-                select pk
-                from report.kpi_results
-                where session_uid = '{}' and atomic_kpi_fk = {}
-                limit 1""".format(session_uid, atomic_kpi_fk)
-
-        df = pd.read_sql_query(query, self.rds_conn.db)
-        try:
-            return df['pk'][0]
-        except IndexError:
-            return None
-
-    def get_kpi_fk_to_overwrite(self, session_uid, kpi_fk):
-        query = """
-                select pk
-                from report.kpk_results
-                where session_uid = '{}' and kpi_fk = {}
-                limit 1""".format(session_uid, kpi_fk)
-
-        df = pd.read_sql_query(query, self.rds_conn.db)
-        try:
-            return df['pk'][0]
-        except IndexError:
-            return None
-
-    def get_kpi_set_fk_to_overwrite(self, session_uid, kpi_set_fk):
-        query = """
-                select *
-                from report.kps_results
-                where session_uid = '{}' and kpi_set_fk = '{}'
-                limit 1""".format(session_uid, kpi_set_fk)
-
-        df = pd.read_sql_query(query, self.rds_conn.db)
-        if not df.empty:
-            return True
-        else:
-            return None
-
-    def get_match_product_in_probe_details(self, session_uid):
-        query = """
-                select mpip.product_fk, mpip.probe_fk, mpip.price, pp.scene_fk, pp.local_image_time
-                from
-                probedata.match_product_in_probe_details mpip
-                join probedata.probe pp on pp.pk=mpip.probe_fk
-                where pp.session_uid = '{}'
-                """.format(session_uid)
-
-        df = pd.read_sql_query(query, self.rds_conn.db)
-
-        return df
-
     def get_object_price(self, scenes, objects, object_type, match_product_details, form_factor=None,
                          include_stacking=False):
-        """
-
-        """
         object_type_conversion = {'SKUs': 'product_ean_code',
                                   'BRAND': 'brand_name',
                                   'CAT': 'category',
@@ -325,16 +181,19 @@ class MARSRU2_SANDKPIFetcher:
             session_fk)
         return query
 
-    def get_kpi_set_fk(self):
-        kpi_set_fk = self.kpi_static_data['kpi_set_fk']
+    def get_kpi_set_fk(self, kpi_set_name):
+        kpi_set_fk = self.kpi_static_data[self.kpi_static_data['kpi_set_name'] == str(kpi_set_name)]['kpi_set_fk']
         return kpi_set_fk.values[0]
 
-    def get_kpi_fk(self, kpi_name):
-        kpi_fk = self.kpi_static_data[self.kpi_static_data['kpi_name'] == str(kpi_name)]['kpi_fk']
+    def get_kpi_fk(self, kpi_set_name, kpi_name):
+        kpi_fk = self.kpi_static_data[(self.kpi_static_data['kpi_set_name'] == str(kpi_set_name)) &
+                                      (self.kpi_static_data['kpi_name'] == str(kpi_name))]['kpi_fk']
         return kpi_fk.values[0]
 
-    def get_atomic_kpi_fk(self, atomic_kpi_name):
-        atomic_kpi_fk = self.kpi_static_data[self.kpi_static_data['atomic_kpi_name'] == str(atomic_kpi_name)][
+    def get_atomic_kpi_fk(self, kpi_set_name, kpi_name, atomic_kpi_name):
+        atomic_kpi_fk = self.kpi_static_data[(self.kpi_static_data['kpi_set_name'] == str(kpi_set_name)) &
+                                             (self.kpi_static_data['kpi_name'] == str(kpi_name)) &
+                                             (self.kpi_static_data['atomic_kpi_name'] == str(atomic_kpi_name))][
             'atomic_kpi_fk']
         return atomic_kpi_fk.values[0]
 
@@ -346,7 +205,7 @@ class MARSRU2_SANDKPIFetcher:
                 from static.atomic_kpi api
                 join static.kpi kpi on kpi.pk = api.kpi_fk
                 join static.kpi_set kps on kps.pk = kpi.kpi_set_fk
-                where kps.name = '{}'""".format(self.set_name)
+                """
         df = pd.read_sql_query(query, self.rds_conn.db)
         return df
 
