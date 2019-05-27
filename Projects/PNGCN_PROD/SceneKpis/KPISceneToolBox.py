@@ -768,34 +768,87 @@ class PngcnSceneKpis(object):
         else:
             print 'the kpi is not configured in db'
 
-    def calculate_linear_length(self):
+    def get_filterd_matches(self):
         """
-        calculate P&G manufacture linear length percentage
+        remove status=2 , group with scif by 'product_fk' to add 'manufacturer_fk'
+        :return:
         """
-        kpi_fk = self.common.get_kpi_fk_by_kpi_name(LINEAR_SOS_MANUFACTURER_IN_SCENE)
-        filters = {'manufacturer_fk': [self.png_manufacturer_fk]}
-        sos = SOS(self.data_provider)
-        score, numerator, denominator = \
-            sos.calculate_linear_share_of_shelf_with_numerator_denominator(filters, {})
+        # copy the DFs
+        a, b = self.matches_from_data_provider.copy(), self.scif.copy()
+
+        b = b[~b['product_fk'].isnull()]
+        new_b_without_irrelevant = b[~(b['product_type'].isin(['Irrelevant']))]
+        new_b_without_excludes = new_b_without_irrelevant[new_b_without_irrelevant['rlv_sos_sc'] == 1]
+
+        # remove status 2
+        a = a[a['status'] != 2]
+        new_b_without_excludes = new_b_without_excludes[new_b_without_excludes['status'] != 2]
+
+        # merge wite scif to add manufacture
+        matches_filtered = pd.merge(a, new_b_without_excludes, how='left',
+                                    on=['product_fk', 'scene_fk'])[['product_fk', 'scene_fk', 'width_mm_x',
+                                                                    'width_mm_advance', 'manufacturer_fk']]
+        # rename columns
+        matches_filtered.columns = [u'product_fk', u'scene_fk', u'width_mm', u'width_mm_advance', u'manufacturer_fk']
+
+        # sum 'width_mm' and 'width_mm_advance'
+        matches_filtered = matches_filtered.groupby(['product_fk', 'scene_fk', 'manufacturer_fk']).sum().reset_index()
+
+        return matches_filtered
+
+    def calculate_linear_or_presize_linear_length(self, width):
+        """
+        calculate the manufacturer 'SOS linear length' by 'width_mm' parmeter or
+        manufacturer 'SOS presize linear length' by 'width_mm_advance' parmeter.
+        :param width: width_mm or width_mm_advance
+        :return:
+        """
+
+        # choosing the kpi to use depend on the input parameter
+        kpi_fk = None
+        if width == 'width_mm':
+            kpi_fk = self.common.get_kpi_fk_by_kpi_name(LINEAR_SOS_MANUFACTURER_IN_SCENE)
+            kpi_name = LINEAR_SOS_MANUFACTURER_IN_SCENE
+        elif width == 'width_mm_advance':
+            kpi_fk = self.common.get_kpi_fk_by_kpi_name(PRESIZE_LINEAR_SOS_MANUFACTURER_IN_SCENE)
+            kpi_name = PRESIZE_LINEAR_SOS_MANUFACTURER_IN_SCENE
+        if kpi_fk is None:
+            Log.warning("There is no matching Kpi fk for kpi name: " + kpi_name)
+            return
+
+        # get the filtered df,
+        matches_filtered = self.get_filterd_matches()
+
+        # get the width of P&G products in scene
+        numerator = matches_filtered[matches_filtered['manufacturer_fk'] ==
+                                     self.png_manufacturer_fk][width].sum()
+
+        # get the width of all products in scene
+        denominator = matches_filtered[width].sum()  # get the width of all products in scene
+
+        if denominator:
+            score = numerator / float(denominator)  # get the percentage of P&G products from all products
+        else:
+            score = 0
+
         self.common.write_to_db_result(fk=kpi_fk, numerator_id=self.png_manufacturer_fk, numerator_result=numerator,
                                        denominator_id=self.store_id, denominator_result=denominator, result=score,
                                        score=score, by_scene=True)
         return 0
 
-    def calculate_presize_linear_length(self):
+    def calculate_linear_length(self):
         """
-        used instead of calculating P&G manufacture products presize out off all products in scene
+        calculate P&G manufacture linear length percentage using 'width_mm'
         """
-        kpi_fk = self.common.get_kpi_fk_by_kpi_name(PRESIZE_LINEAR_SOS_MANUFACTURER_IN_SCENE)
-        numerator = self.scif.width_mm.sum()  # get the width of P&G products in scene
-        denominator = self.matches_from_data_provider.width_mm.sum() # get the width of all products in scene
-        if denominator:
-            score = numerator / denominator  # get the percentage of P&G products from all products
-            self.common.write_to_db_result(fk=kpi_fk, numerator_id=self.png_manufacturer_fk, numerator_result=numerator,
-                                           denominator_id=self.store_id, denominator_result=denominator, result=score,
-                                           score=score, by_scene=True)
+        self.calculate_linear_or_presize_linear_length('width_mm')
         return 0
 
+    def calculate_presize_linear_length(self):
+        """
+        calculate P&G manufacture linear length percentage using 'width_mm_advance'
+        """
+        self.calculate_linear_or_presize_linear_length('width_mm_advance')
+        return 0
 #
 # if __name__ == '__main__':
 #     # Config.init()
