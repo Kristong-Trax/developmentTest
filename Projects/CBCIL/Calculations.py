@@ -1,9 +1,9 @@
 
 from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScript
-# from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
-# from Trax.Utils.Conf.Configuration import Config
-# from Trax.Utils.Logging.Logger import Log
-# from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
+from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
+from Trax.Utils.Conf.Configuration import Config
+from Trax.Utils.Logging.Logger import Log
+from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
 
 from Projects.CBCIL.KPIGenerator import CBCILCBCIL_PRODGenerator
 
@@ -15,14 +15,15 @@ class CBCILCalculations(BaseCalculationsScript):
         self.timer.start()
         CBCILCBCIL_PRODGenerator(self.data_provider, self.output).main_function()
         self.timer.stop('KPIGenerator.run_project_calculations')
-#
+
+
 # if __name__ == '__main__':
 #     LoggerInitializer.init('cbcil calculations')
 #     Config.init()
 #     project_name = 'cbcil'
 #     data_provider = KEngineDataProvider(project_name)
 #     sessions = [
-#         '40dcf168-35b6-46b9-9f10-180e9849547e'
+#         'cdcb0371-17e1-41ff-b8a3-ddaaceef1702'
 #         # '95513285-4c78-4c91-85dd-cae2ff83bbf5' #tested and changed
 #         # 'a0ba8c7d-7dec-40c4-9730-eaea3edcfc95' # tested
 #         # '4bc4c803-c1cb-4a0f-a753-3da1b7f94216' # tested
