@@ -113,12 +113,12 @@ class CBCDAIRYILSANDToolBox:
     def insert_gap_results(self, gap_kpi_fk, score, weight, numerator_id=Consts.CBC_MANU, parent_fk=None):
         """ This is a utility function that insert results to the DB for the GAP """
         should_enter = True if parent_fk else False
-        self.common.write_to_db_result(fk=gap_kpi_fk, numerator_id=numerator_id, numerator_result=score*100,
-                                       denominator_id=self.store_id, denominator_result=weight*100,
-                                       identifier_result=gap_kpi_fk, identifier_parent=parent_fk, result=score*100,
-                                       score=score*100, should_enter=should_enter)
+        self.common.write_to_db_result(fk=gap_kpi_fk, numerator_id=numerator_id, numerator_result=score * 100,
+                                       denominator_id=self.store_id, denominator_result=weight * 100,
+                                       identifier_result=gap_kpi_fk, identifier_parent=parent_fk, result=score * 100,
+                                       score=score * 100, should_enter=should_enter)
 
-    def calculate_kpis_and_save_to_db(self,  kpi_results, kpi_fk, parent_kpi_weight=1.0, parent_fk=None):
+    def calculate_kpis_and_save_to_db(self, kpi_results, kpi_fk, parent_kpi_weight=1.0, parent_fk=None):
         """
         This KPI aggregates the score by weights and saves the results to the DB.
         :param kpi_results: A list of results and weights tuples: [(score1, weight1), (score2, weight2) ... ].
@@ -128,7 +128,7 @@ class CBCDAIRYILSANDToolBox:
         :return: The aggregated KPI score.
         """
         should_enter = True if parent_fk else False
-        ignore_weight = not should_enter    # Weights should be ignored only in the set level!
+        ignore_weight = not should_enter  # Weights should be ignored only in the set level!
         kpi_score = self.calculate_kpi_result_by_weight(kpi_results, parent_kpi_weight, ignore_weights=ignore_weight)
         self.common.write_to_db_result(fk=kpi_fk, numerator_id=Consts.CBC_MANU, numerator_result=kpi_score,
                                        denominator_id=self.store_id, denominator_result=parent_kpi_weight * 100,
@@ -214,7 +214,7 @@ class CBCDAIRYILSANDToolBox:
         :param general_filters: Relevant attributes and values to calculate by.
         :return: A tuple with results: (numerator_result, denominator_result, total_score).
         """
-        num_result = denominator_result = atomic_score = 0
+        num_result = denominator_result = 0
         if atomic_type in [Consts.AVAILABILITY]:
             atomic_score = self.calculate_availability(**general_filters)
         elif atomic_type == Consts.AVAILABILITY_FROM_BOTTOM:
@@ -222,8 +222,7 @@ class CBCDAIRYILSANDToolBox:
         elif atomic_type == Consts.MIN_2_AVAILABILITY:
             num_result, denominator_result, atomic_score = self.calculate_min_2_availability(**general_filters)
         elif atomic_type == Consts.SURVEY:
-            pass    # TODO TODO TODO TODO
-            # atomic_score = self.calculate_survey(**general_filters)   # TODO TODO TODO TODO
+            atomic_score = self.calculate_survey(**general_filters)
         elif atomic_type == Consts.BRAND_BLOCK:
             atomic_score = self.calculate_brand_block(**general_filters)
         elif atomic_type == Consts.EYE_LEVEL:
@@ -364,8 +363,7 @@ class CBCDAIRYILSANDToolBox:
                                                             self.scif.keys()))]
         merged_df = pd.merge(self.scif[self.scif.facings != 0], scif_matches_diff, how='outer',
                              left_on=['scene_id', 'item_id'], right_on=[Consts.SCENE_FK, Consts.PRODUCT_FK])
-        # merged_df = merged_df[self.general_toolbox.get_filter_condition(merged_df, **kpi_filters)]  TODO RESTORE
-        merged_df = merged_df[(merged_df['scene_id'] == 339) & (merged_df['brand_name'].isin(['Terra', 'Muller Prof']))]      # TODO DELETE
+        merged_df = merged_df[self.general_toolbox.get_filter_condition(merged_df, **kpi_filters)]
         return merged_df
 
     def calculate_eye_level(self, **general_filters):
@@ -502,5 +500,5 @@ class CBCDAIRYILSANDToolBox:
         for products in self.passed_availability:
             score += 1 if sum(
                 [facings_counter[product] for product in products if product in facings_counter]) > 1 else 0
-        total_score = (score / float(len(self.passed_availability)))*100 if self.passed_availability else 0
+        total_score = (score / float(len(self.passed_availability))) * 100 if self.passed_availability else 0
         return score, len(self.passed_availability), total_score

@@ -214,7 +214,7 @@ class CBCDAIRYILToolBox:
         :param general_filters: Relevant attributes and values to calculate by.
         :return: A tuple with results: (numerator_result, denominator_result, total_score).
         """
-        num_result = denominator_result = atomic_score = 0
+        num_result = denominator_result = 0
         if atomic_type in [Consts.AVAILABILITY]:
             atomic_score = self.calculate_availability(**general_filters)
         elif atomic_type == Consts.AVAILABILITY_FROM_BOTTOM:
@@ -222,8 +222,7 @@ class CBCDAIRYILToolBox:
         elif atomic_type == Consts.MIN_2_AVAILABILITY:
             num_result, denominator_result, atomic_score = self.calculate_min_2_availability(**general_filters)
         elif atomic_type == Consts.SURVEY:
-            pass    # TODO TODO TODO TODO
-            # atomic_score = self.calculate_survey(**general_filters)   # TODO TODO TODO TODO
+            atomic_score = self.calculate_survey(**general_filters)
         elif atomic_type == Consts.BRAND_BLOCK:
             atomic_score = self.calculate_brand_block(**general_filters)
         elif atomic_type == Consts.EYE_LEVEL:
@@ -364,8 +363,7 @@ class CBCDAIRYILToolBox:
                                                             self.scif.keys()))]
         merged_df = pd.merge(self.scif[self.scif.facings != 0], scif_matches_diff, how='outer',
                              left_on=['scene_id', 'item_id'], right_on=[Consts.SCENE_FK, Consts.PRODUCT_FK])
-        # merged_df = merged_df[self.general_toolbox.get_filter_condition(merged_df, **kpi_filters)]  TODO RESTORE
-        merged_df = merged_df[(merged_df['scene_id'] == 339) & (merged_df['brand_name'].isin(['Terra', 'Muller Prof']))]      # TODO DELETE
+        merged_df = merged_df[self.general_toolbox.get_filter_condition(merged_df, **kpi_filters)]
         return merged_df
 
     def calculate_eye_level(self, **general_filters):
