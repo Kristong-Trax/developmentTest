@@ -1,8 +1,8 @@
 
-# from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
-# from Trax.Utils.Conf.Configuration import Config
-# from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
-# from Projects.GSKAU.Calculations import Calculations
+from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
+from Trax.Utils.Conf.Configuration import Config
+from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
+from Projects.GSKAU.Calculations import Calculations
 
 
 # if __name__ == '__main__':
@@ -10,7 +10,7 @@
 #     Config.init()
 #     project_name = 'gskau'
 #     data_provider = KEngineDataProvider(project_name)
-#     session = ''
+#     session = 'EFA1CC94-3D92-4C2D-8278-730D1A429DC2'
 #     data_provider.load_session_data(session)
 #     output = Output()
 #     Calculations(data_provider, output).run_project_calculations()

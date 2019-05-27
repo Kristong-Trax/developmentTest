@@ -2376,8 +2376,13 @@ class CCRUKPIToolBox:
                                                       'kpk_name',
                                                       'score'])
 
+        target = 100 * (param.get('KPI Weight') if param.get('KPI Weight') else 1)
+        if self.kpi_scores_and_results[self.kpi_set_type].get(str(param.get('KPI ID'))):
+            if self.kpi_scores_and_results[self.kpi_set_type][str(param.get('KPI ID'))].get('target'):
+                target = self.kpi_scores_and_results[self.kpi_set_type][str(param.get('KPI ID'))]['target']
+
         self.update_kpi_scores_and_results(param, {'level': level,
-                                                   'target': 100 * (param.get('KPI Weight') if param.get('KPI Weight') else 1),
+                                                   'target': target,
                                                    'weight': param.get('KPI Weight'),
                                                    # 'result': round(score),
                                                    'score': round(score),
@@ -3633,6 +3638,9 @@ class CCRUKPIToolBox:
             kpi_name = kpi_name.strip().replace("  ", " ").replace(",", ".").upper()
             kpi_fk = self.common.kpi_static_data[self.common.kpi_static_data['type']
                                                  == kpi_name]['pk'].values[0]
+            if not kpi_fk:
+                Log.error('KPI Name <{}> is not found in static.kpi_level_2 table'
+                          ''.format(kpi_name))
 
             scene_id = int(kpi['scene_id']) if kpi['scene_id'] else None
 
@@ -3661,7 +3669,7 @@ class CCRUKPIToolBox:
             if kpi_set_type in [POS, EQUIPMENT, SPIRITS]:
                 score = score if kpi['weighted_score'] is None else kpi['weighted_score']
                 weight = weight if kpi['weight'] is None else kpi['weight']
-                target = weight*100 if kpi['target'] is None and weight else kpi['target']
+                target = weight*100 if weight and kpi['level'] < 3 else kpi['target']
             else:
                 score = score if kpi['score'] is None else kpi['score']
                 weight = kpi['weight']
@@ -3699,6 +3707,7 @@ class CCRUKPIToolBox:
                                            identifier_result=identifier_result,
                                            identifier_parent=identifier_parent,
                                            should_enter=True)
+
 
         return group_score, group_weight
 
