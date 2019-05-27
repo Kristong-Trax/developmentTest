@@ -73,7 +73,7 @@ class CBCDAIRYILToolBox:
             atomics_df = self.get_atomics_to_calculate(kpi_name)
             atomic_results = self.calculate_atomic_results(kpi_fk, atomics_df)  # Atomic level
             kpi_results = self.calculate_kpis_and_save_to_db(atomic_results, kpi_fk, kpi_weight, kpi_set_fk)  # KPI lvl
-            total_set_scores.append((kpi_results, kpi_weight))
+            total_set_scores.append(kpi_results)
         self.calculate_kpis_and_save_to_db(total_set_scores, kpi_set_fk)  # Set level
         self.handle_gaps()
 
@@ -128,20 +128,24 @@ class CBCDAIRYILToolBox:
         :return: The aggregated KPI score.
         """
         should_enter = True if parent_fk else False
-        kpi_score = self.calculate_kpi_result_by_weight(kpi_results, parent_kpi_weight)
+        ignore_weight = not should_enter    # Weights should be ignored only in the set level!
+        kpi_score = self.calculate_kpi_result_by_weight(kpi_results, parent_kpi_weight, ignore_weights=ignore_weight)
         self.common.write_to_db_result(fk=kpi_fk, numerator_id=Consts.CBC_MANU, numerator_result=kpi_score,
-                                       denominator_id=self.store_id, denominator_result=100, identifier_result=kpi_fk,
-                                       identifier_parent=parent_fk, result=kpi_score, score=kpi_score,
-                                       should_enter=should_enter)
+                                       denominator_id=self.store_id, denominator_result=parent_kpi_weight * 100,
+                                       identifier_result=kpi_fk, identifier_parent=parent_fk,
+                                       result=kpi_score, score=kpi_score, should_enter=should_enter)
         return kpi_score
 
-    def calculate_kpi_result_by_weight(self, kpi_results, parent_kpi_weight):
+    def calculate_kpi_result_by_weight(self, kpi_results, parent_kpi_weight, ignore_weights=False):
         """
         This function aggregates the KPI results by scores and weights.
+        :param ignore_weights: If True the function just sums the results.
         :param parent_kpi_weight: The parent's KPI total weight.
         :param kpi_results: A list of results and weights tuples: [(score1, weight1), (score2, weight2) ... ].
         :return: The aggregated KPI score.
         """
+        if ignore_weights or len(kpi_results) == 0:
+            return sum(kpi_results)
         weights_list = map(lambda res: res[1], kpi_results)
         if None in weights_list:  # Ignoring weights and dividing equally by length!
             kpi_score = sum(map(lambda res: res[0], kpi_results)) / len(kpi_results)
@@ -210,7 +214,7 @@ class CBCDAIRYILToolBox:
         :param general_filters: Relevant attributes and values to calculate by.
         :return: A tuple with results: (numerator_result, denominator_result, total_score).
         """
-        num_result = denominator_result, atomic_score = 0
+        num_result = denominator_result = atomic_score = 0
         if atomic_type in [Consts.AVAILABILITY]:
             atomic_score = self.calculate_availability(**general_filters)
         elif atomic_type == Consts.AVAILABILITY_FROM_BOTTOM:
