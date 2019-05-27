@@ -776,25 +776,35 @@ class PngcnSceneKpis(object):
         # copy the DFs
         a, b = self.matches_from_data_provider.copy(), self.scif.copy()
 
-        b = b[~b['product_fk'].isnull()]
-        new_b_without_irrelevant = b[~(b['product_type'].isin(['Irrelevant']))]
-        new_b_without_excludes = new_b_without_irrelevant[new_b_without_irrelevant['rlv_sos_sc'] == 1]
-
-        # remove status 2
-        a = a[a['status'] != 2]
-        new_b_without_excludes = new_b_without_excludes[new_b_without_excludes['status'] != 2]
-
         # merge wite scif to add manufacture
-        matches_filtered = pd.merge(a, new_b_without_excludes, how='left',
-                                    on=['product_fk', 'scene_fk'])[['product_fk', 'scene_fk', 'width_mm_x',
-                                                                    'width_mm_advance', 'manufacturer_fk']]
+        matches_filtered = pd.merge(a, b, how='left',
+                                    on=['product_fk', 'scene_fk'])[[u'scene_fk', u'product_fk', 'status_x',
+                                                                    'width_mm_x', u'width_mm_advance',
+                                                                    u'product_type', u'manufacturer_fk','rlv_sos_sc']]
         # rename columns
-        matches_filtered.columns = [u'product_fk', u'scene_fk', u'width_mm', u'width_mm_advance', u'manufacturer_fk']
+        matches_filtered.columns = [u'scene_fk', u'product_fk', 'status', 'width_mm', u'width_mm_advance',
+                                                                    u'product_type', u'manufacturer_fk','rlv_sos_sc']
 
-        # sum 'width_mm' and 'width_mm_advance'
-        matches_filtered = matches_filtered.groupby(['product_fk', 'scene_fk', 'manufacturer_fk']).sum().reset_index()
+        # remove status == 2
+        matches_filtered = matches_filtered[matches_filtered['status'] != 2]
 
-        return matches_filtered
+        # remove rlv_sos_sc != 1
+        matches_filtered = matches_filtered[~matches_filtered['product_fk'].isnull()]
+        new_matches_filtered_without_irrelevant = matches_filtered[~(matches_filtered['product_type'].isin(['Irrelevant']))]
+        new_matches_filtered_without_excludes = new_matches_filtered_without_irrelevant[
+            new_matches_filtered_without_irrelevant['rlv_sos_sc'] == 1]
+
+        # sum 'width_mm' and 'width_mm_advance' removing unused columns
+        new_matches_filtered_without_excludes = new_matches_filtered_without_excludes[[u'scene_fk', u'manufacturer_fk',
+                                                                                       u'product_fk','width_mm',
+                                                                                       u'width_mm_advance']]
+
+        new_matches_filtered_without_excludes = new_matches_filtered_without_excludes.groupby(['product_fk',
+                                                                                               'scene_fk',
+                                                                                               'manufacturer_fk'
+                                                                                               ]).sum().reset_index()
+
+        return new_matches_filtered_without_excludes
 
     def calculate_linear_or_presize_linear_length(self, width):
         """
