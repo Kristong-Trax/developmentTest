@@ -75,7 +75,7 @@ class CBCDAIRYILToolBox:
             kpi_results = self.calculate_kpis_and_save_to_db(atomic_results, kpi_fk, kpi_weight, kpi_set_fk)  # KPI lvl
             total_set_scores.append((kpi_results, kpi_weight))
         self.calculate_kpis_and_save_to_db(total_set_scores, kpi_set_fk)  # Set level
-        self.handle_gaps()    # TODO TODO TODO TODO TODO
+        self.handle_gaps()
 
     def add_gap(self, atomic_kpi, score, atomic_weight):
         """
@@ -97,10 +97,7 @@ class CBCDAIRYILToolBox:
         return gap_dict[Consts.PRIORITY], gap_dict[Consts.SCORE]
 
     def handle_gaps(self):
-        """
-        This function takes the top 5 gaps (by priority) and saves it to the DB (pservice.custom_gaps table).
-        :return:
-        """
+        """ This function takes the top 5 gaps (by priority) and saves it to the DB (pservice.custom_gaps table) """
         self.kpis_gaps.sort(key=self.sort_by_priority)
         gaps_total_score = 0
         gaps_per_kpi_fk = self.common.get_kpi_fk_by_kpi_type(Consts.GAP_PER_ATOMIC_KPI)
@@ -128,6 +125,7 @@ class CBCDAIRYILToolBox:
         :param kpi_fk: The relevant KPI fk.
         :param parent_kpi_weight: The parent's KPI total weight.
         :param parent_fk: The KPI SET FK that the KPI "belongs" too if exist.
+        :return: The aggregated KPI score.
         """
         should_enter = True if parent_fk else False
         kpi_score = self.calculate_kpi_result_by_weight(kpi_results, parent_kpi_weight)
@@ -145,9 +143,9 @@ class CBCDAIRYILToolBox:
         :return: The aggregated KPI score.
         """
         weights_list = map(lambda res: res[1], kpi_results)
-        if None in weights_list:  # No weights at all - dividing equally by length!
+        if None in weights_list:  # Ignoring weights and dividing equally by length!
             kpi_score = sum(map(lambda res: res[0], kpi_results)) / len(kpi_results)
-        elif round(sum(weights_list), 2) < parent_kpi_weight:  # Missing weights that needs to be divided among the kpis
+        elif round(sum(weights_list), 2) < parent_kpi_weight:  # Missing weights needs to be divided among the kpis
             kpi_score = self.divide_missing_percentage(kpi_results, sum(weights_list))
         else:
             kpi_score = sum([score * weight for score, weight in kpi_results])
@@ -177,40 +175,59 @@ class CBCDAIRYILToolBox:
         total_scores = list()
         for i in atomics_df.index:
             current_atomic = atomics_df.loc[i]
-            kpi_type = current_atomic.get(Consts.KPI_TYPE)
-            general_filters = self.get_general_filters(current_atomic)
-            atomic_weight = float(current_atomic.get(Consts.WEIGHT)) if current_atomic.get(Consts.WEIGHT) else None
-            num_result = denominator_result = 0
+            kpi_type, atomic_weight, general_filters = self.get_relevant_data_per_atomic(current_atomic)
             if general_filters is None:
                 continue
-            elif kpi_type in [Consts.AVAILABILITY]:
-                atomic_score = self.calculate_availability(**general_filters)
-            elif kpi_type == Consts.AVAILABILITY_FROM_BOTTOM:
-                atomic_score = self.calculate_availability_from_bottom(**general_filters)
-            elif kpi_type == Consts.MIN_2_AVAILABILITY:
-                num_result, denominator_result, atomic_score = self.calculate_min_2_availability(**general_filters)
-            elif kpi_type == Consts.SURVEY:
-                continue    # TODO TODO TODO
-                # atomic_score = self.calculate_survey(**general_filters)
-            elif kpi_type == Consts.BRAND_BLOCK:
-                atomic_score = self.calculate_brand_block(**general_filters)
-            elif kpi_type == Consts.EYE_LEVEL:
-                num_result, denominator_result, atomic_score = self.calculate_eye_level(**general_filters)
-            else:
-                Log.warning(Consts.UNSUPPORTED_KPI_LOG.format(kpi_type))
-                continue
+            num_result, den_result, atomic_score = self.calculate_atomic_kpi_by_type(kpi_type, **general_filters)
+            # Handling Atomic KPIs results
             if atomic_score is None:  # In cases that we need to ignore the KPI and divide it's weight
                 continue
             elif atomic_score < 100:
                 self.add_gap(current_atomic, atomic_score, atomic_weight)
             total_scores.append((atomic_score, atomic_weight))
-
             atomic_fk_lvl_2 = self.common.get_kpi_fk_by_kpi_type(current_atomic[Consts.KPI_ATOMIC_NAME].strip())
             self.common.write_to_db_result(fk=atomic_fk_lvl_2, numerator_id=Consts.CBC_MANU,
                                            numerator_result=num_result, denominator_id=self.store_id,
-                                           denominator_result=denominator_result, identifier_parent=kpi_fk,
+                                           denominator_result=den_result, identifier_parent=kpi_fk,
                                            result=atomic_score, score=atomic_score, should_enter=True)
         return total_scores
+
+    def get_relevant_data_per_atomic(self, atomic_series):
+        """
+        This function return the relevant data per Atomic KPI.
+        :param atomic_series: The Atomic row from the Template.
+        :return: A tuple with data: (atomic_type, atomic_weight, general_filters)
+        """
+        kpi_type = atomic_series.get(Consts.KPI_TYPE)
+        atomic_weight = float(atomic_series.get(Consts.WEIGHT)) if atomic_series.get(Consts.WEIGHT) else None
+        general_filters = self.get_general_filters(atomic_series)
+        return kpi_type, atomic_weight, general_filters
+
+    def calculate_atomic_kpi_by_type(self, atomic_type, **general_filters):
+        """
+        This function calculates the result according to the relevant Atomic Type.
+        :param atomic_type: KPI Family from the template.
+        :param general_filters: Relevant attributes and values to calculate by.
+        :return: A tuple with results: (numerator_result, denominator_result, total_score).
+        """
+        num_result = denominator_result, atomic_score = 0
+        if atomic_type in [Consts.AVAILABILITY]:
+            atomic_score = self.calculate_availability(**general_filters)
+        elif atomic_type == Consts.AVAILABILITY_FROM_BOTTOM:
+            atomic_score = self.calculate_availability_from_bottom(**general_filters)
+        elif atomic_type == Consts.MIN_2_AVAILABILITY:
+            num_result, denominator_result, atomic_score = self.calculate_min_2_availability(**general_filters)
+        elif atomic_type == Consts.SURVEY:
+            pass    # TODO TODO TODO TODO
+            # atomic_score = self.calculate_survey(**general_filters)   # TODO TODO TODO TODO
+        elif atomic_type == Consts.BRAND_BLOCK:
+            atomic_score = self.calculate_brand_block(**general_filters)
+        elif atomic_type == Consts.EYE_LEVEL:
+            num_result, denominator_result, atomic_score = self.calculate_eye_level(**general_filters)
+        else:
+            Log.warning(Consts.UNSUPPORTED_KPI_LOG.format(atomic_type))
+            atomic_score = None
+        return num_result, denominator_result, atomic_score
 
     def get_relevant_kpis_for_calculation(self):
         """
@@ -324,7 +341,7 @@ class CBCDAIRYILToolBox:
         This method returns the KPI weight according to the project's template.
         :param kpi: The KPI name.
         :param kpi_set: Set KPI name.
-        :return:
+        :return: The kpi weight (Float).
         """
         row = self.kpi_weights[(self.kpi_weights[Consts.KPI_SET].str.encode('utf-8') == kpi_set.encode('utf-8')) &
                                (self.kpi_weights[Consts.KPI_NAME].str.encode('utf-8') == kpi.encode('utf-8'))]
@@ -333,8 +350,10 @@ class CBCDAIRYILToolBox:
 
     def merge_and_filter_scif_and_matches_for_eye_level(self, **kpi_filters):
         """
-
-        :return:
+        This function merges between scene_item_facts and match_product_in_scene DataFrames and filters the merged DF
+        according to the @param kpi_filters.
+        :param kpi_filters: Dictionary with attributes and values to filter the DataFrame by.
+        :return: The merged and filtered DataFrame.
         """
         scif_matches_diff = self.match_product_in_scene[['scene_fk', 'product_fk'] +
                                                         list(self.match_product_in_scene.keys().difference(

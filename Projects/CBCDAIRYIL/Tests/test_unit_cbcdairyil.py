@@ -1,13 +1,12 @@
 # coding=utf-8
 import os
-
-from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
-from Trax.Cloud.Services.Connector.Keys import DbUsers
-from Trax.Utils.Conf.Configuration import Config
+# from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
+# from Trax.Cloud.Services.Connector.Keys import DbUsers
+# from Trax.Utils.Conf.Configuration import Config
+# import numpy as np
 from Trax.Utils.Testing.Case import TestCase, MockingTestCase
 from mock import MagicMock, mock
 import pandas as pd
-import numpy as np
 from Projects.CBCDAIRYIL.Utils.KPIToolBox import CBCDAIRYILToolBox, Consts
 from KPIUtils.ParseTemplates import parse_template
 
@@ -120,7 +119,7 @@ class TestCBCDAIRYIL(MockingTestCase):
         for test_case_params, expected_result in test_cases:
             self.tool_box.scif = self.get_made_up_scif()
             scenes_list = self.tool_box.get_relevant_scenes_by_params(test_case_params)
-            self.assertEqual(scenes_list, expected_result)
+            self.assertEqual(expected_result, scenes_list)
 
     def test_get_number_of_facings_per_product_dict(self):
         """ This is a test for get_number_of_facings_per_product_dict function"""
@@ -128,10 +127,10 @@ class TestCBCDAIRYIL(MockingTestCase):
         my_df = pd.DataFrame(data=my_df)
         dict_add_stack = self.tool_box.get_number_of_facings_per_product_dict(my_df, ignore_stack=False)
         dict_ignore_stack = self.tool_box.get_number_of_facings_per_product_dict(my_df, ignore_stack=True)
-        self.assertEqual(len(dict_add_stack), 4)
-        self.assertEqual(len(dict_ignore_stack), 2)
-        self.assertEqual(dict_add_stack.keys(), [1, 2, 3, 4])
-        self.assertEqual(dict_ignore_stack.keys(), [1, 2])
+        self.assertEqual(4, len(dict_add_stack))
+        self.assertEqual(2, len(dict_ignore_stack))
+        self.assertEqual([1, 2, 3, 4], dict_add_stack.keys())
+        self.assertEqual([1, 2], dict_ignore_stack.keys())
 
     def test_filter_df_by_shelves(self):
         df_3_shelves = {Consts.SCENE_FK: [1, 1, 2, 2, 2, 3, 3, 4, 4, 4],
@@ -149,10 +148,11 @@ class TestCBCDAIRYIL(MockingTestCase):
                                                         1, 1, 2]}
         df_2_shelves = {Consts.SCENE_FK: [1, 1, 2, 2],
                         Consts.SHELF_NUM_FROM_BOTTOM: [1, 2, 1, 2]}
+        df_no_shelves = {Consts.SCENE_FK: [], Consts.SHELF_NUM_FROM_BOTTOM: []}
         potential_dfs_list = [(df_3_shelves, [2, 3, 4]), (df_4_shelves, [2]), (df_5_shelves, [2, 3]),
                               (df_6_shelves, [1, 2, 3, 4, 5]),
                               (df_7_shelves, [3, 4, 5]),
-                              (df_15_shelves, [2, 3, 4, 5]), (df_2_shelves, [1, 2])]   # todo: check 2 shelves eye lvl
+                              (df_15_shelves, [2, 3, 4, 5]), (df_2_shelves, [1, 2]), (df_no_shelves, [])]
         for d, expected in potential_dfs_list:
             df = pd.DataFrame(data=d)
             filtered_df = self.tool_box.filter_df_by_shelves(df, Consts.EYE_LEVEL_PER_SHELF)
