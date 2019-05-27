@@ -9,7 +9,7 @@ class SosVsTargetKpi(UnifiedCalculationsScript):
 
     def __init__(self, data_provider, **kwargs):
         super(SosVsTargetKpi, self).__init__(data_provider, **kwargs)
-        self.util = PepsicoUtil()
+        self.util = PepsicoUtil(None, data_provider)
 
     def kpi_type(self):
         pass

@@ -17,11 +17,11 @@ class SosVsTargetParentKpi(UnifiedCalculationsScript):
     def calculate(self):
         # in DB the config parameters should have 'child_kpi' and kpi_type
         # check what I will get as a dependency (all results or only relevant results?)
-        child_kpi_results = self.dependencies_data[self.dependencies_data['kpi_type'] ==
-                                                        self._config_params['child_kpi']]
+        child_kpi_results = self.dependencies_data
+
         if not child_kpi_results.empty:
             child_kpi_results['count'] = 1
-            child_kpi_results['KPI Parent'] = self._config_params['kpi_type']
+            child_kpi_results['KPI Parent'] = 1234
             kpi_results = child_kpi_results.groupby(['KPI Parent'], as_index=False).agg({'count': np.sum})
             kpi_results['identifier_parent'] = kpi_results['KPI Parent'].apply(lambda x:
                                                                                      self.util.common.get_dictionary(
@@ -32,5 +32,5 @@ class SosVsTargetParentKpi(UnifiedCalculationsScript):
                 #                         identifier_result=row['identifier_parent'])
                 self.write_to_db_result(fk=row['KPI Parent'], score=row['count'],
                                         numerator_id=self.util.own_manuf_fk, denominator_id=self.util.store_id)
-                self.util.add_kpi_result_to_kpi_results_df([row['KPI Parent'], self.util.own_manuf_fk, self.util.store_id, None,
-                                                            row['count']])
+                # self.util.add_kpi_result_to_kpi_results_df([row['KPI Parent'], self.util.own_manuf_fk, self.util.store_id, None,
+                #                                             row['count']])

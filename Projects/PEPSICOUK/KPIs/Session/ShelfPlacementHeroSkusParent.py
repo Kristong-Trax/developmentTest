@@ -15,8 +15,7 @@ class ShelfPlacementHeroSkusParentKpi(UnifiedCalculationsScript):
     def calculate(self):
         # in DB the config parameters should have 'child_kpi' and kpi_type
         # check what I will get as a dependency (all results or only relevant results?)
-        child_kpi_results = self.dependencies_data[self.dependencies_data['kpi_type'].isin(
-                                                        self._config_params['child_kpi'])]
+        child_kpi_results = self.dependencies_data
         if not child_kpi_results.empty:
             child_kpi_results['KPI Parent'] = self.util.common.get_kpi_fk_by_kpi_type(self.util.HERO_SKU_PLACEMENT_BY_SHELF_NUMBERS)
             kpi_results = child_kpi_results.groupby(['numerator_id', 'KPI Parent'], as_index=False).agg(
@@ -32,9 +31,7 @@ class ShelfPlacementHeroSkusParentKpi(UnifiedCalculationsScript):
                 #                                     identifier_parent=top_parent_identifier_par,
                 #                                     denominator_id=self.util.store_id,
                 #                                     should_enter=True)
-                self.util.common.write_to_db_result(fk=row['KPI Parent'], numerator_id=row['numerator_id'],
-                                                    result=row['result'], score=row['result'],
-                                                    denominator_id=self.util.store_id)
+                self.write_to_db_result(numerator_id=row['numerator_id'], result=row['result'], score=row['result'],denominator_id=self.util.store_id)
                 self.util.add_kpi_result_to_kpi_results_df([row['KPI Parent'], row.numerator_id, self.util.store_id,
                                                             row['result'], row['result']])
 

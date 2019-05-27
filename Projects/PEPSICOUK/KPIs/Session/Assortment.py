@@ -9,7 +9,7 @@ class AssortmentKpi(UnifiedCalculationsScript):
 
     def __init__(self, data_provider, config_params=None, **kwargs):
         super(AssortmentKpi, self).__init__(data_provider, config_params=config_params, **kwargs)
-        self.util = PepsicoUtil()
+        self.util = PepsicoUtil(None, data_provider)
 
     def calculate(self):
         oos_sku_fk = self.util.common.get_kpi_fk_by_kpi_type(self.util.HERO_SKU_OOS_SKU)
