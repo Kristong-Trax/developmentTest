@@ -150,24 +150,25 @@ class CBCDAIRYILSANDToolBox:
             return sum(kpi_results)
         weights_list = map(lambda res: res[1], kpi_results)
         if None in weights_list:  # Ignoring weights and dividing equally by length!
-            kpi_score = sum(map(lambda res: res[0], kpi_results)) / len(kpi_results)
+            kpi_score = sum(map(lambda res: res[0], kpi_results)) / float(len(kpi_results))
         elif round(sum(weights_list), 2) < parent_kpi_weight:  # Missing weights needs to be divided among the kpis
-            kpi_score = self.divide_missing_percentage(kpi_results, sum(weights_list))
+            kpi_score = self.divide_missing_percentage(kpi_results, parent_kpi_weight, sum(weights_list))
         else:
             kpi_score = sum([score * weight for score, weight in kpi_results])
         return kpi_score
 
     @staticmethod
-    def divide_missing_percentage(kpi_results, total_weights):
+    def divide_missing_percentage(kpi_results, parent_weight, total_weights):
         """
         This function is been activated in case the total number of KPI weights doesn't equal to 100%.
         It divides the missing percentage among the other KPI and calculates the score.
+        :param parent_weight: Parent KPI's weight.
         :param total_weights: The total number of weights that were calculated earlier.
         :param kpi_results: A list of results and weights tuples: [(score1, weight1), (score2, weight2) ... ].
         :return: KPI aggregated score.
         """
-        missing_weight = 1 - total_weights
-        weight_addition = missing_weight / len(kpi_results) if kpi_results else 0
+        missing_weight = parent_weight - total_weights
+        weight_addition = missing_weight / float(len(kpi_results)) if kpi_results else 0
         kpi_score = sum([score * (weight + weight_addition) for score, weight in kpi_results])
         return kpi_score
 
@@ -194,8 +195,9 @@ class CBCDAIRYILSANDToolBox:
             atomic_fk_lvl_2 = self.common.get_kpi_fk_by_kpi_type(current_atomic[Consts.KPI_ATOMIC_NAME].strip())
             self.common.write_to_db_result(fk=atomic_fk_lvl_2, numerator_id=Consts.CBC_MANU,
                                            numerator_result=num_result, denominator_id=self.store_id,
-                                           weight=atomic_weight, denominator_result=den_result, should_enter=True,
-                                           result=atomic_score, score=atomic_score, identifier_parent=kpi_fk)
+                                           weight=atomic_weight * 100, denominator_result=den_result, should_enter=True,
+                                           result=atomic_score, score=atomic_score * atomic_weight,
+                                           identifier_parent=kpi_fk)
         return total_scores
 
     def get_relevant_data_per_atomic(self, atomic_series):
@@ -224,7 +226,8 @@ class CBCDAIRYILSANDToolBox:
         elif atomic_type == Consts.MIN_2_AVAILABILITY:
             num_result, denominator_result, atomic_score = self.calculate_min_2_availability(**general_filters)
         elif atomic_type == Consts.SURVEY:
-            atomic_score = self.calculate_survey(**general_filters)
+            return 0, 0, 0  # TODO TODO TODO TODO TODO
+            # atomic_score = self.calculate_survey(**general_filters)
         elif atomic_type == Consts.BRAND_BLOCK:
             atomic_score = self.calculate_brand_block(**general_filters)
         elif atomic_type == Consts.EYE_LEVEL:
