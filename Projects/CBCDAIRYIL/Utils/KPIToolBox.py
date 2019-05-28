@@ -113,7 +113,7 @@ class CBCDAIRYILToolBox:
     def insert_gap_results(self, gap_kpi_fk, score, weight, numerator_id=Consts.CBC_MANU, parent_fk=None):
         """ This is a utility function that insert results to the DB for the GAP """
         should_enter = True if parent_fk else False
-        score, weight = score*100, weight*100
+        score, weight = score*100, round(weight*100, 2)
         self.common.write_to_db_result(fk=gap_kpi_fk, numerator_id=numerator_id, numerator_result=score,
                                        denominator_id=self.store_id, denominator_result=weight, weight=weight,
                                        identifier_result=gap_kpi_fk, identifier_parent=parent_fk, result=score,
@@ -131,7 +131,7 @@ class CBCDAIRYILToolBox:
         should_enter = True if parent_fk else False
         ignore_weight = not should_enter    # Weights should be ignored only in the set level!
         kpi_score = self.calculate_kpi_result_by_weight(kpi_results, parent_kpi_weight, ignore_weights=ignore_weight)
-        total_weight = parent_kpi_weight*100
+        total_weight = round(parent_kpi_weight*100, 2)
         self.common.write_to_db_result(fk=kpi_fk, numerator_id=Consts.CBC_MANU, numerator_result=kpi_score,
                                        denominator_id=self.store_id, denominator_result=total_weight,
                                        identifier_result=kpi_fk, identifier_parent=parent_fk, should_enter=should_enter,
@@ -195,9 +195,10 @@ class CBCDAIRYILToolBox:
             atomic_fk_lvl_2 = self.common.get_kpi_fk_by_kpi_type(current_atomic[Consts.KPI_ATOMIC_NAME].strip())
             self.common.write_to_db_result(fk=atomic_fk_lvl_2, numerator_id=Consts.CBC_MANU,
                                            numerator_result=num_result, denominator_id=self.store_id,
-                                           weight=atomic_weight * 100, denominator_result=den_result, should_enter=True,
-                                           result=atomic_score, score=atomic_score * atomic_weight,
-                                           identifier_parent=kpi_fk)
+                                           weight=round(atomic_weight*100, 2), denominator_result=den_result,
+                                           should_enter=True, identifier_parent=kpi_fk,
+                                           result=atomic_score, score=atomic_score * atomic_weight)
+
         return total_scores
 
     def get_relevant_data_per_atomic(self, atomic_series):
