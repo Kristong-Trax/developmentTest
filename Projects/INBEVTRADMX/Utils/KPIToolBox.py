@@ -311,7 +311,9 @@ class INBEVTRADMXToolBox:
             # initialize the boolean variable
             bol = True
             # special case that the customer asked
-            if inv and df_row.product_type == 'Empty':
+            # if inv and df_row.product_type == 'Empty':
+            if df_row.product_type == 'Empty':
+
                 ratio = ratio + self.scif.facings.loc[i]
                 continue
             # iterate the filtered dictionary keys
