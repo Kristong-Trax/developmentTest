@@ -82,7 +82,6 @@ class GSKSGToolBox:
         self.output = output
         self.data_provider = data_provider
         self.common = Common(self.data_provider)
-        self.common_old_tables= Common_old(self.data_provider)
         self.project_name = self.data_provider.project_name
         self.session_uid = self.data_provider.session_uid
         self.products = self.data_provider[Data.PRODUCTS]
@@ -96,7 +95,6 @@ class GSKSGToolBox:
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
         # self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         self.kpi_static_data = self.common.get_kpi_static_data()
-        self.old_kpi_static_data = self.common_old_tables.get_kpi_static_data()
         self.kpi_results_queries = []
         self.store_type = self.store_info[STORE_LVL_1].values[0]
         self.set_up_template = pd.read_excel(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data',
