@@ -99,6 +99,9 @@ class DIAGEOGTRConsts:
     ENTITY_2 = "entity_2"
     ENTITY_3 = "entity_3"
 
+    EMPTY = 0
+    IRRELEVANT = 145
+
     NUM_OF_DISPLAYS = 'num_of_displays'
     TOTAL_NUM_OF_DISPLAYS = 'total_num_of_displays'
 
@@ -543,6 +546,8 @@ class DIAGEOGTRToolBox:
             entity_1 = template_kpi[DIAGEOGTRConsts.ENTITY_1].strip().lower()
             entity_2 = template_kpi[DIAGEOGTRConsts.ENTITY_2].strip().lower()
             entity_3 = template_kpi[DIAGEOGTRConsts.ENTITY_3].strip().lower()
+            exclude_empty = template_kpi[DIAGEOGTRConsts.EXCLUDE_EMPTY].strip().lower()
+            exclude_irrelevant = template_kpi[DIAGEOGTRConsts.EXCLUDE_IRRELEVANT].strip().lower()
 
             kpi_name = template_kpi[DIAGEOGTRConsts.KPI_NAME]
 
@@ -558,13 +563,13 @@ class DIAGEOGTRToolBox:
 
             if entity_key_2==None or entity_key_3==None:
                 self.calculate_share_of_display_grouped_scenes_single_entity(kpi_set_name, kpi_name, template_names,
-                                                                      entity_key_1)
+                                                                      entity_key_1,exclude_empty, exclude_irrelevant)
             else:
                 self.calculate_share_of_display_grouped_scenes_entity(kpi_set_name, kpi_name, template_names,
-                                                                  entity_key_1,entity_key_2,entity_key_3)
+                                                                  entity_key_1,entity_key_2,entity_key_3, exclude_empty, exclude_irrelevant)
 
-    def calculate_share_of_display_grouped_scenes_entity(self, kpi_set_name, kpi_name, template_names, entity_key_1,
-                                                             entity_key_2=None, entity_key_3=None):
+    def calculate_share_of_display_grouped_scenes_entity(self, kpi_set_name, kpi_name, template_names, entity_key_1, entity_key_2, entity_key_3,
+                                                             exclude_empty,exclude_irrelevant):
         num_of_pure_displays = 0
         total_num_of_displays = 0
         num_of_other_displays = 0
@@ -592,6 +597,7 @@ class DIAGEOGTRToolBox:
             kpi_level_2_fk =0
         else:
             kpi_level_2_fk = kpi_static_new['pk'].iloc[0]
+
 
         for template_name in template_names:
             df_scene_info = self.scene_info[self.scene_info[DIAGEOGTRConsts.TEMPLATE_NAME]== template_name]
@@ -627,6 +633,13 @@ class DIAGEOGTRToolBox:
                         "scene_fk:{}, template_fk:{}, bay_number:{} is empty".format(scene_fk, template_fk, bay_number))
                         continue
                     df_bay=df_bay[[entity_key_0, entity_key_1, entity_key_2,entity_key_3,entity_key_4]]
+
+                    if exclude_empty == 'y':
+                        df_bay = df_bay[df_bay[DIAGEOGTRConsts.PRODUCT_FK]!=DIAGEOGTRConsts.EMPTY]
+
+                    if exclude_irrelevant=='y':
+                        df_bay = df_bay[df_bay[DIAGEOGTRConsts.PRODUCT_FK] != DIAGEOGTRConsts.IRRELEVANT]
+
                     df_bay_group = pd.DataFrame(df_bay.fillna(65534).groupby([entity_key_0, entity_key_1, entity_key_2,
                                                                         entity_key_3]).size().reset_index(name="count"))
                     if df_bay_group.empty:
@@ -700,7 +713,7 @@ class DIAGEOGTRToolBox:
 
         kpi_results={}
 
-    def calculate_share_of_display_grouped_scenes_single_entity(self, kpi_set_name, kpi_name, template_names, entity_key_1):
+    def calculate_share_of_display_grouped_scenes_single_entity(self, kpi_set_name, kpi_name, template_names, entity_key_1,exclude_empty,exclude_irrelevant):
 
         num_of_pure_displays = 0
         total_num_of_displays = 0
@@ -764,7 +777,14 @@ class DIAGEOGTRToolBox:
                         "scene_fk:{}, template_fk:{}, bay_number:{} is empty".format(scene_fk, template_fk, bay_number))
                         continue
 
-                    df_bay= df_bay[[entity_key_0, entity_key_1,'product_fk']]
+                    df_bay= df_bay[[entity_key_0, entity_key_1,DIAGEOGTRConsts.PRODUCT_FK]]
+
+                    if exclude_empty=='y':
+                        df_bay = df_bay[df_bay[DIAGEOGTRConsts.PRODUCT_FK] != DIAGEOGTRConsts.EMPTY]  # exclude empty
+
+                    if exclude_irrelevant=='y':
+                        df_bay = df_bay[df_bay[DIAGEOGTRConsts.PRODUCT_FK] != DIAGEOGTRConsts.IRRELEVANT]  # exclude empty
+                    
                     df_bay_group = pd.DataFrame(df_bay.fillna(-1).groupby([entity_key_0, entity_key_1]).size().reset_index(name="count"))
                     if df_bay_group.empty:
                         print("Group by did not return any results:{},{}".format(entity_key_0, entity_key_1))
