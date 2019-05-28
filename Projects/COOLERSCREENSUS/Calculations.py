@@ -14,7 +14,7 @@ class COOLERSCREENSUSCalculations(BaseCalculationsScript):
         COOLERSCREENSUSKGenerator(self.data_provider, self.output, common).main_function()
         self.timer.stop('KPIGenerator.run_project_calculations')
 
-#
+
 # if __name__ == '__main__':
 #     LoggerInitializer.init('coolerscreensus calculations')
 #     Config.init()
