@@ -194,31 +194,52 @@ class PngcnSceneKpis(object):
         for key in PCC_FILTERS.keys():
             frag_df = self.parser.filter_df(PCC_FILTERS[key], full_df)
             full_df.drop(frag_df.index, axis=0, inplace=True)
+            frag_df.sort_values(by=['bay_number', 'shelf_number', 'facing_sequence_number'], inplace=True)
+            seq_df = frag_df.copy()
+            seq_df['group'] = ((frag_df.product_fk != frag_df.product_fk.shift())
+                                | (frag_df.shelf_number != frag_df.shelf_number.shift())
+                                | (frag_df.bay_number != frag_df.bay_number.shift())).cumsum()
+            frag_df = seq_df.groupby(by=['group']).first()
+            frag_df['facings'] = seq_df.groupby(by=['group']).size()
+            frag_df['is_new_sequence'] = ((frag_df.shelf_number != frag_df.shelf_number.shift()) |
+                                          (frag_df.bay_number != frag_df.bay_number.shift()))
+            facing_sequence_number = 0
             for i, row in frag_df.iterrows():
+                if row['is_new_sequence']:
+                    facing_sequence_number = 0
+                facing_sequence_number += 1
                 entity_fk = entity_df[entity_df['entity_name'] == key]['entity_fk'].values[0]
                 product_fk = row['product_fk']
-                facing_sequence_number = row['facing_sequence_number']
                 bay_number = row['bay_number']
                 shelf_number = row['shelf_number']
                 category_fk = row['category_fk']
+                facings = row['facings']
                 self.common.write_to_db_result(fk=kpi_fk, numerator_id=product_fk, result=facing_sequence_number,
                             numerator_result=bay_number, denominator_result=shelf_number,
-                            denominator_id=entity_fk, score=0, context_id=category_fk, target=None, by_scene=True)
+                            denominator_id=entity_fk, score=facings, context_id=category_fk, target=None, by_scene=True)
 
     def get_eye_level_shelves(self, df):
         if df.empty:
             return df
-        highest_shelf = int(df['shelf_number'].max())
-        if highest_shelf <= 6:
-            shelves_to_choose = [1, 2]
-        elif highest_shelf == 7:
-            shelves_to_choose = [2, 3]
-        elif highest_shelf == 8:
-            shelves_to_choose = [3, 4]
-        else:
-            shelves_to_choose = [4, 5]
         df = df[df['stacking_layer'] == 1]
-        return df[df['shelf_number'].isin(shelves_to_choose)]
+        bay_and_shelves = df.groupby(by=['bay_number', 'shelf_number']).first().reset_index()[['bay_number', 'shelf_number']]
+        max_shelves = bay_and_shelves.groupby('bay_number').max().reset_index()
+        bays_df = []
+        for i, bays_data in max_shelves.iterrows():
+            bay_number = bays_data['bay_number']
+            highest_shelf = bays_data['shelf_number']
+            if highest_shelf <= 6:
+                shelves_to_choose = [1, 2]
+            elif highest_shelf == 7:
+                shelves_to_choose = [2, 3]
+            elif highest_shelf == 8:
+                shelves_to_choose = [3, 4]
+            else:
+                shelves_to_choose = [4, 5]
+            bay_df = df[(df['bay_number'] == bay_number) & (df['shelf_number'].isin(shelves_to_choose))]
+            bays_df.append(bay_df)
+        final_df = pd.concat(bays_df)
+        return final_df
 
     def _handle_rest_display(self):
         """

@@ -21,20 +21,11 @@ if __name__ == '__main__':
     project_name = 'pngcn-sand'
     data_provider = KEngineDataProvider(project_name)
     output = Output()
-    sessions = [
-                'd16a0359-4d0f-4fed-bfe4-0afecca6843e'
-        # 'b8d2cc45-59c5-44c6-a69d-cbf813aec6fd',
-                ]
-                # '786d8a10-8016-4c2c-ade6-72385bd62782',
-                # 'a98bc243-564b-4894-840f-e5ac980a1dd3',
-                # '43b7b7db-9215-46f5-9797-be81e7cc76d4',
-                # '448E6DA8-DFEC-4D4B-AC6D-FBBB2843192F',
-                # 'a9b28c80-deab-44d9-a036-9d4238e26edb']
-                # 'ebebc629-6b82-4be8-a872-0caa248ea248',
-                # 'cb2cc33d-de43-4c35-a25b-ce538730037e']
-    for session in sessions:
-        print "Running for {}".format(session)
-        for scene in [14431215, 14431231, 14431239]:
+    sessions = {'6a08a4d4-118e-4629-ac1a-1e2abadf5767': [14429897],
+                'd16a0359-4d0f-4fed-bfe4-0afecca6843e':[14431215, 14431231, 14431239]}
+    for session in sessions.keys():
+        print "Running for {}".format(str(session))
+        for scene in sessions[session]:
             print('Calculating scene id: ' + str(scene))
             data_provider = KEngineDataProvider(project_name)
             data_provider.load_scene_data(session, scene)
