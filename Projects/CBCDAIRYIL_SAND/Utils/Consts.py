@@ -33,7 +33,7 @@ class Consts(object):
                              (PARAMS_TYPE_3, PARAMS_VALUE_3)]
 
     # KPIs
-    TOTAL_SCORE = 'Total Score'
+    TOTAL_SCORE = u'ציון כולל'
     AVAILABILITY = 'Availability'
     AVAILABILITY_FROM_BOTTOM = 'Availability from bottom'
     MIN_2_AVAILABILITY = 'Min 2 Availability'
