@@ -41,7 +41,8 @@ LINEAR_SOS_MANUFACTURER_IN_SCENE = 'LINEAR_SOS_MANUFACTURER_IN_SCENE'
 PRESIZE_LINEAR_LENGTH_PER_LENGTH = 'PRESIZE_LINEAR_LENGTH_PER_LENGTH'
 
 # Eye level KPI
-EYE_LEVEL_KPI = "Eye_level_kpi_PER_SCENE"
+Eye_level_kpi_SEQUENCE = "Eye_level_kpi_SEQUENCE"
+Eye_level_kpi_FACINGS = "Eye_level_kpi_FACINGS"
 OLAY_BRAND = 'Olay'
 SAFEGUARD_BRAND = 'Safeguard'
 PCC_CATEGORY = 'Personal Cleaning Care'
@@ -191,9 +192,11 @@ class PngcnSceneKpis(object):
             return
         df = self.get_eye_level_shelves(self.matches_from_data_provider)
         full_df = pd.merge(df,self.all_products,on="product_fk")
-        kpi_fk = self.common.get_kpi_fk_by_kpi_name(EYE_LEVEL_KPI)
-        results_df = pd.DataFrame(columns=['fk', 'numerator_id', 'result', 'numerator_result',
-                                             'denominator_result', 'denominator_id', 'score', 'context_id', 'by_scene'])
+        kpi_sequence_fk = self.common.get_kpi_fk_by_kpi_name(Eye_level_kpi_SEQUENCE)
+        kpi_facings_fk = self.common.get_kpi_fk_by_kpi_name(Eye_level_kpi_FACINGS)
+        results_sequence_df = pd.DataFrame(columns=['fk', 'numerator_id', 'denominator_id', 'numerator_result', 'result',
+                                            'score', 'by_scene', 'temp_bay_number'])
+        results_facings_df = results_sequence_df.copy()
         for key in PCC_FILTERS.keys():
             frag_df = self.parser.filter_df(PCC_FILTERS[key], full_df)
             full_df.drop(frag_df.index, axis=0, inplace=True)
@@ -204,13 +207,7 @@ class PngcnSceneKpis(object):
                                 | (frag_df.bay_number != frag_df.bay_number.shift())).cumsum()
             frag_df = seq_df.groupby(by=['group']).first()
             frag_df['facings'] = seq_df.groupby(by=['group']).size()
-            # frag_df['is_new_sequence'] = ((frag_df.shelf_number != frag_df.shelf_number.shift()) |
-            #                               (frag_df.bay_number != frag_df.bay_number.shift()))
-            # facing_sequence_number = 0
             for i, row in frag_df.iterrows():
-                # if row['is_new_sequence']:
-                #     facing_sequence_number = 0
-                # facing_sequence_number += 1
                 facing_sequence_number = row['facing_sequence_number']
                 entity_fk = entity_df[entity_df['entity_name'] == key]['entity_fk'].values[0]
                 product_fk = row['product_fk']
@@ -219,18 +216,42 @@ class PngcnSceneKpis(object):
                 category_fk = row['category_fk']
                 facings = row['facings']
 
-                results_df = results_df.append({'fk': kpi_fk, 'numerator_id':product_fk,
-                                'result':facing_sequence_number, 'numerator_result':bay_number,
-                                'denominator_result':shelf_number, 'denominator_id':entity_fk, 'score':facings,
-                                'context_id':category_fk, 'by_scene':True}, ignore_index=True)
+                results_sequence_df = results_sequence_df.append({'fk': kpi_sequence_fk, 'numerator_id':entity_fk,
+                                                      'denominator_id': category_fk, 'numerator_result':shelf_number,
+                                                      'result':facing_sequence_number, 'score':0, 'by_scene':True,
+                                                       'temp_bay_number': bay_number},
+                                                      ignore_index=True)
+                results_facings_df = results_facings_df.append({'fk': kpi_facings_fk, 'numerator_id':product_fk,
+                                                      'denominator_id': entity_fk, 'numerator_result':shelf_number,
+                                                      'result':facings, 'score':facings, 'by_scene':True},
+                                                      ignore_index=True)
 
-        results_df.sort_values(by=['numerator_result', 'denominator_result', 'result'], inplace=True)
-        for i, row in results_df.iterrows():
+        # groupby and setting the sequenc kpi to the correct format
+        results_sequence_df.sort_values(by=['numerator_result', 'temp_bay_number', 'result'], inplace=True)
+        results_sequence_df = results_sequence_df[((results_sequence_df.numerator_id !=
+                                                    results_sequence_df.numerator_id.shift()) |
+                                (results_sequence_df.numerator_result != results_sequence_df.numerator_result.shift()))]
+        results_sequence_df['is_new_sequence'] = (
+                results_sequence_df.numerator_result != results_sequence_df.numerator_result.shift())
+        facing_sequence_number = 0
+        for i, row in results_sequence_df.iterrows():
+            if row['is_new_sequence']:
+                facing_sequence_number = 0
+            facing_sequence_number += 1
+            results_sequence_df.loc[i, 'result'] = facing_sequence_number
+        results_sequence_df.drop(['temp_bay_number', 'is_new_sequence'], inplace=True, axis=1)
+
+        # groupby and setting the facing kpi to the correct format
+        group_facings_df = results_facings_df.groupby(by=['numerator_result', 'numerator_id']).first().reset_index()
+        summed_result_df = results_facings_df.groupby(by=['numerator_result', 'numerator_id'])['result'].sum().reset_index()
+        group_facings_df.drop(['temp_bay_number'], inplace=True, axis=1)
+        group_facings_df['result'] = group_facings_df['score'] = summed_result_df['result'].copy()
+        all_eyelevel_results = pd.concat([results_sequence_df, group_facings_df], sort=False)
+
+        # saving all results
+        for i, row in all_eyelevel_results.iterrows():
             self.common.write_to_db_result(**row)
-        # self.common.write_to_db_result(fk=kpi_fk, numerator_id=product_fk, result=facing_sequence_number,
-        #                                numerator_result=bay_number, denominator_result=shelf_number,
-        #                                denominator_id=entity_fk, score=facings, context_id=category_fk,
-        #                                by_scene=True)
+
 
     def get_eye_level_shelves(self, df):
         if df.empty:
@@ -251,7 +272,9 @@ class PngcnSceneKpis(object):
             else:
                 shelves_to_choose = [4, 5]
             bay_df = df[(df['bay_number'] == bay_number) & (df['shelf_number'].isin(shelves_to_choose))]
-            bays_df.append(bay_df)
+            final_bay_df = bay_df.copy()
+            final_bay_df['shelf_number'] = bay_df['shelf_number'].map({shelves_to_choose[0]: 1, shelves_to_choose[1]: 2})
+            bays_df.append(final_bay_df)
         final_df = pd.concat(bays_df)
         return final_df
 
