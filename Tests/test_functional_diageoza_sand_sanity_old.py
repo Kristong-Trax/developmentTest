@@ -15,13 +15,13 @@
 # from Tests.Data.Templates.diageoza.POSM import posm
 # from Tests.Data.TestData.test_data_diageoza_sand_sanity import ProjectsSanityData
 # from Projects.DIAGEOZA_SAND.Calculations import DIAGEOZASANDCalculations
-# from Trax.Apps.Core.Testing.BaseCase import TestMockingFunctionalCase
+# from Trax.Apps.Core.Testing.BaseCase import TestFunctionalCase
 #
 #
 # __author__ = 'yoava'
 #
 #
-# class TestKEngineOutOfTheBox(TestMockingFunctionalCase):
+# class TestKEngineOutOfTheBox(TestFunctionalCase):
 #
 #     @property
 #     def import_path(self):

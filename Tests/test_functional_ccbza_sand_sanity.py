@@ -11,13 +11,13 @@
 #
 # from Tests.Data.TestData.test_data_ccbza_sand_sanity import ProjectsSanityData
 # from Projects.CCBZA_SAND.Calculations import CCBZA_SANDCalculations
-# from Trax.Apps.Core.Testing.BaseCase import TestMockingFunctionalCase
+# from Trax.Apps.Core.Testing.BaseCase import TestFunctionalCase
 #
 #
 # __author__ = 'natalyak'
 #
 #
-# class TestKEngineOutOfTheBox(TestMockingFunctionalCase):
+# class TestKEngineOutOfTheBox(TestFunctionalCase):
 #
 #     @property
 #     def import_path(self):

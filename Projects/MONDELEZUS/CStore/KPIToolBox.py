@@ -32,6 +32,7 @@ class CSTOREToolBox:
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
         self.scif['store_fk'] = self.store_id
         self.scif = self.scif[~(self.scif['product_type'].isin([Const.IRRELEVANT, Const.EMPTY]))]
+        self.scif = self.scif[self.scif['facings'] > 0]
         self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         self.kpis = self.load_kpis()
         self.results_values = self.load_results_values()
@@ -85,7 +86,12 @@ class CSTOREToolBox:
                     df['denominator_id'] = self.store_id
                     df.drop('ident_parent', axis=1, inplace=True)
                 self.update_results(df)
-
+        else:
+            df = pd.DataFrame([self.store_id], columns=['denominator_id'])
+            df['numerator_id'] = self.manufacturer_fk
+            df['numerator_result'], df['result'] = 0, 0
+            df['kpi_name'] = [key for key, val in Const.SOS_HIERARCHY.items() if val == 'ihavenoparent'][0]
+            self.update_results(df)
 
     def update_results(self, df):
         results = [val for key, val in df.to_dict('index').items()]
@@ -193,7 +199,8 @@ class CSTOREToolBox:
     def safe_divide(self, num, den):
         res = num
         if num <= den:
-            res = (float(num) / den) * 100 if num and den else 0
+            res = round((float(num) / den) * 100, 2) if num and den else 0
+            res = '{:.2f}'.format(res)
         return res
 
     @staticmethod

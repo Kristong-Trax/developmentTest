@@ -13,7 +13,7 @@ __author__ = 'Nimrod'
 VERTEX_FK_FIELD = 'scene_match_fk'
 
 
-class INBEVCIPositionGraphs:
+class INBEVCISANDPositionGraphs:
 
     TOP = 'shelf_px_top'
     BOTTOM = 'shelf_px_bottom'
@@ -255,4 +255,3 @@ class INBEVCIPositionGraphs:
                 row[y] = graph.vs[index][entity]
             matrix[i] = row
         return matrix
-

@@ -7,6 +7,8 @@ class Const(object):
 
     DICTIONARY_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), 'Data',
                                    'Dictionary.xlsx')
+    TMB_MAP_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), 'Data',
+                                   'TopMiddleBottom_Map.xlsx')
 
     ''' Sheets '''
     KPIS = 'KPIs'
@@ -19,11 +21,13 @@ class Const(object):
     ORIENT = 'Product Orientation'
     PRESENCE = 'Presence'
     PRESENCE_WITHIN_BAY = 'Presence within Bay'
+    PRESENCE_WITHIN_BAY_MEX = 'Presence on Same Bay Mex'
     COUNT_SHELVES = 'Count of Shelves'
     PERCENT = 'Percent'
     AGGREGATION = 'Aggregation'
     TMB_MAP = 'Top-Middle-Bottom Map'
     ADJACENCY = 'Adjacency'
+    ADJACENCY_MIX = 'Adjacency Mix'
     IADJACENCY = 'IAdjacency'
     STOCKING = 'Stocking Location'
     YOGURT_MAP = 'Yogurt Location Map'
@@ -68,6 +72,8 @@ class Const(object):
     MM_TO_FT = 304.8
     COMMA_SPACE = ', '
     COMMA = ','
+    KEEP = 'keep'
+    MAX_BLOCK = 'max_block'
     INTEGRATED = 'Fully Integrated'
     ADJACENT = 'Adjacent Section'
     SAME_AISLE = 'Same Aisle, Not Adjacent'

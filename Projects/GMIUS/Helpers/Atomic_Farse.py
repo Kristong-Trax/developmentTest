@@ -106,6 +106,7 @@ class AtomicFarse():
                       '    "{}"'.format(group, item, e))
 
     def get_aux(self, item):
+        print(item)
         main_line = self.indexed_template[Const.KPIS].loc[item]
         session_lvl = self.read_cell_from_line(main_line, Const.SESSION_LEVEL) if Const.SESSION_LEVEL in main_line.index else 'Y'
         family = self.read_cell_from_line(main_line, Const.TYPE)[0]
@@ -125,7 +126,7 @@ class AtomicFarse():
         den_fk = 999 #self.entity_dict[num] if den else 'null'
 
         return {'family_fk': family_fk, 'num_fk': num_fk, 'den_fk': den_fk, 'result_fk': result_fk,
-                'session': is_session, 'scene': 'is_scene'}
+                'session': is_session, 'scene': is_scene}
 
     def get_kpi_line_params(self, kpi_orig, name=''):
         kpi_line = kpi_orig.copy()
@@ -189,7 +190,7 @@ class AtomicFarse():
 	    (pk, type, client_name, kpi_family_fk, version, numerator_type_fk, denominator_type_fk, kpi_result_type_fk,
 	    valid_from, valid_until, initiated_by, kpi_calculation_stage_fk, session_relevance, scene_relevance)
         VALUES      
-        ('{}', '{}', '{}', '{}', '1.0.0', '{}', '{}', {}, '1990-01-01', '2150-10-15', 'samk', '3', '{}', '{}')
+        ('{}', "{}", "{}", '{}', '1.0.0', '{}', '{}', {}, '1990-01-01', '2150-10-15', 'samk', '3', '{}', '{}')
 
         '''.format(pk, kpi, kpi, family_fk, num_fk, den_fk, result_fk, session, scene)
         print(query)

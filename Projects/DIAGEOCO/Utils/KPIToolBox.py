@@ -29,6 +29,14 @@ class DIAGEOCOToolBox:
     def __init__(self, data_provider, output):
         self.output = output
         self.data_provider = data_provider
+        # ----------- fix for nan types in dataprovider -----------
+        all_products = self.data_provider._static_data_provider.all_products.where(
+            (pd.notnull(self.data_provider._static_data_provider.all_products)), None)
+        self.data_provider._set_all_products(all_products)
+        self.data_provider._init_session_data(None, True)
+        self.data_provider._init_report_data(self.data_provider.session_uid)
+        self.data_provider._init_reporting_data(self.data_provider.session_id)
+        # ----------- fix for nan types in dataprovider -----------
         self.common = Common(self.data_provider)
         self.common_v2 = CommonV2(self.data_provider)
         self.project_name = self.data_provider.project_name
@@ -236,8 +244,10 @@ class DIAGEOCOToolBox:
         """
         Given KPI data and a score, this functions writes the score for both KPI level 2 and 3 in the DB.
         """
-        kpi_data = self.kpi_static_data[(self.kpi_static_data['kpi_set_name'] == set_name) &
-                                        (self.kpi_static_data['kpi_name'] == kpi_name)]
+        kpi_data = self.kpi_static_data[(self.kpi_static_data['kpi_set_name'].str.encode("utf8")
+                                         == set_name.encode("utf8")) &
+                                        (self.kpi_static_data['kpi_name'].str.encode("utf8")
+                                         == kpi_name.encode("utf8"))]
         kpi_fk = kpi_data['kpi_fk'].values[0]
         atomic_kpi_fk = kpi_data['atomic_kpi_fk'].values[0]
         self.write_to_db_result(kpi_fk, score, self.LEVEL2)

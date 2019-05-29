@@ -198,8 +198,10 @@ class CBCILCBCIL_ToolBox(object):
                                                                                 ['מקרר מתחרה', 'מקרר קמעונאי'])
             kpi_scores = {}
             kpi_set = self.template_data[self.KPI_SET].values[0]
-            self.kpi_static_data = self.kpi_static_data[self.kpi_static_data['kpi_set_name'] == kpi_set]
-            kpis = self.template_data[self.template_data[self.KPI_SET] == kpi_set][self.KPI_NAME].unique()
+            self.kpi_static_data = self.kpi_static_data[self.kpi_static_data['kpi_set_name'].str.encode('utf-8') ==
+                                                        kpi_set.encode('utf-8')]
+            kpis = self.template_data[self.template_data[self.KPI_SET].str.encode('utf-8') ==
+                                      kpi_set.encode('utf-8')][self.KPI_NAME].unique()
             kpis_without_score = {}
             all_kpis_in_set = []
 
@@ -208,7 +210,8 @@ class CBCILCBCIL_ToolBox(object):
             for kpi in kpis:
                 identifier_result_kpi = self.get_identifier_result_kpi_by_name(kpi)
 
-                atomics = self.template_data[self.template_data[self.KPI_NAME] == kpi]
+                atomics = self.template_data[self.template_data[self.KPI_NAME].str.encode('utf-8') ==
+                                             kpi.encode('utf-8')]
                 scores = []
 
                 for i in xrange(len(atomics)):
@@ -269,7 +272,8 @@ class CBCILCBCIL_ToolBox(object):
 
                     scores.append((score, atomic_weight))
 
-                kpi_fk = self.kpi_static_data[self.kpi_static_data['kpi_name'] == kpi]['kpi_fk'].values[0]
+                kpi_fk = self.kpi_static_data[self.kpi_static_data['kpi_name'].str.encode('utf-8') ==
+                                              kpi.encode('utf-8')]['kpi_fk'].values[0]
                 denominator_weight = self.get_kpi_weight(kpi, kpi_set)
 
                 kpi_details = self.combine_kpi_details(kpi_fk, scores, denominator_weight)
@@ -316,7 +320,8 @@ class CBCILCBCIL_ToolBox(object):
                                                should_enter=True, result=kpi_scores[kpi['kpi_fk']])
 
             final_score = sum([score for score in kpi_scores.values()])
-            set_fk = self.kpi_static_data[self.kpi_static_data['kpi_set_name'] == kpi_set]['kpi_set_fk'].values[0]
+            set_fk = self.kpi_static_data[self.kpi_static_data['kpi_set_name'].str.encode('utf-8') ==
+                                          kpi_set.encode('utf-8')]['kpi_set_fk'].values[0]
             self.write_to_db_result(set_fk, self.LEVEL1, final_score)
             self.write_gaps_to_db()
 
@@ -431,6 +436,8 @@ class CBCILCBCIL_ToolBox(object):
     def calculate_survey(self, **general_filters):
         params = general_filters['filters']
         filters = params['2'].copy()
+        if not params['All']['scene_id']:
+            return None
         try:
             survey_question = str(int(filters.get('question_id')[0]))
         except:
@@ -597,7 +604,8 @@ class CBCILCBCIL_ToolBox(object):
     def get_kpi_fk_by_kpi_name(self, kpi_name):
         assert isinstance(kpi_name, unicode), "name is not a string: %r" % kpi_name
         try:
-            return self.kpi_static_data[self.kpi_static_data['atomic_kpi_name'] == kpi_name]['atomic_kpi_fk'].values[0]
+            return self.kpi_static_data[self.kpi_static_data['atomic_kpi_name'].str.encode('utf-8') ==
+                                        kpi_name.encode('utf-8')]['atomic_kpi_fk'].values[0]
         except IndexError:
             Log.info('Kpi name: {}, isnt equal to any kpi name in static table'.format(kpi_name))
             return None
@@ -609,7 +617,7 @@ class CBCILCBCIL_ToolBox(object):
         kpi_name = params[self.KPI_NAME]
         kpi_atomic_name = params[self.KPI_ATOMIC_NAME]
         if kpi_name in self.gap_data[self.KPI_NAME].tolist():
-            gap = self.gap_data[self.gap_data[self.KPI_NAME] == kpi_name]
+            gap = self.gap_data[self.gap_data[self.KPI_NAME].str.encode('utf-8') == kpi_name.encode('utf-8')]
             if not gap.empty:
                 gap = gap.iloc[0]['Order']
             else:
@@ -635,7 +643,8 @@ class CBCILCBCIL_ToolBox(object):
         """
         priorities = range(1, 6)
         for gap_category in self.gap_data[self.KPI_NAME].tolist():
-            for i, row in self.gaps[self.gaps[self.KPI_NAME] == gap_category].iterrows():
+            for i, row in self.gaps[self.gaps[self.KPI_NAME].str.encode('utf-8') ==
+                                    gap_category.encode('utf-8')].iterrows():
                 if not priorities:
                     break
                 kpi_atomic_name = row[self.KPI_ATOMIC_NAME]
@@ -728,7 +737,8 @@ class CBCILCBCIL_ToolBox(object):
         return merged_queries
 
     def get_kpi_weight(self, kpi, kpi_set):
-        row = self.kpi_weights[(self.kpi_weights[self.KPI_SET] == kpi_set) & (self.kpi_weights[self.KPI_NAME] == kpi)]
+        row = self.kpi_weights[(self.kpi_weights[self.KPI_SET].str.encode('utf-8') == kpi_set.encode('utf-8')) &
+                               (self.kpi_weights[self.KPI_NAME].str.encode('utf-8') == kpi.encode('utf-8'))]
         weight = row.get(self.WEIGHT)
         if not weight.empty:
             return weight.values[0]

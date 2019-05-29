@@ -107,13 +107,13 @@ from Trax.Utils.Testing.Case import MockingTestCase
 
 from Tests.Data.TestData.test_data_%(project)s_sanity import ProjectsSanityData
 from Projects.%(project_capital)s.Calculations import %(main_class_name)s
-from Trax.Apps.Core.Testing.BaseCase import TestMockingFunctionalCase
+from Trax.Apps.Core.Testing.BaseCase import TestFunctionalCase
 
 
 __author__ = '%(author)s'
 
 
-class TestKEngineOutOfTheBox(TestMockingFunctionalCase):
+class TestKEngineOutOfTheBox(TestFunctionalCase):
 
     @property
     def import_path(self):
@@ -224,15 +224,15 @@ class ProjectsSanityData(BaseSeedData):
             f.write(data_class_content)
 
 
-if __name__ == '__main__':
-    LoggerInitializer.init('')
-    Config.init()
-    project_to_test = 'sanofikz'
-    creator = SeedCreator(project_to_test)
-    creator.activate_exporter(specific_sessions=
-                              ['778B8153-D300-4FB4-9D8B-6A1802714F82'])
-    creator.rds_conn.disconnect_rds()
-    data_class = CreateTestDataProjectSanity(project_to_test)
-    data_class.create_data_class()
-    sanity = SanityTestsCreator(project_to_test, creator.TOP_SESSIONS)
-    sanity.create_test_class()
+# if __name__ == '__main__':
+#     LoggerInitializer.init('')
+#     Config.init()
+#     project_to_test = 'sanofici'
+#     creator = SeedCreator(project_to_test)
+#     creator.activate_exporter(specific_sessions=
+#                               ['37ED8630-CD54-47F8-BE78-8698B5CE9EDB'])
+#     creator.rds_conn.disconnect_rds()
+#     data_class = CreateTestDataProjectSanity(project_to_test)
+#     data_class.create_data_class()
+#     sanity = SanityTestsCreator(project_to_test, creator.TOP_SESSIONS)
+#     sanity.create_test_class()

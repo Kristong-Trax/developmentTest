@@ -1,15 +1,14 @@
 import pandas as pd
 import os
-
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from KPIUtils_v2.Calculations.CalculationsUtils.GENERALToolBoxCalculations import GENERALToolBox
 from Projects.PNGHK.Data.Const import Const
 from Trax.Utils.Logging.Logger import Log
-
+from KPIUtils_v2.GlobalDataProvider.PsDataProvider import PsDataProvider
 
 __author__ = 'ilays'
 
-PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', '06_PNGHK_template_2019_08_03.xlsx')
+PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', Const.TEMPLATE_PATH)
 
 class SceneToolBox:
 
@@ -28,11 +27,15 @@ class SceneToolBox:
         self.tools = GENERALToolBox(data_provider)
         self.osd_rules_sheet = pd.read_excel(PATH, Const.OSD_RULES).fillna("")
         self.store_info = self.data_provider[Data.STORE_INFO]
+        self.psdataprovider = PsDataProvider(self.data_provider)
+        self.match_product_in_probe_state_reporting = self.psdataprovider.get_match_product_in_probe_state_reporting()
 
     def main_calculation(self):
         """
         This function calculates the KPI results.
         """
+        if self.match_product_in_scene.empty or self.products.empty:
+            return
         df = pd.merge(self.match_product_in_scene, self.products, on="product_fk", how="left")
         distinct_session_fk = self.scif[['scene_fk', 'template_name', 'template_fk']].drop_duplicates()
         df = pd.merge(df, distinct_session_fk, on="scene_fk", how="left")
@@ -50,10 +53,10 @@ class SceneToolBox:
         
         # filter df include OSD when needed
         shelfs_to_include = row[Const.OSD_NUMBER_OF_SHELVES].values[0]
-        if row[Const.STORAGE_EXCLUSION_PRICE_TAG].values[0] == Const.NO:
-            if shelfs_to_include != "":
-                shelfs_to_include = int(shelfs_to_include)
-                results_list.append(df[df['shelf_number_from_bottom'] > shelfs_to_include])
+        if shelfs_to_include != "":
+            shelfs_to_include = int(shelfs_to_include)
+            results_list.append(df[df['shelf_number_from_bottom'] >= shelfs_to_include])
+            df = df[df['shelf_number_from_bottom'] < shelfs_to_include]
 
         # if no osd rule is applied
         if row[Const.HAS_OSD].values[0] == Const.NO:
@@ -62,6 +65,8 @@ class SceneToolBox:
         # filter df to have only shelves with given ean code
         if row[Const.HAS_OSD].values[0] == Const.YES:
             products_to_filter = row[Const.POSM_EAN_CODE].values[0].split(",")
+            if products_to_filter != "":
+                products_to_filter = [item.strip() for item in products_to_filter]
             products_df = df[df['product_ean_code'].isin(products_to_filter)][['scene_fk', 'shelf_number']]
             products_df = products_df.drop_duplicates()
             if not products_df.empty:
@@ -71,7 +76,9 @@ class SceneToolBox:
                     results_list.append(scene_df)
 
         if row[Const.HAS_HOTSPOT].values[0] == Const.YES:
-            products_to_filter = row[Const.POSM_EAN_CODE_HOTSPOT]
+            products_to_filter = row[Const.POSM_EAN_CODE_HOTSPOT].values[0].split(",")
+            if products_to_filter != "":
+                products_to_filter = [item.strip() for item in products_to_filter]
             products_df = const_scene_df[const_scene_df['product_ean_code'].isin(products_to_filter)][['scene_fk',
                                                                                            'bay_number',
                                                                                            'shelf_number']]
@@ -98,18 +105,13 @@ class SceneToolBox:
             df = pd.concat(results_list).drop_duplicates()
         else:
             df = results_list[0]
-        self.save_df_to_smart_attribute(df)
+        osd_pk = self.match_product_in_probe_state_reporting[self.match_product_in_probe_state_reporting['name']
+                                         == 'OSD']['match_product_in_probe_state_reporting_fk'].values[0]
+        self.common.match_product_in_probe_state_values[Const.MATCH_PRODUCT_IN_PROBE_FK] = \
+                                                                            df['probe_match_fk'].drop_duplicates()
+        self.common.match_product_in_probe_state_values[Const.MATCH_PRODUCT_IN_PROBE_STATE_REPORTING_FK] = osd_pk
 
     def find_row_osd(self, s):
-        rows = self.osd_rules_sheet[self.osd_rules_sheet[Const.SCENE_TYPE] == s]
+        rows = self.osd_rules_sheet[self.osd_rules_sheet[Const.SCENE_TYPE].str.encode("utf8") == s.encode("utf8")]
         row = rows[rows[Const.RETAILER] == self.store_info['retailer_name'].values[0]]
         return row
-
-    def save_df_to_smart_attribute(self,df):
-        query = "INSERT INTO  probedata.match_product_in_probe_state_value (match_product_in_probe_fk, " \
-                "match_product_in_probe_state_fk) VALUES "
-        for i in set(df['probe_match_fk']):
-            query += "(" + str(i) + ", 3), "
-        query = query[:-2] + ";"
-        # self.common.execute_custom_query(query)
-

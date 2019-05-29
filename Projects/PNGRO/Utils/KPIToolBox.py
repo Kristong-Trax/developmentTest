@@ -299,22 +299,23 @@ class PNGRO_PRODToolBox:
             scene_bay_display_product = pd.merge(scene_bay_product_width, scene_display_bay, on=['scene_fk', 'bay_number'], how='left')
             scene_display_product = scene_bay_display_product.groupby(['scene_fk', 'product_fk', 'display_name', 'pk'], as_index=False)\
                                                                 .agg({'product_width_total':np.sum, 'display_width_total':np.sum})
-            scene_display_product['pallets'] = scene_display_product.apply(self.get_number_of_pallets, axis=1)
-            templates = self.scif[['scene_fk', 'template_fk']].drop_duplicates(keep='last')
-            final_df = scene_display_product.merge(templates, on='scene_fk', how='left')
-            final_df = final_df[['scene_fk', 'template_fk', 'product_fk', 'display_name', 'pk',
-                                 'product_width_total', 'display_width_total', 'pallets']]
-            final_df = final_df.groupby(['template_fk', 'product_fk', 'display_name', 'pk'], as_index=False).agg(
-                {'product_width_total': np.sum, 'display_width_total': np.sum, 'pallets': np.sum})
-            # according to kpi logic denominator_id should be display_pk (pk) and context_id - template_fk but in TD
-            # context_id filed is not retrieved => we switch values in denominator_id and context_id
-            for i, row in final_df.iterrows():
-                self.common.write_to_db_result(fk=kpi_fk, score=row['pallets'], result=row['pallets'],
-                                               numerator_result=row['product_width_total'],
-                                               numerator_id=row['product_fk'],
-                                               denominator_result=row['display_width_total'],
-                                               denominator_id=row['template_fk'],
-                                               context_id=row['pk'])
+            if not scene_display_product.empty:
+                scene_display_product['pallets'] = scene_display_product.apply(self.get_number_of_pallets, axis=1)
+                templates = self.scif[['scene_fk', 'template_fk']].drop_duplicates(keep='last')
+                final_df = scene_display_product.merge(templates, on='scene_fk', how='left')
+                final_df = final_df[['scene_fk', 'template_fk', 'product_fk', 'display_name', 'pk',
+                                     'product_width_total', 'display_width_total', 'pallets']]
+                final_df = final_df.groupby(['template_fk', 'product_fk', 'display_name', 'pk'], as_index=False).agg(
+                    {'product_width_total': np.sum, 'display_width_total': np.sum, 'pallets': np.sum})
+                # according to kpi logic denominator_id should be display_pk (pk) and context_id - template_fk but in TD
+                # context_id filed is not retrieved => we switch values in denominator_id and context_id
+                for i, row in final_df.iterrows():
+                    self.common.write_to_db_result(fk=kpi_fk, score=row['pallets'], result=row['pallets'],
+                                                   numerator_result=row['product_width_total'],
+                                                   numerator_id=row['product_fk'],
+                                                   denominator_result=row['display_width_total'],
+                                                   denominator_id=row['template_fk'],
+                                                   context_id=row['pk'])
 
     def get_number_of_pallets(self, row):
         display_weight = self.get_display_weight_by_display_name(row['display_name'])

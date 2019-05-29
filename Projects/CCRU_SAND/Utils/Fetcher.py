@@ -4,6 +4,7 @@ import pandas as pd
 from Trax.Cloud.Services.Connector.Keys import DbUsers
 from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Projects.CCRU_SAND.Utils.JSON import CCRU_SANDJsonGenerator
+from Trax.Utils.Logging.Logger import Log
 
 
 __author__ = 'urid'

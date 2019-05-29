@@ -6,7 +6,7 @@ from Trax.Algo.Calculations.Core.DataProvider import Data
 __Author__ = 'Dudi_S'
 
 
-class PNGCN_SANDFields(object):
+class Fields(object):
 
     ALL_EXCLUDED_TEMPLATES = 'all_excluded_templates'
     ALL_EXCLUDED_TEMPLATE_PRODUCTS = 'all_excluded_template_products'
@@ -21,7 +21,7 @@ class PNGCN_SANDFields(object):
     VISIT_DATE = 'visit_date'
 
 
-class PNGCN_SANDShareOfDisplayDataProvider(object):
+class ShareOfDisplayDataProvider(object):
 
     def __init__(self, project_connector, session_uid):
         self._data = dict()
@@ -33,27 +33,27 @@ class PNGCN_SANDShareOfDisplayDataProvider(object):
         session_gateway = SQLSessionGateway(self.project_connector.db)
         static_gateway = SQLStaticGateway(self.project_connector.db)
         report_gateway = SQLReportsGateway(self.project_connector.db)
-        self._data[PNGCN_SANDFields.SESSION_INFO] = session_gateway.get_session_info(self.session_uid)
+        self._data[Fields.SESSION_INFO] = session_gateway.get_session_info(self.session_uid)
         self._data[Data.VISIT_DATE] = self._data[Data.SESSION_INFO]['visit_date'].iloc[0]
-        self._data[PNGCN_SANDFields.ALL_EXCLUDED_TEMPLATES], self._data[PNGCN_SANDFields.ALL_EXCLUDED_TEMPLATE_PRODUCTS], \
-        self._data[PNGCN_SANDFields.ALL_EXCLUDED_PRODUCTS] = static_gateway.get_all_excluded_products()
-        self._data[PNGCN_SANDFields.RELEVANT_INCLUDE_EXCLUDE_SETS] = report_gateway. \
-            get_relevant_include_exclude_set(self._data[PNGCN_SANDFields.VISIT_DATE])
-        self._data[PNGCN_SANDFields.SOS_INCLUDE_EXCLUDE_SET] = \
-            self._get_include_exclude_set(self._data[PNGCN_SANDFields.RELEVANT_INCLUDE_EXCLUDE_SETS], 3)
-        self._data[PNGCN_SANDFields.SOS_EXCLUDED_TEMPLATES] = self._data[PNGCN_SANDFields.ALL_EXCLUDED_TEMPLATES][
-            self._data[PNGCN_SANDFields.ALL_EXCLUDED_TEMPLATES][Fd.EXCLUDE_INCLUDE_SET_FK] ==
-            self._data[PNGCN_SANDFields.SOS_INCLUDE_EXCLUDE_SET]].copy()
-        self._data[PNGCN_SANDFields.SOS_EXCLUDED_PRODUCTS] = self._data[PNGCN_SANDFields.ALL_EXCLUDED_PRODUCTS][
-            self._data[PNGCN_SANDFields.ALL_EXCLUDED_PRODUCTS][Fd.EXCLUDE_INCLUDE_SET_FK] == self._data[
-                PNGCN_SANDFields.SOS_INCLUDE_EXCLUDE_SET]].copy()
-        self._data[PNGCN_SANDFields.SOS_EXCLUDED_TEMPLATE_PRODUCTS] = self._data[PNGCN_SANDFields.ALL_EXCLUDED_TEMPLATE_PRODUCTS][
-            self._data[PNGCN_SANDFields.ALL_EXCLUDED_TEMPLATE_PRODUCTS][Fd.EXCLUDE_INCLUDE_SET_FK] == self._data[
-                PNGCN_SANDFields.SOS_INCLUDE_EXCLUDE_SET]].copy()
+        self._data[Fields.ALL_EXCLUDED_TEMPLATES], self._data[Fields.ALL_EXCLUDED_TEMPLATE_PRODUCTS], \
+        self._data[Fields.ALL_EXCLUDED_PRODUCTS] = static_gateway.get_all_excluded_products()
+        self._data[Fields.RELEVANT_INCLUDE_EXCLUDE_SETS] = report_gateway. \
+            get_relevant_include_exclude_set(self._data[Fields.VISIT_DATE])
+        self._data[Fields.SOS_INCLUDE_EXCLUDE_SET] = \
+            self._get_include_exclude_set(self._data[Fields.RELEVANT_INCLUDE_EXCLUDE_SETS], 3)
+        self._data[Fields.SOS_EXCLUDED_TEMPLATES] = self._data[Fields.ALL_EXCLUDED_TEMPLATES][
+            self._data[Fields.ALL_EXCLUDED_TEMPLATES][Fd.EXCLUDE_INCLUDE_SET_FK] ==
+            self._data[Fields.SOS_INCLUDE_EXCLUDE_SET]].copy()
+        self._data[Fields.SOS_EXCLUDED_PRODUCTS] = self._data[Fields.ALL_EXCLUDED_PRODUCTS][
+            self._data[Fields.ALL_EXCLUDED_PRODUCTS][Fd.EXCLUDE_INCLUDE_SET_FK] == self._data[
+                Fields.SOS_INCLUDE_EXCLUDE_SET]].copy()
+        self._data[Fields.SOS_EXCLUDED_TEMPLATE_PRODUCTS] = self._data[Fields.ALL_EXCLUDED_TEMPLATE_PRODUCTS][
+            self._data[Fields.ALL_EXCLUDED_TEMPLATE_PRODUCTS][Fd.EXCLUDE_INCLUDE_SET_FK] == self._data[
+                Fields.SOS_INCLUDE_EXCLUDE_SET]].copy()
         # For backward compatibility
-        self._data[PNGCN_SANDFields.SOS_EXCLUDED_TEMPLATES].drop(Fd.EXCLUDE_INCLUDE_SET_FK, axis=1, inplace=True)
-        self._data[PNGCN_SANDFields.SOS_EXCLUDED_PRODUCTS].drop(Fd.EXCLUDE_INCLUDE_SET_FK, axis=1, inplace=True)
-        self._data[PNGCN_SANDFields.SOS_EXCLUDED_TEMPLATE_PRODUCTS].drop(Fd.EXCLUDE_INCLUDE_SET_FK, axis=1, inplace=True)
+        self._data[Fields.SOS_EXCLUDED_TEMPLATES].drop(Fd.EXCLUDE_INCLUDE_SET_FK, axis=1, inplace=True)
+        self._data[Fields.SOS_EXCLUDED_PRODUCTS].drop(Fd.EXCLUDE_INCLUDE_SET_FK, axis=1, inplace=True)
+        self._data[Fields.SOS_EXCLUDED_TEMPLATE_PRODUCTS].drop(Fd.EXCLUDE_INCLUDE_SET_FK, axis=1, inplace=True)
 
     @staticmethod
     def _get_include_exclude_set(relevant_include_exclude_sets, report_group_fk):

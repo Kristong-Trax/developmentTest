@@ -45,6 +45,7 @@ class DIAGEOUSToolBox:
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
         self.scif_without_emptys = self.scif[~(self.scif['product_type'] == "Empty") &
                                              (self.scif['substitution_product_fk'].isnull())]
+        self.scif_with_substs_without_emptys = self.scif[~(self.scif['product_type'] == "Empty")]
         self.all_products_sku = self.all_products[(self.all_products['product_type'] == 'SKU') &
                                                   (self.all_products['category'] == 'SPIRITS') &
                                                   (self.all_products['is_active'] == 1)]
@@ -59,6 +60,7 @@ class DIAGEOUSToolBox:
         else:
             Log.error("The store for this session has no attribute6. Set temporary as Off-premise, fix ASAP")
             self.on_off = Const.OFF
+        self.template_path = TEMPLATE_PATH
         self.templates = {}
         self.get_templates()
         self.kpi_results_queries = []
@@ -103,15 +105,15 @@ class DIAGEOUSToolBox:
             if sheet in ([Const.SHELF_FACING_SHEET, Const.PRICING_SHEET]):
                 converters = {Const.OUR_EAN_CODE: lambda x: str(x).replace(".0", ""),
                               Const.COMP_EAN_CODE: lambda x: str(x).replace(".0", "")}
-                self.templates[sheet] = pd.read_excel(TEMPLATE_PATH, sheetname=sheet,
+                self.templates[sheet] = pd.read_excel(self.template_path, sheetname=sheet,
                                                       converters=converters, keep_default_na=False)
             elif sheet == Const.SHELF_PLACMENTS_SHEET:
                 converters = {Const.PRODUCT_EAN_CODE: lambda x: str(x).replace(".0", "")}
-                self.templates[sheet] = pd.read_excel(TEMPLATE_PATH, sheetname=sheet,
+                self.templates[sheet] = pd.read_excel(self.template_path, sheetname=sheet,
                                                       converters=converters, keep_default_na=False)
             else:
                 self.templates[sheet] = pd.read_excel(
-                    TEMPLATE_PATH, sheetname=sheet, keep_default_na=False)
+                    self.template_path, sheetname=sheet, keep_default_na=False)
 
     # main functions:
 
@@ -224,7 +226,7 @@ class DIAGEOUSToolBox:
         :return:
         """
         relevant_scenes = self.get_relevant_scenes(scene_types)
-        relevant_scif = self.scif_without_emptys[self.scif_without_emptys['scene_id'].isin(
+        relevant_scif = self.scif_with_substs_without_emptys[self.scif_with_substs_without_emptys['scene_id'].isin(
             relevant_scenes)]
         kpi_db_names = Const.DB_ON_NAMES[kpi_name]
         sku_kpi_fk = self.common.get_kpi_fk_by_kpi_name(kpi_db_names[Const.SKU])
@@ -285,6 +287,9 @@ class DIAGEOUSToolBox:
             relevant_scenes)]
         if kpi_name == Const.POD:
             calculate_function = self.calculate_pod_off_sku
+            # we need to redefine relevant_scif to include substitutions
+            relevant_scif = self.scif_with_substs_without_emptys[self.scif_with_substs_without_emptys['scene_id'].isin(
+                relevant_scenes)]
         elif kpi_name == Const.DISPLAY_BRAND:
             if self.survey_display_write_to_db(weight):
                 Log.debug("There is no display, Display Brand got 100")
@@ -332,7 +337,10 @@ class DIAGEOUSToolBox:
         brand, sub_brand = self.get_product_details(product_fk)
         if sub_brand is None or self.all_products_sku[self.all_products_sku['product_fk'] == product_fk].empty:
             return None
-        facings = relevant_scif[(relevant_scif['product_fk'] == product_fk)]['facings'].sum()
+        relevant_substitution_products = \
+            relevant_scif[relevant_scif['substitution_product_fk'] == product_fk]['product_fk'].unique().tolist()
+        product_fk_with_substs = relevant_substitution_products + [product_fk]
+        facings = relevant_scif[relevant_scif['product_fk'].isin(product_fk_with_substs)]['facings'].sum()
         if facings > 0 or (product_fk in self.sales_data and kpi_name == Const.POD):
             result, passed = Const.DISTRIBUTED, 1
         else:
@@ -357,7 +365,10 @@ class DIAGEOUSToolBox:
         kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.DB_OFF_NAMES[Const.POD][Const.SKU])
         total_kpi_fk = self.common.get_kpi_fk_by_kpi_name(
             Const.DB_OFF_NAMES[Const.POD][Const.TOTAL])
-        facings = relevant_scif[relevant_scif['product_fk'] == product_fk]['facings'].sum()
+        relevant_substitution_products = \
+            relevant_scif[relevant_scif['substitution_product_fk'] == product_fk]['product_fk'].unique().tolist()
+        product_fk_with_substs = relevant_substitution_products + [product_fk]
+        facings = relevant_scif[relevant_scif['product_fk'].isin(product_fk_with_substs)]['facings'].sum()
         if facings > 0:
             result, passed = Const.DISTRIBUTED, 1
         else:

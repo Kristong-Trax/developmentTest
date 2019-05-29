@@ -28,7 +28,10 @@ class Generator:
         """
         if self.tool_box.scif.empty:
             Log.warning('Scene item facts is empty for this session')
-        for kpi_set_fk in self.tool_box.new_kpi_static_data['pk'].unique().tolist():
-            score = self.tool_box.main_calculation(kpi_set_fk=kpi_set_fk)
-            # self.common.write_to_db_result(kpi_set_fk, self.tool_box.LEVEL1, score)
-        self.tool_box.common.commit_results_data()
+        # for kpi_set_fk in self.tool_box.new_kpi_static_data['pk'].unique().tolist():
+        #     score = self.tool_box.main_calculation(kpi_set_fk=kpi_set_fk)
+        #     # self.common.write_to_db_result(kpi_set_fk, self.tool_box.LEVEL1, score)
+        # self.tool_box.common.commit_results_data()
+        self.tool_box.calculate_assortment()
+        # self.tool_box.commit_assortment_results_without_delete()
+        self.tool_box.commit_assortment_results()

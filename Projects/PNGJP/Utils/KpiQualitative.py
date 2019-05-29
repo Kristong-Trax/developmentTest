@@ -247,7 +247,8 @@ class PNGJPKpiQualitative_ToolBox(PNGJPConsts):
         """
         for category in self.template_data['Category Name'].unique().tolist():
             category = \
-                self.all_products[self.all_products['category_local_name'] == category][
+                self.all_products[
+                    self.all_products['category_local_name'].str.encode("utf8") == category.encode("utf8")][
                     self.CATEGORY_LOCAL_NAME].values[0]
             self.category_calculation(category)
 
@@ -267,11 +268,12 @@ class PNGJPKpiQualitative_ToolBox(PNGJPConsts):
         self.category_aggregation_calculation(category)
 
     def calculation_per_entity(self, category):
-        template_data = self.template_data[self.template_data['Category Name'] == category]
+        template_data = self.template_data[
+            self.template_data['Category Name'].str.encode("utf8") == category.encode("utf8")]
         filters = {self.CATEGORY_LOCAL_NAME: category}
 
         for kpi in template_data['fixed KPI name'].unique().tolist():
-            entity_kpis = template_data.loc[template_data['fixed KPI name'] == kpi]
+            entity_kpis = template_data.loc[template_data['fixed KPI name'].str.encode("utf8") == kpi.encode("utf8")]
             entity_filters = filters
 
             for p in xrange(len(entity_kpis)):
@@ -284,19 +286,23 @@ class PNGJPKpiQualitative_ToolBox(PNGJPConsts):
                     kpi_filters = dict(scenes_filters, **entity_filters)
 
                     if kpi_type == self.GOLDEN_ZONE:
-                        kpi_params = self.golden_zone_data[self.golden_zone_data['fixed KPI name'] == kpi]
+                        kpi_params = self.golden_zone_data[
+                            self.golden_zone_data['fixed KPI name'].str.encode("utf8") == kpi.encode("utf8")]
                         score, result, threshold= self.calculate_golden_zone(kpi, kpi_filters, kpi_params)
 
                     elif kpi_type == self.BLOCK:
-                        kpi_params = self.block_data[self.block_data['fixed KPI name'] == kpi]
+                        kpi_params = self.block_data[
+                            self.block_data['fixed KPI name'].str.encode("utf8") == kpi.encode("utf8")]
                         score, result, threshold = self.calculate_block(kpi, kpi_filters, kpi_params)
 
                     elif kpi_type == self.ANCHOR:
-                        kpi_params = self.anchor_data[self.anchor_data['fixed KPI name'] == kpi]
+                        kpi_params = self.anchor_data[
+                            self.anchor_data['fixed KPI name'].str.encode("utf8") == kpi.encode("utf8")]
                         score, result, threshold = self.calculate_anchor(kpi, kpi_filters, kpi_params)
 
                     elif kpi_type == self.ADJACENCY:
-                        kpi_params = self.adjacency_data[self.adjacency_data['fixed KPI name'] == kpi]
+                        kpi_params = self.adjacency_data[
+                            self.adjacency_data['fixed KPI name'].str.encode("utf8") == kpi.encode("utf8")]
                         score, result, threshold = self.calculate_adjacency(kpi, kpi_filters, kpi_params)
 
                     else:
@@ -311,10 +317,11 @@ class PNGJPKpiQualitative_ToolBox(PNGJPConsts):
                     Log.warning("no score/result for '{}'".format(kpi_type))
 
     def category_aggregation_calculation(self, category):
-        template_data = self.template_data[(self.template_data['Category Name'] == category) & (
-            self.template_data['Set Name'] == 'Perfect Execution')]
+        template_data = self.template_data[
+            (self.template_data['Category Name'].str.encode("utf8") == category.encode("utf8")) & (
+                    self.template_data['Set Name'] == 'Perfect Execution')]
         for kpi in template_data['fixed KPI name'].unique().tolist():
-            entity_kpis = template_data.loc[template_data['fixed KPI name'] == kpi]
+            entity_kpis = template_data.loc[template_data['fixed KPI name'].str.encode('utf-8') == kpi.encode('utf-8')]
 
             for p in xrange(len(entity_kpis)):
                 score = threshold = result = None
@@ -411,8 +418,9 @@ class PNGJPKpiQualitative_ToolBox(PNGJPConsts):
         elif level == self.LEVEL2:
             kpi_name = kwargs['kpi_name']
             kpi_set_fk = kwargs['kpi_set_fk']
-            kpi_fk = self.kpi_static_data[(self.kpi_static_data['kpi_name'] == kpi_name) &
-                                          (self.kpi_static_data['kpi_set_fk'] == kpi_set_fk)]['kpi_fk'].values[0]
+            kpi_fk = \
+            self.kpi_static_data[(self.kpi_static_data['kpi_name'].str.encode('utf-8') == kpi_name.encode('utf-8')) &
+                                 (self.kpi_static_data['kpi_set_fk'] == kpi_set_fk)]['kpi_fk'].values[0]
 
             attributes = pd.DataFrame([(self.session_uid, self.store_id, self.visit_date.isoformat(),
                                         kpi_fk, kpi_name, score)],
@@ -420,8 +428,8 @@ class PNGJPKpiQualitative_ToolBox(PNGJPConsts):
             self.kpi_results[kpi_name] = score
         elif level == self.LEVEL3:
             kpi_name = kwargs['kpi_name']
-            kpi_fk = self.kpi_static_data[self.kpi_static_data['kpi_name']
-                                          == kpi_name]['kpi_fk'].values[0]
+            kpi_fk = self.kpi_static_data[self.kpi_static_data['kpi_name'].str.encode('utf-8')
+                                          == kpi_name.encode('utf-8')]['kpi_fk'].values[0]
             atomic_kpi_name = kwargs['atomic_kpi_name']
             atomic_kpi_fk = kwargs['atomic_kpi_fk']
             kpi_set_name = kwargs['kpi_set_name']
@@ -503,7 +511,7 @@ class PNGJPKpiQualitative_ToolBox(PNGJPConsts):
             extra_df['group'] = 'XX'
         return extra_df
 
-    @kpi_runtime(kpi_desc='calculate_golden_zone', project_name='pngjp')
+    # @kpi_runtime(kpi_desc='calculate_golden_zone', project_name='pngjp')
     def calculate_golden_zone(self, kpi, kpi_filters, params):
         kpi_filter = kpi_filters.copy()
         assortment_entity = self.PRODUCT_EAN_CODE_FIELD
@@ -528,7 +536,7 @@ class PNGJPKpiQualitative_ToolBox(PNGJPConsts):
             result = (result / float(total_group_skus)) * 100
         return score, result, threshold
 
-    @kpi_runtime(kpi_desc='calculate_block', project_name='pngjp')
+    # @kpi_runtime(kpi_desc='calculate_block', project_name='pngjp')
     def calculate_block(self, kpi, kpi_filters, params):
         allowed_products_filters = {}
         threshold = 0
@@ -560,7 +568,7 @@ class PNGJPKpiQualitative_ToolBox(PNGJPConsts):
             result = 1 if block_result else 0
         return score, result, threshold
 
-    @kpi_runtime(kpi_desc='calculate_anchor', project_name='pngjp')
+    # @kpi_runtime(kpi_desc='calculate_anchor', project_name='pngjp')
     def calculate_anchor(self, kpi, kpi_filters, params):
         score = result = threshold = 0
         kpi_filter = kpi_filters.copy()
@@ -612,7 +620,7 @@ class PNGJPKpiQualitative_ToolBox(PNGJPConsts):
                             break
         return score, result, threshold
 
-    @kpi_runtime(kpi_desc='calculate_adjacency', project_name='pngjp')
+    # @kpi_runtime(kpi_desc='calculate_adjacency', project_name='pngjp')
     def calculate_adjacency(self, kpi, kpi_filters, params):
         score = result = threshold = 0
         kpi_filter = kpi_filters.copy()
@@ -693,7 +701,8 @@ class PNGJPKpiQualitative_ToolBox(PNGJPConsts):
 
     def calculate_perfect_execution(self, kpi):
         score = result = threshold = 0
-        tested_kpis = self.perfect_execution_data[self.perfect_execution_data['fixed KPI name'] == kpi]
+        tested_kpis = self.perfect_execution_data[
+            self.perfect_execution_data['fixed KPI name'].str.encode('utf-8') == kpi.encode('utf-8')]
         for i, tested_kpi in tested_kpis.iterrows():
             try:
                 param_score = int(self.kpi_scores[tested_kpi['KPI test name'].replace(' ', '')])
@@ -708,7 +717,8 @@ class PNGJPKpiQualitative_ToolBox(PNGJPConsts):
         return score, result, threshold
 
     def write_result(self, score, result, threshold, kpi, category, set_name, template_data, extra_data=None):
-        kpi_name = template_data.loc[template_data['fixed KPI name'] == kpi]['KPI name'].values[0]
+        kpi_name = template_data.loc[template_data['fixed KPI name'].str.encode('utf-8') == kpi.encode('utf-8')][
+            'KPI name'].values[0]
         if extra_data is not None:
             brand = extra_data['brand']
             group = extra_data['group']

@@ -23,7 +23,7 @@ if __name__ == '__main__':
     LoggerInitializer.init('googlejpfm calculations')
     Config.init()
     project_name = 'googlejpfm'
-    sessions = ['fca88900-e56f-4b79-be99-3e38a3308a52']
+    sessions = ['E5400B0D-54DD-40EE-ABE7-1DA27AD3CBEC']
     for session in sessions:
         data_provider = KEngineDataProvider(project_name)
         data_provider.load_session_data(session)
