@@ -2,6 +2,7 @@
 from Trax.Utils.Logging.Logger import Log
 
 from Projects.CCUS.MONSTER.Utils.KPIToolBox import MONSTERToolBox
+from Projects.CCUS.FSOP.Utils.KPIToolBox import FSOPToolBox
 from Projects.CCUS.Utils.CCUSToolBox import log_runtime, CCUSToolBox
 from Projects.CCUS.DISPLAYS.KPIToolBox import DISPLAYSToolBox
 from Projects.CCUS.OBBO.KPIToolBox import OBBOToolBox
@@ -27,6 +28,8 @@ class CCUSGenerator:
         This is the main KPI calculation function.
         It calculates the score for every KPI set and saves it to the DB.
         """
+        self.calculate_fsop()
+
         self.calculate_manufacturer_displays()
         # # self.calculate_obbo()
         # # self.calculate_dunkin_donuts()
@@ -38,7 +41,6 @@ class CCUSGenerator:
         self.calculate_special_programs()
         self.calculate_validation()
         self.calculate_pillars_programs()
-
     @log_runtime('Manufacturer Displays Calculations')
     def calculate_manufacturer_displays(self):
         tool_box = DISPLAYSToolBox(self.data_provider, self.output)
@@ -50,6 +52,12 @@ class CCUSGenerator:
         tool_box = MONSTERToolBox(self.data_provider, self.output)
         tool_box.main_calculation()
         tool_box.commit_results_data(kpi_set_fk=27)
+
+    @log_runtime('FSOP Calculations')
+    def calculate_fsop(self):
+        tool_box = FSOPToolBox(self.data_provider, self.output)
+        tool_box.main_calculation()
+
 
     # @log_runtime('OBBO Calculations')
     # def calculate_obbo(self):
