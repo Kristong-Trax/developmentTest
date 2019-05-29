@@ -33,7 +33,7 @@ class Consts(object):
                              (PARAMS_TYPE_3, PARAMS_VALUE_3)]
 
     # KPIs
-    TOTAL_SCORE = 'Total Score'
+    TOTAL_SCORE = u'ציון כולל'
     AVAILABILITY = 'Availability'
     AVAILABILITY_FROM_BOTTOM = 'Availability from bottom'
     MIN_2_AVAILABILITY = 'Min 2 Availability'
@@ -99,8 +99,8 @@ class Consts(object):
     PRIORITY = 'priority'
     SCORE = 'score'
     ATOMIC_FK = 'atomic_fk'
-    GAPS_TOTAL_SCORE_KPI = 'Gaps Total Score'
-    GAP_PER_ATOMIC_KPI = 'Gaps Per KPI'
+    GAPS_TOTAL_SCORE_KPI = u'פערים מובילים'
+    GAP_PER_ATOMIC_KPI = u'פער לפי מדד'
 
     # Logs
     MISSING_QUESTION_LOG = "Missing question ID field! Please check the template"
