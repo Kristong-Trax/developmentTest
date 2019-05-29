@@ -64,6 +64,9 @@ class MARSRU2_SANDKPIFetcher:
                                   'SCENE_TYPE': 'template_name'}
         object_field = object_type_conversion[object_type]
 
+        if not objects:
+            objects = self.scif[object_field].unique().tolist()
+
         if not manufacturers:
             manufacturers = self.scif['manufacturer_name'].unique().tolist()
 
@@ -285,8 +288,7 @@ class MARSRU2_SANDKPIFetcher:
                         if 'KPI name' in row:
 
                             kpi_name_to_check = str(row.get('KPI name')).encode('utf-8').strip()
-                            kpi_results_to_check = str(row.get('KPI result')).encode(
-                                'utf-8').strip().replace('\n', '').split(',')
+                            kpi_results_to_check = str(row.get('KPI result')).encode('utf-8').strip().replace('\n', '').split(',')
                             kpi_result = str(kpi_results.get(kpi_name_to_check).get('result'))\
                                 if kpi_results.get(kpi_name_to_check) else None
                             if kpi_result:

@@ -59,9 +59,6 @@ class MARSRU2_SANDKPIToolBox:
         self.kpi_templates = kpi_templates
         self.data_provider = data_provider
         self.output = output
-        self.dict_for_planogram = {2261: 0, 2264: 0, 2265: 0,
-                                   2351: 0, 4261: 0, 4264: 0, 4265: 0, 4351: 0,
-                                   4269: 0, 4271: 0, 4270: 0, 4272: 0}
         self.products = self.data_provider[Data.ALL_PRODUCTS]
         self.k_engine = BaseCalculationsGroup(data_provider, output)
         self.project_name = data_provider.project_name
@@ -341,7 +338,7 @@ class MARSRU2_SANDKPIToolBox:
             if '*' in str(params.get('Values')):
                 values_list = str(params.get('Values')).split(', *')
             else:
-                values_list = str(params.get('Values')).split(', ')
+                values_list = str(params.get('Values')).split(', ') if params.get('Values') else []
 
         if not formula:
             formula = params.get('Formula')
@@ -542,7 +539,7 @@ class MARSRU2_SANDKPIToolBox:
             if p.get('Formula') != 'price':
                 continue
 
-            values_list = str(p.get('Values')).split(', ')
+            values_list = str(p.get('Values')).split(', ') if p.get('Values') else []
             if not scenes:
                 scenes = self.get_relevant_scenes(params)
             form_factors = [str(form_factor)
@@ -573,7 +570,7 @@ class MARSRU2_SANDKPIToolBox:
             if p.get('Formula') not in ('custom_average_shelves_1', 'custom_average_shelves_2'):
                 continue
 
-            values_list = str(p.get('Values')).split(', ')
+            values_list = str(p.get('Values')).split(', ') if p.get('Values') else []
             scenes = self.get_relevant_scenes(p)
 
             if p.get('Formula') == 'custom_average_shelves_1':
@@ -665,7 +662,7 @@ class MARSRU2_SANDKPIToolBox:
             if p.get('Formula') != 'custom_number_bays':
                 continue
 
-            values_list = str(p.get('Values')).split(', ')
+            values_list = str(p.get('Values')).split(', ') if p.get('Values') else []
             scenes = self.get_relevant_scenes(p)
 
             result = round(self.calculate_number_bays(
@@ -709,7 +706,7 @@ class MARSRU2_SANDKPIToolBox:
             if p.get('Formula') != 'layout size':
                 continue
 
-            values_list = str(p.get('Values')).split(', ')
+            values_list = str(p.get('Values')).split(', ') if p.get('Values') else []
             manufacturers = str(p.get('Manufacturer')).split(', ')
             scenes = self.get_relevant_scenes(p)
             if p.get('Include Stacking'):
@@ -843,7 +840,7 @@ class MARSRU2_SANDKPIToolBox:
             if p.get('Formula') != 'custom_mars_1':
                 continue
 
-            values_list = str(p.get('Values')).split(', ')
+            values_list = str(p.get('Values')).split(', ') if p.get('Values') else []
             scenes = self.get_relevant_scenes(p)
             shelf_size_dict = self.calculate_shelf_size(scenes)
             check_product = False
@@ -895,7 +892,7 @@ class MARSRU2_SANDKPIToolBox:
                 continue
 
             brands_results_dict = {}
-            values_list = str(p.get('Values')).split(', ')
+            values_list = str(p.get('Values')).split(', ') if p.get('Values') else []
             scenes = self.get_relevant_scenes(p)
             object_field = self.object_type_conversion[p.get('Type')]
             self.check_connection(self.rds_conn)
@@ -1277,7 +1274,10 @@ class MARSRU2_SANDKPIToolBox:
                 continue
 
             brands_results_dict = {}
-            values_list = str(p.get('Values')).split(', *')
+            if '*' in str(p.get('Values')):
+                values_list = str(p.get('Values')).split(', *')
+            else:
+                values_list = str(p.get('Values')).split(', ') if p.get('Values') else []
             scenes = self.get_relevant_scenes(p)
             object_field = self.object_type_conversion[p.get('Type')]
             if p.get('Include Stacking'):
@@ -1344,7 +1344,7 @@ class MARSRU2_SANDKPIToolBox:
             if p.get('Formula') != 'custom_mars_5':
                 continue
 
-            values_list = str(p.get('Values')).split(', ')
+            values_list = str(p.get('Values')).split(', ') if p.get('Values') else []
             scenes = self.get_relevant_scenes(p)
             scenes_results_dict = {}
             for scene in scenes:
@@ -1392,7 +1392,7 @@ class MARSRU2_SANDKPIToolBox:
                 continue
 
             brand_facings_dict = {}
-            values_list = str(p.get('Values')).split(', ')
+            values_list = str(p.get('Values')).split(', ') if p.get('Values') else []
             scenes = self.get_relevant_scenes(p)
             if p.get("Form Factor to include"):
                 form_factors = [str(form_factor)
@@ -1452,23 +1452,25 @@ class MARSRU2_SANDKPIToolBox:
             if p.get('Formula') != 'kpi_results':
                 continue
 
+            kpi_set = '*'
+
             if p.get('#Mars KPI NAME') == 1013:  # Share of Shelf Nestle in Mars = (((1010+1011)/(4261+4265))/0.5)*0.5
                 k1 = 0.5
                 k2 = 0.5
-                kpi_part_1 = self.dict_for_planogram[1010] + self.dict_for_planogram[1011]
-                kpi_part_2 = self.dict_for_planogram[4261] + self.dict_for_planogram[4265]
-                result = ((kpi_part_1/kpi_part_2)/k1)*k2 if kpi_part_2 else 0
+                kpi_part_1 = self.results_and_scores[kpi_set]['1010']['result'] + self.results_and_scores[kpi_set]['1011']['result']
+                kpi_part_2 = self.results_and_scores[kpi_set]['4261']['result'] + self.results_and_scores[kpi_set]['4265']['result']
+                result = ((kpi_part_1/float(kpi_part_2))/k1)*k2 if kpi_part_2 else 0
 
             elif p.get('#Mars KPI NAME') == 1015:  # Nestle in Mars = ((1012/1014)/0.5)*0.5
                 k1 = 0.5
                 k2 = 0.5
-                kpi_part_1 = self.dict_for_planogram[1012]
-                kpi_part_2 = self.dict_for_planogram[1014]
-                result = ((kpi_part_1/kpi_part_2)/k1)*k2 if kpi_part_2 else 0
+                kpi_part_1 = self.results_and_scores[kpi_set]['1012']['result']
+                kpi_part_2 = self.results_and_scores[kpi_set]['1014']['result']
+                result = ((kpi_part_1/float(kpi_part_2))/k1)*k2 if kpi_part_2 else 0
 
             elif p.get('#Mars KPI NAME') == 1016:  # PSS Nestle = 1013+1015
-                kpi_part_1 = self.dict_for_planogram[1013]
-                kpi_part_2 = self.dict_for_planogram[1015]
+                kpi_part_1 = self.results_and_scores[kpi_set]['1013']['result']
+                kpi_part_2 = self.results_and_scores[kpi_set]['1015']['result']
                 result = kpi_part_1 + kpi_part_2
 
             else:
@@ -1485,16 +1487,17 @@ class MARSRU2_SANDKPIToolBox:
             if p.get('Formula') != 'custom_mars_7':
                 continue
 
+            kpi_set = (p.get('#Mars KPI SET Old'), p.get('#Mars KPI SET New'))
+
             if p.get('#Mars KPI NAME') == 4704:  # If ((4269+4271)/(4270+4272))*100% >= 100% then TRUE
-                kpi_part_1 = self.dict_for_planogram[4269] + self.dict_for_planogram[4271]
-                kpi_part_2 = self.dict_for_planogram[4270] + self.dict_for_planogram[4272]
-                ratio = kpi_part_1 / kpi_part_2 if kpi_part_2 else 0
+                kpi_part_1 = self.results_and_scores[kpi_set]['4269']['result'] + self.results_and_scores[kpi_set]['4271']['result']
+                kpi_part_2 = self.results_and_scores[kpi_set]['4270']['result'] + self.results_and_scores[kpi_set]['4272']['result']
+                ratio = kpi_part_1 / float(kpi_part_2) if kpi_part_2 else 0
 
                 result = 'FALSE' if ratio < 1 else 'TRUE'
 
             else:
 
-                kpi_set = (p.get('#Mars KPI SET Old'), p.get('#Mars KPI SET New'))
                 values_list = self.kpi_fetcher.get_must_range_skus_by_region_and_store(self.store_type,
                                                                                        self.region,
                                                                                        p.get('#Mars KPI NAME'),
@@ -1547,27 +1550,31 @@ class MARSRU2_SANDKPIToolBox:
                             result = 'TRUE'
 
                     elif p.get('#Mars KPI NAME') == 2254:
-                        if self.dict_for_planogram[2264] or self.dict_for_planogram[2351]:
-                            kpi_part_1 = self.dict_for_planogram[2261] / self.dict_for_planogram[2264] \
-                                if self.dict_for_planogram[2264] > 0 else 0
-                            kpi_part_2 = self.dict_for_planogram[2265] / self.dict_for_planogram[2351] \
-                                if self.dict_for_planogram[2351] > 0 else 0
+                        if self.results_and_scores[kpi_set]['2264']['result'] or self.results_and_scores[kpi_set]['2351']['result']:
+                            kpi_part_1 = self.results_and_scores[kpi_set]['2261']['result'] / \
+                                         float(self.results_and_scores[kpi_set]['2264']['result']) \
+                                if self.results_and_scores[kpi_set]['2264']['result'] > 0 else 0
+                            kpi_part_2 = self.results_and_scores[kpi_set]['2265']['result'] / \
+                                         float(self.results_and_scores[kpi_set]['2351']['result']) \
+                                if self.results_and_scores[kpi_set]['2351']['result'] > 0 else 0
                             mars_shelf_size = kpi_part_1 + kpi_part_2
                             for row in values_list:
                                 if row['shelf from'] <= mars_shelf_size < row['shelf to']:
                                     result = str(row['result'])
 
                     elif p.get('#Mars KPI NAME') == 4254:
-                        if self.dict_for_planogram[4261]+self.dict_for_planogram[4265] < p.get('Target'):
+                        if self.results_and_scores[kpi_set]['4261']['result']+self.results_and_scores[kpi_set]['4265']['result'] < p.get('Target'):
                             for row in values_list:
                                 if row['length_condition'] == '<' + str(int(p.get('Target'))):
                                     result = str(row['result'])
                                     break
-                        elif self.dict_for_planogram[4264] or self.dict_for_planogram[4351]:
-                            kpi_part_1 = self.dict_for_planogram[4261] / self.dict_for_planogram[4264] \
-                                if self.dict_for_planogram[4264] > 0 else 0
-                            kpi_part_2 = self.dict_for_planogram[4265] / self.dict_for_planogram[4351] \
-                                if self.dict_for_planogram[4351] > 0 else 0
+                        elif self.results_and_scores[kpi_set]['4264']['result'] or self.results_and_scores[kpi_set]['4351']['result']:
+                            kpi_part_1 = self.results_and_scores[kpi_set]['4261']['result'] / \
+                                         float(self.results_and_scores[kpi_set]['4264']['result']) \
+                                if self.results_and_scores[kpi_set]['4264']['result'] > 0 else 0
+                            kpi_part_2 = self.results_and_scores[kpi_set]['4265']['result'] / \
+                                         float(self.results_and_scores[kpi_set]['4351']['result']) \
+                                if self.results_and_scores[kpi_set]['4351']['result'] > 0 else 0
                             mars_shelf_size = kpi_part_1 + kpi_part_2
                             for row in values_list:
                                 if row['shelf from'] <= mars_shelf_size < row['shelf to'] \
@@ -1606,7 +1613,7 @@ class MARSRU2_SANDKPIToolBox:
                 continue
 
             object_field = self.object_type_conversion[p.get('Type')]
-            values_list = str(p.get('Values')).split(', ')
+            values_list = str(p.get('Values')).split(', ') if p.get('Values') else []
             competitor_brands = str(p.get('competitor_brands')).split(', ')
             scenes = self.get_relevant_scenes(p)
             tested_filters = {object_field: values_list, 'category': p.get('Category')}
@@ -2005,11 +2012,6 @@ class MARSRU2_SANDKPIToolBox:
         and stores result and score for the KPI
 
         """
-        if type(result) in (int, float):
-            self.dict_for_planogram[params.get('#Mars KPI NAME')] = float(result)
-        else:
-            self.dict_for_planogram[params.get('#Mars KPI NAME')] = result
-
         if result is None:
             result_value = None
         else:
@@ -2032,11 +2034,17 @@ class MARSRU2_SANDKPIToolBox:
         score_value = None if result_value is None else (
             100 if result_value and result_value != 'FALSE' else 0)
 
+        # Results by KPI Sets
         kpi_set = (params.get('#Mars KPI SET Old'), params.get('#Mars KPI SET New'))
-
         if not self.results_and_scores.get(kpi_set):
             self.results_and_scores[kpi_set] = {}
+        self.results_and_scores[kpi_set][str(params.get('#Mars KPI NAME'))] = {
+            'result': result_value, 'score': score_value}
 
+        # All results
+        kpi_set = '*'
+        if not self.results_and_scores.get(kpi_set):
+            self.results_and_scores[kpi_set] = {}
         self.results_and_scores[kpi_set][str(params.get('#Mars KPI NAME'))] = {
             'result': result_value, 'score': score_value}
 
