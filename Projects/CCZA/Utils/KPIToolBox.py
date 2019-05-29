@@ -318,10 +318,10 @@ class CCZAToolBox:
             :return: 100 if it's fine, 0 otherwise.
         """
         progression_list = ['COCA-COLA', 'COCA-COLA Life', 'COKE ZERO', 'COKE LIGHT', 'TAB', 'SPRITE',
-                            'SPRITE ZERO', 'FANTA ORANGE', 'FANTA ZERO']
+                            'SPRITE ZERO', 'FANTA ORANGE', 'FANTA ZERO', 'FANTA Grape', 'FANTA Pinapple']
 
         filtered_scif = self.scif[
-            (self.scif['location_type'] != "Pricing Scene Types") &
+            (~self.scif['location_type'].isin(["Pricing Scene Types", "Not For Flow"])) &
             (self.scif['tagged'] >= 1) &
             (self.scif['brand_name'].isin(progression_list))]
         join_on = ['scene_fk', 'product_fk']
