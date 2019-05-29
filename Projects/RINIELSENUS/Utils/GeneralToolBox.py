@@ -743,35 +743,35 @@ class MarsUsGENERALToolBox:
 
         return cluster_dicts
 
-    def parse_net_x_block(self, clusters, mpis):
-        clusters = clusters.sort_values('facing_percentage', ascending=False)
-        cluster_dicts = []
-        for i, row in clusters.iterrows():
-            row_dict = defaultdict(list)
-            sub_cluster = row['cluster']
-            for i, node in sub_cluster.nodes(data=True):
-                row_dict['scene_fk'] = row['scene_fk']
-                row_dict['orientation'] = row['orientation']
-                row_dict['cluster_ratio'] = row['facing_percentage']
-                row_dict['is_block'] = row['is_block']
-                node = node['group_attributes']
-                row_dict['all_prods'] += node['product_fk_list']
-                row_dict['all_scene_matches'] += node['match_fk_list']
-                if 'SKU' in node['product_type_list']:
-                    node_mpis = mpis[mpis['scene_match_fk'].isin(node['match_fk_list'])]
-                    if node_mpis.empty:
-                        continue
-                    row_dict['rel_scene_matches'] += list(node_mpis['scene_match_fk'])
-                    row_dict['rel_shelves'] += list(node_mpis['shelf_number'])
-                    row_dict['rel_bays'] += list(node_mpis['bay_number'].unique())
-                    row_dict['rel_facings'] += [node_mpis.shape[0]]
-            row_dict['rel_facings'] = sum(row_dict['rel_facings'])
-            row_dict['rel_shelves'] = list(set(row_dict['rel_shelves']))
-            row_dict['mpis'] = self.match_product_in_scene[self.match_product_in_scene['scene_match_fk']
-                                                           .isin(row_dict['all_scene_matches'])]
-            cluster_dicts.append(row_dict)
-
-        return cluster_dicts
+    # def parse_net_x_block(self, clusters, mpis):
+    #     clusters = clusters.sort_values('facing_percentage', ascending=False)
+    #     cluster_dicts = []
+    #     for i, row in clusters.iterrows():
+    #         row_dict = defaultdict(list)
+    #         sub_cluster = row['cluster']
+    #         for i, node in sub_cluster.nodes(data=True):
+    #             row_dict['scene_fk'] = row['scene_fk']
+    #             row_dict['orientation'] = row['orientation']
+    #             row_dict['cluster_ratio'] = row['facing_percentage']
+    #             row_dict['is_block'] = row['is_block']
+    #             node = node['group_attributes']
+    #             row_dict['all_prods'] += node['product_fk_list']
+    #             row_dict['all_scene_matches'] += node['match_fk_list']
+    #             if 'SKU' in node['product_type_list']:
+    #                 node_mpis = mpis[mpis['scene_match_fk'].isin(node['match_fk_list'])]
+    #                 if node_mpis.empty:
+    #                     continue
+    #                 row_dict['rel_scene_matches'] += list(node_mpis['scene_match_fk'])
+    #                 row_dict['rel_shelves'] += list(node_mpis['shelf_number'])
+    #                 row_dict['rel_bays'] += list(node_mpis['bay_number'].unique())
+    #                 row_dict['rel_facings'] += [node_mpis.shape[0]]
+    #         row_dict['rel_facings'] = sum(row_dict['rel_facings'])
+    #         row_dict['rel_shelves'] = list(set(row_dict['rel_shelves']))
+    #         row_dict['mpis'] = self.match_product_in_scene[self.match_product_in_scene['scene_match_fk']
+    #                                                        .isin(row_dict['all_scene_matches'])]
+    #         cluster_dicts.append(row_dict)
+    #
+    #     return cluster_dicts
 
     def test_subset_ratio(self, subset, cluster, mpis, minimum_block_ratio):
         sc_mpis = mpis[self.get_filter_condition(mpis, **{'scene_fk': cluster['scene_fk']})]
@@ -811,10 +811,8 @@ class MarsUsGENERALToolBox:
                                                             'check_vertical_horizontal': True,
                                                             'ignore_empty': False,
                                                             'minimum_block_ratio': minimum_block_ratio,
-                                                            # 'allowed_edge_type': [self.block.UNCONNECTED,
-                                                            #                       self.block.CONNECTED,
-                                                            #                       self.block.ENCAPSULATED]
-                                                          })
+                                                            'filter_operator': 'and'
+                                                            })
         if not clusters.empty:
             clusters = self.parse_net_x_block(clusters, mpis)
             # Debugging bits
