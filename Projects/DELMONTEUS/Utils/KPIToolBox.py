@@ -43,12 +43,9 @@ class ToolBox:
         self.templates = self.data_provider.all_templates
         self.ps_data_provider = PsDataProvider(self.data_provider, self.output)
         self.result_values_dict = self.make_result_values_dict()
-        self.att_dict = self.make_att_dict()
         self.store_assortment = self.ps_data_provider.get_store_assortment()
         self.store_sos_policies = self.ps_data_provider.get_store_policies()
         self.labels = self.ps_data_provider.get_labels()
-        self.entity_dict = {str(key).lower(): vals['pk'] for key, vals in
-                            self.ps_data_provider.get_custom_entities(22).set_index('name').iterrows()}
         self.scene_info = self.data_provider[Data.SCENES_INFO]
         self.all_products = self.data_provider[Data.ALL_PRODUCTS]
         self.products = self.data_provider[Data.PRODUCTS]
@@ -112,46 +109,35 @@ class ToolBox:
         # if kpi_name not in ('Where are Progresso RTS Light facings shelved?'):
         #     return
 
-        # if kpi_type == Const.AGGREGATION:
-        # if kpi_type:
-        if (self.super_cat in ['RBG', 'YOGURT', 'SOUP', 'MEXICAN']) or (kpi_type in[Const.BASE_MEASURE, Const.BLOCKING, Const.AGGREGATION]):
-        # if (self.super_cat in ['MEXICAN']) or (kpi_type in[Const.BASE_MEASURE, Const.BLOCKING, Const.AGGREGATION]):
-        # if kpi_name == 'How is RTS Progresso blocked?':
-        # if kpi_type in[Const.COUNT_SHELVES]: # Const.COUNT_SHELVES:
-        # if kpi_type in[Const.BASE_MEASURE, Const.SET_COUNT]: # Const.COUNT_SHELVES:
-        # if kpi_type in[Const.BLOCKING]: # Const.COUNT_SHELVES:
-        #     print(kpi_name)
+        dependent_kpis = self.read_cell_from_line(main_line, Const.DEPENDENT)
+        dependent_results = self.read_cell_from_line(main_line, Const.DEPENDENT_RESULT)
+        if dependent_kpis:
+            for dependent_kpi in dependent_kpis:
+                if self.dependencies[dependent_kpi] not in dependent_results:
+                    if dependent_results or self.dependencies[dependent_kpi] is None:
+                        return
 
+        kpi_line = self.template[kpi_type].set_index(Const.KPI_NAME).loc[kpi_name]
+        function = self.get_kpi_function(kpi_type, kpi_line[Const.RESULT])
+        try:
+           all_kwargs = function(kpi_name, kpi_line, relevant_scif, general_filters)
+        except Exception as e:
+            if self.global_fail:
+                all_kwargs = [{'score': 0, 'result': "Not Applicable", 'failed': 0}]
+                Log.warning('kpi "{}" failed to calculate in super category "{}"'.format(kpi_name, self.super_cat))
 
-            dependent_kpis = self.read_cell_from_line(main_line, Const.DEPENDENT)
-            dependent_results = self.read_cell_from_line(main_line, Const.DEPENDENT_RESULT)
-            if dependent_kpis:
-                for dependent_kpi in dependent_kpis:
-                    if self.dependencies[dependent_kpi] not in dependent_results:
-                        if dependent_results or self.dependencies[dependent_kpi] is None:
-                            return
+            else:
+                all_kwargs = [{'score': 0, 'result': None, 'failed': 1}]
+                Log.error('kpi "{}" failed in super category "{}," error: "{}"'.format(kpi_name, self.super_cat, e))
 
-            kpi_line = self.template[kpi_type].set_index(Const.KPI_NAME).loc[kpi_name]
-            function = self.get_kpi_function(kpi_type, kpi_line[Const.RESULT])
-            try:
-               all_kwargs = function(kpi_name, kpi_line, relevant_scif, general_filters)
-            except Exception as e:
-                if self.global_fail:
-                    all_kwargs = [{'score': 0, 'result': "Not Applicable", 'failed': 0}]
-                    Log.warning('kpi "{}" failed to calculate in super category "{}"'.format(kpi_name, self.super_cat))
-
-                else:
-                    all_kwargs = [{'score': 0, 'result': None, 'failed': 1}]
-                    Log.error('kpi "{}" failed in super category "{}," error: "{}"'.format(kpi_name, self.super_cat, e))
-
-            finally:
-                if not isinstance(all_kwargs, list) or not all_kwargs:
-                    all_kwargs = [all_kwargs]
-                for kwargs in all_kwargs:
-                    if not kwargs or kwargs['score'] is None:
-                        kwargs = {'score': 0, 'result': 'Not Applicable', 'failed': 0}
-                    self.write_to_db(kpi_name, **kwargs)
-                    self.dependencies[kpi_name] = kwargs['result']
+        finally:
+            if not isinstance(all_kwargs, list) or not all_kwargs:
+                all_kwargs = [all_kwargs]
+            for kwargs in all_kwargs:
+                if not kwargs or kwargs['score'] is None:
+                    kwargs = {'score': 0, 'result': 'Not Applicable', 'failed': 0}
+                self.write_to_db(kpi_name, **kwargs)
+                self.dependencies[kpi_name] = kwargs['result']
 
     def flag_failures(self):
         for kpi, val in self.dependencies.items():
