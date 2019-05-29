@@ -322,13 +322,12 @@ class DIAGEOGTRToolBox:
                 return kpi_result
         return dict()
 
-    def main_calculation(self, kpi_set_names):
+    def main_calculation(self, set_names, kpi_set_names):
         """
         This function calculates the KPI results.
         # """
         assortment_res_dict = self.diageo_generator.diageo_global_assortment_function_v2()
         self.commonV2.save_json_to_new_tables(assortment_res_dict)
-        self.commonV2.commit_results_data()
 
         for kpi_set_name in kpi_set_names:
             if kpi_set_name == SOWB:
@@ -343,20 +342,8 @@ class DIAGEOGTRToolBox:
                 score = self.calculate_share_of_display_grouped_scenes(kpi_set_name)
             else:
                 continue
-            self.common.commit_results_data_to_new_tables()
-        return
+        self.commonV2.commit_results_data()
 
-        # if set_name not in self.tools.KPI_SETS_WITHOUT_A_TEMPLATE and set_name not in self.set_templates_data.keys():
-        #     self.set_templates_data[set_name] = self.tools.download_template(set_name)
-        #
-        # if set_name in ('Local MPA', 'MPA', 'New Products',):
-        #     set_score = self.calculate_assortment_sets(set_name)
-        # else:
-        #     return
-        # if set_score is False:
-        #     return
-        # set_fk = self.kpi_static_data[self.kpi_static_data['kpi_set_name'] == set_name]['kpi_set_fk'].values[0]
-        # self.write_to_db_result(set_fk, set_score, self.LEVEL1)
 
     def calculate_facings_sos(self, kpi_set_name):
         template_kpis = self.template_data[self.template_data[DIAGEOGTRConsts.KPI_SET_NAME] == kpi_set_name]
@@ -433,7 +420,7 @@ class DIAGEOGTRToolBox:
             kpi_result[DIAGEOGTRConsts.KPI_LEVEL_2_FK] = kpi_level_2_fk
 
             if (kpi_level_2_fk != 0):
-                self.common.write_to_db_result_new_tables(fk=kpi_result[DIAGEOGTRConsts.KPI_LEVEL_2_FK],
+                self.commonV2.write_to_db_result(fk=kpi_result[DIAGEOGTRConsts.KPI_LEVEL_2_FK],
                                                           numerator_id = kpi_result[DIAGEOGTRConsts.NUMERATOR_ID],
                                                           denominator_id = kpi_result[DIAGEOGTRConsts.DENOMINATOR_ID],
                                                           context_id = kpi_result[DIAGEOGTRConsts.CONTEXT_ID],
@@ -692,7 +679,7 @@ class DIAGEOGTRToolBox:
             kpi_result[DIAGEOGTRConsts.KPI_LEVEL_2_FK] = kpi_level_2_fk
 
             if (kpi_level_2_fk!=0):
-                self.common.write_to_db_result_new_tables(fk=kpi_result[DIAGEOGTRConsts.KPI_LEVEL_2_FK],
+                self.commonV2.write_to_db_result(fk=kpi_result[DIAGEOGTRConsts.KPI_LEVEL_2_FK],
                                                           numerator_id = kpi_result[DIAGEOGTRConsts.NUMERATOR_ID] ,
                                                           denominator_id = kpi_result[DIAGEOGTRConsts.DENOMINATOR_ID],
                                                           context_id=kpi_result[DIAGEOGTRConsts.CONTEXT_ID],
@@ -824,7 +811,7 @@ class DIAGEOGTRToolBox:
             kpi_result[DIAGEOGTRConsts.KPI_LEVEL_2_FK] = kpi_level_2_fk
 
             if (kpi_level_2_fk!=0):
-                self.common.write_to_db_result_new_tables(fk=kpi_result[DIAGEOGTRConsts.KPI_LEVEL_2_FK],
+                self.commonV2.write_to_db_result(fk=kpi_result[DIAGEOGTRConsts.KPI_LEVEL_2_FK],
                                                           numerator_id = kpi_result[DIAGEOGTRConsts.NUMERATOR_ID] ,
                                                           denominator_id = kpi_result[DIAGEOGTRConsts.DENOMINATOR_ID],
                                                           context_id=kpi_result[DIAGEOGTRConsts.CONTEXT_ID],
@@ -935,7 +922,7 @@ class DIAGEOGTRToolBox:
                 kpi_result['score_per_displays'] = score_pure_displays
                 kpi_result[DIAGEOGTRConsts.KPI_LEVEL_2_FK] = kpi_level_2_fk
 
-                self.common.write_to_db_result_new_tables(fk=kpi_result[DIAGEOGTRConsts.KPI_LEVEL_2_FK],
+                self.commonV2.write_to_db_result(fk=kpi_result[DIAGEOGTRConsts.KPI_LEVEL_2_FK],
                                                           numerator_id = kpi_result[DIAGEOGTRConsts.NUMERATOR_ID] ,
                                                           denominator_id = kpi_result[DIAGEOGTRConsts.DENOMINATOR_ID],
                                                           numerator_result = kpi_result[DIAGEOGTRConsts.NUM_OF_DISPLAYS],
@@ -1049,7 +1036,7 @@ class DIAGEOGTRToolBox:
                     denominator_id = row_data[entity_key_2]
                     context_id = row_data[entity_key_1]
 
-                self.common.write_to_db_result_new_tables(fk=kpi_level_2_fk,
+                self.commonV2.write_to_db_result(fk=kpi_level_2_fk,
                                                           numerator_id=numerator_id,
                                                           numerator_result=price_promotion_count,
                                                           denominator_id=denominator_id,
@@ -1101,7 +1088,7 @@ class DIAGEOGTRToolBox:
             result = row_data['is_promotion']
             score = row_data[entity_key_1] #sub_category_fk
 
-            self.common.write_to_db_result_new_tables(fk=kpi_level_2_fk,
+            self.commonV2.write_to_db_result(fk=kpi_level_2_fk,
                                                       numerator_id=numerator_id,
                                                       numerator_result=numerator_result,
                                                       denominator_id=denominator_id,
@@ -1259,7 +1246,7 @@ class DIAGEOGTRToolBox:
             return
 
         for row_num, kpi_result in df_sowb.iterrows():
-            self.common.write_to_db_result_new_tables(fk=kpi_level_2_fk,
+            self.commonV2.write_to_db_result(fk=kpi_level_2_fk,
                                                       numerator_id = kpi_result['brand_fk'] ,
                                                       denominator_id = kpi_result['manufacturer_fk'],
                                                       context_id = kpi_result['sub_category_fk'],
@@ -1342,7 +1329,7 @@ class DIAGEOGTRToolBox:
             kpi_result['score'] = score
             kpi_result['kpi_level_2_fk'] = kpi_level_2_fk
 
-            self.common.write_to_db_result_new_tables(fk=kpi_result['kpi_level_2_fk'],
+            self.commonV2.write_to_db_result(fk=kpi_result['kpi_level_2_fk'],
                                                       numerator_id = kpi_result[DIAGEOGTRConsts.NUMERATOR_ID] ,
                                                       denominator_id = kpi_result[DIAGEOGTRConsts.DENOMINATOR_ID],
                                                       numerator_result = kpi_result['entity_length'],
