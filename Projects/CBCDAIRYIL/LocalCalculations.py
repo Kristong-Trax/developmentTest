@@ -1,7 +1,7 @@
 
 from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
 from Trax.Utils.Conf.Configuration import Config
-from Trax.Cloud.Services.Connector.Logger import LoggerInitializer, Log
+from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
 from Projects.CBCDAIRYIL.Calculations import Calculations
 
 
