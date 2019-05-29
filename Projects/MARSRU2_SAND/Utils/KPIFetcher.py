@@ -50,10 +50,10 @@ class MARSRU2_SANDKPIFetcher:
             return False
         return True
 
-    def get_object_facings(self, scenes, objects, object_type, formula, form_factor=[], shelves=None,
-                           manufacturers=None, brand_category=None, sub_brands=[], sub_brands_to_exclude=[],
+    def get_object_facings(self, scenes, objects, object_type, formula, form_factors=[], shelves=None,
+                           manufacturers=None, categories=None, sub_brands=[], sub_brands_to_exclude=[],
                            cl_sub_cats=[], cl_sub_cats_to_exclude=[], include_stacking=False,
-                           form_factor_to_exclude=[], linear=False):
+                           form_factors_to_exclude=[], linear=False):
 
         object_type_conversion = {'SKUs': 'product_ean_code',
                                   'BRAND': 'brand_name',
@@ -74,12 +74,12 @@ class MARSRU2_SANDKPIFetcher:
                                            (self.scif['manufacturer_name'].isin(manufacturers)) &
                                            (~self.scif['product_type'].isin([OTHER, EMPTY]))]
         elif object_type == 'BRAND in CAT':
-            if type(brand_category) is not list:
-                brand_category = [brand_category]
+            if type(categories) is not list:
+                categories = [categories]
             initial_result = self.scif.loc[(self.scif['scene_id'].isin(scenes)) &
                                            (self.scif[object_field].isin(objects)) &
                                            (self.scif['facings'] > 0) & (self.scif['rlv_dist_sc'] == 1) &
-                                           (self.scif['category'].isin(brand_category)) &
+                                           (self.scif['category'].isin(categories)) &
                                            (~self.scif['product_type'].isin([OTHER, EMPTY]))]
         else:
             initial_result = self.scif.loc[(self.scif['scene_id'].isin(scenes)) &
@@ -97,10 +97,10 @@ class MARSRU2_SANDKPIFetcher:
         if include_stacking:
             final_result = initial_result
 
-        if form_factor:
-            final_result = final_result[final_result['form_factor'].isin(form_factor)]
-        if form_factor_to_exclude:
-            final_result = final_result[~final_result['form_factor'].isin(form_factor_to_exclude)]
+        if form_factors:
+            final_result = final_result[final_result['form_factor'].isin(form_factors)]
+        if form_factors_to_exclude:
+            final_result = final_result[~final_result['form_factor'].isin(form_factors_to_exclude)]
         if shelves:
             merged_dfs = pd.merge(final_result, self.matches, on=['product_fk'], suffixes=['', '_1'])
             shelves_list = [int(shelf) for shelf in shelves.split(',')]
@@ -108,6 +108,8 @@ class MARSRU2_SANDKPIFetcher:
             final_result = merged_filter
         if manufacturers:
             final_result = final_result[final_result['manufacturer_name'].isin(manufacturers)]
+        if categories:
+            final_result = final_result[final_result['category'].isin(categories)]
         if sub_brands:
             final_result = final_result[final_result['sub_brand'].isin(sub_brands)]
         if sub_brands_to_exclude:
@@ -136,7 +138,7 @@ class MARSRU2_SANDKPIFetcher:
 
         return object_facings
 
-    def get_object_price(self, scenes, objects, object_type, match_product_details, form_factor=None,
+    def get_object_price(self, scenes, objects, object_type, match_product_details, form_factors=None,
                          include_stacking=False):
         object_type_conversion = {'SKUs': 'product_ean_code',
                                   'BRAND': 'brand_name',
@@ -146,10 +148,11 @@ class MARSRU2_SANDKPIFetcher:
                                   'MAN': 'manufacturer_name'}
         object_field = object_type_conversion[object_type]
         final_result = \
-            self.scif.loc[
-                (self.scif['scene_id'].isin(scenes)) & (self.scif[object_field].isin(objects)) & (
-                    self.scif['facings'] > 0) & (self.scif['rlv_dist_sc'] == 1) & (self.scif['form_factor'].isin(
-                        form_factor))]
+            self.scif.loc[(self.scif['scene_id'].isin(scenes)) &
+                          (self.scif[object_field].isin(objects)) &
+                          (self.scif['facings'] > 0) &
+                          (self.scif['rlv_dist_sc'] == 1) &
+                          (self.scif['form_factor'].isin(form_factors))]
         merged_dfs = pd.merge(final_result, match_product_details,
                               on=['product_fk'], suffixes=['', '_1'])
         if not include_stacking:

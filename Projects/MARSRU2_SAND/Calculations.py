@@ -90,15 +90,16 @@ class MARSRU2_SANDCalculations(BaseCalculationsScript):
 
         # the order is important - source KPIs must be calculated first (above)
         tool_box.must_range_skus(kpi_templates.get('kpi_data'))
+        tool_box.check_kpi_results(kpi_templates.get('kpi_data'))
 
         # Saving to old tables
         for kpi_set_name in tool_box.results_and_scores.keys():
-            tool_box.write_to_db_result_level1(kpi_set_name)
+            tool_box.write_to_db_result_level1(kpi_set_name[0])
         tool_box.commit_results_data()
 
         # Saving to new tables
         for kpi_set_name in tool_box.results_and_scores.keys():
-            tool_box.store_to_new_kpi_tables_level0(kpi_set_name)
+            tool_box.store_to_new_kpi_tables_level0(kpi_set_name[1])
         tool_box.common.commit_results_data()
 
         self.timer.stop('MARSRU2_SANDProjectCalculations.run_project_calculations')

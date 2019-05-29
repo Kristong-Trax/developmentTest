@@ -328,9 +328,6 @@ class MARSRU2_SANDKPIToolBox:
 
             result = self.calculate_availability(p)
 
-            if p.get('#Mars KPI NAME') in (1012, 1014):
-                self.dict_for_planogram[p.get('#Mars KPI NAME')] = float(result)
-
             self.store_results_and_scores(result, p)
 
             self.store_to_old_kpi_tables(p)
@@ -358,6 +355,12 @@ class MARSRU2_SANDKPIToolBox:
         else:
             manufacturers = []
 
+        if params.get("Category"):
+            categories = [str(categories)
+                          for categories in params.get("Category").split(", ")]
+        else:
+            categories = []
+
         if params.get("Form Factor to include"):
             form_factors = [str(form_factor)
                             for form_factor in params.get("Form Factor to include").split(", ")]
@@ -369,32 +372,34 @@ class MARSRU2_SANDKPIToolBox:
                                        params.get("Form Factor to exclude").split(", ")]
         else:
             form_factors_to_exclude = []
+
         if params.get('Sub brand to include'):
             sub_brands = [str(sub_brand)
                           for sub_brand in params.get('Sub brand to include').split(", ")]
         else:
             sub_brands = []
+
         if params.get('Sub brand to exclude'):
             sub_brands_to_exclude = [str(sub_brand)
                                      for sub_brand in params.get('Sub brand to exclude').split(", ")]
         else:
             sub_brands_to_exclude = []
+
         if params.get('Client Sub Category Name to include'):
             cl_sub_cats = [str(cl_sub_cat) for cl_sub_cat in params.get(
                 'Client Sub Category Name to include').split(", ")]
         else:
             cl_sub_cats = []
+
         if params.get('Client Sub Category Name to exclude'):
             cl_sub_cats_to_exclude = [str(cl_sub_cat) for cl_sub_cat in params.get(
                 'Client Sub Category Name to exclude').split(", ")]
         else:
             cl_sub_cats_to_exclude = []
+
         if params.get('Include Stacking'):
             include_stacking = True
-        if params.get('Brand Category value'):
-            brand_category = params.get('Brand Category value')
-        else:
-            brand_category = None
+
         if object_type:
             availability_type = object_type
         else:
@@ -402,15 +407,15 @@ class MARSRU2_SANDKPIToolBox:
 
         object_facings = self.kpi_fetcher.get_object_facings(scenes, values_list, availability_type,
                                                              formula=formula,
-                                                             form_factor=form_factors,
+                                                             form_factors=form_factors,
                                                              manufacturers=manufacturers,
                                                              sub_brands=sub_brands,
                                                              sub_brands_to_exclude=sub_brands_to_exclude,
                                                              cl_sub_cats=cl_sub_cats,
                                                              cl_sub_cats_to_exclude=cl_sub_cats_to_exclude,
                                                              include_stacking=include_stacking,
-                                                             form_factor_to_exclude=form_factors_to_exclude,
-                                                             brand_category=brand_category)
+                                                             form_factors_to_exclude=form_factors_to_exclude,
+                                                             categories=categories)
 
         return object_facings
 
@@ -521,7 +526,7 @@ class MARSRU2_SANDKPIToolBox:
 
             else:
                 Log.debug('No survey data with survey response code {} for this session'
-                            .format(survey_question_code))
+                          ''.format(survey_question_code))
                 result = None
 
             self.store_results_and_scores(result, p)
@@ -579,9 +584,6 @@ class MARSRU2_SANDKPIToolBox:
                     scenes, p.get('Type'), values_list, p.get('Target')), 1)
             else:
                 result = 0.0
-
-            if p.get('#Mars KPI NAME') in (2264, 2351, 4264, 4351, 4269, 4271, 4270, 4272):
-                self.dict_for_planogram[p.get('#Mars KPI NAME')] = float(result)
 
             self.store_results_and_scores(result, p)
 
@@ -708,19 +710,19 @@ class MARSRU2_SANDKPIToolBox:
                 continue
 
             values_list = str(p.get('Values')).split(', ')
+            manufacturers = str(p.get('Manufacturer')).split(', ')
             scenes = self.get_relevant_scenes(p)
             if p.get('Include Stacking'):
                 if p.get('Include Stacking') == -1:
                     form_factor_filter = {"WET": 'gross_len_ign_stack',
                                           "DRY": 'gross_len_split_stack'}
-                    linear_size, products = self.calculate_layout_size_by_form_factor(scenes, p.get('Type'),
+                    linear_size, products = self.calculate_layout_size_by_form_factor(scenes, p.get('Type'), manufacturers,
                                                                                       values_list, form_factor_filter)
                 else:
-                    linear_size, products = self.calculate_layout_size(scenes, p.get('Type'), values_list,
-                                                                       include_stacking=True)
+                    linear_size, products = self.calculate_layout_size(scenes, p.get('Type'), manufacturers,
+                                                                       values_list, include_stacking=True)
             else:
-                linear_size, products = self.calculate_layout_size(
-                    scenes, p.get('Type'), values_list)
+                linear_size, products = self.calculate_layout_size(scenes, p.get('Type'), manufacturers, values_list)
 
             if p.get('additional_attribute_for_specials'):
                 allowed_linear_size = self.calculate_allowed_products(scenes, products,
@@ -731,9 +733,6 @@ class MARSRU2_SANDKPIToolBox:
 
             result = round(linear_size, 1)
 
-            if p.get('#Mars KPI NAME') in (2261, 2265, 4261, 4265, 4269, 4271, 4270, 4272, 1010, 1011):
-                self.dict_for_planogram[p.get('#Mars KPI NAME')] = float(result)
-
             self.store_results_and_scores(result, p)
 
             self.store_to_old_kpi_tables(p)
@@ -741,18 +740,20 @@ class MARSRU2_SANDKPIToolBox:
 
         return
 
-    def calculate_layout_size(self, scenes, object_type, values, include_stacking=False):
+    def calculate_layout_size(self, scenes, object_type, manufacturers, values, include_stacking=False):
         object_field = self.object_type_conversion[object_type]
+        manufacturers = manufacturers if manufacturers else [MARS]
         final_linear_size = 0
         products = []
         for scene in scenes:
             if object_type == 'MAN in CAT':
                 filtered_scif = self.scif.loc[
-                    (self.scif['scene_id'] == scene) & (self.scif[object_field].isin(values)) & (
-                        self.scif['manufacturer_name'] == MARS)]
+                    (self.scif['scene_id'] == scene) &
+                    (self.scif[object_field].isin(values)) &
+                    (self.scif['manufacturer_name'].isin(manufacturers))]
             else:
-                filtered_scif = self.scif.loc[(self.scif['scene_id'] == scene) & (
-                    self.scif[object_field].isin(values))]
+                filtered_scif = self.scif.loc[(self.scif['scene_id'] == scene) &
+                                              (self.scif[object_field].isin(values))]
             products.extend(filtered_scif['product_fk'].unique().tolist())
             if not include_stacking:
                 final_linear_size += filtered_scif['gross_len_ign_stack'].sum()
@@ -813,18 +814,19 @@ class MARSRU2_SANDKPIToolBox:
         final_linear_size = filtered_scif['gross_len_ign_stack'].sum()
         return float(final_linear_size / 1000)
 
-    def calculate_layout_size_by_form_factor(self, scenes, object_type, values, form_factor_filter):
+    def calculate_layout_size_by_form_factor(self, scenes, object_type, manufacturers, values, form_factor_filter):
         object_field = self.object_type_conversion[object_type]
+        manufacturers = manufacturers if manufacturers else [MARS]
         final_linear_size = 0
         products = []
         for scene in scenes:
             if object_type == 'MAN in CAT':
-                filtered_scif = self.scif.loc[
-                    (self.scif['scene_id'] == scene) & (self.scif[object_field].isin(values)) & (
-                        self.scif['manufacturer_name'] == MARS)]
+                filtered_scif = self.scif.loc[(self.scif['scene_id'] == scene) &
+                                              (self.scif[object_field].isin(values)) &
+                                              (self.scif['manufacturer_name'].isin(manufacturers))]
             else:
-                filtered_scif = self.scif.loc[(self.scif['scene_id'] == scene) & (
-                    self.scif[object_field].isin(values))]
+                filtered_scif = self.scif.loc[(self.scif['scene_id'] == scene) &
+                                              (self.scif[object_field].isin(values))]
             for form_factor in form_factor_filter:
                 final_linear_size += filtered_scif[filtered_scif['form_factor'] == form_factor][form_factor_filter[
                     form_factor]].sum()
@@ -907,15 +909,15 @@ class MARSRU2_SANDKPIToolBox:
                             for form_factor in p.get("Form Factor to include").split(", ")]
             for value in values_list:
                 if p.get('Formula') == 'custom_mars_2' and self.visit_date.year != 2018:
-                    self.initial_mapping_of_square(scenes, matches, object_field, [value], p, form_factor=form_factors,
-                                                   sub_brand_to_exclude=sub_brands)
+                    self.initial_mapping_of_square(scenes, matches, object_field, [value], p, form_factors=form_factors,
+                                                   sub_brands_to_exclude=sub_brands)
                     brand_result = self.check_brand_block(object_field, [value])
                 else:
                     sub_brands_to_exclude_by_sub_cats = {'WET': [], 'DRY': sub_brands}
-                    self.initial_mapping_of_square(scenes, matches, object_field, [value], p, form_factor=form_factors,
-                                                   sub_brand_by_sub_cat=sub_brands_to_exclude_by_sub_cats)
+                    self.initial_mapping_of_square(scenes, matches, object_field, [value], p, form_factors=form_factors,
+                                                   sub_brands_by_sub_cat=sub_brands_to_exclude_by_sub_cats)
                     brand_result = self.check_brand_block_2018(object_field, [value], sub_brands, form_factors,
-                                                               sub_brand_by_sub_cat=sub_brands_to_exclude_by_sub_cats)
+                                                               sub_brands_by_sub_cat=sub_brands_to_exclude_by_sub_cats)
                 if brand_result == 'TRUE':
                     brands_results_dict[value] = 1
                 else:
@@ -1021,7 +1023,7 @@ class MARSRU2_SANDKPIToolBox:
         return result
 
     def check_brand_block_2018(self, object_field, values_list, sub_brands_to_exclude, form_factors,
-                               sub_brand_by_sub_cat={}):
+                               sub_brands_by_sub_cat={}):
         if not self.potential_products:
             result = 'FALSE'
         else:
@@ -1044,8 +1046,8 @@ class MARSRU2_SANDKPIToolBox:
                         if type(category) == str:
                             shelf_sub_category = category.upper()
                             break
-                    if shelf_sub_category in sub_brand_by_sub_cat.keys() and not sub_brands_to_exclude:
-                        sub_brands_to_exclude = sub_brand_by_sub_cat[shelf_sub_category]
+                    if shelf_sub_category in sub_brands_by_sub_cat.keys() and not sub_brands_to_exclude:
+                        sub_brands_to_exclude = sub_brands_by_sub_cat[shelf_sub_category]
                     # count facings on shelf:
                     facings_on_shelf = temp.loc[(temp['brand_name'].isin(values_list)) &
                                                 (temp['stacking_layer'] == 1) &
@@ -1167,8 +1169,8 @@ class MARSRU2_SANDKPIToolBox:
                 result = 'FALSE'
         return result
 
-    def initial_mapping_of_square(self, scenes, matches, object_field, values_list, p, form_factor=None,
-                                  sub_brand_to_exclude=None, sub_brand_by_sub_cat={}):
+    def initial_mapping_of_square(self, scenes, matches, object_field, values_list, p, form_factors=None,
+                                  sub_brands_to_exclude=None, sub_brands_by_sub_cat={}):
         self.potential_products = {}
         if not scenes:
             return
@@ -1178,18 +1180,18 @@ class MARSRU2_SANDKPIToolBox:
                 brands_presence_indicator = True
                 scene_data = matches.loc[matches['scene_fk'] == scene]
                 if p.get('Formula') != 'custom_mars_2_2018':
-                    if form_factor:
-                        scene_data = scene_data.loc[scene_data['form_factor'].isin(form_factor)]
+                    if form_factors:
+                        scene_data = scene_data.loc[scene_data['form_factor'].isin(form_factors)]
                     scene_sub_category = scene_data['sub_category'].unique().tolist()
                     if scene_sub_category and scene_sub_category[0] is None:
                         scene_sub_category.remove(None)
                     if scene_sub_category:
                         scene_sub_category = scene_sub_category[0].upper()
-                    if scene_sub_category in sub_brand_by_sub_cat.keys() and not sub_brand_to_exclude:
-                        sub_brand_to_exclude = sub_brand_by_sub_cat[scene_sub_category]
-                    if sub_brand_to_exclude:
+                    if scene_sub_category in sub_brands_by_sub_cat.keys() and not sub_brands_to_exclude:
+                        sub_brands_to_exclude = sub_brands_by_sub_cat[scene_sub_category]
+                    if sub_brands_to_exclude:
                         scene_data = scene_data.loc[~scene_data['sub_brand'].isin(
-                            sub_brand_to_exclude)]
+                            sub_brands_to_exclude)]
                 shelves = scene_data['shelf_number'].unique().tolist()
                 # unified_scene_set = set(scene_data[object_field]) & set(values_list)
                 unified_scene_set = scene_data.loc[scene_data[object_field].isin(values_list)]
@@ -1300,16 +1302,17 @@ class MARSRU2_SANDKPIToolBox:
                 if ',' in value:
                     sub_values_list = str(value).split(', ')
                     self.initial_mapping_of_square(scenes, matches, object_field, sub_values_list, p,
-                                                   form_factor=form_factors,
-                                                   sub_brand_to_exclude=sub_brands)
+                                                   form_factors=form_factors,
+                                                   sub_brands_to_exclude=sub_brands)
                     if p.get('Formula') == 'custom_mars_4':
                         brand_result = self.check_brand_block(object_field, sub_values_list)
                     else:
                         brand_result = self.check_brand_block_2018(
                             object_field, sub_values_list, sub_brands, form_factors)
                 else:
-                    self.initial_mapping_of_square(scenes, matches, object_field, [value], p, form_factor=form_factors,
-                                                   sub_brand_to_exclude=sub_brands)
+                    self.initial_mapping_of_square(scenes, matches, object_field, [value], p,
+                                                   form_factors=form_factors,
+                                                   sub_brands_to_exclude=sub_brands)
                     if p.get('Formula') == 'custom_mars_4':
                         brand_result = self.check_brand_block(object_field, [value])
                     else:
@@ -1355,8 +1358,7 @@ class MARSRU2_SANDKPIToolBox:
                     bay_golden_shelves = self.kpi_fetcher.get_golden_shelves(len(shelves))
                     for shelf in bay_golden_shelves:
                         object_facings = self.kpi_fetcher.get_object_facings(scenes, values_list, p.get('Type'),
-                                                                             form_factor=[
-                                                                                 p.get('Form Factor to include')],
+                                                                             form_factors=[p.get('Form Factor to include')],
                                                                              formula="number of SKUs",
                                                                              shelves=str(shelf))
                         if object_facings > 0:
@@ -1407,14 +1409,12 @@ class MARSRU2_SANDKPIToolBox:
             if p.get('Formula') == 'custom_mars_3_linear':
                 linear = True
 
-            brand_category = p.get('Brand Category value')
-            if brand_category and ', ' in brand_category:
-                brand_category = brand_category.split(', ')
+            categories = p.get('Category').split(', ')
 
             object_facings = self.kpi_fetcher.get_object_facings(scenes, values_list, p.get('Type'),
                                                                  formula='number of facings',
-                                                                 form_factor=form_factors,
-                                                                 brand_category=brand_category,
+                                                                 form_factors=form_factors,
+                                                                 categories=categories,
                                                                  include_stacking=include_stacking,
                                                                  linear=linear)
             brands_to_check = self.scif.loc[self.scif['scene_id'].isin(scenes) &
@@ -1423,8 +1423,8 @@ class MARSRU2_SANDKPIToolBox:
             for brand in brands_to_check:
                 brand_facings = self.kpi_fetcher.get_object_facings(scenes, [brand], p.get('Type'),
                                                                     formula='number of facings',
-                                                                    form_factor=form_factors,
-                                                                    brand_category=brand_category,
+                                                                    form_factors=form_factors,
+                                                                    categories=categories,
                                                                     include_stacking=include_stacking,
                                                                     linear=linear)
                 brand_facings_dict[brand] = brand_facings
@@ -1447,7 +1447,7 @@ class MARSRU2_SANDKPIToolBox:
         return
 
     @kpi_runtime()
-    def must_range_skus(self, params):
+    def check_kpi_results(self, params):
         for p in params:
             if p.get('Formula') != 'kpi_results':
                 continue
@@ -1494,10 +1494,11 @@ class MARSRU2_SANDKPIToolBox:
 
             else:
 
+                kpi_set = (p.get('#Mars KPI SET Old'), p.get('#Mars KPI SET New'))
                 values_list = self.kpi_fetcher.get_must_range_skus_by_region_and_store(self.store_type,
                                                                                        self.region,
                                                                                        p.get('#Mars KPI NAME'),
-                                                                                       self.results_and_scores)
+                                                                                       self.results_and_scores.get(kpi_set))
                 scenes = self.get_relevant_scenes(p)
                 result = None
                 if values_list:
@@ -1608,7 +1609,7 @@ class MARSRU2_SANDKPIToolBox:
             values_list = str(p.get('Values')).split(', ')
             competitor_brands = str(p.get('competitor_brands')).split(', ')
             scenes = self.get_relevant_scenes(p)
-            tested_filters = {object_field: values_list, 'category': p.get('Brand Category value')}
+            tested_filters = {object_field: values_list, 'category': p.get('Category')}
 
             # First check - negative adjacency to MARS products
             mars_anchor_filters = {'manufacturer_name': MARS}
@@ -2004,6 +2005,11 @@ class MARSRU2_SANDKPIToolBox:
         and stores result and score for the KPI
 
         """
+        if type(result) in (int, float):
+            self.dict_for_planogram[params.get('#Mars KPI NAME')] = float(result)
+        else:
+            self.dict_for_planogram[params.get('#Mars KPI NAME')] = result
+
         if result is None:
             result_value = None
         else:
@@ -2162,9 +2168,11 @@ class MARSRU2_SANDKPIToolBox:
                                                            params.get('#Mars KPI NAME'),
                                                            params.get('#Mars KPI NAME'))
 
-        if self.results_and_scores.get(str(params.get('#Mars KPI NAME'))):
-            result = self.results_and_scores[str(params.get('#Mars KPI NAME'))]['result']
-            score = self.results_and_scores[str(params.get('#Mars KPI NAME'))]['score']
+        kpi_set = (params.get('#Mars KPI SET Old'), params.get('#Mars KPI SET New'))
+
+        if self.results_and_scores[kpi_set].get(str(params.get('#Mars KPI NAME'))):
+            result = self.results_and_scores[kpi_set][str(params.get('#Mars KPI NAME'))]['result']
+            score = self.results_and_scores[kpi_set][str(params.get('#Mars KPI NAME'))]['score']
         else:
             result = None
             score = None
@@ -2217,6 +2225,9 @@ class MARSRU2_SANDKPIToolBox:
         self.write_to_db_result(attributes_for_table3, level=3)
 
     def store_to_new_kpi_tables(self, p):
+
+        kpi_set = (p.get('#Mars KPI SET Old'), p.get('#Mars KPI SET New'))
+
         # API KPIs
         kpi_fk = self.common.get_kpi_fk_by_kpi_type(str(p.get('#Mars KPI NAME')))
         parent_fk = self.common.get_kpi_fk_by_kpi_type(str(p.get('#Mars KPI SET New')) + ' API')
@@ -2225,7 +2236,7 @@ class MARSRU2_SANDKPIToolBox:
         identifier_result = self.common.get_dictionary(kpi_fk=kpi_fk)
         identifier_parent = self.common.get_dictionary(kpi_fk=parent_fk)
         result = self.transform_result(
-            self.results_and_scores[str(p.get('#Mars KPI NAME'))]['result'], p)
+            self.results_and_scores[kpi_set][str(p.get('#Mars KPI NAME'))]['result'], p)
 
         if not kpi_fk:
             Log.error('KPI name <{0}> is not found in static.kpi_level_2 table'
@@ -2250,7 +2261,7 @@ class MARSRU2_SANDKPIToolBox:
         identifier_result = self.common.get_dictionary(kpi_fk=kpi_fk)
         identifier_parent = self.common.get_dictionary(kpi_fk=parent_fk)
         result = self.transform_result(
-            self.results_and_scores[str(p.get('#Mars KPI NAME'))]['result'], p)
+            self.results_and_scores[kpi_set][str(p.get('#Mars KPI NAME'))]['result'], p)
 
         if not kpi_fk:
             Log.error('KPI name <{0}> is not found in static.kpi_level_2 table'
