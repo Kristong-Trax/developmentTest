@@ -1031,10 +1031,7 @@ class BATRUToolBox:
         section_data = section_data.loc[section_data['store_attribute_11'].isin([attribute_11, 'ALL'])]
 
         # Filter by valid Sections
-        try:
-            section_data = section_data.loc[section_data['Section'] == str(int(float(section)))]
-        except TypeError:
-            section_data = section_data.loc[section_data['Section'] == int(float(section))]
+        section_data = section_data.loc[section_data['Section'] == int(float(section))]
 
         return section_data
 
