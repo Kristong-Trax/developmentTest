@@ -37,11 +37,11 @@ class MARSRU2_SANDAddKPIs(MARSRU2_SANDConsts):
 
     """
 
-    def __init__(self, project, template_path):
+    def __init__(self, project, template_path, sheet_name):
         self.project = project
         self.aws_conn = PSProjectConnector(self.project, DbUsers.CalculationEng)
         self.kpi_static_data = self.get_kpi_static_data()
-        self.data = pd.read_excel(template_path)
+        self.data = pd.read_excel(template_path, sheet_name=sheet_name)
         self.sets_added = {}
         self.kpis_added = {}
         self.kpi_counter = {'set': 0, 'kpi': 0, 'atomic': 0}
@@ -311,7 +311,7 @@ if __name__ == '__main__':
     # dbusers_mock = dbusers_patcher.start()
     # dbusers_mock.return_value = docker_user
     kpi = MARSRU2_SANDAddKPIs(
-        'marsru-prod', '/home/sergey/dev/kpi_factory/Projects/MARSRU_PROD/Data/2019/KPIs for DB - MARS KPIs.xlsx')
+        'marsru2-sand', '/home/sergey/dev/kpi_factory/Projects/MARSRU2_SAND/Data/2019/KPIs for DB - MARS KPIs.xlsx', 'Sheet3')
     kpi.add_kpis_from_template()
     # kpi.update_atomic_kpi_data()
     # kpi.update_kpi_weights()
