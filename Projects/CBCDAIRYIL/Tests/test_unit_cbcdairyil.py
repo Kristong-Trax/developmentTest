@@ -75,7 +75,7 @@ class TestCBCDAIRYIL(MockingTestCase):
         test_cases_list = [regular_percentage_1, regular_percentage_2, missing_percentage_1, missing_percentage_2,
                            missing_percentage_3, percentage_with_nones_1, percentage_with_nones_2]
         for test_values, expected_result in test_cases_list:
-            self.assertEqual(expected_result, self.tool_box.calculate_kpi_result_by_weight(test_values, 100))
+            self.assertEqual(expected_result, self.tool_box.calculate_kpi_result_by_weight(test_values, 1.0, False))
 
     def test_template_filters(self):
         """

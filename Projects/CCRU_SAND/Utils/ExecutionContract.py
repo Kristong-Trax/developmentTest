@@ -97,11 +97,11 @@ class CCRU_SANDContract:
         parsed_args = self.parse_arguments()
         file_path = parsed_args.file
 
-        kpi_weights = zip(list(pd.read_excel(file_path, header=2, sheetname=TARGETS_SHEET_NAME).columns)[3:],
-                          list(pd.read_excel(file_path, skipcols=3, sheetname=TARGETS_SHEET_NAME).iloc[0].values))
+        kpi_weights = zip(list(pd.read_excel(file_path, header=2, sheet_name=TARGETS_SHEET_NAME).columns)[3:],
+                          list(pd.read_excel(file_path, skipcols=3, sheet_name=TARGETS_SHEET_NAME).iloc[0].values))
         kpi_weights = {x[0]: x[1] for x in kpi_weights}
 
-        raw_data = pd.read_excel(file_path, skiprows=2, sheetname=TARGETS_SHEET_NAME).fillna('')
+        raw_data = pd.read_excel(file_path, skiprows=2, sheet_name=TARGETS_SHEET_NAME, dtype={self.STORE_NUMBER: str}).fillna('')
         if self.STORE_NUMBER not in raw_data.columns:
             Log.error('File must contain a {} column header'.format(self.STORE_NUMBER))
             return
