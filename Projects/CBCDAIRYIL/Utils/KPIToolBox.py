@@ -21,27 +21,19 @@ class CBCDAIRYILToolBox:
         self.project_name = self.data_provider.project_name
         self.common = Common(self.data_provider)
         self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
-        self.session_uid = self.data_provider.session_uid
-        self.session_info = self.data_provider[Data.SESSION_INFO]
-        self.session_fk = self.session_info['pk'][0]
-        self.visit_date = self.data_provider[Data.VISIT_DATE]
-        self.products = self.data_provider[Data.PRODUCTS]
-        self.all_products = self.data_provider[Data.ALL_PRODUCTS]
-        self.scene_info = self.data_provider[Data.SCENES_INFO]
+        self.session_fk = self.data_provider.session_id
         self.match_product_in_scene = self.data_provider[Data.MATCHES]
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
         self.store_info = self.data_provider[Data.STORE_INFO]
         self.store_id = self.data_provider[Data.STORE_FK]
-
         self.survey = Survey(self.data_provider)
         self.block = Block(self.data_provider)
         self.general_toolbox = GENERALToolBox(self.data_provider)
-
         self.gap_data = self.get_gap_data()
         self.kpi_weights = parse_template(Consts.TEMPLATE_PATH, Consts.KPI_WEIGHT, lower_headers_row_index=0)
         self.template_data = self.parse_template_data()
         self.kpis_gaps = list()
-        self.passed_availability = []
+        self.passed_availability = list()
 
     @staticmethod
     def get_gap_data():
