@@ -227,8 +227,7 @@ class CBCDAIRYILToolBox:
         elif atomic_type == Consts.MIN_2_AVAILABILITY:
             num_result, denominator_result, atomic_score = self.calculate_min_2_availability(**general_filters)
         elif atomic_type == Consts.SURVEY:
-            # return 0, 0, 0  # TODO TODO TODO TODO TODO
-            atomic_score = self.calculate_survey(**general_filters)   # TODO TODO TODO TODO TODO
+            atomic_score = self.calculate_survey(**general_filters)
         elif atomic_type == Consts.BRAND_BLOCK:
             atomic_score = self.calculate_brand_block(**general_filters)
         elif atomic_type == Consts.EYE_LEVEL:
