@@ -31,8 +31,8 @@ class HEINZCRToolBox:
     OOS_SKU_KPI = 'OOS - SKU'
     OOS_KPI = 'OOS'
 
-    def __init__(self, data_provider, output, common):
-        self.common = common
+    def __init__(self, data_provider, output):
+        self.common = CommonV2  # remove later
         self.common_v2 = CommonV2
         self.output = output
         self.data_provider = data_provider
