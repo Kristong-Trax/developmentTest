@@ -324,14 +324,15 @@ class CCMYToolBox:
                                             level=self.LEVEL3)
 
                 # KPI new tables - Only
-                self.common.write_to_db_result_new_tables(fk=kpi_level_2_fk,
-                                                          numerator_id=0,
-                                                          denominator_id=0,
-                                                          numerator_result=num_of_pure_shelfs,
-                                                          denominator_result=total_num_of_shelfs,
-                                                          result=score,
-                                                          score=score
-                                                          )
+                if kpi_level_2_fk!=0:
+                    self.common.write_to_db_result_new_tables(fk=kpi_level_2_fk,
+                                                              numerator_id=0,
+                                                              denominator_id=0,
+                                                              numerator_result=num_of_pure_shelfs,
+                                                              denominator_result=total_num_of_shelfs,
+                                                              result=score,
+                                                              score=score
+                                                              )
             else:
                 num_of_pure_shelfs = df_shelf_pure[CCMYConsts.IS_PURE].sum()
                 total_num_of_shelfs = len(df_shelf_pure)
