@@ -75,7 +75,7 @@ class ShelfPlacementHeroSkusKpi(UnifiedCalculationsScript):
             {'numerator_result': np.sum})
         products_df.rename(columns={'numerator_result': 'denominator_result'}, inplace=True)
         kpi_results = kpi_results.merge(products_df, on='numerator_id', how='left')
-        hero_skus = self.util.lvl3_ass_result[self.util.lvl3_ass_result['in_store'] == 1]['product_fk'].values.tolist()
+        # hero_skus = self.util.lvl3_ass_result[self.util.lvl3_ass_result['in_store'] == 1]['product_fk'].values.tolist()
         hero_skus = self.util.get_available_hero_sku_list(self.dependencies_data)
         hero_results = kpi_results[kpi_results['numerator_id'].isin(hero_skus)]
         kpi_parent = self.util.commontools.all_targets_unpacked.drop_duplicates(subset=['kpi_level_2_fk', 'KPI Parent'])[['kpi_level_2_fk', 'KPI Parent']]

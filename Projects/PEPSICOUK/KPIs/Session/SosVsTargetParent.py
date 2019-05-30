@@ -20,17 +20,5 @@ class SosVsTargetParentKpi(UnifiedCalculationsScript):
         child_kpi_results = self.dependencies_data
 
         if not child_kpi_results.empty:
-            child_kpi_results['count'] = 1
-            child_kpi_results['KPI Parent'] = 1234
-            kpi_results = child_kpi_results.groupby(['KPI Parent'], as_index=False).agg({'count': np.sum})
-            kpi_results['identifier_parent'] = kpi_results['KPI Parent'].apply(lambda x:
-                                                                                     self.util.common.get_dictionary(
-                                                                                         kpi_fk=int(float(x))))
-            for i, row in kpi_results.iterrows():
-                # self.write_to_db_result(fk=row['KPI Parent'], score=row['count'], should_enter=True,
-                #                         numerator_id=self.util.own_manuf_fk, denominator_id=self.util.store_id,
-                #                         identifier_result=row['identifier_parent'])
-                self.write_to_db_result(fk=row['KPI Parent'], score=row['count'],
-                                        numerator_id=self.util.own_manuf_fk, denominator_id=self.util.store_id)
-                # self.util.add_kpi_result_to_kpi_results_df([row['KPI Parent'], self.util.own_manuf_fk, self.util.store_id, None,
-                #                                             row['count']])
+            score = len(child_kpi_results)
+            self.write_to_db_result(score=score, numerator_id=self.util.own_manuf_fk, denominator_id=self.util.store_id)
