@@ -1,6 +1,6 @@
 import os
 import re
-from collections import defaultdict
+from collections import (defaultdict, Counter)
 
 import pandas as pd
 from KPIUtils_v2.DB.CommonV2 import Common, PSProjectConnector
@@ -168,84 +168,75 @@ class TWEGAUToolBox:
                     # there is no denominator for sku all
                     denominator_row = zone_category_sheet.loc[(
                             zone_category_sheet[KPI_NAME] == each_kpi_type)].iloc[0]
+                if not write_sku:
+                    # Skipping zone KPI's for Mobile Reports.
+                    continue
                 list_of_zone_data = []
                 for idx, each_kpi_sheet_row in kpi_sheet_rows.iterrows():
                     zone_data = self._get_zone_based_data(kpi, each_kpi_sheet_row.T,
                                                           denominator_row=denominator_row)
-                    list_of_zone_data.append(zone_data)
-                print "Final >>> ", list_of_zone_data
+                    if zone_data:
+                        # empty when the row in sheet could not find any relevant data for zone
+                        list_of_zone_data.append(zone_data)
                 if write_sku:
                     # write for products
-                    _output_to_write = []
-                    for each in list_of_zone_data:
-                        if len(each) > 1:
-                            _output_to_write.extend([x for x in each if 'unique_products' not in x])
-                        else:
-                            # No relevant product as per excel row config parameters
-                            continue
-                    if not _output_to_write:
-                        continue
-                    _df_output_to_write = pd.DataFrame(_output_to_write)
-                    _df_output_to_write.dropna(subset=['bay_number'], inplace=True)
-                    _grouped_output_to_write = _df_output_to_write.groupby(['scene_id', 'bay_number'], as_index=False)
-                    for scene_bay_tuple, each_data_to_write in _grouped_output_to_write:
-                        # remove empty products when getting all SKU's
-                        products_to_write = set([prod_id for prod_list_per_bay in each_data_to_write["products"]
-                                                 for prod_id in prod_list_per_bay])
-                        data_to_write = each_data_to_write.iloc[0]
-                        for each_product_id in products_to_write:
-                            if int(each_product_id) not in self.empty_product_ids:
-                                in_assort_sc = int(self.scif.query("item_id=={prod_id}"
-                                                                   .format(prod_id=each_product_id))
-                                                   .in_assort_sc.values[0])
-                                self.common.write_to_db_result(
-                                    fk=int(data_to_write.fk),
-                                    numerator_id=int(each_product_id),
-                                    numerator_result=int(data_to_write.bay_number),
-                                    denominator_id=int(data_to_write.denominator_id),
-                                    denominator_result=int(data_to_write.scene_id),
-                                    result=int(data_to_write.zone_number),
-                                    score=in_assort_sc,
-                                    identifier_result=str(data_to_write.kpi_name),
-                                    context_id=int(data_to_write.zone_number),
-                                )
+                    for each_scene_zone_map in list_of_zone_data:
+                        for scene_id, bay_zone_list in each_scene_zone_map.iteritems():
+                            for zone_data in bay_zone_list:
+                                product_counter = zone_data['product_count_map']
+                                for prod_id, count in product_counter.iteritems():
+                                    if int(prod_id) not in self.empty_product_ids:
+                                        in_assort_sc = int(self.scif.query("item_id=={prod_id}"
+                                                                           .format(prod_id=prod_id))
+                                                           .in_assort_sc.values[0])
+                                        self.common.write_to_db_result(
+                                            fk=int(zone_data['fk']),
+                                            numerator_id=int(prod_id),  # product ID
+                                            numerator_result=int(zone_data['bay_number']),  # bay number comes as numerator
+                                            denominator_id=int(zone_data['store']),  # store ID
+                                            denominator_result=int(scene_id),  # scene id comes as denominator
+                                            result=int(count),  # save the count
+                                            score=in_assort_sc,
+                                            context_id=int(zone_data['zone_number']),
+                                        )
                 else:
                     # its the calculation
-                    _output_to_write = []
-                    for each in list_of_zone_data:
-                        if len(each) > 1:
-                            _output_to_write.extend([x for x in each if 'unique_products' not in x])
-                        else:
-                            continue
-                    if not _output_to_write:
-                        continue
-                    _df_output_to_write = pd.DataFrame(_output_to_write)
-                    # remove rows with empty `products`
-                    _df_output_to_write = _df_output_to_write[_df_output_to_write.astype(str)['products'] != "[]"]
-                    _grouped_output_to_write = _df_output_to_write.groupby('denominator_id', as_index=False)
-                    unique_manufacturer_products_count_data = _df_output_to_write.get(
-                        "unique_manufacturer_products_count").values
-                    if not len(unique_manufacturer_products_count_data):
-                        continue
-                    unique_manufacturer_products_count = unique_manufacturer_products_count_data[0]
-                    for denominator_id, each_data_to_write in _grouped_output_to_write:
-                        # remove empty products when getting all SKU's
-                        # get all unique product ids from different dataframe rows in a set
-                        products_to_write = set([prod_id for prod_list_per_bay in each_data_to_write["products"]
-                                                 for prod_id in prod_list_per_bay])
-                        # sanitize the products
-                        products_to_write = [x for x in products_to_write if x not in self.empty_product_ids]
-                        result = float(len(products_to_write)) / unique_manufacturer_products_count
-                        data_to_write = each_data_to_write.iloc[0]  # for dot selection from first row
-                        self.common.write_to_db_result(
-                            fk=int(data_to_write.fk),
-                            numerator_id=int(data_to_write.numerator_id),
-                            denominator_id=int(data_to_write.denominator_id),
-                            result=int(result),
-                            score=1,
-                            identifier_result=str(data_to_write.kpi_name),
-                            context_id=int(data_to_write.zone_number),
-                        )
+                    pass
+                    # _output_to_write = []
+                    # for each in list_of_zone_data:
+                    #     if len(each) > 1:
+                    #         _output_to_write.extend([x for x in each if 'unique_products' not in x])
+                    #     else:
+                    #         continue
+                    # if not _output_to_write:
+                    #     continue
+                    # _df_output_to_write = pd.DataFrame(_output_to_write)
+                    # # remove rows with empty `products`
+                    # _df_output_to_write = _df_output_to_write[_df_output_to_write.astype(str)['products'] != "[]"]
+                    # _grouped_output_to_write = _df_output_to_write.groupby('denominator_id', as_index=False)
+                    # unique_manufacturer_products_count_data = _df_output_to_write.get(
+                    #     "unique_manufacturer_products_count").values
+                    # if not len(unique_manufacturer_products_count_data):
+                    #     continue
+                    # unique_manufacturer_products_count = unique_manufacturer_products_count_data[0]
+                    # for denominator_id, each_data_to_write in _grouped_output_to_write:
+                    #     # remove empty products when getting all SKU's
+                    #     # get all unique product ids from different dataframe rows in a set
+                    #     products_to_write = set([prod_id for prod_list_per_bay in each_data_to_write["products"]
+                    #                              for prod_id in prod_list_per_bay])
+                    #     # sanitize the products
+                    #     products_to_write = [x for x in products_to_write if x not in self.empty_product_ids]
+                    #     result = float(len(products_to_write)) / unique_manufacturer_products_count
+                    #     data_to_write = each_data_to_write.iloc[0]  # for dot selection from first row
+                    #     self.common.write_to_db_result(
+                    #         fk=int(data_to_write.fk),
+                    #         numerator_id=int(data_to_write.numerator_id),
+                    #         denominator_id=int(data_to_write.denominator_id),
+                    #         result=int(result),
+                    #         score=1,
+                    #         identifier_result=str(data_to_write.kpi_name),
+                    #         context_id=int(data_to_write.zone_number),
+                    #     )
 
     def calculate_macro_linear(self):
         kpi_sheet = self.get_template_details(LINEAR_KPI_SHEET)
@@ -391,11 +382,6 @@ class TWEGAUToolBox:
                 DENOMINATOR_FILTER_ENTITIES, )
             unique_manufacturer_products_count = len(self.scif.query(denominator_filter_string)
                                                      .product_fk.unique())
-        # NUMERATOR
-        # filter based on store type [d]
-        # filter based on template_type [d]
-        # find the shelf, and filter based on zone
-        # filter based on exclude policy
         if not is_nan(kpi_sheet_row[STORE_TYPE]):
             if bool(kpi_sheet_row[STORE_TYPE].strip()) and kpi_sheet_row[STORE_TYPE].strip().lower() != 'all':
                 print "Check the store types in excel..."
@@ -424,52 +410,40 @@ class TWEGAUToolBox:
             # dummy structure without filters
             filtered_grouped_scene_items = [('', product_scene_join_data.query(filter_string))]
         # get the scene_id's worth getting data from
-        scene_data_map = []
-        unique_products = set() # if the scene type not even valid
+        scene_data_map = defaultdict(list)
         for each_group_by_manf_templ in filtered_grouped_scene_items:
             # append scene to group by
-            current_scene_types = each_group_by_manf_templ[1].template_name.unique()
-            scene_type = current_scene_types
-            if len(current_scene_types) == 1:
-                scene_type = each_group_by_manf_templ[1].template_name.unique()[0]
-            # unique_products = set()
             scene_type_grouped_by_scene = each_group_by_manf_templ[1].groupby(SCENE_FK)
-            for each_scene_id_group in scene_type_grouped_by_scene:
+            for scene_id, scene_data in scene_type_grouped_by_scene:
                 exclude_items = False
-                include_only = False
-                scene_id = each_scene_id_group[0]
-                scene_data_per_scene = each_scene_id_group[1]
                 valid_bay_numbers = self.get_valid_bay_numbers(scene_id, permitted_shelves)
                 if not valid_bay_numbers:
                     continue
-                matched_products_for_scene = scene_data_per_scene.query(
+                scene_per_bay_number = scene_data.query(
                     'shelf_number in {shelves} and bay_number in {bays}'.format(
                         shelves=shelves_policy_from_top,
                         bays=valid_bay_numbers
-                    )).groupby(['bay_number', 'shelf_number'], as_index=False)
-                # scene_uid = self.scene_info.loc[
-                #     self.scene_info['scene_fk'] == each_scene].scene_uid.values[0]
+                    )).groupby(['bay_number'])
                 items_to_check_str = None
                 if not is_nan(kpi_sheet_row.exclude_include_policy):
                     match_exclude = exclude_re.search(kpi_sheet_row.exclude_include_policy)
                     if not match_exclude:
                         match_only = only_re.search(kpi_sheet_row.exclude_include_policy)
                         items_to_check_str = match_only.groups()[-1]
-                        include_only = True
+                        exclude_items = False
                     else:
                         items_to_check_str = match_exclude.groups()[-1]
                         exclude_items = True
-
-                for tuple_data in matched_products_for_scene:
-                    # get excluding shelves
-                    bay_number = tuple_data[0][0]
-                    each_shelf_per_bay = tuple_data[1]
-                    numerator_entity_id = EXCEL_ENTITY_MAP[kpi_sheet_row.numerator_fk]
-                    numerator_id = getattr(each_shelf_per_bay,
-                                           EXCEL_DB_MAP[kpi_sheet_row.numerator_fk],
-                                           None).unique()[0]
+                # the deciding loop
+                # bay iterator
+                for bay_number, scene_data_per_bay in scene_per_bay_number:
+                    total_products = []  # contain the total products per bay
+                    if scene_data_per_bay.empty:
+                        return {}
+                    bay_number = bay_number
+                    scene_data_per_bay_shelf = scene_data_per_bay.groupby('shelf_number')
                     denominator_entity_id = EXCEL_ENTITY_MAP[kpi_sheet_row.denominator_fk]
-                    denominator_data = getattr(each_shelf_per_bay,
+                    denominator_data = getattr(scene_data_per_bay,
                                                EXCEL_DB_MAP[kpi_sheet_row.denominator_fk],
                                                pd.Series())
                     if denominator_data.empty:
@@ -477,41 +451,39 @@ class TWEGAUToolBox:
                         denominator_id = getattr(self, EXCEL_DB_MAP[kpi_sheet_row.denominator_fk], None)
                     else:
                         denominator_id = denominator_data.unique()[0]
-                    if items_to_check_str:
-                        # exclude/include logic
-                        last_shelf_number = str(each_shelf_per_bay.n_shelf_items.unique()[0])
-                        shelf_filter = items_to_check_str.replace('N', last_shelf_number)
-                        shelf_filter_string = '[{}]'.format(shelf_filter)
-                        if exclude_items:
-                            # exclude rows in `items_to_check_tuple`
-                            required_shelf_items = each_shelf_per_bay.drop(
-                                each_shelf_per_bay.query('facing_sequence_number in {filter_string}'
-                                                         .format(filter_string=shelf_filter_string)
-                                                         ).index.tolist())
+                    # shelf iterator
+                    for shelf_id, shelf_data in scene_data_per_bay_shelf:
+                        if items_to_check_str:
+                            # exclude/include logic
+                            last_shelf_number = str(shelf_data.n_shelf_items.unique()[0])
+                            shelf_filter = items_to_check_str.replace('N', last_shelf_number)
+                            shelf_filter_string = '[{}]'.format(shelf_filter)
+                            if exclude_items:
+                                # exclude rows in `items_to_check_tuple`
+                                required_shelf_items = shelf_data.drop(
+                                    shelf_data.query('facing_sequence_number in {filter_string}'
+                                                             .format(filter_string=shelf_filter_string)
+                                                             ).index.tolist())
+                            else:
+                                # it is include_only:
+                                required_shelf_items = shelf_data.query(
+                                    'facing_sequence_number in {filter_string}'.format(
+                                        filter_string=shelf_filter_string
+                                    ))
+                            product_ids = required_shelf_items.product_fk.tolist()
                         else:
-                            # it is include_only:
-                            required_shelf_items = each_shelf_per_bay.query(
-                                'facing_sequence_number in {filter_string}'.format(
-                                    filter_string=shelf_filter_string
-                                ))
-                        product_ids = required_shelf_items.product_fk.unique().tolist()
-                    else:
-                        product_ids = each_shelf_per_bay.product_fk.unique().tolist()
-                    unique_products.update(product_ids)
-                    scene_data_map.append(
-                        {
+                            product_ids = shelf_data.product_fk.tolist()
+                        total_products.extend(product_ids)
+                    # prod_count_map is per bay and shelf
+                    scene_data_map[scene_id].append({
                             'fk': int(kpi['pk']),
-                            'numerator_id': numerator_id,
-                            'denominator_id': denominator_id,
+                            'store': denominator_id,
+                            'product_count_map': Counter(total_products),
                             'bay_number': bay_number,
-                            'scene_id': scene_id,
-                            'products': product_ids,
                             'kpi_name': kpi_sheet_row[KPI_NAME],
                             'zone_number': zone_number,
                             'unique_manufacturer_products_count': unique_manufacturer_products_count,
-                        }
-                    )
-        scene_data_map.append({"unique_products": unique_products})
+                        })
         return scene_data_map
 
     def get_relavant_id(self, denominator_key_str, numerator_row, denominator_row):

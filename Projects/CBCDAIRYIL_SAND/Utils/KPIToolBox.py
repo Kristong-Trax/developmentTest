@@ -21,27 +21,19 @@ class CBCDAIRYILSANDToolBox:
         self.project_name = self.data_provider.project_name
         self.common = Common(self.data_provider)
         self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
-        self.session_uid = self.data_provider.session_uid
-        self.session_info = self.data_provider[Data.SESSION_INFO]
-        self.session_fk = self.session_info['pk'][0]
-        self.visit_date = self.data_provider[Data.VISIT_DATE]
-        self.products = self.data_provider[Data.PRODUCTS]
-        self.all_products = self.data_provider[Data.ALL_PRODUCTS]
-        self.scene_info = self.data_provider[Data.SCENES_INFO]
+        self.session_fk = self.data_provider.session_id
         self.match_product_in_scene = self.data_provider[Data.MATCHES]
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
         self.store_info = self.data_provider[Data.STORE_INFO]
         self.store_id = self.data_provider[Data.STORE_FK]
-
         self.survey = Survey(self.data_provider)
         self.block = Block(self.data_provider)
         self.general_toolbox = GENERALToolBox(self.data_provider)
-
         self.gap_data = self.get_gap_data()
         self.kpi_weights = parse_template(Consts.TEMPLATE_PATH, Consts.KPI_WEIGHT, lower_headers_row_index=0)
         self.template_data = self.parse_template_data()
         self.kpis_gaps = list()
-        self.passed_availability = []
+        self.passed_availability = list()
 
     @staticmethod
     def get_gap_data():
@@ -227,8 +219,7 @@ class CBCDAIRYILSANDToolBox:
         elif atomic_type == Consts.MIN_2_AVAILABILITY:
             num_result, denominator_result, atomic_score = self.calculate_min_2_availability(**general_filters)
         elif atomic_type == Consts.SURVEY:
-            return 0, 0, 0  # TODO TODO TODO TODO TODO
-            # atomic_score = self.calculate_survey(**general_filters)   # TODO TODO TODO TODO TODO
+            atomic_score = self.calculate_survey(**general_filters)
         elif atomic_type == Consts.BRAND_BLOCK:
             atomic_score = self.calculate_brand_block(**general_filters)
         elif atomic_type == Consts.EYE_LEVEL:
@@ -451,9 +442,14 @@ class CBCDAIRYILSANDToolBox:
         if Consts.QUESTION_ID not in general_filters[Consts.KPI_FILTERS].keys():
             Log.warning(Consts.MISSING_QUESTION_LOG)
             return 0
-        survey_question = general_filters[Consts.KPI_FILTERS].get(Consts.QUESTION_ID)
+        survey_question_id = general_filters[Consts.KPI_FILTERS].get(Consts.QUESTION_ID)
+        # General filters returns output for filter_df basically so we need to adjust it here.
+        if isinstance(survey_question_id, tuple):
+            survey_question_id = survey_question_id[0]  # Get rid of the tuple
+        if isinstance(survey_question_id, list):
+            survey_question_id = int(survey_question_id[0])     # Get rid of the list
         target_answer = general_filters[Consts.TARGET]
-        survey_answer = self.survey.get_survey_answer(([survey_question], Consts.CODE))
+        survey_answer = self.survey.get_survey_answer((Consts.QUESTION_FK, survey_question_id))
         if survey_answer in Consts.SURVEY_ANSWERS_TO_IGNORE:
             return None
         elif survey_answer:
