@@ -304,7 +304,7 @@ class CCMYToolBox:
                     (self.kpi_static_data[CCMYConsts.ATOMIC_KPI_NAME] == CCMYConsts.KPI_TOTAL_NUM_OF_SHELVES) & (
                             self.kpi_static_data['kpi_name'] == group_name)]
 
-                if atomic_kpi.empty:
+                if df_atomic_kpi.empty:
                     atomic_kpi_fk_2 = 0
                 else:
                     atomic_kpi_fk_2 = df_atomic_kpi.iloc[0][CCMYConsts.ATOMIC_KPI_FK]
