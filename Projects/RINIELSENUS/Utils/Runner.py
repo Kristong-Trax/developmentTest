@@ -53,7 +53,7 @@ class Results(object):
             if atomic['atomic'] not in [
                                     # 'Is the Nutro Cat Main Meal section >4ft?',
                                     # 'Is the Nutro Cat Main Meal section <=4ft?',
-                'Is Nutro Wet Dog food blocked?'
+                'Is the Wet Dog Food category blocked?'
                                     ]:
                 continue
             print('~~~~~~~~~~~~~~~~~~~~****************~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~')
