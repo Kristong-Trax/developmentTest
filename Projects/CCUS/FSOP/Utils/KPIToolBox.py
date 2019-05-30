@@ -12,9 +12,10 @@ from Projects.CCUS.Programs.Utils.GeneralToolBox import NEW_OBBOGENERALToolBox
 from Projects.CCUS.Programs.Utils.ParseTemplates import parse_template
 from KPIUtils.GlobalDataProvider.PsDataProvider import PsDataProvider
 from KPIUtils_v2.DB.CommonV2 import Common as CommonV2
-from KPIUtils_v2.Calculations.AvailabilityCalculations import Availability as Availability_calc
+from KPIUtils_v2.Calculations.CalculationsUtils.GENERALToolBoxCalculations import GENERALToolBox
+from KPIUtils_v2.Calculations.PositionGraphsCalculations import PositionGraphs
 from KPIUtils_v2.Calculations.SOSCalculations import SOS as SOS_calc
-import numpy as np
+from KPIUtils_v2.Calculations.SurveyCalculations import Survey as Survey_calc
 
 __author__ = 'nicolaske'
 
@@ -25,7 +26,7 @@ STORE_TYPE_LIST = ['LS', 'CR', 'Drug', 'Value']
 Availability = 'Availability'
 SOS = 'SOS'
 Survey = 'Survey'
-Sheets = [Availability, SOS, Survey]
+Sheets = [Availability, SOS]
 TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'Coke_FSOP_v1.xlsx')
 CCNA = 'CCNA'
 
@@ -51,34 +52,41 @@ class FSOPToolBox:
     LEVEL2 = 2
     LEVEL3 = 3
 
-    def __init__(self, data_provider, output):
+    def __init__(self, data_provider, output, commonv2):
         self.k_engine = BaseCalculationsScript(data_provider, output)
         self.output = output
 
         self.data_provider = data_provider
-        self.commonV2 = CommonV2(self.data_provider)
+        self.common = commonv2
         self.project_name = self.data_provider.project_name
         self.session_uid = self.data_provider.session_uid
         self.visit_date = self.data_provider[Data.VISIT_DATE]
         self.session_info = self.data_provider[Data.SESSION_INFO]
         self.scene_info = self.data_provider[Data.SCENES_INFO]
+        self.all_products = self.data_provider[Data.ALL_PRODUCTS]
         self.templates = self.data_provider[Data.TEMPLATES]
         self.store_id = self.data_provider[Data.STORE_FK]
         self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         self.tools = NEW_OBBOGENERALToolBox(self.data_provider, self.output, rds_conn=self.rds_conn)
-        self.kpi_static_data = self.get_kpi_static_data()
+        # self.kpi_static_data = self.get_kpi_static_data()
         self.kpi_results_queries = []
         self.store_info = self.data_provider[Data.STORE_INFO]
         self.store_type = self.store_info['store_type'].iloc[0]
         # self.rules = pd.read_excel(TEMPLATE_PATH).set_index('store_type').to_dict('index')
         self.ps_data_provider = PsDataProvider(self.data_provider, self.output)
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
+        self._position_graphs = PositionGraphs(self.data_provider)
+        self.match_product_in_scene = self._position_graphs.match_product_in_scene
+        self.ignore_stacking = False
+        self.facings_field = 'facings' if not self.ignore_stacking else 'facings_ign_stack'
+        self.manufacturer_fk = self.all_products['manufacturer_fk'][self.all_products['manufacturer_name'] == 'CCNA'].iloc[0]
         # self.scene_data = self.load_scene_data()
         # self.kpi_set_fk = kpi_set_fk
         self.templates = {}
         self.parse_template()
-        self.availability = Availability_calc(self.data_provider)
+        self.toolbox = GENERALToolBox(self.data_provider)
         self.SOS = SOS_calc(self.data_provider)
+        self.survey = Survey_calc(self.data_provider)
 
 
 
@@ -86,28 +94,86 @@ class FSOPToolBox:
         for sheet in Sheets:
             self.templates[sheet] = pd.read_excel(TEMPLATE_PATH, sheet_name=sheet)
 
+    def main_calculation(self):
+        """
+        This function calculates the KPI results.
+        """
+
+        self.calculate_availability()
+        self.calculate_sos()
+
     def calculate_availability(self):
         for i, row in  self.templates[Availability].iterrows():
+            kpi_name = row['KPI Name']
+            kpi_fk = self.common.get_kpi_fk_by_kpi_name(kpi_name)
             manufacturers =  self.sanitize_values(row['manufacturer'])
             brands = self.sanitize_values(row['Brand'])
             container = self.sanitize_values(row['Container'])
             attributte_4 = self.sanitize_values(row['att4'])
             required_brands = row['number_required_brands']
             required_sparkling = row['number_required_Sparkling']
-            required_still= row['number_required_Still']
+            required_still = row['number_required_Still']
             filters = {'manufacturer_name': manufacturers, 'brand_name': brands, 'Container': container, 'att4': attributte_4 }
 
-            for key in filters.keys():
-                if type(filters[key]) is not list:
-                    if pd.isna(filters[key]):
-                        del filters[key]
+            filters = self.delete_filter_nan(filters)
 
             available_df = self.calculate_availability_df(**filters)
 
-            if(required_brands):
-                brands_available = available_df['brand_name'].unique().sum()
+            if pd.notna(required_brands):
+                brands_available = len(available_df['brand_name'].unique())
+                if brands_available >= int(required_brands):
+                    score = 1
+                else:
+                    score = 0
+                # self.common.write_to_db_result(fk=kpi_fk, numerator_id=0, numerator_result=0, denominator_id=0,
+                #                                  denominator_result=0, score=score )
 
-        pass
+            if pd.notna(required_sparkling and required_still):
+                if required_sparkling <= len(available_df[available_df['att4'] == 'SSD']):
+                    if required_still <= len(available_df[available_df['att4'] == 'Still']):
+                        score = 1
+                else:
+                    score =0
+            elif pd.notna(required_sparkling):
+                if required_sparkling <= len(available_df[available_df['att4'] == 'SSD']):
+                    score = 1
+                else:
+                    score = 0
+
+            elif pd.notna(required_still):
+                if required_still <= len(available_df[available_df['att4'] == 'Still']):
+                    score = 1
+                else:
+                    score = 0
+
+
+            self.common.write_to_db_result(fk=kpi_fk, numerator_id=self.manufacturer_fk, numerator_result=0, denominator_id=self.store_id,
+                                                         denominator_result=0, score=score )
+
+
+    def calculate_sos(self):
+        for i, row in self.templates[SOS].iterrows():
+            kpi_name = row['KPI Name']
+            kpi_fk = self.common.get_kpi_fk_by_kpi_name(kpi_name)
+            manufacturers = self.sanitize_values(row['manufacturer'])
+            attributte_4 = self.sanitize_values(row['att4'])
+            scene_types = self.sanitize_values(row['scene Type'])
+            target = int(row['% SOS'])
+
+
+            filters = {'manufacturer_name': manufacturers, 'att4': attributte_4, 'template_name': scene_types}
+            filters = self.delete_filter_nan(filters)
+            # general_filters = {}
+
+            ratio = self.SOS.calculate_share_of_shelf(filters)
+            if (100 * ratio) >= target:
+                score = 1
+            else:
+                score = 0
+
+            self.common.write_to_db_result(fk=kpi_fk, numerator_id=self.manufacturer_fk, numerator_result=0,
+                                           denominator_id=self.store_id,
+                                           denominator_result=0, result=ratio, score=score)
 
 
     def sanitize_values(self, item):
@@ -117,14 +183,13 @@ class FSOPToolBox:
             item = item.split(', ')
             return item
 
-    def get_kpi_static_data(self):
-        """
-        This function extracts the static KPI Data and saves it into one global Data frame.
-        The Data is taken from static.kpi / static.atomic_kpi / static.kpi_set.
-        """
-        query = NEW_OBBOQueries.get_all_kpi_data()
-        kpi_static_data = pd.read_sql_query(query, self.rds_conn.db)
-        return kpi_static_data
+
+    def delete_filter_nan(self, filters):
+        for key in filters.keys():
+            if type(filters[key]) is not list:
+                if pd.isna(filters[key]):
+                    del filters[key]
+        return filters
 
     def main_calculation(self):
         """
@@ -132,41 +197,7 @@ class FSOPToolBox:
         """
 
         self.calculate_availability()
-
-
-        if self.store_type in STORE_TYPE_LIST:
-            result = 'Pass'
-            score = self.determine_pass(self.rules[self.store_type])
-            if not score:
-                score2 = self.determine_pass(self.rules['All'], image_rule='>')
-                if not score2:
-                    result = 'Fail'
-                else:
-                    result = 'Exterior Only'
-
-            self.write_to_db_result(3, name='Validation_KPI', result=result, score=score)
-        return
-
-    def determine_pass(self, rules, image_rule='<'):
-        score = 1
-        if sum([1 for t in self.templates['template_name'] if t in rules['template']]) < int(rules['target']):
-            score = 0
-        if int(self.scene_data.shape[0]) < int(rules['scene_count']):
-            score = 0
-        if eval('{} {} {}'.format(self.scene_data['Images'].sum(), image_rule, int(rules['image_count']))):
-            score = 0
-        return score
-
-    def load_scene_data(self):
-        query = '''
-                select sc.scene_uid, (sc.number_of_probes - sc.number_of_ignored_probes) as 'Images'
-                from probedata.session ses
-                left join probedata.scene sc on ses.session_uid = sc.session_uid
-                where sc.delete_time is null and sc.status = 6
-                and ses.session_uid = '{}';
-                '''.format(self.session_uid)
-        return pd.read_sql_query(query, self.ps_data_provider.rds_conn.db)
-
+        self.calculate_sos()
 
 
 
@@ -192,63 +223,3 @@ class FSOPToolBox:
             availability_df = filtered_df
         return availability_df
 
-    def write_to_db_result(self, level, result=None, score=0, name=None):
-        """
-        This function creates the result Data frame of every KPI (atomic KPI/KPI/KPI set),
-        and appends the insert SQL query into the queries' list, later to be written to the DB.
-        """
-        attributes = self.create_attributes_dict(score, level, result, name)
-        if level == self.LEVEL1:
-            table = KPS_RESULT
-        elif level == self.LEVEL2:
-            table = KPK_RESULT
-        elif level == self.LEVEL3:
-            table = KPI_RESULT
-        else:
-            return
-        query = insert(attributes, table)
-        self.kpi_results_queries.append(query)
-
-    def create_attributes_dict(self, score, level, result=None, name=None):
-        """
-        This function creates a Data frame with all attributes needed for saving in KPI results tables.
-
-        """
-        if level == self.LEVEL1:
-            kpi_set_name = self.kpi_static_data[self.kpi_static_data['kpi_set_fk'] == self.kpi_set_fk]['kpi_set_name']\
-                .values[0]
-            attributes = pd.DataFrame([(kpi_set_name, self.session_uid, self.store_id, self.visit_date.isoformat(),
-                                        format(score, '.2f'), self.kpi_set_fk)],
-                                      columns=['kps_name', 'session_uid', 'store_fk', 'visit_date', 'score_1',
-                                               'kpi_set_fk'])
-        elif level == self.LEVEL3:
-            kpi_set_name = self.kpi_static_data[self.kpi_static_data['kpi_set_fk'] == self.kpi_set_fk]['kpi_set_name']\
-                .values[0]
-            attributes = pd.DataFrame([(name, self.session_uid, kpi_set_name, self.store_id,
-                                        self.visit_date.isoformat(), datetime.utcnow().isoformat(),
-                                        score, 242, result)],
-                                      columns=['display_text', 'session_uid', 'kps_name', 'store_fk', 'visit_date',
-                                               'calculation_time', 'score', 'kpi_fk', 'result'])
-        else:
-            attributes = pd.DataFrame()
-        return attributes.to_dict()
-
-    @log_runtime('Saving to DB')
-    def commit_results_data(self):
-        """
-        This function writes all KPI results to the DB, and commits the changes.
-        """
-        self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
-        atomic_pks = tuple()
-        if self.kpi_set_fk is not None:
-            query = NEW_OBBOQueries.get_atomic_pk_to_delete(self.session_uid, self.kpi_set_fk)
-            kpi_atomic_data = pd.read_sql_query(query, self.rds_conn.db)
-            atomic_pks = tuple(kpi_atomic_data['pk'].tolist())
-        cur = self.rds_conn.db.cursor()
-        if atomic_pks:
-            delete_queries = NEW_OBBOQueries.get_delete_session_results_query(self.session_uid, self.kpi_set_fk, atomic_pks)
-            for query in delete_queries:
-                cur.execute(query)
-        for query in self.kpi_results_queries:
-            cur.execute(query)
-        self.rds_conn.db.commit()

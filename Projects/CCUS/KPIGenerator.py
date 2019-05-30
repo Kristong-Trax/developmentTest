@@ -13,6 +13,8 @@ from Projects.CCUS.GOLD_PEAK_BLOCK.Utils.KPIToolBox import GOLD_PEAK_BLOCKToolBo
 from Projects.CCUS.SpecialPrograms.Utils.KPIToolBox import SpecialProgramsToolBox
 from Projects.CCUS.Pillars.Utils.KPIToolBox import PillarsPROGRAMSToolBox
 from Projects.CCUS.Validation.Utils.KPIToolBox import VALIDATIONToolBox
+from KPIUtils_v2.DB.CommonV2 import Common
+
 
 __author__ = 'ortal'
 
@@ -21,7 +23,7 @@ class CCUSGenerator:
     def __init__(self, data_provider, output):
         self.data_provider = data_provider
         self.output = output
-
+        self.common = Common(self.data_provider)
     @log_runtime('Total Calculations', log_start=True)
     def main_function(self):
         """
@@ -41,6 +43,8 @@ class CCUSGenerator:
         self.calculate_special_programs()
         self.calculate_validation()
         self.calculate_pillars_programs()
+
+        self.common.commit_results_data()
     @log_runtime('Manufacturer Displays Calculations')
     def calculate_manufacturer_displays(self):
         tool_box = DISPLAYSToolBox(self.data_provider, self.output)
@@ -55,7 +59,7 @@ class CCUSGenerator:
 
     @log_runtime('FSOP Calculations')
     def calculate_fsop(self):
-        tool_box = FSOPToolBox(self.data_provider, self.output)
+        tool_box = FSOPToolBox(self.data_provider, self.output, self.common)
         tool_box.main_calculation()
 
 
@@ -86,7 +90,7 @@ class CCUSGenerator:
 
     @log_runtime('Pillars Programs Calculations')
     def calculate_pillars_programs(self):
-        tool_box = PillarsPROGRAMSToolBox(self.data_provider, self.output)
+        tool_box = PillarsPROGRAMSToolBox(self.data_provider, self.output, self.common)
         tool_box.main_calculation()
 
     # @log_runtime('MSC New Calculations')
