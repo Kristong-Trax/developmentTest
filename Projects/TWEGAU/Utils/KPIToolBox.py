@@ -181,23 +181,24 @@ class TWEGAUToolBox:
                 if write_sku:
                     # write for products
                     for each_scene_zone_map in list_of_zone_data:
-                        for scene_id, zone_data in each_scene_zone_map.iteritems():
-                            product_counter = zone_data['product_count_map']
-                            for prod_id, count in product_counter.iteritems():
-                                if int(prod_id) not in self.empty_product_ids:
-                                    in_assort_sc = int(self.scif.query("item_id=={prod_id}"
-                                                                       .format(prod_id=prod_id))
-                                                       .in_assort_sc.values[0])
-                                    self.common.write_to_db_result(
-                                        fk=int(zone_data['fk']),
-                                        numerator_id=int(prod_id),  # product ID
-                                        numerator_result=int(zone_data['bay_number']),  # bay number comes as numerator
-                                        denominator_id=int(zone_data['store']),  # store ID
-                                        denominator_result=int(scene_id),  # scene id comes as denominator
-                                        result=int(count),  # save the count
-                                        score=in_assort_sc,
-                                        context_id=int(zone_data['zone_number']),
-                                    )
+                        for scene_id, bay_zone_list in each_scene_zone_map.iteritems():
+                            for zone_data in bay_zone_list:
+                                product_counter = zone_data['product_count_map']
+                                for prod_id, count in product_counter.iteritems():
+                                    if int(prod_id) not in self.empty_product_ids:
+                                        in_assort_sc = int(self.scif.query("item_id=={prod_id}"
+                                                                           .format(prod_id=prod_id))
+                                                           .in_assort_sc.values[0])
+                                        self.common.write_to_db_result(
+                                            fk=int(zone_data['fk']),
+                                            numerator_id=int(prod_id),  # product ID
+                                            numerator_result=int(zone_data['bay_number']),  # bay number comes as numerator
+                                            denominator_id=int(zone_data['store']),  # store ID
+                                            denominator_result=int(scene_id),  # scene id comes as denominator
+                                            result=int(count),  # save the count
+                                            score=in_assort_sc,
+                                            context_id=int(zone_data['zone_number']),
+                                        )
                 else:
                     # its the calculation
                     pass
@@ -409,7 +410,7 @@ class TWEGAUToolBox:
             # dummy structure without filters
             filtered_grouped_scene_items = [('', product_scene_join_data.query(filter_string))]
         # get the scene_id's worth getting data from
-        scene_data_map = {}
+        scene_data_map = defaultdict(list)
         for each_group_by_manf_templ in filtered_grouped_scene_items:
             # append scene to group by
             scene_type_grouped_by_scene = each_group_by_manf_templ[1].groupby(SCENE_FK)
@@ -474,7 +475,7 @@ class TWEGAUToolBox:
                             product_ids = shelf_data.product_fk.tolist()
                         total_products.extend(product_ids)
                     # prod_count_map is per bay and shelf
-                    scene_data_map[scene_id] = {
+                    scene_data_map[scene_id].append({
                             'fk': int(kpi['pk']),
                             'store': denominator_id,
                             'product_count_map': Counter(total_products),
@@ -482,8 +483,7 @@ class TWEGAUToolBox:
                             'kpi_name': kpi_sheet_row[KPI_NAME],
                             'zone_number': zone_number,
                             'unique_manufacturer_products_count': unique_manufacturer_products_count,
-                        }
-                scene_data_map[scene_id]["unique_products"] = list(set(total_products))
+                        })
         return scene_data_map
 
     def get_relavant_id(self, denominator_key_str, numerator_row, denominator_row):
