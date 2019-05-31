@@ -315,11 +315,11 @@ class CCMYToolBox:
 
                 # KPI old tables
                 if atomic_kpi_fk_1!= 0:
-                    if params[CCMYConsts.KPI_NAME] == CCMYConsts.KPI_NUM_PURE_SHELVES and atomic_kpi_fk != 0:
+                    if params[CCMYConsts.KPI_NAME] == CCMYConsts.KPI_NUM_PURE_SHELVES:
                         self.write_to_db_result(atomic_kpi_fk_1,(num_of_pure_shelfs, num_of_pure_shelfs, 0),
                                                 level=self.LEVEL3)
                 if atomic_kpi_fk_2!=0:
-                    if params[CCMYConsts.KPI_NAME] == CCMYConsts.KPI_TOTAL_NUM_OF_SHELVES and atomic_kpi_fk!=0:
+                    if params[CCMYConsts.KPI_NAME] == CCMYConsts.KPI_TOTAL_NUM_OF_SHELVES:
                         self.write_to_db_result(atomic_kpi_fk_2, (total_num_of_shelfs, total_num_of_shelfs, 0),
                                             level=self.LEVEL3)
 
