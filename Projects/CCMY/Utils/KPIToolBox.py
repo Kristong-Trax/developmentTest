@@ -289,25 +289,25 @@ class CCMYToolBox:
             else:
                 kpi_level_2_fk = df_kpi_level_2.iloc[0]
 
-            if params[CCMYConsts.KPI_NAME] == CCMYConsts.KPI_NUM_PURE_SHELVES:
-                df_atomic_kpi = self.kpi_static_data[
-                    (self.kpi_static_data[CCMYConsts.ATOMIC_KPI_NAME] ==CCMYConsts.KPI_NUM_PURE_SHELVES) & (
+            #if params[CCMYConsts.KPI_NAME] == CCMYConsts.KPI_NUM_PURE_SHELVES:
+            df_atomic_kpi = self.kpi_static_data[
+                (self.kpi_static_data[CCMYConsts.ATOMIC_KPI_NAME] ==CCMYConsts.KPI_NUM_PURE_SHELVES) & (
+                    self.kpi_static_data['kpi_name'] == group_name)]
+
+            if df_atomic_kpi.empty:
+                atomic_kpi_fk_1 = 0
+            else:
+                atomic_kpi_fk_1 = df_atomic_kpi.iloc[0][CCMYConsts.ATOMIC_KPI_FK]
+
+            #if params[CCMYConsts.KPI_NAME] == CCMYConsts.KPI_TOTAL_NUM_OF_SHELVES:
+            df_atomic_kpi = self.kpi_static_data[
+                (self.kpi_static_data[CCMYConsts.ATOMIC_KPI_NAME] == CCMYConsts.KPI_TOTAL_NUM_OF_SHELVES) & (
                         self.kpi_static_data['kpi_name'] == group_name)]
 
-                if df_atomic_kpi.empty:
-                    atomic_kpi_fk_1 = 0
-                else:
-                    atomic_kpi_fk_1 = df_atomic_kpi.iloc[0][CCMYConsts.ATOMIC_KPI_FK]
-
-            if params[CCMYConsts.KPI_NAME] == CCMYConsts.KPI_TOTAL_NUM_OF_SHELVES:
-                df_atomic_kpi = self.kpi_static_data[
-                    (self.kpi_static_data[CCMYConsts.ATOMIC_KPI_NAME] == CCMYConsts.KPI_TOTAL_NUM_OF_SHELVES) & (
-                            self.kpi_static_data['kpi_name'] == group_name)]
-
-                if df_atomic_kpi.empty:
-                    atomic_kpi_fk_2 = 0
-                else:
-                    atomic_kpi_fk_2 = df_atomic_kpi.iloc[0][CCMYConsts.ATOMIC_KPI_FK]
+            if df_atomic_kpi.empty:
+                atomic_kpi_fk_2 = 0
+            else:
+                atomic_kpi_fk_2 = df_atomic_kpi.iloc[0][CCMYConsts.ATOMIC_KPI_FK]
 
             if df_shelf_pure.empty:
                 num_of_pure_shelfs = 0
@@ -342,11 +342,9 @@ class CCMYToolBox:
 
                 # KPI old tables
                 if atomic_kpi_fk_1 != 0:
-                    if params[CCMYConsts.KPI_NAME] == CCMYConsts.KPI_NUM_PURE_SHELVES:
                         self.write_to_db_result(atomic_kpi_fk_1, (num_of_pure_shelfs, num_of_pure_shelfs, 0),
                                                 level=self.LEVEL3)
                 if atomic_kpi_fk_2 != 0:
-                    if params[CCMYConsts.KPI_NAME] == CCMYConsts.KPI_TOTAL_NUM_OF_SHELVES:
                         self.write_to_db_result(atomic_kpi_fk_2, (total_num_of_shelfs, total_num_of_shelfs, 0),
                                             level=self.LEVEL3)
 
