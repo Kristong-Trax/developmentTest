@@ -21,7 +21,8 @@ if __name__ == '__main__':
     project_name = 'pngcn-sand'
     data_provider = KEngineDataProvider(project_name)
     output = Output()
-    sessions = {'d16a0359-4d0f-4fed-bfe4-0afecca6843e':[14431215, 14431231, 14431239]}
+    sessions = {'6a08a4d4-118e-4629-ac1a-1e2abadf5767': [14429897],
+                'd16a0359-4d0f-4fed-bfe4-0afecca6843e': [14431215, 14431231, 14431239]}
     for session in sessions.keys():
         print "Running for {}".format(str(session))
         for scene in sessions[session]:

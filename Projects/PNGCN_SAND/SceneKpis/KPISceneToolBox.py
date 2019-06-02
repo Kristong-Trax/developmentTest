@@ -192,11 +192,30 @@ class PngcnSceneKpis(object):
             return
         df = self.get_eye_level_shelves(self.matches_from_data_provider)
         full_df = pd.merge(df,self.all_products,on="product_fk")
-        kpi_sequence_fk = self.common.get_kpi_fk_by_kpi_name(Eye_level_kpi_SEQUENCE)
+
+        self.calculate_facing_eye_level(full_df)
+        self.calculate_sequence_eye_level(entity_df, full_df)
+
+    def calculate_facing_eye_level(self, full_df):
         kpi_facings_fk = self.common.get_kpi_fk_by_kpi_name(Eye_level_kpi_FACINGS)
+        results_facings_df = full_df.groupby(by=['shelf_number', 'product_fk']).first().reset_index()
+        summed_result_df = full_df.groupby(by=['shelf_number', 'product_fk']).size().reset_index()
+        results_facings_df['result'] = summed_result_df[0].copy()
+        for i, row in results_facings_df.iterrows():
+            product_fk = row['product_fk']
+            shelf_number = row['shelf_number']
+            category_fk = row['category_fk']
+            facings = row['result']
+            self.common.write_to_db_result(fk=kpi_facings_fk, numerator_id=product_fk,
+                                            denominator_id=category_fk, numerator_result=shelf_number,
+                                            result=facings, score=facings, by_scene=True)
+
+    def calculate_sequence_eye_level(self, entity_df, full_df):
+        kpi_sequence_fk = self.common.get_kpi_fk_by_kpi_name(Eye_level_kpi_SEQUENCE)
         results_sequence_df = pd.DataFrame(columns=['fk', 'numerator_id', 'denominator_id', 'numerator_result', 'result',
                                             'score', 'by_scene', 'temp_bay_number'])
-        results_facings_df = results_sequence_df.copy()
+        full_df = full_df[full_df['stacking_layer'] == 1]
+
         for key in PCC_FILTERS.keys():
             frag_df = self.parser.filter_df(PCC_FILTERS[key], full_df)
             full_df.drop(frag_df.index, axis=0, inplace=True)
@@ -206,27 +225,19 @@ class PngcnSceneKpis(object):
                                 | (frag_df.shelf_number != frag_df.shelf_number.shift())
                                 | (frag_df.bay_number != frag_df.bay_number.shift())).cumsum()
             frag_df = seq_df.groupby(by=['group']).first()
-            frag_df['facings'] = seq_df.groupby(by=['group']).size()
             for i, row in frag_df.iterrows():
                 facing_sequence_number = row['facing_sequence_number']
                 entity_fk = entity_df[entity_df['entity_name'] == key]['entity_fk'].values[0]
-                product_fk = row['product_fk']
                 bay_number = row['bay_number']
                 shelf_number = row['shelf_number']
                 category_fk = row['category_fk']
-                facings = row['facings']
-
                 results_sequence_df = results_sequence_df.append({'fk': kpi_sequence_fk, 'numerator_id':entity_fk,
                                                       'denominator_id': category_fk, 'numerator_result':shelf_number,
                                                       'result':facing_sequence_number, 'score':0, 'by_scene':True,
                                                        'temp_bay_number': bay_number},
                                                       ignore_index=True)
-                results_facings_df = results_facings_df.append({'fk': kpi_facings_fk, 'numerator_id':product_fk,
-                                                      'denominator_id': entity_fk, 'numerator_result':shelf_number,
-                                                      'result':facings, 'score':facings, 'by_scene':True},
-                                                      ignore_index=True)
 
-        # groupby and setting the sequenc kpi to the correct format
+        # groupby and setting the sequence kpi to the correct format
         results_sequence_df.sort_values(by=['numerator_result', 'temp_bay_number', 'result'], inplace=True)
         results_sequence_df = results_sequence_df[((results_sequence_df.numerator_id !=
                                                     results_sequence_df.numerator_id.shift()) |
@@ -241,22 +252,14 @@ class PngcnSceneKpis(object):
             results_sequence_df.loc[i, 'result'] = facing_sequence_number
         results_sequence_df.drop(['temp_bay_number', 'is_new_sequence'], inplace=True, axis=1)
 
-        # groupby and setting the facing kpi to the correct format
-        group_facings_df = results_facings_df.groupby(by=['numerator_result', 'numerator_id']).first().reset_index()
-        summed_result_df = results_facings_df.groupby(by=['numerator_result', 'numerator_id'])['result'].sum().reset_index()
-        group_facings_df.drop(['temp_bay_number'], inplace=True, axis=1)
-        group_facings_df['result'] = group_facings_df['score'] = summed_result_df['result'].copy()
-        all_eyelevel_results = pd.concat([results_sequence_df, group_facings_df], sort=False)
-
         # saving all results
-        for i, row in all_eyelevel_results.iterrows():
+        for i, row in results_sequence_df.iterrows():
             self.common.write_to_db_result(**row)
 
 
     def get_eye_level_shelves(self, df):
         if df.empty:
             return df
-        df = df[df['stacking_layer'] == 1]
         bay_and_shelves = df.groupby(by=['bay_number', 'shelf_number']).first().reset_index()[['bay_number', 'shelf_number']]
         max_shelves = bay_and_shelves.groupby('bay_number').max().reset_index()
         bays_df = []
