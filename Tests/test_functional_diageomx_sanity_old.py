@@ -63,7 +63,7 @@ class TestKEngineOutOfTheBox(TestFunctionalCase):
            return_value=position)
     @patch('KPIUtils.DIAGEO.ToolBox.DIAGEOToolBox.download_template',
            return_value=posm)
-    @seeder.seed(["diageomx_seed"], ProjectsSanityData())
+    @seeder.seed(["mongodb_products_and_brands_seed", "diageomx_seed"], ProjectsSanityData())
     def test_diageomx_sanity(self, x, y, json, json2, json3, json4):
         project_name = ProjectsSanityData.project_name
         data_provider = KEngineDataProvider(project_name)
