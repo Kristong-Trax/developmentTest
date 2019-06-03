@@ -2350,6 +2350,9 @@ class MARSRU2_SANDKPIToolBox:
         """
         # assortment_products = self.get_assortment_for_store_id()
         assortment_products = self.assortment.get_lvl3_relevant_ass()
+        assortment_group = \
+            self.kpi_fetcher.get_relevant_assortment_group(assortment_products['assortment_group_fk'].unique().tolist() + [0])
+        assortment_products = assortment_products[assortment_products['assortment_group_fk'] == assortment_group]
         if assortment_products.empty:
             return
 
