@@ -50,7 +50,7 @@ class LIBERTYToolBox:
                 converters = {Const.BASE_SIZE_MIN: self.convert_base_size_values,
                               Const.BASE_SIZE_MAX: self.convert_base_size_values}
             templates[sheet] = \
-                pd.read_excel(Const.TEMPLATE_PATH, sheetname=sheet, converters=converters).fillna('')
+                pd.read_excel(Const.TEMPLATE_PATH, sheet_name=sheet, converters=converters).fillna('')
         return templates
 
     # main functions:
@@ -251,6 +251,10 @@ class LIBERTYToolBox:
         if brand:
             filtered_scif = filtered_scif[filtered_scif['brand_name'].isin(brand)]
 
+        excluded_brand = self.does_exist(kpi_line, Const.EXCLUDED_BRAND)
+        if excluded_brand:
+            filtered_scif = filtered_scif[~filtered_scif['brand_name'].isin(excluded_brand)]
+
         ssd_still = self.does_exist(kpi_line, Const.ATT4)
         if ssd_still:
             filtered_scif = filtered_scif[filtered_scif['att4'].isin(ssd_still)]
@@ -258,17 +262,21 @@ class LIBERTYToolBox:
         size_subpackages = self.does_exist(kpi_line, Const.SIZE_SUBPACKAGES_NUM)
         if size_subpackages:
             # convert all pairings of size and number of subpackages to tuples
-            size_subpackages_tuples = [tuple([float(i) for i in x.split(';')]) for x in size_subpackages]
-            filtered_scif = filtered_scif[pd.Series(list(zip(filtered_scif['size'],
-                                                             filtered_scif['number_of_sub_packages'])),
+            # size_subpackages_tuples = [tuple([float(i) for i in x.split(';')]) for x in size_subpackages]
+            size_subpackages_tuples = [tuple([self.convert_base_size_values(i) for i in x.split(';')]) for x in
+                                       size_subpackages]
+            filtered_scif = filtered_scif[pd.Series(list(zip(filtered_scif['Base Size'],
+                                                             filtered_scif['Multi-Pack Size'])),
                                                     index=filtered_scif.index).isin(size_subpackages_tuples)]
 
         sub_packages = self.does_exist(kpi_line, Const.SUBPACKAGES_NUM)
         if sub_packages:
             if sub_packages == [Const.NOT_NULL]:
-                filtered_scif = filtered_scif[~filtered_scif['number_of_sub_packages'].isnull()]
+                filtered_scif = filtered_scif[~filtered_scif['Multi-Pack Size'].isnull()]
+            elif sub_packages == [Const.GREATER_THAN_ONE]:
+                filtered_scif = filtered_scif[filtered_scif['Multi-Pack Size'] > 1]
             else:
-                filtered_scif = filtered_scif[filtered_scif['number_of_sub_packages'].isin([int(i) for i in sub_packages])]
+                filtered_scif = filtered_scif[filtered_scif['Multi-Pack Size'].isin([int(i) for i in sub_packages])]
 
         if self.does_exist(kpi_line, Const.MINIMUM_FACINGS_REQUIRED):
             number_of_passing_displays, _ = self.get_number_of_passing_displays(filtered_scif)
@@ -292,7 +300,7 @@ class LIBERTYToolBox:
         if ssd_still:
             filtered_scif = filtered_scif[filtered_scif['att4'].isin(ssd_still)]
 
-        denominator_passing_displays, denominator_facings_of_passing_displays = \
+        denominator_passing_displays, _ = \
             self.get_number_of_passing_displays(filtered_scif)
 
         manufacturer = self.does_exist(kpi_line, Const.MANUFACTURER)
@@ -309,12 +317,12 @@ class LIBERTYToolBox:
             filtered_scif = filtered_scif.append(body_armor_scif, sort=False)
 
         if self.does_exist(kpi_line, Const.MINIMUM_FACINGS_REQUIRED):
-            numerator_passing_displays, numerator_facings_of_passing_displays = \
+            numerator_passing_displays, _ = \
                 self.get_number_of_passing_displays(filtered_scif)
 
-            if denominator_facings_of_passing_displays != 0:
+            if denominator_passing_displays != 0:
                 share_of_displays = \
-                    numerator_facings_of_passing_displays / float(denominator_facings_of_passing_displays)
+                    numerator_passing_displays / float(denominator_passing_displays)
             else:
                 share_of_displays = 0
 
@@ -337,6 +345,9 @@ class LIBERTYToolBox:
     def get_number_of_passing_displays(self, filtered_scif):
         if filtered_scif.empty:
             return 0, 0
+
+        filtered_scif = \
+            filtered_scif.groupby(['Base Size', 'Multi-Pack Size', 'scene_id'], as_index=False)['facings'].sum()
 
         filtered_scif['passed_displays'] = \
             filtered_scif.apply(lambda row: self._calculate_pass_status_of_display(row), axis=1)
@@ -409,8 +420,9 @@ class LIBERTYToolBox:
 
     # helper functions
     def convert_base_size_and_multi_pack(self):
-        self.scif['Base Size'] = self.scif['Base Size'].apply(self.convert_base_size_values)
-        self.scif['Multi-Pack Size'] = self.scif['Multi-Pack Size'].apply(lambda x: int(x) if x is not None else None)
+        self.scif.loc[:, 'Base Size'] = self.scif['Base Size'].apply(self.convert_base_size_values)
+        self.scif.loc[:, 'Multi-Pack Size'] = \
+            self.scif['Multi-Pack Size'].apply(lambda x: int(x) if x is not None else None)
 
     @staticmethod
     def convert_base_size_values(value):
