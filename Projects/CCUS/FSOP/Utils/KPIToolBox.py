@@ -110,10 +110,13 @@ class FSOPToolBox:
             brands = self.sanitize_values(row['Brand'])
             container = self.sanitize_values(row['Container'])
             attributte_4 = self.sanitize_values(row['att4'])
+            scene_types = self.sanitize_values(row['scene Type'])
             required_brands = row['number_required_brands']
             required_sparkling = row['number_required_Sparkling']
             required_still = row['number_required_Still']
-            filters = {'manufacturer_name': manufacturers, 'brand_name': brands, 'Container': container, 'att4': attributte_4 }
+            required_sku = row['number_required_SKU']
+            filters = {'manufacturer_name': manufacturers, 'brand_name': brands, 'Container': container, 'att4': attributte_4,
+                       'template_name': scene_types}
 
             filters = self.delete_filter_nan(filters)
 
@@ -146,6 +149,12 @@ class FSOPToolBox:
                 else:
                     score = 0
 
+
+            if pd.notna(required_sku):
+                if required_sku <= len(available_df['product_fk'].unique()):
+                    score = 1
+                else:
+                    score = 0
 
             self.common.write_to_db_result(fk=kpi_fk, numerator_id=self.manufacturer_fk, numerator_result=0, denominator_id=self.store_id,
                                                          denominator_result=0, score=score )
