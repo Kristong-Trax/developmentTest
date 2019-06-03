@@ -91,7 +91,7 @@ PCC_FILTERS = {
                               "brand_name": [OLAY_BRAND], 'sub_category': [PCC_BAR_SUB_CATEGORY]}],
                  'exclude': {},
                  'include_operator': 'and'}},
-'Compatitor PCC': {'population': {'include': [{"category": [PCC_CATEGORY]}],
+'Competitor PCC': {'population': {'include': [{"category": [PCC_CATEGORY]}],
                  'exclude': {"manufacturer_name": [PNG_MANUFACTURER]},
                  'include_operator': 'and'}},
 'PNGOTHER':       {'population':
