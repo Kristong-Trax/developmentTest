@@ -11,7 +11,7 @@ __author__ = 'Jasmine'
 
 class PillarsSceneToolBox:
     PROGRAM_TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))),
-                                         'Data', 'Template.xlsx')
+                                         'Data', 'CCUS_Templatev2.1.xlsx')
 
     def __init__(self, data_provider,output, common):
         self.data_provider = data_provider
