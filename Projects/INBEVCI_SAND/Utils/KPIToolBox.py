@@ -337,18 +337,19 @@ class INBEVCISANDToolBox:
                                                                                                         location_type_fk,
                                                                                                         sos_set_fk,
                                                                                                         price_group)
-        total_res = sum(sos_per_manufacturer_dict.values())
-        # Check if Inbev has the majority
-        kpi_total_score = (max(sos_per_manufacturer_dict,
-                               key=sos_per_manufacturer_dict.get) == Const.ABINBEV_MAN_FK) * 100
-        numerator_res = sos_per_manufacturer_dict[
-            Const.ABINBEV_MAN_FK] if Const.ABINBEV_MAN_FK in sos_per_manufacturer_dict else 0
-        # Saving to DB
-        self.common.write_to_db_result(fk=sos_set_fk, numerator_id=Const.ABINBEV_MAN_FK,
-                                       numerator_result=numerator_res, denominator_id=location_type_fk,
-                                       denominator_result=total_res, context_id=self.store_id,
-                                       identifier_result=(sos_set_fk, location_type_fk), result=kpi_total_score,
-                                       score=kpi_total_score, identifier_parent=identifier_parent, should_enter=True)
+        if sos_per_manufacturer_dict:
+            total_res = sum(sos_per_manufacturer_dict.values())
+            # Check if Inbev has the majority
+            kpi_total_score = (max(sos_per_manufacturer_dict,
+                                   key=sos_per_manufacturer_dict.get) == Const.ABINBEV_MAN_FK) * 100
+            numerator_res = sos_per_manufacturer_dict[
+                Const.ABINBEV_MAN_FK] if Const.ABINBEV_MAN_FK in sos_per_manufacturer_dict else 0
+            # Saving to DB
+            self.common.write_to_db_result(fk=sos_set_fk, numerator_id=Const.ABINBEV_MAN_FK,
+                                           numerator_result=numerator_res, denominator_id=location_type_fk,
+                                           denominator_result=total_res, context_id=self.store_id,
+                                           identifier_result=(sos_set_fk, location_type_fk), result=kpi_total_score,
+                                           score=kpi_total_score, identifier_parent=identifier_parent, should_enter=True)
 
     def inbev_linear_sos_majority_by_location_type_and_price_group(self, relevant_scenes, loc_type_fk, parent_set_fk, price_group):
         """
@@ -362,7 +363,10 @@ class INBEVCISANDToolBox:
         """
         kpi_type = 'SOS vs Target Secondary Shelf {} Products Manufacturer out of Category'.format(price_group)
         kpi_level_2_fk = self.common.get_kpi_fk_by_kpi_type(kpi_type)
-        manufacturer_list = self.get_all_the_manufacturers_by_filters(relevant_scenes)
+        # manufacturer_list = self.get_all_the_manufacturers_by_filters(relevant_scenes)
+        manufacturer_list = self.scif.loc[(self.scif[Const.SCENE_FK].isin(relevant_scenes)) &
+                                          (~self.scif[Const.PRODUCT_TYPE].isin([Const.EMPTY, Const.IRRELEVANT])) &
+                                          (self.scif[Const.PRICE_GROUP] == price_group)][Const.MANUFACTURER_FK].unique().tolist()
         sos_per_manufacturer = {el: 0 for el in manufacturer_list}
         general_filters = {Const.PRODUCT_TYPE: (Const.EMPTY, Const.EXCLUDE_FILTER),
                            Const.CATEGORY_FK: Const.BEER_CATEGORY_FK, Const.SCENE_FK: relevant_scenes,
@@ -385,7 +389,6 @@ class INBEVCISANDToolBox:
                                            denominator_result=total_res, context_id=loc_type_fk,
                                            identifier_parent=(parent_set_fk, loc_type_fk), result=sos_score,
                                            score=sos_score, should_enter=True)
-
         return sos_per_manufacturer
 
 
@@ -405,22 +408,23 @@ class INBEVCISANDToolBox:
         """
         This function calculates the SOS vs Target KPI for both Coolers and Secondary Displays.
         """
-        sos_vs_target_fk = self.common.get_kpi_fk_by_kpi_name(Const.SOS_VS_TARGET)
+        sos_vs_target_fk = self.common.get_kpi_fk_by_kpi_type(Const.SOS_VS_TARGET)
         # Coolers
         self.calculate_sos_vs_target_per_location_type(sos_vs_target_fk, Const.COOLER_FK, identifier_parent)
-        # Secondary Displays
-        self.calculate_sos_vs_target_per_location_type(sos_vs_target_fk, Const.SECONDARY_DISPLAY_FK, identifier_parent)
+        # Secondary Displays - commented out as we do not need it
+        # self.calculate_sos_vs_target_per_location_type(sos_vs_target_fk, Const.SECONDARY_DISPLAY_FK, identifier_parent)
         # Core Products Secondary Displays
         core_kpi_fk = self.common.get_kpi_fk_by_kpi_type(Const.SOS_VS_TARGET_SECONDARY_CORE)
         self.calculate_sos_vs_target_per_location_type(core_kpi_fk, Const.SECONDARY_DISPLAY_FK, identifier_parent, Const.CORE)
         # High End Products Secondary Displays
-        core_kpi_fk = self.common.get_kpi_fk_by_kpi_type(Const.SOS_VS_TARGET_SECONDARY_HIGH_END)
-        self.calculate_sos_vs_target_per_location_type(core_kpi_fk, Const.SECONDARY_DISPLAY_FK, identifier_parent,
+        he_kpi_fk = self.common.get_kpi_fk_by_kpi_type(Const.SOS_VS_TARGET_SECONDARY_HIGH_END)
+        self.calculate_sos_vs_target_per_location_type(he_kpi_fk, Const.SECONDARY_DISPLAY_FK, identifier_parent,
                                                        Const.HIGH_END)
 
     def calculate_kpi_level_1(self, set_name):
         sum_of_total, sum_of_passed = 0, 0
         set_fk = self.get_kpi_fk_by_kpi_name(set_name)
+        mr_set_fk = self.common.get_kpi_fk_by_kpi_type('{} MR'.format(self.get_kpi_type_by_pk(set_fk)))
         for i in xrange(len(self.template_sheet[set_name])):
             params = self.template_sheet[set_name].iloc[i]
             if set_name == Const.BRAND_FACING_TARGET:
@@ -443,7 +447,7 @@ class INBEVCISANDToolBox:
 
                 if self.visit_date < start_date or (end_date != '' and self.visit_date > end_date):
                     continue
-                result_dict = self.calculate_brand_facing(params)
+                result_dict = self.calculate_brand_facing(params, mr_set_fk)
             elif set_name == Const.BRAND_COMPARISON:
                 result_dict = self.calculate_brand_comparison(params)
             sum_of_passed += result_dict['score'] / 100
@@ -453,13 +457,20 @@ class INBEVCISANDToolBox:
                 numerator_result=result_dict['numerator_result'], denominator_result=result_dict['denominator_result'],
                 numerator_id=result_dict['numerator_id'], denominator_id=0,
                 target=result_dict["denominator_result_after_actions"],
-                denominator_result_after_actions=result_dict["denominator_result_after_actions"])
+                denominator_result_after_actions=result_dict["denominator_result_after_actions"],
+                identifier_parent=result_dict.get("identifier_parent"),
+                should_enter=result_dict.get("should_enter") if result_dict.get("should_enter") is not None else False)
         if sum_of_total == 0:
             return 0
         percentage = round(sum_of_passed / float(sum_of_total), 4) * 100
         set_score = (percentage >= 100) * 100
         self.common.write_to_db_result(fk=set_fk, result=percentage, score=set_score, numerator_id=0,
                                        numerator_result=sum_of_passed, denominator_result=sum_of_total)
+        if mr_set_fk is not None:
+            self.common.write_to_db_result(fk=mr_set_fk, result=percentage, score=set_score, numerator_id=self.own_manuf_fk,
+                                           denominator_id=self.store_id, numerator_result=sum_of_passed,
+                                           denominator_result=sum_of_total, identifier_result={"kpi_fk": mr_set_fk},
+                                           should_enter=True)
 
     def calculate_brand_comparison(self, params):
         """
@@ -483,7 +494,7 @@ class INBEVCISANDToolBox:
                        "numerator_id": inbev_brand_fk, "denominator_result_after_actions": comp_brand_fk}
         return result_dict
 
-    def calculate_brand_facing(self, params):
+    def calculate_brand_facing(self, params, mr_set_fk):
         """
         getting a list of brands and a target for each brand, and:
         for each line, write if it passed the target.
@@ -500,7 +511,9 @@ class INBEVCISANDToolBox:
         result = round(facings / float(target), 4) * 100
         result_dict = {"fk": atomic_fk, "result": result, "score": atomic_score, "numerator_result": facings,
                        "denominator_result": target, "numerator_id": brand_fk,
-                       "denominator_result_after_actions": target}
+                       "denominator_result_after_actions": target,
+                       "identifier_parent": {"kpi_fk": mr_set_fk},
+                       "should_enter": True}
         return result_dict
 
     def get_skus_and_brand_fk(self, name, params):
@@ -629,11 +642,41 @@ class INBEVCISANDToolBox:
                 break
         return is_eye_level
 
+    def get_identifier_parent_assortment_lvl2(self, row):
+        kpi_lvl2_name = self.get_kpi_type_by_pk(row['kpi_fk_lvl2'])
+        kpi_fk = self.common.get_kpi_fk_by_kpi_type('{} MR'.format(kpi_lvl2_name)) if np.isnan(row['kpi_fk_lvl1']) or row['kpi_fk_lvl1'] is None \
+                                                                                        else row['kpi_fk_lvl2']
+        identifier_parent = {'kpi_fk': kpi_fk} if np.isnan(row['kpi_fk_lvl1']) or row['kpi_fk_lvl1'] is None \
+            else {'kpi_fk': kpi_fk, 'ass_group':row['assortment_group_fk']}
+        return identifier_parent
+
+    def get_identifier_parent_assortment_lvl1(self, row):
+        kpi_lvl1_name = self.get_kpi_type_by_pk(row['kpi_fk_lvl1']) if not (np.isnan(row['kpi_fk_lvl1']) or row['kpi_fk_lvl1'] is None) else None
+        kpi_fk = self.common.get_kpi_fk_by_kpi_type('{} MR'.format(kpi_lvl1_name)) if kpi_lvl1_name is not None else None
+        identifier_parent = {'kpi_fk': kpi_fk} if kpi_fk is not None else None
+        return identifier_parent
+
+    def get_mobile_report_assortment_lvl2_kpi_fk(self, row):
+        if np.isnan(row['kpi_fk_lvl1']) or row['kpi_fk_lvl1'] is None:
+            mr_kpi_fk = self.common.get_kpi_fk_by_kpi_type('{} MR'.format(self.get_kpi_type_by_pk(row['kpi_fk_lvl2'])))
+        else:
+            mr_kpi_fk = row['kpi_fk_lvl2']
+        return mr_kpi_fk
+
+    def get_numerator_or_denominator_mobile_report_kpi_lvl2(self, row, field):
+        if np.isnan(row['kpi_fk_lvl1']) or row['kpi_fk_lvl1'] is None:
+            entity_fk = self.own_manuf_fk if field == 'numerator' else self.store_id
+        else:
+            entity_fk = row['assortment_group_fk'] if field == 'numerator' else row['assortment_super_group_fk']
+        return entity_fk
+
     def main_assortment_calculation(self):
         """
         This function calculates the KPI results.
         """
         lvl3_result = self.assortment.calculate_lvl3_assortment()
+        lvl3_result['identifier_parent_lvl2'] = lvl3_result.apply(self.get_identifier_parent_assortment_lvl2, axis=1)
+
         if lvl3_result.empty:
             return
         eye_level_sku_fk = self.get_kpi_fk_by_kpi_name(Const.EYE_LEVEL_SKU)
@@ -654,11 +697,21 @@ class INBEVCISANDToolBox:
             self.common.write_to_db_result(fk=result.kpi_fk_lvl3, result=score, score=score,
                                            numerator_id=result.product_fk, denominator_result=1,
                                            numerator_result=numerator_res,
-                                           denominator_id=result.assortment_group_fk)
+                                           denominator_id=result.assortment_group_fk,
+                                           identifier_parent=result.identifier_parent_lvl2, should_enter=True)
+
         must_have_results = lvl3_result[lvl3_result['kpi_fk_lvl3'] == must_have_fk]
         self.calculate_oos(must_have_results)
 
         lvl2_result = self.assortment.calculate_lvl2_assortment(lvl3_result)
+        lvl2_result['identifier_parent_lvl2'] = lvl2_result.apply(self.get_identifier_parent_assortment_lvl2, axis=1)
+        lvl2_result['mr_lvl2_parent_fk'] = lvl2_result.apply(self.get_mobile_report_assortment_lvl2_kpi_fk, axis=1)
+        lvl2_result['mr_numerator_id'] = lvl2_result.apply(self.get_numerator_or_denominator_mobile_report_kpi_lvl2,
+                                                           args=('numerator',), axis=1)
+        lvl2_result['mr_denominator_id'] = lvl2_result.apply(self.get_numerator_or_denominator_mobile_report_kpi_lvl2,
+                                                             args=('denominator',), axis=1)
+        lvl2_result['identifier_parent_lvl1'] = lvl2_result.apply(self.get_identifier_parent_assortment_lvl1, axis=1)
+
         for result in lvl2_result.itertuples():
             super_group_fk = result.assortment_super_group_fk
             denominator_after_action = None
@@ -682,16 +735,42 @@ class INBEVCISANDToolBox:
                         result.total)) * 100, 2)
             res = round(np.divide(float(numerator_res), float(denominator_res)) * 100, 2)
             score = 100 * (res >= denominator_after_action) if denominator_after_action else 100 * (res >= 100)
-            self.common.write_to_db_result(fk=result.kpi_fk_lvl2, result=res, score=score,
-                                           numerator_id=result.assortment_group_fk,
-                                           numerator_result=numerator_res,
-                                           denominator_id=super_group_fk, denominator_result=denominator_res,
-                                           target=denominator_after_action,
-                                           denominator_result_after_actions=denominator_after_action)
+            if result.kpi_fk_lvl2 == result.mr_lvl2_parent_fk:
+                self.common.write_to_db_result(fk=result.mr_lvl2_parent_fk, result=res, score=score,
+                                               numerator_id=result.mr_numerator_id,
+                                               numerator_result=numerator_res,
+                                               denominator_id=result.mr_denominator_id,
+                                               denominator_result=denominator_res,
+                                               target=denominator_after_action,
+                                               denominator_result_after_actions=denominator_after_action,
+                                               identifier_result=result.identifier_parent_lvl2,
+                                               identifier_parent=result.identifier_parent_lvl1,
+                                               should_enter=True)
+            else:
+                self.common.write_to_db_result(fk=result.kpi_fk_lvl2, result=res, score=score,
+                                               numerator_id=result.assortment_group_fk,
+                                               numerator_result=numerator_res,
+                                               denominator_id=super_group_fk, denominator_result=denominator_res,
+                                               target=denominator_after_action,
+                                               denominator_result_after_actions=denominator_after_action)
+                self.common.write_to_db_result(fk=result.mr_lvl2_parent_fk, result=res, score=score,
+                                               numerator_id=result.mr_numerator_id,
+                                               numerator_result=numerator_res,
+                                               denominator_id=result.mr_denominator_id, denominator_result=denominator_res,
+                                               target=denominator_after_action,
+                                               denominator_result_after_actions=denominator_after_action,
+                                               identifier_result=result.identifier_parent_lvl2,
+                                               identifier_parent=result.identifier_parent_lvl1,
+                                               should_enter=True)
+
         if lvl2_result.empty:
             return
         lvl1_result = self.assortment.calculate_lvl1_assortment(lvl2_result)
         lvl1_result = self.update_targets(lvl1_result)
+        lvl1_result['mr_lvl1_parent_fk'] = lvl1_result['kpi_fk_lvl1'].apply(lambda x: \
+                                                        self.common.get_kpi_fk_by_kpi_type('{} MR'.format(self.get_kpi_type_by_pk(x))))
+        # lvl1_result['identifier_parent_lvl1'] = lvl1_result['mr_lvl1_parent_fk'].apply(lambda x: {'kpi_fk': x})
+        lvl1_result['identifier_parent_lvl1'] = lvl1_result.apply(self.get_identifier_parent_assortment_lvl1, axis=1)
         for result in lvl1_result.itertuples():
             denominator_res = result.total
             numerator_res = result.passes
@@ -708,6 +787,22 @@ class INBEVCISANDToolBox:
                                            numerator_id=result.assortment_super_group_fk,
                                            target=denominator_after_action,
                                            denominator_result_after_actions=denominator_after_action)
+            self.common.write_to_db_result(fk=result.mr_lvl1_parent_fk, result=res, score=score,
+                                           numerator_result=numerator_res,
+                                           denominator_result=denominator_res,
+                                           numerator_id=self.own_manuf_fk, denominator_id=self.store_id,
+                                           target=denominator_after_action,
+                                           denominator_result_after_actions=denominator_after_action,
+                                           identifier_result=result.identifier_parent_lvl1,
+                                           should_enter=True)
+
+    def get_kpi_type_by_pk(self, kpi_fk):
+        try:
+            kpi_fk = int(float(kpi_fk))
+            return self.new_kpi_static_data[self.new_kpi_static_data['pk'] == kpi_fk]['type'].values[0]
+        except IndexError:
+            Log.info("Kpi pk: {} is not equal to any kpi in static table".format(kpi_fk))
+            return None
 
     def update_targets(self, lvl1_result):
         """
@@ -730,13 +825,19 @@ class INBEVCISANDToolBox:
         gets a dataframe with all the results of must have, and write all the OOS ones
         :param must_have_results: dataframe
         """
+        oos_mr_kpi_fk = self.common.get_kpi_fk_by_kpi_type(Const.OOS_MR)
+        oos_mr_ident_parent = {'kpi_fk': oos_mr_kpi_fk}
+
         oos_fk = self.get_kpi_fk_by_kpi_name(Const.OOS_KPI)
+        # oos_identifier_parent = {'kpi_fk': oos_fk}
+
         oos_sku_fk = self.get_kpi_fk_by_kpi_name(Const.OOS_SKU_KPI)
         for res in must_have_results.itertuples():
             result = 1 if not res.in_store else 0
             self.common.write_to_db_result(fk=oos_sku_fk, result=result, score=result * 100,
                                            denominator_id=oos_fk, denominator_result=1,
-                                           numerator_id=res.product_fk, numerator_result=result)
+                                           numerator_id=res.product_fk, numerator_result=result,
+                                           identifier_parent=oos_mr_ident_parent, should_enter=True)
         oos_numerator = len(must_have_results[must_have_results['in_store'] == 0])
         denominator = len(must_have_results['in_store'])
         oos_res = 0
@@ -745,6 +846,13 @@ class INBEVCISANDToolBox:
         self.common.write_to_db_result(fk=oos_fk, result=oos_res, score=oos_res,
                                        denominator_result=denominator, numerator_result=oos_numerator,
                                        numerator_id=oos_fk)
+                                       #  identifier_parent=oos_mr_ident_parent,
+                                       # identifier_result=oos_identifier_parent,
+                                       # should_enter=True)
+        self.common.write_to_db_result(fk=oos_mr_kpi_fk, result=oos_res, score=oos_res,
+                                       denominator_result=denominator, numerator_result=oos_numerator,
+                                       numerator_id=self.own_manuf_fk, denominator_id=self.store_id,
+                                       identifier_result=oos_mr_ident_parent, should_enter=True)
 
     def main_sos_calculation(self, identifier_parent):
         """
@@ -844,13 +952,13 @@ class INBEVCISANDToolBox:
                 numerator = filtered_scif[(filtered_scif['manufacturer_fk'] == manufacturer) &
                                           (filtered_scif[denominator_key].str.upper() == denominator_value.upper())][
                     'gross_len_ign_stack'].sum()
-                sos = 0
+                # sos = 0
                 if numerator and denominator:
                     sos = round(np.divide(float(numerator), float(denominator)) * 100, 2)
-                self.common.write_to_db_result(fk=kpi, result=sos, score=sos,
-                                               numerator_result=numerator, numerator_id=manufacturer,
-                                               denominator_id=denominator_id, denominator_result=denominator,
-                                               identifier_parent=identifier_parent, should_enter=True)
+                    self.common.write_to_db_result(fk=kpi, result=sos, score=sos,
+                                                   numerator_result=numerator, numerator_id=manufacturer,
+                                                   denominator_id=denominator_id, denominator_result=denominator,
+                                                   identifier_parent=identifier_parent, should_enter=True)
 
     def validate_groups_exist(self):
         groups_template = self.template_sheet[Const.TOP_BRAND_BLOCK][Const.ATOMIC_NAME].unique().tolist()

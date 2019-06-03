@@ -1031,10 +1031,7 @@ class BATRUToolBox:
         section_data = section_data.loc[section_data['store_attribute_11'].isin([attribute_11, 'ALL'])]
 
         # Filter by valid Sections
-        try:
-            section_data = section_data.loc[section_data['Section'] == str(int(float(section)))]
-        except TypeError:
-            section_data = section_data.loc[section_data['Section'] == int(float(section))]
+        section_data = section_data.loc[section_data['Section'] == int(float(section))]
 
         return section_data
 
@@ -1687,6 +1684,7 @@ class BATRUToolBox:
         set_fk = self.kpi_static_data[self.kpi_static_data['kpi_set_name'] == POSM_AVAILABILITY]['kpi_set_fk'].iloc[0]
         # posm_template = self.get_custom_template(P4_PATH, 'Availability')
         posm_template = self.get_relevant_template_sheet(P4_TEMPLATE, 'Availability')
+        posm_template['Template Group'] = self.encode_column_in_df(posm_template, 'Template Group')
         posm_template['KPI Display Name'] = self.encode_column_in_df(posm_template, 'KPI Display Name')
         posm_template['Group Name'] = self.encode_column_in_df(posm_template, 'Group Name')
         posm_template['Atomic KPI Name'] = self.encode_column_in_df(posm_template, 'Atomic KPI Name')
@@ -1713,7 +1711,7 @@ class BATRUToolBox:
                 equipment_template = posm_template.loc[posm_template['KPI Display Name'] == equipment]
                 scene_type = equipment_template['Template Group'].values[0]
                 scenes = self.scif.loc[(self.scif['additional_attribute_1'] == equipment) &
-                                       (self.scif['template_group'] == scene_type.encode('utf-8'))]['scene_id'].unique()
+                                       (self.scif['template_group'] == scene_type)]['scene_id'].unique()
                 for scene in scenes:
                     equipment_in_store += 1
                     # this will change the display name for the db according to instances:

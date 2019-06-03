@@ -37,6 +37,9 @@ class INBEVCISANDConst(object):
     SOS_VS_TARGET_SECONDARY_CORE = 'SOS vs Target Secondary Shelf Core Products'
     SOS_VS_TARGET_SECONDARY_HIGH_END = 'SOS vs Target Secondary Shelf High End Products'
 
+    MUST_HAVE_MR = 'Must have MR'
+    OOS_MR = 'OOS MR'
+
     # columns:
     NUMERATOR = 'numerator'
     DENOMINATOR = 'denominator'

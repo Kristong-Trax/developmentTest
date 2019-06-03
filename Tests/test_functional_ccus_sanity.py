@@ -12,7 +12,13 @@ from Trax.Utils.Testing.Case import MockingTestCase
 from Tests.Data.TestData.test_data_ccus_sanity import ProjectsSanityData
 from Projects.CCUS.Calculations import CCUSCalculations
 from Trax.Apps.Core.Testing.BaseCase import TestFunctionalCase
-
+from Trax.Algo.Calculations.Core.Constants import Keys
+from Trax.DB.Mongo.Connector import MongoConnector
+from Trax.Data.Testing.Resources import BaseSeedData, DATA_TYPE, FILES_RELATIVE_PATH, DATABASE_NAME, COLLECTION_NAME, \
+    DATA
+from Trax.Data.Testing.TestProjects import TestProjectsNames
+from Trax.Utils.Environments.DockerGlobal import PROJECT_NAME
+from bson import ObjectId
 
 __author__ = 'jasmineg'
 
@@ -39,7 +45,7 @@ class TestKEngineOutOfTheBox(TestFunctionalCase):
         self.assertNotEquals(len(kpi_results), 0)
         connector.disconnect_rds()
     
-    @seeder.seed(["ccus_seed"], ProjectsSanityData())
+    @seeder.seed(["mongodb_products_and_brands_seed", "ccus_seed"], ProjectsSanityData())
     def test_ccus_sanity(self):
         project_name = ProjectsSanityData.project_name
         data_provider = KEngineDataProvider(project_name)
