@@ -783,6 +783,7 @@ class PngcnSceneKpis(object):
                                   self.png_manufacturer_fk]['product_size'].sum()  # get P&G products from scene
             if denominator:
                 score = numerator / denominator  # get the percentage of P&G products from all products
+                numerator, denominator = numerator*100, denominator*100
             else:
                 score = 0
             self.common.write_to_db_result(fk=kpi_fk, numerator_id=self.png_manufacturer_fk, numerator_result=numerator,
