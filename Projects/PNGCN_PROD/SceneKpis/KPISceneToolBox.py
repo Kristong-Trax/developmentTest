@@ -131,41 +131,31 @@ class PngcnSceneKpis(object):
         self.parser = Parser
 
     def process_scene(self):
-        try:
-            self.save_nlsos_to_custom_scif()
-        except Exception as e:
-            Log.error('nlsos to custom scif failed for scene: \'{0}\' error: {1}'.format(self.scene_id, str(e)))
-            raise e
-
+        self.save_nlsos_to_custom_scif()
         self.calculate_eye_level_kpi()
-        try:
-            Log.debug(self.log_prefix + ' Retrieving data')
-            self.calculate_display_size()
-            self.calculate_linear_length()
-            self.calculate_presize_linear_length()
-            self.match_display_in_scene = self._get_match_display_in_scene_data()
-            # if there are no display tags there's no need to retrieve the rest of the data.
-            if self.match_display_in_scene.empty:
-                Log.debug(self.log_prefix + ' No display tags')
-                self._delete_previous_data()
-                self.common.commit_results_data(result_entity='scene')
-            else:
-                self.displays = self._get_displays_data()
-                self.match_product_in_scene = self._get_match_product_in_scene_data()
-                self._delete_previous_data()
-                self._handle_promotion_wall_display()
-                self._handle_cube_or_4_sided_display()
-                self._handle_table_display()
-                self._handle_rest_display()
-                self.common.commit_results_data(result_entity='scene')
-                if self.on_ace:
-                    Log.debug(self.log_prefix + ' Committing share of display calculations')
-                    self.project_connector.db.commit()
-                Log.info(self.log_prefix + ' Finished calculation')
-        except Exception as e:
-            Log.error('Share of display calculation for scene: \'{0}\' error: {1}'.format(
-                self.scene_id, str(e)))
-            raise e
+        Log.debug(self.log_prefix + ' Retrieving data')
+        self.calculate_display_size()
+        self.calculate_linear_length()
+        self.calculate_presize_linear_length()
+        self.match_display_in_scene = self._get_match_display_in_scene_data()
+        # if there are no display tags there's no need to retrieve the rest of the data.
+        if self.match_display_in_scene.empty:
+            Log.debug(self.log_prefix + ' No display tags')
+            self._delete_previous_data()
+            self.common.commit_results_data(result_entity='scene')
+        else:
+            self.displays = self._get_displays_data()
+            self.match_product_in_scene = self._get_match_product_in_scene_data()
+            self._delete_previous_data()
+            self._handle_promotion_wall_display()
+            self._handle_cube_or_4_sided_display()
+            self._handle_table_display()
+            self._handle_rest_display()
+            self.common.commit_results_data(result_entity='scene')
+            if self.on_ace:
+                Log.debug(self.log_prefix + ' Committing share of display calculations')
+                self.project_connector.db.commit()
+            Log.info(self.log_prefix + ' Finished calculation')
 
     def calculate_eye_level_kpi(self):
         if self.matches_from_data_provider.empty:
@@ -938,7 +928,7 @@ class PngcnSceneKpis(object):
         # get size and item id
         DF_products_size = self._get_display_size_of_product_in_scene()
 
-        filter_scif = self.scif[[u'scene_id', u'item_id', u'manufacturer_fk', u'visit_date', u'rlv_sos_sc', u'status']]
+        filter_scif = self.scif[[u'scene_id', u'item_id', u'manufacturer_fk', u'rlv_sos_sc', u'status']]
         df_result = pd.merge(filter_scif, DF_products_size, on=['item_id', 'scene_id'], how='left')
         df_result = df_result[df_result['product_size'] > 0]
 
