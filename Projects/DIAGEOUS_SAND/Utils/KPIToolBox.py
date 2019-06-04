@@ -48,10 +48,8 @@ class DIAGEOUSSANDToolBox:
         self.all_products_sku = self.all_products[(self.all_products['product_type'] == 'SKU') &
                                                   (self.all_products['category'] == 'SPIRITS') &
                                                   (self.all_products['is_active'] == 1)]
-        self.kpi_static_data = self.common.kpi_static_data
         self.manufacturer_fk = self.all_products[
             self.all_products['manufacturer_name'] == 'DIAGEO']['manufacturer_fk'].iloc[0]
-        store_type = self.store_info['store_type'].iloc[0]
         store_number_1 = self.store_info['store_number_1'].iloc[0]
         if self.store_info['additional_attribute_6'].iloc[0]:
             self.on_off = Const.ON if self.store_info['additional_attribute_6'].iloc[0] in (
