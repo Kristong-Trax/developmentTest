@@ -28,7 +28,7 @@ class TestDiageomx(TestFunctionalCase):
     def config_file_path(self):
         return os.path.join(os.path.dirname(os.path.realpath(__file__)), 'k-engine-test.config')
 
-    @seeder.seed(["diageomx_seed"], ProjectsSanityData())
+    @seeder.seed(["mongodb_products_and_brands_seed, diageomx_seed"], ProjectsSanityData())
     def test_get_kpi_static_data(self):
         data_provider = KEngineDataProvider(self.project_name)
         data_provider.load_session_data(self.session_uid)
@@ -36,7 +36,7 @@ class TestDiageomx(TestFunctionalCase):
         result = tool_box.get_kpi_static_data()
         self.assertEquals(type(result), pd.DataFrame)
 
-    @seeder.seed(["diageomx_seed"], ProjectsSanityData())
+    @seeder.seed(["mongodb_products_and_brands_seed, diageomx_seed"], ProjectsSanityData())
     def test_get_business_unit(self):
         data_provider = KEngineDataProvider(self.project_name)
         data_provider.load_session_data(self.session_uid)
@@ -44,7 +44,7 @@ class TestDiageomx(TestFunctionalCase):
         result = tool_box.get_business_unit()
         self.assertEquals(type(result), str)
 
-    @seeder.seed(["diageomx_seed"], ProjectsSanityData())
+    @seeder.seed(["mongodb_products_and_brands_seed, diageomx_seed"], ProjectsSanityData())
     def test_get_match_display(self):
         data_provider = KEngineDataProvider(self.project_name)
         data_provider.load_session_data(self.session_uid)
@@ -53,7 +53,7 @@ class TestDiageomx(TestFunctionalCase):
         self.assertIsNotNone(result)
         self.assertEquals(type(result), pd.DataFrame)
 
-    @seeder.seed(["diageomx_seed"], ProjectsSanityData())
+    @seeder.seed(["mongodb_products_and_brands_seed, diageomx_seed"], ProjectsSanityData())
     def test_main_calculation(self):
         data_provider = KEngineDataProvider(self.project_name)
         data_provider.load_session_data(self.session_uid)
@@ -61,7 +61,7 @@ class TestDiageomx(TestFunctionalCase):
         result = tool_box.main_calculation("main_calculation")
         self.assertIsNone(result)
 
-    @seeder.seed(["diageomx_seed"], ProjectsSanityData())
+    @seeder.seed(["mongodb_products_and_brands_seed, diageomx_seed"], ProjectsSanityData())
     def test_get_direction_for_relative_position_input_General(self):
         data_provider = KEngineDataProvider(self.project_name)
         data_provider.load_session_data(self.session_uid)
@@ -71,7 +71,7 @@ class TestDiageomx(TestFunctionalCase):
         result = tool_box._get_direction_for_relative_position(value)
         self.assertEqual(result, expected_result)
 
-    @seeder.seed(["diageomx_seed"], ProjectsSanityData())
+    @seeder.seed(["mongodb_products_and_brands_seed, diageomx_seed"], ProjectsSanityData())
     def test_get_direction_for_relative_position_input_Positive_int(self):
         data_provider = KEngineDataProvider(self.project_name)
         data_provider.load_session_data(self.session_uid)
@@ -81,7 +81,7 @@ class TestDiageomx(TestFunctionalCase):
         result = tool_box._get_direction_for_relative_position(value)
         self.assertEqual(result, expected_result)
 
-    @seeder.seed(["diageomx_seed"], ProjectsSanityData())
+    @seeder.seed(["mongodb_products_and_brands_seed, diageomx_seed"], ProjectsSanityData())
     def test_get_direction_for_relative_position_input_negetive_int(self):
         data_provider = KEngineDataProvider(self.project_name)
         data_provider.load_session_data(self.session_uid)
@@ -91,7 +91,7 @@ class TestDiageomx(TestFunctionalCase):
         result = tool_box._get_direction_for_relative_position(value)
         self.assertEqual(result, expected_result)
 
-    @seeder.seed(["diageomx_seed"], ProjectsSanityData())
+    @seeder.seed(["mongodb_products_and_brands_seed, diageomx_seed"], ProjectsSanityData())
     def test_get_direction_for_relative_position_input_String(self):
         data_provider = KEngineDataProvider(self.project_name)
         data_provider.load_session_data(self.session_uid)
