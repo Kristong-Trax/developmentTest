@@ -234,6 +234,10 @@ class CCMYToolBox:
             CCMYConsts.TEMPLATE_FK].unique().tolist()
 
         df_all_shelfs = self.match_product_in_scene;
+
+        if self.match_product_in_scene.empty:
+            return
+
         df_all_shelfs_products = df_all_shelfs.merge(self.products, how='inner', on=CCMYConsts.PRODUCT_FK)
         list_columns = [CCMYConsts.SCENE_FK, CCMYConsts.BAY_NUMBER, CCMYConsts.SHELF_NUMBER,
                         CCMYConsts.MANUFACTURER_FK, CCMYConsts.PRODUCT_FK]
