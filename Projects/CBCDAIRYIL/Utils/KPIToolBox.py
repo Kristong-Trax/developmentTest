@@ -414,12 +414,18 @@ class CBCDAIRYILToolBox:
         :param general_filters: A dictionary with the relevant KPI filters.
         :return: 100 if at least one scene has a block, 0 otherwise.
         """
-        allowed_products_dict = self.get_allowed_product_by_params(**general_filters)
-        block_result = self.block.calculate_block_together(allowed_products_filters=allowed_products_dict,
-                                                           include_empty=False, result_by_scene=False,
-                                                           minimum_block_ratio=Consts.MIN_BLOCK_RATIO,
-                                                           min_facings_in_block=Consts.MIN_FACINGS_IN_BLOCK)
-        return 100 if block_result else 0
+        products_dict = self.get_allowed_product_by_params(**general_filters)
+        block_result = self.block.network_x_block_together(
+                                population=products_dict,
+                                additional={'minimum_block_ratio': Consts.MIN_BLOCK_RATIO,
+                                            'minimum_facing_for_block': Consts.MIN_FACINGS_IN_BLOCK,
+                                            'allowed_products_filters': {'product_type': ['Empty']},
+                                            'calculate_all_scenes': False,
+                                            'include_stacking': True,
+                                            'check_vertical_horizontal': False})
+
+        result = 100 if not block_result.empty and not block_result[block_result.is_block].empty else 0
+        return result
 
     def get_allowed_product_by_params(self, **filters):
         """
