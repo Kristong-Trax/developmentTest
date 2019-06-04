@@ -3,7 +3,7 @@ import os
 import collections
 
 from Projects.PEPSICOUK.Utils.Fetcher import PEPSICOUK_Queries
-from Trax.Apps.Services.KEngine.KEUnified.Singleton import KEngineSingleton
+from Trax.Algo.Calculations.Core.KPI.UnifiedKpiSingleton import UnifiedKPISingleton
 from Projects.PEPSICOUK.Utils.CommonToolBox import PEPSICOUKCommonToolBox
 from KPIUtils_v2.GlobalDataProvider.PsDataProvider import PsDataProvider
 # from KPIUtils_v2.DB.Common import Common as CommonV1
@@ -17,8 +17,8 @@ import pandas as pd
 from Trax.Utils.Logging.Logger import Log
 import numpy as np
 
-class PepsicoUtil:
-    __metaclass__ = KEngineSingleton
+class PepsicoUtil(UnifiedKPISingleton):
+
 
     LEVEL1 = 1
     LEVEL2 = 2
@@ -81,8 +81,8 @@ class PepsicoUtil:
     HERO_SKU_PLACEMENT_BY_SHELF_NUMBERS = 'Hero SKU Placement by shelf numbers'
 
     def __init__(self, output, data_provider):
+        super(PepsicoUtil, self).__init__(data_provider)
         self.output = output
-        self.data_provider = data_provider
         self.common = Common(self.data_provider)
         # self.common_v1 = CommonV1(self.data_provider)
         self.project_name = self.data_provider.project_name
