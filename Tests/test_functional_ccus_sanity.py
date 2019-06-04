@@ -6,24 +6,22 @@ from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Trax.Data.Testing.SeedNew import Seeder
 from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
 from Trax.Cloud.Services.Connector.Keys import DbUsers
-from Trax.Data.Testing.TestProjects import TestProjectsNames
-from Trax.Utils.Testing.Case import MockingTestCase
-
 from Tests.Data.TestData.test_data_ccus_sanity import ProjectsSanityData
 from Projects.CCUS.Calculations import CCUSCalculations
 from Trax.Apps.Core.Testing.BaseCase import TestFunctionalCase
-from Trax.Algo.Calculations.Core.Constants import Keys
-from Trax.DB.Mongo.Connector import MongoConnector
-from Trax.Data.Testing.Resources import BaseSeedData, DATA_TYPE, FILES_RELATIVE_PATH, DATABASE_NAME, COLLECTION_NAME, \
-    DATA
 from Trax.Data.Testing.TestProjects import TestProjectsNames
-from Trax.Utils.Environments.DockerGlobal import PROJECT_NAME
-from bson import ObjectId
+
+
+from Tests.TestUtils import remove_cache_and_storage
 
 __author__ = 'jasmineg'
 
 
 class TestKEngineOutOfTheBox(TestFunctionalCase):
+
+    def set_up(self):
+        super(TestKEngineOutOfTheBox, self).set_up()
+        remove_cache_and_storage()
 
     @property
     def import_path(self):
