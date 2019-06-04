@@ -33,21 +33,8 @@ class LinearBrandVsBrandIndexKpi(UnifiedCalculationsScript):
             denominator_sos = denom_num_linear/denom_denom_linear if denom_denom_linear else 0
 
             index = numerator_sos / denominator_sos if denominator_sos else 0
-            # self.write_to_db_result(fk=row.kpi_level_2_fk, numerator_id=row.numerator_id,
-            #                                numerator_result=num_num_linear, denominator_id=row.denominator_id,
-            #                                denominator_result=denom_num_linear, result=index, score=index,
-            #                                identifier_parent=row.identifier_parent, should_enter=True)
             self.write_to_db_result(fk=row.kpi_level_2_fk, numerator_id=row.numerator_id,
                                     numerator_result=num_num_linear, denominator_id=row.denominator_id,
                                     denominator_result=denom_num_linear, result=index, score=index)
             self.util.add_kpi_result_to_kpi_results_df([row.kpi_level_2_fk, row.numerator_id, row.denominator_id, index,
                                                    index])
-
-        # parent_kpis_df = index_targets.drop_duplicates(subset=['KPI Parent'])
-        # parent_kpis_df.rename(columns={'identifier_parent': 'identifier_result'}, inplace=True)
-        # for i, row in parent_kpis_df.iterrows():
-        #     self.write_to_db_result(fk=row['KPI Parent'], numerator_id=self.util.own_manuf_fk,
-        #                                    denominator_id=self.util.store_id, score=1,
-        #                                    identifier_result=row.identifier_result, should_enter=True)
-        #     self.util.add_kpi_result_to_kpi_results_df([row['KPI Parent'], self.util.own_manuf_fk, self.util.store_id, None,
-        #                                            1])

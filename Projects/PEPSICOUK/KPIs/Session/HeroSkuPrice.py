@@ -12,9 +12,7 @@ class HeroSkuPriceKpi(UnifiedCalculationsScript):
         pass
 
     def calculate(self):
-        # if not self.util.lvl3_ass_result.empty:
         if not self.dependencies_data[self.dependencies_data['kpi_type'] == self.util.HERO_SKU_AVAILABILITY_SKU].empty:
-            # hero_sku_list = self.util.lvl3_ass_result[self.util.lvl3_ass_result['in_store'] == 1]['product_fk'].values.tolist()
             hero_sku_list = self.util.get_available_hero_sku_list(self.dependencies_data)
             price_kpi_fk = self.util.common.get_kpi_fk_by_kpi_type(self.util.HERO_SKU_PRICE)
             for sku in hero_sku_list:

@@ -65,35 +65,14 @@ class SosVsTargetSubBrandKpi(UnifiedCalculationsScript):
             result = numerator_linear / denominator_linear if denominator_linear != 0 else 0
             score = result / row['Target'] if row['Target'] else 0
             if row['Target']:
-                # self.write_to_db_result(fk=row.kpi_level_2_fk, numerator_id=row.numerator_id,
-                #                         numerator_result=numerator_linear, denominator_id=row.denominator_id,
-                #                         denominator_result=denominator_linear, result=result * 100, score=score,
-                #                         target=row['Target'] * 100, identifier_parent=row.identifier_parent,
-                #                         should_enter=True)
                 self.write_to_db_result(fk=row.kpi_level_2_fk, numerator_id=row.numerator_id,
                                         numerator_result=numerator_linear, denominator_id=row.denominator_id,
                                         denominator_result=denominator_linear, result=result * 100, score=score,
                                         target=row['Target'] * 100)
             else:
-                # self.write_to_db_result(fk=row.kpi_level_2_fk, numerator_id=row.numerator_id,
-                #                                numerator_result=numerator_linear, denominator_id=row.denominator_id,
-                #                                denominator_result=denominator_linear, result=result * 100,
-                #                                identifier_parent=row.identifier_parent, should_enter=True)
                 self.write_to_db_result(fk=row.kpi_level_2_fk, numerator_id=row.numerator_id,
                                         numerator_result=numerator_linear, denominator_id=row.denominator_id,
                                         denominator_result=denominator_linear, result=result * 100)
             self.util.add_kpi_result_to_kpi_results_df(
                 [row.kpi_level_2_fk, row.numerator_id, row.denominator_id, result * 100,
                  score])
-
-        # sos_targets['count'] = 1
-        # parent_kpis_df = sos_targets.groupby(['KPI Parent'], as_index=False).agg({'count': np.sum})
-        # parent_kpis_df['identifier_parent'] = parent_kpis_df['KPI Parent'].apply(lambda x:
-        #                                                                          self.util.common.get_dictionary(
-        #                                                                              kpi_fk=int(float(x))))
-        # for i, row in parent_kpis_df.iterrows():
-        #     self.write_to_db_result(fk=row['KPI Parent'], score=row['count'], should_enter=True,
-        #                                    numerator_id=self.util.own_manuf_fk, denominator_id=self.util.store_id,
-        #                                    identifier_result=row['identifier_parent'])
-        #     self.util.add_kpi_result_to_kpi_results_df([row['KPI Parent'], self.util.own_manuf_fk, self.util.store_id, None,
-        #                                            row['count']])

@@ -15,10 +15,7 @@ class SosVsTargetParentKpi(UnifiedCalculationsScript):
         pass
 
     def calculate(self):
-        # in DB the config parameters should have 'child_kpi' and kpi_type
-        # check what I will get as a dependency (all results or only relevant results?)
         child_kpi_results = self.dependencies_data
-
         if not child_kpi_results.empty:
             score = len(child_kpi_results)
             self.write_to_db_result(score=score, numerator_id=self.util.own_manuf_fk, denominator_id=self.util.store_id)
