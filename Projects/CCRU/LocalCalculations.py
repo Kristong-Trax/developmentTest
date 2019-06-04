@@ -11,7 +11,7 @@ if __name__ == '__main__':
     project_name = 'ccru'
     data_provider = KEngineDataProvider(project_name)
     session_uids = [
-        '065ca3b9-467c-4efb-816e-aebba0446e9a',
+        '84467391-27E7-4A30-A0FB-A7E78020B78F',
 
         # SAND
         # '3a3e96ee-3dfa-47f2-8cdb-6226756f62f8',

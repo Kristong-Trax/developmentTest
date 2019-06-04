@@ -38,6 +38,8 @@ class Const(object):
     SOS_MANUFACT_SUB_CAT_ALL = 'SOS_manufacturer_sub_category_all'
     SOS_VS_TARGET_SECONDARY_CORE = 'SOS vs Target Secondary Shelf Core Products'
     SOS_VS_TARGET_SECONDARY_HIGH_END = 'SOS vs Target Secondary Shelf High End Products'
+    MUST_HAVE_MR = 'Must have MR'
+    OOS_MR = 'OOS MR'
 
     # columns:
 
