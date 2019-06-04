@@ -12,10 +12,9 @@ class HeroAvailabilityKpi(UnifiedCalculationsScript):
         self.util = PepsicoUtil(None, data_provider)
 
     def calculate(self):
-        lvl3_ass_res_df = self.dependencies_data[self.dependencies_data['kpi_type'] \
-                                      == self.util.HERO_SKU_AVAILABILITY_SKU]
+        lvl3_ass_res_df = self.dependencies_data
         distribution_kpi_fk = self.util.common.get_kpi_fk_by_kpi_type(self.util.HERO_SKU_AVAILABILITY)
-        if lvl3_ass_res_df.empty:
+        if not lvl3_ass_res_df.empty:
             total_skus_in_ass = len(lvl3_ass_res_df)
             in_store_skus = len(self.util.get_available_hero_sku_list(self.dependencies_data))
             res = np.divide(float(in_store_skus), float(total_skus_in_ass)) * 100
