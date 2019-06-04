@@ -25,10 +25,6 @@ if __name__ == '__main__':
                 '0D9C3FAE-E62D-4467-B279-2FB8FC32A2DD': ['17886164'],
                 '6e4dc935-ab56-45ef-9408-caaddb963874': ['17888505'],
                 'C544B5DB-B61F-4B02-B03A-6D8748B3B636': ['17874115']}
-
-
-        # '6a08a4d4-118e-4629-ac1a-1e2abadf5767': [14429897],
-        #         'd16a0359-4d0f-4fed-bfe4-0afecca6843e': [14431215, 14431231, 14431239]}
     for session in sessions.keys():
         print "Running for {}".format(str(session))
         for scene in sessions[session]:
