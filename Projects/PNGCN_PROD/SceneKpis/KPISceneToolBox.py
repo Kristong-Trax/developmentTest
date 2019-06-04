@@ -914,17 +914,41 @@ class PngcnSceneKpis(object):
         return self.all_products[self.all_products['manufacturer_name'].str.encode("utf8") ==
                                  PNG_MANUFACTURER]['manufacturer_fk'].values[0]
 
+    def _get_display_size_of_product_in_scene(self):
+        """
+        get product size and item id for DISPLAY_SIZE_PER_SCENE KPI
+        :return:
+        """
+        local_con = self.project_connector.db
+        query = '''	select ds.scene_fk as scene_id, dif.item_id, dif.product_size, dif.facings  
+                    from 
+                            report.display_item_facts dif
+                    join
+                            probedata.display_surface ds 
+                            on ds.pk=dif.display_surface_fk and ds.scene_fk=\'{0}\''''.format(self.scene_id)
+        df = pd.read_sql_query(query, local_con)
+        return df
+
     def calculate_display_size(self):
         """
         calculate P&G manufacture percentage
         """
         kpi_fk = self.common.get_kpi_fk_by_kpi_name(DISPLAY_SIZE_PER_SCENE)
+
+        # get size and item id
+        DF_products_size = self._get_display_size_of_product_in_scene()
+
+        filter_scif = self.scif[[u'scene_id', u'item_id', u'manufacturer_fk', u'visit_date', u'rlv_sos_sc', u'status']]
+        df_result = pd.merge(filter_scif, DF_products_size, on=['item_id', 'scene_id'], how='left')
+        df_result = df_result[df_result['product_size'] > 0]
+
         if kpi_fk:
-            denominator = self.scif.facings.sum()  # get all products from scene
-            numerator = self.scif[self.scif['manufacturer_fk'] ==
-                                  self.png_manufacturer_fk]['facings'].sum()  # get P&G products from scene
+            denominator = df_result.product_size.sum()  # get all products from scene
+            numerator = df_result[df_result['manufacturer_fk'] ==
+                                  self.png_manufacturer_fk]['product_size'].sum()  # get P&G products from scene
             if denominator:
                 score = numerator / denominator  # get the percentage of P&G products from all products
+                numerator, denominator = numerator*1000, denominator*1000
             else:
                 score = 0
             self.common.write_to_db_result(fk=kpi_fk, numerator_id=self.png_manufacturer_fk, numerator_result=numerator,
