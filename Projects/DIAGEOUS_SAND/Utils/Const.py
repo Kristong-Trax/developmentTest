@@ -97,3 +97,19 @@ class Const(object):
     NO_DISPLAY_ALLOWED_QUESTION = "Confirm that there are no displays allowed in this outlet"
     NO_MENU_ALLOWED_QUESTION = "Confirm that there are no menus allowed in this outlet"
     SURVEY_ANSWER = "Yes"
+
+    # operation types:
+    DISPLAY_TARGET_OP, SHELF_FACINGS_OP = "display_target", "shelf_facings"
+    SHELF_PLACEMENT_OP, MSRP_OP = "shelf_placement", "MSRP"
+    OPERATION_TYPES = [DISPLAY_TARGET_OP, SHELF_PLACEMENT_OP, MSRP_OP, SHELF_FACINGS_OP]
+    # columns in external targets:
+    EX_PRODUCT_FK, EX_STATE_FK, EX_OPERATION_TYPE,  = "product_fk", "state_fk", "operation_type"
+    EX_SCENE_TYPE, EX_BENCHMARK_VALUE, EX_COMPETITOR_FK = "scene_type", "BENCHMARK Value", "competitor_product_fk"
+    EX_MIN_FACINGS, EX_RELATIVE_MAX, EX_RELATIVE_MIN = "minimum facings", "relative_target_max", "relative_target_min"
+    EX_TARGET_MAX, EX_TARGET_MIN, EX_MINIMUM_SHELF = "target_max", "target_min", "MINIMUM SHELF LOCATION"
+    SHELF_FACINGS_COLUMNS = [EX_PRODUCT_FK, EX_COMPETITOR_FK, EX_BENCHMARK_VALUE]
+    SHELF_PLACEMENT_COLUMNS = [EX_PRODUCT_FK, EX_MINIMUM_SHELF]
+    MSRP_COLUMNS = [EX_PRODUCT_FK, EX_COMPETITOR_FK, EX_RELATIVE_MIN, EX_RELATIVE_MAX, EX_TARGET_MAX, EX_TARGET_MIN]
+    DISPLAY_TARGET_COLUMNS = [EX_SCENE_TYPE, EX_MIN_FACINGS]
+
+    ALL = "ALL"
