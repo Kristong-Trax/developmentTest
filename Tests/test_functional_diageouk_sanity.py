@@ -43,7 +43,7 @@ class TestKEngineOutOfTheBox(TestFunctionalCase):
         connector = PSProjectConnector(TestProjectsNames().TEST_PROJECT_1, DbUsers.Docker)
         cursor = connector.db.cursor(MySQLdb.cursors.DictCursor)
         cursor.execute('''
-        SELECT * FROM report.kpi_results
+        SELECT * FROM report.kpi_level_2_results
         ''')
         kpi_results = cursor.fetchall()
         self.assertNotEquals(len(kpi_results), 0)

@@ -15,6 +15,10 @@ from KPIUtils.GlobalProjects.DIAGEO.KPIGenerator import DIAGEOGenerator
 from KPIUtils.GlobalProjects.DIAGEO.Utils.ParseTemplates import parse_template
 from KPIUtils.DB.Common import Common
 from KPIUtils_v2.DB.CommonV2 import Common as CommonV2
+from OutOfTheBox.Calculations.ManufacturerSOS import ManufacturerFacingsSOSInWholeStore, \
+    ManufacturerFacingsSOSPerSubCategoryInStore
+from OutOfTheBox.Calculations.SubCategorySOS import SubCategoryFacingsSOSPerCategory
+
 
 __author__ = 'Nimrod'
 
@@ -98,10 +102,16 @@ class DIAGEOUK_SANDToolBox:
         This function calculates the KPI results.
         """
         log_runtime('Updating templates')(self.tools.update_templates)()
+        # SOS Out Of The Box kpis
+        self.activate_ootb_kpis()
 
         # Global assortment kpis
         assortment_res_dict = self.diageo_generator.diageo_global_assortment_function_v2()
         self.commonV2.save_json_to_new_tables(assortment_res_dict)
+
+        # Global assortment kpis - v3 for NEW MOBILE REPORTS use
+        assortment_res_dict_v3 = self.diageo_generator.diageo_global_assortment_function_v3()
+        self.commonV2.save_json_to_new_tables(assortment_res_dict_v3)
 
         for set_name in set_names:
             set_score = 0
