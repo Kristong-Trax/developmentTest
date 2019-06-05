@@ -929,7 +929,7 @@ class PngcnSceneKpis(object):
         DF_products_size = self._get_display_size_of_product_in_scene()
 
         if self.scif.empty:
-            return
+            return pd.DataFrame()
 
         filter_scif = self.scif[[u'scene_id', u'item_id', u'manufacturer_fk', u'rlv_sos_sc', u'status']]
         df_result = pd.merge(filter_scif, DF_products_size, on=['item_id', 'scene_id'], how='left')
@@ -959,7 +959,7 @@ class PngcnSceneKpis(object):
         a, b = self.matches_from_data_provider.copy(), self.scif.copy()
 
         if a.empty or b.empty:
-            return
+            return pd.DataFrame()
 
         # merge wite scif to add manufacture
         matches_filtered = pd.merge(a, b, how='left',
@@ -1010,9 +1010,10 @@ class PngcnSceneKpis(object):
         if kpi_fk is None:
             Log.warning("There is no matching Kpi fk for kpi name: " + kpi_name)
             return
-
-        # get the filtered df,
         matches_filtered = self.get_filterd_matches()
+
+        if matches_filtered.empty:
+            return
 
         # get the width of P&G products in scene
         numerator = matches_filtered[matches_filtered['manufacturer_fk'] ==
@@ -1058,3 +1059,5 @@ class PngcnSceneKpis(object):
 #     data_provider = ACEDataProvider('integ3')
 #     data_provider.load_session_data(session)
 #     calculate(conn, session, data_provider)
+
+        # get the filtered df,
