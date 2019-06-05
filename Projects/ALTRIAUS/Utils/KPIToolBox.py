@@ -18,6 +18,7 @@ from Trax.Data.Projects.ProjectConnector import AwsProjectConnector
 from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
 from Projects.ALTRIAUS.Utils.ParseTemplates import parse_template
 import datetime
+from Projects.ALTRIAUS.Utils.AltriaDataProvider import AltriaDataProvider
 
 # from KPIUtils_v2.Calculations.CalculationsUtils import GENERALToolBoxCalculations
 
@@ -89,6 +90,7 @@ class ALTRIAUSToolBox:
         self.mpis = self.match_product_in_scene.merge(self.products, on='product_fk', suffixes=['', '_p']) \
                     .merge(self.scene_info, on='scene_fk', suffixes=['', '_s']) \
                       .merge(self.template_info, on='template_fk', suffixes=['', '_t'])
+        self.adp = AltriaDataProvider(self.data_provider)
 
     def main_calculation(self, *args, **kwargs):
         """
