@@ -46,19 +46,19 @@ class Test_COOLERSCREENSUS(MockingTestCase):
         self.data_provider_mock.__getitem__.side_effect = get_item
 
     def test_same_prev_products(self):
-        empty_matches = (pd.DataFrame(columns=['product_fk', 'bay_number', 'shelf_number', 'facing_sequence_number', 'creation_time', 'prev_product'],
-                                      data=[[1, 1, 1, 1, '2019-01-01', 1578], [1, 1, 2, 4, '2019-01-01', 1578]]))
+        empty_matches = (pd.DataFrame(columns=['product_fk', 'bay_number', 'shelf_number', 'facing_sequence_number', 'creation_time', 'prev_product', 'shelf_number_from_bottom'],
+                                      data=[[1, 1, 1, 1, '2019-01-01', 1578, 1], [1, 1, 2, 4, '2019-01-01', 1578, 2]]))
         COOLERSCREENSUSKGenerator(self.data_provider_mock, self.output, self.common).find_prev_products_and_write_to_db(empty_matches)
         self.assertTrue(len(self.kpi_results) == 2)
 
     def test_different_prev_products(self):
-        empty_matches = (pd.DataFrame(columns=['product_fk', 'bay_number', 'shelf_number', 'facing_sequence_number', 'creation_time', 'prev_product'],
-                                      data=[[1, 1, 1, 1, '2019-01-01', 1578], [1, 1, 2, 4, '2019-01-01', 1579]]))
+        empty_matches = (pd.DataFrame(columns=['product_fk', 'bay_number', 'shelf_number', 'facing_sequence_number', 'creation_time', 'prev_product', 'shelf_number_from_bottom'],
+                                      data=[[1, 1, 1, 1, '2019-01-01', 1578, 1], [1, 1, 2, 4, '2019-01-01', 1579, 2]]))
         COOLERSCREENSUSKGenerator(self.data_provider_mock, self.output, self.common).find_prev_products_and_write_to_db(empty_matches)
         self.assertTrue(len(self.kpi_results) == 2)
 
     def test_none_prev_products(self):
-        empty_matches = (pd.DataFrame(columns=['product_fk', 'bay_number', 'shelf_number', 'facing_sequence_number', 'creation_time', 'prev_product'],
-                                      data=[[1, 1, 1, 1, '2019-01-01', None], [1, 1, 2, 4, '2019-01-01', None]]))
+        empty_matches = (pd.DataFrame(columns=['product_fk', 'bay_number', 'shelf_number', 'facing_sequence_number', 'creation_time', 'prev_product', 'shelf_number_from_bottom'],
+                                      data=[[1, 1, 1, 1, '2019-01-01', None, 1], [1, 1, 2, 4, '2019-01-01', None, 2]]))
         COOLERSCREENSUSKGenerator(self.data_provider_mock, self.output, self.common).find_prev_products_and_write_to_db(empty_matches)
         self.assertTrue(len(self.kpi_results) == 0)
