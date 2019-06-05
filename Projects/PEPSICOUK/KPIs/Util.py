@@ -115,11 +115,9 @@ class PepsicoUtil(UnifiedKPISingleton):
 
         self.scene_bay_shelf_product = self.commontools.scene_bay_shelf_product
         self.ps_data = PsDataProvider(self.data_provider, self.output)
-        # self.full_store_info = self.get_store_data_by_store_id()
         self.full_store_info = self.commontools.full_store_info.copy()
         self.external_targets = self.commontools.external_targets
         self.assortment = Assortment(self.commontools.data_provider, self.output)
-        # self.lvl3_ass_result = self.assortment.calculate_lvl3_assortment()
         self.lvl3_ass_result = self.get_lvl3_relevant_assortment_result()
         self.own_manuf_fk = self.all_products[self.all_products['manufacturer_name'] == self.PEPSICO]['manufacturer_fk'].values[0]
 
@@ -136,7 +134,7 @@ class PepsicoUtil(UnifiedKPISingleton):
         return probe_group
 
     @staticmethod
-    def get_full_bay_and_positional_filters(parameters): # get a function from ccbza
+    def get_full_bay_and_positional_filters(parameters):
         filters = {parameters['Parameter 1']: parameters['Value 1']}
         if parameters['Parameter 2']:
             filters.update({parameters['Parameter 2']: parameters['Value 2']})
@@ -144,16 +142,16 @@ class PepsicoUtil(UnifiedKPISingleton):
             filters.update({parameters['Parameter 3']: parameters['Value 3']})
         return filters
 
-    @staticmethod
-    def get_stack_data(row):
-        is_stack = False
-        sequences_list = row['all_sequences'][0:-1].split(',')
-        count_sequences = collections.Counter(sequences_list)
-        repeating_items = [c > 1 for c in count_sequences.values()]
-        if repeating_items:
-            if any(repeating_items):
-                is_stack = True
-        return is_stack
+    # @staticmethod
+    # def get_stack_data(row):
+    #     is_stack = False
+    #     sequences_list = row['all_sequences'][0:-1].split(',')
+    #     count_sequences = collections.Counter(sequences_list)
+    #     repeating_items = [c > 1 for c in count_sequences.values()]
+    #     if repeating_items:
+    #         if any(repeating_items):
+    #             is_stack = True
+    #     return is_stack
 
     @staticmethod
     def split_and_strip(value):
