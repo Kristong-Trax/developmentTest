@@ -40,7 +40,7 @@ if __name__ == '__main__':
         # 'd4391ffb-78a2-4f70-be3c-a0309f47b1ea',
         # 'b3970bc2-de98-4dc5-9289-75cf9255e8d0',
         # '63a38dae-84da-4214-95b3-6cdd33c27869'
-        '0a138058-3b88-4543-8501-d19f83c1b671'
+        '8736f2a2-5567-4981-88de-921f129fd5df'
     ]
 
     # sessions = pd.read_csv('/home/Ilan/Documents/projects/marus/0612_batch_300.csv')['session_uid'].tolist()[:25]

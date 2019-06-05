@@ -15,6 +15,8 @@ from Projects.RINIELSENUS.Utils.Writer import KpiResultsWriter as KpiResultsWrit
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Cloud.Services.Connector.Keys import DbUsers
 from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
+from KPIUtils_v2.GlobalDataProvider.PsDataProvider import PsDataProvider
+from Projects.RINIELSENUS.Utils.Fake_Common import NotCommon as Common
 from Trax.Utils.Logging.Logger import Log
 
 __author__ = 'nethanel'
@@ -23,6 +25,9 @@ __author__ = 'nethanel'
 class MarsUsDogMainMealWet(object):
     def __init__(self, data_provider, output):
         self._data_provider = data_provider
+        self.common = Common(self._data_provider)
+        self.psdataprovider = PsDataProvider(self._data_provider)
+        self.mpip_sr = self.psdataprovider.get_match_product_in_probe_state_reporting()
         self.project_name = self._data_provider.project_name
         self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         self._output = output
@@ -80,12 +85,12 @@ class MarsUsDogMainMealWet(object):
         """
         This function calculates the KPI results.
         """
-        if not self.is_relevant_retailer_channel():
-            Log.warning('retailer: {} and channel: {} are are not relevant'.format(self._get_retailer_name,
-                                                                                   self._get_store_channel))
-            self._writer.commit_results_data()
-            return
-        
+        # if not self.is_relevant_retailer_channel():
+        #     Log.warning('retailer: {} and channel: {} are are not relevant'.format(self._get_retailer_name,
+        #                                                                            self._get_store_channel))
+        #     self._writer.commit_results_data()
+        #     return
+        #
         # if self._is_pet_food_category_excluded():
         #     Log.warning('pet food category does not exists or it was excluded by decision unit')
         #     self._writer.commit_results_data()
@@ -108,7 +113,7 @@ class MarsUsDogMainMealWet(object):
                 template_data = self._template.parse_template(set_name, 0)
                 hierarchy = Definition(template_data, self._get_store_channel, self._get_retailer_name,self._get_store_type).get_atomic_hierarchy_and_filters(set_name)
                 preferred_range = template_data[KPIConsts.PREFERRED_RANGE_SHEET]
-                Results(self._tools, self._data_provider, self._writer,
+                Results(self._tools, self._data_provider, self.mpip_sr, self.common, self._writer,
                         preferred_range[preferred_range['Set name'] == set_name]).calculate(hierarchy)
 
         # template BDB
@@ -128,11 +133,12 @@ class MarsUsDogMainMealWet(object):
                 template_data = self._template.parse_template(set_name, 1)
                 hierarchy = Definition(template_data, self._get_store_channel, self._get_retailer_name,self._get_store_type).get_atomic_hierarchy_and_filters(set_name)
                 preferred_range = template_data[KPIConsts.PREFERRED_RANGE_SHEET]
-                Results(self._tools, self._data_provider, self._writer,
+                Results(self._tools, self._data_provider, self.mpip_sr, self.common, self._writer,
                         preferred_range[preferred_range['Set name'] == set_name]).calculate(hierarchy)
 
         # self._data_provider.trace_container.to_csv('/home/Israel/Desktop/trace_block.csv')
         self._writer.commit_results_data()
+        self.common.commit_results_data()
 
     @staticmethod
     def _get_set_names():
