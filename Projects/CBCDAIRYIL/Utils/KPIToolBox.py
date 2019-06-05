@@ -371,28 +371,35 @@ class CBCDAIRYILToolBox:
         :return: E.g: (10, 20, 50) or (8, 10, 100) --> score >= 75 turns to 100.
         """
         merged_df = self.merge_and_filter_scif_and_matches_for_eye_level(**general_filters[Consts.KPI_FILTERS])
-        total_number_of_facings = len(merged_df)
-        merged_df = self.filter_df_by_shelves(merged_df, Consts.EYE_LEVEL_PER_SHELF)
-        eye_level_facings = len(merged_df)
+        relevant_scenes = merged_df['scene_id'].unique().tolist()
+        total_number_of_facings = eye_level_facings = 0
+        for scene in relevant_scenes:
+            scene_merged_df = merged_df[merged_df['scene_id'] == scene]
+            scene_matches = self.match_product_in_scene[self.match_product_in_scene['scene_fk'] == scene]
+            total_number_of_facings += len(scene_merged_df)
+            scene_merged_df = self.filter_df_by_shelves(scene_merged_df, scene_matches, Consts.EYE_LEVEL_PER_SHELF)
+            eye_level_facings += len(scene_merged_df)
         total_score = eye_level_facings / float(total_number_of_facings) if total_number_of_facings else 0
-        total_score = 100 if total_score >= 0.75 else total_score
+        total_score = 100 if total_score >= 0.75 else total_score * 100
         return eye_level_facings, total_number_of_facings, total_score
 
     @staticmethod
-    def filter_df_by_shelves(df, eye_level_definition):
+    def filter_df_by_shelves(df, scene_matches, eye_level_definition):
         """
         This function filters the df according to the eye-level definition
         :param df: data frame to filter
+        :param scene_matches: match_product_in_scene for particular scene
         :param eye_level_definition: definition for eye level shelves
         :return: filtered data frame
         """
-        number_of_shelves = df.shelf_number_from_bottom.max()
+        # number_of_shelves = df.shelf_number_from_bottom.max()
+        number_of_shelves = max(scene_matches.shelf_number_from_bottom.max(), scene_matches.shelf_number.max())
         top, bottom = 0, 0
         for json_def in eye_level_definition:
             if json_def[Consts.MIN] <= number_of_shelves <= json_def[Consts.MAX]:
                 top = json_def[Consts.TOP]
                 bottom = json_def[Consts.BOTTOM]
-        return df[(df.shelf_number_from_bottom <= number_of_shelves - top) & (df.shelf_number_from_bottom > bottom)]
+        return df[(df.shelf_number > top) & (df.shelf_number_from_bottom > bottom)]
 
     def calculate_availability_from_bottom(self, **general_filters):
         """
