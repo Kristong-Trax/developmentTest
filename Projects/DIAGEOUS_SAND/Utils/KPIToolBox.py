@@ -38,9 +38,11 @@ class ToolBox:
         self.all_products_sku = self.all_products[(self.all_products['product_type'] == 'SKU') &
                                                   (self.all_products['category'] == 'SPIRITS') &
                                                   (self.all_products['is_active'] == 1)]
-        self.manufacturer_fk = int(self.data_provider[Data.OWN_MANUFACTURER]['param_value'].iloc[0])
-        # self.manufacturer_fk = self.all_products[
-        #     self.all_products['manufacturer_name'] == 'DIAGEO']['manufacturer_fk'].iloc[0]
+        try:
+            self.manufacturer_fk = int(self.data_provider[Data.OWN_MANUFACTURER]['param_value'].iloc[0])
+        except Exception as e:
+            self.manufacturer_fk = self.all_products[
+                self.all_products['manufacturer_name'] == 'DIAGEO']['manufacturer_fk'].iloc[0]
         store_number_1 = self.store_info['store_number_1'].iloc[0]
         if self.store_info['additional_attribute_6'].iloc[0]:
             self.on_off = Const.ON if self.store_info['additional_attribute_6'].iloc[0] in (
@@ -66,8 +68,9 @@ class ToolBox:
             scenes = self.scene_info['scene_fk'].unique().tolist()
             self.scenes_with_shelves = {}
             for scene in scenes:
-                shelf = self.match_product_in_scene[self.match_product_in_scene['scene_fk'] == scene][
-                    'shelf_number_from_bottom'].max()
+                shelves = self.match_product_in_scene[self.match_product_in_scene['scene_fk'] == scene][[
+                    'shelf_number_from_bottom', 'shelf_number']].max()
+                shelf = max(shelves[0], shelves[1])
                 self.scenes_with_shelves[scene] = shelf
             self.converted_groups = self.convert_groups_from_template()
             self.no_display_allowed = self.survey.check_survey_answer(survey_text=Const.NO_DISPLAY_ALLOWED_QUESTION,
