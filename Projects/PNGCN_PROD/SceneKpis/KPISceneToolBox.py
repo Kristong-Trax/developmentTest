@@ -1010,9 +1010,10 @@ class PngcnSceneKpis(object):
         if kpi_fk is None:
             Log.warning("There is no matching Kpi fk for kpi name: " + kpi_name)
             return
-
-        # get the filtered df,
         matches_filtered = self.get_filterd_matches()
+
+        if matches_filtered.empty:
+            return
 
         # get the width of P&G products in scene
         numerator = matches_filtered[matches_filtered['manufacturer_fk'] ==
@@ -1058,3 +1059,5 @@ class PngcnSceneKpis(object):
 #     data_provider = ACEDataProvider('integ3')
 #     data_provider.load_session_data(session)
 #     calculate(conn, session, data_provider)
+
+        # get the filtered df,
