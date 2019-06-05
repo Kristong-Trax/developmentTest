@@ -163,33 +163,42 @@ class TestCBCDAIRYIL(MockingTestCase):
         df_3_shelves = {Consts.SCENE_FK: [1, 1, 1, 1, 1, 1, 1, 1],
                         Consts.SHELF_NUM_FROM_BOTTOM: [1, 1, 2, 2, 2, 3, 3, 3],
                         Consts.SHELF_NUM: [3, 3, 2, 2, 2, 1, 1, 1]}
-        merged_df = {Consts.SCENE_FK: [1, 1, 1, 1, 1, 1],
-                     Consts.SHELF_NUM_FROM_BOTTOM: [1, 2, 2, 2, 3, 3],
-                     Consts.SHELF_NUM: [3, 2, 2, 2, 1, 1]}
-        #
-        # df_4_shelves = {Consts.SCENE_FK: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-        #                 Consts.SHELF_NUM_FROM_BOTTOM: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 4],
-        #                 Consts.SHELF_NUM: [4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 1]}
-        # df_5_shelves = {Consts.SCENE_FK: [1, 2, 3, 4, 5],
-        #                 Consts.SHELF_NUM_FROM_BOTTOM: [5, 4, 3, 2, 1]}
-        # df_6_shelves = {Consts.SCENE_FK: [1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6],
-        #                 Consts.SHELF_NUM_FROM_BOTTOM: [6, 5, 4, 4, 3, 3, 3, 2, 2, 3, 2, 1]}
-        # df_7_shelves = {Consts.SCENE_FK: [1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6],
-        #                 Consts.SHELF_NUM_FROM_BOTTOM: [7, 6, 6, 7, 3, 3, 4, 4, 5, 5, 1, 2]}
-        # df_15_shelves = {Consts.SCENE_FK: [1, 1, 1, 2, 2, 2, 3, 3, 3, 4, 4, 4, 5, 5, 5, 6, 6, 6, 7, 7, 7],
-        #                  Consts.SHELF_NUM_FROM_BOTTOM: [15, 14, 14, 12, 13, 14, 13, 13, 14, 5, 3, 2, 5, 5, 5, 1, 2, 2,
-        #                                                 1, 1, 2]}
-        # df_2_shelves = {Consts.SCENE_FK: [1, 1, 2, 2],
-        #                 Consts.SHELF_NUM_FROM_BOTTOM: [1, 2, 1, 2]}
-        # df_no_shelves = {Consts.SCENE_FK: [], Consts.SHELF_NUM_FROM_BOTTOM: []}
-        # potential_dfs_list = [(df_3_shelves, [2, 3, 4]), (df_4_shelves, [2]), (df_5_shelves, [2, 3]),
-        #                       (df_6_shelves, [1, 2, 3, 4, 5]),
-        #                       (df_7_shelves, [3, 4, 5]),
-        #                       (df_15_shelves, [2, 3, 4, 5]), (df_2_shelves, [1, 2]), (df_no_shelves, [])]
-        potential_dfs_list = [(merged_df, df_3_shelves, [1, 2])]
-        for d, d_full, expected in potential_dfs_list:
+        merged_df_3 = {Consts.SCENE_FK: [1, 1, 1, 1, 1, 1],
+                       Consts.SHELF_NUM_FROM_BOTTOM: [1, 2, 2, 2, 3, 3],
+                       Consts.SHELF_NUM: [3, 2, 2, 2, 1, 1]}
+        df_no_shelves = {Consts.SCENE_FK: [], Consts.SHELF_NUM_FROM_BOTTOM: [], Consts.SHELF_NUM: []}
+        merged_df_no_shelves = {Consts.SCENE_FK: [], Consts.SHELF_NUM_FROM_BOTTOM: [], Consts.SHELF_NUM: []}
+        df_2_shelves = {Consts.SCENE_FK: [1, 1, 2, 2],
+                        Consts.SHELF_NUM_FROM_BOTTOM: [1, 2, 1, 2],
+                        Consts.SHELF_NUM: [2, 1, 2, 1]}
+        merged_df_2 = {Consts.SCENE_FK: [1, 1],
+                       Consts.SHELF_NUM_FROM_BOTTOM: [1, 2],
+                       Consts.SHELF_NUM: [2, 1]}
+        df_2_shelves_2 = {Consts.SCENE_FK: [1, 1, 2, 2],
+                          Consts.SHELF_NUM_FROM_BOTTOM: [1, 2, 1, 2],
+                          Consts.SHELF_NUM: [2, 1, 2, 1]}
+        merged_df_2_2 = {Consts.SCENE_FK: [1],
+                         Consts.SHELF_NUM_FROM_BOTTOM: [1],
+                         Consts.SHELF_NUM: [2]}
+        df_6_shelves = {Consts.SCENE_FK: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+                        Consts.SHELF_NUM_FROM_BOTTOM: [6, 5, 4, 4, 3, 3, 3, 2, 2, 3, 2, 1],
+                        Consts.SHELF_NUM: [1, 2, 3, 3, 4, 4, 4, 5, 5, 4, 5, 6]}
+        merged_df_6 = {Consts.SCENE_FK: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+                       Consts.SHELF_NUM_FROM_BOTTOM: [6, 5, 4, 4, 3, 3, 3, 2, 2, 3, 2, 1],
+                       Consts.SHELF_NUM: [1, 2, 3, 3, 4, 4, 4, 5, 5, 4, 5, 6]}
+        df_8_shelves = {Consts.SCENE_FK: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+                        Consts.SHELF_NUM_FROM_BOTTOM: [8, 7, 7, 6, 6, 5, 7, 4, 4, 4, 4, 3, 3, 3, 2, 2, 2, 1],
+                        Consts.SHELF_NUM: [1, 2, 2, 3, 3, 4, 2, 5, 5, 5, 5, 6, 6, 6, 7, 7, 7, 8]}
+        merged_df_8 = {Consts.SCENE_FK: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+                       Consts.SHELF_NUM_FROM_BOTTOM: [8, 7, 6, 5, 7, 4, 4, 4, 4, 3, 3, 3, 2, 2, 2, 1],
+                       Consts.SHELF_NUM: [1, 2, 3, 4, 2, 5, 5, 5, 5, 6, 6, 6, 7, 7, 7, 8]}
+        potential_dfs_list = [(merged_df_3, df_3_shelves, [1, 2], 5), (merged_df_no_shelves, df_no_shelves, [], 0),
+                              (merged_df_2, df_2_shelves, [1, 2], 2), (merged_df_2_2, df_2_shelves_2, [2], 1),
+                              (merged_df_6, df_6_shelves, [2, 3, 4], 7), (merged_df_8, df_8_shelves, [3, 4, 5, 6], 9)]
+        for d, d_full, expected_shelves, exp_length in potential_dfs_list:
             df = pd.DataFrame(data=d)
             df_full = pd.DataFrame(data=d_full)
             filtered_df = self.tool_box.filter_df_by_shelves(df, df_full, Consts.EYE_LEVEL_PER_SHELF)
             eye_lvl_shelves = filtered_df[Consts.SHELF_NUM].unique().tolist()
-            self.assertItemsEqual(expected, eye_lvl_shelves)
+            self.assertItemsEqual(expected_shelves, eye_lvl_shelves)
+            self.assertEqual(exp_length, len(filtered_df))
