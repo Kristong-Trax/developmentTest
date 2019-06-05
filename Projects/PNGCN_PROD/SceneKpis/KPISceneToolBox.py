@@ -929,7 +929,7 @@ class PngcnSceneKpis(object):
         DF_products_size = self._get_display_size_of_product_in_scene()
 
         if self.scif.empty:
-            return
+            return pd.DataFrame()
 
         filter_scif = self.scif[[u'scene_id', u'item_id', u'manufacturer_fk', u'rlv_sos_sc', u'status']]
         df_result = pd.merge(filter_scif, DF_products_size, on=['item_id', 'scene_id'], how='left')
@@ -959,7 +959,7 @@ class PngcnSceneKpis(object):
         a, b = self.matches_from_data_provider.copy(), self.scif.copy()
 
         if a.empty or b.empty:
-            return
+            return pd.DataFrame()
 
         # merge wite scif to add manufacture
         matches_filtered = pd.merge(a, b, how='left',
