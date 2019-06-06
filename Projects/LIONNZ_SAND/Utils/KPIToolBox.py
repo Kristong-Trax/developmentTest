@@ -10,7 +10,10 @@ __author__ = 'nidhin'
 
 TEMPLATE_PARENT_FOLDER = 'Data'
 TEMPLATE_NAME = 'Template.xlsx'
+ASSORTMENT_TEMPLATE_NAME = 'Assortments.xlsx'
+
 KPI_NAMES_SHEET = 'kpis'
+ASSORTMENT_SHEET = 'assortment'
 KPI_DETAILS_SHEET = 'details'
 KPI_INC_EXC_SHEET = 'exclude_include'
 # Column Name
@@ -29,6 +32,7 @@ Count = 'Count'
 # Output Type
 NUM_OUT = 'number'
 LIST_OUT = 'list'
+PARAM_COUNT = 4
 PARAM_DB_MAP = {
     # key: the value in excel as param values
     # value:
@@ -36,14 +40,22 @@ PARAM_DB_MAP = {
     #       name - name as in DataBase
     'brand': {'key': 'brand_fk', 'name': 'brand_name'},
     'sku': {'key': 'product_fk', 'name': 'product_name'},
-    'category': {'key': 'product_fk', 'name': 'category'},
+    'category': {'key': 'category_fk', 'name': 'category'},
     'scene_type': {'key': 'template_fk', 'name': 'template_name'},
     'sub_category': {'key': 'sub_category_fk', 'name': 'sub_category'},
     'manufacturer': {'key': 'manufacturer_fk', 'name': 'manufacturer_name'},
+    'store': {'key': 'store_fk', 'name': 'store_name'},
 }
 # list of `exclude_include` sheet columns
 INC_EXC_LIST = ['stacking', 'others', 'irrelevant', 'empty',
                 'categories_to_exclude', 'scene_types_to_include', ]
+# assortment KPIs
+DST_MAN_BY_STORE_PERC = 'DST_MAN_BY_STORE_PERC'
+OOS_MAN_BY_STORE_PERC = 'OOS_MAN_BY_STORE_PERC'
+
+PRODUCT_PRESENCE_BY_STORE_LIST = 'PRODUCT_PRESENCE_BY_STORE_LIST'
+OOS_PRODUCT_BY_STORE_LIST = 'OOS_PRODUCT_BY_STORE_LIST'
+
 
 
 class LIONNZToolBox:
@@ -66,13 +78,18 @@ class LIONNZToolBox:
         self.store_info = self.data_provider[Data.STORE_INFO]
         self.store_id = self.store_info['store_fk'].values[0]
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
+        self.scene_template_info = self.scif[['scene_fk', 'template_fk', 'template_name']].drop_duplicates()
         self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         self.kpi_static_data = self.common.get_kpi_static_data()
         self.kpi_results_queries = []
-        self.templates_path = os.path.join(os.path.dirname(os.path.realpath(__file__)),
-                                           '..', TEMPLATE_PARENT_FOLDER,
-                                           TEMPLATE_NAME)
-        self.kpi_template = pd.ExcelFile(self.templates_path)
+        self.kpi_template_path = os.path.join(os.path.dirname(os.path.realpath(__file__)),
+                                              '..', TEMPLATE_PARENT_FOLDER,
+                                              TEMPLATE_NAME)
+        self.assortment_template_path = os.path.join(os.path.dirname(os.path.realpath(__file__)),
+                                                     '..', TEMPLATE_PARENT_FOLDER,
+                                                     ASSORTMENT_TEMPLATE_NAME)
+
+        self.kpi_template = pd.ExcelFile(self.kpi_template_path)
         self.empty_prod_ids = self.all_products[
             self.all_products.product_name.str.contains('empty', case=False)]['product_fk'].values
         self.irrelevant_prod_ids = self.all_products[
@@ -84,9 +101,28 @@ class LIONNZToolBox:
         """
         This function calculates the KPI results.
         """
-        self.filter_and_send_kpi_to_calc()
+        # self.filter_and_send_kpi_to_calc()
+        self.calculate_assortment_kpis()
         # self.common.commit_results_data()
         return 0  # to mark successful run of script
+
+    def calculate_assortment_kpis(self):
+        assortment_sheet = self.kpi_template.parse(ASSORTMENT_SHEET)
+        assortment_details = self.kpi_template.parse(KPI_DETAILS_SHEET)
+        for idx, each_assortment_kpi in assortment_sheet.iterrows():
+            kpi_detail = assortment_details[assortment_details[KPI_NAME_COL] == each_assortment_kpi[KPI_NAME_COL]]
+            kpi = self.kpi_static_data[(self.kpi_static_data[KPI_TYPE_COL] == kpi_detail[KPI_NAME_COL].iloc[0])
+                                       & (self.kpi_static_data['delete_time'].isnull())]
+            if not is_nan(each_assortment_kpi['opposite']):
+                opposite_kpi_detail = assortment_details[assortment_details[KPI_NAME_COL] == each_assortment_kpi['opposite']]
+                opposite_kpi = self.kpi_static_data[(self.kpi_static_data[KPI_TYPE_COL] == opposite_kpi_detail[KPI_NAME_COL].iloc[0])
+                                           & (self.kpi_static_data['delete_time'].isnull())]
+            # check active
+            # check store_type
+            # check kpi emtpy
+            policy_data = self.get_policies()
+            # if each_assortment_kpi['kpi_family'] == ""
+            pass
 
     def filter_and_send_kpi_to_calc(self):
         kpi_sheet = self.kpi_template.parse(KPI_NAMES_SHEET)
@@ -106,34 +142,29 @@ class LIONNZToolBox:
             else:
                 print("KPI Name:{} found in DB".format(kpi_sheet_row[KPI_NAME_COL]))
                 detail = kpi_details[kpi_details[KPI_NAME_COL] == kpi[KPI_TYPE_COL].values[0]]
-                pd.reset_option('mode.chained_assignment')
-                with pd.option_context('mode.chained_assignment', None):
-                    detail['pk'] = kpi['pk'].iloc[0]
-                # gather details
-                groupers, query_string = get_groupers_and_query_string(detail)
                 # check for store types allowed
                 permitted_store_types = [x.strip() for x in detail[STORE_POLICY].values[0].split(',') if x.strip()]
                 if self.store_info.store_type.iloc[0] not in permitted_store_types:
                     print("Not permitted store type - {}".format(kpi_sheet_row[KPI_NAME_COL]))
                     continue
+                pd.reset_option('mode.chained_assignment')
+                with pd.option_context('mode.chained_assignment', None):
+                    detail['pk'] = kpi['pk'].iloc[0]
+                # gather details
+                groupers, query_string = get_groupers_and_query_string(detail)
                 _include_exclude = kpi_include_exclude[kpi_details[KPI_NAME_COL] == kpi[KPI_TYPE_COL].values[0]]
                 # gather include exclude
                 include_exclude_data_dict = get_include_exclude(_include_exclude)
                 dataframe_to_process = self.get_sanitized_match_prod_scene(include_exclude_data_dict)
-
             if kpi_sheet_row[KPI_FAMILY_COL] == FSOS:
-                self.write_to_db(detail, groupers, query_string, dataframe_to_process)
-            elif kpi_sheet_row[KPI_FAMILY_COL] == DISTRIBUTION:
-                self.calculate_distribution(detail, groupers, query_string, dataframe_to_process)
-            elif kpi_sheet_row[KPI_FAMILY_COL] == OOS:
-                self.calculate_OOS(detail, groupers, query_string, dataframe_to_process)
+                self.calulcate_fsos(detail, groupers, query_string, dataframe_to_process)
             elif kpi_sheet_row[KPI_FAMILY_COL] == Count:
-                self.write_to_db(detail, groupers, query_string, dataframe_to_process)
+                self.calculate_count(detail, groupers, query_string, dataframe_to_process)
             else:
                 pass
         return True
 
-    def write_to_db(self, kpi, groupers, query_string, dataframe_to_process):
+    def calulcate_fsos(self, kpi, groupers, query_string, dataframe_to_process):
         if query_string:
             grouped_data_frame = dataframe_to_process.query(query_string).groupby(groupers)
         else:
@@ -142,7 +173,9 @@ class LIONNZToolBox:
             param_id_map = dict(zip(groupers, group_id_tup))
             numerator_id = param_id_map.get(PARAM_DB_MAP[kpi['numerator'].iloc[0]]['key'])
             denominator_id = param_id_map.get(PARAM_DB_MAP[kpi['denominator'].iloc[0]]['key'])
-            result = len(group_data) / float(len(grouped_data_frame))
+            context_id = (get_context_id(context_string=kpi['context'].iloc[0], param_id_map=param_id_map)
+                          or self.store_id)
+            result = len(group_data) / float(len(dataframe_to_process))
             should_enter = False
             identifier_parent = None
             identifier_result = None
@@ -153,6 +186,7 @@ class LIONNZToolBox:
             self.common.write_to_db_result(fk=kpi['pk'].iloc[0],
                                            numerator_id=numerator_id,
                                            denominator_id=denominator_id,
+                                           context_id=context_id,
                                            result=result,
                                            identifier_result=identifier_result,
                                            identifier_parent=identifier_parent,
@@ -161,20 +195,40 @@ class LIONNZToolBox:
 
         return True
 
-    def calculate_distribution(self, kpi, groupers, query_string, dataframe_to_process):
+    def calculate_count(self, kpi, groupers, query_string, dataframe_to_process):
+        if query_string:
+            grouped_data_frame = dataframe_to_process.query(query_string).groupby(groupers)
+        else:
+            grouped_data_frame = dataframe_to_process.groupby(groupers)
+        for group_id_tup, group_data in grouped_data_frame:
+            param_id_map = dict(zip(groupers, group_id_tup))
+            numerator_id = param_id_map.get(PARAM_DB_MAP[kpi['numerator'].iloc[0]]['key'])
+            denominator_id = param_id_map.get(PARAM_DB_MAP[kpi['denominator'].iloc[0]]['key'])
+            context_id = (get_context_id(context_string=kpi['context'].iloc[0], param_id_map=param_id_map)
+                          or self.store_id)
+            result = len(group_data)
+            self.common.write_to_db_result(fk=kpi['pk'].iloc[0],
+                                           numerator_id=numerator_id,
+                                           denominator_id=denominator_id,
+                                           context_id=context_id,
+                                           result=result,
+                                           )
+
+        return True
+
+    def calculate_distribution_and_oos(self, kpi, groupers, query_string, dataframe_to_process):
         pass
 
-    def calculate_OOS(self, kpi, groupers, query_string, dataframe_to_process):
+    def calculate_product_presence_and_oos(self, kpi, groupers, query_string, dataframe_to_process):
         pass
 
     def get_sanitized_match_prod_scene(self, include_exclude_data_dict):
-        sanitized_products_in_scene = self.match_product_in_scene.merge(
-            self.scif, how='left', on=['scene_fk', 'product_fk'],  suffixes=('', '_scif')
+        scene_product_data = self.match_product_in_scene.merge(
+            self.products, how='left', on=['product_fk'],  suffixes=('', '_prod')
         )
-        # IF sub_category_fk is not there
-        # sanitized_products_in_scene_prod = sanitized_products_in_scene.merge(
-        #     self.products, how='left', on='product_fk', suffixes=('', '_prod')
-        # )
+        sanitized_products_in_scene = scene_product_data.merge(
+            self.scene_template_info, how='left', on='scene_fk', suffixes=('', '_scene')
+        )
         # flags
         should_include_empty = include_exclude_data_dict.get('empty')
         should_include_irrelevant = include_exclude_data_dict.get('irrelevant')
@@ -209,6 +263,29 @@ class LIONNZToolBox:
         return sanitized_products_in_scene
 
 
+    def get_policies(self):
+        query = """ select p.policy_name, p.policy, atag.assortment_group_fk, atp.assortment_fk, atp.product_fk, 
+                        atp.start_date, atp.end_date from pservice.assortment_to_product atp 
+                        join pservice.assortment_to_assortment_group atag on atp.assortment_fk = atag.assortment_fk 
+                        join pservice.assortment a on a.pk = atag.assortment_group_fk
+                        join pservice.policy p on p.pk = a.store_policy_group_fk;
+                    """
+        policies = pd.read_sql_query(query, self.rds_conn.db)
+        return policies
+
+
+
+def get_context_id(context_string, param_id_map):
+    """Function to return context ID.
+
+    Return the context ID from the dict provided based on the numerator/denominator in excel. Or return `None`.
+    Use appropriate ID in caller; if context ID cannot be found. Usually store_id.
+    """
+    if context_string.strip() and context_string.strip() != 'store':
+        return param_id_map.get(context_string, None)
+    return None
+
+
 def get_include_exclude(kpi_include_exclude):
     output = {}
     for key in INC_EXC_LIST:
@@ -223,7 +300,7 @@ def get_include_exclude(kpi_include_exclude):
 
 
 def get_groupers_and_query_string(detail):
-    keys = ['param_{}'.format(x) for x in range(1, 5)]
+    keys = ['param_{}'.format(x) for x in range(1, PARAM_COUNT + 1)]
     filters = []
     filter_string = ''
     for each_key in keys:
@@ -231,7 +308,7 @@ def get_groupers_and_query_string(detail):
             filters.append(PARAM_DB_MAP[detail[each_key].iloc[0]]['key'])
             if not is_nan(detail[each_key + "_value"].iloc[0]):
                 filter_data = [str(x.strip()) for x in detail[each_key + "_value"].iloc[0].split(',') if x.strip()]
-                filter_string += ' {key} in "{data_list}" and'.format(
+                filter_string += ' {key} in {data_list} and'.format(
                     key=PARAM_DB_MAP[detail[each_key].iloc[0]]['name'],
                     data_list=filter_data
                 )
