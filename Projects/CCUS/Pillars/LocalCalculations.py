@@ -7,7 +7,7 @@ from Trax.Algo.Calculations.Core.Constants import Keys, Fields, SCENE_ITEM_FACTS
 from Trax.Algo.Calculations.Core.Vanilla.Calculations import SceneVanillaCalculations
 from Trax.Algo.Calculations.Core.Vanilla.Output import VanillaOutput
 import pandas as pd
-from Projects.CCUS.Pillars.SceneKpis.SceneCalculations import SceneCalculations
+from Projects.CCUS.Pillars.SceneKpis.LocalSceneCalculations import SceneCalculations
 from Projects.CCUS.Calculations import CCUSCalculations
 
 
