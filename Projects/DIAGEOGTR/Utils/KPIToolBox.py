@@ -135,11 +135,6 @@ class DIAGEOGTRToolBox:
         self.template_data.columns =map(str.lower, self.template_data.columns)
         self.set_templates_data = {}
         self.store_info = self.data_provider[Data.STORE_INFO]
-        self.mpis= self.data_provider[Data.MATCHES].merge(
-            self.data_provider[Data.SCENES_INFO][['scene_fk','template_fk']], on='scene_fk', how='left')
-        self.mpis = self.mpis.merge(
-            self.data_provider[Data.ALL_TEMPLATES][['template_fk', 'template_name']], on='template_fk', how='left')
-        self.mpis = self.mpis.merge(self.products,on='product_fk', how='left')
         self.match_display_in_scene = self.get_match_display()
         self.store_type = self.store_info['additional_attribute_1'].values[0]
         self.kpi_static_data = self.get_kpi_static_data()
@@ -331,6 +326,12 @@ class DIAGEOGTRToolBox:
         # """
         assortment_res_dict = self.diageo_generator.diageo_global_assortment_function_v2()
         self.commonV2.save_json_to_new_tables(assortment_res_dict)
+
+        self.mpis= self.data_provider[Data.MATCHES].merge(
+            self.data_provider[Data.SCENES_INFO][['scene_fk','template_fk']], on='scene_fk', how='left')
+        self.mpis = self.mpis.merge(
+            self.data_provider[Data.ALL_TEMPLATES][['template_fk', 'template_name']], on='template_fk', how='left')
+        self.mpis = self.mpis.merge(self.products,on='product_fk', how='left')
 
         for kpi_set_name in kpi_set_names:
             if kpi_set_name == SOWB:

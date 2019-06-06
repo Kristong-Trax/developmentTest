@@ -21,27 +21,19 @@ class CBCDAIRYILToolBox:
         self.project_name = self.data_provider.project_name
         self.common = Common(self.data_provider)
         self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
-        self.session_uid = self.data_provider.session_uid
-        self.session_info = self.data_provider[Data.SESSION_INFO]
-        self.session_fk = self.session_info['pk'][0]
-        self.visit_date = self.data_provider[Data.VISIT_DATE]
-        self.products = self.data_provider[Data.PRODUCTS]
-        self.all_products = self.data_provider[Data.ALL_PRODUCTS]
-        self.scene_info = self.data_provider[Data.SCENES_INFO]
+        self.session_fk = self.data_provider.session_id
         self.match_product_in_scene = self.data_provider[Data.MATCHES]
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
         self.store_info = self.data_provider[Data.STORE_INFO]
         self.store_id = self.data_provider[Data.STORE_FK]
-
         self.survey = Survey(self.data_provider)
         self.block = Block(self.data_provider)
         self.general_toolbox = GENERALToolBox(self.data_provider)
-
         self.gap_data = self.get_gap_data()
         self.kpi_weights = parse_template(Consts.TEMPLATE_PATH, Consts.KPI_WEIGHT, lower_headers_row_index=0)
         self.template_data = self.parse_template_data()
         self.kpis_gaps = list()
-        self.passed_availability = []
+        self.passed_availability = list()
 
     @staticmethod
     def get_gap_data():
@@ -379,28 +371,35 @@ class CBCDAIRYILToolBox:
         :return: E.g: (10, 20, 50) or (8, 10, 100) --> score >= 75 turns to 100.
         """
         merged_df = self.merge_and_filter_scif_and_matches_for_eye_level(**general_filters[Consts.KPI_FILTERS])
-        total_number_of_facings = len(merged_df)
-        merged_df = self.filter_df_by_shelves(merged_df, Consts.EYE_LEVEL_PER_SHELF)
-        eye_level_facings = len(merged_df)
+        relevant_scenes = merged_df['scene_id'].unique().tolist()
+        total_number_of_facings = eye_level_facings = 0
+        for scene in relevant_scenes:
+            scene_merged_df = merged_df[merged_df['scene_id'] == scene]
+            scene_matches = self.match_product_in_scene[self.match_product_in_scene['scene_fk'] == scene]
+            total_number_of_facings += len(scene_merged_df)
+            scene_merged_df = self.filter_df_by_shelves(scene_merged_df, scene_matches, Consts.EYE_LEVEL_PER_SHELF)
+            eye_level_facings += len(scene_merged_df)
         total_score = eye_level_facings / float(total_number_of_facings) if total_number_of_facings else 0
-        total_score = 100 if total_score >= 0.75 else total_score
+        total_score = 100 if total_score >= 0.75 else total_score * 100
         return eye_level_facings, total_number_of_facings, total_score
 
     @staticmethod
-    def filter_df_by_shelves(df, eye_level_definition):
+    def filter_df_by_shelves(df, scene_matches, eye_level_definition):
         """
         This function filters the df according to the eye-level definition
         :param df: data frame to filter
+        :param scene_matches: match_product_in_scene for particular scene
         :param eye_level_definition: definition for eye level shelves
         :return: filtered data frame
         """
-        number_of_shelves = df.shelf_number_from_bottom.max()
+        # number_of_shelves = df.shelf_number_from_bottom.max()
+        number_of_shelves = max(scene_matches.shelf_number_from_bottom.max(), scene_matches.shelf_number.max())
         top, bottom = 0, 0
         for json_def in eye_level_definition:
             if json_def[Consts.MIN] <= number_of_shelves <= json_def[Consts.MAX]:
                 top = json_def[Consts.TOP]
                 bottom = json_def[Consts.BOTTOM]
-        return df[(df.shelf_number_from_bottom <= number_of_shelves - top) & (df.shelf_number_from_bottom > bottom)]
+        return df[(df.shelf_number > top) & (df.shelf_number_from_bottom > bottom)]
 
     def calculate_availability_from_bottom(self, **general_filters):
         """
@@ -422,12 +421,18 @@ class CBCDAIRYILToolBox:
         :param general_filters: A dictionary with the relevant KPI filters.
         :return: 100 if at least one scene has a block, 0 otherwise.
         """
-        allowed_products_dict = self.get_allowed_product_by_params(**general_filters)
-        block_result = self.block.calculate_block_together(allowed_products_filters=allowed_products_dict,
-                                                           include_empty=False, result_by_scene=False,
-                                                           minimum_block_ratio=Consts.MIN_BLOCK_RATIO,
-                                                           min_facings_in_block=Consts.MIN_FACINGS_IN_BLOCK)
-        return 100 if block_result else 0
+        products_dict = self.get_allowed_product_by_params(**general_filters)
+        block_result = self.block.network_x_block_together(
+                                population=products_dict,
+                                additional={'minimum_block_ratio': Consts.MIN_BLOCK_RATIO,
+                                            'minimum_facing_for_block': Consts.MIN_FACINGS_IN_BLOCK,
+                                            'allowed_products_filters': {'product_type': ['Empty']},
+                                            'calculate_all_scenes': False,
+                                            'include_stacking': True,
+                                            'check_vertical_horizontal': False})
+
+        result = 100 if not block_result.empty and not block_result[block_result.is_block].empty else 0
+        return result
 
     def get_allowed_product_by_params(self, **filters):
         """
