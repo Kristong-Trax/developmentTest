@@ -42,7 +42,7 @@ class TestKEngineOutOfTheBox(TestFunctionalCase):
         connector = PSProjectConnector(TestProjectsNames().TEST_PROJECT_1, DbUsers.Docker)
         cursor = connector.db.cursor(MySQLdb.cursors.DictCursor)
         cursor.execute('''
-        SELECT * FROM report.kpi_results
+        SELECT * FROM report.kpi_level_2_results
         ''')
         kpi_results = cursor.fetchall()
         self.assertNotEquals(0, 0)
@@ -58,7 +58,7 @@ class TestKEngineOutOfTheBox(TestFunctionalCase):
     @patch('KPIUtils.DIAGEO.ToolBox.DIAGEOToolBox.download_template',
            return_value=products)
     @skip('Test failed in garage')
-    @seeder.seed(["diageoie_sand_seed"], ProjectsSanityData())
+    @seeder.seed(["mongodb_products_and_brands_seed", "diageoie_sand_seed"], ProjectsSanityData())
     def test_diageoie_sand_sanity(self, x, y, json, json2, json3):
         project_name = ProjectsSanityData.project_name
         data_provider = KEngineDataProvider(project_name)
