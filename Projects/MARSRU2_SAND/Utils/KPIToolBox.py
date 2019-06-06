@@ -39,11 +39,14 @@ POSITIVE_ADJACENCY_RANGE = (0, 1)
 
 OSA_KPI_NAME = 'OSA'
 
+PSERVICE_CUSTOM_SCIF = 'pservice.custom_scene_item_facts'
+SESSION_FK = 'session_fk'
+SCENE_FK = 'scene_fk'
+PRODUCT_FK = 'product_fk'
 IN_ASSORTMENT = 'in_assortment_osa'
 IS_OOS = 'oos_osa'
-PSERVICE_CUSTOM_SCIF = 'pservice.custom_scene_item_facts'
-PRODUCT_FK = 'product_fk'
-SCENE_FK = 'scene_fk'
+OTHER_CUSTOM_SCIF_COLUMNS = ['length_mm_custom', 'mha_in_assortment', 'mha_oos']
+OTHER_CUSTOM_SCIF_COLUMNS_VALUES = (0, 0, 0)
 
 EXCLUDE_EMPTY = False
 INCLUDE_EMPTY = True
@@ -233,8 +236,8 @@ class MARSRU2_SANDKPIToolBox:
         :param oos:
         :return:
         """
-        attributes = pd.DataFrame([(self.session_fk, scene_fk, product_fk, assortment, oos)],
-                                  columns=['session_fk', 'scene_fk', 'product_fk', IN_ASSORTMENT, IS_OOS])
+        attributes = pd.DataFrame([(self.session_fk, scene_fk, product_fk, assortment, oos) + OTHER_CUSTOM_SCIF_COLUMNS_VALUES],
+                                  columns=[SESSION_FK, SCENE_FK, PRODUCT_FK, IN_ASSORTMENT, IS_OOS] + OTHER_CUSTOM_SCIF_COLUMNS)
 
         query = insert(attributes.to_dict(), PSERVICE_CUSTOM_SCIF)
         self.custom_scif_queries.append(query)
@@ -277,10 +280,10 @@ class MARSRU2_SANDKPIToolBox:
         # assortment_products = self.get_assortment_for_store_id()
         assortment_products = self.assortment.get_lvl3_relevant_ass()
         if not assortment_products.empty:
-            assortment_products = assortment_products[PRODUCT_FK].tolist()
-            for scene in self.scif[SCENE_FK].unique().tolist():
-                products_in_scene = self.scif[(self.scif[SCENE_FK] == scene) &
-                                              (self.scif['facings'] > 0)][PRODUCT_FK].unique().tolist()
+            assortment_products = assortment_products['product_fk'].tolist()
+            for scene in self.scif['scene_fk'].unique().tolist():
+                products_in_scene = self.scif[(self.scif['scene_fk'] == scene) &
+                                              (self.scif['facings'] > 0)]['product_fk'].unique().tolist()
                 for product in assortment_products:
                     if product in products_in_scene:
                         # This means the product in assortment and is not oos (1,0)
@@ -1454,11 +1457,11 @@ class MARSRU2_SANDKPIToolBox:
 
             kpi_set = '*'
 
-            if p.get('#Mars KPI NAME') == 1013:  # Share of Shelf Nestle in Mars = (((1010+1011)/(4261+4265))/0.5)*0.5
+            if p.get('#Mars KPI NAME') == 1013:  # Share of Shelf Nestle in Mars = (((1010+1011)/(4262+4266) )/0,5)*0,5
                 k1 = 0.5
                 k2 = 0.5
                 kpi_part_1 = self.results_and_scores[kpi_set]['1010']['result'] + self.results_and_scores[kpi_set]['1011']['result']
-                kpi_part_2 = self.results_and_scores[kpi_set]['4261']['result'] + self.results_and_scores[kpi_set]['4265']['result']
+                kpi_part_2 = self.results_and_scores[kpi_set]['4262']['result'] + self.results_and_scores[kpi_set]['4266']['result']
                 result = ((kpi_part_1/float(kpi_part_2))/k1)*k2 if kpi_part_2 else 0
 
             elif p.get('#Mars KPI NAME') == 1015:  # Nestle in Mars = ((1012/1014)/0.5)*0.5
