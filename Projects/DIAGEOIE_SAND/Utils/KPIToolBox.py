@@ -156,6 +156,7 @@ class DIAGEOIESandToolBox:
         self.commonV2.commit_results_data()
         return
 
+
     def activate_ootb_kpis(self):
         # FACINGS_SOS_MANUFACTURER_IN_WHOLE_STORE - level 1
         sos_store_fk = self.commonV2.get_kpi_fk_by_kpi_name('SOS OUT OF STORE')
