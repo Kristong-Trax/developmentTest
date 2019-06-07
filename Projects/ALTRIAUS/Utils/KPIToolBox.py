@@ -96,6 +96,7 @@ class ALTRIAUSToolBox:
         """
                This function calculates the KPI results.
                """
+        self.calculate_signage_locations_and_widths()
 
         kpi_set_fk = 2
         set_name = \
@@ -267,7 +268,8 @@ class ALTRIAUSToolBox:
             kpi_name = kpi_name.replace("'", "\'")
         return kpi_name
 
-
+    def calculate_signage_locations_and_widths(self):
+        relevant_scif = self.scif[self.scif['scene_type']]
 
 
     def commit(self):
