@@ -7,7 +7,7 @@ from Trax.Algo.Calculations.Core.Constants import Keys, Fields, SCENE_ITEM_FACTS
 from Trax.Algo.Calculations.Core.Vanilla.Calculations import SceneVanillaCalculations
 from Trax.Algo.Calculations.Core.Vanilla.Output import VanillaOutput
 import pandas as pd
-from Projects.CCUS.Pillars.SceneKpis.SceneCalculations import SceneCalculations
+from Projects.CCUS.Pillars.SceneKpis.LocalSceneCalculations import SceneCalculations
 from Projects.CCUS.Calculations import CCUSCalculations
 
 
@@ -31,14 +31,14 @@ if __name__ == '__main__':
         '4280300D-4876-4658-874C-D0B29F719351': [535488],
     }
     for session in sessions_data:
-        # for scene in sessions_data[session]:
-        #     print('Calculating scene id: ' + str(scene))
-        #     data_provider = KEngineDataProvider(project_name)
-        #     data_provider.load_scene_data(session, scene)
-        #     output = VanillaOutput()
-        #     SceneVanillaCalculations(data_provider, output).run_project_calculations()
-        #     save_scene_item_facts_to_data_provider(data_provider, output)
-        #     SceneCalculations(data_provider).calculate_kpis()
+        for scene in sessions_data[session]:
+            print('Calculating scene id: ' + str(scene))
+            data_provider = KEngineDataProvider(project_name)
+            data_provider.load_scene_data(session, scene)
+            output = VanillaOutput()
+            SceneVanillaCalculations(data_provider, output).run_project_calculations()
+            save_scene_item_facts_to_data_provider(data_provider, output)
+            SceneCalculations(data_provider).calculate_kpis()
         data_provider = KEngineDataProvider(project_name)
         data_provider.load_session_data(session)
         output = Output()
