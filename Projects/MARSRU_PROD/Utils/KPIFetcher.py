@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-import numpy as np
+# import numpy as np
 import pandas as pd
 
 from Trax.Cloud.Services.Connector.Keys import DbUsers
@@ -27,13 +27,12 @@ class MARSRU_PRODKPIFetcher:
     LEFT = 'shelf_px_left'
     RIGHT = 'shelf_px_right'
 
-    def __init__(self, project_name, kpi_templates, scif, matches, set_name, products, session_uid):
+    def __init__(self, project_name, kpi_templates, scif, matches, products, session_uid):
         self.rds_conn = PSProjectConnector(project_name, DbUsers.CalculationEng)
         self.project = project_name
         self.kpi_templates = kpi_templates
         self.scif = scif
         self.matches = matches
-        self.set_name = set_name
         self.kpi_static_data = self.get_static_kpi_data()
         self.kpi_result_values = self.get_kpi_result_values()
         self.products = products
@@ -51,10 +50,10 @@ class MARSRU_PRODKPIFetcher:
             return False
         return True
 
-    def get_object_facings(self, scenes, objects, object_type, formula, form_factor=[], shelves=None,
-                           manufacturers=None, brand_category=None, sub_brands=[], sub_brands_to_exclude=[],
+    def get_object_facings(self, scenes, objects, object_type, formula, form_factors=[], shelves=None,
+                           manufacturers=None, categories=None, sub_brands=[], sub_brands_to_exclude=[],
                            cl_sub_cats=[], cl_sub_cats_to_exclude=[], include_stacking=False,
-                           form_factor_to_exclude=[], linear=False):
+                           form_factors_to_exclude=[], linear=False):
 
         object_type_conversion = {'SKUs': 'product_ean_code',
                                   'BRAND': 'brand_name',
@@ -64,6 +63,9 @@ class MARSRU_PRODKPIFetcher:
                                   'MAN': 'manufacturer_name',
                                   'SCENE_TYPE': 'template_name'}
         object_field = object_type_conversion[object_type]
+
+        if not objects:
+            objects = self.scif[object_field].unique().tolist()
 
         if not manufacturers:
             manufacturers = self.scif['manufacturer_name'].unique().tolist()
@@ -75,12 +77,12 @@ class MARSRU_PRODKPIFetcher:
                                            (self.scif['manufacturer_name'].isin(manufacturers)) &
                                            (~self.scif['product_type'].isin([OTHER, EMPTY]))]
         elif object_type == 'BRAND in CAT':
-            if type(brand_category) is not list:
-                brand_category = [brand_category]
+            if type(categories) is not list:
+                categories = [categories]
             initial_result = self.scif.loc[(self.scif['scene_id'].isin(scenes)) &
                                            (self.scif[object_field].isin(objects)) &
                                            (self.scif['facings'] > 0) & (self.scif['rlv_dist_sc'] == 1) &
-                                           (self.scif['category'].isin(brand_category)) &
+                                           (self.scif['category'].isin(categories)) &
                                            (~self.scif['product_type'].isin([OTHER, EMPTY]))]
         else:
             initial_result = self.scif.loc[(self.scif['scene_id'].isin(scenes)) &
@@ -98,10 +100,10 @@ class MARSRU_PRODKPIFetcher:
         if include_stacking:
             final_result = initial_result
 
-        if form_factor:
-            final_result = final_result[final_result['form_factor'].isin(form_factor)]
-        if form_factor_to_exclude:
-            final_result = final_result[~final_result['form_factor'].isin(form_factor_to_exclude)]
+        if form_factors:
+            final_result = final_result[final_result['form_factor'].isin(form_factors)]
+        if form_factors_to_exclude:
+            final_result = final_result[~final_result['form_factor'].isin(form_factors_to_exclude)]
         if shelves:
             merged_dfs = pd.merge(final_result, self.matches, on=['product_fk'], suffixes=['', '_1'])
             shelves_list = [int(shelf) for shelf in shelves.split(',')]
@@ -109,6 +111,8 @@ class MARSRU_PRODKPIFetcher:
             final_result = merged_filter
         if manufacturers:
             final_result = final_result[final_result['manufacturer_name'].isin(manufacturers)]
+        if categories:
+            final_result = final_result[final_result['category'].isin(categories)]
         if sub_brands:
             final_result = final_result[final_result['sub_brand'].isin(sub_brands)]
         if sub_brands_to_exclude:
@@ -137,151 +141,8 @@ class MARSRU_PRODKPIFetcher:
 
         return object_facings
 
-    @staticmethod
-    def get_kpi_results_data():
-
-        return '''
-            select api.pk as atomic_kpi_fk
-            from
-            static.atomic_kpi api
-            left join static.kpi kpi on kpi.pk = api.kpi_fk
-            join static.kpi_set kps on kps.pk = kpi.kpi_set_fk
-            where api.name = '{}' and kps.name = '{}'
-            limit 1
-                   '''
-
-    @staticmethod
-    def get_kpk_results_data():
-        return '''
-
-            select k.pk as kpi_fk
-            from static.kpi k
-            left join static.kpi_set kp on kp.pk = k.kpi_set_fk
-            where k.display_text = '{}' and kp.name = '{}'
-            limit 1
-                       '''
-
-    @staticmethod
-    def get_kps_results_data():
-        return '''
-                select kps.pk
-    from static.kpi_set kps
-            where kps.name = '{}'
-            limit 1
-                       '''
-
-    # def get_kpi_fk(self, kpi_name, kps_name):
-    #     query = self.get_kpk_results_data().format(kpi_name, kps_name)
-    #     level2 = pd.read_sql_query(query, self.rds_conn.db)
-    #     kpi_fk = level2['kpi_fk']
-    #
-    #     return kpi_fk
-
-    def get_atomic_fk(self, kpi_fk):
-        query = self.get_kpi_results_data().format(kpi_fk)
-        level3 = pd.read_sql_query(query, self.rds_conn.db)
-        atomic_fk = level3['atomic_kpi_fk']
-        return atomic_fk
-
-    def get_kps_fk(self, kps_name):
-        query = self.get_kpi_results_data().format(kps_name)
-        level1 = pd.read_sql_query(query, self.rds_conn.db)
-        kpi_set_fk = level1['kpi_set_fk']
-        return kpi_set_fk
-
-    def get_session_set(self, session_uid):
-        query = """
-                select ss.pk , ss.additional_attribute_12
-                from static.stores ss
-                join probedata.session ps on ps.store_fk=ss.pk
-                where ss.delete_date is null and ps.session_uid = '{}';
-                """.format(session_uid)
-
-        cur = self.rds_conn.db.cursor()
-        cur.execute(query)
-        res = cur.fetchall()
-
-        df = pd.DataFrame(list(res), columns=['store_fk', 'additional_attribute_12'])
-
-        return df
-
-    @staticmethod
-    def get_table_update_query(entries, table, condition):
-        if table == 'report.kpi_results':
-            entries_to_overwrite = ["score", "display_text", "kps_name", "kpi_fk", "result", "threshold",
-                                    "calculation_time"]
-        elif table == 'report.kpk_results':
-            entries_to_overwrite = ["score"]
-        elif table == 'report.kps_results':
-            entries_to_overwrite = ["score_1", "kps_name"]
-        else:
-            entries_to_overwrite = ["score"]
-        updated_values = []
-        for key in entries.keys():
-            if key in entries_to_overwrite:
-                updated_values.append("{} = '{}'".format(key, entries[key][0]))
-
-        query = "UPDATE {} SET {} WHERE {}".format(table, ", ".join(updated_values), condition)
-
-        return query
-
-    def get_atomic_kpi_fk_to_overwrite(self, session_uid, atomic_kpi_fk):
-        query = """
-                select pk
-                from report.kpi_results
-                where session_uid = '{}' and atomic_kpi_fk = {}
-                limit 1""".format(session_uid, atomic_kpi_fk)
-
-        df = pd.read_sql_query(query, self.rds_conn.db)
-        try:
-            return df['pk'][0]
-        except IndexError:
-            return None
-
-    def get_kpi_fk_to_overwrite(self, session_uid, kpi_fk):
-        query = """
-                select pk
-                from report.kpk_results
-                where session_uid = '{}' and kpi_fk = {}
-                limit 1""".format(session_uid, kpi_fk)
-
-        df = pd.read_sql_query(query, self.rds_conn.db)
-        try:
-            return df['pk'][0]
-        except IndexError:
-            return None
-
-    def get_kpi_set_fk_to_overwrite(self, session_uid, kpi_set_fk):
-        query = """
-                select *
-                from report.kps_results
-                where session_uid = '{}' and kpi_set_fk = '{}'
-                limit 1""".format(session_uid, kpi_set_fk)
-
-        df = pd.read_sql_query(query, self.rds_conn.db)
-        if not df.empty:
-            return True
-        else:
-            return None
-
-    def get_match_product_in_probe_details(self, session_uid):
-        query = """
-                select mpip.product_fk, mpip.probe_fk, mpip.price, pp.scene_fk, pp.local_image_time
-                from
-                probedata.match_product_in_probe_details mpip
-                join probedata.probe pp on pp.pk=mpip.probe_fk
-                where pp.session_uid = '{}'
-                """.format(session_uid)
-
-        df = pd.read_sql_query(query, self.rds_conn.db)
-
-        return df
-
-    def get_object_price(self, scenes, objects, object_type, match_product_details, form_factor=None,
+    def get_object_price(self, scenes, objects, object_type, match_product_details, form_factors=None,
                          include_stacking=False):
-        """
-
-        """
         object_type_conversion = {'SKUs': 'product_ean_code',
                                   'BRAND': 'brand_name',
                                   'CAT': 'category',
@@ -290,10 +151,11 @@ class MARSRU_PRODKPIFetcher:
                                   'MAN': 'manufacturer_name'}
         object_field = object_type_conversion[object_type]
         final_result = \
-            self.scif.loc[
-                (self.scif['scene_id'].isin(scenes)) & (self.scif[object_field].isin(objects)) & (
-                    self.scif['facings'] > 0) & (self.scif['rlv_dist_sc'] == 1) & (self.scif['form_factor'].isin(
-                        form_factor))]
+            self.scif.loc[(self.scif['scene_id'].isin(scenes)) &
+                          (self.scif[object_field].isin(objects)) &
+                          (self.scif['facings'] > 0) &
+                          (self.scif['rlv_dist_sc'] == 1) &
+                          (self.scif['form_factor'].isin(form_factors))]
         merged_dfs = pd.merge(final_result, match_product_details,
                               on=['product_fk'], suffixes=['', '_1'])
         if not include_stacking:
@@ -325,16 +187,19 @@ class MARSRU_PRODKPIFetcher:
             session_fk)
         return query
 
-    def get_kpi_set_fk(self):
-        kpi_set_fk = self.kpi_static_data['kpi_set_fk']
+    def get_kpi_set_fk(self, kpi_set_name):
+        kpi_set_fk = self.kpi_static_data[self.kpi_static_data['kpi_set_name'] == str(kpi_set_name)]['kpi_set_fk']
         return kpi_set_fk.values[0]
 
-    def get_kpi_fk(self, kpi_name):
-        kpi_fk = self.kpi_static_data[self.kpi_static_data['kpi_name'] == str(kpi_name)]['kpi_fk']
+    def get_kpi_fk(self, kpi_set_name, kpi_name):
+        kpi_fk = self.kpi_static_data[(self.kpi_static_data['kpi_set_name'] == str(kpi_set_name)) &
+                                      (self.kpi_static_data['kpi_name'] == str(kpi_name))]['kpi_fk']
         return kpi_fk.values[0]
 
-    def get_atomic_kpi_fk(self, atomic_kpi_name):
-        atomic_kpi_fk = self.kpi_static_data[self.kpi_static_data['atomic_kpi_name'] == str(atomic_kpi_name)][
+    def get_atomic_kpi_fk(self, kpi_set_name, kpi_name, atomic_kpi_name):
+        atomic_kpi_fk = self.kpi_static_data[(self.kpi_static_data['kpi_set_name'] == str(kpi_set_name)) &
+                                             (self.kpi_static_data['kpi_name'] == str(kpi_name)) &
+                                             (self.kpi_static_data['atomic_kpi_name'] == str(atomic_kpi_name))][
             'atomic_kpi_fk']
         return atomic_kpi_fk.values[0]
 
@@ -346,7 +211,7 @@ class MARSRU_PRODKPIFetcher:
                 from static.atomic_kpi api
                 join static.kpi kpi on kpi.pk = api.kpi_fk
                 join static.kpi_set kps on kps.pk = kpi.kpi_set_fk
-                where kps.name = '{}'""".format(self.set_name)
+                """
         df = pd.read_sql_query(query, self.rds_conn.db)
         return df
 
@@ -423,8 +288,7 @@ class MARSRU_PRODKPIFetcher:
                         if 'KPI name' in row:
 
                             kpi_name_to_check = str(row.get('KPI name')).encode('utf-8').strip()
-                            kpi_results_to_check = str(row.get('KPI result')).encode(
-                                'utf-8').strip().replace('\n', '').split(',')
+                            kpi_results_to_check = str(row.get('KPI result')).encode('utf-8').strip().replace('\n', '').split(',')
                             kpi_result = str(kpi_results.get(kpi_name_to_check).get('result'))\
                                 if kpi_results.get(kpi_name_to_check) else None
                             if kpi_result:

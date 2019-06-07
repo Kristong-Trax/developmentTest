@@ -3,6 +3,7 @@ from KPIUtils.GlobalProjects.GOOGLE.KPIGenerator import Generator
 
 __author__ = 'Eli_Shivi_Sam'
 
+
 class Calculations(BaseCalculationsScript):
     def run_project_calculations(self):
         self.timer.start()

@@ -8,15 +8,6 @@ from KPIUtils_v2.DB.CommonV2 import Common, PSProjectConnector
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Cloud.Services.Connector.Keys import DbUsers
 
-# from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
-# from KPIUtils_v2.Calculations.AvailabilityCalculations import Availability
-# from KPIUtils_v2.Calculations.NumberOfScenesCalculations import NumberOfScenes
-# from KPIUtils_v2.Calculations.PositionGraphsCalculations import PositionGraphs
-# from KPIUtils_v2.Calculations.SOSCalculations import SOS
-# from KPIUtils_v2.Calculations.SequenceCalculations import Sequence
-# from KPIUtils_v2.Calculations.SurveyCalculations import Survey
-
-# from KPIUtils_v2.Calculations.CalculationsUtils import GENERALToolBoxCalculations
 
 __author__ = 'nidhin'
 
@@ -395,7 +386,7 @@ class TWEGAUToolBox:
             additional_filters=ZONE_ADDITIONAL_FILTERS_PER_COL,
         )
         # combined tables
-        match_product_df = pd.merge(self.match_product_in_scene.query('status==1'), self.products, how='left',
+        match_product_df = pd.merge(self.match_product_in_scene, self.products, how='left',
                                     left_on=['product_fk'], right_on=['product_fk'])
 
         scene_template_df = pd.merge(self.scene_info, self.templates, how='left',
