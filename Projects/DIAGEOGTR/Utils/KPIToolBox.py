@@ -31,7 +31,7 @@ FSOS = "SHARE_OF_SHELF"
 PRICE_PROMOTION = 'PRICE_PROMOTION'
 PRICE_PROMOTION_BRAND_SKU = 'PRICE_PROMOTION_BRAND_SKU'
 PRICE_PROMOTION_SCENE_BRAND_SKU = 'PRICE_PROMOTION_SCENE_BRAND_SKU'
-PRICE_PROMOTION_BRAND = 'PRICE_PROMOTION_BRAND'
+PRICE_PROMOTION_SKU = 'PRICE_PROMOTION_SKU'
 
 entities = {"category":"category_fk",
            "sub_category":"sub_category_fk",
@@ -156,6 +156,7 @@ class DIAGEOGTRToolBox:
         self.scores = {self.LEVEL1: {},self.LEVEL2: {},self.LEVEL3: {}}
 
     def get_product_attribute_length_data(self):
+        ##replace(json_extract(p.labels, '$.sub_brand'), '"', "") sub_brand,
         query= """
         SELECT  		
             session_fk,
@@ -242,25 +243,22 @@ class DIAGEOGTRToolBox:
         SELECT
         mcp.creation_time,
         mcp.session_fk,
-        sub_category_fk,
-        manufacturer_fk,
-        p.brand_fk,
         mcp.product_fk,
+        c.pk country_fk,
         mcp.manual_collection_price_attributes_fk
         mcpa_fk,
         mcpa.name mcpa_name,
-        mcp.value
-        price,
+        mcp.value price,
         mcp.is_promotion
         FROM probedata.manual_collection_price mcp
-        INNER JOIN static.manual_collection_price_attributes mcpa
-        ON mcp.manual_collection_price_attributes_fk = mcpa.pk
-        INNER JOIN static_new.product  p
-        ON p.pk = mcp.product_fk
-        INNER JOIN static_new.brand b
-        ON p.brand_fk = b.pk
-        WHERE mcp.deleted_time IS NULL
-        AND mcp.session_fk = (SELECT pk FROM probedata.session ses WHERE ses.session_uid='{}') 
+        INNER JOIN probedata.session ses on mcp.session_fk = ses.pk
+        INNER JOIN static.manual_collection_price_attributes mcpa ON mcp.manual_collection_price_attributes_fk = mcpa.pk
+        INNER JOIN static.stores st on ses.store_fk = st.pk
+        left  JOIN static.regions reg on st.region_fk = reg.pk
+        left  JOIN static.countries c on reg.country_fk = c.pk
+        WHERE 1=1
+        AND mcp.deleted_time IS NULL
+        AND ses.session_uid = '{}' 
         """.format(self.session_uid)
 
         product_attribute_price_data = pd.read_sql_query(query, self.rds_conn.db)
@@ -959,9 +957,8 @@ class DIAGEOGTRToolBox:
             store_types = [store.strip().encode(DIAGEOGTRConsts.UTF_8) for store in store_policy]
             template_names = [scene.strip().encode(DIAGEOGTRConsts.UTF_8) for scene in template]
 
-            if kpi_name == PRICE_PROMOTION_BRAND:
-                self.calculate_number_of_price_promotion_entity(kpi_set_name, kpi_name, entity_1,
-                                                                entity_2, entity_3)
+            if kpi_name == PRICE_PROMOTION_SKU:
+                self.calculate_number_of_price_promotion_entity(kpi_set_name, kpi_name)
             else:
                 self.calculate_number_of_price_promotion_entity_with_scene(kpi_set_name, kpi_name, template_names, entity_1,
                                                                 entity_2, entity_3)
@@ -1042,7 +1039,7 @@ class DIAGEOGTRToolBox:
                 # self.write_to_db_result(atomic_kpi_fk,(price_promotion_count, price_promotion_count, 0),
                 #                         level=self.LEVEL3)
 
-    def calculate_number_of_price_promotion_entity(self,kpi_set_name,kpi_name,entity_key_1,entity_key_2,entity_key_3):
+    def calculate_number_of_price_promotion_entity(self,kpi_set_name,kpi_name):
         kpi_static = self.kpi_static_data[
             (self.kpi_static_data[DIAGEOGTRConsts.KPI_SET_NAME] == kpi_set_name) &
             (self.kpi_static_data[DIAGEOGTRConsts.KPI_ATOMIC_NAME] == kpi_name)]
@@ -1066,7 +1063,7 @@ class DIAGEOGTRToolBox:
         if kpi_static_new.empty and kpi_static.empty:
             return None
 
-        if kpi_name == PRICE_PROMOTION_BRAND:
+        if kpi_name == PRICE_PROMOTION_SKU:
             df_price = self.product_attribute_price_data
         else:
             print ("kpi_name:{} not found in DB".format(kpi_name))
@@ -1078,17 +1075,15 @@ class DIAGEOGTRToolBox:
 
         for row_count, row_data in df_price.iterrows():
             numerator_id = row_data['product_fk'] #product_fk
-            denominator_id = row_data[entity_key_3] #brand_fk
-            context_id = row_data[entity_key_2] #manufacturer_fk
-            numerator_result = row_data['price']
-            result = row_data['is_promotion']
-            score = row_data[entity_key_1] #sub_category_fk
+            denominator_id = row_data['country_fk'] #country_fk
+            numerator_result = row_data['is_promotion'] #is an integer field
+            result = row_data['price'] #Price can be float so storing it in result
+            score = row_data['price'] #Price can be float so storing it in score
 
             self.commonV2.write_to_db_result(fk=kpi_level_2_fk,
                                                       numerator_id=numerator_id,
                                                       numerator_result=numerator_result,
                                                       denominator_id=denominator_id,
-                                                      context_id=context_id,
                                                       result=result,
                                                       score=score)
 
