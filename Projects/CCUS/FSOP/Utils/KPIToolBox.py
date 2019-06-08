@@ -115,12 +115,14 @@ class FSOPToolBox:
             required_sparkling = row['number_required_Sparkling']
             required_still = row['number_required_Still']
             required_sku = row['number_required_SKU']
-            filters = {'manufacturer_name': manufacturers, 'brand_name': brands, 'Container': container, 'att4': attributte_4,
+            filters = {'manufacturer_name': manufacturers, 'brand_name': brands, 'CONTAINER': container, 'att4': attributte_4,
                        'template_name': scene_types}
 
             filters = self.delete_filter_nan(filters)
 
             available_df = self.calculate_availability_df(**filters)
+
+            score = 0
 
             if pd.notna(required_brands):
                 brands_available = len(available_df['brand_name'].unique())
@@ -189,8 +191,8 @@ class FSOPToolBox:
         if pd.isna(item):
             return item
         else:
-            item = item.split(', ')
-            return item
+            items = [x.strip() for x in item.split(',')]
+            return items
 
 
     def delete_filter_nan(self, filters):
