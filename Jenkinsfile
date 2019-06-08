@@ -298,7 +298,7 @@ def sendFailMail(){
             bitbucketStatusNotify(buildState: 'FAILED')
 
             emailext (
-                to: "ilanp@traxretail.com",
+                to: "yacovt@traxretail.com",
                 recipientProviders: [[$class: 'DevelopersRecipientProvider']],
                 subject: "[Build Failed] ${JOB_NAME}",
                 mimeType: 'text/html',

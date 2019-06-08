@@ -92,5 +92,5 @@ class MoveCodeToINTEG:
 
 
 if __name__ == '__main__':
-    a = MoveCodeToINTEG("MARSRU_PROD", "MARSRU2_SAND")
+    a = MoveCodeToINTEG("MARSRU2_SAND", "MARSRU_PROD")
     a.copy_project()

@@ -115,12 +115,14 @@ class FSOPToolBox:
             required_sparkling = row['number_required_Sparkling']
             required_still = row['number_required_Still']
             required_sku = row['number_required_SKU']
-            filters = {'manufacturer_name': manufacturers, 'brand_name': brands, 'Container': container, 'att4': attributte_4,
+            filters = {'manufacturer_name': manufacturers, 'brand_name': brands, 'CONTAINER': container, 'att4': attributte_4,
                        'template_name': scene_types}
 
             filters = self.delete_filter_nan(filters)
 
             available_df = self.calculate_availability_df(**filters)
+
+            score = 0
 
             if pd.notna(required_brands):
                 brands_available = len(available_df['brand_name'].unique())
@@ -189,8 +191,8 @@ class FSOPToolBox:
         if pd.isna(item):
             return item
         else:
-            item = item.split(', ')
-            return item
+            items = [x.strip() for x in item.split(',')]
+            return items
 
 
     def delete_filter_nan(self, filters):
@@ -218,8 +220,11 @@ class FSOPToolBox:
         if set(filters.keys()).difference(self.scif.keys()):
             scif_mpis_diff = self.match_product_in_scene[['scene_fk', 'product_fk'] +
                                              list(self.match_product_in_scene.keys().difference(self.scif.keys()))]
+
+            # a patch for the item_id field which became item_id_x since it was added to product table as attribute.
+            item_id = 'item_id' if 'item_id' in self.scif.columns else 'item_id_x'
             merged_df = pd.merge(self.scif[self.scif.facings != 0], scif_mpis_diff, how='outer',
-                                 left_on=['scene_id', 'item_id'], right_on=['scene_fk', 'product_fk'])
+                                 left_on=['scene_id', item_id], right_on=['scene_fk', 'product_fk'])
             filtered_df = \
                 merged_df[self.toolbox.get_filter_condition(merged_df, **filters)]
             # filtered_df = \
