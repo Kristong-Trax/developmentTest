@@ -7,13 +7,15 @@ class Const(object):
     OFF, ON = "off_premise", "on_premise"
 
     # sheets:
-    ON_TRADE_MAIN = "main - on_trade"
-    OFF_TRADE_MAIN, SHELF_FACING_SHEET, PRICING_SHEET = "main - off_trade", "Shelf Facings", "Pricing"
+    ON_TRADE_MAIN, OFF_TRADE_MAIN = "main - on_trade", "main - off_trade"
+    ON_TRADE_INDEPENDENT, OFF_TRADE_INDEPENDENT = "independent - on_trade", "independent - off_trade"
+    SHELF_FACING_SHEET, PRICING_SHEET = "Shelf Facings", "Pricing"
     SHELF_PLACMENTS_SHEET, MINIMUM_SHELF_SHEET = "Shelf Placement", "Minimum Shelf"
     DISPLAY_TARGET_SHEET, SHELF_GROUPS_SHEET = "Display_Target", "convert shelves groups"
     SHEETS = {ON: [ON_TRADE_MAIN],
-              OFF: [OFF_TRADE_MAIN, SHELF_FACING_SHEET, PRICING_SHEET, SHELF_PLACMENTS_SHEET,
-                    DISPLAY_TARGET_SHEET, MINIMUM_SHELF_SHEET, SHELF_GROUPS_SHEET]}
+              OFF: [OFF_TRADE_MAIN, MINIMUM_SHELF_SHEET, SHELF_GROUPS_SHEET,
+                    # SHELF_FACING_SHEET, PRICING_SHEET, SHELF_PLACMENTS_SHEET, DISPLAY_TARGET_SHEET
+                    ]}
     # KPIs columns:
     KPI_NAME, KPI_GROUP, SCORE, TARGET, WEIGHT = "KPI Name", "KPI Group", "Score", "Target", "Weight"
     TEMPLATE_GROUP = "Template Group/ Scene Type"
