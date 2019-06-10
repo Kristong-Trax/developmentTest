@@ -25,3 +25,4 @@ class ProjectsSanityData(BaseSeedData):
              "project_name": TestProjectsNames().TEST_PROJECT_1,
              Keys.PRODUCTS_AND_BRANDS: True
          }]}
+    

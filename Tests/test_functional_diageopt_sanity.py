@@ -54,3 +54,4 @@ class TestKEngineOutOfTheBox(TestFunctionalCase):
             output = Output()
             DIAGEOPTCalculations(data_provider, output).run_project_calculations()
             self._assert_kpi_results_filled()
+
