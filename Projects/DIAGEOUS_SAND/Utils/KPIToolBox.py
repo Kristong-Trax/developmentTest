@@ -50,6 +50,12 @@ class ToolBox:
         else:
             Log.error("The store for this session has no attribute6. Set temporary as Off-premise, fix ASAP")
             self.on_off = Const.OFF
+        if self.store_info['additional_attribute_11'].iloc[0]:
+            self.attr11 = Const.INDEPENDENT if self.store_info['additional_attribute_11'].iloc[0] in (
+                Const.INDEPENDENT) else Const.OPEN
+        else:
+            Log.error("The store for this session has no attribute11. Set temporary as Open, fix ASAP")
+            self.attr11 = Const.OPEN
         self.templates = {}
         self.get_templates()
         self.kpi_results_queries = []
@@ -58,29 +64,44 @@ class ToolBox:
         self.sub_brands = self.ps_data.get_custom_entities(1002)
         self.result_values = self.ps_data.get_result_values()
         self.products_with_prices = self.ps_data.get_products_prices()
-        self.assortment = Assortment(self.data_provider, self.output, ps_data_provider=self.ps_data,
-                                     assortment_filter=store_number_1)
-        if self.on_off == Const.ON:
-            self.sales_data = self.ps_data.get_sales_data()
-            self.no_menu_allowed = self.survey.check_survey_answer(survey_text=Const.NO_MENU_ALLOWED_QUESTION,
-                                                                   target_answer=Const.SURVEY_ANSWER)
+        if self.attr11 == Const.OPEN:
+            self.assortment = Assortment(self.data_provider, self.output, ps_data_provider=self.ps_data,
+                                         assortment_filter=store_number_1)
+            if self.on_off == Const.ON:
+                self.sales_data = self.ps_data.get_sales_data()
+                self.no_menu_allowed = self.survey.check_survey_answer(
+                    survey_text=Const.NO_MENU_ALLOWED_QUESTION, target_answer=Const.SURVEY_ANSWER)
+            else:
+                scenes = self.scene_info['scene_fk'].unique().tolist()
+                self.scenes_with_shelves = {}
+                for scene in scenes:
+                    shelves = self.match_product_in_scene[self.match_product_in_scene['scene_fk'] == scene][[
+                        'shelf_number_from_bottom', 'shelf_number']].max()
+                    shelf = max(shelves[0], shelves[1])
+                    self.scenes_with_shelves[scene] = shelf
+                self.converted_groups = self.convert_groups_from_template()
+                self.no_display_allowed = self.survey.check_survey_answer(
+                    survey_text=Const.NO_DISPLAY_ALLOWED_QUESTION, target_answer=Const.SURVEY_ANSWER)
+                self.external_targets = self.ps_data.get_kpi_external_targets(
+                    kpi_operation_types=Const.OPEN_OPERATION_TYPES)
+                self.external_targets = self.external_targets.fillna("N/A")
         else:
-            scenes = self.scene_info['scene_fk'].unique().tolist()
-            self.scenes_with_shelves = {}
-            for scene in scenes:
-                shelves = self.match_product_in_scene[self.match_product_in_scene['scene_fk'] == scene][[
-                    'shelf_number_from_bottom', 'shelf_number']].max()
-                shelf = max(shelves[0], shelves[1])
-                self.scenes_with_shelves[scene] = shelf
-            self.converted_groups = self.convert_groups_from_template()
-            self.no_display_allowed = self.survey.check_survey_answer(survey_text=Const.NO_DISPLAY_ALLOWED_QUESTION,
-                                                                      target_answer=Const.SURVEY_ANSWER)
-            self.external_targets = self.ps_data.get_kpi_external_targets(kpi_operation_types=Const.OPERATION_TYPES)
-            self.external_targets = self.external_targets.fillna("N/A")
+            if self.on_off == Const.ON:
+                self.no_menu_allowed = self.survey.check_survey_answer(
+                    survey_text=Const.NO_MENU_ALLOWED_QUESTION, target_answer=Const.SURVEY_ANSWER)
+                return
+            else:
+                self.external_targets = self.ps_data.get_kpi_external_targets(
+                    kpi_operation_types=Const.INDEPENDENT_OPERATION_TYPES)
+                self.external_targets = self.external_targets.fillna("N/A")
+                self.assortment = Assortment(self.data_provider, self.output, ps_data_provider=self.ps_data)
+                self.no_display_allowed = self.survey.check_survey_answer(
+                    survey_text=Const.NO_DISPLAY_ALLOWED_QUESTION, target_answer=Const.SURVEY_ANSWER)
         self.assortment_products = self.assortment.get_lvl3_relevant_ass()
         if self.on_off == Const.OFF:
             total_off_trade_fk = self.common.get_kpi_fk_by_kpi_name(
-                Const.DB_ASSORTMENTS_NAMES[Const.OFF])
+                Const.DB_ASSORTMENTS_NAMES[Const.OFF]) if self.attr11 == Const.OPEN else \
+                self.common.get_kpi_fk_by_kpi_name(Const.DB_ASSORTMENTS_NAMES[Const.INDEPENDENT])
             if not self.assortment_products.empty:
                 self.relevant_assortment = self.assortment_products[self.assortment_products['kpi_fk_lvl2'] ==
                                                                     total_off_trade_fk]
@@ -93,7 +114,7 @@ class ToolBox:
         """
         Reads the template (and makes the EANs be Strings)
         """
-        for sheet in Const.SHEETS[self.on_off]:
+        for sheet in Const.SHEETS[self.attr11][self.on_off]:
             self.templates[sheet] = pd.read_excel(TEMPLATE_PATH, sheetname=sheet, keep_default_na=False)
 
     # main functions:
@@ -112,7 +133,7 @@ class ToolBox:
             Const.DB_TOTAL_KPIS[self.on_off][Const.SEGMENT])
         national_kpi_fk = self.common.get_kpi_fk_by_kpi_name(
             Const.DB_TOTAL_KPIS[self.on_off][Const.NATIONAL])
-        for i, kpi_line in self.templates[Const.SHEETS[self.on_off][0]].iterrows():
+        for i, kpi_line in self.templates[Const.SHEETS[self.attr11][self.on_off][0]].iterrows():
             total_weighted_score, segment_weighted_score, national_weighted_score = self.calculate_set(
                 kpi_line)
             if kpi_line[Const.KPI_GROUP]:
@@ -280,16 +301,19 @@ class ToolBox:
             return 0, 0, 0
         kpi_db_names = Const.DB_OFF_NAMES[kpi_name]
         sku_kpi_fk = self.common.get_kpi_fk_by_kpi_name(kpi_db_names[Const.SKU])
-        total_off_trade_fk = self.common.get_kpi_fk_by_kpi_name(
-            Const.DB_ASSORTMENTS_NAMES[Const.OFF])
+        store_definition = Const.OFF if self.attr11 == Const.OPEN else Const.INDEPENDENT
+        total_off_trade_fk = self.common.get_kpi_fk_by_kpi_name(Const.DB_ASSORTMENTS_NAMES[store_definition])
         relevant_assortment = self.assortment_products[self.assortment_products['kpi_fk_lvl2']
                                                        == total_off_trade_fk]
         all_results = pd.DataFrame(columns=Const.COLUMNS_FOR_PRODUCT_ASSORTMENT)
         for i, product_line in relevant_assortment.iterrows():
-            additional_attrs = json.loads(product_line['additional_attributes'])
-            if kpi_name == Const.DISPLAY_BRAND and additional_attrs[Const.DISPLAY] in (0, '0'):
-                continue
-            standard_type = additional_attrs[Const.NATIONAL_SEGMENT]
+            if self.attr11 == Const.OPEN:
+                additional_attrs = json.loads(product_line['additional_attributes'])
+                if kpi_name == Const.DISPLAY_BRAND and additional_attrs[Const.DISPLAY] in (0, '0'):
+                    continue
+                standard_type = additional_attrs[Const.NATIONAL_SEGMENT]
+            else:
+                standard_type = Const.TOTAL
             result_line = calculate_function(
                 product_line['product_fk'], relevant_scif, standard_type)
             all_results = all_results.append(result_line, ignore_index=True)

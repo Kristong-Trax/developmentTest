@@ -4,7 +4,7 @@ __author__ = 'Elyashiv'
 
 class Const(object):
 
-    OFF, ON = "off_premise", "on_premise"
+    OFF, ON, INDEPENDENT, OPEN = "off_premise", "on_premise", "Independent", "Open"
 
     # sheets:
     ON_TRADE_MAIN, OFF_TRADE_MAIN = "main - on_trade", "main - off_trade"
@@ -12,10 +12,9 @@ class Const(object):
     SHELF_FACING_SHEET, PRICING_SHEET = "Shelf Facings", "Pricing"
     SHELF_PLACMENTS_SHEET, MINIMUM_SHELF_SHEET = "Shelf Placement", "Minimum Shelf"
     DISPLAY_TARGET_SHEET, SHELF_GROUPS_SHEET = "Display_Target", "convert shelves groups"
-    SHEETS = {ON: [ON_TRADE_MAIN],
-              OFF: [OFF_TRADE_MAIN, MINIMUM_SHELF_SHEET, SHELF_GROUPS_SHEET,
-                    # SHELF_FACING_SHEET, PRICING_SHEET, SHELF_PLACMENTS_SHEET, DISPLAY_TARGET_SHEET
-                    ]}
+    SHEETS = {
+        OPEN: {ON: [ON_TRADE_MAIN], OFF: [OFF_TRADE_MAIN, MINIMUM_SHELF_SHEET, SHELF_GROUPS_SHEET]},
+        INDEPENDENT: {ON: [ON_TRADE_INDEPENDENT], OFF: [OFF_TRADE_INDEPENDENT]}}
     # KPIs columns:
     KPI_NAME, KPI_GROUP, SCORE, TARGET, WEIGHT = "KPI Name", "KPI Group", "Score", "Target", "Weight"
     TEMPLATE_GROUP = "Template Group/ Scene Type"
@@ -86,7 +85,8 @@ class Const(object):
         MENU: {
             TOTAL: 'Menu Share - Total Score', MANUFACTURER: 'Menu Share - Manufacturer Level',
             SUB_BRAND: 'Menu Share - Brand Variant Level'}}
-    DB_ASSORTMENTS_NAMES = {OFF: "Assortment off Trade", ON: "Assortment on Trade"}
+    DB_ASSORTMENTS_NAMES = {OFF: "Assortment off Trade", ON: "Assortment on Trade",
+                            INDEPENDENT: "independent_display"}
     PERCENT_FOR_EYE_LEVEL = 0
 
     PRODUCT_FK, STANDARD_TYPE, PASSED, FACINGS = "product_fk", "standard_type", "passed", "facings"
@@ -103,7 +103,8 @@ class Const(object):
     # operation types:
     DISPLAY_TARGET_OP, SHELF_FACINGS_OP = "display_target", "shelf_facings"
     SHELF_PLACEMENT_OP, MSRP_OP = "shelf_placement", "MSRP"
-    OPERATION_TYPES = [DISPLAY_TARGET_OP, SHELF_PLACEMENT_OP, MSRP_OP, SHELF_FACINGS_OP]
+    OPEN_OPERATION_TYPES = [DISPLAY_TARGET_OP, SHELF_PLACEMENT_OP, MSRP_OP, SHELF_FACINGS_OP]
+    INDEPENDENT_OPERATION_TYPES = [DISPLAY_TARGET_OP]
     # columns in external targets:
     EX_PRODUCT_FK, EX_STATE_FK, EX_OPERATION_TYPE,  = "product_fk", "state_fk", "operation_type"
     EX_SCENE_TYPE, EX_BENCHMARK_VALUE, EX_COMPETITOR_FK = "scene_type", "BENCHMARK Value", "competitor_product_fk"
