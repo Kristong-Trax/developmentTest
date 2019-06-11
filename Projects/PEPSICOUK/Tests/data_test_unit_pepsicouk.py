@@ -12,14 +12,6 @@ class DataScores(object):
     SCORES_5_NONE_WEIGHTS = [(None, 0.15), (None, 0.15), (None, 0.15)] # score_1_1 in my example
     SCORES_6 = [(100, None), (0, None), (100, None)]
 
-# class StoreTypes(object):
-#     LT_Spaza_Affordable = 'L&T SPAZA AFFORDABLE'
-#     LT_Gen_D_Affordable = 'L&T GENERAL DEALER AFFORDABLE'
-#     LT_Spaza_Mainstream = 'L&T SPAZA MAINSTREAM'
-#     LT_Gen_D_Mainstream = 'L&T GENERAL DEALER MAINSTREAM'
-#     LT_Spaza_Premium = 'L&T SPAZA PREMIUM'
-#     LT_Gen_D_Premium = 'L&T GENERAL DEALER PREMIUM'
-#     store_list = [LT_Spaza_Affordable, LT_Gen_D_Affordable, LT_Spaza_Mainstream, LT_Gen_D_Mainstream, LT_Spaza_Premium, LT_Gen_D_Premium]
 
 class DataTestUnitPEPSICOUK(object):
 
@@ -127,7 +119,7 @@ class DataTestUnitPEPSICOUK(object):
           'assortment_group_fk': 1, 'assortment_fk': 2, 'assortment_super_group_fk': nan, 'kpi_fk_lvl1': nan,
           'group_target_date': nan, 'super_group_target': nan, 'additional_attributes': nan
           },
-         {'product_fk': 5, 'in_store': 0, 'kpi_fk_lvl3': 290, 'kpi_fk_lvl2': 289, 'target': nan,
+         {'product_fk': 5, 'in_store': 0, 'kpi_fk_lvl3': 290, 'kpi_fk_lvl2': 289, 'ta   rget': nan,
           'assortment_group_fk': 1, 'assortment_fk': 2, 'assortment_super_group_fk': nan, 'kpi_fk_lvl1': nan,
           'group_target_date': nan, 'super_group_target': nan, 'additional_attributes': nan}]
     )

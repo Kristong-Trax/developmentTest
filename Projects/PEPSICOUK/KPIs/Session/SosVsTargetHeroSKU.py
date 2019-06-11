@@ -26,7 +26,8 @@ class SosVsTargetHeroSkuKpi(UnifiedCalculationsScript):
 
     def calculate_hero_sku_sos_vs_target(self, sos_targets):
         kpi_filtered_products = self.util.filtered_scif['product_fk'].unique().tolist()
-        hero_list = self.util.lvl3_ass_result[self.util.lvl3_ass_result['in_store'] == 1]['product_fk'].unique().tolist()
+        # hero_list = self.util.lvl3_ass_result[self.util.lvl3_ass_result['in_store'] == 1]['product_fk'].unique().tolist()
+        hero_list = self.util.get_available_hero_sku_list(self.dependencies_data)
         hero_list = filter(lambda x: x in kpi_filtered_products, hero_list)
 
         sos_targets = sos_targets[sos_targets['type'] == self.util.HERO_SKU_SPACE_TO_SALES_INDEX]

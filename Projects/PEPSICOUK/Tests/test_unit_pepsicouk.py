@@ -347,9 +347,9 @@ class Test_PEPSICOUK(MockingTestCase):
         self.assertEquals(len(tool_box.kpi_results_check), 4)
         expected_list = list()
         expected_list.append({'kpi_fk': 317, 'numerator': 1, 'result': 9})
-        expected_list.append({'kpi_fk': 318, 'numerator': 1, 'result': 1})
+        expected_list.append({'kpi_fk': 318, 'numerator': 1, 'result': 4})
         expected_list.append({'kpi_fk': 317, 'numerator': 2, 'result': -1})
-        expected_list.append({'kpi_fk': 318, 'numerator': 2, 'result': 0})
+        expected_list.append({'kpi_fk': 318, 'numerator': 2, 'result': 5})
         test_result_list = []
         for expected_result in expected_list:
             test_result_list.append(self.check_kpi_results(tool_box.kpi_results_check, expected_result) == 1)
