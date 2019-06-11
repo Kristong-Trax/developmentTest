@@ -430,8 +430,10 @@ class ToolBox:
         sub_brand_kpi_fk = self.common.get_kpi_fk_by_kpi_name(
             Const.DB_ON_NAMES[Const.MENU][Const.SUB_BRAND])
         relevant_scenes = self.get_relevant_scenes(scene_types)
-        relevant_scif = self.scif_without_emptys[(self.scif_without_emptys['scene_id'].isin(relevant_scenes)) &
-                                                 (self.scif_without_emptys['product_type'] == 'POS')]
+        relevant_scif = self.scif_without_emptys[
+            (self.scif_without_emptys['scene_id'].isin(relevant_scenes)) &
+            (self.scif_without_emptys['product_type'] == 'POS') &
+            ~(self.scif_without_emptys['sub_category_local_name'].isin(Const.MENU_EXCLUDE_SUB_CATEGORIES))]
         all_manufacturers = relevant_scif['manufacturer_fk'].unique().tolist()
         den_res = relevant_scif['facings'].sum()
         diageo_facings = 0
