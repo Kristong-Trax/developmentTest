@@ -96,8 +96,9 @@ class Const(object):
     COLUMNS_FOR_PRODUCT_PLACEMENT = [PASSED, SHELF_NAME, FACINGS]
 
     EXTRA, OOS, DISTRIBUTED, OTHER, NO_PLACEMENT = "EXTRA", "0", "1", "OTHER", "0"
-    NO_DISPLAY_ALLOWED_QUESTION = "Confirm that there are no displays allowed in this outlet"
-    NO_MENU_ALLOWED_QUESTION = "Confirm that there are no menus allowed in this outlet"
+    NO_DISPLAY_ALLOWED_QUESTION = "Confirm that there are no displays in this outlet."
+    NO_MENU_ALLOWED_QUESTION = "Confirm that there are no menus in this outlet."
+    NO_BACK_BAR_ALLOWED_QUESTION = "Confirm that there are no back bars in this outlet."
     SURVEY_ANSWER = "Yes"
 
     # operation types:
@@ -113,6 +114,6 @@ class Const(object):
     SHELF_FACINGS_COLUMNS = [EX_PRODUCT_FK, EX_COMPETITOR_FK, EX_BENCHMARK_VALUE]
     SHELF_PLACEMENT_COLUMNS = [EX_PRODUCT_FK, EX_MINIMUM_SHELF]
     MSRP_COLUMNS = [EX_PRODUCT_FK, EX_COMPETITOR_FK, EX_RELATIVE_MIN, EX_RELATIVE_MAX, EX_TARGET_MAX, EX_TARGET_MIN]
-    DISPLAY_TARGET_COLUMNS = [EX_SCENE_TYPE, EX_MIN_FACINGS]
+    DISPLAY_TARGET_COLUMNS = [EX_SCENE_TYPE, EX_MIN_FACINGS, EX_STATE_FK]
 
     ALL = "ALL"

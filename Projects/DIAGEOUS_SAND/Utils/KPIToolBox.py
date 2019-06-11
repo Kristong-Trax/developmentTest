@@ -71,6 +71,8 @@ class ToolBox:
                 self.sales_data = self.ps_data.get_sales_data()
                 self.no_menu_allowed = self.survey.check_survey_answer(
                     survey_text=Const.NO_MENU_ALLOWED_QUESTION, target_answer=Const.SURVEY_ANSWER)
+                self.no_back_bar_allowed = self.survey.check_survey_answer(
+                    survey_text=Const.NO_BACK_BAR_ALLOWED_QUESTION, target_answer=Const.SURVEY_ANSWER)
             else:
                 scenes = self.scene_info['scene_fk'].unique().tolist()
                 self.scenes_with_shelves = {}
@@ -234,8 +236,7 @@ class ToolBox:
         total_on_trade_fk = self.common.get_kpi_fk_by_kpi_name(Const.DB_ASSORTMENTS_NAMES[Const.ON])
         if self.assortment_products.empty:
             return 0, 0, 0
-        relevant_assortment = self.assortment_products[self.assortment_products['kpi_fk_lvl2']
-                                                       == total_on_trade_fk]
+        relevant_assortment = self.assortment_products[self.assortment_products['kpi_fk_lvl2'] == total_on_trade_fk]
         all_results = pd.DataFrame(columns=Const.COLUMNS_FOR_PRODUCT_ASSORTMENT)
         for i, product_line in relevant_assortment.iterrows():
             additional_attrs = json.loads(product_line['additional_attributes'])
@@ -933,8 +934,11 @@ class ToolBox:
         :param relevant_products: relevant scif
         :return: number of scenes. int.
         """
-        template = self.external_targets[self.external_targets["operation_type"] == Const.DISPLAY_TARGET_OP][
+        external_template = self.external_targets[self.external_targets["operation_type"] == Const.DISPLAY_TARGET_OP][
             Const.DISPLAY_TARGET_COLUMNS]
+        template = external_template[external_template[Const.EX_STATE_FK] == self.state_fk]
+        if template.empty:
+            template = external_template[external_template[Const.EX_STATE_FK] == Const.OTHER]
         sum_scenes_passed, sum_facings = 0, 0
         product_fk_with_substs = [product_fk]
         product_fk_with_substs += self.all_products[self.all_products['substitution_product_fk'] == product_fk][
