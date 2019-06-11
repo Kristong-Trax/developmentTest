@@ -21,7 +21,7 @@ class CCZACalculations(BaseCalculationsScript):
 #     Config.init()
 #     project_name = 'ccza'
 #     sessions = [
-#                 '96c4d671-1ba4-45ac-9a38-9ebd382b7eb5',
+#                 'bbd2978a-3a5d-48a8-b4ec-1b390ec4b24b',
 #                 # 'FF39172D-EE62-4184-ABF7-91CD2D05800B',
 #                 # 'FE8E0E52-9DF1-40BF-81E2-C6F618682806',
 #                 # 'FE1CF09E-272A-4B15-9BF4-E9E4228A2BF2'

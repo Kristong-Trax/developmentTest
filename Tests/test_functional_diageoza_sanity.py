@@ -14,6 +14,13 @@ from Projects.DIAGEOZA.Calculations import DIAGEOZACalculations
 from Trax.Apps.Core.Testing.BaseCase import TestFunctionalCase
 
 from Tests.TestUtils import remove_cache_and_storage
+from mock import patch
+
+from Tests.Data.Templates.diageouk.LocalMPA import LocalMPA
+from Tests.Data.Templates.diageouk.MPA import MPA
+from Tests.Data.Templates.diageouk.NewProducts import Products
+from Tests.Data.Templates.diageouk.POSM import POSM
+from Tests.Data.Templates.diageouk.RelativePosition import Position
 
 __author__ = 'avrahama'
 
@@ -43,12 +50,26 @@ class TestKEngineOutOfTheBox(TestFunctionalCase):
         kpi_results = cursor.fetchall()
         self.assertNotEquals(len(kpi_results), 0)
         connector.disconnect_rds()
-    
+
+    @patch('KPIUtils.DIAGEO.ToolBox.DIAGEOToolBox.get_latest_directory_date_from_cloud',
+           return_value='2018-05-18')
+    @patch('KPIUtils.DIAGEO.ToolBox.DIAGEOToolBox.save_latest_templates')
+    @patch('KPIUtils.DIAGEO.ToolBox.DIAGEOToolBox.download_template',
+           return_value=LocalMPA)
+    @patch('KPIUtils.DIAGEO.ToolBox.DIAGEOToolBox.download_template',
+           return_value=MPA)
+    @patch('KPIUtils.DIAGEO.ToolBox.DIAGEOToolBox.download_template',
+           return_value=Products)
+    @patch('KPIUtils.DIAGEO.ToolBox.DIAGEOToolBox.download_template',
+           return_value=POSM)
+    @patch('KPIUtils.DIAGEO.ToolBox.DIAGEOToolBox.download_template',
+           return_value=Position)
+
     @seeder.seed(["mongodb_products_and_brands_seed", "diageoza_seed"], ProjectsSanityData())
-    def test_diageoza_sanity(self):
+    def test_diageoza_sanity(self, x, y, json, json2, json3, json4, json5):
         project_name = ProjectsSanityData.project_name
         data_provider = KEngineDataProvider(project_name)
-        sessions = ['76464b1f-967b-4661-bc3f-29b20db40624']
+        sessions = ['c211de22-7b8b-4b4c-a8ca-3673a0be4d9c']
         for session in sessions:
             data_provider.load_session_data(session)
             output = Output()

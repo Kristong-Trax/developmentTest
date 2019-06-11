@@ -9,13 +9,20 @@ from Trax.Cloud.Services.Connector.Keys import DbUsers
 from Trax.Data.Testing.TestProjects import TestProjectsNames
 from Trax.Utils.Testing.Case import MockingTestCase
 
-from Tests.Data.TestData.test_data_gskau_sanity import ProjectsSanityData
-from Projects.GSKAU.Calculations import Calculations
+from Tests.Data.TestData.test_data_diageogr_sanity import ProjectsSanityData
+from Projects.DIAGEOGR.Calculations import DIAGEOGRCalculations
 from Trax.Apps.Core.Testing.BaseCase import TestFunctionalCase
+
 from Tests.TestUtils import remove_cache_and_storage
+from mock import patch
+from Tests.Data.Templates.diageoke.MPA import mpa
+from Tests.Data.Templates.diageoke.NewProducts import products
+from Tests.Data.Templates.diageoke.POSM import posm
+from Tests.Data.Templates.diageomx.RelativePosition import position
 
 
-__author__ = 'limorc'
+
+__author__ = 'avrahama'
 
 
 class TestKEngineOutOfTheBox(TestFunctionalCase):
@@ -43,14 +50,26 @@ class TestKEngineOutOfTheBox(TestFunctionalCase):
         kpi_results = cursor.fetchall()
         self.assertNotEquals(len(kpi_results), 0)
         connector.disconnect_rds()
-    
-    @seeder.seed(["mongodb_products_and_brands_seed","gskau_seed"], ProjectsSanityData())
-    def test_gskau_sanity(self):
+
+    @patch('KPIUtils.DIAGEO.ToolBox.DIAGEOToolBox.get_latest_directory_date_from_cloud',
+           return_value='2018-05-18')
+    @patch('KPIUtils.DIAGEO.ToolBox.DIAGEOToolBox.save_latest_templates')
+    @patch('KPIUtils.DIAGEO.ToolBox.DIAGEOToolBox.download_template',
+           return_value=mpa)
+    @patch('KPIUtils.DIAGEO.ToolBox.DIAGEOToolBox.download_template',
+           return_value=products)
+    @patch('KPIUtils.DIAGEO.ToolBox.DIAGEOToolBox.download_template',
+           return_value=position)
+    @patch('KPIUtils.DIAGEO.ToolBox.DIAGEOToolBox.download_template',
+           return_value=posm)
+
+    @seeder.seed(["mongodb_products_and_brands_seed", "diageogr_seed"], ProjectsSanityData())
+    def test_diageogr_sanity(self, x, y, json, json2, json3, json4):
         project_name = ProjectsSanityData.project_name
         data_provider = KEngineDataProvider(project_name)
-        sessions = ['C804124E-7223-446A-A084-A143E45D94D8']
+        sessions = ['6C40C5E4-42D8-4606-947B-D31E072AC625']
         for session in sessions:
             data_provider.load_session_data(session)
             output = Output()
-            Calculations(data_provider, output).run_project_calculations()
+            DIAGEOGRCalculations(data_provider, output).run_project_calculations()
             self._assert_kpi_results_filled()
