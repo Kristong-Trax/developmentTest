@@ -164,19 +164,30 @@ class FSOPToolBox:
 
     def calculate_sos(self):
         for i, row in self.templates[SOS].iterrows():
+            general_filters = {}
             kpi_name = row['KPI Name']
             kpi_fk = self.common.get_kpi_fk_by_kpi_name(kpi_name)
             manufacturers = self.sanitize_values(row['manufacturer'])
-            attributte_4 = self.sanitize_values(row['att4'])
+
             scene_types = self.sanitize_values(row['scene Type'])
+
+            param1 = row['numerator param1'] #attributte_4
+            value1 = self.sanitize_values(row['numerator value1']) #attributte_4
+
+            param2 = row['denominator param1']
+            value2 = self.sanitize_values(row['denominator value1'])
+
             target = int(row['% SOS'])
 
 
-            filters = {'manufacturer_name': manufacturers, 'att4': attributte_4, 'template_name': scene_types}
+            filters = {'manufacturer_name': manufacturers, param1: value1, 'template_name': scene_types}
             filters = self.delete_filter_nan(filters)
-            # general_filters = {}
+            general_filters = {param2 : value2}
 
-            ratio = self.SOS.calculate_share_of_shelf(filters)
+            if not general_filters:
+                ratio = self.SOS.calculate_share_of_shelf(filters)
+            else:
+                ratio = self.SOS.calculate_share_of_shelf(filters, general_filters)
             if (100 * ratio) >= target:
                 score = 1
             else:
