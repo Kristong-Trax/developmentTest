@@ -45,6 +45,8 @@ class Const(object):
     NUMBER_OF_DISPLAYS = "# of Displays"
     MPA = 'MPA'
     MPA_SKU = 'MPA - SKU'
+    MPA_MR = 'MPA - MR'
+    MPA_SKU_MR = 'MPA - SKU - MR'
     ON_SHELF = 'On Shelf'
     NOT_ON_SHELF = 'Not on Shelf'
 
@@ -77,6 +79,32 @@ class Const(object):
         DISPLAY_SHARE: {TOTAL: 'Display Share', MANUFACTURER: 'Display Share - Manufacturer',
                         SKU: 'Display Share - Brand Variant Size'}}
 
+    # these are the off-premise KPI type values for use with hierarchies and mobile reports
+    # this entire infrastructure is dumb, but is needed to duplicate KPIs so the API structure stays the same
+    DB_OFF_NAMES_MR = {
+        SHELF_FACINGS: {
+            TOTAL: 'Shelf Facings - Total Score - MR',
+            BRAND: 'Shelf Facings - Compliance Brand - MR', SUB_BRAND: 'Shelf Facings - Brand Variant - MR',
+            COMPETITION: 'Shelf Facings - Brand Variant Size - MR', SKU: 'Shelf Facings - BVS + Brand Benchmark - MR'},
+        SHELF_FACINGS_MAIN_SHELF: {
+            TOTAL: '# of Facings (Main Shelf) - MR',
+            BRAND: '# of Facings (Main Shelf) - Brand - MR', SUB_BRAND: '# of Facings (Main Shelf) - Brand Variant - MR',
+            COMPETITION: '# of Shelf Facings - Brand Variant Size - MR', SKU: '# of Shelf Facings - BVS + Brand Benchmark - MR',
+            VARIANT: '# of Facings (Main Shelf) - Brand Variant vs. Benchmark - MR'},
+        SHELF_FACINGS_COLD_BOX: {
+            TOTAL: '# of Facings (Cold Box) - MR',
+            BRAND: '# of Facings (Cold Box) - Brand - MR', SUB_BRAND: '# of Facings (Cold Box) - Brand Variant - MR',
+            COMPETITION: '# of Shelf Facings - Brand Variant Size - MR', SKU: '# of Shelf Facings - BVS + Brand Benchmark - MR',
+            VARIANT: '# of Facings (Cold Box) - Brand Variant vs. Benchmark - MR'},
+        NUMBER_OF_DISPLAYS: {
+            TOTAL: '# of Displays - MR',
+            BRAND: '# of Displays - Brand - MR', SUB_BRAND: '# of Displays - Brand Variant - MR',
+            VARIANT: '# of Displays - Brand Variant vs. Benchmark - MR'},
+        MSRP: {TOTAL: 'MSRP - MR', BRAND: 'MSRP - Brand - MR', SUB_BRAND: 'MSRP - Brand Variant - MR',
+               COMPETITION: 'MSRP - Brand Variant Size - MR', SKU: 'MSRP - BVS + Brand Benchmark - MR'},
+        DISPLAY_SHARE: {TOTAL: 'Display Share - MR', MANUFACTURER: 'Display Share - Manufacturer - MR',
+                        SKU: 'Display Share - Brand Variant Size - MR'}}
+
     MENU = 'Menu Presence'
     TAP_HANDLE = 'Tap Handle Availability'
     BEER_GLASSES = 'Beer Glass Availability'
@@ -93,7 +121,21 @@ class Const(object):
             TOTAL: 'Guinness Glasses', BRAND: 'Guinness Glasses - Brand',
             DISPLAY: 'Guinness Glasses - Glass'
         }}
-    DB_ASSORTMENTS_NAMES = {OFF: "Assortment Off Premise", ON: "Assortment on Trade"}
+
+    # these are the on-premise KPI type values for use with hierarchies and mobile reports
+    # this entire infrastructure is dumb, but is needed to duplicate KPIs so the API structure stays the same
+    DB_ON_NAMES_MR = {
+        MENU: {
+            TOTAL: 'Menu Presence - MR', MANUFACTURER: 'Menu Presence - Manufacturer - MR',
+            BRAND: 'Menu Presence - Brand - MR'},
+        TAP_HANDLE: {
+            TOTAL: 'Tap Handle Availability - MR', BRAND: 'Tap Handle Availability - Brand - MR',
+            DISPLAY: 'Tap Handle Availability - Handle - MR'
+        },
+        BEER_GLASSES: {
+            TOTAL: 'Guinness Glasses - MR', BRAND: 'Guinness Glasses - Brand - MR',
+            DISPLAY: 'Guinness Glasses - Glass - MR'
+        }}
 
     # tap handle and beer glass columns
     ATT1 = 'additional_attribute_1'
