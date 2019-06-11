@@ -17,9 +17,8 @@ class TestDiageopt(TestFunctionalCase):
         super(TestDiageopt, self).set_up()
         self.project_name = ProjectsSanityData.project_name
         self.output = Output()
-        self.session_uid = '9F3E857F-E238-4380-A16C-E23E909E1DD1'
+        self.session_uid = '963D013D-EEB6-48DF-B8EC-06C8E0C2AA6C'
         remove_cache_and_storage()
-
 
     @property
     def import_path(self):
