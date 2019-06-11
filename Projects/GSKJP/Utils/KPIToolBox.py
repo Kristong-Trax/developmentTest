@@ -5,6 +5,7 @@ from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 # from Trax.Utils.Logging.Logger import Log
 import pandas as pd
 import os
+from KPIUtils_v2.Calculations.BlockCalculations import Block
 from KPIUtils.GlobalProjects.GSK.KPIGenerator import GSKGenerator
 from KPIUtils_v2.DB.CommonV2 import Common
 # from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
@@ -51,37 +52,68 @@ class GSKJPToolBox:
                                              keep_default_na=False)
 
         self.gsk_generator = GSKGenerator(self.data_provider, self.output, self.common, self.set_up_template)
+        self.blocking_generator = Block(self.data_provider)
 
     def main_calculation(self, *args, **kwargs):
         """
         This function calculates the KPI results.
         """
-        assortment_store_dict = self.gsk_generator.availability_store_function()
-        self.common.save_json_to_new_tables(assortment_store_dict)
 
-        assortment_category_dict = self.gsk_generator.availability_category_function()
-        self.common.save_json_to_new_tables(assortment_category_dict)
+        self.brand_blocking()
 
-        assortment_subcategory_dict = self.gsk_generator.availability_subcategory_function()
-        self.common.save_json_to_new_tables(assortment_subcategory_dict)
-
-        facings_sos_dict = self.gsk_generator.gsk_global_facings_sos_whole_store_function()
-        self.common.save_json_to_new_tables(facings_sos_dict)
-
-        linear_sos_dict = self.gsk_generator.gsk_global_linear_sos_whole_store_function()
-        self.common.save_json_to_new_tables(linear_sos_dict)
-
-        linear_sos_dict = self.gsk_generator.gsk_global_linear_sos_by_sub_category_function()
-        self.common.save_json_to_new_tables(linear_sos_dict)
-
-        facings_sos_dict = self.gsk_generator.gsk_global_facings_by_sub_category_function()
-        self.common.save_json_to_new_tables(facings_sos_dict)
-
-        facings_sos_dict = self.gsk_generator.gsk_global_facings_sos_by_category_function()
-        self.common.save_json_to_new_tables(facings_sos_dict)
-
-        linear_sos_dict = self.gsk_generator.gsk_global_linear_sos_by_category_function()
-        self.common.save_json_to_new_tables(linear_sos_dict)
-
-        self.common.commit_results_data()
+        # assortment_store_dict = self.gsk_generator.availability_store_function()
+        # self.common.save_json_to_new_tables(assortment_store_dict)
+        #
+        # assortment_category_dict = self.gsk_generator.availability_category_function()
+        # self.common.save_json_to_new_tables(assortment_category_dict)
+        #
+        # assortment_subcategory_dict = self.gsk_generator.availability_subcategory_function()
+        # self.common.save_json_to_new_tables(assortment_subcategory_dict)
+        #
+        # facings_sos_dict = self.gsk_generator.gsk_global_facings_sos_whole_store_function()
+        # self.common.save_json_to_new_tables(facings_sos_dict)
+        #
+        # linear_sos_dict = self.gsk_generator.gsk_global_linear_sos_whole_store_function()
+        # self.common.save_json_to_new_tables(linear_sos_dict)
+        #
+        # linear_sos_dict = self.gsk_generator.gsk_global_linear_sos_by_sub_category_function()
+        # self.common.save_json_to_new_tables(linear_sos_dict)
+        #
+        # facings_sos_dict = self.gsk_generator.gsk_global_facings_by_sub_category_function()
+        # self.common.save_json_to_new_tables(facings_sos_dict)
+        #
+        # facings_sos_dict = self.gsk_generator.gsk_global_facings_sos_by_category_function()
+        # self.common.save_json_to_new_tables(facings_sos_dict)
+        #
+        # linear_sos_dict = self.gsk_generator.gsk_global_linear_sos_by_category_function()
+        # self.common.save_json_to_new_tables(linear_sos_dict)
+        #
+        # self.common.commit_results_data()
         return
+
+    def brand_blocking(self):
+
+        results_df=[]
+        df_block = self.scif
+        brands = df_block['brand_fk'].dropna().unique()
+        template_name = 'Oral Main Shelf'# figure out which template name should I use
+        stacking_param = True# false
+        product_filters = {'product_type': ['POS', 'Empty', 'Irrelevant']}
+        for brand in brands:
+            result = self.blocking_generator.network_x_block_together(location={'template_name': template_name},
+                                population={'brand_fk': [brand]},
+                                additional={'minimum_block_ratio': 1,
+                                            'allowed_products_filters': product_filters,
+                                            'calculate_all_scenes': False,
+                                            'include_stacking': stacking_param,
+                                            'check_vertical_horizontal': True,
+                                            'minimum_facing_for_block': 1})
+
+            # results_df.append({'fk': kpi_product_pk, 'numerator_id': prod, 'denominator_id': denominator_fk,
+            #                'denominator_result': results[1], 'numerator_result': results[0], 'result':
+            #                    results[2], 'score': results[3], 'identifier_parent': identifier_level_3,
+            #                'should_enter': True})
+
+
+    # def filter_df(self):
+    #     return self.scif
