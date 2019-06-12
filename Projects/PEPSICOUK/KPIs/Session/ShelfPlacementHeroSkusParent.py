@@ -19,7 +19,8 @@ class ShelfPlacementHeroSkusParentKpi(UnifiedCalculationsScript):
             kpi_results = child_kpi_results.groupby(['numerator_id', 'KPI Parent'], as_index=False).agg(
                 {'result': np.sum})
             for i, row in kpi_results.iterrows():
-                self.write_to_db_result(numerator_id=row['numerator_id'], result=row['result'], score=row['result'],denominator_id=self.util.store_id)
+                self.write_to_db_result(fk=row['KPI Parent'], numerator_id=row['numerator_id'], result=row['result'], score=row['result'],
+                                        denominator_id=self.util.store_id)
                 self.util.add_kpi_result_to_kpi_results_df([row['KPI Parent'], row.numerator_id, self.util.store_id,
                                                             row['result'], row['result']])
 

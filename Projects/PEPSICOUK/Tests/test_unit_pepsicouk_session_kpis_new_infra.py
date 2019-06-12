@@ -20,6 +20,11 @@ from Projects.PEPSICOUK.KPIs.Session.SosVsTargetHeroSKU import SosVsTargetHeroSk
 from Projects.PEPSICOUK.KPIs.Session.SosVsTargetParent import SosVsTargetParentKpi
 from Projects.PEPSICOUK.KPIs.Session.SosVsTargetSubSegment import SosVsTargetSubSegmentKpi
 from Projects.PEPSICOUK.KPIs.Session.ShelfPlacementHeroSkusParent import ShelfPlacementHeroSkusParentKpi
+from Projects.PEPSICOUK.KPIs.Session.ShelfPlacementHeroSkus import ShelfPlacementHeroSkusKpi
+from Projects.PEPSICOUK.KPIs.Session.HeroPlacement import HeroPlacementKpi
+from Projects.PEPSICOUK.KPIs.Session.SosVsTargetBrand import SosVsTargetBrandKpi
+from Projects.PEPSICOUK.KPIs.Session.SosVsTargetSubBrand import SosVsTargetSubBrandKpi
+from Projects.PEPSICOUK.KPIs.Session.SosVsTargetSegment import SosVsTargetSegmentKpi
 
 __author__ = 'natalya'
 
@@ -345,11 +350,12 @@ class Test_PEPSICOUK(MockingTestCase):
         self.assertTrue(all(test_result_list))
 
     def test_hero_sku_price_kpi_writes_no_results_if_no_available_products(self):
-        availability_sku_res = self.get_hero_sku_availability_result()
         self.mock_scene_item_facts(pd.read_excel(DataTestUnitPEPSICOUK.test_case_1, sheet_name='scif'))
         self.mock_match_product_in_scene(pd.read_excel(DataTestUnitPEPSICOUK.test_case_1, sheet_name='matches'))
         self.mock_scene_info(DataTestUnitPEPSICOUK.scene_info)
         self.mock_scene_kpi_results(DataTestUnitPEPSICOUK.scene_kpi_results_test_case_1)
+        availability_sku_res = self.get_hero_sku_availability_result()
+        availability_sku_res['numerator_result'] = 0
         price = HeroSkuPriceKpi(self.data_provider_mock, config_params={}, dependencies_data=availability_sku_res)
         price.calculate()
         kpi_results = pd.DataFrame(price.kpi_results)
@@ -364,7 +370,6 @@ class Test_PEPSICOUK(MockingTestCase):
         price = HeroSkuPromoPriceKpi(self.data_provider_mock, config_params={}, dependencies_data=availability_sku_res)
         price.calculate()
         kpi_results = pd.DataFrame(price.kpi_results)
-        print kpi_results[['kpi_level_2_fk', 'numerator_id', 'result']]
         expected_list = list()
         expected_list.append({'kpi_level_2_fk': 318, 'numerator_id': 1, 'result': 4})
         expected_list.append({'kpi_level_2_fk': 318, 'numerator_id': 2, 'result': 5})
@@ -471,7 +476,7 @@ class Test_PEPSICOUK(MockingTestCase):
             test_result_list.append(self.check_kpi_results(sos_parent_results, expected_result) == 1)
         self.assertTrue(all(test_result_list))
 
-    def test_sos_vs_target_brand_index_and_parent(self):
+    def test_sos_vs_target_sub_segment_index_and_parent(self):
         self.mock_scene_item_facts(pd.read_excel(DataTestUnitPEPSICOUK.test_case_1, sheet_name='scif'))
         self.mock_match_product_in_scene(pd.read_excel(DataTestUnitPEPSICOUK.test_case_1, sheet_name='matches'))
         self.mock_scene_info(DataTestUnitPEPSICOUK.scene_info)
@@ -506,226 +511,239 @@ class Test_PEPSICOUK(MockingTestCase):
             test_result_list.append(self.check_kpi_results(sos_parent_results, expected_result) == 1)
         self.assertTrue(all(test_result_list))
 
-    def test_whatever(self):
-        self.mock_scene_item_facts(pd.read_excel(DataTestUnitPEPSICOUK.test_case_1, sheetname='scif'))
-        self.mock_match_product_in_scene(pd.read_excel(DataTestUnitPEPSICOUK.test_case_1, sheetname='matches'))
+    def test_sos_vs_target_brand_index_and_parent(self):
+        self.mock_scene_item_facts(pd.read_excel(DataTestUnitPEPSICOUK.test_case_1, sheet_name='scif'))
+        self.mock_match_product_in_scene(pd.read_excel(DataTestUnitPEPSICOUK.test_case_1, sheet_name='matches'))
         self.mock_scene_info(DataTestUnitPEPSICOUK.scene_info)
         self.mock_scene_kpi_results(DataTestUnitPEPSICOUK.scene_kpi_results_test_case_1)
-        tool_box = PepsicoUtil(self.output, self.data_provider_mock)
-        # print tool_box.exclusion_template
-        # print tool_box.probe_groups
-        # print tool_box.lvl3_ass_result[['product_fk', 'in_store']]
-        av = HeroAvailabilitySkuKpi(self.data_provider_mock, config_params={})
-        av.calculate()
-        print av.util
-        aval_res = pd.DataFrame(av.kpi_results)
-        # print aval_res[['numerator_id', 'numerator_result']]
-        aval_res['kpi_type'] = tool_box.HERO_SKU_AVAILABILITY_SKU
-        av_all = HeroAvailabilityKpi(self.data_provider_mock, config_params={}, dependencies_data=aval_res)
-        av_all.calculate()
-        print av_all.util
-        # print pd.DataFrame(av_all.kpi_results)[['numerator_id', 'result']]
-        # print tool_box.kpi_results_check
-        print av.util is av_all.util
-        #     print tool_box.scene_kpi_results
-        #     print tool_box.scene_info
+        sos_vs_target_brand = SosVsTargetBrandKpi(self.data_provider_mock,
+                                                  config_params={"kpi_type": "Brand Space to Sales Index"})
+        sos_vs_target_brand.calculate()
+        kpi_results = pd.DataFrame(sos_vs_target_brand.kpi_results)
+        kpi_results['result'] = kpi_results['result'].apply(lambda x: round(x, 5))
+        kpi_results['score'] = kpi_results['score'].apply(lambda x: round(x, 5))
+        print kpi_results[['numerator_id', 'numerator_result', 'denominator_result', 'result']]
+        self.assertEquals(len(kpi_results), 2)
+        expected_list = list()
+        expected_list.append({'kpi_level_2_fk': 293, 'numerator_id': 136, 'denominator_id': 2, 'numerator_result': 180,
+                              'denominator_result': 300, 'score': 0,
+                              'result': 60})
+        expected_list.append({'kpi_level_2_fk': 293, 'numerator_id': 138, 'denominator_id': 2, 'numerator_result': 120,
+                              'denominator_result': 300, 'score': 0,
+                              'result': 40})
 
-    def test_whatever_2(self):
-        self.mock_scene_item_facts(pd.read_excel(DataTestUnitPEPSICOUK.test_case_1, sheetname='scif'))
-        self.mock_match_product_in_scene(pd.read_excel(DataTestUnitPEPSICOUK.test_case_1, sheetname='matches'))
+        test_result_list = []
+        for expected_result in expected_list:
+            test_result_list.append(self.check_kpi_results(kpi_results, expected_result) == 1)
+        self.assertTrue(all(test_result_list))
+
+        # check parent
+        sos_parent = SosVsTargetParentKpi(self.data_provider_mock, config_params={}, dependencies_data=kpi_results)
+        sos_parent.calculate()
+        sos_parent_results = pd.DataFrame(sos_parent.kpi_results)
+        self.assertEquals(len(sos_parent_results), 1)
+        expected_list = list()
+        expected_list.append({'numerator_id': 2, 'score': 2})
+        test_result_list = []
+        for expected_result in expected_list:
+            test_result_list.append(self.check_kpi_results(sos_parent_results, expected_result) == 1)
+        self.assertTrue(all(test_result_list))
+
+    def test_sos_vs_target_sub_brand_index_and_parent(self):
+        self.mock_scene_item_facts(pd.read_excel(DataTestUnitPEPSICOUK.test_case_1, sheet_name='scif'))
+        self.mock_match_product_in_scene(pd.read_excel(DataTestUnitPEPSICOUK.test_case_1, sheet_name='matches'))
         self.mock_scene_info(DataTestUnitPEPSICOUK.scene_info)
         self.mock_scene_kpi_results(DataTestUnitPEPSICOUK.scene_kpi_results_test_case_1)
-        tool_box = PepsicoUtil(self.output, self.data_provider_mock)
-        # print tool_box.exclusion_template
-        # print tool_box.probe_groups
-        # print tool_box.lvl3_ass_result[['product_fk', 'in_store']]
-        av = HeroAvailabilitySkuKpi(self.data_provider_mock, config_params={})
-        av.calculate()
-        print av.util
-        aval_res = pd.DataFrame(av.kpi_results)
-        print aval_res
-        # aval_res['kpi_type'] = tool_box.HERO_SKU_AVAILABILITY_SKU
-        # av_all = HeroAvailabilityKpi(self.data_provider_mock, config_params={}, dependencies_data=aval_res)
-        # av_all.calculate()
-        # print av_all.util
-        # # print pd.DataFrame(av_all.kpi_results)[['numerator_id', 'result']]
-        # # print tool_box.kpi_results_check
-        # print av.util is av_all.util
-        # print tool_box.kpi_results_check
-        # #     print tool_box.scene_kpi_results
-        # #     print tool_box.scene_info
+        sos_vs_target_sub_brand = SosVsTargetSubBrandKpi(self.data_provider_mock,
+                                                     config_params={"kpi_type": "Sub Brand Space to Sales Index"})
+        sos_vs_target_sub_brand.calculate()
+        kpi_results = pd.DataFrame(sos_vs_target_sub_brand.kpi_results)
+        kpi_results['result'] = kpi_results['result'].apply(lambda x: round(x, 5))
+        kpi_results['score'] = kpi_results['score'].apply(lambda x: round(x, 5))
+        print kpi_results[['numerator_id', 'numerator_result', 'denominator_result', 'result', 'target']]
+        self.assertEquals(len(kpi_results), 1)
+        expected_list = list()
+        expected_list.append({'kpi_level_2_fk': 294, 'numerator_id': 10, 'denominator_id': 2, 'numerator_result': 120,
+                              'denominator_result': 435, 'result': round((float(120) / 435) * 100, 5), 'target': 2.0,
+                              'score': round((float(120) / 435)/0.02, 5)})
+        test_result_list = []
+        for expected_result in expected_list:
+            test_result_list.append(self.check_kpi_results(kpi_results, expected_result) == 1)
+        self.assertTrue(all(test_result_list))
 
-    #
-    #
-    # def test_assortment_result_is_calculated(self):
+        # check parent
+        sos_parent = SosVsTargetParentKpi(self.data_provider_mock, config_params={}, dependencies_data=kpi_results)
+        sos_parent.calculate()
+        sos_parent_results = pd.DataFrame(sos_parent.kpi_results)
+        self.assertEquals(len(sos_parent_results), 1)
+        expected_list = list()
+        expected_list.append({'numerator_id': 2, 'score': 1})
+        test_result_list = []
+        for expected_result in expected_list:
+            test_result_list.append(self.check_kpi_results(sos_parent_results, expected_result) == 1)
+        self.assertTrue(all(test_result_list))
+
+    def test_sos_vs_target_segment_index_and_parent_when_no_child_results(self):
+        self.mock_scene_item_facts(pd.read_excel(DataTestUnitPEPSICOUK.test_case_1, sheet_name='scif'))
+        self.mock_match_product_in_scene(pd.read_excel(DataTestUnitPEPSICOUK.test_case_1, sheet_name='matches'))
+        self.mock_scene_info(DataTestUnitPEPSICOUK.scene_info)
+        self.mock_scene_kpi_results(DataTestUnitPEPSICOUK.scene_kpi_results_test_case_1)
+        sos_vs_target_segment = SosVsTargetSegmentKpi(self.data_provider_mock,
+                                                      config_params={"kpi_type": "PepsiCo Segment Space to Sales Index"})
+        sos_vs_target_segment.calculate()
+        kpi_results = pd.DataFrame(sos_vs_target_segment.kpi_results)
+        self.assertTrue(kpi_results.empty)
+
+        # check parent
+        sos_parent = SosVsTargetParentKpi(self.data_provider_mock, config_params={}, dependencies_data=kpi_results)
+        sos_parent.calculate()
+        sos_parent_results = pd.DataFrame(sos_parent.kpi_results)
+        self.assertEquals(len(sos_parent_results), 0)
+
+    def test_hero_shelf_placement_kpi_flow(self):
+        self.mock_scene_item_facts(pd.read_excel(DataTestUnitPEPSICOUK.test_case_1, sheet_name='scif'))
+        self.mock_match_product_in_scene(pd.read_excel(DataTestUnitPEPSICOUK.test_case_1, sheet_name='matches'))
+        self.mock_scene_info(DataTestUnitPEPSICOUK.scene_info)
+        self.mock_scene_kpi_results(DataTestUnitPEPSICOUK.scene_kpi_results_test_case_1)
+        availability_sku_res = self.get_hero_sku_availability_result()
+
+        # hero top
+        hero_top = ShelfPlacementHeroSkusKpi(self.data_provider_mock,
+                                             config_params={"level": "Placement by shelf numbers_Top"},
+                                             dependencies_data=availability_sku_res)
+        hero_top.calculate()
+        hero_top_results = pd.DataFrame(hero_top.kpi_results)
+        hero_top_results['result'] = hero_top_results['result'].apply(lambda x: round(x, 5))
+        hero_top_results['score'] = hero_top_results['score'].apply(lambda x: round(x, 5))
+        self.assertEquals(len(hero_top_results), 1)
+        expected_list = []
+        expected_list.append({'kpi_level_2_fk': 311, 'numerator_id': 1, 'denominator_id': 1,
+                              'numerator_result': 7, 'denominator_result': 12, 'score': round(7.0 * 100 / 12, 5),
+                              'result': round(7.0 * 100 / 12, 5)})
+        test_result_list = []
+        for expected_result in expected_list:
+            test_result_list.append(self.check_kpi_results(hero_top_results, expected_result) == 1)
+        self.assertTrue(all(test_result_list))
+
+        # hero eye
+        hero_eye = ShelfPlacementHeroSkusKpi(self.data_provider_mock,
+                                             config_params={"level": "Placement by shelf numbers_Eye"},
+                                             dependencies_data=availability_sku_res)
+        hero_eye.calculate()
+        hero_eye_results = pd.DataFrame(hero_eye.kpi_results)
+        hero_eye_results['result'] = hero_eye_results['result'].apply(lambda x: round(x, 5))
+        hero_eye_results['score'] = hero_eye_results['score'].apply(lambda x: round(x, 5))
+        self.assertEquals(len(hero_eye_results), 2)
+        expected_list = []
+        expected_list.append({'kpi_level_2_fk': 312, 'numerator_id': 1, 'denominator_id': 1,
+                              'numerator_result': 3, 'denominator_result': 12, 'score': round(3.0 * 100 / 12, 5),
+                              'result': round(3.0 * 100 / 12, 5)})
+        expected_list.append({'kpi_level_2_fk': 312, 'numerator_id': 2, 'denominator_id': 2,
+                              'numerator_result': 8, 'denominator_result': 12, 'score': round(8.0 * 100 / 12, 5),
+                              'result': round(8.0 * 100 / 12, 5)})
+        test_result_list = []
+        for expected_result in expected_list:
+            test_result_list.append(self.check_kpi_results(hero_eye_results, expected_result) == 1)
+        self.assertTrue(all(test_result_list))
+
+        # hero_middle
+        hero_mid = ShelfPlacementHeroSkusKpi(self.data_provider_mock,
+                                             config_params={"level": "Placement by shelf numbers_Middle"},
+                                             dependencies_data=availability_sku_res)
+        hero_mid.calculate()
+        hero_mid_results = pd.DataFrame(hero_mid.kpi_results)
+        hero_mid_results['result'] = hero_mid_results['result'].apply(lambda x: round(x, 5))
+        hero_mid_results['score'] = hero_mid_results['score'].apply(lambda x: round(x, 5))
+        self.assertEquals(len(hero_mid_results), 1)
+        expected_list = []
+        expected_list.append({'kpi_level_2_fk': 313, 'numerator_id': 2, 'denominator_id': 2,
+                              'numerator_result': 2, 'denominator_result': 12, 'score': round(2.0 * 100 / 12, 5),
+                              'result': round(2.0 * 100 / 12, 5)})
+        test_result_list = []
+        for expected_result in expected_list:
+            test_result_list.append(self.check_kpi_results(hero_mid_results, expected_result) == 1)
+        self.assertTrue(all(test_result_list))
+
+        # hero_bottom
+        hero_bottom = ShelfPlacementHeroSkusKpi(self.data_provider_mock,
+                                                config_params={"level": "Placement by shelf numbers_Bottom"},
+                                                dependencies_data=availability_sku_res)
+        hero_bottom.calculate()
+        hero_bottom_results = pd.DataFrame(hero_bottom.kpi_results)
+        hero_bottom_results['result'] = hero_bottom_results['result'].apply(lambda x: round(x, 5))
+        hero_bottom_results['score'] = hero_bottom_results['score'].apply(lambda x: round(x, 5))
+        self.assertEquals(len(hero_bottom_results), 2)
+        expected_list = list()
+        expected_list.append({'kpi_level_2_fk': 314, 'numerator_id': 1, 'denominator_id': 1,
+                              'numerator_result': 2, 'denominator_result': 12, 'score': round(2.0 * 100 / 12, 5),
+                              'result': round(2.0 * 100 / 12, 5)})
+        expected_list.append({'kpi_level_2_fk': 314, 'numerator_id': 2, 'denominator_id': 2,
+                              'numerator_result': 2, 'denominator_result': 12, 'score': round(2.0 * 100 / 12, 5),
+                              'result': round(2.0 * 100 / 12, 5)})
+        test_result_list = []
+        for expected_result in expected_list:
+            test_result_list.append(self.check_kpi_results(hero_bottom_results, expected_result) == 1)
+        self.assertTrue(all(test_result_list))
+
+        # hero placement by sku
+        hero_all_levels = hero_top_results.copy()
+        hero_all_levels = hero_all_levels.append(hero_eye_results)
+        hero_all_levels = hero_all_levels.append(hero_bottom_results)
+        hero_all_levels = hero_all_levels.append(hero_mid_results)
+        hero_placement = ShelfPlacementHeroSkusParentKpi(self.data_provider_mock, config_params={},
+                                                         dependencies_data=hero_all_levels)
+        hero_placement.calculate()
+        hero_results = pd.DataFrame(hero_placement.kpi_results)
+        hero_results['result'] = hero_results['result'].apply(lambda x: round(x, 1))
+        hero_results['score'] = hero_results['score'].apply(lambda x: round(x, 1))
+        self.assertEquals(len(hero_results), 2)
+        expected_list = list()
+        expected_list.append({'kpi_level_2_fk': 310, 'numerator_id': 1,
+                              'score': 1 * 100, 'result': 1 * 100})
+        expected_list.append({'kpi_level_2_fk': 310, 'numerator_id': 2, 'score':  1 * 100,
+                              'result':  1 * 100})
+        test_result_list = []
+        for expected_result in expected_list:
+            test_result_list.append(self.check_kpi_results(hero_results, expected_result) == 1)
+        self.assertTrue(all(test_result_list))
+
+        # top hero kpi
+        top_hero = HeroPlacementKpi(self.data_provider_mock, config_params={},
+                                    dependencies_data=hero_results)
+        top_hero.calculate()
+        top_results = pd.DataFrame(top_hero.kpi_results)
+        self.assertEquals(len(top_results), 1)
+        expected_list = list()
+        expected_list.append({'kpi_level_2_fk': 309, 'numerator_id': 2, 'score': 2, 'result': 2})
+        test_result_list = []
+        for expected_result in expected_list:
+            test_result_list.append(self.check_kpi_results(top_results, expected_result) == 1)
+        self.assertTrue(all(test_result_list))
+
+    # def test_whatever(self):
     #     self.mock_scene_item_facts(pd.read_excel(DataTestUnitPEPSICOUK.test_case_1, sheetname='scif'))
     #     self.mock_match_product_in_scene(pd.read_excel(DataTestUnitPEPSICOUK.test_case_1, sheetname='matches'))
     #     self.mock_scene_info(DataTestUnitPEPSICOUK.scene_info)
     #     self.mock_scene_kpi_results(DataTestUnitPEPSICOUK.scene_kpi_results_test_case_1)
-    #     tool_box = PEPSICOUKToolBox(self.data_provider_mock, self.output)
-    #     # tool_box.calculate_assortment() # complete mock data later
-    #     expected_result = pd.DataFrame.from_records([
-    #         {'in_store': 1, 'product_fk': 1}, {'in_store': 1, 'product_fk': 2}, {'in_store': 0, 'product_fk': 5}
-    #     ])
-    #     assert_frame_equal(expected_result, tool_box.lvl3_ass_result[['in_store', 'product_fk']])
-    #
-    # def test_assortment_kpi_is_calculated_correctly(self):
-    #     self.mock_scene_item_facts(pd.read_excel(DataTestUnitPEPSICOUK.test_case_1, sheetname='scif'))
-    #     self.mock_match_product_in_scene(pd.read_excel(DataTestUnitPEPSICOUK.test_case_1, sheetname='matches'))
-    #     self.mock_scene_info(DataTestUnitPEPSICOUK.scene_info)
-    #     self.mock_scene_kpi_results(DataTestUnitPEPSICOUK.scene_kpi_results_test_case_1)
-    #     tool_box = PEPSICOUKToolBox(self.data_provider_mock, self.output)
-    #     tool_box.calculate_assortment()
-    #     expected_list = []
-    #     expected_list.append({'kpi_fk': 290, 'numerator': 1, 'result': 4, 'score': 100})
-    #     expected_list.append({'kpi_fk': 290, 'numerator': 2, 'result': 4, 'score': 100})
-    #     expected_list.append({'kpi_fk': 290, 'numerator': 5, 'result': 5, 'score': 0})
-    #     expected_list.append({'kpi_fk': 289, 'numerator': 2, 'result': round(2.0 / 3 * 100, 5), 'score': 0})
-    #     kpi_results = tool_box.kpi_results_check
-    #     kpi_results['result'] = kpi_results['result'].apply(lambda x: round(x, 5))
-    #     test_result_list = []
-    #     for expected_result in expected_list:
-    #         test_result_list.append(self.check_kpi_results(kpi_results, expected_result) == 1)
-    #     self.assertTrue(all(test_result_list))
-    #
-    # def test_calculate_hero_shelf_placement_horizontal(self):
-    #     self.mock_scene_item_facts(pd.read_excel(DataTestUnitPEPSICOUK.test_case_1, sheetname='scif'))
-    #     self.mock_match_product_in_scene(pd.read_excel(DataTestUnitPEPSICOUK.test_case_1, sheetname='matches'))
-    #     self.mock_scene_info(DataTestUnitPEPSICOUK.scene_info)
-    #     self.mock_scene_kpi_results(DataTestUnitPEPSICOUK.scene_kpi_results_test_case_1)
-    #     tool_box = PEPSICOUKToolBox(self.data_provider_mock, self.output)
-    #     tool_box.calculate_shelf_placement_hero_skus()
-    #     expected_list = []
-    #     expected_list.append({'kpi_fk': 311, 'numerator': 1, 'result': round(7.0*100 / 12, 5)})
-    #     expected_list.append({'kpi_fk': 312, 'numerator': 1, 'result': round(3.0*100 / 12, 5)})
-    #     expected_list.append({'kpi_fk': 314, 'numerator': 1, 'result': round(2.0*100 / 12, 5)})
-    #     expected_list.append({'kpi_fk': 314, 'numerator': 2, 'result': round(2.0*100 / 12, 5)})
-    #     expected_list.append({'kpi_fk': 313, 'numerator': 2, 'result': round(2.0*100 / 12, 5)})
-    #     expected_list.append({'kpi_fk': 312, 'numerator': 2, 'result': round(8.0*100 / 12, 5)})
-    #     expected_list.append({'kpi_fk': 310, 'numerator': 1, 'result': 1*100})
-    #     expected_list.append({'kpi_fk': 310, 'numerator': 2, 'result': 1*100})
-    #     expected_list.append({'kpi_fk': 309, 'numerator': 2, 'result': 2})
-    #
-    #     kpi_results = tool_box.kpi_results_check
-    #     kpi_results['result'] = kpi_results['result'].apply(lambda x: round(x, 5))
-    #     test_result_list = []
-    #     for expected_result in expected_list:
-    #         test_result_list.append(self.check_kpi_results(kpi_results, expected_result) == 1)
-    #     self.assertTrue(all(test_result_list))
-    #
-    # def test_calculate_brand_full_bay_if_relevant_scenes_exist_in_session(self):
-    #     self.mock_scene_item_facts(pd.read_excel(DataTestUnitPEPSICOUK.test_case_1, sheetname='scif'))
-    #     self.mock_match_product_in_scene(pd.read_excel(DataTestUnitPEPSICOUK.test_case_1, sheetname='matches'))
-    #     # self.mock_scene_info(DataTestUnitPEPSICOUK.scene_info)
-    #     # self.mock_scene_kpi_results(DataTestUnitPEPSICOUK.scene_kpi_results_test_case_1)
-    #     tool_box = PEPSICOUKToolBox(self.data_provider_mock, self.output)
-    #     tool_box.calculate_brand_full_bay()
-    #     expected_list = list()
-    #     expected_list.append({'kpi_fk': 316, 'numerator': 167, 'score': 0})
-    #     expected_list.append({'kpi_fk': 327, 'numerator': 167, 'score': 1})
-    #     expected_list.append({'kpi_fk': 316, 'numerator': 168, 'score': 0})
-    #     expected_list.append({'kpi_fk': 327, 'numerator': 168, 'score': 0})
-    #     test_result_list = []
-    #     for expected_result in expected_list:
-    #         test_result_list.append(self.check_kpi_results(tool_box.kpi_results_check, expected_result) == 1)
-    #     self.assertTrue(all(test_result_list))
-    #     self.assertTrue(len(tool_box.kpi_results_check), 4)
-    #
-    # def test_calculate_brand_full_bay_calculates_no_kpi_results_if_no_relevant_scenes_in_session(self):
-    #     matches, scif = self.create_scif_matches_data_mocks_selected_scenes(DataTestUnitPEPSICOUK.test_case_1, [3])
-    #     tool_box = PEPSICOUKToolBox(self.data_provider_mock, self.output)
-    #     tool_box.calculate_brand_full_bay()
-    #     self.assertTrue(tool_box.kpi_results_check.empty)
-    #     self.assertFalse(tool_box.match_product_in_scene.empty)
-    #
-    # def test_calculate_hero_sku_stacking_by_sequence_number(self):
-    #     self.mock_scene_item_facts(pd.read_excel(DataTestUnitPEPSICOUK.test_case_1, sheetname='scif'))
-    #     self.mock_match_product_in_scene(pd.read_excel(DataTestUnitPEPSICOUK.test_case_1, sheetname='matches'))
-    #     tool_box = PEPSICOUKToolBox(self.data_provider_mock, self.output)
-    #     tool_box.calculate_hero_sku_stacking_by_sequence_number()
-    #     expected_skus_in_results = [1, 2]
-    #     self.assertItemsEqual(tool_box.kpi_results_check['numerator'].unique().tolist(), expected_skus_in_results)
-    #     self.assertEquals(len(tool_box.kpi_results_check), 2)
-    #     expected_list = list()
-    #     expected_list.append({'kpi_fk': 315, 'numerator': 1, 'result': 4, 'score': 1})
-    #     expected_list.append({'kpi_fk': 315, 'numerator': 2, 'result': 4, 'score': 1})
-    #     test_result_list = []
-    #     for expected_result in expected_list:
-    #         test_result_list.append(self.check_kpi_results(tool_box.kpi_results_check, expected_result) == 1)
-    #     self.assertTrue(all(test_result_list))
-    #
-    # def test_calculate_hero_sku_stacking_by_sequence_number_returns_zero_results_if_no_stacked_products(self):
-    #     matches, scif = self.create_scif_matches_data_mocks_selected_scenes(DataTestUnitPEPSICOUK.test_case_1, [2])
-    #     tool_box = PEPSICOUKToolBox(self.data_provider_mock, self.output)
-    #     tool_box.calculate_hero_sku_stacking_by_sequence_number()
-    #     expected_skus_in_results = [1, 2]
-    #     self.assertItemsEqual(tool_box.kpi_results_check['numerator'].unique().tolist(), expected_skus_in_results)
-    #     self.assertEquals(len(tool_box.kpi_results_check), 2)
-    #     expected_list = list()
-    #     expected_list.append({'kpi_fk': 315, 'numerator': 1, 'result': 5, 'score': 0})
-    #     expected_list.append({'kpi_fk': 315, 'numerator': 2, 'result': 5, 'score': 0})
-    #     test_result_list = []
-    #     for expected_result in expected_list:
-    #         test_result_list.append(self.check_kpi_results(tool_box.kpi_results_check, expected_result) == 1)
-    #     self.assertTrue(all(test_result_list))
-    #
-    # def test_calculate_hero_sku_information_kpis_returns_correct_price_info(self):
-    #     self.mock_scene_item_facts(pd.read_excel(DataTestUnitPEPSICOUK.test_case_1, sheetname='scif'))
-    #     self.mock_match_product_in_scene(pd.read_excel(DataTestUnitPEPSICOUK.test_case_1, sheetname='matches'))
-    #     tool_box = PEPSICOUKToolBox(self.data_provider_mock, self.output)
-    #     tool_box.calculate_hero_sku_information_kpis()
-    #     expected_skus_in_results = [1, 2]
-    #     self.assertItemsEqual(tool_box.kpi_results_check['numerator'].unique().tolist(), expected_skus_in_results)
-    #     self.assertEquals(len(tool_box.kpi_results_check), 4)
-    #     expected_list = list()
-    #     expected_list.append({'kpi_fk': 317, 'numerator': 1, 'result': 9})
-    #     expected_list.append({'kpi_fk': 318, 'numerator': 1, 'result': 1})
-    #     expected_list.append({'kpi_fk': 317, 'numerator': 2, 'result': -1})
-    #     expected_list.append({'kpi_fk': 318, 'numerator': 2, 'result': 0})
-    #     test_result_list = []
-    #     for expected_result in expected_list:
-    #         test_result_list.append(self.check_kpi_results(tool_box.kpi_results_check, expected_result) == 1)
-    #     self.assertTrue(all(test_result_list))
-    #
-    # def test_calculate_hero_sku_stacking_width(self):
-    #     matches, scif = self.create_scif_matches_data_mocks_selected_scenes(DataTestUnitPEPSICOUK.test_case_1, [1])
-    #     tool_box = PEPSICOUKToolBox(self.data_provider_mock, self.output)
-    #     sku = 1
-    #     kpi_fk = 315
-    #     tool_box.calculate_hero_sku_stacking_width(sku, kpi_fk)
-    #     expected_list = list()
-    #     expected_list.append({'kpi_fk': 315, 'numerator': 1, 'result': 1, 'score': 1})
-    #     test_result_list = []
-    #     for expected_result in expected_list:
-    #         test_result_list.append(self.check_kpi_results(tool_box.kpi_results_check, expected_result) == 1)
-    #     self.assertTrue(all(test_result_list))
-    #
-    # def test_calculate_hero_sku_stacking_layer_more_than_one_if_sku_stacked(self):
-    #     matches, scif = self.create_scif_matches_data_mocks_selected_scenes(DataTestUnitPEPSICOUK.test_case_1, [1])
-    #     tool_box = PEPSICOUKToolBox(self.data_provider_mock, self.output)
-    #     sku = 2
-    #     kpi_fk = 315
-    #     tool_box.calculate_hero_sku_stacking_layer_more_than_one(sku, kpi_fk)
-    #     expected_list = list()
-    #     expected_list.append({'kpi_fk': 315, 'numerator': 2, 'result': 1, 'score': 1})
-    #     test_result_list = []
-    #     for expected_result in expected_list:
-    #         test_result_list.append(self.check_kpi_results(tool_box.kpi_results_check, expected_result) == 1)
-    #     self.assertTrue(all(test_result_list))
-    #
-    # def test_calculate_hero_sku_stacking_layer_more_than_one_if_sku_not_stacked(self):
-    #     matches, scif = self.create_scif_matches_data_mocks_selected_scenes(DataTestUnitPEPSICOUK.test_case_1, [2])
-    #     tool_box = PEPSICOUKToolBox(self.data_provider_mock, self.output)
-    #     sku = 2
-    #     kpi_fk = 315
-    #     tool_box.calculate_hero_sku_stacking_layer_more_than_one(sku, kpi_fk)
-    #     expected_list = list()
-    #     expected_list.append({'kpi_fk': 315, 'numerator': 2, 'result': 0, 'score': 0})
-    #     test_result_list = []
-    #     for expected_result in expected_list:
-    #         test_result_list.append(self.check_kpi_results(tool_box.kpi_results_check, expected_result) == 1)
-    #     self.assertTrue(all(test_result_list))
-    #
+    #     tool_box = PepsicoUtil(self.output, self.data_provider_mock)
+    #     # print tool_box.exclusion_template
+    #     # print tool_box.probe_groups
+    #     # print tool_box.lvl3_ass_result[['product_fk', 'in_store']]
+    #     av = HeroAvailabilitySkuKpi(self.data_provider_mock, config_params={})
+    #     av.calculate()
+    #     print av.util
+    #     aval_res = pd.DataFrame(av.kpi_results)
+    #     # print aval_res[['numerator_id', 'numerator_result']]
+    #     aval_res['kpi_type'] = tool_box.HERO_SKU_AVAILABILITY_SKU
+    #     av_all = HeroAvailabilityKpi(self.data_provider_mock, config_params={}, dependencies_data=aval_res)
+    #     av_all.calculate()
+    #     print av_all.util
+    #     # print pd.DataFrame(av_all.kpi_results)[['numerator_id', 'result']]
+    #     # print tool_box.kpi_results_check
+    #     print av.util is av_all.util
+    #     #     print tool_box.scene_kpi_results
+    #     #     print tool_box.scene_info
+
     @staticmethod
     def check_kpi_results(results_df, expected_results_dict):
         column = []
@@ -738,88 +756,3 @@ class Test_PEPSICOUK(MockingTestCase):
         query = ' & '.join('{} {} {}'.format(i, j, k) for i, j, k in zip(column, expression, condition))
         filtered_df = results_df.query(query)
         return len(filtered_df)
-    #
-    # def create_scif_matches_data_mocks_selected_scenes(self, test_case_file_path, scene_numbers):
-    #     scif_test_case = pd.read_excel(test_case_file_path, sheetname='scif')
-    #     matches_test_case = pd.read_excel(test_case_file_path, sheetname='matches')
-    #     scif_scene = scif_test_case[scif_test_case['scene_fk'].isin(scene_numbers)]
-    #     matches_scene = matches_test_case[matches_test_case['scene_fk'].isin(scene_numbers)]
-    #     self.mock_scene_item_facts(scif_scene)
-    #     self.mock_match_product_in_scene(matches_scene)
-    #     return matches_scene, scif_scene
-    #
-    # def test_get_relevant_sos_vs_target_kpi_targets_get_relevan_rows_from_kpi_external_targets(self):
-    #     self.mock_scene_item_facts(pd.read_excel(DataTestUnitPEPSICOUK.test_case_1, sheetname='scif'))
-    #     self.mock_match_product_in_scene(pd.read_excel(DataTestUnitPEPSICOUK.test_case_1, sheetname='matches'))
-    #     tool_box = PEPSICOUKToolBox(self.data_provider_mock, self.output)
-    #     targets = tool_box.get_relevant_sos_vs_target_kpi_targets()
-    #     expected_list_of_target_rows = [21, 22, 23, 24, 25]
-    #     self.assertItemsEqual(expected_list_of_target_rows, targets['pk'].values.tolist())
-    #
-    # def test_get_relevant_sos_vs_target_kpi_targets_get_relevant_rows_for_brand_vs_brand(self):
-    #     self.mock_scene_item_facts(pd.read_excel(DataTestUnitPEPSICOUK.test_case_1, sheetname='scif'))
-    #     self.mock_match_product_in_scene(pd.read_excel(DataTestUnitPEPSICOUK.test_case_1, sheetname='matches'))
-    #     tool_box = PEPSICOUKToolBox(self.data_provider_mock, self.output)
-    #     targets = tool_box.get_relevant_sos_vs_target_kpi_targets(brand_vs_brand=True)
-    #     expected_list_of_target_rows = [28, 29]
-    #     self.assertItemsEqual(expected_list_of_target_rows, targets['pk'].values.tolist())
-    #
-    # def test_sos_brand_vs_brand(self):
-    #     self.mock_scene_item_facts(pd.read_excel(DataTestUnitPEPSICOUK.test_case_1, sheetname='scif'))
-    #     self.mock_match_product_in_scene(pd.read_excel(DataTestUnitPEPSICOUK.test_case_1, sheetname='matches'))
-    #     tool_box = PEPSICOUKToolBox(self.data_provider_mock, self.output)
-    #     tool_box.calculate_linear_brand_vs_brand_index()
-    #     expected_list = list()
-    #     expected_list.append({'kpi_fk': 301, 'numerator': 194, 'denominator': 183, 'score': 0})
-    #     expected_list.append({'kpi_fk': 302, 'numerator': 136, 'denominator': 189, 'score':
-    #                                                                                     round((float(60)/195)/(float(135)/195), 5)})
-    #     expected_list.append({'kpi_fk': 303, 'numerator': 2, 'score': 1})
-    #     kpi_results = tool_box.kpi_results_check
-    #     kpi_results['score'] = kpi_results['score'].apply(lambda x: round(x, 5))
-    #     test_result_list = []
-    #     for expected_result in expected_list:
-    #         test_result_list.append(self.check_kpi_results(kpi_results, expected_result) == 1)
-    #     self.assertTrue(all(test_result_list))
-    #
-    # # def test_sos_vs_target(self):
-    # #     self.mock_scene_item_facts(pd.read_excel(DataTestUnitPEPSICOUK.test_case_1, sheetname='scif'))
-    # #     self.mock_match_product_in_scene(pd.read_excel(DataTestUnitPEPSICOUK.test_case_1, sheetname='matches'))
-    # #     tool_box = PEPSICOUKToolBox(self.data_provider_mock, self.output)
-    # #     tool_box.calculate_sos_vs_target_kpis()
-    # #     expected_list = list()
-    # #     expected_list.append({'kpi_fk': 296, 'numerator': 2, 'denominator': 11, 'result': round(float(135)/float(255)*100, 5),
-    # #                           'score': round(float(135)/float(255)/0.9, 5)})
-    # #     expected_list.append({'kpi_fk': 294, 'numerator': 10, 'denominator': 2, 'result': round(float(120)/float(435)*100, 5), 'score':
-    # #         round(float(120) / float(435)/0.02, 5)})
-    # #     expected_list.append({'kpi_fk': 295, 'numerator': 2, 'denominator': 8, 'result': 0, 'score': 0})
-    # #     expected_list.append({'kpi_fk': 293, 'numerator': 155, 'denominator': 2, 'result': 0, 'score': 0})
-    # #     expected_list.append({'kpi_fk': 287, 'numerator': 1515, 'denominator': 2, 'result': 0, 'score': 0})
-    # #     kpi_results = tool_box.kpi_results_check
-    # #     kpi_results['score'] = kpi_results['score'].apply(lambda x: round(x, 5))
-    # #     kpi_results['result'] = kpi_results['result'].apply(lambda x: round(x, 5) if x else x)
-    # #     test_result_list = []
-    # #     for expected_result in expected_list:
-    # #         test_result_list.append(self.check_kpi_results(kpi_results, expected_result) == 1)
-    # #     self.assertTrue(all(test_result_list))
-    #
-    # def test_reset_filtered_scif_and_matches_to_exclusion_all_state(self):
-    #     self.mock_scene_item_facts(pd.read_excel(DataTestUnitPEPSICOUK.test_case_1, sheetname='scif'))
-    #     self.mock_match_product_in_scene(pd.read_excel(DataTestUnitPEPSICOUK.test_case_1, sheetname='matches'))
-    #     tool_box = PEPSICOUKToolBox(self.data_provider_mock, self.output)
-    #     initial_filtered_matches_l = len(tool_box.filtered_matches)
-    #     initial_filtered_scif_l = len(tool_box.filtered_scif)
-    #     tool_box.filtered_scif, tool_box.filtered_matches = \
-    #         tool_box.commontools.set_filtered_scif_and_matches_for_specific_kpi(tool_box.filtered_scif, tool_box.filtered_matches,
-    #                                                                             'Brand Space to Sales Index')
-    #     kpi_filtered_matches_l = len(tool_box.filtered_matches)
-    #     kpi_filtered_scif_l = len(tool_box.filtered_scif)
-    #     tool_box.reset_filtered_scif_and_matches_to_exclusion_all_state()
-    #     reset_to_initial_filtered_matches_l = len(tool_box.filtered_matches)
-    #     reset_to_initial_filtered_scif_l = len(tool_box.filtered_scif)
-    #
-    #     self.assertEquals(kpi_filtered_matches_l, 30)
-    #     self.assertEquals(initial_filtered_matches_l, reset_to_initial_filtered_matches_l)
-    #     self.assertEquals(reset_to_initial_filtered_matches_l, 39)
-    #     self.assertEquals(kpi_filtered_scif_l, 5)
-    #     self.assertEquals(initial_filtered_scif_l, reset_to_initial_filtered_scif_l)
-    #     self.assertEquals(reset_to_initial_filtered_scif_l, 7)

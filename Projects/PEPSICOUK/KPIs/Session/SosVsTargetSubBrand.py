@@ -39,7 +39,7 @@ class SosVsTargetSubBrandKpi(UnifiedCalculationsScript):
         for sub_brand in additional_sub_brands:
             sub_brand_df = self.util.custom_entities[self.util.custom_entities['name'] == sub_brand]
             sub_brand_fk = sub_brand_df['pk'].values[0] if len(sub_brand_df) > 0 else None
-            if sub_brand_df is None:
+            if sub_brand_fk is None:
                 Log.warning('Sub_brand: {} is not in custom_entity table. Please add'.format(sub_brand))
             else:
                 values_to_append = {'numerator_id': sub_brand_fk, 'numerator_type': 'sub_brand',

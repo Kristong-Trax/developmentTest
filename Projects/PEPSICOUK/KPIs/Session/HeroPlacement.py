@@ -16,6 +16,7 @@ class HeroPlacementKpi(UnifiedCalculationsScript):
         if not child_kpi_results.empty:
             top_sku_parent = self.util.common.get_kpi_fk_by_kpi_type(self.util.HERO_PLACEMENT)
             res = len(child_kpi_results)
-            self.write_to_db_result(numerator_id=self.util.own_manuf_fk, denominator_id=self.util.store_id, result=res, score=res)
+            self.write_to_db_result(fk=top_sku_parent, numerator_id=self.util.own_manuf_fk,
+                                    denominator_id=self.util.store_id, result=res, score=res)
             self.util.add_kpi_result_to_kpi_results_df(
                 [top_sku_parent, self.util.own_manuf_fk, self.util.store_id, res, res])
