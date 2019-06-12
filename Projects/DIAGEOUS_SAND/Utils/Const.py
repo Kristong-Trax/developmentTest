@@ -4,7 +4,8 @@ __author__ = 'Elyashiv'
 
 class Const(object):
 
-    OFF, ON, INDEPENDENT, OPEN = "off_premise", "on_premise", "Independent", "Open"
+    OFF, ON, INDEPENDENT, OPEN, NATIONAL_STORE = "off_premise", "on_premise", "Independent", "Open", "National"
+    NOT_INDEPENDENT_STORES = [OPEN, NATIONAL_STORE]
 
     # sheets:
     ON_TRADE_MAIN, OFF_TRADE_MAIN = "main - on_trade", "main - off_trade"
@@ -14,6 +15,7 @@ class Const(object):
     DISPLAY_TARGET_SHEET, SHELF_GROUPS_SHEET = "Display_Target", "convert shelves groups"
     SHEETS = {
         OPEN: {ON: [ON_TRADE_MAIN], OFF: [OFF_TRADE_MAIN, MINIMUM_SHELF_SHEET, SHELF_GROUPS_SHEET]},
+        NATIONAL_STORE: {ON: [ON_TRADE_MAIN], OFF: [OFF_TRADE_MAIN, MINIMUM_SHELF_SHEET, SHELF_GROUPS_SHEET]},
         INDEPENDENT: {ON: [ON_TRADE_INDEPENDENT], OFF: [OFF_TRADE_INDEPENDENT]}}
     # KPIs columns:
     KPI_NAME, KPI_GROUP, SCORE, TARGET, WEIGHT = "KPI Name", "KPI Group", "Score", "Target", "Weight"
@@ -42,6 +44,7 @@ class Const(object):
     BACK_BAR, MENU = "Back Bar", "Menu"
 
     SEGMENT, NATIONAL, TOTAL = "S", "N", "total"
+    TEMPLATE = "template"
     BRAND, SUB_BRAND, SKU = "brand", "sub_brand", "sku"
     COMPETITION, MANUFACTURER = "competition", "manufacturer"
     DISPLAY, NATIONAL_SEGMENT = "display", "national_segment_ind"
@@ -80,11 +83,12 @@ class Const(object):
             SKU: 'On_POD -  Brand Variant Size'},
         BACK_BAR: {
             TOTAL: 'Back Bar - Total Score', NATIONAL: 'Back Bar - National Score', SEGMENT: 'Back Bar - Segment Score',
+            TEMPLATE: "Back Bar - Template Score",
             BRAND: 'Back Bar - Generic Brand', SUB_BRAND: 'Back Bar - Brand Variant',
             SKU: 'Back Bar - Brand Variant Size'},
         MENU: {
             TOTAL: 'Menu Share - Total Score', MANUFACTURER: 'Menu Share - Manufacturer Level',
-            SUB_BRAND: 'Menu Share - Brand Variant Level'}}
+            TEMPLATE: "Menu Share - Template Score", SUB_BRAND: 'Menu Share - Brand Variant Level'}}
     DB_ASSORTMENTS_NAMES = {OFF: "Assortment off Trade", ON: "Assortment on Trade",
                             INDEPENDENT: "independent_display"}
     PERCENT_FOR_EYE_LEVEL = 0

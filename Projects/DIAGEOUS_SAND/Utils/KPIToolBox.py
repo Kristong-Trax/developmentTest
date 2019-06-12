@@ -51,8 +51,7 @@ class ToolBox:
             Log.error("The store for this session has no attribute6. Set temporary as Off-premise, fix ASAP")
             self.on_off = Const.OFF
         if self.store_info['additional_attribute_11'].iloc[0]:
-            self.attr11 = Const.INDEPENDENT if self.store_info['additional_attribute_11'].iloc[0] in (
-                Const.INDEPENDENT) else Const.OPEN
+            self.attr11 = self.store_info['additional_attribute_11'].iloc[0]
         else:
             Log.error("The store for this session has no attribute11. Set temporary as Open, fix ASAP")
             self.attr11 = Const.OPEN
@@ -64,7 +63,7 @@ class ToolBox:
         self.sub_brands = self.ps_data.get_custom_entities(1002)
         self.result_values = self.ps_data.get_result_values()
         self.products_with_prices = self.ps_data.get_products_prices()
-        if self.attr11 == Const.OPEN:
+        if self.attr11 in Const.NOT_INDEPENDENT_STORES:
             self.assortment = Assortment(self.data_provider, self.output, ps_data_provider=self.ps_data,
                                          assortment_filter=store_number_1)
             if self.on_off == Const.ON:
@@ -102,7 +101,7 @@ class ToolBox:
         self.assortment_products = self.assortment.get_lvl3_relevant_ass()
         if self.on_off == Const.OFF:
             total_off_trade_fk = self.common.get_kpi_fk_by_kpi_name(
-                Const.DB_ASSORTMENTS_NAMES[Const.OFF]) if self.attr11 == Const.OPEN else \
+                Const.DB_ASSORTMENTS_NAMES[Const.OFF]) if self.attr11 in Const.NOT_INDEPENDENT_STORES else \
                 self.common.get_kpi_fk_by_kpi_name(Const.DB_ASSORTMENTS_NAMES[Const.INDEPENDENT])
             if not self.assortment_products.empty:
                 self.relevant_assortment = self.assortment_products[self.assortment_products['kpi_fk_lvl2'] ==
@@ -193,21 +192,18 @@ class ToolBox:
             return 0, 0, 0
         return total_score, segment_score, national_score
 
-    def survey_display_write_to_db(self, weight):
+    def survey_display_back_bar_write_to_db(self, weight, kpi_dict):
         """
         In case we don't have display (buy the survey question) we need to pass the KPI.
         :param weight: float
-        :return: True if no display
+        :param kpi_dict: dict
+        :return: True if no display/back_bar
         """
-        if not self.no_display_allowed:
-            return False
         score = 1
         dict_of_fks = {
-            Const.TOTAL: self.common.get_kpi_fk_by_kpi_name(Const.DB_OFF_NAMES[Const.DISPLAY_BRAND][Const.TOTAL]),
-            Const.NATIONAL: self.common.get_kpi_fk_by_kpi_name(Const.DB_OFF_NAMES[Const.DISPLAY_BRAND][
-                Const.NATIONAL]),
-            Const.SEGMENT: self.common.get_kpi_fk_by_kpi_name(Const.DB_OFF_NAMES[Const.DISPLAY_BRAND][
-                Const.SEGMENT])
+            Const.TOTAL: self.common.get_kpi_fk_by_kpi_name(kpi_dict[Const.TOTAL]),
+            Const.NATIONAL: self.common.get_kpi_fk_by_kpi_name(kpi_dict[Const.NATIONAL]),
+            Const.SEGMENT: self.common.get_kpi_fk_by_kpi_name(kpi_dict[Const.SEGMENT])
         }
         for kpi in dict_of_fks:
             self.common.write_to_db_result(
@@ -228,14 +224,21 @@ class ToolBox:
         :param weight: float
         :return:
         """
+        if kpi_name == Const.BACK_BAR and self.no_back_bar_allowed:
+            self.survey_display_back_bar_write_to_db(weight, Const.DB_ON_NAMES[Const.BACK_BAR])
+            Log.debug("There is no back bar, Back Bar got 100")
+            return 1 * weight, 1 * weight, 1 * weight
+        if self.assortment_products.empty:
+            return 0, 0, 0
         relevant_scenes = self.get_relevant_scenes(scene_types)
         relevant_scif = self.scif_without_emptys[self.scif_without_emptys['scene_id'].isin(
             relevant_scenes)]
         kpi_db_names = Const.DB_ON_NAMES[kpi_name]
         sku_kpi_fk = self.common.get_kpi_fk_by_kpi_name(kpi_db_names[Const.SKU])
         total_on_trade_fk = self.common.get_kpi_fk_by_kpi_name(Const.DB_ASSORTMENTS_NAMES[Const.ON])
-        if self.assortment_products.empty:
-            return 0, 0, 0
+        if kpi_name == Const.BACK_BAR and self.attr11 == Const.OPEN:
+            total_on_trade_fk = self.common.get_kpi_fk_by_kpi_name(Const.DB_ASSORTMENTS_NAMES[Const.ON])
+            # TODO: change it to the right back bar
         relevant_assortment = self.assortment_products[self.assortment_products['kpi_fk_lvl2'] == total_on_trade_fk]
         all_results = pd.DataFrame(columns=Const.COLUMNS_FOR_PRODUCT_ASSORTMENT)
         for i, product_line in relevant_assortment.iterrows():
@@ -290,7 +293,8 @@ class ToolBox:
         if kpi_name == Const.POD:
             calculate_function = self.calculate_pod_off_sku
         elif kpi_name == Const.DISPLAY_BRAND:
-            if self.survey_display_write_to_db(weight):
+            if self.no_display_allowed:
+                self.survey_display_back_bar_write_to_db(weight, Const.DB_OFF_NAMES[Const.DISPLAY_BRAND])
                 Log.debug("There is no display, Display Brand got 100")
                 return 1 * weight, 1 * weight, 1 * weight
             calculate_function = self.calculate_display_compliance_sku
@@ -308,7 +312,7 @@ class ToolBox:
                                                        == total_off_trade_fk]
         all_results = pd.DataFrame(columns=Const.COLUMNS_FOR_PRODUCT_ASSORTMENT)
         for i, product_line in relevant_assortment.iterrows():
-            if self.attr11 == Const.OPEN:
+            if self.attr11 in Const.NOT_INDEPENDENT_STORES:
                 additional_attrs = json.loads(product_line['additional_attributes'])
                 if kpi_name == Const.DISPLAY_BRAND and additional_attrs[Const.DISPLAY] in (0, '0'):
                     continue
@@ -445,12 +449,15 @@ class ToolBox:
             num_res = relevant_scif[(relevant_scif['sub_brand'] == sub_brand) &
                                     (relevant_scif['brand_fk'] == brand_fk)]['facings'].sum()
             result = self.get_score(num_res, den_res)
+            manufacturer = relevant_scif[
+                (relevant_scif['sub_brand'] == sub_brand) &
+                (relevant_scif['brand_fk'] == brand_fk)]['manufacturer_fk'].iloc[0]
             sub_brand_fk = self.get_sub_brand_fk(sub_brand, brand_fk)
             if sub_brand_fk == 0:
                 continue
             self.common.write_to_db_result(
                 fk=sub_brand_kpi_fk, numerator_id=sub_brand_fk, numerator_result=num_res, denominator_result=den_res,
-                result=result, identifier_parent=self.common.get_dictionary(kpi_fk=total_kpi_fk))
+                result=result, identifier_parent={"a": manufacturer}, should_enter=True)
         for manufacturer_fk in all_manufacturers:
             num_res = relevant_scif[relevant_scif['manufacturer_fk']
                                     == manufacturer_fk]['facings'].sum()
@@ -464,7 +471,7 @@ class ToolBox:
             self.common.write_to_db_result(
                 fk=manufacturer_kpi_fk, numerator_id=manufacturer_fk, numerator_result=num_res, result=result,
                 denominator_result=den_res, identifier_parent=self.common.get_dictionary(
-                    kpi_fk=total_kpi_fk),
+                    kpi_fk=total_kpi_fk), identifier_result={"a": manufacturer_fk},
                 target=manufacturer_target)
         result = self.get_score(diageo_facings, den_res)
         score = 1 if result >= target else 0
