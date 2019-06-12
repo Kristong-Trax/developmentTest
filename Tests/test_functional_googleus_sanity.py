@@ -6,7 +6,6 @@ import MySQLdb
 from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
 from Trax.Cloud.Services.Connector.Keys import DbUsers
 from Trax.Data.Testing.TestProjects import TestProjectsNames
-from Trax.Utils.Testing.Case import MockingTestCase
 
 from Tests.Data.TestData.test_data_googleus_sanity import ProjectsSanityData
 from Projects.GOOGLEUS.Calculations import GOOGLEUSCalculations
