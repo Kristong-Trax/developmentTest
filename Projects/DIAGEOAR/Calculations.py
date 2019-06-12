@@ -8,7 +8,7 @@ from Projects.DIAGEOAR.KPIGenerator import DIAGEOARDIAGEOARGenerator
 __author__ = 'Yasmin'
 
 
-class DIAGEOARDIAGEOARCalculations(BaseCalculationsScript):
+class DIAGEOARCalculations(BaseCalculationsScript):
     def run_project_calculations(self):
         self.timer.start()
         DIAGEOARDIAGEOARGenerator(self.data_provider, self.output).main_function()
