@@ -7,7 +7,7 @@ from Trax.Data.Testing.SeedNew import Seeder
 from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
 from Trax.Cloud.Services.Connector.Keys import DbUsers
 from Trax.Data.Testing.TestProjects import TestProjectsNames
-from Trax.Utils.Testing.Case import MockingTestCase, skip
+from Trax.Utils.Testing.Case import skip
 from Tests.Data.Templates.diageoke.LocalMPA import local_mpa
 from Tests.Data.Templates.diageoke.MPA import mpa
 from Tests.Data.Templates.diageoke.NewProducts import products
@@ -48,7 +48,6 @@ class TestKEngineOutOfTheBox(TestFunctionalCase):
         self.assertNotEquals(len(kpi_results), 0)
         connector.disconnect_rds()
 
-    @skip('Test failed in garage')
     @patch('KPIUtils.DIAGEO.ToolBox.DIAGEOToolBox.get_latest_directory_date_from_cloud',
            return_value='2018-11-27')
     @patch('KPIUtils.DIAGEO.ToolBox.DIAGEOToolBox.save_latest_templates')
