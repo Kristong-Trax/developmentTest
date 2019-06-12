@@ -162,10 +162,12 @@ class SINGHATHToolBox:
             self.common.write_to_db_result(
                 fk=kpi['pk'].iloc[0],
                 numerator_id=int(own_manufacturer['product_fk'].iloc[0]),
+                numerator_result=result,
                 denominator_id=int(competitive_manufacturer['product_fk'].iloc[0]),
+                denominator_result=result,
                 context_id=self.store_id,
-                result=result,
-                score=result,
+                result=own_manufacturer_price,
+                score=competitive_manufacturer_price,
             )
 
     def write_pos_presence(self, kpi, pos_data_frame):
