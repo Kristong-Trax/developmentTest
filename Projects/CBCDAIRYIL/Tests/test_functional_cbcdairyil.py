@@ -4,8 +4,9 @@ import os
 # from Trax.Cloud.Services.Connector.Keys import DbUsers
 # from Trax.Utils.Conf.Configuration import Config
 # import numpy as np
-from Trax.Utils.Testing.Case import TestCase, MockingTestCase
-from mock import MagicMock, mock
+from Trax.Apps.Core.Testing.BaseCase import TestFunctionalCase
+from Trax.Utils.Testing.Case import TestUnitCase
+from mock import MagicMock
 import pandas as pd
 from Projects.CBCDAIRYIL.Utils.KPIToolBox import CBCDAIRYILToolBox, Consts
 from KPIUtils.ParseTemplates import parse_template
@@ -19,7 +20,7 @@ class TestConsts(object):
     OUT_CAT_FRIDGE = u'מקרר חוץ קטגוריה'
 
 
-class TestCBCDAIRYIL(MockingTestCase):
+class TestCBCDAIRYIL(TestFunctionalCase):
 
     @property
     def import_path(self):
