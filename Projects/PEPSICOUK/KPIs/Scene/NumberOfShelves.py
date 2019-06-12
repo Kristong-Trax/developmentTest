@@ -19,6 +19,6 @@ class NumberOfShelvesKpi(UnifiedCalculationsScript):
             # shelf_num = len(bay_shelf)
             shelf_num = matches['shelf_number'].max()
             self.write_to_db_result(fk=kpi_fk, numerator_id=self.util.own_manuf_fk, result=shelf_num,
-                                                denominator_id=self.util.store_id, by_scene=True)
+                                    denominator_id=self.util.store_id, by_scene=True)
             self.util.add_kpi_result_to_kpi_results_df(
                 [kpi_fk, self.util.own_manuf_fk, self.util.store_id, shelf_num, None])
