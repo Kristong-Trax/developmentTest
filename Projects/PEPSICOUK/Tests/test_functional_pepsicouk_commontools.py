@@ -1,10 +1,7 @@
-from Trax.Utils.Testing.Case import TestCase, MockingTestCase
-from Trax.Data.Testing.SeedNew import Seeder
-from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
+from Trax.Apps.Core.Testing.BaseCase import TestFunctionalCase
 from mock import MagicMock
 from Projects.PEPSICOUK.Utils.KPIToolBox import PEPSICOUKCommonToolBox
 from Projects.PEPSICOUK.Tests.data_test_unit_pepsicouk import DataTestUnitPEPSICOUK
-from Trax.Algo.Calculations.Core.DataProvider import Output
 from pandas.util.testing import assert_frame_equal
 import os
 import pandas as pd
@@ -13,7 +10,7 @@ import numpy as np
 __author__ = 'natalya'
 
 
-class Test_PEPSICOUKCommon(MockingTestCase):
+class Test_PEPSICOUKCommon(TestFunctionalCase):
     # seeder = Seeder()
 
     @property
