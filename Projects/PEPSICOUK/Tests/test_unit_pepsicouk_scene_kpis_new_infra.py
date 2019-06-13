@@ -13,6 +13,7 @@ from Projects.PEPSICOUK.KPIs.Scene.NumberOfShelves import NumberOfShelvesKpi
 from Projects.PEPSICOUK.KPIs.Scene.NumberOfBays import NumberOfBaysKpi
 from Projects.PEPSICOUK.KPIs.Scene.NumberOfFacings import NumberOfFacingsKpi
 from Projects.PEPSICOUK.KPIs.Scene.LinearSpace import LinearSpaceKpi
+from Projects.PEPSICOUK.KPIs.Scene.ShelfPlacementVertical import ShelfPlacementVerticalKpi
 
 __author__ = 'natalya'
 
@@ -218,6 +219,16 @@ class Test_PEPSICOUK(MockingTestCase):
         scene_results.return_value = data
         return
 
+    def create_scene_scif_matches_stitch_groups_data_mocks(self, test_case_file_path, scene_number):
+        scif_test_case = pd.read_excel(test_case_file_path, sheet_name='scif')
+        matches_test_case = pd.read_excel(test_case_file_path, sheet_name='matches')
+        scif_scene = scif_test_case[scif_test_case['scene_fk'] == scene_number]
+        matches_scene = matches_test_case[matches_test_case['scene_fk'] == scene_number]
+        self.mock_scene_item_facts(scif_scene)
+        self.mock_match_product_in_scene(matches_scene)
+        # probe_group = self.mock_probe_group(pd.read_excel(test_case_file_path, sheetname='stitch_groups'))
+        return matches_scene, scif_scene
+
     def test_number_of_shelves_kpi(self):
         matches, scif = self.create_scene_scif_matches_stitch_groups_data_mocks(
             DataTestUnitPEPSICOUK.test_case_1, 1)
@@ -235,6 +246,76 @@ class Test_PEPSICOUK(MockingTestCase):
         for expected_result in expected_list:
             test_result_list.append(self.check_kpi_results(kpi_result, expected_result) == 1)
         self.assertTrue(all(test_result_list))
+
+    def test_scene_kpis_are_not_calculated_if_location_secondary_shelf(self):
+        matches, scene = self.create_scene_scif_matches_stitch_groups_data_mocks(
+            DataTestUnitPEPSICOUK.test_case_1, 3)
+
+        num_of_shelves = NumberOfShelvesKpi(self.data_provider_mock, config_params={})
+        num_of_shelves.calculate()
+        kpi_results = pd.DataFrame(num_of_shelves.kpi_results)
+        self.assertTrue(kpi_results.empty)
+
+        num_of_bays = NumberOfBaysKpi(self.data_provider_mock, config_params={})
+        num_of_bays.calculate()
+        kpi_results = pd.DataFrame(num_of_bays.kpi_results)
+        self.assertTrue(kpi_results.empty)
+
+        num_of_facings = NumberOfFacingsKpi(self.data_provider_mock, config_params={})
+        num_of_facings.calculate()
+        kpi_result = pd.DataFrame(num_of_facings.kpi_results)
+        self.assertTrue(kpi_result.empty)
+
+        linear = LinearSpaceKpi(self.data_provider_mock, config_params={})
+        linear.calculate()
+        kpi_result = pd.DataFrame(linear.kpi_results)
+        self.assertTrue(kpi_result.empty)
+
+        placement_left = ShelfPlacementVerticalKpi(self.data_provider_mock,
+                                                   config_params={"kpi_type": "Shelf Placement Vertical_Left"})
+        placement_left.calculate()
+        kpi_result = pd.DataFrame(placement_left.kpi_results)
+        self.assertTrue(kpi_result.empty)
+
+    # def test_calculate_shelf_placement_vertical_mm_correcly_places_products_if_no_excluded_matches(self):
+    #     matches, scif = self.create_scene_scif_matches_stitch_groups_data_mocks(
+    #         DataTestUnitPEPSICOUK.test_case_1, 2)
+    #     self.mock_scene_info(DataTestUnitPEPSICOUK.scene_info)
+    #     self.mock_scene_kpi_results(DataTestUnitPEPSICOUK.scene_kpi_results_test_case_1)
+    #
+    #     # left
+    #     vertical_left = ShelfPlacementVerticalKpi(self.data_provider_mock,
+    #                                               config_params={"kpi_type": "Shelf Placement Vertical_Left"})
+    #     vertical_left.calculate()
+    #     left_result = pd.DataFrame(vertical_left.kpi_results)
+    #     self.assertEquals(len(left_result), 2)
+    #
+    #     # center
+    #     vertical_center = ShelfPlacementVerticalKpi(self.data_provider_mock,
+    #                                                 config_params={"kpi_type": "Shelf Placement Vertical_Center"})
+    #     vertical_center.calculate()
+    #     center_result = pd.DataFrame(vertical_left.kpi_results)
+    #     self.assertEquals(len(left_result), 2)
+    #
+    #     # right
+    #     vertical_right = ShelfPlacementVerticalKpi(self.data_provider_mock,
+    #                                                config_params={"kpi_type": "Shelf Placement Vertical_Right"})
+    #     vertical_right.calculate()
+    #     right_result = pd.DataFrame(vertical_left.kpi_results)
+    #     self.assertEquals(len(right_result), 1)
+    #
+    #     scene_tb = PEPSICOUKSceneToolBox(self.data_provider_mock, self.output)
+    #     scene_tb.calculate_shelf_placement_vertical_mm()
+    #     expected_list = []
+    #     expected_list.append({'kpi_fk': 327, 'numerator': 1, 'result': 1.0 / 5 * 100})
+    #     expected_list.append({'kpi_fk': 326, 'numerator': 1, 'result': 2.0 / 5 * 100})
+    #     expected_list.append({'kpi_fk': 325, 'numerator': 1, 'result': 2.0 / 5 * 100})
+    #     expected_list.append({'kpi_fk': 325, 'numerator': 2, 'result': 6.0 / 6 * 100})
+    #     expected_list.append({'kpi_fk': 326, 'numerator': 3, 'result': 1.0 / 1 * 100})
+    #     test_result_list = []
+    #     for expected_result in expected_list:
+    #         test_result_list.append(self.check_kpi_results(scene_tb.kpi_results, expected_result) == 1)
+    #     self.assertTrue(all(test_result_list))
 
     def test_number_of_bays_kpi(self):
         matches, scif = self.create_scene_scif_matches_stitch_groups_data_mocks(
@@ -276,25 +357,6 @@ class Test_PEPSICOUK(MockingTestCase):
             test_result_list.append(self.check_kpi_results(kpi_result, expected_result) == 1)
         self.assertTrue(all(test_result_list))
 
-
-
-        #
-        # scene_tb = PEPSICOUKSceneToolBox(self.data_provider_mock, self.output)
-        # scene_tb.calculate_number_of_facings_and_linear_space()
-        # expected_list = []
-        # expected_list.append({'kpi_fk': 321, 'numerator': 1, 'result': 7})
-        # expected_list.append({'kpi_fk': 322, 'numerator': 1, 'result': 70})
-        # expected_list.append({'kpi_fk': 321, 'numerator': 2, 'result': 6})
-        # expected_list.append({'kpi_fk': 322, 'numerator': 2, 'result': 30})
-        # expected_list.append({'kpi_fk': 321, 'numerator': 3, 'result': 8})
-        # expected_list.append({'kpi_fk': 322, 'numerator': 3, 'result': 120})
-        # expected_list.append({'kpi_fk': 321, 'numerator': 4, 'result': 18})
-        # expected_list.append({'kpi_fk': 322, 'numerator': 4, 'result': 120})
-        # test_result_list = []
-        # for expected_result in expected_list:
-        #     test_result_list.append(self.check_kpi_results(scene_tb.kpi_results, expected_result) == 1)
-        # self.assertTrue(all(test_result_list))
-
     def test_linear_kpi(self):
         matches, scif = self.create_scene_scif_matches_stitch_groups_data_mocks(
             DataTestUnitPEPSICOUK.test_case_1, 1)
@@ -329,6 +391,8 @@ class Test_PEPSICOUK(MockingTestCase):
         query = ' & '.join('{} {} {}'.format(i, j, k) for i, j, k in zip(column, expression, condition))
         filtered_df = results_df.query(query)
         return len(filtered_df)
+
+
 
     # def test_get_available_hero_sku_list_retrieves_only_skus_in_store(self):
     #     self.mock_scene_item_facts(pd.read_excel(DataTestUnitPEPSICOUK.test_case_1, sheetname='scif'))
@@ -409,14 +473,3 @@ class Test_PEPSICOUK(MockingTestCase):
     #     print tool_box.kpi_results_check
     #     #     print tool_box.scene_kpi_results
     #     #     print tool_box.scene_info
-
-    def create_scene_scif_matches_stitch_groups_data_mocks(self, test_case_file_path, scene_number):
-        scif_test_case = pd.read_excel(test_case_file_path, sheet_name='scif')
-        matches_test_case = pd.read_excel(test_case_file_path, sheet_name='matches')
-        scif_scene = scif_test_case[scif_test_case['scene_fk'] == scene_number]
-        matches_scene = matches_test_case[matches_test_case['scene_fk'] == scene_number]
-        self.mock_scene_item_facts(scif_scene)
-        self.mock_match_product_in_scene(matches_scene)
-        # probe_group = self.mock_probe_group(pd.read_excel(test_case_file_path, sheetname='stitch_groups'))
-        return matches_scene, scif_scene
-
