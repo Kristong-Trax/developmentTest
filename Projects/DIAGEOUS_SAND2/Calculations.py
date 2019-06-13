@@ -1,7 +1,7 @@
 
 from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScript
 
-from Projects.DIAGEOUS_SAND.KPIGenerator import Generator
+from Projects.DIAGEOUS_SAND2.KPIGenerator import Generator
 
 __author__ = 'Elyashiv'
 
