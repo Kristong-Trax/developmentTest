@@ -131,41 +131,31 @@ class PngcnSceneKpis(object):
         self.parser = Parser
 
     def process_scene(self):
-        try:
-            self.save_nlsos_to_custom_scif()
-        except Exception as e:
-            Log.error('nlsos to custom scif failed for scene: \'{0}\' error: {1}'.format(self.scene_id, str(e)))
-            raise e
-
+        self.save_nlsos_to_custom_scif()
         self.calculate_eye_level_kpi()
-        try:
-            Log.debug(self.log_prefix + ' Retrieving data')
-            self.calculate_display_size()
-            self.calculate_linear_length()
-            self.calculate_presize_linear_length()
-            self.match_display_in_scene = self._get_match_display_in_scene_data()
-            # if there are no display tags there's no need to retrieve the rest of the data.
-            if self.match_display_in_scene.empty:
-                Log.debug(self.log_prefix + ' No display tags')
-                self._delete_previous_data()
-                self.common.commit_results_data(result_entity='scene')
-            else:
-                self.displays = self._get_displays_data()
-                self.match_product_in_scene = self._get_match_product_in_scene_data()
-                self._delete_previous_data()
-                self._handle_promotion_wall_display()
-                self._handle_cube_or_4_sided_display()
-                self._handle_table_display()
-                self._handle_rest_display()
-                self.common.commit_results_data(result_entity='scene')
-                if self.on_ace:
-                    Log.debug(self.log_prefix + ' Committing share of display calculations')
-                    self.project_connector.db.commit()
-                Log.info(self.log_prefix + ' Finished calculation')
-        except Exception as e:
-            Log.error('Share of display calculation for scene: \'{0}\' error: {1}'.format(
-                self.scene_id, str(e)))
-            raise e
+        Log.debug(self.log_prefix + ' Retrieving data')
+        self.calculate_display_size()
+        self.calculate_linear_length()
+        self.calculate_presize_linear_length()
+        self.match_display_in_scene = self._get_match_display_in_scene_data()
+        # if there are no display tags there's no need to retrieve the rest of the data.
+        if self.match_display_in_scene.empty:
+            Log.debug(self.log_prefix + ' No display tags')
+            self._delete_previous_data()
+            self.common.commit_results_data(result_entity='scene')
+        else:
+            self.displays = self._get_displays_data()
+            self.match_product_in_scene = self._get_match_product_in_scene_data()
+            self._delete_previous_data()
+            self._handle_promotion_wall_display()
+            self._handle_cube_or_4_sided_display()
+            self._handle_table_display()
+            self._handle_rest_display()
+            self.common.commit_results_data(result_entity='scene')
+            if self.on_ace:
+                Log.debug(self.log_prefix + ' Committing share of display calculations')
+                self.project_connector.db.commit()
+            Log.info(self.log_prefix + ' Finished calculation')
 
     def calculate_eye_level_kpi(self):
         if self.matches_from_data_provider.empty:
@@ -914,17 +904,44 @@ class PngcnSceneKpis(object):
         return self.all_products[self.all_products['manufacturer_name'].str.encode("utf8") ==
                                  PNG_MANUFACTURER]['manufacturer_fk'].values[0]
 
+    def _get_display_size_of_product_in_scene(self):
+        """
+        get product size and item id for DISPLAY_SIZE_PER_SCENE KPI
+        :return:
+        """
+        local_con = self.project_connector.db
+        query = '''	select ds.scene_fk as scene_id, dif.item_id, dif.product_size, dif.facings  
+                    from 
+                            report.display_item_facts dif
+                    join
+                            probedata.display_surface ds 
+                            on ds.pk=dif.display_surface_fk and ds.scene_fk=\'{0}\''''.format(self.scene_id)
+        df = pd.read_sql_query(query, local_con)
+        return df
+
     def calculate_display_size(self):
         """
         calculate P&G manufacture percentage
         """
         kpi_fk = self.common.get_kpi_fk_by_kpi_name(DISPLAY_SIZE_PER_SCENE)
+
+        # get size and item id
+        DF_products_size = self._get_display_size_of_product_in_scene()
+
+        if self.scif.empty:
+            return pd.DataFrame()
+
+        filter_scif = self.scif[[u'scene_id', u'item_id', u'manufacturer_fk', u'rlv_sos_sc', u'status']]
+        df_result = pd.merge(filter_scif, DF_products_size, on=['item_id', 'scene_id'], how='left')
+        df_result = df_result[df_result['product_size'] > 0]
+
         if kpi_fk:
-            denominator = self.scif.facings.sum()  # get all products from scene
-            numerator = self.scif[self.scif['manufacturer_fk'] ==
-                                  self.png_manufacturer_fk]['facings'].sum()  # get P&G products from scene
+            denominator = df_result.product_size.sum()  # get all products from scene
+            numerator = df_result[df_result['manufacturer_fk'] ==
+                                  self.png_manufacturer_fk]['product_size'].sum()  # get P&G products from scene
             if denominator:
                 score = numerator / denominator  # get the percentage of P&G products from all products
+                numerator, denominator = numerator*1000, denominator*1000
             else:
                 score = 0
             self.common.write_to_db_result(fk=kpi_fk, numerator_id=self.png_manufacturer_fk, numerator_result=numerator,
@@ -940,6 +957,9 @@ class PngcnSceneKpis(object):
         """
         # copy the DFs
         a, b = self.matches_from_data_provider.copy(), self.scif.copy()
+
+        if a.empty or b.empty:
+            return pd.DataFrame()
 
         # merge wite scif to add manufacture
         matches_filtered = pd.merge(a, b, how='left',
@@ -990,9 +1010,10 @@ class PngcnSceneKpis(object):
         if kpi_fk is None:
             Log.warning("There is no matching Kpi fk for kpi name: " + kpi_name)
             return
-
-        # get the filtered df,
         matches_filtered = self.get_filterd_matches()
+
+        if matches_filtered.empty:
+            return
 
         # get the width of P&G products in scene
         numerator = matches_filtered[matches_filtered['manufacturer_fk'] ==
@@ -1038,3 +1059,5 @@ class PngcnSceneKpis(object):
 #     data_provider = ACEDataProvider('integ3')
 #     data_provider.load_session_data(session)
 #     calculate(conn, session, data_provider)
+
+        # get the filtered df,

@@ -4,7 +4,7 @@ __author__ = 'hunter'
 
 
 class Const(object):
-    TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'Liberty_bottlers_Template_2019_05_30.xlsx')
+    TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'Liberty_bottlers_Template_2019_06_03.xlsx')
     LIBERTY = ' - Liberty'
     DRILLDOWN = ' - Drilldown'
     RED_SCORE_PARENT = 'RED SCORE - Liberty'

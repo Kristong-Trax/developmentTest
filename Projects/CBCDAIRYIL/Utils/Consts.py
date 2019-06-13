@@ -55,6 +55,7 @@ class Consts(object):
     FACINGS = 'facings'
     FACINGS_IGN_STACK = 'facings_ign_stack'
     EAN_CODE = 'product_ean_code'
+    SHELF_NUM = 'shelf_number'
 
     # Store attributes
     ADDITIONAL_ATTRIBUTE_1 = 'additional_attribute_1'

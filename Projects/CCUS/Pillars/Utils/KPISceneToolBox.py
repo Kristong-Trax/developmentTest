@@ -8,10 +8,16 @@ import pandas as pd
 
 __author__ = 'Jasmine'
 
+BINARY = 2
 
 class PillarsSceneToolBox:
     PROGRAM_TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))),
-                                         'Data', 'Template.xlsx')
+                                         'Data', 'CCUS_Templatev2.2.xlsx')
+    BITWISE_RECOGNIZER_SIZE = 6
+    RECOGNIZED_BY_POS = BITWISE_RECOGNIZER_SIZE - 1
+    RECOGNIZED_BY_SCENE_RECOGNITION = BITWISE_RECOGNIZER_SIZE - 2
+    RECOGNIZED_BY_QURI = BITWISE_RECOGNIZER_SIZE - 3
+    RECOGNIZED_BY_SURVEY = BITWISE_RECOGNIZER_SIZE - 4
 
     def __init__(self, data_provider,output, common):
         self.data_provider = data_provider
@@ -34,6 +40,9 @@ class PillarsSceneToolBox:
         self.displays_in_scene = self.data_provider.match_display_in_scene
         self.ps_data_provider = PsDataProvider(self.data_provider, output)
 
+        # bit-like sequence to symoblize recognizing methods. Each 'bit' symbolize a recognition method.
+        self.bitwise_for_program_identifier_as_list = list("0" * self.BITWISE_RECOGNIZER_SIZE)
+
     def is_scene_belong_to_program(self):
         # Get template (from file or from external targets)
         relevant_programs = self.get_programs()
@@ -42,7 +51,7 @@ class PillarsSceneToolBox:
 
             # Get data for program from template:
             current_program_data = relevant_programs.iloc[i]
-            program_name = current_program_data[Const.PROGRAM_NAME_FIELD] # assumed to always be brand name!
+            program_name = current_program_data[Const.PROGRAM_NAME_FIELD]  # assumed to always be brand name!
             program_brand_name_fk = self.get_brand_fk_from_name(program_name)
             program_as_brand = current_program_data[Const.PROGRAM_NAME_BY_BRAND]
             program_as_brand_fk = self.get_brand_fk_from_name(program_as_brand)
@@ -53,16 +62,30 @@ class PillarsSceneToolBox:
             score = 0
 
             # Checks if the scene was recognized as relevant program in one of possible recognition options:
-            if self.found_program_products_by_brand(program_as_brand_fk) \
-                    or self.found_scene_program_by_quri(program_as_template) \
-                    or self.found_scene_program_by_survey(survey_question_for_program, program_as_survey_answer) \
-                    or self.found_scene_program_by_display_brand(program_as_display_brand):
-                score = 1
+            self.bitwise_for_program_identifier_as_list[self.RECOGNIZED_BY_POS] = \
+                1 if self.found_program_products_by_brand(program_as_brand_fk) else 0
+
+            self.bitwise_for_program_identifier_as_list[self.RECOGNIZED_BY_SCENE_RECOGNITION] = \
+                1 if self.found_scene_program_by_display_brand(program_as_display_brand) else 0
+
+            self.bitwise_for_program_identifier_as_list[self.RECOGNIZED_BY_QURI] = \
+                1 if self.found_scene_program_by_quri(program_as_template) else 0
+
+            self.bitwise_for_program_identifier_as_list[self.RECOGNIZED_BY_SURVEY] = \
+                1 if self.found_scene_program_by_survey(survey_question_for_program, program_as_survey_answer) else 0
+
+            # convert list of bits to a string in order to convert to decimal in results:
+            bitwise_for_program_identifier_as_str = ''.join(map(str, self.bitwise_for_program_identifier_as_list))
+
+            # convert string of binary-like to decimal value
+            method_recognized_in_bitwise = int(bitwise_for_program_identifier_as_str, BINARY)
+
+            score = 1 if method_recognized_in_bitwise > 0 else 0
 
             scene_kpi_fk = self.common.get_kpi_fk_by_kpi_name(kpi_name=Const.SCENE_KPI_NAME)
             self.common.write_to_db_result(fk=scene_kpi_fk, numerator_id=program_brand_name_fk,
-                                           result=score, score=score, by_scene=True, denominator_id=self.store_id)
-
+                                           result=method_recognized_in_bitwise, score=score, by_scene=True,
+                                           denominator_id=self.store_id)
 
     def get_programs(self, template=False):
         """
