@@ -8,12 +8,14 @@ from Trax.Algo.Calculations.Core.DataProvider import Output
 from mock import patch
 import os
 import pandas as pd
+import numpy as np
 from pandas.util.testing import assert_frame_equal
 from Projects.PEPSICOUK.KPIs.Scene.NumberOfShelves import NumberOfShelvesKpi
 from Projects.PEPSICOUK.KPIs.Scene.NumberOfBays import NumberOfBaysKpi
 from Projects.PEPSICOUK.KPIs.Scene.NumberOfFacings import NumberOfFacingsKpi
 from Projects.PEPSICOUK.KPIs.Scene.LinearSpace import LinearSpaceKpi
 from Projects.PEPSICOUK.KPIs.Scene.ShelfPlacementVertical import ShelfPlacementVerticalKpi
+from Projects.PEPSICOUK.KPIs.Scene.ShelfPlacementHorizontal import ShelfPlacementHorizontalKpi
 
 __author__ = 'natalya'
 
@@ -277,45 +279,236 @@ class Test_PEPSICOUK(MockingTestCase):
         kpi_result = pd.DataFrame(placement_left.kpi_results)
         self.assertTrue(kpi_result.empty)
 
-    # def test_calculate_shelf_placement_vertical_mm_correcly_places_products_if_no_excluded_matches(self):
-    #     matches, scif = self.create_scene_scif_matches_stitch_groups_data_mocks(
-    #         DataTestUnitPEPSICOUK.test_case_1, 2)
-    #     self.mock_scene_info(DataTestUnitPEPSICOUK.scene_info)
-    #     self.mock_scene_kpi_results(DataTestUnitPEPSICOUK.scene_kpi_results_test_case_1)
-    #
-    #     # left
-    #     vertical_left = ShelfPlacementVerticalKpi(self.data_provider_mock,
-    #                                               config_params={"kpi_type": "Shelf Placement Vertical_Left"})
-    #     vertical_left.calculate()
-    #     left_result = pd.DataFrame(vertical_left.kpi_results)
-    #     self.assertEquals(len(left_result), 2)
-    #
-    #     # center
-    #     vertical_center = ShelfPlacementVerticalKpi(self.data_provider_mock,
-    #                                                 config_params={"kpi_type": "Shelf Placement Vertical_Center"})
-    #     vertical_center.calculate()
-    #     center_result = pd.DataFrame(vertical_left.kpi_results)
-    #     self.assertEquals(len(left_result), 2)
-    #
-    #     # right
-    #     vertical_right = ShelfPlacementVerticalKpi(self.data_provider_mock,
-    #                                                config_params={"kpi_type": "Shelf Placement Vertical_Right"})
-    #     vertical_right.calculate()
-    #     right_result = pd.DataFrame(vertical_left.kpi_results)
-    #     self.assertEquals(len(right_result), 1)
-    #
-    #     scene_tb = PEPSICOUKSceneToolBox(self.data_provider_mock, self.output)
-    #     scene_tb.calculate_shelf_placement_vertical_mm()
-    #     expected_list = []
-    #     expected_list.append({'kpi_fk': 327, 'numerator': 1, 'result': 1.0 / 5 * 100})
-    #     expected_list.append({'kpi_fk': 326, 'numerator': 1, 'result': 2.0 / 5 * 100})
-    #     expected_list.append({'kpi_fk': 325, 'numerator': 1, 'result': 2.0 / 5 * 100})
-    #     expected_list.append({'kpi_fk': 325, 'numerator': 2, 'result': 6.0 / 6 * 100})
-    #     expected_list.append({'kpi_fk': 326, 'numerator': 3, 'result': 1.0 / 1 * 100})
-    #     test_result_list = []
-    #     for expected_result in expected_list:
-    #         test_result_list.append(self.check_kpi_results(scene_tb.kpi_results, expected_result) == 1)
-    #     self.assertTrue(all(test_result_list))
+        placement_top = ShelfPlacementHorizontalKpi(self.data_provider_mock,
+                                                    config_params={"kpi_type": "Placement by shelf numbers_Top"})
+        placement_top.calculate()
+        kpi_result = pd.DataFrame(placement_top.kpi_results)
+        self.assertTrue(kpi_result.empty)
+
+    def test_calculate_horizontal_placement_eye(self):
+        matches, scif = self.create_scene_scif_matches_stitch_groups_data_mocks(
+            DataTestUnitPEPSICOUK.test_case_1, 2)
+        self.mock_scene_info(DataTestUnitPEPSICOUK.scene_info)
+        self.mock_scene_kpi_results(DataTestUnitPEPSICOUK.scene_kpi_results_test_case_1)
+        eye = ShelfPlacementHorizontalKpi(self.data_provider_mock,
+                                          config_params={"kpi_type": "Placement by shelf numbers_Eye"})
+        eye.calculate()
+        eye_result = pd.DataFrame(eye.kpi_results)
+        eye_result['result'] = eye_result['result'].apply(lambda x: round(x, 5))
+        eye_result['score'] = eye_result['score'].apply(lambda x: round(x, 5))
+        self.assertEquals(len(eye_result), 1)
+        expected_list = list()
+        expected_list.append({'kpi_level_2_fk': 305, 'numerator_id': 2, 'denominator_id': 2, 'numerator_result': 2,
+                              'denominator_result': 6, 'result': round(2.0/6*100, 5), 'score': round(2.0/6*100, 5)})
+        test_result_list = []
+        for expected_result in expected_list:
+            test_result_list.append(self.check_kpi_results(eye_result, expected_result) == 1)
+        self.assertTrue(all(test_result_list))
+
+    def test_calculate_horizontal_placement_mid(self):
+        matches, scif = self.create_scene_scif_matches_stitch_groups_data_mocks(
+            DataTestUnitPEPSICOUK.test_case_1, 2)
+        self.mock_scene_info(DataTestUnitPEPSICOUK.scene_info)
+        self.mock_scene_kpi_results(DataTestUnitPEPSICOUK.scene_kpi_results_test_case_1)
+        mid = ShelfPlacementHorizontalKpi(self.data_provider_mock,
+                                          config_params={"kpi_type": "Placement by shelf numbers_Middle"})
+        mid.calculate()
+        mid_result = pd.DataFrame(mid.kpi_results)
+        mid_result['result'] = mid_result['result'].apply(lambda x: round(x, 5))
+        mid_result['score'] = mid_result['score'].apply(lambda x: round(x, 5))
+        self.assertEquals(len(mid_result), 1)
+        expected_list = list()
+        expected_list.append({'kpi_level_2_fk': 306, 'numerator_id': 2, 'denominator_id': 2, 'numerator_result': 2,
+                              'denominator_result': 6, 'result': round(2.0/6*100, 5), 'score': round(2.0/6*100, 5)})
+        test_result_list = []
+        for expected_result in expected_list:
+            test_result_list.append(self.check_kpi_results(mid_result, expected_result) == 1)
+        self.assertTrue(all(test_result_list))
+
+    def test_calculate_horizontal_placement_bottom(self):
+        matches, scif = self.create_scene_scif_matches_stitch_groups_data_mocks(
+            DataTestUnitPEPSICOUK.test_case_1, 2)
+        self.mock_scene_info(DataTestUnitPEPSICOUK.scene_info)
+        self.mock_scene_kpi_results(DataTestUnitPEPSICOUK.scene_kpi_results_test_case_1)
+        bottom = ShelfPlacementHorizontalKpi(self.data_provider_mock,
+                                          config_params={"kpi_type": "Placement by shelf numbers_Bottom"})
+        bottom.calculate()
+        bottom_result = pd.DataFrame(bottom.kpi_results)
+        bottom_result['result'] = bottom_result['result'].apply(lambda x: round(x, 5))
+        bottom_result['score'] = bottom_result['score'].apply(lambda x: round(x, 5))
+        self.assertEquals(len(bottom_result), 2)
+        expected_list = list()
+        expected_list.append({'kpi_level_2_fk': 307, 'numerator_id': 2, 'denominator_id': 2, 'numerator_result': 2,
+                              'denominator_result': 6, 'result': round(2.0/6*100, 5), 'score': round(2.0/6*100, 5)})
+        expected_list.append({'kpi_level_2_fk': 307, 'numerator_id': 3, 'denominator_id': 3, 'numerator_result': 1,
+                              'denominator_result': 1, 'result': 1.0*100/1,
+                              'score': 1.0*100/1})
+        test_result_list = []
+        for expected_result in expected_list:
+            test_result_list.append(self.check_kpi_results(bottom_result, expected_result) == 1)
+        self.assertTrue(all(test_result_list))
+
+    def test_calculate_horizontal_placement_top(self):
+        matches, scif = self.create_scene_scif_matches_stitch_groups_data_mocks(
+            DataTestUnitPEPSICOUK.test_case_1, 2)
+        self.mock_scene_info(DataTestUnitPEPSICOUK.scene_info)
+        self.mock_scene_kpi_results(DataTestUnitPEPSICOUK.scene_kpi_results_test_case_1)
+        top = ShelfPlacementHorizontalKpi(self.data_provider_mock,
+                                          config_params={"kpi_type": "Placement by shelf numbers_Top"})
+        top.calculate()
+        top_result = pd.DataFrame(top.kpi_results)
+        self.assertEquals(len(top_result), 1)
+        expected_list = list()
+        expected_list.append({'kpi_level_2_fk': 304, 'numerator_id': 1, 'denominator_id': 1, 'numerator_result': 5,
+                              'denominator_result': 5, 'result':  5.0/5*100, 'score':  5.0/5*100})
+        test_result_list = []
+        for expected_result in expected_list:
+            test_result_list.append(self.check_kpi_results(top_result, expected_result) == 1)
+        self.assertTrue(all(test_result_list))
+
+        expected_list = []
+        expected_list.append({'kpi_fk': 304, 'numerator': 1, 'result': 5.0/5*100})
+        expected_list.append({'kpi_fk': 307, 'numerator': 2, 'result': round(2.0/6*100, 5)})
+        expected_list.append({'kpi_fk': 306, 'numerator': 2, 'result': round(2.0/6*100, 5)})
+        expected_list.append({'kpi_fk': 305, 'numerator': 2, 'result': round(2.0/6*100, 5)})
+        expected_list.append({'kpi_fk': 307, 'numerator': 3, 'result': 1.0*100/1})
+        scene_tb.calculate_shelf_placement_horizontal()
+        kpi_results = scene_tb.kpi_results
+        kpi_results['result'] = kpi_results['result'].apply(lambda x: round(x, 5))
+        test_result_list = []
+        for expected_result in expected_list:
+            test_result_list.append(self.check_kpi_results(scene_tb.kpi_results, expected_result) == 1)
+        self.assertTrue(all(test_result_list))
+
+    def test_calculate_shelf_placement_vertical_mm_correcly_places_products_if_no_excluded_matches(self):
+        matches, scif = self.create_scene_scif_matches_stitch_groups_data_mocks(
+            DataTestUnitPEPSICOUK.test_case_1, 2)
+        self.mock_scene_info(DataTestUnitPEPSICOUK.scene_info)
+        self.mock_scene_kpi_results(DataTestUnitPEPSICOUK.scene_kpi_results_test_case_1)
+
+        # left
+        vertical_left = ShelfPlacementVerticalKpi(self.data_provider_mock,
+                                                  config_params={"kpi_type": "Shelf Placement Vertical_Left"})
+        vertical_left.calculate()
+        left_result = pd.DataFrame(vertical_left.kpi_results)
+        self.assertEquals(len(left_result), 2)
+        expected_list = list()
+        expected_list.append({'kpi_level_2_fk': 325, 'numerator_id': 1, 'denominator_id': 1, 'numerator_result': 2,
+                              'denominator_result': 5, 'result': 2.0 / 5 * 100, 'score': 2.0 / 5 * 100})
+        expected_list.append({'kpi_level_2_fk': 325, 'denominator_id': 2, 'numerator_result': 6,
+                              'denominator_result': 6, 'numerator_id': 2, 'result': 6.0 / 6 * 100, 'score': 6.0 / 6 * 100})
+        test_result_list = []
+        for expected_result in expected_list:
+            test_result_list.append(self.check_kpi_results(left_result, expected_result) == 1)
+        self.assertTrue(all(test_result_list))
+
+        # center
+        vertical_center = ShelfPlacementVerticalKpi(self.data_provider_mock,
+                                                    config_params={"kpi_type": "Shelf Placement Vertical_Center"})
+        vertical_center.calculate()
+        center_result = pd.DataFrame(vertical_center.kpi_results)
+        self.assertEquals(len(center_result), 2)
+        expected_list = list()
+        expected_list.append({'kpi_level_2_fk': 326, 'numerator_id': 1, 'denominator_id': 1, 'numerator_result': 2,
+                              'denominator_result': 5, 'result':  2.0 / 5 * 100, 'score':  2.0 / 5 * 100})
+        expected_list.append({'kpi_level_2_fk': 326, 'denominator_id': 3, 'numerator_result': 1,
+                              'denominator_result': 1, 'numerator_id': 3, 'result': 1.0 / 1 * 100, 'score': 1.0 / 1 * 100})
+        test_result_list = []
+        for expected_result in expected_list:
+            test_result_list.append(self.check_kpi_results(center_result, expected_result) == 1)
+        self.assertTrue(all(test_result_list))
+
+        # right
+        vertical_right = ShelfPlacementVerticalKpi(self.data_provider_mock,
+                                                   config_params={"kpi_type": "Shelf Placement Vertical_Right"})
+        vertical_right.calculate()
+        right_result = pd.DataFrame(vertical_right.kpi_results)
+        self.assertEquals(len(right_result), 1)
+        expected_list = list()
+        expected_list.append({'kpi_level_2_fk': 327, 'numerator_id': 1, 'denominator_id': 1, 'numerator_result': 1,
+                              'denominator_result': 5, 'result': 1.0 / 5 * 100, 'score': 1.0 / 5 * 100})
+        test_result_list = []
+        for expected_result in expected_list:
+            test_result_list.append(self.check_kpi_results(right_result, expected_result) == 1)
+        self.assertTrue(all(test_result_list))
+
+        all_results = left_result
+        all_results = all_results.append(right_result)
+        all_results = all_results.append(center_result)
+        all_results = all_results.groupby(['numerator_id'], as_index=False).agg({'result': np.sum})
+        self.assertTrue(all([round(res, 1) == 100] for res in all_results['result'].values.tolist()))
+
+    def test_calculate_shelf_placement_vertical_mm_in_case_excluded_matches_exist_and_different_stitch_groups(self):
+        matches, scif = self.create_scene_scif_matches_stitch_groups_data_mocks(
+            DataTestUnitPEPSICOUK.test_case_1, 1)
+        self.mock_scene_info(DataTestUnitPEPSICOUK.scene_info)
+        self.mock_scene_kpi_results(DataTestUnitPEPSICOUK.scene_kpi_results_test_case_1)
+
+        # left
+        vertical_left = ShelfPlacementVerticalKpi(self.data_provider_mock,
+                                                  config_params={"kpi_type": "Shelf Placement Vertical_Left"})
+        vertical_left.calculate()
+        left_result = pd.DataFrame(vertical_left.kpi_results)
+        left_result['result'] = left_result['result'].apply(lambda x: round(x, 5))
+        left_result['score'] = left_result['score'].apply(lambda x: round(x, 5))
+        self.assertEquals(len(left_result), 4)
+        expected_list = list()
+        expected_list.append({'kpi_level_2_fk': 325, 'numerator_id': 1, 'denominator_id': 1, 'numerator_result': 7,
+                              'denominator_result': 7, 'result': round(5.0 / 7 * 100, 5), 'score': round(5.0 / 7 * 100, 5)})
+        expected_list.append({'kpi_level_2_fk': 325, 'denominator_id': 2, 'numerator_result': 4,
+                              'denominator_result': 6, 'numerator_id': 2, 'result': round(4.0 / 6 * 100, 5),
+                              'score':round(4.0 / 6 * 100, 5)})
+        expected_list.append({'kpi_level_2_fk': 325, 'numerator_id': 3, 'denominator_id': 3, 'numerator_result': 4,
+                              'denominator_result': 8, 'result': round(4.0 / 8 * 100, 5), 'score': round(4.0 / 8 * 100, 5)})
+        expected_list.append({'kpi_level_2_fk': 325, 'denominator_id': 4, 'numerator_result': 3,
+                              'denominator_result': 6, 'numerator_id': 4, 'result': round(3.0 / 6 * 100, 5),
+                              'score': round(3.0 / 6 * 100, 5)})
+        test_result_list = []
+        for expected_result in expected_list:
+            test_result_list.append(self.check_kpi_results(left_result, expected_result) == 1)
+        self.assertTrue(all(test_result_list))
+
+        # center
+        vertical_center = ShelfPlacementVerticalKpi(self.data_provider_mock,
+                                                    config_params={"kpi_type": "Shelf Placement Vertical_Center"})
+        vertical_center.calculate()
+        center_result = pd.DataFrame(vertical_center.kpi_results)
+        center_result['result'] = center_result['result'].apply(lambda x: round(x, 5))
+        center_result['score'] = center_result['score'].apply(lambda x: round(x, 5))
+        self.assertEquals(len(center_result), 4)
+        expected_list = list()
+        expected_list.append({'kpi_level_2_fk': 326, 'numerator_id': 1, 'denominator_id': 1, 'numerator_result': 2,
+                              'denominator_result': 7, 'result': round(2.0 / 7 * 100, 5), 'score':round(2.0 / 7 * 100, 5)})
+        expected_list.append({'kpi_level_2_fk': 326, 'denominator_id': 2, 'numerator_result': 2,
+                              'denominator_result': 6, 'numerator_id': 2, 'result': round(2.0 / 6 * 100, 5),
+                              'score': round(2.0 / 6 * 100, 5)})
+        expected_list.append({'kpi_level_2_fk': 326, 'numerator_id': 3, 'denominator_id': 3, 'numerator_result': 3,
+                              'denominator_result': 8, 'result': round(3.0 / 8 * 100, 5), 'score': round(3.0 / 8 * 100, 5)})
+        expected_list.append({'kpi_level_2_fk': 326, 'denominator_id': 4, 'numerator_result': 2,
+                              'denominator_result': 6, 'numerator_id': 4, 'result': round(2.0 / 6 * 100, 5),
+                              'score': round(2.0 / 6 * 100, 5)})
+        test_result_list = []
+        for expected_result in expected_list:
+            test_result_list.append(self.check_kpi_results(center_result, expected_result) == 1)
+        self.assertTrue(all(test_result_list))
+
+        # right
+        vertical_right = ShelfPlacementVerticalKpi(self.data_provider_mock,
+                                                   config_params={"kpi_type": "Shelf Placement Vertical_Right"})
+        vertical_right.calculate()
+        right_result = pd.DataFrame(vertical_right.kpi_results)
+        right_result['result'] = right_result['result'].apply(lambda x: round(x, 5))
+        right_result['score'] = right_result['score'].apply(lambda x: round(x, 5))
+        self.assertEquals(len(right_result), 2)
+        expected_list = list()
+        expected_list.append({'kpi_level_2_fk': 327, 'numerator_id': 4, 'denominator_id': 4, 'numerator_result': 1,
+                              'denominator_result': 6, 'result': round(1.0 / 6 * 100, 5), 'score': round(1.0 / 6 * 100, 5)})
+        expected_list.append({'kpi_level_2_fk': 327, 'numerator_id': 3, 'denominator_id': 3, 'numerator_result': 1,
+                              'denominator_result': 8, 'result': round(1.0 / 8 * 100, 5), 'score': round(1.0 / 8 * 100, 5)})
+        test_result_list = []
+        for expected_result in expected_list:
+            test_result_list.append(self.check_kpi_results(right_result, expected_result) == 1)
+        self.assertTrue(all(test_result_list))
 
     def test_number_of_bays_kpi(self):
         matches, scif = self.create_scene_scif_matches_stitch_groups_data_mocks(
