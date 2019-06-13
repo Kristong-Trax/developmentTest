@@ -2,8 +2,6 @@ import os
 
 import MySQLdb
 
-from Trax.Utils.Testing.Case import MockingTestCase
-
 from Trax.Utils.Conf.Keys import DbUsers
 from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Trax.Data.Testing.SeedNew import Seeder

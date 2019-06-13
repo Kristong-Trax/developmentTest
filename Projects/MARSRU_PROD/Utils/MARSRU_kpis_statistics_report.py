@@ -28,7 +28,7 @@ RECEIVERS_BY_DEFAULT = ['sergey@traxretail.com']
 __author__ = 'sergey'
 
 
-class MARSRU_KPIsStatistics:
+class MARSRU_PRODMARSRU_KPIsStatistics:
 
     def __init__(self, arg_sd=None, arg_ed=None, arg_to=None, pivoted='pivoted'):
         self.log_prefix = BUCKET_FOLDER + '_' + PROJECT
@@ -262,7 +262,7 @@ class MARSRU_KPIsStatistics:
 
 def run(sd=None, ed=None, to=None, pivoted=None):
     try:
-        marsru_report = MARSRU_KPIsStatistics(sd, ed, to, pivoted)
+        marsru_report = MARSRU_PRODMARSRU_KPIsStatistics(sd, ed, to, pivoted)
         marsru_report.create_report()
         return 0
     except Exception as e:
@@ -272,6 +272,6 @@ def run(sd=None, ed=None, to=None, pivoted=None):
 
 if __name__ == '__main__':
     LoggerInitializer.init('test run')
-    # marsru_report = MARSRU_KPIsStatistics()
-    marsru_report = MARSRU_KPIsStatistics('2019-02-25', '2019-03-10', 'sergey@traxretail.com')
+    # marsru_report = MARSRU_PRODMARSRU_KPIsStatistics()
+    marsru_report = MARSRU_PRODMARSRU_KPIsStatistics('2019-02-25', '2019-03-10', 'sergey@traxretail.com')
     marsru_report.create_report()

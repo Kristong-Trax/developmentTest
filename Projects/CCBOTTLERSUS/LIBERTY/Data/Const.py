@@ -4,7 +4,7 @@ __author__ = 'hunter'
 
 
 class Const(object):
-    TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'Liberty_bottlers_Template_2019_05_09.xlsx')
+    TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'Liberty_bottlers_Template_2019_06_03.xlsx')
     LIBERTY = ' - Liberty'
     DRILLDOWN = ' - Drilldown'
     RED_SCORE_PARENT = 'RED SCORE - Liberty'
@@ -45,16 +45,17 @@ class Const(object):
     # Availability columns
     BRAND = 'brand'
     CATEGORY = 'category'
-    EXCLUDED_BRAND = 'Excluded_Brand'
+    EXCLUDED_BRAND = 'excluded_brand'
     MINIMUM_NUMBER_OF_SKUS = 'number_required_SKUS'
     SECONDARY_MINIMUM_NUMBER_OF_SKUS = 'number_required_SKUS - secondary'
     SURVEY_QUESTION_SKUS_REQUIRED = 'Survey_Question_SKUs_required'
 
     # Count of Display columns
     ATT4 = 'att4'
-    SIZE_SUBPACKAGES_NUM = 'size;subpackages_num'
-    SUBPACKAGES_NUM = 'subpackages_num'
+    SIZE_SUBPACKAGES_NUM = 'Base Size;Multi-Pack Size'
+    SUBPACKAGES_NUM = 'Multi-Pack Size'
     MINIMUM_FACINGS_REQUIRED = 'facings_threshold'
+    GREATER_THAN_ONE = '>1'
 
     # Share of Display columns
     INCLUDE_BODY_ARMOR = 'body_armor_delivered'
