@@ -1,4 +1,4 @@
-from Trax.Utils.Testing.Case import TestCase, MockingTestCase
+from Trax.Apps.Core.Testing.BaseCase import TestFunctionalCase
 from Trax.Data.Testing.SeedNew import Seeder
 from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from mock import MagicMock
@@ -18,7 +18,7 @@ def get_exclusion_template_df_all_tests():
     return template_df
 
 
-class Test_PEPSICOUK(MockingTestCase):
+class Test_PEPSICOUK(TestFunctionalCase):
     # seeder = Seeder()
     # template_df_mock = get_exclusion_template_df_all_tests()
 

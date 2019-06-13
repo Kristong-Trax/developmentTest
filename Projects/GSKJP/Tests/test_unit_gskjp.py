@@ -1,6 +1,6 @@
 
 from Trax.Utils.Conf.Configuration import Config
-from Trax.Utils.Testing.Case import TestCase, MockingTestCase
+from Trax.Utils.Testing.Case import TestUnitCase
 from mock import MagicMock, Mock
 import pandas as pd
 from Projects.GSKSG.Utils.KPIToolBox import GSKSGToolBox
@@ -12,7 +12,7 @@ from KPIUtils.GlobalProjects.GSK.Utils.KPIToolBox import GSKToolBox
 __author__ = 'limorc'
 
 
-class TestGSKJP(MockingTestCase):
+class TestGSKJP(TestUnitCase):
 
     @property
     def import_path(self):

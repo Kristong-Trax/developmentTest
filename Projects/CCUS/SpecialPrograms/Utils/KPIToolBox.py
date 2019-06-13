@@ -84,16 +84,12 @@ class SpecialProgramsToolBox:
         """
         This function calculates the KPI results.
         """
-        if (str(self.visit_date)>='2018-01-14' and str(self.visit_date)<='2018-02-15') or \
-                (str(self.visit_date) >= '2019-03-02' and str(self.visit_date) <= '2019-04-01') or \
-                (str(self.visit_date) >= '2019-01-12' and str(self.visit_date) <= '2019-02-05'):
-            scenes = self.scif['scene_id'].unique().tolist()
-            if scenes:
-                for scene in scenes:
-                    scene_data = self.scif.loc[self.scif['scene_id'] == scene]
-                    pop_result = self.calculate_pop(scene_data)
-                    self.calculate_Pathway(pop_result, scene_data)
-            return
+        scenes = self.scif['scene_id'].unique().tolist()
+        if scenes:
+            for scene in scenes:
+                scene_data = self.scif.loc[self.scif['scene_id'] == scene]
+                pop_result = self.calculate_pop(scene_data)
+                self.calculate_Pathway(pop_result, scene_data)
         return
 
     def calculate_pop(self, scene_data):

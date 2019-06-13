@@ -1,22 +1,22 @@
-from Trax.Utils.Testing.Case import TestCase, MockingTestCase
+from Trax.Apps.Core.Testing.BaseCase import TestFunctionalCase
 from Trax.Data.Testing.SeedNew import Seeder
-from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
+from Trax.Utils.Testing.Case import TestUnitCase
 from mock import MagicMock
 from Projects.PEPSICOUK.Tests.data_test_unit_pepsicouk import DataTestUnitPEPSICOUK
 from Projects.PEPSICOUK.Utils.KPISceneToolBox import PEPSICOUKSceneToolBox
-from Trax.Algo.Calculations.Core.DataProvider import Output
-import os
 import pandas as pd
 from pandas.util.testing import assert_frame_equal
 
 
 __author__ = 'natalyak'
 
+
 def get_exclusion_template_df_all_tests():
     template_df = pd.read_excel(DataTestUnitPEPSICOUK.exclusion_template_path)
     return template_df
 
-class Test_PEPSICOUKScene(MockingTestCase):
+
+class Test_PEPSICOUKScene(TestFunctionalCase):
     seeder = Seeder()
 
     @property
