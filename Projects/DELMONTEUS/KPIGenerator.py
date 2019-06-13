@@ -24,8 +24,8 @@ class Generator:
             Log.warning('Distribution is empty for this session')
         else:
             template_path = self.find_template()
-            # eu = EntityUploader(self.project_name, template_path)
-            # af = AtomicFarse(self.project_name, template_path)
+            # EntityUploader(self.project_name, template_path)
+            # AtomicFarse(self.project_name, template_path)
             self.tool_box.main_calculation(template_path)
             self.common.commit_results_data()
 
@@ -33,7 +33,7 @@ class Generator:
         ''' screw maintaining hardcoded template paths... '''
         path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'Data')
         files = os.listdir(path)
-        candidates = [f for f in files if f.split('.')[-1] == 'xlsx']
+        candidates = [f for f in files if f.split('.')[-1] == 'xlsx' and 'Template' in f]
         versioned_candidates = []
         all_vers = []
         for x in candidates:

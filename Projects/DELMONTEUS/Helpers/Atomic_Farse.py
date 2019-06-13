@@ -15,8 +15,8 @@ class AtomicFarse():
     FAMILY_TABLE = 'static.kpi_family'
     CALC_STAGE_TABLE = 'static.kpi_calculation_stage'
 
-    MIN = 31000
-    MAX = 32000
+    MIN = 3000
+    MAX = 3200
 
     def __init__(self, project, template_path):
         self.template = pd.read_excel(template_path, sheetname=None)
@@ -57,9 +57,9 @@ class AtomicFarse():
 
         max_len = self.get_max_len(self.kpi2_attribs, field_name='type')
         kpis = {x.strip() for x in self.template[Const.KPIS][Const.KPI_NAME].unique() if x}
-        missing = list (kpis - self.kpi2_set)
+        missing = list(kpis - self.kpi2_set)
         pk = self.special_pk(self.kpi2_table)
-
+        # pk = 3000
 
         self.generic_update(missing, max_len, self.insert_into_kpi2, 'kpi level 2', tracker_set=self.kpi2_set, pk=pk,
                             gen_kwargs=1)
@@ -108,7 +108,7 @@ class AtomicFarse():
     def get_aux(self, item):
         print(item)
         main_line = self.indexed_template[Const.KPIS].loc[item]
-        session_lvl = self.read_cell_from_line(main_line, Const.SESSION_LEVEL) if Const.SESSION_LEVEL in main_line.index else 'Y'
+        session_lvl = 'Y'
         family = self.read_cell_from_line(main_line, Const.TYPE)[0]
         kpi_line = self.indexed_template[family].loc[item]
         # num_check = 'numerator' if [x for x in kpi_line.index if 'numerator' in x.lower()] else ''

@@ -62,8 +62,8 @@ class ToolBox:
         self.scenes = self.scene_info['scene_fk'].tolist()
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
         self.tmb_map = pd.read_excel(Const.TMB_MAP_PATH).set_index('Num Shelves').to_dict('index')
+        self .blockchain = {}
         self.template = {}
-        self.res_dict = {}
         self.dependencies = {}
         self.dependency_lookup = {}
         self.base_measure = None
@@ -77,12 +77,10 @@ class ToolBox:
         """
 
         self.template = pd.read_excel(template_path, sheetname=None)
-        self.super_cat = template_path.split('/')[-1].split(' ')[0].upper()
         self.dependencies = {key: None for key in self.template[Const.KPIS][Const.KPI_NAME]}
         self.dependency_reorder()
         main_template = self.template[Const.KPIS]
         self.dependency_lookup = main_template.set_index(Const.KPI_NAME)[Const.DEPENDENT].to_dict()
-        self.res_dict = self.template[Const.RESULT].set_index('Result Key').to_dict('index')
 
         for i, main_line in main_template.iterrows():
             self.global_fail = 0
@@ -103,11 +101,10 @@ class ToolBox:
         if relevant_scif.empty:
             return
 
-        # print(kpi_name)
-        # if kpi_name != 'Do Kid AND ASH Both Anchor End of Category?':
-        # if kpi_name != 'In the MSL for Yogurt, which of the following is adjacent to Kite Hill?':
-        # if kpi_name not in ('Where are Progresso RTS Light facings shelved?'):
-        #     return
+        print(kpi_name)
+        if kpi_name not in ('What % of Del Monte Canned Fruit  Facings are in the Center?'):
+        # if kpi_type not in (Const.BLOCKING, Const.BLOCKING_PERCENT, Const.SOS, Const.ANCHOR):
+            return
 
         dependent_kpis = self.read_cell_from_line(main_line, Const.DEPENDENT)
         dependent_results = self.read_cell_from_line(main_line, Const.DEPENDENT_RESULT)
@@ -118,17 +115,17 @@ class ToolBox:
                         return
 
         kpi_line = self.template[kpi_type].set_index(Const.KPI_NAME).loc[kpi_name]
-        function = self.get_kpi_function(kpi_type, kpi_line[Const.RESULT])
+        function = self.get_kpi_function(kpi_type)
         try:
            all_kwargs = function(kpi_name, kpi_line, relevant_scif, general_filters)
         except Exception as e:
             if self.global_fail:
-                all_kwargs = [{'score': 0, 'result': "Not Applicable", 'failed': 0}]
-                Log.warning('kpi "{}" failed to calculate in super category "{}"'.format(kpi_name, self.super_cat))
+                all_kwargs = [{'score': 0, 'result': None, 'failed': 0}]
+                Log.warning('kpi "{}" failed to calculate'.format(kpi_name))
 
             else:
                 all_kwargs = [{'score': 0, 'result': None, 'failed': 1}]
-                Log.error('kpi "{}" failed in super category "{}," error: "{}"'.format(kpi_name, self.super_cat, e))
+                Log.error('kpi "{}" failed error: "{}"'.format(kpi_name, e))
 
         finally:
             if not isinstance(all_kwargs, list) or not all_kwargs:
@@ -145,79 +142,64 @@ class ToolBox:
                 Log.warning('Warning: KPI "{}" not run for session "{}"'.format(kpi, self.session_uid))
 
     def calculate_sos(self, kpi_name, kpi_line, relevant_scif, general_filters):
-        super_cats = relevant_scif['Super Category'].unique().tolist()
-        for super_cat in super_cats:
-            if not super_cat or pd.isnull(super_cat):
-                continue
-            den_id = self.entity_dict[super_cat.lower()]
-            levels = self.read_cell_from_line(kpi_line, Const.AGGREGATION_LEVELS)
-            sos_types = self.read_cell_from_line(kpi_line, Const.SOS_TYPE)
-            scif = self.filter_df(relevant_scif, Const.SOS_EXCLUDE_FILTERS, exclude=1)
-            scif = self.filter_df(scif, {'Super Category': super_cat})
-            scif = self.create_special_scif(scif, fake_cat=1)
-            scif['count'] = Const.MM_TO_FT
-            for level in levels:
-                level_col = '{}_fk'.format(level).lower()
-                groups = scif.groupby(level_col)
-                for item_pk, df in groups:
-                    for sos_type in sos_types:
-                        if sos_type in Const.SOS_COLUMN_DICT:
-                            sos_sum_col = Const.SOS_COLUMN_DICT[sos_type]
-                        else:
-                            Log.warning("SOS Type not found in Const.SOS_COLUMN_DICT in kpi {}".format(kpi_name))
-                            return
-                        den = scif[sos_sum_col].sum()
-                        kpi_fk = self.common.get_kpi_fk_by_kpi_type('{} {} {}'.format(level, kpi_name, sos_type))
-                        num = df[sos_sum_col].sum()
-                        ratio, score = self.ratio_score(num, den)
-                        self.common.write_to_db_result(fk=kpi_fk, score=score, result=ratio, numerator_id=item_pk,
-                                                       numerator_result=num, denominator_result=den,
-                                                       denominator_id=den_id)
+        num = self.filter_df(relevant_scif, self.get_kpi_line_filters(kpi_line))['net_len_ign_stack'].sum() / 304.8
+        return {'score': 1, 'result': num}
 
-    def calculate_topmiddlebottom(self, kpi_name, kpi_line, relevant_scif, general_filters):
-        locations = set()
+    def calculate_shelf_placement(self, kpi_name, kpi_line, relevant_scif, general_filters):
+        location = kpi_line['Shelf Placement'].lower()
+        tmb_map = pd.read_excel(Const.TMB_MAP_PATH).melt(id_vars=['Num Shelves'], var_name=['Shelf'])\
+                                                   .set_index(['Num Shelves', 'Shelf']).reset_index()
+        tmb_map.columns = ['max_shelves', 'shelf_number', 'TMB']
+        tmb_map['TMB'] = tmb_map['TMB'].str.lower()
         filters = self.get_kpi_line_filters(kpi_line)
-        relevant_scif = self.filter_df(relevant_scif, filters)
-        relevant_scif = relevant_scif[relevant_scif['facings_ign_stack'] >= 1]
-        if relevant_scif.empty:
+        mpis = self.filter_df(self.mpis, filters)
+        mpis = self.filter_df(mpis, {'stacking_layer': 1})
+        if mpis.empty:
             return
         filters.update(general_filters)
-        for scene in relevant_scif.scene_id.unique():
-            filters['scene_fk'] = scene
-            general_filters['scene_fk'] = scene
+        mpis = self.filter_df(mpis, {'scene_fk': list(relevant_scif.scene_id.unique())})
+        bay_shelf = self.filter_df(self.full_mpis, general_filters).set_index(['scene_fk', 'bay_number'])\
+                                      .groupby(level=[0, 1])[['shelf_number', 'shelf_number_from_bottom']].max()
+        bay_max_shelf = bay_shelf['shelf_number'].to_dict()
+        bay_shelf['shelf_offset'] = bay_shelf['shelf_number_from_bottom'] - bay_shelf['shelf_number']
+        bay_shelf = bay_shelf.drop('shelf_number_from_bottom', axis=1).rename(columns={'shelf_number': 'max_shelves'})
+        mpis = mpis.merge(bay_shelf, on=['bay_number', 'scene_fk'])
+        mpis['true_shelf'] = mpis['shelf_number_from_bottom'] + mpis['shelf_offset']
+        mpis = mpis.merge(tmb_map, on=['max_shelves', 'shelf_number'])
 
-            bay_shelf = self.filter_df(self.full_mpis, general_filters).set_index('bay_number')\
-                                          .groupby(level=0)[['shelf_number', 'shelf_number_from_bottom']].max()
-            bay_max_shelf = bay_shelf['shelf_number'].to_dict()
-            bay_shelf['shelf_offset'] = bay_shelf['shelf_number_from_bottom'] - bay_shelf['shelf_number']
-            shelf_offset = bay_shelf['shelf_offset'].to_dict()
+        result = self.safe_divide(self.filter_df(mpis, {'TMB': location}).shape[0], mpis.shape[0])
+        return {'score': 1, 'result': result}
 
-            mpis = self.filter_df(self.mpis, filters)
-            mpis = self.filter_df(mpis, {'stacking_layer': 1})
-            if mpis.empty:
-                continue
-            grouped_mpis = mpis.set_index('bay_number').groupby(level=0)
-
-            for bay, shelves in grouped_mpis:
-                shelf_no = bay_max_shelf[bay] + shelf_offset[bay] if shelf_offset[bay] < 0 else bay_max_shelf[bay]
-                if shelf_no not in self.tmb_map:
-                    Log.warning('bay "{}" is a problem in kpi "{}" in session "{}"'.format(bay, kpi_name, self.session_uid))
-                    continue
-                sub_map = self.tmb_map[shelf_no]
-                # shelf_with_most = shelves.groupby('shelf_number_from_bottom')[shelves.columns[0]].count()\
-                #     .sort_values().index[-1]
-                # locations.add(sub_map[shelf_with_most])
-                for shelf in shelves['shelf_number_from_bottom'].unique():
-                    shelf = shelf - shelf_offset[bay] if shelf_offset[bay] > 0 else shelf
-                    locations.add(sub_map[shelf])
-                if len(locations) == 3:
-                    break
-
-        locations = sorted(list(locations))[::-1]
-        ordered_result = '-'.join(locations)
-        # result_fk = self.result_values_dict[ordered_result]
-        kwargs = {'score': 1, 'result': ordered_result, 'target': 0}
-        return kwargs
+    def calulate_shelf_region(self, kpi_name, kpi_line, relevant_scif, general_filters):
+        base = self.get_base_name(kpi_name, Const.REGIONS)
+        location = kpi_line['Shelf Placement'].lower()
+        if base not in self.blockchain:
+            num_filters = self.get_kpi_line_filters(kpi_line, 'numerator')
+            den_filters = self.get_kpi_line_filters(kpi_line, 'denominator')
+            mpis = self.filter_df(self.mpis, den_filters)
+            reg_list = ['left', 'center', 'right']
+            self.blockchain[base] = {reg: 0 for reg in reg_list}
+            self.blockchain[base]['den'] = 0
+            for scene in mpis.scene_fk.unique():
+                smpis = self.filter_df(mpis, {'scene_fk': scene})
+                num_df = self.filter_df(smpis, num_filters)
+                bays = list(smpis.bay_number.unique())
+                size = len(bays) / Const.NUM_REG
+                mod = len(bays) % Const.NUM_REG
+                # find start ponts for center and right groups (left is always 0), this is bays var index
+                center = size
+                right = size * 2
+                if mod == 1:
+                    right += 1  # if there is one odd bay we expand center
+                elif mod == 2:
+                    center += 1  # If 2, we expand left and right by one
+                    right += 1
+                self.blockchain[base]['den'] += num_df.shape[0]
+                regions = [0, center, right, len(bays)]
+                for i, reg in enumerate(reg_list):
+                    self.blockchain[base][reg] += self.filter_df(num_df, {'bay_number': bays[regions[i]:regions[i+1]]}).shape[0]
+        result = self.safe_divide(self.blockchain[base][location], self.blockchain[base]['den'])
+        return {'score': 1, 'result': result}
 
     def calculate_new_integrated_adjacency(self, kpi_name, kpi_line, relevant_scif, general_filters):
         for scene in relevant_scif.scene_fk.unique():
@@ -397,7 +379,7 @@ class ToolBox:
 
         return kwargs_list
 
-    def anchor_base(self, general_filters, potential_end, scenes, min_shelves):
+    def anchor_base(self, general_filters, potential_end, scenes, min_shelves, ratio=False):
         results = {}
         cat_filters = dict(general_filters)
         results['left'], results['right'] = 0, 0
@@ -419,6 +401,9 @@ class ToolBox:
                 locs = pd.concat([smpis, rmpis], axis=1)
                 locs.columns = ['A', 'B']
                 locs.dropna(subset=['A'], inplace=True)
+                if ratio:
+                    min_shelves = max(self.filter_df(self.mpis, {'scene_fk': scene, 'bay_number': bay})['shelf_number'])
+                    min_shelves = round(min_shelves / 2.0)
                 if dir == 'left':
                     locs.fillna(float('inf'), inplace=True)
                     if sum(locs['A'] < locs['B']) >= min_shelves:
@@ -430,31 +415,17 @@ class ToolBox:
         return results
 
     def calculate_anchor(self, kpi_name, kpi_line, relevant_scif, general_filters):
-        map = self.template['Anchor Map'].fillna(0).replace('Y', 1).set_index('Result').to_dict('index')
-        potential_ends = self.get_kpi_line_filters(kpi_line)
-        potential_ends = [{key: val} for key, vals in potential_ends.items() for val in vals]
-        cat_filters = {'Super Category': self.super_cat}
-        cat_filters.update(general_filters)
         scenes = relevant_scif['scene_fk'].unique()
-        res_dict = {}
-        for potential_end in potential_ends:
-            results = self.anchor_base(general_filters, potential_end, scenes, 2)
-            for dir, res in results.items():
-                res_dict['{}_{}'.format(dir, potential_end.values()[0])] = res
+        potential_end = self.get_kpi_line_filters(kpi_line, 'numerator')
+        general_filters.update(self.get_kpi_line_filters(kpi_line, 'denominator'))
+        results = self.anchor_base(general_filters, potential_end, scenes, 0, ratio=True)
+        edges = self.splitter(kpi_line[Const.EDGES].strip())
 
-        kwargs = None
-        for result, conditions in map.items():
-            is_true = 1
-            for key, val in conditions.items():
-                if val != res_dict[key]:
-                    is_true = 0
-            if is_true:
-                kwargs = {'score': 1, 'result': result, 'target': 0}
-                break
+        for edge in edges:
+            if results[edge]:
+                return {'score': 1, 'result': results[edge], 'target': 0}
 
-        return kwargs
-
-    def base_block(self, kpi_name, kpi_line, relevant_scif, general_filters_base, check_orient=1, other=0, filters={},
+    def base_block(self, kpi_name, kpi_line, relevant_scif, general_filters_base, check_orient=1, other=1, filters={},
                    multi=0):
         result = pd.DataFrame()
         general_filters = dict(general_filters_base)
@@ -467,8 +438,10 @@ class ToolBox:
         mpis_dict = {}
         if self.read_cell_from_line(kpi_line, 'MSL'):
             scenes = self.find_MSL(relevant_scif)
+        valid_scene_found = 0
         for scene in scenes:
             score = 0
+            empty_check = 0
             scene_filter = {'scene_fk': scene}
             if not filters:
                 filters = self.get_kpi_line_filters(kpi_line)
@@ -479,7 +452,7 @@ class ToolBox:
             mpis = self.filter_df(mpis, {'stacking_layer': 1})
             mpis_dict[scene] = mpis
             if mpis.empty:
-                score = -1
+                empty_check = -1
                 continue
             allowed_filter = Const.ALLOWED_FILTERS
             if not other:
@@ -491,11 +464,12 @@ class ToolBox:
                                                                      'check_vertical_horizontal': check_orient,
                                                                      'minimum_facing_for_block': 1})])
             blocks = result[result['is_block'] == True]
+            valid_scene_found = 1
             if not blocks.empty and not multi:
                 score = 1
                 orientation = blocks.loc[0, 'orientation']
                 break
-        if score == -1:
+        if empty_check == -1 and not valid_scene_found:
             self.global_fail = 1
             raise TypeError('No Data Found fo kpi "'.format(kpi_name))
         return score, orientation, mpis_dict, blocks, result
@@ -503,9 +477,29 @@ class ToolBox:
     def calculate_block(self, kpi_name, kpi_line, relevant_scif, general_filters):
         score, orientation, mpis_dict, _, _ = self.base_block(kpi_name, kpi_line, relevant_scif, general_filters)
         # result_fk = self.result_values_dict[orientation]
-        kwargs = {'numerator_id': 999, 'numerator_result': score, 'score': score, 'result': orientation,
-                  'target': 1}
+        kwargs = {'score': score, 'result': score}
         return kwargs
+
+    def calculate_block_percent(self, kpi_name, kpi_line, relevant_scif, general_filters):
+        allowed_orientation = kpi_line['Orientation'].strip()
+        facings, score = 0, 0
+        # Check if data for this kpi already exists
+        base = self.get_base_name(kpi_name, Const.ORIENTS)
+        if base in self.blockchain:
+            # Data exists. Get it.
+            score, orientation, mpis_dict, blocks = self.blockchain[base]
+        else:
+            # Data doesn't exist, so create and add it
+            score, orientation, mpis_dict, blocks, _ = self.base_block(kpi_name, kpi_line, relevant_scif, general_filters)
+            self.blockchain[base] = score, orientation, mpis_dict, blocks
+
+        if orientation == allowed_orientation:
+            for row in blocks.itertuples():
+                skus = sum([node['group_attributes']['match_fk_list'] for i, node in row.cluster.nodes(data=True)], [])
+                mpis = mpis_dict[row.scene_fk]
+                facings = mpis[mpis['scene_match_fk'].isin(skus)].shape[0]
+                score = 1
+        return {'result': facings, 'score': score}
 
     def calculate_basic_block(self, kpi_name, kpi_line, relevant_scif, general_filters):
         score, _, _, _, _ = self.base_block(kpi_name, kpi_line, self.scif, general_filters)
@@ -705,8 +699,22 @@ class ToolBox:
     def splitter(text_str, delimiter=','):
         ret = [text_str]
         if hasattr(text_str, 'split'):
-            ret = text_str.split(delimiter)
+            ret = [x.strip() for x in text_str.split(delimiter)]
         return ret
+
+    @staticmethod
+    def get_base_name(kpi, group):
+        base = kpi.lower()
+        for obj in group:
+            base = base.replace(obj, '').strip()
+        return base
+
+    @staticmethod
+    def safe_divide(num, den):
+        res = 0
+        if den:
+            res = num*100.0 / den
+        return res
 
     def sos_with_num_and_dem(self, kpi_line, relevant_scif, general_filters, facings_field):
         num_filters = self.get_kpi_line_filters(kpi_line, name='numerator')
@@ -752,31 +760,29 @@ class ToolBox:
                     break
         self.template[Const.KPIS] = kpis.reindex(index=pd.Index(kpis_index)).reset_index(drop=True)
 
-    def get_kpi_function(self, kpi_type, result):
+    def get_kpi_function(self, kpi_type):
         """
         transfers every kpi to its own function
         :param kpi_type: value from "sheet" column in the main sheet
         :return: function
         """
 
-        if kpi_type == Const.TMB:
-            return self.calculate_topmiddlebottom
+        if kpi_type == Const.SHELF_PLACEMENT:
+            return self.calculate_shelf_placement
+        elif kpi_type == Const.SHELF_REGION:
+            return self.calulate_shelf_region
         elif kpi_type == Const.ADJACENCY:
             return self.calculate_adjacency_list
         elif kpi_type == Const.ANCHOR:
             return self.calculate_anchor
         elif kpi_type == Const.BLOCKING:
             return self.calculate_block
-        elif kpi_type == Const.BASE_MEASURE:
-            return self.calculate_base_measure
-        elif kpi_type == Const.COUNT:
-            return self.calculate_count_of
-        elif kpi_type == Const.VARIETY_COUNT:
-            return self.calculate_count_of_variety
-        elif kpi_type == Const.PERCENT:
-            return self.calculate_sos_percent
+        elif kpi_type == Const.BLOCKING_PERCENT:
+            return self.calculate_block_percent
         elif kpi_type == Const.SEQUENCE:
             return self.calculate_sequence
+        elif kpi_type == Const.SOS:
+            return self.calculate_sos
         else:
             Log.warning("The value '{}' in column sheet in the template is not recognized".format(kpi_type))
             return None
@@ -796,12 +802,6 @@ class ToolBox:
         :param threshold: int
         """
         kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_name)
-        if not np.isnan(self.common.kpi_static_data[self.common.kpi_static_data['pk'] == kpi_fk]
-                        ['kpi_result_type_fk'].iloc[0]):
-            if not failed:
-                result = self.result_values_dict[result]
-
         self.common.write_to_db_result(fk=kpi_fk, score=score, result=result, should_enter=True, target=target,
                                        numerator_result=numerator_result, denominator_result=denominator_result,
-                                       numerator_id=numerator_id, denominator_id=denominator_id,
-                                       parent_fk=self.entity_dict[self.super_cat.lower()])
+                                       numerator_id=numerator_id, denominator_id=denominator_id)
