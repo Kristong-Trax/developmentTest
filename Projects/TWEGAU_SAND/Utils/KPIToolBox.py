@@ -151,9 +151,9 @@ class TWEGAUToolBox:
                                        & (self.kpi_static_data[TYPE] == each_kpi_type)
                                        & (self.kpi_static_data['delete_time'].isnull())]
             if kpi.empty:
-                Log.info("KPI Name:{} not found in DB".format(each_kpi_type))
+                print("KPI Name:{} not found in DB".format(each_kpi_type))
             else:
-                Log.info("KPI Name:{} found in DB".format(each_kpi_type))
+                print("KPI Name:{} found in DB".format(each_kpi_type))
                 if 'sku_all' in each_kpi_type.lower():
                     write_sku = True
                 if 'sku_all' not in each_kpi_type.lower():
@@ -239,17 +239,15 @@ class TWEGAUToolBox:
                                        & (self.kpi_static_data[TYPE] == kpi_sheet_row[KPI_TYPE])
                                        & (self.kpi_static_data['delete_time'].isnull())]
             if kpi.empty:
-                Log.info("KPI Name:{} not found in DB".format(kpi_sheet_row[KPI_NAME]))
+                print("KPI Name:{} not found in DB".format(kpi_sheet_row[KPI_NAME]))
             else:
-                Log.info("KPI Name:{} found in DB".format(kpi_sheet_row[KPI_NAME]))
+                print("KPI Name:{} found in DB".format(kpi_sheet_row[KPI_NAME]))
                 if not is_nan(kpi_sheet_row[STORE_TYPE]):
                     if bool(kpi_sheet_row[STORE_TYPE].strip()) and kpi_sheet_row[STORE_TYPE].strip().lower() != 'all':
-                        Log.info("Check the store types in excel...")
+                        print "Check the store types in excel..."
                         permitted_store_types = [x.strip() for x in kpi_sheet_row[STORE_TYPE].split(',') if x.strip()]
                         if self.store_info.store_type.values[0] not in permitted_store_types:
-                            Log.info("Store type = {st} not permitted for session {ses}...".format(
-                                st=self.store_info.store_type.values[0], ses=self.session_uid
-                            ))
+                            print "Store type not permitted..."
                             continue
                 # get the length field
                 length_field = STACKING_MAP[kpi_sheet_row[STACKING_COL]]
