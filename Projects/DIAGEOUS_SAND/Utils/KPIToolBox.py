@@ -457,7 +457,7 @@ class ToolBox:
                 continue
             self.common.write_to_db_result(
                 fk=sub_brand_kpi_fk, numerator_id=sub_brand_fk, numerator_result=num_res, denominator_result=den_res,
-                result=result, identifier_parent={"a": manufacturer}, should_enter=True)
+                result=result)
         for manufacturer_fk in all_manufacturers:
             num_res = relevant_scif[relevant_scif['manufacturer_fk']
                                     == manufacturer_fk]['facings'].sum()
@@ -471,7 +471,7 @@ class ToolBox:
             self.common.write_to_db_result(
                 fk=manufacturer_kpi_fk, numerator_id=manufacturer_fk, numerator_result=num_res, result=result,
                 denominator_result=den_res, identifier_parent=self.common.get_dictionary(
-                    kpi_fk=total_kpi_fk), identifier_result={"a": manufacturer_fk},
+                    kpi_fk=total_kpi_fk),
                 target=manufacturer_target)
         result = self.get_score(diageo_facings, den_res)
         score = 1 if result >= target else 0
@@ -517,8 +517,7 @@ class ToolBox:
         den_res = all_results[Const.PASSED].sum()
         diageo_results, diageo_result = 0, 0
         for manufacturer in all_results[Const.MANUFACTURER].unique().tolist():
-            num_res = all_results[all_results[Const.MANUFACTURER]
-                                  == manufacturer][Const.PASSED].sum()
+            num_res = all_results[all_results[Const.MANUFACTURER] == manufacturer][Const.PASSED].sum()
             result = self.get_score(num_res, den_res)
             target_manufacturer = None
             if manufacturer == self.manufacturer_fk:
