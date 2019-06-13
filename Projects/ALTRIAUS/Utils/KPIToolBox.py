@@ -32,6 +32,8 @@ KPI_LEVEL_2_cat_space = ['Category Space - Cigarettes', 'Category Space - Vapor'
                          'Category Space - Smokeless', 'Category Space - Cigars']
 
 TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'KENGINE_ALTRIA_V1.xlsx')
+FIXTURE_WIDTH_TEMPLATE = \
+    os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'Fixture_Width_Dimensions_v3.xlsx')
 
 
 def log_runtime(description, log_start=False):
@@ -82,6 +84,9 @@ class ALTRIAUSToolBox:
         self.kpi_results_queries = []
         self.all_template_data = parse_template(TEMPLATE_PATH, "KPI")
         self.spacing_template_data = parse_template(TEMPLATE_PATH, "Spacing")
+        self.fixture_width_template = pd.read_excel(FIXTURE_WIDTH_TEMPLATE, "Fixture Width", dtype=pd.Int64Dtype())
+        self.facings_to_feet_template = pd.read_excel(FIXTURE_WIDTH_TEMPLATE, "Conversion Table", dtype=pd.Int64Dtype())
+        self.header_positions_template = pd.read_excel(FIXTURE_WIDTH_TEMPLATE, "Header Positions")
         self.ignore_stacking = False
         self.facings_field = 'facings' if not self.ignore_stacking else 'facings_ign_stack'
         self.INCLUDE_FILTER = 1
@@ -269,8 +274,54 @@ class ALTRIAUSToolBox:
         return kpi_name
 
     def calculate_signage_locations_and_widths(self):
-        relevant_scif = self.scif[self.scif['scene_type']]
+        relevant_scif = self.scif[self.scif['template_name'] == 'Tobacco Merchandising Space']
+        # need to include scene_id from previous relevant_scif
+        # also need to split this shit up into different categories, i.e. smokeless, cigarettes
+        # need to figure out how to deal with POS from smokeless being included with cigarette MPIS
+        relevant_scif = relevant_scif[relevant_scif['category'].isin(['Cigarettes', 'POS'])]
+        relevant_product_pks = relevant_scif['product_fk'].unique().tolist()
+        relevant_mpis = \
+            self.mpis[self.mpis['product_fk'].isin(relevant_product_pks)]
+        relevant_pos = \
+            self.adp.get_products_contained_in_displays(relevant_mpis[relevant_mpis['product_type'] == 'POS'])
+        relevant_pos = relevant_pos[['product_fk', 'product_name', 'left_bound', 'right_bound', 'center_y']]
+        relevant_pos = relevant_pos.reindex(columns=relevant_pos.columns.tolist() + ['type', 'width', 'position'])
+        longest_shelf = \
+            relevant_mpis[relevant_mpis['shelf_number'] ==
+                          self.get_longest_shelf_number(relevant_mpis)].sort_values(by='rect_x', ascending=True)
+        demarcation_line = longest_shelf['rect_y'].median()
+        relevant_pos['width'] = relevant_pos.apply(lambda row: self.get_length_of_pos(row, longest_shelf), axis=1)
+        relevant_pos['type'] = relevant_pos['center_y'].apply(lambda x: 'Header' if x < demarcation_line else 'Flip Sign')
+        header_position_list = [position.strip() for position in
+                                self.header_positions_template[
+                                    self.header_positions_template['Number of Headers'] ==
+                                    len(relevant_pos[relevant_pos['type'] == 'Header'])]['Cigarette Positions'].iloc[0].split()]
+        relevant_pos[relevant_pos['type'] == 'Header']['position'] = pd.Series(header_position_list)
+        relevant_template = \
+            self.fixture_width_template.loc[(self.fixture_width_template['Fixture Width (facings)']
+                                             - len(longest_shelf)).abs().argsort()[:1]].dropna(axis=1)
+        locations = relevant_template.columns[2:].tolist()
+        signage_locations = {}
+        for location in locations:
+            left_bound = longest_shelf.iloc[:relevant_template[location].iloc[0]]['rect_x'].min()
+            right_bound = longest_shelf.iloc[:relevant_template[location].iloc[0]]['rect_x'].max()
+            signage_locations.update({location: (left_bound, right_bound)})
+            longest_shelf.drop(longest_shelf.iloc[:relevant_template[location].iloc[0]].index, inplace=True)
 
+
+        return
+
+    def get_length_of_pos(self, row, longest_shelf):
+        width_in_facings = len(longest_shelf[(longest_shelf['rect_x'] > row['left_bound']) &
+                                             (longest_shelf['rect_x'] < row['right_bound'])])
+        return self.facings_to_feet_template.loc[(self.facings_to_feet_template['Cigarettes Facings']
+                                                  - width_in_facings).abs().argsort()[:1]]['POS Width (ft)'].iloc[0]
+
+    def get_longest_shelf_number(self, relevant_mpis):
+        # returns the shelf_number of the longest shelf
+        return \
+        relevant_mpis[relevant_mpis['shelf_number'] <= 3].groupby('shelf_number').agg({'scene_match_fk': 'count'})[
+            'scene_match_fk'].idxmax()
 
     def commit(self):
         self.common.commit_results_data_to_new_tables()
