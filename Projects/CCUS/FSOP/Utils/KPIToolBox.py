@@ -115,8 +115,10 @@ class FSOPToolBox:
             required_sparkling = row['number_required_Sparkling']
             required_still = row['number_required_Still']
             required_sku = row['number_required_SKU']
+            excluded_brands= self.sanitize_values(row['exclude brand'])
+
             filters = {'manufacturer_name': manufacturers, 'brand_name': brands, 'CONTAINER': container, 'att4': attributte_4,
-                       'template_name': scene_types}
+                       'template_name': scene_types, 'brand_name': (excluded_brands, 0)}
 
             filters = self.delete_filter_nan(filters)
 
@@ -179,8 +181,10 @@ class FSOPToolBox:
 
             target = int(row['% SOS'])
 
+            excluded_brands= self.sanitize_values(row['exclude brand'])
 
-            filters = {'manufacturer_name': manufacturers, param1: value1, 'template_name': scene_types}
+            filters = {'manufacturer_name': manufacturers, param1: value1, 'template_name': scene_types,
+                       'brand_name': (excluded_brands, 0)}
             filters = self.delete_filter_nan(filters)
             general_filters = {param2 : value2}
 
