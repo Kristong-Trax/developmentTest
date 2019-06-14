@@ -190,15 +190,13 @@ class FSOPToolBox:
             excluded_brands= self.sanitize_values(row['exclude brand'])
 
             filters = {'manufacturer_name': manufacturers, param1: value1, 'template_name': scene_types,
-                       'brand_name': (excluded_brands, 0)}
+                       'brand_name': (excluded_brands, 0), 'product_type': ['SKU','OTHER']}
 
             filters = self.delete_filter_nan(filters)
-            general_filters = {param2 : value2}
+            general_filters = {param2:value2, 'product_type': ['SKU','OTHER'], 'template_name': scene_types }
+            general_filters = self.delete_filter_nan(general_filters)
 
-            if not general_filters:
-                ratio = self.SOS.calculate_share_of_shelf(filters)
-            else:
-                ratio = self.SOS.calculate_share_of_shelf(filters, general_filters)
+            ratio = self.SOS.calculate_share_of_shelf(filters, **general_filters)
             if (100 * ratio) >= target:
                 score = 1
             else:
