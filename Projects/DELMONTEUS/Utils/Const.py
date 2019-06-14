@@ -17,6 +17,7 @@ class Const(object):
     MAX_BLOCK_ADJ = 'Max Blocking Adjacency'
     BLOCKED_TOGETHER = 'Blocked Together'
     BLOCKING_PERCENT = 'Blocking Percent'
+    MULTI_BLOCK = 'Multi Block'
     ANCHOR = 'Anchor'
     SEQUENCE = 'Sequence'
     INTEGRATED = 'Integrated Core KPI'

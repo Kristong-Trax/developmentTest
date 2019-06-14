@@ -2,7 +2,7 @@
 import pandas as pd
 import numpy as np
 from functools import reduce
-from collections import defaultdict, Counter
+from collections import defaultdict, Counter, namedtuple
 
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Algo.Calculations.Core.Utils import Validation
@@ -102,8 +102,8 @@ class ToolBox:
             return
 
         print(kpi_name)
-        if kpi_name not in ('What % of Del Monte Canned Fruit  Facings are in the Center?'):
-        # if kpi_type not in (Const.BLOCKING, Const.BLOCKING_PERCENT, Const.SOS, Const.ANCHOR):
+        if kpi_name not in ('What % of PFC facings are Blocked Horizontally?'):
+        # if kpi_type not in (Const.BLOCKING, Const.BLOCKING_PERCENT, Const.SOS, Const.ANCHOR, Const.MULTI_BLOCK):
             return
 
         dependent_kpis = self.read_cell_from_line(main_line, Const.DEPENDENT)
@@ -144,6 +144,16 @@ class ToolBox:
     def calculate_sos(self, kpi_name, kpi_line, relevant_scif, general_filters):
         num = self.filter_df(relevant_scif, self.get_kpi_line_filters(kpi_line))['net_len_ign_stack'].sum() / 304.8
         return {'score': 1, 'result': num}
+
+    def calculate_same_aisle(self, kpi_name, kpi_line, relevant_scif, general_filters):
+        filters = self.get_kpi_line_filters(kpi_line)
+        relevant_scif = self.filter_df(self.scif, filters)
+        if relevant_scif.empty:
+            return
+        result = 0
+        if len(relevant_scif.scene_fk.unique()) == 1:
+            result = 1
+        return {'score': 1, 'result': result}
 
     def calculate_shelf_placement(self, kpi_name, kpi_line, relevant_scif, general_filters):
         location = kpi_line['Shelf Placement'].lower()
@@ -213,18 +223,13 @@ class ToolBox:
             a_items = set(self.filter_df(mpis, a_filter)['scene_match_fk'].values)
             b_items = set(self.filter_df(mpis, b_filter)['scene_match_fk'].values)
 
-    def base_adj_graph(self, scene, kpi_line, general_filters, use_allowed=0, gmi_only=0, super_cat_only=0,
-                       additional_attributes=None, item_filters={}):
+    def base_adj_graph(self, scene, kpi_line, general_filters, use_allowed=0, additional_attributes=None, item_filters={}):
         product_attributes = ['rect_x', 'rect_y']
         if additional_attributes is not None:
             product_attributes = product_attributes + additional_attributes
         filters = self.get_kpi_line_filters(kpi_line)
         filters.update(general_filters)
         mpis_filter = {'scene_fk': scene, 'stacking_layer': 1}
-        if super_cat_only:
-            mpis_filter.update({'Super Category': self.super_cat})
-        if gmi_only:
-            mpis_filter.update({'manufacturer_name': 'GENERAL MILLS'})
         mpis = self.filter_df(self.mpis, mpis_filter)
         items = self.filter_df(mpis, filters)
         items = self.filter_df(items, item_filters)
@@ -243,16 +248,36 @@ class ToolBox:
 
     def calculate_sequence(self, kpi_name, kpi_line, relevant_scif, general_filters):
         # this attribute should be pulled from the template once the template is updated
-        sequence_attribute = 'GMI_SEGMENT'  # value for testing since GMI_Segment isn't coded :(
+        import sklearn.cluster as cluster
+
+        Segment = namedtuple('Segment', 'seg x_coord', 'prod_list')
+        segments = [i.strip() for i in self.splitter(kpi_line['Sequence'])]
+        for scene in relevant_scif.scene_fk.unique():
+            seg_list = []
+            seg_prods = []
+            for seg in segments:
+                seg_filters = self.get_kpi_line_filters(kpi_line, seg)
+                prods = list(self.filter_df(self.mpis, seg_filters)['product_fk'])
+                seg_prods.append(prods)
+                seg_list.append(Segment(seg=seg, prod_list=prods))
+
+            items, mpis, all_graph, filters = self.base_adj_graph(scene, kpi_line, general_filters,
+                                                                  use_allowed=use_allowed)
+
+
+
+
+
+
+
+
 
         # this might affect the max number of facings in each block, not sure - needs testing
         use_allowed = 1
         kwargs_list = []
         for scene in relevant_scif.scene_fk.unique():
             # create a master adjacency graph of all relevant products in the scene
-            items, mpis, all_graph, filters = self.base_adj_graph(scene, kpi_line, general_filters,
-                                                                  use_allowed=use_allowed, gmi_only=0,
-                                                                  additional_attributes=[sequence_attribute])
+
 
             # make a dataframe of matching (filtered) mpis data
             if not items:
@@ -493,7 +518,7 @@ class ToolBox:
             score, orientation, mpis_dict, blocks, _ = self.base_block(kpi_name, kpi_line, relevant_scif, general_filters)
             self.blockchain[base] = score, orientation, mpis_dict, blocks
 
-        if orientation == allowed_orientation:
+        if orientation.lower() == allowed_orientation:
             for row in blocks.itertuples():
                 skus = sum([node['group_attributes']['match_fk_list'] for i, node in row.cluster.nodes(data=True)], [])
                 mpis = mpis_dict[row.scene_fk]
@@ -512,34 +537,59 @@ class ToolBox:
         return kwargs
 
     def calculate_multi_block(self, kpi_name, kpi_line, relevant_scif, general_filters):
-        score, orientation, mpis_dict, blocks, results = self.base_block(kpi_name, kpi_line, self.scif, general_filters,
-                                                                         multi=1)
-        mpis = self.mpis[self.mpis['stacking_layer'] == 1]
-        segs = self.get_kpi_line_filters(kpi_line)['GMI_SEGMENT']
-        seg_count = {}
-        seg_count = {seg: mpis[mpis['GMI_SEGMENT'] == seg].shape[0] for seg in segs}
-        results['segments'] = [[] for i in range(results.shape[0])]
-        for i, row in results.iterrows():
-            block = row.cluster
-            items = {seg: 0 for seg in seg_count.keys()}
-            for i, node in block.nodes(data=True):
-                if node['group_attributes']['group_name'] in segs:
-                    items[node['group_attributes']['group_name']] += len(node['group_attributes']['match_fk_list'])
-            row.segments += [seg for seg in segs if seg_count[seg] > 0 and float(items[seg]) / seg_count[seg] >= .75]
-        results['seg_count'] = [len(stuff) if stuff else 0 for stuff in results.segments]
-        together = results.sort_values('seg_count', ascending=False).reset_index().segments[0]
-        result = 'None shelved together'
-        if len(together) == 3:
-            result = 'Taco, Enchilada Sauce and Cooking Sauce together'
-        elif len(together) == 2:
-            if 'TACO SAUCE/HOT SAUCE' not in together:
-                result = 'Enchilada & Cooking Sauce together, not Taco Sauce'
-            elif 'ENCHILADA SAUCE' not in together:
-                result = 'Taco & Cooking Sauce together, not Enchilada Sauce'
-            elif 'COOKING SAUCE/MARINADE' not in together:
-                result = 'Taco & Enchilada Sauce together, not Cooking Sauce'
-        kwargs = {'score': 1, 'result': result}
-        return kwargs
+        den_filter = self.get_kpi_line_filters(kpi_line, 'denominator')
+        num_filter = self.get_kpi_line_filters(kpi_line, 'numerator')
+        groups = list(*num_filter.values())
+        result = 0
+        score = 0
+        exempt = 0
+        for group in groups:
+            sub_filters = {num_filter.keys()[0]: group}
+            sub_filters.update(den_filter)
+            sub_score = 0
+            try:
+                sub_score, _, _, _, _ = self.base_block(kpi_name, kpi_line, relevant_scif, general_filters,
+                                                        check_orient=0, filters=sub_filters)
+            except TypeError as e:
+                if e[0] == 'No Data Found fo kpi "':
+                    exempt += 1
+                else:
+                    raise e
+            score += sub_score
+        if score == len(groups) - exempt:
+            result = 1
+        return {'score': 1, 'result': result}
+
+
+    # def calculate_multi_block(self, kpi_name, kpi_line, relevant_scif, general_filters):
+    #     score, orientation, mpis_dict, blocks, results = self.base_block(kpi_name, kpi_line, self.scif, general_filters,
+    #                                                                      multi=1)
+    #     mpis = self.mpis[self.mpis['stacking_layer'] == 1]
+    #     segs = self.get_kpi_line_filters(kpi_line)['GMI_SEGMENT']
+    #     seg_count = {}
+    #     seg_count = {seg: mpis[mpis['GMI_SEGMENT'] == seg].shape[0] for seg in segs}
+    #     results['segments'] = [[] for i in range(results.shape[0])]
+    #     for i, row in results.iterrows():
+    #         block = row.cluster
+    #         items = {seg: 0 for seg in seg_count.keys()}
+    #         for i, node in block.nodes(data=True):
+    #             if node['group_attributes']['group_name'] in segs:
+    #                 items[node['group_attributes']['group_name']] += len(node['group_attributes']['match_fk_list'])
+    #         row.segments += [seg for seg in segs if seg_count[seg] > 0 and float(items[seg]) / seg_count[seg] >= .75]
+    #     results['seg_count'] = [len(stuff) if stuff else 0 for stuff in results.segments]
+    #     together = results.sort_values('seg_count', ascending=False).reset_index().segments[0]
+    #     result = 'None shelved together'
+    #     if len(together) == 3:
+    #         result = 'Taco, Enchilada Sauce and Cooking Sauce together'
+    #     elif len(together) == 2:
+    #         if 'TACO SAUCE/HOT SAUCE' not in together:
+    #             result = 'Enchilada & Cooking Sauce together, not Taco Sauce'
+    #         elif 'ENCHILADA SAUCE' not in together:
+    #             result = 'Taco & Cooking Sauce together, not Enchilada Sauce'
+    #         elif 'COOKING SAUCE/MARINADE' not in together:
+    #             result = 'Taco & Enchilada Sauce together, not Cooking Sauce'
+    #     kwargs = {'score': 1, 'result': result}
+    #     return kwargs
 
     def calculate_count_of_shelves(self, kpi_name, kpi_line, relevant_scif, general_filters):
         filters = self.get_kpi_line_filters(kpi_line)
@@ -779,10 +829,14 @@ class ToolBox:
             return self.calculate_block
         elif kpi_type == Const.BLOCKING_PERCENT:
             return self.calculate_block_percent
+        elif kpi_type == Const.MULTI_BLOCK:
+            return self.calculate_multi_block
         elif kpi_type == Const.SEQUENCE:
             return self.calculate_sequence
         elif kpi_type == Const.SOS:
             return self.calculate_sos
+        elif kpi_type == Const.SAME_AISLE:
+            return self.calculate_same_aisle
         else:
             Log.warning("The value '{}' in column sheet in the template is not recognized".format(kpi_type))
             return None
