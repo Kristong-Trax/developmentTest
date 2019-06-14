@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import pandas as pd
 
 from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
@@ -110,23 +111,23 @@ class AddKPIs(Consts, CustomConfigurations):
         for i in xrange(len(kpis)):
             set_name = (unicode(kpis.iloc[i][self.KPI_SET_NAME]).replace("'", "\\'").encode('utf-8')).decode('utf-8')
             kpi_name = (unicode(kpis.iloc[i][self.KPI_NAME]).replace("'", "\\'").encode('utf-8')).decode('utf-8')
-            if self.kpi_static_data[(self.kpi_static_data['kpi_set_name'] == set_name) &
-                                    (self.kpi_static_data['kpi_name'] == kpi_name)].empty:
-                if set_name in self.sets_added.keys():
-                    set_fk = self.sets_added[set_name]
+            if self.kpi_static_data[(self.kpi_static_data['kpi_set_name'] == set_name.encode('utf-8')) &
+                                    (self.kpi_static_data['kpi_name'] == kpi_name.encode('utf-8'))].empty:
+                if set_name.encode('utf-8') in self.sets_added.keys():
+                    set_fk = self.sets_added[set_name.encode('utf-8')]
                 else:
                     try:
-                        set_fk = self.kpi_static_data[self.kpi_static_data['kpi_set_name'] == set_name]['kpi_set_fk'].values[0]
+                        set_fk = self.kpi_static_data[self.kpi_static_data['kpi_set_name'] == set_name.encode('utf-8')]['kpi_set_fk'].values[0]
                     except:
-                        set_fk = self.sets_added[set_name]
+                        set_fk = self.sets_added[set_name.encode('utf-8')]
                 level2_query = """
                        INSERT INTO static.kpi (kpi_set_fk, display_text)
                        VALUES ('{0}', '{1}');""".format(set_fk, kpi_name.encode('utf-8'))
                 cur.execute(level2_query)
-                if set_name in self.kpis_added.keys():
-                    self.kpis_added[set_name][kpi_name] = cur.lastrowid
+                if set_name.encode('utf-8') in self.kpis_added.keys():
+                    self.kpis_added[set_name.encode('utf-8')][kpi_name.encode('utf-8')] = cur.lastrowid
                 else:
-                    self.kpis_added[set_name] = {kpi_name: cur.lastrowid}
+                    self.kpis_added[set_name.encode('utf-8')] = {kpi_name.encode('utf-8'): cur.lastrowid}
                 self.kpi_counter['kpi'] += 1
         self.aws_conn.db.commit()
 
@@ -157,14 +158,14 @@ class AddKPIs(Consts, CustomConfigurations):
                 names = [atomic_name]
 
             for index, name in enumerate(names):
-                if self.kpi_static_data[(self.kpi_static_data['kpi_set_name'] == set_name) &
-                                        (self.kpi_static_data['kpi_name'] == kpi_name) &
-                                        (self.kpi_static_data['atomic_kpi_name'] == name)].empty:
-                    if set_name in self.kpis_added.keys() and kpi_name in self.kpis_added[set_name].keys():
-                        kpi_fk = self.kpis_added[set_name][kpi_name]
+                if self.kpi_static_data[(self.kpi_static_data['kpi_set_name'] == set_name.encode('utf-8')) &
+                                        (self.kpi_static_data['kpi_name'] == kpi_name.encode('utf-8')) &
+                                        (self.kpi_static_data['atomic_kpi_name'] == name.encode('utf-8'))].empty:
+                    if set_name.encode('utf-8') in self.kpis_added.keys() and kpi_name.encode('utf-8') in self.kpis_added[set_name.encode('utf-8')].keys():
+                        kpi_fk = self.kpis_added[set_name.encode('utf-8')][kpi_name.encode('utf-8')]
                     else:
-                        kpi_fk = self.kpi_static_data[(self.kpi_static_data['kpi_set_name'] == set_name) &
-                                                      (self.kpi_static_data['kpi_name'] == kpi_name)]['kpi_fk'].values[0]
+                        kpi_fk = self.kpi_static_data[(self.kpi_static_data['kpi_set_name'] == set_name.encode('utf-8')) &
+                                                      (self.kpi_static_data['kpi_name'] == kpi_name.encode('utf-8'))]['kpi_fk'].values[0]
 
                     level3_query = """
                                INSERT INTO static.atomic_kpi (kpi_fk, name, description, display_text,
@@ -186,7 +187,7 @@ if __name__ == '__main__':
     # dbusers_patcher = patch('{0}.DbUser'.format(dbusers_class_path))
     # dbusers_mock = dbusers_patcher.start()
     # dbusers_mock.return_value = docker_user
-    kpi = AddKPIs('rinielsenus', '/home/samk/Documents/documentation/add_kpi/new_kpi.xlsx')
+    kpi = AddKPIs('cbcdairyil', '/home/israels/Desktop/US/cbcdairyil/kpi_to_db.xlsx')
     kpi.add_kpis_from_template()
     # kpi.add_weights()
 

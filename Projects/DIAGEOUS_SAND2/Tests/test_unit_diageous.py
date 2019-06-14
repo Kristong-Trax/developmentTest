@@ -1,7 +1,7 @@
 from Trax.Utils.Testing.Case import TestCase
 from mock import MagicMock, mock
-import Projects.DIAGEOUS_SAND.Tests.test_data as Data
-from Projects.DIAGEOUS_SAND.Utils.KPIToolBox import ToolBox
+import Projects.DIAGEOUS_SAND2.Tests.test_data as Data
+from Projects.DIAGEOUS_SAND2.Utils.KPIToolBox import ToolBox
 
 
 __author__ = 'yoava'
@@ -9,7 +9,7 @@ __author__ = 'yoava'
 
 class DIAGEOUS_SANDTestDiageous(TestCase):
 
-    @mock.patch('Projects.DIAGEOUS_SAND.Utils.KPIToolBox.ProjectConnector')
+    @mock.patch('Projects.DIAGEOUS_SAND2.Utils.KPIToolBox.ProjectConnector')
     def setUp(self, x):
         self.data_provider_mock = MagicMock()
         self.data_provider_mock.project_name = 'diageous_sand'

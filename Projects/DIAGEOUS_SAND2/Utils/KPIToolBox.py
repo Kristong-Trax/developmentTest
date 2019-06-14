@@ -4,7 +4,7 @@ import numpy as np
 import json
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Utils.Logging.Logger import Log
-from Projects.DIAGEOUS_SAND.Utils.Const import Const
+from Projects.DIAGEOUS_SAND2.Utils.Const import Const
 from KPIUtils_v2.DB.CommonV2 import Common
 from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
 from KPIUtils_v2.Calculations.SurveyCalculations import Survey

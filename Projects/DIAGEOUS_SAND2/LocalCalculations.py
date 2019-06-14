@@ -2,11 +2,11 @@
 from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
 from Trax.Utils.Conf.Configuration import Config
 from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
-from Projects.DIAGEOUS_SAND.Calculations import Calculations
+from Projects.DIAGEOUS_SAND2.Calculations import Calculations
 
 
 if __name__ == '__main__':
-    LoggerInitializer.init('diageous-sand calculations')
+    LoggerInitializer.init('diageous-sand2 calculations')
     Config.init()
     project_name = 'diageous-sand2'
     # Independent On:
