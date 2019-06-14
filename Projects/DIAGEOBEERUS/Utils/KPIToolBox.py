@@ -107,7 +107,7 @@ class DIAGEOBEERUSToolBox:
         """
         This function calculates the KPI results.
         """
-        total_kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.DB_TOTAL_KPIS[self.on_off][Const.TOTAL])
+        total_kpi_fk = self.common.get_kpi_fk_by_kpi_type(Const.DB_TOTAL_KPIS[self.on_off][Const.TOTAL])
         total_store_score = 0
         for i, kpi_line in self.templates[Const.SHEETS[self.on_off][0]].iterrows():
             total_weighted_score = self.calculate_set(kpi_line)
@@ -161,25 +161,38 @@ class DIAGEOBEERUSToolBox:
         total_skus = 0
         passed_skus = 0
         result_dict_list = self.diageo_generator.diageo_global_assortment_function_v2()
-        mpa_fk = self.common.get_kpi_fk_by_kpi_name(Const.MPA)
-        mpa_sku_fk = self.common.get_kpi_fk_by_kpi_name(Const.MPA_SKU)
+        # kpi_fks for hierarchy
+        mpa_fk = self.common.get_kpi_fk_by_kpi_type(Const.MPA_MR)
+        mpa_sku_fk = self.common.get_kpi_fk_by_kpi_type(Const.MPA_SKU_MR)
+        # kpi_fks without hierarchy
+        mpa_fk_without_hierarchy = self.common.get_kpi_fk_by_kpi_type(Const.MPA)
+        mpa_sku_fk_without_hierarchy = self.common.get_kpi_fk_by_kpi_type(Const.MPA_SKU)
+
         total_identifier = self.common.get_dictionary(name=Const.TOTAL)
-        mpa_identifier = self.common.get_dictionary(name=Const.MPA)
+        mpa_identifier = self.common.get_dictionary(name=Const.MPA_MR)
         for result_dict in result_dict_list:
-            if result_dict['fk'] == mpa_fk:
+            if result_dict['fk'] == mpa_fk_without_hierarchy:
+                # save results without hierarchy first
                 score = result_dict['result'] * weight
+                self.common.write_to_db_result(**result_dict)
+                # change kpi_fk and continue to save with hierarchy
+                result_dict['fk'] = mpa_fk
                 result_dict.update({'identifier_parent': total_identifier, 'should_enter': True,
                                     'weight': weight * 100, 'identifier_result': mpa_identifier,
                                     'score': score})
-            if result_dict['fk'] == mpa_sku_fk:
+            if result_dict['fk'] == mpa_sku_fk_without_hierarchy:
                 total_skus = total_skus + 1
                 if result_dict['result'] == 100:
                     passed_skus = passed_skus + 1
-                result_dict.update({'identifier_parent': mpa_identifier, 'should_enter': True})
                 if result_dict['result'] == 100:
                     result_dict.update({'result': self.get_pks_of_result(Const.ON_SHELF)})
                 elif result_dict['result'] == 0:
                     result_dict.update({'result': self.get_pks_of_result(Const.NOT_ON_SHELF)})
+                # save results without hierarchy first
+                self.common.write_to_db_result(**result_dict)
+                # change kpi_fk and continue to save with hierarchy
+                result_dict['fk'] = mpa_sku_fk
+                result_dict.update({'identifier_parent': mpa_identifier, 'should_enter': True})
             self.common.write_to_db_result(**result_dict)
 
         return (passed_skus / float(total_skus)) * weight * 100 if total_skus > 0 else 0
@@ -193,7 +206,9 @@ class DIAGEOBEERUSToolBox:
         :param weight: float
         :return: total_result
         """
-        total_kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.DB_OFF_NAMES[Const.DISPLAY_SHARE][Const.TOTAL])
+        total_kpi_fk = self.common.get_kpi_fk_by_kpi_type(Const.DB_OFF_NAMES_MR[Const.DISPLAY_SHARE][Const.TOTAL])
+        total_kpi_fk_without_hierarchy = \
+            self.common.get_kpi_fk_by_kpi_type(Const.DB_OFF_NAMES[Const.DISPLAY_SHARE][Const.TOTAL])
         total_dict = self.common.get_dictionary(kpi_fk=total_kpi_fk)
         # if self.no_display_allowed:
         #     Log.info("There is no display, Display Share got 100")
@@ -203,8 +218,10 @@ class DIAGEOBEERUSToolBox:
         #         result=score, should_enter=True, weight=weight * 100, score=score,
         #         identifier_parent=self.common.get_dictionary(name=Const.TOTAL))
         #     return score * weight, 0, 0
-        manufacturer_kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.DB_OFF_NAMES[
-                                                                     Const.DISPLAY_SHARE][Const.MANUFACTURER])
+        manufacturer_kpi_fk = self.common.get_kpi_fk_by_kpi_type(Const.DB_OFF_NAMES_MR[
+                                                                 Const.DISPLAY_SHARE][Const.MANUFACTURER])
+        manufacturer_kpi_fk_without_hierarchy = \
+            self.common.get_kpi_fk_by_kpi_type(Const.DB_OFF_NAMES[Const.DISPLAY_SHARE][Const.MANUFACTURER])
         relevant_scenes = self.get_relevant_scenes(scene_types)
         relevant_products = self.scif_without_empties[(self.scif_without_empties['scene_fk'].isin(relevant_scenes)) &
                                                       (self.scif_without_empties['product_type'] == 'SKU')]
@@ -224,19 +241,31 @@ class DIAGEOBEERUSToolBox:
             result_dict = self.common.get_dictionary(manufacturer_fk=manufacturer, kpi_fk=manufacturer_kpi_fk)
             if manufacturer == 0:
                 continue
+            # save result with hierarchy
             self.common.write_to_db_result(
                 fk=manufacturer_kpi_fk, numerator_id=manufacturer, numerator_result=num_res,
                 target=target_manufacturer,
                 denominator_result=den_res, result=result, identifier_parent=total_dict,
                 identifier_result=result_dict, should_enter=True)
+            # save result without hierarchy
+            self.common.write_to_db_result(
+                fk=manufacturer_kpi_fk_without_hierarchy, numerator_id=manufacturer, numerator_result=num_res,
+                target=target_manufacturer,
+                denominator_result=den_res, result=result)
         if den_res == 0:
             score = 0
         else:
             score = 1 if (diageo_results >= target * den_res) else 0
+        # save result with hierarchy
         self.common.write_to_db_result(
             fk=total_kpi_fk, numerator_id=self.manufacturer_fk, numerator_result=diageo_results, target=target,
             denominator_result=den_res, result=score * 100, weight=weight * 100, score=diageo_result * 100,
             identifier_result=total_dict)
+        # save result without hierarchy
+        self.common.write_to_db_result(
+            fk=total_kpi_fk_without_hierarchy, numerator_id=self.manufacturer_fk, numerator_result=diageo_results,
+            target=target,
+            denominator_result=den_res, result=score * 100, weight=weight * 100, score=diageo_result * 100)
         return score * weight
 
     def calculate_display_share_of_sku(self, product_fk, relevant_products, manufacturer_kpi_fk):
@@ -247,7 +276,9 @@ class DIAGEOBEERUSToolBox:
         :param manufacturer_kpi_fk: for write_to_db
         :return: a line for the results DF
         """
-        sku_kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.DB_OFF_NAMES[Const.DISPLAY_SHARE][Const.SKU])
+        sku_kpi_fk = self.common.get_kpi_fk_by_kpi_type(Const.DB_OFF_NAMES_MR[Const.DISPLAY_SHARE][Const.SKU])
+        sku_kpi_fk_without_hierarchy = \
+            self.common.get_kpi_fk_by_kpi_type(Const.DB_OFF_NAMES[Const.DISPLAY_SHARE][Const.SKU])
         manufacturer = self.get_manufacturer(product_fk)
         sum_scenes_passed = self.calculate_passed_display_without_subst(product_fk, relevant_products)
         parent_dict = self.common.get_dictionary(kpi_fk=manufacturer_kpi_fk, manufacturer_fk=manufacturer)
@@ -256,6 +287,9 @@ class DIAGEOBEERUSToolBox:
         self.common.write_to_db_result(
             fk=sku_kpi_fk, numerator_id=product_fk,
             result=sum_scenes_passed, identifier_parent=parent_dict, should_enter=True)
+        self.common.write_to_db_result(
+            fk=sku_kpi_fk_without_hierarchy, numerator_id=product_fk,
+            result=sum_scenes_passed)
         product_result = {Const.PRODUCT_FK: product_fk, Const.PASSED: sum_scenes_passed,
                           Const.MANUFACTURER: manufacturer}
         return product_result
@@ -310,9 +344,11 @@ class DIAGEOBEERUSToolBox:
         for i, competition in all_products_table.iterrows():
             compete_result_dict = self.calculate_msrp_of_competition(competition, relevant_scenes, i)
             all_competes = all_competes.append(compete_result_dict, ignore_index=True)
-        kpi_db_names = Const.DB_OFF_NAMES[kpi_name]
+        kpi_db_names = Const.DB_OFF_NAMES_MR[kpi_name]
+        kpi_db_names_without_hierarchy = Const.DB_OFF_NAMES[kpi_name]
         result = self.insert_all_levels_to_db(
-            all_competes, kpi_db_names, weight, write_numeric=False)  # result should be %, not count
+            all_competes, kpi_db_names, weight, write_numeric=False,
+            kpi_db_names_without_hierarchy=kpi_db_names_without_hierarchy)  # result should be %, not count
         return result
 
     def calculate_msrp_of_competition(self, competition, relevant_scenes, index):
@@ -324,8 +360,8 @@ class DIAGEOBEERUSToolBox:
         :param index: for hierarchy
         :return: 1/0
         """
-        kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.DB_OFF_NAMES[Const.MSRP][Const.COMPETITION])
-        total_kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.DB_OFF_NAMES[Const.MSRP][Const.TOTAL])
+        kpi_fk = self.common.get_kpi_fk_by_kpi_type(Const.DB_OFF_NAMES_MR[Const.MSRP][Const.COMPETITION])
+        total_kpi_fk = self.common.get_kpi_fk_by_kpi_type(Const.DB_OFF_NAMES_MR[Const.MSRP][Const.TOTAL])
         our_ean, comp_ean = competition[Const.OUR_EAN_CODE], competition[Const.COMP_EAN_CODE]
         min_relative, max_relative = competition[Const.MIN_MSRP_RELATIVE], competition[Const.MAX_MSRP_RELATIVE]
         min_absolute, max_absolute = competition[Const.MIN_MSRP_ABSOLUTE], competition[Const.MAX_MSRP_ABSOLUTE]
@@ -364,7 +400,7 @@ class DIAGEOBEERUSToolBox:
         elif our_price > range_price[1]:
             result = range_price[1] - our_price
         brand, sub_brand = self.get_product_details(product_fk)
-        sub_brand_level_kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.DB_OFF_NAMES[Const.MSRP][Const.SUB_BRAND])
+        sub_brand_level_kpi_fk = self.common.get_kpi_fk_by_kpi_type(Const.DB_OFF_NAMES_MR[Const.MSRP][Const.SUB_BRAND])
         identifier_parent = self.common.get_dictionary(kpi_fk=sub_brand_level_kpi_fk,
                                                        brand_fk=brand, sub_brand_fk=sub_brand)
         self.common.write_to_db_result(
@@ -382,7 +418,7 @@ class DIAGEOBEERUSToolBox:
         :param parent_dict: identifier dictionary
         :return: price
         """
-        kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.DB_OFF_NAMES[Const.MSRP][Const.SKU])
+        kpi_fk = self.common.get_kpi_fk_by_kpi_type(Const.DB_OFF_NAMES_MR[Const.MSRP][Const.SKU])
         price = self.products_with_prices[(self.products_with_prices['product_fk'] == product_fk) &
                                           (self.products_with_prices['scene_fk'].isin(scenes))]['price_value']
         if price.empty or product_fk == 0:
@@ -414,12 +450,14 @@ class DIAGEOBEERUSToolBox:
             relevant_competitions = relevant_competitions[((relevant_competitions[Const.STATE] == Const.OTHER) |
                                                            (relevant_competitions[Const.STATE] == 'All'))]
         all_results = pd.DataFrame(columns=Const.COLUMNS_FOR_PRODUCT_ASSORTMENT)
-        kpi_db_names = Const.DB_OFF_NAMES[kpi_name]
+        kpi_db_names = Const.DB_OFF_NAMES_MR[kpi_name]
+        kpi_db_names_without_hierarchy = Const.DB_OFF_NAMES[kpi_name]
         for i, competition in relevant_competitions.iterrows():
             result_dict = self.calculate_shelf_facings_of_competition(competition, relevant_scenes, i, kpi_db_names)
             all_results = all_results.append(result_dict, ignore_index=True)
         total_result = self.insert_all_levels_to_db(
-            all_results, kpi_db_names, weight, weighted_result=True)
+            all_results, kpi_db_names, weight, weighted_result=True,
+            kpi_db_names_without_hierarchy=kpi_db_names_without_hierarchy)
         return total_result
 
     def calculate_shelf_facings_of_competition(self, competition, relevant_scenes, index, kpi_db_names):
@@ -432,7 +470,7 @@ class DIAGEOBEERUSToolBox:
         """
         kpi_type = competition['KPI type']
         weight_of_competition = competition[Const.WEIGHT]
-        kpi_fk = self.common.get_kpi_fk_by_kpi_name(kpi_db_names[Const.SUB_BRAND])
+        kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_db_names[Const.SUB_BRAND])
         our_sub_brands = competition[Const.OUR_SUB_BRAND].split(', ')
         our_lines = self.all_products_sku[self.all_products_sku['sub_brand'].isin(our_sub_brands)]
         if our_lines.empty:
@@ -449,9 +487,10 @@ class DIAGEOBEERUSToolBox:
                 Log.warning("The sub brands {} in shelf facings don't exist in DB".format(comp_sub_brands))
                 target = 0
             else:
-                comp_facings = self.calculate_shelf_facings_of_sub_brand(comp_sub_brands, relevant_scenes,
-                                                                         result_identifier, kpi_db_names=kpi_db_names,
-                                                                         diageo_sub_brand_fk=sub_brand_fk)
+                comp_facings = \
+                    self.calculate_shelf_facings_of_sub_brand(comp_sub_brands, relevant_scenes,
+                                                              result_identifier, kpi_db_names=kpi_db_names,
+                                                              diageo_sub_brand_fk=sub_brand_fk)
                 bench_value = competition[Const.BENCH_VALUE]
                 if type(bench_value) in (unicode, str):
                     bench_value = float(bench_value.replace("%", "")) / 100
@@ -461,10 +500,11 @@ class DIAGEOBEERUSToolBox:
         else:
             Log.warning("Product {} has no target in shelf facings".format(our_sub_brands))
             target = 0
-        our_facings = self.calculate_shelf_facings_of_sub_brand(our_sub_brands, relevant_scenes, result_identifier,
-                                                                target=target,
-                                                                diageo_product=True, kpi_db_names=kpi_db_names,
-                                                                weight=weight_of_competition)
+        our_facings = \
+            self.calculate_shelf_facings_of_sub_brand(our_sub_brands, relevant_scenes, result_identifier,
+                                                      target=target,
+                                                      diageo_product=True, kpi_db_names=kpi_db_names,
+                                                      weight=weight_of_competition)
         # comparison = 1 if (our_facings >= target and our_facings > 0) else 0  # used for count instead of weight
         comparison = weight_of_competition if (our_facings >= target and our_facings > 0) else 0
         product_result = {Const.PRODUCT_FK: product_fk, Const.PASSED: comparison,
@@ -475,7 +515,7 @@ class DIAGEOBEERUSToolBox:
                                              diageo_product=False, kpi_db_names=None, weight=None,
                                              diageo_sub_brand_fk=None):
         amount_of_facings = None
-        kpi_fk = self.common.get_kpi_fk_by_kpi_name(kpi_db_names[Const.VARIANT])
+        kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_db_names[Const.VARIANT])
         for sub_brand in sub_brand_names:
             amount_of_facings = 0
             sub_brand_scif = self.scif_without_empties[self.scif_without_empties['sub_brand'] == sub_brand]
@@ -521,13 +561,14 @@ class DIAGEOBEERUSToolBox:
             relevant_competitions = relevant_competitions[((relevant_competitions[Const.STATE] == Const.OTHER) |
                                                            (relevant_competitions[Const.STATE] == 'All'))]
         all_results = pd.DataFrame(columns=Const.COLUMNS_FOR_PRODUCT_ASSORTMENT)
-        kpi_db_names = Const.DB_OFF_NAMES[kpi_name]
+        kpi_db_names = Const.DB_OFF_NAMES_MR[kpi_name]
+        kpi_db_names_without_hierarchy = Const.DB_OFF_NAMES[kpi_name]
         for i, competition in relevant_competitions.iterrows():
             result_dict = self.calculate_number_of_displays_of_competition(competition, relevant_scenes, i,
                                                                            kpi_db_names)
             all_results = all_results.append(result_dict, ignore_index=True)
         total_result = self.insert_all_levels_to_db(
-            all_results, kpi_db_names, weight)
+            all_results, kpi_db_names, weight, kpi_db_names_without_hierarchy=kpi_db_names_without_hierarchy)
         return total_result
 
     def calculate_number_of_displays_of_competition(self, competition, relevant_scenes, index, kpi_db_names):
@@ -539,7 +580,7 @@ class DIAGEOBEERUSToolBox:
         :return: passed, product_fk, standard_type
         """
         kpi_type = competition['KPI type']
-        kpi_fk = self.common.get_kpi_fk_by_kpi_name(kpi_db_names[Const.SUB_BRAND])
+        kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_db_names[Const.SUB_BRAND])
         our_sub_brands = competition[Const.OUR_SUB_BRAND].split(', ')
         our_lines = self.all_products_sku[self.all_products_sku['sub_brand'].isin(our_sub_brands)]
         if our_lines.empty:
@@ -579,7 +620,7 @@ class DIAGEOBEERUSToolBox:
     def calculate_displays_of_sub_brand(self, sub_brand_names, relevant_scenes, parent_identifier, target=None,
                                         diageo_product=False, kpi_db_names=None, diageo_sub_brand_fk=None):
         number_of_displays = None
-        kpi_fk = self.common.get_kpi_fk_by_kpi_name(kpi_db_names[Const.VARIANT])
+        kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_db_names[Const.VARIANT])
         for sub_brand in sub_brand_names:
             number_of_displays = 0
             sub_brand_scif = self.scif_without_empties[self.scif_without_empties['sub_brand'] == sub_brand]
@@ -620,7 +661,9 @@ class DIAGEOBEERUSToolBox:
         :param target: float
         :return:
         """
-        total_kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.DB_ON_NAMES[Const.MENU][Const.TOTAL])
+        total_kpi_fk = self.common.get_kpi_fk_by_kpi_type(Const.DB_ON_NAMES_MR[Const.MENU][Const.TOTAL])
+        total_kpi_fk_without_hierarchy = \
+            self.common.get_kpi_fk_by_kpi_type(Const.DB_ON_NAMES[Const.MENU][Const.TOTAL])
         if self.no_menu_allowed:
             Log.info("There is no menu, Menu got 100")
             score = 1
@@ -628,9 +671,15 @@ class DIAGEOBEERUSToolBox:
                 fk=total_kpi_fk, numerator_id=self.manufacturer_fk, target=target,
                 result=score, should_enter=True, weight=weight * 100, score=score,
                 identifier_parent=self.common.get_dictionary(name=Const.TOTAL))
+            self.common.write_to_db_result(
+                fk=total_kpi_fk_without_hierarchy, numerator_id=self.manufacturer_fk, target=target,
+                result=score, weight=weight * 100, score=score)
             return score * weight
-        manufacturer_kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.DB_ON_NAMES[Const.MENU][Const.MANUFACTURER])
-        brand_kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.DB_ON_NAMES[Const.MENU][Const.BRAND])
+        manufacturer_kpi_fk = self.common.get_kpi_fk_by_kpi_type(Const.DB_ON_NAMES_MR[Const.MENU][Const.MANUFACTURER])
+        manufacturer_kpi_fk_without_hierarchy = \
+            self.common.get_kpi_fk_by_kpi_type(Const.DB_ON_NAMES[Const.MENU][Const.MANUFACTURER])
+        brand_kpi_fk = self.common.get_kpi_fk_by_kpi_type(Const.DB_ON_NAMES_MR[Const.MENU][Const.BRAND])
+        brand_kpi_fk_without_hierarchy = self.common.get_kpi_fk_by_kpi_type(Const.DB_ON_NAMES[Const.MENU][Const.BRAND])
         relevant_scenes = self.get_relevant_scenes(scene_types)
         relevant_scif = self.scif_without_empties[(self.scif_without_empties['scene_id'].isin(relevant_scenes)) &
                                                   (self.scif_without_empties['product_type'] == 'POS')]
@@ -650,6 +699,10 @@ class DIAGEOBEERUSToolBox:
                 fk=brand_kpi_fk, numerator_id=brand_fk, numerator_result=num_res,
                 denominator_id=products.manufacturer_fk, denominator_result=den_res,
                 result=result, identifier_parent=identifier_parent, should_enter=True)
+            self.common.write_to_db_result(
+                fk=brand_kpi_fk_without_hierarchy, numerator_id=brand_fk, numerator_result=num_res,
+                denominator_id=products.manufacturer_fk, denominator_result=den_res,
+                result=result)
         for manufacturer_fk in all_manufacturers:
             num_res = relevant_scif[relevant_scif['manufacturer_fk'] == manufacturer_fk]['facings'].sum()
             manufacturer_target = None
@@ -665,6 +718,9 @@ class DIAGEOBEERUSToolBox:
                 fk=manufacturer_kpi_fk, numerator_id=manufacturer_fk, numerator_result=num_res, result=result,
                 denominator_result=den_res, identifier_parent=self.common.get_dictionary(kpi_fk=total_kpi_fk),
                 identifier_result=identifier_result, should_enter=True, target=manufacturer_target)
+            self.common.write_to_db_result(
+                fk=manufacturer_kpi_fk_without_hierarchy, numerator_id=manufacturer_fk, numerator_result=num_res, result=result,
+                denominator_result=den_res, target=manufacturer_target)
         result = self.get_score(diageo_facings, den_res)
         score = 1 if result > target else 0
         self.common.write_to_db_result(
@@ -672,13 +728,22 @@ class DIAGEOBEERUSToolBox:
             denominator_result=den_res, result=score * 100, score=score * weight * 100, weight=weight * 100,
             identifier_result=self.common.get_dictionary(kpi_fk=total_kpi_fk), target=target,
             identifier_parent=self.common.get_dictionary(name=Const.TOTAL), should_enter=True)
+        self.common.write_to_db_result(
+            fk=total_kpi_fk_without_hierarchy, numerator_id=self.manufacturer_fk, numerator_result=diageo_facings,
+            denominator_result=den_res, result=score * 100, score=score * weight * 100, weight=weight * 100,
+            target=target)
         return score * weight * 100
 
     # tap handles and beer glasses
     def calculate_tap_handles_and_beer_glasses(self, scene_types, kpi_name, weight):
-        total_kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.DB_ON_NAMES[kpi_name][Const.TOTAL])
-        brand_kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.DB_ON_NAMES[kpi_name][Const.BRAND])
-        display_kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.DB_ON_NAMES[kpi_name][Const.DISPLAY])
+        total_kpi_fk = self.common.get_kpi_fk_by_kpi_type(Const.DB_ON_NAMES_MR[kpi_name][Const.TOTAL])
+        brand_kpi_fk = self.common.get_kpi_fk_by_kpi_type(Const.DB_ON_NAMES_MR[kpi_name][Const.BRAND])
+        display_kpi_fk = self.common.get_kpi_fk_by_kpi_type(Const.DB_ON_NAMES_MR[kpi_name][Const.DISPLAY])
+
+        total_kpi_fk_without_hierarchy = self.common.get_kpi_fk_by_kpi_type(Const.DB_ON_NAMES[kpi_name][Const.TOTAL])
+        brand_kpi_fk_without_hierarchy = self.common.get_kpi_fk_by_kpi_type(Const.DB_ON_NAMES[kpi_name][Const.BRAND])
+        display_kpi_fk_without_hierarchy = \
+            self.common.get_kpi_fk_by_kpi_type(Const.DB_ON_NAMES[kpi_name][Const.DISPLAY])
 
         store_format = self.store_info[Const.ATT1].iloc[0]
         template = self.templates[Const.TAP_HANDLE_BEER_GLASSES_SHEET]
@@ -709,6 +774,10 @@ class DIAGEOBEERUSToolBox:
                         score=score * 100, denominator_result=1,
                         identifier_parent=self.common.get_dictionary(kpi_fk=brand_kpi_fk, brand_fk=display_brand_fk),
                         weight=row.Weight * 100, should_enter=True)
+                    self.common.write_to_db_result(
+                        fk=display_kpi_fk_without_hierarchy, numerator_id=display_fk, numerator_result=result,
+                        result=result * 100,
+                        score=score * 100, denominator_result=1, weight=row.Weight * 100)
             # write brand result
             self.common.write_to_db_result(
                 fk=brand_kpi_fk, numerator_id=display_brand_fk, numerator_result=result, result=result * 100,
@@ -716,6 +785,11 @@ class DIAGEOBEERUSToolBox:
                 identifier_parent=self.common.get_dictionary(kpi_fk=total_kpi_fk),
                 identifier_result=self.common.get_dictionary(kpi_fk=brand_kpi_fk, brand_fk=display_brand_fk),
                 weight=row.Weight * 100, should_enter=True)
+            self.common.write_to_db_result(
+                fk=brand_kpi_fk_without_hierarchy, numerator_id=display_brand_fk, numerator_result=result,
+                result=result * 100,
+                score=score * 100, denominator_result=1,
+                weight=row.Weight * 100)
         # write total result
         self.common.write_to_db_result(
             fk=total_kpi_fk, numerator_id=self.manufacturer_fk, numerator_result=total_score,
@@ -723,11 +797,15 @@ class DIAGEOBEERUSToolBox:
             score=total_score * weight * 100, weight=weight * 100,
             identifier_result=self.common.get_dictionary(kpi_fk=total_kpi_fk),
             identifier_parent=self.common.get_dictionary(name=Const.TOTAL), should_enter=True)
+        self.common.write_to_db_result(
+            fk=total_kpi_fk_without_hierarchy, numerator_id=self.manufacturer_fk, numerator_result=total_score,
+            denominator_result=len(relevant_template[Const.DISPLAY_BRAND].unique().tolist()), result=total_score * 100,
+            score=total_score * weight * 100, weight=weight * 100)
         return total_score * weight * 100
 
     # helpers
     def insert_all_levels_to_db(self, all_results, kpi_db_names, weight, should_enter=True, write_numeric=False,
-                                sub_brand_numeric=False, weighted_result=False):
+                                sub_brand_numeric=False, weighted_result=False, kpi_db_names_without_hierarchy=None):
         """
         This function gets all the sku results (with details) and puts in DB all the way up (sub_brand, brand, total).
         :param all_results: DF with product_fk and its details - passed, sub_brand, brand, standard_type.
@@ -739,7 +817,7 @@ class DIAGEOBEERUSToolBox:
         :param should_enter: if the total should enter the hierarchy table
         :return: the scores of all
         """
-        total_kpi_fk = self.common.get_kpi_fk_by_kpi_name(kpi_db_names[Const.TOTAL])
+        total_kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_db_names[Const.TOTAL])
         total_identifier = self.common.get_dictionary(kpi_fk=total_kpi_fk)
         for brand in all_results[Const.BRAND].unique().tolist():
             if brand is None or np.isnan(brand):
@@ -751,7 +829,8 @@ class DIAGEOBEERUSToolBox:
         all_passed_results = all_results[Const.PASSED]
         total_result = self.insert_totals_to_db(all_passed_results, kpi_db_names, Const.TOTAL, weight, total_identifier,
                                                 should_enter=should_enter, write_numeric=write_numeric,
-                                                weighted_result=weighted_result)
+                                                weighted_result=weighted_result,
+                                                kpi_db_names_without_hierarchy=kpi_db_names_without_hierarchy)
 
         return total_result
 
@@ -767,7 +846,7 @@ class DIAGEOBEERUSToolBox:
         :param sub_brand_numeric: write in the sub_brand if one product passed or not (like sku level)
         :param weighted_result: assume values in brand_results[Const.PASSED] are weighted
         """
-        brand_kpi_fk = self.common.get_kpi_fk_by_kpi_name(kpi_db_names[Const.BRAND])
+        brand_kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_db_names[Const.BRAND])
         brand_dict = self.common.get_dictionary(kpi_fk=brand_kpi_fk, brand_fk=brand)
         for sub_brand in brand_results[brand_results[Const.BRAND] == brand][Const.SUB_BRAND].unique().tolist():
             if sub_brand is None or np.isnan(sub_brand) or sub_brand == 0:
@@ -805,7 +884,7 @@ class DIAGEOBEERUSToolBox:
         :param sub_brand_numeric: write in the sub_brand if one product passed or not (like sku level)
         :param weighted_result: assume values in sub_brand_results[Const.PASSED] are weighted
         """
-        sub_brand_kpi_fk = self.common.get_kpi_fk_by_kpi_name(kpi_db_names[Const.SUB_BRAND])
+        sub_brand_kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_db_names[Const.SUB_BRAND])
         sub_brand_dict = self.common.get_dictionary(kpi_fk=sub_brand_kpi_fk, brand_fk=brand, sub_brand_fk=sub_brand)
         results = sub_brand_results[Const.PASSED]
         num_res, den_res = 0, 0
@@ -826,7 +905,8 @@ class DIAGEOBEERUSToolBox:
             identifier_parent=brand_identifier, identifier_result=sub_brand_dict)
 
     def insert_totals_to_db(self, all_passed_results, kpi_db_names, total_kind, weight, identifier_result=None,
-                            should_enter=True, write_numeric=False, weighted_result=False):
+                            should_enter=True, write_numeric=False, weighted_result=False,
+                            kpi_db_names_without_hierarchy=None):
         """
         inserting all total level (includes segment and national) into DB
         :param all_passed_results: 'passed' column from all_results
@@ -837,9 +917,11 @@ class DIAGEOBEERUSToolBox:
         :param should_enter: if the total should enter the hierarchy table
         :param write_numeric: for MSRP - writing only the amount of passed in the result, without percentage
         :param weighted_result: assume values in all_passed_results are weighted
+        :param kpi_db_names_without_hierarchy: this is the mapping for the KPI names that shouldn't have hierarchy
         :return: the score
         """
-        kpi_fk = self.common.get_kpi_fk_by_kpi_name(kpi_db_names[total_kind])
+        kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_db_names[total_kind])
+        kpi_fk_without_hierarchy = self.common.get_kpi_fk_by_kpi_type(kpi_db_names_without_hierarchy[total_kind])
         if write_numeric:
             num_res, den_res = 0, 0
             result = all_passed_results.sum()
@@ -848,6 +930,9 @@ class DIAGEOBEERUSToolBox:
                 fk=kpi_fk, numerator_id=self.manufacturer_fk, numerator_result=num_res, should_enter=should_enter,
                 denominator_result=den_res, result=self.round_result(score), identifier_result=identifier_result,
                 identifier_parent=self.common.get_dictionary(name=total_kind), weight=weight * 100, score=result)
+            self.common.write_to_db_result(
+                fk=kpi_fk_without_hierarchy, numerator_id=self.manufacturer_fk, numerator_result=num_res,
+                denominator_result=den_res, result=self.round_result(score), weight=weight * 100, score=result)
         elif weighted_result:
             num_res, den_res = len(all_passed_results.nonzero()[0]), all_passed_results.count()
             result = all_passed_results.sum()
@@ -857,6 +942,10 @@ class DIAGEOBEERUSToolBox:
                 denominator_result=den_res, result=result * 100, identifier_result=identifier_result,
                 identifier_parent=self.common.get_dictionary(name=total_kind), weight=weight * 100,
                 score=self.round_result(score))
+            self.common.write_to_db_result(
+                fk=kpi_fk_without_hierarchy, numerator_id=self.manufacturer_fk, numerator_result=num_res,
+                denominator_result=den_res, result=result * 100, weight=weight * 100,
+                score=self.round_result(score))
         else:
             num_res, den_res = all_passed_results.sum(), all_passed_results.count()
             result = self.get_score(num_res, den_res)
@@ -865,6 +954,10 @@ class DIAGEOBEERUSToolBox:
                 fk=kpi_fk, numerator_id=self.manufacturer_fk, numerator_result=num_res, should_enter=should_enter,
                 denominator_result=den_res, result=result * 100, identifier_result=identifier_result,
                 identifier_parent=self.common.get_dictionary(name=total_kind), weight=weight * 100,
+                score=self.round_result(score))
+            self.common.write_to_db_result(
+                fk=kpi_fk_without_hierarchy, numerator_id=self.manufacturer_fk, numerator_result=num_res,
+                denominator_result=den_res, result=result * 100, weight=weight * 100,
                 score=self.round_result(score))
         return score
 

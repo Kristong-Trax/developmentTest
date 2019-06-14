@@ -8,7 +8,7 @@ from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
 from Trax.Cloud.Services.Connector.Keys import DbUsers
 from Trax.Data.Testing.TestProjects import TestProjectsNames
 from mock import patch
-from Trax.Utils.Testing.Case import MockingTestCase, skip
+from Trax.Utils.Testing.Case import skip
 from Tests.Data.Templates.diageoke.LocalMPA import local_mpa
 from Tests.Data.Templates.diageoke.MPA import mpa
 from Tests.Data.Templates.diageoke.NewProducts import products

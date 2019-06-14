@@ -6,7 +6,6 @@ import MySQLdb
 from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
 from Trax.Cloud.Services.Connector.Keys import DbUsers
 from Trax.Data.Testing.TestProjects import TestProjectsNames
-from Trax.Utils.Testing.Case import MockingTestCase
 from mock import patch
 
 from Tests.Data.Templates.diageoga_sand_template import diageoga_sand_template
