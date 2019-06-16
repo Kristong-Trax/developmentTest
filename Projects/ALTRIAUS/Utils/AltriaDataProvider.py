@@ -44,7 +44,7 @@ class AltriaDataProvider:
         return df
 
     def get_products_contained_in_displays(self, match_product_in_scene_df, top_left_display_name=None,
-                                           bottom_right_display_name=None, y_axis_threshold=50, dropna=True):
+                                           bottom_right_display_name=None, y_axis_threshold=40, dropna=True):
         """
         This function takes in an match_product_in_scene (MPIS) dataframe, display name top left/bottom right names,
         and returns a filtered version of MPIS with the dimensions of the polygons each item was found in.
@@ -90,7 +90,7 @@ class AltriaDataProvider:
         return match_product_in_scene_df
 
     def generate_polygon_masks(self, top_left_display_name=TOP_LEFT_CORNER,
-                               bottom_right_display_name=BOTTOM_RIGHT_CORNER, y_axis_threshold=50):
+                               bottom_right_display_name=BOTTOM_RIGHT_CORNER, y_axis_threshold=40):
         """
         Internal function for generating the polygon masks. Probably shouldn't be called directly unless you have
         a special use case.
@@ -193,7 +193,10 @@ class AltriaDataProvider:
         # Euclidean geometry magic
         distances = np.sum((other_points - origin_point)**2, axis=1)
         # get the shortest hypotenuse
-        closest_point = other_points[np.argmin(distances)]
+        try:
+            closest_point = other_points[np.argmin(distances)]
+        except ValueError:
+            return 0
         return other_points_df[(other_points_df['x'] == closest_point[0]) & (other_points_df['y'] == closest_point[1])]
 
     # functions used for debugging

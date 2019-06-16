@@ -294,6 +294,10 @@ class ALTRIAUSToolBox:
         relevant_pos_pks = relevant_scif[relevant_scif['product_type'] == 'POS']['product_fk'].unique().tolist()
         product_mpis = self.mpis[self.mpis['product_fk'].isin(relevant_product_pks)]
 
+        if product_mpis.empty:
+            Log.info('No products found for {} category'.format(category))
+            return
+
         longest_shelf = \
             product_mpis[product_mpis['shelf_number'] ==
                          self.get_longest_shelf_number(product_mpis)].sort_values(by='rect_x', ascending=True)
@@ -357,6 +361,10 @@ class ALTRIAUSToolBox:
             relevant_pos.loc[relevant_pos['type'] == 'Flip Sign', ['position']] = flip_sign_position_list
 
         relevant_pos = relevant_pos.reindex(columns=relevant_pos.columns.tolist() + ['denominator_id'])
+
+        #this is a bandaid fix that should be removed ->  'F7011A7C-1BB6-4007-826D-2B674BD99DAE'
+        relevant_pos.dropna(subset=['position'], inplace=True)
+
         relevant_pos.loc[:, ['denominator_id']] = relevant_pos['position'].apply(self.get_custom_entity_pk)
 
         # remove this after 'No Flip-Sign' SKU is added
