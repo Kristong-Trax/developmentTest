@@ -67,6 +67,8 @@ class PlanogramCompliance(PlanogramComplianceBaseClass):
                 Log.error("Calculated compliance has failed: " + er.message)
         return tag_compliance
 
+# basic functions:
+
     def _filter_irrelevant_out(self):
         """
         This function filters the Irrelevant products out of the DF and move the other products to their real sequence.
@@ -83,6 +85,37 @@ class PlanogramCompliance(PlanogramComplianceBaseClass):
                 (self.scene_matches[Keys.FACING_SEQUENCE_NUMBER] > sequence_number),
                 Keys.FACING_SEQUENCE_NUMBER] -= 1
         self.scene_matches = self.scene_matches[~(self.scene_matches[Keys.PRODUCT_TYPE] == IRRELEVANT)]
+
+    @staticmethod
+    def _local_get_tag_planogram_compliance(scene_data, planogram_data):
+        """
+        Checks if there is one missing shelf, and calculates the percentage of the correct products and the tags
+        """
+        tag_compliance = get_tag_planogram_compliance(scene_data, planogram_data)
+        score = 0
+        if len(tag_compliance) > 0:
+            score = float(len(
+                tag_compliance[tag_compliance[Keys.COMPLIANCE_STATUS_FK] == PlanogramTagCompliance.CORRECTLY_POSITIONED]
+                    )) / len(tag_compliance)
+            if score < 1:
+                if scene_data[Keys.SHELF_NUMBER_FROM_BOTTOM].max() < \
+                        planogram_data[Keys.SHELF_NUMBER_FROM_BOTTOM].max():
+                    scene_data[Keys.SHELF_NUMBER_FROM_BOTTOM] += 1
+                elif scene_data[Keys.SHELF_NUMBER_FROM_BOTTOM].max() > \
+                        planogram_data[Keys.SHELF_NUMBER_FROM_BOTTOM].max():
+                    planogram_data[Keys.SHELF_NUMBER_FROM_BOTTOM] += 1
+                temp_tag_compliance = get_tag_planogram_compliance(scene_data, planogram_data)
+                temp_score = float(len(temp_tag_compliance[temp_tag_compliance[
+                                            Keys.COMPLIANCE_STATUS_FK] == PlanogramTagCompliance.CORRECTLY_POSITIONED])
+                                   ) / len(temp_tag_compliance)
+                if temp_score > score:
+                    score = temp_score
+                    tag_compliance = temp_tag_compliance
+        if Keys.COMPLIANCE_STATUS_FK not in tag_compliance.columns:
+            tag_compliance[Keys.COMPLIANCE_STATUS_FK] = None
+        return tag_compliance, score
+
+# greedy solution (for more than 4 bays) functions:
 
     def _get_iterated_position_greedy(self):
         """
@@ -249,34 +282,7 @@ class PlanogramCompliance(PlanogramComplianceBaseClass):
         self.all_combinations_scores = self.all_combinations_scores.drop(pog_bay, axis=1)
         self.all_combinations_matches = self.all_combinations_matches.drop(pog_bay, axis=1)
 
-    @staticmethod
-    def _local_get_tag_planogram_compliance(scene_data, planogram_data):
-        """
-        Checks if there is one missing shelf, and calculates the percentage of the correct products and the tags
-        """
-        tag_compliance = get_tag_planogram_compliance(scene_data, planogram_data)
-        score = 0
-        if len(tag_compliance) > 0:
-            score = float(len(
-                tag_compliance[tag_compliance[Keys.COMPLIANCE_STATUS_FK] == PlanogramTagCompliance.CORRECTLY_POSITIONED]
-                    )) / len(tag_compliance)
-            if score < 1:
-                if scene_data[Keys.SHELF_NUMBER_FROM_BOTTOM].max() < \
-                        planogram_data[Keys.SHELF_NUMBER_FROM_BOTTOM].max():
-                    scene_data[Keys.SHELF_NUMBER_FROM_BOTTOM] += 1
-                elif scene_data[Keys.SHELF_NUMBER_FROM_BOTTOM].max() > \
-                        planogram_data[Keys.SHELF_NUMBER_FROM_BOTTOM].max():
-                    planogram_data[Keys.SHELF_NUMBER_FROM_BOTTOM] += 1
-                temp_tag_compliance = get_tag_planogram_compliance(scene_data, planogram_data)
-                temp_score = float(len(temp_tag_compliance[temp_tag_compliance[
-                                            Keys.COMPLIANCE_STATUS_FK] == PlanogramTagCompliance.CORRECTLY_POSITIONED])
-                                   ) / len(temp_tag_compliance)
-                if temp_score > score:
-                    score = temp_score
-                    tag_compliance = temp_tag_compliance
-        if Keys.COMPLIANCE_STATUS_FK not in tag_compliance.columns:
-            tag_compliance[Keys.COMPLIANCE_STATUS_FK] = None
-        return tag_compliance, score
+# full solution (for 4 and less bays) functions:
 
     def _get_iterated_position_full_solution(self):
         """
@@ -288,15 +294,22 @@ class PlanogramCompliance(PlanogramComplianceBaseClass):
             scene_bay, pog_bay = combination
             scene_bay_data = self._get_df_of_bay(self.scene_matches, scene_bay)
             pog_bay_data = self._get_df_of_bay(self.planogram_matches, pog_bay)
-            can_match = self.can_match(pog_bay_data=pog_bay_data, scene_bay_data=scene_bay_data)
-            if not can_match:
-                continue
+            # can_match = self.can_match(pog_bay_data=pog_bay_data, scene_bay_data=scene_bay_data)
+            # if not can_match:
+            #     continue
             tag_compliance, score = self._local_get_tag_planogram_compliance(scene_bay_data, pog_bay_data)
             all_combinations = all_combinations.append(
                 {BAYS_COUPLE: (scene_bay, pog_bay), SCORE: score, TAG_COMPLIANCE: tag_compliance},
                 ignore_index=True)
         permutations, combinations = [], all_combinations[BAYS_COUPLE].tolist()
-        for permutation in [zip(x, self.pog_bays) for x in itertools.permutations(self.scene_bays, len(self.pog_bays))]:
+        if len(self.pog_bays) > len(self.scene_bays):
+            all_permutations = [
+                zip(x, self.scene_bays) for x in itertools.permutations(self.pog_bays, len(self.scene_bays))]
+            all_permutations = self.reverse_permutations(all_permutations)
+        else:
+            all_permutations = [
+                zip(x, self.pog_bays) for x in itertools.permutations(self.scene_bays, len(self.pog_bays))]
+        for permutation in all_permutations:
             should_insert = True
             for combination in permutation:
                 if combination not in combinations:
@@ -321,28 +334,38 @@ class PlanogramCompliance(PlanogramComplianceBaseClass):
         # print chosen_permutation
         return final_tag_compliance
 
+    # @staticmethod
+    # def can_match(pog_bay_data, scene_bay_data):
+    #     """
+    #     Checks if these bays can match - their sequences and shelves should be in the same amount (distance of max 1)
+    #     :param pog_bay_data: DF
+    #     :param scene_bay_data: DF
+    #     :return: Bool
+    #     """
+    #     shelves_distance = abs(
+    #         pog_bay_data[Keys.SHELF_NUMBER_FROM_BOTTOM].max() - scene_bay_data[Keys.SHELF_NUMBER_FROM_BOTTOM].max())
+    #     sequences_distance = abs(
+    #         pog_bay_data[Keys.FACING_SEQUENCE_NUMBER].max() - scene_bay_data[Keys.FACING_SEQUENCE_NUMBER].max())
+    #     if shelves_distance > 1 or sequences_distance > 1:
+    #         return False
+    #     return True
+
     @staticmethod
-    def can_match(pog_bay_data, scene_bay_data):
-        """
-        Checks if these bays can match - their sequences and shelves should be in the same amount (distance of max 1)
-        :param pog_bay_data: DF
-        :param scene_bay_data: DF
-        :return: Bool
-        """
-        shelves_distance = abs(
-            pog_bay_data[Keys.SHELF_NUMBER_FROM_BOTTOM].max() - scene_bay_data[Keys.SHELF_NUMBER_FROM_BOTTOM].max())
-        sequences_distance = abs(
-            pog_bay_data[Keys.FACING_SEQUENCE_NUMBER].max() - scene_bay_data[Keys.FACING_SEQUENCE_NUMBER].max())
-        if shelves_distance > 1 or sequences_distance > 1:
-            return False
-        return True
+    def reverse_permutations(permutation_list):
+        final_list = []
+        for permutation in permutation_list:
+            final_permutation = []
+            for x, y in permutation:
+                final_permutation.append((y, x))
+            final_list.append(final_permutation)
+        return final_list
 
 # from Trax.Utils.Conf.Configuration import Config
 # from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
 # if __name__ == '__main__':
 #     LoggerInitializer.init('POG compliance test')
 #     Config.init()
-#     path = "/home/elyashiv/Desktop/backup/POGs/12/"
+#     path = "/home/elyashiv/Desktop/backup/POGs/13/"
 #     planogram_data = pd.read_csv(path + "pog.csv")
 #     scene_data = pd.read_csv(path + "scene.csv")
 #     pog = PlanogramCompliance(data_provider=None)
