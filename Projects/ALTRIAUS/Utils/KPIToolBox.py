@@ -353,12 +353,20 @@ class ALTRIAUSToolBox:
                     relevant_pos.loc[flip_sign_pos.index, ['position']] = location
                 longest_shelf.drop(longest_shelf.iloc[:relevant_template[location].iloc[0]].index, inplace=True)
         elif category == 'Smokeless':
-            flip_sign_position_list = [position.strip() for position in
-                                       self.flip_sign_positions_template[
-                                           self.flip_sign_positions_template['Number of Flip Signs'] ==
-                                           len(relevant_pos[relevant_pos['type'] ==
-                                                            'Flip Sign'])]['Position'].iloc[0].split(',')]
-            relevant_pos.loc[relevant_pos['type'] == 'Flip Sign', ['position']] = flip_sign_position_list
+            # if there are no flip signs found, there are no positions to assign
+            if len(relevant_pos[relevant_pos['type'] == 'Flip Sign']) > 0:
+                flip_sign_position_list = [position.strip() for position in
+                                           self.flip_sign_positions_template[
+                                               self.flip_sign_positions_template['Number of Flip Signs'] ==
+                                               len(relevant_pos[relevant_pos['type'] ==
+                                                                'Flip Sign'])]['Position'].iloc[0].split(',')]
+                relevant_pos.loc[relevant_pos['type'] == 'Flip Sign', ['position']] = flip_sign_position_list
+
+            # store empty flip sign values
+            for location in ['Secondary', 'Tertiary']:
+                if location not in relevant_pos[relevant_pos['type'] == 'Flip Sign']['position'].tolist():
+                    # need to add 'No Flip-Sign' product_fk too
+                    relevant_pos.loc[len(relevant_pos), ['position']] = location
 
         relevant_pos = relevant_pos.reindex(columns=relevant_pos.columns.tolist() + ['denominator_id'])
 
