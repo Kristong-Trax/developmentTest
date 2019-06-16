@@ -129,7 +129,7 @@ class GSKJPToolBox:
         results_df = []
         df_block = self.scif
         brands = df_block['brand_fk'].dropna().unique()
-        template_name = 'Oral Main Shelf' # figure out which template name should I use
+        template_name = 'Oral Main Shelf'# figure out which template name should I use
         stacking_param = True# false
         target = 1
         kpi_target = 0.25
