@@ -174,3 +174,21 @@ class DataTestUnitPEPSICOUK(object):
           'numerator_id': 11, 'numerator_result': 0, 'pk': 24, 'result': 100.0, 'scene_fk': 5, 'score': 4.0,
           'target': None, 'weight': None}]) # design result for placement
 
+    block_results = pd.DataFrame.from_records([{'cluster': 1, 'scene_fk': 1, 'orientation': '',
+                                                'facing_percentage': 0.08, 'is_block': False},
+                                               {'cluster': 2, 'scene_fk': 1, 'orientation': 'VERTICAL',
+                                                'facing_percentage': 0.92, 'is_block': True}
+                                               ])
+
+    block_results_2 = pd.DataFrame.from_records([{'cluster': 1, 'scene_fk': 1, 'orientation': '',
+                                                'facing_percentage': 0.05, 'is_block': False},
+                                                {'cluster': 2, 'scene_fk': 1, 'orientation': 'HORIZONTAL',
+                                                'facing_percentage': 0.95, 'is_block': True}
+                                                ])
+
+    block_results_empty = pd.DataFrame(columns=['cluster','scene_fk', 'orientation',
+                                                'facing_percentage', 'is_block'])
+    block_results_failed = pd.DataFrame.from_records([{'cluster': 1, 'scene_fk': 1, 'orientation': '',
+                                                         'facing_percentage': 0.4, 'is_block': False},
+                                                         {'cluster': 2, 'scene_fk': 1, 'orientation': '',
+                                                          'facing_percentage': 0.6, 'is_block': False}])

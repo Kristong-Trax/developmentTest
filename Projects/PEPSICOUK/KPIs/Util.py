@@ -112,6 +112,7 @@ class PepsicoUtil(UnifiedKPISingleton):
         self.exclusion_template = self.commontools.exclusion_template
         self.filtered_scif = self.commontools.filtered_scif.copy()
         self.filtered_matches = self.commontools.filtered_matches.copy()
+        self.filtered_matches = self.filtered_matches.merge(self.probe_groups, on='probe_match_fk', how='left')
 
         self.scene_bay_shelf_product = self.commontools.scene_bay_shelf_product
         self.ps_data = PsDataProvider(self.data_provider, self.output)

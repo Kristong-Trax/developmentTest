@@ -16,6 +16,7 @@ from Projects.PEPSICOUK.KPIs.Scene.NumberOfFacings import NumberOfFacingsKpi
 from Projects.PEPSICOUK.KPIs.Scene.LinearSpace import LinearSpaceKpi
 from Projects.PEPSICOUK.KPIs.Scene.ShelfPlacementVertical import ShelfPlacementVerticalKpi
 from Projects.PEPSICOUK.KPIs.Scene.ShelfPlacementHorizontal import ShelfPlacementHorizontalKpi
+from Projects.PEPSICOUK.KPIs.Scene.ProductBlocking import ProductBlockingKpi
 
 __author__ = 'natalya'
 
@@ -63,6 +64,8 @@ class Test_PEPSICOUK(MockingTestCase):
         self.mock_all_products()
         self.mock_all_templates()
         self.mock_position_graph()
+        self.mock_position_graph_block()
+        self.mock_position_graph_adjacency()
 
     def mock_store_data(self):
         store_data = self.mock_object('PEPSICOUKCommonToolBox.get_store_data_by_store_id')
@@ -71,6 +74,12 @@ class Test_PEPSICOUK(MockingTestCase):
 
     def mock_position_graph(self):
         self.mock_object('PositionGraphs', path='KPIUtils_v2.Calculations.AssortmentCalculations')
+
+    def mock_position_graph_block(self):
+        self.mock_object('PositionGraphs', path='KPIUtils_v2.Calculations.BlockCalculations')
+
+    def mock_position_graph_adjacency(self):
+        self.mock_object('PositionGraphs', path='KPIUtils_v2.Calculations.AdjacencyCalculations')
 
     def mock_lvl3_ass_result(self):
         ass_res = self.mock_object('Assortment.calculate_lvl3_assortment', path='KPIUtils_v2.Calculations.AssortmentCalculations')
@@ -221,6 +230,83 @@ class Test_PEPSICOUK(MockingTestCase):
         scene_results.return_value = data
         return
 
+    def mock_block_results(self, data):
+        block_results = self.mock_object('Block.network_x_block_together',
+                                         path='KPIUtils_v2.Calculations.BlockCalculations')
+        block_results.side_effect = data
+        return
+
+    def test_adjacency(self):
+        matches, scif = self.create_scene_scif_matches_stitch_groups_data_mocks(
+            DataTestUnitPEPSICOUK.test_case_1, 1)
+        self.mock_scene_info(DataTestUnitPEPSICOUK.scene_info)
+        self.mock_scene_kpi_results(DataTestUnitPEPSICOUK.scene_kpi_results_test_case_1)
+        self.mock_object('PositionGraphs', path='KPIUtils_v2.Calculations.AdjacencyCalculations')
+
+
+    def test_block_together_vertical_and_horizontal(self):
+        matches, scif = self.create_scene_scif_matches_stitch_groups_data_mocks(
+            DataTestUnitPEPSICOUK.test_case_1, 1)
+        self.mock_scene_info(DataTestUnitPEPSICOUK.scene_info)
+        self.mock_scene_kpi_results(DataTestUnitPEPSICOUK.scene_kpi_results_test_case_1)
+
+        self.mock_block_results([DataTestUnitPEPSICOUK.block_results, DataTestUnitPEPSICOUK.block_results_2])
+        block = ProductBlockingKpi(self.data_provider_mock)
+        block.calculate()
+        kpi_result = pd.DataFrame(block.kpi_results)
+        self.assertEquals(len(kpi_result), 2)
+        expected_list = list()
+        expected_list.append({'kpi_level_2_fk': 319, 'numerator_id': 165, 'numerator_result': 92, 'result': 4,
+                              'score': 7, 'target': 90})
+        expected_list.append(
+            {'kpi_level_2_fk': 319, 'numerator_id': 166, 'numerator_result': 95, 'result': 4, 'score': 6, 'target': 90})
+        test_result_list = []
+        for expected_result in expected_list:
+            test_result_list.append(self.check_kpi_results(kpi_result, expected_result) == 1)
+        self.assertTrue(all(test_result_list))
+
+        expected_util_result = list()
+        expected_util_result.append({'Group Name': 'Pringles_FTT_Tubes', 'Score': 1})
+        expected_util_result.append({'Group Name': 'Hula Hoops_LMP_Snacks', 'Score': 1})
+        test_result_list = list()
+        for exp_res in expected_util_result:
+            test_result_list.append(len(block.util.block_results[(block.util.block_results['Group Name']==exp_res['Group Name']) &
+                                                                 (block.util.block_results['Score'] == exp_res[
+                                                                 'Score'])]) == 1)
+        self.assertTrue(all(test_result_list))
+
+    def test_block_together_blocks_fail(self):
+        matches, scif = self.create_scene_scif_matches_stitch_groups_data_mocks(
+            DataTestUnitPEPSICOUK.test_case_1, 1)
+        self.mock_scene_info(DataTestUnitPEPSICOUK.scene_info)
+        self.mock_scene_kpi_results(DataTestUnitPEPSICOUK.scene_kpi_results_test_case_1)
+
+        self.mock_block_results([DataTestUnitPEPSICOUK.block_results_empty, DataTestUnitPEPSICOUK.block_results_failed])
+        block = ProductBlockingKpi(self.data_provider_mock)
+        block.calculate()
+        kpi_result = pd.DataFrame(block.kpi_results)
+        self.assertEquals(len(kpi_result), 2)
+        expected_list = list()
+        expected_list.append(
+            {'kpi_level_2_fk': 319, 'numerator_id': 165, 'numerator_result': 0, 'result': 5, 'score': 0, 'target': 90})
+        expected_list.append(
+            {'kpi_level_2_fk': 319, 'numerator_id': 166, 'numerator_result': 60, 'result': 5, 'score': 0, 'target': 90})
+        test_result_list = []
+        for expected_result in expected_list:
+            test_result_list.append(self.check_kpi_results(kpi_result, expected_result) == 1)
+        self.assertTrue(all(test_result_list))
+
+        expected_util_result = list()
+        expected_util_result.append({'Group Name': 'Pringles_FTT_Tubes', 'Score': 0})
+        expected_util_result.append({'Group Name': 'Hula Hoops_LMP_Snacks', 'Score': 0})
+        test_result_list = list()
+        for exp_res in expected_util_result:
+            test_result_list.append(
+                len(block.util.block_results[(block.util.block_results['Group Name'] == exp_res['Group Name']) &
+                                             (block.util.block_results['Score'] == exp_res[
+                                                 'Score'])]) == 1)
+        self.assertTrue(all(test_result_list))
+
     def create_scene_scif_matches_stitch_groups_data_mocks(self, test_case_file_path, scene_number):
         scif_test_case = pd.read_excel(test_case_file_path, sheet_name='scif')
         matches_test_case = pd.read_excel(test_case_file_path, sheet_name='matches')
@@ -366,20 +452,6 @@ class Test_PEPSICOUK(MockingTestCase):
             test_result_list.append(self.check_kpi_results(top_result, expected_result) == 1)
         self.assertTrue(all(test_result_list))
 
-        expected_list = []
-        expected_list.append({'kpi_fk': 304, 'numerator': 1, 'result': 5.0/5*100})
-        expected_list.append({'kpi_fk': 307, 'numerator': 2, 'result': round(2.0/6*100, 5)})
-        expected_list.append({'kpi_fk': 306, 'numerator': 2, 'result': round(2.0/6*100, 5)})
-        expected_list.append({'kpi_fk': 305, 'numerator': 2, 'result': round(2.0/6*100, 5)})
-        expected_list.append({'kpi_fk': 307, 'numerator': 3, 'result': 1.0*100/1})
-        scene_tb.calculate_shelf_placement_horizontal()
-        kpi_results = scene_tb.kpi_results
-        kpi_results['result'] = kpi_results['result'].apply(lambda x: round(x, 5))
-        test_result_list = []
-        for expected_result in expected_list:
-            test_result_list.append(self.check_kpi_results(scene_tb.kpi_results, expected_result) == 1)
-        self.assertTrue(all(test_result_list))
-
     def test_calculate_shelf_placement_vertical_mm_correcly_places_products_if_no_excluded_matches(self):
         matches, scif = self.create_scene_scif_matches_stitch_groups_data_mocks(
             DataTestUnitPEPSICOUK.test_case_1, 2)
@@ -453,7 +525,7 @@ class Test_PEPSICOUK(MockingTestCase):
         left_result['score'] = left_result['score'].apply(lambda x: round(x, 5))
         self.assertEquals(len(left_result), 4)
         expected_list = list()
-        expected_list.append({'kpi_level_2_fk': 325, 'numerator_id': 1, 'denominator_id': 1, 'numerator_result': 7,
+        expected_list.append({'kpi_level_2_fk': 325, 'numerator_id': 1, 'denominator_id': 1, 'numerator_result': 5,
                               'denominator_result': 7, 'result': round(5.0 / 7 * 100, 5), 'score': round(5.0 / 7 * 100, 5)})
         expected_list.append({'kpi_level_2_fk': 325, 'denominator_id': 2, 'numerator_result': 4,
                               'denominator_result': 6, 'numerator_id': 2, 'result': round(4.0 / 6 * 100, 5),
@@ -584,8 +656,6 @@ class Test_PEPSICOUK(MockingTestCase):
         query = ' & '.join('{} {} {}'.format(i, j, k) for i, j, k in zip(column, expression, condition))
         filtered_df = results_df.query(query)
         return len(filtered_df)
-
-
 
     # def test_get_available_hero_sku_list_retrieves_only_skus_in_store(self):
     #     self.mock_scene_item_facts(pd.read_excel(DataTestUnitPEPSICOUK.test_case_1, sheetname='scif'))

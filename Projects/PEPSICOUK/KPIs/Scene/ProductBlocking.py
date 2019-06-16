@@ -1,6 +1,6 @@
 from Projects.PEPSICOUK.KPIs.Util import PepsicoUtil
 from Trax.Algo.Calculations.Core.KPI.UnifiedKPICalculation import UnifiedCalculationsScript
-from KPIUtils_v2.Calculations.AdjacencyCalculations import Block
+from KPIUtils_v2.Calculations.BlockCalculations import Block
 
 import pandas as pd
 
@@ -47,8 +47,8 @@ class ProductBlockingKpi(UnifiedCalculationsScript):
                     orientation = result_df['orientation'].values[0]
                     score = self.util.commontools.get_kpi_result_value_pk_by_value(orientation.upper())
             self.write_to_db_result(fk=kpi_fk, numerator_id=group_fk, denominator_id=self.util.store_id,
-                                                numerator_result=max_ratio * 100,
-                                                score=score, result=result, target=target, by_scene=True)
+                                    numerator_result=max_ratio * 100,
+                                    score=score, result=result, target=target, by_scene=True)
 
             # connection with adjacency kpi
             # TODO: setup the dependency
