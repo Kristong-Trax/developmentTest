@@ -192,3 +192,33 @@ class DataTestUnitPEPSICOUK(object):
                                                          'facing_percentage': 0.4, 'is_block': False},
                                                          {'cluster': 2, 'scene_fk': 1, 'orientation': '',
                                                           'facing_percentage': 0.6, 'is_block': False}])
+    blocks_all_pass = pd.DataFrame.from_records([{'Group Name': 'Pringles_FTT_Tubes', 'Score': True},
+                                                 {'Group Name': 'Hula Hoops_LMP_Snacks', 'Score': True}])
+    blocks_none_passes = pd.DataFrame.from_records([{'Group Name': 'Pringles_FTT_Tubes', 'Score': False},
+                                                    {'Group Name': 'Hula Hoops_LMP_Snacks', 'Score': False}])
+    blocks_one_passes = pd.DataFrame.from_records([{'Group Name': 'Pringles_FTT_Tubes', 'Score': True},
+                                                   {'Group Name': 'Hula Hoops_LMP_Snacks', 'Score': False}])
+
+    adjacency_results_true = pd.DataFrame.from_records([{'anchor_block': 1, 'tested_block': 1, 'anchor_facing_percentage': 5,
+                                                   'tested_facing_percentage': 4, 'scene_fk': 1, 'is_adj': True}])
+    adjacency_results_false = pd.DataFrame.from_records(
+        [{'anchor_block': 1, 'tested_block': 1, 'anchor_facing_percentage': 5,
+          'tested_facing_percentage': 4, 'scene_fk': 1, 'is_adj': False}])
+
+    blocks_combinations_3_pass_all = pd.DataFrame.from_records([{'Group Name': 'Group 1', 'Score': True},
+                                                     {'Group Name': 'Group 2', 'Score': True},
+                                                     {'Group Name': 'Group 3', 'Score': True}])
+
+    blocks_combinations_2_pass_of_3 = pd.DataFrame.from_records([{'Group Name': 'Group 1', 'Score': True},
+                                                            {'Group Name': 'Group 2', 'Score': True},
+                                                            {'Group Name': 'Group 3', 'Score': False}])
+
+    blocks_combinations_1_pass_of_3 = pd.DataFrame.from_records([{'Group Name': 'Group 1', 'Score': True},
+                                                                 {'Group Name': 'Group 2', 'Score': False},
+                                                                 {'Group Name': 'Group 3', 'Score': False}])
+
+    blocks_combinations_4_pass_of_4 = pd.DataFrame.from_records([{'Group Name': 'Group 1', 'Score': True},
+                                                                 {'Group Name': 'Group 2', 'Score': True},
+                                                                 {'Group Name': 'Group 3', 'Score': True},
+                                                                 {'Group Name': 'Group 4', 'Score': True},
+                                                                 ])

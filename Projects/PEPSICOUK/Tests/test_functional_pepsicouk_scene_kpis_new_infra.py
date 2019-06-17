@@ -1,4 +1,5 @@
-from Trax.Utils.Testing.Case import TestCase, MockingTestCase
+# from Trax.Utils.Testing.Case import TestCase, MockingTestCase
+from Trax.Apps.Core.Testing.BaseCase import TestFunctionalCase
 from Trax.Data.Testing.SeedNew import Seeder
 from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from mock import MagicMock
@@ -17,6 +18,7 @@ from Projects.PEPSICOUK.KPIs.Scene.LinearSpace import LinearSpaceKpi
 from Projects.PEPSICOUK.KPIs.Scene.ShelfPlacementVertical import ShelfPlacementVerticalKpi
 from Projects.PEPSICOUK.KPIs.Scene.ShelfPlacementHorizontal import ShelfPlacementHorizontalKpi
 from Projects.PEPSICOUK.KPIs.Scene.ProductBlocking import ProductBlockingKpi
+from Projects.PEPSICOUK.KPIs.Scene.BlocksAdjacency import BlocksAdjacencyKpi
 
 __author__ = 'natalya'
 
@@ -26,7 +28,7 @@ def get_exclusion_template_df_all_tests():
     return template_df
 
 
-class Test_PEPSICOUK(MockingTestCase):
+class Test_PEPSICOUK(TestFunctionalCase):
     # template_df_mock = get_exclusion_template_df_all_tests()
 
     @property
@@ -236,13 +238,136 @@ class Test_PEPSICOUK(MockingTestCase):
         block_results.side_effect = data
         return
 
-    def test_adjacency(self):
+    def mock_block_results_after_kpi_calculation(self, data):
+        block_res = self.mock_object('PepsicoUtil.get_empty_block_res_df',
+                                     path='Projects.PEPSICOUK.KPIs.Util')
+        block_res.return_value = data
+        return
+
+    def mock_adjacency_results(self, data):
+        adjacency_results = self.mock_object('Adjancency.network_x_adjacency_calculation',
+                                             path='KPIUtils_v2.Calculations.AdjacencyCalculations')
+        adjacency_results.return_value = data
+        return
+
+    def test_adjacency_passes(self):
         matches, scif = self.create_scene_scif_matches_stitch_groups_data_mocks(
             DataTestUnitPEPSICOUK.test_case_1, 1)
         self.mock_scene_info(DataTestUnitPEPSICOUK.scene_info)
         self.mock_scene_kpi_results(DataTestUnitPEPSICOUK.scene_kpi_results_test_case_1)
         self.mock_object('PositionGraphs', path='KPIUtils_v2.Calculations.AdjacencyCalculations')
+        self.mock_block_results_after_kpi_calculation(DataTestUnitPEPSICOUK.blocks_all_pass)
+        self.mock_adjacency_results(DataTestUnitPEPSICOUK.adjacency_results_true)
+        adj = BlocksAdjacencyKpi(self.data_provider_mock, config_params={}, dependencies_data=pd.DataFrame())
+        adj.calculate()
+        kpi_result = pd.DataFrame(adj.kpi_results)
+        self.assertEquals(len(kpi_result), 1)
+        print kpi_result[['kpi_level_2_fk', 'numerator_id',  'denominator_id',  'result', 'score']]
+        expected_list = list()
+        expected_list.append({'kpi_level_2_fk': 320, 'numerator_id': 166, 'denominator_id': 165, 'result': 4,
+                              'score': 1})
+        test_result_list = []
+        for expected_result in expected_list:
+            test_result_list.append(self.check_kpi_results(kpi_result, expected_result) == 1)
+        self.assertTrue(all(test_result_list))
 
+    def test_adjacency_fails(self):
+        matches, scif = self.create_scene_scif_matches_stitch_groups_data_mocks(
+            DataTestUnitPEPSICOUK.test_case_1, 1)
+        self.mock_scene_info(DataTestUnitPEPSICOUK.scene_info)
+        self.mock_scene_kpi_results(DataTestUnitPEPSICOUK.scene_kpi_results_test_case_1)
+        self.mock_object('PositionGraphs', path='KPIUtils_v2.Calculations.AdjacencyCalculations')
+        self.mock_block_results_after_kpi_calculation(DataTestUnitPEPSICOUK.blocks_all_pass)
+        self.mock_adjacency_results(DataTestUnitPEPSICOUK.adjacency_results_false)
+        adj = BlocksAdjacencyKpi(self.data_provider_mock, config_params={}, dependencies_data=pd.DataFrame())
+        adj.calculate()
+        kpi_result = pd.DataFrame(adj.kpi_results)
+        self.assertEquals(len(kpi_result), 1)
+        print kpi_result[['kpi_level_2_fk', 'numerator_id',  'denominator_id',  'result', 'score']]
+        expected_list = list()
+        expected_list.append({'kpi_level_2_fk': 320, 'numerator_id': 166, 'denominator_id': 165, 'result': 5,
+                              'score': 0})
+        test_result_list = []
+        for expected_result in expected_list:
+            test_result_list.append(self.check_kpi_results(kpi_result, expected_result) == 1)
+        self.assertTrue(all(test_result_list))
+
+    def test_adjacency_no_results_if_no_blocks_pass(self):
+        matches, scif = self.create_scene_scif_matches_stitch_groups_data_mocks(
+            DataTestUnitPEPSICOUK.test_case_1, 1)
+        self.mock_scene_info(DataTestUnitPEPSICOUK.scene_info)
+        self.mock_scene_kpi_results(DataTestUnitPEPSICOUK.scene_kpi_results_test_case_1)
+        self.mock_object('PositionGraphs', path='KPIUtils_v2.Calculations.AdjacencyCalculations')
+        self.mock_block_results_after_kpi_calculation(DataTestUnitPEPSICOUK.blocks_none_passes)
+        adj = BlocksAdjacencyKpi(self.data_provider_mock, config_params={}, dependencies_data=pd.DataFrame())
+        adj.calculate()
+        kpi_result = pd.DataFrame(adj.kpi_results)
+        self.assertTrue(kpi_result.empty)
+
+    def test_adjacency_no_results_if_one_block_passes(self):
+        matches, scif = self.create_scene_scif_matches_stitch_groups_data_mocks(
+            DataTestUnitPEPSICOUK.test_case_1, 1)
+        self.mock_scene_info(DataTestUnitPEPSICOUK.scene_info)
+        self.mock_scene_kpi_results(DataTestUnitPEPSICOUK.scene_kpi_results_test_case_1)
+        self.mock_object('PositionGraphs', path='KPIUtils_v2.Calculations.AdjacencyCalculations')
+        self.mock_block_results_after_kpi_calculation(DataTestUnitPEPSICOUK.blocks_one_passes)
+        adj = BlocksAdjacencyKpi(self.data_provider_mock, config_params={}, dependencies_data=pd.DataFrame())
+        adj.calculate()
+        kpi_result = pd.DataFrame(adj.kpi_results)
+        self.assertTrue(kpi_result.empty)
+
+    def test_get_group_pairs_3_pass(self):
+        matches, scif = self.create_scene_scif_matches_stitch_groups_data_mocks(
+            DataTestUnitPEPSICOUK.test_case_1, 1)
+        self.mock_scene_info(DataTestUnitPEPSICOUK.scene_info)
+        self.mock_scene_kpi_results(DataTestUnitPEPSICOUK.scene_kpi_results_test_case_1)
+        self.mock_object('PositionGraphs', path='KPIUtils_v2.Calculations.AdjacencyCalculations')
+        self.mock_block_results_after_kpi_calculation(DataTestUnitPEPSICOUK.blocks_combinations_3_pass_all)
+        adj = BlocksAdjacencyKpi(self.data_provider_mock, config_params={}, dependencies_data=pd.DataFrame())
+        pairs = adj.get_group_pairs()
+        self.assertEquals(len(pairs), 3)
+        expected_result = [frozenset(['Group 3', 'Group 1']), frozenset(['Group 2', 'Group 1']), frozenset(['Group 2', 'Group 3'])]
+        self.assertItemsEqual(pairs, expected_result)
+
+    def test_get_group_pairs_2_pass_out_of_3(self):
+        matches, scif = self.create_scene_scif_matches_stitch_groups_data_mocks(
+            DataTestUnitPEPSICOUK.test_case_1, 1)
+        self.mock_scene_info(DataTestUnitPEPSICOUK.scene_info)
+        self.mock_scene_kpi_results(DataTestUnitPEPSICOUK.scene_kpi_results_test_case_1)
+        self.mock_object('PositionGraphs', path='KPIUtils_v2.Calculations.AdjacencyCalculations')
+        self.mock_block_results_after_kpi_calculation(DataTestUnitPEPSICOUK.blocks_combinations_2_pass_of_3)
+        adj = BlocksAdjacencyKpi(self.data_provider_mock, config_params={}, dependencies_data=pd.DataFrame())
+        pairs = adj.get_group_pairs()
+        expected_result = [frozenset(['Group 2', 'Group 1'])]
+        self.assertEquals(len(pairs), 1)
+        self.assertItemsEqual(pairs, expected_result)
+
+    def test_get_group_pairs_1_pass_out_of_3(self):
+        matches, scif = self.create_scene_scif_matches_stitch_groups_data_mocks(
+            DataTestUnitPEPSICOUK.test_case_1, 1)
+        self.mock_scene_info(DataTestUnitPEPSICOUK.scene_info)
+        self.mock_scene_kpi_results(DataTestUnitPEPSICOUK.scene_kpi_results_test_case_1)
+        self.mock_object('PositionGraphs', path='KPIUtils_v2.Calculations.AdjacencyCalculations')
+        self.mock_block_results_after_kpi_calculation(DataTestUnitPEPSICOUK.blocks_combinations_1_pass_of_3)
+        adj = BlocksAdjacencyKpi(self.data_provider_mock, config_params={}, dependencies_data=pd.DataFrame())
+        pairs = adj.get_group_pairs()
+        self.assertEquals(len(pairs), 0)
+
+    def test_get_group_pairs_4_pass_out_of_4(self):
+        matches, scif = self.create_scene_scif_matches_stitch_groups_data_mocks(
+            DataTestUnitPEPSICOUK.test_case_1, 1)
+        self.mock_scene_info(DataTestUnitPEPSICOUK.scene_info)
+        self.mock_scene_kpi_results(DataTestUnitPEPSICOUK.scene_kpi_results_test_case_1)
+        self.mock_object('PositionGraphs', path='KPIUtils_v2.Calculations.AdjacencyCalculations')
+        self.mock_block_results_after_kpi_calculation(DataTestUnitPEPSICOUK.blocks_combinations_4_pass_of_4)
+        adj = BlocksAdjacencyKpi(self.data_provider_mock, config_params={}, dependencies_data=pd.DataFrame())
+        pairs = adj.get_group_pairs()
+        print pairs
+        expected = [frozenset(['Group 3', 'Group 1']), frozenset(['Group 4', 'Group 2']),
+                    frozenset(['Group 4', 'Group 3']), frozenset(['Group 2', 'Group 3']),
+                    frozenset(['Group 4', 'Group 1']), frozenset(['Group 2', 'Group 1'])]
+        self.assertEquals(len(pairs), 6)
+        self.assertItemsEqual(pairs, expected)
 
     def test_block_together_vertical_and_horizontal(self):
         matches, scif = self.create_scene_scif_matches_stitch_groups_data_mocks(
@@ -369,6 +494,16 @@ class Test_PEPSICOUK(MockingTestCase):
                                                     config_params={"kpi_type": "Placement by shelf numbers_Top"})
         placement_top.calculate()
         kpi_result = pd.DataFrame(placement_top.kpi_results)
+        self.assertTrue(kpi_result.empty)
+
+        block = ProductBlockingKpi(self.data_provider_mock, config_params={})
+        block.calculate()
+        kpi_result = pd.DataFrame(block.kpi_results)
+        self.assertTrue(kpi_result.empty)
+
+        adj = ProductBlockingKpi(self.data_provider_mock, config_params={})
+        adj.calculate()
+        kpi_result = pd.DataFrame(adj.kpi_results)
         self.assertTrue(kpi_result.empty)
 
     def test_calculate_horizontal_placement_eye(self):
