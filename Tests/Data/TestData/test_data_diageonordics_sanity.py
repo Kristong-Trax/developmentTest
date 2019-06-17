@@ -12,8 +12,8 @@ __author__ = 'avrahama'
 
 class ProjectsSanityData(BaseSeedData):
     project_name = TestProjectsNames().TEST_PROJECT_1
-    diageobenelux_seed = {DATA_TYPE: BaseSeedData.MYSQL,
-                        FILES_RELATIVE_PATH: ['Data/Seeds/diageobenelux_seed.sql.gz'],
+    diageonordics_seed = {DATA_TYPE: BaseSeedData.MYSQL,
+                        FILES_RELATIVE_PATH: ['Data/Seeds/diageonordics_seed.sql.gz'],
                         PROJECT_NAME: project_name
                         } 
     mongodb_products_and_brands_seed = \
