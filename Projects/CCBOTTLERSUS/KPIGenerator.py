@@ -34,13 +34,13 @@ class CCBOTTLERSUSGenerator:
         It calculates the score for every KPI set and saves it to the DB.
         """
         Common(self.data_provider).commit_results_data()
-        self.calculate_red_score()
-        # self.calculate_bci()
-        # self.calculate_manufacturer_displays()
-        self.calculate_cma_compliance()
-        # self.calculate_cma_compliance_sw()
-        self.calculate_warehouse_juice()
-        self.calculate_sovi()
+        # self.calculate_red_score()
+        # # self.calculate_bci()
+        # # self.calculate_manufacturer_displays()
+        # self.calculate_cma_compliance()
+        # # self.calculate_cma_compliance_sw()
+        # self.calculate_warehouse_juice()
+        # self.calculate_sovi()
         # self.calculate_msc()
         self.calculate_liberty()
         self.common_v2.commit_results_data()  # saves results to new tables
