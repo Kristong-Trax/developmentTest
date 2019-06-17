@@ -63,6 +63,7 @@ class ToolBox:
         self.sub_brands = self.ps_data.get_custom_entities(1002)
         self.result_values = self.ps_data.get_result_values()
         self.products_with_prices = self.ps_data.get_products_prices()
+        self.relevant_assortment = pd.DataFrame()
         if self.attr11 in Const.NOT_INDEPENDENT_STORES:
             self.assortment = Assortment(self.data_provider, self.output, ps_data_provider=self.ps_data,
                                          assortment_filter=store_number_1)
@@ -124,36 +125,36 @@ class ToolBox:
         """
         This function calculates the KPI results.
         """
-        if self.on_off == Const.OFF:
-            if self.relevant_assortment.empty:
+        # self.sub_brands.rename(
+        #     inplace=True, index=str, columns={"pk": "sub_brand_fk", "parent_id": "brand_fk", "name": "sub_brand"})
+        # self.all_products = self.all_products.merge(self.sub_brands, on=["brand_fk", "sub_brand"], how="left")
+        # self.scif = self.scif.merge(self.sub_brands, on=["brand_fk", "sub_brand"], how="left")
+        if self.relevant_assortment.empty:
+            if self.on_off == Const.OFF:
                 return
+        # else:
+        #     self.relevant_assortment.merge(self.all_products[[
+        #         'brand_fk', 'sub_brand_fk', 'product_fk', 'manufacturer_fk']], on="product_fk", how="left")
         total_store_score, segment_store_score, national_store_score = 0, 0, 0
-        total_kpi_fk = self.common.get_kpi_fk_by_kpi_name(
-            Const.DB_TOTAL_KPIS[self.on_off][Const.TOTAL])
-        segment_kpi_fk = self.common.get_kpi_fk_by_kpi_name(
-            Const.DB_TOTAL_KPIS[self.on_off][Const.SEGMENT])
-        national_kpi_fk = self.common.get_kpi_fk_by_kpi_name(
-            Const.DB_TOTAL_KPIS[self.on_off][Const.NATIONAL])
+        total_kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.DB_TOTAL_KPIS[self.on_off][Const.TOTAL])
+        segment_kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.DB_TOTAL_KPIS[self.on_off][Const.SEGMENT])
+        national_kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.DB_TOTAL_KPIS[self.on_off][Const.NATIONAL])
         for i, kpi_line in self.templates[Const.SHEETS[self.attr11][self.on_off][0]].iterrows():
-            total_weighted_score, segment_weighted_score, national_weighted_score = self.calculate_set(
-                kpi_line)
+            total_weighted_score, segment_weighted_score, national_weighted_score = self.calculate_set(kpi_line)
             if kpi_line[Const.KPI_GROUP]:
                 total_store_score += total_weighted_score
                 segment_store_score += segment_weighted_score
                 national_store_score += national_weighted_score
         self.common.write_to_db_result(
-            fk=total_kpi_fk, numerator_id=self.manufacturer_fk, result=self.round_result(
-                total_store_score),
+            fk=total_kpi_fk, numerator_id=self.manufacturer_fk, result=self.round_result(total_store_score),
             denominator_id=self.store_id,
             identifier_result=self.common.get_dictionary(name=Const.TOTAL), score=self.round_result(total_store_score))
-        self.common.write_to_db_result(fk=segment_kpi_fk, numerator_id=self.manufacturer_fk, result=0,
-                                       identifier_result=self.common.get_dictionary(
-                                           name=Const.SEGMENT),
-                                       score=self.round_result(segment_store_score))
-        self.common.write_to_db_result(fk=national_kpi_fk, numerator_id=self.manufacturer_fk, result=0,
-                                       identifier_result=self.common.get_dictionary(
-                                           name=Const.NATIONAL),
-                                       score=self.round_result(national_store_score))
+        self.common.write_to_db_result(
+            fk=segment_kpi_fk, numerator_id=self.manufacturer_fk, score=self.round_result(segment_store_score),
+            identifier_result=self.common.get_dictionary(name=Const.SEGMENT), result=0)
+        self.common.write_to_db_result(
+            fk=national_kpi_fk, numerator_id=self.manufacturer_fk, score=self.round_result(national_store_score),
+            identifier_result=self.common.get_dictionary(name=Const.NATIONAL), result=0)
 
     def calculate_set(self, kpi_line):
         """
@@ -209,6 +210,54 @@ class ToolBox:
 
     # assortments:
 
+    # def calculate_on_national_back_bar(self, scene_types, kpi_name, weight, target):
+    #     """
+    #     Gets assortment type, and calculates it with the match function.
+    #     It's working until sub_brand level (without sku)
+    #     :param scene_types: string from template
+    #     :param kpi_name: str ("Back Bar" or "POD")
+    #     :param weight: float
+    #     :return:
+    #     """
+    #     if self.no_back_bar_allowed:
+    #         self.survey_display_back_bar_write_to_db(weight, Const.DB_ON_NAMES[Const.BACK_BAR])
+    #         Log.debug("There is no back bar, Back Bar got 100")
+    #         return 1 * weight, 1 * weight, 1 * weight
+    #     if self.assortment_products.empty:
+    #         return 0, 0, 0
+    #     relevant_scenes = self.get_relevant_scenes(scene_types)
+    #     relevant_scif = self.scif_without_emptys[self.scif_without_emptys['scene_id'].isin(
+    #         relevant_scenes)]
+    #     kpi_db_names = Const.DB_ON_NAMES[kpi_name]
+    #     sku_kpi_fk = self.common.get_kpi_fk_by_kpi_name(kpi_db_names[Const.SKU])
+    #     total_on_trade_fk = self.common.get_kpi_fk_by_kpi_name(Const.DB_ASSORTMENTS_NAMES[Const.ON])
+    #     relevant_assortment = self.assortment_products[self.assortment_products['kpi_fk_lvl2'] == total_on_trade_fk]
+    #     all_results = pd.DataFrame(columns=Const.COLUMNS_FOR_PRODUCT_ASSORTMENT)
+    #     for template_fk in relevant_scif['template_fk'].unique().tolist():
+    #         template_scif = relevant_scif[relevant_scif['template_fk'] == template_fk]
+    #         for i, product_line in relevant_assortment.iterrows():
+    #             additional_attrs = json.loads(product_line['additional_attributes'])
+    #             standard_type = additional_attrs[Const.NATIONAL_SEGMENT]
+    #             result_line = self.calculate_ass_on_sku(
+    #                 product_line['product_fk'], template_scif, standard_type, kpi_name, template_fk=template_fk)
+    #             if not result_line:
+    #                 continue
+    #             sub_brand = result_line[Const.SUB_BRAND]
+    #             brand = result_line[Const.BRAND]
+    #             condition = (all_results[Const.SUB_BRAND] == sub_brand) & (all_results[Const.BRAND] == brand)
+    #             sub_brands_results = all_results[condition]
+    #             if sub_brands_results.empty:
+    #                 all_results = all_results.append(result_line, ignore_index=True)
+    #             elif result_line[Const.PASSED] > 0:
+    #                 all_results.loc[condition, Const.PASSED] = 1
+    #     total_result, segment_result, national_result = self.insert_all_levels_to_db(
+    #         all_results, kpi_db_names, weight, with_standard_type=True, sub_brand_numeric=True)
+    #     # add extra products to DB:
+    #     if kpi_name == Const.POD:
+    #         sub_brand_kpi_fk = self.common.get_kpi_fk_by_kpi_name(kpi_db_names[Const.SUB_BRAND])
+    #         self.calculate_extras(relevant_assortment, relevant_scif, sku_kpi_fk, sub_brand_kpi_fk)
+    #     return total_result, segment_result, national_result
+
     def calculate_on_assortment(self, scene_types, kpi_name, weight, target):
         """
         Gets assortment type, and calculates it with the match function.
@@ -229,10 +278,11 @@ class ToolBox:
             relevant_scenes)]
         kpi_db_names = Const.DB_ON_NAMES[kpi_name]
         sku_kpi_fk = self.common.get_kpi_fk_by_kpi_name(kpi_db_names[Const.SKU])
-        total_on_trade_fk = self.common.get_kpi_fk_by_kpi_name(Const.DB_ASSORTMENTS_NAMES[Const.ON])
         if kpi_name == Const.BACK_BAR and self.attr11 == Const.OPEN:
             total_on_trade_fk = self.common.get_kpi_fk_by_kpi_name(Const.DB_ASSORTMENTS_NAMES[Const.ON])
             # TODO: change it to the right back bar list
+        else:
+            total_on_trade_fk = self.common.get_kpi_fk_by_kpi_name(Const.DB_ASSORTMENTS_NAMES[Const.ON])
         relevant_assortment = self.assortment_products[self.assortment_products['kpi_fk_lvl2'] == total_on_trade_fk]
         all_results = pd.DataFrame(columns=Const.COLUMNS_FOR_PRODUCT_ASSORTMENT)
         for i, product_line in relevant_assortment.iterrows():
@@ -257,6 +307,127 @@ class ToolBox:
             sub_brand_kpi_fk = self.common.get_kpi_fk_by_kpi_name(kpi_db_names[Const.SUB_BRAND])
             self.calculate_extras(relevant_assortment, relevant_scif, sku_kpi_fk, sub_brand_kpi_fk)
         return total_result, segment_result, national_result
+
+    def calculate_ass_on_sku(self, product_fk, relevant_scif, standard_type, kpi_name, template_fk=None):
+        """
+        Checks if specific product's sub_brand exists in the filtered scif
+        :param standard_type: S or N
+        :param product_fk: int
+        :param relevant_scif: filtered scif
+        :param kpi_name: POD or Back Bar - to know if we should check the product in the sales data
+        :param template_fk: back_bar national should write the template also
+        :return: a line for the DF - {product: 8, passed: 1/0, standard: N/S, brand: 5, sub: 12}
+        """
+        sku_kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.DB_ON_NAMES[kpi_name][Const.SKU])
+        brand, sub_brand = self.get_product_details(product_fk)
+        if sub_brand is None or self.all_products_sku[self.all_products_sku['product_fk'] == product_fk].empty:
+            return None
+        facings = relevant_scif[(relevant_scif['product_fk'] == product_fk)]['facings'].sum()
+        if facings > 0 or (product_fk in self.sales_data and kpi_name == Const.POD):
+            result, passed = Const.DISTRIBUTED, 1
+        else:
+            result, passed = Const.OOS, 0
+        product_result = {Const.PRODUCT_FK: product_fk, Const.PASSED: passed,
+                          Const.BRAND: brand, Const.SUB_BRAND: sub_brand, Const.STANDARD_TYPE: standard_type}
+        sub_brand_kpi_fk = self.common.get_kpi_fk_by_kpi_name(
+            Const.DB_ON_NAMES[kpi_name][Const.SUB_BRAND])
+        sub_brand_dict = self.common.get_dictionary(kpi_fk=sub_brand_kpi_fk, brand_fk=brand, sub_brand_fk=sub_brand)
+        if template_fk is not None:
+            sub_brand_dict[Const.TEMPLATE] = template_fk
+        self.common.write_to_db_result(
+            fk=sku_kpi_fk, numerator_id=product_fk, result=self.get_pks_of_result(result),
+            identifier_parent=sub_brand_dict, should_enter=True)
+        return product_result
+
+    # def calculate_on_assortment_new(self, scene_types, kpi_name, weight, target):
+    #     """
+    #     Gets assortment type, and calculates it with the match function.
+    #     It's working until sub_brand level (without sku)
+    #     :param scene_types: string from template
+    #     :param kpi_name: str ("Back Bar" or "POD")
+    #     :param weight: float
+    #     :return:
+    #     """
+    #     if kpi_name == Const.BACK_BAR and self.no_back_bar_allowed:
+    #         self.survey_display_back_bar_write_to_db(weight, Const.DB_ON_NAMES[Const.BACK_BAR])
+    #         Log.debug("There is no back bar, Back Bar got 100")
+    #         return 1 * weight, 1 * weight, 1 * weight
+    #     if self.assortment_products.empty:
+    #         return 0, 0, 0
+    #     relevant_scenes = self.get_relevant_scenes(scene_types)
+    #     relevant_scif = self.scif_without_emptys[self.scif_without_emptys['scene_id'].isin(relevant_scenes)]
+    #     kpi_db_names = Const.DB_ON_NAMES[kpi_name]
+    #     sku_kpi_fk = self.common.get_kpi_fk_by_kpi_name(kpi_db_names[Const.SKU])
+    #     if kpi_name == Const.BACK_BAR and self.attr11 == Const.OPEN:
+    #         total_on_trade_fk = self.common.get_kpi_fk_by_kpi_name(Const.DB_ASSORTMENTS_NAMES[Const.ON])
+    #         # TODO: change it to the right back bar list
+    #     else:
+    #         total_on_trade_fk = self.common.get_kpi_fk_by_kpi_name(Const.DB_ASSORTMENTS_NAMES[Const.ON])
+    #     relevant_assortment = self.assortment_products[self.assortment_products['kpi_fk_lvl2'] == total_on_trade_fk]
+    #     all_results = pd.DataFrame(columns=Const.COLUMNS_FOR_PRODUCT_ASSORTMENT)
+    #     national_results, segment_results = [], []
+    #     for brand_fk in relevant_assortment['brand_fk'].unique():
+    #         if brand_fk is None:
+    #             continue
+    #         brand_assortment = relevant_assortment[relevant_assortment['brand_fk'] == brand_fk]
+    #         passed, national_results, segment_results = self.calculate_brand_assortment_on(
+    #             brand_assortment, relevant_scif)
+    #
+    #     for i, product_line in relevant_assortment.iterrows():
+    #         additional_attrs = json.loads(product_line['additional_attributes'])
+    #         standard_type = additional_attrs[Const.NATIONAL_SEGMENT]
+    #         result_line = self.calculate_ass_on_sku(product_line['product_fk'], relevant_scif, standard_type, kpi_name)
+    #         if not result_line:
+    #             continue
+    #         sub_brand = result_line[Const.SUB_BRAND]
+    #         brand = result_line[Const.BRAND]
+    #         condition = (all_results[Const.SUB_BRAND] == sub_brand) & (all_results[Const.BRAND] == brand)
+    #         sub_brands_results = all_results[condition]
+    #         if sub_brands_results.empty:
+    #             all_results = all_results.append(result_line, ignore_index=True)
+    #         elif result_line[Const.PASSED] > 0:
+    #             all_results.loc[condition, Const.PASSED] = 1
+    #     total_result, segment_result, national_result = self.insert_all_levels_to_db(
+    #         all_results, kpi_db_names, weight, with_standard_type=True, sub_brand_numeric=True)
+    #     # add extra products to DB:
+    #     if kpi_name == Const.POD:
+    #         sub_brand_kpi_fk = self.common.get_kpi_fk_by_kpi_name(kpi_db_names[Const.SUB_BRAND])
+    #         self.calculate_extras(relevant_assortment, relevant_scif, sku_kpi_fk, sub_brand_kpi_fk)
+    #     return total_result, segment_result, national_result
+
+    # def calculate_brand_assortment_on(self, brand_assortment, relevant_scif):
+    #     return 0, 0, 0
+    #
+    # def calculate_ass_on_sku_new(self, product_fk, relevant_scif, standard_type, kpi_name, template_fk=None):
+    #     """
+    #     Checks if specific product's sub_brand exists in the filtered scif
+    #     :param standard_type: S or N
+    #     :param product_fk: int
+    #     :param relevant_scif: filtered scif
+    #     :param kpi_name: POD or Back Bar - to know if we should check the product in the sales data
+    #     :param template_fk: back_bar national should write the template also
+    #     :return: a line for the DF - {product: 8, passed: 1/0, standard: N/S, brand: 5, sub: 12}
+    #     """
+    #     sku_kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.DB_ON_NAMES[kpi_name][Const.SKU])
+    #     brand, sub_brand = self.get_product_details(product_fk)
+    #     if sub_brand is None or self.all_products_sku[self.all_products_sku['product_fk'] == product_fk].empty:
+    #         return None
+    #     facings = relevant_scif[(relevant_scif['product_fk'] == product_fk)]['facings'].sum()
+    #     if facings > 0 or (product_fk in self.sales_data and kpi_name == Const.POD):
+    #         result, passed = Const.DISTRIBUTED, 1
+    #     else:
+    #         result, passed = Const.OOS, 0
+    #     product_result = {Const.PRODUCT_FK: product_fk, Const.PASSED: passed,
+    #                       Const.BRAND: brand, Const.SUB_BRAND: sub_brand, Const.STANDARD_TYPE: standard_type}
+    #     sub_brand_kpi_fk = self.common.get_kpi_fk_by_kpi_name(
+    #         Const.DB_ON_NAMES[kpi_name][Const.SUB_BRAND])
+    #     sub_brand_dict = self.common.get_dictionary(kpi_fk=sub_brand_kpi_fk, brand_fk=brand, sub_brand_fk=sub_brand)
+    #     if template_fk is not None:
+    #         sub_brand_dict[Const.TEMPLATE] = template_fk
+    #     self.common.write_to_db_result(
+    #         fk=sku_kpi_fk, numerator_id=product_fk, result=self.get_pks_of_result(result),
+    #         identifier_parent=sub_brand_dict, should_enter=True)
+    #     return product_result
 
     def calculate_extras(self, relevant_assortment, filtered_scif, sku_kpi_fk, sub_brand_kpi_fk):
         """
@@ -328,34 +499,6 @@ class ToolBox:
             sub_brand_kpi_fk = self.common.get_kpi_fk_by_kpi_name(kpi_db_names[Const.SUB_BRAND])
             self.calculate_extras(relevant_assortment, relevant_scif, sku_kpi_fk, sub_brand_kpi_fk)
         return total_result, segment_result, national_result
-
-    def calculate_ass_on_sku(self, product_fk, relevant_scif, standard_type, kpi_name):
-        """
-        Checks if specific product's sub_brand exists in the filtered scif
-        :param standard_type: S or N
-        :param product_fk:
-        :param relevant_scif: filtered scif
-        :param kpi_name: POD or Back Bar - to know if we should check the product in the sales data
-        :return: a line for the DF - {product: 8, passed: 1/0, standard: N/S, brand: 5, sub: 12}
-        """
-        sku_kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.DB_ON_NAMES[kpi_name][Const.SKU])
-        brand, sub_brand = self.get_product_details(product_fk)
-        if sub_brand is None or self.all_products_sku[self.all_products_sku['product_fk'] == product_fk].empty:
-            return None
-        facings = relevant_scif[(relevant_scif['product_fk'] == product_fk)]['facings'].sum()
-        if facings > 0 or (product_fk in self.sales_data and kpi_name == Const.POD):
-            result, passed = Const.DISTRIBUTED, 1
-        else:
-            result, passed = Const.OOS, 0
-        product_result = {Const.PRODUCT_FK: product_fk, Const.PASSED: passed,
-                          Const.BRAND: brand, Const.SUB_BRAND: sub_brand, Const.STANDARD_TYPE: standard_type}
-        sub_brand_kpi_fk = self.common.get_kpi_fk_by_kpi_name(
-            Const.DB_ON_NAMES[kpi_name][Const.SUB_BRAND])
-        sub_brand_dict = self.common.get_dictionary(kpi_fk=sub_brand_kpi_fk, brand_fk=brand, sub_brand_fk=sub_brand)
-        self.common.write_to_db_result(
-            fk=sku_kpi_fk, numerator_id=product_fk, result=self.get_pks_of_result(result),
-            identifier_parent=sub_brand_dict, should_enter=True)
-        return product_result
 
     def calculate_pod_off_sku(self, product_fk, relevant_scif, standard_type):
         """
