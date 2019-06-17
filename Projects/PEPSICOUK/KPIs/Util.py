@@ -127,17 +127,12 @@ class PepsicoUtil(UnifiedKPISingleton):
         self.sos_vs_target_targets = self.construct_sos_vs_target_base_df()
 
         self.all_targets_unpacked = self.commontools.all_targets_unpacked.copy()
-        # self.block_results = pd.DataFrame(columns=['Group Name', 'Score'])
-        self.block_results = self.get_empty_block_res_df()
+        self.block_results = pd.DataFrame(columns=['Group Name', 'Score'])
 
     def get_probe_group(self):
         query = PEPSICOUK_Queries.get_probe_group(self.session_uid)
         probe_group = pd.read_sql_query(query, self.rds_conn.db)
         return probe_group
-
-    @staticmethod
-    def get_empty_block_res_df():
-        return pd.DataFrame(columns=['Group Name', 'Score'])
 
     @staticmethod
     def get_full_bay_and_positional_filters(parameters):

@@ -238,12 +238,6 @@ class Test_PEPSICOUK(TestFunctionalCase):
         block_results.side_effect = data
         return
 
-    def mock_block_results_after_kpi_calculation(self, data):
-        block_res = self.mock_object('PepsicoUtil.get_empty_block_res_df',
-                                     path='Projects.PEPSICOUK.KPIs.Util')
-        block_res.return_value = data
-        return
-
     def mock_adjacency_results(self, data):
         adjacency_results = self.mock_object('Adjancency.network_x_adjacency_calculation',
                                              path='KPIUtils_v2.Calculations.AdjacencyCalculations')
@@ -256,9 +250,9 @@ class Test_PEPSICOUK(TestFunctionalCase):
         self.mock_scene_info(DataTestUnitPEPSICOUK.scene_info)
         self.mock_scene_kpi_results(DataTestUnitPEPSICOUK.scene_kpi_results_test_case_1)
         self.mock_object('PositionGraphs', path='KPIUtils_v2.Calculations.AdjacencyCalculations')
-        self.mock_block_results_after_kpi_calculation(DataTestUnitPEPSICOUK.blocks_all_pass)
         self.mock_adjacency_results(DataTestUnitPEPSICOUK.adjacency_results_true)
         adj = BlocksAdjacencyKpi(self.data_provider_mock, config_params={}, dependencies_data=pd.DataFrame())
+        adj.util.block_results = DataTestUnitPEPSICOUK.blocks_all_pass
         adj.calculate()
         kpi_result = pd.DataFrame(adj.kpi_results)
         self.assertEquals(len(kpi_result), 1)
@@ -277,9 +271,9 @@ class Test_PEPSICOUK(TestFunctionalCase):
         self.mock_scene_info(DataTestUnitPEPSICOUK.scene_info)
         self.mock_scene_kpi_results(DataTestUnitPEPSICOUK.scene_kpi_results_test_case_1)
         self.mock_object('PositionGraphs', path='KPIUtils_v2.Calculations.AdjacencyCalculations')
-        self.mock_block_results_after_kpi_calculation(DataTestUnitPEPSICOUK.blocks_all_pass)
         self.mock_adjacency_results(DataTestUnitPEPSICOUK.adjacency_results_false)
         adj = BlocksAdjacencyKpi(self.data_provider_mock, config_params={}, dependencies_data=pd.DataFrame())
+        adj.util.block_results = DataTestUnitPEPSICOUK.blocks_all_pass
         adj.calculate()
         kpi_result = pd.DataFrame(adj.kpi_results)
         self.assertEquals(len(kpi_result), 1)
@@ -298,8 +292,8 @@ class Test_PEPSICOUK(TestFunctionalCase):
         self.mock_scene_info(DataTestUnitPEPSICOUK.scene_info)
         self.mock_scene_kpi_results(DataTestUnitPEPSICOUK.scene_kpi_results_test_case_1)
         self.mock_object('PositionGraphs', path='KPIUtils_v2.Calculations.AdjacencyCalculations')
-        self.mock_block_results_after_kpi_calculation(DataTestUnitPEPSICOUK.blocks_none_passes)
         adj = BlocksAdjacencyKpi(self.data_provider_mock, config_params={}, dependencies_data=pd.DataFrame())
+        adj.util.block_results = DataTestUnitPEPSICOUK.blocks_none_passes
         adj.calculate()
         kpi_result = pd.DataFrame(adj.kpi_results)
         self.assertTrue(kpi_result.empty)
@@ -310,8 +304,8 @@ class Test_PEPSICOUK(TestFunctionalCase):
         self.mock_scene_info(DataTestUnitPEPSICOUK.scene_info)
         self.mock_scene_kpi_results(DataTestUnitPEPSICOUK.scene_kpi_results_test_case_1)
         self.mock_object('PositionGraphs', path='KPIUtils_v2.Calculations.AdjacencyCalculations')
-        self.mock_block_results_after_kpi_calculation(DataTestUnitPEPSICOUK.blocks_one_passes)
         adj = BlocksAdjacencyKpi(self.data_provider_mock, config_params={}, dependencies_data=pd.DataFrame())
+        adj.util.block_results = DataTestUnitPEPSICOUK.blocks_one_passes
         adj.calculate()
         kpi_result = pd.DataFrame(adj.kpi_results)
         self.assertTrue(kpi_result.empty)
@@ -322,8 +316,8 @@ class Test_PEPSICOUK(TestFunctionalCase):
         self.mock_scene_info(DataTestUnitPEPSICOUK.scene_info)
         self.mock_scene_kpi_results(DataTestUnitPEPSICOUK.scene_kpi_results_test_case_1)
         self.mock_object('PositionGraphs', path='KPIUtils_v2.Calculations.AdjacencyCalculations')
-        self.mock_block_results_after_kpi_calculation(DataTestUnitPEPSICOUK.blocks_combinations_3_pass_all)
         adj = BlocksAdjacencyKpi(self.data_provider_mock, config_params={}, dependencies_data=pd.DataFrame())
+        adj.util.block_results = DataTestUnitPEPSICOUK.blocks_combinations_3_pass_all
         pairs = adj.get_group_pairs()
         self.assertEquals(len(pairs), 3)
         expected_result = [frozenset(['Group 3', 'Group 1']), frozenset(['Group 2', 'Group 1']), frozenset(['Group 2', 'Group 3'])]
@@ -335,8 +329,8 @@ class Test_PEPSICOUK(TestFunctionalCase):
         self.mock_scene_info(DataTestUnitPEPSICOUK.scene_info)
         self.mock_scene_kpi_results(DataTestUnitPEPSICOUK.scene_kpi_results_test_case_1)
         self.mock_object('PositionGraphs', path='KPIUtils_v2.Calculations.AdjacencyCalculations')
-        self.mock_block_results_after_kpi_calculation(DataTestUnitPEPSICOUK.blocks_combinations_2_pass_of_3)
         adj = BlocksAdjacencyKpi(self.data_provider_mock, config_params={}, dependencies_data=pd.DataFrame())
+        adj.util.block_results = DataTestUnitPEPSICOUK.blocks_combinations_2_pass_of_3
         pairs = adj.get_group_pairs()
         expected_result = [frozenset(['Group 2', 'Group 1'])]
         self.assertEquals(len(pairs), 1)
@@ -348,8 +342,8 @@ class Test_PEPSICOUK(TestFunctionalCase):
         self.mock_scene_info(DataTestUnitPEPSICOUK.scene_info)
         self.mock_scene_kpi_results(DataTestUnitPEPSICOUK.scene_kpi_results_test_case_1)
         self.mock_object('PositionGraphs', path='KPIUtils_v2.Calculations.AdjacencyCalculations')
-        self.mock_block_results_after_kpi_calculation(DataTestUnitPEPSICOUK.blocks_combinations_1_pass_of_3)
         adj = BlocksAdjacencyKpi(self.data_provider_mock, config_params={}, dependencies_data=pd.DataFrame())
+        adj.util.block_results = DataTestUnitPEPSICOUK.blocks_combinations_1_pass_of_3
         pairs = adj.get_group_pairs()
         self.assertEquals(len(pairs), 0)
 
@@ -359,8 +353,8 @@ class Test_PEPSICOUK(TestFunctionalCase):
         self.mock_scene_info(DataTestUnitPEPSICOUK.scene_info)
         self.mock_scene_kpi_results(DataTestUnitPEPSICOUK.scene_kpi_results_test_case_1)
         self.mock_object('PositionGraphs', path='KPIUtils_v2.Calculations.AdjacencyCalculations')
-        self.mock_block_results_after_kpi_calculation(DataTestUnitPEPSICOUK.blocks_combinations_4_pass_of_4)
         adj = BlocksAdjacencyKpi(self.data_provider_mock, config_params={}, dependencies_data=pd.DataFrame())
+        adj.util.block_results = DataTestUnitPEPSICOUK.blocks_combinations_4_pass_of_4
         pairs = adj.get_group_pairs()
         print pairs
         expected = [frozenset(['Group 3', 'Group 1']), frozenset(['Group 4', 'Group 2']),
@@ -792,37 +786,6 @@ class Test_PEPSICOUK(TestFunctionalCase):
         filtered_df = results_df.query(query)
         return len(filtered_df)
 
-    # def test_get_available_hero_sku_list_retrieves_only_skus_in_store(self):
-    #     self.mock_scene_item_facts(pd.read_excel(DataTestUnitPEPSICOUK.test_case_1, sheetname='scif'))
-    #     self.mock_match_product_in_scene(pd.read_excel(DataTestUnitPEPSICOUK.test_case_1, sheetname='matches'))
-    #     self.mock_scene_info(DataTestUnitPEPSICOUK.scene_info)
-    #     self.mock_scene_kpi_results(DataTestUnitPEPSICOUK.scene_kpi_results_test_case_1)
-    #     util = PepsicoUtil(self.output, self.data_provider_mock)
-    #     availability_sku = HeroAvailabilitySkuKpi(self.data_provider_mock, config_params={})
-    #     availability_sku.calculate()
-    #     hero_dependency_df = pd.DataFrame(availability_sku.kpi_results)
-    #     hero_dependency_df['kpi_type'] = util.HERO_SKU_AVAILABILITY_SKU
-    #     hero_list = util.get_available_hero_sku_list(hero_dependency_df)
-    #     self.assertItemsEqual(hero_list, [1, 2])
-    #
-    # def test_sos_vs_target_targets_property(self):
-    #     self.mock_scene_item_facts(pd.read_excel(DataTestUnitPEPSICOUK.test_case_1, sheetname='scif'))
-    #     self.mock_match_product_in_scene(pd.read_excel(DataTestUnitPEPSICOUK.test_case_1, sheetname='matches'))
-    #     self.mock_scene_info(DataTestUnitPEPSICOUK.scene_info)
-    #     self.mock_scene_kpi_results(DataTestUnitPEPSICOUK.scene_kpi_results_test_case_1)
-    #     util = PepsicoUtil(self.output, self.data_provider_mock)
-    #     self.assertItemsEqual(util.sos_vs_target_targets['pk'].values.tolist(), [21, 22, 23, 24, 25])
-    #     expected_list = list()
-    #     expected_list.append({'pk': 21, 'numerator_id': 2, 'denominator_id': 8})
-    #     expected_list.append({'pk': 22, 'numerator_id': 2, 'denominator_id': 11})
-    #     expected_list.append({'pk': 23, 'numerator_id': 155, 'denominator_id': 2})
-    #     expected_list.append({'pk': 24, 'numerator_id': 10, 'denominator_id': 2})
-    #     expected_list.append({'pk': 25, 'numerator_id': 1515, 'denominator_id': 2})
-    #     test_result_list = []
-    #     for expected_result in expected_list:
-    #         test_result_list.append(self.check_df_values(util.sos_vs_target_targets, expected_result) == 1)
-    #     self.assertTrue(all(test_result_list))
-
     # def test_whatever(self):
     #     self.mock_scene_item_facts(pd.read_excel(DataTestUnitPEPSICOUK.test_case_1, sheetname='scif'))
     #     self.mock_match_product_in_scene(pd.read_excel(DataTestUnitPEPSICOUK.test_case_1, sheetname='matches'))
@@ -847,27 +810,3 @@ class Test_PEPSICOUK(TestFunctionalCase):
     #     #     print tool_box.scene_kpi_results
     #     #     print tool_box.scene_info
     #
-    # def test_whatever_2(self):
-    #     self.mock_scene_item_facts(pd.read_excel(DataTestUnitPEPSICOUK.test_case_1, sheetname='scif'))
-    #     self.mock_match_product_in_scene(pd.read_excel(DataTestUnitPEPSICOUK.test_case_1, sheetname='matches'))
-    #     self.mock_scene_info(DataTestUnitPEPSICOUK.scene_info)
-    #     self.mock_scene_kpi_results(DataTestUnitPEPSICOUK.scene_kpi_results_test_case_1)
-    #     tool_box = PepsicoUtil(self.output, self.data_provider_mock)
-    #     # print tool_box.exclusion_template
-    #     # print tool_box.probe_groups
-    #     # print tool_box.lvl3_ass_result[['product_fk', 'in_store']]
-    #     av = HeroAvailabilitySkuKpi(self.data_provider_mock, config_params={})
-    #     av.calculate()
-    #     print av.util
-    #     aval_res = pd.DataFrame(av.kpi_results)
-    #     # print aval_res[['numerator_id', 'numerator_result']]
-    #     aval_res['kpi_type'] = tool_box.HERO_SKU_AVAILABILITY_SKU
-    #     av_all = HeroAvailabilityKpi(self.data_provider_mock, config_params={}, dependencies_data=aval_res)
-    #     av_all.calculate()
-    #     print av_all.util
-    #     # print pd.DataFrame(av_all.kpi_results)[['numerator_id', 'result']]
-    #     # print tool_box.kpi_results_check
-    #     print av.util is av_all.util
-    #     print tool_box.kpi_results_check
-    #     #     print tool_box.scene_kpi_results
-    #     #     print tool_box.scene_info
