@@ -7,6 +7,6 @@ echo ==========================
 echo "PS GIT post-merge hook"
 echo ==========================
 
-pip install -U Trax --find-links https://s3.amazonaws.com/trax-pypi/Trax/index.html
+# pip install -U Trax --find-links https://s3.amazonaws.com/trax-pypi/Trax/index.html
 
 echo "installed all necessary packages"

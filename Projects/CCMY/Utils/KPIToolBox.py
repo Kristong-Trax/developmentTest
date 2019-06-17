@@ -1,4 +1,3 @@
-
 import os
 import pandas as pd
 from datetime import datetime
@@ -8,6 +7,7 @@ from Trax.Utils.Conf.Keys import DbUsers
 from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Trax.Utils.Logging.Logger import Log
 from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
+from KPIUtils_v2.DB.Common import Common
 
 from Projects.CCMY.Utils.Fetcher import CCMYQueries
 from Projects.CCMY.Utils.GeneralToolBox import CCMYGENERALToolBox
@@ -56,10 +56,29 @@ class CCMYConsts(object):
 
     SEPARATOR = ','
 
+    CCBM = 2  # CCBM
+    GENERAL_MANUFACTURER = 0
+    OTHER_MANUFACTURER = 12
+    GENERAL_EMPTY_PRODUCT = 0
+    IRRELEVANT = 184
+
     AVAILABILITY = 'Availability'
     FACINGS_SOS = 'Facing SOS'
+    SHELF_PURITY = 'Shelf Purity'
 
-
+    MANUFACTURER_FK = 'manufacturer_fk'
+    SCENE_FK = 'scene_fk'
+    BAY_NUMBER = 'bay_number'
+    SHELF_NUMBER = 'shelf_number'
+    PRODUCT_FK ='product_fk'
+    ATOMIC_KPI_NAME ='atomic_kpi_name'
+    ATOMIC_KPI_FK = 'atomic_kpi_fk'
+    TEMPLATE_FK = 'template_fk'
+    KPI_NUM_PURE_SHELVES='CCRM Cooler Number of Pure Shelves'
+    KPI_TOTAL_NUM_OF_SHELVES ='CCRM Cooler Total Number of Shelves'
+    IS_PURE = 'is_pure'
+    PURE = 1
+    IMPURE = 0
 class CCMYToolBox:
 
     LEVEL1 = 1
@@ -68,16 +87,18 @@ class CCMYToolBox:
 
     def __init__(self, data_provider, output):
         self.output = output
+        self.common = Common(data_provider)
         self.data_provider = data_provider
         self.project_name = self.data_provider.project_name
         self.session_uid = self.data_provider.session_uid
+        self.manufacturer_fk = CCMYConsts.MANUFACTURER_FK
         self.products = self.data_provider[Data.PRODUCTS]
         self.all_products = self.data_provider[Data.ALL_PRODUCTS]
         self.match_product_in_scene = self.data_provider[Data.MATCHES]
         self.visit_date = self.data_provider[Data.VISIT_DATE]
         self.session_info = self.data_provider[Data.SESSION_INFO]
         self.scene_info = self.data_provider[Data.SCENES_INFO].merge(
-            self.data_provider[Data.ALL_TEMPLATES][['template_fk', 'template_name']], on='template_fk', how='left')
+        self.data_provider[Data.ALL_TEMPLATES][['template_fk', 'template_name']], on='template_fk', how='left')
         self.store_id = self.data_provider[Data.STORE_FK]
         self.store_info = self.data_provider[Data.STORE_INFO]
         self.store_type = self.store_info['store_type'].iloc[0]
@@ -86,6 +107,7 @@ class CCMYToolBox:
         self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         self.tools = CCMYGENERALToolBox(self.data_provider, self.output, rds_conn=self.rds_conn)
         self.kpi_static_data = self.get_kpi_static_data()
+        self.kpi_static_data_new = self.common.get_new_kpi_static_data()
         self.template_data = pd.read_excel(TEMPLATE_PATH, 'KPIs').fillna('')
         self.kpi_results_queries = []
 
@@ -103,17 +125,25 @@ class CCMYToolBox:
         This function calculates the KPI results.
         """
         total_score = 0
+        score=0
         for group in self.template_data[CCMYConsts.KPI_GROUP].unique():
             kpi_data = self.template_data[self.template_data[CCMYConsts.KPI_GROUP] == group]
+
+            if kpi_data.empty:
+                continue
+
             kpi_type = kpi_data.iloc[0][CCMYConsts.KPI_TYPE]
 
             if not self.validate_kpi(kpi_data.iloc[0]):
                 continue
 
             if kpi_type == CCMYConsts.AVAILABILITY:
-                score = self.calculate_availability(kpi_data)
+               score = self.calculate_availability(kpi_data)
             elif kpi_type == CCMYConsts.FACINGS_SOS:
-                score = self.calculate_facings_sos(kpi_data)
+               score = self.calculate_facings_sos(kpi_data)
+            elif kpi_type == CCMYConsts.SHELF_PURITY:
+                score = self.calculate_self_purity(kpi_data)
+                self.common.commit_results_data_to_new_tables()
             else:
                 continue
 
@@ -122,8 +152,11 @@ class CCMYToolBox:
                 kpi_fk = self.kpi_static_data[self.kpi_static_data['kpi_name'] == group].iloc[0]['kpi_fk']
                 self.write_to_db_result(kpi_fk, score, level=self.LEVEL2)
 
-        set_fk = self.kpi_static_data.iloc[0]['kpi_set_fk']
-        self.write_to_db_result(set_fk, total_score, level=self.LEVEL1)
+        if self.kpi_static_data.empty:
+            return
+        else:
+            set_fk = self.kpi_static_data.iloc[0]['kpi_set_fk']
+            self.write_to_db_result(set_fk, total_score, level=self.LEVEL1)
 
     def validate_kpi(self, kpi_data):
         validation = True
@@ -183,6 +216,155 @@ class CCMYToolBox:
 
         return group_score
 
+    def calculate_self_purity(self, kpi_data):
+        score = 0
+        atomic_kpi_fk_1 = 0
+        atomic_kpi_fk_2 = 0
+        kpi_level_2_fk = 0
+
+        if kpi_data.empty:
+            return
+
+        group_name = kpi_data.iloc[0][CCMYConsts.KPI_GROUP]
+        scene_types = self.get_scene_types(kpi_data.iloc[0])
+
+        self_purity_scene_list = self.scene_info[self.scene_info['template_name'].isin(scene_types)][
+            CCMYConsts.SCENE_FK].unique().tolist()
+        template_fk = self.scene_info[self.scene_info['template_name'].isin(scene_types)][
+            CCMYConsts.TEMPLATE_FK].unique().tolist()
+
+        df_all_shelfs = self.match_product_in_scene;
+
+        if self.match_product_in_scene.empty:
+            return
+
+        df_all_shelfs_products = df_all_shelfs.merge(self.products, how='inner', on=CCMYConsts.PRODUCT_FK)
+        list_columns = [CCMYConsts.SCENE_FK, CCMYConsts.BAY_NUMBER, CCMYConsts.SHELF_NUMBER,
+                        CCMYConsts.MANUFACTURER_FK, CCMYConsts.PRODUCT_FK]
+
+        df_all_shelfs_products = pd.DataFrame(
+            df_all_shelfs_products.groupby(list_columns).size().reset_index(name='count'))
+
+        df_all_shelfs_products = df_all_shelfs_products[
+            df_all_shelfs_products[CCMYConsts.SCENE_FK].isin(self_purity_scene_list)]
+        df_shelf_pure = df_all_shelfs_products[
+            [CCMYConsts.SCENE_FK, CCMYConsts.BAY_NUMBER, CCMYConsts.SHELF_NUMBER]]
+        df_shelf_pure.drop_duplicates(subset=None, keep='first', inplace=True)
+        df_shelf_pure[CCMYConsts.IS_PURE] = CCMYConsts.PURE
+
+
+        for x, params in kpi_data.iterrows():
+            for row_num_x,row_data_x in df_shelf_pure.iterrows():
+                for row_num_y, row_data_y in df_all_shelfs_products.iterrows():
+                    if ((row_data_x[CCMYConsts.SCENE_FK] == row_data_y[CCMYConsts.SCENE_FK]) &
+                            (row_data_x[CCMYConsts.BAY_NUMBER] == row_data_y [CCMYConsts.BAY_NUMBER]) &
+                            (row_data_x[CCMYConsts.SHELF_NUMBER] == row_data_y[CCMYConsts.SHELF_NUMBER]) &
+                            (row_data_y[CCMYConsts.MANUFACTURER_FK] == CCMYConsts.GENERAL_MANUFACTURER) &
+                            (row_data_y[CCMYConsts.PRODUCT_FK] == CCMYConsts.IRRELEVANT) &
+                            (row_data_x[CCMYConsts.IS_PURE]==CCMYConsts.PURE)):
+
+                        row_data_x[CCMYConsts.IS_PURE] = CCMYConsts.IMPURE
+                        print "Impure Shelf={}".format(row_data_y[CCMYConsts.SHELF_NUMBER])
+                        continue
+                    elif ((row_data_x[CCMYConsts.SCENE_FK] == row_data_y[CCMYConsts.SCENE_FK]) &
+                          (row_data_x[CCMYConsts.BAY_NUMBER] == row_data_y[CCMYConsts.BAY_NUMBER]) &
+                          (row_data_x[CCMYConsts.SHELF_NUMBER] == row_data_y[CCMYConsts.SHELF_NUMBER]) &
+                          (row_data_y[CCMYConsts.MANUFACTURER_FK] not in [CCMYConsts.CCBM, CCMYConsts.GENERAL_MANUFACTURER]) &
+                          (row_data_y[CCMYConsts.PRODUCT_FK] != CCMYConsts.GENERAL_EMPTY_PRODUCT) &
+                          (row_data_x[CCMYConsts.IS_PURE] == CCMYConsts.PURE)):
+
+                        row_data_x[CCMYConsts.IS_PURE] = CCMYConsts.IMPURE
+                        print "Impure Shelf={}".format(row_data_y[CCMYConsts.SHELF_NUMBER])
+                        continue
+                    elif ((row_data_x[CCMYConsts.SCENE_FK] == row_data_y[CCMYConsts.SCENE_FK]) &
+                      (row_data_x[CCMYConsts.BAY_NUMBER] == row_data_y[CCMYConsts.BAY_NUMBER]) &
+                      (row_data_x[CCMYConsts.SHELF_NUMBER] == row_data_y[CCMYConsts.SHELF_NUMBER]) &
+                      (row_data_y[CCMYConsts.MANUFACTURER_FK] == CCMYConsts.GENERAL_MANUFACTURER) &
+                      (row_data_y[CCMYConsts.PRODUCT_FK] != CCMYConsts.GENERAL_EMPTY_PRODUCT) &
+                      (row_data_x[CCMYConsts.IS_PURE] == CCMYConsts.PURE)):
+                        row_data_x[CCMYConsts.IS_PURE] = CCMYConsts.IMPURE
+                        print "Impure Shelf={}".format(row_data_y[CCMYConsts.SHELF_NUMBER])
+                        continue
+
+            df_kpi_level_2 = self.kpi_static_data_new[self.kpi_static_data_new['type'] == 'SHELF_PURITY']['pk']
+
+            if df_kpi_level_2.empty:
+                kpi_level_2_fk = 0
+            else:
+                kpi_level_2_fk = df_kpi_level_2.iloc[0]
+
+            #if params[CCMYConsts.KPI_NAME] == CCMYConsts.KPI_NUM_PURE_SHELVES:
+            df_atomic_kpi = self.kpi_static_data[
+                (self.kpi_static_data[CCMYConsts.ATOMIC_KPI_NAME] ==CCMYConsts.KPI_NUM_PURE_SHELVES) & (
+                    self.kpi_static_data['kpi_name'] == group_name)]
+
+            if df_atomic_kpi.empty:
+                atomic_kpi_fk_1 = 0
+            else:
+                atomic_kpi_fk_1 = df_atomic_kpi.iloc[0][CCMYConsts.ATOMIC_KPI_FK]
+
+            #if params[CCMYConsts.KPI_NAME] == CCMYConsts.KPI_TOTAL_NUM_OF_SHELVES:
+            df_atomic_kpi = self.kpi_static_data[
+                (self.kpi_static_data[CCMYConsts.ATOMIC_KPI_NAME] == CCMYConsts.KPI_TOTAL_NUM_OF_SHELVES) & (
+                        self.kpi_static_data['kpi_name'] == group_name)]
+
+            if df_atomic_kpi.empty:
+                atomic_kpi_fk_2 = 0
+            else:
+                atomic_kpi_fk_2 = df_atomic_kpi.iloc[0][CCMYConsts.ATOMIC_KPI_FK]
+
+            if df_shelf_pure.empty:
+                num_of_pure_shelfs = 0
+                total_num_of_shelfs = 0
+
+                # KPI old tables
+                if atomic_kpi_fk_1!= 0:
+                    if params[CCMYConsts.KPI_NAME] == CCMYConsts.KPI_NUM_PURE_SHELVES:
+                        self.write_to_db_result(atomic_kpi_fk_1,(num_of_pure_shelfs, num_of_pure_shelfs, 0),
+                                                level=self.LEVEL3)
+                if atomic_kpi_fk_2!=0:
+                    if params[CCMYConsts.KPI_NAME] == CCMYConsts.KPI_TOTAL_NUM_OF_SHELVES:
+                        self.write_to_db_result(atomic_kpi_fk_2, (total_num_of_shelfs, total_num_of_shelfs, 0),
+                                            level=self.LEVEL3)
+
+                # KPI new tables - Only
+                if kpi_level_2_fk!=0:
+                    self.common.write_to_db_result_new_tables(fk=kpi_level_2_fk,
+                                                              numerator_id=0,
+                                                              denominator_id=0,
+                                                              numerator_result=num_of_pure_shelfs,
+                                                              denominator_result=total_num_of_shelfs,
+                                                              result=score,
+                                                              score=score
+                                                              )
+            else:
+                num_of_pure_shelfs = df_shelf_pure[CCMYConsts.IS_PURE].sum()
+                total_num_of_shelfs = len(df_shelf_pure)
+
+                if total_num_of_shelfs != 0:
+                    score = num_of_pure_shelfs / float(total_num_of_shelfs)
+
+                # KPI old tables
+                if atomic_kpi_fk_1 != 0:
+                        self.write_to_db_result(atomic_kpi_fk_1, (num_of_pure_shelfs, num_of_pure_shelfs, 0),
+                                                level=self.LEVEL3)
+                if atomic_kpi_fk_2 != 0:
+                        self.write_to_db_result(atomic_kpi_fk_2, (total_num_of_shelfs, total_num_of_shelfs, 0),
+                                            level=self.LEVEL3)
+
+                # KPI new tables
+                if kpi_level_2_fk!=0:
+                    if params[CCMYConsts.KPI_NAME] == CCMYConsts.KPI_NUM_PURE_SHELVES:
+                        self.common.write_to_db_result_new_tables(fk=kpi_level_2_fk,
+                                                                  numerator_id=template_fk[0],
+                                                                  denominator_id=self.store_id,
+                                                                  numerator_result=num_of_pure_shelfs,
+                                                                  denominator_result=total_num_of_shelfs,
+                                                                  #numerator_result_after_actions=0,
+                                                                  result=score,
+                                                                  score=score)
+                return score
+
     def calculate_facings_sos(self, kpi_data):
         group_score = 0
         group_name = kpi_data.iloc[0][CCMYConsts.KPI_GROUP]
@@ -199,6 +381,7 @@ class CCMYToolBox:
             if not score and params[CCMYConsts.ONLY_IF_PASS]:
                     continue
             group_score += result
+
             atomic_fk = self.kpi_static_data[(self.kpi_static_data['atomic_kpi_name'] == params[CCMYConsts.KPI_NAME]) &
                                              (self.kpi_static_data['kpi_name'] == group_name)].iloc[0]['atomic_kpi_fk']
             self.write_to_db_result(atomic_fk, (score, result, target_min), level=self.LEVEL3)
@@ -218,6 +401,8 @@ class CCMYToolBox:
         This function creates the result data frame of every KPI (atomic KPI/KPI/KPI set),
         and appends the insert SQL query into the queries' list, later to be written to the DB.
         """
+        if fk==0:
+            return
         attributes = self.create_attributes_dict(fk, score, level)
         if level == self.LEVEL1:
             table = KPS_RESULT
@@ -256,7 +441,12 @@ class CCMYToolBox:
             else:
                 result = threshold = None
             data = self.kpi_static_data[self.kpi_static_data['atomic_kpi_fk'] == fk]
+
+            if data.empty:
+                return {}
             atomic_kpi_name = data['atomic_kpi_name'].values[0]
+
+
             kpi_fk = data['kpi_fk'].values[0]
             kpi_set_name = self.kpi_static_data[self.kpi_static_data['atomic_kpi_fk'] == fk]['kpi_set_name'].values[0]
             attributes = pd.DataFrame([(atomic_kpi_name, self.session_uid, kpi_set_name, self.store_id,

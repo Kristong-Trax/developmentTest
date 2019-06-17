@@ -22,7 +22,7 @@ class INBEVCISANDCalculations(BaseCalculationsScript):
 #     # sessions = ['fc314c82-bc68-4786-92a4-f55765593779']
 #     # sessions = ['31f63bc0-19d6-41df-9a24-c62a2f4f822d']
 #     # sessions = ['7d602b07-cccd-443d-bd71-ca5484bd41de']
-#     sessions = ['f50184f3-8edd-4e69-a61f-7d375888c279']
+#     sessions = ['ef173353-6682-4b9a-9b02-db2180930043']
 #     for session in sessions:
 #         data_provider = KEngineDataProvider(project_name)
 #         data_provider.load_session_data(session)

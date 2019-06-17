@@ -21,21 +21,27 @@ class COOLERSCREENSUSKGenerator:
         matches_with_products = self._data_provider.matches.merge(right=self._data_provider.products, on='product_fk')
         empty_matches = matches_with_products[matches_with_products['product_type'] == 'Empty']
         empty_matches = empty_matches[
-            ['product_fk', 'bay_number', 'shelf_number', 'facing_sequence_number', 'creation_time']]
+            ['product_fk', 'bay_number', 'shelf_number', 'facing_sequence_number', 'creation_time', 'shelf_number_from_bottom']]
+        self.find_prev_products_and_write_to_db(empty_matches)
+
+        Log.info('Commiting the results of COOLERSCREENSUS kpi')
+        self._common.commit_results_data_to_new_tables()
+        Log.info('Commited the results of COOLERSCREENSUS kpi NEW VERSION')
+
+    def find_prev_products_and_write_to_db(self, empty_matches):
         project_connector = PSProjectConnector(self._data_provider.project_name, DbUsers.CalculationEng)
         for _, match in empty_matches.iterrows():
             prev_product_id = self._find_prev_product(project_connector, match)
             if prev_product_id is not None:
                 kpi_result = 100 if len(self._data_provider.matches[self._data_provider.matches['product_fk'] == prev_product_id]) == 0 else 101
+                shelf_letter = self._get_shelf_letter_by_shelf_number(project_connector, match['shelf_number_from_bottom'])
                 Log.info('Calculated COOLERSCREENSUS kpi for product {} the result is {}'.format(prev_product_id, kpi_result))
                 self._common.write_to_db_result_new_tables(fk=10000,
                                                            numerator_id=prev_product_id,
                                                            numerator_result=kpi_result,
+                                                           score=shelf_letter,
+                                                           denominator_result=match['facing_sequence_number'],
                                                            result=kpi_result)
-
-        Log.info('Commiting the results of COOLERSCREENSUS kpi')
-        self._common.commit_results_data_to_new_tables()
-        Log.info('Commited the results of COOLERSCREENSUS kpi NEW VERSION')
 
     def _find_prev_product(self, project_connector, match):
         cur = project_connector.execute("""
@@ -50,6 +56,26 @@ class COOLERSCREENSUSKGenerator:
               'shelf_number': match['shelf_number'],
               'facing_sequence_number': match['facing_sequence_number'], 'creation_time': match['creation_time'],
               'store_fk': self._data_provider.store_fk, 'template_fk': int(self._data_provider.templates['template_fk'])})
+
+        for row in cur:
+            return row[0]
+
+        return None
+
+    def _get_shelf_letter_by_shelf_number(self, project_connector, shelf_number):
+        letter = chr(shelf_number + 64)
+        return self._get_pk_letter_from_kpi_score_value(project_connector, letter)
+
+    @staticmethod
+    def _get_pk_letter_from_kpi_score_value(project_connector, letter):
+        cur = project_connector.execute("""
+                SELECT KSV.pk
+                FROM static.kpi_score_value KSV
+                JOIN static.kpi_score_type KST ON KSV.kpi_score_type_fk = KST.pk
+                WHERE KST.name = 'SHELF_LETTER'
+                    AND KSV.value = '{letter}'
+                LIMIT 1;
+                """.format(letter=letter))
 
         for row in cur:
             return row[0]

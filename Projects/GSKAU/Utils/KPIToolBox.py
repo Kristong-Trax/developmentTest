@@ -69,40 +69,23 @@ class GSKAUToolBox:
         self.common.save_json_to_new_tables(assortment_subcategory_dict)
 
         facings_sos_dict = self.gsk_generator.gsk_global_facings_sos_whole_store_function()
-        if facings_sos_dict is None:
-            Log.warning('Scene item facts is empty for this session')
-        else:
-            self.common.save_json_to_new_tables(facings_sos_dict)
+        self.common.save_json_to_new_tables(facings_sos_dict)
 
         linear_sos_dict = self.gsk_generator.gsk_global_linear_sos_whole_store_function()
-        if linear_sos_dict is None:
-            Log.warning('Scene item facts is empty for this session')
-        else:
-            self.common.save_json_to_new_tables(linear_sos_dict)
+        self.common.save_json_to_new_tables(linear_sos_dict)
 
         linear_sos_dict = self.gsk_generator.gsk_global_linear_sos_by_sub_category_function()
-        if linear_sos_dict is None:
-            Log.warning('Scene item facts is empty for this session')
-        else:
-            self.common.save_json_to_new_tables(linear_sos_dict)
+        self.common.save_json_to_new_tables(linear_sos_dict)
 
         facings_sos_dict = self.gsk_generator.gsk_global_facings_by_sub_category_function()
-        if facings_sos_dict is None:
-            Log.warning('Scene item facts is empty for this session')
-        else:
-            self.common.save_json_to_new_tables(facings_sos_dict)
+        self.common.save_json_to_new_tables(facings_sos_dict)
 
         facings_sos_dict = self.gsk_generator.gsk_global_facings_sos_by_category_function()
-        if facings_sos_dict is None:
-            Log.warning('Scene item facts is empty for this session')
-        else:
-            self.common.save_json_to_new_tables(facings_sos_dict)
+        self.common.save_json_to_new_tables(facings_sos_dict)
 
         linear_sos_dict = self.gsk_generator.gsk_global_linear_sos_by_category_function()
-        if linear_sos_dict is None:
-            Log.warning('Scene item facts is empty for this session')
-        else:
-            self.common.save_json_to_new_tables(linear_sos_dict)
+        self.common.save_json_to_new_tables(linear_sos_dict)
+
         self.common.commit_results_data()
 
         return

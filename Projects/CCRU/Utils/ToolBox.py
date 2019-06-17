@@ -1,11 +1,13 @@
 # -*- coding: utf-8 -*-
 import os
+import json
 import numpy as np
 import pandas as pd
 import datetime as dt
 
+from Trax.Cloud.Services.Storage.Factory import StorageFactory
 from Trax.Algo.Calculations.Core.Constants import Fields as Fd
-from Trax.Algo.Calculations.Core.DataProvider import Data, Keys
+from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Algo.Calculations.Core.Shortcuts import SessionInfo, BaseCalculationsGroup
 from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
 from Trax.Utils.Conf.Keys import DbUsers
@@ -15,8 +17,6 @@ from KPIUtils_v2.Utils.Decorators.Decorators import kpi_runtime
 from KPIUtils_v2.DB.CommonV2 import Common
 
 from Projects.CCRU.Utils.Fetcher import CCRUCCHKPIFetcher
-from Projects.CCRU.Utils.ExecutionContract import CCRUContract
-from Projects.CCRU.Utils.TopSKU import CCRUTopSKUAssortment
 
 
 __author__ = 'sergey'
@@ -50,6 +50,9 @@ KPI_RESULT = 'report.kpi_results'
 KPK_RESULT = 'report.kpk_results'
 KPS_RESULT = 'report.kps_results'
 CUSTOM_GAPS_TABLE = 'pservice.custom_gaps'
+
+EQUIPMENT_TARGETS_BUCKET = 'traxuscalc'
+EQUIPMENT_TARGETS_CLOUD_BASE_PATH = 'CCRU/KPIData/Contract/'
 
 
 class CCRUKPIToolBox:
@@ -106,9 +109,6 @@ class CCRUKPIToolBox:
             self.planned_visit_flag = int(self.kpi_fetcher.get_planned_visit_flag(self.session_uid))
         except:
             self.planned_visit_flag = None
-
-        self.execution_contract = CCRUContract(rds_conn=self.rds_conn)
-        self.top_sku = CCRUTopSKUAssortment(rds_conn=self.rds_conn)
 
         self.passed_scenes_per_kpi = {}
         self.kpi_facts_hidden = []
@@ -2376,8 +2376,13 @@ class CCRUKPIToolBox:
                                                       'kpk_name',
                                                       'score'])
 
+        target = 100 * (param.get('KPI Weight') if param.get('KPI Weight') else 1)
+        if self.kpi_scores_and_results[self.kpi_set_type].get(str(param.get('KPI ID'))):
+            if self.kpi_scores_and_results[self.kpi_set_type][str(param.get('KPI ID'))].get('target'):
+                target = self.kpi_scores_and_results[self.kpi_set_type][str(param.get('KPI ID'))]['target']
+
         self.update_kpi_scores_and_results(param, {'level': level,
-                                                   'target': 100 * (param.get('KPI Weight') if param.get('KPI Weight') else 1),
+                                                   'target': target,
                                                    'weight': param.get('KPI Weight'),
                                                    # 'result': round(score),
                                                    'score': round(score),
@@ -2914,7 +2919,7 @@ class CCRUKPIToolBox:
     @kpi_runtime()
     def calculate_equipment_execution(self, params, kpi_set_name, kpi_conversion_file):
 
-        target_data_raw = self.execution_contract.get_json_file_content(str(self.store_id))
+        target_data_raw = self.get_equipment_targets(str(self.store_id))
         if target_data_raw:
             Log.debug('Relevant Contract Execution target file for Store ID {} / Number {} is found'.format(
                 self.store_id, self.store_number))
@@ -3167,7 +3172,7 @@ class CCRUKPIToolBox:
     @kpi_runtime()
     def calculate_top_sku(self, include_to_contract, kpi_set_name):
 
-        top_skus = self.top_sku.get_top_skus_for_store(self.store_id, self.visit_date)
+        top_skus = self.kpi_fetcher.get_top_skus_for_store(self.store_id, self.visit_date)
         if not top_skus['product_fks']:
             return
 
@@ -3198,7 +3203,7 @@ class CCRUKPIToolBox:
                                                                 'distributed_extra': 0},
                                                                ignore_index=True)
 
-                query = self.top_sku.get_custom_scif_query(
+                query = self.get_custom_scif_query(
                     self.session_fk, scene_fk, int(anchor_product_fk), in_assortment, distributed)
                 self.top_sku_queries.append(query)
 
@@ -3664,7 +3669,7 @@ class CCRUKPIToolBox:
             if kpi_set_type in [POS, EQUIPMENT, SPIRITS]:
                 score = score if kpi['weighted_score'] is None else kpi['weighted_score']
                 weight = weight if kpi['weight'] is None else kpi['weight']
-                target = weight*100 if kpi['target'] is None and weight else kpi['target']
+                target = weight*100 if weight and kpi['level'] < 3 else kpi['target']
             else:
                 score = score if kpi['score'] is None else kpi['score']
                 weight = kpi['weight']
@@ -3747,4 +3752,46 @@ class CCRUKPIToolBox:
                 result = 1
 
         return result
+
+    @staticmethod
+    def get_custom_scif_query(session_fk, scene_fk, product_fk, in_assortment, distributed):
+        in_assortment = 1 if in_assortment else 0
+        out_of_stock = 1 if not distributed else 0
+        attributes = pd.DataFrame([(session_fk,
+                                    scene_fk,
+                                    product_fk,
+                                    in_assortment,
+                                    out_of_stock,
+                                    0,
+                                    0,
+                                    0)],
+                                  columns=['session_fk',
+                                           'scene_fk',
+                                           'product_fk',
+                                           'in_assortment_osa',
+                                           'oos_osa',
+                                           'length_mm_custom',
+                                           'mha_in_assortment',
+                                           'mha_oos'])
+        query = insert(attributes.to_dict(), 'pservice.custom_scene_item_facts')
+        return query
+
+    @staticmethod
+    def get_equipment_targets(file_name):
+        """
+        This function receives a KPI set name and return its relevant template as a JSON.
+        """
+        cloud_path = os.path.join(EQUIPMENT_TARGETS_CLOUD_BASE_PATH, file_name)
+        temp_path = os.path.join(os.getcwd(), 'TempFile')
+        with open(temp_path, 'wb') as f:
+            try:
+                amz_conn = StorageFactory.get_connector(EQUIPMENT_TARGETS_BUCKET)
+                amz_conn.download_file(cloud_path, f)
+            except:
+                f.write('{}')
+        with open(temp_path, 'rb') as f:
+            data = json.load(f)
+        os.remove(temp_path)
+        return data
+
 

@@ -6,7 +6,6 @@ import MySQLdb
 from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
 from Trax.Cloud.Services.Connector.Keys import DbUsers
 from Trax.Data.Testing.TestProjects import TestProjectsNames
-from Trax.Utils.Testing.Case import MockingTestCase
 from mock import patch
 
 from Tests.Data.Templates.diageouk.LocalMPA import LocalMPA
@@ -43,7 +42,7 @@ class TestKEngineOutOfTheBox(TestFunctionalCase):
         connector = PSProjectConnector(TestProjectsNames().TEST_PROJECT_1, DbUsers.Docker)
         cursor = connector.db.cursor(MySQLdb.cursors.DictCursor)
         cursor.execute('''
-        SELECT * FROM report.kpi_results
+        SELECT * FROM report.kpi_level_2_results
         ''')
         kpi_results = cursor.fetchall()
         self.assertNotEquals(len(kpi_results), 0)
@@ -62,7 +61,8 @@ class TestKEngineOutOfTheBox(TestFunctionalCase):
            return_value=POSM)
     @patch('KPIUtils.DIAGEO.ToolBox.DIAGEOToolBox.download_template',
            return_value=Position)
-    @seeder.seed(["diageouk_seed"], ProjectsSanityData())
+    @seeder.seed(["mongodb_products_and_brands_seed", "diageouk_seed"], ProjectsSanityData())
+
     def test_diageouk_sanity(self, x, y, json, json2, json3, json4, json5):
         project_name = ProjectsSanityData.project_name
         data_provider = KEngineDataProvider(project_name)
