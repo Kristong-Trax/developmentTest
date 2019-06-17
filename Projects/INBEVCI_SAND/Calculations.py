@@ -14,7 +14,7 @@ class INBEVCISANDCalculations(BaseCalculationsScript):
         INBEVCISANDGenerator(self.data_provider, self.output).main_function()
         self.timer.stop('KPIGenerator.run_project_calculations')
 
-#
+
 # if __name__ == '__main__':
 #     LoggerInitializer.init('inbevci-sand calculations')
 #     Config.init()

@@ -1,3 +1,4 @@
+
 from Trax.Algo.Calculations.Core.Constants import Keys
 from Trax.DB.Mongo.Connector import MongoConnector
 from Trax.Data.Testing.Resources import BaseSeedData, DATA_TYPE, FILES_RELATIVE_PATH, DATABASE_NAME, COLLECTION_NAME, \
@@ -10,12 +11,11 @@ __author__ = 'avrahama'
 
 
 class ProjectsSanityData(BaseSeedData):
-    project_name = TestProjectsNames().TEST_PROJECT_3
-
-    diageotw_seed = {DATA_TYPE: BaseSeedData.MYSQL,
-                     FILES_RELATIVE_PATH: ['Data/diageotw_seed.sql.gz'],
-                     PROJECT_NAME: project_name
-                     }
+    project_name = TestProjectsNames().TEST_PROJECT_1
+    diageoin_seed = {DATA_TYPE: BaseSeedData.MYSQL,
+                        FILES_RELATIVE_PATH: ['Data/Seeds/diageoin_seed.sql.gz'],
+                        PROJECT_NAME: project_name
+                        }
     mongodb_products_and_brands_seed = \
         {DATA_TYPE: BaseSeedData.MONGO,
          DATABASE_NAME: MongoConnector.SMART,

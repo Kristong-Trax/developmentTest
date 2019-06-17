@@ -132,9 +132,9 @@ class CBCDAIRYILToolBox:
         should_enter = True if parent_fk else False
         ignore_weight = not should_enter    # Weights should be ignored only in the set level!
         kpi_score = self.calculate_kpi_result_by_weight(kpi_results, parent_kpi_weight, ignore_weights=ignore_weight)
-        total_weight = round(parent_kpi_weight*100, 2)
+        total_weight = target = round(parent_kpi_weight*100, 2)
         self.common.write_to_db_result(fk=kpi_fk, numerator_id=Consts.CBC_MANU, numerator_result=kpi_score,
-                                       denominator_id=self.store_id, denominator_result=total_weight,
+                                       denominator_id=self.store_id, denominator_result=total_weight, target=target,
                                        identifier_result=kpi_fk, identifier_parent=parent_fk, should_enter=should_enter,
                                        weight=total_weight, result=kpi_score, score=kpi_score)
         return kpi_score

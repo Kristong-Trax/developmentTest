@@ -33,6 +33,7 @@ class TestCBCDAIRYIL(TestFunctionalCase):
         self.data_provider_mock.rds_conn = MagicMock()
         self.project_connector_mock = self.mock_project_connector()
         self.common = self.mock_common()
+        self.old_common = self.mock_object('oldCommon')
         self.output = MagicMock()
         self.rds_conn = MagicMock()
         self.survey = self.mock_survey()
