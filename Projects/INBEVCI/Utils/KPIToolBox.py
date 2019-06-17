@@ -737,34 +737,35 @@ class INBEVCIINBEVCIToolBox:
         if lvl2_result.empty:
             return
         lvl1_result = self.assortment.calculate_lvl1_assortment(lvl2_result)
-        lvl1_result = self.update_targets(lvl1_result)
-        lvl1_result['mr_lvl1_parent_fk'] = lvl1_result['kpi_fk_lvl1'].apply(lambda x: \
-                                                        self.common.get_kpi_fk_by_kpi_type('{} MR'.format(self.get_kpi_type_by_pk(x))))
-        lvl1_result['identifier_parent_lvl1'] = lvl1_result.apply(self.get_identifier_parent_assortment_lvl1, axis=1)
-        for result in lvl1_result.itertuples():
-            denominator_res = result.total
-            numerator_res = result.passes
-            denominator_after_action = None
-            if result.super_group_target:
-                denominator_after_action = round(np.divide(
-                    float(result.super_group_target), float(denominator_res)) * 100, 2)
-            res = round(
-                np.divide(float(numerator_res), float(denominator_res)) * 100, 2)
-            score = 100 * (res >= denominator_after_action) if denominator_after_action else 100 * (res >= 100)
-            self.common.write_to_db_result(fk=result.kpi_fk_lvl1, result=res, score=score,
-                                           numerator_result=numerator_res,
-                                           denominator_result=denominator_res,
-                                           numerator_id=result.assortment_super_group_fk,
-                                           target=denominator_after_action,
-                                           denominator_result_after_actions=denominator_after_action)
-            self.common.write_to_db_result(fk=result.mr_lvl1_parent_fk, result=res, score=score,
-                                           numerator_result=numerator_res,
-                                           denominator_result=denominator_res,
-                                           numerator_id=self.own_manuf_fk, denominator_id=self.store_id,
-                                           target=denominator_after_action,
-                                           denominator_result_after_actions=denominator_after_action,
-                                           identifier_result=result.identifier_parent_lvl1,
-                                           should_enter=True)
+        if not lvl1_result.empty:
+            lvl1_result = self.update_targets(lvl1_result)
+            lvl1_result['mr_lvl1_parent_fk'] = lvl1_result['kpi_fk_lvl1'].apply(lambda x: \
+                                                            self.common.get_kpi_fk_by_kpi_type('{} MR'.format(self.get_kpi_type_by_pk(x))))
+            lvl1_result['identifier_parent_lvl1'] = lvl1_result.apply(self.get_identifier_parent_assortment_lvl1, axis=1)
+            for result in lvl1_result.itertuples():
+                denominator_res = result.total
+                numerator_res = result.passes
+                denominator_after_action = None
+                if result.super_group_target:
+                    denominator_after_action = round(np.divide(
+                        float(result.super_group_target), float(denominator_res)) * 100, 2)
+                res = round(
+                    np.divide(float(numerator_res), float(denominator_res)) * 100, 2)
+                score = 100 * (res >= denominator_after_action) if denominator_after_action else 100 * (res >= 100)
+                self.common.write_to_db_result(fk=result.kpi_fk_lvl1, result=res, score=score,
+                                               numerator_result=numerator_res,
+                                               denominator_result=denominator_res,
+                                               numerator_id=result.assortment_super_group_fk,
+                                               target=denominator_after_action,
+                                               denominator_result_after_actions=denominator_after_action)
+                self.common.write_to_db_result(fk=result.mr_lvl1_parent_fk, result=res, score=score,
+                                               numerator_result=numerator_res,
+                                               denominator_result=denominator_res,
+                                               numerator_id=self.own_manuf_fk, denominator_id=self.store_id,
+                                               target=denominator_after_action,
+                                               denominator_result_after_actions=denominator_after_action,
+                                               identifier_result=result.identifier_parent_lvl1,
+                                               should_enter=True)
 
     def update_targets(self, lvl1_result):
         """

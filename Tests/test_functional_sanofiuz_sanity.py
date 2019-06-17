@@ -8,21 +8,15 @@ from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
 from Trax.Cloud.Services.Connector.Keys import DbUsers
 from Trax.Data.Testing.TestProjects import TestProjectsNames
 
-from Tests.Data.TestData.test_data_penaflorar_sanity import ProjectsSanityData
-from Projects.PENAFLORAR.Calculations import PENAFLORARCalculations
+from Tests.Data.TestData.test_data_sanofiuz_sanity import ProjectsSanityData
+from Projects.SANOFIUZ.Calculations import SANOFIUZCalculations
 from Trax.Apps.Core.Testing.BaseCase import TestFunctionalCase
-from Tests.TestUtils import remove_cache_and_storage
 
-__author__ = 'avrahama'
+
+__author__ = 'idanr'
 
 
 class TestKEngineOutOfTheBox(TestFunctionalCase):
-
-    def set_up(self):
-        super(TestKEngineOutOfTheBox, self).set_up()
-        self.mock_object('save_latest_templates', path='KPIUtils.DIAGEO.ToolBox.DIAGEOToolBox')
-        self.mock_object('save_level2_and_level3', path='Projects.PENAFLORAR.Utils.KPIToolBox.PENAFLORARToolBox')
-        remove_cache_and_storage()
 
     @property
     def import_path(self):
@@ -44,13 +38,13 @@ class TestKEngineOutOfTheBox(TestFunctionalCase):
         self.assertNotEquals(len(kpi_results), 0)
         connector.disconnect_rds()
     
-    @seeder.seed(["mongodb_products_and_brands_seed", "penaflorar_seed"], ProjectsSanityData())
-    def test_penaflorar_sanity(self):
+    @seeder.seed(["sanofiuz_seed"], ProjectsSanityData())
+    def test_sanofiuz_sanity(self):
         project_name = ProjectsSanityData.project_name
         data_provider = KEngineDataProvider(project_name)
-        sessions = ['0949f439-185e-48c1-bfc1-8a1230413ef2']
+        sessions = ['D29DA1F6-C8D1-455B-9E85-54E8968BF43D']
         for session in sessions:
             data_provider.load_session_data(session)
             output = Output()
-            PENAFLORARCalculations(data_provider, output).run_project_calculations()
+            SANOFIUZCalculations(data_provider, output).run_project_calculations()
             self._assert_kpi_results_filled()

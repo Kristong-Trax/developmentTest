@@ -7,10 +7,16 @@ from Trax.Data.Testing.SeedNew import Seeder
 from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
 from Trax.Cloud.Services.Connector.Keys import DbUsers
 from Trax.Data.Testing.TestProjects import TestProjectsNames
+from mock import patch
 
-from Tests.Data.TestData.test_data_penaflorar_sanity import ProjectsSanityData
-from Projects.PENAFLORAR.Calculations import PENAFLORARCalculations
+from Tests.Data.Templates.diageomx.MPA import mpa
+from Tests.Data.Templates.diageomx.NewProducts import products
+from Tests.Data.Templates.diageomx.POSM import posm
+from Tests.Data.Templates.diageomx.RelativePosition import position
+from Tests.Data.TestData.test_data_diageoes_sanity import ProjectsSanityData
+from Projects.DIAGEOES.Calculations import DIAGEOESCalculations
 from Trax.Apps.Core.Testing.BaseCase import TestFunctionalCase
+
 from Tests.TestUtils import remove_cache_and_storage
 
 __author__ = 'avrahama'
@@ -20,8 +26,6 @@ class TestKEngineOutOfTheBox(TestFunctionalCase):
 
     def set_up(self):
         super(TestKEngineOutOfTheBox, self).set_up()
-        self.mock_object('save_latest_templates', path='KPIUtils.DIAGEO.ToolBox.DIAGEOToolBox')
-        self.mock_object('save_level2_and_level3', path='Projects.PENAFLORAR.Utils.KPIToolBox.PENAFLORARToolBox')
         remove_cache_and_storage()
 
     @property
@@ -43,14 +47,26 @@ class TestKEngineOutOfTheBox(TestFunctionalCase):
         kpi_results = cursor.fetchall()
         self.assertNotEquals(len(kpi_results), 0)
         connector.disconnect_rds()
-    
-    @seeder.seed(["mongodb_products_and_brands_seed", "penaflorar_seed"], ProjectsSanityData())
-    def test_penaflorar_sanity(self):
+
+    @patch('KPIUtils.DIAGEO.ToolBox.DIAGEOToolBox.get_latest_directory_date_from_cloud',
+           return_value='2018-05-18')
+    @patch('KPIUtils.DIAGEO.ToolBox.DIAGEOToolBox.save_latest_templates')
+    @patch('KPIUtils.DIAGEO.ToolBox.DIAGEOToolBox.download_template',
+           return_value=mpa)
+    @patch('KPIUtils.DIAGEO.ToolBox.DIAGEOToolBox.download_template',
+           return_value=products)
+    @patch('KPIUtils.DIAGEO.ToolBox.DIAGEOToolBox.download_template',
+           return_value=position)
+    @patch('KPIUtils.DIAGEO.ToolBox.DIAGEOToolBox.download_template',
+           return_value=posm)
+
+    @seeder.seed(["mongodb_products_and_brands_seed", "diageoes_seed"], ProjectsSanityData())
+    def test_diageoes_sanity(self, x, y, json, json2, json3, json4):
         project_name = ProjectsSanityData.project_name
         data_provider = KEngineDataProvider(project_name)
-        sessions = ['0949f439-185e-48c1-bfc1-8a1230413ef2']
+        sessions = ['F9E5B557-84D2-4334-9814-6B972FA950AF']
         for session in sessions:
             data_provider.load_session_data(session)
             output = Output()
-            PENAFLORARCalculations(data_provider, output).run_project_calculations()
+            DIAGEOESCalculations(data_provider, output).run_project_calculations()
             self._assert_kpi_results_filled()
