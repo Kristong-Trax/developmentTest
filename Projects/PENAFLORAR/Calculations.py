@@ -8,7 +8,7 @@ from Projects.PENAFLORAR.KPIGenerator import PENAFLORARDIAGEOARGenerator
 __author__ = 'Yasmin'
 
 
-class PENAFLORARDIAGEOARCalculations(BaseCalculationsScript):
+class PENAFLORARCalculations(BaseCalculationsScript):
     def run_project_calculations(self):
         self.timer.start()
         PENAFLORARDIAGEOARGenerator(self.data_provider, self.output).main_function()
