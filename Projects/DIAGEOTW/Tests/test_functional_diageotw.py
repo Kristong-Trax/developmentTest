@@ -5,6 +5,7 @@ from Trax.Data.Testing.SeedNew import Seeder
 from Projects.DIAGEOTW.Calculations import DIAGEOTWCalculations
 from Projects.DIAGEOTW.Tests.Data.test_data_diageotw import ProjectsSanityData
 from Projects.DIAGEOTW.Utils.KPIToolBox import DIAGEOTWToolBox
+from Tests.TestUtils import remove_cache_and_storage
 
 __author__ = 'yoava'
 
@@ -17,19 +18,24 @@ class TestDiageotw(TestFunctionalCase):
         self.project_name = ProjectsSanityData.project_name
         self.output = Output()
         self.mock_object('save_latest_templates', path='KPIUtils.DIAGEO.ToolBox.DIAGEOToolBox')
-        self.session_uid = 'E9C9D024-5CD2-46F1-A759-2E527207B161'
+        self.session_uid = 'B1F11D51-DC00-4FDB-86E4-B389530C66DB'
+        remove_cache_and_storage()
 
     @property
     def import_path(self):
         return 'Projects.DIAGEOTW.Utils.KPIToolBox'
 
-    @seeder.seed(["diageotw_seed"], ProjectsSanityData())
-    def test_diageotw_sanity(self):
-        data_provider = KEngineDataProvider(self.project_name)
-        data_provider.load_session_data(self.session_uid)
-        DIAGEOTWCalculations(data_provider, self.output).run_project_calculations()
+    @property
+    def import_path(self):
+        return 'Trax.Apps.Services.KEngine.Handlers.SessionHandler'
 
-    @seeder.seed(["diageotw_seed"], ProjectsSanityData())
+    # @seeder.seed(["mongodb_products_and_brands_seed", "diageotw_seed"], ProjectsSanityData())
+    # def test_diageotw_sanity(self):
+    #     data_provider = KEngineDataProvider(self.project_name)
+    #     data_provider.load_session_data(self.session_uid)
+    #     DIAGEOTWCalculations(data_provider, self.output).run_project_calculations()
+
+    @seeder.seed(["mongodb_products_and_brands_seed", "diageotw_seed"], ProjectsSanityData())
     def test_get_kpi_static_data_return_type(self):
         """
         test the return value of "get_kpi_static_data"
@@ -42,7 +48,7 @@ class TestDiageotw(TestFunctionalCase):
         expected_result = pd.DataFrame
         self.assertIsInstance(result, expected_result)
 
-    @seeder.seed(["diageotw_seed"], ProjectsSanityData())
+    @seeder.seed(["mongodb_products_and_brands_seed", "diageotw_seed"], ProjectsSanityData())
     def test_get_match_display_return_type(self):
         """
         test the return value of "get_kpi_static_data"
@@ -56,7 +62,7 @@ class TestDiageotw(TestFunctionalCase):
         self.assertIsInstance(result, expected_result)
 
 # _get_direction_for_relative_position(self, value)
-    @seeder.seed(["diageotw_seed"], ProjectsSanityData())
+    @seeder.seed(["mongodb_products_and_brands_seed", "diageotw_seed"], ProjectsSanityData())
     def test_get_direction_for_relative_position_input(self):
         """
         compere different types of inputs with expected result

@@ -321,11 +321,12 @@ class INBEVCIINBEVCIToolBox:
                                    key=sos_per_manufacturer_dict.get) == Const.ABINBEV_MAN_FK) * 100
             numerator_res = sos_per_manufacturer_dict[
                 Const.ABINBEV_MAN_FK] if Const.ABINBEV_MAN_FK in sos_per_manufacturer_dict else 0
+            result = numerator_res / float(total_res) * 100 if total_res else 0
             # Saving to DB
             self.common.write_to_db_result(fk=sos_set_fk, numerator_id=Const.ABINBEV_MAN_FK,
                                            numerator_result=numerator_res, denominator_id=location_type_fk,
                                            denominator_result=total_res, context_id=self.store_id,
-                                           identifier_result=(sos_set_fk, location_type_fk), result=kpi_total_score,
+                                           identifier_result=(sos_set_fk, location_type_fk), result=result,
                                            score=kpi_total_score, identifier_parent=identifier_parent, should_enter=True)
 
     def inbev_linear_sos_majority_by_location_type_and_price_group(self, relevant_scenes, loc_type_fk, parent_set_fk, price_group):
