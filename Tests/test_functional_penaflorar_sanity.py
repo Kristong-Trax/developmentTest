@@ -21,7 +21,7 @@ class TestKEngineOutOfTheBox(TestFunctionalCase):
     def set_up(self):
         super(TestKEngineOutOfTheBox, self).set_up()
         self.mock_object('save_latest_templates', path='KPIUtils.DIAGEO.ToolBox.DIAGEOToolBox')
-        self.mock_object('save_level2_and_level3', path='Projects.PENAFLORAR.Utils.KPIToolBox.PENAFLORARDIAGEOARToolBox')
+        self.mock_object('save_level2_and_level3', path='Projects.PENAFLORAR.Utils.KPIToolBox.PENAFLORARToolBox')
         remove_cache_and_storage()
 
     @property
