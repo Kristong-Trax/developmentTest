@@ -4,6 +4,7 @@ from Trax.Cloud.Services.Connector.Keys import DbUsers
 from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 import pandas as pd
 import os
+import numpy as np
 from KPIUtils_v2.Calculations.BlockCalculations import Block
 from KPIUtils.GlobalProjects.GSK.KPIGenerator import GSKGenerator
 from KPIUtils_v2.DB.CommonV2 import Common
@@ -31,6 +32,16 @@ class GSKJPToolBox:
     LEVEL1 = 1
     LEVEL2 = 2
     LEVEL3 = 3
+    PLN_BLOCK = 'GSK_PLN_BLOCK_SCORE'
+    POSITION_SCORE = 'GSK_PLN_POSITION_SCORE'
+    PRODUCT_PRESENCE = 'GSK_PLN_ECAPS_PRODUCT_PRESENCE'
+    PLN_MSL = 'GSK_PLN_MSL_SCORE'
+    PLN_LSOS = 'GSK_PLN_LSOS_SCORE'
+    COMPLIANCE_ALL_BRANDS = 'GSK_PLN_COMPLIANCE_ALL_BRANDS'
+    ECAP_SUMMARY = 'GSK_PLN_ECAPS_SUMMARY'
+    COMPLIANCE_SUMMARY = 'GSK_PLN_COMPLIANCE_SUMMARY'
+    GLOBAL_LSOS_BRAND_BY_STORE = 'GSK_LSOS_All_Brand_By_Category'
+    PLN_ASSORTMENT_KPI = 'PLN_ECAPS'
 
     def __init__(self, data_provider, output):
         self.output = output
@@ -57,20 +68,18 @@ class GSKJPToolBox:
         self.blocking_generator = Block(self.data_provider)
         self.assortment = self.gsk_generator.get_assortment_data_provider()
         self.store_info = self.data_provider['store_info']
+        self.store_fk = self.data_provider['store_fk']
         self.ps_data_provider = PsDataProvider(self.data_provider, self.output)
         self.targets = self.ps_data_provider.get_kpi_external_targets()
+        self.linear_sos_dict = None
 
     def main_calculation(self, *args, **kwargs):
         """
         This function calculates the KPI results.
         """
 
-        self.get_store_target()# choosing the policy
-        if self.targets.empty:
-            Log.warning('There is no target policy matching this store ')
-        else:
-            self.brand_blocking()
-        assortment_store_dict = self.gsk_generator.availability_store_function()
+
+        # assortment_store_dict = self.gsk_generator.availability_store_function()
         # self.common.save_json_to_new_tables(assortment_store_dict)
         #
         # assortment_category_dict = self.gsk_generator.availability_category_function()
@@ -82,8 +91,8 @@ class GSKJPToolBox:
         # facings_sos_dict = self.gsk_generator.gsk_global_facings_sos_whole_store_function()
         # self.common.save_json_to_new_tables(facings_sos_dict)
         #
-        # linear_sos_dict = self.gsk_generator.gsk_global_linear_sos_whole_store_function()
-        # self.common.save_json_to_new_tables(linear_sos_dict)
+        self.linear_sos_dict = self.gsk_generator.gsk_global_linear_sos_whole_store_function()
+        self.common.save_json_to_new_tables(self.linear_sos_dict)
         #
         # linear_sos_dict = self.gsk_generator.gsk_global_linear_sos_by_sub_category_function()
         # self.common.save_json_to_new_tables(linear_sos_dict)
@@ -97,70 +106,89 @@ class GSKJPToolBox:
         # linear_sos_dict = self.gsk_generator.gsk_global_linear_sos_by_category_function()
         # self.common.save_json_to_new_tables(linear_sos_dict)
         #
+        self.get_store_target()# choosing the policy
+        if self.targets.empty:
+            Log.warning('There is no target policy matching this store ')
+        else:
+            self.brand_blocking()
+
         # self.common.commit_results_data()
         return
 
-    def position_shelf(self):
+    def position_shelf(self, brand_fk,policy):
 
-        brand_fk = 2
-        policy = self.targets[self.targets['brand_fk'] == brand_fk]
-        if policy.empty:
-            Log.warning('There is no target policy matching brand')  # adding branf name
-            return
         shelf_from_bottom = policy['shelf']
         threshold = policy['position_target']
-        target = 0.25
         df = pd.merge(self.match_product_in_scene, self.all_products, on="product_fk")
         df = df[df['stacking_layer'] == 1]
         brand_df = df[df['brand_fk'] == brand_fk]
         shelf_df = brand_df[brand_df['shelf_number_from_bottom'].isin(shelf_from_bottom)]
-        result = shelf_df.shape[0] / brand_df.shape[0]
-        score = target if result >= threshold else 0
+        numerator = shelf_df.shape[0]
+        denominator = shelf_df.shape[0]
+        result = numerator / denominator
+        score = 100 if result >= threshold else 0
+        return result, score, numerator, denominator
 
-        # results_df.append({'fk': kpi_product_pk, 'numerator_id': prod, 'denominator_id': denominator_fk,
-        #                'denominator_result': result, 'numerator_result': 1, 'result':
-        #                    result, 'score': score, 'target': kpi_target, 'identifier_parent': identifier_parent,
-        #                'should_enter': True})
+    def lsos_score(self, brand, policy):
+        result = 0
+        for i in range(0, len(self.linear_sos_dict)):
+            if self.linear_sos_dict[i]['fk'] == self.common.get_kpi_fk_by_kpi_type(self.GLOBAL_LSOS_BRAND_BY_STORE) & \
+                    self.linear_sos_dict[i]['numerator_id'] == brand:
+                    result = self.linear_sos_dict[i]['numerator_result']
+                    break
+        target = policy['brand_target']
+        score = result/target
+
+        return result, score, target
 
 
 
-    def brand_blocking(self):
 
-        results_df = []
-        df_block = self.scif
-        brands = df_block['brand_fk'].dropna().unique()
-        template_name = 'Oral Main Shelf'# figure out which template name should I use
+
+
+
+
+
+
+    def brand_blocking(self,brand,policy):
+
+        template_name = 'Oral Main Shelf' # figure out which template name should I use
         stacking_param = True# false
-        target = 1
-        kpi_target = 0.25
         product_filters = {'product_type': ['POS', 'Empty', 'Irrelevant']} # from Data file
-        for brand in brands:
-            policy = self.targets[self.targets['brand_fk'] == brand]
-            if policy.empty:
-                Log.warning('There is no target policy matching brand')# adding branf name
-                continue
-            result = self.blocking_generator.network_x_block_together(location={'template_name': template_name},
-                                population={'brand_fk': [brand]},
-                                additional={'minimum_block_ratio': 1,
-                                            'allowed_products_filters': product_filters,
-                                            'calculate_all_scenes': False,
-                                            'include_stacking': stacking_param,
-                                            'check_vertical_horizontal': True,
-                                            'minimum_facing_for_block': policy['block_target']})
-            if result[result['is_block'] == True].empty:
-                result = 0
-            score = result * kpi_target
+        target = policy['block_target'] #adding test check if empty
+        if policy.empty:
+            Log.warning('There is no target policy matching brand')# adding brand name
+            return
+        result = self.blocking_generator.network_x_block_together(location={'template_name': template_name},
+                            population={'brand_fk': [brand]},
+                            additional={'minimum_block_ratio': 1,
+                                        'allowed_products_filters': product_filters,
+                                        'calculate_all_scenes': False,
+                                        'include_stacking': stacking_param,
+                                        'check_vertical_horizontal': True,
+                                        'minimum_facing_for_block': target})
+        if result[result['is_block'] is True].empty:
+            result = 0
+        return result
 
-            # results_df.append({'fk': kpi_product_pk, 'numerator_id': prod, 'denominator_id': denominator_fk,
-            #                        'denominator_result': result, 'numerator_result': 1, 'result':
-            #                            result, 'score': score, 'target': kpi_target, 'identifier_parent': identifier_parent,
-            #                        'should_enter': True})
-
-    def PLN_MSL_score(self):
+    def PLN_MSL_score(self, brand):
         if self.assortment is None:
             return
         lvl3_assort = self.assortment.calculate_lvl3_assortment()
-        lvl3_assort ### merge lvl3 
+        kpi_assortment_fk = self.common.get_kpi_fk_by_kpi_type(self.PLN_ASSORTMENT_KPI)
+        kpi_results = lvl3_assort[lvl3_assort['kpi_fk_lvl2'] == kpi_assortment_fk] # using the brand assortment
+        kpi_results = pd.merge(kpi_results, self.all_products[
+                 ['product_fk', 'product_ean_code', 'substitution_product_fk', 'sub_category_fk', 'category_fk']], how='left', on='product_fk')
+
+        kpi_results = kpi_results[kpi_results['substitution_product_fk'].isnull()]  # remove substitution product
+        brand_results = kpi_results[kpi_results['brand_fk'] == brand] # only assortment of desired brand
+        lvl2 = self.assortment.calculate_lvl2_assortment(brand_results)
+        result = np.divide(float(lvl2[0].passes), float(lvl2[0].total)) * 100
+        if lvl2.empty:
+            return None,None,None
+        return lvl2[0].passes,lvl2[0].total,result
+
+
 
     def get_store_target(self):
 
@@ -170,7 +198,57 @@ class GSKJPToolBox:
                 self.targets = self.targets[(self.targets[param] == self.store_info[param][0].encode('utf-8')) |
                                             (self.targets[param] == '')]
 
+    def gsk_all_brands(self):
+        results_df = []
+        kpi_fk = self.common.get_kpi_fk_by_kpi_type(self.COMPLIANCE_ALL_BRANDS)
+        df = self.scif
+        brands = df['brand_fk'].dropna().unique()
+        kpi_block_fk = self.common.get_kpi_fk_by_kpi_type(self.PLN_BLOCK)
+        kpi_position_fk = self.common.get_kpi_fk_by_kpi_type(self.POSITION_SCORE)
+        kpi_lsos_fk = self.common.get_kpi_fk_by_kpi_type(self.PLN_LSOS)
+        block_target = 0.25
+        posit_target = 0.25
+        lsos_target = 0.25
+        msl_target = 0.25
 
+        for brand in brands:
+
+            policy = self.targets[self.targets['brand_fk'] == brand]
+            if policy.empty:
+                Log.warning('There is no target policy matching brand')  # adding brand name
+                continue
+            identifier_parent = self.common.get_dictionary(brand_fk=brand, kpi_fk=kpi_fk)
+            msl_numerator, msl_denominator,msl_result = self.PLN_MSL_score(brand)
+            msl_score = msl_result * msl_target
+            results_df.append({'fk': kpi_lsos_fk, 'numerator_id': brand, 'denominator_id': self.store_fk,
+                               'denominator_result': msl_denominator, 'numerator_result': msl_numerator, 'result':
+                                   msl_result, 'score': msl_score, 'target': msl_target,
+                               'identifier_parent': identifier_parent,
+                               'should_enter': True})
+
+            lsos_numerator, lsos_result, lsos_denominator = self.lsos_score(brand, policy)
+            lsos_score = lsos_result * lsos_target
+            results_df.append({'fk': kpi_lsos_fk, 'numerator_id': brand, 'denominator_id': self.store_fk,
+                               'denominator_result': lsos_denominator, 'numerator_result': lsos_numerator, 'result':
+                                   lsos_result, 'score': lsos_score, 'target': lsos_target,
+                               'identifier_parent': identifier_parent,
+                               'should_enter': True})
+            #block_score
+            block_result = self.brand_blocking(brand, policy)
+            block_score = block_result * block_target
+
+            results_df.append({'fk': kpi_block_fk, 'numerator_id': brand, 'denominator_id': self.store_fk,
+                               'denominator_result': block_result, 'numerator_result': 1, 'result':
+                                block_result, 'score': block_score, 'target': block_target, 'identifier_parent': identifier_parent,
+                               'should_enter': True})
+
+            position_result, position_score, position_num, position_den = self.position_shelf(brand, policy)
+            position_score = position_score *  posit_target
+            results_df.append({'fk': kpi_position_fk, 'numerator_id': brand, 'denominator_id': self.store_fk,
+                           'denominator_result': position_den, 'numerator_result': position_num, 'result':
+                            position_result, 'score': position_score, 'target': posit_target, 'identifier_parent':
+                            identifier_parent,
+                           'should_enter': True})
 
 
 
