@@ -239,7 +239,6 @@ class PngcnSceneKpis(object):
         for i, row in results_sequence_df.iterrows():
             self.common.write_to_db_result(**row)
 
-
     def get_eye_level_shelves(self, df):
         if df.empty:
             return df
@@ -928,8 +927,8 @@ class PngcnSceneKpis(object):
         # get size and item id
         DF_products_size = self._get_display_size_of_product_in_scene()
 
-        if self.scif.empty:
-            return pd.DataFrame()
+        if self.scif.empty or DF_products_size.empty:
+            return
 
         filter_scif = self.scif[[u'scene_id', u'item_id', u'manufacturer_fk', u'rlv_sos_sc', u'status']]
         df_result = pd.merge(filter_scif, DF_products_size, on=['item_id', 'scene_id'], how='left')
