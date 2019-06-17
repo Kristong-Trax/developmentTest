@@ -102,7 +102,7 @@ class ToolBox:
             return
 
         print(kpi_name)
-        if kpi_name not in ('What % of PFC facings are Blocked Horizontally?'):
+        if kpi_name not in ('Are PFC shelved between Canned and Squeezers?'):
         # if kpi_type not in (Const.BLOCKING, Const.BLOCKING_PERCENT, Const.SOS, Const.ANCHOR, Const.MULTI_BLOCK):
             return
 
@@ -250,7 +250,7 @@ class ToolBox:
         # this attribute should be pulled from the template once the template is updated
         import sklearn.cluster as cluster
 
-        Segment = namedtuple('Segment', 'seg x_coord', 'prod_list')
+        Segment = namedtuple('Segment', 'seg x_coord prod_list')
         segments = [i.strip() for i in self.splitter(kpi_line['Sequence'])]
         for scene in relevant_scif.scene_fk.unique():
             seg_list = []
@@ -258,8 +258,11 @@ class ToolBox:
             for seg in segments:
                 seg_filters = self.get_kpi_line_filters(kpi_line, seg)
                 prods = list(self.filter_df(self.mpis, seg_filters)['product_fk'])
-                seg_prods.append(prods)
-                seg_list.append(Segment(seg=seg, prod_list=prods))
+                seg_prods += prods
+                seg_list.append(Segment(seg=seg, prod_list=prods, x_coord=None))
+
+            score, orientation, mpis_dict, _, results = self.base_block(kpi_name, kpi_line, relevant_scif, general_filters,
+                                                                  filters={'product_fk': seg_prods}, check_orient=0)
 
             items, mpis, all_graph, filters = self.base_adj_graph(scene, kpi_line, general_filters,
                                                                   use_allowed=use_allowed)
