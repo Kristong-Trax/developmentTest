@@ -340,7 +340,7 @@ class LIBERTYToolBox:
 
         manufacturer = self.does_exist(kpi_line, Const.MANUFACTURER)
         if manufacturer:
-            filtered_scif = relevant_scif[relevant_scif['manufacturer_name'].isin(manufacturer)]
+            filtered_scif = filtered_scif[filtered_scif['manufacturer_name'].isin(manufacturer)]
 
         if self.does_exist(kpi_line, Const.MARKET_SHARE_TARGET):
             market_share_target = self.get_market_share_target(ssd_still=ssd_still)
