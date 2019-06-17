@@ -310,6 +310,11 @@ class ALTRIAUSToolBox:
                              (self.mpis['rect_x'] < (longest_shelf['rect_x'].max() * 1.05)) &
                              (self.mpis['rect_x'] > (longest_shelf['rect_x'].min() * 0.95))]
         relevant_pos = self.adp.get_products_contained_in_displays(pos_mpis)
+
+        if relevant_pos.empty:
+            Log.error('No polygon mask was generated - cannot compute KPIs for {} category'.format(category))
+            return
+
         relevant_pos = relevant_pos[['product_fk', 'product_name', 'left_bound', 'right_bound', 'center_x', 'center_y']]
         relevant_pos = relevant_pos.reindex(columns=relevant_pos.columns.tolist() + ['type', 'width', 'position'])
         relevant_pos['width'] = relevant_pos.apply(lambda row: self.get_length_of_pos(row, longest_shelf, category), axis=1)

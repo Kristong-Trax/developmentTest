@@ -137,6 +137,11 @@ class AltriaDataProvider:
                 other_point_domain = opposite_points[(opposite_points['x'] < anchor_point.x) &
                                                      (opposite_points['y'] < anchor_point.y) &
                                                      (opposite_points['y'] > anchor_point.y - y_range)]
+
+            if other_point_domain.empty:
+                # this shouldn't happen in a perfect world
+                continue
+
             # make a tuple for the static method that gets the closest point
             point = (anchor_point.x, anchor_point.y)
             # get the closet point
@@ -150,6 +155,11 @@ class AltriaDataProvider:
                                                          anchor_point.y, opposite_point_y,
                                                          np.nan, np.nan]
             opposite_points.drop(opposite_point.index, inplace=True)
+
+        # if we used the bottom right points as the anchors, we need to invert the column names
+        if anchor_points.equals(bottom_right_points):
+            polygon_mask_df.rename(columns={'left_bound': 'right_bound', 'right_bound': 'left_bound',
+                                            'top_bound': 'bottom_bound', 'bottom_bound': 'top_bound'}, inplace=True)
 
         # we need to handle orphaned records now
         if len(opposite_points) > 0 and len(opposite_points) % 2 == 0:
@@ -196,7 +206,8 @@ class AltriaDataProvider:
         try:
             closest_point = other_points[np.argmin(distances)]
         except ValueError:
-            return 0
+            Log.error('Unable to find a matching opposite point for supplied anchor!')
+            return other_points_df
         return other_points_df[(other_points_df['x'] == closest_point[0]) & (other_points_df['y'] == closest_point[1])]
 
     # functions used for debugging
