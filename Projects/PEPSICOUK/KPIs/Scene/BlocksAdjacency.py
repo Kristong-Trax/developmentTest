@@ -59,3 +59,9 @@ class BlocksAdjacencyKpi(UnifiedCalculationsScript):
         for i, group in enumerate(valid_groups):
             [result_set.add(frozenset([group, valid_groups[j]])) for j in range(i+1, len(valid_groups))]
         return list(result_set)
+
+    def construct_block_results(self):
+        for i, result in self.dependencies_data.iterrows():
+            block = self.util.custom_entities[self.util.custom_entities['pk'] == result['numerator_id']]['name'].values[0]
+            score = 1 if result['result'] == 4 else 0
+            self.util.block_results.append({'Group Name': block, 'Score': score})
