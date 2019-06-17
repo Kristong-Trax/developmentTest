@@ -58,7 +58,8 @@ class Results(object):
             if atomic['atomic'] not in [
                                     # 'Is the Nutro Cat Main Meal section >4ft?',
                                     # 'Is the Nutro Cat Main Meal section <=4ft?',
-                'Is Nutro Wet Dog food blocked?'
+                                    # 'Is Nutro Wet Dog food blocked?',
+                                    'Does the Dental segment lead the Dog Treats category?'
                                     ]:
                 continue
             print('~~~~~~~~~~~~~~~~~~~~****************~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~')
@@ -224,28 +225,33 @@ class Results(object):
         return score
 
     def _get_prods_from_filters(self, calculation, atomic):
-        if 'block' in atomic['atomic']:
-            filters = atomic['filters']
-        else:
-            filters = calculation._split_filters(atomic['filters'])
-        allowed = atomic['allowed']
-        if atomic['atomic'] == 'Are Meaty Cat Treats blocked?':
-            allowed_filter = None
-        if atomic['atomic'] == 'Is Nutro Dry Dog food blocked?' or \
-                (atomic['atomic'] == 'Nutro Dry Dog and Wet Dog are BOTH BLOCKED' \
-                 and filters['Sub-section'] == ['DOG MAIN MEAL DRY']):
-            allowed_filter = calculation._get_allowed_products_without_other(allowed, filters)
-        else:
-            allowed_filter = calculation._get_allowed_products(allowed, filters)
-        rel_items = self.mpis[self.mpis['product_fk'].isin(calculation._get_allowed_filters(filters))]['probe_match_fk']
-        allowed_items = self.mpis[self.mpis['product_fk'].isin(allowed_filter['product_fk'])]['probe_match_fk']
-        # allowed_items = []
+        try:
+            if 'block' in atomic['atomic']:
+                filters = atomic['filters']
+            else:
+                filters = calculation._split_filters(atomic['filters'])
+            allowed = atomic['allowed']
+            if atomic['atomic'] == 'Are Meaty Cat Treats blocked?':
+                allowed_filter = None
+            if atomic['atomic'] == 'Is Nutro Dry Dog food blocked?' or \
+                    (atomic['atomic'] == 'Nutro Dry Dog and Wet Dog are BOTH BLOCKED' \
+                     and filters['Sub-section'] == ['DOG MAIN MEAL DRY']):
+                allowed_filter = calculation._get_allowed_products_without_other(allowed, filters)
+            else:
+                allowed_filter = calculation._get_allowed_products(allowed, filters)
+            mpis = self.mpis[self.mpis['stacking_layer'] == 1]
+            rel_items = mpis[mpis['product_fk'].isin(calculation._get_filtered_products(filters)['product_fk'])]['probe_match_fk']
+            allowed_items = mpis[mpis['product_fk'].isin(allowed_filter['product_fk'])]['probe_match_fk']
+            # allowed_items = []
 
-        for i, group in enumerate([rel_items, allowed_items]):
-            mpip_sr_fk = self.get_mpip_svr_fk(atomic['atomic'], i)
-            df = pd.DataFrame(zip(group, [mpip_sr_fk]*len(group)), columns=MPIP_SVR_COLS)
-            self.common.match_product_in_probe_state_values = pd.concat([self.common.match_product_in_probe_state_values
-                                                                         , df])
+            for i, group in enumerate([rel_items, allowed_items]):
+                mpip_sr_fk = self.get_mpip_svr_fk(atomic['atomic'], i)
+                df = pd.DataFrame(zip(group, [mpip_sr_fk]*len(group)), columns=MPIP_SVR_COLS)
+                self.common.match_product_in_probe_state_values = pd.concat([self.common.match_product_in_probe_state_values
+                                                                             , df])
+        except Exception as e:
+            print('{} could not generate filters'.format(atomic['atomic']))
+            pass
 
     def get_mpip_svr_fk(self, kpi, allowed):
         if allowed:
