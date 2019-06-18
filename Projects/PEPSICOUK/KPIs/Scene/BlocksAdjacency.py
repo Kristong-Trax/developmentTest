@@ -1,6 +1,7 @@
 from Projects.PEPSICOUK.KPIs.Util import PepsicoUtil
 from Trax.Algo.Calculations.Core.KPI.UnifiedKPICalculation import UnifiedCalculationsScript
 from KPIUtils_v2.Calculations.AdjacencyCalculations import Adjancency
+import pandas as pd
 
 #TODO: MAKE SURE THAT THE DATA PROVIDER HAS ONLY RESPECTIVE SCENE DATA FOR ONE SCENE (NOT SESSION!)
 
@@ -18,6 +19,7 @@ class BlocksAdjacencyKpi(UnifiedCalculationsScript):
 
     def calculate(self):
         if not self.util.filtered_matches.empty:
+            # self.construct_block_results()
             self.calculate_adjacency()
 
     def calculate_adjacency(self):
@@ -61,7 +63,10 @@ class BlocksAdjacencyKpi(UnifiedCalculationsScript):
         return list(result_set)
 
     def construct_block_results(self):
+        block_results = []
         for i, result in self.dependencies_data.iterrows():
             block = self.util.custom_entities[self.util.custom_entities['pk'] == result['numerator_id']]['name'].values[0]
             score = 1 if result['result'] == 4 else 0
-            self.util.block_results.append({'Group Name': block, 'Score': score})
+            block_results.append({'Group Name': block, 'Score': score})
+        block_res_df = pd.DataFrame.from_records(block_results)
+        self.util.block_results = self.util.block_results.append(block_res_df)
