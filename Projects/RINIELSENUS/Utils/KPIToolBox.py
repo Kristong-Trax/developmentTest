@@ -35,7 +35,7 @@ class MarsUsDogMainMealWet(object):
         self._template = ParseMarsUsTemplates()
         self._writer = self._get_writer()
         self.store_id = self._data_provider[Data.STORE_FK]
-        self._data_provider.channel = self.get_store_att15(self.store_id)
+        self._data_provider.channel = self.get_store_att17(self.store_id)
         self._data_provider.retailer = self.get_store_retailer(self.store_id)
         self._data_provider.probe_groups = self.get_probe_group(self._data_provider.session_uid)
         self.store_type = data_provider.store_type
@@ -43,8 +43,8 @@ class MarsUsDogMainMealWet(object):
         self._data_provider.trace_container = pd.DataFrame(columns=['kpi_display_text', 'scene_id',
                                                      'products&brands', 'allowed_products', 'kpi_pass'])
 
-    def get_store_att15(self, store_fk):
-        query = MarsUsQueries.get_store_attribute(6, store_fk)
+    def get_store_att17(self, store_fk):
+        query = MarsUsQueries.get_store_attribute(17, store_fk)
         att15 = pd.read_sql_query(query, self.rds_conn.db)
         return att15.values[0][0]
 
@@ -85,12 +85,12 @@ class MarsUsDogMainMealWet(object):
         """
         This function calculates the KPI results.
         """
-        # if not self.is_relevant_retailer_channel():
-        #     Log.warning('retailer: {} and channel: {} are are not relevant'.format(self._get_retailer_name,
-        #                                                                            self._get_store_channel))
-        #     self._writer.commit_results_data()
-        #     return
-        #
+        if not self.is_relevant_retailer_channel():
+            Log.warning('retailer: {} and channel: {} are are not relevant'.format(self._get_retailer_name,
+                                                                                   self._get_store_channel))
+            self._writer.commit_results_data()
+            return
+
         # if self._is_pet_food_category_excluded():
         #     Log.warning('pet food category does not exists or it was excluded by decision unit')
         #     self._writer.commit_results_data()

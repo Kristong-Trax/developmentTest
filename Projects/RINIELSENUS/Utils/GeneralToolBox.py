@@ -5,7 +5,7 @@ import pandas as pd
 from collections import defaultdict
 
 from Projects.RINIELSENUS.Utils.PositionGraph import MarsUsPositionGraphs
-from Projects.RINIELSENUS.Utils.Const import ALLOWED
+from Projects.RINIELSENUS.Utils.Const import ALLOWED_TYPES
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Algo.Calculations.Core.Shortcuts import BaseCalculationsGroup
 from KPIUtils_v2.Calculations.BlockCalculations_v2 import Block as Block
@@ -780,7 +780,7 @@ class MarsUsGENERALToolBox:
         ratio = num / float(den) if num else 0
         return ratio >= minimum_block_ratio
 
-    def calculate_block_together(self, allowed_products_filters=ALLOWED, include_empty=EXCLUDE_EMPTY,
+    def calculate_block_together(self, allowed_products_filters=ALLOWED_TYPES, include_empty=EXCLUDE_EMPTY,
                                  minimum_block_ratio=1, block_of_blocks=False,
                                  block_products1=None, block_products2=None, vertical=False, biggest_block=False,
                                  n_cluster=None, **filters):
@@ -793,7 +793,7 @@ class MarsUsGENERALToolBox:
             return False
         scene_filter = {'scene_fk': relevant_scenes}
         sub_allowed = {key.split(';')[-1]: filters.pop(key) for key in dict(filters) if 'ALLOWED;' in key}
-        print('~~~~~~~~~~~~~~~~~~~~{}~~~~~~~~~~~~~~~'.format(scene_filter))
+        # print('~~~~~~~~~~~~~~~~~~~~{}~~~~~~~~~~~~~~~'.format(scene_filter))
         mpis_filter = {'scene_fk': relevant_scenes}
         mpis_filter.update(filters)
         mpis = self.match_product_in_scene.copy()
@@ -816,12 +816,12 @@ class MarsUsGENERALToolBox:
         if not clusters.empty:
             clusters = self.parse_net_x_block(clusters, mpis)
             # Debugging bits
-            for cluster in clusters:
-                print('\n\n')
-                print('cluster ratio: {}'.format(cluster['cluster_ratio']))
-                for j, i in cluster['mpis'].sort_values(['bay_number', 'shelf_number', 'facing_sequence_number']).iterrows():
-                    print('bay:', i['bay_number'], 'shelf:', i['shelf_number'], 'face_#:', i['facing_sequence_number'],
-                          i['Sub-section'], i['Customer Brand'], i['Sub Brand'], i['Segment'], i['product_name'])
+            # for cluster in clusters:
+                # print('\n\n')
+                # print('cluster ratio: {}'.format(cluster['cluster_ratio']))
+                # for j, i in cluster['mpis'].sort_values(['bay_number', 'shelf_number', 'facing_sequence_number']).iterrows():
+                #     print('bay:', i['bay_number'], 'shelf:', i['shelf_number'], 'face_#:', i['facing_sequence_number'],
+                #           i['Sub-section'], i['Customer Brand'], i['Sub Brand'], i['Segment'], i['product_name'])
 
             # kinda weirded out that n_cluster is an arbitrary number, but behavior is binary.....
             if n_cluster is not None:
