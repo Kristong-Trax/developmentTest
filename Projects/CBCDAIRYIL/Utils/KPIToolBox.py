@@ -201,7 +201,7 @@ class CBCDAIRYILToolBox:
                                            should_enter=True, identifier_parent=kpi_fk,
                                            result=atomic_score, score=atomic_score * atomic_weight)
             self.old_common.old_write_to_db_result(fk=old_atomic_fk, level=3,
-                                                    score=atomic_score * atomic_weight, result=str(atomic_score))
+                                                    result=str(format(atomic_score * atomic_weight, '.2f')), score=atomic_score)
         return total_scores
 
     def get_kpi_fk_by_kpi_name(self, kpi_name, kpi_level):
