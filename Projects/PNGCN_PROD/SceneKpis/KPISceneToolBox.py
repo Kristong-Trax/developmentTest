@@ -12,6 +12,7 @@ import pandas as pd
 from KPIUtils_v2.Calculations.SOSCalculations import SOS
 import KPIUtils_v2.Utils.Parsers.ParseInputKPI as Parser
 from KPIUtils_v2.GlobalDataProvider.PsDataProvider import PsDataProvider
+from KPIUtils_v2.Calculations.BlockCalculations import Block as block
 
 __Author__ = 'Dudi_s'
 
@@ -131,6 +132,7 @@ class PngcnSceneKpis(object):
         self.parser = Parser
 
     def process_scene(self):
+        self.calculate_variant_block()
         self.save_nlsos_to_custom_scif()
         self.calculate_eye_level_kpi()
         Log.debug(self.log_prefix + ' Retrieving data')
@@ -156,6 +158,17 @@ class PngcnSceneKpis(object):
                 Log.debug(self.log_prefix + ' Committing share of display calculations')
                 self.project_connector.db.commit()
             Log.info(self.log_prefix + ' Finished calculation')
+
+    def calculate_variant_block(self):
+        block_groups = [{'brand_name': "Gillette", 'sub_brand_name': "Fusion/锋隐"}]
+        for block_filters in block_groups:
+            result = block(self.data_provider).network_x_block_together(
+                population=block_filters,
+                additional={'allowed_products_filters': {'product_type': ['POS']},
+                            'calculate_all_scenes': False,
+                            'include_stacking': True,
+                            'check_vertical_horizontal': False})
+        pass
 
     def calculate_eye_level_kpi(self):
         if self.matches_from_data_provider.empty:
