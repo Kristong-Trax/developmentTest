@@ -134,9 +134,6 @@ class PngcnSceneKpis(object):
         self.save_nlsos_to_custom_scif()
         self.calculate_eye_level_kpi()
         Log.debug(self.log_prefix + ' Retrieving data')
-        self.calculate_display_size()
-        self.calculate_linear_length()
-        self.calculate_presize_linear_length()
         self.match_display_in_scene = self._get_match_display_in_scene_data()
         # if there are no display tags there's no need to retrieve the rest of the data.
         if self.match_display_in_scene.empty:
@@ -156,6 +153,9 @@ class PngcnSceneKpis(object):
                 Log.debug(self.log_prefix + ' Committing share of display calculations')
                 self.project_connector.db.commit()
             Log.info(self.log_prefix + ' Finished calculation')
+        self.calculate_display_size()
+        self.calculate_linear_length()
+        self.calculate_presize_linear_length()
 
     def calculate_eye_level_kpi(self):
         if self.matches_from_data_provider.empty:
