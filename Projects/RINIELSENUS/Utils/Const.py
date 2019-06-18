@@ -97,7 +97,9 @@ IRRELEVANT_FIELDS = ['Score Card Name', 'KPI name', 'Tested Group Type', 'Target
 NOT_SEPARATE_FIELDS = ['Question Text;A']
 
 DENOMINATOR_FILTER_FIELDS = [TEMPLATE_NAME, SUB_SECTION, SECTION, SEGMENT_SPT]
+ALLOWED_TYPES = {'product_type': ['Empty', 'Other']}
 
+MPIP_SVR_COLS = ['match_product_in_probe_fk', 'match_product_in_probe_state_reporting_fk']
 
 FILTER_NAMING_DICT = {
     'Manufacturer': MANUFACTURER_NAME,
