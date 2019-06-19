@@ -117,7 +117,8 @@ class GSKJPToolBox:
         self.common.save_json_to_new_tables(self.linear_sos_dict)
 
         # local kpis
-        self.gsk_generator.tool_box.extract_data_set_up_file('GSK_PLN_BLOCK_SCORE', self.set_up_data, self.KPI_DICT)
+        for kpi in self.KPI_DICT.values():
+            self.gsk_generator.tool_box.extract_data_set_up_file(kpi, self.set_up_data, self.KPI_DICT)
         self.gsk_ecaps_kpis()
         self.get_store_target()  # choosing the policy
         if self.targets.empty:
