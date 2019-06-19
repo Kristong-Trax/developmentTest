@@ -10,6 +10,7 @@ if __name__ == '__main__':
     Config.init()
     project_name = 'diageous-sand2'
     sessions = [
+        "45A474AD-7562-43F0-B365-7D253B843CC5",
         # # Independent On:
         # "4A1C1E22-20EB-4F1D-8D31-1E3EA45200A6", "3E09D306-5805-4553-9FCC-A952D4F46E4C",
         # # Independent Off:

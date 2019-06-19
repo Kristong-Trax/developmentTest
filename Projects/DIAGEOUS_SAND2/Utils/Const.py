@@ -57,37 +57,38 @@ class Const(object):
     }
     DB_OFF_NAMES = {
         POD: {
-            TOTAL: 'POD - Total Score', NATIONAL: 'POD - National Score', SEGMENT: 'POD - Segment Score',
+            TOTAL: 'POD - Total Score', NATIONAL: 'POD - National Score', SEGMENT: 'POD - Segment Score', KPI_NAME: POD,
             BRAND: 'POD - Brand Level', SUB_BRAND: 'POD - Brand Variant Level', SKU: 'POD - Brand Variant Size Level'},
         DISPLAY_BRAND: {
-            TOTAL: 'Display Brand - Total Score', NATIONAL: 'Display Brand - National Score',
+            TOTAL: 'Display Brand - Total Score', NATIONAL: 'Display Brand - National Score', KPI_NAME: DISPLAY_BRAND,
             SEGMENT: 'Display Brand - Segment Score', BRAND: 'Display Brand - Brand Level',
             SUB_BRAND: 'Display Brand - Brand Variant Level', SKU: 'Display Brand - Brand Variant Size'},
         SHELF_FACINGS: {
-            TOTAL: 'Shelf Facings - Total Score',
+            TOTAL: 'Shelf Facings - Total Score', KPI_NAME: SHELF_FACINGS,
             NATIONAL: 'Shelf Facings - National Score', SEGMENT: 'Shelf Facings - Segment Score',
             BRAND: 'Shelf Facings - Compliance Brand', SUB_BRAND: 'Shelf Facings - Brand Variant',
             COMPETITION: 'Shelf Facings - Brand Variant Size', SKU: 'Shelf Facings - BVS + Brand Benchmark'},
         SHELF_PLACEMENT: {
-            TOTAL: 'Shelf Placement - Total Score', BRAND: 'Shelf Placement - Brand',
+            TOTAL: 'Shelf Placement - Total Score', BRAND: 'Shelf Placement - Brand', KPI_NAME: SHELF_PLACEMENT,
             NATIONAL: 'Shelf Placement - National Score', SEGMENT: 'Shelf Placement - Segment Score',
             SUB_BRAND: 'Shelf Placement - Brand Variant', SKU: 'Shelf Placement - Brand Variant Size'},
-        MSRP: {TOTAL: 'MSRP - Total Score', BRAND: 'MSRP - Brand', SUB_BRAND: 'MSRP - Brand Variant',
+        MSRP: {TOTAL: 'MSRP - Total Score', BRAND: 'MSRP - Brand', SUB_BRAND: 'MSRP - Brand Variant', KPI_NAME: MSRP,
                COMPETITION: 'MSRP - Brand Variant Size', SKU: 'MSRP - BVS + Brand Benchmark'},
         DISPLAY_SHARE: {TOTAL: 'Display Share - Total Score', MANUFACTURER: 'Display Share - Manufacturer',
-                        SKU: 'Display Share - Brand Variant Size'}}
+                        SKU: 'Display Share - Brand Variant Size', KPI_NAME: DISPLAY_SHARE}}
+    FUNCTION = "function"
     DB_ON_NAMES = {
         POD: {
             TOTAL: 'On_POD - Total Score', SEGMENT: 'On_POD - Segment Score', NATIONAL: 'On_POD - National Score',
             BRAND: 'On_POD - Generic Brand', SUB_BRAND: 'On_POD -  Brand Variant',
-            SKU: 'On_POD -  Brand Variant Size'},
+            SKU: 'On_POD -  Brand Variant Size', KPI_NAME: POD},
         BACK_BAR: {
             TOTAL: 'Back Bar - Total Score', NATIONAL: 'Back Bar - National Score', SEGMENT: 'Back Bar - Segment Score',
-            TEMPLATE: "Back Bar - Template Score",
+            TEMPLATE: "Back Bar - Template Score", KPI_NAME: BACK_BAR,
             BRAND: 'Back Bar - Generic Brand', SUB_BRAND: 'Back Bar - Brand Variant',
             SKU: 'Back Bar - Brand Variant Size'},
         MENU: {
-            TOTAL: 'Menu Share - Total Score', MANUFACTURER: 'Menu Share - Manufacturer Level',
+            TOTAL: 'Menu Share - Total Score', MANUFACTURER: 'Menu Share - Manufacturer Level', KPI_NAME: MENU,
             TEMPLATE: "Menu Share - Template Score", SUB_BRAND: 'Menu Share - Brand Variant Level'}}
     DB_ASSORTMENTS_NAMES = {OFF: "Assortment off Trade", ON: "Assortment on Trade",
                             INDEPENDENT: "independent_display"}
