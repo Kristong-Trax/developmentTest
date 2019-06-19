@@ -35,9 +35,7 @@ class GSKJPToolBox:
     PLN_ASSORTMENT_KPI = 'PLN_ECAPS - SKU'
 
     KPI_DICT = {"GSK_PLN_BLOCK_SCORE": "GSK_PLN_BLOCK_SCORE", "GSK_PLN_ECAPS_ALL": "GSK_PLN_ECAPS_ALL", "GSK_PLN_MSL_SCORE": "GSK_PLN_MSL_SCORE",
-                "GSK_PLN_POSITION_SCORE": "GSK_PLN_POSITION_SCORE"}
-
-
+                "GSK_PLN_POSITION_SCORE": "GSK_PLN_POSITION_SCORE", "availability": "Availability"}
 
     def __init__(self, data_provider, output):
         self.output = output
@@ -69,8 +67,6 @@ class GSKJPToolBox:
         self.targets = self.ps_data_provider.get_kpi_external_targets()
         self.linear_sos_dict = None
         self.own_manufacturer = self.get_manufacturer
-        self.lvl3_assort = self.assortment.calculate_lvl3_assortment()
-
         self.set_up_data = {(self.PLN_BLOCK, Const.KPI_TYPE_COLUMN): Const.NO_INFO,
                             (self.POSITION_SCORE, Const.KPI_TYPE_COLUMN):
                                 Const.NO_INFO, ("GSK_PLN_ECAPS_ALL", Const.KPI_TYPE_COLUMN):
@@ -87,53 +83,51 @@ class GSKJPToolBox:
         """
         # global kpis
         #
-        assortment_store_dict = self.gsk_generator.availability_store_function()
-        self.common.save_json_to_new_tables(assortment_store_dict)
-
-        assortment_category_dict = self.gsk_generator.availability_category_function()
-        self.common.save_json_to_new_tables(assortment_category_dict)
-
-        assortment_subcategory_dict = self.gsk_generator.availability_subcategory_function()
-        self.common.save_json_to_new_tables(assortment_subcategory_dict)
-
-        facings_sos_dict = self.gsk_generator.gsk_global_facings_sos_whole_store_function()
-        self.common.save_json_to_new_tables(facings_sos_dict)
-
-        linear_sos_dict = self.gsk_generator.gsk_global_linear_sos_by_sub_category_function()
-        self.common.save_json_to_new_tables(linear_sos_dict)
-
-        facings_sos_dict = self.gsk_generator.gsk_global_facings_by_sub_category_function()
-        self.common.save_json_to_new_tables(facings_sos_dict)
-
-        facings_sos_dict = self.gsk_generator.gsk_global_facings_sos_by_category_function()
-        self.common.save_json_to_new_tables(facings_sos_dict)
-
-        linear_sos_dict = self.gsk_generator.gsk_global_linear_sos_by_category_function()
-        self.common.save_json_to_new_tables(linear_sos_dict)
-
+        # assortment_store_dict = self.gsk_generator.availability_store_function()
+        # self.common.save_json_to_new_tables(assortment_store_dict)
+        #
+        # assortment_category_dict = self.gsk_generator.availability_category_function()
+        # self.common.save_json_to_new_tables(assortment_category_dict)
+        #
+        # assortment_subcategory_dict = self.gsk_generator.availability_subcategory_function()
+        # self.common.save_json_to_new_tables(assortment_subcategory_dict)
+        #
+        # facings_sos_dict = self.gsk_generator.gsk_global_facings_sos_whole_store_function()
+        # self.common.save_json_to_new_tables(facings_sos_dict)
+        #
+        # linear_sos_dict = self.gsk_generator.gsk_global_linear_sos_by_sub_category_function()
+        # self.common.save_json_to_new_tables(linear_sos_dict)
+        #
+        # facings_sos_dict = self.gsk_generator.gsk_global_facings_by_sub_category_function()
+        # self.common.save_json_to_new_tables(facings_sos_dict)
+        #
+        # facings_sos_dict = self.gsk_generator.gsk_global_facings_sos_by_category_function()
+        # self.common.save_json_to_new_tables(facings_sos_dict)
+        #
+        # linear_sos_dict = self.gsk_generator.gsk_global_linear_sos_by_category_function()
+        # self.common.save_json_to_new_tables(linear_sos_dict)
+        #
         # kpi gsk_global_linear_sos_whole_store_function is used in gsk_compliance kpis
         self.linear_sos_dict = self.gsk_generator.gsk_global_linear_sos_whole_store_function()
         self.common.save_json_to_new_tables(self.linear_sos_dict)
 
+
+        # need to know on which set of brands to run ?? is it already filtered ? 
         # local kpis
-        # for kpi in self.KPI_DICT.values():
-        #     self.gsk_generator.tool_box.extract_data_set_up_file(kpi, self.set_up_data, self.KPI_DICT)
-        # self.gsk_ecaps_kpis()
-        # self.get_store_target()  # choosing the policy
-        # if self.targets.empty:
-        #     Log.warning('There is no target policy matching this store ')
-        # else:
-        #     self.gsk_compliance()
-        # self.common.commit_results_data()
+        for kpi in self.KPI_DICT.values():
+            self.gsk_generator.tool_box.extract_data_set_up_file(kpi, self.set_up_data, self.KPI_DICT)
+        self.gsk_ecaps_kpis()
+        self.get_store_target()  # choosing the policy
+        if self.targets.empty:
+            Log.warning('There is no target policy matching this store ')
+        else:
+            self.gsk_compliance()
+        self.common.commit_results_data()
         return
 
-    def position_shelf(self, brand_fk, policy):
-
+    def position_shelf(self, brand_fk, policy, df):
         shelf_from_bottom = policy['shelf']
         threshold = policy['position_target']
-        df = pd.merge(self.match_product_in_scene, self.all_products, on="product_fk")
-        # adding filter by  dict & condition to stacking
-        df = df[df['stacking_layer'] == 1]
         brand_df = df[df['brand_fk'] == brand_fk]
         shelf_df = brand_df[brand_df['shelf_number_from_bottom'].isin(shelf_from_bottom)]
         numerator = shelf_df.shape[0]
@@ -189,11 +183,13 @@ class GSKJPToolBox:
             result = 0
         return result
 
-    def msl_assortment(self, kpi):
-        if self.assortment is None:
+    def msl_assortment(self, kpi, set_up_data):
+
+        lvl3_assort = self.gsk_generator.tool_box.get_assortment_filtered(set_up_data)
+        if lvl3_assort is None:
             return None
         kpi_assortment_fk = self.common.get_kpi_fk_by_kpi_type(kpi)
-        kpi_results = self.lvl3_assort[self.lvl3_assort['kpi_fk_lvl3'] == kpi_assortment_fk]  # general assortment
+        kpi_results = lvl3_assort[lvl3_assort['kpi_fk_lvl3'] == kpi_assortment_fk]  # general assortment
         kpi_results = pd.merge(kpi_results, self.all_products[
             ['product_fk', 'product_ean_code', 'substitution_product_fk', 'sub_category_fk', 'category_fk']],
                                how='left', on='product_fk')
@@ -244,13 +240,13 @@ class GSKJPToolBox:
         results_df = []
         df = self.scif
         brands = df['brand_fk'].dropna().unique()
-
-        #kpis
+        # kpis
         kpi_block_fk = self.common.get_kpi_fk_by_kpi_type(self.PLN_BLOCK)
         kpi_position_fk = self.common.get_kpi_fk_by_kpi_type(self.POSITION_SCORE)
         kpi_lsos_fk = self.common.get_kpi_fk_by_kpi_type(self.PLN_LSOS)
         kpi_compliance_brands_fk = self.common.get_kpi_fk_by_kpi_type(self.COMPLIANCE_ALL_BRANDS)
         kpi_compliance_summary_fk = self.common.get_kpi_fk_by_kpi_type(self.COMPLIANCE_SUMMARY)
+        identifier_compliance_summary = self.common.get_dictionary(kpi_fk=kpi_compliance_summary_fk)
 
         # targets
         block_target = 0.25
@@ -261,8 +257,16 @@ class GSKJPToolBox:
         total_brand_score = 0
         counter_brands = 0
 
-        identifier_compliance_summary = self.common.get_dictionary(kpi_fk=kpi_compliance_summary_fk)
-        assortment_msl = self.msl_assortment(Const.DISTRIBUTION)
+        # assortment_lvl3 msl df initialize
+        assortment_msl = self.msl_assortment(Const.DISTRIBUTION, self.gsk_generator.tool_box.set_up_data)
+
+        # set data frame to find position shelf
+        df_position_score = pd.merge(self.match_product_in_scene, self.all_products, on="product_fk")
+        df_position_score = pd.merge(self.scif[Const.SCIF_COLUMNS],
+                                     df_position_score, how='right', right_on=['scene_fk', 'product_fk'], left_on=['scene_id', 'product_fk'])
+        self.gsk_generator.tool_box.tests_by_template(self.POSITION_SCORE, df_position_score, self.set_up_data)
+        if self.set_up_data[(Const.INCLUDE_STACKING, self.POSITION_SCORE)]:
+            df_position_score = df_position_score[df_position_score['stacking_layer'] == 1]
 
         for brand in brands:
             policy = self.targets[self.targets['brand_fk'] == brand]
@@ -296,14 +300,14 @@ class GSKJPToolBox:
                                    identifier_parent, 'should_enter': True})
 
             # position score
-            position_result, position_score, position_num, position_den = self.position_shelf(brand, policy)
+            position_result, position_score, position_num, position_den = self.position_shelf(brand, policy, df_position_score)
             position_score = position_score * posit_target
             results_df.append({'fk': kpi_position_fk, 'numerator_id': brand, 'denominator_id': self.store_fk,
                                'denominator_result': position_den, 'numerator_result': position_num, 'result':
                                    position_result, 'score': position_score, 'target': posit_target, 'identifier_parent'
                                : identifier_parent, 'should_enter': True})
 
-            # complaince score per brand
+            # compliance score per brand
             compliance_score = position_score + block_score + lsos_score + msl_score
             results_df.append(
                 {'fk': kpi_compliance_brands_fk, 'numerator_id': self.own_manufacturer, 'denominator_id': brand,
@@ -334,10 +338,9 @@ class GSKJPToolBox:
         identifier_ecaps_summary = self.common.get_dictionary(kpi_fk=kpi_ecaps_summary_fk)
         brands = df['brand_fk'].dropna().unique()
         total_brand_score = 0
+        assortment_display = self.msl_assortment(self.PLN_ASSORTMENT_KPI, self.set_up_data)
+
         for brand in brands:
-
-            assortment_display = self.msl_assortment(self.PLN_ASSORTMENT_KPI)
-
             numerator_res, denominator_res, result, product_presence_df = self.pln_ecaps_score(brand,
                                                                                                assortment_display)
             results_df.extend(product_presence_df)
