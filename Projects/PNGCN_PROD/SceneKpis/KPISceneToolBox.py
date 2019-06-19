@@ -134,9 +134,6 @@ class PngcnSceneKpis(object):
         self.save_nlsos_to_custom_scif()
         self.calculate_eye_level_kpi()
         Log.debug(self.log_prefix + ' Retrieving data')
-        self.calculate_display_size()
-        self.calculate_linear_length()
-        self.calculate_presize_linear_length()
         self.match_display_in_scene = self._get_match_display_in_scene_data()
         # if there are no display tags there's no need to retrieve the rest of the data.
         if self.match_display_in_scene.empty:
@@ -156,6 +153,9 @@ class PngcnSceneKpis(object):
                 Log.debug(self.log_prefix + ' Committing share of display calculations')
                 self.project_connector.db.commit()
             Log.info(self.log_prefix + ' Finished calculation')
+        self.calculate_display_size()
+        self.calculate_linear_length()
+        self.calculate_presize_linear_length()
 
     def calculate_eye_level_kpi(self):
         if self.matches_from_data_provider.empty:
@@ -238,7 +238,6 @@ class PngcnSceneKpis(object):
         # saving all results
         for i, row in results_sequence_df.iterrows():
             self.common.write_to_db_result(**row)
-
 
     def get_eye_level_shelves(self, df):
         if df.empty:
@@ -928,8 +927,8 @@ class PngcnSceneKpis(object):
         # get size and item id
         DF_products_size = self._get_display_size_of_product_in_scene()
 
-        if self.scif.empty:
-            return pd.DataFrame()
+        if self.scif.empty or DF_products_size.empty:
+            return
 
         filter_scif = self.scif[[u'scene_id', u'item_id', u'manufacturer_fk', u'rlv_sos_sc', u'status']]
         df_result = pd.merge(filter_scif, DF_products_size, on=['item_id', 'scene_id'], how='left')

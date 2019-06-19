@@ -115,12 +115,22 @@ class FSOPToolBox:
             required_sparkling = row['number_required_Sparkling']
             required_still = row['number_required_Still']
             required_sku = row['number_required_SKU']
-            filters = {'manufacturer_name': manufacturers, 'brand_name': brands, 'Container': container, 'att4': attributte_4,
+            excluded_brands= self.sanitize_values(row['exclude brand'])
+
+            #Bandaid Fix - Hunter Approved
+            if isinstance(brands, float):
+                brands_value = (excluded_brands, 0)
+            else:
+                brands_value = brands
+
+            filters = {'manufacturer_name': manufacturers, 'brand_name': brands_value, 'CONTAINER': container, 'att4': attributte_4,
                        'template_name': scene_types}
 
             filters = self.delete_filter_nan(filters)
 
             available_df = self.calculate_availability_df(**filters)
+
+            score = 0
 
             if pd.notna(required_brands):
                 brands_available = len(available_df['brand_name'].unique())
@@ -162,19 +172,31 @@ class FSOPToolBox:
 
     def calculate_sos(self):
         for i, row in self.templates[SOS].iterrows():
+            general_filters = {}
             kpi_name = row['KPI Name']
             kpi_fk = self.common.get_kpi_fk_by_kpi_name(kpi_name)
             manufacturers = self.sanitize_values(row['manufacturer'])
-            attributte_4 = self.sanitize_values(row['att4'])
+
             scene_types = self.sanitize_values(row['scene Type'])
+
+            param1 = row['numerator param1'] #attributte_4
+            value1 = self.sanitize_values(row['numerator value1']) #attributte_4
+
+            param2 = row['denominator param1']
+            value2 = self.sanitize_values(row['denominator value1'])
+
             target = int(row['% SOS'])
 
+            excluded_brands= self.sanitize_values(row['exclude brand'])
 
-            filters = {'manufacturer_name': manufacturers, 'att4': attributte_4, 'template_name': scene_types}
+            filters = {'manufacturer_name': manufacturers, param1: value1, 'template_name': scene_types,
+                       'brand_name': (excluded_brands, 0), 'product_type': ['SKU','OTHER']}
+
             filters = self.delete_filter_nan(filters)
-            # general_filters = {}
+            general_filters = {param2:value2, 'product_type': ['SKU','OTHER'], 'template_name': scene_types }
+            general_filters = self.delete_filter_nan(general_filters)
 
-            ratio = self.SOS.calculate_share_of_shelf(filters)
+            ratio = self.SOS.calculate_share_of_shelf(filters, **general_filters)
             if (100 * ratio) >= target:
                 score = 1
             else:
@@ -189,8 +211,8 @@ class FSOPToolBox:
         if pd.isna(item):
             return item
         else:
-            item = item.split(', ')
-            return item
+            items = [x.strip() for x in item.split(',')]
+            return items
 
 
     def delete_filter_nan(self, filters):

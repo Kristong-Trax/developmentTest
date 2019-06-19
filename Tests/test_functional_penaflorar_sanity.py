@@ -7,24 +7,21 @@ from Trax.Data.Testing.SeedNew import Seeder
 from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
 from Trax.Cloud.Services.Connector.Keys import DbUsers
 from Trax.Data.Testing.TestProjects import TestProjectsNames
-from Trax.Utils.Testing.Case import MockingTestCase
-from mock import patch
 
-from Tests.Data.Templates.penaflorar.MPA import mpa
-from Tests.Data.Templates.penaflorar.NewProducts import products
 from Tests.Data.TestData.test_data_penaflorar_sanity import ProjectsSanityData
-from Projects.PENAFLORAR.Calculations import PENAFLORARDIAGEOARCalculations
+from Projects.PENAFLORAR.Calculations import PENAFLORARCalculations
 from Trax.Apps.Core.Testing.BaseCase import TestFunctionalCase
-
 from Tests.TestUtils import remove_cache_and_storage
 
-__author__ = 'yoava'
+__author__ = 'avrahama'
 
 
 class TestKEngineOutOfTheBox(TestFunctionalCase):
 
     def set_up(self):
         super(TestKEngineOutOfTheBox, self).set_up()
+        self.mock_object('save_latest_templates', path='KPIUtils.DIAGEO.ToolBox.DIAGEOToolBox')
+        self.mock_object('save_level2_and_level3', path='Projects.PENAFLORAR.Utils.KPIToolBox.PENAFLORARToolBox')
         remove_cache_and_storage()
 
     @property
@@ -41,27 +38,19 @@ class TestKEngineOutOfTheBox(TestFunctionalCase):
         connector = PSProjectConnector(TestProjectsNames().TEST_PROJECT_1, DbUsers.Docker)
         cursor = connector.db.cursor(MySQLdb.cursors.DictCursor)
         cursor.execute('''
-        SELECT * FROM report.kpi_results
+        SELECT * FROM report.kpi_level_2_results
         ''')
         kpi_results = cursor.fetchall()
         self.assertNotEquals(len(kpi_results), 0)
         connector.disconnect_rds()
-
-
-    @patch('KPIUtils.DIAGEO.ToolBox.DIAGEOToolBox.get_latest_directory_date_from_cloud',
-           return_value='2018-02-20')
-    @patch('KPIUtils.DIAGEO.ToolBox.DIAGEOToolBox.save_latest_templates')
-    @patch('KPIUtils.DIAGEO.ToolBox.DIAGEOToolBox.download_template',
-           return_value=mpa)
-    @patch('KPIUtils.DIAGEO.ToolBox.DIAGEOToolBox.download_template',
-           return_value=products)
-    @seeder.seed(["penaflorar_seed"], ProjectsSanityData())
-    def test_penaflorar_sanity(self, x, y, json, json2):
+    
+    @seeder.seed(["mongodb_products_and_brands_seed", "penaflorar_seed"], ProjectsSanityData())
+    def test_penaflorar_sanity(self):
         project_name = ProjectsSanityData.project_name
         data_provider = KEngineDataProvider(project_name)
-        sessions = ['b778b179-3053-48ad-841e-6db656d670b2']
+        sessions = ['0949f439-185e-48c1-bfc1-8a1230413ef2']
         for session in sessions:
             data_provider.load_session_data(session)
             output = Output()
-            PENAFLORARDIAGEOARCalculations(data_provider, output).run_project_calculations()
+            PENAFLORARCalculations(data_provider, output).run_project_calculations()
             self._assert_kpi_results_filled()

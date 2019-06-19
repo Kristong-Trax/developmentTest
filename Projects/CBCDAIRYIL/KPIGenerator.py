@@ -25,3 +25,5 @@ class Generator:
             return
         self.tool_box.main_calculation()
         self.tool_box.common.commit_results_data()
+        self.tool_box.old_common.commit_results_data()
+
