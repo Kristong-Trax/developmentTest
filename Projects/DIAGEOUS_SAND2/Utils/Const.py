@@ -6,35 +6,20 @@ class Const(object):
 
     OFF, ON, INDEPENDENT, OPEN, NATIONAL_STORE = "off_premise", "on_premise", "Independent", "Open", "National"
     NOT_INDEPENDENT_STORES = [OPEN, NATIONAL_STORE]
-
     # sheets:
     ON_TRADE_MAIN, OFF_TRADE_MAIN = "main - on_trade", "main - off_trade"
     ON_TRADE_INDEPENDENT, OFF_TRADE_INDEPENDENT = "independent - on_trade", "independent - off_trade"
-    SHELF_FACING_SHEET, PRICING_SHEET = "Shelf Facings", "Pricing"
-    SHELF_PLACMENTS_SHEET, MINIMUM_SHELF_SHEET = "Shelf Placement", "Minimum Shelf"
-    DISPLAY_TARGET_SHEET, SHELF_GROUPS_SHEET = "Display_Target", "convert shelves groups"
+    MINIMUM_SHELF_SHEET = "Minimum Shelf"
+    SHELF_GROUPS_SHEET = "convert shelves groups"
     SHEETS = {
         OPEN: {ON: [ON_TRADE_MAIN], OFF: [OFF_TRADE_MAIN, MINIMUM_SHELF_SHEET, SHELF_GROUPS_SHEET]},
         NATIONAL_STORE: {ON: [ON_TRADE_MAIN], OFF: [OFF_TRADE_MAIN, MINIMUM_SHELF_SHEET, SHELF_GROUPS_SHEET]},
         INDEPENDENT: {ON: [ON_TRADE_INDEPENDENT], OFF: [OFF_TRADE_INDEPENDENT]}}
     # KPIs columns:
-    KPI_NAME, KPI_GROUP, SCORE, TARGET, WEIGHT = "KPI Name", "KPI Group", "Score", "Target", "Weight"
+    KPI_NAME, KPI_GROUP, TARGET, WEIGHT = "KPI Name", "KPI Group", "Target", "Weight"
     TEMPLATE_GROUP = "Template Group/ Scene Type"
-    # Shelf 1 columns:
-    STATE, OUR_EAN_CODE, COMP_EAN_CODE = "State", "Product EAN Code", "Competitor EAN Code"
-    BENCH_ENTITY, BENCH_VALUE = "BENCHMARK Entity", "BENCHMARK Value"
-    # pricing columns:
-    MIN_MSRP_RELATIVE, MAX_MSRP_RELATIVE = "SHELF MSRP RELATIVE GUIDENCE: MIN", "SHELF MSRP RELATIVE GUIDENCE: MAX"
-    MIN_MSRP_ABSOLUTE = "SHELF MSRP ABSOLUTE GUIDENCE: MIN"
-    MAX_MSRP_ABSOLUTE = "SHELF MSRP ABSOLUTE GUIDENCE: MAX"
-    # shelf 2 columns:
-    MIN_SHELF_LOCATION = "MINIMUM SHELF LOCATION"
-    PRODUCT_EAN_CODE = "Product EAN Code"
-    # display columns:
-    SCENE_TYPE, MIN_FACINGS = "Scene Type", "Minimum # of Facings"
     # minimum shelf columns:
-    SHELF_NAME, SHELVES_FROM_BOTTOM = "Shelf Name", "shelf number from bottom"
-    NUM_SHLEVES_MIN, NUM_SHLEVES_MAX = "num. of shelves min", "num. of shelves max"
+    SHELF_NAME = "Shelf Name"
     # shelf groups columns
     NUMBER_GROUP, SHELF_GROUP = "number group", "shelf groups"
     # sets in off-premise:
@@ -91,13 +76,11 @@ class Const(object):
             TOTAL: 'Menu Share - Total Score', MANUFACTURER: 'Menu Share - Manufacturer Level', KPI_NAME: MENU,
             TEMPLATE: "Menu Share - Template Score", SUB_BRAND: 'Menu Share - Brand Variant Level'}}
     DB_ASSORTMENTS_NAMES = {OFF: "Assortment off Trade", ON: "Assortment on Trade",
-                            INDEPENDENT: "independent_display"}
-    PERCENT_FOR_EYE_LEVEL = 0
+                            INDEPENDENT: "independent_display", BACK_BAR: "Assortment on Trade"}
 
     PRODUCT_FK, STANDARD_TYPE, PASSED, FACINGS = "product_fk", "standard_type", "passed", "facings"
     COLUMNS_FOR_DISPLAY = [MANUFACTURER, PRODUCT_FK, PASSED]
     COLUMNS_FOR_PRODUCT = [PRODUCT_FK, PASSED, BRAND, SUB_BRAND]
-    COLUMNS_FOR_PRODUCT_ASSORTMENT = [PRODUCT_FK, STANDARD_TYPE, PASSED, BRAND, SUB_BRAND]
     COLUMNS_FOR_PRODUCT_PLACEMENT = [PASSED, SHELF_NAME, FACINGS]
 
     EXTRA, OOS, DISTRIBUTED, OTHER, NO_PLACEMENT = "EXTRA", "0", "1", "OTHER", "0"
