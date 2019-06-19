@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import random
 
 from Trax.Utils.Testing.Case import TestUnitCase
@@ -29,24 +30,16 @@ class Test_PNGCN(TestUnitCase):
         # mock 'data provider' object giving to the toolbox
         self.data_provider_mock = MagicMock()
 
-    def test_get_png_manufacturer_fk(self):
+    def test__get_filterd_matches(self):
         """
-            test that the return value type is a string
+            1. test that the result is a DF
         """
         scene_tool_box = PngcnSceneKpis(self.ProjectConnector_mock,
                                         self.common_mock, 16588190,
                                         self.data_provider_mock)
-        data = [{'manufacturer_name': 'NotPNG', 'manufacturer_fk': 2},
-                {'manufacturer_name': 'PNG', 'manufacturer_fk': 4},
-                {'manufacturer_name': 'PNG', 'manufacturer_fk': 4},
-                {'manufacturer_name': 'NotPNG', 'manufacturer_fk': 5}]
-        scene_tool_box.all_products = MagicMock(return_value=pd.DataFrame(data))
-        result = scene_tool_box.get_png_manufacturer_fk()
-        self.assertIsInstance(result, str)
-        # self.all_products[self.all_products['manufacturer_name'].str.encode("utf8") == PNG_MANUFACTURER]
-        # ['manufacturer_fk'].values[0]
 
-
+        self.assertIsInstance(scene_tool_box.get_filterd_matches(),
+                              type(pd.DataFrame()))
 
     def test__get_display_size_of_product_in_scene(self):
         """
