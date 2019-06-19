@@ -6,7 +6,7 @@ import os
 import numpy as np
 from KPIUtils_v2.Calculations.BlockCalculations import Block
 from KPIUtils.GlobalProjects.GSK.KPIGenerator import GSKGenerator
-from KPIUtils.GlobalProjects.GSK.Utils.KPIToolBox import GSKToolBox
+from KPIUtils.GlobalProjects.GSK.Utils.KPIToolBox import Const
 from KPIUtils_v2.DB.CommonV2 import Common
 from KPIUtils_v2.GlobalDataProvider.PsDataProvider import PsDataProvider
 from Trax.Utils.Logging.Logger import Log
@@ -20,9 +20,8 @@ KPS_RESULT = 'report.kps_results'
 
 class GSKJPToolBox:
 
-    LEVEL1 = 1
-    LEVEL2 = 2
-    LEVEL3 = 3
+    # Gsk Japan kpis
+
     PLN_BLOCK = 'GSK_PLN_BLOCK_SCORE'
     POSITION_SCORE = 'GSK_PLN_POSITION_SCORE'
     PRODUCT_PRESENCE = 'GSK_PLN_ECAPS_PRODUCT_PRESENCE'
@@ -33,8 +32,8 @@ class GSKJPToolBox:
     COMPLIANCE_SUMMARY = 'GSK_PLN_COMPLIANCE_SUMMARY'
     ECAP_ALL_BRAND = 'GSK_PLN_ECAPS_ALL BRANDS'
     GLOBAL_LSOS_BRAND_BY_STORE = 'GSK_LSOS_All_Brand_By_Category'
-    PLN_ASSORTMENT_KPI = 'PLN_ECAPS'
-    DISTRIBUTION_KPI = 'Distribution'
+    PLN_ASSORTMENT_KPI = 'PLN_ECAPS - SKU'
+
     KPI_DICT = {"GSK_PLN_BLOCK_SCORE": "GSK_PLN_BLOCK_SCORE", "GSK_PLN_ECAPS_ALL": "GSK_PLN_ECAPS_ALL", "GSK_PLN_MSL_SCORE": "GSK_PLN_MSL_SCORE",
                 "GSK_PLN_POSITION_SCORE": "GSK_PLN_POSITION_SCORE"}
 
@@ -72,11 +71,11 @@ class GSKJPToolBox:
         self.own_manufacturer = self.get_manufacturer
         self.lvl3_assort = self.assortment.calculate_lvl3_assortment()
 
-        self.set_up_data = {("GSK_PLN_BLOCK_SCORE", GSKToolBox.KPI_TYPE_COLUMN): GSKToolBox.NO_INFO,
-                            ("GSK_PLN_POSITION_SCORE", GSKToolBox.KPI_TYPE_COLUMN):
-                                GSKToolBox.NO_INFO, ("GSK_PLN_ECAPS_ALL", GSKToolBox.KPI_TYPE_COLUMN):
-                                GSKToolBox.NO_INFO, ("GSK_PLN_MSL_SCORE", GSKToolBox.KPI_TYPE_COLUMN):
-                                GSKToolBox.NO_INFO}
+        self.set_up_data = {(self.PLN_BLOCK, Const.KPI_TYPE_COLUMN): Const.NO_INFO,
+                            (self.POSITION_SCORE, Const.KPI_TYPE_COLUMN):
+                                Const.NO_INFO, ("GSK_PLN_ECAPS_ALL", Const.KPI_TYPE_COLUMN):
+                                Const.NO_INFO, (self.PLN_MSL, Const.KPI_TYPE_COLUMN):
+                                Const.NO_INFO}
     @property
     def get_manufacturer(self):
         return int(self.data_provider.own_manufacturer[self.data_provider.own_manufacturer['param_name'] ==
@@ -88,45 +87,43 @@ class GSKJPToolBox:
         """
         # global kpis
         #
-        # assortment_store_dict = self.gsk_generator.availability_store_function()
-        # self.common.save_json_to_new_tables(assortment_store_dict)
-        #
-        # assortment_category_dict = self.gsk_generator.availability_category_function()
-        # self.common.save_json_to_new_tables(assortment_category_dict)
+        assortment_store_dict = self.gsk_generator.availability_store_function()
+        self.common.save_json_to_new_tables(assortment_store_dict)
 
-        # assortment_subcategory_dict = self.gsk_generator.availability_subcategory_function()
-        # self.common.save_json_to_new_tables(assortment_subcategory_dict)
-        #
-        # facings_sos_dict = self.gsk_generator.gsk_global_facings_sos_whole_store_function()
-        # self.common.save_json_to_new_tables(facings_sos_dict)
-        #
-        # linear_sos_dict = self.gsk_generator.gsk_global_linear_sos_by_sub_category_function()
-        # self.common.save_json_to_new_tables(linear_sos_dict)
-        #
-        # facings_sos_dict = self.gsk_generator.gsk_global_facings_by_sub_category_function()
-        # self.common.save_json_to_new_tables(facings_sos_dict)
+        assortment_category_dict = self.gsk_generator.availability_category_function()
+        self.common.save_json_to_new_tables(assortment_category_dict)
 
-        # facings_sos_dict = self.gsk_generator.gsk_global_facings_sos_by_category_function()
-        # self.common.save_json_to_new_tables(facings_sos_dict)
-        #
-        # linear_sos_dict = self.gsk_generator.gsk_global_linear_sos_by_category_function()
-        # self.common.save_json_to_new_tables(linear_sos_dict)
+        assortment_subcategory_dict = self.gsk_generator.availability_subcategory_function()
+        self.common.save_json_to_new_tables(assortment_subcategory_dict)
+
+        facings_sos_dict = self.gsk_generator.gsk_global_facings_sos_whole_store_function()
+        self.common.save_json_to_new_tables(facings_sos_dict)
+
+        linear_sos_dict = self.gsk_generator.gsk_global_linear_sos_by_sub_category_function()
+        self.common.save_json_to_new_tables(linear_sos_dict)
+
+        facings_sos_dict = self.gsk_generator.gsk_global_facings_by_sub_category_function()
+        self.common.save_json_to_new_tables(facings_sos_dict)
+
+        facings_sos_dict = self.gsk_generator.gsk_global_facings_sos_by_category_function()
+        self.common.save_json_to_new_tables(facings_sos_dict)
+
+        linear_sos_dict = self.gsk_generator.gsk_global_linear_sos_by_category_function()
+        self.common.save_json_to_new_tables(linear_sos_dict)
 
         # kpi gsk_global_linear_sos_whole_store_function is used in gsk_compliance kpis
         self.linear_sos_dict = self.gsk_generator.gsk_global_linear_sos_whole_store_function()
         self.common.save_json_to_new_tables(self.linear_sos_dict)
 
         # local kpis
-        for kpi in self.KPI_DICT.values():
-            self.gsk_generator.tool_box.extract_data_set_up_file(kpi, self.set_up_data, self.KPI_DICT)
-        self.gsk_ecaps_kpis()
-        self.get_store_target()  # choosing the policy
-        if self.targets.empty:
-            Log.warning('There is no target policy matching this store ')
-        else:
-            self.gsk_compliance()
-
-
+        # for kpi in self.KPI_DICT.values():
+        #     self.gsk_generator.tool_box.extract_data_set_up_file(kpi, self.set_up_data, self.KPI_DICT)
+        # self.gsk_ecaps_kpis()
+        # self.get_store_target()  # choosing the policy
+        # if self.targets.empty:
+        #     Log.warning('There is no target policy matching this store ')
+        # else:
+        #     self.gsk_compliance()
         # self.common.commit_results_data()
         return
 
@@ -163,18 +160,17 @@ class GSKJPToolBox:
 
     def brand_blocking(self, brand, policy):
 
-        templates = self.set_up_data[(GSKToolBox.SCENE_TYPE, self.PLN_BLOCK)]
+        templates = self.set_up_data[(Const.SCENE_TYPE, self.PLN_BLOCK)]
         template_name = templates if templates else None  # figure out which template name should I use
         # taking from params from dict
-        stacking_param = False if not self.set_up_data[(GSKToolBox.INCLUDE_STACKING, self.PLN_BLOCK)] else True  # false
+        stacking_param = False if not self.set_up_data[(Const.INCLUDE_STACKING, self.PLN_BLOCK)] else True  # false
         products_excluded = []
-        if not self.set_up_data[(GSKToolBox.INCLUDE_OTHERS, self.PLN_BLOCK)]:
-            products_excluded.append(GSKToolBox.OTHER)
-        if not self.set_up_data[(GSKToolBox.INCLUDE_IRRELEVANT, self.PLN_BLOCK)]:
-            products_excluded.append(GSKToolBox.IRRELEVANT)
-        if not self.set_up_data[(GSKToolBox.INCLUDE_EMPTY, self.PLN_BLOCK)]:
-            products_excluded.append(GSKToolBox.EMPTY)
-# adding Include POSM to tool box
+        if not self.set_up_data[(Const.INCLUDE_OTHERS, self.PLN_BLOCK)]:
+            products_excluded.append(Const.OTHER)
+        if not self.set_up_data[(Const.INCLUDE_IRRELEVANT, self.PLN_BLOCK)]:
+            products_excluded.append(Const.IRRELEVANT)
+        if not self.set_up_data[(Const.INCLUDE_EMPTY, self.PLN_BLOCK)]:
+            products_excluded.append(Const.EMPTY)
         product_filters = {'product_type': products_excluded}  # from Data file
         target = policy['block_target']  # adding test check if empty
         if policy.empty:
@@ -197,7 +193,7 @@ class GSKJPToolBox:
         if self.assortment is None:
             return None
         kpi_assortment_fk = self.common.get_kpi_fk_by_kpi_type(kpi)
-        kpi_results = self.lvl3_assort[self.lvl3_assort['kpi_fk_lvl2'] == kpi_assortment_fk]  # general assortment
+        kpi_results = self.lvl3_assort[self.lvl3_assort['kpi_fk_lvl3'] == kpi_assortment_fk]  # general assortment
         kpi_results = pd.merge(kpi_results, self.all_products[
             ['product_fk', 'product_ean_code', 'substitution_product_fk', 'sub_category_fk', 'category_fk']],
                                how='left', on='product_fk')
@@ -266,7 +262,7 @@ class GSKJPToolBox:
         counter_brands = 0
 
         identifier_compliance_summary = self.common.get_dictionary(kpi_fk=kpi_compliance_summary_fk)
-        assortment_msl = self.msl_assortment(self.DISTRIBUTION_KPI)
+        assortment_msl = self.msl_assortment(Const.DISTRIBUTION)
 
         for brand in brands:
             policy = self.targets[self.targets['brand_fk'] == brand]
