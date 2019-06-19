@@ -781,6 +781,12 @@ class INBEVCIINBEVCIToolBox:
             assortment_type = line[Const.ASSORTMENT_TYPE]
             assortment_kpi_fk = self.get_kpi_fk_by_kpi_name(assortment_type)
             lvl1_result.loc[lvl1_result.kpi_fk_lvl1 == assortment_kpi_fk, 'super_group_target'] = super_group_target
+            # A very unpretty fix to patch incorrect assortment uploaded
+            # TODO: once the infra is developed move to pulling of super_group targets from DB
+            if len(lvl1_result[
+                       lvl1_result.kpi_fk_lvl1 == assortment_kpi_fk]) == 0 and assortment_type == 'Brand Variant':
+                assortment_kpi_fk = self.common.get_kpi_fk_by_kpi_type('{} ASSORTMENT GROUP'.format(assortment_type))
+                lvl1_result.loc[lvl1_result.kpi_fk_lvl1 == assortment_kpi_fk, 'super_group_target'] = super_group_target
         return lvl1_result
 
     def calculate_oos(self, must_have_results):
