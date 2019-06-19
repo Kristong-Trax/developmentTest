@@ -27,8 +27,16 @@ class Test_PNGCN(TestUnitCase):
         self.common_mock = self.mock_object('Common.get_kpi_fk_by_kpi_name', path='KPIUtils_v2.DB.CommonV2')
         self.common_mock.return_value = 3
 
+        mydict = {'matches': 'matches', 'scene_item_facts': 'scene_item_facts', 'all_products':'all_products'}
+
         # mock 'data provider' object giving to the toolbox
         self.data_provider_mock = MagicMock()
+        self.data_provider_mock.__getitem__.side_effect = mydict.__getitem__
+        self.data_provider_mock.__iter__.side_effect = mydict.__iter__
+
+
+
+
 
     def test__get_filterd_matches(self):
         """
