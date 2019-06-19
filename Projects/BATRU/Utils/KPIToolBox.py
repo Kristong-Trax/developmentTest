@@ -152,9 +152,9 @@ class BATRUToolBox:
         self.store_id = self.data_provider[Data.STORE_FK]
 
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
-        self.scif['template_group'] = self.scif['template_group']\
+        self.scif['template_group'] = self.scif[~self.scif['template_group'].isnull()]['template_group']\
             .apply(lambda x: x.encode('utf-8'))
-        self.scif['template_name'] = self.scif['template_name']\
+        self.scif['template_name'] = self.scif[~self.scif['template_name'].isnull()]['template_name']\
             .apply(lambda x: x.encode('utf-8'))
 
         self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
