@@ -14,7 +14,7 @@ class INBEVCISANDCalculations(BaseCalculationsScript):
         INBEVCISANDGenerator(self.data_provider, self.output).main_function()
         self.timer.stop('KPIGenerator.run_project_calculations')
 
-
+#
 # if __name__ == '__main__':
 #     LoggerInitializer.init('inbevci-sand calculations')
 #     Config.init()
@@ -22,7 +22,8 @@ class INBEVCISANDCalculations(BaseCalculationsScript):
 #     # sessions = ['fc314c82-bc68-4786-92a4-f55765593779']
 #     # sessions = ['31f63bc0-19d6-41df-9a24-c62a2f4f822d']
 #     # sessions = ['7d602b07-cccd-443d-bd71-ca5484bd41de']
-#     sessions = ['7d602b07-cccd-443d-bd71-ca5484bd41de']
+#     # sessions = ['7d602b07-cccd-443d-bd71-ca5484bd41de']
+#     sessions = ['abbd64f7-eac8-4c9c-9c04-bc0f7c08f211']
 #     for session in sessions:
 #         data_provider = KEngineDataProvider(project_name)
 #         data_provider.load_session_data(session)
