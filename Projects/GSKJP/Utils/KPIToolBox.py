@@ -112,7 +112,7 @@ class GSKJPToolBox:
         self.common.save_json_to_new_tables(self.linear_sos_dict)
 
 
-        # need to know on which set of brands to run ?? is it already filtered ? 
+        # need to know on which set of brands to run ?? is it already filtered ?
         # local kpis
         for kpi in self.KPI_DICT.values():
             self.gsk_generator.tool_box.extract_data_set_up_file(kpi, self.set_up_data, self.KPI_DICT)
