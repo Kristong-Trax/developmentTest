@@ -1,4 +1,3 @@
-
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Cloud.Services.Connector.Keys import DbUsers
 from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
@@ -7,18 +6,9 @@ import os
 import numpy as np
 from KPIUtils_v2.Calculations.BlockCalculations import Block
 from KPIUtils.GlobalProjects.GSK.KPIGenerator import GSKGenerator
+from KPIUtils.GlobalProjects.GSK.Utils.KPIToolBox import GSKToolBox
 from KPIUtils_v2.DB.CommonV2 import Common
 from KPIUtils_v2.GlobalDataProvider.PsDataProvider import PsDataProvider
-
-# from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
-# from KPIUtils_v2.Calculations.AvailabilityCalculations import Availability
-# from KPIUtils_v2.Calculations.NumberOfScenesCalculations import NumberOfScenes
-# from KPIUtils_v2.Calculations.PositionGraphsCalculations import PositionGraphs
-# from KPIUtils_v2.Calculations.SOSCalculations import SOS
-# from KPIUtils_v2.Calculations.SequenceCalculations import Sequence
-# from KPIUtils_v2.Calculations.SurveyCalculations import Survey
-
-# from KPIUtils_v2.Calculations.CalculationsUtils import GENERALToolBoxCalculations
 from Trax.Utils.Logging.Logger import Log
 
 __author__ = 'limorc'
@@ -29,6 +19,7 @@ KPS_RESULT = 'report.kps_results'
 
 
 class GSKJPToolBox:
+
     LEVEL1 = 1
     LEVEL2 = 2
     LEVEL3 = 3
@@ -40,8 +31,14 @@ class GSKJPToolBox:
     COMPLIANCE_ALL_BRANDS = 'GSK_PLN_COMPLIANCE_ALL_BRANDS'
     ECAP_SUMMARY = 'GSK_PLN_ECAPS_SUMMARY'
     COMPLIANCE_SUMMARY = 'GSK_PLN_COMPLIANCE_SUMMARY'
+    ECAP_ALL_BRAND = 'GSK_PLN_ECAPS_ALL BRANDS'
     GLOBAL_LSOS_BRAND_BY_STORE = 'GSK_LSOS_All_Brand_By_Category'
     PLN_ASSORTMENT_KPI = 'PLN_ECAPS'
+    DISTRIBUTION_KPI = 'Distribution'
+    KPI_DICT = {"GSK_PLN_BLOCK_SCORE": "GSK_PLN_BLOCK_SCORE", "GSK_PLN_ECAPS_ALL": "GSK_PLN_ECAPS_ALL", "GSK_PLN_MSL_SCORE": "GSK_PLN_MSL_SCORE",
+                "GSK_PLN_POSITION_SCORE": "GSK_PLN_POSITION_SCORE"}
+
+
 
     def __init__(self, data_provider, output):
         self.output = output
@@ -72,54 +69,72 @@ class GSKJPToolBox:
         self.ps_data_provider = PsDataProvider(self.data_provider, self.output)
         self.targets = self.ps_data_provider.get_kpi_external_targets()
         self.linear_sos_dict = None
+        self.own_manufacturer = self.get_manufacturer
+        self.lvl3_assort = self.assortment.calculate_lvl3_assortment()
+
+        self.set_up_data = {("GSK_PLN_BLOCK_SCORE", GSKToolBox.KPI_TYPE_COLUMN): GSKToolBox.NO_INFO,
+                            ("GSK_PLN_POSITION_SCORE", GSKToolBox.KPI_TYPE_COLUMN):
+                                GSKToolBox.NO_INFO, ("GSK_PLN_ECAPS_ALL", GSKToolBox.KPI_TYPE_COLUMN):
+                                GSKToolBox.NO_INFO, ("GSK_PLN_MSL_SCORE", GSKToolBox.KPI_TYPE_COLUMN):
+                                GSKToolBox.NO_INFO}
+    @property
+    def get_manufacturer(self):
+        return int(self.data_provider.own_manufacturer[self.data_provider.own_manufacturer['param_name'] ==
+                                                       'manufacturer_id']['param_value'].iloc[0])
 
     def main_calculation(self, *args, **kwargs):
         """
         This function calculates the KPI results.
         """
-
-
+        # global kpis
+        #
         # assortment_store_dict = self.gsk_generator.availability_store_function()
         # self.common.save_json_to_new_tables(assortment_store_dict)
         #
         # assortment_category_dict = self.gsk_generator.availability_category_function()
         # self.common.save_json_to_new_tables(assortment_category_dict)
-        #
+
         # assortment_subcategory_dict = self.gsk_generator.availability_subcategory_function()
         # self.common.save_json_to_new_tables(assortment_subcategory_dict)
         #
         # facings_sos_dict = self.gsk_generator.gsk_global_facings_sos_whole_store_function()
         # self.common.save_json_to_new_tables(facings_sos_dict)
         #
-        self.linear_sos_dict = self.gsk_generator.gsk_global_linear_sos_whole_store_function()
-        self.common.save_json_to_new_tables(self.linear_sos_dict)
-        #
         # linear_sos_dict = self.gsk_generator.gsk_global_linear_sos_by_sub_category_function()
         # self.common.save_json_to_new_tables(linear_sos_dict)
         #
         # facings_sos_dict = self.gsk_generator.gsk_global_facings_by_sub_category_function()
         # self.common.save_json_to_new_tables(facings_sos_dict)
-        #
+
         # facings_sos_dict = self.gsk_generator.gsk_global_facings_sos_by_category_function()
         # self.common.save_json_to_new_tables(facings_sos_dict)
         #
         # linear_sos_dict = self.gsk_generator.gsk_global_linear_sos_by_category_function()
         # self.common.save_json_to_new_tables(linear_sos_dict)
-        #
-        self.get_store_target()# choosing the policy
+
+        # kpi gsk_global_linear_sos_whole_store_function is used in gsk_compliance kpis
+        self.linear_sos_dict = self.gsk_generator.gsk_global_linear_sos_whole_store_function()
+        self.common.save_json_to_new_tables(self.linear_sos_dict)
+
+        # local kpis
+        self.gsk_generator.tool_box.extract_data_set_up_file('GSK_PLN_BLOCK_SCORE', self.set_up_data, self.KPI_DICT)
+        self.gsk_ecaps_kpis()
+        self.get_store_target()  # choosing the policy
         if self.targets.empty:
             Log.warning('There is no target policy matching this store ')
         else:
-            self.brand_blocking()
+            self.gsk_compliance()
+
 
         # self.common.commit_results_data()
         return
 
-    def position_shelf(self, brand_fk,policy):
+    def position_shelf(self, brand_fk, policy):
 
         shelf_from_bottom = policy['shelf']
         threshold = policy['position_target']
         df = pd.merge(self.match_product_in_scene, self.all_products, on="product_fk")
+        # adding filter by  dict & condition to stacking
         df = df[df['stacking_layer'] == 1]
         brand_df = df[df['brand_fk'] == brand_fk]
         shelf_df = brand_df[brand_df['shelf_number_from_bottom'].isin(shelf_from_bottom)]
@@ -130,102 +145,143 @@ class GSKJPToolBox:
         return result, score, numerator, denominator
 
     def lsos_score(self, brand, policy):
+        """
+        This function uses the lsos_in whole_store global calculation.
+        it takes the result of the parameter 'brand' according to the policy set target and results.
+
+        """
         result = 0
         for i in range(0, len(self.linear_sos_dict)):
             if self.linear_sos_dict[i]['fk'] == self.common.get_kpi_fk_by_kpi_type(self.GLOBAL_LSOS_BRAND_BY_STORE) & \
                     self.linear_sos_dict[i]['numerator_id'] == brand:
-                    result = self.linear_sos_dict[i]['numerator_result']
-                    break
+                result = self.linear_sos_dict[i]['numerator_result']
+                break
         target = policy['brand_target']
-        score = result/target
-
+        score = result / target
         return result, score, target
 
+    def brand_blocking(self, brand, policy):
 
-
-
-
-
-
-
-
-
-    def brand_blocking(self,brand,policy):
-
-        template_name = 'Oral Main Shelf' # figure out which template name should I use
-        stacking_param = True# false
-        product_filters = {'product_type': ['POS', 'Empty', 'Irrelevant']} # from Data file
-        target = policy['block_target'] #adding test check if empty
+        templates = self.set_up_data[(GSKToolBox.SCENE_TYPE, self.PLN_BLOCK)]
+        template_name = templates if templates else None  # figure out which template name should I use
+        # taking from params from dict
+        stacking_param = False if not self.set_up_data[(GSKToolBox.INCLUDE_STACKING, self.PLN_BLOCK)] else True  # false
+        products_excluded = []
+        if not self.set_up_data[(GSKToolBox.INCLUDE_OTHERS, self.PLN_BLOCK)]:
+            products_excluded.append(GSKToolBox.OTHER)
+        if not self.set_up_data[(GSKToolBox.INCLUDE_IRRELEVANT, self.PLN_BLOCK)]:
+            products_excluded.append(GSKToolBox.IRRELEVANT)
+        if not self.set_up_data[(GSKToolBox.INCLUDE_EMPTY, self.PLN_BLOCK)]:
+            products_excluded.append(GSKToolBox.EMPTY)
+# adding Include POSM to tool box
+        product_filters = {'product_type': products_excluded}  # from Data file
+        target = policy['block_target']  # adding test check if empty
         if policy.empty:
-            Log.warning('There is no target policy matching brand')# adding brand name
+            Log.warning('There is no target policy matching brand')  # adding brand name
             return
         result = self.blocking_generator.network_x_block_together(location={'template_name': template_name},
-                            population={'brand_fk': [brand]},
-                            additional={'minimum_block_ratio': 1,
-                                        'allowed_products_filters': product_filters,
-                                        'calculate_all_scenes': False,
-                                        'include_stacking': stacking_param,
-                                        'check_vertical_horizontal': True,
-                                        'minimum_facing_for_block': target})
+                                                                  population={'brand_fk': [brand]},
+                                                                  additional={'minimum_block_ratio': 1,
+                                                                              'allowed_products_filters':
+                                                                                  product_filters,
+                                                                              'calculate_all_scenes': False,
+                                                                              'include_stacking': stacking_param,
+                                                                              'check_vertical_horizontal': True,
+                                                                              'minimum_facing_for_block': target})
         if result[result['is_block'] is True].empty:
             result = 0
         return result
 
-    def PLN_MSL_score(self, brand):
+    def msl_assortment(self, kpi):
         if self.assortment is None:
-            return
-        lvl3_assort = self.assortment.calculate_lvl3_assortment()
-        kpi_assortment_fk = self.common.get_kpi_fk_by_kpi_type(self.PLN_ASSORTMENT_KPI)
-        kpi_results = lvl3_assort[lvl3_assort['kpi_fk_lvl2'] == kpi_assortment_fk] # using the brand assortment
+            return None
+        kpi_assortment_fk = self.common.get_kpi_fk_by_kpi_type(kpi)
+        kpi_results = self.lvl3_assort[self.lvl3_assort['kpi_fk_lvl2'] == kpi_assortment_fk]  # general assortment
         kpi_results = pd.merge(kpi_results, self.all_products[
-                 ['product_fk', 'product_ean_code', 'substitution_product_fk', 'sub_category_fk', 'category_fk']], how='left', on='product_fk')
+            ['product_fk', 'product_ean_code', 'substitution_product_fk', 'sub_category_fk', 'category_fk']],
+                               how='left', on='product_fk')
 
-        kpi_results = kpi_results[kpi_results['substitution_product_fk'].isnull()]  # remove substitution product
-        brand_results = kpi_results[kpi_results['brand_fk'] == brand] # only assortment of desired brand
+        kpi_results = kpi_results[kpi_results['substitution_product_fk'].isnull()]
+        return kpi_results
+
+    def pln_ecaps_score(self, brand, assortment):
+
+        identifier_parent = self.common.get_dictionary(brand_fk=brand, kpi_fk=self.common.get_kpi_fk_by_kpi_type(self.ECAP_ALL_BRAND))
+        results_df = []
+        kpi_ecaps_product = self.common.get_kpi_fk_by_kpi_type(self.PRODUCT_PRESENCE)
+        if assortment.empty:
+            return 0, 0, 0, results_df
+        brand_results = assortment[assortment['brand_fk'] == brand]  # only assortment of desired brand
+        for result in assortment.itertuples():
+            score = assortment.in_store * 100
+            results_df.append(
+                {'fk': kpi_ecaps_product, 'numerator_id': result.product_fk, 'denominator_id': self.store_fk,
+                 'denominator_result': 1, 'numerator_result': result.in_store, 'result': score,
+                 'score': score,
+                 'identifier_parent': identifier_parent, 'identifier_result': 1,
+                 'should_enter': True})
+        lvl2 = self.assortment.calculate_lvl2_assortment(brand_results)
+        if lvl2.empty:
+            return 0, 0, 0, results_df  # in case of no assortment return 0
+        result = np.divide(float(lvl2[0].passes), float(lvl2[0].total)) * 100
+        return lvl2[0].passes, lvl2[0].total, result, results_df
+
+    def pln_msl_summary(self, brand, assortment):
+
+        brand_results = assortment[assortment['brand_fk'] == brand]  # only assortment of desired brand
         lvl2 = self.assortment.calculate_lvl2_assortment(brand_results)
         result = np.divide(float(lvl2[0].passes), float(lvl2[0].total)) * 100
         if lvl2.empty:
-            return None,None,None
-        return lvl2[0].passes,lvl2[0].total,result
-
-
+            return 0, 0, 0  # in case of no assortment return 0
+        return lvl2[0].passes, lvl2[0].total, result
 
     def get_store_target(self):
-
         parameters = ['additional_attribute_1', 'additional_attribute_2', 'store_name', 'adress_city', 'region_fk']
         for param in parameters:
             if param in self.targets.columns:
                 self.targets = self.targets[(self.targets[param] == self.store_info[param][0].encode('utf-8')) |
                                             (self.targets[param] == '')]
 
-    def gsk_all_brands(self):
+    def gsk_compliance(self):
+
         results_df = []
-        kpi_fk = self.common.get_kpi_fk_by_kpi_type(self.COMPLIANCE_ALL_BRANDS)
         df = self.scif
         brands = df['brand_fk'].dropna().unique()
+
+        #kpis
         kpi_block_fk = self.common.get_kpi_fk_by_kpi_type(self.PLN_BLOCK)
         kpi_position_fk = self.common.get_kpi_fk_by_kpi_type(self.POSITION_SCORE)
         kpi_lsos_fk = self.common.get_kpi_fk_by_kpi_type(self.PLN_LSOS)
+        kpi_compliance_brands_fk = self.common.get_kpi_fk_by_kpi_type(self.COMPLIANCE_ALL_BRANDS)
+        kpi_compliance_summary_fk = self.common.get_kpi_fk_by_kpi_type(self.COMPLIANCE_SUMMARY)
+
+        # targets
         block_target = 0.25
         posit_target = 0.25
         lsos_target = 0.25
         msl_target = 0.25
 
-        for brand in brands:
+        total_brand_score = 0
+        counter_brands = 0
 
+        identifier_compliance_summary = self.common.get_dictionary(kpi_fk=kpi_compliance_summary_fk)
+        assortment_msl = self.msl_assortment(self.DISTRIBUTION_KPI)
+
+        for brand in brands:
             policy = self.targets[self.targets['brand_fk'] == brand]
             if policy.empty:
                 Log.warning('There is no target policy matching brand')  # adding brand name
                 continue
-            identifier_parent = self.common.get_dictionary(brand_fk=brand, kpi_fk=kpi_fk)
-            msl_numerator, msl_denominator,msl_result = self.PLN_MSL_score(brand)
+            identifier_parent = self.common.get_dictionary(brand_fk=brand, kpi_fk=kpi_compliance_brands_fk)
+            # msl_kpi
+            msl_numerator, msl_denominator, msl_result = self.pln_msl_summary(brand, assortment_msl)
             msl_score = msl_result * msl_target
             results_df.append({'fk': kpi_lsos_fk, 'numerator_id': brand, 'denominator_id': self.store_fk,
                                'denominator_result': msl_denominator, 'numerator_result': msl_numerator, 'result':
                                    msl_result, 'score': msl_score, 'target': msl_target,
                                'identifier_parent': identifier_parent,
                                'should_enter': True})
-
+            # lsos kpi
             lsos_numerator, lsos_result, lsos_denominator = self.lsos_score(brand, policy)
             lsos_score = lsos_result * lsos_target
             results_df.append({'fk': kpi_lsos_fk, 'numerator_id': brand, 'denominator_id': self.store_fk,
@@ -233,24 +289,77 @@ class GSKJPToolBox:
                                    lsos_result, 'score': lsos_score, 'target': lsos_target,
                                'identifier_parent': identifier_parent,
                                'should_enter': True})
-            #block_score
+            # block_score
             block_result = self.brand_blocking(brand, policy)
             block_score = block_result * block_target
 
             results_df.append({'fk': kpi_block_fk, 'numerator_id': brand, 'denominator_id': self.store_fk,
                                'denominator_result': block_result, 'numerator_result': 1, 'result':
-                                block_result, 'score': block_score, 'target': block_target, 'identifier_parent': identifier_parent,
-                               'should_enter': True})
+                                   block_result, 'score': block_score, 'target': block_target, 'identifier_parent':
+                                   identifier_parent, 'should_enter': True})
 
+            # position score
             position_result, position_score, position_num, position_den = self.position_shelf(brand, policy)
-            position_score = position_score *  posit_target
+            position_score = position_score * posit_target
             results_df.append({'fk': kpi_position_fk, 'numerator_id': brand, 'denominator_id': self.store_fk,
-                           'denominator_result': position_den, 'numerator_result': position_num, 'result':
-                            position_result, 'score': position_score, 'target': posit_target, 'identifier_parent':
-                            identifier_parent,
-                           'should_enter': True})
+                               'denominator_result': position_den, 'numerator_result': position_num, 'result':
+                                   position_result, 'score': position_score, 'target': posit_target, 'identifier_parent'
+                               : identifier_parent, 'should_enter': True})
+
+            # complaince score per brand
+            compliance_score = position_score + block_score + lsos_score + msl_score
+            results_df.append(
+                {'fk': kpi_compliance_brands_fk, 'numerator_id': self.own_manufacturer, 'denominator_id': brand,
+                 'denominator_result': 1, 'numerator_result': compliance_score, 'result':
+                     compliance_score, 'score': compliance_score,
+                 'identifier_parent': identifier_compliance_summary, 'identifier_result': identifier_parent,
+                 'should_enter': True})
+
+            # counter and sum updates
+            total_brand_score = total_brand_score + compliance_score
+            counter_brands = counter_brands + 1
+        # compliance summary
+        average_brand_score = total_brand_score / counter_brands
+        results_df.append(
+            {'fk': kpi_compliance_summary_fk, 'numerator_id': self.own_manufacturer, 'denominator_id': self.store_fk,
+             'denominator_result': counter_brands, 'numerator_result': total_brand_score, 'result':
+                 average_brand_score, 'score': average_brand_score,
+             'identifier_result': identifier_compliance_summary})
+
+        return results_df
+
+    def gsk_ecaps_kpis(self):
+
+        results_df = []
+        df = self.scif
+        kpi_ecaps_brands_fk = self.common.get_kpi_fk_by_kpi_type(self.ECAP_ALL_BRAND)
+        kpi_ecaps_summary_fk = self.common.get_kpi_fk_by_kpi_type(self.ECAP_SUMMARY)
+        identifier_ecaps_summary = self.common.get_dictionary(kpi_fk=kpi_ecaps_summary_fk)
+        brands = df['brand_fk'].dropna().unique()
+        total_brand_score = 0
+        for brand in brands:
+
+            assortment_display = self.msl_assortment(self.PLN_ASSORTMENT_KPI)
+
+            numerator_res, denominator_res, result, product_presence_df = self.pln_ecaps_score(brand,
+                                                                                               assortment_display)
+            results_df.extend(product_presence_df)
+            identifier_all_brand = self.common.get_dictionary(brand_fk=brand, kpi_fk=self.common.get_kpi_fk_by_kpi_type(
+                self.ECAP_ALL_BRAND))
+            results_df.append(
+                {'fk': kpi_ecaps_brands_fk, 'numerator_id': self.own_manufacturer, 'denominator_id': brand,
+                 'denominator_result': denominator_res, 'numerator_result': numerator_res, 'result': result,
+                 'score': result, 'identifier_parent': identifier_ecaps_summary, 'identifier_result':
+                     identifier_all_brand, 'should_enter': True})
+
+            total_brand_score = total_brand_score + result
+        result_summary = total_brand_score/len(brands)
+        results_df.append(
+            {'fk': kpi_ecaps_summary_fk, 'numerator_id': self.own_manufacturer, 'denominator_id': self.store_fk,
+             'denominator_result': len(brands), 'numerator_result': total_brand_score, 'result':
+                 result_summary, 'score': result_summary,
+             'identifier_result': identifier_ecaps_summary})
+
+        return results_df
 
 
-
-    # def filter_df(self):
-    #     return self.scif
