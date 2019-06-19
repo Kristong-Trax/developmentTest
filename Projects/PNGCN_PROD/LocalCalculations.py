@@ -19,8 +19,11 @@ if __name__ == '__main__':
     project_name = 'pngcn-prod'
     data_provider = KEngineDataProvider(project_name)
     output = Output()
-    sessions = {'2c742561-8f44-42d2-ab88-e901ffd7e0c2': ['18246334']}
-                # '52DC6AC5-08DC-4D01-A5A4-AE723DB4D651': ['18453856'],
+    sessions = {
+                '471D9B25-30FA-4B33-97DC-509D126E527E': ['18478945'],
+                '117BC751-52D2-462E-8EF4-4ECE6187179C': ['19214788']}
+                # {'0aafdc01-51bb-46cb-bf22-33ccc4a27325': ['18542929'],
+                # '117BC751-52D2-462E-8EF4-4ECE6187179C': ['19214768']}
                 # '6AC1E27A-B2C7-4389-8522-7F1D29642CA4': ['17901923'],
                 # '0D9C3FAE-E62D-4467-B279-2FB8FC32A2DD': ['17886164'],
                 # '6e4dc935-ab56-45ef-9408-caaddb963874': ['17888505'],
