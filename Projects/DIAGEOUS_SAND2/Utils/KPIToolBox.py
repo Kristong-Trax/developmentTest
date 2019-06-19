@@ -576,7 +576,7 @@ class ToolBox:
         :return: a line for the results DF
         """
         sku_kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.DB_OFF_NAMES[Const.DISPLAY_SHARE][Const.SKU])
-        manufacturer = self.get_manufacturer(product_fk)
+        manufacturer = self.all_products[self.all_products['product_fk'] == product_fk]['manufacturer_fk'].iloc[0]
         sum_scenes_passed = self.calculate_passed_display_without_subst(product_fk, relevant_products)
         parent_dict = self.common.get_dictionary(
             kpi_fk=manufacturer_kpi_fk, manufacturer_fk=manufacturer)
@@ -851,8 +851,10 @@ class ToolBox:
         Takes competition between the price of Diageo product and Comp's product.
         The result is the distance between the objected to the observed
         :param competition: line of the template
-        :param relevant_scenes:
+        :param relevant_prices: df
+        :param kpi_db_names: dict
         :param index: for hierarchy
+        :param template: for hierarchy
         :return: 1/0
         """
         kpi_fk = kpi_db_names[Const.COMPETITION]
@@ -910,6 +912,11 @@ class ToolBox:
     # help functions:
 
     def pull_kpi_fks_from_names(self, kpi_db_names):
+        """
+        Takes a dict with level names, convert them to PKs and insert the SKU function
+        :param kpi_db_names: dict with all the KPI's level names
+        :return: converted dict
+        """
         kpis_db = kpi_db_names.copy()
         for key in kpis_db.keys():
             if key != Const.KPI_NAME:
@@ -918,6 +925,9 @@ class ToolBox:
         return kpis_db
 
     def get_function_from_kpi_names(self, kpi_db_names):
+        """
+        Gets a kpi dict and returns the match SKU function
+        """
         if kpi_db_names[Const.KPI_NAME] == Const.SHELF_FACINGS:
             return self.calculate_shelf_facings_of_competition
         if kpi_db_names[Const.KPI_NAME] == Const.SHELF_PLACEMENT:
@@ -933,6 +943,13 @@ class ToolBox:
         return None
 
     def insert_final_results_avg(self, standard_types_results, kpi_db_names, weight):
+        """
+        Gets a dict of lists of all the scores, calculates the total score and inserts them to the DB
+        :param standard_types_results: dict
+        :param kpi_db_names: dict
+        :param weight: float
+        :return: dict of scores
+        """
         scores = {}
         for standard_type in standard_types_results.keys():
             if kpi_db_names[Const.KPI_NAME] == Const.MSRP:
@@ -953,12 +970,21 @@ class ToolBox:
         return scores
 
     def generic_brand_calculator(self, brand_list, relevant_df, standard_types_results, kpi_db_names, template_fk=0):
+        """
+        Calculates the brand with calculating the sub_brand and SKUs scores and inserts it to DB.
+        :param brand_list: assortment or template list
+        :param relevant_df: matches/scif/prices
+        :param standard_types_results: dict with all the standard types scores
+        :param kpi_db_names: dict
+        :param template_fk: for the identifier parent of template level KPIs
+        :return: dict of lists, list
+        """
         brand_results = []
         brand = brand_list.iloc[0]['brand_fk']
         for sub_brand_fk in brand_list['sub_brand_fk'].unique().tolist():
-            sub_brand_assortment = brand_list[brand_list['sub_brand_fk'] == sub_brand_fk]
+            sub_brand_list = brand_list[brand_list['sub_brand_fk'] == sub_brand_fk]
             sub_brand_results, standard_types_results = self.generic_sub_brand_calculator(
-                sub_brand_assortment, relevant_df, standard_types_results, kpi_db_names, template_fk)
+                sub_brand_list, relevant_df, standard_types_results, kpi_db_names, template_fk)
             brand_results += sub_brand_results
         if kpi_db_names[Const.KPI_NAME] == Const.MSRP:
             num, den = 0, 0
@@ -980,6 +1006,14 @@ class ToolBox:
         return standard_types_results, brand_results
 
     def generic_sub_brand_calculator(self, sub_brand_list, relevant_df, standard_types_results, kpi_db_names, template):
+        """
+        Calculates the sub_brand with calculating the SKUs scores and inserts it to DB.
+        :param relevant_df: matches/scif/prices
+        :param standard_types_results: dict with all the standard types scores
+        :param kpi_db_names: dict
+        :param template: for the identifier parent of template level KPIs
+        :return: dict of lists, list
+        """
         sub_brand_results = []
         brand, sub_brand = sub_brand_list.iloc[0][['brand_fk', 'sub_brand_fk']]
         calculate_function = kpi_db_names[Const.FUNCTION]
@@ -1054,13 +1088,6 @@ class ToolBox:
             return self.scif_without_emptys[self.scif_without_emptys["template_name"].isin(scene_type_list)][
                 "scene_id"].unique().tolist()
         return self.scif_without_emptys["scene_id"].unique().tolist()
-
-    def get_manufacturer(self, product_fk): # TODO: it's not necessary
-        """
-        :param product_fk:
-        :return: manufacturer_fk
-        """
-        return self.all_products[self.all_products['product_fk'] == product_fk]['manufacturer_fk'].iloc[0]
 
     @staticmethod
     def does_exist(cell):
