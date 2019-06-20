@@ -72,7 +72,7 @@ class CBCDAIRYILToolBox:
             atomics_df = self.get_atomics_to_calculate(kpi_name)
             atomic_results = self.calculate_atomic_results(kpi_fk, atomics_df)  # Atomic level
             kpi_results = self.calculate_kpis_and_save_to_db(atomic_results, kpi_fk, kpi_weight, kpi_set_fk)  # KPI lvl
-            self.old_common.write_to_db_result(fk=old_kpi_fk, level=2, score=kpi_results)
+            self.old_common.old_write_to_db_result(fk=old_kpi_fk, level=2, score=format(kpi_results, '.2f'))
             total_set_scores.append(kpi_results)
         kpi_set_score = self.calculate_kpis_and_save_to_db(total_set_scores, kpi_set_fk)  # Set level
         self.old_common.write_to_db_result(fk=old_kpi_set_fk, level=1, score=kpi_set_score)
