@@ -5,7 +5,7 @@ __author__ = 'hunter'
 
 class Const(object):
     TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)),
-                                 'Liberty_bottlers_Template_subquestions_added_2019_06_14.xlsx')
+                                 'Liberty_bottlers_Template_subquestions_added_2019_06_17_RB.xlsx')
     LIBERTY = ' - Liberty'
     DRILLDOWN = ' - Drilldown'
     RED_SCORE_PARENT = 'RED SCORE - Liberty'
