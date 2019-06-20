@@ -60,11 +60,11 @@ class Results(object):
             #                         # 'Is the Nutro Cat Main Meal section <=4ft?',
             #                         # 'Is Nutro Wet Dog food blocked?',
             #                         # 'Are Greenies vertically blocked?',
-            #     'Is Nutro Culinary Dog food Feeding Philosophy Segment blocked?'
+            #     'Is the dry dog food category blocked?'
             #                         ]:
             #     continue
-            # print('~~~~~~~~~~~~~~~~~~~~****************~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~')
-            # print(atomic['atomic'])
+            print('~~~~~~~~~~~~~~~~~~~~****************~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~')
+            print(atomic['atomic'])
             if sum([1 for i in atomic['depend_on'] if i is not None and i != '']):
             # if atomic['kpi_type'] == 'PreCalc Vertical Block':
                 dependency_status = self._check_atomic_dependency(atomic, pushed_back_list, atomic_results)
@@ -87,7 +87,7 @@ class Results(object):
             if isinstance(kpi_res, tuple):
                 errata = [i for i in kpi_res[1:]]
                 kpi_res = kpi_res[0]
-            # print('||||| Result for {} is: {}'.format(atomic['atomic'], kpi_res))
+            print('||||| Result for {} is: {}'.format(atomic['atomic'], kpi_res))
             result = {'result': kpi_res,
                       'set': atomic['set'],
                       'kpi': atomic['kpi'],
