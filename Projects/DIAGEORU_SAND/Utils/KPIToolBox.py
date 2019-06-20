@@ -140,10 +140,14 @@ class DIAGEORUToolBox:
             elif set_name == 'Relative Position':
                 # Global function
                 res_dict = self.diageo_generator.diageo_global_relative_position_function(
-                    self.set_templates_data[set_name], location_type='template_display_name')
+                    self.set_templates_data[set_name], location_type='template_name')
 
                 self.commonV2.save_json_to_new_tables(res_dict)
                 set_score = self.calculate_relative_position_sets(set_name)
+
+            elif set_name == 'Vertical Shelf Placement':
+                res_dict = self.diageo_generator.diageo_global_vertical_placement(self.set_templates_data[set_name])
+                self.commonV2.save_json_to_new_tables(res_dict)
 
             if set_score == 0:
                 pass

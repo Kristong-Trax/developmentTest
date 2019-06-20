@@ -50,7 +50,7 @@ class LIBERTYToolBox:
                 converters = {Const.BASE_SIZE_MIN: self.convert_base_size_values,
                               Const.BASE_SIZE_MAX: self.convert_base_size_values}
             templates[sheet] = \
-                pd.read_excel(Const.TEMPLATE_PATH, sheetname=sheet, converters=converters).fillna('')
+                pd.read_excel(Const.TEMPLATE_PATH, sheet_name=sheet, converters=converters).fillna('')
         return templates
 
     # main functions:
@@ -120,14 +120,18 @@ class LIBERTYToolBox:
         result_type_fk = self.ps_data_provider.get_pks_of_result(
             Const.PASS) if result > 0 else self.ps_data_provider.get_pks_of_result(Const.FAIL)
 
-        kpi_name = kpi_line[Const.KPI_NAME] + Const.LIBERTY
-        kpi_fk = self.common_db.get_kpi_fk_by_kpi_type(kpi_name)
-        self.common_db.write_to_db_result(kpi_fk, numerator_id=self.manufacturer_fk, numerator_result=0,
-                                          denominator_id=self.store_id, denominator_result=0, weight=weight,
-                                          result=result_type_fk, identifier_parent=Const.RED_SCORE_PARENT,
-                                          identifier_result=kpi_name, should_enter=True)
+        if self.does_exist(main_line, Const.PARENT_KPI_NAME):
+            # if this is a child KPI, we do not need to return a value to the Total Score KPI
+            return 0
+        else:  # normal behavior for when this isn't a child KPI
+            kpi_name = kpi_line[Const.KPI_NAME] + Const.LIBERTY
+            kpi_fk = self.common_db.get_kpi_fk_by_kpi_type(kpi_name)
+            self.common_db.write_to_db_result(kpi_fk, numerator_id=self.manufacturer_fk, numerator_result=0,
+                                              denominator_id=self.store_id, denominator_result=0, weight=weight,
+                                              result=result_type_fk, identifier_parent=Const.RED_SCORE_PARENT,
+                                              identifier_result=kpi_name, should_enter=True)
+            return result
 
-        return result
 
     # SOS functions
     def calculate_sos(self, kpi_line, relevant_scif, weight):
@@ -228,6 +232,7 @@ class LIBERTYToolBox:
             relevant_template[Const.EAN_CODE].apply(lambda x: str(int(x)) if x != '' else None)
         primary_ean_codes = \
             relevant_template[relevant_template[Const.SECONDARY_GROUP] != 'Y'][Const.EAN_CODE].unique().tolist()
+        primary_ean_codes = [code for code in primary_ean_codes if code is not None]
         primary_products = self.all_products[self.all_products['product_ean_code'].isin(primary_ean_codes)]
         primary_product_pks = primary_products['product_fk'].unique().tolist()
         secondary_ean_codes = \
@@ -251,6 +256,18 @@ class LIBERTYToolBox:
         if brand:
             filtered_scif = filtered_scif[filtered_scif['brand_name'].isin(brand)]
 
+        category = self.does_exist(kpi_line, Const.CATEGORY)
+        if category:
+            filtered_scif = filtered_scif[filtered_scif['category'].isin(category)]
+
+        excluded_brand = self.does_exist(kpi_line, Const.EXCLUDED_BRAND)
+        if excluded_brand:
+            filtered_scif = filtered_scif[~filtered_scif['brand_name'].isin(excluded_brand)]
+
+        excluded_category = self.does_exist(kpi_line, Const.EXCLUDED_CATEGORY)
+        if excluded_category:
+            filtered_scif = filtered_scif[~filtered_scif['category'].isin(excluded_category)]
+
         ssd_still = self.does_exist(kpi_line, Const.ATT4)
         if ssd_still:
             filtered_scif = filtered_scif[filtered_scif['att4'].isin(ssd_still)]
@@ -258,29 +275,55 @@ class LIBERTYToolBox:
         size_subpackages = self.does_exist(kpi_line, Const.SIZE_SUBPACKAGES_NUM)
         if size_subpackages:
             # convert all pairings of size and number of subpackages to tuples
-            size_subpackages_tuples = [tuple([float(i) for i in x.split(';')]) for x in size_subpackages]
-            filtered_scif = filtered_scif[pd.Series(list(zip(filtered_scif['size'],
-                                                             filtered_scif['number_of_sub_packages'])),
+            # size_subpackages_tuples = [tuple([float(i) for i in x.split(';')]) for x in size_subpackages]
+            size_subpackages_tuples = [tuple([self.convert_base_size_values(i) for i in x.split(';')]) for x in
+                                       size_subpackages]
+            filtered_scif = filtered_scif[pd.Series(list(zip(filtered_scif['Base Size'],
+                                                             filtered_scif['Multi-Pack Size'])),
                                                     index=filtered_scif.index).isin(size_subpackages_tuples)]
+
+        excluded_size_subpackages = self.does_exist(kpi_line, Const.EXCLUDED_SIZE_SUBPACKAGES_NUM)
+        if excluded_size_subpackages:
+            # convert all pairings of size and number of subpackages to tuples
+            # size_subpackages_tuples = [tuple([float(i) for i in x.split(';')]) for x in size_subpackages]
+            size_subpackages_tuples = [tuple([self.convert_base_size_values(i) for i in x.split(';')]) for x in
+                                       excluded_size_subpackages]
+            filtered_scif = filtered_scif[~pd.Series(list(zip(filtered_scif['Base Size'],
+                                                              filtered_scif['Multi-Pack Size'])),
+                                                     index=filtered_scif.index).isin(size_subpackages_tuples)]
 
         sub_packages = self.does_exist(kpi_line, Const.SUBPACKAGES_NUM)
         if sub_packages:
             if sub_packages == [Const.NOT_NULL]:
-                filtered_scif = filtered_scif[~filtered_scif['number_of_sub_packages'].isnull()]
+                filtered_scif = filtered_scif[~filtered_scif['Multi-Pack Size'].isnull()]
+            elif sub_packages == [Const.GREATER_THAN_ONE]:
+                filtered_scif = filtered_scif[filtered_scif['Multi-Pack Size'] > 1]
             else:
-                filtered_scif = filtered_scif[filtered_scif['number_of_sub_packages'].isin([int(i) for i in sub_packages])]
+                filtered_scif = filtered_scif[filtered_scif['Multi-Pack Size'].isin([int(i) for i in sub_packages])]
 
         if self.does_exist(kpi_line, Const.MINIMUM_FACINGS_REQUIRED):
             number_of_passing_displays, _ = self.get_number_of_passing_displays(filtered_scif)
 
-            parent_kpi_name = kpi_line[Const.KPI_NAME] + Const.LIBERTY
-            kpi_fk = self.common_db.get_kpi_fk_by_kpi_type(parent_kpi_name + Const.DRILLDOWN)
-            self.common_db.write_to_db_result(kpi_fk, numerator_id=self.manufacturer_fk, numerator_result=0,
-                                              denominator_id=self.store_id, denominator_result=0, weight=weight,
-                                              result=number_of_passing_displays,
-                                              score=number_of_passing_displays * weight,
-                                              identifier_parent=parent_kpi_name, should_enter=True)
-            return number_of_passing_displays
+            if self.does_exist(kpi_line, Const.PARENT_KPI_NAME):
+                parent_kpi_name = kpi_line[Const.PARENT_KPI_NAME] + Const.LIBERTY + Const.DRILLDOWN
+                kpi_fk = self.common_db.get_kpi_fk_by_kpi_type(kpi_line[Const.KPI_NAME] + Const.LIBERTY)
+                self.common_db.write_to_db_result(kpi_fk, numerator_id=self.manufacturer_fk, numerator_result=0,
+                                                  denominator_id=self.store_id, denominator_result=0, weight=weight,
+                                                  result=number_of_passing_displays,
+                                                  score=number_of_passing_displays,
+                                                  identifier_parent=parent_kpi_name, should_enter=True)
+                return 0
+            else:
+                parent_kpi_name = kpi_line[Const.KPI_NAME] + Const.LIBERTY
+                identifier_result = parent_kpi_name + Const.DRILLDOWN
+                kpi_fk = self.common_db.get_kpi_fk_by_kpi_type(parent_kpi_name + Const.DRILLDOWN)
+                self.common_db.write_to_db_result(kpi_fk, numerator_id=self.manufacturer_fk, numerator_result=0,
+                                                  denominator_id=self.store_id, denominator_result=0, weight=weight,
+                                                  result=number_of_passing_displays,
+                                                  score=number_of_passing_displays * weight,
+                                                  identifier_parent=parent_kpi_name,
+                                                  identifier_result=identifier_result, should_enter=True)
+                return number_of_passing_displays
         else:
             return 0
 
@@ -292,12 +335,12 @@ class LIBERTYToolBox:
         if ssd_still:
             filtered_scif = filtered_scif[filtered_scif['att4'].isin(ssd_still)]
 
-        denominator_passing_displays, denominator_facings_of_passing_displays = \
+        denominator_passing_displays, _ = \
             self.get_number_of_passing_displays(filtered_scif)
 
         manufacturer = self.does_exist(kpi_line, Const.MANUFACTURER)
         if manufacturer:
-            filtered_scif = relevant_scif[relevant_scif['manufacturer_name'].isin(manufacturer)]
+            filtered_scif = filtered_scif[filtered_scif['manufacturer_name'].isin(manufacturer)]
 
         if self.does_exist(kpi_line, Const.MARKET_SHARE_TARGET):
             market_share_target = self.get_market_share_target(ssd_still=ssd_still)
@@ -309,12 +352,12 @@ class LIBERTYToolBox:
             filtered_scif = filtered_scif.append(body_armor_scif, sort=False)
 
         if self.does_exist(kpi_line, Const.MINIMUM_FACINGS_REQUIRED):
-            numerator_passing_displays, numerator_facings_of_passing_displays = \
+            numerator_passing_displays, _ = \
                 self.get_number_of_passing_displays(filtered_scif)
 
-            if denominator_facings_of_passing_displays != 0:
+            if denominator_passing_displays != 0:
                 share_of_displays = \
-                    numerator_facings_of_passing_displays / float(denominator_facings_of_passing_displays)
+                    numerator_passing_displays / float(denominator_passing_displays)
             else:
                 share_of_displays = 0
 
@@ -338,6 +381,9 @@ class LIBERTYToolBox:
         if filtered_scif.empty:
             return 0, 0
 
+        filtered_scif = \
+            filtered_scif.groupby(['Base Size', 'Multi-Pack Size', 'scene_id'], as_index=False)['facings'].sum()
+
         filtered_scif['passed_displays'] = \
             filtered_scif.apply(lambda row: self._calculate_pass_status_of_display(row), axis=1)
 
@@ -354,7 +400,7 @@ class LIBERTYToolBox:
         if relevant_template.empty:
             return 0
         minimum_facings = relevant_template[Const.MINIMUM_FACINGS_REQUIRED_FOR_DISPLAY].min()
-        return 1 if row['facings'] > minimum_facings else 0
+        return 1 if row['facings'] >= minimum_facings else 0
 
     # Share of Cooler functions
 
@@ -409,8 +455,9 @@ class LIBERTYToolBox:
 
     # helper functions
     def convert_base_size_and_multi_pack(self):
-        self.scif['Base Size'] = self.scif['Base Size'].apply(self.convert_base_size_values)
-        self.scif['Multi-Pack Size'] = self.scif['Multi-Pack Size'].apply(lambda x: int(x) if x is not None else None)
+        self.scif.loc[:, 'Base Size'] = self.scif['Base Size'].apply(self.convert_base_size_values)
+        self.scif.loc[:, 'Multi-Pack Size'] = \
+            self.scif['Multi-Pack Size'].apply(lambda x: int(x) if x is not None else None)
 
     @staticmethod
     def convert_base_size_values(value):

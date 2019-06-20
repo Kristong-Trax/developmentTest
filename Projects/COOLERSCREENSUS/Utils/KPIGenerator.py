@@ -21,7 +21,7 @@ class COOLERSCREENSUSKGenerator:
         matches_with_products = self._data_provider.matches.merge(right=self._data_provider.products, on='product_fk')
         empty_matches = matches_with_products[matches_with_products['product_type'] == 'Empty']
         empty_matches = empty_matches[
-            ['product_fk', 'bay_number', 'shelf_number', 'facing_sequence_number', 'creation_time']]
+            ['product_fk', 'bay_number', 'shelf_number', 'facing_sequence_number', 'creation_time', 'shelf_number_from_bottom']]
         self.find_prev_products_and_write_to_db(empty_matches)
 
         Log.info('Commiting the results of COOLERSCREENSUS kpi')
@@ -34,7 +34,7 @@ class COOLERSCREENSUSKGenerator:
             prev_product_id = self._find_prev_product(project_connector, match)
             if prev_product_id is not None:
                 kpi_result = 100 if len(self._data_provider.matches[self._data_provider.matches['product_fk'] == prev_product_id]) == 0 else 101
-                shelf_letter = self._get_shelf_letter_by_shelf_number(project_connector, match['shelf_number'])
+                shelf_letter = self._get_shelf_letter_by_shelf_number(project_connector, match['shelf_number_from_bottom'])
                 Log.info('Calculated COOLERSCREENSUS kpi for product {} the result is {}'.format(prev_product_id, kpi_result))
                 self._common.write_to_db_result_new_tables(fk=10000,
                                                            numerator_id=prev_product_id,

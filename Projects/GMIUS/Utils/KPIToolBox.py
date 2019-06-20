@@ -114,8 +114,8 @@ class ToolBox:
         # print(kpi_name)
         # if kpi_name != 'Do Kid AND ASH Both Anchor End of Category?':
         # if kpi_name != 'In the MSL for Yogurt, which of the following is adjacent to Kite Hill?':
-        # if kpi_name not in ('Where are Progresso RTS Light facings shelved?'):
-        #     return
+        if kpi_name not in ('How is Progresso RTS Rich and Hearty blocked?'):
+            return
 
         # if kpi_type == Const.AGGREGATION:
         # if kpi_type:

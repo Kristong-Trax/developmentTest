@@ -82,7 +82,6 @@ class GSKSGToolBox:
         self.output = output
         self.data_provider = data_provider
         self.common = Common(self.data_provider)
-        self.common_old_tables= Common_old(self.data_provider)
         self.project_name = self.data_provider.project_name
         self.session_uid = self.data_provider.session_uid
         self.products = self.data_provider[Data.PRODUCTS]
@@ -96,7 +95,6 @@ class GSKSGToolBox:
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
         # self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         self.kpi_static_data = self.common.get_kpi_static_data()
-        self.old_kpi_static_data = self.common_old_tables.get_kpi_static_data()
         self.kpi_results_queries = []
         self.store_type = self.store_info[STORE_LVL_1].values[0]
         self.set_up_template = pd.read_excel(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data',
@@ -130,8 +128,8 @@ class GSKSGToolBox:
         assortment_category_dict = self.gsk_generator.availability_category_function()
         self.common.save_json_to_new_tables(assortment_category_dict)
 
-        assortment_subcategory_dict = self.gsk_generator.availability_subcategory_function()
-        self.common.save_json_to_new_tables(assortment_subcategory_dict)
+        # assortment_subcategory_dict = self.gsk_generator.availability_subcategory_function()
+        # self.common.save_json_to_new_tables(assortment_subcategory_dict)
 
         facings_sos_dict = self.gsk_generator.gsk_global_facings_sos_whole_store_function()
         if facings_sos_dict is None:

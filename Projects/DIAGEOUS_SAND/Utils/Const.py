@@ -4,16 +4,19 @@ __author__ = 'Elyashiv'
 
 class Const(object):
 
-    OFF, ON = "off_premise", "on_premise"
+    OFF, ON, INDEPENDENT, OPEN, NATIONAL_STORE = "off_premise", "on_premise", "Independent", "Open", "National"
+    NOT_INDEPENDENT_STORES = [OPEN, NATIONAL_STORE]
 
     # sheets:
-    ON_TRADE_MAIN = "main - on_trade"
-    OFF_TRADE_MAIN, SHELF_FACING_SHEET, PRICING_SHEET = "main - off_trade", "Shelf Facings", "Pricing"
+    ON_TRADE_MAIN, OFF_TRADE_MAIN = "main - on_trade", "main - off_trade"
+    ON_TRADE_INDEPENDENT, OFF_TRADE_INDEPENDENT = "independent - on_trade", "independent - off_trade"
+    SHELF_FACING_SHEET, PRICING_SHEET = "Shelf Facings", "Pricing"
     SHELF_PLACMENTS_SHEET, MINIMUM_SHELF_SHEET = "Shelf Placement", "Minimum Shelf"
     DISPLAY_TARGET_SHEET, SHELF_GROUPS_SHEET = "Display_Target", "convert shelves groups"
-    SHEETS = {ON: [ON_TRADE_MAIN],
-              OFF: [OFF_TRADE_MAIN, SHELF_FACING_SHEET, PRICING_SHEET, SHELF_PLACMENTS_SHEET,
-                    DISPLAY_TARGET_SHEET, MINIMUM_SHELF_SHEET, SHELF_GROUPS_SHEET]}
+    SHEETS = {
+        OPEN: {ON: [ON_TRADE_MAIN], OFF: [OFF_TRADE_MAIN, MINIMUM_SHELF_SHEET, SHELF_GROUPS_SHEET]},
+        NATIONAL_STORE: {ON: [ON_TRADE_MAIN], OFF: [OFF_TRADE_MAIN, MINIMUM_SHELF_SHEET, SHELF_GROUPS_SHEET]},
+        INDEPENDENT: {ON: [ON_TRADE_INDEPENDENT], OFF: [OFF_TRADE_INDEPENDENT]}}
     # KPIs columns:
     KPI_NAME, KPI_GROUP, SCORE, TARGET, WEIGHT = "KPI Name", "KPI Group", "Score", "Target", "Weight"
     TEMPLATE_GROUP = "Template Group/ Scene Type"
@@ -41,6 +44,7 @@ class Const(object):
     BACK_BAR, MENU = "Back Bar", "Menu"
 
     SEGMENT, NATIONAL, TOTAL = "S", "N", "total"
+    TEMPLATE = "template"
     BRAND, SUB_BRAND, SKU = "brand", "sub_brand", "sku"
     COMPETITION, MANUFACTURER = "competition", "manufacturer"
     DISPLAY, NATIONAL_SEGMENT = "display", "national_segment_ind"
@@ -79,12 +83,14 @@ class Const(object):
             SKU: 'On_POD -  Brand Variant Size'},
         BACK_BAR: {
             TOTAL: 'Back Bar - Total Score', NATIONAL: 'Back Bar - National Score', SEGMENT: 'Back Bar - Segment Score',
+            TEMPLATE: "Back Bar - Template Score",
             BRAND: 'Back Bar - Generic Brand', SUB_BRAND: 'Back Bar - Brand Variant',
             SKU: 'Back Bar - Brand Variant Size'},
         MENU: {
             TOTAL: 'Menu Share - Total Score', MANUFACTURER: 'Menu Share - Manufacturer Level',
-            SUB_BRAND: 'Menu Share - Brand Variant Level'}}
-    DB_ASSORTMENTS_NAMES = {OFF: "Assortment off Trade", ON: "Assortment on Trade"}
+            TEMPLATE: "Menu Share - Template Score", SUB_BRAND: 'Menu Share - Brand Variant Level'}}
+    DB_ASSORTMENTS_NAMES = {OFF: "Assortment off Trade", ON: "Assortment on Trade",
+                            INDEPENDENT: "independent_display"}
     PERCENT_FOR_EYE_LEVEL = 0
 
     PRODUCT_FK, STANDARD_TYPE, PASSED, FACINGS = "product_fk", "standard_type", "passed", "facings"
@@ -94,6 +100,26 @@ class Const(object):
     COLUMNS_FOR_PRODUCT_PLACEMENT = [PASSED, SHELF_NAME, FACINGS]
 
     EXTRA, OOS, DISTRIBUTED, OTHER, NO_PLACEMENT = "EXTRA", "0", "1", "OTHER", "0"
-    NO_DISPLAY_ALLOWED_QUESTION = "Confirm that there are no displays allowed in this outlet"
-    NO_MENU_ALLOWED_QUESTION = "Confirm that there are no menus allowed in this outlet"
+    NO_DISPLAY_ALLOWED_QUESTION = "Confirm that there are no displays in this outlet."
+    NO_MENU_ALLOWED_QUESTION = "Confirm that there are no menus in this outlet."
+    NO_BACK_BAR_ALLOWED_QUESTION = "Confirm that there are no back bars in this outlet."
     SURVEY_ANSWER = "Yes"
+
+    # operation types:
+    DISPLAY_TARGET_OP, SHELF_FACINGS_OP = "display_target", "shelf_facings"
+    SHELF_PLACEMENT_OP, MSRP_OP = "shelf_placement", "MSRP"
+    OPEN_OPERATION_TYPES = [DISPLAY_TARGET_OP, SHELF_PLACEMENT_OP, MSRP_OP, SHELF_FACINGS_OP]
+    INDEPENDENT_OPERATION_TYPES = [DISPLAY_TARGET_OP]
+    # columns in external targets:
+    EX_PRODUCT_FK, EX_STATE_FK, EX_OPERATION_TYPE,  = "product_fk", "state_fk", "operation_type"
+    EX_SCENE_TYPE, EX_BENCHMARK_VALUE, EX_COMPETITOR_FK = "scene_type", "BENCHMARK Value", "competitor_product_fk"
+    EX_MIN_FACINGS, EX_RELATIVE_MAX, EX_RELATIVE_MIN = "minimum facings", "relative_target_max", "relative_target_min"
+    EX_TARGET_MAX, EX_TARGET_MIN, EX_MINIMUM_SHELF = "target_max", "target_min", "MINIMUM SHELF LOCATION"
+    SHELF_FACINGS_COLUMNS = [EX_PRODUCT_FK, EX_COMPETITOR_FK, EX_BENCHMARK_VALUE]
+    SHELF_PLACEMENT_COLUMNS = [EX_PRODUCT_FK, EX_MINIMUM_SHELF]
+    MSRP_COLUMNS = [EX_PRODUCT_FK, EX_COMPETITOR_FK, EX_RELATIVE_MIN, EX_RELATIVE_MAX, EX_TARGET_MAX, EX_TARGET_MIN]
+    DISPLAY_TARGET_COLUMNS = [EX_SCENE_TYPE, EX_MIN_FACINGS, EX_STATE_FK]
+
+    ALL = "ALL"
+
+    MENU_EXCLUDE_SUB_CATEGORIES = ["SPIRIT DRINK", "COCKTAIL", "CORDIALS/LIQUEURS"]

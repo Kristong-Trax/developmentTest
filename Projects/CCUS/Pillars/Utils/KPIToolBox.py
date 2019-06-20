@@ -8,7 +8,7 @@ from Trax.Utils.Conf.Keys import DbUsers
 from Trax.Utils.Logging.Logger import Log
 from KPIUtils.GlobalDataProvider.PsDataProvider import PsDataProvider
 from Projects.CCUS.Pillars.Utils.Const import Const
-from KPIUtils_v2.DB.CommonV2 import Common
+
 
 
 __author__ = 'Ortal'
@@ -42,11 +42,11 @@ class PillarsPROGRAMSToolBox:
     LEVEL2 = 2
     LEVEL3 = 3
 
-    def __init__(self, data_provider, output):
+    def __init__(self, data_provider, output, commonv2):
         self.k_engine = BaseCalculationsScript(data_provider, output)
         self.output = output
         self.data_provider = data_provider
-        self.common = Common(self.data_provider)
+        self.common = commonv2
         self.project_name = self.data_provider.project_name
         self.session_uid = self.data_provider.session_uid
         self.products = self.data_provider[Data.PRODUCTS]
@@ -89,7 +89,7 @@ class PillarsPROGRAMSToolBox:
                                            result=scene_count, by_scene=False, denominator_id=self.store_id,
                                            score=1 if scene_count > 0 else 0)
 
-        self.common.commit_results_data()
+
 
     def count_specific_program_scenes(self, program_id):
         current_program_result = self.scenes_result.loc[self.scenes_result['numerator_id'] == program_id]
