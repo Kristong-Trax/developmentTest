@@ -21,26 +21,46 @@ class Test_PNGCN(TestUnitCase):
         # mock PSProjectConnector
         self.ProjectConnector_mock = self.mock_object('ProjectConnector', path='KPIUtils_v2.DB.PsProjectConnector')
         self.PSProjectConnector = self.mock_object('PSProjectConnector',
-                                                      path='KPIUtils_v2.DB.PsProjectConnector')
+                                                   path='KPIUtils_v2.DB.PsProjectConnector')
 
         # mock 'Common' object used in toolbox
         self.common_mock = self.mock_object('Common.get_kpi_fk_by_kpi_name', path='KPIUtils_v2.DB.CommonV2')
+        self.SessionInfo_mock = self.mock_object('SessionInfo', path='Trax.Algo.Calculations.Core.Shortcuts')
         self.common_mock.return_value = 3
 
-        mydict = {'matches': 'matches', 'scene_item_facts': 'scene_item_facts', 'all_products':'all_products'}
+
+        # get the relevant DFs
+        matches = pd.read_csv('Data/matches.csv')
+        scif = pd.read_csv('Data/scif.csv')
+        all_products = pd.read_csv('Data/all_products.csv')
+        session_info = pd.read_csv('Data/session_info.csv')
+
+        # create a dict of data_provider object relevant attributes
+        mydict = {'matches': matches,
+                  'scene_item_facts': scif,
+                  'all_products': all_products,
+                  'session_info': session_info,
+                  'store_fk': session_info['store_fk'].iloc[0],
+                  'visit_date': session_info['visit_date'].iloc[0],
+                  'session_and_store_info': pd.DataFrame({'values': [4, 67, 8, 2]})
+                  }
+
+        # decode manufacturer_name (to work around get_png_manufacturer_fk method)
+        mydict['all_products']['manufacturer_name'] = mydict['all_products']['manufacturer_name'].str.decode('utf8')
 
         # mock 'data provider' object giving to the toolbox
         self.data_provider_mock = MagicMock()
+
+        # making data_provider_mock behave like a dict
         self.data_provider_mock.__getitem__.side_effect = mydict.__getitem__
         self.data_provider_mock.__iter__.side_effect = mydict.__iter__
 
-
-
-
+        print 'end __init__'
 
     def test__get_filterd_matches(self):
         """
             1. test that the result is a DF
+            2. test thar the
         """
         scene_tool_box = PngcnSceneKpis(self.ProjectConnector_mock,
                                         self.common_mock, 16588190,
@@ -105,7 +125,3 @@ class Test_PNGCN(TestUnitCase):
             self.assertEqual(len(inputs[0][2]), 8, 'expects to write 8 parameters to db')
             self.assertIsInstance(denominator, float)
             self.assertIsInstance(numerator, float)
-
-
-
-
