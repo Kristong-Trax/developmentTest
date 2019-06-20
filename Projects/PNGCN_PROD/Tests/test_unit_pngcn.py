@@ -65,6 +65,25 @@ class Test_PNGCN(TestUnitCase):
     #                    self.common_mock, 16588190,
     #                    self.data_provider_mock)._get_match_display_in_scene_data()
 
+    def test_calculate_result(self):
+        """
+            1. test that function returns zero for denominator=0
+            2. test that the result is float
+        """
+        scene_tool_box = PngcnSceneKpis(self.ProjectConnector_mock,
+                                        self.common_mock, 16588190,
+                                        self.data_provider_mock)
+        # test that function returns zero for denominator=0
+        numerator, denominator = 12, 0
+        result = scene_tool_box.calculate_result(numerator, denominator)
+        expected_result = 0
+        self.assertEqual(result, expected_result)
+
+        # test that the result is float
+        numerator, denominator = 12, 15
+        result = type(scene_tool_box.calculate_result(numerator, denominator))
+        expected_result = float
+        self.assertEqual(result, expected_result)
 
     def test__get_filterd_matches(self):
         """
