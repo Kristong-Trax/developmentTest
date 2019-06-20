@@ -129,7 +129,7 @@ class GSKJPToolBox:
         shelf_from_bottom = policy['shelf']
         threshold = policy['position_target']
         brand_df = df[df['brand_fk'] == brand_fk]
-        shelf_df = brand_df[brand_df['shelf_number_from_bottom'].isin(shelf_from_bottom)]
+        shelf_df = brand_df[brand_df['shelf_number_from_top'].isin(shelf_from_bottom)]
         numerator = shelf_df.shape[0]
         denominator = shelf_df.shape[0]
         result = numerator / denominator
@@ -239,7 +239,6 @@ class GSKJPToolBox:
 
         results_df = []
         df = self.scif
-        brands = df['brand_fk'].dropna().unique()
         # kpis
         kpi_block_fk = self.common.get_kpi_fk_by_kpi_type(self.PLN_BLOCK)
         kpi_position_fk = self.common.get_kpi_fk_by_kpi_type(self.POSITION_SCORE)
@@ -267,6 +266,8 @@ class GSKJPToolBox:
         self.gsk_generator.tool_box.tests_by_template(self.POSITION_SCORE, df_position_score, self.set_up_data)
         if self.set_up_data[(Const.INCLUDE_STACKING, self.POSITION_SCORE)]:
             df_position_score = df_position_score[df_position_score['stacking_layer'] == 1]
+        #self.set_up_data[(Const.BRANDS_INCLUDE, self.POSITION_SCORE)]
+        brands = df['brand_fk'].dropna().unique()
 
         for brand in brands:
             policy = self.targets[self.targets['brand_fk'] == brand]
@@ -332,14 +333,12 @@ class GSKJPToolBox:
     def gsk_ecaps_kpis(self):
 
         results_df = []
-        df = self.scif
         kpi_ecaps_brands_fk = self.common.get_kpi_fk_by_kpi_type(self.ECAP_ALL_BRAND)
         kpi_ecaps_summary_fk = self.common.get_kpi_fk_by_kpi_type(self.ECAP_SUMMARY)
         identifier_ecaps_summary = self.common.get_dictionary(kpi_fk=kpi_ecaps_summary_fk)
-        brands = df['brand_fk'].dropna().unique()
         total_brand_score = 0
         assortment_display = self.msl_assortment(self.PLN_ASSORTMENT_KPI, self.set_up_data)
-
+        brands = assortment_display['brand_fk'].dropna().unique()
         for brand in brands:
             numerator_res, denominator_res, result, product_presence_df = self.pln_ecaps_score(brand,
                                                                                                assortment_display)
