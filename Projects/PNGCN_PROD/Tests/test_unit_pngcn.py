@@ -2,7 +2,7 @@
 import random
 
 from Trax.Utils.Testing.Case import TestUnitCase
-from mock import MagicMock, Mock
+from mock import MagicMock, patch
 from Projects.PNGCN_PROD.SceneKpis.KPISceneToolBox import PngcnSceneKpis
 import pandas as pd
 
@@ -53,6 +53,18 @@ class Test_PNGCN(TestUnitCase):
         # making data_provider_mock behave like a dict
         self.data_provider_mock.__getitem__.side_effect = mydict.__getitem__
         self.data_provider_mock.__iter__.side_effect = mydict.__iter__
+
+    # # mocking a return value from pandas function
+    # @patch('pandas.read_sql_query')
+    # def test__get_match_display_in_scene_data(self, mock_read_sql):
+    #     """
+    #         1. test that the result is a DF
+    #     """
+    #     mock_read_sql.return_value = pd.DataFrame({'values': [4, 67, 8, 2]})
+    #     PngcnSceneKpis(self.ProjectConnector_mock,
+    #                    self.common_mock, 16588190,
+    #                    self.data_provider_mock)._get_match_display_in_scene_data()
+
 
     def test__get_filterd_matches(self):
         """
@@ -111,7 +123,10 @@ class Test_PNGCN(TestUnitCase):
             3. test that the type of the numerator and denominator is float
         """
 
-        scene_tool_box = PngcnSceneKpis(self.ProjectConnector_mock, self.common_mock, 16588190, self.data_provider_mock)
+        scene_tool_box = PngcnSceneKpis(self.ProjectConnector_mock,
+                                        self.common_mock, 16588190,
+                                        self.data_provider_mock)
+
         data = [{'scene_fk': 101, 'manufacturer_fk': 2, 'product_fk': 252, 'width_mm': 0.84, 'width_mm_advance': 1.23},
                 {'scene_fk': 121, 'manufacturer_fk': 4, 'product_fk': 132, 'width_mm': 0.80, 'width_mm_advance': 0.99},
                 {'scene_fk': 201, 'manufacturer_fk': 4, 'product_fk': 152, 'width_mm': 0.28, 'width_mm_advance': 0.75},
