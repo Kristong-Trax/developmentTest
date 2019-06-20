@@ -28,7 +28,6 @@ class Test_PNGCN(TestUnitCase):
         self.SessionInfo_mock = self.mock_object('SessionInfo', path='Trax.Algo.Calculations.Core.Shortcuts')
         self.common_mock.return_value = 3
 
-
         # get the relevant DFs
         matches = pd.read_csv('Data/matches.csv')
         scif = pd.read_csv('Data/scif.csv')
@@ -55,19 +54,27 @@ class Test_PNGCN(TestUnitCase):
         self.data_provider_mock.__getitem__.side_effect = mydict.__getitem__
         self.data_provider_mock.__iter__.side_effect = mydict.__iter__
 
-        print 'end __init__'
-
     def test__get_filterd_matches(self):
         """
             1. test that the result is a DF
-            2. test thar the
+            2. test that there is only one manufacturer fk in the return DF
+            3. test that the only manufacturer fk in DF is Png
         """
         scene_tool_box = PngcnSceneKpis(self.ProjectConnector_mock,
                                         self.common_mock, 16588190,
                                         self.data_provider_mock)
 
-        self.assertIsInstance(scene_tool_box.get_filterd_matches(),
-                              type(pd.DataFrame()))
+        # test that the result is a DF
+        DFtype = scene_tool_box.get_filterd_matches()
+        self.assertIsInstance(DFtype, type(pd.DataFrame()))
+
+        # test that there is only one manufacturer fk in the return DF
+        UniqueFK = len(DFtype['manufacturer_fk'].unique())
+        self.assertEqual(UniqueFK, 1)
+
+        # test that the only manufacturer fk in DF is Png
+        PngFK = DFtype['manufacturer_fk'].unique()[0]
+        self.assertEqual(PngFK, 4)
 
     def test__get_display_size_of_product_in_scene(self):
         """
