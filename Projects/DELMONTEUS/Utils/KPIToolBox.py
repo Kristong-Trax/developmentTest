@@ -1,6 +1,6 @@
 
 import pandas as pd
-import numpy as np
+import operator as op
 from functools import reduce
 from collections import defaultdict, Counter, namedtuple
 
@@ -103,6 +103,7 @@ class ToolBox:
 
         print(kpi_name)
         if kpi_name not in ('Are PFC shelved between Canned and Squeezers?'):
+        # if kpi_name not in ('Does Del Monte lead the COS Fruit Section?'):
         # if kpi_type not in (Const.BLOCKING, Const.BLOCKING_PERCENT, Const.SOS, Const.ANCHOR, Const.MULTI_BLOCK):
             return
 
@@ -410,36 +411,34 @@ class ToolBox:
     def anchor_base(self, general_filters, potential_end, scenes, min_shelves, ratio=False):
         results = {}
         cat_filters = dict(general_filters)
+        func_dict = {'left': [min, op.lt, float('inf')], 'right': [max, op.gt, 0]}
         results['left'], results['right'] = 0, 0
         for scene in scenes:
             cat_filters['scene_fk'] = scene
             cat_mpis = self.filter_df(self.mpis, cat_filters)
-            cat_mpis = self.filter_df(cat_mpis, Const.ALLOWED_FILTERS, exclude=1)
+            # cat_mpis = self.filter_df(cat_mpis, Const.ALLOWED_FILTERS, exclude=1)
+            cat_mpis = self.filter_df(cat_mpis, {'product_type': 'Empty'}, exclude=1)
             cat_mpis = self.filter_df(cat_mpis, {'stacking_layer': 1})
             bays = {'left': cat_mpis['bay_number'].min(), 'right': cat_mpis['bay_number'].max()}
             for dir, bay in bays.items():
+                agg_func, operator, fill_val = func_dict[dir]
                 bay_mpis = self.filter_df(cat_mpis, {'bay_number': bay})
-
                 smpis = self.filter_df(bay_mpis, potential_end).groupby(['scene_fk', 'bay_number', 'shelf_number']) \
-                    ['facing_sequence_number'].min()
+                    ['facing_sequence_number'].agg(agg_func)
                 if smpis.empty:
                     continue
                 rmpis = self.filter_df(bay_mpis, potential_end, exclude=1) \
-                    .groupby(['scene_fk', 'bay_number', 'shelf_number'])['facing_sequence_number'].min()
+                    .groupby(['scene_fk', 'bay_number', 'shelf_number'])['facing_sequence_number'].agg(agg_func)
                 locs = pd.concat([smpis, rmpis], axis=1)
                 locs.columns = ['A', 'B']
                 locs.dropna(subset=['A'], inplace=True)
                 if ratio:
                     min_shelves = max(self.filter_df(self.mpis, {'scene_fk': scene, 'bay_number': bay})['shelf_number'])
                     min_shelves = round(min_shelves / 2.0)
-                if dir == 'left':
-                    locs.fillna(float('inf'), inplace=True)
-                    if sum(locs['A'] < locs['B']) >= min_shelves:
-                        results[dir] = 1
-                else:
-                    locs.fillna(0, inplace=True)
-                    if sum(locs['A'] > locs['B']) >= min_shelves:
-                        results[dir] = 1
+
+                locs.fillna(fill_val, inplace=True)
+                if sum(operator(locs['A'], locs['B'])) >= min_shelves:
+                    results[dir] = 1
         return results
 
     def calculate_anchor(self, kpi_name, kpi_line, relevant_scif, general_filters):
@@ -451,7 +450,8 @@ class ToolBox:
 
         for edge in edges:
             if results[edge]:
-                return {'score': 1, 'result': results[edge], 'target': 0}
+                result = 1
+        return {'score': 1, 'result': result, 'target': 0}
 
     def base_block(self, kpi_name, kpi_line, relevant_scif, general_filters_base, check_orient=1, other=1, filters={},
                    multi=0):
