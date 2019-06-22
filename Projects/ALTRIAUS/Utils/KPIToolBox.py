@@ -37,6 +37,8 @@ TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 
 FIXTURE_WIDTH_TEMPLATE = \
     os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'Fixture_Width_Dimensions_v3.xlsx')
 
+NO_FLIP_SIGN_PK = 11161
+
 
 def log_runtime(description, log_start=False):
     def decorator(func):
@@ -109,6 +111,7 @@ class ALTRIAUSToolBox:
                """
         self.calculate_signage_locations_and_widths('Cigarettes')
         self.calculate_signage_locations_and_widths('Smokeless')
+        self.calculate_register_type()
 
         return
 
@@ -145,6 +148,20 @@ class ALTRIAUSToolBox:
                 Log.info('KPI {} calculation failed due to {}'.format(kpi_name.encode('utf-8'), e))
                 continue
         return
+
+    def calculate_register_type(self):
+        relevant_scif = self.scif[(self.scif['product_type'] == 'POS') &
+                                  (self.scif['category'] == 'POS Machinery')]
+        if relevant_scif.empty:
+            result = 0
+            product_fk = 0
+        else:
+            result = 1
+            product_fk = relevant_scif['product_fk'].iloc[0]
+
+        kpi_fk = self.common_v2.get_kpi_fk_by_kpi_type('Register Type')
+        self.common_v2.write_to_db_result(kpi_fk, numerator_id=product_fk, denominator_id=self.store_id,
+                                          result=result)
 
     def calculate_category_space(self, kpi_set_fk, kpi_name, category, scene_types=None):
         template = self.all_template_data.loc[(self.all_template_data['KPI Level 2 Name'] == kpi_name) &
@@ -283,6 +300,7 @@ class ALTRIAUSToolBox:
         return kpi_name
 
     def calculate_signage_locations_and_widths(self, category):
+        excluded_types = ['Other', 'Irrelevant', 'Empty']
         relevant_scif = self.scif[self.scif['template_name'] == 'Tobacco Merchandising Space']
         # need to include scene_id from previous relevant_scif
         # also need to split this shit up into different categories, i.e. smokeless, cigarettes
@@ -292,7 +310,11 @@ class ALTRIAUSToolBox:
         relevant_scif = relevant_scif[relevant_scif['category'].isin([category, 'POS'])]
         relevant_product_pks = relevant_scif[relevant_scif['product_type'] == 'SKU']['product_fk'].unique().tolist()
         relevant_pos_pks = relevant_scif[relevant_scif['product_type'] == 'POS']['product_fk'].unique().tolist()
-        product_mpis = self.mpis[self.mpis['product_fk'].isin(relevant_product_pks)]
+        other_product_and_pos_pks = \
+            relevant_scif[relevant_scif['product_type'].isin(excluded_types)]['product_fk'].tolist()
+        relevant_scene_id = relevant_scif['scene_id'].iloc[0]
+        product_mpis = self.mpis[(self.mpis['product_fk'].isin(relevant_product_pks)) &
+                                 (self.mpis['scene_fk'] == relevant_scene_id)]
 
         if product_mpis.empty:
             Log.info('No products found for {} category'.format(category))
@@ -301,14 +323,36 @@ class ALTRIAUSToolBox:
         longest_shelf = \
             product_mpis[product_mpis['shelf_number'] ==
                          self.get_longest_shelf_number(product_mpis)].sort_values(by='rect_x', ascending=True)
+
+        if longest_shelf.empty or longest_shelf.isnull().all().all():
+            Log.warning(
+                'The {} category items are in a non-standard location. The {} category will not be calculated.'.format(
+                    category, category))
+            return
+
         demarcation_line = longest_shelf['rect_y'].median()
+
+        exclusion_line = -9999
+        excluded_mpis = self.mpis[~(self.mpis['product_fk'].isin(relevant_pos_pks +
+                                                                 relevant_product_pks +
+                                                                 other_product_and_pos_pks)) &
+                                  (self.mpis['rect_x'] < longest_shelf['rect_x'].max()) &
+                                  (self.mpis['rect_x'] > longest_shelf['rect_x'].min()) &
+                                  (self.mpis['scene_fk'] == relevant_scene_id) &
+                                  (self.mpis['rect_y'] < demarcation_line)]
+        # we need this line for when SCIF and MPIS don't match
+        excluded_mpis = excluded_mpis[~excluded_mpis['product_type'].isin(excluded_types)]
+
+        if not excluded_mpis.empty:
+            exclusion_line = excluded_mpis['rect_y'].max()
 
         # we need to get POS stuff that falls within the x-range of the longest shelf (which is limited by category)
         # we also need to account for the fact that the images suck, so we're going to add/subtract 5% of the
         # max/min values to allow for POS items that fall slightly out of the shelf length range
         pos_mpis = self.mpis[(self.mpis['product_fk'].isin(relevant_pos_pks)) &
                              (self.mpis['rect_x'] < (longest_shelf['rect_x'].max() * 1.05)) &
-                             (self.mpis['rect_x'] > (longest_shelf['rect_x'].min() * 0.95))]
+                             (self.mpis['rect_x'] > (longest_shelf['rect_x'].min() * 0.95)) &
+                             (self.mpis['scene_fk'] == relevant_scene_id)]
         relevant_pos = self.adp.get_products_contained_in_displays(pos_mpis)
 
         if relevant_pos.empty:
@@ -317,24 +361,26 @@ class ALTRIAUSToolBox:
 
         relevant_pos = relevant_pos[['product_fk', 'product_name', 'left_bound', 'right_bound', 'center_x', 'center_y']]
         relevant_pos = relevant_pos.reindex(columns=relevant_pos.columns.tolist() + ['type', 'width', 'position'])
-        relevant_pos['width'] = relevant_pos.apply(lambda row: self.get_length_of_pos(row, longest_shelf, category), axis=1)
-        relevant_pos['type'] = relevant_pos['center_y'].apply(lambda x: 'Header' if x < demarcation_line else 'Flip Sign')
+        relevant_pos['width'] = \
+            relevant_pos.apply(lambda row: self.get_length_of_pos(row, longest_shelf, category), axis=1)
+        relevant_pos['type'] = \
+            relevant_pos['center_y'].apply(lambda x: 'Header' if exclusion_line < x < demarcation_line else 'Flip Sign')
         relevant_pos = relevant_pos.sort_values(['center_x'], ascending=True)
         relevant_pos = self.remove_duplicate_pos_tags(relevant_pos)
         # generate header positions
         if category == 'Cigarettes':
+            number_of_headers = len(relevant_pos[relevant_pos['type'] == 'Header'])
             header_position_list = [position.strip() for position in
                                     self.header_positions_template[
                                         self.header_positions_template['Number of Headers'] ==
-                                        len(relevant_pos[relevant_pos['type'] ==
-                                                         'Header'])]['Cigarettes Positions'].iloc[0].split(',')]
+                                        number_of_headers]['Cigarettes Positions'].iloc[0].split(',')]
             relevant_pos.loc[relevant_pos['type'] == 'Header', ['position']] = header_position_list
         elif category == 'Smokeless':
+            number_of_headers = len(relevant_pos[relevant_pos['type'] == 'Header'])
             header_position_list = [position.strip() for position in
                                     self.header_positions_template[
                                         self.header_positions_template['Number of Headers'] ==
-                                        len(relevant_pos[relevant_pos['type'] ==
-                                                         'Header'])]['Smokeless Positions'].iloc[0].split(',')]
+                                        number_of_headers]['Smokeless Positions'].iloc[0].split(',')]
             relevant_pos.loc[relevant_pos['type'] == 'Header', ['position']] = header_position_list
         # generate flip-sign positions
         if category == 'Cigarettes':
@@ -351,27 +397,29 @@ class ALTRIAUSToolBox:
                                              (relevant_pos['center_x'] > left_bound) &
                                              (relevant_pos['center_x'] < right_bound)]
                 if flip_sign_pos.empty:
-                    # pass
-                    # need to add 'No Flip-Sign' product_fk too
-                    relevant_pos.loc[len(relevant_pos), ['position']] = location
+                    # add 'NO Flip Sign' product_fk
+                    relevant_pos.loc[len(relevant_pos), ['position', 'product_fk', 'type']] = \
+                        [location, NO_FLIP_SIGN_PK, 'Flip Sign']
                 else:
                     relevant_pos.loc[flip_sign_pos.index, ['position']] = location
                 longest_shelf.drop(longest_shelf.iloc[:relevant_template[location].iloc[0]].index, inplace=True)
         elif category == 'Smokeless':
             # if there are no flip signs found, there are no positions to assign
-            if len(relevant_pos[relevant_pos['type'] == 'Flip Sign']) > 0:
+            number_of_flip_signs = len(relevant_pos[relevant_pos['type'] == 'Flip Sign'])
+            if number_of_flip_signs > self.flip_sign_positions_template['Number of Flip Signs'].max():
+                Log.warning('Number of Flip Signs is greater than max number defined in template!')
+            elif number_of_flip_signs > 0:
                 flip_sign_position_list = [position.strip() for position in
                                            self.flip_sign_positions_template[
                                                self.flip_sign_positions_template['Number of Flip Signs'] ==
-                                               len(relevant_pos[relevant_pos['type'] ==
-                                                                'Flip Sign'])]['Position'].iloc[0].split(',')]
+                                               number_of_flip_signs]['Position'].iloc[0].split(',')]
                 relevant_pos.loc[relevant_pos['type'] == 'Flip Sign', ['position']] = flip_sign_position_list
 
             # store empty flip sign values
             for location in ['Secondary', 'Tertiary']:
                 if location not in relevant_pos[relevant_pos['type'] == 'Flip Sign']['position'].tolist():
-                    # need to add 'No Flip-Sign' product_fk too
-                    relevant_pos.loc[len(relevant_pos), ['position']] = location
+                    relevant_pos.loc[len(relevant_pos), ['position', 'product_fk', 'type']] = \
+                        [location, NO_FLIP_SIGN_PK, 'Flip Sign']
 
         relevant_pos = relevant_pos.reindex(columns=relevant_pos.columns.tolist() + ['denominator_id'])
 
@@ -379,9 +427,6 @@ class ALTRIAUSToolBox:
         relevant_pos.dropna(subset=['position'], inplace=True)
 
         relevant_pos.loc[:, ['denominator_id']] = relevant_pos['position'].apply(self.get_custom_entity_pk)
-
-        # remove this after 'No Flip-Sign' SKU is added
-        relevant_pos.dropna(subset=['product_fk'], inplace=True)
 
         for row in relevant_pos.itertuples():
             kpi_fk = self.common_v2.get_kpi_fk_by_kpi_name(row.type)
@@ -412,9 +457,15 @@ class ALTRIAUSToolBox:
 
     def get_longest_shelf_number(self, relevant_mpis):
         # returns the shelf_number of the longest shelf
-        return \
-        relevant_mpis[relevant_mpis['shelf_number'] <= 3].groupby('shelf_number').agg({'scene_match_fk': 'count'})[
-            'scene_match_fk'].idxmax()
+        try:
+            longest_shelf = \
+            relevant_mpis[relevant_mpis['shelf_number'] <= 3].groupby('shelf_number').agg({'scene_match_fk': 'count'})[
+                'scene_match_fk'].idxmax()
+        except ValueError:
+            longest_shelf = pd.DataFrame()
+
+        return longest_shelf
+
 
     def commit(self):
         # self.common.commit_results_data_to_new_tables()
