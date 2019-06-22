@@ -8,8 +8,8 @@ from KPIUtils_v2.Calculations.PositionGraphsCalculations import PositionGraphs
 from KPIUtils_v2.Calculations.BaseCalculations import BaseCalculation
 import KPIUtils_v2.Calculations.CalculationsUtils.CalculationUtils as CalculationUtils
 import KPIUtils_v2.Calculations.CalculationsUtils.DefaultValues as Default
-from Trax.Algo.Calculations.Core.GraphicalModel2.AdjacencyGraphs import AdjacencyGraphBuilder
-# from Projects.RINIELSENUS.Utils.AdjacencyGraphs_v2 import AdjacencyGraphBuilder
+# from Trax.Algo.Calculations.Core.GraphicalModel2.AdjacencyGraphs import AdjacencyGraphBuilder
+from Projects.RINIELSENUS.Utils.AdjacencyGraphs import AdjacencyGraphBuilder
 from Trax.Algo.Geometry.Masking.MaskingResultsIO import retrieve_maskings
 from Trax.Algo.Geometry.Masking.Utils import transform_maskings
 from Trax.Utils.Logging.Logger import Log
@@ -52,6 +52,8 @@ class Block(BaseCalculation):
                                                                  self.data_provider.scenes_info['scene_fk'].to_list()))
         self.masking_data = self.masking_data.merge(self.matches[['probe_match_fk', 'scene_fk']], on=['probe_match_fk'])
         self.matches_df = self.matches.merge(self.data_provider.all_products_including_deleted, on='product_fk')
+        self.matches_df = self.matches_df[~(self.matches_df['product_type'].isin(['Irrelevant', 'POS'])) &
+                                           (self.matches_df['stacking_layer'] > 0)]
         self.matches_df[Block.BLOCK_KEY] = None
 
     def network_x_block_together(self, population, location=None, additional=None):
@@ -147,12 +149,11 @@ class Block(BaseCalculation):
                 # check if the adj_g already exists for this scene, if not create it and save it
                 if scene not in self.adj_graphs_by_scene:
                     # Create the adjacency graph on the data we filtered above
-                    adj_g = AdjacencyGraphBuilder.initiate_graph_by_dataframe(scene_matches, scene_mask,
+                    graph = AdjacencyGraphBuilder.initiate_graph_by_dataframe(scene_matches, scene_mask,
                             additional_attributes=['rect_x', 'rect_y'] + allowed_product_filter +
                             list(scene_matches.columns))
-                    self.adj_graphs_by_scene[scene] = adj_g
-                else:
-                    adj_g = self.adj_graphs_by_scene[scene]
+                    self.adj_graphs_by_scene[scene] = graph
+                adj_g = self.adj_graphs_by_scene[scene].copy()
 
                 # Update the block_key node attribute based on the population fields
                 for i, n in adj_g.nodes(data=True):
