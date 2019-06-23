@@ -2,7 +2,7 @@
 import random
 
 from Trax.Utils.Testing.Case import TestUnitCase
-from mock import MagicMock, patch
+from mock import MagicMock
 from Projects.PNGCN_PROD.SceneKpis.KPISceneToolBox import PngcnSceneKpis
 import pandas as pd
 import numpy
@@ -79,7 +79,7 @@ class Test_PNGCN(TestUnitCase):
         scene_tool_box.insert_data_into_custom_scif(new_scif)
         delete_query = scene_tool_box.common.execute_custom_query.mock_calls[1][1][0]
         insert_query = scene_tool_box.common.execute_custom_query.mock_calls[2][1][0]
-        self.assertIsInstance(delete_query,str)
+        self.assertIsInstance(delete_query, str)
         self.assertIsInstance(insert_query, str)
 
     def test_calculate_result(self):
