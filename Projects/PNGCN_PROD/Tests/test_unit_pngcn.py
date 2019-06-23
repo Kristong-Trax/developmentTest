@@ -124,8 +124,9 @@ class TestPngcn(TestUnitCase):
         scene_tool_box = PngcnSceneKpis(self.ProjectConnector_mock,
                                         self.common_mock, 16588190,
                                         self.data_provider_mock)
-        scene_tool_box.mock_df_products_size = self.mock_object('_get_display_size_of_product_in_scene',
-                                                                path='Projects.PNGCN_PROD.SceneKpis.KPISceneToolBox.PngcnSceneKpis')
+        scene_tool_box.mock_df_products_size = \
+            self.mock_object('_get_display_size_of_product_in_scene',
+                             path='Projects.PNGCN_PROD.SceneKpis.KPISceneToolBox.PngcnSceneKpis')
         # test that we don't return any thing when the used df is empty
         scene_tool_box.mock_df_products_size.return_value = pd.DataFrame({})
         result = scene_tool_box.calculate_display_size()
