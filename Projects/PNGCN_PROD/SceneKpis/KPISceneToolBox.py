@@ -159,6 +159,9 @@ class PngcnSceneKpis(object):
             Log.info(self.log_prefix + ' Finished calculation')
 
     def calculate_eye_level_kpi(self):
+        """
+        calls the filter eyelevel shelves function, calls both eye_level_sequence and eye_level_facings KPIs
+        """
         if self.matches_from_data_provider.empty:
             return
         relevant_templates = self.psdataprovider.get_scene_category_data(PCC_CATEGORY)['template_fk'].tolist()
@@ -179,6 +182,11 @@ class PngcnSceneKpis(object):
         self.calculate_sequence_eye_level(entity_df, full_df)
 
     def calculate_facing_eye_level(self, full_df):
+        """
+        Summing all facings for each product (includes stackings)
+        :param full_df: the two relevant shelves (eye level shelves)
+        :return: save the facing_eye_level results for each shelf (combine all bays)
+        """
         kpi_facings_fk = self.common.get_kpi_fk_by_kpi_name(Eye_level_kpi_FACINGS)
         results_facings_df = full_df.groupby(by=['shelf_number', 'product_fk']).first().reset_index()
         summed_result_df = full_df.groupby(by=['shelf_number', 'product_fk']).size().reset_index()
@@ -193,6 +201,12 @@ class PngcnSceneKpis(object):
                                             result=facings, score=facings, by_scene=True)
 
     def calculate_sequence_eye_level(self, entity_df, full_df):
+        """
+        Saving sequence of brand-sub_category blocks (not including stackings)
+        :param entity_df: the sub_-category-brand custom_entety fields, to save the correct entity
+        :param full_df: The df to work on
+        :return: saves the sequence of each shelf (combine all bays)
+        """
         kpi_sequence_fk = self.common.get_kpi_fk_by_kpi_name(Eye_level_kpi_SEQUENCE)
         results_sequence_df = pd.DataFrame(columns=['fk', 'numerator_id', 'denominator_id', 'numerator_result', 'result',
                                             'score', 'by_scene', 'temp_bay_number'])
@@ -241,6 +255,11 @@ class PngcnSceneKpis(object):
             self.common.write_to_db_result(**row)
 
     def get_eye_level_shelves(self, df):
+        """
+        Gives us the two relevant shelves according to the costumer request.
+        :param df: the df to work on
+        :return: the two relevant eye_level shelves out of the df given
+        """
         if df.empty:
             return df
         bay_and_shelves = df.groupby(by=['bay_number', 'shelf_number']).first().reset_index()[['bay_number', 'shelf_number']]
