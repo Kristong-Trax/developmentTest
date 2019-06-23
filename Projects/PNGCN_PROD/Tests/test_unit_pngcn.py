@@ -36,13 +36,12 @@ class TestPngcn(TestUnitCase):
 
         # create a dict of data_provider object relevant attributes
         my_dict = {'matches': matches,
-                  'scene_item_facts': scif,
-                  'all_products': all_products,
-                  'session_info': session_info,
-                  'store_fk': session_info['store_fk'].iloc[0],
-                  'visit_date': session_info['visit_date'].iloc[0],
-                  'session_and_store_info': pd.DataFrame({'values': [4, 67, 8, 2]})
-                  }
+                   'scene_item_facts': scif,
+                   'all_products': all_products,
+                   'session_info': session_info,
+                   'store_fk': session_info['store_fk'].iloc[0],
+                   'visit_date': session_info['visit_date'].iloc[0],
+                   'session_and_store_info': pd.DataFrame({'values': [4, 67, 8, 2]})}
 
         # decode manufacturer_name (to work around get_png_manufacturer_fk method)
         my_dict['all_products']['manufacturer_name'] = my_dict['all_products']['manufacturer_name'].str.decode('utf8')
@@ -55,9 +54,9 @@ class TestPngcn(TestUnitCase):
         self.data_provider_mock.__iter__.side_effect = my_dict.__iter__
 
     def test_insert_data_into_custom_scif(self):
-        '''
+        """
             test type delete qury type.
-        '''
+        """
         scene_tool_box = PngcnSceneKpis(self.ProjectConnector_mock,
                                         self.common_mock, 16588190,
                                         self.data_provider_mock)
@@ -119,14 +118,14 @@ class TestPngcn(TestUnitCase):
                               type(pd.DataFrame()))
 
     def test_calculate_display_size_empty_df(self):
-        '''
+        """
             test that we don't return any thing when the used df is empty
-        '''
+        """
         scene_tool_box = PngcnSceneKpis(self.ProjectConnector_mock,
                                         self.common_mock, 16588190,
                                         self.data_provider_mock)
         scene_tool_box.mock_df_products_size = self.mock_object('_get_display_size_of_product_in_scene',
-                                                 path='Projects.PNGCN_PROD.SceneKpis.KPISceneToolBox.PngcnSceneKpis')
+                                                                path='Projects.PNGCN_PROD.SceneKpis.KPISceneToolBox.PngcnSceneKpis')
         # test that we don't return any thing when the used df is empty
         scene_tool_box.mock_df_products_size.return_value = pd.DataFrame({})
         result = scene_tool_box.calculate_display_size()
