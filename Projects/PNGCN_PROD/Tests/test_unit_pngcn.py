@@ -66,6 +66,22 @@ class Test_PNGCN(TestUnitCase):
     #                    self.common_mock, 16588190,
     #                    self.data_provider_mock)._get_match_display_in_scene_data()
 
+    def test_insert_data_into_custom_scif(self):
+        '''
+            1. test type delete qury type.
+        '''
+        scene_tool_box = PngcnSceneKpis(self.ProjectConnector_mock,
+                                        self.common_mock, 16588190,
+                                        self.data_provider_mock)
+        scene_tool_box.data_provider.session_id = 'ebebc629-6b82-4be8-a872-0caa248ea248'
+        new_scif = pd.read_csv('Data/new_scif.csv')
+        scene_tool_box.common.execute_custom_query()
+        scene_tool_box.insert_data_into_custom_scif(new_scif)
+        delete_query = scene_tool_box.common.execute_custom_query.mock_calls[1][1][0]
+        insert_query = scene_tool_box.common.execute_custom_query.mock_calls[2][1][0]
+        self.assertIsInstance(delete_query,str)
+        self.assertIsInstance(insert_query, str)
+
     def test_calculate_result(self):
         """
             1. test that function returns zero for denominator=0
