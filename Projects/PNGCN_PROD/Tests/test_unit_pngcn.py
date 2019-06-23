@@ -10,13 +10,13 @@ import numpy
 __author__ = 'avrahama'
 
 
-class Test_PNGCN(TestUnitCase):
+class TestPngcn(TestUnitCase):
     @property
     def import_path(self):
         return 'Projects.PNGCN_PROD.SceneKpis.KPISceneToolBox.PngcnSceneKpis'
 
     def set_up(self):
-        super(Test_PNGCN, self).set_up()
+        super(TestPngcn, self).set_up()
 
         # mock PSProjectConnector
         self.ProjectConnector_mock = self.mock_object('ProjectConnector', path='KPIUtils_v2.DB.PsProjectConnector')
@@ -35,7 +35,7 @@ class Test_PNGCN(TestUnitCase):
         session_info = pd.read_csv('Data/session_info.csv')
 
         # create a dict of data_provider object relevant attributes
-        mydict = {'matches': matches,
+        my_dict = {'matches': matches,
                   'scene_item_facts': scif,
                   'all_products': all_products,
                   'session_info': session_info,
@@ -45,14 +45,14 @@ class Test_PNGCN(TestUnitCase):
                   }
 
         # decode manufacturer_name (to work around get_png_manufacturer_fk method)
-        mydict['all_products']['manufacturer_name'] = mydict['all_products']['manufacturer_name'].str.decode('utf8')
+        my_dict['all_products']['manufacturer_name'] = my_dict['all_products']['manufacturer_name'].str.decode('utf8')
 
         # mock 'data provider' object giving to the toolbox
         self.data_provider_mock = MagicMock()
 
         # making data_provider_mock behave like a dict
-        self.data_provider_mock.__getitem__.side_effect = mydict.__getitem__
-        self.data_provider_mock.__iter__.side_effect = mydict.__iter__
+        self.data_provider_mock.__getitem__.side_effect = my_dict.__getitem__
+        self.data_provider_mock.__iter__.side_effect = my_dict.__iter__
 
     def test_insert_data_into_custom_scif(self):
         '''
@@ -125,10 +125,10 @@ class Test_PNGCN(TestUnitCase):
         scene_tool_box = PngcnSceneKpis(self.ProjectConnector_mock,
                                         self.common_mock, 16588190,
                                         self.data_provider_mock)
-        scene_tool_box.mock_DF_products_size = self.mock_object('_get_display_size_of_product_in_scene',
+        scene_tool_box.mock_df_products_size = self.mock_object('_get_display_size_of_product_in_scene',
                                                  path='Projects.PNGCN_PROD.SceneKpis.KPISceneToolBox.PngcnSceneKpis')
         # test that we don't return any thing when the used df is empty
-        scene_tool_box.mock_DF_products_size.return_value = pd.DataFrame({})
+        scene_tool_box.mock_df_products_size.return_value = pd.DataFrame({})
         result = scene_tool_box.calculate_display_size()
         expected_result = None
         self.assertEqual(expected_result, result)
@@ -140,21 +140,21 @@ class Test_PNGCN(TestUnitCase):
         scene_tool_box = PngcnSceneKpis(self.ProjectConnector_mock,
                                         self.common_mock, 16588190,
                                         self.data_provider_mock)
-        mock_DF_products_size = self.mock_object('_get_display_size_of_product_in_scene',
+        mock_df_products_size = self.mock_object('_get_display_size_of_product_in_scene',
                                                  path='Projects.PNGCN_PROD.SceneKpis.KPISceneToolBox.PngcnSceneKpis')
         # test that we don't return any thing when the used df is empty
-        mock_DF_products_size.return_value = pd.DataFrame([{'item_id': 2, 'scene_id': 3, 'product_size': 0.25}])
+        mock_df_products_size.return_value = pd.DataFrame([{'item_id': 2, 'scene_id': 3, 'product_size': 0.25}])
         # test that we write the correct results to DB
         data_scif = [{u'scene_id': 16588190, u'item_id': 123, u'manufacturer_fk': 4, u'rlv_sos_sc': 1, u'status': 1},
                      {u'scene_id': 16588190, u'item_id': 125, u'manufacturer_fk': 3, u'rlv_sos_sc': 1, u'status': 1},
                      {u'scene_id': 16588190, u'item_id': 136, u'manufacturer_fk': 3, u'rlv_sos_sc': 1, u'status': 1}]
         scene_tool_box.scif = pd.DataFrame(data_scif)
-        data_DF_products_size = [{'item_id': 123, 'scene_id': 16588190, 'product_size': 1.245},
+        data_df_products_size = [{'item_id': 123, 'scene_id': 16588190, 'product_size': 1.245},
                                  {'item_id': 124, 'scene_id': 16588190, 'product_size': 0.285},
                                  {'item_id': 125, 'scene_id': 16588190, 'product_size': 1.225},
                                  {'item_id': 126, 'scene_id': 16588190, 'product_size': 0.232},
                                  {'item_id': 136, 'scene_id': 16588190, 'product_size': 0}]
-        mock_DF_products_size.return_value = pd.DataFrame(data_DF_products_size)
+        mock_df_products_size.return_value = pd.DataFrame(data_df_products_size)
         scene_tool_box.common.write_to_db_result = MagicMock()
         scene_tool_box.calculate_display_size()
         kpi_results = scene_tool_box.common.write_to_db_result.mock_calls[0][2]
@@ -172,23 +172,23 @@ class Test_PNGCN(TestUnitCase):
         scene_tool_box = PngcnSceneKpis(self.ProjectConnector_mock,
                                         self.common_mock, 16588190,
                                         self.data_provider_mock)
-        mock_DF_products_size = self.mock_object('_get_display_size_of_product_in_scene',
+        mock_df_products_size = self.mock_object('_get_display_size_of_product_in_scene',
                                                  path='Projects.PNGCN_PROD.SceneKpis.KPISceneToolBox.PngcnSceneKpis')
 
         # test that we don't return any thing when the used df is empty
-        mock_DF_products_size.return_value = pd.DataFrame([{'item_id': 2, 'scene_id': 3, 'product_size': 0.25}])
+        mock_df_products_size.return_value = pd.DataFrame([{'item_id': 2, 'scene_id': 3, 'product_size': 0.25}])
 
         # test that we write the correct results to DB
         data_scif = [{u'scene_id': 16588190, u'item_id': 123, u'manufacturer_fk': 4, u'rlv_sos_sc': 1, u'status': 1},
                      {u'scene_id': 16588190, u'item_id': 125, u'manufacturer_fk': 3, u'rlv_sos_sc': 1, u'status': 1},
                      {u'scene_id': 16588190, u'item_id': 136, u'manufacturer_fk': 3, u'rlv_sos_sc': 1, u'status': 1}]
         scene_tool_box.scif = pd.DataFrame(data_scif)
-        data_DF_products_size = [{'item_id': 123, 'scene_id': 16588190, 'product_size': 1.245},
+        data_df_products_size = [{'item_id': 123, 'scene_id': 16588190, 'product_size': 1.245},
                                  {'item_id': 124, 'scene_id': 16588190, 'product_size': 0.285},
                                  {'item_id': 125, 'scene_id': 16588190, 'product_size': 1.225},
                                  {'item_id': 126, 'scene_id': 16588190, 'product_size': 0.232},
                                  {'item_id': 136, 'scene_id': 16588190, 'product_size': 0}]
-        mock_DF_products_size.return_value = pd.DataFrame(data_DF_products_size)
+        mock_df_products_size.return_value = pd.DataFrame(data_df_products_size)
         scene_tool_box.common.write_to_db_result = MagicMock()
         scene_tool_box.calculate_display_size()
         kpi_results = scene_tool_box.common.write_to_db_result.mock_calls[0][2]
@@ -203,23 +203,20 @@ class Test_PNGCN(TestUnitCase):
         scene_tool_box = PngcnSceneKpis(self.ProjectConnector_mock,
                                         self.common_mock, 16588190,
                                         self.data_provider_mock)
-        mock_DF_products_size = self.mock_object('_get_display_size_of_product_in_scene',
+        mock_df_products_size = self.mock_object('_get_display_size_of_product_in_scene',
                                                  path='Projects.PNGCN_PROD.SceneKpis.KPISceneToolBox.PngcnSceneKpis')
-
-        # test that we don't return any thing when the used df is empty
-        mock_DF_products_size.return_value = pd.DataFrame([{'item_id': 2, 'scene_id': 3, 'product_size': 0.25}])
 
         # test that we write the correct results to DB
         data_scif = [{u'scene_id': 16588190, u'item_id': 123, u'manufacturer_fk': 4, u'rlv_sos_sc': 1, u'status': 1},
                      {u'scene_id': 16588190, u'item_id': 125, u'manufacturer_fk': 3, u'rlv_sos_sc': 1, u'status': 1},
                      {u'scene_id': 16588190, u'item_id': 136, u'manufacturer_fk': 3, u'rlv_sos_sc': 1, u'status': 1}]
         scene_tool_box.scif = pd.DataFrame(data_scif)
-        data_DF_products_size = [{'item_id': 123, 'scene_id': 16588190, 'product_size': 1.245},
+        data_df_products_size = [{'item_id': 123, 'scene_id': 16588190, 'product_size': 1.245},
                                  {'item_id': 124, 'scene_id': 16588190, 'product_size': 0.285},
                                  {'item_id': 125, 'scene_id': 16588190, 'product_size': 1.225},
                                  {'item_id': 126, 'scene_id': 16588190, 'product_size': 0.232},
                                  {'item_id': 136, 'scene_id': 16588190, 'product_size': 0}]
-        mock_DF_products_size.return_value = pd.DataFrame(data_DF_products_size)
+        mock_df_products_size.return_value = pd.DataFrame(data_df_products_size)
         scene_tool_box.common.write_to_db_result = MagicMock()
         scene_tool_box.calculate_display_size()
         kpi_results = scene_tool_box.common.write_to_db_result.mock_calls[0][2]
@@ -237,8 +234,8 @@ class Test_PNGCN(TestUnitCase):
                                         self.common_mock, 16588190,
                                         self.data_provider_mock)
         # test that the result is a DF
-        DFtype = scene_tool_box.get_filterd_matches()
-        self.assertIsInstance(DFtype, type(pd.DataFrame()))
+        df_type = scene_tool_box.get_filterd_matches()
+        self.assertIsInstance(df_type, type(pd.DataFrame()))
 
     def test__get_filterd_matches_test_manufacturer_size(self):
         """
@@ -248,10 +245,10 @@ class Test_PNGCN(TestUnitCase):
                                         self.common_mock, 16588190,
                                         self.data_provider_mock)
         # test that the result is a DF
-        DFtype = scene_tool_box.get_filterd_matches()
+        df_type = scene_tool_box.get_filterd_matches()
         # test that there is only one manufacturer fk in the return DF
-        UniqueFK = len(DFtype['manufacturer_fk'].unique())
-        self.assertEqual(UniqueFK, 1)
+        unique_fk = len(df_type['manufacturer_fk'].unique())
+        self.assertEqual(unique_fk, 1)
 
     def test__get_filterd_matches_test_manufacturer_fk(self):
         """
@@ -262,11 +259,11 @@ class Test_PNGCN(TestUnitCase):
                                         self.data_provider_mock)
 
         # test that the result is a DF
-        DFtype = scene_tool_box.get_filterd_matches()
+        df_type = scene_tool_box.get_filterd_matches()
 
         # test that the only manufacturer fk in DF is Png
-        PngFK = DFtype['manufacturer_fk'].unique()[0]
-        self.assertEqual(PngFK, 4)
+        png_fk = df_type['manufacturer_fk'].unique()[0]
+        self.assertEqual(png_fk, 4)
 
     def test_calculate_linear_or_presize_linear_length_test_results_length(self):
         """
