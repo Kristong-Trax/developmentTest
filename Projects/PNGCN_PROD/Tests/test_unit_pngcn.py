@@ -11,7 +11,6 @@ __author__ = 'avrahama'
 
 
 class Test_PNGCN(TestUnitCase):
-
     @property
     def import_path(self):
         return 'Projects.PNGCN_PROD.SceneKpis.KPISceneToolBox.PngcnSceneKpis'
@@ -55,17 +54,6 @@ class Test_PNGCN(TestUnitCase):
         self.data_provider_mock.__getitem__.side_effect = mydict.__getitem__
         self.data_provider_mock.__iter__.side_effect = mydict.__iter__
 
-    # # mocking a return value from pandas function
-    # @patch('pandas.read_sql_query')
-    # def test__get_match_display_in_scene_data(self, mock_read_sql):
-    #     """
-    #         1. test that the result is a DF
-    #     """
-    #     mock_read_sql.return_value = pd.DataFrame({'values': [4, 67, 8, 2]})
-    #     PngcnSceneKpis(self.ProjectConnector_mock,
-    #                    self.common_mock, 16588190,
-    #                    self.data_provider_mock)._get_match_display_in_scene_data()
-
     def test_insert_data_into_custom_scif(self):
         '''
             test type delete qury type.
@@ -82,7 +70,7 @@ class Test_PNGCN(TestUnitCase):
         self.assertIsInstance(delete_query, str)
         self.assertIsInstance(insert_query, str)
 
-    def test_calculate_result_sanaty(self):
+    def test_calculate_result_sanity(self):
         """
             test that function returns zero for denominator=0
         """
@@ -354,7 +342,7 @@ class Test_PNGCN(TestUnitCase):
                                         self.data_provider_mock)
         self.assertEquals(scene_tool_box.calculate_linear_length(), 0)
 
-    def test_calculate_presize_linear_lengthh(self):
+    def test_calculate_presize_linear_length(self):
         """
             test that the function returns 0 (finished as expected)
         """
