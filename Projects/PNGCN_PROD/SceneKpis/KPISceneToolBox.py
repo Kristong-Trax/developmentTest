@@ -852,6 +852,11 @@ class PngcnSceneKpis(object):
         return
 
     def save_nlsos_to_custom_scif(self):
+        """
+        copied the same calculation as 'gross_len_split_stack' field in scif, used 'width_mm_advance' \
+        instead of 'width_mm'.
+        :return: save results to both KPI results and pservice.custom_scene_item_facts
+        """
         matches = self.matches_from_data_provider.copy()
         if matches.empty or self.scif.empty:
             return
@@ -881,6 +886,12 @@ class PngcnSceneKpis(object):
             return 0
 
     def save_nlsos_as_kpi_results(self, new_scif):
+        """
+        Save nlsos results, calculate for each product the nlsos result.
+        The calculation includes exluding for relevant and out_of_sos_assortment Products
+        :param new_scif: the new scif created with width_mm_advance field
+        :return: save the result for each product
+        """
         kpi_fk = self.common.get_kpi_fk_by_kpi_name(NEW_LSOS_KPI)
         if kpi_fk is None:
             Log.warning("There is no matching Kpi fk for kpi name: " + NEW_LSOS_KPI)
@@ -899,6 +910,11 @@ class PngcnSceneKpis(object):
                                            result=result, score=result, by_scene=True)
 
     def insert_data_into_custom_scif(self, new_scif):
+        """
+        Deletes all previous results (for that scene) and writes the new ones.
+        :param new_scif: the df to work on
+        :return: saves the data to reportg.custom_scene_item_facts
+        """
         session_id = self.data_provider.session_id
         new_scif['session_id'] = session_id
         delete_query = """DELETE FROM pservice.custom_scene_item_facts WHERE session_fk = {} and 
