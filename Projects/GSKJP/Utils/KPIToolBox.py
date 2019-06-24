@@ -86,31 +86,31 @@ class GSKJPToolBox:
         This function calculates the KPI results.Global functions and local functions
         """
         # global kpis
-        #
-        # assortment_store_dict = self.gsk_generator.availability_store_function()
-        # self.common.save_json_to_new_tables(assortment_store_dict)
-        #
-        # assortment_category_dict = self.gsk_generator.availability_category_function()
-        # self.common.save_json_to_new_tables(assortment_category_dict)
-        #
-        # assortment_subcategory_dict = self.gsk_generator.availability_subcategory_function()
-        # self.common.save_json_to_new_tables(assortment_subcategory_dict)
-        #
-        # facings_sos_dict = self.gsk_generator.gsk_global_facings_sos_whole_store_function()
-        # self.common.save_json_to_new_tables(facings_sos_dict)
-        #
-        # linear_sos_dict = self.gsk_generator.gsk_global_linear_sos_by_sub_category_function()
-        # self.common.save_json_to_new_tables(linear_sos_dict)
-        #
-        # facings_sos_dict = self.gsk_generator.gsk_global_facings_by_sub_category_function()
-        # self.common.save_json_to_new_tables(facings_sos_dict)
-        #
-        # facings_sos_dict = self.gsk_generator.gsk_global_facings_sos_by_category_function()
-        # self.common.save_json_to_new_tables(facings_sos_dict)
-        #
-        # linear_sos_dict = self.gsk_generator.gsk_global_linear_sos_by_category_function()
-        # self.common.save_json_to_new_tables(linear_sos_dict)
-        #
+
+        assortment_store_dict = self.gsk_generator.availability_store_function()
+        self.common.save_json_to_new_tables(assortment_store_dict)
+
+        assortment_category_dict = self.gsk_generator.availability_category_function()
+        self.common.save_json_to_new_tables(assortment_category_dict)
+
+        assortment_subcategory_dict = self.gsk_generator.availability_subcategory_function()
+        self.common.save_json_to_new_tables(assortment_subcategory_dict)
+
+        facings_sos_dict = self.gsk_generator.gsk_global_facings_sos_whole_store_function()
+        self.common.save_json_to_new_tables(facings_sos_dict)
+
+        linear_sos_dict = self.gsk_generator.gsk_global_linear_sos_by_sub_category_function()
+        self.common.save_json_to_new_tables(linear_sos_dict)
+
+        facings_sos_dict = self.gsk_generator.gsk_global_facings_by_sub_category_function()
+        self.common.save_json_to_new_tables(facings_sos_dict)
+
+        facings_sos_dict = self.gsk_generator.gsk_global_facings_sos_by_category_function()
+        self.common.save_json_to_new_tables(facings_sos_dict)
+
+        linear_sos_dict = self.gsk_generator.gsk_global_linear_sos_by_category_function()
+        self.common.save_json_to_new_tables(linear_sos_dict)
+
         # kpi gsk_global_linear_sos_whole_store_function is used in gsk_compliance kpis
         self.linear_sos_dict = self.gsk_generator.gsk_global_linear_sos_whole_store_function()
         self.common.save_json_to_new_tables(self.linear_sos_dict)
@@ -130,7 +130,7 @@ class GSKJPToolBox:
 
         results_compliance = self.gsk_compliance()
         self.common.save_json_to_new_tables(results_compliance)
-        # self.common.commit_results_data()
+        self.common.commit_results_data()
         return
 
     def position_shelf(self, brand_fk, policy, df):
@@ -435,7 +435,7 @@ class GSKJPToolBox:
         assortment_display = self.msl_assortment(self.PLN_ASSORTMENT_KPI, self.set_up_data)
         brands = assortment_display[
             assortment_display['brand_name'].isin(self.set_up_data[(Const.BRANDS_INCLUDE, self.POSITION_SCORE)])][
-            'brand_name'].unique()
+            'brand_fk'].unique()
         for brand in brands:
             numerator_res, denominator_res, result, product_presence_df = self.pln_ecaps_score(brand,
                                                                                                assortment_display)
