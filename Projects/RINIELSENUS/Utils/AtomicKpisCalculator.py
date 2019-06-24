@@ -8,7 +8,7 @@ from Projects.RINIELSENUS.Utils.Const import TEMPLATE_NAME, DENOMINATOR_FILTER_F
 from Projects.RINIELSENUS.Utils.GeneralToolBox import MarsUsGENERALToolBox
 from Projects.RINIELSENUS.Utils.ParseTemplates import ParseMarsUsTemplates
 from Trax.Utils.DesignPatterns.Decorators import classproperty
-from KPIUtils_v2.Calculations.BlockCalculations import Block
+# from KPIUtils_v2.Calculations.BlockCalculations import Block
 from Projects.RINIELSENUS.Utils.PositionGraph import MarsUsPositionGraphs
 
 
@@ -22,7 +22,7 @@ class KpiAtomicKpisCalculator(object):
         self._preferred_range = preferred_range
         self._sales_data = None
         self.survey_response = self._data_provider['survey_responses']
-        self.block = Block(data_provider=data_provider)
+        # self.block = Block(data_provider=data_provider)
 
     @abc.abstractproperty
     def kpi_type(self):
@@ -1760,7 +1760,7 @@ class SequenceSptCalculation(BaseSSequenceCalculation):
         result_block_edges = {}
         for i in xrange(len(sequence_filters)):
             filters = sequence_filters[i]
-            result = self.block.calculate_block_edges(biggest_block=True, include_empty=True, **filters)
+            result = self._tools.block.calculate_block_edges(biggest_block=True, include_empty=True, **filters)
             result_block_edges[i] = result['visual']
         return result_block_edges
 
