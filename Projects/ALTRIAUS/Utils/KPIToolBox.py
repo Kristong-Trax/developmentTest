@@ -150,7 +150,7 @@ class ALTRIAUSToolBox:
         return
 
     def calculate_register_type(self):
-        relevant_scif = self.scif[(self.scif['product_type'] == 'POS') &
+        relevant_scif = self.scif[(self.scif['product_type'].isin(['POS', 'Other'])) &
                                   (self.scif['category'] == 'POS Machinery')]
         if relevant_scif.empty:
             result = 0
@@ -330,7 +330,8 @@ class ALTRIAUSToolBox:
                     category, category))
             return
 
-        demarcation_line = longest_shelf['rect_y'].median()
+        # demarcation_line = longest_shelf['rect_y'].median() old method, had bugs due to longest shelf being lower
+        demarcation_line = product_mpis['rect_y'].min()
 
         exclusion_line = -9999
         excluded_mpis = self.mpis[~(self.mpis['product_fk'].isin(relevant_pos_pks +
@@ -356,7 +357,7 @@ class ALTRIAUSToolBox:
         relevant_pos = self.adp.get_products_contained_in_displays(pos_mpis)
 
         if relevant_pos.empty:
-            Log.error('No polygon mask was generated - cannot compute KPIs for {} category'.format(category))
+            Log.error('No polygon mask was generated for {} category - cannot compute KPIs'.format(category))
             return
 
         relevant_pos = relevant_pos[['product_fk', 'product_name', 'left_bound', 'right_bound', 'center_x', 'center_y']]
@@ -370,18 +371,24 @@ class ALTRIAUSToolBox:
         # generate header positions
         if category == 'Cigarettes':
             number_of_headers = len(relevant_pos[relevant_pos['type'] == 'Header'])
-            header_position_list = [position.strip() for position in
-                                    self.header_positions_template[
-                                        self.header_positions_template['Number of Headers'] ==
-                                        number_of_headers]['Cigarettes Positions'].iloc[0].split(',')]
-            relevant_pos.loc[relevant_pos['type'] == 'Header', ['position']] = header_position_list
+            if number_of_headers > self.header_positions_template['Number of Headers'].max():
+                Log.warning('Number of Headers for Cigarettes is greater than max number defined in template!')
+            elif number_of_headers > 0:
+                header_position_list = [position.strip() for position in
+                                        self.header_positions_template[
+                                            self.header_positions_template['Number of Headers'] ==
+                                            number_of_headers]['Cigarettes Positions'].iloc[0].split(',')]
+                relevant_pos.loc[relevant_pos['type'] == 'Header', ['position']] = header_position_list
         elif category == 'Smokeless':
             number_of_headers = len(relevant_pos[relevant_pos['type'] == 'Header'])
-            header_position_list = [position.strip() for position in
-                                    self.header_positions_template[
-                                        self.header_positions_template['Number of Headers'] ==
-                                        number_of_headers]['Smokeless Positions'].iloc[0].split(',')]
-            relevant_pos.loc[relevant_pos['type'] == 'Header', ['position']] = header_position_list
+            if number_of_headers > self.header_positions_template['Number of Headers'].max():
+                Log.warning('Number of Headers for Smokeless is greater than max number defined in template!')
+            if number_of_headers > 0:
+                header_position_list = [position.strip() for position in
+                                        self.header_positions_template[
+                                            self.header_positions_template['Number of Headers'] ==
+                                            number_of_headers]['Smokeless Positions'].iloc[0].split(',')]
+                relevant_pos.loc[relevant_pos['type'] == 'Header', ['position']] = header_position_list
         # generate flip-sign positions
         if category == 'Cigarettes':
             relevant_template = \
@@ -407,7 +414,7 @@ class ALTRIAUSToolBox:
             # if there are no flip signs found, there are no positions to assign
             number_of_flip_signs = len(relevant_pos[relevant_pos['type'] == 'Flip Sign'])
             if number_of_flip_signs > self.flip_sign_positions_template['Number of Flip Signs'].max():
-                Log.warning('Number of Flip Signs is greater than max number defined in template!')
+                Log.warning('Number of Flip Signs for Smokeless is greater than max number defined in template!')
             elif number_of_flip_signs > 0:
                 flip_sign_position_list = [position.strip() for position in
                                            self.flip_sign_positions_template[
@@ -423,7 +430,9 @@ class ALTRIAUSToolBox:
 
         relevant_pos = relevant_pos.reindex(columns=relevant_pos.columns.tolist() + ['denominator_id'])
 
-        #this is a bandaid fix that should be removed ->  'F7011A7C-1BB6-4007-826D-2B674BD99DAE'
+        # this is a bandaid fix that should be removed ->  'F7011A7C-1BB6-4007-826D-2B674BD99DAE'
+        # removes POS items that were 'extra', i.e. more than max value in template
+        # only affects smokeless
         relevant_pos.dropna(subset=['position'], inplace=True)
 
         relevant_pos.loc[:, ['denominator_id']] = relevant_pos['position'].apply(self.get_custom_entity_pk)
