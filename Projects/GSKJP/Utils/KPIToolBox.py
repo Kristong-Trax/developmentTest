@@ -83,7 +83,7 @@ class GSKJPToolBox:
 
     def main_calculation(self, *args, **kwargs):
         """
-        This function calculates the KPI results.
+        This function calculates the KPI results.Global functions and local functions
         """
         # global kpis
         #
@@ -134,6 +134,20 @@ class GSKJPToolBox:
         return
 
     def position_shelf(self, brand_fk, policy, df):
+        """
+        :param  brand_fk :
+        :param  policy : dictionary that contains {
+                                                'shelves':"1 ,2 ,4 ,5" (or any other string of numbers separate by ','),
+                                                'position_target': 80 (or any other percentage you want the score to reach)
+                                                }
+        :param  df: data frame that contains columns "shelf_number" , "brand kf"
+
+        :returns   tuple of (result,score,numerator,denominator)
+                   result = number of products from brand_fk in shelves / number of products from brand_fk ,
+                   score  = if result reach position target 100  else 0 ,
+                   numerator = number of products from brand_fk in shelves
+                   denominator = number of products from brand_fk
+        """
         shelf_from_bottom = [int(shelf) for shelf in policy['shelves'].iloc[0].split(",")]
         threshold = policy['position_target'].iloc[0]
         brand_df = df[df['brand_fk'] == brand_fk]
@@ -146,8 +160,14 @@ class GSKJPToolBox:
 
     def lsos_score(self, brand, policy):
         """
+        :param brand : pk of brand
+        :param policy :  dictionary of  { 'brand_target' : lsos number you want to reach}
         This function uses the lsos_in whole_store global calculation.
         it takes the result of the parameter 'brand' according to the policy set target and results.
+        :return result,score,target
+                result : result of this brand lsos
+                score :  result / brand_target ,
+                target  :  branf_target
 
         """
         result = 0
@@ -163,11 +183,16 @@ class GSKJPToolBox:
         return result, score, target
 
     def brand_blocking(self, brand, policy):
-
+        """
+                :param brand : pk of brand
+                :param policy :  dictionary of  { 'block_target' : number you want to reach}
+                :return result : 1 if there is a block answer set_up_data conditions else 0
+        """
         templates = self.set_up_data[(Const.SCENE_TYPE, self.PLN_BLOCK)]
         template_name = {
             'template_name': templates} if templates else None  # figure out which template name should I use
-        # taking from params from dict
+
+        # taking from params from set up  info
         stacking_param = False if not self.set_up_data[(Const.INCLUDE_STACKING, self.PLN_BLOCK)] else True  # false
         products_excluded = []
         if not self.set_up_data[(Const.INCLUDE_OTHERS, self.PLN_BLOCK)]:
@@ -178,6 +203,7 @@ class GSKJPToolBox:
             products_excluded.append(Const.EMPTY)
         product_filters = {'product_type': products_excluded}  # from Data file
         target = policy['block_target'].iloc[0]  # adding test check if empty
+
         result = self.blocking_generator.network_x_block_together(location=template_name,
                                                                   population={'brand_fk': [brand]},
                                                                   additional={'minimum_block_ratio': 1,
@@ -187,12 +213,18 @@ class GSKJPToolBox:
                                                                               'include_stacking': stacking_param,
                                                                               'check_vertical_horizontal': True,
                                                                               'minimum_facing_for_block': target})
-        if result[result['is_block']].empty:
-            result = 0
+        result = 0 if result[result['is_block']].empty else 1
+
         return result
 
     def msl_assortment(self, kpi, set_up_data):
-
+        """
+                        :param kpi : name of level 3 assortment kpi
+                        :param set_up_data :  which set up data to use for filtering data frame and ect
+                        :return kpi_results : data frame of assortment products of the kpi, product's availability,
+                        product details.
+                        filtered by set up
+                """
         lvl3_assort, filter_scif = self.gsk_generator.tool_box.get_assortment_filtered(set_up_data)
         if lvl3_assort is None:
             return None
@@ -206,17 +238,29 @@ class GSKJPToolBox:
         return kpi_results
 
     def pln_ecaps_score(self, brand, assortment):
+        """
+                             :param brand : pk of desired brand
+                             :param assortment : data frame of assortment products of the kpi, product's availability,
+                                    product details. filtered by set up
 
+                             besides result of lvl2_assortment function writing level 3 assortment product presence
+                             results
+
+                             :return  numerator : how many products available out of the granular groups
+                                      denominator : how many products in assortment groups
+                                      result :  (numerator/denominator)*100
+                                      results :  array of dictionary, each dict contains the result details
+        """
         identifier_parent = self.common.get_dictionary(brand_fk=brand,
                                                        kpi_fk=self.common.get_kpi_fk_by_kpi_type(self.ECAP_ALL_BRAND))
-        results_df = []
+        results = []
         kpi_ecaps_product = self.common.get_kpi_fk_by_kpi_type(self.PRODUCT_PRESENCE)
         if assortment.empty:
-            return 0, 0, 0, results_df
+            return 0, 0, 0, results
         brand_results = assortment[assortment['brand_fk'] == brand]  # only assortment of desired brand
         for result in assortment.itertuples():
             score = result.in_store * 100
-            results_df.append(
+            results.append(
                 {'fk': kpi_ecaps_product, 'numerator_id': result.product_fk, 'denominator_id': self.store_fk,
                  'denominator_result': 1, 'numerator_result': result.in_store, 'result': score,
                  'score': score,
@@ -227,12 +271,20 @@ class GSKJPToolBox:
             self.assortment.LVL2_HEADERS.extend(['total', 'passes'])
         lvl2 = self.assortment.calculate_lvl2_assortment(brand_results)
         if lvl2.empty:
-            return 0, 0, 0, results_df  # in case of no assortment return 0
+            return 0, 0, 0, results  # in case of no assortment return 0
         result = np.divide(float(lvl2.iloc[0].passes), float(lvl2.iloc[0].total)) * 100
-        return lvl2.iloc[0].passes, lvl2.iloc[0].total, result, results_df
+        return lvl2.iloc[0].passes, lvl2.iloc[0].total, result, results
 
     def pln_msl_summary(self, brand, assortment):
-
+        """
+                :param brand : pk of desired brand
+                :param assortment : data frame of assortment products of the kpi, product's availability,
+                                           product details. filtered by set up
+                :return  numerator : how many products available out of the granular groups
+                                             denominator : how many products in assortment groups
+                                             result :  (numerator/denominator)*100
+                                             results :  array of dictionary, each dict contains the result details
+               """
         brand_results = assortment[assortment['brand_fk'] == brand]  # only assortment of desired brand
         if 'total' not in self.assortment.LVL2_HEADERS or 'passes' not in self.assortment.LVL2_HEADERS:
             self.assortment.LVL2_HEADERS.extend(['total', 'passes'])
@@ -244,6 +296,11 @@ class GSKJPToolBox:
         return lvl2.iloc[0].passes, lvl2.iloc[0].total, result
 
     def get_store_target(self):
+        """
+            Function checks which policies out of self.target are relevant to this store visit according to store
+            attributes.
+        """
+
         parameters = ['additional_attribute_1', 'additional_attribute_2', 'store_name', 'adress_city', 'region_fk']
         for param in parameters:
             if param in self.targets.columns:
@@ -256,7 +313,11 @@ class GSKJPToolBox:
                                             (self.targets[param] == '')]
 
     def gsk_compliance(self):
-
+        """
+                    Function calculate compliance score for each brand based on : position score, brand-assortment score,
+                    block score ,lsos score.
+                    Also calculate  compliance summary score  - average of brands compliance scores
+                """
         results_df = []
         df = self.scif
         # kpis
@@ -309,7 +370,7 @@ class GSKJPToolBox:
                                'should_enter': True})
             # lsos kpi
             lsos_numerator, lsos_result, lsos_denominator = self.lsos_score(brand, policy)
-            lsos_result =  100  if lsos_result > 1 else lsos_result*100
+            lsos_result = 100 if lsos_result > 1 else lsos_result*100
             lsos_score = lsos_result * lsos_target
             results_df.append({'fk': kpi_lsos_fk, 'numerator_id': brand, 'denominator_id': self.store_fk,
                                'denominator_result': lsos_denominator, 'numerator_result': lsos_numerator, 'result':
@@ -361,7 +422,11 @@ class GSKJPToolBox:
         return results_df
 
     def gsk_ecaps_kpis(self):
-
+        """
+                      Function calculate for each brand ecaps score and , for all brands together set ecaps summary score
+                      :return
+                             results_df :  array of dictionary, each dict contains kpi's result details
+       """
         results_df = []
         kpi_ecaps_brands_fk = self.common.get_kpi_fk_by_kpi_type(self.ECAP_ALL_BRAND)
         kpi_ecaps_summary_fk = self.common.get_kpi_fk_by_kpi_type(self.ECAP_SUMMARY)
