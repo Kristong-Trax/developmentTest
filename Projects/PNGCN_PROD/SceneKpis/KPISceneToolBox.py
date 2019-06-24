@@ -583,6 +583,19 @@ class PngcnSceneKpis(object):
                 display_visit_summary['product_size'] = 0
 
             display_visit_summary = self.remove_by_facing(display_visit_summary)
+            displays = display_visit_summary['display_surface_fk'].unique()
+            for display in displays:
+                single_display_df = display_visit_summary[display_visit_summary['display_surface_fk'] == display]
+                if single_display_df.empty:
+                    continue
+                total_linear_for_display = single_display_df['product_size'].sum()
+                display_size = single_display_df['display_size'].iloc[0]
+                if total_linear_for_display != 0:
+                    diff_ratio = display_size / float(total_linear_for_display)
+                else:
+                    diff_ratio = 0
+                display_visit_summary.loc[display_visit_summary['display_surface_fk'] == display,
+                                                                    ['product_size']] *= diff_ratio
             display_visit_summary_list_of_dict = display_visit_summary.to_dict('records')
             self._insert_into_display_visit_summary(display_visit_summary_list_of_dict)
             self.insert_into_kpi_scene_results(display_visit_summary_list_of_dict)
