@@ -59,8 +59,8 @@ class Results(object):
             #                         # 'Is the Nutro Cat Main Meal section >4ft?',
             #                         # 'Is the Nutro Cat Main Meal section <=4ft?',
             #                         # 'Is Nutro Wet Dog food blocked?',
-            #                         'Is the Meaty Dog Treats segment blocked?',
-            #     'Is the Meaty Dog Treats segment blocked vertically?'
+            #                         # 'Is the Meaty Dog Treats segment blocked?',
+            #     'Is the Culinary Recipes Wet Cat Food feeding philosophy segment blocked?'
             #                         ]:
             #     continue
             # print('~~~~~~~~~~~~~~~~~~~~****************~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~')
