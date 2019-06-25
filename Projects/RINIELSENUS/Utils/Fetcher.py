@@ -54,3 +54,18 @@ class MarsUsQueries(object):
                 where ssi.delete_time is null
                 and sc.session_uid = '{}';
         """.format(session_uid)
+
+    @staticmethod
+    def add_kpi_to_mvp_sr(kpi):
+        return '''
+        insert into static.match_product_in_probe_state_reporting
+        (name, display_name)
+        values
+        ("{}", "{}")
+        '''.format(kpi, kpi)
+
+    @staticmethod
+    def get_updated_mvp_sr():
+        return '''
+          select * from static.match_product_in_probe_state_reporting
+          '''
