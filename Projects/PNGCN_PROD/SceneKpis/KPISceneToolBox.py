@@ -12,7 +12,7 @@ import pandas as pd
 from KPIUtils_v2.Calculations.SOSCalculations import SOS
 import KPIUtils_v2.Utils.Parsers.ParseInputKPI as Parser
 from KPIUtils_v2.GlobalDataProvider.PsDataProvider import PsDataProvider
-from KPIUtils_v2.Calculations.BlockCalculations import Block as block
+from KPIUtils_v2.Calculations.BlockCalculations_v2 import Block as block
 
 __Author__ = 'Dudi_s'
 
@@ -161,13 +161,14 @@ class PngcnSceneKpis(object):
             Log.info(self.log_prefix + ' Finished calculation')
 
     def calculate_variant_block(self):
-        block_groups = [{'brand_name': "Gillette", 'sub_brand_name': "Fusion/锋隐"}]
+        block_groups = [{'brand_name': ["Gillette"], 'sub_brand_name': ["Fusion/锋隐"]}]
         for block_filters in block_groups:
             result = block(self.data_provider).network_x_block_together(
                 population=block_filters,
-                additional={'allowed_products_filters': {'product_type': ['POS']},
+                additional={'allowed_products_filters': {'product_type': ['Irrelevant']},
+                            'minimum_block_ratio': 0.2,
                             'calculate_all_scenes': False,
-                            'include_stacking': True,
+                            'include_stacking': False,
                             'check_vertical_horizontal': False})
         pass
 
