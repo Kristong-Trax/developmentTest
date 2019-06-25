@@ -100,9 +100,13 @@ class ALTRIAUSToolBox:
         self.INCLUDE_FILTER = 1
 
         self.kpi_new_static_data = self.common.get_new_kpi_static_data()
-        self.mpis = self.match_product_in_scene.merge(self.products, on='product_fk', suffixes=['', '_p']) \
-                    .merge(self.scene_info, on='scene_fk', suffixes=['', '_s']) \
-                      .merge(self.template_info, on='template_fk', suffixes=['', '_t'])
+        try:
+            self.mpis = self.match_product_in_scene.merge(self.products, on='product_fk', suffixes=['', '_p']) \
+                        .merge(self.scene_info, on='scene_fk', suffixes=['', '_s']) \
+                          .merge(self.template_info, on='template_fk', suffixes=['', '_t'])
+        except KeyError:
+            Log.error('MPIS cannot be generated!')
+            return
         self.adp = AltriaDataProvider(self.data_provider)
 
     def main_calculation(self, *args, **kwargs):
@@ -371,7 +375,7 @@ class ALTRIAUSToolBox:
         # generate header positions
         if category == 'Cigarettes':
             number_of_headers = len(relevant_pos[relevant_pos['type'] == 'Header'])
-            if number_of_headers > self.header_positions_template['Number of Headers'].max():
+            if number_of_headers > len(self.header_positions_template['Cigarettes Positions'].dropna()):
                 Log.warning('Number of Headers for Cigarettes is greater than max number defined in template!')
             elif number_of_headers > 0:
                 header_position_list = [position.strip() for position in
@@ -381,9 +385,9 @@ class ALTRIAUSToolBox:
                 relevant_pos.loc[relevant_pos['type'] == 'Header', ['position']] = header_position_list
         elif category == 'Smokeless':
             number_of_headers = len(relevant_pos[relevant_pos['type'] == 'Header'])
-            if number_of_headers > self.header_positions_template['Number of Headers'].max():
+            if number_of_headers > len(self.header_positions_template['Smokeless Positions'].dropna()):
                 Log.warning('Number of Headers for Smokeless is greater than max number defined in template!')
-            if number_of_headers > 0:
+            elif number_of_headers > 0:
                 header_position_list = [position.strip() for position in
                                         self.header_positions_template[
                                             self.header_positions_template['Number of Headers'] ==
@@ -443,7 +447,8 @@ class ALTRIAUSToolBox:
                                               result=row.width, score=row.width)
         return
 
-    def remove_duplicate_pos_tags(self, relevant_pos_df):
+    @staticmethod
+    def remove_duplicate_pos_tags(relevant_pos_df):
         duplicate_results = \
             relevant_pos_df[relevant_pos_df.duplicated(subset=['left_bound', 'right_bound'], keep=False)]
         duplicate_results_without_other = duplicate_results[~duplicate_results['product_name'].str.contains('Other')]
@@ -464,7 +469,8 @@ class ALTRIAUSToolBox:
         return self.facings_to_feet_template.loc[(self.facings_to_feet_template[category_facings]
                                                   - width_in_facings).abs().argsort()[:1]]['POS Width (ft)'].iloc[0]
 
-    def get_longest_shelf_number(self, relevant_mpis):
+    @staticmethod
+    def get_longest_shelf_number(relevant_mpis):
         # returns the shelf_number of the longest shelf
         try:
             longest_shelf = \
