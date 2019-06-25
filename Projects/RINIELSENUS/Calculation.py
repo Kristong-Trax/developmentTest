@@ -28,7 +28,8 @@ class MarsUsCalculations(BaseCalculationsScript):
 
 
 if __name__ == '__main__':
-    LoggerInitializer.init('TREX')
+    # LoggerInitializer.init('TREX')
+    LoggerInitializer.init('rinielsenus')
     Config.init()
     # docker_user = DbUsers.Docker
     # dbusers_class_path = 'Trax.Utils.Conf.Keys'
@@ -53,7 +54,7 @@ if __name__ == '__main__':
                 ]
 
     # sessions = pd.read_csv('/home/Ilan/Documents/projects/marus/0612_batch_300.csv')['session_uid'].tolist()[:25]
-    # sessions = ['00471ecc-4bed-4d13-ade2-01ca204d7fad']
+    # sessions = ['b0c69988-5527-4034-ab42-e07f968d2891']
     for session in sessions:
         print
         print('*******************************************************************')

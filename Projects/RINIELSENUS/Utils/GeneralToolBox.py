@@ -775,7 +775,10 @@ class MarsUsGENERALToolBox:
 
     def test_subset_ratio(self, subset, cluster, mpis, minimum_block_ratio):
         sc_mpis = mpis[self.get_filter_condition(mpis, **{'scene_fk': cluster['scene_fk']})]
-        num = cluster['mpis'][self.get_filter_condition(cluster['mpis'], **subset)].shape[0]
+        mask = self.get_filter_condition(cluster['mpis'], **subset)
+        if mask is None or mask.empty:
+            return 0
+        num = cluster['mpis'][mask].shape[0]
         den = sc_mpis[self.get_filter_condition(sc_mpis, **subset)].shape[0]
         ratio = num / float(den) if num else 0
         return ratio >= minimum_block_ratio
