@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np
 from collections import defaultdict
-
+from Projects.RINIELSENUS.Utils.Const import EYELIGHT_KPIS
 from Projects.RINIELSENUS.Utils.AtomicKpisCalculator import BlockAtomicKpiCalculation, \
     VerticalBlockAtomicKpiCalculation, AnchorAtomicKpiCalculation, ShelfLevelAtomicKpiCalculation, \
     AdjacencyAtomicKpiCalculation, BlockTargetAtomicKpiCalculation, BiggestSceneBlockAtomicKpiCalculation, \
@@ -60,7 +60,7 @@ class Results(object):
             #                         # 'Is the Nutro Cat Main Meal section <=4ft?',
             #                         # 'Is Nutro Wet Dog food blocked?',
             #                         # 'Are Greenies vertically blocked?',
-            #     'Is Nutro Culinary Dog food Feeding Philosophy Segment blocked?'
+            #     'Does the Mars portfolio have its fair share of space?'
             #                         ]:
             #     continue
             # print('~~~~~~~~~~~~~~~~~~~~****************~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~')
@@ -79,7 +79,8 @@ class Results(object):
                 atomic['results'] = r_df[r_df['atomic'].isin(atomic['depend_on'])]
             calculation = self._kpi_type_calculator_mapping[atomic['kpi_type']](self._tools, self._data_provider,
                                                                                 self._preferred_range)
-            self._get_prods_from_filters(calculation, atomic)
+            if atomic['atomic'] in EYELIGHT_KPIS:
+                self._get_prods_from_filters(calculation, atomic)
             # This setup allows some kpis to return an object, so we don't have to
             # keep calculating the same things over and over....
             kpi_res = calculation.calculate_atomic_kpi(atomic)
