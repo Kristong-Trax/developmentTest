@@ -10,7 +10,7 @@ if __name__ == '__main__':
     Config.init()
     project_name = 'gskjp-sand'# working on gsk -sand
     data_provider = KEngineDataProvider(project_name)
-    session = 'e870820c-dffb-4335-b1e8-9d884c8d7e1e'
+    session = '89b00828-d567-4245-b438-66963ca58490'
     data_provider.load_session_data(session)
     output = Output()
     Calculations(data_provider, output).run_project_calculations()
