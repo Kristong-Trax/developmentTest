@@ -55,6 +55,8 @@ class Results(object):
         atomic_results = {}
         pushed_back_list = []
         for atomic in atomics:
+            # if atomic['atomic'] not in EYELIGHT_KPIS:
+            #     continue
             # if atomic['atomic'] not in [
             #                         # 'Is the Nutro Cat Main Meal section >4ft?',
             #                         # 'Is the Nutro Cat Main Meal section <=4ft?',
@@ -266,4 +268,4 @@ class Results(object):
                 self.common.execute_custom_query(MarsUsQueries.add_kpi_to_mvp_sr(kpi, max(self.mpip_sr['pk'])+1))
             self.mpip_sr = self.common.read_custom_query(MarsUsQueries.get_updated_mvp_sr())
             df = self.mpip_sr[self.mpip_sr['name'] == kpi]
-        return df['match_product_in_probe_state_reporting_fk'].values[0]
+        return df['pk'].values[0]
