@@ -602,6 +602,9 @@ class ToolBox:
         relevant_scenes = self.get_relevant_scenes(scene_types)
         relevant_competitions = self.external_targets[
             self.external_targets[Const.EX_OPERATION_TYPE] == Const.SHELF_FACINGS_OP]
+        if relevant_competitions.empty:
+            Log.warning("No shelf_facings list for this visit_date.")
+            return 0, 0, 0
         if self.state_fk in relevant_competitions[Const.EX_STATE_FK].unique().tolist():
             relevant_competitions = relevant_competitions[relevant_competitions[Const.EX_STATE_FK] == self.state_fk]
         else:
@@ -635,70 +638,52 @@ class ToolBox:
         kpi_fk = kpi_db_names[Const.SKU]
         product_fk, brand, sub_brand = competition[[Const.EX_PRODUCT_FK, 'brand_fk', 'sub_brand_fk']]
         if product_fk == 0:
-            return None
+            return None, None
         standard_type = competition[Const.STANDARD_TYPE]
-        result_identifier = self.common.get_dictionary(
-            kpi_fk=competition_kpi_fk, product_fk=product_fk, index=index)
-        flag = False
-        comparison_result = comp_facings_df = pd.DataFrame()
-        comp_product_fk = -1
-        if self.does_exist(competition[Const.EX_COMPETITOR_FK]):
-            comp_fk = competition[Const.EX_COMPETITOR_FK]
-            comp_facings_df = relevant_scif[relevant_scif['product_fk'] == comp_fk][[
-                'template_name', 'facings']].groupby('template_name').sum().reset_index()
-            bench_value = competition[Const.EX_BENCHMARK_VALUE]
-            target = comp_facings_df['facings'] * bench_value
-            comp_facings_df['target'] = target
-            comp_facings_df = comp_facings_df.rename(columns={'facings': 'facings_comp'})
-            flag = True
-        elif self.does_exist(competition[Const.EX_BENCHMARK_VALUE]):
-            target = competition[Const.EX_BENCHMARK_VALUE]
-        else:
-            Log.warning("Product {} has no target in shelf facings".format(product_fk))
-            target = 0
-        our_facings_df = relevant_scif[relevant_scif['product_fk'] == product_fk][[
-            'template_name', 'facings']].groupby('template_name').sum().reset_index()
-        if flag and not our_facings_df.empty:
-            comparison_df = pd.merge(our_facings_df, comp_facings_df,
-                                     how="left", on='template_name').fillna(0)
-            comparison_df = comparison_df.iloc[:1]
-            comparison_result = comparison_df[(comparison_df['facings'] >= comparison_df['facings_comp']) &
-                                              (comparison_df['facings'] > 0)]
-            comparison_len = len(comparison_result)
-            if comparison_len > 0:
-                comparison = 1
-                comparison_result = comparison_result.sort_values(by=['template_name'])
-            else:
-                comparison = 0
-        else:
-            if our_facings_df.empty:
-                comparison = 0
-            else:
-                comparison_df = comparison_result = our_facings_df.sort_values(by=['template_name'])
-                comparison = 1 if len(comparison_df[comparison_df['facings'] >= target]) else 0
-        product_facings_comp = product_facings_ours = 0
-        if flag and not comparison_result.empty:
-            product_facings_comp = comparison_result.iloc[0]['facings_comp']
-            product_facings_ours = comparison_result.iloc[0]['facings']
-        else:
-            if not comp_facings_df.empty:
-                product_facings_comp = comp_facings_df.iloc[0]['facings_comp']
-            if not our_facings_df.empty:
-                product_facings_ours = our_facings_df.iloc[0]['facings']
-        if self.does_exist(competition[Const.EX_COMPETITOR_FK]):
+        result_identifier = self.common.get_dictionary(kpi_fk=competition_kpi_fk, product_fk=product_fk, index=index)
+        diageo_facings, comp_facings, score, target, comp_product_fk = self.calculate_facings_competition(
+            competition, relevant_scif, product_fk)
+        if comp_product_fk:
             self.common.write_to_db_result(
-                fk=kpi_fk, numerator_id=comp_product_fk, result=product_facings_comp,
+                fk=kpi_fk, numerator_id=comp_product_fk, result=comp_facings, denominator_id=self.manufacturer_fk,
                 should_enter=True, identifier_parent=result_identifier, target=target)
         self.common.write_to_db_result(
-            fk=kpi_fk, numerator_id=product_fk, result=product_facings_ours, denominator_id=self.manufacturer_fk,
+            fk=kpi_fk, numerator_id=product_fk, result=diageo_facings, denominator_id=self.manufacturer_fk,
             should_enter=True, identifier_parent=result_identifier, target=target)
         sub_brand_kpi_fk = kpi_db_names[Const.SUB_BRAND]
         sub_brand_dict = self.common.get_dictionary(kpi_fk=sub_brand_kpi_fk, brand_fk=brand, sub_brand_fk=sub_brand)
         self.common.write_to_db_result(
-            fk=competition_kpi_fk, numerator_id=product_fk, score=comparison * 100,
-            result=product_facings_ours, identifier_result=result_identifier,
+            fk=competition_kpi_fk, numerator_id=product_fk, score=score * 100,
+            result=diageo_facings, identifier_result=result_identifier,
             identifier_parent=sub_brand_dict, should_enter=True)
-        return comparison, standard_type
+        return score, standard_type
+
+    def calculate_facings_competition(self, competition, relevant_scif, product_fk):
+        if self.does_exist(competition[Const.EX_BENCHMARK_VALUE]):
+            bench_value = float(competition[Const.EX_BENCHMARK_VALUE])
+        else:
+            Log.warning("Product {} has no target in shelf facings".format(product_fk))
+            bench_value = 0
+        target = 0
+        if self.does_exist(competition[Const.EX_COMPETITOR_FK]):
+            comp_product_fk = competition[Const.EX_COMPETITOR_FK]
+        else:
+            comp_product_fk = 0
+            target = bench_value
+        diageo_facings, comp_facings, temp_comp_facings, temp_target = 0, 0, 0, target
+        for template_name in relevant_scif['template_name'].unique():
+            template_scif = relevant_scif[relevant_scif['template_name'] == template_name]
+            temp_diageo_facings = template_scif[template_scif['product_fk'] == product_fk]['facings'].sum()
+            if comp_product_fk:
+                temp_comp_facings = template_scif[template_scif['product_fk'] == comp_product_fk]['facings'].sum()
+                temp_target = bench_value * temp_comp_facings
+            if temp_diageo_facings >= temp_target and temp_diageo_facings > 0:
+                return temp_diageo_facings, temp_comp_facings, 1, temp_target, comp_product_fk
+            if temp_diageo_facings >= diageo_facings:
+                diageo_facings = temp_diageo_facings
+                target = temp_target
+                comp_facings = temp_comp_facings
+        return diageo_facings, comp_facings, 0, target, comp_product_fk
 
     # shelf placement:
 
@@ -713,6 +698,9 @@ class ToolBox:
         relevant_scenes = self.get_relevant_scenes(scene_types)
         all_products_table = self.external_targets[
             self.external_targets[Const.EX_OPERATION_TYPE] == Const.SHELF_PLACEMENT_OP][Const.SHELF_PLACEMENT_COLUMNS]
+        if all_products_table.empty:
+            Log.warning("No shelf_placement list for this visit_date.")
+            return 0, 0, 0
         all_products_table = all_products_table.merge(self.relevant_assortment, on="product_fk")
         kpi_db_names = self.pull_kpi_fks_from_names(Const.DB_OFF_NAMES[kpi_name])
         standard_types_results, total_results = {Const.SEGMENT: [], Const.NATIONAL: []}, []
@@ -826,6 +814,9 @@ class ToolBox:
         relevant_scenes = self.get_relevant_scenes(scene_types)
         relevant_competitions = self.external_targets[
             self.external_targets[Const.EX_OPERATION_TYPE] == Const.MSRP_OP]
+        if relevant_competitions.empty:
+            Log.warning("No MSRP list for this visit_date.")
+            return 0, 0, 0
         if self.state_fk in relevant_competitions[Const.EX_STATE_FK].unique().tolist():
             relevant_competitions = relevant_competitions[relevant_competitions[Const.EX_STATE_FK] == self.state_fk]
         else:
