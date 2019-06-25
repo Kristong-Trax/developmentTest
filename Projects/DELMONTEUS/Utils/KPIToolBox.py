@@ -102,8 +102,8 @@ class ToolBox:
             return
 
         print(kpi_name)
-        if kpi_name not in ('Are PFC shelved between Canned and Squeezers?'):
-        # if kpi_name not in ('Does Del Monte lead the COS Fruit Section?'):
+        # if kpi_name not in ('Are PFC shelved between Canned and Squeezers?'):
+        if kpi_name not in ('Does Multi Serve Core Fruit lead the Fruit Section on the Right?'):
         # if kpi_type not in (Const.BLOCKING, Const.BLOCKING_PERCENT, Const.SOS, Const.ANCHOR, Const.MULTI_BLOCK):
             return
 
@@ -447,7 +447,7 @@ class ToolBox:
         general_filters.update(self.get_kpi_line_filters(kpi_line, 'denominator'))
         results = self.anchor_base(general_filters, potential_end, scenes, 0, ratio=True)
         edges = self.splitter(kpi_line[Const.EDGES].strip())
-
+        result = 0
         for edge in edges:
             if results[edge]:
                 result = 1
