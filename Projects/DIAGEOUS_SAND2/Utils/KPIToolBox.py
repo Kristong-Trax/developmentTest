@@ -602,6 +602,9 @@ class ToolBox:
         relevant_scenes = self.get_relevant_scenes(scene_types)
         relevant_competitions = self.external_targets[
             self.external_targets[Const.EX_OPERATION_TYPE] == Const.SHELF_FACINGS_OP]
+        if relevant_competitions.empty:
+            Log.warning("No shelf_facings list for this visit_date.")
+            return 0, 0, 0
         if self.state_fk in relevant_competitions[Const.EX_STATE_FK].unique().tolist():
             relevant_competitions = relevant_competitions[relevant_competitions[Const.EX_STATE_FK] == self.state_fk]
         else:
@@ -695,6 +698,9 @@ class ToolBox:
         relevant_scenes = self.get_relevant_scenes(scene_types)
         all_products_table = self.external_targets[
             self.external_targets[Const.EX_OPERATION_TYPE] == Const.SHELF_PLACEMENT_OP][Const.SHELF_PLACEMENT_COLUMNS]
+        if all_products_table.empty:
+            Log.warning("No shelf_placement list for this visit_date.")
+            return 0, 0, 0
         all_products_table = all_products_table.merge(self.relevant_assortment, on="product_fk")
         kpi_db_names = self.pull_kpi_fks_from_names(Const.DB_OFF_NAMES[kpi_name])
         standard_types_results, total_results = {Const.SEGMENT: [], Const.NATIONAL: []}, []
@@ -808,6 +814,9 @@ class ToolBox:
         relevant_scenes = self.get_relevant_scenes(scene_types)
         relevant_competitions = self.external_targets[
             self.external_targets[Const.EX_OPERATION_TYPE] == Const.MSRP_OP]
+        if relevant_competitions.empty:
+            Log.warning("No MSRP list for this visit_date.")
+            return 0, 0, 0
         if self.state_fk in relevant_competitions[Const.EX_STATE_FK].unique().tolist():
             relevant_competitions = relevant_competitions[relevant_competitions[Const.EX_STATE_FK] == self.state_fk]
         else:

@@ -18,7 +18,6 @@ if __name__ == '__main__':
         # "FFEA78F0-AEED-48A5-97F9-374DB552AF73", "FF9F50D8-7D90-456C-9690-C8D32B460B9E",
         # # Open Off:
         "1FF9F838-5F2E-44D2-B1E4-3AE224CDCD8B",
-
     ]
     for session in sessions:
         data_provider = KEngineDataProvider(project_name)
