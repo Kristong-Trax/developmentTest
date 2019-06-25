@@ -229,8 +229,8 @@ class GSKJPToolBox:
         if lvl3_assort is None:
             return None
         kpi_assortment_fk = self.common.get_kpi_fk_by_kpi_type(kpi)
-        # kpi_results = lvl3_assort[lvl3_assort['kpi_fk_lvl3'] == kpi_assortment_fk]  # general assortment
-        kpi_results = lvl3_assort
+        kpi_results = lvl3_assort[lvl3_assort['kpi_fk_lvl3'] == kpi_assortment_fk]  # general assortment
+        # kpi_results = lvl3_assort
         kpi_results = pd.merge(kpi_results, self.all_products[Const.PRODUCTS_COLUMNS],
                                how='left', on='product_fk')
 
@@ -349,7 +349,7 @@ class GSKJPToolBox:
         df_position_score = self.gsk_generator.tool_box.tests_by_template(self.POSITION_SCORE, df_position_score,
                                                                           self.set_up_data)
         if self.set_up_data[(Const.INCLUDE_STACKING, self.POSITION_SCORE)]:
-            df_position_score = df_position_score[df_position_score['stacking_layer'] == 1]
+            df_position_score = df_position_score if df_position_score is None else df_position_score[df_position_score['stacking_layer'] == 1]
         brands = df[df['brand_name'].isin(self.set_up_data[(Const.BRANDS_INCLUDE, self.POSITION_SCORE)])][
             'brand_fk'].dropna().unique()
         # brands = df['brand_fk'].dropna().unique()
