@@ -430,7 +430,7 @@ class LIBERTYToolBox:
 
         manufacturer = self.does_exist(kpi_line, Const.MANUFACTURER)
         if manufacturer:
-            results = results[relevant_scif['manufacturer_name'].isin(manufacturer)]
+            results = results[results['manufacturer_name'].isin(manufacturer)]
 
         passing_coolers = results['numerator_result'].count()
 
