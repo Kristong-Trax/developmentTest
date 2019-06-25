@@ -66,6 +66,4 @@ class MarsUsQueries(object):
 
     @staticmethod
     def get_updated_mvp_sr():
-        return '''
-          select * from static.match_product_in_probe_state_reporting
-          '''
+        return 'select * from static.match_product_in_probe_state_reporting'

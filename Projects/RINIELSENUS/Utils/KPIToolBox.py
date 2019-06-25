@@ -15,7 +15,6 @@ from Projects.RINIELSENUS.Utils.Writer import KpiResultsWriter as KpiResultsWrit
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Cloud.Services.Connector.Keys import DbUsers
 from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
-from KPIUtils_v2.GlobalDataProvider.PsDataProvider import PsDataProvider
 from Projects.RINIELSENUS.Utils.Fake_Common import NotCommon as Common
 from Trax.Utils.Logging.Logger import Log
 
@@ -26,8 +25,7 @@ class MarsUsDogMainMealWet(object):
     def __init__(self, data_provider, output):
         self._data_provider = data_provider
         self.common = Common(self._data_provider)
-        self.psdataprovider = PsDataProvider(self._data_provider)
-        self.mpip_sr = self.psdataprovider.get_match_product_in_probe_state_reporting()
+        self.mpip_sr = self.common.read_custom_query(MarsUsQueries.get_updated_mvp_sr())
         self.project_name = self._data_provider.project_name
         self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         self._output = output

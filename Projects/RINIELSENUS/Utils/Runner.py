@@ -260,7 +260,10 @@ class Results(object):
             kpi = '{}_allowed'.format(kpi)
         df = self.mpip_sr[self.mpip_sr['name'] == kpi]
         if df.empty:
-            self.common.execute_custom_query(MarsUsQueries.add_kpi_to_mvp_sr(kpi, max(self.mpip_sr['pk'])+1))
-            self.mpip_sr = self.common.execute_custom_query(MarsUsQueries.get_updated_mvp_sr())
+            if self.mpip_sr.empty:
+                self.common.execute_custom_query(MarsUsQueries.add_kpi_to_mvp_sr(kpi, 1))
+            else:
+                self.common.execute_custom_query(MarsUsQueries.add_kpi_to_mvp_sr(kpi, max(self.mpip_sr['pk'])+1))
+            self.mpip_sr = self.common.read_custom_query(MarsUsQueries.get_updated_mvp_sr())
             df = self.mpip_sr[self.mpip_sr['name'] == kpi]
         return df['match_product_in_probe_state_reporting_fk'].values[0]
