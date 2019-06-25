@@ -2,11 +2,11 @@ from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScrip
 from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
 from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
 from Trax.Utils.Conf.Configuration import Config
-import os
+# import os
 # from KPIUtils.GlobalProjects.HEINZ.KPIGenerator import HEINZGenerator
 from Projects.HEINZCR.KPIGenerator import HEINZCRGenerator
-from KPIUtils.DB.Common import Common
-import pandas as pd
+# from KPIUtils.DB.Common import Common
+# import pandas as pd
 
 __author__ = 'Eli'
 
@@ -31,14 +31,14 @@ class HEINZCRCalculations(BaseCalculationsScript):
         self.timer.stop('KPIGenerator.run_project_calculations')
 
 
-if __name__ == '__main__':
-    LoggerInitializer.init('heinzcr calculations')
-    Config.init()
-    project_name = 'heinzcr'
-    data_provider = KEngineDataProvider(project_name)
-    # session = 'efdd2028-6f09-46ff-ad02-18874a6f45b2'
-    sessions = ['834460f7-8a86-444f-b575-1720a8cf127e']
-    for session in sessions:
-        data_provider.load_session_data(session)
-        output = Output()
-        HEINZCRCalculations(data_provider, output).run_project_calculations()
+# if __name__ == '__main__':
+#     LoggerInitializer.init('heinzcr calculations')
+#     Config.init()
+#     project_name = 'heinzcr'
+#     data_provider = KEngineDataProvider(project_name)
+#     # session = 'efdd2028-6f09-46ff-ad02-18874a6f45b2'
+#     sessions = ['f53c5a67-fab3-4be1-8bae-f1f2d825141c']
+#     for session in sessions:
+#         data_provider.load_session_data(session)
+#         output = Output()
+#         HEINZCRCalculations(data_provider, output).run_project_calculations()
