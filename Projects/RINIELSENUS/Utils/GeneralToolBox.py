@@ -8,8 +8,8 @@ from Projects.RINIELSENUS.Utils.PositionGraph import MarsUsPositionGraphs
 from Projects.RINIELSENUS.Utils.Const import ALLOWED_TYPES
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Algo.Calculations.Core.Shortcuts import BaseCalculationsGroup
-from KPIUtils_v2.Calculations.BlockCalculations_v2 import Block as Block
-
+# from KPIUtils_v2.Calculations.BlockCalculations_v2 import Block as Block
+from Projects.RINIELSENUS.Utils.BlockCalculations_v3 import Block
 from Trax.Utils.Logging.Logger import Log
 
 
@@ -775,7 +775,10 @@ class MarsUsGENERALToolBox:
 
     def test_subset_ratio(self, subset, cluster, mpis, minimum_block_ratio):
         sc_mpis = mpis[self.get_filter_condition(mpis, **{'scene_fk': cluster['scene_fk']})]
-        num = cluster['mpis'][self.get_filter_condition(cluster['mpis'], **subset)].shape[0]
+        mask = self.get_filter_condition(cluster['mpis'], **subset)
+        if mask is None or mask.empty:
+            return 0
+        num = cluster['mpis'][mask].shape[0]
         den = sc_mpis[self.get_filter_condition(sc_mpis, **subset)].shape[0]
         ratio = num / float(den) if num else 0
         return ratio >= minimum_block_ratio
@@ -797,8 +800,10 @@ class MarsUsGENERALToolBox:
         mpis_filter = {'scene_fk': relevant_scenes}
         mpis_filter.update(filters)
         mpis = self.match_product_in_scene.copy()
-        allowed_filters = {'product_fk': mpis[self.get_filter_condition(mpis, **sub_allowed)]['product_fk'].to_list() +
-                            mpis[self.get_filter_condition(mpis, **allowed_products_filters)]['product_fk'].to_list()}
+        allowed_filters = list(mpis[self.get_filter_condition(mpis, **allowed_products_filters)]['product_fk'].unique())
+        if sub_allowed:
+            allowed_filters += list(mpis[self.get_filter_condition(mpis, **sub_allowed)]['product_fk'].unique())
+        allowed_filters = {'product_fk': allowed_filters}
         mpis = mpis[self.get_filter_condition(mpis, **mpis_filter)]
         # mpis = pd.concat([mpis[self.get_filter_condition(mpis, **mpis_filter)],
         #                   mpis[self.get_filter_condition(mpis, **allowed_products_filter)]])
@@ -1177,7 +1182,8 @@ class MarsUsGENERALToolBox:
                 else:
                     filter_condition &= condition
             else:
-                Log.warning('field {} is not in the Data Frame'.format(field))
+                pass
+                # Log.warning('field {} is not in the Data Frame'.format(field))
 
         return filter_condition
 
