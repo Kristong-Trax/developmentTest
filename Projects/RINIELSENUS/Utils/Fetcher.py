@@ -56,13 +56,13 @@ class MarsUsQueries(object):
         """.format(session_uid)
 
     @staticmethod
-    def add_kpi_to_mvp_sr(kpi):
+    def add_kpi_to_mvp_sr(kpi, pk):
         return '''
         insert into static.match_product_in_probe_state_reporting
-        (name, display_name)
+        (pk, name, display_name)
         values
-        ("{}", "{}")
-        '''.format(kpi, kpi)
+        ({}, "{}", "{}")
+        '''.format(pk, kpi, kpi)
 
     @staticmethod
     def get_updated_mvp_sr():
