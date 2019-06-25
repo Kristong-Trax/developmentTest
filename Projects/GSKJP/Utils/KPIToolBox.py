@@ -202,18 +202,18 @@ class GSKJPToolBox:
         if not self.set_up_data[(Const.INCLUDE_EMPTY, self.PLN_BLOCK)]:
             products_excluded.append(Const.EMPTY)
         product_filters = {'product_type': products_excluded}  # from Data file
-        target = policy['block_target'].iloc[0]  # adding test check if empty
+        target = float(policy['block_target'].iloc[0]) / float(100)
 
         result = self.blocking_generator.network_x_block_together(location=template_name,
                                                                   population={'brand_fk': [brand]},
-                                                                  additional={'minimum_block_ratio': 1,
+                                                                  additional={'minimum_block_ratio': target,
                                                                               'allowed_products_filters':
                                                                                   product_filters,
                                                                               'calculate_all_scenes': False,
                                                                               'include_stacking': stacking_param,
                                                                               'check_vertical_horizontal': True,
-                                                                              'minimum_facing_for_block': target})
-        result = 0 if result[result['is_block']].empty else 1
+                                                                              })
+        result = 0 if result[result['is_block']].empty else 100
 
         return result
 
@@ -230,7 +230,6 @@ class GSKJPToolBox:
             return None
         kpi_assortment_fk = self.common.get_kpi_fk_by_kpi_type(kpi)
         kpi_results = lvl3_assort[lvl3_assort['kpi_fk_lvl3'] == kpi_assortment_fk]  # general assortment
-        # kpi_results = lvl3_assort
         kpi_results = pd.merge(kpi_results, self.all_products[Const.PRODUCTS_COLUMNS],
                                how='left', on='product_fk')
 
@@ -324,6 +323,7 @@ class GSKJPToolBox:
         kpi_block_fk = self.common.get_kpi_fk_by_kpi_type(self.PLN_BLOCK)
         kpi_position_fk = self.common.get_kpi_fk_by_kpi_type(self.POSITION_SCORE)
         kpi_lsos_fk = self.common.get_kpi_fk_by_kpi_type(self.PLN_LSOS)
+        kpi_msl_fk = self.common.get_kpi_fk_by_kpi_type(self.PLN_MSL)
         kpi_compliance_brands_fk = self.common.get_kpi_fk_by_kpi_type(self.COMPLIANCE_ALL_BRANDS)
         kpi_compliance_summary_fk = self.common.get_kpi_fk_by_kpi_type(self.COMPLIANCE_SUMMARY)
         identifier_compliance_summary = self.common.get_dictionary(kpi_fk=kpi_compliance_summary_fk)
@@ -363,7 +363,7 @@ class GSKJPToolBox:
             # msl_kpi
             msl_numerator, msl_denominator, msl_result = self.pln_msl_summary(brand, assortment_msl)
             msl_score = msl_result * msl_target
-            results_df.append({'fk': kpi_lsos_fk, 'numerator_id': brand, 'denominator_id': self.store_fk,
+            results_df.append({'fk': kpi_msl_fk, 'numerator_id': brand, 'denominator_id': self.store_fk,
                                'denominator_result': msl_denominator, 'numerator_result': msl_numerator, 'result':
                                    msl_result, 'score': msl_score, 'target': msl_target,
                                'identifier_parent': identifier_parent,
