@@ -1,0 +1,36 @@
+kps_name,kpi_fk,count(kpi_fk),sum(result)
+"SKU Distribution Raw Data",1,1039,1039
+"SKU Distribution (Primary)",2,9,1039
+"SKU OOS (Primary)",3,8,263
+"Share of Shelf (Primary) (by Manufacturer)",4,76,NULL
+"Share of Shelf (Primary) (by Brand)",5,122,NULL
+"Linear Shelf Space (by Manufacturer)",6,76,408398
+"Linear Shelf Space (Primary)",7,148,408398
+"Share of Shelf Facings (Primary) (by Manufacturer)",8,76,NULL
+"Share of Shelf Facings (Primary) (by Brand)",9,122,NULL
+"Number of Facings (Primary) (by Manufacturer)",10,76,3767
+"Number of Facings (Primary)",11,148,3767
+"Number of Facings (Primary) Raw Data",12,1128,3684
+"Share of Shelf Facings by Empty Space",13,1,2518
+"Golden Zone Compliance",14,82,82
+"Display Raw Data",16,122,197
+"Number of Display (by Brand)",17,122,197
+"Share of Display (per Category)",18,8,NULL
+"Share of Display (per Brand)",19,122,NULL
+"Size of Display (by Category)",20,47,NULL
+"Size of Display Raw Data",21,121,3778
+"Size of Display (by Manufacturer)",22,47,3779
+"Number of Facings (by Brand)",23,69,3779
+"SKU on Display Raw Data",24,642,3718
+"SKU on Display (by Category)",25,9,9114
+"PSKU Distribution Raw Data",27,369,369
+"PSKU Presence",28,8,369
+"Number of Display (by Category)",68,8,43
+Adjacency,124,54,1741.9854661159
+Adjacency,125,59,512.55614922
+Adjacency,126,29,1056.3076470772999
+Adjacency,127,31,616.3860182371001
+Adjacency,128,27,441.7486061664
+Adjacency,129,17,2
+Adjacency,130,111,833.3510489279
+Adjacency,131,74,407.6204906206
