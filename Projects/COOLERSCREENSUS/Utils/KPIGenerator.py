@@ -47,9 +47,11 @@ class COOLERSCREENSUSKGenerator:
         cur = project_connector.execute("""
         SELECT product_fk
         FROM probedata.match_product_in_scene mpis JOIN probedata.scene sc on sc.pk = mpis.scene_fk
+        JOIN static_new.product pr on pr.pk = mpis.product_fk
         WHERE sc.creation_time < %(creation_time)s AND bay_number = %(bay_number)s AND shelf_number = %(shelf_number)s
             AND facing_sequence_number = %(facing_sequence_number)s AND product_fk <> %(product_fk)s AND 
             sc.store_fk = %(store_fk)s AND sc.template_fk =%(template_fk)s
+            AND pr.type = 'SKU'
         ORDER BY sc.creation_time DESC
         LIMIT 1
         """, {'product_fk': match['product_fk'], 'bay_number': match['bay_number'],

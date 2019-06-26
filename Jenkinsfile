@@ -215,7 +215,7 @@ pipeline {
                 git remote set-url origin git@bitbucket.org:traxtechnology/trax_dev_garage.git
                 python -u Trax/Deployment/Tools/BuildReport.py --failed_step="$FAILED_STAGE" \
                     --result=$DEPLOY_STATUS --start_time=$START_TIME --duration=$DURATION --job_name=$JOB_NAME \
-                    --build_number=$BUILD_DISPLAY_NAME --url=$RUN_DISPLAY_URL
+                    --build_number=$BUILD_DISPLAY_NAME --url=$RUN_DISPLAY_URL --master_cc="yacovt@traxretail.com ilanp@traxretail.com"
             '''
             }
 

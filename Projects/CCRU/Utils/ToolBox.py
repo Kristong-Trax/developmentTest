@@ -1604,13 +1604,14 @@ class CCRUKPIToolBox:
                         scenes = self.get_relevant_scenes(c)
                         atomic_res = self.calculate_share_of_cch(c, scenes, sos=False)
                     elif c.get("Formula").strip() == "number of filled Coolers (scenes)":
-                        scenes_list = self.check_number_of_doors_of_filled_coolers(
-                            c, func='get scenes')
+                        scenes_list = self.check_number_of_doors_of_filled_coolers(c, func='get scenes')
                         atomic_res = len(scenes_list)
                     elif c.get("Formula").strip() == "number of SKU per Door RANGE":
                         atomic_score = self.check_number_of_skus_per_door_range(params, level=3)
                     elif c.get("Formula").strip() == "Scenes with no tagging":
                         atomic_res = self.check_number_of_scenes_no_tagging(c, level=3)
+                    elif c.get("Formula").strip() == "check_number_of_scenes_with_facings_target":
+                        atomic_res = self.calculate_number_of_scenes_with_target(c)
                     else:
                         # print "the atomic's formula is ", c.get('Formula').strip()
                         atomic_res = 0

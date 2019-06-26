@@ -97,7 +97,9 @@ IRRELEVANT_FIELDS = ['Score Card Name', 'KPI name', 'Tested Group Type', 'Target
 NOT_SEPARATE_FIELDS = ['Question Text;A']
 
 DENOMINATOR_FILTER_FIELDS = [TEMPLATE_NAME, SUB_SECTION, SECTION, SEGMENT_SPT]
+ALLOWED_TYPES = {'product_type': ['Empty', 'Other']}
 
+MPIP_SVR_COLS = ['match_product_in_probe_fk', 'match_product_in_probe_state_reporting_fk']
 
 FILTER_NAMING_DICT = {
     'Manufacturer': MANUFACTURER_NAME,
@@ -159,3 +161,21 @@ SET_PRE_CALC_CHECKS = {
     SPT_CAT_MAIN_MEAL_Q1_2018: {SECTION: 'CAT MAIN MEAL', TEMPLATE_NAME: 'Pet Food & Edible Treats Section'},
     SPT_DOG_MAIN_MEAL_Q1_2018: {SECTION: 'DOG MAIN MEAL', TEMPLATE_NAME: 'Pet Food & Edible Treats Section'}
 }
+
+EYELIGHT_KPIS = [
+                    'Is the Customized Care Dry Cat Food feeding philosophy segment blocked?',
+                    'Is IAMS Wet Cat food shelved within the Customized Care feeding philosophy segment?',
+                    'Is the Cat Treats category blocked?',
+                    'Is IAMS ProActive Health Dry Dog Food shelved with the Customized Care feeding philosophy segment?',
+                    'Is PEDIGREE Dry Dog Food shelved with the Basic & Balanced feeding philosophy segment?',
+                    'Is the Wet Dog Food category blocked?',
+                    'Is the Basic & Balanced Wet Dog Food feeding philosophy segment blocked?',
+                    'Is IAMS Wet Dog Food shelved with the Customized Care feeding philosophy segment?',
+                    'Is the Dog Treats Regular category blocked? <=8 ft',
+                    'Are Cesar Dog Treats blocked? <=8 ft',
+                    'Is Nutro Culinary Dog food feeding philosophy segment blocked?"',
+                    'Is Nutro Ingredient Transparency Dog food feeding philosophy segment blocked?',
+                    'Is Nutro Dry Dog food blocked?',
+                    'Is Nutro Wet Dog food blocked?',
+                    'Is Nutro Wet Cat Food blocked?',
+                    ]
