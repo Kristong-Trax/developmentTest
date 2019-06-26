@@ -23,10 +23,9 @@ class TestKEngineOutOfTheBox(TestFunctionalCase):
         self.mock_object('save_latest_templates', path='KPIUtils.DIAGEO.ToolBox.DIAGEOToolBox')
         self.mock_object('save_json_to_new_tables', path='KPIUtils_v2.DB.CommonV2.Common')
         res_dict = self.mock_object('diageo_global_visible_percentage',
-                         path='KPIUtils.GlobalProjects.DIAGEO.KPIGenerator.DIAGEOGenerator')
+                                    path='KPIUtils.GlobalProjects.DIAGEO.KPIGenerator.DIAGEOGenerator')
         res_dict.return_value = [{'result': 1}]
         remove_cache_and_storage()
-
 
     @property
     def import_path(self):
