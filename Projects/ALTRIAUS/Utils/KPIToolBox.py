@@ -21,6 +21,7 @@ from Projects.ALTRIAUS.Utils.ParseTemplates import parse_template
 import datetime
 from Projects.ALTRIAUS.Utils.AltriaDataProvider import AltriaDataProvider
 from KPIUtils_v2.GlobalDataProvider.PsDataProvider import PsDataProvider
+from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
 
 # from KPIUtils_v2.Calculations.CalculationsUtils import GENERALToolBoxCalculations
 
@@ -98,6 +99,8 @@ class ALTRIAUSToolBox:
         self.ignore_stacking = False
         self.facings_field = 'facings' if not self.ignore_stacking else 'facings_ign_stack'
         self.INCLUDE_FILTER = 1
+        self.assortment = Assortment(self.data_provider, output=self.output, ps_data_provider=self.ps_data_provider)
+        self.store_assortment = self.assortment.get_lvl3_relevant_ass()
 
         self.kpi_new_static_data = self.common.get_new_kpi_static_data()
         try:
@@ -116,6 +119,7 @@ class ALTRIAUSToolBox:
         self.calculate_signage_locations_and_widths('Cigarettes')
         self.calculate_signage_locations_and_widths('Smokeless')
         self.calculate_register_type()
+        self.calculate_assortment()
 
         return
 
@@ -152,6 +156,32 @@ class ALTRIAUSToolBox:
                 Log.info('KPI {} calculation failed due to {}'.format(kpi_name.encode('utf-8'), e))
                 continue
         return
+
+    def calculate_assortment(self):
+        if self.scif.empty or self.store_assortment.empty:
+            Log.error('Unable to calculate assortment: SCIF or store assortment is empty')
+            return
+
+        assortment_with_facings = \
+            pd.merge(self.store_assortment, self.scif[['product_fk', 'facings']], how='left', on='product_fk')
+        assortment_with_facings.loc[:, 'facings'] = assortment_with_facings['facings'].fillna(0)
+
+        for product in assortment_with_facings.itertuples():
+            score = 1 if product.facings > 0 else 0
+            self.common_v2.write_to_db_result(product.kpi_fk_lvl3, numerator_id=product.product_fk,
+                                              denominator_id=product.assortment_fk, numerator_result=product.facings,
+                                              result=product.facings, score=score)
+
+        number_of_skus_present = len(assortment_with_facings[assortment_with_facings['facings'] > 0])
+        score = 1 if number_of_skus_present > 0 else 0
+        kpi_fk = assortment_with_facings['kpi_fk_lvl2'].iloc[0]
+        assortment_group_fk = assortment_with_facings['assortment_group_fk'].iloc[0]
+        self.common_v2.write_to_db_result(kpi_fk, numerator_id=assortment_group_fk,
+                                          numerator_result=number_of_skus_present,
+                                          denominator_result=len(assortment_with_facings),
+                                          result=number_of_skus_present,
+                                          score=score)
+
 
     def calculate_register_type(self):
         relevant_scif = self.scif[(self.scif['product_type'].isin(['POS', 'Other'])) &
@@ -313,7 +343,10 @@ class ALTRIAUSToolBox:
         # get relevant SKUs from the cigarettes category
         relevant_scif = relevant_scif[relevant_scif['category'].isin([category, 'POS'])]
         relevant_product_pks = relevant_scif[relevant_scif['product_type'] == 'SKU']['product_fk'].unique().tolist()
-        relevant_pos_pks = relevant_scif[relevant_scif['product_type'] == 'POS']['product_fk'].unique().tolist()
+        relevant_pos_pks = \
+            relevant_scif[(relevant_scif['product_type'] == 'POS') &
+                          ~(relevant_scif['brand_name'] == 'Age Verification') &
+                          ~(relevant_scif['product_name'] == 'General POS Other')]['product_fk'].unique().tolist()
         other_product_and_pos_pks = \
             relevant_scif[relevant_scif['product_type'].isin(excluded_types)]['product_fk'].tolist()
         relevant_scene_id = relevant_scif['scene_id'].iloc[0]
@@ -451,20 +484,24 @@ class ALTRIAUSToolBox:
     def remove_duplicate_pos_tags(relevant_pos_df):
         duplicate_results = \
             relevant_pos_df[relevant_pos_df.duplicated(subset=['left_bound', 'right_bound'], keep=False)]
+
         duplicate_results_without_other = duplicate_results[~duplicate_results['product_name'].str.contains('Other')]
+
+        results_without_duplicates = \
+            relevant_pos_df[~relevant_pos_df.duplicated(subset=['left_bound', 'right_bound'], keep=False)]
+
         if duplicate_results_without_other.empty:
             return relevant_pos_df[~relevant_pos_df.duplicated(subset=['left_bound', 'right_bound'], keep='first')]
         else:
-            results_without_duplicates = \
-                relevant_pos_df[~relevant_pos_df.duplicated(subset=['left_bound', 'right_bound'], keep=False)]
-            return pd.concat([duplicate_results_without_other, results_without_duplicates])
+            results = pd.concat([duplicate_results_without_other, results_without_duplicates])
+            return results.drop_duplicates(subset=['left_bound', 'right_bound'])
 
     def get_custom_entity_pk(self, name):
         return self.custom_entity_data[self.custom_entity_data['name'] == name]['pk'].iloc[0]
 
     def get_length_of_pos(self, row, longest_shelf, category):
         width_in_facings = len(longest_shelf[(longest_shelf['rect_x'] > row['left_bound']) &
-                                             (longest_shelf['rect_x'] < row['right_bound'])])
+                                             (longest_shelf['rect_x'] < row['right_bound'])]) + 0.5
         category_facings = category + ' Facings'
         return self.facings_to_feet_template.loc[(self.facings_to_feet_template[category_facings]
                                                   - width_in_facings).abs().argsort()[:1]]['POS Width (ft)'].iloc[0]
