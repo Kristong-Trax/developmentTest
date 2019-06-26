@@ -540,7 +540,6 @@ class CCTHToolBox(CCTHConsts):
                 targeted = targeted_atomic_kpi if targeted_atomic_kpi else len(scores)
                 self.summary[main_child[self.template.KPI_NAME]] = [scores.count(100), targeted, score]
                 kpi_name = main_child[self.template.KPI_NAME]
-                print(kpi_name)
                 kpi_fk = self.kpi_static_data[self.kpi_static_data['kpi_name'] == kpi_name]['kpi_fk'].values[0]
                 set_scores[kpi_fk] = (score_weight, score)
         total_weight = sum([score[0] for score in set_scores.values()])
@@ -963,7 +962,6 @@ class CCTHToolBox(CCTHConsts):
         This function gets an Atomic KPI's FK out of the template data.
         """
         atomic_name = params[self.template.KPI_NAME]
-        print('atomic_name={}'.format(atomic_name))
         kpi_name = params[self.template.KPI_GROUP]
         atomic_fk = self.kpi_static_data[(self.kpi_static_data['kpi_name'] == kpi_name) &
                                          (self.kpi_static_data['atomic_kpi_name'] == atomic_name)]['atomic_kpi_fk']
@@ -972,7 +970,6 @@ class CCTHToolBox(CCTHConsts):
         return atomic_fk.values[0]
 
     def write_to_db_result_report(self, kpi_fk, score, atomic_kpi_name, kpi_order=1):
-        print ("KPI Name={}".format(atomic_kpi_name))
         attributes = self.create_attributes_dict_report(kpi_fk, score, atomic_kpi_name, kpi_order)
         table = KPI_RESULT
         query = insert(attributes, table)
@@ -1040,10 +1037,6 @@ class CCTHToolBox(CCTHConsts):
             if isinstance(result, (int, float)):
                 result = round(result, 2)
             data = self.kpi_static_data[self.kpi_static_data['atomic_kpi_fk'] == fk]
-
-            if data.empty:
-                print ("FK value is {}".format(fk))
-
             atomic_kpi_name = data['atomic_kpi_name'].values[0]
             kpi_fk = data['kpi_fk'].values[0]
             kpi_set_name = self.kpi_static_data[self.kpi_static_data['atomic_kpi_fk'] == fk]['kpi_set_name'].values[0]
