@@ -20,7 +20,7 @@ KPI_RESULT = 'report.kpi_results'
 KPK_RESULT = 'report.kpk_results'
 KPS_RESULT = 'report.kps_results'
 
-TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'Template.xlsx')
+TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'Template_New.xlsx')
 SCENE_TYPE_FIELD = 'additional_attribute_1'
 
 
@@ -128,8 +128,8 @@ class CCKHToolBox(CCKHConsts):
         for c in xrange(len(main_children)):
             main_child = main_children.iloc[c]
             if self.validate_store_type(main_child):
-                children = self.templates_data[self.templates_data[self.template.KPI_GROUP] ==
-                                               main_child[self.template.KPI_NAME]]
+                children = self.templates_data[self.templates_data[self.template.KPI_GROUP].str.encode('utf-8') ==
+                                               main_child[self.template.KPI_NAME].encode('utf-8')]
                 scores = []
                 for i in xrange(len(children)):
                     child = children.iloc[i]
