@@ -161,16 +161,38 @@ class PngcnSceneKpis(object):
             Log.info(self.log_prefix + ' Finished calculation')
 
     def calculate_variant_block(self):
-        block_groups = [{'brand_name': ["Gillette"], 'sub_brand_name': ["Fusion/锋隐"]}]
-        for block_filters in block_groups:
-            result = block(self.data_provider).network_x_block_together(
+        legal_blocks = {}
+        block_groups = {'GIL_FUS': {'brand_name': ["Gillette"], 'sub_brand_name': ["Fusion/锋隐"]}}
+        for filter_name, block_filters in block_groups.iteritems():
+            filter_results = []
+            filter_block_result = block(self.data_provider).network_x_block_together(
                 population=block_filters,
                 additional={'allowed_products_filters': {'product_type': ['Irrelevant']},
-                            'minimum_block_ratio': 0.2,
-                            'calculate_all_scenes': False,
+                            'minimum_block_ratio': 0.6,
                             'include_stacking': False,
                             'check_vertical_horizontal': False})
+            for i, row in filter_block_result.iterrows():
+                cluster = row['cluster']
+                for node in cluster.nodes.data():
+                    product_matches_fks = []
+                    product_matches_fks += (list(node[1]['members']))
+                    block_df = self.matches_from_data_provider[self.matches_from_data_provider
+                    ['scene_match_fk'].isin(product_matches_fks)]
+                    shelves = set(block_df['shelf_number'])
+                    if len(shelves) < 2:
+                        continue
+                    block_flag = False
+                    for shelf in shelves:
+                        shelf_df = block_df[block_df['shelf_number'] == shelf]
+                        if len(shelf_df) >= 3:
+                            block_flag = True
+                            break
+                    if block_flag:
+                        filter_results.append(row)
+            if len(filter_results) > 0:
+                legal_blocks[filter_name] = filter_results
         pass
+
 
     def calculate_eye_level_kpi(self):
         if self.matches_from_data_provider.empty:
