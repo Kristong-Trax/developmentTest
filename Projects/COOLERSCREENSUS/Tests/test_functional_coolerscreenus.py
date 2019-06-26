@@ -1,13 +1,13 @@
 import pandas as pd
+from Trax.Apps.Core.Testing.BaseCase import TestFunctionalCase
 
-from Trax.Utils.Testing.Case import MockingTestCase
 from mock import MagicMock
 from Projects.COOLERSCREENSUS.Utils.KPIGenerator import COOLERSCREENSUSKGenerator
 
 __author__ = 'israels'
 
 
-class Test_COOLERSCREENSUS(MockingTestCase):
+class Test_COOLERSCREENSUS(TestFunctionalCase):
     @property
     def import_path(self):
         return 'Projects.COOLERSCREENSUS.Utils.KPIGenerator'

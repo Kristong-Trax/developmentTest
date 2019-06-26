@@ -4,7 +4,8 @@ __author__ = 'hunter'
 
 
 class Const(object):
-    TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'Liberty_bottlers_Template_2019_06_03.xlsx')
+    TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)),
+                                 'Liberty_bottlers_Template_subquestions_added_2019_06_25_RB.xlsx')
     LIBERTY = ' - Liberty'
     DRILLDOWN = ' - Drilldown'
     RED_SCORE_PARENT = 'RED SCORE - Liberty'
@@ -37,15 +38,18 @@ class Const(object):
     TEMPLATE_NAME = 'Template'
     TEMPLATE_GROUP = 'Template Group'
     ADDITIONAL_ATTRIBUTE_7 = 'additional_attribute_7'
+    PARENT_KPI_NAME = 'Parent KPI'
 
     # SOS columns
     MANUFACTURER = 'manufacturer'
     MARKET_SHARE_TARGET = 'market_share_target'
+    LIBERTY_KEY_MANUFACTURER = 'Liberty Key Manufacturer'
 
     # Availability columns
     BRAND = 'brand'
     CATEGORY = 'category'
     EXCLUDED_BRAND = 'excluded_brand'
+    EXCLUDED_SKU = 'excluded_SKU'
     MINIMUM_NUMBER_OF_SKUS = 'number_required_SKUS'
     SECONDARY_MINIMUM_NUMBER_OF_SKUS = 'number_required_SKUS - secondary'
     SURVEY_QUESTION_SKUS_REQUIRED = 'Survey_Question_SKUs_required'
@@ -56,6 +60,8 @@ class Const(object):
     SUBPACKAGES_NUM = 'Multi-Pack Size'
     MINIMUM_FACINGS_REQUIRED = 'facings_threshold'
     GREATER_THAN_ONE = '>1'
+    EXCLUDED_CATEGORY = 'excluded_category'
+    EXCLUDED_SIZE_SUBPACKAGES_NUM = 'Excluded Base Size; Multi Pack Size'
 
     # Share of Display columns
     INCLUDE_BODY_ARMOR = 'body_armor_delivered'

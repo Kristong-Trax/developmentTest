@@ -55,11 +55,13 @@ class SceneToolBox:
         shelfs_to_include = row[Const.OSD_NUMBER_OF_SHELVES].values[0]
         if shelfs_to_include != "":
             shelfs_to_include = int(shelfs_to_include)
-            results_list.append(df[df['shelf_number_from_bottom'] >= shelfs_to_include])
+            result_df = df[df['shelf_number_from_bottom'] >= shelfs_to_include]
+            if not result_df.empty:
+                results_list.append(result_df)
             df = df[df['shelf_number_from_bottom'] < shelfs_to_include]
 
-        # if no osd rule is applied
-        if row[Const.HAS_OSD].values[0] == Const.NO:
+        # if no osd rule is applied.
+        if (row[Const.HAS_OSD].values[0] == Const.NO) and (row[Const.HAS_HOTSPOT].values[0] == Const.NO):
             return
 
         # filter df to have only shelves with given ean code

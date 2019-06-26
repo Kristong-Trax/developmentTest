@@ -129,19 +129,20 @@ class PngcnSceneKpis(object):
         self.png_manufacturer_fk = self.get_png_manufacturer_fk()
         self.psdataprovider = PsDataProvider(data_provider=self.data_provider)
         self.parser = Parser
+        self.match_probe_in_scene = self.get_product_special_attribute_data(self.scene_id)
 
     def process_scene(self):
         self.save_nlsos_to_custom_scif()
         self.calculate_eye_level_kpi()
-        Log.debug(self.log_prefix + ' Retrieving data')
-        self.calculate_display_size()
         self.calculate_linear_length()
         self.calculate_presize_linear_length()
+        Log.debug(self.log_prefix + ' Retrieving data')
         self.match_display_in_scene = self._get_match_display_in_scene_data()
         # if there are no display tags there's no need to retrieve the rest of the data.
         if self.match_display_in_scene.empty:
             Log.debug(self.log_prefix + ' No display tags')
             self._delete_previous_data()
+            self.calculate_display_size()
             self.common.commit_results_data(result_entity='scene')
         else:
             self.displays = self._get_displays_data()
@@ -151,6 +152,7 @@ class PngcnSceneKpis(object):
             self._handle_cube_or_4_sided_display()
             self._handle_table_display()
             self._handle_rest_display()
+            self.calculate_display_size()
             self.common.commit_results_data(result_entity='scene')
             if self.on_ace:
                 Log.debug(self.log_prefix + ' Committing share of display calculations')
@@ -158,6 +160,9 @@ class PngcnSceneKpis(object):
             Log.info(self.log_prefix + ' Finished calculation')
 
     def calculate_eye_level_kpi(self):
+        """
+        calls the filter eyelevel shelves function, calls both eye_level_sequence and eye_level_facings KPIs
+        """
         if self.matches_from_data_provider.empty:
             return
         relevant_templates = self.psdataprovider.get_scene_category_data(PCC_CATEGORY)['template_fk'].tolist()
@@ -178,6 +183,11 @@ class PngcnSceneKpis(object):
         self.calculate_sequence_eye_level(entity_df, full_df)
 
     def calculate_facing_eye_level(self, full_df):
+        """
+        Summing all facings for each product (includes stackings)
+        :param full_df: the two relevant shelves (eye level shelves)
+        :return: save the facing_eye_level results for each shelf (combine all bays)
+        """
         kpi_facings_fk = self.common.get_kpi_fk_by_kpi_name(Eye_level_kpi_FACINGS)
         results_facings_df = full_df.groupby(by=['shelf_number', 'product_fk']).first().reset_index()
         summed_result_df = full_df.groupby(by=['shelf_number', 'product_fk']).size().reset_index()
@@ -192,6 +202,12 @@ class PngcnSceneKpis(object):
                                             result=facings, score=facings, by_scene=True)
 
     def calculate_sequence_eye_level(self, entity_df, full_df):
+        """
+        Saving sequence of brand-sub_category blocks (not including stackings)
+        :param entity_df: the sub_-category-brand custom_entety fields, to save the correct entity
+        :param full_df: The df to work on
+        :return: saves the sequence of each shelf (combine all bays)
+        """
         kpi_sequence_fk = self.common.get_kpi_fk_by_kpi_name(Eye_level_kpi_SEQUENCE)
         results_sequence_df = pd.DataFrame(columns=['fk', 'numerator_id', 'denominator_id', 'numerator_result', 'result',
                                             'score', 'by_scene', 'temp_bay_number'])
@@ -239,8 +255,12 @@ class PngcnSceneKpis(object):
         for i, row in results_sequence_df.iterrows():
             self.common.write_to_db_result(**row)
 
-
     def get_eye_level_shelves(self, df):
+        """
+        Gives us the two relevant shelves according to the costumer request.
+        :param df: the df to work on
+        :return: the two relevant eye_level shelves out of the df given
+        """
         if df.empty:
             return df
         bay_and_shelves = df.groupby(by=['bay_number', 'shelf_number']).first().reset_index()[['bay_number', 'shelf_number']]
@@ -582,6 +602,19 @@ class PngcnSceneKpis(object):
                 display_visit_summary['product_size'] = 0
 
             display_visit_summary = self.remove_by_facing(display_visit_summary)
+            displays = display_visit_summary['display_surface_fk'].unique()
+            for display in displays:
+                single_display_df = display_visit_summary[display_visit_summary['display_surface_fk'] == display]
+                if single_display_df.empty:
+                    continue
+                total_linear_for_display = single_display_df['product_size'].sum()
+                display_size = single_display_df['display_size'].iloc[0]
+                if total_linear_for_display != 0:
+                    diff_ratio = display_size / float(total_linear_for_display)
+                else:
+                    diff_ratio = 0
+                display_visit_summary.loc[display_visit_summary['display_surface_fk'] == display,
+                                                                    ['product_size']] *= diff_ratio
             display_visit_summary_list_of_dict = display_visit_summary.to_dict('records')
             self._insert_into_display_visit_summary(display_visit_summary_list_of_dict)
             self.insert_into_kpi_scene_results(display_visit_summary_list_of_dict)
@@ -791,6 +824,7 @@ class PngcnSceneKpis(object):
         query = ''' select
                         mps.scene_fk
                         ,mps.product_fk
+                        ,mps.probe_match_fk
                         ,mps.bay_number
                         ,mps.shelf_number
                         ,mps.status
@@ -813,7 +847,8 @@ class PngcnSceneKpis(object):
                             static.template t on t.pk = sc.template_fk
                              and t.is_recognition = 1
                     '''.format(self.scene_id)
-        match_product_in_scene = pd.read_sql_query(query, self.project_connector.db)
+        df = pd.read_sql_query(query, self.project_connector.db)
+        match_product_in_scene = self.exclude_special_attribute_products(df, 'additional display')
         return match_product_in_scene
 
     def insert_into_kpi_scene_results(self, display_visit_summary_list_of_dict):
@@ -833,6 +868,11 @@ class PngcnSceneKpis(object):
         return
 
     def save_nlsos_to_custom_scif(self):
+        """
+        copied the same calculation as 'gross_len_split_stack' field in scif, used 'width_mm_advance' \
+        instead of 'width_mm'.
+        :return: save results to both KPI results and pservice.custom_scene_item_facts
+        """
         matches = self.matches_from_data_provider.copy()
         if matches.empty or self.scif.empty:
             return
@@ -862,6 +902,12 @@ class PngcnSceneKpis(object):
             return 0
 
     def save_nlsos_as_kpi_results(self, new_scif):
+        """
+        Save nlsos results, calculate for each product the nlsos result.
+        The calculation includes exluding for relevant and out_of_sos_assortment Products
+        :param new_scif: the new scif created with width_mm_advance field
+        :return: save the result for each product
+        """
         kpi_fk = self.common.get_kpi_fk_by_kpi_name(NEW_LSOS_KPI)
         if kpi_fk is None:
             Log.warning("There is no matching Kpi fk for kpi name: " + NEW_LSOS_KPI)
@@ -880,6 +926,11 @@ class PngcnSceneKpis(object):
                                            result=result, score=result, by_scene=True)
 
     def insert_data_into_custom_scif(self, new_scif):
+        """
+        Deletes all previous results (for that scene) and writes the new ones.
+        :param new_scif: the df to work on
+        :return: saves the data to reportg.custom_scene_item_facts
+        """
         session_id = self.data_provider.session_id
         new_scif['session_id'] = session_id
         delete_query = """DELETE FROM pservice.custom_scene_item_facts WHERE session_fk = {} and 
@@ -928,8 +979,8 @@ class PngcnSceneKpis(object):
         # get size and item id
         DF_products_size = self._get_display_size_of_product_in_scene()
 
-        if self.scif.empty:
-            return pd.DataFrame()
+        if self.scif.empty or DF_products_size.empty:
+            return
 
         filter_scif = self.scif[[u'scene_id', u'item_id', u'manufacturer_fk', u'rlv_sos_sc', u'status']]
         df_result = pd.merge(filter_scif, DF_products_size, on=['item_id', 'scene_id'], how='left')
@@ -1045,7 +1096,32 @@ class PngcnSceneKpis(object):
         """
         self.calculate_linear_or_presize_linear_length('width_mm_advance')
         return 0
-#
+
+    def exclude_special_attribute_products(self, df, smart_attribute):
+        """
+        Helper to exclude smart_attribute products
+        :return: filtered df without smart_attribute products
+        """
+        if self.match_probe_in_scene.empty:
+            return df
+        smart_attribute_df = self.match_probe_in_scene[self.match_probe_in_scene['name'] == smart_attribute]
+        if smart_attribute_df.empty:
+            return df
+        match_product_in_probe_fks = smart_attribute_df['match_product_in_probe_fk'].tolist()
+        df = df[~df['probe_match_fk'].isin(match_product_in_probe_fks)]
+        return df
+
+    def get_product_special_attribute_data(self, scene_id):
+        query = """
+                SELECT * FROM probedata.match_product_in_probe_state_value A
+                left join probedata.match_product_in_probe B on B.pk = A.match_product_in_probe_fk
+                left join static.match_product_in_probe_state C on C.pk = A.match_product_in_probe_state_fk
+                left join probedata.probe on probe.pk = probe_fk 
+                where C.name = '{}' and scene_fk = {};
+            """.format('additional display', scene_id)
+        df = pd.read_sql_query(query, self.project_connector.db)
+        return df
+
 # if __name__ == '__main__':
 #     # Config.init()
 #     LoggerInitializer.init('TREX')

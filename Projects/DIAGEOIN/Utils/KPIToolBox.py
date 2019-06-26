@@ -106,9 +106,13 @@ class DIAGEOINToolBox:
         # # SOS Out Of The Box kpis
         self.activate_ootb_kpis()
 
-        # Global assortment kpis
-        assortment_res_dict = self.diageo_generator.diageo_global_assortment_function_v3()
-        self.commonV2.save_json_to_new_tables(assortment_res_dict)
+        # Global assortment kpis - v2 for API use
+        assortment_res_dict_v2 = self.diageo_generator.diageo_global_assortment_function_v2()
+        self.commonV2.save_json_to_new_tables(assortment_res_dict_v2)
+
+        # Global assortment kpis - v3 for NEW MOBILE REPORTS use
+        assortment_res_dict_v3 = self.diageo_generator.diageo_global_assortment_function_v3()
+        self.commonV2.save_json_to_new_tables(assortment_res_dict_v3)
 
         for set_name in set_names:
             if set_name not in self.tools.KPI_SETS_WITHOUT_A_TEMPLATE and set_name not in self.set_templates_data.keys():

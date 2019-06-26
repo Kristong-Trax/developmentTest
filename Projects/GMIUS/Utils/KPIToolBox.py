@@ -114,8 +114,8 @@ class ToolBox:
         # print(kpi_name)
         # if kpi_name != 'Do Kid AND ASH Both Anchor End of Category?':
         # if kpi_name != 'In the MSL for Yogurt, which of the following is adjacent to Kite Hill?':
-        # if kpi_name not in ('Where are Progresso RTS Light facings shelved?'):
-        #     return
+        if kpi_name not in ('How is Progresso RTS Rich and Hearty blocked?'):
+            return
 
         # if kpi_type == Const.AGGREGATION:
         # if kpi_type:
@@ -758,6 +758,7 @@ class ToolBox:
         mpis_dict = {}
         if self.read_cell_from_line(kpi_line, 'MSL'):
             scenes = self.find_MSL(relevant_scif)
+        valid_scene_found = 0
         for scene in scenes:
             score = 0
             scene_filter = {'scene_fk': scene}
@@ -782,11 +783,12 @@ class ToolBox:
                                                                      'check_vertical_horizontal': check_orient,
                                                                      'minimum_facing_for_block': 1})])
             blocks = result[result['is_block'] == True]
+            valid_scene_found = 1
             if not blocks.empty and not multi:
                 score = 1
                 orientation = blocks.loc[0, 'orientation']
                 break
-        if score == -1:
+        if score == -1 and not valid_scene_found:
             self.global_fail = 1
             raise TypeError('No Data Found fo kpi "'.format(kpi_name))
         return score, orientation, mpis_dict, blocks, result
