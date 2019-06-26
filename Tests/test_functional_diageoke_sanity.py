@@ -6,6 +6,7 @@ from Trax.Data.Testing.SeedNew import Seeder
 from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
 from Trax.Cloud.Services.Connector.Keys import DbUsers
 from Trax.Data.Testing.TestProjects import TestProjectsNames
+from Trax.Utils.Logging.Logger import Log
 
 from Tests.Data.TestData.test_data_diageoke_sanity import ProjectsSanityData
 from Projects.DIAGEOKE.Calculations import DIAGEOKECalculations
@@ -49,6 +50,7 @@ class TestKEngineOutOfTheBox(TestFunctionalCase):
 
     @seeder.seed(["mongodb_products_and_brands_seed", "diageoke_seed"], ProjectsSanityData())
     def test_diageoke_sanity(self):
+        Log.info('test')
         pass
         # project_name = ProjectsSanityData.project_name
         # data_provider = KEngineDataProvider(project_name)
