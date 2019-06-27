@@ -347,3 +347,17 @@ class TestPngcn(TestUnitCase):
                                         self.common_mock, 16588190,
                                         self.data_provider_mock)
         self.assertEquals(scene_tool_box.calculate_presize_linear_length(), 0)
+
+    def test_save_nlsos_as_kpi_results(self):
+        pass
+
+    def test_insert_into_kpi_scene_results(self):
+        pass
+
+    def test_calculate_sequence_eye_level(self):
+        pass
+
+    def test_calculate_facing_eye_level(self):
+        pass
+
+
