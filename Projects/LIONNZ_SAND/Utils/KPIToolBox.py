@@ -51,8 +51,8 @@ PARAM_DB_MAP = {
 }
 # list of `exclude_include` sheet columns
 INC_EXC_LIST = ['stacking', 'others', 'irrelevant', 'empty',
-                'categories_to_exclude', 'scene_types_to_include', 'brands',
-                'ean_codes']
+                'categories_to_exclude', 'scene_types_to_exclude',
+                'brands_to_exclude', 'ean_codes_to_exclude']
 # assortment KPIs
 # Codes
 OOS_CODE = 1
@@ -66,7 +66,12 @@ OOS_PRODUCT_BY_STORE_LIST = 'OOS_PRODUCT_BY_STORE_LIST'
 # map to save list kpis
 CODE_KPI_MAP = {
     OOS_CODE: OOS_PRODUCT_BY_STORE_LIST,
-    PRESENT_CODE:PRODUCT_PRESENCE_BY_STORE_LIST,
+    PRESENT_CODE: PRODUCT_PRESENCE_BY_STORE_LIST,
+}
+# policy JSON map: key is what is in the policy and value corresponds to the one present in the self.store_info below
+POLICY_STORE_MAP = {
+    'retailer': 'retailer_name',
+    'region': 'region_name',
 }
 
 
@@ -115,8 +120,10 @@ class LIONNZToolBox:
         """
         This function calculates the KPI results.
         """
-        self.filter_and_send_kpi_to_calc()
-        self.calculate_assortment_kpis()
+        pd.reset_option('mode.chained_assignment')
+        with pd.option_context('mode.chained_assignment', None):
+            self.filter_and_send_kpi_to_calc()
+            self.calculate_assortment_kpis()
         self.common.commit_results_data()
         return 0  # to mark successful run of script
 
@@ -134,6 +141,10 @@ class LIONNZToolBox:
             policy_json = json.loads(policy)
             store_json = json.loads(self.store_info.reset_index().to_json(orient='records'))[0]
             valid_store = True
+            # map the necessary keys to those names knows
+            for policy_value, store_info_value in POLICY_STORE_MAP.iteritems():
+                if policy_value in policy_json:
+                    policy_json[store_info_value] = policy_json.pop(policy_value)
             for key, values in policy_json.iteritems():
                 if str(store_json[key]) in values:
                     continue
@@ -227,8 +238,9 @@ class LIONNZToolBox:
                                        )
 
     def get_policies(self, kpi_fk):
-        query = """ select a.kpi_fk, p.policy_name, p.policy, atag.assortment_group_fk, atp.assortment_fk, atp.product_fk, 
-                        atp.start_date, atp.end_date from pservice.assortment_to_product atp 
+        query = """ select a.kpi_fk, p.policy_name, p.policy, atag.assortment_group_fk,
+                        atp.assortment_fk, atp.product_fk, atp.start_date, atp.end_date
+                    from pservice.assortment_to_product atp 
                         join pservice.assortment_to_assortment_group atag on atp.assortment_fk = atag.assortment_fk 
                         join pservice.assortment a on a.pk = atag.assortment_group_fk
                         join pservice.policy p on p.pk = a.store_policy_group_fk
@@ -245,24 +257,31 @@ class LIONNZToolBox:
         for index, kpi_sheet_row in kpi_sheet.iterrows():
             if not is_nan(kpi_sheet_row[KPI_ACTIVE]):
                 if str(kpi_sheet_row[KPI_ACTIVE]).strip().lower() in ['0.0', 'n', 'no']:
-                    print("KPI :{} deactivated in sheet.".format(kpi_sheet_row[KPI_NAME_COL]))
+                    Log.warning("KPI :{} deactivated in sheet.".format(kpi_sheet_row[KPI_NAME_COL]))
                     continue
             kpi = self.kpi_static_data[(self.kpi_static_data[KPI_TYPE_COL] == kpi_sheet_row[KPI_NAME_COL])
                                        & (self.kpi_static_data['delete_time'].isnull())]
             if kpi.empty:
-                print("KPI Name:{} not found in DB".format(kpi_sheet_row[KPI_NAME_COL]))
+                Log.warning("*** KPI Name:{name} not found in DB for session {sess} ***".format(
+                    name=kpi_sheet_row[KPI_NAME_COL],
+                    sess=self.session_uid
+                ))
                 return False
             else:
-                print("KPI Name:{} found in DB".format(kpi_sheet_row[KPI_NAME_COL]))
+                Log.info("KPI Name:{name} found in DB for session {sess}".format(
+                    name=kpi_sheet_row[KPI_NAME_COL],
+                    sess=self.session_uid
+                ))
                 detail = kpi_details[kpi_details[KPI_NAME_COL] == kpi[KPI_TYPE_COL].values[0]]
                 # check for store types allowed
-                permitted_store_types = [x.strip() for x in detail[STORE_POLICY].values[0].split(',') if x.strip()]
-                if self.store_info.store_type.iloc[0] not in permitted_store_types:
-                    print("Not permitted store type - {}".format(kpi_sheet_row[KPI_NAME_COL]))
+                permitted_store_types = [x.strip().lower() for x in detail[STORE_POLICY].values[0].split(',') if x.strip()]
+                if self.store_info.store_type.iloc[0].lower() not in permitted_store_types:
+                    Log.warning("Not permitted store type - {type} for session {sess}".format(
+                        type=kpi_sheet_row[KPI_NAME_COL],
+                        sess=self.session_uid
+                    ))
                     continue
-                pd.reset_option('mode.chained_assignment')
-                with pd.option_context('mode.chained_assignment', None):
-                    detail['pk'] = kpi['pk'].iloc[0]
+                detail['pk'] = kpi['pk'].iloc[0]
                 # gather details
                 groupers, query_string = get_groupers_and_query_string(detail)
                 _include_exclude = kpi_include_exclude[kpi_details[KPI_NAME_COL] == kpi[KPI_TYPE_COL].values[0]]
@@ -278,6 +297,10 @@ class LIONNZToolBox:
         return True
 
     def calculate_fsos(self, kpi, groupers, query_string, dataframe_to_process):
+        Log.info("Calulcate {name} for session {sess}".format(
+            name=kpi.kpi_name.iloc[0],
+            sess=self.session_uid
+        ))
         if query_string:
             grouped_data_frame = dataframe_to_process.query(query_string).groupby(groupers)
         else:
@@ -294,8 +317,8 @@ class LIONNZToolBox:
             identifier_result = None
             if not is_nan(kpi['kpi_parent'].iloc[0]):
                 should_enter = True
-                identifier_result = kpi[KPI_NAME_COL]
-                identifier_parent = kpi[KPI_PARENT_COL]
+                identifier_result = kpi[KPI_NAME_COL].iloc[0]
+                identifier_parent = kpi[KPI_PARENT_COL].iloc[0]
             self.common.write_to_db_result(fk=kpi['pk'].iloc[0],
                                            numerator_id=numerator_id,
                                            denominator_id=denominator_id,
@@ -337,36 +360,74 @@ class LIONNZToolBox:
             self.scene_template_info, how='left', on='scene_fk', suffixes=('', '_scene')
         )
         # flags
-        should_include_empty = include_exclude_data_dict.get('empty')
-        should_include_irrelevant = include_exclude_data_dict.get('irrelevant')
-        should_include_others = include_exclude_data_dict.get('others')
-        should_include_stacking = include_exclude_data_dict.get('stacking')
+        include_empty = include_exclude_data_dict.get('empty')
+        include_irrelevant = include_exclude_data_dict.get('irrelevant')
+        include_others = include_exclude_data_dict.get('others')
+        include_stacking = include_exclude_data_dict.get('stacking')
         # list
-        scene_types_to_include = include_exclude_data_dict.get('scene_types_to_include', False)
+        scene_types_to_exclude = include_exclude_data_dict.get('scene_types_to_exclude', False)
         categories_to_exclude = include_exclude_data_dict.get('categories_to_exclude', False)
-        query = ''
+        brands_to_exclude = include_exclude_data_dict.get('brands_to_exclude', False)
+        ean_codes_to_exclude = include_exclude_data_dict.get('ean_codes_to_exclude', False)
+        # Start removing items
+        if scene_types_to_exclude:
+            # list of scene types to include is present, otherwise all included
+            Log.info("Exclude template/scene type {}".format(scene_types_to_exclude))
+            sanitized_products_in_scene.drop(
+                sanitized_products_in_scene[sanitized_products_in_scene['template_name'].str.upper().isin(
+                    [x.upper() if type(x) in [unicode, str] else x for x in scene_types_to_exclude]
+                )].index,
+                inplace=True
+            )
+        if not include_stacking:
+            # exclude stacking if the flag is set
+            Log.info("Exclude stacking other than in layer 1")
+            sanitized_products_in_scene = sanitized_products_in_scene.loc[
+                sanitized_products_in_scene['stacking_layer'] == 1]
+        if categories_to_exclude:
+            # list of categories to exclude is present, otherwise all included
+            Log.info("Exclude categories {}".format(categories_to_exclude))
+            sanitized_products_in_scene.drop(
+                sanitized_products_in_scene[sanitized_products_in_scene['category'].str.upper().isin(
+                    [x.upper() if type(x) in [unicode, str] else x for x in categories_to_exclude]
+                )].index,
+                inplace=True
+            )
+        if brands_to_exclude:
+            # list of brands to exclude is present, otherwise all included
+            Log.info("Exclude brands {}".format(brands_to_exclude))
+            sanitized_products_in_scene.drop(
+                sanitized_products_in_scene[sanitized_products_in_scene['brand_name'].str.upper().isin(
+                    [x.upper() if type(x) in [unicode, str] else x for x in brands_to_exclude]
+                )].index,
+                inplace=True
+            )
+        if ean_codes_to_exclude:
+            # list of ean_codes to exclude is present, otherwise all included
+            Log.info("Exclude ean codes {}".format(ean_codes_to_exclude))
+            sanitized_products_in_scene.drop(
+                sanitized_products_in_scene[sanitized_products_in_scene['product_ean_code'].str.upper().isin(
+                    [x.upper() if type(x) in [unicode, str] else x for x in ean_codes_to_exclude]
+                )].index,
+                inplace=True
+            )
         product_ids_to_exclude = []
-        if not should_include_irrelevant:
+        if not include_irrelevant:
             # add product ids to exclude with irrelevant
             product_ids_to_exclude.extend(self.irrelevant_prod_ids)
-        if not should_include_others:
+        if not include_others:
             # add product ids to exclude with others
             product_ids_to_exclude.extend(self.other_prod_ids)
-        if not should_include_empty:
+        if not include_empty:
             # add product ids to exclude with empty
             product_ids_to_exclude.extend(self.empty_prod_ids)
         if product_ids_to_exclude:
-            query += ' and product_fk not in {}'.format(product_ids_to_exclude)
-        if not should_include_stacking:
-            # exclude stacking
-            query += ' and stacking_layer==1'
-        if scene_types_to_include:
-            # list of scene types to include is present, otherwise all included
-            query += ' and template_name in {}'.format(scene_types_to_include)
-        if categories_to_exclude:
-            # list of categories  to include is present, otherwise all included
-            query += ' and category not in {}'.format(categories_to_exclude)
-        sanitized_products_in_scene = sanitized_products_in_scene.query(query.strip(' and '))
+            Log.info("Exclude product ids {}".format(product_ids_to_exclude))
+            sanitized_products_in_scene.drop(
+                sanitized_products_in_scene[
+                    sanitized_products_in_scene['product_fk'].isin(product_ids_to_exclude)].index,
+                inplace=True
+            )
         return sanitized_products_in_scene
 
 
@@ -386,7 +447,7 @@ def get_include_exclude(kpi_include_exclude):
     for key in INC_EXC_LIST:
         if not is_nan(kpi_include_exclude.get(key).values[0]) and \
                 str(kpi_include_exclude.get(key).values[0]).strip() and \
-                str(kpi_include_exclude.get(key).values[0]).strip().lower() != 'all':
+                str(kpi_include_exclude.get(key).values[0]).strip().lower() in ['na', 'n/a', 'n / a']:
             _data = kpi_include_exclude.get(key).values[0]
             if type(_data) == unicode:
                 _data = [x.strip() for x in _data.split(',') if x.strip()]

@@ -7,7 +7,7 @@ from Projects.LIONNZ.Calculations import Calculations
 
 if __name__ == '__main__':
     Config.init()
-    project_name = 'lionnzdev'
+    project_name = 'lionnz'
     data_provider = KEngineDataProvider(project_name)
     sessions = [
         '45E73409-B056-420D-9094-05C11EBB958D',
