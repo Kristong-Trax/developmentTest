@@ -8,7 +8,7 @@ from Projects.GSKJP.Calculations import Calculations
 if __name__ == '__main__':
     LoggerInitializer.init('gskjp calculations')
     Config.init()
-    project_name = 'gskjp-sand'# working on gsk -sand
+    project_name = 'gskjp'# working on gsk -sand
     data_provider = KEngineDataProvider(project_name)
     session = '89b00828-d567-4245-b438-66963ca58490'
     data_provider.load_session_data(session)

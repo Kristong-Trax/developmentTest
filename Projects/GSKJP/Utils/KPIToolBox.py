@@ -105,7 +105,7 @@ class GSKJPToolBox:
         # kpi gsk_global_linear_sos_whole_store_function is used in gsk_compliance kpis
         linear_sos_dict = self.gsk_generator.gsk_global_linear_sos_whole_store_function()
         self.common.save_json_to_new_tables(linear_sos_dict)
-        #
+
         # #  need to know on which set of brands to run ?? is it already filtered ?
         # # local kpis
         # for kpi in self.KPI_DICT.keys():
