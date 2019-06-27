@@ -161,7 +161,7 @@ class GSKJPToolBox:
                 target  :  branf_target
 
         """
-   
+
         df = pd.merge(self.match_product_in_scene,
                       self.all_products[Const.PRODUCTS_COLUMNS], how='left', on=['product_fk'])
         df = pd.merge(self.scif[Const.SCIF_COLUMNS],
