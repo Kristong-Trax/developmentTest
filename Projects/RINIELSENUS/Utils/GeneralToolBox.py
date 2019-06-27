@@ -775,7 +775,10 @@ class MarsUsGENERALToolBox:
 
     def test_subset_ratio(self, subset, cluster, mpis, minimum_block_ratio):
         sc_mpis = mpis[self.get_filter_condition(mpis, **{'scene_fk': cluster['scene_fk']})]
-        num = cluster['mpis'][self.get_filter_condition(cluster['mpis'], **subset)].shape[0]
+        mask = self.get_filter_condition(cluster['mpis'], **subset)
+        if mask is None or mask.empty:
+            return 0
+        num = cluster['mpis'][mask].shape[0]
         den = sc_mpis[self.get_filter_condition(sc_mpis, **subset)].shape[0]
         ratio = num / float(den) if num else 0
         return ratio >= minimum_block_ratio
@@ -838,12 +841,6 @@ class MarsUsGENERALToolBox:
                     if vertical:
                         return {'block': True}
 
-            elif vertical:
-                biggest_block = clusters[0]
-                if biggest_block['is_block']:
-                    return {'block': True, 'shelves': len(biggest_block['rel_shelves'])}
-                # return biggest_block['cluster_ratio'], biggest_block # not sure this exit is actually used...
-
             elif block_of_blocks:
                 # theoretically one could pass in multiple scenes, and the biggest block
                 # wouldn't necessarily be the right one :/
@@ -853,10 +850,19 @@ class MarsUsGENERALToolBox:
                            self.test_subset_ratio(block_products2, cluster, mpis, minimum_block_ratio):
                             return True
 
+            else:
+                biggest_block = clusters[0]
+                if biggest_block['is_block']:
+                    if vertical:
+                        return {'block': True, 'shelves': len(biggest_block['rel_shelves'])}
+                    elif biggest_block:
+                        return {'block': True, 'shelf_numbers': biggest_block['rel_shelves']}
+                # return biggest_block['cluster_ratio'], biggest_block # not sure this exit is actually used...
+
         return False
 
 
-
+    #
     # def calculate_block_together(self, allowed_products_filters=None, include_empty=EXCLUDE_EMPTY,
     #                              minimum_block_ratio=1, result_by_scene=False, block_of_blocks=False,
     #                              block_products1=None, block_products2=None, vertical=False, biggest_block=False,

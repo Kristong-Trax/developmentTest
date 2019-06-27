@@ -1,5 +1,6 @@
 from KPIUtils_v2.DB.CommonV2 import Common
 import sys
+import pandas as pd
 from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from KPIUtils_v2.Utils.Decorators.Decorators import log_runtime
 from Trax.Algo.Calculations.Core.KPI.OutputWriter import KpiResultsOutputWriter
@@ -39,3 +40,9 @@ class NotCommon(Common):
             cur.execute(costume_smart_att_query)
         local_con.db.commit()
         return
+
+    def read_custom_query(self, query):
+        local_con = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
+        df = pd.read_sql_query(query, local_con.db)
+        local_con.disconnect_rds()
+        return df

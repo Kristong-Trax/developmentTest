@@ -451,7 +451,7 @@ class HEINZCRToolBox:
         return results_df
 
     def calculate_perfect_store_extra_spaces(self):
-        if self.survey.check_survey_answer(Const.EXTRA_SPACES_SURVEY_QUESTION_TEXT, 'Yes,yes,si,Si'):
+        if self.survey.check_survey_answer(('question_fk', Const.EXTRA_SPACES_SURVEY_QUESTION_FK), 'Yes,yes,si,Si'):
             return 1
 
         if self.extra_spaces_results.empty:

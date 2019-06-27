@@ -55,12 +55,14 @@ class Results(object):
         atomic_results = {}
         pushed_back_list = []
         for atomic in atomics:
+            # if atomic['atomic'] not in EYELIGHT_KPIS:
+            #     continue
             # if atomic['atomic'] not in [
             #                         # 'Is the Nutro Cat Main Meal section >4ft?',
             #                         # 'Is the Nutro Cat Main Meal section <=4ft?',
             #                         # 'Is Nutro Wet Dog food blocked?',
-            #                         # 'Are Greenies vertically blocked?',
-            #     'Does the Mars portfolio have its fair share of space?'
+            #                         # 'Is the Meaty Dog Treats segment blocked?',
+            #     'Are TEMPTATIONS Cat Treats shelved small over large (flowing vertically: Regular, Mega, Value)?'
             #                         ]:
             #     continue
             # print('~~~~~~~~~~~~~~~~~~~~****************~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~')
@@ -260,7 +262,10 @@ class Results(object):
             kpi = '{}_allowed'.format(kpi)
         df = self.mpip_sr[self.mpip_sr['name'] == kpi]
         if df.empty:
-            self.common.execute_custom_query(MarsUsQueries.add_kpi_to_mvp_sr(kpi))
-            mpip_sr = self.common.execute_custom_query(MarsUsQueries.get_updated_mvp_sr())
-            df = mpip_sr[mpip_sr['name'] == kpi]
-        return df['match_product_in_probe_state_reporting_fk'].values[0]
+            if self.mpip_sr.empty:
+                self.common.execute_custom_query(MarsUsQueries.add_kpi_to_mvp_sr(kpi, 1))
+            else:
+                self.common.execute_custom_query(MarsUsQueries.add_kpi_to_mvp_sr(kpi, max(self.mpip_sr['pk'])+1))
+            self.mpip_sr = self.common.read_custom_query(MarsUsQueries.get_updated_mvp_sr())
+            df = self.mpip_sr[self.mpip_sr['name'] == kpi]
+        return df['pk'].values[0]
