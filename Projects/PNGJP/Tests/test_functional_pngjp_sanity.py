@@ -18,16 +18,25 @@ __author__ = 'avrahama'
 
 
 class TestKEngineOutOfTheBox(TestFunctionalCase):
+    seeder = Seeder()
 
+    @seeder.seed(["mongodb_products_and_brands_seed", "pngjp_seed"], ProjectsSanityData())
     def set_up(self):
         super(TestKEngineOutOfTheBox, self).set_up()
-        remove_cache_and_storage()
-        self.test_results_aginst = pd.read_csv('Data/Pngcn_results_E14412B2-BEF5-4380-B5D0-D3E23674C32B.csv')
-        self.filtered_results = self.test_results_aginst[~self.test_results_aginst['sum_result'].isnull()]
 
-    @staticmethod
-    def test_if_2_df_are_equal(df1, df2):
-        return len(df1.marge(df2)) == len(df1)
+        # get expected results DB from file
+        self.test_results_against = pd.read_csv('Data/Pngcn_results_E14412B2-BEF5-4380-B5D0-D3E23674C32B.csv')
+        self.kpi_expected_results_df = self.test_results_against[~self.test_results_against['sum_result'].isnull()]
+
+        # load the session and save the results in the seed results for the KPIs and save the toolbox
+        self.toolbox = self.save_kpi_results_in_seed()
+
+        # get results from seed
+        self.kpi_actual_results_df = self.get_kpi_actual_results_from_seed()
+
+        self.toolbox.GOLDEN_ZONE_PATH
+        # mock template
+        remove_cache_and_storage()
 
     @property
     def import_path(self):
@@ -37,43 +46,49 @@ class TestKEngineOutOfTheBox(TestFunctionalCase):
     def config_file_path(self):
         return os.path.join(os.path.dirname(os.path.realpath(__file__)), 'k-engine-test.config')
 
-    seeder = Seeder()
-
-    # def _assert_kpi_results_filled(self):
-    #     connector = PSProjectConnector(TestProjectsNames().TEST_PROJECT_1, DbUsers.Docker)
-    #     cursor = connector.db.cursor(MySQLdb.cursors.DictCursor)
-    #     cursor.execute('''
-    #     SELECT * FROM report.kpi_results
-    #     ''')
-    #     kpi_results = cursor.fetchall()
-    #     self.assertNotEquals(len(kpi_results), 0)
-    #     connector.disconnect_rds()
-    #
+    @staticmethod
     @seeder.seed(["mongodb_products_and_brands_seed", "pngjp_seed"], ProjectsSanityData())
-    def test_pngjp_sanity(self):
-        project_name = ProjectsSanityData.project_name
-        data_provider = KEngineDataProvider(project_name)
-        sessions = ['E14412B2-BEF5-4380-B5D0-D3E23674C32B']
-        for session in sessions:
-            data_provider.load_session_data(session)
-            output = Output()
-            PNGJPCalculations(data_provider, output).run_project_calculations()
-            # self._assert_kpi_results_filled()
-
-    @seeder.seed(["mongodb_products_and_brands_seed", "pngjp_seed"], ProjectsSanityData())
-    def test_pngjp_sanity_Adjacency_KPI_124_131(self):
-        # load the session and get results for the KPIs
+    def save_kpi_results_in_seed():
+        """
+        load the session and save the results in the seed results for the KPIs
+        """
         project_name = ProjectsSanityData.project_name
         data_provider = KEngineDataProvider(project_name)
         session = 'E14412B2-BEF5-4380-B5D0-D3E23674C32B'
         data_provider.load_session_data(session)
         output = Output()
-        PNGJPCalculations(data_provider, output).run_project_calculations()
+        toolbox = PNGJPCalculations(data_provider, output).run_project_calculations()
+        return toolbox
 
-        # get results from seed, and test it
+    @staticmethod
+    @seeder.seed(["mongodb_products_and_brands_seed", "pngjp_seed"], ProjectsSanityData())
+    def get_kpi_actual_results_from_seed():
+        """get results from seed"""
         connector = PSProjectConnector(TestProjectsNames().TEST_PROJECT_1, DbUsers.Docker)
         cursor = connector.db.cursor(MySQLdb.cursors.DictCursor)
         cursor.execute('''
-                SELECT * FROM report.kpi_results
-                ''')
-        self.kpi_results = cursor.fetchall()
+                                SELECT * FROM report.kpi_results
+                                ''')
+        temp = cursor.fetchall()
+        # save results to df
+        df = pd.DataFrame(temp)
+        # filter unneeded columns
+        df_filtered = df[['kps_name', 'kpi_fk', 'result']]
+        # copy kpi_fk in-order to count the fks
+        df_filtered['kpi_fk_count'] = df['kpi_fk']
+        # convert string result to float
+        df_filtered['result'] = pd.to_numeric(df_filtered['result'])
+        # sum results and count fks
+        df_calculated = df_filtered.groupby('kpi_fk').agg(
+            {'kpi_fk_count': 'count', 'result': 'sum'}).reset_index().rename(
+            columns={'result': 'results sum'})
+        df_calculated = df_calculated[~(df_calculated['results sum']== 0.0)]
+        return df_calculated
+
+    @staticmethod
+    def test_if_2_df_are_equal(df1, df2):
+        return len(df1.marge(df2)) == len(df1)
+
+    @seeder.seed(["mongodb_products_and_brands_seed", "pngjp_seed"], ProjectsSanityData())
+    def test_pngjp_sanity(self):
+        pass
