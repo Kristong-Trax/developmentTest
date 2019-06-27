@@ -106,7 +106,6 @@ class GSKJPToolBox:
         linear_sos_dict = self.gsk_generator.gsk_global_linear_sos_whole_store_function()
         self.common.save_json_to_new_tables(linear_sos_dict)
 
-        # #  need to know on which set of brands to run ?? is it already filtered ?
         # # local kpis
         # for kpi in self.KPI_DICT.keys():
         #     self.gsk_generator.tool_box.extract_data_set_up_file(kpi, self.set_up_data, self.KPI_DICT)
@@ -117,7 +116,6 @@ class GSKJPToolBox:
         # self.get_store_target()  # choosing the policy
         # if self.targets.empty:
         #     Log.warning('There is no target policy matching this store')
-        #     # self.targets = pd.DataFrame(self.DEFAULT_TARGET)
         #
         # results_compliance = self.gsk_compliance()
         # self.common.save_json_to_new_tables(results_compliance)

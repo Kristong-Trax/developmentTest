@@ -92,26 +92,24 @@ class GSKJPToolBox:
         """
         # global kpis
 
-        # assortment_store_dict = self.gsk_generator.availability_store_function()
-        # self.common.save_json_to_new_tables(assortment_store_dict)
-        #
-        # assortment_category_dict = self.gsk_generator.availability_category_function()
-        # self.common.save_json_to_new_tables(assortment_category_dict)
-        #
-        # assortment_subcategory_dict = self.gsk_generator.availability_subcategory_function()
-        # self.common.save_json_to_new_tables(assortment_subcategory_dict)
-        #
-        # linear_sos_dict = self.gsk_generator.gsk_global_linear_sos_by_sub_category_function()
-        # self.common.save_json_to_new_tables(linear_sos_dict)
-        #
-        # linear_sos_dict = self.gsk_generator.gsk_global_linear_sos_by_category_function()
-        # self.common.save_json_to_new_tables(linear_sos_dict)
-        #
-        # # kpi gsk_global_linear_sos_whole_store_function is used in gsk_compliance kpis
-        # linear_sos_dict = self.gsk_generator.gsk_global_linear_sos_whole_store_function()
-        # self.common.save_json_to_new_tables(linear_sos_dict)
-        # #
-        # #  need to know on which set of brands to run ?? is it already filtered ?
+        assortment_store_dict = self.gsk_generator.availability_store_function()
+        self.common.save_json_to_new_tables(assortment_store_dict)
+
+        assortment_category_dict = self.gsk_generator.availability_category_function()
+        self.common.save_json_to_new_tables(assortment_category_dict)
+
+        assortment_subcategory_dict = self.gsk_generator.availability_subcategory_function()
+        self.common.save_json_to_new_tables(assortment_subcategory_dict)
+
+        linear_sos_dict = self.gsk_generator.gsk_global_linear_sos_by_sub_category_function()
+        self.common.save_json_to_new_tables(linear_sos_dict)
+
+        linear_sos_dict = self.gsk_generator.gsk_global_linear_sos_by_category_function()
+        self.common.save_json_to_new_tables(linear_sos_dict)
+
+        linear_sos_dict = self.gsk_generator.gsk_global_linear_sos_whole_store_function()
+        self.common.save_json_to_new_tables(linear_sos_dict)
+
         # # local kpis
         for kpi in self.KPI_DICT.keys():
             self.gsk_generator.tool_box.extract_data_set_up_file(kpi, self.set_up_data, self.KPI_DICT)
@@ -122,10 +120,9 @@ class GSKJPToolBox:
         self.get_store_target()  # choosing the policy
         if self.targets.empty:
             Log.warning('There is no target policy matching this store')
-            # self.targets = pd.DataFrame(self.DEFAULT_TARGET)
-
-        results_compliance = self.gsk_compliance()
-        self.common.save_json_to_new_tables(results_compliance)
+        else:
+            results_compliance = self.gsk_compliance()
+            self.common.save_json_to_new_tables(results_compliance)
         self.common.commit_results_data()
         return
 
@@ -298,16 +295,16 @@ class GSKJPToolBox:
             attributes.
         """
 
-        parameters = ['Store Number']
-        for param in parameters:
-            if param in self.targets.columns:
-                if self.store_info[param][0] is None:
-                    if self.targets.empty or self.targets[self.targets[param] != ''].empty:
+        parameters_dict = {'store_number_1': 'store_number'}
+        for store_param, target_param in parameters_dict.items():
+            if target_param in self.targets.columns:
+                if self.store_info[store_param][0] is None:
+                    if self.targets.empty or self.targets[self.targets[target_param] != ''].empty:
                         continue
                     else:
                         self.targets.drop(self.targets.index, inplace=True)
-                self.targets = self.targets[(self.targets[param] == self.store_info[param][0].encode('utf-8')) |
-                                            (self.targets[param] == '')]
+                self.targets = self.targets[(self.targets[target_param] == self.store_info[store_param][0].encode('utf-8')) |
+                                            (self.targets[target_param] == '')]
 
     def gsk_compliance(self):
         """
