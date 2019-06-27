@@ -349,10 +349,55 @@ class TestPngcn(TestUnitCase):
         self.assertEquals(scene_tool_box.calculate_presize_linear_length(), 0)
 
     def test_save_nlsos_as_kpi_results(self):
-        pass
+        """
+           test that the score and result are as expected
+        """
+        scene_tool_box = PngcnSceneKpis(self.ProjectConnector_mock,
+                                        self.common_mock, 16588190,
+                                        self.data_provider_mock)
+        data = [{'gross_len_split_stack_new': 13, 'product_type': ' rrelevant', 'product_fk': None, 'rlv_sos_sc': 0,
+                 'gross_len_split_stack': 0.15},
+                {'gross_len_split_stack_new': 65, 'product_type': ' rrelevant', 'product_fk': 252, 'rlv_sos_sc': 1,
+                 'gross_len_split_stack': 1.23},
+                {'gross_len_split_stack_new': 35, 'product_type': ' rrelevant', 'product_fk': 252, 'rlv_sos_sc': 1,
+                 'gross_len_split_stack': 1.23},
+                {'gross_len_split_stack_new': 121, 'product_type': 'Irrelevant', 'product_fk': 132, 'rlv_sos_sc': 0,
+                 'gross_len_split_stack': 0.99},
+                {'gross_len_split_stack_new': 201, 'product_type': 'Irrelevant', 'product_fk': 132, 'rlv_sos_sc': 0,
+                 'gross_len_split_stack': 0.75},
+                {'gross_len_split_stack_new': 13, 'product_type': ' rrelevant', 'product_fk': 252, 'rlv_sos_sc': 0,
+                 'gross_len_split_stack': 0.15}]
+
+        scene_tool_box.common.write_to_db_result = MagicMock()
+        scene_tool_box.save_nlsos_as_kpi_results(pd.DataFrame(data))
+        kpi_results = scene_tool_box.common.write_to_db_result.mock_calls
+        result = kpi_results[4][2]['score']
+        expected_result = 0.15/100.0
+        self.assertEqual(result, expected_result)
 
     def test_insert_into_kpi_scene_results(self):
-        pass
+        """
+           test that the score are as expected
+        """
+        scene_tool_box = PngcnSceneKpis(self.ProjectConnector_mock,
+                                        self.common_mock, 16588190,
+                                        self.data_provider_mock)
+        data = [{'pk': 101, 'display_group': 5, 'product_fk': 252, 'facings': 0.84, 'product_size': 1.23},
+                {'pk': 121, 'display_group': 4, 'product_fk': 132, 'facings': 0.80, 'product_size': 0.99},
+                {'pk': 201, 'display_group': 4, 'product_fk': 132, 'facings': 0.28, 'product_size': 0.75},
+                {'pk': 151, 'display_group': 5, 'product_fk': 252, 'facings': 0.95, 'product_size': 0.15}]
+
+        scene_tool_box.get_display_group = MagicMock()
+        scene_tool_box.get_display_group.return_value = 1
+        scene_tool_box.common.write_to_db_result = MagicMock()
+        scene_tool_box.insert_into_kpi_scene_results(data)
+        kpi_results = scene_tool_box.common.write_to_db_result.mock_calls
+        result = kpi_results[1][2]['result']
+        expected_result = 1.23 + 0.15
+        score = kpi_results[1][2]['score']
+        expected_score = 0.84 + 0.95
+        self.assertEqual(result, expected_result)
+        self.assertEqual(score, expected_score)
 
     def test_calculate_sequence_eye_level(self):
         pass
