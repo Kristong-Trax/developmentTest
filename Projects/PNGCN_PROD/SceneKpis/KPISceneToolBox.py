@@ -12,7 +12,7 @@ import pandas as pd
 from KPIUtils_v2.Calculations.SOSCalculations import SOS
 import KPIUtils_v2.Utils.Parsers.ParseInputKPI as Parser
 from KPIUtils_v2.GlobalDataProvider.PsDataProvider import PsDataProvider
-from KPIUtils_v2.Calculations.BlockCalculations_v2 import Block as block
+from KPIUtils_v2.Calculations.BlockCalculations_v2 import Block as BLOCK
 
 __Author__ = 'Dudi_s'
 
@@ -102,6 +102,12 @@ PCC_FILTERS = {
                  'include_operator': 'and'}}
 }
 
+
+# Block_Variant KPI
+BLOCK_VARIANT_KPI = 'Block_Variant'
+MIN_FACINGS_ON_SAME_LAYER = 'Min_facing_on_same_layer'
+MIN_LAYER_NUMBER = 'Min_layer_#'
+
 class PngcnSceneKpis(object):
     def __init__(self, project_connector, common, scene_id, data_provider=None):
         # self.session_uid = session_uid
@@ -162,37 +168,81 @@ class PngcnSceneKpis(object):
 
     def calculate_variant_block(self):
         legal_blocks = {}
-        block_groups = {'GIL_FUS': {'brand_name': ["Gillette"], 'sub_brand_name': ["Fusion/锋隐"]}}
-        for filter_name, block_filters in block_groups.iteritems():
-            filter_results = []
-            filter_block_result = block(self.data_provider).network_x_block_together(
-                population=block_filters,
-                additional={'allowed_products_filters': {'product_type': ['Irrelevant']},
-                            'minimum_block_ratio': 0.6,
-                            'include_stacking': False,
-                            'check_vertical_horizontal': False})
-            for i, row in filter_block_result.iterrows():
-                cluster = row['cluster']
-                for node in cluster.nodes.data():
-                    product_matches_fks = []
-                    product_matches_fks += (list(node[1]['members']))
-                    block_df = self.matches_from_data_provider[self.matches_from_data_provider
-                    ['scene_match_fk'].isin(product_matches_fks)]
-                    shelves = set(block_df['shelf_number'])
-                    if len(shelves) < 2:
+        variant_block_template = pd.read_excel('Data/pngcn_variant_block_template_v1.0.xlsx').fillna("")
+        block_class = BLOCK(self.data_provider)
+        for i, row_in_template in variant_block_template.iterrows():
+            block_groups = {}
+            relevant_row = row_in_template.drop(['KPI_NAME', MIN_FACINGS_ON_SAME_LAYER, MIN_LAYER_NUMBER])
+            row_dict = dict((k, [v]) for k, v in relevant_row.to_dict().iteritems() if v != "")
+
+
+            row_dict = {'brand_name': [u'Gillette'], 'category': [u"Blades & Razors"]}
+
+
+
+            filter_row_dict = {'population': {'include': [row_dict], 'include_operator': 'and'}}
+            sub_brands = set(self.parser.filter_df(filter_row_dict, self.scif)['sub_brand_name'])
+            if len(sub_brands) == 0:
+                return
+            legal_sub_brands = [x for x in sub_brands if x is not None]
+            for sub_brand in legal_sub_brands:
+                sub_brand_dict = row_dict.copy()
+                sub_brand_dict['sub_brand_name'] = [sub_brand]
+                block_groups[sub_brand] = sub_brand_dict
+            # block_groups = {'GIL_FUS': {'brand_name': ["Gillette"], 'sub_brand_name': ["Fusion/锋隐"]}}
+            for filter_name, block_filters in block_groups.iteritems():
+                filter_results = []
+                filter_block_result = block_class.network_x_block_together(
+                    population=block_filters,
+                    additional={'allowed_products_filters': {'product_type': ['Irrelevant']},
+                                'minimum_block_ratio': 0.0,
+                                'minimum_facing_for_block': 3,
+                                'include_stacking': False,
+                                'check_vertical_horizontal': False})
+                for i, row in filter_block_result.iterrows():
+                    if not row['is_block']:
                         continue
-                    block_flag = False
-                    for shelf in shelves:
-                        shelf_df = block_df[block_df['shelf_number'] == shelf]
-                        if len(shelf_df) >= 3:
-                            block_flag = True
-                            break
-                    if block_flag:
-                        filter_results.append(row)
-            if len(filter_results) > 0:
-                legal_blocks[filter_name] = filter_results
+                    cluster = row['cluster']
+                    for node in cluster.nodes.data():
+                        product_matches_fks = []
+                        node_data = node[1]
+                        product_matches_fks += (list(node_data['members']))
+                        block_df = self.matches_from_data_provider[self.matches_from_data_provider
+                        ['scene_match_fk'].isin(product_matches_fks)]
+                        shelves = set(block_df['shelf_number'])
+                        if len(shelves) < row_in_template[MIN_LAYER_NUMBER]:
+                            continue
+                        block_flag = False
+                        for shelf in shelves:
+                            shelf_df = block_df[block_df['shelf_number'] == shelf]
+                            if len(shelf_df) >= row_in_template[MIN_FACINGS_ON_SAME_LAYER]:
+                                block_flag = True
+                                break
+                        if block_flag:
+                            point = node_data['polygon'].centroid
+                            row['x'], row['y'] = point.x, point.y
+                            for filter, value in block_filters.iteritems():
+                                row[filter] = value
+                            filter_results.append(row)
+                if len(filter_results) > 0:
+                    legal_blocks[filter_name] = filter_results
+        all_blocks = [p for q in legal_blocks.values() for p in q]
+        self.replace_with_seq_order(sorted(all_blocks, key=lambda i: i['x']), 'x')
+        self.replace_with_seq_order(sorted(all_blocks, key=lambda i: i['y']), 'y')
+        block_variant_kpi_fk = self.common.get_kpi_fk_by_kpi_name(BLOCK_VARIANT_KPI)
+        for block in all_blocks:
+            self.common.write_to_db_result(fk=block_variant_kpi_fk,
+                                           numerator_id=block['brand_name'][0],
+                                           denominator_id=block['brand_name'][0],
+                                           numerator_result=shelf_number,
+                                           result=facings, score=facings, by_scene=True)
         pass
 
+    def replace_with_seq_order(self, sorted, field):
+        seq = 1
+        for item in sorted:
+            item["seq_" + field] = seq
+            seq += 1
 
     def calculate_eye_level_kpi(self):
         if self.matches_from_data_provider.empty:
