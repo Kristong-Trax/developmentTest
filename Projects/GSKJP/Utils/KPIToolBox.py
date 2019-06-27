@@ -32,12 +32,13 @@ class GSKJPToolBox:
     ECAP_ALL_BRAND = 'GSK_PLN_ECAPS_ALL BRANDS'
     GLOBAL_LSOS_BRAND_BY_STORE = 'GSK_LSOS_All_Brand_In_Whole_Store'
     PLN_ASSORTMENT_KPI = 'PLN_ECAPS - SKU'
+    ECAPS_FILTER_IDENT ='GSK_ECAPS'
 
-    KPI_DICT = {"GSK_PLN_BLOCK_SCORE": "GSK_PLN_BLOCK_SCORE", "GSK_PLN_ECAPS_ALL": "GSK_PLN_ECAPS_ALL",
+    KPI_DICT = {"GSK_PLN_BLOCK_SCORE": "GSK_PLN_BLOCK_SCORE", "GSK_ECAPS": "GSK_ECAPS",
                 "GSK_PLN_MSL_SCORE": "GSK_PLN_MSL_SCORE",
-                "GSK_PLN_POSITION_SCORE": "GSK_PLN_POSITION_SCORE", "availability": "Availability"}
+                "GSK_PLN_POSITION_SCORE": "GSK_PLN_POSITION_SCORE", "GSK_PLN_LSOS_SCORE": "GSK_PLN_LSOS_SCORE"}
 
-    DEFAULT_TARGET = {'brand_fk': [-1], 'shelves': ["1,2,3"], 'block_target': [80], 'brand_target': [100], 'position_target': [80]}
+    # DEFAULT_TARGET = {'brand_fk': [-1], 'shelves': ["1,2,3"], 'block_target': [80], 'brand_target': [100], 'position_target': [80]}
 
     def __init__(self, data_provider, output):
         self.output = output
@@ -67,13 +68,12 @@ class GSKJPToolBox:
         self.store_fk = self.data_provider['store_fk']
         self.ps_data_provider = PsDataProvider(self.data_provider, self.output)
         self.targets = self.ps_data_provider.get_kpi_external_targets()
-        self.linear_sos_dict = None
         self.own_manufacturer = self.get_manufacturer
         self.set_up_data = {(self.PLN_BLOCK, Const.KPI_TYPE_COLUMN): Const.NO_INFO,
                             (self.POSITION_SCORE, Const.KPI_TYPE_COLUMN):
-                                Const.NO_INFO, ("GSK_PLN_ECAPS_ALL", Const.KPI_TYPE_COLUMN):
+                                Const.NO_INFO, (self.ECAPS_FILTER_IDENT, Const.KPI_TYPE_COLUMN):
                                 Const.NO_INFO, (self.PLN_MSL, Const.KPI_TYPE_COLUMN):
-                                Const.NO_INFO, ("Availability",
+                                Const.NO_INFO, ("GSK_PLN_LSOS_SCORE",
                                                 Const.KPI_TYPE_COLUMN): Const.NO_INFO}
 
     @property
@@ -96,40 +96,31 @@ class GSKJPToolBox:
         assortment_subcategory_dict = self.gsk_generator.availability_subcategory_function()
         self.common.save_json_to_new_tables(assortment_subcategory_dict)
 
-        facings_sos_dict = self.gsk_generator.gsk_global_facings_sos_whole_store_function()
-        self.common.save_json_to_new_tables(facings_sos_dict)
-
         linear_sos_dict = self.gsk_generator.gsk_global_linear_sos_by_sub_category_function()
         self.common.save_json_to_new_tables(linear_sos_dict)
-
-        facings_sos_dict = self.gsk_generator.gsk_global_facings_by_sub_category_function()
-        self.common.save_json_to_new_tables(facings_sos_dict)
-
-        facings_sos_dict = self.gsk_generator.gsk_global_facings_sos_by_category_function()
-        self.common.save_json_to_new_tables(facings_sos_dict)
 
         linear_sos_dict = self.gsk_generator.gsk_global_linear_sos_by_category_function()
         self.common.save_json_to_new_tables(linear_sos_dict)
 
         # kpi gsk_global_linear_sos_whole_store_function is used in gsk_compliance kpis
-        self.linear_sos_dict = self.gsk_generator.gsk_global_linear_sos_whole_store_function()
-        self.common.save_json_to_new_tables(self.linear_sos_dict)
+        linear_sos_dict = self.gsk_generator.gsk_global_linear_sos_whole_store_function()
+        self.common.save_json_to_new_tables(linear_sos_dict)
         #
         # #  need to know on which set of brands to run ?? is it already filtered ?
         # # local kpis
-        for kpi in self.KPI_DICT.keys():
-            self.gsk_generator.tool_box.extract_data_set_up_file(kpi, self.set_up_data, self.KPI_DICT)
-
-        results_ecaps = self.gsk_ecaps_kpis()
-        self.common.save_json_to_new_tables(results_ecaps)
-
-        self.get_store_target()  # choosing the policy
-        if self.targets.empty:
-            Log.warning('There is no target policy matching this store, using default values')
-            self.targets = pd.DataFrame(self.DEFAULT_TARGET)
-
-        results_compliance = self.gsk_compliance()
-        self.common.save_json_to_new_tables(results_compliance)
+        # for kpi in self.KPI_DICT.keys():
+        #     self.gsk_generator.tool_box.extract_data_set_up_file(kpi, self.set_up_data, self.KPI_DICT)
+        #
+        # results_ecaps = self.gsk_ecaps_kpis()
+        # self.common.save_json_to_new_tables(results_ecaps)
+        #
+        # self.get_store_target()  # choosing the policy
+        # if self.targets.empty:
+        #     Log.warning('There is no target policy matching this store')
+        #     # self.targets = pd.DataFrame(self.DEFAULT_TARGET)
+        #
+        # results_compliance = self.gsk_compliance()
+        # self.common.save_json_to_new_tables(results_compliance)
         self.common.commit_results_data()
         return
 
@@ -170,14 +161,17 @@ class GSKJPToolBox:
                 target  :  branf_target
 
         """
-        result = 0
-        if not len(self.linear_sos_dict):
+   
+        df = pd.merge(self.match_product_in_scene,
+                      self.all_products[Const.PRODUCTS_COLUMNS], how='left', on=['product_fk'])
+        df = pd.merge(self.scif[Const.SCIF_COLUMNS],
+                      df, how='right', right_on=['scene_fk', 'product_fk'], left_on=['scene_id', 'product_fk'])
+
+        if df.empty:
+            Log.warning('match_product_in_scene is empty ')
             return 0, 0, 0
-        for i in range(0, len(self.linear_sos_dict)):
-            if (self.linear_sos_dict[i]['fk'] == self.common.get_kpi_fk_by_kpi_type(self.GLOBAL_LSOS_BRAND_BY_STORE))& \
-                    (self.linear_sos_dict[i]['numerator_id'] == brand):
-                result = self.linear_sos_dict[i]['numerator_result']
-                break
+        df = self.gsk_generator.tool_box.tests_by_template('GSK_PLN_LSOS_SCORE', df, self.set_up_data)
+        result = self.gsk_generator.tool_box.calculate_sos(df, {'brand_fk': brand}, {}, Const.LINEAR)[0]
         target = policy['brand_target'].iloc[0]
         score = result / target
         return result, score, target
@@ -217,18 +211,18 @@ class GSKJPToolBox:
 
         return result
 
-    def msl_assortment(self, kpi, set_up_data):
+    def msl_assortment(self, kpi_fk, kpi_name):
         """
-                        :param kpi : name of level 3 assortment kpi
-                        :param set_up_data :  which set up data to use for filtering data frame and ect
+                        :param kpi_fk : name of level 3 assortment kpi
+                        :param kpi_name: GSK_PLN_MSL_SCORE assortment , or   GSK_ECAPS assortment
                         :return kpi_results : data frame of assortment products of the kpi, product's availability,
                         product details.
                         filtered by set up
                 """
-        lvl3_assort, filter_scif = self.gsk_generator.tool_box.get_assortment_filtered(set_up_data)
+        lvl3_assort, filter_scif = self.gsk_generator.tool_box.get_assortment_filtered(self.set_up_data, kpi_name)
         if lvl3_assort is None:
             return None
-        kpi_assortment_fk = self.common.get_kpi_fk_by_kpi_type(kpi)
+        kpi_assortment_fk = self.common.get_kpi_fk_by_kpi_type(kpi_fk)
         kpi_results = lvl3_assort[lvl3_assort['kpi_fk_lvl3'] == kpi_assortment_fk]  # general assortment
         kpi_results = pd.merge(kpi_results, self.all_products[Const.PRODUCTS_COLUMNS],
                                how='left', on='product_fk')
@@ -257,7 +251,7 @@ class GSKJPToolBox:
         if assortment.empty:
             return 0, 0, 0, results
         brand_results = assortment[assortment['brand_fk'] == brand]  # only assortment of desired brand
-        for result in assortment.itertuples():
+        for result in brand_results.itertuples():
             score = result.in_store * 100
             results.append(
                 {'fk': kpi_ecaps_product, 'numerator_id': result.product_fk, 'denominator_id': self.store_fk,
@@ -300,7 +294,7 @@ class GSKJPToolBox:
             attributes.
         """
 
-        parameters = ['additional_attribute_1', 'additional_attribute_2', 'store_name', 'adress_city', 'region_fk']
+        parameters = ['Store Number']
         for param in parameters:
             if param in self.targets.columns:
                 if self.store_info[param][0] is None:
@@ -338,8 +332,8 @@ class GSKJPToolBox:
         counter_brands = 0
 
         # assortment_lvl3 msl df initialize
-        self.gsk_generator.tool_box.extract_data_set_up_file("availability")
-        assortment_msl = self.msl_assortment(Const.DISTRIBUTION, self.gsk_generator.tool_box.set_up_data)
+        self.gsk_generator.tool_box.extract_data_set_up_file(self.PLN_MSL, self.set_up_data, self.KPI_DICT)
+        assortment_msl = self.msl_assortment(Const.DISTRIBUTION, self.PLN_MSL)
 
         # set data frame to find position shelf
         df_position_score = pd.merge(self.match_product_in_scene, self.all_products, on="product_fk")
@@ -350,15 +344,17 @@ class GSKJPToolBox:
                                                                           self.set_up_data)
         if self.set_up_data[(Const.INCLUDE_STACKING, self.POSITION_SCORE)]:
             df_position_score = df_position_score if df_position_score is None else df_position_score[df_position_score['stacking_layer'] == 1]
-        brands = df[df['brand_name'].isin(self.set_up_data[(Const.BRANDS_INCLUDE, self.POSITION_SCORE)])][
-            'brand_fk'].dropna().unique()
-        # brands = df['brand_fk'].dropna().unique()
+
+        # calculate all brands if template doesnt require specific brand else only for specific brands
+        template_brands = self.set_up_data[(Const.BRANDS_INCLUDE, self.PLN_BLOCK)]
+        brands = df[df['brand_name'].isin(template_brands)]['brand_fk'].unique() if \
+            template_brands else df['brand_fk'].dropna().unique()
 
         for brand in brands:
             policy = self.targets[self.targets['brand_fk'] == brand]
             if policy.empty:
                 Log.warning('There is no target policy matching brand')  # adding brand name
-                policy = pd.DataFrame(self.DEFAULT_TARGET)
+                return results_df
             identifier_parent = self.common.get_dictionary(brand_fk=brand, kpi_fk=kpi_compliance_brands_fk)
             # msl_kpi
             msl_numerator, msl_denominator, msl_result = self.pln_msl_summary(brand, assortment_msl)
@@ -423,7 +419,7 @@ class GSKJPToolBox:
 
     def gsk_ecaps_kpis(self):
         """
-                      Function calculate for each brand ecaps score and , for all brands together set ecaps summary score
+                      Function calculate for each brand ecaps score, and for all brands together set ecaps summary score
                       :return
                              results_df :  array of dictionary, each dict contains kpi's result details
        """
@@ -432,10 +428,14 @@ class GSKJPToolBox:
         kpi_ecaps_summary_fk = self.common.get_kpi_fk_by_kpi_type(self.ECAP_SUMMARY)
         identifier_ecaps_summary = self.common.get_dictionary(kpi_fk=kpi_ecaps_summary_fk)
         total_brand_score = 0
-        assortment_display = self.msl_assortment(self.PLN_ASSORTMENT_KPI, self.set_up_data)
-        brands = assortment_display[
-            assortment_display['brand_name'].isin(self.set_up_data[(Const.BRANDS_INCLUDE, self.POSITION_SCORE)])][
-            'brand_fk'].unique()
+        assortment_display = self.msl_assortment(self.PLN_ASSORTMENT_KPI, self.ECAPS_FILTER_IDENT)
+
+        if assortment_display is None:
+            return results_df
+        template_brands = self.set_up_data[(Const.BRANDS_INCLUDE, self.ECAPS_FILTER_IDENT)]
+        brands = assortment_display[assortment_display['brand_name'].isin(template_brands)]['brand_fk'].unique() if \
+            template_brands else assortment_display['brand_fk'].dropna().unique()
+
         for brand in brands:
             numerator_res, denominator_res, result, product_presence_df = self.pln_ecaps_score(brand,
                                                                                                assortment_display)
