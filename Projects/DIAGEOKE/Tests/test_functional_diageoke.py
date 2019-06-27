@@ -38,39 +38,39 @@ class TestDiageoke(TestFunctionalCase):
         self.assertNotEquals(len(kpi_results), 0)
         connector.disconnect_rds()
 
-    @seeder.seed(["diageoke_seed"], ProjectsSanityData())
-    def test_diageoke_sanity(self):
-        data_provider = KEngineDataProvider(self.project_name)
-        data_provider.load_session_data(self.session_uid)
-        DIAGEOKECalculations(data_provider, self.output).run_project_calculations()
-        self._assert_kpi_results_filled()
-
-    @seeder.seed(["diageoke_seed"], ProjectsSanityData())
-    def test_get_match_display(self):
-        data_provider = KEngineDataProvider(self.project_name)
-        data_provider.load_session_data(self.session_uid)
-        tool_box = DIAGEOKEToolBox(data_provider, self.output)
-        result = tool_box.get_match_display()
-        expected_result = pd.DataFrame
-        self.assertIsInstance(result, expected_result)
-
-    @seeder.seed(["diageoke_seed"], ProjectsSanityData())
-    def test_get_kpi_static_data(self):
-        data_provider = KEngineDataProvider(self.project_name)
-        data_provider.load_session_data(self.session_uid)
-        tool_box = DIAGEOKEToolBox(data_provider, self.output)
-        result = tool_box.get_kpi_static_data()
-        expected_result = pd.DataFrame
-        self.assertIsInstance(result, expected_result)
-
-    @seeder.seed(["diageoke_seed"], ProjectsSanityData())
-    def test_main_calculation(self):
-        data_provider = KEngineDataProvider(self.project_name)
-        data_provider.load_session_data(self.session_uid)
-        tool_box = DIAGEOKEToolBox(data_provider, self.output)
-        set_names = tool_box.kpi_static_data['kpi_set_name'].unique().tolist()
-        tool_box.kpi_static_data = tool_box.get_kpi_static_data()
-        result = tool_box.main_calculation(set_names)
-        self.assertIsNone(result, "Did Not returned None")
+    # @seeder.seed(["diageoke_seed"], ProjectsSanityData())
+    # def test_diageoke_sanity(self):
+    #     data_provider = KEngineDataProvider(self.project_name)
+    #     data_provider.load_session_data(self.session_uid)
+    #     DIAGEOKECalculations(data_provider, self.output).run_project_calculations()
+    #     self._assert_kpi_results_filled()
+    #
+    # @seeder.seed(["diageoke_seed"], ProjectsSanityData())
+    # def test_get_match_display(self):
+    #     data_provider = KEngineDataProvider(self.project_name)
+    #     data_provider.load_session_data(self.session_uid)
+    #     tool_box = DIAGEOKEToolBox(data_provider, self.output)
+    #     result = tool_box.get_match_display()
+    #     expected_result = pd.DataFrame
+    #     self.assertIsInstance(result, expected_result)
+    #
+    # @seeder.seed(["diageoke_seed"], ProjectsSanityData())
+    # def test_get_kpi_static_data(self):
+    #     data_provider = KEngineDataProvider(self.project_name)
+    #     data_provider.load_session_data(self.session_uid)
+    #     tool_box = DIAGEOKEToolBox(data_provider, self.output)
+    #     result = tool_box.get_kpi_static_data()
+    #     expected_result = pd.DataFrame
+    #     self.assertIsInstance(result, expected_result)
+    #
+    # @seeder.seed(["diageoke_seed"], ProjectsSanityData())
+    # def test_main_calculation(self):
+    #     data_provider = KEngineDataProvider(self.project_name)
+    #     data_provider.load_session_data(self.session_uid)
+    #     tool_box = DIAGEOKEToolBox(data_provider, self.output)
+    #     set_names = tool_box.kpi_static_data['kpi_set_name'].unique().tolist()
+    #     tool_box.kpi_static_data = tool_box.get_kpi_static_data()
+    #     result = tool_box.main_calculation(set_names)
+    #     self.assertIsNone(result, "Did Not returned None")
 
 

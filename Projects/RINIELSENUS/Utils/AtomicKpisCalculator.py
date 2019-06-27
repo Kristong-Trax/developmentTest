@@ -1809,10 +1809,10 @@ class VerticalSequenceCalculation(BaseSSequenceCalculation):
 
             for i in range(0, sequence_value_count - 1):
                 scene_value_filter = scene_filter.copy()
-                scene_value_filter.update({order_by: order_sequence[i]})
+                scene_value_filter.update({order_by: [order_sequence[i]]})
                 group_a_block = self._tools.calculate_block_together(minimum_block_ratio=0.01, biggest_block=True,
                                                                      **scene_value_filter)
-                scene_value_filter.update({order_by: order_sequence[i + 1]})
+                scene_value_filter.update({order_by: [order_sequence[i + 1]]})
                 group_b_block = self._tools.calculate_block_together(minimum_block_ratio=0.01, biggest_block=True,
                                                                      **scene_value_filter)
 

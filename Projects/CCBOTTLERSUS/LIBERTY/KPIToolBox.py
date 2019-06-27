@@ -146,11 +146,16 @@ class LIBERTYToolBox:
 
         denominator_facings = relevant_scif['facings'].sum()
 
-        filtered_scif = relevant_scif
+        filtered_scif = relevant_scif.copy()
 
         manufacturer = self.does_exist(kpi_line, Const.MANUFACTURER)
         if manufacturer:
             filtered_scif = relevant_scif[relevant_scif['manufacturer_name'].isin(manufacturer)]
+
+        liberty_truck = self.does_exist(kpi_line, Const.LIBERTY_KEY_MANUFACTURER)
+        if liberty_truck:
+            liberty_truck_scif = relevant_scif[relevant_scif[Const.LIBERTY_KEY_MANUFACTURER].isin(liberty_truck)]
+            filtered_scif = filtered_scif.append(liberty_truck_scif, sort=False).drop_duplicates()
 
         if self.does_exist(kpi_line, Const.INCLUDE_BODY_ARMOR) and self.body_armor_delivered:
             body_armor_scif = relevant_scif[relevant_scif['brand_fk'] == Const.BODY_ARMOR_BRAND_FK]
@@ -199,6 +204,9 @@ class LIBERTYToolBox:
             excluded_brand = self.does_exist(kpi_line, Const.EXCLUDED_BRAND)
             if excluded_brand:
                 relevant_scif = relevant_scif[~relevant_scif['brand_name'].isin(excluded_brand)]
+            excluded_sku = self.does_exist(kpi_line, Const.EXCLUDED_SKU)
+            if excluded_sku:
+                relevant_scif = relevant_scif[~relevant_scif['product_name'].isin(excluded_sku)]
             unique_skus = relevant_scif['product_fk'].unique().tolist()
 
         length_of_unique_skus = len(unique_skus)
@@ -246,11 +254,16 @@ class LIBERTYToolBox:
 
     # Count of Display functions
     def calculate_count_of_display(self, kpi_line, relevant_scif, weight):
-        filtered_scif = relevant_scif
+        filtered_scif = relevant_scif.copy()
 
         manufacturer = self.does_exist(kpi_line, Const.MANUFACTURER)
         if manufacturer:
             filtered_scif = relevant_scif[relevant_scif['manufacturer_name'].isin(manufacturer)]
+
+        liberty_truck = self.does_exist(kpi_line, Const.LIBERTY_KEY_MANUFACTURER)
+        if liberty_truck:
+            liberty_truck_scif = relevant_scif[relevant_scif[Const.LIBERTY_KEY_MANUFACTURER].isin(liberty_truck)]
+            filtered_scif = filtered_scif.append(liberty_truck_scif, sort=False).drop_duplicates()
 
         brand = self.does_exist(kpi_line, Const.BRAND)
         if brand:
@@ -271,6 +284,10 @@ class LIBERTYToolBox:
         ssd_still = self.does_exist(kpi_line, Const.ATT4)
         if ssd_still:
             filtered_scif = filtered_scif[filtered_scif['att4'].isin(ssd_still)]
+
+        if self.does_exist(kpi_line, Const.INCLUDE_BODY_ARMOR) and self.body_armor_delivered:
+            body_armor_scif = relevant_scif[relevant_scif['brand_fk'] == Const.BODY_ARMOR_BRAND_FK]
+            filtered_scif = filtered_scif.append(body_armor_scif, sort=False)
 
         size_subpackages = self.does_exist(kpi_line, Const.SIZE_SUBPACKAGES_NUM)
         if size_subpackages:
@@ -329,7 +346,7 @@ class LIBERTYToolBox:
 
     # Share of Display functions
     def calculate_share_of_display(self, kpi_line, relevant_scif, weight):
-        filtered_scif = relevant_scif
+        filtered_scif = relevant_scif.copy()
 
         ssd_still = self.does_exist(kpi_line, Const.ATT4)
         if ssd_still:
@@ -341,6 +358,11 @@ class LIBERTYToolBox:
         manufacturer = self.does_exist(kpi_line, Const.MANUFACTURER)
         if manufacturer:
             filtered_scif = filtered_scif[filtered_scif['manufacturer_name'].isin(manufacturer)]
+
+        liberty_truck = self.does_exist(kpi_line, Const.LIBERTY_KEY_MANUFACTURER)
+        if liberty_truck:
+            liberty_truck_scif = relevant_scif[relevant_scif[Const.LIBERTY_KEY_MANUFACTURER].isin(liberty_truck)]
+            filtered_scif = filtered_scif.append(liberty_truck_scif, sort=False).drop_duplicates()
 
         if self.does_exist(kpi_line, Const.MARKET_SHARE_TARGET):
             market_share_target = self.get_market_share_target(ssd_still=ssd_still)
@@ -403,36 +425,43 @@ class LIBERTYToolBox:
         return 1 if row['facings'] >= minimum_facings else 0
 
     # Share of Cooler functions
-
     def calculate_share_of_coolers(self, kpi_line, relevant_scif, weight):
-        denominator_results = relevant_scif.groupby('scene_id', as_index=False)[
-            ['facings']].sum().rename(columns={'facings': 'denominator_result'})
+        scene_ids = relevant_scif['scene_id'].unique().tolist()
 
-        numerator_result = relevant_scif.groupby(['scene_id', 'manufacturer_name'], as_index=False)[
-            ['facings']].sum().rename(columns={'facings': 'numerator_result'})
-
-        results = numerator_result.merge(denominator_results)
-        results['result'] = (results['numerator_result'] / results['denominator_result'])
-        results['result'].fillna(0, inplace=True)
-
-        total_coolers = denominator_results['denominator_result'].count()
+        total_coolers = len(scene_ids)
         if total_coolers == 0:
             return 0
+
+        passing_coolers = 0
 
         if self.does_exist(kpi_line, Const.MARKET_SHARE_TARGET):
             market_share_target = self.get_market_share_target()
         else:
             market_share_target = 0
 
-        coke_facings_threshold = self.does_exist(kpi_line, Const.COKE_FACINGS_THRESHOLD)
-        if coke_facings_threshold:
-            results = results[results['result'] >= float(coke_facings_threshold[0])]
+        for scene_id in scene_ids:
+            cooler_scif = relevant_scif[relevant_scif['scene_id'] == scene_id]
 
-        manufacturer = self.does_exist(kpi_line, Const.MANUFACTURER)
-        if manufacturer:
-            results = results[relevant_scif['manufacturer_name'].isin(manufacturer)]
+            filtered_scif = cooler_scif.copy()
 
-        passing_coolers = results['numerator_result'].count()
+            manufacturer = self.does_exist(kpi_line, Const.MANUFACTURER)
+            if manufacturer:
+                filtered_scif = cooler_scif[cooler_scif['manufacturer_name'].isin(manufacturer)]
+
+            liberty_truck = self.does_exist(kpi_line, Const.LIBERTY_KEY_MANUFACTURER)
+            if liberty_truck:
+                liberty_truck_scif = cooler_scif[cooler_scif[Const.LIBERTY_KEY_MANUFACTURER].isin(liberty_truck)]
+                filtered_scif = filtered_scif.append(liberty_truck_scif, sort=False).drop_duplicates()
+
+            if self.does_exist(kpi_line, Const.INCLUDE_BODY_ARMOR) and self.body_armor_delivered:
+                body_armor_scif = cooler_scif[cooler_scif['brand_fk'] == Const.BODY_ARMOR_BRAND_FK]
+                filtered_scif = filtered_scif.append(body_armor_scif, sort=False).drop_duplicates()
+
+            coke_facings_threshold = self.does_exist(kpi_line, Const.COKE_FACINGS_THRESHOLD)
+            cooler_sos = filtered_scif['facings'].sum() / cooler_scif['facings'].sum()
+            cooler_result = 1 if cooler_sos >= coke_facings_threshold else 0
+
+            passing_coolers += cooler_result
 
         coke_market_share = passing_coolers / float(total_coolers)
         result = 1 if coke_market_share > market_share_target else 0
