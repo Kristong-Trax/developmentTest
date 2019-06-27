@@ -231,12 +231,24 @@ class PngcnSceneKpis(object):
         self.replace_with_seq_order(sorted(all_blocks, key=lambda i: i['y']), 'y')
         block_variant_kpi_fk = self.common.get_kpi_fk_by_kpi_name(BLOCK_VARIANT_KPI)
         for block in all_blocks:
+            brand_fk = self.get_attribute_fk_from_name('brand_name', block['brand_name'])
+            category_fk = self.get_attribute_fk_from_name('category', block['category'])
+            sub_brand_fk = self.get_attribute_fk_from_name('sub_brand_name', block['sub_brand_name'])
             self.common.write_to_db_result(fk=block_variant_kpi_fk,
-                                           numerator_id=block['brand_name'][0],
-                                           denominator_id=block['brand_name'][0],
-                                           numerator_result=shelf_number,
-                                           result=facings, score=facings, by_scene=True)
+                                            numerator_id=brand_fk, denominator_id=category_fk,
+                                            context_id=sub_brand_fk,
+                                            numerator_result=block['seq_x'],
+                                            denominator_result=block['seq_y'],
+                                            result=block['facing_percentage'],
+                                            score=block['facing_percentage'],
+                                            by_scene=True)
         pass
+
+    def get_attribute_fk_from_name(self, name, value):
+        ##### todo:
+        pass
+
+
 
     def replace_with_seq_order(self, sorted, field):
         seq = 1
