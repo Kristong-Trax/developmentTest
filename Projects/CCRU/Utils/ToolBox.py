@@ -56,6 +56,9 @@ EQUIPMENT_TARGETS_CLOUD_BASE_PATH = 'CCRU/KPIData/Contract/'
 
 
 class CCRUKPIToolBox:
+
+    MIN_CALC_DATE = '2019-06-29'
+
     def __init__(self, data_provider, output, kpi_set_name=None, kpi_set_type=None):
         self.data_provider = data_provider
         self.output = output
@@ -2561,16 +2564,16 @@ class CCRUKPIToolBox:
         return set_total_res
 
     def get_pos_kpi_set_name(self):
-        if str(self.visit_date) < '2019-01-26':
+        if str(self.visit_date) < self.MIN_CALC_DATE:
             query = """
-                    select ss.pk , ss.additional_attribute_11
+                    select ss.pk , ss.additional_attribute_11 
                     from static.stores ss
                     join probedata.session ps on ps.store_fk=ss.pk
                     where ss.delete_date is null and ps.session_uid = '{}';
                     """.format(self.session_uid)
-        else:
+        else:  # Todo - Change to additional_attribute_12 for PROD
             query = """
-                    select ss.pk , ss.additional_attribute_11
+                    select ss.pk , ss.additional_attribute_11 
                     from static.stores ss
                     join probedata.session ps on ps.store_fk=ss.pk
                     where ss.delete_date is null and ps.session_uid = '{}';
