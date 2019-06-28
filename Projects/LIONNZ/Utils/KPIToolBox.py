@@ -381,9 +381,9 @@ class LIONNZToolBox:
             )
         if not include_stacking:
             # exclude stacking if the flag is set
-            Log.info("Exclude stacking other than in layer 1")
+            Log.info("Exclude stacking other than in layer 1 or negative stacking [menu]")
             sanitized_products_in_scene = sanitized_products_in_scene.loc[
-                sanitized_products_in_scene['stacking_layer'] == 1]
+                sanitized_products_in_scene['stacking_layer'] <= 1]
         if categories_to_exclude:
             # list of categories to exclude is present, otherwise all included
             Log.info("Exclude categories {}".format(categories_to_exclude))
