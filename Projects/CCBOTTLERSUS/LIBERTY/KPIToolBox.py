@@ -346,22 +346,22 @@ class LIBERTYToolBox:
 
     # Share of Display functions
     def calculate_share_of_display(self, kpi_line, relevant_scif, weight):
-        filtered_scif = relevant_scif.copy()
+        base_scif = relevant_scif.copy()
 
         ssd_still = self.does_exist(kpi_line, Const.ATT4)
         if ssd_still:
-            filtered_scif = filtered_scif[filtered_scif['att4'].isin(ssd_still)]
+            ssd_still_scif = base_scif[base_scif['att4'].isin(ssd_still)]
 
         denominator_passing_displays, _ = \
-            self.get_number_of_passing_displays(filtered_scif)
+            self.get_number_of_passing_displays(ssd_still_scif)
 
         manufacturer = self.does_exist(kpi_line, Const.MANUFACTURER)
         if manufacturer:
-            filtered_scif = filtered_scif[filtered_scif['manufacturer_name'].isin(manufacturer)]
+            filtered_scif = ssd_still_scif[ssd_still_scif['manufacturer_name'].isin(manufacturer)]
 
         liberty_truck = self.does_exist(kpi_line, Const.LIBERTY_KEY_MANUFACTURER)
         if liberty_truck:
-            liberty_truck_scif = relevant_scif[relevant_scif[Const.LIBERTY_KEY_MANUFACTURER].isin(liberty_truck)]
+            liberty_truck_scif = ssd_still_scif[ssd_still_scif[Const.LIBERTY_KEY_MANUFACTURER].isin(liberty_truck)]
             filtered_scif = filtered_scif.append(liberty_truck_scif, sort=False).drop_duplicates()
 
         if self.does_exist(kpi_line, Const.MARKET_SHARE_TARGET):

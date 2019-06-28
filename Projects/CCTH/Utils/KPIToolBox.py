@@ -248,7 +248,7 @@ class CCTHToolBox(CCTHConsts):
     def calculate_cooler_rack(self, types, kpi_name):
         survey_q = self.survey_questions
         cooler_rack = ['name', 'count', 'Purity', 'SOVI Cola>=50%', 'Minimum 8 Still Facings', 'Price Tags CSD',
-                       'Price Tags Still', 'First Position', 'Hotspots']
+                       'Price Tags Still', 'First Position', 'Hotspots', 'Twinning']
         cooler_rack_results = pd.DataFrame(columns=cooler_rack)
         cooler_rack_questions_ids = \
             {cooler_rack[2]:
@@ -266,7 +266,10 @@ class CCTHToolBox(CCTHConsts):
                           (survey_q['Question'].str.contains('pass the 1st position?'))]['Survey Q ID'],
              cooler_rack[8]:
                  survey_q[(survey_q['KPI'] == '1st Position/Hot Spot') &
-                          (survey_q['Question'].str.contains('pass the hot spot?'))]['Survey Q ID']}
+                          (survey_q['Question'].str.contains('pass the hot spot?'))]['Survey Q ID'],
+             cooler_rack[9]:
+                 survey_q[survey_q['KPI'] == 'Twinning']['Survey Q ID']
+             }
 
         survey_a = self.survey_response
         result = {}
