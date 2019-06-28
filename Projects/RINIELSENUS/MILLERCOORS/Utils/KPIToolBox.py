@@ -169,6 +169,7 @@ class MILLERCOORSToolBox:
         for scene in relevant_scif.scene_fk.unique():
             scene_filter = {'scene_fk': scene}
             mpis = self.filter_df(self.mpis, scene_filter)
+            mpis = mpis[mpis['stacking_layer'] >= 1]
             # allowed = {'product_type': ['Other', 'Empty']}
             filters = {kpi_line[Const.ANCHOR_PARAM]: kpi_line[Const.ANCHOR_VALUE]}
             # determine if there are any matching products in the scene
@@ -232,6 +233,7 @@ class MILLERCOORSToolBox:
             scene_filter = {'scene_fk': scene}
             location_filter = {'scene_id': scene}
             mpis = self.filter_df(self.mpis, scene_filter)
+            mpis = mpis[mpis['stacking_layer'] >= 1]
             # allowed = {'product_type': ['Other', 'Empty']}
             if kpi_line[Const.TESTED_PARAM] == kpi_line[Const.ANCHOR_PARAM]:
                 filters = {kpi_line[Const.ANCHOR_PARAM]: [kpi_line[Const.ANCHOR_VALUE], kpi_line[Const.TESTED_VALUE]]}
