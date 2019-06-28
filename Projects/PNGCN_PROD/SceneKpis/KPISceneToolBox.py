@@ -129,6 +129,7 @@ class PngcnSceneKpis(object):
         self.png_manufacturer_fk = self.get_png_manufacturer_fk()
         self.psdataprovider = PsDataProvider(data_provider=self.data_provider)
         self.parser = Parser
+        self.match_probe_in_scene = self.get_product_special_attribute_data(self.scene_id)
 
     def process_scene(self):
         self.save_nlsos_to_custom_scif()
@@ -601,6 +602,19 @@ class PngcnSceneKpis(object):
                 display_visit_summary['product_size'] = 0
 
             display_visit_summary = self.remove_by_facing(display_visit_summary)
+            displays = display_visit_summary['display_surface_fk'].unique()
+            for display in displays:
+                single_display_df = display_visit_summary[display_visit_summary['display_surface_fk'] == display]
+                if single_display_df.empty:
+                    continue
+                total_linear_for_display = single_display_df['product_size'].sum()
+                display_size = single_display_df['display_size'].iloc[0]
+                if total_linear_for_display != 0:
+                    diff_ratio = display_size / float(total_linear_for_display)
+                else:
+                    diff_ratio = 0
+                display_visit_summary.loc[display_visit_summary['display_surface_fk'] == display,
+                                                                    ['product_size']] *= diff_ratio
             display_visit_summary_list_of_dict = display_visit_summary.to_dict('records')
             self._insert_into_display_visit_summary(display_visit_summary_list_of_dict)
             self.insert_into_kpi_scene_results(display_visit_summary_list_of_dict)
@@ -810,6 +824,7 @@ class PngcnSceneKpis(object):
         query = ''' select
                         mps.scene_fk
                         ,mps.product_fk
+                        ,mps.probe_match_fk
                         ,mps.bay_number
                         ,mps.shelf_number
                         ,mps.status
@@ -832,7 +847,8 @@ class PngcnSceneKpis(object):
                             static.template t on t.pk = sc.template_fk
                              and t.is_recognition = 1
                     '''.format(self.scene_id)
-        match_product_in_scene = pd.read_sql_query(query, self.project_connector.db)
+        df = pd.read_sql_query(query, self.project_connector.db)
+        match_product_in_scene = self.exclude_special_attribute_products(df, 'additional display')
         return match_product_in_scene
 
     def insert_into_kpi_scene_results(self, display_visit_summary_list_of_dict):
@@ -1080,7 +1096,32 @@ class PngcnSceneKpis(object):
         """
         self.calculate_linear_or_presize_linear_length('width_mm_advance')
         return 0
-#
+
+    def exclude_special_attribute_products(self, df, smart_attribute):
+        """
+        Helper to exclude smart_attribute products
+        :return: filtered df without smart_attribute products
+        """
+        if self.match_probe_in_scene.empty:
+            return df
+        smart_attribute_df = self.match_probe_in_scene[self.match_probe_in_scene['name'] == smart_attribute]
+        if smart_attribute_df.empty:
+            return df
+        match_product_in_probe_fks = smart_attribute_df['match_product_in_probe_fk'].tolist()
+        df = df[~df['probe_match_fk'].isin(match_product_in_probe_fks)]
+        return df
+
+    def get_product_special_attribute_data(self, scene_id):
+        query = """
+                SELECT * FROM probedata.match_product_in_probe_state_value A
+                left join probedata.match_product_in_probe B on B.pk = A.match_product_in_probe_fk
+                left join static.match_product_in_probe_state C on C.pk = A.match_product_in_probe_state_fk
+                left join probedata.probe on probe.pk = probe_fk 
+                where C.name = '{}' and scene_fk = {};
+            """.format('additional display', scene_id)
+        df = pd.read_sql_query(query, self.project_connector.db)
+        return df
+
 # if __name__ == '__main__':
 #     # Config.init()
 #     LoggerInitializer.init('TREX')
