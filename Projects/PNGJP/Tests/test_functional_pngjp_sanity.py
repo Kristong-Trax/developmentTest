@@ -9,7 +9,7 @@ from Trax.Data.Testing.TestProjects import TestProjectsNames
 
 from Projects.PNGJP.Tests.Data.test_data_pngjp_sanity import ProjectsSanityData
 from Projects.PNGJP.Calculations import PNGJPCalculations
-from Trax.Apps.Core.Testing.BaseCase import TestFunctionalCase
+from Trax.Apps.Core.Testing.BaseCase import TestFunctionalCase, patch
 
 from Tests.TestUtils import remove_cache_and_storage
 import pandas as pd
@@ -21,6 +21,10 @@ class TestKEngineOutOfTheBox(TestFunctionalCase):
     seeder = Seeder()
 
     @seeder.seed(["mongodb_products_and_brands_seed", "pngjp_seed"], ProjectsSanityData())
+    @patch('PNGJPToolBox.TEMPLATE_PATH',
+           'Projects/PNGJP/Tests/Data/Template.xlsx')
+    @patch('PNGJPToolBox.GOLDEN_ZONE_PATH',
+           'Projects/PNGJP/Tests/Data/TemplateQualitative.xlsx')
     def set_up(self):
         super(TestKEngineOutOfTheBox, self).set_up()
 
@@ -34,7 +38,6 @@ class TestKEngineOutOfTheBox(TestFunctionalCase):
         # get results from seed
         self.kpi_actual_results_df = self.get_kpi_actual_results_from_seed()
 
-        self.toolbox.GOLDEN_ZONE_PATH
         # mock template
         remove_cache_and_storage()
 
@@ -82,7 +85,7 @@ class TestKEngineOutOfTheBox(TestFunctionalCase):
         df_calculated = df_filtered.groupby('kpi_fk').agg(
             {'kpi_fk_count': 'count', 'result': 'sum'}).reset_index().rename(
             columns={'result': 'results sum'})
-        df_calculated = df_calculated[~(df_calculated['results sum']== 0.0)]
+        df_calculated = df_calculated[~(df_calculated['results sum'] == 0.0)]
         return df_calculated
 
     @staticmethod
