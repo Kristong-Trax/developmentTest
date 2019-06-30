@@ -17,6 +17,7 @@ __author__ = 'yoava'
 class TestDiageoke(TestFunctionalCase):
     seeder = Seeder()
 
+    @seeder.seed(["mongodb_products_and_brands_seed", "diageoke_seed"], ProjectsSanityData())
     def set_up(self):
         super(TestDiageoke, self).set_up()
         self.project_name = ProjectsSanityData.project_name
