@@ -639,6 +639,7 @@ class PERNODUSToolBox:
             elif param1 == Const.brand:
                 param2 = Const.sub_category
                 values_2 = self.all_products[Const.sub_category][self.all_products[param1] == value1].unique().tolist()
+                values_2 = [x for x in values_2 if x is not None]
 
             for value2 in values_2:
                 if (param1 and param2):
@@ -697,6 +698,7 @@ class PERNODUSToolBox:
                         self.all_products[Const.manufacturer] == manufacturer_of_brand].unique().tolist()
                     for brand in brands_list:
                         values_2 = self.all_products[Const.sub_category][self.all_products[param1] == brand].unique().tolist()
+                        values_2 = [x for x in values_2 if x is not None]
                         filter_df_columns = [Const.scene_id, Const.manufacturer, Const.brand, Const.facings]
                         groupby_df_columns = [Const.scene_id, Const.manufacturer, Const.brand]
                         filter_param = Const.sub_category

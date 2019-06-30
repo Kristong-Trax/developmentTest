@@ -251,7 +251,8 @@ class Block(BaseCalculation):
         max_y = max(y_values)
         min_y = min(y_values)
         if num_of_shelves:
-            y_division_factor = (max_y - min_y) / float(num_of_shelves)
+            # numerator max handles edge case where max_y == min_y
+            y_division_factor = max((max_y - min_y), 1) / float(num_of_shelves)
         else:
             return None
         x_width_feet = ((max_x - min_x) * CalcConst.MM_TO_FEET_CONVERSION)
