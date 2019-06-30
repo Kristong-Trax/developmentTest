@@ -104,6 +104,8 @@ PCC_FILTERS = {
 
 
 # Block_Variant KPI
+VARIANT_BLOCK_TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)),
+                                           '..', 'Data', 'pngcn_variant_block_template_v1.xlsx')
 BLOCK_VARIANT_KPI = 'Block_Variant'
 MIN_FACINGS_ON_SAME_LAYER = 'Min_facing_on_same_layer'
 MIN_LAYER_NUMBER = 'Min_layer_#'
@@ -173,8 +175,7 @@ class PngcnSceneKpis(object):
 
     def calculate_variant_block(self):
         legal_blocks = {}
-        variant_block_template = pd.read_excel(
-            'Data/pngcn_variant_block_template_v1.0.xlsx').fillna("")
+        variant_block_template = pd.read_excel(VARIANT_BLOCK_TEMPLATE_PATH).fillna("")
         block_class = BLOCK(self.data_provider)
         for i, row_in_template in variant_block_template.iterrows():
             block_groups = {}
@@ -199,6 +200,7 @@ class PngcnSceneKpis(object):
                 filtered_df = self.parser.filter_df(filter_row_for_sub_brand, complete_df)
                 if filtered_df.empty:
                     continue
+                filtered_df = filtered_df[filtered_df['stacking_layer'] == 1]
                 self.save_eye_light_products(block_filters['sub_brand_name'][0], filtered_df)
                 filter_block_result = block_class.network_x_block_together(
                     population=block_filters,
