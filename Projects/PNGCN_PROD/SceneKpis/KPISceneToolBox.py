@@ -173,8 +173,7 @@ class PngcnSceneKpis(object):
 
     def calculate_variant_block(self):
         legal_blocks = {}
-        variant_block_template = pd.read_excel(
-            'Data/pngcn_variant_block_template_v1.0.xlsx').fillna("")
+        variant_block_template = pd.read_excel('Data/pngcn_variant_block_template_v1.xlsx').fillna("")
         block_class = BLOCK(self.data_provider)
         for i, row_in_template in variant_block_template.iterrows():
             block_groups = {}
