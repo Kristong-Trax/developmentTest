@@ -67,8 +67,10 @@ class DIAGEOGRSANDToolBox:
         self.output = output
         self.common = Common(self.data_provider)
         self.commonV2 = CommonV2(self.data_provider)
-        self.tools = DIAGEOToolBox(self.data_provider, output, match_display_in_scene=self.match_display_in_scene)
-        self.diageo_generator = DIAGEOGenerator(self.data_provider, self.output, self.common, menu=True)
+        self.tools = DIAGEOToolBox(self.data_provider, output,
+                                   match_display_in_scene=self.match_display_in_scene)
+        self.diageo_generator = DIAGEOGenerator(
+            self.data_provider, self.output, self.common, menu=True)
 
     def get_kpi_static_data(self):
         """
@@ -95,26 +97,13 @@ class DIAGEOGRSANDToolBox:
         # Global assortment kpis
         assortment_res_dict = self.diageo_generator.diageo_global_assortment_function_v2()
         self.commonV2.save_json_to_new_tables(assortment_res_dict)
-        menus_res_dict = self.diageo_generator.diageo_global_share_of_menu_cocktail_function()
+        menus_res_dict = self.diageo_generator.diageo_global_share_of_menu_cocktail_function(
+            cocktail_product_level=True)
         self.commonV2.save_json_to_new_tables(menus_res_dict)
         for set_name in set_names:
             if set_name not in self.tools.KPI_SETS_WITHOUT_A_TEMPLATE and set_name not in self.set_templates_data.keys():
                 self.set_templates_data[set_name] = self.tools.download_template(set_name)
             set_score = 0
-        # if set_name in ('MPA', 'Local MPA'):
-        #     set_score = self.calculate_assortment_sets(set_name)
-        # elif set_name in ('Relative Position',): #  todo: delete after the migration is done
-        #     set_score = self.calculate_relative_position_sets(set_name)
-        # elif set_name in ('Brand Blocking',):
-        #     set_score = self.calculate_block_together_sets(set_name)
-        # elif set_name in ('POSM',):
-        #     set_score = self.calculate_posm_sets(set_name)
-        # elif set_name in ('Brand Pouring',):
-        #     set_score = self.calculate_brand_pouring_sets(set_name)
-        # elif set_name == 'Visible to Customer':
-        #     filters = {self.tools.VISIBILITY_PRODUCTS_FIELD: 'Y'}
-        #     set_score = self.tools.calculate_visible_percentage(visible_filters=filters)
-        #     self.save_level2_and_level3(set_name, set_name, set_score)
 
             if set_name in ('Secondary Displays', 'Secondary'):
                 # Global function
@@ -133,7 +122,8 @@ class DIAGEOGRSANDToolBox:
             elif set_score is False:
                 continue
 
-            set_fk = self.kpi_static_data[self.kpi_static_data['kpi_set_name'] == set_name]['kpi_set_fk'].values[0]
+            set_fk = self.kpi_static_data[self.kpi_static_data['kpi_set_name']
+                                          == set_name]['kpi_set_fk'].values[0]
             self.write_to_db_result(set_fk, set_score, self.LEVEL1)
         # committing to new tables
         self.commonV2.commit_results_data()
@@ -362,7 +352,8 @@ class DIAGEOGRSANDToolBox:
         """
         score = round(score, 2)
         if level == self.LEVEL1:
-            kpi_set_name = self.kpi_static_data[self.kpi_static_data['kpi_set_fk'] == fk]['kpi_set_name'].values[0]
+            kpi_set_name = self.kpi_static_data[self.kpi_static_data['kpi_set_fk']
+                                                == fk]['kpi_set_name'].values[0]
             score_type = '%' if kpi_set_name in self.tools.KPI_SETS_WITH_PERCENT_AS_SCORE else ''
             attributes = pd.DataFrame([(kpi_set_name, self.session_uid, self.store_id, self.visit_date.isoformat(),
                                         format(score, '.2f'), score_type, fk)],
@@ -379,7 +370,8 @@ class DIAGEOGRSANDToolBox:
             data = self.kpi_static_data[self.kpi_static_data['atomic_kpi_fk'] == fk]
             atomic_kpi_name = data['atomic_kpi_name'].values[0].replace("'", "\\'")
             kpi_fk = data['kpi_fk'].values[0]
-            kpi_set_name = self.kpi_static_data[self.kpi_static_data['atomic_kpi_fk'] == fk]['kpi_set_name'].values[0]
+            kpi_set_name = self.kpi_static_data[self.kpi_static_data['atomic_kpi_fk']
+                                                == fk]['kpi_set_name'].values[0]
             attributes = pd.DataFrame([(atomic_kpi_name, self.session_uid, kpi_set_name, self.store_id,
                                         self.visit_date.isoformat(), datetime.utcnow().isoformat(),
                                         score, kpi_fk, fk, None, None)],
