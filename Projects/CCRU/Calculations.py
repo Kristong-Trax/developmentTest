@@ -107,7 +107,7 @@ class CCRUProjectCalculations:
                         .format(self.visit_date, self.store_id, self.tool_box.MIN_CALC_DATE))
             return
 
-        self.json.create_kpi_data_json('kpi_source', 'KPI_Source_2019.xlsx',
+        self.json.create_kpi_data_json('kpi_source', 'KPI_Source.xlsx',
                                        sheet_name=self.pos_kpi_set_name)
         kpi_source_json = self.json.project_kpi_dict.get('kpi_source')
         kpi_source = {}
