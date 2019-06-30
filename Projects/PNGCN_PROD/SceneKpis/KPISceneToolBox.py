@@ -107,6 +107,8 @@ PCC_FILTERS = {
 BLOCK_VARIANT_KPI = 'Block_Variant'
 MIN_FACINGS_ON_SAME_LAYER = 'Min_facing_on_same_layer'
 MIN_LAYER_NUMBER = 'Min_layer_#'
+MATCH_PRODUCT_IN_PROBE_FK = 'match_product_in_probe_fk'
+MATCH_PRODUCT_IN_PROBE_STATE_REPORTING_FK = 'match_product_in_probe_state_reporting_fk'
 
 class PngcnSceneKpis(object):
     def __init__(self, project_connector, common, scene_id, data_provider=None):
@@ -136,6 +138,7 @@ class PngcnSceneKpis(object):
         self.png_manufacturer_fk = self.get_png_manufacturer_fk()
         self.psdataprovider = PsDataProvider(data_provider=self.data_provider)
         self.parser = Parser
+        self.match_product_in_probe_state_reporting = self.psdataprovider.get_match_product_in_probe_state_reporting()
 
     def process_scene(self):
         self.calculate_variant_block()
@@ -174,12 +177,6 @@ class PngcnSceneKpis(object):
             block_groups = {}
             relevant_row = row_in_template.drop(['KPI_NAME', MIN_FACINGS_ON_SAME_LAYER, MIN_LAYER_NUMBER])
             row_dict = dict((k, [v]) for k, v in relevant_row.to_dict().iteritems() if v != "")
-
-
-            row_dict = {'brand_name': [u'Gillette'], 'category': [u"Blades & Razors"]}
-
-
-
             filter_row_dict = {'population': {'include': [row_dict], 'include_operator': 'and'}}
             sub_brands = set(self.parser.filter_df(filter_row_dict, self.scif)['sub_brand_name'])
             if len(sub_brands) == 0:
@@ -189,9 +186,14 @@ class PngcnSceneKpis(object):
                 sub_brand_dict = row_dict.copy()
                 sub_brand_dict['sub_brand_name'] = [sub_brand]
                 block_groups[sub_brand] = sub_brand_dict
-            # block_groups = {'GIL_FUS': {'brand_name': ["Gillette"], 'sub_brand_name': ["Fusion/锋隐"]}}
             for filter_name, block_filters in block_groups.iteritems():
                 filter_results = []
+                complete_df = pd.merge(self.matches_from_data_provider, self.scif, on='product_fk', how="left")
+                filter_row_for_sub_brand = {'population': {'include': [block_filters], 'include_operator': 'and'}}
+                filtered_df = self.parser.filter_df(filter_row_for_sub_brand, complete_df)
+                if filtered_df.empty:
+                    continue
+                self.save_eye_light_products(block_filters['sub_brand_name'][0], filtered_df)
                 filter_block_result = block_class.network_x_block_together(
                     population=block_filters,
                     additional={'allowed_products_filters': {'product_type': ['Irrelevant']},
@@ -208,7 +210,7 @@ class PngcnSceneKpis(object):
                         node_data = node[1]
                         product_matches_fks += (list(node_data['members']))
                         block_df = self.matches_from_data_provider[self.matches_from_data_provider
-                        ['scene_match_fk'].isin(product_matches_fks)]
+                                                        ['scene_match_fk'].isin(product_matches_fks)]
                         shelves = set(block_df['shelf_number'])
                         if len(shelves) < row_in_template[MIN_LAYER_NUMBER]:
                             continue
@@ -221,10 +223,12 @@ class PngcnSceneKpis(object):
                         if block_flag:
                             point = node_data['polygon'].centroid
                             row['x'], row['y'] = point.x, point.y
+                            row['number_of_facings'] = len(product_matches_fks)
                             for filter, value in block_filters.iteritems():
                                 row[filter] = value
                             filter_results.append(row)
                 if len(filter_results) > 0:
+                    legal_blocks[filter_name] = filter_results
                     legal_blocks[filter_name] = filter_results
         all_blocks = [p for q in legal_blocks.values() for p in q]
         self.replace_with_seq_order(sorted(all_blocks, key=lambda i: i['x']), 'x')
@@ -240,15 +244,42 @@ class PngcnSceneKpis(object):
                                             numerator_result=block['seq_x'],
                                             denominator_result=block['seq_y'],
                                             result=block['facing_percentage'],
-                                            score=block['facing_percentage'],
+                                            score=block['number_of_facings'],
                                             by_scene=True)
-        pass
+
+    def save_eye_light_products(self, sub_brand, filtered_df):
+        sub_brand_pk = self.match_product_in_probe_state_reporting[
+                                 self.match_product_in_probe_state_reporting['name'].str.encode("utf8") ==
+                                 sub_brand.encode("utf8")]['match_product_in_probe_state_reporting_fk'].values[0]
+        df_to_append = pd.DataFrame(columns=[MATCH_PRODUCT_IN_PROBE_FK, MATCH_PRODUCT_IN_PROBE_STATE_REPORTING_FK])
+        df_to_append[MATCH_PRODUCT_IN_PROBE_FK] = filtered_df['probe_match_fk'].drop_duplicates()
+        df_to_append[MATCH_PRODUCT_IN_PROBE_STATE_REPORTING_FK] = sub_brand_pk
+        self.common.match_product_in_probe_state_values = \
+                                                self.common.match_product_in_probe_state_values.append(df_to_append)
 
     def get_attribute_fk_from_name(self, name, value):
-        ##### todo:
-        pass
+        try:
+            if name == 'brand_name':
+                attribute_fk = self.scif[self.scif[name] == value[0]]['brand_fk'].values[0]
+            elif name == 'category':
+                attribute_fk = self.scif[self.scif[name] == value[0]]['category_fk'].values[0]
+            elif name == 'sub_brand_name':
+                attribute_fk = self.get_custom_entity_fk(name, value[0]).values[0]
+            else:
+                attribute_fk = -1
+        except:
+            attribute_fk = -1
+        return attribute_fk
 
-
+    def get_custom_entity_fk(self, name, value):
+        if name == 'sub_brand_name':
+            attributes = self.psdataprovider.get_custom_entities_df('block_variant_sub_brands')
+        else:
+            return -1
+        if attributes.empty:
+            return -1
+        attribute_fk = attributes[attributes['entity_name'].str.encode("utf8") == value]['entity_fk']
+        return attribute_fk
 
     def replace_with_seq_order(self, sorted, field):
         seq = 1
@@ -861,6 +892,8 @@ class PngcnSceneKpis(object):
         return '({0}, {1}, {2})'.format(display['scene_fk'], display['display_fk'], display['display_size'])
 
     def _get_match_display_in_scene_data(self):
+        self.project_connector.disconnect_rds()
+        self.project_connector.connect_rds()
         local_con = self.project_connector.db
         query = ''' select
                         mds.display_fk
