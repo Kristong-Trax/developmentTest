@@ -21,9 +21,9 @@ class TestKEngineOutOfTheBox(TestFunctionalCase):
     seeder = Seeder()
 
     @seeder.seed(["mongodb_products_and_brands_seed", "pngjp_seed"], ProjectsSanityData())
-    @patch('PNGJPToolBox.TEMPLATE_PATH',
+    @mock.patch('TEMPLATE_PATH',
            'Projects/PNGJP/Tests/Data/Template.xlsx')
-    @patch('PNGJPToolBox.GOLDEN_ZONE_PATH',
+    @mock.patch('GOLDEN_ZONE_PATH',
            'Projects/PNGJP/Tests/Data/TemplateQualitative.xlsx')
     def set_up(self):
         super(TestKEngineOutOfTheBox, self).set_up()
