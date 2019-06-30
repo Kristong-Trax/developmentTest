@@ -20,7 +20,8 @@ KPI_RESULT = 'report.kpi_results'
 KPK_RESULT = 'report.kpk_results'
 KPS_RESULT = 'report.kps_results'
 
-TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'Template_New.xlsx')
+TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)),
+                             '..', 'Data', 'Template_New.xlsx')
 SCENE_TYPE_FIELD = 'additional_attribute_1'
 
 
@@ -147,7 +148,8 @@ class CCKHToolBox(CCKHConsts):
                             score, result, threshold = self.calculate_share_of_shelf(child)
                         elif kpi_type == self.NUMBER_OF_SCENES:
                             scene_types = self.get_scene_types(child)
-                            result = self.general_tools.calculate_number_of_scenes(**{SCENE_TYPE_FIELD: scene_types})
+                            result = self.general_tools.calculate_number_of_scenes(
+                                **{SCENE_TYPE_FIELD: scene_types})
                             score = 1 if result >= 1 else 0
                         else:
                             Log.warning("KPI of type '{}' is not supported".format(kpi_type))
@@ -156,19 +158,23 @@ class CCKHToolBox(CCKHConsts):
                             if score is None:
                                 points = 0
                             else:
-                                points = float(child[self.template.WEIGHT]) if kpi_weight is True else kpi_weight
+                                points = float(child[self.template.WEIGHT]
+                                               ) if kpi_weight is True else kpi_weight
                                 scores.append((points, score))
                             atomic_fk = self.get_atomic_fk(main_child, child)
-                            self.write_to_db_result(atomic_fk, (score, result, threshold, points), level=self.LEVEL3)
+                            self.write_to_db_result(
+                                atomic_fk, (score, result, threshold, points), level=self.LEVEL3)
 
                 max_points = sum([score[0] for score in scores])
                 actual_points = sum([score[0] * score[1] for score in scores])
-                percentage = 0 if max_points == 0 else round((actual_points / float(max_points)) * 100, 2)
+                percentage = 0 if max_points == 0 else round(
+                    (actual_points / float(max_points)) * 100, 2)
 
                 kpi_name = main_child[self.template.TRANSLATION]
                 kpi_fk = self.kpi_static_data[self.kpi_static_data['kpi_name'].str.encode('utf-8') ==
                                               kpi_name.encode('utf-8')]['kpi_fk'].values[0]
-                self.write_to_db_result(kpi_fk, (actual_points, max_points, percentage), level=self.LEVEL2)
+                self.write_to_db_result(kpi_fk, (actual_points, max_points,
+                                                 percentage), level=self.LEVEL2)
                 set_scores[kpi_name] = (max_points, actual_points)
 
         max_points = sum([score[0] for score in set_scores.values()])
@@ -208,7 +214,8 @@ class CCKHToolBox(CCKHConsts):
                 return False
             condition = (custom_template[self.template.KPI_NAME] == params[self.template.KPI_NAME])
             if self.template.KPI_GROUP in custom_template.keys():
-                condition &= (custom_template[self.template.KPI_GROUP] == params[self.template.KPI_GROUP])
+                condition &= (custom_template[self.template.KPI_GROUP]
+                              == params[self.template.KPI_GROUP])
             kpi_data = custom_template[condition]
             if kpi_data.empty:
                 return False
@@ -227,7 +234,7 @@ class CCKHToolBox(CCKHConsts):
         kpi_name = pillar[self.template.TRANSLATION]
         atomic_fk = self.kpi_static_data[(self.kpi_static_data['kpi_name'].str.encode('utf-8') ==
                                           kpi_name.encode('utf-8')) & (
-                self.kpi_static_data['atomic_kpi_name'].str.encode('utf-8') == atomic_name.encode('utf-8'))][
+            self.kpi_static_data['atomic_kpi_name'].str.encode('utf-8') == atomic_name.encode('utf-8'))][
             'atomic_kpi_fk']
         if atomic_fk.empty:
             return None
@@ -255,7 +262,8 @@ class CCKHToolBox(CCKHConsts):
         if not target:
             return False
         target = float(target)
-        filters = {'product_ean_code': kpi_data[self.template.PRODUCTS].split(self.template.SEPARATOR)}
+        filters = {'product_ean_code': kpi_data[self.template.PRODUCTS].split(
+            self.template.SEPARATOR)}
         scene_types = self.get_scene_types(params)
         if scene_types:
             filters[SCENE_TYPE_FIELD] = scene_types
@@ -290,7 +298,8 @@ class CCKHToolBox(CCKHConsts):
         if products_to_exclude:
             general_filters['product_type'] = (products_to_exclude.split(self.template.SEPARATOR),
                                                self.general_tools.EXCLUDE_FILTER)
-        numerator_result = self.general_tools.calculate_availability(**dict(sos_filters, **general_filters))
+        numerator_result = self.general_tools.calculate_availability(
+            **dict(sos_filters, **general_filters))
         denominator_result = self.general_tools.calculate_availability(**general_filters)
         if denominator_result == 0:
             result = 0
@@ -328,14 +337,16 @@ class CCKHToolBox(CCKHConsts):
         """
         if level == self.LEVEL1:
             score_2, score_3, score_1 = score
-            kpi_set_name = self.kpi_static_data[self.kpi_static_data['kpi_set_fk'] == fk]['kpi_set_name'].values[0]
+            kpi_set_name = self.kpi_static_data[self.kpi_static_data['kpi_set_fk']
+                                                == fk]['kpi_set_name'].values[0]
             attributes = pd.DataFrame([(kpi_set_name, self.session_uid, self.store_id, self.visit_date.isoformat(),
                                         format(score_1, '.2f'), score_2, score_3, fk)],
                                       columns=['kps_name', 'session_uid', 'store_fk', 'visit_date', 'score_1',
                                                'score_2', 'score_3', 'kpi_set_fk'])
         elif level == self.LEVEL2:
             score_2, score_3, score = score
-            kpi_name = self.kpi_static_data[self.kpi_static_data['kpi_fk'] == fk]['kpi_name'].values[0]
+            kpi_name = self.kpi_static_data[self.kpi_static_data['kpi_fk']
+                                            == fk]['kpi_name'].values[0]
             attributes = pd.DataFrame([(self.session_uid, self.store_id, self.visit_date.isoformat(),
                                         fk, kpi_name, score, score_2, score_3)],
                                       columns=['session_uid', 'store_fk', 'visit_date', 'kpi_fk', 'kpk_name',
@@ -345,7 +356,8 @@ class CCKHToolBox(CCKHConsts):
             data = self.kpi_static_data[self.kpi_static_data['atomic_kpi_fk'] == fk]
             atomic_kpi_name = data['atomic_kpi_name'].values[0]
             kpi_fk = data['kpi_fk'].values[0]
-            kpi_set_name = self.kpi_static_data[self.kpi_static_data['atomic_kpi_fk'] == fk]['kpi_set_name'].values[0]
+            kpi_set_name = self.kpi_static_data[self.kpi_static_data['atomic_kpi_fk']
+                                                == fk]['kpi_set_name'].values[0]
             attributes = pd.DataFrame([(atomic_kpi_name, self.session_uid, kpi_set_name, self.store_id,
                                         self.visit_date.isoformat(), datetime.utcnow().isoformat(),
                                         score, kpi_fk, fk, threshold, result, weight)],

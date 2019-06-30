@@ -95,7 +95,8 @@ class LIONNZToolBox:
         self.store_info = self.data_provider[Data.STORE_INFO]
         self.store_id = self.store_info['store_fk'].values[0]
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
-        self.scene_template_info = self.scif[['scene_fk', 'template_fk', 'template_name']].drop_duplicates()
+        self.scene_template_info = self.scif[['scene_fk',
+                                              'template_fk', 'template_name']].drop_duplicates()
         self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         self.kpi_static_data = self.common.get_kpi_static_data()
         self.kpi_results_queries = []
@@ -129,13 +130,13 @@ class LIONNZToolBox:
 
     def calculate_assortment_kpis(self):
         distribution_kpi = self.kpi_static_data[(self.kpi_static_data[KPI_TYPE_COL] == DST_MAN_BY_STORE_PERC)
-                                   & (self.kpi_static_data['delete_time'].isnull())]
+                                                & (self.kpi_static_data['delete_time'].isnull())]
         oos_kpi = self.kpi_static_data[(self.kpi_static_data[KPI_TYPE_COL] == OOS_MAN_BY_STORE_PERC)
-                                   & (self.kpi_static_data['delete_time'].isnull())]
+                                       & (self.kpi_static_data['delete_time'].isnull())]
         prod_presence_kpi = self.kpi_static_data[(self.kpi_static_data[KPI_TYPE_COL] == PRODUCT_PRESENCE_BY_STORE_LIST)
-                                           & (self.kpi_static_data['delete_time'].isnull())]
+                                                 & (self.kpi_static_data['delete_time'].isnull())]
         oos_prod_kpi = self.kpi_static_data[(self.kpi_static_data[KPI_TYPE_COL] == OOS_PRODUCT_BY_STORE_LIST)
-                                           & (self.kpi_static_data['delete_time'].isnull())]
+                                            & (self.kpi_static_data['delete_time'].isnull())]
 
         def __return_valid_store_policies(policy):
             policy_json = json.loads(policy)
@@ -204,7 +205,8 @@ class LIONNZToolBox:
                                                    context_id=self.store_id,
                                                    result=assortment_code,
                                                    score=assortment_code,
-                                                   identifier_result=CODE_KPI_MAP.get(assortment_code),
+                                                   identifier_result=CODE_KPI_MAP.get(
+                                                       assortment_code),
                                                    identifier_parent=oos_kpi_name,
                                                    should_enter=True
                                                    )
@@ -274,7 +276,8 @@ class LIONNZToolBox:
                 ))
                 detail = kpi_details[kpi_details[KPI_NAME_COL] == kpi[KPI_TYPE_COL].values[0]]
                 # check for store types allowed
-                permitted_store_types = [x.strip().lower() for x in detail[STORE_POLICY].values[0].split(',') if x.strip()]
+                permitted_store_types = [x.strip().lower()
+                                         for x in detail[STORE_POLICY].values[0].split(',') if x.strip()]
                 if self.store_info.store_type.iloc[0].lower() not in permitted_store_types:
                     Log.warning("Not permitted store type - {type} for session {sess}".format(
                         type=kpi_sheet_row[KPI_NAME_COL],
@@ -284,10 +287,12 @@ class LIONNZToolBox:
                 detail['pk'] = kpi['pk'].iloc[0]
                 # gather details
                 groupers, query_string = get_groupers_and_query_string(detail)
-                _include_exclude = kpi_include_exclude[kpi_details[KPI_NAME_COL] == kpi[KPI_TYPE_COL].values[0]]
+                _include_exclude = kpi_include_exclude[kpi_details[KPI_NAME_COL]
+                                                       == kpi[KPI_TYPE_COL].values[0]]
                 # gather include exclude
                 include_exclude_data_dict = get_include_exclude(_include_exclude)
-                dataframe_to_process = self.get_sanitized_match_prod_scene(include_exclude_data_dict)
+                dataframe_to_process = self.get_sanitized_match_prod_scene(
+                    include_exclude_data_dict)
             if kpi_sheet_row[KPI_FAMILY_COL] == FSOS:
                 self.calculate_fsos(detail, groupers, query_string, dataframe_to_process)
             elif kpi_sheet_row[KPI_FAMILY_COL] == Count:
@@ -463,7 +468,8 @@ def get_groupers_and_query_string(detail):
         if not is_nan(detail[each_key].iloc[0]):
             filters.append(PARAM_DB_MAP[detail[each_key].iloc[0]]['key'])
             if not is_nan(detail[each_key + "_value"].iloc[0]):
-                filter_data = [str(x.strip()) for x in detail[each_key + "_value"].iloc[0].split(',') if x.strip()]
+                filter_data = [str(x.strip()) for x in detail[each_key +
+                                                              "_value"].iloc[0].split(',') if x.strip()]
                 filter_string += ' {key} in {data_list} and'.format(
                     key=PARAM_DB_MAP[detail[each_key].iloc[0]]['name'],
                     data_list=filter_data

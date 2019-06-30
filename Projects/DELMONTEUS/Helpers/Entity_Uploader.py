@@ -4,8 +4,6 @@ from Trax.Cloud.Services.Connector.Keys import DbUsers
 from Trax.Data.Projects.Connector import ProjectConnector
 
 
-
-
 class EntityUploader():
     PS_TYPE = 'PS scores'
     ENTITY_TYPE_TABLE = 'static.kpi_entity_type'
@@ -45,7 +43,7 @@ class EntityUploader():
                     self.insert_into_entity_types(entity_type)
                     self.entity_type_dict[entity_type] = self.entity_type_pk
                 else:
-                    len_errors.append('    Entity Type "{}" and Entity {} not added: {} Exceeds {} characters'\
+                    len_errors.append('    Entity Type "{}" and Entity {} not added: {} Exceeds {} characters'
                                       .format(entity_type, entity, entity_type, max_entity_type_len))
                     continue
             entity_type_fk = self.entity_type_dict[entity_type]
@@ -67,7 +65,7 @@ class EntityUploader():
                             break
 
                 else:
-                    len_errors.append('    Entity {} not added: Exceeds {} characters'\
+                    len_errors.append('    Entity {} not added: Exceeds {} characters'
                                       .format(entity, max_custom_entity_len))
 
             try:
@@ -154,7 +152,3 @@ class EntityUploader():
 
     def get_table_attributes(self, table):
         return pd.read_sql_query('Show Columns FROM {};'.format(table), self.rds_conn.db)
-
-
-
-

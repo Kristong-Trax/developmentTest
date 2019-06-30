@@ -48,4 +48,3 @@ class Generator:
             versioned_candidates.append((float(''.join(normed_components)), x))
         template = sorted(versioned_candidates, key=lambda x: x[0])[-1][1]
         return os.path.join(path, template)
-

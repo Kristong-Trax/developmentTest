@@ -19,16 +19,16 @@ if __name__ == '__main__':
     project_name = 'pngcn-prod'
     data_provider = KEngineDataProvider(project_name)
     output = Output()
-    sessions = {
-                # '471D9B25-30FA-4B33-97DC-509D126E527E': ['18478945'],
-                # '117BC751-52D2-462E-8EF4-4ECE6187179C': ['19214788'],
-                'ea97c8f5-b36c-4965-b025-a8f5b7ab7cfe': ['18324793']}
-                # {'0aafdc01-51bb-46cb-bf22-33ccc4a27325': ['18542929'],
-                # '117BC751-52D2-462E-8EF4-4ECE6187179C': ['19214768']}
-                # '6AC1E27A-B2C7-4389-8522-7F1D29642CA4': ['17901923'],
-                # '0D9C3FAE-E62D-4467-B279-2FB8FC32A2DD': ['17886164'],
-                # '6e4dc935-ab56-45ef-9408-caaddb963874': ['17888505'],
-                # 'C544B5DB-B61F-4B02-B03A-6D8748B3B636': ['17874115']}
+    sessions = {'b4891c75-ccd5-4da6-bb4c-e33e433eb18d': ['19625867'],
+                '381DD222-229E-4B87-ADCD-545B9531D7F2': ['19626212'],
+                '4B69AD0D-64BE-4A14-BBE1-7FF025E7C12F': ['19626218'],
+                '4E75E4F1-F5F0-4B77-8337-513F61913864': ['19626328'],
+                'b958b316-8508-4455-bb25-7903bdbdaf5b': ['19626396', '19626413'],
+                '9CA65502-74CF-400D-B24B-E70496D3EE02': ['17910469']}
+    # '10EAADFA-FF0D-488A-8650-2E8A4E2CBAC0': ['17915480']}
+    # '0D9C3FAE-E62D-4467-B279-2FB8FC32A2DD': ['17886164'],
+    # '6e4dc935-ab56-45ef-9408-caaddb963874': ['17888505'],
+    # 'C544B5DB-B61F-4B02-B03A-6D8748B3B636': ['17874115']}
     for session in sessions.keys():
         print "Running for {}".format(str(session))
         for scene in sessions[session]:
