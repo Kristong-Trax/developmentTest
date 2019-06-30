@@ -104,6 +104,8 @@ PCC_FILTERS = {
 
 
 # Block_Variant KPI
+VARIANT_BLOCK_TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)),
+                                           '..', 'Data', 'pngcn_variant_block_template_v1.xlsx')
 BLOCK_VARIANT_KPI = 'Block_Variant'
 MIN_FACINGS_ON_SAME_LAYER = 'Min_facing_on_same_layer'
 MIN_LAYER_NUMBER = 'Min_layer_#'
@@ -173,7 +175,7 @@ class PngcnSceneKpis(object):
 
     def calculate_variant_block(self):
         legal_blocks = {}
-        variant_block_template = pd.read_excel('Data/pngcn_variant_block_template_v1.xlsx').fillna("")
+        variant_block_template = pd.read_excel(VARIANT_BLOCK_TEMPLATE_PATH).fillna("")
         block_class = BLOCK(self.data_provider)
         for i, row_in_template in variant_block_template.iterrows():
             block_groups = {}
