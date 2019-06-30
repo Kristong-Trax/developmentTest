@@ -100,7 +100,7 @@ class CCRUProjectCalculations:
                         .format(self.pos_kpi_set_name, self.store_id))
             return
 
-        if self.visit_date < self.tool_box.MIN_CALC_DATE:
+        if str(self.visit_date) < self.tool_box.MIN_CALC_DATE:
             Log.warning('Error. Session cannot be calculated. '
                         'Visit date is less than {2} - {0}. '
                         'Store ID {1}.'
