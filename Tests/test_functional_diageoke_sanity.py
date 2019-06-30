@@ -22,6 +22,9 @@ __author__ = 'limorc'
 
 class TestKEngineOutOfTheBox(TestFunctionalCase):
 
+    seeder = Seeder()
+
+    @seeder.seed(["mongodb_products_and_brands_seed", "diageoke_seed"], ProjectsSanityData())
     def set_up(self):
         super(TestKEngineOutOfTheBox, self).set_up()
         self.mock_object('save_latest_templates', path='KPIUtils.DIAGEO.ToolBox.DIAGEOToolBox')
@@ -44,8 +47,6 @@ class TestKEngineOutOfTheBox(TestFunctionalCase):
     def config_file_path(self):
         return os.path.join(os.path.dirname(os.path.realpath(__file__)), 'k-engine-test.config')
 
-    seeder = Seeder()
-
     def _assert_kpi_results_filled(self):
         connector = PSProjectConnector(TestProjectsNames().TEST_PROJECT_1, DbUsers.Docker)
         cursor = connector.db.cursor(MySQLdb.cursors.DictCursor)
@@ -60,12 +61,10 @@ class TestKEngineOutOfTheBox(TestFunctionalCase):
     def test_diageoke_sanity(self):
         project_name = ProjectsSanityData.project_name
         data_provider = KEngineDataProvider(project_name)
-        sessions = [self.session_uid]
-        for session in sessions:
-            data_provider.load_session_data(session)
-            output = Output()
-            DIAGEOKECalculations(data_provider, output).run_project_calculations()
-            self._assert_kpi_results_filled()
+        data_provider.load_session_data(self.session_uid)
+        output = Output()
+        DIAGEOKECalculations(data_provider, output).run_project_calculations()
+        self._assert_kpi_results_filled()
 
     @seeder.seed(["mongodb_products_and_brands_seed", "diageoke_seed"], ProjectsSanityData())
     def test_get_match_display(self):
