@@ -200,6 +200,7 @@ class PngcnSceneKpis(object):
                 filtered_df = self.parser.filter_df(filter_row_for_sub_brand, complete_df)
                 if filtered_df.empty:
                     continue
+                filtered_df = filtered_df[filtered_df['stacking_layer'] == 1]
                 self.save_eye_light_products(block_filters['sub_brand_name'][0], filtered_df)
                 filter_block_result = block_class.network_x_block_together(
                     population=block_filters,
