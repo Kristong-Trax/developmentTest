@@ -208,6 +208,8 @@ class GSKJPToolBox:
                                                                               'include_stacking': stacking_param,
                                                                               'check_vertical_horizontal': True,
                                                                               })
+        # denominator = len(result['cluster'].graph['mapping'])
+        # numerator
         result = 0 if result[result['is_block']].empty else 100
 
         return result
