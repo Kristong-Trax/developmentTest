@@ -66,7 +66,8 @@ class GSKJPToolBox:
                                                           'gsk_set_up.xlsx'), sheet_name='Functional KPIs',
                                              keep_default_na=False)
 
-        self.gsk_generator = GSKGenerator(self.data_provider, self.output, self.common, self.set_up_template)
+        self.gsk_generator = GSKGenerator(
+            self.data_provider, self.output, self.common, self.set_up_template)
         self.blocking_generator = Block(self.data_provider)
         self.assortment = self.gsk_generator.get_assortment_data_provider()
         self.store_info = self.data_provider['store_info']
@@ -112,7 +113,8 @@ class GSKJPToolBox:
 
         # # local kpis
         for kpi in self.KPI_DICT.keys():
-            self.gsk_generator.tool_box.extract_data_set_up_file(kpi, self.set_up_data, self.KPI_DICT)
+            self.gsk_generator.tool_box.extract_data_set_up_file(
+                kpi, self.set_up_data, self.KPI_DICT)
 
         results_ecaps = self.gsk_ecaps_kpis()
         self.common.save_json_to_new_tables(results_ecaps)
@@ -171,8 +173,10 @@ class GSKJPToolBox:
         if df.empty:
             Log.warning('match_product_in_scene is empty ')
             return 0, 0, 0
-        df = self.gsk_generator.tool_box.tests_by_template('GSK_PLN_LSOS_SCORE', df, self.set_up_data)
-        result = self.gsk_generator.tool_box.calculate_sos(df, {'brand_fk': brand}, {}, Const.LINEAR)[0]
+        df = self.gsk_generator.tool_box.tests_by_template(
+            'GSK_PLN_LSOS_SCORE', df, self.set_up_data)
+        result = self.gsk_generator.tool_box.calculate_sos(
+            df, {'brand_fk': brand}, {}, Const.LINEAR)[0]
         target = policy['brand_target'].iloc[0]
         score = result / target
         return result, score, target
@@ -188,7 +192,8 @@ class GSKJPToolBox:
             'template_name': templates} if templates else None  # figure out which template name should I use
 
         # taking from params from set up  info
-        stacking_param = False if not self.set_up_data[(Const.INCLUDE_STACKING, self.PLN_BLOCK)] else True  # false
+        stacking_param = False if not self.set_up_data[(
+            Const.INCLUDE_STACKING, self.PLN_BLOCK)] else True  # false
         products_excluded = []
         if not self.set_up_data[(Const.INCLUDE_OTHERS, self.PLN_BLOCK)]:
             products_excluded.append(Const.OTHER)
@@ -220,11 +225,13 @@ class GSKJPToolBox:
                         product details.
                         filtered by set up
                 """
-        lvl3_assort, filter_scif = self.gsk_generator.tool_box.get_assortment_filtered(self.set_up_data, kpi_name)
+        lvl3_assort, filter_scif = self.gsk_generator.tool_box.get_assortment_filtered(
+            self.set_up_data, kpi_name)
         if lvl3_assort is None:
             return None
         kpi_assortment_fk = self.common.get_kpi_fk_by_kpi_type(kpi_fk)
-        kpi_results = lvl3_assort[lvl3_assort['kpi_fk_lvl3'] == kpi_assortment_fk]  # general assortment
+        kpi_results = lvl3_assort[lvl3_assort['kpi_fk_lvl3']
+                                  == kpi_assortment_fk]  # general assortment
         kpi_results = pd.merge(kpi_results, self.all_products[Const.PRODUCTS_COLUMNS],
                                how='left', on='product_fk')
 
@@ -251,7 +258,8 @@ class GSKJPToolBox:
         kpi_ecaps_product = self.common.get_kpi_fk_by_kpi_type(self.PRODUCT_PRESENCE)
         if assortment.empty:
             return 0, 0, 0, results
-        brand_results = assortment[assortment['brand_fk'] == brand]  # only assortment of desired brand
+        brand_results = assortment[assortment['brand_fk']
+                                   == brand]  # only assortment of desired brand
         for result in brand_results.itertuples():
             score = result.in_store * 100
             results.append(
@@ -279,7 +287,8 @@ class GSKJPToolBox:
                                              result :  (numerator/denominator)*100
                                              results :  array of dictionary, each dict contains the result details
                """
-        brand_results = assortment[assortment['brand_fk'] == brand]  # only assortment of desired brand
+        brand_results = assortment[assortment['brand_fk']
+                                   == brand]  # only assortment of desired brand
         if 'total' not in self.assortment.LVL2_HEADERS or 'passes' not in self.assortment.LVL2_HEADERS:
             self.assortment.LVL2_HEADERS.extend(['total', 'passes'])
 
@@ -333,11 +342,13 @@ class GSKJPToolBox:
         counter_brands = 0
 
         # assortment_lvl3 msl df initialize
-        self.gsk_generator.tool_box.extract_data_set_up_file(self.PLN_MSL, self.set_up_data, self.KPI_DICT)
+        self.gsk_generator.tool_box.extract_data_set_up_file(
+            self.PLN_MSL, self.set_up_data, self.KPI_DICT)
         assortment_msl = self.msl_assortment(Const.DISTRIBUTION, self.PLN_MSL)
 
         # set data frame to find position shelf
-        df_position_score = pd.merge(self.match_product_in_scene, self.all_products, on="product_fk")
+        df_position_score = pd.merge(self.match_product_in_scene,
+                                     self.all_products, on="product_fk")
         df_position_score = pd.merge(self.scif[Const.SCIF_COLUMNS],
                                      df_position_score, how='right', right_on=['scene_fk', 'product_fk'],
                                      left_on=['scene_id', 'product_fk'])
@@ -357,7 +368,8 @@ class GSKJPToolBox:
             if policy.empty:
                 Log.warning('There is no target policy matching brand')  # adding brand name
                 return results_df
-            identifier_parent = self.common.get_dictionary(brand_fk=brand, kpi_fk=kpi_compliance_brands_fk)
+            identifier_parent = self.common.get_dictionary(
+                brand_fk=brand, kpi_fk=kpi_compliance_brands_fk)
             # msl_kpi
             msl_numerator, msl_denominator, msl_result = self.pln_msl_summary(brand, assortment_msl)
             msl_score = msl_result * msl_target
@@ -392,8 +404,7 @@ class GSKJPToolBox:
             position_score = position_score * posit_target
             results_df.append({'fk': kpi_position_fk, 'numerator_id': brand, 'denominator_id': self.store_fk,
                                'denominator_result': position_den, 'numerator_result': position_num, 'result':
-                                   position_result, 'score': position_score, 'target': posit_target, 'identifier_parent'
-                               : identifier_parent, 'should_enter': True})
+                                   position_result, 'score': position_score, 'target': posit_target, 'identifier_parent': identifier_parent, 'should_enter': True})
 
             # compliance score per brand
             compliance_score = position_score + block_score + lsos_score + msl_score

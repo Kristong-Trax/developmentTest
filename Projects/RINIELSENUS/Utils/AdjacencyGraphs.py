@@ -16,7 +16,6 @@ from Trax.Data.Orm.OrmCore import OrmSession
 from Trax.Utils.Logging.Logger import Log
 
 
-
 class MaskingBasedAdjacency(object):
 
     def __init__(self, mpis, masking_information, **kwargs):
@@ -40,7 +39,8 @@ class MaskingBasedAdjacency(object):
         self._complex_stacking_pairs = []
 
     def _minify_scene_width(self):
-        right_side = self.mpis_with_masks.groupby(["bay_number"])["x_right"].max().to_frame('bay_right')
+        right_side = self.mpis_with_masks.groupby(
+            ["bay_number"])["x_right"].max().to_frame('bay_right')
         left_side = self.mpis_with_masks.groupby(["bay_number"])["x_top"].min().to_frame('bay_left')
         bay_width_df = left_side.join(right_side)
         bay_width_df['width'] = bay_width_df['bay_right'] - bay_width_df['bay_left']
@@ -50,24 +50,28 @@ class MaskingBasedAdjacency(object):
             if bay_distance > self.max_width:
                 bay_offset_dict[i] = bay_width_df.loc[bay_width_df.index.max(), 'bay_right'] - bay_width_df.loc[
                     i, 'bay_right'] - \
-                                     (bay_width_df.loc[bay_width_df.index > i, 'width'].sum()
-                                      + 10 * (bay_width_df.index.max() - i))  # 10 pixel buffer between bays
+                    (bay_width_df.loc[bay_width_df.index > i, 'width'].sum()
+                     + 10 * (bay_width_df.index.max() - i))  # 10 pixel buffer between bays
         for col in ["x_top", "x_right"]:
             self.mpis_with_masks[col] = self.mpis_with_masks.apply(lambda x: x[col] + bay_offset_dict.get(
                 x['bay_number'], 0), axis=1)
 
     def _compute_maximal_castings(self):
         # compute the maximal distance between two adjacent shelves
-        shelf_y = self.mpis_with_masks.groupby(["bay_number", "shelf_number"])["y_right"].max().reset_index()
+        shelf_y = self.mpis_with_masks.groupby(["bay_number", "shelf_number"])[
+            "y_right"].max().reset_index()
         cross_shelfs = shelf_y.merge(shelf_y, on='bay_number')
-        y_positions = cross_shelfs[(cross_shelfs["shelf_number_x"] - cross_shelfs["shelf_number_y"]).abs() == 1]
+        y_positions = cross_shelfs[(cross_shelfs["shelf_number_x"] -
+                                    cross_shelfs["shelf_number_y"]).abs() == 1]
         max_shelf_distance = (y_positions["y_right_x"] - y_positions["y_right_y"]).abs().max()
         self.max_height = (self.mpis_with_masks["y_top"] - self.mpis_with_masks[
             "y_right"]).abs().max() + max_shelf_distance
         # Only one shelf exist in one of the bays - take max product height
         if (self.mpis_with_masks.groupby('bay_number')['shelf_number'].nunique().min() == 1) or y_positions.empty:
-            self.max_height = (self.mpis_with_masks["y_top"] - self.mpis_with_masks["y_right"]).abs().max()
-        self.max_width = (self.mpis_with_masks["x_top"] - self.mpis_with_masks["x_right"]).abs().max()
+            self.max_height = (self.mpis_with_masks["y_top"] -
+                               self.mpis_with_masks["y_right"]).abs().max()
+        self.max_width = (self.mpis_with_masks["x_top"] -
+                          self.mpis_with_masks["x_right"]).abs().max()
 
     def _init_cache(self):
         self.casting_dict = {}
@@ -87,13 +91,12 @@ class MaskingBasedAdjacency(object):
         self.polygons_meta_data = polygons_meta_data
         self.polygon_df = (pd.DataFrame(polygon_shelf_coordinates, columns=[
             'polygon', 'match_id', 'shelf_number', 'bay_number', 'facing_sequence_number', 'stacking_layer']).
-            assign(is_last_facing_sequence_number=
-                   lambda df1: df1["facing_sequence_number"] ==
-                               df1.groupby(['bay_number', 'shelf_number'])["facing_sequence_number"].transform(
-                                   "max")).  # Add indicator for the last facing number in each shelf
+            assign(is_last_facing_sequence_number=lambda df1: df1["facing_sequence_number"] ==
+                   df1.groupby(['bay_number', 'shelf_number'])["facing_sequence_number"].transform(
+                "max")).  # Add indicator for the last facing number in each shelf
             assign(is_top_stacking=lambda df2: df2["stacking_layer"] ==
-                                               df2.groupby(['bay_number', 'shelf_number',
-                                                            'facing_sequence_number'])["stacking_layer"].
+                   df2.groupby(['bay_number', 'shelf_number',
+                                'facing_sequence_number'])["stacking_layer"].
                    transform("max")).  # Add indicator for the last stacking layer in each shelf and sequence num
             set_index(['bay_number', 'shelf_number', 'facing_sequence_number', 'stacking_layer']).
             sort_index())
@@ -103,9 +106,9 @@ class MaskingBasedAdjacency(object):
             return sign * getattr(pol.centroid, coord)
 
         self.direction_params = {Direction.UP:
-                                     {'yoff': -self.max_height,
-                                      'xoff': 0,
-                                      'order_func': partial(candidate_order, coord='y', sign=-1)},
+                                 {'yoff': -self.max_height,
+                                  'xoff': 0,
+                                  'order_func': partial(candidate_order, coord='y', sign=-1)},
                                  Direction.DOWN:
                                      {'yoff': self.max_height,
                                       'xoff': 0,
@@ -174,13 +177,15 @@ class MaskingBasedAdjacency(object):
                 return False
             # Check if polygon is covering at least <horizontal_overlap_ratio>
             # of candidate to check that it really is on top of the product
-            is_covering_candidate = intersection_width > horizontal_overlap_ratio * (p.bounds[2] - p.bounds[0])
+            is_covering_candidate = intersection_width > horizontal_overlap_ratio * \
+                (p.bounds[2] - p.bounds[0])
             if not is_covering_candidate:
                 return False
             return ((p.bounds[1] > polygon.centroid.y and shelf_offset == 1) or
                     (p.bounds[3] < polygon.centroid.y and shelf_offset == -1))
 
-        sequence_numbers_to_check = [polygon_meta['facing_sequence_number'] + i for i in [-2, -1, 1, 2]]
+        sequence_numbers_to_check = [
+            polygon_meta['facing_sequence_number'] + i for i in [-2, -1, 1, 2]]
         adjacent_products_in_same_bay_shelf = self.polygon_df.loc[pd.IndexSlice[
                                                                   polygon_meta['bay_number'],
                                                                   polygon_meta['shelf_number'],
@@ -211,7 +216,8 @@ class MaskingBasedAdjacency(object):
         else:
             # get all candidates from higher / lower shelf (only first or last stacking depending if its up or down)
             if polygon_meta['shelf_number'] + shelf_offset in products_in_same_bay.index.get_level_values(0):
-                next_shelf_products = products_in_same_bay.loc[(polygon_meta['shelf_number'] + shelf_offset)]
+                next_shelf_products = products_in_same_bay.loc[(
+                    polygon_meta['shelf_number'] + shelf_offset)]
                 if shelf_offset == -1:
                     return next_shelf_products.loc[pd.IndexSlice[:, 1], :].polygon.tolist()
                 else:
@@ -227,7 +233,7 @@ class MaskingBasedAdjacency(object):
     def get_candidates(self, polygon_row, direction):
         complex_stacking_polygons = []
         xoff, yoff, order_func = self.direction_params[direction]['xoff'], self.direction_params[direction]['yoff'], \
-                                 self.direction_params[direction]['order_func']
+            self.direction_params[direction]['order_func']
         candidates_by_coordinates = []
         polygon_with_shadow = self.cast_shadow(polygon_row.polygon, xoff, yoff)
         if direction == Direction.UP:
@@ -364,13 +370,15 @@ class AdjacencyGraphBuilder(object):
         matches_df = AdjacencyGraphBuilder._load_mpis(project, scene_id)
 
         if matches_df.drop_duplicates('scene_fk').shape[0] > 1:
-            raise NotImplementedError('Match product in scene data cannot contain data from more than one scene')
+            raise NotImplementedError(
+                'Match product in scene data cannot contain data from more than one scene')
 
         matches_df['product_fk'] = matches_df['product_fk'].astype(int)
 
         masking_df = AdjacencyGraphBuilder._load_maskings(project, matches_df.scene_fk.iloc[0])
 
-        _base_adjacency_graph = AdjacencyGraphBuilder.build_base_adjacency_graph(matches_df, masking_df, **kwargs)
+        _base_adjacency_graph = AdjacencyGraphBuilder.build_base_adjacency_graph(
+            matches_df, masking_df, **kwargs)
         return _base_adjacency_graph
 
     @staticmethod
@@ -382,7 +390,8 @@ class AdjacencyGraphBuilder(object):
         scene_matches_df = scene_matches_df[scene_matches_df['stacking_layer'] > 0]
 
         if scene_matches_df.drop_duplicates('scene_fk').shape[0] > 1:
-            raise NotImplementedError('Match product in scene data cannot contain data from more than one scene')
+            raise NotImplementedError(
+                'Match product in scene data cannot contain data from more than one scene')
 
         mandatory_attributes = {"product_fk", "pk", "shelf_number", "bay_number"}
         found_from_mandatory = mandatory_attributes & set(scene_matches_df.columns)
@@ -393,7 +402,8 @@ class AdjacencyGraphBuilder(object):
 
         if additional_attributes:
             # verify all attributes are present in matches_df
-            attributes_not_in_matches_df = set(additional_attributes) - set(scene_matches_df.columns)
+            attributes_not_in_matches_df = set(
+                additional_attributes) - set(scene_matches_df.columns)
             if len(attributes_not_in_matches_df) > 0:
                 raise IndexError("The following attributes are missing from the matches dataframe {}".format(
                     attributes_not_in_matches_df))
@@ -488,11 +498,13 @@ class AdjacencyGraphBuilder(object):
 
         filtered_nodes = [n for i, n in graph.nodes(data=True) if i in selected_nodes]
 
-        attributes_list = [attr for attr, value in graph.node[selected_nodes[0]].iteritems() if isinstance(value, NodeAttribute)]
+        attributes_list = [attr for attr, value in graph.node[selected_nodes[0]
+                                                              ].iteritems() if isinstance(value, NodeAttribute)]
 
         node_attributes = {}
         for attribute_name in attributes_list:
-            node_attributes[attribute_name] = AdjacencyGraphBuilder._chain_attribute(attribute_name, filtered_nodes)
+            node_attributes[attribute_name] = AdjacencyGraphBuilder._chain_attribute(
+                attribute_name, filtered_nodes)
 
         # Total facing of all the products.
         total_facings = sum([n['facings'] for n in filtered_nodes])
@@ -516,7 +528,8 @@ class AdjacencyGraphBuilder(object):
         AdjacencyGraphBuilder._validate_attribute_is_unique(graph, level)
 
         # A set of all the values of the relevant level.
-        level_values = set(itertools.chain(*[node[level].values for idx, node in graph.nodes(data=True)]))
+        level_values = set(itertools.chain(
+            *[node[level].values for idx, node in graph.nodes(data=True)]))
 
         # A list of all the nodes in a condensed node (group of nodes).
         node_groups = list()
@@ -526,7 +539,8 @@ class AdjacencyGraphBuilder(object):
         for level_value in level_values:
 
             # The list of the relevant nodes.
-            relevant_nodes = tuple(get_relevant_nodes(graph=graph, level_name=level, value=level_value))
+            relevant_nodes = tuple(get_relevant_nodes(
+                graph=graph, level_name=level, value=level_value))
 
             if len(relevant_nodes) == 0:
                 continue
@@ -543,7 +557,7 @@ class AdjacencyGraphBuilder(object):
 
                 # The condensed node attributes.
                 merged_node_attributes = AdjacencyGraphBuilder.get_merged_node_attributes_from_nodes(subgraph_relevant_nodes,
-                                                                                    connected_component)
+                                                                                                     connected_component)
 
                 # Adding the condensed node attributes.
                 node_group_attributes[subgraph_relevant_nodes] = merged_node_attributes

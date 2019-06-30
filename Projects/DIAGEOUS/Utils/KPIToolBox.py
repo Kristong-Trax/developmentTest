@@ -338,9 +338,11 @@ class DIAGEOUSToolBox:
         if sub_brand is None or self.all_products_sku[self.all_products_sku['product_fk'] == product_fk].empty:
             return None
         relevant_substitution_products = \
-            relevant_scif[relevant_scif['substitution_product_fk'] == product_fk]['product_fk'].unique().tolist()
+            relevant_scif[relevant_scif['substitution_product_fk']
+                          == product_fk]['product_fk'].unique().tolist()
         product_fk_with_substs = relevant_substitution_products + [product_fk]
-        facings = relevant_scif[relevant_scif['product_fk'].isin(product_fk_with_substs)]['facings'].sum()
+        facings = relevant_scif[relevant_scif['product_fk'].isin(
+            product_fk_with_substs)]['facings'].sum()
         if facings > 0 or (product_fk in self.sales_data and kpi_name == Const.POD):
             result, passed = Const.DISTRIBUTED, 1
         else:
@@ -366,9 +368,11 @@ class DIAGEOUSToolBox:
         total_kpi_fk = self.common.get_kpi_fk_by_kpi_name(
             Const.DB_OFF_NAMES[Const.POD][Const.TOTAL])
         relevant_substitution_products = \
-            relevant_scif[relevant_scif['substitution_product_fk'] == product_fk]['product_fk'].unique().tolist()
+            relevant_scif[relevant_scif['substitution_product_fk']
+                          == product_fk]['product_fk'].unique().tolist()
         product_fk_with_substs = relevant_substitution_products + [product_fk]
-        facings = relevant_scif[relevant_scif['product_fk'].isin(product_fk_with_substs)]['facings'].sum()
+        facings = relevant_scif[relevant_scif['product_fk'].isin(
+            product_fk_with_substs)]['facings'].sum()
         if facings > 0:
             result, passed = Const.DISTRIBUTED, 1
         else:

@@ -32,7 +32,7 @@ class GSKJPToolBox:
     ECAP_ALL_BRAND = 'GSK_PLN_ECAPS_ALL BRANDS'
     GLOBAL_LSOS_BRAND_BY_STORE = 'GSK_LSOS_All_Brand_In_Whole_Store'
     PLN_ASSORTMENT_KPI = 'PLN_ECAPS - SKU'
-    ECAPS_FILTER_IDENT ='GSK_ECAPS'
+    ECAPS_FILTER_IDENT = 'GSK_ECAPS'
 
     KPI_DICT = {"GSK_PLN_BLOCK_SCORE": "GSK_PLN_BLOCK_SCORE", "GSK_ECAPS": "GSK_ECAPS",
                 "GSK_PLN_MSL_SCORE": "GSK_PLN_MSL_SCORE",
@@ -61,7 +61,8 @@ class GSKJPToolBox:
                                                           'gsk_set_up.xlsx'), sheet_name='Functional KPIs',
                                              keep_default_na=False)
 
-        self.gsk_generator = GSKGenerator(self.data_provider, self.output, self.common, self.set_up_template)
+        self.gsk_generator = GSKGenerator(
+            self.data_provider, self.output, self.common, self.set_up_template)
         # self.blocking_generator = Block(self.data_provider)
         # self.assortment = self.gsk_generator.get_assortment_data_provider()
         # self.store_info = self.data_provider['store_info']
