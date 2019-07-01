@@ -104,12 +104,18 @@ class ToolBox:
                     self.scenes_with_shelves[scene] = max(shelves)
                 self.converted_groups = self.convert_groups_from_template()
                 self.external_targets = self.ps_data.get_kpi_external_targets(
-                    kpi_operation_types=Const.OPEN_OPERATION_TYPES)
+                    kpi_operation_types=Const.OPEN_OPERATION_TYPES,
+                    key_fields=['product_fk', 'state_fk', 'store_number_1', 'scene_type', 'attr2'],
+                    data_fields=['minimum facings', 'MINIMUM SHELF LOCATION', 'BENCHMARK Value', 'target_min',
+                                 'competitor_product_fk', 'relative_target_max', 'relative_target_min', 'target_max'])
                 self.external_targets = self.external_targets.fillna("N/A")
         elif self.attr6 != Const.ON:
                 self.init_assortment()
                 self.external_targets = self.ps_data.get_kpi_external_targets(
-                    kpi_operation_types=Const.INDEPENDENT_OPERATION_TYPES)
+                    kpi_operation_types=Const.INDEPENDENT_OPERATION_TYPES,
+                    key_fields=['product_fk', 'state_fk', 'store_number_1', 'scene_type', 'attr2'],
+                    data_fields=['minimum facings', 'MINIMUM SHELF LOCATION', 'BENCHMARK Value', 'target_min',
+                                 'competitor_product_fk', 'relative_target_max', 'relative_target_min', 'target_max'])
                 self.external_targets = self.external_targets.fillna("N/A")
         if self.attr6 == Const.OFF:
             total_off_trade_fk = self.common.get_kpi_fk_by_kpi_name(
