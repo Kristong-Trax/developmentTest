@@ -9,7 +9,7 @@ from Trax.Data.Testing.TestProjects import TestProjectsNames
 
 from Projects.PNGJP.Tests.Data.test_data_pngjp_sanity import ProjectsSanityData
 from Projects.PNGJP.Calculations import PNGJPCalculations
-from Trax.Apps.Core.Testing.BaseCase import TestFunctionalCase, patch
+from Trax.Apps.Core.Testing.BaseCase import TestFunctionalCase, MagicMock
 
 from Tests.TestUtils import remove_cache_and_storage
 import pandas as pd
@@ -21,13 +21,19 @@ class TestKEngineOutOfTheBox(TestFunctionalCase):
     seeder = Seeder()
 
     @seeder.seed(["mongodb_products_and_brands_seed", "pngjp_seed"], ProjectsSanityData())
-    @mock.patch('TEMPLATE_PATH',
-           'Projects/PNGJP/Tests/Data/Template.xlsx')
-    @mock.patch('GOLDEN_ZONE_PATH',
-           'Projects/PNGJP/Tests/Data/TemplateQualitative.xlsx')
     def set_up(self):
         super(TestKEngineOutOfTheBox, self).set_up()
 
+
+        # mock templates
+        self.get_template_path_mock = MagicMock('get_template_path',
+                                                path='Projects.PNGJP.Utils.KPIToolBox.PNGJPToolBox',
+                                                side_effect=[
+                                                    os.path.join(os.path.dirname(os.path.realpath(__file__)), 'Data',
+                                                                 'Template.xlsx'),
+                                                    os.path.join(os.path.dirname(os.path.realpath(__file__)), 'Data',
+                                                                 'TemplateQualitative.xlsx')
+                                                ])
         # get expected results DB from file
         self.test_results_against = pd.read_csv('Data/Pngcn_results_E14412B2-BEF5-4380-B5D0-D3E23674C32B.csv')
         self.kpi_expected_results_df = self.test_results_against[~self.test_results_against['sum_result'].isnull()]
