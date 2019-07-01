@@ -58,7 +58,8 @@ class PNGHKToolBox:
         exclude_products = exclude_products[exclude_products['exclude_include_set_fk'] == 1]
         exclude_products_list = exclude_products['product_fk'].tolist()
         df = df[~df['product_fk'].isin(exclude_products_list)]
-        distinct_session_fk = self.scif[['scene_fk', 'template_name', 'template_fk']].drop_duplicates()
+        distinct_session_fk = self.scif[['scene_fk',
+                                         'template_name', 'template_fk']].drop_duplicates()
         self.df = pd.merge(df, distinct_session_fk, on="scene_fk", how="left")
         kpi_ids = self.kpis_sheet[Const.KPI_ID].drop_duplicates().tolist()
         for id in kpi_ids:
@@ -111,7 +112,8 @@ class PNGHKToolBox:
                 total_numerator += len(set(df[df['product_type'] == 'SKU']['scene_fk']))
                 total_denominator += len(set(df['scene_fk']))
         if total_save:
-            result = float(total_numerator) / float(total_denominator) if (total_denominator != 0) else 0
+            result = float(total_numerator) / \
+                float(total_denominator) if (total_denominator != 0) else 0
             self.common.write_to_db_result(fk=kpi_fk, numerator_id=self.store_id, denominator_id=self.store_id,
                                            numerator_result=total_numerator, denominator_result=total_denominator,
                                            result=result, score=result)
@@ -137,7 +139,8 @@ class PNGHKToolBox:
 
             category = row[Const.CATEGORY]
             if category != "":
-                denominator_id = self.all_products[self.all_products['category']==category]['category_fk'].iloc[0]
+                denominator_id = self.all_products[self.all_products['category']
+                                                   == category]['category_fk'].iloc[0]
                 filters['category'] = category
             else:
                 denominator_id = self.store_id
@@ -190,7 +193,8 @@ class PNGHKToolBox:
             for sc in scene_types:
                 if sc != "":
                     try:
-                        context_id = self.templates[self.templates['template_name'] == sc]['template_fk'].iloc[0]
+                        context_id = self.templates[self.templates['template_name']
+                                                    == sc]['template_fk'].iloc[0]
                     except:
                         Log.warning("No scene type with the following name: " + str(sc))
                         continue
@@ -211,17 +215,18 @@ class PNGHKToolBox:
                 for category in categories:
                     if category != "":
                         denominator_id = self.all_products[self.all_products['category'] ==
-                                                                category]['category_fk'].iloc[0]
+                                                           category]['category_fk'].iloc[0]
                         filters['category'] = category
                         all_numerators = self.df[self.df['category'] ==
-                                               category][entity_name].drop_duplicates().values.tolist()
+                                                 category][entity_name].drop_duplicates().values.tolist()
                     else:
                         denominator_id = self.store_id
                         all_numerators = df[entity_name].drop_duplicates().values.tolist()
 
                     if row[Const.NUMERATOR] != "":
                         all_numerators = [row[Const.NUMERATOR]]
-                    denominator = df[self.tools.get_filter_condition(df, **filters)]['width_mm_advance'].sum()
+                    denominator = df[self.tools.get_filter_condition(
+                        df, **filters)]['width_mm_advance'].sum()
                     if denominator == 0:
                         continue
                     if scene_size != "":
@@ -229,7 +234,8 @@ class PNGHKToolBox:
                         denominator = scene_size
                     for entity in all_numerators:
                         filters[entity_name] = entity
-                        numerator = df[self.tools.get_filter_condition(df, **filters)]['width_mm_advance'].sum()
+                        numerator = df[self.tools.get_filter_condition(
+                            df, **filters)]['width_mm_advance'].sum()
                         del filters[entity_name]
                         if scene_size != "":
                             numerator = numerator * ratio
@@ -240,11 +246,12 @@ class PNGHKToolBox:
                             Log.warning("No entity in this name " + entity)
                             numerator_id = -1
                         if (numerator_id, denominator_id, context_id) not in results_dict.keys():
-                            results_dict[numerator_id, denominator_id, context_id] = [numerator, denominator]
+                            results_dict[numerator_id, denominator_id,
+                                         context_id] = [numerator, denominator]
                         else:
                             results_dict[numerator_id, denominator_id, context_id] = map(sum,
-                                                         zip(results_dict[numerator_id, denominator_id, context_id],
-                                                             [numerator, denominator]))
+                                                                                         zip(results_dict[numerator_id, denominator_id, context_id],
+                                                                                             [numerator, denominator]))
         if len(results_dict) == 0:
             return
 
@@ -351,7 +358,9 @@ class PNGHKToolBox:
             shelfs_to_include = row[Const.OSD_NUMBER_OF_SHELVES].values[0]
             if shelfs_to_include != "":
                 shelfs_to_include = int(shelfs_to_include)
-                df_list.append(scene_df[scene_df['shelf_number_from_bottom'] >= shelfs_to_include])
+                result_df = scene_df[scene_df['shelf_number_from_bottom'] >= shelfs_to_include]
+                if not result_df.empty:
+                    df_list.append(result_df)
 
             # if no osd rule is applied
             if row[Const.HAS_OSD].values[0] == Const.NO:
@@ -382,8 +391,8 @@ class PNGHKToolBox:
                 if not products_df.empty:
                     for index, p in products_df.iterrows():
                         scene_df = const_scene_df[~((const_scene_df['scene_fk'] == p['scene_fk']) &
-                                              (const_scene_df['bay_number'] == p['bay_number']) &
-                                              (const_scene_df['shelf_number'] == p['shelf_number']))]
+                                                    (const_scene_df['bay_number'] == p['bay_number']) &
+                                                    (const_scene_df['shelf_number'] == p['shelf_number']))]
                         df_list.append(scene_df)
         if len(df_list) != 0:
             final_df = pd.concat(df_list)
@@ -393,7 +402,8 @@ class PNGHKToolBox:
         return final_df
 
     def find_row_osd(self, s):
-        rows = self.osd_rules_sheet[self.osd_rules_sheet[Const.SCENE_TYPE].str.encode("utf8") == s.encode("utf8")]
+        rows = self.osd_rules_sheet[self.osd_rules_sheet[Const.SCENE_TYPE].str.encode(
+            "utf8") == s.encode("utf8")]
         row = rows[rows[Const.RETAILER] == self.store_info['retailer_name'].values[0]]
         return row
 
@@ -425,7 +435,8 @@ class PNGHKToolBox:
         """
         if self.match_probe_in_scene.empty:
             return df
-        smart_attribute_df = self.match_probe_in_scene[self.match_probe_in_scene['name'] == smart_attribute]
+        smart_attribute_df = self.match_probe_in_scene[self.match_probe_in_scene['name']
+                                                       == smart_attribute]
         if smart_attribute_df.empty:
             return df
         match_product_in_probe_fks = smart_attribute_df['match_product_in_probe_fk'].tolist()

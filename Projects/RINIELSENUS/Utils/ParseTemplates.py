@@ -22,7 +22,6 @@ class KPIConsts(object):
 
     SHEET_NAME = 'Hierarchy'
 
-
     STORE_TYPE = 'Store Type'
     KPI_NAME = 'KPI name Eng'
     KPI_GROUP = 'KPI Group'
@@ -56,12 +55,13 @@ class ParseMarsUsTemplates(object):
 
     @staticmethod
     def _get_template_path(set_name, i):
-        template_name = 'Template_2019 SPT Baseline_v1.02' if i == 0 else 'Template_2019_BDB Baseline_v6'
+        template_name = 'Template_2019 SPT Midyear_v1.03' if i == 0 else 'Template_2019_BDB Midyear_v1.03'
         return os.path.join(TEMPLATE_PATH, '{}.xlsx'.format(template_name))
 
     def parse_template(self, set_name, i):
         template_file = pd.ExcelFile(self._get_template_path(set_name, i))
-        templates_data = {sheet_name: self.parse_sheet(template_file, sheet_name) for sheet_name in template_file.sheet_names}
+        templates_data = {sheet_name: self.parse_sheet(
+            template_file, sheet_name) for sheet_name in template_file.sheet_names}
         templates_data[KPIConsts.SHEET_NAME] = templates_data[KPIConsts.SHEET_NAME][templates_data[KPIConsts.SHEET_NAME]['Set name'] == set_name]
         return templates_data
 
