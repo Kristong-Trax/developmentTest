@@ -5,7 +5,7 @@ __author__ = 'hunter'
 
 class Const(object):
     TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)),
-                                 'Liberty_bottlers_Template_subquestions_added_2019_06_17_RB.xlsx')
+                                 'Liberty_bottlers_Template_subquestions_added_2019_06_27_RB.xlsx')
     LIBERTY = ' - Liberty'
     DRILLDOWN = ' - Drilldown'
     RED_SCORE_PARENT = 'RED SCORE - Liberty'
@@ -23,7 +23,6 @@ class Const(object):
     MINIMUM_FACINGS = 'minimum_facings'
     SURVEY_QUESTION_SKUS = 'Survey_Question_SKUs'
     MARKET_SHARE = 'market_share'
-
 
     SHEETS = [KPIS, SOS, AVAILABILITY, COUNT_OF_DISPLAY, SHARE_OF_DISPLAY, SURVEY, MINIMUM_FACINGS,
               SURVEY_QUESTION_SKUS, MARKET_SHARE, SHARE_OF_COOLERS]
@@ -43,11 +42,13 @@ class Const(object):
     # SOS columns
     MANUFACTURER = 'manufacturer'
     MARKET_SHARE_TARGET = 'market_share_target'
+    LIBERTY_KEY_MANUFACTURER = 'Liberty Key Manufacturer'
 
     # Availability columns
     BRAND = 'brand'
     CATEGORY = 'category'
     EXCLUDED_BRAND = 'excluded_brand'
+    EXCLUDED_SKU = 'excluded_SKU'
     MINIMUM_NUMBER_OF_SKUS = 'number_required_SKUS'
     SECONDARY_MINIMUM_NUMBER_OF_SKUS = 'number_required_SKUS - secondary'
     SURVEY_QUESTION_SKUS_REQUIRED = 'Survey_Question_SKUs_required'

@@ -19,13 +19,16 @@ class TestPngcn(TestUnitCase):
         super(TestPngcn, self).set_up()
 
         # mock PSProjectConnector
-        self.ProjectConnector_mock = self.mock_object('ProjectConnector', path='KPIUtils_v2.DB.PsProjectConnector')
+        self.ProjectConnector_mock = self.mock_object(
+            'ProjectConnector', path='KPIUtils_v2.DB.PsProjectConnector')
         self.PSProjectConnector = self.mock_object('PSProjectConnector',
                                                    path='KPIUtils_v2.DB.PsProjectConnector')
 
         # mock 'Common' object used in toolbox
-        self.common_mock = self.mock_object('Common.get_kpi_fk_by_kpi_name', path='KPIUtils_v2.DB.CommonV2')
-        self.SessionInfo_mock = self.mock_object('SessionInfo', path='Trax.Algo.Calculations.Core.Shortcuts')
+        self.common_mock = self.mock_object(
+            'Common.get_kpi_fk_by_kpi_name', path='KPIUtils_v2.DB.CommonV2')
+        self.SessionInfo_mock = self.mock_object(
+            'SessionInfo', path='Trax.Algo.Calculations.Core.Shortcuts')
         self.common_mock.return_value = 3
 
         # get the relevant DFs
@@ -44,7 +47,8 @@ class TestPngcn(TestUnitCase):
                    'session_and_store_info': pd.DataFrame({'values': [4, 67, 8, 2]})}
 
         # decode manufacturer_name (to work around get_png_manufacturer_fk method)
-        my_dict['all_products']['manufacturer_name'] = my_dict['all_products']['manufacturer_name'].str.decode('utf8')
+        my_dict['all_products']['manufacturer_name'] = my_dict['all_products']['manufacturer_name'].str.decode(
+            'utf8')
 
         # mock 'data provider' object giving to the toolbox
         self.data_provider_mock = MagicMock()
@@ -143,10 +147,12 @@ class TestPngcn(TestUnitCase):
         mock_df_products_size = self.mock_object('_get_display_size_of_product_in_scene',
                                                  path='Projects.PNGCN_PROD.SceneKpis.KPISceneToolBox.PngcnSceneKpis')
         # test that we don't return any thing when the used df is empty
-        mock_df_products_size.return_value = pd.DataFrame([{'item_id': 2, 'scene_id': 3, 'product_size': 0.25}])
+        mock_df_products_size.return_value = pd.DataFrame(
+            [{'item_id': 2, 'scene_id': 3, 'product_size': 0.25}])
         # test that we write the correct results to DB
         data_scif = [{u'scene_id': 16588190, u'item_id': 123, u'manufacturer_fk': 4, u'rlv_sos_sc': 1, u'status': 1},
-                     {u'scene_id': 16588190, u'item_id': 125, u'manufacturer_fk': 3, u'rlv_sos_sc': 1, u'status': 1},
+                     {u'scene_id': 16588190, u'item_id': 125,
+                         u'manufacturer_fk': 3, u'rlv_sos_sc': 1, u'status': 1},
                      {u'scene_id': 16588190, u'item_id': 136, u'manufacturer_fk': 3, u'rlv_sos_sc': 1, u'status': 1}]
         scene_tool_box.scif = pd.DataFrame(data_scif)
         data_df_products_size = [{'item_id': 123, 'scene_id': 16588190, 'product_size': 1.245},
@@ -176,11 +182,13 @@ class TestPngcn(TestUnitCase):
                                                  path='Projects.PNGCN_PROD.SceneKpis.KPISceneToolBox.PngcnSceneKpis')
 
         # test that we don't return any thing when the used df is empty
-        mock_df_products_size.return_value = pd.DataFrame([{'item_id': 2, 'scene_id': 3, 'product_size': 0.25}])
+        mock_df_products_size.return_value = pd.DataFrame(
+            [{'item_id': 2, 'scene_id': 3, 'product_size': 0.25}])
 
         # test that we write the correct results to DB
         data_scif = [{u'scene_id': 16588190, u'item_id': 123, u'manufacturer_fk': 4, u'rlv_sos_sc': 1, u'status': 1},
-                     {u'scene_id': 16588190, u'item_id': 125, u'manufacturer_fk': 3, u'rlv_sos_sc': 1, u'status': 1},
+                     {u'scene_id': 16588190, u'item_id': 125,
+                         u'manufacturer_fk': 3, u'rlv_sos_sc': 1, u'status': 1},
                      {u'scene_id': 16588190, u'item_id': 136, u'manufacturer_fk': 3, u'rlv_sos_sc': 1, u'status': 1}]
         scene_tool_box.scif = pd.DataFrame(data_scif)
         data_df_products_size = [{'item_id': 123, 'scene_id': 16588190, 'product_size': 1.245},
@@ -208,7 +216,8 @@ class TestPngcn(TestUnitCase):
 
         # test that we write the correct results to DB
         data_scif = [{u'scene_id': 16588190, u'item_id': 123, u'manufacturer_fk': 4, u'rlv_sos_sc': 1, u'status': 1},
-                     {u'scene_id': 16588190, u'item_id': 125, u'manufacturer_fk': 3, u'rlv_sos_sc': 1, u'status': 1},
+                     {u'scene_id': 16588190, u'item_id': 125,
+                         u'manufacturer_fk': 3, u'rlv_sos_sc': 1, u'status': 1},
                      {u'scene_id': 16588190, u'item_id': 136, u'manufacturer_fk': 3, u'rlv_sos_sc': 1, u'status': 1}]
         scene_tool_box.scif = pd.DataFrame(data_scif)
         data_df_products_size = [{'item_id': 123, 'scene_id': 16588190, 'product_size': 1.245},
@@ -224,7 +233,8 @@ class TestPngcn(TestUnitCase):
             numerator = kpi_results['numerator_result']
             denominator = kpi_results['denominator_result']
             # test if the numerator is greater then denominator (if the subgroup is greater then containing group)
-            self.assertGreaterEqual(denominator, numerator, 'the numerator cant be greater then denominator')
+            self.assertGreaterEqual(denominator, numerator,
+                                    'the numerator cant be greater then denominator')
 
     def test__get_filterd_matches_test_type(self):
         """
@@ -273,8 +283,10 @@ class TestPngcn(TestUnitCase):
                                         self.common_mock, 16588190,
                                         self.data_provider_mock)
         data = [{'scene_fk': 101, 'manufacturer_fk': 2, 'product_fk': 252, 'width_mm': 0.84, 'width_mm_advance': 1.23},
-                {'scene_fk': 121, 'manufacturer_fk': 4, 'product_fk': 132, 'width_mm': 0.80, 'width_mm_advance': 0.99},
-                {'scene_fk': 201, 'manufacturer_fk': 4, 'product_fk': 152, 'width_mm': 0.28, 'width_mm_advance': 0.75},
+                {'scene_fk': 121, 'manufacturer_fk': 4, 'product_fk': 132,
+                    'width_mm': 0.80, 'width_mm_advance': 0.99},
+                {'scene_fk': 201, 'manufacturer_fk': 4, 'product_fk': 152,
+                    'width_mm': 0.28, 'width_mm_advance': 0.75},
                 {'scene_fk': 151, 'manufacturer_fk': 5, 'product_fk': 172, 'width_mm': 0.95, 'width_mm_advance': 0.15}]
         scene_tool_box.get_filterd_matches = MagicMock(return_value=pd.DataFrame(data))
         scene_tool_box.png_manufacturer_fk = 4
@@ -293,8 +305,10 @@ class TestPngcn(TestUnitCase):
                                         self.common_mock, 16588190,
                                         self.data_provider_mock)
         data = [{'scene_fk': 101, 'manufacturer_fk': 2, 'product_fk': 252, 'width_mm': 0.84, 'width_mm_advance': 1.23},
-                {'scene_fk': 121, 'manufacturer_fk': 4, 'product_fk': 132, 'width_mm': 0.80, 'width_mm_advance': 0.99},
-                {'scene_fk': 201, 'manufacturer_fk': 4, 'product_fk': 152, 'width_mm': 0.28, 'width_mm_advance': 0.75},
+                {'scene_fk': 121, 'manufacturer_fk': 4, 'product_fk': 132,
+                    'width_mm': 0.80, 'width_mm_advance': 0.99},
+                {'scene_fk': 201, 'manufacturer_fk': 4, 'product_fk': 152,
+                    'width_mm': 0.28, 'width_mm_advance': 0.75},
                 {'scene_fk': 151, 'manufacturer_fk': 5, 'product_fk': 172, 'width_mm': 0.95, 'width_mm_advance': 0.15}]
         scene_tool_box.get_filterd_matches = MagicMock(return_value=pd.DataFrame(data))
         scene_tool_box.png_manufacturer_fk = 4
@@ -316,8 +330,10 @@ class TestPngcn(TestUnitCase):
                                         self.common_mock, 16588190,
                                         self.data_provider_mock)
         data = [{'scene_fk': 101, 'manufacturer_fk': 2, 'product_fk': 252, 'width_mm': 0.84, 'width_mm_advance': 1.23},
-                {'scene_fk': 121, 'manufacturer_fk': 4, 'product_fk': 132, 'width_mm': 0.80, 'width_mm_advance': 0.99},
-                {'scene_fk': 201, 'manufacturer_fk': 4, 'product_fk': 152, 'width_mm': 0.28, 'width_mm_advance': 0.75},
+                {'scene_fk': 121, 'manufacturer_fk': 4, 'product_fk': 132,
+                    'width_mm': 0.80, 'width_mm_advance': 0.99},
+                {'scene_fk': 201, 'manufacturer_fk': 4, 'product_fk': 152,
+                    'width_mm': 0.28, 'width_mm_advance': 0.75},
                 {'scene_fk': 151, 'manufacturer_fk': 5, 'product_fk': 172, 'width_mm': 0.95, 'width_mm_advance': 0.15}]
         scene_tool_box.get_filterd_matches = MagicMock(return_value=pd.DataFrame(data))
         scene_tool_box.png_manufacturer_fk = 4
@@ -328,7 +344,8 @@ class TestPngcn(TestUnitCase):
         if kpi_results:
             numerator = kpi_results['numerator_result']
             denominator = kpi_results['denominator_result']
-            self.assertGreaterEqual(denominator, numerator, 'the numerator cant be greater then denominator')
+            self.assertGreaterEqual(denominator, numerator,
+                                    'the numerator cant be greater then denominator')
 
     def test_calculate_linear_length(self):
         """
@@ -347,3 +364,62 @@ class TestPngcn(TestUnitCase):
                                         self.common_mock, 16588190,
                                         self.data_provider_mock)
         self.assertEquals(scene_tool_box.calculate_presize_linear_length(), 0)
+
+    def test_save_nlsos_as_kpi_results(self):
+        """
+           test that the score and result are as expected
+        """
+        scene_tool_box = PngcnSceneKpis(self.ProjectConnector_mock,
+                                        self.common_mock, 16588190,
+                                        self.data_provider_mock)
+        data = [{'gross_len_split_stack_new': 13, 'product_type': ' rrelevant', 'product_fk': None, 'rlv_sos_sc': 0,
+                 'gross_len_split_stack': 0.15},
+                {'gross_len_split_stack_new': 65, 'product_type': ' rrelevant', 'product_fk': 252, 'rlv_sos_sc': 1,
+                 'gross_len_split_stack': 1.23},
+                {'gross_len_split_stack_new': 35, 'product_type': ' rrelevant', 'product_fk': 252, 'rlv_sos_sc': 1,
+                 'gross_len_split_stack': 1.23},
+                {'gross_len_split_stack_new': 121, 'product_type': 'Irrelevant', 'product_fk': 132, 'rlv_sos_sc': 0,
+                 'gross_len_split_stack': 0.99},
+                {'gross_len_split_stack_new': 201, 'product_type': 'Irrelevant', 'product_fk': 132, 'rlv_sos_sc': 0,
+                 'gross_len_split_stack': 0.75},
+                {'gross_len_split_stack_new': 13, 'product_type': ' rrelevant', 'product_fk': 252, 'rlv_sos_sc': 0,
+                 'gross_len_split_stack': 0.15}]
+
+        scene_tool_box.common.write_to_db_result = MagicMock()
+        scene_tool_box.save_nlsos_as_kpi_results(pd.DataFrame(data))
+        kpi_results = scene_tool_box.common.write_to_db_result.mock_calls
+        result = kpi_results[4][2]['score']
+        expected_result = 0.15/100.0
+        self.assertEqual(result, expected_result)
+
+    def test_insert_into_kpi_scene_results(self):
+        """
+           test that the score are as expected
+        """
+        scene_tool_box = PngcnSceneKpis(self.ProjectConnector_mock,
+                                        self.common_mock, 16588190,
+                                        self.data_provider_mock)
+        data = [{'pk': 101, 'display_group': 5, 'product_fk': 252, 'facings': 0.84, 'product_size': 1.23},
+                {'pk': 121, 'display_group': 4, 'product_fk': 132,
+                    'facings': 0.80, 'product_size': 0.99},
+                {'pk': 201, 'display_group': 4, 'product_fk': 132,
+                    'facings': 0.28, 'product_size': 0.75},
+                {'pk': 151, 'display_group': 5, 'product_fk': 252, 'facings': 0.95, 'product_size': 0.15}]
+
+        scene_tool_box.get_display_group = MagicMock()
+        scene_tool_box.get_display_group.return_value = 1
+        scene_tool_box.common.write_to_db_result = MagicMock()
+        scene_tool_box.insert_into_kpi_scene_results(data)
+        kpi_results = scene_tool_box.common.write_to_db_result.mock_calls
+        result = kpi_results[1][2]['result']
+        expected_result = 1.23 + 0.15
+        score = kpi_results[1][2]['score']
+        expected_score = 0.84 + 0.95
+        self.assertEqual(result, expected_result)
+        self.assertEqual(score, expected_score)
+
+    def test_calculate_sequence_eye_level(self):
+        pass
+
+    def test_calculate_facing_eye_level(self):
+        pass

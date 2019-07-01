@@ -51,7 +51,8 @@ class KpiAtomicKpisCalculator(object):
         matches = self._tools.match_product_in_scene.copy()
         if scene_type_filter:
             templates = self._data_provider.templates
-            relevant_template = templates[templates['template_display_name'].isin(scene_type_filter['template_name'])]
+            relevant_template = templates[templates['template_display_name'].isin(
+                scene_type_filter['template_name'])]
             relevant_scenes = self._data_provider.scenes_info.merge(relevant_template, on='template_fk')[
                 'scene_fk'].tolist()
             matches = matches[matches['scene_fk'].isin(relevant_scenes)]
@@ -87,7 +88,8 @@ class KpiAtomicKpisCalculator(object):
     def _get_preferred_range_filter(self):
         return {
             'shelf_number':
-                (range(self._preferred_range.iloc[0]['ignored from top'] + 1)[1:], MarsUsGENERALToolBox.EXCLUDE_FILTER),
+                (range(self._preferred_range.iloc[0]['ignored from top'] + 1)
+                 [1:], MarsUsGENERALToolBox.EXCLUDE_FILTER),
             'shelf_number_from_bottom':
                 (range(self._preferred_range.iloc[0]['ignored from bottom'] + 1)[1:],
                  MarsUsGENERALToolBox.EXCLUDE_FILTER)
@@ -99,9 +101,11 @@ class KpiAtomicKpisCalculator(object):
         elif filters.get('ignored from top') and filters.get('ignored from bottom'):
             return {
                 'shelf_number':
-                    (range(int(float(filters.get('ignore from top')[0])) + 1)[1:], MarsUsGENERALToolBox.EXCLUDE_FILTER),
+                    (range(int(float(filters.get('ignore from top')[
+                     0])) + 1)[1:], MarsUsGENERALToolBox.EXCLUDE_FILTER),
                 'shelf_number_from_bottom':
-                    (range(int(float(filters.get('ignore from bottom')[0])) + 1)[1:], MarsUsGENERALToolBox.EXCLUDE_FILTER)
+                    (range(int(float(filters.get('ignore from bottom')[
+                     0])) + 1)[1:], MarsUsGENERALToolBox.EXCLUDE_FILTER)
             }
 
     def _get_filtered_products(self, filters):
@@ -121,7 +125,8 @@ class KpiAtomicKpisCalculator(object):
                 section_sub_section_products = self._get_allowed_filters(filters)
                 allowed_bulk.intersection_update(section_sub_section_products)
             if key == 'Segment_SPT' and value == ['None']:
-                allowed_bulk = set(products[products['Segment_SPT'].isin([None])]['product_fk'].tolist())
+                allowed_bulk = set(
+                    products[products['Segment_SPT'].isin([None])]['product_fk'].tolist())
 
             allowed_products.update(allowed_bulk)
 
@@ -205,7 +210,8 @@ class KpiAtomicKpisCalculator(object):
     def get_biggest_scene(self, filters):
         matches = self._tools.match_product_in_scene.copy()
         biggest_scene = matches[self._tools.get_filter_condition(matches, **filters)]
-        biggest_scene = biggest_scene.groupby(['scene_fk']).size().reset_index(name='counts').sort_values(['counts'], ascending=False)
+        biggest_scene = biggest_scene.groupby(['scene_fk']).size().reset_index(
+            name='counts').sort_values(['counts'], ascending=False)
         return biggest_scene['scene_fk'].values[0]
 
     @staticmethod
@@ -222,7 +228,8 @@ class KpiAtomicKpisCalculator(object):
                 filters[key_list[-1]].update({key_list[-2]: all_filters[key]})
 
         for filter_ in filters:
-            filters[filter_] = MarsUsGENERALToolBox.rename_filters_to_match_scif(filters[filter_], FILTER_NAMING_DICT)
+            filters[filter_] = MarsUsGENERALToolBox.rename_filters_to_match_scif(
+                filters[filter_], FILTER_NAMING_DICT)
 
         return filters
 
@@ -256,18 +263,21 @@ class KpiAtomicKpisCalculator(object):
 
 class BlockBaseCalculation(KpiAtomicKpisCalculator):
     def calculate_block(self, atomic_kpi_data):
-        threshold = float(atomic_kpi_data['filters'].pop(FACINGS)[0]) if atomic_kpi_data['filters'].get(FACINGS) else 0
-        use_probes = atomic_kpi_data['filters'].pop(USE_PROBES)[0] if atomic_kpi_data['filters'].get(USE_PROBES) else 0
+        threshold = float(atomic_kpi_data['filters'].pop(FACINGS)[
+                          0]) if atomic_kpi_data['filters'].get(FACINGS) else 0
+        use_probes = atomic_kpi_data['filters'].pop(
+            USE_PROBES)[0] if atomic_kpi_data['filters'].get(USE_PROBES) else 0
         filters = atomic_kpi_data['filters']
         allowed = atomic_kpi_data['allowed']
         target = atomic_kpi_data['target']
         if atomic_kpi_data['atomic'] == 'Is Nutro Dry Dog food blocked?' or \
-                (atomic_kpi_data['atomic'] == 'Nutro Dry Dog and Wet Dog are BOTH BLOCKED'\
-                and filters['Sub-section'] == ['DOG MAIN MEAL DRY']):
+                (atomic_kpi_data['atomic'] == 'Nutro Dry Dog and Wet Dog are BOTH BLOCKED'
+                 and filters['Sub-section'] == ['DOG MAIN MEAL DRY']):
             allowed_filter = self._get_allowed_products_without_other(allowed, filters)
         else:
             allowed_filter = self._get_allowed_products(allowed, filters)
-        scene_type_filter = self._create_filter_dict(key=TEMPLATE_NAME, value=atomic_kpi_data['scene_types'])
+        scene_type_filter = self._create_filter_dict(
+            key=TEMPLATE_NAME, value=atomic_kpi_data['scene_types'])
         filters.update(scene_type_filter)
 
         scif_matches = self.get_scif_matches_by_filters(**filters)
@@ -278,7 +288,8 @@ class BlockBaseCalculation(KpiAtomicKpisCalculator):
 
         num_of_scenes = scene_avg_shelf['scene_fk'].nunique()
 
-        iter_groups, skipped_scenes = self.get_iter_groups(scene_avg_shelf, use_probes, threshold, allowed_filter, **filters)
+        iter_groups, skipped_scenes = self.get_iter_groups(
+            scene_avg_shelf, use_probes, threshold, allowed_filter, **filters)
 
         blocked_scenes = 0
         visited = set()
@@ -322,10 +333,12 @@ class BlockBaseCalculation(KpiAtomicKpisCalculator):
     def _get_relevant_scenes_avg_shelf(self, filters):
         matches = self._tools.match_product_in_scene.copy()
         relevant_matches = matches[self._tools.get_filter_condition(matches, **filters)]
-        relevant_scene_bays = relevant_matches[['scene_fk', 'bay_number']].drop_duplicates(['scene_fk', 'bay_number'])
+        relevant_scene_bays = relevant_matches[['scene_fk', 'bay_number']].drop_duplicates([
+                                                                                           'scene_fk', 'bay_number'])
         scene_bay_shelves = matches.groupby(['scene_fk', 'bay_number'], as_index=False)[
             'shelf_number_from_bottom'].max().rename(columns={'shelf_number_from_bottom': 'num_of_shelves'})
-        scene_bay_shelves = scene_bay_shelves.merge(relevant_scene_bays, on=['scene_fk', 'bay_number'])
+        scene_bay_shelves = scene_bay_shelves.merge(
+            relevant_scene_bays, on=['scene_fk', 'bay_number'])
         scene_avg_shelves = scene_bay_shelves.groupby(['scene_fk'], as_index=False)['num_of_shelves'].mean(). \
             rename(columns={'num_of_shelves': 'scene_avg_num_of_shelves'})
         return scene_avg_shelves
@@ -333,7 +346,8 @@ class BlockBaseCalculation(KpiAtomicKpisCalculator):
 
 class TwoBlocksAtomicKpiCalculation(BlockBaseCalculation):
     def calculate_atomic_kpi(self, atomic_kpi_data):
-        col = atomic_kpi_data['filters'].pop('Two Blocks')[0] if 'Two Blocks' in atomic_kpi_data['filters'] else ''
+        col = atomic_kpi_data['filters'].pop(
+            'Two Blocks')[0] if 'Two Blocks' in atomic_kpi_data['filters'] else ''
         if not col:
             col = 'Customer Brand'
         if col in FILTER_NAMING_DICT:
@@ -360,8 +374,10 @@ class TwoBlocksAtomicKpiCalculation(BlockBaseCalculation):
 
 class BiggestSceneBlockAtomicKpiCalculation(BlockBaseCalculation):
     def calculate_atomic_kpi(self, atomic_kpi_data):
-        threshold = float(atomic_kpi_data['filters'].pop(FACINGS)[0]) if atomic_kpi_data['filters'].get(FACINGS) else 0
-        use_probes = atomic_kpi_data['filters'].pop(USE_PROBES)[0] if atomic_kpi_data['filters'].get(USE_PROBES) else 0
+        threshold = float(atomic_kpi_data['filters'].pop(FACINGS)[
+                          0]) if atomic_kpi_data['filters'].get(FACINGS) else 0
+        use_probes = atomic_kpi_data['filters'].pop(
+            USE_PROBES)[0] if atomic_kpi_data['filters'].get(USE_PROBES) else 0
         filters = atomic_kpi_data['filters']
         allowed = atomic_kpi_data['allowed']
         target = atomic_kpi_data['target']
@@ -370,7 +386,8 @@ class BiggestSceneBlockAtomicKpiCalculation(BlockBaseCalculation):
         if atomic_kpi_data['atomic'] == 'Are Meaty Cat Treats blocked?':
             allowed_filter = None
 
-        scene_type_filter = self._create_filter_dict(key=TEMPLATE_NAME, value=atomic_kpi_data['scene_types'])
+        scene_type_filter = self._create_filter_dict(
+            key=TEMPLATE_NAME, value=atomic_kpi_data['scene_types'])
         filters.update(scene_type_filter)
 
         scif_matches = self.get_scif_matches_by_filters(**filters)
@@ -385,7 +402,8 @@ class BiggestSceneBlockAtomicKpiCalculation(BlockBaseCalculation):
 
         num_of_scenes = scene_avg_shelf['scene_fk'].nunique()
 
-        iter_groups, skipped_scenes = self.get_iter_groups(scene_avg_shelf, use_probes, threshold, allowed_filter, **filters)
+        iter_groups, skipped_scenes = self.get_iter_groups(
+            scene_avg_shelf, use_probes, threshold, allowed_filter, **filters)
 
         blocked_scenes = 0
         visited = set()
@@ -435,13 +453,16 @@ class BlockAtomicKpiCalculation(BlockBaseCalculation):
 
 class BlockTargetBaseCalculation(KpiAtomicKpisCalculator):
     def calculate_block_target(self, atomic_kpi_data):
-        threshold = float(atomic_kpi_data['filters'].pop(FACINGS)[0]) if atomic_kpi_data['filters'].get(FACINGS) else 0
-        use_probes = atomic_kpi_data['filters'].pop(USE_PROBES)[0] if atomic_kpi_data['filters'].get(USE_PROBES) else 0
+        threshold = float(atomic_kpi_data['filters'].pop(FACINGS)[
+                          0]) if atomic_kpi_data['filters'].get(FACINGS) else 0
+        use_probes = atomic_kpi_data['filters'].pop(
+            USE_PROBES)[0] if atomic_kpi_data['filters'].get(USE_PROBES) else 0
         filters = atomic_kpi_data['filters']
         allowed = atomic_kpi_data['allowed']
         target = atomic_kpi_data['target']
         allowed_filter = self._get_allowed_products(allowed, filters)
-        scene_type_filter = self._create_filter_dict(key=TEMPLATE_NAME, value=atomic_kpi_data['scene_types'])
+        scene_type_filter = self._create_filter_dict(
+            key=TEMPLATE_NAME, value=atomic_kpi_data['scene_types'])
         filters.update(scene_type_filter)
 
         scif_matches = self.get_scif_matches_by_filters(**filters)
@@ -455,7 +476,8 @@ class BlockTargetBaseCalculation(KpiAtomicKpisCalculator):
 
         num_of_scenes = scene_avg_shelf['scene_fk'].nunique()
 
-        iter_groups, skipped_scenes = self.get_iter_groups(scene_avg_shelf, use_probes, threshold, allowed_filter, **filters)
+        iter_groups, skipped_scenes = self.get_iter_groups(
+            scene_avg_shelf, use_probes, threshold, allowed_filter, **filters)
 
         blocked_scenes = 0
         visited = set()
@@ -502,10 +524,12 @@ class BlockTargetBaseCalculation(KpiAtomicKpisCalculator):
     def _get_relevant_scenes_avg_shelf(self, filters):
         matches = self._tools.match_product_in_scene.copy()
         relevant_matches = matches[self._tools.get_filter_condition(matches, **filters)]
-        relevant_scene_bays = relevant_matches[['scene_fk', 'bay_number']].drop_duplicates(['scene_fk', 'bay_number'])
+        relevant_scene_bays = relevant_matches[['scene_fk', 'bay_number']].drop_duplicates([
+                                                                                           'scene_fk', 'bay_number'])
         scene_bay_shelves = matches.groupby(['scene_fk', 'bay_number'], as_index=False)[
             'shelf_number_from_bottom'].max().rename(columns={'shelf_number_from_bottom': 'num_of_shelves'})
-        scene_bay_shelves = scene_bay_shelves.merge(relevant_scene_bays, on=['scene_fk', 'bay_number'])
+        scene_bay_shelves = scene_bay_shelves.merge(
+            relevant_scene_bays, on=['scene_fk', 'bay_number'])
         scene_avg_shelves = scene_bay_shelves.groupby(['scene_fk'], as_index=False)['num_of_shelves'].mean(). \
             rename(columns={'num_of_shelves': 'scene_avg_num_of_shelves'})
         return scene_avg_shelves
@@ -529,13 +553,16 @@ class BlockTargetAtomicKpiCalculation(BlockTargetBaseCalculation):
 
 class VerticalBlockOneSceneAtomicKpiCalculation(BlockBaseCalculation):
     def calculate_atomic_kpi(self, atomic_kpi_data):
-        threshold = float(atomic_kpi_data['filters'].pop(FACINGS)[0]) if atomic_kpi_data['filters'].get(FACINGS) else 0
-        use_probes = atomic_kpi_data['filters'].pop(USE_PROBES)[0] if atomic_kpi_data['filters'].get(USE_PROBES) else 0
+        threshold = float(atomic_kpi_data['filters'].pop(FACINGS)[
+                          0]) if atomic_kpi_data['filters'].get(FACINGS) else 0
+        use_probes = atomic_kpi_data['filters'].pop(
+            USE_PROBES)[0] if atomic_kpi_data['filters'].get(USE_PROBES) else 0
         filters = atomic_kpi_data['filters']
         allowed = atomic_kpi_data['allowed']
         target = atomic_kpi_data['target']
         allowed_filter = self._get_allowed_products(allowed, filters)
-        scene_type_filter = self._create_filter_dict(key=TEMPLATE_NAME, value=atomic_kpi_data['scene_types'])
+        scene_type_filter = self._create_filter_dict(
+            key=TEMPLATE_NAME, value=atomic_kpi_data['scene_types'])
         filters.update(scene_type_filter)
 
         scif_matches = self.get_scif_matches_by_filters(**filters)
@@ -546,7 +573,8 @@ class VerticalBlockOneSceneAtomicKpiCalculation(BlockBaseCalculation):
 
         num_of_scenes = scene_avg_shelf['scene_fk'].nunique()
 
-        iter_groups, skipped_scenes = self.get_iter_groups(scene_avg_shelf, use_probes, threshold, allowed_filter, **filters)
+        iter_groups, skipped_scenes = self.get_iter_groups(
+            scene_avg_shelf, use_probes, threshold, allowed_filter, **filters)
 
         blocked_scenes = 0
         vertical_blocked_scenes = 0
@@ -597,12 +625,13 @@ class VerticalBlockOneSceneAtomicKpiCalculation(BlockBaseCalculation):
     def kpi_type(self):
         return 'Vertical Block One Scene'
 
+
 class VerticalPreCalcBlockAtomicKpiCalculation(BlockBaseCalculation):
     def calculate_atomic_kpi(self, atomic_kpi_data):
         filters = atomic_kpi_data['filters']
         biggest_scene = self.get_biggest_scene(filters)
-        scene_avg_num_of_shelves = self._get_relevant_scenes_avg_shelf(filters).set_index('scene_fk')\
-                                        ['scene_avg_num_of_shelves'].to_dict()[biggest_scene]
+        scene_avg_num_of_shelves = self._get_relevant_scenes_avg_shelf(filters).set_index(
+            'scene_fk')['scene_avg_num_of_shelves'].to_dict()[biggest_scene]
         if 'results' not in atomic_kpi_data or atomic_kpi_data['results'].empty:
             Log.error('kpi: "{}" not calculated. PreCalc Vertical Block requires Biggest Scene Block dependency'
                       .format(atomic_kpi_data['atomic']))
@@ -632,6 +661,7 @@ class VerticalPreCalcBlockAtomicKpiCalculation(BlockBaseCalculation):
     def kpi_type(self):
         return 'PreCalc Vertical Block'
 
+
 class VerticalBlockAtomicKpiCalculation(BlockBaseCalculation):
     def calculate_atomic_kpi(self, atomic_kpi_data):
         return self.calculate_block(atomic_kpi_data)
@@ -649,7 +679,8 @@ class VerticalBlockAtomicKpiCalculation(BlockBaseCalculation):
 
 class ShelvedTogetherAtomicKpiCalculation(KpiAtomicKpisCalculator):
     def calculate_atomic_kpi(self, atomic_kpi_data):
-        threshold = float(atomic_kpi_data['filters'].pop('Minimum Products')[0]) if atomic_kpi_data['filters'].get('Minimum Products') else 3
+        threshold = float(atomic_kpi_data['filters'].pop('Minimum Products')[
+                          0]) if atomic_kpi_data['filters'].get('Minimum Products') else 3
         filters = self._split_filters(atomic_kpi_data['filters'])
         scene_type_filter = self._create_filter_dict(key=TEMPLATE_NAME,
                                                      value=atomic_kpi_data['scene_types'])
@@ -674,8 +705,10 @@ class ShelvedTogetherAtomicKpiCalculation(KpiAtomicKpisCalculator):
             relevant_probes_group = matches[matches['scene_fk'] == scene]
             for probe_group in relevant_probes_group['probe_group_id'].unique().tolist():
                 relevant_probe_group = relevant_probes_group[relevant_probes_group['probe_group_id'] == probe_group]
-                matches_a = relevant_probe_group[self._tools.get_filter_condition(relevant_probe_group, **dict(filters['A'], **filters['all']))]
-                matches_b = relevant_probe_group[self._tools.get_filter_condition(relevant_probe_group, **dict(filters['B'], **filters['all']))]
+                matches_a = relevant_probe_group[self._tools.get_filter_condition(
+                    relevant_probe_group, **dict(filters['A'], **filters['all']))]
+                matches_b = relevant_probe_group[self._tools.get_filter_condition(
+                    relevant_probe_group, **dict(filters['B'], **filters['all']))]
                 if len(matches_a) >= threshold and len(matches_b) >= threshold:
                     return 100
         return 0
@@ -687,7 +720,8 @@ class ShelvedTogetherAtomicKpiCalculation(KpiAtomicKpisCalculator):
 
 class AnchorAtomicKpiCalculation(KpiAtomicKpisCalculator):
     def calculate_atomic_kpi(self, atomic_kpi_data):
-        threshold = float(atomic_kpi_data['filters'].pop('Minimum Products')[0]) if atomic_kpi_data['filters'].get('Minimum Products') else 4
+        threshold = float(atomic_kpi_data['filters'].pop('Minimum Products')[
+                          0]) if atomic_kpi_data['filters'].get('Minimum Products') else 4
         filters = self._split_filters(atomic_kpi_data['filters'])
         scene_type_filter = self._create_filter_dict(key=TEMPLATE_NAME,
                                                      value=atomic_kpi_data['scene_types'])
@@ -718,7 +752,8 @@ class AnchorAtomicKpiCalculation(KpiAtomicKpisCalculator):
             matches = self._tools.match_product_in_scene
             relevant_probe_group = matches[matches['scene_fk'] == scene]
             for probe_group in relevant_probe_group['probe_group_id'].unique().tolist():
-                relevant_bay = self.check_bay(relevant_probe_group, probe_group, threshold, **filter_products_after_exclude)
+                relevant_bay = self.check_bay(
+                    relevant_probe_group, probe_group, threshold, **filter_products_after_exclude)
                 if not relevant_bay:
                     continue
                 for direction in ['left', 'right']:
@@ -732,9 +767,11 @@ class AnchorAtomicKpiCalculation(KpiAtomicKpisCalculator):
         return 0
 
     def check_bay(self, matches, probe_group, threshold, **filters):
-        relevant_bays = matches[(matches['product_fk'].isin(filters['product_fk'])) & (matches['probe_group_id'] == probe_group)]
+        relevant_bays = matches[(matches['product_fk'].isin(filters['product_fk'])) & (
+            matches['probe_group_id'] == probe_group)]
         relevant_bays['freq'] = relevant_bays.groupby('bay_number')['bay_number'].transform('count')
-        relevant_bays = relevant_bays[relevant_bays['freq'] >= threshold]['bay_number'].unique().tolist()
+        relevant_bays = relevant_bays[relevant_bays['freq']
+                                      >= threshold]['bay_number'].unique().tolist()
         if relevant_bays:
             relevant_bays.sort()
             return {'left': relevant_bays[0], 'right': relevant_bays[-1]}
@@ -747,7 +784,8 @@ class AnchorAtomicKpiCalculation(KpiAtomicKpisCalculator):
 
 class DoubleAnchorAtomicKpiCalculation(KpiAtomicKpisCalculator):
     def calculate_atomic_kpi(self, atomic_kpi_data):
-        threshold = float(atomic_kpi_data['filters'].pop('Minimum Products')[0]) if atomic_kpi_data['filters'].get('Minimum Products') else 4
+        threshold = float(atomic_kpi_data['filters'].pop('Minimum Products')[
+                          0]) if atomic_kpi_data['filters'].get('Minimum Products') else 4
         filters = self._split_filters(atomic_kpi_data['filters'])
         scene_type_filter = self._create_filter_dict(key=TEMPLATE_NAME,
                                                      value=atomic_kpi_data['scene_types'])
@@ -812,16 +850,19 @@ class DoubleAnchorAtomicKpiCalculation(KpiAtomicKpisCalculator):
         relevant_bays = matches[
             (matches['product_fk'].isin(filters['product_fk'])) & (matches['scene_fk'] == scene)]
         relevant_bays['freq'] = relevant_bays.groupby('bay_number')['bay_number'].transform('count')
-        relevant_bays = relevant_bays[relevant_bays['freq'] >= threshold]['bay_number'].unique().tolist()
+        relevant_bays = relevant_bays[relevant_bays['freq']
+                                      >= threshold]['bay_number'].unique().tolist()
         if relevant_bays:
             relevant_bays.sort()
             return {'left': relevant_bays[0], 'right': relevant_bays[-1]}
         return {}
 
     def check_bay(self, matches, probe_group, threshold, **filters):
-        relevant_bays = matches[(matches['product_fk'].isin(filters['product_fk'])) & (matches['probe_group_id'] == probe_group)]
+        relevant_bays = matches[(matches['product_fk'].isin(filters['product_fk'])) & (
+            matches['probe_group_id'] == probe_group)]
         relevant_bays['freq'] = relevant_bays.groupby('bay_number')['bay_number'].transform('count')
-        relevant_bays = relevant_bays[relevant_bays['freq'] >= threshold]['bay_number'].unique().tolist()
+        relevant_bays = relevant_bays[relevant_bays['freq']
+                                      >= threshold]['bay_number'].unique().tolist()
         if relevant_bays:
             relevant_bays.sort()
             return {'left': relevant_bays[0], 'right': relevant_bays[-1]}
@@ -838,7 +879,8 @@ class SurveyAtomicKpiCalculation(KpiAtomicKpisCalculator):
         survey_question = filters['A']['Question Text']
         survey_excepted_answers = filters['B']['Excepted Answers']
 
-        survey_answer = self.survey_response[self.survey_response['question_text'].isin([survey_question])]['selected_option_text']
+        survey_answer = self.survey_response[self.survey_response['question_text'].isin(
+            [survey_question])]['selected_option_text']
         if not survey_answer.empty and (survey_answer.iloc[0] in survey_excepted_answers):
             return 100
         elif survey_answer.empty:
@@ -854,7 +896,8 @@ class ShelfLevelAtomicKpiCalculation(KpiAtomicKpisCalculator):
     def calculate_atomic_kpi(self, atomic_kpi_data):
         filters = atomic_kpi_data['filters']
         filters.update(self._get_preferred_range_filter())
-        scene_type_filter = self._create_filter_dict(key=TEMPLATE_NAME, value=atomic_kpi_data['scene_types'])
+        scene_type_filter = self._create_filter_dict(
+            key=TEMPLATE_NAME, value=atomic_kpi_data['scene_types'])
         filters.update(scene_type_filter)
         assortment = self._tools.calculate_assortment(**filters)
         return 100 if assortment > 0 else 0
@@ -870,7 +913,8 @@ class ShelfLevelSPTAtomicKpiCalculation(KpiAtomicKpisCalculator):
         # filters.update(self._get_preferred_range_SPT_filter(filters))
         filters.update(self._get_preferred_range_filter())
 
-        scene_type_filter = self._create_filter_dict(key=TEMPLATE_NAME, value=atomic_kpi_data['scene_types'])
+        scene_type_filter = self._create_filter_dict(
+            key=TEMPLATE_NAME, value=atomic_kpi_data['scene_types'])
         filters.update(scene_type_filter)
         assortment = self._tools.calculate_assortment(**filters)
         return 100 if assortment > 0 else 0
@@ -883,7 +927,8 @@ class ShelfLevelSPTAtomicKpiCalculation(KpiAtomicKpisCalculator):
 class ShelfLevelPercentAtomicKpiCalculation(KpiAtomicKpisCalculator):
     def calculate_atomic_kpi(self, atomic_kpi_data):
         filters = atomic_kpi_data['filters']
-        scene_type_filter = self._create_filter_dict(key=TEMPLATE_NAME, value=atomic_kpi_data['scene_types'])
+        scene_type_filter = self._create_filter_dict(
+            key=TEMPLATE_NAME, value=atomic_kpi_data['scene_types'])
         filters.update(scene_type_filter)
 
         scif_filter = scene_type_filter.copy()
@@ -902,7 +947,8 @@ class ShelfLevelPercentAtomicKpiCalculation(KpiAtomicKpisCalculator):
         filters_for_relevant_shelves.update(scene_type_filter)
         filters_for_relevant_shelves.update(self._get_preferred_range_filter())
         matches = self._tools.match_product_in_scene.copy()
-        relevant_matches = matches[self._tools.get_filter_condition(matches, **filters_for_relevant_shelves)]
+        relevant_matches = matches[self._tools.get_filter_condition(
+            matches, **filters_for_relevant_shelves)]
         relevant_scene_shelves = relevant_matches[['scene_fk', 'shelf_number']].drop_duplicates(
             ['scene_fk', 'shelf_number'])
         return relevant_scene_shelves
@@ -933,7 +979,8 @@ class AdjacencyAtomicKpiCalculation(KpiAtomicKpisCalculator):
         allowed_filter = self._get_allowed_products(atomic_kpi_data['allowed'], filters['all'])
         allowed_filter_without_other = self._get_allowed_products_without_other(atomic_kpi_data['allowed'],
                                                                                 filters['all'])
-        scene_type_filter = self._create_filter_dict(key=TEMPLATE_NAME, value=atomic_kpi_data['scene_types'])
+        scene_type_filter = self._create_filter_dict(
+            key=TEMPLATE_NAME, value=atomic_kpi_data['scene_types'])
 
         scif_filter = scene_type_filter.copy()
         scif_filter.update(filters['all'])
@@ -956,7 +1003,8 @@ class AdjacencyAtomicKpiCalculation(KpiAtomicKpisCalculator):
         filter_ = filters[group]
         filter_.update(filters['all'])
         # filter_.update({'Sub-section': filters['all']['Sub-section']})
-        product_list = products[self._tools.get_filter_condition(products, **filter_)]['product_fk'].tolist()
+        product_list = products[self._tools.get_filter_condition(
+            products, **filter_)]['product_fk'].tolist()
         return product_list
 
     def _check_groups_adjacency(self, a_product_list, b_product_list, scene_type_filter, allowed_filter,
@@ -969,7 +1017,8 @@ class AdjacencyAtomicKpiCalculation(KpiAtomicKpisCalculator):
         a_b_filter.update(scene_type_filter)
 
         matches = self._tools.match_product_in_scene.copy()
-        relevant_scenes = matches[self._tools.get_filter_condition(matches, **a_b_filter)]['scene_fk'].unique().tolist()
+        relevant_scenes = matches[self._tools.get_filter_condition(
+            matches, **a_b_filter)]['scene_fk'].unique().tolist()
 
         result = False
         for scene in relevant_scenes:
@@ -1036,10 +1085,12 @@ class LinearFairShareAtomicKpiCalculation(KpiAtomicKpisCalculator):
 
         if atomic_kpi_data['atomic'] == 'MARS Space goal':
             sales = 20
-        scene_type_filter = self._create_filter_dict(key=TEMPLATE_NAME, value=atomic_kpi_data['scene_types'])
+        scene_type_filter = self._create_filter_dict(
+            key=TEMPLATE_NAME, value=atomic_kpi_data['scene_types'])
         filters.update(scene_type_filter)
         denominator_filters = self.get_denominator_filters(filters)
-        sos = self._tools.calculate_linear_share_of_shelf(sos_filters=filters, **denominator_filters)
+        sos = self._tools.calculate_linear_share_of_shelf(
+            sos_filters=filters, **denominator_filters)
         if sos == None:
             return np.nan
         elif sos == 0:
@@ -1062,7 +1113,8 @@ class LinearFairShareNumeratorAtomicKpiCalculation(KpiAtomicKpisCalculator):
 
         if atomic_kpi_data['atomic'] == 'MARS Space goal':
             sales = 20
-        scene_type_filter = self._create_filter_dict(key=TEMPLATE_NAME, value=atomic_kpi_data['scene_types'])
+        scene_type_filter = self._create_filter_dict(
+            key=TEMPLATE_NAME, value=atomic_kpi_data['scene_types'])
         filters.update(scene_type_filter)
         denominator_filters = self.get_denominator_filters(filters)
         return self._tools.calculate_linear_share_of_shelf_numerator(sos_filters=filters, **denominator_filters)
@@ -1082,7 +1134,8 @@ class LinearFairShareDenominatorAtomicKpiCalculation(KpiAtomicKpisCalculator):
 
         if atomic_kpi_data['atomic'] == 'MARS Space goal':
             sales = 20
-        scene_type_filter = self._create_filter_dict(key=TEMPLATE_NAME, value=atomic_kpi_data['scene_types'])
+        scene_type_filter = self._create_filter_dict(
+            key=TEMPLATE_NAME, value=atomic_kpi_data['scene_types'])
         filters.update(scene_type_filter)
         denominator_filters = self.get_denominator_filters(filters)
         return self._tools.calculate_linear_share_of_shelf_denominator(sos_filters=filters, **denominator_filters)
@@ -1100,10 +1153,12 @@ class LinearFairShareSPTAtomicKpiCalculation(KpiAtomicKpisCalculator):
             self.log_missing_sales_message(atomic_kpi_data, sales)
             return np.nan
 
-        scene_type_filter = self._create_filter_dict(key=TEMPLATE_NAME, value=atomic_kpi_data['scene_types'])
+        scene_type_filter = self._create_filter_dict(
+            key=TEMPLATE_NAME, value=atomic_kpi_data['scene_types'])
         filters.update(scene_type_filter)
         denominator_filters = self.get_denominator_filters(filters)
-        sos = self._tools.calculate_linear_share_of_shelf(sos_filters=filters, **denominator_filters)
+        sos = self._tools.calculate_linear_share_of_shelf(
+            sos_filters=filters, **denominator_filters)
         if sos == None:
             return np.nan
         elif sos == 0:
@@ -1115,6 +1170,7 @@ class LinearFairShareSPTAtomicKpiCalculation(KpiAtomicKpisCalculator):
     def kpi_type(self):
         return 'Share of Shelf Linear / Share of Sales SPT'
 
+
 class LinearFairShareNumeratorSPTAtomicKpiCalculation(KpiAtomicKpisCalculator):
     def calculate_atomic_kpi(self, atomic_kpi_data):
         filters = atomic_kpi_data['filters']
@@ -1125,7 +1181,8 @@ class LinearFairShareNumeratorSPTAtomicKpiCalculation(KpiAtomicKpisCalculator):
 
         if atomic_kpi_data['atomic'] == 'MARS Space goal':
             sales = 20
-        scene_type_filter = self._create_filter_dict(key=TEMPLATE_NAME, value=atomic_kpi_data['scene_types'])
+        scene_type_filter = self._create_filter_dict(
+            key=TEMPLATE_NAME, value=atomic_kpi_data['scene_types'])
         filters.update(scene_type_filter)
         denominator_filters = self.get_denominator_filters(filters)
         return self._tools.calculate_linear_share_of_shelf_numerator(sos_filters=filters, **denominator_filters)
@@ -1133,6 +1190,7 @@ class LinearFairShareNumeratorSPTAtomicKpiCalculation(KpiAtomicKpisCalculator):
     @classproperty
     def kpi_type(self):
         return 'Share of Shelf Linear / Share of Sales - numerator SPT'
+
 
 class LinearFairShareDenominatorSPTAtomicKpiCalculation(KpiAtomicKpisCalculator):
     def calculate_atomic_kpi(self, atomic_kpi_data):
@@ -1144,7 +1202,8 @@ class LinearFairShareDenominatorSPTAtomicKpiCalculation(KpiAtomicKpisCalculator)
 
         if atomic_kpi_data['atomic'] == 'MARS Space goal':
             sales = 20
-        scene_type_filter = self._create_filter_dict(key=TEMPLATE_NAME, value=atomic_kpi_data['scene_types'])
+        scene_type_filter = self._create_filter_dict(
+            key=TEMPLATE_NAME, value=atomic_kpi_data['scene_types'])
         filters.update(scene_type_filter)
         denominator_filters = self.get_denominator_filters(filters)
         return self._tools.calculate_linear_share_of_shelf_denominator(sos_filters=filters, **denominator_filters)
@@ -1152,6 +1211,7 @@ class LinearFairShareDenominatorSPTAtomicKpiCalculation(KpiAtomicKpisCalculator)
     @classproperty
     def kpi_type(self):
         return 'Share of Shelf Linear / Share of Sales - denominator SPT'
+
 
 class LinearPreferredRangeShareAtomicKpiCalculation(KpiAtomicKpisCalculator):
     def calculate_atomic_kpi(self, atomic_kpi_data):
@@ -1161,12 +1221,14 @@ class LinearPreferredRangeShareAtomicKpiCalculation(KpiAtomicKpisCalculator):
             return np.nan
 
         numerator_filters = atomic_kpi_data['filters']
-        scene_type_filter = self._create_filter_dict(key=TEMPLATE_NAME, value=atomic_kpi_data['scene_types'])
+        scene_type_filter = self._create_filter_dict(
+            key=TEMPLATE_NAME, value=atomic_kpi_data['scene_types'])
         numerator_filters.update(scene_type_filter)
         numerator_filters.update(self._get_preferred_range_filter())
         denominator_filters = self.get_denominator_filters(numerator_filters)
         denominator_filters.update(self._get_preferred_range_filter())
-        sos = self._tools.calculate_linear_share_of_shelf(sos_filters=numerator_filters, **denominator_filters)
+        sos = self._tools.calculate_linear_share_of_shelf(
+            sos_filters=numerator_filters, **denominator_filters)
         if sos == None:
             return np.nan
         elif sos == 0:
@@ -1187,7 +1249,8 @@ class LinearPreferredRangeShareNumeratorAtomicKpiCalculation(KpiAtomicKpisCalcul
             return np.nan
 
         numerator_filters = atomic_kpi_data['filters']
-        scene_type_filter = self._create_filter_dict(key=TEMPLATE_NAME, value=atomic_kpi_data['scene_types'])
+        scene_type_filter = self._create_filter_dict(
+            key=TEMPLATE_NAME, value=atomic_kpi_data['scene_types'])
         numerator_filters.update(scene_type_filter)
         numerator_filters.update(self._get_preferred_range_filter())
         denominator_filters = self.get_denominator_filters(numerator_filters)
@@ -1207,7 +1270,8 @@ class LinearPreferredRangeShareDenominatorAtomicKpiCalculation(KpiAtomicKpisCalc
             return np.nan
 
         numerator_filters = atomic_kpi_data['filters']
-        scene_type_filter = self._create_filter_dict(key=TEMPLATE_NAME, value=atomic_kpi_data['scene_types'])
+        scene_type_filter = self._create_filter_dict(
+            key=TEMPLATE_NAME, value=atomic_kpi_data['scene_types'])
         numerator_filters.update(scene_type_filter)
         numerator_filters.update(self._get_preferred_range_filter())
         denominator_filters = self.get_denominator_filters(numerator_filters)
@@ -1218,6 +1282,7 @@ class LinearPreferredRangeShareDenominatorAtomicKpiCalculation(KpiAtomicKpisCalc
     def kpi_type(self):
         return 'Linear Share of shelf in Preferred Range / Share of Sales - denominator'
 
+
 class LinearPreferredRangeShareSPTAtomicKpiCalculation(KpiAtomicKpisCalculator):
     def calculate_atomic_kpi(self, atomic_kpi_data):
         filters = atomic_kpi_data['filters']
@@ -1227,14 +1292,16 @@ class LinearPreferredRangeShareSPTAtomicKpiCalculation(KpiAtomicKpisCalculator):
             return np.nan
 
         numerator_filters = atomic_kpi_data['filters']
-        scene_type_filter = self._create_filter_dict(key=TEMPLATE_NAME, value=atomic_kpi_data['scene_types'])
+        scene_type_filter = self._create_filter_dict(
+            key=TEMPLATE_NAME, value=atomic_kpi_data['scene_types'])
         numerator_filters.update(scene_type_filter)
         # numerator_filters.update(self._get_preferred_range_SPT_filter(filters))
         numerator_filters.update(self._get_preferred_range_filter())
         denominator_filters = self.get_denominator_filters(numerator_filters)
         # denominator_filters.update(self._get_preferred_range_SPT_filter(filters))
         denominator_filters.update(self._get_preferred_range_filter())
-        sos = self._tools.calculate_linear_share_of_shelf(sos_filters=numerator_filters, **denominator_filters)
+        sos = self._tools.calculate_linear_share_of_shelf(
+            sos_filters=numerator_filters, **denominator_filters)
         if sos == None:
             return np.nan
         elif sos == 0:
@@ -1246,6 +1313,7 @@ class LinearPreferredRangeShareSPTAtomicKpiCalculation(KpiAtomicKpisCalculator):
     def kpi_type(self):
         return 'Linear Share of shelf in Preferred Range / Share of Sales SPT'
 
+
 class LinearPreferredRangeShareNumeratorSPTAtomicKpiCalculation(KpiAtomicKpisCalculator):
     def calculate_atomic_kpi(self, atomic_kpi_data):
         filters = atomic_kpi_data['filters']
@@ -1255,7 +1323,8 @@ class LinearPreferredRangeShareNumeratorSPTAtomicKpiCalculation(KpiAtomicKpisCal
             return np.nan
 
         numerator_filters = atomic_kpi_data['filters']
-        scene_type_filter = self._create_filter_dict(key=TEMPLATE_NAME, value=atomic_kpi_data['scene_types'])
+        scene_type_filter = self._create_filter_dict(
+            key=TEMPLATE_NAME, value=atomic_kpi_data['scene_types'])
         numerator_filters.update(scene_type_filter)
         # numerator_filters.update(self._get_preferred_range_SPT_filter(filters))
         numerator_filters.update(self._get_preferred_range_filter())
@@ -1268,6 +1337,7 @@ class LinearPreferredRangeShareNumeratorSPTAtomicKpiCalculation(KpiAtomicKpisCal
     def kpi_type(self):
         return 'Linear Share of shelf in Preferred Range / Share of Sales - numerator SPT'
 
+
 class LinearPreferredRangeShareDenominatorSPTAtomicKpiCalculation(KpiAtomicKpisCalculator):
     def calculate_atomic_kpi(self, atomic_kpi_data):
         filters = atomic_kpi_data['filters']
@@ -1277,7 +1347,8 @@ class LinearPreferredRangeShareDenominatorSPTAtomicKpiCalculation(KpiAtomicKpisC
             return np.nan
 
         numerator_filters = atomic_kpi_data['filters']
-        scene_type_filter = self._create_filter_dict(key=TEMPLATE_NAME, value=atomic_kpi_data['scene_types'])
+        scene_type_filter = self._create_filter_dict(
+            key=TEMPLATE_NAME, value=atomic_kpi_data['scene_types'])
         numerator_filters.update(scene_type_filter)
         # numerator_filters.update(self._get_preferred_range_SPT_filter(filters))
         numerator_filters.update(self._get_preferred_range_filter())
@@ -1290,6 +1361,7 @@ class LinearPreferredRangeShareDenominatorSPTAtomicKpiCalculation(KpiAtomicKpisC
     def kpi_type(self):
         return 'Linear Share of shelf in Preferred Range / Share of Sales - denominator SPT'
 
+
 class ShareOfAssortmentPrAtomicKpiCalculation(KpiAtomicKpisCalculator):
     def calculate_atomic_kpi(self, atomic_kpi_data):
         result = np.nan
@@ -1297,14 +1369,16 @@ class ShareOfAssortmentPrAtomicKpiCalculation(KpiAtomicKpisCalculator):
         if not nbil_products.empty:
             products = self._data_provider.all_products[['product_ean_code']].copy()
             products.loc[:, 'upc'] = products['product_ean_code'].str.zfill(12)
-            relevant_ean_codes = products.merge(nbil_products, on='upc')[['either', 'product_ean_code']]
+            relevant_ean_codes = products.merge(nbil_products, on='upc')[
+                ['either', 'product_ean_code']]
             if not relevant_ean_codes.empty:
                 relevant_ean_codes_either = relevant_ean_codes[relevant_ean_codes['either'] != '']
                 relevant_ean_codes = relevant_ean_codes[relevant_ean_codes['either'] == '']
 
                 scene_type_filter = self._create_filter_dict(key=TEMPLATE_NAME,
                                                              value=atomic_kpi_data['scene_types'])
-                ean_code_filter = {'product_ean_code': relevant_ean_codes['product_ean_code'].tolist()}
+                ean_code_filter = {
+                    'product_ean_code': relevant_ean_codes['product_ean_code'].tolist()}
                 shelves_filter = self._get_preferred_range_filter()
                 filters = {}
                 filters.update(scene_type_filter)
@@ -1312,12 +1386,14 @@ class ShareOfAssortmentPrAtomicKpiCalculation(KpiAtomicKpisCalculator):
                 filters.update(shelves_filter)
                 num_of_assorted_products = self._tools.calculate_assortment(**filters)
                 nbil_product_numbers = len(nbil_products[nbil_products['either'] == ''])
-                nbil_either_product_numbers = len(nbil_products[nbil_products['either'] != '']['either'].unique())
+                nbil_either_product_numbers = len(
+                    nbil_products[nbil_products['either'] != '']['either'].unique())
 
                 if not relevant_ean_codes_either.empty:
                     for either_number in relevant_ean_codes_either['either'].unique().tolist():
                         relevant_eans = relevant_ean_codes_either[relevant_ean_codes_either['either'] == either_number]
-                        ean_code_filter = {'product_ean_code': relevant_eans['product_ean_code'].tolist()}
+                        ean_code_filter = {
+                            'product_ean_code': relevant_eans['product_ean_code'].tolist()}
                         filters.update(ean_code_filter)
                         result = self._tools.calculate_assortment(**filters)
                         if result:
@@ -1328,7 +1404,8 @@ class ShareOfAssortmentPrAtomicKpiCalculation(KpiAtomicKpisCalculator):
                 # num_of_expected_product = len(scif[scif['product_ean_code'].isin(relevant_ean_codes)])
                 if num_of_expected_product == 0:
                     return np.nan
-                result = round((float(num_of_assorted_products) / float(num_of_expected_product)) * 100, 2)
+                result = round((float(num_of_assorted_products) /
+                                float(num_of_expected_product)) * 100, 2)
 
         return result
 
@@ -1344,14 +1421,16 @@ class ShareOfAssortmentPrNumeratorAtomicKpiCalculation(KpiAtomicKpisCalculator):
         if not nbil_products.empty:
             products = self._data_provider.all_products[['product_ean_code']].copy()
             products.loc[:, 'upc'] = products['product_ean_code'].str.zfill(12)
-            relevant_ean_codes = products.merge(nbil_products, on='upc')[['either', 'product_ean_code']]
+            relevant_ean_codes = products.merge(nbil_products, on='upc')[
+                ['either', 'product_ean_code']]
             if not relevant_ean_codes.empty:
                 relevant_ean_codes_either = relevant_ean_codes[relevant_ean_codes['either'] != '']
                 relevant_ean_codes = relevant_ean_codes[relevant_ean_codes['either'] == '']
 
                 scene_type_filter = self._create_filter_dict(key=TEMPLATE_NAME,
                                                              value=atomic_kpi_data['scene_types'])
-                ean_code_filter = {'product_ean_code': relevant_ean_codes['product_ean_code'].tolist()}
+                ean_code_filter = {
+                    'product_ean_code': relevant_ean_codes['product_ean_code'].tolist()}
                 shelves_filter = self._get_preferred_range_filter()
                 filters = {}
                 filters.update(scene_type_filter)
@@ -1362,7 +1441,8 @@ class ShareOfAssortmentPrNumeratorAtomicKpiCalculation(KpiAtomicKpisCalculator):
                 if not relevant_ean_codes_either.empty:
                     for either_number in relevant_ean_codes_either['either'].unique().tolist():
                         relevant_eans = relevant_ean_codes_either[relevant_ean_codes_either['either'] == either_number]
-                        ean_code_filter = {'product_ean_code': relevant_eans['product_ean_code'].tolist()}
+                        ean_code_filter = {
+                            'product_ean_code': relevant_eans['product_ean_code'].tolist()}
                         filters.update(ean_code_filter)
                         result = self._tools.calculate_assortment(**filters)
                         if result:
@@ -1375,6 +1455,7 @@ class ShareOfAssortmentPrNumeratorAtomicKpiCalculation(KpiAtomicKpisCalculator):
     def kpi_type(self):
         return 'NBIL SOA - numerator'
 
+
 class ShareOfAssortmentAtomicKpiCalculationNotPR(KpiAtomicKpisCalculator):
     def calculate_atomic_kpi(self, atomic_kpi_data):
         result = np.nan
@@ -1382,7 +1463,8 @@ class ShareOfAssortmentAtomicKpiCalculationNotPR(KpiAtomicKpisCalculator):
         if not nbil_products.empty:
             products = self._data_provider.all_products[['product_ean_code']].copy()
             products.loc[:, 'upc'] = products['product_ean_code'].str.zfill(12)
-            relevant_ean_codes = products.merge(nbil_products, on='upc')['product_ean_code'].tolist()
+            relevant_ean_codes = products.merge(nbil_products, on='upc')[
+                'product_ean_code'].tolist()
             if relevant_ean_codes:
                 scene_type_filter = self._create_filter_dict(key=TEMPLATE_NAME,
                                                              value=atomic_kpi_data['scene_types'])
@@ -1399,15 +1481,14 @@ class ShareOfAssortmentAtomicKpiCalculationNotPR(KpiAtomicKpisCalculator):
                 # num_of_expected_product = len(scif[scif['product_ean_code'].isin(relevant_ean_codes)])
                 if num_of_expected_product == 0:
                     return np.nan
-                result = round((float(num_of_assorted_products) / float(num_of_expected_product)) * 100, 2)
+                result = round((float(num_of_assorted_products) /
+                                float(num_of_expected_product)) * 100, 2)
 
         return result
 
     @classproperty
     def kpi_type(self):
         return 'NBIL SOA NOT PR'
-
-
 
 
 class ShareOfAssortmentPrSPTAtomicKpiCalculation(KpiAtomicKpisCalculator):
@@ -1417,14 +1498,16 @@ class ShareOfAssortmentPrSPTAtomicKpiCalculation(KpiAtomicKpisCalculator):
         if not nbil_products.empty:
             products = self._data_provider.all_products[['product_ean_code']].copy()
             products.loc[:, 'upc'] = products['product_ean_code'].str.zfill(12)
-            relevant_ean_codes = products.merge(nbil_products, on='upc')[['either', 'product_ean_code']]
+            relevant_ean_codes = products.merge(nbil_products, on='upc')[
+                ['either', 'product_ean_code']]
             if not relevant_ean_codes.empty:
                 relevant_ean_codes_either = relevant_ean_codes[relevant_ean_codes['either'] != '']
                 relevant_ean_codes = relevant_ean_codes[relevant_ean_codes['either'] == '']
 
                 scene_type_filter = self._create_filter_dict(key=TEMPLATE_NAME,
                                                              value=atomic_kpi_data['scene_types'])
-                ean_code_filter = {'product_ean_code': relevant_ean_codes['product_ean_code'].tolist()}
+                ean_code_filter = {
+                    'product_ean_code': relevant_ean_codes['product_ean_code'].tolist()}
                 shelves_filter = self._get_preferred_range_SPT_filter(atomic_kpi_data['filters'])
                 filters = {}
                 filters.update(scene_type_filter)
@@ -1432,13 +1515,15 @@ class ShareOfAssortmentPrSPTAtomicKpiCalculation(KpiAtomicKpisCalculator):
                 filters.update(shelves_filter)
                 num_of_assorted_products = self._tools.calculate_assortment(**filters)
                 nbil_product_numbers = len(nbil_products[nbil_products['either'] == ''])
-                nbil_either_product_numbers = len(nbil_products[nbil_products['either'] != '']['either'].unique())
+                nbil_either_product_numbers = len(
+                    nbil_products[nbil_products['either'] != '']['either'].unique())
 
                 if not relevant_ean_codes_either.empty:
                     for either_number in relevant_ean_codes_either['either'].unique().tolist():
                         relevant_eans = relevant_ean_codes_either[
                             relevant_ean_codes_either['either'] == either_number]
-                        ean_code_filter = {'product_ean_code': relevant_eans['product_ean_code'].tolist()}
+                        ean_code_filter = {
+                            'product_ean_code': relevant_eans['product_ean_code'].tolist()}
                         filters.update(ean_code_filter)
                         result = self._tools.calculate_assortment(**filters)
                         if result:
@@ -1449,13 +1534,15 @@ class ShareOfAssortmentPrSPTAtomicKpiCalculation(KpiAtomicKpisCalculator):
                 # num_of_expected_product = len(scif[scif['product_ean_code'].isin(relevant_ean_codes)])
                 if num_of_expected_product == 0:
                     return np.nan
-                result = round((float(num_of_assorted_products) / float(num_of_expected_product)) * 100, 2)
+                result = round((float(num_of_assorted_products) /
+                                float(num_of_expected_product)) * 100, 2)
 
         return result
 
     @classproperty
     def kpi_type(self):
         return 'NBIL SOA SPT'
+
 
 class ShareOfAssortmentPrSPTNumeratorAtomicKpiCalculation(KpiAtomicKpisCalculator):
     def calculate_atomic_kpi(self, atomic_kpi_data):
@@ -1464,14 +1551,16 @@ class ShareOfAssortmentPrSPTNumeratorAtomicKpiCalculation(KpiAtomicKpisCalculato
         if not nbil_products.empty:
             products = self._data_provider.all_products[['product_ean_code']].copy()
             products.loc[:, 'upc'] = products['product_ean_code'].str.zfill(12)
-            relevant_ean_codes = products.merge(nbil_products, on='upc')[['either', 'product_ean_code']]
+            relevant_ean_codes = products.merge(nbil_products, on='upc')[
+                ['either', 'product_ean_code']]
             if not relevant_ean_codes.empty:
                 relevant_ean_codes_either = relevant_ean_codes[relevant_ean_codes['either'] != '']
                 relevant_ean_codes = relevant_ean_codes[relevant_ean_codes['either'] == '']
 
                 scene_type_filter = self._create_filter_dict(key=TEMPLATE_NAME,
                                                              value=atomic_kpi_data['scene_types'])
-                ean_code_filter = {'product_ean_code': relevant_ean_codes['product_ean_code'].tolist()}
+                ean_code_filter = {
+                    'product_ean_code': relevant_ean_codes['product_ean_code'].tolist()}
                 shelves_filter = self._get_preferred_range_SPT_filter(atomic_kpi_data['filters'])
                 filters = {}
                 filters.update(scene_type_filter)
@@ -1482,7 +1571,8 @@ class ShareOfAssortmentPrSPTNumeratorAtomicKpiCalculation(KpiAtomicKpisCalculato
                 if not relevant_ean_codes_either.empty:
                     for either_number in relevant_ean_codes_either['either'].unique().tolist():
                         relevant_eans = relevant_ean_codes_either[relevant_ean_codes_either['either'] == either_number]
-                        ean_code_filter = {'product_ean_code': relevant_eans['product_ean_code'].tolist()}
+                        ean_code_filter = {
+                            'product_ean_code': relevant_eans['product_ean_code'].tolist()}
                         filters.update(ean_code_filter)
                         result = self._tools.calculate_assortment(**filters)
                         if result:
@@ -1495,9 +1585,11 @@ class ShareOfAssortmentPrSPTNumeratorAtomicKpiCalculation(KpiAtomicKpisCalculato
     def kpi_type(self):
         return 'NBIL SOA - numerator SPT'
 
+
 class DistributionCalculation(KpiAtomicKpisCalculator):
     def calculate_atomic_kpi(self, atomic_kpi_data):
-        scene_type_filter = self._create_filter_dict(key=TEMPLATE_NAME, value=atomic_kpi_data['scene_types'])
+        scene_type_filter = self._create_filter_dict(
+            key=TEMPLATE_NAME, value=atomic_kpi_data['scene_types'])
         filters = atomic_kpi_data['filters']
         filters.update(scene_type_filter)
         result = 100 if self._tools.calculate_availability(**filters) >= 1 else 0
@@ -1527,7 +1619,8 @@ class BaseSSequenceCalculation(KpiAtomicKpisCalculator):
 
     def _get_scene_list(self, filters):
         matches = self._tools.match_product_in_scene.copy()
-        scenes_list = matches[self._tools.get_filter_condition(matches, **filters)]['scene_fk'].unique()
+        scenes_list = matches[self._tools.get_filter_condition(
+            matches, **filters)]['scene_fk'].unique()
         return scenes_list
 
     def _get_scene_sequence_values(self, filters, order_by):
@@ -1551,7 +1644,8 @@ class NegativeSequenceCalculation(BaseSSequenceCalculation):
         filters = atomic_kpi_data['filters']
         allowed = atomic_kpi_data['allowed']
         allowed = {'Private Label': (allowed['Private Label'], MarsUsGENERALToolBox.EXCLUDE_FILTER)}
-        scene_type_filter = self._create_filter_dict(key=TEMPLATE_NAME, value=atomic_kpi_data['scene_types'])
+        scene_type_filter = self._create_filter_dict(
+            key=TEMPLATE_NAME, value=atomic_kpi_data['scene_types'])
         filters.update(scene_type_filter)
         filters.update(allowed)
 
@@ -1567,10 +1661,12 @@ class NegativeSequenceCalculation(BaseSSequenceCalculation):
                     # atomic_kpi_data['filters']['Customer Brand'] = [filter]
                     tested_filters = {order_by: order_sequence[i]}
                     tested_filters.update(allowed)
-                    tested_filters = {'product_fk': self.get_products_by_filters(return_value='product_fk', **tested_filters).unique().tolist()}
+                    tested_filters = {'product_fk': self.get_products_by_filters(
+                        return_value='product_fk', **tested_filters).unique().tolist()}
                     anchor_filters = {order_by: order_sequence[index]}
                     anchor_filters.update(allowed)
-                    anchor_filters = {'product_fk': self.get_products_by_filters(return_value='product_fk', **anchor_filters).unique().tolist()}
+                    anchor_filters = {'product_fk': self.get_products_by_filters(
+                        return_value='product_fk', **anchor_filters).unique().tolist()}
                     total_score = self._tools.calculate_non_proximity(tested_filters=tested_filters,
                                                                       anchor_filters=anchor_filters,
                                                                       allowed_diagonal=True,
@@ -1590,7 +1686,8 @@ class NegativeAdjacencyCalculation(BaseSSequenceCalculation):
     def calculate_atomic_kpi(self, atomic_kpi_data):
         result = 0
         filters = self._split_filters(atomic_kpi_data['filters'])
-        scene_type_filter = self._create_filter_dict(key=TEMPLATE_NAME, value=atomic_kpi_data['scene_types'])
+        scene_type_filter = self._create_filter_dict(
+            key=TEMPLATE_NAME, value=atomic_kpi_data['scene_types'])
         scenes_list = self._get_scene_list(scene_type_filter)
         general_filters = filters['all']
 
@@ -1609,9 +1706,9 @@ class NegativeAdjacencyCalculation(BaseSSequenceCalculation):
         for scene in scenes_list:
             general_filters.update({'scene_id': scene})
             score = self._tools.calculate_non_proximity(tested_filters=filters['A'],
-                                                          anchor_filters=filters['B'],
-                                                          allowed_diagonal=False,
-                                                          **general_filters)
+                                                        anchor_filters=filters['B'],
+                                                        allowed_diagonal=False,
+                                                        **general_filters)
             if score == False:
                 return 0
             else:
@@ -1630,7 +1727,8 @@ class SequenceCalculation(BaseSSequenceCalculation):
         order_by, order_sequence = self._get_order_sequence(atomic_kpi_data)
         filters = atomic_kpi_data['filters'].copy()
         target = atomic_kpi_data['target']
-        scene_type_filter = self._create_filter_dict(key=TEMPLATE_NAME, value=atomic_kpi_data['scene_types'])
+        scene_type_filter = self._create_filter_dict(
+            key=TEMPLATE_NAME, value=atomic_kpi_data['scene_types'])
         filters.update(scene_type_filter)
 
         scenes_list = self._get_scene_list(filters)
@@ -1669,7 +1767,8 @@ class SequenceCalculation(BaseSSequenceCalculation):
                 for direction in directions:
                     direction_data = general_direction_data.copy()
                     direction_data[direction] = (1, 1000)
-                    seq = self._tools.calculate_relative_position(tested, anchor, direction_data, **scene_filter)
+                    seq = self._tools.calculate_relative_position(
+                        tested, anchor, direction_data, **scene_filter)
                     at_least_one[direction] = seq or at_least_one[direction]
                     scene_sequence[direction] = seq and at_least_one[direction]
                     if self._both_sides_true(at_least_one) or self._both_sides_false(scene_sequence):
@@ -1697,7 +1796,8 @@ class SequenceSptCalculation(BaseSSequenceCalculation):
         order_by, order_sequence = self._get_order_sequence(atomic_kpi_data)
         filters = atomic_kpi_data['filters'].copy()
         target = atomic_kpi_data['target']
-        scene_type_filter = self._create_filter_dict(key=TEMPLATE_NAME, value=atomic_kpi_data['scene_types'])
+        scene_type_filter = self._create_filter_dict(
+            key=TEMPLATE_NAME, value=atomic_kpi_data['scene_types'])
         filters.update(scene_type_filter)
 
         scenes_list = self._get_scene_list(filters)
@@ -1740,7 +1840,8 @@ class SequenceSptCalculation(BaseSSequenceCalculation):
                 anchor_edge_block = edges_blocks[i]
                 tested_edge_block = edges_blocks[i + 1]
                 for direction in directions:
-                    seq = self.calculate_relative_block_position(anchor_edge_block, tested_edge_block, direction)
+                    seq = self.calculate_relative_block_position(
+                        anchor_edge_block, tested_edge_block, direction)
                     at_least_one[direction] = seq or at_least_one[direction]
                     scene_sequence[direction] = seq and at_least_one[direction]
                     if self._both_sides_true(at_least_one) or self._both_sides_false(scene_sequence):
@@ -1760,7 +1861,8 @@ class SequenceSptCalculation(BaseSSequenceCalculation):
         result_block_edges = {}
         for i in xrange(len(sequence_filters)):
             filters = sequence_filters[i]
-            result = self._tools.block.calculate_block_edges(biggest_block=True, include_empty=True, **filters)
+            result = self._tools.block.calculate_block_edges(
+                biggest_block=True, include_empty=True, **filters)
             result_block_edges[i] = result['visual']
         return result_block_edges
 
@@ -1786,7 +1888,8 @@ class VerticalSequenceCalculation(BaseSSequenceCalculation):
         order_by, order_sequence = self._get_order_sequence(atomic_kpi_data)
         filters = atomic_kpi_data['filters'].copy()
         target = atomic_kpi_data['target']
-        scene_type_filter = self._create_filter_dict(key=TEMPLATE_NAME, value=atomic_kpi_data['scene_types'])
+        scene_type_filter = self._create_filter_dict(
+            key=TEMPLATE_NAME, value=atomic_kpi_data['scene_types'])
         filters.update(scene_type_filter)
 
         scenes_list = self._get_scene_list(filters)
@@ -1809,10 +1912,10 @@ class VerticalSequenceCalculation(BaseSSequenceCalculation):
 
             for i in range(0, sequence_value_count - 1):
                 scene_value_filter = scene_filter.copy()
-                scene_value_filter.update({order_by: order_sequence[i]})
+                scene_value_filter.update({order_by: [order_sequence[i]]})
                 group_a_block = self._tools.calculate_block_together(minimum_block_ratio=0.01, biggest_block=True,
                                                                      **scene_value_filter)
-                scene_value_filter.update({order_by: order_sequence[i + 1]})
+                scene_value_filter.update({order_by: [order_sequence[i + 1]]})
                 group_b_block = self._tools.calculate_block_together(minimum_block_ratio=0.01, biggest_block=True,
                                                                      **scene_value_filter)
 
@@ -1843,14 +1946,16 @@ class VerticalSequenceAvgShelfCalculation(BaseSSequenceCalculation):
         result = 0
         order_by, order_sequence = self._get_order_sequence(atomic_kpi_data)
         filters = atomic_kpi_data['filters'].copy()
-        scene_type_filter = self._create_filter_dict(key=TEMPLATE_NAME, value=atomic_kpi_data['scene_types'])
+        scene_type_filter = self._create_filter_dict(
+            key=TEMPLATE_NAME, value=atomic_kpi_data['scene_types'])
         filters.update(scene_type_filter)
         filters.update({order_by: order_sequence})
 
         matches = self._tools.match_product_in_scene.copy()
         relevant_product_list = matches[self._tools.get_filter_condition(matches, **filters)]
         if not relevant_product_list.empty:
-            biggest_scene = relevant_product_list.groupby(['scene_fk']).size().reset_index(name='counts').sort_values(['counts'], ascending=False)
+            biggest_scene = relevant_product_list.groupby(['scene_fk']).size().reset_index(
+                name='counts').sort_values(['counts'], ascending=False)
             biggest_scene = biggest_scene['scene_fk'].values[0]
 
             scene_filter = filters.copy()
@@ -1889,7 +1994,8 @@ class VerticalSequenceAvgShelfCalculation(BaseSSequenceCalculation):
 class ShelfLengthCalculationBase(KpiAtomicKpisCalculator):
     def calculate_atomic_kpi(self, atomic_kpi_data):
         filters = atomic_kpi_data['filters']
-        scene_type_filter = self._create_filter_dict(key=TEMPLATE_NAME, value=atomic_kpi_data['scene_types'])
+        scene_type_filter = self._create_filter_dict(
+            key=TEMPLATE_NAME, value=atomic_kpi_data['scene_types'])
         filters.update(scene_type_filter)
 
         scif_matches = self.get_scif_matches_by_filters(**filters)
@@ -1904,9 +2010,11 @@ class ShelfLengthCalculationBase(KpiAtomicKpisCalculator):
         matches.loc[:, 'width'] = matches['width_mm_advance'].fillna(matches['width_mm'])
         bay_width = matches.groupby(['bay_number', 'scene_id'], as_index=False).agg(
             {'shelf_number_from_bottom': 'max', 'width': 'sum'})
-        bay_width = bay_width.rename(index=str, columns={'shelf_number_from_bottom': 'shelf_number_from_bottom_filtered'})
+        bay_width = bay_width.rename(
+            index=str, columns={'shelf_number_from_bottom': 'shelf_number_from_bottom_filtered'})
         bay_width_merged = pd.merge(max_shelf_per_bay, bay_width, on=['bay_number', 'scene_id'])
-        bay_width_merged['avg_length'] = bay_width_merged['width'] / bay_width_merged['shelf_number_from_bottom'] / MM_TO_FT_RATIO
+        bay_width_merged['avg_length'] = bay_width_merged['width'] / \
+            bay_width_merged['shelf_number_from_bottom'] / MM_TO_FT_RATIO
         length = bay_width_merged['avg_length'].sum()
         result = self.get_result(length, target)
         return result
@@ -1919,10 +2027,12 @@ class ShelfLengthCalculationBase(KpiAtomicKpisCalculator):
     def kpi_type(self):
         return 'Shelf length'
 
+
 class ShelfLengthNumeratorCalculationBase(KpiAtomicKpisCalculator):
     def calculate_atomic_kpi(self, atomic_kpi_data):
         filters = atomic_kpi_data['filters']
-        scene_type_filter = self._create_filter_dict(key=TEMPLATE_NAME, value=atomic_kpi_data['scene_types'])
+        scene_type_filter = self._create_filter_dict(
+            key=TEMPLATE_NAME, value=atomic_kpi_data['scene_types'])
         filters.update(scene_type_filter)
 
         scif_matches = self.get_scif_matches_by_filters(**filters)
@@ -1937,9 +2047,11 @@ class ShelfLengthNumeratorCalculationBase(KpiAtomicKpisCalculator):
         matches.loc[:, 'width'] = matches['width_mm_advance'].fillna(matches['width_mm'])
         bay_width = matches.groupby(['bay_number', 'scene_id'], as_index=False).agg(
             {'shelf_number_from_bottom': 'max', 'width': 'sum'})
-        bay_width = bay_width.rename(index=str, columns={'shelf_number_from_bottom': 'shelf_number_from_bottom_filtered'})
+        bay_width = bay_width.rename(
+            index=str, columns={'shelf_number_from_bottom': 'shelf_number_from_bottom_filtered'})
         bay_width_merged = pd.merge(max_shelf_per_bay, bay_width, on=['bay_number', 'scene_id'])
-        bay_width_merged['avg_length'] = bay_width_merged['width'] / bay_width_merged['shelf_number_from_bottom'] / MM_TO_FT_RATIO
+        bay_width_merged['avg_length'] = bay_width_merged['width'] / \
+            bay_width_merged['shelf_number_from_bottom'] / MM_TO_FT_RATIO
         length = bay_width_merged['avg_length'].sum()
         # result = self.get_result(length, target)
         return length
@@ -1974,7 +2086,8 @@ class ShelfLengthSmallerThenCalculation(ShelfLengthCalculationBase):
 class NumOfShelvesCalculation(KpiAtomicKpisCalculator):
     def calculate_atomic_kpi(self, atomic_kpi_data):
         filters = atomic_kpi_data['filters']
-        scene_type_filter = self._create_filter_dict(key=TEMPLATE_NAME, value=atomic_kpi_data['scene_types'])
+        scene_type_filter = self._create_filter_dict(
+            key=TEMPLATE_NAME, value=atomic_kpi_data['scene_types'])
         filters.update(scene_type_filter)
 
         scif_matches = self.get_scif_matches_by_filters(**filters)
@@ -1999,9 +2112,11 @@ class MiddleShelfCalculation(KpiAtomicKpisCalculator):
     def calculate_atomic_kpi(self, atomic_kpi_data):
         filters = self._split_filters(atomic_kpi_data['filters'])
 
-        scene_type_filter = self._create_filter_dict(key=TEMPLATE_NAME, value=atomic_kpi_data['scene_types'])
+        scene_type_filter = self._create_filter_dict(
+            key=TEMPLATE_NAME, value=atomic_kpi_data['scene_types'])
         filters_for_relevant_shelves = filters['A'].copy()
-        relevant_scene_shelves = self.get_relevant_scenes_and_shelves(filters_for_relevant_shelves, scene_type_filter)
+        relevant_scene_shelves = self.get_relevant_scenes_and_shelves(
+            filters_for_relevant_shelves, scene_type_filter)
 
         for idx, row in relevant_scene_shelves.iterrows():
             scene = row['scene_fk']
@@ -2009,7 +2124,8 @@ class MiddleShelfCalculation(KpiAtomicKpisCalculator):
             scene_shelf_filter = {'scene_fk': scene, 'shelf_number': shelf}
             filters['A'].update(scene_shelf_filter)
             filters['B'].update(scene_shelf_filter)
-            sos = self._tools.calculate_linear_share_of_shelf(sos_filters=filters['B'], **filters['A'])
+            sos = self._tools.calculate_linear_share_of_shelf(
+                sos_filters=filters['B'], **filters['A'])
             if sos and sos >= atomic_kpi_data['target']:
                 return 100
         return 0
@@ -2018,7 +2134,8 @@ class MiddleShelfCalculation(KpiAtomicKpisCalculator):
         filters_for_relevant_shelves.update(scene_type_filter)
         filters_for_relevant_shelves.update(self._get_preferred_range_filter())
         matches = self._tools.match_product_in_scene.copy()
-        relevant_matches = matches[self._tools.get_filter_condition(matches, **filters_for_relevant_shelves)]
+        relevant_matches = matches[self._tools.get_filter_condition(
+            matches, **filters_for_relevant_shelves)]
         relevant_scene_shelves = relevant_matches[['scene_fk', 'shelf_number']].drop_duplicates(
             ['scene_fk', 'shelf_number'])
         return relevant_scene_shelves

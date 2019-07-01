@@ -10,7 +10,9 @@ from KPIUtils_v2.GlobalDataProvider.PsDataProvider import PsDataProvider
 
 __author__ = 'ilays'
 
-PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', '06_PNGHK_template_2019_08_03.xlsx')
+PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)),
+                    '..', 'Data', '06_PNGHK_template_2019_08_03.xlsx')
+
 
 class SceneToolBox:
 
@@ -37,7 +39,8 @@ class SceneToolBox:
         This function calculates the KPI results.
         """
         df = pd.merge(self.match_product_in_scene, self.products, on="product_fk", how="left")
-        distinct_session_fk = self.scif[['scene_fk', 'template_name', 'template_fk']].drop_duplicates()
+        distinct_session_fk = self.scif[['scene_fk',
+                                         'template_name', 'template_fk']].drop_duplicates()
         df = pd.merge(df, distinct_session_fk, on="scene_fk", how="left")
         self.calculate_osd(df)
 
@@ -50,7 +53,7 @@ class SceneToolBox:
         if row.empty:
             return
         results_list = []
-        
+
         # filter df include OSD when needed
         shelfs_to_include = row[Const.OSD_NUMBER_OF_SHELVES].values[0]
         if shelfs_to_include != "":
@@ -67,7 +70,8 @@ class SceneToolBox:
             products_to_filter = row[Const.POSM_EAN_CODE].values[0].split(",")
             if products_to_filter != "":
                 products_to_filter = [item.strip() for item in products_to_filter]
-            products_df = df[df['product_ean_code'].isin(products_to_filter)][['scene_fk', 'shelf_number']]
+            products_df = df[df['product_ean_code'].isin(products_to_filter)][[
+                'scene_fk', 'shelf_number']]
             products_df = products_df.drop_duplicates()
             if not products_df.empty:
                 for index, p in products_df.iterrows():
@@ -80,14 +84,14 @@ class SceneToolBox:
             if products_to_filter != "":
                 products_to_filter = [item.strip() for item in products_to_filter]
             products_df = const_scene_df[const_scene_df['product_ean_code'].isin(products_to_filter)][['scene_fk',
-                                                                                           'bay_number',
-                                                                                           'shelf_number']]
+                                                                                                       'bay_number',
+                                                                                                       'shelf_number']]
             products_df = products_df.drop_duplicates()
             if not products_df.empty:
                 for index, p in products_df.iterrows():
                     scene_df = const_scene_df[~((const_scene_df['scene_fk'] == p['scene_fk']) &
-                                          (const_scene_df['bay_number'] == p['bay_number']) &
-                                          (const_scene_df['shelf_number'] == p['shelf_number']))]
+                                                (const_scene_df['bay_number'] == p['bay_number']) &
+                                                (const_scene_df['shelf_number'] == p['shelf_number']))]
                     results_list.append(scene_df)
         if len(results_list) == 0:
             return
@@ -106,13 +110,13 @@ class SceneToolBox:
         else:
             df = results_list[0]
         osd_pk = self.match_product_in_probe_state_reporting[self.match_product_in_probe_state_reporting['name']
-                                         == 'OSD']['match_product_in_probe_state_reporting_fk'].values[0]
+                                                             == 'OSD']['match_product_in_probe_state_reporting_fk'].values[0]
         self.common.match_product_in_probe_state_values[Const.MATCH_PRODUCT_IN_PROBE_FK] = \
-                                                                            df['probe_match_fk'].drop_duplicates()
+            df['probe_match_fk'].drop_duplicates()
         self.common.match_product_in_probe_state_values[Const.MATCH_PRODUCT_IN_PROBE_STATE_REPORTING_FK] = osd_pk
 
-
     def find_row_osd(self, s):
-        rows = self.osd_rules_sheet[self.osd_rules_sheet[Const.SCENE_TYPE].str.encode("utf8") == s.encode("utf8")]
+        rows = self.osd_rules_sheet[self.osd_rules_sheet[Const.SCENE_TYPE].str.encode(
+            "utf8") == s.encode("utf8")]
         row = rows[rows[Const.RETAILER] == self.store_info['retailer_name'].values[0]]
         return row
