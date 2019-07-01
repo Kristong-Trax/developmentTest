@@ -205,7 +205,7 @@ class PngcnSceneKpis(object):
                 self.save_eye_light_products(block_filters['sub_brand_name'][0], filtered_df)
                 filter_block_result = block_class.network_x_block_together(
                     population=block_filters,
-                    additional={'allowed_products_filters': {'product_type': ['Irrelevant']},
+                    additional={'allowed_products_filters': {'product_type': ['Empty']},
                                 'minimum_block_ratio': 0.0,
                                 'minimum_facing_for_block': 3,
                                 'include_stacking': False,
