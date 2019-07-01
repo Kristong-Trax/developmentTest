@@ -112,6 +112,8 @@ class DIAGEOUKToolBox:
         assortment_res_dict_v3 = self.diageo_generator.diageo_global_assortment_function_v3()
         self.commonV2.save_json_to_new_tables(assortment_res_dict_v3)
 
+        res_dict = self.diageo_generator.diageo_global_equipment_score(save_scene_level=False)
+        self.commonV2.save_json_to_new_tables(res_dict)
 
         for set_name in set_names:
             if set_name not in self.tools.KPI_SETS_WITHOUT_A_TEMPLATE and set_name not in self.set_templates_data.keys():
