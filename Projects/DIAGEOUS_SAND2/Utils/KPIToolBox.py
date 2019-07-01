@@ -34,7 +34,8 @@ class ToolBox:
         self.store_info = self.data_provider[Data.STORE_INFO]
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
         try:
-            self.manufacturer_fk = int(self.data_provider[Data.OWN_MANUFACTURER]['param_value'].iloc[0])
+            self.manufacturer_fk = int(
+                self.data_provider[Data.OWN_MANUFACTURER]['param_value'].iloc[0])
         except Exception as e:
             self.manufacturer_fk = self.all_products[
                 self.all_products['manufacturer_name'] == 'DIAGEO']['manufacturer_fk'].iloc[0]
@@ -67,19 +68,22 @@ class ToolBox:
         Reads the template (and makes the EANs be Strings)
         """
         for sheet in Const.SHEETS[self.attr11][self.attr6]:
-            self.templates[sheet] = pd.read_excel(TEMPLATE_PATH, sheetname=sheet, keep_default_na=False)
+            self.templates[sheet] = pd.read_excel(
+                TEMPLATE_PATH, sheetname=sheet, keep_default_na=False)
 
     def init_dfs(self):
         self.sub_brands.rename(
             inplace=True, index=str, columns={"pk": "sub_brand_fk", "parent_id": "brand_fk", "name": "sub_brand"})
-        self.all_products = self.all_products.merge(self.sub_brands, on=["brand_fk", "sub_brand"], how="left")
+        self.all_products = self.all_products.merge(
+            self.sub_brands, on=["brand_fk", "sub_brand"], how="left")
         self.scif = self.scif.merge(self.sub_brands, on=["brand_fk", "sub_brand"], how="left")
         self.scif_without_emptys = self.scif[~(self.scif['product_type'] == "Empty") &
                                              (self.scif['substitution_product_fk'].isnull())]
         self.all_products_sku = self.all_products[(self.all_products['product_type'] == 'SKU') &
                                                   (self.all_products['category'] == 'SPIRITS') &
                                                   (self.all_products['is_active'] == 1)]
-        self.match_product_in_scene = self.match_product_in_scene.merge(self.all_products, on="product_fk")
+        self.match_product_in_scene = self.match_product_in_scene.merge(
+            self.all_products, on="product_fk")
         store_number_1 = self.store_info['store_number_1'].iloc[0]
         self.no_menu_allowed = self.survey.check_survey_answer(
             survey_text=Const.NO_MENU_ALLOWED_QUESTION, target_answer=Const.SURVEY_ANSWER)
@@ -104,10 +108,10 @@ class ToolBox:
                     kpi_operation_types=Const.OPEN_OPERATION_TYPES)
                 self.external_targets = self.external_targets.fillna("N/A")
         elif self.attr6 != Const.ON:
-                self.init_assortment()
-                self.external_targets = self.ps_data.get_kpi_external_targets(
-                    kpi_operation_types=Const.INDEPENDENT_OPERATION_TYPES)
-                self.external_targets = self.external_targets.fillna("N/A")
+            self.init_assortment()
+            self.external_targets = self.ps_data.get_kpi_external_targets(
+                kpi_operation_types=Const.INDEPENDENT_OPERATION_TYPES)
+            self.external_targets = self.external_targets.fillna("N/A")
         if self.attr6 == Const.OFF:
             total_off_trade_fk = self.common.get_kpi_fk_by_kpi_name(
                 Const.DB_ASSORTMENTS_NAMES[Const.OFF]) if self.attr11 in Const.NOT_INDEPENDENT_STORES else \
@@ -144,11 +148,15 @@ class ToolBox:
         if self.relevant_assortment.empty and self.attr6 == Const.OFF:
             return
         total_store_score, segment_store_score, national_store_score = 0, 0, 0
-        total_kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.DB_TOTAL_KPIS[self.attr6][Const.TOTAL])
-        segment_kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.DB_TOTAL_KPIS[self.attr6][Const.SEGMENT])
-        national_kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.DB_TOTAL_KPIS[self.attr6][Const.NATIONAL])
+        total_kpi_fk = self.common.get_kpi_fk_by_kpi_name(
+            Const.DB_TOTAL_KPIS[self.attr6][Const.TOTAL])
+        segment_kpi_fk = self.common.get_kpi_fk_by_kpi_name(
+            Const.DB_TOTAL_KPIS[self.attr6][Const.SEGMENT])
+        national_kpi_fk = self.common.get_kpi_fk_by_kpi_name(
+            Const.DB_TOTAL_KPIS[self.attr6][Const.NATIONAL])
         for i, kpi_line in self.templates[Const.SHEETS[self.attr11][self.attr6][0]].iterrows():
-            total_weighted_score, segment_weighted_score, national_weighted_score = self.calculate_set(kpi_line)
+            total_weighted_score, segment_weighted_score, national_weighted_score = self.calculate_set(
+                kpi_line)
             if kpi_line[Const.KPI_GROUP]:
                 total_store_score += total_weighted_score
                 segment_store_score += segment_weighted_score
@@ -194,7 +202,8 @@ class ToolBox:
         else:
             Log.warning("Set {} is not defined".format(kpi_name))
             return 0, 0, 0
-        total_score, segment_score, national_score = calculation(scene_types, kpi_name, weight, target)
+        total_score, segment_score, national_score = calculation(
+            scene_types, kpi_name, weight, target)
         return total_score, segment_score, national_score
 
     def survey_display_back_bar_write_to_db(self, weight, kpi_dict):
@@ -237,10 +246,13 @@ class ToolBox:
         if self.assortment_products.empty:
             return 0, 0, 0
         relevant_scenes = self.get_relevant_scenes(scene_types)
-        relevant_scif = self.scif_without_emptys[self.scif_without_emptys['scene_id'].isin(relevant_scenes)]
+        relevant_scif = self.scif_without_emptys[self.scif_without_emptys['scene_id'].isin(
+            relevant_scenes)]
         assortment_name = Const.BACK_BAR if kpi_name == Const.BACK_BAR and self.attr11 == Const.OPEN else Const.ON
-        total_on_trade_fk = self.common.get_kpi_fk_by_kpi_name(Const.DB_ASSORTMENTS_NAMES[assortment_name])
-        relevant_assortment = self.assortment_products[self.assortment_products['kpi_fk_lvl2'] == total_on_trade_fk]
+        total_on_trade_fk = self.common.get_kpi_fk_by_kpi_name(
+            Const.DB_ASSORTMENTS_NAMES[assortment_name])
+        relevant_assortment = self.assortment_products[self.assortment_products['kpi_fk_lvl2']
+                                                       == total_on_trade_fk]
         standard_types_results, total_results = {Const.SEGMENT: [], Const.NATIONAL: []}, []
         if self.attr11 == Const.NATIONAL_STORE and kpi_name == Const.BACK_BAR:
             template_kpi_fk = kpi_db_names[Const.TEMPLATE]
@@ -252,7 +264,8 @@ class ToolBox:
                 num, den = sum(temp_results), len(temp_results)
                 result = self.get_score(num, den)
                 template_fk = temp_scif['template_fk'].iloc[0]
-                scene_type_dict = self.common.get_dictionary(kpi_fk=template_kpi_fk, template_fk=template_fk)
+                scene_type_dict = self.common.get_dictionary(
+                    kpi_fk=template_kpi_fk, template_fk=template_fk)
                 parent_dict = self.common.get_dictionary(kpi_fk=kpi_db_names[Const.TOTAL])
                 self.common.write_to_db_result(
                     fk=template_kpi_fk, numerator_id=template_fk,
@@ -315,15 +328,18 @@ class ToolBox:
         :return:
         """
         relevant_scenes = self.get_relevant_scenes(scene_types)
-        relevant_scif = self.scif_without_emptys[self.scif_without_emptys['scene_id'].isin(relevant_scenes)]
+        relevant_scif = self.scif_without_emptys[self.scif_without_emptys['scene_id'].isin(
+            relevant_scenes)]
         relevant_assortment = self.relevant_assortment
         if kpi_name == Const.DISPLAY_BRAND:
             if self.no_display_allowed:
-                self.survey_display_back_bar_write_to_db(weight, Const.DB_OFF_NAMES[Const.DISPLAY_BRAND])
+                self.survey_display_back_bar_write_to_db(
+                    weight, Const.DB_OFF_NAMES[Const.DISPLAY_BRAND])
                 Log.debug("There is no display, Display Brand got 100")
                 return 1 * weight, 1 * weight, 1 * weight
             if self.attr11 in Const.NOT_INDEPENDENT_STORES and kpi_name == Const.DISPLAY_BRAND:
-                relevant_assortment = relevant_assortment[relevant_assortment[Const.DISPLAY].isin([1, '1'])]
+                relevant_assortment = relevant_assortment[relevant_assortment[Const.DISPLAY].isin([
+                                                                                                  1, '1'])]
             relevant_scif = relevant_scif[relevant_scif['location_type'] == 'Secondary Shelf']
         if self.assortment_products.empty:
             return 0, 0, 0
@@ -358,7 +374,8 @@ class ToolBox:
             result, passed = Const.OOS, 0
         kpi_fk = kpi_db_names[Const.SKU]
         sub_brand_kpi_fk = kpi_db_names[Const.SUB_BRAND]
-        sub_brand_dict = self.common.get_dictionary(kpi_fk=sub_brand_kpi_fk, brand_fk=brand, sub_brand_fk=sub_brand)
+        sub_brand_dict = self.common.get_dictionary(
+            kpi_fk=sub_brand_kpi_fk, brand_fk=brand, sub_brand_fk=sub_brand)
         self.common.write_to_db_result(
             fk=kpi_fk, numerator_id=product_fk, result=self.get_pks_of_result(result),
             identifier_parent=sub_brand_dict, should_enter=True)
@@ -383,7 +400,8 @@ class ToolBox:
             result, passed = Const.OOS, 0
         kpi_fk = kpi_db_names[Const.SKU]
         sub_brand_kpi_fk = kpi_db_names[Const.SUB_BRAND]
-        sub_brand_dict = self.common.get_dictionary(kpi_fk=sub_brand_kpi_fk, brand_fk=brand, sub_brand_fk=sub_brand)
+        sub_brand_dict = self.common.get_dictionary(
+            kpi_fk=sub_brand_kpi_fk, brand_fk=brand, sub_brand_fk=sub_brand)
         self.common.write_to_db_result(
             fk=kpi_fk, numerator_id=product_fk, result=self.get_pks_of_result(result),
             identifier_parent=sub_brand_dict, should_enter=True)
@@ -404,11 +422,12 @@ class ToolBox:
             (relevant_scif['manufacturer_fk'] == self.manufacturer_fk) &
             (relevant_scif['facings'] > 0) &
             ~(relevant_scif['product_fk'].isin(assortment_products))][[
-            'product_fk', 'sub_brand_fk', 'brand_fk']].drop_duplicates()
+                'product_fk', 'sub_brand_fk', 'brand_fk']].drop_duplicates()
         result = Const.EXTRA
         for i, product_line in all_diageo_products.iterrows():
             product, sub_brand, brand = product_line[['product_fk', 'sub_brand_fk', 'brand_fk']]
-            sub_brand_dict = self.common.get_dictionary(kpi_fk=sub_brand_kpi_fk, brand_fk=brand, sub_brand_fk=sub_brand)
+            sub_brand_dict = self.common.get_dictionary(
+                kpi_fk=sub_brand_kpi_fk, brand_fk=brand, sub_brand_fk=sub_brand)
             self.common.write_to_db_result(
                 fk=sku_kpi_fk, numerator_id=product, result=self.get_pks_of_result(result),
                 identifier_parent=sub_brand_dict, should_enter=True)
@@ -424,7 +443,8 @@ class ToolBox:
         :param target: float
         :return:
         """
-        total_kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.DB_ON_NAMES[Const.MENU][Const.TOTAL])
+        total_kpi_fk = self.common.get_kpi_fk_by_kpi_name(
+            Const.DB_ON_NAMES[Const.MENU][Const.TOTAL])
         result_dict = self.common.get_dictionary(kpi_fk=total_kpi_fk)
         total_dict = self.common.get_dictionary(name=Const.TOTAL)
         if self.no_menu_allowed:
@@ -442,9 +462,11 @@ class ToolBox:
             ~(self.scif_without_emptys['sub_category_local_name'].isin(Const.MENU_EXCLUDE_SUB_CATEGORIES))]
         diageo_facings, den_res = 0, 0
         if self.attr11 == Const.NATIONAL_STORE:
-            template_kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.DB_ON_NAMES[Const.MENU][Const.TEMPLATE])
+            template_kpi_fk = self.common.get_kpi_fk_by_kpi_name(
+                Const.DB_ON_NAMES[Const.MENU][Const.TEMPLATE])
             for scene_type in relevant_scif['template_name'].unique().tolist():
-                scene_type_dict = self.common.get_dictionary(kpi_fk=template_kpi_fk, scene_type=scene_type)
+                scene_type_dict = self.common.get_dictionary(
+                    kpi_fk=template_kpi_fk, scene_type=scene_type)
                 temp_scif = relevant_scif[relevant_scif['template_name'] == scene_type]
                 temp_diageo_facings, temp_den_res = self.calculate_menu_scene_type(
                     temp_scif, scene_type_dict, target, scene_type)
@@ -458,7 +480,8 @@ class ToolBox:
                     identifier_result=scene_type_dict, target=target, numerator_result=temp_diageo_facings,
                     identifier_parent=result_dict, should_enter=True)
         else:
-            diageo_facings, den_res = self.calculate_menu_scene_type(relevant_scif, result_dict, target, Const.ALL)
+            diageo_facings, den_res = self.calculate_menu_scene_type(
+                relevant_scif, result_dict, target, Const.ALL)
         result = self.get_score(diageo_facings, den_res)
         score = 1 if result >= target else 0
         self.common.write_to_db_result(
@@ -476,8 +499,10 @@ class ToolBox:
         :param target: float
         :return:
         """
-        manufacturer_kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.DB_ON_NAMES[Const.MENU][Const.MANUFACTURER])
-        sub_brand_kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.DB_ON_NAMES[Const.MENU][Const.SUB_BRAND])
+        manufacturer_kpi_fk = self.common.get_kpi_fk_by_kpi_name(
+            Const.DB_ON_NAMES[Const.MENU][Const.MANUFACTURER])
+        sub_brand_kpi_fk = self.common.get_kpi_fk_by_kpi_name(
+            Const.DB_ON_NAMES[Const.MENU][Const.SUB_BRAND])
         all_manufacturers = relevant_scif['manufacturer_fk'].unique().tolist()
         den_res = relevant_scif['facings'].sum()
         diageo_facings = 0
@@ -520,7 +545,8 @@ class ToolBox:
         :param weight: float
         :return: total_result
         """
-        total_kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.DB_OFF_NAMES[Const.DISPLAY_SHARE][Const.TOTAL])
+        total_kpi_fk = self.common.get_kpi_fk_by_kpi_name(
+            Const.DB_OFF_NAMES[Const.DISPLAY_SHARE][Const.TOTAL])
         total_dict = self.common.get_dictionary(kpi_fk=total_kpi_fk)
         manufacturer_kpi_fk = self.common.get_kpi_fk_by_kpi_name(
             Const.DB_OFF_NAMES[Const.DISPLAY_SHARE][Const.MANUFACTURER])
@@ -544,13 +570,15 @@ class ToolBox:
         den_res = all_results[Const.PASSED].sum()
         diageo_results, diageo_result = 0, 0
         for manufacturer in all_results[Const.MANUFACTURER].unique().tolist():
-            num_res = all_results[all_results[Const.MANUFACTURER] == manufacturer][Const.PASSED].sum()
+            num_res = all_results[all_results[Const.MANUFACTURER]
+                                  == manufacturer][Const.PASSED].sum()
             result = self.get_score(num_res, den_res)
             target_manufacturer = None
             if manufacturer == self.manufacturer_fk:
                 diageo_result, diageo_results = result, num_res
                 target_manufacturer = target
-            result_dict = self.common.get_dictionary(manufacturer_fk=manufacturer, kpi_fk=manufacturer_kpi_fk)
+            result_dict = self.common.get_dictionary(
+                manufacturer_fk=manufacturer, kpi_fk=manufacturer_kpi_fk)
             if manufacturer == 0:
                 continue
             self.common.write_to_db_result(
@@ -575,9 +603,12 @@ class ToolBox:
         :param manufacturer_kpi_fk: for write_to_db
         :return: a line for the results DF
         """
-        sku_kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.DB_OFF_NAMES[Const.DISPLAY_SHARE][Const.SKU])
-        manufacturer = self.all_products[self.all_products['product_fk'] == product_fk]['manufacturer_fk'].iloc[0]
-        sum_scenes_passed = self.calculate_passed_display_without_subst(product_fk, relevant_products)
+        sku_kpi_fk = self.common.get_kpi_fk_by_kpi_name(
+            Const.DB_OFF_NAMES[Const.DISPLAY_SHARE][Const.SKU])
+        manufacturer = self.all_products[self.all_products['product_fk']
+                                         == product_fk]['manufacturer_fk'].iloc[0]
+        sum_scenes_passed = self.calculate_passed_display_without_subst(
+            product_fk, relevant_products)
         parent_dict = self.common.get_dictionary(
             kpi_fk=manufacturer_kpi_fk, manufacturer_fk=manufacturer)
         if sum_scenes_passed == 0 or product_fk == 0:
@@ -613,10 +644,12 @@ class ToolBox:
                 default_state))
             relevant_competitions = relevant_competitions[relevant_competitions[Const.EX_STATE_FK] == default_state]
         relevant_competitions = relevant_competitions[Const.SHELF_FACINGS_COLUMNS]
-        relevant_competitions = relevant_competitions.merge(self.relevant_assortment, on="product_fk")
+        relevant_competitions = relevant_competitions.merge(
+            self.relevant_assortment, on="product_fk")
         kpi_db_names = self.pull_kpi_fks_from_names(Const.DB_OFF_NAMES[kpi_name])
         standard_types_results, total_results = {Const.SEGMENT: [], Const.NATIONAL: []}, []
-        relevant_scif = self.scif_without_emptys[self.scif_without_emptys['scene_id'].isin(relevant_scenes)]
+        relevant_scif = self.scif_without_emptys[self.scif_without_emptys['scene_id'].isin(
+            relevant_scenes)]
         for brand_fk in relevant_competitions['brand_fk'].unique().tolist():
             brand_competitions = relevant_competitions[relevant_competitions['brand_fk'] == brand_fk]
             standard_types_results, brand_results = self.generic_brand_calculator(
@@ -636,11 +669,13 @@ class ToolBox:
         """
         competition_kpi_fk = kpi_db_names[Const.COMPETITION]
         kpi_fk = kpi_db_names[Const.SKU]
-        product_fk, brand, sub_brand = competition[[Const.EX_PRODUCT_FK, 'brand_fk', 'sub_brand_fk']]
+        product_fk, brand, sub_brand = competition[[
+            Const.EX_PRODUCT_FK, 'brand_fk', 'sub_brand_fk']]
         if product_fk == 0:
             return None, None
         standard_type = competition[Const.STANDARD_TYPE]
-        result_identifier = self.common.get_dictionary(kpi_fk=competition_kpi_fk, product_fk=product_fk, index=index)
+        result_identifier = self.common.get_dictionary(
+            kpi_fk=competition_kpi_fk, product_fk=product_fk, index=index)
         diageo_facings, comp_facings, score, target, comp_product_fk = self.calculate_facings_competition(
             competition, relevant_scif, product_fk)
         if comp_product_fk:
@@ -651,7 +686,8 @@ class ToolBox:
             fk=kpi_fk, numerator_id=product_fk, result=diageo_facings, denominator_id=self.manufacturer_fk,
             should_enter=True, identifier_parent=result_identifier, target=target)
         sub_brand_kpi_fk = kpi_db_names[Const.SUB_BRAND]
-        sub_brand_dict = self.common.get_dictionary(kpi_fk=sub_brand_kpi_fk, brand_fk=brand, sub_brand_fk=sub_brand)
+        sub_brand_dict = self.common.get_dictionary(
+            kpi_fk=sub_brand_kpi_fk, brand_fk=brand, sub_brand_fk=sub_brand)
         self.common.write_to_db_result(
             fk=competition_kpi_fk, numerator_id=product_fk, score=score * 100,
             result=diageo_facings, identifier_result=result_identifier,
@@ -673,9 +709,11 @@ class ToolBox:
         diageo_facings, comp_facings, temp_comp_facings, temp_target = 0, 0, 0, target
         for template_name in relevant_scif['template_name'].unique():
             template_scif = relevant_scif[relevant_scif['template_name'] == template_name]
-            temp_diageo_facings = template_scif[template_scif['product_fk'] == product_fk]['facings'].sum()
+            temp_diageo_facings = template_scif[template_scif['product_fk']
+                                                == product_fk]['facings'].sum()
             if comp_product_fk:
-                temp_comp_facings = template_scif[template_scif['product_fk'] == comp_product_fk]['facings'].sum()
+                temp_comp_facings = template_scif[template_scif['product_fk']
+                                                  == comp_product_fk]['facings'].sum()
                 temp_target = bench_value * temp_comp_facings
             if temp_diageo_facings >= temp_target and temp_diageo_facings > 0:
                 return temp_diageo_facings, temp_comp_facings, 1, temp_target, comp_product_fk
@@ -704,7 +742,8 @@ class ToolBox:
         all_products_table = all_products_table.merge(self.relevant_assortment, on="product_fk")
         kpi_db_names = self.pull_kpi_fks_from_names(Const.DB_OFF_NAMES[kpi_name])
         standard_types_results, total_results = {Const.SEGMENT: [], Const.NATIONAL: []}, []
-        relevant_matches = self.match_product_in_scene[self.match_product_in_scene['scene_fk'].isin(relevant_scenes)]
+        relevant_matches = self.match_product_in_scene[self.match_product_in_scene['scene_fk'].isin(
+            relevant_scenes)]
         for brand_fk in all_products_table['brand_fk'].unique().tolist():
             brand_competitions = all_products_table[all_products_table['brand_fk'] == brand_fk]
             standard_types_results, brand_results = self.generic_brand_calculator(
@@ -722,7 +761,8 @@ class ToolBox:
         :return:
         """
         kpi_fk = kpi_db_names[Const.SKU]
-        product_fk, brand, sub_brand = product_line[[Const.EX_PRODUCT_FK, 'brand_fk', 'sub_brand_fk']]
+        product_fk, brand, sub_brand = product_line[[
+            Const.EX_PRODUCT_FK, 'brand_fk', 'sub_brand_fk']]
         if product_fk == 0:
             return None
         standard_type = product_line[Const.STANDARD_TYPE]
@@ -730,7 +770,8 @@ class ToolBox:
         product_fk_with_substs = [product_fk]
         product_fk_with_substs += self.all_products[self.all_products['substitution_product_fk'] == product_fk][
             'product_fk'].tolist()
-        relevant_products = relevant_matches[relevant_matches['product_fk'].isin(product_fk_with_substs)]
+        relevant_products = relevant_matches[relevant_matches['product_fk'].isin(
+            product_fk_with_substs)]
         if relevant_products.empty:
             passed, result = 0, Const.NO_PLACEMENT
         else:
@@ -741,7 +782,8 @@ class ToolBox:
             all_shelves_placements = pd.DataFrame(columns=Const.COLUMNS_FOR_PRODUCT_PLACEMENT)
             passed, result = 0, None
             for i, product in relevant_products.iterrows():
-                is_passed, shelf_name = self.calculate_specific_product_shelf_placement(product, shelf_groups)
+                is_passed, shelf_name = self.calculate_specific_product_shelf_placement(
+                    product, shelf_groups)
                 if is_passed == 1:
                     result, passed = shelf_name, 1
                     if shelf_name != Const.OTHER:
@@ -757,11 +799,12 @@ class ToolBox:
                 result = all_shelves_placements[Const.SHELF_NAME].iloc[0]
         shelf_groups = self.templates[Const.SHELF_GROUPS_SHEET]
         target = shelf_groups[shelf_groups[
-                                  Const.NUMBER_GROUP] == min_shelf_loc][Const.SHELF_GROUP].iloc[0]
+            Const.NUMBER_GROUP] == min_shelf_loc][Const.SHELF_GROUP].iloc[0]
         target_fk, result_fk = self.get_pks_of_result(target), self.get_pks_of_result(result)
         score = passed * 100
         sub_brand_kpi_fk = kpi_db_names[Const.SUB_BRAND]
-        sub_brand_dict = self.common.get_dictionary(kpi_fk=sub_brand_kpi_fk, brand_fk=brand, sub_brand_fk=sub_brand)
+        sub_brand_dict = self.common.get_dictionary(
+            kpi_fk=sub_brand_kpi_fk, brand_fk=brand, sub_brand_fk=sub_brand)
         self.common.write_to_db_result(
             fk=kpi_fk, numerator_id=product_fk, score=score, result=self.get_pks_of_result(result),
             identifier_parent=sub_brand_dict, target=target_fk, should_enter=True)
@@ -826,7 +869,8 @@ class ToolBox:
         kpi_db_names = self.pull_kpi_fks_from_names(Const.DB_OFF_NAMES[kpi_name])
         all_products_table = relevant_competitions[Const.MSRP_COLUMNS]
         all_products_table = all_products_table.merge(self.all_products, on="product_fk")
-        relevant_prices = self.products_with_prices[self.products_with_prices['scene_fk'].isin(relevant_scenes)]
+        relevant_prices = self.products_with_prices[self.products_with_prices['scene_fk'].isin(
+            relevant_scenes)]
         standard_types_results, total_results = {}, []
         for brand_fk in all_products_table['brand_fk'].unique().tolist():
             brand_competitions = all_products_table[all_products_table['brand_fk'] == brand_fk]
@@ -850,7 +894,8 @@ class ToolBox:
         """
         kpi_fk = kpi_db_names[Const.COMPETITION]
         comp_fk = competition[Const.EX_COMPETITOR_FK]
-        product_fk, brand, sub_brand = competition[[Const.EX_PRODUCT_FK, 'brand_fk', 'sub_brand_fk']]
+        product_fk, brand, sub_brand = competition[[
+            Const.EX_PRODUCT_FK, 'brand_fk', 'sub_brand_fk']]
         min_relative, max_relative = competition[[Const.EX_RELATIVE_MIN, Const.EX_RELATIVE_MAX]]
         min_absolute, max_absolute = competition[[Const.EX_TARGET_MIN, Const.EX_TARGET_MAX]]
         result_dict = self.common.get_dictionary(kpi_fk=kpi_fk, product_fk=product_fk, index=index)
@@ -861,7 +906,8 @@ class ToolBox:
                          self.does_exist(min_relative) and self.does_exist(max_relative))
         is_absolute = self.does_exist(min_absolute) and self.does_exist(max_absolute)
         if is_competitor:
-            comp_price = self.calculate_sku_price(comp_fk, relevant_prices, result_dict, kpi_db_names)
+            comp_price = self.calculate_sku_price(
+                comp_fk, relevant_prices, result_dict, kpi_db_names)
             if comp_price is None:
                 comp_price = our_price + min_relative
             range_price = (round(comp_price + min_relative, 1), round(comp_price + max_relative, 1))
@@ -876,7 +922,8 @@ class ToolBox:
         elif our_price > range_price[1]:
             result = range_price[1] - our_price
         sub_brand_kpi_fk = kpi_db_names[Const.SUB_BRAND]
-        sub_brand_dict = self.common.get_dictionary(kpi_fk=sub_brand_kpi_fk, brand_fk=brand, sub_brand_fk=sub_brand)
+        sub_brand_dict = self.common.get_dictionary(
+            kpi_fk=sub_brand_kpi_fk, brand_fk=brand, sub_brand_fk=sub_brand)
         self.common.write_to_db_result(
             fk=kpi_fk, numerator_id=product_fk, result=result, should_enter=True,
             identifier_parent=sub_brand_dict, identifier_result=result_dict)
@@ -947,7 +994,8 @@ class ToolBox:
                 num, den = 0, 0
                 result = sum(standard_types_results[standard_type])
             else:
-                num, den = sum(standard_types_results[standard_type]), len(standard_types_results[standard_type])
+                num, den = sum(standard_types_results[standard_type]), len(
+                    standard_types_results[standard_type])
                 result = self.get_score(num, den)
             kpi_fk = kpi_db_names[standard_type]
             total_dict = self.common.get_dictionary(kpi_fk=kpi_fk)
@@ -984,7 +1032,8 @@ class ToolBox:
             num, den = sum(brand_results), len(brand_results)
             result = self.get_score(num, den)
         brand_kpi_fk = kpi_db_names[Const.BRAND]
-        brand_dict = self.common.get_dictionary(kpi_fk=brand_kpi_fk, brand_fk=brand, template_fk=template_fk)
+        brand_dict = self.common.get_dictionary(
+            kpi_fk=brand_kpi_fk, brand_fk=brand, template_fk=template_fk)
         if template_fk == 0:
             total_kpi_fk = kpi_db_names[Const.TOTAL]
             parent_dict = self.common.get_dictionary(kpi_fk=total_kpi_fk)
