@@ -143,6 +143,7 @@ class PngcnSceneKpis(object):
         self.parser = Parser
         self.match_probe_in_scene = self.get_product_special_attribute_data(self.scene_id)
         self.match_product_in_probe_state_reporting = self.psdataprovider.get_match_product_in_probe_state_reporting()
+        self.sub_brand_entities = self.psdataprovider.get_custom_entities_df('sub_brand')
 
     def process_scene(self):
         self.calculate_variant_block()
@@ -239,10 +240,16 @@ class PngcnSceneKpis(object):
                     legal_blocks[filter_name] = filter_results
                     legal_blocks[filter_name] = filter_results
         all_blocks = [p for q in legal_blocks.values() for p in q]
-        self.replace_with_seq_order(sorted(all_blocks, key=lambda i: i['x']), 'x')
-        self.replace_with_seq_order(sorted(all_blocks, key=lambda i: i['y']), 'y')
+        all_blocks_no_duplicates = []
+        for i in range(0, len(all_blocks)):
+            if i == len(all_blocks) - 1:
+                all_blocks_no_duplicates.append(all_blocks[i])
+            elif not (all_blocks[i].equals(all_blocks[i + 1])):
+                all_blocks_no_duplicates.append(all_blocks[i])
+        self.replace_with_seq_order(sorted(all_blocks_no_duplicates, key=lambda i: i['x']), 'x')
+        self.replace_with_seq_order(sorted(all_blocks_no_duplicates, key=lambda i: i['y']), 'y')
         block_variant_kpi_fk = self.common.get_kpi_fk_by_kpi_name(BLOCK_VARIANT_KPI)
-        for block in all_blocks:
+        for block in all_blocks_no_duplicates:
             brand_fk = self.get_attribute_fk_from_name('brand_name', block['brand_name'])
             category_fk = self.get_attribute_fk_from_name('category', block['category'])
             sub_brand_fk = self.get_attribute_fk_from_name(
@@ -283,7 +290,7 @@ class PngcnSceneKpis(object):
 
     def get_custom_entity_fk(self, name, value):
         if name == 'sub_brand_name':
-            attributes = self.psdataprovider.get_custom_entities_df('sub_brand')
+            attributes = self.sub_brand_entities
         else:
             return -1
         if attributes.empty:
