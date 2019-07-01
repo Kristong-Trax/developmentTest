@@ -612,19 +612,21 @@ class ToolBox:
         if relevant_competitions.empty:
             Log.warning("No shelf_facings list for this visit_date.")
             return 0, 0, 0
-        if self.state_fk in relevant_competitions[Const.EX_STATE_FK].unique().tolist():
-            relevant_competitions = relevant_competitions[relevant_competitions[Const.EX_STATE_FK] == self.state_fk]
+        if self.attr11 == Const.NATIONAL_STORE:
+            if self.store_number_1 in relevant_competitions[Const.EX_STORE_NUMBER].unique().tolist():
+                relevant_competitions = relevant_competitions[
+                    relevant_competitions[Const.EX_STORE_NUMBER] == self.store_number_1]
+            else:
+                Log.error("The store has no products for shelf_facings.")
+                return 0, 0, 0
         else:
-            default_state = relevant_competitions[Const.EX_STATE_FK][0]
-            Log.error("The store's state has no products, shelf_facings is calculated with state '{}'.".format(
-                default_state))
-            relevant_competitions = relevant_competitions[relevant_competitions[Const.EX_STATE_FK] == default_state]
-        if self.store_number_1 in relevant_competitions[Const.EX_STORE_NUMBER].unique().tolist():
-            relevant_competitions = relevant_competitions[
-                relevant_competitions[Const.EX_STORE_NUMBER] == self.store_number_1]
-        else:
-            Log.error("The store has no products for shelf_facings.")
-            return 0, 0, 0
+            if self.state_fk in relevant_competitions[Const.EX_STATE_FK].unique().tolist():
+                relevant_competitions = relevant_competitions[relevant_competitions[Const.EX_STATE_FK] == self.state_fk]
+            else:
+                default_state = relevant_competitions[Const.EX_STATE_FK][0]
+                Log.error("The store's state has no products, shelf_facings is calculated with state '{}'.".format(
+                    default_state))
+                relevant_competitions = relevant_competitions[relevant_competitions[Const.EX_STATE_FK] == default_state]
         relevant_competitions = relevant_competitions[Const.SHELF_FACINGS_COLUMNS]
         relevant_competitions = relevant_competitions.merge(self.relevant_assortment, on="product_fk")
         kpi_db_names = self.pull_kpi_fks_from_names(Const.DB_OFF_NAMES[kpi_name])
