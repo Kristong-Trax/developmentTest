@@ -511,7 +511,7 @@ class PNGJPKpiQualitative_ToolBox(PNGJPConsts):
             extra_df['group'] = 'XX'
         return extra_df
 
-    # @kpi_runtime(kpi_desc='calculate_golden_zone', project_name='pngjp')
+    @kpi_runtime(kpi_desc='calculate_golden_zone', project_name='pngjp')
     def calculate_golden_zone(self, kpi, kpi_filters, params):
         kpi_filter = kpi_filters.copy()
         assortment_entity = self.PRODUCT_EAN_CODE_FIELD
@@ -536,7 +536,7 @@ class PNGJPKpiQualitative_ToolBox(PNGJPConsts):
             result = (result / float(total_group_skus)) * 100
         return score, result, threshold
 
-    # @kpi_runtime(kpi_desc='calculate_block', project_name='pngjp')
+    @kpi_runtime(kpi_desc='calculate_block', project_name='pngjp')
     def calculate_block(self, kpi, kpi_filters, params):
         allowed_products_filters = {}
         threshold = 0
@@ -568,7 +568,7 @@ class PNGJPKpiQualitative_ToolBox(PNGJPConsts):
             result = 1 if block_result else 0
         return score, result, threshold
 
-    # @kpi_runtime(kpi_desc='calculate_anchor', project_name='pngjp')
+    @kpi_runtime(kpi_desc='calculate_anchor', project_name='pngjp')
     def calculate_anchor(self, kpi, kpi_filters, params):
         score = result = threshold = 0
         kpi_filter = kpi_filters.copy()
@@ -620,7 +620,7 @@ class PNGJPKpiQualitative_ToolBox(PNGJPConsts):
                             break
         return score, result, threshold
 
-    # @kpi_runtime(kpi_desc='calculate_adjacency', project_name='pngjp')
+    @kpi_runtime(kpi_desc='calculate_adjacency', project_name='pngjp')
     def calculate_adjacency(self, kpi, kpi_filters, params):
         score = result = threshold = 0
         kpi_filter = kpi_filters.copy()

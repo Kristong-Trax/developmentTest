@@ -283,7 +283,7 @@ class PngcnSceneKpis(object):
 
     def get_custom_entity_fk(self, name, value):
         if name == 'sub_brand_name':
-            attributes = self.psdataprovider.get_custom_entities_df('block_variant_sub_brands')
+            attributes = self.psdataprovider.get_custom_entities_df('sub_brand')
         else:
             return -1
         if attributes.empty:
