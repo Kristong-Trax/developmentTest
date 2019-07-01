@@ -390,7 +390,7 @@ class PNGHKToolBox:
                 products_df = products_df.drop_duplicates()
                 if not products_df.empty:
                     for index, p in products_df.iterrows():
-                        scene_df = const_scene_df[~((const_scene_df['scene_fk'] == p['scene_fk']) &
+                        scene_df = const_scene_df[((const_scene_df['scene_fk'] == p['scene_fk']) &
                                                     (const_scene_df['bay_number'] == p['bay_number']) &
                                                     (const_scene_df['shelf_number'] == p['shelf_number']))]
                         df_list.append(scene_df)

@@ -54,7 +54,13 @@ if __name__ == '__main__':
     ]
 
     # sessions = pd.read_csv('/home/Ilan/Documents/projects/marus/0612_batch_300.csv')['session_uid'].tolist()[:25]
-    sessions = ['3cb2f018-7527-442b-be6e-0d7de9dcacaf']
+    sessions = ['c93fc99a-78cf-4634-b7ab-59a9a62bf038']
+    sessions = [
+               # '230c5655-52a4-4b68-a047-bfee8e390e76',
+               'a505a0c0-ca71-49dd-bb88-f5214ecb2f0f ',
+                '8837a922-9510-4de4-bd52-f1619491ee4e'
+                ]
+
     for session in sessions:
         print
         print('*******************************************************************')

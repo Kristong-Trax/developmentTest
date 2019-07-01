@@ -302,7 +302,7 @@ class BlockBaseCalculation(KpiAtomicKpisCalculator):
             scene_filters.update({'scene_fk': scene['scene_fk']})
             if use_probes:
                 scene_filters.update({'probe_group_id': item})
-            block = self._tools.calculate_block_together(allowed_products_filters=allowed_filter,
+            block = self._tools.calculate_block_together(allowed_products_filters=allowed_filter, threshold=threshold,
                                                          minimum_block_ratio=target, vertical=True, **scene_filters)
             if not isinstance(block, dict):
                 continue
@@ -416,7 +416,7 @@ class BiggestSceneBlockAtomicKpiCalculation(BlockBaseCalculation):
             scene_filters.update({'scene_fk': scene['scene_fk']})
             if use_probes:
                 scene_filters.update({'probe_group_id': item})
-            block = self._tools.calculate_block_together(allowed_products_filters=allowed_filter,
+            block = self._tools.calculate_block_together(allowed_products_filters=allowed_filter, threshold=threshold,
                                                          minimum_block_ratio=target, vertical=True, **scene_filters)
             if not isinstance(block, dict):
                 continue
@@ -490,7 +490,7 @@ class BlockTargetBaseCalculation(KpiAtomicKpisCalculator):
             scene_filters.update({'scene_fk': scene['scene_fk']})
             if use_probes:
                 scene_filters.update({'probe_group_id': item})
-            block = self._tools.calculate_block_together(allowed_products_filters=allowed_filter,
+            block = self._tools.calculate_block_together(allowed_products_filters=allowed_filter, threshold=threshold,
                                                          minimum_block_ratio=target, vertical=True, n_cluster=2,
                                                          **scene_filters)
             if not isinstance(block, dict):
@@ -589,7 +589,7 @@ class VerticalBlockOneSceneAtomicKpiCalculation(BlockBaseCalculation):
             scene_filters.update({'scene_fk': scene['scene_fk']})
             if use_probes:
                 scene_filters.update({'probe_group_id': item})
-            block = self._tools.calculate_block_together(allowed_products_filters=allowed_filter,
+            block = self._tools.calculate_block_together(allowed_products_filters=allowed_filter, threshold=threshold,
                                                          minimum_block_ratio=target, vertical=True, **scene_filters)
             if not isinstance(block, dict):
                 continue
