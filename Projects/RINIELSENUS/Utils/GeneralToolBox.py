@@ -808,7 +808,7 @@ class MarsUsGENERALToolBox:
     def calculate_block_together(self, allowed_products_filters=ALLOWED_TYPES, include_empty=EXCLUDE_EMPTY,
                                  minimum_block_ratio=1, block_of_blocks=False,
                                  block_products1=None, block_products2=None, vertical=False, biggest_block=False,
-                                 n_cluster=None, **filters):
+                                 n_cluster=None, threshold=1, **filters):
 
         probe = float(filters.pop('probe_group_id')) if 'probe_group_id' in filters else None
         filters, relevant_scenes = self.separate_location_filters_from_product_filters(**filters)
@@ -835,22 +835,24 @@ class MarsUsGENERALToolBox:
         block_filters = {'product_fk': list(mpis['product_fk'].unique())}
 
         clusters = self.block.network_x_block_together(filters, location=scene_filter,
-                                                       additional={'allowed_products_filters': allowed_filters,
-                                                                   'include_stacking': False,
-                                                                   'check_vertical_horizontal': True,
-                                                                   'ignore_empty': False,
-                                                                   'minimum_block_ratio': minimum_block_ratio,
-                                                                   'filter_operator': 'and'
-                                                                   })
+                                                        additional={'allowed_products_filters': allowed_filters,
+                                                                    'include_stacking': False,
+                                                                    'check_vertical_horizontal': True,
+                                                                    'ignore_empty': False,
+                                                                    'minimum_block_ratio': minimum_block_ratio,
+                                                                    'minimum_facing_for_block': threshold,
+                                                                    'filter_operator': 'and'
+                                                                    })
+
         if not clusters.empty:
             clusters = self.parse_net_x_block(clusters, mpis)
             # Debugging bits
             # for cluster in clusters:
-            # print('\n\n')
-            # print('cluster ratio: {}'.format(cluster['cluster_ratio']))
-            # for j, i in cluster['mpis'].sort_values(['bay_number', 'shelf_number', 'facing_sequence_number']).iterrows():
-            #     print('bay:', i['bay_number'], 'shelf:', i['shelf_number'], 'face_#:', i['facing_sequence_number'],
-            #           i['Sub-section'], i['Customer Brand'], i['Sub Brand'], i['Segment'], i['product_name'])
+            #     print('\n\n')
+            #     print('cluster ratio: {}'.format(cluster['cluster_ratio']))
+            #     for j, i in cluster['mpis'].sort_values(['bay_number', 'shelf_number', 'facing_sequence_number']).iterrows():
+            #         print('bay:', i['bay_number'], 'shelf:', i['shelf_number'], 'face_#:', i['facing_sequence_number'],
+            #               i['Sub-section'], i['Customer Brand'], i['Sub Brand'], i['Segment'], i['product_name'])
 
             # kinda weirded out that n_cluster is an arbitrary number, but behavior is binary.....
             if n_cluster is not None:
