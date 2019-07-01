@@ -1,13 +1,13 @@
 from Trax.Utils.Testing.Case import TestCase
 from mock import MagicMock, mock
 import Projects.DIAGEOUS.Tests.test_data as Data
-from Projects.DIAGEOUS.Utils.KPIToolBox import DIAGEOUSToolBox
+from Projects.DIAGEOUS.Utils.KPIToolBox import ToolBox
 
 
 __author__ = 'yoava'
 
 
-class DIAGEOUSTestDiageous(TestCase):
+class DIAGEOUSSANDTestDiageous(TestCase):
 
     @mock.patch('Projects.DIAGEOUS.Utils.KPIToolBox.ProjectConnector')
     def setUp(self, x):
@@ -16,8 +16,8 @@ class DIAGEOUSTestDiageous(TestCase):
         self.data_provider_mock.rds_conn = MagicMock()
         self.output = MagicMock()
         self.data = Data
-        self.tool_box = DIAGEOUSToolBox(self.data_provider_mock, self.output)
+        self.tool_box = ToolBox(self.data_provider_mock, self.output)
 
 
 # if __name__ == '__main__':
-#     tests = DIAGEOUSTestDiageous()
+#     tests = DIAGEOUSSANDTestDiageous()

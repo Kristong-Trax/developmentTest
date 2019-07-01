@@ -1,6 +1,5 @@
 import os
 import pandas as pd
-import numpy as np
 import json
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Utils.Logging.Logger import Log
