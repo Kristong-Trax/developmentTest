@@ -235,7 +235,7 @@ class PNGJPToolBox(PNGJPConsts):
                     target = targets_data[self.store_type]
         return target
 
-    # @kpi_runtime(kpi_desc='category_calculation')
+    @kpi_runtime(kpi_desc='category_calculation')
     def category_calculation(self, category):
 
         self.calculation_per_entity(category)
@@ -926,7 +926,7 @@ class PNGJPToolBox(PNGJPConsts):
                 filters['template_name'] = template_names
         return filters
 
-    # @kpi_runtime(kpi_desc='update_custom_scene_item_facts')
+    @kpi_runtime(kpi_desc='update_custom_scene_item_facts')
     def hadle_update_custom_scif(self):
         """
         This function updates the custom scif of PS with oos and assortment values for each product in each scene.
