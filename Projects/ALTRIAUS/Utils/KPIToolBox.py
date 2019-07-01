@@ -336,6 +336,9 @@ class ALTRIAUSToolBox:
     def calculate_signage_locations_and_widths(self, category):
         excluded_types = ['Other', 'Irrelevant', 'Empty']
         relevant_scif = self.scif[self.scif['template_name'] == 'Tobacco Merchandising Space']
+        if relevant_scif.empty:
+            Log.info('No products found for {} category'.format(category))
+            return
         # need to include scene_id from previous relevant_scif
         # also need to split this shit up into different categories, i.e. smokeless, cigarettes
         # need to figure out how to deal with POS from smokeless being included with cigarette MPIS
@@ -349,7 +352,7 @@ class ALTRIAUSToolBox:
                           ~(relevant_scif['product_name'] == 'General POS Other')]['product_fk'].unique().tolist()
         other_product_and_pos_pks = \
             relevant_scif[relevant_scif['product_type'].isin(excluded_types)]['product_fk'].tolist()
-        relevant_scene_id = relevant_scif['scene_id'].iloc[0]
+        relevant_scene_id = relevant_scif['scene_id'].fillna(0).mode().iloc[0]
         product_mpis = self.mpis[(self.mpis['product_fk'].isin(relevant_product_pks)) &
                                  (self.mpis['scene_fk'] == relevant_scene_id)]
 
@@ -494,14 +497,15 @@ class ALTRIAUSToolBox:
             return relevant_pos_df[~relevant_pos_df.duplicated(subset=['left_bound', 'right_bound'], keep='first')]
         else:
             results = pd.concat([duplicate_results_without_other, results_without_duplicates])
-            return results.drop_duplicates(subset=['left_bound', 'right_bound'])
+            # we need to sort_index to fix the sort order to reflect center_x values
+            return results.drop_duplicates(subset=['left_bound', 'right_bound']).sort_index()
 
     def get_custom_entity_pk(self, name):
         return self.custom_entity_data[self.custom_entity_data['name'] == name]['pk'].iloc[0]
 
     def get_length_of_pos(self, row, longest_shelf, category):
         width_in_facings = len(longest_shelf[(longest_shelf['rect_x'] > row['left_bound']) &
-                                             (longest_shelf['rect_x'] < row['right_bound'])]) + 0.5
+                                             (longest_shelf['rect_x'] < row['right_bound'])]) + 0.75
         category_facings = category + ' Facings'
         return self.facings_to_feet_template.loc[(self.facings_to_feet_template[category_facings]
                                                   - width_in_facings).abs().argsort()[:1]]['POS Width (ft)'].iloc[0]

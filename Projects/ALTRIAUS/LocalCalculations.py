@@ -131,6 +131,10 @@ if __name__ == '__main__':
         '3DAA117F-47E8-4A48-B9DD-E849B6886B4B'
     ]
 
+    sessions = [
+        '06B274E6-CD15-45CE-9398-51237DF60BAF'
+    ]
+
     for session in sessions:
         print('===================={}===================='.format(session))
         data_provider = KEngineDataProvider(project_name)
