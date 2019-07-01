@@ -7,6 +7,7 @@ from Trax.Algo.Calculations.Core.KPI.OutputWriter import KpiResultsOutputWriter
 from Trax.Utils.Conf.Keys import DbUsers
 from Trax.Utils.Logging.Logger import Log
 
+
 class NotCommon(Common):
     @log_runtime('Saving to DB')
     def commit_results_data(self, result_entity=Common.SESSION, scene_session_hierarchy=False, delete_results=True,
@@ -21,9 +22,11 @@ class NotCommon(Common):
         if delete_results:
             delete_queries = {'delete_old_session_specific_tree_query': ''}
             if not self.match_product_in_probe_state_values.empty:
-                match_product_in_probe_fks = self.match_product_in_probe_state_values[self.MATCH_PRODUCT_IN_PROBE_FK].values
+                match_product_in_probe_fks = self.match_product_in_probe_state_values[
+                    self.MATCH_PRODUCT_IN_PROBE_FK].values
                 delete_queries['delete_costume_smart_att'] = \
-                    self.queries.get_delete_match_product_in_probe_state_value_reporting_results_query(match_product_in_probe_fks).replace(",)", ")")
+                    self.queries.get_delete_match_product_in_probe_state_value_reporting_results_query(
+                        match_product_in_probe_fks).replace(",)", ")")
 
             local_con = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
             cur = local_con.db.cursor()

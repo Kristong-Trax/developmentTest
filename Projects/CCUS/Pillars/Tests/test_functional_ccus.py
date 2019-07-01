@@ -7,6 +7,8 @@ from Projects.CCUS.Pillars.Tests.Data.test_data_ccus import ProjectsSanityData
 from Projects.CCUS.Pillars.Utils.KPIToolBox import PillarsPROGRAMSToolBox
 from Projects.DIAGEOUS.Utils.Const import Const
 from Tests.TestUtils import remove_cache_and_storage
+from KPIUtils_v2.DB.CommonV2 import Common
+
 
 __author__ = 'avrahama'
 
@@ -32,7 +34,8 @@ class TestCcus(TestFunctionalCase):
 
     @seeder.seed(["mongodb_products_and_brands_seed", "ccus_seed"], ProjectsSanityData())
     def test_round_result_outpute(self):
-        self.output = Output()
+        output = Output()
         data_provider = KEngineDataProvider(self.project_name)
         data_provider.load_session_data(self.session_uid)
-        self.tool_box = PillarsPROGRAMSToolBox(data_provider, self.output)
+        commonv2 = Common(data_provider)
+        self.tool_box = PillarsPROGRAMSToolBox(data_provider, output, commonv2)

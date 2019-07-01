@@ -37,11 +37,12 @@ class CCRUAddKPIs(CCRUConsts):
 
     """
 
-    def __init__(self, project, template_path):
+    def __init__(self, project, template_path, sheet_name):
         self.project = project
         self.aws_conn = PSProjectConnector(self.project, DbUsers.CalculationEng)
         self.kpi_static_data = self.get_kpi_static_data()
-        self.data = pd.read_excel(template_path)
+        self.data = pd.read_excel(template_path, sheet_name=sheet_name)
+        self.data = self.data.where((pd.notnull(self.data)), None)
         self.sets_added = {}
         self.kpis_added = {}
         self.kpi_counter = {'set': 0, 'kpi': 0, 'atomic': 0}
@@ -169,12 +170,15 @@ class CCRUAddKPIs(CCRUConsts):
         """
         This function updates KPI-Weights in the DB according to KPI-Weight column in the template.
         """
-        update_query = "update static.kpi set weight = '{}' where pk = {}"
+        update_query = "update static.kpi set weight = {} where pk = {}"
         queries = []
         for kpi in self.data.to_dict('records'):
             kpi_fk = self.kpi_static_data[(self.kpi_static_data['kpi_set_name'] == kpi.get(self.SET_NAME)) &
                                           (self.kpi_static_data['kpi_name'] == kpi.get(self.KPI_NAME))]['kpi_fk'].values[0]
-            queries.append(update_query.format(kpi.get(self.KPI_WEIGHT), kpi_fk))
+            if kpi.get(self.KPI_WEIGHT):
+                queries.append(update_query.format(kpi.get(self.KPI_WEIGHT), kpi_fk))
+            else:
+                queries.append(update_query.format('NULL', kpi_fk))
         if queries:
             cur = self.aws_conn.db.cursor()
             for query in queries:
@@ -185,13 +189,16 @@ class CCRUAddKPIs(CCRUConsts):
         """
         This function updates Atomic-Weights in the DB according to KPI-Weight column in the template.
         """
-        update_query = "update static.atomic_kpi set atomic_weight = '{}' where pk = {}"
+        update_query = "update static.atomic_kpi set atomic_weight = {} where pk = {}"
         queries = []
         for atomic in self.data.to_dict('records'):
             atomic_fk = self.kpi_static_data[(self.kpi_static_data['kpi_set_name'] == atomic.get(self.SET_NAME)) &
                                              (self.kpi_static_data['kpi_name'] == atomic.get(self.KPI_NAME)) &
                                              (self.kpi_static_data['atomic_kpi_name'] == atomic.get(self.ATOMIC_NAME))]['atomic_kpi_fk'].values[0]
-            queries.append(update_query.format(kpi.get(self.ATOMIC_WEIGHT), atomic_fk))
+            if atomic.get(self.ATOMIC_WEIGHT):
+                queries.append(update_query.format(atomic.get(self.ATOMIC_WEIGHT), atomic_fk))
+            else:
+                queries.append(update_query.format('NULL', atomic_fk))
         if queries:
             cur = self.aws_conn.db.cursor()
             for query in queries:
@@ -231,7 +238,7 @@ class CCRUAddKPIs(CCRUConsts):
         for i in xrange(len(kpis)):
             set_name = kpis.iloc[i][self.SET_NAME].replace("'", "\\'").encode('utf-8')
             kpi_name = unicode(kpis.iloc[i][self.KPI_NAME]).replace("'", "\\'").encode('utf-8')
-            if self.KPI_WEIGHT in kpis.iloc[i].keys():
+            if self.KPI_WEIGHT in kpis.iloc[i].keys() and kpis.iloc[i][self.KPI_WEIGHT]:
                 kpi_weight = float(kpis.iloc[i][self.KPI_WEIGHT])
             else:
                 kpi_weight = 'NULL'
@@ -274,7 +281,7 @@ class CCRUAddKPIs(CCRUConsts):
             set_name = atomic[self.SET_NAME].replace("'", "\\'").encode('utf-8')
             kpi_name = unicode(atomic[self.KPI_NAME]).replace("'", "\\'").encode('utf-8')
             atomic_name = unicode(atomic[self.ATOMIC_NAME]).replace("'", "\\'").encode('utf-8')
-            if self.ATOMIC_WEIGHT in atomics.iloc[i].keys():
+            if self.ATOMIC_WEIGHT in atomics.iloc[i].keys() and atomics.iloc[i][self.ATOMIC_WEIGHT]:
                 atomic_weight = float(atomics.iloc[i][self.ATOMIC_WEIGHT])
             else:
                 atomic_weight = 'NULL'
@@ -319,11 +326,11 @@ if __name__ == '__main__':
     # dbusers_patcher = patch('{0}.DbUser'.format(dbusers_class_path))
     # dbusers_mock = dbusers_patcher.start()
     # dbusers_mock.return_value = docker_user
-    kpi = CCRUAddKPIs('ccru-sand', '/home/sergey/dev/kpi_factory/Projects/CCRU/Data/KPIs_2019/KPIs for DB - PoS 2019.xlsx')
-    # kpi = CCRUAddKPIs('ccru-sand', '/home/sergey/dev/kpi_factory/Projects/CCRU/Data/KPIs_2019/KPIs for DB - Benchmark 2019.xlsx')
-    # kpi = CCRUAddKPIs('ccru', '/home/sergey/dev/kpi_factory/Projects/CCRU/Data/KPIs_2019/KPIs for DB - Contract Execution 2019.xlsx')
-    # kpi = CCRUAddKPIs('ccru', '/home/sergey/dev/kpi_factory/Projects/CCRU/Data/KPIs_2019/KPIs for DB - CCH Integration 2019.xlsx')
-    kpi.add_kpis_from_template()
-    # kpi.update_atomic_kpi_data()
-    # kpi.update_kpi_weights()
-    # kpi.update_atomic_weights()
+    kpi_data = CCRUAddKPIs('ccru', '/home/sergey/dev/kpi_factory/Projects/CCRU/Data/KPIs_2019/KPIs for DB - PoS 2019.xlsx', '2019-2-2')
+    # kpi_data = CCRUAddKPIs('ccru-sand', '/home/sergey/dev/kpi_factory/Projects/CCRU/Data/KPIs_2019/KPIs for DB - Benchmark 2019.xlsx')
+    # kpi_data = CCRUAddKPIs('ccru', '/home/sergey/dev/kpi_factory/Projects/CCRU/Data/KPIs_2019/KPIs for DB - Contract Execution 2019.xlsx', 'Sheet2')
+    # kpi_data = CCRUAddKPIs('ccru', '/home/sergey/dev/kpi_factory/Projects/CCRU/Data/KPIs_2019/KPIs for DB - CCH Integration 2019.xlsx')
+    kpi_data.add_kpis_from_template()
+    # kpi_data.update_atomic_kpi_data()
+    # kpi_data.update_kpi_weights()
+    # kpi_data.update_atomic_weights()

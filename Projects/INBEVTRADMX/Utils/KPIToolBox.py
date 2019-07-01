@@ -56,7 +56,7 @@ class INBEVTRADMXToolBox:
         self.kpi_static_data = self.common.get_kpi_static_data()
         self.kpi_results_queries = []
         self.templates_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data')
-        self.excel_file_path = os.path.join(self.templates_path, 'inbevtradmx_template_9.xlsx')
+        self.excel_file_path = os.path.join(self.templates_path, 'inbevtradmx_template_10.xlsx')
         self.availability = Availability(self.data_provider)
         self.survey_response = self.data_provider[Data.SURVEY_RESPONSES]
         self.geo = GeoLocation.INBEVTRADMXGeo(self.rds_conn, self.session_uid, self.data_provider,
@@ -311,7 +311,9 @@ class INBEVTRADMXToolBox:
             # initialize the boolean variable
             bol = True
             # special case that the customer asked
-            if inv and df_row.product_type == 'Empty':
+            # if inv and df_row.product_type == 'Empty':
+            if df_row.product_type == 'Empty':
+
                 ratio = ratio + self.scif.facings.loc[i]
                 continue
             # iterate the filtered dictionary keys

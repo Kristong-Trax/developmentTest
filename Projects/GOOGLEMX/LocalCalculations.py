@@ -26,7 +26,7 @@ if __name__ == '__main__':
     
     # all sessions still in new status
     sessions = [
-        '6144c4b7-34b1-4ec7-8fe9-47144d942eb0'
+        '137764e8-cce9-4b38-bd53-c951557b15b4'
     ]
 
 

@@ -75,8 +75,6 @@ class CCRUCCHKPIFetcher:
         if not kpi_fk.empty:
             return kpi_fk.values[0]
         else:
-            # Log.error('KPI Name <{}> is not found for KPI Set <{}>'
-            #           ''.format(kpi_name, self.kpi_set_name))
             return None
 
     def get_atomic_kpi_fk(self, atomic_kpi_name, kpi_fk=None):
@@ -96,8 +94,6 @@ class CCRUCCHKPIFetcher:
         if not atomic_kpi_fk.empty:
             return atomic_kpi_fk.values[0]
         else:
-            # Log.error('Atomic KPI Name <{}> is not found for KPI <{}>, KPI Set <{}>'
-            #           ''.format(atomic_kpi_name, kpi_fk, self.kpi_set_name))
             return None
 
     def get_category_target_by_region(self, category, store_id):
@@ -273,3 +269,27 @@ class CCRUCCHKPIFetcher:
                 """.format(session_uid)
         result = pd.read_sql_query(query, self.rds_conn.db)[0][0]
         return result
+
+    def get_top_skus_for_store(self, store_fk, visit_date):
+        query = """
+                select
+                anchor_product_fk,
+                group_concat(product_fk) as product_fks,
+                max(min_facings) as min_facings
+                from (
+                    select          
+                    ifnull(ts.anchor_product_fk, ts.product_fk) as anchor_product_fk,
+                    ts.product_fk as product_fk,
+                    ifnull(ts.min_facings, 1) as min_facings
+                    from {} ts
+                    where ts.store_fk = {}
+                    and ts.start_date <= '{}' 
+                    and ifnull(ts.end_date, curdate()) >= '{}'
+                ) t
+                group by anchor_product_fk;
+                """.format('pservice.custom_osa',
+                           store_fk,
+                           visit_date,
+                           visit_date)
+        data = pd.read_sql_query(query, self.rds_conn.db)
+        return data.groupby(['anchor_product_fk']).agg({'product_fks': 'first', 'min_facings': 'first'}).to_dict()

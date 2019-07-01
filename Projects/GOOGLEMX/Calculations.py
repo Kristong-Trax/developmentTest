@@ -5,7 +5,7 @@ import os
 __author__ = 'Eli_Shivi_Sam'
 
 FIXTURE_TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'Data',
-                                     'MX - Google Fixture Targets Template v.3.xlsx')
+                                     'MX - Google Fixture Targets Template v.4.xlsx')
 
 
 class Calculations(BaseCalculationsScript):

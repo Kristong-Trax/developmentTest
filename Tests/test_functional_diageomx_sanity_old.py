@@ -7,7 +7,6 @@ from Trax.Data.Testing.SeedNew import Seeder
 from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
 from Trax.Cloud.Services.Connector.Keys import DbUsers
 from Trax.Data.Testing.TestProjects import TestProjectsNames
-from Trax.Utils.Testing.Case import MockingTestCase
 from mock import patch
 
 from Tests.Data.Templates.diageomx.MPA import mpa
@@ -43,7 +42,7 @@ class TestKEngineOutOfTheBox(TestFunctionalCase):
         connector = PSProjectConnector(TestProjectsNames().TEST_PROJECT_1, DbUsers.Docker)
         cursor = connector.db.cursor(MySQLdb.cursors.DictCursor)
         cursor.execute('''
-        SELECT * FROM report.kpi_results
+        SELECT * FROM report.kpi_level_2_results
         ''')
         kpi_results = cursor.fetchall()
 
@@ -63,11 +62,11 @@ class TestKEngineOutOfTheBox(TestFunctionalCase):
            return_value=position)
     @patch('KPIUtils.DIAGEO.ToolBox.DIAGEOToolBox.download_template',
            return_value=posm)
-    @seeder.seed(["diageomx_seed"], ProjectsSanityData())
+    @seeder.seed(["mongodb_products_and_brands_seed", "diageomx_seed"], ProjectsSanityData())
     def test_diageomx_sanity(self, x, y, json, json2, json3, json4):
         project_name = ProjectsSanityData.project_name
         data_provider = KEngineDataProvider(project_name)
-        sessions = ['b124681d-8865-410e-8b25-b7ebff404526']
+        sessions = ['fd7d2a19-3a1c-40fd-a7d1-3a01260392d1']
         for session in sessions:
             data_provider.load_session_data(session)
             output = Output()

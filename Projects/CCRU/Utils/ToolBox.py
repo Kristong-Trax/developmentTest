@@ -1,11 +1,13 @@
 # -*- coding: utf-8 -*-
 import os
+import json
 import numpy as np
 import pandas as pd
 import datetime as dt
 
+from Trax.Cloud.Services.Storage.Factory import StorageFactory
 from Trax.Algo.Calculations.Core.Constants import Fields as Fd
-from Trax.Algo.Calculations.Core.DataProvider import Data, Keys
+from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Algo.Calculations.Core.Shortcuts import SessionInfo, BaseCalculationsGroup
 from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
 from Trax.Utils.Conf.Keys import DbUsers
@@ -15,8 +17,6 @@ from KPIUtils_v2.Utils.Decorators.Decorators import kpi_runtime
 from KPIUtils_v2.DB.CommonV2 import Common
 
 from Projects.CCRU.Utils.Fetcher import CCRUCCHKPIFetcher
-from Projects.CCRU.Utils.ExecutionContract import CCRUContract
-from Projects.CCRU.Utils.TopSKU import CCRUTopSKUAssortment
 
 
 __author__ = 'sergey'
@@ -40,7 +40,8 @@ BENCHMARK = 'BENCHMARK'
 
 SKIP_OLD_CCRUKPIS_FROM_WRITING = [TARGET, MARKETING]
 SKIP_NEW_CCRUKPIS_FROM_WRITING = [TARGET, MARKETING]
-NEW_CCRUKPIS_TO_WRITE_TO_DB = [POS, INTEGRATION, GAPS, SPIRITS, TOPSKU, EQUIPMENT, CONTRACT, BENCHMARK]
+NEW_CCRUKPIS_TO_WRITE_TO_DB = [POS, INTEGRATION, GAPS,
+                               SPIRITS, TOPSKU, EQUIPMENT, CONTRACT, BENCHMARK]
 
 BINARY = 'BINARY'
 PROPORTIONAL = 'PROPORTIONAL'
@@ -51,8 +52,14 @@ KPK_RESULT = 'report.kpk_results'
 KPS_RESULT = 'report.kps_results'
 CUSTOM_GAPS_TABLE = 'pservice.custom_gaps'
 
+EQUIPMENT_TARGETS_BUCKET = 'traxuscalc'
+EQUIPMENT_TARGETS_CLOUD_BASE_PATH = 'CCRU/KPIData/Contract/'
+
 
 class CCRUKPIToolBox:
+
+    MIN_CALC_DATE = '2019-06-29'
+
     def __init__(self, data_provider, output, kpi_set_name=None, kpi_set_type=None):
         self.data_provider = data_provider
         self.output = output
@@ -75,7 +82,8 @@ class CCRUKPIToolBox:
         self.products = self.data_provider[Data.ALL_PRODUCTS]
 
         self.templates = self.data_provider[Data.ALL_TEMPLATES]
-        self.templates['template_name'] = self.templates['template_name'].apply(lambda x: x.encode('utf-8'))
+        self.templates['template_name'] = self.templates['template_name'].apply(
+            lambda x: x.encode('utf-8'))
 
         self.scenes_info = self.data_provider[Data.SCENES_INFO]
 
@@ -106,9 +114,6 @@ class CCRUKPIToolBox:
             self.planned_visit_flag = int(self.kpi_fetcher.get_planned_visit_flag(self.session_uid))
         except:
             self.planned_visit_flag = None
-
-        self.execution_contract = CCRUContract(rds_conn=self.rds_conn)
-        self.top_sku = CCRUTopSKUAssortment(rds_conn=self.rds_conn)
 
         self.passed_scenes_per_kpi = {}
         self.kpi_facts_hidden = []
@@ -1611,6 +1616,8 @@ class CCRUKPIToolBox:
                         atomic_score = self.check_number_of_skus_per_door_range(params, level=3)
                     elif c.get("Formula").strip() == "Scenes with no tagging":
                         atomic_res = self.check_number_of_scenes_no_tagging(c, level=3)
+                    elif c.get("Formula").strip() == "check_number_of_scenes_with_facings_target":
+                        atomic_res = self.calculate_number_of_scenes_with_target(c)
                     else:
                         # print "the atomic's formula is ", c.get('Formula').strip()
                         atomic_res = 0
@@ -2249,6 +2256,12 @@ class CCRUKPIToolBox:
                     result_format = 'STR'
                     result_formatted = str(kf.get("result"))
 
+                atomic_kpi_name = kf.get("name")
+                atomic_kpi_fk = kf.get("atomic_kpi_fk")
+                if not atomic_kpi_fk and self.kpi_set_type not in SKIP_OLD_CCRUKPIS_FROM_WRITING:
+                    Log.error(
+                        'Atomic KPI Name <{}> is not found for KPI FK <{}> of KPI Set <{}> in static.atomic_kpi table'
+                        ''.format(atomic_kpi_name, kpi_fk, self.kpi_set_name))
                 attributes_for_table3 = pd.DataFrame([(kf.get("display_text"),
                                                        self.session_uid,
                                                        kpi_set_name,
@@ -2257,10 +2270,10 @@ class CCRUKPIToolBox:
                                                        dt.datetime.utcnow().isoformat(),
                                                        None,
                                                        kpi_fk,
-                                                       kf.get("atomic_kpi_fk"),
+                                                       atomic_kpi_fk,
                                                        None,
                                                        result_formatted,
-                                                       kf.get("name"))],
+                                                       atomic_kpi_name)],
                                                      columns=['display_text',
                                                               'session_uid',
                                                               'kps_name',
@@ -2288,6 +2301,9 @@ class CCRUKPIToolBox:
 
                 # table3 = table3.append(attributes_for_table3)  # for debugging
 
+        if not kpi_fk and self.kpi_set_type not in SKIP_OLD_CCRUKPIS_FROM_WRITING:
+            Log.error('KPI Name <{}> is not found for KPI Set <{}> in static.kpi table'
+                      ''.format(kpi_name, self.kpi_set_name))
         attributes_for_table2 = pd.DataFrame([(self.session_uid,
                                                self.store_id,
                                                self.visit_date.isoformat(),
@@ -2302,6 +2318,9 @@ class CCRUKPIToolBox:
                                                       'score'])
         self.write_to_kpi_results_old(attributes_for_table2, 'level2')
 
+        if not kpi_set_fk and self.kpi_set_type not in SKIP_OLD_CCRUKPIS_FROM_WRITING:
+            Log.error('KPI Set <{}> is not found in static.kpi_set table'
+                      ''.format(self.kpi_set_name))
         attributes_for_table1 = pd.DataFrame([(kpi_set_name,
                                                self.session_uid,
                                                self.store_id,
@@ -2345,6 +2364,13 @@ class CCRUKPIToolBox:
 
         """
         # score = round(score)
+
+        kpi_name = param.get('KPI name Eng')
+
+        if not kpi_fk and self.kpi_set_type not in SKIP_OLD_CCRUKPIS_FROM_WRITING:
+            Log.error('KPI Name <{}> is not found for KPI Set <{}> in static.kpi table'
+                      ''.format(kpi_name, self.kpi_set_name))
+
         attributes_for_table2 = pd.DataFrame([(self.session_uid,
                                                self.store_id,
                                                self.visit_date.isoformat(),
@@ -2358,8 +2384,14 @@ class CCRUKPIToolBox:
                                                       'kpk_name',
                                                       'score'])
 
+        target = 100 * (param.get('KPI Weight') if param.get('KPI Weight') else 1)
+        if self.kpi_scores_and_results[self.kpi_set_type].get(str(param.get('KPI ID'))):
+            if self.kpi_scores_and_results[self.kpi_set_type][str(param.get('KPI ID'))].get('target'):
+                target = self.kpi_scores_and_results[self.kpi_set_type][str(
+                    param.get('KPI ID'))]['target']
+
         self.update_kpi_scores_and_results(param, {'level': level,
-                                                   'target': 100 * (param.get('KPI Weight') if param.get('KPI Weight') else 1),
+                                                   'target': target,
                                                    'weight': param.get('KPI Weight'),
                                                    # 'result': round(score),
                                                    'score': round(score),
@@ -2385,8 +2417,14 @@ class CCRUKPIToolBox:
             if threshold is None else threshold
         threshold = threshold if threshold else 0
 
-        atomic_kpi_fk = self.kpi_fetcher.get_atomic_kpi_fk(param.get('KPI name Eng'))\
+        atomic_kpi_name = param.get('KPI name Eng')
+        atomic_kpi_fk = self.kpi_fetcher.get_atomic_kpi_fk(atomic_kpi_name, kpi_fk)\
             if atomic_kpi_fk is None else atomic_kpi_fk
+
+        if not atomic_kpi_fk and self.kpi_set_type not in SKIP_OLD_CCRUKPIS_FROM_WRITING:
+            Log.error('Atomic KPI Name <{}> is not found for KPI FK <{}> of KPI Set <{}> in static.atomic_kpi table'
+                      ''.format(atomic_kpi_name, kpi_fk, self.kpi_set_name))
+
         if param.get('KPI name Rus'):
             attributes_for_table3 = pd.DataFrame([(param.get('KPI name Rus').encode('utf-8').replace("'", "\\'"),
                                                    self.session_uid,
@@ -2462,7 +2500,7 @@ class CCRUKPIToolBox:
                 if c.get("KPI ID") in children and c.get("Formula").strip() == "atomic sos":
                     first_atomic_res = self.calculate_facings_sos(c)
                     if first_atomic_res is None:
-                        first_atomic_res =0
+                        first_atomic_res = 0
                     first_atomic_score = self.calculate_score(first_atomic_res, c)
                     # write to DB
                     attributes_for_level3 = self.create_attributes_for_level3_df(
@@ -2531,16 +2569,16 @@ class CCRUKPIToolBox:
         return set_total_res
 
     def get_pos_kpi_set_name(self):
-        if str(self.visit_date) < '2019-01-26':
+        if str(self.visit_date) < self.MIN_CALC_DATE:
             query = """
-                    select ss.pk , ss.additional_attribute_11
+                    select ss.pk , ss.additional_attribute_11 
                     from static.stores ss
                     join probedata.session ps on ps.store_fk=ss.pk
                     where ss.delete_date is null and ps.session_uid = '{}';
                     """.format(self.session_uid)
-        else:
+        else:  # Todo - Change to additional_attribute_12 for PROD
             query = """
-                    select ss.pk , ss.additional_attribute_11
+                    select ss.pk , ss.additional_attribute_12 
                     from static.stores ss
                     join probedata.session ps on ps.store_fk=ss.pk
                     where ss.delete_date is null and ps.session_uid = '{}';
@@ -2794,7 +2832,8 @@ class CCRUKPIToolBox:
             for pos_kpi_name in str(param.get("Values")).replace(", ", ",").replace(",", "\n").replace("\n\n", "\n").split("\n"):
                 pos_kpi_id = self.kpi_name_to_id[POS].get(pos_kpi_name)
                 if pos_kpi_id is None:
-                    Log.warning('Benchmark POS KPI is not found in POS KPI set : {}'.format(pos_kpi_name))
+                    Log.warning(
+                        'Benchmark POS KPI is not found in POS KPI set : {}'.format(pos_kpi_name))
                 else:
 
                     score += self.kpi_scores_and_results[POS][pos_kpi_id].get('weighted_score') \
@@ -2803,6 +2842,10 @@ class CCRUKPIToolBox:
             score = round(score*param.get('K'), 2)
             total_score += score
 
+            # if not atomic_kpi_fk and self.kpi_set_type not in SKIP_OLD_CCRUKPIS_FROM_WRITING:
+            #     Log.error(
+            #         'Atomic KPI Name <{}> is not found for KPI FK <{}> of KPI Set <{}> in static.atomic_kpi table'
+            #         ''.format(kpi_name, kpi_fk, self.kpi_set_name))
             # attributes_for_table3 = pd.DataFrame([(kpi_name,
             #                                        self.session_uid,
             #                                        kpi_set_name,
@@ -2829,6 +2872,9 @@ class CCRUKPIToolBox:
             #                                               'name'])
             # self.write_to_kpi_results_old(attributes_for_table3, 'level3')
 
+            if not kpi_fk and self.kpi_set_type not in SKIP_OLD_CCRUKPIS_FROM_WRITING:
+                Log.error('KPI Name <{}> is not found for KPI Set <{}> in static.kpi table'
+                          ''.format(kpi_name, self.kpi_set_name))
             attributes_for_table2 = pd.DataFrame([(self.session_uid,
                                                    self.store_id,
                                                    self.visit_date.isoformat(),
@@ -2852,6 +2898,9 @@ class CCRUKPIToolBox:
                  'score': score,
                  'level': 1})
 
+        if not kpi_set_fk and self.kpi_set_type not in SKIP_OLD_CCRUKPIS_FROM_WRITING:
+            Log.error('KPI Set <{}> is not found static.kpi_set table'
+                      ''.format(self.kpi_set_name))
         attributes_for_table1 = pd.DataFrame([(kpi_set_name,
                                                self.session_uid,
                                                self.store_id,
@@ -2880,7 +2929,7 @@ class CCRUKPIToolBox:
     @kpi_runtime()
     def calculate_equipment_execution(self, params, kpi_set_name, kpi_conversion_file):
 
-        target_data_raw = self.execution_contract.get_json_file_content(str(self.store_id))
+        target_data_raw = self.get_equipment_targets(str(self.store_id))
         if target_data_raw:
             Log.debug('Relevant Contract Execution target file for Store ID {} / Number {} is found'.format(
                 self.store_id, self.store_number))
@@ -2999,10 +3048,12 @@ class CCRUKPIToolBox:
 
                 for kpi_id in self.kpi_scores_and_results[EQUIPMENT].keys():
                     if self.kpi_scores_and_results[EQUIPMENT][kpi_id]['level'] == 2:
-                        self.kpi_scores_and_results[EQUIPMENT][kpi_id]['weight'] /= float(total_weight)
+                        self.kpi_scores_and_results[EQUIPMENT][kpi_id]['weight'] /= float(
+                            total_weight)
                         self.kpi_scores_and_results[EQUIPMENT][kpi_id]['target'] = self.kpi_scores_and_results[EQUIPMENT][kpi_id]['weight'] * 100
                         self.kpi_scores_and_results[EQUIPMENT][kpi_id]['weighted_score'] = \
-                            self.kpi_scores_and_results[EQUIPMENT][kpi_id]['score'] * self.kpi_scores_and_results[EQUIPMENT][kpi_id]['weight']
+                            self.kpi_scores_and_results[EQUIPMENT][kpi_id]['score'] * \
+                            self.kpi_scores_and_results[EQUIPMENT][kpi_id]['weight']
 
                 self.equipment_execution_score = score
 
@@ -3133,7 +3184,7 @@ class CCRUKPIToolBox:
     @kpi_runtime()
     def calculate_top_sku(self, include_to_contract, kpi_set_name):
 
-        top_skus = self.top_sku.get_top_skus_for_store(self.store_id, self.visit_date)
+        top_skus = self.kpi_fetcher.get_top_skus_for_store(self.store_id, self.visit_date)
         if not top_skus['product_fks']:
             return
 
@@ -3164,7 +3215,7 @@ class CCRUKPIToolBox:
                                                                 'distributed_extra': 0},
                                                                ignore_index=True)
 
-                query = self.top_sku.get_custom_scif_query(
+                query = self.get_custom_scif_query(
                     self.session_fk, scene_fk, int(anchor_product_fk), in_assortment, distributed)
                 self.top_sku_queries.append(query)
 
@@ -3237,7 +3288,8 @@ class CCRUKPIToolBox:
                 score = 100 if row['distributed'] or row['distributed_extra'] else 0
                 weight = sort_order
                 target = 100 if not row['distributed_extra'] else 0
-                result = 'DISTRIBUTED' if row['distributed'] else ('EXTRA' if row['distributed_extra'] else 'OOS')
+                result = 'DISTRIBUTED' if row['distributed'] else (
+                    'EXTRA' if row['distributed_extra'] else 'OOS')
                 kpi_result_type_fk = self.common.kpi_static_data[
                     self.common.kpi_static_data['pk'] == kpi_fk]['kpi_result_type_fk'].values[0]
                 if kpi_result_type_fk:
@@ -3320,7 +3372,8 @@ class CCRUKPIToolBox:
                 score = 100 if row['distributed'] or row['distributed_extra'] else 0
                 weight = sort_order
                 target = 100 if not row['distributed_extra'] else 0
-                result = 'DISTRIBUTED' if row['distributed'] else ('EXTRA' if row['distributed_extra'] else 'OOS')
+                result = 'DISTRIBUTED' if row['distributed'] else (
+                    'EXTRA' if row['distributed_extra'] else 'OOS')
                 kpi_result_type_fk = self.common.kpi_static_data[
                     self.common.kpi_static_data['pk'] == kpi_fk]['kpi_result_type_fk'].values[0]
                 if kpi_result_type_fk:
@@ -3349,7 +3402,7 @@ class CCRUKPIToolBox:
                       'distributed': 'sum',
                       'distributed_extra': 'sum'})
             top_sku_categories['sos'] = top_sku_categories[top_sku_categories['in_assortment'] > 0]['distributed'] / \
-                                        top_sku_categories[top_sku_categories['in_assortment'] > 0]['in_assortment']
+                top_sku_categories[top_sku_categories['in_assortment'] > 0]['in_assortment']
             top_sku_categories = top_sku_categories\
                 .sort_values(by=['sos', 'category'])\
                 .reset_index()
@@ -3375,7 +3428,8 @@ class CCRUKPIToolBox:
                 numerator_result = row['distributed']
                 denominator_result = row['in_assortment']
 
-                result = round(numerator_result / float(denominator_result) * 100, 2) if denominator_result else 0
+                result = round(numerator_result / float(denominator_result)
+                               * 100, 2) if denominator_result else 0
                 score = result
                 weight = sort_order
                 target = 100 if denominator_result else 0
@@ -3417,7 +3471,8 @@ class CCRUKPIToolBox:
         denominator_id = self.store_id
         context_id = None
 
-        result = round(numerator_result / float(denominator_result) * 100, 2) if denominator_result else 0
+        result = round(numerator_result / float(denominator_result)
+                       * 100, 2) if denominator_result else 0
         score = result
         weight = 1
         target = 100 if denominator_result else 0
@@ -3575,7 +3630,8 @@ class CCRUKPIToolBox:
                 kpis = pd.DataFrame(kpis.values())
                 kpis = kpis.where((pd.notnull(kpis)), None).sort_values(by=['sort_order'])
                 if kpi_set_type in [EQUIPMENT, TOPSKU]:
-                    identifier_parent = self.common.get_dictionary(set=CONTRACT, level=0, kpi=CONTRACT)
+                    identifier_parent = self.common.get_dictionary(
+                        set=CONTRACT, level=0, kpi=CONTRACT)
                 else:
                     identifier_parent = None
                 # try:
@@ -3599,6 +3655,9 @@ class CCRUKPIToolBox:
             kpi_name = kpi_name.strip().replace("  ", " ").replace(",", ".").upper()
             kpi_fk = self.common.kpi_static_data[self.common.kpi_static_data['type']
                                                  == kpi_name]['pk'].values[0]
+            if not kpi_fk:
+                Log.error('KPI Name <{}> is not found in static.kpi_level_2 table'
+                          ''.format(kpi_name))
 
             scene_id = int(kpi['scene_id']) if kpi['scene_id'] else None
 
@@ -3627,7 +3686,7 @@ class CCRUKPIToolBox:
             if kpi_set_type in [POS, EQUIPMENT, SPIRITS]:
                 score = score if kpi['weighted_score'] is None else kpi['weighted_score']
                 weight = weight if kpi['weight'] is None else kpi['weight']
-                target = weight*100 if kpi['target'] is None and weight else kpi['target']
+                target = weight*100 if weight and kpi['level'] < 3 else kpi['target']
             else:
                 score = score if kpi['score'] is None else kpi['score']
                 weight = kpi['weight']
@@ -3648,7 +3707,7 @@ class CCRUKPIToolBox:
                 else:
                     result = kpi['result'] if kpi['result'] is not None \
                         else (kpi['score'] if kpi['score'] is not None
-                                else score)
+                              else score)
 
             group_score += score if score else 0
             group_weight += weight if weight else 0
@@ -3710,3 +3769,43 @@ class CCRUKPIToolBox:
 
         return result
 
+    @staticmethod
+    def get_custom_scif_query(session_fk, scene_fk, product_fk, in_assortment, distributed):
+        in_assortment = 1 if in_assortment else 0
+        out_of_stock = 1 if not distributed else 0
+        attributes = pd.DataFrame([(session_fk,
+                                    scene_fk,
+                                    product_fk,
+                                    in_assortment,
+                                    out_of_stock,
+                                    0,
+                                    0,
+                                    0)],
+                                  columns=['session_fk',
+                                           'scene_fk',
+                                           'product_fk',
+                                           'in_assortment_osa',
+                                           'oos_osa',
+                                           'length_mm_custom',
+                                           'mha_in_assortment',
+                                           'mha_oos'])
+        query = insert(attributes.to_dict(), 'pservice.custom_scene_item_facts')
+        return query
+
+    @staticmethod
+    def get_equipment_targets(file_name):
+        """
+        This function receives a KPI set name and return its relevant template as a JSON.
+        """
+        cloud_path = os.path.join(EQUIPMENT_TARGETS_CLOUD_BASE_PATH, file_name)
+        temp_path = os.path.join(os.getcwd(), 'TempFile')
+        with open(temp_path, 'wb') as f:
+            try:
+                amz_conn = StorageFactory.get_connector(EQUIPMENT_TARGETS_BUCKET)
+                amz_conn.download_file(cloud_path, f)
+            except:
+                f.write('{}')
+        with open(temp_path, 'rb') as f:
+            data = json.load(f)
+        os.remove(temp_path)
+        return data
