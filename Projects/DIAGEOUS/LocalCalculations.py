@@ -1,20 +1,26 @@
-#
-# from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
-# from Trax.Utils.Conf.Configuration import Config
-# from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
-# from Projects.DIAGEOUS.Calculations import DIAGEOUSCalculations
-#
-#
-# if __name__ == '__main__':
-#     LoggerInitializer.init('diageous calculations')
-#     Config.init()
-#     project_name = 'diageous'
-#     sessions = [
-#         # '5C8B3DEE-0F6D-4D30-9756-6BBAB250D4BE',
-#         '2C4D043B-3C74-4DBE-8DFD-2240F1A38A7D'
-#     ]
-#     for session in sessions:
-#         data_provider = KEngineDataProvider(project_name)
-#         data_provider.load_session_data(session)
-#         output = Output()
-#         DIAGEOUSCalculations(data_provider, output).run_project_calculations()
+
+from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
+from Trax.Utils.Conf.Configuration import Config
+from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
+from Projects.DIAGEOUS.Calculations import Calculations
+
+
+if __name__ == '__main__':
+    LoggerInitializer.init('diageous calculations')
+    Config.init()
+    project_name = 'diageous'
+    sessions = [
+        # Independent On:
+        "4A1C1E22-20EB-4F1D-8D31-1E3EA45200A6",
+        # Independent Off:
+        "F85259FC-95EB-4DC9-A2F0-D6BCB355FEB8",
+        # Open On:
+        "FF9F50D8-7D90-456C-9690-C8D32B460B9E",
+        # Open Off:
+        "1FF9F838-5F2E-44D2-B1E4-3AE224CDCD8B",
+    ]
+    for session in sessions:
+        data_provider = KEngineDataProvider(project_name)
+        data_provider.load_session_data(session)
+        output = Output()
+        Calculations(data_provider, output).run_project_calculations()
