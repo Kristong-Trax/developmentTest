@@ -2598,7 +2598,8 @@ class CCRUKPIToolBox:
             kpi_name = param.get('KPI Name Eng')
             kpi_id = self.kpi_name_to_id[POS].get(kpi_name)
             if kpi_id is None:
-                Log.warning('Gap KPI is not found in PoS KPI set : {}'.format(kpi_name))
+                Log.warning('Gap KPI <{}> is not found in PoS KPI set <{}>'
+                            ''.format(kpi_name, self.pos_kpi_set_name))
             else:
                 kpi_name_local = self.kpi_scores_and_results[POS][kpi_id].get('rus_name')
                 category = param.get('Gap Category Eng')
@@ -2652,8 +2653,8 @@ class CCRUKPIToolBox:
             if gap_groups_limit.get(kpi.get('Gap Category Eng')) > 0:
                 kpi_id = self.kpi_name_to_id[POS].get(kpi.get('KPI Name Eng'))
                 if kpi_id is None:
-                    Log.warning('Gap KPI is not found in PoS KPI set : {}'.format(
-                        kpi.get('KPI Name Eng')))
+                    Log.warning('Gap KPI <{}> is not found in PoS KPI set <{}>'
+                                ''.format(kpi.get('KPI Name Eng'), self.pos_kpi_set_name))
                 else:
                     score = self.kpi_scores_and_results[POS][kpi_id].get('weighted_score') \
                         if self.kpi_scores_and_results[POS][kpi_id].get('weighted_score') else 0
@@ -2833,7 +2834,8 @@ class CCRUKPIToolBox:
                 pos_kpi_id = self.kpi_name_to_id[POS].get(pos_kpi_name)
                 if pos_kpi_id is None:
                     Log.warning(
-                        'Benchmark POS KPI is not found in POS KPI set : {}'.format(pos_kpi_name))
+                        'Benchmark POS KPI <{}> is not found in POS KPI set <{}>'
+                        ''.format(pos_kpi_name, self.pos_kpi_set_name))
                 else:
 
                     score += self.kpi_scores_and_results[POS][pos_kpi_id].get('weighted_score') \
