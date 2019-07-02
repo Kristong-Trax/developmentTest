@@ -106,8 +106,8 @@ class INBEVCISANDToolBox:
                 self.main_sos_calculation(sos_agg_identifier_parent)
             elif set_name == Const.ASSORTMENT:
                 self.main_assortment_calculation()
-            # elif set_name == Const.TOP_BRAND_BLOCK:
-            #     self.calculate_block_together_sets(set_name)
+            elif set_name == Const.TOP_BRAND_BLOCK:
+                self.calculate_block_together_sets(set_name)
             elif set_name == Const.SOS_VS_TARGET:
                 self.calculate_sos_vs_target(sos_agg_identifier_parent)
             elif set_name == Const.MANUFACTURER_DISPLAY_COUNT:
