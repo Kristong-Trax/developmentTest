@@ -40,7 +40,8 @@ BENCHMARK = 'BENCHMARK'
 
 SKIP_OLD_CCRUKPIS_FROM_WRITING = [TARGET, MARKETING]
 SKIP_NEW_CCRUKPIS_FROM_WRITING = [TARGET, MARKETING]
-NEW_CCRUKPIS_TO_WRITE_TO_DB = [POS, INTEGRATION, GAPS, SPIRITS, TOPSKU, EQUIPMENT, CONTRACT, BENCHMARK]
+NEW_CCRUKPIS_TO_WRITE_TO_DB = [POS, INTEGRATION, GAPS,
+                               SPIRITS, TOPSKU, EQUIPMENT, CONTRACT, BENCHMARK]
 
 BINARY = 'BINARY'
 PROPORTIONAL = 'PROPORTIONAL'
@@ -56,6 +57,9 @@ EQUIPMENT_TARGETS_CLOUD_BASE_PATH = 'CCRU/KPIData/Contract/'
 
 
 class CCRUKPIToolBox:
+
+    MIN_CALC_DATE = '2019-06-29'
+
     def __init__(self, data_provider, output, kpi_set_name=None, kpi_set_type=None):
         self.data_provider = data_provider
         self.output = output
@@ -78,7 +82,8 @@ class CCRUKPIToolBox:
         self.products = self.data_provider[Data.ALL_PRODUCTS]
 
         self.templates = self.data_provider[Data.ALL_TEMPLATES]
-        self.templates['template_name'] = self.templates['template_name'].apply(lambda x: x.encode('utf-8'))
+        self.templates['template_name'] = self.templates['template_name'].apply(
+            lambda x: x.encode('utf-8'))
 
         self.scenes_info = self.data_provider[Data.SCENES_INFO]
 
@@ -1604,7 +1609,8 @@ class CCRUKPIToolBox:
                         scenes = self.get_relevant_scenes(c)
                         atomic_res = self.calculate_share_of_cch(c, scenes, sos=False)
                     elif c.get("Formula").strip() == "number of filled Coolers (scenes)":
-                        scenes_list = self.check_number_of_doors_of_filled_coolers(c, func='get scenes')
+                        scenes_list = self.check_number_of_doors_of_filled_coolers(
+                            c, func='get scenes')
                         atomic_res = len(scenes_list)
                     elif c.get("Formula").strip() == "number of SKU per Door RANGE":
                         atomic_score = self.check_number_of_skus_per_door_range(params, level=3)
@@ -1900,7 +1906,8 @@ class CCRUKPIToolBox:
                             kpi_total_weight += 1
 
                     # write to DB
-                    atomic_kpi_fk = self.kpi_fetcher.get_atomic_kpi_fk(c.get('KPI name Eng'), kpi_fk)
+                    atomic_kpi_fk = self.kpi_fetcher.get_atomic_kpi_fk(
+                        c.get('KPI name Eng'), kpi_fk)
                     if c.get("Formula").strip() == "each SKU hits facings target":
                         attributes_for_level3 = self.create_attributes_for_level3_df(c, (atomic_score, atomic_res, 100),
                                                                                      kpi_fk, atomic_kpi_fk)
@@ -2380,7 +2387,8 @@ class CCRUKPIToolBox:
         target = 100 * (param.get('KPI Weight') if param.get('KPI Weight') else 1)
         if self.kpi_scores_and_results[self.kpi_set_type].get(str(param.get('KPI ID'))):
             if self.kpi_scores_and_results[self.kpi_set_type][str(param.get('KPI ID'))].get('target'):
-                target = self.kpi_scores_and_results[self.kpi_set_type][str(param.get('KPI ID'))]['target']
+                target = self.kpi_scores_and_results[self.kpi_set_type][str(
+                    param.get('KPI ID'))]['target']
 
         self.update_kpi_scores_and_results(param, {'level': level,
                                                    'target': target,
@@ -2492,7 +2500,7 @@ class CCRUKPIToolBox:
                 if c.get("KPI ID") in children and c.get("Formula").strip() == "atomic sos":
                     first_atomic_res = self.calculate_facings_sos(c)
                     if first_atomic_res is None:
-                        first_atomic_res =0
+                        first_atomic_res = 0
                     first_atomic_score = self.calculate_score(first_atomic_res, c)
                     # write to DB
                     attributes_for_level3 = self.create_attributes_for_level3_df(
@@ -2561,16 +2569,16 @@ class CCRUKPIToolBox:
         return set_total_res
 
     def get_pos_kpi_set_name(self):
-        if str(self.visit_date) < '2019-01-26':
+        if str(self.visit_date) < self.MIN_CALC_DATE:
             query = """
-                    select ss.pk , ss.additional_attribute_11
+                    select ss.pk , ss.additional_attribute_11 
                     from static.stores ss
                     join probedata.session ps on ps.store_fk=ss.pk
                     where ss.delete_date is null and ps.session_uid = '{}';
                     """.format(self.session_uid)
-        else:
+        else:  # Todo - Change to additional_attribute_12 for PROD
             query = """
-                    select ss.pk , ss.additional_attribute_11
+                    select ss.pk , ss.additional_attribute_12 
                     from static.stores ss
                     join probedata.session ps on ps.store_fk=ss.pk
                     where ss.delete_date is null and ps.session_uid = '{}';
@@ -2590,7 +2598,8 @@ class CCRUKPIToolBox:
             kpi_name = param.get('KPI Name Eng')
             kpi_id = self.kpi_name_to_id[POS].get(kpi_name)
             if kpi_id is None:
-                Log.warning('Gap KPI is not found in PoS KPI set : {}'.format(kpi_name))
+                Log.warning('Gap KPI <{}> is not found in PoS KPI set <{}>'
+                            ''.format(kpi_name, self.pos_kpi_set_name))
             else:
                 kpi_name_local = self.kpi_scores_and_results[POS][kpi_id].get('rus_name')
                 category = param.get('Gap Category Eng')
@@ -2644,8 +2653,8 @@ class CCRUKPIToolBox:
             if gap_groups_limit.get(kpi.get('Gap Category Eng')) > 0:
                 kpi_id = self.kpi_name_to_id[POS].get(kpi.get('KPI Name Eng'))
                 if kpi_id is None:
-                    Log.warning('Gap KPI is not found in PoS KPI set : {}'.format(
-                        kpi.get('KPI Name Eng')))
+                    Log.warning('Gap KPI <{}> is not found in PoS KPI set <{}>'
+                                ''.format(kpi.get('KPI Name Eng'), self.pos_kpi_set_name))
                 else:
                     score = self.kpi_scores_and_results[POS][kpi_id].get('weighted_score') \
                         if self.kpi_scores_and_results[POS][kpi_id].get('weighted_score') else 0
@@ -2824,7 +2833,9 @@ class CCRUKPIToolBox:
             for pos_kpi_name in str(param.get("Values")).replace(", ", ",").replace(",", "\n").replace("\n\n", "\n").split("\n"):
                 pos_kpi_id = self.kpi_name_to_id[POS].get(pos_kpi_name)
                 if pos_kpi_id is None:
-                    Log.warning('Benchmark POS KPI is not found in POS KPI set : {}'.format(pos_kpi_name))
+                    Log.warning(
+                        'Benchmark POS KPI <{}> is not found in POS KPI set <{}>'
+                        ''.format(pos_kpi_name, self.pos_kpi_set_name))
                 else:
 
                     score += self.kpi_scores_and_results[POS][pos_kpi_id].get('weighted_score') \
@@ -3039,10 +3050,12 @@ class CCRUKPIToolBox:
 
                 for kpi_id in self.kpi_scores_and_results[EQUIPMENT].keys():
                     if self.kpi_scores_and_results[EQUIPMENT][kpi_id]['level'] == 2:
-                        self.kpi_scores_and_results[EQUIPMENT][kpi_id]['weight'] /= float(total_weight)
+                        self.kpi_scores_and_results[EQUIPMENT][kpi_id]['weight'] /= float(
+                            total_weight)
                         self.kpi_scores_and_results[EQUIPMENT][kpi_id]['target'] = self.kpi_scores_and_results[EQUIPMENT][kpi_id]['weight'] * 100
                         self.kpi_scores_and_results[EQUIPMENT][kpi_id]['weighted_score'] = \
-                            self.kpi_scores_and_results[EQUIPMENT][kpi_id]['score'] * self.kpi_scores_and_results[EQUIPMENT][kpi_id]['weight']
+                            self.kpi_scores_and_results[EQUIPMENT][kpi_id]['score'] * \
+                            self.kpi_scores_and_results[EQUIPMENT][kpi_id]['weight']
 
                 self.equipment_execution_score = score
 
@@ -3277,7 +3290,8 @@ class CCRUKPIToolBox:
                 score = 100 if row['distributed'] or row['distributed_extra'] else 0
                 weight = sort_order
                 target = 100 if not row['distributed_extra'] else 0
-                result = 'DISTRIBUTED' if row['distributed'] else ('EXTRA' if row['distributed_extra'] else 'OOS')
+                result = 'DISTRIBUTED' if row['distributed'] else (
+                    'EXTRA' if row['distributed_extra'] else 'OOS')
                 kpi_result_type_fk = self.common.kpi_static_data[
                     self.common.kpi_static_data['pk'] == kpi_fk]['kpi_result_type_fk'].values[0]
                 if kpi_result_type_fk:
@@ -3360,7 +3374,8 @@ class CCRUKPIToolBox:
                 score = 100 if row['distributed'] or row['distributed_extra'] else 0
                 weight = sort_order
                 target = 100 if not row['distributed_extra'] else 0
-                result = 'DISTRIBUTED' if row['distributed'] else ('EXTRA' if row['distributed_extra'] else 'OOS')
+                result = 'DISTRIBUTED' if row['distributed'] else (
+                    'EXTRA' if row['distributed_extra'] else 'OOS')
                 kpi_result_type_fk = self.common.kpi_static_data[
                     self.common.kpi_static_data['pk'] == kpi_fk]['kpi_result_type_fk'].values[0]
                 if kpi_result_type_fk:
@@ -3389,7 +3404,7 @@ class CCRUKPIToolBox:
                       'distributed': 'sum',
                       'distributed_extra': 'sum'})
             top_sku_categories['sos'] = top_sku_categories[top_sku_categories['in_assortment'] > 0]['distributed'] / \
-                                        top_sku_categories[top_sku_categories['in_assortment'] > 0]['in_assortment']
+                top_sku_categories[top_sku_categories['in_assortment'] > 0]['in_assortment']
             top_sku_categories = top_sku_categories\
                 .sort_values(by=['sos', 'category'])\
                 .reset_index()
@@ -3415,7 +3430,8 @@ class CCRUKPIToolBox:
                 numerator_result = row['distributed']
                 denominator_result = row['in_assortment']
 
-                result = round(numerator_result / float(denominator_result) * 100, 2) if denominator_result else 0
+                result = round(numerator_result / float(denominator_result)
+                               * 100, 2) if denominator_result else 0
                 score = result
                 weight = sort_order
                 target = 100 if denominator_result else 0
@@ -3457,7 +3473,8 @@ class CCRUKPIToolBox:
         denominator_id = self.store_id
         context_id = None
 
-        result = round(numerator_result / float(denominator_result) * 100, 2) if denominator_result else 0
+        result = round(numerator_result / float(denominator_result)
+                       * 100, 2) if denominator_result else 0
         score = result
         weight = 1
         target = 100 if denominator_result else 0
@@ -3615,7 +3632,8 @@ class CCRUKPIToolBox:
                 kpis = pd.DataFrame(kpis.values())
                 kpis = kpis.where((pd.notnull(kpis)), None).sort_values(by=['sort_order'])
                 if kpi_set_type in [EQUIPMENT, TOPSKU]:
-                    identifier_parent = self.common.get_dictionary(set=CONTRACT, level=0, kpi=CONTRACT)
+                    identifier_parent = self.common.get_dictionary(
+                        set=CONTRACT, level=0, kpi=CONTRACT)
                 else:
                     identifier_parent = None
                 # try:
@@ -3691,7 +3709,7 @@ class CCRUKPIToolBox:
                 else:
                     result = kpi['result'] if kpi['result'] is not None \
                         else (kpi['score'] if kpi['score'] is not None
-                                else score)
+                              else score)
 
             group_score += score if score else 0
             group_weight += weight if weight else 0
@@ -3708,7 +3726,6 @@ class CCRUKPIToolBox:
                                            identifier_result=identifier_result,
                                            identifier_parent=identifier_parent,
                                            should_enter=True)
-
 
         return group_score, group_weight
 
@@ -3794,5 +3811,3 @@ class CCRUKPIToolBox:
             data = json.load(f)
         os.remove(temp_path)
         return data
-
-

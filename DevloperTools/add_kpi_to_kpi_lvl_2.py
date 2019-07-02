@@ -181,6 +181,7 @@ class AddKPIs(object):
             except Exception as e:
                 print 'kpis were not inserted: {}'.format(repr(e))
 
+
 """
 Template_path: optional attribute. Default value: 'kpi_factory/DevloperTools/new_tables_template.xlsx'- 
                it has all columns required for the script.

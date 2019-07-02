@@ -15,6 +15,7 @@ class HEINZCRCalculations(BaseCalculationsScript):
     """
     https://confluence.trax-cloud.com/pages/resumedraft.action?draftId=174198555&draftShareId=feac8c7a-ec57-4b36-b380-190d3668debc
     """
+
     def run_project_calculations(self):
         self.timer.start()
         # common = Common(self.data_provider)

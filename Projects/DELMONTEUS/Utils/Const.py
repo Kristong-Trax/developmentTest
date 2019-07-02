@@ -6,7 +6,7 @@ class Const(object):
     ''' Holds Constants '''
 
     TMB_MAP_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), 'Data',
-                                   'TopMiddleBottom_Map.xlsx')
+                                'TopMiddleBottom_Map.xlsx')
 
     ''' Sheets '''
     KPIS = 'KPIs'
@@ -51,7 +51,3 @@ class Const(object):
     REGIONS = ['left', 'center', 'right']
     NUM_REG = 3
     MM_FT = 304.8
-
-
-
-

@@ -148,7 +148,7 @@ class CCRUCCHKPIFetcher:
         if not all(res):
             return res[0]
         else:
-            return float(res[0])
+            return float(res[0].replace(',', '.'))
 
     def get_test_store(self, store_id):
         query = """

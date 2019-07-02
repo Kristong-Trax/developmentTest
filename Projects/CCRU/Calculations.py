@@ -31,28 +31,17 @@ KPI_CONVERSION = 'KPI_CONVERSION'
 BENCHMARK = 'BENCHMARK'
 
 ALLOWED_POS_SETS = (
-    'Pos 2018 - Canteen',
-    'Pos 2018 - FT',
-    'Pos 2018 - HoReCa - Bar Tavern Night Clubs',
-    'Pos 2018 - HoReCa - Coffee Tea Shops',
-    'Pos 2018 - HoReCa - Restaurant Cafe',
-    'Pos 2018 - MT - Convenience Big',
-    'Pos 2018 - MT - Convenience Small',
-    'Pos 2018 - MT - Hypermarket',
-    'Pos 2018 - MT - Supermarket',
-    'Pos 2018 - Petroleum',
-    'Pos 2018 - QSR',
-
     'PoS 2019 - FT - CAP',
     'PoS 2019 - FT NS - CAP',
     'PoS 2019 - FT NS - REG',
     'PoS 2019 - FT - REG',
     'PoS 2019 - IC Canteen - EDU',
     'PoS 2019 - IC Canteen - OTH',
-    'PoS 2019 - IC HoReCa BarTavernClub - CAP',
-    'PoS 2019 - IC HoReCa BarTavernClub - REG',
-    'PoS 2019 - IC HoReCa RestCafeTea - CAP',
-    'PoS 2019 - IC HoReCa RestCafeTea - REG',
+    'PoS 2019 - IC Cinema - CAP',
+    'PoS 2019 - IC Cinema - REG',
+    'PoS 2019 - IC FastFood',
+    'PoS 2019 - IC HoReCa BarTavernClub',
+    'PoS 2019 - IC HoReCa RestCafeTea',
     'PoS 2019 - IC Petroleum - CAP',
     'PoS 2019 - IC Petroleum - REG',
     'PoS 2019 - IC QSR',
@@ -102,6 +91,13 @@ class CCRUProjectCalculations:
         if self.tool_box.external_session_id\
                 and self.tool_box.external_session_id.find('EasyMerch-P') >= 0:
             Log.debug('Promo session, no Custom KPI calculation implied')
+            return
+
+        if str(self.visit_date) < self.tool_box.MIN_CALC_DATE:
+            Log.warning('Error. Session cannot be calculated. '
+                        'Visit date is less than {2} - {0}. '
+                        'Store ID {1}.'
+                        .format(self.visit_date, self.store_id, self.tool_box.MIN_CALC_DATE))
             return
 
         if self.pos_kpi_set_name not in ALLOWED_POS_SETS:
