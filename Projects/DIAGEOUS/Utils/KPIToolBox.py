@@ -1002,7 +1002,7 @@ class ToolBox:
         """
         brand_results = []
         brand = brand_list.iloc[0]['brand_fk']
-        for sub_brand_fk in brand_list['sub_brand_fk'].unique().tolist():
+        for sub_brand_fk in brand_list[~(brand_list['sub_brand_fk'].isnull())]['sub_brand_fk'].unique().tolist():
             sub_brand_list = brand_list[brand_list['sub_brand_fk'] == sub_brand_fk]
             sub_brand_results, standard_types_results = self.generic_sub_brand_calculator(
                 sub_brand_list, relevant_df, standard_types_results, kpi_db_names, template_fk)
