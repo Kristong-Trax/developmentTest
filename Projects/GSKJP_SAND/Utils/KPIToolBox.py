@@ -149,7 +149,7 @@ class GSKJPToolBox:
         denominator = brand_df.shape[0]
         result = (float(numerator) / float(denominator)) * 100
         score = 100 if result >= threshold else 0
-        return result, score, numerator, denominator
+        return result, score, numerator, denominator, threshold
 
     def lsos_score(self, brand, policy):
         """
@@ -186,7 +186,7 @@ class GSKJPToolBox:
         templates = self.set_up_data[(Const.SCENE_TYPE, self.PLN_BLOCK)]
         template_name = {
             'template_name': templates} if templates else None  # figure out which template name should I use
-
+        ignore_empty = False
         # taking from params from set up  info
         stacking_param = False if not self.set_up_data[(Const.INCLUDE_STACKING, self.PLN_BLOCK)] else True  # false
         products_excluded = []
@@ -196,6 +196,7 @@ class GSKJPToolBox:
             products_excluded.append(Const.IRRELEVANT)
         if not self.set_up_data[(Const.INCLUDE_EMPTY, self.PLN_BLOCK)]:
             products_excluded.append(Const.EMPTY)
+            ignore_empty = True
         product_filters = {'product_type': products_excluded}  # from Data file
         target = float(policy['block_target'].iloc[0]) / float(100)
 
@@ -205,14 +206,26 @@ class GSKJPToolBox:
                                                                               'allowed_products_filters':
                                                                                   product_filters,
                                                                               'calculate_all_scenes': False,
+                                                                              'ignore_empty': ignore_empty,
                                                                               'include_stacking': stacking_param,
                                                                               'check_vertical_horizontal': True,
+                                                                              'minimum_facing_for_block': 1
                                                                               })
-        # denominator = len(result['cluster'].graph['mapping'])
-        # numerator
+        # result.sort_values('facing_percentage', ascending=False, inplace=True)
+
+        # numerator = len(result['cluster'].values[0].node.keys())
+        # numerator = 0
+        # cluster = result['cluster'].values[0]
+        # for dict in cluster._node.values():
+        #     facings = numerator + dict['group_attributes']['facings']
+
+        # nodes_sum = 0
+        # for node_clust in result['cluster'].values:
+        #     nodes_sum = nodes_sum + node_clust.node.keys()
+        # # numerator
         result = 0 if result[result['is_block']].empty else 100
 
-        return result
+        return result, target
 
     def msl_assortment(self, kpi_fk, kpi_name):
         """
@@ -345,7 +358,7 @@ class GSKJPToolBox:
                                      left_on=['scene_id', 'product_fk'])
         df_position_score = self.gsk_generator.tool_box.tests_by_template(self.POSITION_SCORE, df_position_score,
                                                                           self.set_up_data)
-        if self.set_up_data[(Const.INCLUDE_STACKING, self.POSITION_SCORE)]:
+        if not self.set_up_data[(Const.INCLUDE_STACKING, self.POSITION_SCORE)]:
             df_position_score = df_position_score if df_position_score is None else df_position_score[
                 df_position_score['stacking_layer'] == 1]
 
@@ -365,7 +378,7 @@ class GSKJPToolBox:
             msl_score = msl_result * msl_target
             results_df.append({'fk': kpi_msl_fk, 'numerator_id': brand, 'denominator_id': self.store_fk,
                                'denominator_result': msl_denominator, 'numerator_result': msl_numerator, 'result':
-                                   msl_result, 'score': msl_score, 'target': msl_target,
+                                   msl_result, 'score': msl_score, 'target': (msl_target*100),
                                'identifier_parent': identifier_parent,
                                'should_enter': True})
             # lsos kpi
@@ -374,28 +387,28 @@ class GSKJPToolBox:
             lsos_score = lsos_result * lsos_target
             results_df.append({'fk': kpi_lsos_fk, 'numerator_id': brand, 'denominator_id': self.store_fk,
                                'denominator_result': lsos_denominator, 'numerator_result': lsos_numerator, 'result':
-                                   lsos_result, 'score': lsos_score, 'target': lsos_target,
-                               'identifier_parent': identifier_parent,
+                                   lsos_result, 'score': lsos_score, 'target': (lsos_target*100),
+                               'identifier_parent': identifier_parent, 'weight': lsos_denominator,
                                'should_enter': True})
             # block_score
-            block_result = self.brand_blocking(brand, policy)
+            block_result, block_benchmark = self.brand_blocking(brand, policy)
             block_score = block_result * block_target
 
             results_df.append({'fk': kpi_block_fk, 'numerator_id': brand, 'denominator_id': self.store_fk,
                                'denominator_result': block_result, 'numerator_result': 1, 'result':
-                                   block_result, 'score': block_score, 'target': block_target, 'identifier_parent':
-                                   identifier_parent, 'should_enter': True})
+                                   block_result, 'score': block_score, 'target': (block_target*100), 'identifier_parent':
+                                   identifier_parent, 'should_enter': True, 'weight':( block_benchmark*100)})
 
             # position score
             if df_position_score is None:
                 continue
-            position_result, position_score, position_num, position_den = self.position_shelf(brand, policy,
+            position_result, position_score, position_num, position_den, position_benchmark = self.position_shelf(brand,policy,
                                                                                               df_position_score)
             position_score = position_score * posit_target
             results_df.append({'fk': kpi_position_fk, 'numerator_id': brand, 'denominator_id': self.store_fk,
                                'denominator_result': position_den, 'numerator_result': position_num, 'result':
-                                   position_result, 'score': position_score, 'target': posit_target, 'identifier_parent'
-                               : identifier_parent, 'should_enter': True})
+                                   position_result, 'score': position_score, 'target': (posit_target*100), 'identifier_parent'
+                               : identifier_parent, 'should_enter': True, 'weight': position_benchmark})
 
             # compliance score per brand
             compliance_score = position_score + block_score + lsos_score + msl_score
