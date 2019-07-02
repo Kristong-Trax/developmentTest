@@ -1076,6 +1076,7 @@ class PngcnSceneKpis(object):
         for i, row in new_scif.iterrows():
             numerator_result = row['gross_len_split_stack_new']
             result = self.calculate_result(numerator_result, denominator_result)
+            result = round(result * 100, 2)
             self.common.write_to_db_result(fk=kpi_fk,
                                            numerator_id=row['product_fk'],
                                            denominator_id=self.store_id,
