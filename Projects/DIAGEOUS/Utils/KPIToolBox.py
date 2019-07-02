@@ -51,7 +51,7 @@ class ToolBox:
         if self.store_info['additional_attribute_2'].iloc[0]:
             self.attr2 = self.store_info['additional_attribute_2'].iloc[0]
         else:
-            Log.error("The store for this session has no attribute2. Set temporary as Other, please fix")
+            Log.warning("The store for this session has no attribute2. Set temporary as Other, please fix")
             self.attr2 = Const.OTHER
         self.templates = {}
         self.get_templates()
@@ -105,17 +105,17 @@ class ToolBox:
                 self.converted_groups = self.convert_groups_from_template()
                 self.external_targets = self.ps_data.get_kpi_external_targets(
                     kpi_operation_types=Const.OPEN_OPERATION_TYPES,
-                    key_fields=['product_fk', 'state_fk', 'store_number_1', 'scene_type', 'attr2'],
-                    data_fields=['minimum facings', 'MINIMUM SHELF LOCATION', 'BENCHMARK Value', 'target_min',
-                                 'competitor_product_fk', 'relative_target_max', 'relative_target_min', 'target_max'])
+                    key_fields=[Const.EX_PRODUCT_FK, Const.EX_STATE_FK, Const.EX_STORE_NUMBER, Const.EX_SCENE_TYPE,
+                                Const.EX_ATTR2],
+                    data_fields=[Const.EX_MIN_FACINGS, Const.EX_MINIMUM_SHELF, Const.EX_BENCHMARK_VALUE,
+                                 Const.EX_TARGET_MIN, Const.EX_COMPETITOR_FK, Const.EX_RELATIVE_MAX,
+                                 Const.EX_RELATIVE_MIN, Const.EX_TARGET_MAX])
                 self.external_targets = self.external_targets.fillna("N/A")
         elif self.attr6 != Const.ON:
                 self.init_assortment()
                 self.external_targets = self.ps_data.get_kpi_external_targets(
                     kpi_operation_types=Const.INDEPENDENT_OPERATION_TYPES,
-                    key_fields=['product_fk', 'state_fk', 'store_number_1', 'scene_type', 'attr2'],
-                    data_fields=['minimum facings', 'MINIMUM SHELF LOCATION', 'BENCHMARK Value', 'target_min',
-                                 'competitor_product_fk', 'relative_target_max', 'relative_target_min', 'target_max'])
+                    key_fields=[Const.EX_SCENE_TYPE, Const.EX_ATTR2], data_fields=[Const.EX_MIN_FACINGS])
                 self.external_targets = self.external_targets.fillna("N/A")
         if self.attr6 == Const.OFF:
             total_off_trade_fk = self.common.get_kpi_fk_by_kpi_name(
@@ -554,9 +554,13 @@ class ToolBox:
                 product_fk, relevant_products, manufacturer_kpi_fk)
             all_results = all_results.append(product_result, ignore_index=True)
         den_res = all_results[Const.PASSED].sum()
+        if not den_res:
+            den_res = 0
         diageo_results, diageo_result = 0, 0
         for manufacturer in all_results[Const.MANUFACTURER].unique().tolist():
             num_res = all_results[all_results[Const.MANUFACTURER] == manufacturer][Const.PASSED].sum()
+            if not num_res:
+                num_res = 0
             result = self.get_score(num_res, den_res)
             target_manufacturer = None
             if manufacturer == self.manufacturer_fk:
