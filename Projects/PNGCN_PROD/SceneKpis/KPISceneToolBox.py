@@ -1074,12 +1074,13 @@ class PngcnSceneKpis(object):
         new_scif_without_excludes = new_scif_without_irrelevant[new_scif_without_irrelevant['rlv_sos_sc'] == 1]
         denominator_result = new_scif_without_excludes.gross_len_split_stack_new.sum()
         for i, row in new_scif.iterrows():
-            result = self.calculate_result(row['gross_len_split_stack'], denominator_result)
+            numerator_result = row['gross_len_split_stack_new']
+            result = self.calculate_result(numerator_result, denominator_result)
             self.common.write_to_db_result(fk=kpi_fk,
                                            numerator_id=row['product_fk'],
                                            denominator_id=self.store_id,
                                            denominator_result=denominator_result,
-                                           numerator_result=row['gross_len_split_stack_new'],
+                                           numerator_result=numerator_result,
                                            result=result, score=result, by_scene=True)
 
     def insert_data_into_custom_scif(self, new_scif):
