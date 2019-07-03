@@ -7,6 +7,8 @@ from Projects.PNGCN_PROD.SceneKpis.KPISceneToolBox import PngcnSceneKpis
 import pandas as pd
 import numpy
 
+from Tests.TestUtils import remove_cache_and_storage
+
 __author__ = 'avrahama'
 
 
@@ -17,7 +19,7 @@ class TestPngcn(TestUnitCase):
 
     def set_up(self):
         super(TestPngcn, self).set_up()
-
+        remove_cache_and_storage()
         # mock PSProjectConnector
         self.ProjectConnector_mock = self.mock_object(
             'ProjectConnector', path='KPIUtils_v2.DB.PsProjectConnector')
