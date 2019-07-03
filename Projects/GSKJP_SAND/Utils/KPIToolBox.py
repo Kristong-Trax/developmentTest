@@ -308,6 +308,9 @@ class GSKJPToolBox:
                                              result :  (numerator/denominator)*100
                                              results :  array of dictionary, each dict contains the result details
                """
+
+        if assortment is None or assortment.empty:
+            return 0, 0, 0
         brand_results = assortment[assortment['brand_fk']
                                    == brand]  # only assortment of desired brand
         if 'total' not in self.assortment.LVL2_HEADERS or 'passes' not in self.assortment.LVL2_HEADERS:
@@ -468,7 +471,7 @@ class GSKJPToolBox:
         total_brand_score = 0
         assortment_display = self.msl_assortment(self.PLN_ASSORTMENT_KPI, self.ECAPS_FILTER_IDENT)
 
-        if assortment_display is None:
+        if assortment_display is None or assortment_display.empty:
             return results_df
         template_brands = self.set_up_data[(Const.BRANDS_INCLUDE, self.ECAPS_FILTER_IDENT)]
         brands = assortment_display[assortment_display['brand_name'].isin(template_brands)]['brand_fk'].unique() if \
