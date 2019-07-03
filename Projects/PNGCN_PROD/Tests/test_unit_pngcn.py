@@ -372,24 +372,24 @@ class TestPngcn(TestUnitCase):
         scene_tool_box = PngcnSceneKpis(self.ProjectConnector_mock,
                                         self.common_mock, 16588190,
                                         self.data_provider_mock)
-        data = [{'gross_len_split_stack_new': 13, 'product_type': ' rrelevant', 'product_fk': None, 'rlv_sos_sc': 0,
+        data = [{'gross_len_split_stack_new': 13, 'product_type': 'Irrelevant', 'product_fk': None, 'rlv_sos_sc': 0,
                  'gross_len_split_stack': 0.15},
-                {'gross_len_split_stack_new': 65, 'product_type': ' rrelevant', 'product_fk': 252, 'rlv_sos_sc': 1,
+                {'gross_len_split_stack_new': 65, 'product_type': '', 'product_fk': 252, 'rlv_sos_sc': 1,
                  'gross_len_split_stack': 1.23},
-                {'gross_len_split_stack_new': 35, 'product_type': ' rrelevant', 'product_fk': 252, 'rlv_sos_sc': 1,
+                {'gross_len_split_stack_new': 35, 'product_type': '', 'product_fk': 253, 'rlv_sos_sc': 1,
                  'gross_len_split_stack': 1.23},
                 {'gross_len_split_stack_new': 121, 'product_type': 'Irrelevant', 'product_fk': 132, 'rlv_sos_sc': 0,
                  'gross_len_split_stack': 0.99},
                 {'gross_len_split_stack_new': 201, 'product_type': 'Irrelevant', 'product_fk': 132, 'rlv_sos_sc': 0,
                  'gross_len_split_stack': 0.75},
-                {'gross_len_split_stack_new': 13, 'product_type': ' rrelevant', 'product_fk': 252, 'rlv_sos_sc': 0,
+                {'gross_len_split_stack_new': 13, 'product_type': '', 'product_fk': 272, 'rlv_sos_sc': 0,
                  'gross_len_split_stack': 0.15}]
 
         scene_tool_box.common.write_to_db_result = MagicMock()
         scene_tool_box.save_nlsos_as_kpi_results(pd.DataFrame(data))
         kpi_results = scene_tool_box.common.write_to_db_result.mock_calls
-        result = kpi_results[4][2]['score']
-        expected_result = 0.15/100.0
+        result = kpi_results[0][2]['score']
+        expected_result = 65.0
         self.assertEqual(result, expected_result)
 
     def test_insert_into_kpi_scene_results(self):
