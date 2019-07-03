@@ -152,7 +152,7 @@ class TestPngcn(TestUnitCase):
         # test that we write the correct results to DB
         data_scif = [{u'scene_id': 16588190, u'item_id': 123, u'manufacturer_fk': 4, u'rlv_sos_sc': 1, u'status': 1},
                      {u'scene_id': 16588190, u'item_id': 125,
-                         u'manufacturer_fk': 3, u'rlv_sos_sc': 1, u'status': 1},
+                      u'manufacturer_fk': 3, u'rlv_sos_sc': 1, u'status': 1},
                      {u'scene_id': 16588190, u'item_id': 136, u'manufacturer_fk': 3, u'rlv_sos_sc': 1, u'status': 1}]
         scene_tool_box.scif = pd.DataFrame(data_scif)
         data_df_products_size = [{'item_id': 123, 'scene_id': 16588190, 'product_size': 1.245},
@@ -188,7 +188,7 @@ class TestPngcn(TestUnitCase):
         # test that we write the correct results to DB
         data_scif = [{u'scene_id': 16588190, u'item_id': 123, u'manufacturer_fk': 4, u'rlv_sos_sc': 1, u'status': 1},
                      {u'scene_id': 16588190, u'item_id': 125,
-                         u'manufacturer_fk': 3, u'rlv_sos_sc': 1, u'status': 1},
+                      u'manufacturer_fk': 3, u'rlv_sos_sc': 1, u'status': 1},
                      {u'scene_id': 16588190, u'item_id': 136, u'manufacturer_fk': 3, u'rlv_sos_sc': 1, u'status': 1}]
         scene_tool_box.scif = pd.DataFrame(data_scif)
         data_df_products_size = [{'item_id': 123, 'scene_id': 16588190, 'product_size': 1.245},
@@ -217,7 +217,7 @@ class TestPngcn(TestUnitCase):
         # test that we write the correct results to DB
         data_scif = [{u'scene_id': 16588190, u'item_id': 123, u'manufacturer_fk': 4, u'rlv_sos_sc': 1, u'status': 1},
                      {u'scene_id': 16588190, u'item_id': 125,
-                         u'manufacturer_fk': 3, u'rlv_sos_sc': 1, u'status': 1},
+                      u'manufacturer_fk': 3, u'rlv_sos_sc': 1, u'status': 1},
                      {u'scene_id': 16588190, u'item_id': 136, u'manufacturer_fk': 3, u'rlv_sos_sc': 1, u'status': 1}]
         scene_tool_box.scif = pd.DataFrame(data_scif)
         data_df_products_size = [{'item_id': 123, 'scene_id': 16588190, 'product_size': 1.245},
@@ -284,9 +284,9 @@ class TestPngcn(TestUnitCase):
                                         self.data_provider_mock)
         data = [{'scene_fk': 101, 'manufacturer_fk': 2, 'product_fk': 252, 'width_mm': 0.84, 'width_mm_advance': 1.23},
                 {'scene_fk': 121, 'manufacturer_fk': 4, 'product_fk': 132,
-                    'width_mm': 0.80, 'width_mm_advance': 0.99},
+                 'width_mm': 0.80, 'width_mm_advance': 0.99},
                 {'scene_fk': 201, 'manufacturer_fk': 4, 'product_fk': 152,
-                    'width_mm': 0.28, 'width_mm_advance': 0.75},
+                 'width_mm': 0.28, 'width_mm_advance': 0.75},
                 {'scene_fk': 151, 'manufacturer_fk': 5, 'product_fk': 172, 'width_mm': 0.95, 'width_mm_advance': 0.15}]
         scene_tool_box.get_filterd_matches = MagicMock(return_value=pd.DataFrame(data))
         scene_tool_box.png_manufacturer_fk = 4
@@ -306,9 +306,9 @@ class TestPngcn(TestUnitCase):
                                         self.data_provider_mock)
         data = [{'scene_fk': 101, 'manufacturer_fk': 2, 'product_fk': 252, 'width_mm': 0.84, 'width_mm_advance': 1.23},
                 {'scene_fk': 121, 'manufacturer_fk': 4, 'product_fk': 132,
-                    'width_mm': 0.80, 'width_mm_advance': 0.99},
+                 'width_mm': 0.80, 'width_mm_advance': 0.99},
                 {'scene_fk': 201, 'manufacturer_fk': 4, 'product_fk': 152,
-                    'width_mm': 0.28, 'width_mm_advance': 0.75},
+                 'width_mm': 0.28, 'width_mm_advance': 0.75},
                 {'scene_fk': 151, 'manufacturer_fk': 5, 'product_fk': 172, 'width_mm': 0.95, 'width_mm_advance': 0.15}]
         scene_tool_box.get_filterd_matches = MagicMock(return_value=pd.DataFrame(data))
         scene_tool_box.png_manufacturer_fk = 4
@@ -331,9 +331,9 @@ class TestPngcn(TestUnitCase):
                                         self.data_provider_mock)
         data = [{'scene_fk': 101, 'manufacturer_fk': 2, 'product_fk': 252, 'width_mm': 0.84, 'width_mm_advance': 1.23},
                 {'scene_fk': 121, 'manufacturer_fk': 4, 'product_fk': 132,
-                    'width_mm': 0.80, 'width_mm_advance': 0.99},
+                 'width_mm': 0.80, 'width_mm_advance': 0.99},
                 {'scene_fk': 201, 'manufacturer_fk': 4, 'product_fk': 152,
-                    'width_mm': 0.28, 'width_mm_advance': 0.75},
+                 'width_mm': 0.28, 'width_mm_advance': 0.75},
                 {'scene_fk': 151, 'manufacturer_fk': 5, 'product_fk': 172, 'width_mm': 0.95, 'width_mm_advance': 0.15}]
         scene_tool_box.get_filterd_matches = MagicMock(return_value=pd.DataFrame(data))
         scene_tool_box.png_manufacturer_fk = 4
@@ -401,9 +401,9 @@ class TestPngcn(TestUnitCase):
                                         self.data_provider_mock)
         data = [{'pk': 101, 'display_group': 5, 'product_fk': 252, 'facings': 0.84, 'product_size': 1.23},
                 {'pk': 121, 'display_group': 4, 'product_fk': 132,
-                    'facings': 0.80, 'product_size': 0.99},
+                 'facings': 0.80, 'product_size': 0.99},
                 {'pk': 201, 'display_group': 4, 'product_fk': 132,
-                    'facings': 0.28, 'product_size': 0.75},
+                 'facings': 0.28, 'product_size': 0.75},
                 {'pk': 151, 'display_group': 5, 'product_fk': 252, 'facings': 0.95, 'product_size': 0.15}]
 
         scene_tool_box.get_display_group = MagicMock()
@@ -419,7 +419,26 @@ class TestPngcn(TestUnitCase):
         self.assertEqual(score, expected_score)
 
     def test_calculate_sequence_eye_level(self):
-        pass
+        scene_tool_box = PngcnSceneKpis(self.ProjectConnector_mock,
+                                        self.common_mock, 16588190,
+                                        self.data_provider_mock)
+        entity_df = [{'entity_fk': 17, 'entity_name': u'SFG Bodywash', 'entity_type_fk': 1002,
+                      'entity_type_name': u'eye_level_fragments'},
+                     {'entity_fk': 27, 'entity_name': u'Competitor Other', 'entity_type_fk': 1002,
+                      'entity_type_name': u'eye_level_fragments'}]
+        data = [{'scene_fk': 101, 'manufacturer_fk': 2, 'product_fk': 252, 'width_mm': 0.84, 'width_mm_advance': 1.23},
+                {'scene_fk': 121, 'manufacturer_fk': 4, 'product_fk': 132,
+                 'width_mm': 0.80, 'width_mm_advance': 0.99},
+                {'scene_fk': 201, 'manufacturer_fk': 4, 'product_fk': 152,
+                 'width_mm': 0.28, 'width_mm_advance': 0.75},
+                {'scene_fk': 151, 'manufacturer_fk': 5, 'product_fk': 172, 'width_mm': 0.95, 'width_mm_advance': 0.15}]
+        scene_tool_box.get_filterd_matches = MagicMock(return_value=pd.DataFrame(data))
+        scene_tool_box.png_manufacturer_fk = 4
+        scene_tool_box.common.write_to_db_result = MagicMock()
+        scene_tool_box.calculate_sequence_eye_level(entity_df, data)
+        kpi_results = scene_tool_box.common.write_to_db_result.mock_calls[0][2]
+        if kpi_results:
+            self.assertEqual(len(kpi_results), 8, 'expects to write 8 parameters to db')
 
     def test_calculate_facing_eye_level(self):
         pass
