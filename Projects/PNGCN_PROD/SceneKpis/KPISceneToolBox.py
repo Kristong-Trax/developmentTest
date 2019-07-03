@@ -1073,7 +1073,7 @@ class PngcnSceneKpis(object):
         new_scif_without_irrelevant = new_scif[~(new_scif['product_type'].isin(['Irrelevant']))]
         new_scif_without_excludes = new_scif_without_irrelevant[new_scif_without_irrelevant['rlv_sos_sc'] == 1]
         denominator_result = new_scif_without_excludes.gross_len_split_stack_new.sum()
-        for i, row in new_scif.iterrows():
+        for i, row in new_scif_without_excludes.iterrows():
             numerator_result = row['gross_len_split_stack_new']
             result = self.calculate_result(numerator_result, denominator_result)
             result = round(result * 100, 2)
