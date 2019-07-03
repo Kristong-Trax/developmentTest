@@ -238,7 +238,7 @@ class GSKJPToolBox:
                 """
         lvl3_assort, filter_scif = self.gsk_generator.tool_box.get_assortment_filtered(
             self.set_up_data, kpi_name)
-        if lvl3_assort is None:
+        if lvl3_assort is None or lvl3_assort.empty:
             return None
         kpi_assortment_fk = self.common.get_kpi_fk_by_kpi_type(kpi_fk)
         kpi_results = lvl3_assort[lvl3_assort['kpi_fk_lvl3']
