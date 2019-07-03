@@ -93,18 +93,18 @@ class CCRUProjectCalculations:
             Log.debug('Promo session, no Custom KPI calculation implied')
             return
 
-        if self.pos_kpi_set_name not in ALLOWED_POS_SETS:
-            Log.warning('Error. Session cannot be calculated. '
-                        'POS KPI Set name in store attribute is invalid - {0}. '
-                        'Store ID {1}.'
-                        .format(self.pos_kpi_set_name, self.store_id))
-            return
-
         if str(self.visit_date) < self.tool_box.MIN_CALC_DATE:
             Log.warning('Error. Session cannot be calculated. '
                         'Visit date is less than {2} - {0}. '
                         'Store ID {1}.'
                         .format(self.visit_date, self.store_id, self.tool_box.MIN_CALC_DATE))
+            return
+
+        if self.pos_kpi_set_name not in ALLOWED_POS_SETS:
+            Log.warning('Error. Session cannot be calculated. '
+                        'POS KPI Set name in store attribute is invalid - {0}. '
+                        'Store ID {1}.'
+                        .format(self.pos_kpi_set_name, self.store_id))
             return
 
         self.json.create_kpi_data_json('kpi_source', 'KPI_Source.xlsx',
