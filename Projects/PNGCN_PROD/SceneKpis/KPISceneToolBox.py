@@ -143,6 +143,7 @@ class PngcnSceneKpis(object):
         self.parser = Parser
         self.match_probe_in_scene = self.get_product_special_attribute_data(self.scene_id)
         self.match_product_in_probe_state_reporting = self.psdataprovider.get_match_product_in_probe_state_reporting()
+        self.sub_brand_entities = self.psdataprovider.get_custom_entities_df('sub_brand')
 
     def process_scene(self):
         self.calculate_variant_block()
@@ -204,7 +205,7 @@ class PngcnSceneKpis(object):
                 self.save_eye_light_products(block_filters['sub_brand_name'][0], filtered_df)
                 filter_block_result = block_class.network_x_block_together(
                     population=block_filters,
-                    additional={'allowed_products_filters': {'product_type': ['Irrelevant']},
+                    additional={'allowed_products_filters': {'product_type': ['Empty']},
                                 'minimum_block_ratio': 0.0,
                                 'minimum_facing_for_block': 3,
                                 'include_stacking': False,
@@ -239,10 +240,16 @@ class PngcnSceneKpis(object):
                     legal_blocks[filter_name] = filter_results
                     legal_blocks[filter_name] = filter_results
         all_blocks = [p for q in legal_blocks.values() for p in q]
-        self.replace_with_seq_order(sorted(all_blocks, key=lambda i: i['x']), 'x')
-        self.replace_with_seq_order(sorted(all_blocks, key=lambda i: i['y']), 'y')
+        all_blocks_no_duplicates = []
+        for i in range(0, len(all_blocks)):
+            if i == len(all_blocks) - 1:
+                all_blocks_no_duplicates.append(all_blocks[i])
+            elif not (all_blocks[i].equals(all_blocks[i + 1])):
+                all_blocks_no_duplicates.append(all_blocks[i])
+        self.replace_with_seq_order(sorted(all_blocks_no_duplicates, key=lambda i: i['x']), 'x')
+        self.replace_with_seq_order(sorted(all_blocks_no_duplicates, key=lambda i: i['y']), 'y')
         block_variant_kpi_fk = self.common.get_kpi_fk_by_kpi_name(BLOCK_VARIANT_KPI)
-        for block in all_blocks:
+        for block in all_blocks_no_duplicates:
             brand_fk = self.get_attribute_fk_from_name('brand_name', block['brand_name'])
             category_fk = self.get_attribute_fk_from_name('category', block['category'])
             sub_brand_fk = self.get_attribute_fk_from_name(
@@ -283,7 +290,7 @@ class PngcnSceneKpis(object):
 
     def get_custom_entity_fk(self, name, value):
         if name == 'sub_brand_name':
-            attributes = self.psdataprovider.get_custom_entities_df('block_variant_sub_brands')
+            attributes = self.sub_brand_entities
         else:
             return -1
         if attributes.empty:
@@ -1067,12 +1074,14 @@ class PngcnSceneKpis(object):
         new_scif_without_excludes = new_scif_without_irrelevant[new_scif_without_irrelevant['rlv_sos_sc'] == 1]
         denominator_result = new_scif_without_excludes.gross_len_split_stack_new.sum()
         for i, row in new_scif.iterrows():
-            result = self.calculate_result(row['gross_len_split_stack'], denominator_result)
+            numerator_result = row['gross_len_split_stack_new']
+            result = self.calculate_result(numerator_result, denominator_result)
+            result = round(result * 100, 2)
             self.common.write_to_db_result(fk=kpi_fk,
                                            numerator_id=row['product_fk'],
                                            denominator_id=self.store_id,
                                            denominator_result=denominator_result,
-                                           numerator_result=row['gross_len_split_stack_new'],
+                                           numerator_result=numerator_result,
                                            result=result, score=result, by_scene=True)
 
     def insert_data_into_custom_scif(self, new_scif):
