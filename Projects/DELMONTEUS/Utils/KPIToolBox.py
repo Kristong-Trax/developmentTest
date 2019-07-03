@@ -82,6 +82,8 @@ class ToolBox:
         main_template = self.template[Const.KPIS]
         self.dependency_lookup = main_template.set_index(Const.KPI_NAME)[Const.DEPENDENT].to_dict()
 
+        self.shun()
+
         for i, main_line in main_template.iterrows():
             self.global_fail = 0
             self.calculate_main_kpi(main_line)
@@ -103,7 +105,7 @@ class ToolBox:
 
         print(kpi_name)
         # if kpi_name not in ('Are PFC shelved between Canned and Squeezers?'):
-        # if kpi_name not in ('Does Multi Serve Core Fruit lead the Fruit Section on the Right?'):
+        # if kpi_name not in ('What % of Del Monte facings are blocked vertically?'):
         if kpi_type not in (Const.BLOCKING, Const.BLOCKING_PERCENT, Const.SOS, Const.ANCHOR, Const.MULTI_BLOCK,
                             Const.SAME_AISLE, Const.SHELF_REGION, Const.SHELF_PLACEMENT):
             return
@@ -170,6 +172,7 @@ class ToolBox:
             return
         filters.update(general_filters)
         mpis = self.filter_df(mpis, {'scene_fk': list(relevant_scif.scene_id.unique())})
+
         bay_shelf = self.filter_df(self.full_mpis, general_filters).set_index(['scene_fk', 'bay_number'])\
                                       .groupby(level=[0, 1])[['shelf_number', 'shelf_number_from_bottom']].max()
         bay_max_shelf = bay_shelf['shelf_number'].to_dict()
@@ -672,6 +675,15 @@ class ToolBox:
                         if edge_dir in action_edges:
                             g.remove_edge(node, edge_id)
         return g
+
+    def shun(self):
+        exclude = self.template['Exclude']
+        filters = {}
+        for i, row in exclude.iterrows():
+            filters.update(self.get_kpi_line_filters(row))
+        self.mpis = self.filter_df(self.mpis, filters, exclude=1)
+        self.full_mpis = self.filter_df(self.full_mpis, filters, exclude=1)
+        self.scif = self.filter_df(self.scif, filters, exclude=1)
 
     @staticmethod
     def filter_df(df, filters, exclude=0):
