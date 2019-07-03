@@ -422,23 +422,60 @@ class TestPngcn(TestUnitCase):
         scene_tool_box = PngcnSceneKpis(self.ProjectConnector_mock,
                                         self.common_mock, 16588190,
                                         self.data_provider_mock)
-        entity_df = [{'entity_fk': 17, 'entity_name': u'SFG Bodywash', 'entity_type_fk': 1002,
+        entity_df = pd.DataFrame([{'entity_fk': 17, 'entity_name': u'SFG Handwash', 'entity_type_fk': 1002,
                       'entity_type_name': u'eye_level_fragments'},
+                      {'entity_fk': 18, 'entity_name': u'SFG Bodywash', 'entity_type_fk': 1002,
+                       'entity_type_name': u'eye_level_fragments'},
                      {'entity_fk': 27, 'entity_name': u'Competitor Other', 'entity_type_fk': 1002,
-                      'entity_type_name': u'eye_level_fragments'}]
-        data = [{'scene_fk': 101, 'manufacturer_fk': 2, 'product_fk': 252, 'width_mm': 0.84, 'width_mm_advance': 1.23},
-                {'scene_fk': 121, 'manufacturer_fk': 4, 'product_fk': 132,
-                 'width_mm': 0.80, 'width_mm_advance': 0.99},
-                {'scene_fk': 201, 'manufacturer_fk': 4, 'product_fk': 152,
-                 'width_mm': 0.28, 'width_mm_advance': 0.75},
-                {'scene_fk': 151, 'manufacturer_fk': 5, 'product_fk': 172, 'width_mm': 0.95, 'width_mm_advance': 0.15}]
+                      'entity_type_name': u'eye_level_fragments'}])
+        data = pd.DataFrame(
+                [{'scene_fk': 16588190, 'manufacturer_name': 'P&G\xe5\xae\x9d\xe6\xb4\x81', 'brand_name': 'Safeguard',
+                  'category': 'Personal Cleaning Care', 'product_fk': 252, 'stacking_layer': 1, 'category_fk': 101,
+                  'bay_number': 1, 'shelf_number': 2, 'facing_sequence_number': 3, 'sub_category': 'Handwash'},
+                {'scene_fk': 16588190, 'manufacturer_name': 'P&G\xe5\xae\x9d\xe6\xb4\x81', 'brand_name': 'Safeguard',
+                 'category': 'something', 'product_fk': 132, 'stacking_layer': 2, 'category_fk': 101,
+                 'bay_number':1, 'shelf_number':2, 'facing_sequence_number': 3, 'sub_category': 'Handwash'},
+                {'scene_fk': 16588190, 'manufacturer_name': 'P&G\xe5\xae\x9d\xe6\xb4\x81', 'brand_name': 'Safeguard',
+                 'category': 'Personal Cleaning Care', 'product_fk': 152, 'stacking_layer': 1, 'category_fk': 102,
+                 'bay_number': 2, 'shelf_number': 2, 'facing_sequence_number': 1, 'sub_category': 'Bodywash'},
+                {'scene_fk': 16588190, 'manufacturer_name': 'P&G\xe5\xae\x9d\xe6\xb4\x81', 'brand_name': 'Safeguard',
+                 'category': 'Personal Cleaning Care', 'product_fk': 172, 'stacking_layer': 1, 'category_fk': 101,
+                 'bay_number': 2, 'shelf_number': 2, 'facing_sequence_number': 3, 'sub_category': 'Handwash'},
+                 {'scene_fk': 16588190, 'manufacturer_name': 'P&G\xe5\xae\x9d\xe6\xb4\x81', 'brand_name': 'hola',
+                  'category': 'Personal Cleaning Care', 'product_fk': 173, 'stacking_layer': 1, 'category_fk': 101,
+                  'bay_number': 2, 'shelf_number': 2, 'facing_sequence_number': 2, 'sub_category': 'HOLA'}])
         scene_tool_box.get_filterd_matches = MagicMock(return_value=pd.DataFrame(data))
-        scene_tool_box.png_manufacturer_fk = 4
         scene_tool_box.common.write_to_db_result = MagicMock()
         scene_tool_box.calculate_sequence_eye_level(entity_df, data)
-        kpi_results = scene_tool_box.common.write_to_db_result.mock_calls[0][2]
+        kpi_results = scene_tool_box.common.write_to_db_result.mock_calls
         if kpi_results:
-            self.assertEqual(len(kpi_results), 8, 'expects to write 8 parameters to db')
+            self.assertEqual(len(kpi_results), 3, 'expects to write 3 parameters to db')
+            self.assertEqual(kpi_results[2][2]['numerator_id'], 17, "numerator_id !=17, sequence written isn't correct")
 
     def test_calculate_facing_eye_level(self):
-        pass
+        scene_tool_box = PngcnSceneKpis(self.ProjectConnector_mock,
+                                        self.common_mock, 16588190,
+                                        self.data_provider_mock)
+        data = pd.DataFrame(
+                [{'scene_fk': 16588190, 'manufacturer_name': 'P&G\xe5\xae\x9d\xe6\xb4\x81', 'brand_name': 'Safeguard',
+                  'category': 'Personal Cleaning Care', 'product_fk': 152, 'stacking_layer': 1, 'category_fk': 101,
+                  'bay_number': 1, 'shelf_number': 1, 'facing_sequence_number': 3, 'sub_category': 'Handwash'},
+                {'scene_fk': 16588190, 'manufacturer_name': 'P&G\xe5\xae\x9d\xe6\xb4\x81', 'brand_name': 'Safeguard',
+                 'category': 'something', 'product_fk': 152, 'stacking_layer': 2, 'category_fk': 101,
+                 'bay_number':1, 'shelf_number':2, 'facing_sequence_number': 3, 'sub_category': 'Handwash'},
+                {'scene_fk': 16588190, 'manufacturer_name': 'P&G\xe5\xae\x9d\xe6\xb4\x81', 'brand_name': 'Safeguard',
+                 'category': 'Personal Cleaning Care', 'product_fk': 152, 'stacking_layer': 1, 'category_fk': 102,
+                 'bay_number': 2, 'shelf_number': 2, 'facing_sequence_number': 1, 'sub_category': 'Bodywash'},
+                {'scene_fk': 16588190, 'manufacturer_name': 'P&G\xe5\xae\x9d\xe6\xb4\x81', 'brand_name': 'Safeguard',
+                 'category': 'Personal Cleaning Care', 'product_fk': 152, 'stacking_layer': 1, 'category_fk': 101,
+                 'bay_number': 2, 'shelf_number': 2, 'facing_sequence_number': 3, 'sub_category': 'Handwash'},
+                 {'scene_fk': 16588190, 'manufacturer_name': 'P&G\xe5\xae\x9d\xe6\xb4\x81', 'brand_name': 'hola',
+                  'category': 'Personal Cleaning Care', 'product_fk': 152, 'stacking_layer': 1, 'category_fk': 101,
+                  'bay_number': 2, 'shelf_number': 2, 'facing_sequence_number': 2, 'sub_category': 'HOLA'}])
+        scene_tool_box.get_filterd_matches = MagicMock(return_value=pd.DataFrame(data))
+        scene_tool_box.common.write_to_db_result = MagicMock()
+        scene_tool_box.calculate_facing_eye_level(data)
+        kpi_results = scene_tool_box.common.write_to_db_result.mock_calls
+        if kpi_results:
+            self.assertEqual(len(kpi_results), 2, 'expects to write 2 parameters to db')
+            self.assertEqual(kpi_results[1][2]['result'], 4, "result isn't 4 although there are 4 facings in shelf 2")
