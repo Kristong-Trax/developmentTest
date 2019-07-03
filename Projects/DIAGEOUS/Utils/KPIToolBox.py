@@ -303,7 +303,7 @@ class ToolBox:
         product_fk, brand, sub_brand, standard_type = product_line[[
             'product_fk', 'brand_fk', 'sub_brand_fk', Const.STANDARD_TYPE]]
         if sub_brand is None or self.all_products_sku[self.all_products_sku['product_fk'] == product_fk].empty:
-            return None
+            return None, None
         facings = relevant_scif[relevant_scif['product_fk'] == product_fk]['facings'].sum()
         if facings > 0 or (product_fk in self.sales_data and kpi_db_names[Const.KPI_NAME] == Const.POD):
             result, passed = Const.DISTRIBUTED, 1
@@ -362,7 +362,7 @@ class ToolBox:
         product_fk, brand, sub_brand, standard_type = product_line[[
             'product_fk', 'brand_fk', 'sub_brand_fk', Const.STANDARD_TYPE]]
         if self.all_products_sku[self.all_products_sku['product_fk'] == product_fk].empty:
-            return None
+            return None, None
         facings = relevant_scif[relevant_scif['product_fk'] == product_fk]['facings'].sum()
         if facings > 0:
             result, passed = Const.DISTRIBUTED, 1
@@ -387,7 +387,7 @@ class ToolBox:
         product_fk, brand, sub_brand, standard_type = \
             product_line[['product_fk', 'brand_fk', 'sub_brand_fk', Const.STANDARD_TYPE]]
         if self.all_products_sku[self.all_products_sku['product_fk'] == product_fk].empty:
-            return None
+            return None, None
         facings = self.calculate_passed_display_without_subst(product_fk, relevant_scif)
         if facings > 0:
             result, passed = Const.DISTRIBUTED, 1
@@ -750,7 +750,7 @@ class ToolBox:
         kpi_fk = kpi_db_names[Const.SKU]
         product_fk, brand, sub_brand = product_line[[Const.EX_PRODUCT_FK, 'brand_fk', 'sub_brand_fk']]
         if product_fk == 0:
-            return None
+            return None, None
         standard_type = product_line[Const.STANDARD_TYPE]
         min_shelf_loc = product_line[Const.EX_MINIMUM_SHELF]
         product_fk_with_substs = [product_fk]
