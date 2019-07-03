@@ -259,7 +259,8 @@ class MarsUsGENERALToolBox:
             filters['product_type'] = (self.EMPTY, self.EXCLUDE_FILTER)
         filtered_matches = self.match_product_in_scene[self.get_filter_condition(
             self.match_product_in_scene, **filters)]
-        return filtered_matches['width_mm_advance'].fillna(filtered_matches['width_mm']).sum()
+        # return filtered_matches['width_mm_advance'].fillna(filtered_matches['width_mm']).sum()
+        return filtered_matches['width_mm'].fillna(filtered_matches['width_mm']).sum()
 
     def calculate_products_on_edge(self, min_number_of_facings=1, min_number_of_shelves=1, list_result=False,
                                    edge_population=None, category=None, position=None, **filters):

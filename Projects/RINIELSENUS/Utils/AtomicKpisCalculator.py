@@ -2007,7 +2007,8 @@ class ShelfLengthCalculationBase(KpiAtomicKpisCalculator):
         max_shelf_per_bay = matches.groupby(['bay_number', 'scene_id'], as_index=False).agg(
             {'shelf_number_from_bottom': 'max'})
         matches = matches[self._tools.get_filter_condition(matches, **filters)]
-        matches.loc[:, 'width'] = matches['width_mm_advance'].fillna(matches['width_mm'])
+        matches.loc[:, 'width'] = matches['width_mm'].fillna(matches['width_mm'])
+        # matches.loc[:, 'width'] = matches['width_mm_advance'].fillna(matches['width_mm'])
         bay_width = matches.groupby(['bay_number', 'scene_id'], as_index=False).agg(
             {'shelf_number_from_bottom': 'max', 'width': 'sum'})
         bay_width = bay_width.rename(
@@ -2044,7 +2045,8 @@ class ShelfLengthNumeratorCalculationBase(KpiAtomicKpisCalculator):
         max_shelf_per_bay = matches.groupby(['bay_number', 'scene_id'], as_index=False).agg(
             {'shelf_number_from_bottom': 'max'})
         matches = matches[self._tools.get_filter_condition(matches, **filters)]
-        matches.loc[:, 'width'] = matches['width_mm_advance'].fillna(matches['width_mm'])
+        matches.loc[:, 'width'] = matches['width_mm'].fillna(matches['width_mm'])
+        # matches.loc[:, 'width'] = matches['width_mm_advance'].fillna(matches['width_mm'])
         bay_width = matches.groupby(['bay_number', 'scene_id'], as_index=False).agg(
             {'shelf_number_from_bottom': 'max', 'width': 'sum'})
         bay_width = bay_width.rename(
