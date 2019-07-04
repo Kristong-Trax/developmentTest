@@ -436,7 +436,7 @@ class TestPngcn(TestUnitCase):
                   'bay_number': 1, 'shelf_number': 2, 'facing_sequence_number': 3, 'sub_category': 'Handwash'},
                 {'scene_fk': 16588190, 'manufacturer_name': 'P&G\xe5\xae\x9d\xe6\xb4\x81', 'brand_name': 'Safeguard',
                  'category': 'something', 'product_fk': 132, 'stacking_layer': 2, 'category_fk': 101,
-                 'bay_number':1, 'shelf_number':2, 'facing_sequence_number': 3, 'sub_category': 'Handwash'},
+                 'bay_number':1, 'shelf_number': 2, 'facing_sequence_number': 3, 'sub_category': 'Handwash'},
                 {'scene_fk': 16588190, 'manufacturer_name': 'P&G\xe5\xae\x9d\xe6\xb4\x81', 'brand_name': 'Safeguard',
                  'category': 'Personal Cleaning Care', 'product_fk': 152, 'stacking_layer': 1, 'category_fk': 102,
                  'bay_number': 2, 'shelf_number': 2, 'facing_sequence_number': 1, 'sub_category': 'Bodywash'},
@@ -448,11 +448,14 @@ class TestPngcn(TestUnitCase):
                   'bay_number': 2, 'shelf_number': 2, 'facing_sequence_number': 2, 'sub_category': 'HOLA'}])
         scene_tool_box.get_filterd_matches = MagicMock(return_value=pd.DataFrame(data))
         scene_tool_box.common.write_to_db_result = MagicMock()
-        scene_tool_box.calculate_sequence_eye_level(entity_df, data)
+        scene_tool_box.calculate_sequence_eye_level(entity_df, pd.DataFrame(columns=['scene_fk', 'manufacturer_name', 'brand_name',
+                  'category', 'product_fk', 'stacking_layer', 'category_fk']))
         kpi_results = scene_tool_box.common.write_to_db_result.mock_calls
         if kpi_results:
             self.assertEqual(len(kpi_results), 3, 'expects to write 3 parameters to db')
             self.assertEqual(kpi_results[2][2]['numerator_id'], 17, "numerator_id !=17, sequence written isn't correct")
+        else:
+            raise Exception('No results were saved')
 
     def test_calculate_facing_eye_level(self):
         scene_tool_box = PngcnSceneKpis(self.ProjectConnector_mock,
@@ -481,3 +484,5 @@ class TestPngcn(TestUnitCase):
         if kpi_results:
             self.assertEqual(len(kpi_results), 2, 'expects to write 2 parameters to db')
             self.assertEqual(kpi_results[1][2]['result'], 4, "result isn't 4 although there are 4 facings in shelf 2")
+        else:
+            raise Exception('No results were saved')
