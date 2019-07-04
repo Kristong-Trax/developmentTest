@@ -676,10 +676,9 @@ class INBEVCISANDToolBox:
         This function calculates the KPI results.
         """
         lvl3_result = self.assortment.calculate_lvl3_assortment()
-        lvl3_result['identifier_parent_lvl2'] = lvl3_result.apply(self.get_identifier_parent_assortment_lvl2, axis=1)
-
         if lvl3_result.empty:
             return
+        lvl3_result['identifier_parent_lvl2'] = lvl3_result.apply(self.get_identifier_parent_assortment_lvl2, axis=1)
         eye_level_sku_fk = self.get_kpi_fk_by_kpi_name(Const.EYE_LEVEL_SKU)
         eye_level_fk = self.get_kpi_fk_by_kpi_name(Const.EYE_LEVEL)
         must_have_fk = self.get_kpi_fk_by_kpi_name(Const.MUST_HAVE_SKU)
