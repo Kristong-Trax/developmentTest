@@ -1,6 +1,5 @@
 from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScript
 from KPIUtils.GlobalProjects.GOOGLE.KPIGenerator import Generator
-import os
 
 __author__ = 'Eli_Shivi_Sam'
 
