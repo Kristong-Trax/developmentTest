@@ -21,6 +21,7 @@ class Const(object):
     ANCHOR = 'Anchor'
     SEQUENCE = 'Sequence'
     INTEGRATED = 'Integrated Core KPI'
+    SERIAL = 'Serial Adj'
     RELATIVE_POSTION = 'Relative Position'
     SAME_AISLE = 'Same Aisle'
     SOS = 'SOS Linear'
