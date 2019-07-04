@@ -14,7 +14,7 @@ class Const(object):
     SHELF_REGION = 'Shelf Region'
     ADJACENCY = 'Adjacency'
     BLOCKING = 'Blocking'
-    MAX_BLOCK_ADJ = 'Max Blocking Adjacency'
+    MAX_BLOCK_ADJ = 'Max Block Adjacency'
     BLOCKED_TOGETHER = 'Blocked Together'
     BLOCKING_PERCENT = 'Blocking Percent'
     MULTI_BLOCK = 'Multi Block'
@@ -51,6 +51,7 @@ class Const(object):
     REGIONS = ['left', 'center', 'right']
     NUM_REG = 3
     MM_FT = 304.8
+    ALLOWED_FLAGS = ['unconnected', 'connected', 'encapsulated']
 
 
 
