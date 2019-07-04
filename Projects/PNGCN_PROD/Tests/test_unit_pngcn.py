@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 import random
-
+import os
 from Trax.Utils.Testing.Case import TestUnitCase
 from mock import MagicMock
 from Projects.PNGCN_PROD.SceneKpis.KPISceneToolBox import PngcnSceneKpis
@@ -34,10 +34,10 @@ class TestPngcn(TestUnitCase):
         self.common_mock.return_value = 3
 
         # get the relevant DFs
-        matches = pd.read_csv('Data/matches.csv')
-        scif = pd.read_csv('Data/scif.csv')
-        all_products = pd.read_csv('Data/all_products.csv')
-        session_info = pd.read_csv('Data/session_info.csv')
+        matches = pd.read_csv(os.path.join('./Data', 'matches.csv'))
+        scif = pd.read_csv(os.path.join('./Data', 'scif.csv'))
+        all_products = pd.read_csv(os.path.join('./Data', 'all_products.csv'))
+        session_info = pd.read_csv(os.path.join('./Data', 'session_info.csv'))
 
         # create a dict of data_provider object relevant attributes
         my_dict = {'matches': matches,
@@ -67,7 +67,7 @@ class TestPngcn(TestUnitCase):
                                         self.common_mock, 16588190,
                                         self.data_provider_mock)
         scene_tool_box.data_provider.session_id = 'ebebc629-6b82-4be8-a872-0caa248ea248'
-        new_scif = pd.read_csv('Data/new_scif.csv')
+        new_scif = pd.read_csv(os.path.join('./Data', 'new_scif.csv'))
         scene_tool_box.common.execute_custom_query()
         scene_tool_box.insert_data_into_custom_scif(new_scif)
         delete_query = scene_tool_box.common.execute_custom_query.mock_calls[1][1][0]
