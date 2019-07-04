@@ -104,7 +104,7 @@ class ToolBox:
 
         # print('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~')
         # print(kpi_name)
-        # if kpi_name not in ('Are Family Packs shelved with their same Veg Type?'):
+        # if kpi_name not in ('What % of PFC Facings are Blocked Vertically?'):
         # if kpi_name not in ('Are the majority of Green Giant Spec Veg blocked above Green Giant Core Veg'):
         # if kpi_name not in ('Is majority of Specialty Veg shelved above Core Veg?'):
         # if kpi_name not in ('What % of Del Monte facings are blocked horizontally?'):
@@ -439,7 +439,7 @@ class ToolBox:
     def calculate_block_percent(self, kpi_name, kpi_line, relevant_scif, general_filters):
 
         def concater(a, b):
-            return pd.concat(a, b)
+            return pd.concat([a, b])
 
         allowed_orientation = kpi_line['Orientation'].strip()
         facings, score, den, result = 0, 0, 0, 0
