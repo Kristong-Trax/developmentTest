@@ -420,6 +420,23 @@ class TestPngcn(TestUnitCase):
         self.assertEqual(result, expected_result)
         self.assertEqual(score, expected_score)
 
+    def test_get_eye_level_shelves(self):
+        scene_tool_box = PngcnSceneKpis(self.ProjectConnector_mock,
+                                        self.common_mock, 16588190,
+                                        self.data_provider_mock)
+        data = pd.DataFrame(
+            [{'bay_number': 1, 'shelf_number': 3}, {'bay_number': 1, 'shelf_number': 3},
+             {'bay_number': 1, 'shelf_number': 6}, {'bay_number': 1, 'shelf_number': 6},
+             {'bay_number': 2, 'shelf_number': 2}, {'bay_number': 2, 'shelf_number': 4},
+             {'bay_number': 2, 'shelf_number': 10}, {'bay_number': 2, 'shelf_number': 9},
+             {'bay_number': 3, 'shelf_number': 1}, {'bay_number': 3, 'shelf_number': 1},
+             {'bay_number': 3, 'shelf_number': 2}, {'bay_number': 3, 'shelf_number': 2}])
+        scene_tool_box.get_filterd_matches = MagicMock(return_value=pd.DataFrame(data))
+        scene_tool_box.common.write_to_db_result = MagicMock()
+        kpi_results = scene_tool_box.get_eye_level_shelves(data)
+        self.assertEqual(len(kpi_results[kpi_results['bay_number'] == 3]), 4, 'expects to have 4 lines with bay number 3')
+        self.assertTrue(kpi_results[kpi_results['bay_number'] == 1].empty, "Expected to have an empty df where bay number =1")
+
     def test_calculate_sequence_eye_level(self):
         scene_tool_box = PngcnSceneKpis(self.ProjectConnector_mock,
                                         self.common_mock, 16588190,
@@ -448,8 +465,7 @@ class TestPngcn(TestUnitCase):
                   'bay_number': 2, 'shelf_number': 2, 'facing_sequence_number': 2, 'sub_category': 'HOLA'}])
         scene_tool_box.get_filterd_matches = MagicMock(return_value=pd.DataFrame(data))
         scene_tool_box.common.write_to_db_result = MagicMock()
-        scene_tool_box.calculate_sequence_eye_level(entity_df, pd.DataFrame(columns=['scene_fk', 'manufacturer_name', 'brand_name',
-                  'category', 'product_fk', 'stacking_layer', 'category_fk']))
+        scene_tool_box.calculate_sequence_eye_level(entity_df, data)
         kpi_results = scene_tool_box.common.write_to_db_result.mock_calls
         if kpi_results:
             self.assertEqual(len(kpi_results), 3, 'expects to write 3 parameters to db')
