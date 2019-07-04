@@ -109,6 +109,11 @@ class DIAGEOIESandToolBox:
         assortment_res_dict = self.diageo_generator.diageo_global_assortment_function_v3()
         self.commonV2.save_json_to_new_tables(assortment_res_dict)
 
+        # Global Menu kpis
+        menus_res_dict = self.diageo_generator.diageo_global_share_of_menu_cocktail_function(
+            cocktail_product_level=True)
+        self.commonV2.save_json_to_new_tables(menus_res_dict)
+
         # Global Tap Brand Score
         template_path = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))),
                                      'Data', 'Brand Score.xlsx')
