@@ -35,27 +35,27 @@ RELEVANT_SCENE_TYPES = 'Scene Types to Include'
 DOG_MAIN_MEAL_WET_2018 = 'DOG MAIN MEAL WET 2018'
 
 BDB_RETAILERS = ['Ahold Delhaize',
-                'Ahold',
-                'Albertsons',
-                'Family Dollar',
-                'Meijer',
-                'Target',
-                'Walmart',
-                'Wegmans',
-                'Kroger',
-                'Publix',
-                'Stater Bros',
-                'Dollar General'
-                ]
+                 'Ahold',
+                 'Albertsons',
+                 'Family Dollar',
+                 'Meijer',
+                 'Target',
+                 'Walmart',
+                 'Wegmans',
+                 'Kroger',
+                 'Publix',
+                 'Stater Bros',
+                 'Dollar General'
+                 ]
 
 SPT_RETAILERS = ['PetSmart',
-                'Petco'
-                ]
+                 'Petco'
+                 ]
 
 BDB_CHANNELS = ['MASS',
-               'FOOD',
-               'Small Format'
-               ]
+                'FOOD',
+                'Small Format'
+                ]
 
 SPT_CHANNELS = ['Pet Specialty']
 
@@ -163,19 +163,19 @@ SET_PRE_CALC_CHECKS = {
 }
 
 EYELIGHT_KPIS = [
-                    'Is the Customized Care Dry Cat Food feeding philosophy segment blocked?',
-                    'Is IAMS Wet Cat food shelved within the Customized Care feeding philosophy segment?',
-                    'Is the Cat Treats category blocked?',
-                    'Is IAMS ProActive Health Dry Dog Food shelved with the Customized Care feeding philosophy segment?',
-                    'Is PEDIGREE Dry Dog Food shelved with the Basic & Balanced feeding philosophy segment?',
-                    'Is the Wet Dog Food category blocked?',
-                    'Is the Basic & Balanced Wet Dog Food feeding philosophy segment blocked?',
-                    'Is IAMS Wet Dog Food shelved with the Customized Care feeding philosophy segment?',
-                    'Is the Dog Treats Regular category blocked? <=8 ft',
-                    'Are Cesar Dog Treats blocked? <=8 ft',
-                    'Is Nutro Culinary Dog food feeding philosophy segment blocked?"',
-                    'Is Nutro Ingredient Transparency Dog food feeding philosophy segment blocked?',
-                    'Is Nutro Dry Dog food blocked?',
-                    'Is Nutro Wet Dog food blocked?',
-                    'Is Nutro Wet Cat Food blocked?',
-                    ]
+    'Is the Customized Care Dry Cat Food feeding philosophy segment blocked?',
+    'Is IAMS Wet Cat food shelved within the Customized Care feeding philosophy segment?',
+    'Is the Cat Treats category blocked?',
+    'Is IAMS ProActive Health Dry Dog Food shelved with the Customized Care feeding philosophy segment?',
+    'Is PEDIGREE Dry Dog Food shelved with the Basic & Balanced feeding philosophy segment?',
+    'Is the Wet Dog Food category blocked?',
+    'Is the Basic & Balanced Wet Dog Food feeding philosophy segment blocked?',
+    'Is IAMS Wet Dog Food shelved with the Customized Care feeding philosophy segment?',
+    'Is the Dog Treats Regular category blocked? <=8 ft',
+    'Are Cesar Dog Treats blocked? <=8 ft',
+    'Is Nutro Culinary Dog food feeding philosophy segment blocked?"',
+    'Is Nutro Ingredient Transparency Dog food feeding philosophy segment blocked?',
+    'Is Nutro Dry Dog food blocked?',
+    'Is Nutro Wet Dog food blocked?',
+    'Is Nutro Wet Cat Food blocked?',
+]
