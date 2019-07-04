@@ -104,13 +104,13 @@ class ToolBox:
 
         # print('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~')
         # print(kpi_name)
-        if kpi_name not in ('Are Multipacks shelved with the smaller size Veg Type?'):
+        # if kpi_name not in ('What % of PFC Facings are Blocked Vertically?'):
         # if kpi_name not in ('Are the majority of Green Giant Spec Veg blocked above Green Giant Core Veg'):
         # if kpi_name not in ('Is majority of Specialty Veg shelved above Core Veg?'):
         # if kpi_name not in ('What % of Del Monte facings are blocked horizontally?'):
         # if kpi_type not in (Const.BLOCKING, Const.BLOCKING_PERCENT, Const.SOS, Const.ANCHOR, Const.MULTI_BLOCK,
         #                     Const.SAME_AISLE, Const.SHELF_REGION, Const.SHELF_PLACEMENT):
-            return
+        #     return
 
         dependent_kpis = self.read_cell_from_line(main_line, Const.DEPENDENT)
         dependent_results = self.read_cell_from_line(main_line, Const.DEPENDENT_RESULT)
@@ -439,7 +439,7 @@ class ToolBox:
     def calculate_block_percent(self, kpi_name, kpi_line, relevant_scif, general_filters):
 
         def concater(a, b):
-            return pd.concat(a, b)
+            return pd.concat([a, b])
 
         allowed_orientation = kpi_line['Orientation'].strip()
         facings, score, den, result = 0, 0, 0, 0
