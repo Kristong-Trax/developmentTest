@@ -315,21 +315,71 @@ class LIONNZToolBox:
             grouped_data_frame = dataframe_to_process.query(query_string).groupby(groupers)
         else:
             grouped_data_frame = dataframe_to_process.groupby(groupers)
+        # for the two kpis, we need to show zero presence of own manufacturer.
+        # else the flow will be stuck in case own manufacturers are absent altogether.
+        if '_own_' in kpi['kpi_name'].iloc[0].lower() and \
+                '_whole_store' not in kpi['kpi_name'].iloc[0].lower():
+            denominator_fks_to_save_zero = np.setdiff1d(
+                self.scif[PARAM_DB_MAP[kpi['denominator'].iloc[0]]['key']].unique(),
+                dataframe_to_process.query(query_string)[PARAM_DB_MAP[kpi['denominator'].iloc[0]]['key']].unique()
+            )
+            kpi_details = self.kpi_template.parse(KPI_DETAILS_SHEET)
+            identifier_parent = None
+            if not is_nan(kpi[KPI_PARENT_COL].iloc[0]):
+                kpi_parent = self.kpi_static_data[(self.kpi_static_data[KPI_TYPE_COL] == kpi[KPI_PARENT_COL].iloc[0])
+                                                  & (self.kpi_static_data['delete_time'].isnull())]
+                kpi_parent_detail = kpi_details[kpi_details[KPI_NAME_COL] == kpi_parent[KPI_TYPE_COL].values[0]]
+                parent_context_id = parent_denominator_id = self.store_id
+                identifier_parent = "{}_{}_{}_{}".format(
+                    kpi_parent_detail['kpi_name'].iloc[0],
+                    kpi_parent['pk'].iloc[0],
+                    # parent_numerator_id,
+                    parent_denominator_id,
+                    parent_context_id
+                )
+
+            numerator_fk = self.own_man_fk
+            result = numerator_result = 0  # SAVE ALL RESULTS AS ZERO
+            for each_den_fk in denominator_fks_to_save_zero:
+                context_id = each_den_fk
+                _query = "{key}=='{value_id}'".format(key=PARAM_DB_MAP[kpi['denominator'].iloc[0]]['key'],
+                                                     value_id=each_den_fk)
+                # find number of products in that context
+                denominator_result = len(dataframe_to_process.query(_query))
+                self.common.write_to_db_result(fk=kpi['pk'].iloc[0],
+                                               numerator_id=numerator_fk,
+                                               denominator_id=each_den_fk,
+                                               context_id=context_id,
+                                               result=result,
+                                               numerator_result=numerator_result,
+                                               denominator_result=denominator_result,
+                                               identifier_result="{}_{}_{}_{}".format(
+                                                   kpi['kpi_name'].iloc[0],
+                                                   kpi['pk'].iloc[0],
+                                                   # numerator_id,
+                                                   each_den_fk,
+                                                   context_id
+                                               ),
+                                               identifier_parent=identifier_parent,
+                                               should_enter=True,
+                                               )
+
         for group_id_tup, group_data in grouped_data_frame:
             if type(group_id_tup) not in [tuple, list]:
                 # convert to a tuple
                 group_id_tup = group_id_tup,
             param_id_map = dict(zip(groupers, group_id_tup))
             numerator_id = param_id_map.get(PARAM_DB_MAP[kpi['numerator'].iloc[0]]['key'])
-            denominator_id = (get_parameter_id(key_value=PARAM_DB_MAP[kpi['denominator'].iloc[0]]['key'], param_id_map=param_id_map)
-                              or self.store_id)
-            context_id = (get_parameter_id(key_value=PARAM_DB_MAP[kpi['context'].iloc[0]]['key'], param_id_map=param_id_map)
-                          or self.store_id)
+            denominator_id = (get_parameter_id(key_value=PARAM_DB_MAP[kpi['denominator'].iloc[0]]['key'],
+                                               param_id_map=param_id_map) or self.store_id)
+            context_id = (get_parameter_id(key_value=PARAM_DB_MAP[kpi['context'].iloc[0]]['key'],
+                                           param_id_map=param_id_map) or self.store_id)
             if PARAM_DB_MAP[kpi['denominator'].iloc[0]]['key'] == 'store_fk':
                 denominator_df = dataframe_to_process
             else:
-                denominator_df = dataframe_to_process.query('{key} == {value}'.format(key=PARAM_DB_MAP[kpi['denominator'].iloc[0]]['key'],
-                                                                                      value=denominator_id))
+                denominator_df = dataframe_to_process.query('{key} == {value}'.format(
+                    key=PARAM_DB_MAP[kpi['denominator'].iloc[0]]['key'],
+                    value=denominator_id))
             result = len(group_data) / float(len(denominator_df))
             if not is_nan(kpi[KPI_PARENT_COL].iloc[0]):
                 kpi_parent = self.kpi_static_data[(self.kpi_static_data[KPI_TYPE_COL] == kpi[KPI_PARENT_COL].iloc[0])
