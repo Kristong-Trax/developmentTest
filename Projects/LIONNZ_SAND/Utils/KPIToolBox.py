@@ -342,10 +342,16 @@ class LIONNZToolBox:
             result = numerator_result = 0  # SAVE ALL RESULTS AS ZERO
             for each_den_fk in denominator_fks_to_save_zero:
                 context_id = each_den_fk
-                _query = "{key}=='{value_id}'".format(key=PARAM_DB_MAP[kpi['denominator'].iloc[0]]['key'],
-                                                     value_id=each_den_fk)
+                # query out empty product IDs since FSOS is not interested in them.
+                _query = "{key}=='{value_id}' and product_fk not in '{exc_prod_ids}'".format(
+                    key=PARAM_DB_MAP[kpi['denominator'].iloc[0]]['key'],
+                    value_id=each_den_fk,
+                    exc_prod_ids=self.empty_prod_ids.tolist()
+                )
                 # find number of products in that context
                 denominator_result = len(dataframe_to_process.query(_query))
+                if not denominator_result:
+                    continue
                 self.common.write_to_db_result(fk=kpi['pk'].iloc[0],
                                                numerator_id=numerator_fk,
                                                denominator_id=each_den_fk,
