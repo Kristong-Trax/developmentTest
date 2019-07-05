@@ -121,8 +121,6 @@ class ALTRIAUSToolBox:
         self.calculate_register_type()
         self.calculate_assortment()
 
-        return
-
         kpi_set_fk = 2
         set_name = \
             self.kpi_static_data.loc[self.kpi_static_data['kpi_set_fk'] == kpi_set_fk]['kpi_set_name'].values[0]
@@ -225,7 +223,8 @@ class ALTRIAUSToolBox:
             filters['Category'] = kpi_template['KPI Level 2 Name']
             score = result
             numerator_id = self.products['category_fk'][self.products['category'] == kpi_template['Value1']].iloc[0]
-            self.common.write_to_db_result_new_tables(kpi_set_fk, numerator_id, 999, score, score=score)
+            self.common_v2.write_to_db_result(kpi_set_fk, numerator_id=numerator_id, numerator_result=999, result=score,
+                                              score=score)
 
     def calculate_category_space_length(self, kpi_name, threshold=0.5, retailer=None, exclude_pl=False, **filters):
         """
@@ -360,6 +359,8 @@ class ALTRIAUSToolBox:
             Log.info('No products found for {} category'.format(category))
             return
 
+        self.calculate_total_shelves(product_mpis, category)
+
         longest_shelf = \
             product_mpis[product_mpis['shelf_number'] ==
                          self.get_longest_shelf_number(product_mpis)].sort_values(by='rect_x', ascending=True)
@@ -420,6 +421,7 @@ class ALTRIAUSToolBox:
                                             number_of_headers]['Cigarettes Positions'].iloc[0].split(',')]
                 relevant_pos.loc[relevant_pos['type'] == 'Header', ['position']] = header_position_list
         elif category == 'Smokeless':
+            relevant_pos = self.check_menu_scene_recognition(relevant_pos)
             number_of_headers = len(relevant_pos[relevant_pos['type'] == 'Header'])
             if number_of_headers > len(self.header_positions_template['Smokeless Positions'].dropna()):
                 Log.warning('Number of Headers for Smokeless is greater than max number defined in template!')
@@ -435,8 +437,12 @@ class ALTRIAUSToolBox:
                 self.fixture_width_template.loc[(self.fixture_width_template['Fixture Width (facings)']
                                                  - len(longest_shelf)).abs().argsort()[:1]].dropna(axis=1)
             locations = relevant_template.columns[2:].tolist()
+            right_bound = 0
             for location in locations:
-                left_bound = longest_shelf.iloc[:relevant_template[location].iloc[0]]['rect_x'].min()
+                if right_bound > 0:
+                    left_bound = right_bound + 1
+                else:
+                    left_bound = longest_shelf.iloc[:relevant_template[location].iloc[0]]['rect_x'].min()
                 right_bound = longest_shelf.iloc[:relevant_template[location].iloc[0]]['rect_x'].max()
                 if locations[-1] == location:
                     right_bound = right_bound * 1.05
@@ -481,7 +487,45 @@ class ALTRIAUSToolBox:
             kpi_fk = self.common_v2.get_kpi_fk_by_kpi_name(row.type)
             self.common_v2.write_to_db_result(kpi_fk, numerator_id=row.product_fk, denominator_id=row.denominator_id,
                                               result=row.width, score=row.width)
+
+        self.calculate_fixture_width(relevant_pos, category)
         return
+
+    def calculate_total_shelves(self, product_mpis, category):
+        category_fk = self.get_category_fk_by_name(category)
+        total_shelves = product_mpis['shelf_number'].max()
+
+        kpi_fk = self.common_v2.get_kpi_fk_by_kpi_name('Total Shelves')
+        self.common_v2.write_to_db_result(kpi_fk, numerator_id=category_fk, denominator_id=self.store_id,
+                                          result=total_shelves)
+
+    def calculate_fixture_width(self, relevant_pos, category):
+        category_fk = self.get_category_fk_by_name(category)
+        width = relevant_pos[relevant_pos['type'] == 'Header']['width'].sum()
+
+        kpi_fk = self.common_v2.get_kpi_fk_by_kpi_name('Fixture Width')
+        self.common_v2.write_to_db_result(kpi_fk, numerator_id=category_fk, denominator_id=self.store_id,
+                                          result=width)
+
+    def get_category_fk_by_name(self, category_name):
+        return self.all_products[self.all_products['category'] == category_name]['category_fk'].iloc[0]
+
+    def check_menu_scene_recognition(self, relevant_pos):
+        mdis = self.adp.get_match_display_in_scene()
+        mdis = mdis[mdis['display_name'] == 'Menu POS']
+
+        if mdis.empty:
+            return relevant_pos
+
+        dummy_sku_for_menu_pk = 9282
+        dummy_sky_for_menu_name = 'Other (Smokeless Tobacco)'
+        location_type = 'Header'
+        width = 1
+        center_x = mdis['x'].iloc[0]
+        relevant_pos.loc[len(relevant_pos), ['product_fk', 'product_name', 'center_x', 'type', 'width']] = \
+            [dummy_sku_for_menu_pk, dummy_sky_for_menu_name, center_x, location_type, width]
+        relevant_pos = relevant_pos.sort_values(['center_x'], ascending=True).reset_index(drop=True)
+        return relevant_pos
 
     @staticmethod
     def remove_duplicate_pos_tags(relevant_pos_df):
@@ -522,7 +566,5 @@ class ALTRIAUSToolBox:
 
         return longest_shelf
 
-
     def commit(self):
-        # self.common.commit_results_data_to_new_tables()
         self.common_v2.commit_results_data()
