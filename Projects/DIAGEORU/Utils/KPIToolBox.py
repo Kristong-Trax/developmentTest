@@ -145,7 +145,7 @@ class DIAGEORUToolBox:
                 # Global function
                 res_dict = self.diageo_generator.diageo_global_relative_position_function(
                     self.set_templates_data[set_name], location_type='template_name')
-
+                set_score = False   # Skip the old tables saving
                 self.commonV2.save_json_to_new_tables(res_dict)
                 # set_score = self.calculate_relative_position_sets(set_name)
 
@@ -154,13 +154,13 @@ class DIAGEORUToolBox:
                 set_score = False   # Skip the old tables saving
                 self.commonV2.save_json_to_new_tables(res_dict)
 
-            if set_score == 0:
-                pass
-            elif set_score is False:
+            if set_score is False:
                 continue
+            elif set_score == 0:
+                pass
 
             set_fk = self.kpi_static_data[self.kpi_static_data['kpi_set_name'] == set_name]['kpi_set_fk'].values[0]
-            self.common.write_to_db_result(set_fk, set_score, self.LEVEL1)
+            self.common.write_to_db_result(fk=set_fk, level=self.LEVEL1, score=set_score)
 
         # committing to new tables
         self.commonV2.commit_results_data()
