@@ -167,54 +167,6 @@ class DIAGEORUToolBox:
         # committing to old tables
         self.common.commit_results_data()
 
-    def save_results_to_db(self, results_list):
-        if results_list:
-            for result in results_list:
-                if result is not None:
-                    self.commonV2.write_to_db_result(**result)
-
-    def _get_direction_for_relative_position(self, value):
-        """
-        This function converts direction data from the template (as string) to a number.
-        """
-        if value == self.tools.UNLIMITED_DISTANCE:
-            value = 1000
-        elif not value or not str(value).isdigit():
-            value = 0
-        else:
-            value = int(value)
-        return value
-
-    def calculate_relative_position_sets(self, set_name):
-        """
-        This function calculates every relative-position-typed KPI from the relevant sets, and returns the set
-        final score.
-        """
-        scores = []
-        for params in self.set_templates_data[set_name]:
-            if self.store_channel == params.get(self.tools.CHANNEL, '').upper():
-                tested_filters = {'product_ean_code': params.get(self.tools.TESTED)}
-                anchor_filters = {'product_ean_code': params.get(self.tools.ANCHOR)}
-                direction_data = {'top': self._get_direction_for_relative_position(params.get(self.tools.TOP_DISTANCE)),
-                                  'bottom': self._get_direction_for_relative_position(
-                                      params.get(self.tools.BOTTOM_DISTANCE)),
-                                  'left': self._get_direction_for_relative_position(
-                                      params.get(self.tools.LEFT_DISTANCE)),
-                                  'right': self._get_direction_for_relative_position(
-                                      params.get(self.tools.RIGHT_DISTANCE))}
-                general_filters = {'template_name': params.get(self.tools.LOCATION)}
-                result = self.tools.calculate_relative_position(tested_filters, anchor_filters, direction_data,
-                                                                **general_filters)
-                score = 1 if result else 0
-                scores.append(score)
-
-                self.save_level2_and_level3(set_name, params.get(self.tools.KPI_NAME), score)
-
-        if not scores:
-            return False
-        set_score = (sum(scores) / float(len(scores))) * 100
-        return set_score
-
     def calculate_block_together_sets(self, set_name):
         """
         This function calculates every block-together-typed KPI from the relevant sets, and returns the set final score.
@@ -384,54 +336,6 @@ class DIAGEORUToolBox:
                                              score=res['result'],
                                              identifier_result=kpi_identifier, identifier_parent=parent_identifier,
                                              should_enter=True)
-
-    def calculate_assortment_sets(self, set_name):
-        """
-        This function calculates every Assortment-typed KPI from the relevant sets, and returns the set final score.
-        """
-        scores = []
-        for params in self.set_templates_data[set_name]:
-            target = str(params.get(self.store_type, ''))
-            if target.isdigit() or target.capitalize() in (self.tools.RELEVANT_FOR_STORE, self.tools.OR_OTHER_PRODUCTS):
-                products = str(params.get(self.tools.PRODUCT_EAN_CODE,
-                                          params.get(self.tools.PRODUCT_EAN_CODE2, ''))).replace(',', ' ').split()
-                target = 1 if not target.isdigit() else int(target)
-                kpi_name = params.get(self.tools.GROUP_NAME, params.get(self.tools.PRODUCT_NAME))
-                kpi_static_data = self.kpi_static_data[(self.kpi_static_data['kpi_set_name'] == set_name) &
-                                                       (self.kpi_static_data['kpi_name'] == kpi_name)]
-                if len(products) > 1:
-                    result = 0
-                    for product in products:
-                        product_score = self.tools.calculate_assortment(product_ean_code=product)
-                        result += product_score
-                        try:
-                            product_name = \
-                                self.all_products[self.all_products['product_ean_code'] == product][
-                                    'product_name'].values[0]
-                        except Exception as e:
-                            Log.warning('Product {} is not defined in the DB'.format(product))
-                            continue
-                        try:
-                            atomic_fk = \
-                                kpi_static_data[kpi_static_data['atomic_kpi_name'] == product_name][
-                                    'atomic_kpi_fk'].values[0]
-                        except Exception as e:
-                            Log.warning('Product {} is not defined in the DB'.format(product_name))
-                            continue
-                        self.common.write_to_db_result(fk=atomic_fk, score=product_score, level=self.LEVEL3)
-                    score = 1 if result >= target else 0
-                else:
-                    result = self.tools.calculate_assortment(product_ean_code=products)
-                    atomic_fk = kpi_static_data['atomic_kpi_fk'].values[0]
-                    score = 1 if result >= target else 0
-                    self.common.write_to_db_result(fk=atomic_fk, score=score, level=self.LEVEL3)
-                scores.append(score)
-                kpi_fk = kpi_static_data['kpi_fk'].values[0]
-                self.common.write_to_db_result(fk=kpi_fk, score=score, level=self.LEVEL2)
-        if not scores:
-            return False
-        set_score = (sum(scores) / float(len(scores))) * 100
-        return set_score
 
     def save_level2_and_level3(self, set_name, kpi_name, score):
         """
