@@ -152,6 +152,7 @@ class DIAGEORUToolBox:
 
             elif set_name == 'Vertical Shelf Placement':
                 res_dict = self.diageo_generator.diageo_global_vertical_placement(self.set_templates_data[set_name])
+                set_score = False   # Skip the old tables saving
                 self.commonV2.save_json_to_new_tables(res_dict)
 
             if set_score == 0:
@@ -160,10 +161,12 @@ class DIAGEORUToolBox:
                 continue
 
             set_fk = self.kpi_static_data[self.kpi_static_data['kpi_set_name'] == set_name]['kpi_set_fk'].values[0]
-            self.write_to_db_result(set_fk, set_score, self.LEVEL1)
+            self.common.write_to_db_result(fk=set_fk, level=self.LEVEL1, score=set_score)
 
         # committing to new tables
         self.commonV2.commit_results_data()
+        # committing to old tables
+        self.common.commit_results_data()
 
     def save_results_to_db(self, results_list):
         if results_list:
@@ -418,16 +421,16 @@ class DIAGEORUToolBox:
                         except Exception as e:
                             Log.warning('Product {} is not defined in the DB'.format(product_name))
                             continue
-                        self.write_to_db_result(atomic_fk, product_score, level=self.LEVEL3)
+                        self.common.write_to_db_result(fk=atomic_fk, score=product_score, level=self.LEVEL3)
                     score = 1 if result >= target else 0
                 else:
                     result = self.tools.calculate_assortment(product_ean_code=products)
                     atomic_fk = kpi_static_data['atomic_kpi_fk'].values[0]
                     score = 1 if result >= target else 0
-                    self.write_to_db_result(atomic_fk, score, level=self.LEVEL3)
+                    self.common.write_to_db_result(fk=atomic_fk, score=score, level=self.LEVEL3)
                 scores.append(score)
                 kpi_fk = kpi_static_data['kpi_fk'].values[0]
-                self.write_to_db_result(kpi_fk, score, level=self.LEVEL2)
+                self.common.write_to_db_result(fk=kpi_fk, score=score, level=self.LEVEL2)
         if not scores:
             return False
         set_score = (sum(scores) / float(len(scores))) * 100
@@ -442,67 +445,5 @@ class DIAGEORUToolBox:
 
         kpi_fk = kpi_data['kpi_fk'].values[0]
         atomic_kpi_fk = kpi_data['atomic_kpi_fk'].values[0]
-        self.write_to_db_result(kpi_fk, score, self.LEVEL2)
-        self.write_to_db_result(atomic_kpi_fk, score, self.LEVEL3)
-
-    def write_to_db_result(self, fk, score, level):
-        """
-        This function creates the result data frame of every KPI (atomic KPI/KPI/KPI set),
-        and appends the insert SQL query into the queries' list, later to be written to the DB.
-        """
-        attributes = self.create_attributes_dict(fk, score, level)
-        if level == self.LEVEL1:
-            table = KPS_RESULT
-        elif level == self.LEVEL2:
-            table = KPK_RESULT
-        elif level == self.LEVEL3:
-            table = KPI_RESULT
-        else:
-            return
-        query = insert(attributes, table)
-        self.kpi_results_queries.append(query)
-
-    def create_attributes_dict(self, fk, score, level):
-        """
-        This function creates a data frame with all attributes needed for saving in KPI results tables.
-
-        """
-        if level == self.LEVEL1:
-            kpi_set_name = self.kpi_static_data[self.kpi_static_data['kpi_set_fk'] == fk]['kpi_set_name'].values[0]
-            attributes = pd.DataFrame([(kpi_set_name, self.session_uid, self.store_id, self.visit_date.isoformat(),
-                                        format(score, '.2f'), fk)],
-                                      columns=['kps_name', 'session_uid', 'store_fk', 'visit_date', 'score_1',
-                                               'kpi_set_fk'])
-        elif level == self.LEVEL2:
-            kpi_name = self.kpi_static_data[self.kpi_static_data['kpi_fk'] == fk]['kpi_name'].values[0]
-            attributes = pd.DataFrame([(self.session_uid, self.store_id, self.visit_date.isoformat(),
-                                        fk, kpi_name.replace("'", "''"), score)],
-                                      columns=['session_uid', 'store_fk', 'visit_date', 'kpi_fk', 'kpk_name', 'score'])
-        elif level == self.LEVEL3:
-            data = self.kpi_static_data[self.kpi_static_data['atomic_kpi_fk'] == fk]
-            atomic_kpi_name = data['atomic_kpi_name'].values[0]
-            kpi_fk = data['kpi_fk'].values[0]
-            kpi_set_name = self.kpi_static_data[self.kpi_static_data['atomic_kpi_fk'] == fk]['kpi_set_name'].values[0]
-            attributes = pd.DataFrame([(atomic_kpi_name.replace("'", "''"), self.session_uid, kpi_set_name,
-                                        self.store_id, self.visit_date.isoformat(), datetime.utcnow().isoformat(),
-                                        score, kpi_fk, fk)],
-                                      columns=['display_text', 'session_uid', 'kps_name', 'store_fk', 'visit_date',
-                                               'calculation_time', 'score', 'kpi_fk', 'atomic_kpi_fk'])
-        else:
-            attributes = pd.DataFrame()
-        return attributes.to_dict()
-
-    @log_runtime('Saving to DB')
-    def commit_results_data(self):
-        """
-        This function writes all KPI results to the DB, and commits the changes.
-        """
-        self.rds_conn.disconnect_rds()
-        self.rds_conn.connect_rds()
-        cur = self.rds_conn.db.cursor()
-        delete_queries = DIAGEOQueries.get_delete_session_results_query_old_tables(self.session_uid)
-        for query in delete_queries:
-            cur.execute(query)
-        for query in self.kpi_results_queries:
-            cur.execute(query)
-        self.rds_conn.db.commit()
+        self.common.write_to_db_result(fk=kpi_fk, level=self.LEVEL2, score=score)
+        self.common.write_to_db_result(fk=atomic_kpi_fk, level=self.LEVEL3, score=score)

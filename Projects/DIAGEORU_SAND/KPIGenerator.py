@@ -25,4 +25,3 @@ class DIAGEORUGenerator:
             Log.warning('Scene item facts is empty for this session')
         set_names = self.tool_box.kpi_static_data['kpi_set_name'].unique().tolist()
         self.tool_box.main_calculation(set_names=set_names)
-        self.tool_box.commit_results_data()
