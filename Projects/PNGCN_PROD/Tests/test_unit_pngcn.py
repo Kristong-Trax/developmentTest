@@ -509,3 +509,16 @@ class TestPngcn(TestUnitCase):
             self.assertEqual(kpi_results[1][2]['result'], 4, "result isn't 4 although there are 4 facings in shelf 2")
         else:
             raise Exception('No results were saved')
+
+    def test_calculate_variant_block_case_1(self):
+        scene_tool_box = PngcnSceneKpis(self.ProjectConnector_mock,
+                                        self.common_mock, 16588190,
+                                        self.data_provider_mock)
+        scene_tool_box.common.write_to_db_result = MagicMock()
+        scene_tool_box.calculate_variant_block()
+        kpi_results = scene_tool_box.common.write_to_db_result.mock_calls
+        if kpi_results:
+            self.assertEqual(len(kpi_results), 3, 'expects to write 3 parameters to db')
+            self.assertEqual(kpi_results[2][2]['numerator_id'], 17, "numerator_id !=17, sequence written isn't correct")
+        else:
+            raise Exception('No results were saved')
