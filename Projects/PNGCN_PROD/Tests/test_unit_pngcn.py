@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import random
 import os
-from Trax.Utils.Testing.Case import TestUnitCase
+from Trax.Utils.Testing.Case import TestUnitCase, patch
 from mock import MagicMock
 from Projects.PNGCN_PROD.SceneKpis.KPISceneToolBox import PngcnSceneKpis
 import Projects.PNGCN_PROD.Tests.Data.records as r
@@ -515,10 +515,14 @@ class TestPngcn(TestUnitCase):
                                         self.common_mock, 16588190,
                                         self.data_provider_mock)
         scene_tool_box.common.write_to_db_result = MagicMock()
-        scene_tool_box.calculate_variant_block()
-        kpi_results = scene_tool_box.common.write_to_db_result.mock_calls
-        if kpi_results:
-            self.assertEqual(len(kpi_results), 3, 'expects to write 3 parameters to db')
-            self.assertEqual(kpi_results[2][2]['numerator_id'], 17, "numerator_id !=17, sequence written isn't correct")
-        else:
-            raise Exception('No results were saved')
+        with patch('pandas.read_excel') as mymock:
+            variant_block_template = pd.DataFrame([{'KPI_NAME': 'VARIANT_BLOCK', 'category': 'Personal Cleaning Care',
+                                      'brand_name': 'Safeguard', 'Min_facing_on_same_layer':3, 'Min_layer_#': 1}])
+            mymock.return_value = variant_block_template
+            scene_tool_box.calculate_variant_block()
+            kpi_results = scene_tool_box.common.write_to_db_result.mock_calls
+            if kpi_results:
+                self.assertEqual(len(kpi_results), 3, 'expects to write 3 parameters to db')
+                self.assertEqual(kpi_results[2][2]['numerator_id'], 17, "numerator_id !=17, sequence written isn't correct")
+            else:
+                raise Exception('No results were saved')
