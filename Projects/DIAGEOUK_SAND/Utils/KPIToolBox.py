@@ -77,7 +77,7 @@ class DIAGEOUK_SANDToolBox:
         self.global_gen = DIAGEOGenerator(self.data_provider, self.output, self.common)
         self.tools = DIAGEOToolBox(self.data_provider, output,
                                    match_display_in_scene=self.match_display_in_scene)  # replace the old one
-        self.diageo_generator = DIAGEOGenerator(self.data_provider, self.output, self.common)
+        self.diageo_generator = DIAGEOGenerator(self.data_provider, self.output, self.common, menu=True)
 
     def get_kpi_static_data(self):
         """

@@ -65,7 +65,7 @@ class DIAGEOGAToolBox:
         self.match_display_in_scene = self.get_match_display()
         self.tools = DIAGEOToolBox(self.data_provider, output,match_display_in_scene=self.match_display_in_scene)
         self.common = Common(self.data_provider)
-        self.diageo_generator = DIAGEOGenerator(self.data_provider, self.output, self.common)
+        self.diageo_generator = DIAGEOGenerator(self.data_provider, self.output, self.common, menu=True)
         self.kpi_static_data = self.get_kpi_static_data()
         self.kpi_results_queries = []
         self.store_info = self.data_provider[Data.STORE_INFO]
