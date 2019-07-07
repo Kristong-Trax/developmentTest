@@ -134,7 +134,6 @@ class PNGJPToolBox(PNGJPConsts):
         self.innovation_assortment = parse_template(self.TEMPLATE_PATH, 'Innovation Assortment')
         self.psku_assortment = parse_template(self.TEMPLATE_PATH, 'PSKU Assortment')
         self.scene_types = parse_template(self.TEMPLATE_PATH, 'Category-Scene_Type')
-        # self.GOLDEN_ZONE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'TemplateQualitative.xlsx')
         self.GOLDEN_ZONE_PATH = self.get_template_path('TemplateQualitative.xlsx')
         self.golden_zone_data_criteria = parse_template(self.GOLDEN_ZONE_PATH, 'Golden Zone Criteria')
         self.category_scene_types = self.get_category_scene_types()
