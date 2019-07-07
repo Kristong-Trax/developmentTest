@@ -16,7 +16,7 @@ __author__ = 'avrahama'
 class TestPngcn(TestUnitCase):
     @property
     def import_path(self):
-        return 'Projects.PNGCN_PROD.SceneKpis.KPISceneToolBox.PngcnSceneKpis'
+        return 'Projects.PNGCN_PROD.SceneKpis.KPISceneToolBox'
 
     def set_up(self):
         super(TestPngcn, self).set_up()
@@ -31,6 +31,8 @@ class TestPngcn(TestUnitCase):
 
         self.PSProjectConnector = self.mock_object('PSProjectConnector',
                                                    path='KPIUtils_v2.DB.PsProjectConnector')
+
+        self.block = self.mock_object('BLOCK')
 
         # mock 'Common' object used in toolbox
         self.common_mock = self.mock_object(
@@ -515,10 +517,16 @@ class TestPngcn(TestUnitCase):
                                         self.common_mock, 16588190,
                                         self.data_provider_mock)
         scene_tool_box.common.write_to_db_result = MagicMock()
+        dict_var = {'KPI_NAME': 'VARIANT_BLOCK', 'Min_facing_on_same_layer':3, 'Min_layer_#': 1}
+        variant_block_template = pd.DataFrame(data=[dict_var])
         with patch('pandas.read_excel') as mymock:
-            variant_block_template = pd.DataFrame([{'KPI_NAME': 'VARIANT_BLOCK', 'category': 'Personal Cleaning Care',
-                                      'brand_name': 'Safeguard', 'Min_facing_on_same_layer':3, 'Min_layer_#': 1}])
             mymock.return_value = variant_block_template
+            scene_tool_box.save_eye_light_products = MagicMock()
+            self.block.network_x_block_together.return_value = {'cluster': {0: {}},
+                             'facing_percentage': {0: 0.4},
+                             'is_block': {0: True},
+                             'orientation': {0: None},
+                             'scene_fk': {0: 19625867}}
             scene_tool_box.calculate_variant_block()
             kpi_results = scene_tool_box.common.write_to_db_result.mock_calls
             if kpi_results:
