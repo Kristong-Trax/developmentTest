@@ -100,7 +100,8 @@ class TestPngjpSanityPerKPI(TestFunctionalCase):
             self.kpi_expected_results_df[self.kpi_expected_results_df.kpi_fk == kpi_fk]['sum_result'].values[0]
         actual_result = \
             self.kpi_actual_results_df[self.kpi_actual_results_df['kpi_fk'] == kpi_fk]['results sum'].values[0]
-        self.assertAlmostEqual(expected_result, actual_result, msg='KPI {} results are not as expected'.format(kpi_name))
+        self.assertAlmostEqual(expected_result, actual_result,
+                               msg='KPI {} results are not as expected'.format(kpi_name))
 
     @seeder.seed(["mongodb_products_and_brands_seed", "pngjp_seed"], ProjectsSanityData())
     def test_SKU_Distribution_Primary(self):
@@ -110,7 +111,8 @@ class TestPngjpSanityPerKPI(TestFunctionalCase):
             self.kpi_expected_results_df[self.kpi_expected_results_df.kpi_fk == kpi_fk]['sum_result'].values[0]
         actual_result = \
             self.kpi_actual_results_df[self.kpi_actual_results_df['kpi_fk'] == kpi_fk]['results sum'].values[0]
-        self.assertAlmostEqual(expected_result, actual_result, msg='KPI {} results are not as expected'.format(kpi_name))
+        self.assertAlmostEqual(expected_result, actual_result,
+                               msg='KPI {} results are not as expected'.format(kpi_name))
 
     @seeder.seed(["mongodb_products_and_brands_seed", "pngjp_seed"], ProjectsSanityData())
     def test_SKU_OOS_Primary(self):
@@ -120,7 +122,8 @@ class TestPngjpSanityPerKPI(TestFunctionalCase):
             self.kpi_expected_results_df[self.kpi_expected_results_df.kpi_fk == kpi_fk]['sum_result'].values[0]
         actual_result = \
             self.kpi_actual_results_df[self.kpi_actual_results_df['kpi_fk'] == kpi_fk]['results sum'].values[0]
-        self.assertAlmostEqual(expected_result, actual_result, msg='KPI {} results are not as expected'.format(kpi_name))
+        self.assertAlmostEqual(expected_result, actual_result,
+                               msg='KPI {} results are not as expected'.format(kpi_name))
 
     @seeder.seed(["mongodb_products_and_brands_seed", "pngjp_seed"], ProjectsSanityData())
     def test_Linear_Shelf_Space_by_Manufacturer(self):
@@ -130,7 +133,8 @@ class TestPngjpSanityPerKPI(TestFunctionalCase):
             self.kpi_expected_results_df[self.kpi_expected_results_df.kpi_fk == kpi_fk]['sum_result'].values[0]
         actual_result = \
             self.kpi_actual_results_df[self.kpi_actual_results_df['kpi_fk'] == kpi_fk]['results sum'].values[0]
-        self.assertAlmostEqual(expected_result, actual_result, msg='KPI {} results are not as expected'.format(kpi_name))
+        self.assertAlmostEqual(expected_result, actual_result,
+                               msg='KPI {} results are not as expected'.format(kpi_name))
 
     @seeder.seed(["mongodb_products_and_brands_seed", "pngjp_seed"], ProjectsSanityData())
     def test_Linear_Shelf_Space_Primary(self):
@@ -140,7 +144,8 @@ class TestPngjpSanityPerKPI(TestFunctionalCase):
             self.kpi_expected_results_df[self.kpi_expected_results_df.kpi_fk == kpi_fk]['sum_result'].values[0]
         actual_result = \
             self.kpi_actual_results_df[self.kpi_actual_results_df['kpi_fk'] == kpi_fk]['results sum'].values[0]
-        self.assertAlmostEqual(expected_result, actual_result, msg='KPI {} results are not as expected'.format(kpi_name))
+        self.assertAlmostEqual(expected_result, actual_result,
+                               msg='KPI {} results are not as expected'.format(kpi_name))
 
     @seeder.seed(["mongodb_products_and_brands_seed", "pngjp_seed"], ProjectsSanityData())
     def test_Number_of_Facings_Primary_by_Manufacturer(self):
@@ -150,7 +155,8 @@ class TestPngjpSanityPerKPI(TestFunctionalCase):
             self.kpi_expected_results_df[self.kpi_expected_results_df.kpi_fk == kpi_fk]['sum_result'].values[0]
         actual_result = \
             self.kpi_actual_results_df[self.kpi_actual_results_df['kpi_fk'] == kpi_fk]['results sum'].values[0]
-        self.assertAlmostEqual(expected_result, actual_result, msg='KPI {} results are not as expected'.format(kpi_name))
+        self.assertAlmostEqual(expected_result, actual_result,
+                               msg='KPI {} results are not as expected'.format(kpi_name))
 
     @seeder.seed(["mongodb_products_and_brands_seed", "pngjp_seed"], ProjectsSanityData())
     def test_Number_of_Facings_Primary(self):
@@ -160,7 +166,8 @@ class TestPngjpSanityPerKPI(TestFunctionalCase):
             self.kpi_expected_results_df[self.kpi_expected_results_df.kpi_fk == kpi_fk]['sum_result'].values[0]
         actual_result = \
             self.kpi_actual_results_df[self.kpi_actual_results_df['kpi_fk'] == kpi_fk]['results sum'].values[0]
-        self.assertAlmostEqual(expected_result, actual_result, msg='KPI {} results are not as expected'.format(kpi_name))
+        self.assertAlmostEqual(expected_result, actual_result,
+                               msg='KPI {} results are not as expected'.format(kpi_name))
 
     @seeder.seed(["mongodb_products_and_brands_seed", "pngjp_seed"], ProjectsSanityData())
     def test_Number_of_Facings_Primary_Raw_Data(self):
@@ -170,7 +177,8 @@ class TestPngjpSanityPerKPI(TestFunctionalCase):
             self.kpi_expected_results_df[self.kpi_expected_results_df.kpi_fk == kpi_fk]['sum_result'].values[0]
         actual_result = \
             self.kpi_actual_results_df[self.kpi_actual_results_df['kpi_fk'] == kpi_fk]['results sum'].values[0]
-        self.assertAlmostEqual(expected_result, actual_result, msg='KPI {} results are not as expected'.format(kpi_name))
+        self.assertAlmostEqual(expected_result, actual_result,
+                               msg='KPI {} results are not as expected'.format(kpi_name))
 
     @seeder.seed(["mongodb_products_and_brands_seed", "pngjp_seed"], ProjectsSanityData())
     def test_Share_of_Shelf_Facings_by_Empty_Space(self):
@@ -180,7 +188,8 @@ class TestPngjpSanityPerKPI(TestFunctionalCase):
             self.kpi_expected_results_df[self.kpi_expected_results_df.kpi_fk == kpi_fk]['sum_result'].values[0]
         actual_result = \
             self.kpi_actual_results_df[self.kpi_actual_results_df['kpi_fk'] == kpi_fk]['results sum'].values[0]
-        self.assertAlmostEqual(expected_result, actual_result, msg='KPI {} results are not as expected'.format(kpi_name))
+        self.assertAlmostEqual(expected_result, actual_result,
+                               msg='KPI {} results are not as expected'.format(kpi_name))
 
     @seeder.seed(["mongodb_products_and_brands_seed", "pngjp_seed"], ProjectsSanityData())
     def test_Golden_Zone_Compliance(self):
@@ -190,7 +199,8 @@ class TestPngjpSanityPerKPI(TestFunctionalCase):
             self.kpi_expected_results_df[self.kpi_expected_results_df.kpi_fk == kpi_fk]['sum_result'].values[0]
         actual_result = \
             self.kpi_actual_results_df[self.kpi_actual_results_df['kpi_fk'] == kpi_fk]['results sum'].values[0]
-        self.assertAlmostEqual(expected_result, actual_result, msg='KPI {} results are not as expected'.format(kpi_name))
+        self.assertAlmostEqual(expected_result, actual_result,
+                               msg='KPI {} results are not as expected'.format(kpi_name))
 
     @seeder.seed(["mongodb_products_and_brands_seed", "pngjp_seed"], ProjectsSanityData())
     def test_Display_Raw_Data(self):
@@ -200,7 +210,8 @@ class TestPngjpSanityPerKPI(TestFunctionalCase):
             self.kpi_expected_results_df[self.kpi_expected_results_df.kpi_fk == kpi_fk]['sum_result'].values[0]
         actual_result = \
             self.kpi_actual_results_df[self.kpi_actual_results_df['kpi_fk'] == kpi_fk]['results sum'].values[0]
-        self.assertAlmostEqual(expected_result, actual_result, msg='KPI {} results are not as expected'.format(kpi_name))
+        self.assertAlmostEqual(expected_result, actual_result,
+                               msg='KPI {} results are not as expected'.format(kpi_name))
 
     @seeder.seed(["mongodb_products_and_brands_seed", "pngjp_seed"], ProjectsSanityData())
     def test_Number_of_Display_by_Brand(self):
@@ -210,7 +221,8 @@ class TestPngjpSanityPerKPI(TestFunctionalCase):
             self.kpi_expected_results_df[self.kpi_expected_results_df.kpi_fk == kpi_fk]['sum_result'].values[0]
         actual_result = \
             self.kpi_actual_results_df[self.kpi_actual_results_df['kpi_fk'] == kpi_fk]['results sum'].values[0]
-        self.assertAlmostEqual(expected_result, actual_result, msg='KPI {} results are not as expected'.format(kpi_name))
+        self.assertAlmostEqual(expected_result, actual_result,
+                               msg='KPI {} results are not as expected'.format(kpi_name))
 
     @seeder.seed(["mongodb_products_and_brands_seed", "pngjp_seed"], ProjectsSanityData())
     def test_Size_of_Display_Raw_Data(self):
@@ -220,7 +232,8 @@ class TestPngjpSanityPerKPI(TestFunctionalCase):
             self.kpi_expected_results_df[self.kpi_expected_results_df.kpi_fk == kpi_fk]['sum_result'].values[0]
         actual_result = \
             self.kpi_actual_results_df[self.kpi_actual_results_df['kpi_fk'] == kpi_fk]['results sum'].values[0]
-        self.assertAlmostEqual(expected_result, actual_result, msg='KPI {} results are not as expected'.format(kpi_name))
+        self.assertAlmostEqual(expected_result, actual_result,
+                               msg='KPI {} results are not as expected'.format(kpi_name))
 
     @seeder.seed(["mongodb_products_and_brands_seed", "pngjp_seed"], ProjectsSanityData())
     def test_Size_of_Display_by_Manufacturer(self):
@@ -230,7 +243,8 @@ class TestPngjpSanityPerKPI(TestFunctionalCase):
             self.kpi_expected_results_df[self.kpi_expected_results_df.kpi_fk == kpi_fk]['sum_result'].values[0]
         actual_result = \
             self.kpi_actual_results_df[self.kpi_actual_results_df['kpi_fk'] == kpi_fk]['results sum'].values[0]
-        self.assertAlmostEqual(expected_result, actual_result, msg='KPI {} results are not as expected'.format(kpi_name))
+        self.assertAlmostEqual(expected_result, actual_result,
+                               msg='KPI {} results are not as expected'.format(kpi_name))
 
     @seeder.seed(["mongodb_products_and_brands_seed", "pngjp_seed"], ProjectsSanityData())
     def test_Number_of_Facings_by_Brand(self):
@@ -240,7 +254,8 @@ class TestPngjpSanityPerKPI(TestFunctionalCase):
             self.kpi_expected_results_df[self.kpi_expected_results_df.kpi_fk == kpi_fk]['sum_result'].values[0]
         actual_result = \
             self.kpi_actual_results_df[self.kpi_actual_results_df['kpi_fk'] == kpi_fk]['results sum'].values[0]
-        self.assertAlmostEqual(expected_result, actual_result, msg='KPI {} results are not as expected'.format(kpi_name))
+        self.assertAlmostEqual(expected_result, actual_result,
+                               msg='KPI {} results are not as expected'.format(kpi_name))
 
     @seeder.seed(["mongodb_products_and_brands_seed", "pngjp_seed"], ProjectsSanityData())
     def test_SKU_on_Display_Raw_Data(self):
@@ -250,7 +265,8 @@ class TestPngjpSanityPerKPI(TestFunctionalCase):
             self.kpi_expected_results_df[self.kpi_expected_results_df.kpi_fk == kpi_fk]['sum_result'].values[0]
         actual_result = \
             self.kpi_actual_results_df[self.kpi_actual_results_df['kpi_fk'] == kpi_fk]['results sum'].values[0]
-        self.assertAlmostEqual(expected_result, actual_result, msg='KPI {} results are not as expected'.format(kpi_name))
+        self.assertAlmostEqual(expected_result, actual_result,
+                               msg='KPI {} results are not as expected'.format(kpi_name))
 
     @seeder.seed(["mongodb_products_and_brands_seed", "pngjp_seed"], ProjectsSanityData())
     def test_SKU_on_Display_by_Category(self):
@@ -260,7 +276,8 @@ class TestPngjpSanityPerKPI(TestFunctionalCase):
             self.kpi_expected_results_df[self.kpi_expected_results_df.kpi_fk == kpi_fk]['sum_result'].values[0]
         actual_result = \
             self.kpi_actual_results_df[self.kpi_actual_results_df['kpi_fk'] == kpi_fk]['results sum'].values[0]
-        self.assertAlmostEqual(expected_result, actual_result, msg='KPI {} results are not as expected'.format(kpi_name))
+        self.assertAlmostEqual(expected_result, actual_result,
+                               msg='KPI {} results are not as expected'.format(kpi_name))
 
     @seeder.seed(["mongodb_products_and_brands_seed", "pngjp_seed"], ProjectsSanityData())
     def test_PSKU_Distribution_Raw_Data(self):
@@ -270,7 +287,8 @@ class TestPngjpSanityPerKPI(TestFunctionalCase):
             self.kpi_expected_results_df[self.kpi_expected_results_df.kpi_fk == kpi_fk]['sum_result'].values[0]
         actual_result = \
             self.kpi_actual_results_df[self.kpi_actual_results_df['kpi_fk'] == kpi_fk]['results sum'].values[0]
-        self.assertAlmostEqual(expected_result, actual_result, msg='KPI {} results are not as expected'.format(kpi_name))
+        self.assertAlmostEqual(expected_result, actual_result,
+                               msg='KPI {} results are not as expected'.format(kpi_name))
 
     @seeder.seed(["mongodb_products_and_brands_seed", "pngjp_seed"], ProjectsSanityData())
     def test_PSKU_Presence(self):
@@ -280,7 +298,8 @@ class TestPngjpSanityPerKPI(TestFunctionalCase):
             self.kpi_expected_results_df[self.kpi_expected_results_df.kpi_fk == kpi_fk]['sum_result'].values[0]
         actual_result = \
             self.kpi_actual_results_df[self.kpi_actual_results_df['kpi_fk'] == kpi_fk]['results sum'].values[0]
-        self.assertAlmostEqual(expected_result, actual_result, msg='KPI {} results are not as expected'.format(kpi_name))
+        self.assertAlmostEqual(expected_result, actual_result,
+                               msg='KPI {} results are not as expected'.format(kpi_name))
 
     @seeder.seed(["mongodb_products_and_brands_seed", "pngjp_seed"], ProjectsSanityData())
     def test_Number_of_Display_by_Category(self):
@@ -290,7 +309,8 @@ class TestPngjpSanityPerKPI(TestFunctionalCase):
             self.kpi_expected_results_df[self.kpi_expected_results_df.kpi_fk == kpi_fk]['sum_result'].values[0]
         actual_result = \
             self.kpi_actual_results_df[self.kpi_actual_results_df['kpi_fk'] == kpi_fk]['results sum'].values[0]
-        self.assertAlmostEqual(expected_result, actual_result, msg='KPI {} results are not as expected'.format(kpi_name))
+        self.assertAlmostEqual(expected_result, actual_result,
+                               msg='KPI {} results are not as expected'.format(kpi_name))
 
     @seeder.seed(["mongodb_products_and_brands_seed", "pngjp_seed"], ProjectsSanityData())
     def test_Adjacency124(self):
@@ -300,7 +320,8 @@ class TestPngjpSanityPerKPI(TestFunctionalCase):
             self.kpi_expected_results_df[self.kpi_expected_results_df.kpi_fk == kpi_fk]['sum_result'].values[0]
         actual_result = \
             self.kpi_actual_results_df[self.kpi_actual_results_df['kpi_fk'] == kpi_fk]['results sum'].values[0]
-        self.assertAlmostEqual(expected_result, actual_result, msg='KPI {} results are not as expected'.format(kpi_name))
+        self.assertAlmostEqual(expected_result, actual_result,
+                               msg='KPI {} results are not as expected'.format(kpi_name))
 
     @seeder.seed(["mongodb_products_and_brands_seed", "pngjp_seed"], ProjectsSanityData())
     def test_Adjacency125(self):
@@ -310,7 +331,8 @@ class TestPngjpSanityPerKPI(TestFunctionalCase):
             self.kpi_expected_results_df[self.kpi_expected_results_df.kpi_fk == kpi_fk]['sum_result'].values[0]
         actual_result = \
             self.kpi_actual_results_df[self.kpi_actual_results_df['kpi_fk'] == kpi_fk]['results sum'].values[0]
-        self.assertAlmostEqual(expected_result, actual_result, msg='KPI {} results are not as expected'.format(kpi_name))
+        self.assertAlmostEqual(expected_result, actual_result,
+                               msg='KPI {} results are not as expected'.format(kpi_name))
 
     @seeder.seed(["mongodb_products_and_brands_seed", "pngjp_seed"], ProjectsSanityData())
     def test_Adjacency126(self):
@@ -320,7 +342,8 @@ class TestPngjpSanityPerKPI(TestFunctionalCase):
             self.kpi_expected_results_df[self.kpi_expected_results_df.kpi_fk == kpi_fk]['sum_result'].values[0]
         actual_result = \
             self.kpi_actual_results_df[self.kpi_actual_results_df['kpi_fk'] == kpi_fk]['results sum'].values[0]
-        self.assertAlmostEqual(expected_result, actual_result, msg='KPI {} results are not as expected'.format(kpi_name))
+        self.assertAlmostEqual(expected_result, actual_result,
+                               msg='KPI {} results are not as expected'.format(kpi_name))
 
     @seeder.seed(["mongodb_products_and_brands_seed", "pngjp_seed"], ProjectsSanityData())
     def test_Adjacency127(self):
@@ -330,7 +353,8 @@ class TestPngjpSanityPerKPI(TestFunctionalCase):
             self.kpi_expected_results_df[self.kpi_expected_results_df.kpi_fk == kpi_fk]['sum_result'].values[0]
         actual_result = \
             self.kpi_actual_results_df[self.kpi_actual_results_df['kpi_fk'] == kpi_fk]['results sum'].values[0]
-        self.assertAlmostEqual(expected_result, actual_result, msg='KPI {} results are not as expected'.format(kpi_name))
+        self.assertAlmostEqual(expected_result, actual_result,
+                               msg='KPI {} results are not as expected'.format(kpi_name))
 
     @seeder.seed(["mongodb_products_and_brands_seed", "pngjp_seed"], ProjectsSanityData())
     def test_Adjacency128(self):
@@ -340,7 +364,8 @@ class TestPngjpSanityPerKPI(TestFunctionalCase):
             self.kpi_expected_results_df[self.kpi_expected_results_df.kpi_fk == kpi_fk]['sum_result'].values[0]
         actual_result = \
             self.kpi_actual_results_df[self.kpi_actual_results_df['kpi_fk'] == kpi_fk]['results sum'].values[0]
-        self.assertAlmostEqual(expected_result, actual_result, msg='KPI {} results are not as expected'.format(kpi_name))
+        self.assertAlmostEqual(expected_result, actual_result,
+                               msg='KPI {} results are not as expected'.format(kpi_name))
 
     @seeder.seed(["mongodb_products_and_brands_seed", "pngjp_seed"], ProjectsSanityData())
     def test_Adjacency129(self):
@@ -350,7 +375,8 @@ class TestPngjpSanityPerKPI(TestFunctionalCase):
             self.kpi_expected_results_df[self.kpi_expected_results_df.kpi_fk == kpi_fk]['sum_result'].values[0]
         actual_result = \
             self.kpi_actual_results_df[self.kpi_actual_results_df['kpi_fk'] == kpi_fk]['results sum'].values[0]
-        self.assertAlmostEqual(expected_result, actual_result, msg='KPI {} results are not as expected'.format(kpi_name))
+        self.assertAlmostEqual(expected_result, actual_result,
+                               msg='KPI {} results are not as expected'.format(kpi_name))
 
     @seeder.seed(["mongodb_products_and_brands_seed", "pngjp_seed"], ProjectsSanityData())
     def test_Adjacency130(self):
@@ -360,7 +386,8 @@ class TestPngjpSanityPerKPI(TestFunctionalCase):
             self.kpi_expected_results_df[self.kpi_expected_results_df.kpi_fk == kpi_fk]['sum_result'].values[0]
         actual_result = \
             self.kpi_actual_results_df[self.kpi_actual_results_df['kpi_fk'] == kpi_fk]['results sum'].values[0]
-        self.assertAlmostEqual(expected_result, actual_result, msg='KPI {} results are not as expected'.format(kpi_name))
+        self.assertAlmostEqual(expected_result, actual_result,
+                               msg='KPI {} results are not as expected'.format(kpi_name))
 
     @seeder.seed(["mongodb_products_and_brands_seed", "pngjp_seed"], ProjectsSanityData())
     def test_Adjacency131(self):
@@ -369,4 +396,5 @@ class TestPngjpSanityPerKPI(TestFunctionalCase):
         expected_result = \
             self.kpi_expected_results_df[self.kpi_expected_results_df.kpi_fk == kpi_fk]['sum_result'].values[0]
         actual_result = self.kpi_actual_results_df[self.kpi_actual_results_df.kpi_fk == kpi_fk]['results sum'].values[0]
-        self.assertAlmostEqual(expected_result, actual_result, msg='KPI {} results are not as expected'.format(kpi_name))
+        self.assertAlmostEqual(expected_result, actual_result,
+                               msg='KPI {} results are not as expected'.format(kpi_name))
