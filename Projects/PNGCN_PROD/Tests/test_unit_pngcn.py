@@ -5,6 +5,7 @@ from Trax.Utils.Testing.Case import TestUnitCase, patch
 from mock import MagicMock
 from Projects.PNGCN_PROD.SceneKpis.KPISceneToolBox import PngcnSceneKpis
 import Projects.PNGCN_PROD.Tests.Data.records as r
+from KPIUtils_v2.Calculations.BlockCalculations_v2 import Block as BLOCK
 import pandas as pd
 import numpy
 
@@ -517,20 +518,43 @@ class TestPngcn(TestUnitCase):
                                         self.common_mock, 16588190,
                                         self.data_provider_mock)
         scene_tool_box.common.write_to_db_result = MagicMock()
-        dict_var = {'KPI_NAME': 'VARIANT_BLOCK', 'Min_facing_on_same_layer':3, 'Min_layer_#': 1}
-        variant_block_template = pd.DataFrame(data=[dict_var])
-        with patch('pandas.read_excel') as mymock:
-            mymock.return_value = variant_block_template
-            scene_tool_box.save_eye_light_products = MagicMock()
-            self.block.network_x_block_together.return_value = {'cluster': {0: {}},
-                             'facing_percentage': {0: 0.4},
-                             'is_block': {0: True},
-                             'orientation': {0: None},
-                             'scene_fk': {0: 19625867}}
-            scene_tool_box.calculate_variant_block()
-            kpi_results = scene_tool_box.common.write_to_db_result.mock_calls
-            if kpi_results:
-                self.assertEqual(len(kpi_results), 3, 'expects to write 3 parameters to db')
-                self.assertEqual(kpi_results[2][2]['numerator_id'], 17, "numerator_id !=17, sequence written isn't correct")
-            else:
-                raise Exception('No results were saved')
+        data = {"a": [pd.Series({'cluster': (16, 13), 'scene_fk': 19625867, 'facing_percentage': 1, 'is_block': True,
+                      'number_of_facings': 4, 'category': ['Personal Cleaning Care'], 'sub_brand_name': 'a','x': 1000,
+                      'y': 1500 ,'brand_name': 'SFG'})],
+                "b": [pd.Series({'cluster': (15), 'scene_fk': 19625867, 'facing_percentage': 0.7, 'is_block': True,
+                      'number_of_facings': 8, 'category': ['Personal Cleaning Care'], 'sub_brand_name': 'b', 'x': 200,
+                      'y': 2000, 'brand_name': 'SFG'}),
+                pd.Series({'cluster': (14), 'scene_fk': 19625867, 'facing_percentage': 0.8, 'is_block': True,
+                      'number_of_facings': 10, 'category': ['Personal Cleaning Care'], 'sub_brand_name': 'b', 'x': 500,
+                      'y': 100, 'brand_name': 'SFG'})]}
+        kpi_results = scene_tool_box.reorder_all_blocks_results(data)
+        if kpi_results:
+            self.assertEqual(len(kpi_results), 3, 'expects to get 3 blocks')
+            self.assertEqual(kpi_results[1]['seq_x'], 1, "the x seq isn't 1 like expected")
+            self.assertEqual(kpi_results[1]['seq_y'], 3, "the y seq isn't 3 like expected")
+        else:
+            raise Exception('No results were returned')
+
+
+    # def test_calculate_variant_block_case_1(self):
+    #     scene_tool_box = PngcnSceneKpis(self.ProjectConnector_mock,
+    #                                     self.common_mock, 16588190,
+    #                                     self.data_provider_mock)
+    #     scene_tool_box.common.write_to_db_result = MagicMock()
+    #     dict_var = {'KPI_NAME': 'VARIANT_BLOCK', 'Min_facing_on_same_layer':3, 'Min_layer_#': 1}
+    #     variant_block_template = pd.DataFrame(data=[dict_var])
+    #     with patch('pandas.read_excel') as mymock:
+    #         mymock.return_value = variant_block_template
+    #         scene_tool_box.save_eye_light_products = MagicMock()
+    #         with patch('KPIUtils_v2.Calculations.BlockCalculations_v2.Block.network_x_block_together') as nxbt:
+    #             nxbt.side_effect = [pd.DataFrame(data={'cluster': {0: {}}, 'facing_percentage': {0: 0.4},
+    #                         'is_block': {0: True}, 'orientation': {0: None}, 'scene_fk': {0: 19625867}}),
+    #                          pd.DataFrame(data={'cluster': {0: {}}, 'facing_percentage': {0: 0.4}, 'is_block': {0: False},
+    #                         'orientation': {0: None}, 'scene_fk': {0: 19625867}})]
+    #             scene_tool_box.calculate_variant_block()
+    #             kpi_results = scene_tool_box.common.write_to_db_result.mock_calls
+    #             if kpi_results:
+    #                 self.assertEqual(len(kpi_results), 3, 'expects to write 3 parameters to db')
+    #                 self.assertEqual(kpi_results[2][2]['numerator_id'], 17, "numerator_id !=17, sequence written isn't correct")
+    #             else:
+    #                 raise Exception('No results were saved')
