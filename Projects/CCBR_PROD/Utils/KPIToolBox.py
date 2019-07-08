@@ -24,7 +24,9 @@ KPI_RESULT = 'report.kpi_results'
 KPK_RESULT = 'report.kpk_results'
 KPS_RESULT = 'report.kps_results'
 KPI_NEW_TABLE = 'report.kpi_level_2_results'
-PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'Femsa template 2019 - KENGINE_DCH v8.7.xlsx')
+PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data',
+                    'Femsa template 2019 - KENGINE_DCH v8.7.xlsx')
+
 
 def log_runtime(description, log_start=False):
     def decorator(func):
@@ -36,7 +38,9 @@ def log_runtime(description, log_start=False):
             calc_end_time = datetime.utcnow()
             Log.info('{} took {}'.format(description, calc_end_time - calc_start_time))
             return result
+
         return wrapper
+
     return decorator
 
 
@@ -61,11 +65,15 @@ class CCBRToolBox:
         self.prices_per_session = PsDataProvider(self.data_provider, self.output).get_price_union(self.session_id)
         self.survey_answers = PsDataProvider_v2(self.data_provider, self.output).get_result_values()
         self.common_db = Common(self.data_provider)
-        self.count_sheet = pd.read_excel(PATH, Const.COUNT).fillna("")
-        self.group_count_sheet = pd.read_excel(PATH, Const.GROUP_COUNT).fillna("")
-        self.survey_sheet = pd.read_excel(PATH, Const.SURVEY).fillna("")
-        #Fixes encoding issue
+        # self.count_sheet = pd.read_excel(PATH, Const.COUNT).fillna("") # before the bellow change
+        self.count_sheet = self.load_exel_to_df(PATH, Const.COUNT)
+        # self.group_count_sheet = pd.read_excel(PATH, Const.GROUP_COUNT).fillna("") # before the bellow change
+        self.group_count_sheet = self.load_exel_to_df(PATH, Const.GROUP_COUNT)
+        # self.survey_sheet = pd.read_excel(PATH, Const.SURVEY).fillna("") # before the bellow change
+        self.survey_sheet = self.load_exel_to_df(PATH, Const.SURVEY)
+        # Fixes encoding issue
         # self.common_db.New_kpi_static_data['client_name'] = self.common_db.New_kpi_static_data['client_name'].str.encode('utf8')
+
     def main_calculation(self):
         """
         This function calculates the KPI results.
@@ -75,6 +83,12 @@ class CCBRToolBox:
             self.handle_atomic(row)
         self.handle_simon_kpis()
         self.commit_results_data()
+
+    def load_exel_to_df(self, path, parameter):
+        try:
+            return pd.read_excel(path, parameter).fillna("")
+        except IOError as error:
+            return "can't load file, error: ", error
 
     def handle_simon_kpis(self):
         """
@@ -90,11 +104,11 @@ class CCBRToolBox:
         :param active_products: a df containing only active products
         """
         active_products_sku_and_other = active_products[(active_products['product_type'] == 'SKU')
-                                                                    | (active_products['product_type'] == 'Other')]
+                                                        | (active_products['product_type'] == 'Other')]
         active_products_pks = active_products_sku_and_other['product_fk'].unique().tolist()
         filters = {'product_fk': active_products_pks}
         filtered_df = self.scif[self.tools.get_filter_condition(self.scif, **filters)]
-        facing_filtered = filtered_df.loc[filtered_df['facings'] > 0][['template_fk','product_fk', 'facings']]
+        facing_filtered = filtered_df.loc[filtered_df['facings'] > 0][['template_fk', 'product_fk', 'facings']]
         facing_filtered_pks = facing_filtered['product_fk'].unique().tolist()
         for product in facing_filtered_pks:
             product_df = facing_filtered.loc[facing_filtered['product_fk'] == product]
@@ -116,14 +130,14 @@ class CCBRToolBox:
         merge_size_and_price = pd.merge(all_products_fks_size, product_fks_and_prices, how='left', on='product_fk')
         merge_size_and_price['value'] = merge_size_and_price['value'].fillna('0')
         for row in merge_size_and_price.itertuples():
-            product = row[1] # row['product_fk']
-            size = row[2] # row['size']
-            price = row[3] # row['value']
+            product = row[1]  # row['product_fk']
+            size = row[2]  # row['size']
+            price = row[3]  # row['value']
             if size == '':
                 size = 0
             if price > 0:
                 self.write_to_db_result_new_tables(fk=Const.PRICING_PK, numerator_id=product,
-                                               numerator_result=size, result=price)
+                                                   numerator_result=size, result=price)
 
     def handle_atomic(self, row):
         """
@@ -145,7 +159,8 @@ class CCBRToolBox:
         :param atomic_name: the name of the kpi
         :return: only if the survey filters aren't satisfied
         """
-        row = self.survey_sheet.loc[self.survey_sheet[Const.ENGLISH_KPI_NAME].str.encode("utf8") == atomic_name.encode("utf8")]
+        row = self.survey_sheet.loc[
+            self.survey_sheet[Const.ENGLISH_KPI_NAME].str.encode("utf8") == atomic_name.encode("utf8")]
         if row.empty:
             Log.warning("Dataframe is empty, wrong kpi name: " + atomic_name)
             return
@@ -171,8 +186,8 @@ class CCBRToolBox:
                 Log.warning("question id " + str(question_id) + " in template is not a number")
                 return
         elif question_answer_template == Const.STRING:
-            possible_answers = self.survey_answers[self.survey_answers['kpi_result_type_fk']==2]
-            answer_df = possible_answers[possible_answers['value']==survey_result]
+            possible_answers = self.survey_answers[self.survey_answers['kpi_result_type_fk'] == 2]
+            answer_df = possible_answers[possible_answers['value'] == survey_result]
             if answer_df.empty:
                 survey_result = -1
             else:
@@ -198,7 +213,8 @@ class CCBRToolBox:
         sum_of_count = 0
         target = 0
         count_result = 0
-        row = self.count_sheet.loc[self.count_sheet[Const.ENGLISH_KPI_NAME].str.encode("utf8") == atomic_name.encode("utf8")]
+        row = self.count_sheet.loc[
+            self.count_sheet[Const.ENGLISH_KPI_NAME].str.encode("utf8") == atomic_name.encode("utf8")]
         if row.empty:
             Log.warning("Dataframe is empty, wrong kpi name: " + atomic_name)
             return
@@ -210,7 +226,7 @@ class CCBRToolBox:
             return
         for index, row in row.iterrows():
             sum_of_count, target, count_result = self.handle_count_row(row)
-        if not isinstance(sum_of_count,(int, float, long)):
+        if not isinstance(sum_of_count, (int, float, long)):
             sum_of_count = count_result
 
         self.write_to_db_result_new_tables(fk=atomic_pk, numerator_id=self.session_id,
@@ -222,7 +238,8 @@ class CCBRToolBox:
         handle group count kpis (different from count in or and and conditions), used in consolidada report
         :param atomic_name: the name of the kpi to calculate
         """
-        rows = self.group_count_sheet.loc[self.group_count_sheet[Const.GROUP_KPI_NAME].str.encode("utf8") == atomic_name.encode("utf8")]
+        rows = self.group_count_sheet.loc[
+            self.group_count_sheet[Const.GROUP_KPI_NAME].str.encode("utf8") == atomic_name.encode("utf8")]
         group_weight = 0
         group_result = 0
         group_target = 0
@@ -248,7 +265,7 @@ class CCBRToolBox:
                 if group_weight >= 100:
                     # use for getting numeric results instead of 1 and 0
                     if (target_operator == '+'):
-                        sum_of_count_df = pd.concat([sum_of_count_df,sum_of_count])
+                        sum_of_count_df = pd.concat([sum_of_count_df, sum_of_count])
                     else:
                         group_result = 1
                         break
@@ -294,7 +311,7 @@ class CCBRToolBox:
             store_types = store_type_template.split(",")
             store_types = [item.strip() for item in store_types]
             if store_type_filter not in store_types:
-                return 0,0,0
+                return 0, 0, 0
 
         filtered_df = self.scif.copy()
 
@@ -304,7 +321,7 @@ class CCBRToolBox:
             products_to_check = [item.strip() for item in products_to_check]
             filtered_df = filtered_df[filtered_df['product_name'].isin(products_to_check)]
             if filtered_df.empty:
-                return 0,0,0
+                return 0, 0, 0
 
         # filter product size
         if product_size != "":
@@ -318,18 +335,22 @@ class CCBRToolBox:
                 multipack_df = filtered_df[filtered_df['MPACK'] == 'Y']
             temp_df = l_df.copy()
             temp_df['size'] = l_df['size'].apply((lambda x: x * 1000))
-            filtered_df = pd.concat([temp_df,ml_df])
+            filtered_df = pd.concat([temp_df, ml_df])
 
-            if product_size_operator == '<': filtered_df = filtered_df[filtered_df['size'] < product_size]
-            elif product_size_operator == '<=': filtered_df = filtered_df[filtered_df['size'] <= product_size]
-            elif product_size_operator == '>': filtered_df = filtered_df[filtered_df['size'] > product_size]
-            elif product_size_operator == '>=': filtered_df = filtered_df[filtered_df['size'] >= product_size]
-            elif product_size_operator == '=': filtered_df = filtered_df[filtered_df['size'] == product_size]
+            if product_size_operator == '<':
+                filtered_df = filtered_df[filtered_df['size'] < product_size]
+            elif product_size_operator == '<=':
+                filtered_df = filtered_df[filtered_df['size'] <= product_size]
+            elif product_size_operator == '>':
+                filtered_df = filtered_df[filtered_df['size'] > product_size]
+            elif product_size_operator == '>=':
+                filtered_df = filtered_df[filtered_df['size'] >= product_size]
+            elif product_size_operator == '=':
+                filtered_df = filtered_df[filtered_df['size'] == product_size]
 
             # multipack conditions is an or between product size and MPACK
             if multipack_template != "":
-                filtered_df = pd.concat([filtered_df,multipack_df]).drop_duplicates()
-
+                filtered_df = pd.concat([filtered_df, multipack_df]).drop_duplicates()
 
         filters = self.get_filters_from_row(row)
         count_of_units = 0
@@ -347,7 +368,7 @@ class CCBRToolBox:
 
         # use for getting numeric results instead of 1 and 0
         elif target_operator == '+':
-            if isinstance(count_of_units,(int, float, long)):
+            if isinstance(count_of_units, (int, float, long)):
                 count_result = count_of_units
             else:
                 count_result = len(count_of_units)
@@ -406,13 +427,13 @@ class CCBRToolBox:
         :param filters: only the scif filters in the template shape
         :return: the filters dictionary
         """
-        convert_from_scif =    {Const.TEMPLATE_GROUP: 'template_group',
-                                Const.TEMPLATE_NAME: 'template_name',
-                                Const.BRAND: 'brand_name',
-                                Const.CATEGORY: 'category',
-                                Const.MANUFACTURER: 'manufacturer_name',
-                                Const.PRODUCT_TYPE: 'product_type',
-                                Const.MULTIPACK: 'MPAK'}
+        convert_from_scif = {Const.TEMPLATE_GROUP: 'template_group',
+                             Const.TEMPLATE_NAME: 'template_name',
+                             Const.BRAND: 'brand_name',
+                             Const.CATEGORY: 'category',
+                             Const.MANUFACTURER: 'manufacturer_name',
+                             Const.PRODUCT_TYPE: 'product_type',
+                             Const.MULTIPACK: 'MPAK'}
         for key in filters.keys():
             filters[convert_from_scif[key]] = filters.pop(key)
         return filters
@@ -430,7 +451,7 @@ class CCBRToolBox:
         if target_operator == '+':
 
             # filter by scene_id and by template_name (scene type)
-            scene_types_groupby = scene_data.groupby(['template_name','scene_id'])['facings'].sum().reset_index()
+            scene_types_groupby = scene_data.groupby(['template_name', 'scene_id'])['facings'].sum().reset_index()
             number_of_scenes = scene_types_groupby[scene_types_groupby['facings'] >= target]
         else:
             number_of_scenes = len(scene_data['scene_id'].unique())
@@ -448,7 +469,7 @@ class CCBRToolBox:
         scene_data = scene_data.rename(columns={"facings": "facings_nom"})
 
         # filter by scene_id and by template_name (scene type)
-        scene_types_groupby = scene_data.groupby(['template_name','scene_id'])['facings_nom'].sum()
+        scene_types_groupby = scene_data.groupby(['template_name', 'scene_id'])['facings_nom'].sum()
         all_products_groupby = self.scif.groupby(['template_name', 'scene_id'])['facings'].sum()
         merge_result = pd.concat((scene_types_groupby, all_products_groupby), axis=1, join='inner').reset_index()
         return len(merge_result[merge_result['facings_nom'] >= merge_result['facings'] * 0.5])
