@@ -76,7 +76,7 @@ class Const(object):
             TOTAL: 'Menu Share - Total Score', MANUFACTURER: 'Menu Share - Manufacturer Level', KPI_NAME: MENU,
             TEMPLATE: "Menu Share - Template Score", SUB_BRAND: 'Menu Share - Brand Variant Level'}}
     DB_ASSORTMENTS_NAMES = {OFF: "Assortment off Trade", ON: "Assortment on Trade",
-                            INDEPENDENT: "independent_display", BACK_BAR: "Assortment Back Bar"}
+                            INDEPENDENT: "independent_display", BACK_BAR: "Assortment on Trade"}
 
     PRODUCT_FK, STANDARD_TYPE, PASSED, FACINGS = "product_fk", "standard_type", "passed", "facings"
     COLUMNS_FOR_DISPLAY = [MANUFACTURER, PRODUCT_FK, PASSED]
