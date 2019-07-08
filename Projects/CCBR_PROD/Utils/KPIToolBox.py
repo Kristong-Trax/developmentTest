@@ -84,8 +84,7 @@ class CCBRToolBox:
         self.handle_simon_kpis()
         self.commit_results_data()
 
-    @staticmethod
-    def load_exel_to_df(path, parameter):
+    def load_exel_to_df(self, path, parameter):
         try:
             return pd.read_excel(path, parameter).fillna("")
         except IOError as error:
