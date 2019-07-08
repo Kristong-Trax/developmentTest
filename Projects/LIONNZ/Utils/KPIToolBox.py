@@ -184,9 +184,9 @@ class LIONNZToolBox:
         extra_products = np.setdiff1d(total_products_in_scene, present_products)
         oos_products = np.setdiff1d(assortment_product_fks, present_products)
         product_map = {
-            OOS_CODE: present_products,
-            PRESENT_CODE: extra_products,
-            EXTRA_CODE: oos_products
+            OOS_CODE: oos_products,
+            PRESENT_CODE: present_products,
+            EXTRA_CODE: extra_products
         }
         # save product presence; with distribution % kpi as parent
         for assortment_code, product_fks in product_map.iteritems():
@@ -221,13 +221,17 @@ class LIONNZToolBox:
         """
         Log.info("Calculate distribution and OOS for {}".format(self.project_name))
         scene_products = pd.Series(self.scif["item_id"].unique())
+        total_products_in_assortment = len(assortment_product_fks)
         count_of_assortment_prod_in_scene = assortment_product_fks.isin(scene_products).sum()
+        oos_count = total_products_in_assortment - count_of_assortment_prod_in_scene
         #  count of lion sku / all sku assortment count
-        distribution_perc = count_of_assortment_prod_in_scene / float(len(assortment_product_fks)) * 100
+        distribution_perc = count_of_assortment_prod_in_scene / float(total_products_in_assortment) * 100
         oos_perc = 100 - distribution_perc
         self.common.write_to_db_result(fk=distribution_kpi_fk,
                                        numerator_id=self.own_man_fk,
+                                       numerator_result=count_of_assortment_prod_in_scene,
                                        denominator_id=self.store_id,
+                                       denominator_result=total_products_in_assortment,
                                        context_id=self.store_id,
                                        result=distribution_perc,
                                        score=distribution_perc,
@@ -236,10 +240,12 @@ class LIONNZToolBox:
                                        )
         self.common.write_to_db_result(fk=oos_kpi_fk,
                                        numerator_id=self.own_man_fk,
+                                       numerator_result=oos_count,
                                        denominator_id=self.store_id,
+                                       denominator_result=total_products_in_assortment,
                                        context_id=self.store_id,
                                        result=oos_perc,
-                                       score=distribution_perc,
+                                       score=oos_perc,
                                        identifier_result="{}_{}".format(OOS_MAN_BY_STORE_PERC, self.store_id),
                                        should_enter=True
                                        )
