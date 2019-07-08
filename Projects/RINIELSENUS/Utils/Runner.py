@@ -63,7 +63,7 @@ class Results(object):
             #                         # 'Is Nutro Wet Dog food blocked?',
             #                         # 'Is the Meaty Dog Treats segment blocked?',
             #     # 'Are TEMPTATIONS Cat Treats Mega blocked?',
-            #     'Are TEMPTATIONS Cat Treats Mega blocked?'
+            #     'How many feet is the Dog Treats Regular category?'
             #                         ]:
             #     continue
             # print('~~~~~~~~~~~~~~~~~~~~****************~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~')

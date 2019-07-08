@@ -77,7 +77,7 @@ class DIAGEOUK_SANDToolBox:
         self.global_gen = DIAGEOGenerator(self.data_provider, self.output, self.common)
         self.tools = DIAGEOToolBox(self.data_provider, output,
                                    match_display_in_scene=self.match_display_in_scene)  # replace the old one
-        self.diageo_generator = DIAGEOGenerator(self.data_provider, self.output, self.common)
+        self.diageo_generator = DIAGEOGenerator(self.data_provider, self.output, self.common, menu=True)
 
     def get_kpi_static_data(self):
         """
@@ -112,6 +112,11 @@ class DIAGEOUK_SANDToolBox:
         # Global assortment kpis - v3 for NEW MOBILE REPORTS use
         assortment_res_dict_v3 = self.diageo_generator.diageo_global_assortment_function_v3()
         self.commonV2.save_json_to_new_tables(assortment_res_dict_v3)
+
+        # Global Menu kpis
+        menus_res_dict = self.diageo_generator.diageo_global_share_of_menu_cocktail_function(
+            cocktail_product_level=True)
+        self.commonV2.save_json_to_new_tables(menus_res_dict)
 
         for set_name in set_names:
             set_score = 0

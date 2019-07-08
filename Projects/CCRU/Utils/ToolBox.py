@@ -1362,20 +1362,19 @@ class CCRUKPIToolBox:
         else:
             relevant_products_and_facings = self.scif[
                 (self.scif['scene_id'].isin(scenes)) & ~(self.scif['product_type'].isin(['Empty', 'Other']))]
-        all_products_by_ean_code = relevant_products_and_facings.groupby(['product_ean_code'])[
-            'facings'].sum()
         tested_sku = [unicode(x).strip() for x in unicode(params.get('Values')).split(', ')]
-        tested_facings = \
-            relevant_products_and_facings[relevant_products_and_facings['product_ean_code'].isin(tested_sku)][
-                'facings'].sum()
-        self.update_kpi_scores_and_results(params, {'result': tested_facings})
-        if not all_products_by_ean_code.empty:
-            if sum(tested_facings < all_products_by_ean_code) == 0:
-                return tested_facings
-            else:
-                return 0
+        if not relevant_products_and_facings.empty:
+            tested_facings = \
+                relevant_products_and_facings[
+                    relevant_products_and_facings['product_ean_code'].isin(tested_sku)]['facings'].sum()
+            other_facings = \
+                relevant_products_and_facings[
+                    ~relevant_products_and_facings['product_ean_code'].isin(tested_sku)]['facings'].sum()
         else:
-            return 0
+            tested_facings = 0
+            other_facings = 0
+        self.update_kpi_scores_and_results(params, {'result': tested_facings, 'target': other_facings})
+        return tested_facings, other_facings
 
     def calculate_number_of_scenes(self, p):
         """
@@ -1586,13 +1585,14 @@ class CCRUKPIToolBox:
             for c in params.values()[0]:
                 if c.get("KPI ID") in children:
                     atomic_score = -1
+                    atomic_target = 0
                     if c.get("Formula").strip() == "number of facings" or c.get("Formula").strip() == "number of SKUs":
                         atomic_res = self.calculate_availability(c, all_params=params)
                     elif c.get("Formula").strip() == "number of sub atomic KPI Passed":
                         atomic_res = self.calculate_sub_atomic_passed(c, params, parent=p)
                     elif c.get("Formula").strip() == "Lead SKU":
-                        atomic_res = self.calculate_lead_sku(c)
-                        if not atomic_res:
+                        atomic_res, atomic_target = self.calculate_lead_sku(c)
+                        if atomic_res < atomic_target:
                             atomic_score = 0
                         else:
                             atomic_score = 100
@@ -1628,8 +1628,12 @@ class CCRUKPIToolBox:
                     # write to DB
                     atomic_kpi_fk = self.kpi_fetcher.get_atomic_kpi_fk(
                         c.get('KPI name Eng'), kpi_fk)
-                    attributes_for_level3 = self.create_attributes_for_level3_df(
-                        c, atomic_score, kpi_fk, atomic_kpi_fk)
+                    if c.get("Formula").strip() == "Lead SKU":
+                        attributes_for_level3 = self.create_attributes_for_level3_df(
+                            c, (atomic_score, atomic_res, atomic_target), kpi_fk, atomic_kpi_fk)
+                    else:
+                        attributes_for_level3 = self.create_attributes_for_level3_df(
+                            c, atomic_score, kpi_fk, atomic_kpi_fk)
                     self.write_to_kpi_results_old(attributes_for_level3, 'level3')
                     if atomic_score > 0:
                         kpi_total += 1
@@ -1685,8 +1689,8 @@ class CCRUKPIToolBox:
                         atomic_res = self.calculate_sub_atomic_passed(
                             c, params, [scene], parent=p, same_scene=True)
                     elif c.get("Formula").strip() == "Lead SKU":
-                        atomic_res = self.calculate_lead_sku(c, [scene])
-                        if not atomic_res:
+                        atomic_res, atomic_target = self.calculate_lead_sku(c, [scene])
+                        if atomic_res < atomic_target:
                             atomic_score = 0
                         else:
                             atomic_score = 100
@@ -1734,8 +1738,8 @@ class CCRUKPIToolBox:
                         atomic_res = self.calculate_sub_atomic_passed(
                             c, params, [favorite_scene], parent=p)
                     elif c.get("Formula").strip() == "Lead SKU":
-                        atomic_res = self.calculate_lead_sku(c, [favorite_scene])
-                        if not atomic_res:
+                        atomic_res, atomic_target = self.calculate_lead_sku(c, [favorite_scene])
+                        if atomic_res < atomic_target:
                             atomic_score = 0
                         else:
                             atomic_score = 100
@@ -1811,13 +1815,14 @@ class CCRUKPIToolBox:
         for c in all_params.values()[0]:
             if c.get("KPI ID") in children:
                 sub_atomic_score = -1
+                sub_atomic_target = 0
                 if c.get("Formula").strip() == "number of facings":
                     sub_atomic_res = self.calculate_availability(c, scenes, all_params=all_params)
                 elif c.get("Formula").strip() == "number of facings near food":
                     sub_atomic_res = self.calculate_number_facings_near_food(c, params)
                 elif c.get("Formula").strip() == "Lead SKU":
-                    sub_atomic_res = self.calculate_lead_sku(c, scenes)
-                    if not sub_atomic_res:
+                    sub_atomic_res, sub_atomic_target = self.calculate_lead_sku(c, scenes)
+                    if sub_atomic_res < sub_atomic_target:
                         sub_atomic_score = 0
                     else:
                         sub_atomic_score = 100
@@ -1833,8 +1838,12 @@ class CCRUKPIToolBox:
                 kpi_fk = self.kpi_fetcher.get_kpi_fk(parent.get('KPI name Eng'))
                 sub_atomic_kpi_fk = self.kpi_fetcher.get_atomic_kpi_fk(
                     c.get('KPI name Eng'), kpi_fk)
-                attributes_for_level4 = self.create_attributes_for_level3_df(
-                    c, sub_atomic_score, kpi_fk, sub_atomic_kpi_fk, level=4)
+                if c.get("Formula").strip() == "Lead SKU":
+                    attributes_for_level4 = self.create_attributes_for_level3_df(
+                        c, (sub_atomic_score, sub_atomic_res, sub_atomic_target), kpi_fk, sub_atomic_kpi_fk, level=4)
+                else:
+                    attributes_for_level4 = self.create_attributes_for_level3_df(
+                        c, sub_atomic_score, kpi_fk, sub_atomic_kpi_fk, level=4)
                 self.write_to_kpi_results_old(attributes_for_level4, 'level4')
         return total_res
 

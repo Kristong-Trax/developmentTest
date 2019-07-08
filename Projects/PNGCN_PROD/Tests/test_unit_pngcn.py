@@ -1,9 +1,10 @@
 # -*- coding: utf-8 -*-
 import random
-
+import os
 from Trax.Utils.Testing.Case import TestUnitCase
 from mock import MagicMock
 from Projects.PNGCN_PROD.SceneKpis.KPISceneToolBox import PngcnSceneKpis
+import Projects.PNGCN_PROD.Tests.Data.records as r
 import pandas as pd
 import numpy
 
@@ -23,6 +24,11 @@ class TestPngcn(TestUnitCase):
         # mock PSProjectConnector
         self.ProjectConnector_mock = self.mock_object(
             'ProjectConnector', path='KPIUtils_v2.DB.PsProjectConnector')
+
+        self.ProjectConnector_mock = self.mock_object(
+            'get_png_manufacturer_fk', path='Projects.PNGCN_PROD.SceneKpis.KPISceneToolBox.PngcnSceneKpis')
+        self.ProjectConnector_mock.return_value = 4
+
         self.PSProjectConnector = self.mock_object('PSProjectConnector',
                                                    path='KPIUtils_v2.DB.PsProjectConnector')
 
@@ -34,10 +40,10 @@ class TestPngcn(TestUnitCase):
         self.common_mock.return_value = 3
 
         # get the relevant DFs
-        matches = pd.read_csv('Data/matches.csv')
-        scif = pd.read_csv('Data/scif.csv')
-        all_products = pd.read_csv('Data/all_products.csv')
-        session_info = pd.read_csv('Data/session_info.csv')
+        matches = pd.DataFrame(r.matches)
+        scif = pd.DataFrame(r.scif)
+        all_products = pd.DataFrame(r.all_products)
+        session_info = pd.DataFrame(r.session_info)
 
         # create a dict of data_provider object relevant attributes
         my_dict = {'matches': matches,
@@ -67,7 +73,7 @@ class TestPngcn(TestUnitCase):
                                         self.common_mock, 16588190,
                                         self.data_provider_mock)
         scene_tool_box.data_provider.session_id = 'ebebc629-6b82-4be8-a872-0caa248ea248'
-        new_scif = pd.read_csv('Data/new_scif.csv')
+        new_scif = pd.DataFrame(r.new_scif)
         scene_tool_box.common.execute_custom_query()
         scene_tool_box.insert_data_into_custom_scif(new_scif)
         delete_query = scene_tool_box.common.execute_custom_query.mock_calls[1][1][0]
@@ -110,7 +116,7 @@ class TestPngcn(TestUnitCase):
                                         self.data_provider_mock)
 
         result = type(scene_tool_box.get_png_manufacturer_fk())
-        expected_result = numpy.int64
+        expected_result = int
         self.assertEqual(expected_result, result)
 
     def test__get_display_size_of_product_in_scene(self):
@@ -200,6 +206,7 @@ class TestPngcn(TestUnitCase):
                                  {'item_id': 136, 'scene_id': 16588190, 'product_size': 0}]
         mock_df_products_size.return_value = pd.DataFrame(data_df_products_size)
         scene_tool_box.common.write_to_db_result = MagicMock()
+        # scene_tool_box.png_manufacturer_fk = 4
         scene_tool_box.calculate_display_size()
         kpi_results = scene_tool_box.common.write_to_db_result.mock_calls[0][2]
         if kpi_results:
