@@ -1,4 +1,6 @@
 import pandas as pd
+from Projects.CCBR_PROD.Tests.Data import records
+
 from Trax.Utils.Testing.Case import TestUnitCase, MagicMock
 from Tests.TestUtils import remove_cache_and_storage
 from Projects.CCBR_PROD.Utils.KPIToolBox import CCBRToolBox
@@ -21,8 +23,15 @@ class TestCCCBR(TestUnitCase):
             'Common', path='KPIUtils.DB.Common')
         self.ProjectConnector_mock = self.mock_object(
             'PSProjectConnector', path='KPIUtils_v2.DB.PsProjectConnector')
-        self.ProjectConnector_mock = self.mock_object(
+        self.PsDataProvider_mock = self.mock_object(
             'PsDataProvider', path='KPIUtils_v2.GlobalDataProvider.PsDataProvider')
+        self.load_exel_to_df_mock = self.mock_object(
+            'load_exel_to_df', path='Projects.CCBR_PROD.Utils.KPIToolBox.CCBRToolBox')
+
+        # import sheets dfs
+        self.load_exel_to_df_mock.side_effect = [pd.DataFrame(records.count_sheet),
+                                                 pd.DataFrame(records.group_count_sheet),
+                                                 pd.DataFrame(records.survey_sheet)]
 
         # mock 'data provider' and object
         self.data_provider_mock = MagicMock()
@@ -33,4 +42,6 @@ class TestCCCBR(TestUnitCase):
 
     def test_test(self):
 
+
+        x = 5
         pass
