@@ -179,9 +179,12 @@ class LIONNZToolBox:
     def calculate_and_save_prod_presence_and_oos_products(self, assortment_product_fks,
                                                           prod_presence_kpi_fk, oos_prod_kpi_fk,
                                                           distribution_kpi_name, oos_kpi_name):
-        total_products_in_scene = self.scif["item_id"].unique()
-        present_products = np.intersect1d(total_products_in_scene, assortment_product_fks)
-        extra_products = np.setdiff1d(total_products_in_scene, present_products)
+        # all assortment products are only in own manufacturers context
+        total_own_products_in_scene = self.scif[
+            self.scif['manufacturer_fk'].astype(int) == self.own_man_fk
+        ]["item_id"].unique()
+        present_products = np.intersect1d(total_own_products_in_scene, assortment_product_fks)
+        extra_products = np.setdiff1d(total_own_products_in_scene, present_products)
         oos_products = np.setdiff1d(assortment_product_fks, present_products)
         product_map = {
             OOS_CODE: oos_products,
