@@ -86,7 +86,10 @@ class CCBRToolBox:
 
     @staticmethod
     def load_exel_to_df(path, parameter):
-        return pd.read_excel(path, parameter).fillna("")
+        try:
+            return pd.read_excel(path, parameter).fillna("")
+        except IOError as error:
+            return "can't load file, error: ", error
 
     def handle_simon_kpis(self):
         """
