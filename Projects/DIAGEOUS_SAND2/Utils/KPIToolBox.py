@@ -51,7 +51,7 @@ class ToolBox:
         if self.store_info['additional_attribute_2'].iloc[0]:
             self.attr2 = self.store_info['additional_attribute_2'].iloc[0]
         else:
-            Log.error("The store for this session has no attribute2. Set temporary as Other, please fix")
+            Log.warning("The store for this session has no attribute2. Set temporary as Other, please fix")
             self.attr2 = Const.OTHER
         self.templates = {}
         self.get_templates()
@@ -104,12 +104,18 @@ class ToolBox:
                     self.scenes_with_shelves[scene] = max(shelves)
                 self.converted_groups = self.convert_groups_from_template()
                 self.external_targets = self.ps_data.get_kpi_external_targets(
-                    kpi_operation_types=Const.OPEN_OPERATION_TYPES)
+                    kpi_operation_types=Const.OPEN_OPERATION_TYPES,
+                    key_fields=[Const.EX_PRODUCT_FK, Const.EX_STATE_FK, Const.EX_STORE_NUMBER, Const.EX_SCENE_TYPE,
+                                Const.EX_ATTR2],
+                    data_fields=[Const.EX_MIN_FACINGS, Const.EX_MINIMUM_SHELF, Const.EX_BENCHMARK_VALUE,
+                                 Const.EX_TARGET_MIN, Const.EX_COMPETITOR_FK, Const.EX_RELATIVE_MAX,
+                                 Const.EX_RELATIVE_MIN, Const.EX_TARGET_MAX])
                 self.external_targets = self.external_targets.fillna("N/A")
         elif self.attr6 != Const.ON:
                 self.init_assortment()
                 self.external_targets = self.ps_data.get_kpi_external_targets(
-                    kpi_operation_types=Const.INDEPENDENT_OPERATION_TYPES)
+                    kpi_operation_types=Const.INDEPENDENT_OPERATION_TYPES,
+                    key_fields=[Const.EX_SCENE_TYPE, Const.EX_ATTR2], data_fields=[Const.EX_MIN_FACINGS])
                 self.external_targets = self.external_targets.fillna("N/A")
         if self.attr6 == Const.OFF:
             total_off_trade_fk = self.common.get_kpi_fk_by_kpi_name(
@@ -297,7 +303,7 @@ class ToolBox:
         product_fk, brand, sub_brand, standard_type = product_line[[
             'product_fk', 'brand_fk', 'sub_brand_fk', Const.STANDARD_TYPE]]
         if sub_brand is None or self.all_products_sku[self.all_products_sku['product_fk'] == product_fk].empty:
-            return None
+            return None, None
         facings = relevant_scif[relevant_scif['product_fk'] == product_fk]['facings'].sum()
         if facings > 0 or (product_fk in self.sales_data and kpi_db_names[Const.KPI_NAME] == Const.POD):
             result, passed = Const.DISTRIBUTED, 1
@@ -356,7 +362,7 @@ class ToolBox:
         product_fk, brand, sub_brand, standard_type = product_line[[
             'product_fk', 'brand_fk', 'sub_brand_fk', Const.STANDARD_TYPE]]
         if self.all_products_sku[self.all_products_sku['product_fk'] == product_fk].empty:
-            return None
+            return None, None
         facings = relevant_scif[relevant_scif['product_fk'] == product_fk]['facings'].sum()
         if facings > 0:
             result, passed = Const.DISTRIBUTED, 1
@@ -381,7 +387,7 @@ class ToolBox:
         product_fk, brand, sub_brand, standard_type = \
             product_line[['product_fk', 'brand_fk', 'sub_brand_fk', Const.STANDARD_TYPE]]
         if self.all_products_sku[self.all_products_sku['product_fk'] == product_fk].empty:
-            return None
+            return None, None
         facings = self.calculate_passed_display_without_subst(product_fk, relevant_scif)
         if facings > 0:
             result, passed = Const.DISTRIBUTED, 1
@@ -548,9 +554,13 @@ class ToolBox:
                 product_fk, relevant_products, manufacturer_kpi_fk)
             all_results = all_results.append(product_result, ignore_index=True)
         den_res = all_results[Const.PASSED].sum()
+        if not den_res:
+            den_res = 0
         diageo_results, diageo_result = 0, 0
         for manufacturer in all_results[Const.MANUFACTURER].unique().tolist():
             num_res = all_results[all_results[Const.MANUFACTURER] == manufacturer][Const.PASSED].sum()
+            if not num_res:
+                num_res = 0
             result = self.get_score(num_res, den_res)
             target_manufacturer = None
             if manufacturer == self.manufacturer_fk:
@@ -740,7 +750,7 @@ class ToolBox:
         kpi_fk = kpi_db_names[Const.SKU]
         product_fk, brand, sub_brand = product_line[[Const.EX_PRODUCT_FK, 'brand_fk', 'sub_brand_fk']]
         if product_fk == 0:
-            return None
+            return None, None
         standard_type = product_line[Const.STANDARD_TYPE]
         min_shelf_loc = product_line[Const.EX_MINIMUM_SHELF]
         product_fk_with_substs = [product_fk]
@@ -992,7 +1002,7 @@ class ToolBox:
         """
         brand_results = []
         brand = brand_list.iloc[0]['brand_fk']
-        for sub_brand_fk in brand_list['sub_brand_fk'].unique().tolist():
+        for sub_brand_fk in brand_list[~(brand_list['sub_brand_fk'].isnull())]['sub_brand_fk'].unique().tolist():
             sub_brand_list = brand_list[brand_list['sub_brand_fk'] == sub_brand_fk]
             sub_brand_results, standard_types_results = self.generic_sub_brand_calculator(
                 sub_brand_list, relevant_df, standard_types_results, kpi_db_names, template_fk)
