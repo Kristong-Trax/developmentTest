@@ -102,15 +102,27 @@ class ToolBox:
         if relevant_scif.empty:
             return
 
-        # print('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~')
-        # print(kpi_name)
-        # if kpi_name not in ('What % of PFC Facings are Blocked Vertically?'):
-        # if kpi_name not in ('Are the majority of Green Giant Spec Veg blocked above Green Giant Core Veg'):
-        # if kpi_name not in ('Is majority of Specialty Veg shelved above Core Veg?'):
+
+        # if kpi_name not in (
+        #         'What is Apple Sauce Multi Serve linear footage?',
+        #         'What is Apple Sauce Single Serve linear footage?',
+        #         'What is Canned Fruit linear footage?',
+        #         'What is Canned Veg category linear footage?',
+        #         'What is Del Monte Canned Veg linear footage?',
+        #         'What is PFC linear footage?',
+        #         'What is Squeezers linear footage',
+        #         'What is the COS Fruit category linear footage?',
+        #
+        # ):
+        # # if kpi_name not in ('Are the majority of Green Giant Spec Veg blocked above Green Giant Core Veg'):
+        if kpi_name not in ('Are Family Packs shelved with their same Veg Type?'):
         # if kpi_name not in ('What % of Del Monte facings are blocked horizontally?'):
         # if kpi_type not in (Const.BLOCKING, Const.BLOCKING_PERCENT, Const.SOS, Const.ANCHOR, Const.MULTI_BLOCK,
         #                     Const.SAME_AISLE, Const.SHELF_REGION, Const.SHELF_PLACEMENT):
-        #     return
+            return
+
+        print('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~')
+        print(kpi_name)
 
         dependent_kpis = self.read_cell_from_line(main_line, Const.DEPENDENT)
         dependent_results = self.read_cell_from_line(main_line, Const.DEPENDENT_RESULT)
@@ -124,8 +136,9 @@ class ToolBox:
         function = self.get_kpi_function(kpi_type)
         try:
            all_kwargs = function(kpi_name, kpi_line, relevant_scif, general_filters)
-           # print(all_kwargs)
+           print(all_kwargs)
         except Exception as e:
+            print(e)
             if self.global_fail:
                 all_kwargs = [{'score': 0, 'result': None, 'failed': 0}]
                 Log.warning('kpi "{}" failed to calculate'.format(kpi_name))
@@ -168,7 +181,7 @@ class ToolBox:
         location = kpi_line['Shelf Placement'].lower()
         tmb_map = pd.read_excel(Const.TMB_MAP_PATH).melt(id_vars=['Num Shelves'], var_name=['Shelf'])\
                                                    .set_index(['Num Shelves', 'Shelf']).reset_index()
-        tmb_map.columns = ['max_shelves', 'shelf_number', 'TMB']
+        tmb_map.columns = ['max_shelves', 'shelf_number_from_bottom', 'TMB']
         tmb_map['TMB'] = tmb_map['TMB'].str.lower()
         filters = self.get_kpi_line_filters(kpi_line)
         mpis = self.filter_df(self.mpis, filters)
@@ -187,7 +200,7 @@ class ToolBox:
             columns={'shelf_number': 'max_shelves'})
         mpis = mpis.merge(bay_shelf, on=['bay_number', 'scene_fk'])
         mpis['true_shelf'] = mpis['shelf_number_from_bottom'] + mpis['shelf_offset']
-        mpis = mpis.merge(tmb_map, on=['max_shelves', 'shelf_number'])
+        mpis = mpis.merge(tmb_map, on=['max_shelves', 'shelf_number_from_bottom'])
 
         result = self.safe_divide(self.filter_df(mpis, {'TMB': location}).shape[0], mpis.shape[0])
         return {'score': 1, 'result': result}
@@ -205,7 +218,7 @@ class ToolBox:
             for scene in mpis.scene_fk.unique():
                 smpis = self.filter_df(mpis, {'scene_fk': scene})
                 num_df = self.filter_df(smpis, num_filters)
-                bays = list(smpis.bay_number.unique())
+                bays = sorted(list(smpis.bay_number.unique()))
                 size = len(bays) / Const.NUM_REG
                 mod = len(bays) % Const.NUM_REG
                 # find start ponts for center and right groups (left is always 0), this is bays var index
@@ -229,24 +242,26 @@ class ToolBox:
         vector = kpi_line['Vector']
         Segment = namedtuple('Segment', 'seg position')
         segments = [i.strip() for i in self.splitter(kpi_line['Sequence'])]
+        result = 0
         for scene in relevant_scif.scene_fk.unique():
+            scene_scif = relevant_scif[relevant_scif['scene_fk'] == scene]
             seg_list = []
             for seg in segments:
                 seg_filters = self.get_kpi_line_filters(kpi_line, seg)
-                _, _, mpis_dict, _, results = self.base_block(kpi_name, kpi_line, relevant_scif,
-                                                                            general_filters,
-                                                                            filters=seg_filters,
-                                                                            check_orient=0)
+                _, _, mpis_dict, _, results = self.base_block(kpi_name, kpi_line, scene_scif,
+                                                              general_filters,
+                                                              filters=seg_filters,
+                                                              check_orient=0)
                 cluster = results.sort_values('facing_percentage', ascending=False).iloc[0, 0]
                 df = pd.DataFrame([(n['polygon'].centroid.x, n['polygon'].centroid.x, n['facings'])
                                   for i, n in cluster.nodes(data=True)], columns=['x', 'y', 'facings'])
                 facings = df.facings.sum()
                 seg_list.append(Segment(seg=seg, position=(df[vector]*df['facings']).sum()/facings))
 
-        order = [x.seg for x in sorted(seg_list, key=lambda x: x.seg)]
-        result = 0
-        if '_'.join(order) == '_'.join(segments):
-            result = 1
+            order = [x.seg for x in sorted(seg_list, key=lambda x: x.seg)]
+            if '_'.join(order) == '_'.join(segments):
+                result = 1
+                # break
         return {'result': result, 'score': 1}
 
     def calculate_max_block_adj_base(self, kpi_name, kpi_line, relevant_scif, general_filters):
@@ -282,28 +297,44 @@ class ToolBox:
 
     def calculate_block_together(self, kpi_name, kpi_line, relevant_scif, general_filters):
         result, _ = self.calculate_max_block_adj_base(kpi_name, kpi_line, relevant_scif, general_filters)
-        result['result'] = result['result'] != 1  # this kpi is reversed (is not blocked together?) so we xor
+        result['result'] = result['result'] ^ 1  # this kpi is reversed (is not blocked together?) so we xor
         return result
 
     def calculate_serial_adj(self, kpi_name, kpi_line, relevant_scif, general_filters):
         scif = self.filter_df(relevant_scif, self.get_kpi_line_filters(kpi_line, 'A'))
+        sizes = self.self.get_kpi_line_filters(kpi_line, 'A')['DLM_ VEGSZ(C)']
+        num_count_sizes = 0 if self.get_kpi_line_filters(kpi_line, 'A')['DLM_ VEGSZ(C)'] == 'FAMILY LARGE' else 1
         if scif.empty:
             return
         subsets = scif[kpi_line['Unit']].unique()
         tally = 0
         skip = 0
         for subset in subsets:
-            general_filters[kpi_line['Unit']] = [subset]
-            try:
-                result, _ = self.calculate_max_block_adj_base(kpi_name, kpi_line, relevant_scif, general_filters)
-                tally += result['result']
-                if not result['result']:
-                    break
-            except TypeError:  # yeah, i really should define a custom error, but, another day
-                skip += 1  # we will ignore subsets that are missing either A group or B group
+            size_pass = 0
+            size_skip = 0
+            for size in sizes:
+                sub_kpi_line = kpi_line.copy()
+                for i in sub_kpi_line.index:
+                    if sub_kpi_line[i] == ','.join(sizes):
+                        sub_kpi_line[i] == size
+                general_filters[kpi_line['Unit']] = [subset]
+                try:
+                    result, _ = self.calculate_max_block_adj_base(kpi_name, sub_kpi_line, relevant_scif, general_filters)
+                    tally += result['result']
+                    size_pass += 1
+                except TypeError:  # yeah, i really should define a custom error, but, another day
+                    size_skip += 1  # we will ignore subsets that are missing either A group or B group
+            if size_pass and not num_count_sizes: # Family large only needs to be next to one size, so we need to be careful how we increment skip
+               skip += 0  # family passed, even if one size failed, so we don't increment skip
+            if not size_pass and not num_count_sizes:
+                skip += 1  # Family size failed so we increment by one
+            else:
+                skip += size_skip  # this is the mutipk rt.
 
-        if len(subsets) - skip > tally:
-            result['result'] = 0  # This only works if pass criteria requires all subsets to pass, if that changes, use a new variable for the final result
+        result['result'] = 0
+        target = len(subsets)*len(sizes) - skip if not num_count_sizes else len(subsets) - skip  #family only needs to pass one size, multipk both
+        if self.safe_divide(tally, target) > 75:
+            result['result'] = 1
         return result
 
     def calculate_adjacency_list(self, kpi_name, kpi_line, relevant_scif, general_filters):
@@ -387,12 +418,10 @@ class ToolBox:
         blocks = pd.DataFrame()
         result = pd.DataFrame()
         orientation = 'Not Blocked'
-        scenes = self.filter_df(self.scif, general_filters).scene_fk.unique()
+        scenes = self.filter_df(relevant_scif, general_filters).scene_fk.unique()
         if 'template_name' in general_filters:
             del general_filters['template_name']
         mpis_dict = {}
-        if self.read_cell_from_line(kpi_line, 'MSL'):
-            scenes = self.find_MSL(relevant_scif)
         valid_scene_found = 0
         for scene in scenes:
             score = 0
@@ -430,8 +459,7 @@ class ToolBox:
         return score, orientation, mpis_dict, blocks, result
 
     def calculate_block(self, kpi_name, kpi_line, relevant_scif, general_filters):
-        score, orientation, mpis_dict, _, _ = self.base_block(
-            kpi_name, kpi_line, relevant_scif, general_filters)
+        score, orientation, mpis_dict, _, _ = self.base_block(kpi_name, kpi_line, relevant_scif, general_filters)
         # result_fk = self.result_values_dict[orientation]
         kwargs = {'score': score, 'result': score}
         return kwargs
@@ -494,7 +522,7 @@ class ToolBox:
                 else:
                     raise e
             score += sub_score
-        if score == len(groups) - exempt:
+        if score and score == len(groups) - exempt:
             result = 1
         return {'score': 1, 'result': result}
 
