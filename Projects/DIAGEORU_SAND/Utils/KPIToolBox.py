@@ -96,7 +96,7 @@ class DIAGEORUToolBox:
         """
         This function calculates the KPI results.
         """
-        # # SOS Out Of The Box kpis
+        # SOS Out Of The Box kpis
         self.activate_ootb_kpis()
 
         log_runtime('Updating templates')
@@ -116,11 +116,10 @@ class DIAGEORUToolBox:
         self.commonV2.save_json_to_new_tables(menus_res_dict)
 
         for set_name in set_names:
-            set_score = 0
             if set_name not in self.tools.KPI_SETS_WITHOUT_A_TEMPLATE and set_name not in self.set_templates_data.keys():
                 self.set_templates_data[set_name] = self.tools.download_template(set_name)
 
-            if set_name in ('Secondary Displays', 'Secondary'):
+            if set_name == 'Secondary Displays':
                 # Global function
                 res_json = self.diageo_generator.diageo_global_secondary_display_secondary_function()
                 if res_json:
@@ -128,68 +127,27 @@ class DIAGEORUToolBox:
                     self.commonV2.write_to_db_result(fk=res_json['fk'], numerator_id=1, denominator_id=self.store_id,
                                                      result=res_json['result'])
 
-                # Saving to old tables
-                set_score = self.tools.calculate_number_of_scenes(location_type='Secondary')
-                self.save_level2_and_level3(set_name, set_name, set_score)
-
-            elif set_name in ('Brand Blocking',):
+            elif set_name == 'Brand Blocking':
                 # Global function
                 res_dict = self.diageo_generator.diageo_global_block_together(
                     kpi_name=set_name,
                     set_templates_data=self.set_templates_data[set_name])
                 self.commonV2.save_json_to_new_tables(res_dict)
 
-                # Saving to old tables
-                set_score = self.calculate_block_together_sets(set_name)
-
             elif set_name == 'Relative Position':
                 # Global function
                 res_dict = self.diageo_generator.diageo_global_relative_position_function(
                     self.set_templates_data[set_name], location_type='template_name')
-                set_score = False   # Skip the old tables saving
                 self.commonV2.save_json_to_new_tables(res_dict)
-                # set_score = self.calculate_relative_position_sets(set_name)
 
             elif set_name == 'Vertical Shelf Placement':
                 res_dict = self.diageo_generator.diageo_global_vertical_placement(self.set_templates_data[set_name])
-                set_score = False   # Skip the old tables saving
                 self.commonV2.save_json_to_new_tables(res_dict)
 
-            if set_score is False:
-                continue
-            elif set_score == 0:
-                pass
-
-            set_fk = self.kpi_static_data[self.kpi_static_data['kpi_set_name'] == set_name]['kpi_set_fk'].values[0]
-            self.common.write_to_db_result(fk=set_fk, level=self.LEVEL1, score=set_score)
-
-        # committing to new tables
+        # committing to the new tables
         self.commonV2.commit_results_data()
-        # committing to old tables
+        # committing to the old tables
         self.common.commit_results_data()
-
-    def calculate_block_together_sets(self, set_name):
-        """
-        This function calculates every block-together-typed KPI from the relevant sets, and returns the set final score.
-        """
-        scores = []
-        for params in self.set_templates_data[set_name]:
-            if self.store_channel == params.get(self.tools.CHANNEL, '').upper():
-                filters = {'template_name': params.get(self.tools.LOCATION)}
-                if params.get(self.tools.SUB_BRAND_NAME):
-                    filters['sub_brand_name'] = params.get(self.tools.SUB_BRAND_NAME)
-                else:
-                    filters['brand_name'] = params.get(self.tools.BRAND_NAME)
-                result = self.tools.calculate_block_together(**filters)
-                score = 1 if result else 0
-                scores.append(score)
-
-                self.save_level2_and_level3(set_name, params.get(self.tools.KPI_NAME), score)
-
-        if not scores:
-            return False
-        set_score = (sum(scores) / float(len(scores))) * 100
-        return set_score
 
     def activate_ootb_kpis(self):
         # FACINGS_SOS_MANUFACTURER_IN_WHOLE_STORE - level 1
@@ -339,15 +297,3 @@ class DIAGEORUToolBox:
                                              score=res['result'],
                                              identifier_result=kpi_identifier, identifier_parent=parent_identifier,
                                              should_enter=True)
-
-    def save_level2_and_level3(self, set_name, kpi_name, score):
-        """
-        Given KPI data and a score, this functions writes the score for both KPI level 2 and 3 in the DB.
-        """
-        kpi_data = self.kpi_static_data[(self.kpi_static_data['kpi_set_name'] == set_name) &
-                                        (self.kpi_static_data['kpi_name'] == kpi_name)]
-
-        kpi_fk = kpi_data['kpi_fk'].values[0]
-        atomic_kpi_fk = kpi_data['atomic_kpi_fk'].values[0]
-        self.common.write_to_db_result(fk=kpi_fk, level=self.LEVEL2, score=score)
-        self.common.write_to_db_result(fk=atomic_kpi_fk, level=self.LEVEL3, score=score)
