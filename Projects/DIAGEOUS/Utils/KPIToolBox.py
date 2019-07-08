@@ -8,6 +8,7 @@ from KPIUtils_v2.DB.CommonV2 import Common
 from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
 from KPIUtils_v2.Calculations.SurveyCalculations import Survey
 from KPIUtils_v2.GlobalDataProvider.PsDataProvider import PsDataProvider
+from datetime import datetime
 
 __author__ = 'Elyashiv'
 
@@ -388,7 +389,7 @@ class ToolBox:
             product_line[['product_fk', 'brand_fk', 'sub_brand_fk', Const.STANDARD_TYPE]]
         if self.all_products_sku[self.all_products_sku['product_fk'] == product_fk].empty:
             return None, None
-        facings = self.calculate_passed_display_without_subst(product_fk, relevant_scif)
+        facings = self.calculate_passed_display_without_subst_sep_scenes(product_fk, relevant_scif)
         if facings > 0:
             result, passed = Const.DISTRIBUTED, 1
         else:
@@ -593,7 +594,11 @@ class ToolBox:
         """
         sku_kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.DB_OFF_NAMES[Const.DISPLAY_SHARE][Const.SKU])
         manufacturer = self.all_products[self.all_products['product_fk'] == product_fk]['manufacturer_fk'].iloc[0]
-        sum_scenes_passed = self.calculate_passed_display_without_subst(product_fk, relevant_products)
+        if self.visit_date >= datetime.strptime("2019-07-01", '%Y-%m-%d').date():
+            display_function = self.calculate_passed_display_without_subst_sep_scenes
+        else:
+            display_function = self.calculate_passed_display_without_subst
+        sum_scenes_passed = display_function(product_fk, relevant_products)
         parent_dict = self.common.get_dictionary(
             kpi_fk=manufacturer_kpi_fk, manufacturer_fk=manufacturer)
         if sum_scenes_passed == 0 or product_fk == 0:
@@ -1096,6 +1101,41 @@ class ToolBox:
                 facings = len(scene_products)
                 # if the condition is failed, it will "add" 0.
                 sum_scenes_passed += 1 * (facings >= minimum_products)
+        return sum_scenes_passed
+
+    def calculate_passed_display_without_subst_sep_scenes(self, product_fk, relevant_products):
+        """
+        Counts how many scenes the given product passed the conditions of the display (defined in Display_target sheet),
+        every time it should pass the condition ONLY with the same product_fk (without the similar products).
+        :param product_fk:
+        :param relevant_products: relevant scif
+        :return: number of scenes. int.
+        """
+        external_template = self.external_targets[self.external_targets["operation_type"] == Const.DISPLAY_TARGET_OP][
+            Const.DISPLAY_TARGET_COLUMNS]
+        template = external_template[external_template[Const.EX_ATTR2] == self.attr2]
+        if template.empty:
+            template = external_template[external_template[Const.EX_ATTR2] == Const.OTHER]
+        sum_scenes_passed, sum_facings = 0, 0
+        product_fk_with_substs = [product_fk]
+        product_fk_with_substs += self.all_products[self.all_products['substitution_product_fk'] == product_fk][
+            'product_fk'].tolist()
+        for scene in relevant_products['scene_fk'].unique().tolist():
+            for product in product_fk_with_substs:
+                scene_products = self.match_product_in_scene[
+                    (self.match_product_in_scene['scene_fk'] == scene) &
+                    (self.match_product_in_scene['product_fk'] == product)]
+                if scene_products.empty:
+                    continue
+                scene_type = self.scif[self.scif['scene_fk'] == scene]['template_name'].iloc[0]
+                minimum_products = template[template[Const.EX_SCENE_TYPE] == scene_type]
+                if minimum_products.empty:
+                    minimum_products = template[template[Const.EX_SCENE_TYPE] == Const.OTHER]
+                minimum_products = minimum_products[Const.EX_MIN_FACINGS].iloc[0]
+                facings = len(scene_products)
+                if facings >= minimum_products:
+                    sum_scenes_passed += 1
+                    break
         return sum_scenes_passed
 
     def get_relevant_scenes(self, scene_types):
