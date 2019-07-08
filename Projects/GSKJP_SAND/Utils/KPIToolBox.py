@@ -6,11 +6,12 @@ from Trax.Utils.Logging.Logger import Log
 import pandas as pd
 import os
 import numpy as np
+import math
 from KPIUtils_v2.DB.CommonV2 import Common
 from KPIUtils.GlobalProjects.GSK.KPIGenerator import GSKGenerator
 from Trax.Utils.Logging.Logger import Log
 from KPIUtils.GlobalProjects.GSK.Utils.KPIToolBox import Const
-from KPIUtils_v2.Calculations.BlockCalculations import Block
+from KPIUtils_v2.Calculations.BlockCalculations_v2 import Block
 from KPIUtils_v2.GlobalDataProvider.PsDataProvider import PsDataProvider
 
 
@@ -172,9 +173,12 @@ class GSKJPToolBox:
             Log.warning('match_product_in_scene is empty ')
             return 0, 0, 0
         df = self.gsk_generator.tool_box.tests_by_template('GSK_PLN_LSOS_SCORE', df, self.set_up_data)
+        if df is None:
+            Log.warning('match_product_in_scene is empty ')
+            return 0, 0, 0
         result = self.gsk_generator.tool_box.calculate_sos(df, {'brand_fk': brand}, {}, Const.LINEAR)[0]
         target = policy['brand_target'].iloc[0]
-        score = result / target
+        score = float(result) / float(target)
         return result, score, target
 
     def brand_blocking(self, brand, policy):
@@ -190,22 +194,30 @@ class GSKJPToolBox:
         # taking from params from set up  info
         stacking_param = False if not self.set_up_data[(
             Const.INCLUDE_STACKING, self.PLN_BLOCK)] else True  # false
-        products_excluded = []
-        if not self.set_up_data[(Const.INCLUDE_OTHERS, self.PLN_BLOCK)]:
-            products_excluded.append(Const.OTHER)
-        if not self.set_up_data[(Const.INCLUDE_IRRELEVANT, self.PLN_BLOCK)]:
-            products_excluded.append(Const.IRRELEVANT)
-        if not self.set_up_data[(Const.INCLUDE_EMPTY, self.PLN_BLOCK)]:
-            products_excluded.append(Const.EMPTY)
+        population_parameters = {'brand_fk': [brand], 'product_type': ['SKU']}
+
+        if self.set_up_data[(Const.INCLUDE_OTHERS, self.PLN_BLOCK)]:
+            population_parameters['product_type'].append(Const.OTHER)
+        if self.set_up_data[(Const.INCLUDE_IRRELEVANT, self.PLN_BLOCK)]:
+            population_parameters['product_type'].append(Const.IRRELEVANT)
+        if self.set_up_data[(Const.INCLUDE_EMPTY, self.PLN_BLOCK)]:
+
+            population_parameters['product_type'].append(Const.EMPTY)
+        else:
             ignore_empty = True
-        product_filters = {'product_type': products_excluded}  # from Data file
+
+        if self.set_up_data[(Const.CATEGORY_INCLUDE,  self.PLN_BLOCK)]:  # category_name
+            population_parameters['category'] = self.set_up_data[(Const.CATEGORY_INCLUDE,  self.PLN_BLOCK)]
+
+        if self.set_up_data[(Const.SUB_CATEGORY_INCLUDE, self.PLN_BLOCK)]:  # sub_category_name
+            population_parameters['sub_category'] = self.set_up_data[(Const.SUB_CATEGORY_INCLUDE,  self.PLN_BLOCK)]
+
+        # from Data file
         target = float(policy['block_target'].iloc[0]) / float(100)
 
         result = self.blocking_generator.network_x_block_together(location=template_name,
-                                                                  population={'brand_fk': [brand]},
+                                                                  population=population_parameters,
                                                                   additional={'minimum_block_ratio': target,
-                                                                              'allowed_products_filters':
-                                                                                  product_filters,
                                                                               'calculate_all_scenes': False,
                                                                               'ignore_empty': ignore_empty,
                                                                               'include_stacking': stacking_param,
@@ -216,17 +228,19 @@ class GSKJPToolBox:
 
         # numerator = len(result['cluster'].values[0].node.keys())
         # numerator = 0
-        # cluster = result['cluster'].values[0]
+        # cluster = result['cluster'].iloc[0]
+        # for node in cluster.nodes.data():
+        #     print node
         # for dict in cluster._node.values():
-        #     facings = numerator + dict['group_attributes']['facings']
+        #     numerator = numerator + dict['group_attributes']['facings']
 
         # nodes_sum = 0
         # for node_clust in result['cluster'].values:
         #     nodes_sum = nodes_sum + node_clust.node.keys()
         # # numerator
-        result = 0 if result[result['is_block']].empty else 100
+        score = 0 if result[result['is_block']].empty else 100
 
-        return result, target
+        return score, target
 
     def msl_assortment(self, kpi_fk, kpi_name):
         """
@@ -267,16 +281,25 @@ class GSKJPToolBox:
                                                        kpi_fk=self.common.get_kpi_fk_by_kpi_type(self.ECAP_ALL_BRAND))
         results = []
         kpi_ecaps_product = self.common.get_kpi_fk_by_kpi_type(self.PRODUCT_PRESENCE)
+        ecaps_assortment_fk = self.common.get_kpi_fk_by_kpi_type(self.PLN_ASSORTMENT_KPI)
         if assortment.empty:
             return 0, 0, 0, results
         brand_results = assortment[assortment['brand_fk']
                                    == brand]  # only assortment of desired brand
         for result in brand_results.itertuples():
-            score = result.in_store * 100
+            if (math.isnan(result.in_store)) | (result.kpi_fk_lvl3 != ecaps_assortment_fk):
+                score = self.gsk_generator.tool_box.result_value_pk(Const.EXTRA)
+                result_num = 1
+            else:
+                score = self.gsk_generator.tool_box.result_value_pk(Const.OOS) if result.in_store == 0 else \
+                    self.gsk_generator.tool_box.result_value_pk(Const.DISTRIBUTED)
+                result_num = result.in_store
+            last_status = self.gsk_generator.tool_box.get_last_status(kpi_ecaps_product, result.product_fk)
+            # score = result.in_store * 100
             results.append(
                 {'fk': kpi_ecaps_product, 'numerator_id': result.product_fk, 'denominator_id': self.store_fk,
-                 'denominator_result': 1, 'numerator_result': result.in_store, 'result': score,
-                 'score': score,
+                 'denominator_result': 1, 'numerator_result': result_num, 'result': score,
+                 'score': last_status,
                  'identifier_parent': identifier_parent, 'identifier_result': 1,
                  'should_enter': True})
 
@@ -298,6 +321,9 @@ class GSKJPToolBox:
                                              result :  (numerator/denominator)*100
                                              results :  array of dictionary, each dict contains the result details
                """
+
+        if assortment is None or assortment.empty:
+            return 0, 0, 0
         brand_results = assortment[assortment['brand_fk']
                                    == brand]  # only assortment of desired brand
         if 'total' not in self.assortment.LVL2_HEADERS or 'passes' not in self.assortment.LVL2_HEADERS:
@@ -365,6 +391,7 @@ class GSKJPToolBox:
                                      left_on=['scene_id', 'product_fk'])
         df_position_score = self.gsk_generator.tool_box.tests_by_template(self.POSITION_SCORE, df_position_score,
                                                                           self.set_up_data)
+
         if not self.set_up_data[(Const.INCLUDE_STACKING, self.POSITION_SCORE)]:
             df_position_score = df_position_score if df_position_score is None else df_position_score[
                 df_position_score['stacking_layer'] == 1]
@@ -399,13 +426,13 @@ class GSKJPToolBox:
                                'identifier_parent': identifier_parent, 'weight': lsos_denominator,
                                'should_enter': True})
             # block_score
+            # block_result, block_benchmark, block_numerator, block_denominator = self.brand_blocking(brand, policy,df_block)
             block_result, block_benchmark = self.brand_blocking(brand, policy)
             block_score = block_result * block_target
-
             results_df.append({'fk': kpi_block_fk, 'numerator_id': brand, 'denominator_id': self.store_fk,
-                               'denominator_result': block_result, 'numerator_result': 1, 'result':
+                               'denominator_result': 0, 'numerator_result': 1, 'result':
                                    block_result, 'score': block_score, 'target': (block_target*100), 'identifier_parent':
-                                   identifier_parent, 'should_enter': True, 'weight':( block_benchmark*100)})
+                                   identifier_parent, 'should_enter': True, 'weight': (block_benchmark*100)})
 
             # position score
             if df_position_score is None:
@@ -458,7 +485,7 @@ class GSKJPToolBox:
         total_brand_score = 0
         assortment_display = self.msl_assortment(self.PLN_ASSORTMENT_KPI, self.ECAPS_FILTER_IDENT)
 
-        if assortment_display is None:
+        if assortment_display is None or assortment_display.empty:
             return results_df
         template_brands = self.set_up_data[(Const.BRANDS_INCLUDE, self.ECAPS_FILTER_IDENT)]
         brands = assortment_display[assortment_display['brand_name'].isin(template_brands)]['brand_fk'].unique() if \
