@@ -1081,8 +1081,8 @@ class ToolBox:
         product_fk_with_substs = [product_fk]
         product_fk_with_substs += self.all_products[self.all_products['substitution_product_fk'] == product_fk][
             'product_fk'].tolist()
-        for product in product_fk_with_substs:
-            for scene in relevant_products['scene_fk'].unique().tolist():
+        for scene in relevant_products['scene_fk'].unique().tolist():
+            for product in product_fk_with_substs:
                 scene_products = self.match_product_in_scene[
                     (self.match_product_in_scene['scene_fk'] == scene) &
                     (self.match_product_in_scene['product_fk'] == product)]
@@ -1094,8 +1094,9 @@ class ToolBox:
                     minimum_products = template[template[Const.EX_SCENE_TYPE] == Const.OTHER]
                 minimum_products = minimum_products[Const.EX_MIN_FACINGS].iloc[0]
                 facings = len(scene_products)
-                # if the condition is failed, it will "add" 0.
-                sum_scenes_passed += 1 * (facings >= minimum_products)
+                if facings >= minimum_products:
+                    sum_scenes_passed += 1
+                    break
         return sum_scenes_passed
 
     def get_relevant_scenes(self, scene_types):
