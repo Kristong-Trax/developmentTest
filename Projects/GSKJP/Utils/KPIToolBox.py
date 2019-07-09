@@ -190,22 +190,30 @@ class GSKJPToolBox:
         # taking from params from set up  info
         stacking_param = False if not self.set_up_data[(
             Const.INCLUDE_STACKING, self.PLN_BLOCK)] else True  # false
-        products_excluded = []
-        # if self.set_up_data[(Const.INCLUDE_OTHERS, self.PLN_BLOCK)]:
-        #     products_excluded.append(Const.OTHER)
-        # if self.set_up_data[(Const.INCLUDE_IRRELEVANT, self.PLN_BLOCK)]:
-        #     products_excluded.append(Const.IRRELEVANT)
+        population_parameters = {'brand_fk': [brand], 'product_type': ['SKU']}
+
+        if self.set_up_data[(Const.INCLUDE_OTHERS, self.PLN_BLOCK)]:
+            population_parameters['product_type'].append(Const.OTHER)
+        if self.set_up_data[(Const.INCLUDE_IRRELEVANT, self.PLN_BLOCK)]:
+            population_parameters['product_type'].append(Const.IRRELEVANT)
         if self.set_up_data[(Const.INCLUDE_EMPTY, self.PLN_BLOCK)]:
-            #     products_excluded.append(Const.EMPTY)
+
+            population_parameters['product_type'].append(Const.EMPTY)
+        else:
             ignore_empty = True
-        product_filters = {'product_type': products_excluded}  # from Data file
+
+        if self.set_up_data[(Const.CATEGORY_INCLUDE, self.PLN_BLOCK)]:  # category_name
+            population_parameters['category'] = self.set_up_data[(Const.CATEGORY_INCLUDE, self.PLN_BLOCK)]
+
+        if self.set_up_data[(Const.SUB_CATEGORY_INCLUDE, self.PLN_BLOCK)]:  # sub_category_name
+            population_parameters['sub_category'] = self.set_up_data[(Const.SUB_CATEGORY_INCLUDE, self.PLN_BLOCK)]
+
+        # from Data file
         target = float(policy['block_target'].iloc[0]) / float(100)
 
         result = self.blocking_generator.network_x_block_together(location=template_name,
-                                                                  population={'brand_fk': [brand]},
+                                                                  population=population_parameters,
                                                                   additional={'minimum_block_ratio': target,
-                                                                              'allowed_products_filters':
-                                                                                  product_filters,
                                                                               'calculate_all_scenes': False,
                                                                               'ignore_empty': ignore_empty,
                                                                               'include_stacking': stacking_param,
@@ -227,11 +235,7 @@ class GSKJPToolBox:
         #     nodes_sum = nodes_sum + node_clust.node.keys()
         # # numerator
         score = 0 if result[result['is_block']].empty else 100
-        #
-        # df = df[df['brand_fk'] == brand]
-        # denominator = len(df)
-        # numerator = round(denominator * result['facing_percentage'].iloc[0])
-        # return score, target, numerator, denominator
+
         return score, target
 
     def msl_assortment(self, kpi_fk, kpi_name):
@@ -315,7 +319,7 @@ class GSKJPToolBox:
                """
 
         if assortment is None or assortment.empty:
-            return 0, 0, 0
+            return 0, 0, 0, 0
         brand_results = assortment[assortment['brand_fk']
                                    == brand]  # only assortment of desired brand
         if 'total' not in self.assortment.LVL2_HEADERS or 'passes' not in self.assortment.LVL2_HEADERS:
@@ -323,9 +327,9 @@ class GSKJPToolBox:
 
         lvl2 = self.assortment.calculate_lvl2_assortment(brand_results)
         if lvl2.empty:
-            return 0, 0, 0  # in case of no assortment return 0
+            return 0, 0, 0, 0  # in case of no assortment return 0
         result = np.divide(float(lvl2.iloc[0].passes), float(lvl2.iloc[0].total)) * 100
-        return lvl2.iloc[0].passes, lvl2.iloc[0].total, result
+        return lvl2.iloc[0].passes, lvl2.iloc[0].total, result, lvl2.iloc[0].assortment_group_fk
 
     def get_store_target(self):
         """
@@ -403,11 +407,11 @@ class GSKJPToolBox:
             identifier_parent = self.common.get_dictionary(
                 brand_fk=brand, kpi_fk=kpi_compliance_brands_fk)
             # msl_kpi
-            msl_numerator, msl_denominator, msl_result = self.pln_msl_summary(brand, assortment_msl)
+            msl_numerator, msl_denominator, msl_result, msl_assortment_group = self.pln_msl_summary(brand, assortment_msl)
             msl_score = msl_result * msl_target
             results_df.append({'fk': kpi_msl_fk, 'numerator_id': brand, 'denominator_id': self.store_fk,
                                'denominator_result': msl_denominator, 'numerator_result': msl_numerator, 'result':
-                                   msl_result, 'score': msl_score, 'target': (msl_target * 100),
+                                   msl_result, 'score': msl_score, 'target': (msl_target * 100),'context_id':msl_assortment_group,
                                'identifier_parent': identifier_parent,
                                'should_enter': True})
             # lsos kpi
