@@ -141,7 +141,8 @@ class CCTHToolBox(CCTHConsts):
                     template_name = ParseTemplates.TEMPLATE_TT
                 self.template = ParseTemplates(template=template_name)
                 self.calculation_type = self.template.TEMPLATE_TT
-                self.survey_id = '{};{};{}'.format('All Regions', self.store_type, self.segmentation)
+                self.survey_id = '{};{};{}'.format(
+                    'All Regions', self.store_type, self.segmentation)
                 self.availability_id = self.gap_id = '{};{}'.format('All Regions', self.store_type)
                 self.survey_questions = self.template.parse_sheet(self.SURVEY_SHEET)
             else:
@@ -227,7 +228,7 @@ class CCTHToolBox(CCTHConsts):
         trader_results = pd.DataFrame(columns=trader)
         trader_questions_ids = \
             {trader[0]:
-                 survey_q[survey_q['KPI'] == 'Thainamthip product 1 door']['Survey Q ID'],
+             survey_q[survey_q['KPI'] == 'Thainamthip product 1 door']['Survey Q ID'],
              trader[1]:
                  survey_q[survey_q['KPI'] == 'Minimum 2 Still Shelf']['Survey Q ID'],
              trader[2]:
@@ -252,7 +253,7 @@ class CCTHToolBox(CCTHConsts):
         cooler_rack_results = pd.DataFrame(columns=cooler_rack)
         cooler_rack_questions_ids = \
             {cooler_rack[2]:
-                 survey_q[survey_q['KPI'] == 'Purity']['Survey Q ID'],
+             survey_q[survey_q['KPI'] == 'Purity']['Survey Q ID'],
              cooler_rack[5]:
                  survey_q[(survey_q['KPI'] == 'Price Tag') &
                           (survey_q['KPI Group'].isin(['COOLER', 'RACK'])) &
@@ -278,26 +279,33 @@ class CCTHToolBox(CCTHConsts):
             sovi = self.sovi_scores.get(type)
             type_to_filter = 'PM' if type == 'KO PM Rack' else type
             groups = survey_a[(survey_a['selected_option_text'] is not None) & (
-                     survey_a['selected_option_text'].str.upper().str.contains(type_to_filter.upper()))]['group_num'].unique()
-            answers = survey_a[survey_a['group_num'].isin(groups)][['question_fk', 'selected_option_text']]
+                survey_a['selected_option_text'].str.upper().str.contains(type_to_filter.upper()))]['group_num'].unique()
+            answers = survey_a[survey_a['group_num'].isin(
+                groups)][['question_fk', 'selected_option_text']]
             for column in cooler_rack_results.columns.tolist():
                 if column == 'name':
                     result[column] = type
                 elif column == 'count':
                     result[column] = len(groups) if len(groups) else None
-                    if result[column]: total[column] = (total[column] if total.get(column) else 0) + int(result[column])
+                    if result[column]:
+                        total[column] = (total[column] if total.get(
+                            column) else 0) + int(result[column])
                 elif column == 'SOVI Cola>=50%':
                     result[column] = sovi[0] if sovi else None
-                    if result[column]: total[column] = (str(total[column]) if total.get(column) else '') + ' ' + str(
-                        result[column])
+                    if result[column]:
+                        total[column] = (str(total[column]) if total.get(column) else '') + ' ' + str(
+                            result[column])
                 elif column == 'Minimum 8 Still Facings':
                     result[column] = sovi[1] if sovi else None
-                    if result[column]: total[column] = (str(total[column]) if total.get(column) else '') + ' ' + str(
-                        result[column])
+                    if result[column]:
+                        total[column] = (str(total[column]) if total.get(column) else '') + ' ' + str(
+                            result[column])
                 else:
-                    result[column] = self.build_result_from_answers(cooler_rack_questions_ids[column], answers)
-                    if result[column]: total[column] = (str(total[column]) if total.get(column) else '') + ' ' + str(
-                        result[column])
+                    result[column] = self.build_result_from_answers(
+                        cooler_rack_questions_ids[column], answers)
+                    if result[column]:
+                        total[column] = (str(total[column]) if total.get(column) else '') + ' ' + str(
+                            result[column])
             cooler_rack_results = cooler_rack_results.append(pd.Series(result), ignore_index=True)
         cooler_rack_results = cooler_rack_results.append(pd.Series(total), ignore_index=True)
 
@@ -318,7 +326,8 @@ class CCTHToolBox(CCTHConsts):
 
     def build_cooler_rack_and_save(self, order, kpi_name, scene_type, kpi_set_fk):
         results = self.calculate_cooler_rack(scene_type, kpi_name)
-        results.loc[results['name'] == 'Total', 'name'] = 'Total KO Cooler' if kpi_name == 'COOLER' else 'Total KO Rack'
+        results.loc[results['name'] == 'Total',
+                    'name'] = 'Total KO Cooler' if kpi_name == 'COOLER' else 'Total KO Rack'
         for i, result in results.iterrows():
             for column in results:
                 if column != 'name':
@@ -354,7 +363,7 @@ class CCTHToolBox(CCTHConsts):
                  'Customer Developer': store_data['sales_rep_name']}
         for kpi_name in kpi_names:
             try:
-                value = match[kpi_name].replace("'","") if match[kpi_name] else ''
+                value = match[kpi_name].replace("'", "") if match[kpi_name] else ''
                 self.write_to_db_result_report(kpi_set_fk, value, kpi_name, order)
             except:
                 pass
@@ -367,7 +376,8 @@ class CCTHToolBox(CCTHConsts):
             child = childrens.iloc[c]
             kpi = child[self.template.KPI_NAME]
             if kpi == self.STATIC:
-                self.build_static_data_and_save(1, kpi_set_fk, child[self.template.SCENE_TYPE].split(','))
+                self.build_static_data_and_save(
+                    1, kpi_set_fk, child[self.template.SCENE_TYPE].split(','))
             if kpi == self.BPPC:
                 results = self.calculate_bppc(child['Scene Type'])
                 for i, result in results.iterrows():
@@ -379,7 +389,8 @@ class CCTHToolBox(CCTHConsts):
                 params = child['Scene Type'].split(',')
                 for param in params:
                     kpi_name, scene_type = param.split(':')
-                    cooler_count = len(self.scif[self.scif['template_name'] == scene_type]['scene_id'].unique())
+                    cooler_count = len(self.scif[self.scif['template_name']
+                                                 == scene_type]['scene_id'].unique())
                     self.write_to_db_result_report(kpi_set_fk, cooler_count, kpi_name, order + 1)
                     order += 1
             elif kpi == self.RACK:
@@ -400,7 +411,8 @@ class CCTHToolBox(CCTHConsts):
                 order = 600
                 results = self.calculate_trader()
                 for column in results.columns:
-                    self.write_to_db_result_report(kpi_set_fk, results.loc[0, column], column, order + 1)
+                    self.write_to_db_result_report(
+                        kpi_set_fk, results.loc[0, column], column, order + 1)
                     order += 1
             elif kpi == self.BRAND_BLOCK:
                 result = self.build_result_from_answers([child['Scene Type']], self.survey_response)
@@ -432,9 +444,12 @@ class CCTHToolBox(CCTHConsts):
                         self.build_summary_and_save(708, 'BRAND BLOCK', result, kpi_set_fk)
 
                     if result == 'RED SCORE':
-                        self.write_to_db_result_report(kpi_set_fk, "%.2f" % self.summary[result][0], 'RED Score Achieved', 900)
-                        self.write_to_db_result_report(kpi_set_fk, "%.2f" % self.summary[result][1], 'RED Score Targeted', 901)
-                        self.write_to_db_result_report(kpi_set_fk, "%.2f" % self.summary[result][2], 'RED Score (Outlet)', 902)
+                        self.write_to_db_result_report(
+                            kpi_set_fk, "%.2f" % self.summary[result][0], 'RED Score Achieved', 900)
+                        self.write_to_db_result_report(
+                            kpi_set_fk, "%.2f" % self.summary[result][1], 'RED Score Targeted', 901)
+                        self.write_to_db_result_report(
+                            kpi_set_fk, "%.2f" % self.summary[result][2], 'RED Score (Outlet)', 902)
                         if '7-11' not in self.store_type:
                             self.write_to_db_result_report(kpi_set_fk, self.summary[result][3],
                                                            'RED 80 - 100 = A 60 - 79.99 = B 0 - 59.99 = C', 903)
@@ -449,7 +464,8 @@ class CCTHToolBox(CCTHConsts):
         if answers.empty:
             return None
         result = ''
-        thi_answers = answers[answers['question_fk'].isin(question_ids)]['selected_option_text'].tolist()
+        thi_answers = answers[answers['question_fk'].isin(
+            question_ids)]['selected_option_text'].tolist()
         for thi_answer in thi_answers:
             if thi_answer.encode('utf-8') in self.YES:
                 result += ' Yes'
@@ -522,7 +538,7 @@ class CCTHToolBox(CCTHConsts):
                 scores = [0]
                 self.summary[main_child[self.template.KPI_NAME]] = [None, None, None]
                 if self.template.EXECUTION_CONDITION in main_child.keys() and main_child[
-                    self.template.EXECUTION_CONDITION]:
+                        self.template.EXECUTION_CONDITION]:
                     scores = None
             if scores:
                 targeted_atomic_kpi = 0
@@ -538,22 +554,27 @@ class CCTHToolBox(CCTHConsts):
                 else:
                     score = pass_percentage
                 targeted = targeted_atomic_kpi if targeted_atomic_kpi else len(scores)
-                self.summary[main_child[self.template.KPI_NAME]] = [scores.count(100), targeted, score]
+                self.summary[main_child[self.template.KPI_NAME]] = [
+                    scores.count(100), targeted, score]
                 kpi_name = main_child[self.template.KPI_NAME]
-                kpi_fk = self.kpi_static_data[self.kpi_static_data['kpi_name'] == kpi_name]['kpi_fk'].values[0]
+                kpi_fk = self.kpi_static_data[self.kpi_static_data['kpi_name']
+                                              == kpi_name]['kpi_fk'].values[0]
                 set_scores[kpi_fk] = (score_weight, score)
         total_weight = sum([score[0] for score in set_scores.values()])
         for kpi_fk in set_scores.keys():
             normalized_weight = round((set_scores[kpi_fk][0] / total_weight) * 100, 2)
-            self.write_to_db_result(kpi_fk, (set_scores[kpi_fk][1], normalized_weight), level=self.LEVEL2)
+            self.write_to_db_result(
+                kpi_fk, (set_scores[kpi_fk][1], normalized_weight), level=self.LEVEL2)
         self.calculate_bonus(set_scores)
         final_score = sum([score[0] * score[1] for score in set_scores.values()])
         red_score = final_score / total_weight
 
         red_score_result = 100 if red_score > 100 else red_score
-        red_letter = 'A' if 100 >= red_score_result >= 80 else ('B' if 79.99 >= red_score_result >= 60 else 'C')
+        red_letter = 'A' if 100 >= red_score_result >= 80 else (
+            'B' if 79.99 >= red_score_result >= 60 else 'C')
         self.summary['RED SCORE'] = [final_score, total_weight * 100, red_score_result, red_letter]
-        set_fk = self.kpi_static_data[self.kpi_static_data['kpi_set_name'] == self.RED_SCORE]['kpi_set_fk'].values[0]
+        set_fk = self.kpi_static_data[self.kpi_static_data['kpi_set_name']
+                                      == self.RED_SCORE]['kpi_set_fk'].values[0]
         self.write_to_db_result(set_fk, red_score_result, level=self.LEVEL1)
 
     def calculate_bonus(self, set_scores):
@@ -589,7 +610,8 @@ class CCTHToolBox(CCTHConsts):
             score_weight = main_child[self.template.WEIGHT]
             result = scores
             kpi_name = main_child[self.template.KPI_NAME]
-            kpi_fk = self.kpi_static_data[self.kpi_static_data['kpi_name'] == kpi_name]['kpi_fk'].values[0]
+            kpi_fk = self.kpi_static_data[self.kpi_static_data['kpi_name']
+                                          == kpi_name]['kpi_fk'].values[0]
             self.write_to_db_result(kpi_fk, (result, score_weight * 100), level=self.LEVEL2)
             self.summary[main_child[self.template.KPI_NAME]][2] = result
             set_scores[kpi_fk] = (score_weight, result)
@@ -651,7 +673,8 @@ class CCTHToolBox(CCTHConsts):
                 return None
             survey_data = survey_data.iloc[0]
             survey_id = int(survey_data[self.template.survey_consts.SURVEY_ID])
-            target_answers = survey_data[self.template.survey_consts.SURVEY_ANSWER].split(self.template.SEPARATOR)
+            target_answers = survey_data[self.template.survey_consts.SURVEY_ANSWER].split(
+                self.template.SEPARATOR)
             survey_answer = self.tools.get_survey_answer(('question_fk', survey_id))
             if survey_answer:
                 survey_result = True if survey_answer.strip() in target_answers else False
@@ -670,7 +693,8 @@ class CCTHToolBox(CCTHConsts):
         products = str(availability_data[self.template.availability_consts.PRODUCT_EAN_CODES]).split(
             self.template.SEPARATOR)
         products = map(lambda x: x.strip(), products)
-        availability = self.tools.calculate_availability(product_ean_code=products, additional_attribute_1=scene_types)
+        availability = self.tools.calculate_availability(
+            product_ean_code=products, additional_attribute_1=scene_types)
         availability_result = 100 if availability >= availability_target else 0
 
         if survey_result and availability_result:
@@ -696,7 +720,8 @@ class CCTHToolBox(CCTHConsts):
                 scenes_group = mandatory_scenes[index].split(self.template.SEPARATOR)
                 relevant_scenes = self.scif[
                     self.tools.get_filter_condition(self.scif, template_name=(scenes_group, self.tools.CONTAIN_FILTER))]
-                relevant_scenes = relevant_scenes[~relevant_scenes['template_name'].isin(['KO Cooler Other'])]
+                relevant_scenes = relevant_scenes[~relevant_scenes['template_name'].isin([
+                                                                                         'KO Cooler Other'])]
                 number_of_scenes = len(relevant_scenes['scene_id'].unique())
                 if number_of_scenes > 0:
                     survey_ids.extend(survey_group.split(self.template.SEPARATOR))
@@ -741,7 +766,8 @@ class CCTHToolBox(CCTHConsts):
             scenes_group = mandatory_scenes.split(self.template.SEPARATOR)
             relevant_scenes = self.scif[
                 self.tools.get_filter_condition(self.scif, template_name=(scenes_group, self.tools.CONTAIN_FILTER))]
-            relevant_scenes = relevant_scenes[~relevant_scenes['template_name'].isin(['KO Cooler Other'])]
+            relevant_scenes = relevant_scenes[~relevant_scenes['template_name'].isin([
+                                                                                     'KO Cooler Other'])]
             number_of_scenes = len(relevant_scenes['scene_id'].unique())
             if number_of_scenes == 0:
                 return 0
@@ -796,7 +822,8 @@ class CCTHToolBox(CCTHConsts):
         for survey_group in survey_params['Question Group'].unique():
             desired_survey_answers = []
             none_answer_number = 0
-            survey_q_ids = survey_params[survey_params['Question Group'] == survey_group]['Survey Q ID']
+            survey_q_ids = survey_params[survey_params['Question Group']
+                                         == survey_group]['Survey Q ID']
             for survey_id in survey_q_ids:
                 survey_answer = self.tools.get_survey_answer(('question_fk', survey_id))
                 if survey_answer and survey_answer.encode('utf-8') in self.YES:
@@ -849,7 +876,8 @@ class CCTHToolBox(CCTHConsts):
         """
         sos_brands = params[self.template.SOS_NUMERATOR].split(self.template.SEPARATOR)
         all_brands = params[self.template.SOS_DENOMINATOR].split(self.template.SEPARATOR)
-        result = self.tools.calculate_share_of_shelf({'brand_name': sos_brands}, brand_name=all_brands)
+        result = self.tools.calculate_share_of_shelf(
+            {'brand_name': sos_brands}, brand_name=all_brands)
         target = params[self.template.TARGET]
         score = 100 if result >= target else 0
         return score, result * 100, target * 100
@@ -865,13 +893,15 @@ class CCTHToolBox(CCTHConsts):
         facing_target = int(sovi_params['Facing Target'])
         scene_types = sovi_params['Scene Type'].iloc[0].split(',')
         if scene_types[0] != 'all':
-            scene_types = self.scif[self.scif['template_name'].isin(scene_types)]['template_name'].unique().tolist()
+            scene_types = self.scif[self.scif['template_name'].isin(
+                scene_types)]['template_name'].unique().tolist()
         params_row = sovi_params[:]
         params_row.pop(self.template.SCENE_TYPE)
         check_failed_type = True
         for scene_type in scene_types:
             if scene_type == 'all':
-                result_numerator, result_denominator = self.calculate_share_of_shelf_single(params=params_row.iloc[0])
+                result_numerator, result_denominator = self.calculate_share_of_shelf_single(
+                    params=params_row.iloc[0])
                 try:
                     result = float(result_numerator) / float(result_denominator)
                 except:
@@ -945,7 +975,7 @@ class CCTHToolBox(CCTHConsts):
     def calculate_share_of_shelf_single(self, params, scene_type_source='additional_attribute_1', scene_type=None,
                                         include_empty=EXCLUDE_EMPTY, **kargs):
         numerator = {params['Type_Numerator']: params['Numerator'].split(self.template.SEPARATOR)}
-        denominator = {params['Type_Denominator']: params['Denominator'].split(self.template.SEPARATOR)}
+        denominator = {params['Type_Denominator']                       : params['Denominator'].split(self.template.SEPARATOR)}
         if scene_type is not None:
             numerator.update({scene_type_source: scene_type})
             denominator.update({scene_type_source: scene_type})
@@ -1015,14 +1045,16 @@ class CCTHToolBox(CCTHConsts):
 
         """
         if level == self.LEVEL1:
-            kpi_set_name = self.kpi_static_data[self.kpi_static_data['kpi_set_fk'] == fk]['kpi_set_name'].values[0]
+            kpi_set_name = self.kpi_static_data[self.kpi_static_data['kpi_set_fk']
+                                                == fk]['kpi_set_name'].values[0]
             attributes = pd.DataFrame([(kpi_set_name, self.session_uid, self.store_id, self.visit_date.isoformat(),
                                         format(score, '.2f'), fk)],
                                       columns=['kps_name', 'session_uid', 'store_fk', 'visit_date', 'score_1',
                                                'kpi_set_fk'])
         elif level == self.LEVEL2:
             score, weight = score
-            kpi_name = self.kpi_static_data[self.kpi_static_data['kpi_fk'] == fk]['kpi_name'].values[0]
+            kpi_name = self.kpi_static_data[self.kpi_static_data['kpi_fk']
+                                            == fk]['kpi_name'].values[0]
             attributes = pd.DataFrame([(self.session_uid, self.store_id, self.visit_date.isoformat(),
                                         fk, kpi_name, score, weight)],
                                       columns=['session_uid', 'store_fk', 'visit_date', 'kpi_fk', 'kpk_name',
@@ -1039,7 +1071,8 @@ class CCTHToolBox(CCTHConsts):
             data = self.kpi_static_data[self.kpi_static_data['atomic_kpi_fk'] == fk]
             atomic_kpi_name = data['atomic_kpi_name'].values[0]
             kpi_fk = data['kpi_fk'].values[0]
-            kpi_set_name = self.kpi_static_data[self.kpi_static_data['atomic_kpi_fk'] == fk]['kpi_set_name'].values[0]
+            kpi_set_name = self.kpi_static_data[self.kpi_static_data['atomic_kpi_fk']
+                                                == fk]['kpi_set_name'].values[0]
             attributes = pd.DataFrame([(atomic_kpi_name, self.session_uid, kpi_set_name, self.store_id,
                                         self.visit_date.isoformat(), datetime.utcnow().isoformat(),
                                         score, kpi_fk, fk, threshold, result)],
@@ -1075,7 +1108,8 @@ class CCTHToolBox(CCTHConsts):
         """
         insert_queries = self.merge_insert_queries(self.kpi_results_queries)
         cur = self.rds_conn.db.cursor()
-        delete_queries = CCTHQueries.get_delete_session_results_query(self.session_uid, self.session_fk)
+        delete_queries = CCTHQueries.get_delete_session_results_query(
+            self.session_uid, self.session_fk)
         for query in delete_queries:
             cur.execute(query)
         for query in insert_queries:

@@ -320,8 +320,11 @@ class CCZAToolBox:
             checking if the shelf is sorted like the brands list.
             :return: 100 if it's fine, 0 otherwise.
         """
-        progression_list = ['COCA-COLA', 'COCA-COLA Life', 'COKE ZERO', 'COKE LIGHT', 'TAB', 'SPRITE',
-                            'SPRITE ZERO', 'FANTA ORANGE', 'FANTA ZERO', 'FANTA Grape', 'FANTA Pinapple']
+        # progression_list = ['COCA-COLA', 'COCA-COLA Life', 'COKE ZERO', 'COKE LIGHT', 'TAB', 'SPRITE',
+        #                     'SPRITE ZERO', 'FANTA ORANGE', 'FANTA ZERO', 'FANTA Grape', 'FANTA Pinapple']
+        progression_list = ['COCA-COLA', 'COCA COLA PLUS COFFEE', 'COKE ZERO', 'COKE LIGHT',
+                            'COCA COLA NO SUGAR NO CAFFEINE', 'TAB', 'SPRITE', 'SPRITE ZERO', 'FANTA ORANGE',
+                            'Fanta Mango', 'FANTA Pinapple', 'FANTA Grape', 'STONEY']
 
         filtered_scif = self.scif[
             (~self.scif['location_type'].isin(["Pricing Scene Types", "Not For Flow"])) &

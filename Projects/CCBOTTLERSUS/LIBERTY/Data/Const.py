@@ -5,7 +5,7 @@ __author__ = 'hunter'
 
 class Const(object):
     TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)),
-                                 'Liberty_bottlers_Template_subquestions_added_2019_06_27_RB.xlsx')
+                                 'Liberty_bottlers_Template_subquestions_added_2019_07_01_RB.xlsx')
     LIBERTY = ' - Liberty'
     DRILLDOWN = ' - Drilldown'
     RED_SCORE_PARENT = 'RED SCORE - Liberty'
@@ -23,7 +23,6 @@ class Const(object):
     MINIMUM_FACINGS = 'minimum_facings'
     SURVEY_QUESTION_SKUS = 'Survey_Question_SKUs'
     MARKET_SHARE = 'market_share'
-
 
     SHEETS = [KPIS, SOS, AVAILABILITY, COUNT_OF_DISPLAY, SHARE_OF_DISPLAY, SURVEY, MINIMUM_FACINGS,
               SURVEY_QUESTION_SKUS, MARKET_SHARE, SHARE_OF_COOLERS]

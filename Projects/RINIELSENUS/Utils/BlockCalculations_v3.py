@@ -37,7 +37,8 @@ class Block(BaseCalculation):
 
     def __init__(self, data_provider, output=None, ps_data_provider=None, common=None, rds_conn=None,
                  front_facing=False, custom_scif=None, custom_matches=None, **kwargs):
-        super(Block, self).__init__(data_provider, output, ps_data_provider, common, rds_conn, **kwargs)
+        super(Block, self).__init__(data_provider, output,
+                                    ps_data_provider, common, rds_conn, **kwargs)
         self._position_graphs = PositionGraphs(self.data_provider)
         self.front_facing = front_facing
         self.outliers_threshold = Default.outliers_threshold
@@ -50,14 +51,15 @@ class Block(BaseCalculation):
         self.adj_graphs_by_scene = {}
         self.masking_data = transform_maskings(retrieve_maskings(self.data_provider.project_name,
                                                                  self.data_provider.scenes_info['scene_fk'].to_list()))
-        self.masking_data = self.masking_data.merge(self.matches[['probe_match_fk', 'scene_fk']], on=['probe_match_fk'])
-        self.matches_df = self.matches.merge(self.data_provider.all_products_including_deleted, on='product_fk')
+        self.masking_data = self.masking_data.merge(
+            self.matches[['probe_match_fk', 'scene_fk']], on=['probe_match_fk'])
+        self.matches_df = self.matches.merge(
+            self.data_provider.all_products_including_deleted, on='product_fk')
         self.matches_df = self.matches_df[~(self.matches_df['product_type'].isin(['Irrelevant', 'POS'])) &
                                            (self.matches_df['stacking_layer'] > 0)]
         self.matches_df[Block.BLOCK_KEY] = None
 
     def network_x_block_together(self, population, location=None, additional=None):
-
         """
         :param location: The location parameters which the blocks are checked for (scene_type for example).
         :param population: These are the parameters which the blocks are checked for.
@@ -124,22 +126,26 @@ class Block(BaseCalculation):
             return results_df
 
         # Identify relevant block values
-        block_value = ['_'.join(str(x) for x in elem) for elem in list(itertools.product(*population.values()))]
+        block_value = ['_'.join(str(x) for x in elem)
+                       for elem in list(itertools.product(*population.values()))]
 
         # Creating unified filters from the block filters and the allowed filters
         allowed_product_filter = []
         if block_parameters[AdditionalAttr.ALLOWED_PRODUCTS_FILTERS]:
-            allowed_product_filter = block_parameters[AdditionalAttr.ALLOWED_PRODUCTS_FILTERS].keys()
+            allowed_product_filter = block_parameters[AdditionalAttr.ALLOWED_PRODUCTS_FILTERS].keys(
+            )
 
         # For each relevant scene check if a block is exist
         for scene in relevant_scenes:
             try:
                 # filter masking and matches data by the scene
-                scene_mask = self.masking_data[self.masking_data['scene_fk'] == scene].drop('scene_fk', axis=1)
+                scene_mask = self.masking_data[self.masking_data['scene_fk'] == scene].drop(
+                    'scene_fk', axis=1)
                 scene_matches = self.matches_df[self.matches_df['scene_fk'] == scene]
                 relevant_matches_for_block = self.filter_graph_data(scene_matches, population, operator=operator,
                                                                     is_blocks_graph=False)
-                scene_matches = scene_matches.drop('pk', axis=1).rename(columns={'scene_match_fk': 'pk'})
+                scene_matches = scene_matches.drop('pk', axis=1).rename(
+                    columns={'scene_match_fk': 'pk'})
                 if relevant_matches_for_block.empty:
                     continue
 
@@ -150,14 +156,15 @@ class Block(BaseCalculation):
                 if scene not in self.adj_graphs_by_scene:
                     # Create the adjacency graph on the data we filtered above
                     graph = AdjacencyGraphBuilder.initiate_graph_by_dataframe(scene_matches, scene_mask,
-                            additional_attributes=['rect_x', 'rect_y'] + allowed_product_filter +
-                            list(scene_matches.columns))
+                                                                              additional_attributes=['rect_x', 'rect_y'] + allowed_product_filter +
+                                                                              list(scene_matches.columns))
                     self.adj_graphs_by_scene[scene] = graph
                 adj_g = self.adj_graphs_by_scene[scene].copy()
 
                 # Update the block_key node attribute based on the population fields
                 for i, n in adj_g.nodes(data=True):
-                    n[Block.BLOCK_KEY].stored_values = set(['_'.join([str(*n[x]) for x in population.keys()])])
+                    n[Block.BLOCK_KEY].stored_values = set(
+                        ['_'.join([str(*n[x]) for x in population.keys()])])
 
                 if allowed_product_filter:
                     adj_g = self._set_allowed_nodes(adj_g, block_parameters[AdditionalAttr.ALLOWED_PRODUCTS_FILTERS],
@@ -172,7 +179,7 @@ class Block(BaseCalculation):
                 adj_g = adj_g.subgraph(filtered_nodes)
 
                 # Creating the condensed graph based on the adjacency graph created above
-                if len(population.keys()) == 1 and population.keys()[0] != CalcConst.PRODUCT_FK :
+                if len(population.keys()) == 1 and population.keys()[0] != CalcConst.PRODUCT_FK:
                     # adj_g = AdjacencyGraphBuilder.build_adjacency_graph_by_level(Block.BLOCK_KEY, adj_g)
                     adj_g = AdjacencyGraphBuilder.condense_graph_by_level(Block.BLOCK_KEY, adj_g)
 
@@ -187,7 +194,8 @@ class Block(BaseCalculation):
 
                 # For each component in the graph calculate the blocks data
                 for component in components:
-                    component_data = self.calculate_block_data(component, relevant_matches_for_block)
+                    component_data = self.calculate_block_data(
+                        component, relevant_matches_for_block)
 
                     blocks_res = blocks_res.append(component_data)
 
@@ -208,7 +216,8 @@ class Block(BaseCalculation):
 
                         # If needed, calculate the block's orientation
                         if block_parameters[AdditionalAttr.CHECK_VERTICAL_HORIZONTAL]:
-                            orientation = self.handle_horizontal_and_vertical(row.component, row.num_of_shelves)
+                            orientation = self.handle_horizontal_and_vertical(
+                                row.component, row.num_of_shelves)
 
                         results_df = results_df.append(pd.DataFrame(columns=[ColumnNames.CLUSTER, ColumnNames.SCENE_FK,
                                                                              ColumnNames.ORIENTATION,
@@ -241,7 +250,7 @@ class Block(BaseCalculation):
         :param num_of_shelves: num of shelves the block is spread on.
         :return: The threshold for removing the outliers for the horizontal/vertical calculation.
         """
-        #TODO - Optimize the function we should have some predefined calcs in pandas
+        # TODO - Optimize the function we should have some predefined calcs in pandas
 
         num_of_shelves = int(num_of_shelves)
         x_values = sorted(self.get_matches_by_graph_att(graph, 'rect_x'))
@@ -316,7 +325,8 @@ class Block(BaseCalculation):
         if not is_blocks_graph:
             exclude['product_type'].append('Empty')
         filtered_df = self.input_parser.filter_df(
-            conditions={'population': {'include': filters, 'exclude': exclude, 'include_operator': operator}},
+            conditions={'population': {'include': filters,
+                                       'exclude': exclude, 'include_operator': operator}},
             data_frame_to_filter=df1)
         return filtered_df
 
@@ -346,7 +356,8 @@ class Block(BaseCalculation):
         min_shelf = 1
 
         # Check if the node is a valid product or allowed attribute
-        relevant_matches = list(itertools.chain(*(d[CalcConst.MATCH_FK] for n, d in component.nodes(data=True))))
+        relevant_matches = list(itertools.chain(
+            *(d[CalcConst.MATCH_FK] for n, d in component.nodes(data=True))))
         block_facings = len(relevant_matches_for_block[(relevant_matches_for_block['scene_match_fk'].isin(
             relevant_matches)) & relevant_matches_for_block['product_type'].isin(['SKU', 'Other'])])
 

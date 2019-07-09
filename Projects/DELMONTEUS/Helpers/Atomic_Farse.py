@@ -6,8 +6,6 @@ from Trax.Cloud.Services.Connector.Keys import DbUsers
 from Trax.Data.Projects.Connector import ProjectConnector
 
 
-
-
 class AtomicFarse():
     PS_TYPE = 'PS scores'
     KPI = 'static.kpi_level_2'
@@ -44,11 +42,9 @@ class AtomicFarse():
         self.family_dict = self.family_table.set_index('name')['pk'].to_dict()
         self.entity_dict = self.entity_table.set_index('name')['pk'].to_dict()
 
-
         self.pk_max_family = max(self.family_table['pk'])
 
         self.errors = []
-
 
         self.main()
 
@@ -83,7 +79,7 @@ class AtomicFarse():
         range_pks = [i for i in table['pk'] if self.MIN <= i < self.MAX]
         return max(range_pks)
 
-    def generic_update(self, iterable, max_len, update_function, group, tracker_dict={}, tracker_set= set(), pk=0,
+    def generic_update(self, iterable, max_len, update_function, group, tracker_dict={}, tracker_set=set(), pk=0,
                        gen_kwargs=0):
         for item in iterable:
             if len(item) <= max_len:
@@ -116,14 +112,15 @@ class AtomicFarse():
 
         # num = self.get_kpi_line_params(kpi_line, name=num_check)[-1][-1]
         # den = self.get_kpi_line_params(kpi_line, name='denominator')[-1][-1] if den_check else None
-        use_result = self.read_cell_from_line(kpi_line, Const.RESULT) if Const.RESULT in kpi_line.index else None
+        use_result = self.read_cell_from_line(
+            kpi_line, Const.RESULT) if Const.RESULT in kpi_line.index else None
 
         is_session = 1 if session_lvl else 0
         is_scene = 0 if session_lvl else 1
         family_fk = self.family_dict[family.upper()]
         result_fk = 2 if use_result else 'null'
-        num_fk = 999 #self.entity_dict[num]
-        den_fk = 999 #self.entity_dict[num] if den else 'null'
+        num_fk = 999  # self.entity_dict[num]
+        den_fk = 999  # self.entity_dict[num] if den else 'null'
 
         return {'family_fk': family_fk, 'num_fk': num_fk, 'den_fk': den_fk, 'result_fk': result_fk,
                 'session': is_session, 'scene': is_scene}
@@ -138,7 +135,8 @@ class AtomicFarse():
         c = 1
         while 1:
             if '{}param {}'.format(name, c) in attribs and kpi_line['{}param {}'.format(name, c)]:
-                filters[kpi_line['{}param {}'.format(name, c)]] += self.splitter(kpi_line['{}value {}'.format(name, c)])
+                filters[kpi_line['{}param {}'.format(
+                    name, c)]] += self.splitter(kpi_line['{}value {}'.format(name, c)])
             else:
                 if c > 3:  # just in case someone inexplicably chose a nonlinear numbering format.
                     break
@@ -169,7 +167,7 @@ class AtomicFarse():
 
         return val
 
-    def get_max_len(self, attribs, field_name = 'name'):
+    def get_max_len(self, attribs, field_name='name'):
         return int(attribs.loc[attribs['Field'] == field_name, 'Type'].values[0].split('(')[1].split(')')[0])
 
     def read_table(self, table):
@@ -198,7 +196,3 @@ class AtomicFarse():
 
     def get_table_attributes(self, table):
         return pd.read_sql_query('Show Columns FROM {};'.format(table), self.rds_conn.db)
-
-
-
-
