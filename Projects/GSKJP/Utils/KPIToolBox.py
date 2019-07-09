@@ -434,12 +434,11 @@ class GSKJPToolBox:
                                    identifier_parent, 'should_enter': True, 'weight': (block_benchmark * 100)})
 
             # position score
-            if df_position_score is None:
-                continue
-            position_result, position_score, position_num, position_den, position_benchmark = self.position_shelf(brand,
-                                                                                                                  policy
-                                                                                                                  ,
-                                                                                                                  df_position_score)
+            if df_position_score is not None:
+                position_result, position_score, position_num, position_den, position_benchmark = self.position_shelf(
+                    brand, policy, df_position_score)
+            else:
+                position_result, position_score, position_num, position_den, position_benchmark = 0, 0, 0, 0, 0
             position_score = position_score * posit_target
             results_df.append({'fk': kpi_position_fk, 'numerator_id': brand, 'denominator_id': self.store_fk,
                                'denominator_result': position_den, 'numerator_result': position_num, 'result':
