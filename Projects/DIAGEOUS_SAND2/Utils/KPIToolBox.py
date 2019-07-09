@@ -638,7 +638,7 @@ class ToolBox:
             if self.state_fk in relevant_competitions[Const.EX_STATE_FK].unique().tolist():
                 relevant_competitions = relevant_competitions[relevant_competitions[Const.EX_STATE_FK] == self.state_fk]
             else:
-                default_state = relevant_competitions[Const.EX_STATE_FK][0]
+                default_state = relevant_competitions[Const.EX_STATE_FK].iloc[0]
                 Log.error("The store's state has no products, shelf_facings is calculated with state '{}'.".format(
                     default_state))
                 relevant_competitions = relevant_competitions[relevant_competitions[Const.EX_STATE_FK] == default_state]
@@ -852,7 +852,7 @@ class ToolBox:
         if self.state_fk in relevant_competitions[Const.EX_STATE_FK].unique().tolist():
             relevant_competitions = relevant_competitions[relevant_competitions[Const.EX_STATE_FK] == self.state_fk]
         else:
-            default_state = relevant_competitions[Const.EX_STATE_FK][0]
+            default_state = relevant_competitions[Const.EX_STATE_FK].iloc[0]
             Log.error("The store has no state, MSRP is calculated with state '{}'.".format(default_state))
             relevant_competitions = relevant_competitions[relevant_competitions[Const.EX_STATE_FK] == default_state]
         kpi_db_names = self.pull_kpi_fks_from_names(Const.DB_OFF_NAMES[kpi_name])
