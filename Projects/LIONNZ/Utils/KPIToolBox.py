@@ -179,14 +179,17 @@ class LIONNZToolBox:
     def calculate_and_save_prod_presence_and_oos_products(self, assortment_product_fks,
                                                           prod_presence_kpi_fk, oos_prod_kpi_fk,
                                                           distribution_kpi_name, oos_kpi_name):
-        total_products_in_scene = self.scif["item_id"].unique()
-        present_products = np.intersect1d(total_products_in_scene, assortment_product_fks)
-        extra_products = np.setdiff1d(total_products_in_scene, present_products)
+        # all assortment products are only in own manufacturers context
+        total_own_products_in_scene = self.scif[
+            self.scif['manufacturer_fk'].astype(int) == self.own_man_fk
+        ]["item_id"].unique()
+        present_products = np.intersect1d(total_own_products_in_scene, assortment_product_fks)
+        extra_products = np.setdiff1d(total_own_products_in_scene, present_products)
         oos_products = np.setdiff1d(assortment_product_fks, present_products)
         product_map = {
-            OOS_CODE: present_products,
-            PRESENT_CODE: extra_products,
-            EXTRA_CODE: oos_products
+            OOS_CODE: oos_products,
+            PRESENT_CODE: present_products,
+            EXTRA_CODE: extra_products
         }
         # save product presence; with distribution % kpi as parent
         for assortment_code, product_fks in product_map.iteritems():
@@ -221,13 +224,20 @@ class LIONNZToolBox:
         """
         Log.info("Calculate distribution and OOS for {}".format(self.project_name))
         scene_products = pd.Series(self.scif["item_id"].unique())
+        total_products_in_assortment = len(assortment_product_fks)
         count_of_assortment_prod_in_scene = assortment_product_fks.isin(scene_products).sum()
+        oos_count = total_products_in_assortment - count_of_assortment_prod_in_scene
         #  count of lion sku / all sku assortment count
-        distribution_perc = count_of_assortment_prod_in_scene / float(len(assortment_product_fks)) * 100
+        if not total_products_in_assortment:
+            Log.info("No assortments applicable for session {sess}.".format(sess=self.session_uid))
+            return 0
+        distribution_perc = count_of_assortment_prod_in_scene / float(total_products_in_assortment) * 100
         oos_perc = 100 - distribution_perc
         self.common.write_to_db_result(fk=distribution_kpi_fk,
                                        numerator_id=self.own_man_fk,
+                                       numerator_result=count_of_assortment_prod_in_scene,
                                        denominator_id=self.store_id,
+                                       denominator_result=total_products_in_assortment,
                                        context_id=self.store_id,
                                        result=distribution_perc,
                                        score=distribution_perc,
@@ -236,10 +246,12 @@ class LIONNZToolBox:
                                        )
         self.common.write_to_db_result(fk=oos_kpi_fk,
                                        numerator_id=self.own_man_fk,
+                                       numerator_result=oos_count,
                                        denominator_id=self.store_id,
+                                       denominator_result=total_products_in_assortment,
                                        context_id=self.store_id,
                                        result=oos_perc,
-                                       score=distribution_perc,
+                                       score=oos_perc,
                                        identifier_result="{}_{}".format(OOS_MAN_BY_STORE_PERC, self.store_id),
                                        should_enter=True
                                        )
@@ -342,10 +354,16 @@ class LIONNZToolBox:
             result = numerator_result = 0  # SAVE ALL RESULTS AS ZERO
             for each_den_fk in denominator_fks_to_save_zero:
                 context_id = each_den_fk
-                _query = "{key}=='{value_id}'".format(key=PARAM_DB_MAP[kpi['denominator'].iloc[0]]['key'],
-                                                     value_id=each_den_fk)
+                # query out empty product IDs since FSOS is not interested in them.
+                _query = "{key}=='{value_id}' and product_fk not in '{exc_prod_ids}'".format(
+                    key=PARAM_DB_MAP[kpi['denominator'].iloc[0]]['key'],
+                    value_id=each_den_fk,
+                    exc_prod_ids=self.empty_prod_ids.tolist()
+                )
                 # find number of products in that context
                 denominator_result = len(dataframe_to_process.query(_query))
+                if not denominator_result:
+                    continue
                 self.common.write_to_db_result(fk=kpi['pk'].iloc[0],
                                                numerator_id=numerator_fk,
                                                denominator_id=each_den_fk,
@@ -380,6 +398,12 @@ class LIONNZToolBox:
                 denominator_df = dataframe_to_process.query('{key} == {value}'.format(
                     key=PARAM_DB_MAP[kpi['denominator'].iloc[0]]['key'],
                     value=denominator_id))
+            if not len(denominator_df):
+                Log.info("No denominator data for session {sess} to calculate  {name}".format(
+                    sess=self.session_uid,
+                    name=kpi.kpi_name.iloc[0]
+                ))
+                continue
             result = len(group_data) / float(len(denominator_df))
             if not is_nan(kpi[KPI_PARENT_COL].iloc[0]):
                 kpi_parent = self.kpi_static_data[(self.kpi_static_data[KPI_TYPE_COL] == kpi[KPI_PARENT_COL].iloc[0])
