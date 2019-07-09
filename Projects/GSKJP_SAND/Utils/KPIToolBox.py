@@ -411,9 +411,9 @@ class GSKJPToolBox:
             # msl_kpi
             msl_numerator, msl_denominator, msl_result, msl_assortment_group = self.pln_msl_summary(brand, assortment_msl)
             msl_score = msl_result * msl_target
-            results_df.append({'fk': kpi_msl_fk, 'numerator_id': brand, 'denominator_id': msl_assortment_group,
+            results_df.append({'fk': kpi_msl_fk, 'numerator_id': brand, 'denominator_id':self.store_fk,
                                'denominator_result': msl_denominator, 'numerator_result': msl_numerator, 'result':
-                                   msl_result, 'score': msl_score, 'target': (msl_target*100),
+                                   msl_result, 'score': msl_score, 'target': (msl_target*100), 'context_id':msl_assortment_group,
                                'identifier_parent': identifier_parent,
                                'should_enter': True})
             # lsos kpi
