@@ -14,6 +14,8 @@ from Trax.Apps.Core.Testing.BaseCase import TestFunctionalCase, MagicMock
 
 from Tests.TestUtils import remove_cache_and_storage
 import pandas as pd
+from Projects.PNGJP.Tests.Data import parse_template_data
+from Projects.PNGJP.Tests.Data import expected_results_from_db
 
 __author__ = 'avrahama'
 
@@ -24,18 +26,18 @@ class TestPngjpSanityPerKPI(TestFunctionalCase):
     @seeder.seed(["mongodb_products_and_brands_seed", "pngjp_seed"], ProjectsSanityData())
     def set_up(self):
         super(TestPngjpSanityPerKPI, self).set_up()
-
-        # mock templates
-        self.get_template_path_mock = MagicMock('get_template_path',
-                                                path='Projects.PNGJP.Utils.KPIToolBox.PNGJPToolBox',
+        # mock parse_template to return the expected DFs
+        self.get_template_path_mock = MagicMock('parse_template',
+                                                path='Projects.PNGJP.Utils.ParseTemplates',
                                                 side_effect=[
-                                                    os.path.join(os.path.dirname(os.path.realpath(__file__)), 'Data',
-                                                                 'Template.xlsx'),
-                                                    os.path.join(os.path.dirname(os.path.realpath(__file__)), 'Data',
-                                                                 'TemplateQualitative.xlsx')
+                                                    pd.DataFrame(parse_template_data.template_data),
+                                                    pd.DataFrame(parse_template_data.innovation_assortment),
+                                                    pd.DataFrame(parse_template_data.psku_assortment),
+                                                    pd.DataFrame(parse_template_data.scene_types),
+                                                    pd.DataFrame(parse_template_data.golden_zone_data_criteria)
                                                 ])
-        # get expected results DB from file
-        self.test_results_against = pd.read_csv('Data/Pngcn_results_E14412B2-BEF5-4380-B5D0-D3E23674C32B.csv')
+        # get expected results data
+        self.test_results_against = pd.DataFrame(expected_results_from_db.expected_results)
         self.kpi_expected_results_df = self.test_results_against[~self.test_results_against['sum_result'].isnull()]
 
         # load seed data
