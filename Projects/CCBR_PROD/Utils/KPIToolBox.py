@@ -162,7 +162,7 @@ class CCBRToolBox:
         row = self.survey_sheet.loc[
             self.survey_sheet[Const.ENGLISH_KPI_NAME].str.encode("utf8") == atomic_name.encode("utf8")]
         if row.empty:
-            Log.warning("Dataframe is empty, wrong kpi name: " + atomic_name)
+            Log.warning("Dataframe is empty, wrong kpi name: " + atomic_name.encode("utf8"))
             return
         store_type_filter = self.store_info['store_type'].values[0].strip()
         store_type_template = row[Const.STORE_TYPE_TEMPLATE].values[0].strip()
