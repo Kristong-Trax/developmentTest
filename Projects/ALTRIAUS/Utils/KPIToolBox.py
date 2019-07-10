@@ -391,11 +391,17 @@ class ALTRIAUSToolBox:
         # we need to get POS stuff that falls within the x-range of the longest shelf (which is limited by category)
         # we also need to account for the fact that the images suck, so we're going to add/subtract 5% of the
         # max/min values to allow for POS items that fall slightly out of the shelf length range
+        correction_factor = 0.05
+        correction_value = (longest_shelf['rect_x'].max() - longest_shelf['rect_x'].min()) * correction_factor
         pos_mpis = self.mpis[(self.mpis['product_fk'].isin(relevant_pos_pks)) &
-                             (self.mpis['rect_x'] < (longest_shelf['rect_x'].max() * 1.05)) &
-                             (self.mpis['rect_x'] > (longest_shelf['rect_x'].min() * 0.95)) &
+                             (self.mpis['rect_x'] < (longest_shelf['rect_x'].max() + correction_value)) &
+                             (self.mpis['rect_x'] > (longest_shelf['rect_x'].min() - correction_value)) &
                              (self.mpis['scene_fk'] == relevant_scene_id)]
-        relevant_pos = self.adp.get_products_contained_in_displays(pos_mpis)
+
+        # DO NOT SET TO TRUE WHEN DEPLOYING
+        # debug flag displays polygon_mask graph DO NOT SET TO TRUE WHEN DEPLOYING
+        # DO NOT SET TO TRUE WHEN DEPLOYING
+        relevant_pos = self.adp.get_products_contained_in_displays(pos_mpis, y_axis_threshold=35, debug=True)
 
         if relevant_pos.empty:
             Log.error('No polygon mask was generated for {} category - cannot compute KPIs'.format(category))
@@ -447,7 +453,7 @@ class ALTRIAUSToolBox:
                     left_bound = longest_shelf.iloc[:relevant_template[location].iloc[0]]['rect_x'].min()
                 right_bound = longest_shelf.iloc[:relevant_template[location].iloc[0]]['rect_x'].max()
                 if locations[-1] == location:
-                    right_bound = right_bound * 1.05
+                    right_bound = right_bound + abs(right_bound * 0.05)
                 flip_sign_pos = relevant_pos[(relevant_pos['type'] == 'Flip Sign') &
                                              (relevant_pos['center_x'] > left_bound) &
                                              (relevant_pos['center_x'] < right_bound)]
@@ -549,11 +555,21 @@ class ALTRIAUSToolBox:
 
         distance_in_facings = 2
 
-        left_bound = longest_shelf[longest_shelf['rect_x'] < center_x].sort_values(
-            by=['rect_x'], ascending=False)['rect_x'].iloc[int(distance_in_facings) - 1]
+        try:
+            left_bound = longest_shelf[longest_shelf['rect_x'] < center_x].sort_values(
+                by=['rect_x'], ascending=False)['rect_x'].iloc[int(distance_in_facings) - 1]
+        except IndexError:
+            # if there are no POS items found to the left of the 'Menu POS' scene recognition tag, use the tag itself
+            # in theory this should never happen
+            left_bound = center_x
 
-        right_bound = longest_shelf[longest_shelf['rect_x'] > center_x].sort_values(
-            by=['rect_x'], ascending=True)['rect_x'].iloc[int(distance_in_facings) - 1]
+        try:
+            right_bound = longest_shelf[longest_shelf['rect_x'] > center_x].sort_values(
+                by=['rect_x'], ascending=True)['rect_x'].iloc[int(distance_in_facings) - 1]
+        except IndexError:
+            # if there are no POS items found to the right of the 'Menu POS' scene recognition tag, use the tag itself
+            # this is more likely to happen for the right bound than the left bound
+            right_bound = center_x
 
         pos_mpis = pos_mpis[(pos_mpis['rect_x'] > left_bound) &
                             (pos_mpis['rect_x'] < right_bound) &
