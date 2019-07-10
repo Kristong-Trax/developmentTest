@@ -401,7 +401,7 @@ class ALTRIAUSToolBox:
         # DO NOT SET TO TRUE WHEN DEPLOYING
         # debug flag displays polygon_mask graph DO NOT SET TO TRUE WHEN DEPLOYING
         # DO NOT SET TO TRUE WHEN DEPLOYING
-        relevant_pos = self.adp.get_products_contained_in_displays(pos_mpis, y_axis_threshold=35, debug=True)
+        relevant_pos = self.adp.get_products_contained_in_displays(pos_mpis, y_axis_threshold=35, debug=False)
 
         if relevant_pos.empty:
             Log.error('No polygon mask was generated for {} category - cannot compute KPIs'.format(category))
