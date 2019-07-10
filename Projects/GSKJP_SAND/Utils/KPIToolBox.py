@@ -323,7 +323,7 @@ class GSKJPToolBox:
                """
 
         if assortment is None or assortment.empty:
-            return 0, 0, 0
+            return 0, 0, 0, 0
         brand_results = assortment[assortment['brand_fk']
                                    == brand]  # only assortment of desired brand
         if 'total' not in self.assortment.LVL2_HEADERS or 'passes' not in self.assortment.LVL2_HEADERS:
@@ -331,9 +331,9 @@ class GSKJPToolBox:
 
         lvl2 = self.assortment.calculate_lvl2_assortment(brand_results)
         if lvl2.empty:
-            return 0, 0, 0  # in case of no assortment return 0
+            return 0, 0, 0, 0  # in case of no assortment return 0
         result = np.divide(float(lvl2.iloc[0].passes), float(lvl2.iloc[0].total)) * 100
-        return lvl2.iloc[0].passes, lvl2.iloc[0].total, result
+        return lvl2.iloc[0].passes, lvl2.iloc[0].total, result, lvl2.iloc[0].assortment_group_fk
 
     def get_store_target(self):
         """
@@ -409,11 +409,11 @@ class GSKJPToolBox:
             identifier_parent = self.common.get_dictionary(
                 brand_fk=brand, kpi_fk=kpi_compliance_brands_fk)
             # msl_kpi
-            msl_numerator, msl_denominator, msl_result = self.pln_msl_summary(brand, assortment_msl)
+            msl_numerator, msl_denominator, msl_result, msl_assortment_group = self.pln_msl_summary(brand, assortment_msl)
             msl_score = msl_result * msl_target
-            results_df.append({'fk': kpi_msl_fk, 'numerator_id': brand, 'denominator_id': self.store_fk,
+            results_df.append({'fk': kpi_msl_fk, 'numerator_id': brand, 'denominator_id':self.store_fk,
                                'denominator_result': msl_denominator, 'numerator_result': msl_numerator, 'result':
-                                   msl_result, 'score': msl_score, 'target': (msl_target*100),
+                                   msl_result, 'score': msl_score, 'target': (msl_target*100), 'context_id':msl_assortment_group,
                                'identifier_parent': identifier_parent,
                                'should_enter': True})
             # lsos kpi
@@ -435,12 +435,13 @@ class GSKJPToolBox:
                                    identifier_parent, 'should_enter': True, 'weight': (block_benchmark*100)})
 
             # position score
-            if df_position_score is None:
-                continue
-            position_result, position_score, position_num, position_den, position_benchmark = self.position_shelf(brand,
+            if df_position_score is not None:
+                position_result, position_score, position_num, position_den, position_benchmark = self.position_shelf(brand,
                                                                                                                   policy
                                                                                                                   ,
                                                                                                                   df_position_score)
+            else:
+                position_result, position_score, position_num, position_den, position_benchmark = 0, 0, 0, 0, 0
             position_score = position_score * posit_target
             results_df.append({'fk': kpi_position_fk, 'numerator_id': brand, 'denominator_id': self.store_fk,
                                'denominator_result': position_den, 'numerator_result': position_num, 'result':
