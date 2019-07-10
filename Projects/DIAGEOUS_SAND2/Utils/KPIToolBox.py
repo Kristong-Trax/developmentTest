@@ -199,7 +199,7 @@ class ToolBox:
             if self.attr6 == Const.ON:
                 calculation = self.calculate_on_assortment
             else:
-                calculation = self.calculate_ass_off
+                calculation = self.calculate_off_assortment
         elif kpi_name == Const.MENU:
             calculation = self.calculate_menu
         else:
@@ -270,7 +270,7 @@ class ToolBox:
                     fk=template_kpi_fk, numerator_id=template_fk,
                     denominator_result=den, result=result, weight=weight * 100,
                     identifier_result=scene_type_dict, target=target, numerator_result=num,
-                    identifier_parent=parent_dict, should_enter=True)
+                    identifier_parent=parent_dict, should_enter=True)  # hierarchy?
         else:
             total_results, standard_types_results = self.calculate_ass_on_template(
                 relevant_scif, relevant_assortment, kpi_db_names, standard_types_results)
@@ -315,10 +315,10 @@ class ToolBox:
             kpi_fk=sub_brand_kpi_fk, brand_fk=brand, sub_brand_fk=sub_brand, template_fk=template_fk)
         self.common.write_to_db_result(
             fk=sku_kpi_fk, numerator_id=product_fk, result=self.get_pks_of_result(result),
-            identifier_parent=sub_brand_dict, should_enter=True)
+            identifier_parent=sub_brand_dict, should_enter=False)
         return passed, standard_type
 
-    def calculate_ass_off(self, scene_types, kpi_name, weight, target):
+    def calculate_off_assortment(self, scene_types, kpi_name, weight, target):
         """
         Gets assortment type, and calculates it with the match function
         :param scene_types: string from template
@@ -374,7 +374,7 @@ class ToolBox:
         sub_brand_dict = self.common.get_dictionary(kpi_fk=sub_brand_kpi_fk, brand_fk=brand, sub_brand_fk=sub_brand)
         self.common.write_to_db_result(
             fk=kpi_fk, numerator_id=product_fk, result=self.get_pks_of_result(result),
-            identifier_parent=sub_brand_dict, should_enter=True)
+            identifier_parent=sub_brand_dict, should_enter=False)
         return passed, standard_type
 
     def calculate_display_compliance_sku(self, product_line, relevant_scif, kpi_db_names, i, template):
@@ -399,7 +399,7 @@ class ToolBox:
         sub_brand_dict = self.common.get_dictionary(kpi_fk=sub_brand_kpi_fk, brand_fk=brand, sub_brand_fk=sub_brand)
         self.common.write_to_db_result(
             fk=kpi_fk, numerator_id=product_fk, result=self.get_pks_of_result(result),
-            identifier_parent=sub_brand_dict, should_enter=True)
+            identifier_parent=sub_brand_dict, should_enter=False)
         return passed, standard_type
 
     def calculate_extras(self, relevant_assortment, relevant_scif, kpi_db_names):
@@ -424,7 +424,7 @@ class ToolBox:
             sub_brand_dict = self.common.get_dictionary(kpi_fk=sub_brand_kpi_fk, brand_fk=brand, sub_brand_fk=sub_brand)
             self.common.write_to_db_result(
                 fk=sku_kpi_fk, numerator_id=product, result=self.get_pks_of_result(result),
-                identifier_parent=sub_brand_dict, should_enter=True)
+                identifier_parent=sub_brand_dict, should_enter=False)
 
     # menu
 
@@ -470,7 +470,7 @@ class ToolBox:
                     fk=template_kpi_fk, numerator_id=temp_scif['template_fk'].iloc[0],
                     denominator_result=temp_den_res, result=score, score=result, weight=weight * 100,
                     identifier_result=scene_type_dict, target=target, numerator_result=temp_diageo_facings,
-                    identifier_parent=result_dict, should_enter=True)
+                    identifier_parent=result_dict, should_enter=True)  # hierarchy?
         else:
             diageo_facings, den_res = self.calculate_menu_scene_type(relevant_scif, result_dict, target, Const.ALL)
         result = self.get_score(diageo_facings, den_res)
@@ -512,7 +512,7 @@ class ToolBox:
                 result = self.get_score(num_res, den_res)
                 self.common.write_to_db_result(
                     fk=sub_brand_kpi_fk, numerator_id=sub_brand_fk, numerator_result=num_res,
-                    denominator_result=den_res, result=result, should_enter=True, identifier_parent=manufacturer_dict)
+                    denominator_result=den_res, result=result, should_enter=False, identifier_parent=manufacturer_dict)
             manufacturer_target = None
             if manufacturer_fk == self.manufacturer_fk:
                 diageo_facings = manufacturer_num
@@ -520,7 +520,7 @@ class ToolBox:
             result = self.get_score(manufacturer_num, den_res)
             self.common.write_to_db_result(
                 fk=manufacturer_kpi_fk, numerator_id=manufacturer_fk, numerator_result=manufacturer_num, result=result,
-                denominator_result=den_res, target=manufacturer_target, should_enter=True,
+                denominator_result=den_res, target=manufacturer_target, should_enter=False,
                 identifier_parent=parent_dict, identifier_result=manufacturer_dict)
         return diageo_facings, den_res
 
@@ -573,7 +573,7 @@ class ToolBox:
                 continue
             self.common.write_to_db_result(
                 fk=manufacturer_kpi_fk, numerator_id=manufacturer, numerator_result=num_res,
-                target=target_manufacturer, should_enter=True, denominator_result=den_res,
+                target=target_manufacturer, should_enter=False, denominator_result=den_res,
                 result=result, identifier_parent=total_dict, identifier_result=result_dict)
         if den_res == 0:
             score = 0
@@ -606,7 +606,7 @@ class ToolBox:
             return None
         self.common.write_to_db_result(
             fk=sku_kpi_fk, numerator_id=product_fk,
-            result=sum_scenes_passed, identifier_parent=parent_dict, should_enter=True)
+            result=sum_scenes_passed, identifier_parent=parent_dict, should_enter=False)
         product_result = {Const.PRODUCT_FK: product_fk, Const.PASSED: sum_scenes_passed,
                           Const.MANUFACTURER: manufacturer}
         return product_result
@@ -686,7 +686,7 @@ class ToolBox:
         self.common.write_to_db_result(
             fk=competition_kpi_fk, numerator_id=product_fk, score=score * 100,
             result=diageo_facings, identifier_result=result_identifier,
-            identifier_parent=sub_brand_dict, should_enter=True)
+            identifier_parent=sub_brand_dict, should_enter=False)
         return score, standard_type
 
     def calculate_facings_competition(self, competition, relevant_scif, product_fk):
@@ -796,7 +796,7 @@ class ToolBox:
         sub_brand_dict = self.common.get_dictionary(kpi_fk=sub_brand_kpi_fk, brand_fk=brand, sub_brand_fk=sub_brand)
         self.common.write_to_db_result(
             fk=kpi_fk, numerator_id=product_fk, score=score, result=self.get_pks_of_result(result),
-            identifier_parent=sub_brand_dict, target=target_fk, should_enter=True)
+            identifier_parent=sub_brand_dict, target=target_fk, should_enter=False)
         return passed, standard_type
 
     def convert_groups_from_template(self):
@@ -910,7 +910,7 @@ class ToolBox:
         sub_brand_kpi_fk = kpi_db_names[Const.SUB_BRAND]
         sub_brand_dict = self.common.get_dictionary(kpi_fk=sub_brand_kpi_fk, brand_fk=brand, sub_brand_fk=sub_brand)
         self.common.write_to_db_result(
-            fk=kpi_fk, numerator_id=product_fk, result=result, should_enter=True,
+            fk=kpi_fk, numerator_id=product_fk, result=result, should_enter=False,
             identifier_parent=sub_brand_dict, identifier_result=result_dict)
         passed = (result == 0) * 1
         return passed, None
@@ -1029,7 +1029,7 @@ class ToolBox:
             parent_dict = self.common.get_dictionary(kpi_fk=total_kpi_fk, template_fk=template_fk)
         self.common.write_to_db_result(
             fk=brand_kpi_fk, numerator_id=brand, result=result, numerator_result=num, denominator_result=den,
-            identifier_parent=parent_dict, should_enter=True, identifier_result=brand_dict)
+            identifier_parent=parent_dict, should_enter=False, identifier_result=brand_dict)
         return standard_types_results, brand_results
 
     def generic_sub_brand_calculator(self, sub_brand_list, relevant_df, standard_types_results, kpi_db_names, template):
@@ -1067,7 +1067,7 @@ class ToolBox:
         brand_dict = self.common.get_dictionary(kpi_fk=brand_kpi_fk, brand_fk=brand)
         self.common.write_to_db_result(
             fk=sub_brand_kpi_fk, numerator_id=sub_brand, result=result, numerator_result=num, denominator_result=den,
-            identifier_parent=brand_dict, should_enter=True, identifier_result=sub_brand_dict)
+            identifier_parent=brand_dict, should_enter=False, identifier_result=sub_brand_dict)
         return sub_brand_results, standard_types_results
 
     def calculate_passed_display_without_subst(self, product_fk, relevant_products):
