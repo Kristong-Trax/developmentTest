@@ -112,6 +112,10 @@ MIN_LAYER_NUMBER = 'Min_layer_#'
 MATCH_PRODUCT_IN_PROBE_FK = 'match_product_in_probe_fk'
 MATCH_PRODUCT_IN_PROBE_STATE_REPORTING_FK = 'match_product_in_probe_state_reporting_fk'
 
+# Category linear SOS
+CATEGORY_LSOS_KPI = 'Category_linear_sos'
+CATEGORY_DISPLAY_LSOS_KPI = 'Category_display_linear_sos'
+
 
 class PngcnSceneKpis(object):
     def __init__(self, project_connector, common, scene_id, data_provider=None):
@@ -147,7 +151,7 @@ class PngcnSceneKpis(object):
 
     def process_scene(self):
         self.calculate_variant_block()
-        self.save_nlsos_to_custom_scif()
+        new_scif = self.save_nlsos_to_custom_scif()
         self.calculate_eye_level_kpi()
         self.calculate_linear_length()
         self.calculate_presize_linear_length()
@@ -158,6 +162,7 @@ class PngcnSceneKpis(object):
             Log.debug(self.log_prefix + ' No display tags')
             self._delete_previous_data()
             self.calculate_display_size()
+            self.calculate_linear_sos_per_category(new_scif, CATEGORY_LSOS_KPI, 'gross_len_split_stack_new')
             self.common.commit_results_data(result_entity='scene')
         else:
             self.displays = self._get_displays_data()
@@ -168,11 +173,35 @@ class PngcnSceneKpis(object):
             self._handle_table_display()
             self._handle_rest_display()
             self.calculate_display_size()
+            display_df = self._get_display_size_of_product_in_scene().drop(columns=['facings'])
+            df = pd.merge(display_df, self.scif, how="left", left_on='item_id', right_on='product_fk')
+            self.calculate_linear_sos_per_category(df, CATEGORY_DISPLAY_LSOS_KPI, 'product_size')
             self.common.commit_results_data(result_entity='scene')
             if self.on_ace:
                 Log.debug(self.log_prefix + ' Committing share of display calculations')
                 self.project_connector.db.commit()
             Log.info(self.log_prefix + ' Finished calculation')
+
+    def calculate_linear_sos_per_category(self, df, kpi_name, field_to_calc):
+        kpi_fk = self.common.get_kpi_fk_by_kpi_name(kpi_name)
+        categories = (set(df['category_fk']))
+        for category_fk in categories:
+            category_df = df[df['category_fk'] == category_fk]
+            numerator_df = category_df[category_df['manufacturer_name'].str.encode("utf8") == PNG_MANUFACTURER]
+            numerator = numerator_df[field_to_calc].sum()
+            denominator = category_df[field_to_calc].sum()
+            if denominator == 0:
+                result = 0
+            else:
+                result = numerator / float(denominator)
+            facings = category_df['facings'].sum()
+            self.common.write_to_db_result(fk=kpi_fk,
+                                           numerator_id=category_fk, denominator_id=self.store_id,
+                                           numerator_result=numerator,
+                                           denominator_result=denominator,
+                                           result=result,
+                                           score=facings,
+                                           by_scene=True)
 
     def calculate_variant_block(self):
         legal_blocks = {}
@@ -1081,6 +1110,7 @@ class PngcnSceneKpis(object):
         new_scif = new_scif.fillna(0)
         self.save_nlsos_as_kpi_results(new_scif)
         self.insert_data_into_custom_scif(new_scif)
+        return new_scif
 
     def calculate_result(self, num, den):
         if den:
@@ -1166,14 +1196,14 @@ class PngcnSceneKpis(object):
         kpi_fk = self.common.get_kpi_fk_by_kpi_name(DISPLAY_SIZE_PER_SCENE)
 
         # get size and item id
-        DF_products_size = self._get_display_size_of_product_in_scene()
+        df_products_size = self._get_display_size_of_product_in_scene()
 
-        if self.scif.empty or DF_products_size.empty:
+        if self.scif.empty or df_products_size.empty:
             return
 
         filter_scif = self.scif[[u'scene_id', u'item_id',
                                  u'manufacturer_fk', u'rlv_sos_sc', u'status']]
-        df_result = pd.merge(filter_scif, DF_products_size, on=['item_id', 'scene_id'], how='left')
+        df_result = pd.merge(filter_scif, df_products_size, on=['item_id', 'scene_id'], how='left')
         df_result = df_result[df_result['product_size'] > 0]
 
         if kpi_fk:
@@ -1205,11 +1235,12 @@ class PngcnSceneKpis(object):
         # merge wite scif to add manufacture
         matches_filtered = pd.merge(a, b, how='left',
                                     on=['product_fk', 'scene_fk'])[[u'scene_fk', u'product_fk', 'status_x',
-                                                                    'width_mm_x', u'width_mm_advance',
-                                                                    u'product_type', u'manufacturer_fk', 'rlv_sos_sc']]
+                                                                    'width_mm_x', u'width_mm_advance', 'category_fk',
+                                                                    'manufacturer_name', u'manufacturer_fk',
+                                                                    u'product_type', 'rlv_sos_sc']]
         # rename columns
         matches_filtered.columns = [u'scene_fk', u'product_fk', 'status', 'width_mm', u'width_mm_advance',
-                                    u'product_type', u'manufacturer_fk', 'rlv_sos_sc']
+                                    'category_fk','manufacturer_name', u'manufacturer_fk', u'product_type','rlv_sos_sc']
 
         # remove status == 2
         matches_filtered = matches_filtered[matches_filtered['status'] != 2]
@@ -1223,13 +1254,9 @@ class PngcnSceneKpis(object):
 
         # sum 'width_mm' and 'width_mm_advance' removing unused columns
         new_matches_filtered_without_excludes = new_matches_filtered_without_excludes[[u'scene_fk', u'manufacturer_fk',
-                                                                                       u'product_fk', 'width_mm',
-                                                                                       u'width_mm_advance']]
-
-        new_matches_filtered_without_excludes = new_matches_filtered_without_excludes.groupby(['product_fk',
-                                                                                               'scene_fk',
-                                                                                               'manufacturer_fk'
-                                                                                               ]).sum().reset_index()
+                                                                                   u'product_fk', 'width_mm',
+                                                                                   'category_fk', 'manufacturer_name',
+                                                                                   u'width_mm_advance']]
 
         return new_matches_filtered_without_excludes
 
@@ -1253,6 +1280,7 @@ class PngcnSceneKpis(object):
             Log.warning("There is no matching Kpi fk for kpi name: " + kpi_name)
             return
         matches_filtered = self.get_filterd_matches()
+        matches_filtered = matches_filtered.groupby(['product_fk', 'scene_fk', 'manufacturer_fk']).sum().reset_index()
 
         if matches_filtered.empty:
             return
