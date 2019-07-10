@@ -4,12 +4,11 @@ import time
 
 from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Trax.Data.Testing.SeedNew import Seeder
-from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
+from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider
 from Trax.Cloud.Services.Connector.Keys import DbUsers
 from Trax.Data.Testing.TestProjects import TestProjectsNames
 
 from Projects.PNGJP.Tests.Data.test_data_pngjp_sanity_per_kpi import ProjectsSanityData
-from Projects.PNGJP.Calculations import PNGJPCalculations
 from Trax.Apps.Core.Testing.BaseCase import TestFunctionalCase, MagicMock
 
 from Tests.TestUtils import remove_cache_and_storage
