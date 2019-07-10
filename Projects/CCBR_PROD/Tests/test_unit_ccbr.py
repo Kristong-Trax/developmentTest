@@ -101,17 +101,21 @@ class TestCCCBR(TestUnitCase):
         self.assertEqual(actual_results, expected_results)
 
     def test_handle_atomics_KPIs_results(self):
+        """
+            there are 244 atomic KPIs in this project i want this function to loop them and get the expected result
+        """
+
         # self.tool_box.write_to_db_result_new_tables = MagicMock()
-        kpis_sheet = pd.DataFrame(kpis.kpi_sheet)
-
-        kpis_sheet_filterd = kpis_sheet[kpis_sheet['KPI Type'] == 'SURVEY']
-
-        for index, row in kpis_sheet_filterd.iterrows():
-            atomic_name = row['English KPI Name'].strip()
-            self.tool_box.write_to_db_result_new_tables = MagicMock()
-            self.tool_box.handle_survey_atomics(atomic_name)
-            kpi_results = self.tool_box.write_to_db_result_new_tables.mock_calls
-            print kpi_results
+        # kpis_sheet = pd.DataFrame(kpis.kpi_sheet)
+        #
+        # kpis_sheet_filterd = kpis_sheet[kpis_sheet['KPI Type'] == 'SURVEY']
+        #
+        # for index, row in kpis_sheet_filterd.iterrows():
+        #     atomic_name = row['English KPI Name'].strip()
+        #     self.tool_box.write_to_db_result_new_tables = MagicMock()
+        #     self.tool_box.handle_survey_atomics(atomic_name)
+        #     kpi_results = self.tool_box.write_to_db_result_new_tables.mock_calls
+        #     print kpi_results
 
 
 
@@ -121,6 +125,7 @@ class TestCCCBR(TestUnitCase):
         # expected_results = 1
         # actual_results = self.sum_results(kpi_results)
         # self.assertEqual(expected_results, actual_results)
+        pass
 
     def test_handle_count_atomics(self):
         pass
