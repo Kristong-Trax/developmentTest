@@ -41,6 +41,9 @@ class AltriaDataProvider:
         cur.execute(query)
         res = cur.fetchall()
         df = pd.DataFrame(list(res), columns=['scene_fk', 'display_fk', 'display_name', 'x', 'y', 'display_brand_fk'])
+        # we need to remove duplicate results
+        # this should never happen, but it did...
+        df.drop_duplicates(subset=['display_fk', 'x', 'y'], keep='first', inplace=True)
         return df
 
     def get_products_contained_in_displays(self, match_product_in_scene_df, top_left_display_name=None,
