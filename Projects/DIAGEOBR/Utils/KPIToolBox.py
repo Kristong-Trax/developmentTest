@@ -1,4 +1,3 @@
-
 import pandas as pd
 from datetime import datetime
 
@@ -16,7 +15,7 @@ from KPIUtils.DB.Common import Common
 from KPIUtils_v2.DB.CommonV2 import Common as CommonV2
 
 from OutOfTheBox.Calculations.ManufacturerSOS import ManufacturerFacingsSOSInWholeStore, \
-                  ManufacturerFacingsSOSPerSubCategoryInStore
+    ManufacturerFacingsSOSPerSubCategoryInStore
 from OutOfTheBox.Calculations.SubCategorySOS import SubCategoryFacingsSOSPerCategory
 
 __author__ = 'Nimrod'
@@ -36,12 +35,13 @@ def log_runtime(description, log_start=False):
             calc_end_time = datetime.utcnow()
             Log.info('{} took {}'.format(description, calc_end_time - calc_start_time))
             return result
+
         return wrapper
+
     return decorator
 
 
 class DIAGEOBRToolBox:
-
     LEVEL1 = 1
     LEVEL2 = 2
     LEVEL3 = 3
@@ -111,12 +111,13 @@ class DIAGEOBRToolBox:
         """
         This function calculates the KPI results.
         """
-        # Global assortment kpis
-        assortment_res_dict = self.diageo_generator.diageo_global_assortment_function_v2()
-        self.commonV2.save_json_to_new_tables(assortment_res_dict)
 
         # SOS Out Of The Box kpis
         self.activate_ootb_kpis()
+
+        # Global assortment kpis
+        assortment_res_dict = self.diageo_generator.diageo_global_assortment_function_v2()
+        self.commonV2.save_json_to_new_tables(assortment_res_dict)
 
         # Global assortment kpis - v3 for NEW MOBILE REPORTS use
         assortment_res_dict_v3 = self.diageo_generator.diageo_global_assortment_function_v3()
@@ -223,7 +224,7 @@ class DIAGEOBRToolBox:
         segment = '{};{}'.format(self.store_type, self.segment)
         for params in self.set_templates_data[set_name]:
             if params.get(segment, '').capitalize() in (self.tools.RELEVANT_FOR_STORE,
-                                                                self.tools.OR_OTHER_PRODUCTS):
+                                                        self.tools.OR_OTHER_PRODUCTS):
 
                 object_type = self.tools.ENTITY_TYPE_CONVERTER.get(params.get(self.tools.ENTITY_TYPE),
                                                                    'product_ean_code')
@@ -425,7 +426,8 @@ class DIAGEOBRToolBox:
                                                'score_2', 'kpi_set_fk'])
 
         elif level == self.LEVEL2:
-            kpi_name = self.kpi_static_data[self.kpi_static_data['kpi_fk'] == fk]['kpi_name'].values[0].replace("'", "\\'")
+            kpi_name = self.kpi_static_data[self.kpi_static_data['kpi_fk'] == fk]['kpi_name'].values[0].replace("'",
+                                                                                                                "\\'")
             attributes = pd.DataFrame([(self.session_uid, self.store_id, self.visit_date.isoformat(),
                                         fk, kpi_name, score)],
                                       columns=['session_uid', 'store_fk', 'visit_date', 'kpi_fk', 'kpk_name', 'score'])

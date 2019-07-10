@@ -12,7 +12,7 @@ from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
 from KPIUtils.DIAGEO.ToolBox import DIAGEOToolBox
 from KPIUtils.GlobalProjects.DIAGEO.Utils.Fetcher import DIAGEOQueries
 from KPIUtils.GlobalProjects.DIAGEO.KPIGenerator import DIAGEOGenerator
-from KPIUtils.GlobalProjects.DIAGEO.Utils.ParseTemplates import parse_template # if needed
+from KPIUtils.GlobalProjects.DIAGEO.Utils.ParseTemplates import parse_template  # if needed
 from KPIUtils.DB.Common import Common
 from KPIUtils_v2.DB.CommonV2 import Common as CommonV2
 from OutOfTheBox.Calculations.ManufacturerSOS import ManufacturerFacingsSOSInWholeStore, \
@@ -26,6 +26,7 @@ KPK_RESULT = 'report.kpk_results'
 KPS_RESULT = 'report.kps_results'
 RELATIVE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'Relative Position.xlsx')
 
+
 def log_runtime(description, log_start=False):
     def decorator(func):
         def wrapper(*args, **kwargs):
@@ -36,8 +37,11 @@ def log_runtime(description, log_start=False):
             calc_end_time = datetime.utcnow()
             Log.info('{} took {}'.format(description, calc_end_time - calc_start_time))
             return result
+
         return wrapper
+
     return decorator
+
 
 class DIAGEOMXToolBox:
     LEVEL1 = 1
@@ -120,20 +124,21 @@ class DIAGEOMXToolBox:
         # SOS Out Of The Box kpis
         self.activate_ootb_kpis()
 
-        # Global assortment kpis - v3 for NEW MOBILE REPORTS use
-        assortment_res_dict_v3 = self.diageo_generator.diageo_global_assortment_function_v3()
-        self.commonV2.save_json_to_new_tables(assortment_res_dict_v3)
-
         # Global assortment kpis
         assortment_res_dict = self.diageo_generator.diageo_global_assortment_function_v2()
         self.commonV2.save_json_to_new_tables(assortment_res_dict)
+
+        # Global assortment kpis - v3 for NEW MOBILE REPORTS use
+        assortment_res_dict_v3 = self.diageo_generator.diageo_global_assortment_function_v3()
+        self.commonV2.save_json_to_new_tables(assortment_res_dict_v3)
 
         # global SOS kpi
         res_dict = self.diageo_generator.diageo_global_share_of_shelf_function()
         self.commonV2.save_json_to_new_tables(res_dict)
 
         # global touch point kpi
-        template_path = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), 'Data', 'TOUCH POINT v6.xlsx')
+        template_path = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), 'Data',
+                                     'TOUCH POINT v6.xlsx')
         res_dict = self.diageo_generator.diageo_global_touch_point_function(template_path)
         self.commonV2.save_json_to_new_tables(res_dict)
 
@@ -176,7 +181,6 @@ class DIAGEOMXToolBox:
         #     set_fk = self.kpi_static_data[self.kpi_static_data['kpi_set_name'] == set_name]['kpi_set_fk'].values[0]
         #     self.write_to_db_result(set_fk, set_score, self.LEVEL1)
         #     continue
-
 
         # commiting to new tables
         self.commonV2.commit_results_data()
@@ -339,7 +343,8 @@ class DIAGEOMXToolBox:
                     for product in products:
                         product_score = self.tools.calculate_assortment(product_ean_code=product)
                         result += product_score
-                        atomic_fk = kpi_static_data[kpi_static_data['description'] == product]['atomic_kpi_fk'].values[0]
+                        atomic_fk = kpi_static_data[kpi_static_data['description'] == product]['atomic_kpi_fk'].values[
+                            0]
                         self.write_to_db_result(atomic_fk, product_score, level=self.LEVEL3)
                     score = 1 if result >= target else 0
                 else:
@@ -389,7 +394,8 @@ class DIAGEOMXToolBox:
                                                'score_2', 'kpi_set_fk'])
 
         elif level == self.LEVEL2:
-            kpi_name = self.kpi_static_data[self.kpi_static_data['kpi_fk'] == fk]['kpi_name'].values[0].replace("'", "\\'")
+            kpi_name = self.kpi_static_data[self.kpi_static_data['kpi_fk'] == fk]['kpi_name'].values[0].replace("'",
+                                                                                                                "\\'")
             attributes = pd.DataFrame([(self.session_uid, self.store_id, self.visit_date.isoformat(),
                                         fk, kpi_name, score)],
                                       columns=['session_uid', 'store_fk', 'visit_date', 'kpi_fk', 'kpk_name', 'score'])
@@ -570,4 +576,3 @@ class DIAGEOMXToolBox:
         for query in self.common.kpi_results_queries:
             cur.execute(query)
         self.rds_conn.db.commit()
-
