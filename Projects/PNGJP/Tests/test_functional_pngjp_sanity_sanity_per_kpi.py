@@ -1,6 +1,5 @@
 import os
 import MySQLdb
-import time
 
 from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Trax.Data.Testing.SeedNew import Seeder
@@ -22,7 +21,6 @@ __author__ = 'avrahama'
 class TestPngjpSanityPerKPI(TestFunctionalCase):
     seeder = Seeder()
 
-    @seeder.seed(["mongodb_products_and_brands_seed", "pngjp_seed"], ProjectsSanityData())
     def set_up(self):
         super(TestPngjpSanityPerKPI, self).set_up()
         # mock parse_template to return the expected DFs
@@ -65,10 +63,7 @@ class TestPngjpSanityPerKPI(TestFunctionalCase):
         project_name = ProjectsSanityData.project_name
         data_provider = KEngineDataProvider(project_name)
         session = 'E14412B2-BEF5-4380-B5D0-D3E23674C32B'
-        start_time = time.time()
         data_provider.load_session_data(session)
-        elapsed_time = time.time() - start_time
-        print elapsed_time
 
     @staticmethod
     @seeder.seed(["mongodb_products_and_brands_seed", "pngjp_seed"], ProjectsSanityData())
