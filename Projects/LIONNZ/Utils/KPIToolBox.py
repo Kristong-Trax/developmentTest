@@ -228,6 +228,9 @@ class LIONNZToolBox:
         count_of_assortment_prod_in_scene = assortment_product_fks.isin(scene_products).sum()
         oos_count = total_products_in_assortment - count_of_assortment_prod_in_scene
         #  count of lion sku / all sku assortment count
+        if not total_products_in_assortment:
+            Log.info("No assortments applicable for session {sess}.".format(sess=self.session_uid))
+            return 0
         distribution_perc = count_of_assortment_prod_in_scene / float(total_products_in_assortment) * 100
         oos_perc = 100 - distribution_perc
         self.common.write_to_db_result(fk=distribution_kpi_fk,
@@ -395,6 +398,12 @@ class LIONNZToolBox:
                 denominator_df = dataframe_to_process.query('{key} == {value}'.format(
                     key=PARAM_DB_MAP[kpi['denominator'].iloc[0]]['key'],
                     value=denominator_id))
+            if not len(denominator_df):
+                Log.info("No denominator data for session {sess} to calculate  {name}".format(
+                    sess=self.session_uid,
+                    name=kpi.kpi_name.iloc[0]
+                ))
+                continue
             result = len(group_data) / float(len(denominator_df))
             if not is_nan(kpi[KPI_PARENT_COL].iloc[0]):
                 kpi_parent = self.kpi_static_data[(self.kpi_static_data[KPI_TYPE_COL] == kpi[KPI_PARENT_COL].iloc[0])
