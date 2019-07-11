@@ -254,6 +254,12 @@ class BATRUToolBox:
         """
         This function calculates the KPI results.
         """
+
+        # file_name = 'batru_current_p4.xlsx'
+        # path = '/tmp/{}'.format(file_name)
+        # writer = pd.ExcelWriter(path, engine='xlsxwriter')
+        # self.all_templates[P4_TEMPLATE]['Availability'].to_excel(writer, sheet_name='Sheet1', index=False)
+        # writer.save()
         self.handle_priority_1()
         self.handle_priority_2()
         self.handle_priority_3()
@@ -1738,6 +1744,9 @@ class BATRUToolBox:
                         result = 0
 
                     score = score + 1 if result else score
+
+        euipment_not_in_template = self.posm_in_session[~(self.posm_in_session['display_name'].isnull())]\
+            ['additional_attribute_1'].unique().tolist()
 
         set_score = '{}/{}'.format(score, equipment_in_store)
         self.write_to_db_result(set_fk, set_score, level=self.LEVEL1)
