@@ -3,7 +3,7 @@ import pandas as pd
 import json
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Utils.Logging.Logger import Log
-from Projects.DIAGEOUS_SAND2.Utils.Const import Const
+from Projects.DIAGEOUS.Utils.Const import Const
 from KPIUtils_v2.DB.CommonV2 import Common
 from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
 from KPIUtils_v2.Calculations.SurveyCalculations import Survey
@@ -39,8 +39,7 @@ class ToolBox:
             self.manufacturer_fk = self.all_products[
                 self.all_products['manufacturer_name'] == 'DIAGEO']['manufacturer_fk'].iloc[0]
         if self.store_info['additional_attribute_6'].iloc[0]:
-            self.attr6 = Const.ON if self.store_info['additional_attribute_6'].iloc[0] in (
-                'On-Premise') else Const.OFF
+            self.attr6 = Const.ON if self.store_info['additional_attribute_6'].iloc[0] == 'On-Premise' else Const.OFF
         else:
             Log.error("The store for this session has no attribute6. Set temporary as Off-premise, fix ASAP")
             self.attr6 = Const.OFF
@@ -72,7 +71,7 @@ class ToolBox:
         Reads the template (and makes the EANs be Strings)
         """
         for sheet in Const.SHEETS[self.attr11][self.attr6]:
-            self.templates[sheet] = pd.read_excel(TEMPLATE_PATH, sheetname=sheet, keep_default_na=False)
+            self.templates[sheet] = pd.read_excel(TEMPLATE_PATH, sheet_name=sheet, keep_default_na=False)
 
     def init_dfs(self):
         self.sub_brands.rename(
@@ -96,7 +95,7 @@ class ToolBox:
             self.init_assortment(self.store_number_1)
             if self.attr6 == Const.ON:
                 self.sales_data = self.ps_data.get_sales_data()
-            else:
+            elif self.attr11 == Const.OPEN:
                 scenes = self.scene_info['scene_fk'].unique().tolist()
                 self.scenes_with_shelves = {}
                 for scene in scenes:
@@ -111,6 +110,14 @@ class ToolBox:
                     data_fields=[Const.EX_MIN_FACINGS, Const.EX_MINIMUM_SHELF, Const.EX_BENCHMARK_VALUE,
                                  Const.EX_TARGET_MIN, Const.EX_COMPETITOR_FK, Const.EX_RELATIVE_MAX,
                                  Const.EX_RELATIVE_MIN, Const.EX_TARGET_MAX])
+                self.external_targets = self.external_targets.fillna("N/A")
+            else:
+                self.external_targets = self.ps_data.get_kpi_external_targets(
+                    kpi_operation_types=Const.OPEN_OPERATION_TYPES,
+                    key_fields=[Const.EX_PRODUCT_FK, Const.EX_STATE_FK, Const.EX_STORE_NUMBER, Const.EX_SCENE_TYPE,
+                                Const.EX_ATTR2],
+                    data_fields=[Const.EX_MIN_FACINGS, Const.EX_MINIMUM_SHELF, Const.EX_BENCHMARK_VALUE,
+                                 Const.EX_COMPETITOR_FK])
                 self.external_targets = self.external_targets.fillna("N/A")
         elif self.attr6 != Const.ON:
                 self.init_assortment()
