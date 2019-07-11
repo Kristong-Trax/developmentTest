@@ -1,9 +1,9 @@
 import os
 from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScript
-from Trax.Algo.Calculations.Core.DataProvider import ACEDataProvider, Output, KEngineDataProvider
-from Trax.Utils.Conf.Configuration import Config
-from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
-from mock import MagicMock
+# from Trax.Algo.Calculations.Core.DataProvider import ACEDataProvider, Output, KEngineDataProvider
+# from Trax.Utils.Conf.Configuration import Config
+# from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
+# from mock import MagicMock
 
 from Projects.INBEVNL_SAND.KPIGenerator import INBEVNL_SANDINBEVBEGenerator
 
@@ -20,12 +20,12 @@ class INBEVNL_SANDINBEVBECalculations(BaseCalculationsScript):
         self.timer.stop('KPIGenerator.run_project_calculations')
 
 
-if __name__ == '__main__':
-    LoggerInitializer.init('inbevnl-sand calculations')
-    Config.init()
-    project_name = 'inbevnl-sand'
-    data_provider = KEngineDataProvider(project_name, monitor=MagicMock())
-    session = '4b4733e9-11ea-497c-9b77-a04899cd65cd'
-    data_provider.load_session_data(session)
-    output = Output()
-    INBEVNL_SANDINBEVBECalculations(data_provider, output).run_project_calculations()
+# if __name__ == '__main__':
+#     LoggerInitializer.init('inbevnl-sand calculations')
+#     Config.init()
+#     project_name = 'inbevnl-sand'
+#     data_provider = KEngineDataProvider(project_name, monitor=MagicMock())
+#     session = '4b4733e9-11ea-497c-9b77-a04899cd65cd'
+#     data_provider.load_session_data(session)
+#     output = Output()
+#     INBEVNL_SANDINBEVBECalculations(data_provider, output).run_project_calculations()
