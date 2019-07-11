@@ -6,6 +6,7 @@ from Trax.Utils.Testing.Case import TestUnitCase
 from mock import MagicMock
 from Projects.CCBOTTLERSUS.SOVI.KPIToolBox import SOVIToolBox
 from Tests.TestUtils import remove_cache_and_storage
+from Projects.CCBOTTLERSUS.SOVI.Tests.Data import records
 
 __author__ = 'avrahama'
 
@@ -27,7 +28,16 @@ class TestSOVI(TestUnitCase):
             'Common', path='KPIUtils_v2.DB.CommonV2')
 
         data_provider_dict = {'store_fk': 224259,
-                              'visit_date': '2019-5-21'}
+                              'visit_date': '2019-5-21',
+                              'products': pd.DataFrame(records.products),
+                              'all_products': pd.DataFrame(records.all_products),
+                              'matches': pd.DataFrame(records.matches),
+                              'session_info': pd.DataFrame(records.session_info),
+                              'scenes_info': pd.DataFrame(records.scenes_info),
+                              'store_info': pd.DataFrame(records.store_info),
+                              'scene_item_facts': pd.DataFrame(records.scene_item_facts)
+                              }
+
         # mock 'data provider' object giving to the toolbox
         self.data_provider_mock = MagicMock()
         # making data_provider_mock behave like a dict
