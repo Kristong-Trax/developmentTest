@@ -29,6 +29,8 @@ class CreateDictFromDf:
     def fix_df_dates(self):
         df_columns_list = self.df.columns.to_list()
         df_columns_list_with_date = []
+        if type(df_columns_list[0]) == int:
+            return
         for i in df_columns_list:
             if ('date' in i) or ('time' in i):
                 df_columns_list_with_date.append(i)

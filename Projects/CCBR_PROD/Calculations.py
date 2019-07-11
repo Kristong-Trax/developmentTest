@@ -14,14 +14,19 @@ class CCBRCalculations(BaseCalculationsScript):
         CCBRGenerator(self.data_provider, self.output).main_function()
         self.timer.stop('KPIGenerator.run_project_calculations')
 
-# if __name__ == '__main__':
-#     LoggerInitializer.init('ccbr-prod calculations')
-#     Config.init()
-#     project_name = 'ccbr-prod'
-#     data_provider = KEngineDataProvider(project_name)
-#     output = Output()
-#     list_sessions = [
-#     #                   '8cc8c098-fa97-47dd-83d6-00f109a78ada',
+if __name__ == '__main__':
+    LoggerInitializer.init('ccbr-prod calculations')
+    Config.init()
+    project_name = 'ccbr-prod'
+    data_provider = KEngineDataProvider(project_name)
+    output = Output()
+    list_sessions = [
+                       '8cc8c098-fa97-47dd-83d6-00f109a78ada']
+    for session in list_sessions:
+        data_provider.load_session_data(session)
+        CCBRCalculations(data_provider, output).run_project_calculations()
+
+
 #     #                 '1b4d4795-90b9-4161-b321-cfba53ba5fc5',
 #     #                 '233f5fca-8ce7-4398-8e8e-bb248de06b1a',
 #     #                 '6c66c955-f3af-4688-9463-5441c8cc4c90',

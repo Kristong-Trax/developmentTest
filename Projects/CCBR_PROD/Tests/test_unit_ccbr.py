@@ -13,7 +13,7 @@ class TestCCCBR(TestUnitCase):
 
     @property
     def import_path(self):
-        return 'Projects.CCBR_PROD.Utils.KPIToolBox.CCBRToolBox'
+        return 'Projects.CCBR_PROD.Utils.KPIToolBox'
 
     def set_up(self):
         super(TestCCCBR, self).set_up()
@@ -34,6 +34,12 @@ class TestCCCBR(TestUnitCase):
             'PsDataProvider', path='KPIUtils_v2.GlobalDataProvider.PsDataProvider')
         self.load_exel_to_df_mock = self.mock_object(
             'load_exel_to_df', path='Projects.CCBR_PROD.Utils.KPIToolBox.CCBRToolBox')
+
+        # self.get_kpi_fk_by_kpi_name_new_tables = MagicMock(side_effect=self.survay_respons_mock)
+
+        get_kpi_fk_by_kpi_name_new_tables = self.mock_object(
+            'Common.get_kpi_fk_by_kpi_name_new_tables')
+        get_kpi_fk_by_kpi_name_new_tables.side_effect = self.survay_respons_mock
 
         # send templates as DFs
         self.load_exel_to_df_mock.side_effect = [pd.DataFrame(records.count_sheet),
@@ -70,6 +76,13 @@ class TestCCCBR(TestUnitCase):
             sum_results = sum_results + float(kpi_results[i][2]['result'])
         return sum_results
 
+    @staticmethod
+    def survay_respons_mock(kpi_name):
+        new_kpi_static_data = pd.DataFrame(kpis.kpi_static_data)
+        return \
+            new_kpi_static_data.loc[new_kpi_static_data['client_name'].str.encode('utf-8') == kpi_name.encode('utf-8')][
+                'pk'].values[0]
+
     def test_calculate_availability_results(self):
         """
         test this that calculate_availability KPI results is the same as the results
@@ -100,35 +113,63 @@ class TestCCCBR(TestUnitCase):
         actual_results = self.sum_results(kpi_results)
         self.assertEqual(actual_results, expected_results)
 
-    def test_handle_atomics_KPIs_results(self):
+    def test_handle_atomics_survay(self):
         """
             there are 244 atomic KPIs in this project i want this function to loop them and get the expected result
         """
 
-        # self.tool_box.write_to_db_result_new_tables = MagicMock()
-        # kpis_sheet = pd.DataFrame(kpis.kpi_sheet)
-        #
-        # kpis_sheet_filterd = kpis_sheet[kpis_sheet['KPI Type'] == 'SURVEY']
-        #
-        # for index, row in kpis_sheet_filterd.iterrows():
-        #     atomic_name = row['English KPI Name'].strip()
-        #     self.tool_box.write_to_db_result_new_tables = MagicMock()
-        #     self.tool_box.handle_survey_atomics(atomic_name)
-        #     kpi_results = self.tool_box.write_to_db_result_new_tables.mock_calls
-        #     print kpi_results
+        get_survey_answer = self.mock_object(
+            'get_survey_answer', path='KPIUtils.Calculations.Survey.Survey')
+        get_survey_answer.return_value = 1
 
+        check_survey_answer = self.mock_object(
+            'check_survey_answer', path='KPIUtils.Calculations.Survey.Survey')
+        check_survey_answer.return_value = 1
 
+        self.tool_box.write_to_db_result_new_tables = MagicMock()
+        kpis_sheet = pd.DataFrame(kpis.kpi_sheet)
+        kpis_sheet_filterd = kpis_sheet[kpis_sheet['KPI Type'] == 'SURVEY']
 
-            # self.tool_box.write_to_db_result_new_tables = MagicMock()
-        # self.tool_box.handle_survey_atomics(atomic_name)
-        # kpi_results = self.tool_box.write_to_db_result_new_tables.mock_calls
-        # expected_results = 1
-        # actual_results = self.sum_results(kpi_results)
-        # self.assertEqual(expected_results, actual_results)
-        pass
+        for index, row in kpis_sheet_filterd.iterrows():
+            atomic_name = row['English KPI Name'].strip()
+            self.tool_box.handle_survey_atomics(atomic_name)
+            kpi_results = self.tool_box.write_to_db_result_new_tables.mock_calls
+            if kpi_results:
+                expected_results = 1
+                actual_results = kpi_results[0][2]['result']
+                self.assertEqual(expected_results, actual_results)
 
     def test_handle_count_atomics(self):
-        pass
+        """
+            there are 244 atomic KPIs in this project i want this function to loop them and get the expected result
+        """
+        self.tool_box.write_to_db_result_new_tables = MagicMock()
+        kpis_sheet = pd.DataFrame(kpis.kpi_sheet)
+        kpis_sheet_filterd = kpis_sheet[kpis_sheet['KPI Type'] == 'COUNT']
+
+        for index, row in kpis_sheet_filterd.iterrows():
+            atomic_name = row['English KPI Name'].strip()
+            self.tool_box.handle_count_atomics(atomic_name)
+            kpi_results = self.tool_box.write_to_db_result_new_tables.mock_calls
+            if kpi_results:
+                expected_results = 0
+                actual_results = kpi_results[0][2]['result']
+                self.assertEqual(expected_results, actual_results)
 
     def test_handle_group_count_atomics(self):
-        pass
+        """
+            there are 244 atomic KPIs in this project i want this function to loop them and get the expected result
+        """
+        self.tool_box.write_to_db_result_new_tables = MagicMock()
+        kpis_sheet = pd.DataFrame(kpis.kpi_sheet)
+        kpis_sheet_filterd = kpis_sheet[kpis_sheet['KPI Type'] == 'GROUP_COUNT']
+
+        for index, row in kpis_sheet_filterd.iterrows():
+            atomic_name = row['English KPI Name'].strip()
+            self.tool_box.handle_group_count_atomics(atomic_name)
+            kpi_results = self.tool_box.write_to_db_result_new_tables.mock_calls
+            print '****************************',index
+            if kpi_results:
+                expected_results = 0
+                actual_results = kpi_results[0][2]['result']
+                self.assertEqual(expected_results, actual_results)
