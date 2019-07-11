@@ -30,12 +30,12 @@ class ToolBox:
         self.data_provider = data_provider
 
         # ----------- fix for nan types in dataprovider -----------
-        all_products = self.data_provider._static_data_provider.all_products.where(
-            (pd.notnull(self.data_provider._static_data_provider.all_products)), None)
-        self.data_provider._set_all_products(all_products)
-        self.data_provider._init_session_data(None, True)
-        self.data_provider._init_report_data(self.data_provider.session_uid)
-        self.data_provider._init_reporting_data(self.data_provider.session_id)
+        # all_products = self.data_provider._static_data_provider.all_products.where(
+        #     (pd.notnull(self.data_provider._static_data_provider.all_products)), None)
+        # self.data_provider._set_all_products(all_products)
+        # self.data_provider._init_session_data(None, True)
+        # self.data_provider._init_report_data(self.data_provider.session_uid)
+        # self.data_provider._init_reporting_data(self.data_provider.session_id)
         # ----------- fix for nan types in dataprovider -----------
 
         self.block = Block(self.data_provider)
@@ -152,7 +152,7 @@ class ToolBox:
                 all_kwargs = [all_kwargs]
             for kwargs in all_kwargs:
                 if not kwargs or kwargs['score'] is None:
-                    kwargs = {'score': 0, 'result': 'Not Applicable', 'failed': 0}
+                    kwargs = {'score': 0, 'result': 0, 'failed': 0}
                 self.write_to_db(kpi_name, **kwargs)
                 self.dependencies[kpi_name] = kwargs['result']
 
@@ -302,7 +302,7 @@ class ToolBox:
 
     def calculate_serial_adj(self, kpi_name, kpi_line, relevant_scif, general_filters):
         scif = self.filter_df(relevant_scif, self.get_kpi_line_filters(kpi_line, 'A'))
-        sizes = self.self.get_kpi_line_filters(kpi_line, 'A')['DLM_ VEGSZ(C)']
+        sizes = self.get_kpi_line_filters(kpi_line, 'A')['DLM_ VEGSZ(C)']
         num_count_sizes = 0 if self.get_kpi_line_filters(kpi_line, 'A')['DLM_ VEGSZ(C)'] == 'FAMILY LARGE' else 1
         if scif.empty:
             return
@@ -744,6 +744,6 @@ class ToolBox:
         :param threshold: int
         """
         kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_name)
-        self.common.write_to_db_result(fk=kpi_fk, score=score, result=result, should_enter=True, target=target,
+        self.common.write_to_db_result(fk=kpi_fk, score=score, result=result, target=target,
                                        numerator_result=numerator_result, denominator_result=denominator_result,
                                        numerator_id=numerator_id, denominator_id=denominator_id)

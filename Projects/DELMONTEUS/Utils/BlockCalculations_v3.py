@@ -10,8 +10,11 @@ import KPIUtils_v2.Calculations.CalculationsUtils.CalculationUtils as Calculatio
 import KPIUtils_v2.Calculations.CalculationsUtils.DefaultValues as Default
 # from Trax.Algo.Calculations.Core.GraphicalModel2.AdjacencyGraphs import AdjacencyGraphBuilder
 from Projects.DELMONTEUS.Utils.AdjacencyGraphs import AdjacencyGraphBuilder
-from Trax.Algo.Geometry.Masking.MaskingResultsIO import retrieve_maskings_flat
-from Trax.Algo.Geometry.Masking.Utils import transform_maskings_flat
+# from Trax.Algo.Geometry.Masking.MaskingResultsIO import retrieve_maskings_flat
+# from Trax.Algo.Geometry.Masking.Utils import transform_maskings_flat
+from Projects.DELMONTEUS.Utils.MaskingResultsIO_v2 import retrieve_maskings
+# from Trax.Algo.Geometry.Masking.MaskingResultsIO import retrieve_maskings
+from Trax.Algo.Geometry.Masking.Utils import transform_maskings
 from Trax.Utils.Logging.Logger import Log
 
 
@@ -49,8 +52,9 @@ class Block(BaseCalculation):
         self.scif = data_provider.scene_item_facts if custom_scif is None else custom_scif
         self.matches = data_provider.matches if custom_matches is None else custom_matches
         self.adj_graphs_by_scene = {}
-        self.masking_data = transform_maskings_flat(*retrieve_maskings_flat(self.data_provider.project_name,
-                                                                 self.data_provider.scenes_info['scene_fk'].to_list()))
+        self.masking_data = \
+            transform_maskings(retrieve_maskings(self.data_provider.project_name,
+                                                 self.data_provider.scenes_info['scene_fk'].to_list()))
         self.masking_data = self.masking_data.merge(
             self.matches[['probe_match_fk', 'scene_fk']], on=['probe_match_fk'])
         self.matches_df = self.matches.merge(

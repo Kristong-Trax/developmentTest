@@ -41,10 +41,14 @@ class AltriaDataProvider:
         cur.execute(query)
         res = cur.fetchall()
         df = pd.DataFrame(list(res), columns=['scene_fk', 'display_fk', 'display_name', 'x', 'y', 'display_brand_fk'])
+        # we need to remove duplicate results
+        # this should never happen, but it did...
+        df.drop_duplicates(subset=['display_fk', 'x', 'y'], keep='first', inplace=True)
         return df
 
     def get_products_contained_in_displays(self, match_product_in_scene_df, top_left_display_name=None,
-                                           bottom_right_display_name=None, y_axis_threshold=40, dropna=True):
+                                           bottom_right_display_name=None, y_axis_threshold=40, x_axis_threshold=75,
+                                           dropna=True, debug=False):
         """
         This function takes in an match_product_in_scene (MPIS) dataframe, display name top left/bottom right names,
         and returns a filtered version of MPIS with the dimensions of the polygons each item was found in.
@@ -52,8 +56,11 @@ class AltriaDataProvider:
         :param str top_left_display_name: name of the 'Top Left Corner' of the display
         :param str bottom_right_display_name: name of the 'Bottom Right Corner' of the display
         :param int y_axis_threshold: The percentage of the max y-range that the opposite point (e.g. Bottom Right)
-        is allowed to be from the anchor point (e.g. Top Let).
+        is allowed to be from the anchor point (e.g. Top Left).
+        :param int x_axis_threshold: The percentage of the max x-range that the opposite point (e.g. Bottom Right)
+        is allowed to be from the anchor point (e.g. Top Left).
         :param bool dropna: Drop MPIS records from the returned dataframe that are not found in any display polygon
+        :param bool debug: Set to True when you would like a graph to be displayed of the polygon_masks
         :return: match_product_in_scene (MPIS) dataframe merged with polygon data
         """
 
@@ -64,7 +71,11 @@ class AltriaDataProvider:
 
         # build a dataframe with all polygon masks that match the display names provided
         polygon_mask_df = self.generate_polygon_masks(top_left_display_name, bottom_right_display_name,
-                                                      y_axis_threshold)
+                                                      y_axis_threshold, x_axis_threshold)
+
+        # plot a graph and display the polygon_mask_df for debugging
+        if debug:
+            self.plot_mdis_points(polygon_mask_df)
 
         # add the columns from the polygon dataframe to MPIS
         match_product_in_scene_df = \
@@ -90,15 +101,22 @@ class AltriaDataProvider:
         return match_product_in_scene_df
 
     def generate_polygon_masks(self, top_left_display_name=TOP_LEFT_CORNER,
-                               bottom_right_display_name=BOTTOM_RIGHT_CORNER, y_axis_threshold=40):
+                               bottom_right_display_name=BOTTOM_RIGHT_CORNER, y_axis_threshold=None,
+                               x_axis_threshold=None):
         """
         Internal function for generating the polygon masks. Probably shouldn't be called directly unless you have
         a special use case.
         :param top_left_display_name:
         :param bottom_right_display_name:
         :param y_axis_threshold:
+        :param x_axis_threshold:
         :return:
         """
+        if not y_axis_threshold:
+            y_axis_threshold = 40
+        if not x_axis_threshold:
+            x_axis_threshold = 75
+
         polygon_mask_df = pd.DataFrame(columns=['scene_fk', 'display_name', 'left_bound', 'right_bound',
                                                 'top_bound', 'bottom_bound', 'center_x', 'center_y'])
         top_left_points = self.mdis[self.mdis['display_name'] == top_left_display_name].reset_index(drop=True)
@@ -124,19 +142,26 @@ class AltriaDataProvider:
         y_max = bottom_right_points['y'].max()
         y_range = (y_max - y_min) * y_axis_threshold / 100
 
+        x_min = top_left_points['x'].min()
+        x_max = bottom_right_points['x'].max()
+
+        x_range = (x_max - x_min) * x_axis_threshold / 100
+
         # pair every anchor point with the closest opposite point
         for anchor_point in anchor_points.itertuples():
             # we only care about points that are lower and further right than the anchor point
             if anchor_points.equals(top_left_points):
                 other_point_domain = opposite_points[(opposite_points['x'] > anchor_point.x) &
                                                      (opposite_points['y'] > anchor_point.y) &
-                                                     (opposite_points['y'] < anchor_point.y + y_range)]
+                                                     (opposite_points['y'] < anchor_point.y + y_range) &
+                                                     (opposite_points['x'] < anchor_point.x + x_range)]
             # ... or if the anchor points are the bottom right, we only care about points that are higher
             # and further to the left than the anchor point
             elif anchor_points.equals(bottom_right_points):
                 other_point_domain = opposite_points[(opposite_points['x'] < anchor_point.x) &
                                                      (opposite_points['y'] < anchor_point.y) &
-                                                     (opposite_points['y'] > anchor_point.y - y_range)]
+                                                     (opposite_points['y'] > anchor_point.y - y_range) &
+                                                     (opposite_points['x'] > anchor_point.x - x_range)]
 
             if other_point_domain.empty:
                 # this shouldn't happen in a perfect world
@@ -211,7 +236,7 @@ class AltriaDataProvider:
         return other_points_df[(other_points_df['x'] == closest_point[0]) & (other_points_df['y'] == closest_point[1])]
 
     # functions used for debugging
-    def plot_mdis_points(self):
+    def plot_mdis_points(self, polygon_mask_df=None):
         """
         This function should only be called when debugging locally - it generates a pretty graph that shows all of the
         tagged display corners
@@ -222,6 +247,15 @@ class AltriaDataProvider:
         bottom_right = self.mdis[self.mdis['display_name'] == BOTTOM_RIGHT_CORNER]
         plt.plot(top_left_points['x'].tolist(), top_left_points['y'].tolist(), 'bo')
         plt.plot(bottom_right['x'].tolist(), bottom_right['y'].tolist(), 'ro')
+        if polygon_mask_df is not None:
+            polygon_mask_df = polygon_mask_df.reindex(columns=polygon_mask_df.columns.tolist() + ['width', 'height'])
+            polygon_mask_df['width'] = polygon_mask_df['right_bound'] - polygon_mask_df['left_bound']
+            polygon_mask_df['height'] = polygon_mask_df['top_bound'] - polygon_mask_df['bottom_bound']
+            from matplotlib.patches import Rectangle
+            for row in polygon_mask_df.itertuples():
+                plt.gca().add_patch(Rectangle((row.left_bound, row.bottom_bound),
+                                              row.width, row.height, fill=False, color='green'))
+
         # plt.axis([self.mdis['x'].min(), self.mdis['x'].max(), self.mdis['y'].max(), self.mdis['y'].min()])
         plt.gca().invert_yaxis()
         plt.show()
