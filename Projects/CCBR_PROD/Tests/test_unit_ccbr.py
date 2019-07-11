@@ -35,11 +35,9 @@ class TestCCCBR(TestUnitCase):
         self.load_exel_to_df_mock = self.mock_object(
             'load_exel_to_df', path='Projects.CCBR_PROD.Utils.KPIToolBox.CCBRToolBox')
 
-        # self.get_kpi_fk_by_kpi_name_new_tables = MagicMock(side_effect=self.survay_respons_mock)
-
         get_kpi_fk_by_kpi_name_new_tables = self.mock_object(
             'Common.get_kpi_fk_by_kpi_name_new_tables')
-        get_kpi_fk_by_kpi_name_new_tables.side_effect = self.survay_respons_mock
+        get_kpi_fk_by_kpi_name_new_tables.side_effect = self.survey_response_mock
 
         # send templates as DFs
         self.load_exel_to_df_mock.side_effect = [pd.DataFrame(records.count_sheet),
@@ -77,7 +75,7 @@ class TestCCCBR(TestUnitCase):
         return sum_results
 
     @staticmethod
-    def survay_respons_mock(kpi_name):
+    def survey_response_mock(kpi_name):
         new_kpi_static_data = pd.DataFrame(kpis.kpi_static_data)
         return \
             new_kpi_static_data.loc[new_kpi_static_data['client_name'].str.encode('utf-8') == kpi_name.encode('utf-8')][
@@ -113,7 +111,7 @@ class TestCCCBR(TestUnitCase):
         actual_results = self.sum_results(kpi_results)
         self.assertEqual(actual_results, expected_results)
 
-    def test_handle_atomics_survay(self):
+    def test_handle_atomics_survey(self):
         """
             there are 244 atomic KPIs in this project i want this function to loop them and get the expected result
         """
