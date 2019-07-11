@@ -112,7 +112,6 @@ MIN_LAYER_NUMBER = 'Min_layer_#'
 MATCH_PRODUCT_IN_PROBE_FK = 'match_product_in_probe_fk'
 MATCH_PRODUCT_IN_PROBE_STATE_REPORTING_FK = 'match_product_in_probe_state_reporting_fk'
 
-
 class PngcnSceneKpis(object):
     def __init__(self, project_connector, common, scene_id, data_provider=None):
         # self.session_uid = session_uid
@@ -1166,14 +1165,14 @@ class PngcnSceneKpis(object):
         kpi_fk = self.common.get_kpi_fk_by_kpi_name(DISPLAY_SIZE_PER_SCENE)
 
         # get size and item id
-        DF_products_size = self._get_display_size_of_product_in_scene()
+        df_products_size = self._get_display_size_of_product_in_scene()
 
-        if self.scif.empty or DF_products_size.empty:
+        if self.scif.empty or df_products_size.empty:
             return
 
         filter_scif = self.scif[[u'scene_id', u'item_id',
                                  u'manufacturer_fk', u'rlv_sos_sc', u'status']]
-        df_result = pd.merge(filter_scif, DF_products_size, on=['item_id', 'scene_id'], how='left')
+        df_result = pd.merge(filter_scif, df_products_size, on=['item_id', 'scene_id'], how='left')
         df_result = df_result[df_result['product_size'] > 0]
 
         if kpi_fk:
@@ -1205,11 +1204,12 @@ class PngcnSceneKpis(object):
         # merge wite scif to add manufacture
         matches_filtered = pd.merge(a, b, how='left',
                                     on=['product_fk', 'scene_fk'])[[u'scene_fk', u'product_fk', 'status_x',
-                                                                    'width_mm_x', u'width_mm_advance',
-                                                                    u'product_type', u'manufacturer_fk', 'rlv_sos_sc']]
+                                                                    'width_mm_x', u'width_mm_advance', 'category_fk',
+                                                                    'manufacturer_name', u'manufacturer_fk',
+                                                                    u'product_type', 'rlv_sos_sc']]
         # rename columns
         matches_filtered.columns = [u'scene_fk', u'product_fk', 'status', 'width_mm', u'width_mm_advance',
-                                    u'product_type', u'manufacturer_fk', 'rlv_sos_sc']
+                                    'category_fk','manufacturer_name', u'manufacturer_fk', u'product_type','rlv_sos_sc']
 
         # remove status == 2
         matches_filtered = matches_filtered[matches_filtered['status'] != 2]
@@ -1223,13 +1223,9 @@ class PngcnSceneKpis(object):
 
         # sum 'width_mm' and 'width_mm_advance' removing unused columns
         new_matches_filtered_without_excludes = new_matches_filtered_without_excludes[[u'scene_fk', u'manufacturer_fk',
-                                                                                       u'product_fk', 'width_mm',
-                                                                                       u'width_mm_advance']]
-
-        new_matches_filtered_without_excludes = new_matches_filtered_without_excludes.groupby(['product_fk',
-                                                                                               'scene_fk',
-                                                                                               'manufacturer_fk'
-                                                                                               ]).sum().reset_index()
+                                                                                   u'product_fk', 'width_mm',
+                                                                                   'category_fk', 'manufacturer_name',
+                                                                                   u'width_mm_advance']]
 
         return new_matches_filtered_without_excludes
 
@@ -1253,6 +1249,7 @@ class PngcnSceneKpis(object):
             Log.warning("There is no matching Kpi fk for kpi name: " + kpi_name)
             return
         matches_filtered = self.get_filterd_matches()
+        matches_filtered = matches_filtered.groupby(['product_fk', 'scene_fk', 'manufacturer_fk']).sum().reset_index()
 
         if matches_filtered.empty:
             return
