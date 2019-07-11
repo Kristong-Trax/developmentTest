@@ -202,8 +202,10 @@ class PNGToolBox:
                                            denominator_result=denominator,
                                            result=result,
                                            score=facings)
+
     def get_display_item_facts_result(self):
-        scenes = tuple(self.scif['scene_fk'].unique())
+        scenes_unique = self.scif['scene_fk'].unique()
+        scenes = tuple(scenes_unique) if len(scenes_unique) > 1 else "(" + scenes_unique[0] + ")"
         query = """
                 select ds.scene_fk as scene_fk, dif.item_id as 'product_fk', dif.product_size, dif.facings  
                     from report.display_item_facts dif join probedata.display_surface ds 
