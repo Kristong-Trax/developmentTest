@@ -176,6 +176,8 @@ class PNGToolBox:
 
         # Calculate nlsos per category - DISPLAYS
         display_item_facts = self.get_display_item_facts_result()
+        if display_item_facts.empty:
+            return
         relevant_scif = self.scif[['product_fk','category_fk', 'manufacturer_name']].drop_duplicates()
         display_scif = pd.merge(display_item_facts, relevant_scif, on=['product_fk'], how="left")
         display_item_facts_session = display_scif.groupby(['category_fk', 'manufacturer_name',
@@ -202,8 +204,12 @@ class PNGToolBox:
                                            denominator_result=denominator,
                                            result=result,
                                            score=facings)
+
     def get_display_item_facts_result(self):
-        scenes = tuple(self.scif['scene_fk'].unique())
+        scenes_unique = self.scif['scene_fk'].unique()
+        if len(scenes_unique) == 0:
+            return
+        scenes = tuple(scenes_unique) if len(scenes_unique) > 1 else "(" + str(scenes_unique[0]) + ")"
         query = """
                 select ds.scene_fk as scene_fk, dif.item_id as 'product_fk', dif.product_size, dif.facings  
                     from report.display_item_facts dif join probedata.display_surface ds 
