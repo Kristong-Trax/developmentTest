@@ -112,11 +112,6 @@ MIN_LAYER_NUMBER = 'Min_layer_#'
 MATCH_PRODUCT_IN_PROBE_FK = 'match_product_in_probe_fk'
 MATCH_PRODUCT_IN_PROBE_STATE_REPORTING_FK = 'match_product_in_probe_state_reporting_fk'
 
-# Category linear SOS
-CATEGORY_LSOS_KPI = 'Category_linear_sos'
-CATEGORY_DISPLAY_LSOS_KPI = 'Category_display_linear_sos'
-
-
 class PngcnSceneKpis(object):
     def __init__(self, project_connector, common, scene_id, data_provider=None):
         # self.session_uid = session_uid
@@ -151,7 +146,7 @@ class PngcnSceneKpis(object):
 
     def process_scene(self):
         self.calculate_variant_block()
-        new_scif = self.save_nlsos_to_custom_scif()
+        self.save_nlsos_to_custom_scif()
         self.calculate_eye_level_kpi()
         self.calculate_linear_length()
         self.calculate_presize_linear_length()
@@ -162,7 +157,6 @@ class PngcnSceneKpis(object):
             Log.debug(self.log_prefix + ' No display tags')
             self._delete_previous_data()
             self.calculate_display_size()
-            self.calculate_linear_sos_per_category(new_scif, CATEGORY_LSOS_KPI, 'gross_len_split_stack_new')
             self.common.commit_results_data(result_entity='scene')
         else:
             self.displays = self._get_displays_data()
@@ -173,35 +167,11 @@ class PngcnSceneKpis(object):
             self._handle_table_display()
             self._handle_rest_display()
             self.calculate_display_size()
-            display_df = self._get_display_size_of_product_in_scene().drop(columns=['facings'])
-            df = pd.merge(display_df, self.scif, how="left", left_on='item_id', right_on='product_fk')
-            self.calculate_linear_sos_per_category(df, CATEGORY_DISPLAY_LSOS_KPI, 'product_size')
             self.common.commit_results_data(result_entity='scene')
             if self.on_ace:
                 Log.debug(self.log_prefix + ' Committing share of display calculations')
                 self.project_connector.db.commit()
             Log.info(self.log_prefix + ' Finished calculation')
-
-    def calculate_linear_sos_per_category(self, df, kpi_name, field_to_calc):
-        kpi_fk = self.common.get_kpi_fk_by_kpi_name(kpi_name)
-        categories = (set(df['category_fk']))
-        for category_fk in categories:
-            category_df = df[df['category_fk'] == category_fk]
-            numerator_df = category_df[category_df['manufacturer_name'].str.encode("utf8") == PNG_MANUFACTURER]
-            numerator = numerator_df[field_to_calc].sum()
-            denominator = category_df[field_to_calc].sum()
-            if denominator == 0:
-                result = 0
-            else:
-                result = numerator / float(denominator)
-            facings = category_df['facings'].sum()
-            self.common.write_to_db_result(fk=kpi_fk,
-                                           numerator_id=category_fk, denominator_id=self.store_id,
-                                           numerator_result=numerator,
-                                           denominator_result=denominator,
-                                           result=result,
-                                           score=facings,
-                                           by_scene=True)
 
     def calculate_variant_block(self):
         legal_blocks = {}
@@ -1110,7 +1080,6 @@ class PngcnSceneKpis(object):
         new_scif = new_scif.fillna(0)
         self.save_nlsos_as_kpi_results(new_scif)
         self.insert_data_into_custom_scif(new_scif)
-        return new_scif
 
     def calculate_result(self, num, den):
         if den:
