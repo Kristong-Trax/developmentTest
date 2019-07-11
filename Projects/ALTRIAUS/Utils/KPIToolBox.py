@@ -391,11 +391,17 @@ class ALTRIAUSToolBox:
         # we need to get POS stuff that falls within the x-range of the longest shelf (which is limited by category)
         # we also need to account for the fact that the images suck, so we're going to add/subtract 5% of the
         # max/min values to allow for POS items that fall slightly out of the shelf length range
+        correction_factor = 0.05
+        correction_value = (longest_shelf['rect_x'].max() - longest_shelf['rect_x'].min()) * correction_factor
         pos_mpis = self.mpis[(self.mpis['product_fk'].isin(relevant_pos_pks)) &
-                             (self.mpis['rect_x'] < (longest_shelf['rect_x'].max() * 1.05)) &
-                             (self.mpis['rect_x'] > (longest_shelf['rect_x'].min() * 0.95)) &
+                             (self.mpis['rect_x'] < (longest_shelf['rect_x'].max() + correction_value)) &
+                             (self.mpis['rect_x'] > (longest_shelf['rect_x'].min() - correction_value)) &
                              (self.mpis['scene_fk'] == relevant_scene_id)]
-        relevant_pos = self.adp.get_products_contained_in_displays(pos_mpis)
+
+        # DO NOT SET TO TRUE WHEN DEPLOYING
+        # debug flag displays polygon_mask graph DO NOT SET TO TRUE WHEN DEPLOYING
+        # DO NOT SET TO TRUE WHEN DEPLOYING
+        relevant_pos = self.adp.get_products_contained_in_displays(pos_mpis, y_axis_threshold=35, debug=False)
 
         if relevant_pos.empty:
             Log.error('No polygon mask was generated for {} category - cannot compute KPIs'.format(category))
@@ -431,6 +437,8 @@ class ALTRIAUSToolBox:
                                             self.header_positions_template['Number of Headers'] ==
                                             number_of_headers]['Smokeless Positions'].iloc[0].split(',')]
                 relevant_pos.loc[relevant_pos['type'] == 'Header', ['position']] = header_position_list
+
+            relevant_pos = self.get_menu_board_items(relevant_pos, longest_shelf, pos_mpis)
         # generate flip-sign positions
         if category == 'Cigarettes':
             relevant_template = \
@@ -445,7 +453,7 @@ class ALTRIAUSToolBox:
                     left_bound = longest_shelf.iloc[:relevant_template[location].iloc[0]]['rect_x'].min()
                 right_bound = longest_shelf.iloc[:relevant_template[location].iloc[0]]['rect_x'].max()
                 if locations[-1] == location:
-                    right_bound = right_bound * 1.05
+                    right_bound = right_bound + abs(right_bound * 0.05)
                 flip_sign_pos = relevant_pos[(relevant_pos['type'] == 'Flip Sign') &
                                              (relevant_pos['center_x'] > left_bound) &
                                              (relevant_pos['center_x'] < right_bound)]
@@ -501,6 +509,8 @@ class ALTRIAUSToolBox:
 
     def calculate_fixture_width(self, relevant_pos, category):
         category_fk = self.get_category_fk_by_name(category)
+        # this is needed to remove intentionally duplicated 'Menu Board' POS 'Headers'
+        relevant_pos = relevant_pos.drop_duplicates(subset=['position'])
         width = relevant_pos[relevant_pos['type'] == 'Header']['width'].sum()
 
         kpi_fk = self.common_v2.get_kpi_fk_by_kpi_name('Fixture Width')
@@ -517,14 +527,69 @@ class ALTRIAUSToolBox:
         if mdis.empty:
             return relevant_pos
 
-        dummy_sku_for_menu_pk = 9282
-        dummy_sky_for_menu_name = 'Other (Smokeless Tobacco)'
+        dummy_sku_for_menu_pk = 9282  # 'Other (Smokeless Tobacco)'
+        dummy_sky_for_menu_name = 'Menu POS (Scene Recognized Item)'
         location_type = 'Header'
         width = 1
         center_x = mdis['x'].iloc[0]
-        relevant_pos.loc[len(relevant_pos), ['product_fk', 'product_name', 'center_x', 'type', 'width']] = \
-            [dummy_sku_for_menu_pk, dummy_sky_for_menu_name, center_x, location_type, width]
+        center_y = mdis['y'].iloc[0]
+        relevant_pos.loc[len(relevant_pos), ['product_fk', 'product_name', 'center_x', 'center_y', 'type', 'width']] = \
+            [dummy_sku_for_menu_pk, dummy_sky_for_menu_name, center_x, center_y, location_type, width]
         relevant_pos = relevant_pos.sort_values(['center_x'], ascending=True).reset_index(drop=True)
+        return relevant_pos
+
+    def get_menu_board_items(self, relevant_pos, longest_shelf, pos_mpis):
+        # get the placeholder item
+        menu_board_dummy = relevant_pos[relevant_pos['product_name'] == 'Menu POS (Scene Recognized Item)']
+
+        # if no placeholder, this function isn't relevant
+        if menu_board_dummy.empty:
+            return relevant_pos
+
+        center_x = menu_board_dummy['center_x'].iloc[0]
+        center_y = menu_board_dummy['center_y'].iloc[0]
+        position = menu_board_dummy['position'].iloc[0]
+
+        demarcation_line = longest_shelf['rect_y'].min()
+        upper_demarcation_line = center_y - (demarcation_line - center_y)
+
+        distance_in_facings = 2
+
+        try:
+            left_bound = longest_shelf[longest_shelf['rect_x'] < center_x].sort_values(
+                by=['rect_x'], ascending=False)['rect_x'].iloc[int(distance_in_facings) - 1]
+        except IndexError:
+            # if there are no POS items found to the left of the 'Menu POS' scene recognition tag, use the tag itself
+            # in theory this should never happen
+            left_bound = center_x
+
+        try:
+            right_bound = longest_shelf[longest_shelf['rect_x'] > center_x].sort_values(
+                by=['rect_x'], ascending=True)['rect_x'].iloc[int(distance_in_facings) - 1]
+        except IndexError:
+            # if there are no POS items found to the right of the 'Menu POS' scene recognition tag, use the tag itself
+            # this is more likely to happen for the right bound than the left bound
+            right_bound = center_x
+
+        pos_mpis = pos_mpis[(pos_mpis['rect_x'] > left_bound) &
+                            (pos_mpis['rect_x'] < right_bound) &
+                            (pos_mpis['rect_y'] > upper_demarcation_line) &
+                            (pos_mpis['rect_y'] < demarcation_line)]
+
+        if pos_mpis.empty:
+            return relevant_pos
+
+        # remove the placeholder item
+        relevant_pos = relevant_pos[~(relevant_pos['product_name'] == 'Menu POS (Scene Recognized Item)')]
+
+        location_type = 'Header'
+        width = 1
+
+        for row in pos_mpis.itertuples():
+            relevant_pos.loc[len(relevant_pos), ['product_fk', 'product_name', 'center_x',
+                                                 'center_y', 'type', 'width', 'position']] = \
+                [row.product_fk, row.product_name, row.rect_x, row.rect_y, location_type, width, position]
+
         return relevant_pos
 
     @staticmethod
