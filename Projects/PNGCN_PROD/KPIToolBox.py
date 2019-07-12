@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 
 import pandas as pd
 import os
@@ -15,7 +16,7 @@ from Projects.PNGCN_PROD.ShareOfDisplay.Calculation import calculate_share_of_di
 
 __author__ = 'nimrodp'
 
-
+PNG_MANUFACTURER = 'P&G宝洁'
 PRIMARY_SHELF = 'Primary Shelf'
 RELEVANT_CATEGORIES = [4, 5, 6, 7, 8, 9, 10, 11, 13]
 PNG_MANUFACTURER_FK = 4
@@ -27,6 +28,10 @@ KPS_RESULT = 'report.kps_results'
 DISPLAY_COUNT_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'Data', 'display_to_count.xlsx')
 TOTAL_DISPLAY_COUNT = 'Total_display_count'
 KPS_WITH_SUB_CATEGORY = 'Fem'
+
+# Category linear SOS
+CATEGORY_LSOS_KPI = 'Category_linear_sos'
+CATEGORY_DISPLAY_LSOS_KPI = 'Category_display_linear_sos'
 
 def log_runtime(description, log_start=False):
     def decorator(func):
@@ -58,6 +63,7 @@ class PNGToolBox:
         self.k_engine = BaseCalculationsScript(data_provider, output)
         self.data_provider = data_provider
         self.project_name = self.data_provider.project_name
+        self.session_id = self.data_provider.session_id
         self.session_uid = self.data_provider.session_uid
         self.all_products = self.data_provider[Data.ALL_PRODUCTS]
         self.visit_date = self.data_provider[Data.VISIT_DATE]
@@ -72,6 +78,152 @@ class PNGToolBox:
                              if self.check_validation_of_category(category)}
         self.irrelevant_empties = 0
         self.common = Common(self.data_provider)
+
+    def main_calculation(self):
+        self.calculate_category_nlsos()
+        self.calculate_total_number_of_display()
+        self.calculate_empty_spaces()
+        relevant_facings = self.scif[(~self.scif['product_type'].isin([self.IRRELEVANT, self.EMPTY])) &
+                                     (self.scif['rlv_sos_sc'] == 1) &
+                                     (self.scif['location_type'] == PRIMARY_SHELF) &
+                                     (self.scif['facings'] > 0)]
+        relevant_facings = relevant_facings.fillna("")
+        sets_to_save = set()
+        for category in self.empty_spaces.keys():
+            # if np.nan in self.empty_spaces[category]:
+            #     self.empty_spaces[category][None] = self.empty_spaces[category][np.nan]
+            #     del self.empty_spaces[category][np.nan]
+            for sub_category in self.empty_spaces[category].keys():
+                kpi_dict = {}
+                empty_spaces = self.empty_spaces[category][sub_category]
+                main_category = True
+                category_facings = relevant_facings[
+                    relevant_facings['category_local_name'].str.encode("utf8") == category.encode("utf8")]
+                if sub_category != category:
+                    main_category = False
+                    if sub_category == '{} Other'.format(category.split('_')[0]):
+                        category_facings = category_facings[~category_facings['sub_category'].apply(bool)]
+                    else:
+                        category_facings = category_facings[
+                            category_facings['sub_category'].str.encode("utf8") == sub_category.encode("utf8")]
+                kpi_dict['PNG_Empty'] = empty_spaces['png']
+                kpi_dict['Total_Empty'] = empty_spaces['png'] + empty_spaces['other']
+                png_facings = category_facings[category_facings['manufacturer_fk'] == PNG_MANUFACTURER_FK]
+                kpi_dict['PG_non-Empty_Facing'] = png_facings['facings'].sum()
+                kpi_dict['Total_non-Empty_Facing'] = category_facings['facings'].sum()
+                png_facings_with_empty = kpi_dict['PG_non-Empty_Facing'] + empty_spaces['png']
+                if png_facings_with_empty > 0:
+                    kpi_dict['PNG_Empty_Rate%'] = (empty_spaces['png'] / float(png_facings_with_empty)) * 100
+                else:
+                    kpi_dict['PNG_Empty_Rate%'] = 0
+                total_facings_with_empty = kpi_dict['Total_non-Empty_Facing'] + kpi_dict['Total_Empty']
+                if total_facings_with_empty > 0:
+                    kpi_dict['Category_Empty_Rate%'] = (kpi_dict['Total_Empty'] / float(total_facings_with_empty)) * 100
+                else:
+                    kpi_dict['Category_Empty_Rate%'] = 0
+
+                if not main_category:
+                    sub_category_data = self.kpi_static_data[(self.kpi_static_data['kpi_set_name'].str.encode("utf8")
+                                                              == (category + SUB_CATEGORY_SETS_SUFFIX).encode("utf8")) &
+                                                             (self.kpi_static_data['kpi_name'].str.encode("utf8")
+                                                              == sub_category.encode("utf8"))]
+                    if sub_category_data.empty:
+                        self.insert_sub_category_kpi(category, sub_category)
+                        sub_category_data = self.kpi_static_data[
+                            (self.kpi_static_data['kpi_set_name'].str.encode("utf8") ==
+                             (category + SUB_CATEGORY_SETS_SUFFIX).encode("utf8")) &
+                            (self.kpi_static_data['kpi_name'].str.encode("utf8")
+                             == sub_category.encode("utf8"))]
+                    sets_to_save.add(sub_category_data['kpi_set_fk'].values[0])
+                    kpi_fk = sub_category_data['kpi_fk'].values[0]
+                    self.write_to_db_result(kpi_fk, 100, self.LEVEL2)
+                    for kpi in kpi_dict.keys():
+                        atomic_kpi_fk = sub_category_data[sub_category_data['atomic_kpi_name'] ==
+                                                          kpi]['atomic_kpi_fk'].values[0]
+                        # if KPS_WITH_SUB_CATEGORY in str(sub_category_data[sub_category_data['atomic_kpi_name'] ==
+                        #                                   kpi]['kpi_set_name']):
+                        self.write_to_db_result(atomic_kpi_fk, kpi_dict[kpi], self.LEVEL3,
+                                                (sub_category).encode('utf-8').strip())
+                        # else:
+                        #     self.write_to_db_result(atomic_kpi_fk, kpi_dict[kpi], self.LEVEL3)
+                else:
+                    category_data = self.kpi_static_data[self.kpi_static_data['kpi_set_name'].str.encode("utf8")
+                                                         == category.encode("utf8")]
+                    sets_to_save.add(category_data['kpi_set_fk'].values[0])
+                    for kpi in kpi_dict:
+                        kpi_fk = category_data[category_data['kpi_name'] == kpi]['kpi_fk'].values[0]
+                        atomic_kpi_fk = category_data[category_data['atomic_kpi_name'] == kpi]['atomic_kpi_fk'].values[
+                            0]
+                        self.write_to_db_result(kpi_fk, kpi_dict[kpi], self.LEVEL2)
+                        # if KPS_WITH_SUB_CATEGORY in str(category_data[category_data['kpi_name'] == kpi]['kpi_set_name']):
+                        self.write_to_db_result(atomic_kpi_fk, kpi_dict[kpi], self.LEVEL3,
+                                                (sub_category).encode('utf-8').strip())
+                        # else :
+                        #     self.write_to_db_result(atomic_kpi_fk, kpi_dict[kpi], self.LEVEL3)
+        for set_fk in sets_to_save:
+            self.write_to_db_result(set_fk, 100, self.LEVEL1)
+        self.common.commit_results_data()
+
+    def calculate_category_nlsos(self):
+        # Calculate nlsos per category - PRIMARY SHELF
+        custom_scif = self.get_custom_scif_results()
+        new_scif = pd.merge(self.scif, custom_scif, on=['scene_fk', 'product_fk'], how="left")
+        new_scif = new_scif[new_scif['rlv_sos_sc'] == 1]
+        new_scif = new_scif[new_scif['location_type'] == PRIMARY_SHELF]
+        new_scif = new_scif.groupby(['category_fk', 'manufacturer_name','product_fk']).sum().reset_index()
+        if not new_scif.empty:
+            self.calculate_linear_sos_per_category(new_scif, CATEGORY_LSOS_KPI, 'length_mm_custom')
+
+        # Calculate nlsos per category - DISPLAYS
+        display_item_facts = self.get_display_item_facts_result()
+        if display_item_facts.empty:
+            return
+        relevant_scif = self.scif[['product_fk','category_fk', 'manufacturer_name']].drop_duplicates()
+        display_scif = pd.merge(display_item_facts, relevant_scif, on=['product_fk'], how="left")
+        display_item_facts_session = display_scif.groupby(['category_fk', 'manufacturer_name',
+                                                        'product_fk']).sum().reset_index()
+        self.calculate_linear_sos_per_category(display_item_facts_session,
+                                               CATEGORY_DISPLAY_LSOS_KPI, 'product_size', multiplie=1000)
+
+    def calculate_linear_sos_per_category(self, df, kpi_name, field_to_calc, multiplie=1):
+        kpi_fk = self.common.get_kpi_fk_by_kpi_name(kpi_name)
+        categories = (set(df['category_fk']))
+        for category_fk in categories:
+            category_df = df[df['category_fk'] == category_fk]
+            numerator_df = category_df[category_df['manufacturer_name'].str.encode("utf8") == PNG_MANUFACTURER]
+            numerator = numerator_df[field_to_calc].sum() * multiplie
+            denominator = category_df[field_to_calc].sum() * multiplie
+            if denominator == 0:
+                continue
+            else:
+                result = numerator / float(denominator)
+            facings = category_df['facings'].sum()
+            self.common.write_to_db_result(fk=kpi_fk,
+                                           numerator_id=category_fk, denominator_id=self.store_id,
+                                           numerator_result=numerator,
+                                           denominator_result=denominator,
+                                           result=result,
+                                           score=facings)
+
+    def get_display_item_facts_result(self):
+        scenes_unique = self.scif['scene_fk'].unique()
+        if len(scenes_unique) == 0:
+            return
+        scenes = tuple(scenes_unique) if len(scenes_unique) > 1 else "(" + str(scenes_unique[0]) + ")"
+        query = """
+                select ds.scene_fk as scene_fk, dif.item_id as 'product_fk', dif.product_size, dif.facings  
+                    from report.display_item_facts dif join probedata.display_surface ds 
+                    on ds.pk=dif.display_surface_fk 
+					where ds.scene_fk in {};""".format(scenes)
+        display_item_facts = pd.read_sql_query(query, self.rds_conn.db)
+        return display_item_facts
+
+    def get_custom_scif_results(self):
+        query = """
+                select * from pservice.custom_scene_item_facts where session_fk = {};
+                """.format(self.session_id)
+        custom_scif = pd.read_sql_query(query, self.rds_conn.db)
+        return custom_scif
 
     def get_category_name(self, category_fk):
         return self.all_products[self.all_products['category_fk'] == category_fk]['category_local_name'].values[0]
@@ -156,84 +308,6 @@ class PNGToolBox:
             except IndexError:
                 Log.warning('The display:{} does not exist in the template.'.format(row['display_name']))
         self.handle_db_total_number_of_display(display_counter)
-
-
-    def main_calculation(self):
-        self.calculate_total_number_of_display()
-        self.calculate_empty_spaces()
-        relevant_facings = self.scif[(~self.scif['product_type'].isin([self.IRRELEVANT, self.EMPTY])) &
-                                     (self.scif['rlv_sos_sc'] == 1) &
-                                     (self.scif['location_type'] == PRIMARY_SHELF) &
-                                     (self.scif['facings'] > 0)]
-        relevant_facings = relevant_facings.fillna("")
-        sets_to_save = set()
-        for category in self.empty_spaces.keys():
-            # if np.nan in self.empty_spaces[category]:
-            #     self.empty_spaces[category][None] = self.empty_spaces[category][np.nan]
-            #     del self.empty_spaces[category][np.nan]
-            for sub_category in self.empty_spaces[category].keys():
-                kpi_dict = {}
-                empty_spaces = self.empty_spaces[category][sub_category]
-                main_category = True
-                category_facings = relevant_facings[relevant_facings['category_local_name'].str.encode("utf8") == category.encode("utf8")]
-                if sub_category != category:
-                    main_category = False
-                    if sub_category == '{} Other'.format(category.split('_')[0]):
-                        category_facings = category_facings[~category_facings['sub_category'].apply(bool)]
-                    else:
-                        category_facings = category_facings[category_facings['sub_category'].str.encode("utf8") == sub_category.encode("utf8")]
-                kpi_dict['PNG_Empty'] = empty_spaces['png']
-                kpi_dict['Total_Empty'] = empty_spaces['png'] + empty_spaces['other']
-                png_facings = category_facings[category_facings['manufacturer_fk'] == PNG_MANUFACTURER_FK]
-                kpi_dict['PG_non-Empty_Facing'] = png_facings['facings'].sum()
-                kpi_dict['Total_non-Empty_Facing'] = category_facings['facings'].sum()
-                png_facings_with_empty = kpi_dict['PG_non-Empty_Facing'] + empty_spaces['png']
-                if png_facings_with_empty > 0:
-                    kpi_dict['PNG_Empty_Rate%'] = (empty_spaces['png'] / float(png_facings_with_empty)) * 100
-                else:
-                    kpi_dict['PNG_Empty_Rate%'] = 0
-                total_facings_with_empty = kpi_dict['Total_non-Empty_Facing'] + kpi_dict['Total_Empty']
-                if total_facings_with_empty > 0:
-                    kpi_dict['Category_Empty_Rate%'] = (kpi_dict['Total_Empty'] / float(total_facings_with_empty)) * 100
-                else:
-                    kpi_dict['Category_Empty_Rate%'] = 0
-
-                if not main_category:
-                    sub_category_data = self.kpi_static_data[(self.kpi_static_data['kpi_set_name'].str.encode("utf8")
-                                                              == (category + SUB_CATEGORY_SETS_SUFFIX).encode("utf8")) &
-                                                             (self.kpi_static_data['kpi_name'].str.encode("utf8")
-                                                              == sub_category.encode("utf8"))]
-                    if sub_category_data.empty:
-                        self.insert_sub_category_kpi(category, sub_category)
-                        sub_category_data = self.kpi_static_data[(self.kpi_static_data['kpi_set_name'].str.encode("utf8") ==
-                                                            (category + SUB_CATEGORY_SETS_SUFFIX).encode("utf8")) &
-                                                            (self.kpi_static_data['kpi_name'].str.encode("utf8")
-                                                             == sub_category.encode("utf8"))]
-                    sets_to_save.add(sub_category_data['kpi_set_fk'].values[0])
-                    kpi_fk = sub_category_data['kpi_fk'].values[0]
-                    self.write_to_db_result(kpi_fk, 100, self.LEVEL2)
-                    for kpi in kpi_dict.keys():
-                        atomic_kpi_fk = sub_category_data[sub_category_data['atomic_kpi_name'] ==
-                                                          kpi]['atomic_kpi_fk'].values[0]
-                        # if KPS_WITH_SUB_CATEGORY in str(sub_category_data[sub_category_data['atomic_kpi_name'] ==
-                        #                                   kpi]['kpi_set_name']):
-                        self.write_to_db_result(atomic_kpi_fk, kpi_dict[kpi], self.LEVEL3, (sub_category).encode('utf-8').strip())
-                        # else:
-                        #     self.write_to_db_result(atomic_kpi_fk, kpi_dict[kpi], self.LEVEL3)
-                else:
-                    category_data = self.kpi_static_data[self.kpi_static_data['kpi_set_name'].str.encode("utf8")
-                                                         == category.encode("utf8")]
-                    sets_to_save.add(category_data['kpi_set_fk'].values[0])
-                    for kpi in kpi_dict:
-                        kpi_fk = category_data[category_data['kpi_name'] == kpi]['kpi_fk'].values[0]
-                        atomic_kpi_fk = category_data[category_data['atomic_kpi_name'] == kpi]['atomic_kpi_fk'].values[0]
-                        self.write_to_db_result(kpi_fk, kpi_dict[kpi], self.LEVEL2)
-                        # if KPS_WITH_SUB_CATEGORY in str(category_data[category_data['kpi_name'] == kpi]['kpi_set_name']):
-                        self.write_to_db_result(atomic_kpi_fk, kpi_dict[kpi], self.LEVEL3, (sub_category).encode('utf-8').strip())
-                        # else :
-                        #     self.write_to_db_result(atomic_kpi_fk, kpi_dict[kpi], self.LEVEL3)
-        for set_fk in sets_to_save:
-            self.write_to_db_result(set_fk, 100, self.LEVEL1)
 
     def calculate_empty_spaces(self):
         empty_facings = self.matches[self.matches['product_type'] == 'Empty']

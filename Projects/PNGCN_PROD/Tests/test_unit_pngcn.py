@@ -4,6 +4,7 @@ import os
 from Trax.Utils.Testing.Case import TestUnitCase, patch
 from mock import MagicMock
 from Projects.PNGCN_PROD.SceneKpis.KPISceneToolBox import PngcnSceneKpis
+from Projects.PNGCN_PROD.KPIToolBox import PNGToolBox
 import Projects.PNGCN_PROD.Tests.Data.records as r
 from KPIUtils_v2.Calculations.BlockCalculations_v2 import Block as BLOCK
 import pandas as pd
@@ -29,6 +30,9 @@ class TestPngcn(TestUnitCase):
         self.ProjectConnector_mock = self.mock_object(
             'get_png_manufacturer_fk', path='Projects.PNGCN_PROD.SceneKpis.KPISceneToolBox.PngcnSceneKpis')
         self.ProjectConnector_mock.return_value = 4
+
+        self.matches_mock = self.mock_object(
+            'get_match_product_in_scene', path='Projects.PNGCN_PROD.KPIToolBox.PNGToolBox')
 
         self.PSProjectConnector = self.mock_object('PSProjectConnector',
                                                    path='KPIUtils_v2.DB.PsProjectConnector')
@@ -63,6 +67,7 @@ class TestPngcn(TestUnitCase):
 
         # mock 'data provider' object giving to the toolbox
         self.data_provider_mock = MagicMock()
+        self.output_mock = MagicMock()
 
         # making data_provider_mock behave like a dict
         self.data_provider_mock.__getitem__.side_effect = my_dict.__getitem__
@@ -513,7 +518,7 @@ class TestPngcn(TestUnitCase):
         else:
             raise Exception('No results were saved')
 
-    def test_calculate_variant_block_case_1(self):
+    def test_calculate_variant_block(self):
         scene_tool_box = PngcnSceneKpis(self.ProjectConnector_mock,
                                         self.common_mock, 16588190,
                                         self.data_provider_mock)
@@ -532,6 +537,33 @@ class TestPngcn(TestUnitCase):
             self.assertEqual(len(kpi_results), 3, 'expects to get 3 blocks')
             self.assertEqual(kpi_results[1]['seq_x'], 1, "the x seq isn't 1 like expected")
             self.assertEqual(kpi_results[1]['seq_y'], 3, "the y seq isn't 3 like expected")
+        else:
+            raise Exception('No results were returned')
+
+    def test_calculate_linear_sos_per_category(self):
+        kpi_tool_box = PNGToolBox(self.data_provider_mock, self.output_mock)
+        kpi_tool_box.common.write_to_db_result = MagicMock()
+        data = pd.DataFrame(
+            [{'scene_fk': 16588190, 'manufacturer_name': 'P&G\u5b9d\u6d01', 'brand_name': 'Safeguard',
+              'category': 'Personal Cleaning Care', 'product_fk': 131, 'stacking_layer': 1, 'category_fk': 101,
+              'product_size': 0.6, 'facings':10},
+             {'scene_fk': 16588190, 'manufacturer_name': 'P&G\u5b9d\u6d01', 'brand_name': 'Safeguard',
+              'category': 'something', 'product_fk': 132, 'stacking_layer': 2, 'category_fk': 101,
+              'product_size': 3, 'facings':2},
+             {'scene_fk': 16588191, 'manufacturer_name': 'other', 'brand_name': 'Safeguard',
+              'category': 'Personal Cleaning Care', 'product_fk': 133, 'stacking_layer': 1, 'category_fk': 102,
+              'product_size': 1.6, 'facings':5},
+             {'scene_fk': 16588191, 'manufacturer_name': 'P&G\u5b9d\u6d01', 'brand_name': 'Safeguard',
+              'category': 'Personal Cleaning Care', 'product_fk': 134, 'stacking_layer': 1, 'category_fk': 101,
+              'product_size': 0.6, 'facings':10},
+             {'scene_fk': 16588191, 'manufacturer_name': 'P&G\u5b9d\u6d01', 'brand_name': 'hola',
+              'category': 'Personal Cleaning Care', 'product_fk': 135, 'stacking_layer': 1, 'category_fk': 101,
+              'product_size': 0.7, 'facings':20}])
+        kpi_tool_box.common.write_to_db_result = MagicMock()
+        kpi_tool_box.calculate_linear_sos_per_category(data, kpi_name='BLA', field_to_calc='product_size')
+        kpi_results = kpi_tool_box.common.write_to_db_result.mock_calls
+        if kpi_results:
+            self.assertEqual(len(kpi_results), 2, 'expects to get 2 categories results')
         else:
             raise Exception('No results were returned')
 

@@ -1,4 +1,3 @@
-
 import pandas as pd
 from datetime import datetime
 from Trax.Algo.Calculations.Core.DataProvider import Data
@@ -14,7 +13,7 @@ from KPIUtils.GlobalProjects.DIAGEO.KPIGenerator import DIAGEOGenerator
 from KPIUtils.DB.Common import Common
 from KPIUtils_v2.DB.CommonV2 import Common as CommonV2
 from OutOfTheBox.Calculations.ManufacturerSOS import ManufacturerFacingsSOSInWholeStore, \
-                  ManufacturerFacingsSOSPerSubCategoryInStore
+    ManufacturerFacingsSOSPerSubCategoryInStore
 from OutOfTheBox.Calculations.SubCategorySOS import SubCategoryFacingsSOSPerCategory
 
 __author__ = 'Yasmin'
@@ -34,7 +33,9 @@ def log_runtime(description, log_start=False):
             calc_end_time = datetime.utcnow()
             Log.info('{} took {}'.format(description, calc_end_time - calc_start_time))
             return result
+
         return wrapper
+
     return decorator
 
 
@@ -96,12 +97,12 @@ class DIAGEOGHToolBox:
         This function calculates the KPI results.
         """
 
+        # SOS Out Of The Box kpis
+        self.activate_ootb_kpis()
+
         # Global assortment kpis
         assortment_res_dict = self.diageo_generator.diageo_global_assortment_function_v2()
         self.commonV2.save_json_to_new_tables(assortment_res_dict)
-
-        # SOS Out Of The Box kpis
-        self.activate_ootb_kpis()
 
         # Global assortment kpis - v3 for NEW MOBILE REPORTS use
         assortment_res_dict_v3 = self.diageo_generator.diageo_global_assortment_function_v3()

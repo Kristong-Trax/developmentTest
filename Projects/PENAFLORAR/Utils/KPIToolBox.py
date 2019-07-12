@@ -1,4 +1,3 @@
-
 import pandas as pd
 from datetime import datetime
 
@@ -13,7 +12,7 @@ from KPIUtils.GlobalProjects.DIAGEO.KPIGenerator import DIAGEOGenerator
 from KPIUtils.DB.Common import Common
 from KPIUtils_v2.DB.CommonV2 import Common as CommonV2
 from OutOfTheBox.Calculations.ManufacturerSOS import ManufacturerFacingsSOSInWholeStore, \
-                  ManufacturerFacingsSOSPerSubCategoryInStore
+    ManufacturerFacingsSOSPerSubCategoryInStore
 from OutOfTheBox.Calculations.SubCategorySOS import SubCategoryFacingsSOSPerCategory
 
 __author__ = 'Yasmin'
@@ -28,6 +27,7 @@ ANCHOR_VALUE = 'Anchor Product Name'
 TESTED_TYPE = 'Tested Type'
 ANCHOR_TYPE = 'Anchor Type'
 
+
 def log_runtime(description, log_start=False):
     def decorator(func):
         def wrapper(*args, **kwargs):
@@ -38,7 +38,9 @@ def log_runtime(description, log_start=False):
             calc_end_time = datetime.utcnow()
             Log.info('{} took {}'.format(description, calc_end_time - calc_start_time))
             return result
+
         return wrapper
+
     return decorator
 
 
@@ -104,13 +106,13 @@ class PENAFLORARToolBox:
         # SOS Out Of The Box kpis
         self.activate_ootb_kpis()
 
-        # Global assortment kpis - v3 for NEW MOBILE REPORTS use
-        assortment_res_dict_v3 = self.diageo_generator.diageo_global_assortment_function_v3()
-        self.commonV2.save_json_to_new_tables(assortment_res_dict_v3)
-
         # Global assortment kpis
         assortment_res_dict = self.diageo_generator.diageo_global_assortment_function_v2()
         self.commonV2.save_json_to_new_tables(assortment_res_dict)
+
+        # Global assortment kpis - v3 for NEW MOBILE REPORTS use
+        assortment_res_dict_v3 = self.diageo_generator.diageo_global_assortment_function_v3()
+        self.commonV2.save_json_to_new_tables(assortment_res_dict_v3)
 
         for set_name in set_names:
             if set_name not in self.tools.KPI_SETS_WITHOUT_A_TEMPLATE and set_name not in self.set_templates_data.keys():
@@ -462,13 +464,14 @@ class PENAFLORARToolBox:
                                       columns=['kps_name', 'session_uid', 'store_fk', 'visit_date', 'score_1',
                                                'kpi_set_fk'])
         elif level == self.LEVEL2:
-            kpi_name = self.kpi_static_data[self.kpi_static_data['kpi_fk'] == fk]['kpi_name'].values[0].replace("'","''")
+            kpi_name = self.kpi_static_data[self.kpi_static_data['kpi_fk'] == fk]['kpi_name'].values[0].replace("'",
+                                                                                                                "''")
             attributes = pd.DataFrame([(self.session_uid, self.store_id, self.visit_date.isoformat(),
                                         fk, kpi_name, score)],
                                       columns=['session_uid', 'store_fk', 'visit_date', 'kpi_fk', 'kpk_name', 'score'])
         elif level == self.LEVEL3:
             data = self.kpi_static_data[self.kpi_static_data['atomic_kpi_fk'] == fk]
-            atomic_kpi_name = data['atomic_kpi_name'].values[0].replace("'","''")
+            atomic_kpi_name = data['atomic_kpi_name'].values[0].replace("'", "''")
             kpi_fk = data['kpi_fk'].values[0]
             kpi_set_name = self.kpi_static_data[self.kpi_static_data['atomic_kpi_fk'] == fk]['kpi_set_name'].values[0]
             attributes = pd.DataFrame([(atomic_kpi_name, self.session_uid, kpi_set_name, self.store_id,
