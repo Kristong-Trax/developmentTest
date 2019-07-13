@@ -510,7 +510,7 @@ class ToolBox:
         score = 0
         exempt = 0
         for group in groups:
-            sub_filters = {num_filter.keys()[0]: group}
+            sub_filters = {num_filter.keys()[0]: [group]}
             sub_filters.update(den_filter)
             sub_score = 0
             try:
