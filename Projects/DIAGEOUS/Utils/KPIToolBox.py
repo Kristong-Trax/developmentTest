@@ -551,19 +551,21 @@ class ToolBox:
             total_kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.DB_ON_NAMES[Const.MENU_NATIONAL][Const.TOTAL])
             result_dict = self.common.get_dictionary(kpi_fk=total_kpi_fk)
             template_kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.DB_ON_NAMES[Const.MENU_NATIONAL][Const.TEMPLATE])
-            for template_fk in relevant_scif['template_fk'].unique().tolist():
-                scene_type_dict = self.common.get_dictionary(kpi_fk=template_kpi_fk, scene_type=template_fk)
-                temp_scif = relevant_scif[relevant_scif['template_fk'] == template_fk]
-                temp_diageo_facings, temp_den_res = self.calculate_menu_scene_type(
-                    temp_scif, scene_type_dict, target, template_fk)
-                diageo_facings += temp_diageo_facings
+            for template_group in relevant_scif['template_group'].unique().tolist():
+                template_scif = relevant_scif[
+                    relevant_scif['template_group'].str.encode("utf-8") == template_group.encode("utf-8")]
+                template_id = template_scif['template_fk'].iloc[0]
+                scene_type_dict = self.common.get_dictionary(kpi_fk=template_kpi_fk, template_fk=template_id)
+                template_diageo_facings, temp_den_res = self.calculate_menu_scene_type(
+                    template_scif, scene_type_dict, target, template_id)
+                diageo_facings += template_diageo_facings
                 den_res += temp_den_res
-                result = self.get_score(temp_diageo_facings, temp_den_res)
+                result = self.get_score(template_diageo_facings, temp_den_res)
                 score = 1 if result >= target else 0
                 self.common.write_to_db_result(
-                    fk=template_kpi_fk, numerator_id=temp_scif['template_fk'].iloc[0],
+                    fk=template_kpi_fk, numerator_id=template_id,
                     denominator_result=temp_den_res, result=score, score=result, weight=weight * 100,
-                    identifier_result=scene_type_dict, target=target, numerator_result=temp_diageo_facings,
+                    identifier_result=scene_type_dict, target=target, numerator_result=template_diageo_facings,
                     identifier_parent=result_dict, should_enter=True)
         else:
             diageo_facings, den_res = self.calculate_menu_scene_type(relevant_scif, result_dict, target, Const.ALL)
@@ -601,7 +603,7 @@ class ToolBox:
             manufacturer_scif = relevant_scif[(relevant_scif['manufacturer_fk'] == manufacturer_fk) &
                                               ~(relevant_scif['sub_brand_fk'].isnull())]
             manufacturer_dict = self.common.get_dictionary(
-                kpi_fk=manufacturer_kpi_fk, manufacturer_fk=manufacturer_fk, scene_type=template_fk)
+                kpi_fk=manufacturer_kpi_fk, manufacturer_fk=manufacturer_fk, template_fk=template_fk)
             for products in manufacturer_scif[['sub_brand_fk', 'brand_fk']].drop_duplicates().itertuples():
                 sub_brand_fk = products.sub_brand_fk
                 brand_fk = products.brand_fk
