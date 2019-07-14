@@ -1709,9 +1709,9 @@ class BATRUToolBox:
         for equipment in equipments:
             if equipment in self.scif['additional_attribute_1'].unique().tolist():
                 equipment_template = posm_template.loc[posm_template['KPI Display Name'] == equipment]
-                scene_type = equipment_template['Template Group'].values[0].encode('utf8')
+                scene_type = equipment_template['Template Group'].values[0]
                 scenes = self.scif.loc[(self.scif['additional_attribute_1'] == equipment) &
-                                       (self.scif['template_group'].str.encode('utf8') == scene_type)]['scene_id'].unique()
+                                       (self.scif['template_group'] == scene_type)]['scene_id'].unique()
                 for scene in scenes:
                     equipment_in_store += 1
                     # this will change the display name for the db according to instances:
@@ -1758,7 +1758,7 @@ class BATRUToolBox:
                                          (~(self.posm_in_session['additional_attribute_1'].isnull()))]
         add_posms = add_posms[['additional_attribute_1', 'display_name']].drop_duplicates()
         for i, row in add_posms.iterrows():
-            name = '{};{};{};{}'.format(row['additional_attribute_1'].encode('utf8'), DEFAULT_GROUP_NAME,
+            name = '{};{};{};{}'.format(row['additional_attribute_1'], DEFAULT_GROUP_NAME,
                                         DEFAULT_ATOMIC_NAME, row['display_name'])
             self.p4_posm_to_api[name] = 1
 

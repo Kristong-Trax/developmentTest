@@ -1676,6 +1676,7 @@ class BATRU_SANDToolBox:
         # posm_template = self.get_custom_template(P4_PATH, 'Availability')
         posm_template = self.get_relevant_template_sheet(P4_TEMPLATE, 'Availability')
         posm_template['KPI Display Name'] = self.encode_column_in_df(posm_template, 'KPI Display Name')
+        posm_template['Template Group'] = self.encode_column_in_df(posm_template, 'Template Group')
         posm_template['Group Name'] = self.encode_column_in_df(posm_template, 'Group Name')
         posm_template['Atomic KPI Name'] = self.encode_column_in_df(posm_template, 'Atomic KPI Name')
         posm_template['Product Name'] = self.encode_column_in_df(posm_template, 'Product Name')
