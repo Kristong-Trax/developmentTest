@@ -510,7 +510,7 @@ class ToolBox:
         score = 0
         exempt = 0
         for group in groups:
-            sub_filters = {num_filter.keys()[0]: group}
+            sub_filters = {num_filter.keys()[0]: [group]}
             sub_filters.update(den_filter)
             sub_score = 0
             try:
@@ -744,6 +744,6 @@ class ToolBox:
         :param threshold: int
         """
         kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_name)
-        self.common.write_to_db_result(fk=kpi_fk, score=score, result=result, should_enter=True, target=target,
+        self.common.write_to_db_result(fk=kpi_fk, score=score, result=result, target=target,
                                        numerator_result=numerator_result, denominator_result=denominator_result,
                                        numerator_id=numerator_id, denominator_id=denominator_id)

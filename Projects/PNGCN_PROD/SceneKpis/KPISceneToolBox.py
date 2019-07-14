@@ -112,7 +112,6 @@ MIN_LAYER_NUMBER = 'Min_layer_#'
 MATCH_PRODUCT_IN_PROBE_FK = 'match_product_in_probe_fk'
 MATCH_PRODUCT_IN_PROBE_STATE_REPORTING_FK = 'match_product_in_probe_state_reporting_fk'
 
-
 class PngcnSceneKpis(object):
     def __init__(self, project_connector, common, scene_id, data_provider=None):
         # self.session_uid = session_uid
@@ -1166,14 +1165,14 @@ class PngcnSceneKpis(object):
         kpi_fk = self.common.get_kpi_fk_by_kpi_name(DISPLAY_SIZE_PER_SCENE)
 
         # get size and item id
-        DF_products_size = self._get_display_size_of_product_in_scene()
+        df_products_size = self._get_display_size_of_product_in_scene()
 
-        if self.scif.empty or DF_products_size.empty:
+        if self.scif.empty or df_products_size.empty:
             return
 
         filter_scif = self.scif[[u'scene_id', u'item_id',
                                  u'manufacturer_fk', u'rlv_sos_sc', u'status']]
-        df_result = pd.merge(filter_scif, DF_products_size, on=['item_id', 'scene_id'], how='left')
+        df_result = pd.merge(filter_scif, df_products_size, on=['item_id', 'scene_id'], how='left')
         df_result = df_result[df_result['product_size'] > 0]
 
         if kpi_fk:
