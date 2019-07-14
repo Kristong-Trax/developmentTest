@@ -254,12 +254,6 @@ class BATRUToolBox:
         """
         This function calculates the KPI results.
         """
-
-        # file_name = 'batru_current_p4.xlsx'
-        # path = '/tmp/{}'.format(file_name)
-        # writer = pd.ExcelWriter(path, engine='xlsxwriter')
-        # self.all_templates[P4_TEMPLATE]['Availability'].to_excel(writer, sheet_name='Sheet1', index=False)
-        # writer.save()
         self.handle_priority_1()
         self.handle_priority_2()
         self.handle_priority_3()
@@ -1715,9 +1709,9 @@ class BATRUToolBox:
         for equipment in equipments:
             if equipment in self.scif['additional_attribute_1'].unique().tolist():
                 equipment_template = posm_template.loc[posm_template['KPI Display Name'] == equipment]
-                scene_type = equipment_template['Template Group'].values[0]
+                scene_type = equipment_template['Template Group'].values[0].encode('utf8')
                 scenes = self.scif.loc[(self.scif['additional_attribute_1'] == equipment) &
-                                       (self.scif['template_group'] == scene_type)]['scene_id'].unique()
+                                       (self.scif['template_group'].str.encode('utf8') == scene_type)]['scene_id'].unique()
                 for scene in scenes:
                     equipment_in_store += 1
                     # this will change the display name for the db according to instances:
@@ -1744,13 +1738,10 @@ class BATRUToolBox:
                         result = 0
 
                     score = score + 1 if result else score
-
-        euipment_not_in_template = self.posm_in_session[~(self.posm_in_session['display_name'].isnull())]\
-            ['additional_attribute_1'].unique().tolist()
-
         set_score = '{}/{}'.format(score, equipment_in_store)
         self.write_to_db_result(set_fk, set_score, level=self.LEVEL1)
 
+        self.add_posms_not_assigned_to_scenes_in_template()
         # publish POSMs to API
         self.save_level1(set_name=P4_API_SET, score=None)
         for name in self.p4_posm_to_api.keys():
@@ -1761,6 +1752,15 @@ class BATRUToolBox:
                                             atomic_kpi_name=name)
 
         return
+
+    def add_posms_not_assigned_to_scenes_in_template(self):
+        add_posms = self.posm_in_session[(~(self.posm_in_session['additional_attribute_1'].isin(self.p4_display_count.keys()))) &
+                                         (~(self.posm_in_session['additional_attribute_1'].isnull()))]
+        add_posms = add_posms[['additional_attribute_1', 'display_name']].drop_duplicates()
+        for i, row in add_posms.iterrows():
+            name = '{};{};{};{}'.format(row['additional_attribute_1'].encode('utf8'), DEFAULT_GROUP_NAME,
+                                        DEFAULT_ATOMIC_NAME, row['display_name'])
+            self.p4_posm_to_api[name] = 1
 
     def calculate_passed_equipments(self, equipment_template, equipment_name, scene_fk):
         """

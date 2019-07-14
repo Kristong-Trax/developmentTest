@@ -15,7 +15,7 @@ from Projects.BATRU_SAND.Utils.Fetcher import BATRU_SANDQueries
 from Projects.BATRU_SAND.Utils.GeneralToolBox import BATRU_SANDGENERALToolBox
 from Projects.BATRU_SAND.Utils.PositionGraph import BATRU_SANDPositionGraphs
 from KPIUtils_v2.Utils.Decorators.Decorators import kpi_runtime, log_runtime
-
+import numpy as np
 
 __author__ = 'uri'
 
@@ -117,6 +117,7 @@ class BATRU_SANDToolBox:
         self.session_uid = self.data_provider.session_uid
 
         self.products = self.data_provider[Data.PRODUCTS]
+        self.products.loc[self.products['substitution_product_fk'].isnull(), 'substitution_product_fk'] = np.nan
         self.products = self.products\
             .merge(self.products[['product_fk', 'product_ean_code', 'product_name']],
                    how='left', left_on='substitution_product_fk', right_on='product_fk', suffixes=['', '_lead'])
@@ -128,6 +129,7 @@ class BATRU_SANDToolBox:
         ), 'product_fk_lead'] = self.products['product_fk']
 
         self.all_products = self.data_provider[Data.ALL_PRODUCTS]
+        self.all_products.loc[self.all_products['substitution_product_fk'].isnull(), 'substitution_product_fk'] = np.nan
         self.all_products = self.all_products\
             .merge(self.all_products[['product_fk', 'product_ean_code', 'product_name']],
                    how='left', left_on='substitution_product_fk', right_on='product_fk', suffixes=['', '_lead'])
@@ -1697,9 +1699,9 @@ class BATRU_SANDToolBox:
         for equipment in equipments:
             if equipment in self.scif['additional_attribute_1'].unique().tolist():
                 equipment_template = posm_template.loc[posm_template['KPI Display Name'] == equipment]
-                scene_type = equipment_template['Template Group'].values[0]
+                scene_type = equipment_template['Template Group'].values[0].encode('utf8')
                 scenes = self.scif.loc[(self.scif['additional_attribute_1'] == equipment) &
-                                       (self.scif['template_group'] == scene_type)]['scene_id'].unique()
+                                       (self.scif['template_group'].str.encode('utf8') == scene_type)]['scene_id'].unique()
                 for scene in scenes:
                     equipment_in_store += 1
                     # this will change the display name for the db according to instances:
@@ -1730,6 +1732,7 @@ class BATRU_SANDToolBox:
         set_score = '{}/{}'.format(score, equipment_in_store)
         self.write_to_db_result(set_fk, set_score, level=self.LEVEL1)
 
+        self.add_posms_not_assigned_to_scenes_in_template()
         # publish POSMs to API
         self.save_level1(set_name=P4_API_SET, score=None)
         for name in self.p4_posm_to_api.keys():
@@ -1740,6 +1743,15 @@ class BATRU_SANDToolBox:
                                             atomic_kpi_name=name)
 
         return
+
+    def add_posms_not_assigned_to_scenes_in_template(self):
+        add_posms = self.posm_in_session[(~(self.posm_in_session['additional_attribute_1'].isin(self.p4_display_count.keys()))) &
+                                         (~(self.posm_in_session['additional_attribute_1'].isnull()))]
+        add_posms = add_posms[['additional_attribute_1', 'display_name']].drop_duplicates()
+        for i, row in add_posms.iterrows():
+            name = '{};{};{};{}'.format(row['additional_attribute_1'].encode('utf8'), DEFAULT_GROUP_NAME,
+                                        DEFAULT_ATOMIC_NAME, row['display_name'])
+            self.p4_posm_to_api[name] = 1
 
     def calculate_passed_equipments(self, equipment_template, equipment_name, scene_fk):
         """
