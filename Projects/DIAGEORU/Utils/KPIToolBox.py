@@ -1,92 +1,28 @@
 
-import pandas as pd
-from datetime import datetime
 from Trax.Algo.Calculations.Core.DataProvider import Data
-from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScript
 from OutOfTheBox.Calculations.ManufacturerSOS import ManufacturerFacingsSOSInWholeStore, \
     ManufacturerFacingsSOSPerSubCategoryInStore
 from OutOfTheBox.Calculations.SubCategorySOS import SubCategoryFacingsSOSPerCategory
-from Trax.Utils.Conf.Keys import DbUsers
-from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
-from Trax.Utils.Logging.Logger import Log
-from KPIUtils.DIAGEO.ToolBox import DIAGEOToolBox
-from KPIUtils.GlobalProjects.DIAGEO.Utils.Fetcher import DIAGEOQueries
 from KPIUtils.GlobalProjects.DIAGEO.KPIGenerator import DIAGEOGenerator
 from KPIUtils.DB.Common import Common
 from KPIUtils_v2.DB.CommonV2 import Common as CommonV2
-
-__author__ = 'Yasmin'
-
-
-def log_runtime(description, log_start=False):
-    def decorator(func):
-        def wrapper(*args, **kwargs):
-            calc_start_time = datetime.utcnow()
-            if log_start:
-                Log.info('{} started at {}'.format(description, calc_start_time))
-            result = func(*args, **kwargs)
-            calc_end_time = datetime.utcnow()
-            Log.info('{} took {}'.format(description, calc_end_time - calc_start_time))
-            return result
-        return wrapper
-    return decorator
+from KPIUtils.GlobalProjects.DIAGEO.Utils.Consts import DiageoKpiNames
+from KPIUtils.GlobalProjects.DIAGEO.Utils.TemplateCache import
+from KPIUtils_v2.Utils.Decorators.Decorators import log_runtime
 
 
 class DIAGEORUToolBox:
-    LEVEL1 = 1
-    LEVEL2 = 2
-    LEVEL3 = 3
 
     def __init__(self, data_provider, output):
-        self.k_engine = BaseCalculationsScript(data_provider, output)
         self.output = output
         self.data_provider = data_provider
-        self.project_name = self.data_provider.project_name
-        self.session_uid = self.data_provider.session_uid
-        self.products = self.data_provider[Data.PRODUCTS]
-        self.all_products = self.data_provider[Data.ALL_PRODUCTS]
-        self.match_product_in_scene = self.data_provider[Data.MATCHES]
-        self.visit_date = self.data_provider[Data.VISIT_DATE]
-        self.session_info = self.data_provider[Data.SESSION_INFO]
-        self.scene_info = self.data_provider[Data.SCENES_INFO]
         self.store_id = self.data_provider[Data.STORE_FK]
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
-        self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
-        self.kpi_static_data = self.get_kpi_static_data()
-        self.kpi_results_queries = []
-        self.store_info = self.data_provider[Data.STORE_INFO]
-        self.store_channel = self.store_info['store_type'].values[0]
-        if self.store_channel:
-            self.store_channel = self.store_channel.upper()
-        self.store_type = self.store_info['additional_attribute_1'].values[0]
-        self.set_templates_data = {}
-        self.kpi_static_data = self.get_kpi_static_data()
-        self.match_display_in_scene = self.get_match_display()
-        self.output = output
         self.common = Common(self.data_provider)
         self.commonV2 = CommonV2(self.data_provider)
-        self.tools = DIAGEOToolBox(self.data_provider, output, match_display_in_scene=self.match_display_in_scene)
         self.diageo_generator = DIAGEOGenerator(self.data_provider, self.output, self.common, menu=True)
 
-    def get_match_display(self):
-        """
-        This function extracts the display matches data and saves it into one global data frame.
-        The data is taken from probedata.match_display_in_scene.
-        """
-        query = DIAGEOQueries.get_match_display(self.session_uid)
-        match_display = pd.read_sql_query(query, self.rds_conn.db)
-        return match_display
-
-    def get_kpi_static_data(self):
-        """
-        This function extracts the static KPI data and saves it into one global data frame.
-        The data is taken from static.kpi / static.atomic_kpi / static.kpi_set.
-        """
-        query = DIAGEOQueries.get_all_kpi_data()
-        kpi_static_data = pd.read_sql_query(query, self.rds_conn.db)
-        return kpi_static_data
-
-    def main_calculation(self, set_names):
+    def main_calculation(self):
         """
         This function calculates the KPI results.
         """
@@ -109,34 +45,28 @@ class DIAGEORUToolBox:
             cocktail_product_level=True)
         self.commonV2.save_json_to_new_tables(menus_res_dict)
 
-        for set_name in set_names:
-            if set_name not in self.tools.KPI_SETS_WITHOUT_A_TEMPLATE and set_name not in self.set_templates_data.keys():
-                self.set_templates_data[set_name] = self.tools.download_template(set_name)
+        # Global Secondary Displays function
+        res_json = self.diageo_generator.diageo_global_secondary_display_secondary_function()
+        if res_json:
+            self.commonV2.write_to_db_result(fk=res_json['fk'], numerator_id=1, denominator_id=self.store_id,
+                                             result=res_json['result'])
+        # Brand Blocking Global function
+        template_data = self.tools.download_templatea[DiageoKpiNames.BRAND_BLOCKING]
+        res_dict = self.diageo_generator.diageo_global_block_together(
+            kpi_name=DiageoKpiNames.BRAND_BLOCKING,
+            set_templates_data=template_data)
+        self.commonV2.save_json_to_new_tables(res_dict)
 
-            if set_name == 'Secondary Displays':
-                # Global function
-                res_json = self.diageo_generator.diageo_global_secondary_display_secondary_function()
-                if res_json:
-                    # Saving to new tables
-                    self.commonV2.write_to_db_result(fk=res_json['fk'], numerator_id=1, denominator_id=self.store_id,
-                                                     result=res_json['result'])
+        # Global Relative Position function
+        template_data = self.tools.download_template(DiageoKpiNames.RELATIVE_POSITION)
+        res_dict = self.diageo_generator.diageo_global_relative_position_function(
+            template_data, location_type='template_name')
+        self.commonV2.save_json_to_new_tables(res_dict)
 
-            elif set_name == 'Brand Blocking':
-                # Global function
-                res_dict = self.diageo_generator.diageo_global_block_together(
-                    kpi_name=set_name,
-                    set_templates_data=self.set_templates_data[set_name])
-                self.commonV2.save_json_to_new_tables(res_dict)
-
-            elif set_name == 'Relative Position':
-                # Global function
-                res_dict = self.diageo_generator.diageo_global_relative_position_function(
-                    self.set_templates_data[set_name], location_type='template_name')
-                self.commonV2.save_json_to_new_tables(res_dict)
-
-            elif set_name == 'Vertical Shelf Placement':
-                res_dict = self.diageo_generator.diageo_global_vertical_placement(self.set_templates_data[set_name])
-                self.commonV2.save_json_to_new_tables(res_dict)
+        # Global Vertical Shelf Placement function
+        template_data = self.tools.download_template(DiageoKpiNames.VERTICAL_SHELF_PLACEMENT)
+        res_dict = self.diageo_generator.diageo_global_vertical_placement(template_data)
+        self.commonV2.save_json_to_new_tables(res_dict)
 
         # committing to the new tables
         self.commonV2.commit_results_data()
