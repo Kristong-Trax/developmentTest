@@ -1753,9 +1753,8 @@ class BATRU_SANDToolBox:
         add_posms = add_posms[['additional_attribute_1', 'display_name']].drop_duplicates()
         for i, row in add_posms.iterrows():
             name = '{};{};{};{}'.format(row['additional_attribute_1'].encode('utf8'), DEFAULT_GROUP_NAME,
-                                        DEFAULT_ATOMIC_NAME, row['display_name'])
-            if name not in self.p4_posm_to_api.keys():
-                self.p4_posm_to_api[name] = 1
+                                        DEFAULT_ATOMIC_NAME, row['display_name'].encode('utf8'))
+            self.p4_posm_to_api[name] = 1
 
     def calculate_passed_equipments(self, equipment_template, equipment_name, scene_fk):
         """
