@@ -421,6 +421,8 @@ class ToolBox:
         scenes = self.filter_df(relevant_scif, general_filters).scene_fk.unique()
         if 'template_name' in general_filters:
             del general_filters['template_name']
+        if 'scene_fk' in general_filters:
+            del general_filters['scene_fk']
         mpis_dict = {}
         valid_scene_found = 0
         for scene in scenes:
@@ -517,9 +519,10 @@ class ToolBox:
         if 'template_name' in general_filters:
             del general_filters['template_name']
         for scene in scenes:  # check every scene
-            scene_general_filters = general_filters.update({'scene_fk': scene})
+            scene_general_filters = general_filters.copy()
+            scene_general_filters.update({'scene_fk': scene})
 
-            for group in groups: # check all the groups in the current scene
+            for group in groups:  # check all the groups in the current scene
                 sub_filters = {num_filter.keys()[0]: [group]}
                 sub_filters.update(den_filter)
                 sub_score = 0
