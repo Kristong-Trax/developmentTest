@@ -49,7 +49,7 @@ class TestSOVI(TestUnitCase):
 
         self.toolbox = SOVIToolBox(self.data_provider_mock, self.output_mock, self.common_mock)
 
-
     def test_test(self):
         x = 1
+        x = 4
         pass
