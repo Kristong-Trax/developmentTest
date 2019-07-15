@@ -50,7 +50,7 @@ class DIAGEORUToolBox:
             self.commonV2.write_to_db_result(fk=res_json['fk'], numerator_id=1, denominator_id=self.store_id,
                                              result=res_json['result'])
         # Brand Blocking Global function
-        template_data = self.template_handler.download_template[DiageoKpiNames.BRAND_BLOCKING]
+        template_data = self.template_handler.download_template(DiageoKpiNames.BRAND_BLOCKING)
         res_dict = self.diageo_generator.diageo_global_block_together(
             kpi_name=DiageoKpiNames.BRAND_BLOCKING,
             set_templates_data=template_data)
