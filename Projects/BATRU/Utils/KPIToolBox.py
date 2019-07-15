@@ -1754,13 +1754,25 @@ class BATRUToolBox:
         return
 
     def add_posms_not_assigned_to_scenes_in_template(self):
-        add_posms = self.posm_in_session[(~(self.posm_in_session['additional_attribute_1'].isin(self.p4_display_count.keys()))) &
-                                         (~(self.posm_in_session['additional_attribute_1'].isnull()))]
+        # add_posms = self.posm_in_session[(~(self.posm_in_session['additional_attribute_1'].isin(self.p4_display_count.keys()))) &
+        #                                  (~(self.posm_in_session['display_name'].isnull())) &
+        #                                  (~(self.posm_in_session['additional_attribute_1'].isnull())) &
+        #                                  (self.posm_in_session['template_group'] == EXIT_TEMPLATE_GROUP)]
+        # add_posms = add_posms[['additional_attribute_1', 'display_name']].drop_duplicates()
+        # for i, row in add_posms.iterrows():
+        #     name = '{};{};{};{}'.format(row['additional_attribute_1'], DEFAULT_GROUP_NAME,
+        #                                 DEFAULT_ATOMIC_NAME, row['display_name'])
+        #     self.p4_posm_to_api[name] = 1
+
+        add_posms = self.posm_in_session[(~(self.posm_in_session['display_name'].isnull())) &
+                                         (~(self.posm_in_session['additional_attribute_1'].isnull())) &
+                                         (self.posm_in_session['template_group'] == EXIT_TEMPLATE_GROUP)]
         add_posms = add_posms[['additional_attribute_1', 'display_name']].drop_duplicates()
         for i, row in add_posms.iterrows():
             name = '{};{};{};{}'.format(row['additional_attribute_1'], DEFAULT_GROUP_NAME,
                                         DEFAULT_ATOMIC_NAME, row['display_name'])
-            self.p4_posm_to_api[name] = 1
+            if name not in self.p4_posm_to_api.keys():
+                self.p4_posm_to_api[name] = 1
 
     def calculate_passed_equipments(self, equipment_template, equipment_name, scene_fk):
         """
