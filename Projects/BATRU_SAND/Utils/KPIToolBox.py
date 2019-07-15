@@ -1700,7 +1700,7 @@ class BATRU_SANDToolBox:
         for equipment in equipments:
             if equipment in self.scif['additional_attribute_1'].unique().tolist():
                 equipment_template = posm_template.loc[posm_template['KPI Display Name'] == equipment]
-                scene_type = equipment_template['Template Group'].values[0].encode('utf8')
+                scene_type = equipment_template['Template Group'].values[0]
                 scenes = self.scif.loc[(self.scif['additional_attribute_1'] == equipment) &
                                        (self.scif['template_group'].str.encode('utf8') == scene_type)]['scene_id'].unique()
                 for scene in scenes:
