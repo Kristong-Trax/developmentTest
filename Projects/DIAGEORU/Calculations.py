@@ -15,12 +15,12 @@ class DIAGEORUDIAGEORUCalculations(BaseCalculationsScript):
         self.timer.stop('KPIGenerator.run_project_calculations')
 
 
-# if __name__ == '__main__':
-#     LoggerInitializer.init('diageoru calculations')
-#     Config.init()
-#     project_name = 'diageoru'
-#     data_provider = KEngineDataProvider(project_name)
-#     session = 'e4f2c2a9-820f-4d59-bb88-54eac8fdf014'
-#     data_provider.load_session_data(session)
-#     output = Output()
-#     DIAGEORUDIAGEORUCalculations(data_provider, output).run_project_calculations()
+if __name__ == '__main__':
+    LoggerInitializer.init('diageoru calculations')
+    Config.init()
+    project_name = 'diageoru'
+    data_provider = KEngineDataProvider(project_name)
+    session = 'dbde0d3c-d8de-4c05-ade1-d2e0f03a518f'
+    data_provider.load_session_data(session)
+    output = Output()
+    DIAGEORUDIAGEORUCalculations(data_provider, output).run_project_calculations()
