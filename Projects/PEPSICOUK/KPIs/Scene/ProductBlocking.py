@@ -4,8 +4,6 @@ from KPIUtils_v2.Calculations.BlockCalculations import Block
 
 import pandas as pd
 
-#TODO: MAKE SURE THAT THE DATA PROVIDER HAS ONLY RESPECTIVE SCENE DATA FOR ONE SCENE (NOT SESSION!)
-
 
 class ProductBlockingKpi(UnifiedCalculationsScript):
 

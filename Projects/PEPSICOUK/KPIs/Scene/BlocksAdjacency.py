@@ -3,8 +3,6 @@ from Trax.Algo.Calculations.Core.KPI.UnifiedKPICalculation import UnifiedCalcula
 from KPIUtils_v2.Calculations.AdjacencyCalculations import Adjancency
 import pandas as pd
 
-#TODO: MAKE SURE THAT THE DATA PROVIDER HAS ONLY RESPECTIVE SCENE DATA FOR ONE SCENE (NOT SESSION!)
-
 
 class BlocksAdjacencyKpi(UnifiedCalculationsScript):
 
