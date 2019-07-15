@@ -254,17 +254,18 @@ class HEINZCRToolBox:
             if denominator_key == 'sub_category' and denominator_val.lower() == 'all':
                 # Here we are talkin on a KPI when the target have no denominator,
                 # the calculation should be done on Numerator only
-                numerator = self.scif[(self.scif[numerator_key] == numerator_val)
+                numerator = self.scif[(self.scif[numerator_key] == numerator_val) &
+                                      (self.scif['location_type'] == 'Primary Shelf')
                                       ]['facings_ign_stack'].sum()
                 kpi_fk = 9
                 denominator = None
                 denominator_id = None
             else:
-                numerator = self.scif[
-                    (self.scif[numerator_key] == numerator_val) & (self.scif[denominator_key] == denominator_val)][
-                    'facings_ign_stack'].sum()
-                denominator = self.scif[self.scif[denominator_key]
-                                        == denominator_val]['facings_ign_stack'].sum()
+                numerator = self.scif[(self.scif[numerator_key] == numerator_val) &
+                                      (self.scif[denominator_key] == denominator_val) &
+                                      (self.scif['location_type'] == 'Primary Shelf')]['facings_ign_stack'].sum()
+                denominator = self.scif[(self.scif[denominator_key] == denominator_val) &
+                                        (self.scif['location_type'] == 'Primary Shelf')]['facings_ign_stack'].sum()
 
             try:
                 if denominator is not None:

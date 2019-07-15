@@ -167,6 +167,8 @@ class PNGToolBox:
     def calculate_category_nlsos(self):
         # Calculate nlsos per category - PRIMARY SHELF
         custom_scif = self.get_custom_scif_results()
+        if self.scif.empty:
+            return
         new_scif = pd.merge(self.scif, custom_scif, on=['scene_fk', 'product_fk'], how="left")
         new_scif = new_scif[new_scif['rlv_sos_sc'] == 1]
         new_scif = new_scif[new_scif['location_type'] == PRIMARY_SHELF]
