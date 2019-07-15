@@ -15,6 +15,7 @@ from Projects.RINIELSENUS.Utils.Writer import KpiResultsWriter as KpiResultsWrit
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Cloud.Services.Connector.Keys import DbUsers
 from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
+from Projects.RINIELSENUS.Utils.Fake_Common import NotCommon as Common
 from Trax.Utils.Logging.Logger import Log
 
 __author__ = 'nethanel'
@@ -23,6 +24,8 @@ __author__ = 'nethanel'
 class MarsUsDogMainMealWet(object):
     def __init__(self, data_provider, output):
         self._data_provider = data_provider
+        self.common = Common(self._data_provider)
+        self.mpip_sr = self.common.read_custom_query(MarsUsQueries.get_updated_mvp_sr())
         self.project_name = self._data_provider.project_name
         self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         self._output = output
@@ -30,16 +33,16 @@ class MarsUsDogMainMealWet(object):
         self._template = ParseMarsUsTemplates()
         self._writer = self._get_writer()
         self.store_id = self._data_provider[Data.STORE_FK]
-        self._data_provider.channel = self.get_store_att15(self.store_id)
+        self._data_provider.channel = self.get_store_att17(self.store_id)
         self._data_provider.retailer = self.get_store_retailer(self.store_id)
         self._data_provider.probe_groups = self.get_probe_group(self._data_provider.session_uid)
         self.store_type = data_provider.store_type
         self.rds_conn.disconnect_rds()
         self._data_provider.trace_container = pd.DataFrame(columns=['kpi_display_text', 'scene_id',
-                                                     'products&brands', 'allowed_products', 'kpi_pass'])
+                                                                    'products&brands', 'allowed_products', 'kpi_pass'])
 
-    def get_store_att15(self, store_fk):
-        query = MarsUsQueries.get_store_attribute(15, store_fk)
+    def get_store_att17(self, store_fk):
+        query = MarsUsQueries.get_store_attribute(17, store_fk)
         att15 = pd.read_sql_query(query, self.rds_conn.db)
         return att15.values[0][0]
 
@@ -85,7 +88,7 @@ class MarsUsDogMainMealWet(object):
                                                                                    self._get_store_channel))
             self._writer.commit_results_data()
             return
-        
+
         # if self._is_pet_food_category_excluded():
         #     Log.warning('pet food category does not exists or it was excluded by decision unit')
         #     self._writer.commit_results_data()
@@ -106,9 +109,10 @@ class MarsUsDogMainMealWet(object):
                                                                set_name))
 
                 template_data = self._template.parse_template(set_name, 0)
-                hierarchy = Definition(template_data, self._get_store_channel, self._get_retailer_name,self._get_store_type).get_atomic_hierarchy_and_filters(set_name)
+                hierarchy = Definition(template_data, self._get_store_channel, self._get_retailer_name,
+                                       self._get_store_type).get_atomic_hierarchy_and_filters(set_name)
                 preferred_range = template_data[KPIConsts.PREFERRED_RANGE_SHEET]
-                Results(self._tools, self._data_provider, self._writer,
+                Results(self._tools, self._data_provider, self.mpip_sr, self.common, self._writer,
                         preferred_range[preferred_range['Set name'] == set_name]).calculate(hierarchy)
 
         # template BDB
@@ -126,13 +130,15 @@ class MarsUsDogMainMealWet(object):
                                                                set_name))
 
                 template_data = self._template.parse_template(set_name, 1)
-                hierarchy = Definition(template_data, self._get_store_channel, self._get_retailer_name,self._get_store_type).get_atomic_hierarchy_and_filters(set_name)
+                hierarchy = Definition(template_data, self._get_store_channel, self._get_retailer_name,
+                                       self._get_store_type).get_atomic_hierarchy_and_filters(set_name)
                 preferred_range = template_data[KPIConsts.PREFERRED_RANGE_SHEET]
-                Results(self._tools, self._data_provider, self._writer,
+                Results(self._tools, self._data_provider, self.mpip_sr, self.common, self._writer,
                         preferred_range[preferred_range['Set name'] == set_name]).calculate(hierarchy)
 
         # self._data_provider.trace_container.to_csv('/home/Israel/Desktop/trace_block.csv')
         self._writer.commit_results_data()
+        self.common.commit_results_data()
 
     @staticmethod
     def _get_set_names():
@@ -167,8 +173,10 @@ class MarsUsDogMainMealWet(object):
         if session_category[session_category['category_fk'] == category_fk]['exclude_status_fk'].empty:
             return True
         category_excluded = \
-            session_category[session_category['category_fk'] == category_fk]['exclude_status_fk'].fillna(1).iloc[0] != 1
-        session_excluded = decision_unit._session_exclude_status['exclude_status_fk'].fillna(1).iloc[0] != 1
+            session_category[session_category['category_fk'] ==
+                             category_fk]['exclude_status_fk'].fillna(1).iloc[0] != 1
+        session_excluded = decision_unit._session_exclude_status['exclude_status_fk'].fillna(
+            1).iloc[0] != 1
         return category_excluded | session_excluded
 
     def _is_session_irrelevant_for_set(self, set_name):
@@ -185,10 +193,12 @@ class MarsUsDogMainMealWet(object):
 
     def check_template(self):
         set_names = self._get_set_names()
-        suspicious = {'kpis with empty filters': [], 'filters with no data': {}, 'kpi with no filters': []}
+        suspicious = {'kpis with empty filters': [],
+                      'filters with no data': {}, 'kpi with no filters': []}
         for set_name in set_names:
             template_data = self._template.parse_template(set_name)
-            hierarchy = Definition(template_data, self._get_store_channel).get_atomic_hierarchy_and_filters(set_name)
+            hierarchy = Definition(
+                template_data, self._get_store_channel).get_atomic_hierarchy_and_filters(set_name)
             product = self._data_provider.all_products
             for kpi in hierarchy:
                 if kpi.has_key('filters'):
@@ -203,7 +213,8 @@ class MarsUsDogMainMealWet(object):
                         key = self.rename_filter(key)
                         if isinstance(value, tuple):
                             value = value[0]
-                        Log.info('set {} atomic {}, checking {} in {}'.format(set_name, kpi['atomic'], value, key))
+                        Log.info('set {} atomic {}, checking {} in {}'.format(
+                            set_name, kpi['atomic'], value, key))
                         pp = product[product[key].isin(value)]
                         if len(pp) == 0:
                             suspicious['filters with no data'].setdefault(key, set()).update(value)

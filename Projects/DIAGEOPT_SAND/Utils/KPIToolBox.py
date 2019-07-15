@@ -76,7 +76,7 @@ class DIAGEOPT_SANDToolBox:
         self.commonV2 = CommonV2(self.data_provider)
         self.tools = DIAGEOToolBox(self.data_provider, output,
                                    match_display_in_scene=self.match_display_in_scene)
-        self.diageo_generator = DIAGEOGenerator(self.data_provider, self.output, self.common)
+        self.diageo_generator = DIAGEOGenerator(self.data_provider, self.output, self.common, menu=True)
 
     def get_business_unit(self):
         """
@@ -118,6 +118,12 @@ class DIAGEOPT_SANDToolBox:
         # saving in dictionary for  activation standard use
         if assortment_res_dict:
             total_scores_dict.append(assortment_res_dict)
+
+        # Global Menu kpis
+        menus_res_dict = self.diageo_generator.diageo_global_share_of_menu_cocktail_function(
+            cocktail_product_level=True)
+        self.commonV2.save_json_to_new_tables(menus_res_dict)
+
         for set_name in set_names:
             set_score = 0
 

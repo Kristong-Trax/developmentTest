@@ -6,11 +6,12 @@ __author__ = 'Hunter'
 
 class Const(object):
     PRICE_ADHERENCE_TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)),
-                                                 'Price Adherence Targets 3Ene2019.xlsx')
+                                                 'Price Adherence Targets 20Jun2019.xlsx')
     EXTRA_SPACES_RELEVANT_SUB_CATEGORIES_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)),
                                                              'Extra_spaces_relevant_sub_categories_2019_06_03.xlsx')
-    EXTRA_SPACES_SURVEY_QUESTION_TEXT = \
-        "¿Tiene el punto de venta al menos una exhibición especial y en ella al menos dos de las categoría foco? "
+
+    # had to do this because of weird encoding problems
+    EXTRA_SPACES_SURVEY_QUESTION_FK = 54
 
     PERFECT_STORE = 'Perfect Store Score'
 

@@ -72,7 +72,7 @@ class DIAGEORUToolBox:
         self.common = Common(self.data_provider)
         self.commonV2 = CommonV2(self.data_provider)
         self.tools = DIAGEOToolBox(self.data_provider, output, match_display_in_scene=self.match_display_in_scene)
-        self.diageo_generator = DIAGEOGenerator(self.data_provider, self.output, self.common)
+        self.diageo_generator = DIAGEOGenerator(self.data_provider, self.output, self.common, menu=True)
 
     def get_match_display(self):
         """
@@ -110,6 +110,11 @@ class DIAGEORUToolBox:
         assortment_res_dict_v3 = self.diageo_generator.diageo_global_assortment_function_v3()
         self.commonV2.save_json_to_new_tables(assortment_res_dict_v3)
 
+        # Global Menu kpis
+        menus_res_dict = self.diageo_generator.diageo_global_share_of_menu_cocktail_function(
+            cocktail_product_level=True)
+        self.commonV2.save_json_to_new_tables(menus_res_dict)
+
         for set_name in set_names:
             set_score = 0
             if set_name not in self.tools.KPI_SETS_WITHOUT_A_TEMPLATE and set_name not in self.set_templates_data.keys():
@@ -144,6 +149,10 @@ class DIAGEORUToolBox:
 
                 self.commonV2.save_json_to_new_tables(res_dict)
                 set_score = self.calculate_relative_position_sets(set_name)
+
+            elif set_name == 'Vertical Shelf Placement':
+                res_dict = self.diageo_generator.diageo_global_vertical_placement(self.set_templates_data[set_name])
+                self.commonV2.save_json_to_new_tables(res_dict)
 
             if set_score == 0:
                 pass

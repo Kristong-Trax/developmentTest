@@ -5,10 +5,11 @@ import pandas as pd
 from collections import defaultdict
 
 from Projects.RINIELSENUS.Utils.PositionGraph import MarsUsPositionGraphs
+from Projects.RINIELSENUS.Utils.Const import ALLOWED_TYPES
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Algo.Calculations.Core.Shortcuts import BaseCalculationsGroup
-from KPIUtils_v2.Calculations.BlockCalculations import Block as Block
-
+# from KPIUtils_v2.Calculations.BlockCalculations_v2 import Block as Block
+from Projects.RINIELSENUS.Utils.BlockCalculations_v3 import Block
 from Trax.Utils.Logging.Logger import Log
 
 
@@ -61,9 +62,11 @@ class MarsUsGENERALToolBox:
         if not hasattr(self, '_match_product_in_scene'):
             self._match_product_in_scene = self.position_graphs.match_product_in_scene
             if self.front_facing:
-                self._match_product_in_scene = self._match_product_in_scene[self._match_product_in_scene['front_facing'] == 'Y']
+                self._match_product_in_scene = self._match_product_in_scene[
+                    self._match_product_in_scene['front_facing'] == 'Y']
             if self.ignore_stacking:
-                self._match_product_in_scene = self._match_product_in_scene[self._match_product_in_scene['stacking_layer'] == 1]
+                self._match_product_in_scene = self._match_product_in_scene[
+                    self._match_product_in_scene['stacking_layer'] == 1]
             # self._match_product_in_scene = pd.merge(self._match_product_in_scene, self.data_provider.probe_groups, on='probe_match_fk')
         return self._match_product_in_scene
 
@@ -106,7 +109,8 @@ class MarsUsGENERALToolBox:
             Log.warning('Survey with {} = {} doesn\'t exist'.format(entity, value))
             return None
         answer_field = 'selected_option_text' if not survey_data['selected_option_text'].empty else 'number_value'
-        target_answers = [target_answer] if not isinstance(target_answer, (list, tuple)) else target_answer
+        target_answers = [target_answer] if not isinstance(
+            target_answer, (list, tuple)) else target_answer
         survey_answers = survey_data[answer_field].values.tolist()
         for answer in target_answers:
             if answer in survey_answers:
@@ -122,7 +126,8 @@ class MarsUsGENERALToolBox:
             if set(filters.keys()).difference(self.scenes_info.keys()):
                 scene_data = self.scif[self.get_filter_condition(self.scif, **filters)]
             else:
-                scene_data = self.scenes_info[self.get_filter_condition(self.scenes_info, **filters)]
+                scene_data = self.scenes_info[self.get_filter_condition(
+                    self.scenes_info, **filters)]
         else:
             scene_data = self.scenes_info
         number_of_scenes = len(scene_data['scene_fk'].unique().tolist())
@@ -134,7 +139,8 @@ class MarsUsGENERALToolBox:
         :return: Total number of SKUs facings appeared in the filtered Scene Item Facts data frame.
         """
         if set(filters.keys()).difference(self.scif.keys()):
-            filtered_df = self.match_product_in_scene[self.get_filter_condition(self.match_product_in_scene, **filters)]
+            filtered_df = self.match_product_in_scene[self.get_filter_condition(
+                self.match_product_in_scene, **filters)]
         else:
             filtered_df = self.scif[self.get_filter_condition(self.scif, **filters)]
         if self.facings_field in filtered_df.columns:
@@ -152,7 +158,8 @@ class MarsUsGENERALToolBox:
         :return: Number of unique SKUs appeared in the filtered Scene Item Facts data frame.
         """
         if set(filters.keys()).difference(self.scif.keys()):
-            filtered_df = self.match_product_in_scene[self.get_filter_condition(self.match_product_in_scene, **filters)]
+            filtered_df = self.match_product_in_scene[self.get_filter_condition(
+                self.match_product_in_scene, **filters)]
         else:
             filtered_df = self.scif[self.get_filter_condition(self.scif, **filters)]
         if minimum_assortment_for_entity == 1:
@@ -196,7 +203,8 @@ class MarsUsGENERALToolBox:
         """
         if include_empty == self.EXCLUDE_EMPTY:
             filters['product_type'] = (self.EMPTY, self.EXCLUDE_FILTER)
-        filtered_matches = self.match_product_in_scene[self.get_filter_condition(self.match_product_in_scene, **filters)]
+        filtered_matches = self.match_product_in_scene[self.get_filter_condition(
+            self.match_product_in_scene, **filters)]
         return len(filtered_matches)
 
     def calculate_linear_share_of_shelf(self, sos_filters, include_empty=EXCLUDE_EMPTY, **general_filters):
@@ -249,8 +257,10 @@ class MarsUsGENERALToolBox:
         """
         if include_empty == self.EXCLUDE_EMPTY:
             filters['product_type'] = (self.EMPTY, self.EXCLUDE_FILTER)
-        filtered_matches = self.match_product_in_scene[self.get_filter_condition(self.match_product_in_scene, **filters)]
-        return filtered_matches['width_mm_advance'].fillna(filtered_matches['width_mm']).sum()
+        filtered_matches = self.match_product_in_scene[self.get_filter_condition(
+            self.match_product_in_scene, **filters)]
+        # return filtered_matches['width_mm_advance'].fillna(filtered_matches['width_mm']).sum()
+        return filtered_matches['width_mm'].fillna(filtered_matches['width_mm']).sum()
 
     def calculate_products_on_edge(self, min_number_of_facings=1, min_number_of_shelves=1, list_result=False,
                                    edge_population=None, category=None, position=None, **filters):
@@ -283,7 +293,8 @@ class MarsUsGENERALToolBox:
             for shelf in matches['shelf_number'].unique():
                 shelf_matches = matches[matches['shelf_number'] == shelf]
                 if not shelf_matches.empty:
-                    shelf_matches = shelf_matches.sort_values(by=['bay_number', 'facing_sequence_number'])
+                    shelf_matches = shelf_matches.sort_values(
+                        by=['bay_number', 'facing_sequence_number'])
                     if position:
                         if position == 'left':
                             edge_facings = edge_facings.append(shelf_matches.iloc[0])
@@ -336,7 +347,8 @@ class MarsUsGENERALToolBox:
             else:
                 Log.error('Eye-level configurations are not set up')
                 return False
-        number_of_products = len(self.all_products[self.get_filter_condition(self.all_products, **filters)]['product_ean_code'])
+        number_of_products = len(self.all_products[self.get_filter_condition(
+            self.all_products, **filters)]['product_ean_code'])
         min_shelf, max_shelf, min_ignore, max_ignore = eye_level_configurations.columns
         number_of_eye_level_scenes = 0
         for scene in relevant_scenes:
@@ -353,17 +365,18 @@ class MarsUsGENERALToolBox:
                     configuration = {min_ignore: 0, max_ignore: 0}
                 min_include = configuration[min_ignore] + 1
                 max_include = number_of_shelves - configuration[max_ignore]
-                eye_level_shelves = bay_matches[bay_matches['shelf_number'].between(min_include, max_include)]
+                eye_level_shelves = bay_matches[bay_matches['shelf_number'].between(
+                    min_include, max_include)]
                 eye_level_facings = eye_level_facings.append(eye_level_shelves)
             eye_level_assortment = len(eye_level_facings[
-                                           self.get_filter_condition(eye_level_facings, **filters)]['product_ean_code'])
+                self.get_filter_condition(eye_level_facings, **filters)]['product_ean_code'])
             if min_number_of_products == self.ALL:
                 min_number_of_products = number_of_products
             if eye_level_assortment >= min_number_of_products:
                 number_of_eye_level_scenes += 1
         return number_of_eye_level_scenes, len(relevant_scenes)
 
-    def shelf_level_assortment(self, min_number_of_products ,shelf_target, strict=True, **filters):
+    def shelf_level_assortment(self, min_number_of_products, shelf_target, strict=True, **filters):
         filters, relevant_scenes = self.separate_location_filters_from_product_filters(**filters)
         if len(relevant_scenes) == 0:
             relevant_scenes = self.scif['scene_fk'].unique().tolist()
@@ -380,8 +393,8 @@ class MarsUsGENERALToolBox:
                     bay_matches['product_ean_code'].isin(number_of_products))]
                 eye_level_facings = eye_level_facings.append(products_in_target_shelf)
             eye_level_assortment = len(eye_level_facings[
-                                           self.get_filter_condition(eye_level_facings, **filters)][
-                                           'product_ean_code'])
+                self.get_filter_condition(eye_level_facings, **filters)][
+                'product_ean_code'])
             if eye_level_assortment >= min_number_of_products:
                 result = 1
         return result
@@ -460,7 +473,8 @@ class MarsUsGENERALToolBox:
         filtered_scene_graph.delete_edges([edge.index for edge in edges_to_remove])
 
         reversed_scene_graph = graph.copy()
-        edges_to_remove = reversed_scene_graph.es.select(direction_ne=self._reverse_direction(direction))
+        edges_to_remove = reversed_scene_graph.es.select(
+            direction_ne=self._reverse_direction(direction))
         reversed_scene_graph.delete_edges([edge.index for edge in edges_to_remove])
 
         vertices_list = []
@@ -588,7 +602,8 @@ class MarsUsGENERALToolBox:
             direction_data.append({'top': (0, 1), 'bottom': (0, 1)})
             direction_data.append({'right': (0, 1), 'left': (0, 1)})
         else:
-            direction_data.append({'top': (0, 1), 'bottom': (0, 1), 'right': (0, 1), 'left': (0, 1)})
+            direction_data.append({'top': (0, 1), 'bottom': (0, 1),
+                                   'right': (0, 1), 'left': (0, 1)})
         is_proximity = self.calculate_relative_position(tested_filters, anchor_filters, direction_data,
                                                         min_required_to_pass=1, **general_filters)
         return not is_proximity
@@ -607,8 +622,10 @@ class MarsUsGENERALToolBox:
         :return: True if (at least) one pair of relevant SKUs fits the distance requirements; otherwise - returns False.
         """
         filtered_scif = self.scif[self.get_filter_condition(self.scif, **general_filters)]
-        tested_scenes = filtered_scif[self.get_filter_condition(filtered_scif, **tested_filters)]['scene_id'].unique()
-        anchor_scenes = filtered_scif[self.get_filter_condition(filtered_scif, **anchor_filters)]['scene_id'].unique()
+        tested_scenes = filtered_scif[self.get_filter_condition(
+            filtered_scif, **tested_filters)]['scene_id'].unique()
+        anchor_scenes = filtered_scif[self.get_filter_condition(
+            filtered_scif, **anchor_filters)]['scene_id'].unique()
         relevant_scenes = set(tested_scenes).intersection(anchor_scenes)
 
         if relevant_scenes:
@@ -621,7 +638,8 @@ class MarsUsGENERALToolBox:
                 for tested_vertex in tested_vertices:
                     for anchor_vertex in anchor_vertices:
                         moves = {'top': 0, 'bottom': 0, 'left': 0, 'right': 0}
-                        path = scene_graph.get_shortest_paths(anchor_vertex, tested_vertex, output='epath')
+                        path = scene_graph.get_shortest_paths(
+                            anchor_vertex, tested_vertex, output='epath')
                         if path:
                             path = path[0]
                             for edge in path:
@@ -649,7 +667,8 @@ class MarsUsGENERALToolBox:
         vertices_indexes = None
         for field in filters.keys():
             field_vertices = set()
-            values = filters[field] if isinstance(filters[field], (list, tuple)) else [filters[field]]
+            values = filters[field] if isinstance(
+                filters[field], (list, tuple)) else [filters[field]]
             for value in values:
                 vertices = [v.index for v in graph.vs.select(**{field: value})]
                 field_vertices = field_vertices.union(vertices)
@@ -657,7 +676,8 @@ class MarsUsGENERALToolBox:
                 vertices_indexes = field_vertices
             else:
                 vertices_indexes = vertices_indexes.intersection(field_vertices)
-        vertices_indexes = vertices_indexes if vertices_indexes is not None else [v.index for v in graph.vs]
+        vertices_indexes = vertices_indexes if vertices_indexes is not None else [
+            v.index for v in graph.vs]
         if self.front_facing:
             front_facing_vertices = [v.index for v in graph.vs.select(front_facing='Y')]
             vertices_indexes = set(vertices_indexes).intersection(front_facing_vertices)
@@ -668,13 +688,15 @@ class MarsUsGENERALToolBox:
         """
         This function checks whether the distance between the anchor and the tested SKUs fits the requirements.
         """
-        direction_data = direction_data if isinstance(direction_data, (list, tuple)) else [direction_data]
+        direction_data = direction_data if isinstance(
+            direction_data, (list, tuple)) else [direction_data]
         validated = False
         for data in direction_data:
             data_validated = True
             for direction in moves.keys():
                 allowed_moves = data.get(direction, (0, 0))
-                min_move, max_move = allowed_moves if isinstance(allowed_moves, tuple) else (0, allowed_moves)
+                min_move, max_move = allowed_moves if isinstance(
+                    allowed_moves, tuple) else (0, allowed_moves)
                 if not min_move <= moves[direction] <= max_move:
                     data_validated = False
                     break
@@ -706,11 +728,43 @@ class MarsUsGENERALToolBox:
         return blocks, graph
 
     def calculate_avg_shelf(self, **filters):
-        matches = self.match_product_in_scene[self.get_filter_condition(self.match_product_in_scene, **filters)]
+        matches = self.match_product_in_scene[self.get_filter_condition(
+            self.match_product_in_scene, **filters)]
         matches = matches.groupby(['shelf_number_from_bottom']).size().reset_index(name='counts')
-        avg_shelf = sum(matches.apply(lambda x: x['shelf_number_from_bottom'] * x['counts'], axis=1))
+        avg_shelf = sum(matches.apply(
+            lambda x: x['shelf_number_from_bottom'] * x['counts'], axis=1))
         products_count = sum(matches['counts'])
         return avg_shelf / products_count
+
+    '~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~'
+
+    def parse_net_x_block(self, clusters, mpis):
+        clusters = clusters.sort_values('facing_percentage', ascending=False)
+        cluster_dicts = []
+        for i, row in clusters.iterrows():
+            row_dict = defaultdict(list)
+            sub_cluster = row['cluster']
+            for i, node in sub_cluster.nodes(data=True):
+                row_dict['scene_fk'] = row['scene_fk']
+                row_dict['orientation'] = row['orientation']
+                row_dict['cluster_ratio'] = row['facing_percentage']
+                row_dict['is_block'] = row['is_block']
+                row_dict['all_prods'] += node['product_fk']
+                row_dict['all_scene_matches'] += node['match_fk']
+                node_mpis = mpis[mpis['scene_match_fk'].isin(node['match_fk'])]
+                if node_mpis.empty:
+                    continue
+                row_dict['rel_scene_matches'] += list(node_mpis['scene_match_fk'])
+                row_dict['rel_shelves'] += list(node_mpis['shelf_number'].unique())
+                row_dict['rel_bays'] += list(node_mpis['bay_number'].unique())
+                row_dict['rel_facings'] += [node_mpis.shape[0]]
+            row_dict['rel_facings'] = sum(row_dict['rel_facings'])
+            row_dict['rel_shelves'] = list(set(row_dict['rel_shelves']))
+            row_dict['mpis'] = self.match_product_in_scene[self.match_product_in_scene['scene_match_fk']
+                                                           .isin(row_dict['all_scene_matches'])]
+            cluster_dicts.append(row_dict)
+
+        return cluster_dicts
 
     # def parse_net_x_block(self, clusters, mpis):
     #     clusters = clusters.sort_values('facing_percentage', ascending=False)
@@ -741,189 +795,208 @@ class MarsUsGENERALToolBox:
     #         cluster_dicts.append(row_dict)
     #
     #     return cluster_dicts
-    #
-    # def test_subset_ratio(self, subset, cluster, mpis, minimum_block_ratio):
-    #     sc_mpis = mpis[self.get_filter_condition(mpis, **{'scene_fk': cluster['scene_fk']})]
-    #     num = cluster['mpis'][self.get_filter_condition(cluster['mpis'], **subset)].shape[0]
-    #     den = sc_mpis[self.get_filter_condition(sc_mpis, **subset)].shape[0]
-    #     ratio = num / float(den) if num else 0
-    #     return ratio >= minimum_block_ratio
-    #
-    # def calculate_block_together(self, allowed_products_filters=None, include_empty=EXCLUDE_EMPTY,
-    #                              minimum_block_ratio=1, block_of_blocks=False,
-    #                              block_products1=None, block_products2=None, vertical=False, biggest_block=False,
-    #                              n_cluster=None, **filters):
-    #
-    #     probe = float(filters.pop('probe_group_id')) if 'probe_group_id' in filters else None
-    #     filters, relevant_scenes = self.separate_location_filters_from_product_filters(**filters)
-    #     relevant_scenes = list(relevant_scenes)
-    #     if len(relevant_scenes) == 0:
-    #         Log.debug('Block Together: No relevant SKUs were found for these filters {}'.format(filters))
-    #         return False
-    #     scene_filter = {'scene_fk': relevant_scenes}
-    #     print('~~~~~~~~~~~~~~~~~~~~{}~~~~~~~~~~~~~~~'.format(scene_filter))
-    #     mpis_filter = {'scene_fk': relevant_scenes}
-    #     mpis_filter.update(filters)
-    #     mpis = self.match_product_in_scene
-    #     mpis = mpis[self.get_filter_condition(mpis, **mpis_filter)]
-    #     block_filters = {'product_fk': list(mpis['product_fk'].unique())}
-    #     # allowed_products_filters = {'product_type': ['Empty', 'Other']}
-    #
-    #     clusters = self.block.network_x_block_together(block_filters, location=scene_filter,
-    #                                             additional={'allowed_products_filters': allowed_products_filters,
-    #                                                         'include_stacking': False,
-    #                                                         'check_vertical_horizontal': True,
-    #                                                         'ignore_empty': False,
-    #                                                         'minimum_block_ratio': minimum_block_ratio})
-    #     if not clusters.empty:
-    #         clusters = self.parse_net_x_block(clusters, mpis)
-    #         # Debugging bits
-    #         for cluster in clusters:
-    #             print('\n\n')
-    #             for j, i in cluster['mpis'].sort_values(['bay_number', 'shelf_number', 'facing_sequence_number']).iterrows():
-    #                 print('bay:', i['bay_number'], 'shelf:', i['shelf_number'], 'face_#:', i['facing_sequence_number'],
-    #                       i['Sub-section'], i['Customer Brand'], i['Sub Brand'], i['Segment'], i['product_name'])
-    #
-    #         # kinda weirded out that n_cluster is an arbitrary number, but behavior is binary.....
-    #         if n_cluster is not None:
-    #             # sorta feel like this should be >=n_cluster
-    #             largest_cluster = clusters[0]['cluster_ratio']  # 39
-    #             if len(clusters) >= 2 and clusters[0]['scene_fk'] == clusters[1]['scene_fk']:
-    #                 second_cluster = clusters[1]['cluster_ratio']
-    #             else:
-    #                 second_cluster = 0
-    #             cluster_ratio = largest_cluster + second_cluster
-    #             if cluster_ratio >= minimum_block_ratio:
-    #                 if vertical:
-    #                     return {'block': True}
-    #
-    #         elif vertical:
-    #             biggest_block = clusters[0]
-    #             if biggest_block['is_block']:
-    #                 return {'block': True, 'shelves': len(biggest_block['rel_shelves'])}
-    #             # return biggest_block['cluster_ratio'], biggest_block # not sure this exit is actually used...
-    #
-    #         elif block_of_blocks:
-    #             # theoretically one could pass in multiple scenes, and the biggest block
-    #             # wouldn't necessarily be the right one :/
-    #             for cluster in clusters:
-    #                 if cluster['is_block']:
-    #                     if self.test_subset_ratio(block_products1, cluster, mpis, minimum_block_ratio) and \
-    #                        self.test_subset_ratio(block_products2, cluster, mpis, minimum_block_ratio):
-    #                         return True
-    #
-    #     return False
 
+    def test_subset_ratio(self, subset, cluster, mpis, minimum_block_ratio):
+        sc_mpis = mpis[self.get_filter_condition(mpis, **{'scene_fk': cluster['scene_fk']})]
+        mask = self.get_filter_condition(cluster['mpis'], **subset)
+        if mask is None or mask.empty:
+            return 0
+        num = cluster['mpis'][mask].shape[0]
+        den = sc_mpis[self.get_filter_condition(sc_mpis, **subset)].shape[0]
+        ratio = num / float(den) if num else 0
+        return ratio >= minimum_block_ratio
 
-
-    def calculate_block_together(self, allowed_products_filters=None, include_empty=EXCLUDE_EMPTY,
-                                 minimum_block_ratio=1, result_by_scene=False, block_of_blocks=False,
+    def calculate_block_together(self, allowed_products_filters=ALLOWED_TYPES, include_empty=EXCLUDE_EMPTY,
+                                 minimum_block_ratio=1, block_of_blocks=False,
                                  block_products1=None, block_products2=None, vertical=False, biggest_block=False,
-                                 n_cluster=None, **filters):
-        """
-        :param biggest_block:
-        :param block_products1:
-        :param block_products2:
-        :param block_of_blocks:
-        :param vertical: if needed to check vertical block by average shelf
-        :param allowed_products_filters: These are the parameters which are allowed to corrupt the block without failing it.
-        :param include_empty: This parameter dictates whether or not to discard Empty-typed products.
-        :param minimum_block_ratio: The minimum (block number of facings / total number of relevant facings) ratio
-                                    in order for KPI to pass (if ratio=1, then only one block is allowed).
-        :param result_by_scene: True - The result is a tuple of (number of passed scenes, total relevant scenes);
-                                False - The result is True if at least one scene has a block, False - otherwise.
-        :param filters: These are the parameters which the blocks are checked for.
-        :return: see 'result_by_scene' above.
-        """
+                                 n_cluster=None, threshold=1, **filters):
+
         probe = float(filters.pop('probe_group_id')) if 'probe_group_id' in filters else None
         filters, relevant_scenes = self.separate_location_filters_from_product_filters(**filters)
+        relevant_scenes = list(relevant_scenes)
         if len(relevant_scenes) == 0:
-            if result_by_scene:
-                return 0, 0
-            else:
-                Log.debug('Block Together: No relevant SKUs were found for these filters {}'.format(filters))
-                return False
-        number_of_blocked_scenes = 0
-        cluster_ratios = []
-        for scene in relevant_scenes:
-            # print('~~~~~~~~~~~~~~ SCENE {} ~~~~~~~~~~~~'.format(scene))
-            # scene_graph = self.position_graphs.get(scene).copy()
-            scene_graph = self.position_graphs.get(scene, probe_id=probe).copy()
+            Log.debug('Block Together: No relevant SKUs were found for these filters {}'.format(filters))
+            return False
+        scene_filter = {'scene_fk': relevant_scenes}
+        sub_allowed = {key.split(';')[-1]: filters.pop(key)
+                       for key in dict(filters) if 'ALLOWED;' in key}
+        # print('~~~~~~~~~~~~~~~~~~~~{}~~~~~~~~~~~~~~~'.format(scene_filter))
+        mpis_filter = {'scene_fk': relevant_scenes}
+        mpis_filter.update(filters)
+        mpis = self.match_product_in_scene.copy()
+        allowed_filters = list(mpis[self.get_filter_condition(
+            mpis, **allowed_products_filters)]['product_fk'].unique())
+        if sub_allowed:
+            allowed_filters += list(mpis[self.get_filter_condition(mpis,
+                                                                   **sub_allowed)]['product_fk'].unique())
+        allowed_filters = {'product_fk': allowed_filters}
+        mpis = mpis[self.get_filter_condition(mpis, **mpis_filter)]
+        # mpis = pd.concat([mpis[self.get_filter_condition(mpis, **mpis_filter)],
+        #                   mpis[self.get_filter_condition(mpis, **allowed_products_filter)]])
+        block_filters = {'product_fk': list(mpis['product_fk'].unique())}
 
-            clusters, scene_graph = self.get_scene_blocks(scene_graph, allowed_products_filters=allowed_products_filters,
-                                                          include_empty=include_empty, **filters)
+        clusters = self.block.network_x_block_together(filters, location=scene_filter,
+                                                        additional={'allowed_products_filters': allowed_filters,
+                                                                    'include_stacking': False,
+                                                                    'check_vertical_horizontal': True,
+                                                                    'ignore_empty': False,
+                                                                    'minimum_block_ratio': minimum_block_ratio,
+                                                                    'minimum_facing_for_block': threshold,
+                                                                    'filter_operator': 'and'
+                                                                    })
 
-            if block_of_blocks:
-                new_relevant_vertices1 = self.filter_vertices_from_graph(scene_graph, **block_products1)
-                new_relevant_vertices2 = self.filter_vertices_from_graph(scene_graph, **block_products2)
-            else:
-                new_relevant_vertices = self.filter_vertices_from_graph(scene_graph, **filters)
-            for cluster in clusters:
-                # print('\n\n')
-                # sorted_clust = sorted(scene_graph.vs[cluster], key=lambda x: [x['bay_number'], x['shelf_number'],
-                #                                                               x['shelf_px_left']])
-                # for i in sorted_clust:
-                #     print('bay:', i['bay_number'], 'shelf', i['shelf_number'], i['Sub-section'], i['Customer Brand'],
-                #           i['Sub Brand'], i['Segment'], i['product_name'])
-                if block_of_blocks:
-                    relevant_vertices_in_cluster1 = set(cluster).intersection(new_relevant_vertices1)
-                    if len(new_relevant_vertices1) > 0:
-                        cluster_ratio1 = len(relevant_vertices_in_cluster1) / float(len(new_relevant_vertices1))
-                    else:
-                        cluster_ratio1 = 0
-                    relevant_vertices_in_cluster2 = set(cluster).intersection(new_relevant_vertices2)
-                    if len(new_relevant_vertices2) > 0:
-                        cluster_ratio2 = len(relevant_vertices_in_cluster2) / float(len(new_relevant_vertices2))
-                    else:
-                        cluster_ratio2 = 0
-                    if cluster_ratio1 >= minimum_block_ratio and cluster_ratio2 >= minimum_block_ratio:
-                        return True
-                else:
-                    relevant_vertices_in_cluster = set(cluster).intersection(new_relevant_vertices)
-                    if len(new_relevant_vertices) > 0:
-                        cluster_ratio = len(relevant_vertices_in_cluster) / float(len(new_relevant_vertices))
-                    else:
-                        cluster_ratio = 0
-                    cluster_ratios.append(cluster_ratio)
-                    if biggest_block:
-                        continue
-                    if cluster_ratio >= minimum_block_ratio:
-                        if result_by_scene:
-                            number_of_blocked_scenes += 1
-                            break
-                        else:
-                            all_vertices = {v.index for v in scene_graph.vs}
-                            non_cluster_vertices = all_vertices.difference(list(relevant_vertices_in_cluster))
-                            scene_graph.delete_vertices(non_cluster_vertices)
-                            if vertical:
-                                return {'block': True, 'shelves': len(
-                                    set(scene_graph.vs['shelf_number']))}
-                            return cluster_ratio, scene_graph
+        if not clusters.empty:
+            clusters = self.parse_net_x_block(clusters, mpis)
+            # Debugging bits
+            # for cluster in clusters:
+            #     print('\n\n')
+            #     print('cluster ratio: {}'.format(cluster['cluster_ratio']))
+            #     for j, i in cluster['mpis'].sort_values(['bay_number', 'shelf_number', 'facing_sequence_number']).iterrows():
+            #         print('bay:', i['bay_number'], 'shelf:', i['shelf_number'], 'face_#:', i['facing_sequence_number'],
+            #               i['Sub-section'], i['Customer Brand'], i['Sub Brand'], i['Segment'], i['product_name'])
+
+            # kinda weirded out that n_cluster is an arbitrary number, but behavior is binary.....
             if n_cluster is not None:
-                copy_of_cluster_ratios = cluster_ratios[:]
-                largest_cluster = max(copy_of_cluster_ratios)  # 39
-                copy_of_cluster_ratios.remove(largest_cluster)
-                if len(copy_of_cluster_ratios) > 0:
-                    second_largest_integer = max(copy_of_cluster_ratios)
+                # sorta feel like this should be >=n_cluster
+                largest_cluster = clusters[0]['cluster_ratio']  # 39
+                if len(clusters) >= 2 and clusters[0]['scene_fk'] == clusters[1]['scene_fk']:
+                    second_cluster = clusters[1]['cluster_ratio']
                 else:
-                    second_largest_integer = 0
-                cluster_ratio = largest_cluster + second_largest_integer
+                    second_cluster = 0
+                cluster_ratio = largest_cluster + second_cluster
                 if cluster_ratio >= minimum_block_ratio:
                     if vertical:
                         return {'block': True}
 
-            if biggest_block:
-                max_ratio = max(cluster_ratios)
-                biggest_cluster = clusters[cluster_ratios.index(max_ratio)]
-                relevant_vertices_in_cluster = set(biggest_cluster).intersection(new_relevant_vertices)
-                all_vertices = {v.index for v in scene_graph.vs}
-                non_cluster_vertices = all_vertices.difference(list(relevant_vertices_in_cluster))
-                scene_graph.delete_vertices(non_cluster_vertices)
-                return {'block': True, 'shelf_numbers': set(scene_graph.vs['shelf_number'])}
-            if result_by_scene:
-                return number_of_blocked_scenes, len(relevant_scenes)
+            elif block_of_blocks:
+                # theoretically one could pass in multiple scenes, and the biggest block
+                # wouldn't necessarily be the right one :/
+                for cluster in clusters:
+                    if cluster['is_block']:
+                        if self.test_subset_ratio(block_products1, cluster, mpis, minimum_block_ratio) and \
+                           self.test_subset_ratio(block_products2, cluster, mpis, minimum_block_ratio):
+                            return True
+
             else:
-                return False
+                biggest_block = clusters[0]
+                if biggest_block['is_block']:
+                    if vertical:
+                        return {'block': True, 'shelves': len(biggest_block['rel_shelves'])}
+                    elif biggest_block:
+                        return {'block': True, 'shelf_numbers': biggest_block['rel_shelves']}
+                # return biggest_block['cluster_ratio'], biggest_block # not sure this exit is actually used...
+
+        return False
+
+    #
+    # def calculate_block_together(self, allowed_products_filters=None, include_empty=EXCLUDE_EMPTY,
+    #                              minimum_block_ratio=1, result_by_scene=False, block_of_blocks=False,
+    #                              block_products1=None, block_products2=None, vertical=False, biggest_block=False,
+    #                              n_cluster=None, **filters):
+    #     """
+    #     :param biggest_block:
+    #     :param block_products1:
+    #     :param block_products2:
+    #     :param block_of_blocks:
+    #     :param vertical: if needed to check vertical block by average shelf
+    #     :param allowed_products_filters: These are the parameters which are allowed to corrupt the block without failing it.
+    #     :param include_empty: This parameter dictates whether or not to discard Empty-typed products.
+    #     :param minimum_block_ratio: The minimum (block number of facings / total number of relevant facings) ratio
+    #                                 in order for KPI to pass (if ratio=1, then only one block is allowed).
+    #     :param result_by_scene: True - The result is a tuple of (number of passed scenes, total relevant scenes);
+    #                             False - The result is True if at least one scene has a block, False - otherwise.
+    #     :param filters: These are the parameters which the blocks are checked for.
+    #     :return: see 'result_by_scene' above.
+    #     """
+    #     probe = float(filters.pop('probe_group_id')) if 'probe_group_id' in filters else None
+    #     filters, relevant_scenes = self.separate_location_filters_from_product_filters(**filters)
+    #     if len(relevant_scenes) == 0:
+    #         if result_by_scene:
+    #             return 0, 0
+    #         else:
+    #             Log.debug('Block Together: No relevant SKUs were found for these filters {}'.format(filters))
+    #             return False
+    #     number_of_blocked_scenes = 0
+    #     cluster_ratios = []
+    #     for scene in relevant_scenes:
+    #         # print('~~~~~~~~~~~~~~ SCENE {} ~~~~~~~~~~~~'.format(scene))
+    #         # scene_graph = self.position_graphs.get(scene).copy()
+    #         scene_graph = self.position_graphs.get(scene, probe_id=probe).copy()
+    #
+    #         clusters, scene_graph = self.get_scene_blocks(scene_graph, allowed_products_filters=allowed_products_filters,
+    #                                                       include_empty=include_empty, **filters)
+    #
+    #         if block_of_blocks:
+    #             new_relevant_vertices1 = self.filter_vertices_from_graph(scene_graph, **block_products1)
+    #             new_relevant_vertices2 = self.filter_vertices_from_graph(scene_graph, **block_products2)
+    #         else:
+    #             new_relevant_vertices = self.filter_vertices_from_graph(scene_graph, **filters)
+    #         for cluster in clusters:
+    #             print('\n\n')
+    #             sorted_clust = sorted(scene_graph.vs[cluster], key=lambda x: [x['bay_number'], x['shelf_number'],
+    #                                                                           x['shelf_px_left']])
+    #             for i in sorted_clust:
+    #                 print('bay:', i['bay_number'], 'shelf', i['shelf_number'], i['Sub-section'], i['Customer Brand'],
+    #                       i['Sub Brand'], i['Segment'], i['product_name'])
+    #             if block_of_blocks:
+    #                 relevant_vertices_in_cluster1 = set(cluster).intersection(new_relevant_vertices1)
+    #                 if len(new_relevant_vertices1) > 0:
+    #                     cluster_ratio1 = len(relevant_vertices_in_cluster1) / float(len(new_relevant_vertices1))
+    #                 else:
+    #                     cluster_ratio1 = 0
+    #                 relevant_vertices_in_cluster2 = set(cluster).intersection(new_relevant_vertices2)
+    #                 if len(new_relevant_vertices2) > 0:
+    #                     cluster_ratio2 = len(relevant_vertices_in_cluster2) / float(len(new_relevant_vertices2))
+    #                 else:
+    #                     cluster_ratio2 = 0
+    #                 if cluster_ratio1 >= minimum_block_ratio and cluster_ratio2 >= minimum_block_ratio:
+    #                     return True
+    #             else:
+    #                 relevant_vertices_in_cluster = set(cluster).intersection(new_relevant_vertices)
+    #                 if len(new_relevant_vertices) > 0:
+    #                     cluster_ratio = len(relevant_vertices_in_cluster) / float(len(new_relevant_vertices))
+    #                 else:
+    #                     cluster_ratio = 0
+    #                 cluster_ratios.append(cluster_ratio)
+    #                 if biggest_block:
+    #                     continue
+    #                 if cluster_ratio >= minimum_block_ratio:
+    #                     if result_by_scene:
+    #                         number_of_blocked_scenes += 1
+    #                         break
+    #                     else:
+    #                         all_vertices = {v.index for v in scene_graph.vs}
+    #                         non_cluster_vertices = all_vertices.difference(list(relevant_vertices_in_cluster))
+    #                         scene_graph.delete_vertices(non_cluster_vertices)
+    #                         if vertical:
+    #                             return {'block': True, 'shelves': len(
+    #                                 set(scene_graph.vs['shelf_number']))}
+    #                         return cluster_ratio, scene_graph
+    #         if n_cluster is not None:
+    #             copy_of_cluster_ratios = cluster_ratios[:]
+    #             largest_cluster = max(copy_of_cluster_ratios)  # 39
+    #             copy_of_cluster_ratios.remove(largest_cluster)
+    #             if len(copy_of_cluster_ratios) > 0:
+    #                 second_largest_integer = max(copy_of_cluster_ratios)
+    #             else:
+    #                 second_largest_integer = 0
+    #             cluster_ratio = largest_cluster + second_largest_integer
+    #             if cluster_ratio >= minimum_block_ratio:
+    #                 if vertical:
+    #                     return {'block': True}
+    #
+    #         if biggest_block:
+    #             max_ratio = max(cluster_ratios)
+    #             biggest_cluster = clusters[cluster_ratios.index(max_ratio)]
+    #             relevant_vertices_in_cluster = set(biggest_cluster).intersection(new_relevant_vertices)
+    #             all_vertices = {v.index for v in scene_graph.vs}
+    #             non_cluster_vertices = all_vertices.difference(list(relevant_vertices_in_cluster))
+    #             scene_graph.delete_vertices(non_cluster_vertices)
+    #             return {'block': True, 'shelf_numbers': set(scene_graph.vs['shelf_number'])}
+    #         if result_by_scene:
+    #             return number_of_blocked_scenes, len(relevant_scenes)
+    #         else:
+    #             return False
 
     def calculate_existence_of_blocks(self, conditions, include_empty=EXCLUDE_EMPTY, min_number_of_blocks=1, **filters):
         """
@@ -1002,10 +1075,12 @@ class MarsUsGENERALToolBox:
             blocks, scene_graph = self.get_scene_blocks(scene_graph, **filters)
             blocks.sort(key=lambda x: len(x), reverse=True)
             blocks = [(0, self.get_block_edges(scene_graph.copy().vs[block])) for block in blocks]
-            new_blocks = self.merge_blocks_into_flexible_blocks(filters, scene, number_of_allowed_others, list(blocks))
+            new_blocks = self.merge_blocks_into_flexible_blocks(
+                filters, scene, number_of_allowed_others, list(blocks))
             while len(blocks) != len(new_blocks):
                 blocks = list(new_blocks)
-                new_blocks = self.merge_blocks_into_flexible_blocks(filters, scene, number_of_allowed_others, blocks)
+                new_blocks = self.merge_blocks_into_flexible_blocks(
+                    filters, scene, number_of_allowed_others, blocks)
             results[scene] = len(new_blocks)
         return results
 
@@ -1026,11 +1101,13 @@ class MarsUsGENERALToolBox:
                     bottom = max(range1[2], range2[2])
                     left = min(range1[3], range2[3])
 
-                    number_of_others = self.get_number_of_others_in_block_range(filters, scene_id, top, right, bottom, left)
+                    number_of_others = self.get_number_of_others_in_block_range(
+                        filters, scene_id, top, right, bottom, left)
                     previous_others = previous1 + previous2
 
                     if number_of_others <= number_of_allowed_others + previous_others:
-                        blocks.insert(0, (previous_others + number_of_others, (top, right, bottom, left)))
+                        blocks.insert(0, (previous_others + number_of_others,
+                                          (top, right, bottom, left)))
                         blocks.remove(block1)
                         blocks.remove(block2)
                         return blocks
@@ -1068,7 +1145,8 @@ class MarsUsGENERALToolBox:
                                     (matches[self.position_graphs.BOTTOM].between(top+1, bottom))) &
                                    ((matches[self.position_graphs.LEFT].between(left, right-1)) |
                                     (matches[self.position_graphs.RIGHT].between(left+1, right)))]
-        relevant_facings_in_range = facings_in_range[self.get_filter_condition(facings_in_range, **filters)]
+        relevant_facings_in_range = facings_in_range[self.get_filter_condition(
+            facings_in_range, **filters)]
         other_facings_in_range = len(facings_in_range) - len(relevant_facings_in_range)
         return other_facings_in_range
 
@@ -1138,7 +1216,8 @@ class MarsUsGENERALToolBox:
                 else:
                     filter_condition &= condition
             else:
-                Log.warning('field {} is not in the Data Frame'.format(field))
+                pass
+                # Log.warning('field {} is not in the Data Frame'.format(field))
 
         return filter_condition
 
@@ -1148,7 +1227,8 @@ class MarsUsGENERALToolBox:
         and returns them along with the product filters only.
         """
         filters_ = filters.copy()
-        relevant_scenes = self.scif[self.get_filter_condition(self.scif, **filters_)]['scene_id'].unique()
+        relevant_scenes = self.scif[self.get_filter_condition(
+            self.scif, **filters_)]['scene_id'].unique()
         location_filters = {}
         for field in filters_.keys():
             if field not in self.all_products.columns and field in self.scif.columns:

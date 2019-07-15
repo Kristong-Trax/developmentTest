@@ -62,15 +62,16 @@ class HEINZCRToolBox:
         self.country = self.store_info['country'].iloc[0]
         self.current_date = datetime.now()
         self.extra_spaces_template = pd.read_excel(Const.EXTRA_SPACES_RELEVANT_SUB_CATEGORIES_PATH)
-        self.store_assortment = PSAssortmentDataProvider(self.data_provider).execute(policy_name=None)
+        self.store_assortment = PSAssortmentDataProvider(
+            self.data_provider).execute(policy_name=None)
         self.sub_category_assortment = pd.merge(self.store_assortment,
                                                 self.all_products.loc[:, ['product_fk', 'sub_category',
                                                                           'sub_category_fk']],
                                                 how='left', on='product_fk')
         self.adherence_results = pd.DataFrame(columns=['product_fk', 'trax_average',
                                                        'suggested_price', 'into_interval'])
-        self.extra_spaces_results = pd.DataFrame(columns=['sub_category_fk', 'template_fk', 'count'])
-
+        self.extra_spaces_results = pd.DataFrame(
+            columns=['sub_category_fk', 'template_fk', 'count'])
 
     def main_calculation(self, *args, **kwargs):
         """
@@ -78,7 +79,7 @@ class HEINZCRToolBox:
         """
         # these function must run first
         self.adherence_results = self.heinz_global_price_adherence(pd.read_excel(Const.PRICE_ADHERENCE_TEMPLATE_PATH,
-                                                                   sheetname="Price Adherence"))
+                                                                                 sheetname="Price Adherence"))
         self.extra_spaces_results = self.heinz_global_extra_spaces()
 
         # this isn't relevant to the 'Perfect Score' calculation
@@ -119,7 +120,8 @@ class HEINZCRToolBox:
             self.sub_category_assortment.loc[:, 'product_fk'].isin(products_in_session)
         # save PowerSKU results at SKU level
         for sku in self.sub_category_assortment[['product_fk', 'sub_category_fk', 'in_session']].itertuples():
-            parent_dict = self.common_v2.get_dictionary(kpi_fk=sub_category_kpi_fk, sub_category_fk=sku.sub_category_fk)
+            parent_dict = self.common_v2.get_dictionary(
+                kpi_fk=sub_category_kpi_fk, sub_category_fk=sku.sub_category_fk)
             result = 1 if sku.in_session else 0
             self.common_v2.write_to_db_result(sku_kpi_fk, numerator_id=sku.product_fk,
                                               denominator_id=sku.sub_category_fk,
@@ -146,7 +148,6 @@ class HEINZCRToolBox:
                                           result=total_score, score=total_score, identifier_parent=Const.PERFECT_STORE,
                                           identifier_result=total_dict, should_enter=True)
         return total_score
-
 
     def heinz_global_distribution_per_category(self):
         relevant_stores = pd.DataFrame(columns=self.store_sos_policies.columns)
@@ -231,7 +232,8 @@ class HEINZCRToolBox:
         results_df = pd.DataFrame(columns=['sub_category', 'sub_category_fk', 'score'])
 
         sos_sub_category_kpi_fk = self.common_v2.get_kpi_fk_by_kpi_type(Const.SOS_SUB_CATEGORY)
-        total_sos_sub_category_kpi_fk = self.common_v2.get_kpi_fk_by_kpi_type(Const.SOS_SUB_CATEGORY_TOTAL)
+        total_sos_sub_category_kpi_fk = self.common_v2.get_kpi_fk_by_kpi_type(
+            Const.SOS_SUB_CATEGORY_TOTAL)
 
         for row in relevant_stores.itertuples():
             sos_policy = json.loads(row.sos_policy)
@@ -252,15 +254,18 @@ class HEINZCRToolBox:
             if denominator_key == 'sub_category' and denominator_val.lower() == 'all':
                 # Here we are talkin on a KPI when the target have no denominator,
                 # the calculation should be done on Numerator only
-                numerator = self.scif[(self.scif[numerator_key] == numerator_val)]['facings_ign_stack'].sum()
+                numerator = self.scif[(self.scif[numerator_key] == numerator_val) &
+                                      (self.scif['location_type'] == 'Primary Shelf')
+                                      ]['facings_ign_stack'].sum()
                 kpi_fk = 9
                 denominator = None
                 denominator_id = None
             else:
-                numerator = self.scif[
-                    (self.scif[numerator_key] == numerator_val) & (self.scif[denominator_key] == denominator_val)][
-                    'facings_ign_stack'].sum()
-                denominator = self.scif[self.scif[denominator_key] == denominator_val]['facings_ign_stack'].sum()
+                numerator = self.scif[(self.scif[numerator_key] == numerator_val) &
+                                      (self.scif[denominator_key] == denominator_val) &
+                                      (self.scif['location_type'] == 'Primary Shelf')]['facings_ign_stack'].sum()
+                denominator = self.scif[(self.scif[denominator_key] == denominator_val) &
+                                        (self.scif['location_type'] == 'Primary Shelf')]['facings_ign_stack'].sum()
 
             try:
                 if denominator is not None:
@@ -337,9 +342,11 @@ class HEINZCRToolBox:
         adherence_kpi_fk = self.common_v2.get_kpi_fk_by_kpi_type(Const.POWER_SKU_PRICE_ADHERENCE)
         adherence_sub_category_kpi_fk = \
             self.common_v2.get_kpi_fk_by_kpi_type(Const.POWER_SKU_PRICE_ADHERENCE_SUB_CATEGORY)
-        adherence_total_kpi_fk = self.common_v2.get_kpi_fk_by_kpi_type(Const.POWER_SKU_PRICE_ADHERENCE_TOTAL)
+        adherence_total_kpi_fk = self.common_v2.get_kpi_fk_by_kpi_type(
+            Const.POWER_SKU_PRICE_ADHERENCE_TOTAL)
 
-        results = pd.merge(self.sub_category_assortment, self.adherence_results, how='left', on='product_fk')
+        results = pd.merge(self.sub_category_assortment,
+                           self.adherence_results, how='left', on='product_fk')
         for row in results.itertuples():
             parent_dict = self.common_v2.get_dictionary(kpi_fk=adherence_sub_category_kpi_fk,
                                                         sub_category_fk=row.sub_category_fk)
@@ -373,11 +380,11 @@ class HEINZCRToolBox:
                                           should_enter=True)
         return number_of_categories_meeting_price_adherence
 
-
     def heinz_global_price_adherence(self, config_df):
         results_df = self.adherence_results
         my_config_df = config_df[config_df['STORETYPE'] == self.store_info.store_type[0]]
-        products_in_session = self.scif.drop_duplicates(subset=['product_ean_code'], keep='last')['product_ean_code'].tolist()
+        products_in_session = self.scif.drop_duplicates(subset=['product_ean_code'], keep='last')[
+            'product_ean_code'].tolist()
         for product_in_session in products_in_session:
             if product_in_session:
                 row = my_config_df[my_config_df['EAN CODE'] == int(product_in_session)]
@@ -385,7 +392,8 @@ class HEINZCRToolBox:
                     # ean_code = row['EAN CODE'].values[0]
                     # product_pk = self.labels[self.labels['ean_code'] == product_in_session]['pk'].values[0]
                     product_pk = \
-                        self.all_products[self.all_products['product_ean_code'] == product_in_session]['product_fk'].iloc[0]
+                        self.all_products[self.all_products['product_ean_code']
+                                          == product_in_session]['product_fk'].iloc[0]
                     # product_in_session_df = self.scif[self.scif['product_ean_code'] == ean_code]
                     mpisc_df_price = self.match_product_in_scene[self.match_product_in_scene['product_fk'] == product_pk][
                         'price']
@@ -415,7 +423,8 @@ class HEINZCRToolBox:
                     if min_price <= trax_average <= max_price:
                         into_interval = 100
 
-                    results_df.loc[len(results_df)] = [product_pk, trax_average, suggested_price, into_interval / 100]
+                    results_df.loc[len(results_df)] = [product_pk, trax_average,
+                                                       suggested_price, into_interval / 100]
 
                     # self.common.write_to_db_result_new_tables(fk=10,
                     #                                           numerator_id=product_pk,
@@ -431,7 +440,8 @@ class HEINZCRToolBox:
                                                       result=row['PERCENTAGE'].values[0],
                                                       score=into_interval)
                     if trax_average:
-                        mark_up = (np.divide(np.divide(float(trax_average), float(1.13)), float(suggested_price)) -1) * 100
+                        mark_up = (np.divide(np.divide(float(trax_average), float(1.13)),
+                                             float(suggested_price)) - 1) * 100
                         # self.common.write_to_db_result_new_tables(fk=11,
                         #                                           numerator_id=product_pk,
                         #                                           numerator_result=suggested_price,
@@ -447,29 +457,33 @@ class HEINZCRToolBox:
                                                           result=mark_up)
                 else:
                     Log.warning("Product with ean_code {} is not in the configuration file for customer type {}"
-                              .format(product_in_session, self.store_info.store_type[0]))
+                                .format(product_in_session, self.store_info.store_type[0]))
         return results_df
 
     def calculate_perfect_store_extra_spaces(self):
-        if self.survey.check_survey_answer(Const.EXTRA_SPACES_SURVEY_QUESTION_TEXT, 'Yes,yes,si,Si'):
+        if self.survey.check_survey_answer(('question_fk', Const.EXTRA_SPACES_SURVEY_QUESTION_FK), 'Yes,yes,si,Si'):
             return 1
 
         if self.extra_spaces_results.empty:
             return 0
 
-        extra_spaces_kpi_fk = self.common_v2.get_kpi_fk_by_kpi_type(Const.PERFECT_STORE_EXTRA_SPACES_SUB_CATEGORY)
-        extra_spaces_total_kpi_fk = self.common_v2.get_kpi_fk_by_kpi_type(Const.PERFECT_STORE_EXTRA_SPACES_TOTAL)
+        extra_spaces_kpi_fk = self.common_v2.get_kpi_fk_by_kpi_type(
+            Const.PERFECT_STORE_EXTRA_SPACES_SUB_CATEGORY)
+        extra_spaces_total_kpi_fk = self.common_v2.get_kpi_fk_by_kpi_type(
+            Const.PERFECT_STORE_EXTRA_SPACES_TOTAL)
 
         relevant_sub_categories = [x.strip() for x in
                                    self.extra_spaces_template[self.extra_spaces_template['country'] == self.country][
                                        'sub_category'].iloc[0].split(',')]
 
         self.extra_spaces_results = pd.merge(self.extra_spaces_results,
-                                             self.all_products.loc[:, ['sub_category_fk', 'sub_category']].dropna(),
+                                             self.all_products.loc[:, [
+                                                 'sub_category_fk', 'sub_category']].dropna(),
                                              how='left', on='sub_category_fk')
 
         relevant_extra_spaces = \
-            self.extra_spaces_results[self.extra_spaces_results['sub_category'].isin(relevant_sub_categories)]
+            self.extra_spaces_results[self.extra_spaces_results['sub_category'].isin(
+                relevant_sub_categories)]
         total_dict = self.common_v2.get_dictionary(kpi_fk=extra_spaces_total_kpi_fk)
         for row in relevant_extra_spaces.itertuples():
             self.common_v2.write_to_db_result(extra_spaces_kpi_fk, numerator_id=row.sub_category_fk,
@@ -510,15 +524,17 @@ class HEINZCRToolBox:
             template_fk = row['template_fk']
             location_type = row.get('location_type_fk')
             if template_fk >= 0 and location_type == float(2):
-                scene_data = self.scif[(self.scif['template_fk'] == template_fk) & (self.scif['sub_category_fk'])]
-                categories_in_scene = scene_data.drop_duplicates(subset=['sub_category_fk'], keep='last')
+                scene_data = self.scif[(self.scif['template_fk'] == template_fk)
+                                       & (self.scif['sub_category_fk'])]
+                categories_in_scene = scene_data.drop_duplicates(
+                    subset=['sub_category_fk'], keep='last')
                 winner = []
                 max_count = -1
                 for index1, category_row in categories_in_scene.iterrows():
                     category = category_row['sub_category_fk']
                     if not pd.isnull(category):
                         df = scene_data[scene_data['sub_category_fk'] == category]
-                        item_count =len(df)
+                        item_count = len(df)
                         if item_count > max_count:
                             max_count = item_count
                             winner = [{'sub_category_fk': category,
@@ -534,7 +550,8 @@ class HEINZCRToolBox:
                     #                                           denominator_id=i.get('sub_category_fk'),
                     #                                           denominator_result=i.get('count'),
                     #                                           result=store_target)
-                    results_df.loc[len(results_df)] = [i.get('sub_category_fk'), template_fk, i.get('count')]
+                    results_df.loc[len(results_df)] = [i.get(
+                        'sub_category_fk'), template_fk, i.get('count')]
 
                     self.common_v2.write_to_db_result(13, numerator_id=template_fk,
                                                       numerator_result=i.get('count'),

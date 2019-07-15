@@ -676,10 +676,9 @@ class INBEVCISANDToolBox:
         This function calculates the KPI results.
         """
         lvl3_result = self.assortment.calculate_lvl3_assortment()
-        lvl3_result['identifier_parent_lvl2'] = lvl3_result.apply(self.get_identifier_parent_assortment_lvl2, axis=1)
-
         if lvl3_result.empty:
             return
+        lvl3_result['identifier_parent_lvl2'] = lvl3_result.apply(self.get_identifier_parent_assortment_lvl2, axis=1)
         eye_level_sku_fk = self.get_kpi_fk_by_kpi_name(Const.EYE_LEVEL_SKU)
         eye_level_fk = self.get_kpi_fk_by_kpi_name(Const.EYE_LEVEL)
         must_have_fk = self.get_kpi_fk_by_kpi_name(Const.MUST_HAVE_SKU)
@@ -767,35 +766,36 @@ class INBEVCISANDToolBox:
         if lvl2_result.empty:
             return
         lvl1_result = self.assortment.calculate_lvl1_assortment(lvl2_result)
-        lvl1_result = self.update_targets(lvl1_result)
-        lvl1_result['mr_lvl1_parent_fk'] = lvl1_result['kpi_fk_lvl1'].apply(lambda x: \
-                                                        self.common.get_kpi_fk_by_kpi_type('{} MR'.format(self.get_kpi_type_by_pk(x))))
-        # lvl1_result['identifier_parent_lvl1'] = lvl1_result['mr_lvl1_parent_fk'].apply(lambda x: {'kpi_fk': x})
-        lvl1_result['identifier_parent_lvl1'] = lvl1_result.apply(self.get_identifier_parent_assortment_lvl1, axis=1)
-        for result in lvl1_result.itertuples():
-            denominator_res = result.total
-            numerator_res = result.passes
-            denominator_after_action = None
-            if result.super_group_target:
-                denominator_after_action = round(np.divide(
-                    float(result.super_group_target), float(denominator_res)) * 100, 2)
-            res = round(
-                np.divide(float(numerator_res), float(denominator_res)) * 100, 2)
-            score = 100 * (res >= denominator_after_action) if denominator_after_action else 100 * (res >= 100)
-            self.common.write_to_db_result(fk=result.kpi_fk_lvl1, result=res, score=score,
-                                           numerator_result=numerator_res,
-                                           denominator_result=denominator_res,
-                                           numerator_id=result.assortment_super_group_fk,
-                                           target=denominator_after_action,
-                                           denominator_result_after_actions=denominator_after_action)
-            self.common.write_to_db_result(fk=result.mr_lvl1_parent_fk, result=res, score=score,
-                                           numerator_result=numerator_res,
-                                           denominator_result=denominator_res,
-                                           numerator_id=self.own_manuf_fk, denominator_id=self.store_id,
-                                           target=denominator_after_action,
-                                           denominator_result_after_actions=denominator_after_action,
-                                           identifier_result=result.identifier_parent_lvl1,
-                                           should_enter=True)
+        if not lvl1_result.empty:
+            lvl1_result = self.update_targets(lvl1_result)
+            lvl1_result['mr_lvl1_parent_fk'] = lvl1_result['kpi_fk_lvl1'].apply(lambda x: \
+                                                            self.common.get_kpi_fk_by_kpi_type('{} MR'.format(self.get_kpi_type_by_pk(x))))
+            # lvl1_result['identifier_parent_lvl1'] = lvl1_result['mr_lvl1_parent_fk'].apply(lambda x: {'kpi_fk': x})
+            lvl1_result['identifier_parent_lvl1'] = lvl1_result.apply(self.get_identifier_parent_assortment_lvl1, axis=1)
+            for result in lvl1_result.itertuples():
+                denominator_res = result.total
+                numerator_res = result.passes
+                denominator_after_action = None
+                if result.super_group_target:
+                    denominator_after_action = round(np.divide(
+                        float(result.super_group_target), float(denominator_res)) * 100, 2)
+                res = round(
+                    np.divide(float(numerator_res), float(denominator_res)) * 100, 2)
+                score = 100 * (res >= denominator_after_action) if denominator_after_action else 100 * (res >= 100)
+                self.common.write_to_db_result(fk=result.kpi_fk_lvl1, result=res, score=score,
+                                               numerator_result=numerator_res,
+                                               denominator_result=denominator_res,
+                                               numerator_id=result.assortment_super_group_fk,
+                                               target=denominator_after_action,
+                                               denominator_result_after_actions=denominator_after_action)
+                self.common.write_to_db_result(fk=result.mr_lvl1_parent_fk, result=res, score=score,
+                                               numerator_result=numerator_res,
+                                               denominator_result=denominator_res,
+                                               numerator_id=self.own_manuf_fk, denominator_id=self.store_id,
+                                               target=denominator_after_action,
+                                               denominator_result_after_actions=denominator_after_action,
+                                               identifier_result=result.identifier_parent_lvl1,
+                                               should_enter=True)
 
     def get_kpi_type_by_pk(self, kpi_fk):
         try:
@@ -819,6 +819,11 @@ class INBEVCISANDToolBox:
             assortment_type = line[Const.ASSORTMENT_TYPE]
             assortment_kpi_fk = self.get_kpi_fk_by_kpi_name(assortment_type)
             lvl1_result.loc[lvl1_result.kpi_fk_lvl1 == assortment_kpi_fk, 'super_group_target'] = super_group_target
+            # A very unpretty fix to patch incorrect assortment uploaded
+            # TODO: once the infra is developed move to pulling of super_group targets from DB
+            if len(lvl1_result[lvl1_result.kpi_fk_lvl1 == assortment_kpi_fk]) == 0 and assortment_type == 'Brand Variant':
+                assortment_kpi_fk = self.common.get_kpi_fk_by_kpi_type('{} ASSORTMENT GROUP'.format(assortment_type))
+                lvl1_result.loc[lvl1_result.kpi_fk_lvl1 == assortment_kpi_fk, 'super_group_target'] = super_group_target
         return lvl1_result
 
     def calculate_oos(self, must_have_results):

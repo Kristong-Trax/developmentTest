@@ -1,20 +1,16 @@
 #
 # from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
 # from Trax.Utils.Conf.Configuration import Config
-# from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
 # from Projects.TWEGAU.Calculations import Calculations
 #
 # if __name__ == '__main__':
-#     LoggerInitializer.init('twegau calculations')
 #     Config.init()
 #     project_name = 'twegau'
 #     data_provider = KEngineDataProvider(project_name)
 #     sessions = [
-#         '37CB709B-E44F-4250-AC7F-39A540C38AC7',
-#         'CE422F5F-24C3-4160-93F2-F06E6D55B6BF',
-#         '0E18536A-352D-4EA6-A3A8-E33A2C8BAE35',
-#         '25E48E96-7C20-4137-B21D-0A9E905AA11A',
-#         'D7FE3ED4-F996-4C35-9AEE-0509FA0E2403'
+#         'F8AF5B91-7CA1-4134-AA0D-DEE08547933C',
+#         '4138394A-F64F-421D-AC10-0876F5EEE4FE',
+#         '184741F1-93ED-4A37-8217-77338210F009'
 #     ]
 #
 #     for session in sessions:

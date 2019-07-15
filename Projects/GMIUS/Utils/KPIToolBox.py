@@ -20,9 +20,9 @@ from shapely.geometry import Polygon, mapping
 from networkx import nx
 
 
-
 __author__ = 'Sam'
 # if you're looking for template path check kpigenerator.find_template
+
 
 class ToolBox:
 
@@ -98,7 +98,6 @@ class ToolBox:
 
         # self.flag_failures()
 
-
     def calculate_main_kpi(self, main_line):
         kpi_name = main_line[Const.KPI_NAME]
         kpi_type = main_line[Const.TYPE]
@@ -114,19 +113,18 @@ class ToolBox:
         # print(kpi_name)
         # if kpi_name != 'Do Kid AND ASH Both Anchor End of Category?':
         # if kpi_name != 'In the MSL for Yogurt, which of the following is adjacent to Kite Hill?':
-        # if kpi_name not in ('Where are Progresso RTS Light facings shelved?'):
-        #     return
+        if kpi_name not in ('How is Progresso RTS Rich and Hearty blocked?'):
+            return
 
         # if kpi_type == Const.AGGREGATION:
         # if kpi_type:
         if (self.super_cat in ['RBG', 'YOGURT', 'SOUP', 'MEXICAN']) or (kpi_type in[Const.BASE_MEASURE, Const.BLOCKING, Const.AGGREGATION]):
-        # if (self.super_cat in ['MEXICAN']) or (kpi_type in[Const.BASE_MEASURE, Const.BLOCKING, Const.AGGREGATION]):
-        # if kpi_name == 'How is RTS Progresso blocked?':
-        # if kpi_type in[Const.COUNT_SHELVES]: # Const.COUNT_SHELVES:
-        # if kpi_type in[Const.BASE_MEASURE, Const.SET_COUNT]: # Const.COUNT_SHELVES:
-        # if kpi_type in[Const.BLOCKING]: # Const.COUNT_SHELVES:
-        #     print(kpi_name)
-
+            # if (self.super_cat in ['MEXICAN']) or (kpi_type in[Const.BASE_MEASURE, Const.BLOCKING, Const.AGGREGATION]):
+            # if kpi_name == 'How is RTS Progresso blocked?':
+            # if kpi_type in[Const.COUNT_SHELVES]: # Const.COUNT_SHELVES:
+            # if kpi_type in[Const.BASE_MEASURE, Const.SET_COUNT]: # Const.COUNT_SHELVES:
+            # if kpi_type in[Const.BLOCKING]: # Const.COUNT_SHELVES:
+            #     print(kpi_name)
 
             dependent_kpis = self.read_cell_from_line(main_line, Const.DEPENDENT)
             dependent_results = self.read_cell_from_line(main_line, Const.DEPENDENT_RESULT)
@@ -139,15 +137,17 @@ class ToolBox:
             kpi_line = self.template[kpi_type].set_index(Const.KPI_NAME).loc[kpi_name]
             function = self.get_kpi_function(kpi_type, kpi_line[Const.RESULT])
             try:
-               all_kwargs = function(kpi_name, kpi_line, relevant_scif, general_filters)
+                all_kwargs = function(kpi_name, kpi_line, relevant_scif, general_filters)
             except Exception as e:
                 if self.global_fail:
                     all_kwargs = [{'score': 0, 'result': "Not Applicable", 'failed': 0}]
-                    Log.warning('kpi "{}" failed to calculate in super category "{}"'.format(kpi_name, self.super_cat))
+                    Log.warning('kpi "{}" failed to calculate in super category "{}"'.format(
+                        kpi_name, self.super_cat))
 
                 else:
                     all_kwargs = [{'score': 0, 'result': None, 'failed': 1}]
-                    Log.error('kpi "{}" failed in super category "{}," error: "{}"'.format(kpi_name, self.super_cat, e))
+                    Log.error('kpi "{}" failed in super category "{}," error: "{}"'.format(
+                        kpi_name, self.super_cat, e))
 
             finally:
                 if not isinstance(all_kwargs, list) or not all_kwargs:
@@ -161,7 +161,8 @@ class ToolBox:
     def flag_failures(self):
         for kpi, val in self.dependencies.items():
             if val is None:
-                Log.warning('Warning: KPI "{}" not run for session "{}"'.format(kpi, self.session_uid))
+                Log.warning('Warning: KPI "{}" not run for session "{}"'.format(
+                    kpi, self.session_uid))
 
     def calculate_sos(self, kpi_name, kpi_line, relevant_scif, general_filters):
         super_cats = relevant_scif['Super Category'].unique().tolist()
@@ -183,10 +184,12 @@ class ToolBox:
                         if sos_type in Const.SOS_COLUMN_DICT:
                             sos_sum_col = Const.SOS_COLUMN_DICT[sos_type]
                         else:
-                            Log.warning("SOS Type not found in Const.SOS_COLUMN_DICT in kpi {}".format(kpi_name))
+                            Log.warning(
+                                "SOS Type not found in Const.SOS_COLUMN_DICT in kpi {}".format(kpi_name))
                             return
                         den = scif[sos_sum_col].sum()
-                        kpi_fk = self.common.get_kpi_fk_by_kpi_type('{} {} {}'.format(level, kpi_name, sos_type))
+                        kpi_fk = self.common.get_kpi_fk_by_kpi_type(
+                            '{} {} {}'.format(level, kpi_name, sos_type))
                         num = df[sos_sum_col].sum()
                         ratio, score = self.ratio_score(num, den)
                         self.common.write_to_db_result(fk=kpi_fk, score=score, result=ratio, numerator_id=item_pk,
@@ -206,9 +209,10 @@ class ToolBox:
             general_filters['scene_fk'] = scene
 
             bay_shelf = self.filter_df(self.full_mpis, general_filters).set_index('bay_number')\
-                                          .groupby(level=0)[['shelf_number', 'shelf_number_from_bottom']].max()
+                .groupby(level=0)[['shelf_number', 'shelf_number_from_bottom']].max()
             bay_max_shelf = bay_shelf['shelf_number'].to_dict()
-            bay_shelf['shelf_offset'] = bay_shelf['shelf_number_from_bottom'] - bay_shelf['shelf_number']
+            bay_shelf['shelf_offset'] = bay_shelf['shelf_number_from_bottom'] - \
+                bay_shelf['shelf_number']
             shelf_offset = bay_shelf['shelf_offset'].to_dict()
 
             mpis = self.filter_df(self.mpis, filters)
@@ -218,9 +222,11 @@ class ToolBox:
             grouped_mpis = mpis.set_index('bay_number').groupby(level=0)
 
             for bay, shelves in grouped_mpis:
-                shelf_no = bay_max_shelf[bay] + shelf_offset[bay] if shelf_offset[bay] < 0 else bay_max_shelf[bay]
+                shelf_no = bay_max_shelf[bay] + \
+                    shelf_offset[bay] if shelf_offset[bay] < 0 else bay_max_shelf[bay]
                 if shelf_no not in self.tmb_map:
-                    Log.warning('bay "{}" is a problem in kpi "{}" in session "{}"'.format(bay, kpi_name, self.session_uid))
+                    Log.warning('bay "{}" is a problem in kpi "{}" in session "{}"'.format(
+                        bay, kpi_name, self.session_uid))
                     continue
                 sub_map = self.tmb_map[shelf_no]
                 # shelf_with_most = shelves.groupby('shelf_number_from_bottom')[shelves.columns[0]].count()\
@@ -250,7 +256,6 @@ class ToolBox:
             a_items = set(self.filter_df(mpis, a_filter)['scene_match_fk'].values)
             b_items = set(self.filter_df(mpis, b_filter)['scene_match_fk'].values)
 
-
     def intersect(self):
         # The dictionary of nodes and adjacent candidate nodes.
         adjacent_nodes = dict()
@@ -267,7 +272,8 @@ class ToolBox:
 
         # For each polygons save the intersecting polygons
         for index, polygon in polygons_dict.items():
-            adjacent_nodes[index] = [polygons_map[mapping(p)['coordinates']] for p in polygons_tree.query(polygon)]
+            adjacent_nodes[index] = [polygons_map[mapping(
+                p)['coordinates']] for p in polygons_tree.query(polygon)]
 
     def calculate_presence(self, kpi_name, kpi_line, relevant_scif, general_filters):
         general_filters.update({'Super Category': self.super_cat})
@@ -278,7 +284,8 @@ class ToolBox:
         if mpis.empty:
             return
         # mpis = self.mpis.copy()
-        sections = mpis.groupby(['scene_fk', 'bay_number']).count().sort_values('product_fk', ascending=False)
+        sections = mpis.groupby(['scene_fk', 'bay_number']).count(
+        ).sort_values('product_fk', ascending=False)
         section_filters = {sections.index.names[i]: lvl for i, lvl in enumerate(sections.index[0])}
         cat_skus = self.filter_df(full_mpis, section_filters).shape[0]
         rel_skus = self.filter_df(mpis, section_filters).shape[0]
@@ -353,10 +360,11 @@ class ToolBox:
                 aisle = True
             filters = self.filter_join([a_filter, b_filter])
             g, blocks = self.block.network_x_block_together2(filters, location=scene_filter,
-                                                               additional={'allowed_products_filters': allowed,
-                                                                           'include_stacking': False})
+                                                             additional={'allowed_products_filters': allowed,
+                                                                         'include_stacking': False})
             for block in blocks:
-                block = blocks[0] # for testing only, so I can pick which block stays alive in the local namespace
+                # for testing only, so I can pick which block stays alive in the local namespace
+                block = blocks[0]
                 nodes_dict = {i: n['match_fk'] for i, n in block.nodes(data=True)}
                 def cond_1(x, y): return (nodes_dict[x] in a_items and nodes_dict[y] in b_items)
                 def cond_2(x, y): return (nodes_dict[x] in b_items and nodes_dict[y] in a_items)
@@ -367,7 +375,7 @@ class ToolBox:
                 if a_pass and b_pass:
                     adjac = True
                     edges = [d['direction'] for x, y, d in block.to_undirected().edges(data=True) if cond_1(x, y) or
-                                                                                                     cond_2(x, y)]
+                             cond_2(x, y)]
                     if not edges:
                         ''' This happens when the 2 groups are only connected by allowed products-
                             a decision on how to handle this is pending from elizabeth '''
@@ -440,7 +448,8 @@ class ToolBox:
             sequence_values = scene_items[sequence_attribute].unique().tolist()
 
             # generate block components
-            condensed_graph_sku = all_graph.build_adjacency_graph_from_base_graph_by_level(sequence_attribute)
+            condensed_graph_sku = all_graph.build_adjacency_graph_from_base_graph_by_level(
+                sequence_attribute)
             condensed_graph_sku = condensed_graph_sku.to_undirected()
             components = list(nx.connected_component_subgraphs(condensed_graph_sku))
 
@@ -466,13 +475,16 @@ class ToolBox:
                             # save block result
                             blocks = blocks.append(pd.DataFrame(columns=[sequence_attribute, 'facings', 'x_coordinate',
                                                                          'y_coordinate', 'node_object'],
-                                                                data=[[attribute_value, facings, center.x, center.y, n]]
+                                                                data=[
+                                                                    [attribute_value, facings, center.x, center.y, n]]
                                                                 ))
             # get the max blocks (most facings) from each sequence attribute value in the passing block dataframe
-            max_blocks = blocks.sort_values('facings', ascending=False).groupby(sequence_attribute, as_index=False).first()
+            max_blocks = blocks.sort_values('facings', ascending=False).groupby(
+                sequence_attribute, as_index=False).first()
 
             # order the max_block dataframe by x_coordinate and return an ordered list
-            ordered_list = max_blocks.sort_values('x_coordinate', ascending=True)[sequence_attribute].tolist()
+            ordered_list = max_blocks.sort_values('x_coordinate', ascending=True)[
+                sequence_attribute].tolist()
             potential_results = self.get_results_value(kpi_line)
             result = ' --> '.join(ordered_list)
             if result not in potential_results:
@@ -510,7 +522,8 @@ class ToolBox:
                 adj_mpis = self.filter_df(adj_mpis, {'product_type': 'Empty'}, exclude=1)
                 # adj_mpis = self.filter_df(adj_mpis, Const.ALLOWED_FILTERS, exclude=1)
 
-                adjacent_sections = list(set(sum([list(adj_mpis[col].unique()) for col in col_list], [])))
+                adjacent_sections = list(
+                    set(sum([list(adj_mpis[col].unique()) for col in col_list], [])))
 
                 if limit_potential:
                     adjacent_sections = self.results_contorter(adj_mpis, kpi_line)
@@ -537,18 +550,22 @@ class ToolBox:
         kwargs_list = []
 
         if max_block:
-            _, _, _, _, blocks = self.base_block(kpi_name, kpi_line, relevant_scif, general_filters, check_orient=False)
+            _, _, _, _, blocks = self.base_block(
+                kpi_name, kpi_line, relevant_scif, general_filters, check_orient=False)
             block = blocks.sort_values('facing_percentage').reset_index().iloc[-1, :]['cluster']
-            ids = sum([node['group_attributes']['match_fk_list'] for i, node in block.node(data=True)], [])
+            ids = sum([node['group_attributes']['match_fk_list']
+                       for i, node in block.node(data=True)], [])
             item_filters = {'scene_match_fk': ids}
 
         if Const.END_OF_CAT in self.get_results_value(kpi_line):
             anchor_filters = item_filters if item_filters else self.get_kpi_line_filters(kpi_line)
-            anchor = self.anchor_base(general_filters, anchor_filters, relevant_scif['scene_fk'].unique(), 1)
+            anchor = self.anchor_base(general_filters, anchor_filters,
+                                      relevant_scif['scene_fk'].unique(), 1)
             if sum(anchor.values()) > 0:
                 kwargs_list.append({'score': 1, 'result': Const.END_OF_CAT, 'target': 1})
 
-        all_results = self.base_adjacency(kpi_name, kpi_line, relevant_scif, general_filters, item_filters=item_filters)
+        all_results = self.base_adjacency(
+            kpi_name, kpi_line, relevant_scif, general_filters, item_filters=item_filters)
         for result in sum([x for x, y in all_results.values()], []):
             # result_fk = self.result_values_dict[result]
             kwargs_list.append({'score': 1, 'result': result, 'target': 1})
@@ -569,12 +586,12 @@ class ToolBox:
         kwargs = {'score': 1, 'result': result, 'target': 1}
         return kwargs
 
-
     def calculate_adjacency(self, kpi_name, kpi_line, relevant_scif, general_filters):
         res_col = self.read_cell_from_line(kpi_line, Const.RESULT_TYPE)
         if not res_col:
             res_col = Const.REF_COLS
-        all_results = self.base_adjacency(kpi_name, kpi_line, relevant_scif, general_filters, col_list=res_col)
+        all_results = self.base_adjacency(
+            kpi_name, kpi_line, relevant_scif, general_filters, col_list=res_col)
         ret_values = []
         for result in sum([x for x, y in all_results.values()], []):
             if not result and kpi_line[Const.TYPE] == Const.ANCHOR_LIST:
@@ -620,8 +637,8 @@ class ToolBox:
             for dir, bay in bays.items():
                 bay_mpis = self.filter_df(cat_mpis, {'bay_number': bay})
 
-                smpis = self.filter_df(bay_mpis, potential_end).groupby(['scene_fk', 'bay_number', 'shelf_number']) \
-                    ['facing_sequence_number'].min()
+                smpis = self.filter_df(bay_mpis, potential_end).groupby(
+                    ['scene_fk', 'bay_number', 'shelf_number'])['facing_sequence_number'].min()
                 if smpis.empty:
                     continue
                 rmpis = self.filter_df(bay_mpis, potential_end, exclude=1) \
@@ -640,7 +657,8 @@ class ToolBox:
         return results
 
     def calculate_anchor(self, kpi_name, kpi_line, relevant_scif, general_filters):
-        map = self.template['Anchor Map'].fillna(0).replace('Y', 1).set_index('Result').to_dict('index')
+        map = self.template['Anchor Map'].fillna(0).replace(
+            'Y', 1).set_index('Result').to_dict('index')
         potential_ends = self.get_kpi_line_filters(kpi_line)
         potential_ends = [{key: val} for key, vals in potential_ends.items() for val in vals]
         cat_filters = {'Super Category': self.super_cat}
@@ -664,8 +682,8 @@ class ToolBox:
 
         return kwargs
 
-
     # i think this should probably be removed now and replaced with calculate_vertical_block_adjacencies() - hunter
+
     def adjacency_by_block(self, kpi_name, kpi_line, relevant_scif, general_filters):
         ''' variant limited by block '''
         for scene in relevant_scif.scene_fk.unique():
@@ -679,12 +697,13 @@ class ToolBox:
                 return
 
             graph, blocks = self.block.network_x_block_together2(filter, location=scene_filter,
-                                                                  additional={'allowed_products_filters': allowed,
-                                                                              'include_stacking': False})
+                                                                 additional={'allowed_products_filters': allowed,
+                                                                             'include_stacking': False})
             all_graph = AdjacencyGraph(mpis, None, self.products,
                                        product_attributes=['rect_x', 'rect_y'],
                                        name=None, adjacency_overlap_ratio=.4)
-            match_to_node = {int(node['match_fk']): 1 for i, node in all_graph.base_adjacency_graph.nodes(data=True)}
+            match_to_node = {int(node['match_fk']): 1 for i,
+                             node in all_graph.base_adjacency_graph.nodes(data=True)}
             all_nodes_dict = {i: n['match_fk'] for i, n in block.nodes(data=True)}
             for block in blocks:
                 block = blocks[0]
@@ -696,7 +715,7 @@ class ToolBox:
 
     def calculate_stocking_location(self, kpi_name, kpi_line, relevant_scif, general_filters):
         max_criteria = max([int(col.split(' ')[1]) for col in kpi_line.index if col != Const.KPI_NAME
-                           and col != Const.RESULT])
+                            and col != Const.RESULT])
         comp_dict = {}
         for ind, row in self.template[Const.YOGURT_MAP].set_index('Result').iterrows():
             comp_dict[ind] = tuple([1 if not pd.isnull(i) else 0 for i in row])
@@ -717,7 +736,8 @@ class ToolBox:
 
                 try:
                     if sub_func == Const.BLOCKING:
-                        score, _, _, _, _ = self.base_block(kpi_name, mod_kpi_line, relevant_scif, {})
+                        score, _, _, _, _ = self.base_block(
+                            kpi_name, mod_kpi_line, relevant_scif, {})
                     elif sub_func == 'Distribution':
                         score = self.distribution(mod_kpi_line)
                 except:
@@ -744,7 +764,6 @@ class ToolBox:
                 score = 1
         return score
 
-
     def base_block(self, kpi_name, kpi_line, relevant_scif, general_filters_base, check_orient=1, other=0, filters={},
                    multi=0):
         result = pd.DataFrame()
@@ -758,6 +777,7 @@ class ToolBox:
         mpis_dict = {}
         if self.read_cell_from_line(kpi_line, 'MSL'):
             scenes = self.find_MSL(relevant_scif)
+        valid_scene_found = 0
         for scene in scenes:
             score = 0
             scene_filter = {'scene_fk': scene}
@@ -776,30 +796,33 @@ class ToolBox:
             if not other:
                 allowed_filter = {'product_type': 'Empty'}
             result = pd.concat([result, self.block.network_x_block_together(filters, location=scene_filter,
-                                                         additional={
-                                                                     'allowed_products_filters': allowed_filter,
-                                                                     'include_stacking': False,
-                                                                     'check_vertical_horizontal': check_orient,
-                                                                     'minimum_facing_for_block': 1})])
+                                                                            additional={
+                                                                                'allowed_products_filters': allowed_filter,
+                                                                                'include_stacking': False,
+                                                                                'check_vertical_horizontal': check_orient,
+                                                                                'minimum_facing_for_block': 1})])
             blocks = result[result['is_block'] == True]
+            valid_scene_found = 1
             if not blocks.empty and not multi:
                 score = 1
                 orientation = blocks.loc[0, 'orientation']
                 break
-        if score == -1:
+        if score == -1 and not valid_scene_found:
             self.global_fail = 1
             raise TypeError('No Data Found fo kpi "'.format(kpi_name))
         return score, orientation, mpis_dict, blocks, result
 
     def calculate_block(self, kpi_name, kpi_line, relevant_scif, general_filters):
-        score, orientation, mpis_dict, _, _ = self.base_block(kpi_name, kpi_line, relevant_scif, general_filters)
+        score, orientation, mpis_dict, _, _ = self.base_block(
+            kpi_name, kpi_line, relevant_scif, general_filters)
         # result_fk = self.result_values_dict[orientation]
         kwargs = {'numerator_id': 999, 'numerator_result': score, 'score': score, 'result': orientation,
                   'target': 1}
         return kwargs
 
     def calculate_tub_block(self, kpi_name, kpi_line, relevant_scif, general_filters):
-        score, orientation, mpis_dict, _, _ = self.base_block(kpi_name, kpi_line, relevant_scif, general_filters)
+        score, orientation, mpis_dict, _, _ = self.base_block(
+            kpi_name, kpi_line, relevant_scif, general_filters)
         potential_results = self.get_results_value(kpi_line)
         if score:
             result = [x for x in potential_results if orientation.lower() in x.lower()][0]
@@ -818,7 +841,8 @@ class ToolBox:
         return kwargs
 
     def calculate_yogurt_block(self, kpi_name, kpi_line, relevant_scif, general_filters):
-        score, orientation, mpis_dict, blocks, _ = self.base_block(kpi_name, kpi_line, self.scif, general_filters)
+        score, orientation, mpis_dict, blocks, _ = self.base_block(
+            kpi_name, kpi_line, self.scif, general_filters)
         potential_results = self.get_results_value(kpi_line)
         if score:
             if self.find_MSL(relevant_scif)[0] in blocks['scene_fk'].values:
@@ -845,7 +869,8 @@ class ToolBox:
         return kwargs
 
     def calculate_blocking_all_shelves(self, kpi_name, kpi_line, relevant_scif, general_filters):
-        score, orientation, mpis_dict, blocks, _ = self.base_block(kpi_name, kpi_line, self.scif, general_filters)
+        score, orientation, mpis_dict, blocks, _ = self.base_block(
+            kpi_name, kpi_line, self.scif, general_filters)
         filters = self.get_kpi_line_filters(kpi_line)
         result = orientation
         if score:
@@ -873,8 +898,10 @@ class ToolBox:
             items = {seg: 0 for seg in seg_count.keys()}
             for i, node in block.nodes(data=True):
                 if node['group_attributes']['group_name'] in segs:
-                    items[node['group_attributes']['group_name']] += len(node['group_attributes']['match_fk_list'])
-            row.segments += [seg for seg in segs if seg_count[seg] > 0 and float(items[seg]) / seg_count[seg] >= .75]
+                    items[node['group_attributes']['group_name']
+                          ] += len(node['group_attributes']['match_fk_list'])
+            row.segments += [seg for seg in segs if seg_count[seg]
+                             > 0 and float(items[seg]) / seg_count[seg] >= .75]
         results['seg_count'] = [len(stuff) if stuff else 0 for stuff in results.segments]
         together = results.sort_values('seg_count', ascending=False).reset_index().segments[0]
         result = 'None shelved together'
@@ -899,7 +926,8 @@ class ToolBox:
             mpis = self.filter_df(self.mpis, scene_filter)
             # allowed = {'product_type': ['Other', 'Empty']}
             if kpi_line[Const.TESTED_PARAM] == kpi_line[Const.ANCHOR_PARAM]:
-                filters = {kpi_line[Const.ANCHOR_PARAM]: [kpi_line[Const.ANCHOR_VALUE], kpi_line[Const.TESTED_VALUE]]}
+                filters = {kpi_line[Const.ANCHOR_PARAM]: [
+                    kpi_line[Const.ANCHOR_VALUE], kpi_line[Const.TESTED_VALUE]]}
             elif kpi_line[Const.TESTED_PARAM] == '':
                 filters = {kpi_line[Const.ANCHOR_PARAM]: kpi_line[Const.ANCHOR_VALUE]}
             else:
@@ -912,7 +940,8 @@ class ToolBox:
             if not (items):
                 break
 
-            block_result = self.block.network_x_block_together(filters, location=location_filter, additional=additional)
+            block_result = self.block.network_x_block_together(
+                filters, location=location_filter, additional=additional)
 
             passed_blocks = block_result[block_result['is_block'] is True &
                                          block_result['orientation'] == 'Vertical'].cluster.tolist()
@@ -943,7 +972,8 @@ class ToolBox:
                         if value is not None:
                             try:
                                 numerator_fk = \
-                                self.custom_entity_data[self.custom_entity_data['name'] == value].pk.values[0]
+                                    self.custom_entity_data[self.custom_entity_data['name']
+                                                            == value].pk.values[0]
                             except IndexError:
                                 Log.warning('Custom entity "{}" does not exist'.format(value))
                                 continue
@@ -1031,15 +1061,17 @@ class ToolBox:
         agg = agg[agg['C'] >= .9].reset_index().drop(['A', 'B', 'C'], axis=1)
         if agg.empty:
             return
-        bay_filters = {'scene_fk': list(agg['scene_fk'].unique()), 'bay_number': list(agg['bay_number'].unique())}
+        bay_filters = {'scene_fk': list(agg['scene_fk'].unique()),
+                       'bay_number': list(agg['bay_number'].unique())}
 
         shelves = int(round(self.filter_df(self.full_mpis, bay_filters).groupby(['scene_fk', 'bay_number'])
                             ['shelf_number'].max().mean()))
 
-        potential_results = [res.replace(' Shelves', '') for res in self.get_results_value(kpi_line)]
+        potential_results = [res.replace(' Shelves', '')
+                             for res in self.get_results_value(kpi_line)]
         result = self.semi_numerical_results(shelves, potential_results, form='{} Shelves')
         kwargs = {'numerator_result': shelves, 'score': 1, 'result': result,
-                  'target': None}  
+                  'target': None}
         return kwargs
 
     def calculate_product_orientation(self, kpi_name, kpi_line, relevant_scif, general_filters):
@@ -1076,7 +1108,6 @@ class ToolBox:
                 min_diff = diff
                 match = i
         return match
-
 
     @staticmethod
     def is_int(x):
@@ -1123,7 +1154,8 @@ class ToolBox:
         potential_results = self.get_results_value(kpi_line)
         num_results = [res.split('format(s)')[0].strip() for res in potential_results]
         base = potential_results[0].split('format(s)')[-1].strip()
-        result = '{} {} {}'.format(self.semi_numerical_results(count, num_results), 'format(s)', base)
+        result = '{} {} {}'.format(self.semi_numerical_results(
+            count, num_results), 'format(s)', base)
         kwargs = {'numerator_result': count, 'score': 1, 'result': result, 'target': 0}
         return kwargs
 
@@ -1136,7 +1168,8 @@ class ToolBox:
         mpk_count = self.base_count(kpi_name, kpi_line, relevant_scif, mpk_filters)
 
         result = self.ss_mpk_results(ss_count, mpk_count, kpi_line)
-        kwargs = {'numerator_result': ss_count, 'numerator_result': mpk_count, 'score': 1, 'result': result}
+        kwargs = {'numerator_result': ss_count,
+                  'numerator_result': mpk_count, 'score': 1, 'result': result}
         return kwargs
 
     def ss_mpk_results(self, ss_count, mpk_count, kpi_line):
@@ -1178,15 +1211,18 @@ class ToolBox:
             den = self.base_count(kpi_name, kpi_line, relevant_scif, general_filters, min=0)
             ratio, score = self.ratio_score(count, den)
             result = self.inequality_results(ratio, potential_results, kpi_name)
-        kwargs = {'numerator_result': count, 'score': 1, 'result': result, 'target': 0, 'denominator_result': den}
+        kwargs = {'numerator_result': count, 'score': 1,
+                  'result': result, 'target': 0, 'denominator_result': den}
         return kwargs
 
     def calculate_sos_percent(self, kpi_name, kpi_line, relevant_scif, general_filters):
-        ratio, num, den = self.sos_with_num_and_dem(kpi_line, relevant_scif, general_filters, 'facings_ign_stack')
+        ratio, num, den = self.sos_with_num_and_dem(
+            kpi_line, relevant_scif, general_filters, 'facings_ign_stack')
         if ratio is not None:
             potential_results = self.get_results_value(kpi_line)
             result = self.inequality_results(ratio, potential_results, kpi_name)
-        kwargs = {'numerator_result': num, 'score': ratio, 'result': result, 'denominator_result': den, 'target': 0}
+        kwargs = {'numerator_result': num, 'score': ratio,
+                  'result': result, 'denominator_result': den, 'target': 0}
         return kwargs
 
     def graph(self, kpi_name, kpi_line, relevant_scif, general_filters):
@@ -1196,7 +1232,6 @@ class ToolBox:
         scene_filter = {'scene_fk': 78}
         res = x.network_x_block_together(relevant_filter, location=scene_filter,
                                          additional={'allowed_products_filters': allowed_filter, 'include_stacking': False})
-
 
     def semi_numerical_results(self, val, potential_results, form='{}'):
         min_cap, max_cap = self.find_caps(potential_results)
@@ -1263,11 +1298,8 @@ class ToolBox:
                 result = result
             if eval(inequality):
                 return res
-        Log.error('Result "{}" not found in potential results "{}" in kpi "{}"'.format(res, potential_results, kpi))
-
-
-
-
+        Log.error('Result "{}" not found in potential results "{}" in kpi "{}"'.format(
+            res, potential_results, kpi))
 
     @staticmethod
     def filter_df(df, filters, exclude=0):
@@ -1298,7 +1330,8 @@ class ToolBox:
     @staticmethod
     def filter_join(filters):
         final_filter = defaultdict(list)
-        filters = reduce((lambda x, y: x + y.items() if isinstance(x, list) else x.items() + y.items()), filters)
+        filters = reduce((lambda x, y: x + y.items() if isinstance(x, list)
+                          else x.items() + y.items()), filters)
         for (key, val) in filters:
             final_filter[key].append(val)
         return final_filter
@@ -1347,7 +1380,8 @@ class ToolBox:
         while 1:
             if '{}param {}'.format(name, c) in attribs and kpi_line['{}param {}'.format(name, c)]\
                     and not pd.isnull(kpi_line['{}param {}'.format(name, c)]):
-                filters[kpi_line['{}param {}'.format(name, c)]] += self.splitter(kpi_line['{}value {}'.format(name, c)])
+                filters[kpi_line['{}param {}'.format(
+                    name, c)]] += self.splitter(kpi_line['{}value {}'.format(name, c)])
             else:
                 if c > 3:  # just in case someone inexplicably chose a nonlinear numbering format.
                     break
@@ -1471,7 +1505,8 @@ class ToolBox:
         elif kpi_type == Const.SEQUENCE:
             return self.calculate_sequence
         else:
-            Log.warning("The value '{}' in column sheet in the template is not recognized".format(kpi_type))
+            Log.warning(
+                "The value '{}' in column sheet in the template is not recognized".format(kpi_type))
             return None
 
     def make_result_values_dict(self):
@@ -1498,7 +1533,8 @@ class ToolBox:
             if np.isnan(list_cats[0]) or list_cats[0] is None:
                 Log.error('Category error in Session {} create_special_scif'.format(self.session_uid))
             else:
-                priv['category'], priv['category_fk'] = cats.loc[0, 'category'], cats.loc[0, 'category_fk']
+                priv['category'], priv['category_fk'] = cats.loc[0,
+                                                                 'category'], cats.loc[0, 'category_fk']
         return pd.concat([scif, priv]).reset_index()[scif.columns]
 
     def create_mpip(self):
@@ -1512,8 +1548,7 @@ class ToolBox:
                 where sc.session_uid = '{}'
                 '''.format(self.session_uid)
         return pd.read_sql_query(query, self.ps_data_provider.rds_conn.db)\
-                                .merge(self.products, how='left', on='product_fk', suffixes=['', '_p'])
-
+            .merge(self.products, how='left', on='product_fk', suffixes=['', '_p'])
 
         # self.data_provider.add_resource_from_table('mpip', 'probedata', 'match_product_in_probe', '*',
         #                                            where='''pk in (select distinct p.pk
@@ -1525,7 +1560,6 @@ class ToolBox:
         # mpip = self.data_provider['mpip'].drop('pk', axis=1).merge(self.data_provider['prod_img'],
         #                                                           left_on='product_image_fk', right_on='pk')
         return mpip
-
 
     def write_to_db(self, kpi_name, score=0, result=None, target=None, numerator_result=0,
                     denominator_result=None, numerator_id=999, denominator_id=999, failed=0):

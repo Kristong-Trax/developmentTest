@@ -1,17 +1,17 @@
 
 from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
 from Trax.Utils.Conf.Configuration import Config
-from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
 from Projects.LIONNZ.Calculations import Calculations
 
 
 if __name__ == '__main__':
     Config.init()
-    project_name = 'lionnzdev'
+    project_name = 'lionnz'
     data_provider = KEngineDataProvider(project_name)
     sessions = [
-        'a70cf08d-ab91-4136-9b0e-dab5a15153c1',
-        '6561D6CE-C995-4032-8568-3F3ACCC306CD'
+        '58664d85-865c-4b10-adc1-cd7b67367fff',
+        '02e04d93-5b92-4e04-b1a3-54c6fba20bb7',
+        'f6430600-faea-41e1-b0ea-8c2e61ee4028',
     ]
     for session in sessions:
         print "Running session >>", session
