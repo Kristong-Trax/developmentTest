@@ -1738,6 +1738,7 @@ class BATRUToolBox:
                         result = 0
 
                     score = score + 1 if result else score
+
         set_score = '{}/{}'.format(score, equipment_in_store)
         self.write_to_db_result(set_fk, set_score, level=self.LEVEL1)
 
