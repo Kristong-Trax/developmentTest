@@ -24,17 +24,17 @@ class JNJESCalculations(BaseCalculationsScript):
         jnj_generator = JNJGenerator(self.data_provider, self.output, common)
         jnj_generator.calculate_auto_assortment()
         jnj_generator.eye_hand_level_sos_calculation(eye_hand_lvl_template)
-        jnj_generator.promo_calc(sales_reps_date='2019-06-30')
+        # jnj_generator.promo_calc(sales_reps_date='2019-06-30')
         common.commit_results_data()
         self.timer.stop('KPIGenerator.run_project_calculations')
 
-
-if __name__ == '__main__':
-    LoggerInitializer.init('jnjes calculations')
-    Config.init()
-    project_name = 'jnjes'
-    data_provider = KEngineDataProvider(project_name)
-    session = 'F670CB0D-769B-44F2-89C9-96A16F4FF25E'
-    data_provider.load_session_data(session)
-    output = Output()
-    JNJESCalculations(data_provider, output).run_project_calculations()
+#
+# if __name__ == '__main__':
+#     LoggerInitializer.init('jnjes calculations')
+#     Config.init()
+#     project_name = 'jnjes'
+#     data_provider = KEngineDataProvider(project_name)
+#     session = 'F670CB0D-769B-44F2-89C9-96A16F4FF25E'
+#     data_provider.load_session_data(session)
+#     output = Output()
+#     JNJESCalculations(data_provider, output).run_project_calculations()
