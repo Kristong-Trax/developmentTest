@@ -33,8 +33,6 @@ class Const(object):
     MINIMUM_FACINGS = 'Minimum facings'
     SIZE = 'size'
     SUB_PACKAGES = 'number_of_sub_packages'
-    EXCLUDED_TYPE = 'excluded_type'
-    EXCLUDED_VALUE = 'excluded_value'
 
     # Double Availability columns
     GROUP1_BRAND = 'Brand Group 1'
@@ -60,3 +58,14 @@ class Const(object):
     FAIL = 'Fail'
 
     NUMERIC_VALUES_TYPES = ['size']
+
+    # value types
+    NUM_TYPE = 'numerator_type'
+    DEN_TYPE = 'denominator_type'
+    NUM_VALUE = 'numerator_value'
+    DEN_VALUE = 'denominator_value'
+    NUM_EXCLUDE_TYPE = 'numerator_exclude_type'
+    NUM_EXCLUDE_VALUE = 'numerator_exclude_value'
+    EXCLUDED_TYPE = 'excluded_type'
+    EXCLUDED_VALUE = 'excluded_value'
+

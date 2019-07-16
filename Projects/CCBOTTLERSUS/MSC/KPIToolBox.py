@@ -320,3 +320,40 @@ class MSCToolBox:
             elif type(cell) in [unicode, str]:
                 return [x.strip() for x in cell.split(",")]
         return None
+
+    def get_numerator_scif(self, kpi_line, denominator_scif):
+        numerator_scif = self.filter_scif_by_template_columns(kpi_line, Const.NUM_TYPE, Const.NUM_VALUE,
+                                                              denominator_scif)
+        numerator_scif = self.filter_scif_by_template_columns(kpi_line, Const.NUM_EXCLUDE_TYPE, Const.NUM_EXCLUDE_VALUE,
+                                                              numerator_scif, exclude=True)
+        return numerator_scif
+
+    def get_denominator_scif(self, kpi_line, relevant_scif):
+        denominator_scif = self.filter_scif_by_template_columns(kpi_line, Const.DEN_TYPE, Const.DEN_VALUE,
+                                                                relevant_scif)
+        denominator_scif = self.filter_scif_by_template_columns(kpi_line, Const.EXCLUDED_TYPE, Const.EXCLUDED_VALUE,
+                                                                denominator_scif, exclude=True)
+        return denominator_scif
+
+    @staticmethod
+    def filter_scif_by_template_columns(kpi_line, type_base, value_base, relevant_scif, exclude=False):
+        filters = {}
+
+        # get denominator filters
+        for den_column in [col for col in kpi_line.keys() if type_base in col]:  # get relevant den columns
+            if kpi_line[den_column]:  # check to make sure this kpi has this denominator param
+                filters[kpi_line[den_column]] = \
+                    [value.strip() for value in kpi_line[den_column.replace(type_base, value_base)].split(
+                        ',')]  # get associated values
+
+        for key in filters.iterkeys():
+            if key not in relevant_scif.columns.tolist():
+                Log.error('{} is not a valid parameter type'.format(key))
+                continue
+            if exclude:
+                relevant_scif = relevant_scif[~(relevant_scif[key].isin(filters[key]))]
+            else:
+                relevant_scif = relevant_scif[relevant_scif[key].isin(filters[key])]
+
+        return relevant_scif
+
