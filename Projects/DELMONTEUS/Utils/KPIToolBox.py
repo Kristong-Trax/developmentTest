@@ -513,12 +513,12 @@ class ToolBox:
             all_scenes_required = False
         groups = list(*num_filter.values())
         result = 0
-        score = 0
         scenes = self.filter_df(relevant_scif, general_filters).scene_fk.unique()
         if 'template_name' in general_filters:
             del general_filters['template_name']
         for scene in scenes:  # check every scene
             groups_exempt = 0
+            score = 0
             scene_general_filters = general_filters.copy()
             scene_general_filters.update({'scene_fk': scene})
 
