@@ -112,7 +112,6 @@ MIN_LAYER_NUMBER = 'Min_layer_#'
 MATCH_PRODUCT_IN_PROBE_FK = 'match_product_in_probe_fk'
 MATCH_PRODUCT_IN_PROBE_STATE_REPORTING_FK = 'match_product_in_probe_state_reporting_fk'
 
-
 class PngcnSceneKpis(object):
     def __init__(self, project_connector, common, scene_id, data_provider=None):
         # self.session_uid = session_uid
@@ -202,7 +201,11 @@ class PngcnSceneKpis(object):
                 if filtered_df.empty:
                     continue
                 filtered_df = filtered_df[filtered_df['stacking_layer'] == 1]
+
+                # Save all sub_brands in the scene to eye-light KPI
                 self.save_eye_light_products(block_filters['sub_brand_name'][0], filtered_df)
+
+                # Activate global BLOCK function
                 filter_block_result = block_class.network_x_block_together(
                     population=block_filters,
                     additional={'allowed_products_filters': {'product_type': ['Empty']},
@@ -213,41 +216,20 @@ class PngcnSceneKpis(object):
                 for i, row in filter_block_result.iterrows():
                     if not row['is_block']:
                         continue
+
+                    # Iterate all nodes, verify and filter "not blocks" and add info to dictionary
                     cluster = row['cluster']
                     for node in cluster.nodes.data():
-                        product_matches_fks = []
-                        node_data = node[1]
-                        product_matches_fks += (list(node_data['members']))
-                        block_df = self.matches_from_data_provider[self.matches_from_data_provider
-                                                                   ['scene_match_fk'].isin(product_matches_fks)]
-                        shelves = set(block_df['shelf_number'])
-                        if len(shelves) < row_in_template[MIN_LAYER_NUMBER]:
-                            continue
-                        block_flag = False
-                        for shelf in shelves:
-                            shelf_df = block_df[block_df['shelf_number'] == shelf]
-                            if len(shelf_df) >= row_in_template[MIN_FACINGS_ON_SAME_LAYER]:
-                                block_flag = True
-                                break
-                        if block_flag:
-                            point = node_data['polygon'].centroid
-                            row['x'], row['y'] = point.x, point.y
-                            row['number_of_facings'] = len(product_matches_fks)
-                            for filter, value in block_filters.iteritems():
-                                row[filter] = value
-                            filter_results.append(row)
+                        filter_results = self.handle_node_in_variant_block(row_in_template, row, node, filter_results,
+                                                                                                        block_filters)
                 if len(filter_results) > 0:
                     legal_blocks[filter_name] = filter_results
                     legal_blocks[filter_name] = filter_results
-        all_blocks = [p for q in legal_blocks.values() for p in q]
-        all_blocks_no_duplicates = []
-        for i in range(0, len(all_blocks)):
-            if i == len(all_blocks) - 1:
-                all_blocks_no_duplicates.append(all_blocks[i])
-            elif not (all_blocks[i].equals(all_blocks[i + 1])):
-                all_blocks_no_duplicates.append(all_blocks[i])
-        self.replace_with_seq_order(sorted(all_blocks_no_duplicates, key=lambda i: i['x']), 'x')
-        self.replace_with_seq_order(sorted(all_blocks_no_duplicates, key=lambda i: i['y']), 'y')
+
+        # Sort all block results by X axis and Y axis
+        all_blocks_no_duplicates = self.reorder_all_blocks_results(legal_blocks)
+
+        # Save all blocks results
         block_variant_kpi_fk = self.common.get_kpi_fk_by_kpi_name(BLOCK_VARIANT_KPI)
         for block in all_blocks_no_duplicates:
             brand_fk = self.get_attribute_fk_from_name('brand_name', block['brand_name'])
@@ -262,6 +244,53 @@ class PngcnSceneKpis(object):
                                            result=block['facing_percentage'],
                                            score=block['number_of_facings'],
                                            by_scene=True)
+
+    def handle_node_in_variant_block(self, row_in_template, row, node, filter_results, block_filters):
+        product_matches_fks = []
+        node_data = node[1]
+        product_matches_fks += (list(node_data['members']))
+        block_df = self.matches_from_data_provider[self.matches_from_data_provider
+        ['scene_match_fk'].isin(product_matches_fks)]
+        shelves = set(block_df['shelf_number'])
+
+        # filter blocks without the minimum shelves spreading number
+        if len(shelves) < row_in_template[MIN_LAYER_NUMBER]:
+            return
+        block_flag = False
+        for shelf in shelves:
+            shelf_df = block_df[block_df['shelf_number'] == shelf]
+
+            # filter blocks without the minimum number of facings on the same layer
+            if len(shelf_df) >= row_in_template[MIN_FACINGS_ON_SAME_LAYER]:
+                block_flag = True
+                break
+
+        # Add relevant blocks the following info: x,y coordinates and number of facings
+        if block_flag:
+            point = node_data['polygon'].centroid
+            row['x'], row['y'] = point.x, point.y
+            row['number_of_facings'] = len(product_matches_fks)
+            for filter, value in block_filters.iteritems():
+                row[filter] = value
+            filter_results.append(row)
+        return filter_results
+
+    def reorder_all_blocks_results(self, legal_blocks):
+        # Combine all blocks
+        all_blocks = [p for q in legal_blocks.values() for p in q]
+        all_blocks_no_duplicates = []
+
+        # Drop all duplicates blocks
+        for i in range(0, len(all_blocks)):
+            if i == len(all_blocks) - 1:
+                all_blocks_no_duplicates.append(all_blocks[i])
+            elif not (all_blocks[i].equals(all_blocks[i + 1])):
+                all_blocks_no_duplicates.append(all_blocks[i])
+
+        # Sort by both X axis and Y axis
+        self.replace_with_seq_order(sorted(all_blocks_no_duplicates, key=lambda i: i['x']), 'x')
+        self.replace_with_seq_order(sorted(all_blocks_no_duplicates, key=lambda i: i['y']), 'y')
+        return all_blocks_no_duplicates
 
     def save_eye_light_products(self, sub_brand, filtered_df):
         sub_brand_pk = self.match_product_in_probe_state_reporting[
@@ -1136,14 +1165,14 @@ class PngcnSceneKpis(object):
         kpi_fk = self.common.get_kpi_fk_by_kpi_name(DISPLAY_SIZE_PER_SCENE)
 
         # get size and item id
-        DF_products_size = self._get_display_size_of_product_in_scene()
+        df_products_size = self._get_display_size_of_product_in_scene()
 
-        if self.scif.empty or DF_products_size.empty:
+        if self.scif.empty or df_products_size.empty:
             return
 
         filter_scif = self.scif[[u'scene_id', u'item_id',
                                  u'manufacturer_fk', u'rlv_sos_sc', u'status']]
-        df_result = pd.merge(filter_scif, DF_products_size, on=['item_id', 'scene_id'], how='left')
+        df_result = pd.merge(filter_scif, df_products_size, on=['item_id', 'scene_id'], how='left')
         df_result = df_result[df_result['product_size'] > 0]
 
         if kpi_fk:

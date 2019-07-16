@@ -10,7 +10,7 @@ __author__ = 'Sergey'
 
 PROJECT = 'ccru'
 START_DATE = '2019-06-29'
-END_DATE = '2019-07-03'
+END_DATE = '2019-07-05'
 NUMBER_OF_SCENES_LIMIT = 10000
 BATCH_FILE = '/home/sergey/Documents/Recalc/' + PROJECT + '_sessions_'
 
@@ -21,13 +21,38 @@ class CCRUSessionBatches:
         self.aws_conn = PSProjectConnector(self.project, DbUsers.CalculationEng)
 
     def run_it(self):
+        # query = """
+        #         SELECT visit_date, session_uid, number_of_scenes
+        #         FROM probedata.session
+        #         WHERE number_of_scenes > 0
+        #         AND visit_date >= '{}' AND visit_date <= '{}'
+        #         AND (external_session_id NOT LIKE 'EasyMerch-P%' OR external_session_id IS NULL)
+        #         ORDER BY visit_date
+        #         """.format(START_DATE, END_DATE)
         query = """
-                SELECT visit_date, session_uid, number_of_scenes
-                FROM probedata.session
-                WHERE number_of_scenes > 0
-                AND visit_date >= '{}' AND visit_date <= '{}'
-                AND (external_session_id NOT LIKE 'EasyMerch-P%' OR external_session_id IS NULL)
-                ORDER BY visit_date
+                SELECT ss.visit_date, ss.session_uid, ss.number_of_scenes
+                FROM probedata.session ss
+                JOIN report.kps_results ksr ON ksr.session_uid=ss.session_uid
+                JOIN static.kpi_set ks ON ks.pk=ksr.kpi_set_fk
+                WHERE ss.number_of_scenes > 0
+                AND ss.visit_date >= '{}' AND ss.visit_date <= '{}'
+                AND (ss.external_session_id NOT LIKE 'EasyMerch-P%' OR ss.external_session_id IS NULL)
+                AND ks.name IN(
+                'PoS 2019 - IC Cinema - CAP',
+                'PoS 2019 - IC Cinema - REG',
+                'PoS 2019 - IC FastFood',
+                'PoS 2019 - IC Petroleum - CAP',
+                'PoS 2019 - IC Petroleum - REG',
+                'PoS 2019 - IC QSR',
+                'PoS 2019 - MT Conv Big - CAP',
+                'PoS 2019 - MT Conv Small - CAP',
+                'PoS 2019 - MT Conv Small - REG',
+                'PoS 2019 - MT Hypermarket - CAP',
+                'PoS 2019 - MT Hypermarket - REG',
+                'PoS 2019 - MT Supermarket - CAP',
+                'PoS 2019 - MT Supermarket - REG'
+                )
+                ORDER BY ss.visit_date;
                 """.format(START_DATE, END_DATE)
 
         sessions = pd.read_sql_query(query, self.aws_conn.db)

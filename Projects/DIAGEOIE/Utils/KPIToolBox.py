@@ -67,7 +67,7 @@ class DIAGEOIEToolBox:
 
         self.tools = DIAGEOToolBox(self.data_provider, output,
                                    match_display_in_scene=self.match_display_in_scene)  # replace the old one
-        self.diageo_generator = DIAGEOGenerator(self.data_provider, self.output, self.common)
+        self.diageo_generator = DIAGEOGenerator(self.data_provider, self.output, self.common, menu=True)
         self.kpi_static_data = self.get_kpi_static_data()
         self.kpi_results_queries = []
         self.store_info = self.data_provider[Data.STORE_INFO]
@@ -109,6 +109,11 @@ class DIAGEOIEToolBox:
         assortment_res_dict_v3 = self.diageo_generator.diageo_global_assortment_function_v3()
         self.commonV2.save_json_to_new_tables(assortment_res_dict_v3)
 
+        # Global Menu kpis
+        menus_res_dict = self.diageo_generator.diageo_global_share_of_menu_cocktail_function(
+            cocktail_product_level=True)
+        self.commonV2.save_json_to_new_tables(menus_res_dict)
+
         # Global Tap Brand Score
         template_path = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))),
                                      'Data', 'Brand Score.xlsx')
@@ -136,7 +141,7 @@ class DIAGEOIEToolBox:
 
             # Global Visible to Consumer
             # elif set_name in ('Visible to Customer', 'Visible to Consumer %'):
-            if set_name in ('Visible to Customer', 'Visible to Consumer %'):
+            if set_name in ('Visible to Customer', 'Visible to Consumer %', 'Visible to Consumer'):
                 # Global function
                 sku_list = filter(None, self.scif[self.scif['product_type'] == 'SKU'].product_ean_code.tolist())
                 res_dict = self.diageo_generator.diageo_global_visible_percentage(sku_list)

@@ -1,4 +1,3 @@
-
 import pandas as pd
 from datetime import datetime
 
@@ -12,11 +11,11 @@ from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
 from KPIUtils.DIAGEO.ToolBox import DIAGEOToolBox
 from KPIUtils.GlobalProjects.DIAGEO.Utils.Fetcher import DIAGEOQueries
 from KPIUtils.GlobalProjects.DIAGEO.KPIGenerator import DIAGEOGenerator
-from KPIUtils.GlobalProjects.DIAGEO.Utils.ParseTemplates import parse_template # if needed
+from KPIUtils.GlobalProjects.DIAGEO.Utils.ParseTemplates import parse_template  # if needed
 from KPIUtils.DB.Common import Common
 from KPIUtils_v2.DB.CommonV2 import Common as CommonV2
 from OutOfTheBox.Calculations.ManufacturerSOS import ManufacturerFacingsSOSInWholeStore, \
-                  ManufacturerFacingsSOSPerSubCategoryInStore
+    ManufacturerFacingsSOSPerSubCategoryInStore
 from OutOfTheBox.Calculations.SubCategorySOS import SubCategoryFacingsSOSPerCategory
 
 __author__ = 'Nimrod'
@@ -24,6 +23,7 @@ __author__ = 'Nimrod'
 KPI_RESULT = 'report.kpi_results'
 KPK_RESULT = 'report.kpk_results'
 KPS_RESULT = 'report.kps_results'
+
 
 def log_runtime(description, log_start=False):
     def decorator(func):
@@ -35,12 +35,13 @@ def log_runtime(description, log_start=False):
             calc_end_time = datetime.utcnow()
             Log.info('{} took {}'.format(description, calc_end_time - calc_start_time))
             return result
+
         return wrapper
+
     return decorator
 
 
 class DIAGEOTWToolBox:
-
     SOS_SETS = 'SOS_SETS'
     LEVEL1 = 1
     LEVEL2 = 2
@@ -103,12 +104,13 @@ class DIAGEOTWToolBox:
         """
         This function calculates the KPI results.
         """
-        # Global assortment kpis
-        assortment_res_dict = self.diageo_generator.diageo_global_assortment_function_v2()
-        self.commonV2.save_json_to_new_tables(assortment_res_dict)
 
         # SOS Out Of The Box kpis
         self.activate_ootb_kpis()
+
+        # Global assortment kpis
+        assortment_res_dict = self.diageo_generator.diageo_global_assortment_function_v2()
+        self.commonV2.save_json_to_new_tables(assortment_res_dict)
 
         # Global assortment kpis - v3 for NEW MOBILE REPORTS use
         assortment_res_dict_v3 = self.diageo_generator.diageo_global_assortment_function_v3()
@@ -294,11 +296,15 @@ class DIAGEOTWToolBox:
                 tested_filters = {'product_ean_code': params.get(self.tools.TESTED)}
                 anchor_filters = {'product_ean_code': params.get(self.tools.ANCHOR)}
                 direction_data = {'top': self._get_direction_for_relative_position(params.get(self.tools.TOP_DISTANCE)),
-                                  'bottom': self._get_direction_for_relative_position(params.get(self.tools.BOTTOM_DISTANCE)),
-                                  'left': self._get_direction_for_relative_position(params.get(self.tools.LEFT_DISTANCE)),
-                                  'right': self._get_direction_for_relative_position(params.get(self.tools.RIGHT_DISTANCE))}
+                                  'bottom': self._get_direction_for_relative_position(
+                                      params.get(self.tools.BOTTOM_DISTANCE)),
+                                  'left': self._get_direction_for_relative_position(
+                                      params.get(self.tools.LEFT_DISTANCE)),
+                                  'right': self._get_direction_for_relative_position(
+                                      params.get(self.tools.RIGHT_DISTANCE))}
                 general_filters = {'template_name': params.get(self.tools.LOCATION)}
-                result = self.tools.calculate_relative_position(tested_filters, anchor_filters, direction_data, **general_filters)
+                result = self.tools.calculate_relative_position(tested_filters, anchor_filters, direction_data,
+                                                                **general_filters)
                 score = 1 if result else 0
                 scores.append(score)
 
@@ -363,11 +369,13 @@ class DIAGEOTWToolBox:
                         product_score = self.tools.calculate_assortment(product_ean_code=product)
                         result += product_score
                         product_name = \
-                        self.all_products[self.all_products['product_ean_code'] == product]['product_name'].values[0]
+                            self.all_products[self.all_products['product_ean_code'] == product]['product_name'].values[
+                                0]
                         try:
                             atomic_fk = \
-                            kpi_static_data[kpi_static_data['atomic_kpi_name'] == product_name]['atomic_kpi_fk'].values[
-                                0]
+                                kpi_static_data[kpi_static_data['atomic_kpi_name'] == product_name][
+                                    'atomic_kpi_fk'].values[
+                                    0]
                         except Exception as e:
                             Log.info('Product {} is not defined in the DB'.format(product_name))
                             continue
@@ -571,7 +579,8 @@ class DIAGEOTWToolBox:
                                                'score_2', 'kpi_set_fk'])
 
         elif level == self.LEVEL2:
-            kpi_name = self.kpi_static_data[self.kpi_static_data['kpi_fk'] == fk]['kpi_name'].values[0].replace("'", "\\'")
+            kpi_name = self.kpi_static_data[self.kpi_static_data['kpi_fk'] == fk]['kpi_name'].values[0].replace("'",
+                                                                                                                "\\'")
             attributes = pd.DataFrame([(self.session_uid, self.store_id, self.visit_date.isoformat(),
                                         fk, kpi_name, score)],
                                       columns=['session_uid', 'store_fk', 'visit_date', 'kpi_fk', 'kpk_name', 'score'])

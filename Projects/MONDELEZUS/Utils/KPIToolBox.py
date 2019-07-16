@@ -1,7 +1,7 @@
 import pandas as pd
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Cloud.Services.Connector.Keys import DbUsers
-from Trax.Data.Projects.Connector import ProjectConnector
+from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 # from Trax.Utils.Logging.Logger import Log
 import math
 # from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
@@ -13,7 +13,6 @@ import math
 # from KPIUtils_v2.Calculations.SurveyCalculations import Survey
 import os
 from Trax.Utils.Logging.Logger import Log
-from Trax.Data.Projects.ProjectConnector import AwsProjectConnector
 from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
 from Projects.MONDELEZUS.Utils.ParseTemplates import parse_template
 import datetime
@@ -66,7 +65,7 @@ class MONDELEZUSToolBox:
         self.scene_info = self.data_provider[Data.SCENES_INFO]
         self.store_id = self.data_provider[Data.STORE_FK]
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
-        self.rds_conn = ProjectConnector(self.project_name, DbUsers.CalculationEng)
+        self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         self.thresholds_and_results = {}
         self.result_df = []
         self.writing_to_db_time = datetime.timedelta(0)
