@@ -10,14 +10,21 @@ from Trax.Data.Testing.TestProjects import TestProjectsNames
 
 from Tests.Data.TestData.test_data_pngcn_prod_sanity import ProjectsSanityData
 from Projects.PNGCN_PROD.Calculations import PngCNEmptyCalculations
-from Projects.PNGCN_PROD.SceneKpis.SceneCalculations import SceneCalculations
 from Trax.Apps.Core.Testing.BaseCase import TestFunctionalCase
-
+from Projects.PNGCN_PROD.SceneKpis.SceneCalculations import SceneCalculations
+from Tests.TestUtils import remove_cache_and_storage
 
 __author__ = 'ilays'
 
 
 class TestKEngineOutOfTheBox(TestFunctionalCase):
+
+    def set_up(self):
+        super(TestKEngineOutOfTheBox, self).set_up()
+        remove_cache_and_storage()
+        self.mock_object(object_name='commit_results_data', path='KPIUtils_v2.DB.CommonV2.Common')
+        self.mock_object(object_name='get_display_group',
+                         path='Projects.PNGCN_PROD.SceneKpis.KPISceneToolBox.PngcnSceneKpis')
 
     @property
     def import_path(self):
@@ -29,6 +36,16 @@ class TestKEngineOutOfTheBox(TestFunctionalCase):
     
     seeder = Seeder()
     
+    def _assert_old_tables_kpi_results_filled(self):
+        connector = PSProjectConnector(TestProjectsNames().TEST_PROJECT_1, DbUsers.Docker)
+        cursor = connector.db.cursor(MySQLdb.cursors.DictCursor)
+        cursor.execute('''
+        SELECT * FROM report.kpi_results
+        ''')
+        kpi_results = cursor.fetchall()
+        self.assertNotEquals(len(kpi_results), 0)
+        connector.disconnect_rds()
+
     def _assert_new_tables_kpi_results_filled(self):
         connector = PSProjectConnector(TestProjectsNames().TEST_PROJECT_1, DbUsers.Docker)
         cursor = connector.db.cursor(MySQLdb.cursors.DictCursor)
@@ -39,22 +56,12 @@ class TestKEngineOutOfTheBox(TestFunctionalCase):
         self.assertNotEquals(len(kpi_results), 0)
         connector.disconnect_rds()
 
-    def _assert_scene_tables_kpi_results_filled(self):
+    def _assert_scene_kpi_results_filled(self):
         connector = PSProjectConnector(TestProjectsNames().TEST_PROJECT_1, DbUsers.Docker)
         cursor = connector.db.cursor(MySQLdb.cursors.DictCursor)
         cursor.execute('''
-        SELECT * FROM report.scene_kpi_results
-        ''')
-        kpi_results = cursor.fetchall()
-        self.assertNotEquals(len(kpi_results), 0)
-        connector.disconnect_rds()
-
-    def _assert_old_tables_kpi_results_filled(self):
-        connector = PSProjectConnector(TestProjectsNames().TEST_PROJECT_1, DbUsers.Docker)
-        cursor = connector.db.cursor(MySQLdb.cursors.DictCursor)
-        cursor.execute('''
-        SELECT * FROM report.kpi_results
-        ''')
+         SELECT * FROM report.scene_kpi_results
+         ''')
         kpi_results = cursor.fetchall()
         self.assertNotEquals(len(kpi_results), 0)
         connector.disconnect_rds()
@@ -68,7 +75,8 @@ class TestKEngineOutOfTheBox(TestFunctionalCase):
             data_provider.load_session_data(session)
             output = Output()
             PngCNEmptyCalculations(data_provider, output).run_project_calculations()
-            SceneCalculations(data_provider).calculate_kpis()
             self._assert_new_tables_kpi_results_filled()
-            self._assert_scene_tables_kpi_results_filled()
             self._assert_old_tables_kpi_results_filled()
+            data_provider.load_scene_data(session, scene_id=19626328)
+            SceneCalculations(data_provider).calculate_kpis()
+            self._assert_scene_kpi_results_filled()
