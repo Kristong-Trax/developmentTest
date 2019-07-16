@@ -1466,6 +1466,7 @@ class MARSRU2_SANDKPIToolBox:
                 kpi_part_1 = self.results_and_scores[kpi_set]['1010']['result'] + self.results_and_scores[kpi_set]['1011']['result']
                 kpi_part_2 = self.results_and_scores[kpi_set]['4262']['result'] + self.results_and_scores[kpi_set]['4266']['result']
                 result = ((kpi_part_1/float(kpi_part_2))/k1)*k2 if kpi_part_2 else 0
+                result = round(result if result < 1 else 1, 1)
 
             elif p.get('#Mars KPI NAME') == 1015:  # Nestle in Mars = ((1012/1014)/0.5)*0.5
                 k1 = 0.5
@@ -1473,11 +1474,13 @@ class MARSRU2_SANDKPIToolBox:
                 kpi_part_1 = self.results_and_scores[kpi_set]['1012']['result']
                 kpi_part_2 = self.results_and_scores[kpi_set]['1014']['result']
                 result = ((kpi_part_1/float(kpi_part_2))/k1)*k2 if kpi_part_2 else 0
+                result = round(result if result < 1 else 1, 1)
 
             elif p.get('#Mars KPI NAME') == 1016:  # PSS Nestle = 1013+1015
                 kpi_part_1 = self.results_and_scores[kpi_set]['1013']['result']
                 kpi_part_2 = self.results_and_scores[kpi_set]['1015']['result']
                 result = kpi_part_1 + kpi_part_2
+                result = round(result if result < 1 else 1, 1)
 
             else:
                 result = None
