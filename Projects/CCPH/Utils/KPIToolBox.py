@@ -31,6 +31,7 @@ class CCPHConsts(object):
     KPI_NAME = 'kpi_name'
     FACINGS_SOS = 'FSOS'
     SHELF_PURITY = "SHELF_PURITY"
+    SHELF_CUTIL = "SHELF_CUTIL"
     EXCLUDE_EMPTY = "exclude_empty"
     EXCLUDE_IRRELEVANT = "exclude_irrelevant"
     GENERAL_EMPTY = 0
@@ -66,7 +67,9 @@ class CCPHToolBox:
         self.kpi_static_data = self.common.get_new_kpi_static_data()
         self.kpi_static_data = self.kpi_static_data[self.kpi_static_data['kpi_family_fk'] == CCPHConsts.CUSTOM_KPIS]
         self.kpi_results_queries = []
-        self.mapping = {'manufacturer': 'manufacturer_name'}
+        self.mapping_param = {"manufacturer": "manufacturer_name"}
+        self.mapping_entity = {"manufacturer": "manufacturer_fk", "store": "store_id",
+                               "scene_type": "template_fk", "brand": "brand_fk", "product": "product_fk"}
 
     def main_calculation(self):
         """
@@ -82,8 +85,9 @@ class CCPHToolBox:
 
             for row_num, kpi in kpis.iterrows():
                 if kpi[CCPHConsts.KPI_GROUP] == CCPHConsts.SHELF_PURITY:
-                    score = self.calculate_self_purity(kpi)
-
+                    score = self.calculate_self_purity_util(kpi)
+                elif kpi[CCPHConsts.KPI_GROUP] == CCPHConsts.SHELF_CUTIL:
+                    score = self.calculate_self_purity_util(kpi)
             else:
                 continue
 
@@ -91,7 +95,7 @@ class CCPHToolBox:
 
         return score
 
-    def calculate_self_purity(self, kpi):
+    def calculate_self_purity_util(self, kpi):
         result = 0
         df_scene_data = self.scif
 
@@ -101,16 +105,17 @@ class CCPHToolBox:
         scene_types = [x.strip() for x in kpi[CCPHConsts.SCENE_TYPE].split(',')]
 
         filter_param_name_1 = kpi['filter_param_name_1'].strip()
-        filter_param_value_1 = ""
 
         if len(filter_param_name_1) != 0:
             filter_param_value_1 = kpi['filter_param_value_1'].strip()
+        else:
+            filter_param_value_1 = ""
 
-        if kpi[CCPHConsts.EXCLUDE_EMPTY] in ['Y', 'y']:
+        if str(kpi[CCPHConsts.EXCLUDE_EMPTY]).upper() == 'Y':
             df_scene_data = df_scene_data[df_scene_data[CCPHConsts.PRODUCT_FK] != CCPHConsts.EMPTY]
             df_scene_data = df_scene_data[df_scene_data[CCPHConsts.PRODUCT_FK] != CCPHConsts.GENERAL_EMPTY]
 
-        if kpi[CCPHConsts.EXCLUDE_IRRELEVANT] in ['Y', 'y']:
+        if str(kpi[CCPHConsts.EXCLUDE_IRRELEVANT]).upper() == 'Y':
             df_scene_data = df_scene_data[df_scene_data[CCPHConsts.IRRELEVANT] != CCPHConsts.IRRELEVANT]
 
         df_kpi_level_2_fk = self.kpi_static_data[self.kpi_static_data['type'] == kpi['kpi_name']]
@@ -126,10 +131,23 @@ class CCPHToolBox:
         denominator = float(total_facings)
 
         if len(filter_param_value_1) != 0:
-            df_scene_data = df_scene_data[df_scene_data[self.mapping[filter_param_name_1]] == filter_param_value_1]
+            df_scene_data = df_scene_data[df_scene_data[self.mapping_param[filter_param_name_1]] == filter_param_value_1]
 
-        df_scene_data = df_scene_data[['manufacturer_fk', 'facings']]
-        df_purity = pd.DataFrame(df_scene_data.groupby('manufacturer_fk').sum().reset_index())
+        group_list = []
+        for idx in range(1, 5):
+            entity = kpi['entity' + str(idx)].strip()
+            if entity == 'N/A' or len(entity) == 0:
+                continue
+            else:
+                entity = self.mapping_entity[kpi['entity' + str(idx)].strip()]
+                group_list.append(entity)
+
+        filter_columns = list(group_list)
+        filter_columns.append('facings')
+
+        df_scene_data = df_scene_data[filter_columns]
+
+        df_purity = pd.DataFrame(df_scene_data.groupby(group_list).sum().reset_index())
 
         for row_num, row_data in df_purity.iterrows():
             numerator = row_data['facings']
@@ -141,8 +159,8 @@ class CCPHToolBox:
 
             if kpi_level_2_fk != 0:
                 self.common.write_to_db_result_new_tables(fk=kpi_level_2_fk,
-                                                          numerator_id=row_data['manufacturer_fk'],
-                                                          denominator_id=self.store_id,
+                                                          numerator_id=row_data[group_list[len(group_list)-1]],
+                                                          denominator_id=row_data[group_list[0]],
                                                           numerator_result=numerator,
                                                           denominator_result=denominator,
                                                           result=result,
