@@ -7,7 +7,7 @@ from Trax.Data.Testing.SeedNew import Seeder
 from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
 from Trax.Cloud.Services.Connector.Keys import DbUsers
 from Trax.Data.Testing.TestProjects import TestProjectsNames
-from Trax.Utils.Testing.Case import MockingTestCase, skip
+from Trax.Utils.Testing.Case import skip
 from mock import patch
 
 from Tests.Data.TestData.test_data_diageoie_sand_sanity import ProjectsSanityData
@@ -42,7 +42,7 @@ class TestKEngineOutOfTheBox(TestFunctionalCase):
         connector = PSProjectConnector(TestProjectsNames().TEST_PROJECT_1, DbUsers.Docker)
         cursor = connector.db.cursor(MySQLdb.cursors.DictCursor)
         cursor.execute('''
-        SELECT * FROM report.kpi_results
+        SELECT * FROM report.kpi_level_2_results
         ''')
         kpi_results = cursor.fetchall()
         self.assertNotEquals(len(kpi_results), 0)
@@ -58,7 +58,7 @@ class TestKEngineOutOfTheBox(TestFunctionalCase):
            return_value=products)
     @patch('KPIUtils.DIAGEO.ToolBox.DIAGEOToolBox.download_template',
            return_value=local_mpa)
-    @seeder.seed(["diageoie_seed"], ProjectsSanityData())
+    @seeder.seed(["mongodb_products_and_brands_seed", "diageoie_seed"], ProjectsSanityData())
     def test_diageoie_sanity(self, x, y, json1, json2, json3):
         project_name = ProjectsSanityData.project_name
         data_provider = KEngineDataProvider(project_name)

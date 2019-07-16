@@ -1,74 +1,98 @@
-
 import os
 import MySQLdb
+import pandas as pd
 
 from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Trax.Data.Testing.SeedNew import Seeder
 from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
 from Trax.Cloud.Services.Connector.Keys import DbUsers
 from Trax.Data.Testing.TestProjects import TestProjectsNames
-from mock import patch
-from Trax.Utils.Testing.Case import MockingTestCase, skip
-from Tests.Data.Templates.diageoke.LocalMPA import local_mpa
-from Tests.Data.Templates.diageoke.MPA import mpa
-from Tests.Data.Templates.diageoke.NewProducts import products
-from Tests.Data.Templates.diageoke.POSM import posm
+from Trax.Utils.Logging.Logger import Log
+
 from Tests.Data.TestData.test_data_diageoke_sanity import ProjectsSanityData
 from Projects.DIAGEOKE.Calculations import DIAGEOKECalculations
 from Trax.Apps.Core.Testing.BaseCase import TestFunctionalCase
 
 from Tests.TestUtils import remove_cache_and_storage
+from Projects.DIAGEOKE.Utils.KPIToolBox import DIAGEOKEToolBox
+
 
 __author__ = 'limorc'
 
 
 class TestKEngineOutOfTheBox(TestFunctionalCase):
-    
+
+    seeder = Seeder()
+
+    @seeder.seed(["mongodb_products_and_brands_seed", "diageoke_seed"], ProjectsSanityData())
     def set_up(self):
         super(TestKEngineOutOfTheBox, self).set_up()
+        self.mock_object('save_latest_templates', path='KPIUtils.DIAGEO.ToolBox.DIAGEOToolBox')
+        self.mock_object('save_json_to_new_tables', path='KPIUtils_v2.DB.CommonV2.Common')
+        res_dict = self.mock_object('diageo_global_visible_percentage',
+                                    path='KPIUtils.GlobalProjects.DIAGEO.KPIGenerator.DIAGEOGenerator')
+        res_dict.return_value = [{'result': 1}]
+        self.project_name = ProjectsSanityData.project_name
+        self.output = Output()
+        self.session_uid = '08e4dbd4-9270-4352-a68b-ca27e7853de6'
+        self.data_provider = KEngineDataProvider(self.project_name)
+        self.data_provider.load_session_data(self.session_uid)
         remove_cache_and_storage()
-    
+
     @property
     def import_path(self):
         return 'Trax.Apps.Services.KEngine.Handlers.SessionHandler'
-    
+
     @property
     def config_file_path(self):
         return os.path.join(os.path.dirname(os.path.realpath(__file__)), 'k-engine-test.config')
-    
-    seeder = Seeder()
-    
+
     def _assert_kpi_results_filled(self):
         connector = PSProjectConnector(TestProjectsNames().TEST_PROJECT_1, DbUsers.Docker)
         cursor = connector.db.cursor(MySQLdb.cursors.DictCursor)
         cursor.execute('''
-        SELECT * FROM report.kpi_results
+        SELECT * FROM report.kpi_level_2_results
         ''')
         kpi_results = cursor.fetchall()
         self.assertNotEquals(len(kpi_results), 0)
         connector.disconnect_rds()
 
-    @skip('Test failed in garage')
-    @patch('KPIUtils.DIAGEO.ToolBox.DIAGEOToolBox.get_latest_directory_date_from_cloud',
-           return_value='2018-11-27')
-    @patch('KPIUtils.DIAGEO.ToolBox.DIAGEOToolBox.save_latest_templates')
-    @patch('KPIUtils.DIAGEO.ToolBox.DIAGEOToolBox.download_template',
-           return_value=mpa)
-    @patch('KPIUtils.DIAGEO.ToolBox.DIAGEOToolBox.download_template',
-           return_value=local_mpa)
-    @patch('KPIUtils.DIAGEO.ToolBox.DIAGEOToolBox.download_template',
-           return_value=products)
-    @patch('KPIUtils.DIAGEO.ToolBox.DIAGEOToolBox.download_template',
-           return_value=posm)
-    @seeder.seed(["diageoke_seed"], ProjectsSanityData())
-
-
-    def test_diageoke_sanity(self, x, y, json, json2, json3,json4):
+    @seeder.seed(["mongodb_products_and_brands_seed", "diageoke_seed"], ProjectsSanityData())
+    def test_diageoke_sanity(self):
         project_name = ProjectsSanityData.project_name
         data_provider = KEngineDataProvider(project_name)
-        sessions = ['08e4dbd4-9270-4352-a68b-ca27e7853de6']
-        for session in sessions:
-            data_provider.load_session_data(session)
-            output = Output()
-            DIAGEOKECalculations(data_provider, output).run_project_calculations()
-            self._assert_kpi_results_filled()
+        data_provider.load_session_data(self.session_uid)
+        output = Output()
+        DIAGEOKECalculations(data_provider, output).run_project_calculations()
+        self._assert_kpi_results_filled()
+
+    @seeder.seed(["mongodb_products_and_brands_seed", "diageoke_seed"], ProjectsSanityData())
+    def test_get_match_display(self):
+        """
+        test the resulte type
+        """
+        tool_box = DIAGEOKEToolBox(self.data_provider, self.output)
+        result = tool_box.get_match_display()
+        expected_result = pd.DataFrame
+        self.assertIsInstance(result, expected_result)
+
+    @seeder.seed(["mongodb_products_and_brands_seed", "diageoke_seed"], ProjectsSanityData())
+    def test_get_kpi_static_data(self):
+        """
+        test the resulte type
+        """
+        tool_box = DIAGEOKEToolBox(self.data_provider, self.output)
+        result = tool_box.get_kpi_static_data()
+        expected_result = pd.DataFrame
+        self.assertIsInstance(result, expected_result)
+
+    @seeder.seed(["mongodb_products_and_brands_seed", "diageoke_seed"], ProjectsSanityData())
+    def test_main_calculation(self):
+        """
+        test that the resulte is None
+        """
+        tool_box = DIAGEOKEToolBox(self.data_provider, self.output)
+        set_names = tool_box.kpi_static_data['kpi_set_name'].unique().tolist()
+        tool_box.kpi_static_data = tool_box.get_kpi_static_data()
+        result = tool_box.main_calculation(set_names)
+        self.assertIsNone(result, "Did Not returned None")

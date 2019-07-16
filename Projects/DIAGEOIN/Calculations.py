@@ -19,9 +19,9 @@ class DIAGEOINCalculations(BaseCalculationsScript):
 # if __name__ == '__main__':
 #     LoggerInitializer.init('DIAGEOIN calculations')
 #     Config.init()
-#     project_name = 'DIAGEOIN'
+#     project_name = 'diageoin'
 #     data_provider = KEngineDataProvider(project_name)
-#     session = '37ae1878-bc8b-4d1b-8b26-1798f4c562da'
+#     session = '92726422-1c2e-44a2-ab3d-6ed378bb7dac'
 #     data_provider.load_session_data(session)
 #     output = Output()
 #     DIAGEOINCalculations(data_provider, output).run_project_calculations()

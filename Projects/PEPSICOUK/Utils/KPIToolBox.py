@@ -194,7 +194,7 @@ class PEPSICOUKToolBox:
                     self.add_kpi_result_to_kpi_results_df([kpi_90_fk, row['group_fk'], None, None, result_90])
 
     @staticmethod
-    def get_full_bay_and_positional_filters(parameters): # get a function from ccbza
+    def get_full_bay_and_positional_filters(parameters):
         filters = {parameters['Parameter 1']: parameters['Value 1']}
         if parameters['Parameter 2']:
             filters.update({parameters['Parameter 2']: parameters['Value 2']})
@@ -236,7 +236,7 @@ class PEPSICOUKToolBox:
             price = 1
         result = self.commontools.get_yes_no_result(price)
         self.common.write_to_db_result(fk=kpi_fk, numerator_id=sku, result=result)
-        self.add_kpi_result_to_kpi_results_df([kpi_fk, sku, None, price, None])
+        self.add_kpi_result_to_kpi_results_df([kpi_fk, sku, None, result, None])
 
     def calculate_hero_sku_price(self, sku, kpi_fk):
         # what should we write if there is no price at all?
@@ -703,7 +703,7 @@ class PEPSICOUKToolBox:
         for sub_brand in additional_sub_brands:
             sub_brand_df = self.custom_entities[self.custom_entities['name'] == sub_brand]
             sub_brand_fk = sub_brand_df['pk'].values[0] if len(sub_brand_df) > 0 else None
-            if sub_brand_df is None:
+            if sub_brand_fk is None:
                 Log.warning('Sub_brand: {} is not in custom_entity table. Please add'.format(sub_brand))
             else:
                 values_to_append = {'numerator_id': sub_brand_fk, 'numerator_type': 'sub_brand', 'numerator_value': sub_brand,

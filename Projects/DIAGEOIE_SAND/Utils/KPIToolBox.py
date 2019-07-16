@@ -74,7 +74,7 @@ class DIAGEOIESandToolBox:
         self.common = Common(self.data_provider)
         self.commonV2 = CommonV2(self.data_provider)
         self.tools = DIAGEOToolBox(self.data_provider, output, match_display_in_scene=self.match_display_in_scene)
-        self.diageo_generator = DIAGEOGenerator(self.data_provider, self.output, self.common)
+        self.diageo_generator = DIAGEOGenerator(self.data_provider, self.output, self.common, menu=True)
 
     def get_kpi_static_data(self):
         """
@@ -108,6 +108,11 @@ class DIAGEOIESandToolBox:
         # Global assortment kpis
         assortment_res_dict = self.diageo_generator.diageo_global_assortment_function_v3()
         self.commonV2.save_json_to_new_tables(assortment_res_dict)
+
+        # Global Menu kpis
+        menus_res_dict = self.diageo_generator.diageo_global_share_of_menu_cocktail_function(
+            cocktail_product_level=True)
+        self.commonV2.save_json_to_new_tables(menus_res_dict)
 
         # Global Tap Brand Score
         template_path = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))),
@@ -155,6 +160,7 @@ class DIAGEOIESandToolBox:
         # committing to new tables
         self.commonV2.commit_results_data()
         return
+
 
     def activate_ootb_kpis(self):
         # FACINGS_SOS_MANUFACTURER_IN_WHOLE_STORE - level 1

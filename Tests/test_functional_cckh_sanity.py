@@ -7,22 +7,16 @@ from Trax.Data.Testing.SeedNew import Seeder
 from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
 from Trax.Cloud.Services.Connector.Keys import DbUsers
 from Trax.Data.Testing.TestProjects import TestProjectsNames
-from Trax.Utils.Testing.Case import MockingTestCase
 
 from Tests.Data.TestData.test_data_cckh_sanity import ProjectsSanityData
 from Projects.CCKH.Calculations import CCKHCalculations
 from Trax.Apps.Core.Testing.BaseCase import TestFunctionalCase
 
-from Tests.TestUtils import remove_cache_and_storage
 
-__author__ = 'sathiyanarayanan'
+__author__ = 'ritikash'
 
 
 class TestKEngineOutOfTheBox(TestFunctionalCase):
-
-    def set_up(self):
-        super(TestKEngineOutOfTheBox, self).set_up()
-        remove_cache_and_storage()
 
     @property
     def import_path(self):
@@ -48,7 +42,7 @@ class TestKEngineOutOfTheBox(TestFunctionalCase):
     def test_cckh_sanity(self):
         project_name = ProjectsSanityData.project_name
         data_provider = KEngineDataProvider(project_name)
-        sessions = ['776C429E-3459-4D14-BAF9-8B45B525C66B']
+        sessions = ['FFEA7BBF-70A0-4B24-8D3B-54CC49C65329']
         for session in sessions:
             data_provider.load_session_data(session)
             output = Output()

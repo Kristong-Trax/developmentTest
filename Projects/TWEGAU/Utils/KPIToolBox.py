@@ -4,19 +4,10 @@ from collections import (defaultdict, Counter)
 
 import pandas as pd
 from KPIUtils_v2.DB.CommonV2 import Common, PSProjectConnector
-
+from Trax.Utils.Logging.Logger import Log
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Cloud.Services.Connector.Keys import DbUsers
 
-# from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
-# from KPIUtils_v2.Calculations.AvailabilityCalculations import Availability
-# from KPIUtils_v2.Calculations.NumberOfScenesCalculations import NumberOfScenes
-# from KPIUtils_v2.Calculations.PositionGraphsCalculations import PositionGraphs
-# from KPIUtils_v2.Calculations.SOSCalculations import SOS
-# from KPIUtils_v2.Calculations.SequenceCalculations import Sequence
-# from KPIUtils_v2.Calculations.SurveyCalculations import Survey
-
-# from KPIUtils_v2.Calculations.CalculationsUtils import GENERALToolBoxCalculations
 
 __author__ = 'nidhin'
 
@@ -147,6 +138,7 @@ class TWEGAUToolBox:
         return 0
 
     def calculate_zone_based(self):
+        Log.info("Calculating zone based...")
         zone_kpi_sheet = self.get_template_details(ZONE_KPI_SHEET)
         zone_category_sheet = self.get_template_details(ZONE_CATEGORY_SHEET)
         name_grouped_zone_kpi_sheet = zone_kpi_sheet.groupby(KPI_TYPE)
@@ -159,9 +151,9 @@ class TWEGAUToolBox:
                                        & (self.kpi_static_data[TYPE] == each_kpi_type)
                                        & (self.kpi_static_data['delete_time'].isnull())]
             if kpi.empty:
-                print("KPI Name:{} not found in DB".format(each_kpi_type))
+                Log.info("KPI Name:{} not found in DB".format(each_kpi_type))
             else:
-                print("KPI Name:{} found in DB".format(each_kpi_type))
+                Log.info("KPI Name:{} found in DB".format(each_kpi_type))
                 if 'sku_all' in each_kpi_type.lower():
                     write_sku = True
                 if 'sku_all' not in each_kpi_type.lower():
@@ -186,9 +178,12 @@ class TWEGAUToolBox:
                                 product_counter = zone_data['product_count_map']
                                 for prod_id, count in product_counter.iteritems():
                                     if int(prod_id) not in self.empty_product_ids:
-                                        in_assort_sc = int(self.scif.query("item_id=={prod_id}"
-                                                                           .format(prod_id=prod_id))
-                                                           .in_assort_sc.values[0])
+                                        in_assort_sc_values = self.scif.query(
+                                            "item_id=={prod_id}".format(prod_id=prod_id)).in_assort_sc
+                                        if not in_assort_sc_values.empty:
+                                            in_assort_sc = int(in_assort_sc_values.values[0])
+                                        else:
+                                            in_assort_sc = 0
                                         self.common.write_to_db_result(
                                             fk=int(zone_data['fk']),
                                             numerator_id=int(prod_id),  # product ID
@@ -239,6 +234,7 @@ class TWEGAUToolBox:
                     #     )
 
     def calculate_macro_linear(self):
+        Log.info("Calculating macro linear...")
         kpi_sheet = self.get_template_details(LINEAR_KPI_SHEET)
         category_sheet = self.get_template_details(LINEAR_CATEGORY_SHEET)
         for index, kpi_sheet_row in kpi_sheet.iterrows():
@@ -246,15 +242,17 @@ class TWEGAUToolBox:
                                        & (self.kpi_static_data[TYPE] == kpi_sheet_row[KPI_TYPE])
                                        & (self.kpi_static_data['delete_time'].isnull())]
             if kpi.empty:
-                print("KPI Name:{} not found in DB".format(kpi_sheet_row[KPI_NAME]))
+                Log.info("KPI Name:{} not found in DB".format(kpi_sheet_row[KPI_NAME]))
             else:
-                print("KPI Name:{} found in DB".format(kpi_sheet_row[KPI_NAME]))
+                Log.info("KPI Name:{} found in DB".format(kpi_sheet_row[KPI_NAME]))
                 if not is_nan(kpi_sheet_row[STORE_TYPE]):
                     if bool(kpi_sheet_row[STORE_TYPE].strip()) and kpi_sheet_row[STORE_TYPE].strip().lower() != 'all':
-                        print "Check the store types in excel..."
+                        Log.info("Check the store types in excel...")
                         permitted_store_types = [x.strip() for x in kpi_sheet_row[STORE_TYPE].split(',') if x.strip()]
                         if self.store_info.store_type.values[0] not in permitted_store_types:
-                            print "Store type not permitted..."
+                            Log.info("Store type = {st} not permitted for session {ses}...".format(
+                                st=self.store_info.store_type.values[0], ses=self.session_uid
+                            ))
                             continue
                 # get the length field
                 length_field = STACKING_MAP[kpi_sheet_row[STACKING_COL]]
@@ -374,6 +372,9 @@ class TWEGAUToolBox:
                                    if x.strip()]
         permitted_shelves = [int(x.strip()) for x in str(kpi_sheet_row[NUMBER_OF_SHELVES]).split(',') if
                              x.strip()]
+        Log.info("Calulating for zone {z} with shelf policy {sh} and permitted shelves {psh}".format(
+            z=zone_number, sh=shelves_policy_from_top, psh=permitted_shelves
+        ))
         unique_manufacturer_products_count = 0
         # DENOMINATOR
         if not denominator_row.empty:
@@ -384,18 +385,21 @@ class TWEGAUToolBox:
                                                      .product_fk.unique())
         if not is_nan(kpi_sheet_row[STORE_TYPE]):
             if bool(kpi_sheet_row[STORE_TYPE].strip()) and kpi_sheet_row[STORE_TYPE].strip().lower() != 'all':
-                print "Check the store types in excel..."
+                Log.info("Check the store types in excel...")
                 permitted_store_types = [x.strip() for x in kpi_sheet_row[STORE_TYPE].split(',') if x.strip()]
                 if self.store_info.store_type.values[0] not in permitted_store_types:
-                    print "Store type not permitted..."
+                    Log.info("Store type = {st} not permitted for session {ses}...".format(
+                        st=self.store_info.store_type.values[0], ses=self.session_uid
+                    ))
                     return []
         filters, filter_string = get_filter_string_per_row(
             kpi_sheet_row,
             ZONE_NUMERATOR_FILTER_ENTITIES,
             additional_filters=ZONE_ADDITIONAL_FILTERS_PER_COL,
         )
+        Log.info("Store filters = {ft} and filter_string = {fts}...".format(ft=filters, fts=filter_string))
         # combined tables
-        match_product_df = pd.merge(self.match_product_in_scene.query('status==1'), self.products, how='left',
+        match_product_df = pd.merge(self.match_product_in_scene, self.products, how='left',
                                     left_on=['product_fk'], right_on=['product_fk'])
 
         scene_template_df = pd.merge(self.scene_info, self.templates, how='left',

@@ -151,11 +151,14 @@ class CCZAToolBox:
             return 0.0
         type1 = Converters.convert_type(type1)
         value1 = value1.split(', ')
+        value1 = map(lambda x: x.strip(), value1)
         type2 = Converters.convert_type(type2)
         value2 = value2
         filters = {type1: value1}
         if type2 and value2:
-            filters[type2] = value2.split(', ')
+            value2 = value2.split(', ')
+            value2 = map(lambda x: x.strip(), value2)
+            filters[type2] = value2
         if in_or_not:
             filters = self.update_filters(filters, in_or_not, filter_type, filter_value)
         return self.tools.calculate_availability(**filters)
@@ -317,8 +320,11 @@ class CCZAToolBox:
             checking if the shelf is sorted like the brands list.
             :return: 100 if it's fine, 0 otherwise.
         """
-        progression_list = ['COCA-COLA', 'COCA-COLA Life', 'COKE ZERO', 'COKE LIGHT', 'TAB', 'SPRITE',
-                            'SPRITE ZERO', 'FANTA ORANGE', 'FANTA ZERO', 'FANTA Grape', 'FANTA Pinapple']
+        # progression_list = ['COCA-COLA', 'COCA-COLA Life', 'COKE ZERO', 'COKE LIGHT', 'TAB', 'SPRITE',
+        #                     'SPRITE ZERO', 'FANTA ORANGE', 'FANTA ZERO', 'FANTA Grape', 'FANTA Pinapple']
+        progression_list = ['COCA-COLA', 'COCA COLA PLUS COFFEE', 'COKE ZERO', 'COKE LIGHT',
+                            'COCA COLA NO SUGAR NO CAFFEINE', 'TAB', 'SPRITE', 'SPRITE ZERO', 'FANTA ORANGE',
+                            'Fanta Mango', 'FANTA Pinapple', 'FANTA Grape', 'STONEY']
 
         filtered_scif = self.scif[
             (~self.scif['location_type'].isin(["Pricing Scene Types", "Not For Flow"])) &

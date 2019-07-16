@@ -152,9 +152,9 @@ class BATRUToolBox:
         self.store_id = self.data_provider[Data.STORE_FK]
 
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
-        self.scif['template_group'] = self.scif['template_group']\
+        self.scif['template_group'] = self.scif[~self.scif['template_group'].isnull()]['template_group']\
             .apply(lambda x: x.encode('utf-8'))
-        self.scif['template_name'] = self.scif['template_name']\
+        self.scif['template_name'] = self.scif[~self.scif['template_name'].isnull()]['template_name']\
             .apply(lambda x: x.encode('utf-8'))
 
         self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
@@ -681,6 +681,9 @@ class BATRUToolBox:
         price_attr = pd.read_sql_query(price_query, self.rds_conn.db)
         date_attr = pd.read_sql_query(date_query, self.rds_conn.db)
         matches = self.data_provider[Data.MATCHES]
+        session_scenes = matches['scene_fk'].unique().tolist()
+        price_attr = price_attr[price_attr['scene_fk'].isin(session_scenes)]
+        date_attr = date_attr[date_attr['scene_fk'].isin(session_scenes)]
 
         merged_pricing_data = price_attr.merge(matches[['scene_fk', 'product_fk', 'probe_match_fk']],
                                                on=['probe_match_fk', 'product_fk', 'scene_fk'])
