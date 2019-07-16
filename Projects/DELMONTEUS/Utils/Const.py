@@ -53,3 +53,4 @@ class Const(object):
     NUM_REG = 3
     MM_FT = 304.8
     ALLOWED_FLAGS = ['unconnected', 'connected', 'encapsulated']
+    ALL_SCENES_REQUIRED = 'All Scenes Required'

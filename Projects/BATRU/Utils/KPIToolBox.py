@@ -681,6 +681,9 @@ class BATRUToolBox:
         price_attr = pd.read_sql_query(price_query, self.rds_conn.db)
         date_attr = pd.read_sql_query(date_query, self.rds_conn.db)
         matches = self.data_provider[Data.MATCHES]
+        session_scenes = matches['scene_fk'].unique().tolist()
+        price_attr = price_attr[price_attr['scene_fk'].isin(session_scenes)]
+        date_attr = date_attr[date_attr['scene_fk'].isin(session_scenes)]
 
         merged_pricing_data = price_attr.merge(matches[['scene_fk', 'product_fk', 'probe_match_fk']],
                                                on=['probe_match_fk', 'product_fk', 'scene_fk'])

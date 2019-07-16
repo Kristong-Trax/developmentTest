@@ -355,10 +355,10 @@ class LIONNZToolBox:
             for each_den_fk in denominator_fks_to_save_zero:
                 context_id = each_den_fk
                 # query out empty product IDs since FSOS is not interested in them.
-                _query = "{key}=='{value_id}' and product_fk not in '{exc_prod_ids}'".format(
+                _query = "{key}=='{value_id}' and product_fk not in {exc_prod_ids}".format(
                     key=PARAM_DB_MAP[kpi['denominator'].iloc[0]]['key'],
                     value_id=each_den_fk,
-                    exc_prod_ids=self.empty_prod_ids.tolist()
+                    exc_prod_ids=self.empty_prod_ids.tolist() + self.irrelevant_prod_ids.tolist()
                 )
                 # find number of products in that context
                 denominator_result = len(dataframe_to_process.query(_query))
