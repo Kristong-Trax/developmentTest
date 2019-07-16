@@ -10,7 +10,7 @@ __author__ = 'Sergey'
 
 PROJECT = 'ccru'
 START_DATE = '2019-06-29'
-END_DATE = '2019-07-05'
+END_DATE = '2019-07-12'
 NUMBER_OF_SCENES_LIMIT = 10000
 BATCH_FILE = '/home/sergey/Documents/Recalc/' + PROJECT + '_sessions_'
 
@@ -62,7 +62,7 @@ class CCRUSessionBatches:
         session_counter = 0
         total_counter = 0
         batch_sessions = []
-        batch_file = open(BATCH_FILE + str(batch_number), 'w+')
+        batch_file = open(BATCH_FILE + str(batch_number) + '.csv', 'w+')
 
         for i, row in sessions.iterrows():
 
@@ -76,13 +76,13 @@ class CCRUSessionBatches:
             if scene_counter + number_of_scenes >= NUMBER_OF_SCENES_LIMIT:
                 batch_file.writelines(batch_sessions)
                 batch_file.close()
-                print 'File {}: {} sessions'.format(BATCH_FILE + str(batch_number), session_counter)
+                print 'File {}: {} sessions'.format(BATCH_FILE + str(batch_number) + '.csv', session_counter)
 
                 batch_number += 1
                 scene_counter = 0
                 session_counter = 0
                 batch_sessions = []
-                batch_file = open(BATCH_FILE + str(batch_number), 'w+')
+                batch_file = open(BATCH_FILE + str(batch_number) + '.csv', 'w+')
 
             batch_sessions.append(session_uid + '\n')
             scene_counter += number_of_scenes
