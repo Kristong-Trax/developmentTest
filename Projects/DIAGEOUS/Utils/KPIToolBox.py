@@ -344,7 +344,12 @@ class ToolBox:
                 continue
             sub_brand_results.append(passed)
         num, den = 0, 0
-        result = Const.DISTRIBUTED if sum(sub_brand_results) > 0 else Const.OOS
+        if sum(sub_brand_results) > 0:
+            result = Const.DISTRIBUTED
+            answer_list = [1]
+        else:
+            result = Const.OOS
+            answer_list = [0]
         result = self.get_pks_of_result(result)
         sub_brand_kpi_fk = kpi_db_names[Const.SUB_BRAND]
         brand_kpi_fk = kpi_db_names[Const.BRAND]
@@ -354,7 +359,7 @@ class ToolBox:
         self.common.write_to_db_result(
             fk=sub_brand_kpi_fk, numerator_id=sub_brand, result=result, numerator_result=num, denominator_result=den,
             identifier_parent=brand_dict, should_enter=True, identifier_result=sub_brand_dict)
-        return sub_brand_results
+        return answer_list
 
     def calculate_back_bar_national_sku(self, product_line, relevant_scif, kpi_db_names, i, template_fk):
         """
@@ -654,7 +659,7 @@ class ToolBox:
         relevant_scenes = self.get_relevant_scenes(scene_types)
         relevant_products = self.scif_without_emptys[(self.scif_without_emptys['scene_fk'].isin(relevant_scenes)) &
                                                      (self.scif_without_emptys['location_type'] == 'Secondary Shelf') &
-                                                     (self.scif_without_emptys['product_type'] == 'SKU')]
+                                                     (self.scif_without_emptys['product_type'].isin(['SKU', 'Other']))]
         all_results = pd.DataFrame(columns=Const.COLUMNS_FOR_DISPLAY)
         for product_fk in relevant_products['product_fk'].unique().tolist():
             product_result = self.calculate_display_share_of_sku(
