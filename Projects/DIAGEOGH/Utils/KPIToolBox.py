@@ -127,7 +127,7 @@ class DIAGEOGHToolBox:
                 self.save_level2_and_level3(set_name, set_name, set_score)
 
             # Global Visible to Customer / Visible to Consumer
-            elif set_name in ('Visible to Customer', 'Visible to Consumer %'):
+            elif set_name in ('Visible to Customer', 'Visible to Consumer %', 'Visible to Consumer'):
                 # Global function
                 sku_list = filter(None, self.scif[self.scif['product_type'] == 'SKU'].product_ean_code.tolist())
                 res_dict = self.diageo_generator.diageo_global_visible_percentage(sku_list)
