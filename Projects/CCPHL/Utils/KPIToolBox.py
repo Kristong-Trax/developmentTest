@@ -122,12 +122,6 @@ class CCPHLToolBox:
 
         df_scene_data = df_scene_data[df_scene_data['template_name'].isin(scene_types)]
 
-        total_facings = df_scene_data['facings'].sum()
-        denominator = float(total_facings)
-
-        if len(filter_param_value_1) != 0:
-            df_scene_data = df_scene_data[df_scene_data[self.mapping_param[filter_param_name_1]] == filter_param_value_1]
-
         group_list = []
         for idx in range(1, 5):
             entity = kpi['entity' + str(idx)].strip()
@@ -137,15 +131,32 @@ class CCPHLToolBox:
                 entity = self.mapping_entity[kpi['entity' + str(idx)].strip()]
                 group_list.append(entity)
 
+        denominator = 0
+        if group_list[0] == 'store_id':
+            total_facings = df_scene_data['facings'].sum()
+            denominator = float(total_facings)
+
+        if len(filter_param_value_1) != 0:
+            df_scene_data2 = df_scene_data[df_scene_data[self.mapping_param[filter_param_name_1]]==filter_param_value_1]
+        else:
+            df_scene_data2 = df_scene_data
+
         filter_columns = list(group_list)
         filter_columns.append('facings')
 
-        df_scene_data = df_scene_data[filter_columns]
+        df_scene_data2 = df_scene_data2[filter_columns]
 
-        df_purity = pd.DataFrame(df_scene_data.groupby(group_list).sum().reset_index())
+        df_purity = pd.DataFrame(df_scene_data2.groupby(group_list).sum().reset_index())
 
         for row_num, row_data in df_purity.iterrows():
             numerator = row_data['facings']
+            if group_list[0] == 'template_fk':
+                df_scene_count = df_scene_data[df_scene_data['template_fk'] == row_data['template_fk']]
+                if df_scene_count.empty:
+                    total_facings = 0
+                else:
+                    total_facings = df_scene_count['facings'].sum()
+                denominator = float(total_facings)
             try:
                 result = round(float(numerator) / float(denominator), 4)
             except ZeroDivisionError:
