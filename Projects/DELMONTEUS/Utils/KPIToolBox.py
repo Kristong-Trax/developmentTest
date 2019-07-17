@@ -513,12 +513,12 @@ class ToolBox:
             all_scenes_required = False
         groups = list(*num_filter.values())
         result = 0
-        score = 0
-        exempt = 0
         scenes = self.filter_df(relevant_scif, general_filters).scene_fk.unique()
         if 'template_name' in general_filters:
             del general_filters['template_name']
         for scene in scenes:  # check every scene
+            groups_exempt = 0
+            score = 0
             scene_general_filters = general_filters.copy()
             scene_general_filters.update({'scene_fk': scene})
 
@@ -531,11 +531,11 @@ class ToolBox:
                                                             check_orient=0, filters=sub_filters)
                 except TypeError as e:
                     if e[0] == 'No Data Found fo kpi "':  # no relevant products found, so this group is exempt
-                        exempt += 1
+                        groups_exempt += 1
                     else:
                         raise e
                 score += sub_score
-            if score and score == len(groups) - exempt:  # check to make sure all non-exempt groups were blocked
+            if score and score == len(groups) - groups_exempt:  # check to make sure all non-exempt groups were blocked
                 result += 1
                 if not all_scenes_required:  # we already found one passing scene so we don't need to continue
                     break
