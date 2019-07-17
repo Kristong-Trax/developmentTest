@@ -12,10 +12,11 @@ class Const(object):
     # sheets
     KPIS = 'KPIs'
     AVAILABILITY = 'Availability'
+    PER_SCENE_AVAILABILITY = 'Per Scene Availability'
     DOUBLE_AVAILABILITY = 'Double Availability'
     FACINGS = 'Facings'
-    SHARE_OF_DISPLAYS = 'Share of Displays'
-    DISPLAY_PRESENCE = 'Display Presence & Location'
+    SHARE_OF_SCENES = 'Share of Scenes'
+    SHARE_OF_POCS = 'Share of POCs'
 
     SHEETS = [KPIS, AVAILABILITY, DOUBLE_AVAILABILITY, FACINGS, SHARE_OF_DISPLAYS, DISPLAY_PRESENCE]
 
@@ -26,13 +27,10 @@ class Const(object):
     STORE_TYPE = 'store_type'
 
     # Availability columns
-    MANUFACTURER = 'manufacturer'
-    BRAND = 'brand'
-    ATT1 = 'att1'
-    ATT3 = 'att3'
-    MINIMUM_FACINGS = 'Minimum facings'
-    SIZE = 'size'
-    SUB_PACKAGES = 'number_of_sub_packages'
+    MINIMUM_SKUS = 'Minimum SKUs'
+    MINIMUM_BRANDS = 'Minimum Brands'
+    MINIMUM_PACKAGES = 'Minimum Packages'
+    MINIMUM_FACINGS = 'Minimum Facings'
 
     # Double Availability columns
     GROUP1_BRAND = 'Brand Group 1'
