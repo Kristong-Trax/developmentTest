@@ -38,19 +38,15 @@ class CCRUSessionBatches:
                 AND ss.visit_date >= '{}' AND ss.visit_date <= '{}'
                 AND (ss.external_session_id NOT LIKE 'EasyMerch-P%' OR ss.external_session_id IS NULL)
                 AND ks.name IN(
-                'PoS 2019 - IC Cinema - CAP',
-                'PoS 2019 - IC Cinema - REG',
-                'PoS 2019 - IC FastFood',
-                'PoS 2019 - IC Petroleum - CAP',
-                'PoS 2019 - IC Petroleum - REG',
-                'PoS 2019 - IC QSR',
-                'PoS 2019 - MT Conv Big - CAP',
-                'PoS 2019 - MT Conv Small - CAP',
-                'PoS 2019 - MT Conv Small - REG',
-                'PoS 2019 - MT Hypermarket - CAP',
-                'PoS 2019 - MT Hypermarket - REG',
-                'PoS 2019 - MT Supermarket - CAP',
-                'PoS 2019 - MT Supermarket - REG'
+    'PoS 2019 - FT NS - CAP',
+    'PoS 2019 - FT NS - REG',
+    'PoS 2019 - IC Canteen - EDU',
+    'PoS 2019 - IC Canteen - OTH',
+    'PoS 2019 - IC QSR',
+    'PoS 2019 - MT Conv Big - CAP',
+    'PoS 2019 - MT Hypermarket - CAP',
+    'PoS 2019 - MT Supermarket - CAP',
+    'PoS 2019 - MT Supermarket - REG',
                 )
                 ORDER BY ss.visit_date;
                 """.format(START_DATE, END_DATE)
