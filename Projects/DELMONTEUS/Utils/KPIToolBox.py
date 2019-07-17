@@ -421,6 +421,8 @@ class ToolBox:
         scenes = self.filter_df(relevant_scif, general_filters).scene_fk.unique()
         if 'template_name' in general_filters:
             del general_filters['template_name']
+        if 'scene_fk' in general_filters:
+            del general_filters['scene_fk']
         mpis_dict = {}
         valid_scene_found = 0
         for scene in scenes:
@@ -505,26 +507,45 @@ class ToolBox:
     def calculate_multi_block(self, kpi_name, kpi_line, relevant_scif, general_filters):
         den_filter = self.get_kpi_line_filters(kpi_line, 'denominator')
         num_filter = self.get_kpi_line_filters(kpi_line, 'numerator')
+        if kpi_line[Const.ALL_SCENES_REQUIRED] in ('Y', 'y'):  # get value for all scenes required
+            all_scenes_required = True
+        else:
+            all_scenes_required = False
         groups = list(*num_filter.values())
         result = 0
-        score = 0
-        exempt = 0
-        for group in groups:
-            sub_filters = {num_filter.keys()[0]: [group]}
-            sub_filters.update(den_filter)
-            sub_score = 0
-            try:
-                sub_score, _, _, _, _ = self.base_block(kpi_name, kpi_line, relevant_scif, general_filters,
-                                                        check_orient=0, filters=sub_filters)
-            except TypeError as e:
-                if e[0] == 'No Data Found fo kpi "':
-                    exempt += 1
-                else:
-                    raise e
-            score += sub_score
-        if score and score == len(groups) - exempt:
-            result = 1
-        return {'score': 1, 'result': result}
+        scenes = self.filter_df(relevant_scif, general_filters).scene_fk.unique()
+        if 'template_name' in general_filters:
+            del general_filters['template_name']
+        for scene in scenes:  # check every scene
+            groups_exempt = 0
+            score = 0
+            scene_general_filters = general_filters.copy()
+            scene_general_filters.update({'scene_fk': scene})
+
+            for group in groups:  # check all the groups in the current scene
+                sub_filters = {num_filter.keys()[0]: [group]}
+                sub_filters.update(den_filter)
+                sub_score = 0
+                try:
+                    sub_score, _, _, _, _ = self.base_block(kpi_name, kpi_line, relevant_scif, scene_general_filters,
+                                                            check_orient=0, filters=sub_filters)
+                except TypeError as e:
+                    if e[0] == 'No Data Found fo kpi "':  # no relevant products found, so this group is exempt
+                        groups_exempt += 1
+                    else:
+                        raise e
+                score += sub_score
+            if score and score == len(groups) - groups_exempt:  # check to make sure all non-exempt groups were blocked
+                result += 1
+                if not all_scenes_required:  # we already found one passing scene so we don't need to continue
+                    break
+
+        if all_scenes_required:
+            final_result = 1 if result == len(scenes) else 0  # make sure all scenes have a passing result
+        else:
+            final_result = 1 if result > 0 else 0
+
+        return {'score': 1, 'result': final_result}
 
     def make_mpis(self, kpi_line, general_filters, ign_stacking=1, use_full_mpis=0):
         mpis = self.full_mpis if use_full_mpis else self.mpis
