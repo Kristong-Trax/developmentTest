@@ -3202,7 +3202,10 @@ class CCRUKPIToolBox:
         in_assortment = True
         for scene_fk in self.scif['scene_id'].unique():
 
-            scene_data = self.scif[(self.scif['scene_id'] == scene_fk) & (self.scif['facings'] > 0)]
+            scene_data = self.scif[(self.scif['scene_id'] == scene_fk) &
+                                   (self.scif['manufacturer_name'] == 'TCCC') &
+                                   (self.scif['product_type'] == 'SKU') &
+                                   (self.scif['facings'] > 0)]
             facings_data = scene_data.groupby('product_fk')['facings'].sum().to_dict()
             for anchor_product_fk in top_skus['product_fks'].keys():
                 min_facings = top_skus['min_facings'][anchor_product_fk]
