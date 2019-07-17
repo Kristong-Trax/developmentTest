@@ -111,7 +111,9 @@ class MSCToolBox:
         denominator_scif = self.get_denominator_scif(kpi_line, relevant_scif)
         numerator_scif = self.get_numerator_scif(kpi_line, denominator_scif)
 
-        sos_value = numerator_scif['facings'].sum() / denominator_scif['facings'].sum()
+        numerator_result = numerator_scif['facings'].sum()
+        denominator_result = denominator_scif['facings'].sum()
+        sos_value = numerator_result / denominator_result
 
         kpi_fk = self.common_db.get_kpi_fk_by_kpi_type(kpi_line[Const.KPI_NAME])
         self.common_db.write_to_db_result(kpi_fk, numerator_id=self.manufacturer_fk, numerator_result=numerator_result,
@@ -170,7 +172,7 @@ class MSCToolBox:
 
         threshold = self.does_exist(kpi_line, Const.THRESHOLD)
         if threshold:
-            availability = numerator_scif['facings'] / relevant_scif['facings'] > threshold[0]
+            availability = numerator_scif['facings'].sum() / relevant_scif['facings'].sum() > threshold[0]
 
         # result = self.ps_data_provider.get_pks_of_result(
         #     Const.PASS) if availability else self.ps_data_provider.get_pks_of_result(Const.FAIL)
@@ -273,10 +275,10 @@ class MSCToolBox:
         # the numerator population is applied only to scenes that exist in the denominator population
         numerator_scif = self.get_numerator_scif(kpi_line, denominator_scif)
 
-        agg_denominator_scif = denominator_scif.groupby('scene_fk', asindex=False)['facings'].sum()
+        agg_denominator_scif = denominator_scif.groupby('scene_fk', as_index=False)[['facings']].sum()
         agg_denominator_scif.rename(columns={'facings': 'den_facings'}, inplace=True)
-        agg_numerator_scif = numerator_scif('scene_fk', asindex=True)['facings'].sum()
-        agg_numerator_scif.rename(columns={'facings': 'num_facings'})
+        agg_numerator_scif = numerator_scif.groupby('scene_fk', as_index=False)[['facings']].sum()
+        agg_numerator_scif.rename(columns={'facings': 'num_facings'}, inplace=True)
 
         results = agg_numerator_scif.merge(agg_denominator_scif)
         results['sos'] = (results['num_facings'] / results['den_facings'])
@@ -284,12 +286,15 @@ class MSCToolBox:
 
         threshold = self.does_exist(kpi_line, Const.THRESHOLD)
         if threshold:
-            results = results[results['sos'] > threshold]
+            results = results[results['sos'] > threshold[0]]
 
         numerator_scenes = len(results[results['sos'] > 0])
         denominator_scenes = len(results)
 
-        sos_value = numerator_scenes / float(denominator_scenes)
+        if denominator_scenes > 0:
+            sos_value = numerator_scenes / float(denominator_scenes)
+        else:
+            sos_value = 0
 
         kpi_fk = self.common_db.get_kpi_fk_by_kpi_type(kpi_line[Const.KPI_NAME])
         self.common_db.write_to_db_result(kpi_fk, numerator_id=self.manufacturer_fk, numerator_result=numerator_scenes,

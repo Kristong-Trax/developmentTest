@@ -2,7 +2,7 @@ from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
 from Trax.Utils.Conf.Configuration import Config
 from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
 from Projects.CCBOTTLERSUS.Calculations import CCBOTTLERSUSCalculations
-from Projects.CCBOTTLERSUS.SOVI.KPIToolBox import SOVIToolBox
+from Projects.CCBOTTLERSUS.MSC.KPIToolBox import MSCToolBox
 from KPIUtils_v2.DB.CommonV2 import Common
 
 if __name__ == '__main__':
@@ -41,4 +41,4 @@ if __name__ == '__main__':
         data_provider = KEngineDataProvider(project_name)
         data_provider.load_session_data(session)
         output = Output()
-        SOVIToolBox(data_provider, output, Common(data_provider)).main_calculation()
+        MSCToolBox(data_provider, output, Common(data_provider)).main_calculation()
