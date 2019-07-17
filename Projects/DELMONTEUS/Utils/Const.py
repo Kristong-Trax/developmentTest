@@ -17,6 +17,7 @@ class Const(object):
     MAX_BLOCK_ADJ = 'Max Block Adjacency'
     BLOCKED_TOGETHER = 'Blocked Together'
     BLOCKING_PERCENT = 'Blocking Percent'
+    BLOCK_ORIENTATION = 'Block Orientation'
     MULTI_BLOCK = 'Multi Block'
     ANCHOR = 'Anchor'
     SEQUENCE = 'Sequence'
