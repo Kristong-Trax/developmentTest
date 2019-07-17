@@ -1152,10 +1152,16 @@ class ToolBox:
             if standard_type in standard_types_results.keys():
                 standard_types_results[standard_type].append(passed)
         num, den = 0, 0
+        sub_brand_results_for_brand = sub_brand_results[:]
         if kpi_db_names[Const.KPI_NAME] == Const.MSRP:
             result = sum(sub_brand_results)
         elif self.attr6 == Const.ON:
-            result = Const.DISTRIBUTED if sum(sub_brand_results) > 0 else Const.OOS
+            if sum(sub_brand_results) > 0:
+                result = Const.DISTRIBUTED
+                sub_brand_results_for_brand = [1]
+            else:
+                result = Const.OOS
+                sub_brand_results_for_brand = [0]
             result = self.get_pks_of_result(result)
         else:
             num, den = sum(sub_brand_results), len(sub_brand_results)
@@ -1168,7 +1174,7 @@ class ToolBox:
         self.common.write_to_db_result(
             fk=sub_brand_kpi_fk, numerator_id=sub_brand, result=result, numerator_result=num, denominator_result=den,
             identifier_parent=brand_dict, should_enter=False, identifier_result=sub_brand_dict)
-        return sub_brand_results, standard_types_results
+        return sub_brand_results_for_brand, standard_types_results
 
     def calculate_passed_display_without_subst(self, product_fk, relevant_products):
         """
