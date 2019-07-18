@@ -116,7 +116,7 @@ class ToolBox:
         # ):
         # # if kpi_name not in ('Are the majority of Green Giant Spec Veg blocked above Green Giant Core Veg'):
         # if kpi_name not in ('is multi serve pineapple shelved above Canned Fruit?'):
-        # if kpi_name not in ('Are Del Monte Family Packs shelved with their same Veg Type?'):
+        # if kpi_name not in ('is multi serve pineapple shelved above Canned Fruit?'):
         # if kpi_type not in (Const.BLOCKING, Const.BLOCKING_PERCENT, Const.SOS, Const.ANCHOR, Const.MULTI_BLOCK,
         #                     Const.SAME_AISLE, Const.SHELF_REGION, Const.SHELF_PLACEMENT):
         #     return
@@ -149,7 +149,7 @@ class ToolBox:
         finally:
             if not isinstance(all_kwargs, list) or not all_kwargs:
                 all_kwargs = [all_kwargs]
-                # print(all_kwargs)
+            # print(all_kwargs)
             for kwargs in all_kwargs:
                 if not kwargs or kwargs['score'] is None:
                     kwargs = {'score': 0, 'result': 0, 'failed': 0}
@@ -240,7 +240,8 @@ class ToolBox:
     def calculate_sequence(self, kpi_name, kpi_line, relevant_scif, general_filters):
         # this attribute should be pulled from the template once the template is updated
         vector = kpi_line['Vector']
-        Segment = namedtuple('Segment', 'seg position')
+        orth = (set(['x', 'y']) - set(vector)).pop()
+        Segment = namedtuple('Segment', 'seg position facings orth_min orth_max matches')
         segments = [i.strip() for i in self.splitter(kpi_line['Sequence'])]
         result = 0
         for scene in relevant_scif.scene_fk.unique():
@@ -253,17 +254,35 @@ class ToolBox:
                                                               filters=seg_filters,
                                                               check_orient=0)
                 cluster = results.sort_values('facing_percentage', ascending=False).iloc[0, 0]
-                df = pd.DataFrame([(n['polygon'].centroid.x, n['polygon'].centroid.y, n['facings'])
+                df = pd.DataFrame([(n['polygon'].centroid.x, n['polygon'].centroid.y, n['facings'],
+                                  list(n['match_fk'].values)) + n['polygon'].bounds
                                   for i, n in cluster.nodes(data=True) if n['block_key'].value
-                                  not in Const.ALLOWED_FLAGS], columns=['x', 'y', 'facings'])
+                                  not in Const.ALLOWED_FLAGS],
+                                  columns=['x', 'y', 'facings', 'matches', 'x_min', 'y_min', 'x_max', 'y_max'])
                 facings = df.facings.sum()
-                seg_list.append(Segment(seg=seg, position=(df[vector]*df['facings']).sum()/facings))
+                seg_list.append(Segment(seg=seg, position=(df[vector]*df['facings']).sum()/facings, facings=facings,
+                                orth_min=mpis_dict[scene]['rect_{}'.format(orth)].min(),
+                                orth_max=mpis_dict[scene]['rect_{}'.format(orth)].max(),
+                                matches=df['matches'].sum()))
 
             order = [x.seg for x in sorted(seg_list, key=lambda x: x.position)]
             if '_'.join(order) == '_'.join(segments):
-                result = 1
-                # break
+                flow_count = 1 # 1 is intentional, since loop is smaller than list by 1
+                for i in range(1, len(order)):
+                    if self.safe_divide(self.seq_axis_engulfs_df(i, seg_list, orth), seg_list[i].facings) >= .1 and\
+                       self.safe_divide(self.seq_axis_engulfs_df(i, seg_list, orth, r=1), seg_list[i-1].facings) >= .1:
+                        flow_count += 1
+                if flow_count == len(order):
+                    result = 1
         return {'result': result, 'score': 1}
+
+    def seq_axis_engulfs_df(self, i, seg_list, orth, r=0):
+        j = i - 1
+        if r:
+            i, j = j, i
+        return self.mpis[(self.mpis['scene_match_fk'].isin(seg_list[i].matches)) &
+                         (seg_list[j].orth_min <= self.mpis['rect_{}'.format(orth)]) &
+                         (self.mpis['rect_{}'.format(orth)] <= seg_list[j].orth_max)].shape[0]
 
     def calculate_max_block_adj_base(self, kpi_name, kpi_line, relevant_scif, general_filters):
         allowed_edges = [x.upper() for x in self.read_cell_from_line(kpi_line, Const.EDGES)]
