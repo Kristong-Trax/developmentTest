@@ -315,7 +315,12 @@ class MSCToolBox:
         numerator_scenes = len(numerator_scif['scene_fk'].unique())
         denominator_scenes = len(denominator_scif['scene_fk'].unique())
 
-        poc_share = numerator_scenes / float(numerator_scenes + denominator_scenes)
+        denominator_value = float(numerator_scenes + denominator_scenes)
+
+        if denominator_value > 0:
+            poc_share = numerator_scenes / denominator_value
+        else:
+            poc_share = 0
 
         kpi_fk = self.common_db.get_kpi_fk_by_kpi_type(kpi_line[Const.KPI_NAME])
         self.common_db.write_to_db_result(kpi_fk, numerator_id=self.manufacturer_fk, numerator_result=numerator_scenes,
