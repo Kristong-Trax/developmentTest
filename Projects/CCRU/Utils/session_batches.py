@@ -10,7 +10,7 @@ __author__ = 'Sergey'
 
 PROJECT = 'ccru'
 START_DATE = '2019-06-29'
-END_DATE = '2019-07-05'
+END_DATE = '2019-07-12'
 NUMBER_OF_SCENES_LIMIT = 10000
 BATCH_FILE = '/home/sergey/Documents/Recalc/' + PROJECT + '_sessions_'
 
@@ -38,19 +38,15 @@ class CCRUSessionBatches:
                 AND ss.visit_date >= '{}' AND ss.visit_date <= '{}'
                 AND (ss.external_session_id NOT LIKE 'EasyMerch-P%' OR ss.external_session_id IS NULL)
                 AND ks.name IN(
-                'PoS 2019 - IC Cinema - CAP',
-                'PoS 2019 - IC Cinema - REG',
-                'PoS 2019 - IC FastFood',
-                'PoS 2019 - IC Petroleum - CAP',
-                'PoS 2019 - IC Petroleum - REG',
-                'PoS 2019 - IC QSR',
-                'PoS 2019 - MT Conv Big - CAP',
-                'PoS 2019 - MT Conv Small - CAP',
-                'PoS 2019 - MT Conv Small - REG',
-                'PoS 2019 - MT Hypermarket - CAP',
-                'PoS 2019 - MT Hypermarket - REG',
-                'PoS 2019 - MT Supermarket - CAP',
-                'PoS 2019 - MT Supermarket - REG'
+    'PoS 2019 - FT NS - CAP',
+    'PoS 2019 - FT NS - REG',
+    'PoS 2019 - IC Canteen - EDU',
+    'PoS 2019 - IC Canteen - OTH',
+    'PoS 2019 - IC QSR',
+    'PoS 2019 - MT Conv Big - CAP',
+    'PoS 2019 - MT Hypermarket - CAP',
+    'PoS 2019 - MT Supermarket - CAP',
+    'PoS 2019 - MT Supermarket - REG',
                 )
                 ORDER BY ss.visit_date;
                 """.format(START_DATE, END_DATE)
@@ -62,7 +58,7 @@ class CCRUSessionBatches:
         session_counter = 0
         total_counter = 0
         batch_sessions = []
-        batch_file = open(BATCH_FILE + str(batch_number), 'w+')
+        batch_file = open(BATCH_FILE + str(batch_number) + '.csv', 'w+')
 
         for i, row in sessions.iterrows():
 
@@ -76,13 +72,13 @@ class CCRUSessionBatches:
             if scene_counter + number_of_scenes >= NUMBER_OF_SCENES_LIMIT:
                 batch_file.writelines(batch_sessions)
                 batch_file.close()
-                print 'File {}: {} sessions'.format(BATCH_FILE + str(batch_number), session_counter)
+                print 'File {}: {} sessions'.format(BATCH_FILE + str(batch_number) + '.csv', session_counter)
 
                 batch_number += 1
                 scene_counter = 0
                 session_counter = 0
                 batch_sessions = []
-                batch_file = open(BATCH_FILE + str(batch_number), 'w+')
+                batch_file = open(BATCH_FILE + str(batch_number) + '.csv', 'w+')
 
             batch_sessions.append(session_uid + '\n')
             scene_counter += number_of_scenes

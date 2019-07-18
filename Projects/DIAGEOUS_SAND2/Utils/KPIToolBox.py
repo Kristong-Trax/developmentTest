@@ -344,7 +344,12 @@ class ToolBox:
                 continue
             sub_brand_results.append(passed)
         num, den = 0, 0
-        result = Const.DISTRIBUTED if sum(sub_brand_results) > 0 else Const.OOS
+        if sum(sub_brand_results) > 0:
+            result = Const.DISTRIBUTED
+            answer_list = [1]
+        else:
+            result = Const.OOS
+            answer_list = [0]
         result = self.get_pks_of_result(result)
         sub_brand_kpi_fk = kpi_db_names[Const.SUB_BRAND]
         brand_kpi_fk = kpi_db_names[Const.BRAND]
@@ -354,7 +359,7 @@ class ToolBox:
         self.common.write_to_db_result(
             fk=sub_brand_kpi_fk, numerator_id=sub_brand, result=result, numerator_result=num, denominator_result=den,
             identifier_parent=brand_dict, should_enter=True, identifier_result=sub_brand_dict)
-        return sub_brand_results
+        return answer_list
 
     def calculate_back_bar_national_sku(self, product_line, relevant_scif, kpi_db_names, i, template_fk):
         """
@@ -422,9 +427,10 @@ class ToolBox:
         relevant_scenes = self.get_relevant_scenes(scene_types)
         relevant_scif = self.scif_without_emptys[self.scif_without_emptys['scene_id'].isin(relevant_scenes)]
         relevant_assortment = self.relevant_assortment
+        kpi_db_names = self.pull_kpi_fks_from_names(Const.DB_OFF_NAMES[kpi_name])
         if kpi_name == Const.DISPLAY_BRAND:
             if self.no_display_allowed:
-                self.survey_display_back_bar_write_to_db(weight, Const.DB_OFF_NAMES[Const.DISPLAY_BRAND])
+                self.survey_display_back_bar_write_to_db(weight, kpi_db_names)
                 Log.debug("There is no display, Display Brand got 100")
                 return 1 * weight, 1 * weight, 1 * weight
             if self.attr11 in Const.NOT_INDEPENDENT_STORES and kpi_name == Const.DISPLAY_BRAND:
@@ -432,7 +438,6 @@ class ToolBox:
             relevant_scif = relevant_scif[relevant_scif['location_type'] == 'Secondary Shelf']
         if self.assortment_products.empty:
             return 0, 0, 0
-        kpi_db_names = self.pull_kpi_fks_from_names(Const.DB_OFF_NAMES[kpi_name])
         standard_types_results = {Const.SEGMENT: [], Const.NATIONAL: []} if self.attr11 == Const.OPEN else {}
         total_results = []
         for brand_fk in relevant_assortment['brand_fk'].unique().tolist():
@@ -654,7 +659,7 @@ class ToolBox:
         relevant_scenes = self.get_relevant_scenes(scene_types)
         relevant_products = self.scif_without_emptys[(self.scif_without_emptys['scene_fk'].isin(relevant_scenes)) &
                                                      (self.scif_without_emptys['location_type'] == 'Secondary Shelf') &
-                                                     (self.scif_without_emptys['product_type'] == 'SKU')]
+                                                     (self.scif_without_emptys['product_type'].isin(['SKU', 'Other']))]
         all_results = pd.DataFrame(columns=Const.COLUMNS_FOR_DISPLAY)
         for product_fk in relevant_products['product_fk'].unique().tolist():
             product_result = self.calculate_display_share_of_sku(
@@ -1152,10 +1157,16 @@ class ToolBox:
             if standard_type in standard_types_results.keys():
                 standard_types_results[standard_type].append(passed)
         num, den = 0, 0
+        sub_brand_results_for_brand = sub_brand_results[:]
         if kpi_db_names[Const.KPI_NAME] == Const.MSRP:
             result = sum(sub_brand_results)
         elif self.attr6 == Const.ON:
-            result = Const.DISTRIBUTED if sum(sub_brand_results) > 0 else Const.OOS
+            if sum(sub_brand_results) > 0:
+                result = Const.DISTRIBUTED
+                sub_brand_results_for_brand = [1]
+            else:
+                result = Const.OOS
+                sub_brand_results_for_brand = [0]
             result = self.get_pks_of_result(result)
         else:
             num, den = sum(sub_brand_results), len(sub_brand_results)
@@ -1168,7 +1179,7 @@ class ToolBox:
         self.common.write_to_db_result(
             fk=sub_brand_kpi_fk, numerator_id=sub_brand, result=result, numerator_result=num, denominator_result=den,
             identifier_parent=brand_dict, should_enter=False, identifier_result=sub_brand_dict)
-        return sub_brand_results, standard_types_results
+        return sub_brand_results_for_brand, standard_types_results
 
     def calculate_passed_display_without_subst(self, product_fk, relevant_products):
         """
