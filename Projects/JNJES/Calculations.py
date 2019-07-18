@@ -24,7 +24,7 @@ class JNJESCalculations(BaseCalculationsScript):
         jnj_generator = JNJGenerator(self.data_provider, self.output, common)
         jnj_generator.calculate_auto_assortment()
         jnj_generator.eye_hand_level_sos_calculation(eye_hand_lvl_template)
-        # jnj_generator.promo_calc(sales_reps_date='2019-06-30')
+        jnj_generator.promo_calc(sales_reps_date='2019-06-30')
         common.commit_results_data()
         self.timer.stop('KPIGenerator.run_project_calculations')
 
