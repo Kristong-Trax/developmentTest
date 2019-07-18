@@ -24,18 +24,18 @@ def save_scene_item_facts_to_data_provider(data_provider, output):
 if __name__ == '__main__':
     LoggerInitializer.init('diageoie calculations')
     Config.init()
-    project_name = 'diageouk-sand'
+    project_name = 'diageouk'
     data_provider = KEngineDataProvider(project_name)
-    session = '461BA74D-E11E-4856-959E-59D60BB7F7B6'
+    session = '7B55D2B3-3728-4534-A7F7-4A5520748085'
     data_provider.load_session_data(session)
-    # output = Output()
-    # DIAGEOUKCalculations(data_provider, output).run_project_calculations()
-    scenes = data_provider.scenes_info.scene_fk.tolist()
-    for scene in scenes:
-        data_provider.load_scene_data(session, scene)
-        output = VanillaOutput()
-        SceneVanillaCalculations(data_provider, output).run_project_calculations()
-        save_scene_item_facts_to_data_provider(data_provider, output)
-        DIAGEOUKSceneToolBox(data_provider).calculate_kpis()
+    output = Output()
+    DIAGEOUKCalculations(data_provider, output).run_project_calculations()
+    # scenes = data_provider.scenes_info.scene_fk.tolist()
+    # for scene in scenes:
+    #     data_provider.load_scene_data(session, scene)
+    #     output = VanillaOutput()
+    #     SceneVanillaCalculations(data_provider, output).run_project_calculations()
+    #     save_scene_item_facts_to_data_provider(data_provider, output)
+    #     DIAGEOUKSceneToolBox(data_provider).calculate_kpis()
 
 

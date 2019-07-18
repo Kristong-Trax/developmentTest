@@ -112,7 +112,9 @@ class DIAGEOUKToolBox:
         assortment_res_dict_v3 = self.diageo_generator.diageo_global_assortment_function_v3()
         self.commonV2.save_json_to_new_tables(assortment_res_dict_v3)
 
-        res_dict = self.diageo_generator.diageo_global_equipment_score(save_scene_level=False)
+        equipment_score_scenes = self.get_equipment_score_relevant_scenes()
+        res_dict = self.diageo_generator.diageo_global_equipment_score(save_scene_level=False,
+                                                                       scene_list=equipment_score_scenes)
         self.commonV2.save_json_to_new_tables(res_dict)
 
         for set_name in set_names:
@@ -716,3 +718,10 @@ class DIAGEOUKToolBox:
         for query in self.kpi_results_queries:
             cur.execute(query)
         self.rds_conn.db.commit()
+
+    def get_equipment_score_relevant_scenes(self):
+        scenes = []
+        if not self.diageo_generator.scif.empty:
+            scenes = self.diageo_generator.scif[self.diageo_generator.scif['template_name'] == \
+                                                'ON - DRAUGHT TAPS']['scene_fk'].unique().tolist()
+        return scenes
