@@ -430,7 +430,7 @@ class ToolBox:
         kpi_db_names = self.pull_kpi_fks_from_names(Const.DB_OFF_NAMES[kpi_name])
         if kpi_name == Const.DISPLAY_BRAND:
             if self.no_display_allowed:
-                self.survey_display_back_bar_write_to_db(weight, Const.DB_OFF_NAMES[Const.DISPLAY_BRAND])
+                self.survey_display_back_bar_write_to_db(weight, kpi_db_names)
                 Log.debug("There is no display, Display Brand got 100")
                 return 1 * weight, 1 * weight, 1 * weight
             if self.attr11 in Const.NOT_INDEPENDENT_STORES and kpi_name == Const.DISPLAY_BRAND:
