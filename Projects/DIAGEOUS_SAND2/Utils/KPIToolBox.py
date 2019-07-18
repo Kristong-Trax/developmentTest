@@ -427,9 +427,10 @@ class ToolBox:
         relevant_scenes = self.get_relevant_scenes(scene_types)
         relevant_scif = self.scif_without_emptys[self.scif_without_emptys['scene_id'].isin(relevant_scenes)]
         relevant_assortment = self.relevant_assortment
+        kpi_db_names = self.pull_kpi_fks_from_names(Const.DB_OFF_NAMES[kpi_name])
         if kpi_name == Const.DISPLAY_BRAND:
             if self.no_display_allowed:
-                self.survey_display_back_bar_write_to_db(weight, Const.DB_OFF_NAMES[Const.DISPLAY_BRAND])
+                self.survey_display_back_bar_write_to_db(weight, kpi_db_names)
                 Log.debug("There is no display, Display Brand got 100")
                 return 1 * weight, 1 * weight, 1 * weight
             if self.attr11 in Const.NOT_INDEPENDENT_STORES and kpi_name == Const.DISPLAY_BRAND:
@@ -437,7 +438,6 @@ class ToolBox:
             relevant_scif = relevant_scif[relevant_scif['location_type'] == 'Secondary Shelf']
         if self.assortment_products.empty:
             return 0, 0, 0
-        kpi_db_names = self.pull_kpi_fks_from_names(Const.DB_OFF_NAMES[kpi_name])
         standard_types_results = {Const.SEGMENT: [], Const.NATIONAL: []} if self.attr11 == Const.OPEN else {}
         total_results = []
         for brand_fk in relevant_assortment['brand_fk'].unique().tolist():
