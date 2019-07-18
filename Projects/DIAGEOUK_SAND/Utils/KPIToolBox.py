@@ -77,7 +77,7 @@ class DIAGEOUK_SANDToolBox:
         self.global_gen = DIAGEOGenerator(self.data_provider, self.output, self.common)
         self.tools = DIAGEOToolBox(self.data_provider, output,
                                    match_display_in_scene=self.match_display_in_scene)  # replace the old one
-        self.diageo_generator = DIAGEOGenerator(self.data_provider, self.output, self.common)
+        self.diageo_generator = DIAGEOGenerator(self.data_provider, self.output, self.common, menu=True)
 
     def get_kpi_static_data(self):
         """
@@ -117,6 +117,11 @@ class DIAGEOUK_SANDToolBox:
         res_dict = self.diageo_generator.diageo_global_equipment_score(save_scene_level=False,
                                                                        scene_list=equipment_score_scenes)
         self.commonV2.save_json_to_new_tables(res_dict)
+
+        # Global Menu kpis
+        menus_res_dict = self.diageo_generator.diageo_global_share_of_menu_cocktail_function(
+            cocktail_product_level=True)
+        self.commonV2.save_json_to_new_tables(menus_res_dict)
 
         for set_name in set_names:
             set_score = 0
@@ -351,7 +356,7 @@ class DIAGEOUK_SANDToolBox:
     #
     #     if not scores:
     #         return False
-    #     set_score = (sum(scores) / fif not self.diageo_generator.scif.empty:loat(len(scores))) * 100
+    #     set_score = (sum(scores) / float(len(scores))) * 100
     #     return set_score
 
     def write_to_db_result(self, fk, score, level):

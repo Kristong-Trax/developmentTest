@@ -71,7 +71,8 @@ class CCRUKPIS:
                     kpi_weight = round(kpi['KPI Weight'], 6)
                 kpis.loc[i, 'KPI Weight'] = kpi_weight
 
-            kpis = kpis[kpis['level'] == 2].merge(kpis, how='left', left_on='KPI ID', right_on='Parent', suffixes=['_2', '_3'])
+            kpis = kpis[kpis['level'] == 2].merge(
+                kpis, how='left', left_on='KPI ID', right_on='Parent', suffixes=['_2', '_3'])
             kpis = kpis.merge(kpis_input[['KPI ID', 'KPI name Eng', 'KPI name Rus', 'Parent']],
                               how='left',
                               left_on='Parent_2', right_on='KPI ID', suffixes=['_2', '_12'])
@@ -93,7 +94,8 @@ class CCRUKPIS:
         for file_name in files:
             kpis_input = pd.read_excel(os.path.join(path, file_name))
             kpis_input = kpis_input.where((pd.notnull(kpis_input)), None)
-            kpis = kpis_input[(kpis_input['KPI Type'] == 'Hidden')][['KPI name Eng', 'KPI name Rus']]
+            kpis = kpis_input[(kpis_input['KPI Type'] == 'Hidden')
+                              ][['KPI name Eng', 'KPI name Rus']]
             kpis['KPI name Rus'] = kpis['KPI name Eng']
             kpis_output = kpis_output.append(kpis, ignore_index=True)
 
@@ -113,7 +115,8 @@ class CCRUKPIS:
         for file_name in files:
             kpis_input = pd.read_excel(os.path.join(path, file_name))
             kpis_input = kpis_input.where((pd.notnull(kpis_input)), None)
-            kpis = kpis_input[(kpis_input['KPI Type'] != 'Hidden')][['KPI name Eng', 'KPI name Rus']]
+            kpis = kpis_input[(kpis_input['KPI Type'] != 'Hidden')
+                              ][['KPI name Eng', 'KPI name Rus']]
             kpis_output = kpis_output.append(kpis, ignore_index=True)
 
         kpis_output = kpis_output.drop_duplicates()
@@ -125,4 +128,3 @@ class CCRUKPIS:
 if __name__ == '__main__':
     kpis_list = CCRUKPIS()
     kpis_list.create_kpis_list()
-

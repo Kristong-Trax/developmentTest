@@ -69,7 +69,7 @@ class CCBOTTLERSUSGenerator:
                 tool_box.save_level1(set_name=kpi_set_name, score=100)
                 Log.info('calculate kpi took {}'.format(tool_box.download_time))
                 set_fk = tool_box.kpi_static_data[tool_box.kpi_static_data[
-                                                      'kpi_set_name'] == kpi_set_name]['kpi_set_fk'].values[0]
+                    'kpi_set_name'] == kpi_set_name]['kpi_set_fk'].values[0]
                 tool_box.commit_results_data(kpi_set_fk=set_fk)
 
     @log_runtime('Red Score CCBOTTLERSUSCalculations')
@@ -97,7 +97,8 @@ class CCBOTTLERSUSGenerator:
     def calculate_cma_compliance_sw(self):
         Log.info('starting calculate_cma_compliance')
         try:
-            tool_box = CCBOTTLERSUSCMASOUTHWESTToolBox(self.data_provider, self.output, self.common_v2)
+            tool_box = CCBOTTLERSUSCMASOUTHWESTToolBox(
+                self.data_provider, self.output, self.common_v2)
             tool_box.main_calculation()  # saves to new tables
             # tool_box.commit_results()  # this currently deletes any previous results in report.kpi_level_2_results
         except Exception as e:
@@ -107,7 +108,8 @@ class CCBOTTLERSUSGenerator:
     def calculate_warehouse_juice(self):
         Log.info('starting calculate_warehouse_juice')
         try:
-            tool_box = CCBOTTLERSUSWAREHOUSEJUICEToolBox(self.data_provider, self.output, self.common_v2)
+            tool_box = CCBOTTLERSUSWAREHOUSEJUICEToolBox(
+                self.data_provider, self.output, self.common_v2)
             tool_box.main_calculation()  # saves to new tables
             # tool_box.commit_results_without_delete()
             # tool_box.commit_results()

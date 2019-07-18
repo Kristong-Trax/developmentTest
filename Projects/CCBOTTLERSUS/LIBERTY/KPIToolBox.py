@@ -24,7 +24,8 @@ class LIBERTYToolBox:
         self.scene_info = self.data_provider[Data.SCENES_INFO]
         self.store_id = self.data_provider[Data.STORE_FK]
         self.ps_data_provider = PsDataProvider(self.data_provider, self.output)
-        self.store_info = self.ps_data_provider.get_ps_store_info(self.data_provider[Data.STORE_INFO])
+        self.store_info = self.ps_data_provider.get_ps_store_info(
+            self.data_provider[Data.STORE_INFO])
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
         self.scif = self.scif[self.scif['product_type'] != "Irrelevant"]
         self.result_values = self.ps_data_provider.get_result_values()
@@ -50,7 +51,8 @@ class LIBERTYToolBox:
                 converters = {Const.BASE_SIZE_MIN: self.convert_base_size_values,
                               Const.BASE_SIZE_MAX: self.convert_base_size_values}
             templates[sheet] = \
-                pd.read_excel(Const.TEMPLATE_PATH, sheet_name=sheet, converters=converters).fillna('')
+                pd.read_excel(Const.TEMPLATE_PATH, sheet_name=sheet,
+                              converters=converters).fillna('')
         return templates
 
     # main functions:
@@ -90,7 +92,8 @@ class LIBERTYToolBox:
             relevant_scif = relevant_scif[relevant_scif['template_name'].isin(scene_types)]
         excluded_scene_types = self.does_exist(main_line, Const.EXCLUDED_SCENE_TYPE)
         if excluded_scene_types:
-            relevant_scif = relevant_scif[~relevant_scif['template_name'].isin(excluded_scene_types)]
+            relevant_scif = relevant_scif[~relevant_scif['template_name'].isin(
+                excluded_scene_types)]
         template_groups = self.does_exist(main_line, Const.TEMPLATE_GROUP)
         if template_groups:
             relevant_scif = relevant_scif[relevant_scif['template_group'].isin(template_groups)]
@@ -108,7 +111,8 @@ class LIBERTYToolBox:
         """
         kpi_type = main_line[Const.KPI_TYPE]
         relevant_template = self.templates[kpi_type]
-        kpi_line = relevant_template[relevant_template[Const.KPI_NAME] == main_line[Const.KPI_NAME]].iloc[0]
+        kpi_line = relevant_template[relevant_template[Const.KPI_NAME]
+                                     == main_line[Const.KPI_NAME]].iloc[0]
         kpi_function = self.get_kpi_function(kpi_type)
         weight = main_line[Const.WEIGHT]
 
@@ -132,8 +136,8 @@ class LIBERTYToolBox:
                                               identifier_result=kpi_name, should_enter=True)
             return result
 
-
     # SOS functions
+
     def calculate_sos(self, kpi_line, relevant_scif, weight):
         market_share_required = self.does_exist(kpi_line, Const.MARKET_SHARE_TARGET)
         if market_share_required:
@@ -154,7 +158,8 @@ class LIBERTYToolBox:
 
         liberty_truck = self.does_exist(kpi_line, Const.LIBERTY_KEY_MANUFACTURER)
         if liberty_truck:
-            liberty_truck_scif = relevant_scif[relevant_scif[Const.LIBERTY_KEY_MANUFACTURER].isin(liberty_truck)]
+            liberty_truck_scif = relevant_scif[relevant_scif[Const.LIBERTY_KEY_MANUFACTURER].isin(
+                liberty_truck)]
             filtered_scif = filtered_scif.append(liberty_truck_scif, sort=False).drop_duplicates()
 
         if self.does_exist(kpi_line, Const.INCLUDE_BODY_ARMOR) and self.body_armor_delivered:
@@ -177,12 +182,14 @@ class LIBERTYToolBox:
 
     # Availability functions
     def calculate_availability(self, kpi_line, relevant_scif, weight):
-        survey_question_skus_required = self.does_exist(kpi_line, Const.SURVEY_QUESTION_SKUS_REQUIRED)
+        survey_question_skus_required = self.does_exist(
+            kpi_line, Const.SURVEY_QUESTION_SKUS_REQUIRED)
         if survey_question_skus_required:
             survey_question_skus, secondary_survey_question_skus = \
                 self.get_relevant_product_assortment_by_kpi_name(kpi_line[Const.KPI_NAME])
             unique_skus = \
-                relevant_scif[relevant_scif['product_fk'].isin(survey_question_skus)]['product_fk'].unique().tolist()
+                relevant_scif[relevant_scif['product_fk'].isin(
+                    survey_question_skus)]['product_fk'].unique().tolist()
             if secondary_survey_question_skus:
                 secondary_unique_skus = \
                     relevant_scif[relevant_scif['product_fk'].isin(secondary_survey_question_skus)][
@@ -239,14 +246,18 @@ class LIBERTYToolBox:
         relevant_template[Const.EAN_CODE] = \
             relevant_template[Const.EAN_CODE].apply(lambda x: str(int(x)) if x != '' else None)
         primary_ean_codes = \
-            relevant_template[relevant_template[Const.SECONDARY_GROUP] != 'Y'][Const.EAN_CODE].unique().tolist()
+            relevant_template[relevant_template[Const.SECONDARY_GROUP]
+                              != 'Y'][Const.EAN_CODE].unique().tolist()
         primary_ean_codes = [code for code in primary_ean_codes if code is not None]
-        primary_products = self.all_products[self.all_products['product_ean_code'].isin(primary_ean_codes)]
+        primary_products = self.all_products[self.all_products['product_ean_code'].isin(
+            primary_ean_codes)]
         primary_product_pks = primary_products['product_fk'].unique().tolist()
         secondary_ean_codes = \
-            relevant_template[relevant_template[Const.SECONDARY_GROUP] == 'Y'][Const.EAN_CODE].unique().tolist()
+            relevant_template[relevant_template[Const.SECONDARY_GROUP]
+                              == 'Y'][Const.EAN_CODE].unique().tolist()
         if secondary_ean_codes:
-            secondary_products = self.all_products[self.all_products['product_ean_code'].isin(secondary_ean_codes)]
+            secondary_products = self.all_products[self.all_products['product_ean_code'].isin(
+                secondary_ean_codes)]
             secondary_product_pks = secondary_products['product_fk'].unique().tolist()
         else:
             secondary_product_pks = None
@@ -262,7 +273,8 @@ class LIBERTYToolBox:
 
         liberty_truck = self.does_exist(kpi_line, Const.LIBERTY_KEY_MANUFACTURER)
         if liberty_truck:
-            liberty_truck_scif = relevant_scif[relevant_scif[Const.LIBERTY_KEY_MANUFACTURER].isin(liberty_truck)]
+            liberty_truck_scif = relevant_scif[relevant_scif[Const.LIBERTY_KEY_MANUFACTURER].isin(
+                liberty_truck)]
             filtered_scif = filtered_scif.append(liberty_truck_scif, sort=False).drop_duplicates()
 
         brand = self.does_exist(kpi_line, Const.BRAND)
@@ -316,14 +328,16 @@ class LIBERTYToolBox:
             elif sub_packages == [Const.GREATER_THAN_ONE]:
                 filtered_scif = filtered_scif[filtered_scif['Multi-Pack Size'] > 1]
             else:
-                filtered_scif = filtered_scif[filtered_scif['Multi-Pack Size'].isin([int(i) for i in sub_packages])]
+                filtered_scif = filtered_scif[filtered_scif['Multi-Pack Size'].isin(
+                    [int(i) for i in sub_packages])]
 
         if self.does_exist(kpi_line, Const.MINIMUM_FACINGS_REQUIRED):
             number_of_passing_displays, _ = self.get_number_of_passing_displays(filtered_scif)
 
             if self.does_exist(kpi_line, Const.PARENT_KPI_NAME):
                 parent_kpi_name = kpi_line[Const.PARENT_KPI_NAME] + Const.LIBERTY + Const.DRILLDOWN
-                kpi_fk = self.common_db.get_kpi_fk_by_kpi_type(kpi_line[Const.KPI_NAME] + Const.LIBERTY)
+                kpi_fk = self.common_db.get_kpi_fk_by_kpi_type(
+                    kpi_line[Const.KPI_NAME] + Const.LIBERTY)
                 self.common_db.write_to_db_result(kpi_fk, numerator_id=self.manufacturer_fk, numerator_result=0,
                                                   denominator_id=self.store_id, denominator_result=0, weight=weight,
                                                   result=number_of_passing_displays,
@@ -361,7 +375,8 @@ class LIBERTYToolBox:
 
         liberty_truck = self.does_exist(kpi_line, Const.LIBERTY_KEY_MANUFACTURER)
         if liberty_truck:
-            liberty_truck_scif = ssd_still_scif[ssd_still_scif[Const.LIBERTY_KEY_MANUFACTURER].isin(liberty_truck)]
+            liberty_truck_scif = ssd_still_scif[ssd_still_scif[Const.LIBERTY_KEY_MANUFACTURER].isin(
+                liberty_truck)]
             filtered_scif = filtered_scif.append(liberty_truck_scif, sort=False).drop_duplicates()
 
         if self.does_exist(kpi_line, Const.MARKET_SHARE_TARGET):
@@ -404,7 +419,8 @@ class LIBERTYToolBox:
             return 0, 0
 
         filtered_scif = \
-            filtered_scif.groupby(['Base Size', 'Multi-Pack Size', 'scene_id'], as_index=False)['facings'].sum()
+            filtered_scif.groupby(['Base Size', 'Multi-Pack Size', 'scene_id'],
+                                  as_index=False)['facings'].sum()
 
         filtered_scif['passed_displays'] = \
             filtered_scif.apply(lambda row: self._calculate_pass_status_of_display(row), axis=1)
@@ -450,8 +466,10 @@ class LIBERTYToolBox:
 
             liberty_truck = self.does_exist(kpi_line, Const.LIBERTY_KEY_MANUFACTURER)
             if liberty_truck:
-                liberty_truck_scif = cooler_scif[cooler_scif[Const.LIBERTY_KEY_MANUFACTURER].isin(liberty_truck)]
-                filtered_scif = filtered_scif.append(liberty_truck_scif, sort=False).drop_duplicates()
+                liberty_truck_scif = cooler_scif[cooler_scif[Const.LIBERTY_KEY_MANUFACTURER].isin(
+                    liberty_truck)]
+                filtered_scif = filtered_scif.append(
+                    liberty_truck_scif, sort=False).drop_duplicates()
 
             if self.does_exist(kpi_line, Const.INCLUDE_BODY_ARMOR) and self.body_armor_delivered:
                 body_armor_scif = cooler_scif[cooler_scif['brand_fk'] == Const.BODY_ARMOR_BRAND_FK]

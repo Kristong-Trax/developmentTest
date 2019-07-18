@@ -6,7 +6,7 @@ class Const(object):
     ''' Holds Constants '''
 
     TMB_MAP_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), 'Data',
-                                   'TopMiddleBottom_Map.xlsx')
+                                'TopMiddleBottom_Map.xlsx')
 
     ''' Sheets '''
     KPIS = 'KPIs'
@@ -14,13 +14,15 @@ class Const(object):
     SHELF_REGION = 'Shelf Region'
     ADJACENCY = 'Adjacency'
     BLOCKING = 'Blocking'
-    MAX_BLOCK_ADJ = 'Max Blocking Adjacency'
+    MAX_BLOCK_ADJ = 'Max Block Adjacency'
     BLOCKED_TOGETHER = 'Blocked Together'
     BLOCKING_PERCENT = 'Blocking Percent'
+    BLOCK_ORIENTATION = 'Block Orientation'
     MULTI_BLOCK = 'Multi Block'
     ANCHOR = 'Anchor'
     SEQUENCE = 'Sequence'
     INTEGRATED = 'Integrated Core KPI'
+    SERIAL = 'Serial Adj'
     RELATIVE_POSTION = 'Relative Position'
     SAME_AISLE = 'Same Aisle'
     SOS = 'SOS Linear'
@@ -51,7 +53,5 @@ class Const(object):
     REGIONS = ['left', 'center', 'right']
     NUM_REG = 3
     MM_FT = 304.8
-
-
-
-
+    ALLOWED_FLAGS = ['unconnected', 'connected', 'encapsulated']
+    ALL_SCENES_REQUIRED = 'All Scenes Required'

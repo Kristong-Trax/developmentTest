@@ -147,7 +147,8 @@ class MILLERCOORSToolBox:
             if not (items):
                 break
 
-            block_result = self.block.network_x_block_together(filters, location=location_filter, additional=additional)
+            block_result = self.block.network_x_block_together(
+                filters, location=location_filter, additional=additional)
 
             passed_blocks = block_result[block_result['is_block'] == True].cluster.tolist()
 
@@ -183,7 +184,8 @@ class MILLERCOORSToolBox:
                                        product_attributes=['rect_x', 'rect_y'],
                                        name=None, adjacency_overlap_ratio=.4)
 
-            match_to_node = {int(node['match_fk']): i for i, node in all_graph.base_adjacency_graph.nodes(data=True)}
+            match_to_node = {int(node['match_fk']): i for i,
+                             node in all_graph.base_adjacency_graph.nodes(data=True)}
             node_to_match = {val: key for key, val in match_to_node.items()}
             edge_matches = set(
                 sum([[node_to_match[i] for i in all_graph.base_adjacency_graph[match_to_node[item]].keys()]
@@ -200,7 +202,8 @@ class MILLERCOORSToolBox:
                         if value is not None:
                             try:
                                 numerator_fk = \
-                                self.custom_entity_data[self.custom_entity_data['name'] == value].pk.values[0]
+                                    self.custom_entity_data[self.custom_entity_data['name']
+                                                            == value].pk.values[0]
                             except IndexError:
                                 Log.warning('Custom entity "{}" does not exist'.format(value))
                                 continue
@@ -236,7 +239,8 @@ class MILLERCOORSToolBox:
             mpis = mpis[mpis['stacking_layer'] >= 1]
             # allowed = {'product_type': ['Other', 'Empty']}
             if kpi_line[Const.TESTED_PARAM] == kpi_line[Const.ANCHOR_PARAM]:
-                filters = {kpi_line[Const.ANCHOR_PARAM]: [kpi_line[Const.ANCHOR_VALUE], kpi_line[Const.TESTED_VALUE]]}
+                filters = {kpi_line[Const.ANCHOR_PARAM]: [
+                    kpi_line[Const.ANCHOR_VALUE], kpi_line[Const.TESTED_VALUE]]}
             elif kpi_line[Const.TESTED_PARAM] == '':
                 filters = {kpi_line[Const.ANCHOR_PARAM]: kpi_line[Const.ANCHOR_VALUE]}
             else:
@@ -248,7 +252,8 @@ class MILLERCOORSToolBox:
             if not (items):
                 break
 
-            block_result = self.block.network_x_block_together(filters, location=location_filter, additional=additional)
+            block_result = self.block.network_x_block_together(
+                filters, location=location_filter, additional=additional)
 
             passed_blocks = block_result[block_result['is_block'] == True].cluster.tolist()
 
@@ -278,7 +283,8 @@ class MILLERCOORSToolBox:
                         if value is not None:
                             try:
                                 numerator_fk = \
-                                self.custom_entity_data[self.custom_entity_data['name'] == value].pk.values[0]
+                                    self.custom_entity_data[self.custom_entity_data['name']
+                                                            == value].pk.values[0]
                             except IndexError:
                                 Log.warning('Custom entity "{}" does not exist'.format(value))
                                 continue
@@ -323,7 +329,8 @@ class MILLERCOORSToolBox:
             for shelf in matches['shelf_number'].unique():
                 shelf_matches = matches[matches['shelf_number'] == shelf]
                 if not shelf_matches.empty:
-                    shelf_matches = shelf_matches.sort_values(by=['bay_number', 'facing_sequence_number'])
+                    shelf_matches = shelf_matches.sort_values(
+                        by=['bay_number', 'facing_sequence_number'])
                     edge_facings = edge_facings.append(shelf_matches.iloc[0])
                     if len(edge_facings) > 1:
                         edge_facings = edge_facings.append(shelf_matches.iloc[-1])
@@ -342,7 +349,8 @@ class MILLERCOORSToolBox:
         for field in filters.keys():
             if field not in self.all_products.columns and field in self.scif.columns:
                 location_filters[field] = filters.pop(field)
-        relevant_scenes = self.scif[self.get_filter_condition(self.scif, **location_filters)]['scene_id'].unique()
+        relevant_scenes = self.scif[self.get_filter_condition(
+            self.scif, **location_filters)]['scene_id'].unique()
         return filters, relevant_scenes
 
     @staticmethod
@@ -415,7 +423,8 @@ class MILLERCOORSToolBox:
         elif kpi_type == Const.ADJACENCY:
             return self.calculate_adjacency
         else:
-            Log.warning("The value '{}' in column sheet in the template is not recognized".format(kpi_type))
+            Log.warning(
+                "The value '{}' in column sheet in the template is not recognized".format(kpi_type))
             return None
 
     @staticmethod

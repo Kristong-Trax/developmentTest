@@ -1,4 +1,3 @@
-
 import pandas as pd
 from datetime import datetime
 
@@ -15,7 +14,7 @@ from KPIUtils.GlobalProjects.DIAGEO.KPIGenerator import DIAGEOGenerator
 from KPIUtils.DB.Common import Common
 from KPIUtils_v2.DB.CommonV2 import Common as CommonV2
 from OutOfTheBox.Calculations.ManufacturerSOS import ManufacturerFacingsSOSInWholeStore, \
-                  ManufacturerFacingsSOSPerSubCategoryInStore
+    ManufacturerFacingsSOSPerSubCategoryInStore
 from OutOfTheBox.Calculations.SubCategorySOS import SubCategoryFacingsSOSPerCategory
 
 __author__ = 'Nimrod'
@@ -35,12 +34,13 @@ def log_runtime(description, log_start=False):
             calc_end_time = datetime.utcnow()
             Log.info('{} took {}'.format(description, calc_end_time - calc_start_time))
             return result
+
         return wrapper
+
     return decorator
 
 
 class DIAGEONORDICSToolBox:
-
     LEVEL1 = 1
     LEVEL2 = 2
     LEVEL3 = 3
@@ -79,7 +79,7 @@ class DIAGEONORDICSToolBox:
         self.commonV2 = CommonV2(self.data_provider)
         self.tools = DIAGEOToolBox(self.data_provider, output,
                                    match_display_in_scene=self.match_display_in_scene)
-        self.diageo_generator = DIAGEOGenerator(self.data_provider, self.output, self.common)
+        self.diageo_generator = DIAGEOGenerator(self.data_provider, self.output, self.common, menu=True)
 
     def get_kpi_static_data(self):
         """
@@ -107,13 +107,18 @@ class DIAGEONORDICSToolBox:
         # SOS Out Of The Box kpis
         self.activate_ootb_kpis()
 
+        # Global assortment kpis
+        assortment_res_dict = self.diageo_generator.diageo_global_assortment_function_v2()
+        self.commonV2.save_json_to_new_tables(assortment_res_dict)
+
         # Global assortment kpis - v3 for NEW MOBILE REPORTS use
         assortment_res_dict_v3 = self.diageo_generator.diageo_global_assortment_function_v3()
         self.commonV2.save_json_to_new_tables(assortment_res_dict_v3)
 
-        # Global assortment kpis
-        assortment_res_dict = self.diageo_generator.diageo_global_assortment_function_v2()
-        self.commonV2.save_json_to_new_tables(assortment_res_dict)
+        # Global Menu kpis
+        menus_res_dict = self.diageo_generator.diageo_global_share_of_menu_cocktail_function(
+            cocktail_product_level=True)
+        self.commonV2.save_json_to_new_tables(menus_res_dict)
 
         for set_name in set_names:
             set_score = 0

@@ -7,13 +7,14 @@ class Const(object):
     OFF, ON, INDEPENDENT, OPEN, NATIONAL_STORE = "off_premise", "on_premise", "Independent", "Open", "National"
     NOT_INDEPENDENT_STORES = [OPEN, NATIONAL_STORE]
     # sheets:
-    ON_TRADE_MAIN, OFF_TRADE_MAIN = "main - on_trade", "main - off_trade"
+    ON_TRADE_OPEN, OFF_TRADE_OPEN = "open - on_trade", "open - off_trade"
     ON_TRADE_INDEPENDENT, OFF_TRADE_INDEPENDENT = "independent - on_trade", "independent - off_trade"
+    ON_TRADE_NATIONAL, OFF_TRADE_NATIONAL = "national - on_trade", "national - off_trade"
     MINIMUM_SHELF_SHEET = "Minimum Shelf"
     SHELF_GROUPS_SHEET = "convert shelves groups"
     SHEETS = {
-        OPEN: {ON: [ON_TRADE_MAIN], OFF: [OFF_TRADE_MAIN, MINIMUM_SHELF_SHEET, SHELF_GROUPS_SHEET]},
-        NATIONAL_STORE: {ON: [ON_TRADE_MAIN], OFF: [OFF_TRADE_MAIN, MINIMUM_SHELF_SHEET, SHELF_GROUPS_SHEET]},
+        OPEN: {ON: [ON_TRADE_OPEN], OFF: [OFF_TRADE_OPEN, MINIMUM_SHELF_SHEET, SHELF_GROUPS_SHEET]},
+        NATIONAL_STORE: {ON: [ON_TRADE_NATIONAL], OFF: [OFF_TRADE_NATIONAL]},
         INDEPENDENT: {ON: [ON_TRADE_INDEPENDENT], OFF: [OFF_TRADE_INDEPENDENT]}}
     # KPIs columns:
     KPI_NAME, KPI_GROUP, TARGET, WEIGHT = "KPI Name", "KPI Group", "Target", "Weight"
@@ -27,6 +28,7 @@ class Const(object):
     SHELF_PLACEMENT, MSRP, STORE_SCORE = "Shelf Placement", "MSRP", "Store Score"
     # sets in on-premise:
     BACK_BAR, MENU = "Back Bar", "Menu"
+    BACK_BAR_NATIONAL, MENU_NATIONAL = "National Back Bar", "National Menu"
 
     SEGMENT, NATIONAL, TOTAL = "S", "N", "total"
     TEMPLATE = "template"
@@ -69,14 +71,21 @@ class Const(object):
             SKU: 'On_POD -  Brand Variant Size', KPI_NAME: POD},
         BACK_BAR: {
             TOTAL: 'Back Bar - Total Score', NATIONAL: 'Back Bar - National Score', SEGMENT: 'Back Bar - Segment Score',
+            KPI_NAME: BACK_BAR, SKU: 'Back Bar - Brand Variant Size',
+            BRAND: 'Back Bar - Generic Brand', SUB_BRAND: 'Back Bar - Brand Variant'},
+        BACK_BAR_NATIONAL: {
+            TOTAL: 'Back Bar National - Total Score', SKU: 'Back Bar - Brand Variant Size',
             TEMPLATE: "Back Bar - Template Score", KPI_NAME: BACK_BAR,
-            BRAND: 'Back Bar - Generic Brand', SUB_BRAND: 'Back Bar - Brand Variant',
-            SKU: 'Back Bar - Brand Variant Size'},
+            BRAND: 'Back Bar National - Generic Brand', SUB_BRAND: 'Back Bar National - Brand Variant'},
         MENU: {
             TOTAL: 'Menu Share - Total Score', MANUFACTURER: 'Menu Share - Manufacturer Level', KPI_NAME: MENU,
+            SUB_BRAND: 'Menu Share - Brand Variant Level', TEMPLATE: "Menu Share - Template Score"},
+        MENU_NATIONAL: {
+            TOTAL: 'Menu Share National - Total Score',
+            MANUFACTURER: 'Menu Share National - Manufacturer Level', KPI_NAME: MENU,
             TEMPLATE: "Menu Share - Template Score", SUB_BRAND: 'Menu Share - Brand Variant Level'}}
     DB_ASSORTMENTS_NAMES = {OFF: "Assortment off Trade", ON: "Assortment on Trade",
-                            INDEPENDENT: "independent_display", BACK_BAR: "Assortment on Trade"}
+                            INDEPENDENT: "independent_display", BACK_BAR: "Assortment Back Bar"}
 
     PRODUCT_FK, STANDARD_TYPE, PASSED, FACINGS = "product_fk", "standard_type", "passed", "facings"
     COLUMNS_FOR_DISPLAY = [MANUFACTURER, PRODUCT_FK, PASSED]
@@ -96,13 +105,14 @@ class Const(object):
     INDEPENDENT_OPERATION_TYPES = [DISPLAY_TARGET_OP]
     # columns in external targets:
     EX_PRODUCT_FK, EX_STATE_FK, EX_OPERATION_TYPE,  = "product_fk", "state_fk", "operation_type"
+    EX_ATTR2, EX_STORE_NUMBER = "attr2", "store_number_1"
     EX_SCENE_TYPE, EX_BENCHMARK_VALUE, EX_COMPETITOR_FK = "scene_type", "BENCHMARK Value", "competitor_product_fk"
     EX_MIN_FACINGS, EX_RELATIVE_MAX, EX_RELATIVE_MIN = "minimum facings", "relative_target_max", "relative_target_min"
     EX_TARGET_MAX, EX_TARGET_MIN, EX_MINIMUM_SHELF = "target_max", "target_min", "MINIMUM SHELF LOCATION"
     SHELF_FACINGS_COLUMNS = [EX_PRODUCT_FK, EX_COMPETITOR_FK, EX_BENCHMARK_VALUE]
     SHELF_PLACEMENT_COLUMNS = [EX_PRODUCT_FK, EX_MINIMUM_SHELF]
     MSRP_COLUMNS = [EX_PRODUCT_FK, EX_COMPETITOR_FK, EX_RELATIVE_MIN, EX_RELATIVE_MAX, EX_TARGET_MAX, EX_TARGET_MIN]
-    DISPLAY_TARGET_COLUMNS = [EX_SCENE_TYPE, EX_MIN_FACINGS, EX_STATE_FK]
+    DISPLAY_TARGET_COLUMNS = [EX_SCENE_TYPE, EX_MIN_FACINGS, EX_ATTR2]
 
     ALL = "ALL"
 

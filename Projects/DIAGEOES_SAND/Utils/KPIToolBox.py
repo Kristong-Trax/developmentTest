@@ -62,7 +62,8 @@ class DIAGEOESSANDToolBox:
         self.commonV2 = CommonV2(self.data_provider)
         self.tools = DIAGEOToolBox(self.data_provider, output,
                                    match_display_in_scene=self.match_display_in_scene)
-        self.diageo_generator = DIAGEOGenerator(self.data_provider, self.output, self.common, menu=True)
+        self.diageo_generator = DIAGEOGenerator(
+            self.data_provider, self.output, self.common, menu=True)
         self.kpi_static_data = self.get_kpi_static_data()
         self.kpi_results_queries = []
         self.store_info = self.data_provider[Data.STORE_INFO]
@@ -95,7 +96,7 @@ class DIAGEOESSANDToolBox:
         assortment_res_dict = self.diageo_generator.diageo_global_assortment_function_v2()
         self.commonV2.save_json_to_new_tables(assortment_res_dict)
 
-        # Global Menus kpis
+        # Global Menu kpis
         menus_res_dict = self.diageo_generator.diageo_global_share_of_menu_cocktail_function(
             cocktail_product_level=True)
         self.commonV2.save_json_to_new_tables(menus_res_dict)
@@ -119,7 +120,8 @@ class DIAGEOESSANDToolBox:
             elif set_score is False:
                 continue
 
-            set_fk = self.kpi_static_data[self.kpi_static_data['kpi_set_name'] == set_name]['kpi_set_fk'].values[0]
+            set_fk = self.kpi_static_data[self.kpi_static_data['kpi_set_name']
+                                          == set_name]['kpi_set_fk'].values[0]
             self.write_to_db_result(set_fk, set_score, self.LEVEL1)
 
         # committing to new tables
@@ -208,13 +210,15 @@ class DIAGEOESSANDToolBox:
 
         """
         if level == self.LEVEL1:
-            kpi_set_name = self.kpi_static_data[self.kpi_static_data['kpi_set_fk'] == fk]['kpi_set_name'].values[0]
+            kpi_set_name = self.kpi_static_data[self.kpi_static_data['kpi_set_fk']
+                                                == fk]['kpi_set_name'].values[0]
             attributes = pd.DataFrame([(kpi_set_name, self.session_uid, self.store_id, self.visit_date.isoformat(),
                                         format(score, '.2f'), fk)],
                                       columns=['kps_name', 'session_uid', 'store_fk', 'visit_date', 'score_1',
                                                'kpi_set_fk'])
         elif level == self.LEVEL2:
-            kpi_name = self.kpi_static_data[self.kpi_static_data['kpi_fk'] == fk]['kpi_name'].values[0]
+            kpi_name = self.kpi_static_data[self.kpi_static_data['kpi_fk']
+                                            == fk]['kpi_name'].values[0]
             attributes = pd.DataFrame([(self.session_uid, self.store_id, self.visit_date.isoformat(),
                                         fk, kpi_name.replace("'", "''"), score)],
                                       columns=['session_uid', 'store_fk', 'visit_date', 'kpi_fk', 'kpk_name', 'score'])
@@ -222,7 +226,8 @@ class DIAGEOESSANDToolBox:
             data = self.kpi_static_data[self.kpi_static_data['atomic_kpi_fk'] == fk]
             atomic_kpi_name = data['atomic_kpi_name'].values[0]
             kpi_fk = data['kpi_fk'].values[0]
-            kpi_set_name = self.kpi_static_data[self.kpi_static_data['atomic_kpi_fk'] == fk]['kpi_set_name'].values[0]
+            kpi_set_name = self.kpi_static_data[self.kpi_static_data['atomic_kpi_fk']
+                                                == fk]['kpi_set_name'].values[0]
             attributes = pd.DataFrame(
                 [(atomic_kpi_name.replace("'", "''"), self.session_uid, kpi_set_name, self.store_id,
                   self.visit_date.isoformat(), datetime.utcnow().isoformat(),

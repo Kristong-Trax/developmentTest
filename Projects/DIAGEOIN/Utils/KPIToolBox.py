@@ -66,7 +66,8 @@ class DIAGEOINToolBox:
         self.kpi_static_data = self.get_kpi_static_data()
         self.common = Common(self.data_provider)
         self.commonV2 = CommonV2(self.data_provider)
-        self.tools = DIAGEOToolBox(self.data_provider, output, match_display_in_scene=self.match_display_in_scene)
+        self.tools = DIAGEOToolBox(self.data_provider, output,
+                                   match_display_in_scene=self.match_display_in_scene)
         self.diageo_generator = DIAGEOGenerator(self.data_provider, self.output, self.common)
 
     def get_match_display(self):
@@ -168,7 +169,8 @@ class DIAGEOINToolBox:
             elif set_score is False:
                 continue
 
-            set_fk = self.kpi_static_data[self.kpi_static_data['kpi_set_name'] == set_name]['kpi_set_fk'].values[0]
+            set_fk = self.kpi_static_data[self.kpi_static_data['kpi_set_name']
+                                          == set_name]['kpi_set_fk'].values[0]
             self.write_to_db_result(set_fk, set_score, self.LEVEL1)
 
         # commiting to new tables
@@ -181,20 +183,24 @@ class DIAGEOINToolBox:
                                                        kpi_definition_fk=sos_store_fk).calculate()
         # FACINGS_SOS_CATEGORY_IN_WHOLE_STORE - level 2
         sos_cat_out_of_store_fk = self.commonV2.get_kpi_fk_by_kpi_name('SOS CATEGORY OUT OF STORE')
-        sos_cat_out_of_store = self.calculate_sos_of_cat_of_out_of_store_new(sos_cat_out_of_store_fk)
+        sos_cat_out_of_store = self.calculate_sos_of_cat_of_out_of_store_new(
+            sos_cat_out_of_store_fk)
 
         # FACINGS_SOS_SUB_CATEGORY_OUT_OF_CATEGORY - level 3
-        sos_sub_cat_out_of_cat_fk = self.commonV2.get_kpi_fk_by_kpi_name('SOS SUB CATEGORY OUT OF CATEGORY')
+        sos_sub_cat_out_of_cat_fk = self.commonV2.get_kpi_fk_by_kpi_name(
+            'SOS SUB CATEGORY OUT OF CATEGORY')
         sos_sub_cat_out_of_cat = SubCategoryFacingsSOSPerCategory(data_provider=self.data_provider,
                                                                   kpi_definition_fk=sos_sub_cat_out_of_cat_fk).calculate()
 
         # FACINGS_SOS_MANUFACTURER_OUT_OF_SUB_CATEGORY - level 4
-        sos_man_out_of_sub_cat_fk = self.commonV2.get_kpi_fk_by_kpi_name('SOS MANUFACTURER OUT OF SUB CATEGORY')
+        sos_man_out_of_sub_cat_fk = self.commonV2.get_kpi_fk_by_kpi_name(
+            'SOS MANUFACTURER OUT OF SUB CATEGORY')
         sos_man_out_of_sub_cat = ManufacturerFacingsSOSPerSubCategoryInStore(
             data_provider=self.data_provider, kpi_definition_fk=sos_man_out_of_sub_cat_fk).calculate()
 
         # FACINGS_SOS_BRAND_OUT_OF_SUB_CATEGORY_IN_WHOLE_STORE - level 5
-        sos_brand_out_of_sub_cat_fk = self.commonV2.get_kpi_fk_by_kpi_name('SOS BRAND OUT OF SUB CATEGORY')
+        sos_brand_out_of_sub_cat_fk = self.commonV2.get_kpi_fk_by_kpi_name(
+            'SOS BRAND OUT OF SUB CATEGORY')
         sos_brand_out_of_sub_cat = self.calculate_sos_of_brand_out_of_manufacturer_in_sub_cat(
             sos_brand_out_of_sub_cat_fk)
 
@@ -213,14 +219,17 @@ class DIAGEOINToolBox:
         sub_cat_fk_list = filtered_scif['sub_category_fk'].unique().tolist()
         for sub_cat in sub_cat_fk_list:
             filtered_scif_by_sub_cat = filtered_scif[filtered_scif['sub_category_fk'] == sub_cat]
-            list_of_relevant_manufacturers = filtered_scif_by_sub_cat['manufacturer_fk'].unique().tolist()
+            list_of_relevant_manufacturers = filtered_scif_by_sub_cat['manufacturer_fk'].unique(
+            ).tolist()
             for manu_fk in list_of_relevant_manufacturers:
                 filtered_scif_by_sub_cat_and_manufacturer = filtered_scif_by_sub_cat[
                     filtered_scif_by_sub_cat['manufacturer_fk'] == manu_fk]
-                denominator_result = filtered_scif_by_sub_cat_and_manufacturer['facings_ign_stack'].sum()
+                denominator_result = filtered_scif_by_sub_cat_and_manufacturer['facings_ign_stack'].sum(
+                )
 
                 # Calculate results per Brand
-                list_of_relevant_brands = filtered_scif_by_sub_cat_and_manufacturer['brand_fk'].unique().tolist()
+                list_of_relevant_brands = filtered_scif_by_sub_cat_and_manufacturer['brand_fk'].unique(
+                ).tolist()
                 for brand_fk in list_of_relevant_brands:
                     filtered_scif_by_brand = filtered_scif_by_sub_cat_and_manufacturer[
                         filtered_scif_by_sub_cat_and_manufacturer['brand_fk'] == brand_fk]
@@ -368,7 +377,8 @@ class DIAGEOINToolBox:
 
                 object_type = self.tools.ENTITY_TYPE_CONVERTER.get(params.get(self.tools.ENTITY_TYPE),
                                                                    'product_ean_code')
-                objects = [str(params.get(self.tools.PRODUCT_EAN_CODE, params.get(self.tools.PRODUCT_EAN_CODE2, '')))]
+                objects = [str(params.get(self.tools.PRODUCT_EAN_CODE,
+                                          params.get(self.tools.PRODUCT_EAN_CODE2, '')))]
                 if params.get(self.store_type) == self.tools.OR_OTHER_PRODUCTS:
                     additional_objects = str(params.get(self.tools.ADDITIONAL_SKUS)).split(',')
                     objects.extend(additional_objects)
@@ -408,7 +418,8 @@ class DIAGEOINToolBox:
         """
         score = round(score, 2)
         if level == self.LEVEL1:
-            kpi_set_name = self.kpi_static_data[self.kpi_static_data['kpi_set_fk'] == fk]['kpi_set_name'].values[0]
+            kpi_set_name = self.kpi_static_data[self.kpi_static_data['kpi_set_fk']
+                                                == fk]['kpi_set_name'].values[0]
             score_type = '%' if kpi_set_name in self.tools.KPI_SETS_WITH_PERCENT_AS_SCORE else ''
             attributes = pd.DataFrame([(kpi_set_name, self.session_uid, self.store_id, self.visit_date.isoformat(),
                                         format(score, '.2f'), score_type, fk)],
@@ -416,7 +427,8 @@ class DIAGEOINToolBox:
                                                'score_2', 'kpi_set_fk'])
 
         elif level == self.LEVEL2:
-            kpi_name = self.kpi_static_data[self.kpi_static_data['kpi_fk'] == fk]['kpi_name'].values[0].replace("'", "\\'")
+            kpi_name = self.kpi_static_data[self.kpi_static_data['kpi_fk']
+                                            == fk]['kpi_name'].values[0].replace("'", "\\'")
             attributes = pd.DataFrame([(self.session_uid, self.store_id, self.visit_date.isoformat(),
                                         fk, kpi_name, score)],
                                       columns=['session_uid', 'store_fk', 'visit_date', 'kpi_fk', 'kpk_name', 'score'])
@@ -424,7 +436,8 @@ class DIAGEOINToolBox:
             data = self.kpi_static_data[self.kpi_static_data['atomic_kpi_fk'] == fk]
             atomic_kpi_name = data['atomic_kpi_name'].values[0].replace("'", "\\'")
             kpi_fk = data['kpi_fk'].values[0]
-            kpi_set_name = self.kpi_static_data[self.kpi_static_data['atomic_kpi_fk'] == fk]['kpi_set_name'].values[0]
+            kpi_set_name = self.kpi_static_data[self.kpi_static_data['atomic_kpi_fk']
+                                                == fk]['kpi_set_name'].values[0]
             attributes = pd.DataFrame([(atomic_kpi_name, self.session_uid, kpi_set_name, self.store_id,
                                         self.visit_date.isoformat(), datetime.utcnow().isoformat(),
                                         score, kpi_fk, fk, None, None)],
