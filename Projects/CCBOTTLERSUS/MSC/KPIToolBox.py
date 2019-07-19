@@ -26,7 +26,7 @@ class MSCToolBox:
         self.store_id = self.data_provider[Data.STORE_FK]
         self.store_info = self.data_provider[Data.STORE_INFO]
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
-        self.scif = self.scif[self.scif['product_type'] != "Irrelevant"]
+        self.scif = self.scif[~(self.scif['product_type'].isin(["Irrelevant", "Empty"]))]
         self.ps_data_provider = PsDataProvider(self.data_provider, self.output)
         self.templates = {}
         self.result_values = self.ps_data_provider.get_result_values()
