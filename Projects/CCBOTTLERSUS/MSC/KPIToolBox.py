@@ -207,12 +207,12 @@ class MSCToolBox:
     def calculate_double_availability(self, kpi_line, relevant_scif):
         group_1_scif = self.filter_scif_availability(kpi_line, relevant_scif, group=1)
         group_1_minimum_facings = kpi_line[Const.GROUP1_MINIMUM_FACINGS]
-        if not group_1_scif['facings'].sum() >= group_1_minimum_facings:
-            return False
+        availability = group_1_scif['facings'].sum() >= group_1_minimum_facings
 
-        group_2_scif = self.filter_scif_availability(kpi_line, relevant_scif, group=2)
-        group_2_minimum_facings = kpi_line[Const.GROUP2_MINIMUM_FACINGS]
-        availability = group_2_scif['facings'].sum() >= group_2_minimum_facings
+        if availability:
+            group_2_scif = self.filter_scif_availability(kpi_line, relevant_scif, group=2)
+            group_2_minimum_facings = kpi_line[Const.GROUP2_MINIMUM_FACINGS]
+            availability = group_2_scif['facings'].sum() >= group_2_minimum_facings
 
         # result = self.ps_data_provider.get_pks_of_result(
         #     Const.PASS) if availability else self.ps_data_provider.get_pks_of_result(Const.FAIL)
