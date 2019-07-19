@@ -46,7 +46,7 @@ class CCRUSessionBatches:
     'PoS 2019 - MT Conv Big - CAP',
     'PoS 2019 - MT Hypermarket - CAP',
     'PoS 2019 - MT Supermarket - CAP',
-    'PoS 2019 - MT Supermarket - REG',
+    'PoS 2019 - MT Supermarket - REG'
                 )
                 ORDER BY ss.visit_date;
                 """.format(START_DATE, END_DATE)
