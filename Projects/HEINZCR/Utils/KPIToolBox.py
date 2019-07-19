@@ -68,6 +68,10 @@ class HEINZCRToolBox:
                                                 self.all_products.loc[:, ['product_fk', 'sub_category',
                                                                           'sub_category_fk']],
                                                 how='left', on='product_fk')
+        self.sub_category_assortment = \
+            self.sub_category_assortment[~self.sub_category_assortment['assortment_name'].str.contains('ASSORTMENT')]
+        self.store_assortment_without_powerskus = \
+            self.store_assortment[self.store_assortment['assortment_name'].str.contains('ASSORTMENT')]
         self.adherence_results = pd.DataFrame(columns=['product_fk', 'trax_average',
                                                        'suggested_price', 'into_interval'])
         self.extra_spaces_results = pd.DataFrame(
@@ -84,6 +88,7 @@ class HEINZCRToolBox:
 
         # this isn't relevant to the 'Perfect Score' calculation
         self.heinz_global_distribution_per_category()
+        self.calculate_assortment()
 
         perfect_store_score = 0
         perfect_store_score += self.calculate_powersku_assortment()
@@ -107,8 +112,35 @@ class HEINZCRToolBox:
                                           score=perfect_store_score, identifier_result=Const.PERFECT_STORE)
         return
 
+    def calculate_assortment(self):
+        if self.store_assortment_without_powerskus.empty:
+            return
+
+        products_in_store = self.scif[self.scif['facings'] > 0]['product_fk'].unique().tolist()
+        pass_count = 0
+
+        assortment_fk = self.store_assortment_without_powerskus['assortment_fk'].iloc[0]
+        assortment_group_fk = self.store_assortment_without_powerskus['assortment_grou_fk'].iloc[0]
+
+        for row in self.store_assortment_without_powerskus.itertuples():
+            result = 0
+            if row.product_fk in products_in_store:
+                result = 1
+                pass_count += 1
+
+            sku_kpi_fk = self.common_v2.get_kpi_fk_by_kpi_type('Distribution - SKU')
+            self.common_v2.write_to_db_result(sku_kpi_fk, numerator_id=row.product_fk, denominator_id=row.assortment_fk,
+                                              result=result)
+
+        total_kpi_fk = self.common_v2.get_kpi_fk_by_kpi_type('Distribution')
+        self.common_v2.write_to_db_result(total_kpi_fk, numerator_id=assortment_fk, denominator_id=assortment_group_fk,
+                                          numerator_result=pass_count,
+                                          denominator_result=len(self.store_assortment_without_powerskus),
+                                          result=pass_count)
+
+
     def calculate_powersku_assortment(self):
-        if self.store_assortment.empty:
+        if self.sub_category_assortment.empty:
             return 0
 
         total_kpi_fk = self.common_v2.get_kpi_fk_by_kpi_type(Const.POWER_SKU_TOTAL)
@@ -336,7 +368,7 @@ class HEINZCRToolBox:
         return number_of_passing_sub_categories
 
     def calculate_powersku_price_adherence(self):
-        if self.store_assortment.empty:
+        if self.sub_category_assortment.empty:
             return 0
 
         adherence_kpi_fk = self.common_v2.get_kpi_fk_by_kpi_type(Const.POWER_SKU_PRICE_ADHERENCE)
