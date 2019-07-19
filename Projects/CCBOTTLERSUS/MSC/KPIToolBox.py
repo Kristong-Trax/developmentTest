@@ -158,21 +158,21 @@ class MSCToolBox:
         minimum_skus = self.does_exist(kpi_line, Const.MINIMUM_SKUS)
         if minimum_skus:
             number_of_skus = len(numerator_scif['product_name'].unique())
-            availability = number_of_skus > minimum_skus[0]
+            availability = number_of_skus >= minimum_skus[0]
 
         minimum_brands = self.does_exist(kpi_line, Const.MINIMUM_BRANDS)
         if minimum_brands:
             number_of_brands = len(numerator_scif['brand_name'].unique())
-            availability = number_of_brands > minimum_brands[0]
+            availability = number_of_brands >= minimum_brands[0]
 
         minimum_packages = self.does_exist(kpi_line, Const.MINIMUM_PACKAGES)
         if minimum_packages:
             number_of_packages = len(numerator_scif.drop_duplicates(subset=['Multi-Pack Size', 'Base Size']))
-            availability = number_of_packages > minimum_packages[0]
+            availability = number_of_packages >= minimum_packages[0]
 
         threshold = self.does_exist(kpi_line, Const.THRESHOLD)
         if threshold:
-            availability = numerator_scif['facings'].sum() / relevant_scif['facings'].sum() > threshold[0]
+            availability = numerator_scif['facings'].sum() / relevant_scif['facings'].sum() >= threshold[0]
 
         # result = self.ps_data_provider.get_pks_of_result(
         #     Const.PASS) if availability else self.ps_data_provider.get_pks_of_result(Const.FAIL)
@@ -286,7 +286,7 @@ class MSCToolBox:
 
         threshold = self.does_exist(kpi_line, Const.THRESHOLD)
         if threshold:
-            results = results[results['sos'] > threshold[0]]
+            results = results[results['sos'] >= threshold[0]]
 
         numerator_scenes = len(results[results['sos'] > 0])
         denominator_scenes = len(results)
