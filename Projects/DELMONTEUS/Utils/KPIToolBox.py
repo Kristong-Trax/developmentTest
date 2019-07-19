@@ -115,11 +115,11 @@ class ToolBox:
         #
         # ):
         # # if kpi_name not in ('Are the majority of Green Giant Spec Veg blocked above Green Giant Core Veg'):
-        # if kpi_name not in ('is multi serve pineapple shelved above Canned Fruit?'):
+        if kpi_name not in ('Are PFC shelved between Canned and Squeezers?'):
         # if kpi_name not in ('is multi serve pineapple shelved above Canned Fruit?'):
         # if kpi_type not in (Const.BLOCKING, Const.BLOCKING_PERCENT, Const.SOS, Const.ANCHOR, Const.MULTI_BLOCK,
         #                     Const.SAME_AISLE, Const.SHELF_REGION, Const.SHELF_PLACEMENT):
-        #     return
+            return
 
         # print('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~')
         # print(kpi_name)
@@ -266,7 +266,8 @@ class ToolBox:
                                 matches=df['matches'].sum()))
 
             order = [x.seg for x in sorted(seg_list, key=lambda x: x.position)]
-            if '_'.join(order) == '_'.join(segments):
+            if '_'.join(order) == '_'.join(segments) or \
+               (kpi_line['Reversible'] in ['Y', 'y'] and '_'.join(order) == '_'.join(segments[::-1])):
                 flow_count = 1 # 1 is intentional, since loop is smaller than list by 1
                 for i in range(1, len(order)):
                     if self.safe_divide(self.seq_axis_engulfs_df(i, seg_list, orth), seg_list[i].facings) >= .1 and\
@@ -492,7 +493,7 @@ class ToolBox:
                 kpi_name, kpi_line, relevant_scif, general_filters)
             self.blockchain[base] = result, orientation, mpis_dict, blocks  # result_fk = self.result_values_dict[orientation]
 
-        if kpi_line['AntiBlock']:
+        if kpi_line['AntiBlock'] in ['Y', 'y']:
             result = result ^ 1
         kwargs = {'score': 1, 'result': result}
         return kwargs
