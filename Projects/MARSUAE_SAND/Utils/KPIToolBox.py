@@ -54,13 +54,19 @@ class MARSUAE_SANDToolBox:
         self.full_store_info = self.get_store_data_by_store_id()
         self.store_info_dict = self.full_store_info.to_dict('records')[0]
         self.category_params = self.get_category_level_targets()
+        self.kpi_category_dict = self.get_kpi_category_dict()
         self.atomic_kpi_results = pd.DataFrame(columns=['kpi_fk', 'result', 'score', 'weight', 'parent_name'])
         # self.kpi_results_queries = []
 
     def get_category_level_targets(self):
         category_params = self.all_targets_unpacked[self.all_targets_unpacked['operation_type'] == self.CATEGORY_LEVEL]
-        # move to dict
         return category_params
+
+    def get_kpi_category_dict(self):
+        kpi_category_dict = {}
+        for i, row in self.category_params.iteritems():
+            kpi_category_dict.update({row['kpi_level_2_fk']: row['Template Name']})
+        return kpi_category_dict
 
     def get_store_data_by_store_id(self):
         store_id = self.store_id if self.store_id else self.session_info['store_fk'].values[0]
@@ -154,4 +160,19 @@ class MARSUAE_SANDToolBox:
         pass
 
     def calculate_price(self):
+        pass
+
+    def calculate_availability(self):
+        pass
+
+    def calculate_linear_sos(self):
+        pass
+
+    def calculate_displays(self):
+        pass
+
+    def calculate_checkouts(self):
+        pass
+
+    def calculate_block(self):
         pass
