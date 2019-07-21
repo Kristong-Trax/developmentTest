@@ -116,6 +116,10 @@ class DIAGEOUKToolBox:
         menus_res_dict = self.diageo_generator.diageo_global_share_of_menu_cocktail_function(
             cocktail_product_level=True)
         self.commonV2.save_json_to_new_tables(menus_res_dict)
+        equipment_score_scenes = self.get_equipment_score_relevant_scenes()
+        res_dict = self.diageo_generator.diageo_global_equipment_score(save_scene_level=False,
+                                                                       scene_list=equipment_score_scenes)
+        self.commonV2.save_json_to_new_tables(res_dict)
 
         for set_name in set_names:
             if set_name not in self.tools.KPI_SETS_WITHOUT_A_TEMPLATE and set_name not in self.set_templates_data.keys():
@@ -718,3 +722,10 @@ class DIAGEOUKToolBox:
         for query in self.kpi_results_queries:
             cur.execute(query)
         self.rds_conn.db.commit()
+
+    def get_equipment_score_relevant_scenes(self):
+        scenes = []
+        if not self.diageo_generator.scif.empty:
+            scenes = self.diageo_generator.scif[self.diageo_generator.scif['template_name'] == \
+                                                'ON - DRAUGHT TAPS']['scene_fk'].unique().tolist()
+        return scenes
