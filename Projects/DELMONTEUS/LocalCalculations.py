@@ -9,9 +9,9 @@ if __name__ == '__main__':
     Config.init()
     project_name = 'delmonteus'
 
-    # from Trax.Data.Projects.Store import ProjectStore
-    # ProjectStore.get_project(project_name)['rds_name'] = ProjectStore.get_project(project_name)['rds_name'].replace(
-    #     'mysql.', 'mysql.vpn.')
+    from Trax.Data.Projects.Store import ProjectStore
+    ProjectStore.get_project(project_name)['rds_name'] = ProjectStore.get_project(project_name)['rds_name'].replace(
+        'mysql.', 'mysql.vpn.')
 
     sessions = [
         'e54a25c4-00f9-4287-8b1f-07af15a23dd4',
@@ -93,7 +93,7 @@ if __name__ == '__main__':
     # sessions = ['9f3a2329-6cb1-4279-8520-d23c2fd6d75f']
 
     sessions = ['00701a05-2cac-4b50-9b9a-8308521aba02']
-    sessions = ['1cca12bd-3a1c-4b04-a453-ce3051f0aa0f']
+    sessions = ['70a8fcf5-0313-4a7f-81de-643d714c7543']
 
     for session in sessions:
         print('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~{}~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~'.format(session))
