@@ -26,7 +26,7 @@ class MSCToolBox:
         self.store_id = self.data_provider[Data.STORE_FK]
         self.store_info = self.data_provider[Data.STORE_INFO]
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
-        self.scif = self.scif[~(self.scif['product_type'].isin(["Irrelevant", "Empty"]))]
+        self.scif = self.scif[~(self.scif['product_type'].isin(["Irrelevant", "Empty", "Other"]))]
         self.ps_data_provider = PsDataProvider(self.data_provider, self.output)
         self.templates = {}
         self.result_values = self.ps_data_provider.get_result_values()
@@ -306,6 +306,8 @@ class MSCToolBox:
     def calculate_share_of_pocs(self, kpi_line, relevant_scif):
         numerator_scif = self.get_numerator_scif(kpi_line, relevant_scif)
         denominator_scif = self.get_denominator_scif(kpi_line, relevant_scif)
+        # remove the numerator subset from the denominator
+        denominator_scif = pd.concat([numerator_scif, denominator_scif]).drop_duplicates(keep=False)
 
         minimum_facings = self.does_exist(kpi_line, Const.MINIMUM_FACINGS)
         if minimum_facings:
@@ -324,7 +326,7 @@ class MSCToolBox:
 
         kpi_fk = self.common_db.get_kpi_fk_by_kpi_type(kpi_line[Const.KPI_NAME])
         self.common_db.write_to_db_result(kpi_fk, numerator_id=self.manufacturer_fk, numerator_result=numerator_scenes,
-                                          denominator_id=self.store_id, denominator_result=denominator_scenes,
+                                          denominator_id=self.store_id, denominator_result=denominator_value,
                                           result=poc_share * 100, identifier_parent=Const.MSC, should_enter=True)
 
         return
