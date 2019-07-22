@@ -1695,6 +1695,7 @@ class BATRU_SANDToolBox:
         posm_template = posm_template.loc[posm_template['Product Name'] != '']
         score = 0
         self.posm_in_session = self.tools.get_posm_availability()
+        self.posm_in_session['template_group'] = self.encode_column_in_df(self.posm_in_session, 'template_group')
         equipment_in_store = 0
         equipments = posm_template['KPI Display Name'].unique().tolist()
         for equipment in equipments:
@@ -1749,7 +1750,7 @@ class BATRU_SANDToolBox:
         add_posms = self.posm_in_session[(~(self.posm_in_session['additional_attribute_1'].isin(self.p4_display_count.keys()))) &
                                          (~(self.posm_in_session['display_name'].isnull())) &
                                          (~(self.posm_in_session['additional_attribute_1'].isnull())) &
-                                         (self.posm_in_session['template_group'].str.encode('utf8') == EXIT_TEMPLATE_GROUP.encode('utf8'))]
+                                         (self.posm_in_session['template_group'] == EXIT_TEMPLATE_GROUP.encode('utf8'))]
         add_posms = add_posms[['additional_attribute_1', 'display_name']].drop_duplicates()
         for i, row in add_posms.iterrows():
             name = '{};{};{};{}'.format(row['additional_attribute_1'].encode('utf8'), DEFAULT_GROUP_NAME,

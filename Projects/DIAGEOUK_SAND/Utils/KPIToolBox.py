@@ -113,6 +113,11 @@ class DIAGEOUK_SANDToolBox:
         assortment_res_dict_v3 = self.diageo_generator.diageo_global_assortment_function_v3()
         self.commonV2.save_json_to_new_tables(assortment_res_dict_v3)
 
+        equipment_score_scenes = self.get_equipment_score_relevant_scenes()
+        res_dict = self.diageo_generator.diageo_global_equipment_score(save_scene_level=False,
+                                                                       scene_list=equipment_score_scenes)
+        self.commonV2.save_json_to_new_tables(res_dict)
+
         # Global Menu kpis
         menus_res_dict = self.diageo_generator.diageo_global_share_of_menu_cocktail_function(
             cocktail_product_level=True)
@@ -573,3 +578,10 @@ class DIAGEOUK_SANDToolBox:
         for query in self.kpi_results_queries:
             cur.execute(query)
         self.rds_conn.db.commit()
+
+    def get_equipment_score_relevant_scenes(self):
+        scenes = []
+        if not self.diageo_generator.scif.empty:
+            scenes = self.diageo_generator.scif[self.diageo_generator.scif['template_name'] == \
+                                                'ON - DRAUGHT TAPS']['scene_fk'].unique().tolist()
+        return scenes

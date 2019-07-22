@@ -423,6 +423,30 @@ class MARSRU_PRODKPIFetcher:
         assortments = pd.read_sql_query(query, self.rds_conn.db)
         return assortments['product_fk'].tolist()
 
+    def get_relevant_assortment_group(self, assortment_groups):
+        assortment_groups = tuple(assortment_groups)
+        self.check_connection(self.rds_conn)
+        query = """
+                SELECT a.pk AS assortment_group_fk, p.policy AS policy
+                FROM pservice.assortment a
+                JOIN pservice.policy p ON p.pk=a.store_policy_group_fk
+                WHERE a.pk IN{}                
+                """.format(assortment_groups)
+        assortment_groups = pd.read_sql_query(query, self.rds_conn.db)
+        if not assortment_groups[assortment_groups['policy'].str.startswith('{"store_number_1":')].empty:
+            assortment_group = assortment_groups[assortment_groups['policy'].str.startswith('{"store_number_1":')][
+                'assortment_group_fk'].values[0]
+        elif not assortment_groups[assortment_groups['policy'].str.startswith('{"retailer_name":')].empty:
+            assortment_group = assortment_groups[assortment_groups['policy'].str.startswith('{"retailer_name":')][
+                'assortment_group_fk'].values[0]
+        elif not assortment_groups[assortment_groups['policy'] == '{}'].empty:
+            assortment_group = assortment_groups[assortment_groups['policy'] == '{}'][
+                'assortment_group_fk'].values[0]
+        else:
+            assortment_group = 0
+
+        return assortment_group
+
     def get_store_number_1(self, store_fk):
         query = """
                 select store_number_1

@@ -135,7 +135,7 @@ class DIAGEOPTToolBox:
             # if set_name not in self.tools.KPI_SETS_WITHOUT_A_TEMPLATE and set_name not in self.set_templates_data.keys():
             #     self.set_templates_data[set_name] = self.tools.download_template(set_name)
 
-            if set_name in ('Visible to Customer', 'Visible to Consumer %'):
+            if set_name in ('Visible to Customer', 'Visible to Consumer %', 'Visible to Consumer'):
                 # Global function
                 sku_list = filter(None, self.scif[self.scif['product_type'] == 'SKU'].product_ean_code.tolist())
                 res_dict = self.diageo_generator.diageo_global_visible_percentage(sku_list)

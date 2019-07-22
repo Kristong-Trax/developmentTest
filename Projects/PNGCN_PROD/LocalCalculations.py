@@ -20,12 +20,13 @@ if __name__ == '__main__':
     data_provider = KEngineDataProvider(project_name)
     output = Output()
     sessions = {
-                '4E75E4F1-F5F0-4B77-8337-513F61913864': ['19626328'],
-                '2af37e81-529d-43ce-b3e2-8b3307838830':[],
-                '173e66d3-5b63-4482-b1ab-4fbc6674aa70':[],
-                '4d157f69-a754-41d8-9f93-6ed9d7486bb5':[],
-                '050a5b18-acd1-4c4d-867a-e833368d8cdc':[],
-                '7d9bca6b-c3a6-4c74-901c-8dffd151d551':[]
+                'F5A52C23-90D6-4CA6-A965-046079E9FDA9': [19013919],
+                # '4E75E4F1-F5F0-4B77-8337-513F61913864': ['19626328'],
+                # '2af37e81-529d-43ce-b3e2-8b3307838830':[],
+                # '173e66d3-5b63-4482-b1ab-4fbc6674aa70':[],
+                # '4d157f69-a754-41d8-9f93-6ed9d7486bb5':[],
+                # '050a5b18-acd1-4c4d-867a-e833368d8cdc':[],
+                # '7d9bca6b-c3a6-4c74-901c-8dffd151d551':[]
 
                }
                 # '381DD222-229E-4B87-ADCD-545B9531D7F2': ['19626212'],
@@ -39,14 +40,14 @@ if __name__ == '__main__':
     # 'C544B5DB-B61F-4B02-B03A-6D8748B3B636': ['17874115']}
     for session in sessions.keys():
         print "Running for {}".format(str(session))
-        # for scene in sessions[session]:
-        #     print('Calculating scene id: ' + str(scene))
-        #     data_provider = KEngineDataProvider(project_name)
-        #     data_provider.load_scene_data(session, scene)
-        #     output = VanillaOutput()
-        #     SceneVanillaCalculations(data_provider, output).run_project_calculations()
-        #     save_scene_item_facts_to_data_provider(data_provider, output)
-        #     SceneCalculations(data_provider).calculate_kpis()
+        for scene in sessions[session]:
+            print('Calculating scene id: ' + str(scene))
+            data_provider = KEngineDataProvider(project_name)
+            data_provider.load_scene_data(session, scene)
+            output = VanillaOutput()
+            SceneVanillaCalculations(data_provider, output).run_project_calculations()
+            save_scene_item_facts_to_data_provider(data_provider, output)
+            SceneCalculations(data_provider).calculate_kpis()
         data_provider.load_session_data(session)
         output = Output()
         PngCNEmptyCalculations(data_provider, output).run_project_calculations()
