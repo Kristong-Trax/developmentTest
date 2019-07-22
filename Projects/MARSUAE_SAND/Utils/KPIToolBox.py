@@ -18,6 +18,7 @@ from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
 # from KPIUtils_v2.Calculations.SurveyCalculations import Survey
 
 # from KPIUtils_v2.Calculations.CalculationsUtils import GENERALToolBoxCalculations
+from KPIUtils_v2.Utils.Parsers.ParseInputKPI import filter_df
 from Projects.MARSUAE_SAND.Utils.Fetcher import MARSUAE_SAND_Queries
 
 __author__ = 'natalyak'
@@ -37,7 +38,7 @@ class MARSUAE_SANDToolBox:
     LINEAR_SOS = 'Linear SOS'
     POI = 'POI'
     PENETRATION = 'Penetration'
-    BLOCK = 'Block'
+    BLOCKING = 'Blocking'
 
     # Template columns
     KPI_FAMILY = 'KPI Family'
@@ -51,6 +52,7 @@ class MARSUAE_SANDToolBox:
     SCORE_LOGIC = 'score_logic'
     WEIGHT = 'Weight'
     MARS = 'MARS GCC'
+    KPI_COMBINATION_EITHER = 'Kpi Combination Either'
 
     def __init__(self, data_provider, output):
         self.output = output
@@ -159,7 +161,7 @@ class MARSUAE_SANDToolBox:
             relevant_atomic_params_df[self.WEIGHT] = relevant_atomic_params_df[self.WEIGHT].apply(lambda x: float(x))
         return relevant_atomic_params_df
 
-    def get_tiers_for_atomics(self, atomics_df):
+    def build_tiers_for_atomics(self, atomics_df):
         filtered_atomics_df = atomics_df[atomics_df[self.SCORE_LOGIC] == self.TIERED]
         tier_dict_list = list()
         if not filtered_atomics_df.empty:
@@ -177,7 +179,8 @@ class MARSUAE_SANDToolBox:
                   self.LINEAR_SOS: self.calculate_linear_sos,
                   self.POI: self.calculate_displays,
                   self.PENETRATION: self.calculate_checkouts,
-                  self.BLOCK: self.calculate_block}
+                  self.BLOCKING: self.calculate_block,
+                  self.KPI_COMBINATION_EITHER: self.calculate_kpi_combination_score}
         return mapper
 
     def map_score_logic_to_function(self):
@@ -227,6 +230,16 @@ class MARSUAE_SANDToolBox:
                                      'step_score_value': row(value_col)}
                         tier_dict_list.append(tier_dict)
 
+    def get_general_filters(self, param_row):
+        templates = param_row[self.TEMPLATE_NAME_T]
+        if templates:
+            conditions = {'location': {'template_name': templates}}
+            relevant_scenes = filter_df(conditions, self.scif)['scene_fk'].values.tolist()
+        else:
+            relevant_scenes = self.scif['scene_fk'].values.tolist()
+        general_filters = {'scene_fk': relevant_scenes}
+        return general_filters
+        
 #-------------------------------main calculation section-----------------------------------
 
     def main_calculation(self, *args, **kwargs):
@@ -247,7 +260,7 @@ class MARSUAE_SANDToolBox:
 
     def calculate_atomics(self):
         store_atomics = self.get_store_atomic_kpi_parameters()
-        self.get_tiers_for_atomics(store_atomics)
+        self.build_tiers_for_atomics(store_atomics)
         if not store_atomics.empty:
             for i, row in store_atomics:
                 kpi_type = row[self.KPI_FAMILY]
@@ -337,4 +350,5 @@ class MARSUAE_SANDToolBox:
     def calculate_block(self, param_row):
         pass
 
-
+    def calculate_kpi_combination_score(self, param_row, either=True):
+        pass

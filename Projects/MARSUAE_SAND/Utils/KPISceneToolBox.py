@@ -23,6 +23,7 @@ from KPIUtils_v2.DB.CommonV2 import Common
 
 # from KPIUtils_v2.Calculations.CalculationsUtils import GENERALToolBoxCalculations
 # from KPIUtils_v2.Calculations.CalculationsUtils.GENERALToolBoxCalculations import GENERALToolBox
+from KPIUtils_v2.Utils.Parsers.ParseInputKPI import filter_df
 
 __author__ = 'natalyak'
 
