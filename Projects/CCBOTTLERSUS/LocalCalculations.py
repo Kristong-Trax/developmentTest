@@ -36,7 +36,9 @@ if __name__ == '__main__':
     ]
 
     sessions = [
-        '1829d74f-0ef3-40d2-bcff-2b8cb6187f9c'
+        'f0fa96c0-1870-4d48-ba7b-76a8ececcd6a',
+        'd54945e1-be4d-4fd7-a363-d0f78432c322',
+        'ffdd7097-6081-4a50-9cea-2739d647341d'
     ]
 
     for session in sessions:
