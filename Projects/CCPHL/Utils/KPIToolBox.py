@@ -36,6 +36,7 @@ class CCPHLConsts(object):
     GENERAL_EMPTY = 0
     SCENE_TYPE = 'scene_type'
     PRODUCT_FK = 'product_fk'
+    STORE_ZERO_RESULTS = 'store_zero_results'
     EMPTY = 1251
     IRRELEVANT = 1252
     CUSTOM_KPIS = 19
@@ -148,6 +149,8 @@ class CCPHLToolBox:
 
         df_purity = pd.DataFrame(df_scene_data2.groupby(group_list).sum().reset_index())
 
+        store_zero_results = str(kpi[CCPHLConsts.STORE_ZERO_RESULTS]).strip().upper()
+
         for row_num, row_data in df_purity.iterrows():
             numerator = row_data['facings']
             if group_list[0] == 'template_fk':
@@ -164,10 +167,20 @@ class CCPHLToolBox:
                 continue
 
             if kpi_level_2_fk != 0:
-                self.common.write_to_db_result_new_tables(fk=kpi_level_2_fk,
-                                                          numerator_id=row_data[group_list[len(group_list)-1]],
-                                                          denominator_id=row_data[group_list[0]],
-                                                          numerator_result=numerator,
-                                                          denominator_result=denominator,
-                                                          result=result,
-                                                          score=result)
+                if result == 0:
+                    if store_zero_results == 'Y':
+                        self.common.write_to_db_result_new_tables(fk=kpi_level_2_fk,
+                                                                  numerator_id=row_data[group_list[len(group_list)-1]],
+                                                                  denominator_id=row_data[group_list[0]],
+                                                                  numerator_result=numerator,
+                                                                  denominator_result=denominator,
+                                                                  result=result,
+                                                                  score=result)
+                else:
+                    self.common.write_to_db_result_new_tables(fk=kpi_level_2_fk,
+                                                              numerator_id=row_data[group_list[len(group_list) - 1]],
+                                                              denominator_id=row_data[group_list[0]],
+                                                              numerator_result=numerator,
+                                                              denominator_result=denominator,
+                                                              result=result,
+                                                              score=result)
