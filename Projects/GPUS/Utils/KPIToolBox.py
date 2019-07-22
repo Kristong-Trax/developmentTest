@@ -74,14 +74,16 @@ class GPUSToolBox:
         return
 
     def calculate_facings_sos(self):
-        self.safety_func('Facings SOS', self.calculate_sos, [Const.FACING_SOS_KPI, {}])
+        scif = self.filter_df(self.scif, {'location_type': 'Primary Shelf'})
+        self.safety_func('Facings SOS', self.calculate_sos, [Const.FACING_SOS_KPI, {}, scif])
 
     def calculate_linear_sos(self):
         scif = self.filter_df(self.scif, {'location_type': 'Primary Shelf'})
         self.safety_func('Linear SOS', self.calculate_sos, [Const.LINEAR_SOS_KPI, {}, scif])
 
     def calculate_share_of_empty(self):
-        self.safety_func('Share of Empty', self.calculate_sos, [Const.SHARE_OF_EMPTY_KPI, {'numerator_id': 0}])
+        scif = self.filter_df(self.scif, {'location_type': 'Primary Shelf'})
+        self.safety_func('Share of Empty', self.calculate_sos, [Const.SHARE_OF_EMPTY_KPI, {'numerator_id': 0}, scif])
 
     def calculate_adjacency(self):
         self.safety_func('Adjacency', self.update_adjacency, [])
