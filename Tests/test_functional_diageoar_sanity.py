@@ -27,6 +27,8 @@ class TestKEngineOutOfTheBox(TestFunctionalCase):
         super(TestKEngineOutOfTheBox, self).set_up()
         self.mock_object('save_latest_templates',
                          path='KPIUtils.GlobalProjects.DIAGEO.Utils.TemplatesUtil.TemplateHandler')
+        self.mock_object('download_template',
+                         path='KPIUtils.GlobalProjects.DIAGEO.Utils.TemplatesUtil.TemplateHandler')
         remove_cache_and_storage()
 
     @property
