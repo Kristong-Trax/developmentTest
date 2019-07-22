@@ -446,12 +446,13 @@ class ALTRIAUSToolBox:
                                                  - len(longest_shelf)).abs().argsort()[:1]].dropna(axis=1)
             locations = relevant_template.columns[2:].tolist()
             right_bound = 0
+            longest_shelf_copy = longest_shelf.copy()
             for location in locations:
                 if right_bound > 0:
                     left_bound = right_bound + 1
                 else:
-                    left_bound = longest_shelf.iloc[:relevant_template[location].iloc[0]]['rect_x'].min()
-                right_bound = longest_shelf.iloc[:relevant_template[location].iloc[0]]['rect_x'].max()
+                    left_bound = longest_shelf_copy.iloc[:relevant_template[location].iloc[0]]['rect_x'].min()
+                right_bound = longest_shelf_copy.iloc[:relevant_template[location].iloc[0]]['rect_x'].max()
                 if locations[-1] == location:
                     right_bound = right_bound + abs(right_bound * 0.05)
                 flip_sign_pos = relevant_pos[(relevant_pos['type'] == 'Flip Sign') &
@@ -463,7 +464,8 @@ class ALTRIAUSToolBox:
                         [location, NO_FLIP_SIGN_PK, 'Flip Sign']
                 else:
                     relevant_pos.loc[flip_sign_pos.index, ['position']] = location
-                longest_shelf.drop(longest_shelf.iloc[:relevant_template[location].iloc[0]].index, inplace=True)
+                longest_shelf_copy.drop(longest_shelf_copy.iloc[:relevant_template[location].iloc[0]].index,
+                                        inplace=True)
         elif category == 'Smokeless':
             # if there are no flip signs found, there are no positions to assign
             number_of_flip_signs = len(relevant_pos[relevant_pos['type'] == 'Flip Sign'])
@@ -496,22 +498,28 @@ class ALTRIAUSToolBox:
             self.common_v2.write_to_db_result(kpi_fk, numerator_id=row.product_fk, denominator_id=row.denominator_id,
                                               result=row.width, score=row.width)
 
-        self.calculate_fixture_width(relevant_pos, category)
+        self.calculate_fixture_width(relevant_pos, longest_shelf, category)
         return
 
-    def calculate_total_shelves(self, product_mpis, category):
+    def calculate_total_shelves(self, longest_shelf, category):
         category_fk = self.get_category_fk_by_name(category)
+        product_mpis = self.mpis[(self.mpis['rect_x'] > longest_shelf['rect_x'].min()) &
+                                 (self.mpis['rect_x'] < longest_shelf['rect_x'].max()) &
+                                 (self.mpis['scene_fk'] == longest_shelf['scene_fk'].fillna(0).mode().iloc[0])]
         total_shelves = product_mpis['shelf_number'].max()
 
         kpi_fk = self.common_v2.get_kpi_fk_by_kpi_name('Total Shelves')
         self.common_v2.write_to_db_result(kpi_fk, numerator_id=category_fk, denominator_id=self.store_id,
                                           result=total_shelves)
 
-    def calculate_fixture_width(self, relevant_pos, category):
+    def calculate_fixture_width(self, relevant_pos, longest_shelf, category):
         category_fk = self.get_category_fk_by_name(category)
         # this is needed to remove intentionally duplicated 'Menu Board' POS 'Headers'
         relevant_pos = relevant_pos.drop_duplicates(subset=['position'])
         width = relevant_pos[relevant_pos['type'] == 'Header']['width'].sum()
+
+        if relevant_pos.empty or width == 0:
+            width = int(len(longest_shelf) / float(self.facings_to_feet_template[category + ' Facings'].iloc[0]))
 
         kpi_fk = self.common_v2.get_kpi_fk_by_kpi_name('Fixture Width')
         self.common_v2.write_to_db_result(kpi_fk, numerator_id=category_fk, denominator_id=self.store_id,
