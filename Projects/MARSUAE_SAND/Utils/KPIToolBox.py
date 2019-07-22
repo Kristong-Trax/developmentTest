@@ -73,7 +73,7 @@ class MARSUAE_SANDToolBox:
         self.full_store_info = self.get_store_data_by_store_id()
         self.store_info_dict = self.full_store_info.to_dict('records')[0]
         self.category_params = self.get_category_level_targets()
-        self.kpi_category_dict = self.get_kpi_category_dict()
+        # self.kpi_category_dict = self.get_kpi_category_dict()
         self.atomic_function = self.map_atomic_type_to_function()
         self.score_function = self.map_score_logic_to_function()
         self.assortment = Assortment(self.data_provider, self.output)
@@ -81,6 +81,7 @@ class MARSUAE_SANDToolBox:
         self.own_manuf_fk = self.all_products[self.all_products['manufacturer_name'] ==
                                               self.MARS]['manufacturer_fk'].values[0]
         self.atomic_kpi_results = pd.DataFrame(columns=['kpi_fk', 'result', 'score', 'weight', 'parent_name'])
+        self.atomic_tiers_df = pd.DataFrame()
         # self.kpi_results_queries = []
 
     def get_lvl3_relevant_assortment(self):
@@ -95,14 +96,18 @@ class MARSUAE_SANDToolBox:
         category_params = self.all_targets_unpacked[self.all_targets_unpacked['operation_type'] == self.CATEGORY_LEVEL]
         return category_params
 
-    def get_kpi_category_dict(self):
-        kpi_category_dict = {}
-        for i, row in self.category_params.iterrows():
-            if isinstance(row['Template Name'], (list, tuple)):
-                map(lambda x: kpi_category_dict.update({x: row['kpi_level_2_fk']}), row['Template Name'])
-            else:
-                kpi_category_dict.update({row['Template Name']: row['kpi_level_2_fk']})
-        return kpi_category_dict
+    # def get_kpi_category_dict(self):
+    #     kpi_category_dict = {}
+    #     for i, row in self.category_params.iterrows():
+    #         if isinstance(row['Template Name'], (list, tuple)):
+    #             map(lambda x: kpi_category_dict.update({x: row['kpi_level_2_fk']}), row['Template Name'])
+    #         else:
+    #             kpi_category_dict.update({row['Template Name']: row['kpi_level_2_fk']})
+    #     return kpi_category_dict
+
+    def get_tier_score_steps(self, external_targets_df):
+
+        pass
 
     def get_store_data_by_store_id(self):
         store_id = self.store_id if self.store_id else self.session_info['store_fk'].values[0]
@@ -154,6 +159,13 @@ class MARSUAE_SANDToolBox:
             relevant_atomic_params_df[self.WEIGHT] = relevant_atomic_params_df[self.WEIGHT].apply(lambda x: float(x))
         return relevant_atomic_params_df
 
+    def get_tiers_for_atomics(self, atomics_df):
+        filtered_atomics_df = atomics_df[atomics_df[self.SCORE_LOGIC] == self.TIERED]
+        tier_dict_list = list()
+        if not filtered_atomics_df.empty:
+            filtered_atomics_df.apply(self.match_tier_targets_to_scores, args=(tier_dict_list,), axis=1)
+        self.atomic_tiers_df = pd.DataFrame.from_records(tier_dict_list)
+
     def get_masking_filter(self, row, column, store_att_value):
         if store_att_value in self.split_and_strip(row[column]):
             return True
@@ -201,6 +213,20 @@ class MARSUAE_SANDToolBox:
     def get_category_parent_dict(self, row):
         return {'kpi_fk': row[self.KPI_LVL_2_NAME]}
 
+    def match_tier_targets_to_scores(self, row, tier_dict_list):
+        relevant_columns = filter(lambda x: x.startswith('score_cond'), row.index.values)
+        for column in relevant_columns:
+            if row[column]:
+                if column.startswith('score_cond_target_'):
+                    condition_number = str(column.strip('score_cond_target_'))
+                    matching_value_col = filter(lambda x: x == 'score_cond_score_'.format(condition_number),
+                                                relevant_columns)
+                    value_col = matching_value_col[0] if len(matching_value_col) > 0 else None
+                    if value_col:
+                        tier_dict = {self.KPI_LVL_3_NAME: row[self.KPI_LVL_3_NAME], 'step_value': row[column],
+                                     'step_score_value': row(value_col)}
+                        tier_dict_list.append(tier_dict)
+
 #-------------------------------main calculation section-----------------------------------
 
     def main_calculation(self, *args, **kwargs):
@@ -221,6 +247,7 @@ class MARSUAE_SANDToolBox:
 
     def calculate_atomics(self):
         store_atomics = self.get_store_atomic_kpi_parameters()
+        self.get_tiers_for_atomics(store_atomics)
         if not store_atomics.empty:
             for i, row in store_atomics:
                 kpi_type = row[self.KPI_FAMILY]
