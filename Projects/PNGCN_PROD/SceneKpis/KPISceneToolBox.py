@@ -1064,9 +1064,6 @@ class PngcnSceneKpis(object):
                (matches.stacking_layer != -1) & (matches.facing_sequence_number != -1)
         matches_reduced = matches[mask]
 
-        # Handle uncorrect width_mm_advance = 0 cases.
-        matches_reduced = self.deal_with_empty_advanced_width_mm_values(matches_reduced)
-
         # calculate number of products in each stack
         items_in_stack = matches.loc[mask, ['scene_fk', 'bay_number', 'shelf_number', 'facing_sequence_number']].groupby(
             ['scene_fk', 'bay_number', 'shelf_number', 'facing_sequence_number']).size().reset_index()
@@ -1077,25 +1074,29 @@ class PngcnSceneKpis(object):
         matches_reduced['gross_len_split_stack_new'] = matches_reduced['width_mm_advance'] * \
             matches_reduced.w_split
         new_scif_gross_split = matches_reduced[['product_fk', 'scene_fk', 'gross_len_split_stack_new',
-                                                'width_mm_advance', 'width_mm']].groupby(by=['product_fk', 'scene_fk']).sum().reset_index()
+                          'width_mm_advance', 'width_mm']].groupby(by=['product_fk', 'scene_fk']).sum().reset_index()
 
         new_scif = pd.merge(self.scif, new_scif_gross_split,
                             how='left', on=['scene_fk', 'product_fk'])
-        new_scif = new_scif.fillna(0)
+
+        # Handle uncorrect gross_len_split_stack_new <= 1 cases.
+        new_scif = self.deal_with_empty_advanced_width_mm_values(new_scif).fillna(0)
+
         self.save_nlsos_as_kpi_results(new_scif)
         self.insert_data_into_custom_scif(new_scif)
 
-    def deal_with_empty_advanced_width_mm_values(self, matches_reduced):
-        relevant_rows = matches_reduced[(matches_reduced['width_mm'] != 0) & (matches_reduced['width_mm_advance'] == 0)]
+    def deal_with_empty_advanced_width_mm_values(self, new_scif):
+        relevant_rows = new_scif[(new_scif['gross_len_split_stack'] >= 1) &
+                                 (new_scif['gross_len_split_stack_new'] <= 1)]
         relevant_indices = relevant_rows.reset_index()['index'].tolist()
         for i in relevant_indices:
-            matches_reduced.iloc[i, matches_reduced.columns.get_loc('width_mm_advance')] = \
-                matches_reduced.iloc[i]['width_mm']
-        return matches_reduced
+            new_scif.iloc[i, new_scif.columns.get_loc('gross_len_split_stack_new')] = \
+                new_scif.iloc[i]['gross_len_split_stack']
+        return new_scif
 
     def calculate_result(self, num, den):
         if den:
-            return num/float(den)
+            return num / float(den)
         else:
             return 0
 
