@@ -155,11 +155,21 @@ class TNUVAILToolBox:
                 sku_level_fk = self.common_v2.get_kpi_fk_by_kpi_type(Consts.OOS_SKU_LEVEL_TIRAT_TSVI)
         return store_level_fk, category_level_fk, sku_level_fk
 
+    def _calculate_category_level_distribution(self, lv3_data, categories_list):
+        pass    # TODO GROUP BY CATEGORY !!
+
+
     def _calculate_distribution(self, lvl3_data, policy):
         store_level_kpi_fk, category_lvl_fk, sku_level_fk = self._get_assortment_kpi_fks(policy, is_distribution=True)
         category_per_product = self.products[[Consts.PRODUCT_FK, Consts.CATEGORY_FK]]
         lvl3_data = pd.merge(lvl3_data, category_per_product, how='left')
-        store_num_res, store_denom_res = lvl3_data.sum(), lvl3_data.count()
+        store_num_res, store_denom_res = lvl3_data.in_store.sum(), lvl3_data.in_store.count()
+        assortment_ratio = store_num_res / float(store_denom_res) if store_denom_res else 0
+        self.common_v2.write_to_db_result(fk=store_level_kpi_fk, numerator_id=999, numerator_result=store_num_res,
+                                          denominator_id=self.store_id, denominator_result=store_denom_res,
+                                          score=assortment_ratio, result=assortment_ratio,
+                                          identifier_result=store_level_kpi_fk)
+        categories_list = lvl3_data.category_fk.unique().tolist()
 
 
     def _calculate_assortment(self):
