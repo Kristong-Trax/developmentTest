@@ -21,7 +21,7 @@ class DIAGEOITCalculations(BaseCalculationsScript):
 #    Config.init()
 #    project_name = 'ps1-sand'
 #    data_provider = KEngineDataProvider(project_name)
-#    session = '37ae1878-bc8b-4d1b-8b26-1798f4c562da'
+#    session = '17E91F59-1812-4B7A-B944-1BE4DEABD182'
 #    data_provider.load_session_data(session)
 #    output = Output()
 #    DIAGEOITCalculations(data_provider, output).run_project_calculations()
