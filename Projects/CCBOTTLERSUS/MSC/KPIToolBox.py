@@ -280,7 +280,7 @@ class MSCToolBox:
         agg_numerator_scif = numerator_scif.groupby('scene_fk', as_index=False)[['facings']].sum()
         agg_numerator_scif.rename(columns={'facings': 'num_facings'}, inplace=True)
 
-        results = agg_numerator_scif.merge(agg_denominator_scif)
+        results = pd.merge(agg_denominator_scif, agg_numerator_scif, on='scene_fk', how='outer').fillna(0)
         results['sos'] = (results['num_facings'] / results['den_facings'])
         results['sos'].fillna(0, inplace=True)
 
