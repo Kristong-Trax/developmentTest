@@ -26,7 +26,7 @@ class MSCToolBox:
         self.store_id = self.data_provider[Data.STORE_FK]
         self.store_info = self.data_provider[Data.STORE_INFO]
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
-        self.scif = self.scif[self.scif['product_type'] != "Irrelevant"]
+        self.scif = self.scif[~(self.scif['product_type'].isin(["Irrelevant", "Empty", "Other"]))]
         self.ps_data_provider = PsDataProvider(self.data_provider, self.output)
         self.templates = {}
         self.result_values = self.ps_data_provider.get_result_values()
@@ -108,36 +108,12 @@ class MSCToolBox:
 
     # facings calculations
     def calculate_facings(self, kpi_line, relevant_scif):
-        if not self.check_activation_status(kpi_line, relevant_scif):
-            return
-
-        numerator_param = kpi_line[Const.NUMERATOR_TYPE]
-        numerator_values = self.does_exist(kpi_line, Const.NUMERATOR_VALUE)
-
-        denominator_param = kpi_line[Const.DENOMINATOR_TYPE]
-        if denominator_param:
-            denominator_values = self.does_exist(kpi_line, Const.DENOMINATOR_VALUE)
-            denominator_scif = relevant_scif[relevant_scif[denominator_param].isin(denominator_values)]
-        else:
-            denominator_scif = relevant_scif
-
-        excluded_param = kpi_line[Const.EXCLUDED_TYPE]
-        if excluded_param:
-            excluded_values = self.does_exist(kpi_line, Const.EXCLUDED_VALUE)
-            denominator_scif = denominator_scif[~denominator_scif[excluded_param].isin(excluded_values)]
-
-        numerator_scif = denominator_scif[denominator_scif[numerator_param].isin(numerator_values)]
+        denominator_scif = self.get_denominator_scif(kpi_line, relevant_scif)
+        numerator_scif = self.get_numerator_scif(kpi_line, denominator_scif)
 
         numerator_result = numerator_scif['facings'].sum()
         denominator_result = denominator_scif['facings'].sum()
-
-        if denominator_result > 0:
-            sos_value = numerator_result / float(denominator_result)
-        else:
-            sos_value = 0
-
-        if not self.check_activation_threshold(kpi_line, sos_value):
-            return
+        sos_value = numerator_result / denominator_result
 
         kpi_fk = self.common_db.get_kpi_fk_by_kpi_type(kpi_line[Const.KPI_NAME])
         self.common_db.write_to_db_result(kpi_fk, numerator_id=self.manufacturer_fk, numerator_result=numerator_result,
@@ -154,68 +130,89 @@ class MSCToolBox:
         :param relevant_scif:
         :return:
         """
+
+
         try:
             activation_param = kpi_line[Const.ACTIVATION_TYPE]
         except KeyError:
             activation_param = None
         if activation_param:
-            # get activation parameter columns and iterate over them
-            for parameter_column in [col for col in kpi_line.keys() if Const.ACTIVATION_TYPE in col]:
-                if kpi_line[parameter_column]:  # check to make sure this kpi has this activation param
-                    # get the corresponding value column, e.g. 'activation_value 2' for 'activation_type 2'
-                    value_column = parameter_column.replace(Const.ACTIVATION_TYPE, Const.ACTIVATION_VALUE)
-                    # get the values for the value column
-                    values = self.does_exist(kpi_line, value_column)
-                    # filter the relevant_scif for these values
-                    relevant_scif = relevant_scif[relevant_scif[kpi_line[parameter_column]].isin(values)]
+            relevant_scif = self.filter_scif_by_template_columns(kpi_line, Const.ACTIVATION_TYPE,
+                                                                 Const.ACTIVATION_VALUE, relevant_scif)
 
-            # verify all of the main activation values are a part of the relevant_scif
-            activation_value = self.does_exist(kpi_line, Const.ACTIVATION_VALUE)
-            # return true if all values are present, else false
-            return set(activation_value).issubset(set(relevant_scif[activation_param].tolist()))
+            if relevant_scif.empty:
+                return False
+            else:
+                return True
         else:
             # no activation for this KPI? return true
             return True
 
-    def check_activation_threshold(self, kpi_line, sos_value):
+    def calculate_availability(self, kpi_line, relevant_scif, save_result=True):
+        availability = True
+        numerator_scif = self.get_numerator_scif(kpi_line, relevant_scif)
+
+        if numerator_scif.empty:
+            availability = False
+
+        minimum_skus = self.does_exist(kpi_line, Const.MINIMUM_SKUS)
+        if minimum_skus:
+            number_of_skus = len(numerator_scif['product_name'].unique())
+            availability = number_of_skus >= minimum_skus[0]
+
+        minimum_brands = self.does_exist(kpi_line, Const.MINIMUM_BRANDS)
+        if minimum_brands:
+            number_of_brands = len(numerator_scif['brand_name'].unique())
+            availability = number_of_brands >= minimum_brands[0]
+
+        minimum_packages = self.does_exist(kpi_line, Const.MINIMUM_PACKAGES)
+        if minimum_packages:
+            number_of_packages = len(numerator_scif.drop_duplicates(subset=['Multi-Pack Size', 'Base Size']))
+            availability = number_of_packages >= minimum_packages[0]
+
         threshold = self.does_exist(kpi_line, Const.THRESHOLD)
         if threshold:
-            return sos_value > threshold
-        else:
-            return True
-
-    # availability calculations
-    def calculate_availability(self, kpi_line, relevant_scif):
-        """
-        checks if all the lines in the availability sheet passes the KPI (there is at least one product
-        in this relevant scif that has the attributes).
-        :param relevant_scif: filtered scif
-        :param minimum_facings: minimum facings required to pass
-        :param kpi_line: line from the availability sheet
-        :return: boolean
-        """
-        filtered_scif = self.filter_scif_availability(kpi_line, relevant_scif)
-        minimum_facings = kpi_line[Const.MINIMUM_FACINGS]
-        availability = filtered_scif[filtered_scif['facings'] > 0]['facings'].count() >= minimum_facings
+            availability = numerator_scif['facings'].sum() / relevant_scif['facings'].sum() >= threshold[0]
 
         # result = self.ps_data_provider.get_pks_of_result(
         #     Const.PASS) if availability else self.ps_data_provider.get_pks_of_result(Const.FAIL)
         result = 100 if availability else 0
 
+        if save_result:
+            kpi_fk = self.common_db.get_kpi_fk_by_kpi_type(kpi_line[Const.KPI_NAME])
+            self.common_db.write_to_db_result(kpi_fk, numerator_id=self.manufacturer_fk, denominator_id=self.store_id,
+                                              result=result, identifier_parent=Const.MSC, should_enter=True)
+        return availability
+
+    def calculate_per_scene_availability(self, kpi_line, relevant_scif):
+        scenes = relevant_scif['scene_fk'].unique().tolist()
+        passing_scenes = 0
+
+        for scene in scenes:
+            scene_scif = relevant_scif[relevant_scif['scene_fk'] == scene]
+
+            if not self.check_activation_status(kpi_line, scene_scif):
+                continue
+
+            passing_scenes += self.calculate_availability(kpi_line, scene_scif, save_result=False)
+            if passing_scenes:  # we only need at least one passing scene
+                break
+
         kpi_fk = self.common_db.get_kpi_fk_by_kpi_type(kpi_line[Const.KPI_NAME])
         self.common_db.write_to_db_result(kpi_fk, numerator_id=self.manufacturer_fk, denominator_id=self.store_id,
-                                          result=result, identifier_parent=Const.MSC, should_enter=True)
-        return availability
+                                          result=passing_scenes, identifier_parent=Const.MSC, should_enter=True)
+
+        return passing_scenes
 
     def calculate_double_availability(self, kpi_line, relevant_scif):
         group_1_scif = self.filter_scif_availability(kpi_line, relevant_scif, group=1)
         group_1_minimum_facings = kpi_line[Const.GROUP1_MINIMUM_FACINGS]
-        if not group_1_scif['facings'].sum() >= group_1_minimum_facings:
-            return False
+        availability = group_1_scif['facings'].sum() >= group_1_minimum_facings
 
-        group_2_scif = self.filter_scif_availability(kpi_line, relevant_scif, group=2)
-        group_2_minimum_facings = kpi_line[Const.GROUP2_MINIMUM_FACINGS]
-        availability = group_2_scif['facings'].sum() >= group_2_minimum_facings
+        if availability:
+            group_2_scif = self.filter_scif_availability(kpi_line, relevant_scif, group=2)
+            group_2_minimum_facings = kpi_line[Const.GROUP2_MINIMUM_FACINGS]
+            availability = group_2_scif['facings'].sum() >= group_2_minimum_facings
 
         # result = self.ps_data_provider.get_pks_of_result(
         #     Const.PASS) if availability else self.ps_data_provider.get_pks_of_result(Const.FAIL)
@@ -235,36 +232,21 @@ class MSCToolBox:
         :param group: used to indicate group for double availability
         :return:
         """
-        try:
-            excluded_param = kpi_line[Const.EXCLUDED_TYPE]
-        except KeyError:
-            excluded_param = None
-        if excluded_param:
-            excluded_values = self.does_exist(kpi_line, Const.EXCLUDED_VALUE)
-            relevant_scif = relevant_scif[~relevant_scif[excluded_param].isin(excluded_values)]
-
         if group == 1:
             names_of_columns = {
                 Const.GROUP1_BRAND: "brand_name",
-                Const.MANUFACTURER: "manufacturer_name"
             }
         elif group == 2:
             names_of_columns = {
                 Const.GROUP2_BRAND: "brand_name",
-                Const.MANUFACTURER: "manufacturer_name"
             }
         else:
-            names_of_columns = {
-                Const.MANUFACTURER: "manufacturer_name",
-                Const.BRAND: "brand_name",
-                Const.ATT1: "att1",
-                Const.ATT3: "att3",
-                Const.SIZE: "size",
-                Const.SUB_PACKAGES: "number_of_sub_packages"
-            }
+            return relevant_scif
+
         for name in names_of_columns:
             relevant_scif = self.filter_scif_specific(
                 relevant_scif, kpi_line, name, names_of_columns[name])
+
         return relevant_scif
 
     def filter_scif_specific(self, relevant_scif, kpi_line, name_in_template, name_in_scif):
@@ -283,6 +265,72 @@ class MSCToolBox:
             return relevant_scif[relevant_scif[name_in_scif].isin(values)]
         return relevant_scif
 
+    # Share of Scenes functions
+    def calculate_share_of_scenes(self, kpi_line, relevant_scif):
+        relevant_scenes_scif = self.get_denominator_scif(kpi_line, relevant_scif)
+        # we need to get only the scenes from the denominator scif
+        denominator_scif = \
+            relevant_scif[relevant_scif['scene_fk'].isin(relevant_scenes_scif['scene_fk'].unique().tolist())]
+
+        # the numerator population is applied only to scenes that exist in the denominator population
+        numerator_scif = self.get_numerator_scif(kpi_line, denominator_scif)
+
+        agg_denominator_scif = denominator_scif.groupby('scene_fk', as_index=False)[['facings']].sum()
+        agg_denominator_scif.rename(columns={'facings': 'den_facings'}, inplace=True)
+        agg_numerator_scif = numerator_scif.groupby('scene_fk', as_index=False)[['facings']].sum()
+        agg_numerator_scif.rename(columns={'facings': 'num_facings'}, inplace=True)
+
+        results = agg_numerator_scif.merge(agg_denominator_scif)
+        results['sos'] = (results['num_facings'] / results['den_facings'])
+        results['sos'].fillna(0, inplace=True)
+
+        threshold = self.does_exist(kpi_line, Const.THRESHOLD)
+        if threshold:
+            results = results[results['sos'] >= threshold[0]]
+
+        numerator_scenes = len(results[results['sos'] > 0])
+        denominator_scenes = len(results)
+
+        if denominator_scenes > 0:
+            sos_value = numerator_scenes / float(denominator_scenes)
+        else:
+            sos_value = 0
+
+        kpi_fk = self.common_db.get_kpi_fk_by_kpi_type(kpi_line[Const.KPI_NAME])
+        self.common_db.write_to_db_result(kpi_fk, numerator_id=self.manufacturer_fk, numerator_result=numerator_scenes,
+                                          denominator_id=self.store_id, denominator_result=denominator_scenes,
+                                          result=sos_value * 100, identifier_parent=Const.MSC, should_enter=True)
+        return
+
+    # Share of POCs functions
+    def calculate_share_of_pocs(self, kpi_line, relevant_scif):
+        numerator_scif = self.get_numerator_scif(kpi_line, relevant_scif)
+        denominator_scif = self.get_denominator_scif(kpi_line, relevant_scif)
+        # remove the numerator subset from the denominator
+        denominator_scif = pd.concat([numerator_scif, denominator_scif]).drop_duplicates(keep=False)
+
+        minimum_facings = self.does_exist(kpi_line, Const.MINIMUM_FACINGS)
+        if minimum_facings:
+            numerator_scif = numerator_scif[numerator_scif['facings'] >= minimum_facings[0]]
+            denominator_scif = denominator_scif[denominator_scif['facings'] >= minimum_facings[0]]
+
+        numerator_scenes = len(numerator_scif['scene_fk'].unique())
+        denominator_scenes = len(denominator_scif['scene_fk'].unique())
+
+        denominator_value = float(numerator_scenes + denominator_scenes)
+
+        if denominator_value > 0:
+            poc_share = numerator_scenes / denominator_value
+        else:
+            poc_share = 0
+
+        kpi_fk = self.common_db.get_kpi_fk_by_kpi_type(kpi_line[Const.KPI_NAME])
+        self.common_db.write_to_db_result(kpi_fk, numerator_id=self.manufacturer_fk, numerator_result=numerator_scenes,
+                                          denominator_id=self.store_id, denominator_result=denominator_value,
+                                          result=poc_share * 100, identifier_parent=Const.MSC, should_enter=True)
+
+        return
+
     # helper functions
     def get_kpi_function(self, kpi_type):
         """
@@ -294,12 +342,14 @@ class MSCToolBox:
             return self.calculate_availability
         elif kpi_type == Const.DOUBLE_AVAILABILITY:
             return self.calculate_double_availability
+        elif kpi_type == Const.PER_SCENE_AVAILABILITY:
+            return self.calculate_per_scene_availability
         elif kpi_type == Const.FACINGS:
             return self.calculate_facings
-        elif kpi_type == Const.SHARE_OF_DISPLAYS:
-            return self.calculate_facings
-        elif kpi_type == Const.DISPLAY_PRESENCE:
-            return self.calculate_facings
+        elif kpi_type == Const.SHARE_OF_SCENES:
+            return self.calculate_share_of_scenes
+        elif kpi_type == Const.SHARE_OF_POCS:
+            return self.calculate_share_of_pocs
         else:
             Log.warning(
                 "The value '{}' in column sheet in the template is not recognized".format(kpi_type))
@@ -320,3 +370,42 @@ class MSCToolBox:
             elif type(cell) in [unicode, str]:
                 return [x.strip() for x in cell.split(",")]
         return None
+
+    def get_numerator_scif(self, kpi_line, denominator_scif):
+        numerator_scif = self.filter_scif_by_template_columns(kpi_line, Const.NUM_TYPE, Const.NUM_VALUE,
+                                                              denominator_scif)
+        numerator_scif = self.filter_scif_by_template_columns(kpi_line, Const.NUM_EXCLUDE_TYPE, Const.NUM_EXCLUDE_VALUE,
+                                                              numerator_scif, exclude=True)
+        numerator_scif = self.filter_scif_by_template_columns(kpi_line, Const.EXCLUDED_TYPE, Const.EXCLUDED_VALUE,
+                                                              numerator_scif, exclude=True)
+        return numerator_scif
+
+    def get_denominator_scif(self, kpi_line, relevant_scif):
+        denominator_scif = self.filter_scif_by_template_columns(kpi_line, Const.DEN_TYPE, Const.DEN_VALUE,
+                                                                relevant_scif)
+        denominator_scif = self.filter_scif_by_template_columns(kpi_line, Const.EXCLUDED_TYPE, Const.EXCLUDED_VALUE,
+                                                                denominator_scif, exclude=True)
+        return denominator_scif
+
+    @staticmethod
+    def filter_scif_by_template_columns(kpi_line, type_base, value_base, relevant_scif, exclude=False):
+        filters = {}
+
+        # get denominator filters
+        for den_column in [col for col in kpi_line.keys() if type_base in col]:  # get relevant den columns
+            if kpi_line[den_column]:  # check to make sure this kpi has this denominator param
+                filters[kpi_line[den_column]] = \
+                    [value.strip() for value in kpi_line[den_column.replace(type_base, value_base)].split(
+                        ',')]  # get associated values
+
+        for key in filters.iterkeys():
+            if key not in relevant_scif.columns.tolist():
+                Log.error('{} is not a valid parameter type'.format(key))
+                continue
+            if exclude:
+                relevant_scif = relevant_scif[~(relevant_scif[key].isin(filters[key]))]
+            else:
+                relevant_scif = relevant_scif[relevant_scif[key].isin(filters[key])]
+
+        return relevant_scif
+
