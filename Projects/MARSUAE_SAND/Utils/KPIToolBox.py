@@ -10,6 +10,7 @@ import os
 
 from KPIUtils_v2.DB.CommonV2 import Common
 from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
+from KPIUtils_v2.Calculations.BlockCalculations_v2 import Block
 # from KPIUtils_v2.Calculations.AvailabilityCalculations import Availability
 # from KPIUtils_v2.Calculations.NumberOfScenesCalculations import NumberOfScenes
 # from KPIUtils_v2.Calculations.PositionGraphsCalculations import PositionGraphs
@@ -38,7 +39,10 @@ class MARSUAE_SANDToolBox:
     LINEAR_SOS = 'Linear SOS'
     POI = 'POI'
     PENETRATION = 'Penetration'
-    BLOCKING = 'Blocking'
+    BLOCK = 'Block'
+    CHECKOUTS_COUNT = 'Checkouts Count'
+    DISPLAYS_COUNT = 'Displays Count'
+
 
     # Template columns
     KPI_FAMILY = 'KPI Family'
@@ -52,7 +56,11 @@ class MARSUAE_SANDToolBox:
     SCORE_LOGIC = 'score_logic'
     WEIGHT = 'Weight'
     MARS = 'MARS GCC'
-    KPI_COMBINATION_EITHER = 'Kpi Combination Either'
+    KPI_COMBINATION = 'Kpi Combination'
+    PARENT_KPI = 'parent_kpi'
+    CHILD_KPI = 'child_kpi'
+
+    TOTAL_UAE_SCORE = 'Total UAE Score'
 
     def __init__(self, data_provider, output):
         self.output = output
@@ -70,6 +78,10 @@ class MARSUAE_SANDToolBox:
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
         self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         self.kpi_static_data = self.common.get_kpi_static_data()
+        self.probe_groups = self.get_probe_group()
+        self.match_product_in_scene = self.match_product_in_scene.merge(self.probe_groups, on='probe_match_fk',
+                                                                        how='left')
+        self.matches_products = self.match_product_in_scene.merge(self.all_products, on='product_fk', how='left')
         self.external_targets = self.get_all_kpi_external_targets()
         self.all_targets_unpacked = self.unpack_all_external_targets()
         self.full_store_info = self.get_store_data_by_store_id()
@@ -79,11 +91,14 @@ class MARSUAE_SANDToolBox:
         self.atomic_function = self.map_atomic_type_to_function()
         self.score_function = self.map_score_logic_to_function()
         self.assortment = Assortment(self.data_provider, self.output)
+        self.block = Block(self.data_provider, self.output)
         self.lvl3_assortment = self.get_lvl3_relevant_assortment()
         self.own_manuf_fk = self.all_products[self.all_products['manufacturer_name'] ==
                                               self.MARS]['manufacturer_fk'].values[0]
-        self.atomic_kpi_results = pd.DataFrame(columns=['kpi_fk', 'result', 'score', 'weight', 'parent_name'])
+        self.atomic_kpi_results = pd.DataFrame(columns=['kpi_fk', 'kpi_type', 'result', 'score', 'weight',
+                                               'score_by_weight', 'parent_name'])
         self.atomic_tiers_df = pd.DataFrame()
+        self.cat_lvl_res = pd.DataFrame()
         # self.kpi_results_queries = []
 
     def get_lvl3_relevant_assortment(self):
@@ -97,6 +112,11 @@ class MARSUAE_SANDToolBox:
     def get_category_level_targets(self):
         category_params = self.all_targets_unpacked[self.all_targets_unpacked['operation_type'] == self.CATEGORY_LEVEL]
         return category_params
+
+    def get_probe_group(self):
+        query = MARSUAE_SAND_Queries.get_probe_group(self.session_uid)
+        probe_group = pd.read_sql_query(query, self.rds_conn.db)
+        return probe_group
 
     # def get_kpi_category_dict(self):
     #     kpi_category_dict = {}
@@ -177,10 +197,10 @@ class MARSUAE_SANDToolBox:
     def map_atomic_type_to_function(self):
         mapper = {self.AVAILABILITY: self.calculate_availability,
                   self.LINEAR_SOS: self.calculate_linear_sos,
-                  self.POI: self.calculate_displays,
-                  self.PENETRATION: self.calculate_checkouts,
-                  self.BLOCKING: self.calculate_block,
-                  self.KPI_COMBINATION_EITHER: self.calculate_kpi_combination_score}
+                  self.DISPLAYS_COUNT: self.calculate_displays,
+                  self.CHECKOUTS_COUNT: self.calculate_checkouts,
+                  self.BLOCK: self.calculate_block,
+                  self.KPI_COMBINATION: self.calculate_kpi_combination_score}
         return mapper
 
     def map_score_logic_to_function(self):
@@ -202,7 +222,7 @@ class MARSUAE_SANDToolBox:
         output_df = pd.DataFrame(data_list)
         return output_df
 
-    def add_atomic_result_to_kpi_results_df(self, result_list):
+    def add_kpi_result_to_kpi_results_df(self, result_list):
         self.atomic_kpi_results.loc[len(self.atomic_kpi_results)] = result_list
 
     def get_kpi_type_by_pk(self, kpi_fk):
@@ -237,8 +257,47 @@ class MARSUAE_SANDToolBox:
             relevant_scenes = filter_df(conditions, self.scif)['scene_fk'].values.tolist()
         else:
             relevant_scenes = self.scif['scene_fk'].values.tolist()
-        general_filters = {'scene_fk': relevant_scenes}
+        general_filters = {'location': {'scene_fk': relevant_scenes}}
         return general_filters
+
+    @staticmethod
+    def get_non_sos_kpi_filters(param_row):
+        include_filters = {}
+        if param_row['param_type_1/numerator_type']:
+            include_filters.update({param_row['param_type_1/numerator_type']: param_row['param_value_1/numerator_value']})
+        if param_row['param_type_2/denom_type']:
+            include_filters.update({param_row['param_type_2/denom_type']: param_row['param_value_2/denom_value']})
+        condition_filters = {'population': {'include': [include_filters]}}
+        exclude_filters = {}
+        if param_row['exclude_param_type_1']:
+            exclude_filters.update({param_row['exclude_param_type_1']: param_row['exclude_param_value_1']})
+        condition_filters['population'].update({'exclude': [exclude_filters]})
+        return condition_filters
+
+    def get_sos_filters(self, param_row):
+        if not param_row['param_type_2/denom_type'] or not param_row['param_type_1/numerator_type']:
+            Log.error('Sos filters are incorrect for kpi {}. '
+                      'Kpi is not calculated'.format(param_row[self.KPI_LVL_3_NAME]))
+            return None
+        denominator_filters = {}
+        if param_row['param_type_2/denom_type']:
+            denominator_filters.update({param_row['param_type_2/denom_type']: param_row['param_value_2/denom_value']})
+        sos_filters = {'population': {'include': [denominator_filters]}}
+
+        exclude_filters = {}
+        if param_row['exclude_param_type_1']:
+            exclude_filters.update({param_row['exclude_param_type_1']: param_row['exclude_param_value_1']})
+        if exclude_filters:
+            sos_filters['population'].update({'exclude': [exclude_filters]})
+
+        num_filters = {}
+        if param_row['param_type_1/numerator_type']:
+            num_filters.update({param_row['param_type_1/numerator_type']: param_row['param_value_1/numerator_value']})
+        numerator_filters = sos_filters.copy()
+        numerator_filters['population']['include'].append(num_filters)
+
+        final_filters = {'denom_filters': sos_filters, 'num_filters': numerator_filters}
+        return final_filters
         
 #-------------------------------main calculation section-----------------------------------
 
@@ -246,25 +305,96 @@ class MARSUAE_SANDToolBox:
         """
         This function calculates the KPI results.
         """
-        score = 0
         self.calculate_atomics()
         self.calculate_category_level()
         self.calculate_total_score()
-        return score
 
     def calculate_total_score(self):
-        pass
+        category_results = self.cat_lvl_res.merge(self.get_category_level_targets, on='kpi_type', how='left')
+        sum_weights = float(category_results[self.WEIGHT].sum())
+        category_results['weighted_scores'] = category_results['cat_score'] * category_results[self.WEIGHT]
+        total_result = category_results['weighted_scores'].sum() / sum_weights
+        kpi_fk = self.common.get_kpi_fk_by_kpi_type(self.TOTAL_UAE_SCORE)
+        identifier_result = {'kpi_fk': kpi_fk}
+        self.common.write_to_db_result(fk=kpi_fk, numerator_id=self.own_manuf_fk, denominator_id=self.store_id,
+                                       result=total_result, score=total_result,
+                                       identifier_result=identifier_result)
 
     def calculate_category_level(self):
-        pass
+        self.cat_lvl_res = self.atomic_kpi_results.groupby(['parent_kpi'], as_index=False).agg({'score_by_weight': np.sum})
+        self.cat_lvl_res.rename(columns={'parent_kpi': 'kpi_type', 'score_by_weight': 'cat_score'}, inplace=True)
+        identifier_parent = {'kpi_fk': self.common.get_kpi_fk_by_kpi_type(self.TOTAL_UAE_SCORE)}
+        for i, result in self.cat_lvl_res.iterrows():
+            kpi_fk = self.common.get_kpi_fk_by_kpi_type(result['kpi_type'])
+            identifier_result = {'kpi_fk': kpi_fk}
+            self.common.write_to_db_result(fk=kpi_fk, numerator_id=self.own_manuf_fk, denominator_id=self.store_id,
+                                           result=result['cat_score'], score=result['cat_score'],
+                                           identifier_parent=identifier_parent, identifier_result=identifier_result)
 
     def calculate_atomics(self):
         store_atomics = self.get_store_atomic_kpi_parameters()
         self.build_tiers_for_atomics(store_atomics)
         if not store_atomics.empty:
-            for i, row in store_atomics:
-                kpi_type = row[self.KPI_FAMILY]
-                self.atomic_function[kpi_type](row)
+            # Option 1: rearrange kpi order and then calculate
+            store_atomics.reset_index(inplace=True)
+            reordered_index = self.reorder_kpis(store_atomics)
+            for i in reordered_index:
+                row = store_atomics.iloc[i]
+                self.calculate_atomic_results(row)
+
+            # Option 2: check for existence of children
+            # for i, row in store_atomics:
+            #     if row[self.CHILD_KPI]:
+            #         child_kpis = row[self.CHILD_KPI] if isinstance(row[self.CHILD_KPI], (list, tuple)) \
+            #                                                                     else [row[self.CHILD_KPI]]
+            #         for kpi in child_kpis:
+            #             ind = store_atomics[store_atomics[self.KPI_LVL_3_NAME] == kpi].index[0]
+            #             child_row = store_atomics.iloc[ind]
+            #             self.calculate_atomic_results(child_row)
+            #     else:
+            #         self.calculate_atomic_results(row)
+
+
+                # if row[self.KPI_LVL_3_NAME] not in self.atomic_kpi_results['kpi_name'].values.tolist():
+                #     kpi_type = row[self.KPI_FAMILY]
+                #     self.atomic_function[kpi_type](row)
+
+    def reorder_kpis(self, store_atomics):
+        input_df = store_atomics.copy()
+        input_df['remaining_child'] = input_df[self.CHILD_KPI].copy()
+        input_df.loc[~(input_df['remaining_child'] == ''), 'remaining_child'] = input_df['remaining_child'].apply(
+            lambda x: x if isinstance(x, list) else [x])
+        reordered_df = pd.DataFrame(columns=input_df.columns.values.tolist())
+        child_flag = True
+        while child_flag:
+            input_df['remaining_child'] = input_df.apply(self.check_remaining_child, axis=1, args=(input_df,))
+            remaining_df = input_df[(input_df['remaining_child'] == '') |
+                                    (input_df['remaining_child'].isnull())]
+            reordered_df = reordered_df.append(remaining_df)
+            input_df = input_df[(~(input_df['remaining_child'] == '')) &
+                                (~(input_df['remaining_child'].isnull()))]
+            if input_df.empty:
+                child_flag = False
+        reordered_index = reordered_df.index
+        return reordered_index
+
+    def check_remaining_child(self, row, initial_df):
+        child_kpis = row['remaining_child']
+        if child_kpis:
+            child_kpis = child_kpis if isinstance(child_kpis, (list, tuple)) else [child_kpis]
+            for kpi in child_kpis:
+                if kpi not in initial_df[self.KPI_LVL_3_NAME].values:
+                    ind_to_remove = [i for i, x in enumerate(child_kpis) if x == kpi]
+                    for ind in ind_to_remove:
+                        child_kpis.pop(ind)
+                        if len(child_kpis) == 0:
+                            child_kpis = ''
+        return child_kpis
+
+    def calculate_atomic_results(self, param_row):
+        if param_row[self.KPI_LVL_3_NAME] not in self.atomic_kpi_results['kpi_name'].values.tolist():
+            kpi_type = param_row[self.KPI_FAMILY]
+            self.atomic_function[kpi_type](param_row)
 
     def calculate_availability(self, param_row):
         if self.lvl3_assortment.empty:
@@ -289,15 +419,17 @@ class MARSUAE_SANDToolBox:
                     if row.group_target_date <= self.visit_date:
                         denominator_res = row.target
                 result = np.divide(float(row.passes), float(denominator_res)) * 100
-                score = self.get_score(result, param_row)
+                score, weight = self.get_score(result, param_row)
+                target = param_row[self.TARGET] if param_row[self.TARGET] else None
                 self.common.write_to_db_result(fk=row.kpi_fk_lvl2, numerator_id=self.own_manuf_fk,
                                                numerator_result=row.passes, result=result,
                                                denominator_id=self.store_id, denominator_result=denominator_res,
-                                               score=score, weight=param_row[self.WEIGHT],
+                                               score=score * weight, weight=weight, target=target,
                                                identifier_result=identifier_result,
                                                identifier_parent=identifier_cat_parent, should_enter=True)
-                self.add_atomic_result_to_kpi_results_df([row.kpi_fk_lvl2, self.own_manuf_fk, self.store_id,
-                                                          result, score])
+                self.add_kpi_result_to_kpi_results_df([row.kpi_fk_lvl2, param_row[self.KPI_LVL_3_NAME],
+                                                       result, score, weight, score * weight,
+                                                       param_row[self.KPI_LVL_2_NAME]])
 
     @staticmethod
     def add_actual_facings_to_assortment(lvl3_ass_res, scif):
@@ -321,34 +453,177 @@ class MARSUAE_SANDToolBox:
         if score_function is not None:
             score = score_function(param_row, result)
         else:
-            Log.error('Score logic for kpi {} is not supported for kpi. '
-                      'Score set to zero'.format(param_row[self.KPI_LVL_3_NAME]))
+            Log.error('Score logic {} for kpi {} is not supported. '
+                      'Score set to zero'.format(kpi_logic, param_row[self.KPI_LVL_3_NAME]))
             score = 0
-        return score
+        weight = float(param_row[self.WEIGHT])
+        return score, weight
 
     def get_tiered_score(self, param_row, result):
-        pass
+        # in case the rule is >= step...
+        kpi_name = param_row[self.KPI_LVL_3_NAME]
+        tiers = self.atomic_tiers_df[self.atomic_tiers_df[self.KPI_LVL_3_NAME] == kpi_name]
+        relevant_step = min([tiers[tiers['step_value'] >= result]['step_value'].values.tolist()])
+        tier_score_value = tiers[tiers['step_value'] == relevant_step]['step_score_value'].values[0]
+        score = tier_score_value
+        return score
 
     def get_relative_score(self, param_row, result):
         target = float(param_row[self.TARGET])
-        # think if maybe make the code error-friendly....
-        score = result / target * param_row[self.WEIGHT] if target else 0
+        # think if maybe make the code error-friendly and to check float. ....
+        score = result / target if target else 0
         return score
 
     def get_binary_score(self, param_row, result):
-        pass
+        target = float(param_row[self.TARGET])
+        # think if maybe make the code error-friendly and to check float. ....
+        score = 1 if result >= target else 0
+        return score
 
     def calculate_linear_sos(self, param_row):
-        pass
+        general_filters = self.get_general_filters(param_row)
+        sos_filters = self.get_sos_filters(param_row)
+        if sos_filters is not None:
+            numerator_filters = sos_filters['num_filters'].update(general_filters)
+            denominator_filters = sos_filters['denom_filters'].update(general_filters)
+            numerator_length = self.calculate_linear_space(numerator_filters)
+            denominator_length = self.calculate_linear_space(denominator_filters)
+            result = numerator_length / denominator_length if denominator_length else 0
+            score, weight = self.get_score(result=result, param_row=param_row)
+
+            num_id = param_row['param_value_1/numerator_value'] if \
+                        isinstance(param_row['param_value_1/numerator_value'], (str, unicode)) else self.own_manuf_fk
+            denom_id = param_row['param_value_2/denom_value']
+            identifier_parent = self.get_identifier_parent_for_atomic(param_row)
+            identifier_result = self.get_identifier_result_for_atomic(param_row)
+            target = param_row[self.TARGET] if param_row[self.TARGET] else None
+            self.common.write_to_db_result(fk=param_row['kpi_level_2_fk'], numerator_id=num_id,
+                                           numerator_result=numerator_length, denominator_id=denom_id,
+                                           denominator_result=denominator_length, target=target,
+                                           result=result, score=score * weight, weight=weight,
+                                           identifier_parent=identifier_parent, identifier_result=identifier_result,
+                                           should_enter=True)
+            self.add_kpi_result_to_kpi_results_df([param_row['kpi_level_2_fk'], param_row[self.KPI_LVL_3_NAME],
+                                                   result, score, weight, score * weight,
+                                                   param_row[self.KPI_LVL_2_NAME]])
 
     def calculate_displays(self, param_row):
-        pass
+        general_filters = self.get_general_filters(param_row)
+        filtered_scif = filter_df(general_filters, self.scif)
+        result = len(filtered_scif['scene_fk'].unique().tolist())
+        score, weight = self.get_score(result, param_row)
+        identifier_parent = self.get_identifier_parent_for_atomic(param_row)
+        #TODO: think!!  not sure I want to use identifier result here: I know that this kpi will not have children but I want to be as generic as possible
+        target = param_row[self.TARGET] if param_row[self.TARGET] else None
+        identifier_result = self.get_identifier_result_for_atomic(param_row)
+        self.common.write_to_db_result(fk=param_row['kpi_level_2_fk'], numerator_id=self.own_manuf_fk,
+                                       numerator_result=result, result=result, target=target,
+                                       denominator_id=self.store_id, score=score * weight, weight=weight,
+                                       identifier_parent=identifier_parent, identifier_result=identifier_result,
+                                       should_enter=True)
+        self.add_kpi_result_to_kpi_results_df([param_row['kpi_level_2_fk'], param_row[self.KPI_LVL_3_NAME],
+                                               result, score, weight, score * weight,
+                                               param_row[self.KPI_LVL_2_NAME]])
+
+    def get_identifier_parent_for_atomic(self, param_row):
+        parent_fk = self.common.get_kpi_fk_by_kpi_type(param_row[self.PARENT_KPI]) if param_row[self.PARENT_KPI] else \
+                                                    self.common.get_kpi_fk_by_kpi_type(param_row[self.KPI_LVL_2_NAME])
+        identifier_parent = {'kpi_fk': parent_fk}
+        return identifier_parent
+
+    def get_identifier_result_for_atomic(self, param_row):
+        identifier_result = None
+        if param_row[self.CHILD_KPI]:
+            identifier_result = {'kpi': param_row['kpi_level_2_fk']}
+        return identifier_result
 
     def calculate_checkouts(self, param_row):
-        pass
+        filters = self.get_general_filters(param_row)
+        kpi_filters = self.get_non_sos_kpi_filters(param_row)
+        filters.update(kpi_filters)
+        filtered_matches = filter_df(filters, self.matches_products)
+        filtered_matches = filtered_matches[filtered_matches['stacking_layer'] == 1]
+        scene_probe_groups = filtered_matches.drop_duplicates(subset=['scene_fk', 'probe_group_id'])
+        result = len(scene_probe_groups)
+        score, weight = self.get_score(param_row=param_row, result=result)
+        # maybe i should have a function that unifies these rows.
+        target = param_row[self.TARGET] if param_row[self.TARGET] else None
+        identifier_parent = self.get_identifier_parent_for_atomic(param_row)
+        identifier_result = self.get_identifier_result_for_atomic(param_row)
+        self.common.write_to_db_result(fk=param_row['kpi_level_2_fk'], numerator_id=self.own_manuf_fk,
+                                       numerator_result=result, result=result, target=target,
+                                       denominator_id=self.store_id, score=score * weight, weight=weight,
+                                       identifier_parent=identifier_parent, identifier_result=identifier_result,
+                                       should_enter=True)
+        self.add_kpi_result_to_kpi_results_df([param_row['kpi_level_2_fk'], param_row[self.KPI_LVL_3_NAME],
+                                               result, score, weight, score * weight,
+                                               param_row[self.KPI_LVL_2_NAME]])
 
     def calculate_block(self, param_row):
-        pass
+        if self.lvl3_assortment.empty:
+            return
+        block_ass = self.lvl3_assortment[self.lvl3_assortment['ass_lvl2_kpi_type'] == param_row[self.KPI_LVL_3_NAME]]
+        if not block_ass.empty:
+            block_ass = self.get_template_relevant_assortment_result(block_ass, param_row)
+            relevant_products = block_ass['product_fk'].unique().tolist()
+            block_clusters = self.get_relevant_block_clusters(relevant_products, param_row)
+            cluster_results = list()
+            number_of_products = float(len(relevant_products))
+            for cluster in block_clusters:
+                facings = len(cluster.nodes['probe_matck_fk']) # verify how the data looks
+                cluster_results.append(facings/number_of_products)
+            result = max(cluster_results)
+            score, weight = self.get_score(result, param_row)
 
-    def calculate_kpi_combination_score(self, param_row, either=True):
-        pass
+            target = param_row[self.TARGET] if param_row[self.TARGET] else None
+            identifier_parent = self.get_identifier_parent_for_atomic(param_row)
+            identifier_result = self.get_identifier_result_for_atomic(param_row)
+            self.common.write_to_db_result(fk=param_row['kpi_level_2_fk'], numerator_id=self.own_manuf_fk,
+                                           numerator_result=result, result=result, target=target,
+                                           denominator_id=self.store_id, score=score * weight, weight=weight,
+                                           identifier_parent=identifier_parent, identifier_result=identifier_result,
+                                           should_enter=True)
+            self.add_kpi_result_to_kpi_results_df([param_row['kpi_level_2_fk'], param_row[self.KPI_LVL_3_NAME],
+                                                   result, score, weight, score * weight,
+                                                   param_row[self.KPI_LVL_2_NAME]])
+
+    def get_relevant_block_clusters(self, relevant_products, param_row):
+        general_filters = self.get_general_filters(param_row)
+        scenes = general_filters['location']['scene_fk']
+        block_filters = {'product_fk': relevant_products}
+        additional_filters = {'minimum_facing_for_block': 2, 'minimum_block_ratio': 0}
+        cluster_list = list()
+        for scene in scenes:
+            location_filters = {'scene_fk': [scene]}
+            block_res = self.block.network_x_block_together(block_filters, location_filters, additional_filters)
+            block_res = block_res[block_res['is_block']]
+            if not block_res:
+                continue
+            else:
+                max_ratio = block_res['facing_percentage'].max()
+                largest_cluster = block_res[block_res['facing_percentage'] == max_ratio]['cluster'].values[0]
+                cluster_list.append(largest_cluster)
+        return cluster_list
+
+    def calculate_kpi_combination_score(self, param_row):
+        child_kpis = param_row[self.CHILD_KPI] if isinstance(param_row[self.CHILD_KPI], (list, tuple)) \
+                                                    else [param_row[self.CHILD_KPI]]
+        child_results = self.atomic_kpi_results[self.atomic_kpi_results['kpi_type'].isin(child_kpis)]
+        result = len(child_results[(child_results['score'] == 1) | (child_results['score'] == 100)])
+        score, weight = self.get_score(result, param_row)
+        target = param_row[self.TARGET] if param_row[self.TARGET] else None
+        identifier_parent = self.get_identifier_parent_for_atomic(param_row)
+        identifier_result = self.get_identifier_result_for_atomic(param_row)
+        self.common.write_to_db_result(fk=param_row['kpi_level_2_fk'], numerator_id=self.own_manuf_fk,
+                                       result=result, target=target, denominator_id=self.store_id,
+                                       score=score * weight, weight=weight,
+                                       identifier_parent=identifier_parent, identifier_result=identifier_result,
+                                       should_enter=True)
+        self.add_kpi_result_to_kpi_results_df([param_row['kpi_level_2_fk'], param_row[self.KPI_LVL_3_NAME],
+                                               result, score, weight, score * weight,
+                                               param_row[self.KPI_LVL_2_NAME]])
+
+    def calculate_linear_space(self, filters):
+        filtered_scif = filter_df(filters, self.scif)
+        space_length = filtered_scif['gross_len_ign_stack'].sum()
+        return float(space_length)
