@@ -1,0 +1,33 @@
+
+class Consts(object):
+    PRODUCT_TYPE = 'product_type'
+    TYPES_TO_IGNORE_IN_SOS = ['Irrelevant', 'Empty']
+    FACINGS_FOR_SOS = 'facings_ign_stack'
+    MANUFACTURER_FK = 'manufacturer_fk'
+    CATEGORY_FK = 'category_fk'
+    PRODUCT_FK = 'product_fk'
+
+    NUMERATOR_RESULT = 'numerator_result'
+    DENOMINATOR_RESULT = 'denominator_result'
+    ENTITIES_FOR_DB = [MANUFACTURER_FK, CATEGORY_FK, NUMERATOR_RESULT, DENOMINATOR_RESULT]
+    OBLIGATORY_ASSORTMENT = 'TBD???'
+    MILKY_POLICY = 'TBD???'
+    TIRAT_TSVI_POLICY = 'TBD???'
+    TEMPLATE_NAME = 'template_name'
+
+    # KPIs names
+    SOS_MANUFACTURER_OUT_OF_STORE_KPI = 'TBD???'
+    SOS_OWN_MANUFACTURER_OUT_OF_CAT_KPI = 'TBD???'
+    SOS_ALL_MANUFACTURER_OUT_OF_CAT_KPI = 'TBD???'
+    DIST_STORE_LEVEL_MILKY = 'TBD???'
+    DIST_STORE_LEVEL_TIRAT_TSVI = 'TBD???'
+    DIST_CATEGORY_LEVEL_MILKY = 'TBD???'
+    DIST_CATEGORY_LEVEL_TIRAT_TSVI = 'TBD???'
+    DIST_SKU_LEVEL_MILKY = 'TBD???'
+    DIST_SKU_LEVEL_TIRAT_TSVI = 'TBD???'
+    OOS_STORE_LEVEL_MILKY = 'TBD???'
+    OOS_STORE_LEVEL_TIRAT_TSVI = 'TBD???'
+    OOS_CATEGORY_LEVEL_MILKY = 'TBD???'
+    OOS_CATEGORY_LEVEL_TIRAT_TSVI = 'TBD???'
+    OOS_SKU_LEVEL_MILKY = 'TBD???'
+    OOS_SKU_LEVEL_TIRAT_TSVI = 'TBD???'

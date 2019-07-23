@@ -26,7 +26,7 @@ class DIAGEORUToolBox:
         This function calculates the KPI results.
         """
         # SOS Out Of The Box kpis
-        self.diageo_generator.activate_ootb_kpis(self.commonV2)
+        # self.diageo_generator.activate_ootb_kpis(self.commonV2)
 
         log_runtime('Updating templates')
         self.template_handler.update_templates()
