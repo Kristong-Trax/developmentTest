@@ -513,6 +513,7 @@ class ALTRIAUSToolBox:
                                           result=total_shelves)
 
     def calculate_fixture_width(self, relevant_pos, longest_shelf, category):
+        longest_shelf = longest_shelf[longest_shelf['stacking_layer'] == 1]
         category_fk = self.get_category_fk_by_name(category)
         # this is needed to remove intentionally duplicated 'Menu Board' POS 'Headers'
         relevant_pos = relevant_pos.drop_duplicates(subset=['position'])
