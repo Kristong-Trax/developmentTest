@@ -62,16 +62,26 @@ class HEINZCRToolBox:
         self.country = self.store_info['country'].iloc[0]
         self.current_date = datetime.now()
         self.extra_spaces_template = pd.read_excel(Const.EXTRA_SPACES_RELEVANT_SUB_CATEGORIES_PATH)
+        self.store_targets = pd.read_excel(Const.STORE_TARGETS_PATH)
         self.store_assortment = PSAssortmentDataProvider(
             self.data_provider).execute(policy_name=None)
-        self.sub_category_assortment = pd.merge(self.store_assortment,
-                                                self.all_products.loc[:, ['product_fk', 'sub_category',
-                                                                          'sub_category_fk']],
-                                                how='left', on='product_fk')
-        self.sub_category_assortment = \
-            self.sub_category_assortment[~self.sub_category_assortment['assortment_name'].str.contains('ASSORTMENT')]
-        self.store_assortment_without_powerskus = \
-            self.store_assortment[self.store_assortment['assortment_name'].str.contains('ASSORTMENT')]
+        try:
+            self.sub_category_assortment = pd.merge(self.store_assortment,
+                                                    self.all_products.loc[:, ['product_fk', 'sub_category',
+                                                                              'sub_category_fk']],
+                                                    how='left', on='product_fk')
+            self.sub_category_assortment = \
+                self.sub_category_assortment[~self.sub_category_assortment['assortment_name'].str.contains(
+                    'ASSORTMENT')]
+        except KeyError:
+            self.sub_category_assortment = pd.DataFrame()
+
+        try:
+            self.store_assortment_without_powerskus = \
+                self.store_assortment[self.store_assortment['assortment_name'].str.contains('ASSORTMENT')]
+        except KeyError:
+            self.store_assortment_without_powerskus = pd.DataFrame()
+
         self.adherence_results = pd.DataFrame(columns=['product_fk', 'trax_average',
                                                        'suggested_price', 'into_interval'])
         self.extra_spaces_results = pd.DataFrame(
@@ -96,11 +106,9 @@ class HEINZCRToolBox:
         perfect_store_score += self.calculate_powersku_price_adherence()
         perfect_store_score += self.calculate_perfect_store_extra_spaces()
 
-        # this needs to be moved to excel or kpi_targets
-        if self.country == 'Costa Rica':
-            target = 7
-        elif self.country == 'Chile':
-            target = 6
+        relevant_target_df = self.store_targets[self.store_targets['Country'] == self.country]
+        if not relevant_target_df.empty:
+            target = relevant_target_df['Store Execution Score'].iloc[0]
         else:
             target = 0
 
