@@ -1393,7 +1393,15 @@ class CCRUKPIToolBox:
             partner_facings_max = 0
             other_facings_max = 0
 
-        facings_target = max(partner_facings_max, other_facings_max + 1)
+        # # option 1:
+        # # tested sku is lead if its facings are more or equal to any partner sku facings
+        # # or they are more than any other sku facings
+        # facings_target = max(partner_facings_max, other_facings_max + 1)
+
+        # # option 2:
+        # tested sku is lead if its facings are more or equal to any sku facings (either partner or any other sku)
+        facings_target = max(partner_facings_max, other_facings_max)
+
         self.update_kpi_scores_and_results(params, {'result': tested_facings, 'target': facings_target})
         return tested_facings, facings_target
 
@@ -3017,7 +3025,7 @@ class CCRUKPIToolBox:
                                     target = int(target)
                                 try:
                                     result = round(float(self.kpi_scores_and_results[TARGET][self.kpi_name_to_id[TARGET]
-                                                                                             .get(atomic_kpi_name)].get('result')), 2)
+                                                         .get(atomic_kpi_name)].get('result')), 2)
                                     result = int(result) if result == int(result) else result
                                 except:
                                     result = 0
