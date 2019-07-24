@@ -31,7 +31,7 @@ class TNUVAILToolBox:
         self.project_name = self.data_provider.project_name
         self.match_product_in_scene = self.data_provider[Data.MATCHES]
         self.session_info = self.data_provider[Data.SESSION_INFO]
-        self.products = self.data_provider[Data.PRODUCTS]
+        self.all_products = self.data_provider[Data.ALL_PRODUCTS]
         self.scene_info = self.data_provider[Data.SCENES_INFO]
         self.store_id = self.data_provider[Data.STORE_FK]
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
@@ -155,13 +155,29 @@ class TNUVAILToolBox:
                 sku_level_fk = self.common_v2.get_kpi_fk_by_kpi_type(Consts.OOS_SKU_LEVEL_TIRAT_TSVI)
         return store_level_fk, category_level_fk, sku_level_fk
 
-    def _calculate_category_level_distribution(self, lv3_data, categories_list):
-        pass    # TODO GROUP BY CATEGORY !!
-
+    @staticmethod
+    def _calculate_category_level_distribution(lvl3_data):
+        """
+        This method grouping by the assortment SKUs per category and returns the amount of in_store skus per product.
+        :param lvl3_data: The SKU level assortment data
+        :return: A dictionary - the key is the category_fk and the value is the amount of SKUs in store from that
+        category. E.g: {1: 10, 2:0, 3:22 ..}
+        """
+        in_store_per_category = lvl3_data[[Consts.CATEGORY_FK, Consts.IN_STORE]].fillna(0)
+        in_store_per_category = in_store_per_category.groupby(Consts.CATEGORY_FK, as_index=False).agg(['sum', 'count'])
+        in_store_per_category.columns = in_store_per_category.columns.droplevel(0)
+        in_store_per_category = in_store_per_category[Consts.IN_STORE].to_dict()
+        return in_store_per_category
 
     def _calculate_distribution(self, lvl3_data, policy):
+        """
+
+        :param lvl3_data:
+        :param policy:
+        :return:
+        """
         store_level_kpi_fk, category_lvl_fk, sku_level_fk = self._get_assortment_kpi_fks(policy, is_distribution=True)
-        category_per_product = self.products[[Consts.PRODUCT_FK, Consts.CATEGORY_FK]]
+        category_per_product = self.all_products[[Consts.PRODUCT_FK, Consts.CATEGORY_FK]]
         lvl3_data = pd.merge(lvl3_data, category_per_product, how='left')
         store_num_res, store_denom_res = lvl3_data.in_store.sum(), lvl3_data.in_store.count()
         assortment_ratio = store_num_res / float(store_denom_res) if store_denom_res else 0
@@ -169,8 +185,19 @@ class TNUVAILToolBox:
                                           denominator_id=self.store_id, denominator_result=store_denom_res,
                                           score=assortment_ratio, result=assortment_ratio,
                                           identifier_result=store_level_kpi_fk)
-        categories_list = lvl3_data.category_fk.unique().tolist()
+        results_per_category = self._calculate_category_level_distribution(lvl3_data)
 
+    def _save_results_for_assortment_category_level(self, results_per_category, kpi_fk, parent_kpi_fk):
+        """
+
+        :param category_lvl_kpi_fk:
+        :return:
+        """
+        for category_fk, result in results_per_category.results_per_category.iteritems():
+            self.common_v2.write_to_db_result(fk=kpi_fk, numerator_id=999, numerator_result=store_num_res,
+                                              denominator_id=self.store_id, denominator_result=store_denom_res,
+                                              score=result, result=result,
+                                              identifier_result=kpi_fk, identifier_parent=parent_kpi_fk)
 
     def _calculate_assortment(self):
         """

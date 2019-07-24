@@ -6,6 +6,7 @@ class Consts(object):
     MANUFACTURER_FK = 'manufacturer_fk'
     CATEGORY_FK = 'category_fk'
     PRODUCT_FK = 'product_fk'
+    IN_STORE = 'in_store'
 
     NUMERATOR_RESULT = 'numerator_result'
     DENOMINATOR_RESULT = 'denominator_result'
