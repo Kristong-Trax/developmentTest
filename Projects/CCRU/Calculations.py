@@ -117,12 +117,12 @@ class CCRUProjectCalculations:
         if kpi_source:
             pass
 
-        elif self.test_store == "Y":
-            Log.warning('Error. Session cannot be calculated: '
-                        'Store is a test store. '
-                        'Store ID {1}.'
-                        .format(self.pos_kpi_set_name, self.store_id))
-            return
+        # elif self.test_store == "Y":
+        #     Log.warning('Error. Session cannot be calculated: '
+        #                 'Store is a test store. '
+        #                 'Store ID {1}.'
+        #                 .format(self.pos_kpi_set_name, self.store_id))
+        #     return
 
         else:
             Log.warning('Error. Session cannot be calculated. '
