@@ -18,6 +18,8 @@ class JNJESCalculations(BaseCalculationsScript):
         eye_level_data, exclusion_data = self._parse_templates_for_calculations()
         common = Common(self.data_provider)
         jnj_generator = JNJGenerator(self.data_provider, self.output, common, exclusion_data)
+        jnj_generator.linear_sos_out_of_store_discovery_report()
+        jnj_generator.share_of_shelf_manufacturer_out_of_sub_category()
         jnj_generator.calculate_auto_assortment()
         jnj_generator.eye_hand_level_sos_calculation(eye_level_data)
         jnj_generator.promo_calc(sales_reps_date='2019-06-30')
@@ -34,7 +36,7 @@ class JNJESCalculations(BaseCalculationsScript):
         exclusion_template = pd.read_excel(exclusive_template_path)
         return eye_hand_lvl_template, exclusion_template
 
-#
+
 # if __name__ == '__main__':
 #     LoggerInitializer.init('jnjes calculations')
 #     Config.init()
