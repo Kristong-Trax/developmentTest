@@ -68,7 +68,7 @@ class MARSUAE_SANDSceneToolBox:
             if not promo_price_df.empty:
                 prices_df = prices_df.merge(promo_price_df, on='product_fk', how='outer')
                 prices_df['price'] = prices_df.apply(self.get_max_price, axis=1)
-            for i, row in prices_df:
+            for i, row in prices_df.iterrows():
                 self.common.write_to_db_result(fk=kpi_fk, numerator_id=row['product_fk'], denominator_id=self.store_id,
                                                result=row['price'])
                 self.add_kpi_result_to_kpi_results_df([kpi_fk, row['product_fk'], self.store_id, row['price'], None])
@@ -82,9 +82,7 @@ class MARSUAE_SANDSceneToolBox:
         return max_value
 
     def get_promo_price_df(self):
-        promo_price_df = pd.DataFrame()
-        if 'promotion_price' in self.match_product_in_scene.columns.values.tolist():
-            promo_price_df = self.match_product_in_scene[~self.match_product_in_scene['promotion_price'].isnull()]
-            if not promo_price_df.empty:
-                promo_price_df = promo_price_df.groupby(['product_fk'], as_index=False).agg({'promotion_price': np.max})
+        promo_price_df = self.match_product_in_scene[~self.match_product_in_scene['promotion_price'].isnull()]
+        if not promo_price_df.empty:
+            promo_price_df = promo_price_df.groupby(['product_fk'], as_index=False).agg({'promotion_price': np.max})
         return promo_price_df

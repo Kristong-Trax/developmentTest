@@ -51,7 +51,7 @@ class MARSUAE_SANDToolBox:
     KPI_LVL_3_NAME = 'KPI Level 3 Name'
     TEMPLATE_NAME_T = 'Template Name'
     TIERED = 'Tiered'
-    RELATIVE_SCORE = 'Relative score'
+    RELATIVE_SCORE = 'Relative Score'
     BINARY = 'Binary'
     SCORE_LOGIC = 'score_logic'
     WEIGHT = 'Weight'
@@ -59,6 +59,7 @@ class MARSUAE_SANDToolBox:
     KPI_COMBINATION = 'Kpi Combination'
     PARENT_KPI = 'parent_kpi'
     CHILD_KPI = 'child_kpi'
+    KPI_TYPE = 'kpi_type'
 
     TOTAL_UAE_SCORE = 'Total UAE Score'
 
@@ -246,7 +247,7 @@ class MARSUAE_SANDToolBox:
                                                 relevant_columns)
                     value_col = matching_value_col[0] if len(matching_value_col) > 0 else None
                     if value_col:
-                        tier_dict = {self.KPI_LVL_3_NAME: row[self.KPI_LVL_3_NAME], 'step_value': row[column],
+                        tier_dict = {self.KPI_TYPE: row[self.KPI_TYPE], 'step_value': row[column],
                                      'step_score_value': row(value_col)}
                         tier_dict_list.append(tier_dict)
 
@@ -277,7 +278,7 @@ class MARSUAE_SANDToolBox:
     def get_sos_filters(self, param_row):
         if not param_row['param_type_2/denom_type'] or not param_row['param_type_1/numerator_type']:
             Log.error('Sos filters are incorrect for kpi {}. '
-                      'Kpi is not calculated'.format(param_row[self.KPI_LVL_3_NAME]))
+                      'Kpi is not calculated'.format(param_row[self.KPI_TYPE]))
             return None
         denominator_filters = {}
         if param_row['param_type_2/denom_type']:
@@ -348,14 +349,14 @@ class MARSUAE_SANDToolBox:
             #         child_kpis = row[self.CHILD_KPI] if isinstance(row[self.CHILD_KPI], (list, tuple)) \
             #                                                                     else [row[self.CHILD_KPI]]
             #         for kpi in child_kpis:
-            #             ind = store_atomics[store_atomics[self.KPI_LVL_3_NAME] == kpi].index[0]
+            #             ind = store_atomics[store_atomics[self.KPI_TYPE] == kpi].index[0]
             #             child_row = store_atomics.iloc[ind]
             #             self.calculate_atomic_results(child_row)
             #     else:
             #         self.calculate_atomic_results(row)
 
 
-                # if row[self.KPI_LVL_3_NAME] not in self.atomic_kpi_results['kpi_name'].values.tolist():
+                # if row[self.KPI_TYPE] not in self.atomic_kpi_results['kpi_name'].values.tolist():
                 #     kpi_type = row[self.KPI_FAMILY]
                 #     self.atomic_function[kpi_type](row)
 
@@ -383,7 +384,7 @@ class MARSUAE_SANDToolBox:
         if child_kpis:
             child_kpis = child_kpis if isinstance(child_kpis, (list, tuple)) else [child_kpis]
             for kpi in child_kpis:
-                if kpi not in initial_df[self.KPI_LVL_3_NAME].values:
+                if kpi not in initial_df[self.KPI_TYPE].values:
                     ind_to_remove = [i for i, x in enumerate(child_kpis) if x == kpi]
                     for ind in ind_to_remove:
                         child_kpis.pop(ind)
@@ -392,14 +393,14 @@ class MARSUAE_SANDToolBox:
         return child_kpis
 
     def calculate_atomic_results(self, param_row):
-        if param_row[self.KPI_LVL_3_NAME] not in self.atomic_kpi_results['kpi_name'].values.tolist():
+        if param_row[self.KPI_TYPE] not in self.atomic_kpi_results['kpi_name'].values.tolist():
             kpi_type = param_row[self.KPI_FAMILY]
             self.atomic_function[kpi_type](param_row)
 
     def calculate_availability(self, param_row):
         if self.lvl3_assortment.empty:
             return
-        lvl3_ass_res = self.lvl3_assortment[self.lvl3_assortment['ass_lvl2_kpi_type'] == param_row[self.KPI_LVL_3_NAME]]
+        lvl3_ass_res = self.lvl3_assortment[self.lvl3_assortment['ass_lvl2_kpi_type'] == param_row[self.KPI_TYPE]]
         if not lvl3_ass_res.empty:
             identifier_cat_parent = self.get_category_parent_dict(param_row)
             lvl3_ass_res = self.get_template_relevant_assortment_result(lvl3_ass_res, param_row)
@@ -427,7 +428,7 @@ class MARSUAE_SANDToolBox:
                                                score=score * weight, weight=weight, target=target,
                                                identifier_result=identifier_result,
                                                identifier_parent=identifier_cat_parent, should_enter=True)
-                self.add_kpi_result_to_kpi_results_df([row.kpi_fk_lvl2, param_row[self.KPI_LVL_3_NAME],
+                self.add_kpi_result_to_kpi_results_df([row.kpi_fk_lvl2, param_row[self.KPI_TYPE],
                                                        result, score, weight, score * weight,
                                                        param_row[self.KPI_LVL_2_NAME]])
 
@@ -454,15 +455,15 @@ class MARSUAE_SANDToolBox:
             score = score_function(param_row, result)
         else:
             Log.error('Score logic {} for kpi {} is not supported. '
-                      'Score set to zero'.format(kpi_logic, param_row[self.KPI_LVL_3_NAME]))
+                      'Score set to zero'.format(kpi_logic, param_row[self.KPI_TYPE]))
             score = 0
         weight = float(param_row[self.WEIGHT])
         return score, weight
 
     def get_tiered_score(self, param_row, result):
         # in case the rule is >= step...
-        kpi_name = param_row[self.KPI_LVL_3_NAME]
-        tiers = self.atomic_tiers_df[self.atomic_tiers_df[self.KPI_LVL_3_NAME] == kpi_name]
+        kpi_name = param_row[self.KPI_TYPE]
+        tiers = self.atomic_tiers_df[self.atomic_tiers_df[self.KPI_TYPE] == kpi_name]
         relevant_step = min([tiers[tiers['step_value'] >= result]['step_value'].values.tolist()])
         tier_score_value = tiers[tiers['step_value'] == relevant_step]['step_score_value'].values[0]
         score = tier_score_value
@@ -503,7 +504,7 @@ class MARSUAE_SANDToolBox:
                                            result=result, score=score * weight, weight=weight,
                                            identifier_parent=identifier_parent, identifier_result=identifier_result,
                                            should_enter=True)
-            self.add_kpi_result_to_kpi_results_df([param_row['kpi_level_2_fk'], param_row[self.KPI_LVL_3_NAME],
+            self.add_kpi_result_to_kpi_results_df([param_row['kpi_level_2_fk'], param_row[self.KPI_TYPE],
                                                    result, score, weight, score * weight,
                                                    param_row[self.KPI_LVL_2_NAME]])
 
@@ -521,7 +522,7 @@ class MARSUAE_SANDToolBox:
                                        denominator_id=self.store_id, score=score * weight, weight=weight,
                                        identifier_parent=identifier_parent, identifier_result=identifier_result,
                                        should_enter=True)
-        self.add_kpi_result_to_kpi_results_df([param_row['kpi_level_2_fk'], param_row[self.KPI_LVL_3_NAME],
+        self.add_kpi_result_to_kpi_results_df([param_row['kpi_level_2_fk'], param_row['kpi_type'],
                                                result, score, weight, score * weight,
                                                param_row[self.KPI_LVL_2_NAME]])
 
@@ -555,14 +556,14 @@ class MARSUAE_SANDToolBox:
                                        denominator_id=self.store_id, score=score * weight, weight=weight,
                                        identifier_parent=identifier_parent, identifier_result=identifier_result,
                                        should_enter=True)
-        self.add_kpi_result_to_kpi_results_df([param_row['kpi_level_2_fk'], param_row[self.KPI_LVL_3_NAME],
+        self.add_kpi_result_to_kpi_results_df([param_row['kpi_level_2_fk'], param_row['kpi_type'],
                                                result, score, weight, score * weight,
                                                param_row[self.KPI_LVL_2_NAME]])
 
     def calculate_block(self, param_row):
         if self.lvl3_assortment.empty:
             return
-        block_ass = self.lvl3_assortment[self.lvl3_assortment['ass_lvl2_kpi_type'] == param_row[self.KPI_LVL_3_NAME]]
+        block_ass = self.lvl3_assortment[self.lvl3_assortment['ass_lvl2_kpi_type'] == param_row[self.KPI_TYPE]]
         if not block_ass.empty:
             block_ass = self.get_template_relevant_assortment_result(block_ass, param_row)
             relevant_products = block_ass['product_fk'].unique().tolist()
@@ -583,7 +584,7 @@ class MARSUAE_SANDToolBox:
                                            denominator_id=self.store_id, score=score * weight, weight=weight,
                                            identifier_parent=identifier_parent, identifier_result=identifier_result,
                                            should_enter=True)
-            self.add_kpi_result_to_kpi_results_df([param_row['kpi_level_2_fk'], param_row[self.KPI_LVL_3_NAME],
+            self.add_kpi_result_to_kpi_results_df([param_row['kpi_level_2_fk'], param_row[self.KPI_TYPE],
                                                    result, score, weight, score * weight,
                                                    param_row[self.KPI_LVL_2_NAME]])
 
@@ -619,7 +620,7 @@ class MARSUAE_SANDToolBox:
                                        score=score * weight, weight=weight,
                                        identifier_parent=identifier_parent, identifier_result=identifier_result,
                                        should_enter=True)
-        self.add_kpi_result_to_kpi_results_df([param_row['kpi_level_2_fk'], param_row[self.KPI_LVL_3_NAME],
+        self.add_kpi_result_to_kpi_results_df([param_row['kpi_level_2_fk'], param_row[self.KPI_TYPE],
                                                result, score, weight, score * weight,
                                                param_row[self.KPI_LVL_2_NAME]])
 
