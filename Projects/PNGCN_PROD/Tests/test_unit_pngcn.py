@@ -6,7 +6,7 @@ from mock import MagicMock
 from Projects.PNGCN_PROD.SceneKpis.KPISceneToolBox import PngcnSceneKpis
 from Projects.PNGCN_PROD.KPIToolBox import PNGToolBox
 import Projects.PNGCN_PROD.Tests.Data.records as r
-from KPIUtils_v2.Calculations.BlockCalculations_v2 import Block as BLOCK
+from KPIUtils_v2.Calculations.BlockCalculations_v2 import Block as Block
 import pandas as pd
 import numpy
 
@@ -37,7 +37,7 @@ class TestPngcn(TestUnitCase):
         self.PSProjectConnector = self.mock_object('PSProjectConnector',
                                                    path='KPIUtils_v2.DB.PsProjectConnector')
 
-        self.block = self.mock_object('BLOCK')
+        self.block = self.mock_object('Block')
 
         # mock 'Common' object used in toolbox
         self.common_mock = self.mock_object(
