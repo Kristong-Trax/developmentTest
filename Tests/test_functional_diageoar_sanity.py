@@ -25,6 +25,10 @@ class TestKEngineOutOfTheBox(TestFunctionalCase):
 
     def set_up(self):
         super(TestKEngineOutOfTheBox, self).set_up()
+        self.mock_object('save_latest_templates',
+                         path='KPIUtils.GlobalProjects.DIAGEO.Utils.TemplatesUtil.TemplateHandler')
+        self.mock_object('download_template',
+                         path='KPIUtils.GlobalProjects.DIAGEO.Utils.TemplatesUtil.TemplateHandler')
         remove_cache_and_storage()
 
     @property
@@ -47,20 +51,8 @@ class TestKEngineOutOfTheBox(TestFunctionalCase):
         self.assertNotEquals(len(kpi_results), 0)
         connector.disconnect_rds()
 
-    @patch('KPIUtils.DIAGEO.ToolBox.DIAGEOToolBox.get_latest_directory_date_from_cloud',
-           return_value='2018-11-27')
-    @patch('KPIUtils.DIAGEO.ToolBox.DIAGEOToolBox.save_latest_templates')
-    @patch('KPIUtils.DIAGEO.ToolBox.DIAGEOToolBox.download_template',
-           return_value=mpa)
-    @patch('KPIUtils.DIAGEO.ToolBox.DIAGEOToolBox.download_template',
-           return_value=local_mpa)
-    @patch('KPIUtils.DIAGEO.ToolBox.DIAGEOToolBox.download_template',
-           return_value=products)
-    @patch('KPIUtils.DIAGEO.ToolBox.DIAGEOToolBox.download_template',
-           return_value=posm)
-
     @seeder.seed(["mongodb_products_and_brands_seed", "diageoar_seed"], ProjectsSanityData())
-    def test_diageoar_sanity(self, x, y, json, json2, json3,json4):
+    def test_diageoar_sanity(self):
         project_name = ProjectsSanityData.project_name
         data_provider = KEngineDataProvider(project_name)
         sessions = ['df6add11-8fc6-4503-8e82-21d79e9870c0']

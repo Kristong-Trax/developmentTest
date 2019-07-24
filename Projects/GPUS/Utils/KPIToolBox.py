@@ -74,13 +74,16 @@ class GPUSToolBox:
         return
 
     def calculate_facings_sos(self):
-        self.safety_func('Facings SOS', self.calculate_sos, [Const.FACING_SOS_KPI, {}])
+        scif = self.filter_df(self.scif, {'location_type': 'Primary Shelf'})
+        self.safety_func('Facings SOS', self.calculate_sos, [Const.FACING_SOS_KPI, {}, scif])
 
     def calculate_linear_sos(self):
-        self.safety_func('Linear SOS', self.calculate_sos, [Const.LINEAR_SOS_KPI, {}])
+        scif = self.filter_df(self.scif, {'location_type': 'Primary Shelf'})
+        self.safety_func('Linear SOS', self.calculate_sos, [Const.LINEAR_SOS_KPI, {}, scif])
 
     def calculate_share_of_empty(self):
-        self.safety_func('Share of Empty', self.calculate_sos, [Const.SHARE_OF_EMPTY_KPI, {'numerator_id': 0}])
+        scif = self.filter_df(self.scif, {'location_type': 'Primary Shelf'})
+        self.safety_func('Share of Empty', self.calculate_sos, [Const.SHARE_OF_EMPTY_KPI, {'numerator_id': 0}, scif])
 
     def calculate_adjacency(self):
         self.safety_func('Adjacency', self.update_adjacency, [])
@@ -123,15 +126,16 @@ class GPUSToolBox:
         results[results.isnull()] = None
         self.kpi_results += [v for k, v in results.to_dict('index').items()]
 
-    def calculate_sos(self, kpi_family, kpi_filter):
+    def calculate_sos(self, kpi_family, kpi_filter, scif=None):
         relevant_kpis = self.kpis[self.kpis[Const.KPI_FAMILY] == kpi_family]
         sum_col = Const.SUM_COLS[kpi_family]
         relevant_kpis['num_types'] = self.name_to_col_name(relevant_kpis[Const.NUMERATOR])
         relevant_kpis['den_types'] = self.name_to_col_name(relevant_kpis[Const.DENOMINATOR])
-
+        if scif is None:
+            scif = self.scif
         for i, kpi in relevant_kpis.iterrows():
             parent = relevant_kpis[relevant_kpis['type'] == Const.SOS_HIERARCHY[kpi['type']]] #  Note, parent is df, kpi is a series
-            df = self.scif.copy()
+            df = scif.copy()
             df = self.transform_new_col(df, [kpi['num_types'], kpi['den_types']], sum_col, 'numerator_result')
             df = self.transform_new_col(df, kpi['den_types'], sum_col, 'denominator_result')
             df['result'] = df['numerator_result'].astype(float) / df['denominator_result']

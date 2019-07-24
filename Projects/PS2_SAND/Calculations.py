@@ -1,8 +1,8 @@
 
 from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScript
-# from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
-# from Trax.Utils.Conf.Configuration import Config
-# from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
+from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
+from Trax.Utils.Conf.Configuration import Config
+from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
 
 from Projects.PS2_SAND.KPIGenerator import DIAGEOPLGenerator
 
@@ -21,7 +21,7 @@ class DIAGEOPLCalculations(BaseCalculationsScript):
 #     Config.init()
 #     project_name = 'ps2-sand'
 #     data_provider = KEngineDataProvider(project_name)
-#     session = '963D013D-EEB6-48DF-B8EC-06C8E0C2AA6C'
+#     session = '8400a292-4b23-4895-8f1e-b1597a7335b3'
 #     data_provider.load_session_data(session)
 #     output = Output()
 #     DIAGEOPLCalculations(data_provider, output).run_project_calculations()
