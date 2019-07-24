@@ -1362,19 +1362,46 @@ class CCRUKPIToolBox:
         else:
             relevant_products_and_facings = self.scif[
                 (self.scif['scene_id'].isin(scenes)) & ~(self.scif['product_type'].isin(['Empty', 'Other']))]
-        tested_sku = [unicode(x).strip() for x in unicode(params.get('Values')).split(', ')]
-        if not relevant_products_and_facings.empty:
+        values = [unicode(x).strip() for x in unicode(params.get('Values')).replace(' ', '').replace('=', '\n').split('\n')]
+        partner_skus = []
+        tested_skus = []
+        if values:
+            for skus in values:
+                analogue_skus = [unicode(x).strip() for x in skus.split(',')]
+                anchor_sku = analogue_skus.pop()
+                partner_skus += [anchor_sku]
+                relevant_products_and_facings.loc[
+                    relevant_products_and_facings['product_ean_code'].isin(analogue_skus), [
+                        'product_ean_code']] = anchor_sku
+
+            tested_skus = [partner_skus.pop()]
+
+        if tested_skus and not relevant_products_and_facings.empty:
             tested_facings = \
                 relevant_products_and_facings[
-                    relevant_products_and_facings['product_ean_code'].isin(tested_sku)]['facings'].sum()
+                    relevant_products_and_facings['product_ean_code'].isin(tested_skus)]['facings'].sum()
+            partner_facings_max = \
+                relevant_products_and_facings[
+                    relevant_products_and_facings['product_ean_code'].isin(partner_skus)].groupby(
+                    'product_ean_code').agg({'facings': 'sum'}).max().sum()
             other_facings_max = \
                 relevant_products_and_facings[
-                    ~relevant_products_and_facings['product_ean_code'].isin(tested_sku)]\
-                        .groupby('product_ean_code').agg({'facings': 'sum'}).max().sum()
+                    ~relevant_products_and_facings['product_ean_code'].isin(tested_skus + partner_skus)].groupby(
+                    'product_ean_code').agg({'facings': 'sum'}).max().sum()
         else:
             tested_facings = 0
+            partner_facings_max = 0
             other_facings_max = 0
-        facings_target = other_facings_max + 1
+
+        # # option 1:
+        # # tested sku is lead if its facings are more or equal to any partner sku facings
+        # # or they are more than any other sku facings
+        # facings_target = max(partner_facings_max, other_facings_max + 1)
+
+        # # option 2:
+        # tested sku is lead if its facings are more or equal to any sku facings (either partner or any other sku)
+        facings_target = max(partner_facings_max, other_facings_max)
+
         self.update_kpi_scores_and_results(params, {'result': tested_facings, 'target': facings_target})
         return tested_facings, facings_target
 
@@ -2998,7 +3025,7 @@ class CCRUKPIToolBox:
                                     target = int(target)
                                 try:
                                     result = round(float(self.kpi_scores_and_results[TARGET][self.kpi_name_to_id[TARGET]
-                                                                                             .get(atomic_kpi_name)].get('result')), 2)
+                                                         .get(atomic_kpi_name)].get('result')), 2)
                                     result = int(result) if result == int(result) else result
                                 except:
                                     result = 0
