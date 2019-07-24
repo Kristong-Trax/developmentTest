@@ -70,7 +70,7 @@ class MARSUAE_SANDSceneToolBox:
                 prices_df['price'] = prices_df.apply(self.get_max_price, axis=1)
             for i, row in prices_df.iterrows():
                 self.common.write_to_db_result(fk=kpi_fk, numerator_id=row['product_fk'], denominator_id=self.store_id,
-                                               result=row['price'])
+                                               result=row['price'], by_scene=True)
                 self.add_kpi_result_to_kpi_results_df([kpi_fk, row['product_fk'], self.store_id, row['price'], None])
 
     def add_kpi_result_to_kpi_results_df(self, result_list):
