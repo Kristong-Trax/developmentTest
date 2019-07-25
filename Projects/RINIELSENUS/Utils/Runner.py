@@ -57,17 +57,17 @@ class Results(object):
         for atomic in atomics:
             # if atomic['atomic'] not in EYELIGHT_KPIS:
             #     continue
-            if atomic['atomic'] not in [
-                                    # 'Is the Nutro Cat Main Meal section >4ft?',
-                                    # 'Is the Nutro Cat Main Meal section <=4ft?',
-                                    # 'Is Nutro Wet Dog food blocked?',
-                                    # 'Is the Meaty Dog Treats segment blocked?',
-                # 'Are TEMPTATIONS Cat Treats Mega blocked?',
-                'Does the Mars portfolio have its fair share of space?'
-                                    ]:
-                continue
-            print('~~~~~~~~~~~~~~~~~~~~****************~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~')
-            print(atomic['atomic'])
+            # if atomic['atomic'] not in [
+            #                         # 'Is the Nutro Cat Main Meal section >4ft?',
+            #                         # 'Is the Nutro Cat Main Meal section <=4ft?',
+            #                         # 'Is Nutro Wet Dog food blocked?',
+            #                         # 'Is the Meaty Dog Treats segment blocked?',
+            #     'ARE GREENIES AND TEMPTATIONS ADJACENT?',
+            #     'Are Greenies and Temptations shelved on opposite ends of category?'
+            #                         ]:
+            #     continue
+            # print('~~~~~~~~~~~~~~~~~~~~****************~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~')
+            # print(atomic['atomic'])
             if sum([1 for i in atomic['depend_on'] if i is not None and i != '']):
                 # if atomic['kpi_type'] == 'PreCalc Vertical Block':
                 dependency_status = self._check_atomic_dependency(
@@ -90,7 +90,7 @@ class Results(object):
             if isinstance(kpi_res, tuple):
                 errata = [i for i in kpi_res[1:]]
                 kpi_res = kpi_res[0]
-            print('||||| Result for {} is: {}'.format(atomic['atomic'], kpi_res))
+            # print('||||| Result for {} is: {}'.format(atomic['atomic'], kpi_res))
             if atomic['atomic'] in EYELIGHT_KPIS:
                 self._get_prods_from_filters(calculation, atomic)
             result = {'result': kpi_res,

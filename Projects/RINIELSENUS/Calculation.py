@@ -61,10 +61,7 @@ if __name__ == '__main__':
                 '8837a922-9510-4de4-bd52-f1619491ee4e'
                 ]
 
-    sessions = ['90b24c4a-57a5-4fba-8a69-b3dea22c20af',
-                '4d3e92f7-ca5d-4dea-a045-cc186367e9c2',
-                'f6af0508-1cae-42e2-8496-438c611b75df',
-                '484b5ccb-d1c6-4823-a164-00fa9bcef551',]
+    sessions = ['f541fd37-8ae1-4185-8026-20692e3400d0']
 
 
     for session in sessions:
