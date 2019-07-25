@@ -12,7 +12,7 @@ from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
 __author__ = 'idanr'
 
 
-class TNUVAILSANDToolBox:
+class TNUVAILToolBox:
 
     def __init__(self, data_provider, output):
         self.output = output
@@ -79,25 +79,18 @@ class TNUVAILSANDToolBox:
         :param scene_type:  חלבי או טירת צבי scene types.
         :return: filtered scif and match product in scene DataFrames.
         """
-        filtered_scif = self.scif.loc[self.scif.template_name.str.encode('utf-8') == scene_type.encode('utf-8')]
+        filtered_scif = self.scif.loc[self.scif.template_name == scene_type]
         filtered_scif = filtered_scif.loc[filtered_scif.facings > 0]
         return filtered_scif
 
     def _get_relevant_assortment_data(self, lvl3_assortment, policy):
         """
         This method filters only the relevant assortment data according to the relevant scene type to calculate.
-        :param policy:  חלבי או טירת צבי - this policy is matching for scene types and products as well
+        :param scene_type_to_filter:  חלבי או טירת צבי scene types.
         :return:
         """
-        # Products with the relevant policy attribute
-        product_with_relevant_policy = self.all_products.loc[
-            self.all_products[Consts.PRODUCT_POLICY_ATTR].str.encode('utf-8') == policy.encode('utf-8')]
-        product_with_relevant_policy = product_with_relevant_policy.product_fk.unique().tolist()
-        # Products that appear in scenes with the relevant policy
-        filtered_scif = self._get_filtered_scif_per_scene_type(policy)
-        relevant_products_in_scene = filtered_scif.product_fk.unique().tolist()
-        # Filtering by their intersection
-        relevant_products = list(set(product_with_relevant_policy) & set(relevant_products_in_scene))
+        filtered_scif = self._get_filtered_scif_per_scene_type(scene_type_to_filter)
+        relevant_products = filtered_scif.product_fk.unique().tolist()
         relevant_lvl3_assortment_data = lvl3_assortment.loc[lvl3_assortment.product_fk.isin(relevant_products)]
         return relevant_lvl3_assortment_data
 
