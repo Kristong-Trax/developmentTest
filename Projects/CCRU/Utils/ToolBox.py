@@ -60,6 +60,16 @@ class CCRUKPIToolBox:
 
     MIN_CALC_DATE = '2019-06-29'
 
+    STANDARD_VISIT = 'Standard visit'
+    PROMO_VISIT = 'Promo visit'
+    SOVI_SOCVI_VISIT = 'SOVI/SOCVI'
+    SEGMENTATION_VISIT = 'Segmentation'
+
+    VISIT_TYPE = {1: STANDARD_VISIT,
+                  2: PROMO_VISIT,
+                  3: SOVI_SOCVI_VISIT,
+                  4: SEGMENTATION_VISIT}
+
     def __init__(self, data_provider, output, kpi_set_name=None, kpi_set_type=None):
         self.data_provider = data_provider
         self.output = output
@@ -72,6 +82,8 @@ class CCRUKPIToolBox:
 
         self.session_uid = self.data_provider.session_uid
         self.session_fk = self.data_provider[Data.SESSION_INFO]['pk'].iloc[0]
+        self.visit_type = self.VISIT_TYPE.get(self.data_provider[Data.SESSION_INFO]['visit_type_fk'].iloc[0],
+                                              self.data_provider[Data.SESSION_INFO]['visit_type_fk'].iloc[0])
         self.visit_date = self.data_provider[Data.VISIT_DATE]
         self.store_id = self.data_provider[Data.STORE_FK]
         self.own_manufacturer_id = int(

@@ -88,8 +88,7 @@ class CCRUProjectCalculations:
 
     def main_function(self):
 
-        if self.tool_box.external_session_id\
-                and self.tool_box.external_session_id.find('EasyMerch-P') >= 0:
+        if self.tool_box.visit_type == self.tool_box.PROMO_VISIT:
             Log.debug('Promo session, no Custom KPI calculation implied')
             return
 
