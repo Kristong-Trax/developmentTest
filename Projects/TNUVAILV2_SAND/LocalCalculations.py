@@ -1,12 +1,12 @@
 
 from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
-from Trax.Utils.Conf.Configuration import Config
 from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
-from Projects.TNUVAIL_SAND.Calculations import Calculations
+from Projects.TNUVAILV2_SAND.Calculations import Calculations
+from Trax.Utils.Conf.Configuration import Config
 
 
 if __name__ == '__main__':
-    LoggerInitializer.init('tnuvail-sand calculations')
+    LoggerInitializer.init('tnuvailv2-sand calculations')
     Config.init()
     project_name = 'tnuvailv2'
     data_provider = KEngineDataProvider(project_name)

@@ -3,7 +3,7 @@ from Trax.Utils.Conf.Configuration import Config
 from Trax.Utils.Testing.Case import TestCase
 from mock import MagicMock, mock
 import pandas as pd
-from Projects.TNUVAIL_SAND.Utils.KPIToolBox import TNUVAILToolBox
+from Projects.TNUVAILV2_SAND.Utils.KPIToolBox import TNUVAILToolBox
 
 
 __author__ = 'idanr'
@@ -11,7 +11,7 @@ __author__ = 'idanr'
 
 class TestTNUVAIL_SAND(TestCase):
 
-    @mock.patch('Projects.TNUVAIL_SAND.Utils.KPIToolBox.ProjectConnector')
+    @mock.patch('Projects.TNUVAILV2_SAND.Utils.KPIToolBox.ProjectConnector')
     def setUp(self, x):
         Config.init('')
         self.data_provider_mock = MagicMock()

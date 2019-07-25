@@ -1,6 +1,6 @@
 
 from Trax.Utils.Logging.Logger import Log
-from Projects.TNUVAIL_SAND.Utils.KPIToolBox import TNUVAILSANDToolBox
+from Projects.TNUVAILV2_SAND.Utils.KPIToolBox import TNUVAILSANDToolBox
 from KPIUtils_v2.Utils.Decorators.Decorators import log_runtime
 
 __author__ = 'idanr'
