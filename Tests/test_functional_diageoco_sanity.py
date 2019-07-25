@@ -8,7 +8,7 @@ from Trax.Data.Testing.TestProjects import TestProjectsNames
 from Tests.Data.TestData.test_data_diageoco_sanity import ProjectsSanityData
 from Projects.DIAGEOCO.Calculations import DIAGEOCOCalculations
 from Trax.Apps.Core.Testing.BaseCase import TestFunctionalCase
-
+from Trax.Utils.Testing.Case import skip
 from Tests.TestUtils import remove_cache_and_storage
 
 __author__ = 'avrahama'
@@ -35,6 +35,7 @@ class TestKEngineOutOfTheBox(TestFunctionalCase):
     seeder = Seeder()
 
     def _assert_kpi_results_filled(self):
+        """tests if get results after running the KPIs"""
         connector = PSProjectConnector(TestProjectsNames().TEST_PROJECT_1, DbUsers.Docker)
         cursor = connector.db.cursor(MySQLdb.cursors.DictCursor)
         cursor.execute('''
@@ -44,7 +45,8 @@ class TestKEngineOutOfTheBox(TestFunctionalCase):
         self.assertNotEquals(len(kpi_results), 0)
         connector.disconnect_rds()
 
-    @seeder.seed(["mongodb_products_and_brands_seed", "diageoco_seed"], ProjectsSanityData())
+    # @seeder.seed(["mongodb_products_and_brands_seed", "diageoco_seed"], ProjectsSanityData())
+    @skip('Will be restored soon')
     def test_diageoco_sanity(self):
         project_name = ProjectsSanityData.project_name
         data_provider = KEngineDataProvider(project_name)
