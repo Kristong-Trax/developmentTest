@@ -35,6 +35,7 @@ class TestKEngineOutOfTheBox(TestFunctionalCase):
     seeder = Seeder()
 
     def _assert_kpi_results_filled(self):
+        """tests if get results after running the KPIs"""
         connector = PSProjectConnector(TestProjectsNames().TEST_PROJECT_1, DbUsers.Docker)
         cursor = connector.db.cursor(MySQLdb.cursors.DictCursor)
         cursor.execute('''
