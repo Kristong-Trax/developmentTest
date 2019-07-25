@@ -37,7 +37,7 @@ class JNJUKCalculations(BaseCalculationsScript):
     def _parse_templates_for_calculations():
         """ This method parse the local relevant template for the global code calculation"""
         data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'Data')
-        eye_hand_lvl_template_path = os.path.join(data_path, 'eye_level_jnjes.xlsx')
+        eye_hand_lvl_template_path = os.path.join(data_path, 'eye_level_jnjuk.xlsx')
         exclusive_template_path = os.path.join(data_path, 'KPI Exclusions Template.xlsx')
         survey_template_path = os.path.join(data_path, 'SurveyTemplate.xlsx')
         eye_hand_lvl_template = pd.read_excel(eye_hand_lvl_template_path)
@@ -51,7 +51,7 @@ class JNJUKCalculations(BaseCalculationsScript):
 #     Config.init()
 #     project_name = 'jnjuk'
 #     data_provider = KEngineDataProvider(project_name)
-#     session = 'ac4a24cc-7874-41bd-a161-06d6b79fffa3'
+#     session = '9f8383ad-16be-47a1-b60a-508360c4d76f'
 #     # session = 'f850397b-6b79-47e9-897b-9edb2632efda' # 60 sec for promocalc
 #     data_provider.load_session_data(session)
 #     output = Output()
