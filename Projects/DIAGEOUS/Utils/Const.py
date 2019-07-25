@@ -18,6 +18,7 @@ class Const(object):
         INDEPENDENT: {ON: [ON_TRADE_INDEPENDENT], OFF: [OFF_TRADE_INDEPENDENT]}}
     # KPIs columns:
     KPI_NAME, KPI_GROUP, TARGET, WEIGHT = "KPI Name", "KPI Group", "Target", "Weight"
+    PREVIOUS_WEIGHT, SWITCH_DATE = "Previous Weight", "Switch Date"
     TEMPLATE_GROUP = "Template Group/ Scene Type"
     # minimum shelf columns:
     SHELF_NAME = "Shelf Name"
