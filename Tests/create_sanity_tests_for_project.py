@@ -56,6 +56,10 @@ class SeedCreator:
             self.TOP_SESSIONS_AND_SCENES[session] = []
 
     def build_export_command(self):
+        """
+        this method return an adjusted export query created from the given sessions
+        :return: The custom query mentioned
+        """
         export_command = """./traxExportIntuition.sh {0} {1} session_uid """.format(self.rds_name, self.output_dir)
         for session_uid in self.TOP_SESSIONS_AND_SCENES.keys():
             export_command = export_command.__add__(session_uid)
