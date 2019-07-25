@@ -29,34 +29,27 @@ class CCRUSessionBatches:
         #         AND (external_session_id NOT LIKE 'EasyMerch-P%' OR external_session_id IS NULL)
         #         ORDER BY visit_date
         #         """.format(START_DATE, END_DATE)
+        #     query = """
+        #             SELECT ss.visit_date, ss.session_uid, ss.number_of_scenes
+        #             FROM probedata.session ss
+        #             JOIN report.kps_results ksr ON ksr.session_uid=ss.session_uid
+        #             JOIN static.kpi_set ks ON ks.pk=ksr.kpi_set_fk
+        #             WHERE ss.number_of_scenes > 0
+        #             AND ss.visit_date >= '{}' AND ss.visit_date <= '{}'
+        #             AND (ss.external_session_id NOT LIKE 'EasyMerch-P%' OR ss.external_session_id IS NULL)
+        #             AND ks.name IN(
+        # 'Contract Execution 2019'
+        #             )
+        #             GROUP BY ss.session_uid
+        #             ORDER BY ss.visit_date;
+        #             """.format(START_DATE, END_DATE)
         query = """
-                SELECT ss.visit_date, ss.session_uid, ss.number_of_scenes
+                SELECT session_uid
                 FROM probedata.session ss
-                JOIN report.kps_results ksr ON ksr.session_uid=ss.session_uid
-                JOIN static.kpi_set ks ON ks.pk=ksr.kpi_set_fk
-                WHERE ss.number_of_scenes > 0
-                AND ss.visit_date >= '{}' AND ss.visit_date <= '{}'
-                AND (ss.external_session_id NOT LIKE 'EasyMerch-P%' OR ss.external_session_id IS NULL)
-                AND ks.name IN(
-    'PoS 2019 - FT - CAP',
-    'PoS 2019 - FT - REG',
-    'PoS 2019 - FT NS - CAP',
-    'PoS 2019 - FT NS - REG',
-    'PoS 2019 - IC Petroleum - CAP',
-    'PoS 2019 - IC Petroleum - REG',
-    'PoS 2019 - IC FastFood',
-    'PoS 2019 - MT Conv Big - CAP',
-    'PoS 2019 - MT Conv Big - REG',
-    'PoS 2019 - MT Conv Small - CAP',
-    'PoS 2019 - MT Conv Small - REG',
-    'PoS 2019 - MT Hypermarket - CAP',
-    'PoS 2019 - MT Hypermarket - REG',
-    'PoS 2019 - MT Supermarket - CAP',
-    'PoS 2019 - MT Supermarket - REG',
-    'Contract Execution 2019'
-                )
-                GROUP BY ss.session_uid
-                ORDER BY ss.visit_date;
+                WHERE (external_session_id NOT LIKE 'EasyMerch-P%' OR external_session_id IS NULL)
+                AND visit_date>='2019-07-15' and visit_type_fk=2
+                AND delete_time is NULL
+                ORDER BY ss.pk DESC;
                 """.format(START_DATE, END_DATE)
 
         sessions = pd.read_sql_query(query, self.aws_conn.db)
