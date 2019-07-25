@@ -4,6 +4,8 @@ from Trax.Cloud.Services.Connector.Keys import DbUsers
 from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 # from Trax.Utils.Logging.Logger import Log
 import pandas as pd
+from pandas.io.json.normalize import json_normalize
+import json
 import numpy
 import ast
 import os
@@ -19,6 +21,8 @@ from KPIUtils_v2.DB.CommonV2 import Common
 from Projects.MONDELEZDMIUS.Utils.Const import Const
 # from KPIUtils_v2.Calculations.CalculationsUtils import GENERALToolBoxCalculations
 from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
+from KPIUtils_v2.GlobalDataProvider.PsDataProvider import PsDataProvider
+
 
 
 __author__ = 'nicolaske'
@@ -54,6 +58,8 @@ class MONDELEZDMIUSToolBox:
                                                                 'MONDELEZ INTERNATIONAL, INC.'].iloc[0]
         self.assortment = Assortment(self.data_provider, common=self.common)
         self.store_number = self.get_store_number()
+        self.ps_data_provider = PsDataProvider(self.data_provider, self.output)
+        self.custom_entities = self.ps_data_provider.get_custom_entities(Const.PPG_ENTITY_TYPE_FK)
 
     def main_calculation(self, *args, **kwargs):
         """
@@ -72,12 +78,14 @@ class MONDELEZDMIUSToolBox:
         kpi_fk = self.common.get_kpi_fk_by_kpi_name( Const.DISPLAY_COUNT_kpi)
 
         count_of_scenes = len(self.scif['scene_fk'].unique().tolist())
-        self.common.write_to_db_result(fk=kpi_fk, numerator_id=self.manufacturer_fk , denominator_id=self.store_id,
-                                                  score=count_of_scenes)
+        self.common.write_to_db_result(fk=kpi_fk, numerator_id=self.manufacturer_fk , numerator_result= count_of_scenes,
+                                       denominator_id=self.store_id, denominator_result= 1, result=count_of_scenes,
+                                        score=count_of_scenes)
 
     def calculate_FD_compliance(self):
 
         score = 0
+        compliance_status = Const.NON_COMPLIANT_FK
         kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.FD_COMPLIANCE_KPI)
         if self.store_assortment.empty:
             # LOG ERROR
@@ -85,17 +93,36 @@ class MONDELEZDMIUSToolBox:
         else:
             filtered_assortment = self.store_assortment[self.store_assortment['kpi_fk_lvl3'] == kpi_fk]
             if not filtered_assortment.empty:
-                relevant_ppg_list = (filtered_assortment[Const.PPG_COLUMN_NAME]).to_list()
-                for i, row in self.scif.iterrows():
+                for i, row in filtered_assortment.iterrows():
                     ppg = row[Const.PPG_COLUMN_NAME]
-                    if pd.isnull(ppg):
-                        pass
-                    elif row[Const.PPG_COLUMN_NAME] in relevant_ppg_list :
-                        score = 1
-                        break
+                    sub_ppg = row[Const.SUB_PPG_COLUMN_NAME]
 
-        self.common.write_to_db_result(fk=kpi_fk, numerator_id=self.manufacturer_fk, denominator_id=self.store_id,
-                                       score=score)
+                    if not pd.isnull(ppg):
+                        filtered_scif_count = len(self.scif[self.scif['PPG'] == ppg])
+                        if filtered_scif_count > 0:
+                            score = 1
+                            compliance_status = Const.COMPLIANT_FK
+                            product_fk = self.custom_entities['pk'][self.custom_entities['name'] == ppg].iloc[0]
+                        else:
+                            score = 0
+                            product_fk = 0
+                            compliance_status = Const.NON_COMPLIANT_FK
+
+                    if not pd.isnull(sub_ppg):
+                        filtered_scif_count = len(self.scif[self.scif['Sub PPG'] == sub_ppg])
+                        if filtered_scif_count > 0:
+                            score = 1
+                            compliance_status = Const.COMPLIANT_FK
+                            product_fk = \
+                            self.custom_entities['pk'][self.custom_entities['name'] == sub_ppg].iloc[0]
+                        else:
+                            score = 0
+                            product_fk = 0
+                            compliance_status = Const.NON_COMPLIANT_FK
+
+                    self.common.write_to_db_result(fk=kpi_fk, numerator_id=product_fk, numerator_result=score,
+                                                   denominator_id=self.store_id, denominator_result=1,
+                                       result=compliance_status, score=score)
 
     def calculate_scripted_compliance(self):
         score = 0
@@ -106,16 +133,36 @@ class MONDELEZDMIUSToolBox:
         else:
             filtered_assortment = self.store_assortment[self.store_assortment['kpi_fk_lvl3'] == kpi_fk]
             if not filtered_assortment.empty:
-                relevant_sub_ppg_list = (filtered_assortment[Const.SUB_PPG_COLUMN_NAME]).to_list()
-                for i, row in self.scif.iterrows():
+                for i, row in filtered_assortment.iterrows():
+                    ppg = row[Const.PPG_COLUMN_NAME]
                     sub_ppg = row[Const.SUB_PPG_COLUMN_NAME]
-                    if pd.isnull(sub_ppg):
-                        pass
-                    elif row[Const.SUB_PPG_COLUMN_NAME] in relevant_sub_ppg_list:
-                        score = 1
-                        break
-        self.common.write_to_db_result(fk=kpi_fk, numerator_id=self.manufacturer_fk, denominator_id=self.store_id,
-                                       score=score)
+
+                    if not pd.isnull(ppg):
+                        filtered_scif_count = len(self.scif[self.scif['PPG'] == ppg])
+                        if filtered_scif_count > 0:
+                            score = 1
+                            compliance_status = Const.COMPLIANT_FK
+                            product_fk = self.custom_entities['pk'][self.custom_entities['name'] == ppg].iloc[0]
+                        else:
+                            score = 0
+                            product_fk = 0
+                            compliance_status = Const.NON_COMPLIANT_FK
+
+                    if not pd.isnull(sub_ppg):
+                        filtered_scif_count = len(self.scif[self.scif['Sub PPG'] == sub_ppg])
+                        if filtered_scif_count > 0:
+                            score = 1
+                            compliance_status = Const.COMPLIANT_FK
+                            product_fk = \
+                            self.custom_entities['pk'][self.custom_entities['name'] == sub_ppg].iloc[0]
+                        else:
+                            score = 0
+                            product_fk = 0
+                            compliance_status = Const.NON_COMPLIANT_FK
+
+                    self.common.write_to_db_result(fk=kpi_fk, numerator_id=product_fk, numerator_result=score,
+                                                   denominator_id=self.store_id, denominator_result=1,
+                                                   result=compliance_status, score=score)
 
     def calculate_assortment(self):
         self.store_assortment = self.assortment.store_assortment
@@ -124,11 +171,13 @@ class MONDELEZDMIUSToolBox:
             return
         else:
             ppg_list = [ast.literal_eval(x) for x in self.store_assortment['additional_attributes'].to_list() if x]
-            # ppg_list['MONDELEZ BRAND NAME = PPG'] = ppg_list['MONDELEZ BRAND NAME = PPG'].str[1:]
-            # ppg_list['MONDELEZ Sub Brand = Sub PPG'] = ppg_list['MONDELEZ Sub Brand = Sub PPG'].str[1:]
             df_assortment = pd.DataFrame(ppg_list)
             merged_assortment = self.store_assortment.join(df_assortment)
             self.store_assortment = merged_assortment
+
+
+            # self.store_assortment['additional_attributes'] = self.store_assortment['additional_attributes'].apply(json.loads)
+            # self.store_assortment[['ppg', 'value']] = json_normalize(self.store_assortment['additional_attributes'])
 
 
 

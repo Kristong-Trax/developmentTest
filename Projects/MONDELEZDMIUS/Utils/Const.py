@@ -32,6 +32,8 @@ class Const(object):
     list_value = "list"
     PRODUCT_ATTRIBUTE = "Product Att"
 
+    RESULT_NO = 4
+    RESULT_YES = 5
 
 
     #DISPLAY KPIS
@@ -65,3 +67,9 @@ class Const(object):
     SKU = 'SKU'
     OTHER = 'Other'
     facings = 'facings'
+
+
+
+    PPG_ENTITY_TYPE_FK = 1002
+    COMPLIANT_FK = 7
+    NON_COMPLIANT_FK = 6
