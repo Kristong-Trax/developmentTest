@@ -1,20 +1,15 @@
 # -*- coding: utf-8 -*-
 
 import os
-import numpy as np
 from Trax.Algo.Calculations.Core.DataProvider import Data
-from Trax.Cloud.Services.Connector.Keys import DbUsers
-from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
-from Trax.Utils.Logging.Logger import Log
 from Projects.PNGCN_PROD.ShareOfDisplay.ExcludeDataProvider import Fields
 from Trax.Utils.Logging.Logger import Log
 import pandas as pd
-from KPIUtils_v2.Calculations.SOSCalculations import SOS
 import KPIUtils_v2.Utils.Parsers.ParseInputKPI as Parser
 from KPIUtils_v2.GlobalDataProvider.PsDataProvider import PsDataProvider
-from KPIUtils_v2.Calculations.BlockCalculations_v2 import Block as BLOCK
+from KPIUtils_v2.Calculations.BlockCalculations_v2 import Block as Block
 
-__Author__ = 'Dudi_s'
+__Author__ = 'Dudi_s and ilays'
 
 CUBE = 'Cube'
 NON_BRANDED_CUBE = 'Non branded cube'
@@ -49,59 +44,51 @@ BODYWASH_SUB_CATEGORY = 'Bodywash'
 OTHER_SUB_CATEGORY = 'Other'
 PCC_BAR_SUB_CATEGORY = 'PCC-Bar'
 PCC_FILTERS = {
-    'SFG Bodywash':  {'population':
-                      {'include': [{"manufacturer_name": [PNG_MANUFACTURER], "category": [PCC_CATEGORY],
-                                    "brand_name": [SAFEGUARD_BRAND], 'sub_category': [BODYWASH_SUB_CATEGORY]}],
-                       'exclude': {},
-                       'include_operator': 'and'}},
-    'SFG Handwash':  {'population':
-                      {'include': [{"manufacturer_name": [PNG_MANUFACTURER], "category": [PCC_CATEGORY],
-                                    "brand_name": [SAFEGUARD_BRAND], 'sub_category': [HANDWASH_SUB_CATEGORY]}],
-                       'exclude': {},
-                       'include_operator': 'and'}},
-    'SFG Other':     {'population':
-                      {'include': [{"manufacturer_name": [PNG_MANUFACTURER], "category": [PCC_CATEGORY],
-                                    "brand_name": [SAFEGUARD_BRAND], 'sub_category': [OTHER_SUB_CATEGORY]}],
-                       'exclude': {},
-                       'include_operator': 'and'}},
-    'SFG PCCBAR':    {'population':
-                      {'include': [{"manufacturer_name": [PNG_MANUFACTURER], "category": [PCC_CATEGORY],
-                                    "brand_name": [SAFEGUARD_BRAND], 'sub_category': [PCC_BAR_SUB_CATEGORY]}],
-                       'exclude': {},
-                       'include_operator': 'and'}},
-    'OLAY Bodywash': {'population':
-                      {'include': [{"manufacturer_name": [PNG_MANUFACTURER], "category": [PCC_CATEGORY],
-                                    "brand_name": [OLAY_BRAND], 'sub_category': [BODYWASH_SUB_CATEGORY]}],
-                       'exclude': {},
-                       'include_operator': 'and'}},
-    'OLAY Handwash':  {'population':
-                       {'include': [{"manufacturer_name": [PNG_MANUFACTURER], "category": [PCC_CATEGORY],
-                                     "brand_name": [OLAY_BRAND], 'sub_category': [HANDWASH_SUB_CATEGORY]}],
-                        'exclude': {},
-                        'include_operator': 'and'}},
-    'OLAY Other':     {'population':
-                       {'include': [{"manufacturer_name": [PNG_MANUFACTURER], "category": [PCC_CATEGORY],
-                                     "brand_name": [OLAY_BRAND], 'sub_category': [OTHER_SUB_CATEGORY]}],
-                        'exclude': {},
-                        'include_operator': 'and'}},
-    'OLAY PCCBAR':    {'population':
-                       {'include': [{"manufacturer_name": [PNG_MANUFACTURER], "category": [PCC_CATEGORY],
-                                     "brand_name": [OLAY_BRAND], 'sub_category': [PCC_BAR_SUB_CATEGORY]}],
-                        'exclude': {},
-                        'include_operator': 'and'}},
+    'SFG Bodywash': {'population': {'include': [{"manufacturer_name": [PNG_MANUFACTURER], "category": [PCC_CATEGORY],
+                                                 "brand_name": [SAFEGUARD_BRAND],
+                                                 'sub_category': [BODYWASH_SUB_CATEGORY]}],
+                                    'exclude': {},
+                                    'include_operator': 'and'}},
+    'SFG Handwash': {'population': {'include': [{"manufacturer_name": [PNG_MANUFACTURER], "category": [PCC_CATEGORY],
+                                                 "brand_name": [SAFEGUARD_BRAND],
+                                                 'sub_category': [HANDWASH_SUB_CATEGORY]}],
+                                    'exclude': {},
+                                    'include_operator': 'and'}},
+    'SFG Other': {'population': {'include': [{"manufacturer_name": [PNG_MANUFACTURER], "category": [PCC_CATEGORY],
+                                              "brand_name": [SAFEGUARD_BRAND], 'sub_category': [OTHER_SUB_CATEGORY]}],
+                                 'exclude': {},
+                                 'include_operator': 'and'}},
+    'SFG PCCBAR': {'population': {'include': [{"manufacturer_name": [PNG_MANUFACTURER], "category": [PCC_CATEGORY],
+                                               "brand_name": [SAFEGUARD_BRAND],
+                                               'sub_category': [PCC_BAR_SUB_CATEGORY]}],
+                                  'exclude': {},
+                                  'include_operator': 'and'}},
+    'OLAY Bodywash': {'population': {'include': [{"manufacturer_name": [PNG_MANUFACTURER], "category": [PCC_CATEGORY],
+                                                  "brand_name": [OLAY_BRAND], 'sub_category': [BODYWASH_SUB_CATEGORY]}],
+                                     'exclude': {},
+                                     'include_operator': 'and'}},
+    'OLAY Handwash': {'population': {'include': [{"manufacturer_name": [PNG_MANUFACTURER], "category": [PCC_CATEGORY],
+                                                  "brand_name": [OLAY_BRAND], 'sub_category': [HANDWASH_SUB_CATEGORY]}],
+                                     'exclude': {},
+                                     'include_operator': 'and'}},
+    'OLAY Other': {'population': {'include': [{"manufacturer_name": [PNG_MANUFACTURER], "category": [PCC_CATEGORY],
+                                               "brand_name": [OLAY_BRAND], 'sub_category': [OTHER_SUB_CATEGORY]}],
+                                  'exclude': {},
+                                  'include_operator': 'and'}},
+    'OLAY PCCBAR': {'population': {'include': [{"manufacturer_name": [PNG_MANUFACTURER], "category": [PCC_CATEGORY],
+                                                "brand_name": [OLAY_BRAND], 'sub_category': [PCC_BAR_SUB_CATEGORY]}],
+                                   'exclude': {},
+                                   'include_operator': 'and'}},
     'Competitor PCC': {'population': {'include': [{"category": [PCC_CATEGORY]}],
                                       'exclude': {"manufacturer_name": [PNG_MANUFACTURER]},
                                       'include_operator': 'and'}},
-    'PNGOTHER':       {'population':
-                       {'include': [{"manufacturer_name": [PNG_MANUFACTURER]}],
-                        'exclude': {"category": [PCC_CATEGORY]},
-                        'include_operator': 'and'}},
-    'Competitor Other':  {'population':
-                          {'include': [{}],
-                           'exclude': {"manufacturer_name": [PNG_MANUFACTURER], "category": [PCC_CATEGORY]},
-                           'include_operator': 'and'}}
-}
-
+    'PNGOTHER': {'population': {'include': [{"manufacturer_name": [PNG_MANUFACTURER]}],
+                                'exclude': {"category": [PCC_CATEGORY]},
+                                'include_operator': 'and'}},
+    'Competitor Other': {'population': {'include': [{}],
+                                        'exclude': {"manufacturer_name": [PNG_MANUFACTURER],
+                                                    "category": [PCC_CATEGORY]},
+                                        'include_operator': 'and'}}}
 
 # Block_Variant KPI
 VARIANT_BLOCK_TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)),
@@ -177,7 +164,7 @@ class PngcnSceneKpis(object):
     def calculate_variant_block(self):
         legal_blocks = {}
         variant_block_template = pd.read_excel(VARIANT_BLOCK_TEMPLATE_PATH).fillna("")
-        block_class = BLOCK(self.data_provider)
+        block_class = Block(self.data_provider)
         for i, row_in_template in variant_block_template.iterrows():
             block_groups = {}
             relevant_row = row_in_template.drop(
@@ -202,7 +189,11 @@ class PngcnSceneKpis(object):
                 if filtered_df.empty:
                     continue
                 filtered_df = filtered_df[filtered_df['stacking_layer'] == 1]
+
+                # Save all sub_brands in the scene to eye-light KPI
                 self.save_eye_light_products(block_filters['sub_brand_name'][0], filtered_df)
+
+                # Activate global BLOCK function
                 filter_block_result = block_class.network_x_block_together(
                     population=block_filters,
                     additional={'allowed_products_filters': {'product_type': ['Empty']},
@@ -210,58 +201,84 @@ class PngcnSceneKpis(object):
                                 'minimum_facing_for_block': 3,
                                 'include_stacking': False,
                                 'check_vertical_horizontal': False})
-                for i, row in filter_block_result.iterrows():
+                for j, row in filter_block_result.iterrows():
                     if not row['is_block']:
                         continue
+
+                    # Iterate all nodes, verify and filter "not blocks" and add info to dictionary
                     cluster = row['cluster']
                     for node in cluster.nodes.data():
-                        product_matches_fks = []
-                        node_data = node[1]
-                        product_matches_fks += (list(node_data['members']))
-                        block_df = self.matches_from_data_provider[self.matches_from_data_provider
-                                                                   ['scene_match_fk'].isin(product_matches_fks)]
-                        shelves = set(block_df['shelf_number'])
-                        if len(shelves) < row_in_template[MIN_LAYER_NUMBER]:
-                            continue
-                        block_flag = False
-                        for shelf in shelves:
-                            shelf_df = block_df[block_df['shelf_number'] == shelf]
-                            if len(shelf_df) >= row_in_template[MIN_FACINGS_ON_SAME_LAYER]:
-                                block_flag = True
-                                break
-                        if block_flag:
-                            point = node_data['polygon'].centroid
-                            row['x'], row['y'] = point.x, point.y
-                            row['number_of_facings'] = len(product_matches_fks)
-                            for filter, value in block_filters.iteritems():
-                                row[filter] = value
-                            filter_results.append(row)
+                        filter_results = self.handle_node_in_variant_block(row_in_template, row, node, filter_results,
+                                                                           block_filters)
                 if len(filter_results) > 0:
                     legal_blocks[filter_name] = filter_results
                     legal_blocks[filter_name] = filter_results
+
+        # Sort all block results by X axis and Y axis
+        all_blocks_no_duplicates = self.reorder_all_blocks_results(legal_blocks)
+
+        # Save all blocks results
+        block_variant_kpi_fk = self.common.get_kpi_fk_by_kpi_name(BLOCK_VARIANT_KPI)
+        for sub_block in all_blocks_no_duplicates:
+            brand_fk = self.get_attribute_fk_from_name('brand_name', sub_block['brand_name'])
+            category_fk = self.get_attribute_fk_from_name('category', sub_block['category'])
+            sub_brand_fk = self.get_attribute_fk_from_name(
+                'sub_brand_name', sub_block['sub_brand_name'])
+            self.common.write_to_db_result(fk=block_variant_kpi_fk,
+                                           numerator_id=brand_fk, denominator_id=category_fk,
+                                           context_id=sub_brand_fk,
+                                           numerator_result=sub_block['seq_x'],
+                                           denominator_result=sub_block['seq_y'],
+                                           result=sub_block['facing_percentage'],
+                                           score=sub_block['number_of_facings'],
+                                           by_scene=True)
+
+    def handle_node_in_variant_block(self, row_in_template, row, node, filter_results, block_filters):
+        product_matches_fks = []
+        node_data = node[1]
+        product_matches_fks += (list(node_data['members']))
+        block_df = self.matches_from_data_provider[
+            self.matches_from_data_provider['scene_match_fk'].isin(product_matches_fks)]
+        shelves = set(block_df['shelf_number'])
+
+        # filter blocks without the minimum shelves spreading number
+        if len(shelves) < row_in_template[MIN_LAYER_NUMBER]:
+            return
+        block_flag = False
+        for shelf in shelves:
+            shelf_df = block_df[block_df['shelf_number'] == shelf]
+
+            # filter blocks without the minimum number of facings on the same layer
+            if len(shelf_df) >= row_in_template[MIN_FACINGS_ON_SAME_LAYER]:
+                block_flag = True
+                break
+
+        # Add relevant blocks the following info: x,y coordinates and number of facings
+        if block_flag:
+            point = node_data['polygon'].centroid
+            row['x'], row['y'] = point.x, point.y
+            row['number_of_facings'] = len(product_matches_fks)
+            for filter_val, value in block_filters.iteritems():
+                row[filter_val] = value
+            filter_results.append(row)
+        return filter_results
+
+    def reorder_all_blocks_results(self, legal_blocks):
+        # Combine all blocks
         all_blocks = [p for q in legal_blocks.values() for p in q]
         all_blocks_no_duplicates = []
+
+        # Drop all duplicates blocks
         for i in range(0, len(all_blocks)):
             if i == len(all_blocks) - 1:
                 all_blocks_no_duplicates.append(all_blocks[i])
             elif not (all_blocks[i].equals(all_blocks[i + 1])):
                 all_blocks_no_duplicates.append(all_blocks[i])
+
+        # Sort by both X axis and Y axis
         self.replace_with_seq_order(sorted(all_blocks_no_duplicates, key=lambda i: i['x']), 'x')
         self.replace_with_seq_order(sorted(all_blocks_no_duplicates, key=lambda i: i['y']), 'y')
-        block_variant_kpi_fk = self.common.get_kpi_fk_by_kpi_name(BLOCK_VARIANT_KPI)
-        for block in all_blocks_no_duplicates:
-            brand_fk = self.get_attribute_fk_from_name('brand_name', block['brand_name'])
-            category_fk = self.get_attribute_fk_from_name('category', block['category'])
-            sub_brand_fk = self.get_attribute_fk_from_name(
-                'sub_brand_name', block['sub_brand_name'])
-            self.common.write_to_db_result(fk=block_variant_kpi_fk,
-                                           numerator_id=brand_fk, denominator_id=category_fk,
-                                           context_id=sub_brand_fk,
-                                           numerator_result=block['seq_x'],
-                                           denominator_result=block['seq_y'],
-                                           result=block['facing_percentage'],
-                                           score=block['number_of_facings'],
-                                           by_scene=True)
+        return all_blocks_no_duplicates
 
     def save_eye_light_products(self, sub_brand, filtered_df):
         sub_brand_pk = self.match_product_in_probe_state_reporting[
@@ -284,7 +301,8 @@ class PngcnSceneKpis(object):
                 attribute_fk = self.get_custom_entity_fk(name, value[0]).values[0]
             else:
                 attribute_fk = -1
-        except:
+        except Exception as ex:
+            Log.warning("No attribute name: " + name + ", ERROR: ".format(ex))
             attribute_fk = -1
         return attribute_fk
 
@@ -299,9 +317,10 @@ class PngcnSceneKpis(object):
             "utf8") == value]['entity_fk']
         return attribute_fk
 
-    def replace_with_seq_order(self, sorted, field):
+    @staticmethod
+    def replace_with_seq_order(sorted_items, field):
         seq = 1
-        for item in sorted:
+        for item in sorted_items:
             item["seq_" + field] = seq
             seq += 1
 
@@ -317,8 +336,8 @@ class PngcnSceneKpis(object):
             template_fk = self.data_provider.scenes_info['template_fk'].values[0]
             if template_fk not in relevant_templates:
                 return
-        except:
-            Log.error("Couldn't find scene type for scene number {}".format(str(self.scene_id)))
+        except Exception as ex:
+            Log.error("Couldn't find scene type for scene number {}, error {}".format(str(self.scene_id), ex))
             return
         entity_df = self.psdataprovider.get_custom_entities_df('eye_level_fragments')
         if entity_df.empty:
@@ -357,8 +376,9 @@ class PngcnSceneKpis(object):
         :return: saves the sequence of each shelf (combine all bays)
         """
         kpi_sequence_fk = self.common.get_kpi_fk_by_kpi_name(Eye_level_kpi_SEQUENCE)
-        results_sequence_df = pd.DataFrame(columns=['fk', 'numerator_id', 'denominator_id', 'numerator_result', 'result',
-                                                    'score', 'by_scene', 'temp_bay_number'])
+        results_sequence_df = pd.DataFrame(
+            columns=['fk', 'numerator_id', 'denominator_id', 'numerator_result', 'result',
+                     'score', 'by_scene', 'temp_bay_number'])
         full_df = full_df[full_df['stacking_layer'] == 1]
 
         for key in PCC_FILTERS.keys():
@@ -380,8 +400,10 @@ class PngcnSceneKpis(object):
                 shelf_number = row['shelf_number']
                 category_fk = row['category_fk']
                 results_sequence_df = results_sequence_df.append({'fk': kpi_sequence_fk, 'numerator_id': entity_fk,
-                                                                  'denominator_id': category_fk, 'numerator_result': shelf_number,
-                                                                  'result': facing_sequence_number, 'score': 0, 'by_scene': True,
+                                                                  'denominator_id': category_fk,
+                                                                  'numerator_result': shelf_number,
+                                                                  'result': facing_sequence_number, 'score': 0,
+                                                                  'by_scene': True,
                                                                   'temp_bay_number': bay_number},
                                                                  ignore_index=True)
 
@@ -390,9 +412,10 @@ class PngcnSceneKpis(object):
             by=['numerator_result', 'temp_bay_number', 'result'], inplace=True)
         results_sequence_df = results_sequence_df[((results_sequence_df.numerator_id !=
                                                     results_sequence_df.numerator_id.shift()) |
-                                                   (results_sequence_df.numerator_result != results_sequence_df.numerator_result.shift()))]
+                                                   (results_sequence_df.numerator_result !=
+                                                    results_sequence_df.numerator_result.shift()))]
         results_sequence_df['is_new_sequence'] = (
-            results_sequence_df.numerator_result != results_sequence_df.numerator_result.shift())
+                results_sequence_df.numerator_result != results_sequence_df.numerator_result.shift())
         facing_sequence_number = 0
         for i, row in results_sequence_df.iterrows():
             if row['is_new_sequence']:
@@ -405,7 +428,8 @@ class PngcnSceneKpis(object):
         for i, row in results_sequence_df.iterrows():
             self.common.write_to_db_result(**row)
 
-    def get_eye_level_shelves(self, df):
+    @staticmethod
+    def get_eye_level_shelves(df):
         """
         Gives us the two relevant shelves according to the costumer request.
         :param df: the df to work on
@@ -505,7 +529,7 @@ class PngcnSceneKpis(object):
         table_scenes = table_tags.scene_fk.tolist()
         scenes = tags.scene_fk.tolist() + total_tags.scene_fk.tolist()
         mixed_with_table_scenes = list(set(scenes) & set(table_scenes))
-        scenes = list(set(scenes)-set(mixed_with_table_scenes))
+        scenes = list(set(scenes) - set(mixed_with_table_scenes))
         bays = pd.DataFrame({})
         display = pd.DataFrame({})
         for scene in scenes:
@@ -572,7 +596,7 @@ class PngcnSceneKpis(object):
         mixed_scenes = list(set(table_scenes) & set(total_cube_scenes)
                             )  # scenes with total cube tag & table tag
         # scenes = list((set(table_scenes)|set(mixed_scenes))-set(other_scenes))
-        scenes = list(set(table_scenes)-set(other_scenes))
+        scenes = list(set(table_scenes) - set(other_scenes))
         table_bays = pd.DataFrame({})
         table_display = pd.DataFrame({})
         if not table_tags.empty:
@@ -606,7 +630,8 @@ class PngcnSceneKpis(object):
                 except Exception as e:
                     display_size = (cube_size * 3 * table_size)  # table bays are not valid
             table_display = table_display.append({'scene_fk': scene, 'display_fk': table_display_fk,
-                                                  'display_size': display_size, 'display_name': table_display_name}, ignore_index=True)
+                                                  'display_size': display_size, 'display_name': table_display_name},
+                                                 ignore_index=True)
             table_bays = table_bays.append(table_bays_scene, ignore_index=True)
             if scene in mixed_scenes:
                 table_bays = table_bays.append(cube_bays_scene, ignore_index=True)
@@ -664,7 +689,7 @@ class PngcnSceneKpis(object):
                 TABLE_DISPLAYS)]
             display_visit_stacking.drop(['status', 'stacking_layer'], axis=1)
             display_visit = display_visit[~display_visit['display_name'].isin(TABLE_DISPLAYS)]
-            display_visit = display_visit[(display_visit['stacking_layer'] == 1)]\
+            display_visit = display_visit[(display_visit['stacking_layer'] == 1)] \
                 .drop(['status', 'stacking_layer'], axis=1)
             display_visit = display_visit.append(display_visit_stacking)
             display_facings_for_product = self._exclude_sos(display_facings_for_product)
@@ -682,15 +707,14 @@ class PngcnSceneKpis(object):
 
                 display_visit_by_display = \
                     display_visit_by_display_product[display_visit_by_display_product['in_sos'] == 1] \
-                    .groupby(['display_surface_fk'], as_index=False)
+                        .groupby(['display_surface_fk'], as_index=False)
                 display_tot_linear = display_visit_by_display.linear.sum().rename(columns={
                     'linear': 'tot_linear'})
                 display_tot_facings = display_visit_by_display.facings.sum().rename(columns={
                     'facings': 'tot_facings'})
                 display_visit_by_display_product_enrich_totals = \
-                    display_visit_by_display_product \
-                    .merge(display_tot_linear, on='display_surface_fk') \
-                    .merge(display_tot_facings, on='display_surface_fk')
+                    display_visit_by_display_product.merge(display_tot_linear, on='display_surface_fk') \
+                        .merge(display_tot_facings, on='display_surface_fk')
 
                 display_visit_by_display_product_enrich_sos_type = display_visit_by_display_product_enrich_totals.merge(
                     self.displays, on='display_fk')
@@ -713,15 +737,16 @@ class PngcnSceneKpis(object):
                 # sub_category was excluded by customer request
 
                 excluded_products = self.data_provider._data[Fields.SOS_EXCLUDED_PRODUCTS]
-                irrelvant_products = self.data_provider.all_products.loc[
+                irrelevant_products = self.data_provider.all_products.loc[
                     (self.data_provider.all_products['product_type'] == 'Irrelevant') |
                     (self.data_provider.all_products['sub_category'] == 'Skin Care Men') |
                     (self.data_provider.all_products['product_fk'].isin(excluded_products))
 
-                ]['product_fk'].tolist()
+                    ]['product_fk'].tolist()
 
                 not_in_sos_condition = ((display_visit_by_display_product_enrich_sos_type['in_sos'] == 0) |
-                                        (display_visit_by_display_product_enrich_sos_type['product_fk'].isin(irrelvant_products)))
+                                        (display_visit_by_display_product_enrich_sos_type['product_fk'].isin(
+                                            irrelevant_products)))
                 display_visit_by_display_product_enrich_sos_type.loc[not_in_sos_condition,
                                                                      'product_size'] = 0
 
@@ -743,7 +768,8 @@ class PngcnSceneKpis(object):
                         merged_displays['display_surface_fk'] == current_display]
                     brands_in_display = current_display_products['brand_name'].unique()
                     for brand in brands_in_display:
-                        if current_display_products[current_display_products['brand_name'] == brand]['facings'].sum() > 2:
+                        if current_display_products[current_display_products['brand_name'] ==
+                                                    brand]['facings'].sum() > 2:
                             self.valid_facing_product[current_display].extend(
                                 current_display_products[current_display_products['brand_name'] == brand]['product_fk'])
 
@@ -794,29 +820,12 @@ class PngcnSceneKpis(object):
         Log.debug(self.log_prefix + ' calculating in_sos')
         excluded_templates = self.data_provider._data[Fields.SOS_EXCLUDED_TEMPLATES]
         excluded_templates['excluded_templates'] = 1
-
         excluded_template_products = self.data_provider._data[Fields.SOS_EXCLUDED_TEMPLATE_PRODUCTS]
         excluded_template_products['excluded_template_products'] = 1
-
-        # excluded_products = self.data_provider._data[Fields.SOS_EXCLUDED_PRODUCTS]
-        # excluded_products['excluded_products'] = 1
-
-        # df = df.merge(excluded_templates, how='left', on='template_fk') \
-        #        .merge(excluded_products, how='left', on='product_fk') \
-        #        .merge(excluded_template_products, how='left', on=['product_fk', 'template_fk'])
-
         df = df.merge(excluded_templates, how='left', on='template_fk') \
-               .merge(excluded_template_products, how='left', on=['product_fk', 'template_fk'])
-
-        # condition = (df['excluded_templates'] == 1) | \
-        #             (df['excluded_template_products'] == 1) | (df['excluded_products'] == 1)
-
+            .merge(excluded_template_products, how='left', on=['product_fk', 'template_fk'])
         condition = (df['excluded_templates'] == 1) | (df['excluded_template_products'] == 1)
-
-        # df = df.drop(['excluded_templates', 'excluded_template_products',
-        #               'excluded_products'], axis=1)
         df = df.drop(['excluded_templates', 'excluded_template_products'], axis=1)
-
         df.loc[condition, 'in_sos'] = 0
         df.loc[~condition, 'in_sos'] = 1
 
@@ -858,12 +867,6 @@ class PngcnSceneKpis(object):
                str(round(display['product_size'], 2)) + ',' + \
                str(display['facings']) + \
                ')'
-
-    def _get_session_info(self):
-        query = ''' select pk as session_fk, store_fk, visit_date, session_uid
-                    from probedata.session where session_uid = \'{}\''''.format(self.session_uid)
-        session_info = pd.read_sql_query(query, self.project_connector.db)
-        return session_info
 
     def _get_displays_data(self):
         query = ''' select
@@ -1018,7 +1021,8 @@ class PngcnSceneKpis(object):
         for index, row in final_df.iterrows():
             if row['product_size'] != 0:
                 display_group_fk = self.get_display_group(row['display_group'])
-                self.common.write_to_db_result(fk=kpi_fk, numerator_id=display_group_fk, denominator_id=row['product_fk'],
+                self.common.write_to_db_result(fk=kpi_fk, numerator_id=display_group_fk,
+                                               denominator_id=row['product_fk'],
                                                result=row['product_size'], score=row['facings'], by_scene=True)
         return
 
@@ -1036,25 +1040,42 @@ class PngcnSceneKpis(object):
         matches_reduced = matches[mask]
 
         # calculate number of products in each stack
-        items_in_stack = matches.loc[mask, ['scene_fk', 'bay_number', 'shelf_number', 'facing_sequence_number']].groupby(
+        items_in_stack = matches.loc[
+            mask, ['scene_fk', 'bay_number', 'shelf_number', 'facing_sequence_number']].groupby(
             ['scene_fk', 'bay_number', 'shelf_number', 'facing_sequence_number']).size().reset_index()
         items_in_stack.rename(columns={0: 'items_in_stack'}, inplace=True)
         matches_reduced = matches_reduced.merge(items_in_stack, how='left',
                                                 on=['scene_fk', 'bay_number', 'shelf_number', 'facing_sequence_number'])
         matches_reduced['w_split'] = 1 / matches_reduced.items_in_stack
-        matches_reduced['gross_len_split_stack_new'] = matches_reduced['width_mm_advance'] * \
-            matches_reduced.w_split
+        matches_reduced['gross_len_split_stack_new'] = matches_reduced['width_mm_advance'] * matches_reduced.w_split
         new_scif_gross_split = matches_reduced[['product_fk', 'scene_fk', 'gross_len_split_stack_new',
-                                                'width_mm_advance', 'width_mm']].groupby(by=['product_fk', 'scene_fk']).sum().reset_index()
+                                                'width_mm_advance', 'width_mm']].groupby(
+            by=['product_fk', 'scene_fk']).sum().reset_index()
+
         new_scif = pd.merge(self.scif, new_scif_gross_split,
                             how='left', on=['scene_fk', 'product_fk'])
-        new_scif = new_scif.fillna(0)
+
+        # Handle uncorrect gross_len_split_stack_new <= 1 cases.
+        new_scif = self.deal_with_empty_advanced_width_mm_values(new_scif).fillna(0)
+
         self.save_nlsos_as_kpi_results(new_scif)
         self.insert_data_into_custom_scif(new_scif)
 
-    def calculate_result(self, num, den):
+    @staticmethod
+    def deal_with_empty_advanced_width_mm_values(new_scif):
+        relevant_rows = new_scif[(new_scif['gross_len_split_stack'] >= 1) &
+                                 ((new_scif['gross_len_split_stack_new'] < 2) |
+                                  (new_scif['gross_len_split_stack_new'].isna()))]
+        relevant_indices = relevant_rows.reset_index()['index'].tolist()
+        for i in relevant_indices:
+            new_scif.iloc[i, new_scif.columns.get_loc('gross_len_split_stack_new')] = \
+                new_scif.iloc[i]['gross_len_split_stack']
+        return new_scif
+
+    @staticmethod
+    def calculate_result(num, den):
         if den:
-            return num/float(den)
+            return num / float(den)
         else:
             return 0
 
@@ -1073,13 +1094,15 @@ class PngcnSceneKpis(object):
         new_scif_without_irrelevant = new_scif[~(new_scif['product_type'].isin(['Irrelevant']))]
         new_scif_without_excludes = new_scif_without_irrelevant[new_scif_without_irrelevant['rlv_sos_sc'] == 1]
         denominator_result = new_scif_without_excludes.gross_len_split_stack_new.sum()
-        for i, row in new_scif.iterrows():
-            result = self.calculate_result(row['gross_len_split_stack'], denominator_result)
+        for i, row in new_scif_without_excludes.iterrows():
+            numerator_result = row['gross_len_split_stack_new']
+            result = self.calculate_result(numerator_result, denominator_result)
+            result = round(result * 100, 2)
             self.common.write_to_db_result(fk=kpi_fk,
                                            numerator_id=row['product_fk'],
                                            denominator_id=self.store_id,
                                            denominator_result=denominator_result,
-                                           numerator_result=row['gross_len_split_stack_new'],
+                                           numerator_result=numerator_result,
                                            result=result, score=result, by_scene=True)
 
     def insert_data_into_custom_scif(self, new_scif):
@@ -1100,13 +1123,14 @@ class PngcnSceneKpis(object):
         insert_query = insert_query[:-2]
         try:
             self.common.execute_custom_query(delete_query)
-        except:
-            Log.error("Couldn't delete old results from custom_scene_item_facts")
+        except Exception as ex:
+            Log.error("Couldn't delete old results from custom_scene_item_facts, error".format(ex))
             return
         try:
             self.common.execute_custom_query(insert_query)
-        except:
-            Log.error("Couldn't write new results to custom_scene_item_facts and deleted the old results")
+        except Exception as ex:
+            Log.error("Couldn't write new results to custom_scene_item_facts and deleted the old results, "
+                      "error {}".format(ex))
 
     def get_png_manufacturer_fk(self):
         return self.all_products[self.all_products['manufacturer_name'].str.encode("utf8") ==
@@ -1134,14 +1158,14 @@ class PngcnSceneKpis(object):
         kpi_fk = self.common.get_kpi_fk_by_kpi_name(DISPLAY_SIZE_PER_SCENE)
 
         # get size and item id
-        DF_products_size = self._get_display_size_of_product_in_scene()
+        df_products_size = self._get_display_size_of_product_in_scene()
 
-        if self.scif.empty or DF_products_size.empty:
+        if self.scif.empty or df_products_size.empty:
             return
 
         filter_scif = self.scif[[u'scene_id', u'item_id',
                                  u'manufacturer_fk', u'rlv_sos_sc', u'status']]
-        df_result = pd.merge(filter_scif, DF_products_size, on=['item_id', 'scene_id'], how='left')
+        df_result = pd.merge(filter_scif, df_products_size, on=['item_id', 'scene_id'], how='left')
         df_result = df_result[df_result['product_size'] > 0]
 
         if kpi_fk:
@@ -1150,7 +1174,7 @@ class PngcnSceneKpis(object):
                                   self.png_manufacturer_fk]['product_size'].sum()  # get P&G products from scene
             if denominator:
                 score = numerator / denominator  # get the percentage of P&G products from all products
-                numerator, denominator = numerator*1000, denominator*1000
+                numerator, denominator = numerator * 1000, denominator * 1000
             else:
                 score = 0
             self.common.write_to_db_result(fk=kpi_fk, numerator_id=self.png_manufacturer_fk, numerator_result=numerator,
@@ -1210,7 +1234,7 @@ class PngcnSceneKpis(object):
         """
 
         # choosing the kpi to use depend on the input parameter
-        kpi_fk = None
+        kpi_fk = kpi_name = None
         if width == 'width_mm':
             kpi_fk = self.common.get_kpi_fk_by_kpi_name(LINEAR_SOS_MANUFACTURER_IN_SCENE)
             kpi_name = LINEAR_SOS_MANUFACTURER_IN_SCENE
@@ -1297,4 +1321,4 @@ class PngcnSceneKpis(object):
 #     data_provider.load_session_data(session)
 #     calculate(conn, session, data_provider)
 
-        # get the filtered df,
+# get the filtered df,

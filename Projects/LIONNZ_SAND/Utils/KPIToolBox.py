@@ -61,8 +61,8 @@ EXTRA_CODE = 3
 # KPI Names
 DST_MAN_BY_STORE_PERC = 'DST_MAN_BY_STORE_PERC'
 OOS_MAN_BY_STORE_PERC = 'OOS_MAN_BY_STORE_PERC'
-PRODUCT_PRESENCE_BY_STORE_LIST = 'PRODUCT_PRESENCE_BY_STORE_LIST'
-OOS_PRODUCT_BY_STORE_LIST = 'OOS_PRODUCT_BY_STORE_LIST'
+PRODUCT_PRESENCE_BY_STORE_LIST = 'DST_MAN_BY_STORE_PERC - SKU'
+OOS_PRODUCT_BY_STORE_LIST = 'OOS_MAN_BY_STORE_PERC - SKU'
 # map to save list kpis
 CODE_KPI_MAP = {
     OOS_CODE: OOS_PRODUCT_BY_STORE_LIST,
@@ -76,10 +76,6 @@ POLICY_STORE_MAP = {
 
 
 class LIONNZToolBox:
-    LEVEL1 = 1
-    LEVEL2 = 2
-    LEVEL3 = 3
-
     def __init__(self, data_provider, output):
         self.output = output
         self.data_provider = data_provider
@@ -153,9 +149,18 @@ class LIONNZToolBox:
                     valid_store = False
                     break
             return valid_store
+
         policy_data = self.get_policies(distribution_kpi.iloc[0].pk)
+        if policy_data.empty:
+            Log.info("No Assortments Loaded.")
+            return 0
         resp = policy_data['policy'].apply(__return_valid_store_policies)
         valid_policy_data = policy_data[resp]
+        if valid_policy_data.empty:
+            Log.info("No policy applicable for session {sess} and kpi {kpi}.".format(
+                sess=self.session_uid,
+                kpi=distribution_kpi.iloc[0].type))
+            return 0
         # calculate and save the percentage values for distribution and oos
         self.calculate_and_save_distribution_and_oos(
             assortment_product_fks=valid_policy_data['product_fk'],
@@ -174,14 +179,17 @@ class LIONNZToolBox:
     def calculate_and_save_prod_presence_and_oos_products(self, assortment_product_fks,
                                                           prod_presence_kpi_fk, oos_prod_kpi_fk,
                                                           distribution_kpi_name, oos_kpi_name):
-        total_products_in_scene = self.scif["item_id"].unique()
-        present_products = np.intersect1d(total_products_in_scene, assortment_product_fks)
-        extra_products = np.setdiff1d(total_products_in_scene, present_products)
+        # all assortment products are only in own manufacturers context
+        total_own_products_in_scene = self.scif[
+            self.scif['manufacturer_fk'].astype(int) == self.own_man_fk
+        ]["item_id"].unique()
+        present_products = np.intersect1d(total_own_products_in_scene, assortment_product_fks)
+        extra_products = np.setdiff1d(total_own_products_in_scene, present_products)
         oos_products = np.setdiff1d(assortment_product_fks, present_products)
         product_map = {
-            OOS_CODE: present_products,
-            PRESENT_CODE: extra_products,
-            EXTRA_CODE: oos_products
+            OOS_CODE: oos_products,
+            PRESENT_CODE: present_products,
+            EXTRA_CODE: extra_products
         }
         # save product presence; with distribution % kpi as parent
         for assortment_code, product_fks in product_map.iteritems():
@@ -193,7 +201,7 @@ class LIONNZToolBox:
                                                result=assortment_code,
                                                score=assortment_code,
                                                identifier_result=CODE_KPI_MAP.get(assortment_code),
-                                               identifier_parent=distribution_kpi_name,
+                                               identifier_parent="{}_{}".format(distribution_kpi_name, self.store_id),
                                                should_enter=True
                                                )
             if assortment_code == OOS_CODE:
@@ -205,9 +213,8 @@ class LIONNZToolBox:
                                                    context_id=self.store_id,
                                                    result=assortment_code,
                                                    score=assortment_code,
-                                                   identifier_result=CODE_KPI_MAP.get(
-                                                       assortment_code),
-                                                   identifier_parent=oos_kpi_name,
+                                                   identifier_result=CODE_KPI_MAP.get(assortment_code),
+                                                   identifier_parent="{}_{}".format(oos_kpi_name, self.store_id),
                                                    should_enter=True
                                                    )
 
@@ -216,27 +223,37 @@ class LIONNZToolBox:
         Saves distribution and oos percentage as values.
         """
         Log.info("Calculate distribution and OOS for {}".format(self.project_name))
+        scene_products = pd.Series(self.scif["item_id"].unique())
+        total_products_in_assortment = len(assortment_product_fks)
+        count_of_assortment_prod_in_scene = assortment_product_fks.isin(scene_products).sum()
+        oos_count = total_products_in_assortment - count_of_assortment_prod_in_scene
         #  count of lion sku / all sku assortment count
-        larger_dat, smaller_dat = self.scif["item_id"].unique(), assortment_product_fks
-        if len(assortment_product_fks) > len(self.scif["item_id"].unique()):
-            larger_dat = assortment_product_fks
-            smaller_dat = self.scif["item_id"].unique()
-        count_of_prod_in_scene = len([x for x in smaller_dat if x in larger_dat])
-        distribution_perc = count_of_prod_in_scene / float(len(assortment_product_fks)) * 100
+        if not total_products_in_assortment:
+            Log.info("No assortments applicable for session {sess}.".format(sess=self.session_uid))
+            return 0
+        distribution_perc = count_of_assortment_prod_in_scene / float(total_products_in_assortment) * 100
         oos_perc = 100 - distribution_perc
         self.common.write_to_db_result(fk=distribution_kpi_fk,
                                        numerator_id=self.own_man_fk,
+                                       numerator_result=count_of_assortment_prod_in_scene,
                                        denominator_id=self.store_id,
+                                       denominator_result=total_products_in_assortment,
                                        context_id=self.store_id,
                                        result=distribution_perc,
                                        score=distribution_perc,
+                                       identifier_result="{}_{}".format(DST_MAN_BY_STORE_PERC, self.store_id),
+                                       should_enter=True
                                        )
         self.common.write_to_db_result(fk=oos_kpi_fk,
                                        numerator_id=self.own_man_fk,
+                                       numerator_result=oos_count,
                                        denominator_id=self.store_id,
+                                       denominator_result=total_products_in_assortment,
                                        context_id=self.store_id,
                                        result=oos_perc,
-                                       score=distribution_perc,
+                                       score=oos_perc,
+                                       identifier_result="{}_{}".format(OOS_MAN_BY_STORE_PERC, self.store_id),
+                                       should_enter=True
                                        )
 
     def get_policies(self, kpi_fk):
@@ -302,7 +319,7 @@ class LIONNZToolBox:
         return True
 
     def calculate_fsos(self, kpi, groupers, query_string, dataframe_to_process):
-        Log.info("Calulcate {name} for session {sess}".format(
+        Log.info("Calculate {name} for session {sess}".format(
             name=kpi.kpi_name.iloc[0],
             sess=self.session_uid
         ))
@@ -310,29 +327,145 @@ class LIONNZToolBox:
             grouped_data_frame = dataframe_to_process.query(query_string).groupby(groupers)
         else:
             grouped_data_frame = dataframe_to_process.groupby(groupers)
+        # for the two kpis, we need to show zero presence of own manufacturer.
+        # else the flow will be stuck in case own manufacturers are absent altogether.
+        if '_own_' in kpi['kpi_name'].iloc[0].lower() and \
+                '_whole_store' not in kpi['kpi_name'].iloc[0].lower():
+            self.scif['store_fk'] = self.store_id
+            dataframe_to_process['store_fk'] = self.store_id
+            scif_with_den_context = self.scif[[PARAM_DB_MAP[kpi['denominator'].iloc[0]]['key'],
+                                               PARAM_DB_MAP[kpi['context'].iloc[0]]['key']]].drop_duplicates()
+            df_with_den_context = dataframe_to_process.query(query_string)[[
+                PARAM_DB_MAP[kpi['denominator'].iloc[0]]['key'],
+                PARAM_DB_MAP[kpi['context'].iloc[0]]['key']
+            ]].drop_duplicates()
+            denominators_df_to_save_zero = scif_with_den_context[(~scif_with_den_context[
+                PARAM_DB_MAP[kpi['denominator'].iloc[0]]['key']
+            ].isin(df_with_den_context[PARAM_DB_MAP[kpi['denominator'].iloc[0]]['key']]))]
+
+            kpi_details = self.kpi_template.parse(KPI_DETAILS_SHEET)
+            identifier_parent = None
+            if not is_nan(kpi[KPI_PARENT_COL].iloc[0]):
+                kpi_parent = self.kpi_static_data[(self.kpi_static_data[KPI_TYPE_COL] == kpi[KPI_PARENT_COL].iloc[0])
+                                                  & (self.kpi_static_data['delete_time'].isnull())]
+                kpi_parent_detail = kpi_details[kpi_details[KPI_NAME_COL] == kpi_parent[KPI_TYPE_COL].values[0]]
+                # hard coding; expecting only `FSOS_OWN_MANUFACTURER_IN_WHOLE_STORE` as parent
+                parent_denominator_id = self.store_id
+                parent_context_id = self.store_id
+                identifier_parent = "{}_{}_{}_{}".format(
+                    kpi_parent_detail['kpi_name'].iloc[0],
+                    kpi_parent['pk'].iloc[0],
+                    # parent_numerator_id,
+                    parent_denominator_id,
+                    parent_context_id
+                )
+
+            numerator_fk = self.own_man_fk
+            result = numerator_result = 0  # SAVE ALL RESULTS AS ZERO
+            for idx, each_row in denominators_df_to_save_zero.iterrows():
+                context_id = each_row[PARAM_DB_MAP[kpi['context'].iloc[0]]['key']]
+                # query out empty product IDs since FSOS is not interested in them.
+                each_den_fk = each_row[PARAM_DB_MAP[kpi['denominator'].iloc[0]]['key']]
+                _query = "{key}=='{value_id}' and product_fk not in {exc_prod_ids}".format(
+                    key=PARAM_DB_MAP[kpi['denominator'].iloc[0]]['key'],
+                    value_id=each_den_fk,
+                    exc_prod_ids=self.empty_prod_ids.tolist() + self.irrelevant_prod_ids.tolist()
+                )
+                # find number of products in that context
+                denominator_result = len(dataframe_to_process.query(_query))
+                if not denominator_result:
+                    continue
+                self.common.write_to_db_result(fk=kpi['pk'].iloc[0],
+                                               numerator_id=numerator_fk,
+                                               denominator_id=each_den_fk,
+                                               context_id=context_id,
+                                               result=result,
+                                               numerator_result=numerator_result,
+                                               denominator_result=denominator_result,
+                                               identifier_result="{}_{}_{}_{}".format(
+                                                   kpi['kpi_name'].iloc[0],
+                                                   kpi['pk'].iloc[0],
+                                                   # numerator_id,
+                                                   each_den_fk,
+                                                   context_id
+                                               ),
+                                               identifier_parent=identifier_parent,
+                                               should_enter=True,
+                                               )
+
         for group_id_tup, group_data in grouped_data_frame:
+            if type(group_id_tup) not in [tuple, list]:
+                # convert to a tuple
+                group_id_tup = group_id_tup,
             param_id_map = dict(zip(groupers, group_id_tup))
             numerator_id = param_id_map.get(PARAM_DB_MAP[kpi['numerator'].iloc[0]]['key'])
-            denominator_id = param_id_map.get(PARAM_DB_MAP[kpi['denominator'].iloc[0]]['key'])
-            context_id = (get_context_id(context_string=kpi['context'].iloc[0], param_id_map=param_id_map)
-                          or self.store_id)
-            result = len(group_data) / float(len(dataframe_to_process))
-            should_enter = False
-            identifier_parent = None
-            identifier_result = None
-            if not is_nan(kpi['kpi_parent'].iloc[0]):
-                should_enter = True
-                identifier_result = kpi[KPI_NAME_COL].iloc[0]
-                identifier_parent = kpi[KPI_PARENT_COL].iloc[0]
-            self.common.write_to_db_result(fk=kpi['pk'].iloc[0],
-                                           numerator_id=numerator_id,
-                                           denominator_id=denominator_id,
-                                           context_id=context_id,
-                                           result=result,
-                                           identifier_result=identifier_result,
-                                           identifier_parent=identifier_parent,
-                                           should_enter=should_enter,
-                                           )
+            denominator_id = (get_parameter_id(key_value=PARAM_DB_MAP[kpi['denominator'].iloc[0]]['key'],
+                                               param_id_map=param_id_map) or self.store_id)
+            context_id = (get_parameter_id(key_value=PARAM_DB_MAP[kpi['context'].iloc[0]]['key'],
+                                           param_id_map=param_id_map) or self.store_id)
+            if PARAM_DB_MAP[kpi['denominator'].iloc[0]]['key'] == 'store_fk':
+                denominator_df = dataframe_to_process
+            else:
+                denominator_df = dataframe_to_process.query('{key} == {value}'.format(
+                    key=PARAM_DB_MAP[kpi['denominator'].iloc[0]]['key'],
+                    value=denominator_id))
+            if not len(denominator_df):
+                Log.info("No denominator data for session {sess} to calculate  {name}".format(
+                    sess=self.session_uid,
+                    name=kpi.kpi_name.iloc[0]
+                ))
+                continue
+            result = len(group_data) / float(len(denominator_df))
+            if not is_nan(kpi[KPI_PARENT_COL].iloc[0]):
+                kpi_parent = self.kpi_static_data[(self.kpi_static_data[KPI_TYPE_COL] == kpi[KPI_PARENT_COL].iloc[0])
+                                                  & (self.kpi_static_data['delete_time'].isnull())]
+                kpi_details = self.kpi_template.parse(KPI_DETAILS_SHEET)
+                kpi_parent_detail = kpi_details[kpi_details[KPI_NAME_COL] == kpi_parent[KPI_TYPE_COL].values[0]]
+                parent_denominator_id = (get_parameter_id(key_value=PARAM_DB_MAP[kpi_parent_detail['denominator'].iloc[0]]['key'],
+                                                          param_id_map=param_id_map) or self.store_id)
+                parent_context_id = (get_parameter_id(key_value=PARAM_DB_MAP[kpi_parent_detail['context'].iloc[0]]['key'],
+                                                      param_id_map=param_id_map) or self.store_id)
+                self.common.write_to_db_result(fk=kpi['pk'].iloc[0],
+                                               numerator_id=numerator_id,
+                                               denominator_id=denominator_id,
+                                               context_id=context_id,
+                                               result=result,
+                                               numerator_result=len(group_data),
+                                               denominator_result=len(denominator_df),
+                                               identifier_result="{}_{}_{}_{}".format(
+                                                   kpi['kpi_name'].iloc[0],
+                                                   kpi['pk'].iloc[0],
+                                                   # numerator_id,
+                                                   denominator_id,
+                                                   context_id
+                                               ),
+                                               identifier_parent="{}_{}_{}_{}".format(
+                                                   kpi_parent_detail['kpi_name'].iloc[0],
+                                                   kpi_parent['pk'].iloc[0],
+                                                   # parent_numerator_id,
+                                                   parent_denominator_id,
+                                                   parent_context_id
+                                               ),
+                                               should_enter=True,
+                                               )
+            else:
+                # its the parent. Save the identifier result.
+                self.common.write_to_db_result(fk=kpi['pk'].iloc[0],
+                                               numerator_id=numerator_id,
+                                               denominator_id=denominator_id,
+                                               context_id=context_id,
+                                               result=result,
+                                               numerator_result=len(group_data),
+                                               denominator_result=len(denominator_df),
+                                               identifier_result="{}_{}_{}_{}".format(
+                                                   kpi['kpi_name'].iloc[0],
+                                                   kpi['pk'].iloc[0],
+                                                   # numerator_id,
+                                                   denominator_id,
+                                                   context_id
+                                               ),
+                                               should_enter=True,
+                                               )
 
         return True
 
@@ -345,7 +478,8 @@ class LIONNZToolBox:
             param_id_map = dict(zip(groupers, group_id_tup))
             numerator_id = param_id_map.get(PARAM_DB_MAP[kpi['numerator'].iloc[0]]['key'])
             denominator_id = param_id_map.get(PARAM_DB_MAP[kpi['denominator'].iloc[0]]['key'])
-            context_id = (get_context_id(context_string=kpi['context'].iloc[0], param_id_map=param_id_map)
+            context_id = (get_parameter_id(key_value=PARAM_DB_MAP[kpi['context'].iloc[0]]['key'],
+                                           param_id_map=param_id_map)
                           or self.store_id)
             result = len(group_data)
             self.common.write_to_db_result(fk=kpi['pk'].iloc[0],
@@ -436,14 +570,14 @@ class LIONNZToolBox:
         return sanitized_products_in_scene
 
 
-def get_context_id(context_string, param_id_map):
-    """Function to return context ID.
+def get_parameter_id(key_value, param_id_map):
+    """Function to return parameter ID.
 
     Return the context ID from the dict provided based on the numerator/denominator in excel. Or return `None`.
-    Use appropriate ID in caller; if context ID cannot be found. Usually store_id.
+    Use appropriate default ID in caller; if context ID cannot be found. Usually store_id.
     """
-    if context_string.strip() and context_string.strip() != 'store':
-        return param_id_map.get(context_string, None)
+    if key_value.strip() and key_value.strip() != 'store_fk':
+        return param_id_map.get(key_value, None)
     return None
 
 
@@ -451,8 +585,8 @@ def get_include_exclude(kpi_include_exclude):
     output = {}
     for key in INC_EXC_LIST:
         if not is_nan(kpi_include_exclude.get(key).values[0]) and \
-                str(kpi_include_exclude.get(key).values[0]).strip() and \
-                str(kpi_include_exclude.get(key).values[0]).strip().lower() in ['na', 'n/a', 'n / a']:
+                str(kpi_include_exclude.get(key).values[0]).strip() != '' and \
+                str(kpi_include_exclude.get(key).values[0]).strip().lower() not in ['na', 'n/a', 'n / a']:
             _data = kpi_include_exclude.get(key).values[0]
             if type(_data) == unicode:
                 _data = [x.strip() for x in _data.split(',') if x.strip()]

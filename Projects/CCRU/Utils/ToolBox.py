@@ -60,6 +60,16 @@ class CCRUKPIToolBox:
 
     MIN_CALC_DATE = '2019-06-29'
 
+    STANDARD_VISIT = 'Standard visit'
+    PROMO_VISIT = 'Promo visit'
+    SOVI_SOCVI_VISIT = 'SOVI/SOCVI'
+    SEGMENTATION_VISIT = 'Segmentation'
+
+    VISIT_TYPE = {1: STANDARD_VISIT,
+                  2: PROMO_VISIT,
+                  3: SOVI_SOCVI_VISIT,
+                  4: SEGMENTATION_VISIT}
+
     def __init__(self, data_provider, output, kpi_set_name=None, kpi_set_type=None):
         self.data_provider = data_provider
         self.output = output
@@ -72,6 +82,8 @@ class CCRUKPIToolBox:
 
         self.session_uid = self.data_provider.session_uid
         self.session_fk = self.data_provider[Data.SESSION_INFO]['pk'].iloc[0]
+        self.visit_type = self.VISIT_TYPE.get(self.data_provider[Data.SESSION_INFO]['visit_type_fk'].iloc[0],
+                                              self.data_provider[Data.SESSION_INFO]['visit_type_fk'].iloc[0])
         self.visit_date = self.data_provider[Data.VISIT_DATE]
         self.store_id = self.data_provider[Data.STORE_FK]
         self.own_manufacturer_id = int(
@@ -1362,20 +1374,48 @@ class CCRUKPIToolBox:
         else:
             relevant_products_and_facings = self.scif[
                 (self.scif['scene_id'].isin(scenes)) & ~(self.scif['product_type'].isin(['Empty', 'Other']))]
-        all_products_by_ean_code = relevant_products_and_facings.groupby(['product_ean_code'])[
-            'facings'].sum()
-        tested_sku = [unicode(x).strip() for x in unicode(params.get('Values')).split(', ')]
-        tested_facings = \
-            relevant_products_and_facings[relevant_products_and_facings['product_ean_code'].isin(tested_sku)][
-                'facings'].sum()
-        self.update_kpi_scores_and_results(params, {'result': tested_facings})
-        if not all_products_by_ean_code.empty:
-            if sum(tested_facings < all_products_by_ean_code) == 0:
-                return tested_facings
-            else:
-                return 0
+        values = [unicode(x).strip() for x in unicode(params.get('Values')).replace(' ', '').replace('=', '\n').split('\n')]
+        partner_skus = []
+        tested_skus = []
+        if values:
+            for skus in values:
+                analogue_skus = [unicode(x).strip() for x in skus.split(',')]
+                anchor_sku = analogue_skus.pop()
+                partner_skus += [anchor_sku]
+                relevant_products_and_facings.loc[
+                    relevant_products_and_facings['product_ean_code'].isin(analogue_skus), [
+                        'product_ean_code']] = anchor_sku
+
+            tested_skus = [partner_skus.pop()]
+
+        if tested_skus and not relevant_products_and_facings.empty:
+            tested_facings = \
+                relevant_products_and_facings[
+                    relevant_products_and_facings['product_ean_code'].isin(tested_skus)]['facings'].sum()
+            partner_facings_max = \
+                relevant_products_and_facings[
+                    relevant_products_and_facings['product_ean_code'].isin(partner_skus)].groupby(
+                    'product_ean_code').agg({'facings': 'sum'}).max().sum()
+            other_facings_max = \
+                relevant_products_and_facings[
+                    ~relevant_products_and_facings['product_ean_code'].isin(tested_skus + partner_skus)].groupby(
+                    'product_ean_code').agg({'facings': 'sum'}).max().sum()
         else:
-            return 0
+            tested_facings = 0
+            partner_facings_max = 0
+            other_facings_max = 0
+
+        # # option 1:
+        # # tested sku is lead if its facings are more or equal to any partner sku facings
+        # # or they are more than any other sku facings
+        # facings_target = max(partner_facings_max, other_facings_max + 1)
+
+        # # option 2:
+        # tested sku is lead if its facings are more or equal to any sku facings (either partner or any other sku)
+        facings_target = max(partner_facings_max, other_facings_max)
+
+        self.update_kpi_scores_and_results(params, {'result': tested_facings, 'target': facings_target})
+        return tested_facings, facings_target
 
     def calculate_number_of_scenes(self, p):
         """
@@ -1510,8 +1550,7 @@ class CCRUKPIToolBox:
                     if c.get("Formula").strip() == "number of facings":
                         atomic_res = self.calculate_availability(c)
                     elif c.get("Formula").strip() == "number of doors with more than Target facings":
-                        atomic_res = self.calculate_number_of_doors_more_than_target_facings(
-                            c, 'sum of doors')
+                        atomic_res = self.calculate_number_of_doors_more_than_target_facings(c, 'sum of doors')
                     elif c.get("Formula").strip() == "facings TCCC/40":
                         atomic_res = self.calculate_tccc_40(c)
                     elif c.get("Formula").strip() == "number of doors of filled Coolers":
@@ -1519,10 +1558,8 @@ class CCRUKPIToolBox:
                     elif c.get("Formula").strip() == "check_number_of_scenes_with_facings_target":
                         atomic_res = self.calculate_number_of_scenes_with_target(c)
                     elif c.get("Formula").strip() == "number of coolers with facings target and fullness target":
-                        scenes = self.calculate_number_of_doors_more_than_target_facings(
-                            c, 'get scenes')
-                        atomic_res = self.calculate_number_of_doors_of_filled_coolers(
-                            c, scenes, proportion_param=0.9)
+                        scenes = self.calculate_number_of_doors_more_than_target_facings(c, 'get scenes')
+                        atomic_res = self.calculate_number_of_doors_of_filled_coolers(c, scenes, proportion_param=0.9)
                     else:
                         # print "sum of atomic KPI result:", c.get("Formula").strip()
                         atomic_res = 0
@@ -1586,13 +1623,14 @@ class CCRUKPIToolBox:
             for c in params.values()[0]:
                 if c.get("KPI ID") in children:
                     atomic_score = -1
+                    atomic_target = 0
                     if c.get("Formula").strip() == "number of facings" or c.get("Formula").strip() == "number of SKUs":
                         atomic_res = self.calculate_availability(c, all_params=params)
                     elif c.get("Formula").strip() == "number of sub atomic KPI Passed":
                         atomic_res = self.calculate_sub_atomic_passed(c, params, parent=p)
                     elif c.get("Formula").strip() == "Lead SKU":
-                        atomic_res = self.calculate_lead_sku(c)
-                        if not atomic_res:
+                        atomic_res, atomic_target = self.calculate_lead_sku(c)
+                        if atomic_res < atomic_target:
                             atomic_score = 0
                         else:
                             atomic_score = 100
@@ -1628,8 +1666,12 @@ class CCRUKPIToolBox:
                     # write to DB
                     atomic_kpi_fk = self.kpi_fetcher.get_atomic_kpi_fk(
                         c.get('KPI name Eng'), kpi_fk)
-                    attributes_for_level3 = self.create_attributes_for_level3_df(
-                        c, atomic_score, kpi_fk, atomic_kpi_fk)
+                    if c.get("Formula").strip() == "Lead SKU":
+                        attributes_for_level3 = self.create_attributes_for_level3_df(
+                            c, (atomic_score, atomic_res, atomic_target), kpi_fk, atomic_kpi_fk)
+                    else:
+                        attributes_for_level3 = self.create_attributes_for_level3_df(
+                            c, atomic_score, kpi_fk, atomic_kpi_fk)
                     self.write_to_kpi_results_old(attributes_for_level3, 'level3')
                     if atomic_score > 0:
                         kpi_total += 1
@@ -1685,8 +1727,8 @@ class CCRUKPIToolBox:
                         atomic_res = self.calculate_sub_atomic_passed(
                             c, params, [scene], parent=p, same_scene=True)
                     elif c.get("Formula").strip() == "Lead SKU":
-                        atomic_res = self.calculate_lead_sku(c, [scene])
-                        if not atomic_res:
+                        atomic_res, atomic_target = self.calculate_lead_sku(c, [scene])
+                        if atomic_res < atomic_target:
                             atomic_score = 0
                         else:
                             atomic_score = 100
@@ -1734,8 +1776,8 @@ class CCRUKPIToolBox:
                         atomic_res = self.calculate_sub_atomic_passed(
                             c, params, [favorite_scene], parent=p)
                     elif c.get("Formula").strip() == "Lead SKU":
-                        atomic_res = self.calculate_lead_sku(c, [favorite_scene])
-                        if not atomic_res:
+                        atomic_res, atomic_target = self.calculate_lead_sku(c, [favorite_scene])
+                        if atomic_res < atomic_target:
                             atomic_score = 0
                         else:
                             atomic_score = 100
@@ -1811,13 +1853,14 @@ class CCRUKPIToolBox:
         for c in all_params.values()[0]:
             if c.get("KPI ID") in children:
                 sub_atomic_score = -1
+                sub_atomic_target = 0
                 if c.get("Formula").strip() == "number of facings":
                     sub_atomic_res = self.calculate_availability(c, scenes, all_params=all_params)
                 elif c.get("Formula").strip() == "number of facings near food":
                     sub_atomic_res = self.calculate_number_facings_near_food(c, params)
                 elif c.get("Formula").strip() == "Lead SKU":
-                    sub_atomic_res = self.calculate_lead_sku(c, scenes)
-                    if not sub_atomic_res:
+                    sub_atomic_res, sub_atomic_target = self.calculate_lead_sku(c, scenes)
+                    if sub_atomic_res < sub_atomic_target:
                         sub_atomic_score = 0
                     else:
                         sub_atomic_score = 100
@@ -1833,8 +1876,12 @@ class CCRUKPIToolBox:
                 kpi_fk = self.kpi_fetcher.get_kpi_fk(parent.get('KPI name Eng'))
                 sub_atomic_kpi_fk = self.kpi_fetcher.get_atomic_kpi_fk(
                     c.get('KPI name Eng'), kpi_fk)
-                attributes_for_level4 = self.create_attributes_for_level3_df(
-                    c, sub_atomic_score, kpi_fk, sub_atomic_kpi_fk, level=4)
+                if c.get("Formula").strip() == "Lead SKU":
+                    attributes_for_level4 = self.create_attributes_for_level3_df(
+                        c, (sub_atomic_score, sub_atomic_res, sub_atomic_target), kpi_fk, sub_atomic_kpi_fk, level=4)
+                else:
+                    attributes_for_level4 = self.create_attributes_for_level3_df(
+                        c, sub_atomic_score, kpi_fk, sub_atomic_kpi_fk, level=4)
                 self.write_to_kpi_results_old(attributes_for_level4, 'level4')
         return total_res
 
@@ -2598,7 +2645,8 @@ class CCRUKPIToolBox:
             kpi_name = param.get('KPI Name Eng')
             kpi_id = self.kpi_name_to_id[POS].get(kpi_name)
             if kpi_id is None:
-                Log.warning('Gap KPI is not found in PoS KPI set : {}'.format(kpi_name))
+                Log.warning('Gap KPI <{}> is not found in PoS KPI set <{}>'
+                            ''.format(kpi_name, self.pos_kpi_set_name))
             else:
                 kpi_name_local = self.kpi_scores_and_results[POS][kpi_id].get('rus_name')
                 category = param.get('Gap Category Eng')
@@ -2652,8 +2700,8 @@ class CCRUKPIToolBox:
             if gap_groups_limit.get(kpi.get('Gap Category Eng')) > 0:
                 kpi_id = self.kpi_name_to_id[POS].get(kpi.get('KPI Name Eng'))
                 if kpi_id is None:
-                    Log.warning('Gap KPI is not found in PoS KPI set : {}'.format(
-                        kpi.get('KPI Name Eng')))
+                    Log.warning('Gap KPI <{}> is not found in PoS KPI set <{}>'
+                                ''.format(kpi.get('KPI Name Eng'), self.pos_kpi_set_name))
                 else:
                     score = self.kpi_scores_and_results[POS][kpi_id].get('weighted_score') \
                         if self.kpi_scores_and_results[POS][kpi_id].get('weighted_score') else 0
@@ -2833,7 +2881,8 @@ class CCRUKPIToolBox:
                 pos_kpi_id = self.kpi_name_to_id[POS].get(pos_kpi_name)
                 if pos_kpi_id is None:
                     Log.warning(
-                        'Benchmark POS KPI is not found in POS KPI set : {}'.format(pos_kpi_name))
+                        'Benchmark POS KPI <{}> is not found in POS KPI set <{}>'
+                        ''.format(pos_kpi_name, self.pos_kpi_set_name))
                 else:
 
                     score += self.kpi_scores_and_results[POS][pos_kpi_id].get('weighted_score') \
@@ -2988,7 +3037,7 @@ class CCRUKPIToolBox:
                                     target = int(target)
                                 try:
                                     result = round(float(self.kpi_scores_and_results[TARGET][self.kpi_name_to_id[TARGET]
-                                                                                             .get(atomic_kpi_name)].get('result')), 2)
+                                                         .get(atomic_kpi_name)].get('result')), 2)
                                     result = int(result) if result == int(result) else result
                                 except:
                                     result = 0
@@ -3192,7 +3241,10 @@ class CCRUKPIToolBox:
         in_assortment = True
         for scene_fk in self.scif['scene_id'].unique():
 
-            scene_data = self.scif[(self.scif['scene_id'] == scene_fk) & (self.scif['facings'] > 0)]
+            scene_data = self.scif[(self.scif['scene_id'] == scene_fk) &
+                                   (self.scif['manufacturer_name'] == 'TCCC') &
+                                   (self.scif['product_type'] == 'SKU') &
+                                   (self.scif['facings'] > 0)]
             facings_data = scene_data.groupby('product_fk')['facings'].sum().to_dict()
             for anchor_product_fk in top_skus['product_fks'].keys():
                 min_facings = top_skus['min_facings'][anchor_product_fk]

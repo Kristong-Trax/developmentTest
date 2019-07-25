@@ -7,11 +7,9 @@ from Projects.MARSRU2_SAND.Calculations import MARSRU2_SANDCalculations
 if __name__ == '__main__':
     LoggerInitializer.init('MARSRU calculations')
     Config.init()
-    project_name = 'marsru2-sand'
+    project_name = 'marsru-prod'
     session_uids = [
-        'ff23ea8d-2e26-4c03-9ac2-3dccbc6ed72c',
-        'ff959c2c-cc64-464f-ad1b-0c272530abc4',
-        'fffd3e66-882a-4a12-a284-5b5851ac9ee3'
+        'd0cfeb52-15df-456b-a973-61d49b77b6ca'
     ]
     data_provider = KEngineDataProvider(project_name)
     output = Output()

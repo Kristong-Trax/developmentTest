@@ -128,12 +128,13 @@ class PNGJPToolBox(PNGJPConsts):
             template_name = 'Template_7-10.xlsx'
         else:
             template_name = 'Template_11-12.xlsx'
-        self.TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', template_name)
+        # self.TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', template_name)
+        self.TEMPLATE_PATH = self.get_template_path(template_name)
         self.template_data = parse_template(self.TEMPLATE_PATH, 'KPIs')
         self.innovation_assortment = parse_template(self.TEMPLATE_PATH, 'Innovation Assortment')
         self.psku_assortment = parse_template(self.TEMPLATE_PATH, 'PSKU Assortment')
         self.scene_types = parse_template(self.TEMPLATE_PATH, 'Category-Scene_Type')
-        self.GOLDEN_ZONE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'TemplateQualitative.xlsx')
+        self.GOLDEN_ZONE_PATH = self.get_template_path('TemplateQualitative.xlsx')
         self.golden_zone_data_criteria = parse_template(self.GOLDEN_ZONE_PATH, 'Golden Zone Criteria')
         self.category_scene_types = self.get_category_scene_types()
         self._custom_templates = {}
@@ -146,6 +147,9 @@ class PNGJPToolBox(PNGJPConsts):
         self.display_types = ['Aisle', 'Casher', 'End-shelf', 'Entrance', 'Island', 'Side-End', 'Side-net']
         self.custom_scif_queries = []
         self.session_fk = self.data_provider[Data.SESSION_INFO]['pk'].iloc[0]
+
+    def get_template_path(self, template_name):
+        return os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', template_name)
 
     @property
     def rds_conn(self):
