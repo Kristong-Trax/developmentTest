@@ -107,7 +107,7 @@ class MARSUAE_SANDToolBox:
         kpi_static_data = self.kpi_static_data[['pk', 'type']]
         assortment_result = assortment_result.merge(kpi_static_data, left_on='kpi_fk_lvl2', right_on='pk', how='left')
         assortment_result = assortment_result.drop(columns=['pk'])
-        assortment_result.rename({'type': 'ass_lvl2_kpi_type'}, inplace=True)
+        assortment_result.rename(columns={'type': 'ass_lvl2_kpi_type'}, inplace=True)
         return assortment_result
 
     def get_category_level_targets(self):
@@ -162,7 +162,7 @@ class MARSUAE_SANDToolBox:
 
     def get_store_atomic_kpi_parameters(self):
         atomic_params = self.external_targets[self.external_targets['operation_type'] == self.ATOMIC_LEVEL]
-        atomic_params = atomic_params.drop_duplicates(subset=['operation_type', 'kpi_level_2_fk', 'kpi_type'
+        atomic_params = atomic_params.drop_duplicates(subset=['operation_type', 'kpi_level_2_fk', 'kpi_type',
                                                               'key_json', 'data_json'], keep='last')
         relevant_atomic_params_df = pd.DataFrame(columns=atomic_params.columns.values.tolist())
         if not atomic_params.empty:
@@ -170,6 +170,8 @@ class MARSUAE_SANDToolBox:
             policy_columns = policies_df.columns.values.tolist()
             del policy_columns[policy_columns.index('pk')]
 
+            match_dict = self.match_policy_attr_columns_to_value_columns(policy_columns)
+            # continue from here
             for column in policy_columns:
                 store_att_value = self.store_info_dict.get(column)
                 mask = policies_df.apply(self.get_masking_filter, args=(column, store_att_value), axis=1)
@@ -250,6 +252,33 @@ class MARSUAE_SANDToolBox:
                         tier_dict = {self.KPI_TYPE: row[self.KPI_TYPE], 'step_value': row[column],
                                      'step_score_value': row(value_col)}
                         tier_dict_list.append(tier_dict)
+
+    @staticmethod
+    def match_policy_attr_columns_to_value_columns(policy_columns):
+        attr_name_match_dict = {}
+        for col in policy_columns:
+            if col.startswith('store_att_name_'):
+                condition_number = str(col.strip('store_att_name_'))
+                matching_value_col = filter(lambda x: x == 'store_att_value_{}'.format(condition_number),
+                                            policy_columns)
+                value_col = matching_value_col[0] if len(matching_value_col) > 0 else None
+                if value_col:
+                    attr_name_match_dict.update({col: value_col})
+        return attr_name_match_dict
+
+    # def match_store_attributes_to_values(self, row, tier_dict_list):
+    #     relevant_columns = filter(lambda x: x.startswith('score_cond'), row.index.values)
+    #     for column in relevant_columns:
+    #         if row[column]:
+    #             if column.startswith('score_cond_target_'):
+    #                 condition_number = str(column.strip('score_cond_target_'))
+    #                 matching_value_col = filter(lambda x: x == 'score_cond_score_'.format(condition_number),
+    #                                             relevant_columns)
+    #                 value_col = matching_value_col[0] if len(matching_value_col) > 0 else None
+    #                 if value_col:
+    #                     tier_dict = {self.KPI_TYPE: row[self.KPI_TYPE], 'step_value': row[column],
+    #                                  'step_score_value': row(value_col)}
+    #                     tier_dict_list.append(tier_dict)
 
     def get_general_filters(self, param_row):
         templates = param_row[self.TEMPLATE_NAME_T]

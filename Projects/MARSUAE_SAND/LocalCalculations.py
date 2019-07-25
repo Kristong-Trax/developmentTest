@@ -27,12 +27,12 @@ if __name__ == '__main__':
     data_provider = KEngineDataProvider(project_name)
     session = '7CB61001-022D-4077-B275-AB9A9E0C2AFF'
     data_provider.load_session_data(session)
-    # output = Output()
-    # MarsuaeSandCalculations(data_provider, output).run_project_calculations()
-    scenes = data_provider.scenes_info.scene_fk.tolist()
-    for scene in scenes:
-        data_provider.load_scene_data(session, scene)
-        output = VanillaOutput()
-        SceneVanillaCalculations(data_provider, output).run_project_calculations()
-        save_scene_item_facts_to_data_provider(data_provider, output)
-        MARSUAE_SANDSceneCalculations(data_provider).calculate_kpis()
+    output = Output()
+    MarsuaeSandCalculations(data_provider, output).run_project_calculations()
+    # scenes = data_provider.scenes_info.scene_fk.tolist()
+    # for scene in scenes:
+    #     data_provider.load_scene_data(session, scene)
+    #     output = VanillaOutput()
+    #     SceneVanillaCalculations(data_provider, output).run_project_calculations()
+    #     save_scene_item_facts_to_data_provider(data_provider, output)
+    #     MARSUAE_SANDSceneCalculations(data_provider).calculate_kpis()
