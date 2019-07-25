@@ -10,7 +10,7 @@ __author__ = 'Sergey'
 
 PROJECT = 'ccru'
 START_DATE = '2019-06-29'
-END_DATE = '2019-07-12'
+END_DATE = '2019-07-25'
 NUMBER_OF_SCENES_LIMIT = 10000
 BATCH_FILE = '/home/sergey/Documents/Recalc/' + PROJECT + '_sessions_'
 
@@ -55,6 +55,7 @@ class CCRUSessionBatches:
     'PoS 2019 - MT Supermarket - REG',
     'Contract Execution 2019'
                 )
+                GROUP BY ss.session_uid
                 ORDER BY ss.visit_date;
                 """.format(START_DATE, END_DATE)
 
