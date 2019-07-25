@@ -38,6 +38,42 @@ class TNUVAILToolBox:
         self.assortment = Assortment(self.data_provider, self.output)
         self.own_manufacturer_fk = self.data_provider.own_manufacturer.param_value.values[0]
 
+    def main_calculation(self):
+        """ This function calculates all of the KPIs' results """
+        self._calculate_facings_sos()
+        self._calculate_assortment()
+        self.common_v2.commit_results_data()
+
+    def _calculate_assortment(self):
+        """
+        This the main function for assortment calculation. It prepares the data and calculating all of the relevant
+        policies. In this project there is abuse of notion of "Assortment" KPI - Distribution and OOS are been
+        calculated on different data. Distribution is been calculated for everything and OOS only for
+        "Obligatory" policy
+        """
+        lvl3_result = self._prepare_data_for_assortment_calculation()
+        # Calculating Milky assortments
+        self._calculate_assortment_results_per_policy(lvl3_result, policy=Consts.MILKY_POLICY)
+        # Calculating Tirat Tsvi assortments
+        self._calculate_assortment_results_per_policy(lvl3_result, policy=Consts.TIRAT_TSVI_POLICY)
+
+    def _prepare_data_for_assortment_calculation(self):
+        """ This method gets the level 3 assortment results (SKU level), adding category_fk and returns the DataFrame"""
+        lvl3_result = self.assortment.calculate_lvl3_assortment()
+        category_per_product = self.all_products[[Consts.PRODUCT_FK, Consts.CATEGORY_FK]]
+        lvl3_result = pd.merge(lvl3_result, category_per_product, how='left')
+        return lvl3_result
+
+    def _calculate_assortment_results_per_policy(self, lvl3_result, policy):
+        """
+        This method triggering the Distribution and OOS calculations for the relevant policy.
+        :param lvl3_result: Assortment SKU level results + category_fk column.
+        :param policy: חלבי או טירת צבי
+        """
+        lvl3_data = self._get_relevant_assortment_data(lvl3_result, policy)
+        self._calculate_distribution_and_oos(lvl3_data, policy, is_dist=True)
+        self._calculate_distribution_and_oos(lvl3_data, policy, is_dist=False)
+
     def _get_filtered_scif_for_sos_calculations(self):
         """ This method filters the relevant attribute from scene item facts for sos calculation"""
         filtered_scif = self.scif[~self.scif[Consts.PRODUCT_TYPE].isin(Consts.TYPES_TO_IGNORE_IN_SOS)]
@@ -126,13 +162,13 @@ class TNUVAILToolBox:
         filtered_scif = self._get_filtered_scif_per_scene_type(scene_type_to_filter)
         relevant_products = filtered_scif.product_fk.unique().tolist()
         relevant_lvl3_assortment_data = lvl3_assortment.loc[lvl3_assortment.product_fk.isin(relevant_products)]
-        return relevant_lvl3_assortment_data, filtered_scif
+        return relevant_lvl3_assortment_data
 
     def _get_assortment_kpi_fks(self, policy, is_distribution):
         """
-        This project have 12 different kpis for distribution and oos. So this method returns the relevant one according
-        to the scene_type, level and distribution / oos.
-        :param is_distribution: True if the KPI is distribution. False ==> OOS.
+        This project have 12 different kpis for distribution and oos. So this method returns the relevant ones
+        according to the scene_type, level and distribution / oos.
+        :param is_distribution: True if the KPI is distribution, else (KPI is OOS) False.
         :return: The relevant Assortment KPI name by attributes.
         """
         if is_distribution:
@@ -156,58 +192,90 @@ class TNUVAILToolBox:
         return store_level_fk, category_level_fk, sku_level_fk
 
     @staticmethod
-    def _calculate_category_level_distribution(lvl3_data):
+    def _calculate_category_level_assortment(lvl3_data, is_distribution):
         """
         This method grouping by the assortment SKUs per category and returns the amount of in_store skus per product.
         :param lvl3_data: The SKU level assortment data
+        :param is_distribution: True if we calculating Distribution, False if we calculating OOS
         :return: A dictionary - the key is the category_fk and the value is the amount of SKUs in store from that
         category. E.g: {1: 10, 2:0, 3:22 ..}
         """
-        in_store_per_category = lvl3_data[[Consts.CATEGORY_FK, Consts.IN_STORE]].fillna(0)
+        in_store_per_category = lvl3_data[[Consts.CATEGORY_FK, 'in_store']].fillna(0)  # todo Replace with CONST
         in_store_per_category = in_store_per_category.groupby(Consts.CATEGORY_FK, as_index=False).agg(['sum', 'count'])
         in_store_per_category.columns = in_store_per_category.columns.droplevel(0)
-        in_store_per_category = in_store_per_category[Consts.IN_STORE].to_dict()
+        in_store_per_category.reset_index(inplace=True)
+        in_store_per_category.rename(Consts.AGGREGATION_COLUMNS_RENAMING, inplace=True, axis=1)
+        if not is_distribution:  # In OOS the numerator is total - distribution
+            in_store_per_category[Consts.NUMERATOR_RESULT] = in_store_per_category[Consts.DENOMINATOR_RESULT] - \
+                                                             in_store_per_category[Consts.NUMERATOR_RESULT]
+        in_store_per_category = in_store_per_category.to_dict('records')
         return in_store_per_category
 
-    def _calculate_distribution(self, lvl3_data, policy):
+    @staticmethod
+    def _calculate_sku_level_assortment(lvl3_data, is_distribution):
         """
-
-        :param lvl3_data:
-        :param policy:
+        This method filters the relevant data to save (Distribution or OOS) and transform that DataFrame into a
+        convenient dictionary with product_fk, numerator_result and denominator_result
+        :param lvl3_data: Assortment SKU level results
+        :param is_distribution: True if the KPI is distribution, else (KPI is OOS) False.
         :return:
         """
-        store_level_kpi_fk, category_lvl_fk, sku_level_fk = self._get_assortment_kpi_fks(policy, is_distribution=True)
-        category_per_product = self.all_products[[Consts.PRODUCT_FK, Consts.CATEGORY_FK]]
-        lvl3_data = pd.merge(lvl3_data, category_per_product, how='left')
-        store_num_res, store_denom_res = lvl3_data.in_store.sum(), lvl3_data.in_store.count()
-        assortment_ratio = store_num_res / float(store_denom_res) if store_denom_res else 0
-        self.common_v2.write_to_db_result(fk=store_level_kpi_fk, numerator_id=999, numerator_result=store_num_res,
-                                          denominator_id=self.store_id, denominator_result=store_denom_res,
-                                          score=assortment_ratio, result=assortment_ratio,
-                                          identifier_result=store_level_kpi_fk)
-        results_per_category = self._calculate_category_level_distribution(lvl3_data)
+        in_store_relevant_attribute = 1 if is_distribution else 0
+        sku_level_res = lvl3_data.loc[lvl3_data.in_store == in_store_relevant_attribute]
+        sku_level_res = sku_level_res[[Consts.PRODUCT_FK, 'in_store']]  # todo Consts.IN_STORE
+        sku_level_res = sku_level_res.assign(denominator_result=1).rename({'in_store': 'numerator_result'}, axis=1)
+        sku_level_res = sku_level_res.to_dict('records')
+        return sku_level_res
 
-    def _save_results_for_assortment_category_level(self, results_per_category, kpi_fk, parent_kpi_fk):
+    @staticmethod
+    def _calculate_store_level_assortment(lvl3_data, is_distribution=True):
         """
-
-        :param category_lvl_kpi_fk:
+        This method filters the relevant data to save (Distribution or OOS) and transform that DataFrame into a
+        convenient dictionary with product_fk, numerator_result and denominator_result
+        :param lvl3_data: Assortment SKU level results
+        :param is_distribution: True if the KPI is distribution, else (KPI is OOS) False.
         :return:
         """
-        for category_fk, result in results_per_category.results_per_category.iteritems():
-            self.common_v2.write_to_db_result(fk=kpi_fk, numerator_id=999, numerator_result=store_num_res,
-                                              denominator_id=self.store_id, denominator_result=store_denom_res,
-                                              score=result, result=result,
+        store_result_dict = dict()       # todo ???
+        store_result_dict[Consts.NUMERATOR_RESULT] = lvl3_data.in_store.sum()
+        store_result_dict[Consts.DENOMINATOR_RESULT] = lvl3_data.in_store.count()
+        store_result_dict['TODO TODO TODO CHOOSE ENTITY'] = '?????????'     # TODO TODO TODO
+        if not is_distribution:  # In OOS the numerator is total - distribution
+            store_result_dict[Consts.NUMERATOR_RESULT] = store_result_dict[Consts.DENOMINATOR_RESULT] - \
+                                                         store_result_dict[Consts.NUMERATOR_RESULT]
+        return [store_result_dict]
+
+    def _calculate_distribution_and_oos(self, lvl3_data, policy, is_dist):
+        """
+        This method calculates the 3 levels of the assortment.
+        :param lvl3_data: Assortment SKU level results + category_fk column.
+        :param policy: חלבי או טירת צבי
+        """
+        store_level_kpi_fk, cat_lvl_fk, sku_level_fk = self._get_assortment_kpi_fks(policy, is_distribution=is_dist)
+        store_results = self._calculate_store_level_assortment(lvl3_data, is_distribution=is_dist)
+        category_results = self._calculate_category_level_assortment(lvl3_data, is_distribution=is_dist)
+        sku_level_results = self._calculate_sku_level_assortment(lvl3_data, is_distribution=is_dist)
+        self._save_results_for_assortment_('TODO!!!', store_results, store_level_kpi_fk)
+        self._save_results_for_assortment_(Consts.CATEGORY_FK, category_results, cat_lvl_fk, store_level_kpi_fk)
+        self._save_results_for_assortment_(Consts.PRODUCT_FK, sku_level_results, sku_level_fk, cat_lvl_fk)
+
+    def _save_results_for_assortment_(self, numerator_entity, results_list, kpi_fk, parent_kpi_fk=None):
+        """
+        This method saves the assortments results for all of the levels.
+        :param numerator_entity: The key of the numerator id that can be found in the results dictionary.
+        :param results_list: List of dictionaries with the assortment results.
+        :param kpi_fk: Relevant fk to save.
+        :param parent_kpi_fk.
+        """
+        should_enter = True if parent_kpi_fk is not None else False
+        for result in results_list:
+            numerator_id = result[numerator_entity]
+            num_res, denominator_res = result[Consts.NUMERATOR_RESULT], result[Consts.DENOMINATOR_RESULT]
+            total_score = (num_res / float(denominator_res))*100 if denominator_res else 0
+            self.common_v2.write_to_db_result(fk=kpi_fk, numerator_id=numerator_id, numerator_result=num_res,
+                                              denominator_id=self.store_id, denominator_result=denominator_res,
+                                              score=total_score, result=total_score, should_enter=should_enter,
                                               identifier_result=kpi_fk, identifier_parent=parent_kpi_fk)
-
-    def _calculate_assortment(self):
-        """
-
-        :return:
-        """
-        lvl3_result = self.assortment.calculate_lvl3_assortment()
-        milky_data, filtered_scif = self._get_relevant_assortment_data(lvl3_result, Consts.MILKY_POLICY)
-        tirat_tsvi_data, filtered_scif = self._get_relevant_assortment_data(lvl3_result, Consts.TIRAT_TSVI_POLICY)
-
 
     def _calculate_facings_sos(self):
         """
@@ -224,9 +292,3 @@ class TNUVAILToolBox:
         # Calculate manufacturers out of Categories
         results_list = self._calculate_manufacturer_of_out_category_sos(filtered_scif)
         self._save_results_for_sos(results_list)
-
-    def main_calculation(self):
-        """ This function calculates the KPI results. """
-        self._calculate_facings_sos()
-        self._calculate_assortment()
-        self.common_v2.commit_results_data()

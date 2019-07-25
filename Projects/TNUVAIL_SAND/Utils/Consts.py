@@ -15,6 +15,7 @@ class Consts(object):
     MILKY_POLICY = 'TBD???'
     TIRAT_TSVI_POLICY = 'TBD???'
     TEMPLATE_NAME = 'template_name'
+    AGGREGATION_COLUMNS_RENAMING = {'sum': NUMERATOR_RESULT, 'count': DENOMINATOR_RESULT}
 
     # KPIs names
     SOS_MANUFACTURER_OUT_OF_STORE_KPI = 'TBD???'
