@@ -67,7 +67,7 @@ class SeedCreator:
         """
         this method build a dump file with traxExporter from the given sessions
         :param number_of_sessions: number of sessions in cae we want to fetch them from db
-        :param specific_sessions: list of sessions if we already know the sessions to test
+        :param specific_sessions_and_scenes: list of sessions and scenes if we already know the sessions to test
         :return: None
         """
         os.chdir(self.export_dir)
@@ -168,12 +168,12 @@ class TestKEngineOutOfTheBox(TestFunctionalCase):
             # self._assert_old_tables_kpi_results_filled()
             # self._assert_new_tables_kpi_results_filled()
             # for scene in sessions[session]:
-                # data_provider.load_scene_data(session, scene_id=scene)
-                # SceneCalculations(data_provider).calculate_kpis()
-                # self._assert_scene_tables_kpi_results_filled()
+            #     data_provider.load_scene_data(str(session), scene_id=scene)
+            #     SceneCalculations(data_provider).calculate_kpis()
+            #     self._assert_scene_tables_kpi_results_filled()
 """
 
-    def __init__(self, project, sessions_scenes_list, need_pnb=False):
+    def __init__(self, project, sessions_scenes_list, need_pnb=True):
         self.project = project.lower().replace('-', '_')
         self.project_capital = self.project.upper().replace('-', '_')
         self.user = os.environ.get('USER')
@@ -278,7 +278,7 @@ if __name__ == '__main__':
     """
     LoggerInitializer.init('')
     Config.init()
-    project_to_test = 'pngcn-sand'
+    project_to_test = 'jnjes'
     creator = SeedCreator(project_to_test)
     creator.activate_exporter(specific_sessions_and_scenes=None
                               # {'6e4dc935-ab56-45ef-9408-caaddb963874': [17888508],
