@@ -113,7 +113,7 @@ class SceneMONDELEZDMIUSToolBox:
     def calculate_gold_zone(self):
         result = Const.RESULT_YES
 
-        kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.DISPLAY_LOCATION_KPI)
+        kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.GOLDZONE_KPI)
 
         store_area_df_filtered = self.store_areas[self.store_areas['scene_fk'] == self.scene]
         if not store_area_df_filtered.empty:
