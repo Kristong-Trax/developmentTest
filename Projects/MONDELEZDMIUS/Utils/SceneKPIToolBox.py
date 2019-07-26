@@ -43,7 +43,8 @@ class SceneMONDELEZDMIUSToolBox:
         self.match_product_in_scene = self.data_provider[Data.MATCHES]
 
         self.visit_date = self.data_provider[Data.VISIT_DATE]
-        self.store_id = self.data_provider.store_fk
+        self.store_id = self.data_provider[Data.STORE_FK]
+        self.store_info = self.data_provider[Data.STORE_INFO]
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
         # self.scif = self.scif[~(self.scif['product_type'] == 'Irrelevant')]
         self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
@@ -55,6 +56,7 @@ class SceneMONDELEZDMIUSToolBox:
         self.static_task_area_location = self.get_store_task_area()
         self.vtw_points_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data',
                                         "VTW_POINTS_SCORE.xlsx")
+        self.points_template = pd.read_excel(self.vtw_points_path)
 
         self.assortment = Assortment(self.data_provider, common=self.common)
          # self.ps_data_provider = PsDataProvider(self.data_provider, self.output)
@@ -66,27 +68,70 @@ class SceneMONDELEZDMIUSToolBox:
         """
         This function calculates the KPI results.
         """
+        self.check_store_id()
         self.calculate_assortment()
-        self.calculate_VTW()
+        self.calculate_VTW_and_vehicle()
         self.calculate_display_non_scripted()
         self.calculate_location()
+        self.calculate_gold_zone()
 
-
-    def calculate_VTW(self):
-        kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.VTW_KPI)
-        self.points_template = pd.read_excel(self.vtw_points_path)
-
-        for i, row in self.mdis.iterrows():
-
+    def check_store_id(self):
+        if type(self.store_id) == type(None):
             try:
-                score = self.points_template['score'][self.points_template['display'] == row['display_name']].iloc[0]
+                self.store_id = self.store_info['store_fk'].iloc[0]
             except:
-                score = 0
-            self.common.write_to_db_result(fk=kpi_fk, numerator_id=self.manufacturer_fk, numerator_result= score,
-                                           denominator_id=self.store_id, denominator_result=1,
-                                       result = score, score=score, scene_result_fk = self.scene ,should_enter= True,
-                                           by_scene = True)
+                pass
 
+    def calculate_VTW_and_vehicle(self):
+        vtw_kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.VTW_KPI)
+        vehicle_kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.DISPLAY_VEHICLE_KPI)
+        score = 0
+
+        if not self.mdis.empty:
+            for i, row in self.mdis.iterrows():
+
+                try:
+                    new_score = self.points_template['score'][self.points_template['display'] == row['display_name']].iloc[0]
+                    if score < new_score:
+                        score = new_score
+
+                        vehicle_display_fk = row['display_fk']
+                except:
+                    pass
+
+            self.common.write_to_db_result(fk=vtw_kpi_fk, numerator_id=self.manufacturer_fk, numerator_result= score,
+                                               denominator_id=self.store_id, denominator_result=1,
+                                           result = score, score=score, scene_result_fk = self.scene ,should_enter= True,
+                                               by_scene = True)
+
+            self.common.write_to_db_result(fk=vehicle_kpi_fk, numerator_id=vehicle_display_fk, numerator_result=1,
+                                               denominator_id=self.store_id, denominator_result=1,
+                                               result=Const.RESULT_YES, score=Const.SCORE_YES, scene_result_fk=self.scene, should_enter=True,
+                                               by_scene=True)
+
+
+    def calculate_gold_zone(self):
+        result = Const.RESULT_YES
+
+        kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.DISPLAY_LOCATION_KPI)
+
+        store_area_df_filtered = self.store_areas[self.store_areas['scene_fk'] == self.scene]
+        if not store_area_df_filtered.empty:
+            store_area_name = store_area_df_filtered['store_area_name'].iloc[0]
+            if store_area_name == 'Gold Zone End Cap':
+                # store_area_pk = store_area_df_filtered['pk'].iloc[0]
+                score = 1
+                result = Const.RESULT_YES
+
+            else:
+                # store_area_pk = 0
+                score = 0
+                result = Const.RESULT_NO
+
+            self.common.write_to_db_result(fk=kpi_fk, numerator_id=self.manufacturer_fk, numerator_result=score,
+                                           denominator_id=self.store_id, denominator_result=1,
+                                           result=result, score=score, scene_result_fk=self.scene, should_enter=True,
+                                           by_scene=True)
 
 
     def calculate_display_non_scripted(self):
