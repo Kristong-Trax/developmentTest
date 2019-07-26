@@ -98,23 +98,24 @@ class MONDELEZDMIUSToolBox:
                     sub_ppg = row[Const.SUB_PPG_COLUMN_NAME]
 
                     if not pd.isnull(ppg):
+                        product_fk = self.custom_entities['pk'][self.custom_entities['name'] == ppg].iloc[0]
                         filtered_scif_count = len(self.scif[self.scif['PPG'] == ppg])
                         if filtered_scif_count > 0:
                             score = 1
                             compliance_status = Const.COMPLIANT_FK
-                            product_fk = self.custom_entities['pk'][self.custom_entities['name'] == ppg].iloc[0]
                         else:
                             score = 0
-                            product_fk = 0
+
                             compliance_status = Const.NON_COMPLIANT_FK
 
                     if not pd.isnull(sub_ppg):
+                        product_fk = \
+                            self.custom_entities['pk'][self.custom_entities['name'] == sub_ppg].iloc[0]
                         filtered_scif_count = len(self.scif[self.scif['Sub PPG'] == sub_ppg])
                         if filtered_scif_count > 0:
                             score = 1
                             compliance_status = Const.COMPLIANT_FK
-                            product_fk = \
-                            self.custom_entities['pk'][self.custom_entities['name'] == sub_ppg].iloc[0]
+
                         else:
                             score = 0
                             product_fk = 0
@@ -138,26 +139,27 @@ class MONDELEZDMIUSToolBox:
                     sub_ppg = row[Const.SUB_PPG_COLUMN_NAME]
 
                     if not pd.isnull(ppg):
+                        product_fk = self.custom_entities['pk'][self.custom_entities['name'] == ppg].iloc[0]
+
                         filtered_scif_count = len(self.scif[self.scif['PPG'] == ppg])
                         if filtered_scif_count > 0:
                             score = 1
                             compliance_status = Const.COMPLIANT_FK
-                            product_fk = self.custom_entities['pk'][self.custom_entities['name'] == ppg].iloc[0]
                         else:
                             score = 0
-                            product_fk = 0
                             compliance_status = Const.NON_COMPLIANT_FK
 
                     if not pd.isnull(sub_ppg):
+                        product_fk = self.custom_entities['pk'][self.custom_entities['name'] == sub_ppg].iloc[0]
                         filtered_scif_count = len(self.scif[self.scif['Sub PPG'] == sub_ppg])
                         if filtered_scif_count > 0:
                             score = 1
                             compliance_status = Const.COMPLIANT_FK
-                            product_fk = \
-                            self.custom_entities['pk'][self.custom_entities['name'] == sub_ppg].iloc[0]
+
+
                         else:
                             score = 0
-                            product_fk = 0
+
                             compliance_status = Const.NON_COMPLIANT_FK
 
                     self.common.write_to_db_result(fk=kpi_fk, numerator_id=product_fk, numerator_result=score,
