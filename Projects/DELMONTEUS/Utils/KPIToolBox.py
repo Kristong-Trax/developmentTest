@@ -115,11 +115,11 @@ class ToolBox:
         #
         # ):
         # # if kpi_name not in ('Are the majority of Green Giant Spec Veg blocked above Green Giant Core Veg'):
-        # if kpi_name not in ('Are Family Packs shelved with their same Veg Type?'):
-        # if kpi_name not in ('What % of Del Monte facings are blocked horizontally?'):
+        if kpi_name not in ('Are PFC shelved between Canned and Squeezers?'):
+        # if kpi_name not in ('is multi serve pineapple shelved above Canned Fruit?'):
         # if kpi_type not in (Const.BLOCKING, Const.BLOCKING_PERCENT, Const.SOS, Const.ANCHOR, Const.MULTI_BLOCK,
         #                     Const.SAME_AISLE, Const.SHELF_REGION, Const.SHELF_PLACEMENT):
-        #     return
+            return
 
         # print('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~')
         # print(kpi_name)
@@ -136,7 +136,6 @@ class ToolBox:
         function = self.get_kpi_function(kpi_type)
         try:
            all_kwargs = function(kpi_name, kpi_line, relevant_scif, general_filters)
-           # print(all_kwargs)
         except Exception as e:
             # print(e)
             if self.global_fail:
@@ -150,6 +149,7 @@ class ToolBox:
         finally:
             if not isinstance(all_kwargs, list) or not all_kwargs:
                 all_kwargs = [all_kwargs]
+            # print(all_kwargs)
             for kwargs in all_kwargs:
                 if not kwargs or kwargs['score'] is None:
                     kwargs = {'score': 0, 'result': 0, 'failed': 0}
@@ -240,7 +240,8 @@ class ToolBox:
     def calculate_sequence(self, kpi_name, kpi_line, relevant_scif, general_filters):
         # this attribute should be pulled from the template once the template is updated
         vector = kpi_line['Vector']
-        Segment = namedtuple('Segment', 'seg position')
+        orth = (set(['x', 'y']) - set(vector)).pop()
+        Segment = namedtuple('Segment', 'seg position facings orth_min orth_max matches')
         segments = [i.strip() for i in self.splitter(kpi_line['Sequence'])]
         result = 0
         for scene in relevant_scif.scene_fk.unique():
@@ -253,16 +254,36 @@ class ToolBox:
                                                               filters=seg_filters,
                                                               check_orient=0)
                 cluster = results.sort_values('facing_percentage', ascending=False).iloc[0, 0]
-                df = pd.DataFrame([(n['polygon'].centroid.x, n['polygon'].centroid.x, n['facings'])
-                                  for i, n in cluster.nodes(data=True)], columns=['x', 'y', 'facings'])
+                df = pd.DataFrame([(n['polygon'].centroid.x, n['polygon'].centroid.y, n['facings'],
+                                  list(n['match_fk'].values)) + n['polygon'].bounds
+                                  for i, n in cluster.nodes(data=True) if n['block_key'].value
+                                  not in Const.ALLOWED_FLAGS],
+                                  columns=['x', 'y', 'facings', 'matches', 'x_min', 'y_min', 'x_max', 'y_max'])
                 facings = df.facings.sum()
-                seg_list.append(Segment(seg=seg, position=(df[vector]*df['facings']).sum()/facings))
+                seg_list.append(Segment(seg=seg, position=(df[vector]*df['facings']).sum()/facings, facings=facings,
+                                orth_min=mpis_dict[scene]['rect_{}'.format(orth)].min(),
+                                orth_max=mpis_dict[scene]['rect_{}'.format(orth)].max(),
+                                matches=df['matches'].sum()))
 
-            order = [x.seg for x in sorted(seg_list, key=lambda x: x.seg)]
-            if '_'.join(order) == '_'.join(segments):
-                result = 1
-                # break
+            order = [x.seg for x in sorted(seg_list, key=lambda x: x.position)]
+            if '_'.join(order) == '_'.join(segments) or \
+               (kpi_line['Reversible'] in ['Y', 'y'] and '_'.join(order) == '_'.join(segments[::-1])):
+                flow_count = 1 # 1 is intentional, since loop is smaller than list by 1
+                for i in range(1, len(order)):
+                    if self.safe_divide(self.seq_axis_engulfs_df(i, seg_list, orth), seg_list[i].facings) >= .1 and\
+                       self.safe_divide(self.seq_axis_engulfs_df(i, seg_list, orth, r=1), seg_list[i-1].facings) >= .1:
+                        flow_count += 1
+                if flow_count == len(order):
+                    result = 1
         return {'result': result, 'score': 1}
+
+    def seq_axis_engulfs_df(self, i, seg_list, orth, r=0):
+        j = i - 1
+        if r:
+            i, j = j, i
+        return self.mpis[(self.mpis['scene_match_fk'].isin(seg_list[i].matches)) &
+                         (seg_list[j].orth_min <= self.mpis['rect_{}'.format(orth)]) &
+                         (self.mpis['rect_{}'.format(orth)] <= seg_list[j].orth_max)].shape[0]
 
     def calculate_max_block_adj_base(self, kpi_name, kpi_line, relevant_scif, general_filters):
         allowed_edges = [x.upper() for x in self.read_cell_from_line(kpi_line, Const.EDGES)]
@@ -301,9 +322,10 @@ class ToolBox:
         return result
 
     def calculate_serial_adj(self, kpi_name, kpi_line, relevant_scif, general_filters):
+        result = {'score': 0, 'result': 0}
         scif = self.filter_df(relevant_scif, self.get_kpi_line_filters(kpi_line, 'A'))
         sizes = self.get_kpi_line_filters(kpi_line, 'A')['DLM_ VEGSZ(C)']
-        num_count_sizes = 0 if self.get_kpi_line_filters(kpi_line, 'A')['DLM_ VEGSZ(C)'] == 'FAMILY LARGE' else 1
+        num_count_sizes = 0 if self.get_kpi_line_filters(kpi_line, 'A')['DLM_ VEGSZ(C)'] == [u'FAMILY LARGE'] else 1
         if scif.empty:
             return
         subsets = scif[kpi_line['Unit']].unique()
@@ -331,8 +353,8 @@ class ToolBox:
             else:
                 skip += size_skip  # this is the mutipk rt.
 
-        result['result'] = 0
-        target = len(subsets)*len(sizes) - skip if not num_count_sizes else len(subsets) - skip  #family only needs to pass one size, multipk both
+        target = len(subsets)*len(sizes) - skip if num_count_sizes else len(subsets) - skip  #family only needs to pass one size, multipk both
+        result['result'] = 0 if target else None
         if self.safe_divide(tally, target) > 75:
             result['result'] = 1
         return result
@@ -421,6 +443,8 @@ class ToolBox:
         scenes = self.filter_df(relevant_scif, general_filters).scene_fk.unique()
         if 'template_name' in general_filters:
             del general_filters['template_name']
+        if 'scene_fk' in general_filters:
+            del general_filters['scene_fk']
         mpis_dict = {}
         valid_scene_found = 0
         for scene in scenes:
@@ -459,72 +483,108 @@ class ToolBox:
         return score, orientation, mpis_dict, blocks, result
 
     def calculate_block(self, kpi_name, kpi_line, relevant_scif, general_filters):
-        score, orientation, mpis_dict, _, _ = self.base_block(kpi_name, kpi_line, relevant_scif, general_filters)
-        # result_fk = self.result_values_dict[orientation]
-        kwargs = {'score': score, 'result': score}
+        base = self.get_base_name(kpi_name, Const.ORIENTS)
+        if base in self.blockchain:
+            # Data exists. Get it.
+            result, orientation, mpis_dict, blocks = self.blockchain[base]
+        else:
+            # Data doesn't exist, so create and add it
+            result, orientation, mpis_dict, blocks, _ = self.base_block(
+                kpi_name, kpi_line, relevant_scif, general_filters)
+            self.blockchain[base] = result, orientation, mpis_dict, blocks  # result_fk = self.result_values_dict[orientation]
+
+        if kpi_line['AntiBlock'] in ['Y', 'y']:
+            result = result ^ 1
+        kwargs = {'score': 1, 'result': result}
         return kwargs
 
-    def calculate_block_percent(self, kpi_name, kpi_line, relevant_scif, general_filters):
-
-        def concater(a, b):
-            return pd.concat([a, b])
-
+    def calculate_block_orientation(self, kpi_name, kpi_line, relevant_scif, general_filters):
         allowed_orientation = kpi_line['Orientation'].strip()
-        facings, score, den, result = 0, 0, 0, 0
         # Check if data for this kpi already exists
         base = self.get_base_name(kpi_name, Const.ORIENTS)
         if base in self.blockchain:
             # Data exists. Get it.
-            score, orientation, mpis_dict, blocks = self.blockchain[base]
+            result, orientation, mpis_dict, blocks = self.blockchain[base]
         else:
             # Data doesn't exist, so create and add it
-            score, orientation, mpis_dict, blocks, _ = self.base_block(
+            result, orientation, mpis_dict, blocks, _ = self.base_block(
                 kpi_name, kpi_line, relevant_scif, general_filters)
-            self.blockchain[base] = score, orientation, mpis_dict, blocks
+            self.blockchain[base] = result, orientation, mpis_dict, blocks
 
-        den = reduce(concater, mpis_dict.values()).shape[0]
-        if orientation.lower() == allowed_orientation:
-            for row in blocks.itertuples():
-                skus = sum([list(node['match_fk']) for i, node in row.cluster.nodes(data=True)], [])
-                mpis = mpis_dict[row.scene_fk]
-                facings = mpis[mpis['scene_match_fk'].isin(skus)].shape[0]
-                score = 1
-                result = self.safe_divide(facings, den)
-        return {'numerator_result': facings, 'denominator_result': den, 'result': result, 'score': score}
+        if allowed_orientation.upper() != orientation:
+            result = 0
+        return {'score': 1, 'result': result}
 
-    def calculate_basic_block(self, kpi_name, kpi_line, relevant_scif, general_filters):
-        score, _, _, _, _ = self.base_block(kpi_name, kpi_line, self.scif, general_filters)
-        if score:
-            result = 'Blocked'
-        else:
-            result = 'Not Blocked'
-
-        kwargs = {'numerator_result': score, 'score': score, 'result': result, 'target': 1}
-        return kwargs
+    # def calculate_block_percent(self, kpi_name, kpi_line, relevant_scif, general_filters):
+    #
+    #     def concater(a, b):
+    #         return pd.concat([a, b])
+    #
+    #     allowed_orientation = kpi_line['Orientation'].strip()
+    #     facings, score, den, result = 0, 0, 0, 0
+    #     # Check if data for this kpi already exists
+    #     base = self.get_base_name(kpi_name, Const.ORIENTS)
+    #     if base in self.blockchain:
+    #         # Data exists. Get it.
+    #         score, orientation, mpis_dict, blocks = self.blockchain[base]
+    #     else:
+    #         # Data doesn't exist, so create and add it
+    #         score, orientation, mpis_dict, blocks, _ = self.base_block(
+    #             kpi_name, kpi_line, relevant_scif, general_filters)
+    #         self.blockchain[base] = score, orientation, mpis_dict, blocks
+    #
+    #     den = reduce(concater, mpis_dict.values()).shape[0]
+    #     if orientation.lower() == allowed_orientation:
+    #         for row in blocks.itertuples():
+    #             skus = sum([list(node['match_fk']) for i, node in row.cluster.nodes(data=True)], [])
+    #             mpis = mpis_dict[row.scene_fk]
+    #             facings = mpis[mpis['scene_match_fk'].isin(skus)].shape[0]
+    #             score = 1
+    #             result = self.safe_divide(facings, den)
+    #     return {'numerator_result': facings, 'denominator_result': den, 'result': result, 'score': score}
 
     def calculate_multi_block(self, kpi_name, kpi_line, relevant_scif, general_filters):
         den_filter = self.get_kpi_line_filters(kpi_line, 'denominator')
         num_filter = self.get_kpi_line_filters(kpi_line, 'numerator')
+        if kpi_line[Const.ALL_SCENES_REQUIRED] in ('Y', 'y'):  # get value for all scenes required
+            all_scenes_required = True
+        else:
+            all_scenes_required = False
         groups = list(*num_filter.values())
         result = 0
-        score = 0
-        exempt = 0
-        for group in groups:
-            sub_filters = {num_filter.keys()[0]: group}
-            sub_filters.update(den_filter)
-            sub_score = 0
-            try:
-                sub_score, _, _, _, _ = self.base_block(kpi_name, kpi_line, relevant_scif, general_filters,
-                                                        check_orient=0, filters=sub_filters)
-            except TypeError as e:
-                if e[0] == 'No Data Found fo kpi "':
-                    exempt += 1
-                else:
-                    raise e
-            score += sub_score
-        if score and score == len(groups) - exempt:
-            result = 1
-        return {'score': 1, 'result': result}
+        scenes = self.filter_df(relevant_scif, general_filters).scene_fk.unique()
+        if 'template_name' in general_filters:
+            del general_filters['template_name']
+        for scene in scenes:  # check every scene
+            groups_exempt = 0
+            score = 0
+            scene_general_filters = general_filters.copy()
+            scene_general_filters.update({'scene_fk': scene})
+
+            for group in groups:  # check all the groups in the current scene
+                sub_filters = {num_filter.keys()[0]: [group]}
+                sub_filters.update(den_filter)
+                sub_score = 0
+                try:
+                    sub_score, _, _, _, _ = self.base_block(kpi_name, kpi_line, relevant_scif, scene_general_filters,
+                                                            check_orient=0, filters=sub_filters)
+                except TypeError as e:
+                    if e[0] == 'No Data Found fo kpi "':  # no relevant products found, so this group is exempt
+                        groups_exempt += 1
+                    else:
+                        raise e
+                score += sub_score
+            if score and score == len(groups) - groups_exempt:  # check to make sure all non-exempt groups were blocked
+                result += 1
+                if not all_scenes_required:  # we already found one passing scene so we don't need to continue
+                    break
+
+        if all_scenes_required:
+            final_result = 1 if result == len(scenes) else 0  # make sure all scenes have a passing result
+        else:
+            final_result = 1 if result > 0 else 0
+
+        return {'score': 1, 'result': final_result}
 
     def make_mpis(self, kpi_line, general_filters, ign_stacking=1, use_full_mpis=0):
         mpis = self.full_mpis if use_full_mpis else self.mpis
@@ -706,6 +766,8 @@ class ToolBox:
             return self.calculate_block
         elif kpi_type == Const.BLOCKING_PERCENT:
             return self.calculate_block_percent
+        elif kpi_type == Const.BLOCK_ORIENTATION:
+            return self.calculate_block_orientation
         elif kpi_type == Const.MULTI_BLOCK:
             return self.calculate_multi_block
         elif kpi_type == Const.MAX_BLOCK_ADJ:

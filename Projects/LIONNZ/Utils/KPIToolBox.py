@@ -331,17 +331,27 @@ class LIONNZToolBox:
         # else the flow will be stuck in case own manufacturers are absent altogether.
         if '_own_' in kpi['kpi_name'].iloc[0].lower() and \
                 '_whole_store' not in kpi['kpi_name'].iloc[0].lower():
-            denominator_fks_to_save_zero = np.setdiff1d(
-                self.scif[PARAM_DB_MAP[kpi['denominator'].iloc[0]]['key']].unique(),
-                dataframe_to_process.query(query_string)[PARAM_DB_MAP[kpi['denominator'].iloc[0]]['key']].unique()
-            )
+            self.scif['store_fk'] = self.store_id
+            dataframe_to_process['store_fk'] = self.store_id
+            scif_with_den_context = self.scif[[PARAM_DB_MAP[kpi['denominator'].iloc[0]]['key'],
+                                               PARAM_DB_MAP[kpi['context'].iloc[0]]['key']]].drop_duplicates()
+            df_with_den_context = dataframe_to_process.query(query_string)[[
+                PARAM_DB_MAP[kpi['denominator'].iloc[0]]['key'],
+                PARAM_DB_MAP[kpi['context'].iloc[0]]['key']
+            ]].drop_duplicates()
+            denominators_df_to_save_zero = scif_with_den_context[(~scif_with_den_context[
+                PARAM_DB_MAP[kpi['denominator'].iloc[0]]['key']
+            ].isin(df_with_den_context[PARAM_DB_MAP[kpi['denominator'].iloc[0]]['key']]))]
+
             kpi_details = self.kpi_template.parse(KPI_DETAILS_SHEET)
             identifier_parent = None
             if not is_nan(kpi[KPI_PARENT_COL].iloc[0]):
                 kpi_parent = self.kpi_static_data[(self.kpi_static_data[KPI_TYPE_COL] == kpi[KPI_PARENT_COL].iloc[0])
                                                   & (self.kpi_static_data['delete_time'].isnull())]
                 kpi_parent_detail = kpi_details[kpi_details[KPI_NAME_COL] == kpi_parent[KPI_TYPE_COL].values[0]]
-                parent_context_id = parent_denominator_id = self.store_id
+                # hard coding; expecting only `FSOS_OWN_MANUFACTURER_IN_WHOLE_STORE` as parent
+                parent_denominator_id = self.store_id
+                parent_context_id = self.store_id
                 identifier_parent = "{}_{}_{}_{}".format(
                     kpi_parent_detail['kpi_name'].iloc[0],
                     kpi_parent['pk'].iloc[0],
@@ -352,13 +362,14 @@ class LIONNZToolBox:
 
             numerator_fk = self.own_man_fk
             result = numerator_result = 0  # SAVE ALL RESULTS AS ZERO
-            for each_den_fk in denominator_fks_to_save_zero:
-                context_id = each_den_fk
+            for idx, each_row in denominators_df_to_save_zero.iterrows():
+                context_id = each_row[PARAM_DB_MAP[kpi['context'].iloc[0]]['key']]
                 # query out empty product IDs since FSOS is not interested in them.
-                _query = "{key}=='{value_id}' and product_fk not in '{exc_prod_ids}'".format(
+                each_den_fk = each_row[PARAM_DB_MAP[kpi['denominator'].iloc[0]]['key']]
+                _query = "{key}=='{value_id}' and product_fk not in {exc_prod_ids}".format(
                     key=PARAM_DB_MAP[kpi['denominator'].iloc[0]]['key'],
                     value_id=each_den_fk,
-                    exc_prod_ids=self.empty_prod_ids.tolist()
+                    exc_prod_ids=self.empty_prod_ids.tolist() + self.irrelevant_prod_ids.tolist()
                 )
                 # find number of products in that context
                 denominator_result = len(dataframe_to_process.query(_query))

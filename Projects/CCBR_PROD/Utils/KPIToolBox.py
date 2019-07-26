@@ -161,9 +161,11 @@ class CCBRToolBox:
         """
         row = self.survey_sheet.loc[
             self.survey_sheet[Const.ENGLISH_KPI_NAME].str.encode("utf8") == atomic_name.encode("utf8")]
+
         if row.empty:
-            Log.warning("Dataframe is empty, wrong kpi name: " + atomic_name)
+            Log.warning("Dataframe is empty, wrong kpi name: " + atomic_name.encode("utf8"))
             return
+
         store_type_filter = self.store_info['store_type'].values[0].strip()
         store_type_template = row[Const.STORE_TYPE_TEMPLATE].values[0].strip()
 
@@ -199,7 +201,7 @@ class CCBRToolBox:
         try:
             atomic_pk = self.common_db.get_kpi_fk_by_kpi_name_new_tables(atomic_name)
         except IndexError:
-            Log.warning("There is no matching Kpi fk for kpi name: " + atomic_name)
+            Log.warning("There is no matching Kpi fk for kpi name: " + atomic_name.encode("utf8"))
             return
 
         self.write_to_db_result_new_tables(fk=atomic_pk, numerator_id=self.session_id, numerator_result=survey_result,
@@ -216,13 +218,13 @@ class CCBRToolBox:
         row = self.count_sheet.loc[
             self.count_sheet[Const.ENGLISH_KPI_NAME].str.encode("utf8") == atomic_name.encode("utf8")]
         if row.empty:
-            Log.warning("Dataframe is empty, wrong kpi name: " + atomic_name)
+            Log.warning("Dataframe is empty, wrong kpi name: " + atomic_name.encode("utf8"))
             return
 
         try:
             atomic_pk = self.common_db.get_kpi_fk_by_kpi_name_new_tables(atomic_name)
         except IndexError:
-            Log.warning("There is no matching Kpi fk for kpi name: " + atomic_name)
+            Log.warning("There is no matching Kpi fk for kpi name: " + atomic_name.encode("utf8"))
             return
         for index, row in row.iterrows():
             sum_of_count, target, count_result = self.handle_count_row(row)
@@ -247,13 +249,13 @@ class CCBRToolBox:
         sum_of_count_df = pd.DataFrame()
         target_operator = ""
         if rows.empty:
-            Log.warning("Dataframe is empty, wrong kpi name: " + atomic_name)
+            Log.warning("Dataframe is empty, wrong kpi name: " + atomic_name.encode("utf8"))
             return
 
         try:
             atomic_pk = self.common_db.get_kpi_fk_by_kpi_name_new_tables(atomic_name)
         except IndexError:
-            Log.warning("There is no matching Kpi fk for kpi name: " + atomic_name)
+            Log.warning("There is no matching Kpi fk for kpi name: " + atomic_name.encode("utf8"))
             return
 
         for index, row in rows.iterrows():

@@ -10,7 +10,7 @@ __author__ = 'Sergey'
 
 PROJECT = 'ccru'
 START_DATE = '2019-06-29'
-END_DATE = '2019-07-05'
+END_DATE = '2019-07-25'
 NUMBER_OF_SCENES_LIMIT = 10000
 BATCH_FILE = '/home/sergey/Documents/Recalc/' + PROJECT + '_sessions_'
 
@@ -21,13 +21,35 @@ class CCRUSessionBatches:
         self.aws_conn = PSProjectConnector(self.project, DbUsers.CalculationEng)
 
     def run_it(self):
+        # query = """
+        #         SELECT visit_date, session_uid, number_of_scenes
+        #         FROM probedata.session
+        #         WHERE number_of_scenes > 0
+        #         AND visit_date >= '{}' AND visit_date <= '{}'
+        #         AND (external_session_id NOT LIKE 'EasyMerch-P%' OR external_session_id IS NULL)
+        #         ORDER BY visit_date
+        #         """.format(START_DATE, END_DATE)
+        #     query = """
+        #             SELECT ss.visit_date, ss.session_uid, ss.number_of_scenes
+        #             FROM probedata.session ss
+        #             JOIN report.kps_results ksr ON ksr.session_uid=ss.session_uid
+        #             JOIN static.kpi_set ks ON ks.pk=ksr.kpi_set_fk
+        #             WHERE ss.number_of_scenes > 0
+        #             AND ss.visit_date >= '{}' AND ss.visit_date <= '{}'
+        #             AND (ss.external_session_id NOT LIKE 'EasyMerch-P%' OR ss.external_session_id IS NULL)
+        #             AND ks.name IN(
+        # 'Contract Execution 2019'
+        #             )
+        #             GROUP BY ss.session_uid
+        #             ORDER BY ss.visit_date;
+        #             """.format(START_DATE, END_DATE)
         query = """
-                SELECT visit_date, session_uid, number_of_scenes
-                FROM probedata.session
-                WHERE number_of_scenes > 0
-                AND visit_date >= '{}' AND visit_date <= '{}'
-                AND (external_session_id NOT LIKE 'EasyMerch-P%' OR external_session_id IS NULL)
-                ORDER BY visit_date
+                SELECT session_uid
+                FROM probedata.session ss
+                WHERE (external_session_id NOT LIKE 'EasyMerch-P%' OR external_session_id IS NULL)
+                AND visit_date>='2019-07-15' and visit_type_fk=2
+                AND delete_time is NULL
+                ORDER BY ss.pk DESC;
                 """.format(START_DATE, END_DATE)
 
         sessions = pd.read_sql_query(query, self.aws_conn.db)
@@ -37,7 +59,7 @@ class CCRUSessionBatches:
         session_counter = 0
         total_counter = 0
         batch_sessions = []
-        batch_file = open(BATCH_FILE + str(batch_number), 'w+')
+        batch_file = open(BATCH_FILE + str(batch_number) + '.csv', 'w+')
 
         for i, row in sessions.iterrows():
 
@@ -51,13 +73,13 @@ class CCRUSessionBatches:
             if scene_counter + number_of_scenes >= NUMBER_OF_SCENES_LIMIT:
                 batch_file.writelines(batch_sessions)
                 batch_file.close()
-                print 'File {}: {} sessions'.format(BATCH_FILE + str(batch_number), session_counter)
+                print 'File {}: {} sessions'.format(BATCH_FILE + str(batch_number) + '.csv', session_counter)
 
                 batch_number += 1
                 scene_counter = 0
                 session_counter = 0
                 batch_sessions = []
-                batch_file = open(BATCH_FILE + str(batch_number), 'w+')
+                batch_file = open(BATCH_FILE + str(batch_number) + '.csv', 'w+')
 
             batch_sessions.append(session_uid + '\n')
             scene_counter += number_of_scenes

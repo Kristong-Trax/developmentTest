@@ -12,14 +12,6 @@ class DataScores(object):
     SCORES_5_NONE_WEIGHTS = [(None, 0.15), (None, 0.15), (None, 0.15)] # score_1_1 in my example
     SCORES_6 = [(100, None), (0, None), (100, None)]
 
-# class StoreTypes(object):
-#     LT_Spaza_Affordable = 'L&T SPAZA AFFORDABLE'
-#     LT_Gen_D_Affordable = 'L&T GENERAL DEALER AFFORDABLE'
-#     LT_Spaza_Mainstream = 'L&T SPAZA MAINSTREAM'
-#     LT_Gen_D_Mainstream = 'L&T GENERAL DEALER MAINSTREAM'
-#     LT_Spaza_Premium = 'L&T SPAZA PREMIUM'
-#     LT_Gen_D_Premium = 'L&T GENERAL DEALER PREMIUM'
-#     store_list = [LT_Spaza_Affordable, LT_Gen_D_Affordable, LT_Spaza_Mainstream, LT_Gen_D_Mainstream, LT_Spaza_Premium, LT_Gen_D_Premium]
 
 class DataTestUnitPEPSICOUK(object):
 
@@ -127,7 +119,7 @@ class DataTestUnitPEPSICOUK(object):
           'assortment_group_fk': 1, 'assortment_fk': 2, 'assortment_super_group_fk': nan, 'kpi_fk_lvl1': nan,
           'group_target_date': nan, 'super_group_target': nan, 'additional_attributes': nan
           },
-         {'product_fk': 5, 'in_store': 0, 'kpi_fk_lvl3': 290, 'kpi_fk_lvl2': 289, 'target': nan,
+         {'product_fk': 5, 'in_store': 0, 'kpi_fk_lvl3': 290, 'kpi_fk_lvl2': 289, 'ta   rget': nan,
           'assortment_group_fk': 1, 'assortment_fk': 2, 'assortment_super_group_fk': nan, 'kpi_fk_lvl1': nan,
           'group_target_date': nan, 'super_group_target': nan, 'additional_attributes': nan}]
     )
@@ -182,3 +174,51 @@ class DataTestUnitPEPSICOUK(object):
           'numerator_id': 11, 'numerator_result': 0, 'pk': 24, 'result': 100.0, 'scene_fk': 5, 'score': 4.0,
           'target': None, 'weight': None}]) # design result for placement
 
+    block_results = pd.DataFrame.from_records([{'cluster': 1, 'scene_fk': 1, 'orientation': '',
+                                                'facing_percentage': 0.08, 'is_block': False},
+                                               {'cluster': 2, 'scene_fk': 1, 'orientation': 'VERTICAL',
+                                                'facing_percentage': 0.92, 'is_block': True}
+                                               ])
+
+    block_results_2 = pd.DataFrame.from_records([{'cluster': 1, 'scene_fk': 1, 'orientation': '',
+                                                'facing_percentage': 0.05, 'is_block': False},
+                                                {'cluster': 2, 'scene_fk': 1, 'orientation': 'HORIZONTAL',
+                                                'facing_percentage': 0.95, 'is_block': True}
+                                                ])
+
+    block_results_empty = pd.DataFrame(columns=['cluster','scene_fk', 'orientation',
+                                                'facing_percentage', 'is_block'])
+    block_results_failed = pd.DataFrame.from_records([{'cluster': 1, 'scene_fk': 1, 'orientation': '',
+                                                         'facing_percentage': 0.4, 'is_block': False},
+                                                         {'cluster': 2, 'scene_fk': 1, 'orientation': '',
+                                                          'facing_percentage': 0.6, 'is_block': False}])
+    blocks_all_pass = pd.DataFrame.from_records([{'Group Name': 'Pringles_FTT_Tubes', 'Score': True},
+                                                 {'Group Name': 'Hula Hoops_LMP_Snacks', 'Score': True}])
+    blocks_none_passes = pd.DataFrame.from_records([{'Group Name': 'Pringles_FTT_Tubes', 'Score': False},
+                                                    {'Group Name': 'Hula Hoops_LMP_Snacks', 'Score': False}])
+    blocks_one_passes = pd.DataFrame.from_records([{'Group Name': 'Pringles_FTT_Tubes', 'Score': True},
+                                                   {'Group Name': 'Hula Hoops_LMP_Snacks', 'Score': False}])
+
+    adjacency_results_true = pd.DataFrame.from_records([{'anchor_block': 1, 'tested_block': 1, 'anchor_facing_percentage': 5,
+                                                   'tested_facing_percentage': 4, 'scene_fk': 1, 'is_adj': True}])
+    adjacency_results_false = pd.DataFrame.from_records(
+        [{'anchor_block': 1, 'tested_block': 1, 'anchor_facing_percentage': 5,
+          'tested_facing_percentage': 4, 'scene_fk': 1, 'is_adj': False}])
+
+    blocks_combinations_3_pass_all = pd.DataFrame.from_records([{'Group Name': 'Group 1', 'Score': True},
+                                                     {'Group Name': 'Group 2', 'Score': True},
+                                                     {'Group Name': 'Group 3', 'Score': True}])
+
+    blocks_combinations_2_pass_of_3 = pd.DataFrame.from_records([{'Group Name': 'Group 1', 'Score': True},
+                                                            {'Group Name': 'Group 2', 'Score': True},
+                                                            {'Group Name': 'Group 3', 'Score': False}])
+
+    blocks_combinations_1_pass_of_3 = pd.DataFrame.from_records([{'Group Name': 'Group 1', 'Score': True},
+                                                                 {'Group Name': 'Group 2', 'Score': False},
+                                                                 {'Group Name': 'Group 3', 'Score': False}])
+
+    blocks_combinations_4_pass_of_4 = pd.DataFrame.from_records([{'Group Name': 'Group 1', 'Score': True},
+                                                                 {'Group Name': 'Group 2', 'Score': True},
+                                                                 {'Group Name': 'Group 3', 'Score': True},
+                                                                 {'Group Name': 'Group 4', 'Score': True},
+                                                                 ])
