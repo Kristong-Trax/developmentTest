@@ -12,8 +12,8 @@ __author__ = 'ilays'
 
 class ProjectsSanityData(BaseSeedData):
     project_name = TestProjectsNames().TEST_PROJECT_1
-    ccru_seed = {DATA_TYPE: BaseSeedData.MYSQL,
-                       FILES_RELATIVE_PATH: ['Data/Seeds/ccru_seed.sql.gz'],
+    inbevnl_seed = {DATA_TYPE: BaseSeedData.MYSQL,
+                       FILES_RELATIVE_PATH: ['Data/Seeds/inbevnl_seed.sql.gz'],
                        PROJECT_NAME: project_name
                        } 
     mongodb_products_and_brands_seed = {DATA_TYPE: BaseSeedData.MONGO,

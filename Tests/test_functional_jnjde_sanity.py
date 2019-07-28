@@ -7,8 +7,8 @@ from Trax.Data.Testing.SeedNew import Seeder
 from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
 from Trax.Cloud.Services.Connector.Keys import DbUsers
 from Trax.Data.Testing.TestProjects import TestProjectsNames
-from Tests.Data.TestData.test_data_ccru_sanity import ProjectsSanityData
-from Projects.CCRU.Calculations import CCRUCalculations
+from Tests.Data.TestData.test_data_jnjde_sanity import ProjectsSanityData
+from Projects.JNJDE.Calculations import JNJDECalculations
 
 from Trax.Apps.Core.Testing.BaseCase import TestFunctionalCase
 from Tests.TestUtils import remove_cache_and_storage
@@ -64,17 +64,17 @@ class TestKEngineOutOfTheBox(TestFunctionalCase):
         self.assertNotEquals(len(kpi_results), 0)
         connector.disconnect_rds()
     
-    @seeder.seed(["ccru_seed", "mongodb_products_and_brands_seed"], ProjectsSanityData())
-    def test_ccru_sanity(self):
+    @seeder.seed(["jnjde_seed", "mongodb_products_and_brands_seed"], ProjectsSanityData())
+    def test_jnjde_sanity(self):
         project_name = ProjectsSanityData.project_name
         data_provider = KEngineDataProvider(project_name)
-        sessions = {'854F53FF-9B52-4DCF-9E95-A393487BCCA2': []}
+        sessions = {'8d24fd5c-0696-4945-8d54-413f0b947324': []}
         for session in sessions.keys():
             data_provider.load_session_data(str(session))
             output = Output()
-            CCRUCalculations(data_provider, output).run_project_calculations()
-            self._assert_old_tables_kpi_results_filled()
-            # self._assert_new_tables_kpi_results_filled()
+            JNJDECalculations(data_provider, output).run_project_calculations()
+            # self._assert_old_tables_kpi_results_filled()
+            self._assert_new_tables_kpi_results_filled()
             # for scene in sessions[session]:
             #     data_provider.load_scene_data(str(session), scene_id=scene)
             #     SceneCalculations(data_provider).calculate_kpis()
