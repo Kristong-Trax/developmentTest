@@ -4,6 +4,7 @@ from Trax.Utils.Logging.Logger import Log
 from KPIUtils_v2.DB.CommonV2 import Common
 from KPIUtils_v2.Utils.Parsers import ParseInputKPI
 from Projects.TNUVAILV2_SAND.Utils.Consts import Consts
+from Projects.TNUVAILV2_SAND.Utils.PreviousResultsHandler import PrevResHandler
 from Trax.Algo.Calculations.Core.DataProvider import Data
 # from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
@@ -23,6 +24,8 @@ class TNUVAILSANDToolBox:
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
         self.assortment = Assortment(self.data_provider, self.output)
         self.own_manufacturer_fk = int(self.data_provider.own_manufacturer.param_value.values[0])
+        self.previous_oos_results = PrevResHandler(self.data_provider.project_name,
+                                                   self.data_provider.session_uid).get_last_session_oos_results()
 
     def main_calculation(self):
         """ This function calculates all of the KPIs' results """
@@ -215,9 +218,10 @@ class TNUVAILSANDToolBox:
         sku_level_results = self._calculate_sku_level_assortment(lvl3_data, is_distribution=is_dist)
         self._save_results_for_assortment_(Consts.MANUFACTURER_FK, store_results, store_level_kpi_fk)
         self._save_results_for_assortment_(Consts.CATEGORY_FK, category_results, cat_lvl_fk, store_level_kpi_fk)
-        self._save_results_for_assortment_(Consts.PRODUCT_FK, sku_level_results, sku_level_fk, cat_lvl_fk)
+        prev_res = True if not is_dist else False   # In order to support previous results in SKU-OOS KPIs
+        self._save_results_for_assortment_(Consts.PRODUCT_FK, sku_level_results, sku_level_fk, cat_lvl_fk, prev_res)
 
-    def _save_results_for_assortment_(self, numerator_entity, results_list, kpi_fk, parent_kpi_fk=None):
+    def _save_results_for_assortment_(self, numerator_entity, results_list, kpi_fk, parent_kpi_fk=None, prev_res=False):
         """
         This method saves the assortments results for all of the levels.
         :param numerator_entity: The key of the numerator id that can be found in the results dictionary.
@@ -229,11 +233,20 @@ class TNUVAILSANDToolBox:
         for result in results_list:
             numerator_id, denominator_id = result[numerator_entity], result[Consts.DENOMINATOR_ID]
             num_res, denominator_res = result[Consts.NUMERATOR_RESULT], result[Consts.DENOMINATOR_RESULT]
+            prev_res_score = self._get_previous_oos_score(kpi_fk, numerator_id) if prev_res else 0
             total_score = round((num_res / float(denominator_res))*100, 2) if denominator_res else 0
             self.common_v2.write_to_db_result(fk=kpi_fk, numerator_id=numerator_id, numerator_result=num_res,
                                               denominator_id=self.store_id, denominator_result=denominator_res,
                                               score=total_score, result=total_score, should_enter=should_enter,
                                               identifier_result=kpi_fk, identifier_parent=parent_kpi_fk)
+
+    def _get_previous_oos_score(self, kpi_fk, numerator_id):
+        """
+
+        :param kpi_fk: kpi_level_2_fk.
+        :param numerator_id:
+        :return:
+        """
 
     def _get_sos_kpi_fks(self, policy):
         """

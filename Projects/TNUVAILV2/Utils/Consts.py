@@ -11,6 +11,7 @@ class Consts(object):
     IN_STORE = 'in_store'
     NUMERATOR_ID = 'numerator_id'
     DENOMINATOR_ID = 'denominator_id'
+    PS_CALC_STAGE = 3
 
     NUMERATOR_RESULT = 'numerator_result'
     DENOMINATOR_RESULT = 'denominator_result'
@@ -46,3 +47,4 @@ class Consts(object):
     # Logs
     EMPTY_ASSORTMENT_DATA = "There isn't relevant assortment data for this visit"
     LOG_EMPTY_ASSORTMENT_DATA_PER_POLICY = "There isn't relevant assortment data for the following policy: {}"
+    LOG_EMPTY_PREVIOUS_SESSIONS = "Couldn't fetch previous results for the the following session: {}"
