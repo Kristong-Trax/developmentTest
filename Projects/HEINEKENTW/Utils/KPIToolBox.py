@@ -127,7 +127,6 @@ class HEINEKENTWToolBox:
                                                               denominator_result=denominator_res,
                                                               result=1 - res, score=(1 - res),
                                                               score_after_actions=1 - res)
-                self.assortment.LVL2_HEADERS.extend(['passes', 'total'])
         return
 
     def store_assortment_calculation(self, lvl3_result):
