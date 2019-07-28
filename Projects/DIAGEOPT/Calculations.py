@@ -6,8 +6,6 @@ from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScrip
 
 from Projects.DIAGEOPT.KPIGenerator import DIAGEOPTGenerator
 
-__author__ = 'Nimrod'
-
 
 class DIAGEOPTCalculations(BaseCalculationsScript):
     def run_project_calculations(self):

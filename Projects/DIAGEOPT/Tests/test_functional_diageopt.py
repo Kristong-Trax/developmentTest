@@ -28,27 +28,31 @@ class TestDiageopt(TestFunctionalCase):
     def config_file_path(self):
         return os.path.join(os.path.dirname(os.path.realpath(__file__)), 'k-engine-test.config')
 
-    @seeder.seed(["mongodb_products_and_brands_seed", "diageopt_seed"], ProjectsSanityData())
-    def test_get_kpi_static_data(self):
-        data_provider = KEngineDataProvider(self.project_name)
-        data_provider.load_session_data(self.session_uid)
-        tool_box = DIAGEOPTToolBox(data_provider, self.output)
-        result = tool_box.get_kpi_static_data()
-        self.assertEquals(type(result), pd.DataFrame)
+    # Todo
+    # Those tests were remove because those functions were deprecated.
+    # In the future we will replace those tests with relevant comparing - sessions' results to expected ones.
 
-    @seeder.seed(["mongodb_products_and_brands_seed", "diageopt_seed"], ProjectsSanityData())
-    def test_get_business_unit(self):
-        data_provider = KEngineDataProvider(self.project_name)
-        data_provider.load_session_data(self.session_uid)
-        tool_box = DIAGEOPTToolBox(data_provider, self.output)
-        result = tool_box.get_business_unit()
-        self.assertEquals(type(result), str)
-
-    @seeder.seed(["mongodb_products_and_brands_seed", "diageopt_seed"], ProjectsSanityData())
-    def test_get_match_display(self):
-        data_provider = KEngineDataProvider(self.project_name)
-        data_provider.load_session_data(self.session_uid)
-        tool_box = DIAGEOPTToolBox(data_provider, self.output)
-        result = tool_box.get_match_display()
-        self.assertEquals(type(result), pd.DataFrame)
-
+    # @seeder.seed(["mongodb_products_and_brands_seed", "diageopt_seed"], ProjectsSanityData())
+    # def test_get_kpi_static_data(self):
+    #     data_provider = KEngineDataProvider(self.project_name)
+    #     data_provider.load_session_data(self.session_uid)
+    #     tool_box = DIAGEOPTToolBox(data_provider, self.output)
+    #     result = tool_box.get_kpi_static_data()
+    #     self.assertEquals(type(result), pd.DataFrame)
+    #
+    # @seeder.seed(["mongodb_products_and_brands_seed", "diageopt_seed"], ProjectsSanityData())
+    # def test_get_business_unit(self):
+    #     data_provider = KEngineDataProvider(self.project_name)
+    #     data_provider.load_session_data(self.session_uid)
+    #     tool_box = DIAGEOPTToolBox(data_provider, self.output)
+    #     result = tool_box.get_business_unit()
+    #     self.assertEquals(type(result), str)
+    #
+    # @seeder.seed(["mongodb_products_and_brands_seed", "diageopt_seed"], ProjectsSanityData())
+    # def test_get_match_display(self):
+    #     data_provider = KEngineDataProvider(self.project_name)
+    #     data_provider.load_session_data(self.session_uid)
+    #     tool_box = DIAGEOPTToolBox(data_provider, self.output)
+    #     result = tool_box.get_match_display()
+    #     self.assertEquals(type(result), pd.DataFrame)
+    #

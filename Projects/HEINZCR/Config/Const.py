@@ -9,6 +9,8 @@ class Const(object):
                                                  'Price Adherence Targets 20Jun2019.xlsx')
     EXTRA_SPACES_RELEVANT_SUB_CATEGORIES_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)),
                                                              'Extra_spaces_relevant_sub_categories_2019_06_03.xlsx')
+    STORE_TARGETS_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)),
+                                      'Targets Store Excecution Score_ 24 Jun 2019.xlsx')
 
     # had to do this because of weird encoding problems
     EXTRA_SPACES_SURVEY_QUESTION_FK = 54

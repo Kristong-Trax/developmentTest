@@ -1,13 +1,10 @@
 
 from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScript
-from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
-from Trax.Utils.Conf.Configuration import Config
-from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
+# from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
+# from Trax.Utils.Conf.Configuration import Config
+# from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
 
 from Projects.DIAGEOGH.KPIGenerator import DiageoGHGenerator
-
-
-__author__ = 'Nimrod'
 
 
 class DIAGEOGHCalculations(BaseCalculationsScript):
@@ -26,4 +23,3 @@ class DIAGEOGHCalculations(BaseCalculationsScript):
 #     data_provider.load_session_data(session)
 #     output = Output()
 #     DIAGEOGHCalculations(data_provider, output).run_project_calculations()
-
