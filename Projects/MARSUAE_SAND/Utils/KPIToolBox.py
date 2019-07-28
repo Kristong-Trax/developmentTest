@@ -171,18 +171,53 @@ class MARSUAE_SANDToolBox:
             del policy_columns[policy_columns.index('pk')]
 
             match_dict = self.match_policy_attr_columns_to_value_columns(policy_columns)
-            # continue from here
-            for column in policy_columns:
-                store_att_value = self.store_info_dict.get(column)
-                mask = policies_df.apply(self.get_masking_filter, args=(column, store_att_value), axis=1)
-                policies_df = policies_df[mask]
-
-            atomic_params_pks = policies_df['pk'].values.tolist()
+            policies_df['policy_json'] = policies_df.apply(self.build_policy_json, args=(match_dict,), axis=1)
+            # for column in policy_columns:
+            #     store_att_value = self.store_info_dict.get(column)
+            #     mask = policies_df.apply(self.get_masking_filter, args=(column, store_att_value), axis=1)
+            #     policies_df = policies_df[mask]
+            #
+            # atomic_params_pks = policies_df['pk'].values.tolist()
+            atomic_params_pks = self.get_the_list_of_store_relevant_external_targets(policies_df)
+            # atomic_params_pks = []
+            # for i, row in policies_df.iterrows():
+            #     policy_fits = False
+            #     for key, value in row['policy_json'].items():
+            #         value = value if isinstance(value, (list, tuple)) else [value]
+            #         if self.store_info_dict[key] in value:
+            #             policy_fits = True
+            #         else:
+            #             policy_fits = False
+            #     if policy_fits:
+            #         atomic_params_pks.append(row['pk'])
             relevant_atomic_params_df = atomic_params[atomic_params['pk'].isin(atomic_params_pks)]
             data_json_df = self.unpack_external_targets_json_fields_to_df(relevant_atomic_params_df, 'data_json')
             relevant_atomic_params_df = relevant_atomic_params_df.merge(data_json_df, on='pk', how='left')
             relevant_atomic_params_df[self.WEIGHT] = relevant_atomic_params_df[self.WEIGHT].apply(lambda x: float(x))
         return relevant_atomic_params_df
+
+    def get_the_list_of_store_relevant_external_targets(self, policies_df):
+        atomic_params_pks = []
+        for i, row in policies_df.iterrows():
+            policy_fits = False
+            for key, value in row['policy_json'].items():
+                value = value if isinstance(value, (list, tuple)) else [value]
+                if self.store_info_dict[key] in value:
+                    policy_fits = True
+                else:
+                    policy_fits = False
+            if policy_fits:
+                atomic_params_pks.append(row['pk'])
+        return atomic_params_pks
+
+    @staticmethod
+    def build_policy_json(row, match_dict):
+        policy_dict = {}
+        for key, value in match_dict.items():
+            if row[key]:
+                if row[key] == row[key] and row[key] is not None:
+                    policy_dict.update({row[key]: row[value]})
+        return policy_dict
 
     def build_tiers_for_atomics(self, atomics_df):
         filtered_atomics_df = atomics_df[atomics_df[self.SCORE_LOGIC] == self.TIERED]
@@ -242,15 +277,16 @@ class MARSUAE_SANDToolBox:
     def match_tier_targets_to_scores(self, row, tier_dict_list):
         relevant_columns = filter(lambda x: x.startswith('score_cond'), row.index.values)
         for column in relevant_columns:
-            if row[column]:
+            if row[column] or row[column] == 0:
                 if column.startswith('score_cond_target_'):
                     condition_number = str(column.strip('score_cond_target_'))
-                    matching_value_col = filter(lambda x: x == 'score_cond_score_'.format(condition_number),
+                    matching_value_col = filter(lambda x: x == 'score_cond_score_{}'.format(condition_number),
                                                 relevant_columns)
                     value_col = matching_value_col[0] if len(matching_value_col) > 0 else None
-                    if value_col:
+                    if value_col or value_col == 0:
                         tier_dict = {self.KPI_TYPE: row[self.KPI_TYPE], 'step_value': row[column],
-                                     'step_score_value': row(value_col)}
+                                     'step_score_value': row[value_col]}
+                        print tier_dict
                         tier_dict_list.append(tier_dict)
 
     @staticmethod
