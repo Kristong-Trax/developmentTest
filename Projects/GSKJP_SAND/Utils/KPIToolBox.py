@@ -218,13 +218,13 @@ class GSKJPToolBox:
         result = self.blocking_generator.network_x_block_together(location=template_name,
                                                                   population=population_parameters,
                                                                   additional={'minimum_block_ratio': target,
-                                                                              'calculate_all_scenes': False,
+                                                                              'calculate_all_scenes': True,
                                                                               'ignore_empty': ignore_empty,
                                                                               'include_stacking': stacking_param,
                                                                               'check_vertical_horizontal': True,
                                                                               'minimum_facing_for_block': 1
                                                                               })
-        # result.sort_values('facing_percentage', ascending=False, inplace=True)
+        result.sort_values('facing_percentage', ascending=False, inplace=True)
 
         # numerator = len(result['cluster'].values[0].node.keys())
         # numerator = 0
@@ -239,6 +239,10 @@ class GSKJPToolBox:
         #     nodes_sum = nodes_sum + node_clust.node.keys()
         # # numerator
         score = 0 if result[result['is_block']].empty else 100
+        numerator = 0 if result.empty else result['block_facings'].iloc[0]
+        denominator = 0 if result.empty else result['total_facings'].iloc[0]
+
+        return score, target, numerator, denominator
 
         return score, target
 
