@@ -282,9 +282,9 @@ if __name__ == '__main__':
     """
     LoggerInitializer.init('')
     Config.init()
-    project_to_test = 'jnjes'
+    project_to_test = 'ccit'
     creator = SeedCreator(project_to_test)
-    creator.activate_exporter(specific_sessions_and_scenes=None
+    creator.activate_exporter(specific_sessions_and_scenes={'df199d1e-99f6-4e17-9c5e-2efe443bf7e1':[32175]}
                               # {'6e4dc935-ab56-45ef-9408-caaddb963874': [17888508],
                               #  'C544B5DB-B61F-4B02-B03A-6D8748B3B636': []}
                               )
