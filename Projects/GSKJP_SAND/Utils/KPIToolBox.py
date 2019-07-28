@@ -244,7 +244,6 @@ class GSKJPToolBox:
 
         return score, target, numerator, denominator
 
-        return score, target
 
     def msl_assortment(self, kpi_fk, kpi_name):
         """
@@ -431,12 +430,13 @@ class GSKJPToolBox:
                                'should_enter': True})
             # block_score
             # block_result, block_benchmark, block_numerator, block_denominator = self.brand_blocking(brand, policy,df_block)
-            block_result, block_benchmark = self.brand_blocking(brand, policy)
+            block_result, block_benchmark, numerator_block, block_denominator = self.brand_blocking(brand, policy)
             block_score = block_result * block_target
             results_df.append({'fk': kpi_block_fk, 'numerator_id': brand, 'denominator_id': self.store_fk,
-                               'denominator_result': 0, 'numerator_result': 1, 'result':
-                                   block_result, 'score': block_score, 'target': (block_target*100), 'identifier_parent':
-                                   identifier_parent, 'should_enter': True, 'weight': (block_benchmark*100)})
+                               'denominator_result': block_denominator, 'numerator_result': numerator_block, 'result':
+                                   block_result, 'score': block_score, 'target': (block_target * 100),
+                               'identifier_parent':
+                                   identifier_parent, 'should_enter': True, 'weight': (block_benchmark * 100)})
 
             # position score
             if df_position_score is not None:
