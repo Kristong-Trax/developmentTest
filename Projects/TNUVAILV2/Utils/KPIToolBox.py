@@ -78,14 +78,13 @@ class TNUVAILToolBox:
         :param policy:  חלבי או טירת צבי - this policy is matching for scene types and products as well
         """
         lvl3_data = self._get_relevant_assortment_data(lvl3_result, policy)
-        if lvl3_data.empty:
-            Log.warning(Consts.LOG_EMPTY_ASSORTMENT_DATA_PER_POLICY.format(policy.encode('utf-8')))
         self._calculate_distribution_and_oos(lvl3_data, policy, is_dist=True)  # Distribution
         lvl3_data = self._filter_data_for_oos_calculation(lvl3_data)
         self._calculate_distribution_and_oos(lvl3_data, policy, is_dist=False)  # OOS
 
     def _get_filtered_scif_for_sos_calculations(self, policy):
         """ This method filters scene item facts by policy and removes redundant row for SOS calculation"""
+        # TODO: rlv_sos_sc -> should be used in this case...?
         filtered_scif = self._get_filtered_scif_per_scene_type(policy)
         filtered_scif = filtered_scif[~filtered_scif[Consts.PRODUCT_TYPE].isin(Consts.TYPES_TO_IGNORE_IN_SOS)]
         filtered_scif = filtered_scif.loc[filtered_scif[Consts.FACINGS_FOR_SOS] > 0]
@@ -197,11 +196,12 @@ class TNUVAILToolBox:
         :return: A dictionary - which contains the following keys: product_fk, denominator_id, numerator_result and
         denominator_result.
         """
-        in_store_relevant_attribute = 1 if is_distribution else 0
-        sku_level_res = lvl3_data.loc[lvl3_data.in_store == in_store_relevant_attribute]
-        sku_level_res = sku_level_res[[Consts.PRODUCT_FK, Consts.IN_STORE, Consts.CATEGORY_FK]]
-        sku_level_res = sku_level_res.assign(denominator_result=1).rename(
-            {Consts.IN_STORE: Consts.NUMERATOR_RESULT, Consts.CATEGORY_FK: Consts.DENOMINATOR_ID}, axis=1)
+        in_store_relevant_attributes = [Consts.OOS, Consts.AVAILABLE] if is_distribution else [Consts.OOS]
+        sku_level_res = lvl3_data.loc[lvl3_data.in_store.isin(in_store_relevant_attributes)]
+        sku_level_res = sku_level_res[[Consts.PRODUCT_FK, Consts.IN_STORE, Consts.CATEGORY_FK, Consts.FACINGS]]
+        sku_level_res.rename(Consts.SOS_SKU_LVL_RENAME, axis=1, inplace=True)
+        if not is_distribution:
+            sku_level_res[Consts.DENOMINATOR_RESULT] = 1
         sku_level_res = sku_level_res.to_dict('records')
         return sku_level_res
 
@@ -211,6 +211,9 @@ class TNUVAILToolBox:
         :param lvl3_data: Assortment SKU level results + category_fk column.
         :param policy: חלבי או טירת צבי
         """
+        if lvl3_data.empty:
+            Log.warning(Consts.LOG_EMPTY_ASSORTMENT_DATA_PER_POLICY.format(policy.encode('utf-8')))
+            return
         store_level_kpi_fk, cat_lvl_fk, sku_level_fk = self._get_assortment_kpi_fks(policy, is_distribution=is_dist)
         store_results = self._calculate_store_level_assortment(lvl3_data, is_distribution=is_dist)
         category_results = self._calculate_category_level_assortment(lvl3_data, is_distribution=is_dist)
@@ -237,8 +240,9 @@ class TNUVAILToolBox:
             self.common_v2.write_to_db_result(fk=kpi_fk, numerator_id=numerator_id, numerator_result=num_res,
                                               denominator_id=self.store_id, denominator_result=denominator_res,
                                               score=score, result=result, should_enter=should_enter,
-                                              score_after_actions=prev_res_score, identifier_result=kpi_fk,
-                                              identifier_parent=parent_kpi_fk, context_id=context_id)
+                                              score_after_actions=prev_res_score,
+                                              identifier_result=(kpi_fk, numerator_id),
+                                              identifier_parent=(parent_kpi_fk, denominator_id), context_id=context_id)
 
     def _calculate_assortment_score_and_result(self, numerator_entity, numerator_result, denominator_result):
         """
@@ -297,9 +301,9 @@ class TNUVAILToolBox:
         # Store level calculation
         num_result, denominator_result = self._calculate_own_manufacturer_sos(filtered_scif_by_policy)
         sos_score = round(num_result / float(denominator_result)*100, 2) if denominator_result else 0
-        self.common_v2.write_to_db_result(fk=store_level_kpi, numerator_id=self.own_manufacturer_fk,
-                                          numerator_result=num_result, denominator_id=self.store_id,
-                                          denominator_result=denominator_result, score=sos_score, result=sos_score)
+        self.common_v2.write_to_db_result(fk=store_level_kpi, numerator_id=self.own_manufacturer_fk, score=sos_score,
+                                          numerator_result=num_result, denominator_id=self.store_id, result=sos_score,
+                                          denominator_result=denominator_result, identifier_result=store_level_kpi)
         # Category level calculations
         category_results = self._calculate_category_levels_sos(filtered_scif_by_policy)
         self._save_results_for_sos(category_results, store_level_kpi, own_manu_out_of_cat_kpi, all_manu_out_of_cat_kpi)
@@ -369,10 +373,10 @@ class TNUVAILToolBox:
                 self.common_v2.write_to_db_result(fk=own_manu_out_of_category_fk, numerator_id=category_id,
                                                   numerator_result=numerator_res, denominator_id=manufacturer_id,
                                                   denominator_result=denominator_res, score=sos_score, result=sos_score,
-                                                  identifier_result=own_manu_out_of_category_fk,
+                                                  identifier_result=(own_manu_out_of_category_fk, category_id),
                                                   identifier_parent=store_lvl_fk, should_enter=True)
             self.common_v2.write_to_db_result(fk=all_manu_out_of_category_fk, numerator_id=manufacturer_id,
                                               numerator_result=numerator_res, denominator_id=category_id,
                                               denominator_result=denominator_res, score=sos_score, result=sos_score,
-                                              identifier_result=all_manu_out_of_category_fk,
-                                              identifier_parent=own_manu_out_of_category_fk, should_enter=True)
+                                              identifier_result=all_manu_out_of_category_fk,  should_enter=True,
+                                              identifier_parent=(own_manu_out_of_category_fk, category_id))

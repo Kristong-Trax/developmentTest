@@ -2,29 +2,40 @@
 
 
 class Consts(object):
-    PRODUCT_TYPE = 'product_type'
-    TYPES_TO_IGNORE_IN_SOS = ['Irrelevant', 'Empty']
-    FACINGS_FOR_SOS = 'facings_ign_stack'
+
+    # Scene item facts attributes
+    FACINGS = 'facings'
+    TEMPLATE_NAME = 'template_name'
     MANUFACTURER_FK = 'manufacturer_fk'
     CATEGORY_FK = 'category_fk'
     PRODUCT_FK = 'product_fk'
-    IN_STORE = 'in_store'
-    NUMERATOR_ID = 'numerator_id'
-    DENOMINATOR_ID = 'denominator_id'
-    PS_CALC_STAGE = 3
-    OOS_TYPE = 'OOS'
-    DISTRIBUTION_TYPE = 'DISTRIBUTED'
-
-    NUMERATOR_RESULT = 'numerator_result'
-    DENOMINATOR_RESULT = 'denominator_result'
-    ENTITIES_FOR_DB = [MANUFACTURER_FK, CATEGORY_FK, NUMERATOR_RESULT, DENOMINATOR_RESULT]
-    OBLIGATORY_ASSORTMENT = u'חובה'
-    OPTIONAL_SKU_ASSORTMENT = u'אופציונאלי'
+    PRODUCT_TYPE = 'product_type'
     PRODUCT_POLICY_ATTR = 'att3'
     MILKY_POLICY = u'חלבי'
     TIRAT_TSVI_POLICY = u'טירת צבי'
-    TEMPLATE_NAME = 'template_name'
+
+    # SOS
+    TYPES_TO_IGNORE_IN_SOS = ['Irrelevant', 'Empty']
+    FACINGS_FOR_SOS = 'facings_ign_stack'
+
+    # DB attributes
+    NUMERATOR_ID = 'numerator_id'
+    DENOMINATOR_ID = 'denominator_id'
+    NUMERATOR_RESULT = 'numerator_result'
+    DENOMINATOR_RESULT = 'denominator_result'
+    ENTITIES_FOR_DB = [MANUFACTURER_FK, CATEGORY_FK, NUMERATOR_RESULT, DENOMINATOR_RESULT]
+
+    # Assortment Consts
+    IN_STORE = 'in_store'
+    PS_CALC_STAGE = 3
+    OOS_TYPE = 'OOS'
+    DISTRIBUTION_TYPE = 'DISTRIBUTED'
+    OOS = 0
+    AVAILABLE = 1
+    OBLIGATORY_ASSORTMENT = u'חובה'
+    OPTIONAL_SKU_ASSORTMENT = u'אופציונאלי'
     AGGREGATION_COLUMNS_RENAMING = {'sum': NUMERATOR_RESULT, 'count': DENOMINATOR_RESULT}
+    SOS_SKU_LVL_RENAME = {IN_STORE: NUMERATOR_RESULT, CATEGORY_FK: DENOMINATOR_ID, FACINGS: DENOMINATOR_RESULT}
 
     # KPIs names
     SOS_MANU_OUT_OF_STORE_KPI_TIRAT_TSVI = 'TIRAT_TSVI_MANUFACTURER_OUT_OF_STORE_SOS'
