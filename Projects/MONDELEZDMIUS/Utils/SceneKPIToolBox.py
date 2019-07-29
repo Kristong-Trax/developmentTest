@@ -151,6 +151,8 @@ class SceneMONDELEZDMIUSToolBox:
                 for i, row in filtered_assortment.iterrows():
                     ppg = row[Const.PPG_COLUMN_NAME]
                     sub_ppg = row[Const.SUB_PPG_COLUMN_NAME]
+                    ppg2 = row[Const.PPG_COLUMN_NAME_2]
+                    sub_ppg2 = row[Const.SUB_PPG_COLUMN_NAME_2]
 
                     if not pd.isnull(ppg):
                         filtered_scif_count = len(self.scif[self.scif['PPG'] == ppg])
@@ -161,6 +163,20 @@ class SceneMONDELEZDMIUSToolBox:
 
                     if not pd.isnull(sub_ppg):
                         filtered_scif_count = len(self.scif[self.scif['Sub PPG'] == sub_ppg])
+                        if filtered_scif_count > 0:
+                            score = 0
+                            result = Const.RESULT_NO
+                            break
+
+                    if not pd.isnull(ppg2):
+                        filtered_scif_count = len(self.scif[self.scif['PPG'] == ppg2])
+                        if filtered_scif_count > 0:
+                            score = 0
+                            result = Const.RESULT_NO
+                            break
+
+                    if not pd.isnull(sub_ppg2):
+                        filtered_scif_count = len(self.scif[self.scif['Sub PPG'] == sub_ppg2])
                         if filtered_scif_count > 0:
                             score = 0
                             result = Const.RESULT_NO
