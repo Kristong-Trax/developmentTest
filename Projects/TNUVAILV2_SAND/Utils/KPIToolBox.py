@@ -4,11 +4,9 @@ from Trax.Utils.Logging.Logger import Log
 from KPIUtils_v2.DB.CommonV2 import Common
 from KPIUtils_v2.Utils.Parsers import ParseInputKPI
 from Projects.TNUVAILV2_SAND.Utils.Consts import Consts
-from Projects.TNUVAILV2_SAND.Utils.PreviousResultsHandler import PrevResHandler
+from Projects.TNUVAILV2_SAND.Utils.DataBaseHandler import DBHandler
 from Trax.Algo.Calculations.Core.DataProvider import Data
-# from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
-
 
 __author__ = 'idanr'
 
@@ -24,8 +22,9 @@ class TNUVAILSANDToolBox:
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
         self.assortment = Assortment(self.data_provider, self.output)
         self.own_manufacturer_fk = int(self.data_provider.own_manufacturer.param_value.values[0])
-        self.previous_oos_results = PrevResHandler(self.data_provider.project_name,
-                                                   self.data_provider.session_uid).get_last_session_oos_results()
+        self.db_handler = DBHandler(self.data_provider.project_name, self.data_provider.session_uid)
+        self.previous_oos_results = self.db_handler.get_last_session_oos_results()
+        self.kpi_result_types = self.db_handler.get_kpi_result_type()
 
     def main_calculation(self):
         """ This function calculates all of the KPIs' results """
@@ -218,8 +217,7 @@ class TNUVAILSANDToolBox:
         sku_level_results = self._calculate_sku_level_assortment(lvl3_data, is_distribution=is_dist)
         self._save_results_for_assortment_(Consts.MANUFACTURER_FK, store_results, store_level_kpi_fk)
         self._save_results_for_assortment_(Consts.CATEGORY_FK, category_results, cat_lvl_fk, store_level_kpi_fk)
-        prev_res = True if not is_dist else False   # In order to support previous results in SKU-OOS KPIs
-        self._save_results_for_assortment_(Consts.PRODUCT_FK, sku_level_results, sku_level_fk, cat_lvl_fk, prev_res)
+        self._save_results_for_assortment_(Consts.PRODUCT_FK, sku_level_results, sku_level_fk, cat_lvl_fk, not is_dist)
 
     def _save_results_for_assortment_(self, numerator_entity, results_list, kpi_fk, parent_kpi_fk=None, prev_res=False):
         """
@@ -227,26 +225,52 @@ class TNUVAILSANDToolBox:
         :param numerator_entity: The key of the numerator id that can be found in the results dictionary.
         :param results_list: List of dictionaries with the assortment results.
         :param kpi_fk: Relevant fk to save.
-        :param parent_kpi_fk.
+        :param prev_res: It will be True in cases
         """
         should_enter = True if parent_kpi_fk is not None else False
         for result in results_list:
             numerator_id, denominator_id = result[numerator_entity], result[Consts.DENOMINATOR_ID]
             num_res, denominator_res = result[Consts.NUMERATOR_RESULT], result[Consts.DENOMINATOR_RESULT]
             prev_res_score = self._get_previous_oos_score(kpi_fk, numerator_id) if prev_res else 0
-            total_score = round((num_res / float(denominator_res))*100, 2) if denominator_res else 0
+            context_id = numerator_id if prev_res else None
+            score, result = self._calculate_assortment_score_and_result(numerator_entity, num_res, denominator_res)
             self.common_v2.write_to_db_result(fk=kpi_fk, numerator_id=numerator_id, numerator_result=num_res,
                                               denominator_id=self.store_id, denominator_result=denominator_res,
-                                              score=total_score, result=total_score, should_enter=should_enter,
-                                              identifier_result=kpi_fk, identifier_parent=parent_kpi_fk)
+                                              score=score, result=result, should_enter=should_enter,
+                                              score_after_actions=prev_res_score, identifier_result=kpi_fk,
+                                              identifier_parent=parent_kpi_fk, context_id=context_id)
+
+    def _calculate_assortment_score_and_result(self, numerator_entity, numerator_result, denominator_result):
+        """
+        This method calculates the relevant assortment score. We need to handle SKU level differently in order
+        to support the kpi_result_type.
+        :param numerator_entity: The relevant assortment entity. E.g: "category_fk" or "product_fk"
+        :return: A tuple of score and result. The result represent the kpi_type_result_fk.
+        """
+        total_score = round((numerator_result / float(denominator_result)) * 100, 2) if denominator_result else 0
+        if numerator_entity == Consts.PRODUCT_FK:
+            result_type = Consts.DISTRIBUTION_TYPE if total_score else Consts.OOS_TYPE
+            result = self.kpi_result_types.loc[self.kpi_result_types.value == result_type, 'pk'].values[0]
+        else:
+            result = total_score
+        return total_score, result
 
     def _get_previous_oos_score(self, kpi_fk, numerator_id):
         """
-
+        In order to support special NCC report, this method matches the relevant OOS result from the previous
+        session in the SKU level.
         :param kpi_fk: kpi_level_2_fk.
-        :param numerator_id:
-        :return:
+        :param numerator_id: The relevant product fk for the oos results.
+        :return: The previous OOS results per kpi_fk and product_fk.
         """
+        if self.previous_oos_results is None:
+            return 0
+        prev_result = self.previous_oos_results.loc[(self.previous_oos_results.kpi_level_2_fk == kpi_fk) & (
+                self.previous_oos_results.numerator_id == numerator_id)]
+        if prev_result.empty:
+            return 0
+        else:
+            return prev_result.result.values[0]
 
     def _get_sos_kpi_fks(self, policy):
         """

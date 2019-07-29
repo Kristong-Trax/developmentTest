@@ -6,7 +6,7 @@ from Projects.TNUVAILV2_SAND.Utils.Consts import Consts
 from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 
 
-class PrevResHandler:
+class DBHandler:
     """
     Tnuva has NCC report that comparing the results of the OOS SKU level for the current session and the previous
     ones. We didn't want to calculate it during the report and this doesn't exist yet in the API so this util class
@@ -24,7 +24,7 @@ class PrevResHandler:
         last_session_fk_query = self._get_last_visit_fk_query()
         last_session_fk = self._execute_db_query(last_session_fk_query)
         if len(last_session_fk) != 2:
-            Log.warning(Consts.LOG_EMPTY_PREVIOUS_SESSIONS)
+            Log.warning(Consts.LOG_EMPTY_PREVIOUS_SESSIONS.format(self.session_uid))
             last_session_fk = None
         else:
             last_session_fk = last_session_fk.loc[1, 'pk']
@@ -48,6 +48,12 @@ class PrevResHandler:
             return None
         oos_results = self._get_oos_results(last_session_fk)
         return oos_results
+
+    def get_kpi_result_type(self):
+        """ This method extracts the kpi_result_types from the DB. """
+        result_type_query = self._get_kpi_result_types_query()
+        result_types = self._execute_db_query(result_type_query)
+        return result_types
 
     def _execute_db_query(self, query):
         """ This method is responsible on the DB execution.
@@ -74,16 +80,21 @@ class PrevResHandler:
                             FROM
                                 report.kpi_level_2_results
                             WHERE
-                                session_fk = 1428887
+                                session_fk = {}
                                     AND kpi_level_2_fk IN (SELECT 
                                         pk
                                     FROM
                                         static.kpi_level_2
                                     WHERE
-                                        kpi_calculation_stage_fk = '3'
+                                        kpi_calculation_stage_fk = {}
                                             AND type LIKE '%OOS%'
                                             AND type LIKE '%SKU%');""".format(session_fk, Consts.PS_CALC_STAGE)
         return prev_results_query
+
+    @staticmethod
+    def _get_kpi_result_types_query():
+        kpi_result_type = """SELECT pk, value FROM static.kpi_result_value;"""
+        return kpi_result_type
 
     def _get_last_visit_fk_query(self):
         """

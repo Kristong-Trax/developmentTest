@@ -12,6 +12,8 @@ class Consts(object):
     NUMERATOR_ID = 'numerator_id'
     DENOMINATOR_ID = 'denominator_id'
     PS_CALC_STAGE = 3
+    OOS_TYPE = 'OOS'
+    DISTRIBUTION_TYPE = 'DISTRIBUTED'
 
     NUMERATOR_RESULT = 'numerator_result'
     DENOMINATOR_RESULT = 'denominator_result'

@@ -8,9 +8,9 @@ from Trax.Utils.Conf.Configuration import Config
 if __name__ == '__main__':
     LoggerInitializer.init('tnuvailv2-sand calculations')
     Config.init()
-    project_name = 'tnuvailv2'
+    project_name = 'tnuvailv2-sand'
     data_provider = KEngineDataProvider(project_name)
-    session = '07d7b4e0-5acc-401b-807d-71221be5446b'
+    session = ''
     data_provider.load_session_data(session)
     output = Output()
     Calculations(data_provider, output).run_project_calculations()
