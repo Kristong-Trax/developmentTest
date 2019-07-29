@@ -497,11 +497,11 @@ class MARSUAE_SANDToolBox:
                 if row.target and not np.math.isnan(row.target):
                     if row.group_target_date <= self.visit_date:
                         denominator_res = row.target
-                result = np.divide(float(row.passes), float(denominator_res)) * 100
+                result = np.divide(float(row.passes), float(denominator_res))
                 score, weight = self.get_score(result, param_row)
                 target = param_row[self.TARGET] if param_row[self.TARGET] else None
                 self.common.write_to_db_result(fk=row.kpi_fk_lvl2, numerator_id=self.own_manuf_fk,
-                                               numerator_result=row.passes, result=result,
+                                               numerator_result=row.passes, result=result * 100,
                                                denominator_id=self.store_id, denominator_result=denominator_res,
                                                score=score * weight, weight=weight, target=target,
                                                identifier_result=identifier_result,
@@ -542,7 +542,7 @@ class MARSUAE_SANDToolBox:
         # in case the rule is >= step...
         kpi_name = param_row[self.KPI_TYPE]
         tiers = self.atomic_tiers_df[self.atomic_tiers_df[self.KPI_TYPE] == kpi_name]
-        relevant_step = min([tiers[tiers['step_value'] >= result]['step_value'].values.tolist()])
+        relevant_step = min(tiers[tiers['step_value'] >= result]['step_value'].values.tolist())
         tier_score_value = tiers[tiers['step_value'] == relevant_step]['step_score_value'].values[0]
         score = tier_score_value
         return score
