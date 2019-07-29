@@ -194,6 +194,7 @@ class MARSUAE_SANDToolBox:
             data_json_df = self.unpack_external_targets_json_fields_to_df(relevant_atomic_params_df, 'data_json')
             relevant_atomic_params_df = relevant_atomic_params_df.merge(data_json_df, on='pk', how='left')
             relevant_atomic_params_df[self.WEIGHT] = relevant_atomic_params_df[self.WEIGHT].apply(lambda x: float(x))
+            relevant_atomic_params_df[self.CHILD_KPI] = relevant_atomic_params_df[self.CHILD_KPI].astype(object)
         return relevant_atomic_params_df
 
     def get_the_list_of_store_relevant_external_targets(self, policies_df):
@@ -464,10 +465,13 @@ class MARSUAE_SANDToolBox:
         parents_list = filter(lambda x: x, parents_list)
         for parent in parents_list:
             child_kpis = store_atomics[store_atomics[self.PARENT_KPI] == parent][self.KPI_TYPE].unique().tolist()
-            store_atomics.loc[store_atomics[self.KPI_TYPE] == parent, self.CHILD_KPI] = json.dumps(child_kpis)
+            # store_atomics[self.CHILD_KPI] = store_atomics[self.CHILD_KPI].astype(object)
+            store_atomics.loc[store_atomics[self.KPI_TYPE] == parent, self.CHILD_KPI] = [', '.join(child_kpis)]
+            store_atomics[self.CHILD_KPI] = store_atomics[self.CHILD_KPI].apply(lambda x: x.split(',') if x else '')
+            # store_atomics.at[store_atomics[self.KPI_TYPE] == parent, self.CHILD_KPI] = child_kpis
 
     def calculate_atomic_results(self, param_row):
-        if param_row[self.KPI_TYPE] not in self.atomic_kpi_results['kpi_name'].values.tolist():
+        if param_row[self.KPI_TYPE] not in self.atomic_kpi_results[self.KPI_TYPE].values.tolist():
             kpi_type = param_row[self.KPI_FAMILY]
             self.atomic_function[kpi_type](param_row)
 
