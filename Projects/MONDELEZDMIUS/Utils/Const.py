@@ -25,6 +25,8 @@ class Const(object):
     #PPG and SUB-PPG Columns
     PPG_COLUMN_NAME ='MONDELEZ BRAND NAME = PPG'
     SUB_PPG_COLUMN_NAME = 'MONDELEZ Sub Brand = Sub PPG'
+    PPG_COLUMN_NAME_2 = 'PPG'
+    SUB_PPG_COLUMN_NAME_2 = 'Sub PPG'
 
     #column of param and vlalues:
     SOVI_NAME = "KPI NAME"
