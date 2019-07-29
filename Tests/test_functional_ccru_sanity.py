@@ -12,6 +12,7 @@ from Projects.CCRU.Calculations import CCRUCalculations
 
 from Trax.Apps.Core.Testing.BaseCase import TestFunctionalCase
 from Tests.TestUtils import remove_cache_and_storage
+from Trax.Utils.Testing.Case import skip
 
 
 __author__ = 'ilays'
@@ -63,7 +64,8 @@ class TestKEngineOutOfTheBox(TestFunctionalCase):
         kpi_results = cursor.fetchall()
         self.assertNotEquals(len(kpi_results), 0)
         connector.disconnect_rds()
-    
+
+    @skip('Test is not completely ready')
     @seeder.seed(["ccru_seed", "mongodb_products_and_brands_seed"], ProjectsSanityData())
     def test_ccru_sanity(self):
         project_name = ProjectsSanityData.project_name
