@@ -405,6 +405,8 @@ class ALTRIAUSToolBox:
 
         if relevant_pos.empty:
             Log.error('No polygon mask was generated for {} category - cannot compute KPIs'.format(category))
+            # we need to attempt to calculate fixture width, even if there's no polygon mask
+            self.calculate_fixture_width(relevant_pos, longest_shelf, category)
             return
 
         relevant_pos = relevant_pos[['product_fk', 'product_name', 'left_bound', 'right_bound', 'center_x', 'center_y']]
@@ -517,7 +519,11 @@ class ALTRIAUSToolBox:
         category_fk = self.get_category_fk_by_name(category)
         # this is needed to remove intentionally duplicated 'Menu Board' POS 'Headers'
         relevant_pos = relevant_pos.drop_duplicates(subset=['position'])
-        width = relevant_pos[relevant_pos['type'] == 'Header']['width'].sum()
+        try:
+            width = relevant_pos[relevant_pos['type'] == 'Header']['width'].sum()
+        except KeyError:
+            # needed for when 'width' doesn't exist
+            width = 0
 
         if relevant_pos.empty or width == 0:
             width = int(len(longest_shelf) / float(self.facings_to_feet_template[category + ' Facings'].iloc[0]))

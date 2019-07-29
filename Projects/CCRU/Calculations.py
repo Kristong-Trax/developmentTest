@@ -88,8 +88,7 @@ class CCRUProjectCalculations:
 
     def main_function(self):
 
-        if self.tool_box.external_session_id\
-                and self.tool_box.external_session_id.find('EasyMerch-P') >= 0:
+        if self.tool_box.visit_type == self.tool_box.PROMO_VISIT:
             Log.debug('Promo session, no Custom KPI calculation implied')
             return
 
@@ -117,12 +116,12 @@ class CCRUProjectCalculations:
         if kpi_source:
             pass
 
-        elif self.test_store == "Y":
-            Log.warning('Error. Session cannot be calculated: '
-                        'Store is a test store. '
-                        'Store ID {1}.'
-                        .format(self.pos_kpi_set_name, self.store_id))
-            return
+        # elif self.test_store == "Y":
+        #     Log.warning('Error. Session cannot be calculated: '
+        #                 'Store is a test store. '
+        #                 'Store ID {1}.'
+        #                 .format(self.pos_kpi_set_name, self.store_id))
+        #     return
 
         else:
             Log.warning('Error. Session cannot be calculated. '
