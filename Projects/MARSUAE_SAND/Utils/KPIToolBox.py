@@ -57,8 +57,8 @@ class MARSUAE_SANDToolBox:
     WEIGHT = 'Weight'
     MARS = 'MARS GCC'
     KPI_COMBINATION = 'Kpi Combination'
-    PARENT_KPI = 'parent_kpi'
-    CHILD_KPI = 'child_kpi'
+    PARENT_KPI = 'kpi_parent'
+    CHILD_KPI = 'kpi_child'
     KPI_TYPE = 'kpi_type'
 
     TOTAL_UAE_SCORE = 'Total UAE Score'
@@ -286,7 +286,6 @@ class MARSUAE_SANDToolBox:
                     if value_col or value_col == 0:
                         tier_dict = {self.KPI_TYPE: row[self.KPI_TYPE], 'step_value': row[column],
                                      'step_score_value': row[value_col]}
-                        print tier_dict
                         tier_dict_list.append(tier_dict)
 
     @staticmethod
@@ -402,8 +401,9 @@ class MARSUAE_SANDToolBox:
         self.build_tiers_for_atomics(store_atomics)
         if not store_atomics.empty:
             # Option 1: rearrange kpi order and then calculate
-            store_atomics.reset_index(inplace=True)
+            # store_atomics.reset_index(inplace=True)
             reordered_index = self.reorder_kpis(store_atomics)
+            self.restore_children(store_atomics)
             for i in reordered_index:
                 row = store_atomics.iloc[i]
                 self.calculate_atomic_results(row)
@@ -427,6 +427,7 @@ class MARSUAE_SANDToolBox:
 
     def reorder_kpis(self, store_atomics):
         input_df = store_atomics.copy()
+        # input_df = store_atomics[['pk', self.KPI_TYPE, self.CHILD_KPI]]
         input_df['remaining_child'] = input_df[self.CHILD_KPI].copy()
         input_df.loc[~(input_df['remaining_child'] == ''), 'remaining_child'] = input_df['remaining_child'].apply(
             lambda x: x if isinstance(x, list) else [x])
@@ -441,6 +442,7 @@ class MARSUAE_SANDToolBox:
                                 (~(input_df['remaining_child'].isnull()))]
             if input_df.empty:
                 child_flag = False
+        # reordered_pks = reordered_df['pk'].values.tolist()
         reordered_index = reordered_df.index
         return reordered_index
 
@@ -456,6 +458,13 @@ class MARSUAE_SANDToolBox:
                         if len(child_kpis) == 0:
                             child_kpis = ''
         return child_kpis
+
+    def restore_children(self, store_atomics):
+        parents_list = store_atomics[self.PARENT_KPI].unique().tolist()
+        parents_list = filter(lambda x: x, parents_list)
+        for parent in parents_list:
+            child_kpis = store_atomics[store_atomics[self.PARENT_KPI] == parent][self.KPI_TYPE].unique().tolist()
+            store_atomics.loc[store_atomics[self.KPI_TYPE] == parent, self.CHILD_KPI] = json.dumps(child_kpis)
 
     def calculate_atomic_results(self, param_row):
         if param_row[self.KPI_TYPE] not in self.atomic_kpi_results['kpi_name'].values.tolist():
