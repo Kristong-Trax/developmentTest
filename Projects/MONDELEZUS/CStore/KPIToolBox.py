@@ -167,8 +167,6 @@ class CSTOREToolBox:
                                               'total', 'assortment_group_fk', 'assortment_super_group_fk')
                 self.parse_assortment_results(lvl1_result, 'kpi_fk_lvl1', 'num_id', 'passes',
                                               'den_id', 'total', 'assortment_super_group_fk', None)
-                self.assortment.LVL2_HEADERS += ['passes', 'total']
-                self.assortment.LVL1_HEADERS += ['passes', 'total']
 
             Log.info('Assortment KPIs Calculated')
 

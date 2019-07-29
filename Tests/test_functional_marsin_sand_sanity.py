@@ -12,16 +12,11 @@ from Tests.Data.TestData.test_data_marsin_sand_sanity import ProjectsSanityData
 from Projects.MARSIN_SAND.Calculations import MARSIN_SANDCalculations
 from Trax.Apps.Core.Testing.BaseCase import TestFunctionalCase
 
-from Tests.TestUtils import remove_cache_and_storage
 
-__author__ = 'yoava'
+__author__ = 'ritikash'
 
 
 class TestKEngineOutOfTheBox(TestFunctionalCase):
-
-    def set_up(self):
-        super(TestKEngineOutOfTheBox, self).set_up()
-        remove_cache_and_storage()
 
     @property
     def import_path(self):
@@ -47,7 +42,7 @@ class TestKEngineOutOfTheBox(TestFunctionalCase):
     def test_marsin_sand_sanity(self):
         project_name = ProjectsSanityData.project_name
         data_provider = KEngineDataProvider(project_name)
-        sessions = ['fc47f80f-a114-4514-b653-649b0870f081']
+        sessions = ['4a690e85-544b-4bcc-be23-d321b21cb50b']
         for session in sessions:
             data_provider.load_session_data(session)
             output = Output()
