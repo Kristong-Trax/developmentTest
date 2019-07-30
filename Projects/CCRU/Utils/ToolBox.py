@@ -16,7 +16,8 @@ from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from KPIUtils_v2.Utils.Decorators.Decorators import kpi_runtime
 from KPIUtils_v2.DB.CommonV2 import Common
 
-from Projects.CCRU.Utils.Fetcher import CCRUCCHKPIFetcher
+from Fetcher import CCRUCCHKPIFetcher
+from Consts import CCRUConsts
 
 
 __author__ = 'sergey'
@@ -54,6 +55,8 @@ CUSTOM_GAPS_TABLE = 'pservice.custom_gaps'
 
 EQUIPMENT_TARGETS_BUCKET = 'traxuscalc'
 EQUIPMENT_TARGETS_CLOUD_BASE_PATH = 'CCRU/KPIData/Contract/'
+
+ALLOWED_POS_SETS = tuple(CCRUConsts.ALLOWED_POS_SETS)
 
 
 class CCRUKPIToolBox:
@@ -2616,28 +2619,41 @@ class CCRUKPIToolBox:
         return set_total_res
 
     def get_pos_kpi_set_name(self):
-        if str(self.visit_date) < self.MIN_CALC_DATE:
-            query = """
-                    select ss.pk , ss.additional_attribute_11 
-                    from static.stores ss
-                    join probedata.session ps on ps.store_fk=ss.pk
-                    where ss.delete_date is null and ps.session_uid = '{}';
-                    """.format(self.session_uid)
-        else:  # Todo - Change to additional_attribute_12 for PROD
-            query = """
-                    select ss.pk , ss.additional_attribute_12 
-                    from static.stores ss
-                    join probedata.session ps on ps.store_fk=ss.pk
-                    where ss.delete_date is null and ps.session_uid = '{}';
-                    """.format(self.session_uid)
 
+        query = """
+                select s.name 
+                from report.kps_results r
+                join static.kpi_set s ON s.pk=r.kpi_set_fk
+                WHERE session_uid='{}'
+                AND s.name IN {};
+                """.format(self.session_uid, tuple(ALLOWED_POS_SETS))
         cur = self.rds_conn.db.cursor()
         cur.execute(query)
         res = cur.fetchall()
 
-        df = pd.DataFrame(list(res), columns=['store_fk', 'channel'])
+        if not res:
+            if str(self.visit_date) < self.MIN_CALC_DATE:
+                query = """
+                        select ss.additional_attribute_11 
+                        from static.stores ss
+                        join probedata.session ps on ps.store_fk=ss.pk
+                        where ss.delete_date is null and ps.session_uid = '{}';
+                        """.format(self.session_uid)
+            else:  # Todo - Change to additional_attribute_12 for PROD
+                query = """
+                        select ss.additional_attribute_12 
+                        from static.stores ss
+                        join probedata.session ps on ps.store_fk=ss.pk
+                        where ss.delete_date is null and ps.session_uid = '{}';
+                        """.format(self.session_uid)
 
-        return df['channel'][0]
+            cur = self.rds_conn.db.cursor()
+            cur.execute(query)
+            res = cur.fetchall()
+
+        df = pd.DataFrame(list(res), columns=['POS'])
+
+        return df['POS'][0]
 
     @kpi_runtime()
     def calculate_gaps_old(self, params):
