@@ -8,9 +8,9 @@ from Trax.Utils.Logging.Logger import Log
 from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from KPIUtils_v2.Utils.Decorators.Decorators import log_runtime
 
-from Utils.Consts import CCRUConsts
-from Utils.JSON import CCRUJsonGenerator
-from Utils.ToolBox import CCRUKPIToolBox
+from Projects.CCRU.Utils.Consts import CCRUConsts
+from Projects.CCRU.Utils.JSON import CCRUJsonGenerator
+from Projects.CCRU.Utils.ToolBox import CCRUKPIToolBox
 
 
 __author__ = 'sergey'

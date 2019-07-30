@@ -16,8 +16,8 @@ from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from KPIUtils_v2.Utils.Decorators.Decorators import kpi_runtime
 from KPIUtils_v2.DB.CommonV2 import Common
 
-from Fetcher import CCRUCCHKPIFetcher
-from Consts import CCRUConsts
+from Projects.CCRU.Utils.Fetcher import CCRUCCHKPIFetcher
+from Projects.CCRU.Utils.Consts import CCRUConsts
 
 
 __author__ = 'sergey'
