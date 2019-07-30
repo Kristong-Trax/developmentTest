@@ -7,6 +7,7 @@ from Projects.TNUVAILV2.Utils.Consts import Consts
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
 from Projects.TNUVAILV2.Utils.DataBaseHandler import DBHandler
+from collections import Counter
 
 __author__ = 'idanr'
 
@@ -25,6 +26,8 @@ class TNUVAILToolBox:
         self.db_handler = DBHandler(self.data_provider.project_name, self.data_provider.session_uid)
         self.previous_oos_results = self.db_handler.get_last_session_oos_results()
         self.kpi_result_types = self.db_handler.get_kpi_result_type()
+        self.oos_store_results = list()
+        self.oos_sku_results = list()
 
     def main_calculation(self):
         """ This function calculates all of the KPIs' results """
@@ -53,6 +56,28 @@ class TNUVAILToolBox:
             return
         self._calculate_assortment_results_per_policy(lvl3_result, policy=Consts.MILKY_POLICY)
         self._calculate_assortment_results_per_policy(lvl3_result, policy=Consts.TIRAT_TSVI_POLICY)
+        self._calculate_total_oos_results()  # In order to support NCC report and OOS reasons
+
+    def _calculate_total_oos_results(self):
+        """
+        This kpi uses the previous OOS results that were calculated and saves the results in the store level
+        (without "Dairy" or "Tirat Tsvi" policies).
+        """
+        # Store level OOS
+        if not self.oos_store_results or not self.oos_sku_results:
+            return
+        store_level_no_policy_kpi_fk = self.common_v2.get_kpi_fk_by_kpi_type(Consts.OOS_STORE_LEVEL)
+        total_res = Counter()
+        for result in self.oos_store_results:
+            total_res.update(result)
+        total_res[Consts.DENOMINATOR_ID] = self.store_id
+        total_res[Consts.NUMERATOR_ID] = self.own_manufacturer_fk
+        total_res = [dict(total_res)]
+        self._save_results_for_assortment(Consts.MANUFACTURER_FK, total_res, store_level_no_policy_kpi_fk)
+
+        # SKU level OOS
+        sku_level_no_policies_kpi_fk = self.common_v2.get_kpi_fk_by_kpi_type(Consts.OOS_STORE_LEVEL)
+        self._save_results_for_assortment(Consts.PRODUCT_FK, self.oos_sku_results, sku_level_no_policies_kpi_fk)
 
     def _prepare_data_for_assortment_calculation(self):
         """ This method gets the level 3 assortment results (SKU level), adding category_fk and returns the DataFrame"""
@@ -164,6 +189,7 @@ class TNUVAILToolBox:
         if not is_distribution:  # In OOS the numerator is total - distribution
             store_result_dict[Consts.NUMERATOR_RESULT] = store_result_dict[Consts.DENOMINATOR_RESULT] - \
                                                          store_result_dict[Consts.NUMERATOR_RESULT]
+            self.oos_store_results.append(store_result_dict)
         return [store_result_dict]
 
     def _calculate_category_level_assortment(self, lvl3_data, is_distribution):
@@ -186,8 +212,7 @@ class TNUVAILToolBox:
         in_store_per_category = in_store_per_category.to_dict('records')
         return in_store_per_category
 
-    @staticmethod
-    def _calculate_sku_level_assortment(lvl3_data, is_distribution):
+    def _calculate_sku_level_assortment(self, lvl3_data, is_distribution):
         """
         This method filters the relevant data to save (Distribution or OOS) and transform that DataFrame into a
         convenient dictionary with product_fk, numerator_result and denominator_result
@@ -203,6 +228,8 @@ class TNUVAILToolBox:
         if not is_distribution:
             sku_level_res[Consts.DENOMINATOR_RESULT] = 1
         sku_level_res = sku_level_res.to_dict('records')
+        if not is_distribution:
+            self.oos_sku_results.append(sku_level_res)
         return sku_level_res
 
     def _calculate_distribution_and_oos(self, lvl3_data, policy, is_dist):
@@ -218,11 +245,11 @@ class TNUVAILToolBox:
         store_results = self._calculate_store_level_assortment(lvl3_data, is_distribution=is_dist)
         category_results = self._calculate_category_level_assortment(lvl3_data, is_distribution=is_dist)
         sku_level_results = self._calculate_sku_level_assortment(lvl3_data, is_distribution=is_dist)
-        self._save_results_for_assortment_(Consts.MANUFACTURER_FK, store_results, store_level_kpi_fk)
-        self._save_results_for_assortment_(Consts.CATEGORY_FK, category_results, cat_lvl_fk, store_level_kpi_fk)
-        self._save_results_for_assortment_(Consts.PRODUCT_FK, sku_level_results, sku_level_fk, cat_lvl_fk, not is_dist)
+        self._save_results_for_assortment(Consts.MANUFACTURER_FK, store_results, store_level_kpi_fk)
+        self._save_results_for_assortment(Consts.CATEGORY_FK, category_results, cat_lvl_fk, store_level_kpi_fk)
+        self._save_results_for_assortment(Consts.PRODUCT_FK, sku_level_results, sku_level_fk, cat_lvl_fk, not is_dist)
 
-    def _save_results_for_assortment_(self, numerator_entity, results_list, kpi_fk, parent_kpi_fk=None, prev_res=False):
+    def _save_results_for_assortment(self, numerator_entity, results_list, kpi_fk, parent_kpi_fk=None, prev_res=False):
         """
         This method saves the assortments results for all of the levels.
         For OOS the last session's results per product from this store is being saved as "score"!
