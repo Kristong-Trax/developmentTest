@@ -389,7 +389,7 @@ class MARSUAE_SANDToolBox:
         self.calculate_total_score()
 
     def calculate_total_score(self):
-        category_results = self.cat_lvl_res.merge(self.get_category_level_targets, on='kpi_type', how='left')
+        category_results = self.cat_lvl_res.merge(self.category_params, on='kpi_type', how='left')
         sum_weights = float(category_results[self.WEIGHT].sum())
         category_results['weighted_scores'] = category_results['cat_score'] * category_results[self.WEIGHT]
         total_result = category_results['weighted_scores'].sum() / sum_weights
@@ -400,7 +400,7 @@ class MARSUAE_SANDToolBox:
                                        identifier_result=identifier_result)
 
     def calculate_category_level(self):
-        self.cat_lvl_res = self.atomic_kpi_results.groupby(['parent_kpi'], as_index=False).agg({'score_by_weight': np.sum})
+        self.cat_lvl_res = self.atomic_kpi_results.groupby(['parent_name'], as_index=False).agg({'score_by_weight': np.sum})
         self.cat_lvl_res.rename(columns={'parent_kpi': 'kpi_type', 'score_by_weight': 'cat_score'}, inplace=True)
         identifier_parent = {'kpi_fk': self.common.get_kpi_fk_by_kpi_type(self.TOTAL_UAE_SCORE)}
         for i, result in self.cat_lvl_res.iterrows():
@@ -479,7 +479,7 @@ class MARSUAE_SANDToolBox:
         for parent in parents_list:
             child_kpis = store_atomics[store_atomics[self.PARENT_KPI] == parent][self.KPI_TYPE].unique().tolist()
             # store_atomics[self.CHILD_KPI] = store_atomics[self.CHILD_KPI].astype(object)
-            store_atomics.loc[store_atomics[self.KPI_TYPE] == parent, self.CHILD_KPI] = [', '.join(child_kpis)]
+            store_atomics.loc[store_atomics[self.KPI_TYPE] == parent, self.CHILD_KPI] = [','.join(child_kpis)]
             store_atomics[self.CHILD_KPI] = store_atomics[self.CHILD_KPI].apply(lambda x: x.split(',') if x else '')
             # store_atomics.at[store_atomics[self.KPI_TYPE] == parent, self.CHILD_KPI] = child_kpis
 
@@ -590,7 +590,7 @@ class MARSUAE_SANDToolBox:
             score, weight = self.get_score(result=result, param_row=param_row)
 
             num_id = param_row['param_value_1/numerator_value'] if \
-                        isinstance(param_row['param_value_1/numerator_value'], (str, unicode)) else self.own_manuf_fk
+                        isinstance(param_row['param_value_1/numerator_value'], (str, unicode, int, float)) else self.own_manuf_fk
             denom_id = param_row['param_value_2/denom_value']
             identifier_parent = self.get_identifier_parent_for_atomic(param_row)
             identifier_result = self.get_identifier_result_for_atomic(param_row)
@@ -662,35 +662,38 @@ class MARSUAE_SANDToolBox:
             return
         block_ass = self.lvl3_assortment[self.lvl3_assortment['ass_lvl2_kpi_type'] == param_row[self.KPI_TYPE]]
         if not block_ass.empty:
-            block_ass = self.get_template_relevant_assortment_result(block_ass, param_row) # add empty condition in next line.. also for assortment
-            relevant_products = block_ass['product_fk'].unique().tolist()
-            block_clusters = self.get_relevant_block_clusters(relevant_products, param_row)
-            cluster_results = list()
-            number_of_products = float(len(relevant_products))
-            for cluster in block_clusters:
-                facings = len(cluster.nodes['probe_matck_fk']) # verify how the data looks
-                cluster_results.append(facings/number_of_products)
-            result = max(cluster_results)
-            score, weight = self.get_score(result, param_row)
+            block_ass = self.get_template_relevant_assortment_result(block_ass, param_row)
+            if not block_ass.empty:
+                relevant_products = block_ass['product_fk'].unique().tolist()
+                skus_in_clusters = self.get_relevant_block_clusters(relevant_products, param_row)
+                cluster_results = list()
+                number_of_products = float(len(relevant_products))
+                for result in skus_in_clusters:
+                    cluster_results.append(result / number_of_products)
+                # for cluster in block_clusters:
+                #     facings = len(cluster.nodes['probe_match_fk']) # verify how the data looks
+                #     cluster_results.append(facings/number_of_products)
+                result = max(cluster_results) if cluster_results else 0
+                score, weight = self.get_score(result, param_row)
 
-            target = param_row[self.TARGET] if param_row[self.TARGET] else None
-            identifier_parent = self.get_identifier_parent_for_atomic(param_row)
-            identifier_result = self.get_identifier_result_for_atomic(param_row)
-            self.common.write_to_db_result(fk=param_row['kpi_level_2_fk'], numerator_id=self.own_manuf_fk,
-                                           numerator_result=result, result=result, target=target,
-                                           denominator_id=self.store_id, score=score * weight, weight=weight,
-                                           identifier_parent=identifier_parent, identifier_result=identifier_result,
-                                           should_enter=True)
-            self.add_kpi_result_to_kpi_results_df([param_row['kpi_level_2_fk'], param_row[self.KPI_TYPE],
-                                                   result, score, weight, score * weight,
-                                                   param_row[self.KPI_LVL_2_NAME]])
+                target = param_row[self.TARGET] if param_row[self.TARGET] else None
+                identifier_parent = self.get_identifier_parent_for_atomic(param_row)
+                identifier_result = self.get_identifier_result_for_atomic(param_row)
+                self.common.write_to_db_result(fk=param_row['kpi_level_2_fk'], numerator_id=self.own_manuf_fk,
+                                               numerator_result=result, result=result * 100, target=target,
+                                               denominator_id=self.store_id, score=score * weight, weight=weight,
+                                               identifier_parent=identifier_parent, identifier_result=identifier_result,
+                                               should_enter=True)
+                self.add_kpi_result_to_kpi_results_df([param_row['kpi_level_2_fk'], param_row[self.KPI_TYPE],
+                                                       result, score, weight, score * weight,
+                                                       param_row[self.KPI_LVL_2_NAME]])
 
     def get_relevant_block_clusters(self, relevant_products, param_row):
         general_filters = self.get_general_filters(param_row)
         scenes = general_filters['location']['scene_fk']
         block_filters = {'product_fk': relevant_products}
         additional_filters = {'minimum_facing_for_block': 2, 'minimum_block_ratio': 0}
-        cluster_list = list()
+        cluster_skus_list = list()
         for scene in scenes:
             location_filters = {'scene_fk': [scene]}
             block_res = self.block.network_x_block_together(block_filters, location_filters, additional_filters)
@@ -698,10 +701,24 @@ class MARSUAE_SANDToolBox:
             if block_res.empty:
                 continue
             else:
-                max_ratio = block_res['facing_percentage'].max()
-                largest_cluster = block_res[block_res['facing_percentage'] == max_ratio]['cluster'].values[0]
-                cluster_list.append(largest_cluster)
-        return cluster_list
+                self.get_number_of_sku_types_from_clusters(block_res, cluster_skus_list)
+                # for i, block_row in block_res.iterrows():
+                #     sku_types_in_cluster = self.get_number_of_sku_types_from_cluster(block_row)
+                #     cluster_skus_list.append(sku_types_in_cluster)
+                # max_ratio = block_res['facing_percentage'].max()
+                # largest_block = block_res[block_res['facing_percentage'] == max_ratio]
+                #
+                # largest_cluster = block_res[block_res['facing_percentage'] == max_ratio]['cluster'].values[0]
+                # cluster_list.append(largest_cluster)
+        return cluster_skus_list
+
+    def get_number_of_sku_types_from_clusters(self, block_res, cluster_skus_list):
+        for i, block_row in block_res.iterrows():
+            cluster_nodes = block_row['cluster'].nodes.values() # returns the list of dictionaries for each cluster item
+            sku_types = set()
+            product_list = [list(node['product_fk']) for node in cluster_nodes]
+            map(lambda x: sku_types.update(x), product_list)
+            cluster_skus_list.append(len(sku_types))
 
     def calculate_kpi_combination_score(self, param_row):
         child_kpis = param_row[self.CHILD_KPI] if isinstance(param_row[self.CHILD_KPI], (list, tuple)) \
