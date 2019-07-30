@@ -62,12 +62,26 @@ class HEINZCRToolBox:
         self.country = self.store_info['country'].iloc[0]
         self.current_date = datetime.now()
         self.extra_spaces_template = pd.read_excel(Const.EXTRA_SPACES_RELEVANT_SUB_CATEGORIES_PATH)
+        self.store_targets = pd.read_excel(Const.STORE_TARGETS_PATH)
         self.store_assortment = PSAssortmentDataProvider(
             self.data_provider).execute(policy_name=None)
-        self.sub_category_assortment = pd.merge(self.store_assortment,
-                                                self.all_products.loc[:, ['product_fk', 'sub_category',
-                                                                          'sub_category_fk']],
-                                                how='left', on='product_fk')
+        try:
+            self.sub_category_assortment = pd.merge(self.store_assortment,
+                                                    self.all_products.loc[:, ['product_fk', 'sub_category',
+                                                                              'sub_category_fk']],
+                                                    how='left', on='product_fk')
+            self.sub_category_assortment = \
+                self.sub_category_assortment[~self.sub_category_assortment['assortment_name'].str.contains(
+                    'ASSORTMENT')]
+        except KeyError:
+            self.sub_category_assortment = pd.DataFrame()
+
+        try:
+            self.store_assortment_without_powerskus = \
+                self.store_assortment[self.store_assortment['assortment_name'].str.contains('ASSORTMENT')]
+        except KeyError:
+            self.store_assortment_without_powerskus = pd.DataFrame()
+
         self.adherence_results = pd.DataFrame(columns=['product_fk', 'trax_average',
                                                        'suggested_price', 'into_interval'])
         self.extra_spaces_results = pd.DataFrame(
@@ -84,6 +98,7 @@ class HEINZCRToolBox:
 
         # this isn't relevant to the 'Perfect Score' calculation
         self.heinz_global_distribution_per_category()
+        self.calculate_assortment()
 
         perfect_store_score = 0
         perfect_store_score += self.calculate_powersku_assortment()
@@ -91,11 +106,10 @@ class HEINZCRToolBox:
         perfect_store_score += self.calculate_powersku_price_adherence()
         perfect_store_score += self.calculate_perfect_store_extra_spaces()
 
-        # this needs to be moved to excel or kpi_targets
-        if self.country == 'Costa Rica':
-            target = 7
-        elif self.country == 'Chile':
-            target = 6
+        relevant_target_df = \
+            self.store_targets[self.store_targets['Country'].str.encode('utf-8') == self.country.encode('utf-8')]
+        if not relevant_target_df.empty:
+            target = relevant_target_df['Store Execution Score'].iloc[0]
         else:
             target = 0
 
@@ -107,8 +121,35 @@ class HEINZCRToolBox:
                                           score=perfect_store_score, identifier_result=Const.PERFECT_STORE)
         return
 
+    def calculate_assortment(self):
+        if self.store_assortment_without_powerskus.empty:
+            return
+
+        products_in_store = self.scif[self.scif['facings'] > 0]['product_fk'].unique().tolist()
+        pass_count = 0
+
+        assortment_fk = self.store_assortment_without_powerskus['assortment_fk'].iloc[0]
+        assortment_group_fk = self.store_assortment_without_powerskus['assortment_group_fk'].iloc[0]
+
+        for row in self.store_assortment_without_powerskus.itertuples():
+            result = 0
+            if row.product_fk in products_in_store:
+                result = 1
+                pass_count += 1
+
+            sku_kpi_fk = self.common_v2.get_kpi_fk_by_kpi_type('Distribution - SKU')
+            self.common_v2.write_to_db_result(sku_kpi_fk, numerator_id=row.product_fk, denominator_id=row.assortment_fk,
+                                              result=result)
+
+        total_kpi_fk = self.common_v2.get_kpi_fk_by_kpi_type('Distribution')
+        self.common_v2.write_to_db_result(total_kpi_fk, numerator_id=assortment_fk, denominator_id=assortment_group_fk,
+                                          numerator_result=pass_count,
+                                          denominator_result=len(self.store_assortment_without_powerskus),
+                                          result=pass_count)
+
+
     def calculate_powersku_assortment(self):
-        if self.store_assortment.empty:
+        if self.sub_category_assortment.empty:
             return 0
 
         total_kpi_fk = self.common_v2.get_kpi_fk_by_kpi_type(Const.POWER_SKU_TOTAL)
@@ -336,7 +377,7 @@ class HEINZCRToolBox:
         return number_of_passing_sub_categories
 
     def calculate_powersku_price_adherence(self):
-        if self.store_assortment.empty:
+        if self.sub_category_assortment.empty:
             return 0
 
         adherence_kpi_fk = self.common_v2.get_kpi_fk_by_kpi_type(Const.POWER_SKU_PRICE_ADHERENCE)
@@ -420,8 +461,9 @@ class HEINZCRToolBox:
                         trax_average = prices_sum / count
                         into_interval = 0
 
-                    if min_price <= trax_average <= max_price:
-                        into_interval = 100
+                    if not np.isnan(suggested_price):
+                        if min_price <= trax_average <= max_price:
+                            into_interval = 100
 
                     results_df.loc[len(results_df)] = [product_pk, trax_average,
                                                        suggested_price, into_interval / 100]
@@ -472,9 +514,9 @@ class HEINZCRToolBox:
         extra_spaces_total_kpi_fk = self.common_v2.get_kpi_fk_by_kpi_type(
             Const.PERFECT_STORE_EXTRA_SPACES_TOTAL)
 
-        relevant_sub_categories = [x.strip() for x in
-                                   self.extra_spaces_template[self.extra_spaces_template['country'] == self.country][
-                                       'sub_category'].iloc[0].split(',')]
+        relevant_sub_categories = [x.strip() for x in self.extra_spaces_template[
+            self.extra_spaces_template['country'].str.encode('utf-8') == self.country.encode('utf-8')][
+            'sub_category'].iloc[0].split(',')]
 
         self.extra_spaces_results = pd.merge(self.extra_spaces_results,
                                              self.all_products.loc[:, [

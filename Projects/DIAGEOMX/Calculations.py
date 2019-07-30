@@ -1,11 +1,8 @@
-import os
 from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScript
-from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
-from Trax.Utils.Conf.Configuration import Config
-from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
+# from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
+# from Trax.Utils.Conf.Configuration import Config
+# from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
 from Projects.DIAGEOMX.KPIGenerator import DIAGEOMXGenerator
-
-__author__ = 'Nimrod'
 
 
 class DIAGEOMXCalculations(BaseCalculationsScript):

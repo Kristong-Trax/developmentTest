@@ -194,6 +194,15 @@ class ToolBox:
         target, weight = kpi_line[Const.TARGET], kpi_line[Const.WEIGHT]
         if not self.does_exist(weight):
             weight = 0
+
+        try:
+            previous_weight = kpi_line[Const.PREVIOUS_WEIGHT]
+            switch_date = kpi_line[Const.SWITCH_DATE].to_pydatetime().date()
+            if self.visit_date < switch_date:
+                weight = previous_weight
+        except KeyError:
+            pass
+
         if kpi_name == Const.SHELF_PLACEMENT:
             calculation = self.calculate_total_shelf_placement
         elif kpi_name == Const.SHELF_FACINGS:

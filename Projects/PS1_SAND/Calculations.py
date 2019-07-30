@@ -1,29 +1,27 @@
-import os
+
 from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScript
-from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
-from Trax.Utils.Conf.Configuration import Config
-from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
+# from Trax.Algo.Calculations.Core.DataProvider import ACEDataProvider, Output, KEngineDataProvider
+# from Trax.Utils.Conf.Configuration import Config
+# from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
 
-from Projects.DIAGEOIE.KPIGenerator import DIAGEOIEGenerator
-from KPIUtils.GlobalProjects.DIAGEO.KPIGenerator import DIAGEOGenerator
-from KPIUtils.DB.Common import Common
+from Projects.PS1_SAND.KPIGenerator import DIAGEOKEGenerator
 
-__author__ = 'Yasmin'
+__author__ = 'Nimrod'
 
 
-class DIAGEOIECalculations(BaseCalculationsScript):
+class DIAGEOKECalculations(BaseCalculationsScript):
     def run_project_calculations(self):
         self.timer.start()
-        DIAGEOIEGenerator(self.data_provider, self.output).main_function()
+        DIAGEOKEGenerator(self.data_provider, self.output).main_function()
         self.timer.stop('KPIGenerator.run_project_calculations')
 
 
 # if __name__ == '__main__':
-#     LoggerInitializer.init('diageoie calculations')
-#     Config.init() 
-#     project_name = 'ps1-sand'
+#     LoggerInitializer.init('diageoke calculations')
+#     Config.init()
+#     project_name = 'diageoke'
 #     data_provider = KEngineDataProvider(project_name)
-#     session = 'C2D8A9DC-C94D-4C24-B10A-36F3BC61E6FB'
+#     session = '28051307-a521-4a61-9fba-4c78ae9969f9'
 #     data_provider.load_session_data(session)
 #     output = Output()
-#     DIAGEOIECalculations(data_provider, output).run_project_calculations()
+#     DIAGEOKECalculations(data_provider, output).run_project_calculations()
