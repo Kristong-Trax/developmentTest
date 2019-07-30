@@ -14,12 +14,12 @@ class DIAGEOPTCalculations(BaseCalculationsScript):
         self.timer.stop('KPIGenerator.run_project_calculations')
 
 
-if __name__ == '__main__':
-    LoggerInitializer.init('diageopt calculations')
-    Config.init()
-    project_name = 'ps3-sand'
-    data_provider = KEngineDataProvider(project_name)
-    session = '963D013D-EEB6-48DF-B8EC-06C8E0C2AA6C'
-    data_provider.load_session_data(session)
-    output = Output()
-    DIAGEOPTCalculations(data_provider, output).run_project_calculations()
+# if __name__ == '__main__':
+#     LoggerInitializer.init('diageopt calculations')
+#     Config.init()
+#     project_name = 'ps3-sand'
+#     data_provider = KEngineDataProvider(project_name)
+#     session = '259BC32A-935A-4F5E-9686-A47E6ADFB780'
+#     data_provider.load_session_data(session)
+#     output = Output()
+#     DIAGEOPTCalculations(data_provider, output).run_project_calculations()
