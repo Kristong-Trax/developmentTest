@@ -1,26 +1,25 @@
-import os
+
 from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScript
 from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
 from Trax.Utils.Conf.Configuration import Config
 from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
-from Projects.PS3_SAND.KPIGenerator import PS3_SANDGenerator
 
-__author__ = 'Nimrod'
+from Projects.PS3_SAND.KPIGenerator import DIAGEOPTGenerator
 
 
-class PS3_SANDCalculations(BaseCalculationsScript):
+class DIAGEOPTCalculations(BaseCalculationsScript):
     def run_project_calculations(self):
         self.timer.start()
-        PS3_SANDGenerator(self.data_provider, self.output).main_function()
+        DIAGEOPTGenerator(self.data_provider, self.output).main_function()
         self.timer.stop('KPIGenerator.run_project_calculations')
 
 
-# if __name__ == '__main__':
-#     LoggerInitializer.init('diageomx calculations')
-#     Config.init()
-#     project_name = 'ps3_sand'
-#     data_provider = KEngineDataProvider(project_name)
-#     session = 'fd7d2a19-3a1c-40fd-a7d1-3a01260392d1'
-#     data_provider.load_session_data(session)
-#     output = Output()
-#     PS3_SANDCalculations(data_provider, output).run_project_calculations()
+if __name__ == '__main__':
+    LoggerInitializer.init('diageopt calculations')
+    Config.init()
+    project_name = 'ps3-sand'
+    data_provider = KEngineDataProvider(project_name)
+    session = '963D013D-EEB6-48DF-B8EC-06C8E0C2AA6C'
+    data_provider.load_session_data(session)
+    output = Output()
+    DIAGEOPTCalculations(data_provider, output).run_project_calculations()
