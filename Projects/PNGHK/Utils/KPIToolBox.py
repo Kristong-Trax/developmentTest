@@ -58,8 +58,7 @@ class PNGHKToolBox:
         exclude_products = exclude_products[exclude_products['exclude_include_set_fk'] == 1]
         exclude_products_list = exclude_products['product_fk'].tolist()
         df = df[~df['product_fk'].isin(exclude_products_list)]
-        distinct_session_fk = self.scif[['scene_fk',
-                                         'template_name', 'template_fk']].drop_duplicates()
+        distinct_session_fk = self.scif[['scene_fk', 'template_name', 'template_fk']].drop_duplicates()
         self.df = pd.merge(df, distinct_session_fk, on="scene_fk", how="left")
         kpi_ids = self.kpis_sheet[Const.KPI_ID].drop_duplicates().tolist()
         for id in kpi_ids:
@@ -149,7 +148,7 @@ class PNGHKToolBox:
                 all_denominators = [row[Const.NUMERATOR]]
             denominator = self.tools.get_filter_condition(df, **filters).sum()
 
-            # iterate all enteties
+            # iterate all entities
             for entity in all_denominators:
                 filters[entity_name] = entity
                 numerator = self.tools.get_filter_condition(df, **filters).sum()
@@ -213,6 +212,9 @@ class PNGHKToolBox:
 
                 # Iterate categories
                 for category in categories:
+                    df = df[df['width_mm_advance'] != -1]
+                    total_denominator = df[self.tools.get_filter_condition(df, **filters)]['width_mm_advance'].sum()
+
                     if category != "":
                         denominator_id = self.all_products[self.all_products['category'] ==
                                                            category]['category_fk'].iloc[0]
@@ -225,17 +227,15 @@ class PNGHKToolBox:
 
                     if row[Const.NUMERATOR] != "":
                         all_numerators = [row[Const.NUMERATOR]]
-                    denominator = df[self.tools.get_filter_condition(
-                        df, **filters)]['width_mm_advance'].sum()
+                    denominator = df[self.tools.get_filter_condition(df, **filters)]['width_mm_advance'].sum()
                     if denominator == 0:
                         continue
-                    if scene_size != "":
-                        ratio = scene_size / denominator
+                    elif scene_size != "":
+                        ratio = scene_size / total_denominator
                         denominator = scene_size
                     for entity in all_numerators:
                         filters[entity_name] = entity
-                        numerator = df[self.tools.get_filter_condition(
-                            df, **filters)]['width_mm_advance'].sum()
+                        numerator = df[self.tools.get_filter_condition(df, **filters)]['width_mm_advance'].sum()
                         del filters[entity_name]
                         if scene_size != "":
                             numerator = numerator * ratio
@@ -249,9 +249,9 @@ class PNGHKToolBox:
                             results_dict[numerator_id, denominator_id,
                                          context_id] = [numerator, denominator]
                         else:
-                            results_dict[numerator_id, denominator_id, context_id] = map(sum,
-                                                                                         zip(results_dict[numerator_id, denominator_id, context_id],
-                                                                                             [numerator, denominator]))
+                            results_dict[numerator_id, denominator_id, context_id] = \
+                                map(sum, zip(results_dict[numerator_id, denominator_id, context_id],
+                                             [numerator, denominator]))
         if len(results_dict) == 0:
             return
 
@@ -284,7 +284,7 @@ class PNGHKToolBox:
 
         # filter category
         category = kpi_df[Const.CATEGORY].strip()
-        if (category != "" and category != Const.EACH):
+        if (category != "") and (category != Const.EACH):
             df = df[df['category'] == category]
 
         return df
@@ -424,6 +424,8 @@ class PNGHKToolBox:
             df = df[df['product_type'] != 'Empty']
         if self.kpi_excluding[Const.EXCLUDE_POSM] == Const.EXCLUDE:
             df = df[df['product_type'] != 'POS']
+        else:
+            df = df[df['product_type'] == 'POS']
         if self.kpi_excluding[Const.STACKING] == Const.EXCLUDE:
             df = df[df['stacking_layer'] == 1]
         return df
