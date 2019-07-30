@@ -7,6 +7,7 @@ import pandas as pd
 import json
 import numpy as np
 import os
+import copy
 
 from KPIUtils_v2.DB.CommonV2 import Common
 from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
@@ -21,6 +22,7 @@ from KPIUtils_v2.Calculations.BlockCalculations_v2 import Block
 # from KPIUtils_v2.Calculations.CalculationsUtils import GENERALToolBoxCalculations
 from KPIUtils_v2.Utils.Parsers.ParseInputKPI import filter_df
 from Projects.MARSUAE_SAND.Utils.Fetcher import MARSUAE_SAND_Queries
+
 
 __author__ = 'natalyak'
 
@@ -94,13 +96,18 @@ class MARSUAE_SANDToolBox:
         self.assortment = Assortment(self.data_provider, self.output)
         self.block = Block(self.data_provider, self.output)
         self.lvl3_assortment = self.get_lvl3_relevant_assortment()
-        self.own_manuf_fk = self.all_products[self.all_products['manufacturer_name'] ==
-                                              self.MARS]['manufacturer_fk'].values[0]
+        # self.own_manuf_fk = self.all_products[self.all_products['manufacturer_name'] ==
+        #                                       self.MARS]['manufacturer_fk'].values[0]
+        self.own_manuf_fk = self.get_own_manufacturer_fk()
         self.atomic_kpi_results = pd.DataFrame(columns=['kpi_fk', 'kpi_type', 'result', 'score', 'weight',
                                                'score_by_weight', 'parent_name'])
         self.atomic_tiers_df = pd.DataFrame()
         self.cat_lvl_res = pd.DataFrame()
         # self.kpi_results_queries = []
+
+    def get_own_manufacturer_fk(self):
+        own_manufacturer_fk = self.data_provider.own_manufacturer.param_value.values[0]
+        return own_manufacturer_fk
 
     def get_lvl3_relevant_assortment(self):
         assortment_result = self.assortment.get_lvl3_relevant_ass()
@@ -322,7 +329,7 @@ class MARSUAE_SANDToolBox:
             conditions = {'location': {'template_name': templates}}
             relevant_scenes = filter_df(conditions, self.scif)['scene_fk'].values.tolist()
         else:
-            relevant_scenes = self.scif['scene_fk'].values.tolist()
+            relevant_scenes = self.scif['scene_fk'].unique().tolist()
         general_filters = {'location': {'scene_fk': relevant_scenes}}
         return general_filters
 
@@ -337,7 +344,8 @@ class MARSUAE_SANDToolBox:
         exclude_filters = {}
         if param_row['exclude_param_type_1']:
             exclude_filters.update({param_row['exclude_param_type_1']: param_row['exclude_param_value_1']})
-        condition_filters['population'].update({'exclude': [exclude_filters]})
+        if exclude_filters:
+            condition_filters['population'].update({'exclude': exclude_filters})
         return condition_filters
 
     def get_sos_filters(self, param_row):
@@ -354,15 +362,20 @@ class MARSUAE_SANDToolBox:
         if param_row['exclude_param_type_1']:
             exclude_filters.update({param_row['exclude_param_type_1']: param_row['exclude_param_value_1']})
         if exclude_filters:
-            sos_filters['population'].update({'exclude': [exclude_filters]})
+            sos_filters['population'].update({'exclude': exclude_filters})
 
         num_filters = {}
         if param_row['param_type_1/numerator_type']:
             num_filters.update({param_row['param_type_1/numerator_type']: param_row['param_value_1/numerator_value']})
-        numerator_filters = sos_filters.copy()
-        numerator_filters['population']['include'].append(num_filters)
+        numerator_filters = copy.deepcopy(sos_filters)
+        numerator_filters['population']['include'][0].update(num_filters)
 
         final_filters = {'denom_filters': sos_filters, 'num_filters': numerator_filters}
+
+        # filters = {'location': {'scene_fk': [27898, 27896, 27894, 27859, 27892, 27854]},
+        #            'population': {'exclude': {'template_name': 'Checkout Chocolate'},
+        #                           'include': [{'category_fk': 6, 'manufacturer_fk': 3}]}}
+
         return final_filters
         
 #-------------------------------main calculation section-----------------------------------
@@ -520,7 +533,10 @@ class MARSUAE_SANDToolBox:
 
     def get_template_relevant_assortment_result(self, lvl3_ass_res, param_row):
         ass_template = param_row[self.TEMPLATE_NAME_T]
-        filtered_scif = self.scif[self.scif['template_name'] == ass_template]
+        filtered_scif = self.scif.copy()
+        if ass_template:
+            filtered_scif = self.scif[self.scif['template_name'].isin(ass_template)] \
+                if isinstance(ass_template, (list, tuple)) else self.scif[self.scif['template_name'] == ass_template]
         products_in_session = filtered_scif.loc[filtered_scif['facings'] > 0]['product_fk'].values
         lvl3_ass_res.loc[lvl3_ass_res['product_fk'].isin(products_in_session), 'in_store'] = 1
         self.add_actual_facings_to_assortment(lvl3_ass_res, filtered_scif)
@@ -563,10 +579,13 @@ class MARSUAE_SANDToolBox:
         general_filters = self.get_general_filters(param_row)
         sos_filters = self.get_sos_filters(param_row)
         if sos_filters is not None:
-            numerator_filters = sos_filters['num_filters'].update(general_filters)
-            denominator_filters = sos_filters['denom_filters'].update(general_filters)
-            numerator_length = self.calculate_linear_space(numerator_filters)
-            denominator_length = self.calculate_linear_space(denominator_filters)
+            sos_filters['num_filters'].update(general_filters)
+            sos_filters['denom_filters'].update(general_filters)
+            # numerator_filters = sos_filters['num_filters']
+            #
+            # denominator_filters = sos_filters['denom_filters']
+            numerator_length = self.calculate_linear_space(sos_filters['num_filters'])
+            denominator_length = self.calculate_linear_space(sos_filters['denom_filters'])
             result = numerator_length / denominator_length if denominator_length else 0
             score, weight = self.get_score(result=result, param_row=param_row)
 
@@ -575,15 +594,15 @@ class MARSUAE_SANDToolBox:
             denom_id = param_row['param_value_2/denom_value']
             identifier_parent = self.get_identifier_parent_for_atomic(param_row)
             identifier_result = self.get_identifier_result_for_atomic(param_row)
-            target = param_row[self.TARGET] if param_row[self.TARGET] else None
+            target = param_row[self.TARGET] * 100 if param_row[self.TARGET] else None
             self.common.write_to_db_result(fk=param_row['kpi_level_2_fk'], numerator_id=num_id,
                                            numerator_result=numerator_length, denominator_id=denom_id,
                                            denominator_result=denominator_length, target=target,
-                                           result=result, score=score * weight, weight=weight,
+                                           result=result * 100, score=score * weight, weight=weight,
                                            identifier_parent=identifier_parent, identifier_result=identifier_result,
                                            should_enter=True)
             self.add_kpi_result_to_kpi_results_df([param_row['kpi_level_2_fk'], param_row[self.KPI_TYPE],
-                                                   result, score, weight, score * weight,
+                                                   result*100, score, weight, score * weight,
                                                    param_row[self.KPI_LVL_2_NAME]])
 
     def calculate_displays(self, param_row):
@@ -643,7 +662,7 @@ class MARSUAE_SANDToolBox:
             return
         block_ass = self.lvl3_assortment[self.lvl3_assortment['ass_lvl2_kpi_type'] == param_row[self.KPI_TYPE]]
         if not block_ass.empty:
-            block_ass = self.get_template_relevant_assortment_result(block_ass, param_row)
+            block_ass = self.get_template_relevant_assortment_result(block_ass, param_row) # add empty condition in next line.. also for assortment
             relevant_products = block_ass['product_fk'].unique().tolist()
             block_clusters = self.get_relevant_block_clusters(relevant_products, param_row)
             cluster_results = list()
@@ -675,8 +694,8 @@ class MARSUAE_SANDToolBox:
         for scene in scenes:
             location_filters = {'scene_fk': [scene]}
             block_res = self.block.network_x_block_together(block_filters, location_filters, additional_filters)
-            block_res = block_res[block_res['is_block']]
-            if not block_res:
+            block_res = block_res[block_res['is_block'] == True]
+            if block_res.empty:
                 continue
             else:
                 max_ratio = block_res['facing_percentage'].max()
