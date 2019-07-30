@@ -253,6 +253,7 @@ class TNUVAILSANDToolBox:
         """
         total_score = round((numerator_result / float(denominator_result)) * 100, 2) if denominator_result else 0
         if numerator_entity == Consts.PRODUCT_FK:
+            total_score = 100 if total_score > 0 else 0
             result_type = Consts.DISTRIBUTION_TYPE if total_score else Consts.OOS_TYPE
             result = self.kpi_result_types.loc[self.kpi_result_types.value == result_type, 'pk'].values[0]
         else:

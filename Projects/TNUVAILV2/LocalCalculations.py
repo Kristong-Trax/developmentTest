@@ -10,7 +10,7 @@ if __name__ == '__main__':
     Config.init()
     project_name = 'tnuvailv2'
     data_provider = KEngineDataProvider(project_name)
-    session = '236c1577-0ecb-4bf9-88b9-c9e87ab17c58'
+    session = '07d7b4e0-5acc-401b-807d-71221be5446b'
     data_provider.load_session_data(session)
     output = Output()
     Calculations(data_provider, output).run_project_calculations()
