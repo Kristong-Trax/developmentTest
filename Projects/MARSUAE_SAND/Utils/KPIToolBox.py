@@ -64,6 +64,9 @@ class MARSUAE_SANDToolBox:
     KPI_TYPE = 'kpi_type'
 
     TOTAL_UAE_SCORE = 'Total UAE Score'
+    FIXED_TARGET_FOR_MR = 80
+    OOS = 'OOS'
+    DISTRIBUTED = 'DISTRIBUTED'
 
     def __init__(self, data_provider, output):
         self.output = output
@@ -90,7 +93,7 @@ class MARSUAE_SANDToolBox:
         self.full_store_info = self.get_store_data_by_store_id()
         self.store_info_dict = self.full_store_info.to_dict('records')[0]
         self.category_params = self.get_category_level_targets()
-        # self.kpi_category_dict = self.get_kpi_category_dict()
+        self.kpi_category_df = self.get_kpi_category_df()
         self.atomic_function = self.map_atomic_type_to_function()
         self.score_function = self.map_score_logic_to_function()
         self.assortment = Assortment(self.data_provider, self.output)
@@ -103,7 +106,18 @@ class MARSUAE_SANDToolBox:
                                                'score_by_weight', 'parent_name'])
         self.atomic_tiers_df = pd.DataFrame()
         self.cat_lvl_res = pd.DataFrame()
+        self.kpi_result_values = self.get_kpi_result_values_df()
         # self.kpi_results_queries = []
+
+    def get_kpi_result_values_df(self):
+        query = MARSUAE_SAND_Queries.get_kpi_result_values()
+        query_result = pd.read_sql_query(query, self.rds_conn.db)
+        return query_result
+
+    def get_oos_distributed_result(self, result):
+        value = 'OOS' if not result else 'DISTRIBUTED'
+        custom_score = self.get_kpi_result_value_pk_by_value(value)
+        return custom_score
 
     def get_own_manufacturer_fk(self):
         own_manufacturer_fk = self.data_provider.own_manufacturer.param_value.values[0]
@@ -126,18 +140,20 @@ class MARSUAE_SANDToolBox:
         probe_group = pd.read_sql_query(query, self.rds_conn.db)
         return probe_group
 
-    # def get_kpi_category_dict(self):
-    #     kpi_category_dict = {}
-    #     for i, row in self.category_params.iterrows():
-    #         if isinstance(row['Template Name'], (list, tuple)):
-    #             map(lambda x: kpi_category_dict.update({x: row['kpi_level_2_fk']}), row['Template Name'])
-    #         else:
-    #             kpi_category_dict.update({row['Template Name']: row['kpi_level_2_fk']})
-    #     return kpi_category_dict
+    def get_kpi_category_df(self):
+        kpi_category = []
+        for i, row in self.category_params.iterrows():
+            if isinstance(row['Template Group'], (list, tuple)):
+                map(lambda x: kpi_category.append({'template_group': x, self.KPI_LVL_2_NAME: row['type']}),
+                    row['Template Group'])
+            else:
+                kpi_category.append({'template_group': row['Template Group'], self.KPI_LVL_2_NAME: row['type']})
+        kpi_category_df = pd.DataFrame.from_records(kpi_category)
+        return kpi_category_df
 
-    def get_tier_score_steps(self, external_targets_df):
-
-        pass
+    # def get_tier_score_steps(self, external_targets_df):
+    #
+    #     pass
 
     def get_store_data_by_store_id(self):
         store_id = self.store_id if self.store_id else self.session_info['store_fk'].values[0]
@@ -377,6 +393,14 @@ class MARSUAE_SANDToolBox:
         #                           'include': [{'category_fk': 6, 'manufacturer_fk': 3}]}}
 
         return final_filters
+
+    def get_kpi_result_value_pk_by_value(self, value):
+        pk = None
+        try:
+            pk = self.kpi_result_values[self.kpi_result_values['value'] == value]['pk'].values[0]
+        except:
+            Log.error('Value {} does not exist'.format(value))
+        return pk
         
 #-------------------------------main calculation section-----------------------------------
 
@@ -396,11 +420,12 @@ class MARSUAE_SANDToolBox:
         kpi_fk = self.common.get_kpi_fk_by_kpi_type(self.TOTAL_UAE_SCORE)
         identifier_result = {'kpi_fk': kpi_fk}
         self.common.write_to_db_result(fk=kpi_fk, numerator_id=self.own_manuf_fk, denominator_id=self.store_id,
-                                       result=total_result, score=total_result,
-                                       identifier_result=identifier_result)
+                                       result=total_result, score=total_result, identifier_result=identifier_result,
+                                       target=self.FIXED_TARGET_FOR_MR)
 
     def calculate_category_level(self):
-        self.cat_lvl_res = self.atomic_kpi_results.groupby(['parent_name'], as_index=False).agg({'score_by_weight': np.sum})
+        self.cat_lvl_res = self.atomic_kpi_results.groupby(['parent_name'],
+                                                           as_index=False).agg({'score_by_weight': np.sum})
         self.cat_lvl_res.rename(columns={'parent_kpi': 'kpi_type', 'score_by_weight': 'cat_score'}, inplace=True)
         identifier_parent = {'kpi_fk': self.common.get_kpi_fk_by_kpi_type(self.TOTAL_UAE_SCORE)}
         for i, result in self.cat_lvl_res.iterrows():
@@ -408,10 +433,19 @@ class MARSUAE_SANDToolBox:
             identifier_result = {'kpi_fk': kpi_fk}
             self.common.write_to_db_result(fk=kpi_fk, numerator_id=self.own_manuf_fk, denominator_id=self.store_id,
                                            result=result['cat_score'], score=result['cat_score'],
-                                           identifier_parent=identifier_parent, identifier_result=identifier_result)
+                                           identifier_parent=identifier_parent, identifier_result=identifier_result,
+                                           target=self.FIXED_TARGET_FOR_MR)
+
+    def get_atomics_for_template_groups_present_in_store(self, store_atomics):
+        session_template_groups = self.scif['template_group'].unique().tolist()
+        category_kpis_df = self.kpi_category_df[self.kpi_category_df['template_group'].isin(session_template_groups)]
+        visit_category_kpis = category_kpis_df[self.KPI_LVL_2_NAME].unique().tolist()
+        store_atomics = store_atomics[store_atomics[self.KPI_LVL_2_NAME].isin(visit_category_kpis)]
+        return store_atomics
 
     def calculate_atomics(self):
         store_atomics = self.get_store_atomic_kpi_parameters()
+        store_atomics = self.get_atomics_for_template_groups_present_in_store(store_atomics)
         self.build_tiers_for_atomics(store_atomics)
         if not store_atomics.empty:
             # Option 1: rearrange kpi order and then calculate
@@ -490,38 +524,79 @@ class MARSUAE_SANDToolBox:
 
     def calculate_availability(self, param_row):
         if self.lvl3_assortment.empty:
+            Log.warning("Assortment list is empty for store type {}".format(self.store_info_dict['store_type']))
             return
         lvl3_ass_res = self.lvl3_assortment[self.lvl3_assortment['ass_lvl2_kpi_type'] == param_row[self.KPI_TYPE]]
+        if lvl3_ass_res.empty:
+            Log.warning("Assortment list not available for kpi {}".format(self.KPI_TYPE))
+            return
         if not lvl3_ass_res.empty:
-            identifier_cat_parent = self.get_category_parent_dict(param_row)
-            lvl3_ass_res = self.get_template_relevant_assortment_result(lvl3_ass_res, param_row)
-            for i, row in lvl3_ass_res.iterrows():
-                identifier_parent = {'kpi_fk': row.kpi_fk_lvl2}
-                self.common.write_to_db_result(fk=row.kpi_fk_lvl3, numerator_id=row.product_fk,
-                                               numerator_result=row.facings, denominator_result=1,
-                                               denominator_id=row.product_fk, result=row.in_store,
-                                               score=row.in_store, should_enter=True,
-                                               identifier_parent=identifier_parent)
+            lvl3_ass_res = self.calculate_lvl_3_assortment_result(lvl3_ass_res, param_row)
+            self.calculate_lvl_2_assortment_result(lvl3_ass_res, param_row)
+            # identifier_cat_parent = self.get_category_parent_dict(param_row)
+            # lvl3_ass_res = self.get_template_relevant_assortment_result(lvl3_ass_res, param_row)
+            # for i, row in lvl3_ass_res.iterrows():
+            #     identifier_parent = {'kpi_fk': row.kpi_fk_lvl2}
+            #     custom_result = self.get_oos_distributed_result(row.in_store)
+            #     self.common.write_to_db_result(fk=row.kpi_fk_lvl3, numerator_id=row.product_fk,
+            #                                    numerator_result=row.facings, denominator_result=1,
+            #                                    denominator_id=row.product_fk, result=custom_result,
+            #                                    score=row.in_store, should_enter=True,
+            #                                    identifier_parent=identifier_parent)
+            #
+            # lvl2_result = self.assortment.calculate_lvl2_assortment(lvl3_ass_res)
+            # for i, row in lvl2_result.iterrows():
+            #     identifier_result = {'kpi_fk': row.kpi_fk_lvl2}
+            #     denominator_res = row.total
+            #     if row.target and not np.math.isnan(row.target):
+            #         if row.group_target_date <= self.visit_date:
+            #             denominator_res = row.target
+            #     result = np.divide(float(row.passes), float(denominator_res))
+            #     score, weight = self.get_score(result, param_row)
+            #     target = param_row[self.TARGET] if param_row[self.TARGET] else None
+            #     self.common.write_to_db_result(fk=row.kpi_fk_lvl2, numerator_id=self.own_manuf_fk,
+            #                                    numerator_result=row.passes, result=result * 100,
+            #                                    denominator_id=self.store_id, denominator_result=denominator_res,
+            #                                    score=score * weight, weight=weight, target=target,
+            #                                    identifier_result=identifier_result,
+            #                                    identifier_parent=identifier_cat_parent, should_enter=True)
+            #     self.add_kpi_result_to_kpi_results_df([row.kpi_fk_lvl2, param_row[self.KPI_TYPE],
+            #                                            result, score, weight, score * weight,
+            #                                            param_row[self.KPI_LVL_2_NAME]])
 
-            lvl2_result = self.assortment.calculate_lvl2_assortment(lvl3_ass_res)
-            for i, row in lvl2_result.iterrows():
-                identifier_result = {'kpi_fk': row.kpi_fk_lvl2}
-                denominator_res = row.total
-                if row.target and not np.math.isnan(row.target):
-                    if row.group_target_date <= self.visit_date:
-                        denominator_res = row.target
-                result = np.divide(float(row.passes), float(denominator_res))
-                score, weight = self.get_score(result, param_row)
-                target = param_row[self.TARGET] if param_row[self.TARGET] else None
-                self.common.write_to_db_result(fk=row.kpi_fk_lvl2, numerator_id=self.own_manuf_fk,
-                                               numerator_result=row.passes, result=result * 100,
-                                               denominator_id=self.store_id, denominator_result=denominator_res,
-                                               score=score * weight, weight=weight, target=target,
-                                               identifier_result=identifier_result,
-                                               identifier_parent=identifier_cat_parent, should_enter=True)
-                self.add_kpi_result_to_kpi_results_df([row.kpi_fk_lvl2, param_row[self.KPI_TYPE],
-                                                       result, score, weight, score * weight,
-                                                       param_row[self.KPI_LVL_2_NAME]])
+    def calculate_lvl_3_assortment_result(self, lvl3_ass_res, param_row):
+        lvl3_ass_res = self.get_template_relevant_assortment_result(lvl3_ass_res, param_row)
+        for i, row in lvl3_ass_res.iterrows():
+            identifier_parent = {'kpi_fk': row.kpi_fk_lvl2}
+            custom_result = self.get_oos_distributed_result(row.in_store)
+            self.common.write_to_db_result(fk=row.kpi_fk_lvl3, numerator_id=row.product_fk,
+                                           numerator_result=row.facings, denominator_result=1,
+                                           denominator_id=row.product_fk, result=custom_result,
+                                           score=row.in_store, should_enter=True,
+                                           identifier_parent=identifier_parent)
+        return lvl3_ass_res
+
+    def calculate_lvl_2_assortment_result(self, lvl3_ass_res, param_row):
+        identifier_cat_parent = self.get_category_parent_dict(param_row)
+        lvl2_result = self.assortment.calculate_lvl2_assortment(lvl3_ass_res)
+        for i, row in lvl2_result.iterrows():
+            identifier_result = {'kpi_fk': row.kpi_fk_lvl2}
+            denominator_res = row.total
+            if row.target and not np.math.isnan(row.target):
+                if row.group_target_date <= self.visit_date:
+                    denominator_res = row.target
+            result = np.divide(float(row.passes), float(denominator_res))
+            score, weight = self.get_score(result, param_row)
+            target = param_row[self.TARGET] if param_row[self.TARGET] else None
+            self.common.write_to_db_result(fk=row.kpi_fk_lvl2, numerator_id=self.own_manuf_fk,
+                                           numerator_result=row.passes, result=result * 100,
+                                           denominator_id=self.store_id, denominator_result=denominator_res,
+                                           score=score * weight, weight=weight, target=target,
+                                           identifier_result=identifier_result,
+                                           identifier_parent=identifier_cat_parent, should_enter=True)
+            self.add_kpi_result_to_kpi_results_df([row.kpi_fk_lvl2, param_row[self.KPI_TYPE],
+                                                   result, score, weight, score * weight,
+                                                   param_row[self.KPI_LVL_2_NAME]])
 
     @staticmethod
     def add_actual_facings_to_assortment(lvl3_ass_res, scif):
