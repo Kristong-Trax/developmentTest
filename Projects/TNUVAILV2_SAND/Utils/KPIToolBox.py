@@ -225,6 +225,7 @@ class TNUVAILSANDToolBox:
     def _save_results_for_assortment_(self, numerator_entity, results_list, kpi_fk, parent_kpi_fk=None, prev_res=False):
         """
         This method saves the assortments results for all of the levels.
+        For OOS the last session's results per product from this store is being saved as "score"!
         :param numerator_entity: The key of the numerator id that can be found in the results dictionary.
         :param results_list: List of dictionaries with the assortment results.
         :param kpi_fk: Relevant fk to save.
@@ -234,13 +235,12 @@ class TNUVAILSANDToolBox:
         for result in results_list:
             numerator_id, denominator_id = result[numerator_entity], result[Consts.DENOMINATOR_ID]
             num_res, denominator_res = result[Consts.NUMERATOR_RESULT], result[Consts.DENOMINATOR_RESULT]
-            prev_res_score = self._get_previous_oos_score(kpi_fk, numerator_id) if prev_res else 0
             context_id = numerator_id if prev_res else None
             score, result = self._calculate_assortment_score_and_result(numerator_entity, num_res, denominator_res)
+            score = self._get_previous_oos_score(kpi_fk, numerator_id) if prev_res else score
             self.common_v2.write_to_db_result(fk=kpi_fk, numerator_id=numerator_id, numerator_result=num_res,
                                               denominator_id=self.store_id, denominator_result=denominator_res,
                                               score=score, result=result, should_enter=should_enter,
-                                              score_after_actions=prev_res_score,
                                               identifier_result=(kpi_fk, numerator_id),
                                               identifier_parent=(parent_kpi_fk, denominator_id), context_id=context_id)
 
@@ -253,6 +253,7 @@ class TNUVAILSANDToolBox:
         """
         total_score = round((numerator_result / float(denominator_result)) * 100, 2) if denominator_result else 0
         if numerator_entity == Consts.PRODUCT_FK:
+            total_score = 100 if total_score > 0 else 0
             result_type = Consts.DISTRIBUTION_TYPE if total_score else Consts.OOS_TYPE
             result = self.kpi_result_types.loc[self.kpi_result_types.value == result_type, 'pk'].values[0]
         else:
