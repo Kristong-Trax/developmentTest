@@ -7,9 +7,6 @@ class TnuvaMocks:
     def __init__(self):
         pass
 
-    # def all_products(self):
-    #     all_products_df =
-
     @staticmethod
     def lvl3_results():
         lvl3_assortment_results = pd.DataFrame([
