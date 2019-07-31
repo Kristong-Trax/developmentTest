@@ -218,7 +218,7 @@ class TNUVAILToolBox:
         sku_level_res = lvl3_data[[Consts.PRODUCT_FK, Consts.IN_STORE, Consts.CATEGORY_FK, Consts.FACINGS]]
         sku_level_res.rename(Consts.SOS_SKU_LVL_RENAME, axis=1, inplace=True)
         if not is_distribution:
-            sku_level_res[Consts.DENOMINATOR_RESULT] = 1
+            sku_level_res = sku_level_res.assign(denominator_result=1)
         sku_level_res = sku_level_res.to_dict('records')
         return sku_level_res
 
@@ -255,14 +255,13 @@ class TNUVAILToolBox:
         for result in results_list:
             numerator_id, denominator_id = result[numerator_entity], result[Consts.DENOMINATOR_ID]
             num_res, denominator_res = result[Consts.NUMERATOR_RESULT], result[Consts.DENOMINATOR_RESULT]
-            context_id = numerator_id if prev_res else None
             score, result = self._calculate_assortment_score_and_result(numerator_entity, num_res, denominator_res)
             score = self._get_previous_oos_score(kpi_fk, numerator_id) if prev_res else score   # Only for OOS-SKU!
             self.common_v2.write_to_db_result(fk=kpi_fk, numerator_id=numerator_id, numerator_result=num_res,
                                               denominator_id=self.store_id, denominator_result=denominator_res,
                                               score=score, result=result, should_enter=should_enter,
                                               identifier_result=(kpi_fk, numerator_id),
-                                              identifier_parent=(parent_kpi_fk, denominator_id), context_id=context_id)
+                                              identifier_parent=(parent_kpi_fk, denominator_id))
 
     def _calculate_assortment_score_and_result(self, numerator_entity, numerator_result, denominator_result):
         """
@@ -371,6 +370,8 @@ class TNUVAILToolBox:
         results_list = list()
         filtered_scif_by_category = df_to_filter.loc[df_to_filter.category_fk == category_fk]
         manufacturers_list = filtered_scif_by_category.manufacturer_fk.unique().tolist()
+        if self.own_manufacturer_fk not in manufacturers_list:
+            manufacturers_list.append(self.own_manufacturer_fk)
         for manufacturer in manufacturers_list:
             sos_result = {key: 0 for key in Consts.ENTITIES_FOR_DB}
             filters = {Consts.MANUFACTURER_FK: int(manufacturer)}
@@ -396,6 +397,8 @@ class TNUVAILToolBox:
                                                   denominator_result=denominator_res, score=sos_score, result=sos_score,
                                                   identifier_result=(own_manu_out_of_category_fk, category_id),
                                                   identifier_parent=store_lvl_fk, should_enter=True)
+            if not sos_score:
+                continue  # Tnuva should be represented in the second level (even if 0) but not in the third!
             self.common_v2.write_to_db_result(fk=all_manu_out_of_category_fk, numerator_id=manufacturer_id,
                                               numerator_result=numerator_res, denominator_id=category_id,
                                               denominator_result=denominator_res, score=sos_score, result=sos_score,
