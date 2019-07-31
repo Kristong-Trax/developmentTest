@@ -1,5 +1,6 @@
 # coding=utf-8
 import pandas as pd
+from collections import Counter
 from Trax.Utils.Logging.Logger import Log
 from KPIUtils_v2.DB.CommonV2 import Common
 from KPIUtils_v2.Utils.Parsers import ParseInputKPI
@@ -7,7 +8,6 @@ from Projects.TNUVAILV2.Utils.Consts import Consts
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
 from Projects.TNUVAILV2.Utils.DataBaseHandler import DBHandler
-from collections import Counter
 
 __author__ = 'idanr'
 
@@ -29,7 +29,7 @@ class TNUVAILToolBox:
         self.oos_store_results = list()
 
     def main_calculation(self):
-        """ This function calculates all of the KPIs' results """
+        """ This function calculates all of the KPIs' results."""
         self._calculate_facings_sos()
         self._calculate_assortment()
         self.common_v2.commit_results_data()
@@ -64,13 +64,12 @@ class TNUVAILToolBox:
         """
         if not self.oos_store_results:
             return
-        # Store level OOS
         store_level_no_policy_kpi_fk = self.common_v2.get_kpi_fk_by_kpi_type(Consts.OOS_STORE_LEVEL)
         total_res = Counter()
         for result in self.oos_store_results:
             total_res.update(result)
         total_res[Consts.DENOMINATOR_ID] = self.store_id
-        total_res[Consts.NUMERATOR_ID] = self.own_manufacturer_fk
+        total_res[Consts.MANUFACTURER_FK] = self.own_manufacturer_fk
         total_res = [dict(total_res)]
         self._save_results_for_assortment(Consts.MANUFACTURER_FK, total_res, store_level_no_policy_kpi_fk)
 
@@ -104,7 +103,6 @@ class TNUVAILToolBox:
 
     def _get_filtered_scif_for_sos_calculations(self, policy):
         """ This method filters scene item facts by policy and removes redundant row for SOS calculation"""
-        # TODO: rlv_sos_sc -> should be used in this case...?
         filtered_scif = self._get_filtered_scif_per_scene_type(policy)
         filtered_scif = filtered_scif[~filtered_scif[Consts.PRODUCT_TYPE].isin(Consts.TYPES_TO_IGNORE_IN_SOS)]
         filtered_scif = filtered_scif.loc[filtered_scif[Consts.FACINGS_FOR_SOS] > 0]
@@ -217,9 +215,7 @@ class TNUVAILToolBox:
         :return: A dictionary - which contains the following keys: product_fk, denominator_id, numerator_result and
         denominator_result.
         """
-        in_store_relevant_attributes = [Consts.OOS, Consts.AVAILABLE] if is_distribution else [Consts.OOS]
-        sku_level_res = lvl3_data.loc[lvl3_data.in_store.isin(in_store_relevant_attributes)]
-        sku_level_res = sku_level_res[[Consts.PRODUCT_FK, Consts.IN_STORE, Consts.CATEGORY_FK, Consts.FACINGS]]
+        sku_level_res = lvl3_data[[Consts.PRODUCT_FK, Consts.IN_STORE, Consts.CATEGORY_FK, Consts.FACINGS]]
         sku_level_res.rename(Consts.SOS_SKU_LVL_RENAME, axis=1, inplace=True)
         if not is_distribution:
             sku_level_res[Consts.DENOMINATOR_RESULT] = 1

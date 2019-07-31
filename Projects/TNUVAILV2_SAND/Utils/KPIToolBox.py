@@ -1,5 +1,6 @@
 # coding=utf-8
 import pandas as pd
+from collections import Counter
 from Trax.Utils.Logging.Logger import Log
 from KPIUtils_v2.DB.CommonV2 import Common
 from KPIUtils_v2.Utils.Parsers import ParseInputKPI
@@ -25,23 +26,10 @@ class TNUVAILSANDToolBox:
         self.db_handler = DBHandler(self.data_provider.project_name, self.data_provider.session_uid)
         self.previous_oos_results = self.db_handler.get_last_session_oos_results()
         self.kpi_result_types = self.db_handler.get_kpi_result_type()
-
-    def __init__(self, data_provider, output):
-        self.output = output
-        self.data_provider = data_provider
-        self.common_v2 = Common(self.data_provider)
-        self.all_products = self.data_provider[Data.ALL_PRODUCTS]
-        self.store_id = self.data_provider[Data.STORE_FK]
-        self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
-        self.assortment = Assortment(self.data_provider, self.output)
-        self.own_manufacturer_fk = int(self.data_provider.own_manufacturer.param_value.values[0])
-        self.db_handler = DBHandler(self.data_provider.project_name, self.data_provider.session_uid)
-        self.previous_oos_results = self.db_handler.get_last_session_oos_results()
-        self.kpi_result_types = self.db_handler.get_kpi_result_type()
         self.oos_store_results = list()
 
     def main_calculation(self):
-        """ This function calculates all of the KPIs' results """
+        """ This function calculates all of the KPIs' results."""
         self._calculate_facings_sos()
         self._calculate_assortment()
         self.common_v2.commit_results_data()
@@ -76,13 +64,12 @@ class TNUVAILSANDToolBox:
         """
         if not self.oos_store_results:
             return
-        # Store level OOS
         store_level_no_policy_kpi_fk = self.common_v2.get_kpi_fk_by_kpi_type(Consts.OOS_STORE_LEVEL)
         total_res = Counter()
         for result in self.oos_store_results:
             total_res.update(result)
         total_res[Consts.DENOMINATOR_ID] = self.store_id
-        total_res[Consts.NUMERATOR_ID] = self.own_manufacturer_fk
+        total_res[Consts.MANUFACTURER_FK] = self.own_manufacturer_fk
         total_res = [dict(total_res)]
         self._save_results_for_assortment(Consts.MANUFACTURER_FK, total_res, store_level_no_policy_kpi_fk)
 
@@ -116,7 +103,6 @@ class TNUVAILSANDToolBox:
 
     def _get_filtered_scif_for_sos_calculations(self, policy):
         """ This method filters scene item facts by policy and removes redundant row for SOS calculation"""
-        # TODO: rlv_sos_sc -> should be used in this case...?
         filtered_scif = self._get_filtered_scif_per_scene_type(policy)
         filtered_scif = filtered_scif[~filtered_scif[Consts.PRODUCT_TYPE].isin(Consts.TYPES_TO_IGNORE_IN_SOS)]
         filtered_scif = filtered_scif.loc[filtered_scif[Consts.FACINGS_FOR_SOS] > 0]
@@ -229,9 +215,7 @@ class TNUVAILSANDToolBox:
         :return: A dictionary - which contains the following keys: product_fk, denominator_id, numerator_result and
         denominator_result.
         """
-        in_store_relevant_attributes = [Consts.OOS, Consts.AVAILABLE] if is_distribution else [Consts.OOS]
-        sku_level_res = lvl3_data.loc[lvl3_data.in_store.isin(in_store_relevant_attributes)]
-        sku_level_res = sku_level_res[[Consts.PRODUCT_FK, Consts.IN_STORE, Consts.CATEGORY_FK, Consts.FACINGS]]
+        sku_level_res = lvl3_data[[Consts.PRODUCT_FK, Consts.IN_STORE, Consts.CATEGORY_FK, Consts.FACINGS]]
         sku_level_res.rename(Consts.SOS_SKU_LVL_RENAME, axis=1, inplace=True)
         if not is_distribution:
             sku_level_res[Consts.DENOMINATOR_RESULT] = 1
