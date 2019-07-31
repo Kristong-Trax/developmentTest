@@ -1,4 +1,3 @@
-
 import os
 import pandas as pd
 from datetime import datetime
@@ -10,8 +9,8 @@ from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Trax.Utils.Logging.Logger import Log
 from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
 
-from Projects.MARSIN_SAND.Utils.Fetcher import MARSIN_SANDQueries
-from Projects.MARSIN_SAND.Utils.GeneralToolBox import MARSIN_SANDGENERALToolBox
+from Projects.MARSIN_SAND.Utils.Fetcher import MARSINQueries
+from Projects.MARSIN_SAND.Utils.GeneralToolBox import MARSINGENERALToolBox
 from Projects.MARSIN_SAND.Utils.ParseComplexTemplates import parse_template
 
 __author__ = 'Nimrod'
@@ -19,9 +18,8 @@ __author__ = 'Nimrod'
 KPI_RESULT = 'report.kpi_results'
 KPK_RESULT = 'report.kpk_results'
 KPS_RESULT = 'report.kps_results'
-THRESHOLD = 0.5
-NewScore =['Availability','SOS Facings']
-AVAILABILITY ='Availability'
+
+
 TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'Template.xlsx')
 
 
@@ -39,7 +37,7 @@ def log_runtime(description, log_start=False):
     return decorator
 
 
-class MARSIN_SANDKPIConsts(object):
+class MARSINKPIConsts(object):
 
     PICOS = 'PicOS'
     SURVEY = 'Survey'
@@ -49,9 +47,10 @@ class MARSIN_SANDKPIConsts(object):
     SEQUENCE_WITHIN_BLOCK = 'Blocked Together in Sequence'
     BLOCKS_IN_SEQUENCE = 'Product Group Adjacency'
     AVAILABILITY_AND_SURVEY = 'Availability & Survey'
+    THRESHOLD = 0.5
+    NewScore =['Availability','SOS Facings']
 
-
-class MARSIN_SANDTemplateConsts(object):
+class MARSINTemplateConsts(object):
 
     # HEADERS #
     STORE_TYPE = 'Store Type'
@@ -99,7 +98,7 @@ class MARSIN_SANDTemplateConsts(object):
     SEPARATOR3 = ' / '    # Or
 
 
-class MARSIN_SANDToolBox(MARSIN_SANDTemplateConsts, MARSIN_SANDKPIConsts):
+class MARSINToolBox(MARSINTemplateConsts, MARSINKPIConsts):
 
     LEVEL1 = 1
     LEVEL2 = 2
@@ -132,7 +131,7 @@ class MARSIN_SANDToolBox(MARSIN_SANDTemplateConsts, MARSIN_SANDKPIConsts):
         self.scif = self.scif.merge(self.get_missing_attributes(), on='product_fk', how='left', suffixes=['', '_1'])
         self.kpi_static_data = self.get_kpi_static_data()
         self.match_display_in_scene = self.get_match_display()
-        self.tools = MARSIN_SANDGENERALToolBox(self.data_provider, self.output, rds_conn=self.rds_conn, scif=self.scif)
+        self.tools = MARSINGENERALToolBox(self.data_provider, self.output, rds_conn=self.rds_conn, scif=self.scif)
         self.weights = parse_template(TEMPLATE_PATH, 'Weight')
         self.kpi_data = parse_template(TEMPLATE_PATH, 'KPIs')
         self.template_id = self.store_type + (';{}'.format(self.outlet_class) if self.outlet_class else '')
@@ -148,7 +147,7 @@ class MARSIN_SANDToolBox(MARSIN_SANDTemplateConsts, MARSIN_SANDKPIConsts):
         return self._templates_data[name]
 
     def get_missing_attributes(self):
-        query = MARSIN_SANDQueries.get_missing_attributes_data()
+        query = MARSINQueries.get_missing_attributes_data()
         data = pd.read_sql_query(query, self.rds_conn.db)
         return data
 
@@ -157,7 +156,7 @@ class MARSIN_SANDToolBox(MARSIN_SANDTemplateConsts, MARSIN_SANDKPIConsts):
         This function extracts the display matches data and saves it into one global data frame.
         The data is taken from probedata.match_display_in_scene.
         """
-        query = MARSIN_SANDQueries.get_match_display(self.session_uid)
+        query = MARSINQueries.get_match_display(self.session_uid)
         match_display = pd.read_sql_query(query, self.rds_conn.db)
         return match_display
 
@@ -166,7 +165,7 @@ class MARSIN_SANDToolBox(MARSIN_SANDTemplateConsts, MARSIN_SANDKPIConsts):
         This function extracts the static KPI data and saves it into one global data frame.
         The data is taken from static.kpi / static.atomic_kpi / static.kpi_set.
         """
-        query = MARSIN_SANDQueries.get_all_kpi_data()
+        query = MARSINQueries.get_all_kpi_data()
         kpi_static_data = pd.read_sql_query(query, self.rds_conn.db)
         return kpi_static_data
 
@@ -205,21 +204,24 @@ class MARSIN_SANDToolBox(MARSIN_SANDTemplateConsts, MARSIN_SANDKPIConsts):
                 if kpi_score is not None:
                     number_of_atomics = len(self.results.get(kpi_fk, []))
                     number_of_passed_atomics = self.results.get(kpi_fk, []).count(1)
-                    new_atomic=(1 if kpi_score > 0 and kpi_type in NewScore else kpi_score)
-                    if kpi_type == 'SOS Facings':
-                        self.write_to_db_result(kpi_fk, (kpi_score*100, new_atomic, number_of_atomics),
+                    new_atomic = (1 if kpi_score > 0 and kpi_type in self.NewScore else kpi_score)
+                    if kpi_type == self.SHARE_OF_SHELF:
+                        self.write_to_db_result(kpi_fk, (kpi_score * 100, new_atomic, number_of_atomics),
                                                 level=self.LEVEL2)
                     else:
+
                         self.write_to_db_result(kpi_fk, (kpi_score, number_of_passed_atomics, number_of_atomics),
-                                            level=self.LEVEL2)
+                                                level=self.LEVEL2)
                     if kpi_group not in group_scores.keys():
                         group_scores[kpi_group] = [0, 0]
-                    if number_of_atomics != 0 or number_of_passed_atomics != 0:
-                        if kpi_type == AVAILABILITY:
-                            group_scores[kpi_group][0] += kpi_score
-                        else:
-                            group_scores[kpi_group][0] += new_atomic
-                        group_scores[kpi_group][1] += 1
+                    # this line was commented out according to Nakul's request in 2/7 that we will count KPIS even if
+                    # there is no product in the db
+                    # if number_of_atomics != 0 or number_of_passed_atomics != 0:
+                    if kpi_type == self.AVAILABILITY:
+                        group_scores[kpi_group][0] += kpi_score
+                    else:
+                        group_scores[kpi_group][0] += new_atomic
+                    group_scores[kpi_group][1] += 1
         for group_name in group_scores:
             set_fk = self.kpi_static_data[self.kpi_static_data['kpi_set_name'] == group_name]['kpi_set_fk'].values[0]
             actual_points, max_points = group_scores[group_name]
@@ -419,6 +421,7 @@ class MARSIN_SANDToolBox(MARSIN_SANDTemplateConsts, MARSIN_SANDKPIConsts):
         if params[self.KPI_GROUP] == self.AVAILABILITY:
             kpi_data = kpi_data.iloc[0]
             products = kpi_data[self.VALUES].split(self.SEPARATOR)
+
             result = 0
             target = 0
             for product in products:
@@ -427,23 +430,22 @@ class MARSIN_SANDToolBox(MARSIN_SANDTemplateConsts, MARSIN_SANDKPIConsts):
                     if self.all_products[self.all_products['product_ean_code'].isin([sub_product])].product_ean_code.count() > 0:
                         target += 1
                     else :
-                        Log.error('product_ean_code does not exists {}'.format(sub_product))
+                        Log.debug('product_ean_code does not exists {}'.format(sub_product))
                         break
                     sub_product_result = self.tools.calculate_availability(front_facing='Y', template_name=scene_types,
                                                                            product_ean_code=sub_product)
                     sub_product_score = 1 if sub_product_result >= 1 else 0
                     if sub_product_result >= 1:
                         product_result = 1
-                    #value = None
-                    s = self.save_result_for_product(params, sub_product, (sub_product_score, sub_product_result,1))
+                    s = self.save_result_for_product(params, sub_product, (sub_product_score, sub_product_result, 1))
                     if s is None and len(product.split(self.SEPARATOR3)) == 1:
                         product_result += 1
+
+
                 result += product_result
             if target > 0 :
                 result = round(float(result) / float(target), 2)
-            score = 0 if result < THRESHOLD else 1 if result >= 1 else result
-
-
+            score = 0 if result < self.THRESHOLD else 1 if result >= 1 else result
 
         else:
             scores = []
@@ -609,7 +611,7 @@ class MARSIN_SANDToolBox(MARSIN_SANDTemplateConsts, MARSIN_SANDKPIConsts):
         This function writes all KPI results to the DB, and commits the changes.
         """
         cur = self.rds_conn.db.cursor()
-        delete_queries = MARSIN_SANDQueries.get_delete_session_results_query(self.session_uid)
+        delete_queries = MARSINQueries.get_delete_session_results_query(self.session_uid)
         for query in delete_queries:
             cur.execute(query)
         for query in self.kpi_results_queries:
