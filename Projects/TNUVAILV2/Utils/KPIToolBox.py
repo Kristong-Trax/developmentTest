@@ -56,16 +56,16 @@ class TNUVAILToolBox:
             return
         self._calculate_assortment_results_per_policy(lvl3_result, policy=Consts.MILKY_POLICY)
         self._calculate_assortment_results_per_policy(lvl3_result, policy=Consts.TIRAT_TSVI_POLICY)
-        self._calculate_total_oos_results()  # In order to support NCC report and OOS reasons
+        self._calculate_total_oos_results()  # New addition: In order to support NCC report and OOS reasons
 
     def _calculate_total_oos_results(self):
         """
-        This kpi uses the previous OOS results that were calculated and saves the results in the store level
+        This KPI uses the previous OOS results that were calculated and saves the results in the store level
         (without "Dairy" or "Tirat Tsvi" policies).
         """
-        # Store level OOS
         if not self.oos_store_results or not self.oos_sku_results:
             return
+        # Store level OOS
         store_level_no_policy_kpi_fk = self.common_v2.get_kpi_fk_by_kpi_type(Consts.OOS_STORE_LEVEL)
         total_res = Counter()
         for result in self.oos_store_results:
@@ -76,8 +76,9 @@ class TNUVAILToolBox:
         self._save_results_for_assortment(Consts.MANUFACTURER_FK, total_res, store_level_no_policy_kpi_fk)
 
         # SKU level OOS
-        sku_level_no_policies_kpi_fk = self.common_v2.get_kpi_fk_by_kpi_type(Consts.OOS_STORE_LEVEL)
-        self._save_results_for_assortment(Consts.PRODUCT_FK, self.oos_sku_results, sku_level_no_policies_kpi_fk)
+        sku_level_no_policies_kpi_fk = self.common_v2.get_kpi_fk_by_kpi_type(Consts.OOS_SKU_IN_STORE_LEVEL)
+        self._save_results_for_assortment(Consts.PRODUCT_FK, self.oos_sku_results, sku_level_no_policies_kpi_fk,
+                                          parent_kpi_fk=None, prev_res=True)
 
     def _prepare_data_for_assortment_calculation(self):
         """ This method gets the level 3 assortment results (SKU level), adding category_fk and returns the DataFrame"""
@@ -154,18 +155,18 @@ class TNUVAILToolBox:
         """
         if is_distribution:
                 if policy == Consts.MILKY_POLICY:
-                    store_level_fk = self.common_v2.get_kpi_fk_by_kpi_type(Consts.DIST_STORE_LEVEL_MILKY)
-                    category_level_fk = self.common_v2.get_kpi_fk_by_kpi_type(Consts.DIST_CATEGORY_LEVEL_MILKY)
-                    sku_level_fk = self.common_v2.get_kpi_fk_by_kpi_type(Consts.DIST_SKU_LEVEL_MILKY)
+                    store_level_fk = self.common_v2.get_kpi_fk_by_kpi_type(Consts.DIST_STORE_LEVEL_DAIRY)
+                    category_level_fk = self.common_v2.get_kpi_fk_by_kpi_type(Consts.DIST_CATEGORY_LEVEL_DAIRY)
+                    sku_level_fk = self.common_v2.get_kpi_fk_by_kpi_type(Consts.DIST_SKU_LEVEL_DAIRY)
                 else:
                     store_level_fk = self.common_v2.get_kpi_fk_by_kpi_type(Consts.DIST_STORE_LEVEL_TIRAT_TSVI)
                     category_level_fk = self.common_v2.get_kpi_fk_by_kpi_type(Consts.DIST_CATEGORY_LEVEL_TIRAT_TSVI)
                     sku_level_fk = self.common_v2.get_kpi_fk_by_kpi_type(Consts.DIST_SKU_LEVEL_TIRAT_TSVI)
         else:
             if policy == Consts.MILKY_POLICY:
-                store_level_fk = self.common_v2.get_kpi_fk_by_kpi_type(Consts.OOS_STORE_LEVEL_MILKY)
-                category_level_fk = self.common_v2.get_kpi_fk_by_kpi_type(Consts.OOS_CATEGORY_LEVEL_MILKY)
-                sku_level_fk = self.common_v2.get_kpi_fk_by_kpi_type(Consts.OOS_SKU_LEVEL_MILKY)
+                store_level_fk = self.common_v2.get_kpi_fk_by_kpi_type(Consts.OOS_STORE_LEVEL_DAIRY)
+                category_level_fk = self.common_v2.get_kpi_fk_by_kpi_type(Consts.OOS_CATEGORY_LEVEL_DAIRY)
+                sku_level_fk = self.common_v2.get_kpi_fk_by_kpi_type(Consts.OOS_SKU_LEVEL_DAIRY)
             else:
                 store_level_fk = self.common_v2.get_kpi_fk_by_kpi_type(Consts.OOS_STORE_LEVEL_TIRAT_TSVI)
                 category_level_fk = self.common_v2.get_kpi_fk_by_kpi_type(Consts.OOS_CATEGORY_LEVEL_TIRAT_TSVI)
@@ -310,9 +311,9 @@ class TNUVAILToolBox:
         tuple with the relevant KPIs (store_level, own manufacturer_out_of_category, all_manufacturers_out_of_category)
         """
         if policy == Consts.MILKY_POLICY:
-            store_level_fk = self.common_v2.get_kpi_fk_by_kpi_type(Consts.SOS_MANU_OUT_OF_STORE_KPI_MILKY)
-            own_manu_category_level_fk = self.common_v2.get_kpi_fk_by_kpi_type(Consts.SOS_OWN_MANU_OUT_OF_CAT_KPI_MILKY)
-            all_manu_category_level_fk = self.common_v2.get_kpi_fk_by_kpi_type(Consts.SOS_ALL_MANU_OUT_OF_CAT_KPI_MILKY)
+            store_level_fk = self.common_v2.get_kpi_fk_by_kpi_type(Consts.SOS_MANU_OUT_OF_STORE_KPI_DAIRY)
+            own_manu_category_level_fk = self.common_v2.get_kpi_fk_by_kpi_type(Consts.SOS_OWN_MANU_OUT_OF_CAT_KPI_DAIRY)
+            all_manu_category_level_fk = self.common_v2.get_kpi_fk_by_kpi_type(Consts.SOS_ALL_MANU_OUT_OF_CAT_KPI_DAIRY)
         else:
             store_level_fk = self.common_v2.get_kpi_fk_by_kpi_type(Consts.SOS_MANU_OUT_OF_STORE_KPI_TIRAT_TSVI)
             own_manu_category_level_fk = self.common_v2.get_kpi_fk_by_kpi_type(Consts.SOS_OWN_MANU_OUT_OF_CAT_KPI_TSVI)
