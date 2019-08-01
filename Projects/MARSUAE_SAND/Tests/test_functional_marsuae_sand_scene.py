@@ -4,9 +4,6 @@ from Trax.Data.Testing.SeedNew import Seeder
 from mock import MagicMock
 from Projects.MARSUAE_SAND.Tests.data_test_unit_marsuae_sand import DataTestUnitMarsuae
 from Projects.MARSUAE_SAND.Utils.KPISceneToolBox import MARSUAE_SANDSceneToolBox
-import pandas as pd
-from pandas.util.testing import assert_frame_equal
-
 
 __author__ = 'natalyak'
 
@@ -28,25 +25,9 @@ class TestMarsuaeSandScene(TestFunctionalCase):
         self.mock_common_project_connector_mock = self.mock_common_project_connector()
         self.static_kpi_mock = self.mock_static_kpi()
         self.session_info_mock = self.mock_session_info()
-        # self.probe_group_mock = self.mock_probe_group()
-        # self.full_store_info = self.mock_store_data()
         self.output = MagicMock()
         self.session_info_mock = self.mock_session_info()
-        # self.external_targets_mock = self.mock_kpi_external_targets_data()
-        # self.kpi_result_values_mock = self.mock_kpi_result_value_table()
-        # self.kpi_scores_values_mock = self.mock_kpi_score_value_table()
         self.mock_all_products()
-        # self.mock_all_templates()
-        # self.mock_block()
-
-    # def mock_store_data(self):
-    #     store_data = self.mock_object('MARSUAE_SANDSceneToolBox.get_store_data_by_store_id')
-    #     store_data.return_value = DataTestUnitMarsuae.store_data_sss_a
-    #     return store_data.return_value
-
-    # def mock_block(self):
-    #     self.mock_object('Block')
-    #
 
     def mock_probe_group(self, data):
         probe_group = self.mock_object('PEPSICOUKSceneToolBox.get_probe_group')
@@ -80,38 +61,8 @@ class TestMarsuaeSandScene(TestFunctionalCase):
         static_kpi.return_value = DataTestUnitMarsuae.kpi_static_data
         return static_kpi.return_value
 
-    # def mock_kpi_external_targets_data(self):
-    #     # print DataTestUnitPEPSICOUK.external_targets
-    #     external_targets_df = pd.read_excel(DataTestUnitMarsuae.external_targets)
-    #     external_targets = self.mock_object('PEPSICOUKCommonToolBox.get_all_kpi_external_targets',
-    #                                         path='Projects.PEPSICOUK.Utils.CommonToolBox')
-    #     external_targets.return_value = external_targets_df
-    #     return external_targets.return_value
-
-    # def mock_kpi_result_value_table(self):
-    #     kpi_result_value = self.mock_object('PEPSICOUKCommonToolBox.get_kpi_result_values_df',
-    #                                         path='Projects.PEPSICOUK.Utils.CommonToolBox')
-    #     kpi_result_value.return_value = DataTestUnitPEPSICOUK.kpi_results_values_table
-    #     return kpi_result_value.return_value
-
-    # def mock_kpi_score_value_table(self):
-    #     kpi_score_value = self.mock_object('PEPSICOUKCommonToolBox.get_kpi_result_values_df',
-    #                                        path='Projects.PEPSICOUK.Utils.CommonToolBox',)
-    #     kpi_score_value.return_value = DataTestUnitPEPSICOUK.kpi_scores_values_table
-    #     return kpi_score_value.return_value
-    #
-    # def mock_all_products(self):
-    #     self.data_provider_data_mock['all_products'] = pd.read_excel(DataTestUnitPEPSICOUK.test_case_1,
-    #                                                                  sheetname='all_products')
-
     def mock_all_products(self):
         self.data_provider_mock['all_products'] = DataTestUnitMarsuae.all_products_scene
-
-    # def mock_all_templates(self):
-    #     self.data_provider_data_mock['all_templates'] = DataTestUnitPEPSICOUK.all_templates
-
-    # def mock_scene_item_facts(self, data):
-    #     self.data_provider_data_mock['scene_item_facts'] = data.where(data.notnull(), None)
 
     def mock_match_product_in_scene(self, data):
         self.data_provider_data_mock['matches'] = data.where(data.notnull(), None)
