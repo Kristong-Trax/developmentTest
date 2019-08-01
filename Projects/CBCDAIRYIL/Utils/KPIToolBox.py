@@ -201,7 +201,8 @@ class CBCDAIRYILToolBox:
                                            should_enter=True, identifier_parent=kpi_fk,
                                            result=atomic_score, score=atomic_score * atomic_weight)
             self.old_common.old_write_to_db_result(fk=old_atomic_fk, level=3,
-                                                    result=str(format(atomic_score * atomic_weight, '.2f')), score=atomic_score)
+                                                   result=str(format(atomic_score * atomic_weight, '.2f')),
+                                                   score=atomic_score)
         return total_scores
 
     def get_kpi_fk_by_kpi_name(self, kpi_name, kpi_level):
@@ -215,11 +216,13 @@ class CBCDAIRYILToolBox:
             column_key = 'atomic_kpi_fk'
             column_value = 'atomic_kpi_name'
         else:
-            raise ValueError, 'invalid level'
+            raise ValueError('invalid level')
 
         try:
             if column_key and column_value:
-                return self.kpi_static_data[self.kpi_static_data[column_value].str.encode('utf-8') == kpi_name.encode('utf-8')][column_key].values[0]
+                return self.kpi_static_data[
+                    self.kpi_static_data[column_value].str.encode('utf-8') == kpi_name.encode('utf-8')][
+                    column_key].values[0]
 
         except IndexError:
             Log.error('Kpi name: {}, isnt equal to any kpi name in static table'.format(kpi_name))
@@ -549,4 +552,3 @@ class CBCDAIRYILToolBox:
                 [facings_counter[product] for product in products if product in facings_counter]) > 1 else 0
         total_score = (score / float(len(self.passed_availability)))*100 if self.passed_availability else 0
         return score, len(self.passed_availability), total_score
-
