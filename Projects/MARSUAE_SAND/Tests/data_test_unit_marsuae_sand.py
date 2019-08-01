@@ -52,19 +52,6 @@ class DataTestUnitMarsuae(object):
          {'pk': 3034, 'type': u'SOS - Petfood Main'}]
     )
 
-    # custom_entity = pd.DataFrame.from_records(
-    #     [{'entity_type_fk': 1003, 'name': 'Healthier Multipack', 'parent_id': nan, 'pk': 11},
-    #      {'entity_type_fk': 1004, 'name': 'Fun times together Tortilla', 'parent_id': nan, 'pk': 12},
-    #      {'entity_type_fk': 1004, 'name': 'Fun times together Tubes', 'parent_id': nan, 'pk': 13},
-    #      {'entity_type_fk': 1003, 'name': 'Premium Sharing', 'parent_id': nan, 'pk': 14},
-    #      {'entity_type_fk': 1002, 'name': 'TRANSFORM-A-SNACK', 'parent_id': nan, 'pk': 15},
-    #      {'entity_type_fk': 1005, 'name': 'Pringles_FTT_Tubes', 'parent_id': nan, 'pk': 165},
-    #      {'entity_type_fk': 1005, 'name': 'Hula Hoops_LMP_Snacks', 'parent_id': nan, 'pk': 166},
-    #      {'entity_type_fk': 1005, 'name': 'DORITOS GROUP', 'parent_id': nan, 'pk': 167},
-    #      {'entity_type_fk': 1005, 'name': 'Walkers Crisps_Small MP PC', 'parent_id': nan, 'pk': 168},
-    #      {'entity_type_fk': 1002, 'name': 'EAT REAL HUMMUS LENTIL & QUINOA CHIPS', 'pk': 10}]
-    # )
-
     store_data_sss_a = pd.DataFrame.from_records(
         [{'pk': 1, 'store_type': 'SSS A', 'store_number_1': '10388932', 'additional_attribute_1': 'All Others',
           'additional_attribute_2': 'General Trade', 'additional_attribute_3': 'SSS'}])
@@ -78,11 +65,6 @@ class DataTestUnitMarsuae(object):
     # exclusion_template_path ='{}/Data/Template_L&T_test_updated.xlsx'.format(os.path.dirname(os.path.realpath(__file__)))
 
     # test_case_2 = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'Data', 'test_case_2_empty_scene.xlsx')
-
-    # on_display_products = pd.DataFrame.from_records([{'probe_match_fk': 1, 'smart_attribute': 'stock'},
-    #                                                  {'probe_match_fk': 2, 'smart_attribute': 'additional display'},
-    #                                                  {'probe_match_fk': 9, 'smart_attribute': 'additional display'},
-    #                                                  {'probe_match_fk': 10, 'smart_attribute': 'additional display'}])
 
     session_info_1 = pd.DataFrame.from_records([
         {'pk': 101, 'visit_date': '2019-06-18', 'store_fk': 1, 's_sales_rep_fk': 42, 'exclude_status_fk': None,
@@ -117,6 +99,36 @@ class DataTestUnitMarsuae(object):
         {'pk': 2, 'json_field': u''}, {'pk': 3, 'json_field': u''}
     ])
 
+    all_products_scene = pd.DataFrame([
+        {'product_fk': 1, 'product_name': 'Product 1'}, {'product_fk': 2, 'product_name': 'Product 2'},
+        {'product_fk': 3, 'product_name': 'Product 3'}, {'product_fk': 4, 'product_name': 'Product 4'}
+    ])
+
+    scene_1_no_prices = pd.DataFrame([
+        {'probe_match_fk': 1, 'scene_fk': 1, 'product_fk': 1, 'price': None, 'promotion_price': None},
+        {'probe_match_fk': 2, 'scene_fk': 1, 'product_fk': 1, 'price': None, 'promotion_price': None},
+        {'probe_match_fk': 3, 'scene_fk': 1, 'product_fk': 2, 'price': None, 'promotion_price': None},
+        {'probe_match_fk': 4, 'scene_fk': 1, 'product_fk': 3, 'price': None, 'promotion_price': None},
+    ])
+
+    scene_2 = pd.DataFrame([
+        {'probe_match_fk': 1, 'scene_fk': 1, 'product_fk': 1, 'price': 4, 'promotion_price': None},
+        {'probe_match_fk': 2, 'scene_fk': 1, 'product_fk': 1, 'price': None, 'promotion_price': None},
+        {'probe_match_fk': 3, 'scene_fk': 1, 'product_fk': 1, 'price': 4.5, 'promotion_price': None},
+        {'probe_match_fk': 4, 'scene_fk': 1, 'product_fk': 3, 'price': None, 'promotion_price': None},
+        {'probe_match_fk': 5, 'scene_fk': 1, 'product_fk': 3, 'price': 2, 'promotion_price': None},
+        {'probe_match_fk': 6, 'scene_fk': 1, 'product_fk': 2, 'price': None, 'promotion_price': None},
+    ])
+
+    scene_3 = pd.DataFrame([
+        {'probe_match_fk': 1, 'scene_fk': 1, 'product_fk': 1, 'price': 4, 'promotion_price': None},
+        {'probe_match_fk': 2, 'scene_fk': 1, 'product_fk': 1, 'price': 3, 'promotion_price': 5},
+        {'probe_match_fk': 3, 'scene_fk': 1, 'product_fk': 1, 'price': None, 'promotion_price': 4.8},
+        {'probe_match_fk': 4, 'scene_fk': 1, 'product_fk': 3, 'price': 2, 'promotion_price': 1},
+        {'probe_match_fk': 5, 'scene_fk': 1, 'product_fk': 3, 'price': 2, 'promotion_price': 1.5},
+    ])
+
+    #change product pks
     assortment_store_sss_a = pd.DataFrame.from_records([
         {'additional_attributes': '{}', 'assortment_fk': 128, 'assortment_group_fk': 94, 'assortment_super_group_fk': nan,
          'group_target_date': nan, 'in_store': 0, 'kpi_fk_lvl1': nan, 'kpi_fk_lvl2': 3009, 'kpi_fk_lvl3': 3017,
