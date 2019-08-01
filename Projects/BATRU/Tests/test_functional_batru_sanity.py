@@ -7,7 +7,7 @@ from Trax.Data.Testing.SeedNew import Seeder
 from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
 from Trax.Cloud.Services.Connector.Keys import DbUsers
 from Trax.Data.Testing.TestProjects import TestProjectsNames
-from Tests.Data.TestData.test_data_batru_sanity import ProjectsSanityData
+from Projects.BATRU.Tests.Data.test_data_batru_sanity import ProjectsSanityData
 from Projects.BATRU.Calculations import BATRUCalculations
 
 from Trax.Apps.Core.Testing.BaseCase import TestFunctionalCase
