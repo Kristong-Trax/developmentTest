@@ -12,10 +12,10 @@ __author__ = 'ilays'
 
 class ProjectsSanityData(BaseSeedData):
     project_name = TestProjectsNames().TEST_PROJECT_1
-    jnjde_seed = {DATA_TYPE: BaseSeedData.MYSQL,
-                       FILES_RELATIVE_PATH: ['Data/Seeds/jnjde_seed.sql.gz'],
-                       PROJECT_NAME: project_name
-                       } 
+    jnjes_seed = {DATA_TYPE: BaseSeedData.MYSQL,
+                  FILES_RELATIVE_PATH: ['Data/jnjes_seed.sql.gz'],
+                  PROJECT_NAME: project_name
+                  }
     mongodb_products_and_brands_seed = {DATA_TYPE: BaseSeedData.MONGO,
                                         DATABASE_NAME: MongoConnector.SMART,
                                         COLLECTION_NAME: 'projects_project',

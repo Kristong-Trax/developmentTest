@@ -7,12 +7,11 @@ from Trax.Data.Testing.SeedNew import Seeder
 from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
 from Trax.Cloud.Services.Connector.Keys import DbUsers
 from Trax.Data.Testing.TestProjects import TestProjectsNames
-from Tests.Data.TestData.test_data_ccru_sanity import ProjectsSanityData
-from Projects.CCRU.Calculations import CCRUCalculations
+from Projects.INBEVNL.Tests.Data.test_data_inbevnl_sanity import ProjectsSanityData
+from Projects.INBEVNL.Calculations import INBEVNLINBEVBECalculations
 
 from Trax.Apps.Core.Testing.BaseCase import TestFunctionalCase
 from Tests.TestUtils import remove_cache_and_storage
-from Trax.Utils.Testing.Case import skip
 
 
 __author__ = 'ilays'
@@ -24,7 +23,8 @@ class TestKEngineOutOfTheBox(TestFunctionalCase):
         super(TestKEngineOutOfTheBox, self).set_up()
         remove_cache_and_storage()
         self.mock_object(object_name='commit_results_data', path='KPIUtils_v2.DB.CommonV2.Common')
-        self.mock_object(object_name='commit_results_data_new', path='Projects.CCRU.Utils.ToolBox.CCRUKPIToolBox')
+        self.mock_object(object_name='save_latest_templates', path='KPIUtils.INBEV.ToolBox.ToolBox')
+
 
     @property
     def import_path(self):
@@ -65,16 +65,16 @@ class TestKEngineOutOfTheBox(TestFunctionalCase):
         kpi_results = cursor.fetchall()
         self.assertNotEquals(len(kpi_results), 0)
         connector.disconnect_rds()
-
-    @seeder.seed(["ccru_seed", "mongodb_products_and_brands_seed"], ProjectsSanityData())
-    def test_ccru_sanity(self):
+    
+    @seeder.seed(["inbevnl_seed", "mongodb_products_and_brands_seed"], ProjectsSanityData())
+    def test_inbevnl_sanity(self):
         project_name = ProjectsSanityData.project_name
         data_provider = KEngineDataProvider(project_name)
-        sessions = {'854F53FF-9B52-4DCF-9E95-A393487BCCA2': []}
+        sessions = {'3b863322-0606-48cb-92fe-ade6be7f132b': []}
         for session in sessions.keys():
             data_provider.load_session_data(str(session))
             output = Output()
-            CCRUCalculations(data_provider, output).run_project_calculations()
+            INBEVNLINBEVBECalculations(data_provider, output).run_project_calculations()
             self._assert_old_tables_kpi_results_filled()
             # self._assert_new_tables_kpi_results_filled()
             # for scene in sessions[session]:

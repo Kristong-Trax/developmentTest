@@ -7,7 +7,7 @@ from Trax.Data.Testing.SeedNew import Seeder
 from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
 from Trax.Cloud.Services.Connector.Keys import DbUsers
 from Trax.Data.Testing.TestProjects import TestProjectsNames
-from Tests.Data.TestData.test_data_cbcdairyil_sanity import ProjectsSanityData
+from Projects.CBCDAIRYIL.Tests.Data.test_data_cbcdairyil_sanity import ProjectsSanityData
 from Projects.CBCDAIRYIL.Calculations import Calculations
 from Trax.Apps.Core.Testing.BaseCase import TestFunctionalCase
 from Tests.TestUtils import remove_cache_and_storage
@@ -31,14 +31,33 @@ class TestKEngineOutOfTheBox(TestFunctionalCase):
         return os.path.join(os.path.dirname(os.path.realpath(__file__)), 'k-engine-test.config')
     
     seeder = Seeder()
-    
-    def _assert_kpi_results_filled(self):
-        """ This is a basic test in order to make sure that there are results for the calculation"""
+
+    def _assert_old_tables_kpi_results_filled(self):
         connector = PSProjectConnector(TestProjectsNames().TEST_PROJECT_1, DbUsers.Docker)
         cursor = connector.db.cursor(MySQLdb.cursors.DictCursor)
         cursor.execute('''
-        SELECT * FROM report.kpi_level_2_results
-        ''')
+           SELECT * FROM report.kpi_results
+           ''')
+        kpi_results = cursor.fetchall()
+        self.assertNotEquals(len(kpi_results), 0)
+        connector.disconnect_rds()
+
+    def _assert_new_tables_kpi_results_filled(self):
+        connector = PSProjectConnector(TestProjectsNames().TEST_PROJECT_1, DbUsers.Docker)
+        cursor = connector.db.cursor(MySQLdb.cursors.DictCursor)
+        cursor.execute('''
+           SELECT * FROM report.kpi_level_2_results
+           ''')
+        kpi_results = cursor.fetchall()
+        self.assertNotEquals(len(kpi_results), 0)
+        connector.disconnect_rds()
+
+    def _assert_scene_tables_kpi_results_filled(self):
+        connector = PSProjectConnector(TestProjectsNames().TEST_PROJECT_1, DbUsers.Docker)
+        cursor = connector.db.cursor(MySQLdb.cursors.DictCursor)
+        cursor.execute('''
+           SELECT * FROM report.scene_kpi_results
+           ''')
         kpi_results = cursor.fetchall()
         self.assertNotEquals(len(kpi_results), 0)
         connector.disconnect_rds()
@@ -52,4 +71,5 @@ class TestKEngineOutOfTheBox(TestFunctionalCase):
             data_provider.load_session_data(session)
             output = Output()
             Calculations(data_provider, output).run_project_calculations()
-            self._assert_kpi_results_filled()
+            self._assert_old_tables_kpi_results_filled()
+            self._assert_new_tables_kpi_results_filled()
