@@ -86,10 +86,13 @@ class Results(object):
             calculation = self._kpi_type_calculator_mapping[atomic['kpi_type']](self._tools, self._data_provider,
                                                                                 self._preferred_range)
             if self.min_face:
-                thresh = self.min_face[(atomic['atomic'], self._data_provider.store_type)]['value']
-                if not thresh:
-                    thresh = 0
-                atomic['filters'].update({FACINGS: [thresh]})
+                try:
+                    thresh = self.min_face[(atomic['atomic'], self._data_provider.store_type)]['value']
+                    if not thresh:
+                        thresh = 0
+                    atomic['filters'].update({FACINGS: [thresh]})
+                except:
+                    pass
             # This setup allows some kpis to return an object, so we don't have to
             # keep calculating the same things over and over....
             kpi_res = calculation.calculate_atomic_kpi(atomic)
