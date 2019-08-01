@@ -280,8 +280,11 @@ class MARSRU_PRODKPIToolBox:
         # assortment_products = self.get_assortment_for_store_id()
         assortment_products = self.assortment.get_lvl3_relevant_ass()
         assortment_group = \
-            self.kpi_fetcher.get_relevant_assortment_group(assortment_products['assortment_group_fk'].unique().tolist() + [0])
+            self.kpi_fetcher.get_relevant_assortment_group(assortment_products[
+                                                               'assortment_group_fk'].unique().tolist() + [0],
+                                                           self.store_id)
         assortment_products = assortment_products[assortment_products['assortment_group_fk'] == assortment_group]
+
         if not assortment_products.empty:
             assortment_products = assortment_products['product_fk'].tolist()
             for scene in self.scif['scene_fk'].unique().tolist():
@@ -2357,73 +2360,75 @@ class MARSRU_PRODKPIToolBox:
         # assortment_products = self.get_assortment_for_store_id()
         assortment_products = self.assortment.get_lvl3_relevant_ass()
         assortment_group = \
-            self.kpi_fetcher.get_relevant_assortment_group(assortment_products['assortment_group_fk'].unique().tolist() + [0])
+            self.kpi_fetcher.get_relevant_assortment_group(assortment_products[
+                                                               'assortment_group_fk'].unique().tolist() + [0],
+                                                           self.store_id)
         assortment_products = assortment_products[assortment_products['assortment_group_fk'] == assortment_group]
-        if assortment_products.empty:
-            return
 
-        assortment_products = assortment_products['product_fk'].tolist()
-        product_facings = self.scif.groupby('product_fk')['facings'].sum().reset_index()
+        if not assortment_products.empty:
+            assortment_products = assortment_products['product_fk'].tolist()
+            product_facings = self.scif.groupby('product_fk')['facings'].sum().reset_index()
 
-        kpi_fk = self.common.get_kpi_fk_by_kpi_type(OSA_KPI_NAME + ' - SKU')
-        parent_fk = self.common.get_kpi_fk_by_kpi_type(OSA_KPI_NAME)
-        identifier_result = self.common.get_dictionary(kpi_fk=kpi_fk)
-        identifier_parent = self.common.get_dictionary(kpi_fk=parent_fk)
-        denominator_id = self.store_id
-        total_result = 0
-        for product in assortment_products:
-            numerator_id = product
-            try:
-                numerator_result = product_facings[product_facings['product_fk']
-                                                   == product]['facings'].iloc[0]
-            except:
-                numerator_result = 0
-            denominator_result = 1
-            result = 1 if numerator_result >= denominator_result else 0
+            kpi_fk = self.common.get_kpi_fk_by_kpi_type(OSA_KPI_NAME + ' - SKU')
+            parent_fk = self.common.get_kpi_fk_by_kpi_type(OSA_KPI_NAME)
+            identifier_result = self.common.get_dictionary(kpi_fk=kpi_fk)
+            identifier_parent = self.common.get_dictionary(kpi_fk=parent_fk)
+            denominator_id = self.store_id
+            total_result = 0
+            for product in assortment_products:
+                numerator_id = product
+                try:
+                    numerator_result = product_facings[product_facings['product_fk'] == product]['facings'].iloc[0]
+                except:
+                    numerator_result = 0
+                denominator_result = 1
+                result = 1 if numerator_result >= denominator_result else 0
+                score = result*100
+
+                try:
+                    if result:
+                        result_value = self.kpi_fetcher.kpi_result_values[
+                            (self.kpi_fetcher.kpi_result_values['kpi_result_type'] == 'PRESENCE') &
+                            (self.kpi_fetcher.kpi_result_values['kpi_result_value'] == 'DISTRIBUTED')][
+                            'kpi_result_value_fk'].iloc[0]
+                    else:
+                        result_value = self.kpi_fetcher.kpi_result_values[
+                            (self.kpi_fetcher.kpi_result_values['kpi_result_type'] == 'PRESENCE') &
+                            (self.kpi_fetcher.kpi_result_values['kpi_result_value'] == 'OOS')][
+                            'kpi_result_value_fk'].iloc[0]
+                except:
+                    result_value = None
+
+                self.common.write_to_db_result(fk=kpi_fk,
+                                               numerator_id=numerator_id,
+                                               numerator_result=numerator_result,
+                                               denominator_id=denominator_id,
+                                               denominator_result=denominator_result,
+                                               result=result_value,
+                                               score=score,
+                                               identifier_result=identifier_result,
+                                               identifier_parent=identifier_parent,
+                                               should_enter=True)
+                total_result += result
+
+            kpi_fk = self.common.get_kpi_fk_by_kpi_type(OSA_KPI_NAME)
+            parent_fk = 0
+            identifier_result = self.common.get_dictionary(kpi_fk=kpi_fk)
+            identifier_parent = self.common.get_dictionary(kpi_fk=parent_fk)
+            numerator_id = self.own_manufacturer_id
+            numerator_result = total_result
+            denominator_result = len(assortment_products)
+            result = round(numerator_result / float(denominator_result), 3)
             score = result*100
-
-            try:
-                if result:
-                    result_value = self.kpi_fetcher.kpi_result_values[
-                        (self.kpi_fetcher.kpi_result_values['kpi_result_type'] == 'PRESENCE') &
-                        (self.kpi_fetcher.kpi_result_values['kpi_result_value'] == 'DISTRIBUTED')][
-                        'kpi_result_value_fk'].iloc[0]
-                else:
-                    result_value = self.kpi_fetcher.kpi_result_values[
-                        (self.kpi_fetcher.kpi_result_values['kpi_result_type'] == 'PRESENCE') &
-                        (self.kpi_fetcher.kpi_result_values['kpi_result_value'] == 'OOS')][
-                        'kpi_result_value_fk'].iloc[0]
-            except:
-                result_value = None
-
             self.common.write_to_db_result(fk=kpi_fk,
                                            numerator_id=numerator_id,
                                            numerator_result=numerator_result,
                                            denominator_id=denominator_id,
                                            denominator_result=denominator_result,
-                                           result=result_value,
+                                           result=result,
                                            score=score,
                                            identifier_result=identifier_result,
                                            identifier_parent=identifier_parent,
                                            should_enter=True)
-            total_result += result
 
-        kpi_fk = self.common.get_kpi_fk_by_kpi_type(OSA_KPI_NAME)
-        parent_fk = 0
-        identifier_result = self.common.get_dictionary(kpi_fk=kpi_fk)
-        identifier_parent = self.common.get_dictionary(kpi_fk=parent_fk)
-        numerator_id = self.own_manufacturer_id
-        numerator_result = total_result
-        denominator_result = len(assortment_products)
-        result = round(numerator_result / float(denominator_result), 3)
-        score = result*100
-        self.common.write_to_db_result(fk=kpi_fk,
-                                       numerator_id=numerator_id,
-                                       numerator_result=numerator_result,
-                                       denominator_id=denominator_id,
-                                       denominator_result=denominator_result,
-                                       result=result,
-                                       score=score,
-                                       identifier_result=identifier_result,
-                                       identifier_parent=identifier_parent,
-                                       should_enter=True)
+        return

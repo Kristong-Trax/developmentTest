@@ -7,8 +7,8 @@ from Trax.Data.Testing.SeedNew import Seeder
 from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
 from Trax.Cloud.Services.Connector.Keys import DbUsers
 from Trax.Data.Testing.TestProjects import TestProjectsNames
-from Tests.Data.TestData.test_data_inbevnl_sanity import ProjectsSanityData
-from Projects.INBEVNL.Calculations import INBEVNLINBEVBECalculations
+from Tests.Data.TestData.test_data_jnjit_sanity import ProjectsSanityData
+from Projects.JNJIT.Calculations import JNJITCalculations
 
 from Trax.Apps.Core.Testing.BaseCase import TestFunctionalCase
 from Tests.TestUtils import remove_cache_and_storage
@@ -23,8 +23,6 @@ class TestKEngineOutOfTheBox(TestFunctionalCase):
         super(TestKEngineOutOfTheBox, self).set_up()
         remove_cache_and_storage()
         self.mock_object(object_name='commit_results_data', path='KPIUtils_v2.DB.CommonV2.Common')
-        self.mock_object(object_name='save_latest_templates', path='KPIUtils.INBEV.ToolBox.ToolBox')
-
 
     @property
     def import_path(self):
@@ -66,17 +64,17 @@ class TestKEngineOutOfTheBox(TestFunctionalCase):
         self.assertNotEquals(len(kpi_results), 0)
         connector.disconnect_rds()
     
-    @seeder.seed(["inbevnl_seed", "mongodb_products_and_brands_seed"], ProjectsSanityData())
-    def test_inbevnl_sanity(self):
+    @seeder.seed(["jnjit_seed", "mongodb_products_and_brands_seed"], ProjectsSanityData())
+    def test_jnjit_sanity(self):
         project_name = ProjectsSanityData.project_name
         data_provider = KEngineDataProvider(project_name)
-        sessions = {'3b863322-0606-48cb-92fe-ade6be7f132b': []}
+        sessions = {'e85417b8-54ed-473f-82ee-b38b6cbcaf28': []}
         for session in sessions.keys():
             data_provider.load_session_data(str(session))
             output = Output()
-            INBEVNLINBEVBECalculations(data_provider, output).run_project_calculations()
-            self._assert_old_tables_kpi_results_filled()
-            # self._assert_new_tables_kpi_results_filled()
+            JNJITCalculations(data_provider, output).run_project_calculations()
+            # self._assert_old_tables_kpi_results_filled()
+            self._assert_new_tables_kpi_results_filled()
             # for scene in sessions[session]:
             #     data_provider.load_scene_data(str(session), scene_id=scene)
             #     SceneCalculations(data_provider).calculate_kpis()

@@ -24,6 +24,7 @@ class TestKEngineOutOfTheBox(TestFunctionalCase):
         super(TestKEngineOutOfTheBox, self).set_up()
         remove_cache_and_storage()
         self.mock_object(object_name='commit_results_data', path='KPIUtils_v2.DB.CommonV2.Common')
+        self.mock_object(object_name='commit_results_data_new', path='Projects.CCRU.Utils.ToolBox.CCRUKPIToolBox')
 
     @property
     def import_path(self):
@@ -65,7 +66,6 @@ class TestKEngineOutOfTheBox(TestFunctionalCase):
         self.assertNotEquals(len(kpi_results), 0)
         connector.disconnect_rds()
 
-    @skip('Test is not completely ready')
     @seeder.seed(["ccru_seed", "mongodb_products_and_brands_seed"], ProjectsSanityData())
     def test_ccru_sanity(self):
         project_name = ProjectsSanityData.project_name

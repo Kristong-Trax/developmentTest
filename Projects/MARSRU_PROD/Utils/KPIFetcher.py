@@ -423,14 +423,14 @@ class MARSRU_PRODKPIFetcher:
         assortments = pd.read_sql_query(query, self.rds_conn.db)
         return assortments['product_fk'].tolist()
 
-    def get_relevant_assortment_group(self, assortment_groups):
+    def get_relevant_assortment_group(self, assortment_groups, store_id):
         assortment_groups = tuple(assortment_groups)
         self.check_connection(self.rds_conn)
         query = """
                 SELECT a.pk AS assortment_group_fk, p.policy AS policy
                 FROM pservice.assortment a
                 JOIN pservice.policy p ON p.pk=a.store_policy_group_fk
-                WHERE a.pk IN{}                
+                WHERE a.pk IN {}                
                 """.format(assortment_groups)
         assortment_groups = pd.read_sql_query(query, self.rds_conn.db)
         if not assortment_groups[assortment_groups['policy'].str.startswith('{"store_number_1":')].empty:
@@ -442,8 +442,12 @@ class MARSRU_PRODKPIFetcher:
         elif not assortment_groups[assortment_groups['policy'] == '{}'].empty:
             assortment_group = assortment_groups[assortment_groups['policy'] == '{}'][
                 'assortment_group_fk'].values[0]
+        elif not assortment_groups[assortment_groups['policy'].str.startswith('{"region_name":')].empty:
+            assortment_group = assortment_groups[assortment_groups['policy'].str.startswith('{"region_name":')][
+                'assortment_group_fk'].values[0]
         else:
             assortment_group = 0
+            Log.warning('Error. No relevant OSA Assortment was found. Store ID: {}'.format(store_id))
 
         return assortment_group
 
