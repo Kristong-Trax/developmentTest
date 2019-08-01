@@ -282,9 +282,9 @@ if __name__ == '__main__':
     """
     LoggerInitializer.init('')
     Config.init()
-    project_to_test = 'jnjit'
+    project_to_test = 'inbevnl'
     creator = SeedCreator(project_to_test)
-    creator.activate_exporter(specific_sessions_and_scenes={'e85417b8-54ed-473f-82ee-b38b6cbcaf28':[]}
+    creator.activate_exporter(specific_sessions_and_scenes={'3b863322-0606-48cb-92fe-ade6be7f132b':[]}
                               # {'6e4dc935-ab56-45ef-9408-caaddb963874': [17888508],
                               #  'C544B5DB-B61F-4B02-B03A-6D8748B3B636': []}
                               )

@@ -1,5 +1,6 @@
 # coding=utf-8
 import pandas as pd
+from collections import Counter
 from Trax.Utils.Logging.Logger import Log
 from KPIUtils_v2.DB.CommonV2 import Common
 from KPIUtils_v2.Utils.Parsers import ParseInputKPI
@@ -25,9 +26,10 @@ class TNUVAILSANDToolBox:
         self.db_handler = DBHandler(self.data_provider.project_name, self.data_provider.session_uid)
         self.previous_oos_results = self.db_handler.get_last_session_oos_results()
         self.kpi_result_types = self.db_handler.get_kpi_result_type()
+        self.oos_store_results = list()
 
     def main_calculation(self):
-        """ This function calculates all of the KPIs' results """
+        """ This function calculates all of the KPIs' results."""
         self._calculate_facings_sos()
         self._calculate_assortment()
         self.common_v2.commit_results_data()
@@ -53,6 +55,23 @@ class TNUVAILSANDToolBox:
             return
         self._calculate_assortment_results_per_policy(lvl3_result, policy=Consts.MILKY_POLICY)
         self._calculate_assortment_results_per_policy(lvl3_result, policy=Consts.TIRAT_TSVI_POLICY)
+        self._calculate_total_oos_results()  # New addition: In order to support NCC report and OOS reasons
+
+    def _calculate_total_oos_results(self):
+        """
+        This KPI uses the previous OOS results that were calculated and saves the results in the store level
+        (without considering "Dairy" or "Tirat Tsvi" policies).
+        """
+        if not self.oos_store_results:
+            return
+        store_level_no_policy_kpi_fk = self.common_v2.get_kpi_fk_by_kpi_type(Consts.OOS_STORE_LEVEL)
+        total_res = Counter()
+        for result in self.oos_store_results:
+            total_res.update(result)
+        total_res[Consts.DENOMINATOR_ID] = self.store_id
+        total_res[Consts.MANUFACTURER_FK] = self.own_manufacturer_fk
+        total_res = [dict(total_res)]
+        self._save_results_for_assortment(Consts.MANUFACTURER_FK, total_res, store_level_no_policy_kpi_fk)
 
     def _prepare_data_for_assortment_calculation(self):
         """ This method gets the level 3 assortment results (SKU level), adding category_fk and returns the DataFrame"""
@@ -84,7 +103,6 @@ class TNUVAILSANDToolBox:
 
     def _get_filtered_scif_for_sos_calculations(self, policy):
         """ This method filters scene item facts by policy and removes redundant row for SOS calculation"""
-        # TODO: rlv_sos_sc -> should be used in this case...?
         filtered_scif = self._get_filtered_scif_per_scene_type(policy)
         filtered_scif = filtered_scif[~filtered_scif[Consts.PRODUCT_TYPE].isin(Consts.TYPES_TO_IGNORE_IN_SOS)]
         filtered_scif = filtered_scif.loc[filtered_scif[Consts.FACINGS_FOR_SOS] > 0]
@@ -129,18 +147,18 @@ class TNUVAILSANDToolBox:
         """
         if is_distribution:
                 if policy == Consts.MILKY_POLICY:
-                    store_level_fk = self.common_v2.get_kpi_fk_by_kpi_type(Consts.DIST_STORE_LEVEL_MILKY)
-                    category_level_fk = self.common_v2.get_kpi_fk_by_kpi_type(Consts.DIST_CATEGORY_LEVEL_MILKY)
-                    sku_level_fk = self.common_v2.get_kpi_fk_by_kpi_type(Consts.DIST_SKU_LEVEL_MILKY)
+                    store_level_fk = self.common_v2.get_kpi_fk_by_kpi_type(Consts.DIST_STORE_LEVEL_DAIRY)
+                    category_level_fk = self.common_v2.get_kpi_fk_by_kpi_type(Consts.DIST_CATEGORY_LEVEL_DAIRY)
+                    sku_level_fk = self.common_v2.get_kpi_fk_by_kpi_type(Consts.DIST_SKU_LEVEL_DAIRY)
                 else:
                     store_level_fk = self.common_v2.get_kpi_fk_by_kpi_type(Consts.DIST_STORE_LEVEL_TIRAT_TSVI)
                     category_level_fk = self.common_v2.get_kpi_fk_by_kpi_type(Consts.DIST_CATEGORY_LEVEL_TIRAT_TSVI)
                     sku_level_fk = self.common_v2.get_kpi_fk_by_kpi_type(Consts.DIST_SKU_LEVEL_TIRAT_TSVI)
         else:
             if policy == Consts.MILKY_POLICY:
-                store_level_fk = self.common_v2.get_kpi_fk_by_kpi_type(Consts.OOS_STORE_LEVEL_MILKY)
-                category_level_fk = self.common_v2.get_kpi_fk_by_kpi_type(Consts.OOS_CATEGORY_LEVEL_MILKY)
-                sku_level_fk = self.common_v2.get_kpi_fk_by_kpi_type(Consts.OOS_SKU_LEVEL_MILKY)
+                store_level_fk = self.common_v2.get_kpi_fk_by_kpi_type(Consts.OOS_STORE_LEVEL_DAIRY)
+                category_level_fk = self.common_v2.get_kpi_fk_by_kpi_type(Consts.OOS_CATEGORY_LEVEL_DAIRY)
+                sku_level_fk = self.common_v2.get_kpi_fk_by_kpi_type(Consts.OOS_SKU_LEVEL_DAIRY)
             else:
                 store_level_fk = self.common_v2.get_kpi_fk_by_kpi_type(Consts.OOS_STORE_LEVEL_TIRAT_TSVI)
                 category_level_fk = self.common_v2.get_kpi_fk_by_kpi_type(Consts.OOS_CATEGORY_LEVEL_TIRAT_TSVI)
@@ -164,6 +182,7 @@ class TNUVAILSANDToolBox:
         if not is_distribution:  # In OOS the numerator is total - distribution
             store_result_dict[Consts.NUMERATOR_RESULT] = store_result_dict[Consts.DENOMINATOR_RESULT] - \
                                                          store_result_dict[Consts.NUMERATOR_RESULT]
+            self.oos_store_results.append(store_result_dict)
         return [store_result_dict]
 
     def _calculate_category_level_assortment(self, lvl3_data, is_distribution):
@@ -196,9 +215,7 @@ class TNUVAILSANDToolBox:
         :return: A dictionary - which contains the following keys: product_fk, denominator_id, numerator_result and
         denominator_result.
         """
-        in_store_relevant_attributes = [Consts.OOS, Consts.AVAILABLE] if is_distribution else [Consts.OOS]
-        sku_level_res = lvl3_data.loc[lvl3_data.in_store.isin(in_store_relevant_attributes)]
-        sku_level_res = sku_level_res[[Consts.PRODUCT_FK, Consts.IN_STORE, Consts.CATEGORY_FK, Consts.FACINGS]]
+        sku_level_res = lvl3_data[[Consts.PRODUCT_FK, Consts.IN_STORE, Consts.CATEGORY_FK, Consts.FACINGS]]
         sku_level_res.rename(Consts.SOS_SKU_LVL_RENAME, axis=1, inplace=True)
         if not is_distribution:
             sku_level_res[Consts.DENOMINATOR_RESULT] = 1
@@ -209,7 +226,7 @@ class TNUVAILSANDToolBox:
         """
         This method calculates the 3 levels of the assortment.
         :param lvl3_data: Assortment SKU level results + category_fk column.
-        :param policy: חלבי או טירת צבי
+        :param policy:  חלבי או טירת צבי - this policy is matching for scene types and products as well
         """
         if lvl3_data.empty:
             Log.warning(Consts.LOG_EMPTY_ASSORTMENT_DATA_PER_POLICY.format(policy.encode('utf-8')))
@@ -218,11 +235,14 @@ class TNUVAILSANDToolBox:
         store_results = self._calculate_store_level_assortment(lvl3_data, is_distribution=is_dist)
         category_results = self._calculate_category_level_assortment(lvl3_data, is_distribution=is_dist)
         sku_level_results = self._calculate_sku_level_assortment(lvl3_data, is_distribution=is_dist)
-        self._save_results_for_assortment_(Consts.MANUFACTURER_FK, store_results, store_level_kpi_fk)
-        self._save_results_for_assortment_(Consts.CATEGORY_FK, category_results, cat_lvl_fk, store_level_kpi_fk)
-        self._save_results_for_assortment_(Consts.PRODUCT_FK, sku_level_results, sku_level_fk, cat_lvl_fk, not is_dist)
+        self._save_results_for_assortment(Consts.MANUFACTURER_FK, store_results, store_level_kpi_fk)
+        self._save_results_for_assortment(Consts.CATEGORY_FK, category_results, cat_lvl_fk, store_level_kpi_fk)
+        self._save_results_for_assortment(Consts.PRODUCT_FK, sku_level_results, sku_level_fk, cat_lvl_fk, not is_dist)
+        if not is_dist:  # New addition in order to support OOS reasons
+            sku_no_policy_kpi_fk = self.common_v2.get_kpi_fk_by_kpi_type(Consts.OOS_SKU_IN_STORE_LEVEL)
+            self._save_results_for_assortment(Consts.PRODUCT_FK, sku_level_results, sku_no_policy_kpi_fk, None, True)
 
-    def _save_results_for_assortment_(self, numerator_entity, results_list, kpi_fk, parent_kpi_fk=None, prev_res=False):
+    def _save_results_for_assortment(self, numerator_entity, results_list, kpi_fk, parent_kpi_fk=None, prev_res=False):
         """
         This method saves the assortments results for all of the levels.
         For OOS the last session's results per product from this store is being saved as "score"!
@@ -237,7 +257,7 @@ class TNUVAILSANDToolBox:
             num_res, denominator_res = result[Consts.NUMERATOR_RESULT], result[Consts.DENOMINATOR_RESULT]
             context_id = numerator_id if prev_res else None
             score, result = self._calculate_assortment_score_and_result(numerator_entity, num_res, denominator_res)
-            score = self._get_previous_oos_score(kpi_fk, numerator_id) if prev_res else score
+            score = self._get_previous_oos_score(kpi_fk, numerator_id) if prev_res else score   # Only for OOS-SKU!
             self.common_v2.write_to_db_result(fk=kpi_fk, numerator_id=numerator_id, numerator_result=num_res,
                                               denominator_id=self.store_id, denominator_result=denominator_res,
                                               score=score, result=result, should_enter=should_enter,
@@ -283,9 +303,9 @@ class TNUVAILSANDToolBox:
         tuple with the relevant KPIs (store_level, own manufacturer_out_of_category, all_manufacturers_out_of_category)
         """
         if policy == Consts.MILKY_POLICY:
-            store_level_fk = self.common_v2.get_kpi_fk_by_kpi_type(Consts.SOS_MANU_OUT_OF_STORE_KPI_MILKY)
-            own_manu_category_level_fk = self.common_v2.get_kpi_fk_by_kpi_type(Consts.SOS_OWN_MANU_OUT_OF_CAT_KPI_MILKY)
-            all_manu_category_level_fk = self.common_v2.get_kpi_fk_by_kpi_type(Consts.SOS_ALL_MANU_OUT_OF_CAT_KPI_MILKY)
+            store_level_fk = self.common_v2.get_kpi_fk_by_kpi_type(Consts.SOS_MANU_OUT_OF_STORE_KPI_DAIRY)
+            own_manu_category_level_fk = self.common_v2.get_kpi_fk_by_kpi_type(Consts.SOS_OWN_MANU_OUT_OF_CAT_KPI_DAIRY)
+            all_manu_category_level_fk = self.common_v2.get_kpi_fk_by_kpi_type(Consts.SOS_ALL_MANU_OUT_OF_CAT_KPI_DAIRY)
         else:
             store_level_fk = self.common_v2.get_kpi_fk_by_kpi_type(Consts.SOS_MANU_OUT_OF_STORE_KPI_TIRAT_TSVI)
             own_manu_category_level_fk = self.common_v2.get_kpi_fk_by_kpi_type(Consts.SOS_OWN_MANU_OUT_OF_CAT_KPI_TSVI)
