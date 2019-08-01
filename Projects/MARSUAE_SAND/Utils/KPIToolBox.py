@@ -426,7 +426,7 @@ class MARSUAE_SANDToolBox:
     def calculate_category_level(self):
         self.cat_lvl_res = self.atomic_kpi_results.groupby(['parent_name'],
                                                            as_index=False).agg({'score_by_weight': np.sum})
-        self.cat_lvl_res.rename(columns={'parent_kpi': self.KPI_TYPE, 'score_by_weight': 'cat_score'}, inplace=True)
+        self.cat_lvl_res.rename(columns={'parent_name': self.KPI_TYPE, 'score_by_weight': 'cat_score'}, inplace=True)
         identifier_parent = {'kpi_fk': self.common.get_kpi_fk_by_kpi_type(self.TOTAL_UAE_SCORE)}
         for i, result in self.cat_lvl_res.iterrows():
             kpi_fk = self.common.get_kpi_fk_by_kpi_type(result[self.KPI_TYPE])
@@ -575,7 +575,7 @@ class MARSUAE_SANDToolBox:
             return
         lvl3_ass_res = self.lvl3_assortment[self.lvl3_assortment['ass_lvl2_kpi_type'] == param_row[self.KPI_TYPE]]
         if lvl3_ass_res.empty:
-            Log.warning("Assortment list not available for kpi {}".format(self.KPI_TYPE))
+            Log.warning("Assortment list not available for kpi {}".format(param_row[self.KPI_TYPE]))
             return
         if not lvl3_ass_res.empty:
             lvl3_ass_res = self.calculate_lvl_3_assortment_result(lvl3_ass_res, param_row)
