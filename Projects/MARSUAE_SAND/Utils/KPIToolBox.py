@@ -22,6 +22,7 @@ from KPIUtils_v2.Calculations.BlockCalculations_v2 import Block
 # from KPIUtils_v2.Calculations.CalculationsUtils import GENERALToolBoxCalculations
 from KPIUtils_v2.Utils.Parsers.ParseInputKPI import filter_df
 from Projects.MARSUAE_SAND.Utils.Fetcher import MARSUAE_SAND_Queries
+from Projects.MARSUAE_SAND.Utils.Nodes import Node
 
 
 __author__ = 'natalyak'
@@ -32,9 +33,6 @@ __author__ = 'natalyak'
 
 
 class MARSUAE_SANDToolBox:
-    # LEVEL1 = 1
-    # LEVEL2 = 2
-    # LEVEL3 = 3
     CATEGORY_LEVEL = 'category_level'
     ATOMIC_LEVEL = 'atomic_level'
     AVAILABILITY = 'Availability'
@@ -102,7 +100,7 @@ class MARSUAE_SANDToolBox:
         # self.own_manuf_fk = self.all_products[self.all_products['manufacturer_name'] ==
         #                                       self.MARS]['manufacturer_fk'].values[0]
         self.own_manuf_fk = self.get_own_manufacturer_fk()
-        self.atomic_kpi_results = pd.DataFrame(columns=['kpi_fk', 'kpi_type', 'result', 'score', 'weight',
+        self.atomic_kpi_results = pd.DataFrame(columns=['kpi_fk', self.KPI_TYPE, 'result', 'score', 'weight',
                                                'score_by_weight', 'parent_name'])
         self.atomic_tiers_df = pd.DataFrame()
         self.cat_lvl_res = pd.DataFrame()
@@ -115,7 +113,7 @@ class MARSUAE_SANDToolBox:
         return query_result
 
     def get_oos_distributed_result(self, result):
-        value = 'OOS' if not result else 'DISTRIBUTED'
+        value = self.OOS if not result else self.DISTRIBUTED
         custom_score = self.get_kpi_result_value_pk_by_value(value)
         return custom_score
 
@@ -185,9 +183,9 @@ class MARSUAE_SANDToolBox:
 
     def get_store_atomic_kpi_parameters(self):
         atomic_params = self.external_targets[self.external_targets['operation_type'] == self.ATOMIC_LEVEL]
-        atomic_params = atomic_params.drop_duplicates(subset=['operation_type', 'kpi_level_2_fk', 'kpi_type',
+        atomic_params = atomic_params.drop_duplicates(subset=['operation_type', 'kpi_level_2_fk', self.KPI_TYPE,
                                                               'key_json', 'data_json'], keep='last')
-        relevant_atomic_params_df = pd.DataFrame(columns=atomic_params.columns.values.tolist())
+        relevant_atomic_df = pd.DataFrame(columns=atomic_params.columns.values.tolist())
         if not atomic_params.empty:
             policies_df = self.unpack_external_targets_json_fields_to_df(atomic_params, field_name='key_json')
             policy_columns = policies_df.columns.values.tolist()
@@ -213,12 +211,14 @@ class MARSUAE_SANDToolBox:
             #             policy_fits = False
             #     if policy_fits:
             #         atomic_params_pks.append(row['pk'])
-            relevant_atomic_params_df = atomic_params[atomic_params['pk'].isin(atomic_params_pks)]
-            data_json_df = self.unpack_external_targets_json_fields_to_df(relevant_atomic_params_df, 'data_json')
-            relevant_atomic_params_df = relevant_atomic_params_df.merge(data_json_df, on='pk', how='left')
-            relevant_atomic_params_df[self.WEIGHT] = relevant_atomic_params_df[self.WEIGHT].apply(lambda x: float(x))
-            relevant_atomic_params_df[self.CHILD_KPI] = relevant_atomic_params_df[self.CHILD_KPI].astype(object)
-        return relevant_atomic_params_df
+            relevant_atomic_df = atomic_params[atomic_params['pk'].isin(atomic_params_pks)]
+            data_json_df = self.unpack_external_targets_json_fields_to_df(relevant_atomic_df, 'data_json')
+            relevant_atomic_df = relevant_atomic_df.merge(data_json_df, on='pk', how='left')
+            relevant_atomic_df[self.WEIGHT] = relevant_atomic_df[self.WEIGHT].apply(lambda x: float(x))
+            # relevant_atomic_params_df[self.CHILD_KPI] = relevant_atomic_params_df[self.CHILD_KPI].astype(object)
+            relevant_atomic_df['kpi_parent'] = relevant_atomic_df['kpi_parent'].apply(lambda x: x if x else None)
+            relevant_atomic_df['kpi_child'] = relevant_atomic_df['kpi_child'].apply(lambda x: x if x else None)
+        return relevant_atomic_df
 
     def get_the_list_of_store_relevant_external_targets(self, policies_df):
         atomic_params_pks = []
@@ -426,10 +426,10 @@ class MARSUAE_SANDToolBox:
     def calculate_category_level(self):
         self.cat_lvl_res = self.atomic_kpi_results.groupby(['parent_name'],
                                                            as_index=False).agg({'score_by_weight': np.sum})
-        self.cat_lvl_res.rename(columns={'parent_kpi': 'kpi_type', 'score_by_weight': 'cat_score'}, inplace=True)
+        self.cat_lvl_res.rename(columns={'parent_kpi': self.KPI_TYPE, 'score_by_weight': 'cat_score'}, inplace=True)
         identifier_parent = {'kpi_fk': self.common.get_kpi_fk_by_kpi_type(self.TOTAL_UAE_SCORE)}
         for i, result in self.cat_lvl_res.iterrows():
-            kpi_fk = self.common.get_kpi_fk_by_kpi_type(result['kpi_type'])
+            kpi_fk = self.common.get_kpi_fk_by_kpi_type(result[self.KPI_TYPE])
             identifier_result = {'kpi_fk': kpi_fk}
             self.common.write_to_db_result(fk=kpi_fk, numerator_id=self.own_manuf_fk, denominator_id=self.store_id,
                                            result=result['cat_score'], score=result['cat_score'],
@@ -445,16 +445,23 @@ class MARSUAE_SANDToolBox:
 
     def calculate_atomics(self):
         store_atomics = self.get_store_atomic_kpi_parameters()
-        store_atomics = self.get_atomics_for_template_groups_present_in_store(store_atomics)
+        # store_atomics = self.get_atomics_for_template_groups_present_in_store(store_atomics)
         self.build_tiers_for_atomics(store_atomics)
         if not store_atomics.empty:
-            # Option 1: rearrange kpi order and then calculate
-            # store_atomics.reset_index(inplace=True)
-            reordered_index = self.reorder_kpis(store_atomics)
-            self.restore_children(store_atomics)
-            for i in reordered_index:
+            # Option 0: create nodes
+            # execute_list = self.get_kpis_execute_list(store_atomics)
+            execute_list = Node.get_kpi_execute_list(store_atomics)
+            for kpi in execute_list:
+                i = store_atomics[store_atomics[self.KPI_TYPE] == kpi].index[0]
                 row = store_atomics.iloc[i]
                 self.calculate_atomic_results(row)
+
+            # Option 1: rearrange kpi order and then calculate
+            # reordered_index = self.reorder_kpis(store_atomics)
+            # self.restore_children(store_atomics)
+            # for i in reordered_index:
+            #     row = store_atomics.iloc[i]
+            #     self.calculate_atomic_results(row)
 
             # Option 2: check for existence of children
             # for i, row in store_atomics:
@@ -472,6 +479,46 @@ class MARSUAE_SANDToolBox:
                 # if row[self.KPI_TYPE] not in self.atomic_kpi_results['kpi_name'].values.tolist():
                 #     kpi_type = row[self.KPI_FAMILY]
                 #     self.atomic_function[kpi_type](row)
+
+    @staticmethod
+    def get_kpis_execute_list(store_atomics):
+        kpis_out_of_hierarchy = store_atomics[(store_atomics['kpi_child'].isnull()) &
+                                              (store_atomics['kpi_parent'].isnull())]
+
+        execute_list = kpis_out_of_hierarchy['kpi_type'].values.tolist()
+        initial_df = store_atomics[['kpi_type', 'kpi_parent', 'kpi_child']]
+        initial_df = initial_df[~(initial_df['kpi_type'].isin(execute_list))]
+        # input_df['kpi_parent'] = input_df['kpi_parent'].apply(lambda x: x if x else None)
+        # input_df['kpi_child'] = input_df['kpi_child'].apply(lambda x: x if x else None)
+        if not initial_df.empty:
+            start_df = initial_df[initial_df['kpi_child'].isnull()]
+            threads_dict = dict()
+            for i, row in start_df.iterrows():
+                threads_dict.update({i: []})
+                new_node = Node(initial_df, row['kpi_type'])
+                new_node.set_next()
+                threads_dict[i].append(new_node)
+                flag = True
+                while flag:
+                    new_node = Node(initial_df, new_node.next_node)
+                    print new_node.data
+                    new_node.set_next()
+                    threads_dict[i].append(new_node)
+                    if new_node.next_node is None:
+                        flag = False
+            for key, nodes_list in threads_dict.items():
+                nodes_list.reverse()
+
+            max_len = max(map(lambda x: len(x), threads_dict.values()))
+
+            # execute_list = []
+            for i in range(max_len - 1, -1, -1):
+                for key, nodes_list in threads_dict.items():
+                    if i <= len(nodes_list) - 1:
+                        if nodes_list[i].data not in execute_list:
+                            execute_list.append(nodes_list[i].data)
+
+        return execute_list
 
     def reorder_kpis(self, store_atomics):
         input_df = store_atomics.copy()
@@ -798,7 +845,7 @@ class MARSUAE_SANDToolBox:
     def calculate_kpi_combination_score(self, param_row):
         child_kpis = param_row[self.CHILD_KPI] if isinstance(param_row[self.CHILD_KPI], (list, tuple)) \
                                                     else [param_row[self.CHILD_KPI]]
-        child_results = self.atomic_kpi_results[self.atomic_kpi_results['kpi_type'].isin(child_kpis)]
+        child_results = self.atomic_kpi_results[self.atomic_kpi_results[self.KPI_TYPE].isin(child_kpis)]
         result = len(child_results[(child_results['score'] == 1) | (child_results['score'] == 100)])
         score, weight = self.get_score(result, param_row)
         target = param_row[self.TARGET] if param_row[self.TARGET] else None

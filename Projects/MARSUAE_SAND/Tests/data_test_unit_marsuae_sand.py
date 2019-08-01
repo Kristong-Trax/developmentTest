@@ -4,13 +4,27 @@ import pandas as pd
 from numpy import nan
 import numpy as np
 
-# class DataScores(object):
-#     SCORES_1 = [(None, 0.15), (100, 0.15), (3, 0.15)]
-#     SCORES_2 = [(False, None), (100, None), (False, None)]
-#     SCORES_3 = [(100, 0.05),  (None, 0.05)]
-#     SCORES_4_NONE_NO_WEIGHTS = [(None, None), (None, None), (None, None)]
-#     SCORES_5_NONE_WEIGHTS = [(None, 0.15), (None, 0.15), (None, 0.15)] # score_1_1 in my example
-#     SCORES_6 = [(100, None), (0, None), (100, None)]
+
+class DataTestNode(object):
+    atomics_df_1 = pd.DataFrame([{'kpi_type': 'one', 'kpi_parent': None, 'kpi_child': ['two', 'four']},
+                               {'kpi_type': 'two', 'kpi_parent': 'one', 'kpi_child': 'five'},
+                               {'kpi_type': 'three', 'kpi_parent': 'five', 'kpi_child': None},
+                               {'kpi_type': 'four', 'kpi_parent': 'one', 'kpi_child': None},
+                               {'kpi_type': 'five', 'kpi_parent': 'two', 'kpi_child': 'three'},
+                               {'kpi_type': 'six', 'kpi_parent': 'two', 'kpi_child': None}])
+
+    atomics_df_2 = pd.DataFrame([{'kpi_type': 'one', 'kpi_parent': None, 'kpi_child': ['two', 'four']},
+                                 {'kpi_type': 'seven', 'kpi_parent': None, 'kpi_child': None},
+                                 {'kpi_type': 'two', 'kpi_parent': 'one', 'kpi_child': 'five'},
+                                 {'kpi_type': 'three', 'kpi_parent': 'two', 'kpi_child': None},
+                                 {'kpi_type': 'four', 'kpi_parent': 'one', 'kpi_child': None},
+                                 {'kpi_type': 'five', 'kpi_parent': None, 'kpi_child': None},
+                                 {'kpi_type': 'six', 'kpi_parent': 'two', 'kpi_child': None}])
+
+    atomics_df_3 = pd.DataFrame([{'kpi_type': 'one', 'kpi_parent': None, 'kpi_child': None},
+                                 {'kpi_type': 'two', 'kpi_parent': None, 'kpi_child': None},
+                                 {'kpi_type': 'three', 'kpi_parent': None, 'kpi_child': None},
+                                 {'kpi_type': 'four', 'kpi_parent': None, 'kpi_child': None}])
 
 
 class DataTestUnitMarsuae(object):

@@ -2,8 +2,8 @@ from Trax.Apps.Core.Testing.BaseCase import TestFunctionalCase
 from Trax.Data.Testing.SeedNew import Seeder
 # from Trax.Utils.Testing.Case import TestUnitCase
 from mock import MagicMock
-from Projects.PEPSICOUK.Tests.data_test_unit_pepsicouk import DataTestUnitPEPSICOUK
-from Projects.PEPSICOUK.Utils.KPISceneToolBox import PEPSICOUKSceneToolBox
+from Projects.MARSUAE_SAND.Tests.data_test_unit_marsuae_sand import DataTestUnitMarsuae
+from Projects.MARSUAE_SAND.Utils.KPISceneToolBox import MARSUAE_SANDSceneToolBox
 import pandas as pd
 from pandas.util.testing import assert_frame_equal
 
@@ -11,20 +11,15 @@ from pandas.util.testing import assert_frame_equal
 __author__ = 'natalyak'
 
 
-def get_exclusion_template_df_all_tests():
-    template_df = pd.read_excel(DataTestUnitPEPSICOUK.exclusion_template_path)
-    return template_df
-
-
-class Test_PEPSICOUKScene(TestFunctionalCase):
+class TestMarsuaeSandScene(TestFunctionalCase):
     seeder = Seeder()
 
     @property
     def import_path(self):
-        return 'Projects.PEPSICOUK.Utils.KPISceneToolBox'
+        return 'Projects.MARSUAE_SAND.Utils.KPISceneToolBox'
 
     def set_up(self):
-        super(Test_PEPSICOUKScene, self).set_up()
+        super(TestMarsuaeSandScene, self).set_up()
         self.mock_data_provider()
         self.data_provider_mock.project_name = 'Test_Project_1'
         self.data_provider_mock.rds_conn = MagicMock()
