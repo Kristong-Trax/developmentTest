@@ -172,7 +172,6 @@ class PNGHKToolBox:
         entity_name_for_fk = Const.NAME_TO_FK[entity_name]
         results_dict = {}
         for i, row in kpi_df.iterrows():
-            filters = {}
             scene_size = row[Const.SCENE_SIZE]
             self.kpi_excluding = row[[Const.EXCLUDE_EMPTY, Const.EXCLUDE_HANGER, Const.EXCLUDE_IRRELEVANT,
                                       Const.EXCLUDE_POSM, Const.EXCLUDE_OTHER, Const.STACKING, Const.EXCLUDE_SKU,
@@ -190,6 +189,7 @@ class PNGHKToolBox:
 
             # Iterate scene types
             for sc in scene_types:
+                filters = {}
                 if sc != "":
                     try:
                         context_id = self.templates[self.templates['template_name']
