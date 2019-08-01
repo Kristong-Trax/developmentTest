@@ -233,13 +233,13 @@ class PNGHKToolBox:
                         continue
                     elif scene_size != "":
                         ratio = scene_size / total_denominator
-                        denominator = scene_size
+                        denominator *= ratio
                     for entity in all_numerators:
                         filters[entity_name] = entity
                         numerator = df[self.tools.get_filter_condition(df, **filters)]['width_mm_advance'].sum()
                         del filters[entity_name]
                         if scene_size != "":
-                            numerator = numerator * ratio
+                            numerator *= ratio
                         try:
                             numerator_id = self.all_products[self.all_products[entity_name] ==
                                                              entity][entity_name_for_fk].values[0]
