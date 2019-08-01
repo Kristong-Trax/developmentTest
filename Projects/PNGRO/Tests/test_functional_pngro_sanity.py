@@ -7,8 +7,8 @@ from Trax.Data.Testing.SeedNew import Seeder
 from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
 from Trax.Cloud.Services.Connector.Keys import DbUsers
 from Trax.Data.Testing.TestProjects import TestProjectsNames
-from Tests.Data.TestData.test_data_jnjuk_sanity import ProjectsSanityData
-from Projects.JNJUK.Calculations import JNJUKCalculations
+from Projects.PNGRO.Tests.Data.test_data_pngro_sanity import ProjectsSanityData
+from Projects.PNGRO.Calculations import PNGRO_PRODCalculations
 
 from Trax.Apps.Core.Testing.BaseCase import TestFunctionalCase
 from Tests.TestUtils import remove_cache_and_storage
@@ -64,16 +64,16 @@ class TestKEngineOutOfTheBox(TestFunctionalCase):
         self.assertNotEquals(len(kpi_results), 0)
         connector.disconnect_rds()
     
-    @seeder.seed(["jnjuk_seed", "mongodb_products_and_brands_seed"], ProjectsSanityData())
-    def test_jnjuk_sanity(self):
+    @seeder.seed(["pngro_seed", "mongodb_products_and_brands_seed"], ProjectsSanityData())
+    def test_pngro_sanity(self):
         project_name = ProjectsSanityData.project_name
         data_provider = KEngineDataProvider(project_name)
-        sessions = {'89a8d548-d747-4567-844a-7b2b3252331d': []}
+        sessions = {'36137377-bd74-4d77-a93b-e8fcce261801': []}
         for session in sessions.keys():
             data_provider.load_session_data(str(session))
             output = Output()
-            JNJUKCalculations(data_provider, output).run_project_calculations()
-            # self._assert_old_tables_kpi_results_filled()
+            PNGRO_PRODCalculations(data_provider, output).run_project_calculations()
+            self._assert_old_tables_kpi_results_filled()
             self._assert_new_tables_kpi_results_filled()
             # for scene in sessions[session]:
             #     data_provider.load_scene_data(str(session), scene_id=scene)

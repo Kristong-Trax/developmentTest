@@ -7,8 +7,8 @@ from Trax.Data.Testing.SeedNew import Seeder
 from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
 from Trax.Cloud.Services.Connector.Keys import DbUsers
 from Trax.Data.Testing.TestProjects import TestProjectsNames
-from Tests.Data.TestData.test_data_jnjes_sanity import ProjectsSanityData
-from Projects.JNJES.Calculations import JNJESCalculations
+from Projects.MARSUAE.Tests.Data.test_data_marsuae_sanity import ProjectsSanityData
+from Projects.MARSUAE.Calculations import Calculations
 
 from Trax.Apps.Core.Testing.BaseCase import TestFunctionalCase
 from Tests.TestUtils import remove_cache_and_storage
@@ -64,18 +64,18 @@ class TestKEngineOutOfTheBox(TestFunctionalCase):
         self.assertNotEquals(len(kpi_results), 0)
         connector.disconnect_rds()
     
-    @seeder.seed(["jnjes_seed", "mongodb_products_and_brands_seed"], ProjectsSanityData())
-    def test_jnjes_sanity(self):
+    @seeder.seed(["marsuae_seed", "mongodb_products_and_brands_seed"], ProjectsSanityData())
+    def test_marsuae_sanity(self):
         project_name = ProjectsSanityData.project_name
         data_provider = KEngineDataProvider(project_name)
-        sessions = {u'c0676dfe-711f-4a0a-9669-e0741b79e56e': []}
+        sessions = {'c26365c9-4dee-4710-b18f-59dc01ff0975': []}
         for session in sessions.keys():
             data_provider.load_session_data(str(session))
             output = Output()
-            JNJESCalculations(data_provider, output).run_project_calculations()
-            # self._assert_old_tables_kpi_results_filled()
+            Calculations(data_provider, output).run_project_calculations()
+            self._assert_old_tables_kpi_results_filled()
             self._assert_new_tables_kpi_results_filled()
             # for scene in sessions[session]:
-            #     data_provider.load_scene_data(session, scene_id=scene)
+            #     data_provider.load_scene_data(str(session), scene_id=scene)
             #     SceneCalculations(data_provider).calculate_kpis()
             #     self._assert_scene_tables_kpi_results_filled()
