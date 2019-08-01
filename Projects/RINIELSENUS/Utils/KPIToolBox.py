@@ -112,7 +112,8 @@ class MarsUsDogMainMealWet(object):
                 hierarchy = Definition(template_data, self._get_store_channel, self._get_retailer_name,
                                        self._get_store_type).get_atomic_hierarchy_and_filters(set_name)
                 preferred_range = template_data[KPIConsts.PREFERRED_RANGE_SHEET]
-                Results(self._tools, self._data_provider, self.mpip_sr, self.common, self._writer,
+                min_face = self.load_min_facings(template_data)
+                Results(self._tools, self._data_provider, self.mpip_sr, self.common, self._writer, min_face,
                         preferred_range[preferred_range['Set name'] == set_name]).calculate(hierarchy)
 
         # template BDB
@@ -133,12 +134,24 @@ class MarsUsDogMainMealWet(object):
                 hierarchy = Definition(template_data, self._get_store_channel, self._get_retailer_name,
                                        self._get_store_type).get_atomic_hierarchy_and_filters(set_name)
                 preferred_range = template_data[KPIConsts.PREFERRED_RANGE_SHEET]
-                Results(self._tools, self._data_provider, self.mpip_sr, self.common, self._writer,
+                min_face = self.load_min_facings(template_data)
+                Results(self._tools, self._data_provider, self.mpip_sr, self.common, self._writer, min_face,
                         preferred_range[preferred_range['Set name'] == set_name]).calculate(hierarchy)
 
         # self._data_provider.trace_container.to_csv('/home/Israel/Desktop/trace_block.csv')
         self._writer.commit_results_data()
         self.common.commit_results_data()
+
+    @staticmethod
+    def load_min_facings(template_data):
+        min_face = None
+        if 'Block_Facings_Min' in template_data:
+            min_face = template_data['Block_Facings_Min'].drop('Score Card Name', axis=1).melt(id_vars='KPI Name') \
+                .set_index(['KPI Name', 'value'])
+            min_face['variable'] = min_face['variable'].str.split(',')
+            min_face = min_face.variable.apply(pd.Series).stack().reset_index(level=[0, 1]) \
+                .rename(columns={0: 'store_type'}).set_index(['KPI Name', 'store_type'], drop=True).to_dict('index')
+        return min_face
 
     @staticmethod
     def _get_set_names():

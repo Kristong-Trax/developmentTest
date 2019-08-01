@@ -59,7 +59,6 @@ BDB_CHANNELS = ['MASS',
 
 SPT_CHANNELS = ['Pet Specialty']
 
-
 ATT1 = 'att1'
 KPI_NAME = 'KPI name'
 TARGET = 'Target'

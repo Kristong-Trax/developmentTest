@@ -975,7 +975,11 @@ class AdjacencyAtomicKpiCalculation(KpiAtomicKpisCalculator):
             b_target = float(b_target[0])
 
         all_filters = atomic_kpi_data['filters'].copy()
+
+        retailers = all_filters.pop('Allow One Brand_Retailer') if 'Allow One Brand_Retailer' in all_filters else []
+        store_typ = all_filters.pop('Allow One Brand_Store Type') if 'Allow One Brand_Store Type' in all_filters else []
         filters = self._split_filters(all_filters)
+
         allowed_filter = self._get_allowed_products(atomic_kpi_data['allowed'], filters['all'])
         allowed_filter_without_other = self._get_allowed_products_without_other(atomic_kpi_data['allowed'],
                                                                                 filters['all'])
@@ -983,6 +987,12 @@ class AdjacencyAtomicKpiCalculation(KpiAtomicKpisCalculator):
             key=TEMPLATE_NAME, value=atomic_kpi_data['scene_types'])
 
         scif_filter = scene_type_filter.copy()
+        if self._data_provider.retailer in retailers or self._data_provider.store_type in store_typ:
+            a, b = filters['A'].copy(), filters['B'].copy()
+            a.update(scif_filter), b.update(scif_filter)
+            if self.get_scif_matches_by_filters(**a) and not self.get_scif_matches_by_filters(**b):
+                return 100
+
         scif_filter.update(filters['all'])
         scif_filter.update(filters['A'])
         scif_matches = self.get_scif_matches_by_filters(**scif_filter)
