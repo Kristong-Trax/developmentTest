@@ -433,21 +433,23 @@ class MARSRU_PRODKPIFetcher:
                 WHERE a.pk IN {}                
                 """.format(assortment_groups)
         assortment_groups = pd.read_sql_query(query, self.rds_conn.db)
-        if not assortment_groups[assortment_groups['policy'].str.startswith('{"store_number_1":')].empty:
-            assortment_group = assortment_groups[assortment_groups['policy'].str.startswith('{"store_number_1":')][
-                'assortment_group_fk'].values[0]
-        elif not assortment_groups[assortment_groups['policy'].str.startswith('{"retailer_name":')].empty:
-            assortment_group = assortment_groups[assortment_groups['policy'].str.startswith('{"retailer_name":')][
-                'assortment_group_fk'].values[0]
-        elif not assortment_groups[assortment_groups['policy'] == '{}'].empty:
-            assortment_group = assortment_groups[assortment_groups['policy'] == '{}'][
-                'assortment_group_fk'].values[0]
-        elif not assortment_groups[assortment_groups['policy'].str.startswith('{"region_name":')].empty:
-            assortment_group = assortment_groups[assortment_groups['policy'].str.startswith('{"region_name":')][
-                'assortment_group_fk'].values[0]
+        if not assortment_groups.empty:
+            if not assortment_groups[assortment_groups['policy'].str.startswith('{"store_number_1":')].empty:
+                assortment_group = assortment_groups[assortment_groups['policy'].str.startswith('{"store_number_1":')][
+                    'assortment_group_fk'].values[0]
+            elif not assortment_groups[assortment_groups['policy'].str.startswith('{"retailer_name":')].empty:
+                assortment_group = assortment_groups[assortment_groups['policy'].str.startswith('{"retailer_name":')][
+                    'assortment_group_fk'].values[0]
+            elif not assortment_groups[assortment_groups['policy'] == '{}'].empty:
+                assortment_group = assortment_groups[assortment_groups['policy'] == '{}'][
+                    'assortment_group_fk'].values[0]
+            elif not assortment_groups[assortment_groups['policy'].str.startswith('{"region_name":')].empty:
+                assortment_group = assortment_groups[assortment_groups['policy'].str.startswith('{"region_name":')][
+                    'assortment_group_fk'].values[0]
+            else:
+                assortment_group = 0
         else:
             assortment_group = 0
-            Log.warning('Error. No relevant OSA Assortment was found. Store ID: {}'.format(store_id))
 
         return assortment_group
 
