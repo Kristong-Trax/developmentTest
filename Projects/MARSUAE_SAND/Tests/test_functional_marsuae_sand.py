@@ -261,7 +261,13 @@ class TestMarsuaeSand(TestFunctionalCase):
         for expected_result in expected_list:
             self.assertTrue(expected_result in test_result_list)
 
-
+    def test_calculate_checkouts_considers_stitch_groups(self):
+        probe_group, matches, scene = self.create_scif_matches_stitch_groups_data_mocks(
+            DataTestUnitMarsuae.test_case_1, [1, 2])
+        tool_box = MARSUAE_SANDToolBox(self.data_provider_mock, self.output)
+        store_atomics = tool_box.get_store_atomic_kpi_parameters()
+        param_row = self.get_parameter_series_for_kpi_calculation(store_atomics, 'Checkout Penetration - Chocolate')
+        print param_row
 
     @staticmethod
     def check_results(results_df, expected_results_dict):
@@ -275,3 +281,10 @@ class TestMarsuaeSand(TestFunctionalCase):
         query = ' & '.join('{} {} {}'.format(i, j, k) for i, j, k in zip(column, expression, condition))
         filtered_df = results_df.query(query)
         return len(filtered_df)
+
+    @staticmethod
+    def get_parameter_series_for_kpi_calculation(store_atomics, kpi_name):
+        param_df = store_atomics[store_atomics['kpi_type'] == kpi_name]
+        param_index = param_df.index.values[0]
+        param_row = store_atomics.iloc[param_index]
+        return param_row
