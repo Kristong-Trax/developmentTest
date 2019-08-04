@@ -269,6 +269,8 @@ class TestMarsuaeSand(TestFunctionalCase):
         param_row = self.get_parameter_series_for_kpi_calculation(store_atomics, 'Checkout Penetration - Chocolate')
         print param_row
 
+    # add tests for different score logic functions
+
     @staticmethod
     def check_results(results_df, expected_results_dict):
         column = []
