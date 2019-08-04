@@ -106,7 +106,7 @@ class SceneMONDELEZDMIUSToolBox:
 
             self.common.write_to_db_result(fk=vehicle_kpi_fk, numerator_id=vehicle_display_fk, numerator_result=1,
                                                denominator_id=self.store_id, denominator_result=1,
-                                               result=Const.RESULT_YES, score=Const.SCORE_YES, scene_result_fk=self.scene, should_enter=True,
+                                               result=Const.RESULT_YES, score=1, scene_result_fk=self.scene, should_enter=True,
                                                by_scene=True)
 
 
@@ -149,38 +149,27 @@ class SceneMONDELEZDMIUSToolBox:
                                                         (self.store_assortment['kpi_fk_lvl3'] == scripted_kpi)]
             if not filtered_assortment.empty:
                 for i, row in filtered_assortment.iterrows():
-                    ppg = row[Const.PPG_COLUMN_NAME]
-                    sub_ppg = row[Const.SUB_PPG_COLUMN_NAME]
-                    ppg2 = row[Const.PPG_COLUMN_NAME_2]
-                    sub_ppg2 = row[Const.SUB_PPG_COLUMN_NAME_2]
 
-                    if not pd.isnull(ppg):
-                        filtered_scif_count = len(self.scif[self.scif['PPG'] == ppg])
-                        if filtered_scif_count > 0:
-                            score = 0
-                            result = Const.RESULT_NO
-                            break
+                    if Const.PPG_COLUMN_NAME in filtered_assortment.columns.to_list():
+                        ppg = row[Const.PPG_COLUMN_NAME]
 
-                    if not pd.isnull(sub_ppg):
-                        filtered_scif_count = len(self.scif[self.scif['Sub PPG'] == sub_ppg])
-                        if filtered_scif_count > 0:
-                            score = 0
-                            result = Const.RESULT_NO
-                            break
+                        if not pd.isnull(ppg):
+                            filtered_scif_count = len(self.scif[self.scif['PPG'] == ppg])
+                            if filtered_scif_count > 0:
+                                score = 0
+                                result = Const.RESULT_NO
+                                break
 
-                    if not pd.isnull(ppg2):
-                        filtered_scif_count = len(self.scif[self.scif['PPG'] == ppg2])
-                        if filtered_scif_count > 0:
-                            score = 0
-                            result = Const.RESULT_NO
-                            break
+                    if Const.SUB_PPG_COLUMN_NAME in filtered_assortment.columns.to_list():
+                        sub_ppg = row[Const.SUB_PPG_COLUMN_NAME]
 
-                    if not pd.isnull(sub_ppg2):
-                        filtered_scif_count = len(self.scif[self.scif['Sub PPG'] == sub_ppg2])
-                        if filtered_scif_count > 0:
-                            score = 0
-                            result = Const.RESULT_NO
-                            break
+                        if not pd.isnull(sub_ppg):
+                            filtered_scif_count = len(self.scif[self.scif['Sub PPG'] == sub_ppg])
+                            if filtered_scif_count > 0:
+                                score = 0
+                                result = Const.RESULT_NO
+                                break
+
 
                 self.common.write_to_db_result(fk=kpi_fk, numerator_id=self.manufacturer_fk, numerator_result=score,
                                        denominator_id=self.store_id, denominator_result=1,

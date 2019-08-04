@@ -2,7 +2,7 @@
 class Const(object):
 
     # template path
-    TEMPLATE_PATH = '08_PNGHK_template_2019_05_14.xlsx'
+    TEMPLATE_PATH = '09_PNGHK_template_2019_07_30.xlsx'
 
     # sheet names
     KPIS = 'KPIS'

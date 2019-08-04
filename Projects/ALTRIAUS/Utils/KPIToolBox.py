@@ -160,8 +160,9 @@ class ALTRIAUSToolBox:
             Log.error('Unable to calculate assortment: SCIF or store assortment is empty')
             return
 
+        grouped_scif = self.scif.groupby('product_fk', as_index=False)['facings'].sum()
         assortment_with_facings = \
-            pd.merge(self.store_assortment, self.scif[['product_fk', 'facings']], how='left', on='product_fk')
+            pd.merge(self.store_assortment, grouped_scif, how='left', on='product_fk')
         assortment_with_facings.loc[:, 'facings'] = assortment_with_facings['facings'].fillna(0)
 
         for product in assortment_with_facings.itertuples():

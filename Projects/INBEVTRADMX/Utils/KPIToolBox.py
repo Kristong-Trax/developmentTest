@@ -46,6 +46,7 @@ class INBEVTRADMXToolBox:
         self.products = self.data_provider[Data.PRODUCTS]
         self.all_products = self.data_provider[Data.ALL_PRODUCTS]
         self.match_product_in_scene = self.data_provider[Data.MATCHES]
+        self.templates = self.data_provider.all_templates
         self.visit_date = self.data_provider[Data.VISIT_DATE]
         self.session_info = self.data_provider[Data.SESSION_INFO]
         self.scene_info = self.data_provider[Data.SCENES_INFO]
@@ -56,7 +57,7 @@ class INBEVTRADMXToolBox:
         self.kpi_static_data = self.common.get_kpi_static_data()
         self.kpi_results_queries = []
         self.templates_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data')
-        self.excel_file_path = os.path.join(self.templates_path, 'inbevtradmx_template_10.xlsx')
+        self.excel_file_path = os.path.join(self.templates_path, 'inbevtradmx_template_11.xlsx')
         self.availability = Availability(self.data_provider)
         self.survey_response = self.data_provider[Data.SURVEY_RESPONSES]
         self.geo = GeoLocation.INBEVTRADMXGeo(self.rds_conn, self.session_uid, self.data_provider,
@@ -64,6 +65,11 @@ class INBEVTRADMXToolBox:
         self.new_static_data = self.common2.kpi_static_data
         self.manufacturer_fk = 1
         self.match_displays_in_scene = self.data_provider.match_display_in_scene
+        self.mpis = self.mpis_merger()
+        self.all_data = pd.merge(self.scif, self.match_product_in_scene[
+            ['product_fk', 'shelf_number', 'scene_fk', 'facing_sequence_number']],
+                                 how="inner", left_on=['item_id', 'scene_id'],
+                                 right_on=['product_fk', 'scene_fk']).drop_duplicates()
 
     # init functions:
 
@@ -278,8 +284,16 @@ class INBEVTRADMXToolBox:
         :param row: data frame to calculate from
         :return: share of shelf score
         """
-        # get df only with the correct template name
-        df = self.scif[self.scif.template_name == row['template_name']]
+
+        if 'shelf_number' in relevant_columns:
+            df = self.all_data[(self.all_data.template_name == row['template_name']) &
+                               (self.all_data.shelf_number == row['shelf_number'])&
+                               (self.all_data.facing_sequence_number > 0)]
+            df.shelf_number = df.shelf_number.astype(float)
+            df.shelf_number = df.shelf_number.astype(str)
+        else:
+            # get df only with the correct template name
+            df = self.scif[self.scif.template_name == row['template_name']]
 
         # sum of all the facings in df
         facings = df.facings.values.sum()
@@ -289,9 +303,14 @@ class INBEVTRADMXToolBox:
         filters_dict = self.create_sos_filtered_dictionary(relevant_columns, row)
         # reduce the df only to relevant columns
         df = df[filters_dict.keys()]
+
+
         # check if it's invasion KPI for the special case
         inv = row['KPI Level 3 Name'][:3] == 'Inv'
         ratio = self.calculate_sos_ratio(df, filters_dict, inv)
+
+
+
         return ratio / facings
 
     def calculate_sos_ratio(self, df, filters_dict, inv):
@@ -323,8 +342,11 @@ class INBEVTRADMXToolBox:
                     bol &= df_row[key] in filters_dict[key]
             # that means success of the inner loop, that all the values matching for this data frame row
             if bol:
-                # accumulate ratio
-                ratio = ratio + self.scif.facings.loc[i]
+                if 'shelf_number' in filters_dict.keys():
+                    ratio = ratio + self.all_data.facings.loc[i]
+                else:
+                    # accumulate ratio
+                    ratio = ratio + self.scif.facings.loc[i]
         return ratio
 
     def create_sos_filtered_dictionary(self, relevant_columns, row):
@@ -582,5 +604,8 @@ class INBEVTRADMXToolBox:
             weight=curr_weight, should_enter=True, score=is_kpi_passed,
             identifier_parent=identifier_parent)
 
-
-
+    def mpis_merger(self):
+        mpis = self.match_product_in_scene.merge(self.products, on='product_fk', suffixes=['', '_p']) \
+        .merge(self.scene_info, on='scene_fk', suffixes=['', '_s']) \
+        .merge(self.templates, on='template_fk', suffixes=['', '_t'])
+        return mpis
