@@ -11,4 +11,4 @@ class ProjectsSanityData(BaseSeedData):
     ccza_seed = {DATA_TYPE: BaseSeedData.MYSQL,
                  FILES_RELATIVE_PATH: ['Data/ccza_seed.sql.gz'],
                  PROJECT_NAME: project_name
-                 } 
+                 }
