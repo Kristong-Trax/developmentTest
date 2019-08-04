@@ -16,4 +16,10 @@ class Consts(object):
     DISTRIBUTION_SKU_LEVEL = 'Distribution - SKU'
     OOS_STORE_LEVEL = 'OOS'
     OOS_SKU_LEVEL = 'OOS - SKU'
-    # ENTITIES_FOR_DB = [FK, NUMEARTOR_ID, NUMERATOR_RESULT, DENOMINATOR_ID, DENOMINATOR_RESULT, SCORE, RESULT]
+
+    # KPI result values
+    OOS_VALUE = 'OOS'
+    DISTRIBUTED_VALUE = 'DISTRIBUTED'
+
+    # Logs
+    EMPTY_ASSORTMENT_DATA = "There isn't relevant assortment data for this visit"
