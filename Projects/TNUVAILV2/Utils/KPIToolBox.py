@@ -202,7 +202,7 @@ class TNUVAILToolBox:
         if not is_distribution:  # In OOS the numerator is total - distribution
             in_store_per_category[Consts.NUMERATOR_RESULT] = in_store_per_category[Consts.DENOMINATOR_RESULT] - \
                                                              in_store_per_category[Consts.NUMERATOR_RESULT]
-        in_store_pert_category = in_store_per_category.to_dict('records')
+        in_store_per_category = in_store_per_category.to_dict('records')
         return in_store_per_category
 
     @staticmethod
