@@ -190,34 +190,16 @@ class MARSUAE_SANDToolBox:
             policies_df = self.unpack_external_targets_json_fields_to_df(atomic_params, field_name='key_json')
             policy_columns = policies_df.columns.values.tolist()
             del policy_columns[policy_columns.index('pk')]
-
             match_dict = self.match_policy_attr_columns_to_value_columns(policy_columns)
             policies_df['policy_json'] = policies_df.apply(self.build_policy_json, args=(match_dict,), axis=1)
-            # for column in policy_columns:
-            #     store_att_value = self.store_info_dict.get(column)
-            #     mask = policies_df.apply(self.get_masking_filter, args=(column, store_att_value), axis=1)
-            #     policies_df = policies_df[mask]
-            #
-            # atomic_params_pks = policies_df['pk'].values.tolist()
             atomic_params_pks = self.get_the_list_of_store_relevant_external_targets(policies_df)
-            # atomic_params_pks = []
-            # for i, row in policies_df.iterrows():
-            #     policy_fits = False
-            #     for key, value in row['policy_json'].items():
-            #         value = value if isinstance(value, (list, tuple)) else [value]
-            #         if self.store_info_dict[key] in value:
-            #             policy_fits = True
-            #         else:
-            #             policy_fits = False
-            #     if policy_fits:
-            #         atomic_params_pks.append(row['pk'])
             relevant_atomic_df = atomic_params[atomic_params['pk'].isin(atomic_params_pks)]
             data_json_df = self.unpack_external_targets_json_fields_to_df(relevant_atomic_df, 'data_json')
-            relevant_atomic_df = relevant_atomic_df.merge(data_json_df, on='pk', how='left')
-            relevant_atomic_df[self.WEIGHT] = relevant_atomic_df[self.WEIGHT].apply(lambda x: float(x))
-            # relevant_atomic_params_df[self.CHILD_KPI] = relevant_atomic_params_df[self.CHILD_KPI].astype(object)
-            relevant_atomic_df['kpi_parent'] = relevant_atomic_df['kpi_parent'].apply(lambda x: x if x else None)
-            relevant_atomic_df['kpi_child'] = relevant_atomic_df['kpi_child'].apply(lambda x: x if x else None)
+            if not data_json_df.empty:
+                relevant_atomic_df = relevant_atomic_df.merge(data_json_df, on='pk', how='left')
+                relevant_atomic_df[self.WEIGHT] = relevant_atomic_df[self.WEIGHT].apply(lambda x: float(x))
+                relevant_atomic_df['kpi_parent'] = relevant_atomic_df['kpi_parent'].apply(lambda x: x if x else None)
+                relevant_atomic_df['kpi_child'] = relevant_atomic_df['kpi_child'].apply(lambda x: x if x else None)
         return relevant_atomic_df
 
     def get_the_list_of_store_relevant_external_targets(self, policies_df):
@@ -250,11 +232,11 @@ class MARSUAE_SANDToolBox:
             filtered_atomics_df.apply(self.match_tier_targets_to_scores, args=(tier_dict_list,), axis=1)
         self.atomic_tiers_df = pd.DataFrame.from_records(tier_dict_list)
 
-    def get_masking_filter(self, row, column, store_att_value):
-        if store_att_value in self.split_and_strip(row[column]):
-            return True
-        else:
-            return False
+    # def get_masking_filter(self, row, column, store_att_value):
+    #     if store_att_value in self.split_and_strip(row[column]):
+    #         return True
+    #     else:
+    #         return False
 
     def map_atomic_type_to_function(self):
         mapper = {self.AVAILABILITY: self.calculate_availability,
@@ -398,7 +380,7 @@ class MARSUAE_SANDToolBox:
         pk = None
         try:
             pk = self.kpi_result_values[self.kpi_result_values['value'] == value]['pk'].values[0]
-        except:
+        except IndexError as e:
             Log.error('Value {} does not exist'.format(value))
         return pk
         
@@ -445,9 +427,9 @@ class MARSUAE_SANDToolBox:
 
     def calculate_atomics(self):
         store_atomics = self.get_store_atomic_kpi_parameters()
-        # store_atomics = self.get_atomics_for_template_groups_present_in_store(store_atomics)
-        self.build_tiers_for_atomics(store_atomics)
+        store_atomics = self.get_atomics_for_template_groups_present_in_store(store_atomics)
         if not store_atomics.empty:
+            self.build_tiers_for_atomics(store_atomics)
             # Option 0: create nodes
             # execute_list = self.get_kpis_execute_list(store_atomics)
             execute_list = Node.get_kpi_execute_list(store_atomics)
@@ -480,89 +462,89 @@ class MARSUAE_SANDToolBox:
                 #     kpi_type = row[self.KPI_FAMILY]
                 #     self.atomic_function[kpi_type](row)
 
-    @staticmethod
-    def get_kpis_execute_list(store_atomics):
-        kpis_out_of_hierarchy = store_atomics[(store_atomics['kpi_child'].isnull()) &
-                                              (store_atomics['kpi_parent'].isnull())]
+    # @staticmethod
+    # def get_kpis_execute_list(store_atomics):
+    #     kpis_out_of_hierarchy = store_atomics[(store_atomics['kpi_child'].isnull()) &
+    #                                           (store_atomics['kpi_parent'].isnull())]
+    #
+    #     execute_list = kpis_out_of_hierarchy['kpi_type'].values.tolist()
+    #     initial_df = store_atomics[['kpi_type', 'kpi_parent', 'kpi_child']]
+    #     initial_df = initial_df[~(initial_df['kpi_type'].isin(execute_list))]
+    #     # input_df['kpi_parent'] = input_df['kpi_parent'].apply(lambda x: x if x else None)
+    #     # input_df['kpi_child'] = input_df['kpi_child'].apply(lambda x: x if x else None)
+    #     if not initial_df.empty:
+    #         start_df = initial_df[initial_df['kpi_child'].isnull()]
+    #         threads_dict = dict()
+    #         for i, row in start_df.iterrows():
+    #             threads_dict.update({i: []})
+    #             new_node = Node(initial_df, row['kpi_type'])
+    #             new_node.set_next()
+    #             threads_dict[i].append(new_node)
+    #             flag = True
+    #             while flag:
+    #                 new_node = Node(initial_df, new_node.next_node)
+    #                 print new_node.data
+    #                 new_node.set_next()
+    #                 threads_dict[i].append(new_node)
+    #                 if new_node.next_node is None:
+    #                     flag = False
+    #         for key, nodes_list in threads_dict.items():
+    #             nodes_list.reverse()
+    #
+    #         max_len = max(map(lambda x: len(x), threads_dict.values()))
+    #
+    #         # execute_list = []
+    #         for i in range(max_len - 1, -1, -1):
+    #             for key, nodes_list in threads_dict.items():
+    #                 if i <= len(nodes_list) - 1:
+    #                     if nodes_list[i].data not in execute_list:
+    #                         execute_list.append(nodes_list[i].data)
+    #
+    #     return execute_list
 
-        execute_list = kpis_out_of_hierarchy['kpi_type'].values.tolist()
-        initial_df = store_atomics[['kpi_type', 'kpi_parent', 'kpi_child']]
-        initial_df = initial_df[~(initial_df['kpi_type'].isin(execute_list))]
-        # input_df['kpi_parent'] = input_df['kpi_parent'].apply(lambda x: x if x else None)
-        # input_df['kpi_child'] = input_df['kpi_child'].apply(lambda x: x if x else None)
-        if not initial_df.empty:
-            start_df = initial_df[initial_df['kpi_child'].isnull()]
-            threads_dict = dict()
-            for i, row in start_df.iterrows():
-                threads_dict.update({i: []})
-                new_node = Node(initial_df, row['kpi_type'])
-                new_node.set_next()
-                threads_dict[i].append(new_node)
-                flag = True
-                while flag:
-                    new_node = Node(initial_df, new_node.next_node)
-                    print new_node.data
-                    new_node.set_next()
-                    threads_dict[i].append(new_node)
-                    if new_node.next_node is None:
-                        flag = False
-            for key, nodes_list in threads_dict.items():
-                nodes_list.reverse()
+    # def reorder_kpis(self, store_atomics):
+    #     input_df = store_atomics.copy()
+    #     # input_df = store_atomics[['pk', self.KPI_TYPE, self.CHILD_KPI]]
+    #     input_df['remaining_child'] = input_df[self.CHILD_KPI].copy()
+    #     input_df.loc[~(input_df['remaining_child'] == ''), 'remaining_child'] = input_df['remaining_child'].apply(
+    #         lambda x: x if isinstance(x, list) else [x])
+    #     reordered_df = pd.DataFrame(columns=input_df.columns.values.tolist())
+    #     child_flag = True
+    #     while child_flag:
+    #         input_df['remaining_child'] = input_df.apply(self.check_remaining_child, axis=1, args=(input_df,))
+    #         remaining_df = input_df[(input_df['remaining_child'] == '') |
+    #                                 (input_df['remaining_child'].isnull())]
+    #         reordered_df = reordered_df.append(remaining_df)
+    #         input_df = input_df[(~(input_df['remaining_child'] == '')) &
+    #                             (~(input_df['remaining_child'].isnull()))]
+    #         if input_df.empty:
+    #             child_flag = False
+    #     # reordered_pks = reordered_df['pk'].values.tolist()
+    #     reordered_index = reordered_df.index
+    #     return reordered_index
 
-            max_len = max(map(lambda x: len(x), threads_dict.values()))
-
-            # execute_list = []
-            for i in range(max_len - 1, -1, -1):
-                for key, nodes_list in threads_dict.items():
-                    if i <= len(nodes_list) - 1:
-                        if nodes_list[i].data not in execute_list:
-                            execute_list.append(nodes_list[i].data)
-
-        return execute_list
-
-    def reorder_kpis(self, store_atomics):
-        input_df = store_atomics.copy()
-        # input_df = store_atomics[['pk', self.KPI_TYPE, self.CHILD_KPI]]
-        input_df['remaining_child'] = input_df[self.CHILD_KPI].copy()
-        input_df.loc[~(input_df['remaining_child'] == ''), 'remaining_child'] = input_df['remaining_child'].apply(
-            lambda x: x if isinstance(x, list) else [x])
-        reordered_df = pd.DataFrame(columns=input_df.columns.values.tolist())
-        child_flag = True
-        while child_flag:
-            input_df['remaining_child'] = input_df.apply(self.check_remaining_child, axis=1, args=(input_df,))
-            remaining_df = input_df[(input_df['remaining_child'] == '') |
-                                    (input_df['remaining_child'].isnull())]
-            reordered_df = reordered_df.append(remaining_df)
-            input_df = input_df[(~(input_df['remaining_child'] == '')) &
-                                (~(input_df['remaining_child'].isnull()))]
-            if input_df.empty:
-                child_flag = False
-        # reordered_pks = reordered_df['pk'].values.tolist()
-        reordered_index = reordered_df.index
-        return reordered_index
-
-    def check_remaining_child(self, row, initial_df):
-        child_kpis = row['remaining_child']
-        if child_kpis:
-            child_kpis = child_kpis if isinstance(child_kpis, (list, tuple)) else [child_kpis]
-            for kpi in child_kpis:
-                if kpi not in initial_df[self.KPI_TYPE].values:
-                    ind_to_remove = [i for i, x in enumerate(child_kpis) if x == kpi]
-                    for ind in ind_to_remove:
-                        child_kpis.pop(ind)
-                        if len(child_kpis) == 0:
-                            child_kpis = ''
-        return child_kpis
-
-    def restore_children(self, store_atomics):
-        parents_list = store_atomics[self.PARENT_KPI].unique().tolist()
-        parents_list = filter(lambda x: x, parents_list)
-        for parent in parents_list:
-            child_kpis = store_atomics[store_atomics[self.PARENT_KPI] == parent][self.KPI_TYPE].unique().tolist()
-            # store_atomics[self.CHILD_KPI] = store_atomics[self.CHILD_KPI].astype(object)
-            store_atomics.loc[store_atomics[self.KPI_TYPE] == parent, self.CHILD_KPI] = [','.join(child_kpis)]
-            store_atomics[self.CHILD_KPI] = store_atomics[self.CHILD_KPI].apply(lambda x: x.split(',') if x else '')
-            # store_atomics.at[store_atomics[self.KPI_TYPE] == parent, self.CHILD_KPI] = child_kpis
+    # def check_remaining_child(self, row, initial_df):
+    #     child_kpis = row['remaining_child']
+    #     if child_kpis:
+    #         child_kpis = child_kpis if isinstance(child_kpis, (list, tuple)) else [child_kpis]
+    #         for kpi in child_kpis:
+    #             if kpi not in initial_df[self.KPI_TYPE].values:
+    #                 ind_to_remove = [i for i, x in enumerate(child_kpis) if x == kpi]
+    #                 for ind in ind_to_remove:
+    #                     child_kpis.pop(ind)
+    #                     if len(child_kpis) == 0:
+    #                         child_kpis = ''
+    #     return child_kpis
+    #
+    # def restore_children(self, store_atomics):
+    #     parents_list = store_atomics[self.PARENT_KPI].unique().tolist()
+    #     parents_list = filter(lambda x: x, parents_list)
+    #     for parent in parents_list:
+    #         child_kpis = store_atomics[store_atomics[self.PARENT_KPI] == parent][self.KPI_TYPE].unique().tolist()
+    #         # store_atomics[self.CHILD_KPI] = store_atomics[self.CHILD_KPI].astype(object)
+    #         store_atomics.loc[store_atomics[self.KPI_TYPE] == parent, self.CHILD_KPI] = [','.join(child_kpis)]
+    #         store_atomics[self.CHILD_KPI] = store_atomics[self.CHILD_KPI].apply(lambda x: x.split(',') if x else '')
+    #         # store_atomics.at[store_atomics[self.KPI_TYPE] == parent, self.CHILD_KPI] = child_kpis
 
     def calculate_atomic_results(self, param_row):
         if param_row[self.KPI_TYPE] not in self.atomic_kpi_results[self.KPI_TYPE].values.tolist():
@@ -792,9 +774,6 @@ class MARSUAE_SANDToolBox:
                 number_of_products = float(len(relevant_products))
                 for result in skus_in_clusters:
                     cluster_results.append(result / number_of_products)
-                # for cluster in block_clusters:
-                #     facings = len(cluster.nodes['probe_match_fk']) # verify how the data looks
-                #     cluster_results.append(facings/number_of_products)
                 result = max(cluster_results) if cluster_results else 0
                 score, weight = self.get_score(result, param_row)
 
@@ -824,17 +803,10 @@ class MARSUAE_SANDToolBox:
                 continue
             else:
                 self.get_number_of_sku_types_from_clusters(block_res, cluster_skus_list)
-                # for i, block_row in block_res.iterrows():
-                #     sku_types_in_cluster = self.get_number_of_sku_types_from_cluster(block_row)
-                #     cluster_skus_list.append(sku_types_in_cluster)
-                # max_ratio = block_res['facing_percentage'].max()
-                # largest_block = block_res[block_res['facing_percentage'] == max_ratio]
-                #
-                # largest_cluster = block_res[block_res['facing_percentage'] == max_ratio]['cluster'].values[0]
-                # cluster_list.append(largest_cluster)
         return cluster_skus_list
 
-    def get_number_of_sku_types_from_clusters(self, block_res, cluster_skus_list):
+    @staticmethod
+    def get_number_of_sku_types_from_clusters(block_res, cluster_skus_list):
         for i, block_row in block_res.iterrows():
             cluster_nodes = block_row['cluster'].nodes.values() # returns the list of dictionaries for each cluster item
             sku_types = set()

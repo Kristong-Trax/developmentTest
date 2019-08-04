@@ -1,3 +1,5 @@
+import pandas as pd
+
 
 class Node(object):
     def __init__(self, initial_df, data=None, next_node=None):
@@ -53,3 +55,55 @@ class Node(object):
                             execute_list.append(nodes_list[i].data)
 
         return execute_list
+
+
+class ReorderKpisMethods(object):
+    PARENT_KPI = 'kpi_parent'
+    CHILD_KPI = 'kpi_child'
+    KPI_TYPE = 'kpi_type'
+
+    def _reorder_kpis(self, store_atomics):
+        input_df = store_atomics.copy()
+        input_df['remaining_child'] = input_df[self.CHILD_KPI].copy()
+        input_df.loc[~(input_df['remaining_child'] == ''), 'remaining_child'] = input_df['remaining_child'].apply(
+            lambda x: x if isinstance(x, list) else [x])
+        reordered_df = pd.DataFrame(columns=input_df.columns.values.tolist())
+        child_flag = True
+        while child_flag:
+            input_df['remaining_child'] = input_df.apply(self._check_remaining_child, axis=1, args=(input_df,))
+            remaining_df = input_df[(input_df['remaining_child'] == '') |
+                                    (input_df['remaining_child'].isnull())]
+            reordered_df = reordered_df.append(remaining_df)
+            input_df = input_df[(~(input_df['remaining_child'] == '')) &
+                                (~(input_df['remaining_child'].isnull()))]
+            if input_df.empty:
+                child_flag = False
+        reordered_index = reordered_df.index
+        return reordered_index
+
+    def _check_remaining_child(self, row, initial_df):
+        child_kpis = row['remaining_child']
+        if child_kpis:
+            child_kpis = child_kpis if isinstance(child_kpis, (list, tuple)) else [child_kpis]
+            for kpi in child_kpis:
+                if kpi not in initial_df[self.KPI_TYPE].values:
+                    ind_to_remove = [i for i, x in enumerate(child_kpis) if x == kpi]
+                    for ind in ind_to_remove:
+                        child_kpis.pop(ind)
+                        if len(child_kpis) == 0:
+                            child_kpis = ''
+        return child_kpis
+
+    def _restore_children(self, store_atomics):
+        parents_list = store_atomics[self.PARENT_KPI].unique().tolist()
+        parents_list = filter(lambda x: x, parents_list)
+        for parent in parents_list:
+            child_kpis = store_atomics[store_atomics[self.PARENT_KPI] == parent][self.KPI_TYPE].unique().tolist()
+            store_atomics[self.CHILD_KPI] = store_atomics[self.CHILD_KPI].astype(object)
+            store_atomics.loc[store_atomics[self.KPI_TYPE] == parent, self.CHILD_KPI] = [','.join(child_kpis)]
+            store_atomics[self.CHILD_KPI] = store_atomics[self.CHILD_KPI].apply(lambda x: x.split(',') if x else '')
+
+    def get_correct_atomic_sequence_index(self, store_atomics):
+        reordered_index = self._reorder_kpis(store_atomics)
+        self._restore_children(store_atomics)
+        return reordered_index

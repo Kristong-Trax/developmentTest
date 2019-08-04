@@ -60,6 +60,10 @@ class DataTestUnitMarsuae(object):
         [{'pk': 2, 'store_type': 'Hypers', 'store_number_1': '10097162', 'additional_attribute_1': 'Hypers',
           'additional_attribute_2': 'MT', 'additional_attribute_3': 'Lulu'}])
 
+    store_info_dict_other_type = {'pk': 3, 'store_type': 'Other', 'store_number_1': '100978891',
+                                  'additional_attribute_1': 'Other', 'additional_attribute_2': 'Other',
+                                  'additional_attribute_3': 'Lulu'}
+
     # exclusion_template_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'Data',
     #                                        'Inclusion_Exclusion_Template.xlsx')
     # exclusion_template_path ='{}/Data/Template_L&T_test_updated.xlsx'.format(os.path.dirname(os.path.realpath(__file__)))
@@ -130,58 +134,64 @@ class DataTestUnitMarsuae(object):
 
     #change product pks
     assortment_store_sss_a = pd.DataFrame.from_records([
+        # NBL - Chocolate Checkout
         {'additional_attributes': '{}', 'assortment_fk': 128, 'assortment_group_fk': 94, 'assortment_super_group_fk': nan,
          'group_target_date': nan, 'in_store': 0, 'kpi_fk_lvl1': nan, 'kpi_fk_lvl2': 3009, 'kpi_fk_lvl3': 3017,
-         'product_fk': 214, 'super_group_target': None, 'target': nan},
+         'product_fk': 2, 'super_group_target': None, 'target': nan},
         {'additional_attributes': '{}', 'assortment_fk': 128, 'assortment_group_fk': 94, 'assortment_super_group_fk': nan,
          'group_target_date': nan, 'in_store': 0, 'kpi_fk_lvl1': nan, 'kpi_fk_lvl2': 3009, 'kpi_fk_lvl3': 3017,
-         'product_fk': 293, 'super_group_target': None, 'target': nan},
-        {'additional_attributes': '{}', 'assortment_fk': 128, 'assortment_group_fk': 94, 'assortment_super_group_fk': nan,
-         'group_target_date': nan, 'in_store': 0, 'kpi_fk_lvl1': nan, 'kpi_fk_lvl2': 3009, 'kpi_fk_lvl3': 3017,
-         'product_fk': 296, 'super_group_target': None, 'target': nan},
-        {'additional_attributes': '{}', 'assortment_fk': 128, 'assortment_group_fk': 94, 'assortment_super_group_fk': nan,
-         'group_target_date': nan, 'in_store': 0, 'kpi_fk_lvl1': nan, 'kpi_fk_lvl2': 3009, 'kpi_fk_lvl3': 3017,
-         'product_fk': 363, 'super_group_target': None, 'target': nan},
-        {'additional_attributes': '{}', 'assortment_fk': 128, 'assortment_group_fk': 94, 'assortment_super_group_fk': nan,
-         'group_target_date': nan, 'in_store': 0, 'kpi_fk_lvl1': nan, 'kpi_fk_lvl2': 3009, 'kpi_fk_lvl3': 3017,
-         'product_fk': 699, 'super_group_target': None, 'target': nan},
+         'product_fk': 3, 'super_group_target': None, 'target': nan},
+        # NBL - Chocolate Main
         {'additional_attributes': '{}', 'assortment_fk': 147, 'assortment_group_fk': 113, 'assortment_super_group_fk': nan,
          'group_target_date': nan, 'in_store': 0, 'kpi_fk_lvl1': nan, 'kpi_fk_lvl2': 3011, 'kpi_fk_lvl3': 3019,
-         'product_fk': 214, 'super_group_target': None, 'target': nan},
+         'product_fk': 1, 'super_group_target': None, 'target': nan},
         {'additional_attributes': '{}', 'assortment_fk': 147, 'assortment_group_fk': 113, 'assortment_super_group_fk': nan,
          'group_target_date': nan, 'in_store': 0, 'kpi_fk_lvl1': nan, 'kpi_fk_lvl2': 3011, 'kpi_fk_lvl3': 3019,
-         'product_fk': 293, 'super_group_target': None, 'target': nan},
+         'product_fk': 2, 'super_group_target': None, 'target': nan},
         {'additional_attributes': '{}', 'assortment_fk': 147, 'assortment_group_fk': 113, 'assortment_super_group_fk': nan,
          'group_target_date': nan, 'in_store': 0, 'kpi_fk_lvl1': nan, 'kpi_fk_lvl2': 3011, 'kpi_fk_lvl3': 3019,
-         'product_fk': 296, 'super_group_target': None, 'target': nan},
-        {'additional_attributes': '{}', 'assortment_fk': 147, 'assortment_group_fk': 113, 'assortment_super_group_fk': nan,
-         'group_target_date': nan, 'in_store': 0, 'kpi_fk_lvl1': nan, 'kpi_fk_lvl2': 3011, 'kpi_fk_lvl3': 3019,
-         'product_fk': 363, 'super_group_target': None, 'target': nan},
-        {'additional_attributes': '{}', 'assortment_fk': 147, 'assortment_group_fk': 113, 'assortment_super_group_fk': nan,
-         'group_target_date': nan, 'in_store': 0, 'kpi_fk_lvl1': nan, 'kpi_fk_lvl2': 3011, 'kpi_fk_lvl3': 3019,
-         'product_fk': 699, 'super_group_target': None, 'target': nan},
+         'product_fk': 12, 'super_group_target': None, 'target': nan},
+        # Red Block Compliance - Main
         {'additional_attributes': '{}', 'assortment_fk': 152, 'assortment_group_fk': 118, 'assortment_super_group_fk': nan,
          'group_target_date': nan, 'in_store': 0, 'kpi_fk_lvl1': nan, 'kpi_fk_lvl2': 3016, 'kpi_fk_lvl3': 3024,
-         'product_fk': 214, 'super_group_target': None, 'target': nan},
+         'product_fk': 1, 'super_group_target': None, 'target': nan},
         {'additional_attributes': '{}', 'assortment_fk': 152, 'assortment_group_fk': 118, 'assortment_super_group_fk': nan,
          'group_target_date': nan, 'in_store': 0, 'kpi_fk_lvl1': nan, 'kpi_fk_lvl2': 3016, 'kpi_fk_lvl3': 3024,
-         'product_fk': 293, 'super_group_target': None, 'target': nan},
-        {'additional_attributes': '{}', 'assortment_fk': 152, 'assortment_group_fk': 118, 'assortment_super_group_fk': nan,
+         'product_fk': 2, 'super_group_target': None, 'target': nan},
+        {'additional_attributes': '{}', 'assortment_fk': 152, 'assortment_group_fk': 118,
+         'assortment_super_group_fk': nan,
          'group_target_date': nan, 'in_store': 0, 'kpi_fk_lvl1': nan, 'kpi_fk_lvl2': 3016, 'kpi_fk_lvl3': 3024,
-         'product_fk': 363, 'super_group_target': None, 'target': nan},
-        {'additional_attributes': '{}', 'assortment_fk': 152, 'assortment_group_fk': 118, 'assortment_super_group_fk': nan,
+         'product_fk': 3, 'super_group_target': None, 'target': nan},
+        {'additional_attributes': '{}', 'assortment_fk': 152, 'assortment_group_fk': 118,
+         'assortment_super_group_fk': nan,
          'group_target_date': nan, 'in_store': 0, 'kpi_fk_lvl1': nan, 'kpi_fk_lvl2': 3016, 'kpi_fk_lvl3': 3024,
-         'product_fk': 699, 'super_group_target': None, 'target': nan},
+         'product_fk': 8, 'super_group_target': None, 'target': nan},
+        {'additional_attributes': '{}', 'assortment_fk': 152, 'assortment_group_fk': 118,
+         'assortment_super_group_fk': nan,
+         'group_target_date': nan, 'in_store': 0, 'kpi_fk_lvl1': nan, 'kpi_fk_lvl2': 3016, 'kpi_fk_lvl3': 3024,
+         'product_fk': 5, 'super_group_target': None, 'target': nan},
+        # NBL - Gum Checkout
         {'additional_attributes': '{}', 'assortment_fk': 135, 'assortment_group_fk': 101, 'assortment_super_group_fk': nan,
-         'group_target_date': nan, 'in_store': 0, 'kpi_fk_lvl1': nan, 'kpi_fk_lvl2': 3010, 'kpi_fk_lvl3': 3018,
-         'product_fk': 363, 'super_group_target': None, 'target': nan}])
-
-
-#-------start here
+         'group_target_date': nan, 'in_store': 0, 'kpi_fk_lvl1': nan, 'kpi_fk_lvl2': 3012, 'kpi_fk_lvl3': 3020,
+         'product_fk': 7, 'super_group_target': None, 'target': nan},
+        {'additional_attributes': '{}', 'assortment_fk': 135, 'assortment_group_fk': 101,
+         'assortment_super_group_fk': nan, 'group_target_date': nan, 'in_store': 0, 'kpi_fk_lvl1': nan,
+         'kpi_fk_lvl2': 3012, 'kpi_fk_lvl3': 3020,
+         'product_fk': 8, 'super_group_target': None, 'target': nan},
+    ])
 
     all_templates = pd.DataFrame.from_records(
-        [{'template_fk': 1, 'template_name': 'Template 1', 'location_type': 'Primary Shelf'},
-         {'template_fk': 2, 'template_name': 'Template 2', 'location_type': 'Secondary Shelf'}]
+        [{'template_fk': 1, 'template_name': 'Main shelf chocolate', 'template_group': 'Chocolate'},
+         {'template_fk': 2, 'template_name': 'Checkout Chocolate', 'template_group': 'Chocolate'},
+         {'template_fk': 3, 'template_name': 'Secondary Display 1.2x1.2', 'template_group': 'Chocolate'},
+         {'template_fk': 4, 'template_name': 'POI Chocolate', 'template_group': 'Chocolate'},
+         {'template_fk': 5, 'template_name': 'Main Shelf Gum and Confectionary',
+          'template_group': 'Gum and Confectionary'},
+         {'template_fk': 6, 'template_name': 'Ice Cream MBL', 'template_group': 'Ice Cream'},
+         {'template_fk': 7, 'template_name': 'Checkout Gum & Confectionary',
+          'template_group': 'Gum and Confectionary'},
+         {'template_fk': 8, 'template_name': 'POI Gum & Confectionary', 'template_group': 'Gum and Confectionary'},
+         {'template_fk': 9, 'template_name': 'Main Shelf Pet food', 'template_group': 'Pet food'}]
     )
 
     external_targets = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'Data',
@@ -189,82 +199,39 @@ class DataTestUnitMarsuae(object):
 
     test_case_1 = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'Data', 'test_case_1.xlsx')
 
+    # test_case_1_ass_result = pd.DataFrame([{'product_fk': 1,  'in_store': 1}, {'product_fk': 2,  'in_store': 1},
+    #                                        {'product_fk': 5,  'in_store': 0}])
+    # test_case_1_ass_base = pd.DataFrame([{'product_fk': 1, 'in_store': 0}, {'product_fk': 2, 'in_store': 0},
+    #                                      {'product_fk': 5, 'in_store': 0}])
+    #
+    # test_case_1_ass_base_extended = pd.DataFrame(
+    #     [{'product_fk': 1, 'in_store': 0, 'kpi_fk_lvl3': 290, 'kpi_fk_lvl2': 289, 'target': nan,
+    #       'assortment_group_fk': 1, 'assortment_fk': 2, 'assortment_super_group_fk': nan, 'kpi_fk_lvl1': nan,
+    #       'group_target_date': nan, 'super_group_target': nan, 'additional_attributes': nan},
+    #      {'product_fk': 2, 'in_store': 0, 'kpi_fk_lvl3': 290, 'kpi_fk_lvl2': 289, 'target': nan,
+    #       'assortment_group_fk': 1, 'assortment_fk': 2, 'assortment_super_group_fk': nan, 'kpi_fk_lvl1': nan,
+    #       'group_target_date': nan, 'super_group_target': nan, 'additional_attributes': nan
+    #       },
+    #      {'product_fk': 5, 'in_store': 0, 'kpi_fk_lvl3': 290, 'kpi_fk_lvl2': 289, 'ta   rget': nan,
+    #       'assortment_group_fk': 1, 'assortment_fk': 2, 'assortment_super_group_fk': nan, 'kpi_fk_lvl1': nan,
+    #       'group_target_date': nan, 'super_group_target': nan, 'additional_attributes': nan}]
+    # )
 
+    external_targets_columns = ['pk', 'kpi_operation_type_fk', 'kpi_level_2_fk', 'key_json', 'data_json', 'start_date',
+                                'end_date', 'received_time', 'operation_type', 'kpi_type', 'Template Group',
+                                'store_att_name_1', 'store_att_value_1', 'KPI Family', 'KPI Level 2 Name',
+                                'Target', 'Template Name', 'Weight', 'exclude_param_type_1',
+                                'exclude_param_value_1', 'kpi_child', 'kpi_parent', 'param_type_1/numerator_type',
+                                'param_type_2/denom_type', 'param_value_1/numerator_value',
+                                'param_value_2/denom_value', 'score_cond_score_1', 'score_cond_score_2',
+                                'score_cond_score_3', 'score_cond_score_4', 'score_cond_target_1',
+                                'score_cond_target_2', 'score_cond_target_3', 'score_cond_target_4', 'score_logic',
+                                'type']
 
-    # empty_exclusion_template = pd.DataFrame(columns=['KPI', 'Action', 'Type', 'Value'])
-    # exclusion_template_missing_action = pd.DataFrame([
-    #     {'KPI': 'All', 'Action': 'Include', 'Type': 'location_type', 'Value': 'Primary Shelf'},
-    #     {'KPI': 'ALL', 'Action': np.nan, 'Type': 'product_name', 'Value': 'General Empty'},
-    #     {'KPI': 'All', 'Action': 'Exclude', 'Type': 'category', 'Value': 'Cat 1, Cat 2'}
-    # ])
-
-    test_case_1_ass_result = pd.DataFrame([{'product_fk': 1,  'in_store': 1}, {'product_fk': 2,  'in_store': 1},
-                                           {'product_fk': 5,  'in_store': 0}])
-    test_case_1_ass_base = pd.DataFrame([{'product_fk': 1, 'in_store': 0}, {'product_fk': 2, 'in_store': 0},
-                                           {'product_fk': 5, 'in_store': 0}])
-
-    test_case_1_ass_base_extended = pd.DataFrame(
-        [{'product_fk': 1, 'in_store': 0, 'kpi_fk_lvl3': 290, 'kpi_fk_lvl2': 289, 'target': nan,
-          'assortment_group_fk': 1, 'assortment_fk': 2, 'assortment_super_group_fk': nan, 'kpi_fk_lvl1': nan,
-          'group_target_date': nan, 'super_group_target': nan, 'additional_attributes': nan},
-         {'product_fk': 2, 'in_store': 0, 'kpi_fk_lvl3': 290, 'kpi_fk_lvl2': 289, 'target': nan,
-          'assortment_group_fk': 1, 'assortment_fk': 2, 'assortment_super_group_fk': nan, 'kpi_fk_lvl1': nan,
-          'group_target_date': nan, 'super_group_target': nan, 'additional_attributes': nan
-          },
-         {'product_fk': 5, 'in_store': 0, 'kpi_fk_lvl3': 290, 'kpi_fk_lvl2': 289, 'ta   rget': nan,
-          'assortment_group_fk': 1, 'assortment_fk': 2, 'assortment_super_group_fk': nan, 'kpi_fk_lvl1': nan,
-          'group_target_date': nan, 'super_group_target': nan, 'additional_attributes': nan}]
-    )
-
-    external_targets_columns = ['kpi_operation_type_fk', 'operation_type', 'kpi_level_2_fk', 'store_type',
-            'additional_attribute_1', 'additional_attribute_2', 'additional_attribute_3', 'numerator_type', 'numerator_value',
-            'denominator_type', 'denominator_value', 'additional_filter_type_1',
-            'additional_filter_value_1', 'Target', 'KPI Parent',
-            'Shelves From Bottom To Include (data)', 'No of Shelves in Fixture (per bay) (key)', 'type']
+# -------start here----------------
 
     scene_info = pd.DataFrame([{'scene_fk': 1,  'template_fk': 1}, {'scene_fk': 2,  'template_fk': 1},
                                {'scene_fk': 3, 'template_fk': 2}])
-
-    scene_kpi_results_test_case_1 = pd.DataFrame(
-        [{'scene_fk': 2, 'kpi_level_2_fk': 304, 'numerator_id': 1, 'numerator_result': 5, 'denominator_result': 5},
-         {'scene_fk': 2, 'kpi_level_2_fk': 305, 'numerator_id': 2, 'numerator_result': 2, 'denominator_result': 6},
-         {'scene_fk': 2, 'kpi_level_2_fk': 306, 'numerator_id': 2, 'numerator_result': 2, 'denominator_result': 6},
-         {'scene_fk': 2, 'kpi_level_2_fk': 307, 'numerator_id': 2, 'numerator_result': 2, 'denominator_result': 6},
-         {'scene_fk': 2, 'kpi_level_2_fk': 307, 'numerator_id': 3, 'numerator_result': 1, 'denominator_result': 1},
-
-         {'scene_fk': 1, 'kpi_level_2_fk': 304, 'numerator_id': 1, 'numerator_result': 2, 'denominator_result': 7},
-         {'scene_fk': 1, 'kpi_level_2_fk': 305, 'numerator_id': 1, 'numerator_result': 3, 'denominator_result': 7},
-         {'scene_fk': 1, 'kpi_level_2_fk': 307, 'numerator_id': 1, 'numerator_result': 2, 'denominator_result': 7},
-
-         {'scene_fk': 1, 'kpi_level_2_fk': 305, 'numerator_id': 2, 'numerator_result': 6, 'denominator_result': 6},
-
-         {'scene_fk': 1, 'kpi_level_2_fk': 306, 'numerator_id': 3, 'numerator_result': 3, 'denominator_result': 8},
-         {'scene_fk': 1, 'kpi_level_2_fk': 307, 'numerator_id': 3, 'numerator_result': 5, 'denominator_result': 8},
-
-         {'scene_fk': 1, 'kpi_level_2_fk': 306, 'numerator_id': 4, 'numerator_result': 3, 'denominator_result': 6},
-         {'scene_fk': 1, 'kpi_level_2_fk': 304, 'numerator_id': 4, 'numerator_result': 3, 'denominator_result': 6},
-         ])
-
-
-    scene_kpi_results_placement = pd.DataFrame.from_records(
-        [{'context_id': None, 'denominator_id': None,  'denominator_result': 0,
-          'kpi_level_2_fk': 300021, 'numerator_id': 11, 'numerator_result': 0, 'pk': 19, 'result': 0.0,
-          'scene_fk': 4, 'score': 5.0, 'target': None, 'weight': None},
-         {'context_id': None, 'denominator_id': None, 'denominator_result': 0, 'kpi_level_2_fk': 300029,
-          'numerator_id': 11, 'numerator_result': 0, 'pk': 20, 'result': 0.0, 'scene_fk': 4, 'score': 5.0,
-          'target': None, 'weight': None},
-         {'context_id': None, 'denominator_id': None, 'denominator_result': 0, 'kpi_level_2_fk': 300030,
-          'numerator_id': 11, 'numerator_result': 0, 'pk': 21, 'result': 0.0, 'scene_fk': 4, 'score': 5.0,
-          'target': None, 'weight': None},
-         {'context_id': None, 'denominator_id': None, 'denominator_result': 0, 'kpi_level_2_fk': 300021,
-          'numerator_id': 11, 'numerator_result': 0, 'pk': 22, 'result': 100.0, 'scene_fk': 5, 'score': 4.0,
-          'target': None, 'weight': None},
-         {'context_id': None, 'denominator_id': None, 'denominator_result': 0, 'kpi_level_2_fk': 300029,
-          'numerator_id': 11, 'numerator_result': 0, 'pk': 23, 'result': 0.0, 'scene_fk': 5, 'score': 5.0,
-          'target': None, 'weight': None},
-         {'context_id': None, 'denominator_id': None, 'denominator_result': 0, 'kpi_level_2_fk': 300030,
-          'numerator_id': 11, 'numerator_result': 0, 'pk': 24, 'result': 100.0, 'scene_fk': 5, 'score': 4.0,
-          'target': None, 'weight': None}]) # design result for placement
 
     block_results = pd.DataFrame.from_records([{'cluster': 1, 'scene_fk': 1, 'orientation': '',
                                                 'facing_percentage': 0.08, 'is_block': False},
