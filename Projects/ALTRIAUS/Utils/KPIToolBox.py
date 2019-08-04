@@ -120,6 +120,7 @@ class ALTRIAUSToolBox:
         self.calculate_signage_locations_and_widths('Smokeless')
         self.calculate_register_type()
         self.calculate_assortment()
+        self.calculate_vapor_kpis()
 
         kpi_set_fk = 2
         set_name = \
@@ -153,6 +154,42 @@ class ALTRIAUSToolBox:
             except Exception as e:
                 Log.info('KPI {} calculation failed due to {}'.format(kpi_name.encode('utf-8'), e))
                 continue
+        return
+
+    def calculate_vapor_kpis(self):
+        category = 'Vapor'
+        relevant_scif = self.scif[self.scif['template_name'] == 'JUUL Merchandising']
+        if relevant_scif.empty:
+            Log.info('No products found for {} category'.format(category))
+            return
+
+        relevant_scif = relevant_scif[(relevant_scif['category'].isin([category, 'POS'])) &
+                                      (relevant_scif['brand_name'] == 'Juul')]
+        if relevant_scif.empty:
+            return
+        relevant_product_pks = relevant_scif[relevant_scif['product_type'] == 'SKU']['product_fk'].unique().tolist()
+        relevant_scene_id = relevant_scif['scene_id'].fillna(0).mode().iloc[0]
+        product_mpis = self.mpis[(self.mpis['product_fk'].isin(relevant_product_pks)) &
+                                 (self.mpis['scene_fk'] == relevant_scene_id)]
+
+        if product_mpis.empty:
+            Log.info('No products found for {} category'.format(category))
+            return
+
+        self.calculate_total_shelves(product_mpis, category, product_mpis)
+
+        longest_shelf = \
+            product_mpis[product_mpis['shelf_number'] ==
+                         self.get_longest_shelf_number(product_mpis)].sort_values(by='rect_x', ascending=True)
+
+        if longest_shelf.empty or longest_shelf.isnull().all().all():
+            Log.warning(
+                'The {} category items are in a non-standard location. The {} category will not be calculated.'.format(
+                    category, category))
+            return
+
+        relevant_pos = pd.DataFrame()
+        self.calculate_fixture_width(relevant_pos, longest_shelf, category)
         return
 
     def calculate_assortment(self):
@@ -504,12 +541,13 @@ class ALTRIAUSToolBox:
         self.calculate_fixture_width(relevant_pos, longest_shelf, category)
         return
 
-    def calculate_total_shelves(self, longest_shelf, category):
+    def calculate_total_shelves(self, longest_shelf, category, product_mpis=None):
         category_fk = self.get_category_fk_by_name(category)
-        product_mpis = self.mpis[(self.mpis['rect_x'] > longest_shelf['rect_x'].min()) &
-                                 (self.mpis['rect_x'] < longest_shelf['rect_x'].max()) &
-                                 (self.mpis['scene_fk'] == longest_shelf['scene_fk'].fillna(0).mode().iloc[0])]
-        total_shelves = product_mpis['shelf_number'].max()
+        if product_mpis is None:
+            product_mpis = self.mpis[(self.mpis['rect_x'] > longest_shelf['rect_x'].min()) &
+                                     (self.mpis['rect_x'] < longest_shelf['rect_x'].max()) &
+                                     (self.mpis['scene_fk'] == longest_shelf['scene_fk'].fillna(0).mode().iloc[0])]
+        total_shelves = len(product_mpis['shelf_number'].unique())
 
         kpi_fk = self.common_v2.get_kpi_fk_by_kpi_name('Total Shelves')
         self.common_v2.write_to_db_result(kpi_fk, numerator_id=category_fk, denominator_id=self.store_id,
@@ -527,7 +565,7 @@ class ALTRIAUSToolBox:
             width = 0
 
         if relevant_pos.empty or width == 0:
-            width = int(len(longest_shelf) / float(self.facings_to_feet_template[category + ' Facings'].iloc[0]))
+            width = round(len(longest_shelf) / float(self.facings_to_feet_template[category + ' Facings'].iloc[0]))
 
         kpi_fk = self.common_v2.get_kpi_fk_by_kpi_name('Fixture Width')
         self.common_v2.write_to_db_result(kpi_fk, numerator_id=category_fk, denominator_id=self.store_id,
