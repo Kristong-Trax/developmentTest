@@ -140,7 +140,7 @@ class MarsUsDogMainMealWet(object):
 
         # self._data_provider.trace_container.to_csv('/home/Israel/Desktop/trace_block.csv')
         self._writer.commit_results_data()
-        self.common.commit_results_data()
+        # self.common.commit_results_data()
 
     @staticmethod
     def load_min_facings(template_data):
