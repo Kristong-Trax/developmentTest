@@ -93,6 +93,7 @@ class Consts(object):
     GENERAL = u'כללי'
     ARAB = u'ערבי'
     ORTHODOX = u'חרדי'
+    RUSSIAN = u'רוסי'
     QUESTION_IDS_FOR_EMPTY_SESSIONS = [9]
 
     # Gaps

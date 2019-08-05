@@ -67,8 +67,9 @@ class CCRUProjectCalculations:
 
     def main_function(self):
 
-        if self.tool_box.visit_type == self.tool_box.PROMO_VISIT:
-            Log.debug('Promo session, no Custom KPI calculation implied')
+        if self.tool_box.visit_type in (self.tool_box.PROMO_VISIT, self.tool_box.SEGMENTATION_VISIT):
+            Log.info('\'{}\' visit type: no Custom KPI calculation implied'
+                     ''.format(self.tool_box.visit_type))
             return
 
         if str(self.visit_date) < self.tool_box.MIN_CALC_DATE:
