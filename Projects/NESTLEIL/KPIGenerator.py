@@ -1,7 +1,7 @@
 
 from Trax.Utils.Logging.Logger import Log
 from KPIUtils_v2.Utils.Decorators.Decorators import log_runtime
-from Projects.NESTLEIL_SAND.Utils.KPIToolBox import NESTLEILToolBox
+from Projects.NESTLEIL.Utils.KPIToolBox import NESTLEILToolBox
 
 __author__ = 'idanr'
 

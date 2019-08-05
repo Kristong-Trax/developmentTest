@@ -24,6 +24,7 @@ class NESTLEILToolBox:
     def main_calculation(self):
         """ This function calculates the KPI results."""
         self._calculate_assortment()
+        self.common_v2.commit_results_data()
 
     def _calculate_assortment(self):
         """
