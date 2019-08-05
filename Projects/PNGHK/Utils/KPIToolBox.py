@@ -171,6 +171,9 @@ class PNGHKToolBox:
         entity_name = kpi_df[Const.NUMERATOR_ENTITY].values[0]
         entity_name_for_fk = Const.NAME_TO_FK[entity_name]
         results_dict = {}
+
+        # Iterate all rows of the KPI, each is calculated differently,
+        # added to an aggregated dictionary on the end of the loops
         for i, row in kpi_df.iterrows():
             scene_size = row[Const.SCENE_SIZE]
             self.kpi_excluding = row[[Const.EXCLUDE_EMPTY, Const.EXCLUDE_HANGER, Const.EXCLUDE_IRRELEVANT,
@@ -209,9 +212,11 @@ class PNGHKToolBox:
                         scene_size *= number_of_scenes
                     scenes = [""]
 
+                # Iterate scenes, inorder to get exact ratios between each scene with fixed 4000 mm size
                 for scene in scenes:
+                    # If iterating scenes, replacing all current filters with {scene_fk: scene}
                     if scene != "":
-                        filters['scene_fk'] = scene
+                        filters = {'scene_fk': scene}
                     category = row[Const.CATEGORY]
                     if category != "":
                         if category == Const.EACH:
@@ -224,8 +229,6 @@ class PNGHKToolBox:
                     # Iterate categories
                     df = df[df['width_mm_advance'] != -1]
                     total_denominator = df[self.tools.get_filter_condition(df, **filters)]['width_mm_advance'].sum()
-                    if total_denominator == 0:
-                        continue
                     for category in categories:
                         if category != "":
                             denominator_id = self.all_products[self.all_products['category'] ==
@@ -245,6 +248,8 @@ class PNGHKToolBox:
                         elif scene_size != "":
                             ratio = scene_size / total_denominator
                             denominator *= ratio
+
+                        # Iterate entities (manufacturer / product_fk...)
                         for entity in all_numerators:
                             filters[entity_name] = entity
                             numerator = df[self.tools.get_filter_condition(df, **filters)]['width_mm_advance'].sum()
