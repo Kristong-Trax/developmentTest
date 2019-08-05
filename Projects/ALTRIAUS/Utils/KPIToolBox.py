@@ -168,7 +168,7 @@ class ALTRIAUSToolBox:
         if relevant_scif.empty:
             return
         relevant_product_pks = relevant_scif[relevant_scif['product_type'] == 'SKU']['product_fk'].unique().tolist()
-        relevant_scene_id = relevant_scif['scene_id'].fillna(0).mode().iloc[0]
+        relevant_scene_id = self.get_most_frequent_scene(relevant_scif)
         product_mpis = self.mpis[(self.mpis['product_fk'].isin(relevant_product_pks)) &
                                  (self.mpis['scene_fk'] == relevant_scene_id)]
 
@@ -217,7 +217,6 @@ class ALTRIAUSToolBox:
                                           denominator_result=len(assortment_with_facings),
                                           result=number_of_skus_present,
                                           score=score)
-
 
     def calculate_register_type(self):
         relevant_scif = self.scif[(self.scif['product_type'].isin(['POS', 'Other'])) &
@@ -286,7 +285,6 @@ class ALTRIAUSToolBox:
                                                          (scene_matches['status'] == 1)]['width_mm_advance'].sum()
                     scene_filters['bay_number'] = bay
 
-
                     tested_group_linear = scene_matches[self.get_filter_condition(scene_matches, **scene_filters)]
 
                     tested_group_linear_value = tested_group_linear['width_mm_advance'].sum()
@@ -312,8 +310,6 @@ class ALTRIAUSToolBox:
             space_length = 0
 
         return space_length
-
-
 
     def get_filter_condition(self, df, **filters):
         """
@@ -389,7 +385,7 @@ class ALTRIAUSToolBox:
                           ~(relevant_scif['product_name'] == 'General POS Other')]['product_fk'].unique().tolist()
         other_product_and_pos_pks = \
             relevant_scif[relevant_scif['product_type'].isin(excluded_types)]['product_fk'].tolist()
-        relevant_scene_id = relevant_scif['scene_id'].fillna(0).mode().iloc[0]
+        relevant_scene_id = self.get_most_frequent_scene(relevant_scif)
         product_mpis = self.mpis[(self.mpis['product_fk'].isin(relevant_product_pks)) &
                                  (self.mpis['scene_fk'] == relevant_scene_id)]
 
@@ -684,6 +680,14 @@ class ALTRIAUSToolBox:
             longest_shelf = pd.DataFrame()
 
         return longest_shelf
+
+    @staticmethod
+    def get_most_frequent_scene(relevant_scif):
+        try:
+            relevant_scene_id = relevant_scif['scene_id'].fillna(0).mode().iloc[0]
+        except IndexError:
+            relevant_scene_id = 0
+        return relevant_scene_id
 
     def commit(self):
         self.common_v2.commit_results_data()
