@@ -8,8 +8,10 @@ from KPIUtils_v2.Calculations.PositionGraphsCalculations import PositionGraphs
 from KPIUtils_v2.Calculations.BaseCalculations import BaseCalculation
 import KPIUtils_v2.Calculations.CalculationsUtils.CalculationUtils as CalculationUtils
 import KPIUtils_v2.Calculations.CalculationsUtils.DefaultValues as Default
+
+from Projects.RINIELSENUS.Utils.AdjacencyGraphs_2 import NodeAttribute
 # from Trax.Algo.Calculations.Core.GraphicalModel2.AdjacencyGraphs import AdjacencyGraphBuilder
-from Projects.RINIELSENUS.Utils.AdjacencyGraphs import AdjacencyGraphBuilder
+from Projects.RINIELSENUS.Utils.AdjacencyGraphs_2 import AdjacencyGraphBuilder
 from Trax.Algo.Geometry.Masking.MaskingResultsIO import retrieve_maskings
 # from Projects.RINIELSENUS.Utils.MaskingResultsIO_v2 import retrieve_maskings
 from Trax.Algo.Geometry.Masking.Utils import transform_maskings
@@ -149,6 +151,29 @@ class Block(BaseCalculation):
                     columns={'scene_match_fk': 'pk'})
                 if relevant_matches_for_block.empty:
                     continue
+
+                import pymongo
+                from networkx.readwrite import json_graph
+                import json
+                import cPickle as pickle
+                import pickletools
+                import bz2
+                import bson
+                mdb = pymongo.MongoClient('mongodb://127.0.0.1:27017')
+                col = mdb.config['graph']
+                graph = AdjacencyGraphBuilder.initiate_graph_by_dataframe(scene_matches, scene_mask,
+                                                                          additional_attributes=['rect_x',
+                                                                                                 'rect_y'] + allowed_product_filter +
+                                                                                                list(
+                                                                                                    scene_matches.columns))
+
+                data = json_graph.adjacency_data(graph)
+                pkl = {'project': self.data_provider.project_name, 'scene': scene, 'graph': bson.Binary(bz2.compress(pickletools.optimize(pickle.dumps(data))))}
+                col.insert_one(pkl)
+
+                doc = col.find({'project': self.data_provider.project_name, 'scene': scene})[0]
+                upkl = pickle.loads(bz2.decompress(doc['graph']))
+
 
                 if not self.include_stacking:
                     scene_matches = self._get_no_stack_data(scene_matches)
@@ -400,4 +425,17 @@ class Block(BaseCalculation):
             elif i >= 1:
                 graph.nodes[node][Block.BLOCK_KEY].stored_values = set([Block.CONNECTED])
 
+        return graph
+
+    def denodify(self, graph):
+        if isinstance(graph, NodeAttribute):
+            graph = graph.value
+        elif isinstance(graph, dict):
+            for key in graph:
+                if "." in key:
+                    del graph[key]
+                graph[key] = self.denodify(graph[key])
+        elif isinstance(graph, list):
+            for i, sub in enumerate(graph):
+                graph[i] = self.denodify(sub)
         return graph
