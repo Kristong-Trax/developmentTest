@@ -272,8 +272,9 @@ class ToolBox:
         total_results = []
         if self.attr11 == Const.NATIONAL_STORE and kpi_name == Const.BACK_BAR:
             kpi_db_names = self.pull_kpi_fks_from_names(Const.DB_ON_NAMES[Const.BACK_BAR_NATIONAL])
-            for scene_type in relevant_scif['template_name'].unique().tolist():
-                temp_scif = relevant_scif[relevant_scif['template_name'] == scene_type]
+            for template_group in relevant_scif['template_group'].unique().tolist():
+                temp_scif = relevant_scif[
+                    relevant_scif['template_group'].str.encode("utf-8") == template_group.encode("utf-8")]
                 temp_results = self.calculate_back_bar_national_template(
                     temp_scif, relevant_assortment, kpi_db_names, weight, target)
                 total_results += temp_results
