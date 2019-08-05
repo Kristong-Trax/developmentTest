@@ -261,7 +261,7 @@ class TestMarsuaeSand(TestFunctionalCase):
         for expected_result in expected_list:
             self.assertTrue(expected_result in test_result_list)
 
-    def test_calculate_checkouts_considers_stitch_groups_for_calculations(self):
+    def test_calculate_checkouts_considers_stitch_groups_for_calculations_groups_less_then_target(self):
         probe_group, matches, scene = self.create_scif_matches_stitch_groups_data_mocks(
             DataTestUnitMarsuae.test_case_1, [1, 2])
         tool_box = MARSUAE_SANDToolBox(self.data_provider_mock, self.output)
@@ -271,6 +271,58 @@ class TestMarsuaeSand(TestFunctionalCase):
         expected_result = {'kpi_fk': 3005, 'result': 1, 'score': 0, 'weight': 7.5, 'score_by_weight': 0}
         check = self.check_results(tool_box.atomic_kpi_results, expected_result)
         self.assertEquals(check, 1)
+
+    def test_calculate_checkouts_considers_stitch_groups_for_calculations_groups_more_than_target(self):
+        probe_group, matches, scene = self.create_scif_matches_stitch_groups_data_mocks(
+            DataTestUnitMarsuae.test_case_1, [1, 2, 3])
+        tool_box = MARSUAE_SANDToolBox(self.data_provider_mock, self.output)
+        store_atomics = tool_box.get_store_atomic_kpi_parameters()
+        param_row = self.get_parameter_series_for_kpi_calculation(store_atomics, 'Checkout Penetration - Chocolate')
+        tool_box.calculate_checkouts(param_row)
+        expected_result = {'kpi_fk': 3005, 'result': 2, 'score': 1, 'weight': 7.5, 'score_by_weight': 7.5}
+        check = self.check_results(tool_box.atomic_kpi_results, expected_result)
+        self.assertEquals(check, 1)
+
+    def test_calculate_availability_no_products_from_list_in_session(self):
+        probe_group, matches, scene = self.create_scif_matches_stitch_groups_data_mocks(
+            DataTestUnitMarsuae.test_case_1, [3])
+        tool_box = MARSUAE_SANDToolBox(self.data_provider_mock, self.output)
+        store_atomics = tool_box.get_store_atomic_kpi_parameters()
+        tool_box.build_tiers_for_atomics(store_atomics)
+        param_row = self.get_parameter_series_for_kpi_calculation(store_atomics, 'NBL - Chocolate Checkout')
+        tool_box.calculate_availability(param_row)
+        expected_result = {'kpi_fk': 3009, 'result': 0, 'score': 0, 'weight': 7.5, 'score_by_weight': 0}
+        check = self.check_results(tool_box.atomic_kpi_results, expected_result)
+        self.assertEquals(check, 1)
+
+    def test_calculate_availability_sku_lvl_no_products_in_list(self):
+        probe_group, matches, scene = self.create_scif_matches_stitch_groups_data_mocks(
+            DataTestUnitMarsuae.test_case_1, [3])
+        tool_box = MARSUAE_SANDToolBox(self.data_provider_mock, self.output)
+        store_atomics = tool_box.get_store_atomic_kpi_parameters()
+        param_row = self.get_parameter_series_for_kpi_calculation(store_atomics, 'NBL - Chocolate Checkout')
+        lvl3_ass_res = tool_box.lvl3_assortment[tool_box.lvl3_assortment['ass_lvl2_kpi_type']
+                                                == param_row[tool_box.KPI_TYPE]]
+        lvl3_ass_res = tool_box.calculate_lvl_3_assortment_result(lvl3_ass_res, param_row)
+        expected_results = list()
+        expected_results.append({'kpi_fk_lvl3': 3017, 'in_store': 0, 'product_fk': 2})
+        expected_results.append({'kpi_fk_lvl3': 3017, 'in_store': 0, 'product_fk': 3})
+        test_result_list = []
+        for expected_result in expected_results:
+            test_result_list.append(self.check_results(lvl3_ass_res, expected_result) == 1)
+        self.assertTrue(all(test_result_list))
+
+    # def test_calculate_availability_products_from_list_exist_in_session(self):
+    #     probe_group, matches, scene = self.create_scif_matches_stitch_groups_data_mocks(
+    #         DataTestUnitMarsuae.test_case_1, [3])
+    #     tool_box = MARSUAE_SANDToolBox(self.data_provider_mock, self.output)
+    #     store_atomics = tool_box.get_store_atomic_kpi_parameters()
+    #     tool_box.build_tiers_for_atomics(store_atomics)
+    #     param_row = self.get_parameter_series_for_kpi_calculation(store_atomics, 'NBL - Chocolate Checkout')
+    #     tool_box.calculate_availability(param_row)
+    #     expected_result = {'kpi_fk': 3009, 'result': 0, 'score': 0, 'weight': 7.5, 'score_by_weight': 0}
+    #     check = self.check_results(tool_box.atomic_kpi_results, expected_result)
+    #     self.assertEquals(check, 1)
 
     def test_binary_score_result_exceeds_target(self):
         tool_box = MARSUAE_SANDToolBox(self.data_provider_mock, self.output)
@@ -313,14 +365,13 @@ class TestMarsuaeSand(TestFunctionalCase):
         input_df['Target'] = input_df.apply(tool_box.process_targets, axis=1)
         input_df_dict = input_df.to_dict(orient='records')
         expected_list = list()
-        expected_list.append({'score_logic': 'Binary', 'Target': 0.5, 'kpi_type': 'kpi_a', 'kpi_fk':1})
-        expected_list.append({'score_logic': 'Relative Score', 'Target': 0, 'kpi_type': 'kpi_b', 'kpi_fk':2})
-        expected_list.append({'score_logic': 'Binary', 'Target': 0, 'kpi_type': 'kpi_c', 'kpi_fk':3})
-        expected_list.append({'score_logic': 'Tiered', 'Target': '', 'kpi_type': 'kpi_d', 'kpi_fk':4})
-        expected_list.append({'score_logic': 'Relative Score', 'Target': 0, 'kpi_type': 'kpi_e', 'kpi_fk':5})
+        expected_list.append({'score_logic': 'Binary', 'Target': 0.5, 'kpi_type': 'kpi_a', 'kpi_fk': 1})
+        expected_list.append({'score_logic': 'Relative Score', 'Target': 0, 'kpi_type': 'kpi_b', 'kpi_fk': 2})
+        expected_list.append({'score_logic': 'Binary', 'Target': 0, 'kpi_type': 'kpi_c', 'kpi_fk': 3})
+        expected_list.append({'score_logic': 'Tiered', 'Target': '', 'kpi_type': 'kpi_d', 'kpi_fk': 4})
+        expected_list.append({'score_logic': 'Relative Score', 'Target': 0, 'kpi_type': 'kpi_e', 'kpi_fk': 5})
         for expected_result in expected_list:
             self.assertTrue(expected_result in input_df_dict)
-
     # add tests for different score logic functions
 
     @staticmethod
