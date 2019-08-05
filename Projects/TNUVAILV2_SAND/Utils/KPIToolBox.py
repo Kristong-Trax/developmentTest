@@ -5,8 +5,8 @@ from Trax.Utils.Logging.Logger import Log
 from KPIUtils_v2.DB.CommonV2 import Common
 from KPIUtils_v2.Utils.Parsers import ParseInputKPI
 from Projects.TNUVAILV2_SAND.Utils.Consts import Consts
-from Projects.TNUVAILV2_SAND.Utils.DataBaseHandler import DBHandler
 from Trax.Algo.Calculations.Core.DataProvider import Data
+from Projects.TNUVAILV2_SAND.Utils.DataBaseHandler import DBHandler
 from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
 
 __author__ = 'idanr'

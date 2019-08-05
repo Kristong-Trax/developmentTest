@@ -3,11 +3,11 @@ import pandas as pd
 from collections import Counter
 from Trax.Utils.Logging.Logger import Log
 from KPIUtils_v2.DB.CommonV2 import Common
-from KPIUtils_v2.Utils.Parsers import ParseInputKPI
 from Projects.TNUVAILV2.Utils.Consts import Consts
+from KPIUtils_v2.Utils.Parsers import ParseInputKPI
 from Trax.Algo.Calculations.Core.DataProvider import Data
-from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
 from Projects.TNUVAILV2.Utils.DataBaseHandler import DBHandler
+from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
 
 __author__ = 'idanr'
 
@@ -96,6 +96,8 @@ class TNUVAILToolBox:
         :param lvl3_result: Assortment SKU level results + category_fk column.
         :param policy:  חלבי או טירת צבי - this policy is matching for scene types and products as well
         """
+        if policy not in self.scif.template_name.unique().tolist():
+            return
         lvl3_data = self._get_relevant_assortment_data(lvl3_result, policy)
         self._calculate_distribution_and_oos(lvl3_data, policy, is_dist=True)  # Distribution
         lvl3_data = self._filter_data_for_oos_calculation(lvl3_data)
@@ -317,6 +319,8 @@ class TNUVAILToolBox:
         calculation and saves the results.
         """
         filtered_scif_by_policy = self._get_filtered_scif_for_sos_calculations(policy)
+        if filtered_scif_by_policy.empty:
+            return
         store_level_kpi, own_manu_out_of_cat_kpi, all_manu_out_of_cat_kpi = self._get_sos_kpi_fks(policy)
         # Store level calculation
         num_result, denominator_result = self._calculate_own_manufacturer_sos(filtered_scif_by_policy)
