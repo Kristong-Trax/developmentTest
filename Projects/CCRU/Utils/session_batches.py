@@ -9,7 +9,7 @@ from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
 __author__ = 'Sergey'
 
 PROJECT = 'ccru'
-START_DATE = '2019-06-27'
+START_DATE = '2019-07-27'
 END_DATE = '2019-12-31'
 NUMBER_OF_SCENES_LIMIT = 10000
 BATCH_FILE = '/home/sergey/Documents/Recalc/' + PROJECT + '_sessions_'
@@ -51,26 +51,24 @@ class CCRUSessionBatches:
         #         AND delete_time is NULL
         #         ORDER BY ss.pk DESC;
         #         """.format(START_DATE, END_DATE)
-        # query = """
-        #         SELECT ss.visit_date, ss.session_uid, ss.number_of_scenes
-        #         FROM probedata.session ss
-        #         JOIN report.kps_results ksr ON ksr.session_uid=ss.session_uid
-        #         JOIN static.kpi_set ks ON ks.pk=ksr.kpi_set_fk
-        #         WHERE ss.number_of_scenes > 0
-        #         AND visit_type_fk<>2
-        #         AND ss.visit_date >= '{}' AND ss.visit_date <= '{}'
-        #         AND delete_time is NULL AND status='Completed'
-        #         AND ks.name LIKE 'PoS 2019 - MT%'
-        #         ORDER BY ss.pk DESC;
-        #         """.format(START_DATE, END_DATE)
         query = """
                 SELECT ss.visit_date, ss.session_uid, ss.number_of_scenes
                 FROM probedata.session ss
+                JOIN report.kps_results ksr ON ksr.session_uid=ss.session_uid
+                JOIN static.kpi_set ks ON ks.pk=ksr.kpi_set_fk
                 WHERE ss.number_of_scenes > 0 AND delete_time is NULL AND status='Completed'
                 AND ss.visit_date >= '{}' AND ss.visit_date <= '{}'
-                AND visit_type_fk=4
+                AND ks.name LIKE 'PoS 2019 - MT Supermarket - REG'
                 ORDER BY ss.pk DESC;
                 """.format(START_DATE, END_DATE)
+        # query = """
+        #         SELECT ss.visit_date, ss.session_uid, ss.number_of_scenes
+        #         FROM probedata.session ss
+        #         WHERE ss.number_of_scenes > 0 AND delete_time is NULL AND status='Completed'
+        #         AND ss.visit_date >= '{}' AND ss.visit_date <= '{}'
+        #         AND visit_type_fk=4
+        #         ORDER BY ss.pk DESC;
+        #         """.format(START_DATE, END_DATE)
 
         sessions = pd.read_sql_query(query, self.aws_conn.db)
 
