@@ -824,9 +824,10 @@ class ToolBox:
         diageo_facings, comp_facings, temp_comp_facings, temp_target = 0, 0, 0, target
         for template_name in relevant_scif['template_name'].unique():
             template_scif = relevant_scif[relevant_scif['template_name'] == template_name]
-            temp_diageo_facings = template_scif[template_scif['product_fk'] == product_fk]['facings'].sum()
+            temp_diageo_facings = template_scif[template_scif['product_fk'] == product_fk]['facings_ign_stack'].sum()
             if comp_product_fk:
-                temp_comp_facings = template_scif[template_scif['product_fk'] == comp_product_fk]['facings'].sum()
+                temp_comp_facings = \
+                    template_scif[template_scif['product_fk'] == comp_product_fk]['facings_ign_stack'].sum()
                 temp_target = bench_value * temp_comp_facings
             if temp_diageo_facings >= temp_target and temp_diageo_facings > 0:
                 return temp_diageo_facings, temp_comp_facings, 1, temp_target, comp_product_fk
