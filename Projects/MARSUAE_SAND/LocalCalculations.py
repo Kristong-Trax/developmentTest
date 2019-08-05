@@ -25,10 +25,11 @@ if __name__ == '__main__':
     Config.init()
     project_name = 'marsuae-sand'
     data_provider = KEngineDataProvider(project_name)
-    session = 'baa68060-8464-4841-82ad-f28f28047b06'    #SSS A
+    # session = 'baa68060-8464-4841-82ad-f28f28047b06'    #SSS A
     # session = '7CB61001-022D-4077-B275-AB9A9E0C2AFF'    #Hypers - no ass results for some reason
     # session = 'D53E1FAA-BC36-457B-96C8-79EE7753B929' # scenes Hypers - prices in db
     # session = '7CB61001-022D-4077-B275-AB9A9E0C2AFF' # scenes Hypers - prices in db
+    session = '8C545C66-D892-4173-8354-0B6BF97B189D' # sss a all templates
     data_provider.load_session_data(session)
     output = Output()
     MarsuaeSandCalculations(data_provider, output).run_project_calculations()

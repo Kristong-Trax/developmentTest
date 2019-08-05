@@ -261,13 +261,65 @@ class TestMarsuaeSand(TestFunctionalCase):
         for expected_result in expected_list:
             self.assertTrue(expected_result in test_result_list)
 
-    def test_calculate_checkouts_considers_stitch_groups(self):
+    def test_calculate_checkouts_considers_stitch_groups_for_calculations(self):
         probe_group, matches, scene = self.create_scif_matches_stitch_groups_data_mocks(
             DataTestUnitMarsuae.test_case_1, [1, 2])
         tool_box = MARSUAE_SANDToolBox(self.data_provider_mock, self.output)
         store_atomics = tool_box.get_store_atomic_kpi_parameters()
         param_row = self.get_parameter_series_for_kpi_calculation(store_atomics, 'Checkout Penetration - Chocolate')
-        print param_row
+        tool_box.calculate_checkouts(param_row)
+        expected_result = {'kpi_fk': 3005, 'result': 1, 'score': 0, 'weight': 7.5, 'score_by_weight': 0}
+        check = self.check_results(tool_box.atomic_kpi_results, expected_result)
+        self.assertEquals(check, 1)
+
+    def test_binary_score_result_exceeds_target(self):
+        tool_box = MARSUAE_SANDToolBox(self.data_provider_mock, self.output)
+        param_row = pd.Series({'score_logic': 'Binary', 'Weight': 50, 'Target': 2, 'kpi_type': 'kpi1'})
+        score, weight = tool_box.get_score(result=3, param_row=param_row)
+        self.assertEquals(score, 1)
+        self.assertEquals(weight, 50)
+
+    def test_binary_score_result_equals_target(self):
+        tool_box = MARSUAE_SANDToolBox(self.data_provider_mock, self.output)
+        param_row = pd.Series({'score_logic': 'Binary', 'Weight': 10, 'Target': 0.5, 'kpi_type': 'kpi1'})
+        score, weight = tool_box.get_score(result=0.5, param_row=param_row)
+        self.assertEquals(score, 1)
+        self.assertEquals(weight, 10)
+
+    def test_binary_score_result_less_than_target(self):
+        tool_box = MARSUAE_SANDToolBox(self.data_provider_mock, self.output)
+        param_row = pd.Series({'score_logic': 'Binary', 'Weight': 10, 'Target': 0.5, 'kpi_type': 'kpi1'})
+        score, weight = tool_box.get_score(result=0.2, param_row=param_row)
+        self.assertEquals(score, 0)
+        self.assertEquals(weight, 10)
+
+    def test_get_relative_score(self):
+        tool_box = MARSUAE_SANDToolBox(self.data_provider_mock, self.output)
+        param_row = pd.Series({'score_logic': 'Relative Score', 'Weight': 20, 'Target': 2})
+        score, weight = tool_box.get_score(result=1, param_row=param_row)
+        self.assertEquals(score, 0.5)
+        self.assertEquals(weight, 20)
+
+    def test_get_relative_score_if_target_zero(self):
+        tool_box = MARSUAE_SANDToolBox(self.data_provider_mock, self.output)
+        param_row = pd.Series({'score_logic': 'Relative Score', 'Weight': 20, 'Target': 0})
+        score, weight = tool_box.get_score(result=1, param_row=param_row)
+        self.assertEquals(score, 0)
+        self.assertEquals(weight, 20)
+
+    def test_process_targets_appropriately_processes_the_target_field_of_external_targets(self):
+        tool_box = MARSUAE_SANDToolBox(self.data_provider_mock, self.output)
+        input_df = DataTestUnitMarsuae.input_df_for_targets
+        input_df['Target'] = input_df.apply(tool_box.process_targets, axis=1)
+        input_df_dict = input_df.to_dict(orient='records')
+        expected_list = list()
+        expected_list.append({'score_logic': 'Binary', 'Target': 0.5, 'kpi_type': 'kpi_a', 'kpi_fk':1})
+        expected_list.append({'score_logic': 'Relative Score', 'Target': 0, 'kpi_type': 'kpi_b', 'kpi_fk':2})
+        expected_list.append({'score_logic': 'Binary', 'Target': 0, 'kpi_type': 'kpi_c', 'kpi_fk':3})
+        expected_list.append({'score_logic': 'Tiered', 'Target': '', 'kpi_type': 'kpi_d', 'kpi_fk':4})
+        expected_list.append({'score_logic': 'Relative Score', 'Target': 0, 'kpi_type': 'kpi_e', 'kpi_fk':5})
+        for expected_result in expected_list:
+            self.assertTrue(expected_result in input_df_dict)
 
     # add tests for different score logic functions
 

@@ -118,7 +118,9 @@ class MARSUAE_SANDToolBox:
         return custom_score
 
     def get_own_manufacturer_fk(self):
-        own_manufacturer_fk = self.data_provider.own_manufacturer.param_value.values[0]
+        # own_manufacturer_fk = self.data_provider.own_manufacturer.param_value.values[0]
+        own_manufacturer_fk = self.all_products[self.all_products['manufacturer_name'] ==
+                                                'MARS GCC']['manufacturer_fk'].values[0]
         return own_manufacturer_fk
 
     def get_lvl3_relevant_assortment(self):
@@ -200,7 +202,21 @@ class MARSUAE_SANDToolBox:
                 relevant_atomic_df[self.WEIGHT] = relevant_atomic_df[self.WEIGHT].apply(lambda x: float(x))
                 relevant_atomic_df['kpi_parent'] = relevant_atomic_df['kpi_parent'].apply(lambda x: x if x else None)
                 relevant_atomic_df['kpi_child'] = relevant_atomic_df['kpi_child'].apply(lambda x: x if x else None)
+                relevant_atomic_df[self.TARGET] = relevant_atomic_df.apply(self.process_targets, axis=1)
         return relevant_atomic_df
+
+    def process_targets(self, row):
+        target = row[self.TARGET]
+        if row[self.SCORE_LOGIC] in [self.BINARY, self.RELATIVE_SCORE]:
+            if target != target or target is None:
+                self.log_target_error(row[self.KPI_TYPE])
+                return 0
+            try:
+                target = float(target)
+            except ValueError:
+                self.log_target_error(row[self.KPI_TYPE])
+                target = 0
+        return target
 
     def get_the_list_of_store_relevant_external_targets(self, policies_df):
         atomic_params_pks = []
@@ -278,7 +294,7 @@ class MARSUAE_SANDToolBox:
             return None
 
     def get_category_parent_dict(self, row):
-        return {'kpi_fk': row[self.KPI_LVL_2_NAME]}
+        return {'kpi_fk': self.common.get_kpi_fk_by_kpi_type(row[self.KPI_LVL_2_NAME])}
 
     def match_tier_targets_to_scores(self, row, tier_dict_list):
         relevant_columns = filter(lambda x: x.startswith('score_cond'), row.index.values)
@@ -403,7 +419,7 @@ class MARSUAE_SANDToolBox:
         identifier_result = {'kpi_fk': kpi_fk}
         self.common.write_to_db_result(fk=kpi_fk, numerator_id=self.own_manuf_fk, denominator_id=self.store_id,
                                        result=total_result, score=total_result, identifier_result=identifier_result,
-                                       target=self.FIXED_TARGET_FOR_MR)
+                                       target=self.FIXED_TARGET_FOR_MR, should_enter=True)
 
     def calculate_category_level(self):
         self.cat_lvl_res = self.atomic_kpi_results.groupby(['parent_name'],
@@ -416,7 +432,7 @@ class MARSUAE_SANDToolBox:
             self.common.write_to_db_result(fk=kpi_fk, numerator_id=self.own_manuf_fk, denominator_id=self.store_id,
                                            result=result['cat_score'], score=result['cat_score'],
                                            identifier_parent=identifier_parent, identifier_result=identifier_result,
-                                           target=self.FIXED_TARGET_FOR_MR)
+                                           target=self.FIXED_TARGET_FOR_MR, should_enter=True)
 
     def get_atomics_for_template_groups_present_in_store(self, store_atomics):
         session_template_groups = self.scif['template_group'].unique().tolist()
@@ -669,13 +685,11 @@ class MARSUAE_SANDToolBox:
 
     def get_relative_score(self, param_row, result):
         target = float(param_row[self.TARGET])
-        # think if maybe make the code error-friendly and to check float. ....
         score = result / target if target else 0
         return score
 
     def get_binary_score(self, param_row, result):
         target = float(param_row[self.TARGET])
-        # think if maybe make the code error-friendly and to check float. ....
         score = 1 if result >= target else 0
         return score
 
@@ -736,7 +750,7 @@ class MARSUAE_SANDToolBox:
     def get_identifier_result_for_atomic(self, param_row):
         identifier_result = None
         if param_row[self.CHILD_KPI]:
-            identifier_result = {'kpi': param_row['kpi_level_2_fk']}
+            identifier_result = {'kpi_fk': param_row['kpi_level_2_fk']}
         return identifier_result
 
     def calculate_checkouts(self, param_row):
@@ -836,3 +850,7 @@ class MARSUAE_SANDToolBox:
         filtered_scif = filter_df(filters, self.scif)
         space_length = filtered_scif['gross_len_ign_stack'].sum()
         return float(space_length)
+
+    @staticmethod
+    def log_target_error(kpi_type):
+        Log.error('Target is not set accordingly for kpi {}'.format(kpi_type))

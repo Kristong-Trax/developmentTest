@@ -64,6 +64,14 @@ class DataTestUnitMarsuae(object):
                                   'additional_attribute_1': 'Other', 'additional_attribute_2': 'Other',
                                   'additional_attribute_3': 'Lulu'}
 
+    input_df_for_targets = pd.DataFrame.from_records(
+        [{'score_logic': 'Binary', 'Target': '0.5', 'kpi_type': 'kpi_a', 'kpi_fk':1},
+         {'score_logic': 'Relative Score', 'Target': None, 'kpi_type': 'kpi_b', 'kpi_fk':2},
+         {'score_logic': 'Binary', 'Target': np.nan, 'kpi_type': 'kpi_c', 'kpi_fk':3},
+         {'score_logic': 'Tiered', 'Target': '', 'kpi_type': 'kpi_d', 'kpi_fk':4},
+         {'score_logic': 'Relative Score', 'Target': '', 'kpi_type': 'kpi_e', 'kpi_fk':5}]
+    )
+
     # exclusion_template_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'Data',
     #                                        'Inclusion_Exclusion_Template.xlsx')
     # exclusion_template_path ='{}/Data/Template_L&T_test_updated.xlsx'.format(os.path.dirname(os.path.realpath(__file__)))
