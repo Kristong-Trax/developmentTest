@@ -255,6 +255,7 @@ class INBEVTRADMXToolBox:
                     if self.calculate_availability_score(row, relevant_columns):
                         is_kpi_passed = 1
             elif row['KPI type'] == 'SOS':
+
                 ratio = self.calculate_sos_score(row, relevant_columns)
                 if (row['product_type'] == 'Empty') & (ratio <= 0.2):
                     is_kpi_passed = 1
@@ -286,11 +287,14 @@ class INBEVTRADMXToolBox:
         """
 
         if 'shelf_number' in relevant_columns:
+            scif_index_list = []
             df = self.all_data[(self.all_data.template_name == row['template_name']) &
                                (self.all_data.shelf_number == row['shelf_number'])&
                                (self.all_data.facing_sequence_number > 0)]
             df.shelf_number = df.shelf_number.astype(float)
             df.shelf_number = df.shelf_number.astype(str)
+            df = df[df['product_type'] != 'Empty']
+
         else:
             # get df only with the correct template name
             df = self.scif[self.scif.template_name == row['template_name']]
@@ -332,7 +336,6 @@ class INBEVTRADMXToolBox:
             # special case that the customer asked
             # if inv and df_row.product_type == 'Empty':
             if df_row.product_type == 'Empty':
-
                 ratio = ratio + self.scif.facings.loc[i]
                 continue
             # iterate the filtered dictionary keys
@@ -605,7 +608,10 @@ class INBEVTRADMXToolBox:
             identifier_parent=identifier_parent)
 
     def mpis_merger(self):
-        mpis = self.match_product_in_scene.merge(self.products, on='product_fk', suffixes=['', '_p']) \
-        .merge(self.scene_info, on='scene_fk', suffixes=['', '_s']) \
-        .merge(self.templates, on='template_fk', suffixes=['', '_t'])
-        return mpis
+        try:
+            mpis = self.match_product_in_scene.merge(self.products, on='product_fk', suffixes=['', '_p']) \
+            .merge(self.scene_info, on='scene_fk', suffixes=['', '_s']) \
+            .merge(self.templates, on='template_fk', suffixes=['', '_t'])
+            return mpis
+        except:
+            pass
