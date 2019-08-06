@@ -233,23 +233,21 @@ class DataTestUnitMarsuae(object):
           'score_by_weight': 0, 'parent_name': 'Gum & Fruity'}]
     )[['kpi_fk', 'kpi_type', 'result', 'score', 'weight', 'score_by_weight', 'parent_name']]
 
-    # test_case_1_ass_result = pd.DataFrame([{'product_fk': 1,  'in_store': 1}, {'product_fk': 2,  'in_store': 1},
-    #                                        {'product_fk': 5,  'in_store': 0}])
-    # test_case_1_ass_base = pd.DataFrame([{'product_fk': 1, 'in_store': 0}, {'product_fk': 2, 'in_store': 0},
-    #                                      {'product_fk': 5, 'in_store': 0}])
-    #
-    # test_case_1_ass_base_extended = pd.DataFrame(
-    #     [{'product_fk': 1, 'in_store': 0, 'kpi_fk_lvl3': 290, 'kpi_fk_lvl2': 289, 'target': nan,
-    #       'assortment_group_fk': 1, 'assortment_fk': 2, 'assortment_super_group_fk': nan, 'kpi_fk_lvl1': nan,
-    #       'group_target_date': nan, 'super_group_target': nan, 'additional_attributes': nan},
-    #      {'product_fk': 2, 'in_store': 0, 'kpi_fk_lvl3': 290, 'kpi_fk_lvl2': 289, 'target': nan,
-    #       'assortment_group_fk': 1, 'assortment_fk': 2, 'assortment_super_group_fk': nan, 'kpi_fk_lvl1': nan,
-    #       'group_target_date': nan, 'super_group_target': nan, 'additional_attributes': nan
-    #       },
-    #      {'product_fk': 5, 'in_store': 0, 'kpi_fk_lvl3': 290, 'kpi_fk_lvl2': 289, 'ta   rget': nan,
-    #       'assortment_group_fk': 1, 'assortment_fk': 2, 'assortment_super_group_fk': nan, 'kpi_fk_lvl1': nan,
-    #       'group_target_date': nan, 'super_group_target': nan, 'additional_attributes': nan}]
-    # )
+    kpi_results_df_for_cat_level_all_cat = pd.DataFrame(
+        [{'kpi_fk': 3033, 'score_by_weight': 10, 'parent_name': 'Gum & Fruity'},
+         {'kpi_fk': 3011, 'score_by_weight': 5, 'parent_name': 'Chocolate & Ice Cream'},
+         {'kpi_fk': 3030, 'score_by_weight': 20, 'parent_name': 'Chocolate & Ice Cream'},
+         {'kpi_fk': 3005, 'score_by_weight': 20, 'parent_name': 'Chocolate & Ice Cream'},
+         {'kpi_fk': 3015, 'score_by_weight': 40, 'parent_name': 'Pet Food'},
+         {'kpi_fk': 3034, 'score_by_weight': 60, 'parent_name': 'Pet Food'}]
+    )
+
+    kpi_results_df_for_cat_level_2_cat = pd.DataFrame(
+        [{'kpi_fk': 3030, 'score_by_weight': 20, 'parent_name': 'Chocolate & Ice Cream'},
+         {'kpi_fk': 3005, 'score_by_weight': 10, 'parent_name': 'Chocolate & Ice Cream'},
+         {'kpi_fk': 3015, 'score_by_weight': 40, 'parent_name': 'Pet Food'},
+         {'kpi_fk': 3034, 'score_by_weight': 60, 'parent_name': 'Pet Food'}]
+    )
 
     external_targets_columns = ['pk', 'kpi_operation_type_fk', 'kpi_level_2_fk', 'key_json', 'data_json', 'start_date',
                                 'end_date', 'received_time', 'operation_type', 'kpi_type', 'Template Group',

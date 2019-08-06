@@ -97,15 +97,13 @@ class MARSUAE_SANDToolBox:
         self.assortment = Assortment(self.data_provider, self.output)
         self.block = Block(self.data_provider, self.output)
         self.lvl3_assortment = self.get_lvl3_relevant_assortment()
-        # self.own_manuf_fk = self.all_products[self.all_products['manufacturer_name'] ==
-        #                                       self.MARS]['manufacturer_fk'].values[0]
         self.own_manuf_fk = self.get_own_manufacturer_fk()
         self.atomic_kpi_results = pd.DataFrame(columns=['kpi_fk', self.KPI_TYPE, 'result', 'score', 'weight',
                                                'score_by_weight', 'parent_name'])
         self.atomic_tiers_df = pd.DataFrame()
         self.cat_lvl_res = pd.DataFrame()
         self.kpi_result_values = self.get_kpi_result_values_df()
-        # self.kpi_results_queries = []
+        self.total_score = 0
 
     def get_kpi_result_values_df(self):
         query = MARSUAE_SAND_Queries.get_kpi_result_values()
@@ -203,6 +201,8 @@ class MARSUAE_SANDToolBox:
                 relevant_atomic_df['kpi_parent'] = relevant_atomic_df['kpi_parent'].apply(lambda x: x if x else None)
                 relevant_atomic_df['kpi_child'] = relevant_atomic_df['kpi_child'].apply(lambda x: x if x else None)
                 relevant_atomic_df[self.TARGET] = relevant_atomic_df.apply(self.process_targets, axis=1)
+        if relevant_atomic_df.empty:
+            Log.warning('No atomic kpis are defined for store')
         return relevant_atomic_df
 
     def process_targets(self, row):
@@ -247,12 +247,6 @@ class MARSUAE_SANDToolBox:
         if not filtered_atomics_df.empty:
             filtered_atomics_df.apply(self.match_tier_targets_to_scores, args=(tier_dict_list,), axis=1)
         self.atomic_tiers_df = pd.DataFrame.from_records(tier_dict_list)
-
-    # def get_masking_filter(self, row, column, store_att_value):
-    #     if store_att_value in self.split_and_strip(row[column]):
-    #         return True
-    #     else:
-    #         return False
 
     def map_atomic_type_to_function(self):
         mapper = {self.AVAILABILITY: self.calculate_availability,
@@ -411,14 +405,17 @@ class MARSUAE_SANDToolBox:
         self.calculate_total_score()
 
     def calculate_total_score(self):
-        category_results = self.cat_lvl_res.merge(self.category_params, on='kpi_type', how='left')
-        sum_weights = float(category_results[self.WEIGHT].sum())
-        category_results['weighted_scores'] = category_results['cat_score'] * category_results[self.WEIGHT]
-        total_result = category_results['weighted_scores'].sum() / sum_weights
+        if not self.cat_lvl_res.empty:
+            category_results = self.cat_lvl_res.merge(self.category_params, on='kpi_type', how='left')
+            sum_weights = float(category_results[self.WEIGHT].sum())
+            category_results['weighted_scores'] = category_results['cat_score'] * category_results[self.WEIGHT]
+            total_result = category_results['weighted_scores'].sum() / sum_weights
+            self.total_score = total_result
+
         kpi_fk = self.common.get_kpi_fk_by_kpi_type(self.TOTAL_UAE_SCORE)
         identifier_result = {'kpi_fk': kpi_fk}
         self.common.write_to_db_result(fk=kpi_fk, numerator_id=self.own_manuf_fk, denominator_id=self.store_id,
-                                       result=total_result, score=total_result, identifier_result=identifier_result,
+                                       result=self.total_score, score=self.total_score, identifier_result=identifier_result,
                                        target=self.FIXED_TARGET_FOR_MR, should_enter=True)
 
     def calculate_category_level(self):
@@ -439,6 +436,8 @@ class MARSUAE_SANDToolBox:
         category_kpis_df = self.kpi_category_df[self.kpi_category_df['template_group'].isin(session_template_groups)]
         visit_category_kpis = category_kpis_df[self.KPI_LVL_2_NAME].unique().tolist()
         store_atomics = store_atomics[store_atomics[self.KPI_LVL_2_NAME].isin(visit_category_kpis)]
+        if store_atomics.empty:
+            Log.warning('Template groups in session do not correspond to template groups for category level kpis')
         return store_atomics
 
     def calculate_atomics(self):
@@ -446,8 +445,6 @@ class MARSUAE_SANDToolBox:
         store_atomics = self.get_atomics_for_template_groups_present_in_store(store_atomics)
         if not store_atomics.empty:
             self.build_tiers_for_atomics(store_atomics)
-            # Option 0: create nodes
-            # execute_list = self.get_kpis_execute_list(store_atomics)
             execute_list = Node.get_kpi_execute_list(store_atomics)
             for kpi in execute_list:
                 i = store_atomics[store_atomics[self.KPI_TYPE] == kpi].index[0]
@@ -477,46 +474,6 @@ class MARSUAE_SANDToolBox:
                 # if row[self.KPI_TYPE] not in self.atomic_kpi_results['kpi_name'].values.tolist():
                 #     kpi_type = row[self.KPI_FAMILY]
                 #     self.atomic_function[kpi_type](row)
-
-    # @staticmethod
-    # def get_kpis_execute_list(store_atomics):
-    #     kpis_out_of_hierarchy = store_atomics[(store_atomics['kpi_child'].isnull()) &
-    #                                           (store_atomics['kpi_parent'].isnull())]
-    #
-    #     execute_list = kpis_out_of_hierarchy['kpi_type'].values.tolist()
-    #     initial_df = store_atomics[['kpi_type', 'kpi_parent', 'kpi_child']]
-    #     initial_df = initial_df[~(initial_df['kpi_type'].isin(execute_list))]
-    #     # input_df['kpi_parent'] = input_df['kpi_parent'].apply(lambda x: x if x else None)
-    #     # input_df['kpi_child'] = input_df['kpi_child'].apply(lambda x: x if x else None)
-    #     if not initial_df.empty:
-    #         start_df = initial_df[initial_df['kpi_child'].isnull()]
-    #         threads_dict = dict()
-    #         for i, row in start_df.iterrows():
-    #             threads_dict.update({i: []})
-    #             new_node = Node(initial_df, row['kpi_type'])
-    #             new_node.set_next()
-    #             threads_dict[i].append(new_node)
-    #             flag = True
-    #             while flag:
-    #                 new_node = Node(initial_df, new_node.next_node)
-    #                 print new_node.data
-    #                 new_node.set_next()
-    #                 threads_dict[i].append(new_node)
-    #                 if new_node.next_node is None:
-    #                     flag = False
-    #         for key, nodes_list in threads_dict.items():
-    #             nodes_list.reverse()
-    #
-    #         max_len = max(map(lambda x: len(x), threads_dict.values()))
-    #
-    #         # execute_list = []
-    #         for i in range(max_len - 1, -1, -1):
-    #             for key, nodes_list in threads_dict.items():
-    #                 if i <= len(nodes_list) - 1:
-    #                     if nodes_list[i].data not in execute_list:
-    #                         execute_list.append(nodes_list[i].data)
-    #
-    #     return execute_list
 
     # def reorder_kpis(self, store_atomics):
     #     input_df = store_atomics.copy()
@@ -578,36 +535,6 @@ class MARSUAE_SANDToolBox:
         if not lvl3_ass_res.empty:
             lvl3_ass_res = self.calculate_lvl_3_assortment_result(lvl3_ass_res, param_row)
             self.calculate_lvl_2_assortment_result(lvl3_ass_res, param_row)
-            # identifier_cat_parent = self.get_category_parent_dict(param_row)
-            # lvl3_ass_res = self.get_template_relevant_assortment_result(lvl3_ass_res, param_row)
-            # for i, row in lvl3_ass_res.iterrows():
-            #     identifier_parent = {'kpi_fk': row.kpi_fk_lvl2}
-            #     custom_result = self.get_oos_distributed_result(row.in_store)
-            #     self.common.write_to_db_result(fk=row.kpi_fk_lvl3, numerator_id=row.product_fk,
-            #                                    numerator_result=row.facings, denominator_result=1,
-            #                                    denominator_id=row.product_fk, result=custom_result,
-            #                                    score=row.in_store, should_enter=True,
-            #                                    identifier_parent=identifier_parent)
-            #
-            # lvl2_result = self.assortment.calculate_lvl2_assortment(lvl3_ass_res)
-            # for i, row in lvl2_result.iterrows():
-            #     identifier_result = {'kpi_fk': row.kpi_fk_lvl2}
-            #     denominator_res = row.total
-            #     if row.target and not np.math.isnan(row.target):
-            #         if row.group_target_date <= self.visit_date:
-            #             denominator_res = row.target
-            #     result = np.divide(float(row.passes), float(denominator_res))
-            #     score, weight = self.get_score(result, param_row)
-            #     target = param_row[self.TARGET] if param_row[self.TARGET] else None
-            #     self.common.write_to_db_result(fk=row.kpi_fk_lvl2, numerator_id=self.own_manuf_fk,
-            #                                    numerator_result=row.passes, result=result * 100,
-            #                                    denominator_id=self.store_id, denominator_result=denominator_res,
-            #                                    score=score * weight, weight=weight, target=target,
-            #                                    identifier_result=identifier_result,
-            #                                    identifier_parent=identifier_cat_parent, should_enter=True)
-            #     self.add_kpi_result_to_kpi_results_df([row.kpi_fk_lvl2, param_row[self.KPI_TYPE],
-            #                                            result, score, weight, score * weight,
-            #                                            param_row[self.KPI_LVL_2_NAME]])
 
     def calculate_lvl_3_assortment_result(self, lvl3_ass_res, param_row):
         lvl3_ass_res = self.get_template_relevant_assortment_result(lvl3_ass_res, param_row)
@@ -699,9 +626,6 @@ class MARSUAE_SANDToolBox:
         if sos_filters is not None:
             sos_filters['num_filters'].update(general_filters)
             sos_filters['denom_filters'].update(general_filters)
-            # numerator_filters = sos_filters['num_filters']
-            #
-            # denominator_filters = sos_filters['denom_filters']
             numerator_length = self.calculate_linear_space(sos_filters['num_filters'])
             denominator_length = self.calculate_linear_space(sos_filters['denom_filters'])
             result = numerator_length / denominator_length if denominator_length else 0
@@ -761,7 +685,6 @@ class MARSUAE_SANDToolBox:
         scene_probe_groups = filtered_matches.drop_duplicates(subset=['scene_fk', 'probe_group_id'])
         result = len(scene_probe_groups)
         score, weight = self.get_score(param_row=param_row, result=result)
-        # maybe i should have a function that unifies these rows.
         target = param_row[self.TARGET] if param_row[self.TARGET] else None
         identifier_parent = self.get_identifier_parent_for_atomic(param_row)
         identifier_result = self.get_identifier_result_for_atomic(param_row)

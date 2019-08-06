@@ -283,17 +283,6 @@ class TestMarsuaeSand(TestFunctionalCase):
         check = self.check_results(tool_box.atomic_kpi_results, expected_result)
         self.assertEquals(check, 1)
 
-    # def test_calculate_checkouts_considers_stitch_groups_for_calculations_groups_no_mars_products(self):
-    #     probe_group, matches, scene = self.create_scif_matches_stitch_groups_data_mocks(
-    #         DataTestUnitMarsuae.test_case_1, [1, 2, 3])
-    #     tool_box = MARSUAE_SANDToolBox(self.data_provider_mock, self.output)
-    #     store_atomics = tool_box.get_store_atomic_kpi_parameters()
-    #     param_row = self.get_parameter_series_for_kpi_calculation(store_atomics, 'Checkout Penetration - Chocolate')
-    #     tool_box.calculate_checkouts(param_row)
-    #     expected_result = {'kpi_fk': 3005, 'result': 2, 'score': 1, 'weight': 7.5, 'score_by_weight': 7.5}
-    #     check = self.check_results(tool_box.atomic_kpi_results, expected_result)
-    #     self.assertEquals(check, 1)
-
     def test_calculate_availability_no_products_from_list_in_session(self):
         probe_group, matches, scene = self.create_scif_matches_stitch_groups_data_mocks(
             DataTestUnitMarsuae.test_case_1, [3])
@@ -460,6 +449,48 @@ class TestMarsuaeSand(TestFunctionalCase):
         expected_result = {'kpi_fk': 3008, 'result': 0, 'score': 0, 'weight': 40, 'score_by_weight': 0}
         check = self.check_results(tool_box.atomic_kpi_results, expected_result)
         self.assertEquals(check, 1)
+
+    def test_calculate_category_level_categories(self):
+        tool_box = MARSUAE_SANDToolBox(self.data_provider_mock, self.output)
+        tool_box.atomic_kpi_results = DataTestUnitMarsuae.kpi_results_df_for_cat_level_all_cat
+        tool_box.calculate_category_level()
+        expected_results = list()
+        expected_results.append({'kpi_type': 'Chocolate & Ice Cream', 'cat_score': 45})
+        expected_results.append({'kpi_type': 'Gum & Fruity', 'cat_score': 10})
+        expected_results.append({'kpi_type': 'Pet Food', 'cat_score': 100})
+        cat_lvl_dict = tool_box.cat_lvl_res.to_dict(orient='records')
+        for expected_result in expected_results:
+            self.assertTrue(expected_result in cat_lvl_dict)
+        self.assertEquals(len(tool_box.cat_lvl_res), 3)
+
+    def test_calculate_category_level_no_atomic_results(self):
+        tool_box = MARSUAE_SANDToolBox(self.data_provider_mock, self.output)
+        tool_box.atomic_kpi_results = pd.DataFrame(columns=['kpi_fk', 'kpi_type', 'result', 'score', 'weight',
+                                                            'score_by_weight', 'parent_name'])
+        tool_box.calculate_category_level()
+        self.assertTrue(tool_box.cat_lvl_res.empty)
+
+    def test_calculate_total_score_3_categories(self):
+        tool_box = MARSUAE_SANDToolBox(self.data_provider_mock, self.output)
+        tool_box.atomic_kpi_results = DataTestUnitMarsuae.kpi_results_df_for_cat_level_all_cat
+        tool_box.calculate_category_level()
+        tool_box.calculate_total_score()
+        self.assertEquals(tool_box.total_score, 43.5)
+
+    def test_calculate_category_level_2_categories(self):
+        tool_box = MARSUAE_SANDToolBox(self.data_provider_mock, self.output)
+        tool_box.atomic_kpi_results = DataTestUnitMarsuae.kpi_results_df_for_cat_level_2_cat
+        tool_box.calculate_category_level()
+        tool_box.calculate_total_score()
+        self.assertEquals(tool_box.total_score, 38.75)
+
+    def test_calculate_category_level_empty(self):
+        tool_box = MARSUAE_SANDToolBox(self.data_provider_mock, self.output)
+        tool_box.atomic_kpi_results = pd.DataFrame(columns=['kpi_fk', 'kpi_type', 'result', 'score', 'weight',
+                                                            'score_by_weight', 'parent_name'])
+        tool_box.calculate_category_level()
+        tool_box.calculate_total_score()
+        self.assertEquals(tool_box.total_score, 0)
 
     def test_get_tiered_score_gets_relevant_score_if_result_in_lower_range(self):
         tool_box = MARSUAE_SANDToolBox(self.data_provider_mock, self.output)
