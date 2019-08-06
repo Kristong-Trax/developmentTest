@@ -283,6 +283,17 @@ class TestMarsuaeSand(TestFunctionalCase):
         check = self.check_results(tool_box.atomic_kpi_results, expected_result)
         self.assertEquals(check, 1)
 
+    # def test_calculate_checkouts_considers_stitch_groups_for_calculations_groups_no_mars_products(self):
+    #     probe_group, matches, scene = self.create_scif_matches_stitch_groups_data_mocks(
+    #         DataTestUnitMarsuae.test_case_1, [1, 2, 3])
+    #     tool_box = MARSUAE_SANDToolBox(self.data_provider_mock, self.output)
+    #     store_atomics = tool_box.get_store_atomic_kpi_parameters()
+    #     param_row = self.get_parameter_series_for_kpi_calculation(store_atomics, 'Checkout Penetration - Chocolate')
+    #     tool_box.calculate_checkouts(param_row)
+    #     expected_result = {'kpi_fk': 3005, 'result': 2, 'score': 1, 'weight': 7.5, 'score_by_weight': 7.5}
+    #     check = self.check_results(tool_box.atomic_kpi_results, expected_result)
+    #     self.assertEquals(check, 1)
+
     def test_calculate_availability_no_products_from_list_in_session(self):
         probe_group, matches, scene = self.create_scif_matches_stitch_groups_data_mocks(
             DataTestUnitMarsuae.test_case_1, [3])
@@ -334,7 +345,6 @@ class TestMarsuaeSand(TestFunctionalCase):
         tool_box.calculate_availability(param_row)
         atomic_results = tool_box.atomic_kpi_results
         atomic_results['result'] = atomic_results['result'].apply(lambda x: round(x, 5))
-        print atomic_results[['kpi_fk', 'result', 'score', 'score_by_weight']]
         expected_result = {'kpi_fk': 3011, 'result': round(2/3.0, 5), 'score': 0.5, 'weight': 10, 'score_by_weight': 5}
         check = self.check_results(atomic_results, expected_result)
         self.assertEquals(check, 1)
@@ -357,6 +367,133 @@ class TestMarsuaeSand(TestFunctionalCase):
             test_result_list.append(self.check_results(lvl3_ass_res, expected_result) == 1)
         self.assertTrue(all(test_result_list))
 
+    def test_calculate_display_number_if_displays_equals_target(self):
+        probe_group, matches, scene = self.create_scif_matches_stitch_groups_data_mocks(
+            DataTestUnitMarsuae.test_case_1, [1, 2, 3, 4])
+        tool_box = MARSUAE_SANDToolBox(self.data_provider_mock, self.output)
+        store_atomics = tool_box.get_store_atomic_kpi_parameters()
+        param_row = self.get_parameter_series_for_kpi_calculation(store_atomics,
+                                                                  'POI Compliance - Chocolate / Ice Cream')
+        tool_box.calculate_atomic_results(param_row)
+        expected_result = {'kpi_fk': 3025, 'result': 1, 'score': 1, 'weight': 5, 'score_by_weight': 5}
+        check = self.check_results(tool_box.atomic_kpi_results, expected_result)
+        self.assertEquals(check, 1)
+
+    def test_calculate_display_number_if_no_relevant_displays_in_session(self):
+        probe_group, matches, scene = self.create_scif_matches_stitch_groups_data_mocks(
+            DataTestUnitMarsuae.test_case_1, [1, 2, 3])
+        tool_box = MARSUAE_SANDToolBox(self.data_provider_mock, self.output)
+        store_atomics = tool_box.get_store_atomic_kpi_parameters()
+        param_row = self.get_parameter_series_for_kpi_calculation(store_atomics,
+                                                                  'POI Compliance - Chocolate / Ice Cream')
+        tool_box.calculate_atomic_results(param_row)
+        expected_result = {'kpi_fk': 3025, 'result': 0, 'score': 0, 'weight': 5, 'score_by_weight': 0}
+        check = self.check_results(tool_box.atomic_kpi_results, expected_result)
+        self.assertEquals(check, 1)
+
+    def test_calculate_display_display_number_more_than_target(self):
+        probe_group, matches, scene = self.create_scif_matches_stitch_groups_data_mocks(
+            DataTestUnitMarsuae.test_case_1, [1, 2, 3, 4, 5])
+        tool_box = MARSUAE_SANDToolBox(self.data_provider_mock, self.output)
+        store_atomics = tool_box.get_store_atomic_kpi_parameters()
+        param_row = self.get_parameter_series_for_kpi_calculation(store_atomics,
+                                                                  'POI Compliance - Chocolate / Ice Cream')
+        tool_box.calculate_atomic_results(param_row)
+        expected_result = {'kpi_fk': 3025, 'result': 2, 'score': 2, 'weight': 5, 'score_by_weight': 10}
+        check = self.check_results(tool_box.atomic_kpi_results, expected_result)
+        self.assertEquals(check, 1)
+
+    def test_calculate_linear_sos(self):
+        probe_group, matches, scene = self.create_scif_matches_stitch_groups_data_mocks(
+            DataTestUnitMarsuae.test_case_1, [1, 2, 3, 4, 5, 6])
+        tool_box = MARSUAE_SANDToolBox(self.data_provider_mock, self.output)
+        store_atomics = tool_box.get_store_atomic_kpi_parameters()
+        param_row = self.get_parameter_series_for_kpi_calculation(store_atomics,
+                                                                  'SOS - Gum/Fruity Checkout')
+        tool_box.calculate_atomic_results(param_row)
+        kpi_result = tool_box.atomic_kpi_results
+        kpi_result['result'] = kpi_result['result'].apply(lambda x: round(x, 5))
+        kpi_result['score'] = kpi_result['score'].apply(lambda x: round(x, 5))
+        expected_result = {'kpi_fk': 3033, 'result': round((46/52.0)*100, 5), 'score': round((46/52.0)/0.77, 5),
+                           'weight': 0, 'score_by_weight': 0}
+        check = self.check_results(kpi_result, expected_result)
+        self.assertEquals(check, 1)
+
+    def test_calculate_kpi_combination_score_two_child_kpis_pass(self):
+        probe_group, matches, scene = self.create_scif_matches_stitch_groups_data_mocks(
+            DataTestUnitMarsuae.test_case_1, [1, 2, 3, 4, 5, 6])
+        tool_box = MARSUAE_SANDToolBox(self.data_provider_mock, self.output)
+        store_atomics = tool_box.get_store_atomic_kpi_parameters()
+        tool_box.atomic_kpi_results = DataTestUnitMarsuae.kpi_results_df_for_kpi_combination_test_1
+        param_row = self.get_parameter_series_for_kpi_calculation(store_atomics,
+                                                                  'Gum / Fruity Checkout Compliance')
+        tool_box.calculate_atomic_results(param_row)
+        print tool_box.atomic_kpi_results[['kpi_fk', 'result', 'score']]
+        expected_result = {'kpi_fk': 3008, 'result': 2, 'score': 1, 'weight': 40, 'score_by_weight': 40}
+        check = self.check_results(tool_box.atomic_kpi_results, expected_result)
+        self.assertEquals(check, 1)
+
+    def test_calculate_kpi_combination_score_one_child_kpi_passes(self):
+        probe_group, matches, scene = self.create_scif_matches_stitch_groups_data_mocks(
+            DataTestUnitMarsuae.test_case_1, [1, 2, 3, 4, 5, 6])
+        tool_box = MARSUAE_SANDToolBox(self.data_provider_mock, self.output)
+        store_atomics = tool_box.get_store_atomic_kpi_parameters()
+        tool_box.atomic_kpi_results = DataTestUnitMarsuae.kpi_results_df_for_kpi_combination_test_2
+        param_row = self.get_parameter_series_for_kpi_calculation(store_atomics,
+                                                                  'Gum / Fruity Checkout Compliance')
+        tool_box.calculate_atomic_results(param_row)
+        print tool_box.atomic_kpi_results[['kpi_fk', 'result', 'score']]
+        expected_result = {'kpi_fk': 3008, 'result': 1, 'score': 1, 'weight': 40, 'score_by_weight': 40}
+        check = self.check_results(tool_box.atomic_kpi_results, expected_result)
+        self.assertEquals(check, 1)
+
+    def test_calculate_kpi_combination_score_none_child_kpi_passes(self):
+        probe_group, matches, scene = self.create_scif_matches_stitch_groups_data_mocks(
+            DataTestUnitMarsuae.test_case_1, [1, 2, 3, 4, 5, 6])
+        tool_box = MARSUAE_SANDToolBox(self.data_provider_mock, self.output)
+        store_atomics = tool_box.get_store_atomic_kpi_parameters()
+        tool_box.atomic_kpi_results = DataTestUnitMarsuae.kpi_results_df_for_kpi_combination_test_3
+        param_row = self.get_parameter_series_for_kpi_calculation(store_atomics,
+                                                                  'Gum / Fruity Checkout Compliance')
+        tool_box.calculate_atomic_results(param_row)
+        print tool_box.atomic_kpi_results[['kpi_fk', 'result', 'score']]
+        expected_result = {'kpi_fk': 3008, 'result': 0, 'score': 0, 'weight': 40, 'score_by_weight': 0}
+        check = self.check_results(tool_box.atomic_kpi_results, expected_result)
+        self.assertEquals(check, 1)
+
+    def test_get_tiered_score_gets_relevant_score_if_result_in_lower_range(self):
+        tool_box = MARSUAE_SANDToolBox(self.data_provider_mock, self.output)
+        store_atomics = tool_box.get_store_atomic_kpi_parameters()
+        tool_box.build_tiers_for_atomics(store_atomics)
+        param_row = pd.Series({'score_logic': 'Tiered', 'Weight': 10, 'kpi_type': 'NBL - Chocolate Main'})
+        score, weight = tool_box.get_score(0.5, param_row)
+        self.assertEquals(score, 0)
+        self.assertEquals(weight, 10)
+
+    def test_get_tiered_score_gets_relevant_score_if_result_at_border_value(self):
+        tool_box = MARSUAE_SANDToolBox(self.data_provider_mock, self.output)
+        store_atomics = tool_box.get_store_atomic_kpi_parameters()
+        tool_box.build_tiers_for_atomics(store_atomics)
+        param_row = pd.Series({'score_logic': 'Tiered', 'Weight': 10, 'kpi_type': 'NBL - Chocolate Main'})
+        score, weight = tool_box.get_score(0.8, param_row)
+        self.assertEquals(score, 0.5)
+        self.assertEquals(weight, 10)
+
+    def test_get_tiered_score_gets_relevant_score_if_result_in_upper_range(self):
+        tool_box = MARSUAE_SANDToolBox(self.data_provider_mock, self.output)
+        store_atomics = tool_box.get_store_atomic_kpi_parameters()
+        tool_box.build_tiers_for_atomics(store_atomics)
+        param_row = pd.Series({'score_logic': 'Tiered', 'Weight': 10, 'kpi_type': 'NBL - Gum Main'})
+        score, weight = tool_box.get_score(1, param_row)
+        self.assertEquals(score, 1)
+        self.assertEquals(weight, 10)
+
+    def test_get_score_returns_zero_if_score_logic_is_not_defined(self):
+        tool_box = MARSUAE_SANDToolBox(self.data_provider_mock, self.output)
+        param_row = pd.Series({'score_logic': 'Not_existing_logic', 'Weight': 10, 'kpi_type': 'kpi1'})
+        score, weight = tool_box.get_score(1, param_row)
+        self.assertEquals(score, 0)
+        self.assertEquals(weight, 10)
 
     def test_binary_score_result_exceeds_target(self):
         tool_box = MARSUAE_SANDToolBox(self.data_provider_mock, self.output)

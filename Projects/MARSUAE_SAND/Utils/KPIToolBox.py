@@ -341,7 +341,7 @@ class MARSUAE_SANDToolBox:
         templates = param_row[self.TEMPLATE_NAME_T]
         if templates:
             conditions = {'location': {'template_name': templates}}
-            relevant_scenes = filter_df(conditions, self.scif)['scene_fk'].values.tolist()
+            relevant_scenes = filter_df(conditions, self.scif)['scene_fk'].unique().tolist()
         else:
             relevant_scenes = self.scif['scene_fk'].unique().tolist()
         general_filters = {'location': {'scene_fk': relevant_scenes}}
@@ -729,7 +729,6 @@ class MARSUAE_SANDToolBox:
         result = len(filtered_scif['scene_fk'].unique().tolist())
         score, weight = self.get_score(result, param_row)
         identifier_parent = self.get_identifier_parent_for_atomic(param_row)
-        #TODO: think!!  not sure I want to use identifier result here: I know that this kpi will not have children but I want to be as generic as possible
         target = param_row[self.TARGET] if param_row[self.TARGET] else None
         identifier_result = self.get_identifier_result_for_atomic(param_row)
         self.common.write_to_db_result(fk=param_row['kpi_level_2_fk'], numerator_id=self.own_manuf_fk,

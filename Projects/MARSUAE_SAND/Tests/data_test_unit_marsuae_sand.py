@@ -206,6 +206,32 @@ class DataTestUnitMarsuae(object):
                                     'external_targets.xlsx')
 
     test_case_1 = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'Data', 'test_case_1.xlsx')
+    kpi_results_df_for_kpi_combination_test_1 = pd.DataFrame.from_records(
+        [{'kpi_fk': 3033, 'kpi_type': 'SOS - Gum/Fruity Checkout', 'result': None, 'score': 1, 'weight': 0,
+          'score_by_weight': 0, 'parent_name': 'Gum & Fruity'},
+         {'kpi_fk': 3027, 'kpi_type': 'POI Compliance - Gum / Fruity Checkout', 'result': None, 'score': 100,
+          'weight': 0, 'score_by_weight': 0, 'parent_name': 'Gum & Fruity'},
+         {'kpi_fk': 3012, 'kpi_type': 'NBL - Gum Checkout', 'result': None, 'score': 1, 'weight': 0,
+          'score_by_weight': 0, 'parent_name': 'Gum & Fruity'}]
+    )[['kpi_fk', 'kpi_type', 'result', 'score', 'weight', 'score_by_weight', 'parent_name']]
+
+    kpi_results_df_for_kpi_combination_test_2 = pd.DataFrame.from_records(
+        [{'kpi_fk': 3033, 'kpi_type': 'SOS - Gum/Fruity Checkout', 'result': None, 'score': 0, 'weight': 0,
+          'score_by_weight': 0, 'parent_name': 'Gum & Fruity'},
+         {'kpi_fk': 3027, 'kpi_type': 'POI Compliance - Gum / Fruity Checkout', 'result': None, 'score': 100,
+          'weight': 0, 'score_by_weight': 0, 'parent_name': 'Gum & Fruity'},
+         {'kpi_fk': 3012, 'kpi_type': 'NBL - Gum Checkout', 'result': None, 'score': 1, 'weight': 0,
+          'score_by_weight': 0, 'parent_name': 'Gum & Fruity'}]
+    )[['kpi_fk', 'kpi_type', 'result', 'score', 'weight', 'score_by_weight', 'parent_name']]
+
+    kpi_results_df_for_kpi_combination_test_3 = pd.DataFrame.from_records(
+        [{'kpi_fk': 3033, 'kpi_type': 'SOS - Gum/Fruity Checkout', 'result': None, 'score': 0, 'weight': 0,
+          'score_by_weight': 0, 'parent_name': 'Gum & Fruity'},
+         {'kpi_fk': 3027, 'kpi_type': 'POI Compliance - Gum / Fruity Checkout', 'result': None, 'score': 0,
+          'weight': 0, 'score_by_weight': 0, 'parent_name': 'Gum & Fruity'},
+         {'kpi_fk': 3012, 'kpi_type': 'NBL - Gum Checkout', 'result': None, 'score': 1, 'weight': 0,
+          'score_by_weight': 0, 'parent_name': 'Gum & Fruity'}]
+    )[['kpi_fk', 'kpi_type', 'result', 'score', 'weight', 'score_by_weight', 'parent_name']]
 
     # test_case_1_ass_result = pd.DataFrame([{'product_fk': 1,  'in_store': 1}, {'product_fk': 2,  'in_store': 1},
     #                                        {'product_fk': 5,  'in_store': 0}])
