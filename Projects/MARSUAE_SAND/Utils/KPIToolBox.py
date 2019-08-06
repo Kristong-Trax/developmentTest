@@ -149,10 +149,6 @@ class MARSUAE_SANDToolBox:
         kpi_category_df = pd.DataFrame.from_records(kpi_category)
         return kpi_category_df
 
-    # def get_tier_score_steps(self, external_targets_df):
-    #
-    #     pass
-
     def get_store_data_by_store_id(self):
         store_id = self.store_id if self.store_id else self.session_info['store_fk'].values[0]
         query = MARSUAE_SAND_Queries.get_store_data_by_store_id(store_id)
@@ -317,20 +313,6 @@ class MARSUAE_SANDToolBox:
                     attr_name_match_dict.update({col: value_col})
         return attr_name_match_dict
 
-    # def match_store_attributes_to_values(self, row, tier_dict_list):
-    #     relevant_columns = filter(lambda x: x.startswith('score_cond'), row.index.values)
-    #     for column in relevant_columns:
-    #         if row[column]:
-    #             if column.startswith('score_cond_target_'):
-    #                 condition_number = str(column.strip('score_cond_target_'))
-    #                 matching_value_col = filter(lambda x: x == 'score_cond_score_'.format(condition_number),
-    #                                             relevant_columns)
-    #                 value_col = matching_value_col[0] if len(matching_value_col) > 0 else None
-    #                 if value_col:
-    #                     tier_dict = {self.KPI_TYPE: row[self.KPI_TYPE], 'step_value': row[column],
-    #                                  'step_score_value': row(value_col)}
-    #                     tier_dict_list.append(tier_dict)
-
     def get_general_filters(self, param_row):
         templates = param_row[self.TEMPLATE_NAME_T]
         if templates:
@@ -450,74 +432,6 @@ class MARSUAE_SANDToolBox:
                 i = store_atomics[store_atomics[self.KPI_TYPE] == kpi].index[0]
                 row = store_atomics.iloc[i]
                 self.calculate_atomic_results(row)
-
-            # Option 1: rearrange kpi order and then calculate
-            # reordered_index = self.reorder_kpis(store_atomics)
-            # self.restore_children(store_atomics)
-            # for i in reordered_index:
-            #     row = store_atomics.iloc[i]
-            #     self.calculate_atomic_results(row)
-
-            # Option 2: check for existence of children
-            # for i, row in store_atomics:
-            #     if row[self.CHILD_KPI]:
-            #         child_kpis = row[self.CHILD_KPI] if isinstance(row[self.CHILD_KPI], (list, tuple)) \
-            #                                                                     else [row[self.CHILD_KPI]]
-            #         for kpi in child_kpis:
-            #             ind = store_atomics[store_atomics[self.KPI_TYPE] == kpi].index[0]
-            #             child_row = store_atomics.iloc[ind]
-            #             self.calculate_atomic_results(child_row)
-            #     else:
-            #         self.calculate_atomic_results(row)
-
-
-                # if row[self.KPI_TYPE] not in self.atomic_kpi_results['kpi_name'].values.tolist():
-                #     kpi_type = row[self.KPI_FAMILY]
-                #     self.atomic_function[kpi_type](row)
-
-    # def reorder_kpis(self, store_atomics):
-    #     input_df = store_atomics.copy()
-    #     # input_df = store_atomics[['pk', self.KPI_TYPE, self.CHILD_KPI]]
-    #     input_df['remaining_child'] = input_df[self.CHILD_KPI].copy()
-    #     input_df.loc[~(input_df['remaining_child'] == ''), 'remaining_child'] = input_df['remaining_child'].apply(
-    #         lambda x: x if isinstance(x, list) else [x])
-    #     reordered_df = pd.DataFrame(columns=input_df.columns.values.tolist())
-    #     child_flag = True
-    #     while child_flag:
-    #         input_df['remaining_child'] = input_df.apply(self.check_remaining_child, axis=1, args=(input_df,))
-    #         remaining_df = input_df[(input_df['remaining_child'] == '') |
-    #                                 (input_df['remaining_child'].isnull())]
-    #         reordered_df = reordered_df.append(remaining_df)
-    #         input_df = input_df[(~(input_df['remaining_child'] == '')) &
-    #                             (~(input_df['remaining_child'].isnull()))]
-    #         if input_df.empty:
-    #             child_flag = False
-    #     # reordered_pks = reordered_df['pk'].values.tolist()
-    #     reordered_index = reordered_df.index
-    #     return reordered_index
-
-    # def check_remaining_child(self, row, initial_df):
-    #     child_kpis = row['remaining_child']
-    #     if child_kpis:
-    #         child_kpis = child_kpis if isinstance(child_kpis, (list, tuple)) else [child_kpis]
-    #         for kpi in child_kpis:
-    #             if kpi not in initial_df[self.KPI_TYPE].values:
-    #                 ind_to_remove = [i for i, x in enumerate(child_kpis) if x == kpi]
-    #                 for ind in ind_to_remove:
-    #                     child_kpis.pop(ind)
-    #                     if len(child_kpis) == 0:
-    #                         child_kpis = ''
-    #     return child_kpis
-    #
-    # def restore_children(self, store_atomics):
-    #     parents_list = store_atomics[self.PARENT_KPI].unique().tolist()
-    #     parents_list = filter(lambda x: x, parents_list)
-    #     for parent in parents_list:
-    #         child_kpis = store_atomics[store_atomics[self.PARENT_KPI] == parent][self.KPI_TYPE].unique().tolist()
-    #         # store_atomics[self.CHILD_KPI] = store_atomics[self.CHILD_KPI].astype(object)
-    #         store_atomics.loc[store_atomics[self.KPI_TYPE] == parent, self.CHILD_KPI] = [','.join(child_kpis)]
-    #         store_atomics[self.CHILD_KPI] = store_atomics[self.CHILD_KPI].apply(lambda x: x.split(',') if x else '')
-    #         # store_atomics.at[store_atomics[self.KPI_TYPE] == parent, self.CHILD_KPI] = child_kpis
 
     def calculate_atomic_results(self, param_row):
         if param_row[self.KPI_TYPE] not in self.atomic_kpi_results[self.KPI_TYPE].values.tolist():
