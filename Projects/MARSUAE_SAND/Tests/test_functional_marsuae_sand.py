@@ -574,7 +574,14 @@ class TestMarsuaeSand(TestFunctionalCase):
         expected_list.append({'score_logic': 'Relative Score', 'Target': 0, 'kpi_type': 'kpi_e', 'kpi_fk': 5})
         for expected_result in expected_list:
             self.assertTrue(expected_result in input_df_dict)
-    # add tests for different score logic functions
+
+    def test_calculate_block_does_not_write_results_if_ass_empty(self):
+        tool_box = MARSUAE_SANDToolBox(self.data_provider_mock, self.output)
+        tool_box.lvl3_assortment = pd.DataFrame()
+        store_atomics = tool_box.get_store_atomic_kpi_parameters()
+        param_row = self.get_parameter_series_for_kpi_calculation(store_atomics, 'Red Block Compliance - Main')
+        tool_box.calculate_atomic_results(param_row)
+        self.assertTrue(tool_box.atomic_kpi_results.empty)
 
     @staticmethod
     def check_results(results_df, expected_results_dict):
