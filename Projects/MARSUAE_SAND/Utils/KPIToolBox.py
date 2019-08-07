@@ -397,8 +397,9 @@ class MARSUAE_SANDToolBox:
         kpi_fk = self.common.get_kpi_fk_by_kpi_type(self.TOTAL_UAE_SCORE)
         identifier_result = {'kpi_fk': kpi_fk}
         self.common.write_to_db_result(fk=kpi_fk, numerator_id=self.own_manuf_fk, denominator_id=self.store_id,
-                                       result=self.total_score, score=self.total_score, identifier_result=identifier_result,
-                                       target=self.FIXED_TARGET_FOR_MR, should_enter=True)
+                                       result=self.total_score, score=self.total_score,
+                                       identifier_result=identifier_result, target=self.FIXED_TARGET_FOR_MR,
+                                       should_enter=True)
 
     def calculate_category_level(self):
         self.cat_lvl_res = self.atomic_kpi_results.groupby(['parent_name'],
