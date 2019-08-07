@@ -195,6 +195,9 @@ class CBCDAIRYILToolBox:
             total_scores.append((atomic_score, atomic_weight))
             atomic_fk_lvl_2 = self.common.get_kpi_fk_by_kpi_type(current_atomic[Consts.KPI_ATOMIC_NAME].strip())
             old_atomic_fk = self.get_kpi_fk_by_kpi_name(current_atomic[Consts.KPI_ATOMIC_NAME].strip(), 3)
+            if not atomic_fk_lvl_2 or not old_atomic_fk:
+                Log.warning(Consts.MISSING_KPI_IN_DB.format(current_atomic[Consts.KPI_ATOMIC_NAME].encode('utf-8')))
+                continue
             self.common.write_to_db_result(fk=atomic_fk_lvl_2, numerator_id=Consts.CBC_MANU,
                                            numerator_result=num_result, denominator_id=self.store_id,
                                            weight=round(atomic_weight*100, 2), denominator_result=den_result,
@@ -225,7 +228,6 @@ class CBCDAIRYILToolBox:
                     column_key].values[0]
 
         except IndexError:
-            Log.error('Kpi name: {}, isnt equal to any kpi name in static table'.format(kpi_name))
             return None
 
     def get_relevant_data_per_atomic(self, atomic_series):
