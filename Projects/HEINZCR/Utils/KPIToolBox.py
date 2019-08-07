@@ -144,11 +144,16 @@ class HEINZCRToolBox:
             self.common_v2.write_to_db_result(sku_kpi_fk, numerator_id=row.product_fk, denominator_id=row.assortment_fk,
                                               result=result, identifier_parent=identifier_dict, should_enter=True)
 
+        number_of_products_in_assortment = len(self.store_assortment_without_powerskus)
+        if number_of_products_in_assortment:
+            total_result = (pass_count / float(number_of_products_in_assortment)) * 100
+        else:
+            total_result = 0
         self.common_v2.write_to_db_result(total_kpi_fk, numerator_id=Const.OWN_MANUFACTURER_FK,
-                                          denominator_id=assortment_group_fk,
+                                          denominator_id=self.store_id,
                                           numerator_result=pass_count,
-                                          denominator_result=len(self.store_assortment_without_powerskus),
-                                          result=pass_count, identifier_result=identifier_dict)
+                                          denominator_result=number_of_products_in_assortment,
+                                          result=total_result, identifier_result=identifier_dict)
 
     def calculate_powersku_assortment(self):
         if self.sub_category_assortment.empty:
@@ -158,7 +163,7 @@ class HEINZCRToolBox:
         sub_category_kpi_fk = self.common_v2.get_kpi_fk_by_kpi_type(Const.POWER_SKU_SUB_CATEGORY)
         sku_kpi_fk = self.common_v2.get_kpi_fk_by_kpi_type(Const.POWER_SKU)
 
-        products_in_session = self.scif['product_fk'].unique().tolist()
+        products_in_session = self.scif[self.scif['facings'] > 0]['product_fk'].unique().tolist()
         self.sub_category_assortment['in_session'] = \
             self.sub_category_assortment.loc[:, 'product_fk'].isin(products_in_session)
         # save PowerSKU results at SKU level
