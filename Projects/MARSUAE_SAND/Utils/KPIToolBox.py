@@ -74,6 +74,7 @@ class MARSUAE_SANDToolBox:
 
     # scif / matches columns
     SCENE_FK = 'scene_fk'
+    PRODUCT_FK = 'product_fk'
 
     def __init__(self, data_provider, output):
         self.output = output
@@ -94,7 +95,7 @@ class MARSUAE_SANDToolBox:
         self.probe_groups = self.get_probe_group()
         self.match_product_in_scene = self.match_product_in_scene.merge(self.probe_groups, on='probe_match_fk',
                                                                         how='left')
-        self.matches_products = self.match_product_in_scene.merge(self.all_products, on='product_fk', how='left')
+        self.matches_products = self.match_product_in_scene.merge(self.all_products, on=self.PRODUCT_FK, how='left')
         self.external_targets = self.get_all_kpi_external_targets()
         self.all_targets_unpacked = self.unpack_all_external_targets()
         self.full_store_info = self.get_store_data_by_store_id()
@@ -437,6 +438,7 @@ class MARSUAE_SANDToolBox:
         if not store_atomics.empty:
             self.build_tiers_for_atomics(store_atomics)
             execute_list = Node.get_kpi_execute_list(store_atomics)
+            store_atomics = store_atomics.reset_index(drop=True)
             for kpi in execute_list:
                 i = store_atomics[store_atomics[self.KPI_TYPE] == kpi].index[0]
                 row = store_atomics.iloc[i]
@@ -482,7 +484,7 @@ class MARSUAE_SANDToolBox:
                     denominator_res = row.target
             result = np.divide(float(row.passes), float(denominator_res))
             score, weight = self.get_score(result, param_row)
-            target = param_row[self.TARGET] if param_row[self.TARGET] else None
+            target = param_row[self.TARGET] * 100 if param_row[self.TARGET] else None
             self.common.write_to_db_result(fk=row.kpi_fk_lvl2, numerator_id=self.own_manuf_fk,
                                            numerator_result=row.passes, result=result * 100,
                                            denominator_id=self.store_id, denominator_result=denominator_res,
@@ -493,12 +495,11 @@ class MARSUAE_SANDToolBox:
                                                    result, score, weight, score * weight,
                                                    param_row[self.KPI_LVL_2_NAME]])
 
-    @staticmethod
-    def add_actual_facings_to_assortment(lvl3_ass_res, scif):
+    def add_actual_facings_to_assortment(self,lvl3_ass_res, scif):
         lvl3_ass_res['facings'] = 0
-        product_assort = lvl3_ass_res['product_fk'].unique()
+        product_assort = lvl3_ass_res[self.PRODUCT_FK].unique()
         for prod in product_assort:
-            lvl3_ass_res.loc[lvl3_ass_res['product_fk'] == prod, 'facings'] = scif[scif['product_fk'] \
+            lvl3_ass_res.loc[lvl3_ass_res[self.PRODUCT_FK] == prod, 'facings'] = scif[scif[self.PRODUCT_FK] \
                                                                                    == prod]['facings'].sum()
 
     def get_template_relevant_assortment_result(self, lvl3_ass_res, param_row):
@@ -507,8 +508,8 @@ class MARSUAE_SANDToolBox:
         if ass_template:
             filtered_scif = self.scif[self.scif['template_name'].isin(ass_template)] \
                 if isinstance(ass_template, (list, tuple)) else self.scif[self.scif['template_name'] == ass_template]
-        products_in_session = filtered_scif.loc[filtered_scif['facings'] > 0]['product_fk'].values
-        lvl3_ass_res.loc[lvl3_ass_res['product_fk'].isin(products_in_session), 'in_store'] = 1
+        products_in_session = filtered_scif.loc[filtered_scif['facings'] > 0][self.PRODUCT_FK].values
+        lvl3_ass_res.loc[lvl3_ass_res[self.PRODUCT_FK].isin(products_in_session), 'in_store'] = 1
         self.add_actual_facings_to_assortment(lvl3_ass_res, filtered_scif)
         return lvl3_ass_res
 
@@ -610,12 +611,12 @@ class MARSUAE_SANDToolBox:
         scene_probe_groups = len(filtered_matches.drop_duplicates(subset=[self.SCENE_FK, 'probe_group_id']))
         result = float(scene_probe_groups) / all_ch_o if all_ch_o else 0
         score, weight = self.get_score(param_row=param_row, result=result)
-        target = param_row[self.TARGET] if param_row[self.TARGET] else None
+        target = param_row[self.TARGET] * 100 if param_row[self.TARGET] else None
         identifier_parent = self.get_identifier_parent_for_atomic(param_row)
         identifier_result = self.get_identifier_result_for_atomic(param_row)
         self.common.write_to_db_result(fk=param_row['kpi_level_2_fk'], numerator_id=self.own_manuf_fk,
                                        numerator_result=scene_probe_groups, denominator_result=all_ch_o,
-                                       result=result * 100, target=target * 100,
+                                       result=result * 100, target=target,
                                        denominator_id=self.store_id, score=score * weight, weight=weight,
                                        identifier_parent=identifier_parent, identifier_result=identifier_result,
                                        should_enter=True)
@@ -630,7 +631,7 @@ class MARSUAE_SANDToolBox:
         if not block_ass.empty:
             block_ass = self.get_template_relevant_assortment_result(block_ass, param_row)
             if not block_ass.empty:
-                relevant_products = block_ass['product_fk'].unique().tolist()
+                relevant_products = block_ass[self.PRODUCT_FK].unique().tolist()
                 skus_in_clusters = self.get_relevant_block_clusters(relevant_products, param_row)
                 cluster_results = list()
                 number_of_products = float(len(relevant_products))
@@ -639,11 +640,11 @@ class MARSUAE_SANDToolBox:
                 result = max(cluster_results) if cluster_results else 0
                 score, weight = self.get_score(result, param_row)
 
-                target = param_row[self.TARGET] if param_row[self.TARGET] else None
+                target = param_row[self.TARGET] * 100 if param_row[self.TARGET] else None
                 identifier_parent = self.get_identifier_parent_for_atomic(param_row)
                 identifier_result = self.get_identifier_result_for_atomic(param_row)
                 self.common.write_to_db_result(fk=param_row['kpi_level_2_fk'], numerator_id=self.own_manuf_fk,
-                                               numerator_result=result, result=result * 100, target=target * 100,
+                                               numerator_result=result, result=result * 100, target=target,
                                                denominator_id=self.store_id, score=score * weight, weight=weight,
                                                identifier_parent=identifier_parent, identifier_result=identifier_result,
                                                should_enter=True)
@@ -653,8 +654,10 @@ class MARSUAE_SANDToolBox:
 
     def get_relevant_block_clusters(self, relevant_products, param_row):
         general_filters = self.get_general_filters(param_row)
-        scenes = general_filters['location'][self.SCENE_FK]
-        block_filters = {'product_fk': relevant_products}
+        scenes_template = general_filters['location'][self.SCENE_FK]
+        scenes = self.scif[(self.scif[self.SCENE_FK].isin(scenes_template)) &
+                           (self.scif[self.PRODUCT_FK].isin(relevant_products))][self.SCENE_FK].unique().tolist()
+        block_filters = {self.PRODUCT_FK: relevant_products}
         additional_filters = {'minimum_facing_for_block': 2, 'minimum_block_ratio': 0}
         cluster_skus_list = list()
         for scene in scenes:
@@ -667,12 +670,11 @@ class MARSUAE_SANDToolBox:
                 self.get_number_of_sku_types_from_clusters(block_res, cluster_skus_list)
         return cluster_skus_list
 
-    @staticmethod
-    def get_number_of_sku_types_from_clusters(block_res, cluster_skus_list):
+    def get_number_of_sku_types_from_clusters(self, block_res, cluster_skus_list):
         for i, block_row in block_res.iterrows():
             cluster_nodes = block_row['cluster'].nodes.values() # returns the list of dictionaries for each cluster item
             sku_types = set()
-            product_list = [list(node['product_fk']) for node in cluster_nodes]
+            product_list = [list(node[self.PRODUCT_FK]) for node in cluster_nodes]
             map(lambda x: sku_types.update(x), product_list)
             cluster_skus_list.append(len(sku_types))
 

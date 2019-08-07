@@ -27,7 +27,6 @@ class TestMarsuaeSand(TestFunctionalCase):
         self.mock_common_project_connector_mock = self.mock_common_project_connector()
         self.static_kpi_mock = self.mock_static_kpi()
         self.session_info_mock = self.mock_session_info()
-        # self.probe_group_mock = self.mock_probe_group()
         self.full_store_info = self.mock_store_data()
         self.output = MagicMock()
         self.session_info_mock = self.mock_session_info()
@@ -35,10 +34,11 @@ class TestMarsuaeSand(TestFunctionalCase):
         self.kpi_result_values_mock = self.mock_kpi_result_value_table()
         self.mock_all_products()
         self.mock_all_templates()
-        self.mock_block()
+        # self.mock_block()
         self.mock_various_project_connectors()
         self.mock_position_graph()
         self.mock_lvl3_ass_base_df()
+        self.mock_position_graph_block()
 
     # def mock_lvl3_ass_result(self):
     #     ass_res = self.mock_object('Assortment.calculate_lvl3_assortment',
@@ -46,7 +46,9 @@ class TestMarsuaeSand(TestFunctionalCase):
     #     ass_res.return_value = DataTestUnitMarsuae.test_case_1_ass_result
     #     return ass_res.return_value
 
-#start here
+    def mock_position_graph_block(self):
+        self.mock_object('PositionGraphs', path='KPIUtils_v2.Calculations.BlockCalculations_v2')
+
     def mock_lvl3_ass_base_df(self):
         ass_res = self.mock_object('Assortment.get_lvl3_relevant_ass',
                                    path='KPIUtils_v2.Calculations.AssortmentCalculations')
@@ -93,6 +95,7 @@ class TestMarsuaeSand(TestFunctionalCase):
         self.mock_object('PSProjectConnector', path='KPIUtils_v2.GlobalDataProvider.PSAssortmentProvider')
         self.mock_object('PSProjectConnector', path='KPIUtils_v2.DB.PsProjectConnector')
         self.mock_object('PSProjectConnector', path='KPIUtils_v2.Calculations.BaseCalculations')
+        self.mock_object('PSProjectConnector', path='KPIUtils_v2.GlobalDataProvider.PsDataProvider')
 
     def mock_project_connector(self):
         return self.mock_object('PSProjectConnector')
@@ -111,6 +114,12 @@ class TestMarsuaeSand(TestFunctionalCase):
     def mock_all_products(self):
         self.data_provider_data_mock['all_products'] = pd.read_excel(DataTestUnitMarsuae.test_case_1,
                                                                      sheetname='all_products')
+
+    def mock_block_results(self, data):
+        block_results = self.mock_object('Block.network_x_block_together',
+                                         path='KPIUtils_v2.Calculations.BlockCalculations_v2')
+        block_results.side_effect = data
+        return
 
     def mock_all_templates(self):
         self.data_provider_data_mock['all_templates'] = DataTestUnitMarsuae.all_templates
