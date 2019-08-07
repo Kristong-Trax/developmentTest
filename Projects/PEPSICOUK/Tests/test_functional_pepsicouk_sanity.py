@@ -7,7 +7,7 @@ from Trax.Data.Testing.SeedNew import Seeder
 from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
 from Trax.Cloud.Services.Connector.Keys import DbUsers
 from Trax.Data.Testing.TestProjects import TestProjectsNames
-from Tests.Data.TestData.test_data_pepsicouk_sanity import ProjectsSanityData
+from Projects.PEPSICOUK.Tests.Data.test_data_pepsicouk_sanity import ProjectsSanityData
 from Projects.PEPSICOUK.Calculations import PEPSICOUKCalculations
 from Projects.PEPSICOUK.SceneKpis.SceneCalculations import PEPSICOUKSceneCalculations
 from Trax.Apps.Core.Testing.BaseCase import TestFunctionalCase
@@ -68,7 +68,8 @@ class TestKEngineOutOfTheBox(TestFunctionalCase):
     def test_pepsicouk_sanity(self):
         project_name = ProjectsSanityData.project_name
         data_provider = KEngineDataProvider(project_name)
-        sessions = {'aee71e4d-cdd1-4474-803e-ef834d24871d': [94402], '961edfb7-ae52-40a7-ab39-45064f8c554d': [92747], 'be03f331-a509-4ef5-99a0-a1807fc96b71': [93375]}
+        sessions = {'aee71e4d-cdd1-4474-803e-ef834d24871d': [94402], '961edfb7-ae52-40a7-ab39-45064f8c554d': [92747],
+                    'be03f331-a509-4ef5-99a0-a1807fc96b71': [93375]}
         for session in sessions.keys():
             data_provider.load_session_data(str(session))
             output = Output()
