@@ -268,7 +268,7 @@ class TestMarsuaeSand(TestFunctionalCase):
         store_atomics = tool_box.get_store_atomic_kpi_parameters()
         param_row = self.get_parameter_series_for_kpi_calculation(store_atomics, 'Checkout Penetration - Chocolate')
         tool_box.calculate_checkouts(param_row)
-        expected_result = {'kpi_fk': 3005, 'result': 1, 'score': 0, 'weight': 7.5, 'score_by_weight': 0}
+        expected_result = {'kpi_fk': 3005, 'result': 50, 'score': 0, 'weight': 7.5, 'score_by_weight': 0}
         check = self.check_results(tool_box.atomic_kpi_results, expected_result)
         self.assertEquals(check, 1)
 
@@ -279,7 +279,9 @@ class TestMarsuaeSand(TestFunctionalCase):
         store_atomics = tool_box.get_store_atomic_kpi_parameters()
         param_row = self.get_parameter_series_for_kpi_calculation(store_atomics, 'Checkout Penetration - Chocolate')
         tool_box.calculate_checkouts(param_row)
-        expected_result = {'kpi_fk': 3005, 'result': 2, 'score': 1, 'weight': 7.5, 'score_by_weight': 7.5}
+        atomic_res = tool_box.atomic_kpi_results
+        atomic_res['result'] = atomic_res['result'].apply(lambda x: round(x, 5))
+        expected_result = {'kpi_fk': 3005, 'result': round(2/3.0 * 100, 5), 'score': 1, 'weight': 7.5, 'score_by_weight': 7.5}
         check = self.check_results(tool_box.atomic_kpi_results, expected_result)
         self.assertEquals(check, 1)
 

@@ -592,23 +592,26 @@ class MARSUAE_SANDToolBox:
 
     def calculate_checkouts(self, param_row):
         filters = self.get_general_filters(param_row)
+        all_ch_o = len(filter_df(filters, self.match_product_in_scene).drop_duplicates(subset=['scene_fk',
+                                                                                               'probe_group_id']))
         kpi_filters = self.get_non_sos_kpi_filters(param_row)
         filters.update(kpi_filters)
         filtered_matches = filter_df(filters, self.matches_products)
         filtered_matches = filtered_matches[filtered_matches['stacking_layer'] == 1]
-        scene_probe_groups = filtered_matches.drop_duplicates(subset=['scene_fk', 'probe_group_id'])
-        result = len(scene_probe_groups)
+        scene_probe_groups = len(filtered_matches.drop_duplicates(subset=['scene_fk', 'probe_group_id']))
+        result = float(scene_probe_groups) / all_ch_o if all_ch_o else 0
         score, weight = self.get_score(param_row=param_row, result=result)
         target = param_row[self.TARGET] if param_row[self.TARGET] else None
         identifier_parent = self.get_identifier_parent_for_atomic(param_row)
         identifier_result = self.get_identifier_result_for_atomic(param_row)
         self.common.write_to_db_result(fk=param_row['kpi_level_2_fk'], numerator_id=self.own_manuf_fk,
-                                       numerator_result=result, result=result, target=target,
+                                       numerator_result=scene_probe_groups, denominator_result=all_ch_o,
+                                       result=result * 100, target=target * 100,
                                        denominator_id=self.store_id, score=score * weight, weight=weight,
                                        identifier_parent=identifier_parent, identifier_result=identifier_result,
                                        should_enter=True)
         self.add_kpi_result_to_kpi_results_df([param_row['kpi_level_2_fk'], param_row['kpi_type'],
-                                               result, score, weight, score * weight,
+                                               result * 100, score, weight, score * weight,
                                                param_row[self.KPI_LVL_2_NAME]])
 
     def calculate_block(self, param_row):
