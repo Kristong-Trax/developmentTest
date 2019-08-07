@@ -585,6 +585,9 @@ class TestMarsuaeSand(TestFunctionalCase):
         tool_box.calculate_atomic_results(param_row)
         self.assertTrue(tool_box.atomic_kpi_results.empty)
 
+    def test_calculate_block(self):
+        pass
+
     @staticmethod
     def check_results(results_df, expected_results_dict):
         column = []

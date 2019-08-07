@@ -60,11 +60,20 @@ class MARSUAE_SANDToolBox:
     PARENT_KPI = 'kpi_parent'
     CHILD_KPI = 'kpi_child'
     KPI_TYPE = 'kpi_type'
+    PARAM_1_NUM_TYPE = 'param_type_1/numerator_type'
+    PARAM_1_NUM_VALUE = 'param_value_1/numerator_value'
+    PARAM_2_DENOM_TYPE = 'param_type_2/denom_type'
+    PARAM_2_DENOM_VALUE = 'param_value_2/denom_value'
+    EXCLUDE_TYPE_1 = 'exclude_param_type_1'
+    EXCLUDE_VALUE_1 = 'exclude_param_value_1'
 
     TOTAL_UAE_SCORE = 'Total UAE Score'
     FIXED_TARGET_FOR_MR = 80
     OOS = 'OOS'
     DISTRIBUTED = 'DISTRIBUTED'
+
+    # scif / matches columns
+    SCENE_FK = 'scene_fk'
 
     def __init__(self, data_provider, output):
         self.output = output
@@ -317,46 +326,45 @@ class MARSUAE_SANDToolBox:
         templates = param_row[self.TEMPLATE_NAME_T]
         if templates:
             conditions = {'location': {'template_name': templates}}
-            relevant_scenes = filter_df(conditions, self.scif)['scene_fk'].unique().tolist()
+            relevant_scenes = filter_df(conditions, self.scif)[self.SCENE_FK].unique().tolist()
         else:
-            relevant_scenes = self.scif['scene_fk'].unique().tolist()
-        general_filters = {'location': {'scene_fk': relevant_scenes}}
+            relevant_scenes = self.scif[self.SCENE_FK].unique().tolist()
+        general_filters = {'location': {self.SCENE_FK: relevant_scenes}}
         return general_filters
 
-    @staticmethod
-    def get_non_sos_kpi_filters(param_row):
+    def get_non_sos_kpi_filters(self, param_row):
         include_filters = {}
-        if param_row['param_type_1/numerator_type']:
-            include_filters.update({param_row['param_type_1/numerator_type']: param_row['param_value_1/numerator_value']})
-        if param_row['param_type_2/denom_type']:
-            include_filters.update({param_row['param_type_2/denom_type']: param_row['param_value_2/denom_value']})
+        if param_row[self.PARAM_1_NUM_TYPE]:
+            include_filters.update({param_row[self.PARAM_1_NUM_TYPE]: param_row[self.PARAM_1_NUM_VALUE]})
+        if param_row[self.PARAM_2_DENOM_TYPE]:
+            include_filters.update({param_row[self.PARAM_2_DENOM_TYPE]: param_row[self.PARAM_2_DENOM_VALUE]})
         condition_filters = {'population': {'include': [include_filters]}}
         exclude_filters = {}
-        if param_row['exclude_param_type_1']:
-            exclude_filters.update({param_row['exclude_param_type_1']: param_row['exclude_param_value_1']})
+        if param_row[self.EXCLUDE_TYPE_1]:
+            exclude_filters.update({param_row[self.EXCLUDE_TYPE_1]: param_row[self.EXCLUDE_VALUE_1]})
         if exclude_filters:
             condition_filters['population'].update({'exclude': exclude_filters})
         return condition_filters
 
     def get_sos_filters(self, param_row):
-        if not param_row['param_type_2/denom_type'] or not param_row['param_type_1/numerator_type']:
+        if not param_row[self.PARAM_2_DENOM_TYPE] or not param_row[self.PARAM_1_NUM_TYPE]:
             Log.error('Sos filters are incorrect for kpi {}. '
                       'Kpi is not calculated'.format(param_row[self.KPI_TYPE]))
             return None
         denominator_filters = {}
-        if param_row['param_type_2/denom_type']:
-            denominator_filters.update({param_row['param_type_2/denom_type']: param_row['param_value_2/denom_value']})
+        if param_row[self.PARAM_2_DENOM_TYPE]:
+            denominator_filters.update({param_row[self.PARAM_2_DENOM_TYPE]: param_row[self.PARAM_2_DENOM_VALUE]})
         sos_filters = {'population': {'include': [denominator_filters]}}
 
         exclude_filters = {}
-        if param_row['exclude_param_type_1']:
-            exclude_filters.update({param_row['exclude_param_type_1']: param_row['exclude_param_value_1']})
+        if param_row[self.EXCLUDE_TYPE_1]:
+            exclude_filters.update({param_row[self.EXCLUDE_TYPE_1]: param_row[self.EXCLUDE_VALUE_1]})
         if exclude_filters:
             sos_filters['population'].update({'exclude': exclude_filters})
 
         num_filters = {}
-        if param_row['param_type_1/numerator_type']:
-            num_filters.update({param_row['param_type_1/numerator_type']: param_row['param_value_1/numerator_value']})
+        if param_row[self.PARAM_1_NUM_TYPE]:
+            num_filters.update({param_row[self.PARAM_1_NUM_TYPE]: param_row[self.PARAM_1_NUM_VALUE]})
         numerator_filters = copy.deepcopy(sos_filters)
         numerator_filters['population']['include'][0].update(num_filters)
 
@@ -546,9 +554,9 @@ class MARSUAE_SANDToolBox:
             result = numerator_length / denominator_length if denominator_length else 0
             score, weight = self.get_score(result=result, param_row=param_row)
 
-            num_id = param_row['param_value_1/numerator_value'] if \
-                        isinstance(param_row['param_value_1/numerator_value'], (str, unicode, int, float)) else self.own_manuf_fk
-            denom_id = param_row['param_value_2/denom_value']
+            num_id = param_row[self.PARAM_1_NUM_VALUE] if \
+                        isinstance(param_row[self.PARAM_1_NUM_VALUE], (str, unicode, int, float)) else self.own_manuf_fk
+            denom_id = param_row[self.PARAM_2_DENOM_VALUE]
             identifier_parent = self.get_identifier_parent_for_atomic(param_row)
             identifier_result = self.get_identifier_result_for_atomic(param_row)
             target = param_row[self.TARGET] * 100 if param_row[self.TARGET] else None
@@ -565,7 +573,7 @@ class MARSUAE_SANDToolBox:
     def calculate_displays(self, param_row):
         general_filters = self.get_general_filters(param_row)
         filtered_scif = filter_df(general_filters, self.scif)
-        result = len(filtered_scif['scene_fk'].unique().tolist())
+        result = len(filtered_scif[self.SCENE_FK].unique().tolist())
         score, weight = self.get_score(result, param_row)
         identifier_parent = self.get_identifier_parent_for_atomic(param_row)
         target = param_row[self.TARGET] if param_row[self.TARGET] else None
@@ -593,13 +601,13 @@ class MARSUAE_SANDToolBox:
 
     def calculate_checkouts(self, param_row):
         filters = self.get_general_filters(param_row)
-        all_ch_o = len(filter_df(filters, self.match_product_in_scene).drop_duplicates(subset=['scene_fk',
+        all_ch_o = len(filter_df(filters, self.match_product_in_scene).drop_duplicates(subset=[self.SCENE_FK,
                                                                                                'probe_group_id']))
         kpi_filters = self.get_non_sos_kpi_filters(param_row)
         filters.update(kpi_filters)
         filtered_matches = filter_df(filters, self.matches_products)
         filtered_matches = filtered_matches[filtered_matches['stacking_layer'] == 1]
-        scene_probe_groups = len(filtered_matches.drop_duplicates(subset=['scene_fk', 'probe_group_id']))
+        scene_probe_groups = len(filtered_matches.drop_duplicates(subset=[self.SCENE_FK, 'probe_group_id']))
         result = float(scene_probe_groups) / all_ch_o if all_ch_o else 0
         score, weight = self.get_score(param_row=param_row, result=result)
         target = param_row[self.TARGET] if param_row[self.TARGET] else None
@@ -635,7 +643,7 @@ class MARSUAE_SANDToolBox:
                 identifier_parent = self.get_identifier_parent_for_atomic(param_row)
                 identifier_result = self.get_identifier_result_for_atomic(param_row)
                 self.common.write_to_db_result(fk=param_row['kpi_level_2_fk'], numerator_id=self.own_manuf_fk,
-                                               numerator_result=result, result=result * 100, target=target,
+                                               numerator_result=result, result=result * 100, target=target * 100,
                                                denominator_id=self.store_id, score=score * weight, weight=weight,
                                                identifier_parent=identifier_parent, identifier_result=identifier_result,
                                                should_enter=True)
@@ -645,12 +653,12 @@ class MARSUAE_SANDToolBox:
 
     def get_relevant_block_clusters(self, relevant_products, param_row):
         general_filters = self.get_general_filters(param_row)
-        scenes = general_filters['location']['scene_fk']
+        scenes = general_filters['location'][self.SCENE_FK]
         block_filters = {'product_fk': relevant_products}
         additional_filters = {'minimum_facing_for_block': 2, 'minimum_block_ratio': 0}
         cluster_skus_list = list()
         for scene in scenes:
-            location_filters = {'scene_fk': [scene]}
+            location_filters = {self.SCENE_FK: [scene]}
             block_res = self.block.network_x_block_together(block_filters, location_filters, additional_filters)
             block_res = block_res[block_res['is_block'] == True]
             if block_res.empty:
