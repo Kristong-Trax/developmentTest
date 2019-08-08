@@ -260,56 +260,102 @@ class DataTestUnitMarsuae(object):
                                 'score_cond_target_2', 'score_cond_target_3', 'score_cond_target_4', 'score_logic',
                                 'type']
 
-# -------start here----------------
-
-    scene_info = pd.DataFrame([{'scene_fk': 1,  'template_fk': 1}, {'scene_fk': 2,  'template_fk': 1},
-                               {'scene_fk': 3, 'template_fk': 2}])
-
-    block_results = pd.DataFrame.from_records([{'cluster': 1, 'scene_fk': 1, 'orientation': '',
-                                                'facing_percentage': 0.08, 'is_block': False},
-                                               {'cluster': 2, 'scene_fk': 1, 'orientation': 'VERTICAL',
-                                                'facing_percentage': 0.92, 'is_block': True}
-                                               ])
-
-    block_results_2 = pd.DataFrame.from_records([{'cluster': 1, 'scene_fk': 1, 'orientation': '',
-                                                'facing_percentage': 0.05, 'is_block': False},
-                                                {'cluster': 2, 'scene_fk': 1, 'orientation': 'HORIZONTAL',
-                                                'facing_percentage': 0.95, 'is_block': True}
-                                                ])
-
-    block_results_empty = pd.DataFrame(columns=['cluster','scene_fk', 'orientation',
+    block_results_empty = pd.DataFrame(columns=['cluster', 'scene_fk', 'orientation',
                                                 'facing_percentage', 'is_block'])
-    block_results_failed = pd.DataFrame.from_records([{'cluster': 1, 'scene_fk': 1, 'orientation': '',
-                                                         'facing_percentage': 0.4, 'is_block': False},
-                                                         {'cluster': 2, 'scene_fk': 1, 'orientation': '',
-                                                          'facing_percentage': 0.6, 'is_block': False}])
-    blocks_all_pass = pd.DataFrame.from_records([{'Group Name': 'Pringles_FTT_Tubes', 'Score': True},
-                                                 {'Group Name': 'Hula Hoops_LMP_Snacks', 'Score': True}])
-    blocks_none_passes = pd.DataFrame.from_records([{'Group Name': 'Pringles_FTT_Tubes', 'Score': False},
-                                                    {'Group Name': 'Hula Hoops_LMP_Snacks', 'Score': False}])
-    blocks_one_passes = pd.DataFrame.from_records([{'Group Name': 'Pringles_FTT_Tubes', 'Score': True},
-                                                   {'Group Name': 'Hula Hoops_LMP_Snacks', 'Score': False}])
+    block_results_failed = pd.DataFrame.from_records([{'cluster': 1, 'scene_fk': 9, 'orientation': '',
+                                                       'facing_percentage': 1, 'is_block': False},
+                                                      {'cluster': 2, 'scene_fk': 9, 'orientation': '',
+                                                       'facing_percentage': 1, 'is_block': False}])
 
-    adjacency_results_true = pd.DataFrame.from_records([{'anchor_block': 1, 'tested_block': 1, 'anchor_facing_percentage': 5,
-                                                   'tested_facing_percentage': 4, 'scene_fk': 1, 'is_adj': True}])
-    adjacency_results_false = pd.DataFrame.from_records(
-        [{'anchor_block': 1, 'tested_block': 1, 'anchor_facing_percentage': 5,
-          'tested_facing_percentage': 4, 'scene_fk': 1, 'is_adj': False}])
+    cluster_7_1 = {1: {'match_fk': set([604]), 'product_fk': set([1])},
+                   2: {'match_fk': set([605]), 'product_fk': set([1])},
+                   3: {'match_fk': set([606]), 'product_fk': set([2])}}
 
-    blocks_combinations_3_pass_all = pd.DataFrame.from_records([{'Group Name': 'Group 1', 'Score': True},
-                                                     {'Group Name': 'Group 2', 'Score': True},
-                                                     {'Group Name': 'Group 3', 'Score': True}])
+    block_results_sc_7 = pd.DataFrame.from_records([{'cluster': pd.Series({'nodes': cluster_7_1}),
+                                                     'scene_fk': 7, 'orientation': '',
+                                                     'facing_percentage': 1, 'is_block': True}
+                                                   ])
 
-    blocks_combinations_2_pass_of_3 = pd.DataFrame.from_records([{'Group Name': 'Group 1', 'Score': True},
-                                                            {'Group Name': 'Group 2', 'Score': True},
-                                                            {'Group Name': 'Group 3', 'Score': False}])
+    cluster_8_1 = {1: {'match_fk': set([703]), 'product_fk': set([5])},
+                   2: {'match_fk': set([704]), 'product_fk': set([5])},
+                   3: {'match_fk': set([705]), 'product_fk': set([5])},
+                   4: {'match_fk': set([706]), 'product_fk': set([5])},
+                   5: {'match_fk': set([707]), 'product_fk': set([5])},
+                   6: {'match_fk': set([708]), 'product_fk': set([5])},
+                   }
 
-    blocks_combinations_1_pass_of_3 = pd.DataFrame.from_records([{'Group Name': 'Group 1', 'Score': True},
-                                                                 {'Group Name': 'Group 2', 'Score': False},
-                                                                 {'Group Name': 'Group 3', 'Score': False}])
+    block_results_sc_8 = pd.DataFrame.from_records([{'cluster': pd.Series({'nodes': cluster_8_1}),
+                                                     'scene_fk': 8, 'orientation': '',
+                                                     'facing_percentage': 1, 'is_block': True}
+                                                    ])
 
-    blocks_combinations_4_pass_of_4 = pd.DataFrame.from_records([{'Group Name': 'Group 1', 'Score': True},
-                                                                 {'Group Name': 'Group 2', 'Score': True},
-                                                                 {'Group Name': 'Group 3', 'Score': True},
-                                                                 {'Group Name': 'Group 4', 'Score': True},
-                                                                 ])
+    cluster_10_1 = {1: {'match_fk': set([902]), 'product_fk': set([1])},
+                    2: {'match_fk': set([907]), 'product_fk': set([2])},
+                    3: {'match_fk': set([908]), 'product_fk': set([3])}
+                    }
+
+    cluster_10_2 = {1: {'match_fk': set([905]), 'product_fk': set([8])},
+                    2: {'match_fk': set([906]), 'product_fk': set([8])},
+                    3: {'match_fk': set([910]), 'product_fk': set([8])},
+                    4: {'match_fk': set([911]), 'product_fk': set([8])},
+                    }
+
+    block_results_sc_10 = pd.DataFrame.from_records([
+        {'cluster': pd.Series({'nodes': cluster_10_1}), 'scene_fk': 10, 'orientation': '', 'facing_percentage': 3/7.0,
+         'is_block': True},
+        {'cluster': pd.Series({'nodes': cluster_10_2}), 'scene_fk': 10, 'orientation': '', 'facing_percentage': 4/7.0,
+         'is_block': True}
+    ])
+
+# -------start here----------------
+#     blocks_all_pass = pd.DataFrame.from_records([{'Group Name': 'Pringles_FTT_Tubes', 'Score': True},
+#                                                  {'Group Name': 'Hula Hoops_LMP_Snacks', 'Score': True}])
+#
+#
+#     scene_info = pd.DataFrame([{'scene_fk': 1,  'template_fk': 1}, {'scene_fk': 2,  'template_fk': 1},
+#                                {'scene_fk': 3, 'template_fk': 2}])
+#
+#     block_results = pd.DataFrame.from_records([{'cluster': 1, 'scene_fk': 1, 'orientation': '',
+#                                                 'facing_percentage': 0.08, 'is_block': False},
+#                                                {'cluster': 2, 'scene_fk': 1, 'orientation': 'VERTICAL',
+#                                                 'facing_percentage': 0.92, 'is_block': True}
+#                                                ])
+#
+#     block_results_2 = pd.DataFrame.from_records([{'cluster': 1, 'scene_fk': 1, 'orientation': '',
+#                                                 'facing_percentage': 0.05, 'is_block': False},
+#                                                 {'cluster': 2, 'scene_fk': 1, 'orientation': 'HORIZONTAL',
+#                                                 'facing_percentage': 0.95, 'is_block': True}
+#                                                 ])
+#
+#     block_results_empty = pd.DataFrame(columns=['cluster','scene_fk', 'orientation',
+#                                                 'facing_percentage', 'is_block'])
+
+#
+#     blocks_none_passes = pd.DataFrame.from_records([{'Group Name': 'Pringles_FTT_Tubes', 'Score': False},
+#                                                     {'Group Name': 'Hula Hoops_LMP_Snacks', 'Score': False}])
+#     blocks_one_passes = pd.DataFrame.from_records([{'Group Name': 'Pringles_FTT_Tubes', 'Score': True},
+#                                                    {'Group Name': 'Hula Hoops_LMP_Snacks', 'Score': False}])
+#
+#     adjacency_results_true = pd.DataFrame.from_records([{'anchor_block': 1, 'tested_block': 1, 'anchor_facing_percentage': 5,
+#                                                    'tested_facing_percentage': 4, 'scene_fk': 1, 'is_adj': True}])
+#     adjacency_results_false = pd.DataFrame.from_records(
+#         [{'anchor_block': 1, 'tested_block': 1, 'anchor_facing_percentage': 5,
+#           'tested_facing_percentage': 4, 'scene_fk': 1, 'is_adj': False}])
+#
+#     blocks_combinations_3_pass_all = pd.DataFrame.from_records([{'Group Name': 'Group 1', 'Score': True},
+#                                                      {'Group Name': 'Group 2', 'Score': True},
+#                                                      {'Group Name': 'Group 3', 'Score': True}])
+#
+#     blocks_combinations_2_pass_of_3 = pd.DataFrame.from_records([{'Group Name': 'Group 1', 'Score': True},
+#                                                             {'Group Name': 'Group 2', 'Score': True},
+#                                                             {'Group Name': 'Group 3', 'Score': False}])
+#
+#     blocks_combinations_1_pass_of_3 = pd.DataFrame.from_records([{'Group Name': 'Group 1', 'Score': True},
+#                                                                  {'Group Name': 'Group 2', 'Score': False},
+#                                                                  {'Group Name': 'Group 3', 'Score': False}])
+#
+#     blocks_combinations_4_pass_of_4 = pd.DataFrame.from_records([{'Group Name': 'Group 1', 'Score': True},
+#                                                                  {'Group Name': 'Group 2', 'Score': True},
+#                                                                  {'Group Name': 'Group 3', 'Score': True},
+#                                                                  {'Group Name': 'Group 4', 'Score': True},
+#                                                                  ])

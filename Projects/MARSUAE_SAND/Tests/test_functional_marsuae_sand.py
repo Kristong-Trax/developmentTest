@@ -456,7 +456,6 @@ class TestMarsuaeSand(TestFunctionalCase):
         param_row = self.get_parameter_series_for_kpi_calculation(store_atomics,
                                                                   'Gum / Fruity Checkout Compliance')
         tool_box.calculate_atomic_results(param_row)
-        print tool_box.atomic_kpi_results[['kpi_fk', 'result', 'score']]
         expected_result = {'kpi_fk': 3008, 'result': 0, 'score': 0, 'weight': 40, 'score_by_weight': 0}
         check = self.check_results(tool_box.atomic_kpi_results, expected_result)
         self.assertEquals(check, 1)
@@ -594,8 +593,99 @@ class TestMarsuaeSand(TestFunctionalCase):
         tool_box.calculate_atomic_results(param_row)
         self.assertTrue(tool_box.atomic_kpi_results.empty)
 
-    def test_calculate_block(self):
-        pass
+    def test_calculate_block_results_empty(self):
+        probe_group, matches, scene = self.create_scif_matches_stitch_groups_data_mocks(
+            DataTestUnitMarsuae.test_case_1, [1, 9])
+        self.mock_block_results([DataTestUnitMarsuae.block_results_empty])
+        tool_box = MARSUAE_SANDToolBox(self.data_provider_mock, self.output)
+        store_atomics = tool_box.get_store_atomic_kpi_parameters()
+        tool_box.build_tiers_for_atomics(store_atomics)
+        param_row = self.get_parameter_series_for_kpi_calculation(store_atomics, 'Red Block Compliance - Main')
+        tool_box.calculate_block(param_row)
+        print tool_box.atomic_kpi_results[['kpi_fk', 'result', 'score']]
+        expected_result = {'kpi_fk': 3016, 'result': 0, 'score': 0, 'weight': 10, 'score_by_weight': 0}
+        check = self.check_results(tool_box.atomic_kpi_results, expected_result)
+        self.assertEquals(check, 1)
+
+    def test_calculate_block_all_blocks_fail(self):
+        probe_group, matches, scene = self.create_scif_matches_stitch_groups_data_mocks(
+            DataTestUnitMarsuae.test_case_1, [1, 9])
+        self.mock_block_results([DataTestUnitMarsuae.block_results_failed])
+        tool_box = MARSUAE_SANDToolBox(self.data_provider_mock, self.output)
+        store_atomics = tool_box.get_store_atomic_kpi_parameters()
+        tool_box.build_tiers_for_atomics(store_atomics)
+        param_row = self.get_parameter_series_for_kpi_calculation(store_atomics, 'Red Block Compliance - Main')
+        tool_box.calculate_block(param_row)
+        expected_result = {'kpi_fk': 3016, 'result': 0, 'score': 0, 'weight': 10, 'score_by_weight': 0}
+        check = self.check_results(tool_box.atomic_kpi_results, expected_result)
+        self.assertEquals(check, 1)
+
+    def test_calculate_block_one_block_passes_one_scene_2_sku_types(self):
+        probe_group, matches, scene = self.create_scif_matches_stitch_groups_data_mocks(
+            DataTestUnitMarsuae.test_case_1, [1, 7])
+        self.mock_block_results([DataTestUnitMarsuae.block_results_sc_7])
+        tool_box = MARSUAE_SANDToolBox(self.data_provider_mock, self.output)
+        store_atomics = tool_box.get_store_atomic_kpi_parameters()
+        tool_box.build_tiers_for_atomics(store_atomics)
+        param_row = self.get_parameter_series_for_kpi_calculation(store_atomics, 'Red Block Compliance - Main')
+        tool_box.calculate_block(param_row)
+        expected_result = {'kpi_fk': 3016, 'result': 0.4, 'score': 1, 'weight': 10, 'score_by_weight': 10}
+        check = self.check_results(tool_box.atomic_kpi_results, expected_result)
+        self.assertEquals(check, 1)
+
+    def test_calculate_block_one_block_passes_one_scene_one_sku_type(self):
+        probe_group, matches, scene = self.create_scif_matches_stitch_groups_data_mocks(
+            DataTestUnitMarsuae.test_case_1, [1, 8])
+        self.mock_block_results([DataTestUnitMarsuae.block_results_sc_8])
+        tool_box = MARSUAE_SANDToolBox(self.data_provider_mock, self.output)
+        store_atomics = tool_box.get_store_atomic_kpi_parameters()
+        tool_box.build_tiers_for_atomics(store_atomics)
+        param_row = self.get_parameter_series_for_kpi_calculation(store_atomics, 'Red Block Compliance - Main')
+        tool_box.calculate_block(param_row)
+        expected_result = {'kpi_fk': 3016, 'result': 0.2, 'score': 0, 'weight': 10, 'score_by_weight': 0}
+        check = self.check_results(tool_box.atomic_kpi_results, expected_result)
+        self.assertEquals(check, 1)
+
+    def test_calculate_block_two_scenes_returns_result_for_largest_number_of_skus(self):
+        probe_group, matches, scene = self.create_scif_matches_stitch_groups_data_mocks(
+            DataTestUnitMarsuae.test_case_1, [1, 7, 8])
+        self.mock_block_results([DataTestUnitMarsuae.block_results_sc_7, DataTestUnitMarsuae.block_results_sc_8])
+        tool_box = MARSUAE_SANDToolBox(self.data_provider_mock, self.output)
+        store_atomics = tool_box.get_store_atomic_kpi_parameters()
+        tool_box.build_tiers_for_atomics(store_atomics)
+        param_row = self.get_parameter_series_for_kpi_calculation(store_atomics, 'Red Block Compliance - Main')
+        tool_box.calculate_block(param_row)
+        expected_result = {'kpi_fk': 3016, 'result': 0.4, 'score': 1, 'weight': 10, 'score_by_weight': 10}
+        check = self.check_results(tool_box.atomic_kpi_results, expected_result)
+        self.assertEquals(check, 1)
+
+    def test_calculate_block_two_blocks_pass_in_one_scene_returns_share_for_max_sku_types(self):
+        probe_group, matches, scene = self.create_scif_matches_stitch_groups_data_mocks(
+            DataTestUnitMarsuae.test_case_1, [1, 10])
+        self.mock_block_results([DataTestUnitMarsuae.block_results_sc_10])
+        tool_box = MARSUAE_SANDToolBox(self.data_provider_mock, self.output)
+        store_atomics = tool_box.get_store_atomic_kpi_parameters()
+        tool_box.build_tiers_for_atomics(store_atomics)
+        param_row = self.get_parameter_series_for_kpi_calculation(store_atomics, 'Red Block Compliance - Main')
+        tool_box.calculate_block(param_row)
+        print tool_box.atomic_kpi_results[['kpi_fk', 'result', 'score']]
+        expected_result = {'kpi_fk': 3016, 'result': 0.6, 'score': 1, 'weight': 10, 'score_by_weight': 10}
+        check = self.check_results(tool_box.atomic_kpi_results, expected_result)
+        self.assertEquals(check, 1)
+
+    def test_calculate_block_3_scenes_max_block(self):
+        probe_group, matches, scene = self.create_scif_matches_stitch_groups_data_mocks(
+            DataTestUnitMarsuae.test_case_1, [1, 7, 8, 10])
+        self.mock_block_results([DataTestUnitMarsuae.block_results_sc_7, DataTestUnitMarsuae.block_results_sc_8,
+                                 DataTestUnitMarsuae.block_results_sc_10])
+        tool_box = MARSUAE_SANDToolBox(self.data_provider_mock, self.output)
+        store_atomics = tool_box.get_store_atomic_kpi_parameters()
+        tool_box.build_tiers_for_atomics(store_atomics)
+        param_row = self.get_parameter_series_for_kpi_calculation(store_atomics, 'Red Block Compliance - Main')
+        tool_box.calculate_block(param_row)
+        expected_result = {'kpi_fk': 3016, 'result': 0.6, 'score': 1, 'weight': 10, 'score_by_weight': 10}
+        check = self.check_results(tool_box.atomic_kpi_results, expected_result)
+        self.assertEquals(check, 1)
 
     @staticmethod
     def check_results(results_df, expected_results_dict):
