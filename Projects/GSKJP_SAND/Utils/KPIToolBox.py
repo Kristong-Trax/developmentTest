@@ -218,13 +218,13 @@ class GSKJPToolBox:
         result = self.blocking_generator.network_x_block_together(location=template_name,
                                                                   population=population_parameters,
                                                                   additional={'minimum_block_ratio': target,
-                                                                              'calculate_all_scenes': False,
+                                                                              'calculate_all_scenes': True,
                                                                               'ignore_empty': ignore_empty,
                                                                               'include_stacking': stacking_param,
                                                                               'check_vertical_horizontal': True,
                                                                               'minimum_facing_for_block': 1
                                                                               })
-        # result.sort_values('facing_percentage', ascending=False, inplace=True)
+        result.sort_values('facing_percentage', ascending=False, inplace=True)
 
         # numerator = len(result['cluster'].values[0].node.keys())
         # numerator = 0
@@ -239,8 +239,11 @@ class GSKJPToolBox:
         #     nodes_sum = nodes_sum + node_clust.node.keys()
         # # numerator
         score = 0 if result[result['is_block']].empty else 100
+        numerator = 0 if result.empty else result['block_facings'].iloc[0]
+        denominator = 0 if result.empty else result['total_facings'].iloc[0]
 
-        return score, target
+        return score, target, numerator, denominator
+
 
     def msl_assortment(self, kpi_fk, kpi_name):
         """
@@ -427,12 +430,13 @@ class GSKJPToolBox:
                                'should_enter': True})
             # block_score
             # block_result, block_benchmark, block_numerator, block_denominator = self.brand_blocking(brand, policy,df_block)
-            block_result, block_benchmark = self.brand_blocking(brand, policy)
+            block_result, block_benchmark, numerator_block, block_denominator = self.brand_blocking(brand, policy)
             block_score = block_result * block_target
             results_df.append({'fk': kpi_block_fk, 'numerator_id': brand, 'denominator_id': self.store_fk,
-                               'denominator_result': 0, 'numerator_result': 1, 'result':
-                                   block_result, 'score': block_score, 'target': (block_target*100), 'identifier_parent':
-                                   identifier_parent, 'should_enter': True, 'weight': (block_benchmark*100)})
+                               'denominator_result': block_denominator, 'numerator_result': numerator_block, 'result':
+                                   block_result, 'score': block_score, 'target': (block_target * 100),
+                               'identifier_parent':
+                                   identifier_parent, 'should_enter': True, 'weight': (block_benchmark * 100)})
 
             # position score
             if df_position_score is not None:

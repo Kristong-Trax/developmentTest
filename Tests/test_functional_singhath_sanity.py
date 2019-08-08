@@ -11,13 +11,17 @@ from Trax.Data.Testing.TestProjects import TestProjectsNames
 from Tests.Data.TestData.test_data_singhath_sanity import ProjectsSanityData
 from Projects.SINGHATH.Calculations import Calculations
 from Trax.Apps.Core.Testing.BaseCase import TestFunctionalCase
-
+from Tests.TestUtils import remove_cache_and_storage
 
 __author__ = 'nidhin'
 
 
 class TestKEngineOutOfTheBox(TestFunctionalCase):
 
+    def set_up(self):
+        super(TestKEngineOutOfTheBox, self).set_up()
+        remove_cache_and_storage()
+        
     @property
     def import_path(self):
         return 'Trax.Apps.Services.KEngine.Handlers.SessionHandler'
