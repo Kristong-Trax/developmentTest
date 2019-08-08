@@ -1,10 +1,11 @@
+import os
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from KPIUtils.GlobalProjects.DIAGEO.KPIGenerator import DIAGEOGenerator
 from KPIUtils.DB.Common import Common
 from KPIUtils_v2.DB.CommonV2 import Common as CommonV2
 
 
-class DIAGEOKEToolBox:
+class DIAGEOMXToolBox:
 
     def __init__(self, data_provider, output):
         self.data_provider = data_provider
@@ -16,9 +17,7 @@ class DIAGEOKEToolBox:
         self.diageo_generator = DIAGEOGenerator(self.data_provider, self.output, self.common)
 
     def main_calculation(self):
-        """
-        This function calculates the KPI results.
-        """
+        """ This function calculates the KPI results """
         # SOS Out Of The Box kpis
         self.diageo_generator.activate_ootb_kpis(self.commonV2)
 
@@ -30,13 +29,17 @@ class DIAGEOKEToolBox:
         assortment_res_dict_v3 = self.diageo_generator.diageo_global_assortment_function_v3()
         self.commonV2.save_json_to_new_tables(assortment_res_dict_v3)
 
-        # Global Visible to Consumer function
-        sku_list = filter(None, self.scif[self.scif['product_type'] == 'SKU'].product_ean_code.tolist())
-        res_dict = self.diageo_generator.diageo_global_visible_percentage(sku_list)
-        if res_dict:
-            self.commonV2.save_json_to_new_tables(res_dict)
+        # global SOS kpi
+        res_dict = self.diageo_generator.diageo_global_share_of_shelf_function()
+        self.commonV2.save_json_to_new_tables(res_dict)
 
+        # global touch point kpi
+        template_path = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), 'Data',
+                                     'TOUCH POINT v7.xlsx')
+        res_dict = self.diageo_generator.diageo_global_touch_point_function(template_path)
+        self.commonV2.save_json_to_new_tables(res_dict)
+
+        # committing to the old tables
+        self.common.commit_results_data()  # commit to old tables
         # committing to new tables
         self.commonV2.commit_results_data()
-        # committing to the old tables
-        self.common.commit_results_data()
