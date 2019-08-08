@@ -453,8 +453,8 @@ class HEINZCRToolBox:
                         Log.error("Product with ean_code {} is not in the configuration file for customer type {}"
                                   .format(product_in_session, self.store_info.store_type[0]))
                         break
-                    upper_percentage = (100 + row['PERCENTAGE'].values[0]) / 100
-                    lower_percentage = (100 - row['PERCENTAGE'].values[0]) / 100
+                    upper_percentage = (100 + row['PERCENTAGE'].values[0]) / float(100)
+                    lower_percentage = (100 - row['PERCENTAGE'].values[0]) / float(100)
                     min_price = suggested_price * lower_percentage
                     max_price = suggested_price * upper_percentage
                     into_interval = 0
