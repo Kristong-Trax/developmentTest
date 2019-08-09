@@ -149,7 +149,7 @@ class MarsUsDogMainMealWet(object):
         if 'Block_Facings_Min' in template_data:
             min_face = template_data['Block_Facings_Min'].drop('Score Card Name', axis=1).melt(id_vars='KPI Name') \
                 .set_index(['KPI Name', 'value'])
-            min_face['variable'] = min_face['variable'].str.split(',')
+            min_face['variable'] = min_face['variable'].str.split(',').strip()
             min_face = min_face.variable.apply(pd.Series).stack().reset_index(level=[0, 1]) \
                 .rename(columns={0: 'store_type'}).set_index(['KPI Name', 'store_type'], drop=True).to_dict('index')
         return min_face
