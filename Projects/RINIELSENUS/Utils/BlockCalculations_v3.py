@@ -56,7 +56,7 @@ class Block(BaseCalculation):
             self.matches[['probe_match_fk', 'scene_fk']], on=['probe_match_fk'])
         self.matches_df = self.matches.merge(
             self.data_provider.all_products_including_deleted, on='product_fk')
-        self.matches_df = self.matches_df[~(self.matches_df['product_type'].isin(['Irrelevant', 'POS'])) &
+        self.matches_df = self.matches_df[~(self.matches_df['product_type'].isin(['POS'])) &
                                            (self.matches_df['stacking_layer'] > 0)]
         self.matches_df[Block.BLOCK_KEY] = None
 
