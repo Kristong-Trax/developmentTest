@@ -987,11 +987,6 @@ class AdjacencyAtomicKpiCalculation(KpiAtomicKpisCalculator):
             key=TEMPLATE_NAME, value=atomic_kpi_data['scene_types'])
 
         scif_filter = scene_type_filter.copy()
-        if self._data_provider.retailer in retailers or self._data_provider.store_type in store_typ:
-            a, b = filters['A'].copy(), filters['B'].copy()
-            a.update(scif_filter), b.update(scif_filter)
-            if self.get_scif_matches_by_filters(**a) and not self.get_scif_matches_by_filters(**b):
-                return 100
 
         scif_filter.update(filters['all'])
         scif_filter.update(filters['A'])
@@ -1002,7 +997,8 @@ class AdjacencyAtomicKpiCalculation(KpiAtomicKpisCalculator):
         for group in ['B', 'C', 'D']:
             if filters[group]:
                 adjacency = self._check_adjacency(filters, 'A', group, scene_type_filter, allowed_filter,
-                                                  allowed_filter_without_other, a_target, b_target, target)
+                                                  allowed_filter_without_other, a_target, b_target, target, retailers,
+                                                  store_typ)
                 if adjacency:
                     return 100
 
@@ -1018,7 +1014,8 @@ class AdjacencyAtomicKpiCalculation(KpiAtomicKpisCalculator):
         return product_list
 
     def _check_groups_adjacency(self, a_product_list, b_product_list, scene_type_filter, allowed_filter,
-                                allowed_filter_without_other, check_a_group_blocked, a_target, b_target, target):
+                                allowed_filter_without_other, check_a_group_blocked, a_target, b_target, target,
+                                retailers, store_types):
         a_b_union = list(set(a_product_list) | set(b_product_list))
 
         a_filter = {'product_fk': a_product_list}
@@ -1040,7 +1037,15 @@ class AdjacencyAtomicKpiCalculation(KpiAtomicKpisCalculator):
                 a_products = self.get_products_by_filters('product_fk', **a_filter_for_block)
                 b_products = self.get_products_by_filters('product_fk', **b_filter_for_block)
                 if sorted(a_products.tolist()) == sorted(b_products.tolist()):
-                    continue
+                    if self._data_provider.retailer in retailers or self._data_provider.store_type in store_types:
+                        a_block = self._tools.calculate_block_together(allowed_products_filters=allowed_filter,
+                                                                       minimum_block_ratio=a_target,
+                                                                       vertical=True, **a_filter_for_block)
+                        if isinstance(a_block, dict) and a_block['block']:
+                            result = 100
+                        return result
+                    else:
+                        continue
             except:
                 pass
             if a_target:
@@ -1069,7 +1074,7 @@ class AdjacencyAtomicKpiCalculation(KpiAtomicKpisCalculator):
         return result
 
     def _check_adjacency(self, filters, group_a, group_b, scene_type_filter, allowed_filter,
-                         allowed_filter_without_other, a_target, b_target, target):
+                         allowed_filter_without_other, a_target, b_target, target, retailers, store_types):
         is_brand_in_a = 'brand_name' in filters[group_a]
         is_brand_in_b = 'brand_name' in filters[group_b]
 
@@ -1080,7 +1085,7 @@ class AdjacencyAtomicKpiCalculation(KpiAtomicKpisCalculator):
 
         adjacency = self._check_groups_adjacency(a_product_list, b_product_list, scene_type_filter, allowed_filter,
                                                  allowed_filter_without_other, check_a_group_blocked,
-                                                 a_target, b_target, target)
+                                                 a_target, b_target, target, retailers, store_types)
 
         return adjacency
 

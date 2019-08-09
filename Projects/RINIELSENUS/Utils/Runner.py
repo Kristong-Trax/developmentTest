@@ -65,7 +65,7 @@ class Results(object):
             #                         # 'Is Nutro Wet Dog food blocked?',
             #                         # 'Is the Meaty Dog Treats segment blocked?',
             #                         # 'Is NUTRO Dry Dog blocked in the Ingredient Transparency feeding philosophy segment?'
-            #                         'Is the Basic & Balanced Wet Dog Food feeding philosophy segment blocked?'
+            #                         'Is the Dry Cat Food category blocked?'
             #                         ]:
             #     continue
             # print('~~~~~~~~~~~~~~~~~~~~****************~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~')
@@ -85,14 +85,14 @@ class Results(object):
                 atomic['results'] = r_df[r_df['atomic'].isin(atomic['depend_on'])]
             calculation = self._kpi_type_calculator_mapping[atomic['kpi_type']](self._tools, self._data_provider,
                                                                                 self._preferred_range)
-            # if self.min_face:
-            #     try:
-            #         thresh = self.min_face[(atomic['atomic'], self._data_provider.store_type)]['value']
-            #         if not thresh:
-            #             thresh = 0
-            #         atomic['filters'].update({FACINGS: [thresh]})
-            #     except:
-            #         pass
+            if self.min_face:
+                try:
+                    thresh = self.min_face[(atomic['atomic'], self._data_provider.store_type)]['value']
+                    if not thresh:
+                        thresh = 0
+                    atomic['filters'].update({FACINGS: [thresh]})
+                except:
+                    pass
             # This setup allows some kpis to return an object, so we don't have to
             # keep calculating the same things over and over....
             kpi_res = calculation.calculate_atomic_kpi(atomic)
