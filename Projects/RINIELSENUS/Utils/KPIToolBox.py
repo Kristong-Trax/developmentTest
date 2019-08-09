@@ -29,7 +29,6 @@ class MarsUsDogMainMealWet(object):
         self.project_name = self._data_provider.project_name
         self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         self._output = output
-        self._tools = MarsUsGENERALToolBox(self._data_provider, self._output, ignore_stacking=True)
         self._template = ParseMarsUsTemplates()
         self._writer = self._get_writer()
         self.store_id = self._data_provider[Data.STORE_FK]
@@ -40,6 +39,8 @@ class MarsUsDogMainMealWet(object):
         self.rds_conn.disconnect_rds()
         self._data_provider.trace_container = pd.DataFrame(columns=['kpi_display_text', 'scene_id',
                                                                     'products&brands', 'allowed_products', 'kpi_pass'])
+        self._tools = MarsUsGENERALToolBox(self._data_provider, self._output, ignore_stacking=True)
+
 
     def get_store_att17(self, store_fk):
         query = MarsUsQueries.get_store_attribute(17, store_fk)

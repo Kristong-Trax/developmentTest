@@ -17,8 +17,17 @@ from Trax.Algo.Geometry.Masking.MaskingResultsIO import retrieve_maskings
 from Trax.Algo.Geometry.Masking.Utils import transform_maskings
 from Trax.Utils.Logging.Logger import Log
 
+import pymongo
+from networkx.readwrite import json_graph
+import cPickle as pickle
+import pickletools
+import bz2
+import bson
+
 
 class Block(BaseCalculation):
+    ADJ_GRAPHS = {}
+
     EXCLUDE_FILTER = 0
     INCLUDE_FILTER = 1
     CONTAIN_FILTER = 2
@@ -39,7 +48,7 @@ class Block(BaseCalculation):
     ENCAPSULATED = 'encapsulated'
 
     def __init__(self, data_provider, output=None, ps_data_provider=None, common=None, rds_conn=None,
-                 front_facing=False, custom_scif=None, custom_matches=None, **kwargs):
+                 front_facing=False, custom_scif=None, custom_matches=None, graph_all_scenes=True, **kwargs):
         super(Block, self).__init__(data_provider, output,
                                     ps_data_provider, common, rds_conn, **kwargs)
         self._position_graphs = PositionGraphs(self.data_provider)
@@ -47,11 +56,11 @@ class Block(BaseCalculation):
         self.outliers_threshold = Default.outliers_threshold
         self.check_vertical_horizontal = Default.check_vertical_horizontal
         self.include_stacking = Default.include_stacking
+        self.include_stacking = True
         self.ignore_empty = Default.ignore_empty
         self.allowed_edge_type = Default.allowed_edge_type
         self.scif = data_provider.scene_item_facts if custom_scif is None else custom_scif
         self.matches = data_provider.matches if custom_matches is None else custom_matches
-        self.adj_graphs_by_scene = {}
         self.masking_data = transform_maskings(retrieve_maskings(self.data_provider.project_name,
                                                                  self.data_provider.scenes_info['scene_fk'].to_list()))
         self.masking_data = self.masking_data.merge(
@@ -61,6 +70,9 @@ class Block(BaseCalculation):
         self.matches_df = self.matches_df[~(self.matches_df['product_type'].isin(['POS'])) &
                                            (self.matches_df['stacking_layer'] > 0)]
         self.matches_df[Block.BLOCK_KEY] = None
+        self.load_graphs_from_mongo(self.data_provider.project_name, self.data_provider.session_uid)
+        if not Block.ADJ_GRAPHS and graph_all_scenes:
+            self.create_graphs_for_all_scenes()
 
     def network_x_block_together(self, population, location=None, additional=None):
         """
@@ -115,6 +127,9 @@ class Block(BaseCalculation):
         self.allowed_edge_type = block_parameters[AdditionalAttr.ALLOWED_EDGE_TYPE]
         operator = block_parameters[AdditionalAttr.FILTER_OPERATOR]
 
+        # if self.include_stacking:
+        #     population.update({'stacking_layer': [1]})
+
         # Constructing the result_df that will be returned if calculate_all_scenes = True
         results_df = pd.DataFrame(columns=[ColumnNames.CLUSTER, ColumnNames.SCENE_FK, ColumnNames.ORIENTATION,
                                            ColumnNames.FACING_PERCENTAGE, ColumnNames.IS_BLOCK])
@@ -134,138 +149,31 @@ class Block(BaseCalculation):
                        for elem in list(itertools.product(*population.values()))]
 
         # Creating unified filters from the block filters and the allowed filters
-        allowed_product_filter = []
-        if block_parameters[AdditionalAttr.ALLOWED_PRODUCTS_FILTERS]:
-            allowed_product_filter = block_parameters[AdditionalAttr.ALLOWED_PRODUCTS_FILTERS].keys(
-            )
+        # allowed_product_filter = []
+        # if block_parameters[AdditionalAttr.ALLOWED_PRODUCTS_FILTERS]:
+        #     allowed_product_filter = block_parameters[AdditionalAttr.ALLOWED_PRODUCTS_FILTERS].keys(
+        #     )
 
         # For each relevant scene check if a block is exist
         for scene in relevant_scenes:
             try:
-                # filter masking and matches data by the scene
-                scene_mask = self.masking_data[self.masking_data['scene_fk'] == scene].drop(
-                    'scene_fk', axis=1)
-                scene_matches = self.matches_df[self.matches_df['scene_fk'] == scene]
+                scene_matches, scene_mask = self.make_matches_and_mask(scene)
                 relevant_matches_for_block = self.filter_graph_data(scene_matches, population, operator=operator,
                                                                     is_blocks_graph=False)
-                scene_matches = scene_matches.drop('pk', axis=1).rename(
-                    columns={'scene_match_fk': 'pk'})
+                relevant_matches_for_block = relevant_matches_for_block.rename(
+                    columns={'pk': 'scene_match_fk'})
                 if relevant_matches_for_block.empty:
-                    continue
+                    return None, None
 
-                import time
-                times = []
-                start = time.time()
-
-                graph = AdjacencyGraphBuilder.initiate_graph_by_dataframe(scene_matches, scene_mask,
-                                                                          additional_attributes=['rect_x',
-                                                                                                 'rect_y'] + allowed_product_filter +
-                                                                                                list(
-                                                                                                    scene_matches.columns))
-                start = time.time() - start
-                times.append(['build graph', start])
-                print('{} to build graph'.format(start))
-                start = time.time()
-
-                graph = AdjacencyGraphBuilder.condense_graph_by_level(CalcConst.PRODUCT_FK, graph)
-                start = time.time() - start
-                times.append(['simplify graph', start])
-                print('{} to build simplify'.format(start))
-                start = time.time()
-
-
-                import pymongo
-                from networkx.readwrite import json_graph
-                import json
-                import cPickle as pickle
-                import pickletools
-                import bz2
-                import bson
-                mdb = pymongo.MongoClient('mongodb://127.0.0.1:27017')
-                col = mdb.config['graph']
-
-                start = time.time() - start
-                times.append(['mongo connect', start])
-                print('{} to connect to mongo'.format(start))
-                start = time.time()
-
-                data = json_graph.adjacency_data(graph)
-                start = time.time() - start
-                times.append(['extract graph data', start])
-                print('{} extract graph data'.format(start))
-                start = time.time()
-
-                print('~~~~~~~~~~~~')
-                g = pickle.dumps(data, protocol=pickle.HIGHEST_PROTOCOL)
-                start = time.time() - start
-                print('{} pickle'.format(start))
-                start = time.time()
-                g = pickletools.optimize(g)
-                start = time.time() - start
-                print('{} optimize'.format(start))
-                start = time.time()
-                g = bz2.compress(g)
-                start = time.time() - start
-                print('{} compress'.format(start))
-                start = time.time()
-                g = bson.Binary(g)
-                start = time.time() - start
-                print('{} bsonify'.format(start))
-                start = time.time()
-                print('~~~~~~~~~~~~')
-
-
-                # bson.Binary(bz2.compress(pickletools.optimize(pickle.dumps(data))))
-                pkl = {'project': self.data_provider.project_name, 'scene': scene, 'session': self.data_provider.session_uid,
-                       'graph': g}
-                start = time.time() - start
-                times.append(['pickle graph', start])
-                print('{} to pickle graph'.format(start))
-                start = time.time()
-
-
-                col.insert_one(pkl)
-                start = time.time() - start
-                times.append(['insert to mongo', start])
-                print('{} to insert into mongo'.format(start))
-                start = time.time()
-
-
-                doc = col.find({'project': self.data_provider.project_name, 'scene': scene})[0]
-                start = time.time() - start
-                times.append(['load from mongo', start])
-                print('{} to load graph from mongo'.format(start))
-                start = time.time()
-
-
-                upkl = pickle.loads(bz2.decompress(doc['graph']))
-                start = time.time() - start
-                times.append(['unpickle graph', start])
-                print('{} to unpickle'.format(start))
-                start = time.time()
-
-
-
-                if not self.include_stacking:
-                    scene_matches = self._get_no_stack_data(scene_matches)
-
-                # check if the adj_g already exists for this scene, if not create it and save it
-                if scene not in self.adj_graphs_by_scene:
-                    # Create the adjacency graph on the data we filtered above
-                    graph = AdjacencyGraphBuilder.initiate_graph_by_dataframe(scene_matches, scene_mask,
-                                                                              additional_attributes=['rect_x', 'rect_y'] + allowed_product_filter +
-                                                                              list(scene_matches.columns))
-                    self.adj_graphs_by_scene[scene] = graph
-                adj_g = self.adj_graphs_by_scene[scene].copy()
+                adj_g = self.get_scene_graph(scene, scene_matches, scene_mask)
 
                 # Update the block_key node attribute based on the population fields
                 for i, n in adj_g.nodes(data=True):
                     n[Block.BLOCK_KEY].stored_values = set(
                         ['_'.join([str(*n[x]) for x in population.keys()])])
 
-                if allowed_product_filter:
-                    adj_g = self._set_allowed_nodes(adj_g, block_parameters[AdditionalAttr.ALLOWED_PRODUCTS_FILTERS],
-                                                    block_value)
+                adj_g = self._set_allowed_nodes(adj_g, block_parameters[AdditionalAttr.ALLOWED_PRODUCTS_FILTERS],
+                                                block_value)
 
                 # TODO: filter nodes to subgraph
                 # Filter only relevant nodes for block out of the graph
@@ -339,6 +247,34 @@ class Block(BaseCalculation):
                 Log.error('{}'.format(err))
                 return results_df
         return results_df
+
+    def get_scene_graph(self, scene, scene_matches, scene_mask):
+
+        # check if the adj_g already exists for this scene, if not create it and save it
+        if scene not in Block.ADJ_GRAPHS:
+            # Create the adjacency graph on the data we filtered above
+            graph = AdjacencyGraphBuilder.initiate_graph_by_dataframe(scene_matches, scene_mask,
+                                                                      additional_attributes=['rect_x',
+                                                                                             'rect_y'] +
+                                                                      list(scene_matches.columns))
+            graph = AdjacencyGraphBuilder.condense_graph_by_level(CalcConst.PRODUCT_FK, graph)
+            Block.ADJ_GRAPHS[scene] = {'project_name': self.data_provider.project_name, 'scene': scene, 'new': True,
+                                       'session_uid': self.data_provider.session_uid, 'graph': graph}
+            Log.info('Graph created for scene {}'.format(scene))
+
+        return Block.ADJ_GRAPHS[scene]['graph'].copy()
+
+    def make_matches_and_mask(self, scene):
+        # filter masking and matches data by the scene
+        scene_mask = self.masking_data[self.masking_data['scene_fk'] == scene].drop(
+            'scene_fk', axis=1)
+        scene_matches = self.matches_df[self.matches_df['scene_fk'] == scene]
+
+        scene_matches = scene_matches.drop('pk', axis=1).rename(
+            columns={'scene_match_fk': 'pk'})
+        if not self.include_stacking:
+            scene_matches = self._get_no_stack_data(scene_matches)
+        return scene_matches, scene_mask
 
     def handle_horizontal_and_vertical(self, graph, num_of_shelves):
         """
@@ -471,6 +407,14 @@ class Block(BaseCalculation):
 
         return blocks_data
 
+    def create_graphs_for_all_scenes(self):
+        import time
+        s = time.time()
+        for scene in self.scif.scene_id.unique():
+            matches, masks = self.make_matches_and_mask(scene)
+            _ = self.get_scene_graph(scene, matches, masks)
+        print(' --------------- Block Creation took {} ------------- '.format(time.time() - s))
+
     def _get_no_stack_data(self, matches_df):
         return CalculationUtils.adjust_stacking(matches_df)
 
@@ -480,7 +424,7 @@ class Block(BaseCalculation):
     def _set_allowed_nodes(self, graph, allowed_filters, block_value):
         allowed_nodes = []
         for filter in allowed_filters.keys():
-            allowed_nodes += list(itertools.chain(*(d[CalcConst.MATCH_FK] for n, d in graph.nodes(data=True)
+            allowed_nodes += list(itertools.chain(*([n] for n, d in graph.nodes(data=True)
                                                     if list(d[filter])[0] in allowed_filters[filter])))
         node_block_att = nx.get_node_attributes(graph, Block.BLOCK_KEY)
         for node in allowed_nodes:
@@ -498,15 +442,27 @@ class Block(BaseCalculation):
 
         return graph
 
-    def denodify(self, graph):
-        if isinstance(graph, NodeAttribute):
-            graph = graph.value
-        elif isinstance(graph, dict):
-            for key in graph:
-                if "." in key:
-                    del graph[key]
-                graph[key] = self.denodify(graph[key])
-        elif isinstance(graph, list):
-            for i, sub in enumerate(graph):
-                graph[i] = self.denodify(sub)
-        return graph
+    @classmethod
+    def load_graphs_from_mongo(cls, project_name, session_uid):
+        mdb = pymongo.MongoClient('mongodb://127.0.0.1:27017')
+        docs = mdb.config['graph'].find({'project_name': project_name, 'session_uid': session_uid})
+        for doc in docs:
+            doc['graph'] = json_graph.adjacency_graph(pickle.loads(bz2.decompress(doc['graph'])))
+            cls.ADJ_GRAPHS[doc['scene']] = doc
+        mdb.close()
+
+    def __del__(self):
+        new = []
+        for doc in Block.ADJ_GRAPHS.values():
+            if 'new' in doc:
+                del doc['new']
+                data = json_graph.adjacency_data(doc['graph'])
+                doc['graph'] = bson.Binary(bz2.compress(pickletools.optimize(
+                    pickle.dumps(data, protocol=pickle.HIGHEST_PROTOCOL))))
+                new.append(doc)
+        if doc:
+            mdb = pymongo.MongoClient('mongodb://127.0.0.1:27017')
+            mdb.config['graph'].insert_many(new)
+            mdb.close()
+            Log.info('New scene graphs uploaded')
+        Block.ADJ_GRAPHS = {}
