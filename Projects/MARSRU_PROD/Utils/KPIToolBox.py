@@ -2,7 +2,7 @@
 import ast
 import datetime as dt
 import pandas as pd
-
+import time
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Algo.Calculations.Core.Shortcuts import SessionInfo, BaseCalculationsGroup
 from Trax.Cloud.Services.Connector.Keys import DbUsers
@@ -268,13 +268,15 @@ class MARSRU_PRODKPIToolBox:
         cur = self.rds_conn.db.cursor()
         cur.execute(delete_query)
         self.rds_conn.db.commit()
+        time.sleep(2)
         self.custom_scif_queries = list(set(self.custom_scif_queries))
+        self.rds_conn.disconnect_rds()
+        self.rds_conn.connect_rds()
         for query in self.custom_scif_queries:
             try:
                 cur.execute(query)
-            except:
-                Log.error('could not run query: {}'.format(query))
-                print 'could not run query: {}'.format(query)
+            except Exception as ex:
+                Log.error('could not run query: {}, error {}'.format(query, ex))
         self.rds_conn.db.commit()
 
     @kpi_runtime()
