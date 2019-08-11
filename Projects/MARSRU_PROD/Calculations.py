@@ -28,12 +28,12 @@ class MARSRU_PRODCalculations(BaseCalculationsScript):
                                       'must_range_skus', [2217, 2220, 2390, 2391, 2317, 2254]]
         else:
             # [file name, key, sheet name]
-            kpi_template = ['2019/MARS KPIs (09.08).xlsx', 'kpi_data', 'KPI']
-            kpi_channels = ['2019/MARS KPIs (09.08).xlsx', 'channels', 'channels']
-            kpi_golden_shelves = ['2019/MARS KPIs (09.08).xlsx', 'golden_shelves', 'golden_shelves']
-            kpi_answers_translation = ['2019/MARS KPIs (09.08).xlsx',
+            kpi_template = ['2019/MARS KPIs.xlsx', 'kpi_data', 'KPI']
+            kpi_channels = ['2019/MARS KPIs.xlsx', 'channels', 'channels']
+            kpi_golden_shelves = ['2019/MARS KPIs.xlsx', 'golden_shelves', 'golden_shelves']
+            kpi_answers_translation = ['2019/MARS KPIs.xlsx',
                                        'survey_answers_translation', 'survey_answers_translation']
-            kpi_must_range_targets = ['2019/MARS KPIs (09.08).xlsx',
+            kpi_must_range_targets = ['2019/MARS KPIs.xlsx',
                                       'must_range_skus', [4317, 4650, 4254, 4388, 4389]]
 
         jg = MARSRU_PRODJSONGenerator(project_name)
