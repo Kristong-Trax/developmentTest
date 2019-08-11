@@ -133,10 +133,11 @@ class MARSUAE_SANDToolBox:
 
     def get_lvl3_relevant_assortment(self):
         assortment_result = self.assortment.get_lvl3_relevant_ass()
-        kpi_static_data = self.kpi_static_data[['pk', 'type']]
-        assortment_result = assortment_result.merge(kpi_static_data, left_on='kpi_fk_lvl2', right_on='pk', how='left')
-        assortment_result = assortment_result.drop(columns=['pk'])
-        assortment_result.rename(columns={'type': 'ass_lvl2_kpi_type'}, inplace=True)
+        if not assortment_result.empty:
+            kpi_static_data = self.kpi_static_data[['pk', 'type']]
+            assortment_result = assortment_result.merge(kpi_static_data, left_on='kpi_fk_lvl2', right_on='pk', how='left')
+            assortment_result = assortment_result.drop(columns=['pk'])
+            assortment_result.rename(columns={'type': 'ass_lvl2_kpi_type'}, inplace=True)
         return assortment_result
 
     def get_category_level_targets(self):
