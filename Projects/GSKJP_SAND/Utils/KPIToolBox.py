@@ -309,7 +309,7 @@ class GSKJPToolBox:
         lvl2 = self.assortment.calculate_lvl2_assortment(brand_results)
         if lvl2.empty:
             return 0, 0, 0, results  # in case of no assortment return 0
-        result = round(np.divide(float(lvl2.iloc[0].passes), float(lvl2.iloc[0].total)), 2)
+        result = round(np.divide(float(lvl2.iloc[0].passes), float(lvl2.iloc[0].total)), 4)
         return lvl2.iloc[0].passes, lvl2.iloc[0].total, result, results
 
     def pln_msl_summary(self, brand, assortment):
@@ -333,7 +333,7 @@ class GSKJPToolBox:
         lvl2 = self.assortment.calculate_lvl2_assortment(brand_results)
         if lvl2.empty:
             return 0, 0, 0, 0  # in case of no assortment return 0
-        result = round(np.divide(float(lvl2.iloc[0].passes), float(lvl2.iloc[0].total)), 2)
+        result = round(np.divide(float(lvl2.iloc[0].passes), float(lvl2.iloc[0].total)), 4)
         return lvl2.iloc[0].passes, lvl2.iloc[0].total, result, lvl2.iloc[0].assortment_group_fk
 
     def get_store_target(self):
@@ -431,7 +431,7 @@ class GSKJPToolBox:
             # block_score
             # block_result, block_benchmark, block_numerator, block_denominator = self.brand_blocking(brand, policy,df_block)
             block_result, block_benchmark, numerator_block, block_denominator = self.brand_blocking(brand, policy)
-            block_score = round(block_result * block_target, 2)
+            block_score = round(block_result * block_target, 4)
             results_df.append({'fk': kpi_block_fk, 'numerator_id': brand, 'denominator_id': self.store_fk,
                                'denominator_result': block_denominator, 'numerator_result': numerator_block, 'result':
                                    block_result, 'score': block_score, 'target': (block_target * 100),
@@ -444,7 +444,7 @@ class GSKJPToolBox:
                     brand, policy, df_position_score)
             else:
                 position_result, position_score, position_num, position_den, position_benchmark = 0, 0, 0, 0, 0
-            position_score = round(position_score * posit_target, 2)
+            position_score = round(position_score * posit_target, 4)
             results_df.append({'fk': kpi_position_fk, 'numerator_id': brand, 'denominator_id': self.store_fk,
                                'denominator_result': position_den, 'numerator_result': position_num, 'result':
                                    position_result, 'score': position_score, 'target': posit_target,
@@ -452,7 +452,7 @@ class GSKJPToolBox:
                                    position_benchmark})
 
             # compliance score per brand
-            compliance_score = round(position_score + block_score + lsos_score + msl_score, 2)
+            compliance_score = round(position_score + block_score + lsos_score + msl_score, 4)
             results_df.append(
                 {'fk': kpi_compliance_brands_fk, 'numerator_id': self.own_manufacturer, 'denominator_id': brand,
                  'denominator_result': 1, 'numerator_result': compliance_score, 'result':
@@ -461,12 +461,12 @@ class GSKJPToolBox:
                  'should_enter': True})
 
             # counter and sum updates
-            total_brand_score = round(total_brand_score + compliance_score, 2)
+            total_brand_score = round(total_brand_score + compliance_score, 4)
             counter_brands = counter_brands + 1
         if counter_brands == 0:
             return results_df
         # compliance summary
-        average_brand_score = round(total_brand_score / counter_brands, 2)
+        average_brand_score = round(total_brand_score / counter_brands, 4)
         results_df.append(
             {'fk': kpi_compliance_summary_fk, 'numerator_id': self.own_manufacturer, 'denominator_id': self.store_fk,
              'denominator_result': counter_brands, 'numerator_result': total_brand_score, 'result':
@@ -508,7 +508,7 @@ class GSKJPToolBox:
 
             total_brand_score = total_brand_score + result
         if len(brands) > 0:  # don't want to show result in case of there are no brands relevan to the template
-            result_summary = round(total_brand_score / len(brands), 2)
+            result_summary = round(total_brand_score / len(brands), 4)
             results_df.append(
                 {'fk': kpi_ecaps_summary_fk, 'numerator_id': self.own_manufacturer, 'denominator_id': self.store_fk,
                  'denominator_result': len(brands), 'numerator_result': total_brand_score, 'result':
