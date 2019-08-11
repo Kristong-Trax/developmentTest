@@ -292,8 +292,7 @@ class PngcnSceneKpis(object):
             self.common.match_product_in_probe_state_values = \
                 self.common.match_product_in_probe_state_values.append(df_to_append)
         except Exception as ex:
-            Log.error("Scene {} failed to write to highlight kpi, missing sub_brand is {}, "
-                      "error: {}".format(str(self.scene_id), sub_brand, ex))
+            Log.error("Scene {} failed to write to highlight kpi, error: {}".format(str(self.scene_id), ex))
 
     def get_attribute_fk_from_name(self, name, value):
         try:

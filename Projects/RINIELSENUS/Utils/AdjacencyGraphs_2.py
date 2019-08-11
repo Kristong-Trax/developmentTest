@@ -508,9 +508,10 @@ class AdjacencyGraphBuilder(object):
 
         # Total facing of all the products.
         total_facings = sum([n['facings'] for n in filtered_nodes])
-
-        node_attributes.update({'facings': total_facings,
-                                'polygon': MultiPolygon([n['polygon'] for n in filtered_nodes])})
+        polygons = [n['polygon'] for n in filtered_nodes]
+        if isinstance(polygons[0], MultiPolygon):
+            polygons = [poly for multi in polygons for poly in multi]
+        node_attributes.update({'facings': total_facings, 'polygon': MultiPolygon(polygons)})
 
         return node_attributes
 
