@@ -2432,17 +2432,14 @@ class MARSRU_PRODKPIToolBox:
     @kpi_runtime()
     def calculate_mars_facings_per_scene_type(self):
         kpi_fk = self.common.get_kpi_fk_by_kpi_type(MARS_FACINGS_PER_SCENE_TYPE_KPI_NAME)
-        dict_to_calculate = {'population': {'include': [{'template_name': MOTIVATION_PROGRAM_SCENE_TYPE_NAME}]}}
+        dict_to_calculate = {'population': {'include': [{'template_group': MOTIVATION_PROGRAM_SCENE_TYPE_NAME}]}}
         df = self.parser.filter_df(dict_to_calculate, self.scif)
         if df.empty:
             return
         first_creation_time = df['creation_time'].min()
         dict_to_calculate = {'population': {'include': [{'creation_time': first_creation_time}]}}
         df = self.parser.filter_df(dict_to_calculate, df)
-        df.rename(columns={'product_fk': 'numerator_id',
-                           'template_fk': 'denominator_id',
-                           'facings_ign_stack': 'result'}, inplace=True)
-        df['fk'] = kpi_fk
-        df['score'] = df['result'].copy()
-        final_df = df[['fk', 'numerator_id', 'denominator_id', 'result', 'score']]
-        self.common.write_to_db_result(final_df)
+        scene_type = df['template_fk'].values[0]
+        result = df['facings_ign_stack'].sum()
+        self.common.write_to_db_result(fk=kpi_fk, numerator_id=scene_type, denominator_id=self.store_id,
+                                       result=result, score=result)
