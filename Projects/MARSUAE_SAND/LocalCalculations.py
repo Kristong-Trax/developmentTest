@@ -39,7 +39,7 @@ if __name__ == '__main__':
     #                 "494773A6-6E17-418C-B965-F0847B6701AB", "82AA237B-040C-434F-BF57-9421F481168B",
     #                 "228ae67a-c47d-468b-9964-05e913d7c847", "5C98034A-3F49-4606-AB5C-409CE210A6BC"]
 
-    session_list = ["d78d65f9-4e7d-4ed6-ad11-dfea78eb8747", "b4213ace-f7fa-4185-8991-fc9616b90c90"]
+    session_list = ["d83743b9-1f36-4586-b0de-cd93d6bc84a2"]
     for session in session_list:
         print session
         data_provider.load_session_data(session)

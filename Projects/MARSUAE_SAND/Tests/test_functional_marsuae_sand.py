@@ -156,6 +156,21 @@ class TestMarsuaeSand(TestFunctionalCase):
     #     print tool_box.atomic_kpi_results
     #     print tool_box.lvl3_assortment
 
+    def test_calculate_availability_assortment_list_empty(self):
+        ass_res = self.mock_object('Assortment.get_lvl3_relevant_ass',
+                                   path='KPIUtils_v2.Calculations.AssortmentCalculations')
+        ass_res.return_value = pd.DataFrame()
+        probe_group, matches, scene = self.create_scif_matches_stitch_groups_data_mocks(
+            DataTestUnitMarsuae.test_case_1, [3])
+        tool_box = MARSUAE_SANDToolBox(self.data_provider_mock, self.output)
+        store_atomics = tool_box.get_store_atomic_kpi_parameters()
+        tool_box.build_tiers_for_atomics(store_atomics)
+        param_row = self.get_parameter_series_for_kpi_calculation(store_atomics, 'NBL - Chocolate Checkout')
+        tool_box.calculate_atomic_results(param_row)
+        expected_result = {'kpi_fk': 3009, 'result': 0, 'score': 0, 'weight': 7.5, 'score_by_weight': 0}
+        check = self.check_results(tool_box.atomic_kpi_results, expected_result)
+        self.assertEquals(check, 1)
+
     def test_get_category_level_targets_returns_targets_for_lvl_2_kpis(self):
         tool_box = MARSUAE_SANDToolBox(self.data_provider_mock, self.output)
         expected_list = list()
@@ -428,7 +443,6 @@ class TestMarsuaeSand(TestFunctionalCase):
         param_row = self.get_parameter_series_for_kpi_calculation(store_atomics,
                                                                   'Gum / Fruity Checkout Compliance')
         tool_box.calculate_atomic_results(param_row)
-        print tool_box.atomic_kpi_results[['kpi_fk', 'result', 'score']]
         expected_result = {'kpi_fk': 3008, 'result': 2, 'score': 1, 'weight': 40, 'score_by_weight': 40}
         check = self.check_results(tool_box.atomic_kpi_results, expected_result)
         self.assertEquals(check, 1)
@@ -442,7 +456,6 @@ class TestMarsuaeSand(TestFunctionalCase):
         param_row = self.get_parameter_series_for_kpi_calculation(store_atomics,
                                                                   'Gum / Fruity Checkout Compliance')
         tool_box.calculate_atomic_results(param_row)
-        print tool_box.atomic_kpi_results[['kpi_fk', 'result', 'score']]
         expected_result = {'kpi_fk': 3008, 'result': 1, 'score': 1, 'weight': 40, 'score_by_weight': 40}
         check = self.check_results(tool_box.atomic_kpi_results, expected_result)
         self.assertEquals(check, 1)
@@ -602,7 +615,6 @@ class TestMarsuaeSand(TestFunctionalCase):
         tool_box.build_tiers_for_atomics(store_atomics)
         param_row = self.get_parameter_series_for_kpi_calculation(store_atomics, 'Red Block Compliance - Main')
         tool_box.calculate_block(param_row)
-        print tool_box.atomic_kpi_results[['kpi_fk', 'result', 'score']]
         expected_result = {'kpi_fk': 3016, 'result': 0, 'score': 0, 'weight': 10, 'score_by_weight': 0}
         check = self.check_results(tool_box.atomic_kpi_results, expected_result)
         self.assertEquals(check, 1)
@@ -668,7 +680,6 @@ class TestMarsuaeSand(TestFunctionalCase):
         tool_box.build_tiers_for_atomics(store_atomics)
         param_row = self.get_parameter_series_for_kpi_calculation(store_atomics, 'Red Block Compliance - Main')
         tool_box.calculate_block(param_row)
-        print tool_box.atomic_kpi_results[['kpi_fk', 'result', 'score']]
         expected_result = {'kpi_fk': 3016, 'result': 0.6, 'score': 1, 'weight': 10, 'score_by_weight': 10}
         check = self.check_results(tool_box.atomic_kpi_results, expected_result)
         self.assertEquals(check, 1)

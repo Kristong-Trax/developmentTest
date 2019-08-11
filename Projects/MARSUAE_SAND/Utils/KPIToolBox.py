@@ -126,9 +126,9 @@ class MARSUAE_SANDToolBox:
         return custom_score
 
     def get_own_manufacturer_fk(self):
-        # own_manufacturer_fk = self.data_provider.own_manufacturer.param_value.values[0]
-        own_manufacturer_fk = self.all_products[self.all_products['manufacturer_name'] ==
-                                                'MARS GCC']['manufacturer_fk'].values[0]
+        own_manufacturer_fk = self.data_provider.own_manufacturer.param_value.values[0]
+        # own_manufacturer_fk = self.all_products[self.all_products['manufacturer_name'] ==
+        #                                         'MARS GCC']['manufacturer_fk'].values[0]
         return own_manufacturer_fk
 
     def get_lvl3_relevant_assortment(self):
@@ -453,14 +453,30 @@ class MARSUAE_SANDToolBox:
     def calculate_availability(self, param_row):
         if self.lvl3_assortment.empty:
             Log.warning("Assortment list is empty for store type {}".format(self.store_info_dict['store_type']))
+            self.write_zero_assortment_result(param_row)
             return
         lvl3_ass_res = self.lvl3_assortment[self.lvl3_assortment['ass_lvl2_kpi_type'] == param_row[self.KPI_TYPE]]
         if lvl3_ass_res.empty:
             Log.warning("Assortment list not available for kpi {}".format(param_row[self.KPI_TYPE]))
-            return
+            self.write_zero_assortment_result(param_row)
         if not lvl3_ass_res.empty:
             lvl3_ass_res = self.calculate_lvl_3_assortment_result(lvl3_ass_res, param_row)
             self.calculate_lvl_2_assortment_result(lvl3_ass_res, param_row)
+
+    def write_zero_assortment_result(self, param_row):
+        identifier_cat_parent = self.get_category_parent_dict(param_row)
+        kpi_fk = param_row['kpi_level_2_fk']
+        result = 0
+        score, weight = self.get_score(result, param_row)
+        target = param_row[self.TARGET] * 100 if param_row[self.TARGET] else None
+        self.common.write_to_db_result(fk=kpi_fk, numerator_id=self.own_manuf_fk,
+                                       numerator_result=0, result=result * 100,
+                                       denominator_id=self.store_id, denominator_result=0,
+                                       score=score * weight, weight=weight, target=target,
+                                       identifier_parent=identifier_cat_parent, should_enter=True)
+        self.add_kpi_result_to_kpi_results_df([kpi_fk, param_row[self.KPI_TYPE],
+                                               result, score, weight, score * weight,
+                                               param_row[self.KPI_LVL_2_NAME]])
 
     def calculate_lvl_3_assortment_result(self, lvl3_ass_res, param_row):
         lvl3_ass_res = self.get_template_relevant_assortment_result(lvl3_ass_res, param_row)
