@@ -149,7 +149,7 @@ class GSKJPToolBox:
         numerator = shelf_df.shape[0]
         denominator = brand_df.shape[0]
         result = float(numerator) / float(denominator)
-        score = 1 if result >= threshold else 0
+        score = 1 if (result*100) >= threshold else 0
         return result, score, numerator, denominator, threshold
 
     def lsos_score(self, brand, policy):
