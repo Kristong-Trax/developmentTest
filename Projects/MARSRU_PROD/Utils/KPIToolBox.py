@@ -2443,7 +2443,8 @@ class MARSRU_PRODKPIToolBox:
         first_creation_time = df['creation_time'].min()
         dict_to_calculate = {'population': {'include': [{'creation_time': first_creation_time}]}}
         df = self.parser.filter_df(dict_to_calculate, df)
+        scene_id = df['scene_fk'].values[0]
         scene_type = df['template_fk'].values[0]
         result = df['facings_ign_stack'].sum()
         self.common.write_to_db_result(fk=kpi_fk, numerator_id=scene_type, denominator_id=self.store_id,
-                                       result=result, score=result)
+                                       numerator_result=scene_id, result=result, score=result)
