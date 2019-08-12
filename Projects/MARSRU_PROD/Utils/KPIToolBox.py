@@ -268,10 +268,14 @@ class MARSRU_PRODKPIToolBox:
         cur = self.rds_conn.db.cursor()
         cur.execute(delete_query)
         self.rds_conn.db.commit()
+
+        # Wait 2 seconds due to failures
         time.sleep(2)
+
         self.custom_scif_queries = list(set(self.custom_scif_queries))
         self.rds_conn.disconnect_rds()
         self.rds_conn.connect_rds()
+        cur = self.rds_conn.db.cursor()
         for query in self.custom_scif_queries:
             try:
                 cur.execute(query)
