@@ -14,6 +14,7 @@ from Projects.CCUS.SpecialPrograms.Utils.KPIToolBox import SpecialProgramsToolBo
 from Projects.CCUS.Pillars.Utils.KPIToolBox import PillarsPROGRAMSToolBox
 from Projects.CCUS.Validation.Utils.KPIToolBox import VALIDATIONToolBox
 from Projects.CCUS.JEFF_DEMO.Utils.KPIToolBox import JEFFToolBox
+from Projects.CCUS.SOVI.KPIToolBox import SOVIToolBox
 from KPIUtils_v2.DB.CommonV2 import Common
 
 
@@ -45,6 +46,7 @@ class CCUSGenerator:
         self.calculate_validation()
         self.calculate_pillars_programs()
         self.calculate_jeff()
+        self.calculate_sovi()
 
         self.common.commit_results_data()
     @log_runtime('Manufacturer Displays Calculations')
@@ -69,6 +71,10 @@ class CCUSGenerator:
         tool_box = JEFFToolBox(self.data_provider, self.output, self.common)
         tool_box.main_calculation()
 
+    @log_runtime('SOVI Calculations')
+    def calculate_sovi(self):
+        tool_box = SOVIToolBox(self.data_provider, self.output, self.common)
+        tool_box.main_calculation()
 
     # @log_runtime('OBBO Calculations')
     # def calculate_obbo(self):
