@@ -67,9 +67,9 @@ class MARSRU_PRODCalculations(BaseCalculationsScript):
         tool_box = MARSRU_PRODKPIToolBox(kpi_templates, self.data_provider, self.output)
 
         # Todo - Uncomment the OSA before deploying!!!
+        tool_box.calculate_mars_facings_per_scene_type()
         tool_box.handle_update_custom_scif()
         tool_box.calculate_osa()
-
         tool_box.check_availability(kpi_templates.get('kpi_data'))
         tool_box.check_survey_answer(kpi_templates.get('kpi_data'))
         tool_box.check_number_of_scenes(kpi_templates.get('kpi_data'))
