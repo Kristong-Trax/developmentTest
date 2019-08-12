@@ -416,7 +416,7 @@ class GSKJPToolBox:
             msl_score = msl_result * msl_target
             results_df.append({'fk': kpi_msl_fk, 'numerator_id': brand, 'denominator_id': self.store_fk,
                                'denominator_result': msl_denominator, 'numerator_result': msl_numerator, 'result':
-                                   msl_result, 'score': msl_score, 'target': (msl_target * 100), 'context_id':msl_assortment_group,
+                                   msl_result, 'score': msl_score, 'target': msl_target, 'context_id':msl_assortment_group,
                                'identifier_parent': identifier_parent,
                                'should_enter': True})
             # lsos kpi
@@ -425,7 +425,7 @@ class GSKJPToolBox:
             lsos_score = lsos_result * lsos_target
             results_df.append({'fk': kpi_lsos_fk, 'numerator_id': brand, 'denominator_id': self.store_fk,
                                'denominator_result': lsos_denominator, 'numerator_result': lsos_numerator, 'result':
-                                   lsos_result, 'score': lsos_score, 'target': (lsos_target * 100),
+                                   lsos_result, 'score': lsos_score, 'target': lsos_target,
                                'identifier_parent': identifier_parent, 'weight': lsos_denominator,
                                'should_enter': True})
             # block_score
@@ -434,7 +434,7 @@ class GSKJPToolBox:
             block_score = round(block_result * block_target, 4)
             results_df.append({'fk': kpi_block_fk, 'numerator_id': brand, 'denominator_id': self.store_fk,
                                'denominator_result': block_denominator, 'numerator_result': numerator_block, 'result':
-                                   block_result, 'score': block_score, 'target': (block_target * 100),
+                                   block_result, 'score': block_score, 'target': block_target,
                                'identifier_parent':
                                    identifier_parent, 'should_enter': True, 'weight': (block_benchmark * 100)})
 
