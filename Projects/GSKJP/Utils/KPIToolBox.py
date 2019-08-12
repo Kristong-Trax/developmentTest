@@ -145,7 +145,7 @@ class GSKJPToolBox:
         numerator = shelf_df.shape[0]
         denominator = brand_df.shape[0]
         result = float(numerator) / float(denominator)
-        score = 1 if result >= threshold else 0
+        score = 1 if (result*100) >= threshold else 0
         return result, score, numerator, denominator, threshold
 
     def lsos_score(self, brand, policy):
@@ -389,8 +389,7 @@ class GSKJPToolBox:
                                      left_on=['scene_id', 'product_fk'])
         df_position_score = self.gsk_generator.tool_box.tests_by_template(self.POSITION_SCORE, df_position_score,
                                                                           self.set_up_data)
-        # df_block = self.gsk_generator.tool_box.tests_by_template(self.PLN_BLOCK, df,
-        #                                                                   self.set_up_data)
+
         if not self.set_up_data[(Const.INCLUDE_STACKING, self.POSITION_SCORE)]:
             df_position_score = df_position_score if df_position_score is None else df_position_score[
                 df_position_score['stacking_layer'] == 1]
@@ -408,11 +407,13 @@ class GSKJPToolBox:
             identifier_parent = self.common.get_dictionary(
                 brand_fk=brand, kpi_fk=kpi_compliance_brands_fk)
             # msl_kpi
-            msl_numerator, msl_denominator, msl_result, msl_assortment_group = self.pln_msl_summary(brand, assortment_msl)
+            msl_numerator, msl_denominator, msl_result, msl_assortment_group = self.pln_msl_summary(brand,
+                                                                                                    assortment_msl)
             msl_score = msl_result * msl_target
             results_df.append({'fk': kpi_msl_fk, 'numerator_id': brand, 'denominator_id': self.store_fk,
                                'denominator_result': msl_denominator, 'numerator_result': msl_numerator, 'result':
-                                   msl_result, 'score': msl_score, 'target': (msl_target * 100), 'context_id':msl_assortment_group,
+                                   msl_result, 'score': msl_score, 'target': (msl_target * 100), 'context_id':
+                                   msl_assortment_group,
                                'identifier_parent': identifier_parent,
                                'should_enter': True})
             # lsos kpi
@@ -425,7 +426,6 @@ class GSKJPToolBox:
                                'identifier_parent': identifier_parent, 'weight': lsos_denominator,
                                'should_enter': True})
             # block_score
-            # block_result, block_benchmark, block_numerator, block_denominator = self.brand_blocking(brand, policy,df_block)
             block_result, block_benchmark, numerator_block, block_denominator = self.brand_blocking(brand, policy)
             block_score = round(block_result * block_target, 4)
             results_df.append({'fk': kpi_block_fk, 'numerator_id': brand, 'denominator_id': self.store_fk,
