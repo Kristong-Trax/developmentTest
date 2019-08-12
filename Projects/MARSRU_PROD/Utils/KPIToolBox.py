@@ -14,7 +14,7 @@ from KPIUtils_v2.DB.CommonV2 import Common
 from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
 from KPIUtils_v2.Calculations.BlockCalculations import Block
 from KPIUtils_v2.Utils.Decorators.Decorators import kpi_runtime
-
+from KPIUtils_v2.Utils.Parsers import ParseInputKPI as Parser
 from Projects.MARSRU_PROD.Utils.KPIFetcher import MARSRU_PRODKPIFetcher
 from Projects.MARSRU_PROD.Utils.PositionGraph import MARSRU_PRODPositionGraphs
 
@@ -47,6 +47,10 @@ IN_ASSORTMENT = 'in_assortment_osa'
 IS_OOS = 'oos_osa'
 OTHER_CUSTOM_SCIF_COLUMNS = ['length_mm_custom', 'mha_in_assortment', 'mha_oos']
 OTHER_CUSTOM_SCIF_COLUMNS_VALUES = (0, 0, 0)
+
+# MARS_FACINGS_PER_SCENE_TYPE
+MARS_FACINGS_PER_SCENE_TYPE_KPI_NAME = 'MARS_FACINGS_PER_SCENE_TYPE'
+MOTIVATION_PROGRAM_SCENE_TYPE_NAME = 'Мотивационная программа'
 
 EXCLUDE_EMPTY = False
 INCLUDE_EMPTY = True
@@ -115,8 +119,8 @@ class MARSRU_PRODKPIToolBox:
         self.common = Common(self.data_provider)
         self.osa_kpi_dict = {}
         self.kpi_count = {}
-
         self.assortment_products = self.get_assortment_for_store()
+        self.parser = Parser
 
     def check_connection(self, rds_conn):
         try:
@@ -264,10 +268,14 @@ class MARSRU_PRODKPIToolBox:
         cur = self.rds_conn.db.cursor()
         cur.execute(delete_query)
         self.rds_conn.db.commit()
+
+        # Wait 2 seconds due to failures
         time.sleep(2)
+
         self.custom_scif_queries = list(set(self.custom_scif_queries))
         self.rds_conn.disconnect_rds()
         self.rds_conn.connect_rds()
+        cur = self.rds_conn.db.cursor()
         for query in self.custom_scif_queries:
             try:
                 cur.execute(query)
@@ -2424,3 +2432,19 @@ class MARSRU_PRODKPIToolBox:
                                            should_enter=True)
 
         return
+
+    @kpi_runtime()
+    def calculate_mars_facings_per_scene_type(self):
+        kpi_fk = self.common.get_kpi_fk_by_kpi_type(MARS_FACINGS_PER_SCENE_TYPE_KPI_NAME)
+        dict_to_calculate = {'population': {'include': [{'template_group': MOTIVATION_PROGRAM_SCENE_TYPE_NAME}]}}
+        df = self.parser.filter_df(dict_to_calculate, self.scif)
+        if df.empty:
+            return
+        first_creation_time = df['creation_time'].min()
+        dict_to_calculate = {'population': {'include': [{'creation_time': first_creation_time}]}}
+        df = self.parser.filter_df(dict_to_calculate, df)
+        scene_id = df['scene_fk'].values[0]
+        scene_type = df['template_fk'].values[0]
+        result = df['facings_ign_stack'].sum()
+        self.common.write_to_db_result(fk=kpi_fk, numerator_id=scene_type, denominator_id=self.store_id,
+                                       numerator_result=scene_id, result=result, score=result)
