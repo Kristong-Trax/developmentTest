@@ -88,8 +88,6 @@ class JEFFToolBox:
         self.SOS = SOS_calc(self.data_provider)
         self.survey = Survey_calc(self.data_provider)
 
-
-
     def parse_template(self):
         self.templates['SOS'] = pd.read_excel(TEMPLATE_PATH)
 
@@ -97,19 +95,14 @@ class JEFFToolBox:
         """
         This function calculates the KPI results.
         """
-
-
         self.calculate_sos()
-
 
     def calculate_sos(self):
         for i, row in self.templates[SOS].iterrows():
             for scene in (self.scif['scene_fk'].unique()).tolist():
                 parent_kpi_fk = 0
 
-                general_filters = {}
                 kpi_name = row['KPI Name'].strip()
-                print(kpi_name)
                 kpi_fk = self.common.get_kpi_fk_by_kpi_name(kpi_name)
 
                 num_param1 = row['numerator_param1']
@@ -137,11 +130,14 @@ class JEFFToolBox:
                 if not pd.isna(parent_kpi_name):
                     parent_kpi_fk = self.common.get_kpi_fk_by_kpi_name(parent_kpi_name.strip())
 
-                filters = {num_param1: num_values1, num_param2: num_values2,  'product_type': ['POS','SKU','OTHER'],
-                           'scene_fk':scene}
+                filters = {num_param1: num_values1, num_param2: num_values2,  'product_type': ['POS', 'SKU', 'OTHER'],
+                           'scene_fk': scene}
 
                 filters = self.delete_filter_nan(filters)
-                general_filters = {den_param1:den_values1, den_param2:den_values2, 'product_type': ['SKU','OTHER'],'scene_fk':scene }
+                general_filters = {den_param1: den_values1,
+                                   den_param2: den_values2,
+                                   'product_type': ['SKU', 'OTHER'],
+                                   'scene_fk': scene}
                 general_filters = self.delete_filter_nan(general_filters)
 
                 if not pd.isna(num_exclude_param1):
@@ -163,43 +159,38 @@ class JEFFToolBox:
                         excluded_list = list(set(all_unique_values) - set(den_exclude_value))
                         general_filters[den_exclude_param] = excluded_list
 
-
                 ratio = self.SOS.calculate_share_of_shelf(filters, **general_filters)
 
-
-                shelf_count = max((self.match_product_in_scene['shelf_number'][self.match_product_in_scene['scene_fk'] == scene].
-                     unique()).tolist())
+                shelf_count = max(
+                    (self.match_product_in_scene['shelf_number'][self.match_product_in_scene['scene_fk'] == scene].
+                        unique()).tolist())
 
                 result = ratio
                 score = (ratio * shelf_count)
 
                 if parent_kpi_fk == 0:
-                    self.common.write_to_db_result( fk=kpi_fk, numerator_id=self.manufacturer_fk, numerator_result=0,
-                                           denominator_id=scene,
-                                           denominator_result=0, result=result, score=score)
+                    self.common.write_to_db_result(fk=kpi_fk, numerator_id=self.manufacturer_fk, numerator_result=0,
+                                                   denominator_id=scene, denominator_result=0, result=result,
+                                                   score=score)
                 else:
                     self.common.write_to_db_result(fk=kpi_fk, numerator_id=self.manufacturer_fk, numerator_result=0,
-                                                   denominator_id=scene,
-                                                   denominator_result=0, result=result, score=score,
-                                                    identifier_parent= parent_kpi_fk)
-
-
-    def sanitize_values(self, item):
+                                                   denominator_id=scene,denominator_result=0, result=result,
+                                                   score=score, identifier_parent=parent_kpi_fk)
+    @staticmethod
+    def sanitize_values(item):
         if pd.isna(item):
             return item
         else:
             items = [x.strip() for x in item.split(',')]
             return items
 
-
-    def delete_filter_nan(self, filters):
+    @staticmethod
+    def delete_filter_nan(filters):
         for key in filters.keys():
             if type(filters[key]) is not list:
                 if pd.isna(filters[key]):
                     del filters[key]
         return filters
-
-
 
     def calculate_availability_df(self, **filters):
         """
@@ -208,7 +199,8 @@ class JEFFToolBox:
         """
         if set(filters.keys()).difference(self.scif.keys()):
             scif_mpis_diff = self.match_product_in_scene[['scene_fk', 'product_fk'] +
-                                             list(self.match_product_in_scene.keys().difference(self.scif.keys()))]
+                                                         list(self.match_product_in_scene.keys().difference(
+                                                             self.scif.keys()))]
 
             # a patch for the item_id field which became item_id_x since it was added to product table as attribute.
             item_id = 'item_id' if 'item_id' in self.scif.columns else 'item_id_x'
