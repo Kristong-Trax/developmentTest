@@ -132,6 +132,7 @@ class PNGHKToolBox:
                                       Const.EXCLUDE_POSM, Const.EXCLUDE_OTHER, Const.STACKING, Const.EXCLUDE_SKU,
                                       Const.EXCLUDE_STOCK, Const.EXCLUDE_OSD]]
             df = self.filter_df(row)
+            df = df[df['width_mm_advance'] != -1]
             if df.empty:
                 continue
 
@@ -204,6 +205,7 @@ class PNGHKToolBox:
                                       Const.EXCLUDE_STOCK, Const.EXCLUDE_OSD]]
             # filter df to the specific template row
             df = self.filter_df(row)
+            df = df[df['width_mm_advance'] != -1]
             if df.empty:
                 continue
             number_of_scenes = len(df['scene_fk'].unique())
@@ -251,7 +253,6 @@ class PNGHKToolBox:
                         categories = [""]
 
                     # Iterate categories
-                    df = df[df['width_mm_advance'] != -1]
                     total_denominator = df[self.tools.get_filter_condition(df, **filters)]['width_mm_advance'].sum()
                     for category in categories:
                         if category != "":
