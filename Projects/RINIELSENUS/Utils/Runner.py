@@ -65,7 +65,7 @@ class Results(object):
             #                         # 'Is Nutro Wet Dog food blocked?',
             #                         # 'Is the Meaty Dog Treats segment blocked?',
             #                         # 'Is NUTRO Dry Dog blocked in the Ingredient Transparency feeding philosophy segment?'
-            #                         'Is the Dry Cat Food category blocked?'
+            #                         'Is the Basic & Balanced Dry Dog food feeding philosophy segment blocked?'
             #                         ]:
             #     continue
             # print('~~~~~~~~~~~~~~~~~~~~****************~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~')
