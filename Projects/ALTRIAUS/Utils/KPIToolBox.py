@@ -181,7 +181,9 @@ class ALTRIAUSToolBox:
 
         longest_shelf = \
             product_mpis[product_mpis['shelf_number'] ==
-                         self.get_longest_shelf_number(product_mpis)].sort_values(by='rect_x', ascending=True)
+                         self.get_longest_shelf_number(product_mpis,
+                                                       max_shelves_from_top=999)].sort_values(by='rect_x',
+                                                                                              ascending=True)
 
         if longest_shelf.empty or longest_shelf.isnull().all().all():
             Log.warning(
@@ -684,12 +686,12 @@ class ALTRIAUSToolBox:
                                                   - width_in_facings).abs().argsort()[:1]]['POS Width (ft)'].iloc[0]
 
     @staticmethod
-    def get_longest_shelf_number(relevant_mpis):
+    def get_longest_shelf_number(relevant_mpis, max_shelves_from_top=3):
         # returns the shelf_number of the longest shelf
         try:
             longest_shelf = \
-            relevant_mpis[relevant_mpis['shelf_number'] <= 3].groupby('shelf_number').agg({'scene_match_fk': 'count'})[
-                'scene_match_fk'].idxmax()
+                relevant_mpis[relevant_mpis['shelf_number'] <= max_shelves_from_top].groupby('shelf_number').agg(
+                    {'scene_match_fk': 'count'})['scene_match_fk'].idxmax()
         except ValueError:
             longest_shelf = pd.DataFrame()
 
