@@ -108,7 +108,7 @@ class ALTRIAUSToolBox:
                         .merge(self.scene_info, on='scene_fk', suffixes=['', '_s']) \
                           .merge(self.template_info, on='template_fk', suffixes=['', '_t'])
         except KeyError:
-            Log.error('MPIS cannot be generated!')
+            Log.warning('MPIS cannot be generated!')
             return
         self.adp = AltriaDataProvider(self.data_provider)
 
@@ -119,6 +119,7 @@ class ALTRIAUSToolBox:
         self.calculate_signage_locations_and_widths('Cigarettes')
         self.calculate_signage_locations_and_widths('Smokeless')
         self.calculate_register_type()
+        self.calculate_age_verification()
         self.calculate_assortment()
         self.calculate_vapor_kpis()
 
@@ -194,7 +195,7 @@ class ALTRIAUSToolBox:
 
     def calculate_assortment(self):
         if self.scif.empty or self.store_assortment.empty:
-            Log.error('Unable to calculate assortment: SCIF or store assortment is empty')
+            Log.warning('Unable to calculate assortment: SCIF or store assortment is empty')
             return
 
         grouped_scif = self.scif.groupby('product_fk', as_index=False)['facings'].sum()
@@ -229,6 +230,19 @@ class ALTRIAUSToolBox:
             product_fk = relevant_scif['product_fk'].iloc[0]
 
         kpi_fk = self.common_v2.get_kpi_fk_by_kpi_type('Register Type')
+        self.common_v2.write_to_db_result(kpi_fk, numerator_id=product_fk, denominator_id=self.store_id,
+                                          result=result)
+
+    def calculate_age_verification(self):
+        relevant_scif = self.scif[self.scif['brand_name'].isin(['Age Verification'])]
+        if relevant_scif.empty:
+            result = 0
+            product_fk = 0
+        else:
+            result = 1
+            product_fk = relevant_scif['product_fk'].iloc[0]
+
+        kpi_fk = self.common_v2.get_kpi_fk_by_kpi_type('Age Verification')
         self.common_v2.write_to_db_result(kpi_fk, numerator_id=product_fk, denominator_id=self.store_id,
                                           result=result)
 
@@ -438,7 +452,7 @@ class ALTRIAUSToolBox:
         relevant_pos = self.adp.get_products_contained_in_displays(pos_mpis, y_axis_threshold=35, debug=False)
 
         if relevant_pos.empty:
-            Log.error('No polygon mask was generated for {} category - cannot compute KPIs'.format(category))
+            Log.warning('No polygon mask was generated for {} category - cannot compute KPIs'.format(category))
             # we need to attempt to calculate fixture width, even if there's no polygon mask
             self.calculate_fixture_width(relevant_pos, longest_shelf, category)
             return
