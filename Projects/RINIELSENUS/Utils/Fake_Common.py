@@ -21,12 +21,11 @@ class NotCommon(Common):
         """
         if delete_results:
             delete_queries = {'delete_old_session_specific_tree_query': ''}
-            if not self.match_product_in_probe_state_values.empty:
-                match_product_in_probe_fks = self.match_product_in_probe_state_values[
-                    self.MATCH_PRODUCT_IN_PROBE_FK].values
+            match_product_in_probe_fks = self.data_provider.matches['probe_match_fk'].values
+            if self.kpi_level_2_fks and match_product_in_probe_fks.any():
                 delete_queries['delete_costume_smart_att'] = \
                     self.queries.get_delete_match_product_in_probe_state_value_reporting_results_query(
-                        match_product_in_probe_fks).replace(",)", ")")
+                        match_product_in_probe_fks, self.kpi_level_2_fks).replace(",)", ")")
 
             local_con = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
             cur = local_con.db.cursor()

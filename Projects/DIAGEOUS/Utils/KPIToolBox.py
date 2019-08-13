@@ -272,8 +272,9 @@ class ToolBox:
         total_results = []
         if self.attr11 == Const.NATIONAL_STORE and kpi_name == Const.BACK_BAR:
             kpi_db_names = self.pull_kpi_fks_from_names(Const.DB_ON_NAMES[Const.BACK_BAR_NATIONAL])
-            for scene_type in relevant_scif['template_name'].unique().tolist():
-                temp_scif = relevant_scif[relevant_scif['template_name'] == scene_type]
+            for template_group in relevant_scif['template_group'].unique().tolist():
+                temp_scif = relevant_scif[
+                    relevant_scif['template_group'].str.encode("utf-8") == template_group.encode("utf-8")]
                 temp_results = self.calculate_back_bar_national_template(
                     temp_scif, relevant_assortment, kpi_db_names, weight, target)
                 total_results += temp_results
@@ -823,9 +824,10 @@ class ToolBox:
         diageo_facings, comp_facings, temp_comp_facings, temp_target = 0, 0, 0, target
         for template_name in relevant_scif['template_name'].unique():
             template_scif = relevant_scif[relevant_scif['template_name'] == template_name]
-            temp_diageo_facings = template_scif[template_scif['product_fk'] == product_fk]['facings'].sum()
+            temp_diageo_facings = template_scif[template_scif['product_fk'] == product_fk]['facings_ign_stack'].sum()
             if comp_product_fk:
-                temp_comp_facings = template_scif[template_scif['product_fk'] == comp_product_fk]['facings'].sum()
+                temp_comp_facings = \
+                    template_scif[template_scif['product_fk'] == comp_product_fk]['facings_ign_stack'].sum()
                 temp_target = bench_value * temp_comp_facings
             if temp_diageo_facings >= temp_target and temp_diageo_facings > 0:
                 return temp_diageo_facings, temp_comp_facings, 1, temp_target, comp_product_fk

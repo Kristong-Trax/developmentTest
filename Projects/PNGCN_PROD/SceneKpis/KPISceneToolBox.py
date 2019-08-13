@@ -186,9 +186,9 @@ class PngcnSceneKpis(object):
                 filter_row_for_sub_brand = {'population': {
                     'include': [block_filters], 'include_operator': 'and'}}
                 filtered_df = self.parser.filter_df(filter_row_for_sub_brand, complete_df)
+                filtered_df = filtered_df[filtered_df['stacking_layer'] == 1]
                 if filtered_df.empty:
                     continue
-                filtered_df = filtered_df[filtered_df['stacking_layer'] == 1]
 
                 # Save all sub_brands in the scene to eye-light KPI
                 self.save_eye_light_products(block_filters['sub_brand_name'][0], filtered_df)
@@ -281,15 +281,18 @@ class PngcnSceneKpis(object):
         return all_blocks_no_duplicates
 
     def save_eye_light_products(self, sub_brand, filtered_df):
-        sub_brand_pk = self.match_product_in_probe_state_reporting[
-            self.match_product_in_probe_state_reporting['name'].str.encode("utf8") ==
-            sub_brand.encode("utf8")]['match_product_in_probe_state_reporting_fk'].values[0]
-        df_to_append = pd.DataFrame(
-            columns=[MATCH_PRODUCT_IN_PROBE_FK, MATCH_PRODUCT_IN_PROBE_STATE_REPORTING_FK])
-        df_to_append[MATCH_PRODUCT_IN_PROBE_FK] = filtered_df['probe_match_fk'].drop_duplicates()
-        df_to_append[MATCH_PRODUCT_IN_PROBE_STATE_REPORTING_FK] = sub_brand_pk
-        self.common.match_product_in_probe_state_values = \
-            self.common.match_product_in_probe_state_values.append(df_to_append)
+        try:
+            sub_brand_pk = self.match_product_in_probe_state_reporting[
+                self.match_product_in_probe_state_reporting['name'].str.encode("utf8") ==
+                sub_brand.encode("utf8")]['match_product_in_probe_state_reporting_fk'].values[0]
+            df_to_append = pd.DataFrame(
+                columns=[MATCH_PRODUCT_IN_PROBE_FK, MATCH_PRODUCT_IN_PROBE_STATE_REPORTING_FK])
+            df_to_append[MATCH_PRODUCT_IN_PROBE_FK] = filtered_df['probe_match_fk'].drop_duplicates()
+            df_to_append[MATCH_PRODUCT_IN_PROBE_STATE_REPORTING_FK] = sub_brand_pk
+            self.common.match_product_in_probe_state_values = \
+                self.common.match_product_in_probe_state_values.append(df_to_append)
+        except Exception as ex:
+            Log.error("Scene {} failed to write to highlight kpi, error: {}".format(str(self.scene_id), ex))
 
     def get_attribute_fk_from_name(self, name, value):
         try:
