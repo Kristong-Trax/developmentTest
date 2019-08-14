@@ -451,7 +451,7 @@ class HEINZCRToolBox:
                         suggested_price = row['SUGGESTED_PRICE'].values[0]
                     except Exception as e:
                         Log.error("Product with ean_code {} is not in the configuration file for customer type {}"
-                                  .format(product_in_session, self.store_info.store_type[0]))
+                                  .format(product_in_session, self.store_info.store_type[0].encode('utf-8')))
                         break
                     upper_percentage = (100 + row['PERCENTAGE'].values[0]) / float(100)
                     lower_percentage = (100 - row['PERCENTAGE'].values[0]) / float(100)
@@ -508,7 +508,7 @@ class HEINZCRToolBox:
                                                           result=mark_up)
                 else:
                     Log.warning("Product with ean_code {} is not in the configuration file for customer type {}"
-                                .format(product_in_session, self.store_info.store_type[0]))
+                                .format(product_in_session, self.store_info.store_type[0].encode('utf-8')))
         return results_df
 
     def calculate_perfect_store_extra_spaces(self):
