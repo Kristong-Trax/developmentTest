@@ -145,8 +145,18 @@ class MARSRU_PRODKPIToolBox:
                 continue
 
             result = 'TRUE'
-            scene_param = p.get('Values')
-            filtered_scif = self.scif.loc[self.scif['template_name'] == scene_param]
+
+            if p.get('Values'):
+                filtered_scif = self.scif.loc[self.scif['template_name'].isin(p.get('Values').split('\n'))]
+            else:
+                filtered_scif = self.scif
+
+            if p.get('Scene type'):
+                filtered_scif = filtered_scif.loc[filtered_scif['template_name'].isin(p.get('Scene type').split(', '))]
+
+            if p.get('Location type'):
+                filtered_scif = filtered_scif.loc[filtered_scif['location_type'].isin(p.get('Location type').split(', '))]
+
             if filtered_scif.empty:
                 result = 'FALSE'
 

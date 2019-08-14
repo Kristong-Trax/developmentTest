@@ -144,17 +144,14 @@ class CCRUCCHKPIFetcher:
                 """.format(store_id)
         cur = self.rds_conn.db.cursor()
         cur.execute(query)
-        res = cur.fetchall()[0]
+        result = cur.fetchall()
 
         try:
-            if not all(res):
-                result = res[0]
-            else:
-                result = float(res[0].replace(',', '.'))
+            result = float(result[0][0].replace(',', '.'))
         except:
-            result = 1
+            result = 1.0
 
-        return float(result)
+        return result
 
     def get_test_store(self, store_id):
         query = """
