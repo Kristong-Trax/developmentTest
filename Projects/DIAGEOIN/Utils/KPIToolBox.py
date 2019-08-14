@@ -102,7 +102,7 @@ class DIAGEOINToolBox:
         # committing to new tables
         self.commonV2.commit_results_data()
         # committing to the old tables
-        self.common.commit_results_data()
+        #self.common.commit_results_data()
 
     def save_results_to_db(self, results_list):
         if results_list:
@@ -140,8 +140,7 @@ class DIAGEOINToolBox:
         store_policy = self.get_store_policy().strip()
 
         if len(store_policy) == 0:
-            message = "store_policy not available for store_fk:{},"
-            message += " store_name:{}".format(self.store_id, dict(self.scene_info.iloc['store_name']))
+            message = "store_policy not available for store_fk:{}".format(self.store_id)
             Log.info(message)
             return
 
