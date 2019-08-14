@@ -1,14 +1,11 @@
 # coding=utf-8
 import os
-# from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
-# from Trax.Cloud.Services.Connector.Keys import DbUsers
-# from Trax.Utils.Conf.Configuration import Config
 import math
-from Trax.Apps.Core.Testing.BaseCase import TestFunctionalCase
-from mock import MagicMock
 import pandas as pd
-from Projects.CBCDAIRYIL.Utils.KPIToolBox import CBCDAIRYILToolBox, Consts
+from mock import MagicMock
 from KPIUtils.ParseTemplates import parse_template
+from Trax.Apps.Core.Testing.BaseCase import TestFunctionalCase
+from Projects.CBCDAIRYIL.Utils.KPIToolBox import CBCDAIRYILToolBox, Consts
 
 
 __author__ = 'idanr'
@@ -163,33 +160,6 @@ class TestCBCDAIRYIL(TestFunctionalCase):
         self.assertEqual(2, len(dict_ignore_stack))
         self.assertEqual([1, 2, 3, 4], dict_add_stack.keys())
         self.assertEqual([1, 2], dict_ignore_stack.keys())
-
-    # def test_filter_df_by_shelves(self):
-    #     df_3_shelves = {Consts.SCENE_FK: [1, 1, 2, 2, 2, 3, 3, 4, 4, 4],
-    #                     Consts.SHELF_NUM_FROM_BOTTOM: [1, 1, 2, 2, 2, 3, 3, 4, 4, 4]}
-    #     df_4_shelves = {Consts.SCENE_FK: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2],
-    #                     Consts.SHELF_NUM_FROM_BOTTOM: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 4]}
-    #     df_5_shelves = {Consts.SCENE_FK: [1, 2, 3, 4, 5],
-    #                     Consts.SHELF_NUM_FROM_BOTTOM: [5, 4, 3, 2, 1]}
-    #     df_6_shelves = {Consts.SCENE_FK: [1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6],
-    #                     Consts.SHELF_NUM_FROM_BOTTOM: [6, 5, 4, 4, 3, 3, 3, 2, 2, 3, 2, 1]}
-    #     df_7_shelves = {Consts.SCENE_FK: [1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6],
-    #                     Consts.SHELF_NUM_FROM_BOTTOM: [7, 6, 6, 7, 3, 3, 4, 4, 5, 5, 1, 2]}
-    #     df_15_shelves = {Consts.SCENE_FK: [1, 1, 1, 2, 2, 2, 3, 3, 3, 4, 4, 4, 5, 5, 5, 6, 6, 6, 7, 7, 7],
-    #                      Consts.SHELF_NUM_FROM_BOTTOM: [15, 14, 14, 12, 13, 14, 13, 13, 14, 5, 3, 2, 5, 5, 5, 1, 2, 2,
-    #                                                     1, 1, 2]}
-    #     df_2_shelves = {Consts.SCENE_FK: [1, 1, 2, 2],
-    #                     Consts.SHELF_NUM_FROM_BOTTOM: [1, 2, 1, 2]}
-    #     df_no_shelves = {Consts.SCENE_FK: [], Consts.SHELF_NUM_FROM_BOTTOM: []}
-    #     potential_dfs_list = [(df_3_shelves, [2, 3, 4]), (df_4_shelves, [2]), (df_5_shelves, [2, 3]),
-    #                           (df_6_shelves, [1, 2, 3, 4, 5]),
-    #                           (df_7_shelves, [3, 4, 5]),
-    #                           (df_15_shelves, [2, 3, 4, 5]), (df_2_shelves, [1, 2]), (df_no_shelves, [])]
-    #     for d, expected in potential_dfs_list:
-    #         df = pd.DataFrame(data=d)
-    #         filtered_df = self.tool_box.filter_df_by_shelves(df, df, Consts.EYE_LEVEL_PER_SHELF)
-    #         scenes = filtered_df['scene_fk'].unique().tolist()
-    #         self.assertEqual(expected, scenes)
 
     def test_filter_df_by_shelves_top_bottom_max_match(self):
         df_3_shelves = {Consts.SCENE_FK: [1, 1, 1, 1, 1, 1, 1, 1],
