@@ -30,12 +30,6 @@ class TnuvaMocks:
         ])
         return lvl3_assortment_results
 
-    def empty_scif(self):
-        empty_scene_item_facts = pd.DataFrame(
-            columns=[Fields.PRODUCT_FK, Fields.SCENE_FK, Fields.FACINGS, Fields.TAGGED, Fields.OOS_SC, Fields.DIST_SC,
-                     Fields.FACINGS_IGN_STACK, Fields.RLV_OOS_SC, Fields.RLV_SOS_SC])
-        return empty_scene_item_facts
-
     @staticmethod
     def get_mock_scif_1(own_manu):
         """ Notice! We are not considering policies here!"""
@@ -63,7 +57,7 @@ class TnuvaMocks:
 
     @staticmethod
     def get_result_value():
-        res_val = pd.DataFrame([{Fields.PK: 1, 'value' : 'OOS'}, {Fields.PK: 2, 'value' : 'DISTRIBUTED'}])
+        res_val = pd.DataFrame([{Fields.PK: 1, 'value': 'OOS'}, {Fields.PK: 2, 'value': 'DISTRIBUTED'}])
         return res_val
 
 

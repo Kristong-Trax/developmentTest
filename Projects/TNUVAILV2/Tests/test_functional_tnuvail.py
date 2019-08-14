@@ -1,17 +1,12 @@
 # coding=utf-8
 from Projects.TNUVAILV2.Tests.Data.TestData.test_data_tnuvailv2 import TnuvailV2SanityData
-from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
+from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider
 from Projects.TNUVAILV2.Tests.Data.MockDataFrames import TnuvaMocks
-from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Trax.Apps.Core.Testing.BaseCase import TestFunctionalCase
 from Projects.TNUVAILV2.Utils.KPIToolBox import TNUVAILToolBox
-from Trax.Data.Testing.TestProjects import TestProjectsNames
-from Projects.TNUVAILV2.Calculations import Calculations
-from Trax.Cloud.Services.Connector.Keys import DbUsers
 from Projects.TNUVAILV2.Utils.Consts import Consts
 from Trax.Data.Testing.SeedNew import Seeder
 from mock import MagicMock
-import MySQLdb
 
 
 __author__ = 'idanr'
@@ -65,22 +60,6 @@ class TestTnuvaV2(TestFunctionalCase):
         data_provider.load_session_data(session)
         return data_provider
 
-    def _assert_kpi_results_filled(self):
-        connector = PSProjectConnector(TestProjectsNames().TEST_PROJECT_1, DbUsers.Docker)
-        cursor = connector.db.cursor(MySQLdb.cursors.DictCursor)
-        cursor.execute('''
-        SELECT * FROM report.kpi_level_2_results
-        ''')
-        kpi_results = cursor.fetchall()
-        self.assertNotEquals(len(kpi_results), 0)
-        connector.disconnect_rds()
-
-    @seeder.seed(["mongodb_products_and_brands_seed", "tnuvailv2_sand_seed"], TnuvailV2SanityData())
-    def test_tnuvailv2_sanity(self):
-        output = Output()
-        Calculations(self.data_provider_mock, output).run_project_calculations()
-        self._assert_kpi_results_filled()
-
     def test_general_sos_calculation(self):
         test_case_1 = ((11, 11), {Consts.MANUFACTURER_FK: self.tool_box.own_manufacturer_fk})
         test_case_2 = ((0, 11), {Consts.MANUFACTURER_FK: 999})
@@ -119,15 +98,38 @@ class TestTnuvaV2(TestFunctionalCase):
                     self.assertEqual(expected_own_manu_in_cat_res[cat_fk], res[Consts.NUMERATOR_RESULT])
                     is_own_manufacturer_in_res = True
             self.assertTrue(is_own_manufacturer_in_res, msg='There must be Tnuva manufacturer in category results!')
-    #
-    # def test_lvl3_data(self):
-    #     lvl3_assortment = self.lvl3_assortment.return_value
-    #     dairy_lvl3 = self.tool_box._get_relevant_assortment_data(lvl3_assortment, Consts.MILKY_POLICY)
-    #     tirat_tsvi_lvl3 = self.tool_box._get_relevant_assortment_data(lvl3_assortment, Consts.TIRAT_TSVI_POLICY)
-    #     print "wow"
 
+    def test_assortment(self):
+        lvl3_assortment = self.lvl3_assortment.return_value
+        tirat_tsvi_data = self.tool_box._get_relevant_assortment_data(lvl3_assortment, Consts.TIRAT_TSVI_POLICY)
+        dairy_data = self.tool_box._get_relevant_assortment_data(lvl3_assortment, Consts.MILKY_POLICY)
+        # Compare expected product
+        dairy_expected_product = [15628, 15603, 15613, 15829, 15639, 15631, 15567, 16080, 15602, 15588]
+        tirat_tsvi_product = [15915, 15884, 15854, 15881, 15874, 15852, 15879]
+        self.compare_assortment_product_and_expected(tirat_tsvi_data, tirat_tsvi_product)
+        self.compare_assortment_product_and_expected(dairy_data, dairy_expected_product)
+        # Compare expected store results
+        store_ass_res_dairy = 4, 10
+        store_oos_res_tsvi = 3, 7
+        self.compare_store_results(dairy_data, store_ass_res_dairy, True)
+        self.compare_store_results(tirat_tsvi_data, store_oos_res_tsvi, False)
+        # Compare expected category results
+        dairy_expected_cat = {(252, 810): 1, (260, 810): 0, (262, 810): 2}
+        tsvi_expected_cat = {(260, 810): 4}
+        self.compare_category_results(dairy_data, dairy_expected_cat, True)
+        self.compare_category_results(tirat_tsvi_data, tsvi_expected_cat, True)
 
+    def compare_assortment_product_and_expected(self, lvl3_data_relevant, expected_product):
+        self.assertEqual(set(expected_product), set(lvl3_data_relevant.product_fk.unique().tolist()))
 
+    def compare_store_results(self, lvl3_data, expected_results, is_dist):
+        store_res = self.tool_box._calculate_store_level_assortment(lvl3_data, is_dist)
+        num_res, den_res = store_res[0][Consts.NUMERATOR_RESULT], store_res[0][Consts.DENOMINATOR_RESULT]
+        self.assertEqual((num_res, den_res), expected_results)
 
-
-
+    def compare_category_results(self, lvl3_data, expected_res, is_dist):
+        cat_results = self.tool_box._calculate_category_level_assortment(lvl3_data, is_distribution=is_dist)
+        for res in cat_results:
+            cat_fk, manufacturer_fk = res[Consts.CATEGORY_FK], res[Consts.DENOMINATOR_ID]
+            if (cat_fk, manufacturer_fk) in expected_res.keys():
+                self.assertEqual(expected_res[(cat_fk, manufacturer_fk)], res[Consts.NUMERATOR_RESULT])
