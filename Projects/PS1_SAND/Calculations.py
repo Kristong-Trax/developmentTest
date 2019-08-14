@@ -1,27 +1,23 @@
-
 from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScript
-# from Trax.Algo.Calculations.Core.DataProvider import ACEDataProvider, Output, KEngineDataProvider
+# from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
 # from Trax.Utils.Conf.Configuration import Config
 # from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
-
-from Projects.PS1_SAND.KPIGenerator import DIAGEOKEGenerator
-
-__author__ = 'Nimrod'
+from Projects.DIAGEOMX.KPIGenerator import DIAGEOMXGenerator
 
 
-class DIAGEOKECalculations(BaseCalculationsScript):
+class DIAGEOMXCalculations(BaseCalculationsScript):
     def run_project_calculations(self):
         self.timer.start()
-        DIAGEOKEGenerator(self.data_provider, self.output).main_function()
+        DIAGEOMXGenerator(self.data_provider, self.output).main_function()
         self.timer.stop('KPIGenerator.run_project_calculations')
 
 
 # if __name__ == '__main__':
-#     LoggerInitializer.init('diageoke calculations')
+#     LoggerInitializer.init('diageomx calculations')
 #     Config.init()
-#     project_name = 'diageoke'
+#     project_name = 'diageomx'
 #     data_provider = KEngineDataProvider(project_name)
-#     session = '28051307-a521-4a61-9fba-4c78ae9969f9'
+#     session = 'fd7d2a19-3a1c-40fd-a7d1-3a01260392d1'
 #     data_provider.load_session_data(session)
 #     output = Output()
-#     DIAGEOKECalculations(data_provider, output).run_project_calculations()
+#     DIAGEOMXCalculations(data_provider, output).run_project_calculations()

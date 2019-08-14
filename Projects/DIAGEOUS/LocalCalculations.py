@@ -10,7 +10,8 @@ if __name__ == '__main__':
     Config.init()
     project_name = 'diageous'
     sessions = [
-        "E2695B9C-8B5E-40C4-8F65-8E1A0EA83C2F"
+        # National On:
+        "3F6CFD91-0D38-4A09-AD0D-510B58868296",
         # Independent On:
         # "4A1C1E22-20EB-4F1D-8D31-1E3EA45200A6",
         # # Independent Off:

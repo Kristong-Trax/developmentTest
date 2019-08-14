@@ -18,7 +18,6 @@ all you have to do is to insert the project name and run it
 
 class SeedCreator:
     TOP_SESSIONS_AND_SCENES = {}
-
     """
     this class creates seed file
     """
@@ -282,9 +281,11 @@ if __name__ == '__main__':
     """
     LoggerInitializer.init('')
     Config.init()
-    project_to_test = 'jnjit'
+    project_to_test = 'pepsicouk'
     creator = SeedCreator(project_to_test)
-    creator.activate_exporter(specific_sessions_and_scenes={'e85417b8-54ed-473f-82ee-b38b6cbcaf28':[]}
+    creator.activate_exporter(specific_sessions_and_scenes={'961edfb7-ae52-40a7-ab39-45064f8c554d': [92747],
+                                                            'aee71e4d-cdd1-4474-803e-ef834d24871d': [94402],
+                                                            'be03f331-a509-4ef5-99a0-a1807fc96b71': [93375]}
                               # {'6e4dc935-ab56-45ef-9408-caaddb963874': [17888508],
                               #  'C544B5DB-B61F-4B02-B03A-6D8748B3B636': []}
                               )

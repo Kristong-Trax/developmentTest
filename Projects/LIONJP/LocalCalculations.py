@@ -12,9 +12,7 @@
 #     data_provider = KEngineDataProvider(project_name)
 #
 #     sessions = [
-#         '1C74055B-E079-4FD9-8DC6-72B10B6723EC',
-#         '9C3B6415-5732-4C59-A588-28EF1A1D5DD7',
-#         '8B6C334E-649D-453B-A508-3D2CDC483FE4',
+#         '5D2B2887-C7A8-4349-BD08-1C52BA722329',
 #
 #     ]
 #     for session in sessions:

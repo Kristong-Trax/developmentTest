@@ -131,6 +131,9 @@ class HEINZCRToolBox:
         assortment_fk = self.store_assortment_without_powerskus['assortment_fk'].iloc[0]
         assortment_group_fk = self.store_assortment_without_powerskus['assortment_group_fk'].iloc[0]
 
+        total_kpi_fk = self.common_v2.get_kpi_fk_by_kpi_type('Distribution')
+        identifier_dict = self.common_v2.get_dictionary(kpi_fk=total_kpi_fk)
+
         for row in self.store_assortment_without_powerskus.itertuples():
             result = 0
             if row.product_fk in products_in_store:
@@ -139,14 +142,18 @@ class HEINZCRToolBox:
 
             sku_kpi_fk = self.common_v2.get_kpi_fk_by_kpi_type('Distribution - SKU')
             self.common_v2.write_to_db_result(sku_kpi_fk, numerator_id=row.product_fk, denominator_id=row.assortment_fk,
-                                              result=result)
+                                              result=result, identifier_parent=identifier_dict, should_enter=True)
 
-        total_kpi_fk = self.common_v2.get_kpi_fk_by_kpi_type('Distribution')
-        self.common_v2.write_to_db_result(total_kpi_fk, numerator_id=assortment_fk, denominator_id=assortment_group_fk,
+        number_of_products_in_assortment = len(self.store_assortment_without_powerskus)
+        if number_of_products_in_assortment:
+            total_result = (pass_count / float(number_of_products_in_assortment)) * 100
+        else:
+            total_result = 0
+        self.common_v2.write_to_db_result(total_kpi_fk, numerator_id=Const.OWN_MANUFACTURER_FK,
+                                          denominator_id=self.store_id,
                                           numerator_result=pass_count,
-                                          denominator_result=len(self.store_assortment_without_powerskus),
-                                          result=pass_count)
-
+                                          denominator_result=number_of_products_in_assortment,
+                                          result=total_result, identifier_result=identifier_dict)
 
     def calculate_powersku_assortment(self):
         if self.sub_category_assortment.empty:
@@ -156,7 +163,7 @@ class HEINZCRToolBox:
         sub_category_kpi_fk = self.common_v2.get_kpi_fk_by_kpi_type(Const.POWER_SKU_SUB_CATEGORY)
         sku_kpi_fk = self.common_v2.get_kpi_fk_by_kpi_type(Const.POWER_SKU)
 
-        products_in_session = self.scif['product_fk'].unique().tolist()
+        products_in_session = self.scif[self.scif['facings'] > 0]['product_fk'].unique().tolist()
         self.sub_category_assortment['in_session'] = \
             self.sub_category_assortment.loc[:, 'product_fk'].isin(products_in_session)
         # save PowerSKU results at SKU level
@@ -171,19 +178,19 @@ class HEINZCRToolBox:
         aggregated_results = self.sub_category_assortment.groupby('sub_category_fk').agg(
             {'in_session': 'sum', 'product_fk': 'count'}).reset_index().rename(
             columns={'product_fk': 'product_count'})
-        aggregated_results['complete'] = \
-            aggregated_results.loc[:, 'in_session'] == aggregated_results.loc[:, 'product_count']
+        aggregated_results['percent_complete'] = \
+            aggregated_results.loc[:, 'in_session'] / aggregated_results.loc[:, 'product_count']
         for sub_category in aggregated_results.itertuples():
             parent_dict = self.common_v2.get_dictionary(kpi_fk=total_kpi_fk)
             identifier_dict = self.common_v2.get_dictionary(kpi_fk=sub_category_kpi_fk,
                                                             sub_category_fk=sub_category.sub_category_fk)
-            result = 1 if sub_category.complete else 0
+            result = sub_category.percent_complete
             self.common_v2.write_to_db_result(sub_category_kpi_fk, numerator_id=sub_category.sub_category_fk,
                                               denominator_id=self.store_id, identifier_parent=parent_dict,
                                               identifier_result=identifier_dict, result=result,
                                               should_enter=True)
         # save PowerSKU total score
-        total_score = aggregated_results['complete'].sum()
+        total_score = aggregated_results['percent_complete'].sum()
         total_dict = self.common_v2.get_dictionary(kpi_fk=total_kpi_fk)
         self.common_v2.write_to_db_result(total_kpi_fk, numerator_id=1, denominator_id=self.store_id,
                                           result=total_score, score=total_score, identifier_parent=Const.PERFECT_STORE,
@@ -400,18 +407,19 @@ class HEINZCRToolBox:
         aggregated_results = results.groupby('sub_category_fk').agg(
             {'into_interval': 'sum', 'product_fk': 'count'}).reset_index().rename(
             columns={'product_fk': 'product_count'})
-        aggregated_results['complete'] = \
-            aggregated_results.loc[:, 'into_interval'] == aggregated_results.loc[:, 'product_count']
+        aggregated_results['percent_complete'] = \
+            aggregated_results.loc[:, 'into_interval'] / aggregated_results.loc[:, 'product_count']
         total_dict = self.common_v2.get_dictionary(kpi_fk=adherence_total_kpi_fk)
         for row in aggregated_results.itertuples():
             identifier_result = self.common_v2.get_dictionary(kpi_fk=adherence_sub_category_kpi_fk,
                                                               sub_category_fk=row.sub_category_fk)
-            result = 1 if row.complete else 0
+            result = row.percent_complete
             self.common_v2.write_to_db_result(adherence_sub_category_kpi_fk, numerator_id=row.sub_category_fk,
                                               denominator_id=self.store_id, result=result, score=result,
                                               identifier_parent=total_dict, identifier_result=identifier_result,
                                               should_enter=True)
-        number_of_categories_meeting_price_adherence = aggregated_results['complete'].sum()
+        # this value is not necessarily a whole number
+        number_of_categories_meeting_price_adherence = aggregated_results['percent_complete'].sum()
         number_of_possible_categories = len(aggregated_results)
         self.common_v2.write_to_db_result(adherence_total_kpi_fk, numerator_id=1, denominator_id=self.store_id,
                                           numerator_result=number_of_categories_meeting_price_adherence,
@@ -423,7 +431,8 @@ class HEINZCRToolBox:
 
     def heinz_global_price_adherence(self, config_df):
         results_df = self.adherence_results
-        my_config_df = config_df[config_df['STORETYPE'] == self.store_info.store_type[0]]
+        my_config_df = \
+            config_df[config_df['STORETYPE'].str.encode('utf-8') == self.store_info.store_type[0].encode('utf-8')]
         products_in_session = self.scif.drop_duplicates(subset=['product_ean_code'], keep='last')[
             'product_ean_code'].tolist()
         for product_in_session in products_in_session:
@@ -444,8 +453,8 @@ class HEINZCRToolBox:
                         Log.error("Product with ean_code {} is not in the configuration file for customer type {}"
                                   .format(product_in_session, self.store_info.store_type[0]))
                         break
-                    upper_percentage = (100 + row['PERCENTAGE'].values[0]) / 100
-                    lower_percentage = (100 - row['PERCENTAGE'].values[0]) / 100
+                    upper_percentage = (100 + row['PERCENTAGE'].values[0]) / float(100)
+                    lower_percentage = (100 - row['PERCENTAGE'].values[0]) / float(100)
                     min_price = suggested_price * lower_percentage
                     max_price = suggested_price * upper_percentage
                     into_interval = 0
