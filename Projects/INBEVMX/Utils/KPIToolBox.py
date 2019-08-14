@@ -16,7 +16,6 @@ from Projects.INBEVMX.Utils.Fetcher import INBEVMXQueries
 from KPIUtils_v2.Calculations.SurveyCalculations import Survey
 from KPIUtils_v2.Calculations.CalculationsUtils.GENERALToolBoxCalculations import GENERALToolBox
 
-
 __author__ = 'ilays'
 
 KPI_NEW_TABLE = 'report.kpi_level_2_results'
@@ -86,7 +85,6 @@ class INBEVMXToolBox:
         self.save_parent_kpis()
         self.common_v2.commit_results_data()
 
-
     def calculate_oos_target(self):
         temp = self.oos_sheet[Const.TEMPLATE_STORE_TYPE]
         rows_stores_filter = self.oos_sheet[
@@ -95,7 +93,8 @@ class INBEVMXToolBox:
             weight = 0
         else:
             weight = rows_stores_filter[Const.TEMPLATE_SCORE].values[0]
-        all_data = pd.merge(self.scif[["store_id","product_fk","facings","template_name"]], self.store_info, left_on="store_id",right_on="store_fk")
+        all_data = pd.merge(self.scif[["store_id", "product_fk", "facings", "template_name"]], self.store_info,
+                            left_on="store_id", right_on="store_fk")
         if all_data.empty:
             return 0
         json_policies = self.oos_policies.copy()
@@ -119,7 +118,7 @@ class INBEVMXToolBox:
         selected_row = diff_policies.iloc[diff_table.index[0]][Const.POLICY]
         json_policies = json_policies[json_policies[Const.POLICY] == selected_row]
         products_to_check = json_policies['product_fk'].tolist()
-        products_df = all_data[(all_data['product_fk'].isin(products_to_check))][['product_fk','facings']].fillna(0)
+        products_df = all_data[(all_data['product_fk'].isin(products_to_check))][['product_fk', 'facings']].fillna(0)
         products_df = products_df.groupby('product_fk').sum().reset_index()
         try:
             atomic_pk_sku = self.common_v2.get_kpi_fk_by_kpi_name(Const.OOS_SKU_KPI)
@@ -132,9 +131,9 @@ class INBEVMXToolBox:
         for index, row in products_df.iterrows():
             result = 0 if row['facings'] > 0 else 1
             self.common_v2.write_to_db_result(fk=atomic_pk_sku, numerator_id=row['product_fk'],
-                                        numerator_result=row['facings'], denominator_id=self.store_id,
-                                        result=result, score=result, identifier_parent=Const.OOS_KPI,
-                                        should_enter=True, parent_fk=3)
+                                              numerator_result=row['facings'], denominator_id=self.store_id,
+                                              result=result, score=result, identifier_parent=Const.OOS_KPI,
+                                              should_enter=True, parent_fk=3)
 
         not_existing_products_len = len(products_df[products_df['facings'] == 0])
         result = not_existing_products_len / float(len(products_to_check))
@@ -146,8 +145,8 @@ class INBEVMXToolBox:
             return 0
         score = result * weight
         self.common_v2.write_to_db_result(fk=atomic_pk, numerator_id=self.region_fk,
-                                           numerator_result=not_existing_products_len, denominator_id=self.store_id,
-                                           denominator_result=len(products_to_check), result=result, score=score,
+                                          numerator_result=not_existing_products_len, denominator_id=self.store_id,
+                                          denominator_result=len(products_to_check), result=result, score=score,
                                           identifier_result=Const.OOS_KPI, parent_fk=3)
         self.common_v2.write_to_db_result(fk=result_oos_pk, numerator_id=self.region_fk,
                                           numerator_result=not_existing_products_len, denominator_id=self.store_id,
@@ -165,7 +164,7 @@ class INBEVMXToolBox:
             if kpi not in self.hierarchy_dict:
                 self.common_v2.write_to_db_result(fk=kpi_fk, numerator_id=self.region_fk, denominator_id=self.store_id,
                                                   result=self.result_dict[kpi], score=self.result_dict[kpi],
-                                                    identifier_result=kpi, parent_fk=1)
+                                                  identifier_result=kpi, parent_fk=1)
             else:
                 self.common_v2.write_to_db_result(fk=kpi_fk, numerator_id=self.region_fk,
                                                   denominator_id=self.store_id,
@@ -218,7 +217,10 @@ class INBEVMXToolBox:
 
         # get a single row
         row = self.find_row(rows)
-        if row.empty:
+        if row:
+            if row.empty:
+                return 0
+        elif row is False:
             return 0
 
         target = row[Const.TEMPLATE_TARGET_PRECENT].values[0]
@@ -239,7 +241,6 @@ class INBEVMXToolBox:
                                     denominator_number_of_total_facings)
                 count_result = score if percentage >= target else -1
 
-
         if count_result == -1:
             return 0
 
@@ -250,23 +251,34 @@ class INBEVMXToolBox:
             return 0
 
         self.common_v2.write_to_db_result(fk=atomic_pk, numerator_id=self.region_fk,
-                                           numerator_result=numerator_number_of_facings, denominator_id=self.store_id,
-                                           denominator_result=denominator_number_of_total_facings, result=count_result,
-                                          score=count_result, identifier_result=atomic_name, identifier_parent=parent_name,
+                                          numerator_result=numerator_number_of_facings, denominator_id=self.store_id,
+                                          denominator_result=denominator_number_of_total_facings, result=count_result,
+                                          score=count_result, identifier_result=atomic_name,
+                                          identifier_parent=parent_name,
                                           should_enter=True, parent_fk=3)
         return count_result
 
     def find_row(self, rows):
-        temp = rows[Const.TEMPLATE_STORE_TYPE]
-        rows_stores_filter = rows[(temp.apply(lambda r: self.store_type_filter in [item.strip()
-                                                                                   for item in r.split(",")])) | (temp == "")]
-        temp = rows_stores_filter[Const.TEMPLATE_REGION]
-        rows_regions_filter = rows_stores_filter[(temp.apply(lambda r: self.region_name_filter in [item.strip()
-                                                                                                   for item in r.split(",")])) | (temp == "")]
-        temp = rows_regions_filter[Const.TEMPLATE_ADDITIONAL_ATTRIBUTE_6]
-        rows_att6_filter = rows_regions_filter[(temp.apply(lambda r: self.att6_filter in [item.strip()
-                                                                                          for item in r.split(",")])) | (temp == "")]
-        return rows_att6_filter
+        try:
+            temp = rows[Const.TEMPLATE_STORE_TYPE]
+            rows_stores_filter = rows[(temp.apply(lambda r: self.store_type_filter in [item.strip()
+                                                                                       for item in r.split(",")])) | (
+                                              temp == "")]
+            temp = rows_stores_filter[Const.TEMPLATE_REGION]
+            rows_regions_filter = rows_stores_filter[(temp.apply(lambda r: self.region_name_filter in [item.strip()
+                                                                                                       for item in
+                                                                                                       r.split(
+                                                                                                           ",")])) | (
+                                                             temp == "")]
+            temp = rows_regions_filter[Const.TEMPLATE_ADDITIONAL_ATTRIBUTE_6]
+            rows_att6_filter = rows_regions_filter[(temp.apply(lambda r: self.att6_filter in [item.strip()
+                                                                                              for item in
+                                                                                              r.split(",")])) | (
+                                                           temp == "")]
+            return rows_att6_filter
+
+        except AttributeError:
+            return False
 
     def get_filters_from_row(self, row):
         filters = dict(row)
@@ -418,9 +430,10 @@ class INBEVMXToolBox:
             Log.warning("There is no matching Kpi fk for kpi name: " + atomic_name)
             return 0
         self.common_v2.write_to_db_result(fk=atomic_pk, numerator_id=self.region_fk, numerator_result=0,
-                                        denominator_result=0, denominator_id=self.store_id, result=survey_result,
-                                        score=final_score, identifier_result=atomic_name, identifier_parent=parent_name,
-                                        should_enter=True, parent_fk=3)
+                                          denominator_result=0, denominator_id=self.store_id, result=survey_result,
+                                          score=final_score, identifier_result=atomic_name,
+                                          identifier_parent=parent_name,
+                                          should_enter=True, parent_fk=3)
         return final_score
 
     def get_new_kpi_static_data(self):
