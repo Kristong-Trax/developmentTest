@@ -28,7 +28,6 @@ class TestCBCDAIRYIL(TestFunctionalCase):
         self.data_provider_mock = MagicMock()
         self.data_provider_mock.project_name = 'Test_Project_1'
         self.data_provider_mock.rds_conn = MagicMock()
-        self.project_connector_mock = self.mock_project_connector()
         self.common = self.mock_common()
         self.old_common = self.mock_object('oldCommon')
         self.output = MagicMock()
@@ -46,9 +45,6 @@ class TestCBCDAIRYIL(TestFunctionalCase):
                                'SOME_TEMPLATE'], 'template_group': ['', '', '', '']}
         df = pd.DataFrame(data=d)
         return df
-
-    def mock_project_connector(self):
-        return self.mock_object('PSProjectConnector')
 
     def mock_common(self):
         return self.mock_object('Common')
