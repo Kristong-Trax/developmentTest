@@ -65,7 +65,8 @@ class Results(object):
             #                         # 'Is Nutro Wet Dog food blocked?',
             #                         # 'Is the Meaty Dog Treats segment blocked?',
             #                         # 'Is NUTRO Dry Dog blocked in the Ingredient Transparency feeding philosophy segment?'
-            #                         'Is the Basic & Balanced Dry Dog food feeding philosophy segment blocked?'
+            #                         # 'Is PEDIGREE Dry Dog Food shelved with the Basic & Balanced feeding philosophy segment?'
+            #                         'What percent of non-negotiable items are shelved in the preferred range? - numerator'
             #                         ]:
             #     continue
             # print('~~~~~~~~~~~~~~~~~~~~****************~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~')
@@ -102,7 +103,7 @@ class Results(object):
                 kpi_res = kpi_res[0]
             # print('||||| Result for {} is: {}'.format(atomic['atomic'], kpi_res))
             # if atomic['atomic'] in EYELIGHT_KPIS:
-            #     self._get_prods_from_filters(calculation, atomic)
+            self._get_prods_from_filters(calculation, atomic)
             result = {'result': kpi_res,
                       'set': atomic['set'],
                       'kpi': atomic['kpi'],

@@ -162,6 +162,8 @@ class MarsUsGENERALToolBox:
                 self.match_product_in_scene, **filters)]
         else:
             filtered_df = self.scif[self.get_filter_condition(self.scif, **filters)]
+        with pd.ExcelWriter('/home/samk/Downloads/assort.xlsx') as writer:
+            filtered_df.to_excel(writer)
         if minimum_assortment_for_entity == 1:
             assortment = len(filtered_df[assortment_entity].unique())
         else:
