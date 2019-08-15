@@ -9,7 +9,7 @@ from KPIUtils_v2.Calculations.BaseCalculations import BaseCalculation
 import KPIUtils_v2.Calculations.CalculationsUtils.CalculationUtils as CalculationUtils
 import KPIUtils_v2.Calculations.CalculationsUtils.DefaultValues as Default
 # from Trax.Algo.Calculations.Core.GraphicalModel2.AdjacencyGraphs import AdjacencyGraphBuilder
-from Projects.RINIELSENUS.Utils.AdjacencyGraphs import AdjacencyGraphBuilder
+from Projects.RINIELSENUS.Utils.AdjacencyGraphs_2 import AdjacencyGraphBuilder
 from Trax.Algo.Geometry.Masking.MaskingResultsIO import retrieve_maskings
 # from Projects.RINIELSENUS.Utils.MaskingResultsIO_v2 import retrieve_maskings
 from Trax.Algo.Geometry.Masking.Utils import transform_maskings
