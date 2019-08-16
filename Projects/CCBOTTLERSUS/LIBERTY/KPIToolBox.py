@@ -365,6 +365,8 @@ class LIBERTYToolBox:
         ssd_still = self.does_exist(kpi_line, Const.ATT4)
         if ssd_still:
             ssd_still_scif = base_scif[base_scif['att4'].isin(ssd_still)]
+        else:
+            ssd_still_scif = base_scif
 
         denominator_passing_displays, _ = \
             self.get_number_of_passing_displays(ssd_still_scif)
@@ -372,6 +374,8 @@ class LIBERTYToolBox:
         manufacturer = self.does_exist(kpi_line, Const.MANUFACTURER)
         if manufacturer:
             filtered_scif = ssd_still_scif[ssd_still_scif['manufacturer_name'].isin(manufacturer)]
+        else:
+            filtered_scif = ssd_still_scif
 
         liberty_truck = self.does_exist(kpi_line, Const.LIBERTY_KEY_MANUFACTURER)
         if liberty_truck:
