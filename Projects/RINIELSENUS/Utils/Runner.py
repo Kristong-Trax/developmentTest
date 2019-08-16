@@ -103,7 +103,7 @@ class Results(object):
                 kpi_res = kpi_res[0]
             # print('||||| Result for {} is: {}'.format(atomic['atomic'], kpi_res))
             # if atomic['atomic'] in EYELIGHT_KPIS:
-            self._get_prods_from_filters(calculation, atomic)
+            # self._get_prods_from_filters(calculation, atomic)
             result = {'result': kpi_res,
                       'set': atomic['set'],
                       'kpi': atomic['kpi'],
