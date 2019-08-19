@@ -28,33 +28,38 @@ if __name__ == '__main__':
     Config.init()
     project_name = 'pnghk'
     data_provider = KEngineDataProvider(project_name)
-    sessions = {'7c64c9c4-a439-42af-8b23-2dea2f909f3d': ['185596'],
-                '58f29898-f31f-4182-adb4-c8f1e5c51621': ['192809']}
-    # 'bd812815-649d-4553-8fee-e3e39a9174f7',
-    # '5a7faa1c-3a69-47a8-aac4-19133bb64549',
-    #
-    # 'bd812815-649d-4553-8fee-e3e39a9174f7',
-    # 'aefaf595-d0ac-40a8-8fa5-1f4b1763ed2a',
-    # '5a7faa1c-3a69-47a8-aac4-19133bb64549',
-    # '6cccc451-19b5-42d2-a581-1dcdd5b02491',
-    # '4f43c5ec-c6c9-4139-ac19-55334d17be74',
-    # '41a4abd4-0ee7-490a-868b-9043f162d252',
-    # '8e687c04-ac58-47a4-8000-bd8afd9382d0',
-    # '6dc13c96-5943-42f8-ad26-48f9e5617f0f',
-    # 'ed5bc391-ce81-4d7e-b16d-1de5a573cbe0',  # has smart probe/69066 has hanger probe/69044 has stock
-    # 'ad052993-9609-4aba-a927-dbaaff036280',  # has smart
-    # '6c56a073-c8db-42aa-a491-c38b0c1c4086',  # has smart
-    # 'dca92352-a549-4956-88b0-0811b35137c3',
+    sessions = {
+        # '7c64c9c4-a439-42af-8b23-2dea2f909f3d': ['185596'],
+        #         '58f29898-f31f-4182-adb4-c8f1e5c51621': ['192809']}
+        # '14f1ce60-b974-4649-b72b-06fd138c9f40': []}
+        # '92653457-346d-4b00-bfd6-ceba4ab07ab1': [],
+        # '3032a21c-4b47-45a6-ba60-aa2a6ae90730': [],
+        # '4d0a507c-7ba4-49f6-9177-4b1c4fd4408c': [],
+        # '74038BBC-A81F-4F77-B404-9C252781C927': [],
+        # '8762738e-6104-4a28-b64a-82d46cb31585': [],
+        # '90929e2d-47ef-494e-bfaa-40f4f9df9fef': [],
+        '3032a21c-4b47-45a6-ba60-aa2a6ae90730': [],
+        '4d0a507c-7ba4-49f6-9177-4b1c4fd4408c': [],
+        '74038BBC-A81F-4F77-B404-9C252781C927': [],
+        '8762738e-6104-4a28-b64a-82d46cb31585': [],
+        '90929e2d-47ef-494e-bfaa-40f4f9df9fef': [],
+        '92653457-346d-4b00-bfd6-ceba4ab07ab1': [],
+        '9ef5fb03-8ab0-4cc0-bc39-56679fe0142f': [],
+        '13dde5e5-01d4-4ca3-ab38-9c8c78c8de0e': [],
+        'e1ca39ef-62e0-41f1-8f53-d4ec2b36600b': []
+    }
+
+
     for session in sessions:
         print "Running for {}".format(session)
-        for scene in sessions[session]:
-            print('Calculating scene id: ' + str(scene))
-            data_provider = KEngineDataProvider(project_name)
-            data_provider.load_scene_data(session, scene)
-            output = VanillaOutput()
-            SceneVanillaCalculations(data_provider, output).run_project_calculations()
-            save_scene_item_facts_to_data_provider(data_provider, output)
-            SceneCalculations(data_provider).calculate_kpis()
+        # for scene in sessions[session]:
+        #     print('Calculating scene id: ' + str(scene))
+        #     data_provider = KEngineDataProvider(project_name)
+        #     data_provider.load_scene_data(session, scene)
+        #     output = VanillaOutput()
+        #     SceneVanillaCalculations(data_provider, output).run_project_calculations()
+        #     save_scene_item_facts_to_data_provider(data_provider, output)
+        #     SceneCalculations(data_provider).calculate_kpis()
         data_provider.load_session_data(session)
         output = Output()
         Calculations(data_provider, output).run_project_calculations()

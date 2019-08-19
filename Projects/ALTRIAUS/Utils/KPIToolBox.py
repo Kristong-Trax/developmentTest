@@ -108,7 +108,7 @@ class ALTRIAUSToolBox:
                         .merge(self.scene_info, on='scene_fk', suffixes=['', '_s']) \
                           .merge(self.template_info, on='template_fk', suffixes=['', '_t'])
         except KeyError:
-            Log.error('MPIS cannot be generated!')
+            Log.warning('MPIS cannot be generated!')
             return
         self.adp = AltriaDataProvider(self.data_provider)
 
@@ -119,7 +119,9 @@ class ALTRIAUSToolBox:
         self.calculate_signage_locations_and_widths('Cigarettes')
         self.calculate_signage_locations_and_widths('Smokeless')
         self.calculate_register_type()
+        self.calculate_age_verification()
         self.calculate_assortment()
+        self.calculate_vapor_kpis()
 
         kpi_set_fk = 2
         set_name = \
@@ -155,13 +157,52 @@ class ALTRIAUSToolBox:
                 continue
         return
 
-    def calculate_assortment(self):
-        if self.scif.empty or self.store_assortment.empty:
-            Log.error('Unable to calculate assortment: SCIF or store assortment is empty')
+    def calculate_vapor_kpis(self):
+        category = 'Vapor'
+        relevant_scif = self.scif[self.scif['template_name'] == 'JUUL Merchandising']
+        if relevant_scif.empty:
+            Log.info('No products found for {} category'.format(category))
             return
 
+        relevant_scif = relevant_scif[(relevant_scif['category'].isin([category, 'POS'])) &
+                                      (relevant_scif['brand_name'] == 'Juul')]
+        if relevant_scif.empty:
+            return
+        relevant_product_pks = relevant_scif[relevant_scif['product_type'] == 'SKU']['product_fk'].unique().tolist()
+        relevant_scene_id = self.get_most_frequent_scene(relevant_scif)
+        product_mpis = self.mpis[(self.mpis['product_fk'].isin(relevant_product_pks)) &
+                                 (self.mpis['scene_fk'] == relevant_scene_id)]
+
+        if product_mpis.empty:
+            Log.info('No products found for {} category'.format(category))
+            return
+
+        self.calculate_total_shelves(product_mpis, category, product_mpis)
+
+        longest_shelf = \
+            product_mpis[product_mpis['shelf_number'] ==
+                         self.get_longest_shelf_number(product_mpis,
+                                                       max_shelves_from_top=999)].sort_values(by='rect_x',
+                                                                                              ascending=True)
+
+        if longest_shelf.empty or longest_shelf.isnull().all().all():
+            Log.warning(
+                'The {} category items are in a non-standard location. The {} category will not be calculated.'.format(
+                    category, category))
+            return
+
+        relevant_pos = pd.DataFrame()
+        self.calculate_fixture_width(relevant_pos, longest_shelf, category)
+        return
+
+    def calculate_assortment(self):
+        if self.scif.empty or self.store_assortment.empty:
+            Log.warning('Unable to calculate assortment: SCIF or store assortment is empty')
+            return
+
+        grouped_scif = self.scif.groupby('product_fk', as_index=False)['facings'].sum()
         assortment_with_facings = \
-            pd.merge(self.store_assortment, self.scif[['product_fk', 'facings']], how='left', on='product_fk')
+            pd.merge(self.store_assortment, grouped_scif, how='left', on='product_fk')
         assortment_with_facings.loc[:, 'facings'] = assortment_with_facings['facings'].fillna(0)
 
         for product in assortment_with_facings.itertuples():
@@ -180,7 +221,6 @@ class ALTRIAUSToolBox:
                                           result=number_of_skus_present,
                                           score=score)
 
-
     def calculate_register_type(self):
         relevant_scif = self.scif[(self.scif['product_type'].isin(['POS', 'Other'])) &
                                   (self.scif['category'] == 'POS Machinery')]
@@ -192,6 +232,19 @@ class ALTRIAUSToolBox:
             product_fk = relevant_scif['product_fk'].iloc[0]
 
         kpi_fk = self.common_v2.get_kpi_fk_by_kpi_type('Register Type')
+        self.common_v2.write_to_db_result(kpi_fk, numerator_id=product_fk, denominator_id=self.store_id,
+                                          result=result)
+
+    def calculate_age_verification(self):
+        relevant_scif = self.scif[self.scif['brand_name'].isin(['Age Verification'])]
+        if relevant_scif.empty:
+            result = 0
+            product_fk = 0
+        else:
+            result = 1
+            product_fk = relevant_scif['product_fk'].iloc[0]
+
+        kpi_fk = self.common_v2.get_kpi_fk_by_kpi_type('Age Verification')
         self.common_v2.write_to_db_result(kpi_fk, numerator_id=product_fk, denominator_id=self.store_id,
                                           result=result)
 
@@ -248,7 +301,6 @@ class ALTRIAUSToolBox:
                                                          (scene_matches['status'] == 1)]['width_mm_advance'].sum()
                     scene_filters['bay_number'] = bay
 
-
                     tested_group_linear = scene_matches[self.get_filter_condition(scene_matches, **scene_filters)]
 
                     tested_group_linear_value = tested_group_linear['width_mm_advance'].sum()
@@ -274,8 +326,6 @@ class ALTRIAUSToolBox:
             space_length = 0
 
         return space_length
-
-
 
     def get_filter_condition(self, df, **filters):
         """
@@ -351,7 +401,7 @@ class ALTRIAUSToolBox:
                           ~(relevant_scif['product_name'] == 'General POS Other')]['product_fk'].unique().tolist()
         other_product_and_pos_pks = \
             relevant_scif[relevant_scif['product_type'].isin(excluded_types)]['product_fk'].tolist()
-        relevant_scene_id = relevant_scif['scene_id'].fillna(0).mode().iloc[0]
+        relevant_scene_id = self.get_most_frequent_scene(relevant_scif)
         product_mpis = self.mpis[(self.mpis['product_fk'].isin(relevant_product_pks)) &
                                  (self.mpis['scene_fk'] == relevant_scene_id)]
 
@@ -404,7 +454,9 @@ class ALTRIAUSToolBox:
         relevant_pos = self.adp.get_products_contained_in_displays(pos_mpis, y_axis_threshold=35, debug=False)
 
         if relevant_pos.empty:
-            Log.error('No polygon mask was generated for {} category - cannot compute KPIs'.format(category))
+            Log.warning('No polygon mask was generated for {} category - cannot compute KPIs'.format(category))
+            # we need to attempt to calculate fixture width, even if there's no polygon mask
+            self.calculate_fixture_width(relevant_pos, longest_shelf, category)
             return
 
         relevant_pos = relevant_pos[['product_fk', 'product_name', 'left_bound', 'right_bound', 'center_x', 'center_y']]
@@ -446,12 +498,13 @@ class ALTRIAUSToolBox:
                                                  - len(longest_shelf)).abs().argsort()[:1]].dropna(axis=1)
             locations = relevant_template.columns[2:].tolist()
             right_bound = 0
+            longest_shelf_copy = longest_shelf.copy()
             for location in locations:
                 if right_bound > 0:
                     left_bound = right_bound + 1
                 else:
-                    left_bound = longest_shelf.iloc[:relevant_template[location].iloc[0]]['rect_x'].min()
-                right_bound = longest_shelf.iloc[:relevant_template[location].iloc[0]]['rect_x'].max()
+                    left_bound = longest_shelf_copy.iloc[:relevant_template[location].iloc[0]]['rect_x'].min()
+                right_bound = longest_shelf_copy.iloc[:relevant_template[location].iloc[0]]['rect_x'].max()
                 if locations[-1] == location:
                     right_bound = right_bound + abs(right_bound * 0.05)
                 flip_sign_pos = relevant_pos[(relevant_pos['type'] == 'Flip Sign') &
@@ -463,7 +516,8 @@ class ALTRIAUSToolBox:
                         [location, NO_FLIP_SIGN_PK, 'Flip Sign']
                 else:
                     relevant_pos.loc[flip_sign_pos.index, ['position']] = location
-                longest_shelf.drop(longest_shelf.iloc[:relevant_template[location].iloc[0]].index, inplace=True)
+                longest_shelf_copy.drop(longest_shelf_copy.iloc[:relevant_template[location].iloc[0]].index,
+                                        inplace=True)
         elif category == 'Smokeless':
             # if there are no flip signs found, there are no positions to assign
             number_of_flip_signs = len(relevant_pos[relevant_pos['type'] == 'Flip Sign'])
@@ -496,22 +550,34 @@ class ALTRIAUSToolBox:
             self.common_v2.write_to_db_result(kpi_fk, numerator_id=row.product_fk, denominator_id=row.denominator_id,
                                               result=row.width, score=row.width)
 
-        self.calculate_fixture_width(relevant_pos, category)
+        self.calculate_fixture_width(relevant_pos, longest_shelf, category)
         return
 
-    def calculate_total_shelves(self, product_mpis, category):
+    def calculate_total_shelves(self, longest_shelf, category, product_mpis=None):
         category_fk = self.get_category_fk_by_name(category)
-        total_shelves = product_mpis['shelf_number'].max()
+        if product_mpis is None:
+            product_mpis = self.mpis[(self.mpis['rect_x'] > longest_shelf['rect_x'].min()) &
+                                     (self.mpis['rect_x'] < longest_shelf['rect_x'].max()) &
+                                     (self.mpis['scene_fk'] == longest_shelf['scene_fk'].fillna(0).mode().iloc[0])]
+        total_shelves = len(product_mpis['shelf_number'].unique())
 
         kpi_fk = self.common_v2.get_kpi_fk_by_kpi_name('Total Shelves')
         self.common_v2.write_to_db_result(kpi_fk, numerator_id=category_fk, denominator_id=self.store_id,
                                           result=total_shelves)
 
-    def calculate_fixture_width(self, relevant_pos, category):
+    def calculate_fixture_width(self, relevant_pos, longest_shelf, category):
+        longest_shelf = longest_shelf[longest_shelf['stacking_layer'] == 1]
         category_fk = self.get_category_fk_by_name(category)
         # this is needed to remove intentionally duplicated 'Menu Board' POS 'Headers'
         relevant_pos = relevant_pos.drop_duplicates(subset=['position'])
-        width = relevant_pos[relevant_pos['type'] == 'Header']['width'].sum()
+        try:
+            width = relevant_pos[relevant_pos['type'] == 'Header']['width'].sum()
+        except KeyError:
+            # needed for when 'width' doesn't exist
+            width = 0
+
+        if relevant_pos.empty or width == 0:
+            width = round(len(longest_shelf) / float(self.facings_to_feet_template[category + ' Facings'].iloc[0]))
 
         kpi_fk = self.common_v2.get_kpi_fk_by_kpi_name('Fixture Width')
         self.common_v2.write_to_db_result(kpi_fk, numerator_id=category_fk, denominator_id=self.store_id,
@@ -620,16 +686,24 @@ class ALTRIAUSToolBox:
                                                   - width_in_facings).abs().argsort()[:1]]['POS Width (ft)'].iloc[0]
 
     @staticmethod
-    def get_longest_shelf_number(relevant_mpis):
+    def get_longest_shelf_number(relevant_mpis, max_shelves_from_top=3):
         # returns the shelf_number of the longest shelf
         try:
             longest_shelf = \
-            relevant_mpis[relevant_mpis['shelf_number'] <= 3].groupby('shelf_number').agg({'scene_match_fk': 'count'})[
-                'scene_match_fk'].idxmax()
+                relevant_mpis[relevant_mpis['shelf_number'] <= max_shelves_from_top].groupby('shelf_number').agg(
+                    {'scene_match_fk': 'count'})['scene_match_fk'].idxmax()
         except ValueError:
             longest_shelf = pd.DataFrame()
 
         return longest_shelf
+
+    @staticmethod
+    def get_most_frequent_scene(relevant_scif):
+        try:
+            relevant_scene_id = relevant_scif['scene_id'].fillna(0).mode().iloc[0]
+        except IndexError:
+            relevant_scene_id = 0
+        return relevant_scene_id
 
     def commit(self):
         self.common_v2.commit_results_data()

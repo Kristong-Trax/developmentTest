@@ -10,8 +10,8 @@ import KPIUtils_v2.Calculations.CalculationsUtils.CalculationUtils as Calculatio
 import KPIUtils_v2.Calculations.CalculationsUtils.DefaultValues as Default
 # from Trax.Algo.Calculations.Core.GraphicalModel2.AdjacencyGraphs import AdjacencyGraphBuilder
 from Projects.RINIELSENUS.Utils.AdjacencyGraphs import AdjacencyGraphBuilder
-# from Trax.Algo.Geometry.Masking.MaskingResultsIO import retrieve_maskings
-from Projects.RINIELSENUS.Utils.MaskingResultsIO_v2 import retrieve_maskings
+from Trax.Algo.Geometry.Masking.MaskingResultsIO import retrieve_maskings
+# from Projects.RINIELSENUS.Utils.MaskingResultsIO_v2 import retrieve_maskings
 from Trax.Algo.Geometry.Masking.Utils import transform_maskings
 from Trax.Utils.Logging.Logger import Log
 
@@ -56,7 +56,7 @@ class Block(BaseCalculation):
             self.matches[['probe_match_fk', 'scene_fk']], on=['probe_match_fk'])
         self.matches_df = self.matches.merge(
             self.data_provider.all_products_including_deleted, on='product_fk')
-        self.matches_df = self.matches_df[~(self.matches_df['product_type'].isin(['Irrelevant', 'POS'])) &
+        self.matches_df = self.matches_df[~(self.matches_df['product_type'].isin(['POS'])) &
                                            (self.matches_df['stacking_layer'] > 0)]
         self.matches_df[Block.BLOCK_KEY] = None
 

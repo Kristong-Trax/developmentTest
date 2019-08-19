@@ -38,7 +38,7 @@ class TestKEngineOutOfTheBox(TestFunctionalCase):
         self.assertNotEquals(len(kpi_results), 0)
         connector.disconnect_rds()
     
-    @seeder.seed(["sanofiuz_seed"], ProjectsSanityData())
+    @seeder.seed(["sanofiuz_seed", 'mongodb_products_and_brands_seed'], ProjectsSanityData())
     def test_sanofiuz_sanity(self):
         project_name = ProjectsSanityData.project_name
         data_provider = KEngineDataProvider(project_name)

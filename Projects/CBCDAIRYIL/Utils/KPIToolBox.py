@@ -1,17 +1,14 @@
 # coding=utf-8
-from Trax.Algo.Calculations.Core.DataProvider import Data
-from Trax.Cloud.Services.Connector.Keys import DbUsers
-from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
-from Trax.Utils.Logging.Logger import Log
-from KPIUtils.ParseTemplates import parse_template
-from KPIUtils_v2.DB.CommonV2 import Common
-from KPIUtils_v2.DB.Common import Common as oldCommon
-
-from Projects.CBCDAIRYIL.Utils.Consts import Consts
-from KPIUtils_v2.Calculations.SurveyCalculations import Survey
-from KPIUtils_v2.Calculations.BlockCalculations import Block
-from KPIUtils_v2.Calculations.CalculationsUtils.GENERALToolBoxCalculations import GENERALToolBox
 import pandas as pd
+from Trax.Utils.Logging.Logger import Log
+from KPIUtils_v2.DB.CommonV2 import Common
+from KPIUtils.ParseTemplates import parse_template
+from Projects.CBCDAIRYIL.Utils.Consts import Consts
+from KPIUtils_v2.DB.Common import Common as oldCommon
+from Trax.Algo.Calculations.Core.DataProvider import Data
+from KPIUtils_v2.Calculations.BlockCalculations import Block
+from KPIUtils_v2.Calculations.SurveyCalculations import Survey
+from KPIUtils_v2.Calculations.CalculationsUtils.GENERALToolBoxCalculations import GENERALToolBox
 
 __author__ = 'idanr'
 
@@ -24,8 +21,6 @@ class CBCDAIRYILToolBox:
         self.project_name = self.data_provider.project_name
         self.common = Common(self.data_provider)
         self.old_common = oldCommon(self.data_provider)
-        self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
-        self.session_fk = self.data_provider.session_id
         self.match_product_in_scene = self.data_provider[Data.MATCHES]
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
         self.store_info = self.data_provider[Data.STORE_INFO]
@@ -195,13 +190,17 @@ class CBCDAIRYILToolBox:
             total_scores.append((atomic_score, atomic_weight))
             atomic_fk_lvl_2 = self.common.get_kpi_fk_by_kpi_type(current_atomic[Consts.KPI_ATOMIC_NAME].strip())
             old_atomic_fk = self.get_kpi_fk_by_kpi_name(current_atomic[Consts.KPI_ATOMIC_NAME].strip(), 3)
+            if not atomic_fk_lvl_2 or not old_atomic_fk:
+                Log.warning(Consts.MISSING_KPI_IN_DB.format(current_atomic[Consts.KPI_ATOMIC_NAME].encode('utf-8')))
+                continue
             self.common.write_to_db_result(fk=atomic_fk_lvl_2, numerator_id=Consts.CBC_MANU,
                                            numerator_result=num_result, denominator_id=self.store_id,
                                            weight=round(atomic_weight*100, 2), denominator_result=den_result,
                                            should_enter=True, identifier_parent=kpi_fk,
                                            result=atomic_score, score=atomic_score * atomic_weight)
             self.old_common.old_write_to_db_result(fk=old_atomic_fk, level=3,
-                                                    result=str(format(atomic_score * atomic_weight, '.2f')), score=atomic_score)
+                                                   result=str(format(atomic_score * atomic_weight, '.2f')),
+                                                   score=atomic_score)
         return total_scores
 
     def get_kpi_fk_by_kpi_name(self, kpi_name, kpi_level):
@@ -215,14 +214,15 @@ class CBCDAIRYILToolBox:
             column_key = 'atomic_kpi_fk'
             column_value = 'atomic_kpi_name'
         else:
-            raise ValueError, 'invalid level'
+            raise ValueError('invalid level')
 
         try:
             if column_key and column_value:
-                return self.kpi_static_data[self.kpi_static_data[column_value].str.encode('utf-8') == kpi_name.encode('utf-8')][column_key].values[0]
+                return self.kpi_static_data[
+                    self.kpi_static_data[column_value].str.encode('utf-8') == kpi_name.encode('utf-8')][
+                    column_key].values[0]
 
         except IndexError:
-            Log.error('Kpi name: {}, isnt equal to any kpi name in static table'.format(kpi_name))
             return None
 
     def get_relevant_data_per_atomic(self, atomic_series):
@@ -549,4 +549,3 @@ class CBCDAIRYILToolBox:
                 [facings_counter[product] for product in products if product in facings_counter]) > 1 else 0
         total_score = (score / float(len(self.passed_availability)))*100 if self.passed_availability else 0
         return score, len(self.passed_availability), total_score
-

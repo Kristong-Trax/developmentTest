@@ -1,111 +1,82 @@
-
+import os
 import pandas as pd
-from datetime import datetime
-from OutOfTheBox.Calculations.ManufacturerSOS import ManufacturerFacingsSOSInWholeStore, \
-    ManufacturerFacingsSOSPerSubCategoryInStore
-from OutOfTheBox.Calculations.SubCategorySOS import SubCategoryFacingsSOSPerCategory
+
 from Trax.Algo.Calculations.Core.DataProvider import Data
-from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScript
-from Trax.Cloud.Services.Connector.Keys import DbUsers
-from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
-from Trax.Utils.Logging.Logger import Log
-from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
-from KPIUtils.DIAGEO.ToolBox import DIAGEOToolBox
-from KPIUtils.GlobalProjects.DIAGEO.Utils.Fetcher import DIAGEOQueries
 from KPIUtils.GlobalProjects.DIAGEO.KPIGenerator import DIAGEOGenerator
 from KPIUtils.DB.Common import Common
 from KPIUtils_v2.DB.CommonV2 import Common as CommonV2
+from KPIUtils.GlobalProjects.DIAGEO.Utils.Consts import DiageoKpiNames, Consts
+from KPIUtils.GlobalProjects.DIAGEO.Utils.TemplatesUtil import TemplateHandler
+from KPIUtils.DIAGEO.ParseTemplates import parse_template
+from Trax.Utils.Logging.Logger import Log
 
-__author__ = 'Nidhin'
-
-KPI_RESULT = 'report.kpi_results'
-KPK_RESULT = 'report.kpk_results'
-KPS_RESULT = 'report.kps_results'
-
-
-def log_runtime(description, log_start=False):
-    def decorator(func):
-        def wrapper(*args, **kwargs):
-            calc_start_time = datetime.utcnow()
-            if log_start:
-                Log.info('{} started at {}'.format(description, calc_start_time))
-            result = func(*args, **kwargs)
-            calc_end_time = datetime.utcnow()
-            Log.info('{} took {}'.format(description, calc_end_time - calc_start_time))
-            return result
-        return wrapper
-    return decorator
+__author__ = 'satya'
 
 
 class DIAGEOINToolBox:
-    LEVEL1 = 1
-    LEVEL2 = 2
-    LEVEL3 = 3
-
     def __init__(self, data_provider, output):
-        self.k_engine = BaseCalculationsScript(data_provider, output)
         self.data_provider = data_provider
-        self.project_name = self.data_provider.project_name
-        self.session_uid = self.data_provider.session_uid
-        self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
-        self.match_display_in_scene = self.get_match_display()
         self.output = output
-        self.store_info = self.data_provider[Data.STORE_INFO]
         self.store_id = self.data_provider[Data.STORE_FK]
-        self.visit_date = self.data_provider[Data.VISIT_DATE]
-        self.all_products = self.data_provider[Data.ALL_PRODUCTS]
-        self.match_product_in_scene = self.data_provider[Data.MATCHES]
-        self.set_templates_data = {}
-        self.kpi_results_queries = []
-        self.store_channel = self.store_info['store_type'].values[0]
-        if self.store_channel:
-            self.store_channel = self.store_channel.upper()
-        self.segment = self.get_business_unit_name()
+        self.own_manufacturer_fk = 12
+        self.store_info = self.get_store_info(self.store_id)
+        self.assortment = self.get_assortment_info()
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
-        self.store_type = self.store_info['additional_attribute_1'].values[0]
-        self.kpi_static_data = self.get_kpi_static_data()
         self.common = Common(self.data_provider)
         self.commonV2 = CommonV2(self.data_provider)
-        self.tools = DIAGEOToolBox(self.data_provider, output,
-                                   match_display_in_scene=self.match_display_in_scene)
+        self.scene_info = self.data_provider[Data.SCENES_INFO]
         self.diageo_generator = DIAGEOGenerator(self.data_provider, self.output, self.common)
+        self.template_handler = TemplateHandler(self.data_provider.project_name)
+        local_template_path = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))),
+                                 'Data', 'Template.xlsx')
+        self.bpa_store = parse_template(local_template_path, sheet_name='brand_presence_assortments_store')
+        self.bpa = parse_template(local_template_path, 'brand_presence_assortments')
 
-    def get_match_display(self):
-        """
-        This function extracts the display matches data and saves it into one global data frame.
-        The data is taken from probedata.match_display_in_scene.
-        """
-        query = DIAGEOQueries.get_match_display(self.session_uid)
-        match_display = pd.read_sql_query(query, self.rds_conn.db)
-        return match_display
+    def get_assortment_info(self):
+        query = """SELECT pk, assortment_name FROM pservice.assortment"""
 
-    def get_business_unit_name(self):
-        """
-        This function extracts the static KPI data and saves it into one global data frame.
-        The data is taken from static.kpi / static.atomic_kpi / static.kpi_set.
-        """
-        query = DIAGEOQueries.get_business_unit_name(self.store_id)
-        business_unit_name = pd.read_sql_query(query, self.rds_conn.db)
-        if business_unit_name['business_unit_name'].empty:
-            return ""
-        else:
-            return business_unit_name['business_unit_name'].values[0]
+        return self.perform_query(query)
 
-    def get_kpi_static_data(self):
-        """
-        This function extracts the static KPI data and saves it into one global data frame.
-        The data is taken from static.kpi / static.atomic_kpi / static.kpi_set.
-        """
-        query = DIAGEOQueries.get_all_kpi_data()
-        kpi_static_data = pd.read_sql_query(query, self.rds_conn.db)
-        return kpi_static_data
+    def get_store_info(self, store_id):
+        query = """SELECT st.name as store_name, st.pk as store_fk, st.store_number_1, st.sales_rep_name, st.store_type,
+                           st.distribution_type, st.address_city,
+                           st.customer_name,
+                           st.manager_name,
+                           st.comment as store_comment,
+                           st.test_store,
+                           sta.name state,
+                           st.additional_attribute_1, st.additional_attribute_2, st.additional_attribute_3,
+                           st.additional_attribute_4, st.additional_attribute_5, st.additional_attribute_6,
+                           st.additional_attribute_7, st.additional_attribute_8, st.additional_attribute_9,
+                           st.additional_attribute_10, st.additional_attribute_11, st.additional_attribute_12,
+                           st.additional_attribute_13, st.additional_attribute_14, st.additional_attribute_15,
+                           rg.name as region_name, rg.code as region_code, rg.remarks as region_remarks, st.region_fk,
+                           st.branch_fk, st.retailer_fk, state_fk, r.name as retailer_name
+                    FROM static.stores st
+                    JOIN static.regions rg on rg.pk = st.region_fk
+                    LEFT join static.retailer r on r.pk = st.retailer_fk
+                    LEFT join static.state sta on sta.pk= state_fk
+                    WHERE st.pk = {0};
+                """.format(store_id)
+        return self.perform_query(query)
 
-    def main_calculation(self, set_names):
+    def perform_query(self, query, **kwargs):
+        """
+
+        This function creates a :class: `pandas.DataFrame` using a given cursor\n
+        :param str query: The query
+        :return: A newly created :class:`pandas.DataFrame` object with the results of the query
+        """
+        df = self.data_provider.run_query(query)
+        return df
+
+    def main_calculation(self):
         """
         This function calculates the KPI results.
         """
+
         # # SOS Out Of The Box kpis
-        self.activate_ootb_kpis()
+        self.diageo_generator.activate_ootb_kpis(self.commonV2)
 
         # Global assortment kpis - v2 for API use
         assortment_res_dict_v2 = self.diageo_generator.diageo_global_assortment_function_v2()
@@ -115,348 +86,170 @@ class DIAGEOINToolBox:
         assortment_res_dict_v3 = self.diageo_generator.diageo_global_assortment_function_v3()
         self.commonV2.save_json_to_new_tables(assortment_res_dict_v3)
 
-        for set_name in set_names:
-            if set_name not in self.tools.KPI_SETS_WITHOUT_A_TEMPLATE and set_name not in self.set_templates_data.keys():
+        # Global Secondary Displays function
+        res_json = self.diageo_generator.diageo_global_secondary_display_secondary_function()
+        if res_json:
+            self.commonV2.write_to_db_result(fk=res_json['fk'], numerator_id=1, denominator_id=self.store_id,
+                                             result=res_json['result'])
+        # Local Custom/Client Brand Group Presence
+        self.custom_brand_presence()
+
+        # # Global Brand Blocking KPI
+        # template_data = self.template_handler.download_template(DiageoKpiNames.BRAND_BLOCKING)
+        # results_list = self.diageo_generator.diageo_global_block_together(DiageoKpiNames.BRAND_BLOCKING, template_data)
+        # self.save_results_to_db(results_list)
+
+        # committing to new tables
+        self.commonV2.commit_results_data()
+        # committing to the old tables
+        #self.common.commit_results_data()
+
+    def save_results_to_db(self, results_list):
+        if results_list:
+            for result in results_list:
+                if result is not None:
+                    self.commonV2.write_to_db_result(**result)
+
+    def get_store_policy(self):
+
+        store_policy = ""
+
+        for row_num, row_data in self.bpa_store.iterrows():
+            filter_params = {}
+            for idx in range(1, 7):
                 try:
-                    self.set_templates_data[set_name] = self.tools.download_template(set_name)
-                except:
-                    Log.warning("Couldn't find a template for set name: " + str(set_name))
+                    if len(str(row_data["store_attr_" + str(idx) + "_name"]).strip()) != 0:
+                        filter_params[row_data["store_attr_" + str(idx) + "_name"]] = \
+                            row_data["store_attr_" + str(idx) + "_value"]
+                except Exception as ex:
+                    Log.info("Error:{} filter_params:{}".format(ex, filter_params))
+
+            result = self.store_info.loc[
+                (self.store_info[list(filter_params)] == pd.Series(filter_params)).all(axis=1)]
+
+            if result.empty:
+                continue
+            else:
+                Log.info("store_policy:{} filter_params:{}".format(row_data['store_policy'], filter_params))
+                return row_data['store_policy']
+
+        return store_policy
+
+    def custom_brand_presence(self):
+
+        store_policy = self.get_store_policy().strip()
+
+        if len(store_policy) == 0:
+            message = "store_policy not available for store_fk:{}".format(self.store_id)
+            Log.info(message)
+            return
+
+        brand_group_list = []
+        for row_num_bpa, row_data_bpa in self.bpa.iterrows():
+            store_policies = [x.strip() for x in row_data_bpa['store_policy'].split(',')]
+            if store_policy in store_policies:
+                brand_group_list.append(dict(row_data_bpa))
+
+        brand_groups = pd.DataFrame(brand_group_list)
+
+        if brand_groups.empty:
+            Log.info("No brand groups for the policy:{}".format(store_policy))
+            return
+
+        brand_group_names = brand_groups['brand_group_name'].drop_duplicates()
+
+        list_results = []
+        assortment_fk = 0
+
+        for brand_group_name in brand_group_names:
+            brand_group = brand_groups[brand_groups['brand_group_name'] == brand_group_name]
+            dict_result = dict()
+
+            for row_num_brand_group, row_data_brand_group in brand_group.iterrows():
+                assortment = self.assortment[self.assortment['assortment_name'] == row_data_brand_group['brand_group_name']]
+                if assortment.empty:
                     continue
 
-            if set_name in ('Secondary Displays', 'Secondary'):
-                # Global function
-                res_dict = self.diageo_generator.diageo_global_secondary_display_secondary_function()
+                assortment_fk = assortment.iloc[0]['pk']
+                template_name = row_data_brand_group['scene_type']
 
-                # Saving to new tables
-                if res_dict:
-                    self.commonV2.write_to_db_result(fk=res_dict['fk'], numerator_id=1, denominator_id=self.store_id,
-                                                     result=res_dict['result'])
+                df = self.scif[(self.scif['template_name'] == template_name) & (self.scif['facings'] > 0)]
+                if df.empty:
+                    template_fk = 0
+                else:
+                    template_fk = df.iloc[0]['template_fk']
 
-                # Saving to old tables
-                set_score = self.tools.calculate_assortment(assortment_entity='scene_id',
-                                                            location_type='Secondary Shelf')
-                self.save_level2_and_level3(set_name, set_name, set_score)
+                ean_codes_found = []
+                ean_codes = [x.strip() for x in row_data_brand_group['ean_code_list'].split(',')]
+                for row_num_2, row_data_2 in df.iterrows():
+                    for ean_code in ean_codes:
+                        if row_data_2['product_ean_code'] == ean_code:
+                            ean_codes_found.append(ean_code)
 
-            # elif set_name == 'Visible to Customer':
-            #
-            #     # Global function
-            #     sku_list = filter(None, self.scif[self.scif['product_type'] == 'SKU'].product_ean_code.tolist())
-            #     res_dict = self.diageo_generator.diageo_global_visible_percentage(sku_list)
-            #
-            #     if res_dict:
-            #         # Saving to new tables
-            #         parent_res = res_dict[-1]
-            #         for r in res_dict:
-            #             self.commonV2.write_to_db_result(**r)
-            #
-            #         # Saving to old tables
-            #         set_score = result = parent_res['result']
-            #         self.save_level2_and_level3(set_name=set_name, kpi_name=set_name, score=result)
-            #
-            #     # filters = {self.tools.VISIBILITY_PRODUCTS_FIELD: 'Y'}
-            #     # set_score = self.tools.calculate_visible_percentage(visible_filters=filters)
-            #     # self.save_level2_and_level3(set_name, set_name, set_score)
+                result = 0
+                if len(ean_codes_found) >= int(row_data_brand_group['target']):
+                    result = 1
 
-            # elif set_name in ('MPA', 'New Products'):
-            #     set_score = self.calculate_assortment_sets(set_name)
-            # elif set_name in ('POSM',):
-            #     set_score = self.calculate_posm_sets(set_name)
-            else:
-                continue
+                dict_result['fk'] = 3478
+                if template_name == 'Back Bar':
+                    dict_result['numerator_id'] = template_fk
+                    dict_result['numerator_result'] = result
+                elif template_name == 'Menu':
+                    dict_result['denominator_id'] = template_fk
+                    dict_result['denominator_result'] = result
 
-            if set_score == 0:
-                pass
-            elif set_score is False:
-                continue
+            if len(dict_result.keys())>0:
+                # below code is added when Menu is found and Back Bar scene is missing or vice-versa
+                dict_result['numerator_id'] = 0 if 'numerator_id' not in dict_result.keys() else dict_result[
+                    'numerator_id']
+                dict_result['numerator_result'] = 0 if 'numerator_result' not in dict_result.keys() else dict_result[
+                    'numerator_result']
+                dict_result['denominator_id'] = 0 if 'denominator_id' not in dict_result.keys() else dict_result[
+                    'denominator_id']
+                dict_result['denominator_result'] = 0 if 'denominator_result' not in dict_result.keys() else \
+                dict_result['denominator_result']
 
-            set_fk = self.kpi_static_data[self.kpi_static_data['kpi_set_name']
-                                          == set_name]['kpi_set_fk'].values[0]
-            self.write_to_db_result(set_fk, set_score, self.LEVEL1)
+                net_result = int(dict_result['numerator_result']) + int(dict_result['denominator_result'])
+                net_result = 1 if net_result > 1 else net_result
 
-        # commiting to new tables
-        self.commonV2.commit_results_data()
+                dict_result['context_id'] = assortment_fk
+                dict_result['result'] = net_result
+                dict_result['score'] = net_result
+                list_results.append(dict_result)
 
-    def activate_ootb_kpis(self):
-        # FACINGS_SOS_MANUFACTURER_IN_WHOLE_STORE - level 1
-        sos_store_fk = self.commonV2.get_kpi_fk_by_kpi_name('SOS OUT OF STORE')
-        sos_store = ManufacturerFacingsSOSInWholeStore(data_provider=self.data_provider,
-                                                       kpi_definition_fk=sos_store_fk).calculate()
-        # FACINGS_SOS_CATEGORY_IN_WHOLE_STORE - level 2
-        sos_cat_out_of_store_fk = self.commonV2.get_kpi_fk_by_kpi_name('SOS CATEGORY OUT OF STORE')
-        sos_cat_out_of_store = self.calculate_sos_of_cat_of_out_of_store_new(
-            sos_cat_out_of_store_fk)
+        df_results = pd.DataFrame(list_results)
 
-        # FACINGS_SOS_SUB_CATEGORY_OUT_OF_CATEGORY - level 3
-        sos_sub_cat_out_of_cat_fk = self.commonV2.get_kpi_fk_by_kpi_name(
-            'SOS SUB CATEGORY OUT OF CATEGORY')
-        sos_sub_cat_out_of_cat = SubCategoryFacingsSOSPerCategory(data_provider=self.data_provider,
-                                                                  kpi_definition_fk=sos_sub_cat_out_of_cat_fk).calculate()
+        self.calculate_brand_presence_overall_score(df_results)
 
-        # FACINGS_SOS_MANUFACTURER_OUT_OF_SUB_CATEGORY - level 4
-        sos_man_out_of_sub_cat_fk = self.commonV2.get_kpi_fk_by_kpi_name(
-            'SOS MANUFACTURER OUT OF SUB CATEGORY')
-        sos_man_out_of_sub_cat = ManufacturerFacingsSOSPerSubCategoryInStore(
-            data_provider=self.data_provider, kpi_definition_fk=sos_man_out_of_sub_cat_fk).calculate()
+        for row_num_results, row_data_results in df_results.iterrows():
+            self.commonV2.write_to_db_result(fk=row_data_results['fk'],
+                                             numerator_id=row_data_results['numerator_id'],
+                                             numerator_result=row_data_results['numerator_result'],
+                                             denominator_id=row_data_results['denominator_id'],
+                                             denominator_result=row_data_results['denominator_result'],
+                                             context_id=row_data_results['context_id'],
+                                             score=row_data_results['result'],
+                                             result=row_data_results['result'])
 
-        # FACINGS_SOS_BRAND_OUT_OF_SUB_CATEGORY_IN_WHOLE_STORE - level 5
-        sos_brand_out_of_sub_cat_fk = self.commonV2.get_kpi_fk_by_kpi_name(
-            'SOS BRAND OUT OF SUB CATEGORY')
-        sos_brand_out_of_sub_cat = self.calculate_sos_of_brand_out_of_manufacturer_in_sub_cat(
-            sos_brand_out_of_sub_cat_fk)
+        print df_results
 
-        # Savings results in Hierarchy
-        self.save_hierarchy(sos_store, sos_cat_out_of_store, sos_sub_cat_out_of_cat, sos_man_out_of_sub_cat,
-                            sos_brand_out_of_sub_cat)
+    def calculate_brand_presence_overall_score(self, df):
+        fk = 3479
+        numerator_id = self.own_manufacturer_fk
+        numerator_result = df['result'].sum()
+        denominator_id = self.store_id
+        denominator_result = df.shape[0]
+        score = 0.0
 
-    def calculate_sos_of_brand_out_of_manufacturer_in_sub_cat(self, kpi_fk):
-        res_list = []
-        res_dict = dict()
-        # Get rid of Irrelevant and Empty types and keep only facings > 1
-        filtered_scif = self.scif[
-            ~self.scif['product_type'].isin(['Irrelevant', 'Empty']) & self.scif['facings_ign_stack'] > 0]
+        try:
+            score = numerator_result / float(denominator_result)
+        except Exception as ex:
+            print (ex)
 
-        # Filter by each Sub Category and Manufacturer
-        sub_cat_fk_list = filtered_scif['sub_category_fk'].unique().tolist()
-        for sub_cat in sub_cat_fk_list:
-            filtered_scif_by_sub_cat = filtered_scif[filtered_scif['sub_category_fk'] == sub_cat]
-            list_of_relevant_manufacturers = filtered_scif_by_sub_cat['manufacturer_fk'].unique(
-            ).tolist()
-            for manu_fk in list_of_relevant_manufacturers:
-                filtered_scif_by_sub_cat_and_manufacturer = filtered_scif_by_sub_cat[
-                    filtered_scif_by_sub_cat['manufacturer_fk'] == manu_fk]
-                denominator_result = filtered_scif_by_sub_cat_and_manufacturer['facings_ign_stack'].sum(
-                )
-
-                # Calculate results per Brand
-                list_of_relevant_brands = filtered_scif_by_sub_cat_and_manufacturer['brand_fk'].unique(
-                ).tolist()
-                for brand_fk in list_of_relevant_brands:
-                    filtered_scif_by_brand = filtered_scif_by_sub_cat_and_manufacturer[
-                        filtered_scif_by_sub_cat_and_manufacturer['brand_fk'] == brand_fk]
-                    facings_brand_results = filtered_scif_by_brand['facings_ign_stack'].sum()
-                    result_for_brand = facings_brand_results / denominator_result
-
-                    # Preparing the results' dictionary
-                    res_dict['kpi_definition_fk'] = kpi_fk
-                    res_dict['numerator_id'] = brand_fk
-                    res_dict['numerator_result'] = facings_brand_results
-                    res_dict['denominator_id'] = int(sub_cat)
-                    res_dict['denominator_result'] = denominator_result
-                    res_dict['identifier_result'] = (int(brand_fk), int(sub_cat), int(manu_fk))
-                    res_dict['identifier_parent'] = int(manu_fk), (int(sub_cat))
-                    res_dict['result'] = result_for_brand
-                    res_dict['score'] = result_for_brand
-                    res_list.append(res_dict.copy())
-        return res_list
-
-    def calculate_sos_of_cat_of_out_of_store_new(self, kpi_fk):
-        res_list = []
-        res_dict = dict()
-        # Get rid of Irrelevant and Empty types and keep only facings ignore stacking > 1
-        filtered_scif = self.scif[
-            ~self.scif['product_type'].isin(['Irrelevant', 'Empty']) & self.scif['facings_ign_stack'] > 0]
-        denominator_result = filtered_scif['facings_ign_stack'].sum()
-        categories_fk_list = filtered_scif['category_fk'].unique().tolist()
-
-        # Calculate result per category (using facings_ign_stack!)
-        for category_fk in categories_fk_list:
-            filtered_scif_by_category = filtered_scif[filtered_scif['category_fk'] == category_fk]
-            facings_category_result = filtered_scif_by_category['facings_ign_stack'].sum()
-            result_for_category = facings_category_result / denominator_result
-
-            # Preparing the results' dictionary
-            res_dict['kpi_definition_fk'] = kpi_fk
-            res_dict['numerator_id'] = category_fk
-            res_dict['numerator_result'] = facings_category_result
-            res_dict['denominator_id'] = self.store_id
-            res_dict['denominator_result'] = denominator_result
-            res_dict['result'] = result_for_category
-            res_dict['score'] = result_for_category
-            res_list.append(res_dict.copy())
-        return res_list
-
-    def save_hierarchy(self, level_1, level_2, level_3, level_4, level_5):
-        for i in level_1:
-            res = i.to_dict
-            kpi_identifier = "level_1"
-            self.commonV2.write_to_db_result(fk=res['kpi_definition_fk'], numerator_id=res['numerator_id'],
-                                             denominator_id=res['denominator_id'],
-                                             numerator_result=res['numerator_result'],
-                                             denominator_result=res['denominator_result'], result=res['result'],
-                                             score=res['result'],
-                                             identifier_result=kpi_identifier, should_enter=False)
-
-        for res in level_2:
-            kpi_identifier = "level_2_"+str(int(res['numerator_id']))
-            parent_identifier = "level_1"
-            self.commonV2.write_to_db_result(fk=res['kpi_definition_fk'], numerator_id=res['numerator_id'],
-                                             denominator_id=res['denominator_id'],
-                                             numerator_result=res['numerator_result'],
-                                             denominator_result=res['denominator_result'], result=res['result'],
-                                             score=res['result'],
-                                             identifier_result=kpi_identifier,
-                                             identifier_parent=parent_identifier, should_enter=True)
-
-        for i in level_3:
-            res = i.to_dict
-            kpi_identifier = str(int(res['numerator_id']))
-            parent_identifier = "level_2_"+str(int(res['denominator_id']))
-            self.commonV2.write_to_db_result(fk=res['kpi_definition_fk'], numerator_id=res['numerator_id'],
-                                             denominator_id=res['denominator_id'],
-                                             numerator_result=res['numerator_result'],
-                                             denominator_result=res['denominator_result'], result=res['result'],
-                                             score=res['result'],
-                                             identifier_result=kpi_identifier,
-                                             identifier_parent=parent_identifier, should_enter=True)
-
-        for i in level_4:
-            res = i.to_dict
-            kpi_identifier = "level_4_"+str((int(res['numerator_id']), int(res['denominator_id'])))
-            parent_identifier = str(int(res['denominator_id']))
-            self.commonV2.write_to_db_result(fk=res['kpi_definition_fk'], numerator_id=res['numerator_id'],
-                                             denominator_id=res['denominator_id'],
-                                             numerator_result=res['numerator_result'],
-                                             denominator_result=res['denominator_result'], result=res['result'],
-                                             score=res['result'],
-                                             identifier_result=kpi_identifier,
-                                             identifier_parent=parent_identifier, should_enter=True)
-
-        for res in level_5:
-            kpi_identifier = "level_5_"+str(res['identifier_result'])
-            parent_identifier = "level_4_"+str(res['identifier_parent'])
-            self.commonV2.write_to_db_result(fk=res['kpi_definition_fk'], numerator_id=res['numerator_id'],
-                                             denominator_id=res['denominator_id'],
-                                             numerator_result=res['numerator_result'],
-                                             denominator_result=res['denominator_result'], result=res['result'],
-                                             score=res['result'],
-                                             identifier_result=kpi_identifier, identifier_parent=parent_identifier,
-                                             should_enter=True)
-
-    def save_level2_and_level3(self, set_name, kpi_name, score):
-        """
-        Given KPI data and a score, this functions writes the score for both KPI level 2 and 3 in the DB.
-        """
-        kpi_data = self.kpi_static_data[(self.kpi_static_data['kpi_set_name'] == set_name) &
-                                        (self.kpi_static_data['kpi_name'] == kpi_name)]
-        kpi_fk = kpi_data['kpi_fk'].values[0]
-        atomic_kpi_fk = kpi_data['atomic_kpi_fk'].values[0]
-        self.write_to_db_result(kpi_fk, score, self.LEVEL2)
-        self.write_to_db_result(atomic_kpi_fk, score, self.LEVEL3)
-
-    def calculate_posm_sets(self, set_name):
-        """
-        This function calculates every POSM-typed KPI from the relevant sets, and returns the set final score.
-        """
-        scores = []
-        for params in self.set_templates_data[set_name]:
-            if self.store_channel is None:
-                break
-
-            kpi_res = self.tools.calculate_posm(display_name=params.get(self.tools.DISPLAY_NAME))
-            score = 1 if kpi_res > 0 else 0
-            if params.get(self.store_type) == self.tools.RELEVANT_FOR_STORE:
-                scores.append(score)
-
-            if score == 1 or params.get(self.store_type) == self.tools.RELEVANT_FOR_STORE:
-                self.save_level2_and_level3(set_name, params.get(self.tools.DISPLAY_NAME), score)
-
-        if not scores:
-            return False
-        set_score = (sum(scores) / float(len(scores))) * 100
-        return set_score
-
-    def calculate_assortment_sets(self, set_name):
-        """
-        This function calculates every Assortment-typed KPI from the relevant sets, and returns the set final score.
-        """
-        scores = []
-        segment = '{};{}'.format(self.store_type, self.segment)
-        for params in self.set_templates_data[set_name]:
-            if params.get(segment, '').capitalize() in (self.tools.RELEVANT_FOR_STORE,
-                                                        self.tools.OR_OTHER_PRODUCTS):
-
-                object_type = self.tools.ENTITY_TYPE_CONVERTER.get(params.get(self.tools.ENTITY_TYPE),
-                                                                   'product_ean_code')
-                objects = [str(params.get(self.tools.PRODUCT_EAN_CODE,
-                                          params.get(self.tools.PRODUCT_EAN_CODE2, '')))]
-                if params.get(self.store_type) == self.tools.OR_OTHER_PRODUCTS:
-                    additional_objects = str(params.get(self.tools.ADDITIONAL_SKUS)).split(',')
-                    objects.extend(additional_objects)
-                filters = {object_type: objects}
-                result = self.tools.calculate_assortment(**filters)
-                score = 1 if result > 0 else 0
-                scores.append(score)
-
-                self.save_level2_and_level3(set_name, params.get(self.tools.PRODUCT_NAME), score)
-
-        if not scores:
-            return False
-        set_score = (sum(scores) / float(len(scores))) * 100
-        return set_score
-
-    def write_to_db_result(self, fk, score, level):
-        """
-        This function the result data frame of every KPI (atomic KPI/KPI/KPI set),
-        and appends the insert SQL query into the queries' list, later to be written to the DB.
-        """
-        attributes = self.create_attributes_dict(fk, score, level)
-        if level == self.LEVEL1:
-            table = KPS_RESULT
-        elif level == self.LEVEL2:
-            table = KPK_RESULT
-        elif level == self.LEVEL3:
-            table = KPI_RESULT
-        else:
-            return
-        query = insert(attributes, table)
-        self.kpi_results_queries.append(query)
-
-    def create_attributes_dict(self, fk, score, level):
-        """
-        This function creates a data frame with all attributes needed for saving in KPI results tables.
-
-        """
-        score = round(score, 2)
-        if level == self.LEVEL1:
-            kpi_set_name = self.kpi_static_data[self.kpi_static_data['kpi_set_fk']
-                                                == fk]['kpi_set_name'].values[0]
-            score_type = '%' if kpi_set_name in self.tools.KPI_SETS_WITH_PERCENT_AS_SCORE else ''
-            attributes = pd.DataFrame([(kpi_set_name, self.session_uid, self.store_id, self.visit_date.isoformat(),
-                                        format(score, '.2f'), score_type, fk)],
-                                      columns=['kps_name', 'session_uid', 'store_fk', 'visit_date', 'score_1',
-                                               'score_2', 'kpi_set_fk'])
-
-        elif level == self.LEVEL2:
-            kpi_name = self.kpi_static_data[self.kpi_static_data['kpi_fk']
-                                            == fk]['kpi_name'].values[0].replace("'", "\\'")
-            attributes = pd.DataFrame([(self.session_uid, self.store_id, self.visit_date.isoformat(),
-                                        fk, kpi_name, score)],
-                                      columns=['session_uid', 'store_fk', 'visit_date', 'kpi_fk', 'kpk_name', 'score'])
-        elif level == self.LEVEL3:
-            data = self.kpi_static_data[self.kpi_static_data['atomic_kpi_fk'] == fk]
-            atomic_kpi_name = data['atomic_kpi_name'].values[0].replace("'", "\\'")
-            kpi_fk = data['kpi_fk'].values[0]
-            kpi_set_name = self.kpi_static_data[self.kpi_static_data['atomic_kpi_fk']
-                                                == fk]['kpi_set_name'].values[0]
-            attributes = pd.DataFrame([(atomic_kpi_name, self.session_uid, kpi_set_name, self.store_id,
-                                        self.visit_date.isoformat(), datetime.utcnow().isoformat(),
-                                        score, kpi_fk, fk, None, None)],
-                                      columns=['display_text', 'session_uid', 'kps_name', 'store_fk', 'visit_date',
-                                               'calculation_time', 'score', 'kpi_fk', 'atomic_kpi_fk', 'threshold',
-                                               'result'])
-        else:
-            attributes = pd.DataFrame()
-        return attributes.to_dict()
-
-    @log_runtime('Saving to DB')
-    def commit_results_data(self):
-        """
-        This function writes all KPI results to the DB, and commits the changes.
-        """
-        cur = self.rds_conn.db.cursor()
-        delete_queries = DIAGEOQueries.get_delete_session_results_query_old_tables(self.session_uid)
-        for query in delete_queries:
-            cur.execute(query)
-        for query in self.kpi_results_queries:
-            cur.execute(query)
-        self.rds_conn.db.commit()
+        self.commonV2.write_to_db_result(fk=fk,
+                                         numerator_id=numerator_id,
+                                         numerator_result=numerator_result,
+                                         denominator_id=denominator_id,
+                                         denominator_result=denominator_result,
+                                         score=score,
+                                         result=score)

@@ -18,6 +18,7 @@ class Const(object):
         INDEPENDENT: {ON: [ON_TRADE_INDEPENDENT], OFF: [OFF_TRADE_INDEPENDENT]}}
     # KPIs columns:
     KPI_NAME, KPI_GROUP, TARGET, WEIGHT = "KPI Name", "KPI Group", "Target", "Weight"
+    PREVIOUS_WEIGHT, SWITCH_DATE = "Previous Weight", "Switch Date"
     TEMPLATE_GROUP = "Template Group/ Scene Type"
     # minimum shelf columns:
     SHELF_NAME = "Shelf Name"
@@ -85,7 +86,7 @@ class Const(object):
             MANUFACTURER: 'Menu Share National - Manufacturer Level', KPI_NAME: MENU,
             TEMPLATE: "Menu Share - Template Score", SUB_BRAND: 'Menu Share - Brand Variant Level'}}
     DB_ASSORTMENTS_NAMES = {OFF: "Assortment off Trade", ON: "Assortment on Trade",
-                            INDEPENDENT: "independent_display", BACK_BAR: "Assortment on Trade"}
+                            INDEPENDENT: "independent_display", BACK_BAR: "Assortment Back Bar"}
 
     PRODUCT_FK, STANDARD_TYPE, PASSED, FACINGS = "product_fk", "standard_type", "passed", "facings"
     COLUMNS_FOR_DISPLAY = [MANUFACTURER, PRODUCT_FK, PASSED]

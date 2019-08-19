@@ -5,10 +5,7 @@ from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScrip
 # from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
 
 from Projects.DIAGEOES.KPIGenerator import DIAGEOESGenerator
-from KPIUtils.GlobalProjects.DIAGEO.KPIGenerator import DIAGEOGenerator
-from KPIUtils.DB.Common import Common
 
-__author__ = 'Nimrod'
 
 
 class DIAGEOESCalculations(BaseCalculationsScript):
