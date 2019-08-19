@@ -2446,7 +2446,8 @@ class MARSRU_PRODKPIToolBox:
     @kpi_runtime()
     def calculate_mars_facings_per_scene_type(self):
         kpi_fk = self.common.get_kpi_fk_by_kpi_type(MARS_FACINGS_PER_SCENE_TYPE_KPI_NAME)
-        dict_to_calculate = {'population': {'include': [{'template_group': MOTIVATION_PROGRAM_SCENE_TYPE_NAME}]}}
+        dict_to_calculate = {'population': {'include': [{'template_group': MOTIVATION_PROGRAM_SCENE_TYPE_NAME,
+                                                         'manufacturer_name': MARS}]}}
         df = self.parser.filter_df(dict_to_calculate, self.scif)
         if df.empty:
             return
