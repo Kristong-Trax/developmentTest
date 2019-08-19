@@ -2455,6 +2455,6 @@ class MARSRU_PRODKPIToolBox:
         df = self.parser.filter_df(dict_to_calculate, df)
         scene_id = df['scene_fk'].values[0]
         scene_type = df['template_fk'].values[0]
-        result = df['facings_ign_stack'].sum()
+        result = df['facings'].sum()
         self.common.write_to_db_result(fk=kpi_fk, numerator_id=scene_type, denominator_id=self.store_id,
                                        numerator_result=scene_id, result=result, score=result)
