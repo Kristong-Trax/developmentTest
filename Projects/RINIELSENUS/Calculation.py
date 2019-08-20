@@ -103,10 +103,3 @@ if __name__ == '__main__':
         output = Output()
         MarsUsCalculations(data_provider, output).run_project_calculations()
         print('session took {} minutes to calculate'.format((time.time() - s)/60.0))
-
-
-
-        # from Trax.Cloud.Services.Connector.Credentials import CredentialsFactory
-
-        # my_secret = CredentialsFactory.get_secret('mongo', 'services_mongo')
-        # my_secret = CredentialsFactory.get_secret('devops', 'mysql_devops')

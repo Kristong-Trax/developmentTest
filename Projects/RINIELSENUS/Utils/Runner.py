@@ -104,7 +104,7 @@ class Results(object):
             if isinstance(kpi_res, tuple):
                 errata = [i for i in kpi_res[1:]]
                 kpi_res = kpi_res[0]
-            print('||||| Result for {} is: {}'.format(atomic['atomic'], kpi_res))
+            # print('||||| Result for {} is: {}'.format(atomic['atomic'], kpi_res))
 
             result = {'result': kpi_res,
                       'set': atomic['set'],
