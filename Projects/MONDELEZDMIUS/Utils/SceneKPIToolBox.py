@@ -89,25 +89,40 @@ class SceneMONDELEZDMIUSToolBox:
         score = 0
 
         if not self.mdis.empty:
-            for i, row in self.mdis.iterrows():
-                try:
-                    new_score = \
-                    self.points_template['score'][self.points_template['display'] == row['display_name']].iloc[0]
-                    score = new_score + score
-                except:
-                    pass
+            merged_mdis = self.mdis.merge(self.points_template, how='left', left_on='display_name', right_on='display')
+            not_allowed_duplicate_df = merged_mdis[merged_mdis['multiple'] == 'n']
+            not_allowed_duplicate_df.drop_duplicates(subset='display_name', keep='first', inplace=True)
+            allowed_duplicate_df = merged_mdis[merged_mdis['multiple'] == 'y']
+            fixed_df = pd.concat([not_allowed_duplicate_df, allowed_duplicate_df])
+            score = int(fixed_df['score'].sum())
+
+            #     try:
+            #         new_score = \
+            #         self.points_template['score'][self.points_template['display'] == row['display_name']].iloc[0]
+            #         score = new_score + score
+            #     except:
+            #         pass
 
             self.common.write_to_db_result(fk=vtw_kpi_fk, numerator_id=self.manufacturer_fk, numerator_result=score,
                                            denominator_id=self.store_id, denominator_result=1,
                                            result=score, score=score, scene_result_fk=self.scene, should_enter=True,
                                            by_scene=True)
 
+            # for i, row in self.mdis.iterrows():
             try:
-                for display in self.mdis.display_name.unique().tolist():
-                    vehicle_display_fk = row['display_fk']
-                    display_count = len(self.mdis[self.mdis['display_name'] == display])
+                for row in fixed_df[['display_name', 'display_fk']].itertuples():
+                    vehicle_display_fk = row.display_fk
+
+                    multiple = \
+                    self.points_template['multiple'][self.points_template['display'] == row.display_name].iloc[0]
+
                     display_point = int(
-                        self.points_template['score'][self.points_template['display'] == row['display_name']].iloc[0])
+                        self.points_template['score'][self.points_template['display'] == row.display_name].iloc[0])
+                    if multiple == 'y':
+                        display_count = len(fixed_df[fixed_df['display_name'] == row.display_name])
+
+                    else:
+                        display_count = 1
                     vehicle_score = display_count * display_point
                     self.common.write_to_db_result(fk=vehicle_kpi_fk, numerator_id=vehicle_display_fk,
                                                    numerator_result=display_count,
