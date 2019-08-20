@@ -46,7 +46,6 @@ class CCUSGenerator:
         self.calculate_validation()
         self.calculate_pillars_programs()
         self.calculate_jeff()
-        self.calculate_sovi()
 
         self.common.commit_results_data()
     @log_runtime('Manufacturer Displays Calculations')
@@ -69,11 +68,6 @@ class CCUSGenerator:
     @log_runtime('JEFF Calculations')
     def calculate_jeff(self):
         tool_box = JEFFToolBox(self.data_provider, self.output, self.common)
-        tool_box.main_calculation()
-
-    @log_runtime('SOVI Calculations')
-    def calculate_sovi(self):
-        tool_box = SOVIToolBox(self.data_provider, self.output, self.common)
         tool_box.main_calculation()
 
     # @log_runtime('OBBO Calculations')
