@@ -443,7 +443,7 @@ class TestMarsuaeSand(TestFunctionalCase):
         param_row = self.get_parameter_series_for_kpi_calculation(store_atomics,
                                                                   'Gum / Fruity Checkout Compliance')
         tool_box.calculate_atomic_results(param_row)
-        expected_result = {'kpi_fk': 3008, 'result': 2, 'score': 1, 'weight': 40, 'score_by_weight': 40}
+        expected_result = {'kpi_fk': 3008, 'result': 100, 'score': 1, 'weight': 40, 'score_by_weight': 40}
         check = self.check_results(tool_box.atomic_kpi_results, expected_result)
         self.assertEquals(check, 1)
 
@@ -456,7 +456,7 @@ class TestMarsuaeSand(TestFunctionalCase):
         param_row = self.get_parameter_series_for_kpi_calculation(store_atomics,
                                                                   'Gum / Fruity Checkout Compliance')
         tool_box.calculate_atomic_results(param_row)
-        expected_result = {'kpi_fk': 3008, 'result': 1, 'score': 1, 'weight': 40, 'score_by_weight': 40}
+        expected_result = {'kpi_fk': 3008, 'result': 100, 'score': 1, 'weight': 40, 'score_by_weight': 40}
         check = self.check_results(tool_box.atomic_kpi_results, expected_result)
         self.assertEquals(check, 1)
 

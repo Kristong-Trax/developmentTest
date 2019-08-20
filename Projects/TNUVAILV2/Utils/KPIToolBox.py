@@ -25,7 +25,7 @@ class TNUVAILToolBox:
         self.own_manufacturer_fk = int(self.data_provider.own_manufacturer.param_value.values[0])
         self.db_handler = DBHandler(self.data_provider.project_name, self.data_provider.session_uid)
         self.previous_oos_results = self.db_handler.get_last_session_oos_results()
-        self.kpi_result_types = self.db_handler.get_kpi_result_type()
+        self.kpi_result_types = self.db_handler.get_kpi_result_value()
         self.oos_store_results = list()
 
     def main_calculation(self):

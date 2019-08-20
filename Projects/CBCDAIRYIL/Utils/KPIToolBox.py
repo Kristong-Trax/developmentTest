@@ -1,17 +1,14 @@
 # coding=utf-8
-from Trax.Algo.Calculations.Core.DataProvider import Data
-from Trax.Cloud.Services.Connector.Keys import DbUsers
-from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
-from Trax.Utils.Logging.Logger import Log
-from KPIUtils.ParseTemplates import parse_template
-from KPIUtils_v2.DB.CommonV2 import Common
-from KPIUtils_v2.DB.Common import Common as oldCommon
-
-from Projects.CBCDAIRYIL.Utils.Consts import Consts
-from KPIUtils_v2.Calculations.SurveyCalculations import Survey
-from KPIUtils_v2.Calculations.BlockCalculations import Block
-from KPIUtils_v2.Calculations.CalculationsUtils.GENERALToolBoxCalculations import GENERALToolBox
 import pandas as pd
+from Trax.Utils.Logging.Logger import Log
+from KPIUtils_v2.DB.CommonV2 import Common
+from KPIUtils.ParseTemplates import parse_template
+from Projects.CBCDAIRYIL.Utils.Consts import Consts
+from KPIUtils_v2.DB.Common import Common as oldCommon
+from Trax.Algo.Calculations.Core.DataProvider import Data
+from KPIUtils_v2.Calculations.BlockCalculations import Block
+from KPIUtils_v2.Calculations.SurveyCalculations import Survey
+from KPIUtils_v2.Calculations.CalculationsUtils.GENERALToolBoxCalculations import GENERALToolBox
 
 __author__ = 'idanr'
 
@@ -24,8 +21,6 @@ class CBCDAIRYILToolBox:
         self.project_name = self.data_provider.project_name
         self.common = Common(self.data_provider)
         self.old_common = oldCommon(self.data_provider)
-        self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
-        self.session_fk = self.data_provider.session_id
         self.match_product_in_scene = self.data_provider[Data.MATCHES]
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
         self.store_info = self.data_provider[Data.STORE_INFO]
