@@ -162,6 +162,7 @@ class PngcnSceneKpis(object):
             Log.info(self.log_prefix + ' Finished calculation')
 
     def calculate_variant_block(self):
+        block_variant_kpi_fk = self.common.get_kpi_fk_by_kpi_name(BLOCK_VARIANT_KPI)
         legal_blocks = {}
         variant_block_template = pd.read_excel(VARIANT_BLOCK_TEMPLATE_PATH).fillna("")
         block_class = Block(self.data_provider)
@@ -191,7 +192,7 @@ class PngcnSceneKpis(object):
                     continue
 
                 # Save all sub_brands in the scene to eye-light KPI
-                self.save_eye_light_products(block_filters['sub_brand_name'][0], filtered_df)
+                self.save_eye_light_products(block_filters['sub_brand_name'][0], filtered_df, block_variant_kpi_fk)
 
                 # Activate global BLOCK function
                 filter_block_result = block_class.network_x_block_together(
@@ -218,7 +219,6 @@ class PngcnSceneKpis(object):
         all_blocks_no_duplicates = self.reorder_all_blocks_results(legal_blocks)
 
         # Save all blocks results
-        block_variant_kpi_fk = self.common.get_kpi_fk_by_kpi_name(BLOCK_VARIANT_KPI)
         for sub_block in all_blocks_no_duplicates:
             brand_fk = self.get_attribute_fk_from_name('brand_name', sub_block['brand_name'])
             category_fk = self.get_attribute_fk_from_name('category', sub_block['category'])
@@ -280,8 +280,11 @@ class PngcnSceneKpis(object):
         self.replace_with_seq_order(sorted(all_blocks_no_duplicates, key=lambda i: i['y']), 'y')
         return all_blocks_no_duplicates
 
-    def save_eye_light_products(self, sub_brand, filtered_df):
+    def save_eye_light_products(self, sub_brand, filtered_df, kpi_level_2_fk):
         try:
+            if sub_brand.encode("utf8") not in \
+                    self.match_product_in_probe_state_reporting['name'].str.encode("utf8").to_list():
+                self.insert_sub_brand_into_probe_state_reporting(sub_brand.encode("utf8"), kpi_level_2_fk)
             sub_brand_pk = self.match_product_in_probe_state_reporting[
                 self.match_product_in_probe_state_reporting['name'].str.encode("utf8") ==
                 sub_brand.encode("utf8")]['match_product_in_probe_state_reporting_fk'].values[0]
@@ -293,6 +296,12 @@ class PngcnSceneKpis(object):
                 self.common.match_product_in_probe_state_values.append(df_to_append)
         except Exception as ex:
             Log.error("Scene {} failed to write to highlight kpi, error: {}".format(str(self.scene_id), ex))
+
+    def insert_sub_brand_into_probe_state_reporting(self, sub_brand, kpi_level_2_fk):
+        query = """INSERT into static.match_product_in_probe_state_reporting (name, display_name, kpi_level_2_fk) \
+                 VALUES ('{0}', '{0}', {1});""".format(sub_brand, kpi_level_2_fk)
+        self.common.execute_custom_query(query)
+        self.match_product_in_probe_state_reporting = self.psdataprovider.get_match_product_in_probe_state_reporting()
 
     def get_attribute_fk_from_name(self, name, value):
         try:
