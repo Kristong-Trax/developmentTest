@@ -105,6 +105,7 @@ class HEINZCRToolBox:
         perfect_store_score += self.main_sos_calculation()
         perfect_store_score += self.calculate_powersku_price_adherence()
         perfect_store_score += self.calculate_perfect_store_extra_spaces()
+        perfect_store_score += self.check_bonus_question()
 
         relevant_target_df = \
             self.store_targets[self.store_targets['Country'].str.encode('utf-8') == self.country.encode('utf-8')]
@@ -425,6 +426,7 @@ class HEINZCRToolBox:
                                           numerator_result=number_of_categories_meeting_price_adherence,
                                           denominator_result=number_of_possible_categories,
                                           result=number_of_categories_meeting_price_adherence,
+                                          score=number_of_categories_meeting_price_adherence,
                                           identifier_result=total_dict, identifier_parent=Const.PERFECT_STORE,
                                           should_enter=True)
         return number_of_categories_meeting_price_adherence
@@ -451,7 +453,7 @@ class HEINZCRToolBox:
                         suggested_price = row['SUGGESTED_PRICE'].values[0]
                     except Exception as e:
                         Log.error("Product with ean_code {} is not in the configuration file for customer type {}"
-                                  .format(product_in_session, self.store_info.store_type[0]))
+                                  .format(product_in_session, self.store_info.store_type[0].encode('utf-8')))
                         break
                     upper_percentage = (100 + row['PERCENTAGE'].values[0]) / float(100)
                     lower_percentage = (100 - row['PERCENTAGE'].values[0]) / float(100)
@@ -508,13 +510,10 @@ class HEINZCRToolBox:
                                                           result=mark_up)
                 else:
                     Log.warning("Product with ean_code {} is not in the configuration file for customer type {}"
-                                .format(product_in_session, self.store_info.store_type[0]))
+                                .format(product_in_session, self.store_info.store_type[0].encode('utf-8')))
         return results_df
 
     def calculate_perfect_store_extra_spaces(self):
-        if self.survey.check_survey_answer(('question_fk', Const.EXTRA_SPACES_SURVEY_QUESTION_FK), 'Yes,yes,si,Si'):
-            return 1
-
         if self.extra_spaces_results.empty:
             return 0
 
@@ -543,6 +542,11 @@ class HEINZCRToolBox:
 
         number_of_extra_spaces = relevant_extra_spaces['sub_category_fk'].nunique()
         score = 1 if number_of_extra_spaces > 2 else 0
+
+        if score == 0:
+            if self.survey.check_survey_answer(('question_fk', Const.EXTRA_SPACES_SURVEY_QUESTION_FK), 'Yes,yes,si,Si'):
+                score = 1
+
         self.common_v2.write_to_db_result(extra_spaces_total_kpi_fk, numerator_id=1, denominator_id=self.store_id,
                                           result=number_of_extra_spaces, score=score,
                                           identifier_parent=Const.PERFECT_STORE,
@@ -610,6 +614,19 @@ class HEINZCRToolBox:
                                                       denominator_result=i.get('count'),
                                                       result=store_target)
         return results_df
+
+    def check_bonus_question(self):
+        if self.survey.check_survey_answer(('question_fk', Const.BONUS_QUESTION_FK), 'Yes,yes,si,Si'):
+            result = 1
+        else:
+            result = 0
+
+        bonus_kpi_fk = self.common_v2.get_kpi_fk_by_kpi_type(
+            Const.BONUS_QUESTION)
+        self.common_v2.write_to_db_result(bonus_kpi_fk, numerator_id=1, denominator_id=self.store_id,
+                                          result=result, score=result, identifier_parent=Const.PERFECT_STORE,
+                                          should_enter=True)
+        return result
 
     def commit_results_data(self):
         self.common_v2.commit_results_data()
