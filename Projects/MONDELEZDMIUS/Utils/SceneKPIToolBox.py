@@ -1,4 +1,3 @@
-
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Cloud.Services.Connector.Keys import DbUsers
 from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
@@ -54,15 +53,17 @@ class SceneMONDELEZDMIUSToolBox:
         self.manufacturer_fk = self.products['manufacturer_fk'][self.products['manufacturer_name'] ==
                                                                 'MONDELEZ INTERNATIONAL, INC.'].iloc[0]
         self.static_task_area_location = self.get_store_task_area()
-        self.vtw_points_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data',
-                                        "VTW_POINTS_SCORE.xlsx")
-        self.points_template = pd.read_excel(self.vtw_points_path)
+        # self.vtw_points_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data',
+        #                                 "VTW_POINTS_SCORE.xlsx")
+
+        self.dmi_template = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data',
+                                         "MondelezDMI_KPITemplate.xlsx")
+        self.points_template = pd.read_excel(self.dmi_template, sheetname='VTW_POINTS')
+        self.goldzone_template = pd.read_excel(self.dmi_template, sheetname='GOLD_ZONE')
 
         self.assortment = Assortment(self.data_provider, common=self.common)
-         # self.ps_data_provider = PsDataProvider(self.data_provider, self.output)
+        # self.ps_data_provider = PsDataProvider(self.data_provider, self.output)
         self.store_areas = self.get_store_area_df()
-
-
 
     def main_calculation(self, *args, **kwargs):
         """
@@ -88,27 +89,50 @@ class SceneMONDELEZDMIUSToolBox:
         score = 0
 
         if not self.mdis.empty:
-            for i, row in self.mdis.iterrows():
+            merged_mdis = self.mdis.merge(self.points_template, how='left', left_on='display_name', right_on='display')
+            not_allowed_duplicate_df = merged_mdis[merged_mdis['multiple'] == 'n']
+            not_allowed_duplicate_df.drop_duplicates(subset='display_name', keep='first', inplace=True)
+            allowed_duplicate_df = merged_mdis[merged_mdis['multiple'] == 'y']
+            fixed_df = pd.concat([not_allowed_duplicate_df, allowed_duplicate_df])
+            score = int(fixed_df['score'].sum())
 
-                try:
-                    new_score = self.points_template['score'][self.points_template['display'] == row['display_name']].iloc[0]
-                    if score < new_score:
-                        score = new_score
+            #     try:
+            #         new_score = \
+            #         self.points_template['score'][self.points_template['display'] == row['display_name']].iloc[0]
+            #         score = new_score + score
+            #     except:
+            #         pass
 
-                        vehicle_display_fk = row['display_fk']
-                except:
-                    pass
+            self.common.write_to_db_result(fk=vtw_kpi_fk, numerator_id=self.manufacturer_fk, numerator_result=score,
+                                           denominator_id=self.store_id, denominator_result=1,
+                                           result=score, score=score, scene_result_fk=self.scene, should_enter=True,
+                                           by_scene=True)
 
-            self.common.write_to_db_result(fk=vtw_kpi_fk, numerator_id=self.manufacturer_fk, numerator_result= score,
-                                               denominator_id=self.store_id, denominator_result=1,
-                                           result = score, score=score, scene_result_fk = self.scene ,should_enter= True,
-                                               by_scene = True)
+            # for i, row in self.mdis.iterrows():
+            try:
+                for row in fixed_df[['display_name', 'display_fk']].itertuples():
+                    vehicle_display_fk = row.display_fk
 
-            self.common.write_to_db_result(fk=vehicle_kpi_fk, numerator_id=vehicle_display_fk, numerator_result=1,
-                                               denominator_id=self.store_id, denominator_result=1,
-                                               result=Const.RESULT_YES, score=1, scene_result_fk=self.scene, should_enter=True,
-                                               by_scene=True)
+                    multiple = \
+                    self.points_template['multiple'][self.points_template['display'] == row.display_name].iloc[0]
 
+                    display_point = int(
+                        self.points_template['score'][self.points_template['display'] == row.display_name].iloc[0])
+                    if multiple == 'y':
+                        display_count = len(fixed_df[fixed_df['display_name'] == row.display_name])
+
+                    else:
+                        display_count = 1
+                    vehicle_score = display_count * display_point
+                    self.common.write_to_db_result(fk=vehicle_kpi_fk, numerator_id=vehicle_display_fk,
+                                                   numerator_result=display_count,
+                                                   denominator_id=self.store_id, denominator_result=1,
+                                                   result=Const.RESULT_YES, score=vehicle_score,
+                                                   scene_result_fk=self.scene,
+                                                   should_enter=True,
+                                                   by_scene=True)
+            except:
+                pass
 
     def calculate_gold_zone(self):
         result = Const.RESULT_YES
@@ -118,7 +142,7 @@ class SceneMONDELEZDMIUSToolBox:
         store_area_df_filtered = self.store_areas[self.store_areas['scene_fk'] == self.scene]
         if not store_area_df_filtered.empty:
             store_area_name = store_area_df_filtered['store_area_name'].iloc[0]
-            if store_area_name == 'Gold Zone End Cap':
+            if store_area_name in self.goldzone_template.location.unique().tolist():
                 # store_area_pk = store_area_df_filtered['pk'].iloc[0]
                 score = 1
                 result = Const.RESULT_YES
@@ -132,7 +156,6 @@ class SceneMONDELEZDMIUSToolBox:
                                            denominator_id=self.store_id, denominator_result=1,
                                            result=result, score=score, scene_result_fk=self.scene, should_enter=True,
                                            by_scene=True)
-
 
     def calculate_display_non_scripted(self):
         score = 1
@@ -170,12 +193,11 @@ class SceneMONDELEZDMIUSToolBox:
                                 result = Const.RESULT_NO
                                 break
 
-
                 self.common.write_to_db_result(fk=kpi_fk, numerator_id=self.manufacturer_fk, numerator_result=score,
-                                       denominator_id=self.store_id, denominator_result=1,
-                                       result=result, score=score, scene_result_fk=self.scene, should_enter=True,
-                                       by_scene=True)
-
+                                               denominator_id=self.store_id, denominator_result=1,
+                                               result=result, score=score, scene_result_fk=self.scene,
+                                               should_enter=True,
+                                               by_scene=True)
 
     def calculate_location(self):
         result = Const.RESULT_YES
@@ -191,7 +213,6 @@ class SceneMONDELEZDMIUSToolBox:
                                            result=result, score=1, scene_result_fk=self.scene, should_enter=True,
                                            by_scene=True)
 
-
     def get_match_display_in_scene(self):
         query = """select mdis.scene_fk, mdis.display_fk, d.display_name, mdis.rect_x, mdis.rect_y, 
                 d.display_brand_fk from probedata.match_display_in_scene mdis
@@ -205,8 +226,6 @@ class SceneMONDELEZDMIUSToolBox:
         cur.execute(query)
         res = cur.fetchall()
         df = pd.DataFrame(list(res), columns=['scene_fk', 'display_fk', 'display_name', 'x', 'y', 'display_brand_fk'])
-        # we need to remove duplicate results
-        # this should never happen, but it did...
         df.drop_duplicates(subset=['display_fk', 'x', 'y'], keep='first', inplace=True)
         return df
 
@@ -219,7 +238,6 @@ class SceneMONDELEZDMIUSToolBox:
         res = cur.fetchall()
         df = pd.DataFrame(list(res))
         return df
-
 
     def get_mpis(self):
         if self.scif.empty:
@@ -243,7 +261,6 @@ class SceneMONDELEZDMIUSToolBox:
             merged_assortment = self.store_assortment.join(df_assortment)
             self.store_assortment = merged_assortment
 
-
     def get_store_area_df(self):
         query = """
                 select st.pk, sst.scene_fk, st.name, sc.session_uid from probedata.scene_store_task_area_group_items sst
@@ -256,6 +273,6 @@ class SceneMONDELEZDMIUSToolBox:
         cur.execute(query)
         res = cur.fetchall()
 
-        df = pd.DataFrame(list(res), columns=['pk', 'scene_fk',  'store_area_name', 'session_uid'])
+        df = pd.DataFrame(list(res), columns=['pk', 'scene_fk', 'store_area_name', 'session_uid'])
 
         return df
