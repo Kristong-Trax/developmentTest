@@ -279,6 +279,8 @@ class MARSRU_PRODKPIToolBox:
         except Exception as ex:
             Log.error('could not run delete query: {}, error {}'.format(delete_query, ex))
             return
+        if self.custom_scif_queries.empty:
+            return
         self.custom_scif_queries.drop_duplicates(inplace=True)
         values_dict = self.custom_scif_queries.to_dict()
         insert_query = insert(values_dict, PSERVICE_CUSTOM_SCIF)
