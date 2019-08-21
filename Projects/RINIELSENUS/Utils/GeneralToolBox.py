@@ -829,6 +829,8 @@ class MarsUsGENERALToolBox:
         if sub_allowed:
             allowed_filters += list(mpis[self.get_filter_condition(mpis,
                                                                    **sub_allowed)]['product_fk'].unique())
+        allowed_filters += list(mpis[self.get_filter_condition(mpis,
+                                                               **{'product_type': ['Irrelevant']})]['product_fk'].unique())
         allowed_filters = {'product_fk': allowed_filters}
         mpis = mpis[self.get_filter_condition(mpis, **mpis_filter)]
         # mpis = pd.concat([mpis[self.get_filter_condition(mpis, **mpis_filter)],
