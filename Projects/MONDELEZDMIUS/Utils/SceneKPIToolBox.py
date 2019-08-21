@@ -114,7 +114,7 @@ class SceneMONDELEZDMIUSToolBox:
                     vehicle_display_fk = row.display_fk
 
                     multiple = \
-                    self.points_template['multiple'][self.points_template['display'] == row.display_name].iloc[0]
+                        self.points_template['multiple'][self.points_template['display'] == row.display_name].iloc[0]
 
                     display_point = int(
                         self.points_template['score'][self.points_template['display'] == row.display_name].iloc[0])
