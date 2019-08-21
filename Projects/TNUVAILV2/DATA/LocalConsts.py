@@ -1,6 +1,8 @@
 # coding=utf-8
-from KPIUtils_v2.Utils.Consts import DataProvider
-from KPIUtils_v2.Utils.Consts import DB
+from KPIUtils_v2.Utils.Consts.DataProvider import ScifConsts
+from KPIUtils_v2.Utils.Consts.DB import SessionResultsConsts
+
+
 class Consts(object):
 
     # Scene item facts attributes
@@ -12,8 +14,8 @@ class Consts(object):
     TYPES_TO_IGNORE_IN_SOS = ['Irrelevant', 'Empty']
 
     # DB attributes
-    ENTITIES_FOR_DB = [DataProvider.ScifConsts.MANUFACTURER_FK, DataProvider.ScifConsts.CATEGORY_FK,
-                       DB.SessionResultsConsts.NUMERATOR_RESULT, DB.SessionResultsConsts.DENOMINATOR_RESULT]
+    ENTITIES_FOR_DB = [ScifConsts.MANUFACTURER_FK, ScifConsts.CATEGORY_FK,
+                       DB.SessionResultsConsts.NUMERATOR_RESULT, SessionResultsConsts.DENOMINATOR_RESULT]
 
     # Assortment Consts
     IN_STORE = 'in_store'
@@ -24,11 +26,11 @@ class Consts(object):
     AVAILABLE = 1
     OBLIGATORY_ASSORTMENT = u'חובה'
     OPTIONAL_SKU_ASSORTMENT = u'אופציונאלי'
-    AGGREGATION_COLUMNS_RENAMING = {'sum': DB.SessionResultsConsts.NUMERATOR_RESULT, 'count':
+    AGGREGATION_COLUMNS_RENAMING = {'sum': SessionResultsConsts.NUMERATOR_RESULT, 'count':
         DB.SessionResultsConsts.DENOMINATOR_RESULT}
-    SOS_SKU_LVL_RENAME = {IN_STORE: DB.SessionResultsConsts.NUMERATOR_RESULT, DataProvider.ScifConsts.CATEGORY_FK:
+    SOS_SKU_LVL_RENAME = {IN_STORE: SessionResultsConsts.NUMERATOR_RESULT, ScifConsts.CATEGORY_FK:
         DB.SessionResultsConsts.DENOMINATOR_ID,
-                          DataProvider.ScifConsts.FACINGS: DB.SessionResultsConsts.DENOMINATOR_RESULT}
+                          ScifConsts.FACINGS: SessionResultsConsts.DENOMINATOR_RESULT}
 
     # KPIs names
     OOS_STORE_LEVEL = 'OOS_STORE_LEVEL'
