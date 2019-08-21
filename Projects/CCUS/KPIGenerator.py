@@ -14,7 +14,6 @@ from Projects.CCUS.SpecialPrograms.Utils.KPIToolBox import SpecialProgramsToolBo
 from Projects.CCUS.Pillars.Utils.KPIToolBox import PillarsPROGRAMSToolBox
 from Projects.CCUS.Validation.Utils.KPIToolBox import VALIDATIONToolBox
 from Projects.CCUS.JEFF_DEMO.Utils.KPIToolBox import JEFFToolBox
-from Projects.CCUS.SOVI.KPIToolBox import SOVIToolBox
 from KPIUtils_v2.DB.CommonV2 import Common
 
 
