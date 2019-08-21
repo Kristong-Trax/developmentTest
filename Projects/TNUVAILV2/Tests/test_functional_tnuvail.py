@@ -1,10 +1,12 @@
 # coding=utf-8
+from KPIUtils_v2.Utils.Consts import DataProvider
 from Projects.TNUVAILV2.Tests.Data.TestData.test_data_tnuvailv2 import TnuvailV2SanityData
+from KPIUtils_v2.Utils.Consts import DB
 from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider
 from Projects.TNUVAILV2.Tests.Data.MockDataFrames import TnuvaMocks
 from Trax.Apps.Core.Testing.BaseCase import TestFunctionalCase
 from Projects.TNUVAILV2.Utils.KPIToolBox import TNUVAILToolBox
-from Projects.TNUVAILV2.Utils.Consts import Consts
+from Projects.TNUVAILV2.DATA.LocalConsts import Consts
 from Trax.Data.Testing.SeedNew import Seeder
 from mock import MagicMock
 
@@ -61,9 +63,9 @@ class TestTnuvaV2(TestFunctionalCase):
         return data_provider
 
     def test_general_sos_calculation(self):
-        test_case_1 = ((11, 11), {Consts.MANUFACTURER_FK: self.tool_box.own_manufacturer_fk})
-        test_case_2 = ((0, 11), {Consts.MANUFACTURER_FK: 999})
-        test_case_3 = ((1, 11), {Consts.CATEGORY_FK: 252})
+        test_case_1 = ((11, 11), {DataProvider.ScifConsts.MANUFACTURER_FK: self.tool_box.own_manufacturer_fk})
+        test_case_2 = ((0, 11), {DataProvider.ScifConsts.MANUFACTURER_FK: 999})
+        test_case_3 = ((1, 11), {DataProvider.ScifConsts.CATEGORY_FK: 252})
         test_cases = [test_case_1, test_case_2, test_case_3]
         for expected_res, test_case in test_cases:
             self.assertEqual(expected_res, self.tool_box._general_sos_calculation(self.tool_box.scif, **test_case))
@@ -93,9 +95,9 @@ class TestTnuvaV2(TestFunctionalCase):
         for cat_res in category_results:
             is_own_manufacturer_in_res = False
             for res in cat_res:
-                cat_fk = res[Consts.CATEGORY_FK]
-                if res[Consts.MANUFACTURER_FK] == self.tool_box.own_manufacturer_fk:
-                    self.assertEqual(expected_own_manu_in_cat_res[cat_fk], res[Consts.NUMERATOR_RESULT])
+                cat_fk = res[DataProvider.ScifConsts.CATEGORY_FK]
+                if res[DataProvider.ScifConsts.MANUFACTURER_FK] == self.tool_box.own_manufacturer_fk:
+                    self.assertEqual(expected_own_manu_in_cat_res[cat_fk], res[DB.SessionResultsConsts.NUMERATOR_RESULT])
                     is_own_manufacturer_in_res = True
             self.assertTrue(is_own_manufacturer_in_res, msg='There must be Tnuva manufacturer in category results!')
 
@@ -124,12 +126,12 @@ class TestTnuvaV2(TestFunctionalCase):
 
     def compare_store_results(self, lvl3_data, expected_results, is_dist):
         store_res = self.tool_box._calculate_store_level_assortment(lvl3_data, is_dist)
-        num_res, den_res = store_res[0][Consts.NUMERATOR_RESULT], store_res[0][Consts.DENOMINATOR_RESULT]
+        num_res, den_res = store_res[0][DB.SessionResultsConsts.NUMERATOR_RESULT], store_res[0][DB.SessionResultsConsts.DENOMINATOR_RESULT]
         self.assertEqual((num_res, den_res), expected_results)
 
     def compare_category_results(self, lvl3_data, expected_res, is_dist):
         cat_results = self.tool_box._calculate_category_level_assortment(lvl3_data, is_distribution=is_dist)
         for res in cat_results:
-            cat_fk, manufacturer_fk = res[Consts.CATEGORY_FK], res[Consts.DENOMINATOR_ID]
+            cat_fk, manufacturer_fk = res[DataProvider.ScifConsts.CATEGORY_FK], res[DB.SessionResultsConsts.DENOMINATOR_ID]
             if (cat_fk, manufacturer_fk) in expected_res.keys():
-                self.assertEqual(expected_res[(cat_fk, manufacturer_fk)], res[Consts.NUMERATOR_RESULT])
+                self.assertEqual(expected_res[(cat_fk, manufacturer_fk)], res[DB.SessionResultsConsts.NUMERATOR_RESULT])
