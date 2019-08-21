@@ -24,6 +24,40 @@ class KpiAtomicKpisCalculator(object):
         self.survey_response = self._data_provider['survey_responses']
         # self.block = Block(data_provider=data_provider)
 
+    def _get_prods_from_filters(self, filters, kpi_name):
+        common = self._data_provider['common']
+
+        mpis = self._data_provider['matches'][self._data_provider['matches']['stacking_layer'] == 1]
+        rel_items = mpis[mpis['product_fk'].isin(self._get_filtered_products(filters)[
+                                                 'product_fk'])]['probe_match_fk']
+
+        for i, group in enumerate([rel_items]):
+            mpip_sr_fk = self.get_mpip_svr_fk(kpi_name, i, common)
+            df = pd.DataFrame(zip(group, [mpip_sr_fk]*len(group)), columns=['match_product_in_probe_fk', 'match_product_in_probe_state_reporting_fk'])
+            common.match_product_in_probe_state_values = pd.concat(
+                [common.match_product_in_probe_state_values, df])
+            print(mpis[mpis['probe_match_fk'].isin(df.match_product_in_probe_fk.to_list())].scene_fk.unique())
+
+
+    def get_mpip_svr_fk(self, kpi, allowed, common):
+        mpip_sr = self._data_provider._shared_data
+        from Projects.RINIELSENUS.Utils.Fetcher import MarsUsQueries
+        if allowed:
+            kpi = '{}_allowed'.format(kpi)
+        df = mpip_sr[mpip_sr['name'] == kpi]
+        if df.empty:
+            if mpip_sr.empty:
+                common.execute_custom_query(MarsUsQueries.add_kpi_to_mvp_sr(kpi, 1))
+            else:
+                common.execute_custom_query(
+                    MarsUsQueries.add_kpi_to_mvp_sr(kpi, max(mpip_sr['pk'])+1))
+            self._data_provider.set_shared_data(common.read_custom_query(MarsUsQueries.get_updated_mvp_sr()))
+            mpip_sr = self._data_provider._shared_data
+            df = mpip_sr[mpip_sr['name'] == kpi]
+        return df['pk'].values[0]
+
+
+
     @abc.abstractproperty
     def kpi_type(self):
         pass
@@ -1464,6 +1498,7 @@ class ShareOfAssortmentPrNumeratorAtomicKpiCalculation(KpiAtomicKpisCalculator):
                             num_of_assorted_products += 1
 
                 result = num_of_assorted_products
+        self._get_prods_from_filters(filters, atomic_kpi_data['atomic'])
         return result
 
     @classproperty
