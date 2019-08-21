@@ -57,7 +57,7 @@ class SceneMONDELEZDMIUSToolBox:
         #                                 "VTW_POINTS_SCORE.xlsx")
 
         self.dmi_template = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data',
-                                         "MondelezDMI_KPITemplate.xlsx")
+                                         "MondelezDMI_KPITemplatev2.xlsx")
         self.points_template = pd.read_excel(self.dmi_template, sheetname='VTW_POINTS')
         self.goldzone_template = pd.read_excel(self.dmi_template, sheetname='GOLD_ZONE')
 
