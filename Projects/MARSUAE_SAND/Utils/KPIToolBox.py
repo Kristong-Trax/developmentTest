@@ -420,7 +420,7 @@ class MARSUAE_SANDToolBox:
             kpi_fk = self.common.get_kpi_fk_by_kpi_type(result[self.KPI_TYPE])
             identifier_result = {'kpi_fk': kpi_fk}
             self.common.write_to_db_result(fk=kpi_fk, numerator_id=self.own_manuf_fk, denominator_id=self.store_id,
-                                           result=result['cat_score'], score=result['cat_score'],
+                                           result=result['cat_score'], score=result['cat_score'], weight=100,
                                            identifier_parent=identifier_parent, identifier_result=identifier_result,
                                            target=self.FIXED_TARGET_FOR_MR, should_enter=True)
 
@@ -705,12 +705,12 @@ class MARSUAE_SANDToolBox:
         identifier_parent = self.get_identifier_parent_for_atomic(param_row)
         identifier_result = self.get_identifier_result_for_atomic(param_row)
         self.common.write_to_db_result(fk=param_row['kpi_level_2_fk'], numerator_id=self.own_manuf_fk,
-                                       result=result, target=target, denominator_id=self.store_id,
-                                       score=score * weight, weight=weight,
+                                       numerator_result=result, result=score*100, target=target,
+                                       denominator_id=self.store_id, score=score * weight, weight=weight,
                                        identifier_parent=identifier_parent, identifier_result=identifier_result,
                                        should_enter=True)
         self.add_kpi_result_to_kpi_results_df([param_row['kpi_level_2_fk'], param_row[self.KPI_TYPE],
-                                               result, score, weight, score * weight,
+                                               score * 100, score, weight, score * weight,
                                                param_row[self.KPI_LVL_2_NAME]])
 
     def calculate_linear_space(self, filters):
