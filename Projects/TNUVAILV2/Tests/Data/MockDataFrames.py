@@ -1,5 +1,5 @@
 from KPIUtils_v2.Utils.Consts.DataProvider import ScifConsts
-from Projects.TNUVAILV2.DATA.LocalConsts import Consts
+from Projects.TNUVAILV2.Data.LocalConsts import Consts
 from Trax.Algo.Calculations.Core.Constants import Keys, Fields
 import pandas as pd
 

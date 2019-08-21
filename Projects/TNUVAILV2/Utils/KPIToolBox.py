@@ -5,7 +5,7 @@ from KPIUtils_v2.Utils.Consts.DB import SessionResultsConsts
 from KPIUtils_v2.Utils.Consts.GlobalConsts import BasicConsts, HelperConsts
 from KPIUtils_v2.DB.CommonV2 import Common
 from Projects.TNUVAILV2.Utils.DataBaseHandler import DBHandler
-from Projects.TNUVAILV2.DATA.LocalConsts import Consts
+from Projects.TNUVAILV2.Data.LocalConsts import Consts
 from collections import Counter
 from Trax.Utils.Logging.Logger import Log
 from KPIUtils_v2.Utils.Parsers import ParseInputKPI

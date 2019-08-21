@@ -5,7 +5,7 @@ from Projects.TNUVAILV2.Tests.Data.TestData.test_data_tnuvailv2 import TnuvailV2
 from KPIUtils_v2.Utils.Consts.DB import SessionResultsConsts
 from Trax.Data.Testing.SeedNew import Seeder
 from Trax.Apps.Core.Testing.BaseCase import TestFunctionalCase
-from Projects.TNUVAILV2.DATA.LocalConsts import Consts
+from Projects.TNUVAILV2.Data.LocalConsts import Consts
 from Projects.TNUVAILV2.Tests.Data.MockDataFrames import TnuvaMocks
 from mock import MagicMock
 from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider
