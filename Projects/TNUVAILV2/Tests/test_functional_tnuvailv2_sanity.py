@@ -1,13 +1,13 @@
-
 from Projects.TNUVAILV2.Tests.Data.TestData.test_data_tnuvailv2 import TnuvailV2SanityData
-from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
-from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
-from Trax.Apps.Core.Testing.BaseCase import TestFunctionalCase
-from Trax.Data.Testing.TestProjects import TestProjectsNames
-from Projects.TNUVAILV2.Calculations import Calculations
-from Trax.Cloud.Services.Connector.Keys import DbUsers
-from Tests.TestUtils import remove_cache_and_storage
 from Trax.Data.Testing.SeedNew import Seeder
+from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
+from Trax.Cloud.Services.Connector.Keys import DbUsers
+from Projects.TNUVAILV2.Calculations import Calculations
+from Trax.Apps.Core.Testing.BaseCase import TestFunctionalCase
+from Tests.TestUtils import remove_cache_and_storage
+from Trax.Data.Testing.TestProjects import TestProjectsNames
+from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
+
 import MySQLdb
 import os
 

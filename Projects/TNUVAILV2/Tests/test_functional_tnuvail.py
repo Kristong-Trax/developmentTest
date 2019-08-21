@@ -1,15 +1,15 @@
 # coding=utf-8
+
 from KPIUtils_v2.Utils.Consts.DataProvider import ScifConsts
 from Projects.TNUVAILV2.Tests.Data.TestData.test_data_tnuvailv2 import TnuvailV2SanityData
 from KPIUtils_v2.Utils.Consts.DB import SessionResultsConsts
-from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider
-from Projects.TNUVAILV2.Tests.Data.MockDataFrames import TnuvaMocks
-from Trax.Apps.Core.Testing.BaseCase import TestFunctionalCase
-from Projects.TNUVAILV2.Utils.KPIToolBox import TNUVAILToolBox
-from Projects.TNUVAILV2.DATA.LocalConsts import Consts
 from Trax.Data.Testing.SeedNew import Seeder
+from Trax.Apps.Core.Testing.BaseCase import TestFunctionalCase
+from Projects.TNUVAILV2.DATA.LocalConsts import Consts
+from Projects.TNUVAILV2.Tests.Data.MockDataFrames import TnuvaMocks
 from mock import MagicMock
-
+from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider
+from Projects.TNUVAILV2.Utils.KPIToolBox import TNUVAILToolBox
 
 __author__ = 'idanr'
 

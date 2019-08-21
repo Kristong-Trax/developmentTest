@@ -1,7 +1,7 @@
 # coding=utf-8
+
 from KPIUtils_v2.Utils.Consts.DataProvider import ScifConsts
 from KPIUtils_v2.Utils.Consts.DB import SessionResultsConsts
-
 
 class Consts(object):
 

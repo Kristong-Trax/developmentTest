@@ -1,18 +1,16 @@
 # coding=utf-8
-from KPIUtils_v2.Utils.Consts.DataProvider import ProductsConsts
-from KPIUtils_v2.Utils.Consts.GlobalConsts import BasicConsts
-from KPIUtils_v2.Utils.Consts.GlobalConsts import HelperConsts
-from KPIUtils_v2.Utils.Consts.DataProvider import ScifConsts
+from KPIUtils_v2.Utils.Consts.DataProvider import ProductsConsts, ScifConsts
+from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
 from KPIUtils_v2.Utils.Consts.DB import SessionResultsConsts
-import pandas as pd
+from KPIUtils_v2.Utils.Consts.GlobalConsts import BasicConsts, HelperConsts
+from KPIUtils_v2.DB.CommonV2 import Common
+from Projects.TNUVAILV2.Utils.DataBaseHandler import DBHandler
+from Projects.TNUVAILV2.DATA.LocalConsts import Consts
 from collections import Counter
 from Trax.Utils.Logging.Logger import Log
-from KPIUtils_v2.DB.CommonV2 import Common
-from Projects.TNUVAILV2.DATA.LocalConsts import Consts
 from KPIUtils_v2.Utils.Parsers import ParseInputKPI
 from Trax.Algo.Calculations.Core.DataProvider import Data
-from Projects.TNUVAILV2.Utils.DataBaseHandler import DBHandler
-from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
+import pandas as pd
 
 __author__ = 'idanr'
 
