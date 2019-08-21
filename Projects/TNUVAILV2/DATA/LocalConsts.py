@@ -15,7 +15,7 @@ class Consts(object):
 
     # DB attributes
     ENTITIES_FOR_DB = [ScifConsts.MANUFACTURER_FK, ScifConsts.CATEGORY_FK,
-                       DB.SessionResultsConsts.NUMERATOR_RESULT, SessionResultsConsts.DENOMINATOR_RESULT]
+                       SessionResultsConsts.NUMERATOR_RESULT, SessionResultsConsts.DENOMINATOR_RESULT]
 
     # Assortment Consts
     IN_STORE = 'in_store'
@@ -27,9 +27,9 @@ class Consts(object):
     OBLIGATORY_ASSORTMENT = u'חובה'
     OPTIONAL_SKU_ASSORTMENT = u'אופציונאלי'
     AGGREGATION_COLUMNS_RENAMING = {'sum': SessionResultsConsts.NUMERATOR_RESULT, 'count':
-        DB.SessionResultsConsts.DENOMINATOR_RESULT}
+        SessionResultsConsts.DENOMINATOR_RESULT}
     SOS_SKU_LVL_RENAME = {IN_STORE: SessionResultsConsts.NUMERATOR_RESULT, ScifConsts.CATEGORY_FK:
-        DB.SessionResultsConsts.DENOMINATOR_ID,
+        SessionResultsConsts.DENOMINATOR_ID,
                           ScifConsts.FACINGS: SessionResultsConsts.DENOMINATOR_RESULT}
 
     # KPIs names
