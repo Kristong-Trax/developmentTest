@@ -115,7 +115,7 @@ class CCRUProjectCalculations:
             if not kpi_source[kpi_set_type][SET]:
                 continue
 
-            Log.info('KPI calculation stage: {}'.format(kpi_source[kpi_set_type][SET]))
+            Log.debug('KPI calculation stage: {}'.format(kpi_source[kpi_set_type][SET]))
             self.tool_box.set_kpi_set(kpi_source[kpi_set_type][SET], kpi_set_type)
             self.json.project_kpi_dict['kpi_data'] = []
             self.json.create_kpi_data_json('kpi_data', kpi_source[kpi_set_type][FILE],
@@ -165,11 +165,11 @@ class CCRUProjectCalculations:
                  'level': 0})
 
             if kpi_set_type == POS:
-                Log.info('KPI calculation stage: {}'.format(kpi_source[INTEGRATION][SET]))
+                Log.debug('KPI calculation stage: {}'.format(kpi_source[INTEGRATION][SET]))
                 self.tool_box.prepare_hidden_set(kpi_data, kpi_source[INTEGRATION][SET])
 
         if kpi_source[GAPS][SET]:
-            Log.info('KPI calculation stage: {}'.format(kpi_source[GAPS][SET]))
+            Log.debug('KPI calculation stage: {}'.format(kpi_source[GAPS][SET]))
             self.tool_box.set_kpi_set(kpi_source[GAPS][SET], GAPS)
             self.json.create_kpi_data_json(
                 'gaps', kpi_source[GAPS][FILE], sheet_name=kpi_source[GAPS][SHEET])
@@ -178,7 +178,7 @@ class CCRUProjectCalculations:
                                              kpi_source[GAPS][SET])
 
         if kpi_source[BENCHMARK][SET]:
-            Log.info('KPI calculation stage: {}'.format(kpi_source[BENCHMARK][SET]))
+            Log.debug('KPI calculation stage: {}'.format(kpi_source[BENCHMARK][SET]))
             self.tool_box.set_kpi_set(kpi_source[BENCHMARK][SET], BENCHMARK)
             self.json.create_kpi_data_json(
                 'benchmark', kpi_source[BENCHMARK][FILE], sheet_name=kpi_source[BENCHMARK][SHEET])
@@ -186,12 +186,12 @@ class CCRUProjectCalculations:
                                               kpi_source[BENCHMARK][SET])
 
         if kpi_source[CONTRACT][FILE]:
-            Log.info('Importing Contract Execution template')
+            Log.debug('Importing Contract Execution template')
             self.json.create_kpi_data_json(
                 'contract', kpi_source[CONTRACT][FILE], sheet_name=kpi_source[CONTRACT][SHEET])
 
         if kpi_source[TOPSKU][SET]:
-            Log.info('KPI calculation stage: {}'.format(kpi_source[TOPSKU][SET]))
+            Log.debug('KPI calculation stage: {}'.format(kpi_source[TOPSKU][SET]))
             include_to_contract = True if self.json.project_kpi_dict.get('contract') else False
             self.tool_box.set_kpi_set(kpi_source[TOPSKU][SET], TOPSKU)
             self.tool_box.calculate_top_sku(include_to_contract,
@@ -199,23 +199,25 @@ class CCRUProjectCalculations:
 
         if self.json.project_kpi_dict.get('contract'):
             if kpi_source[EQUIPMENT][SET]:
-                Log.info('KPI calculation stage: {}'.format(kpi_source[EQUIPMENT][SET]))
+                Log.debug('KPI calculation stage: {}'.format(kpi_source[EQUIPMENT][SET]))
                 self.tool_box.set_kpi_set(kpi_source[EQUIPMENT][SET], EQUIPMENT)
                 self.tool_box.calculate_equipment_execution(self.json.project_kpi_dict.get('contract'),
                                                             kpi_source[EQUIPMENT][SET],
                                                             kpi_source[KPI_CONVERSION][FILE])
 
             if kpi_source[CONTRACT][SET]:
-                Log.info('KPI calculation stage: {}'.format(kpi_source[CONTRACT][SET]))
+                Log.debug('KPI calculation stage: {}'.format(kpi_source[CONTRACT][SET]))
                 self.tool_box.set_kpi_set(kpi_source[CONTRACT][SET], CONTRACT)
                 self.tool_box.calculate_contract_execution(self.json.project_kpi_dict.get('contract'),
                                                            kpi_source[CONTRACT][SET])
 
-        Log.info('KPI calculation stage: {}'.format('Committing results old'))
+        Log.debug('KPI calculation stage: {}'.format('Committing results old'))
         self.tool_box.commit_results_data_old()
 
-        Log.info('KPI calculation stage: {}'.format('Committing results new'))
+        Log.debug('KPI calculation stage: {}'.format('Committing results new'))
         self.tool_box.commit_results_data_new()
+
+        Log.debug('KPI calculation is completed')
 
     def rds_connection(self):
         if not hasattr(self, '_rds_conn'):
