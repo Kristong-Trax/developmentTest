@@ -2,8 +2,8 @@
 from KPIUtils_v2.Utils.Consts.DataProvider import ProductsConsts
 from KPIUtils_v2.Utils.Consts.GlobalConsts import BasicConsts
 from KPIUtils_v2.Utils.Consts.GlobalConsts import HelperConsts
-from KPIUtils_v2.Utils.Consts import DataProvider
-from KPIUtils_v2.Utils.Consts import DB
+from KPIUtils_v2.Utils.Consts.DataProvider import ScifConsts
+from KPIUtils_v2.Utils.Consts.DB import SessionResultsConsts
 import pandas as pd
 from collections import Counter
 from Trax.Utils.Logging.Logger import Log
@@ -73,7 +73,7 @@ class TNUVAILToolBox:
         total_res = Counter()
         for result in self.oos_store_results:
             total_res.update(result)
-        total_res[DB.SessionResultsConsts.DENOMINATOR_ID] = self.store_id
+        total_res[SessionResultsConsts.DENOMINATOR_ID] = self.store_id
         total_res[ProductsConsts.MANUFACTURER_FK] = self.own_manufacturer_fk
         total_res = [dict(total_res)]
         self._save_results_for_assortment(ProductsConsts.MANUFACTURER_FK, total_res, store_level_no_policy_kpi_fk)
@@ -81,7 +81,7 @@ class TNUVAILToolBox:
     def _prepare_data_for_assortment_calculation(self):
         """ This method gets the level 3 assortment results (SKU level), adding category_fk and returns the DataFrame"""
         lvl3_result = self.assortment.calculate_lvl3_assortment()
-        category_per_product = self.all_products[[ProductsConsts.PRODUCT_FK, DataProvider.ScifConsts.CATEGORY_FK]]
+        category_per_product = self.all_products[[ProductsConsts.PRODUCT_FK,ScifConsts.CATEGORY_FK]]
         lvl3_result = pd.merge(lvl3_result, category_per_product, how='left')
         return lvl3_result
 
@@ -112,7 +112,7 @@ class TNUVAILToolBox:
         """ This method filters scene item facts by policy and removes redundant row for SOS calculation"""
         filtered_scif = self._get_filtered_scif_per_scene_type(policy)
         filtered_scif = filtered_scif[~filtered_scif[ProductsConsts.PRODUCT_TYPE].isin(Consts.TYPES_TO_IGNORE_IN_SOS)]
-        filtered_scif = filtered_scif.loc[filtered_scif[DataProvider.ScifConsts.FACINGS_IGN_STACK] > 0]
+        filtered_scif = filtered_scif.loc[filtered_scif[ScifConsts.FACINGS_IGN_STACK] > 0]
         return filtered_scif
 
     def _get_filtered_scif_per_scene_type(self, scene_type):
@@ -183,13 +183,13 @@ class TNUVAILToolBox:
         and denominator_result.
         """
         store_result_dict = dict()
-        store_result_dict[DB.SessionResultsConsts.NUMERATOR_RESULT] = lvl3_data.in_store.sum()
-        store_result_dict[DB.SessionResultsConsts.DENOMINATOR_RESULT] = lvl3_data.in_store.count()
+        store_result_dict[SessionResultsConsts.NUMERATOR_RESULT] = lvl3_data.in_store.sum()
+        store_result_dict[SessionResultsConsts.DENOMINATOR_RESULT] = lvl3_data.in_store.count()
         store_result_dict[ProductsConsts.MANUFACTURER_FK] = self.own_manufacturer_fk
-        store_result_dict[DB.SessionResultsConsts.DENOMINATOR_ID] = self.store_id
+        store_result_dict[SessionResultsConsts.DENOMINATOR_ID] = self.store_id
         if not is_distribution:  # In OOS the numerator is total - distribution
-            store_result_dict[DB.SessionResultsConsts.NUMERATOR_RESULT] = store_result_dict[DB.SessionResultsConsts.DENOMINATOR_RESULT] - \
-                                                         store_result_dict[DB.SessionResultsConsts.NUMERATOR_RESULT]
+            store_result_dict[SessionResultsConsts.NUMERATOR_RESULT] = store_result_dict[SessionResultsConsts.DENOMINATOR_RESULT] - \
+                                                         store_result_dict[SessionResultsConsts.NUMERATOR_RESULT]
             self.oos_store_results.append(store_result_dict)
         return [store_result_dict]
 
@@ -201,15 +201,15 @@ class TNUVAILToolBox:
         :return: A dictionary which contains the following keys: category_fk, denominator_id, numerator_result and
         denominator_result.
         """
-        in_store_per_category = lvl3_data[[DataProvider.ScifConsts.CATEGORY_FK, Consts.IN_STORE]].fillna(0)
-        in_store_per_category = in_store_per_category.groupby(DataProvider.ScifConsts.CATEGORY_FK, as_index=False).agg(['sum', 'count'])
+        in_store_per_category = lvl3_data[[ScifConsts.CATEGORY_FK, Consts.IN_STORE]].fillna(0)
+        in_store_per_category = in_store_per_category.groupby(ScifConsts.CATEGORY_FK, as_index=False).agg(['sum', 'count'])
         in_store_per_category.columns = in_store_per_category.columns.droplevel(0)
         in_store_per_category.reset_index(inplace=True)
         in_store_per_category = in_store_per_category.assign(denominator_id=self.own_manufacturer_fk)
         in_store_per_category.rename(Consts.AGGREGATION_COLUMNS_RENAMING, inplace=True, axis=1)
         if not is_distribution:  # In OOS the numerator is total - distribution
-            in_store_per_category[DB.SessionResultsConsts.NUMERATOR_RESULT] = in_store_per_category[DB.SessionResultsConsts.DENOMINATOR_RESULT] - \
-                                                             in_store_per_category[DB.SessionResultsConsts.NUMERATOR_RESULT]
+            in_store_per_category[SessionResultsConsts.NUMERATOR_RESULT] = in_store_per_category[SessionResultsConsts.DENOMINATOR_RESULT] - \
+                                                             in_store_per_category[SessionResultsConsts.NUMERATOR_RESULT]
         in_store_per_category = in_store_per_category.to_dict('records')
         return in_store_per_category
 
@@ -223,7 +223,7 @@ class TNUVAILToolBox:
         :return: A dictionary - which contains the following keys: product_fk, denominator_id, numerator_result and
         denominator_result.
         """
-        sku_level_res = lvl3_data[[ProductsConsts.PRODUCT_FK, Consts.IN_STORE, DataProvider.ScifConsts.CATEGORY_FK, DataProvider.ScifConsts.FACINGS]]
+        sku_level_res = lvl3_data[[ProductsConsts.PRODUCT_FK, Consts.IN_STORE, ScifConsts.CATEGORY_FK, ScifConsts.FACINGS]]
         sku_level_res.rename(Consts.SOS_SKU_LVL_RENAME, axis=1, inplace=True)
         if not is_distribution:
             sku_level_res = sku_level_res.assign(denominator_result=1)
@@ -244,7 +244,7 @@ class TNUVAILToolBox:
         category_results = self._calculate_category_level_assortment(lvl3_data, is_distribution=is_dist)
         sku_level_results = self._calculate_sku_level_assortment(lvl3_data, is_distribution=is_dist)
         self._save_results_for_assortment(ProductsConsts.MANUFACTURER_FK, store_results, store_level_kpi_fk)
-        self._save_results_for_assortment(DataProvider.ScifConsts.CATEGORY_FK, category_results, cat_lvl_fk, store_level_kpi_fk)
+        self._save_results_for_assortment(ScifConsts.CATEGORY_FK, category_results, cat_lvl_fk, store_level_kpi_fk)
         self._save_results_for_assortment(ProductsConsts.PRODUCT_FK, sku_level_results, sku_level_fk, cat_lvl_fk, not is_dist)
         if not is_dist:  # New addition in order to support OOS reasons
             sku_no_policy_kpi_fk = self.common_v2.get_kpi_fk_by_kpi_type(Consts.OOS_SKU_IN_STORE_LEVEL)
@@ -261,8 +261,8 @@ class TNUVAILToolBox:
         """
         should_enter = True if parent_kpi_fk is not None else False
         for result in results_list:
-            numerator_id, denominator_id = result[numerator_entity], result[DB.SessionResultsConsts.DENOMINATOR_ID]
-            num_res, denominator_res = result[DB.SessionResultsConsts.NUMERATOR_RESULT], result[DB.SessionResultsConsts.DENOMINATOR_RESULT]
+            numerator_id, denominator_id = result[numerator_entity], result[SessionResultsConsts.DENOMINATOR_ID]
+            num_res, denominator_res = result[SessionResultsConsts.NUMERATOR_RESULT], result[SessionResultsConsts.DENOMINATOR_RESULT]
             score, result = self._calculate_assortment_score_and_result(numerator_entity, num_res, denominator_res)
             score = self._get_previous_oos_score(kpi_fk, numerator_id) if prev_res else score   # Only for OOS-SKU!
             self.common_v2.write_to_db_result(fk=kpi_fk, numerator_id=numerator_id, numerator_result=num_res,
@@ -361,8 +361,8 @@ class TNUVAILToolBox:
         """
         population_filters = {ParseInputKPI.POPULATION: {ParseInputKPI.INCLUDE: [sos_filters]}}
         filtered_df = ParseInputKPI.filter_df(population_filters, df_to_filter)
-        numerator_result = filtered_df[DataProvider.ScifConsts.FACINGS_IGN_STACK].sum()
-        denominator_result = df_to_filter[DataProvider.ScifConsts.FACINGS_IGN_STACK].sum()
+        numerator_result = filtered_df[ScifConsts.FACINGS_IGN_STACK].sum()
+        denominator_result = df_to_filter[ScifConsts.FACINGS_IGN_STACK].sum()
         return numerator_result, denominator_result
 
     def _calculate_own_manufacturer_sos(self, df_to_filter):
@@ -386,9 +386,9 @@ class TNUVAILToolBox:
             sos_result = {key: 0 for key in Consts.ENTITIES_FOR_DB}
             filters = {ProductsConsts.MANUFACTURER_FK: int(manufacturer)}
             numerator_result, denominator_result = self._general_sos_calculation(filtered_scif_by_category, **filters)
-            sos_result[DB.SessionResultsConsts.NUMERATOR_RESULT] = numerator_result
-            sos_result[DB.SessionResultsConsts.DENOMINATOR_RESULT] = denominator_result
-            sos_result[ProductsConsts.MANUFACTURER_FK], sos_result[DataProvider.ScifConsts.CATEGORY_FK] = manufacturer, category_fk
+            sos_result[SessionResultsConsts.NUMERATOR_RESULT] = numerator_result
+            sos_result[SessionResultsConsts.DENOMINATOR_RESULT] = denominator_result
+            sos_result[ProductsConsts.MANUFACTURER_FK], sos_result[ScifConsts.CATEGORY_FK] = manufacturer, category_fk
             results_list.append(sos_result)
         return results_list
 
@@ -398,8 +398,8 @@ class TNUVAILToolBox:
         are checking if current manufacturer is own manufacturer and saves it in both level.
         """
         for res_dict in results:
-            manufacturer_id, category_id = res_dict[ProductsConsts.MANUFACTURER_FK], res_dict[DataProvider.ScifConsts.CATEGORY_FK]
-            numerator_res, denominator_res = res_dict[DB.SessionResultsConsts.NUMERATOR_RESULT], res_dict[DB.SessionResultsConsts.DENOMINATOR_RESULT]
+            manufacturer_id, category_id = res_dict[ProductsConsts.MANUFACTURER_FK], res_dict[ScifConsts.CATEGORY_FK]
+            numerator_res, denominator_res = res_dict[SessionResultsConsts.NUMERATOR_RESULT], res_dict[SessionResultsConsts.DENOMINATOR_RESULT]
             sos_score = round(numerator_res / float(denominator_res)*100, 2) if denominator_res else 0
             if res_dict[ProductsConsts.MANUFACTURER_FK] == self.own_manufacturer_fk:
                 self.common_v2.write_to_db_result(fk=own_manu_out_of_category_fk, numerator_id=category_id,
