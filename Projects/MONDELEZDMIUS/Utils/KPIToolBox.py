@@ -138,7 +138,6 @@ class MONDELEZDMIUSToolBox:
                                 product_fk = 0
                                 compliance_status = Const.NON_COMPLIANT_FK
 
-
                     self.common.write_to_db_result(fk=kpi_fk, numerator_id=product_fk, numerator_result=score,
                                                    denominator_id=self.store_id, denominator_result=1,
                                                    result=compliance_status, score=score)
@@ -183,8 +182,6 @@ class MONDELEZDMIUSToolBox:
                                 score = 0
                                 product_fk = 0
                                 compliance_status = Const.NON_COMPLIANT_FK
-
-
 
                     self.common.write_to_db_result(fk=kpi_fk, numerator_id=product_fk, numerator_result=score,
                                                    denominator_id=self.store_id, denominator_result=1,
