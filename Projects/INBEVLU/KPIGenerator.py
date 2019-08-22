@@ -32,6 +32,7 @@ class INBEVLUINBEVBEGenerator:
         """
         if self.tool_box.scif.empty:
             Log.warning('Scene item facts is empty for this session')
+            return
         self.tool_box.tools.update_templates()
         set_names = ['Product Blocking', 'Linear Share of Shelf',
                      'OSA', 'Pallet Presence', 'Share of Assortment']
