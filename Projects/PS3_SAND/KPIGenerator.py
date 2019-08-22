@@ -1,14 +1,17 @@
+
 from Trax.Utils.Logging.Logger import Log
-from Projects.PS3_SAND.Utils.KPIToolBox import DIAGEOPTToolBox
+from Projects.DIAGEOCO.Utils.KPIToolBox import DIAGEOCOToolBox
 from KPIUtils_v2.Utils.Decorators.Decorators import log_runtime
 
+__author__ = 'huntery'
 
-class DIAGEOPTGenerator:
+
+class DIAGEOCOGenerator:
 
     def __init__(self, data_provider, output):
         self.data_provider = data_provider
         self.output = output
-        self.tool_box = DIAGEOPTToolBox(self.data_provider, self.output)
+        self.tool_box = DIAGEOCOToolBox(self.data_provider, self.output)
 
     @log_runtime('Total Calculations', log_start=True)
     def main_function(self):

@@ -67,9 +67,9 @@ class MaskingBasedAdjacency(object):
         self.max_height = (self.mpis_with_masks["y_top"] - self.mpis_with_masks[
             "y_right"]).abs().max() + max_shelf_distance
         # Only one shelf exist in one of the bays - take max product height
+        self.y_shelf = (self.mpis_with_masks["y_top"] - self.mpis_with_masks["y_right"]).abs().max()
         if (self.mpis_with_masks.groupby('bay_number')['shelf_number'].nunique().min() == 1) or y_positions.empty:
-            self.max_height = (self.mpis_with_masks["y_top"] -
-                               self.mpis_with_masks["y_right"]).abs().max()
+            self.max_height = self.y_shelf
         self.max_width = (self.mpis_with_masks["x_top"] -
                           self.mpis_with_masks["x_right"]).abs().max()
 
@@ -114,11 +114,11 @@ class MaskingBasedAdjacency(object):
                                       'xoff': 0,
                                       'order_func': partial(candidate_order, coord='y', sign=1)},
                                  Direction.LEFT:
-                                     {'yoff': 0,
+                                     {'yoff': self.y_shelf,
                                       'xoff': -self.max_width,
                                       'order_func': partial(candidate_order, coord='x', sign=-1)},
                                  Direction.RIGHT:
-                                     {'yoff': 0,
+                                     {'yoff': self.y_shelf,
                                       'xoff': self.max_width,
                                       'order_func': partial(candidate_order, coord='x', sign=1)}
                                  }

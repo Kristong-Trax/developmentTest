@@ -2,7 +2,7 @@ from Trax.Utils.Logging.Logger import Log
 from Projects.DIAGEOIN.Utils.KPIToolBox import DIAGEOINToolBox
 from KPIUtils_v2.Utils.Decorators.Decorators import log_runtime
 
-__author__ = 'nidhin'
+__author__ = 'satya'
 
 
 class DIAGEOINGenerator:

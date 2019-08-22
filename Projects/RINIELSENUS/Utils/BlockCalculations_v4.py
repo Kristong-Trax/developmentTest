@@ -109,7 +109,8 @@ class Block(BaseCalculation):
 
         self.outliers_threshold = block_parameters[AdditionalAttr.OUTLIERS_THRESHOLD]
         self.check_vertical_horizontal = block_parameters[AdditionalAttr.CHECK_VERTICAL_HORIZONTAL]
-        self.include_stacking = block_parameters[AdditionalAttr.INCLUDE_STACKING]
+        # self.include_stacking = block_parameters[AdditionalAttr.INCLUDE_STACKING]
+        self.include_stacking = True
         self.ignore_empty = block_parameters[AdditionalAttr.IGNORE_EMPTY]
         self.allowed_edge_type = block_parameters[AdditionalAttr.ALLOWED_EDGE_TYPE]
         operator = block_parameters[AdditionalAttr.FILTER_OPERATOR]
@@ -152,6 +153,27 @@ class Block(BaseCalculation):
                 if relevant_matches_for_block.empty:
                     continue
 
+                import time
+                times = []
+                start = time.time()
+
+                graph = AdjacencyGraphBuilder.initiate_graph_by_dataframe(scene_matches, scene_mask,
+                                                                          additional_attributes=['rect_x',
+                                                                                                 'rect_y'] + allowed_product_filter +
+                                                                                                list(
+                                                                                                    scene_matches.columns))
+                start = time.time() - start
+                times.append(['build graph', start])
+                print('{} to build graph'.format(start))
+                start = time.time()
+
+                graph = AdjacencyGraphBuilder.condense_graph_by_level(CalcConst.PRODUCT_FK, graph)
+                start = time.time() - start
+                times.append(['simplify graph', start])
+                print('{} to build simplify'.format(start))
+                start = time.time()
+
+
                 import pymongo
                 from networkx.readwrite import json_graph
                 import json
@@ -161,18 +183,67 @@ class Block(BaseCalculation):
                 import bson
                 mdb = pymongo.MongoClient('mongodb://127.0.0.1:27017')
                 col = mdb.config['graph']
-                graph = AdjacencyGraphBuilder.initiate_graph_by_dataframe(scene_matches, scene_mask,
-                                                                          additional_attributes=['rect_x',
-                                                                                                 'rect_y'] + allowed_product_filter +
-                                                                                                list(
-                                                                                                    scene_matches.columns))
+
+                start = time.time() - start
+                times.append(['mongo connect', start])
+                print('{} to connect to mongo'.format(start))
+                start = time.time()
 
                 data = json_graph.adjacency_data(graph)
-                pkl = {'project': self.data_provider.project_name, 'scene': scene, 'graph': bson.Binary(bz2.compress(pickletools.optimize(pickle.dumps(data))))}
+                start = time.time() - start
+                times.append(['extract graph data', start])
+                print('{} extract graph data'.format(start))
+                start = time.time()
+
+                print('~~~~~~~~~~~~')
+                g = pickle.dumps(data, protocol=pickle.HIGHEST_PROTOCOL)
+                start = time.time() - start
+                print('{} pickle'.format(start))
+                start = time.time()
+                g = pickletools.optimize(g)
+                start = time.time() - start
+                print('{} optimize'.format(start))
+                start = time.time()
+                g = bz2.compress(g)
+                start = time.time() - start
+                print('{} compress'.format(start))
+                start = time.time()
+                g = bson.Binary(g)
+                start = time.time() - start
+                print('{} bsonify'.format(start))
+                start = time.time()
+                print('~~~~~~~~~~~~')
+
+
+                # bson.Binary(bz2.compress(pickletools.optimize(pickle.dumps(data))))
+                pkl = {'project': self.data_provider.project_name, 'scene': scene, 'session': self.data_provider.session_uid,
+                       'graph': g}
+                start = time.time() - start
+                times.append(['pickle graph', start])
+                print('{} to pickle graph'.format(start))
+                start = time.time()
+
+
                 col.insert_one(pkl)
+                start = time.time() - start
+                times.append(['insert to mongo', start])
+                print('{} to insert into mongo'.format(start))
+                start = time.time()
+
 
                 doc = col.find({'project': self.data_provider.project_name, 'scene': scene})[0]
+                start = time.time() - start
+                times.append(['load from mongo', start])
+                print('{} to load graph from mongo'.format(start))
+                start = time.time()
+
+
                 upkl = pickle.loads(bz2.decompress(doc['graph']))
+                start = time.time() - start
+                times.append(['unpickle graph', start])
+                print('{} to unpickle'.format(start))
+                start = time.time()
+
 
 
                 if not self.include_stacking:

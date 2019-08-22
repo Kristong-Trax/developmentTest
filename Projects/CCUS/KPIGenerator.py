@@ -69,7 +69,6 @@ class CCUSGenerator:
         tool_box = JEFFToolBox(self.data_provider, self.output, self.common)
         tool_box.main_calculation()
 
-
     # @log_runtime('OBBO Calculations')
     # def calculate_obbo(self):
     #     tool_box = OBBOToolBox(self.data_provider, self.output)

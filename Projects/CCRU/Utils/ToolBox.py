@@ -1383,13 +1383,13 @@ class CCRUKPIToolBox:
         if values:
             for skus in values:
                 analogue_skus = [unicode(x).strip() for x in skus.split(',')]
-                anchor_sku = analogue_skus.pop()
+                anchor_sku = analogue_skus.pop(0)
                 partner_skus += [anchor_sku]
                 relevant_products_and_facings.loc[
                     relevant_products_and_facings['product_ean_code'].isin(analogue_skus), [
                         'product_ean_code']] = anchor_sku
 
-            tested_skus = [partner_skus.pop()]
+            tested_skus = [partner_skus.pop(0)]
 
         if tested_skus and not relevant_products_and_facings.empty:
             tested_facings = \
