@@ -123,8 +123,8 @@ class DataTestUnitMarsuae(object):
         {'probe_match_fk': 4, 'scene_fk': 1, 'product_fk': 3, 'price': None, 'promotion_price': None},
     ])
 
-    scene_1_scif = pd.DataFrame([{'product_fk': 1, 'manufacturer_fk': 3}, {'product_fk': 2, 'manufacturer_fk': 3},
-                                 {'product_fk': 3, 'manufacturer_fk': 3}])
+    scene_1_scif = pd.DataFrame([{'product_fk': 1, 'product_type': 'SKU'}, {'product_fk': 2,  'product_type': 'SKU'},
+                                 {'product_fk': 3, 'product_type': 'SKU'}])
 
     scene_2 = pd.DataFrame([
         {'probe_match_fk': 1, 'scene_fk': 1, 'product_fk': 1, 'price': 4, 'promotion_price': None},
@@ -136,8 +136,8 @@ class DataTestUnitMarsuae(object):
     ])
 
     scene_2_scif = pd.DataFrame([
-        {'product_fk': 1, 'manufacturer_fk': 3}, {'product_fk': 2, 'manufacturer_fk': 3},
-        {'product_fk': 3, 'manufacturer_fk': 3}
+        {'product_fk': 1,  'product_type': 'SKU'}, {'product_fk': 2,  'product_type': 'SKU'},
+        {'product_fk': 3,  'product_type': 'SKU'}
     ])
 
     scene_3 = pd.DataFrame([
@@ -149,8 +149,8 @@ class DataTestUnitMarsuae(object):
     ])
 
     scene_3_scif = pd.DataFrame([
-        {'product_fk': 1, 'manufacturer_fk': 3}, {'product_fk': 2, 'manufacturer_fk': 3},
-        {'product_fk': 3, 'manufacturer_fk': 3}
+        {'product_fk': 1,  'product_type': 'SKU'}, {'product_fk': 2,  'product_type': 'SKU'},
+        {'product_fk': 3,  'product_type': 'SKU'}
     ])
 
     scene_4_with_non_mars = pd.DataFrame([
@@ -160,8 +160,8 @@ class DataTestUnitMarsuae(object):
         {'probe_match_fk': 4, 'scene_fk': 1, 'product_fk': 3, 'price': None, 'promotion_price': None},
     ])
     scene_4_scif = pd.DataFrame([
-        {'product_fk': 1, 'manufacturer_fk': 3}, {'product_fk': 4, 'manufacturer_fk': 4},
-        {'product_fk': 3, 'manufacturer_fk': 3}
+        {'product_fk': 1,  'product_type': 'SKU'}, {'product_fk': 4,  'product_type': 'Other'},
+        {'product_fk': 3,  'product_type': 'SKU'}
     ])
 
     #change product pks
