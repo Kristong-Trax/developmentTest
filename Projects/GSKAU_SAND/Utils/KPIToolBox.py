@@ -7,7 +7,6 @@ from Trax.Cloud.Services.Connector.Keys import DbUsers
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from KPIUtils.GlobalProjects.GSK.KPIGenerator import GSKGenerator
-from KPIUtils_v2.GlobalDataProvider.PsDataProvider import PsDataProvider
 
 __author__ = 'limorc'
 
@@ -30,13 +29,10 @@ class GSKAUToolBox:
         self.visit_date = self.data_provider[Data.VISIT_DATE]
         self.session_info = self.data_provider[Data.SESSION_INFO]
         self.scene_info = self.data_provider[Data.SCENES_INFO]
-        self.store_info = self.data_provider[Data.STORE_INFO]
         self.store_id = self.data_provider[Data.STORE_FK]
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
         self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         self.kpi_static_data = self.common.get_kpi_static_data()
-        self.ps_data_provider = PsDataProvider(self.data_provider, self.output)
-        self.targets = self.ps_data_provider.get_kpi_external_targets()
         self.kpi_results_queries = []
 
         self.set_up_template = pd.read_excel(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data',
