@@ -64,10 +64,10 @@ class MONDELEZDMIUSToolBox:
         This function calculates the KPI results.
         """
 
-        # self.calculate_display_count()
+        self.calculate_display_count()
         self.calculate_assortment()
-        # self.calculate_FD_compliance()
-        # self.calculate_scripted_compliance()
+        self.calculate_FD_compliance()
+        self.calculate_scripted_compliance()
         self.calculate_assortment_time()
         self.common.commit_results_data()
 
@@ -83,12 +83,9 @@ class MONDELEZDMIUSToolBox:
                 end_date_timestamp = start_date + pd.DateOffset(days=6)
                 unix = int((end_date_timestamp - datetime.datetime(1970, 1, 1)).total_seconds())
 
-
-
             self.common.write_to_db_result(fk=kpi_fk, numerator_id=self.manufacturer_fk, numerator_result=0,
-                                       denominator_id=self.store_id, denominator_result=0, result=unix,
-                                       score=0)
-
+                                           denominator_id=self.store_id, denominator_result=0, result=unix,
+                                           score=0)
 
     def calculate_display_count(self):
         kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.DISPLAY_COUNT_kpi)
