@@ -2,6 +2,7 @@ from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Cloud.Services.Connector.Keys import DbUsers
 from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 # from Trax.Utils.Logging.Logger import Log
+import datetime
 import pandas as pd
 from pandas.io.json.normalize import json_normalize
 import json
@@ -67,7 +68,24 @@ class MONDELEZDMIUSToolBox:
         self.calculate_assortment()
         self.calculate_FD_compliance()
         self.calculate_scripted_compliance()
+        self.calculate_assortment_time()
         self.common.commit_results_data()
+
+    def calculate_assortment_time(self):
+        for selected_kpi in [Const.AD_BREAK_START, Const.AD_BREAK_STOP]:
+            kpi_fk = self.common.get_kpi_fk_by_kpi_name(selected_kpi)
+            start_date = self.store_assortment.start_date.min()
+
+            if selected_kpi == Const.AD_BREAK_START:
+                unix = int((start_date - datetime.datetime(1970, 1, 1)).total_seconds())
+
+            else:
+                end_date_timestamp = start_date + pd.DateOffset(days=6)
+                unix = int((end_date_timestamp - datetime.datetime(1970, 1, 1)).total_seconds())
+
+            self.common.write_to_db_result(fk=kpi_fk, numerator_id=self.manufacturer_fk, numerator_result=0,
+                                           denominator_id=self.store_id, denominator_result=0, result=unix,
+                                           score=0)
 
     def calculate_display_count(self):
         kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.DISPLAY_COUNT_kpi)
@@ -120,7 +138,6 @@ class MONDELEZDMIUSToolBox:
                                 product_fk = 0
                                 compliance_status = Const.NON_COMPLIANT_FK
 
-
                     self.common.write_to_db_result(fk=kpi_fk, numerator_id=product_fk, numerator_result=score,
                                                    denominator_id=self.store_id, denominator_result=1,
                                                    result=compliance_status, score=score)
@@ -165,8 +182,6 @@ class MONDELEZDMIUSToolBox:
                                 score = 0
                                 product_fk = 0
                                 compliance_status = Const.NON_COMPLIANT_FK
-
-
 
                     self.common.write_to_db_result(fk=kpi_fk, numerator_id=product_fk, numerator_result=score,
                                                    denominator_id=self.store_id, denominator_result=1,
