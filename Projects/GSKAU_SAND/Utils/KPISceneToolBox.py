@@ -117,8 +117,11 @@ class GSKAUSceneToolBox:
                                  'score': int(multi_posm_or_bay), 'numerator_id': posm_to_check,
                                  'numerator_result': posm_to_check},
                                 {'pk': kpi_display_sku_compliance.iloc[0].pk, 'result': float(mandatory_sku_compliance),
-                                 'score': float(optional_sku_compliance)},
-                                {'pk': kpi_display_price_compliance.iloc[0].pk, 'result': float(price_compliance)},
+                                 'score': float(optional_sku_compliance), 'denominator_id': posm_to_check,
+                                 'denominator_result': posm_to_check},
+                                {'pk': kpi_display_price_compliance.iloc[0].pk, 'result': float(price_compliance),
+                                 'score': float(price_compliance), 'denominator_id': posm_to_check,
+                                 'denominator_result': posm_to_check},
                             ]
                         )
                         continue
@@ -139,8 +142,11 @@ class GSKAUSceneToolBox:
                                  'score': int(multi_posm_or_bay), 'numerator_id': posm_to_check,
                                  'numerator_result': posm_to_check},
                                 {'pk': kpi_display_sku_compliance.iloc[0].pk, 'result': float(mandatory_sku_compliance),
-                                 'score': float(optional_sku_compliance)},
-                                {'pk': kpi_display_price_compliance.iloc[0].pk, 'result': float(price_compliance)},
+                                 'score': float(optional_sku_compliance), 'denominator_id': posm_to_check,
+                                 'denominator_result': posm_to_check},
+                                {'pk': kpi_display_price_compliance.iloc[0].pk, 'result': float(price_compliance),
+                                 'score': float(price_compliance), 'denominator_id': posm_to_check,
+                                 'denominator_result': posm_to_check},
                             ]
                         )
                         multi_posm_or_bay = True
@@ -171,8 +177,11 @@ class GSKAUSceneToolBox:
                              'score': int(multi_posm_or_bay), 'numerator_id': posm_to_check,
                              'numerator_result': posm_to_check},
                             {'pk': kpi_display_sku_compliance.iloc[0].pk, 'result': float(mandatory_sku_compliance),
-                             'score': float(optional_sku_compliance)},
-                            {'pk': kpi_display_price_compliance.iloc[0].pk, 'result': float(price_compliance)},
+                             'score': float(optional_sku_compliance), 'denominator_id': posm_to_check,
+                             'denominator_result': posm_to_check},
+                            {'pk': kpi_display_price_compliance.iloc[0].pk, 'result': float(price_compliance),
+                             'score': float(price_compliance), 'denominator_id': posm_to_check,
+                             'denominator_result': posm_to_check},
                         ]
                     )
                     continue
