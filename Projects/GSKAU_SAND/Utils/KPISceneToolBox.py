@@ -100,17 +100,25 @@ class GSKAUSceneToolBox:
                 relevant_store_attributes = each_target[STORE_IDENTIFIERS].dropna()
                 _bool_check_df = self.store_info[list(store_relevant_targets.keys())] == relevant_store_attributes.values
                 is_store_relevant = _bool_check_df.all(axis=None)
+                current_scene_fk = self.scene_info.iloc[0].scene_fk
                 if is_store_relevant:
-                    current_scene_fk = self.scene_info.iloc[0].scene_fk
-                    Log.info('The scene: {scene} is relevant for calculating secondary display compliance.'
-                             .format(scene=current_scene_fk))
+                    Log.info('The session: {sess} - {scene} is relevant for calculating secondary display compliance.'
+                             .format(sess=self.session_uid, scene=current_scene_fk))
                     # FIND THE SCENES WHICH HAS THE POSM to check for multiposm or multibays
                     posm_to_check = each_target[POSM_PK_KEY]
-                    scene_invalid = self.scif[self.scif['product_fk'] == posm_to_check]['scene_id'].empty
+                    scene_invalid = self.scif[self.scif['product_fk'] == posm_to_check].empty
                     if scene_invalid:
                         Log.info('The scene: {scene} is relevant but POSM {pos} is not present. '
                                  'Save and start new scene.'
                                  .format(scene=current_scene_fk, pos=posm_to_check))
+                        if len(self.match_product_in_scene['bay_number'].unique()) > 1 or \
+                                len(self.scif[self.scif['product_type'] == POS_TYPE]) > 1:
+                            Log.info(
+                                'The scene: {scene} is relevant and multi_bay_posm is True. '
+                                'Purity per bay is calculated and going to next scene.'
+                                .format(scene=current_scene_fk, pos=posm_to_check))
+                            multi_posm_or_bay = True
+                            self.save_purity_per_bay(kpi_display_bay_purity)
                         self.save_display_compliance_data(
                             [
                                 {'pk': kpi_display_presence.iloc[0].pk, 'result': int(has_posm_recognized),
@@ -187,8 +195,8 @@ class GSKAUSceneToolBox:
                     continue
                 else:
                     # the session/store is not part of the KPI targets
-                    Log.info('For the session: {sess}, the current kpi target is not valid. Keep Looking...'
-                             .format(sess=self.session_uid))
+                    Log.info('The session: {sess} - {scene}, the current kpi target is not valid. Keep Looking...'
+                             .format(sess=self.session_uid, scene=current_scene_fk))
                     continue
 
     def get_ean_presence_rate(self, ean_list):
