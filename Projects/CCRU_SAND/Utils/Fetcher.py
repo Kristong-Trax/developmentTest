@@ -144,11 +144,14 @@ class CCRU_SANDCCHKPIFetcher:
                 """.format(store_id)
         cur = self.rds_conn.db.cursor()
         cur.execute(query)
-        res = cur.fetchall()[0]
-        if not all(res):
-            return res[0]
-        else:
-            return float(res[0])
+        result = cur.fetchall()
+
+        try:
+            result = float(result[0][0].replace(',', '.'))
+        except:
+            result = 1.0
+
+        return result
 
     def get_test_store(self, store_id):
         query = """
@@ -269,3 +272,27 @@ class CCRU_SANDCCHKPIFetcher:
                 """.format(session_uid)
         result = pd.read_sql_query(query, self.rds_conn.db)[0][0]
         return result
+
+    def get_top_skus_for_store(self, store_fk, visit_date):
+        query = """
+                select
+                anchor_product_fk,
+                group_concat(product_fk) as product_fks,
+                max(min_facings) as min_facings
+                from (
+                    select          
+                    ifnull(ts.anchor_product_fk, ts.product_fk) as anchor_product_fk,
+                    ts.product_fk as product_fk,
+                    ifnull(ts.min_facings, 1) as min_facings
+                    from {} ts
+                    where ts.store_fk = {}
+                    and ts.start_date <= '{}' 
+                    and ifnull(ts.end_date, curdate()) >= '{}'
+                ) t
+                group by anchor_product_fk;
+                """.format('pservice.custom_osa',
+                           store_fk,
+                           visit_date,
+                           visit_date)
+        data = pd.read_sql_query(query, self.rds_conn.db)
+        return data.groupby(['anchor_product_fk']).agg({'product_fks': 'first', 'min_facings': 'first'}).to_dict()
