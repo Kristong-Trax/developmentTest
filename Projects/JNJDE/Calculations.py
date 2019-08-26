@@ -17,7 +17,7 @@ class JNJDECalculations(BaseCalculationsScript):
     def run_project_calculations(self):
         self.timer.start()
         eye_hand_lvl_template_path = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))),
-                                                  'JNJDE', 'Data', 'eye_level_jnjuk.xlsx')
+                                                  'JNJDE', 'Data', 'eye_level_jnjde.xlsx')
         eye_hand_lvl_template = pd.read_excel(eye_hand_lvl_template_path)
         common = Common(self.data_provider)
         jnj_generator = JNJGenerator(self.data_provider, self.output, common)

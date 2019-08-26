@@ -5,6 +5,7 @@ __author__ = 'Hunter'
 
 
 class Const(object):
+    OWN_MANUFACTURER_FK = 1
     PRICE_ADHERENCE_TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)),
                                                  'Price Adherence Targets 20Jun2019.xlsx')
     EXTRA_SPACES_RELEVANT_SUB_CATEGORIES_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)),
@@ -14,6 +15,7 @@ class Const(object):
 
     # had to do this because of weird encoding problems
     EXTRA_SPACES_SURVEY_QUESTION_FK = 54
+    BONUS_QUESTION_FK = 56
 
     PERFECT_STORE = 'Perfect Store Score'
 
@@ -30,3 +32,5 @@ class Const(object):
 
     PERFECT_STORE_EXTRA_SPACES_SUB_CATEGORY = 'Perfect Store Extra Spaces - Sub-Category'
     PERFECT_STORE_EXTRA_SPACES_TOTAL = 'Perfect Store Extra Spaces - Total Score'
+
+    BONUS_QUESTION = 'Bonus Question'

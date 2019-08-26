@@ -108,3 +108,4 @@ class Consts(object):
     MISSING_QUESTION_LOG = "Missing question ID field! Please check the template"
     EMPTY_TEMPLATE_DATA_LOG = "There isn't relevant data in the template for store fk = {}! Exiting..."
     UNSUPPORTED_KPI_LOG = "KPI of type '{}' is not supported"
+    MISSING_KPI_IN_DB = "Missing the following KPI name in the DB: {}"

@@ -1383,13 +1383,13 @@ class CCRUKPIToolBox:
         if values:
             for skus in values:
                 analogue_skus = [unicode(x).strip() for x in skus.split(',')]
-                anchor_sku = analogue_skus.pop()
+                anchor_sku = analogue_skus.pop(0)
                 partner_skus += [anchor_sku]
                 relevant_products_and_facings.loc[
                     relevant_products_and_facings['product_ean_code'].isin(analogue_skus), [
                         'product_ean_code']] = anchor_sku
 
-            tested_skus = [partner_skus.pop()]
+            tested_skus = [partner_skus.pop(0)]
 
         if tested_skus and not relevant_products_and_facings.empty:
             tested_facings = \
@@ -2136,22 +2136,22 @@ class CCRUKPIToolBox:
             self.session_uid, self.session_fk)
         for query in delete_queries:
             cur.execute(query)
-        self.rds_conn.db.commit()
+        # self.rds_conn.db.commit()
         # self.rds_conn.disconnect_rds()
-        self.rds_conn = self.rds_connection()
-        cur = self.rds_conn.db.cursor()
+        # self.rds_conn = self.rds_connection()
+        # cur = self.rds_conn.db.cursor()
         for query in self.kpi_results_queries:
             cur.execute(query)
-        self.rds_conn.db.commit()
+        # self.rds_conn.db.commit()
         # self.rds_conn.disconnect_rds()
-        self.rds_conn = self.rds_connection()
-        cur = self.rds_conn.db.cursor()
+        # self.rds_conn = self.rds_connection()
+        # cur = self.rds_conn.db.cursor()
         for query in set(self.gaps_queries):
             cur.execute(query)
-        self.rds_conn.db.commit()
+        # self.rds_conn.db.commit()
         # self.rds_conn.disconnect_rds()
-        self.rds_conn = self.rds_connection()
-        cur = self.rds_conn.db.cursor()
+        # self.rds_conn = self.rds_connection()
+        # cur = self.rds_conn.db.cursor()
         top_sku_queries = self.merge_insert_queries(self.top_sku_queries)
         for query in top_sku_queries:
             cur.execute(query)

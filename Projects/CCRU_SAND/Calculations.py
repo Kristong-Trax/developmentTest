@@ -217,6 +217,8 @@ class CCRU_SANDProjectCalculations:
         Log.info('KPI calculation stage: {}'.format('Committing results new'))
         self.tool_box.commit_results_data_new()
 
+        Log.debug('KPI calculation is completed')
+
     def rds_connection(self):
         if not hasattr(self, '_rds_conn'):
             self._rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)

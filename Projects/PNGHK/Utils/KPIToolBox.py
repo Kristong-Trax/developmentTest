@@ -128,38 +128,62 @@ class PNGHKToolBox:
 
         # iterate all categories (if kpi_df length > 1)
         for i, row in kpi_df.iterrows():
-            filters = {}
             self.kpi_excluding = row[[Const.EXCLUDE_EMPTY, Const.EXCLUDE_HANGER, Const.EXCLUDE_IRRELEVANT,
                                       Const.EXCLUDE_POSM, Const.EXCLUDE_OTHER, Const.STACKING, Const.EXCLUDE_SKU,
                                       Const.EXCLUDE_STOCK, Const.EXCLUDE_OSD]]
             df = self.filter_df(row)
+            df = df[df['width_mm_advance'] != -1]
             if df.empty:
                 continue
 
-            category = row[Const.CATEGORY]
-            if category != "":
-                denominator_id = self.all_products[self.all_products['category']
-                                                   == category]['category_fk'].iloc[0]
-                filters['category'] = category
+            if row[Const.PER_SCENE_TYPE] == Const.EACH:
+                scene_types = row[Const.SCENE_TYPE].split(",")
+                scene_types = [item.strip() for item in scene_types]
+                scene_types = set(scene_types).intersection(set(df['template_name']))
             else:
-                denominator_id = self.store_id
-            all_denominators = df[entity_name].drop_duplicates().tolist()
-            if row[Const.NUMERATOR] != "":
-                all_denominators = [row[Const.NUMERATOR]]
-            denominator = self.tools.get_filter_condition(df, **filters).sum()
+                scene_types = [""]
 
-            # iterate all entities
-            for entity in all_denominators:
-                filters[entity_name] = entity
-                numerator = self.tools.get_filter_condition(df, **filters).sum()
-                del filters[entity_name]
-                if numerator == 0:
+            # Iterate scene types
+            for sc in scene_types:
+                filters = {}
+                if sc != "":
+                    try:
+                        context_id = self.templates[self.templates['template_name']
+                                                    == sc]['template_fk'].iloc[0]
+                    except Exception as ex:
+                        Log.warning("No scene type with the following name: " + str(sc) + ", warning: " + str(ex))
+                        continue
+                    filters['template_name'] = sc
+                else:
+                    context_id = 0
+
+                category = row[Const.CATEGORY]
+                if category != "":
+                    denominator_id = self.all_products[self.all_products['category']
+                                                       == category]['category_fk'].iloc[0]
+                    filters['category'] = category
+                else:
+                    denominator_id = self.store_id
+
+                all_denominators = df[entity_name].drop_duplicates().tolist()
+                if row[Const.NUMERATOR] != "":
+                    all_denominators = [row[Const.NUMERATOR]]
+                denominator = self.tools.get_filter_condition(df, **filters).sum()
+                if denominator == 0:
                     continue
-                result = float(numerator) / float(denominator)
-                numerator_id = df[df[entity_name] == entity][entity_name_for_fk].values[0]
-                self.common.write_to_db_result(fk=kpi_fk, numerator_id=numerator_id, denominator_id=denominator_id,
-                                               numerator_result=numerator, denominator_result=denominator,
-                                               result=result, score=result)
+
+                # iterate all entities
+                for entity in all_denominators:
+                    filters[entity_name] = entity
+                    numerator = self.tools.get_filter_condition(df, **filters).sum()
+                    del filters[entity_name]
+                    if numerator == 0:
+                        continue
+                    result = float(numerator) / float(denominator)
+                    numerator_id = df[df[entity_name] == entity][entity_name_for_fk].values[0]
+                    self.common.write_to_db_result(fk=kpi_fk, numerator_id=numerator_id, denominator_id=denominator_id,
+                                                   context_id=context_id, numerator_result=numerator,
+                                                   denominator_result=denominator, result=result, score=result)
 
     def calculate_linear_sos_kpi(self, kpi_df):
         ratio = 1
@@ -181,6 +205,7 @@ class PNGHKToolBox:
                                       Const.EXCLUDE_STOCK, Const.EXCLUDE_OSD]]
             # filter df to the specific template row
             df = self.filter_df(row)
+            df = df[df['width_mm_advance'] != -1]
             if df.empty:
                 continue
             number_of_scenes = len(df['scene_fk'].unique())
@@ -188,6 +213,7 @@ class PNGHKToolBox:
             if row[Const.PER_SCENE_TYPE] == Const.EACH:
                 scene_types = row[Const.SCENE_TYPE].split(",")
                 scene_types = [item.strip() for item in scene_types]
+                scene_types = set(scene_types).intersection(set(df['template_name']))
             else:
                 scene_types = [""]
 
@@ -227,7 +253,6 @@ class PNGHKToolBox:
                         categories = [""]
 
                     # Iterate categories
-                    df = df[df['width_mm_advance'] != -1]
                     total_denominator = df[self.tools.get_filter_condition(df, **filters)]['width_mm_advance'].sum()
                     for category in categories:
                         if category != "":

@@ -30,7 +30,10 @@ class MarsUsGenerator:
             Log.warning('Scene item facts is empty for this session')
 
         try:
+            import time
+            s = time.time()
             self.tool_box.calculate_scores()
+            print('_______________________ Calculations took {} ______________________'.format(time.time() - s))
         except:
             Log.error('Mars US kpis not calculated')
 

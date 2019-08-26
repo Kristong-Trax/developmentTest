@@ -40,9 +40,6 @@ class DIAGEOCOToolBox:
         assortment_res_dict_v3 = self.diageo_generator.diageo_global_assortment_function_v3()
         self.common_v2.save_json_to_new_tables(assortment_res_dict_v3)
 
-        # the manufacturer name for DIAGEO is 'Diageo' by default. We need to redefine this for DiageoCO
-        self.diageo_generator.tool_box.DIAGEO = 'DIAGEO'
-
         # Menu kpis
         menus_res_dict = self.diageo_generator.diageo_global_share_of_menu_cocktail_function()
         self.common_v2.save_json_to_new_tables(menus_res_dict)
@@ -50,7 +47,8 @@ class DIAGEOCOToolBox:
         # Global Secondary Displays KPI
         res_json = self.diageo_generator.diageo_global_secondary_display_secondary_function()
         if res_json:
-            self.common_v2.write_to_db_result(fk=res_json['fk'], numerator_id=1, denominator_id=self.store_id,
+            self.common_v2.write_to_db_result(fk=res_json['fk'], numerator_id=res_json['numerator_id'],
+                                              denominator_id=self.store_id,
                                               result=res_json['result'])
 
         # Global Brand Pouring KPI

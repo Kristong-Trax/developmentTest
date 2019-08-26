@@ -29,7 +29,6 @@ class MarsUsDogMainMealWet(object):
         self.project_name = self._data_provider.project_name
         self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         self._output = output
-        self._tools = MarsUsGENERALToolBox(self._data_provider, self._output, ignore_stacking=True)
         self._template = ParseMarsUsTemplates()
         self._writer = self._get_writer()
         self.store_id = self._data_provider[Data.STORE_FK]
@@ -40,6 +39,10 @@ class MarsUsDogMainMealWet(object):
         self.rds_conn.disconnect_rds()
         self._data_provider.trace_container = pd.DataFrame(columns=['kpi_display_text', 'scene_id',
                                                                     'products&brands', 'allowed_products', 'kpi_pass'])
+        self._tools = MarsUsGENERALToolBox(self._data_provider, self._output, ignore_stacking=True)
+        self._data_provider['common'] = self.common
+
+
 
     def get_store_att17(self, store_fk):
         query = MarsUsQueries.get_store_attribute(17, store_fk)
@@ -140,7 +143,7 @@ class MarsUsDogMainMealWet(object):
 
         # self._data_provider.trace_container.to_csv('/home/Israel/Desktop/trace_block.csv')
         self._writer.commit_results_data()
-        # self.common.commit_results_data()
+        self.common.commit_results_data()
 
     @staticmethod
     def load_min_facings(template_data):
@@ -149,7 +152,7 @@ class MarsUsDogMainMealWet(object):
             min_face = template_data['Block_Facings_Min'].drop('Score Card Name', axis=1).melt(id_vars='KPI Name') \
                 .set_index(['KPI Name', 'value'])
             min_face['variable'] = min_face['variable'].str.split(',')
-            min_face = min_face.variable.apply(pd.Series).stack().reset_index(level=[0, 1]) \
+            min_face = min_face.variable.apply(pd.Series).stack().str.strip().reset_index(level=[0, 1]) \
                 .rename(columns={0: 'store_type'}).set_index(['KPI Name', 'store_type'], drop=True).to_dict('index')
         return min_face
 
