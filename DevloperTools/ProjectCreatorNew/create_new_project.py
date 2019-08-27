@@ -12,7 +12,7 @@ from DevloperTools.ProjectCreatorNew.Consts import Const, SCENE_TOOLBOX_SCRIPT, 
     PLANOGRAM_GENERATOR_SCRIPT, PLANOGRAM_TOOLBOX_SCRIPT, LIVE_SCENE_CALCULATIONS_SCRIPT, LIVE_SCENE_TOOLBOX_SCRIPT, \
     LIVE_SESSION_TOOLBOX_SCRIPT, LIVE_SESSION_CALCULATIONS_SCRIPT, LIVE_SESSION_GENERATOR_SCRIPT, SCENE_CALCULATIONS, \
     LIVE_SCENE_GENERATOR_SCRIPT, CALCULATIONS, LOCAL_CALCS, GENERATOR, TOOL_BOX, PROFILING_SCRIPT, \
-    GEN_DEPENDENCY_SCRIPT, LOCAL_CALCS_WITH_SCENES
+    GEN_DEPENDENCY_SCRIPT, LOCAL_CALCS_WITH_SCENES, LOCAL_CONSTS
 
 __author__ = 'yoava'
 
@@ -77,9 +77,9 @@ class CreateKPIProject:
                     with open(directory_path + file_name + '.py', 'wb') as f:
                         f.write(file_content % formatting_dict)
 
-        data_directory = os.path.join(self.project_path, 'Data')
-        if not os.path.exists(data_directory):
-            os.makedirs(data_directory)
+        # data_directory = os.path.join(self.project_path, 'Data')
+        # if not os.path.exists(data_directory):
+        #     os.makedirs(data_directory)
 
     def get_formatting_dict(self):
         formatting_dict = {'author': self.author,
@@ -100,13 +100,19 @@ class CreateKPIProject:
                            'planogram_tool_box_file_name': Const.PLANOGRAM_TOOLBOX_FILE_NAME,
                            'live_scene_tool_box_file_name': Const.LIVE_SCENE_TOOLBOX_FILE_NAME,
                            'live_session_tool_box_file_name': Const.LIVE_SESSION_TOOLBOX_FILE_NAME,
-                           'tool_box_class_name': '{}ToolBox'.format(self.project_short),
-                           'scene_tool_box_class_name': '{}SceneToolBox'.format(self.project_short),
-                           'planogram_tool_box_class_name': '{}PlanogramToolBox'.format(self.project_short),
-                           'live_scene_tool_box_class_name': '{}LiveSceneToolBox'.format(self.project_short),
-                           'live_session_tool_box_class_name': '{}LiveSessionToolBox'.format(self.project_short),
+                           'tool_box_class_name': 'ToolBox',
+                           'scene_tool_box_class_name': 'SceneToolBox',
+                           'planogram_tool_box_class_name': 'PlanogramToolBox',
+                           'live_scene_tool_box_class_name': 'LiveSceneToolBox',
+                           'live_session_tool_box_class_name': 'LiveSessionToolBox',
+                           'main_class_name': 'Calculations',
+                           # 'tool_box_class_name': '{}ToolBox'.format(self.project_short),
+                           # 'scene_tool_box_class_name': '{}SceneToolBox'.format(self.project_short),
+                           # 'planogram_tool_box_class_name': '{}PlanogramToolBox'.format(self.project_short),
+                           # 'live_scene_tool_box_class_name': '{}LiveSceneToolBox'.format(self.project_short),
+                           # 'live_session_tool_box_class_name': '{}LiveSessionToolBox'.format(self.project_short),
+                           # 'main_class_name': '{}Calculations'.format(self.project_short)
                            'main_file_name': Const.MAIN_FILE_NAME,
-                           'main_class_name': '{}Calculations'.format(self.project_short)
                            }
         return formatting_dict
 
@@ -121,7 +127,8 @@ class CreateKPIProject:
                            'Utils': [(Const.TOOL_BOX_FILE_NAME, TOOL_BOX)],
                            'Profiling': [(Const.PROFILING_SCRIPT_NAME, PROFILING_SCRIPT),
                                          (Const.DEPENDENCIES_SCRIPT_NAME, GEN_DEPENDENCY_SCRIPT)],
-                           'Tests': [(Const.TESTS_SCRIPT_NAME + '_{}'.format(self.project), TEST_SCRIPT)]}
+                           'Tests': [(Const.TESTS_SCRIPT_NAME + '_{}'.format(self.project), TEST_SCRIPT)],
+                           'Data': [(Const.LOCAL_CONSTS_FILE_NAME, LOCAL_CONSTS)]}
         if self.calculate_by_scene:
             files_to_create['Utils'].append((Const.SCENE_TOOLBOX_FILE_NAME, SCENE_TOOLBOX_SCRIPT))
             files_to_create[''].append((Const.SCENE_GENERATOR_FILE_NAME, SCENE_GENERATOR_SCRIPT))
@@ -151,7 +158,7 @@ if __name__ == '__main__':
     try:
         LoggerInitializer.init('new_project')
         Config.init(app_name='new_project_new')
-        project = 'sanofiabcd'
+        project = 'aaaaac-sand'
         Log.info("project name : " + project)
         new = CreateKPIProject(project, calculate_by_scene=True)
         new.create_new_project()

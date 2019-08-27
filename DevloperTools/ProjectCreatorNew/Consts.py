@@ -1,4 +1,4 @@
-__author__ = 'yoava'
+__author__ = 'yoava_shivi'
 
 
 class Const(object):
@@ -7,6 +7,7 @@ class Const(object):
     GENERATOR_FILE_NAME = 'KPIGenerator'
     FETCHER_FILE_NAME = 'Fetcher'
     TOOL_BOX_FILE_NAME = 'KPIToolBox'
+    LOCAL_CONSTS_FILE_NAME = "LocalConsts"
     LOCAL_CALCULATIONS_FILE_NAME = 'LocalCalculations'
     PROFILING_SCRIPT_NAME = 'gen_profiling'
     DEPENDENCIES_SCRIPT_NAME = 'gen_dependency_graph'
@@ -31,6 +32,8 @@ class Const(object):
     SCENE_GENERATOR_CLASS_NAME = 'SceneGenerator'
 
 
+# local scripts:
+
 LOCAL_CALCS = """
 # from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
 # from Trax.Utils.Conf.Configuration import Config
@@ -43,10 +46,11 @@ LOCAL_CALCS = """
 #     Config.init()
 #     project_name = '%(project)s'
 #     data_provider = KEngineDataProvider(project_name)
-#     session = ''
-#     data_provider.load_session_data(session)
-#     output = Output()
-#     Calculations(data_provider, output).run_project_calculations()
+#     session_list = ['INSERT_TEST_SESSIONS']
+#     for session in session_list:
+#         data_provider.load_session_data(session)
+#         output = Output()
+#         Calculations(data_provider, output).run_project_calculations()
 """
 
 LOCAL_CALCS_WITH_SCENES = """
@@ -76,13 +80,13 @@ LOCAL_CALCS_WITH_SCENES = """
 #     Config.init()
 #     project_name = '%(project)s'
 #     data_provider = KEngineDataProvider(project_name)
-#     session_list = []
+#     session_list = ['INSERT_TEST_SESSIONS']
 #     for session in session_list:
 #         data_provider = KEngineDataProvider(project_name)
 #         data_provider.load_session_data(session)
 #         scif = data_provider['scene_item_facts']
 #         scenes = scif['scene_id'].unique().tolist()
-#         # scenes = []
+#         # scenes = [1, 2, 3, 4]
 #         for scene in scenes:
 #             print('scene')
 #             data_provider = KEngineDataProvider(project_name)
@@ -91,11 +95,20 @@ LOCAL_CALCS_WITH_SCENES = """
 #             SceneVanillaCalculations(data_provider, output).run_project_calculations()
 #             save_scene_item_facts_to_data_provider(data_provider, output)
 #             SceneCalculations(data_provider).calculate_kpis()
-#         data_provider = KEngineDataProvider(project_name)
 #         data_provider.load_session_data(session)
 #         output = Output()
 #         Calculations(data_provider, output).run_project_calculations()
 """
+
+LOCAL_CONSTS = """from KPIUtils_v2.Utils.Consts import DataProvider, DB, OldDB, Custom, GlobalConsts, PS, Messages
+
+
+class Consts(object):
+
+    pass
+"""
+
+# session:
 
 CALCULATIONS = """
 from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScript
@@ -110,53 +123,6 @@ class Calculations(BaseCalculationsScript):
         self.timer.start()
         %(generator_class_name)s(self.data_provider, self.output).main_function()
         self.timer.stop('%(generator_file_name)s.run_project_calculations')
-"""
-
-TOOL_BOX = """
-from Trax.Algo.Calculations.Core.DataProvider import Data
-from Trax.Cloud.Services.Connector.Keys import DbUsers
-from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
-# from Trax.Utils.Logging.Logger import Log
-import pandas as pd
-import os
-
-from KPIUtils_v2.DB.Common import Common
-# from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
-# from KPIUtils_v2.Calculations.AvailabilityCalculations import Availability
-# from KPIUtils_v2.Calculations.NumberOfScenesCalculations import NumberOfScenes
-# from KPIUtils_v2.Calculations.PositionGraphsCalculations import PositionGraphs
-# from KPIUtils_v2.Calculations.SOSCalculations import SOS
-# from KPIUtils_v2.Calculations.SequenceCalculations import Sequence
-# from KPIUtils_v2.Calculations.SurveyCalculations import Survey
-
-# from KPIUtils_v2.Calculations.CalculationsUtils import GENERALToolBoxCalculations
-
-__author__ = '%(author)s'
-
-
-class %(tool_box_class_name)s:
-
-    def __init__(self, data_provider, output):
-        self.output = output
-        self.data_provider = data_provider
-        self.common = Common(self.data_provider)
-        self.project_name = self.data_provider.project_name
-        self.session_uid = self.data_provider.session_uid
-        self.products = self.data_provider[Data.PRODUCTS]
-        self.all_products = self.data_provider[Data.ALL_PRODUCTS]
-        self.match_product_in_scene = self.data_provider[Data.MATCHES]
-        self.visit_date = self.data_provider[Data.VISIT_DATE]
-        self.session_info = self.data_provider[Data.SESSION_INFO]
-        self.scene_info = self.data_provider[Data.SCENES_INFO]
-        self.store_id = self.data_provider[Data.STORE_FK]
-        self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
-
-    def main_calculation(self):
-        \"""
-        This function calculates the KPI results.
-        \"""
-        score = 0
-        return score
 """
 
 GENERATOR = """
@@ -185,8 +151,119 @@ class %(generator_class_name)s:
         if self.tool_box.scif.empty:
             Log.warning('Scene item facts is empty for this session')
         self.tool_box.main_calculation()
-        self.tool_box.common.commit_results_data()
+        self.tool_box.commit_results()
 """
+
+TOOL_BOX = """
+from Trax.Algo.Calculations.Core.DataProvider import Data
+from Trax.Utils.Logging.Logger import Log
+from KPIUtils_v2.Utils.GlobalScripts.Scripts import GlobalSessionToolBox
+# import pandas as pd
+
+from Projects.%(project_capital)s.Data.LocalConsts import \\
+    Consts, DataProvider, DB, OldDB, Custom, GlobalConsts, PS, Messages
+from KPIUtils_v2.DB.Common import Common
+# from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
+# from KPIUtils_v2.Calculations.AvailabilityCalculations import Availability
+# from KPIUtils_v2.Calculations.NumberOfScenesCalculations import NumberOfScenes
+# from KPIUtils_v2.Calculations.PositionGraphsCalculations import PositionGraphs
+# from KPIUtils_v2.Calculations.SOSCalculations import SOS
+# from KPIUtils_v2.Calculations.SequenceCalculations import Sequence
+# from KPIUtils_v2.Calculations.SurveyCalculations import Survey
+
+# from KPIUtils_v2.Calculations.CalculationsUtils import GENERALToolBoxCalculations
+
+__author__ = '%(author)s'
+
+
+class %(tool_box_class_name)s(GlobalSessionToolBox):
+
+    def __init__(self, data_provider, output):
+        GlobalSessionToolBox.__init__(self, data_provider, output, Common(self.data_provider))
+
+    def main_calculation(self):
+        score = 0
+        return score
+"""
+
+# scene:
+
+SCENE_CALCULATIONS = """
+from Trax.Apps.Services.KEngine.Handlers.Utils.Scripts import SceneBaseClass
+from Projects.%(project_capital)s.%(scene_generator_file_name)s import %(scene_generator_class_name)s
+
+__author__ = '%(author)s'
+
+
+class SceneCalculations(SceneBaseClass):
+    def __init__(self, data_provider):
+        super(SceneCalculations, self).__init__(data_provider)
+        self.scene_generator = %(scene_generator_class_name)s(self._data_provider)
+
+    def calculate_kpis(self):
+        self.scene_generator.scene_score()
+
+"""
+
+SCENE_GENERATOR_SCRIPT = """
+from Trax.Utils.Logging.Logger import Log
+from KPIUtils_v2.Utils.Decorators.Decorators import log_runtime
+
+from Projects.%(project_capital)s.Utils.%(scene_tool_box_file_name)s import %(scene_tool_box_class_name)s
+
+__author__ = '%(author)s'
+
+
+class SceneGenerator:
+
+    def __init__(self, data_provider, output=None):
+        self.data_provider = data_provider
+        self.output = output
+        self.project_name = data_provider.project_name
+        self.session_uid = self.data_provider.session_uid
+        self.scene_tool_box = %(scene_tool_box_class_name)s(self.data_provider, self.output)
+
+    @log_runtime('Total Calculations', log_start=True)
+    def scene_score(self):
+        if self.scene_tool_box.match_product_in_scene.empty:
+            Log.warning('Match product in scene is empty for this scene')
+        self.scene_tool_box.main_function()
+        self.scene_tool_box.commit_results()
+"""
+
+SCENE_TOOLBOX_SCRIPT = """
+from Trax.Algo.Calculations.Core.DataProvider import Data
+from Trax.Utils.Logging.Logger import Log
+from KPIUtils_v2.Utils.GlobalScripts.Scripts import GlobalSceneToolBox
+# import pandas as pd
+
+from Projects.%(project_capital)s.Data.LocalConsts import \\
+    Consts, DataProvider, DB, OldDB, Custom, GlobalConsts, PS, Messages
+from KPIUtils_v2.DB.Common import Common
+# from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
+# from KPIUtils_v2.Calculations.AvailabilityCalculations import Availability
+# from KPIUtils_v2.Calculations.NumberOfScenesCalculations import NumberOfScenes
+# from KPIUtils_v2.Calculations.PositionGraphsCalculations import PositionGraphs
+# from KPIUtils_v2.Calculations.SOSCalculations import SOS
+# from KPIUtils_v2.Calculations.SequenceCalculations import Sequence
+# from KPIUtils_v2.Calculations.SurveyCalculations import Survey
+
+# from KPIUtils_v2.Calculations.CalculationsUtils import GENERALToolBoxCalculations
+
+__author__ = '%(author)s'
+
+
+class %(scene_tool_box_class_name)s(GlobalSceneToolBox):
+
+    def __init__(self, data_provider, output):
+        GlobalSceneToolBox.__init__(self, data_provider, output, Common(self.data_provider))
+
+    def main_function(self):
+        score = 0
+        return score
+"""
+
+# test and profiling:
 
 PROFILING_SCRIPT = """
 
@@ -219,7 +296,6 @@ mv ~/dev/kpi_factory/1.stats ${PROJECT_DIR}/1.stats
 mv ~/dev/kpi_factory/${PROJECT}_profiling.svg ${PROJECT_DIR}/${PROJECT}_profiling.svg
 
 """
-
 
 GEN_DEPENDENCY_SCRIPT = """
 
@@ -281,92 +357,53 @@ class Test%(project_capital)s(TestCase):
 
 """
 
-SCENE_TOOLBOX_SCRIPT = """
-from Trax.Algo.Calculations.Core.DataProvider import Data
-from Trax.Cloud.Services.Connector.Keys import DbUsers
-from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
-from Trax.Utils.Logging.Logger import Log
-import pandas as pd
-import os
+# planogram:
 
-from KPIUtils_v2.DB.Common import Common
-# from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
-# from KPIUtils_v2.Calculations.AvailabilityCalculations import Availability
-# from KPIUtils_v2.Calculations.NumberOfScenesCalculations import NumberOfScenes
-# from KPIUtils_v2.Calculations.PositionGraphsCalculations import PositionGraphs
-# from KPIUtils_v2.Calculations.SOSCalculations import SOS
-# from KPIUtils_v2.Calculations.SequenceCalculations import Sequence
-# from KPIUtils_v2.Calculations.SurveyCalculations import Survey
-
-# from KPIUtils_v2.Calculations.CalculationsUtils import GENERALToolBoxCalculations
+PLANOGRAM_CALCULATIONS_SCRIPT = """
+from Trax.Apps.Services.KEngine.Handlers.Utils.Scripts import PlanogramBaseClass
+from Projects.%(project_capital)s.%(planogram_generator_file_name)s import %(planogram_generator_class_name)s
 
 __author__ = '%(author)s'
 
 
-class %(scene_tool_box_class_name)s:
-    
-    def __init__(self, data_provider, output):
-        self.output = output
-        self.data_provider = data_provider
-        self.common = Common(self.data_provider)
-        self.project_name = self.data_provider.project_name
-        self.session_uid = self.data_provider.session_uid
-        self.products = self.data_provider[Data.PRODUCTS]
-        self.templates = self.data_provider[Data.TEMPLATES]
-        self.all_products = self.data_provider[Data.ALL_PRODUCTS]
-        self.match_product_in_scene = self.data_provider[Data.MATCHES]
-        self.visit_date = self.data_provider[Data.VISIT_DATE]
-        self.session_info = self.data_provider[Data.SESSION_INFO]
-        self.scene_info = self.data_provider[Data.SCENES_INFO]
-        self.store_id = self.data_provider[Data.STORE_FK]
-        self.store_type = self.data_provider.store_type
+class PlanogramCalculations(PlanogramBaseClass):
+    def __init__(self, data_provider):
+        super(PlanogramCalculations, self).__init__(data_provider)
+        self.planogram_generator = %(planogram_generator_class_name)s(self._data_provider)
 
-    def main_function(self):
-        score = 0
-        return score
+    def calculate_planogram(self):
+        self.planogram_generator.planogram_score()
 """
 
-SCENE_GENERATOR_SCRIPT = """
+PLANOGRAM_GENERATOR_SCRIPT = """
 from Trax.Utils.Logging.Logger import Log
 from KPIUtils_v2.Utils.Decorators.Decorators import log_runtime
 
-from Projects.%(project_capital)s.Utils.%(scene_tool_box_file_name)s import %(scene_tool_box_class_name)s
+from Projects.%(project_capital)s.Utils.%(planogram_tool_box_file_name)s import %(planogram_tool_box_class_name)s
+
+from KPIUtils_v2.DB.CommonV2 import Common
+
 
 __author__ = '%(author)s'
 
 
-class SceneGenerator:
+class PlanogramGenerator:
 
     def __init__(self, data_provider, output=None):
         self.data_provider = data_provider
         self.output = output
         self.project_name = data_provider.project_name
         self.session_uid = self.data_provider.session_uid
-        self.scene_tool_box = %(scene_tool_box_class_name)s(self.data_provider, self.output)
+        self.common = Common(data_provider)
+        self.scene_tool_box = %(planogram_tool_box_class_name)s(self.data_provider, self.output, self.common)
 
     @log_runtime('Total Calculations', log_start=True)
-    def scene_score(self):
+    def planogram_score(self):
         if self.scene_tool_box.match_product_in_scene.empty:
             Log.warning('Match product in scene is empty for this scene')
-        self.scene_tool_box.main_function()
-        self.scene_tool_box.common.commit_results_data(result_entity='scene')
-"""
-
-SCENE_CALCULATIONS = """
-from Trax.Apps.Services.KEngine.Handlers.Utils.Scripts import SceneBaseClass
-from Projects.%(project_capital)s.%(scene_generator_file_name)s import %(scene_generator_class_name)s
-
-__author__ = '%(author)s'
-
-
-class SceneCalculations(SceneBaseClass):
-    def __init__(self, data_provider):
-        super(SceneCalculations, self).__init__(data_provider)
-        self.scene_generator =  %(scene_generator_class_name)s(self._data_provider)
-
-    def calculate_kpis(self):
-        self.scene_generator.scene_score()
-
+        else:
+            self.scene_tool_box.main_function()
+            self.common.commit_results_data()
 """
 
 PLANOGRAM_TOOLBOX_SCRIPT = """
@@ -416,53 +453,7 @@ class %(planogram_tool_box_class_name)s:
         return score
 """
 
-PLANOGRAM_GENERATOR_SCRIPT = """
-from Trax.Utils.Logging.Logger import Log
-from KPIUtils_v2.Utils.Decorators.Decorators import log_runtime
-
-from Projects.%(project_capital)s.Utils.%(planogram_tool_box_file_name)s import %(planogram_tool_box_class_name)s
-
-from KPIUtils_v2.DB.CommonV2 import Common
-
-
-__author__ = '%(author)s'
-
-
-class PlanogramGenerator:
-
-    def __init__(self, data_provider, output=None):
-        self.data_provider = data_provider
-        self.output = output
-        self.project_name = data_provider.project_name
-        self.session_uid = self.data_provider.session_uid
-        self.common = Common(data_provider)
-        self.scene_tool_box = %(planogram_tool_box_class_name)s(self.data_provider, self.output, self.common)
-
-    @log_runtime('Total Calculations', log_start=True)
-    def planogram_score(self):
-        if self.scene_tool_box.match_product_in_scene.empty:
-            Log.warning('Match product in scene is empty for this scene')
-        else:
-            self.scene_tool_box.main_function()
-            self.common.commit_results_data()
-"""
-
-PLANOGRAM_CALCULATIONS_SCRIPT = """
-from Trax.Apps.Services.KEngine.Handlers.Utils.Scripts import PlanogramBaseClass
-from Projects.%(project_capital)s.%(planogram_generator_file_name)s import %(planogram_generator_class_name)s
-
-__author__ = '%(author)s'
-
-
-class PlanogramCalculations(PlanogramBaseClass):
-    def __init__(self, data_provider):
-        super(PlanogramCalculations, self).__init__(data_provider)
-        self.planogram_generator = %(planogram_generator_class_name)s(self._data_provider)
-
-    def calculate_planogram(self):
-        self.planogram_generator.planogram_score()
-"""
-
+# planogram status tags and finder:
 
 PLANOGRAM_COMPLIANCE_CALCULATIONS_SCRIPT = """
 from Trax.Apps.Services.KEngine.Handlers.Utils.Scripts import PlanogramComplianceBaseClass
@@ -493,23 +484,23 @@ class PlanogramFinderCalculation(PlanogramFinderBaseClass):
         pass
 """
 
-LIVE_SCENE_TOOLBOX_SCRIPT = """
-from Trax.Utils.Logging.Logger import Log
+# live scene:
+
+LIVE_SCENE_CALCULATIONS_SCRIPT = """
+from Trax.Apps.Services.KEngine.Handlers.Utils.Scripts import LiveSceneBaseClass
+from Projects.%(project_capital)s.%(live_scene_generator_file_name)s import %(live_scene_generator_class_name)s
 
 __author__ = '%(author)s'
 
 
-class %(live_scene_tool_box_class_name)s:
+class LiveSceneCalculations(LiveSceneBaseClass):
+    def __init__(self, data_provider):
+        super(LiveSceneCalculations, self).__init__(data_provider)
+        self.live_scene_generator = %(live_scene_generator_class_name)s(self._data_provider)
 
-    def __init__(self, data_provider, common):
-        self.data_provider = data_provider
-        self.live_common = common
-        self.project_name = self.data_provider.project_name
-        self.scene_uid = self.data_provider.level_uid
+    def calculate_scene_live_kpi(self):
+        self.live_scene_generator.live_scene_score()
 
-    def main_function(self):
-        score = 0
-        return score
 """
 
 LIVE_SCENE_GENERATOR_SCRIPT = """
@@ -537,42 +528,42 @@ class LiveSceneGenerator:
         self.live_scene_tool_box.main_function()
 """
 
-LIVE_SCENE_CALCULATIONS_SCRIPT = """
-from Trax.Apps.Services.KEngine.Handlers.Utils.Scripts import LiveSceneBaseClass
-from Projects.%(project_capital)s.%(live_scene_generator_file_name)s import %(live_scene_generator_class_name)s
-
-__author__ = '%(author)s'
-
-
-class LiveSceneCalculations(LiveSceneBaseClass):
-    def __init__(self, data_provider):
-        super(LiveSceneCalculations, self).__init__(data_provider)
-        self.live_scene_generator = %(live_scene_generator_class_name)s(self._data_provider)
-
-    def calculate_scene_live_kpi(self):
-        self.live_scene_generator.live_scene_score()
-
-"""
-
-
-LIVE_SESSION_TOOLBOX_SCRIPT = """
+LIVE_SCENE_TOOLBOX_SCRIPT = """
 from Trax.Utils.Logging.Logger import Log
 
-
 __author__ = '%(author)s'
 
 
-class %(live_session_tool_box_class_name)s:
+class %(live_scene_tool_box_class_name)s:
 
     def __init__(self, data_provider, common):
         self.data_provider = data_provider
         self.live_common = common
         self.project_name = self.data_provider.project_name
-        self.session_uid = self.data_provider.level_uid
+        self.scene_uid = self.data_provider.level_uid
 
     def main_function(self):
         score = 0
         return score
+"""
+
+# live session:
+
+LIVE_SESSION_CALCULATIONS_SCRIPT = """
+from Trax.Apps.Services.KEngine.Handlers.Utils.Scripts import LiveSessionBaseClass
+from Projects.%(project_capital)s.%(live_session_generator_file_name)s import %(live_session_generator_class_name)s
+
+__author__ = '%(author)s'
+
+
+class LiveSessionCalculations(LiveSessionBaseClass):
+    def __init__(self, data_provider):
+        super(LiveSessionCalculations, self).__init__(data_provider)
+        self.live_session_generator = %(live_session_generator_class_name)s(self._data_provider)
+
+    def calculate_session_live_kpi(self):
+        self.live_session_generator.live_session_score()
+
 """
 
 LIVE_SESSION_GENERATOR_SCRIPT = """
@@ -600,19 +591,22 @@ class LiveSessionGenerator:
         self.live_session_tool_box.main_function()
 """
 
-LIVE_SESSION_CALCULATIONS_SCRIPT = """
-from Trax.Apps.Services.KEngine.Handlers.Utils.Scripts import LiveSessionBaseClass
-from Projects.%(project_capital)s.%(live_session_generator_file_name)s import %(live_session_generator_class_name)s
+LIVE_SESSION_TOOLBOX_SCRIPT = """
+from Trax.Utils.Logging.Logger import Log
+
 
 __author__ = '%(author)s'
 
 
-class LiveSessionCalculations(LiveSessionBaseClass):
-    def __init__(self, data_provider):
-        super(LiveSessionCalculations, self).__init__(data_provider)
-        self.live_session_generator = %(live_session_generator_class_name)s(self._data_provider)
+class %(live_session_tool_box_class_name)s:
 
-    def calculate_session_live_kpi(self):
-        self.live_session_generator.live_session_score()
+    def __init__(self, data_provider, common):
+        self.data_provider = data_provider
+        self.live_common = common
+        self.project_name = self.data_provider.project_name
+        self.session_uid = self.data_provider.level_uid
 
+    def main_function(self):
+        score = 0
+        return score
 """
