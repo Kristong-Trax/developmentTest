@@ -2,6 +2,8 @@
 
 from KPIUtils_v2.Utils.Consts.DataProvider import ScifConsts
 from KPIUtils_v2.Utils.Consts.DB import SessionResultsConsts
+from KPIUtils_v2.Utils.Consts.GlobalConsts import ProductTypeConsts
+
 
 class Consts(object):
 
@@ -11,7 +13,7 @@ class Consts(object):
     TIRAT_TSVI_POLICY = u'טירת צבי'
 
     # SOS
-    TYPES_TO_IGNORE_IN_SOS = ['Irrelevant', 'Empty']
+    TYPES_TO_IGNORE_IN_SOS = [ProductTypeConsts.IRRELEVANT, ProductTypeConsts.EMPTY]
 
     # DB attributes
     ENTITIES_FOR_DB = [ScifConsts.MANUFACTURER_FK, ScifConsts.CATEGORY_FK,
