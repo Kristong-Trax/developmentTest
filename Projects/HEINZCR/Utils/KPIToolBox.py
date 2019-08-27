@@ -83,7 +83,7 @@ class HEINZCRToolBox:
             self.store_assortment_without_powerskus = pd.DataFrame()
 
         self.adherence_results = pd.DataFrame(columns=['product_fk', 'trax_average',
-                                                       'suggested_price', 'into_interval'])
+                                                       'suggested_price', 'into_interval', 'min_target', 'max_target'])
         self.extra_spaces_results = pd.DataFrame(
             columns=['sub_category_fk', 'template_fk', 'count'])
 
@@ -117,7 +117,8 @@ class HEINZCRToolBox:
         result = 1 if perfect_store_score > target else 0
 
         perfect_store_kpi_fk = self.common_v2.get_kpi_fk_by_kpi_type(Const.PERFECT_STORE)
-        self.common_v2.write_to_db_result(perfect_store_kpi_fk, numerator_id=1, denominator_id=self.store_id,
+        self.common_v2.write_to_db_result(perfect_store_kpi_fk, numerator_id=Const.OWN_MANUFACTURER_FK,
+                                          denominator_id=self.store_id,
                                           result=result, target=target,
                                           score=perfect_store_score, identifier_result=Const.PERFECT_STORE)
         return
@@ -193,7 +194,8 @@ class HEINZCRToolBox:
         # save PowerSKU total score
         total_score = aggregated_results['percent_complete'].sum()
         total_dict = self.common_v2.get_dictionary(kpi_fk=total_kpi_fk)
-        self.common_v2.write_to_db_result(total_kpi_fk, numerator_id=1, denominator_id=self.store_id,
+        self.common_v2.write_to_db_result(total_kpi_fk, numerator_id=Const.OWN_MANUFACTURER_FK,
+                                          denominator_id=self.store_id,
                                           result=total_score, score=total_score, identifier_parent=Const.PERFECT_STORE,
                                           identifier_result=total_dict, should_enter=True)
         return total_score
@@ -373,7 +375,7 @@ class HEINZCRToolBox:
         # save total score for sos sub_category
         number_of_passing_sub_categories = results_df['score'].sum()
         number_of_possible_sub_categories = len(results_df)
-        self.common_v2.write_to_db_result(total_sos_sub_category_kpi_fk, numerator_id=1,
+        self.common_v2.write_to_db_result(total_sos_sub_category_kpi_fk, numerator_id=Const.OWN_MANUFACTURER_FK,
                                           denominator_id=self.store_id,
                                           numerator_result=number_of_passing_sub_categories,
                                           denominator_result=number_of_possible_sub_categories,
@@ -385,14 +387,20 @@ class HEINZCRToolBox:
         return number_of_passing_sub_categories
 
     def calculate_powersku_price_adherence(self):
-        if self.sub_category_assortment.empty:
-            return 0
-
         adherence_kpi_fk = self.common_v2.get_kpi_fk_by_kpi_type(Const.POWER_SKU_PRICE_ADHERENCE)
         adherence_sub_category_kpi_fk = \
             self.common_v2.get_kpi_fk_by_kpi_type(Const.POWER_SKU_PRICE_ADHERENCE_SUB_CATEGORY)
         adherence_total_kpi_fk = self.common_v2.get_kpi_fk_by_kpi_type(
             Const.POWER_SKU_PRICE_ADHERENCE_TOTAL)
+        total_dict = self.common_v2.get_dictionary(kpi_fk=adherence_total_kpi_fk)
+
+        if self.sub_category_assortment.empty:
+            self.common_v2.write_to_db_result(adherence_total_kpi_fk, numerator_id=Const.OWN_MANUFACTURER_FK,
+                                              denominator_id=self.store_id,
+                                              result=0, identifier_result=total_dict,
+                                              identifier_parent=Const.PERFECT_STORE,
+                                              should_enter=True)
+            return 0
 
         results = pd.merge(self.sub_category_assortment,
                            self.adherence_results, how='left', on='product_fk')
@@ -402,7 +410,8 @@ class HEINZCRToolBox:
             score = 1 if row.into_interval else 0
             self.common_v2.write_to_db_result(adherence_kpi_fk, numerator_id=row.product_fk,
                                               denominator_id=row.sub_category_fk, result=row.trax_average,
-                                              score=score, target=row.suggested_price,
+                                              score=score, target=row.suggested_price, numerator_result=row.min_target,
+                                              denominator_result=row.max_target,
                                               identifier_parent=parent_dict, should_enter=True)
 
         aggregated_results = results.groupby('sub_category_fk').agg(
@@ -410,7 +419,7 @@ class HEINZCRToolBox:
             columns={'product_fk': 'product_count'})
         aggregated_results['percent_complete'] = \
             aggregated_results.loc[:, 'into_interval'] / aggregated_results.loc[:, 'product_count']
-        total_dict = self.common_v2.get_dictionary(kpi_fk=adherence_total_kpi_fk)
+
         for row in aggregated_results.itertuples():
             identifier_result = self.common_v2.get_dictionary(kpi_fk=adherence_sub_category_kpi_fk,
                                                               sub_category_fk=row.sub_category_fk)
@@ -422,7 +431,8 @@ class HEINZCRToolBox:
         # this value is not necessarily a whole number
         number_of_categories_meeting_price_adherence = aggregated_results['percent_complete'].sum()
         number_of_possible_categories = len(aggregated_results)
-        self.common_v2.write_to_db_result(adherence_total_kpi_fk, numerator_id=1, denominator_id=self.store_id,
+        self.common_v2.write_to_db_result(adherence_total_kpi_fk, numerator_id=Const.OWN_MANUFACTURER_FK,
+                                          denominator_id=self.store_id,
                                           numerator_result=number_of_categories_meeting_price_adherence,
                                           denominator_result=number_of_possible_categories,
                                           result=number_of_categories_meeting_price_adherence,
@@ -477,7 +487,7 @@ class HEINZCRToolBox:
                             into_interval = 100
 
                     results_df.loc[len(results_df)] = [product_pk, trax_average,
-                                                       suggested_price, into_interval / 100]
+                                                       suggested_price, into_interval / 100, min_price, max_price]
 
                     # self.common.write_to_db_result_new_tables(fk=10,
                     #                                           numerator_id=product_pk,
@@ -514,13 +524,18 @@ class HEINZCRToolBox:
         return results_df
 
     def calculate_perfect_store_extra_spaces(self):
-        if self.extra_spaces_results.empty:
-            return 0
-
         extra_spaces_kpi_fk = self.common_v2.get_kpi_fk_by_kpi_type(
             Const.PERFECT_STORE_EXTRA_SPACES_SUB_CATEGORY)
         extra_spaces_total_kpi_fk = self.common_v2.get_kpi_fk_by_kpi_type(
             Const.PERFECT_STORE_EXTRA_SPACES_TOTAL)
+        total_dict = self.common_v2.get_dictionary(kpi_fk=extra_spaces_total_kpi_fk)
+
+        if self.extra_spaces_results.empty:
+            self.common_v2.write_to_db_result(extra_spaces_total_kpi_fk, numerator_id=Const.OWN_MANUFACTURER_FK,
+                                              denominator_id=self.store_id, result=0, score=0,
+                                              identifier_parent=Const.PERFECT_STORE,
+                                              identifier_result=total_dict, should_enter=True)
+            return 0
 
         relevant_sub_categories = [x.strip() for x in self.extra_spaces_template[
             self.extra_spaces_template['country'].str.encode('utf-8') == self.country.encode('utf-8')][
@@ -528,13 +543,13 @@ class HEINZCRToolBox:
 
         self.extra_spaces_results = pd.merge(self.extra_spaces_results,
                                              self.all_products.loc[:, [
-                                                 'sub_category_fk', 'sub_category']].dropna(),
+                                                 'sub_category_fk', 'sub_category']].dropna().drop_duplicates(),
                                              how='left', on='sub_category_fk')
 
         relevant_extra_spaces = \
             self.extra_spaces_results[self.extra_spaces_results['sub_category'].isin(
                 relevant_sub_categories)]
-        total_dict = self.common_v2.get_dictionary(kpi_fk=extra_spaces_total_kpi_fk)
+
         for row in relevant_extra_spaces.itertuples():
             self.common_v2.write_to_db_result(extra_spaces_kpi_fk, numerator_id=row.sub_category_fk,
                                               denominator_id=row.template_fk, result=1, identifier_parent=total_dict,
@@ -547,7 +562,8 @@ class HEINZCRToolBox:
             if self.survey.check_survey_answer(('question_fk', Const.EXTRA_SPACES_SURVEY_QUESTION_FK), 'Yes,yes,si,Si'):
                 score = 1
 
-        self.common_v2.write_to_db_result(extra_spaces_total_kpi_fk, numerator_id=1, denominator_id=self.store_id,
+        self.common_v2.write_to_db_result(extra_spaces_total_kpi_fk, numerator_id=Const.OWN_MANUFACTURER_FK,
+                                          denominator_id=self.store_id,
                                           result=number_of_extra_spaces, score=score,
                                           identifier_parent=Const.PERFECT_STORE,
                                           identifier_result=total_dict, should_enter=True)
@@ -623,7 +639,8 @@ class HEINZCRToolBox:
 
         bonus_kpi_fk = self.common_v2.get_kpi_fk_by_kpi_type(
             Const.BONUS_QUESTION)
-        self.common_v2.write_to_db_result(bonus_kpi_fk, numerator_id=1, denominator_id=self.store_id,
+        self.common_v2.write_to_db_result(bonus_kpi_fk, numerator_id=Const.OWN_MANUFACTURER_FK,
+                                          denominator_id=self.store_id,
                                           result=result, score=result, identifier_parent=Const.PERFECT_STORE,
                                           should_enter=True)
         return result
