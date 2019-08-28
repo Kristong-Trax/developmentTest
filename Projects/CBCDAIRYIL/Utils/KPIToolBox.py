@@ -11,6 +11,8 @@ from Projects.CBCDAIRYIL.Utils.Consts import Consts
 from KPIUtils_v2.Calculations.SurveyCalculations import Survey
 from KPIUtils_v2.Calculations.BlockCalculations import Block
 from KPIUtils_v2.Calculations.CalculationsUtils.GENERALToolBoxCalculations import GENERALToolBox
+from KPIUtils_v2.Utils.Decorators.Decorators import log_runtime, kpi_runtime
+
 import pandas as pd
 
 __author__ = 'idanr'
@@ -398,6 +400,7 @@ class CBCDAIRYILToolBox:
         merged_df = merged_df[self.general_toolbox.get_filter_condition(merged_df, **kpi_filters)]
         return merged_df
 
+    @kpi_runtime()
     def calculate_eye_level(self, **general_filters):
         """
         This function calculates the Eye level KPI. It filters and products according to the template and
@@ -436,6 +439,7 @@ class CBCDAIRYILToolBox:
                 bottom = json_def[Consts.BOTTOM]
         return df[(df.shelf_number > top) & (df.shelf_number_from_bottom > bottom)]
 
+    @kpi_runtime()
     def calculate_availability_from_bottom(self, **general_filters):
         """
         This function checks if *all* of the relevant products are in the lowest shelf.
@@ -449,6 +453,7 @@ class CBCDAIRYILToolBox:
         # Check bottom shelf condition
         return 0 if len(relevant_shelves_to_check) != 1 or Consts.LOWEST_SHELF not in relevant_shelves_to_check else 100
 
+    @kpi_runtime()
     def calculate_brand_block(self, **general_filters):
         """
         This function calculates the brand block KPI. It filters and excluded products according to the template and
@@ -481,6 +486,7 @@ class CBCDAIRYILToolBox:
         allowed_product[Consts.PRODUCT_FK] = filtered_scif[Consts.PRODUCT_FK].unique().tolist()
         return allowed_product
 
+    @kpi_runtime()
     def calculate_survey(self, **general_filters):
         """
         This function calculates the result for Survey KPI.
@@ -504,6 +510,7 @@ class CBCDAIRYILToolBox:
             return 100 if survey_answer.strip() == target_answer else 0
         return 0
 
+    @kpi_runtime()
     def calculate_availability(self, return_df=False, **general_filters):
         """
         This functions checks for availability by filters.
@@ -537,6 +544,7 @@ class CBCDAIRYILToolBox:
         facings_dict = dict(zip(df[Consts.EAN_CODE], df[stacking_field]))
         return facings_dict
 
+    @kpi_runtime()
     def calculate_min_2_availability(self, **general_filters):
         """
         This KPI checks for all of the Availability Atomics KPIs that passed, if the tested products have at least
