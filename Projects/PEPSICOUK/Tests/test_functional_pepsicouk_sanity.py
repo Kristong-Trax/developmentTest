@@ -7,7 +7,7 @@ from Trax.Data.Testing.SeedNew import Seeder
 from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
 from Trax.Cloud.Services.Connector.Keys import DbUsers
 from Trax.Data.Testing.TestProjects import TestProjectsNames
-from Tests.Data.TestData.test_data_pepsicouk_sanity import ProjectsSanityData
+from Projects.PEPSICOUK.Tests.Data.test_data_pepsicouk_sanity import ProjectsSanityData
 from Projects.PEPSICOUK.Calculations import PEPSICOUKCalculations
 from Projects.PEPSICOUK.SceneKpis.SceneCalculations import PEPSICOUKSceneCalculations
 from Trax.Apps.Core.Testing.BaseCase import TestFunctionalCase
@@ -22,7 +22,6 @@ class TestKEngineOutOfTheBox(TestFunctionalCase):
     def set_up(self):
         super(TestKEngineOutOfTheBox, self).set_up()
         remove_cache_and_storage()
-        self.mock_object(object_name='commit_results_data', path='KPIUtils_v2.DB.CommonV2.Common')
 
     @property
     def import_path(self):
