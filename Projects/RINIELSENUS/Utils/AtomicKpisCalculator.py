@@ -24,6 +24,40 @@ class KpiAtomicKpisCalculator(object):
         self.survey_response = self._data_provider['survey_responses']
         # self.block = Block(data_provider=data_provider)
 
+    def _get_prods_from_filters(self, filters, kpi_name):
+        common = self._data_provider['common']
+
+        mpis = self._data_provider['matches'][self._data_provider['matches']['stacking_layer'] == 1]
+        rel_items = mpis[mpis['product_fk'].isin(self._get_filtered_products(filters)[
+                                                 'product_fk'])]['probe_match_fk']
+
+        for i, group in enumerate([rel_items]):
+            mpip_sr_fk = self.get_mpip_svr_fk(kpi_name, i, common)
+            df = pd.DataFrame(zip(group, [mpip_sr_fk]*len(group)), columns=['match_product_in_probe_fk', 'match_product_in_probe_state_reporting_fk'])
+            common.match_product_in_probe_state_values = pd.concat(
+                [common.match_product_in_probe_state_values, df])
+            print(mpis[mpis['probe_match_fk'].isin(df.match_product_in_probe_fk.to_list())].scene_fk.unique())
+
+
+    def get_mpip_svr_fk(self, kpi, allowed, common):
+        mpip_sr = self._data_provider._shared_data
+        from Projects.RINIELSENUS.Utils.Fetcher import MarsUsQueries
+        if allowed:
+            kpi = '{}_allowed'.format(kpi)
+        df = mpip_sr[mpip_sr['name'] == kpi]
+        if df.empty:
+            if mpip_sr.empty:
+                common.execute_custom_query(MarsUsQueries.add_kpi_to_mvp_sr(kpi, 1))
+            else:
+                common.execute_custom_query(
+                    MarsUsQueries.add_kpi_to_mvp_sr(kpi, max(mpip_sr['pk'])+1))
+            self._data_provider.set_shared_data(common.read_custom_query(MarsUsQueries.get_updated_mvp_sr()))
+            mpip_sr = self._data_provider._shared_data
+            df = mpip_sr[mpip_sr['name'] == kpi]
+        return df['pk'].values[0]
+
+
+
     @abc.abstractproperty
     def kpi_type(self):
         pass
@@ -987,11 +1021,6 @@ class AdjacencyAtomicKpiCalculation(KpiAtomicKpisCalculator):
             key=TEMPLATE_NAME, value=atomic_kpi_data['scene_types'])
 
         scif_filter = scene_type_filter.copy()
-        if self._data_provider.retailer in retailers or self._data_provider.store_type in store_typ:
-            a, b = filters['A'].copy(), filters['B'].copy()
-            a.update(scif_filter), b.update(scif_filter)
-            if self.get_scif_matches_by_filters(**a) and not self.get_scif_matches_by_filters(**b):
-                return 100
 
         scif_filter.update(filters['all'])
         scif_filter.update(filters['A'])
@@ -1002,7 +1031,8 @@ class AdjacencyAtomicKpiCalculation(KpiAtomicKpisCalculator):
         for group in ['B', 'C', 'D']:
             if filters[group]:
                 adjacency = self._check_adjacency(filters, 'A', group, scene_type_filter, allowed_filter,
-                                                  allowed_filter_without_other, a_target, b_target, target)
+                                                  allowed_filter_without_other, a_target, b_target, target, retailers,
+                                                  store_typ)
                 if adjacency:
                     return 100
 
@@ -1018,7 +1048,8 @@ class AdjacencyAtomicKpiCalculation(KpiAtomicKpisCalculator):
         return product_list
 
     def _check_groups_adjacency(self, a_product_list, b_product_list, scene_type_filter, allowed_filter,
-                                allowed_filter_without_other, check_a_group_blocked, a_target, b_target, target):
+                                allowed_filter_without_other, check_a_group_blocked, a_target, b_target, target,
+                                retailers, store_types):
         a_b_union = list(set(a_product_list) | set(b_product_list))
 
         a_filter = {'product_fk': a_product_list}
@@ -1040,7 +1071,15 @@ class AdjacencyAtomicKpiCalculation(KpiAtomicKpisCalculator):
                 a_products = self.get_products_by_filters('product_fk', **a_filter_for_block)
                 b_products = self.get_products_by_filters('product_fk', **b_filter_for_block)
                 if sorted(a_products.tolist()) == sorted(b_products.tolist()):
-                    continue
+                    if self._data_provider.retailer in retailers or self._data_provider.store_type in store_types:
+                        a_block = self._tools.calculate_block_together(allowed_products_filters=allowed_filter,
+                                                                       minimum_block_ratio=a_target,
+                                                                       vertical=True, **a_filter_for_block)
+                        if isinstance(a_block, dict) and a_block['block']:
+                            result = 100
+                        return result
+                    else:
+                        continue
             except:
                 pass
             if a_target:
@@ -1069,7 +1108,7 @@ class AdjacencyAtomicKpiCalculation(KpiAtomicKpisCalculator):
         return result
 
     def _check_adjacency(self, filters, group_a, group_b, scene_type_filter, allowed_filter,
-                         allowed_filter_without_other, a_target, b_target, target):
+                         allowed_filter_without_other, a_target, b_target, target, retailers, store_types):
         is_brand_in_a = 'brand_name' in filters[group_a]
         is_brand_in_b = 'brand_name' in filters[group_b]
 
@@ -1080,7 +1119,7 @@ class AdjacencyAtomicKpiCalculation(KpiAtomicKpisCalculator):
 
         adjacency = self._check_groups_adjacency(a_product_list, b_product_list, scene_type_filter, allowed_filter,
                                                  allowed_filter_without_other, check_a_group_blocked,
-                                                 a_target, b_target, target)
+                                                 a_target, b_target, target, retailers, store_types)
 
         return adjacency
 
@@ -1459,6 +1498,7 @@ class ShareOfAssortmentPrNumeratorAtomicKpiCalculation(KpiAtomicKpisCalculator):
                             num_of_assorted_products += 1
 
                 result = num_of_assorted_products
+        self._get_prods_from_filters(filters, atomic_kpi_data['atomic'])
         return result
 
     @classproperty

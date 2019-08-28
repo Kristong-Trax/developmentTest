@@ -57,6 +57,7 @@ class PNGJPConsts(object):
     COUNT_OF_SCENES = 'Count of Scenes'
     COUNT_OF_SCENES_BY_SCENE_TYPE = 'Count of Scenes by scene type'
     COUNT_OF_POSM = 'Count of POSM'
+    POSM_COUNT = 'POSM Count'
     POSM_ASSORTMENT = 'POSM Assortment'
     SURVEY_QUESTION = 'Survey Question'
 
@@ -746,11 +747,45 @@ class PNGJPToolBox(PNGJPConsts):
                             posm_items = custom_sheet[(custom_sheet[self.store_type].apply(bool)) & (
                                     custom_sheet['Category'].str.encode('utf-8') == category.encode('utf-8'))][
                                 'POSM Name'].values
-                            kpi_name = params[self.KPI_NAME].format(category=category)
-                            result = len(match_display[match_display['display_name'].isin(posm_items)])
+
+                            for posm in posm_items:
+                                kpi_name = params[self.KPI_NAME].format(category=category, display_type=item,
+                                                                        display=posm)
+                                result = len(match_display[match_display['display_name'].isin([posm])])
+                                result_dict[kpi_name] = result
                         else:
                             continue
+                    elif kpi_type == self.POSM_COUNT:
+                        match_display = self.match_display_in_scene[self.tools.get_filter_condition(
+                            self.match_display_in_scene, **scenes_filters)]
+                        score = None
+                        threshold = None
+                        if sub_entity == 'POSM Type':
+                            if params[self.CUSTOM_SHEET] == 'Solution Center POSM':
+                                custom_sheet = self.get_template('Solution Center POSM')
+                            posm_items = custom_sheet[(custom_sheet[sub_entity] == item) &
+                                                      (custom_sheet[self.store_type].apply(bool)) &
+                                                      (custom_sheet['Category'].str.encode('utf-8') == category.encode(
+                                                          'utf-8'))]['POSM Name'].values
 
+                            kpi_name = params[self.KPI_NAME].format(category=category)
+                            result = len(match_display[match_display['display_name'].isin(posm_items)])
+                            result_dict[kpi_name] = result
+                        elif sub_entity in ('category', 'template_name'):
+                            if params[self.CUSTOM_SHEET] == 'Solution Center POSM':
+                                custom_sheet = self.get_template('Solution Center POSM')
+                            else:
+                                custom_sheet = self.get_template('POSM Assortment')
+
+                            posm_items = custom_sheet[(custom_sheet[self.store_type].apply(bool)) & (
+                                    custom_sheet['Category'].str.encode('utf-8') == category.encode('utf-8'))][
+                                'POSM Name'].values
+
+                            kpi_name = params[self.KPI_NAME].format(category=category)
+                            result = len(match_display[match_display['display_name'].isin(posm_items)])
+                            result_dict[kpi_name] = result
+                        else:
+                            continue
                     else:
                         # Log.warning("KPI type '{}' is not supported".format(kpi_type))
                         continue

@@ -67,7 +67,8 @@ class TestKEngineOutOfTheBox(TestFunctionalCase):
     def test_pepsicouk_sanity(self):
         project_name = ProjectsSanityData.project_name
         data_provider = KEngineDataProvider(project_name)
-        sessions = {'aee71e4d-cdd1-4474-803e-ef834d24871d': [94402], '961edfb7-ae52-40a7-ab39-45064f8c554d': [92747], 'be03f331-a509-4ef5-99a0-a1807fc96b71': [93375]}
+        sessions = {'aee71e4d-cdd1-4474-803e-ef834d24871d': [94402], '961edfb7-ae52-40a7-ab39-45064f8c554d': [92747],
+                    'be03f331-a509-4ef5-99a0-a1807fc96b71': [93375]}
         for session in sessions.keys():
             data_provider.load_session_data(str(session))
             output = Output()

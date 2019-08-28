@@ -8,8 +8,8 @@ from Projects.RINIELSENUS.Utils.PositionGraph import MarsUsPositionGraphs
 from Projects.RINIELSENUS.Utils.Const import ALLOWED_TYPES
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Algo.Calculations.Core.Shortcuts import BaseCalculationsGroup
-# from KPIUtils_v2.Calculations.BlockCalculations import Block as Block
-from Projects.RINIELSENUS.Utils.BlockCalculations_v3 import Block
+# from KPIUtils_v2.Calculations.BlockCalculations_v2 import Block as Block
+from Projects.RINIELSENUS.Utils.BlockCalculations_v_stack import Block
 from Trax.Utils.Logging.Logger import Log
 
 
@@ -829,6 +829,8 @@ class MarsUsGENERALToolBox:
         if sub_allowed:
             allowed_filters += list(mpis[self.get_filter_condition(mpis,
                                                                    **sub_allowed)]['product_fk'].unique())
+        allowed_filters += list(mpis[self.get_filter_condition(mpis,
+                                                               **{'product_type': ['Irrelevant']})]['product_fk'].unique())
         allowed_filters = {'product_fk': allowed_filters}
         mpis = mpis[self.get_filter_condition(mpis, **mpis_filter)]
         # mpis = pd.concat([mpis[self.get_filter_condition(mpis, **mpis_filter)],
@@ -837,7 +839,7 @@ class MarsUsGENERALToolBox:
 
         clusters = self.block.network_x_block_together(filters, location=scene_filter,
                                                         additional={'allowed_products_filters': allowed_filters,
-                                                                    'include_stacking': False,
+                                                                    'include_stacking': True,
                                                                     'check_vertical_horizontal': True,
                                                                     'ignore_empty': False,
                                                                     'minimum_block_ratio': minimum_block_ratio,
@@ -848,11 +850,13 @@ class MarsUsGENERALToolBox:
         if not clusters.empty:
             clusters = self.parse_net_x_block(clusters, mpis)
             # Debugging bits
+            # c = 0
             # for cluster in clusters:
             #     print('\n\n')
             #     print('cluster ratio: {}'.format(cluster['cluster_ratio']))
             #     for j, i in cluster['mpis'].sort_values(['bay_number', 'shelf_number', 'facing_sequence_number']).iterrows():
-            #         print('bay:', i['bay_number'], 'shelf:', i['shelf_number'], 'face_#:', i['facing_sequence_number'],
+            #         c += 1
+            #         print(c, 'bay:', i['bay_number'], 'shelf:', i['shelf_number'], 'face_#:', i['facing_sequence_number'],
             #               i['Sub-section'], i['Customer Brand'], i['Sub Brand'], i['Segment'], i['product_name'])
 
             # kinda weirded out that n_cluster is an arbitrary number, but behavior is binary.....
