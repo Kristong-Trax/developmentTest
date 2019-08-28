@@ -298,6 +298,9 @@ class INBEVTRADMXToolBox:
         else:
             # get df only with the correct template name
             df = self.scif[self.scif.template_name == row['template_name']]
+        if not pd.isna(row['exclude product_type']):
+            for excl in [e.strip() for e in row['exclude product_type'].split(',')]:
+                df = df[df['product_type'] != excl]
 
         # sum of all the facings in df
         facings = df.facings.values.sum()
