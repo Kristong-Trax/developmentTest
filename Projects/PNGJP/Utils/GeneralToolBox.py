@@ -1,4 +1,4 @@
-from KPIUtils_v2.Utils.Consts.DataProvider import MatchesConsts, ProductsConsts, ScifConsts
+from KPIUtils_v2.Utils.Consts.DataProvider import MatchesConsts, ProductsConsts, ScifConsts , SceneInfoConsts
 from KPIUtils_v2.Utils.Consts.GlobalConsts import ProductTypeConsts
 from Trax.Algo.Calculations.Core.Shortcuts import BaseCalculationsGroup
 from Trax.Utils.Logging.Logger import Log
@@ -35,9 +35,9 @@ class PNGJPGENERALToolBox:
         self.all_products = self.data_provider[Data.ALL_PRODUCTS]
         self.survey_response = self.data_provider[Data.SURVEY_RESPONSES]
         self.scenes_info = self.data_provider[Data.SCENES_INFO].merge(self.data_provider[Data.ALL_TEMPLATES],
-                                                                      how='left', on='template_fk', suffixes=['', '_y'])
+                                                                      how='left', on=SceneInfoConsts.TEMPLATE_FK, suffixes=['', '_y'])
         self.ignore_stacking = ignore_stacking
-        self.facings_field = 'facings' if not self.ignore_stacking else 'facings_ign_stack'
+        self.facings_field = ScifConsts.FACINGS if not self.ignore_stacking else ScifConsts.FACINGS_IGN_STACK
         self.front_facing = front_facing
         for data in kwargs.keys():
             setattr(self, data, kwargs[data])
@@ -120,7 +120,7 @@ class PNGJPGENERALToolBox:
                 scene_data = self.scenes_info[self.get_filter_condition(self.scenes_info, **filters)]
         else:
             scene_data = self.scenes_info
-        number_of_scenes = len(scene_data['scene_fk'].unique().tolist())
+        number_of_scenes = len(scene_data[SceneInfoConsts.SCENE_FK].unique().tolist())
         return number_of_scenes
 
     def calculate_availability(self, **filters):
@@ -144,7 +144,7 @@ class PNGJPGENERALToolBox:
         :return: Total number of SKUs facings appeared in the filtered Scene Item Facts data frame.
         """
         filtered_df = self.scif[self.get_filter_condition(self.scif, **filters)]
-        linear = filtered_df['gross_len_ign_stack'].sum()
+        linear = filtered_df[ScifConsts.GROSS_LEN_IGN_STACK].sum()
         return linear
 
     def calculate_assortment(self, assortment_entity=ProductsConsts.PRODUCT_EAN_CODE, minimum_assortment_for_entity=1, **filters):
@@ -178,11 +178,11 @@ class PNGJPGENERALToolBox:
         total_linear = 0
         filtered_df = self.match_product_in_scene[self.get_filter_condition(self.match_product_in_scene, **filters)]
         if not filtered_df.empty:
-            scenes = filtered_df['scene_fk'].unique().tolist()
+            scenes = filtered_df[MatchesConsts.SCENE_FK].unique().tolist()
             for scene in scenes:
-                bays = filtered_df.loc[filtered_df['scene_fk']==scene][MatchesConsts.BAY_NUMBER].unique().tolist()
+                bays = filtered_df.loc[filtered_df[MatchesConsts.SCENE_FK]==scene][MatchesConsts.BAY_NUMBER].unique().tolist()
                 for bay in bays:
-                    bay_df = self.match_product_in_scene.loc[(self.match_product_in_scene['scene_fk']==scene) & (self.match_product_in_scene[MatchesConsts.BAY_NUMBER]==bay)]
+                    bay_df = self.match_product_in_scene.loc[(self.match_product_in_scene[MatchesConsts.SCENE_FK]==scene) & (self.match_product_in_scene[MatchesConsts.BAY_NUMBER]==bay)]
                     filtered_bay_df = filtered_df.loc[filtered_df[MatchesConsts.BAY_NUMBER] == bay]
                     num_shelves = bay_df[MatchesConsts.SHELF_NUMBER].max()
                     golden_zone_shelves = self.get_golden_zone_shelves(num_shelves, golden_zone_data)
@@ -258,7 +258,7 @@ class PNGJPGENERALToolBox:
         :return: The total shelf width (in mm) the relevant facings occupy.
         """
         filtered_matches = self.scif[self.get_filter_condition(self.scif, **filters)]
-        space_length = filtered_matches['gross_len_ign_stack'].sum()
+        space_length = filtered_matches[ScifConsts.GROSS_LEN_IGN_STACK].sum()
         return space_length
 
     def calculate_products_on_edge(self, min_number_of_facings=1, min_number_of_shelves=1, list_result=False,
@@ -281,7 +281,7 @@ class PNGJPGENERALToolBox:
         total_edge = pd.DataFrame(columns=self.match_product_in_scene.columns)
         for scene in relevant_scenes:
             edge_facings = pd.DataFrame(columns=self.match_product_in_scene.columns)
-            matches = self.match_product_in_scene[self.match_product_in_scene['scene_fk'] == scene]
+            matches = self.match_product_in_scene[self.match_product_in_scene[MatchesConsts.SCENE_FK] == scene]
             bay_number_filter = filters.get(MatchesConsts.BAY_NUMBER)
             if bay_number_filter:
                 matches = matches[matches[MatchesConsts.BAY_NUMBER] == bay_number_filter]
@@ -351,7 +351,7 @@ class PNGJPGENERALToolBox:
         number_of_eye_level_scenes = 0
         for scene in relevant_scenes:
             eye_level_facings = pd.DataFrame(columns=self.match_product_in_scene.columns)
-            matches = self.match_product_in_scene[self.match_product_in_scene['scene_fk'] == scene]
+            matches = self.match_product_in_scene[self.match_product_in_scene[MatchesConsts.SCENE_FK] == scene]
             for bay in matches[MatchesConsts.BAY_NUMBER].unique():
                 bay_matches = matches[matches[MatchesConsts.BAY_NUMBER] == bay]
                 number_of_shelves = bay_matches[MatchesConsts.SHELF_NUMBER].max()
@@ -376,14 +376,14 @@ class PNGJPGENERALToolBox:
     def shelf_level_assortment(self, min_number_of_products ,shelf_target, strict=True, **filters):
         filters, relevant_scenes = self.separate_location_filters_from_product_filters(**filters)
         if len(relevant_scenes) == 0:
-            relevant_scenes = self.scif['scene_fk'].unique().tolist()
+            relevant_scenes = self.scif[ScifConsts.SCENE_FK].unique().tolist()
         number_of_products = len(self.all_products[self.get_filter_condition(self.all_products, **filters)]
                                  [ProductsConsts.PRODUCT_EAN_CODE])
         result = 0  # Default score is FALSE
         for scene in relevant_scenes:
             eye_level_facings = pd.DataFrame(columns=self.match_product_in_scene.columns)
-            matches = pd.merge(self.match_product_in_scene[self.match_product_in_scene['scene_fk'] == scene],
-                               self.all_products, on=['product_fk'])
+            matches = pd.merge(self.match_product_in_scene[self.match_product_in_scene[MatchesConsts.SCENE_FK] == scene],
+                               self.all_products, on=[MatchesConsts.PRODUCT_FK])
             for bay in matches[MatchesConsts.BAY_NUMBER].unique():
                 bay_matches = matches[matches[MatchesConsts.BAY_NUMBER] == bay]
                 products_in_target_shelf = bay_matches[(bay_matches[MatchesConsts.SHELF_NUMBER].isin(shelf_target)) & (
@@ -843,8 +843,8 @@ class PNGJPGENERALToolBox:
             scene_graph = self.position_graphs.get(scene).copy()
             clusters, scene_graph = self.get_scene_blocks(scene_graph,
                                                           allowed_products_filters=allowed_products_filters,
-                                                          include_empty=include_empty, **{'product_fk': product_list})
-            new_relevant_vertices = self.filter_vertices_from_graph(scene_graph, **{'product_fk': product_list})
+                                                          include_empty=include_empty, **{ProductsConsts.PRODUCT_FK: product_list})
+            new_relevant_vertices = self.filter_vertices_from_graph(scene_graph, **{ProductsConsts.PRODUCT_FK: product_list})
 
             for cluster in clusters:
                 relevant_vertices_in_cluster = list(set(cluster).intersection(new_relevant_vertices))
@@ -907,7 +907,7 @@ class PNGJPGENERALToolBox:
         :param filters: These are the parameters which the unique position is checked for.
         :return: The position of the first SKU (from the given filters) to appear in the specific shelf.
         """
-        shelf_matches = self.match_product_in_scene[(self.match_product_in_scene['scene_fk'] == scene_id) &
+        shelf_matches = self.match_product_in_scene[(self.match_product_in_scene[MatchesConsts.SCENE_FK] == scene_id) &
                                                     (self.match_product_in_scene[MatchesConsts.SHELF_NUMBER] == shelf_number)]
         if shelf_matches[self.get_filter_condition(shelf_matches, **filters)].empty:
             Log.info("Products of '{}' are not tagged in shelf number {}".format(filters, shelf_number))
@@ -1025,24 +1025,24 @@ class PNGJPGENERALToolBox:
                             allowed_filter_without_other, a_target, b_target, target):
         a_b_union = list(set(a_product_list) | set(b_product_list))
 
-        a_filter = {'product_fk': a_product_list}
-        b_filter = {'product_fk': b_product_list}
-        a_b_filter = {'product_fk': a_b_union}
+        a_filter = {ProductsConsts.PRODUCT_FK: a_product_list}
+        b_filter = {ProductsConsts.PRODUCT_FK: b_product_list}
+        a_b_filter = {ProductsConsts.PRODUCT_FK: a_b_union}
         a_b_filter.update(scene_type_filter)
 
         matches = self.data_provider.matches
         relevant_scenes = matches[self.get_filter_condition(matches, **a_b_filter)][
-            'scene_fk'].unique().tolist()
+            MatchesConsts.SCENE_FK].unique().tolist()
 
         result = False
         for scene in relevant_scenes:
             a_filter_for_block = a_filter.copy()
-            a_filter_for_block.update({'scene_fk': scene})
+            a_filter_for_block.update({SceneInfoConsts.SCENE_FK: scene})
             b_filter_for_block = b_filter.copy()
-            b_filter_for_block.update({'scene_fk': scene})
+            b_filter_for_block.update({SceneInfoConsts.SCENE_FK: scene})
             try:
-                a_products = self.get_products_by_filters('product_fk', **a_filter_for_block)
-                b_products = self.get_products_by_filters('product_fk', **b_filter_for_block)
+                a_products = self.get_products_by_filters(ProductsConsts.PRODUCT_FK, **a_filter_for_block)
+                b_products = self.get_products_by_filters(ProductsConsts.PRODUCT_FK, **b_filter_for_block)
                 if sorted(a_products.tolist()) == sorted(b_products.tolist()):
                     return False
             except:
@@ -1062,7 +1062,7 @@ class PNGJPGENERALToolBox:
                     continue
 
             a_b_filter_for_block = a_b_filter.copy()
-            a_b_filter_for_block.update({'scene_fk': scene})
+            a_b_filter_for_block.update({MatchesConsts.SCENE_FK: scene})
 
             block = self.calculate_block_together(allowed_products_filters=allowed_filter_without_other,
                                                         minimum_block_ratio=target, block_of_blocks=True,
@@ -1075,7 +1075,7 @@ class PNGJPGENERALToolBox:
     def _get_group_product_list(self, filters):
         products = self.data_provider.products.copy()
         # filter_.update({'Sub-section': filters['all']['Sub-section']})
-        product_list = products[self.get_filter_condition(products, **filters)]['product_fk'].tolist()
+        product_list = products[self.get_filter_condition(products, **filters)][ProductsConsts.PRODUCT_FK].tolist()
         return product_list
 
     def get_products_by_filters(self, return_value=ProductsConsts.PRODUCT_NAME, **filters):

@@ -1,8 +1,9 @@
 from KPIUtils_v2.Utils.Consts.GlobalConsts import HelperConsts, BasicConsts, HelperConsts
 from KPIUtils_v2.Utils.Consts.OldDB import KpiResults, KpkResults, KpsResults
-from KPIUtils_v2.Utils.Consts.DataProvider import ProductsConsts, ScifConsts, StoreInfoConsts
+from KPIUtils_v2.Utils.Consts.DataProvider import ProductsConsts, ScifConsts, StoreInfoConsts, SceneInfoConsts,\
+    TemplatesConsts, MatchesConsts
 from datetime import datetime
-from KPIUtils_v2.Utils.Consts.DB import SessionResultsConsts
+from KPIUtils_v2.Utils.Consts.DB import SessionResultsConsts,SceneResultsConsts
 import os
 import pandas as pd
 # from timeit import default_timer as timer
@@ -85,7 +86,7 @@ class PNGJPToolBox(Consts):
         self.kpi_results_queries = []
         self.kpi_results = {}
         self.atomic_results = {}
-        self.categories = self.all_products['category_fk'].unique().tolist()
+        self.categories = self.all_products[ProductsConsts.CATEGORY_FK].unique().tolist()
         self.display_types = ['Aisle', 'Casher', 'End-shelf', 'Entrance', 'Island', 'Side-End', 'Side-net']
         self.custom_scif_queries = []
         self.session_fk = self.data_provider[Data.SESSION_INFO][BasicConsts.PK].iloc[0]
@@ -150,8 +151,8 @@ class PNGJPToolBox(Consts):
         """
         query = PNGJPQueries.get_match_display(self.session_uid)
         match_display = pd.read_sql_query(query, self.rds_conn.db)
-        match_display = match_display.merge(self.scene_info[['scene_fk', 'template_fk']], on='scene_fk', how='left')
-        match_display = match_display.merge(self.all_templates, on='template_fk', how='left', suffixes=['', '_y'])
+        match_display = match_display.merge(self.scene_info[[SceneInfoConsts.SCENE_FK, SceneInfoConsts.TEMPLATE_FK]], on=SceneInfoConsts.SCENE_FK, how='left')
+        match_display = match_display.merge(self.all_templates, on=SceneInfoConsts.TEMPLATE_FK, how='left', suffixes=['', '_y'])
         return match_display
 
     @log_runtime('Main Calculation')
@@ -161,7 +162,7 @@ class PNGJPToolBox(Consts):
         """
         for category_fk in self.categories:
             category = \
-                self.all_products[self.all_products['category_fk'] == category_fk][ProductsConsts.CATEGORY_LOCAL_NAME].values[0]
+                self.all_products[self.all_products[ProductsConsts.CATEGORY_FK] == category_fk][ProductsConsts.CATEGORY_LOCAL_NAME].values[0]
             self.category_calculation(category)
         for kpi_set in self.template_data[self.SET_NAME].unique().tolist():
             self.write_to_db_result(score=None, level=self.LEVEL1, kpi_set_name=kpi_set)
@@ -331,11 +332,11 @@ class PNGJPToolBox(Consts):
             product_brand, manufacturer = self.all_products.loc[self.all_products[ProductsConsts.PRODUCT_EAN_CODE] ==
                                                                 product_ean_code][
                 [ProductsConsts.BRAND_LOCAL_NAME, ProductsConsts.MANUFACTURER_NAME]].values[0]
-            template_kpi_filters = scenes_filters['template_name']
+            template_kpi_filters = scenes_filters[TemplatesConsts.TEMPLATE_NAME]
             for scene_type in template_kpi_filters:
-                filters = {'template_name': scene_type, ProductsConsts.PRODUCT_EAN_CODE: product_ean_code}
+                filters = {TemplatesConsts.TEMPLATE_NAME: scene_type, ProductsConsts.PRODUCT_EAN_CODE: product_ean_code}
                 result = int(distribution_products[self.tools.get_filter_condition(distribution_products, **filters)][
-                                 'facings'].sum())
+                                 ScifConsts.FACINGS].sum())
                 atomic_kpi_name = atomic_name.format(category=category, brand=product_brand,
                                                      ean=product_ean_code, manufacturer=manufacturer,
                                                      scene_type=scene_type)
@@ -362,7 +363,7 @@ class PNGJPToolBox(Consts):
                     reference_results[ProductsConsts.CATEGORY].str.encode(HelperConsts.UTF8) == category.encode(HelperConsts.UTF8)]
                 total_calculated = len(reference_results)
 
-                number_of_failed = len(reference_results[reference_results['result'] == 0])
+                number_of_failed = len(reference_results[reference_results[SceneResultsConsts.RESULT] == 0])
                 number_of_passed = total_calculated - number_of_failed
 
                 if aggregation_type.startswith('Percentage'):
@@ -379,7 +380,7 @@ class PNGJPToolBox(Consts):
                     else:
                         result = number_of_failed
                 elif aggregation_type.startswith('Sum'):
-                    result = sum(reference_results['result'])
+                    result = sum(reference_results[SceneResultsConsts.RESULT])
                 else:
                     try:
                         result = int(float(aggregation_type))
@@ -464,7 +465,7 @@ class PNGJPToolBox(Consts):
                             continue
 
                     elif kpi_type == self.FACING_COUNT_BY_SCENE:
-                        template_kpi_filters = scenes_filters['template_name']
+                        template_kpi_filters = scenes_filters[TemplatesConsts.TEMPLATE_NAME]
                         if sub_entity == ProductsConsts.BRAND_LOCAL_NAME:
                             brand = item
                             score = None
@@ -483,32 +484,32 @@ class PNGJPToolBox(Consts):
                             denominator_filter.pop(sub_entity)
                             updated_scif_denominator = int(
                                 self.scif[self.tools.get_filter_condition(self.scif, **denominator_filter)][
-                                    'facings'].sum())
+                                    ScifConsts.FACINGS].sum())
 
                         kpi_filter = {}
 
                         for scene_type in template_kpi_filters:
                             # dict(kpi_filters)
                             if set_name == 'Number of Facings (Primary)':
-                                kpi_filter['template_name'] = scene_type
+                                kpi_filter[TemplatesConsts.TEMPLATE_NAME] = scene_type
                                 result = int(updated_scif[self.tools.get_filter_condition(updated_scif, **kpi_filter)][
-                                                 'facings'].sum())
+                                                 ScifConsts.FACINGS].sum())
                                 threshold = updated_scif_denominator
 
                                 kpi_name = params[self.KPI_NAME].format(category=category, brand=brand,
                                                                         manufacturer=manufacturer,
                                                                         scene_type=scene_type)
-                                scores = {'result': result, KpiResults.THRESHOLD: threshold}
+                                scores = {SceneResultsConsts.RESULT: result, KpiResults.THRESHOLD: threshold}
                                 result_dict[kpi_name] = scores
                             else:
-                                kpi_filter['template_name'] = scene_type
+                                kpi_filter[TemplatesConsts.TEMPLATE_NAME] = scene_type
 
                                 result = int(updated_scif[self.tools.get_filter_condition(updated_scif, **kpi_filter)][
-                                                 'facings'].sum())
+                                                 ScifConsts.FACINGS].sum())
                                 score = int(updated_scif[self.tools.get_filter_condition(updated_scif, **kpi_filter)][
-                                                'gross_len_ign_stack'].sum())
+                                                ScifConsts.GROSS_LEN_IGN_STACK].sum())
 
-                                scores = {'result': result, 'score': score}
+                                scores = {SceneResultsConsts.RESULT: result, SceneResultsConsts.SCORE: score}
                                 kpi_name = params[self.KPI_NAME].format(category=category, brand=brand, ean=item,
                                                                         manufacturer=manufacturer,
                                                                         scene_type=scene_type)
@@ -532,24 +533,24 @@ class PNGJPToolBox(Consts):
 
                     elif kpi_type == self.FACING_SOS_BY_SCENE:
                         brand = item
-                        template_kpi_filters = scenes_filters['template_name']
+                        template_kpi_filters = scenes_filters[TemplatesConsts.TEMPLATE_NAME]
                         update_scif = self.scif[self.tools.get_filter_condition(self.scif, **kpi_filters)]
                         for scene_type in template_kpi_filters:
                             kpi_filter = dict(kpi_filters)
                             denominator_filter = dict(kpi_filter)
                             denominator_filter.pop(sub_entity)
-                            kpi_filter['template_name'] = scene_type
+                            kpi_filter[TemplatesConsts.TEMPLATE_NAME] = scene_type
                             result = update_scif[self.tools.get_filter_condition(update_scif, **{
-                                'template_name': scene_type})].facings.sum()
+                                TemplatesConsts.TEMPLATE_NAME: scene_type})].facings.sum()
                             threshold = self.scif[
                                 self.tools.get_filter_condition(self.scif, **denominator_filter)].facings.sum()
-                            sos_filters = {sub_entity: kpi_filter.pop(sub_entity), 'template_name': scene_type}
+                            sos_filters = {sub_entity: kpi_filter.pop(sub_entity), TemplatesConsts.TEMPLATE_NAME: scene_type}
                             score = self.tools.calculate_share_of_shelf(
                                 sos_filters=sos_filters, **denominator_filter)
                             kpi_name = params[self.KPI_NAME].format(category=category, brand=brand,
                                                                     manufacturer=manufacturer, scene_type=scene_type)
                             score = int(score * 10000)
-                            scores = {'result': result, KpiResults.THRESHOLD: threshold, 'score': score}
+                            scores = {SceneResultsConsts.RESULT: result, KpiResults.THRESHOLD: threshold, SceneResultsConsts.SCORE: score}
                             result_dict[kpi_name] = scores
 
                     elif kpi_type == self.LINEAR_SOS:
@@ -580,7 +581,7 @@ class PNGJPToolBox(Consts):
 
                     elif kpi_type == self.SHELF_SPACE_LENGTH_BY_SCENE:
                         brand = item
-                        template_kpi_filters = scenes_filters['template_name']
+                        template_kpi_filters = scenes_filters[TemplatesConsts.TEMPLATE_NAME]
                         manufacturer = self.all_products.loc[
                             self.all_products[ProductsConsts.BRAND_LOCAL_NAME].str.encode(HelperConsts.UTF8) == brand.encode(HelperConsts.UTF8)][
                             ProductsConsts.MANUFACTURER_NAME].values[0]
@@ -589,14 +590,14 @@ class PNGJPToolBox(Consts):
 
                         for scene_type in template_kpi_filters:
                             result = int(update_scif[self.tools.get_filter_condition(update_scif,
-                                                                                     **{'template_name': scene_type})][
-                                             'gross_len_ign_stack'].sum())
+                                                                                     **{TemplatesConsts.TEMPLATE_NAME: scene_type})][
+                                             ScifConsts.GROSS_LEN_IGN_STACK].sum())
                             score = None
-                            cat_filters = dict(filters, **{'template_name': kpi_filters['template_name']})
+                            cat_filters = dict(filters, **{TemplatesConsts.TEMPLATE_NAME: kpi_filters[TemplatesConsts.TEMPLATE_NAME]})
                             threshold = int(self.tools.calculate_share_space_length(**cat_filters))
                             kpi_name = params[self.KPI_NAME].format(category=category, brand=brand,
                                                                     manufacturer=manufacturer, scene_type=scene_type)
-                            scores = {'result': result, KpiResults.THRESHOLD: threshold}
+                            scores = {SceneResultsConsts.RESULT: result, KpiResults.THRESHOLD: threshold}
                             result_dict[kpi_name] = scores
 
                     elif kpi_type == self.SHELF_POSITION:
@@ -624,21 +625,21 @@ class PNGJPToolBox(Consts):
                         elif set_name == 'Number of Display (by Category)':
                             kpi_name = params[self.KPI_NAME].format(category=category, brand=item)
                         elif set_name == 'Display Raw Data':
-                            old_kpi_filters = scenes_filters['template_name']
+                            old_kpi_filters = scenes_filters[TemplatesConsts.TEMPLATE_NAME]
                             scenes_to_check = self.scif.loc[
                                 (self.scif[ProductsConsts.CATEGORY_LOCAL_NAME].str.encode(HelperConsts.UTF8) == category.encode(HelperConsts.UTF8)) &
                                 (self.scif[sub_entity].str.encode(HelperConsts.UTF8) == item.encode(HelperConsts.UTF8))][
-                                'scene_fk'].unique().tolist()
+                                ScifConsts.SCENE_FK].unique().tolist()
                             display_types = \
-                                self.match_display_in_scene.loc[self.match_display_in_scene['scene_fk'].isin(
+                                self.match_display_in_scene.loc[self.match_display_in_scene[MatchesConsts.SCENE_FK].isin(
                                     scenes_to_check)]['display_type'].unique().tolist()
                             if not display_types:
                                 display_types = self.display_types
                             for display_type in display_types:
                                 for scene_type in old_kpi_filters:
                                     if display_type in scene_type:
-                                        kpi_filters['template_name'] = scene_type
-                                product_kpi_filters = dict({'scene_fk': scenes_to_check}, **kpi_filters)
+                                        kpi_filters[TemplatesConsts.TEMPLATE_NAME] = scene_type
+                                product_kpi_filters = dict({SceneInfoConsts.SCENE_FK: scenes_to_check}, **kpi_filters)
                                 result = self.tools.calculate_number_of_scenes(**product_kpi_filters)
                                 kpi_name = params[self.KPI_NAME].format(category=category, brand=item,
                                                                         display_type=display_type)
@@ -648,7 +649,7 @@ class PNGJPToolBox(Consts):
                         kpi_filter = kpi_filters
                         if params[self.MANUFACTURERS].strip():
                             kpi_filter = dict({ProductsConsts.MANUFACTURER_NAME: params[self.MANUFACTURERS]}, **kpi_filter)
-                        template_kpi_filters = scenes_filters['template_name']
+                        template_kpi_filters = scenes_filters[TemplatesConsts.TEMPLATE_NAME]
                         score = None
                         threshold = None
                         brand = item
@@ -657,7 +658,7 @@ class PNGJPToolBox(Consts):
                             ProductsConsts.MANUFACTURER_NAME].values[0]
 
                         for scene_type in template_kpi_filters:
-                            kpi_filter['template_name'] = scene_type
+                            kpi_filter[TemplatesConsts.TEMPLATE_NAME] = scene_type
                             result = self.tools.calculate_number_of_scenes(**kpi_filter)
                             kpi_name = params[self.KPI_NAME].format(category=category, brand=brand, ean=item,
                                                                     manufacturer=manufacturer, scene_type=scene_type)
@@ -680,7 +681,7 @@ class PNGJPToolBox(Consts):
                                                                         display=posm)
                                 result = len(match_display[match_display['display_name'].isin([posm])])
                                 result_dict[kpi_name] = result
-                        elif sub_entity in (ProductsConsts.CATEGORY, 'template_name'):
+                        elif sub_entity in (ProductsConsts.CATEGORY, TemplatesConsts.TEMPLATE_NAME):
                             if params[self.CUSTOM_SHEET] == 'Solution Center POSM':
                                 custom_sheet = self.get_template('Solution Center POSM')
                             else:
@@ -712,7 +713,7 @@ class PNGJPToolBox(Consts):
                             kpi_name = params[self.KPI_NAME].format(category=category)
                             result = len(match_display[match_display['display_name'].isin(posm_items)])
                             result_dict[kpi_name] = result
-                        elif sub_entity in (ProductsConsts.CATEGORY, 'template_name'):
+                        elif sub_entity in (ProductsConsts.CATEGORY, TemplatesConsts.TEMPLATE_NAME):
                             if params[self.CUSTOM_SHEET] == 'Solution Center POSM':
                                 custom_sheet = self.get_template('Solution Center POSM')
                             else:
@@ -745,13 +746,13 @@ class PNGJPToolBox(Consts):
                             else:
                                 for kpi_name, result in result_dict.items():
                                     if type(result) == dict:
-                                        if result['result'] > 0:
-                                            self.write_to_db_result(score=result['result'], level=self.LEVEL3,
-                                                                    level3_score=result['score'], kpi_set_name=set_name,
+                                        if result[SceneResultsConsts.RESULT] > 0:
+                                            self.write_to_db_result(score=result[SceneResultsConsts.RESULT], level=self.LEVEL3,
+                                                                    level3_score=result[SceneResultsConsts.SCORE], kpi_set_name=set_name,
                                                                     kpi_name=set_name, atomic_kpi_name=kpi_name)
                                         else:
-                                            self.create_attributes_dict(score=result['result'], level=self.LEVEL3,
-                                                                        level3_score=result['score'],
+                                            self.create_attributes_dict(score=result[SceneResultsConsts.RESULT], level=self.LEVEL3,
+                                                                        level3_score=result[SceneResultsConsts.SCORE],
                                                                         kpi_set_name=set_name,
                                                                         kpi_name=set_name, atomic_kpi_name=kpi_name)
                                     else:
@@ -778,14 +779,14 @@ class PNGJPToolBox(Consts):
                             else:
                                 for kpi_name, result in result_dict.items():
                                     if type(result) == dict:
-                                        if result['result'] > 0 and result['score'] > 0:
-                                            self.write_to_db_result(score=result['result'], level=self.LEVEL3,
-                                                                    level3_score=result['score'],
+                                        if result[SceneResultsConsts.RESULT] > 0 and result[SceneResultsConsts.SCORE] > 0:
+                                            self.write_to_db_result(score=result[SceneResultsConsts.RESULT], level=self.LEVEL3,
+                                                                    level3_score=result[SceneResultsConsts.SCORE],
                                                                     kpi_set_name=set_name, kpi_name=set_name,
                                                                     atomic_kpi_name=kpi_name)
                                             # else:
-                                            #     self.create_attributes_dict(score=result['result'], level=self.LEVEL3,
-                                            #                             level3_score=result['score'],
+                                            #     self.create_attributes_dict(score=result[SceneResultsConsts.RESULT], level=self.LEVEL3,
+                                            #                             level3_score=result[SceneResultsConsts.SCORE],
                                             #                             kpi_set_name=set_name, kpi_name=set_name,
                                             #                             atomic_kpi_name=kpi_name)
                                     else:
@@ -813,13 +814,13 @@ class PNGJPToolBox(Consts):
                             else:
                                 for kpi_name, result in result_dict.items():
                                     if type(result) == dict:
-                                        if result['result'] > 0 and result[KpiResults.THRESHOLD] > 0:
-                                            self.write_to_db_result(score=result['result'], level=self.LEVEL3,
+                                        if result[SceneResultsConsts.RESULT] > 0 and result[KpiResults.THRESHOLD] > 0:
+                                            self.write_to_db_result(score=result[SceneResultsConsts.RESULT], level=self.LEVEL3,
                                                                     threshold=result[KpiResults.THRESHOLD],
                                                                     kpi_set_name=set_name, kpi_name=set_name,
                                                                     atomic_kpi_name=kpi_name)
                                             # else:
-                                            #     self.create_attributes_dict(score=result['result'], level=self.LEVEL3,
+                                            #     self.create_attributes_dict(score=result[SceneResultsConsts.RESULT], level=self.LEVEL3,
                                             #                                 threshold=result[KpiResults.THRESHOLD],
                                             #                                 kpi_set_name=set_name, kpi_name=set_name,
                                             #                                 atomic_kpi_name=kpi_name)
@@ -847,15 +848,15 @@ class PNGJPToolBox(Consts):
                             else:
                                 for kpi_name, result in result_dict.items():
                                     if type(result) == dict:
-                                        if result['result'] > 0 and result[KpiResults.THRESHOLD] > 0 and result['score'] > 0:
-                                            self.write_to_db_result(score=result['result'], level=self.LEVEL3,
-                                                                    level3_score=result['score'],
+                                        if result[SceneResultsConsts.RESULT] > 0 and result[KpiResults.THRESHOLD] > 0 and result[SceneResultsConsts.SCORE] > 0:
+                                            self.write_to_db_result(score=result[SceneResultsConsts.RESULT], level=self.LEVEL3,
+                                                                    level3_score=result[SceneResultsConsts.SCORE],
                                                                     threshold=result[KpiResults.THRESHOLD],
                                                                     kpi_set_name=set_name,
                                                                     kpi_name=set_name, atomic_kpi_name=kpi_name)
                                             # else:
-                                            #     self.create_attributes_dict(score=result['result'], level=self.LEVEL3,
-                                            #                                 level3_score=result['score'],
+                                            #     self.create_attributes_dict(score=result[SceneResultsConsts.RESULT], level=self.LEVEL3,
+                                            #                                 level3_score=result[SceneResultsConsts.SCORE],
                                             #                                 threshold=result[KpiResults.THRESHOLD],
                                             #                                 kpi_set_name=set_name,
                                             #                                 kpi_name=set_name, atomic_kpi_name=kpi_name)
@@ -880,7 +881,7 @@ class PNGJPToolBox(Consts):
         output = []
         if set_name in self.atomic_results.keys():
             for atomic in self.atomic_results[set_name].keys():
-                results = {'result': self.atomic_results[set_name][atomic]}
+                results = {SceneResultsConsts.RESULT: self.atomic_results[set_name][atomic]}
                 for data in atomic.split(self.UNICODE_DASH):
                     name, value = data.split(':')
                     results[name.lower()] = value
@@ -903,7 +904,7 @@ class PNGJPToolBox(Consts):
                 else:
                     template_names.append(scene_type)
             if template_names:
-                filters['template_name'] = template_names
+                filters[TemplatesConsts.TEMPLATE_NAME] = template_names
         return filters
 
     @kpi_runtime(kpi_desc='update_custom_scene_item_facts')
@@ -915,12 +916,12 @@ class PNGJPToolBox(Consts):
         store_type = self.store_type
         try:
             psku_assortment_products = self.psku_assortment['Product EAN'][self.psku_assortment[store_type] == '1']
-            psku_assortment_products = self.all_products['product_fk'][
+            psku_assortment_products = self.all_products[ProductsConsts.PRODUCT_FK][
                 self.all_products[ProductsConsts.PRODUCT_EAN_CODE].isin(psku_assortment_products)]
 
             innovation_assortment_products = self.innovation_assortment['Product EAN'][
                 self.psku_assortment[store_type] == '1']
-            innovation_assortment_products = self.all_products['product_fk'][
+            innovation_assortment_products = self.all_products[ProductsConsts.PRODUCT_FK][
                 self.all_products[ProductsConsts.PRODUCT_EAN_CODE].isin(innovation_assortment_products)]
         except Exception as e:
             Log.warning("store_type '{}' is not valid : {}".format(store_type, e.message))
@@ -931,10 +932,10 @@ class PNGJPToolBox(Consts):
         psku_assortment_products = psku_assortment_products.tolist()
         innovation_assortment_products = innovation_assortment_products.tolist()
         # shelves = [4, 5]
-        all_scenes_in_scif = self.scif[Consts.SCENE_FK].unique().tolist()
+        all_scenes_in_scif = self.scif[ScifConsts.SCENE_FK].unique().tolist()
 
         if all_scenes_in_scif:
-            products_in_session = self.scif.loc[self.scif[ScifConsts.DIST_SC] == 1][Consts.PRODUCT_FK].unique().tolist()
+            products_in_session = self.scif.loc[self.scif[ScifConsts.DIST_SC] == 1][ScifConsts.PRODUCT_FK].unique().tolist()
             for product in assortment_products:
                 if product in products_in_session:
                     # This means the product in assortment and is not oos. (1,0)
@@ -973,8 +974,8 @@ class PNGJPToolBox(Consts):
                                               mha_in_assortment,
                                               mha_oos, length_mm_custom)
 
-            products_not_in_assortment = self.scif[~self.scif[Consts.PRODUCT_FK].isin(assortment_products)]
-            for product in products_not_in_assortment[Consts.PRODUCT_FK].unique().tolist():
+            products_not_in_assortment = self.scif[~self.scif[ScifConsts.PRODUCT_FK].isin(assortment_products)]
+            for product in products_not_in_assortment[ScifConsts.PRODUCT_FK].unique().tolist():
                 # The product is not in assortment list and not oos. (0,0)
                 scenes = self.get_scenes_for_product(product)
                 for scene in scenes:
@@ -992,11 +993,11 @@ class PNGJPToolBox(Consts):
         :return: a list of scenes_fks
         """
         if product_fk:
-            product_scif = self.scif.loc[self.scif['product_fk'] == product_fk]
+            product_scif = self.scif.loc[self.scif[ScifConsts.PRODUCT_FK] == product_fk]
         else:
             product_scif = self.scif
 
-        scenes = product_scif['scene_fk'].unique().tolist()
+        scenes = product_scif[ScifConsts.SCENE_FK].unique().tolist()
         return scenes
 
     def get_custom_query(self, scene_fk, product_fk, in_assortment_OSA, oos_osa, mha_in_assortment, mha_oos,
@@ -1015,7 +1016,7 @@ class PNGJPToolBox(Consts):
         attributes = pd.DataFrame([(
             self.session_fk, scene_fk, product_fk, in_assortment_OSA, oos_osa, mha_in_assortment,
             mha_oos, length_mm_custom)],
-            columns=[SessionResultsConsts.SESSION_FK, 'scene_fk', 'product_fk', 'in_assortment_OSA', 'oos_osa',
+            columns=[SessionResultsConsts.SESSION_FK, SceneInfoConsts.SCENE_FK, ProductsConsts.PRODUCT_FK, 'in_assortment_OSA', 'oos_osa',
                      'mha_in_assortment', 'mha_oos', 'length_mm_custom'])
 
         query = insert(attributes.to_dict(), Consts.PSERVICE_CUSTOM_SCIF)
@@ -1049,48 +1050,48 @@ class PNGJPToolBox(Consts):
             if score is not None:
                 attributes = pd.DataFrame([(set_name, self.session_uid, self.store_id, self.visit_date.isoformat(),
                                             format(score, '.2f'), set_fk)],
-                                          columns=['kps_name', 'session_uid', 'store_fk', 'visit_date', KpsResults.SCORE_1,
+                                          columns=[KpiResults.KPS_NAME, KpiResults.SESSION_UID, KpiResults.STORE_FK, KpiResults.VISIT_DATE, KpsResults.SCORE_1,
                                                    KpsResults.KPI_SET_FK])
             else:
                 attributes = pd.DataFrame([(set_name, self.session_uid, self.store_id, self.visit_date.isoformat(),
                                             None, set_fk)],
-                                          columns=['kps_name', 'session_uid', 'store_fk', 'visit_date', KpsResults.SCORE_1,
+                                          columns=[KpiResults.KPS_NAME, KpiResults.SESSION_UID, KpiResults.STORE_FK, KpiResults.VISIT_DATE, KpsResults.SCORE_1,
                                                    KpsResults.KPI_SET_FK])
         elif level == self.LEVEL2:
             kpi_name = kwargs['kpi_name']
-            kpi_fk = self.kpi_static_data[self.kpi_static_data['kpi_name'] == kpi_name]['kpi_fk'].values[0]
+            kpi_fk = self.kpi_static_data[self.kpi_static_data['kpi_name'] == kpi_name][KpiResults.KPI_FK].values[0]
             attributes = pd.DataFrame([(self.session_uid, self.store_id, self.visit_date.isoformat(),
                                         kpi_fk, kpi_name, score)],
-                                      columns=['session_uid', 'store_fk', 'visit_date', 'kpi_fk', KpkResults.KPK_NAME, 'score'])
+                                      columns=[KpiResults.SESSION_UID, KpiResults.STORE_FK, KpiResults.VISIT_DATE, KpiResults.KPI_FK, KpkResults.KPK_NAME, KpiResults.SCORE])
             self.kpi_results[kpi_name] = score
         elif level == self.LEVEL3:
             kpi_name = kwargs['kpi_name']
-            kpi_fk = self.kpi_static_data[self.kpi_static_data['kpi_name'] == kpi_name]['kpi_fk'].values[0]
+            kpi_fk = self.kpi_static_data[self.kpi_static_data['kpi_name'] == kpi_name][KpiResults.KPI_FK].values[0]
             atomic_kpi_name = kwargs['atomic_kpi_name']
             kpi_set_name = kwargs['kpi_set_name']
             if level3_score is None and threshold is None:
                 attributes = pd.DataFrame([(atomic_kpi_name, self.session_uid, kpi_set_name, self.store_id,
                                             self.visit_date.isoformat(), datetime.utcnow().isoformat(), score, kpi_fk)],
-                                          columns=['display_text', 'session_uid', 'kps_name', 'store_fk', 'visit_date',
-                                                   KpiResults.CALCULATION_TIME, 'result', 'kpi_fk'])
+                                          columns=[KpiResults.DISPLAY_TEXT, KpiResults.SESSION_UID, KpiResults.KPS_NAME, KpiResults.STORE_FK, KpiResults.VISIT_DATE,
+                                                   KpiResults.CALCULATION_TIME, KpiResults.RESULT, KpiResults.KPI_FK])
             elif level3_score is not None and threshold is None:
                 attributes = pd.DataFrame([(atomic_kpi_name, self.session_uid, kpi_set_name, self.store_id,
                                             self.visit_date.isoformat(), datetime.utcnow().isoformat(), score, kpi_fk,
                                             level3_score, None)],
-                                          columns=['display_text', 'session_uid', 'kps_name', 'store_fk', 'visit_date',
-                                                   KpiResults.CALCULATION_TIME, 'result', 'kpi_fk', 'score', KpiResults.THRESHOLD])
+                                          columns=[KpiResults.DISPLAY_TEXT, KpiResults.SESSION_UID, KpiResults.KPS_NAME, KpiResults.STORE_FK, KpiResults.VISIT_DATE,
+                                                   KpiResults.CALCULATION_TIME, KpiResults.RESULT, KpiResults.KPI_FK, KpiResults.SCORE, KpiResults.THRESHOLD])
             elif level3_score is None and threshold is not None:
                 attributes = pd.DataFrame([(atomic_kpi_name, self.session_uid, kpi_set_name, self.store_id,
                                             self.visit_date.isoformat(), datetime.utcnow().isoformat(), score, kpi_fk,
                                             threshold, None)],
-                                          columns=['display_text', 'session_uid', 'kps_name', 'store_fk', 'visit_date',
-                                                   KpiResults.CALCULATION_TIME, 'result', 'kpi_fk', KpiResults.THRESHOLD, 'score'])
+                                          columns=[KpiResults.DISPLAY_TEXT, KpiResults.SESSION_UID, KpiResults.KPS_NAME, KpiResults.STORE_FK, KpiResults.VISIT_DATE,
+                                                   KpiResults.CALCULATION_TIME, KpiResults.RESULT, KpiResults.KPI_FK, KpiResults.THRESHOLD, KpiResults.SCORE])
             else:
                 attributes = pd.DataFrame([(atomic_kpi_name, self.session_uid, kpi_set_name, self.store_id,
                                             self.visit_date.isoformat(), datetime.utcnow().isoformat(), score, kpi_fk,
                                             threshold, level3_score)],
-                                          columns=['display_text', 'session_uid', 'kps_name', 'store_fk', 'visit_date',
-                                                   KpiResults.CALCULATION_TIME, 'result', 'kpi_fk', KpiResults.THRESHOLD, 'score'])
+                                          columns=[KpiResults.DISPLAY_TEXT, KpiResults.SESSION_UID, KpiResults.KPS_NAME, KpiResults.STORE_FK, KpiResults.VISIT_DATE,
+                                                   KpiResults.CALCULATION_TIME, KpiResults.RESULT, KpiResults.KPI_FK, KpiResults.THRESHOLD, KpiResults.SCORE])
             if kpi_set_name not in self.atomic_results.keys():
                 self.atomic_results[kpi_set_name] = {}
             self.atomic_results[kpi_set_name][atomic_kpi_name] = score

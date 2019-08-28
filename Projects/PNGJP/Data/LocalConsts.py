@@ -5,7 +5,7 @@ class Consts(object):
     FLEXIBLE_MODE = 'Flexible Mode'
     STRICT_MODE = 'Strict Mode'
 
-    ATTRIBUTES_TO_SAVE = [MatchesConsts.SCENE_MATCH_FK,ProductsConsts.PRODUCT_NAME, 'product_fk', ProductsConsts.PRODUCT_TYPE, ProductsConsts.PRODUCT_EAN_CODE, 'sub_brand_name',
+    ATTRIBUTES_TO_SAVE = [MatchesConsts.SCENE_MATCH_FK, ProductsConsts.PRODUCT_NAME, ProductsConsts.PRODUCT_FK, ProductsConsts.PRODUCT_TYPE, ProductsConsts.PRODUCT_EAN_CODE, 'sub_brand_name',
                           MatchesConsts.BAY_NUMBER, MatchesConsts.WIDTH_MM_ADVANCE, MatchesConsts.HEIGHT_MM_ADVANCE]
     KPI_RESULT = 'report.kpi_results'
     KPK_RESULT = 'report.kpk_results'
@@ -14,8 +14,6 @@ class Consts(object):
     IN_ASSORTMENT = 'in_assortment_osa'
     IS_OOS = 'oos_osa'
     PSERVICE_CUSTOM_SCIF = 'pservice.custom_scene_item_facts'
-    PRODUCT_FK = 'product_fk'
-    SCENE_FK = 'scene_fk'
     DEFAULT = 'Default'
     TOP = 'Top'
     BOTTOM = 'Bottom'

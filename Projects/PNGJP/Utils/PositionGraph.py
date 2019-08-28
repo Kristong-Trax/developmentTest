@@ -52,13 +52,13 @@ class PNGJPPositionGraphs:
         matches = self.data_provider[Data.MATCHES]
         matches = matches.sort_values(by=[MatchesConsts.BAY_NUMBER, MatchesConsts.SHELF_NUMBER, MatchesConsts.FACING_SEQUENCE_NUMBER])
         matches = matches.merge(self.get_match_product_in_scene(), how='left', on=MatchesConsts.SCENE_MATCH_FK, suffixes=['', '_2'])
-        matches = matches.merge(self.data_provider[Data.ALL_PRODUCTS], how='left', on='product_fk', suffixes=['', '_3'])
-        matches = matches.merge(self.data_provider[Data.SCENE_ITEM_FACTS][['template_name', 'location_type',
-                                                                           ScifConsts.SCENE_ID, 'scene_fk']],
-                                how='left', on='scene_fk', suffixes=['', '_4'])
+        matches = matches.merge(self.data_provider[Data.ALL_PRODUCTS], how='left', on=MatchesConsts.PRODUCT_FK, suffixes=['', '_3'])
+        matches = matches.merge(self.data_provider[Data.SCENE_ITEM_FACTS][[ScifConsts.TEMPLATE_NAME, ScifConsts.LOCATION_TYPE,
+                                                                           ScifConsts.SCENE_ID, ScifConsts.SCENE_FK]],
+                                how='left', on=ScifConsts.SCENE_FK, suffixes=['', '_4'])
         if set(Consts.ATTRIBUTES_TO_SAVE).difference(matches.keys()):
             missing_data = self.get_missing_data()
-            matches = matches.merge(missing_data, on='product_fk', how='left', suffixes=['', '_5'])
+            matches = matches.merge(missing_data, on=MatchesConsts.PRODUCT_FK, how='left', suffixes=['', '_5'])
         matches = matches.drop_duplicates(subset=[MatchesConsts.SCENE_MATCH_FK])
         return matches
 
@@ -93,9 +93,9 @@ class PNGJPPositionGraphs:
         if scene_id:
             scenes = [scene_id]
         else:
-            scenes = self.match_product_in_scene['scene_fk'].unique()
+            scenes = self.match_product_in_scene[MatchesConsts.SCENE_FK].unique()
         for scene in scenes:
-            matches = self.match_product_in_scene[self.match_product_in_scene['scene_fk'] == scene]
+            matches = self.match_product_in_scene[self.match_product_in_scene[MatchesConsts.SCENE_FK] == scene]
             matches['distance_from_end_of_shelf'] = matches[MatchesConsts.N_SHELF_ITEMS] - matches[MatchesConsts.FACING_SEQUENCE_NUMBER]
             scene_graph = igraph.Graph(directed=True)
             edges = []
