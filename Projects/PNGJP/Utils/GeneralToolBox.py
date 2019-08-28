@@ -8,7 +8,7 @@ from Trax.Algo.Calculations.Core.Shortcuts import BaseCalculationsGroup
 from Trax.Utils.Logging.Logger import Log
 
 from Projects.PNGJP.Utils.PositionGraph import PNGJPPositionGraphs
-
+from Projects.PNGJP.Data.LocalConsts import Consts
 __author__ = 'Nimrod'
 
 
@@ -22,11 +22,6 @@ class PNGJPGENERALToolBox:
     EXCLUDE_OTHER = False
 
     STRICT_MODE = ALL = 1000
-
-    EMPTY = 'Empty'
-    DEFAULT = 'Default'
-    TOP = 'Top'
-    BOTTOM = 'Bottom'
 
     def __init__(self, data_provider, output, rds_conn=None, ignore_stacking=False, front_facing=False, **kwargs):
         self.k_engine = BaseCalculationsGroup(data_provider, output)
@@ -223,7 +218,7 @@ class PNGJPGENERALToolBox:
         :return: The ratio of the SOS.
         """
         if include_empty == self.EXCLUDE_EMPTY and 'product_type' not in sos_filters.keys() + general_filters.keys():
-            general_filters['product_type'] = (self.EMPTY, self.EXCLUDE_FILTER)
+            general_filters['product_type'] = (Consts.EMPTY, self.EXCLUDE_FILTER)
         pop_filter = self.get_filter_condition(self.scif, **general_filters)
         subset_filter = self.get_filter_condition(self.scif, **sos_filters)
 
@@ -244,7 +239,7 @@ class PNGJPGENERALToolBox:
         :return: The Linear SOS ratio.
         """
         if include_empty == self.EXCLUDE_EMPTY:
-            general_filters['product_type'] = (self.EMPTY, self.EXCLUDE_FILTER)
+            general_filters['product_type'] = (Consts.EMPTY, self.EXCLUDE_FILTER)
 
         numerator_width = self.calculate_share_space_length(**dict(sos_filters, **general_filters))
         denominator_width = self.calculate_share_space_length(**general_filters)
@@ -316,7 +311,7 @@ class PNGJPGENERALToolBox:
         else:
             return number_of_edge_scenes, len(relevant_scenes)
 
-    def calculate_shelf_level_assortment(self, shelves, from_top_or_bottom=TOP, **filters):
+    def calculate_shelf_level_assortment(self, shelves, from_top_or_bottom=Consts.TOP, **filters):
         """
         :param shelves: A shelf number (of type int or string), or a list of shelves (of type int or string).
         :param from_top_or_bottom: TOP for default shelf number (counted from top)
@@ -326,13 +321,13 @@ class PNGJPGENERALToolBox:
         """
         shelves = shelves if isinstance(shelves, list) else [shelves]
         shelves = [int(shelf) for shelf in shelves]
-        if from_top_or_bottom == self.TOP:
+        if from_top_or_bottom == Consts.TOP:
             assortment = self.calculate_assortment(shelf_number=shelves, **filters)
         else:
             assortment = self.calculate_assortment(shelf_number_from_bottom=shelves, **filters)
         return assortment
 
-    def calculate_eye_level_assortment(self, eye_level_configurations=DEFAULT, min_number_of_products=ALL, **filters):
+    def calculate_eye_level_assortment(self, eye_level_configurations=Consts.DEFAULT, min_number_of_products=ALL, **filters):
         """
         :param eye_level_configurations: A data frame containing information about shelves to ignore (==not eye level)
                                          for every number of shelves in each bay.
@@ -343,7 +338,7 @@ class PNGJPGENERALToolBox:
         filters, relevant_scenes = self.separate_location_filters_from_product_filters(**filters)
         if len(relevant_scenes) == 0:
             return 0, 0
-        if eye_level_configurations == self.DEFAULT:
+        if eye_level_configurations == Consts.DEFAULT:
             if hasattr(self, 'eye_level_configurations'):
                 eye_level_configurations = self.eye_level_configurations
             else:
@@ -506,7 +501,7 @@ class PNGJPGENERALToolBox:
                 vertex = graph.vs[vindex]
                 if vindex not in vertices_list and vindex not in tested_vertices:
                     if current_index < len(sequence_vertices):
-                        if vertex['product_type'] == self.EMPTY:
+                        if vertex['product_type'] == Consts.EMPTY:
                             empties_found = True
                         else:
                             irrelevant_found = True

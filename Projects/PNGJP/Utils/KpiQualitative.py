@@ -5,6 +5,7 @@ import pandas as pd
 from datetime import datetime
 # from timeit import default_timer as timer
 
+from Projects.PNGJP.Data.LocalConsts import Consts
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScript
 from Trax.Utils.Conf.Keys import DbUsers
@@ -20,16 +21,6 @@ from KPIUtils_v2.Calculations.BlockCalculations import Block
 from KPIUtils_v2.Calculations.AdjacencyCalculations import Adjancency
 
 __author__ = 'Israels'
-
-KPI_RESULT = 'report.kpi_results'
-KPK_RESULT = 'report.kpk_results'
-KPS_RESULT = 'report.kps_results'
-
-IN_ASSORTMENT = 'in_assortment_osa'
-IS_OOS = 'oos_osa'
-PSERVICE_CUSTOM_SCIF = 'pservice.custom_scene_item_facts'
-PRODUCT_FK = 'product_fk'
-SCENE_FK = 'scene_fk'
 
 
 def log_runtime(description, log_start=False):
@@ -386,11 +377,11 @@ class PNGJPKpiQualitative_ToolBox(PNGJPConsts):
         """
         attributes = self.create_attributes_dict(score, level, threshold, level3_score, **kwargs)
         if level == self.LEVEL1:
-            table = KPS_RESULT
+            table = Consts.KPS_RESULT
         elif level == self.LEVEL2:
-            table = KPK_RESULT
+            table = Consts.KPK_RESULT
         elif level == self.LEVEL3:
-            table = KPI_RESULT
+            table = Consts.KPI_RESULT
         else:
             return
         query = insert(attributes, table)

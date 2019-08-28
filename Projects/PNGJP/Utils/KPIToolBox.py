@@ -13,18 +13,10 @@ from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
 from Projects.PNGJP.Utils.Fetcher import PNGJPQueries
 from Projects.PNGJP.Utils.GeneralToolBox import PNGJPGENERALToolBox
 from Projects.PNGJP.Utils.ParseTemplates import parse_template
+from Projects.PNGJP.Data.LocalConsts import Consts
+
 
 __author__ = 'Nimrod'
-
-KPI_RESULT = 'report.kpi_results'
-KPK_RESULT = 'report.kpk_results'
-KPS_RESULT = 'report.kps_results'
-
-IN_ASSORTMENT = 'in_assortment_osa'
-IS_OOS = 'oos_osa'
-PSERVICE_CUSTOM_SCIF = 'pservice.custom_scene_item_facts'
-PRODUCT_FK = 'product_fk'
-SCENE_FK = 'scene_fk'
 
 
 def log_runtime(description, log_start=False):
@@ -990,10 +982,10 @@ class PNGJPToolBox(PNGJPConsts):
         psku_assortment_products = psku_assortment_products.tolist()
         innovation_assortment_products = innovation_assortment_products.tolist()
         # shelves = [4, 5]
-        all_scenes_in_scif = self.scif[SCENE_FK].unique().tolist()
+        all_scenes_in_scif = self.scif[Consts.SCENE_FK].unique().tolist()
 
         if all_scenes_in_scif:
-            products_in_session = self.scif.loc[self.scif['dist_sc'] == 1][PRODUCT_FK].unique().tolist()
+            products_in_session = self.scif.loc[self.scif['dist_sc'] == 1][Consts.PRODUCT_FK].unique().tolist()
             for product in assortment_products:
                 if product in products_in_session:
                     # This means the product in assortment and is not oos. (1,0)
@@ -1032,8 +1024,8 @@ class PNGJPToolBox(PNGJPConsts):
                                               mha_in_assortment,
                                               mha_oos, length_mm_custom)
 
-            products_not_in_assortment = self.scif[~self.scif[PRODUCT_FK].isin(assortment_products)]
-            for product in products_not_in_assortment[PRODUCT_FK].unique().tolist():
+            products_not_in_assortment = self.scif[~self.scif[Consts.PRODUCT_FK].isin(assortment_products)]
+            for product in products_not_in_assortment[Consts.PRODUCT_FK].unique().tolist():
                 # The product is not in assortment list and not oos. (0,0)
                 scenes = self.get_scenes_for_product(product)
                 for scene in scenes:
@@ -1077,7 +1069,7 @@ class PNGJPToolBox(PNGJPConsts):
             columns=['session_fk', 'scene_fk', 'product_fk', 'in_assortment_OSA', 'oos_osa',
                      'mha_in_assortment', 'mha_oos', 'length_mm_custom'])
 
-        query = insert(attributes.to_dict(), PSERVICE_CUSTOM_SCIF)
+        query = insert(attributes.to_dict(), Consts.PSERVICE_CUSTOM_SCIF)
         self.custom_scif_queries.append(query)
 
     def write_to_db_result(self, score, level, threshold=None, level3_score=None, **kwargs):
@@ -1087,11 +1079,11 @@ class PNGJPToolBox(PNGJPConsts):
         """
         attributes = self.create_attributes_dict(score, level, threshold, level3_score, **kwargs)
         if level == self.LEVEL1:
-            table = KPS_RESULT
+            table = Consts.KPS_RESULT
         elif level == self.LEVEL2:
-            table = KPK_RESULT
+            table = Consts.KPK_RESULT
         elif level == self.LEVEL3:
-            table = KPI_RESULT
+            table = Consts.KPI_RESULT
         else:
             return
         query = insert(attributes, table)

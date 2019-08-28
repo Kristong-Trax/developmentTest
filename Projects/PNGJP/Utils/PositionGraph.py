@@ -7,6 +7,8 @@ from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Cloud.Services.Connector.Keys import DbUsers
 from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Trax.Utils.Logging.Logger import Log
+from Projects.PNGJP.Data.LocalConsts import Consts
+
 
 __author__ = 'Nimrod'
 
@@ -15,20 +17,7 @@ VERTEX_FK_FIELD = 'scene_match_fk'
 
 class PNGJPPositionGraphs:
 
-    TOP = 'shelf_px_top'
-    BOTTOM = 'shelf_px_bottom'
-    LEFT = 'shelf_px_left'
-    RIGHT = 'shelf_px_right'
-
-    FLEXIBLE_MODE = 'Flexible Mode'
-    STRICT_MODE = 'Strict Mode'
-
-    ATTRIBUTES_TO_SAVE = ['scene_match_fk','product_name', 'product_fk', 'product_type', 'product_ean_code', 'sub_brand_name',
-                          'brand_name', 'category', 'sub_category', 'manufacturer_name', 'front_facing',
-                          'category_local_name', 'shelf_number', TOP, BOTTOM, LEFT, RIGHT, 'x_mm', 'y_mm',
-                          'bay_number', 'width_mm_advance', 'height_mm_advance']
-
-    def __init__(self, data_provider, flexibility=1, proximity_mode=FLEXIBLE_MODE, rds_conn=None):
+    def __init__(self, data_provider, flexibility=1, proximity_mode=Consts.FLEXIBLE_MODE, rds_conn=None):
         self.data_provider = data_provider
         self.flexibility = flexibility
         self.proximity_mode = proximity_mode
@@ -67,7 +56,7 @@ class PNGJPPositionGraphs:
         matches = matches.merge(self.data_provider[Data.SCENE_ITEM_FACTS][['template_name', 'location_type',
                                                                            'scene_id', 'scene_fk']],
                                 how='left', on='scene_fk', suffixes=['', '_4'])
-        if set(self.ATTRIBUTES_TO_SAVE).difference(matches.keys()):
+        if set(Consts.ATTRIBUTES_TO_SAVE).difference(matches.keys()):
             missing_data = self.get_missing_data()
             matches = matches.merge(missing_data, on='product_fk', how='left', suffixes=['', '_5'])
         matches = matches.drop_duplicates(subset=[VERTEX_FK_FIELD])
@@ -116,7 +105,7 @@ class PNGJPPositionGraphs:
                 scene_graph.add_vertex(facing_name)
                 # adding attributes to vertex
                 vertex = scene_graph.vs.find(facing_name)
-                for attribute in self.ATTRIBUTES_TO_SAVE:
+                for attribute in Consts.ATTRIBUTES_TO_SAVE:
                     vertex[attribute] = facing[attribute]
 
                 surrounding_products = self.get_surrounding_products(facing, matches)
@@ -137,15 +126,15 @@ class PNGJPPositionGraphs:
         :param matches: The filtered match_product_in_scene data frame for the relevant scene.
         :return: The surrounding SKUs to the anchor (from all sides), as data frames.
         """
-        anchor_top = int(anchor[self.TOP])
-        anchor_bottom = int(anchor[self.BOTTOM])
+        anchor_top = int(anchor[Consts.SHELF_TOP])
+        anchor_bottom = int(anchor[Consts.SHELF_BOTTOM])
         anchor_y = anchor_bottom - anchor_top
         height_flexibility = ((anchor_bottom - anchor_top) * (self.flexibility - 1)) / 2
         anchor_top -= height_flexibility
         anchor_bottom += height_flexibility
 
-        anchor_left = int(anchor[self.LEFT])
-        anchor_right = int(anchor[self.RIGHT])
+        anchor_left = int(anchor[Consts.SHELF_LEFT])
+        anchor_right = int(anchor[Consts.SHELF_RIGHT])
         anchor_x = anchor_right - anchor_left
         width_flexibility = ((anchor_right - anchor_left) * (self.flexibility - 1)) / 2
         anchor_left -= width_flexibility
@@ -158,15 +147,15 @@ class PNGJPPositionGraphs:
         anchor_shelf_items = int(anchor['n_shelf_items'])
 
         # checking top & bottom
-        if self.proximity_mode == self.STRICT_MODE:
+        if self.proximity_mode == Consts.STRICT_MODE:
             filtered_matches = matches[(matches['bay_number'] == anchor_bay_number) &
-                                       (matches[self.LEFT] < anchor_x) & (matches[self.RIGHT] > anchor_x)]
+                                       (matches[Consts.SHELF_LEFT] < anchor_x) & (matches[Consts.SHELF_RIGHT] > anchor_x)]
         else:
             filtered_matches = matches[(matches['bay_number'] == anchor_bay_number) &
-                                       (matches[self.LEFT].between(anchor_left, anchor_right) |
-                                        matches[self.RIGHT].between(anchor_left, anchor_right) |
-                                        ((matches[self.LEFT] < anchor_left) & (anchor_left < matches[self.RIGHT])) |
-                                        ((matches[self.LEFT] < anchor_right) & (anchor_right < matches[self.RIGHT])))]
+                                       (matches[Consts.SHELF_LEFT].between(anchor_left, anchor_right) |
+                                        matches[Consts.SHELF_RIGHT].between(anchor_left, anchor_right) |
+                                        ((matches[Consts.SHELF_LEFT] < anchor_left) & (anchor_left < matches[Consts.SHELF_RIGHT])) |
+                                        ((matches[Consts.SHELF_LEFT] < anchor_right) & (anchor_right < matches[Consts.SHELF_RIGHT])))]
         if anchor_shelf_number == 1:
             surrounding_top = []
         else:
@@ -188,15 +177,15 @@ class PNGJPPositionGraphs:
             left_bay = matches[(matches['bay_number'] == anchor_bay_number - 1) &
                                (matches['distance_from_end_of_shelf'] == 0)]
 
-            if self.proximity_mode == self.STRICT_MODE:
-                surrounding_left = left_bay[(left_bay[self.TOP] < anchor_y) & (left_bay[self.BOTTOM] > anchor_y)]
+            if self.proximity_mode == Consts.STRICT_MODE:
+                surrounding_left = left_bay[(left_bay[Consts.SHELF_TOP] < anchor_y) & (left_bay[Consts.SHELF_BOTTOM] > anchor_y)]
             else:
-                surrounding_left = left_bay[(left_bay[self.TOP].between(anchor_top, anchor_bottom) |
-                                             left_bay[self.BOTTOM].between(anchor_top, anchor_bottom) |
-                                             ((left_bay[self.TOP] < anchor_top) &
-                                              (anchor_top < left_bay[self.BOTTOM])) |
-                                             ((left_bay[self.TOP] < anchor_bottom) &
-                                              (anchor_bottom < left_bay[self.BOTTOM])))]
+                surrounding_left = left_bay[(left_bay[Consts.SHELF_TOP].between(anchor_top, anchor_bottom) |
+                                             left_bay[Consts.SHELF_BOTTOM].between(anchor_top, anchor_bottom) |
+                                             ((left_bay[Consts.SHELF_TOP] < anchor_top) &
+                                              (anchor_top < left_bay[Consts.SHELF_BOTTOM])) |
+                                             ((left_bay[Consts.SHELF_TOP] < anchor_bottom) &
+                                              (anchor_bottom < left_bay[Consts.SHELF_BOTTOM])))]
             surrounding_left = surrounding_left[VERTEX_FK_FIELD]
 
         if anchor_facing < anchor_shelf_items:
@@ -208,15 +197,15 @@ class PNGJPPositionGraphs:
             if right_bay.empty:
                 surrounding_right = []
             else:
-                if self.proximity_mode == self.STRICT_MODE:
-                    surrounding_right = right_bay[(right_bay[self.TOP] < anchor_y) & (right_bay[self.BOTTOM] > anchor_y)]
+                if self.proximity_mode == Consts.STRICT_MODE:
+                    surrounding_right = right_bay[(right_bay[Consts.SHELF_TOP] < anchor_y) & (right_bay[Consts.SHELF_BOTTOM] > anchor_y)]
                 else:
-                    surrounding_right = right_bay[(right_bay[self.TOP].between(anchor_top, anchor_bottom) |
-                                                   right_bay[self.BOTTOM].between(anchor_top, anchor_bottom) |
-                                                   ((right_bay[self.TOP] < anchor_top) &
-                                                    (anchor_top < right_bay[self.BOTTOM])) |
-                                                   ((right_bay[self.TOP] < anchor_bottom) &
-                                                    (anchor_bottom < right_bay[self.BOTTOM])))]
+                    surrounding_right = right_bay[(right_bay[Consts.SHELF_TOP].between(anchor_top, anchor_bottom) |
+                                                   right_bay[Consts.SHELF_BOTTOM].between(anchor_top, anchor_bottom) |
+                                                   ((right_bay[Consts.SHELF_TOP] < anchor_top) &
+                                                    (anchor_top < right_bay[Consts.SHELF_BOTTOM])) |
+                                                   ((right_bay[Consts.SHELF_TOP] < anchor_bottom) &
+                                                    (anchor_bottom < right_bay[Consts.SHELF_BOTTOM])))]
                 surrounding_right = surrounding_right[VERTEX_FK_FIELD]
 
         return dict(top=surrounding_top, bottom=surrounding_bottom,
@@ -227,7 +216,7 @@ class PNGJPPositionGraphs:
         This function creates a list of lists:
         Each list represents a shelf in the scene - with the given entity for each facing, from left to right.
         """
-        if entity not in self.ATTRIBUTES_TO_SAVE:
+        if entity not in Consts.ATTRIBUTES_TO_SAVE:
             Log.warning("Entity '{}' is not set as an attribute in the graph".format(entity))
             return None
         graph = self.get(scene_id).copy()
