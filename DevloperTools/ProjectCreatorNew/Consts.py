@@ -30,6 +30,13 @@ class Const(object):
     LIVE_SESSION_GENERATOR_CLASS_NAME = 'LiveSessionGenerator'
     PLANOGRAM_GENERATOR_CLASS_NAME = 'PlanogramGenerator'
     SCENE_GENERATOR_CLASS_NAME = 'SceneGenerator'
+    GENERATOR_CLASS_NAME = 'Generator'
+    TOOL_BOX_CLASS_NAME = 'ToolBox'
+    PLANOGRAM_TOOL_BOX_CLASS_NAME = 'PlanogramToolBox'
+    LIVE_SCENE_TOOL_BOX_CLASS_NAME = 'LiveSceneToolBox'
+    MAIN_CLASS_NAME = 'Calculations'
+    LIVE_SESSION_TOOL_BOX_CLASS_NAME = 'LiveSessionToolBox'
+    SCENE_TOOL_BOX_CLASS_NAME = 'SceneToolBox'
 
 
 # local scripts:
@@ -351,7 +358,7 @@ TEST_SCRIPT = """
 from Trax.Utils.Conf.Configuration import Config
 from Trax.Utils.Testing.Case import TestCase
 from mock import MagicMock, mock
-import pandas as pd
+# import pandas as pd
 from Projects.%(project_capital)s.Utils.%(tool_box_file_name)s import %(tool_box_class_name)s
 
 
@@ -368,7 +375,6 @@ class Test%(project_capital)s(TestCase):
         self.data_provider_mock.rds_conn = MagicMock()
         self.output = MagicMock()
         self.tool_box = %(tool_box_class_name)s(self.data_provider_mock, MagicMock())
-
 """
 
 # planogram:

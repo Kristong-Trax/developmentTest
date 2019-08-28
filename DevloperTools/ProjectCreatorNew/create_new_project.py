@@ -76,43 +76,30 @@ class CreateKPIProject:
                     with open(directory_path + file_name + '.py', 'wb') as f:
                         f.write(file_content % formatting_dict)
 
-        # data_directory = os.path.join(self.project_path, 'Data')
-        # if not os.path.exists(data_directory):
-        #     os.makedirs(data_directory)
-
     def get_formatting_dict(self):
-        formatting_dict = {'author': self.author,
-                           'project': self.project,
-                           'project_capital': self.project_capital,
-                           'generator_file_name': Const.GENERATOR_FILE_NAME,
-                           'scene_generator_file_name': Const.SCENE_GENERATOR_FILE_NAME,
-                           'planogram_generator_file_name': Const.PLANOGRAM_GENERATOR_FILE_NAME,
-                           'live_scene_generator_file_name': Const.LIVE_SCENE_GENERATOR_FILE_NAME,
-                           'live_scene_generator_class_name': Const.LIVE_SCENE_GENERATOR_CLASS_NAME,
-                           'live_session_generator_file_name': Const.LIVE_SESSION_GENERATOR_FILE_NAME,
-                           'live_session_generator_class_name': Const.LIVE_SESSION_GENERATOR_CLASS_NAME,
-                           'generator_class_name': 'Generator',
-                           'scene_generator_class_name': Const.SCENE_GENERATOR_CLASS_NAME,
-                           'planogram_generator_class_name': Const.PLANOGRAM_GENERATOR_CLASS_NAME,
-                           'tool_box_file_name': Const.TOOL_BOX_FILE_NAME,
-                           'scene_tool_box_file_name': Const.SCENE_TOOLBOX_FILE_NAME,
-                           'planogram_tool_box_file_name': Const.PLANOGRAM_TOOLBOX_FILE_NAME,
-                           'live_scene_tool_box_file_name': Const.LIVE_SCENE_TOOLBOX_FILE_NAME,
-                           'live_session_tool_box_file_name': Const.LIVE_SESSION_TOOLBOX_FILE_NAME,
-                           'tool_box_class_name': 'ToolBox',
-                           'scene_tool_box_class_name': 'SceneToolBox',
-                           'planogram_tool_box_class_name': 'PlanogramToolBox',
-                           'live_scene_tool_box_class_name': 'LiveSceneToolBox',
-                           'live_session_tool_box_class_name': 'LiveSessionToolBox',
-                           'main_class_name': 'Calculations',
-                           # 'tool_box_class_name': '{}ToolBox'.format(self.project_short),
-                           # 'scene_tool_box_class_name': '{}SceneToolBox'.format(self.project_short),
-                           # 'planogram_tool_box_class_name': '{}PlanogramToolBox'.format(self.project_short),
-                           # 'live_scene_tool_box_class_name': '{}LiveSceneToolBox'.format(self.project_short),
-                           # 'live_session_tool_box_class_name': '{}LiveSessionToolBox'.format(self.project_short),
-                           # 'main_class_name': '{}Calculations'.format(self.project_short)
-                           'main_file_name': Const.MAIN_FILE_NAME,
-                           }
+        formatting_dict = {
+            'author': self.author, 'project': self.project, 'project_capital': self.project_capital,
+            'generator_file_name': Const.GENERATOR_FILE_NAME,
+            'scene_generator_file_name': Const.SCENE_GENERATOR_FILE_NAME,
+            'planogram_generator_file_name': Const.PLANOGRAM_GENERATOR_FILE_NAME,
+            'live_scene_generator_file_name': Const.LIVE_SCENE_GENERATOR_FILE_NAME,
+            'live_scene_generator_class_name': Const.LIVE_SCENE_GENERATOR_CLASS_NAME,
+            'live_session_generator_file_name': Const.LIVE_SESSION_GENERATOR_FILE_NAME,
+            'live_session_generator_class_name': Const.LIVE_SESSION_GENERATOR_CLASS_NAME,
+            'generator_class_name': Const.GENERATOR_CLASS_NAME,
+            'scene_generator_class_name': Const.SCENE_GENERATOR_CLASS_NAME,
+            'planogram_generator_class_name': Const.PLANOGRAM_GENERATOR_CLASS_NAME,
+            'tool_box_file_name': Const.TOOL_BOX_FILE_NAME,
+            'scene_tool_box_file_name': Const.SCENE_TOOLBOX_FILE_NAME,
+            'planogram_tool_box_file_name': Const.PLANOGRAM_TOOLBOX_FILE_NAME,
+            'live_scene_tool_box_file_name': Const.LIVE_SCENE_TOOLBOX_FILE_NAME,
+            'live_session_tool_box_file_name': Const.LIVE_SESSION_TOOLBOX_FILE_NAME,
+            'tool_box_class_name': Const.TOOL_BOX_CLASS_NAME,
+            'scene_tool_box_class_name': Const.SCENE_TOOL_BOX_CLASS_NAME,
+            'planogram_tool_box_class_name': Const.PLANOGRAM_TOOL_BOX_CLASS_NAME,
+            'live_scene_tool_box_class_name': Const.LIVE_SCENE_TOOL_BOX_CLASS_NAME,
+            'live_session_tool_box_class_name': Const.LIVE_SESSION_TOOL_BOX_CLASS_NAME,
+            'main_class_name': Const.MAIN_CLASS_NAME, 'main_file_name': Const.MAIN_FILE_NAME}
         return formatting_dict
 
     def get_files_to_create(self):
@@ -157,7 +144,7 @@ if __name__ == '__main__':
     try:
         LoggerInitializer.init('new_project')
         Config.init(app_name='new_project_new')
-        project = 'abc2'
+        project = 'avi-sand'
         Log.info("project name : " + project)
         new = CreateKPIProject(project, calculate_by_scene=False)
         new.create_new_project()
