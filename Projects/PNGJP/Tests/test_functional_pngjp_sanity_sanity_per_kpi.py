@@ -1,19 +1,18 @@
+from Projects.PNGJP.Tests.Data import parse_template_data, expected_results_from_db
+from Trax.Data.Testing.SeedNew import Seeder
+from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
+from Trax.Cloud.Services.Connector.Keys import DbUsers
+from Projects.PNGJP.Tests.Data.test_data_pngjp_sanity_per_kpi import ProjectsSanityData
+from Trax.Apps.Core.Testing.BaseCase import TestFunctionalCase, MagicMock
+from Tests.TestUtils import remove_cache_and_storage
+from Trax.Data.Testing.TestProjects import TestProjectsNames
+from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider
 import os
 import MySQLdb
 
-from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
-from Trax.Data.Testing.SeedNew import Seeder
-from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider
-from Trax.Cloud.Services.Connector.Keys import DbUsers
-from Trax.Data.Testing.TestProjects import TestProjectsNames
 
-from Projects.PNGJP.Tests.Data.test_data_pngjp_sanity_per_kpi import ProjectsSanityData
-from Trax.Apps.Core.Testing.BaseCase import TestFunctionalCase, MagicMock
 
-from Tests.TestUtils import remove_cache_and_storage
 import pandas as pd
-from Projects.PNGJP.Tests.Data import parse_template_data
-from Projects.PNGJP.Tests.Data import expected_results_from_db
 
 __author__ = 'avrahama'
 

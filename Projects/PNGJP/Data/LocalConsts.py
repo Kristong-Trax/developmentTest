@@ -1,16 +1,12 @@
+from KPIUtils_v2.Utils.Consts.DataProvider import ProductsConsts, MatchesConsts
+
 class Consts(object):
-    SHELF_TOP = 'shelf_px_top'
-    SHELF_BOTTOM = 'shelf_px_bottom'
-    SHELF_LEFT = 'shelf_px_left'
-    SHELF_RIGHT = 'shelf_px_right'
 
     FLEXIBLE_MODE = 'Flexible Mode'
     STRICT_MODE = 'Strict Mode'
 
-    ATTRIBUTES_TO_SAVE = ['scene_match_fk','product_name', 'product_fk', 'product_type', 'product_ean_code', 'sub_brand_name',
-                          'brand_name', 'category', 'sub_category', 'manufacturer_name', 'front_facing',
-                          'category_local_name', 'shelf_number', SHELF_TOP, SHELF_BOTTOM, SHELF_LEFT, SHELF_RIGHT, 'x_mm', 'y_mm',
-                          'bay_number', 'width_mm_advance', 'height_mm_advance']
+    ATTRIBUTES_TO_SAVE = [MatchesConsts.SCENE_MATCH_FK,ProductsConsts.PRODUCT_NAME, 'product_fk', ProductsConsts.PRODUCT_TYPE, ProductsConsts.PRODUCT_EAN_CODE, 'sub_brand_name',
+                          MatchesConsts.BAY_NUMBER, MatchesConsts.WIDTH_MM_ADVANCE, MatchesConsts.HEIGHT_MM_ADVANCE]
     KPI_RESULT = 'report.kpi_results'
     KPK_RESULT = 'report.kpk_results'
     KPS_RESULT = 'report.kps_results'
@@ -20,7 +16,6 @@ class Consts(object):
     PSERVICE_CUSTOM_SCIF = 'pservice.custom_scene_item_facts'
     PRODUCT_FK = 'product_fk'
     SCENE_FK = 'scene_fk'
-    EMPTY = 'Empty'
     DEFAULT = 'Default'
     TOP = 'Top'
     BOTTOM = 'Bottom'
@@ -64,9 +59,6 @@ class Consts(object):
     SET_NAME = 'Set Name'
     UNICODE_DASH = u' \u2013 '
 
-    CATEGORY_LOCAL_NAME = 'category_local_name'
-    BRAND_LOCAL_NAME = 'brand_local_name'
-    MANUFACTURER_NAME = 'manufacturer_name'
     CATEGORY = 'Category'
     POSM_NAME = 'POSM Name'
     POSM_TYPE = 'POSM Type'
@@ -78,9 +70,7 @@ class Consts(object):
 
     SEPARATOR = ','
     SCENE_TYPES_TO_INCLUDE = 'Scene Types to Include'
-    PRODUCT_EAN_CODE_FIELD = 'product_ean_code'
 
-    IRRELEVANT = 'Irrelevant'
 
     HIERARCHY = 'Hierarchy'
     GOLDEN_ZONE = 'Golden Zone'
@@ -97,4 +87,3 @@ class Consts(object):
     ALLOWED_PRODUCT_GROUP_ID = 'ALLOWED;Product Group Id'
     KPI_FORMAT = 'Category: {category} - Brand: {brand} - Product group id: {group} - KPI Question: {question}'
 
-    VERTEX_FK_FIELD = 'scene_match_fk'

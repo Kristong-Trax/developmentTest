@@ -1,7 +1,7 @@
+from KPIUtils.Utils.Validators.Template.TemplateValidator import TemplateValidator
+from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
 # -*- coding: utf-8 -*-
 import os
-from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
-from KPIUtils.Utils.Validators.Template.TemplateValidator import TemplateValidator
 
 def templateValidator():
     # pay attention if there any number column in template like product en please put string in the last column

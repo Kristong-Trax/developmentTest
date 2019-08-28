@@ -1,8 +1,11 @@
 # coding=utf-8
 
+from KPIUtils_v2.Utils.Consts.GlobalConsts import HelperConsts, ProductTypeConsts, BasicConsts, HelperConsts
+from KPIUtils_v2.Utils.Consts.OldDB import KpiResults, KpkResults, KpsResults
+from KPIUtils_v2.Utils.Consts.DataProvider import MatchesConsts, ProductsConsts, StoreInfoConsts
+from datetime import datetime
 import os
 import pandas as pd
-from datetime import datetime
 # from timeit import default_timer as timer
 
 from Projects.PNGJP.Data.LocalConsts import Consts
@@ -65,7 +68,7 @@ class PNGJPKpiQualitative_ToolBox(Consts):
         self.session_info = self.data_provider[Data.SESSION_INFO]
         self.scene_info = self.data_provider[Data.SCENES_INFO]
         self.store_id = self.data_provider[Data.STORE_FK]
-        self.store_type = self.data_provider[Data.STORE_INFO]['store_type'].values[0]
+        self.store_type = self.data_provider[Data.STORE_INFO][StoreInfoConsts.STORE_TYPE].values[0]
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
         self.match_display_in_scene = self.get_match_display()
         self.data_provider.probe_groups = self.get_probe_group(self.data_provider.session_uid)
@@ -93,7 +96,7 @@ class PNGJPKpiQualitative_ToolBox(Consts):
         self.display_types = ['Aisle', 'Casher', 'End-shelf',
                               'Entrance', 'Island', 'Side-End', 'Side-net']
         self.custom_scif_queries = []
-        self.session_fk = self.data_provider[Data.SESSION_INFO]['pk'].iloc[0]
+        self.session_fk = self.data_provider[Data.SESSION_INFO][BasicConsts.PK].iloc[0]
         self.block = Block(data_provider=self.data_provider, rds_conn=self.rds_conn)
         self.adjacency = Adjancency(data_provider=self.data_provider, rds_conn=self.rds_conn)
         self.fix_utf_space_problem()
@@ -112,7 +115,7 @@ class PNGJPKpiQualitative_ToolBox(Consts):
 
     @property
     def _allowed_products(self):
-        return {'product_type': ['Other', 'Empty']}
+        return {ProductsConsts.PRODUCT_TYPE: [ProductTypeConsts.OTHER, ProductTypeConsts.EMPTY]}
 
     def get_template(self, name):
         if name not in self._custom_templates.keys():
@@ -167,15 +170,15 @@ class PNGJPKpiQualitative_ToolBox(Consts):
         for category in self.template_data['Category Name'].unique().tolist():
             category = \
                 self.all_products[
-                    self.all_products['category_local_name'].str.encode("utf8") == category.encode("utf8")][
-                    self.CATEGORY_LOCAL_NAME].values[0]
+                    self.all_products[ProductsConsts.CATEGORY_LOCAL_NAME].str.encode(HelperConsts.UTF8) == category.encode(HelperConsts.UTF8)][
+                    ProductsConsts.CATEGORY_LOCAL_NAME].values[0]
             self.category_calculation(category)
 
         # for kpi_set in self.template_data[self.SET_NAME].unique().tolist():
         for kpi_set in ['Golden Zone', 'Block', 'Adjacency', 'Perfect Execution', 'Anchor']:
             self.write_to_db_result(score=None, level=self.LEVEL1, kpi_set_name=kpi_set)
             kpi_set_fk = self.kpi_static_data.loc[self.kpi_static_data[
-                'kpi_set_name'] == kpi_set]['kpi_set_fk'].values[0]
+                'kpi_set_name'] == kpi_set][KpsResults.KPI_SET_FK].values[0]
             set_kpis = self.kpi_static_data.loc[self.kpi_static_data[
                 'kpi_set_name'] == kpi_set]['kpi_name'].unique().tolist()
             for kpi in set_kpis:
@@ -188,11 +191,11 @@ class PNGJPKpiQualitative_ToolBox(Consts):
 
     def calculation_per_entity(self, category):
         template_data = self.template_data[
-            self.template_data['Category Name'].str.encode("utf8") == category.encode("utf8")]
-        filters = {self.CATEGORY_LOCAL_NAME: category}
+            self.template_data['Category Name'].str.encode(HelperConsts.UTF8) == category.encode(HelperConsts.UTF8)]
+        filters = {ProductsConsts.CATEGORY_LOCAL_NAME: category}
 
         for kpi in template_data['fixed KPI name'].unique().tolist():
-            entity_kpis = template_data.loc[template_data['fixed KPI name'].str.encode("utf8") == kpi.encode("utf8")]
+            entity_kpis = template_data.loc[template_data['fixed KPI name'].str.encode(HelperConsts.UTF8) == kpi.encode(HelperConsts.UTF8)]
             entity_filters = filters
 
             for p in xrange(len(entity_kpis)):
@@ -206,22 +209,22 @@ class PNGJPKpiQualitative_ToolBox(Consts):
 
                     if kpi_type == self.GOLDEN_ZONE:
                         kpi_params = self.golden_zone_data[
-                            self.golden_zone_data['fixed KPI name'].str.encode("utf8") == kpi.encode("utf8")]
+                            self.golden_zone_data['fixed KPI name'].str.encode(HelperConsts.UTF8) == kpi.encode(HelperConsts.UTF8)]
                         score, result, threshold= self.calculate_golden_zone(kpi, kpi_filters, kpi_params)
 
                     elif kpi_type == self.BLOCK:
                         kpi_params = self.block_data[
-                            self.block_data['fixed KPI name'].str.encode("utf8") == kpi.encode("utf8")]
+                            self.block_data['fixed KPI name'].str.encode(HelperConsts.UTF8) == kpi.encode(HelperConsts.UTF8)]
                         score, result, threshold = self.calculate_block(kpi, kpi_filters, kpi_params)
 
                     elif kpi_type == self.ANCHOR:
                         kpi_params = self.anchor_data[
-                            self.anchor_data['fixed KPI name'].str.encode("utf8") == kpi.encode("utf8")]
+                            self.anchor_data['fixed KPI name'].str.encode(HelperConsts.UTF8) == kpi.encode(HelperConsts.UTF8)]
                         score, result, threshold = self.calculate_anchor(kpi, kpi_filters, kpi_params)
 
                     elif kpi_type == self.ADJACENCY:
                         kpi_params = self.adjacency_data[
-                            self.adjacency_data['fixed KPI name'].str.encode("utf8") == kpi.encode("utf8")]
+                            self.adjacency_data['fixed KPI name'].str.encode(HelperConsts.UTF8) == kpi.encode(HelperConsts.UTF8)]
                         score, result, threshold = self.calculate_adjacency(kpi, kpi_filters, kpi_params)
 
                     else:
@@ -237,10 +240,10 @@ class PNGJPKpiQualitative_ToolBox(Consts):
 
     def category_aggregation_calculation(self, category):
         template_data = self.template_data[
-            (self.template_data['Category Name'].str.encode("utf8") == category.encode("utf8")) & (
+            (self.template_data['Category Name'].str.encode(HelperConsts.UTF8) == category.encode(HelperConsts.UTF8)) & (
                     self.template_data['Set Name'] == 'Perfect Execution')]
         for kpi in template_data['fixed KPI name'].unique().tolist():
-            entity_kpis = template_data.loc[template_data['fixed KPI name'].str.encode('utf-8') == kpi.encode('utf-8')]
+            entity_kpis = template_data.loc[template_data['fixed KPI name'].str.encode(HelperConsts.UTF8) == kpi.encode(HelperConsts.UTF8)]
 
             for p in xrange(len(entity_kpis)):
                 score = threshold = result = None
@@ -266,7 +269,7 @@ class PNGJPKpiQualitative_ToolBox(Consts):
 
     def _get_allowed_products(self, allowed):
         allowed_products = set()
-        # allowed.setdefault('product_type', []).extend(self._allowed_products['product_type'])
+        # allowed.setdefault(ProductsConsts.PRODUCT_TYPE, []).extend(self._allowed_products[ProductsConsts.PRODUCT_TYPE])
         for key, value in allowed.items():
             products = self.data_provider.products.copy()
             allowed_bulk = set(
@@ -278,9 +281,9 @@ class PNGJPKpiQualitative_ToolBox(Consts):
     def check_bay(self, matches, probe_group, threshold, **filters):
         relevant_bays = matches[
             (matches['product_fk'].isin(filters['product_fk'])) & (matches['probe_group_id'] == probe_group)]
-        relevant_bays['freq'] = relevant_bays.groupby('bay_number')['bay_number'].transform('count')
+        relevant_bays['freq'] = relevant_bays.groupby(MatchesConsts.BAY_NUMBER)[MatchesConsts.BAY_NUMBER].transform('count')
         relevant_bays = relevant_bays[relevant_bays['freq']
-                                      >= threshold]['bay_number'].unique().tolist()
+                                      >= threshold][MatchesConsts.BAY_NUMBER].unique().tolist()
 
         if relevant_bays:
             relevant_bays.sort()
@@ -323,62 +326,62 @@ class PNGJPKpiQualitative_ToolBox(Consts):
         if level == self.LEVEL1:
             set_name = kwargs['kpi_set_name']
             set_fk = self.kpi_static_data[self.kpi_static_data['kpi_set_name']
-                                          == set_name]['kpi_set_fk'].values[0]
+                                          == set_name][KpsResults.KPI_SET_FK].values[0]
             if score is not None:
                 attributes = pd.DataFrame([(set_name, self.session_uid, self.store_id, self.visit_date.isoformat(),
                                             format(score, '.2f'), set_fk)],
-                                          columns=['kps_name', 'session_uid', 'store_fk', 'visit_date', 'score_1',
-                                                   'kpi_set_fk'])
+                                          columns=['kps_name', 'session_uid', 'store_fk', 'visit_date', KpsResults.SCORE_1,
+                                                   KpsResults.KPI_SET_FK])
             else:
                 attributes = pd.DataFrame([(set_name, self.session_uid, self.store_id, self.visit_date.isoformat(),
                                             None, set_fk)],
-                                          columns=['kps_name', 'session_uid', 'store_fk', 'visit_date', 'score_1',
-                                                   'kpi_set_fk'])
+                                          columns=['kps_name', 'session_uid', 'store_fk', 'visit_date', KpsResults.SCORE_1,
+                                                   KpsResults.KPI_SET_FK])
         elif level == self.LEVEL2:
             kpi_name = kwargs['kpi_name']
-            kpi_set_fk = kwargs['kpi_set_fk']
+            kpi_set_fk = kwargs[KpsResults.KPI_SET_FK]
             kpi_fk = \
-            self.kpi_static_data[(self.kpi_static_data['kpi_name'].str.encode('utf-8') == kpi_name.encode('utf-8')) &
-                                 (self.kpi_static_data['kpi_set_fk'] == kpi_set_fk)]['kpi_fk'].values[0]
+            self.kpi_static_data[(self.kpi_static_data['kpi_name'].str.encode(HelperConsts.UTF8) == kpi_name.encode(HelperConsts.UTF8)) &
+                                 (self.kpi_static_data[KpsResults.KPI_SET_FK] == kpi_set_fk)]['kpi_fk'].values[0]
 
             attributes = pd.DataFrame([(self.session_uid, self.store_id, self.visit_date.isoformat(),
                                         kpi_fk, kpi_name, score)],
-                                      columns=['session_uid', 'store_fk', 'visit_date', 'kpi_fk', 'kpk_name', 'score'])
+                                      columns=['session_uid', 'store_fk', 'visit_date', 'kpi_fk', KpkResults.KPK_NAME, 'score'])
             self.kpi_results[kpi_name] = score
         elif level == self.LEVEL3:
             kpi_name = kwargs['kpi_name']
-            kpi_fk = self.kpi_static_data[self.kpi_static_data['kpi_name'].str.encode('utf-8')
-                                          == kpi_name.encode('utf-8')]['kpi_fk'].values[0]
+            kpi_fk = self.kpi_static_data[self.kpi_static_data['kpi_name'].str.encode(HelperConsts.UTF8)
+                                          == kpi_name.encode(HelperConsts.UTF8)]['kpi_fk'].values[0]
             atomic_kpi_name = kwargs['atomic_kpi_name']
-            atomic_kpi_fk = kwargs['atomic_kpi_fk']
+            atomic_kpi_fk = kwargs[KpiResults.ATOMIC_KPI_FK]
             kpi_set_name = kwargs['kpi_set_name']
             if level3_score is None and threshold is None:
                 attributes = pd.DataFrame([(atomic_kpi_name, self.session_uid, kpi_set_name, self.store_id,
                                             self.visit_date.isoformat(), datetime.utcnow().isoformat(), score, kpi_fk,
                                             atomic_kpi_fk)],
                                           columns=['display_text', 'session_uid', 'kps_name', 'store_fk', 'visit_date',
-                                                   'calculation_time', 'result', 'kpi_fk', 'atomic_kpi_fk'])
+                                                   KpiResults.CALCULATION_TIME, 'result', 'kpi_fk', KpiResults.ATOMIC_KPI_FK])
             elif level3_score is not None and threshold is None:
                 attributes = pd.DataFrame([(atomic_kpi_name, self.session_uid, kpi_set_name, self.store_id,
                                             self.visit_date.isoformat(), datetime.utcnow().isoformat(), score, kpi_fk,
                                             level3_score, None, atomic_kpi_fk)],
                                           columns=['display_text', 'session_uid', 'kps_name', 'store_fk', 'visit_date',
-                                                   'calculation_time', 'result', 'kpi_fk', 'score', 'threshold',
-                                                   'atomic_kpi_fk'])
+                                                   KpiResults.CALCULATION_TIME, 'result', 'kpi_fk', 'score', KpiResults.THRESHOLD,
+                                                   KpiResults.ATOMIC_KPI_FK])
             elif level3_score is None and threshold is not None:
                 attributes = pd.DataFrame([(atomic_kpi_name, self.session_uid, kpi_set_name, self.store_id,
                                             self.visit_date.isoformat(), datetime.utcnow().isoformat(), score, kpi_fk,
                                             threshold, None, atomic_kpi_fk)],
                                           columns=['display_text', 'session_uid', 'kps_name', 'store_fk', 'visit_date',
-                                                   'calculation_time', 'result', 'kpi_fk', 'threshold', 'score',
-                                                   'atomic_kpi_fk'])
+                                                   KpiResults.CALCULATION_TIME, 'result', 'kpi_fk', KpiResults.THRESHOLD, 'score',
+                                                   KpiResults.ATOMIC_KPI_FK])
             else:
                 attributes = pd.DataFrame([(atomic_kpi_name, self.session_uid, kpi_set_name, self.store_id,
                                             self.visit_date.isoformat(), datetime.utcnow().isoformat(), score, kpi_fk,
                                             threshold, level3_score, atomic_kpi_fk)],
                                           columns=['display_text', 'session_uid', 'kps_name', 'store_fk', 'visit_date',
-                                                   'calculation_time', 'result', 'kpi_fk', 'threshold', 'score',
-                                                   'atomic_kpi_fk'])
+                                                   KpiResults.CALCULATION_TIME, 'result', 'kpi_fk', KpiResults.THRESHOLD, 'score',
+                                                   KpiResults.ATOMIC_KPI_FK])
             if kpi_set_name not in self.atomic_results.keys():
                 self.atomic_results[kpi_set_name] = {}
             self.atomic_results[kpi_set_name][atomic_kpi_name] = score
@@ -433,9 +436,9 @@ class PNGJPKpiQualitative_ToolBox(Consts):
     @kpi_runtime(kpi_desc='calculate_golden_zone', project_name='pngjp')
     def calculate_golden_zone(self, kpi, kpi_filters, params):
         kpi_filter = kpi_filters.copy()
-        assortment_entity = self.PRODUCT_EAN_CODE_FIELD
+        assortment_entity = ProductsConsts.PRODUCT_EAN_CODE
         if params[self.BRANDS].values[0]:
-            kpi_filter['brand_local_name'] = params[self.BRANDS].values[0]
+            kpi_filter[ProductsConsts.BRAND_LOCAL_NAME] = params[self.BRANDS].values[0]
             total_group_skus = int(self.tools.calculate_availability(**kpi_filter))
         elif params[self.PRODUCT_GROUP_ID].values[0]:
             product_eans = self._get_ean_codes_by_product_group_id(**params)
@@ -463,11 +466,11 @@ class PNGJPKpiQualitative_ToolBox(Consts):
         block_threshold = params['Threshold'].values[0]
         if params[self.PRODUCT_GROUP_ID].values[0] is not None:
             product_eans = self._get_ean_codes_by_product_group_id(**params)
-            kpi_filter['product_ean_code'] = product_eans
+            kpi_filter[ProductsConsts.PRODUCT_EAN_CODE] = product_eans
         if (params[self.ALLOWED_PRODUCT_GROUP_ID].values[0] is not None) and (params[self.ALLOWED_PRODUCT_GROUP_ID].values[0] != ''):
             product_eans = self._get_ean_codes_by_product_group_id(
                 column_name=self.ALLOWED_PRODUCT_GROUP_ID, **params)
-            allowed_products_filters['product_ean_code'] = product_eans
+            allowed_products_filters[ProductsConsts.PRODUCT_EAN_CODE] = product_eans
         else:
             allowed_products_filters = None
         if params[self.VERTICAL].values[0] == 'Y':
@@ -497,9 +500,9 @@ class PNGJPKpiQualitative_ToolBox(Consts):
         params.pop('Threshold')
 
         product_eans = self._get_ean_codes_by_product_group_id(**params)
-        kpi_filter[self.PRODUCT_EAN_CODE_FIELD] = product_eans
+        kpi_filter[ProductsConsts.PRODUCT_EAN_CODE] = product_eans
 
-        allowed = {'product_type': ['Other', 'Empty', 'Irrelevant']}
+        allowed = {ProductsConsts.PRODUCT_TYPE: [ProductTypeConsts.OTHER, ProductTypeConsts.EMPTY, ProductTypeConsts.IRRELEVANT]}
         # allowed = params['allowed']
         allowed_products = self._get_allowed_products(allowed)
         filtered_products_all = self._get_filtered_products()
@@ -528,7 +531,7 @@ class PNGJPKpiQualitative_ToolBox(Consts):
                     if not relevant_bay:
                         continue
                     for direction in ['left', 'right']:
-                        separate_filters.update({'bay_number': relevant_bay[direction]})
+                        separate_filters.update({MatchesConsts.BAY_NUMBER: relevant_bay[direction]})
                         edge = self.tools.calculate_products_on_edge(position=direction,
                                                                      edge_population=filter_products_after_exclude,
                                                                      min_number_of_shelves=2,
@@ -554,16 +557,16 @@ class PNGJPKpiQualitative_ToolBox(Consts):
             params.pop('Threshold B')
             b_target = float(b_target.values[0])
 
-        group_a = {self.PRODUCT_EAN_CODE_FIELD: self._get_ean_codes_by_product_group_id(
+        group_a = {ProductsConsts.PRODUCT_EAN_CODE: self._get_ean_codes_by_product_group_id(
             'Product Group Id;A', **params)}
-        group_b = {self.PRODUCT_EAN_CODE_FIELD: self._get_ean_codes_by_product_group_id(
+        group_b = {ProductsConsts.PRODUCT_EAN_CODE: self._get_ean_codes_by_product_group_id(
             'Product Group Id;B', **params)}
 
-        # allowed_filter = self._get_allowed_products({'product_type': ([self.EMPTY, self.IRRELEVANT], self.EXCLUDE_FILTER)})
+        # allowed_filter = self._get_allowed_products({ProductsConsts.PRODUCT_TYPE: ([self.EMPTY, self.IRRELEVANT], self.EXCLUDE_FILTER)})
         allowed_filter = self._get_allowed_products(
-            {'product_type': ['Irrelevant', 'Empty', 'Other']})
+            {ProductsConsts.PRODUCT_TYPE: [ProductTypeConsts.IRRELEVANT, ProductTypeConsts.EMPTY, ProductTypeConsts.OTHER]})
         allowed_filter_without_other = self._get_allowed_products(
-            {'product_type': ['Irrelevant', 'Empty']})
+            {ProductsConsts.PRODUCT_TYPE: [ProductTypeConsts.IRRELEVANT, ProductTypeConsts.EMPTY]})
         scene_filters = {'template_name': kpi_filter['template_name']}
 
         filters, relevant_scenes = self.tools.separate_location_filters_from_product_filters(
@@ -579,8 +582,8 @@ class PNGJPKpiQualitative_ToolBox(Consts):
                 else:
                     # a = self.data_provider.products[self.tools.get_filter_condition(self.data_provider.products, **group_a)]['product_fk'].tolist()
                     # b = self.data_provider.products[self.tools.get_filter_condition(self.data_provider.products, **group_b)]['product_fk'].tolist()
-                    # a = self.scif[self.scif['product_fk'].isin(a)]['product_name'].drop_duplicates()
-                    # b = self.scif[self.scif['product_fk'].isin(b)]['product_name'].drop_duplicates()
+                    # a = self.scif[self.scif['product_fk'].isin(a)][ProductsConsts.PRODUCT_NAME].drop_duplicates()
+                    # b = self.scif[self.scif['product_fk'].isin(b)][ProductsConsts.PRODUCT_NAME].drop_duplicates()
 
                     edges_a = self.tools.calculate_block_edges(
                         minimum_block_ratio=a_target, **dict(group_a, allowed_products_filters=allowed_filter,
@@ -621,7 +624,7 @@ class PNGJPKpiQualitative_ToolBox(Consts):
     def calculate_perfect_execution(self, kpi):
         score = result = threshold = 0
         tested_kpis = self.perfect_execution_data[
-            self.perfect_execution_data['fixed KPI name'].str.encode('utf-8') == kpi.encode('utf-8')]
+            self.perfect_execution_data['fixed KPI name'].str.encode(HelperConsts.UTF8) == kpi.encode(HelperConsts.UTF8)]
         for i, tested_kpi in tested_kpis.iterrows():
             try:
                 param_score = int(self.kpi_scores[tested_kpi['KPI test name'].replace(' ', '')])
@@ -636,28 +639,28 @@ class PNGJPKpiQualitative_ToolBox(Consts):
         return score, result, threshold
 
     def write_result(self, score, result, threshold, kpi, category, set_name, template_data, extra_data=None):
-        kpi_name = template_data.loc[template_data['fixed KPI name'].str.encode('utf-8') == kpi.encode('utf-8')][
+        kpi_name = template_data.loc[template_data['fixed KPI name'].str.encode(HelperConsts.UTF8) == kpi.encode(HelperConsts.UTF8)][
             'KPI name'].values[0]
         if extra_data is not None:
             brand = extra_data['brand']
             group = extra_data['group']
             kpi_name = self.KPI_FORMAT.format(
-                category=category.encode('utf-8'),
-                brand=brand.encode('utf-8'),
+                category=category.encode(HelperConsts.UTF8),
+                brand=brand.encode(HelperConsts.UTF8),
                 group=str(group),
-                question=kpi_name.encode('utf-8'))
+                question=kpi_name.encode(HelperConsts.UTF8))
         else:
             kpi_name = self.KPI_FORMAT.format(
-                category=category.encode('utf-8'),
+                category=category.encode(HelperConsts.UTF8),
                 brand='XX',
                 group='XX',
-                question=kpi_name.encode('utf-8'))
+                question=kpi_name.encode(HelperConsts.UTF8))
         while '  ' in kpi_name:
             kpi_name = kpi_name.replace('  ', ' ')
         atomic_kpi_fk = \
             self.kpi_static_data[
-                self.kpi_static_data['fixed atomic_kpi_name'].str.encode('utf-8') == kpi.encode('utf-8')][
-                'atomic_kpi_fk'].values[0]
+                self.kpi_static_data['fixed atomic_kpi_name'].str.encode(HelperConsts.UTF8) == kpi.encode(HelperConsts.UTF8)][
+                KpiResults.ATOMIC_KPI_FK].values[0]
 
         if result is not None or score is not None:
             if not kpi_name:
