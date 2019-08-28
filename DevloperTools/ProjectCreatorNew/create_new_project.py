@@ -157,9 +157,9 @@ if __name__ == '__main__':
     try:
         LoggerInitializer.init('new_project')
         Config.init(app_name='new_project_new')
-        project = 'aaaaac-sand'
+        project = 'abc2'
         Log.info("project name : " + project)
-        new = CreateKPIProject(project, calculate_by_scene=True)
+        new = CreateKPIProject(project, calculate_by_scene=False)
         new.create_new_project()
         Log.info('project {} was created successfully'.format(project))
     except Exception as e:  

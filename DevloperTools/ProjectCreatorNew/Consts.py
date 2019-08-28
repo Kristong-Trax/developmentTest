@@ -100,9 +100,7 @@ LOCAL_CALCS_WITH_SCENES = """
 #         Calculations(data_provider, output).run_project_calculations()
 """
 
-LOCAL_CONSTS = """from KPIUtils_v2.Utils.Consts import DataProvider, DB, OldDB, Custom, GlobalConsts, PS, Messages
-
-
+LOCAL_CONSTS = """
 class Consts(object):
 
     pass
@@ -160,9 +158,17 @@ from Trax.Utils.Logging.Logger import Log
 from KPIUtils_v2.Utils.GlobalScripts.Scripts import GlobalSessionToolBox
 # import pandas as pd
 
-from Projects.%(project_capital)s.Data.LocalConsts import \\
-    Consts, DataProvider, DB, OldDB, Custom, GlobalConsts, PS, Messages
+from Projects.%(project_capital)s.Data.LocalConsts import Consts
 from KPIUtils_v2.DB.Common import Common
+
+# from KPIUtils_v2.Utils.Consts.DataProvider import 
+# from KPIUtils_v2.Utils.Consts.DB import 
+# from KPIUtils_v2.Utils.Consts.PS import 
+# from KPIUtils_v2.Utils.Consts.GlobalConsts import 
+# from KPIUtils_v2.Utils.Consts.Messages import 
+# from KPIUtils_v2.Utils.Consts.Custom import 
+# from KPIUtils_v2.Utils.Consts.OldDB import 
+
 # from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
 # from KPIUtils_v2.Calculations.AvailabilityCalculations import Availability
 # from KPIUtils_v2.Calculations.NumberOfScenesCalculations import NumberOfScenes
@@ -237,9 +243,17 @@ from Trax.Utils.Logging.Logger import Log
 from KPIUtils_v2.Utils.GlobalScripts.Scripts import GlobalSceneToolBox
 # import pandas as pd
 
-from Projects.%(project_capital)s.Data.LocalConsts import \\
-    Consts, DataProvider, DB, OldDB, Custom, GlobalConsts, PS, Messages
+from Projects.%(project_capital)s.Data.LocalConsts import Consts
 from KPIUtils_v2.DB.Common import Common
+
+# from KPIUtils_v2.Utils.Consts.DataProvider import  
+# from KPIUtils_v2.Utils.Consts.DB import 
+# from KPIUtils_v2.Utils.Consts.PS import 
+# from KPIUtils_v2.Utils.Consts.GlobalConsts import 
+# from KPIUtils_v2.Utils.Consts.Messages import 
+# from KPIUtils_v2.Utils.Consts.Custom import 
+# from KPIUtils_v2.Utils.Consts.OldDB import 
+
 # from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
 # from KPIUtils_v2.Calculations.AvailabilityCalculations import Availability
 # from KPIUtils_v2.Calculations.NumberOfScenesCalculations import NumberOfScenes
