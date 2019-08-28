@@ -7,7 +7,7 @@ class Const(object):
     GENERATOR_FILE_NAME = 'KPIGenerator'
     FETCHER_FILE_NAME = 'Fetcher'
     TOOL_BOX_FILE_NAME = 'KPIToolBox'
-    LOCAL_CONSTS_FILE_NAME = "LocalConsts"
+    LOCAL_CONSTS_FILE_NAME = 'LocalConsts'
     LOCAL_CALCULATIONS_FILE_NAME = 'LocalCalculations'
     PROFILING_SCRIPT_NAME = 'gen_profiling'
     DEPENDENCIES_SCRIPT_NAME = 'gen_dependency_graph'
@@ -610,3 +610,12 @@ class %(live_session_tool_box_class_name)s:
         score = 0
         return score
 """
+
+# functions:
+
+
+def get_project_name_and_directory_name(project):
+
+    project_name = project.lower().replace('_', '-')
+    project_capital = project_name.upper().replace('-', '_')
+    return project_name, project_capital

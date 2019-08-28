@@ -12,7 +12,7 @@ from DevloperTools.ProjectCreatorNew.Consts import Const, SCENE_TOOLBOX_SCRIPT, 
     PLANOGRAM_GENERATOR_SCRIPT, PLANOGRAM_TOOLBOX_SCRIPT, LIVE_SCENE_CALCULATIONS_SCRIPT, LIVE_SCENE_TOOLBOX_SCRIPT, \
     LIVE_SESSION_TOOLBOX_SCRIPT, LIVE_SESSION_CALCULATIONS_SCRIPT, LIVE_SESSION_GENERATOR_SCRIPT, SCENE_CALCULATIONS, \
     LIVE_SCENE_GENERATOR_SCRIPT, CALCULATIONS, LOCAL_CALCS, GENERATOR, TOOL_BOX, PROFILING_SCRIPT, \
-    GEN_DEPENDENCY_SCRIPT, LOCAL_CALCS_WITH_SCENES, LOCAL_CONSTS
+    GEN_DEPENDENCY_SCRIPT, LOCAL_CALCS_WITH_SCENES, LOCAL_CONSTS, get_project_name_and_directory_name
 
 __author__ = 'yoava'
 
@@ -27,8 +27,7 @@ class CreateKPIProject:
     """
     def __init__(self, project_name, calculate_by_scene=False, calculate_by_planogram=False,
                  planogram_compliance=False, trax_live_scene=False, trax_live_session=False):
-        self.project = project_name.lower().replace('_', '-')
-        self.project_capital = self.project.upper().replace('-', '_')
+        self.project, self.project_capital = get_project_name_and_directory_name(project_name)
         self.project_short = self.project_capital.split('_')[0]
         self.author = os.environ.get('USER', '')
         self.project_path = self.get_project_path()
