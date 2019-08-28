@@ -280,11 +280,9 @@ if __name__ == '__main__':
     """
     LoggerInitializer.init('')
     Config.init()
-    project_to_test = 'pepsicouk'
+    project_to_test = 'tnuvailv2'
     creator = SeedCreator(project_to_test)
-    creator.activate_exporter(specific_sessions_and_scenes={'961edfb7-ae52-40a7-ab39-45064f8c554d': [92747],
-                                                            'aee71e4d-cdd1-4474-803e-ef834d24871d': [94402],
-                                                            'be03f331-a509-4ef5-99a0-a1807fc96b71': [93375]}
+    creator.activate_exporter(specific_sessions_and_scenes={'236c1577-0ecb-4bf9-88b9-c9e87ab17c58': []}
                               # {'6e4dc935-ab56-45ef-9408-caaddb963874': [17888508],
                               #  'C544B5DB-B61F-4B02-B03A-6D8748B3B636': []}
                               )
