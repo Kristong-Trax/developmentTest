@@ -12,7 +12,6 @@ from Projects.PNGJP.Data.LocalConsts import Consts
 
 __author__ = 'Nimrod'
 
-VERTEX_FK_FIELD = 'scene_match_fk'
 
 
 class PNGJPPositionGraphs:
@@ -59,7 +58,7 @@ class PNGJPPositionGraphs:
         if set(Consts.ATTRIBUTES_TO_SAVE).difference(matches.keys()):
             missing_data = self.get_missing_data()
             matches = matches.merge(missing_data, on='product_fk', how='left', suffixes=['', '_5'])
-        matches = matches.drop_duplicates(subset=[VERTEX_FK_FIELD])
+        matches = matches.drop_duplicates(subset=[Consts.VERTEX_FK_FIELD])
         return matches
 
     def get_missing_data(self):
@@ -101,7 +100,7 @@ class PNGJPPositionGraphs:
             edges = []
             for f in xrange(len(matches)):
                 facing = matches.iloc[f]
-                facing_name = str(facing[VERTEX_FK_FIELD])
+                facing_name = str(facing[Consts.VERTEX_FK_FIELD])
                 scene_graph.add_vertex(facing_name)
                 # adding attributes to vertex
                 vertex = scene_graph.vs.find(facing_name)
@@ -159,18 +158,18 @@ class PNGJPPositionGraphs:
         if anchor_shelf_number == 1:
             surrounding_top = []
         else:
-            surrounding_top = filtered_matches[matches['shelf_number'] == anchor_shelf_number - 1][VERTEX_FK_FIELD]
+            surrounding_top = filtered_matches[matches['shelf_number'] == anchor_shelf_number - 1][Consts.VERTEX_FK_FIELD]
         if anchor_shelf_number_from_bottom == 1:
             surrounding_bottom = []
         else:
-            surrounding_bottom = filtered_matches[matches['shelf_number'] == anchor_shelf_number + 1][VERTEX_FK_FIELD]
+            surrounding_bottom = filtered_matches[matches['shelf_number'] == anchor_shelf_number + 1][Consts.VERTEX_FK_FIELD]
 
         # checking left & right
         filtered_matches = matches[(matches['shelf_number'] == anchor_shelf_number) &
                                    (matches['bay_number'] == anchor_bay_number)]
         if anchor_facing > 1:
             surrounding_left = filtered_matches[filtered_matches['facing_sequence_number'] ==
-                                                anchor_facing - 1][VERTEX_FK_FIELD]
+                                                anchor_facing - 1][Consts.VERTEX_FK_FIELD]
         elif anchor_bay_number == 1:
             surrounding_left = []
         else:
@@ -186,11 +185,11 @@ class PNGJPPositionGraphs:
                                               (anchor_top < left_bay[Consts.SHELF_BOTTOM])) |
                                              ((left_bay[Consts.SHELF_TOP] < anchor_bottom) &
                                               (anchor_bottom < left_bay[Consts.SHELF_BOTTOM])))]
-            surrounding_left = surrounding_left[VERTEX_FK_FIELD]
+            surrounding_left = surrounding_left[Consts.VERTEX_FK_FIELD]
 
         if anchor_facing < anchor_shelf_items:
             surrounding_right = filtered_matches[filtered_matches['facing_sequence_number'] ==
-                                                 anchor_facing + 1][VERTEX_FK_FIELD]
+                                                 anchor_facing + 1][Consts.VERTEX_FK_FIELD]
         else:
             right_bay = matches[(matches['bay_number'] == anchor_bay_number + 1) &
                                 (matches['facing_sequence_number'] == 1)]
@@ -206,7 +205,7 @@ class PNGJPPositionGraphs:
                                                     (anchor_top < right_bay[Consts.SHELF_BOTTOM])) |
                                                    ((right_bay[Consts.SHELF_TOP] < anchor_bottom) &
                                                     (anchor_bottom < right_bay[Consts.SHELF_BOTTOM])))]
-                surrounding_right = surrounding_right[VERTEX_FK_FIELD]
+                surrounding_right = surrounding_right[Consts.VERTEX_FK_FIELD]
 
         return dict(top=surrounding_top, bottom=surrounding_bottom,
                     left=surrounding_left, right=surrounding_right)
