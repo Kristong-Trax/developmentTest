@@ -1,4 +1,4 @@
-from DevloperTools.ProjectCreatorNew.Consts import get_project_name_and_directory_name
+from DevloperTools.ProjectCreator.Consts import get_project_name_and_directory_name
 import re
 import os
 import shutil
