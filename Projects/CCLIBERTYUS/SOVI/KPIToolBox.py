@@ -1,6 +1,6 @@
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Utils.Logging.Logger import Log
-from Projects.CCUS.SOVI.Const import Const
+from Projects.CCLIBERTYUS.SOVI.Const import Const
 
 # from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
 # from KPIUtils_v2.Calculations.AvailabilityCalculations import Availability
@@ -308,3 +308,10 @@ class SOVIToolBox:
         if not isinstance(ratio, (float, int)):
             ratio = 0
         return round(ratio * 100, 2)
+
+    def commit_results(self):
+        pass
+        # self.common_v2.commit_results_data()
+
+    def commit_results_without_delete(self):
+        self.common.commit_results_data_without_delete_version2()

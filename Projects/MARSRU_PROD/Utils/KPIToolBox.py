@@ -2,14 +2,12 @@
 import ast
 import datetime as dt
 import pandas as pd
-import time
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Algo.Calculations.Core.Shortcuts import SessionInfo, BaseCalculationsGroup
 from Trax.Cloud.Services.Connector.Keys import DbUsers
 from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
 from Trax.Utils.Logging.Logger import Log
-
 from KPIUtils_v2.DB.CommonV2 import Common
 from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
 from KPIUtils_v2.Calculations.BlockCalculations import Block
@@ -108,7 +106,8 @@ class MARSRU_PRODKPIToolBox:
         self.position_graphs = MARSRU_PRODPositionGraphs(
             self.data_provider, rds_conn=self.rds_conn)
         self.potential_products = {}
-        self.custom_scif_queries = []
+        self.custom_scif_queries = pd.DataFrame(columns=[SESSION_FK, SCENE_FK, PRODUCT_FK, IN_ASSORTMENT, IS_OOS] +
+                                                                                           OTHER_CUSTOM_SCIF_COLUMNS)
         self.shelf_square_boundaries = {}
         self.object_type_conversion = {'SKUs': 'product_ean_code',
                                        'BRAND': 'brand_name',
@@ -145,8 +144,18 @@ class MARSRU_PRODKPIToolBox:
                 continue
 
             result = 'TRUE'
-            scene_param = p.get('Values')
-            filtered_scif = self.scif.loc[self.scif['template_name'] == scene_param]
+
+            if p.get('Values'):
+                filtered_scif = self.scif.loc[self.scif['template_name'].isin(p.get('Values').split('\n'))]
+            else:
+                filtered_scif = self.scif
+
+            if p.get('Scene type'):
+                filtered_scif = filtered_scif.loc[filtered_scif['template_name'].isin(p.get('Scene type').split(', '))]
+
+            if p.get('Location type'):
+                filtered_scif = filtered_scif.loc[filtered_scif['location_type'].isin(p.get('Location type').split(', '))]
+
             if filtered_scif.empty:
                 result = 'FALSE'
 
@@ -236,7 +245,7 @@ class MARSRU_PRODKPIToolBox:
 
         return assortment_products
 
-    def get_custom_query(self, scene_fk, product_fk, assortment, oos):
+    def get_custom_query_values(self, scene_fk, product_fk, assortment, oos):
         """
         This gets the query for insertion to PS custom scif
         :param scene_fk:
@@ -245,11 +254,11 @@ class MARSRU_PRODKPIToolBox:
         :param oos:
         :return:
         """
-        attributes = pd.DataFrame([(self.session_fk, scene_fk, product_fk, assortment, oos) + OTHER_CUSTOM_SCIF_COLUMNS_VALUES],
-                                  columns=[SESSION_FK, SCENE_FK, PRODUCT_FK, IN_ASSORTMENT, IS_OOS] + OTHER_CUSTOM_SCIF_COLUMNS)
-
-        query = insert(attributes.to_dict(), PSERVICE_CUSTOM_SCIF)
-        self.custom_scif_queries.append(query)
+        attributes_df = pd.DataFrame([(self.session_fk, scene_fk, product_fk, assortment, oos) +
+                                      OTHER_CUSTOM_SCIF_COLUMNS_VALUES],
+                                     columns=[SESSION_FK, SCENE_FK, PRODUCT_FK, IN_ASSORTMENT, IS_OOS] +
+                                             OTHER_CUSTOM_SCIF_COLUMNS)
+        self.custom_scif_queries = self.custom_scif_queries.append(attributes_df, ignore_index=True)
 
     def get_scenes_for_product(self, product_fk):
         """
@@ -263,24 +272,23 @@ class MARSRU_PRODKPIToolBox:
 
     def commit_custom_scif(self):
         self.check_connection(self.rds_conn)
-
         delete_query = self.kpi_fetcher.get_delete_session_custom_scif(self.session_fk)
         cur = self.rds_conn.db.cursor()
-        cur.execute(delete_query)
-        self.rds_conn.db.commit()
-
-        # Wait 2 seconds due to failures
-        time.sleep(2)
-
-        self.custom_scif_queries = list(set(self.custom_scif_queries))
-        self.rds_conn.disconnect_rds()
-        self.rds_conn.connect_rds()
-        cur = self.rds_conn.db.cursor()
-        for query in self.custom_scif_queries:
-            try:
-                cur.execute(query)
-            except Exception as ex:
-                Log.error('could not run query: {}, error {}'.format(query, ex))
+        try:
+            cur.execute(delete_query)
+        except Exception as ex:
+            Log.error('could not run delete query: {}, error {}'.format(delete_query, ex))
+            return
+        if self.custom_scif_queries.empty:
+            return
+        self.custom_scif_queries.drop_duplicates(inplace=True)
+        values_dict = self.custom_scif_queries.to_dict()
+        insert_query = insert(values_dict, PSERVICE_CUSTOM_SCIF)
+        try:
+            cur.execute(insert_query)
+        except Exception as ex:
+            Log.error('could not run insert query: {}, error {}'.format(insert_query, ex))
+            return
         self.rds_conn.db.commit()
 
     @kpi_runtime()
@@ -300,15 +308,15 @@ class MARSRU_PRODKPIToolBox:
                 for product in assortment_products:
                     if product in products_in_scene:
                         # This means the product in assortment and is not oos (1,0)
-                        self.get_custom_query(scene, product, 1, 0)
+                        self.get_custom_query_values(scene, product, 1, 0)
                     else:
                         # The product is in assortment list but is oos (1,1)
-                        self.get_custom_query(scene, product, 1, 1)
+                        self.get_custom_query_values(scene, product, 1, 1)
 
                 for product in products_in_scene:
                     if product not in assortment_products:
                         # The product is not in assortment list and not oos (0,0)
-                        self.get_custom_query(scene, product, 0, 0)
+                        self.get_custom_query_values(scene, product, 0, 0)
 
         Log.debug("Done updating PS Custom SCIF... ")
         self.commit_custom_scif()
@@ -2436,7 +2444,8 @@ class MARSRU_PRODKPIToolBox:
     @kpi_runtime()
     def calculate_mars_facings_per_scene_type(self):
         kpi_fk = self.common.get_kpi_fk_by_kpi_type(MARS_FACINGS_PER_SCENE_TYPE_KPI_NAME)
-        dict_to_calculate = {'population': {'include': [{'template_group': MOTIVATION_PROGRAM_SCENE_TYPE_NAME}]}}
+        dict_to_calculate = {'population': {'include': [{'template_group': MOTIVATION_PROGRAM_SCENE_TYPE_NAME,
+                                                         'manufacturer_name': MARS}]}}
         df = self.parser.filter_df(dict_to_calculate, self.scif)
         if df.empty:
             return
@@ -2445,6 +2454,6 @@ class MARSRU_PRODKPIToolBox:
         df = self.parser.filter_df(dict_to_calculate, df)
         scene_id = df['scene_fk'].values[0]
         scene_type = df['template_fk'].values[0]
-        result = df['facings_ign_stack'].sum()
+        result = df['facings'].sum()
         self.common.write_to_db_result(fk=kpi_fk, numerator_id=scene_type, denominator_id=self.store_id,
                                        numerator_result=scene_id, result=result, score=result)

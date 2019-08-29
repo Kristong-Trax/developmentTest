@@ -8,11 +8,13 @@ from Trax.Utils.Logging.Logger import Log
 from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from KPIUtils_v2.Utils.Decorators.Decorators import log_runtime
 
+from Projects.CCRU_SAND.Utils.Consts import CCRU_SANDConsts
 from Projects.CCRU_SAND.Utils.JSON import CCRU_SANDJsonGenerator
 from Projects.CCRU_SAND.Utils.ToolBox import CCRU_SANDKPIToolBox
 
 
 __author__ = 'sergey'
+
 
 SOURCE = 'SOURCE'
 SET = 'SET'
@@ -30,41 +32,7 @@ TOPSKU = 'TOPSKU'
 KPI_CONVERSION = 'KPI_CONVERSION'
 BENCHMARK = 'BENCHMARK'
 
-ALLOWED_POS_SETS = (
-    'Pos 2018 - Canteen',
-    'Pos 2018 - FT',
-    'Pos 2018 - HoReCa - Bar Tavern Night Clubs',
-    'Pos 2018 - HoReCa - Coffee Tea Shops',
-    'Pos 2018 - HoReCa - Restaurant Cafe',
-    'Pos 2018 - MT - Convenience Big',
-    'Pos 2018 - MT - Convenience Small',
-    'Pos 2018 - MT - Hypermarket',
-    'Pos 2018 - MT - Supermarket',
-    'Pos 2018 - Petroleum',
-    'Pos 2018 - QSR',
-
-    'PoS 2019 - FT - CAP',
-    'PoS 2019 - FT NS - CAP',
-    'PoS 2019 - FT NS - REG',
-    'PoS 2019 - FT - REG',
-    'PoS 2019 - IC Canteen - EDU',
-    'PoS 2019 - IC Canteen - OTH',
-    'PoS 2019 - IC HoReCa BarTavernClub - CAP',
-    'PoS 2019 - IC HoReCa BarTavernClub - REG',
-    'PoS 2019 - IC HoReCa RestCafeTea - CAP',
-    'PoS 2019 - IC HoReCa RestCafeTea - REG',
-    'PoS 2019 - IC Petroleum - CAP',
-    'PoS 2019 - IC Petroleum - REG',
-    'PoS 2019 - IC QSR',
-    'PoS 2019 - MT Conv Big - CAP',
-    'PoS 2019 - MT Conv Big - REG',
-    'PoS 2019 - MT Conv Small - CAP',
-    'PoS 2019 - MT Conv Small - REG',
-    'PoS 2019 - MT Hypermarket - CAP',
-    'PoS 2019 - MT Hypermarket - REG',
-    'PoS 2019 - MT Supermarket - CAP',
-    'PoS 2019 - MT Supermarket - REG',
-)
+ALLOWED_POS_SETS = tuple(CCRU_SANDConsts.ALLOWED_POS_SETS)
 
 
 class CCRU_SANDCalculations(BaseCalculationsScript):
@@ -99,9 +67,16 @@ class CCRU_SANDProjectCalculations:
 
     def main_function(self):
 
-        if self.tool_box.external_session_id\
-                and self.tool_box.external_session_id.find('EasyMerch-P') >= 0:
-            Log.debug('Promo session, no Custom KPI calculation implied')
+        if self.tool_box.visit_type in (self.tool_box.PROMO_VISIT, self.tool_box.SEGMENTATION_VISIT):
+            Log.info('\'{}\' visit type: no Custom KPI calculation implied'
+                     ''.format(self.tool_box.visit_type))
+            return
+
+        if str(self.visit_date) < self.tool_box.MIN_CALC_DATE:
+            Log.warning('Error. Session cannot be calculated. '
+                        'Visit date is less than {2} - {0}. '
+                        'Store ID {1}.'
+                        .format(self.visit_date, self.store_id, self.tool_box.MIN_CALC_DATE))
             return
 
         if self.pos_kpi_set_name not in ALLOWED_POS_SETS:
@@ -121,12 +96,12 @@ class CCRU_SANDProjectCalculations:
         if kpi_source:
             pass
 
-        elif self.test_store == "Y":
-            Log.warning('Error. Session cannot be calculated: '
-                        'Store is a test store. '
-                        'Store ID {1}.'
-                        .format(self.pos_kpi_set_name, self.store_id))
-            return
+        # elif self.test_store == "Y":
+        #     Log.warning('Error. Session cannot be calculated: '
+        #                 'Store is a test store. '
+        #                 'Store ID {1}.'
+        #                 .format(self.pos_kpi_set_name, self.store_id))
+        #     return
 
         else:
             Log.warning('Error. Session cannot be calculated. '
@@ -241,6 +216,8 @@ class CCRU_SANDProjectCalculations:
 
         Log.debug('KPI calculation stage: {}'.format('Committing results new'))
         self.tool_box.commit_results_data_new()
+
+        Log.debug('KPI calculation is completed')
 
     def rds_connection(self):
         if not hasattr(self, '_rds_conn'):

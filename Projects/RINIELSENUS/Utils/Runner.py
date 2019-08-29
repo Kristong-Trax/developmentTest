@@ -38,6 +38,7 @@ class Results(object):
         self.dependency_tracker = defaultdict(int)
         self.mpip_sr = mpip_sr
         self.mpis = self._data_provider['matches']
+        self._data_provider.set_shared_data(self.mpip_sr)
 
     def calculate(self, hierarchy):
         atomic_results = self._get_atomic_results(hierarchy)
@@ -65,7 +66,8 @@ class Results(object):
             #                         # 'Is Nutro Wet Dog food blocked?',
             #                         # 'Is the Meaty Dog Treats segment blocked?',
             #                         # 'Is NUTRO Dry Dog blocked in the Ingredient Transparency feeding philosophy segment?'
-            #                         'Is the Dry Cat Food category blocked?'
+            #                         # 'Is PEDIGREE Dry Dog Food shelved with the Basic & Balanced feeding philosophy segment?'
+            #                         'What percent of non-negotiable items are shelved in the preferred range? - numerator'
             #                         ]:
             #     continue
             # print('~~~~~~~~~~~~~~~~~~~~****************~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~')
@@ -95,14 +97,15 @@ class Results(object):
                     pass
             # This setup allows some kpis to return an object, so we don't have to
             # keep calculating the same things over and over....
+            # if atomic['atomic'] in EYELIGHT_KPIS:
+            # self._get_prods_from_filters(calculation, atomic)
             kpi_res = calculation.calculate_atomic_kpi(atomic)
             errata = [None]
             if isinstance(kpi_res, tuple):
                 errata = [i for i in kpi_res[1:]]
                 kpi_res = kpi_res[0]
             # print('||||| Result for {} is: {}'.format(atomic['atomic'], kpi_res))
-            # if atomic['atomic'] in EYELIGHT_KPIS:
-            #     self._get_prods_from_filters(calculation, atomic)
+
             result = {'result': kpi_res,
                       'set': atomic['set'],
                       'kpi': atomic['kpi'],

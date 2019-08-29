@@ -49,9 +49,9 @@ class DBHandler:
         oos_results = self._get_oos_results(last_session_fk)
         return oos_results
 
-    def get_kpi_result_type(self):
+    def get_kpi_result_value(self):
         """ This method extracts the kpi_result_types from the DB. """
-        result_type_query = self._get_kpi_result_types_query()
+        result_type_query = self._get_kpi_result_value_query()
         result_types = self._execute_db_query(result_type_query)
         return result_types
 
@@ -92,7 +92,7 @@ class DBHandler:
         return prev_results_query
 
     @staticmethod
-    def _get_kpi_result_types_query():
+    def _get_kpi_result_value_query():
         kpi_result_type = """SELECT pk, value FROM static.kpi_result_value;"""
         return kpi_result_type
 
