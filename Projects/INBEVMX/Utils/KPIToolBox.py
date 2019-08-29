@@ -114,6 +114,8 @@ class INBEVMXToolBox:
             Log.warning("There is more than one possible match")
             return 0
         if diff_table.empty:
+            Log.warning("There is no matching policy for {}".format(str(all_data[diff_table.columns].iloc[0, :]\
+                                                                        .to_dict())))
             return 0
         selected_row = diff_policies.iloc[diff_table.index[0]][Const.POLICY]
         json_policies = json_policies[json_policies[Const.POLICY] == selected_row]
