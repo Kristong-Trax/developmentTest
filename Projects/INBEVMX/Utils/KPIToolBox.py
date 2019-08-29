@@ -106,11 +106,12 @@ class INBEVMXToolBox:
         diff_table = diff_table.applymap(lambda x: x[0] if isinstance(x, list) else x)
         for col in diff_table.columns:
             diff_table[col] = diff_table[col].str.encode('utf-8')
-            att = all_data.iloc[0][col].encode('utf-8')
-            if att is None:
-                return 0
+            all_data[col] = all_data[col].str.encode('utf-8')
+            att = all_data.iloc[0][col]
             diff_table = diff_table[diff_table[col] == att]
-            # all_data = all_data[all_data[col] == att]
+            if att is None or diff_table.empty:
+                return 0
+            all_data = all_data[all_data[col] == att]
         if diff_table.shape[0] > 1:
             Log.warning("There is more than one possible match")
             return 0
