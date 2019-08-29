@@ -105,12 +105,13 @@ class INBEVMXToolBox:
         # remove all lists from df
         diff_table = diff_table.applymap(lambda x: x[0] if isinstance(x, list) else x)
         for col in diff_table.columns:
-            att = all_data.iloc[0][col]
+            diff_table[col] = diff_table[col].str.encode('utf-8')
+            att = all_data.iloc[0][col].encode('utf-8')
             if att is None:
                 return 0
             diff_table = diff_table[diff_table[col] == att]
-            all_data = all_data[all_data[col] == att]
-        if len(diff_table) > 1:
+            # all_data = all_data[all_data[col] == att]
+        if diff_table.shape[0] > 1:
             Log.warning("There is more than one possible match")
             return 0
         if diff_table.empty:
@@ -217,10 +218,7 @@ class INBEVMXToolBox:
 
         # get a single row
         row = self.find_row(rows)
-        if row:
-            if row.empty:
-                return 0
-        elif row is False:
+        if row.empty:
             return 0
 
         target = row[Const.TEMPLATE_TARGET_PRECENT].values[0]
@@ -278,7 +276,7 @@ class INBEVMXToolBox:
             return rows_att6_filter
 
         except AttributeError:
-            return False
+            return pd.DataFrame()
 
     def get_filters_from_row(self, row):
         filters = dict(row)
