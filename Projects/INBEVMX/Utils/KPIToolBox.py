@@ -107,9 +107,10 @@ class INBEVMXToolBox:
         for col in diff_table.columns:
             diff_table[col] = diff_table[col].str.encode('utf-8')
             att = all_data.iloc[0][col].encode('utf-8')
-            diff_table = diff_table[diff_table[col] == att]
-            if att is None or diff_table.empty:
+            if att is None:
                 return 0
+            diff_table = diff_table[diff_table[col] == att]
+
         if diff_table.shape[0] > 1:
             Log.warning("There is more than one possible match")
             return 0
