@@ -87,13 +87,15 @@ LOCAL_CALCS_WITH_SCENES = """
 #     Config.init()
 #     project_name = '%(project)s'
 #     data_provider = KEngineDataProvider(project_name)
-#     session_list = ['INSERT_TEST_SESSIONS']
+#     session_list = {'INSERT_TEST_SESSION': [1, 2, 3, 4],
+#                     'INSERT_TEST_SESSION2': []}  # leave empty for all scenes 
 #     for session in session_list:
-#         data_provider = KEngineDataProvider(project_name)
-#         data_provider.load_session_data(session)
-#         scif = data_provider['scene_item_facts']
-#         scenes = scif['scene_id'].unique().tolist()
-#         # scenes = [1, 2, 3, 4]
+#         scenes = session_list[session]
+#         if len(scenes) == 0:
+#             data_provider = KEngineDataProvider(project_name)
+#             data_provider.load_session_data(session)
+#             scif = data_provider['scene_item_facts']
+#             scenes = scif['scene_id'].unique().tolist()
 #         for scene in scenes:
 #             print('scene')
 #             data_provider = KEngineDataProvider(project_name)
@@ -633,7 +635,6 @@ class %(live_session_tool_box_class_name)s:
 
 
 def get_project_name_and_directory_name(project):
-
     project_name = project.lower().replace('_', '-')
     project_capital = project_name.upper().replace('-', '_')
     return project_name, project_capital
