@@ -15,6 +15,7 @@ from Projects.CBCIL.Utils.Fetcher import CBCILCBCIL_Queries
 from Projects.CBCIL.Utils.GeneralToolBox import CBCILCBCIL_GENERALToolBox
 from Projects.CBCIL.Utils.ParseTemplates import parse_template
 from KPIUtils_v2.DB.CommonV2 import Common
+from KPIUtils_v2.Utils.Decorators.Decorators import log_runtime, kpi_runtime
 # from KPIUtils.DB.Common import Common
 
 __author__ = 'Israel'
@@ -31,18 +32,18 @@ TEMPLATE_NAME_BETWEEN_2019_01_15_TO_2019_03_01 = 'Template_until_2019-03-01.xlsx
 CURRENT_TEMPLATE = 'Template.xlsx'
 
 
-def log_runtime(description, log_start=False):
-    def decorator(func):
-        def wrapper(*args, **kwargs):
-            calc_start_time = datetime.utcnow()
-            if log_start:
-                Log.info('{} started at {}'.format(description, calc_start_time))
-            result = func(*args, **kwargs)
-            calc_end_time = datetime.utcnow()
-            Log.info('{} took {}'.format(description, calc_end_time - calc_start_time))
-            return result
-        return wrapper
-    return decorator
+# def log_runtime(description, log_start=False):
+#     def decorator(func):
+#         def wrapper(*args, **kwargs):
+#             calc_start_time = datetime.utcnow()
+#             if log_start:
+#                 Log.info('{} started at {}'.format(description, calc_start_time))
+#             result = func(*args, **kwargs)
+#             calc_end_time = datetime.utcnow()
+#             Log.info('{} took {}'.format(description, calc_end_time - calc_start_time))
+#             return result
+#         return wrapper
+#     return decorator
 
 
 class CBCILCBCIL_ToolBox(object):
@@ -433,6 +434,7 @@ class CBCILCBCIL_ToolBox(object):
                   }
         return result
 
+    @kpi_runtime()
     def calculate_survey(self, **general_filters):
         params = general_filters['filters']
         filters = params['2'].copy()
@@ -449,6 +451,7 @@ class CBCILCBCIL_ToolBox(object):
         else:
             return 0
 
+    @kpi_runtime()
     def calculate_block_by_shelf(self, **general_filters):
         params = general_filters['filters']
         if params['All']['scene_id']:
@@ -471,6 +474,7 @@ class CBCILCBCIL_ToolBox(object):
                     return 100
         return 0
 
+    @kpi_runtime()
     def calculate_sos(self, **general_filters):
         params = general_filters['filters']
         if params['All']['scene_id']:
@@ -487,6 +491,7 @@ class CBCILCBCIL_ToolBox(object):
                 return round(ratio*100, 2)
         return 0
 
+    @kpi_runtime()
     def calculate_sos_cooler(self, competitor_coolers, cbc_coolers, relevant_scenes, **general_filters):
         params = general_filters['filters']
         if params['All']['scene_id']:
@@ -510,6 +515,7 @@ class CBCILCBCIL_ToolBox(object):
                 return set_scores[0]/0.8*100 if set_scores[0] < 0.8 else 100
         return 0
 
+    @kpi_runtime()
     def calculate_availability(self, **general_filters):
         params = general_filters['filters']
         if params['All']['scene_id']:
@@ -519,6 +525,7 @@ class CBCILCBCIL_ToolBox(object):
                 return 100
         return 0
 
+    @kpi_runtime()
     def calculate_availability_from_mid_and_up(self, **general_filters):
         params = general_filters['filters']
         if params['All']['scene_id']:
@@ -534,6 +541,7 @@ class CBCILCBCIL_ToolBox(object):
                     return 100
         return 0
 
+    @kpi_runtime()
     def calculate_availability_by_top_shelf(self, **general_filters):
         params = general_filters['filters']
         if params['All']['scene_id']:
@@ -564,6 +572,7 @@ class CBCILCBCIL_ToolBox(object):
                 return 100 if any(session_results) else 0
         return 0
 
+    @kpi_runtime()
     def calculate_availability_by_sequence(self, **general_filters):
         params = general_filters['filters']
         if params['All']['scene_id']:
@@ -581,6 +590,7 @@ class CBCILCBCIL_ToolBox(object):
                         return 100
         return 0
 
+    @kpi_runtime()
     def calculate_min_2_availability(self, **general_filters):
         params = general_filters['filters']
         if params['All']['scene_id']:

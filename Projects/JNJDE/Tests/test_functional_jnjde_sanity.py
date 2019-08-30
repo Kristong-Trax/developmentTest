@@ -25,7 +25,6 @@ class TestKEngineOutOfTheBox(TestFunctionalCase):
     def set_up(self):
         super(TestKEngineOutOfTheBox, self).set_up()
         remove_cache_and_storage()
-        self.mock_object(object_name='commit_results_data', path='KPIUtils_v2.DB.CommonV2.Common')
 
     @property
     def import_path(self):
