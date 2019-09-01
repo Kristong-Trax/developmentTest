@@ -7,7 +7,7 @@ from KPIUtils_v2.Calculations.SequenceCalculations import Sequence
 from Projects.GSKSG_SAND2.Data.LocalConsts import Consts
 from KPIUtils.GlobalProjects.GSK.KPIGenerator import GSKGenerator
 from KPIUtils_v2.GlobalDataProvider.PsDataProvider import PsDataProvider
-from KPIUtils_v2.Utils.Consts import GlobalConsts, DataProvider as DataProviderConsts ,DB
+from KPIUtils_v2.Utils.Consts import GlobalConsts, DataProvider as DataProviderConsts, DB
 
 __author__ = 'limorc'
 
@@ -59,11 +59,11 @@ class GSKSGToolBox:
         # assortment_store_dict = self.gsk_generator.availability_store_function()
         # self.common.save_json_to_new_tables(assortment_store_dict)
 
-        # assortment_category_dict = self.gsk_generator.availability_category_function()
-        # self.common.save_json_to_new_tables(assortment_category_dict)
-        # fsos_category_dict = self.gsk_generator.gsk_global_facings_sos_by_category_function()
-        # self.common.save_json_to_new_tables(fsos_category_dict)
-        assortment_category_dict,fsos_category_dict ='a','b'
+        assortment_category_dict = self.gsk_generator.availability_category_function()
+        self.common.save_json_to_new_tables(assortment_category_dict)
+        fsos_category_dict = self.gsk_generator.gsk_global_facings_sos_by_category_function()
+        self.common.save_json_to_new_tables(fsos_category_dict)
+        # assortment_category_dict,fsos_category_dict ='a','b'
         orange_score_dict = self.orange_score_category(assortment_category_dict, fsos_category_dict)
         self.common.save_json_to_new_tables(orange_score_dict)
 
@@ -95,8 +95,10 @@ class GSKSGToolBox:
         return score
 
     def msl_compliance_score(self, category, categories_results_json):
-        dst_result = categories_results_json[category]
         weight = self.targets[self.targets[DataProviderConsts.ProductsConsts.CATEGORY_FK] == category]['msl_weight'].iloc[0]
+        if category not in categories_results_json:
+            return 0, weight
+        dst_result = categories_results_json[category]
         result = dst_result * weight
         return result, weight
 
@@ -106,15 +108,15 @@ class GSKSGToolBox:
         result = 0.1 if dst_result >= benchmark else 0
         return result, benchmark
 
-    def extract_json_results_by_kpi(self, assortment_category_dict, kpi_type):
-        kpi_fk = self.common.get_kpi_fk_by_kpi_type('GSK_Dst_Manufacturer_By_Category')
-        categories_results_json = self.extract_json_results(kpi_fk, assortment_category_dict)
+    def extract_json_results_by_kpi(self, general_kpi_results, kpi_type):
+        kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_type)
+        categories_results_json = self.extract_json_results(kpi_fk, general_kpi_results)
         return categories_results_json
 
     @staticmethod
-    def extract_json_results(kpi_fk, assortment_category_dict):
+    def extract_json_results(kpi_fk, general_kpi_results):
         category_json = {}
-        for row in assortment_category_dict:
+        for row in general_kpi_results:
             if row['fk'] == kpi_fk:
                 category_json[row[DB.SessionResultsConsts.DENOMINATOR_ID]] = row[DB.SessionResultsConsts.RESULT]
         return category_json
@@ -138,7 +140,7 @@ class GSKSGToolBox:
     def target_test(self, store_param, store_param_val=None):
         store_param_val = store_param_val if store_param_val is not None else store_param
         store_param = self.targets[store_param] if store_param_val is not None else store_param
-        store_param.values.unique()
+        store_param = store_param.unique()
         for param in store_param:
             if self.store_info[param][0] is None:
                 if self.targets.empty:
@@ -148,6 +150,43 @@ class GSKSGToolBox:
             self.targets = self.targets[
                 (self.targets[store_param_val] == self.store_info[param][0].encode(GlobalConsts.HelperConsts.UTF8)) |
                 (self.targets[store_param_val] == '')]
+
+    def display_distribution(self, display_name):
+        display_products = self.scif[self.scif['product_type'] == 'POSM']
+        display_products = display_products[display_products['additional_attribute_1'] == display_name]
+        display_sku_level = self.display_sku_results(display_products)
+
+    def display_sku_results(self, display_data):
+        results_list = []
+         #:todo checks what is product name in scif
+        display_names = display_data['product_id'].unique()
+        for display in display_names:
+            count = display_data[display_data['product_id'] == display]['facings'].count()
+           # self.db_write()
+        return results_list
+
+
+    def assortment(self):
+
+        #self _msl_assortment() gskjp
+        lvl3_assort, filter_scif = self.gsk_generator.tool_box.get_assortment_filtered(self.gsk_generator.tool_box.
+                                                                                       set_up_data, Consts.DISTRIBUTION)
+        #merge all products
+        return lvl3_assort
+
+    def shelf_compliance(self, category, assortment_df):
+        # I need to extract assortment level3 and than for the specific  category. count how many are in a specific shelf
+        policy = self.targets[self.targets[DataProviderConsts.ProductsConsts.CATEGORY_FK] == category]
+        assortment_cat = assortment_df[assortment_df['category_fk'] == category]
+        weight = policy['shelf_weight'].iloc[0]
+        benchmark = policy['shelf_benchmark'].iloc[0]
+        shelves = [int(shelf) for shelf in policy['shelf_number'].iloc[0].split(",")]
+        shelf_df = assortment_cat[assortment_cat['shelf_number'].isin(shelves)]
+        numerator = shelf_df.shape[0]
+        denominator = assortment_cat.shape[0]
+        result = float(numerator) / float(denominator)
+        score = weight if result >= benchmark else 0
+        return score, weight
 
     def orange_score_category(self, assortment_category_dict, fsos_category_dict):
         self.store_target()
@@ -159,5 +198,8 @@ class GSKSGToolBox:
         for cat in categories:
             msl_score = self.msl_compliance_score(cat, msl_results)
             fsos_score = self.fsos_compliance_score(cat, fsos_results)
+            # secondery_display_score = 0 #display distrbution
+            # promotion_activation_score = 0 #display distrbution
+            # pln_summary_category= 0 # (shelf_compliance ) +sequence compliance
 
         return []

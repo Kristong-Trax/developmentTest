@@ -1,5 +1,6 @@
 
 class Consts(object):
 
-    GLOBAL_FSOS_BY_CATEGORY = 'FACINGS_SOS_OWN_MANUFACTURER_OUT_OF_CATEGORY_IN_WHOLE_STORE'
+    GLOBAL_FSOS_BY_CATEGORY = 'GSK_FSOS_Own_Manufacturer_By_Category'
     GLOBAL_DST_BY_CATEGORY = 'GSK_Dst_Manufacturer_By_Category'
+    DISTRIBUTION = 'Distribution - SKU'
