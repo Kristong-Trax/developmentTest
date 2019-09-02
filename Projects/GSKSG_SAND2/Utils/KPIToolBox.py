@@ -103,18 +103,36 @@ class GSKSGToolBox:
         return result, weight
 
     def fsos_compliance_score(self, category, categories_results_json):
+        """
+               This function return json of keys- categories and values -  kpi result for category
+               :param category: pk of category
+               :param categories_results_json: type of the desired kpi
+               :return category json :  number-category_fk,number-result
+           """
         dst_result = categories_results_json[category]
         benchmark = self.targets[self.targets[DataProviderConsts.ProductsConsts.CATEGORY_FK] == category]['fsos_benchmark'].iloc[0]
         result = 0.1 if dst_result >= benchmark else 0
         return result, benchmark
 
     def extract_json_results_by_kpi(self, general_kpi_results, kpi_type):
+        """
+            This function return json of keys- categories and values -  kpi result for category
+            :param general_kpi_results: list of json's , each json is the db results
+            :param kpi_type: type of the desired kpi
+            :return category json :  number-category_fk,number-result
+        """
         kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_type)
         categories_results_json = self.extract_json_results(kpi_fk, general_kpi_results)
         return categories_results_json
 
     @staticmethod
     def extract_json_results(kpi_fk, general_kpi_results):
+        """
+        This function created json of keys- categories and values -  kpi result for category
+        :param kpi_fk: pk of the kpi you want to extract results from.
+        :param general_kpi_results: list of json's , each json is the db results
+        :return category json :  number-category_fk,number-result
+        """
         category_json = {}
         for row in general_kpi_results:
             if row['fk'] == kpi_fk:
@@ -122,6 +140,14 @@ class GSKSGToolBox:
         return category_json
 
     def store_target(self):
+        """
+        This function filters the external targets df , to the only df with policy that answer current session's store
+        attributes.
+        It search which store attributes defined the targets policy.
+        In addition it gives the targets flexibility to send "changed variables" , external targets need to save
+        store param+_key and store_val + _value , than this function search the store param to look for and which value
+        it need to have for this policy.
+        """
         target_columns = self.targets.columns
         store_att = ['store_name', 'store_number', 'att']
         store_columns = [col for col in target_columns if [att for att in store_att if att in col]]
@@ -138,8 +164,15 @@ class GSKSGToolBox:
                 self.target_test(col)
 
     def target_test(self, store_param, store_param_val=None):
+        """
+        :param store_param: string , store attribute . by this attribute will compare between targets policy and
+        current session
+        :param store_param_val: string , if not None the store attribute value the policy have
+               This function filters the targets to the only targets with a attributes that answer the current session's
+                store attributes
+        """
         store_param_val = store_param_val if store_param_val is not None else store_param
-        store_param = self.targets[store_param] if store_param_val is not None else store_param
+        store_param = self.targets[store_param] if store_param_val is None else [store_param]
         store_param = store_param.unique()
         for param in store_param:
             if self.store_info[param][0] is None:
@@ -158,17 +191,14 @@ class GSKSGToolBox:
 
     def display_sku_results(self, display_data):
         results_list = []
-         #:todo checks what is product name in scif
-        display_names = display_data['product_id'].unique()
+        display_names = display_data['item_id'].unique()
         for display in display_names:
-            count = display_data[display_data['product_id'] == display]['facings'].count()
+            count = display_data[display_data['item_id'] == display]['facings'].count()
            # self.db_write()
         return results_list
 
-
     def assortment(self):
-
-        #self _msl_assortment() gskjp
+        # self _msl_assortment() gskjp
         lvl3_assort, filter_scif = self.gsk_generator.tool_box.get_assortment_filtered(self.gsk_generator.tool_box.
                                                                                        set_up_data, Consts.DISTRIBUTION)
         #merge all products
@@ -195,11 +225,13 @@ class GSKSGToolBox:
         fsos_results = self.extract_json_results_by_kpi(fsos_category_dict, Consts.GLOBAL_FSOS_BY_CATEGORY)
         msl_results = self.extract_json_results_by_kpi(assortment_category_dict, Consts.GLOBAL_DST_BY_CATEGORY)
         categories = self.scif[DataProviderConsts.ProductsConsts.CATEGORY_FK].unique()
+        assortment = self.assortment()
         for cat in categories:
-            msl_score = self.msl_compliance_score(cat, msl_results)
-            fsos_score = self.fsos_compliance_score(cat, fsos_results)
+            # msl_score = self.msl_compliance_score(cat, msl_results)
+            # fsos_score = self.fsos_compliance_score(cat, fsos_results)
             # secondery_display_score = 0 #display distrbution
             # promotion_activation_score = 0 #display distrbution
             # pln_summary_category= 0 # (shelf_compliance ) +sequence compliance
+            pln_compliance = self.shelf_compliance(cat, assortment)
 
         return []
