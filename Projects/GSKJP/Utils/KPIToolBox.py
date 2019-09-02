@@ -1,18 +1,19 @@
-from Trax.Algo.Calculations.Core.DataProvider import Data
-from Trax.Cloud.Services.Connector.Keys import DbUsers
+from KPIUtils_v2.Utils.Consts.DataProvider import MatchesConsts, ProductsConsts, ScifConsts, StoreInfoConsts
+from KPIUtils.GlobalProjects.GSK.KPIGenerator import GSKGenerator
+from KPIUtils_v2.Utils.Consts.GlobalConsts import HelperConsts, ProductTypeConsts
+from KPIUtils_v2.DB.CommonV2 import Common
 from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
+from Trax.Cloud.Services.Connector.Keys import DbUsers
+from Projects.GSKJP.Data.LocalConsts import Consts
+from KPIUtils_v2.GlobalDataProvider.PsDataProvider import PsDataProvider
+from Trax.Utils.Logging.Logger import Log
+from KPIUtils_v2.Calculations.BlockCalculations_v2 import Block
+from KPIUtils.GlobalProjects.GSK.Data.LocalConsts import Consts as GlobalConsts
+from Trax.Algo.Calculations.Core.DataProvider import Data
 import pandas as pd
 import os
 import numpy as np
 import math
-from KPIUtils_v2.Calculations.BlockCalculations_v2 import Block
-from KPIUtils.GlobalProjects.GSK.KPIGenerator import GSKGenerator
-from KPIUtils.GlobalProjects.GSK.Data.LocalConsts import Consts as GlobalConsts
-from Projects.GSKJP.Data.LocalConsts import Consts
-from KPIUtils_v2.DB.CommonV2 import Common
-from KPIUtils_v2.GlobalDataProvider.PsDataProvider import PsDataProvider
-from Trax.Utils.Logging.Logger import Log
-from KPIUtils_v2.Utils.Consts.GlobalConsts import ProductTypeConsts
 
 __author__ = 'limorc'
 
@@ -20,7 +21,7 @@ __author__ = 'limorc'
 
 class GSKJPToolBox:
 
-    # DEFAULT_TARGET = {'brand_fk': [-1], 'shelves': ["1,2,3"], 'block_target': [80], 'brand_target': [100], 'position_target': [80]}
+    # DEFAULT_TARGET = {ProductsConsts.BRAND_FK: [-1], 'shelves': ["1,2,3"], 'block_target': [80], 'brand_target': [100], 'position_target': [80]}
 
     def __init__(self, data_provider, output):
         self.output = output
@@ -111,7 +112,7 @@ class GSKJPToolBox:
                                                 'shelves':"1 ,2 ,4 ,5" (or any other string of numbers separate by ','),
                                                 'position_target': 80 (or any other percentage you want the score to reach)
                                                 }
-        :param  df: data frame that contains columns "shelf_number" , "brand kf"
+        :param  df: data frame that contains columns MatchesConsts.SHELF_NUMBER , "brand kf"
 
         :returns   tuple of (result,score,numerator,denominator)
                    result = number of products from brand_fk in shelves / number of products from brand_fk ,
@@ -121,8 +122,8 @@ class GSKJPToolBox:
         """
         shelf_from_bottom = [int(shelf) for shelf in policy['shelves'].iloc[0].split(",")]
         threshold = policy['position_target'].iloc[0]
-        brand_df = df[df['brand_fk'] == brand_fk]
-        shelf_df = brand_df[brand_df['shelf_number'].isin(shelf_from_bottom)]
+        brand_df = df[df[ProductsConsts.BRAND_FK] == brand_fk]
+        shelf_df = brand_df[brand_df[MatchesConsts.SHELF_NUMBER].isin(shelf_from_bottom)]
         numerator = shelf_df.shape[0]
         denominator = brand_df.shape[0]
         result = float(numerator) / float(denominator)
@@ -144,7 +145,7 @@ class GSKJPToolBox:
         df = pd.merge(self.match_product_in_scene,
                       self.all_products[GlobalConsts.PRODUCTS_COLUMNS], how='left', on=['product_fk'])
         df = pd.merge(self.scif[GlobalConsts.SCIF_COLUMNS],
-                      df, how='right', right_on=['scene_fk', 'product_fk'], left_on=['scene_id', 'product_fk'])
+                      df, how='right', right_on=['scene_fk', 'product_fk'], left_on=[ScifConsts.SCENE_ID, 'product_fk'])
 
         if df.empty:
             Log.warning('match_product_in_scene is empty ')
@@ -153,7 +154,7 @@ class GSKJPToolBox:
         if df is None:
             Log.warning('match_product_in_scene is empty ')
             return 0, 0, 0
-        result = self.gsk_generator.tool_box.calculate_sos(df, {'brand_fk': brand}, {}, GlobalConsts.LINEAR_SOS)[0]
+        result = self.gsk_generator.tool_box.calculate_sos(df, {ProductsConsts.BRAND_FK: brand}, {}, GlobalConsts.LINEAR_SOS)[0]
         target = policy['brand_target'].iloc[0]
         score = float(result) / float(target)
         return result, score, target
@@ -171,23 +172,23 @@ class GSKJPToolBox:
         # taking from params from set up  info
         stacking_param = False if not self.set_up_data[(
             GlobalConsts.INCLUDE_STACKING, Consts.PLN_BLOCK)] else True  # false
-        population_parameters = {'brand_fk': [brand], 'product_type': ['SKU']}
+        population_parameters = {ProductsConsts.BRAND_FK: [brand], ProductsConsts.PRODUCT_TYPE: [ProductTypeConsts.SKU]}
 
         if self.set_up_data[(GlobalConsts.INCLUDE_OTHERS, Consts.PLN_BLOCK)]:
-            population_parameters['product_type'].append(ProductTypeConsts.OTHER)
+            population_parameters[ProductsConsts.PRODUCT_TYPE].append(ProductTypeConsts.OTHER)
         if self.set_up_data[(GlobalConsts.INCLUDE_IRRELEVANT, Consts.PLN_BLOCK)]:
-            population_parameters['product_type'].append(ProductTypeConsts.IRRELEVANT)
+            population_parameters[ProductsConsts.PRODUCT_TYPE].append(ProductTypeConsts.IRRELEVANT)
         if self.set_up_data[(GlobalConsts.INCLUDE_EMPTY, Consts.PLN_BLOCK)]:
 
-            population_parameters['product_type'].append(ProductTypeConsts.EMPTY)
+            population_parameters[ProductsConsts.PRODUCT_TYPE].append(ProductTypeConsts.EMPTY)
         else:
             ignore_empty = True
 
         if self.set_up_data[(GlobalConsts.CATEGORY_INCLUDE, Consts.PLN_BLOCK)]:  # category_name
-            population_parameters['category'] = self.set_up_data[(GlobalConsts.CATEGORY_INCLUDE, Consts.PLN_BLOCK)]
+            population_parameters[ProductsConsts.CATEGORY] = self.set_up_data[(GlobalConsts.CATEGORY_INCLUDE, Consts.PLN_BLOCK)]
 
         if self.set_up_data[(GlobalConsts.SUB_CATEGORY_INCLUDE, Consts.PLN_BLOCK)]:  # sub_category_name
-            population_parameters['sub_category'] = self.set_up_data[(GlobalConsts.SUB_CATEGORY_INCLUDE, Consts.PLN_BLOCK)]
+            population_parameters[ProductsConsts.SUB_CATEGORY] = self.set_up_data[(GlobalConsts.SUB_CATEGORY_INCLUDE, Consts.PLN_BLOCK)]
 
         # from Data file
         target = float(policy['block_target'].iloc[0]) / float(100)
@@ -238,7 +239,7 @@ class GSKJPToolBox:
         kpi_results = pd.merge(kpi_results, self.all_products[GlobalConsts.PRODUCTS_COLUMNS],
                                how='left', on='product_fk')
 
-        kpi_results = kpi_results[kpi_results['substitution_product_fk'].isnull()]
+        kpi_results = kpi_results[kpi_results[ProductsConsts.SUBSTITUTION_PRODUCT_FK].isnull()]
         return kpi_results
 
     def pln_ecaps_score(self, brand, assortment):
@@ -262,7 +263,7 @@ class GSKJPToolBox:
         ecaps_assortment_fk = self.common.get_kpi_fk_by_kpi_type(Consts.PLN_ASSORTMENT_KPI)
         if assortment.empty:
             return 0, 0, 0, results
-        brand_results = assortment[assortment['brand_fk']
+        brand_results = assortment[assortment[ProductsConsts.BRAND_FK]
                                    == brand]  # only assortment of desired brand
         for result in brand_results.itertuples():
             if (math.isnan(result.in_store)) | (result.kpi_fk_lvl3 != ecaps_assortment_fk):
@@ -302,7 +303,7 @@ class GSKJPToolBox:
 
         if assortment is None or assortment.empty:
             return 0, 0, 0, 0
-        brand_results = assortment[assortment['brand_fk']
+        brand_results = assortment[assortment[ProductsConsts.BRAND_FK]
                                    == brand]  # only assortment of desired brand
         if 'total' not in self.assortment.LVL2_HEADERS or 'passes' not in self.assortment.LVL2_HEADERS:
             self.assortment.LVL2_HEADERS.extend(['total', 'passes'])
@@ -319,7 +320,7 @@ class GSKJPToolBox:
             attributes.
         """
 
-        parameters_dict = {'store_number_1': 'store_number'}
+        parameters_dict = {StoreInfoConsts.STORE_NUMBER_1: 'store_number'}
         for store_param, target_param in parameters_dict.items():
             if target_param in self.targets.columns:
                 if self.store_info[store_param][0] is None:
@@ -328,7 +329,7 @@ class GSKJPToolBox:
                     else:
                         self.targets.drop(self.targets.index, inplace=True)
                 self.targets = self.targets[
-                    (self.targets[target_param] == self.store_info[store_param][0].encode('utf-8')) |
+                    (self.targets[target_param] == self.store_info[store_param][0].encode(HelperConsts.UTF8)) |
                     (self.targets[target_param] == '')]
 
     def gsk_compliance(self):
@@ -367,21 +368,21 @@ class GSKJPToolBox:
                                      self.all_products, on="product_fk")
         df_position_score = pd.merge(self.scif[GlobalConsts.SCIF_COLUMNS],
                                      df_position_score, how='right', right_on=['scene_fk', 'product_fk'],
-                                     left_on=['scene_id', 'product_fk'])
+                                     left_on=[ScifConsts.SCENE_ID, 'product_fk'])
         df_position_score = self.gsk_generator.tool_box.tests_by_template(Consts.POSITION_SCORE, df_position_score,
                                                                           self.set_up_data)
 
         if not self.set_up_data[(GlobalConsts.INCLUDE_STACKING, Consts.POSITION_SCORE)]:
             df_position_score = df_position_score if df_position_score is None else df_position_score[
-                df_position_score['stacking_layer'] == 1]
+                df_position_score[MatchesConsts.STACKING_LAYER] == 1]
 
         # calculate all brands if template doesnt require specific brand else only for specific brands
         template_brands = self.set_up_data[(GlobalConsts.BRANDS_INCLUDE, Consts.PLN_BLOCK)]
-        brands = df[df['brand_name'].isin(template_brands)]['brand_fk'].unique() if \
-            template_brands else df['brand_fk'].dropna().unique()
+        brands = df[df[ProductsConsts.BRAND_NAME].isin(template_brands)][ProductsConsts.BRAND_FK].unique() if \
+            template_brands else df[ProductsConsts.BRAND_FK].dropna().unique()
 
         for brand in brands:
-            policy = self.targets[self.targets['brand_fk'] == brand]
+            policy = self.targets[self.targets[ProductsConsts.BRAND_FK] == brand]
             if policy.empty:
                 Log.warning('There is no target policy matching brand')  # adding brand name
                 return results_df
@@ -468,8 +469,8 @@ class GSKJPToolBox:
         if assortment_display is None or assortment_display.empty:
             return results_df
         template_brands = self.set_up_data[(GlobalConsts.BRANDS_INCLUDE, Consts.ECAPS_FILTER_IDENT)]
-        brands = assortment_display[assortment_display['brand_name'].isin(template_brands)]['brand_fk'].unique() if \
-            template_brands else assortment_display['brand_fk'].dropna().unique()
+        brands = assortment_display[assortment_display[ProductsConsts.BRAND_NAME].isin(template_brands)][ProductsConsts.BRAND_FK].unique() if \
+            template_brands else assortment_display[ProductsConsts.BRAND_FK].dropna().unique()
 
         for brand in brands:
             numerator_res, denominator_res, result, product_presence_df = self.pln_ecaps_score(brand,

@@ -1,7 +1,6 @@
-
+from Projects.GSKJP.KPIGenerator import Generator
 from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScript
 
-from Projects.GSKJP.KPIGenerator import Generator
 
 __author__ = 'limorc'
 
