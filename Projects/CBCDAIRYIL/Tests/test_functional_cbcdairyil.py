@@ -28,6 +28,8 @@ class TestCBCDAIRYIL(TestFunctionalCase):
         self.data_provider_mock = MagicMock()
         self.data_provider_mock.project_name = 'Test_Project_1'
         self.data_provider_mock.rds_conn = MagicMock()
+        self.PSProjectConnector = self.mock_object('PSProjectConnector',
+                                                   path='KPIUtils_v2.DB.PsProjectConnector')
         self.common = self.mock_common()
         self.old_common = self.mock_object('oldCommon')
         self.output = MagicMock()

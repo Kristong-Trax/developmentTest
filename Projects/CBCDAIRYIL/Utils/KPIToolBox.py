@@ -1,14 +1,19 @@
 # coding=utf-8
-import pandas as pd
-from Trax.Utils.Logging.Logger import Log
-from KPIUtils_v2.DB.CommonV2 import Common
-from KPIUtils.ParseTemplates import parse_template
-from Projects.CBCDAIRYIL.Utils.Consts import Consts
-from KPIUtils_v2.DB.Common import Common as oldCommon
 from Trax.Algo.Calculations.Core.DataProvider import Data
-from KPIUtils_v2.Calculations.BlockCalculations import Block
+from Trax.Cloud.Services.Connector.Keys import DbUsers
+from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
+from Trax.Utils.Logging.Logger import Log
+from KPIUtils.ParseTemplates import parse_template
+from KPIUtils_v2.DB.CommonV2 import Common
+from KPIUtils_v2.DB.Common import Common as oldCommon
+
+from Projects.CBCDAIRYIL.Utils.Consts import Consts
 from KPIUtils_v2.Calculations.SurveyCalculations import Survey
+from KPIUtils_v2.Calculations.BlockCalculations import Block
 from KPIUtils_v2.Calculations.CalculationsUtils.GENERALToolBoxCalculations import GENERALToolBox
+from KPIUtils_v2.Utils.Decorators.Decorators import log_runtime, kpi_runtime
+
+import pandas as pd
 
 __author__ = 'idanr'
 
@@ -21,6 +26,8 @@ class CBCDAIRYILToolBox:
         self.project_name = self.data_provider.project_name
         self.common = Common(self.data_provider)
         self.old_common = oldCommon(self.data_provider)
+        self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
+        self.session_fk = self.data_provider.session_id
         self.match_product_in_scene = self.data_provider[Data.MATCHES]
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
         self.store_info = self.data_provider[Data.STORE_INFO]
@@ -190,9 +197,6 @@ class CBCDAIRYILToolBox:
             total_scores.append((atomic_score, atomic_weight))
             atomic_fk_lvl_2 = self.common.get_kpi_fk_by_kpi_type(current_atomic[Consts.KPI_ATOMIC_NAME].strip())
             old_atomic_fk = self.get_kpi_fk_by_kpi_name(current_atomic[Consts.KPI_ATOMIC_NAME].strip(), 3)
-            if not atomic_fk_lvl_2 or not old_atomic_fk:
-                Log.warning(Consts.MISSING_KPI_IN_DB.format(current_atomic[Consts.KPI_ATOMIC_NAME].encode('utf-8')))
-                continue
             self.common.write_to_db_result(fk=atomic_fk_lvl_2, numerator_id=Consts.CBC_MANU,
                                            numerator_result=num_result, denominator_id=self.store_id,
                                            weight=round(atomic_weight*100, 2), denominator_result=den_result,
@@ -223,6 +227,7 @@ class CBCDAIRYILToolBox:
                     column_key].values[0]
 
         except IndexError:
+            Log.error('Kpi name: {}, isnt equal to any kpi name in static table'.format(kpi_name))
             return None
 
     def get_relevant_data_per_atomic(self, atomic_series):
@@ -395,6 +400,7 @@ class CBCDAIRYILToolBox:
         merged_df = merged_df[self.general_toolbox.get_filter_condition(merged_df, **kpi_filters)]
         return merged_df
 
+    @kpi_runtime()
     def calculate_eye_level(self, **general_filters):
         """
         This function calculates the Eye level KPI. It filters and products according to the template and
@@ -433,6 +439,7 @@ class CBCDAIRYILToolBox:
                 bottom = json_def[Consts.BOTTOM]
         return df[(df.shelf_number > top) & (df.shelf_number_from_bottom > bottom)]
 
+    @kpi_runtime()
     def calculate_availability_from_bottom(self, **general_filters):
         """
         This function checks if *all* of the relevant products are in the lowest shelf.
@@ -446,6 +453,7 @@ class CBCDAIRYILToolBox:
         # Check bottom shelf condition
         return 0 if len(relevant_shelves_to_check) != 1 or Consts.LOWEST_SHELF not in relevant_shelves_to_check else 100
 
+    @kpi_runtime()
     def calculate_brand_block(self, **general_filters):
         """
         This function calculates the brand block KPI. It filters and excluded products according to the template and
@@ -478,6 +486,7 @@ class CBCDAIRYILToolBox:
         allowed_product[Consts.PRODUCT_FK] = filtered_scif[Consts.PRODUCT_FK].unique().tolist()
         return allowed_product
 
+    @kpi_runtime()
     def calculate_survey(self, **general_filters):
         """
         This function calculates the result for Survey KPI.
@@ -501,6 +510,7 @@ class CBCDAIRYILToolBox:
             return 100 if survey_answer.strip() == target_answer else 0
         return 0
 
+    @kpi_runtime()
     def calculate_availability(self, return_df=False, **general_filters):
         """
         This functions checks for availability by filters.
@@ -534,6 +544,7 @@ class CBCDAIRYILToolBox:
         facings_dict = dict(zip(df[Consts.EAN_CODE], df[stacking_field]))
         return facings_dict
 
+    @kpi_runtime()
     def calculate_min_2_availability(self, **general_filters):
         """
         This KPI checks for all of the Availability Atomics KPIs that passed, if the tested products have at least

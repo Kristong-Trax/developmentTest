@@ -26,13 +26,16 @@ if __name__ == '__main__':
         'f6c0247d-64b4-4d11-8e0b-f7616316c08f'
     ]
 
+    sessions = ['DB5BD1DB-CA44-4F83-A641-12BBA733F3CF']
+
     for session in sessions:
         print('***********************************************************************************')
         print('_______________________ {} ____________________'.format(session))
         data_provider = KEngineDataProvider(project_name)
         data_provider.load_session_data(session)
         output = Output()
-        common = Common(data_provider)
-        MSCToolBox(data_provider, output, common).main_calculation()
-        common.commit_results_data()
+        # common = Common(data_provider)
+        # MSCToolBox(data_provider, output, common).main_calculation()
+        CCLIBERTYUSCalculations(data_provider, output).run_project_calculations()
+        # common.commit_results_data()
 
