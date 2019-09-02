@@ -284,7 +284,8 @@ class PngcnSceneKpis(object):
         try:
             if sub_brand.encode("utf8") not in \
                     self.match_product_in_probe_state_reporting['name'].str.encode("utf8").to_list():
-                self.insert_sub_brand_into_probe_state_reporting(sub_brand.encode("utf8"), kpi_level_2_fk)
+                return
+                # self.insert_sub_brand_into_probe_state_reporting(sub_brand.encode("utf8"), kpi_level_2_fk)
             sub_brand_pk = self.match_product_in_probe_state_reporting[
                 self.match_product_in_probe_state_reporting['name'].str.encode("utf8") ==
                 sub_brand.encode("utf8")]['match_product_in_probe_state_reporting_fk'].values[0]
