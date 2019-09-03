@@ -1,10 +1,10 @@
-from Trax.Utils.Environments.DockerGlobal import PROJECT_NAME
-from Trax.DB.Mongo.Connector import MongoConnector
-from Trax.Data.Testing.TestProjects import TestProjectsNames
-from bson import ObjectId
-from Trax.Algo.Calculations.Core.Constants import Keys
 from Trax.Data.Testing.Resources import BaseSeedData, DATA_TYPE, FILES_RELATIVE_PATH, DATABASE_NAME, COLLECTION_NAME, \
     DATA
+from Trax.Data.Testing.TestProjects import TestProjectsNames
+from Trax.Utils.Environments.DockerGlobal import PROJECT_NAME
+from Trax.Algo.Calculations.Core.Constants import Keys
+from Trax.DB.Mongo.Connector import MongoConnector
+from bson import ObjectId
 
 __author__ = 'Idanr'
 

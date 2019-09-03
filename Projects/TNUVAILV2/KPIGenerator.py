@@ -1,7 +1,7 @@
-from KPIUtils_v2.Utils.Decorators.Decorators import log_runtime
-from Projects.TNUVAILV2.Utils.KPIToolBox import TNUVAILToolBox
-from Trax.Utils.Logging.Logger import Log
 
+from Trax.Utils.Logging.Logger import Log
+from Projects.TNUVAILV2.Utils.KPIToolBox import TNUVAILToolBox
+from KPIUtils_v2.Utils.Decorators.Decorators import log_runtime
 
 __author__ = 'idanr'
 

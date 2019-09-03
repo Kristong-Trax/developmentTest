@@ -1,10 +1,9 @@
-from KPIUtils_v2.Utils.Consts.GlobalConsts import BasicConsts
-from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
-from Trax.Cloud.Services.Connector.Keys import DbUsers
-from Projects.TNUVAILV2.Data.LocalConsts import Consts
+import pandas as pd
 from pandas.io.sql import DatabaseError
 from Trax.Utils.Logging.Logger import Log
-import pandas as pd
+from Trax.Cloud.Services.Connector.Keys import DbUsers
+from Projects.TNUVAILV2.Utils.Consts import Consts
+from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 
 
 class DBHandler:
@@ -28,7 +27,7 @@ class DBHandler:
             Log.warning(Consts.LOG_EMPTY_PREVIOUS_SESSIONS.format(self.session_uid))
             last_session_fk = None
         else:
-            last_session_fk = last_session_fk.loc[1, BasicConsts.PK]
+            last_session_fk = last_session_fk.loc[1, 'pk']
         return last_session_fk
 
     def _get_oos_results(self, session_fk):

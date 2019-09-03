@@ -1,8 +1,8 @@
-from Projects.TNUVAILV2.Calculations import Calculations
-from Trax.Utils.Conf.Configuration import Config
+
 from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
 from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
-
+from Projects.TNUVAILV2.Calculations import Calculations
+from Trax.Utils.Conf.Configuration import Config
 
 
 if __name__ == '__main__':
