@@ -194,7 +194,7 @@ class PngcnSceneKpis(object):
                 # Save all sub_brands in the scene to eye-light KPI
                 self.save_eye_light_products(block_filters['sub_brand_name'][0], filtered_df, block_variant_kpi_fk)
 
-                # Activate global BLOCK function
+                # Activate global_ BLOCK function
                 filter_block_result = block_class.network_x_block_together(
                     population=block_filters,
                     additional={'allowed_products_filters': {'product_type': ['Empty']},
@@ -284,7 +284,7 @@ class PngcnSceneKpis(object):
         try:
             if sub_brand.encode("utf8") not in \
                     self.match_product_in_probe_state_reporting['name'].str.encode("utf8").to_list():
-                self.insert_sub_brand_into_probe_state_reporting(sub_brand.encode("utf8"), kpi_level_2_fk)
+                        self.insert_sub_brand_into_probe_state_reporting(sub_brand.encode("utf8"), kpi_level_2_fk)
             sub_brand_pk = self.match_product_in_probe_state_reporting[
                 self.match_product_in_probe_state_reporting['name'].str.encode("utf8") ==
                 sub_brand.encode("utf8")]['match_product_in_probe_state_reporting_fk'].values[0]
