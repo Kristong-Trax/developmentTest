@@ -1,12 +1,12 @@
-from KPIUtils.GlobalProjects.GSK.KPIGenerator import GSKGenerator
-from Projects.GSKSG.Utils.KPIToolBox import GSKSGToolBox
-from Trax.Utils.Conf.Configuration import Config
-from KPIUtils.GlobalProjects.GSK.Utils.KPIToolBox import GSKToolBox
-from mock import MagicMock, Mock
-from Trax.Utils.Testing.Case import TestUnitCase
 
+from Trax.Utils.Conf.Configuration import Config
+from Trax.Utils.Testing.Case import TestUnitCase
+from mock import MagicMock, Mock
 import pandas as pd
+from Projects.GSKSG.Utils.KPIToolBox import GSKSGToolBox
+from KPIUtils.GlobalProjects.GSK.KPIGenerator import GSKGenerator
 import os
+from KPIUtils.GlobalProjects.GSK.Utils.KPIToolBox import GSKToolBox
 
 
 __author__ = 'limorc'
