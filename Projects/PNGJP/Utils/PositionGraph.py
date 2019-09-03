@@ -1,34 +1,23 @@
+from KPIUtils_v2.Utils.Consts.DataProvider import MatchesConsts, ScifConsts
+from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
+from Trax.Cloud.Services.Connector.Keys import DbUsers
+from Trax.Utils.Logging.Logger import Log
+from Trax.Algo.Calculations.Core.DataProvider import Data
+from Projects.PNGJP.Data.LocalConsts import Consts
 
 import igraph
 import datetime
 import pandas as pd
 
-from Trax.Algo.Calculations.Core.DataProvider import Data
-from Trax.Cloud.Services.Connector.Keys import DbUsers
-from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
-from Trax.Utils.Logging.Logger import Log
+
 
 __author__ = 'Nimrod'
 
-VERTEX_FK_FIELD = 'scene_match_fk'
 
 
 class PNGJPPositionGraphs:
 
-    TOP = 'shelf_px_top'
-    BOTTOM = 'shelf_px_bottom'
-    LEFT = 'shelf_px_left'
-    RIGHT = 'shelf_px_right'
-
-    FLEXIBLE_MODE = 'Flexible Mode'
-    STRICT_MODE = 'Strict Mode'
-
-    ATTRIBUTES_TO_SAVE = ['scene_match_fk','product_name', 'product_fk', 'product_type', 'product_ean_code', 'sub_brand_name',
-                          'brand_name', 'category', 'sub_category', 'manufacturer_name', 'front_facing',
-                          'category_local_name', 'shelf_number', TOP, BOTTOM, LEFT, RIGHT, 'x_mm', 'y_mm',
-                          'bay_number', 'width_mm_advance', 'height_mm_advance']
-
-    def __init__(self, data_provider, flexibility=1, proximity_mode=FLEXIBLE_MODE, rds_conn=None):
+    def __init__(self, data_provider, flexibility=1, proximity_mode=Consts.FLEXIBLE_MODE, rds_conn=None):
         self.data_provider = data_provider
         self.flexibility = flexibility
         self.proximity_mode = proximity_mode
@@ -61,16 +50,16 @@ class PNGJPPositionGraphs:
 
     def get_filtered_matches(self, include_stacking=False):
         matches = self.data_provider[Data.MATCHES]
-        matches = matches.sort_values(by=['bay_number', 'shelf_number', 'facing_sequence_number'])
-        matches = matches.merge(self.get_match_product_in_scene(), how='left', on='scene_match_fk', suffixes=['', '_2'])
-        matches = matches.merge(self.data_provider[Data.ALL_PRODUCTS], how='left', on='product_fk', suffixes=['', '_3'])
-        matches = matches.merge(self.data_provider[Data.SCENE_ITEM_FACTS][['template_name', 'location_type',
-                                                                           'scene_id', 'scene_fk']],
-                                how='left', on='scene_fk', suffixes=['', '_4'])
-        if set(self.ATTRIBUTES_TO_SAVE).difference(matches.keys()):
+        matches = matches.sort_values(by=[MatchesConsts.BAY_NUMBER, MatchesConsts.SHELF_NUMBER, MatchesConsts.FACING_SEQUENCE_NUMBER])
+        matches = matches.merge(self.get_match_product_in_scene(), how='left', on=MatchesConsts.SCENE_MATCH_FK, suffixes=['', '_2'])
+        matches = matches.merge(self.data_provider[Data.ALL_PRODUCTS], how='left', on=MatchesConsts.PRODUCT_FK, suffixes=['', '_3'])
+        matches = matches.merge(self.data_provider[Data.SCENE_ITEM_FACTS][[ScifConsts.TEMPLATE_NAME, ScifConsts.LOCATION_TYPE,
+                                                                           ScifConsts.SCENE_ID, ScifConsts.SCENE_FK]],
+                                how='left', on=ScifConsts.SCENE_FK, suffixes=['', '_4'])
+        if set(Consts.ATTRIBUTES_TO_SAVE).difference(matches.keys()):
             missing_data = self.get_missing_data()
-            matches = matches.merge(missing_data, on='product_fk', how='left', suffixes=['', '_5'])
-        matches = matches.drop_duplicates(subset=[VERTEX_FK_FIELD])
+            matches = matches.merge(missing_data, on=MatchesConsts.PRODUCT_FK, how='left', suffixes=['', '_5'])
+        matches = matches.drop_duplicates(subset=[MatchesConsts.SCENE_MATCH_FK])
         return matches
 
     def get_missing_data(self):
@@ -104,19 +93,19 @@ class PNGJPPositionGraphs:
         if scene_id:
             scenes = [scene_id]
         else:
-            scenes = self.match_product_in_scene['scene_fk'].unique()
+            scenes = self.match_product_in_scene[MatchesConsts.SCENE_FK].unique()
         for scene in scenes:
-            matches = self.match_product_in_scene[self.match_product_in_scene['scene_fk'] == scene]
-            matches['distance_from_end_of_shelf'] = matches['n_shelf_items'] - matches['facing_sequence_number']
+            matches = self.match_product_in_scene[self.match_product_in_scene[MatchesConsts.SCENE_FK] == scene]
+            matches['distance_from_end_of_shelf'] = matches[MatchesConsts.N_SHELF_ITEMS] - matches[MatchesConsts.FACING_SEQUENCE_NUMBER]
             scene_graph = igraph.Graph(directed=True)
             edges = []
             for f in xrange(len(matches)):
                 facing = matches.iloc[f]
-                facing_name = str(facing[VERTEX_FK_FIELD])
+                facing_name = str(facing[MatchesConsts.SCENE_MATCH_FK])
                 scene_graph.add_vertex(facing_name)
                 # adding attributes to vertex
                 vertex = scene_graph.vs.find(facing_name)
-                for attribute in self.ATTRIBUTES_TO_SAVE:
+                for attribute in Consts.ATTRIBUTES_TO_SAVE:
                     vertex[attribute] = facing[attribute]
 
                 surrounding_products = self.get_surrounding_products(facing, matches)
@@ -137,87 +126,87 @@ class PNGJPPositionGraphs:
         :param matches: The filtered match_product_in_scene data frame for the relevant scene.
         :return: The surrounding SKUs to the anchor (from all sides), as data frames.
         """
-        anchor_top = int(anchor[self.TOP])
-        anchor_bottom = int(anchor[self.BOTTOM])
+        anchor_top = int(anchor[MatchesConsts.SHELF_PX_TOP])
+        anchor_bottom = int(anchor[MatchesConsts.SHELF_PX_BOTTOM])
         anchor_y = anchor_bottom - anchor_top
         height_flexibility = ((anchor_bottom - anchor_top) * (self.flexibility - 1)) / 2
         anchor_top -= height_flexibility
         anchor_bottom += height_flexibility
 
-        anchor_left = int(anchor[self.LEFT])
-        anchor_right = int(anchor[self.RIGHT])
+        anchor_left = int(anchor[MatchesConsts.SHELF_PX_LEFT])
+        anchor_right = int(anchor[MatchesConsts.SHELF_PX_RIGHT])
         anchor_x = anchor_right - anchor_left
         width_flexibility = ((anchor_right - anchor_left) * (self.flexibility - 1)) / 2
         anchor_left -= width_flexibility
         anchor_right += width_flexibility
 
-        anchor_shelf_number = int(anchor['shelf_number'])
-        anchor_shelf_number_from_bottom = int(anchor['shelf_number_from_bottom'])
-        anchor_bay_number = int(anchor['bay_number'])
-        anchor_facing = int(anchor['facing_sequence_number'])
-        anchor_shelf_items = int(anchor['n_shelf_items'])
+        anchor_shelf_number = int(anchor[MatchesConsts.SHELF_NUMBER])
+        anchor_shelf_number_from_bottom = int(anchor[MatchesConsts.SHELF_NUMBER_FROM_BOTTOM])
+        anchor_bay_number = int(anchor[MatchesConsts.BAY_NUMBER])
+        anchor_facing = int(anchor[MatchesConsts.FACING_SEQUENCE_NUMBER])
+        anchor_shelf_items = int(anchor[MatchesConsts.N_SHELF_ITEMS])
 
         # checking top & bottom
-        if self.proximity_mode == self.STRICT_MODE:
-            filtered_matches = matches[(matches['bay_number'] == anchor_bay_number) &
-                                       (matches[self.LEFT] < anchor_x) & (matches[self.RIGHT] > anchor_x)]
+        if self.proximity_mode == Consts.STRICT_MODE:
+            filtered_matches = matches[(matches[MatchesConsts.BAY_NUMBER] == anchor_bay_number) &
+                                       (matches[MatchesConsts.SHELF_PX_LEFT] < anchor_x) & (matches[MatchesConsts.SHELF_PX_RIGHT] > anchor_x)]
         else:
-            filtered_matches = matches[(matches['bay_number'] == anchor_bay_number) &
-                                       (matches[self.LEFT].between(anchor_left, anchor_right) |
-                                        matches[self.RIGHT].between(anchor_left, anchor_right) |
-                                        ((matches[self.LEFT] < anchor_left) & (anchor_left < matches[self.RIGHT])) |
-                                        ((matches[self.LEFT] < anchor_right) & (anchor_right < matches[self.RIGHT])))]
+            filtered_matches = matches[(matches[MatchesConsts.BAY_NUMBER] == anchor_bay_number) &
+                                       (matches[MatchesConsts.SHELF_PX_LEFT].between(anchor_left, anchor_right) |
+                                        matches[MatchesConsts.SHELF_PX_RIGHT].between(anchor_left, anchor_right) |
+                                        ((matches[MatchesConsts.SHELF_PX_LEFT] < anchor_left) & (anchor_left < matches[MatchesConsts.SHELF_PX_RIGHT])) |
+                                        ((matches[MatchesConsts.SHELF_PX_LEFT] < anchor_right) & (anchor_right < matches[MatchesConsts.SHELF_PX_RIGHT])))]
         if anchor_shelf_number == 1:
             surrounding_top = []
         else:
-            surrounding_top = filtered_matches[matches['shelf_number'] == anchor_shelf_number - 1][VERTEX_FK_FIELD]
+            surrounding_top = filtered_matches[matches[MatchesConsts.SHELF_NUMBER] == anchor_shelf_number - 1][MatchesConsts.SCENE_MATCH_FK]
         if anchor_shelf_number_from_bottom == 1:
             surrounding_bottom = []
         else:
-            surrounding_bottom = filtered_matches[matches['shelf_number'] == anchor_shelf_number + 1][VERTEX_FK_FIELD]
+            surrounding_bottom = filtered_matches[matches[MatchesConsts.SHELF_NUMBER] == anchor_shelf_number + 1][MatchesConsts.SCENE_MATCH_FK]
 
         # checking left & right
-        filtered_matches = matches[(matches['shelf_number'] == anchor_shelf_number) &
-                                   (matches['bay_number'] == anchor_bay_number)]
+        filtered_matches = matches[(matches[MatchesConsts.SHELF_NUMBER] == anchor_shelf_number) &
+                                   (matches[MatchesConsts.BAY_NUMBER] == anchor_bay_number)]
         if anchor_facing > 1:
-            surrounding_left = filtered_matches[filtered_matches['facing_sequence_number'] ==
-                                                anchor_facing - 1][VERTEX_FK_FIELD]
+            surrounding_left = filtered_matches[filtered_matches[MatchesConsts.FACING_SEQUENCE_NUMBER] ==
+                                                anchor_facing - 1][MatchesConsts.SCENE_MATCH_FK]
         elif anchor_bay_number == 1:
             surrounding_left = []
         else:
-            left_bay = matches[(matches['bay_number'] == anchor_bay_number - 1) &
+            left_bay = matches[(matches[MatchesConsts.BAY_NUMBER] == anchor_bay_number - 1) &
                                (matches['distance_from_end_of_shelf'] == 0)]
 
-            if self.proximity_mode == self.STRICT_MODE:
-                surrounding_left = left_bay[(left_bay[self.TOP] < anchor_y) & (left_bay[self.BOTTOM] > anchor_y)]
+            if self.proximity_mode == Consts.STRICT_MODE:
+                surrounding_left = left_bay[(left_bay[MatchesConsts.SHELF_PX_TOP] < anchor_y) & (left_bay[MatchesConsts.SHELF_PX_BOTTOM] > anchor_y)]
             else:
-                surrounding_left = left_bay[(left_bay[self.TOP].between(anchor_top, anchor_bottom) |
-                                             left_bay[self.BOTTOM].between(anchor_top, anchor_bottom) |
-                                             ((left_bay[self.TOP] < anchor_top) &
-                                              (anchor_top < left_bay[self.BOTTOM])) |
-                                             ((left_bay[self.TOP] < anchor_bottom) &
-                                              (anchor_bottom < left_bay[self.BOTTOM])))]
-            surrounding_left = surrounding_left[VERTEX_FK_FIELD]
+                surrounding_left = left_bay[(left_bay[MatchesConsts.SHELF_PX_TOP].between(anchor_top, anchor_bottom) |
+                                             left_bay[MatchesConsts.SHELF_PX_BOTTOM].between(anchor_top, anchor_bottom) |
+                                             ((left_bay[MatchesConsts.SHELF_PX_TOP] < anchor_top) &
+                                              (anchor_top < left_bay[MatchesConsts.SHELF_PX_BOTTOM])) |
+                                             ((left_bay[MatchesConsts.SHELF_PX_TOP] < anchor_bottom) &
+                                              (anchor_bottom < left_bay[MatchesConsts.SHELF_PX_BOTTOM])))]
+            surrounding_left = surrounding_left[MatchesConsts.SCENE_MATCH_FK]
 
         if anchor_facing < anchor_shelf_items:
-            surrounding_right = filtered_matches[filtered_matches['facing_sequence_number'] ==
-                                                 anchor_facing + 1][VERTEX_FK_FIELD]
+            surrounding_right = filtered_matches[filtered_matches[MatchesConsts.FACING_SEQUENCE_NUMBER] ==
+                                                 anchor_facing + 1][MatchesConsts.SCENE_MATCH_FK]
         else:
-            right_bay = matches[(matches['bay_number'] == anchor_bay_number + 1) &
-                                (matches['facing_sequence_number'] == 1)]
+            right_bay = matches[(matches[MatchesConsts.BAY_NUMBER] == anchor_bay_number + 1) &
+                                (matches[MatchesConsts.FACING_SEQUENCE_NUMBER] == 1)]
             if right_bay.empty:
                 surrounding_right = []
             else:
-                if self.proximity_mode == self.STRICT_MODE:
-                    surrounding_right = right_bay[(right_bay[self.TOP] < anchor_y) & (right_bay[self.BOTTOM] > anchor_y)]
+                if self.proximity_mode == Consts.STRICT_MODE:
+                    surrounding_right = right_bay[(right_bay[MatchesConsts.SHELF_PX_TOP] < anchor_y) & (right_bay[MatchesConsts.SHELF_PX_BOTTOM] > anchor_y)]
                 else:
-                    surrounding_right = right_bay[(right_bay[self.TOP].between(anchor_top, anchor_bottom) |
-                                                   right_bay[self.BOTTOM].between(anchor_top, anchor_bottom) |
-                                                   ((right_bay[self.TOP] < anchor_top) &
-                                                    (anchor_top < right_bay[self.BOTTOM])) |
-                                                   ((right_bay[self.TOP] < anchor_bottom) &
-                                                    (anchor_bottom < right_bay[self.BOTTOM])))]
-                surrounding_right = surrounding_right[VERTEX_FK_FIELD]
+                    surrounding_right = right_bay[(right_bay[MatchesConsts.SHELF_PX_TOP].between(anchor_top, anchor_bottom) |
+                                                   right_bay[MatchesConsts.SHELF_PX_BOTTOM].between(anchor_top, anchor_bottom) |
+                                                   ((right_bay[MatchesConsts.SHELF_PX_TOP] < anchor_top) &
+                                                    (anchor_top < right_bay[MatchesConsts.SHELF_PX_BOTTOM])) |
+                                                   ((right_bay[MatchesConsts.SHELF_PX_TOP] < anchor_bottom) &
+                                                    (anchor_bottom < right_bay[MatchesConsts.SHELF_PX_BOTTOM])))]
+                surrounding_right = surrounding_right[MatchesConsts.SCENE_MATCH_FK]
 
         return dict(top=surrounding_top, bottom=surrounding_bottom,
                     left=surrounding_left, right=surrounding_right)
@@ -227,7 +216,7 @@ class PNGJPPositionGraphs:
         This function creates a list of lists:
         Each list represents a shelf in the scene - with the given entity for each facing, from left to right.
         """
-        if entity not in self.ATTRIBUTES_TO_SAVE:
+        if entity not in Consts.ATTRIBUTES_TO_SAVE:
             Log.warning("Entity '{}' is not set as an attribute in the graph".format(entity))
             return None
         graph = self.get(scene_id).copy()
