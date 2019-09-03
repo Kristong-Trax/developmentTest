@@ -1,12 +1,12 @@
-
-from Trax.Algo.Calculations.Core.DataProvider import Data
-
 from KPIUtils.GlobalProjects.DIAGEO.KPIGenerator import DIAGEOGenerator
 from KPIUtils_v2.DB.CommonV2 import Common as CommonV2
+from Trax.Algo.Calculations.Core.DataProvider import Data
+
 __author__ = 'michaela'
 
 
-class DIAGEONGToolBox:
+class DIAGEONGSANDToolBox:
+
     def __init__(self, data_provider, output):
         self.data_provider = data_provider
         self.output = output
@@ -32,3 +32,4 @@ class DIAGEONGToolBox:
 
         # committing to the new tables
         self.commonV2.commit_results_data()
+
