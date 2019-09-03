@@ -1,6 +1,6 @@
-
-from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScript
 from Projects.TNUVAILV2.KPIGenerator import Generator
+from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScript
+
 
 __author__ = 'idanr'
 
