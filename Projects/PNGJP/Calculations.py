@@ -1,9 +1,9 @@
-# from Trax.Utils.Conf.Configuration import Config
 from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScript
-from Projects.PNGJP.KPIGenerator import PNGJPGenerator
 # from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
+# from Trax.Utils.Conf.Configuration import Config
 # from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
 
+from Projects.PNGJP.KPIGenerator import PNGJPGenerator
 
 __author__ = 'Nimrod'
 
@@ -19,7 +19,7 @@ class PNGJPCalculations(BaseCalculationsScript):
 #     Config.init()
 #     project_name = 'pngjp'
 #     data_provider = KEngineDataProvider(project_name)
-#     session = 'ED9E7E80-5A03-478F-ADAF-F3535F9B0DED'
+#     session = '8925E0EE-8457-496B-9164-D28AFAB28161'
 #     data_provider.load_session_data(session)
 #     output = Output()
 #     PNGJPCalculations(data_provider, output).run_project_calculations()
