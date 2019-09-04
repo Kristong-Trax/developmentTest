@@ -1,11 +1,11 @@
 from Trax.Apps.Core.Testing.BaseCase import TestFunctionalCase
-from Trax.Data.Testing.SeedNew import Seeder
+# from Trax.Data.Testing.SeedNew import Seeder
 # from Trax.Utils.Testing.Case import TestUnitCase
 from mock import MagicMock
 from Projects.MARSUAE_SAND.Tests.data_test_unit_marsuae_sand import DataTestUnitMarsuae
 from Projects.MARSUAE_SAND.Utils.KPIToolBox import MARSUAE_SANDToolBox
 import pandas as pd
-import numpy as np
+# import numpy as np
 from pandas.util.testing import assert_frame_equal
 
 __author__ = 'natalyak'

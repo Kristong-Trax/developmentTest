@@ -6,7 +6,7 @@ from Trax.Utils.Logging.Logger import Log
 import pandas as pd
 import json
 import numpy as np
-import os
+# import os
 import copy
 
 from KPIUtils_v2.DB.CommonV2 import Common
@@ -79,6 +79,12 @@ class MARSUAE_SANDToolBox:
     # scif / matches columns
     SCENE_FK = 'scene_fk'
     PRODUCT_FK = 'product_fk'
+
+    POPULATION = 'population'
+    EXCLUDE = 'exclude'
+    DENOM_FILTERS = 'denom_filters'
+    NUM_FILTERS = 'num_filters'
+    INCLUDE = 'include'
 
     def __init__(self, data_provider, output):
         self.output = output
@@ -344,14 +350,14 @@ class MARSUAE_SANDToolBox:
             include_filters.update({param_row[self.PARAM_1_NUM_TYPE]: param_row[self.PARAM_1_NUM_VALUE]})
         if param_row[self.PARAM_2_DENOM_TYPE]:
             include_filters.update({param_row[self.PARAM_2_DENOM_TYPE]: param_row[self.PARAM_2_DENOM_VALUE]})
-        condition_filters = {'population': {'include': [include_filters]}}
+        condition_filters = {self.POPULATION: {self.INCLUDE: [include_filters]}}
         exclude_filters = {}
         if param_row[self.EXCLUDE_TYPE_1]:
             exclude_filters.update({param_row[self.EXCLUDE_TYPE_1]: param_row[self.EXCLUDE_VALUE_1]})
         if param_row.get(self.EXCLUDE_TYPE_2) and param_row[self.EXCLUDE_TYPE_2] == param_row[self.EXCLUDE_TYPE_2]:
             exclude_filters.update({param_row[self.EXCLUDE_TYPE_2]: param_row[self.EXCLUDE_VALUE_2]})
         if exclude_filters:
-            condition_filters['population'].update({'exclude': exclude_filters})
+            condition_filters[self.POPULATION].update({self.EXCLUDE: exclude_filters})
         return condition_filters
 
     def get_sos_filters(self, param_row):
@@ -362,26 +368,26 @@ class MARSUAE_SANDToolBox:
         denominator_filters = {}
         if param_row[self.PARAM_2_DENOM_TYPE]:
             denominator_filters.update({param_row[self.PARAM_2_DENOM_TYPE]: param_row[self.PARAM_2_DENOM_VALUE]})
-        sos_filters = {'population': {'include': [denominator_filters]}}
+        sos_filters = {self.POPULATION: {self.INCLUDE: [denominator_filters]}}
 
         exclude_filters = {}
         if param_row[self.EXCLUDE_TYPE_1]:
             exclude_filters.update({param_row[self.EXCLUDE_TYPE_1]: param_row[self.EXCLUDE_VALUE_1]})
         if exclude_filters:
-            sos_filters['population'].update({'exclude': exclude_filters})
+            sos_filters[self.POPULATION].update({self.EXCLUDE: exclude_filters})
 
         num_filters = {}
         if param_row[self.PARAM_1_NUM_TYPE]:
             num_filters.update({param_row[self.PARAM_1_NUM_TYPE]: param_row[self.PARAM_1_NUM_VALUE]})
         numerator_filters = copy.deepcopy(sos_filters)
-        numerator_filters['population']['include'][0].update(num_filters)
+        numerator_filters[self.POPULATION][self.INCLUDE][0].update(num_filters)
 
-        final_filters = {'denom_filters': sos_filters, 'num_filters': numerator_filters}
+        final_filters = {self.DENOM_FILTERS: sos_filters, self.NUM_FILTERS: numerator_filters}
 
         if param_row.get(self.EXCLUDE_TYPE_2) and (param_row[self.EXCLUDE_TYPE_2] == param_row[self.EXCLUDE_TYPE_2]):
             if not exclude_filters:
-                final_filters.get('denom_filters').get('population')['exclude'] = exclude_filters
-                final_filters.get('num_filters').get('population')['exclude'] = exclude_filters
+                final_filters.get(self.DENOM_FILTERS).get(self.POPULATION)[self.EXCLUDE] = exclude_filters
+                final_filters.get(self.NUM_FILTERS).get(self.POPULATION)[self.EXCLUDE] = exclude_filters
             main_filters, additional_filters = self.update_sos_filters_with_additional_filters(final_filters, param_row)
             return main_filters, additional_filters
         return final_filters, None
@@ -391,19 +397,19 @@ class MARSUAE_SANDToolBox:
 
     def update_sos_filters_with_additional_filters(self, final_filters, param_row):
         main_filters = copy.deepcopy(final_filters)
-        main_filters.get('denom_filters').get('population').get('exclude'). \
+        main_filters.get(self.DENOM_FILTERS).get(self.POPULATION).get(self.EXCLUDE). \
             update({param_row[self.EXCLUDE_TYPE_2]: param_row[self.EXCLUDE_VALUE_2]})
-        main_filters.get('num_filters').get('population').get('exclude'). \
+        main_filters.get(self.NUM_FILTERS).get(self.POPULATION).get(self.EXCLUDE). \
             update({param_row[self.EXCLUDE_TYPE_2]: param_row[self.EXCLUDE_VALUE_2]})
         if not param_row[self.EXCLUDE_EXCEPTION_TYPE_2] or not\
                 param_row[self.EXCLUDE_EXCEPTION_TYPE_2] == param_row[self.EXCLUDE_EXCEPTION_TYPE_2]:
             return main_filters, None
 
         additional_filters = copy.deepcopy(final_filters)
-        additional_filters.get('denom_filters').get('population').get('include')[0]. \
+        additional_filters.get(self.DENOM_FILTERS).get(self.POPULATION).get(self.INCLUDE)[0]. \
             update({param_row[self.EXCLUDE_TYPE_2]: param_row[self.EXCLUDE_VALUE_2],
                     param_row[self.EXCLUDE_EXCEPTION_TYPE_2]: param_row[self.EXCLUDE_EXCEPTION_VALUE_2]})
-        additional_filters.get('num_filters').get('population').get('include')[0]. \
+        additional_filters.get(self.NUM_FILTERS).get(self.POPULATION).get(self.INCLUDE)[0]. \
             update({param_row[self.EXCLUDE_TYPE_2]: param_row[self.EXCLUDE_VALUE_2],
                     param_row[self.EXCLUDE_EXCEPTION_TYPE_2]: param_row[self.EXCLUDE_EXCEPTION_VALUE_2]})
         return main_filters, additional_filters
@@ -595,15 +601,15 @@ class MARSUAE_SANDToolBox:
         general_filters = self.get_general_filters(param_row)
         sos_filters, additional_filters = self.get_sos_filters(param_row)
         if sos_filters is not None:
-            sos_filters['num_filters'].update(general_filters)
-            sos_filters['denom_filters'].update(general_filters)
-            numerator_length = self.calculate_linear_space(sos_filters['num_filters'])
-            denominator_length = self.calculate_linear_space(sos_filters['denom_filters'])
+            sos_filters[self.NUM_FILTERS].update(general_filters)
+            sos_filters[self.DENOM_FILTERS].update(general_filters)
+            numerator_length = self.calculate_linear_space(sos_filters[self.NUM_FILTERS])
+            denominator_length = self.calculate_linear_space(sos_filters[self.DENOM_FILTERS])
             if additional_filters is not None:
-                additional_filters['num_filters'].update(general_filters)
-                additional_filters['denom_filters'].update(general_filters)
-                add_numerator_length = self.calculate_linear_space(additional_filters['num_filters'])
-                add_denominator_length = self.calculate_linear_space(additional_filters['denom_filters'])
+                additional_filters[self.NUM_FILTERS].update(general_filters)
+                additional_filters[self.DENOM_FILTERS].update(general_filters)
+                add_numerator_length = self.calculate_linear_space(additional_filters[self.NUM_FILTERS])
+                add_denominator_length = self.calculate_linear_space(additional_filters[self.DENOM_FILTERS])
                 numerator_length += add_numerator_length
                 denominator_length += add_denominator_length
 
