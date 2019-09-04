@@ -66,6 +66,10 @@ class MARSUAE_SANDToolBox:
     PARAM_2_DENOM_VALUE = 'param_value_2/denom_value'
     EXCLUDE_TYPE_1 = 'exclude_param_type_1'
     EXCLUDE_VALUE_1 = 'exclude_param_value_1'
+    EXCLUDE_TYPE_2 = 'exclude_param_type_2'
+    EXCLUDE_VALUE_2 = 'exclude_param_value_2'
+    EXCLUDE_EXCEPTION_TYPE_2 = 'exclude_param_2_exception_type'
+    EXCLUDE_EXCEPTION_VALUE_2 = 'exclude_param_2_exception_value'
 
     TOTAL_UAE_SCORE = 'Total UAE Score'
     FIXED_TARGET_FOR_MR = 80
@@ -344,6 +348,8 @@ class MARSUAE_SANDToolBox:
         exclude_filters = {}
         if param_row[self.EXCLUDE_TYPE_1]:
             exclude_filters.update({param_row[self.EXCLUDE_TYPE_1]: param_row[self.EXCLUDE_VALUE_1]})
+        if param_row.get(self.EXCLUDE_TYPE_2) and param_row[self.EXCLUDE_TYPE_2] == param_row[self.EXCLUDE_TYPE_2]:
+            exclude_filters.update({param_row[self.EXCLUDE_TYPE_2]: param_row[self.EXCLUDE_VALUE_2]})
         if exclude_filters:
             condition_filters['population'].update({'exclude': exclude_filters})
         return condition_filters
@@ -352,7 +358,7 @@ class MARSUAE_SANDToolBox:
         if not param_row[self.PARAM_2_DENOM_TYPE] or not param_row[self.PARAM_1_NUM_TYPE]:
             Log.error('Sos filters are incorrect for kpi {}. '
                       'Kpi is not calculated'.format(param_row[self.KPI_TYPE]))
-            return None
+            return None, None
         denominator_filters = {}
         if param_row[self.PARAM_2_DENOM_TYPE]:
             denominator_filters.update({param_row[self.PARAM_2_DENOM_TYPE]: param_row[self.PARAM_2_DENOM_VALUE]})
@@ -372,11 +378,35 @@ class MARSUAE_SANDToolBox:
 
         final_filters = {'denom_filters': sos_filters, 'num_filters': numerator_filters}
 
+        if param_row.get(self.EXCLUDE_TYPE_2) and (param_row[self.EXCLUDE_TYPE_2] == param_row[self.EXCLUDE_TYPE_2]):
+            if not exclude_filters:
+                final_filters.get('denom_filters').get('population')['exclude'] = exclude_filters
+                final_filters.get('num_filters').get('population')['exclude'] = exclude_filters
+            main_filters, additional_filters = self.update_sos_filters_with_additional_filters(final_filters, param_row)
+            return main_filters, additional_filters
+        return final_filters, None
         # filters = {'location': {'scene_fk': [27898, 27896, 27894, 27859, 27892, 27854]},
         #            'population': {'exclude': {'template_name': 'Checkout Chocolate'},
         #                           'include': [{'category_fk': 6, 'manufacturer_fk': 3}]}}
 
-        return final_filters
+    def update_sos_filters_with_additional_filters(self, final_filters, param_row):
+        main_filters = copy.deepcopy(final_filters)
+        main_filters.get('denom_filters').get('population').get('exclude'). \
+            update({param_row[self.EXCLUDE_TYPE_2]: param_row[self.EXCLUDE_VALUE_2]})
+        main_filters.get('num_filters').get('population').get('exclude'). \
+            update({param_row[self.EXCLUDE_TYPE_2]: param_row[self.EXCLUDE_VALUE_2]})
+        if not param_row[self.EXCLUDE_EXCEPTION_TYPE_2] or not\
+                param_row[self.EXCLUDE_EXCEPTION_TYPE_2] == param_row[self.EXCLUDE_EXCEPTION_TYPE_2]:
+            return main_filters, None
+
+        additional_filters = copy.deepcopy(final_filters)
+        additional_filters.get('denom_filters').get('population').get('include')[0]. \
+            update({param_row[self.EXCLUDE_TYPE_2]: param_row[self.EXCLUDE_VALUE_2],
+                    param_row[self.EXCLUDE_EXCEPTION_TYPE_2]: param_row[self.EXCLUDE_EXCEPTION_VALUE_2]})
+        additional_filters.get('num_filters').get('population').get('include')[0]. \
+            update({param_row[self.EXCLUDE_TYPE_2]: param_row[self.EXCLUDE_VALUE_2],
+                    param_row[self.EXCLUDE_EXCEPTION_TYPE_2]: param_row[self.EXCLUDE_EXCEPTION_VALUE_2]})
+        return main_filters, additional_filters
 
     def get_kpi_result_value_pk_by_value(self, value):
         pk = None
@@ -563,12 +593,20 @@ class MARSUAE_SANDToolBox:
 
     def calculate_linear_sos(self, param_row):
         general_filters = self.get_general_filters(param_row)
-        sos_filters = self.get_sos_filters(param_row)
+        sos_filters, additional_filters = self.get_sos_filters(param_row)
         if sos_filters is not None:
             sos_filters['num_filters'].update(general_filters)
             sos_filters['denom_filters'].update(general_filters)
             numerator_length = self.calculate_linear_space(sos_filters['num_filters'])
             denominator_length = self.calculate_linear_space(sos_filters['denom_filters'])
+            if additional_filters is not None:
+                additional_filters['num_filters'].update(general_filters)
+                additional_filters['denom_filters'].update(general_filters)
+                add_numerator_length = self.calculate_linear_space(additional_filters['num_filters'])
+                add_denominator_length = self.calculate_linear_space(additional_filters['denom_filters'])
+                numerator_length += add_numerator_length
+                denominator_length += add_denominator_length
+
             result = numerator_length / denominator_length if denominator_length else 0
             score, weight = self.get_score(result=result, param_row=param_row)
 
