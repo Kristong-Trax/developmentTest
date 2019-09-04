@@ -349,7 +349,7 @@ class HEINZCRToolBox:
                 #                                           score_after_actions=manufacturer)
                 self.common_v2.write_to_db_result(kpi_fk, numerator_id=numerator_id, numerator_result=numerator,
                                                   denominator_id=denominator_id, denominator_result=denominator,
-                                                  result=target, score=sos,
+                                                  result=target, score=sos, target=target,
                                                   score_after_actions=manufacturer, identifier_parent=identifier_parent,
                                                   should_enter=should_enter)
             except Exception as e:
