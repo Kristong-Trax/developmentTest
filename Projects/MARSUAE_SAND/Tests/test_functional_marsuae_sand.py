@@ -718,22 +718,6 @@ class TestMarsuaeSand(TestFunctionalCase):
         check = self.check_results(tool_box.atomic_kpi_results, expected_result)
         self.assertEquals(check, 1)
 
-    # def test_wtf(self):
-    #     probe_group, matches, scene = self.create_scif_matches_stitch_groups_data_mocks(
-    #         DataTestUnitMarsuae.test_case_1, [11])
-    #     self.mock_store_data_test_case(DataTestUnitMarsuae.store_data_supers_a)
-    #     tool_box = MARSUAE_SANDToolBox(self.data_provider_mock, self.output)
-    #     store_atomics = tool_box.get_store_atomic_kpi_parameters()
-    #     tool_box.build_tiers_for_atomics(store_atomics)
-    #     param_row = self.get_parameter_series_for_kpi_calculation(store_atomics, 'SOS - Chocolate Main')
-    #     tool_box.calculate_atomic_results(param_row)
-    #     kpi_result = tool_box.atomic_kpi_results
-    #     kpi_result['result'] = kpi_result['result'].apply(lambda x: round(x, 5))
-    #     expected_result = {'kpi_fk': 3032, 'result': round(2/22.0*100, 5), 'score': 0, 'weight': 15,
-    #                        'score_by_weight': 0}
-    #     check = self.check_results(tool_box.atomic_kpi_results, expected_result)
-    #     self.assertEquals(check, 1)
-
     @staticmethod
     def check_results(results_df, expected_results_dict):
         column = []
