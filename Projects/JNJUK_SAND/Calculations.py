@@ -32,6 +32,7 @@ class JNJUKCalculations(BaseCalculationsScript):
         jnj_generator.promo_calc_recovery()
         jnj_generator.eye_hand_level_sos_calculation(eye_hand_lvl_template)
         jnj_generator.general_assortment_calculation()
+        jnj_generator.osa_calculation()
         common.commit_results_data()
         jnj_generator.tool_box.commit_osa_queries()
         self.timer.stop('KPIGenerator.run_project_calculations')
