@@ -34,13 +34,13 @@ class INBEVNLINBEVBEGenerator:
             Log.warning('Scene item facts is empty for this session')
             return
         self.tool_box.tools.update_templates()
-        set_names = ['Product Blocking', 'Linear Share of Shelf',
-                     'OSA', 'Pallet Presence', 'Share of Assortment', 'Product Stacking']
+        set_names = ['Product Blocking', 'Linear Share of Shelf', 'OSA', 'Pallet Presence', 'Share of Assortment',
+                     'Product Stacking', 'Shelf Level', 'Linear Share of Shelf vs. Target', 'Shelf Impact Score',
+                     'Product Group Blocking']
+        set_names = [
+                     'Product Group Blocking']
         for kpi_set_name in set_names:
             self.tool_box.main_calculation(set_name=kpi_set_name)
-        self.tool_box.main_calculation(set_name='Shelf Level')
-        self.tool_box.main_calculation(set_name='Linear Share of Shelf vs. Target')
-        self.tool_box.main_calculation(set_name='Shelf Impact Score')
         self.tool_box.save_custom_scene_item_facts_results()
         self.tool_box.save_linear_length_results()
         Log.info('Downloading templates took {}'.format(self.tool_box.download_time))
