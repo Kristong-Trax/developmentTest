@@ -577,6 +577,7 @@ class DIAGEOGTRToolBox:
                     print (" scene_policy:{} is not matching with template_name(in DB) ".format(template_name))
                 continue
 
+            denominator_count = 0
             for row, scene_info in df_scene_info.iterrows():
                 scene_fk = scene_info[DIAGEOGTRConsts.SCENE_FK]
                 template_fk = scene_info[DIAGEOGTRConsts.TEMPLATE_FK]
@@ -595,6 +596,7 @@ class DIAGEOGTRToolBox:
                         print "Number of bays is zero"
                     continue
 
+                denominator_count += df_max_bay[DIAGEOGTRConsts.BAY_NUMBER].iloc[0]
                 total_num_of_displays = df_max_bay[DIAGEOGTRConsts.BAY_NUMBER].iloc[0]
                 total_num_of_displays_2 = df_max_bay[DIAGEOGTRConsts.BAY_NUMBER].iloc[0]
 
@@ -603,7 +605,7 @@ class DIAGEOGTRToolBox:
                     if df_bay.empty:
                         continue
 
-                    df_bay = df_bay[[entity_key_0, entity_key_1, entity_key_2,entity_key_3,entity_key_4]]
+                    df_bay = df_bay[[entity_key_0, entity_key_1, entity_key_2, entity_key_3, entity_key_4]]
 
                     if exclude_empty == 'y':
                         df_bay = df_bay[df_bay[DIAGEOGTRConsts.PRODUCT_FK]!=DIAGEOGTRConsts.EMPTY]
@@ -650,30 +652,30 @@ class DIAGEOGTRToolBox:
                     kpi_result[DIAGEOGTRConsts.TOTAL_NUM_OF_DISPLAYS] = total_num_of_displays_2
                     kpi_results[entity_key_value] = kpi_result
 
-                for key, kpi_result in kpi_results.items():
-                    if kpi_result[DIAGEOGTRConsts.TOTAL_NUM_OF_DISPLAYS] != 0:
-                        numerator = kpi_result[DIAGEOGTRConsts.NUM_OF_DISPLAYS]
-                        denominator = float(kpi_result[DIAGEOGTRConsts.TOTAL_NUM_OF_DISPLAYS])
-                        score_pure_displays = round(numerator/denominator, 6)
-                    else:
-                        score_pure_displays = 0
+            for key, kpi_result in kpi_results.items():
+                if denominator_count != 0:
+                    numerator = kpi_result[DIAGEOGTRConsts.NUM_OF_DISPLAYS]
+                    denominator = float(denominator_count)
+                    score_pure_displays = round(numerator/denominator, 6)
+                else:
+                    score_pure_displays = 0
 
-                    kpi_result['score_per_displays'] = score_pure_displays
-                    kpi_result[DIAGEOGTRConsts.KPI_LEVEL_2_FK] = kpi_level_2_fk
+                kpi_result['score_per_displays'] = score_pure_displays
+                kpi_result[DIAGEOGTRConsts.KPI_LEVEL_2_FK] = kpi_level_2_fk
 
-                    if kpi_level_2_fk != 0:
-                        self.commonV2.write_to_db_result(fk=kpi_result[DIAGEOGTRConsts.KPI_LEVEL_2_FK],
-                                                         numerator_id=kpi_result[DIAGEOGTRConsts.NUMERATOR_ID],
-                                                         denominator_id=kpi_result[DIAGEOGTRConsts.DENOMINATOR_ID],
-                                                         context_id=kpi_result[DIAGEOGTRConsts.CONTEXT_ID],
-                                                         numerator_result=kpi_result[DIAGEOGTRConsts.NUM_OF_DISPLAYS],
-                                                         denominator_result=kpi_result[DIAGEOGTRConsts.TOTAL_NUM_OF_DISPLAYS],
-                                                         denominator_result_after_actions=kpi_result[DIAGEOGTRConsts.DENOMINATOR_RESULT_AFTER_ACTIONS],
-                                                         score_after_actions=kpi_result[DIAGEOGTRConsts.SCORE_AFTER_ACTIONS],
-                                                         result=kpi_result['score_per_displays'],
-                                                         score=kpi_result['score_per_displays'])
+                if kpi_level_2_fk != 0:
+                    self.commonV2.write_to_db_result(fk=kpi_result[DIAGEOGTRConsts.KPI_LEVEL_2_FK],
+                                                     numerator_id=kpi_result[DIAGEOGTRConsts.NUMERATOR_ID],
+                                                     denominator_id=kpi_result[DIAGEOGTRConsts.DENOMINATOR_ID],
+                                                     context_id=kpi_result[DIAGEOGTRConsts.CONTEXT_ID],
+                                                     numerator_result=kpi_result[DIAGEOGTRConsts.NUM_OF_DISPLAYS],
+                                                     denominator_result=denominator_count,
+                                                     denominator_result_after_actions=kpi_result[DIAGEOGTRConsts.DENOMINATOR_RESULT_AFTER_ACTIONS],
+                                                     score_after_actions=kpi_result[DIAGEOGTRConsts.SCORE_AFTER_ACTIONS],
+                                                     result=kpi_result['score_per_displays'],
+                                                     score=kpi_result['score_per_displays'])
 
-                kpi_results = {}
+            kpi_results = {}
 
     def calculate_share_of_display_grouped_scenes_single_entity(self, kpi_set_name, kpi_name, template_names,
                                                                 entity_key_1, exclude_empty, exclude_irrelevant):
@@ -711,6 +713,8 @@ class DIAGEOGTRToolBox:
                     print (" scene_policy:{} is not matching with template_name(in DB) ".format(template_name))
                 continue
 
+            denominator_count = 0
+
             for row, scene_info in df_scene_info.iterrows():
                 scene_fk = scene_info[DIAGEOGTRConsts.SCENE_FK]
                 template_fk = scene_info[DIAGEOGTRConsts.TEMPLATE_FK]
@@ -729,6 +733,7 @@ class DIAGEOGTRToolBox:
                         print "Number of bays is zero"
                     continue
 
+                denominator_count += df_max_bay[DIAGEOGTRConsts.BAY_NUMBER].iloc[0]
                 total_num_of_displays = df_max_bay[DIAGEOGTRConsts.BAY_NUMBER].iloc[0]
                 total_num_of_displays_2 = df_max_bay[DIAGEOGTRConsts.BAY_NUMBER].iloc[0]
 
@@ -737,7 +742,7 @@ class DIAGEOGTRToolBox:
                     if df_bay.empty:
                         continue
 
-                    df_bay= df_bay[[entity_key_0, entity_key_1, DIAGEOGTRConsts.PRODUCT_FK]]
+                    df_bay = df_bay[[entity_key_0, entity_key_1, DIAGEOGTRConsts.PRODUCT_FK]]
 
                     if exclude_empty == 'y':
                         df_bay = df_bay[df_bay[DIAGEOGTRConsts.PRODUCT_FK] != DIAGEOGTRConsts.EMPTY]  # ex-empty
@@ -775,27 +780,27 @@ class DIAGEOGTRToolBox:
                     kpi_result[DIAGEOGTRConsts.TOTAL_NUM_OF_DISPLAYS] = total_num_of_displays_2
                     kpi_results[entity_key_value] = kpi_result
 
-                for key, kpi_result in kpi_results.items():
-                    if kpi_result[DIAGEOGTRConsts.TOTAL_NUM_OF_DISPLAYS] != 0:
-                        score_pure_displays = round(
-                            kpi_result[DIAGEOGTRConsts.NUM_OF_DISPLAYS] / float(
-                                kpi_result[DIAGEOGTRConsts.TOTAL_NUM_OF_DISPLAYS]), 6)
-                    else:
-                        score_pure_displays = 0
+            for key, kpi_result in kpi_results.items():
+                if kpi_result[DIAGEOGTRConsts.TOTAL_NUM_OF_DISPLAYS] != 0:
+                    score_pure_displays = round(
+                        kpi_result[DIAGEOGTRConsts.NUM_OF_DISPLAYS] / float(
+                            kpi_result[DIAGEOGTRConsts.TOTAL_NUM_OF_DISPLAYS]), 6)
+                else:
+                    score_pure_displays = 0
 
-                    kpi_result['score_per_displays'] = score_pure_displays
-                    kpi_result[DIAGEOGTRConsts.KPI_LEVEL_2_FK] = kpi_level_2_fk
+                kpi_result['score_per_displays'] = score_pure_displays
+                kpi_result[DIAGEOGTRConsts.KPI_LEVEL_2_FK] = kpi_level_2_fk
 
-                    if kpi_level_2_fk != 0:
-                        self.commonV2.write_to_db_result(fk=kpi_result[DIAGEOGTRConsts.KPI_LEVEL_2_FK],
-                                                         numerator_id=kpi_result[DIAGEOGTRConsts.NUMERATOR_ID],
-                                                         denominator_id=kpi_result[DIAGEOGTRConsts.DENOMINATOR_ID],
-                                                         context_id=kpi_result[DIAGEOGTRConsts.CONTEXT_ID],
-                                                         numerator_result=kpi_result[DIAGEOGTRConsts.NUM_OF_DISPLAYS],
-                                                         denominator_result=kpi_result[DIAGEOGTRConsts.TOTAL_NUM_OF_DISPLAYS],
-                                                         result=kpi_result['score_per_displays'],
-                                                         score=kpi_result['score_per_displays'])
-                kpi_results = {}
+                if kpi_level_2_fk != 0:
+                    self.commonV2.write_to_db_result(fk=kpi_result[DIAGEOGTRConsts.KPI_LEVEL_2_FK],
+                                                     numerator_id=kpi_result[DIAGEOGTRConsts.NUMERATOR_ID],
+                                                     denominator_id=kpi_result[DIAGEOGTRConsts.DENOMINATOR_ID],
+                                                     context_id=kpi_result[DIAGEOGTRConsts.CONTEXT_ID],
+                                                     numerator_result=kpi_result[DIAGEOGTRConsts.NUM_OF_DISPLAYS],
+                                                     denominator_result=denominator_count,
+                                                     result=kpi_result['score_per_displays'],
+                                                     score=kpi_result['score_per_displays'])
+            kpi_results = {}
 
     def calculate_share_of_display(self, kpi_set_name):
         template_kpis = self.template_data[self.template_data[DIAGEOGTRConsts.KPI_SET_NAME] == kpi_set_name]
@@ -843,6 +848,7 @@ class DIAGEOGTRToolBox:
         if DIAGEOGTRToolBox.DEBUG:
             print "atomic_kpi_fk={}, kpi_level_2_fk={}".format(atomic_kpi_fk, kpi_level_2_fk)
 
+        total_num_of_displays = 0
         for template_name in template_names:
             df_scif = self.scif[self.scif[DIAGEOGTRConsts.TEMPLATE_NAME] == template_name]
 
@@ -851,7 +857,7 @@ class DIAGEOGTRToolBox:
                     print ("scene_policy:{} is not matching with template_name(in DB) ".format(template_name))
                 continue
 
-            total_num_of_displays = len(df_scif)
+            total_num_of_displays += len(df_scif)
 
             scene_fk = 0
             for row, scene_info in df_scif.iterrows():
@@ -889,23 +895,21 @@ class DIAGEOGTRToolBox:
                 kpi_result[DIAGEOGTRConsts.TOTAL_NUM_OF_DISPLAYS] = total_num_of_displays
                 kpi_results[entity_key_pk] = kpi_result
 
-            score_pure_displays = 0
-            for key, kpi_result in kpi_results.items():
-                if kpi_result[DIAGEOGTRConsts.TOTAL_NUM_OF_DISPLAYS] != 0:
-                    score_pure_displays = round(kpi_result[DIAGEOGTRConsts.NUM_OF_DISPLAYS] / float(
-                        kpi_result[DIAGEOGTRConsts.TOTAL_NUM_OF_DISPLAYS]), 2)
+        score_pure_displays = 0
+        for key, kpi_result in kpi_results.items():
+            if total_num_of_displays != 0:
+                score_pure_displays = round(kpi_result[DIAGEOGTRConsts.NUM_OF_DISPLAYS] /
+                                            float(total_num_of_displays), 2)
 
-                kpi_result['score_per_displays'] = score_pure_displays
-                kpi_result[DIAGEOGTRConsts.KPI_LEVEL_2_FK] = kpi_level_2_fk
+            kpi_result['score_per_displays'] = score_pure_displays
+            kpi_result[DIAGEOGTRConsts.KPI_LEVEL_2_FK] = kpi_level_2_fk
 
-                self.commonV2.write_to_db_result(fk=kpi_result[DIAGEOGTRConsts.KPI_LEVEL_2_FK],
-                                                 numerator_id=kpi_result[DIAGEOGTRConsts.NUMERATOR_ID],
-                                                 denominator_id=kpi_result[DIAGEOGTRConsts.DENOMINATOR_ID],
-                                                 numerator_result=kpi_result[DIAGEOGTRConsts.NUM_OF_DISPLAYS],
-                                                 denominator_result=kpi_result[DIAGEOGTRConsts.TOTAL_NUM_OF_DISPLAYS],
-                                                 result=kpi_result['score_per_displays'],
-                                                 score=scene_fk)
-            kpi_results = {}
+            self.commonV2.write_to_db_result(fk=kpi_result[DIAGEOGTRConsts.KPI_LEVEL_2_FK],
+                                             numerator_id=kpi_result[DIAGEOGTRConsts.NUMERATOR_ID],
+                                             denominator_id=kpi_result[DIAGEOGTRConsts.DENOMINATOR_ID],
+                                             numerator_result=kpi_result[DIAGEOGTRConsts.NUM_OF_DISPLAYS],
+                                             denominator_result=total_num_of_displays,
+                                             result=kpi_result['score_per_displays'])
 
     def calculate_number_of_price_promotion(self, kpi_set_name):
         template_kpis = self.template_data[self.template_data[DIAGEOGTRConsts.KPI_SET_NAME] == kpi_set_name]
