@@ -7,7 +7,6 @@ from KPIUtils_v2.GlobalDataProvider.PsDataProvider import PsDataProvider
 
 from Trax.Utils.Logging.Logger import Log
 
-
 __author__ = 'nidhinb'
 # The KPIs
 GSK_DISPLAY_PRESENCE = 'GSK_DISPLAY_PRESENCE'
@@ -28,7 +27,9 @@ STORE_IDENTIFIERS = [
     'region_pk', 'store_type', 'store_number', 'city',
     'retailer_fk',
 ]
-TEMPLATE_KEY = 'template_pk'
+SCENE_IDENTIFIERS = [
+    'template_fk',
+]
 POSM_PK_KEY = 'posm_pk'
 # ALLOWED_POSM_EAN_KEY = 'allowed_posm_eans'
 OPTIONAN_EAN_KEY = 'optional_eans'
@@ -95,19 +96,29 @@ class GSKAUSceneToolBox:
             price_compliance = False
             for idx, each_target in secondary_display_targets.iterrows():
                 # loop through each external target to fit the current store
-                # calculate display compliance for all the matching external targets
+                is_scene_relevant = False
+                scene_relevant_targets = pd.DataFrame()
+                # check store relevance
                 store_relevant_targets = each_target[STORE_IDENTIFIERS].dropna()
-                relevant_store_attributes = each_target[STORE_IDENTIFIERS].dropna()
-                _bool_check_df = self.store_info[list(store_relevant_targets.keys())] == relevant_store_attributes.values
-                is_store_relevant = _bool_check_df.all(axis=None)
-                current_scene_fk = self.scene_info.iloc[0].scene_fk
+                _bool_store_check_df = self.store_info[list(store_relevant_targets.keys())] \
+                                       == store_relevant_targets.values
+                is_store_relevant = _bool_store_check_df.all(axis=None)
                 if is_store_relevant:
-                    Log.info('The session: {sess} - {scene} is relevant for calculating secondary display compliance.'
+                    # check scene relevance
+                    scene_relevant_targets = each_target[SCENE_IDENTIFIERS].dropna()
+                    _bool_scene_check_df = self.scene_info[list(scene_relevant_targets.keys())] \
+                                           == scene_relevant_targets.values
+                    is_scene_relevant = _bool_scene_check_df.all(axis=None)
+                current_scene_fk = self.scene_info.iloc[0].scene_fk
+                if is_store_relevant and is_scene_relevant:
+                    # calculate display compliance for the matched external targets
+                    Log.info('The session: {sess} - scene: {scene} is relevant for calculating '
+                             'secondary display compliance.'
                              .format(sess=self.session_uid, scene=current_scene_fk))
                     # FIND THE SCENES WHICH HAS THE POSM to check for multiposm or multibays
                     posm_to_check = each_target[POSM_PK_KEY]
-                    scene_invalid = self.scif[self.scif['product_fk'] == posm_to_check].empty
-                    if scene_invalid:
+                    is_posm_absent = self.scif[self.scif['product_fk'] == posm_to_check].empty
+                    if is_posm_absent:
                         Log.info('The scene: {scene} is relevant but POSM {pos} is not present. '
                                  'Save and start new scene.'
                                  .format(scene=current_scene_fk, pos=posm_to_check))
@@ -116,7 +127,7 @@ class GSKAUSceneToolBox:
                             Log.info(
                                 'The scene: {scene} is relevant and multi_bay_posm is True. '
                                 'Purity per bay is calculated and going to next scene.'
-                                .format(scene=current_scene_fk, pos=posm_to_check))
+                                    .format(scene=current_scene_fk, pos=posm_to_check))
                             multi_posm_or_bay = True
                             self.save_purity_per_bay(kpi_display_bay_purity)
                         self.save_display_compliance_data(
@@ -173,6 +184,7 @@ class GSKAUSceneToolBox:
                             return [x.strip() for x in data if x.strip()]
                         else:
                             return [each.strip() for each in data.split(',') if each.strip()]
+
                     mandatory_eans = _sanitize_csv(posm_relevant_targets[MANDATORY_EANS_KEY])
                     mandatory_sku_compliance = self.get_ean_presence_rate(mandatory_eans)
                     optional_posm_eans = _sanitize_csv(posm_relevant_targets[OPTIONAN_EAN_KEY])
@@ -195,8 +207,21 @@ class GSKAUSceneToolBox:
                     continue
                 else:
                     # the session/store is not part of the KPI targets
-                    Log.info('The session: {sess} - {scene}, the current kpi target is not valid. Keep Looking...'
-                             .format(sess=self.session_uid, scene=current_scene_fk))
+                    Log.info('The session: {sess} - scene: {scene}, the current kpi target [pk={t_pk}] '
+                             'is not valid. Keep Looking...'
+                             .format(sess=self.session_uid, scene=current_scene_fk,
+                                     t_pk=each_target.external_target_fk))
+                    if scene_relevant_targets.empty:
+                        Log.info("Scene info is {curr_data} but target is {store_data}".format(
+                            curr_data=self.scene_info.iloc[0][list(scene_relevant_targets.keys())].to_json(),
+                            store_data=scene_relevant_targets.to_json()
+                        ))
+                    else:
+                        # Store failed
+                        Log.info("Store info is {curr_data} but target is {store_data}".format(
+                            curr_data=self.store_info.iloc[0][list(store_relevant_targets.keys())].to_json(),
+                            store_data=store_relevant_targets.to_json()
+                        ))
                     continue
 
     def get_ean_presence_rate(self, ean_list):
@@ -208,7 +233,7 @@ class GSKAUSceneToolBox:
         if not ean_list:
             return 0.0
         present_ean_count = len(self.scif[self.scif['product_ean_code'].isin(ean_list)])
-        return present_ean_count/float(len(ean_list)) * 100
+        return present_ean_count / float(len(ean_list)) * 100
 
     def get_price_presence_rate(self, ean_list):
         """
@@ -223,7 +248,7 @@ class GSKAUSceneToolBox:
         for idx, each_data in scif_to_check.iterrows():
             if each_data[price_fields].apply(pd.notnull).any():
                 present_price_count += 1
-        return present_price_count/float(len(ean_list)) * 100
+        return present_price_count / float(len(ean_list)) * 100
 
     def save_purity_per_bay(self, kpi_bay_purity):
         Log.info('Calculate purity per bay for : {scene}.'.format(scene=self.scene_info.iloc[0].scene_fk))
