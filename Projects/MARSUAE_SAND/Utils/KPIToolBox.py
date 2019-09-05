@@ -434,10 +434,9 @@ class MARSUAE_SANDToolBox:
 
     def calculate_total_score(self):
         if not self.cat_lvl_res.empty:
-            category_results = self.cat_lvl_res.merge(self.category_params, on='kpi_type', how='left')
-            sum_weights = float(category_results[self.WEIGHT].sum())
-            category_results['weighted_scores'] = category_results['cat_score'] * category_results[self.WEIGHT]
-            total_result = category_results['weighted_scores'].sum() / sum_weights
+            sum_weights = float(self.cat_lvl_res[self.WEIGHT].sum())
+            self.cat_lvl_res['weighted_scores'] = self.cat_lvl_res['cat_score'] * self.cat_lvl_res[self.WEIGHT]
+            total_result = self.cat_lvl_res['weighted_scores'].sum() / sum_weights
             self.total_score = total_result
 
         kpi_fk = self.common.get_kpi_fk_by_kpi_type(self.TOTAL_UAE_SCORE)
@@ -451,6 +450,7 @@ class MARSUAE_SANDToolBox:
         self.cat_lvl_res = self.atomic_kpi_results.groupby(['parent_name'],
                                                            as_index=False).agg({'score_by_weight': np.sum})
         self.cat_lvl_res.rename(columns={'parent_name': self.KPI_TYPE, 'score_by_weight': 'cat_score'}, inplace=True)
+        self.cat_lvl_res = self.cat_lvl_res.merge(self.category_params, on='kpi_type', how='left')
         identifier_parent = {'kpi_fk': self.common.get_kpi_fk_by_kpi_type(self.TOTAL_UAE_SCORE)}
         for i, result in self.cat_lvl_res.iterrows():
             kpi_fk = self.common.get_kpi_fk_by_kpi_type(result[self.KPI_TYPE])
@@ -458,7 +458,8 @@ class MARSUAE_SANDToolBox:
             self.common.write_to_db_result(fk=kpi_fk, numerator_id=self.own_manuf_fk, denominator_id=self.store_id,
                                            result=result['cat_score'], score=result['cat_score'], weight=100,
                                            identifier_parent=identifier_parent, identifier_result=identifier_result,
-                                           target=self.FIXED_TARGET_FOR_MR, should_enter=True)
+                                           target=self.FIXED_TARGET_FOR_MR, should_enter=True,
+                                           numerator_result=self.WEIGHT)
 
     def get_atomics_for_template_groups_present_in_store(self, store_atomics):
         session_template_groups = self.scif['template_group'].unique().tolist()

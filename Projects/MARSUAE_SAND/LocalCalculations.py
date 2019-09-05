@@ -38,18 +38,18 @@ if __name__ == '__main__':
     #                 "e4e5e230-4b51-4908-a959-51a46fa5f54f", "fb6f25a7-2d03-49e9-8216-25bb9dede3e2",
     #                 "494773A6-6E17-418C-B965-F0847B6701AB", "82AA237B-040C-434F-BF57-9421F481168B",
     #                 "228ae67a-c47d-468b-9964-05e913d7c847", "5C98034A-3F49-4606-AB5C-409CE210A6BC"]
-    session_list = ['A178768E-5962-4854-A6CA-3502245CAE74'] #Hypers
+    session_list = ['7CB61001-022D-4077-B275-AB9A9E0C2AFF']
     # session_list = ["d83743b9-1f36-4586-b0de-cd93d6bc84a2"]
     for session in session_list:
         data_provider.load_session_data(session)
-        # output = Output()
-        # MarsuaeSandCalculations(data_provider, output).run_project_calculations()
+        output = Output()
+        MarsuaeSandCalculations(data_provider, output).run_project_calculations()
         # scenes = data_provider.scenes_info.scene_fk.tolist()
-        scenes = [35003]
-        for scene in scenes:
-            print scene
-            data_provider.load_scene_data(session, scene)
-            output = VanillaOutput()
-            SceneVanillaCalculations(data_provider, output).run_project_calculations()
-            save_scene_item_facts_to_data_provider(data_provider, output)
-            MARSUAE_SANDSceneCalculations(data_provider).calculate_kpis()
+        # scenes = [35003]
+        # for scene in scenes:
+        #     print scene
+        #     data_provider.load_scene_data(session, scene)
+        #     output = VanillaOutput()
+        #     SceneVanillaCalculations(data_provider, output).run_project_calculations()
+        #     save_scene_item_facts_to_data_provider(data_provider, output)
+        #     MARSUAE_SANDSceneCalculations(data_provider).calculate_kpis()
