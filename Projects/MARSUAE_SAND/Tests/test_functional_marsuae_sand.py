@@ -485,7 +485,8 @@ class TestMarsuaeSand(TestFunctionalCase):
         expected_results.append({'kpi_type': 'Chocolate & Ice Cream', 'cat_score': 45})
         expected_results.append({'kpi_type': 'Gum & Fruity', 'cat_score': 10})
         expected_results.append({'kpi_type': 'Pet Food', 'cat_score': 100})
-        cat_lvl_dict = tool_box.cat_lvl_res.to_dict(orient='records')
+        cat_lvl_res = tool_box.cat_lvl_res[['kpi_type', 'cat_score']]
+        cat_lvl_dict = cat_lvl_res.to_dict(orient='records')
         for expected_result in expected_results:
             self.assertTrue(expected_result in cat_lvl_dict)
         self.assertEquals(len(tool_box.cat_lvl_res), 3)
