@@ -26,7 +26,7 @@ if __name__ == '__main__':
         'f6c0247d-64b4-4d11-8e0b-f7616316c08f'
     ]
 
-    sessions = ['DB5BD1DB-CA44-4F83-A641-12BBA733F3CF']
+    sessions = ['E06BE3AA-246B-4988-8713-1DAD2B5C7915']
 
     for session in sessions:
         print('***********************************************************************************')
