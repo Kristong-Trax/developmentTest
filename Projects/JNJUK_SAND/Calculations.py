@@ -43,7 +43,7 @@ class JNJUKCalculations(BaseCalculationsScript):
 #     Config.init()
 #     project_name = 'jnjuk-sand'
 #     data_provider = KEngineDataProvider(project_name)
-#     session = '300e5dec-5cd6-42e2-9759-4fa269c4ee67'
+#     session = 'cff3c170-1ba9-4ce4-bb24-f784827d953d'
 #     data_provider.load_session_data(session)
 #     output = Output()
 #     JNJUKCalculations(data_provider, output).run_project_calculations()
