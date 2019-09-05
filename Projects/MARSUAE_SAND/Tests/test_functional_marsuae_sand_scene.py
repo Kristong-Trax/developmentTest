@@ -67,14 +67,19 @@ class TestMarsuaeSandScene(TestFunctionalCase):
     def mock_match_product_in_scene(self, data):
         self.data_provider_data_mock['matches'] = data.where(data.notnull(), None)
 
+    def mock_scene_item_facts(self, data):
+        self.data_provider_data_mock['scene_item_facts'] = data.where(data.notnull(), None)
+
     def test_calculate_price_generates_no_kpi_results_if_no_prices_in_scene(self):
         self.mock_match_product_in_scene(DataTestUnitMarsuae.scene_1_no_prices)
+        self.mock_scene_item_facts(DataTestUnitMarsuae.scene_1_scif)
         scene_tb = MARSUAE_SANDSceneToolBox(self.data_provider_mock, self.output)
         scene_tb.calculate_price()
         self.assertTrue(scene_tb.kpi_results.empty)
 
     def test_calculate_price_returns_max_result_and_only_for_products_with_prices(self):
         self.mock_match_product_in_scene(DataTestUnitMarsuae.scene_2)
+        self.mock_scene_item_facts(DataTestUnitMarsuae.scene_2_scif)
         scene_tb = MARSUAE_SANDSceneToolBox(self.data_provider_mock, self.output)
         scene_tb.calculate_price()
         expected_list = list()
@@ -88,11 +93,40 @@ class TestMarsuaeSandScene(TestFunctionalCase):
 
     def test_calculate_price_returns_max_result_among_price_and_promo_price(self):
         self.mock_match_product_in_scene(DataTestUnitMarsuae.scene_3)
+        self.mock_scene_item_facts(DataTestUnitMarsuae.scene_3_scif)
         scene_tb = MARSUAE_SANDSceneToolBox(self.data_provider_mock, self.output)
         scene_tb.calculate_price()
         expected_list = list()
         expected_list.append({'kpi_fk': 3004, 'numerator': 1, 'result': 5})
         expected_list.append({'kpi_fk': 3004, 'numerator': 3, 'result': 2})
+        test_result_list = []
+        for expected_result in expected_list:
+            test_result_list.append(self.check_kpi_results(scene_tb.kpi_results, expected_result) == 1)
+        self.assertTrue(all(test_result_list))
+        self.assertEquals(len(scene_tb.kpi_results), 2)
+
+    def test_calculate_price_returns_prices_only_for_sku_products(self):
+        self.mock_match_product_in_scene(DataTestUnitMarsuae.scene_4_with_non_mars)
+        self.mock_scene_item_facts(DataTestUnitMarsuae.scene_4_scif)
+        scene_tb = MARSUAE_SANDSceneToolBox(self.data_provider_mock, self.output)
+        scene_tb.own_manufacturer_fk = 3
+        scene_tb.calculate_price()
+        expected_list = list()
+        expected_list.append({'kpi_fk': 3004, 'numerator': 1, 'result': 5})
+        test_result_list = []
+        for expected_result in expected_list:
+            test_result_list.append(self.check_kpi_results(scene_tb.kpi_results, expected_result) == 1)
+        self.assertTrue(all(test_result_list))
+        self.assertEquals(len(scene_tb.kpi_results), 1)
+
+    def test_calculate_price_returns_max_result_among_price_and_promo_price_if_one_of_them_is_none(self):
+        self.mock_match_product_in_scene(DataTestUnitMarsuae.scene_5)
+        self.mock_scene_item_facts(DataTestUnitMarsuae.scene_5_scif)
+        scene_tb = MARSUAE_SANDSceneToolBox(self.data_provider_mock, self.output)
+        scene_tb.calculate_price()
+        expected_list = list()
+        expected_list.append({'kpi_fk': 3004, 'numerator': 1, 'result': 4})
+        expected_list.append({'kpi_fk': 3004, 'numerator': 2, 'result': 5})
         test_result_list = []
         for expected_result in expected_list:
             test_result_list.append(self.check_kpi_results(scene_tb.kpi_results, expected_result) == 1)

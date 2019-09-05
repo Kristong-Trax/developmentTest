@@ -60,8 +60,10 @@ class MARSUAE_SANDSceneToolBox:
         self.calculate_price()
 
     def calculate_price(self):
-        prices_df = self.match_product_in_scene[~(self.match_product_in_scene['price'].isnull())]
-        promo_price_df = self.get_promo_price_df()
+        skus_list = self.scif[self.scif['product_type'] == 'SKU']['product_fk'].values.tolist()
+        prices_df = self.match_product_in_scene[(~(self.match_product_in_scene['price'].isnull())) &
+                                                (self.match_product_in_scene['product_fk'].isin(skus_list))]
+        promo_price_df = self.get_promo_price_df(skus_list)
         if not prices_df.empty:
             kpi_fk = self.common.get_kpi_fk_by_kpi_type(self.PRICE)
             prices_df = prices_df.groupby(['product_fk'], as_index=False).agg({'price': np.max})
@@ -78,11 +80,14 @@ class MARSUAE_SANDSceneToolBox:
 
     @staticmethod
     def get_max_price(row):
-        max_value = max(row['price'], row['promotion_price'])
+        prices = [row['price'], row['promotion_price']]
+        prices = filter(lambda x: x == x, prices)
+        max_value = max(prices)
         return max_value
 
-    def get_promo_price_df(self):
-        promo_price_df = self.match_product_in_scene[~self.match_product_in_scene['promotion_price'].isnull()]
+    def get_promo_price_df(self, skus_list):
+        promo_price_df = self.match_product_in_scene[(~self.match_product_in_scene['promotion_price'].isnull()) &
+                                                     (self.match_product_in_scene['product_fk'].isin(skus_list))]
         if not promo_price_df.empty:
             promo_price_df = promo_price_df.groupby(['product_fk'], as_index=False).agg({'promotion_price': np.max})
         return promo_price_df

@@ -11,7 +11,7 @@ class MoveCodeToINTEG:
         self.src_project = src_project.upper()
         self.dest_project = dest_project.upper()
         if self.src_project != 'DUMMY' and not self.validate_projects():
-            print "Try using create_new_project.py instead!"
+            print "Try using CreateNewProject.py instead!"
         self.projects_path = "{}/Projects/".format(
             os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
         self.classes_names = {}
@@ -92,5 +92,5 @@ class MoveCodeToINTEG:
 
 
 if __name__ == '__main__':
-    a = MoveCodeToINTEG("MARSRU2_SAND", "MARSRU_PROD")
+    a = MoveCodeToINTEG("CCRU", "CCRU_SAND")
     a.copy_project()

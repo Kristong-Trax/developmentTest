@@ -28,7 +28,7 @@ if __name__ == '__main__':
     # session = 'baa68060-8464-4841-82ad-f28f28047b06'    #SSS A
     # session = 'D7156E31-F359-4358-A193-0B41E4C8A65F' # sss a
     # session = '7CB61001-022D-4077-B275-AB9A9E0C2AFF'    #Hypers - no ass results for some reason
-    # session = 'D53E1FAA-BC36-457B-96C8-79EE7753B929' # scenes Hypers - prices in db
+    # session_list = ['D53E1FAA-BC36-457B-96C8-79EE7753B929', '7CB61001-022D-4077-B275-AB9A9E0C2AFF'] # scenes Hypers - prices in db
     # session = '7CB61001-022D-4077-B275-AB9A9E0C2AFF' # scenes Hypers - prices in db
     # session = '8C545C66-D892-4173-8354-0B6BF97B189D' # sss a all templates
     # session = '84e3fd3e-ae17-438d-8f52-5db0623f32a0' # convenience b
@@ -38,17 +38,18 @@ if __name__ == '__main__':
     #                 "e4e5e230-4b51-4908-a959-51a46fa5f54f", "fb6f25a7-2d03-49e9-8216-25bb9dede3e2",
     #                 "494773A6-6E17-418C-B965-F0847B6701AB", "82AA237B-040C-434F-BF57-9421F481168B",
     #                 "228ae67a-c47d-468b-9964-05e913d7c847", "5C98034A-3F49-4606-AB5C-409CE210A6BC"]
-
-    session_list = ["d83743b9-1f36-4586-b0de-cd93d6bc84a2"]
+    session_list = ['7CB61001-022D-4077-B275-AB9A9E0C2AFF']
+    # session_list = ["d83743b9-1f36-4586-b0de-cd93d6bc84a2"]
     for session in session_list:
-        print session
         data_provider.load_session_data(session)
         output = Output()
         MarsuaeSandCalculations(data_provider, output).run_project_calculations()
-    # scenes = data_provider.scenes_info.scene_fk.tolist()
-    # for scene in scenes:
-    #     data_provider.load_scene_data(session, scene)
-    #     output = VanillaOutput()
-    #     SceneVanillaCalculations(data_provider, output).run_project_calculations()
-    #     save_scene_item_facts_to_data_provider(data_provider, output)
-    #     MARSUAE_SANDSceneCalculations(data_provider).calculate_kpis()
+        # scenes = data_provider.scenes_info.scene_fk.tolist()
+        # scenes = [35003]
+        # for scene in scenes:
+        #     print scene
+        #     data_provider.load_scene_data(session, scene)
+        #     output = VanillaOutput()
+        #     SceneVanillaCalculations(data_provider, output).run_project_calculations()
+        #     save_scene_item_facts_to_data_provider(data_provider, output)
+        #     MARSUAE_SANDSceneCalculations(data_provider).calculate_kpis()

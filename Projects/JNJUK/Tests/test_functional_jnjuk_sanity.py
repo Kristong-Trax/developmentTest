@@ -1,7 +1,8 @@
 
 import os
 import MySQLdb
-
+import math
+import pandas as pd
 from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Trax.Data.Testing.SeedNew import Seeder
 from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
@@ -16,13 +17,14 @@ from Tests.TestUtils import remove_cache_and_storage
 
 __author__ = 'ilays'
 
+PROJECT_DATA_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data')
+
 
 class TestKEngineOutOfTheBox(TestFunctionalCase):
 
     def set_up(self):
         super(TestKEngineOutOfTheBox, self).set_up()
         remove_cache_and_storage()
-        self.mock_object(object_name='commit_results_data', path='KPIUtils_v2.DB.CommonV2.Common')
 
     @property
     def import_path(self):
@@ -79,3 +81,42 @@ class TestKEngineOutOfTheBox(TestFunctionalCase):
             #     data_provider.load_scene_data(str(session), scene_id=scene)
             #     SceneCalculations(data_provider).calculate_kpis()
             #     self._assert_scene_tables_kpi_results_filled()
+
+    def test_project_template(self):
+        """
+        This test is responsible to validate the project's template. It validate existance and that there aren't
+        any empty values (unless it is allowed).
+        """
+        required_templates = ['eye_level_jnjuk.xlsx', 'SurveyTemplate.xlsx', 'KPI Exclusions Template.xlsx']
+        allowed_empty_values_template = ['KPI Exclusions Template.xlsx']
+        current_templates_in_project = os.listdir(PROJECT_DATA_PATH)
+        for template in required_templates:
+            self.assertIn(template, current_templates_in_project,
+                          msg="The following template is missing: {}".format(template))
+            if template in allowed_empty_values_template:
+                continue
+            error_col, values_validation = self._check_template_instances(template)
+            self.assertTrue(values_validation, msg="There a missing value in the template {} in the following "
+                                                   "column: {}".format(template, error_col))
+
+    def _check_template_instances(self, template_name):
+        """
+        This test going over all of the columns of the template and makes
+        sure that it doesn't have empty values.
+        """
+        template_df = self._read_template(template_name)
+        for col in template_df.columns:
+            attribute_values = template_df[col].unique().tolist()
+            for value in attribute_values:
+                if isinstance(value, float) and math.isnan(value):
+                    print "ERROR! There is a empty value in the following column: {}".format(col)
+                    return col, False
+        return "OK", True
+
+    @staticmethod
+    def _read_template(template_name):
+        template_path = os.path.join(PROJECT_DATA_PATH, template_name)
+        template = pd.read_excel(template_path, skiprows=0)
+        if 'Unnamed' in template.columns[0]:  # Give it another shot, we allow empty first row
+            template = pd.read_excel(template_path, skiprows=1)
+        return template
