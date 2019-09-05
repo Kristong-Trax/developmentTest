@@ -78,26 +78,44 @@ class TestKEngineOutOfTheBox(TestFunctionalCase):
             self._assert_new_tables_kpi_results_filled()
 
     def test_current_project_template(self):
-        """ This test is check the validation of the current project's template! """
-        # Columns tests
-        expected_columns = {'Atomic Name', 'KPI Name', 'KPI Set', 'store_type', 'additional_attribute_1',
-                            'Template Name', 'Template group', 'KPI Family', 'Score Type', 'Param Type (1)/ Numerator',
-                            'Param (1) Values', 'Param Type (2)/ Denominator', 'Param (2) Values', 'Param Type (3)',
-                            'Param (3) Values', 'Weight', 'Target', 'Split Score'}
-        template = pd.read_excel(PROJECT_TEMPLATE_PATH, skiprows=1)
+        """
+        This test is check the validation of the current project's template!
+        For every sheet it validates the obligatory columns + the columns that mustn't have nan value.
+        Every sheet with this data represented as a tuple which contains the sheet name, the expected columns and the
+        columns the cannot have nan values! (sheet_name, {col_set}, {col_set2})
+        """
+        sheets_data = [('KPI', {'Atomic Name', 'KPI Name', 'KPI Set', 'store_type', 'additional_attribute_1',
+                                'Template Name', 'Template group', 'KPI Family', 'Score Type',
+                                'Param Type (1)/ Numerator',
+                                'Param (1) Values', 'Param Type (2)/ Denominator', 'Param (2) Values', 'Param Type (3)',
+                                'Param (3) Values', 'Weight', 'Target', 'Split Score'},
+                        {'Atomic Name', 'KPI Name', 'KPI Set', 'store_type', 'additional_attribute_1',
+                         'Param Type (1)/ Numerator', 'KPI Family', 'Weight'}),
+                       ('kpi weights', {'KPI Set', 'KPI Name', 'Weight'}, {'KPI Set', 'KPI Name', 'Weight'}),
+                       ('Kpi Gap', {'KPI Name', 'Order'}, {'KPI Name', 'Order'})]
+        for sheet_data in sheets_data:
+            self._check_obligatory_template_columns(sheet_data)
+
+    def _check_obligatory_template_columns(self, sheet_data_tuple):
+        """
+        :param sheet_data_tuple: A tuple which contains the sheet name, the expected columns and the columns the cannot
+        have nan values! (sheet_name, {col_set}, {col_set2}).
+        """
+        sheet_name, expected_columns, columns_without_nan = sheet_data_tuple
+        template = pd.read_excel(PROJECT_TEMPLATE_PATH, sheet_name=sheet_name, skiprows=1)
         if expected_columns.difference(template.columns):
             # Gives it another shot - Maybe the redundant top row was removed
-            template = pd.read_excel(PROJECT_TEMPLATE_PATH, skiprows=0)
+            template = pd.read_excel(PROJECT_TEMPLATE_PATH, sheet_name=sheet_name, skiprows=0)
         self.assertEqual(set(), expected_columns.difference(template.columns),
-                         msg="The template's columns are different than the expected ones!")
+                         msg="Columns difference in the following sheet: {}".format(sheet_name))
 
         # Template's attributes Test
-        self.assertTrue(self._check_template_instances(template), msg="One of template's attributes has nan value!")
+        self.assertTrue(self._check_template_instances(template, columns_without_nan),
+                        msg="One of template's attributes has nan value!")
 
     @staticmethod
-    def _check_template_instances(template):
-        columns_to_check = ['Atomic Name', 'KPI Name', 'KPI Set', 'store_type', 'additional_attribute_1',
-                            'Param Type (1)/ Numerator', 'KPI Family', 'Weight']
+    def _check_template_instances(template, columns_to_check):
+        """ This method get a DataFrame and columns that mustn't have nan values and validates it. """
         for col in columns_to_check:
             attribute_values = template[col].unique().tolist()
             for value in attribute_values:

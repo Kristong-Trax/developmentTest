@@ -264,10 +264,10 @@ class CBCILCBCIL_ToolBox(object):
                             score = score[0]
                         if score == 0:
                             self.add_gap(atomic)
-
+                        score = round(score * atomic_weight, 2)
                         atomic_fk_lvl_2 = self.common.get_kpi_fk_by_kpi_type(atomic[self.KPI_ATOMIC_NAME])
                         self.common.write_to_db_result(fk=atomic_fk_lvl_2, numerator_id=self.cbcil_id,
-                                                       denominator_id=self.store_id,
+                                                       denominator_id=self.store_id, weight=round(atomic_weight*100, 2),
                                                        identifier_parent=identifier_result_kpi,
                                                        result=score, score=score, should_enter=True)
 
@@ -312,11 +312,12 @@ class CBCILCBCIL_ToolBox(object):
                 kpi_name = self.get_kpi_name_by_pk(kpi['kpi_fk'])
                 kpi_lvl_2_fk = self.common.get_kpi_fk_by_kpi_type(kpi_name)
                 identifier_res_kpi_2 = self.get_identifier_result_kpi_by_pk(kpi_lvl_2_fk)
+                kpi_weight = float(kpi['denominator_weight']) * 100
                 self.common.write_to_db_result(fk=kpi_lvl_2_fk, numerator_id=self.cbcil_id,
                                                denominator_id=self.store_id,
                                                identifier_parent=identifier_result_set,
                                                identifier_result=identifier_res_kpi_2,
-                                               weight=float(kpi['denominator_weight']) * 100,
+                                               weight=kpi_weight,  target=kpi_weight,
                                                score=kpi_scores[kpi['kpi_fk']],
                                                should_enter=True, result=kpi_scores[kpi['kpi_fk']])
 
@@ -329,7 +330,7 @@ class CBCILCBCIL_ToolBox(object):
             total_score_fk = self.common.get_kpi_fk_by_kpi_type(self.TOTAL_SCORE)
             self.common.write_to_db_result(fk=total_score_fk, numerator_id=self.cbcil_id, denominator_id=self.store_id,
                                            identifier_result=identifier_result_set, result=final_score,
-                                           score=final_score, should_enter=True)
+                                           score=final_score, should_enter=True, weight=100, target=100)
 
             self.commit_results_data()
             self.common.commit_results_data()
