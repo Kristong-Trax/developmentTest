@@ -80,7 +80,9 @@ class MARSUAE_SANDSceneToolBox:
 
     @staticmethod
     def get_max_price(row):
-        max_value = max(row['price'], row['promotion_price'])
+        prices = [row['price'], row['promotion_price']]
+        prices = filter(lambda x: x == x, prices)
+        max_value = max(prices)
         return max_value
 
     def get_promo_price_df(self, skus_list):
