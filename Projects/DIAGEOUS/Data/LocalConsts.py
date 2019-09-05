@@ -1,8 +1,9 @@
-
+from KPIUtils_v2.Utils.Consts.DataProvider import StoreInfoConsts
+from KPIUtils_v2.Utils.Consts.OldDB import KPIsAtomic
 __author__ = 'Elyashiv'
 
 
-class Const(object):
+class Consts(object):
 
     OFF, ON, INDEPENDENT, OPEN, NATIONAL_STORE = "off_premise", "on_premise", "Independent", "Open", "National"
     NOT_INDEPENDENT_STORES = [OPEN, NATIONAL_STORE]
@@ -35,7 +36,7 @@ class Const(object):
     TEMPLATE = "template"
     BRAND, SUB_BRAND, SKU = "brand", "sub_brand", "sku"
     COMPETITION, MANUFACTURER = "competition", "manufacturer"
-    DISPLAY, NATIONAL_SEGMENT = "display", "national_segment_ind"
+    DISPLAY, NATIONAL_SEGMENT = KPIsAtomic.DISPLAY, "national_segment_ind"
     # names in DB:
     DB_TOTAL_KPIS = {
         ON: {TOTAL: 'Total Score - On Premise',
@@ -105,8 +106,8 @@ class Const(object):
     OPEN_OPERATION_TYPES = [DISPLAY_TARGET_OP, SHELF_PLACEMENT_OP, MSRP_OP, SHELF_FACINGS_OP]
     INDEPENDENT_OPERATION_TYPES = [DISPLAY_TARGET_OP]
     # columns in external targets:
-    EX_PRODUCT_FK, EX_STATE_FK, EX_OPERATION_TYPE,  = "product_fk", "state_fk", "operation_type"
-    EX_ATTR2, EX_STORE_NUMBER = "attr2", "store_number_1"
+    EX_PRODUCT_FK, EX_STATE_FK, EX_OPERATION_TYPE,  = "product_fk", StoreInfoConsts.STATE_FK, "operation_type"
+    EX_ATTR2, EX_STORE_NUMBER = "attr2", StoreInfoConsts.STORE_NUMBER_1
     EX_SCENE_TYPE, EX_BENCHMARK_VALUE, EX_COMPETITOR_FK = "scene_type", "BENCHMARK Value", "competitor_product_fk"
     EX_MIN_FACINGS, EX_RELATIVE_MAX, EX_RELATIVE_MIN = "minimum facings", "relative_target_max", "relative_target_min"
     EX_TARGET_MAX, EX_TARGET_MIN, EX_MINIMUM_SHELF = "target_max", "target_min", "MINIMUM SHELF LOCATION"
