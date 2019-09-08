@@ -1,4 +1,6 @@
-from KPIUtils_v2.Utils.Consts.DataProvider import MatchesConsts, ProductsConsts, ScifConsts, StoreInfoConsts
+from KPIUtils_v2.Utils.Consts.DataProvider import MatchesConsts, ProductsConsts, ScifConsts, StoreInfoConsts, \
+    SceneInfoConsts
+from KPIUtils_v2.Utils.Consts.PS import ExternalTargetsConsts
 from KPIUtils_v2.Calculations.SurveyCalculations import Survey
 from KPIUtils_v2.Utils.Consts.GlobalConsts import HelperConsts, ProductTypeConsts, BasicConsts
 from KPIUtils_v2.DB.CommonV2 import Common
@@ -50,8 +52,8 @@ class ToolBox:
         else:
             Log.error("The store for this session has no attribute11. Set temporary as Open, fix ASAP")
             self.attr11 = Consts.OPEN
-        if self.store_info['additional_attribute_2'].iloc[0]:
-            self.attr2 = self.store_info['additional_attribute_2'].iloc[0]
+        if self.store_info[StoreInfoConsts.ADDITIONAL_ATTRIBUTE_2].iloc[0]:
+            self.attr2 = self.store_info[StoreInfoConsts.ADDITIONAL_ATTRIBUTE_2].iloc[0]
         else:
             Log.warning("The store for this session has no attribute2. Set temporary as Other, please fix")
             self.attr2 = Consts.OTHER
@@ -77,15 +79,18 @@ class ToolBox:
 
     def init_dfs(self):
         self.sub_brands.rename(
-            inplace=True, index=str, columns={BasicConsts.PK: "sub_brand_fk", "parent_id": ProductsConsts.BRAND_FK, "name": "sub_brand"})
-        self.all_products = self.all_products.merge(self.sub_brands, on=[ProductsConsts.BRAND_FK, "sub_brand"], how="left")
+            inplace=True, index=str, columns={BasicConsts.PK: "sub_brand_fk", "parent_id": ProductsConsts.BRAND_FK,
+                                              "name": "sub_brand"})
+        self.all_products = self.all_products.merge(self.sub_brands, on=[ProductsConsts.BRAND_FK, "sub_brand"],
+                                                    how="left")
         self.scif = self.scif.merge(self.sub_brands, on=[ProductsConsts.BRAND_FK, "sub_brand"], how="left")
         self.scif_without_emptys = self.scif[~(self.scif[ProductsConsts.PRODUCT_TYPE] == ProductTypeConsts.EMPTY) &
                                              (self.scif[ProductsConsts.SUBSTITUTION_PRODUCT_FK].isnull())]
-        self.all_products_sku = self.all_products[(self.all_products[ProductsConsts.PRODUCT_TYPE] == ProductTypeConsts.SKU) &
+        self.all_products_sku = self.all_products[(self.all_products[ProductsConsts.PRODUCT_TYPE]
+                                                   == ProductTypeConsts.SKU) &
                                                   (self.all_products[ProductsConsts.CATEGORY] == 'SPIRITS') &
                                                   (self.all_products[ProductsConsts.IS_ACTIVE] == 1)]
-        self.match_product_in_scene = self.match_product_in_scene.merge(self.all_products, on="product_fk")
+        self.match_product_in_scene = self.match_product_in_scene.merge(self.all_products, on=ProductsConsts.PRODUCT_FK)
         self.store_number_1 = self.store_info[StoreInfoConsts.STORE_NUMBER_1].iloc[0]
         self.no_menu_allowed = self.survey.check_survey_answer(
             survey_text=Consts.NO_MENU_ALLOWED_QUESTION, target_answer=Consts.SURVEY_ANSWER)
@@ -98,11 +103,12 @@ class ToolBox:
             if self.attr6 == Consts.ON:
                 self.sales_data = self.ps_data.get_sales_data()
             elif self.attr11 == Consts.OPEN:
-                scenes = self.scene_info['scene_fk'].unique().tolist()
+                scenes = self.scene_info[SceneInfoConsts.SCENE_FK].unique().tolist()
                 self.scenes_with_shelves = {}
                 for scene in scenes:
-                    shelves = self.match_product_in_scene[self.match_product_in_scene['scene_fk'] == scene][[
-                        MatchesConsts.SHELF_NUMBER_FROM_BOTTOM, MatchesConsts.SHELF_NUMBER]].max()
+                    shelves = self.match_product_in_scene[
+                        self.match_product_in_scene[MatchesConsts.SCENE_FK] 
+                        == scene][[MatchesConsts.SHELF_NUMBER_FROM_BOTTOM, MatchesConsts.SHELF_NUMBER]].max()
                     self.scenes_with_shelves[scene] = max(shelves)
                 self.converted_groups = self.convert_groups_from_template()
                 self.external_targets = self.ps_data.get_kpi_external_targets(
@@ -141,8 +147,8 @@ class ToolBox:
         self.assortment = Assortment(self.data_provider, self.output, ps_data_provider=self.ps_data,
                                      assortment_filter=store_number_1)
         self.assortment_products = self.assortment.get_lvl3_relevant_ass()
-        if 'product_fk' not in self.assortment_products.columns:
-            self.assortment_products['product_fk'] = None
+        if ProductsConsts.PRODUCT_FK not in self.assortment_products.columns:
+            self.assortment_products[ProductsConsts.PRODUCT_FK] = None
         if 'additional_attributes' not in self.assortment_products.columns:
             self.assortment_products['additional_attributes'] = '{}'
         self.assortment_products['additional_attributes'] = self.assortment_products[
@@ -152,7 +158,8 @@ class ToolBox:
         self.assortment_products[Consts.STANDARD_TYPE] = self.assortment_products['additional_attributes'].apply(
             lambda x: x[Consts.NATIONAL_SEGMENT] if Consts.NATIONAL_SEGMENT in x.keys() else None)
         self.assortment_products = self.assortment_products.merge(self.all_products[[
-            'product_fk', ProductsConsts.MANUFACTURER_FK, ProductsConsts.BRAND_FK, 'sub_brand_fk']], on="product_fk")
+            ProductsConsts.PRODUCT_FK, ProductsConsts.MANUFACTURER_FK,
+            ProductsConsts.BRAND_FK, 'sub_brand_fk']], on=ProductsConsts.PRODUCT_FK)
 
     # main functions:
 
@@ -274,9 +281,9 @@ class ToolBox:
         total_results = []
         if self.attr11 == Consts.NATIONAL_STORE and kpi_name == Consts.BACK_BAR:
             kpi_db_names = self.pull_kpi_fks_from_names(Consts.DB_ON_NAMES[Consts.BACK_BAR_NATIONAL])
-            for template_group in relevant_scif['template_group'].unique().tolist():
+            for template_group in relevant_scif[ScifConsts.TEMPLATE_GROUP].unique().tolist():
                 temp_scif = relevant_scif[
-                    relevant_scif['template_group'].str.encode(HelperConsts.UTF8) == template_group.encode(HelperConsts.UTF8)]
+                    relevant_scif[ScifConsts.TEMPLATE_GROUP].str.encode(HelperConsts.UTF8) == template_group.encode(HelperConsts.UTF8)]
                 temp_results = self.calculate_back_bar_national_template(
                     temp_scif, relevant_assortment, kpi_db_names, weight, target)
                 total_results += temp_results
@@ -296,7 +303,7 @@ class ToolBox:
     def calculate_back_bar_national_template(self, relevant_scif, relevant_assortment, kpi_db_names, weight, target):
         total_results = []
         template_kpi_fk = kpi_db_names[Consts.TEMPLATE]
-        template_fk = relevant_scif['template_fk'].iloc[0]
+        template_fk = relevant_scif[ScifConsts.TEMPLATE_FK].iloc[0]
         for brand_fk in relevant_assortment[ProductsConsts.BRAND_FK].unique().tolist():
             brand_assortment = relevant_assortment[relevant_assortment[ProductsConsts.BRAND_FK] == brand_fk]
             brand_results = self.calculate_back_bar_national_brand(
@@ -376,16 +383,17 @@ class ToolBox:
     def calculate_back_bar_national_sku(self, product_line, relevant_scif, kpi_db_names, i, template_fk):
         """
         Checks if specific product's sub_brand exists in the filtered scif
+        :param product_line: assortment line joined with all_products
         :param relevant_scif: filtered scif
         :param template_fk: back_bar national should write the template also
         :return: a line for the DF - {product: 8, passed: 1/0, standard: N/S, brand: 5, sub: 12}
         """
         sku_kpi_fk = kpi_db_names[Consts.SKU]
         product_fk, brand, sub_brand, standard_type = product_line[[
-            'product_fk', ProductsConsts.BRAND_FK, 'sub_brand_fk', Consts.STANDARD_TYPE]]
-        if sub_brand is None or self.all_products_sku[self.all_products_sku['product_fk'] == product_fk].empty:
+            ProductsConsts.PRODUCT_FK, ProductsConsts.BRAND_FK, 'sub_brand_fk', Consts.STANDARD_TYPE]]
+        if sub_brand is None or self.all_products_sku[self.all_products_sku[ScifConsts.PRODUCT_FK] == product_fk].empty:
             return None, None
-        facings = relevant_scif[relevant_scif['product_fk'] == product_fk]['facings'].sum()
+        facings = relevant_scif[relevant_scif[ScifConsts.PRODUCT_FK] == product_fk][ScifConsts.FACINGS].sum()
         if facings > 0:
             result, passed = Consts.DISTRIBUTED, 1
         else:
@@ -412,10 +420,11 @@ class ToolBox:
         """
         sku_kpi_fk = kpi_db_names[Consts.SKU]
         product_fk, brand, sub_brand, standard_type = product_line[[
-            'product_fk', ProductsConsts.BRAND_FK, 'sub_brand_fk', Consts.STANDARD_TYPE]]
-        if sub_brand is None or self.all_products_sku[self.all_products_sku['product_fk'] == product_fk].empty:
+            ProductsConsts.PRODUCT_FK, ProductsConsts.BRAND_FK, 'sub_brand_fk', Consts.STANDARD_TYPE]]
+        if sub_brand is None or self.all_products_sku[self.all_products_sku[ProductsConsts.PRODUCT_FK]
+                                                      == product_fk].empty:
             return None, None
-        facings = relevant_scif[relevant_scif['product_fk'] == product_fk]['facings'].sum()
+        facings = relevant_scif[relevant_scif[ScifConsts.PRODUCT_FK] == product_fk][ScifConsts.FACINGS].sum()
         if facings > 0 or (product_fk in self.sales_data and kpi_db_names[Consts.KPI_NAME] == Consts.POD):
             result, passed = Consts.DISTRIBUTED, 1
         else:
@@ -447,7 +456,7 @@ class ToolBox:
                 return 1 * weight, 1 * weight, 1 * weight
             if self.attr11 in Consts.NOT_INDEPENDENT_STORES and kpi_name == Consts.DISPLAY_BRAND:
                 relevant_assortment = relevant_assortment[relevant_assortment[Consts.DISPLAY].isin([1, '1'])]
-            relevant_scif = relevant_scif[relevant_scif['location_type'] == 'Secondary Shelf']
+            relevant_scif = relevant_scif[relevant_scif[ScifConsts.LOCATION_TYPE] == 'Secondary Shelf']
         if self.assortment_products.empty:
             return 0, 0, 0
         standard_types_results = {Consts.SEGMENT: [], Consts.NATIONAL: []} if self.attr11 == Consts.OPEN else {}
@@ -471,10 +480,10 @@ class ToolBox:
         :return: a line for the DF - {product: 8, passed: 1/0, standard: N/S, brand: 5, sub: 12}
         """
         product_fk, brand, sub_brand, standard_type = product_line[[
-            'product_fk', ProductsConsts.BRAND_FK, 'sub_brand_fk', Consts.STANDARD_TYPE]]
-        if self.all_products_sku[self.all_products_sku['product_fk'] == product_fk].empty:
+            ProductsConsts.PRODUCT_FK, ProductsConsts.BRAND_FK, 'sub_brand_fk', Consts.STANDARD_TYPE]]
+        if self.all_products_sku[self.all_products_sku[ProductsConsts.PRODUCT_FK] == product_fk].empty:
             return None, None
-        facings = relevant_scif[relevant_scif['product_fk'] == product_fk]['facings'].sum()
+        facings = relevant_scif[relevant_scif[ScifConsts.PRODUCT_FK] == product_fk][ScifConsts.FACINGS].sum()
         if facings > 0:
             result, passed = Consts.DISTRIBUTED, 1
         else:
@@ -496,8 +505,8 @@ class ToolBox:
         :return: a line for the DF - {product: 8, passed: 1/0, standard: N/S, brand: 5, sub: 12}
         """
         product_fk, brand, sub_brand, standard_type = \
-            product_line[['product_fk', ProductsConsts.BRAND_FK, 'sub_brand_fk', Consts.STANDARD_TYPE]]
-        if self.all_products_sku[self.all_products_sku['product_fk'] == product_fk].empty:
+            product_line[[ProductsConsts.PRODUCT_FK, ProductsConsts.BRAND_FK, 'sub_brand_fk', Consts.STANDARD_TYPE]]
+        if self.all_products_sku[self.all_products_sku[ProductsConsts.PRODUCT_FK] == product_fk].empty:
             return None, None
         facings = self.calculate_passed_display_without_subst_sep_scenes(product_fk, relevant_scif)
         if facings > 0:
@@ -522,15 +531,16 @@ class ToolBox:
         """
         sku_kpi_fk = kpi_db_names[Consts.SKU]
         sub_brand_kpi_fk = kpi_db_names[Consts.SUB_BRAND]
-        assortment_products = relevant_assortment['product_fk'].unique().tolist()
+        assortment_products = relevant_assortment[ProductsConsts.PRODUCT_FK].unique().tolist()
         all_diageo_products = relevant_scif[
             (relevant_scif[ProductsConsts.MANUFACTURER_FK] == self.manufacturer_fk) &
-            (relevant_scif['facings'] > 0) &
-            ~(relevant_scif['product_fk'].isin(assortment_products))][[
-            'product_fk', 'sub_brand_fk', ProductsConsts.BRAND_FK]].drop_duplicates()
+            (relevant_scif[ScifConsts.FACINGS] > 0) &
+            ~(relevant_scif[ScifConsts.PRODUCT_FK].isin(assortment_products))][[
+            ScifConsts.PRODUCT_FK, 'sub_brand_fk', ProductsConsts.BRAND_FK]].drop_duplicates()
         result = Consts.EXTRA
         for i, product_line in all_diageo_products.iterrows():
-            product, sub_brand, brand = product_line[['product_fk', 'sub_brand_fk', ProductsConsts.BRAND_FK]]
+            product, sub_brand, brand = product_line[[ProductsConsts.PRODUCT_FK,
+                                                      'sub_brand_fk', ProductsConsts.BRAND_FK]]
             sub_brand_dict = self.common.get_dictionary(kpi_fk=sub_brand_kpi_fk, brand_fk=brand, sub_brand_fk=sub_brand)
             self.common.write_to_db_result(
                 fk=sku_kpi_fk, numerator_id=product, result=self.get_pks_of_result(result),
@@ -562,16 +572,19 @@ class ToolBox:
         relevant_scif = self.scif_without_emptys[
             (self.scif_without_emptys[ScifConsts.SCENE_ID].isin(relevant_scenes)) &
             (self.scif_without_emptys[ProductsConsts.PRODUCT_TYPE] == ProductTypeConsts.POS) &
-            ~(self.scif_without_emptys[ProductsConsts.SUB_CATEGORY_LOCAL_NAME].isin(Consts.MENU_EXCLUDE_SUB_CATEGORIES))]
+            ~(self.scif_without_emptys
+              [ProductsConsts.SUB_CATEGORY_LOCAL_NAME].isin(Consts.MENU_EXCLUDE_SUB_CATEGORIES))]
         diageo_facings, den_res = 0, 0
         if self.attr11 == Consts.NATIONAL_STORE:
             total_kpi_fk = self.common.get_kpi_fk_by_kpi_name(Consts.DB_ON_NAMES[Consts.MENU_NATIONAL][Consts.TOTAL])
             result_dict = self.common.get_dictionary(kpi_fk=total_kpi_fk)
-            template_kpi_fk = self.common.get_kpi_fk_by_kpi_name(Consts.DB_ON_NAMES[Consts.MENU_NATIONAL][Consts.TEMPLATE])
-            for template_group in relevant_scif['template_group'].unique().tolist():
+            template_kpi_fk =\
+                self.common.get_kpi_fk_by_kpi_name(Consts.DB_ON_NAMES[Consts.MENU_NATIONAL][Consts.TEMPLATE])
+            for template_group in relevant_scif[ScifConsts.TEMPLATE_GROUP].unique().tolist():
                 template_scif = relevant_scif[
-                    relevant_scif['template_group'].str.encode(HelperConsts.UTF8) == template_group.encode(HelperConsts.UTF8)]
-                template_id = template_scif['template_fk'].iloc[0]
+                    relevant_scif[ScifConsts.TEMPLATE_GROUP].str.encode(HelperConsts.UTF8)
+                    == template_group.encode(HelperConsts.UTF8)]
+                template_id = template_scif[ScifConsts.TEMPLATE_FK].iloc[0]
                 scene_type_dict = self.common.get_dictionary(kpi_fk=template_kpi_fk, template_fk=template_id)
                 template_diageo_facings, temp_den_res = self.calculate_menu_scene_type(
                     template_scif, scene_type_dict, target, template_id)
@@ -611,7 +624,7 @@ class ToolBox:
         manufacturer_kpi_fk = self.common.get_kpi_fk_by_kpi_name(Consts.DB_ON_NAMES[menu_type][Consts.MANUFACTURER])
         sub_brand_kpi_fk = self.common.get_kpi_fk_by_kpi_name(Consts.DB_ON_NAMES[menu_type][Consts.SUB_BRAND])
         all_manufacturers = relevant_scif[ProductsConsts.MANUFACTURER_FK].unique().tolist()
-        den_res = relevant_scif['facings'].sum()
+        den_res = relevant_scif[ScifConsts.FACINGS].sum()
         diageo_facings = 0
         for manufacturer_fk in all_manufacturers:
             if manufacturer_fk == 0:
@@ -625,7 +638,7 @@ class ToolBox:
                 sub_brand_fk = products.sub_brand_fk
                 brand_fk = products.brand_fk
                 num_res = manufacturer_scif[(manufacturer_scif['sub_brand_fk'] == sub_brand_fk) &
-                                            (manufacturer_scif[ProductsConsts.BRAND_FK] == brand_fk)]['facings'].sum()
+                                            (manufacturer_scif[ProductsConsts.BRAND_FK] == brand_fk)][ScifConsts.FACINGS].sum()
                 manufacturer_num += num_res
                 result = self.get_score(num_res, den_res)
                 self.common.write_to_db_result(
@@ -669,11 +682,13 @@ class ToolBox:
                 identifier_parent=self.common.get_dictionary(name=Consts.TOTAL))
             return score * weight, 0, 0
         relevant_scenes = self.get_relevant_scenes(scene_types)
-        relevant_products = self.scif_without_emptys[(self.scif_without_emptys['scene_fk'].isin(relevant_scenes)) &
-                                                     (self.scif_without_emptys['location_type'] == 'Secondary Shelf') &
-                                                     (self.scif_without_emptys[ProductsConsts.PRODUCT_TYPE].isin([ProductTypeConsts.SKU, ProductTypeConsts.OTHER]))]
+        relevant_products = self.scif_without_emptys[
+            (self.scif_without_emptys[ScifConsts.SCENE_FK].isin(relevant_scenes)) &
+            (self.scif_without_emptys[ScifConsts.LOCATION_TYPE] == 'Secondary Shelf') &
+            (self.scif_without_emptys[ProductsConsts.PRODUCT_TYPE].isin([ProductTypeConsts.SKU,
+                                                                         ProductTypeConsts.OTHER]))]
         all_results = pd.DataFrame(columns=Consts.COLUMNS_FOR_DISPLAY)
-        for product_fk in relevant_products['product_fk'].unique().tolist():
+        for product_fk in relevant_products[ScifConsts.PRODUCT_FK].unique().tolist():
             product_result = self.calculate_display_share_of_sku(
                 product_fk, relevant_products, manufacturer_kpi_fk)
             all_results = all_results.append(product_result, ignore_index=True)
@@ -716,7 +731,8 @@ class ToolBox:
         :return: a line for the results DF
         """
         sku_kpi_fk = self.common.get_kpi_fk_by_kpi_name(Consts.DB_OFF_NAMES[Consts.DISPLAY_SHARE][Consts.SKU])
-        manufacturer = self.all_products[self.all_products['product_fk'] == product_fk][ProductsConsts.MANUFACTURER_FK].iloc[0]
+        manufacturer = self.all_products[self.all_products[ProductsConsts.PRODUCT_FK]
+                                         == product_fk][ProductsConsts.MANUFACTURER_FK].iloc[0]
         if self.visit_date >= datetime.strptime("2019-07-01", '%Y-%m-%d').date():
             display_function = self.calculate_passed_display_without_subst_sep_scenes
         else:
@@ -745,7 +761,7 @@ class ToolBox:
         """
         relevant_scenes = self.get_relevant_scenes(scene_types)
         relevant_competitions = self.external_targets[
-            self.external_targets[Consts.EX_OPERATION_TYPE] == Consts.SHELF_FACINGS_OP]
+            self.external_targets[ExternalTargetsConsts.OPERATION_TYPE] == Consts.SHELF_FACINGS_OP]
         if relevant_competitions.empty:
             Log.warning("No shelf_facings list for this visit_date.")
             return 0, 0, 0
@@ -765,7 +781,7 @@ class ToolBox:
                     default_state))
                 relevant_competitions = relevant_competitions[relevant_competitions[Consts.EX_STATE_FK] == default_state]
         relevant_competitions = relevant_competitions[Consts.SHELF_FACINGS_COLUMNS]
-        relevant_competitions = relevant_competitions.merge(self.relevant_assortment, on="product_fk")
+        relevant_competitions = relevant_competitions.merge(self.relevant_assortment, on=ProductsConsts.PRODUCT_FK)
         kpi_db_names = self.pull_kpi_fks_from_names(Consts.DB_OFF_NAMES[kpi_name])
         total_results = []
         standard_types_results = {Consts.SEGMENT: [], Consts.NATIONAL: []} if self.attr11 == Consts.OPEN else {}
@@ -824,12 +840,14 @@ class ToolBox:
             comp_product_fk = 0
             target = bench_value
         diageo_facings, comp_facings, temp_comp_facings, temp_target = 0, 0, 0, target
-        for template_name in relevant_scif['template_name'].unique():
-            template_scif = relevant_scif[relevant_scif['template_name'] == template_name]
-            temp_diageo_facings = template_scif[template_scif['product_fk'] == product_fk]['facings_ign_stack'].sum()
+        for template_name in relevant_scif[ScifConsts.TEMPLATE_NAME].unique():
+            template_scif = relevant_scif[relevant_scif[ScifConsts.TEMPLATE_NAME] == template_name]
+            temp_diageo_facings = template_scif[template_scif[ScifConsts.PRODUCT_FK] 
+                                                == product_fk][ScifConsts.FACINGS_IGN_STACK].sum()
             if comp_product_fk:
                 temp_comp_facings = \
-                    template_scif[template_scif['product_fk'] == comp_product_fk]['facings_ign_stack'].sum()
+                    template_scif[template_scif[ScifConsts.PRODUCT_FK] 
+                                  == comp_product_fk][ScifConsts.FACINGS_IGN_STACK].sum()
                 temp_target = bench_value * temp_comp_facings
             if temp_diageo_facings >= temp_target and temp_diageo_facings > 0:
                 return temp_diageo_facings, temp_comp_facings, 1, temp_target, comp_product_fk
@@ -851,15 +869,16 @@ class ToolBox:
         """
         relevant_scenes = self.get_relevant_scenes(scene_types)
         all_products_table = self.external_targets[
-            self.external_targets[Consts.EX_OPERATION_TYPE] == Consts.SHELF_PLACEMENT_OP][Consts.SHELF_PLACEMENT_COLUMNS]
+            self.external_targets[ExternalTargetsConsts.OPERATION_TYPE] == Consts.SHELF_PLACEMENT_OP][Consts.SHELF_PLACEMENT_COLUMNS]
         if all_products_table.empty:
             Log.warning("No shelf_placement list for this visit_date.")
             return 0, 0, 0
-        all_products_table = all_products_table.merge(self.relevant_assortment, on="product_fk")
+        all_products_table = all_products_table.merge(self.relevant_assortment, on=ProductsConsts.PRODUCT_FK)
         kpi_db_names = self.pull_kpi_fks_from_names(Consts.DB_OFF_NAMES[kpi_name])
         total_results = []
         standard_types_results = {Consts.SEGMENT: [], Consts.NATIONAL: []} if self.attr11 == Consts.OPEN else {}
-        relevant_matches = self.match_product_in_scene[self.match_product_in_scene['scene_fk'].isin(relevant_scenes)]
+        relevant_matches =\
+            self.match_product_in_scene[self.match_product_in_scene[MatchesConsts.SCENE_FK].isin(relevant_scenes)]
         for brand_fk in all_products_table[ProductsConsts.BRAND_FK].unique().tolist():
             brand_competitions = all_products_table[all_products_table[ProductsConsts.BRAND_FK] == brand_fk]
             standard_types_results, brand_results = self.generic_brand_calculator(
@@ -883,15 +902,16 @@ class ToolBox:
         standard_type = product_line[Consts.STANDARD_TYPE]
         min_shelf_loc = product_line[Consts.EX_MINIMUM_SHELF]
         product_fk_with_substs = [product_fk]
-        product_fk_with_substs += self.all_products[self.all_products[ProductsConsts.SUBSTITUTION_PRODUCT_FK] == product_fk][
-            'product_fk'].tolist()
-        relevant_products = relevant_matches[relevant_matches['product_fk'].isin(product_fk_with_substs)]
+        product_fk_with_substs += self.all_products[self.all_products[ProductsConsts.SUBSTITUTION_PRODUCT_FK]
+                                                    == product_fk][MatchesConsts.PRODUCT_FK].tolist()
+        relevant_products = relevant_matches[relevant_matches[MatchesConsts.PRODUCT_FK].isin(product_fk_with_substs)]
         if relevant_products.empty:
             passed, result = 0, Consts.NO_PLACEMENT
         else:
-            relevant_products = pd.merge(relevant_products, self.scif[[ScifConsts.SCENE_ID, 'template_name']], how='left',
-                                         left_on='scene_fk', right_on=ScifConsts.SCENE_ID).drop_duplicates()
-            relevant_products = relevant_products.sort_values(by=['template_name'])
+            relevant_products = pd.merge(relevant_products, 
+                                         self.scif[[ScifConsts.SCENE_ID, ScifConsts.TEMPLATE_NAME]], how='left',
+                                         left_on=MatchesConsts.SCENE_FK, right_on=ScifConsts.SCENE_ID).drop_duplicates()
+            relevant_products = relevant_products.sort_values(by=[ScifConsts.TEMPLATE_NAME])
             shelf_groups = self.converted_groups[min_shelf_loc]
             all_shelves_placements = pd.DataFrame(columns=Consts.COLUMNS_FOR_PRODUCT_PLACEMENT)
             passed, result = 0, None
@@ -942,7 +962,7 @@ class ToolBox:
         """
         min_max_shleves = self.templates[Consts.MINIMUM_SHELF_SHEET]
         shelf_from_bottom = match_product_line[MatchesConsts.SHELF_NUMBER_FROM_BOTTOM]
-        scene = match_product_line['scene_fk']
+        scene = match_product_line[MatchesConsts.SCENE_FK]
         if shelf_from_bottom > len(min_max_shleves):
             shelf_from_bottom = len(min_max_shleves)
         amount_of_shelves = self.scenes_with_shelves[scene] \
@@ -968,7 +988,7 @@ class ToolBox:
         """
         relevant_scenes = self.get_relevant_scenes(scene_types)
         relevant_competitions = self.external_targets[
-            self.external_targets[Consts.EX_OPERATION_TYPE] == Consts.MSRP_OP]
+            self.external_targets[ExternalTargetsConsts.OPERATION_TYPE] == Consts.MSRP_OP]
         if relevant_competitions.empty:
             Log.warning("No MSRP list for this visit_date.")
             return 0, 0, 0
@@ -980,8 +1000,8 @@ class ToolBox:
             relevant_competitions = relevant_competitions[relevant_competitions[Consts.EX_STATE_FK] == default_state]
         kpi_db_names = self.pull_kpi_fks_from_names(Consts.DB_OFF_NAMES[kpi_name])
         all_products_table = relevant_competitions[Consts.MSRP_COLUMNS]
-        all_products_table = all_products_table.merge(self.all_products, on="product_fk")
-        relevant_prices = self.products_with_prices[self.products_with_prices['scene_fk'].isin(relevant_scenes)]
+        all_products_table = all_products_table.merge(self.all_products, on=ScifConsts.PRODUCT_FK)
+        relevant_prices = self.products_with_prices[self.products_with_prices[ScifConsts.SCENE_FK].isin(relevant_scenes)]
         standard_types_results, total_results = {}, []
         for brand_fk in all_products_table[ProductsConsts.BRAND_FK].unique().tolist():
             brand_competitions = all_products_table[all_products_table[ProductsConsts.BRAND_FK] == brand_fk]
@@ -1202,23 +1222,24 @@ class ToolBox:
         :param relevant_products: relevant scif
         :return: number of scenes. int.
         """
-        external_template = self.external_targets[self.external_targets["operation_type"] == Consts.DISPLAY_TARGET_OP][
+        external_template = self.external_targets[
+            self.external_targets[ExternalTargetsConsts.OPERATION_TYPE] == Consts.DISPLAY_TARGET_OP][
             Consts.DISPLAY_TARGET_COLUMNS]
         template = external_template[external_template[Consts.EX_ATTR2] == self.attr2]
         if template.empty:
             template = external_template[external_template[Consts.EX_ATTR2] == Consts.OTHER]
         sum_scenes_passed, sum_facings = 0, 0
         product_fk_with_substs = [product_fk]
-        product_fk_with_substs += self.all_products[self.all_products[ProductsConsts.SUBSTITUTION_PRODUCT_FK] == product_fk][
-            'product_fk'].tolist()
+        product_fk_with_substs += self.all_products[self.all_products[ProductsConsts.SUBSTITUTION_PRODUCT_FK] ==
+                                                    product_fk][ProductsConsts.PRODUCT_FK].tolist()
         for product in product_fk_with_substs:
-            for scene in relevant_products['scene_fk'].unique().tolist():
+            for scene in relevant_products[ScifConsts.SCENE_FK].unique().tolist():
                 scene_products = self.match_product_in_scene[
-                    (self.match_product_in_scene['scene_fk'] == scene) &
-                    (self.match_product_in_scene['product_fk'] == product)]
+                    (self.match_product_in_scene[MatchesConsts.SCENE_FK] == scene) &
+                    (self.match_product_in_scene[MatchesConsts.PRODUCT_FK] == product)]
                 if scene_products.empty:
                     continue
-                scene_type = self.scif[self.scif['scene_fk'] == scene]['template_name'].iloc[0]
+                scene_type = self.scif[self.scif[ScifConsts.SCENE_FK] == scene][ScifConsts.TEMPLATE_NAME].iloc[0]
                 minimum_products = template[template[Consts.EX_SCENE_TYPE] == scene_type]
                 if minimum_products.empty:
                     minimum_products = template[template[Consts.EX_SCENE_TYPE] == Consts.OTHER]
@@ -1236,23 +1257,24 @@ class ToolBox:
         :param relevant_products: relevant scif
         :return: number of scenes. int.
         """
-        external_template = self.external_targets[self.external_targets["operation_type"] == Consts.DISPLAY_TARGET_OP][
+        external_template = self.external_targets[
+            self.external_targets[ExternalTargetsConsts.OPERATION_TYPE] == Consts.DISPLAY_TARGET_OP][
             Consts.DISPLAY_TARGET_COLUMNS]
         template = external_template[external_template[Consts.EX_ATTR2] == self.attr2]
         if template.empty:
             template = external_template[external_template[Consts.EX_ATTR2] == Consts.OTHER]
         sum_scenes_passed, sum_facings = 0, 0
         product_fk_with_substs = [product_fk]
-        product_fk_with_substs += self.all_products[self.all_products[ProductsConsts.SUBSTITUTION_PRODUCT_FK] == product_fk][
-            'product_fk'].tolist()
-        for scene in relevant_products['scene_fk'].unique().tolist():
+        product_fk_with_substs += self.all_products[self.all_products[ProductsConsts.SUBSTITUTION_PRODUCT_FK] 
+                                                    == product_fk][ScifConsts.PRODUCT_FK].tolist()
+        for scene in relevant_products[ScifConsts.SCENE_FK].unique().tolist():
             for product in product_fk_with_substs:
                 scene_products = self.match_product_in_scene[
-                    (self.match_product_in_scene['scene_fk'] == scene) &
-                    (self.match_product_in_scene['product_fk'] == product)]
+                    (self.match_product_in_scene[MatchesConsts.SCENE_FK] == scene) &
+                    (self.match_product_in_scene[MatchesConsts.PRODUCT_FK] == product)]
                 if scene_products.empty:
                     continue
-                scene_type = self.scif[self.scif['scene_fk'] == scene]['template_name'].iloc[0]
+                scene_type = self.scif[self.scif[ScifConsts.SCENE_FK] == scene][ScifConsts.TEMPLATE_NAME].iloc[0]
                 minimum_products = template[template[Consts.EX_SCENE_TYPE] == scene_type]
                 if minimum_products.empty:
                     minimum_products = template[template[Consts.EX_SCENE_TYPE] == Consts.OTHER]
@@ -1270,7 +1292,7 @@ class ToolBox:
         """
         if self.does_exist(scene_types):
             scene_type_list = scene_types.split(", ")
-            return self.scif_without_emptys[self.scif_without_emptys["template_name"].isin(scene_type_list)][
+            return self.scif_without_emptys[self.scif_without_emptys[ScifConsts.TEMPLATE_NAME].isin(scene_type_list)][
                 ScifConsts.SCENE_ID].unique().tolist()
         return self.scif_without_emptys[ScifConsts.SCENE_ID].unique().tolist()
 
