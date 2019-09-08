@@ -60,6 +60,10 @@ class DataTestUnitMarsuae(object):
         [{'pk': 2, 'store_type': 'Hypers', 'store_number_1': '10097162', 'additional_attribute_1': 'Hypers',
           'additional_attribute_2': 'MT', 'additional_attribute_3': 'Lulu'}])
 
+    store_data_supers_a = pd.DataFrame.from_records(
+        [{'pk': 3, 'store_type': 'Supers A', 'store_number_1': '10388934', 'additional_attribute_1': 'All Others',
+          'additional_attribute_2': 'General Trade', 'additional_attribute_3': 'Supers'}])
+
     store_info_dict_other_type = {'pk': 3, 'store_type': 'Other', 'store_number_1': '100978891',
                                   'additional_attribute_1': 'Other', 'additional_attribute_2': 'Other',
                                   'additional_attribute_3': 'Lulu'}
@@ -162,6 +166,13 @@ class DataTestUnitMarsuae(object):
     scene_4_scif = pd.DataFrame([
         {'product_fk': 1,  'product_type': 'SKU'}, {'product_fk': 4,  'product_type': 'Other'},
         {'product_fk': 3,  'product_type': 'SKU'}
+    ])
+    scene_5 = pd.DataFrame([
+        {'probe_match_fk': 1, 'scene_fk': 1, 'product_fk': 1, 'price': 4, 'promotion_price': None},
+        {'probe_match_fk': 2, 'scene_fk': 1, 'product_fk': 2, 'price': None, 'promotion_price': 5},
+    ])
+    scene_5_scif = pd.DataFrame([
+        {'product_fk': 1, 'product_type': 'SKU'}, {'product_fk': 2, 'product_type': 'SKU'},
     ])
 
     #change product pks

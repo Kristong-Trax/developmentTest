@@ -1,7 +1,8 @@
 
 from Trax.Utils.Logging.Logger import Log
+from Projects.CBCIL.Utils.KPIToolBox import CBCILCBCIL_ToolBox
+from KPIUtils_v2.Utils.Decorators.Decorators import log_runtime
 
-from Projects.CBCIL.Utils.KPIToolBox import CBCILCBCIL_ToolBox, log_runtime
 
 __author__ = 'Israel'
 

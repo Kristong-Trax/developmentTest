@@ -125,6 +125,10 @@ class AltriaDataProvider:
         # we need to make sure there aren't any orphaned tags
         if len(top_left_points) != len(bottom_right_points):
             Log.warning('The number of top left and bottom right corners are not equal!')
+            # Sometimes, salvaging bad "tagging" lies beyond our science.
+            if top_left_points.empty or bottom_right_points.empty:
+                Log.error('POS not usable. Only 1 corner of the POS was tagged')
+                return polygon_mask_df  # Since POS is not usable, we will pretend there is none
             # if there are orphaned tags, we should use the set with the fewest points as the anchor points set
             if len(top_left_points) < len(bottom_right_points):
                 anchor_points = top_left_points
