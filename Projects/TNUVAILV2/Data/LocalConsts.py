@@ -1,12 +1,10 @@
 # coding=utf-8
-
 from KPIUtils_v2.Utils.Consts.DataProvider import ScifConsts
 from KPIUtils_v2.Utils.Consts.DB import SessionResultsConsts
 from KPIUtils_v2.Utils.Consts.GlobalConsts import ProductTypeConsts
 
 
 class Consts(object):
-
     # Scene item facts attributes
     PRODUCT_POLICY_ATTR = 'att3'
     MILKY_POLICY = u'חלבי'
@@ -28,12 +26,11 @@ class Consts(object):
     AVAILABLE = 1
     OBLIGATORY_ASSORTMENT = u'חובה'
     OPTIONAL_SKU_ASSORTMENT = u'אופציונאלי'
-    AGGREGATION_COLUMNS_RENAMING = {'sum': SessionResultsConsts.NUMERATOR_RESULT, 'count':
-        SessionResultsConsts.DENOMINATOR_RESULT}
-    SOS_SKU_LVL_RENAME = {IN_STORE: SessionResultsConsts.NUMERATOR_RESULT, ScifConsts.CATEGORY_FK:
-        SessionResultsConsts.DENOMINATOR_ID,
+    AGGREGATION_COLUMNS_RENAMING = {'sum': SessionResultsConsts.NUMERATOR_RESULT,
+                                    'count': SessionResultsConsts.DENOMINATOR_RESULT}
+    SOS_SKU_LVL_RENAME = {IN_STORE: SessionResultsConsts.NUMERATOR_RESULT,
+                          ScifConsts.CATEGORY_FK: SessionResultsConsts.DENOMINATOR_ID,
                           ScifConsts.FACINGS: SessionResultsConsts.DENOMINATOR_RESULT}
-
     # KPIs names
     OOS_STORE_LEVEL = 'OOS_STORE_LEVEL'
     OOS_SKU_IN_STORE_LEVEL = 'OOS_SKU_IN_STORE_LEVEL'
@@ -55,8 +52,16 @@ class Consts(object):
     OOS_CATEGORY_LEVEL_TIRAT_TSVI = 'OOS_CATEGORY_LEVEL_TIRAT_TSVI'
     OOS_SKU_LEVEL_DAIRY = 'OOS_SKU_LEVEL_DAIRY'
     OOS_SKU_LEVEL_TIRAT_TSVI = 'OOS_SKU_LEVEL_TIRAT_TSVI'
+    # KPIs with previous results for NCC report
+    OOS_STORE_DAIRY_PREV_RES = 'OOS_STORE_LEVEL_DAIRY_WITH_PREVIOUS_RESULTS'
+    OOS_STORE_TIRAT_TSVI_PREV_RES = 'OOS_STORE_LEVEL_TIRAT_TSVI_WITH_PREVIOUS_RESULTS'
+    OOS_SKU_DAIRY_PREV_RES = 'OOS_SKU_LEVEL_DAIRY_WITH_PREVIOUS_RESULTS'
+    OOS_SKU_TIRAT_TSVI_PREV_RES = 'OOS_SKU_LEVEL_TIRAT_TSVI_WITH_PREVIOUS_RESULTS'
 
     # Logs
     EMPTY_ASSORTMENT_DATA = "There isn't relevant assortment data for this visit"
     LOG_EMPTY_ASSORTMENT_DATA_PER_POLICY = "There isn't relevant assortment data for the following policy: {}"
     LOG_EMPTY_PREVIOUS_SESSIONS = "Couldn't fetch previous results for the the following session: {}"
+
+    PREV_RES_KPIS_FOR_NCC = (
+        OOS_STORE_DAIRY_PREV_RES, OOS_STORE_TIRAT_TSVI_PREV_RES, OOS_SKU_DAIRY_PREV_RES, OOS_SKU_TIRAT_TSVI_PREV_RES)
