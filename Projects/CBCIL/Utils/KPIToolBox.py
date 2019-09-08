@@ -246,11 +246,7 @@ class CBCILCBCIL_ToolBox(object):
                             Log.warning("KPI of type '{}' is not supported".format(kpi_type))
                             continue
 
-                    try:
-                        atomic_weight = float(atomic[self.WEIGHT])
-                    except:
-                        atomic_weight = None
-
+                    atomic_weight = float(atomic[self.WEIGHT]) if atomic[self.WEIGHT] else 0
                     if score is not None:
                         atomic_fk = self.kpi_static_data[
                             self.kpi_static_data['atomic_kpi_name'].str.encode('utf-8') == atomic[
