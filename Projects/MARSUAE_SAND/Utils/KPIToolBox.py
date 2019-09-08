@@ -459,7 +459,7 @@ class MARSUAE_SANDToolBox:
                                            result=result['cat_score'], score=result['cat_score'], weight=100,
                                            identifier_parent=identifier_parent, identifier_result=identifier_result,
                                            target=self.FIXED_TARGET_FOR_MR, should_enter=True,
-                                           numerator_result=self.WEIGHT)
+                                           numerator_result=result[self.WEIGHT])
 
     def get_atomics_for_template_groups_present_in_store(self, store_atomics):
         session_template_groups = self.scif['template_group'].unique().tolist()
