@@ -59,14 +59,12 @@ class GSKSGToolBox:
 
         # assortment_store_dict = self.gsk_generator.availability_store_function()
         # self.common.save_json_to_new_tables(assortment_store_dict)
-
         assortment_category_dict = self.gsk_generator.availability_category_function()
         self.common.save_json_to_new_tables(assortment_category_dict)
         fsos_category_dict = self.gsk_generator.gsk_global_facings_sos_by_category_function()
         self.common.save_json_to_new_tables(fsos_category_dict)
         orange_score_dict = self.orange_score_category(assortment_category_dict, fsos_category_dict)
         self.common.save_json_to_new_tables(orange_score_dict)
-
         #
         # assortment_subcategory_dict = self.gsk_generator.availability_subcategory_function()
         # self.common.save_json_to_new_tables(assortment_subcategory_dict)
@@ -94,25 +92,39 @@ class GSKSGToolBox:
         score = 0
         return score
 
-    def msl_compliance_score(self, category, categories_results_json, category_targets):
-        weight = category_targets['msl_weight'].iloc[0]
+    def msl_compliance_score(self, category, categories_results_json, category_targets,parent_result_identifier):
+        results_list = []
+        msl_kpi_fk = self.common.get_kpi_fk_by_kpi_type(Consts.MSL_ORANGE_SCORE)
         if category not in categories_results_json:
-            return 0, weight
-        dst_result = categories_results_json[category]
+            dst_result = 0
+        else:
+            dst_result = categories_results_json[category]
+        weight = category_targets['msl_weight'].iloc[0]
         result = dst_result * weight
-        return result, weight
+        results_list.append({'fk': msl_kpi_fk, 'numerator_id': category, 'denominator_id':
+            self.store_id, 'denominator_result': 1, 'numerator_result': result, 'result': result,
+                             'target': weight, 'score': result,
+                             'identifier_parent': parent_result_identifier, 'should_enter': True})
+        return result, results_list
 
-    def fsos_compliance_score(self, category, categories_results_json, category_targets):
+    def fsos_compliance_score(self, category, categories_results_json, category_targets, parent_result_identifier):
         """
                This function return json of keys- categories and values -  kpi result for category
                :param category: pk of category
                :param categories_results_json: type of the desired kpi
                :return category json :  number-category_fk,number-result
            """
+        results_list =[]
+        fsos_kpi_fk = self.common.get_kpi_fk_by_kpi_type(Consts.FSOS_ORANGE_SCORE)
         dst_result = categories_results_json[category]
         benchmark = category_targets['fsos_benchmark'].iloc[0]
-        result = 0.1 if dst_result >= benchmark else 0
-        return result, benchmark
+        weight = category_targets['fsos_weight'].iloc[0]
+        result = weight if dst_result >= benchmark else 0
+        results_list.append({'fk': fsos_kpi_fk, 'numerator_id': category, 'denominator_id':
+            self.store_id, 'denominator_result': 1, 'numerator_result': result, 'result': result,
+                                                 'target': weight, 'score': result,
+                                                 'identifier_parent': parent_result_identifier, 'should_enter': True})
+        return result, results_list
 
     def extract_json_results_by_kpi(self, general_kpi_results, kpi_type):
         """
@@ -189,35 +201,49 @@ class GSKSGToolBox:
                 (self.targets[store_param_val] == self.store_info[param][0].encode(GlobalConsts.HelperConsts.UTF8)) |
                 (self.targets[store_param_val] == '') | (not self.targets[store_param_val].any())]
 
-    def display_distribution(self, display_name, category_fk, category_targets):
+    def display_distribution(self, display_name, category_fk, category_targets, parent_identifier, kpi_name, parent_kpi_name):
+
+        kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_name+Consts.COMPLIANCE_KPI)
         results_list = []
         display_products = self.scif[self.scif['product_type'] == 'POS']
+        display_name = "{}_name".format(display_name.lower())
         display_names = category_targets[display_name].iloc[0]
+        identifier_result = self.common.get_dictionary(category_fk=category_fk, kpi_fk=kpi_fk)
         kpi_result = 0
+        if isinstance(display_names, str) or isinstance(display_names, unicode):
+            display_array = []
+            if len(display_names) > 0:
+                display_array.append(display_names)
+            display_names = display_array
         # check if name in
         for display in display_names:
             current_display_prod = display_products[display_products['product_name'].str.contains(display)]
-            display_sku_level = self.display_sku_results(current_display_prod, category_fk)
+            display_sku_level = self.display_sku_results(current_display_prod, category_fk, kpi_name)
             kpi_result += len(current_display_prod)
             results_list.extend(display_sku_level)
 
-        weight = category_targets['display_weight'].iloc[0]
-        benchmark = category_targets['display_benchmark'].iloc[0]
+        weight = category_targets['{}_weight'.format(parent_kpi_name)].iloc[0]
+        benchmark = category_targets['{}_benchmark'.format(parent_kpi_name)].iloc[0]
         kpi_score = weight if kpi_result >= benchmark else 0
-        # results_list.append({'fk': kpi_fk, 'numerator_id':   category_fk, 'denominator_id': self.store_id,
-        #                      'denominator_result': 1, 'numerator_result': kpi_score, 'result': kpi_score,
-        #                      'score': kpi_score, 'identifier_parent': identifier_parent, 'should_enter': True})
-        return results_list
-    def display_sku_results(self, display_data, category_fk):
-        kpi_fk = 3
+        results_list.append({'fk': kpi_fk, 'numerator_id':   category_fk, 'denominator_id': self.store_id,
+                             'denominator_result': 1, 'numerator_result': kpi_score, 'result': kpi_score,
+                             'score': kpi_score, 'identifier_parent': parent_identifier, 'identifier_result':
+                                 identifier_result, 'target': weight, 'should_enter': True})
+        return kpi_score, results_list
+
+    def display_sku_results(self, display_data, category_fk, kpi_name):
         results_list = []
+
+        kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_name+Consts.SKU_LEVEL_LIST)
+        parent_kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_name + Consts.COMPLIANCE_KPI)
+        identifier_parent = self.common.get_dictionary(category_fk=category_fk, kpi_fk=parent_kpi_fk)
+
         display_names = display_data['item_id'].unique()
         for display in display_names:
-            count = display_data[display_data['item_id'] == display]['facings'].count()
-            # results_list.extend ({'fk': kpi_fk, 'numerator_id':   display, 'denominator_id': category_fk,
-            #  'denominator_result': 1, 'numerator_result': count, 'result':count,
-            #   'score':count, 'identifier_parent': identifier_parent
-            #     , 'should_enter':True})
+            count = float(display_data[display_data['item_id'] == display]['facings'].sum()) / float(100)
+            results_list.append({'fk': kpi_fk, 'numerator_id':   display, 'denominator_id': category_fk,
+                                 'denominator_result': 1, 'numerator_result': count, 'result': count,
+                                 'score': count, 'identifier_parent': identifier_parent, 'should_enter': True})
         return results_list
 
     def assortment(self):
@@ -243,74 +269,150 @@ class GSKSGToolBox:
         kpi_results = kpi_results[kpi_results['in_store'] == 1]
         kpi_results = kpi_results[kpi_results['substitution_product_fk'].isnull()]
         shelf_data = pd.merge(self.match_product_in_scene[['scene_fk', 'product_fk', 'shelf_number']],
-                filtered_scif[['scene_id', 'product_fk']], how='right', left_on=
-                              ['scene_fk', 'product_fk'],
-                                                  right_on=['scene_id', 'product_fk'])
+                              filtered_scif[['scene_id', 'product_fk']], how='right', left_on=
+                              ['scene_fk', 'product_fk'], right_on=['scene_id', 'product_fk'])
 
         kpi_results = pd.merge(shelf_data, kpi_results, how='right', on=['product_fk'])
         return kpi_results
 
-    def shelf_compliance(self, category, assortment_df, category_targets):
+    def shelf_compliance(self, category, assortment_df, category_targets, identifier_parent):
+        results_list = []
+        kpi_fk = self.common.get_kpi_fk_by_kpi_type(Consts.SHELF_COMPLIANCE)
         assortment_cat = assortment_df[assortment_df['category_fk'] == category]
-        weight = category_targets['shelf_weight'].iloc[0]
+        shelf_weight = category_targets['shelf_weight'].iloc[0]
         benchmark = category_targets['shelf_benchmark'].iloc[0]
         shelves = [int(shelf) for shelf in category_targets['shelf_number'].iloc[0].split(",")]
         shelf_df = assortment_cat[assortment_cat['shelf_number'].isin(shelves)]
         numerator = shelf_df.shape[0]
         denominator = assortment_cat.shape[0]
         result = float(numerator) / float(denominator)
-        score = weight if result >= benchmark else 0
-        return score, weight
+        score = shelf_weight if result >= benchmark else 0
+        results_list.append({'fk': kpi_fk, 'numerator_id': category, 'denominator_id':
+            self.store_id, 'denominator_result': denominator, 'numerator_result': numerator, 'result': score,
+                             'target': shelf_weight, 'score': score,
+                             'identifier_parent': identifier_parent, 'should_enter': True})
+        return score, results_list, shelf_weight
 
-    def planogram(self, category_fk, assortment, category_targets):
-        shelf_compliance = self.shelf_compliance(category_fk, assortment, category_targets)
-        #sequence kpis
-        return shelf_compliance
+    def planogram(self, category_fk, assortment, category_targets, parent_result_identifier):
+        results_list = []
+        kpi_fk = self.common.get_kpi_fk_by_kpi_type(Consts.PLN_CATEGORY)
+        identifier_result = self.common.get_dictionary(category_fk=category_fk, kpi_fk=kpi_fk)
 
-    def secondary_display(self, category_fk, category_targets):
+        shelf_compliance_score, shelf_compliance_result, shelf_weight = self.shelf_compliance(category_fk, assortment,
+                                                                                              category_targets,
+                                                                                              identifier_result)
+        results_list.extend(shelf_compliance_result)
+        sequence_kpi, sequence_weight = 0, self.sequence(category_targets)
+        planogram_score = shelf_compliance_score + sequence_kpi
+        planogram_weight = shelf_weight + sequence_weight
+        results_list.append({'fk': kpi_fk, 'numerator_id': category_fk, 'denominator_id':
+            self.store_id, 'denominator_result': 1, 'numerator_result': planogram_score, 'result': planogram_score,
+                             'target': planogram_weight, 'score': planogram_score,
+                             'identifier_parent': parent_result_identifier, 'identifier_result': identifier_result
+                             ,'should_enter': True})
+        return planogram_score, results_list
+
+    def sequence(self, category_targets):
+
+        seq_1_target = 0 if category_targets['seq_1_weight'].empty else category_targets['seq_1_weight'].iloc[0]
+        seq_2_target = 0 if category_targets['seq_2_weight'].empty else category_targets['seq_2_weight'].iloc[0]
+        seq_3_target = 0 if category_targets['seq_3_weight'].empty else category_targets['seq_3_weight'].iloc[0]
+
+        sequence_weight = seq_1_target + seq_2_target + seq_3_target
+
+        return sequence_weight
+
+    def secondary_display(self, category_fk, category_targets, identifier_parent):
         # display compliance
-        dispenser_kpi = self.common.get_kpi_fk_by_kpi_type(Consts.DISPENSERS+Consts.COMPLIANCE_KPI)
-        counter_top_kpi = self.common.get_kpi_fk_by_kpi_type(Consts.DISPENSERS+Consts.COMPLIANCE_KPI)
-        standee_kpi =self.common.get_kpi_fk_by_kpi_type()
+        results_list = []
+        parent_kpi_name = 'display'
+        weight = category_targets['display_weight'].iloc[0]
+        total_kpi_fk = self.common.get_kpi_fk_by_kpi_type(Consts.DISPLAY_SUMMARY)
+        result_identifier = self.common.get_dictionary(category_fk=category_fk, kpi_fk=total_kpi_fk)
 
-        display_kpi = "{}_name".format(display_name.lower())
-        dispenser_score = self.display_distribution('Dispenser', category_fk, category_targets)
-        counter_top_score = self.display_distribution('Counter_Top', category_fk, category_targets)
-        Standee_score = self.display_distribution('Standee', category_fk, category_targets)
+        dispenser_score, dispenser_res = self.display_distribution(Consts.DISPENSER_TARGET, category_fk,
+                                                                   category_targets, result_identifier,
+                                                                   Consts.DISPENSERS, parent_kpi_name)
+        counter_top_score, counter_top_res = self.display_distribution(Consts.COUNTER_TOP_TARGET, category_fk,
+                                                                       category_targets, result_identifier,
+                                                                       Consts.COUNTERTOP, parent_kpi_name)
+        standee_score, standee_res = self.display_distribution(Consts.STANDEE_TARGET, category_fk, category_targets,
+                                                               result_identifier, Consts.STANDEE, parent_kpi_name)
+        results_list.extend(dispenser_res)
+        results_list.extend(counter_top_res)
+        results_list.extend(standee_res)
 
-        return
+        display_score = weight if (dispenser_score == weight) or (counter_top_score == weight) or (standee_score ==
+                                                                                                   weight) else 0
+        results_list.append({'fk': total_kpi_fk, 'numerator_id':   category_fk, 'denominator_id': self.store_id,
+                             'denominator_result': 1, 'numerator_result': display_score, 'result': display_score,
+                             'target': weight, 'score': display_score, 'identifier_parent': identifier_parent,
+                             'identifier_result': result_identifier,'should_enter': True})
 
-    def promo_activation(self, category_fk, category_targets):
+        return results_list, display_score
+
+    def promo_activation(self, category_fk, category_targets, identifier_parent):
         # display compliance
         # Promotion activation
-        Standee_score = self.display_distribution('Hang_Sell', category_fk, category_targets)
-        Standee_score = self.display_distribution('Top_Shelf', category_fk, category_targets)
+        total_kpi_fk = self.common.get_kpi_fk_by_kpi_type(Consts.PROMO_SUMMARY)
+        result_identifier = self.common.get_dictionary(category_fk=category_fk, kpi_fk=total_kpi_fk)
+        results_list = []
+        parent_kpi_name = 'promo'
+        weight = category_targets['promo_weight'].iloc[0]
 
-        return
+        hang_shell_score, hang_shell_res = self.display_distribution('Hang_Sell', category_fk, category_targets,
+                                                                     result_identifier, Consts.HANGSELL,
+                                                                     parent_kpi_name)
+        top_shelf_score, top_shelf_res = self.display_distribution('Top_Shelf', category_fk, category_targets,
+                                                                   result_identifier, Consts.TOP_SHELF, parent_kpi_name)
+        results_list.extend(hang_shell_res)
+        results_list.extend(top_shelf_res)
+        promo_score = weight if (hang_shell_score == weight) or (top_shelf_score == weight) else 0
+
+        results_list.append({'fk': total_kpi_fk, 'numerator_id': category_fk, 'denominator_id':
+            self.store_id, 'denominator_result': 1, 'numerator_result': promo_score, 'result': promo_score,
+                                                 'target': weight,
+                                                 'score': promo_score, 'identifier_parent': identifier_parent,
+                                                 'identifier_result': result_identifier, 'should_enter': True})
+
+        return results_list, promo_score
 
     def orange_score_category(self, assortment_category_dict, fsos_category_dict):
+        results_list = []
         self.store_target()
         if self.targets.empty:
             return
+
+        total_kpi_fk = self.common.get_kpi_fk_by_kpi_type(Consts.ORANGE_SCORE_COMPLIANCE)
         fsos_results = self.extract_json_results_by_kpi(fsos_category_dict, Consts.GLOBAL_FSOS_BY_CATEGORY)
         msl_results = self.extract_json_results_by_kpi(assortment_category_dict, Consts.GLOBAL_DST_BY_CATEGORY)
         categories = self.targets[DataProviderConsts.ProductsConsts.CATEGORY_FK].unique()
 
         assortment = self.msl_assortment('Distribution - SKU')
         for cat in categories:
+            orange_score_result_identifier = self.common.get_dictionary(category_fk=cat, kpi_fk=total_kpi_fk)
 
             cat_targets = self.targets[self.targets[DataProviderConsts.ProductsConsts.CATEGORY_FK] == cat]
 
-            msl_score = self.msl_compliance_score(cat, msl_results, cat_targets)
+            msl_score, msl_results = self.msl_compliance_score(cat, msl_results, cat_targets,
+                                                               orange_score_result_identifier)
 
-            fsos_score = self.fsos_compliance_score(cat, fsos_results, cat_targets)
+            fsos_score, fsos_results = self.fsos_compliance_score(cat, fsos_results, cat_targets,
+                                                                  orange_score_result_identifier)
 
-            planogram_aggregation = self.planogram(cat, assortment, cat_targets)
+            planogram_score, planogram_results = self.planogram(cat, assortment, cat_targets,
+                                                                orange_score_result_identifier)
 
-            secondery_display =  self.secondary_display(cat, assortment, cat_targets)
+            secondary_display_res, secondary_score = self.secondary_display(cat, cat_targets,
+                                                                            orange_score_result_identifier)
 
-            promo_activation = self.promo_activation()
+            promo_activation_res, promo_score = self.promo_activation(cat, cat_targets,
+                                                                      orange_score_result_identifier)
 
-
-
-        return []
+            compliance_category_score = promo_score + secondary_score + fsos_score + msl_score + planogram_score
+            results_list.extend(msl_results+fsos_results+planogram_results+secondary_display_res+promo_activation_res)
+            results_list.append({'fk': total_kpi_fk, 'numerator_id': cat, 'denominator_id': self.store_id,
+                                 'denominator_result': 1, 'numerator_result': compliance_category_score, 'result':
+                                     compliance_category_score, 'score': compliance_category_score,
+                                 'identifier_result': orange_score_result_identifier})
+        return results_list

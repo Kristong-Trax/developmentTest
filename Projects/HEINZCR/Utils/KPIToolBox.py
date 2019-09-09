@@ -130,9 +130,6 @@ class HEINZCRToolBox:
         products_in_store = self.scif[self.scif['facings'] > 0]['product_fk'].unique().tolist()
         pass_count = 0
 
-        assortment_fk = self.store_assortment_without_powerskus['assortment_fk'].iloc[0]
-        assortment_group_fk = self.store_assortment_without_powerskus['assortment_group_fk'].iloc[0]
-
         total_kpi_fk = self.common_v2.get_kpi_fk_by_kpi_type('Distribution')
         identifier_dict = self.common_v2.get_dictionary(kpi_fk=total_kpi_fk)
 
@@ -352,7 +349,7 @@ class HEINZCRToolBox:
                 #                                           score_after_actions=manufacturer)
                 self.common_v2.write_to_db_result(kpi_fk, numerator_id=numerator_id, numerator_result=numerator,
                                                   denominator_id=denominator_id, denominator_result=denominator,
-                                                  result=target, score=sos,
+                                                  result=target, score=sos, target=target,
                                                   score_after_actions=manufacturer, identifier_parent=identifier_parent,
                                                   should_enter=should_enter)
             except Exception as e:
@@ -519,8 +516,9 @@ class HEINZCRToolBox:
                                                           score=mark_up,
                                                           result=mark_up)
                 else:
-                    Log.warning("Product with ean_code {} is not in the configuration file for customer type {}"
-                                .format(product_in_session, self.store_info.store_type[0].encode('utf-8')))
+                    continue
+                    # Log.warning("Product with ean_code {} is not in the configuration file for customer type {}"
+                    #             .format(product_in_session, self.store_info.store_type[0].encode('utf-8')))
         return results_df
 
     def calculate_perfect_store_extra_spaces(self):
