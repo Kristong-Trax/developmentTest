@@ -1,4 +1,5 @@
 from KPIUtils_v2.Utils.Consts.DataProvider import MatchesConsts, ProductsConsts, ScifConsts, StoreInfoConsts
+from KPIUtils_v2.Utils.Consts.DB import SessionResultsConsts
 from KPIUtils.GlobalProjects.GSK.KPIGenerator import GSKGenerator
 from KPIUtils_v2.Utils.Consts.GlobalConsts import ProductTypeConsts, HelperConsts
 from KPIUtils_v2.DB.CommonV2 import Common
@@ -49,7 +50,7 @@ class GSKJPToolBox:
         self.blocking_generator = Block(self.data_provider)
         self.assortment = self.gsk_generator.get_assortment_data_provider()
         self.store_info = self.data_provider['store_info']
-        self.store_fk = self.data_provider['store_fk']
+        self.store_fk = self.data_provider[StoreInfoConsts.STORE_FK]
         self.ps_data_provider = PsDataProvider(self.data_provider, self.output)
         self.targets = self.ps_data_provider.get_kpi_external_targets()
         self.own_manufacturer = self.get_manufacturer
@@ -110,7 +111,8 @@ class GSKJPToolBox:
         :param  brand_fk :
         :param  policy : dictionary that contains {
                                                 'shelves':"1 ,2 ,4 ,5" (or any other string of numbers separate by ','),
-                                                'position_target': 80 (or any other percentage you want the score to reach)
+                                                'position_target': 80 (or any other percentage you want the score to
+                                                reach)
                                                 }
         :param  df: data frame that contains columns MatchesConsts.SHELF_NUMBER , "brand kf"
 
@@ -143,9 +145,10 @@ class GSKJPToolBox:
 
         """
         df = pd.merge(self.match_product_in_scene,
-                      self.all_products[Const.PRODUCTS_COLUMNS], how='left', on=['product_fk'])
+                      self.all_products[Const.PRODUCTS_COLUMNS], how='left', on=[MatchesConsts.PRODUCT_FK])
         df = pd.merge(self.scif[Const.SCIF_COLUMNS],
-                      df, how='right', right_on=['scene_fk', 'product_fk'], left_on=[ScifConsts.SCENE_ID, 'product_fk'])
+                      df, how='right', right_on=[ScifConsts.SCENE_FK, ScifConsts.SCENE_FK],
+                      left_on=[ScifConsts.SCENE_ID, ScifConsts.PRODUCT_FK])
 
         if df.empty:
             Log.warning('match_product_in_scene is empty ')
@@ -167,7 +170,7 @@ class GSKJPToolBox:
         """
         templates = self.set_up_data[(Const.SCENE_TYPE, Consts.PLN_BLOCK)]
         template_name = {
-            'template_name': templates} if templates else None  # figure out which template name should I use
+            ScifConsts.TEMPLATE_NAME: templates} if templates else None  # figure out which template name should I use
         ignore_empty = False
         # taking from params from set up  info
         stacking_param = False if not self.set_up_data[(
@@ -185,10 +188,12 @@ class GSKJPToolBox:
             ignore_empty = True
 
         if self.set_up_data[(Const.CATEGORY_INCLUDE, Consts.PLN_BLOCK)]:  # category_name
-            population_parameters[ProductsConsts.CATEGORY] = self.set_up_data[(Const.CATEGORY_INCLUDE, Consts.PLN_BLOCK)]
+            population_parameters[ProductsConsts.CATEGORY] = self.set_up_data[(Const.CATEGORY_INCLUDE,
+                                                                               Consts.PLN_BLOCK)]
 
         if self.set_up_data[(Const.SUB_CATEGORY_INCLUDE, Consts.PLN_BLOCK)]:  # sub_category_name
-            population_parameters[ProductsConsts.SUB_CATEGORY] = self.set_up_data[(Const.SUB_CATEGORY_INCLUDE, Consts.PLN_BLOCK)]
+            population_parameters[ProductsConsts.SUB_CATEGORY] = self.set_up_data[(Const.SUB_CATEGORY_INCLUDE,
+                                                                                   Consts.PLN_BLOCK)]
 
         # from Data file
         target = float(policy['block_target'].iloc[0]) / float(100)
@@ -237,7 +242,7 @@ class GSKJPToolBox:
         kpi_results = lvl3_assort[lvl3_assort['kpi_fk_lvl3']
                                   == kpi_assortment_fk]  # general assortment
         kpi_results = pd.merge(kpi_results, self.all_products[Const.PRODUCTS_COLUMNS],
-                               how='left', on='product_fk')
+                               how='left', on=ProductsConsts.PRODUCT_FK)
 
         kpi_results = kpi_results[kpi_results[ProductsConsts.SUBSTITUTION_PRODUCT_FK].isnull()]
         return kpi_results
@@ -276,9 +281,11 @@ class GSKJPToolBox:
             last_status = self.gsk_generator.tool_box.get_last_status(kpi_ecaps_product, result.product_fk)
             # score = result.in_store * 100
             results.append(
-                {'fk': kpi_ecaps_product, 'numerator_id': result.product_fk, 'denominator_id': self.store_fk,
-                 'denominator_result': 1, 'numerator_result': result_num, 'result': score,
-                 'score': last_status,
+                {'fk': kpi_ecaps_product, SessionResultsConsts.NUMERATOR_ID: result.product_fk,
+                 SessionResultsConsts.DENOMINATOR_ID: self.store_fk,
+                 SessionResultsConsts.DENOMINATOR_RESULT: 1, SessionResultsConsts.NUMERATOR_RESULT: result_num,
+                 SessionResultsConsts.RESULT: score,
+                 SessionResultsConsts.SCORE: last_status,
                  'identifier_parent': identifier_parent, 'identifier_result': 1,
                  'should_enter': True})
 
@@ -334,7 +341,8 @@ class GSKJPToolBox:
 
     def gsk_compliance(self):
         """
-                    Function calculate compliance score for each brand based on : position score, brand-assortment score,
+                    Function calculate compliance score for each brand based on : 
+                    position score, brand-assortment score,
                     block score ,lsos score.
                     Also calculate  compliance summary score  - average of brands compliance scores
                 """
@@ -365,10 +373,11 @@ class GSKJPToolBox:
 
         # set data frame to find position shelf
         df_position_score = pd.merge(self.match_product_in_scene,
-                                     self.all_products, on="product_fk")
+                                     self.all_products, on=ProductsConsts.PRODUCT_FK)
         df_position_score = pd.merge(self.scif[Const.SCIF_COLUMNS],
-                                     df_position_score, how='right', right_on=['scene_fk', 'product_fk'],
-                                     left_on=[ScifConsts.SCENE_ID, 'product_fk'])
+                                     df_position_score, how='right', right_on=[ScifConsts.SCENE_FK,
+                                                                               ProductsConsts.PRODUCT_FK],
+                                     left_on=[ScifConsts.SCENE_ID, ScifConsts.PRODUCT_FK])
         df_position_score = self.gsk_generator.tool_box.tests_by_template(Consts.POSITION_SCORE, df_position_score,
                                                                           self.set_up_data)
 
@@ -392,29 +401,38 @@ class GSKJPToolBox:
             msl_numerator, msl_denominator, msl_result, msl_assortment_group = self.pln_msl_summary(brand,
                                                                                                     assortment_msl)
             msl_score = msl_result * msl_target
-            results_df.append({'fk': kpi_msl_fk, 'numerator_id': brand, 'denominator_id': self.store_fk,
-                               'denominator_result': msl_denominator, 'numerator_result': msl_numerator, 'result':
-                                   msl_result, 'score': msl_score, 'target': msl_target, 'context_id':
-                                   msl_assortment_group,
-                               'identifier_parent': identifier_parent,
-                               'should_enter': True})
+            results_df.append({'fk': kpi_msl_fk, SessionResultsConsts.NUMERATOR_ID: brand,
+                               SessionResultsConsts.DENOMINATOR_ID: self.store_fk,
+                               SessionResultsConsts.DENOMINATOR_RESULT: msl_denominator,
+                               SessionResultsConsts.NUMERATOR_RESULT: msl_numerator, SessionResultsConsts.RESULT:
+                                   msl_result, SessionResultsConsts.SCORE: msl_score, SessionResultsConsts.TARGET:
+                                   msl_target,
+                               SessionResultsConsts.CONTEXT_ID:
+                                   msl_assortment_group, 'identifier_parent': identifier_parent, 'should_enter': True})
             # lsos kpi
             lsos_numerator, lsos_result, lsos_denominator = self.lsos_score(brand, policy)
             lsos_result = 1 if lsos_result > 1 else lsos_result
             lsos_score = lsos_result * lsos_target
-            results_df.append({'fk': kpi_lsos_fk, 'numerator_id': brand, 'denominator_id': self.store_fk,
-                               'denominator_result': lsos_denominator, 'numerator_result': lsos_numerator, 'result':
-                                   lsos_result, 'score': lsos_score, 'target': lsos_target ,
-                               'identifier_parent': identifier_parent, 'weight': lsos_denominator,
+            results_df.append({'fk': kpi_lsos_fk, SessionResultsConsts.NUMERATOR_ID: brand,
+                               SessionResultsConsts.DENOMINATOR_ID: self.store_fk,
+                               SessionResultsConsts.DENOMINATOR_RESULT: lsos_denominator,
+                               SessionResultsConsts.NUMERATOR_RESULT: lsos_numerator, SessionResultsConsts.RESULT:
+                                   lsos_result,
+                               SessionResultsConsts.SCORE: lsos_score, SessionResultsConsts.TARGET: lsos_target,
+                               'identifier_parent': identifier_parent, SessionResultsConsts.WEIGHT: lsos_denominator,
                                'should_enter': True})
             # block_score
             block_result, block_benchmark, numerator_block, block_denominator = self.brand_blocking(brand, policy)
             block_score = round(block_result * block_target, 4)
-            results_df.append({'fk': kpi_block_fk, 'numerator_id': brand, 'denominator_id': self.store_fk,
-                               'denominator_result': block_denominator, 'numerator_result': numerator_block, 'result':
-                                   block_result, 'score': block_score, 'target':block_target,
+            results_df.append({'fk': kpi_block_fk, SessionResultsConsts.NUMERATOR_ID: brand,
+                               SessionResultsConsts.DENOMINATOR_ID: self.store_fk,
+                               SessionResultsConsts.DENOMINATOR_RESULT: block_denominator,
+                               SessionResultsConsts.NUMERATOR_RESULT: numerator_block, SessionResultsConsts.RESULT:
+                                   block_result, SessionResultsConsts.SCORE: block_score,
+                               SessionResultsConsts.TARGET: block_target,
                                'identifier_parent':
-                                   identifier_parent, 'should_enter': True, 'weight': (block_benchmark * 100)})
+                                   identifier_parent, 'should_enter': True,
+                               SessionResultsConsts.WEIGHT: (block_benchmark * 100)})
 
             # position score
             if df_position_score is not None:
@@ -423,18 +441,24 @@ class GSKJPToolBox:
             else:
                 position_result, position_score, position_num, position_den, position_benchmark = 0, 0, 0, 0, 0
             position_score = round(position_score * posit_target, 4)
-            results_df.append({'fk': kpi_position_fk, 'numerator_id': brand, 'denominator_id': self.store_fk,
-                               'denominator_result': position_den, 'numerator_result': position_num, 'result':
-                                   position_result, 'score': position_score, 'target': posit_target,
-                               'identifier_parent': identifier_parent, 'should_enter': True, 'weight':
+            results_df.append({'fk': kpi_position_fk, SessionResultsConsts.NUMERATOR_ID: brand,
+                               SessionResultsConsts.DENOMINATOR_ID: self.store_fk,
+                               SessionResultsConsts.DENOMINATOR_RESULT: position_den,
+                               SessionResultsConsts.NUMERATOR_RESULT: position_num, SessionResultsConsts.RESULT:
+                                   position_result, SessionResultsConsts.SCORE: position_score,
+                               SessionResultsConsts.TARGET: posit_target,
+                               'identifier_parent': identifier_parent, 'should_enter': True,
+                               SessionResultsConsts.WEIGHT:
                                    position_benchmark})
 
             # compliance score per brand
             compliance_score = round(position_score + block_score + lsos_score + msl_score, 4)
             results_df.append(
-                {'fk': kpi_compliance_brands_fk, 'numerator_id': self.own_manufacturer, 'denominator_id': brand,
-                 'denominator_result': 1, 'numerator_result': compliance_score, 'result':
-                     compliance_score, 'score': compliance_score,
+                {'fk': kpi_compliance_brands_fk, SessionResultsConsts.NUMERATOR_ID: self.own_manufacturer,
+                 SessionResultsConsts.DENOMINATOR_ID: brand,
+                 SessionResultsConsts.DENOMINATOR_RESULT: 1, SessionResultsConsts.NUMERATOR_RESULT: compliance_score,
+                 SessionResultsConsts.RESULT:
+                     compliance_score, SessionResultsConsts.SCORE: compliance_score,
                  'identifier_parent': identifier_compliance_summary, 'identifier_result': identifier_parent,
                  'should_enter': True})
 
@@ -446,9 +470,11 @@ class GSKJPToolBox:
         # compliance summary
         average_brand_score = round(total_brand_score / counter_brands, 4)
         results_df.append(
-            {'fk': kpi_compliance_summary_fk, 'numerator_id': self.own_manufacturer, 'denominator_id': self.store_fk,
-             'denominator_result': counter_brands, 'numerator_result': total_brand_score, 'result':
-                 average_brand_score, 'score': average_brand_score,
+            {'fk': kpi_compliance_summary_fk, SessionResultsConsts.NUMERATOR_ID: self.own_manufacturer,
+             SessionResultsConsts.DENOMINATOR_ID: self.store_fk,
+             SessionResultsConsts.DENOMINATOR_RESULT: counter_brands, SessionResultsConsts.NUMERATOR_RESULT:
+                 total_brand_score, SessionResultsConsts.RESULT:
+                 average_brand_score, SessionResultsConsts.SCORE: average_brand_score,
              'identifier_result': identifier_compliance_summary})
 
         return results_df
@@ -469,7 +495,8 @@ class GSKJPToolBox:
         if assortment_display is None or assortment_display.empty:
             return results_df
         template_brands = self.set_up_data[(Const.BRANDS_INCLUDE, Consts.ECAPS_FILTER_IDENT)]
-        brands = assortment_display[assortment_display[ProductsConsts.BRAND_NAME].isin(template_brands)][ProductsConsts.BRAND_FK].unique() if \
+        brands = assortment_display[assortment_display[ProductsConsts.BRAND_NAME].isin(template_brands)][
+            ProductsConsts.BRAND_FK].unique() if \
             template_brands else assortment_display[ProductsConsts.BRAND_FK].dropna().unique()
 
         for brand in brands:
@@ -479,17 +506,21 @@ class GSKJPToolBox:
             identifier_all_brand = self.common.get_dictionary(brand_fk=brand, kpi_fk=self.common.get_kpi_fk_by_kpi_type(
                 Consts.ECAP_ALL_BRAND))
             results_df.append(
-                {'fk': kpi_ecaps_brands_fk, 'numerator_id': self.own_manufacturer, 'denominator_id': brand,
-                 'denominator_result': denominator_res, 'numerator_result': numerator_res, 'result': result,
-                 'score': result, 'identifier_parent': identifier_ecaps_summary, 'identifier_result':
+                {'fk': kpi_ecaps_brands_fk, SessionResultsConsts.NUMERATOR_ID: self.own_manufacturer,
+                 SessionResultsConsts.DENOMINATOR_ID: brand,
+                 SessionResultsConsts.DENOMINATOR_RESULT: denominator_res, SessionResultsConsts.NUMERATOR_RESULT:
+                     numerator_res, SessionResultsConsts.RESULT: result,
+                 SessionResultsConsts.SCORE: result, 'identifier_parent': identifier_ecaps_summary, 'identifier_result':
                      identifier_all_brand, 'should_enter': True})
 
             total_brand_score = total_brand_score + result
         if len(brands) > 0:  # don't want to show result in case of there are no brands relevan to the template
             result_summary = round(total_brand_score / len(brands), 4)
             results_df.append(
-                {'fk': kpi_ecaps_summary_fk, 'numerator_id': self.own_manufacturer, 'denominator_id': self.store_fk,
-                 'denominator_result': len(brands), 'numerator_result': total_brand_score, 'result':
-                     result_summary, 'score': result_summary,
+                {'fk': kpi_ecaps_summary_fk, SessionResultsConsts.NUMERATOR_ID: self.own_manufacturer,
+                 SessionResultsConsts.DENOMINATOR_ID: self.store_fk,
+                 SessionResultsConsts.DENOMINATOR_RESULT: len(brands), SessionResultsConsts.NUMERATOR_RESULT:
+                     total_brand_score, SessionResultsConsts.RESULT:
+                     result_summary, SessionResultsConsts.SCORE: result_summary,
                  'identifier_result': identifier_ecaps_summary})
         return results_df
