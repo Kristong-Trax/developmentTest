@@ -1,5 +1,3 @@
-from KPIUtils_v2.Utils.Consts.DataProvider import StoreInfoConsts
-from KPIUtils_v2.Utils.Consts.OldDB import KPIsAtomic
 __author__ = 'Elyashiv'
 
 
