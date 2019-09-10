@@ -79,7 +79,7 @@ class TNUVAILToolBox:
     def _prepare_data_for_assortment_calculation(self):
         """ This method gets the level 3 assortment results (SKU level), adding category_fk and returns the DataFrame"""
         lvl3_result = self.assortment.calculate_lvl3_assortment()
-        category_per_product = self.all_products[[ProductsConsts.PRODUCT_FK,ScifConsts.CATEGORY_FK]]
+        category_per_product = self.all_products[[ProductsConsts.PRODUCT_FK, ScifConsts.CATEGORY_FK]]
         lvl3_result = pd.merge(lvl3_result, category_per_product, how='left')
         return lvl3_result
 
@@ -133,7 +133,8 @@ class TNUVAILToolBox:
         """
         # Products with the relevant policy attribute
         product_with_policy_attr = self.all_products.loc[
-            self.all_products[Consts.PRODUCT_POLICY_ATTR].str.encode(HelperConsts.UTF8) == policy.encode(HelperConsts.UTF8)]
+            self.all_products[Consts.PRODUCT_POLICY_ATTR].str.encode(HelperConsts.UTF8) == policy.encode(
+                HelperConsts.UTF8)]
         product_with_policy_attr = product_with_policy_attr.product_fk.unique().tolist()
         # Products that appear in scenes with the relevant policy
         filtered_scif = self._get_filtered_scif_per_scene_type(policy)
@@ -186,8 +187,9 @@ class TNUVAILToolBox:
         store_result_dict[ProductsConsts.MANUFACTURER_FK] = self.own_manufacturer_fk
         store_result_dict[SessionResultsConsts.DENOMINATOR_ID] = self.store_id
         if not is_distribution:  # In OOS the numerator is total - distribution
-            store_result_dict[SessionResultsConsts.NUMERATOR_RESULT] = store_result_dict[SessionResultsConsts.DENOMINATOR_RESULT] - \
-                                                         store_result_dict[SessionResultsConsts.NUMERATOR_RESULT]
+            store_result_dict[SessionResultsConsts.NUMERATOR_RESULT] = \
+                store_result_dict[SessionResultsConsts.DENOMINATOR_RESULT] - store_result_dict[
+                    SessionResultsConsts.NUMERATOR_RESULT]
             self.oos_store_results.append(store_result_dict)
         return [store_result_dict]
 
@@ -200,14 +202,16 @@ class TNUVAILToolBox:
         denominator_result.
         """
         in_store_per_category = lvl3_data[[ScifConsts.CATEGORY_FK, Consts.IN_STORE]].fillna(0)
-        in_store_per_category = in_store_per_category.groupby(ScifConsts.CATEGORY_FK, as_index=False).agg(['sum', 'count'])
+        in_store_per_category = in_store_per_category.groupby(ScifConsts.CATEGORY_FK, as_index=False).agg(
+            ['sum', 'count'])
         in_store_per_category.columns = in_store_per_category.columns.droplevel(0)
         in_store_per_category.reset_index(inplace=True)
         in_store_per_category = in_store_per_category.assign(denominator_id=self.own_manufacturer_fk)
         in_store_per_category.rename(Consts.AGGREGATION_COLUMNS_RENAMING, inplace=True, axis=1)
         if not is_distribution:  # In OOS the numerator is total - distribution
-            in_store_per_category[SessionResultsConsts.NUMERATOR_RESULT] = in_store_per_category[SessionResultsConsts.DENOMINATOR_RESULT] - \
-                                                             in_store_per_category[SessionResultsConsts.NUMERATOR_RESULT]
+            in_store_per_category[SessionResultsConsts.NUMERATOR_RESULT] = \
+                in_store_per_category[SessionResultsConsts.DENOMINATOR_RESULT] - in_store_per_category[
+                    SessionResultsConsts.NUMERATOR_RESULT]
         in_store_per_category = in_store_per_category.to_dict('records')
         return in_store_per_category
 
@@ -221,7 +225,8 @@ class TNUVAILToolBox:
         :return: A dictionary - which contains the following keys: product_fk, denominator_id, numerator_result and
         denominator_result.
         """
-        sku_level_res = lvl3_data[[ProductsConsts.PRODUCT_FK, Consts.IN_STORE, ScifConsts.CATEGORY_FK, ScifConsts.FACINGS]]
+        sku_level_res = lvl3_data[
+            [ProductsConsts.PRODUCT_FK, Consts.IN_STORE, ScifConsts.CATEGORY_FK, ScifConsts.FACINGS]]
         sku_level_res.rename(Consts.SOS_SKU_LVL_RENAME, axis=1, inplace=True)
         if not is_distribution:
             sku_level_res = sku_level_res.assign(denominator_result=1)
