@@ -36,7 +36,8 @@ class INBEVNLINBEVBEGenerator:
         self.tool_box.tools.update_templates()
         set_names = ['Product Blocking', 'Linear Share of Shelf', 'OSA', 'Pallet Presence', 'Share of Assortment',
                      'Product Stacking', 'Shelf Level', 'Linear Share of Shelf vs. Target', 'Shelf Impact Score',
-                     'Product Group Blocking']
+                     # 'Product Group Blocking']
+                    ]
         for kpi_set_name in set_names:
             self.tool_box.main_calculation(set_name=kpi_set_name)
         self.tool_box.save_custom_scene_item_facts_results()

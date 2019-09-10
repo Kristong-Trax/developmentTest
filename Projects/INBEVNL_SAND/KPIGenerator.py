@@ -36,7 +36,8 @@ class INBEVNL_SANDINBEVBEGenerator:
             Log.warning('Scene item facts is empty for this session')
         self.tool_box.tools.update_templates()
         set_names = ['Product Blocking', 'Linear Share of Shelf',
-                     'OSA', 'Pallet Presence', 'Share of Assortment', 'Product Stacking']
+                     'OSA', 'Pallet Presence', 'Share of Assortment', 'Product Stacking',
+                     'Product Group Blocking']
         for kpi_set_name in set_names:
             self.tool_box.main_calculation(set_name=kpi_set_name)
         self.tool_box.main_calculation(set_name='Shelf Level')
