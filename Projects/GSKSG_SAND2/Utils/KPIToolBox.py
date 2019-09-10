@@ -1,9 +1,7 @@
 import pandas as pd
 import os
 from Trax.Algo.Calculations.Core.DataProvider import Data
-from Trax.Utils.Logging.Logger import Log
 from KPIUtils_v2.DB.CommonV2 import Common
-from KPIUtils_v2.Calculations.SequenceCalculations import Sequence
 from Projects.GSKSG_SAND2.Data.LocalConsts import Consts
 from KPIUtils.GlobalProjects.GSK.Utils.KPIToolBox import Const
 from KPIUtils.GlobalProjects.GSK.KPIGenerator import GSKGenerator
@@ -22,7 +20,6 @@ class GSKSGToolBox:
         self.output = output
         self.data_provider = data_provider
         self.common = Common(self.data_provider)
-        # self.common_old_tables = Common_old(self.data_provider)
         self.project_name = self.data_provider.project_name
         self.session_uid = self.data_provider.session_uid
         self.products = self.data_provider[Data.PRODUCTS]
@@ -34,22 +31,9 @@ class GSKSGToolBox:
         self.store_id = self.data_provider[Data.STORE_FK]
         self.store_info = self.data_provider[Data.STORE_INFO]
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
-        # self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
-        # self.kpi_static_data = self.common.get_kpi_static_data()
-        # self.old_kpi_static_data = self.common_old_tables.get_kpi_static_data()
         self.ps_data_provider = PsDataProvider(self.data_provider, self.output)
         self.manufacturer_fk = None if self.data_provider[Data.OWN_MANUFACTURER]['param_value'].iloc[0] is None else\
             int(self.data_provider[Data.OWN_MANUFACTURER]['param_value'].iloc[0])
-        # self.calculations = {'SOS': self.calculate_sos, 'MSL': self.calculate_MSL, 'Sequence': self.calculate_sequence,
-        #                      'Presence': self.calculate_presence, 'Facings': self.calculate_facings,
-        #                      'No Facings': self.calculate_no_facings, 'Survey': self.calculate_survey}
-        # self.sequence = Sequence(data_provider)
-        # self.availability = Availability(data_provider)
-        # self.sos = SOS(data_provider, self.output)
-        # self.survey = Survey(data_provider, self.output)
-        # self.toolbox = GENERALToolBox(self.data_provider)
-
-        # adding data to templates
         self.set_up_template = pd.read_excel(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data',
                                                           'gsk_set_up.xlsx'), sheet_name='Functional KPIs',
                                              keep_default_na=False)
@@ -61,45 +45,23 @@ class GSKSGToolBox:
                                 Const.NO_INFO, ('promo', Const.KPI_TYPE_COLUMN):
                                 Const.NO_INFO}
 
-
     def main_calculation(self):
         """
         This function calculates the KPI results.
-        # """
+        """
 
-        # assortment_store_dict = self.gsk_generator.availability_store_function()
-        # self.common.save_json_to_new_tables(assortment_store_dict)
         assortment_category_dict = self.gsk_generator.availability_category_function()
         self.common.save_json_to_new_tables(assortment_category_dict)
         fsos_category_dict = self.gsk_generator.gsk_global_facings_sos_by_category_function()
         self.common.save_json_to_new_tables(fsos_category_dict)
 
+        # updating the set up dictionary for all local kpis
         for kpi in self.KPI_DICT.keys():
             self.gsk_generator.tool_box.extract_data_set_up_file(kpi, self.set_up_data, self.KPI_DICT)
-        orange_score_dict = self.orange_score_category(assortment_category_dict, fsos_category_dict)
-        self.common.save_json_to_new_tables(orange_score_dict)
-        #
-        # assortment_subcategory_dict = self.gsk_generator.availability_subcategory_function()
-        # self.common.save_json_to_new_tables(assortment_subcategory_dict)
-        #
-        # facings_sos_dict = self.gsk_generator.gsk_global_facings_sos_whole_store_function()
-        # self.common.save_json_to_new_tables(facings_sos_dict)
-        #
-        # linear_sos_dict = self.gsk_generator.gsk_global_linear_sos_whole_store_function()
-        # self.common.save_json_to_new_tables(linear_sos_dict)
-        #
-        # linear_sos_dict = self.gsk_generator.gsk_global_linear_sos_by_sub_category_function()
-        # self.common.save_json_to_new_tables(linear_sos_dict)
-        #
-        # facings_sos_dict = self.gsk_generator.gsk_global_facings_by_sub_category_function()
-        # self.common.save_json_to_new_tables(facings_sos_dict)
-        #
-        # facings_sos_dict = self.gsk_generator.gsk_global_facings_sos_by_category_function()
-        # self.common.save_json_to_new_tables(facings_sos_dict)
-        #
-        # linear_sos_dict = self.gsk_generator.gsk_global_linear_sos_by_category_function()
-        # self.common.save_json_to_new_tables(linear_sos_dict)
 
+        orange_score_dict = self.orange_score_category(assortment_category_dict, fsos_category_dict)
+
+        self.common.save_json_to_new_tables(orange_score_dict)
         self.common.commit_results_data()
 
         score = 0
@@ -141,8 +103,8 @@ class GSKSGToolBox:
 
     def extract_json_results_by_kpi(self, general_kpi_results, kpi_type):
         """
-            This function return json of keys- categories and values -  kpi result for category
-            :param general_kpi_results: list of json's , each json is the db results
+            This function return json of keys and values. keys= categories & values = kpi result for category
+            :param general_kpi_results: list of json's , each json is a db result
             :param kpi_type: type of the desired kpi
             :return category json :  number-category_fk,number-result
         """
@@ -217,6 +179,18 @@ class GSKSGToolBox:
     def display_distribution(self, display_name, category_fk, category_targets, parent_identifier, kpi_name,
                              parent_kpi_name, scif_df):
 
+        """
+          This Function sum facings of posm that it name contains substring (decided by external_targets )
+          if sum facings is equal/bigger than benchmark that gets weight.
+            :param display_name display name (in external targets this key contains relevant substrings)
+            :param category_fk
+            :param category_targets-targets df for the specific category
+            :param parent_identifier  - result identifier for this kpi parent
+            :param kpi_name - kpi name
+            :param parent_kpi_name - this parent kpi name
+            :param scif_df - scif filtered by promo activation settings
+
+        """
         kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_name+Consts.COMPLIANCE_KPI)
         results_list = []
         display_products = scif_df[scif_df['product_type'] == 'POS']
@@ -224,12 +198,15 @@ class GSKSGToolBox:
         display_names = category_targets[display_name].iloc[0]
         identifier_result = self.common.get_dictionary(category_fk=category_fk, kpi_fk=kpi_fk)
         kpi_result = 0
+
+        # check's if display names (received from external targets) are string or array of strings
         if isinstance(display_names, str) or isinstance(display_names, unicode):
             display_array = []
             if len(display_names) > 0:
                 display_array.append(display_names)
             display_names = display_array
-        # check if name in
+
+        # for each display name , search POSM that contains display name (= sub string)
         for display in display_names:
             current_display_prod = display_products[display_products['product_name'].str.contains(display)]
             display_sku_level = self.display_sku_results(current_display_prod, category_fk, kpi_name)
@@ -246,7 +223,12 @@ class GSKSGToolBox:
         return kpi_score, results_list
 
     def display_sku_results(self, display_data, category_fk, kpi_name):
-
+        """
+          This Function create for each posm in display data  db result with score of  posm facings.
+            :param category_fk
+            :param display_data-targets df for the specific category
+            :param kpi_name - kpi name
+        """
         results_list = []
         kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_name+Consts.SKU_LEVEL_LIST)
         parent_kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_name + Consts.COMPLIANCE_KPI)
@@ -261,16 +243,19 @@ class GSKSGToolBox:
         return results_list
 
     def assortment(self):
+        """
+          This Function get relevant assortment based on filtered scif
+        """
         lvl3_assort, filter_scif = self.gsk_generator.tool_box.get_assortment_filtered(self.set_up_data, "planogram")
         return lvl3_assort, filter_scif
 
     def msl_assortment(self, kpi_name):
         """
-                        :param kpi_name : name of level 3 assortment kpi
-                        :return kpi_results : data frame of assortment products of the kpi, product's availability,
-                        product details.(reduce assortment products that are not available)
-                        filtered by set up
-                """
+            :param kpi_name : name of level 3 assortment kpi
+            :return kpi_results : data frame of assortment products of the kpi, product's availability,
+            product details.(reduce assortment products that are not available)
+            filtered by set up
+         """
         lvl3_assort, filtered_scif = self.assortment()
         if lvl3_assort is None or lvl3_assort.empty:
             return None
@@ -279,16 +264,29 @@ class GSKSGToolBox:
                                   == kpi_assortment_fk]  # general assortment
         kpi_results = pd.merge(kpi_results, self.all_products[Const.PRODUCTS_COLUMNS],
                                how='left', on='product_fk')
+        # only distributed products
         kpi_results = kpi_results[kpi_results['in_store'] == 1]
+
+        # filtering substitied products
         kpi_results = kpi_results[kpi_results['substitution_product_fk'].isnull()]
+
         shelf_data = pd.merge(self.match_product_in_scene[['scene_fk', 'product_fk', 'shelf_number']],
                               filtered_scif[['scene_id', 'product_fk']], how='right', left_on=
                               ['scene_fk', 'product_fk'], right_on=['scene_id', 'product_fk'])
 
+        # merge assortment results with match_product_in_scene for shelf_number parameter
         kpi_results = pd.merge(shelf_data, kpi_results, how='right', on=['product_fk'])
         return kpi_results
 
     def shelf_compliance(self, category, assortment_df, category_targets, identifier_parent):
+        """
+            This function calculate how many assortment products available on specific shelves
+            :param category
+            :param category_targets : targets df for the specific category
+            :param assortment_df :relevant assortment based on filtered scif
+            :param identifier_parent - result identifier for shelf compliance kpi parent .
+
+        """
         results_list = []
         kpi_fk = self.common.get_kpi_fk_by_kpi_type(Consts.SHELF_COMPLIANCE)
         assortment_cat = assortment_df[assortment_df['category_fk'] == category]
@@ -306,7 +304,15 @@ class GSKSGToolBox:
                              'identifier_parent': identifier_parent, 'should_enter': True})
         return score, results_list, shelf_weight
 
-    def planogram(self, category_fk, assortment, category_targets, parent_result_identifier):
+    def planogram(self, category_fk, assortment, category_targets, identifier_parent):
+        """
+          This function sum sequence kpi and  shelf compliance
+            :param category_fk
+            :param category_targets : targets df for the specific category
+            :param assortment :relevant assortment based on filtered scif
+            :param identifier_parent : result identifier for planogram kpi parent .
+
+        """
         results_list = []
         kpi_fk = self.common.get_kpi_fk_by_kpi_type(Consts.PLN_CATEGORY)
         identifier_result = self.common.get_dictionary(category_fk=category_fk, kpi_fk=kpi_fk)
@@ -319,14 +325,17 @@ class GSKSGToolBox:
         planogram_score = shelf_compliance_score + sequence_kpi
         planogram_weight = shelf_weight + sequence_weight
         results_list.append({'fk': kpi_fk, 'numerator_id': category_fk, 'denominator_id':
-            self.store_id, 'denominator_result': 1, 'numerator_result': planogram_score, 'result': planogram_score,
+                              self.store_id, 'denominator_result': 1, 'numerator_result': planogram_score,
+                             'result': planogram_score,
                              'target': planogram_weight, 'score': planogram_score,
-                             'identifier_parent': parent_result_identifier, 'identifier_result': identifier_result
+                             'identifier_parent': identifier_parent, 'identifier_result': identifier_result
                              ,'should_enter': True})
         return planogram_score, results_list
 
     def sequence(self, category_targets):
-
+        """
+            this function calculate sequence  #TODO
+        """
         seq_1_target = 0 if category_targets['seq_1_weight'].empty else category_targets['seq_1_weight'].iloc[0]
         seq_2_target = 0 if category_targets['seq_2_weight'].empty else category_targets['seq_2_weight'].iloc[0]
         seq_3_target = 0 if category_targets['seq_3_weight'].empty else category_targets['seq_3_weight'].iloc[0]
@@ -336,7 +345,15 @@ class GSKSGToolBox:
         return sequence_weight
 
     def secondary_display(self, category_fk, category_targets, identifier_parent, scif_df):
-        # display compliance
+        """
+            This function calculate secondary score -  0  or full weight if at least
+            one of it's child kpis equal to weight.
+            :param category_fk
+            :param category_targets : targets df for the specific category
+            :param identifier_parent : result identifier for promo activation kpi parent .
+            :param scif_df : scif filtered by promo activation settings
+
+        """
         results_list = []
         parent_kpi_name = 'display'
         weight = category_targets['display_weight'].iloc[0]
@@ -366,19 +383,28 @@ class GSKSGToolBox:
         return results_list, display_score
 
     def promo_activation(self, category_fk, category_targets, identifier_parent, scif_df):
-        # display compliance
-        # Promotion activation
+        """
+            This function calculate promo activation score -  0  or full weight if at least
+            one of it's child kpis equal to weight.
+            :param category_fk
+            :param category_targets : targets df for the specific category
+            :param identifier_parent : result identifier for promo activation kpi parent .
+            :param scif_df : scif filtered by promo activation settings
+
+        """
+
         total_kpi_fk = self.common.get_kpi_fk_by_kpi_type(Consts.PROMO_SUMMARY)
         result_identifier = self.common.get_dictionary(category_fk=category_fk, kpi_fk=total_kpi_fk)
         results_list = []
         parent_kpi_name = 'promo'
         weight = category_targets['promo_weight'].iloc[0]
 
-        hang_shell_score, hang_shell_res = self.display_distribution('Hang_Sell', category_fk, category_targets,
-                                                                     result_identifier, Consts.HANGSELL,
-                                                                     parent_kpi_name,scif_df)
-        top_shelf_score, top_shelf_res = self.display_distribution('Top_Shelf', category_fk, category_targets,
-                                                                   result_identifier, Consts.TOP_SHELF, parent_kpi_name,
+        hang_shell_score, hang_shell_res = self.display_distribution(Consts.HANGSELL, category_fk, category_targets,
+                                                                     result_identifier, Consts.HANGSELL_KPI,
+                                                                     parent_kpi_name, scif_df)
+        top_shelf_score, top_shelf_res = self.display_distribution(Consts.TOP_SHELF, category_fk, category_targets,
+                                                                   result_identifier, Consts.TOP_SHELF_KPI,
+                                                                   parent_kpi_name,
                                                                    scif_df)
         results_list.extend(hang_shell_res)
         results_list.extend(top_shelf_res)
@@ -392,22 +418,29 @@ class GSKSGToolBox:
 
         return results_list, promo_score
 
-    def orange_score_category(self, assortment_category_dict, fsos_category_dict):
+    def orange_score_category(self, assortment_category_res, fsos_category_res):
+        """
+        This function calculate orange score kpi by category. Settings are based on external targets and set up file.
+        :param assortment_category_res :  array  of assortment results
+        :param fsos_category_res : array  of facing sos by store results
+        """
         results_list = []
         self.store_target()
         if self.targets.empty:
             return
 
         total_kpi_fk = self.common.get_kpi_fk_by_kpi_type(Consts.ORANGE_SCORE_COMPLIANCE)
-        fsos_results = self.extract_json_results_by_kpi(fsos_category_dict, Consts.GLOBAL_FSOS_BY_CATEGORY)
-        msl_results = self.extract_json_results_by_kpi(assortment_category_dict, Consts.GLOBAL_DST_BY_CATEGORY)
-        categories = self.targets[DataProviderConsts.ProductsConsts.CATEGORY_FK].unique()
+        fsos_results = self.extract_json_results_by_kpi(fsos_category_res, Consts.GLOBAL_FSOS_BY_CATEGORY)
+        msl_results = self.extract_json_results_by_kpi(assortment_category_res, Consts.GLOBAL_DST_BY_CATEGORY)
+
+        # scif after filtering it by set up file for each kpi
         scif_secondary = self.gsk_generator.tool_box.tests_by_template('secondary_display', self.scif,
                                                                            self.set_up_data)
         scif_promo = self.gsk_generator.tool_box.tests_by_template('promo', self.scif,
                                                                           self.set_up_data)
-
+        categories = self.targets[DataProviderConsts.ProductsConsts.CATEGORY_FK].unique()
         assortment = self.msl_assortment('Distribution - SKU')
+
         for cat in categories:
             orange_score_result_identifier = self.common.get_dictionary(category_fk=cat, kpi_fk=total_kpi_fk)
 
