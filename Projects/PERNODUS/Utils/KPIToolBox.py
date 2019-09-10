@@ -113,10 +113,10 @@ class PERNODUSToolBox:
                 Log.info('KPI {} calculation failed due to {}'.format(kpi_name.encode('utf-8'), e))
                 continue
 
-        #Presence
+        # Presence
         self.calculate_presence()
 
-        #Blocking
+        # Blocking
         for i, row in self.Blocking_template.iterrows():
             try:
                 kpi_name = row['KPI']
@@ -127,7 +127,7 @@ class PERNODUSToolBox:
                 Log.info('KPI {} calculation failed due to {}'.format(kpi_name.encode('utf-8'), e))
                 continue
 
-        #Eye Level
+        # Eye Level
         for i, row in self.Eye_Level_template.iterrows():
             try:
                 kpi_name = row['KPI']
@@ -158,10 +158,10 @@ class PERNODUSToolBox:
 
                 kpi_set_fk = self.kpi_static_data['pk'][self.kpi_static_data['type']
                                                         == row['KPI LEVEL 2']].iloc[0]
-                if(kpi_name == Const.Count_of_display):
+                if (kpi_name == Const.Count_of_display):
                     self.calculate_count_of_display(kpi_set_fk, kpi_name, row)
 
-                elif(kpi_name == Const.Brand_on_display):
+                elif (kpi_name == Const.Brand_on_display):
                     self.calculate_brands_on_display(kpi_set_fk, kpi_name, row)
 
                 elif (kpi_name in [Const.SOS_on_display_manufacturer, Const.SOS_on_display_brand]):
@@ -196,7 +196,8 @@ class PERNODUSToolBox:
         kpi_template = kpi_template.iloc[0]
 
         if kpi_template['param2']:
-            relevant_filter = {kpi_template['param']: self.values_to_list(kpi_template['value']), kpi_template['param2']: self.values_to_list(kpi_template['value2'])}
+            relevant_filter = {kpi_template['param']: self.values_to_list(kpi_template['value']),
+                               kpi_template['param2']: self.values_to_list(kpi_template['value2'])}
         else:
             relevant_filter = {kpi_template['param']: self.values_to_list(kpi_template['value'])}
 
@@ -204,7 +205,7 @@ class PERNODUSToolBox:
                                                              additional={'minimum_facing_for_block': 2})
 
         score = 0
-        if(result.is_block.any() == True):
+        if (result.is_block.any() == True):
             score = 1
         else:
             pass
@@ -241,7 +242,8 @@ class PERNODUSToolBox:
 
             numerator_length = int(round(numerator_length * 0.0393700787))
             if numerator_length > 0:
-                self.common.write_to_db_result(fk=kpi_set_fk, numerator_id=product_fk, numerator_result=numerator_length,
+                self.common.write_to_db_result(fk=kpi_set_fk, numerator_id=product_fk,
+                                               numerator_result=numerator_length,
                                                denominator_id=product_fk,
                                                result=numerator_length, score=numerator_length)
 
@@ -318,7 +320,7 @@ class PERNODUSToolBox:
                                        name=None, adjacency_overlap_ratio=.4)
 
             match_to_node = {int(node['match_fk']): i for i,
-                             node in all_graph.base_adjacency_graph.nodes(data=True)}
+                                                          node in all_graph.base_adjacency_graph.nodes(data=True)}
             node_to_match = {val: key for key, val in match_to_node.items()}
             edge_matches = set(
                 sum([[node_to_match[i] for i in all_graph.base_adjacency_graph[match_to_node[item]].keys()]
@@ -368,7 +370,8 @@ class PERNODUSToolBox:
                                                               == adjacent_brand].iloc[0]
 
                     if Param == Const.brand:
-                        numerator_id = self.all_products[Const.brand_fk][self.all_products[Const.brand] == Value1[0]].iloc[
+                        numerator_id = \
+                        self.all_products[Const.brand_fk][self.all_products[Const.brand] == Value1[0]].iloc[
                             0]
                         denominator_id = \
                             self.all_products[Const.brand_fk][self.all_products[Const.brand]
@@ -475,18 +478,16 @@ class PERNODUSToolBox:
 
         values_to_check = []
 
-
         if kpi_template['param']:
             values_to_check = str(kpi_template['value']).split(',')
 
         for value in values_to_check:
-
             filters = {kpi_template['param']: value, Const.template_name: 'Shelf'}
             result = self.calculate_products_on_edge(**filters)
             score = 1 if result >= 1 else 0
 
-
-            sub_category_fk = self.all_products[Const.sub_category_fk][self.all_products[Const.sub_category] == value].iloc[0]
+            sub_category_fk = \
+            self.all_products[Const.sub_category_fk][self.all_products[Const.sub_category] == value].iloc[0]
 
             self.common.write_to_db_result(fk=kpi_set_fk, numerator_id=sub_category_fk,
                                            numerator_result=0,
@@ -567,7 +568,7 @@ class PERNODUSToolBox:
         #                                              requested_attribute=Const.facings, **filters)
 
         result = self.calculate_eye_level_assortment(eye_level_configurations=self.eye_level_definition,
-                                                     min_number_of_products=1,  **filters)
+                                                     min_number_of_products=1, **filters)
         score = 1 if result == True else 0
 
         self.common.write_to_db_result(fk=kpi_set_fk, numerator_id=self.store_id,
@@ -636,7 +637,7 @@ class PERNODUSToolBox:
         score = 0
 
         for template_type in template_types:
-            if(param1):
+            if (param1):
                 general_filters = {param1: value1, Const.template_name: template_type,
                                    Const.product_type: [Const.SKU, Const.OTHER]}
             else:
@@ -701,7 +702,8 @@ class PERNODUSToolBox:
 
                     if param1 == Const.manufacturer:
                         manufacturer_fk = \
-                            self.all_products[Const.manufacturer_fk][self.all_products[Const.manufacturer] == value1].iloc[0]
+                            self.all_products[Const.manufacturer_fk][
+                                self.all_products[Const.manufacturer] == value1].iloc[0]
                         category_fk = self.scif[Const.category_fk][self.scif[Const.category]
                                                                    == value2].iloc[0]
 
@@ -713,10 +715,14 @@ class PERNODUSToolBox:
                         brand_fk = \
                             self.all_products[Const.brand_fk][self.all_products[Const.brand]
                                                               == value1].iloc[0]
-                        sub_category_fk = self.all_products[Const.sub_category_fk][self.all_products[Const.sub_category] == value2].iloc[0]
+                        sub_category_fk = \
+                        self.all_products[Const.sub_category_fk][self.all_products[Const.sub_category] == value2].iloc[
+                            0]
 
-                        self.common.write_to_db_result(fk=kpi_set_fk, numerator_id=brand_fk, numerator_result=numerator_res,
-                                                       denominator_id=sub_category_fk, denominator_result=denominator_res,
+                        self.common.write_to_db_result(fk=kpi_set_fk, numerator_id=brand_fk,
+                                                       numerator_result=numerator_res,
+                                                       denominator_id=sub_category_fk,
+                                                       denominator_result=denominator_res,
                                                        result=score, score=score)
 
     def calculate_share_of_display(self, kpi_set_fk, kpi_name, row):
@@ -730,7 +736,8 @@ class PERNODUSToolBox:
         for value1 in values_1:
 
             if param1 == Const.brand:
-                manufacturer_of_brand = self.all_products[Const.manufacturer][self.all_products[param1] == value1].iloc[0]
+                manufacturer_of_brand = self.all_products[Const.manufacturer][self.all_products[param1] == value1].iloc[
+                    0]
                 if manufacturer_of_brand in checked_manufacturers:
                     pass
                 else:
@@ -768,7 +775,8 @@ class PERNODUSToolBox:
                     self.share_of_display_grouping(kpi_set_fk, param1, value1, value2, filter_df_columns,
                                                    groupby_df_columns, **general_filters)
 
-    def share_of_display_grouping(self, kpi_set_fk, param_type, param_value, category_sub_category_value,  filter_df_columns, groupby_df_columns, **general_filters):
+    def share_of_display_grouping(self, kpi_set_fk, param_type, param_value, category_sub_category_value,
+                                  filter_df_columns, groupby_df_columns, **general_filters):
         display_df = self.scif[self.get_filter_condition(self.scif, **general_filters)]
         numerator_df_filtered = display_df[filter_df_columns][(display_df[Const.facings]
                                                                >= int(float(self.minimum_facings)))
