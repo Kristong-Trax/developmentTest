@@ -67,14 +67,14 @@ class TNUVAILToolBox:
         """
         if not self.oos_store_results:
             return
-        store_level_no_policy_kpi_fk = self.common_v2.get_kpi_fk_by_kpi_type(Consts.OOS_STORE_LEVEL)
+        store_level_fk = self.common_v2.get_kpi_fk_by_kpi_type(Consts.OOS_STORE_LEVEL)
         total_res = Counter()
         for result in self.oos_store_results:
             total_res.update(result)
         total_res[SessionResultsConsts.DENOMINATOR_ID] = self.store_id
         total_res[ProductsConsts.MANUFACTURER_FK] = self.own_manufacturer_fk
         total_res = [dict(total_res)]
-        self._save_results_for_assortment(ProductsConsts.MANUFACTURER_FK, total_res, store_level_no_policy_kpi_fk)
+        self._save_results_for_assortment(ProductsConsts.MANUFACTURER_FK, total_res, store_level_fk, None, True)
 
     def _prepare_data_for_assortment_calculation(self):
         """ This method gets the level 3 assortment results (SKU level), adding category_fk and returns the DataFrame"""

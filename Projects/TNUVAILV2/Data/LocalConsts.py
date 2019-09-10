@@ -63,5 +63,6 @@ class Consts(object):
     LOG_EMPTY_ASSORTMENT_DATA_PER_POLICY = "There isn't relevant assortment data for the following policy: {}"
     LOG_EMPTY_PREVIOUS_SESSIONS = "Couldn't fetch previous results for the the following session: {}"
 
-    PREV_RES_KPIS_FOR_NCC = (
-        OOS_STORE_DAIRY_PREV_RES, OOS_STORE_TIRAT_TSVI_PREV_RES, OOS_SKU_DAIRY_PREV_RES, OOS_SKU_TIRAT_TSVI_PREV_RES)
+    PREV_RES_KPIS_FOR_NCC = (OOS_STORE_LEVEL,
+                             OOS_STORE_DAIRY_PREV_RES, OOS_STORE_TIRAT_TSVI_PREV_RES, OOS_SKU_DAIRY_PREV_RES,
+                             OOS_SKU_TIRAT_TSVI_PREV_RES)
