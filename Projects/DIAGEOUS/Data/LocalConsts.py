@@ -36,7 +36,7 @@ class Consts(object):
     TEMPLATE = "template"
     BRAND, SUB_BRAND, SKU = "brand", "sub_brand", "sku"
     COMPETITION, MANUFACTURER = "competition", "manufacturer"
-    DISPLAY, NATIONAL_SEGMENT = KPIsAtomic.DISPLAY, "national_segment_ind"
+    DISPLAY, NATIONAL_SEGMENT = "display", "national_segment_ind"
     # names in DB:
     DB_TOTAL_KPIS = {
         ON: {TOTAL: 'Total Score - On Premise',
