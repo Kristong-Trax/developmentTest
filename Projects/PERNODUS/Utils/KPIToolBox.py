@@ -195,7 +195,10 @@ class PERNODUSToolBox:
             return None
         kpi_template = kpi_template.iloc[0]
 
-        relevant_filter = {kpi_template['param']: self.values_to_list(kpi_template['value'])}
+        if kpi_template['param2']:
+            relevant_filter = {kpi_template['param']: self.values_to_list(kpi_template['value']), kpi_template['param2']: self.values_to_list(kpi_template['value2'])}
+        else:
+            relevant_filter = {kpi_template['param']: self.values_to_list(kpi_template['value'])}
 
         result = self.blocking_calc.network_x_block_together(relevant_filter, location={Const.template_name: 'Shelf'},
                                                              additional={'minimum_facing_for_block': 2})
@@ -290,7 +293,8 @@ class PERNODUSToolBox:
 
     def adjacency(self, kpi_set_fk, kpi_name):
         relevant_scif = self.filter_df(self.scif.copy(), {Const.template_name: 'Shelf'})
-        template = self.Adjaceny_template.loc[self.Adjaceny_template['KPI'] == kpi_name]
+        self.Adjaceny_template['KPI'] = self.Adjaceny_template['KPI'].str.encode('ascii', 'ignore')
+        template = self.Adjaceny_template.loc[self.Adjaceny_template['KPI'] == kpi_name.encode('ascii', 'ignore')]
         kpi_template = template.loc[template['KPI'] == kpi_name]
         if kpi_template.empty:
             return None
@@ -307,7 +311,7 @@ class PERNODUSToolBox:
             # allowed_items = set(self.filter_df(mpis, allowed)['scene_match_fk'].values)
             # items.update(allowed_items)
             if not (items):
-                return
+                continue
 
             all_graph = AdjacencyGraph(mpis, None, self.products,
                                        product_attributes=['rect_x', 'rect_y'],
@@ -471,14 +475,17 @@ class PERNODUSToolBox:
 
         values_to_check = []
 
+
         if kpi_template['param']:
             values_to_check = str(kpi_template['value']).split(',')
 
-        filters = {kpi_template['param']: values_to_check}
-        result = self.calculate_products_on_edge(**filters)
-        score = 1 if result >= 1 else 0
-
         for value in values_to_check:
+
+            filters = {kpi_template['param']: value, Const.template_name: 'Shelf'}
+            result = self.calculate_products_on_edge(**filters)
+            score = 1 if result >= 1 else 0
+
+
             sub_category_fk = self.all_products[Const.sub_category_fk][self.all_products[Const.sub_category] == value].iloc[0]
 
             self.common.write_to_db_result(fk=kpi_set_fk, numerator_id=sub_category_fk,
@@ -609,9 +616,10 @@ class PERNODUSToolBox:
                     min_include, max_include)]
                 eye_level_facings = eye_level_facings.append(eye_level_shelves)
 
-                # eye_level_facings = pd.concat([eye_level_facings, self.all_products])
-        found_pks = eye_level_facings['product_fk'][
-            self.get_filter_condition(self.all_products, **filters)].unique().tolist()
+                eye_level_facings = pd.concat([eye_level_facings, self.all_products])
+        filtered_all_products = self.get_filter_condition(self.all_products, **filters)
+        found_pks = eye_level_facings['product_fk'][eye_level_facings['product_fk'].isin(
+            filtered_all_products[filtered_all_products].index.to_list())].unique().tolist()
         eye_level_assortment = self.all_products[filters.keys()[0]][
             self.all_products['product_fk'].isin(found_pks)].unique()
 
