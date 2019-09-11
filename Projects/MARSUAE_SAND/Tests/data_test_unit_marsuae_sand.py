@@ -49,7 +49,14 @@ class DataTestUnitMarsuae(object):
          {'pk': 3028, 'type': u'SOD - Chocolate Display'}, {'pk': 3029, 'type': u'SOS - Chocolate Checkout'},
          {'pk': 3030, 'type': u'SOS - Chocolate Main'}, {'pk': 3031, 'type': u'SOS - Gum Checkout'},
          {'pk': 3032, 'type': u'SOS - Gum Main'}, {'pk': 3033, 'type': u'SOS - Gum/Fruity Checkout'},
-         {'pk': 3034, 'type': u'SOS - Petfood Main'}]
+         {'pk': 3034, 'type': u'SOS - Petfood Main'},
+         {'pk': 3035, 'type': u'Checkout Penetration - Chocolate_2'},
+         {'pk': 3036, 'type': u'Checkout Penetration - Gum_2'},
+         {'pk': 3037, 'type': u'Freezer Penetration - Ice Cream_2'},
+         {'pk': 3038, 'type': u'SOD - Chocolate Display_2'}, {'pk': 3039, 'type': u'SOS - Chocolate Checkout_2'},
+         {'pk': 3040, 'type': u'SOS - Chocolate Main_2'}, {'pk': 3041, 'type': u'SOS - Gum Checkout_2'},
+         {'pk': 3042, 'type': u'SOS - Gum Main_2'}, {'pk': 3043, 'type': u'SOS - Gum/Fruity Checkout_2'},
+         {'pk': 3044, 'type': u'SOS - Petfood Main_2'}]
     )
 
     store_data_sss_a = pd.DataFrame.from_records(
