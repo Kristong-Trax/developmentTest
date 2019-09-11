@@ -13,7 +13,7 @@ if __name__ == '__main__':
     session_uids = [
         'ED1A8E77-8CDA-4869-BD75-A913D993CA25',
         '20B1F47A-BEB9-4E28-A258-9E78CC0A4074',
-        '8794DC26-EB06-4013-801C-F8C2621442EE'
+        '8794DC26-EB06-4013-801C-F8C2621442EE',
 
         # SAND
         # '3a3e96ee-3dfa-47f2-8cdb-6226756f62f8',
