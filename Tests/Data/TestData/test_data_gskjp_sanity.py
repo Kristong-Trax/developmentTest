@@ -13,16 +13,12 @@ __author__ = 'limorc'
 class ProjectsSanityData(BaseSeedData):
     project_name = TestProjectsNames().TEST_PROJECT_1
     gskjp_seed = {DATA_TYPE: BaseSeedData.MYSQL,
-                        FILES_RELATIVE_PATH: ['Data/Seeds/gskjp_seed.sql.gz'],
-                        PROJECT_NAME: project_name
-                        } 
-
-    mongodb_products_and_brands_seed = \
-           {DATA_TYPE: BaseSeedData.MONGO,
-            DATABASE_NAME: MongoConnector.SMART,
-            COLLECTION_NAME: 'projects_project',
-            DATA: [{
-                "_id": ObjectId("5824dd6bc9b9128805964eab"),
-                "project_name": TestProjectsNames().TEST_PROJECT_1,
-                Keys.PRODUCTS_AND_BRANDS: True
-            }]}
+                       FILES_RELATIVE_PATH: ['Data/Seeds/gskjp_seed.sql.gz'],
+                       PROJECT_NAME: project_name
+                       } 
+    mongodb_products_and_brands_seed = {DATA_TYPE: BaseSeedData.MONGO,
+                                        DATABASE_NAME: MongoConnector.SMART,
+                                        COLLECTION_NAME: 'projects_project',
+                                        DATA: [{"_id": ObjectId("5824dd6bc9b9128805964eab"),
+                                                "project_name": TestProjectsNames().TEST_PROJECT_1, 
+                                                Keys.PRODUCTS_AND_BRANDS: True}]}

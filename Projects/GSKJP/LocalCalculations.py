@@ -10,7 +10,7 @@ from Projects.GSKJP.Calculations import Calculations
 #     Config.init()
 #     project_name = 'gskjp'
 #     data_provider = KEngineDataProvider(project_name)
-#     session ='92C9B9CE-CD2C-4259-9035-D4DA5301168E'
+#     session ='0F4B19C0-1239-474B-A5E9-402493820174'
 #     data_provider.load_session_data(session)
 #     output = Output()
 #     Calculations(data_provider, output).run_project_calculations()

@@ -119,6 +119,20 @@ class TestMarsuaeSandScene(TestFunctionalCase):
         self.assertTrue(all(test_result_list))
         self.assertEquals(len(scene_tb.kpi_results), 1)
 
+    def test_calculate_price_returns_max_result_among_price_and_promo_price_if_one_of_them_is_none(self):
+        self.mock_match_product_in_scene(DataTestUnitMarsuae.scene_5)
+        self.mock_scene_item_facts(DataTestUnitMarsuae.scene_5_scif)
+        scene_tb = MARSUAE_SANDSceneToolBox(self.data_provider_mock, self.output)
+        scene_tb.calculate_price()
+        expected_list = list()
+        expected_list.append({'kpi_fk': 3004, 'numerator': 1, 'result': 4})
+        expected_list.append({'kpi_fk': 3004, 'numerator': 2, 'result': 5})
+        test_result_list = []
+        for expected_result in expected_list:
+            test_result_list.append(self.check_kpi_results(scene_tb.kpi_results, expected_result) == 1)
+        self.assertTrue(all(test_result_list))
+        self.assertEquals(len(scene_tb.kpi_results), 2)
+
     @staticmethod
     def check_kpi_results(kpi_results_df, expected_results_dict):
         column = []

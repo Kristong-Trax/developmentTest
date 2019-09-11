@@ -13,6 +13,7 @@ from Projects.CCZA.Utils.Converters import Converters
 from KPIUtils.GeneralToolBox import GENERALToolBox
 from KPIUtils.DB.Common import Common
 from KPIUtils.Calculations.Survey import Survey
+from KPIUtils_v2.Utils.Decorators.Decorators import kpi_runtime
 
 __author__ = 'Elyashiv'
 
@@ -126,6 +127,7 @@ class CCZAToolBox:
                 Log.error('Exception in the atomic-kpi {} writing to DB: {}'.format(atomic_name, e.message))
         return atomic_score
 
+    @kpi_runtime()
     def calculate_availability(self, atomic_params):
         """
             :param atomic_params: dict - atomic kpi line from the template
@@ -163,6 +165,7 @@ class CCZAToolBox:
             filters = self.update_filters(filters, in_or_not, filter_type, filter_value)
         return self.tools.calculate_availability(**filters)
 
+    @kpi_runtime()
     def calculate_survey_with_types(self, atomic_params):
         """
             :param atomic_params: dict - atomic kpi line from the template.
@@ -197,6 +200,7 @@ class CCZAToolBox:
             Log.warning('The type "{}" is not recognized'.format(atomic_type))
         return atomic_score
 
+    @kpi_runtime()
     def calculate_survey_with_codes(self, atomic_params):
         """
             :param atomic_params: dict - atomic kpi line from the template.
@@ -265,6 +269,7 @@ class CCZAToolBox:
         scene_count = self.tools.calculate_number_of_scenes(**filters)
         return scene_count
 
+    @kpi_runtime()
     def calculate_sos(self, atomic_params):
         """
             :param atomic_params: dict - atomic kpi line from the template
@@ -315,6 +320,7 @@ class CCZAToolBox:
             Log.warning('The value in "In/Not In" in the template should be "Not in", "In" or empty')
         return filters
 
+    @kpi_runtime()
     def calculate_flow(self):
         """
             checking if the shelf is sorted like the brands list.

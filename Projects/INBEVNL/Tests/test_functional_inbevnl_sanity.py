@@ -22,7 +22,6 @@ class TestKEngineOutOfTheBox(TestFunctionalCase):
     def set_up(self):
         super(TestKEngineOutOfTheBox, self).set_up()
         remove_cache_and_storage()
-        self.mock_object(object_name='commit_results_data', path='KPIUtils_v2.DB.CommonV2.Common')
         self.mock_object(object_name='save_latest_templates', path='KPIUtils.INBEV.ToolBox.ToolBox')
 
 
@@ -76,7 +75,7 @@ class TestKEngineOutOfTheBox(TestFunctionalCase):
             output = Output()
             INBEVNLINBEVBECalculations(data_provider, output).run_project_calculations()
             self._assert_old_tables_kpi_results_filled()
-            # self._assert_new_tables_kpi_results_filled()
+            self._assert_new_tables_kpi_results_filled()
             # for scene in sessions[session]:
             #     data_provider.load_scene_data(str(session), scene_id=scene)
             #     SceneCalculations(data_provider).calculate_kpis()

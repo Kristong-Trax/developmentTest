@@ -57,7 +57,7 @@ class INBEVTRADMXToolBox:
         self.kpi_static_data = self.common.get_kpi_static_data()
         self.kpi_results_queries = []
         self.templates_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data')
-        self.excel_file_path = os.path.join(self.templates_path, 'inbevtradmx_template_11.xlsx')
+        self.excel_file_path = os.path.join(self.templates_path, 'inbevtradmx_template_11_v2.xlsx')
         self.availability = Availability(self.data_provider)
         self.survey_response = self.data_provider[Data.SURVEY_RESPONSES]
         self.geo = GeoLocation.INBEVTRADMXGeo(self.rds_conn, self.session_uid, self.data_provider,
@@ -298,6 +298,9 @@ class INBEVTRADMXToolBox:
         else:
             # get df only with the correct template name
             df = self.scif[self.scif.template_name == row['template_name']]
+        if not pd.isna(row['exclude product_type']):
+            for excl in [e.strip() for e in row['exclude product_type'].split(',')]:
+                df = df[df['product_type'] != excl]
 
         # sum of all the facings in df
         facings = df.facings.values.sum()

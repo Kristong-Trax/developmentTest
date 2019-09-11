@@ -1,34 +1,49 @@
 
-from Projects.TNUVAILV2.Tests.Data.TestData.test_data_tnuvailv2 import TnuvailV2SanityData
-from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
-from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
-from Trax.Apps.Core.Testing.BaseCase import TestFunctionalCase
-from Trax.Data.Testing.TestProjects import TestProjectsNames
-from Projects.TNUVAILV2.Calculations import Calculations
-from Trax.Cloud.Services.Connector.Keys import DbUsers
-from Tests.TestUtils import remove_cache_and_storage
-from Trax.Data.Testing.SeedNew import Seeder
-import MySQLdb
 import os
+import MySQLdb
+
+from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
+from Trax.Data.Testing.SeedNew import Seeder
+from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
+from Trax.Cloud.Services.Connector.Keys import DbUsers
+from Trax.Data.Testing.TestProjects import TestProjectsNames
+from Projects.TNUVAILV2.Tests.Data.test_data_tnuvailv2_sanity import ProjectsSanityData
+from Projects.TNUVAILV2.Calculations import Calculations
+
+from Trax.Apps.Core.Testing.BaseCase import TestFunctionalCase
+from Tests.TestUtils import remove_cache_and_storage
 
 
-class TestTnuvailV2Sanity(TestFunctionalCase):
+__author__ = 'ilays'
+
+
+class TestKEngineOutOfTheBox(TestFunctionalCase):
 
     def set_up(self):
-        super(TestTnuvailV2Sanity, self).set_up()
+        super(TestKEngineOutOfTheBox, self).set_up()
         remove_cache_and_storage()
 
     @property
     def import_path(self):
         return 'Trax.Apps.Services.KEngine.Handlers.SessionHandler'
-
+    
     @property
     def config_file_path(self):
         return os.path.join(os.path.dirname(os.path.realpath(__file__)), 'k-engine-test.config')
-
+    
     seeder = Seeder()
-
-    def _assert_kpi_results_filled(self):
+    
+    def _assert_old_tables_kpi_results_filled(self):
+        connector = PSProjectConnector(TestProjectsNames().TEST_PROJECT_1, DbUsers.Docker)
+        cursor = connector.db.cursor(MySQLdb.cursors.DictCursor)
+        cursor.execute('''
+        SELECT * FROM report.kpi_results
+        ''')
+        kpi_results = cursor.fetchall()
+        self.assertNotEquals(len(kpi_results), 0)
+        connector.disconnect_rds()
+        
+    def _assert_new_tables_kpi_results_filled(self):
         connector = PSProjectConnector(TestProjectsNames().TEST_PROJECT_1, DbUsers.Docker)
         cursor = connector.db.cursor(MySQLdb.cursors.DictCursor)
         cursor.execute('''
@@ -37,14 +52,29 @@ class TestTnuvailV2Sanity(TestFunctionalCase):
         kpi_results = cursor.fetchall()
         self.assertNotEquals(len(kpi_results), 0)
         connector.disconnect_rds()
-
-    @seeder.seed(["mongodb_products_and_brands_seed", "tnuvailv2_sand_seed"], TnuvailV2SanityData())
+    
+    def _assert_scene_tables_kpi_results_filled(self):
+        connector = PSProjectConnector(TestProjectsNames().TEST_PROJECT_1, DbUsers.Docker)
+        cursor = connector.db.cursor(MySQLdb.cursors.DictCursor)
+        cursor.execute('''
+        SELECT * FROM report.scene_kpi_results
+        ''')
+        kpi_results = cursor.fetchall()
+        self.assertNotEquals(len(kpi_results), 0)
+        connector.disconnect_rds()
+    
+    @seeder.seed(["tnuvailv2_seed", "mongodb_products_and_brands_seed"], ProjectsSanityData())
     def test_tnuvailv2_sanity(self):
-        project_name = TnuvailV2SanityData.project_name
+        project_name = ProjectsSanityData.project_name
         data_provider = KEngineDataProvider(project_name)
-        sessions = ['236c1577-0ecb-4bf9-88b9-c9e87ab17c58']
-        for session in sessions:
-            data_provider.load_session_data(session)
+        sessions = {'236c1577-0ecb-4bf9-88b9-c9e87ab17c58': []}
+        for session in sessions.keys():
+            data_provider.load_session_data(str(session))
             output = Output()
             Calculations(data_provider, output).run_project_calculations()
-            self._assert_kpi_results_filled()
+            # self._assert_old_tables_kpi_results_filled()
+            self._assert_new_tables_kpi_results_filled()
+            # for scene in sessions[session]:
+            #     data_provider.load_scene_data(str(session), scene_id=scene)
+            #     SceneCalculations(data_provider).calculate_kpis()
+            #     self._assert_scene_tables_kpi_results_filled()

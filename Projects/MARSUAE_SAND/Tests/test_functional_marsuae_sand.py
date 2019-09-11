@@ -1,11 +1,11 @@
 from Trax.Apps.Core.Testing.BaseCase import TestFunctionalCase
-from Trax.Data.Testing.SeedNew import Seeder
+# from Trax.Data.Testing.SeedNew import Seeder
 # from Trax.Utils.Testing.Case import TestUnitCase
 from mock import MagicMock
 from Projects.MARSUAE_SAND.Tests.data_test_unit_marsuae_sand import DataTestUnitMarsuae
 from Projects.MARSUAE_SAND.Utils.KPIToolBox import MARSUAE_SANDToolBox
 import pandas as pd
-import numpy as np
+# import numpy as np
 from pandas.util.testing import assert_frame_equal
 
 __author__ = 'natalyak'
@@ -73,6 +73,10 @@ class TestMarsuaeSand(TestFunctionalCase):
         store_data = self.mock_object('MARSUAE_SANDToolBox.get_store_data_by_store_id')
         store_data.return_value = DataTestUnitMarsuae.store_data_sss_a
         return store_data.return_value
+
+    def mock_store_data_test_case(self, data):
+        store_data = self.mock_object('MARSUAE_SANDToolBox.get_store_data_by_store_id')
+        store_data.return_value = data
 
     def mock_data_provider(self):
         self.data_provider_mock = MagicMock()
@@ -225,7 +229,7 @@ class TestMarsuaeSand(TestFunctionalCase):
         expected_columns_in_output_df = DataTestUnitMarsuae.external_targets_columns
         validation_list = [col in columns for col in expected_columns_in_output_df]
         self.assertTrue(all(validation_list))
-        self.assertEquals(len(tool_box.all_targets_unpacked), 40)
+        self.assertEquals(len(tool_box.all_targets_unpacked), 44)
 
     def test_get_yes_no_result_type_fk_if_score_value_not_zero(self):
         tool_box = MARSUAE_SANDToolBox(self.data_provider_mock, self.output)
@@ -481,7 +485,8 @@ class TestMarsuaeSand(TestFunctionalCase):
         expected_results.append({'kpi_type': 'Chocolate & Ice Cream', 'cat_score': 45})
         expected_results.append({'kpi_type': 'Gum & Fruity', 'cat_score': 10})
         expected_results.append({'kpi_type': 'Pet Food', 'cat_score': 100})
-        cat_lvl_dict = tool_box.cat_lvl_res.to_dict(orient='records')
+        cat_lvl_res = tool_box.cat_lvl_res[['kpi_type', 'cat_score']]
+        cat_lvl_dict = cat_lvl_res.to_dict(orient='records')
         for expected_result in expected_results:
             self.assertTrue(expected_result in cat_lvl_dict)
         self.assertEquals(len(tool_box.cat_lvl_res), 3)
@@ -695,6 +700,22 @@ class TestMarsuaeSand(TestFunctionalCase):
         param_row = self.get_parameter_series_for_kpi_calculation(store_atomics, 'Red Block Compliance - Main')
         tool_box.calculate_block(param_row)
         expected_result = {'kpi_fk': 3016, 'result': 0.6, 'score': 1, 'weight': 10, 'score_by_weight': 10}
+        check = self.check_results(tool_box.atomic_kpi_results, expected_result)
+        self.assertEquals(check, 1)
+
+    def test_sos_gum_with_additional_exclusion_parameter(self):
+        probe_group, matches, scene = self.create_scif_matches_stitch_groups_data_mocks(
+            DataTestUnitMarsuae.test_case_1, [11])
+        self.mock_store_data_test_case(DataTestUnitMarsuae.store_data_supers_a)
+        tool_box = MARSUAE_SANDToolBox(self.data_provider_mock, self.output)
+        store_atomics = tool_box.get_store_atomic_kpi_parameters()
+        tool_box.build_tiers_for_atomics(store_atomics)
+        param_row = self.get_parameter_series_for_kpi_calculation(store_atomics, 'SOS - Gum Main')
+        tool_box.calculate_atomic_results(param_row)
+        kpi_result = tool_box.atomic_kpi_results
+        kpi_result['result'] = kpi_result['result'].apply(lambda x: round(x, 5))
+        expected_result = {'kpi_fk': 3032, 'result': round(2/22.0*100, 5), 'score': 0, 'weight': 15,
+                           'score_by_weight': 0}
         check = self.check_results(tool_box.atomic_kpi_results, expected_result)
         self.assertEquals(check, 1)
 

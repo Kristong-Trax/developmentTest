@@ -2,7 +2,7 @@
 from Trax.Utils.Logging.Logger import Log
 
 from Projects.CCZA.Utils.KPIToolBox import CCZAToolBox
-from KPIUtils.Utils.Helpers.LogHandler import log_handler
+from KPIUtils_v2.Utils.Decorators.Decorators import log_runtime
 from Projects.CCZA.Utils.Const import Const
 
 __author__ = 'Elyashiv'
@@ -17,7 +17,7 @@ class CCZAGenerator:
         self.session_uid = self.data_provider.session_uid
         self.tool_box = CCZAToolBox(self.data_provider, self.output)
 
-    @log_handler.log_runtime('Total Calculations', log_start=True)
+    @log_runtime('Total Calculations', log_start=True)
     def main_function(self):
         """
         This is the main KPI calculation function.

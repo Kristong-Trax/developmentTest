@@ -425,6 +425,9 @@ class LIBERTYToolBox:
             filtered_scif.groupby(['Base Size', 'Multi-Pack Size', 'scene_id'],
                                   as_index=False)['facings'].sum()
 
+        if filtered_scif.empty:
+            return 0, 0
+
         filtered_scif['passed_displays'] = \
             filtered_scif.apply(lambda row: self._calculate_pass_status_of_display(row), axis=1)
 
@@ -527,13 +530,13 @@ class LIBERTYToolBox:
         if relevant_template.empty:
             if ssd_still:
                 if ssd_still[0].lower() == Const.SSD.lower():
-                    return 49
+                    return .49
                 elif ssd_still[0].lower() == Const.STILL.lower():
-                    return 16
+                    return .16
                 else:
                     return 0
             else:
-                return 26
+                return .26
 
         if ssd_still:
             if ssd_still[0].lower() == Const.SSD.lower():
