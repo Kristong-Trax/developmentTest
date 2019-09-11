@@ -1550,15 +1550,15 @@ class ToolBox:
         return pd.read_sql_query(query, self.ps_data_provider.rds_conn.db)\
             .merge(self.products, how='left', on='product_fk', suffixes=['', '_p'])
 
-        self.data_provider.add_resource_from_table('mpip', 'probedata', 'match_product_in_probe', '*',
-                                                   where='''pk in (select distinct p.pk
-                                                            from probedata.probe p
-                                                            left join probedata.scene s on p.scene_fk = s.pk
-                                                            where s.session_uid = '{}')
-                                                            '''.format(self.session_uid))
-        self.data_provider.add_resource_from_table('prod_img', 'static_new', 'product_image', ['pk', 'image_direction'])
-        mpip = self.data_provider['mpip'].drop('pk', axis=1).merge(self.data_provider['prod_img'],
-                                                                  left_on='product_image_fk', right_on='pk')
+        # self.data_provider.add_resource_from_table('mpip', 'probedata', 'match_product_in_probe', '*',
+        #                                            where='''pk in (select distinct p.pk
+        #                                                     from probedata.probe p
+        #                                                     left join probedata.scene s on p.scene_fk = s.pk
+        #                                                     where s.session_uid = '{}')
+        #                                                     '''.format(self.session_uid))
+        # self.data_provider.add_resource_from_table('prod_img', 'static_new', 'product_image', ['pk', 'image_direction'])
+        # mpip = self.data_provider['mpip'].drop('pk', axis=1).merge(self.data_provider['prod_img'],
+        #                                                           left_on='product_image_fk', right_on='pk')
         return mpip
 
     def write_to_db(self, kpi_name, score=0, result=None, target=None, numerator_result=0,
