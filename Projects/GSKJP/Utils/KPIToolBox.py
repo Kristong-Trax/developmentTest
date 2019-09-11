@@ -8,7 +8,6 @@ from Trax.Cloud.Services.Connector.Keys import DbUsers
 from Trax.Utils.Logging.Logger import Log
 from Projects.GSKJP.Data.LocalConsts import Consts
 from KPIUtils_v2.GlobalDataProvider.PsDataProvider import PsDataProvider
-from KPIUtils.GlobalProjects.GSK.Utils.KPIToolBox import Const
 from KPIUtils_v2.Calculations.BlockCalculations_v2 import Block
 from Trax.Algo.Calculations.Core.DataProvider import Data
 import pandas as pd
