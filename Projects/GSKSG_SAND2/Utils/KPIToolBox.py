@@ -456,7 +456,8 @@ class GSKSGToolBox:
                                                                 orange_score_result_identifier)
 
             secondary_display_res, secondary_score = self.secondary_display(cat, cat_targets,
-                                                                            orange_score_result_identifier, scif_secondary)
+                                                                            orange_score_result_identifier,
+                                                                            scif_secondary)
 
             promo_activation_res, promo_score = self.promo_activation(cat, cat_targets,
                                                                       orange_score_result_identifier, scif_promo)
