@@ -18,7 +18,6 @@ class INBEVNLINBEVBECalculations(BaseCalculationsScript):
         INBEVNLINBEVBEGenerator(self.data_provider, self.output, TEMPLATE_PATH).main_function()
         self.timer.stop('KPIGenerator.run_project_calculations')
 
-
 # if __name__ == '__main__':
 #     LoggerInitializer.init('inbevnl calculations')
 #     Config.init()
