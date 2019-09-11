@@ -4,6 +4,7 @@ from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
 from Trax.Algo.Calculations.Core.GraphicalModel.AdjacencyGraphs import AdjacencyGraph
 import ast
+import math
 # from Trax.Utils.Logging.Logger import Log
 import pandas as pd
 from collections import defaultdict
@@ -96,12 +97,15 @@ class SceneMONDELEZDMIUSToolBox:
             fixed_df = pd.concat([not_allowed_duplicate_df, allowed_duplicate_df])
             score = int(fixed_df['score'].sum())
 
-            #     try:
-            #         new_score = \
-            #         self.points_template['score'][self.points_template['display'] == row['display_name']].iloc[0]
-            #         score = new_score + score
-            #     except:
-            #         pass
+            pallets_tagged_df = fixed_df[fixed_df['display'] == 'Pallet - Full - PRD']
+
+            if not pallets_tagged_df.empty:
+                pallets_tagged = len(pallets_tagged_df)
+                pallet_current_score = pallets_tagged * 16
+                pallet_actual_score = math.ceil(pallets_tagged / 4.0) * 16
+                score = score - ( pallet_current_score - pallet_actual_score)
+
+
 
             self.common.write_to_db_result(fk=vtw_kpi_fk, numerator_id=self.manufacturer_fk, numerator_result=score,
                                            denominator_id=self.store_id, denominator_result=1,
@@ -118,9 +122,12 @@ class SceneMONDELEZDMIUSToolBox:
 
                     display_point = int(
                         self.points_template['score'][self.points_template['display'] == row.display_name].iloc[0])
-                    if multiple == 'y':
-                        display_count = len(fixed_df[fixed_df['display_name'] == row.display_name])
 
+                    if row.display_name.__contains__('Pallet') and multiple == 'y':
+                        pallet_tagged = len(fixed_df[fixed_df['display_name'] == row.display_name])
+                        display_count = math.ceil((pallet_tagged / 4.0))
+                    elif multiple == 'y':
+                        display_count = len(fixed_df[fixed_df['display_name'] == row.display_name])
                     else:
                         display_count = 1
                     vehicle_score = display_count * display_point
@@ -165,8 +172,12 @@ class SceneMONDELEZDMIUSToolBox:
         FD_kpi_kpi = self.common.get_kpi_fk_by_kpi_name(Const.FD_COMPLIANCE_KPI)
         scripted_kpi = self.common.get_kpi_fk_by_kpi_name(Const.SCRIPTED_COMPLIANCE_KPI)
         if self.store_assortment.empty:
-            # LOG ERROR
-            pass
+            self.common.write_to_db_result(fk=kpi_fk, numerator_id=self.manufacturer_fk, numerator_result=score,
+                                           denominator_id=self.store_id, denominator_result=1,
+                                           result=result, score=score, scene_result_fk=self.scene,
+                                           should_enter=True,
+                                           by_scene=True)
+
         else:
             filtered_assortment = self.store_assortment[(self.store_assortment['kpi_fk_lvl3'] == FD_kpi_kpi) |
                                                         (self.store_assortment['kpi_fk_lvl3'] == scripted_kpi)]
