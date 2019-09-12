@@ -68,8 +68,8 @@ class Results(object):
             #                         # 'Is NUTRO Dry Dog blocked in the Ingredient Transparency feeding philosophy segment?'
             #                         # 'Is PEDIGREE Dry Dog Food shelved with the Basic & Balanced feeding philosophy segment?'
             #                         # 'What percent of non-negotiable items are shelved in the preferred range? - numerator'
-            #     'What percent of non-negotiable items are shelved in the preferred range?',
-            # # 'What percent of non-negotiable items are shelved in the preferred range no pr?'
+            #     # 'What percent of non-negotiable items are shelved in the preferred range?',
+            # 'What percent of non-negotiable items are shelved in the preferred range no pr?'
             #
             # ]:
             #     continue
