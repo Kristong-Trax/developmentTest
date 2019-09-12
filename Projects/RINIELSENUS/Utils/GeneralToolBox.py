@@ -9,7 +9,7 @@ from Projects.RINIELSENUS.Utils.Const import ALLOWED_TYPES
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Algo.Calculations.Core.Shortcuts import BaseCalculationsGroup
 # from KPIUtils_v2.Calculations.BlockCalculations_v2 import Block as Block
-from Projects.RINIELSENUS.Utils.BlockCalculations_v_stack import Block
+from Projects.RINIELSENUS.Utils.BlockCalculations_v3 import Block
 from Trax.Utils.Logging.Logger import Log
 
 
@@ -839,7 +839,7 @@ class MarsUsGENERALToolBox:
 
         clusters = self.block.network_x_block_together(filters, location=scene_filter,
                                                         additional={'allowed_products_filters': allowed_filters,
-                                                                    'include_stacking': True,
+                                                                    'include_stacking': False,
                                                                     'check_vertical_horizontal': True,
                                                                     'ignore_empty': False,
                                                                     'minimum_block_ratio': minimum_block_ratio,
