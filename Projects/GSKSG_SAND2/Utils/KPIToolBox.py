@@ -48,7 +48,15 @@ class GSKSGToolBox:
         """
         This function calculates the KPI results.
         """
+        # # global kpis in store_level
+        assortment_store_dict = self.gsk_generator.availability_store_function()
+        self.common.save_json_to_new_tables(assortment_store_dict)
+        facings_sos_dict = self.gsk_generator.gsk_global_facings_sos_whole_store_function()
+        self.common.save_json_to_new_tables(facings_sos_dict)
+        linear_sos_dict = self.gsk_generator.gsk_global_linear_sos_whole_store_function()
+        self.common.save_json_to_new_tables(linear_sos_dict)
 
+        # global kpis in category level & kpi results are used for orange score kpi
         assortment_category_dict = self.gsk_generator.availability_category_function()
         self.common.save_json_to_new_tables(assortment_category_dict)
         fsos_category_dict = self.gsk_generator.gsk_global_facings_sos_by_category_function()
@@ -172,15 +180,20 @@ class GSKSGToolBox:
                 else:
                     self.targets.drop(self.targets.index, inplace=True)
 
-            targets_param_val = [self.targets[store_param_val].iloc[0]] if (isinstance(self.targets[store_param_val],
-                                                                                       str) or isinstance(self.targets[store_param_val],
-                                                                               unicode)) else self.targets[
-                store_param_val].iloc[0]
+            self.targets['target_match'] = self.targets[store_param_val].apply(self.checking_param, store_info_col=param)
+            self.targets = self.targets[self.targets['target_match']]
 
-            # targets contains, params equal to store info or , param value empty or none
-            self.targets = self.targets[
-                (self.store_info[param][0].encode(GlobalConsts.HelperConsts.UTF8) in targets_param_val) |
-                (self.targets[store_param_val] == ['']) | (not self.targets[store_param_val].any())]
+    def checking_param(self, df_param, store_info_col):
+        # x is  self.targets[store_param_val]
+        if isinstance(df_param, list):
+            if self.store_info[store_info_col][0].encode(GlobalConsts.HelperConsts.UTF8) in df_param:
+                return True
+        if isinstance(df_param, unicode):
+            if self.store_info[store_info_col][0].encode(GlobalConsts.HelperConsts.UTF8) == df_param or df_param == '':
+                return True
+        if isinstance(df_param, type(None)):
+            return False
+        return False
 
     def display_distribution(self, display_name, category_fk, category_targets, parent_identifier, kpi_name,
                              parent_kpi_name, scif_df):
@@ -209,7 +222,7 @@ class GSKSGToolBox:
                                      identifier_result, 'target': weight, 'should_enter': True})
             return 0, results_list
 
-        display_products = scif_df[scif_df['product_type'] == 'POS']
+        display_products = scif_df[(scif_df['product_type'] == 'POS') & (scif_df['category_fk'] == category_fk)]
 
         display_name = "{}_name".format(display_name.lower())
         display_names = category_targets[display_name].iloc[0]
@@ -448,8 +461,8 @@ class GSKSGToolBox:
             return
 
         total_kpi_fk = self.common.get_kpi_fk_by_kpi_type(Consts.ORANGE_SCORE_COMPLIANCE)
-        fsos_results = self.extract_json_results_by_kpi(fsos_category_res, Consts.GLOBAL_FSOS_BY_CATEGORY)
-        msl_results = self.extract_json_results_by_kpi(assortment_category_res, Consts.GLOBAL_DST_BY_CATEGORY)
+        fsos_json_global_results = self.extract_json_results_by_kpi(fsos_category_res, Consts.GLOBAL_FSOS_BY_CATEGORY)
+        msl_json_global_results = self.extract_json_results_by_kpi(assortment_category_res, Consts.GLOBAL_DST_BY_CATEGORY)
 
         # scif after filtering it by set up file for each kpi
         scif_secondary = self.gsk_generator.tool_box.tests_by_template('secondary_display', self.scif,
@@ -464,10 +477,10 @@ class GSKSGToolBox:
 
             cat_targets = self.targets[self.targets[DataProviderConsts.ProductsConsts.CATEGORY_FK] == cat]
 
-            msl_score, msl_results = self.msl_compliance_score(cat, msl_results, cat_targets,
+            msl_score, msl_results = self.msl_compliance_score(cat, msl_json_global_results, cat_targets,
                                                                orange_score_result_identifier)
 
-            fsos_score, fsos_results = self.fsos_compliance_score(cat, fsos_results, cat_targets,
+            fsos_score, fsos_results = self.fsos_compliance_score(cat, fsos_json_global_results, cat_targets,
                                                                   orange_score_result_identifier)
 
             planogram_score, planogram_results = self.planogram(cat, assortment, cat_targets,
