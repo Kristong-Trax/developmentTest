@@ -10,7 +10,7 @@ if __name__ == '__main__':
     project_name = 'inbevnl'
     data_provider = KEngineDataProvider(project_name)
     sessions = [
-        '5c0baab1-5d5b-4a90-92de-6efe713ef37f',
+        'a68f4178-efa3-4c24-b7ae-ae77e7d40fa6'
         # '2b201dbc-1780-4800-84c5-7a4378578149'
     ]
     for session in sessions:
