@@ -25,7 +25,7 @@ class MarsUsDogMainMealWet(object):
     def __init__(self, data_provider, output):
         self._data_provider = data_provider
         self.common = Common(self._data_provider)
-        self.mpip_sr = self.common.read_custom_query(MarsUsQueries.get_updated_mvp_sr())
+        self._data_provider.set_shared_data(self.common.read_custom_query(MarsUsQueries.get_updated_mvp_sr()))
         self.project_name = self._data_provider.project_name
         self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         self._output = output
@@ -116,7 +116,7 @@ class MarsUsDogMainMealWet(object):
                                        self._get_store_type).get_atomic_hierarchy_and_filters(set_name)
                 preferred_range = template_data[KPIConsts.PREFERRED_RANGE_SHEET]
                 min_face = self.load_min_facings(template_data)
-                Results(self._tools, self._data_provider, self.mpip_sr, self.common, self._writer, min_face,
+                Results(self._tools, self._data_provider, self.common, self._writer, min_face,
                         preferred_range[preferred_range['Set name'] == set_name]).calculate(hierarchy)
 
         # template BDB
@@ -138,7 +138,7 @@ class MarsUsDogMainMealWet(object):
                                        self._get_store_type).get_atomic_hierarchy_and_filters(set_name)
                 preferred_range = template_data[KPIConsts.PREFERRED_RANGE_SHEET]
                 min_face = self.load_min_facings(template_data)
-                Results(self._tools, self._data_provider, self.mpip_sr, self.common, self._writer, min_face,
+                Results(self._tools, self._data_provider, self.common, self._writer, min_face,
                         preferred_range[preferred_range['Set name'] == set_name]).calculate(hierarchy)
 
         # self._data_provider.trace_container.to_csv('/home/Israel/Desktop/trace_block.csv')
