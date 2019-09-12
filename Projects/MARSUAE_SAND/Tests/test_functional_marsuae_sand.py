@@ -260,6 +260,14 @@ class TestMarsuaeSand(TestFunctionalCase):
         store_atomics = tool_box.get_store_atomic_kpi_parameters()
         self.assertTrue(store_atomics.empty)
 
+    def test_calculate_atomics_does_not_calculate_atomics_if_no_relevant_atomics_for_policy(self):
+        probe_group, matches, scene = self.create_scif_matches_stitch_groups_data_mocks(
+            DataTestUnitMarsuae.test_case_1, [1, 2])
+        tool_box = MARSUAE_SANDToolBox(self.data_provider_mock, self.output)
+        tool_box.store_info_dict = DataTestUnitMarsuae.store_info_dict_other_type
+        tool_box.calculate_atomics()
+        self.assertTrue(tool_box.atomic_kpi_results.empty)
+
     def test_get_atomics_for_template_groups_present_in_store_returns_both_choc_and_ice_cream_atomic_kpis(self):
         probe_group, matches, scene = self.create_scif_matches_stitch_groups_data_mocks(
                 DataTestUnitMarsuae.test_case_1, [1, 2])

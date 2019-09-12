@@ -484,6 +484,9 @@ class MARSUAE_SANDToolBox:
 
     def calculate_atomics(self):
         store_atomics = self.get_store_atomic_kpi_parameters()
+        if store_atomics.empty:
+            Log.warning('No targets were set for store type of store {}'.format(self.store_id))
+            return
         store_atomics = self.get_atomics_for_template_groups_present_in_store(store_atomics)
         if not store_atomics.empty:
             self.build_tiers_for_atomics(store_atomics)
