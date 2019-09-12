@@ -86,57 +86,57 @@ class PERNODUSToolBox:
         self.minimum_facings = 2
 
     def main_calculation(self, *args, **kwargs):
-
-        # Base Measurement
-        for i, row in self.BaseMeasure_template.iterrows():
-            try:
-                kpi_name = row['KPI']
-                value = row['value']
-                location = row['Store Location']
-                kpi_set_fk = self.kpi_static_data['pk'][self.kpi_static_data['type'] == row['KPI LEVEL 2']].iloc[0]
-                self.calculate_category_space(kpi_set_fk, kpi_name, value, location)
-
-            except Exception as e:
-                Log.info('KPI {} calculation failed due to {}'.format(kpi_name.encode('utf-8'), e))
-                continue
-
-        # Anchor
-        for i, row in self.Anchor_template.iterrows():
-            try:
-                kpi_name = row['KPI']
-                value = row['value']
-                kpi_set_fk = self.kpi_static_data['pk'][self.kpi_static_data['type'] == row['KPI LEVEL 2']].iloc[0]
-
-                self.calculate_anchor(kpi_set_fk, kpi_name)
-
-            except Exception as e:
-                Log.info('KPI {} calculation failed due to {}'.format(kpi_name.encode('utf-8'), e))
-                continue
-
-        # Presence
-        self.calculate_presence()
-
-        # Blocking
-        for i, row in self.Blocking_template.iterrows():
-            try:
-                kpi_name = row['KPI']
-                kpi_set_fk = self.kpi_static_data['pk'][self.kpi_static_data['type'] == row['KPI LEVEL 2']].iloc[0]
-                self.calculate_blocking(kpi_set_fk, kpi_name)
-
-            except Exception as e:
-                Log.info('KPI {} calculation failed due to {}'.format(kpi_name.encode('utf-8'), e))
-                continue
-
-        # Eye Level
-        for i, row in self.Eye_Level_template.iterrows():
-            try:
-                kpi_name = row['KPI']
-                kpi_set_fk = self.kpi_static_data['pk'][self.kpi_static_data['type'] == row['KPI LEVEL 2']].iloc[0]
-                self.calculate_eye_level(kpi_set_fk, kpi_name)
-
-            except Exception as e:
-                Log.info('KPI {} calculation failed due to {}'.format(kpi_name.encode('utf-8'), e))
-                continue
+        #
+        # # Base Measurement
+        # for i, row in self.BaseMeasure_template.iterrows():
+        #     try:
+        #         kpi_name = row['KPI']
+        #         value = row['value']
+        #         location = row['Store Location']
+        #         kpi_set_fk = self.kpi_static_data['pk'][self.kpi_static_data['type'] == row['KPI LEVEL 2']].iloc[0]
+        #         self.calculate_category_space(kpi_set_fk, kpi_name, value, location)
+        #
+        #     except Exception as e:
+        #         Log.info('KPI {} calculation failed due to {}'.format(kpi_name.encode('utf-8'), e))
+        #         continue
+        #
+        # # Anchor
+        # for i, row in self.Anchor_template.iterrows():
+        #     try:
+        #         kpi_name = row['KPI']
+        #         value = row['value']
+        #         kpi_set_fk = self.kpi_static_data['pk'][self.kpi_static_data['type'] == row['KPI LEVEL 2']].iloc[0]
+        #
+        #         self.calculate_anchor(kpi_set_fk, kpi_name)
+        #
+        #     except Exception as e:
+        #         Log.info('KPI {} calculation failed due to {}'.format(kpi_name.encode('utf-8'), e))
+        #         continue
+        #
+        # # Presence
+        # self.calculate_presence()
+        #
+        # # Blocking
+        # for i, row in self.Blocking_template.iterrows():
+        #     try:
+        #         kpi_name = row['KPI']
+        #         kpi_set_fk = self.kpi_static_data['pk'][self.kpi_static_data['type'] == row['KPI LEVEL 2']].iloc[0]
+        #         self.calculate_blocking(kpi_set_fk, kpi_name)
+        #
+        #     except Exception as e:
+        #         Log.info('KPI {} calculation failed due to {}'.format(kpi_name.encode('utf-8'), e))
+        #         continue
+        #
+        # # Eye Level
+        # for i, row in self.Eye_Level_template.iterrows():
+        #     try:
+        #         kpi_name = row['KPI']
+        #         kpi_set_fk = self.kpi_static_data['pk'][self.kpi_static_data['type'] == row['KPI LEVEL 2']].iloc[0]
+        #         self.calculate_eye_level(kpi_set_fk, kpi_name)
+        #
+        #     except Exception as e:
+        #         Log.info('KPI {} calculation failed due to {}'.format(kpi_name.encode('utf-8'), e))
+        #         continue
 
         # Adjacency
         for i, row in self.Adjaceny_template.iterrows():
@@ -514,7 +514,7 @@ class PERNODUSToolBox:
                     shelf_matches = shelf_matches.sort_values(
                         by=['bay_number', 'facing_sequence_number'])
                     edge_facings = edge_facings.append(shelf_matches.iloc[0])
-                    if len(edge_facings) > 1:
+                    if len(shelf_matches) > 1:
                         edge_facings = edge_facings.append(shelf_matches.iloc[-1])
 
             category_list = []
