@@ -5,7 +5,6 @@ from Trax.Apps.Core.Testing.BaseCase import TestFunctionalCase
 from Trax.Data.Testing.SeedNew import Seeder
 from Projects.CCUS.Pillars.Tests.Data.test_data_ccus import ProjectsSanityData
 from Projects.CCUS.Pillars.Utils.KPIToolBox import PillarsPROGRAMSToolBox
-from Projects.DIAGEOUS.Utils.Const import Const
 from Tests.TestUtils import remove_cache_and_storage
 from KPIUtils_v2.DB.CommonV2 import Common
 
