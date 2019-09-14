@@ -86,7 +86,7 @@ class DBHandler:
                                         pk
                                     FROM
                                         static.kpi_level_2
-                                    WHERE TYPE IN {})
+                                    WHERE type IN {})
                                        """.format(session_fk, Consts.PREV_RES_KPIS_FOR_NCC)
         return prev_results_query
 
