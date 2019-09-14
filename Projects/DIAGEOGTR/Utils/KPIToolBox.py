@@ -881,7 +881,7 @@ class DIAGEOGTRToolBox:
                     dict_key = str(entity_key_1) + "-" + str(entity_key_2) + "-" + str(entity_key_3)
                 else:
                     entity_key_pk = 0
-                    dict_key = "000"
+                    dict_key = "0-0-0"
 
                 kpi_result = kpi_results.get(dict_key, dict())
                 kpi_result[DIAGEOGTRConsts.NUMERATOR_ID] = entity_key_pk
