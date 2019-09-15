@@ -1,15 +1,15 @@
 
 from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScript
 
-from Projects.MARSUAE.KPIGenerator import MARSUAEGenerator
+from Projects.MARSUAE.KPIGenerator import Generator
 
-__author__ = 'natalyak'
+__author__ = 'israels'
 
 
-class MarsuaeCalculations(BaseCalculationsScript):
+class Calculations(BaseCalculationsScript):
     def run_project_calculations(self):
         self.timer.start()
-        MARSUAEGenerator(self.data_provider, self.output).main_function()
+        Generator(self.data_provider, self.output).main_function()
         self.timer.stop('KPIGenerator.run_project_calculations')
 
 
