@@ -52,4 +52,4 @@ if __name__ == '__main__':
         #     output = VanillaOutput()
         #     SceneVanillaCalculations(data_provider, output).run_project_calculations()
         #     save_scene_item_facts_to_data_provider(data_provider, output)
-        #     MARSUAE_SANDSceneCalculations(data_provider).calculate_kpis()
+        #     MARSUAESceneCalculations(data_provider).calculate_kpis()
