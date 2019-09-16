@@ -114,7 +114,7 @@ class SceneMONDELEZDMIUSToolBox:
 
             # for i, row in self.mdis.iterrows():
             try:
-                for row in fixed_df[['display_name', 'display_fk']].itertuples():
+                for row in fixed_df[['display_name', 'display_fk']].groupby('display_name').first().itertuples():
                     vehicle_display_fk = row.display_fk
 
                     multiple = \
