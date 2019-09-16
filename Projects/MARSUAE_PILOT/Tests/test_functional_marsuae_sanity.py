@@ -7,8 +7,8 @@ from Trax.Data.Testing.SeedNew import Seeder
 from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
 from Trax.Cloud.Services.Connector.Keys import DbUsers
 from Trax.Data.Testing.TestProjects import TestProjectsNames
-from Projects.MARSUAE.Tests.Data.test_data_marsuae_sanity import ProjectsSanityData
-from Projects.MARSUAE.Calculations import Calculations
+from Projects.MARSUAE_PILOT.Tests.Data.test_data_marsuae_sanity import ProjectsSanityData
+from Projects.MARSUAE_PILOT.Calculations import Calculations
 
 from Trax.Apps.Core.Testing.BaseCase import TestFunctionalCase
 from Tests.TestUtils import remove_cache_and_storage

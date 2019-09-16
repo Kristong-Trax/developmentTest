@@ -12,7 +12,7 @@ from KPIUtils_v2.Utils.Parsers import ParseTemplates
 from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
 from KPIUtils_v2.Calculations.SOSCalculations import SOS
 
-from Projects.MARSUAE.Utils.Runner import Results
+from Projects.MARSUAE_PILOT.Utils.Runner import Results
 
 __author__ = 'israels'
 

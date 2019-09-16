@@ -1,7 +1,7 @@
 
 from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScript
 
-from Projects.MARSUAE.KPIGenerator import Generator
+from Projects.MARSUAE_PILOT.KPIGenerator import Generator
 
 __author__ = 'israels'
 
