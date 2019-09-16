@@ -514,7 +514,7 @@ class PERNODUSToolBox:
                     shelf_matches = shelf_matches.sort_values(
                         by=['bay_number', 'facing_sequence_number'])
                     edge_facings = edge_facings.append(shelf_matches.iloc[0])
-                    if len(edge_facings) > 1:
+                    if len(shelf_matches) > 1:
                         edge_facings = edge_facings.append(shelf_matches.iloc[-1])
 
             category_list = []
