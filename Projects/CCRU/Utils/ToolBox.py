@@ -2298,7 +2298,8 @@ class CCRUKPIToolBox:
                 for scene in scenes:
                     scene_uid = self.scenes_info[self.scenes_info['scene_fk']
                                                  == scene]['scene_uid'].values[0]
-                    kpi_facts.append({"id": atomic_kpi_id, "name": atomic_kpi_name, "display_text": atomic_kpi_name + "@" + scene_uid,
+                    kpi_facts.append({"id": atomic_kpi_id, "name": atomic_kpi_name,
+                                      "display_text": atomic_kpi_name + "@" + scene_uid,
                                       "atomic_kpi_fk": atomic_kpi_fk, "result": p.get("Values"),
                                       "scene_uid": scene_uid, "scene_id": scene,
                                       "format": p.get("Result Format")})
@@ -2313,7 +2314,8 @@ class CCRUKPIToolBox:
                                                     == scene]['template_fk'].values[0]
                         result = self.templates[self.templates['template_fk']
                                                 == template]['additional_attribute_1'].values[0]
-                        kpi_facts.append({"id": atomic_kpi_id, "name": atomic_kpi_name, "display_text": atomic_kpi_name + "@" + scene_uid,
+                        kpi_facts.append({"id": atomic_kpi_id, "name": atomic_kpi_name,
+                                          "display_text": atomic_kpi_name + "@" + scene_uid,
                                           "atomic_kpi_fk": atomic_kpi_fk, "result": result,
                                           "scene_uid": scene_uid, "scene_id": scene,
                                           "format": p.get("Result Format")})
@@ -2333,7 +2335,8 @@ class CCRUKPIToolBox:
                                 result = passed_failed[1]
                             else:
                                 result = ""
-                            kpi_facts.append({"id": atomic_kpi_id, "name": atomic_kpi_name, "display_text": atomic_kpi_name + "@" + scene_uid,
+                            kpi_facts.append({"id": atomic_kpi_id, "name": atomic_kpi_name,
+                                              "display_text": atomic_kpi_name + "@" + scene_uid,
                                               "atomic_kpi_fk": atomic_kpi_fk, "result": result,
                                               "scene_uid": scene_uid, "scene_id": scene,
                                               "format": p.get("Result Format")})
@@ -4111,7 +4114,7 @@ class CCRUKPIToolBox:
             location, scif_loc, kpis, kpi_target, kpi_identifier_result)
 
         self.common.write_to_db_result(fk=kpi_fk,
-                                       numerator_id=None,
+                                       numerator_id=self.own_manufacturer_id,
                                        numerator_result=None,
                                        denominator_id=display_fk,
                                        context_id=location_fk,
@@ -4156,7 +4159,7 @@ class CCRUKPIToolBox:
         target = round(float(weight) * 100, 2)
 
         self.common.write_to_db_result(fk=kpi_fk,
-                                       numerator_id=None,
+                                       numerator_id=self.own_manufacturer_id,
                                        numerator_result=total_facings_fact,
                                        denominator_id=display_fk,
                                        denominator_result=total_facings_target,
@@ -4264,7 +4267,7 @@ class CCRUKPIToolBox:
         target = round(float(weight) * 100, 2)
 
         self.common.write_to_db_result(fk=kpi_fk,
-                                       numerator_id=None,
+                                       numerator_id=self.own_manufacturer_id,
                                        numerator_result=len(product_groups_fact),
                                        denominator_id=display_fk,
                                        denominator_result=len(product_groups_target),
@@ -4368,7 +4371,7 @@ class CCRUKPIToolBox:
         target = round(float(weight) * 100, 2)
 
         self.common.write_to_db_result(fk=kpi_fk,
-                                       numerator_id=None,
+                                       numerator_id=self.own_manufacturer_id,
                                        numerator_result=len(product_groups_fact),
                                        denominator_id=display_fk,
                                        denominator_result=len(product_groups_target),
@@ -4479,7 +4482,7 @@ class CCRUKPIToolBox:
         target = round(float(weight) * 100, 2)
 
         self.common.write_to_db_result(fk=kpi_fk,
-                                       numerator_id=None,
+                                       numerator_id=self.own_manufacturer_id,
                                        numerator_result=len(product_groups_fact),
                                        denominator_id=display_fk,
                                        denominator_result=len(product_groups_target),
@@ -4524,7 +4527,7 @@ class CCRUKPIToolBox:
         target = round(float(weight) * 100, 2)
 
         self.common.write_to_db_result(fk=kpi_fk,
-                                       numerator_id=None,
+                                       numerator_id=self.own_manufacturer_id,
                                        numerator_result=total_price_count,
                                        denominator_id=display_fk,
                                        denominator_result=1,
@@ -4632,7 +4635,7 @@ class CCRUKPIToolBox:
         target = round(float(weight) * 100, 2)
 
         self.common.write_to_db_result(fk=kpi_fk,
-                                       numerator_id=None,
+                                       numerator_id=self.own_manufacturer_id,
                                        numerator_result=product_groups_fact * 100,
                                        denominator_id=display_fk,
                                        denominator_result=product_groups_target * 100,
