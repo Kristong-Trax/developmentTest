@@ -112,9 +112,11 @@ class SceneMONDELEZDMIUSToolBox:
                                            result=score, score=score, scene_result_fk=self.scene, should_enter=True,
                                            by_scene=True)
 
-            # for i, row in self.mdis.iterrows():
+
+            # Using unique display df to iterate, but using duplicates for pallet logic
+            unique_display_df = fixed_df[['display_name', 'display_fk']].drop_duplicates(subset='display_name', keep='first')
             try:
-                for row in fixed_df[['display_name', 'display_fk']].groupby('display_name').first().itertuples():
+                for row in unique_display_df.itertuples():
                     vehicle_display_fk = row.display_fk
 
                     multiple = \
