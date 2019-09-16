@@ -260,6 +260,14 @@ class TestMarsuaeSand(TestFunctionalCase):
         store_atomics = tool_box.get_store_atomic_kpi_parameters()
         self.assertTrue(store_atomics.empty)
 
+    def test_calculate_atomics_does_not_calculate_atomics_if_no_relevant_atomics_for_policy(self):
+        probe_group, matches, scene = self.create_scif_matches_stitch_groups_data_mocks(
+            DataTestUnitMarsuae.test_case_1, [1, 2])
+        tool_box = MARSUAE_SANDToolBox(self.data_provider_mock, self.output)
+        tool_box.store_info_dict = DataTestUnitMarsuae.store_info_dict_other_type
+        tool_box.calculate_atomics()
+        self.assertTrue(tool_box.atomic_kpi_results.empty)
+
     def test_get_atomics_for_template_groups_present_in_store_returns_both_choc_and_ice_cream_atomic_kpis(self):
         probe_group, matches, scene = self.create_scif_matches_stitch_groups_data_mocks(
                 DataTestUnitMarsuae.test_case_1, [1, 2])
@@ -293,18 +301,29 @@ class TestMarsuaeSand(TestFunctionalCase):
         probe_group, matches, scene = self.create_scif_matches_stitch_groups_data_mocks(
             DataTestUnitMarsuae.test_case_1, [1, 2])
         tool_box = MARSUAE_SANDToolBox(self.data_provider_mock, self.output)
+        tool_box.common.write_to_db_result = MagicMock()
         store_atomics = tool_box.get_store_atomic_kpi_parameters()
+        store_atomics = tool_box.add_duplicate_kpi_fk_where_applicable(store_atomics)
         param_row = self.get_parameter_series_for_kpi_calculation(store_atomics, 'Checkout Penetration - Chocolate')
         tool_box.calculate_checkouts(param_row)
         expected_result = {'kpi_fk': 3005, 'result': 50, 'score': 0, 'weight': 7.5, 'score_by_weight': 0}
         check = self.check_results(tool_box.atomic_kpi_results, expected_result)
         self.assertEquals(check, 1)
 
+        duplicate_parent_res = tool_box.common.write_to_db_result.mock_calls[0][2]
+        duplicate_res = tool_box.common.write_to_db_result.mock_calls[1][2]
+        self.assertEquals(duplicate_res['numerator_result'], 1)
+        self.assertEquals(duplicate_res['denominator_result'], 2)
+        self.assertEquals(duplicate_res['fk'], 3035)
+        self.check_duplicate_kpi_results_mirrors_parent(duplicate_parent_res, duplicate_res)
+
     def test_calculate_checkouts_considers_stitch_groups_for_calculations_groups_more_than_target(self):
         probe_group, matches, scene = self.create_scif_matches_stitch_groups_data_mocks(
             DataTestUnitMarsuae.test_case_1, [1, 2, 3])
         tool_box = MARSUAE_SANDToolBox(self.data_provider_mock, self.output)
+        tool_box.common.write_to_db_result = MagicMock()
         store_atomics = tool_box.get_store_atomic_kpi_parameters()
+        store_atomics = tool_box.add_duplicate_kpi_fk_where_applicable(store_atomics)
         param_row = self.get_parameter_series_for_kpi_calculation(store_atomics, 'Checkout Penetration - Chocolate')
         tool_box.calculate_checkouts(param_row)
         atomic_res = tool_box.atomic_kpi_results
@@ -312,6 +331,13 @@ class TestMarsuaeSand(TestFunctionalCase):
         expected_result = {'kpi_fk': 3005, 'result': round(2/3.0 * 100, 5), 'score': 1, 'weight': 7.5, 'score_by_weight': 7.5}
         check = self.check_results(tool_box.atomic_kpi_results, expected_result)
         self.assertEquals(check, 1)
+
+        duplicate_parent_res = tool_box.common.write_to_db_result.mock_calls[0][2]
+        duplicate_res = tool_box.common.write_to_db_result.mock_calls[1][2]
+        self.assertEquals(duplicate_res['numerator_result'], 2)
+        self.assertEquals(duplicate_res['denominator_result'], 3)
+        self.assertEquals(duplicate_res['fk'], 3035)
+        self.check_duplicate_kpi_results_mirrors_parent(duplicate_parent_res, duplicate_res)
 
     def test_calculate_availability_no_products_from_list_in_session(self):
         probe_group, matches, scene = self.create_scif_matches_stitch_groups_data_mocks(
@@ -391,6 +417,7 @@ class TestMarsuaeSand(TestFunctionalCase):
             DataTestUnitMarsuae.test_case_1, [1, 2, 3, 4])
         tool_box = MARSUAE_SANDToolBox(self.data_provider_mock, self.output)
         store_atomics = tool_box.get_store_atomic_kpi_parameters()
+        store_atomics = tool_box.add_duplicate_kpi_fk_where_applicable(store_atomics)
         param_row = self.get_parameter_series_for_kpi_calculation(store_atomics,
                                                                   'POI Compliance - Chocolate / Ice Cream')
         tool_box.calculate_atomic_results(param_row)
@@ -403,6 +430,7 @@ class TestMarsuaeSand(TestFunctionalCase):
             DataTestUnitMarsuae.test_case_1, [1, 2, 3])
         tool_box = MARSUAE_SANDToolBox(self.data_provider_mock, self.output)
         store_atomics = tool_box.get_store_atomic_kpi_parameters()
+        store_atomics = tool_box.add_duplicate_kpi_fk_where_applicable(store_atomics)
         param_row = self.get_parameter_series_for_kpi_calculation(store_atomics,
                                                                   'POI Compliance - Chocolate / Ice Cream')
         tool_box.calculate_atomic_results(param_row)
@@ -415,6 +443,7 @@ class TestMarsuaeSand(TestFunctionalCase):
             DataTestUnitMarsuae.test_case_1, [1, 2, 3, 4, 5])
         tool_box = MARSUAE_SANDToolBox(self.data_provider_mock, self.output)
         store_atomics = tool_box.get_store_atomic_kpi_parameters()
+        store_atomics = tool_box.add_duplicate_kpi_fk_where_applicable(store_atomics)
         param_row = self.get_parameter_series_for_kpi_calculation(store_atomics,
                                                                   'POI Compliance - Chocolate / Ice Cream')
         tool_box.calculate_atomic_results(param_row)
@@ -426,7 +455,9 @@ class TestMarsuaeSand(TestFunctionalCase):
         probe_group, matches, scene = self.create_scif_matches_stitch_groups_data_mocks(
             DataTestUnitMarsuae.test_case_1, [1, 2, 3, 4, 5, 6])
         tool_box = MARSUAE_SANDToolBox(self.data_provider_mock, self.output)
+        tool_box.common.write_to_db_result = MagicMock()
         store_atomics = tool_box.get_store_atomic_kpi_parameters()
+        store_atomics = tool_box.add_duplicate_kpi_fk_where_applicable(store_atomics)
         param_row = self.get_parameter_series_for_kpi_calculation(store_atomics,
                                                                   'SOS - Gum/Fruity Checkout')
         tool_box.calculate_atomic_results(param_row)
@@ -437,6 +468,13 @@ class TestMarsuaeSand(TestFunctionalCase):
                            'weight': 0, 'score_by_weight': 0}
         check = self.check_results(kpi_result, expected_result)
         self.assertEquals(check, 1)
+
+        duplicate_parent_res = tool_box.common.write_to_db_result.mock_calls[0][2]
+        duplicate_res = tool_box.common.write_to_db_result.mock_calls[1][2]
+        self.assertEquals(duplicate_res['numerator_result'], 46)
+        self.assertEquals(duplicate_res['denominator_result'], 52)
+        self.assertEquals(duplicate_res['fk'], 3043)
+        self.check_duplicate_kpi_results_mirrors_parent(duplicate_parent_res, duplicate_res)
 
     def test_calculate_kpi_combination_score_two_child_kpis_pass(self):
         probe_group, matches, scene = self.create_scif_matches_stitch_groups_data_mocks(
@@ -617,6 +655,7 @@ class TestMarsuaeSand(TestFunctionalCase):
         self.mock_block_results([DataTestUnitMarsuae.block_results_empty])
         tool_box = MARSUAE_SANDToolBox(self.data_provider_mock, self.output)
         store_atomics = tool_box.get_store_atomic_kpi_parameters()
+        store_atomics = tool_box.add_duplicate_kpi_fk_where_applicable(store_atomics)
         tool_box.build_tiers_for_atomics(store_atomics)
         param_row = self.get_parameter_series_for_kpi_calculation(store_atomics, 'Red Block Compliance - Main')
         tool_box.calculate_block(param_row)
@@ -630,6 +669,7 @@ class TestMarsuaeSand(TestFunctionalCase):
         self.mock_block_results([DataTestUnitMarsuae.block_results_failed])
         tool_box = MARSUAE_SANDToolBox(self.data_provider_mock, self.output)
         store_atomics = tool_box.get_store_atomic_kpi_parameters()
+        store_atomics = tool_box.add_duplicate_kpi_fk_where_applicable(store_atomics)
         tool_box.build_tiers_for_atomics(store_atomics)
         param_row = self.get_parameter_series_for_kpi_calculation(store_atomics, 'Red Block Compliance - Main')
         tool_box.calculate_block(param_row)
@@ -643,6 +683,7 @@ class TestMarsuaeSand(TestFunctionalCase):
         self.mock_block_results([DataTestUnitMarsuae.block_results_sc_7])
         tool_box = MARSUAE_SANDToolBox(self.data_provider_mock, self.output)
         store_atomics = tool_box.get_store_atomic_kpi_parameters()
+        store_atomics = tool_box.add_duplicate_kpi_fk_where_applicable(store_atomics)
         tool_box.build_tiers_for_atomics(store_atomics)
         param_row = self.get_parameter_series_for_kpi_calculation(store_atomics, 'Red Block Compliance - Main')
         tool_box.calculate_block(param_row)
@@ -656,6 +697,7 @@ class TestMarsuaeSand(TestFunctionalCase):
         self.mock_block_results([DataTestUnitMarsuae.block_results_sc_8])
         tool_box = MARSUAE_SANDToolBox(self.data_provider_mock, self.output)
         store_atomics = tool_box.get_store_atomic_kpi_parameters()
+        store_atomics = tool_box.add_duplicate_kpi_fk_where_applicable(store_atomics)
         tool_box.build_tiers_for_atomics(store_atomics)
         param_row = self.get_parameter_series_for_kpi_calculation(store_atomics, 'Red Block Compliance - Main')
         tool_box.calculate_block(param_row)
@@ -669,6 +711,7 @@ class TestMarsuaeSand(TestFunctionalCase):
         self.mock_block_results([DataTestUnitMarsuae.block_results_sc_7, DataTestUnitMarsuae.block_results_sc_8])
         tool_box = MARSUAE_SANDToolBox(self.data_provider_mock, self.output)
         store_atomics = tool_box.get_store_atomic_kpi_parameters()
+        store_atomics = tool_box.add_duplicate_kpi_fk_where_applicable(store_atomics)
         tool_box.build_tiers_for_atomics(store_atomics)
         param_row = self.get_parameter_series_for_kpi_calculation(store_atomics, 'Red Block Compliance - Main')
         tool_box.calculate_block(param_row)
@@ -682,6 +725,7 @@ class TestMarsuaeSand(TestFunctionalCase):
         self.mock_block_results([DataTestUnitMarsuae.block_results_sc_10])
         tool_box = MARSUAE_SANDToolBox(self.data_provider_mock, self.output)
         store_atomics = tool_box.get_store_atomic_kpi_parameters()
+        store_atomics = tool_box.add_duplicate_kpi_fk_where_applicable(store_atomics)
         tool_box.build_tiers_for_atomics(store_atomics)
         param_row = self.get_parameter_series_for_kpi_calculation(store_atomics, 'Red Block Compliance - Main')
         tool_box.calculate_block(param_row)
@@ -696,6 +740,7 @@ class TestMarsuaeSand(TestFunctionalCase):
                                  DataTestUnitMarsuae.block_results_sc_10])
         tool_box = MARSUAE_SANDToolBox(self.data_provider_mock, self.output)
         store_atomics = tool_box.get_store_atomic_kpi_parameters()
+        store_atomics = tool_box.add_duplicate_kpi_fk_where_applicable(store_atomics)
         tool_box.build_tiers_for_atomics(store_atomics)
         param_row = self.get_parameter_series_for_kpi_calculation(store_atomics, 'Red Block Compliance - Main')
         tool_box.calculate_block(param_row)
@@ -708,8 +753,10 @@ class TestMarsuaeSand(TestFunctionalCase):
             DataTestUnitMarsuae.test_case_1, [11])
         self.mock_store_data_test_case(DataTestUnitMarsuae.store_data_supers_a)
         tool_box = MARSUAE_SANDToolBox(self.data_provider_mock, self.output)
+        tool_box.common.write_to_db_result = MagicMock()
         store_atomics = tool_box.get_store_atomic_kpi_parameters()
         tool_box.build_tiers_for_atomics(store_atomics)
+        store_atomics = tool_box.add_duplicate_kpi_fk_where_applicable(store_atomics)
         param_row = self.get_parameter_series_for_kpi_calculation(store_atomics, 'SOS - Gum Main')
         tool_box.calculate_atomic_results(param_row)
         kpi_result = tool_box.atomic_kpi_results
@@ -718,6 +765,13 @@ class TestMarsuaeSand(TestFunctionalCase):
                            'score_by_weight': 0}
         check = self.check_results(tool_box.atomic_kpi_results, expected_result)
         self.assertEquals(check, 1)
+
+        duplicate_parent_res = tool_box.common.write_to_db_result.mock_calls[0][2]
+        duplicate_res = tool_box.common.write_to_db_result.mock_calls[1][2]
+        self.assertEquals(duplicate_res['numerator_result'], 2)
+        self.assertEquals(duplicate_res['denominator_result'], 22)
+        self.assertEquals(duplicate_res['fk'], 3042)
+        self.check_duplicate_kpi_results_mirrors_parent(duplicate_parent_res, duplicate_res)
 
     @staticmethod
     def check_results(results_df, expected_results_dict):
@@ -738,3 +792,12 @@ class TestMarsuaeSand(TestFunctionalCase):
         param_index = param_df.index.values[0]
         param_row = store_atomics.iloc[param_index]
         return param_row
+
+    def check_duplicate_kpi_results_mirrors_parent(self, duplicate_parent_res, duplicate_res):
+        self.assertEquals(duplicate_parent_res['numerator_result'], duplicate_res['numerator_result'])
+        self.assertEquals(duplicate_parent_res['denominator_result'], duplicate_res['denominator_result'])
+        self.assertEquals(duplicate_parent_res['score'], duplicate_res['score'])
+        self.assertEquals(duplicate_parent_res['result'], duplicate_res['result'])
+        self.assertEquals(duplicate_parent_res['target'], duplicate_res['target'])
+        self.assertEquals(duplicate_res['identifier_parent']['kpi_fk'], duplicate_parent_res['fk'])
+        self.assertEquals(duplicate_res['identifier_parent'], duplicate_parent_res['identifier_result'])
