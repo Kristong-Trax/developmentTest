@@ -599,10 +599,19 @@ class MARSUAE_SANDToolBox:
         # in case the rule is >= step...
         kpi_name = param_row[self.KPI_TYPE]
         tiers = self.atomic_tiers_df[self.atomic_tiers_df[self.KPI_TYPE] == kpi_name]
-        relevant_step = min(tiers[tiers['step_value'] >= result]['step_value'].values.tolist())
+        relevant_step = min(tiers[tiers['step_value'] > result]['step_value'].values.tolist())
         tier_score_value = tiers[tiers['step_value'] == relevant_step]['step_score_value'].values[0]
         score = tier_score_value
         return score
+
+    # def get_tiered_score(self, param_row, result):
+    #     # in case the rule is >= step...
+    #     kpi_name = param_row[self.KPI_TYPE]
+    #     tiers = self.atomic_tiers_df[self.atomic_tiers_df[self.KPI_TYPE] == kpi_name]
+    #     relevant_step = min(tiers[tiers['step_value'] >= result]['step_value'].values.tolist())
+    #     tier_score_value = tiers[tiers['step_value'] == relevant_step]['step_score_value'].values[0]
+    #     score = tier_score_value
+    #     return score
 
     def get_relative_score(self, param_row, result):
         target = float(param_row[self.TARGET])
