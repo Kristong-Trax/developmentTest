@@ -3,13 +3,15 @@
 # from mock import patch
 #
 # from KPIUtils.DB.Common import Common
-from Projects.RINIELSENUS.KPIGenerator import MarsUsGenerator
-from Projects.RINIELSENUS.Utils.ParseTemplates import ParseMarsUsTemplates
+# from Projects.RINIELSENUS.KPIGenerator import MarsUsGenerator
+# from Projects.RINIELSENUS.Utils.ParseTemplates import ParseMarsUsTemplates
 from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
 from Trax.Utils.Conf.Configuration import Config
 from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
 from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScript
 from Trax.Utils.Logging.Logger import Log
+from Projects.RINIELSENUS.TYSON.Utils.KPIToolBox import TYSONToolBox
+
 import time
 
 
