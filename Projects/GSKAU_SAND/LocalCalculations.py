@@ -13,16 +13,16 @@ if __name__ == '__main__':
     project_name = 'gskau-sand'
     # RUN for scene level KPIs
     session_scene_map = OrderedDict([
-        ("060C5E25-2B5B-4F95-BA99-50325E866407", [23598]),  # multi posm
-        ("749AD6BB-54DA-4727-9852-A6D503BECB96", [23595]),  # multi posm
-        ("26595CE1-1F43-4F50-9918-45EB1B34DDCE", [23604]),  # multi posm
-        ("286DACD0-A5AA-42AD-BC7E-6BFC4A0135B3", [23607]),  # multi posm
-        ("BAE5D1D0-B341-45AE-BA99-889B611266C8", [23610]),  # multi posm + no targets match
-        ("82CFBFC1-BDD9-4CB8-8B39-87C11B6FF62E", [23613]),  # multi posm
+        ("BAE5D1D0-B341-45AE-BA99-889B611266C8", [23610]),  # no targets match [multi bay]
+        ("82CFBFC1-BDD9-4CB8-8B39-87C11B6FF62E", [23613]),  # multi bay
+        ("060C5E25-2B5B-4F95-BA99-50325E866407", [23598]),  # multi bay
+        ("749AD6BB-54DA-4727-9852-A6D503BECB96", [23595]),  # multi bay
+        ("26595CE1-1F43-4F50-9918-45EB1B34DDCE", [23604]),  # multi bay
+        ("286DACD0-A5AA-42AD-BC7E-6BFC4A0135B3", [23607]),  # multi bay
+        ("103CDB86-69BF-4B4E-9B34-E32B0FA8B235", [23601]),
         ("59EC0A21-500E-4E78-88AC-5B759FB39731", [23586]),
         ("9BF79D4B-A15F-4EF3-B687-499ACC51669B", [23589]),
         ("8F9D4831-2DFD-4F36-B6A5-BA3273CDEBBB", [23592]),
-        # ("103CDB86-69BF-4B4E-9B34-E32B0FA8B235", [23601]),
     ])
     # session_scene_map = OrderedDict([
     #     ('002FF630-6FEB-43B3-8916-7B85D864B903', [4154, 4259, 4359, 4361]),  # only 4359
