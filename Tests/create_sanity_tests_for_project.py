@@ -280,17 +280,16 @@ if __name__ == '__main__':
     """
     LoggerInitializer.init('')
     Config.init()
-    project_to_test = 'tnuvailv2'
+    project_to_test = 'marsru-prod'
     creator = SeedCreator(project_to_test)
-    creator.activate_exporter(specific_sessions_and_scenes={'236c1577-0ecb-4bf9-88b9-c9e87ab17c58': []}
-                              # {'6e4dc935-ab56-45ef-9408-caaddb963874': [17888508],
-                              #  'C544B5DB-B61F-4B02-B03A-6D8748B3B636': []}
+    creator.activate_exporter(specific_sessions_and_scenes={'fffaedb6-0614-4762-986e-3f92e43f00b7': [],
+                                                            'ff50d177-57a7-42ae-98dd-bf2d91e3c594': []}
                               )
     creator.rds_conn.disconnect_rds()
-    data_class = CreateTestDataProjectSanity(project_to_test)
-    data_class.create_data_class()
-
-    # products_and_brands is needed for some projects, if you don't need it, put False in the script,
-    # the tests will run much faster without it
-    sanity = SanityTestsCreator(project_to_test, creator.TOP_SESSIONS_AND_SCENES, need_pnb=True)
-    sanity.create_test_class()
+    # data_class = CreateTestDataProjectSanity(project_to_test)
+    # data_class.create_data_class()
+    #
+    # # products_and_brands is needed for some projects, if you don't need it, put False in the script,
+    # # the tests will run much faster without it
+    # sanity = SanityTestsCreator(project_to_test, creator.TOP_SESSIONS_AND_SCENES, need_pnb=True)
+    # sanity.create_test_class()
