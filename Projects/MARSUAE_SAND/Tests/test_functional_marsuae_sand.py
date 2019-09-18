@@ -585,6 +585,15 @@ class TestMarsuaeSand(TestFunctionalCase):
         self.assertEquals(score, 0.8)
         self.assertEquals(weight, 10)
 
+    def test_get_tiered_score_gets_score_zero_if_result_is_zero(self):
+        tool_box = MARSUAE_SANDToolBox(self.data_provider_mock, self.output)
+        store_atomics = tool_box.get_store_atomic_kpi_parameters()
+        tool_box.build_tiers_for_atomics(store_atomics)
+        param_row = pd.Series({'score_logic': 'Tiered', 'Weight': 10, 'kpi_type': 'NBL - Chocolate Main'})
+        score, weight = tool_box.get_score(0, param_row)
+        self.assertEquals(score, 0)
+        self.assertEquals(weight, 10)
+
     def test_get_tiered_score_gets_relevant_score_if_result_in_upper_range(self):
         tool_box = MARSUAE_SANDToolBox(self.data_provider_mock, self.output)
         store_atomics = tool_box.get_store_atomic_kpi_parameters()
