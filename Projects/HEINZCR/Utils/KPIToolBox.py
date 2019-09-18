@@ -587,46 +587,67 @@ class HEINZCRToolBox:
 
         results_df = self.extra_spaces_results
 
-        # kpi_fk = row.kpi
-        scene_types = self.scif.drop_duplicates(subset=['template_fk'], keep='first')
-        for index, row in scene_types.iterrows():
-            template_fk = row['template_fk']
-            location_type = row.get('location_type_fk')
-            if template_fk >= 0 and location_type == float(2):
-                scene_data = self.scif[(self.scif['template_fk'] == template_fk)
-                                       & (self.scif['sub_category_fk'])]
-                categories_in_scene = scene_data.drop_duplicates(
-                    subset=['sub_category_fk'], keep='last')
-                winner = []
-                max_count = -1
-                for index1, category_row in categories_in_scene.iterrows():
-                    category = category_row['sub_category_fk']
-                    if not pd.isnull(category):
-                        df = scene_data[scene_data['sub_category_fk'] == category]
-                        item_count = len(df)
-                        if item_count > max_count:
-                            max_count = item_count
-                            winner = [{'sub_category_fk': category,
-                                       'count': item_count}]
-                        elif item_count > max_count:
-                            winner.append({'sub_category_fk': category,
-                                           'count': item_count})
+        # limit to only secondary scenes
+        relevant_scif = self.scif[(self.scif['location_type_fk'] == float(2)) &
+                                  (self.scif['facings'] > 0)]
+        # aggregate facings for every scene/sub_category combination in the visit
+        relevant_scif = \
+            relevant_scif.groupby(['scene_fk', 'template_fk', 'sub_category_fk'], as_index=False)['facings'].sum()
+        # sort sub_categories by number of facings, largest first
+        relevant_scif = relevant_scif.sort_values(['facings'], ascending=False)
+        # drop all but the sub_category with the largest number of facings for each scene
+        relevant_scif = relevant_scif.drop_duplicates(subset=['scene_fk'], keep='first')
 
-                for i in winner:
-                    # self.common.write_to_db_result_new_tables(fk=13,
-                    #                                           numerator_id=template_fk,
-                    #                                           numerator_result=i.get('count'),
-                    #                                           denominator_id=i.get('sub_category_fk'),
-                    #                                           denominator_result=i.get('count'),
-                    #                                           result=store_target)
-                    results_df.loc[len(results_df)] = [i.get(
-                        'sub_category_fk'), template_fk, i.get('count')]
+        for row in relevant_scif.itertuples():
+            results_df.loc[len(results_df)] = [row.sub_category_fk, row.template_fk, row.facings]
+            self.common_v2.write_to_db_result(13, numerator_id=row.template_fk,
+                                              numerator_result=row.facings,
+                                              denominator_id=row.sub_category_fk,
+                                              denominator_result=row.facings,
+                                              context_id=row.scene_fk,
+                                              result=store_target)
 
-                    self.common_v2.write_to_db_result(13, numerator_id=template_fk,
-                                                      numerator_result=i.get('count'),
-                                                      denominator_id=i.get('sub_category_fk'),
-                                                      denominator_result=i.get('count'),
-                                                      result=store_target)
+
+        # # kpi_fk = row.kpi
+        # scene_types = self.scif.drop_duplicates(subset=['template_fk'], keep='first')
+        # for index, row in scene_types.iterrows():
+        #     template_fk = row['template_fk']
+        #     location_type = row.get('location_type_fk')
+        #     if template_fk >= 0 and location_type == float(2):
+        #         scene_data = self.scif[(self.scif['template_fk'] == template_fk)
+        #                                & (self.scif['sub_category_fk'])]
+        #         categories_in_scene = scene_data.drop_duplicates(
+        #             subset=['sub_category_fk'], keep='last')
+        #         winner = []
+        #         max_count = -1
+        #         for index1, category_row in categories_in_scene.iterrows():
+        #             category = category_row['sub_category_fk']
+        #             if not pd.isnull(category):
+        #                 df = scene_data[scene_data['sub_category_fk'] == category]
+        #                 item_count = len(df)
+        #                 if item_count > max_count:
+        #                     max_count = item_count
+        #                     winner = [{'sub_category_fk': category,
+        #                                'count': item_count}]
+        #                 elif item_count > max_count:
+        #                     winner.append({'sub_category_fk': category,
+        #                                    'count': item_count})
+        #
+        #         for i in winner:
+        #             # self.common.write_to_db_result_new_tables(fk=13,
+        #             #                                           numerator_id=template_fk,
+        #             #                                           numerator_result=i.get('count'),
+        #             #                                           denominator_id=i.get('sub_category_fk'),
+        #             #                                           denominator_result=i.get('count'),
+        #             #                                           result=store_target)
+        #             results_df.loc[len(results_df)] = [i.get(
+        #                 'sub_category_fk'), template_fk, i.get('count')]
+        #
+        #             self.common_v2.write_to_db_result(13, numerator_id=template_fk,
+        #                                               numerator_result=i.get('count'),
+        #                                               denominator_id=i.get('sub_category_fk'),
+        #                                               denominator_result=i.get('count'),
+        #                                               result=store_target)
         return results_df
 
     def check_bonus_question(self):
