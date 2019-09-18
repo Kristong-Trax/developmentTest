@@ -323,8 +323,8 @@ class GSKSGToolBox:
             benchmark = category_targets['shelf_benchmark'].iloc[0]
             shelves = [int(shelf) for shelf in category_targets['shelf_number'].iloc[0].split(",")]
             shelf_df = assortment_cat[assortment_cat['shelf_number'].isin(shelves)]
-            numerator = shelf_df.shape[0]
-            denominator = assortment_cat.shape[0]
+            numerator = len(shelf_df['product_fk'].unique())
+            denominator = len(assortment_cat['product_fk'].unique())
             result = float(numerator) / float(denominator) if numerator and denominator != 0 else 0
             score = shelf_weight if result >= benchmark else 0
         else:
