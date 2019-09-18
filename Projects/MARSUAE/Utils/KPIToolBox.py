@@ -396,10 +396,22 @@ class MARSUAEToolBox:
 
     def update_sos_filters_with_additional_filters(self, final_filters, param_row):
         main_filters = copy.deepcopy(final_filters)
-        main_filters.get(self.DENOM_FILTERS).get(self.POPULATION).get(self.EXCLUDE). \
-            update({param_row[self.EXCLUDE_TYPE_2]: param_row[self.EXCLUDE_VALUE_2]})
-        main_filters.get(self.NUM_FILTERS).get(self.POPULATION).get(self.EXCLUDE). \
-            update({param_row[self.EXCLUDE_TYPE_2]: param_row[self.EXCLUDE_VALUE_2]})
+        main_denom_exclude_filters = main_filters.get(self.DENOM_FILTERS).get(self.POPULATION).get(self.EXCLUDE)
+        if param_row[self.EXCLUDE_TYPE_2] != param_row[self.EXCLUDE_TYPE_1]:
+            main_denom_exclude_filters.update({param_row[self.EXCLUDE_TYPE_2]: param_row[self.EXCLUDE_VALUE_2]})
+        else:
+            excl_value_list = [param_row[self.EXCLUDE_VALUE_1]]
+            excl_value_list.append(param_row[self.EXCLUDE_VALUE_2])
+            main_denom_exclude_filters.update({param_row[self.EXCLUDE_TYPE_1]: excl_value_list})
+
+        main_num_exclude_filters = main_filters.get(self.NUM_FILTERS).get(self.POPULATION).get(self.EXCLUDE)
+        if param_row[self.EXCLUDE_TYPE_2] != param_row[self.EXCLUDE_TYPE_1]:
+            main_num_exclude_filters.update({param_row[self.EXCLUDE_TYPE_2]: param_row[self.EXCLUDE_VALUE_2]})
+        else:
+            excl_value_list = [param_row[self.EXCLUDE_VALUE_1]]
+            excl_value_list.append(param_row[self.EXCLUDE_VALUE_2])
+            main_num_exclude_filters.update({param_row[self.EXCLUDE_TYPE_1]: excl_value_list})
+
         if not param_row[self.EXCLUDE_EXCEPTION_TYPE_2] or not\
                 param_row[self.EXCLUDE_EXCEPTION_TYPE_2] == param_row[self.EXCLUDE_EXCEPTION_TYPE_2]:
             return main_filters, None
@@ -595,7 +607,7 @@ class MARSUAEToolBox:
         # in case the rule is >= step...
         kpi_name = param_row[self.KPI_TYPE]
         tiers = self.atomic_tiers_df[self.atomic_tiers_df[self.KPI_TYPE] == kpi_name]
-        relevant_step = min(tiers[tiers['step_value'] >= result]['step_value'].values.tolist())
+        relevant_step = min(tiers[tiers['step_value'] > result]['step_value'].values.tolist())
         tier_score_value = tiers[tiers['step_value'] == relevant_step]['step_score_value'].values[0]
         score = tier_score_value
         return score
