@@ -98,7 +98,7 @@ class GSKSGToolBox:
            """
         results_list = []
         fsos_kpi_fk = self.common.get_kpi_fk_by_kpi_type(Consts.FSOS_ORANGE_SCORE)
-        dst_result = categories_results_json[category]
+        dst_result = categories_results_json[category] if category in categories_results_json.keys() else 0
         benchmark = category_targets['fsos_benchmark'].iloc[0]
         weight = category_targets['fsos_weight'].iloc[0]
         result = weight if dst_result >= benchmark else 0
@@ -325,12 +325,14 @@ class GSKSGToolBox:
             shelf_df = assortment_cat[assortment_cat['shelf_number'].isin(shelves)]
             numerator = shelf_df.shape[0]
             denominator = assortment_cat.shape[0]
-            result = float(numerator) / float(denominator)
+            result = float(numerator) / float(denominator) if numerator and denominator != 0 else 0
             score = shelf_weight if result >= benchmark else 0
         else:
             denominator, numerator, score, shelf_weight = 0, 0, 0, 0
-        results_list.append({'fk': kpi_fk, 'numerator_id': category, 'denominator_id':
-            self.store_id, 'denominator_result': denominator, 'numerator_result': numerator, 'result': score,
+            result = float(numerator) / float(denominator) if numerator and denominator != 0 else 0
+            shelf_weight = category_targets['shelf_weight'].iloc[0]
+            results_list.append({'fk': kpi_fk, 'numerator_id': category, 'denominator_id':
+            self.store_id, 'denominator_result': denominator, 'numerator_result': numerator, 'result': result,
                              'target': shelf_weight, 'score': score,
                              'identifier_parent': identifier_parent, 'should_enter': True})
         return score, results_list, shelf_weight
