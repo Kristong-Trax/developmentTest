@@ -607,47 +607,6 @@ class HEINZCRToolBox:
                                               context_id=row.scene_fk,
                                               result=store_target)
 
-
-        # # kpi_fk = row.kpi
-        # scene_types = self.scif.drop_duplicates(subset=['template_fk'], keep='first')
-        # for index, row in scene_types.iterrows():
-        #     template_fk = row['template_fk']
-        #     location_type = row.get('location_type_fk')
-        #     if template_fk >= 0 and location_type == float(2):
-        #         scene_data = self.scif[(self.scif['template_fk'] == template_fk)
-        #                                & (self.scif['sub_category_fk'])]
-        #         categories_in_scene = scene_data.drop_duplicates(
-        #             subset=['sub_category_fk'], keep='last')
-        #         winner = []
-        #         max_count = -1
-        #         for index1, category_row in categories_in_scene.iterrows():
-        #             category = category_row['sub_category_fk']
-        #             if not pd.isnull(category):
-        #                 df = scene_data[scene_data['sub_category_fk'] == category]
-        #                 item_count = len(df)
-        #                 if item_count > max_count:
-        #                     max_count = item_count
-        #                     winner = [{'sub_category_fk': category,
-        #                                'count': item_count}]
-        #                 elif item_count > max_count:
-        #                     winner.append({'sub_category_fk': category,
-        #                                    'count': item_count})
-        #
-        #         for i in winner:
-        #             # self.common.write_to_db_result_new_tables(fk=13,
-        #             #                                           numerator_id=template_fk,
-        #             #                                           numerator_result=i.get('count'),
-        #             #                                           denominator_id=i.get('sub_category_fk'),
-        #             #                                           denominator_result=i.get('count'),
-        #             #                                           result=store_target)
-        #             results_df.loc[len(results_df)] = [i.get(
-        #                 'sub_category_fk'), template_fk, i.get('count')]
-        #
-        #             self.common_v2.write_to_db_result(13, numerator_id=template_fk,
-        #                                               numerator_result=i.get('count'),
-        #                                               denominator_id=i.get('sub_category_fk'),
-        #                                               denominator_result=i.get('count'),
-        #                                               result=store_target)
         return results_df
 
     def check_bonus_question(self):
