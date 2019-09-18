@@ -49,9 +49,9 @@ class SanofiJPToolBox:
                 numerator_result=int(each_row.facings),
                 denominator_id=int(self.store_id),
                 denominator_result=1,
-                result=1,
+                result=int(each_row.scene_id),
                 score=1,
-                context_id=int(self.store_id),
+                context_id=int(each_row.template_fk),
             )
             num_of_prods += 1
         Log.info("{proj} - For session: {sess}, {prod_count} products were written for kpi: {kpi_name}".format(
