@@ -1,9 +1,10 @@
-#
-# from Trax.Utils.Testing.Case import TestCase
 # from mock import MagicMock, mock
+# from KPIUtils_v2.Utils.Consts.OldDB import KpiResults
+# from Projects.PNGJP.Utils.KpiQualitative import PNGJPKpiQualitative_ToolBox
+# from Trax.Utils.Testing.Case import TestCase
+#
 # import pandas as pd
 # import Projects.PNGJP.Tests.test_data as Data
-# from Projects.PNGJP.Utils.KpiQualitative import PNGJPKpiQualitative_ToolBox
 #
 # __author__ = 'israels'
 #
@@ -53,8 +54,8 @@
 #         kpi1 = 'K004'
 #         kpi2 = 'K005'
 #         df = self.data.get_atomic_fk()
-#         self.assertLess(df[df['atomic_kpi_name'] == kpi1]['atomic_kpi_fk'].values[0],
-#                         df[df['atomic_kpi_name'] == kpi2]['atomic_kpi_fk'].values[0])
+#         self.assertLess(df[df['atomic_kpi_name'] == kpi1][KpiResults.ATOMIC_KPI_FK].values[0],
+#                         df[df['atomic_kpi_name'] == kpi2][KpiResults.ATOMIC_KPI_FK].values[0])
 #
 #
 # if __name__ == '__main__':
