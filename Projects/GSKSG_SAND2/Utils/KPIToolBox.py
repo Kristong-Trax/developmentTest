@@ -300,10 +300,10 @@ class GSKSGToolBox:
 
         shelf_data = pd.merge(self.match_product_in_scene[['scene_fk', 'product_fk', 'shelf_number']],
                               filtered_scif[['scene_id', 'product_fk']], how='right', left_on=
-                              ['scene_fk', 'product_fk'], right_on=['scene_id', 'product_fk'])
+                              ['scene_fk', 'product_fk'], right_on=['scene_id', 'product_fk'])  # why is this happening?
 
         # merge assortment results with match_product_in_scene for shelf_number parameter
-        kpi_results = pd.merge(shelf_data, kpi_results, how='right', on=['product_fk'])
+        kpi_results = pd.merge(shelf_data, kpi_results, how='right', on=['product_fk'])  # also problematic
         return kpi_results
 
     def shelf_compliance(self, category, assortment_df, category_targets, identifier_parent):
