@@ -67,7 +67,7 @@ class TestKEngineOutOfTheBox(TestFunctionalCase):
     def test_sanofijp_sanity(self):
         project_name = ProjectsSanityData.project_name
         data_provider = KEngineDataProvider(project_name)
-        sessions = {'0030CDE1-DBE0-4609-8FF2-958C1797BA2C': []}
+        sessions = {'54600246-F842-4512-8DBC-A72DF98839FE': []}
         for session in sessions.keys():
             data_provider.load_session_data(str(session))
             output = Output()
