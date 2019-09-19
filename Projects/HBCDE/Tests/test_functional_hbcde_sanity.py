@@ -67,13 +67,13 @@ class TestKEngineOutOfTheBox(TestFunctionalCase):
     def test_hbcde_sanity(self):
         project_name = ProjectsSanityData.project_name
         data_provider = KEngineDataProvider(project_name)
-        sessions = {'E7893702-544E-4961-8577-714B8AE89981': [], '6B8E5091-5182-45CE-AEF2-12344DB0F957': []}
+        sessions = {'E7893702-544E-4961-8577-714B8AE89981': []}
         for session in sessions.keys():
             data_provider.load_session_data(str(session))
             output = Output()
             Calculations(data_provider, output).run_project_calculations()
             # self._assert_old_tables_kpi_results_filled()
-            # self._assert_new_tables_kpi_results_filled()
+            self._assert_new_tables_kpi_results_filled()
             # for scene in sessions[session]:
             #     data_provider.load_scene_data(str(session), scene_id=scene)
             #     SceneCalculations(data_provider).calculate_kpis()

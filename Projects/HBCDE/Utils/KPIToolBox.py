@@ -17,8 +17,7 @@ class ToolBox(GlobalSessionToolBox):
         self.assortment = Assortment(self.data_provider, self.output)
 
     def main_calculation(self):
-        # self.calculate_assortment()
-        return
+        self.calculate_assortment()
 
     @kpi_runtime()
     def calculate_assortment(self):
