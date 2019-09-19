@@ -187,7 +187,7 @@ class PngcnSceneKpis(object):
                 filter_row_for_sub_brand = {'population': {
                     'include': [block_filters], 'include_operator': 'and'}}
                 filtered_df = self.parser.filter_df(filter_row_for_sub_brand, complete_df)
-                filtered_df = filtered_df[filtered_df['stacking_layer'] == 1]
+                #filtered_df = filtered_df[filtered_df['stacking_layer'] == 1]
                 if filtered_df.empty:
                     continue
 
@@ -200,7 +200,7 @@ class PngcnSceneKpis(object):
                     additional={'allowed_products_filters': {'product_type': ['Empty']},
                                 'minimum_block_ratio': 0.0,
                                 'minimum_facing_for_block': 3,
-                                'include_stacking': False,
+                                'include_stacking': True,
                                 'check_vertical_horizontal': False})
                 for j, row in filter_block_result.iterrows():
                     if not row['is_block']:
