@@ -258,7 +258,10 @@ class INBEVTRADMXToolBox:
 
                 ratio = self.calculate_sos_score(row, relevant_columns)
                 if (row['product_type'] == 'Empty') & (ratio <= 0.2):
-                    is_kpi_passed = 1
+                    if self.scif[self.scif['template_name'] == row['template_name']].empty:
+                        is_kpi_passed = 0
+                    else:
+                        is_kpi_passed = 1
                 elif ratio == 1:
                     is_kpi_passed = 1
             elif row['KPI type'] == 'Survey':
