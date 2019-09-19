@@ -68,13 +68,15 @@ class Results(object):
             #                         # 'Is NUTRO Dry Dog blocked in the Ingredient Transparency feeding philosophy segment?'
             #                         # 'Is PEDIGREE Dry Dog Food shelved with the Basic & Balanced feeding philosophy segment?'
             #                         # 'What percent of non-negotiable items are shelved in the preferred range? - numerator'
+            #     # 'Is Nutro Dry Cat food blocked within the Ingredient Transparency feeding philosophy segment?'
+            #     'Is the Culinary Wet Dog Food feeding philosophy segment blocked (weighted)?'
             #     # 'What percent of non-negotiable items are shelved in the preferred range?',
-            # 'What percent of non-negotiable items are shelved in the preferred range no pr?'
+            # # 'What percent of non-negotiable items are shelved in the preferred range no pr?'
             #
             # ]:
             #     continue
-            # print('~~~~~~~~~~~~~~~~~~~~****************~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~')
-            # print(atomic['atomic'])
+            print('~~~~~~~~~~~~~~~~~~~~****************~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~')
+            print(atomic['atomic'])
             if sum([1 for i in atomic['depend_on'] if i is not None and i != '']):
                 # if atomic['kpi_type'] == 'PreCalc Vertical Block':
                 dependency_status = self._check_atomic_dependency(
@@ -107,8 +109,8 @@ class Results(object):
             if isinstance(kpi_res, tuple):
                 errata = [i for i in kpi_res[1:]]
                 kpi_res = kpi_res[0]
-            # print('||||| Result for {} is: {}'.format(atomic['atomic'], kpi_res))
-            # print('!!!!!!!!!!!!!!!!!!!!!!! New Set !!!!!!!!!!!!!!!!!!!!!!!!!')
+            print('||||| Result for {} is: {}'.format(atomic['atomic'], kpi_res))
+            print('!!!!!!!!!!!!!!!!!!!!!!! New Set !!!!!!!!!!!!!!!!!!!!!!!!!')
             result = {'result': kpi_res,
                       'set': atomic['set'],
                       'kpi': atomic['kpi'],
