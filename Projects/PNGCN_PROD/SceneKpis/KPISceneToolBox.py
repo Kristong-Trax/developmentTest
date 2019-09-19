@@ -194,7 +194,7 @@ class PngcnSceneKpis(object):
                 # Save all sub_brands in the scene to eye-light KPI
                 self.save_eye_light_products(block_filters['sub_brand_name'][0], filtered_df, block_variant_kpi_fk)
 
-                # Activate global BLOCK function
+                # Activate BLOCK function
                 filter_block_result = block_class.network_x_block_together(
                     population=block_filters,
                     additional={'allowed_products_filters': {'product_type': ['Empty']},

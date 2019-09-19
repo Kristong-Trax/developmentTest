@@ -29,6 +29,7 @@ class JNJUKCalculations(BaseCalculationsScript):
         jnj_generator.promo_calc_recovery()
         jnj_generator.eye_hand_level_sos_calculation(eye_level_data)
         jnj_generator.general_assortment_calculation()
+        jnj_generator.osa_calculation()
         common.commit_results_data()
         jnj_generator.tool_box.commit_osa_queries()
         self.timer.stop('KPIGenerator.run_project_calculations')
@@ -45,13 +46,13 @@ class JNJUKCalculations(BaseCalculationsScript):
         survey_template = pd.read_excel(survey_template_path, sheetname='Sheet1')
         return eye_hand_lvl_template, exclusion_template, survey_template
 
-#
+
 # if __name__ == '__main__':
 #     LoggerInitializer.init('jnjuk calculations')
 #     Config.init()
 #     project_name = 'jnjuk'
 #     data_provider = KEngineDataProvider(project_name)
-#     session = '9f8383ad-16be-47a1-b60a-508360c4d76f'
+#     session = 'b3ff7bc7-cbe1-46fe-ada7-712f0f9f070d'
 #     # session = 'f850397b-6b79-47e9-897b-9edb2632efda' # 60 sec for promocalc
 #     data_provider.load_session_data(session)
 #     output = Output()

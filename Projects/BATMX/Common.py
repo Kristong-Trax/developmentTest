@@ -45,7 +45,7 @@ class Common(object):
 
     def get_kpi_static_data(self):
         """
-        This function extracts the static new KPI data (new tables) and saves it into one global data frame.
+        This function extracts the static new KPI data (new tables) and saves it into one 'global' data frame.
         The data is taken from static.kpi_level_2.
         """
         query = Queries.get_new_kpi_data()

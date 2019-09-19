@@ -1,9 +1,10 @@
-import pandas as pd
+from KPIUtils_v2.Utils.Consts.GlobalConsts import BasicConsts
+from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
+from Trax.Cloud.Services.Connector.Keys import DbUsers
+from Projects.TNUVAILV2.Data.LocalConsts import Consts
 from pandas.io.sql import DatabaseError
 from Trax.Utils.Logging.Logger import Log
-from Trax.Cloud.Services.Connector.Keys import DbUsers
-from Projects.TNUVAILV2.Utils.Consts import Consts
-from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
+import pandas as pd
 
 
 class DBHandler:
@@ -27,7 +28,7 @@ class DBHandler:
             Log.warning(Consts.LOG_EMPTY_PREVIOUS_SESSIONS.format(self.session_uid))
             last_session_fk = None
         else:
-            last_session_fk = last_session_fk.loc[1, 'pk']
+            last_session_fk = last_session_fk.loc[1, BasicConsts.PK]
         return last_session_fk
 
     def _get_oos_results(self, session_fk):
@@ -85,10 +86,8 @@ class DBHandler:
                                         pk
                                     FROM
                                         static.kpi_level_2
-                                    WHERE
-                                        kpi_calculation_stage_fk = {}
-                                            AND type LIKE '%OOS%'
-                                            AND type LIKE '%SKU%');""".format(session_fk, Consts.PS_CALC_STAGE)
+                                    WHERE type IN {})
+                                       """.format(session_fk, Consts.PREV_RES_KPIS_FOR_NCC)
         return prev_results_query
 
     @staticmethod

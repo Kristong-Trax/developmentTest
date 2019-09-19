@@ -5,31 +5,46 @@ from Projects.GSKAU_SAND.Calculations import Calculations
 from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
 from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
 from Projects.GSKAU_SAND.SceneKpis.SceneCalculations import SceneCalculations
-
+from collections import OrderedDict
 
 if __name__ == '__main__':
     LoggerInitializer.init('gskau-sand calculations')
     Config.init()
     project_name = 'gskau-sand'
-    data_provider = KEngineDataProvider(project_name)
     # RUN for scene level KPIs
-    session_scene_map = {
-        '6DF2E0C8-8AE0-432A-AD3B-C2BE8F086E3B': ['12697', '12753', '12742'],
-        '6520B138-780D-4AD1-95CF-8DA1727C4580': ['14779', '14810', '14818', '14824', '14833', '14837', '14849',],
-        # '01006BB4-3E04-4C34-9C2E-FE24B557C74D': ['15173', '15186', '15188', '15215', '15234'],
-        # '02E8F2A3-391E-4BC5-8EFA-09E59570D9DF': ['12523', '12546', '12582', '12593'],
-        # '7DDEA72B-9DCC-48DA-AC68-3D3E61612875': ['15157', '15162', '15166'],
-        # '1CAEDC02-EFD4-4F83-81B0-95764B2A5A9A': ['16219', '16234'],
-        # '1F137EBF-9724-4890-A69A-15F72EDE38E7': ['13492', '13512', '13515', '13518'],
-        '0BDDC8E9-2F39-4572-99BA-63D505A97968': ['12894', '12899', '12919'],
-        # '0A5A3F52-06F2-4B7F-905D-5E8938AC4404': ['12907', '12928', '12932', '12960'],
-        '0618D9AB-BD10-4917-8A86-35EFE993E7CA': ['12941', '12966', '12974', '13010', '13159', '13162'],
-        # '10004FDB-964D-424D-A4F8-086F1F0F020E': ['15854', '15856', '15868', '14177', '14183', '14187', '14191', '14199',
-        #                                          '14206']
-
-    }
+    session_scene_map = OrderedDict([
+        ("060C5E25-2B5B-4F95-BA99-50325E866407", [23598]),  # multi posm
+        ("749AD6BB-54DA-4727-9852-A6D503BECB96", [23595]),  # multi posm
+        ("26595CE1-1F43-4F50-9918-45EB1B34DDCE", [23604]),  # multi posm
+        ("286DACD0-A5AA-42AD-BC7E-6BFC4A0135B3", [23607]),  # multi posm
+        ("BAE5D1D0-B341-45AE-BA99-889B611266C8", [23610]),  # multi posm + no targets match
+        ("82CFBFC1-BDD9-4CB8-8B39-87C11B6FF62E", [23613]),  # multi posm
+        ("59EC0A21-500E-4E78-88AC-5B759FB39731", [23586]),
+        ("9BF79D4B-A15F-4EF3-B687-499ACC51669B", [23589]),
+        ("8F9D4831-2DFD-4F36-B6A5-BA3273CDEBBB", [23592]),
+        # ("103CDB86-69BF-4B4E-9B34-E32B0FA8B235", [23601]),
+    ])
+    # session_scene_map = OrderedDict([
+    #     ('002FF630-6FEB-43B3-8916-7B85D864B903', [4154, 4259, 4359, 4361]),  # only 4359
+    #     ('40F1D7D1-93CC-409D-A3D7-2BCC5175476A', [6933, 6925, 6922]),  # wont work 6925, 6922
+    #     ('6944F6F5-79D7-43FB-BE32-E3FAE237FA63', [10566]),  # this!
+    #     ('54DA2146-C09A-4C29-B77B-2A2B38E66BD0', [15743]),
+    #     ('00703094-4889-441D-A9AC-DAF0D32EFC45', [18308]),  # this is ok
+    #     ('7275C65F-F479-44EA-A431-38169655C201', [18137]),
+    #     # these wont work
+    #     ('04AEDCB1-AFB5-441A-87A9-027F406F8125', [16705]),  # 'Oral Main Shelf' -- wont calc
+    #     ('43775D5F-F9BA-46C4-B349-834F0A5DF8E2', [18247]),  # wont work cuz its IND Grocery and T
+    #     ('1A77E364-551D-4036-8248-87C4000A4C28', [3981]),
+    #     ('22F9B0F8-9D8C-41C4-9D1C-5838F4FA9DFD', [22074]),
+    # ]
+    # )
     for session, scenes in session_scene_map.iteritems():
         for e_scene in scenes:
+            print "\n"
+            data_provider = KEngineDataProvider(project_name)
+            Log.info("**********************************")
+            Log.info('*** Starting session: {sess}: scene: {scene}. ***'.format(sess=session, scene=e_scene))
+            Log.info("**********************************")
             data_provider.load_scene_data(session, e_scene)
             SceneCalculations(data_provider).calculate_kpis()
 #     sessions = [

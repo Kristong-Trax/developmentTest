@@ -425,6 +425,9 @@ class LIBERTYToolBox:
             filtered_scif.groupby(['Base Size', 'Multi-Pack Size', 'scene_id'],
                                   as_index=False)['facings'].sum()
 
+        if filtered_scif.empty:
+            return 0, 0
+
         filtered_scif['passed_displays'] = \
             filtered_scif.apply(lambda row: self._calculate_pass_status_of_display(row), axis=1)
 

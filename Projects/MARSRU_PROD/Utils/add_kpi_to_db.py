@@ -304,14 +304,14 @@ class MARSRU_PRODAddKPIs(MARSRU_PRODConsts):
 
 if __name__ == '__main__':
     LoggerInitializer.init('Add KPIs to static')
-    Config.init()
+    # Config.init()
     # docker_user = DbUsers.Docker
     # dbusers_class_path = 'Trax.Utils.Conf.Keys'
     # dbusers_patcher = patch('{0}.DbUser'.format(dbusers_class_path))
     # dbusers_mock = dbusers_patcher.start()
     # dbusers_mock.return_value = docker_user
     kpi = MARSRU_PRODAddKPIs(
-        'marsru2-sand', '/home/sergey/dev/kpi_factory/Projects/MARSRU2_SAND/Data/2019/KPIs for DB - MARS KPIs.xlsx', 'Sheet3')
+        'marsru-prod', '/home/sergey/dev/kpi_factory/Projects/MARSRU_PROD/Data/2019/KPIs for DB - MARS KPIs.xlsx', 'Sheet4')
     kpi.add_kpis_from_template()
     # kpi.update_atomic_kpi_data()
     # kpi.update_kpi_weights()

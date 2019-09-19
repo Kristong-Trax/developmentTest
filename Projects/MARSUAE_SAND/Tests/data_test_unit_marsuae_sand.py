@@ -49,7 +49,14 @@ class DataTestUnitMarsuae(object):
          {'pk': 3028, 'type': u'SOD - Chocolate Display'}, {'pk': 3029, 'type': u'SOS - Chocolate Checkout'},
          {'pk': 3030, 'type': u'SOS - Chocolate Main'}, {'pk': 3031, 'type': u'SOS - Gum Checkout'},
          {'pk': 3032, 'type': u'SOS - Gum Main'}, {'pk': 3033, 'type': u'SOS - Gum/Fruity Checkout'},
-         {'pk': 3034, 'type': u'SOS - Petfood Main'}]
+         {'pk': 3034, 'type': u'SOS - Petfood Main'},
+         {'pk': 3035, 'type': u'Checkout Penetration - Chocolate_2'},
+         {'pk': 3036, 'type': u'Checkout Penetration - Gum_2'},
+         {'pk': 3037, 'type': u'Freezer Penetration - Ice Cream_2'},
+         {'pk': 3038, 'type': u'SOD - Chocolate Display_2'}, {'pk': 3039, 'type': u'SOS - Chocolate Checkout_2'},
+         {'pk': 3040, 'type': u'SOS - Chocolate Main_2'}, {'pk': 3041, 'type': u'SOS - Gum Checkout_2'},
+         {'pk': 3042, 'type': u'SOS - Gum Main_2'}, {'pk': 3043, 'type': u'SOS - Gum/Fruity Checkout_2'},
+         {'pk': 3044, 'type': u'SOS - Petfood Main_2'}]
     )
 
     store_data_sss_a = pd.DataFrame.from_records(
@@ -59,6 +66,10 @@ class DataTestUnitMarsuae(object):
     store_data_hypers = pd.DataFrame.from_records(
         [{'pk': 2, 'store_type': 'Hypers', 'store_number_1': '10097162', 'additional_attribute_1': 'Hypers',
           'additional_attribute_2': 'MT', 'additional_attribute_3': 'Lulu'}])
+
+    store_data_supers_a = pd.DataFrame.from_records(
+        [{'pk': 3, 'store_type': 'Supers A', 'store_number_1': '10388934', 'additional_attribute_1': 'All Others',
+          'additional_attribute_2': 'General Trade', 'additional_attribute_3': 'Supers'}])
 
     store_info_dict_other_type = {'pk': 3, 'store_type': 'Other', 'store_number_1': '100978891',
                                   'additional_attribute_1': 'Other', 'additional_attribute_2': 'Other',
@@ -162,6 +173,13 @@ class DataTestUnitMarsuae(object):
     scene_4_scif = pd.DataFrame([
         {'product_fk': 1,  'product_type': 'SKU'}, {'product_fk': 4,  'product_type': 'Other'},
         {'product_fk': 3,  'product_type': 'SKU'}
+    ])
+    scene_5 = pd.DataFrame([
+        {'probe_match_fk': 1, 'scene_fk': 1, 'product_fk': 1, 'price': 4, 'promotion_price': None},
+        {'probe_match_fk': 2, 'scene_fk': 1, 'product_fk': 2, 'price': None, 'promotion_price': 5},
+    ])
+    scene_5_scif = pd.DataFrame([
+        {'product_fk': 1, 'product_type': 'SKU'}, {'product_fk': 2, 'product_type': 'SKU'},
     ])
 
     #change product pks

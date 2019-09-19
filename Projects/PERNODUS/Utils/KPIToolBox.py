@@ -9,7 +9,7 @@ from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
 from KPIUtils_v2.Calculations.AvailabilityCalculations import Availability
 from KPIUtils_v2.Calculations.AdjacencyCalculations import Adjancency
 from Trax.Algo.Calculations.Core.GraphicalModel.AdjacencyGraphs import AdjacencyGraph
-from KPIUtils_v2.Calculations.BlockCalculations import Block
+from KPIUtils_v2.Calculations.BlockCalculations_v2 import Block
 from KPIUtils_v2.Calculations.EyeLevelCalculations import EYE_LEVEL_DEFINITION
 from KPIUtils_v2.Calculations.NumberOfScenesCalculations import NumberOfScenes
 from KPIUtils_v2.Calculations.PositionGraphsCalculations import PositionGraphs
@@ -28,7 +28,7 @@ __author__ = 'nicolaske'
 
 CATEGORIES = []
 TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)),
-                             '..', 'Data', "Pernod_US KPI_PS v0.1.xlsx")
+                             '..', 'Data', "Pernod_US KPI_PS v0.1_Updated 8.29.19.xlsx")
 DISPLAY_TEMPLATE_PATH = os.path.join(os.path.dirname(
     os.path.realpath(__file__)), '..', 'Data', "Pernod_display_kpi.xlsx")
 
@@ -87,68 +87,68 @@ class PERNODUSToolBox:
 
     def main_calculation(self, *args, **kwargs):
 
-        # # Base Measurement
-        # for i, row in self.BaseMeasure_template.iterrows():
-        #     try:
-        #         kpi_name = row['KPI']
-        #         value = row['value']
-        #         location = row['Store Location']
-        #         kpi_set_fk = self.kpi_static_data['pk'][self.kpi_static_data['type'] == row['KPI LEVEL 2']].iloc[0]
-        #         self.calculate_category_space(kpi_set_fk, kpi_name, value, location)
-        #
-        #     except Exception as e:
-        #         Log.info('KPI {} calculation failed due to {}'.format(kpi_name.encode('utf-8'), e))
-        #         continue
-        #
-        # # Anchor
-        # for i, row in self.Anchor_template.iterrows():
-        #     try:
-        #         kpi_name = row['KPI']
-        #         value = row['value']
-        #         kpi_set_fk = self.kpi_static_data['pk'][self.kpi_static_data['type'] == row['KPI LEVEL 2']].iloc[0]
-        #
-        #         self.calculate_anchor(kpi_set_fk, kpi_name)
-        #
-        #     except Exception as e:
-        #         Log.info('KPI {} calculation failed due to {}'.format(kpi_name.encode('utf-8'), e))
-        #         continue
-        #
-        # #Presence
-        # self.calculate_presence()
-        #
-        # #Blocking
-        # for i, row in self.Blocking_template.iterrows():
-        #     try:
-        #         kpi_name = row['KPI']
-        #         kpi_set_fk = self.kpi_static_data['pk'][self.kpi_static_data['type'] == row['KPI LEVEL 2']].iloc[0]
-        #         self.calculate_blocking(kpi_set_fk, kpi_name)
-        #
-        #     except Exception as e:
-        #         Log.info('KPI {} calculation failed due to {}'.format(kpi_name.encode('utf-8'), e))
-        #         continue
-        #
-        # #Eye Level
-        # for i, row in self.Eye_Level_template.iterrows():
-        #     try:
-        #         kpi_name = row['KPI']
-        #         kpi_set_fk = self.kpi_static_data['pk'][self.kpi_static_data['type'] == row['KPI LEVEL 2']].iloc[0]
-        #         self.calculate_eye_level(kpi_set_fk, kpi_name)
-        #
-        #     except Exception as e:
-        #         Log.info('KPI {} calculation failed due to {}'.format(kpi_name.encode('utf-8'), e))
-        #         continue
-        #
-        # # Adjacency
-        # for i, row in self.Adjaceny_template.iterrows():
-        #     try:
-        #         kpi_set_fk = self.kpi_static_data['pk'][self.kpi_static_data['type'] == row['KPI LEVEL 2']].iloc[0]
-        #         kpi_name = row['KPI']
-        #         self.adjacency(kpi_set_fk, kpi_name)
-        #     except Exception as e:
-        #         Log.info('KPI {} calculation failed due to {}'.format(kpi_name.encode('utf-8'), e))
-        #         continue
-        #
-        # self.calculate_linear_sos()
+        # Base Measurement
+        for i, row in self.BaseMeasure_template.iterrows():
+            try:
+                kpi_name = row['KPI']
+                value = row['value']
+                location = row['Store Location']
+                kpi_set_fk = self.kpi_static_data['pk'][self.kpi_static_data['type'] == row['KPI LEVEL 2']].iloc[0]
+                self.calculate_category_space(kpi_set_fk, kpi_name, value, location)
+
+            except Exception as e:
+                Log.info('KPI {} calculation failed due to {}'.format(kpi_name.encode('utf-8'), e))
+                continue
+
+        # Anchor
+        for i, row in self.Anchor_template.iterrows():
+            try:
+                kpi_name = row['KPI']
+                value = row['value']
+                kpi_set_fk = self.kpi_static_data['pk'][self.kpi_static_data['type'] == row['KPI LEVEL 2']].iloc[0]
+
+                self.calculate_anchor(kpi_set_fk, kpi_name)
+
+            except Exception as e:
+                Log.info('KPI {} calculation failed due to {}'.format(kpi_name.encode('utf-8'), e))
+                continue
+
+        # Presence
+        self.calculate_presence()
+
+        # Blocking
+        for i, row in self.Blocking_template.iterrows():
+            try:
+                kpi_name = row['KPI']
+                kpi_set_fk = self.kpi_static_data['pk'][self.kpi_static_data['type'] == row['KPI LEVEL 2']].iloc[0]
+                self.calculate_blocking(kpi_set_fk, kpi_name)
+
+            except Exception as e:
+                Log.info('KPI {} calculation failed due to {}'.format(kpi_name.encode('utf-8'), e))
+                continue
+
+        # Eye Level
+        for i, row in self.Eye_Level_template.iterrows():
+            try:
+                kpi_name = row['KPI']
+                kpi_set_fk = self.kpi_static_data['pk'][self.kpi_static_data['type'] == row['KPI LEVEL 2']].iloc[0]
+                self.calculate_eye_level(kpi_set_fk, kpi_name)
+
+            except Exception as e:
+                Log.info('KPI {} calculation failed due to {}'.format(kpi_name.encode('utf-8'), e))
+                continue
+
+        # Adjacency
+        for i, row in self.Adjaceny_template.iterrows():
+            try:
+                kpi_set_fk = self.kpi_static_data['pk'][self.kpi_static_data['type'] == row['KPI LEVEL 2']].iloc[0]
+                kpi_name = row['KPI']
+                self.adjacency(kpi_set_fk, kpi_name)
+            except Exception as e:
+                Log.info('KPI {} calculation failed due to {}'.format(kpi_name.encode('utf-8'), e))
+                continue
+
+        self.calculate_linear_sos()
 
         # Count of Displays
         for i, row in self.display_template.iterrows():
@@ -158,10 +158,10 @@ class PERNODUSToolBox:
 
                 kpi_set_fk = self.kpi_static_data['pk'][self.kpi_static_data['type']
                                                         == row['KPI LEVEL 2']].iloc[0]
-                if(kpi_name == Const.Count_of_display):
+                if (kpi_name == Const.Count_of_display):
                     self.calculate_count_of_display(kpi_set_fk, kpi_name, row)
 
-                elif(kpi_name == Const.Brand_on_display):
+                elif (kpi_name == Const.Brand_on_display):
                     self.calculate_brands_on_display(kpi_set_fk, kpi_name, row)
 
                 elif (kpi_name in [Const.SOS_on_display_manufacturer, Const.SOS_on_display_brand]):
@@ -195,13 +195,17 @@ class PERNODUSToolBox:
             return None
         kpi_template = kpi_template.iloc[0]
 
-        relevant_filter = {kpi_template['param']: kpi_template['value']}
+        if kpi_template['param2']:
+            relevant_filter = {kpi_template['param']: self.values_to_list(kpi_template['value']),
+                               kpi_template['param2']: self.values_to_list(kpi_template['value2'])}
+        else:
+            relevant_filter = {kpi_template['param']: self.values_to_list(kpi_template['value'])}
 
         result = self.blocking_calc.network_x_block_together(relevant_filter, location={Const.template_name: 'Shelf'},
                                                              additional={'minimum_facing_for_block': 2})
 
         score = 0
-        if(result.is_block.any() == True):
+        if (result.is_block.any() == True):
             score = 1
         else:
             pass
@@ -238,7 +242,8 @@ class PERNODUSToolBox:
 
             numerator_length = int(round(numerator_length * 0.0393700787))
             if numerator_length > 0:
-                self.common.write_to_db_result(fk=kpi_set_fk, numerator_id=product_fk, numerator_result=numerator_length,
+                self.common.write_to_db_result(fk=kpi_set_fk, numerator_id=product_fk,
+                                               numerator_result=numerator_length,
                                                denominator_id=product_fk,
                                                result=numerator_length, score=numerator_length)
 
@@ -290,7 +295,8 @@ class PERNODUSToolBox:
 
     def adjacency(self, kpi_set_fk, kpi_name):
         relevant_scif = self.filter_df(self.scif.copy(), {Const.template_name: 'Shelf'})
-        template = self.Adjaceny_template.loc[self.Adjaceny_template['KPI'] == kpi_name]
+        self.Adjaceny_template['KPI'] = self.Adjaceny_template['KPI'].str.encode('ascii', 'ignore')
+        template = self.Adjaceny_template.loc[self.Adjaceny_template['KPI'] == kpi_name.encode('ascii', 'ignore')]
         kpi_template = template.loc[template['KPI'] == kpi_name]
         if kpi_template.empty:
             return None
@@ -307,14 +313,14 @@ class PERNODUSToolBox:
             # allowed_items = set(self.filter_df(mpis, allowed)['scene_match_fk'].values)
             # items.update(allowed_items)
             if not (items):
-                return
+                continue
 
             all_graph = AdjacencyGraph(mpis, None, self.products,
                                        product_attributes=['rect_x', 'rect_y'],
                                        name=None, adjacency_overlap_ratio=.4)
 
             match_to_node = {int(node['match_fk']): i for i,
-                             node in all_graph.base_adjacency_graph.nodes(data=True)}
+                                                          node in all_graph.base_adjacency_graph.nodes(data=True)}
             node_to_match = {val: key for key, val in match_to_node.items()}
             edge_matches = set(
                 sum([[node_to_match[i] for i in all_graph.base_adjacency_graph[match_to_node[item]].keys()]
@@ -364,7 +370,8 @@ class PERNODUSToolBox:
                                                               == adjacent_brand].iloc[0]
 
                     if Param == Const.brand:
-                        numerator_id = self.all_products[Const.brand_fk][self.all_products[Const.brand] == Value1[0]].iloc[
+                        numerator_id = \
+                        self.all_products[Const.brand_fk][self.all_products[Const.brand] == Value1[0]].iloc[
                             0]
                         denominator_id = \
                             self.all_products[Const.brand_fk][self.all_products[Const.brand]
@@ -474,12 +481,13 @@ class PERNODUSToolBox:
         if kpi_template['param']:
             values_to_check = str(kpi_template['value']).split(',')
 
-        filters = {kpi_template['param']: values_to_check}
-        result = self.calculate_products_on_edge(**filters)
-        score = 1 if result >= 1 else 0
-
         for value in values_to_check:
-            sub_category_fk = self.all_products[Const.sub_category_fk][self.all_products[Const.sub_category] == value].iloc[0]
+            filters = {kpi_template['param']: value, Const.template_name: 'Shelf'}
+            result = self.calculate_products_on_edge(**filters)
+            score = 1 if result >= 1 else 0
+
+            sub_category_fk = \
+            self.all_products[Const.sub_category_fk][self.all_products[Const.sub_category] == value].iloc[0]
 
             self.common.write_to_db_result(fk=kpi_set_fk, numerator_id=sub_category_fk,
                                            numerator_result=0,
@@ -506,7 +514,7 @@ class PERNODUSToolBox:
                     shelf_matches = shelf_matches.sort_values(
                         by=['bay_number', 'facing_sequence_number'])
                     edge_facings = edge_facings.append(shelf_matches.iloc[0])
-                    if len(edge_facings) > 1:
+                    if len(shelf_matches) > 1:
                         edge_facings = edge_facings.append(shelf_matches.iloc[-1])
 
             category_list = []
@@ -555,9 +563,12 @@ class PERNODUSToolBox:
             values_to_check = str(kpi_template['value']).replace(', ', ',').split(',')
 
         filters = {kpi_template['param']: values_to_check}
+        # result = self.calculate_eye_level_assortment(eye_level_configurations=self.eye_level_definition,
+        #                                              min_number_of_products=1, percentage_result=True,
+        #                                              requested_attribute=Const.facings, **filters)
+
         result = self.calculate_eye_level_assortment(eye_level_configurations=self.eye_level_definition,
-                                                     min_number_of_products=1, percentage_result=True,
-                                                     requested_attribute=Const.facings, **filters)
+                                                     min_number_of_products=1, **filters)
         score = 1 if result == True else 0
 
         self.common.write_to_db_result(fk=kpi_set_fk, numerator_id=self.store_id,
@@ -585,6 +596,7 @@ class PERNODUSToolBox:
         number_of_products = len(
             self.all_products[self.get_filter_condition(self.all_products, **filters)]['product_ean_code'])
         min_shelf, max_shelf, min_ignore, max_ignore = eye_level_configurations.columns
+        eye_level_configurations = eye_level_configurations.apply(pd.to_numeric)
         number_of_eye_level_scenes = 0
         products_on_eye_level = []
         for scene in relevant_scenes:
@@ -605,9 +617,10 @@ class PERNODUSToolBox:
                     min_include, max_include)]
                 eye_level_facings = eye_level_facings.append(eye_level_shelves)
 
-                # eye_level_facings = pd.concat([eye_level_facings, self.all_products])
-        found_pks = eye_level_facings['product_fk'][
-            self.get_filter_condition(self.all_products, **filters)].unique().tolist()
+                eye_level_facings = pd.concat([eye_level_facings, self.all_products])
+        filtered_all_products = self.get_filter_condition(self.all_products, **filters)
+        found_pks = eye_level_facings['product_fk'][eye_level_facings['product_fk'].isin(
+            filtered_all_products[filtered_all_products].index.to_list())].unique().tolist()
         eye_level_assortment = self.all_products[filters.keys()[0]][
             self.all_products['product_fk'].isin(found_pks)].unique()
 
@@ -624,7 +637,7 @@ class PERNODUSToolBox:
         score = 0
 
         for template_type in template_types:
-            if(param1):
+            if (param1):
                 general_filters = {param1: value1, Const.template_name: template_type,
                                    Const.product_type: [Const.SKU, Const.OTHER]}
             else:
@@ -689,7 +702,8 @@ class PERNODUSToolBox:
 
                     if param1 == Const.manufacturer:
                         manufacturer_fk = \
-                            self.all_products[Const.manufacturer_fk][self.all_products[Const.manufacturer] == value1].iloc[0]
+                            self.all_products[Const.manufacturer_fk][
+                                self.all_products[Const.manufacturer] == value1].iloc[0]
                         category_fk = self.scif[Const.category_fk][self.scif[Const.category]
                                                                    == value2].iloc[0]
 
@@ -701,10 +715,14 @@ class PERNODUSToolBox:
                         brand_fk = \
                             self.all_products[Const.brand_fk][self.all_products[Const.brand]
                                                               == value1].iloc[0]
-                        sub_category_fk = self.all_products[Const.sub_category_fk][self.all_products[Const.sub_category] == value2].iloc[0]
+                        sub_category_fk = \
+                        self.all_products[Const.sub_category_fk][self.all_products[Const.sub_category] == value2].iloc[
+                            0]
 
-                        self.common.write_to_db_result(fk=kpi_set_fk, numerator_id=brand_fk, numerator_result=numerator_res,
-                                                       denominator_id=sub_category_fk, denominator_result=denominator_res,
+                        self.common.write_to_db_result(fk=kpi_set_fk, numerator_id=brand_fk,
+                                                       numerator_result=numerator_res,
+                                                       denominator_id=sub_category_fk,
+                                                       denominator_result=denominator_res,
                                                        result=score, score=score)
 
     def calculate_share_of_display(self, kpi_set_fk, kpi_name, row):
@@ -718,7 +736,8 @@ class PERNODUSToolBox:
         for value1 in values_1:
 
             if param1 == Const.brand:
-                manufacturer_of_brand = self.all_products[Const.manufacturer][self.all_products[param1] == value1].iloc[0]
+                manufacturer_of_brand = self.all_products[Const.manufacturer][self.all_products[param1] == value1].iloc[
+                    0]
                 if manufacturer_of_brand in checked_manufacturers:
                     pass
                 else:
@@ -756,7 +775,8 @@ class PERNODUSToolBox:
                     self.share_of_display_grouping(kpi_set_fk, param1, value1, value2, filter_df_columns,
                                                    groupby_df_columns, **general_filters)
 
-    def share_of_display_grouping(self, kpi_set_fk, param_type, param_value, category_sub_category_value,  filter_df_columns, groupby_df_columns, **general_filters):
+    def share_of_display_grouping(self, kpi_set_fk, param_type, param_value, category_sub_category_value,
+                                  filter_df_columns, groupby_df_columns, **general_filters):
         display_df = self.scif[self.get_filter_condition(self.scif, **general_filters)]
         numerator_df_filtered = display_df[filter_df_columns][(display_df[Const.facings]
                                                                >= int(float(self.minimum_facings)))
@@ -1005,3 +1025,7 @@ class PERNODUSToolBox:
                 .merge(self.templates, on=Const.template_fk, suffixes=['', '_t'])
 
             return mpis
+
+    def values_to_list(self, value):
+        list_of_values = value.split(',')
+        return list_of_values
