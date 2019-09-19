@@ -75,8 +75,8 @@ class Results(object):
             #
             # ]:
             #     continue
-            print('~~~~~~~~~~~~~~~~~~~~****************~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~')
-            print(atomic['atomic'])
+            # print('~~~~~~~~~~~~~~~~~~~~****************~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~')
+            # print(atomic['atomic'])
             if sum([1 for i in atomic['depend_on'] if i is not None and i != '']):
                 # if atomic['kpi_type'] == 'PreCalc Vertical Block':
                 dependency_status = self._check_atomic_dependency(
@@ -109,8 +109,7 @@ class Results(object):
             if isinstance(kpi_res, tuple):
                 errata = [i for i in kpi_res[1:]]
                 kpi_res = kpi_res[0]
-            print('||||| Result for {} is: {}'.format(atomic['atomic'], kpi_res))
-            print('!!!!!!!!!!!!!!!!!!!!!!! New Set !!!!!!!!!!!!!!!!!!!!!!!!!')
+            # print('||||| Result for {} is: {}'.format(atomic['atomic'], kpi_res))
             result = {'result': kpi_res,
                       'set': atomic['set'],
                       'kpi': atomic['kpi'],

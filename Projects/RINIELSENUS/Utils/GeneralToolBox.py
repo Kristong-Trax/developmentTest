@@ -838,7 +838,7 @@ class MarsUsGENERALToolBox:
 
         clusters = self.block.network_x_block_together(filters, location=scene_filter,
                                                         additional={'allowed_products_filters': allowed_filters,
-                                                                    'include_stacking': True,
+                                                                    'include_stacking': False,
                                                                     'check_vertical_horizontal': True,
                                                                     'ignore_empty': False,
                                                                     'minimum_block_ratio': minimum_block_ratio,
