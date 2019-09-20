@@ -556,7 +556,7 @@ class HEINZCRToolBox:
                                               should_enter=True)
 
         number_of_extra_spaces = relevant_extra_spaces['sub_category_fk'].nunique()
-        score = 1 if number_of_extra_spaces > 2 else 0
+        score = 1 if number_of_extra_spaces >= 2 else 0
 
         if score == 0:
             if self.survey.check_survey_answer(('question_fk', Const.EXTRA_SPACES_SURVEY_QUESTION_FK), 'Yes,yes,si,Si'):
