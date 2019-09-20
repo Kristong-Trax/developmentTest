@@ -172,6 +172,7 @@ class GSKAUSceneToolBox:
                     # this scene has the posm
                     Log.info('The scene: {scene} is relevant and POSM {pos} is present.'
                              .format(scene=current_scene_fk, pos=posm_to_check))
+                    has_posm_recognized = True
                     # check if this scene has multi posm or multi bays
                     if len(self.match_product_in_scene['bay_number'].unique()) > 1 or \
                             len(self.scif[self.scif['product_type'] == POS_TYPE]) > 1:
@@ -204,7 +205,6 @@ class GSKAUSceneToolBox:
 
                     Log.info('The scene: {scene} is relevant and POSM {pos} is present with only one bay.'
                              .format(scene=current_scene_fk, pos=posm_to_check))
-                    has_posm_recognized = True
                     # save purity per bay
                     self.save_purity_per_bay(kpi_display_bay_purity)
                     # calculate display per sku for ALL SUCCESS
