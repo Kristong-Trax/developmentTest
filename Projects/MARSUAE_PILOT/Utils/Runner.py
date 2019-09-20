@@ -5,7 +5,7 @@ import pandas as pd
 from KPIUtils_v2.DB.CommonV2 import Common as CommonV2
 from KPIUtils_v2.DB.Common import Common as CommonV1
 
-from Projects.MARSUAE.Utils.AtomicKpiCalculator import AggregationCalculation, DistributionCalculation, \
+from Projects.MARSUAE_PILOT.Utils.AtomicKpiCalculator import AggregationCalculation, DistributionCalculation, \
     LinearSOSCalculation, AvailabilityCalculation, DisplaySOSCalculation
 
 

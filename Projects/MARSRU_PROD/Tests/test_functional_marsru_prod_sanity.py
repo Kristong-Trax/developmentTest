@@ -1,6 +1,5 @@
 
 import os
-import pandas as pd
 import MySQLdb
 
 from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
@@ -13,10 +12,9 @@ from Projects.MARSRU_PROD.Calculations import MARSRU_PRODCalculations
 
 from Trax.Apps.Core.Testing.BaseCase import TestFunctionalCase
 from Tests.TestUtils import remove_cache_and_storage
-from Trax.Utils.Testing.Case import skip
 
 
-__author__ = 'ilays'
+__author__ = 'sergey'
 
 
 class TestKEngineOutOfTheBox(TestFunctionalCase):
@@ -24,14 +22,8 @@ class TestKEngineOutOfTheBox(TestFunctionalCase):
     def set_up(self):
         super(TestKEngineOutOfTheBox, self).set_up()
         remove_cache_and_storage()
-        data = [{'product_fk': 14, 'additional_attributes': '{}', 'assortment_fk': 2, 'kpi_fk_lvl2': 1001,
-                 'kpi_fk_lvl3': 1002, 'in_store': 0, 'assortment_group_fk': 1},
-                {'product_fk': 289, 'additional_attributes': '{}', 'assortment_fk': 2, 'kpi_fk_lvl2': 1001,
-                 'kpi_fk_lvl3': 1002, 'in_store': 0, 'assortment_group_fk': 1}]
-        func = self.mock_object(object_name='get_lvl3_relevant_ass',
-                                path='KPIUtils_v2.Calculations.AssortmentCalculations.Assortment')
-        func.return_value = pd.DataFrame(data)
 
+    @property
     def import_path(self):
         return 'Trax.Apps.Services.KEngine.Handlers.SessionHandler'
     
@@ -70,13 +62,12 @@ class TestKEngineOutOfTheBox(TestFunctionalCase):
         kpi_results = cursor.fetchall()
         self.assertNotEquals(len(kpi_results), 0)
         connector.disconnect_rds()
-
-    @skip('new kpis added - need to change data seed')
+    
     @seeder.seed(["marsru_prod_seed", "mongodb_products_and_brands_seed"], ProjectsSanityData())
     def test_marsru_prod_sanity(self):
         project_name = ProjectsSanityData.project_name
         data_provider = KEngineDataProvider(project_name)
-        sessions = {'4a7dcb07-a83c-4ab0-8694-6b2a0c6ef642': []}
+        sessions = {'ff50d177-57a7-42ae-98dd-bf2d91e3c594': [], 'fffaedb6-0614-4762-986e-3f92e43f00b7': []}
         for session in sessions.keys():
             data_provider.load_session_data(str(session))
             output = Output()

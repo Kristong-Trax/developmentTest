@@ -4,6 +4,7 @@ from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScrip
 # from Trax.Utils.Conf.Configuration import Config
 # from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
 import os
+from Projects.SANOFIJP_SAND.KPIGenerator import Generator
 from KPIUtils.GlobalProjects.SANOFI_2.KPIGenerator import SANOFIGenerator
 
 
@@ -15,6 +16,8 @@ class SANOFIJP_SANDCalculations(BaseCalculationsScript):
         self.timer.start()
         TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), 'SANOFIJP_SAND', 'Data', 'Template.xlsx')
         SANOFIGenerator(self.data_provider, self.output, TEMPLATE_PATH).main_function()
+        # For Custom KPI -- PROS-11486
+        Generator(self.data_provider, self.output).main_function()
         self.timer.stop('KPIGenerator.run_project_calculations')
 
 
