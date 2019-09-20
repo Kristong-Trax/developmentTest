@@ -55,12 +55,22 @@ class TYSONToolBox:
         else:
             filtered_scif.dropna(subset=['net_len_add_stack'])
 
+
             # Need to display name as the "bunker cooler" in display name determines
             # whether the linear feet is stacked or not
-            relevant_match_display_in_scene = self.match_display_in_scene[['scene_fk', 'display_name']]
-            scif_with_display_name = filtered_scif.merge(relevant_match_display_in_scene, left_on='scene_id',
-                                                         right_on='scene_fk')
-            scif_with_display_name = scif_with_display_name.drop(columns=['scene_fk', 'scene_id'])
+
+            if not self.match_display_in_scene.empty:
+                relevant_match_display_in_scene = self.match_display_in_scene[['scene_fk', 'display_name']]
+                scif_with_display_name = filtered_scif.merge(relevant_match_display_in_scene, left_on='scene_id',
+                                                             right_on='scene_fk')
+                scif_with_display_name = scif_with_display_name.drop(columns=['scene_fk', 'scene_id'])
+
+            else:
+                scif_with_display_name = filtered_scif
+                scif_with_display_name['display_name'] = "Not a Bunker Cooler"
+
+
+
 
             scif_with_display_name.loc[scif_with_display_name['display_name'] == 'Bunker Cooler', 'final_linear_feet'] = \
                 scif_with_display_name.loc[scif_with_display_name['display_name'] == 'Bunker Cooler', 'net_len_add_stack']
