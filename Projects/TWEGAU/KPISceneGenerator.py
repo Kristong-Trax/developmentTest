@@ -14,7 +14,6 @@ class SceneGenerator:
         self.common = Common(data_provider)
         self.scene_tool_box = TWEGAUSceneToolBox(self.data_provider, self.output, self.common)
 
-
     @log_runtime('Total Calculations', log_start=True)
     def scene_main_calculation(self):
         """
