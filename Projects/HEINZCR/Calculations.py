@@ -38,7 +38,7 @@ if __name__ == '__main__':
     project_name = 'heinzcr'
     data_provider = KEngineDataProvider(project_name)
     # session = 'efdd2028-6f09-46ff-ad02-18874a6f45b2'
-    sessions = ['b3e7a9e6-7ffb-459c-91ce-57a37103ca05']
+    sessions = ['9d2ea68e-f169-4059-bc3d-edfc5e8fb6da']
     for session in sessions:
         data_provider.load_session_data(session)
         output = Output()
