@@ -233,16 +233,15 @@ class TWEGAUSceneToolBox:
         template = pd.read_excel(self.excel_file_path, sheetname=sheet_name)
         return template
 
-    def calculate_zone_based(self):
-        Log.info("Calculating zone based...")
+    def calculate_zone_kpis(self):
+        Log.info("Scene based calculations for zone KPIs...")
         zone_kpi_sheet = self.get_template_details(ZONE_KPI_SHEET)
-        zone_category_sheet = self.get_template_details(ZONE_CATEGORY_SHEET)
         name_grouped_zone_kpi_sheet = zone_kpi_sheet.groupby(KPI_TYPE)
         for each_kpi in name_grouped_zone_kpi_sheet:
-            each_kpi_type = each_kpi[0]
+            # ugly hack! -- this came as a requirement after the kpi was written
+            each_kpi_type = "SCENE_" + each_kpi[0]  # manipulate kpi name to fit into its scene based
             kpi_sheet_rows = each_kpi[1]
             denominator_row = pd.Series()
-            write_sku = False
             kpi = self.kpi_static_data[(self.kpi_static_data[KPI_FAMILY] == PS_KPI_FAMILY)
                                        & (self.kpi_static_data[TYPE] == each_kpi_type)
                                        & (self.kpi_static_data['delete_time'].isnull())]
@@ -250,13 +249,7 @@ class TWEGAUSceneToolBox:
                 Log.info("KPI Name:{} not found in DB".format(each_kpi_type))
             else:
                 Log.info("KPI Name:{} found in DB".format(each_kpi_type))
-                if 'sku_all' in each_kpi_type.lower():
-                    write_sku = True
                 if 'sku_all' not in each_kpi_type.lower():
-                    # there is no denominator for sku all
-                    denominator_row = zone_category_sheet.loc[(
-                            zone_category_sheet[KPI_NAME] == each_kpi_type)].iloc[0]
-                if not write_sku:
                     # Skipping zone KPI's for Mobile Reports.
                     continue
                 list_of_zone_data = []
@@ -266,33 +259,34 @@ class TWEGAUSceneToolBox:
                     if zone_data:
                         # empty when the row in sheet could not find any relevant data for zone
                         list_of_zone_data.append(zone_data)
-                if write_sku:
-                    # write for products
-                    for each_scene_zone_map in list_of_zone_data:
-                        for scene_id, bay_zone_list in each_scene_zone_map.iteritems():
-                            for zone_data in bay_zone_list:
-                                product_counter = zone_data['product_count_map']
-                                for prod_id, count in product_counter.iteritems():
-                                    if int(prod_id) not in self.empty_product_ids:
-                                        in_assort_sc_values = self.scif.query(
-                                            "item_id=={prod_id}".format(prod_id=prod_id)).in_assort_sc
-                                        if not in_assort_sc_values.empty:
-                                            in_assort_sc = int(in_assort_sc_values.values[0])
-                                        else:
-                                            in_assort_sc = 0
-                                        self.common.write_to_db_result(
-                                            fk=int(zone_data['fk']),
-                                            numerator_id=int(prod_id),  # product ID
-                                            numerator_result=int(zone_data['bay_number']),
-                                            # bay number comes as numerator
-                                            denominator_id=int(zone_data['store']),  # store ID
-                                            denominator_result=int(scene_id),  # scene id comes as denominator
-                                            result=int(count),  # save the count
-                                            score=in_assort_sc,
-                                            context_id=int(zone_data['zone_number']),
-                                        )
-                else:
-                    pass
+                # write for products
+                for each_scene_zone_map in list_of_zone_data:
+                    for scene_id, bay_zone_list in each_scene_zone_map.iteritems():
+                        for zone_data in bay_zone_list:
+                            product_counter = zone_data['product_count_map']
+                            for prod_id, count in product_counter.iteritems():
+                                Log.info("Product_id is {pr} and count is {cn} on bay {bay}".format(
+                                    pr=prod_id, cn=count, bay=zone_data['bay_number']
+                                ))
+                                if int(prod_id) not in self.empty_product_ids:
+                                    in_assort_sc_values = self.scif.query(
+                                        "item_id=={prod_id}".format(prod_id=prod_id)).in_assort_sc
+                                    if not in_assort_sc_values.empty:
+                                        in_assort_sc = int(in_assort_sc_values.values[0])
+                                    else:
+                                        in_assort_sc = 0
+                                    self.common.write_to_db_result(
+                                        fk=int(zone_data['fk']),
+                                        numerator_id=int(prod_id),  # product ID
+                                        numerator_result=int(zone_data['bay_number']),
+                                        # bay number comes as numerator
+                                        denominator_id=int(zone_data['store']),  # store ID
+                                        denominator_result=int(scene_id),  # scene id comes as denominator
+                                        result=int(count),  # save the count
+                                        score=in_assort_sc,
+                                        context_id=int(zone_data['zone_number']),
+                                        by_scene=True
+                                    )
 
     def get_shelf_limit_for_scene(self, scene_id):
         shelf_limit_per_scene_map = defaultdict(list)
