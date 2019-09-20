@@ -41,8 +41,6 @@ class TYSONToolBox:
                     the denominator which is grouped by template_fk and product_fk.
                     In which the final result is the numerator over the denominator.
         '''
-
-
         # Calls the updated scif the remove_substitue method
         filtered_scif = self.scif[
             ['scene_id', 'template_fk', 'template_name', 'product_fk', 'net_len_add_stack', 'net_len_ign_stack']]
