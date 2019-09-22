@@ -230,7 +230,7 @@ class PNGJPKpiQualitative_ToolBox(Consts):
                         score, result, threshold = self.calculate_adjacency(kpi, kpi_filters, kpi_params)
 
                     else:
-                        Log.warning("KPI type '{}' is not supported".format(kpi_type))
+                        Log.debug("KPI type '{}' is not supported".format(kpi_type))
                         continue
 
                     extra_data = self.get_extra_data_from_params(kpi_params)
