@@ -300,6 +300,11 @@ class BlockBaseCalculation(KpiAtomicKpisCalculator):
                           0]) if atomic_kpi_data['filters'].get(FACINGS) else 0
         use_probes = atomic_kpi_data['filters'].pop(
             USE_PROBES)[0] if atomic_kpi_data['filters'].get(USE_PROBES) else 0
+        block_by_session = atomic_kpi_data['filters'].pop(
+            'Block by Session')[0] if 'Block by Session' in atomic_kpi_data['filters'] else None
+        use_stack = atomic_kpi_data['filters'].pop(
+            'Stacked Facings - Retailer')[0] if 'Stacked Facings - Retailer' in atomic_kpi_data['filters'] else None
+
         filters = atomic_kpi_data['filters']
         allowed = atomic_kpi_data['allowed']
         target = atomic_kpi_data['target']
@@ -349,9 +354,14 @@ class BlockBaseCalculation(KpiAtomicKpisCalculator):
                 blocked_scenes += 1
                 visited.add(scene['scene_fk'])
 
-        if float(blocked_scenes) == float(num_of_scenes - len(skipped_scenes))\
+        if block_by_session == 'Count':
+            return blocked_scenes
+        elif float(blocked_scenes) == float(num_of_scenes - len(skipped_scenes))\
                 and blocked_scenes > 0:
             return 100
+        elif block_by_session == 'Percent':
+            return float(blocked_scenes) / float(num_of_scenes - len(skipped_scenes)) * 100 if \
+                float(num_of_scenes - len(skipped_scenes)) > 0 else 0
         else:
             return 0
 
@@ -411,6 +421,10 @@ class BiggestSceneBlockAtomicKpiCalculation(BlockBaseCalculation):
                           0]) if atomic_kpi_data['filters'].get(FACINGS) else 0
         use_probes = atomic_kpi_data['filters'].pop(
             USE_PROBES)[0] if atomic_kpi_data['filters'].get(USE_PROBES) else 0
+        block_by_session = atomic_kpi_data['filters'].pop(
+            'Block by Session')[0] if 'Block by Session' in atomic_kpi_data['filters'] else None
+        use_stack = atomic_kpi_data['filters'].pop(
+            'Stacked Facings - Retailer')[0] if 'Stacked Facings - Retailer' in atomic_kpi_data['filters'] else None
         filters = atomic_kpi_data['filters']
         allowed = atomic_kpi_data['allowed']
         target = atomic_kpi_data['target']
@@ -490,6 +504,10 @@ class BlockTargetBaseCalculation(KpiAtomicKpisCalculator):
                           0]) if atomic_kpi_data['filters'].get(FACINGS) else 0
         use_probes = atomic_kpi_data['filters'].pop(
             USE_PROBES)[0] if atomic_kpi_data['filters'].get(USE_PROBES) else 0
+        block_by_session = atomic_kpi_data['filters'].pop(
+            'Block by Session')[0] if 'Block by Session' in atomic_kpi_data['filters'] else None
+        use_stack = atomic_kpi_data['filters'].pop(
+            'Stacked Facings - Retailer')[0] if 'Stacked Facings - Retailer' in atomic_kpi_data['filters'] else None
         filters = atomic_kpi_data['filters']
         allowed = atomic_kpi_data['allowed']
         target = atomic_kpi_data['target']
@@ -590,6 +608,10 @@ class VerticalBlockOneSceneAtomicKpiCalculation(BlockBaseCalculation):
                           0]) if atomic_kpi_data['filters'].get(FACINGS) else 0
         use_probes = atomic_kpi_data['filters'].pop(
             USE_PROBES)[0] if atomic_kpi_data['filters'].get(USE_PROBES) else 0
+        block_by_session = atomic_kpi_data['filters'].pop(
+            'Block by Session')[0] if 'Block by Session' in atomic_kpi_data['filters'] else None
+        use_stack = atomic_kpi_data['filters'].pop(
+            'Stacked Facings - Retailer')[0] if 'Stacked Facings - Retailer' in atomic_kpi_data['filters'] else None
         filters = atomic_kpi_data['filters']
         allowed = atomic_kpi_data['allowed']
         target = atomic_kpi_data['target']

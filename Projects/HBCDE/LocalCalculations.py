@@ -18,11 +18,11 @@ def save_scene_item_facts_to_data_provider(data_provider, output):
 
 
 if __name__ == '__main__':
-    LoggerInitializer.init('hbcde-prod calculations')
+    LoggerInitializer.init('hbcde calculations')
     Config.init()
-    project_name = 'hbcde-prod'
+    project_name = 'hbcde'
     data_provider = KEngineDataProvider(project_name)
-    session_list = {'F5D2D292-3EB8-4122-AEDE-5C7A29DE65FD': []}
+    session_list = {'F8FC10A8-00E2-452A-8247-BFD41FEB6E95': []}
     for session in session_list:
         # scenes = session_list[session]
         # if len(scenes) == 0:

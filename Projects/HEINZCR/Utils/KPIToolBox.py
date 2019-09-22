@@ -91,6 +91,8 @@ class HEINZCRToolBox:
         """
         This function calculates the KPI results.
         """
+        if self.scif.empty:
+            return
         # these function must run first
         self.adherence_results = self.heinz_global_price_adherence(pd.read_excel(Const.PRICE_ADHERENCE_TEMPLATE_PATH,
                                                                                  sheetname="Price Adherence"))
@@ -554,7 +556,7 @@ class HEINZCRToolBox:
                                               should_enter=True)
 
         number_of_extra_spaces = relevant_extra_spaces['sub_category_fk'].nunique()
-        score = 1 if number_of_extra_spaces > 2 else 0
+        score = 1 if number_of_extra_spaces >= 2 else 0
 
         if score == 0:
             if self.survey.check_survey_answer(('question_fk', Const.EXTRA_SPACES_SURVEY_QUESTION_FK), 'Yes,yes,si,Si'):
@@ -590,6 +592,8 @@ class HEINZCRToolBox:
         # limit to only secondary scenes
         relevant_scif = self.scif[(self.scif['location_type_fk'] == float(2)) &
                                   (self.scif['facings'] > 0)]
+        if relevant_scif.empty:
+            return results_df
         # aggregate facings for every scene/sub_category combination in the visit
         relevant_scif = \
             relevant_scif.groupby(['scene_fk', 'template_fk', 'sub_category_fk'], as_index=False)['facings'].sum()

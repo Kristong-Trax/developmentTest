@@ -2,9 +2,12 @@
 from Trax.Utils.Logging.Logger import Log
 from KPIUtils_v2.Utils.Decorators.Decorators import log_runtime
 
-from Projects.HBCDE_SAND.Utils.KPISceneToolBox import SceneToolBox
+from Projects.MARSUAE.Utils.KPISceneToolBox import MARSUAESceneToolBox
 
-__author__ = 'ilays'
+from KPIUtils_v2.DB.CommonV2 import Common
+
+
+__author__ = 'natalyak'
 
 
 class SceneGenerator:
@@ -14,11 +17,13 @@ class SceneGenerator:
         self.output = output
         self.project_name = data_provider.project_name
         self.session_uid = self.data_provider.session_uid
-        self.scene_tool_box = SceneToolBox(self.data_provider, self.output)
+        self.common = Common(data_provider)
+        self.scene_tool_box = MARSUAESceneToolBox(self.data_provider, self.output, self.common)
 
     @log_runtime('Total Calculations', log_start=True)
     def scene_score(self):
         if self.scene_tool_box.match_product_in_scene.empty:
             Log.warning('Match product in scene is empty for this scene')
-        self.scene_tool_box.main_function()
-        self.scene_tool_box.commit_results()
+        else:
+            self.scene_tool_box.main_function()
+            self.scene_tool_box.common.commit_results_data(result_entity='scene')

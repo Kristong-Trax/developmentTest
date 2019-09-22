@@ -1,13 +1,13 @@
 
 from Trax.Apps.Services.KEngine.Handlers.Utils.Scripts import SceneBaseClass
-from Projects.HBCDE_SAND.KPISceneGenerator import SceneGenerator
+from Projects.MARSUAE.KPISceneGenerator import SceneGenerator
 
-__author__ = 'ilays'
+__author__ = 'natalyak'
 
 
-class SceneCalculations(SceneBaseClass):
+class MARSUAESceneCalculations(SceneBaseClass):
     def __init__(self, data_provider):
-        super(SceneCalculations, self).__init__(data_provider)
+        super(MARSUAESceneCalculations, self).__init__(data_provider)
         self.scene_generator = SceneGenerator(self._data_provider)
 
     def calculate_kpis(self):
