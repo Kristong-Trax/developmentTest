@@ -12,7 +12,6 @@ __author__ = 'limorc'
 
 
 class GSKSGToolBox:
-
     KPI_DICT = {"planogram": "planogram", "secondary_display": "secondary_display",
                 "promo": "promo"}
 
@@ -32,7 +31,7 @@ class GSKSGToolBox:
         self.store_info = self.data_provider[Data.STORE_INFO]
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
         self.ps_data_provider = PsDataProvider(self.data_provider, self.output)
-        self.manufacturer_fk = None if self.data_provider[Data.OWN_MANUFACTURER]['param_value'].iloc[0] is None else\
+        self.manufacturer_fk = None if self.data_provider[Data.OWN_MANUFACTURER]['param_value'].iloc[0] is None else \
             int(self.data_provider[Data.OWN_MANUFACTURER]['param_value'].iloc[0])
         self.set_up_template = pd.read_excel(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data',
                                                           'gsk_set_up.xlsx'), sheet_name='Functional KPIs',
@@ -49,7 +48,15 @@ class GSKSGToolBox:
         """
         This function calculates the KPI results.
         """
+        # # global kpis in store_level
+        assortment_store_dict = self.gsk_generator.availability_store_function()
+        self.common.save_json_to_new_tables(assortment_store_dict)
+        facings_sos_dict = self.gsk_generator.gsk_global_facings_sos_whole_store_function()
+        self.common.save_json_to_new_tables(facings_sos_dict)
+        linear_sos_dict = self.gsk_generator.gsk_global_linear_sos_whole_store_function()
+        self.common.save_json_to_new_tables(linear_sos_dict)
 
+        # global kpis in category level & kpi results are used for orange score kpi
         assortment_category_dict = self.gsk_generator.availability_category_function()
         self.common.save_json_to_new_tables(assortment_category_dict)
         fsos_category_dict = self.gsk_generator.gsk_global_facings_sos_by_category_function()
@@ -67,7 +74,7 @@ class GSKSGToolBox:
         score = 0
         return score
 
-    def msl_compliance_score(self, category, categories_results_json, category_targets,parent_result_identifier):
+    def msl_compliance_score(self, category, categories_results_json, category_targets, parent_result_identifier):
         results_list = []
         msl_kpi_fk = self.common.get_kpi_fk_by_kpi_type(Consts.MSL_ORANGE_SCORE)
         if category not in categories_results_json:
@@ -89,16 +96,16 @@ class GSKSGToolBox:
                :param categories_results_json: type of the desired kpi
                :return category json :  number-category_fk,number-result
            """
-        results_list =[]
+        results_list = []
         fsos_kpi_fk = self.common.get_kpi_fk_by_kpi_type(Consts.FSOS_ORANGE_SCORE)
-        dst_result = categories_results_json[category]
+        dst_result = categories_results_json[category] if category in categories_results_json.keys() else 0
         benchmark = category_targets['fsos_benchmark'].iloc[0]
         weight = category_targets['fsos_weight'].iloc[0]
         result = weight if dst_result >= benchmark else 0
         results_list.append({'fk': fsos_kpi_fk, 'numerator_id': category, 'denominator_id':
             self.store_id, 'denominator_result': 1, 'numerator_result': result, 'result': result,
-                                                 'target': weight, 'score': result,
-                                                 'identifier_parent': parent_result_identifier, 'should_enter': True})
+                             'target': weight, 'score': result,
+                             'identifier_parent': parent_result_identifier, 'should_enter': True})
         return result, results_list
 
     def extract_json_results_by_kpi(self, general_kpi_results, kpi_type):
@@ -109,6 +116,8 @@ class GSKSGToolBox:
             :return category json :  number-category_fk,number-result
         """
         kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_type)
+        if general_kpi_results is None:
+            return {}
         categories_results_json = self.extract_json_results(kpi_fk, general_kpi_results)
         return categories_results_json
 
@@ -171,10 +180,20 @@ class GSKSGToolBox:
                 else:
                     self.targets.drop(self.targets.index, inplace=True)
 
-            # targets contains, params equal to store info or , param value empty or none
-            self.targets = self.targets[
-                (self.targets[store_param_val] == self.store_info[param][0].encode(GlobalConsts.HelperConsts.UTF8)) |
-                (self.targets[store_param_val] == '') | (not self.targets[store_param_val].any())]
+            self.targets['target_match'] = self.targets[store_param_val].apply(self.checking_param, store_info_col=param)
+            self.targets = self.targets[self.targets['target_match']]
+
+    def checking_param(self, df_param, store_info_col):
+        # x is  self.targets[store_param_val]
+        if isinstance(df_param, list):
+            if self.store_info[store_info_col][0].encode(GlobalConsts.HelperConsts.UTF8) in df_param:
+                return True
+        if isinstance(df_param, unicode):
+            if self.store_info[store_info_col][0].encode(GlobalConsts.HelperConsts.UTF8) == df_param or df_param == '':
+                return True
+        if isinstance(df_param, type(None)):
+            return False
+        return False
 
     def display_distribution(self, display_name, category_fk, category_targets, parent_identifier, kpi_name,
                              parent_kpi_name, scif_df):
@@ -191,12 +210,22 @@ class GSKSGToolBox:
             :param scif_df - scif filtered by promo activation settings
 
         """
-        kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_name+Consts.COMPLIANCE_KPI)
+        kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_name + Consts.COMPLIANCE_KPI)
         results_list = []
-        display_products = scif_df[scif_df['product_type'] == 'POS']
+        identifier_result = self.common.get_dictionary(category_fk=category_fk, kpi_fk=kpi_fk)
+        weight = category_targets['{}_weight'.format(parent_kpi_name)].iloc[0]
+
+        if scif_df is None:
+            results_list.append({'fk': kpi_fk, 'numerator_id': category_fk, 'denominator_id': self.store_id,
+                                 'denominator_result': 1, 'numerator_result': 0, 'result': 0,
+                                 'score': 0, 'identifier_parent': parent_identifier, 'identifier_result':
+                                     identifier_result, 'target': weight, 'should_enter': True})
+            return 0, results_list
+
+        display_products = scif_df[(scif_df['product_type'] == 'POS') & (scif_df['category_fk'] == category_fk)]
+
         display_name = "{}_name".format(display_name.lower())
         display_names = category_targets[display_name].iloc[0]
-        identifier_result = self.common.get_dictionary(category_fk=category_fk, kpi_fk=kpi_fk)
         kpi_result = 0
 
         # check's if display names (received from external targets) are string or array of strings
@@ -213,10 +242,9 @@ class GSKSGToolBox:
             kpi_result += current_display_prod['facings'].sum()
             results_list.extend(display_sku_level)
 
-        weight = category_targets['{}_weight'.format(parent_kpi_name)].iloc[0]
         benchmark = category_targets['{}_benchmark'.format(parent_kpi_name)].iloc[0]
         kpi_score = weight if kpi_result >= benchmark else 0
-        results_list.append({'fk': kpi_fk, 'numerator_id':   category_fk, 'denominator_id': self.store_id,
+        results_list.append({'fk': kpi_fk, 'numerator_id': category_fk, 'denominator_id': self.store_id,
                              'denominator_result': 1, 'numerator_result': kpi_score, 'result': kpi_score,
                              'score': kpi_score, 'identifier_parent': parent_identifier, 'identifier_result':
                                  identifier_result, 'target': weight, 'should_enter': True})
@@ -230,14 +258,14 @@ class GSKSGToolBox:
             :param kpi_name - kpi name
         """
         results_list = []
-        kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_name+Consts.SKU_LEVEL_LIST)
+        kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_name + Consts.SKU_LEVEL_LIST)
         parent_kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_name + Consts.COMPLIANCE_KPI)
         identifier_parent = self.common.get_dictionary(category_fk=category_fk, kpi_fk=parent_kpi_fk)
 
         display_names = display_data['item_id'].unique()
         for display in display_names:
             count = float(display_data[display_data['item_id'] == display]['facings'].sum()) / float(100)
-            results_list.append({'fk': kpi_fk, 'numerator_id':   display, 'denominator_id': category_fk,
+            results_list.append({'fk': kpi_fk, 'numerator_id': display, 'denominator_id': category_fk,
                                  'denominator_result': 1, 'numerator_result': count, 'result': count,
                                  'score': count, 'identifier_parent': identifier_parent, 'should_enter': True})
         return results_list
@@ -272,10 +300,10 @@ class GSKSGToolBox:
 
         shelf_data = pd.merge(self.match_product_in_scene[['scene_fk', 'product_fk', 'shelf_number']],
                               filtered_scif[['scene_id', 'product_fk']], how='right', left_on=
-                              ['scene_fk', 'product_fk'], right_on=['scene_id', 'product_fk'])
+                              ['scene_fk', 'product_fk'], right_on=['scene_id', 'product_fk'])  # why is this happening?
 
         # merge assortment results with match_product_in_scene for shelf_number parameter
-        kpi_results = pd.merge(shelf_data, kpi_results, how='right', on=['product_fk'])
+        kpi_results = pd.merge(shelf_data, kpi_results, how='right', on=['product_fk'])  # also problematic
         return kpi_results
 
     def shelf_compliance(self, category, assortment_df, category_targets, identifier_parent):
@@ -289,17 +317,22 @@ class GSKSGToolBox:
         """
         results_list = []
         kpi_fk = self.common.get_kpi_fk_by_kpi_type(Consts.SHELF_COMPLIANCE)
-        assortment_cat = assortment_df[assortment_df['category_fk'] == category]
-        shelf_weight = category_targets['shelf_weight'].iloc[0]
-        benchmark = category_targets['shelf_benchmark'].iloc[0]
-        shelves = [int(shelf) for shelf in category_targets['shelf_number'].iloc[0].split(",")]
-        shelf_df = assortment_cat[assortment_cat['shelf_number'].isin(shelves)]
-        numerator = shelf_df.shape[0]
-        denominator = assortment_cat.shape[0]
-        result = float(numerator) / float(denominator)
-        score = shelf_weight if result >= benchmark else 0
-        results_list.append({'fk': kpi_fk, 'numerator_id': category, 'denominator_id':
-            self.store_id, 'denominator_result': denominator, 'numerator_result': numerator, 'result': score,
+        if assortment_df is not None:
+            assortment_cat = assortment_df[assortment_df['category_fk'] == category]
+            shelf_weight = category_targets['shelf_weight'].iloc[0]
+            benchmark = category_targets['shelf_benchmark'].iloc[0]
+            shelves = [int(shelf) for shelf in category_targets['shelf_number'].iloc[0].split(",")]
+            shelf_df = assortment_cat[assortment_cat['shelf_number'].isin(shelves)]
+            numerator = len(shelf_df['product_fk'].unique())
+            denominator = len(assortment_cat['product_fk'].unique())
+            result = float(numerator) / float(denominator) if numerator and denominator != 0 else 0
+            score = shelf_weight if result >= benchmark else 0
+        else:
+            denominator, numerator, score, shelf_weight = 0, 0, 0, 0
+            result = float(numerator) / float(denominator) if numerator and denominator != 0 else 0
+            shelf_weight = category_targets['shelf_weight'].iloc[0]
+            results_list.append({'fk': kpi_fk, 'numerator_id': category, 'denominator_id':
+            self.store_id, 'denominator_result': denominator, 'numerator_result': numerator, 'result': result,
                              'target': shelf_weight, 'score': score,
                              'identifier_parent': identifier_parent, 'should_enter': True})
         return score, results_list, shelf_weight
@@ -325,16 +358,16 @@ class GSKSGToolBox:
         planogram_score = shelf_compliance_score + sequence_kpi
         planogram_weight = shelf_weight + sequence_weight
         results_list.append({'fk': kpi_fk, 'numerator_id': category_fk, 'denominator_id':
-                              self.store_id, 'denominator_result': 1, 'numerator_result': planogram_score,
+            self.store_id, 'denominator_result': 1, 'numerator_result': planogram_score,
                              'result': planogram_score,
                              'target': planogram_weight, 'score': planogram_score,
                              'identifier_parent': identifier_parent, 'identifier_result': identifier_result
-                             ,'should_enter': True})
+                                , 'should_enter': True})
         return planogram_score, results_list
 
     def sequence(self, category_targets):
         """
-            this function calculate sequence  #TODO
+            this function calculate sequence  #TODO SEQUENCE
         """
         seq_1_target = 0 if category_targets['seq_1_weight'].empty else category_targets['seq_1_weight'].iloc[0]
         seq_2_target = 0 if category_targets['seq_2_weight'].empty else category_targets['seq_2_weight'].iloc[0]
@@ -375,10 +408,10 @@ class GSKSGToolBox:
 
         display_score = weight if (dispenser_score == weight) or (counter_top_score == weight) or (standee_score ==
                                                                                                    weight) else 0
-        results_list.append({'fk': total_kpi_fk, 'numerator_id':   category_fk, 'denominator_id': self.store_id,
+        results_list.append({'fk': total_kpi_fk, 'numerator_id': category_fk, 'denominator_id': self.store_id,
                              'denominator_result': 1, 'numerator_result': display_score, 'result': display_score,
                              'target': weight, 'score': display_score, 'identifier_parent': identifier_parent,
-                             'identifier_result': result_identifier,'should_enter': True})
+                             'identifier_result': result_identifier, 'should_enter': True})
 
         return results_list, display_score
 
@@ -412,9 +445,9 @@ class GSKSGToolBox:
 
         results_list.append({'fk': total_kpi_fk, 'numerator_id': category_fk, 'denominator_id':
             self.store_id, 'denominator_result': 1, 'numerator_result': promo_score, 'result': promo_score,
-                                                 'target': weight,
-                                                 'score': promo_score, 'identifier_parent': identifier_parent,
-                                                 'identifier_result': result_identifier, 'should_enter': True})
+                             'target': weight,
+                             'score': promo_score, 'identifier_parent': identifier_parent,
+                             'identifier_result': result_identifier, 'should_enter': True})
 
         return results_list, promo_score
 
@@ -430,14 +463,14 @@ class GSKSGToolBox:
             return
 
         total_kpi_fk = self.common.get_kpi_fk_by_kpi_type(Consts.ORANGE_SCORE_COMPLIANCE)
-        fsos_results = self.extract_json_results_by_kpi(fsos_category_res, Consts.GLOBAL_FSOS_BY_CATEGORY)
-        msl_results = self.extract_json_results_by_kpi(assortment_category_res, Consts.GLOBAL_DST_BY_CATEGORY)
+        fsos_json_global_results = self.extract_json_results_by_kpi(fsos_category_res, Consts.GLOBAL_FSOS_BY_CATEGORY)
+        msl_json_global_results = self.extract_json_results_by_kpi(assortment_category_res, Consts.GLOBAL_DST_BY_CATEGORY)
 
         # scif after filtering it by set up file for each kpi
         scif_secondary = self.gsk_generator.tool_box.tests_by_template('secondary_display', self.scif,
-                                                                           self.set_up_data)
+                                                                       self.set_up_data)
         scif_promo = self.gsk_generator.tool_box.tests_by_template('promo', self.scif,
-                                                                          self.set_up_data)
+                                                                   self.set_up_data)
         categories = self.targets[DataProviderConsts.ProductsConsts.CATEGORY_FK].unique()
         assortment = self.msl_assortment('Distribution - SKU')
 
@@ -446,10 +479,10 @@ class GSKSGToolBox:
 
             cat_targets = self.targets[self.targets[DataProviderConsts.ProductsConsts.CATEGORY_FK] == cat]
 
-            msl_score, msl_results = self.msl_compliance_score(cat, msl_results, cat_targets,
+            msl_score, msl_results = self.msl_compliance_score(cat, msl_json_global_results, cat_targets,
                                                                orange_score_result_identifier)
 
-            fsos_score, fsos_results = self.fsos_compliance_score(cat, fsos_results, cat_targets,
+            fsos_score, fsos_results = self.fsos_compliance_score(cat, fsos_json_global_results, cat_targets,
                                                                   orange_score_result_identifier)
 
             planogram_score, planogram_results = self.planogram(cat, assortment, cat_targets,
@@ -463,8 +496,9 @@ class GSKSGToolBox:
                                                                       orange_score_result_identifier, scif_promo)
 
             compliance_category_score = promo_score + secondary_score + fsos_score + msl_score + planogram_score
-            results_list.extend(msl_results+fsos_results+planogram_results+secondary_display_res+promo_activation_res)
-            results_list.append({'fk': total_kpi_fk, 'numerator_id':  self.manufacturer_fk, 'denominator_id': cat,
+            results_list.extend(
+                msl_results + fsos_results + planogram_results + secondary_display_res + promo_activation_res)
+            results_list.append({'fk': total_kpi_fk, 'numerator_id': self.manufacturer_fk, 'denominator_id': cat,
                                  'denominator_result': 1, 'numerator_result': compliance_category_score, 'result':
                                      compliance_category_score, 'score': compliance_category_score,
                                  'identifier_result': orange_score_result_identifier})

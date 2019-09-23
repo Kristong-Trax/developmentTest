@@ -85,6 +85,9 @@ class MARSUAE_SANDToolBox:
     DENOM_FILTERS = 'denom_filters'
     NUM_FILTERS = 'num_filters'
     INCLUDE = 'include'
+    DUPLICATE_SUFFIX = '_2'
+    DUPLIC_KPI_FK = 'duplicate_kpi_fk'
+    DUPLIC_KPI_TYPE = 'duplic_kpi_type'
 
     def __init__(self, data_provider, output):
         self.output = output
@@ -395,12 +398,43 @@ class MARSUAE_SANDToolBox:
         #            'population': {'exclude': {'template_name': 'Checkout Chocolate'},
         #                           'include': [{'category_fk': 6, 'manufacturer_fk': 3}]}}
 
+    # def update_sos_filters_with_additional_filters(self, final_filters, param_row):
+    #     main_filters = copy.deepcopy(final_filters)
+    #     main_filters.get(self.DENOM_FILTERS).get(self.POPULATION).get(self.EXCLUDE). \
+    #         update({param_row[self.EXCLUDE_TYPE_2]: param_row[self.EXCLUDE_VALUE_2]})
+    #     main_filters.get(self.NUM_FILTERS).get(self.POPULATION).get(self.EXCLUDE). \
+    #         update({param_row[self.EXCLUDE_TYPE_2]: param_row[self.EXCLUDE_VALUE_2]})
+    #     if not param_row[self.EXCLUDE_EXCEPTION_TYPE_2] or not\
+    #             param_row[self.EXCLUDE_EXCEPTION_TYPE_2] == param_row[self.EXCLUDE_EXCEPTION_TYPE_2]:
+    #         return main_filters, None
+    #
+    #     additional_filters = copy.deepcopy(final_filters)
+    #     additional_filters.get(self.DENOM_FILTERS).get(self.POPULATION).get(self.INCLUDE)[0]. \
+    #         update({param_row[self.EXCLUDE_TYPE_2]: param_row[self.EXCLUDE_VALUE_2],
+    #                 param_row[self.EXCLUDE_EXCEPTION_TYPE_2]: param_row[self.EXCLUDE_EXCEPTION_VALUE_2]})
+    #     additional_filters.get(self.NUM_FILTERS).get(self.POPULATION).get(self.INCLUDE)[0]. \
+    #         update({param_row[self.EXCLUDE_TYPE_2]: param_row[self.EXCLUDE_VALUE_2],
+    #                 param_row[self.EXCLUDE_EXCEPTION_TYPE_2]: param_row[self.EXCLUDE_EXCEPTION_VALUE_2]})
+    #     return main_filters, additional_filters
+
     def update_sos_filters_with_additional_filters(self, final_filters, param_row):
         main_filters = copy.deepcopy(final_filters)
-        main_filters.get(self.DENOM_FILTERS).get(self.POPULATION).get(self.EXCLUDE). \
-            update({param_row[self.EXCLUDE_TYPE_2]: param_row[self.EXCLUDE_VALUE_2]})
-        main_filters.get(self.NUM_FILTERS).get(self.POPULATION).get(self.EXCLUDE). \
-            update({param_row[self.EXCLUDE_TYPE_2]: param_row[self.EXCLUDE_VALUE_2]})
+        main_denom_exclude_filters = main_filters.get(self.DENOM_FILTERS).get(self.POPULATION).get(self.EXCLUDE)
+        if param_row[self.EXCLUDE_TYPE_2] != param_row[self.EXCLUDE_TYPE_1]:
+            main_denom_exclude_filters.update({param_row[self.EXCLUDE_TYPE_2]: param_row[self.EXCLUDE_VALUE_2]})
+        else:
+            excl_value_list = [param_row[self.EXCLUDE_VALUE_1]]
+            excl_value_list.append(param_row[self.EXCLUDE_VALUE_2])
+            main_denom_exclude_filters.update({param_row[self.EXCLUDE_TYPE_1]: excl_value_list})
+
+        main_num_exclude_filters = main_filters.get(self.NUM_FILTERS).get(self.POPULATION).get(self.EXCLUDE)
+        if param_row[self.EXCLUDE_TYPE_2] != param_row[self.EXCLUDE_TYPE_1]:
+            main_num_exclude_filters.update({param_row[self.EXCLUDE_TYPE_2]: param_row[self.EXCLUDE_VALUE_2]})
+        else:
+            excl_value_list = [param_row[self.EXCLUDE_VALUE_1]]
+            excl_value_list.append(param_row[self.EXCLUDE_VALUE_2])
+            main_num_exclude_filters.update({param_row[self.EXCLUDE_TYPE_1]: excl_value_list})
+
         if not param_row[self.EXCLUDE_EXCEPTION_TYPE_2] or not\
                 param_row[self.EXCLUDE_EXCEPTION_TYPE_2] == param_row[self.EXCLUDE_EXCEPTION_TYPE_2]:
             return main_filters, None
@@ -421,6 +455,15 @@ class MARSUAE_SANDToolBox:
         except IndexError as e:
             Log.error('Value {} does not exist'.format(value))
         return pk
+
+    def add_duplicate_kpi_fk_where_applicable(self, store_atomics):
+        store_atomics[self.DUPLIC_KPI_TYPE] = store_atomics[self.KPI_TYPE].apply(lambda x: '{}{}'.format(x,
+                                                                                                self.DUPLICATE_SUFFIX))
+        kpi_static_data = self.kpi_static_data[['pk', 'type']]
+        kpi_static_data.rename(columns={'pk': self.DUPLIC_KPI_FK, 'type': self.DUPLIC_KPI_TYPE}, inplace=True)
+        store_atomics = store_atomics.merge(kpi_static_data, on=self.DUPLIC_KPI_TYPE, how='left')
+        store_atomics[self.DUPLIC_KPI_FK] = store_atomics[self.DUPLIC_KPI_FK].apply(lambda x: x if x == x else '')
+        return store_atomics
         
 #-------------------------------main calculation section-----------------------------------
 
@@ -472,11 +515,15 @@ class MARSUAE_SANDToolBox:
 
     def calculate_atomics(self):
         store_atomics = self.get_store_atomic_kpi_parameters()
+        if store_atomics.empty:
+            Log.warning('No targets were set for store type of store {}'.format(self.store_id))
+            return
         store_atomics = self.get_atomics_for_template_groups_present_in_store(store_atomics)
         if not store_atomics.empty:
             self.build_tiers_for_atomics(store_atomics)
             execute_list = Node.get_kpi_execute_list(store_atomics)
             store_atomics = store_atomics.reset_index(drop=True)
+            store_atomics = self.add_duplicate_kpi_fk_where_applicable(store_atomics)
             for kpi in execute_list:
                 i = store_atomics[store_atomics[self.KPI_TYPE] == kpi].index[0]
                 row = store_atomics.iloc[i]
@@ -583,10 +630,19 @@ class MARSUAE_SANDToolBox:
         # in case the rule is >= step...
         kpi_name = param_row[self.KPI_TYPE]
         tiers = self.atomic_tiers_df[self.atomic_tiers_df[self.KPI_TYPE] == kpi_name]
-        relevant_step = min(tiers[tiers['step_value'] >= result]['step_value'].values.tolist())
+        relevant_step = min(tiers[tiers['step_value'] > result]['step_value'].values.tolist())
         tier_score_value = tiers[tiers['step_value'] == relevant_step]['step_score_value'].values[0]
         score = tier_score_value
         return score
+
+    # def get_tiered_score(self, param_row, result):
+    #     # in case the rule is >= step...
+    #     kpi_name = param_row[self.KPI_TYPE]
+    #     tiers = self.atomic_tiers_df[self.atomic_tiers_df[self.KPI_TYPE] == kpi_name]
+    #     relevant_step = min(tiers[tiers['step_value'] >= result]['step_value'].values.tolist())
+    #     tier_score_value = tiers[tiers['step_value'] == relevant_step]['step_score_value'].values[0]
+    #     score = tier_score_value
+    #     return score
 
     def get_relative_score(self, param_row, result):
         target = float(param_row[self.TARGET])
@@ -630,8 +686,14 @@ class MARSUAE_SANDToolBox:
                                            identifier_parent=identifier_parent, identifier_result=identifier_result,
                                            should_enter=True)
             self.add_kpi_result_to_kpi_results_df([param_row['kpi_level_2_fk'], param_row[self.KPI_TYPE],
-                                                   result*100, score, weight, score * weight,
+                                                   result * 100, score, weight, score * weight,
                                                    param_row[self.KPI_LVL_2_NAME]])
+            if param_row[self.DUPLIC_KPI_FK]:
+                self.common.write_to_db_result(fk=param_row[self.DUPLIC_KPI_FK], numerator_id=num_id,
+                                               numerator_result=numerator_length, denominator_id=denom_id,
+                                               denominator_result=denominator_length, target=target,
+                                               result=result * 100, score=score * weight, weight=weight,
+                                               identifier_parent=identifier_result, should_enter=True)
 
     def calculate_displays(self, param_row):
         general_filters = self.get_general_filters(param_row)
@@ -658,7 +720,7 @@ class MARSUAE_SANDToolBox:
 
     def get_identifier_result_for_atomic(self, param_row):
         identifier_result = None
-        if param_row[self.CHILD_KPI]:
+        if param_row[self.CHILD_KPI] or param_row[self.DUPLIC_KPI_FK]:
             identifier_result = {'kpi_fk': param_row['kpi_level_2_fk']}
         return identifier_result
 
@@ -685,6 +747,12 @@ class MARSUAE_SANDToolBox:
         self.add_kpi_result_to_kpi_results_df([param_row['kpi_level_2_fk'], param_row['kpi_type'],
                                                result * 100, score, weight, score * weight,
                                                param_row[self.KPI_LVL_2_NAME]])
+        if param_row[self.DUPLIC_KPI_FK]:
+            self.common.write_to_db_result(fk=param_row[self.DUPLIC_KPI_FK], numerator_id=self.own_manuf_fk,
+                                           numerator_result=scene_probe_groups, denominator_result=all_ch_o,
+                                           result=result * 100, target=target,
+                                           denominator_id=self.store_id, score=score * weight, weight=weight,
+                                           identifier_parent=identifier_result, should_enter=True)
 
     def calculate_block(self, param_row):
         if self.lvl3_assortment.empty:

@@ -79,6 +79,7 @@ class MarsUsPositionGraphs:
         return matches
 
     def pos_scrubber(self, matches):
+        matches = matches[matches['stacking_layer'] > 0]
         columns_of_import = ['scene_fk', 'bay_number', 'shelf_number', 'facing_sequence_number']
         pos_mask = matches['product_type'] == 'POS'
         pos = matches[pos_mask]
