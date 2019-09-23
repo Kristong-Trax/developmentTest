@@ -20,6 +20,8 @@ from Projects.PNGRO.Utils.ParseTemplates import parse_template
 from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
 from KPIUtils_v2.Calculations.AdjacencyCalculations import Adjancency
 from KPIUtils_v2.Calculations.BlockCalculations import Block
+from KPIUtils_v2.Utils.Decorators.Decorators import kpi_runtime
+
 
 
 __author__ = 'Israel'
@@ -236,6 +238,7 @@ class PNGRO_PRODToolBox:
         if self.main_shelves:
             self.calculate_sbd()
 
+    @kpi_runtime()
     def calculate_sbd(self):
         for x, params in self.sbd_kpis_data.iterrows():
             # if self.check_if_blade_ok(params, self.match_display, category_status_ok):
@@ -289,6 +292,7 @@ class PNGRO_PRODToolBox:
                             self.write_to_db_result(score=int(score)*100, level=self.LEVEL3, fk=atomic_kpi_fk,
                                                     logical_operator=location)
 
+    @kpi_runtime()
     def calculate_sos_pallets_per_product_by_scene_type_secondary_shelves(self):
         if not self.scene_display_bay.empty:
             kpi_fk = self.get_new_kpi_fk_by_kpi_name('Share of SKU on Secondary Shelf')
@@ -442,6 +446,7 @@ class PNGRO_PRODToolBox:
             filters.update({type3: value3})
         return filters, target
 
+    @kpi_runtime()
     def calculate_assortment_main_shelf(self):
         assortment_result_lvl3 = self.assortment.get_lvl3_relevant_ass()
         if not self.main_shelves and not assortment_result_lvl3.empty:
@@ -742,6 +747,7 @@ class PNGRO_PRODToolBox:
     def split_and_strip(string):
         return map(lambda x: x.strip(' '), str(string).split(',')) if string else []
 
+    @kpi_runtime()
     def calculate_linear_share_of_shelf_per_product_display(self):
         # display_agg, display_filter_from_scif = self.get_display_agg()
         # display_agg = self.get_display_agg()
