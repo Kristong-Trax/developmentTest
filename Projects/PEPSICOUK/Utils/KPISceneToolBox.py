@@ -124,8 +124,10 @@ class PEPSICOUKSceneToolBox:
             self.calculate_external_kpis()
 
     def calculate_external_kpis(self):
-        self.calculate_product_blocking()
-        self.calculate_adjacency()
+        # self.calculate_product_blocking()
+        # self.calculate_adjacency()
+        self.calculate_product_blocking_new()
+        self.calculate_adjacency_new()
 
     def calculate_internal_kpis(self):
         self.calculate_number_of_facings_and_linear_space()
@@ -332,13 +334,13 @@ class PEPSICOUKSceneToolBox:
     def calculate_adjacency_new(self):
         block_pairs = self.get_group_pairs()
         kpi_fk = self.common.get_kpi_fk_by_kpi_type(self.PRODUCT_BLOCKING_ADJACENCY)
+        block_pairs = [list(pair) for pair in block_pairs]
         for pair in block_pairs:
             group_1_fk = self.custom_entities[self.custom_entities['name'] == pair[0]]['pk'].values[0]
             group_2_fk = self.custom_entities[self.custom_entities['name'] == pair[1]]['pk'].values[0]
 
             adjacency_results = pd.DataFrame(columns=['anchor_block', 'tested_block', 'anchor_facing_percentage',
                                                       'tested_facing_percentage', 'scene_fk', 'is_adj'])
-            pair = list(pair)
             blocks = {'anchor_products': self.passed_blocks[pair[0]], 'tested_products': self.passed_blocks[pair[1]]}
             merged_blocks = self.adjacency._union_anchor_tested_blocks(blocks)
             adjacency_results = self.adjacency._is_block_adjacent(adjacency_results, merged_blocks)
