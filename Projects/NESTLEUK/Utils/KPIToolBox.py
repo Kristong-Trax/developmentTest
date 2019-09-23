@@ -205,6 +205,7 @@ class NESTLEUKToolBox(NESTLEUKConsts):
         set_fk = self.kpi_static_data[self.kpi_static_data['kpi_set_name'] == set_name]['kpi_set_fk'].values[0]
         self.write_to_db_result(set_fk, set_score, level=self.LEVEL1)
 
+    @kpi_runtime()
     def calculate_ava(self):
         """
         This function calculates the KPI results.
