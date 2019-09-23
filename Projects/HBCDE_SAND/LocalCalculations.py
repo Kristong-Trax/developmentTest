@@ -5,9 +5,6 @@ from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
 from Trax.Utils.Conf.Configuration import Config
 from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
 from Projects.HBCDE_SAND.Calculations import Calculations
-from Trax.Algo.Calculations.Core.Vanilla.Calculations import SceneVanillaCalculations
-from Trax.Algo.Calculations.Core.Vanilla.Output import VanillaOutput
-from Projects.HBCDE_SAND.SceneKpis.SceneCalculations import SceneCalculations
 
 
 def save_scene_item_facts_to_data_provider(data_provider, output):
