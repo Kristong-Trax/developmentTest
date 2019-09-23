@@ -33,26 +33,26 @@ class TYSONToolBox:
         # self.match_display_in_scene = self.data_provider._display_set_match_display_in_scene(self, level, uid)
         self.match_display_in_scene = self.data_provider.match_display_in_scene
 
-
-
     def calculate_linear_feet(self):
         '''
-        :return: the df of numerator which is grouped by product_fk and
-                    the denominator which is grouped by template_fk and product_fk.
-                    In which the final result is the numerator over the denominator.
+        This Function calculates the linear sos of products in scenes :
+        'Frozen Meat and Frozen Breakfast-Secondary Locations' and 'Frozen Meat and Frozen Breakfast - Main Aisle'.
+        The numerator is grouped by product_fk and denominator is grouped by scene_if.
+        If the scene display name is 'Bunker Cooler', then we taking stacking into account. Else, stacking is not considerd
+        in terms of linear sos.
+        :return:
         '''
-        # Calls the updated scif the remove_substitue method
+
         filtered_scif = self.scif[
             ['scene_id', 'template_fk', 'template_name', 'product_fk', 'net_len_add_stack', 'net_len_ign_stack']]
 
         filtered_scif[filtered_scif['template_name'].isin(["Frozen Meat and Frozen Breakfast - Secondary Locations",
                                                            'Frozen Meat and Frozen Breakfast - Main Aisle'])]
         if filtered_scif.empty:
-            pass
+            return
 
         else:
-            filtered_scif.dropna(subset=['net_len_add_stack'])
-
+            filtered_scif = filtered_scif.dropna(subset=['net_len_add_stack'], how='all')
 
             # Need to display name as the "bunker cooler" in display name determines
             # whether the linear feet is stacked or not
@@ -65,16 +65,16 @@ class TYSONToolBox:
 
             else:
                 scif_with_display_name = filtered_scif
+
                 scif_with_display_name['display_name'] = "Not a Bunker Cooler"
 
-
-
-
             scif_with_display_name.loc[scif_with_display_name['display_name'] == 'Bunker Cooler', 'final_linear_feet'] = \
-                scif_with_display_name.loc[scif_with_display_name['display_name'] == 'Bunker Cooler', 'net_len_add_stack']
+                scif_with_display_name.loc[
+                    scif_with_display_name['display_name'] == 'Bunker Cooler', 'net_len_add_stack']
 
             scif_with_display_name.loc[scif_with_display_name['display_name'] != 'Bunker Cooler', 'final_linear_feet'] = \
-                scif_with_display_name.loc[scif_with_display_name['display_name'] != 'Bunker Cooler', 'net_len_ign_stack']
+                scif_with_display_name.loc[
+                    scif_with_display_name['display_name'] != 'Bunker Cooler', 'net_len_ign_stack']
 
             scif_with_display_name = scif_with_display_name.drop(columns=['net_len_ign_stack', 'net_len_add_stack'])
 
@@ -89,9 +89,10 @@ class TYSONToolBox:
             results['result'] = (results['numerator_result'] / results['denominator_result'])
 
             results['result'] = (results['numerator_result'] / results['denominator_result'])
+            results = results[results['result'] != 0]
 
             kpi_fk = self.common.get_kpi_fk_by_kpi_type('Tyson_SOS')
-
+            a = 1
             for row in results.itertuples():
                 self.common.write_to_db_result(fk=kpi_fk, score=1, result=getattr(row, 'result'), should_enter=True,
                                                numerator_result=getattr(row, 'numerator_result'),
@@ -99,7 +100,6 @@ class TYSONToolBox:
                                                numerator_id=getattr(row, 'product_fk'),
                                                denominator_id=getattr(row, 'template_fk'),
                                                by_scene=True)
-
 
     def main_calculation(self, *args, **kwargs):
         """

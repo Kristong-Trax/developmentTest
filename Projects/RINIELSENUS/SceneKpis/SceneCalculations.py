@@ -1,7 +1,7 @@
 from Projects.RINIELSENUS.TYSON.KPISceneGenerator import SceneGenerator
 from Trax.Apps.Services.KEngine.Handlers.Utils.Scripts import SceneBaseClass
 
-__author__ = 'Nic, Sam'
+__author__ = 'krishnat'
 
 
 class SceneCalculations(SceneBaseClass):
