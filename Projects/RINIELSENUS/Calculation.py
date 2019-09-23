@@ -3,7 +3,7 @@
 # from mock import patch
 #
 # from KPIUtils.DB.Common import Common
-# from Projects.RINIELSENUS.KPIGenerator import MarsUsGenerator
+from Projects.RINIELSENUS.KPIGenerator import MarsUsGenerator
 # from Projects.RINIELSENUS.Utils.ParseTemplates import ParseMarsUsTemplates
 from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
 from Trax.Utils.Conf.Configuration import Config

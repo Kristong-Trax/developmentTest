@@ -51,55 +51,55 @@ class TYSONToolBox:
         if filtered_scif.empty:
             return
 
+
+        filtered_scif = filtered_scif.dropna(subset=['net_len_add_stack'], how='all')
+
+        # Need to display name as the "bunker cooler" in display name determines
+        # whether the linear feet is stacked or not
+
+        if not self.match_display_in_scene.empty:
+            relevant_match_display_in_scene = self.match_display_in_scene[['scene_fk', 'display_name']]
+            scif_with_display_name = filtered_scif.merge(relevant_match_display_in_scene, left_on='scene_id',
+                                                         right_on='scene_fk')
+            scif_with_display_name = scif_with_display_name.drop(columns=['scene_fk', 'scene_id'])
+
         else:
-            filtered_scif = filtered_scif.dropna(subset=['net_len_add_stack'], how='all')
+            scif_with_display_name = filtered_scif
 
-            # Need to display name as the "bunker cooler" in display name determines
-            # whether the linear feet is stacked or not
+            scif_with_display_name['display_name'] = "Not a Bunker Cooler"
 
-            if not self.match_display_in_scene.empty:
-                relevant_match_display_in_scene = self.match_display_in_scene[['scene_fk', 'display_name']]
-                scif_with_display_name = filtered_scif.merge(relevant_match_display_in_scene, left_on='scene_id',
-                                                             right_on='scene_fk')
-                scif_with_display_name = scif_with_display_name.drop(columns=['scene_fk', 'scene_id'])
+        scif_with_display_name.loc[scif_with_display_name['display_name'] == 'Bunker Cooler', 'final_linear_feet'] = \
+            scif_with_display_name.loc[
+                scif_with_display_name['display_name'] == 'Bunker Cooler', 'net_len_add_stack']
 
-            else:
-                scif_with_display_name = filtered_scif
+        scif_with_display_name.loc[scif_with_display_name['display_name'] != 'Bunker Cooler', 'final_linear_feet'] = \
+            scif_with_display_name.loc[
+                scif_with_display_name['display_name'] != 'Bunker Cooler', 'net_len_ign_stack']
 
-                scif_with_display_name['display_name'] = "Not a Bunker Cooler"
+        scif_with_display_name = scif_with_display_name.drop(columns=['net_len_ign_stack', 'net_len_add_stack'])
 
-            scif_with_display_name.loc[scif_with_display_name['display_name'] == 'Bunker Cooler', 'final_linear_feet'] = \
-                scif_with_display_name.loc[
-                    scif_with_display_name['display_name'] == 'Bunker Cooler', 'net_len_add_stack']
+        denominator_results = scif_with_display_name.groupby('template_fk', as_index=False)[
+            ['final_linear_feet']].sum().rename(columns={'final_linear_feet': 'denominator_result'})
 
-            scif_with_display_name.loc[scif_with_display_name['display_name'] != 'Bunker Cooler', 'final_linear_feet'] = \
-                scif_with_display_name.loc[
-                    scif_with_display_name['display_name'] != 'Bunker Cooler', 'net_len_ign_stack']
+        numerator_result = scif_with_display_name.groupby(
+            ['template_fk', 'product_fk'], as_index=False).sum().rename(
+            columns={'final_linear_feet': 'numerator_result'})
 
-            scif_with_display_name = scif_with_display_name.drop(columns=['net_len_ign_stack', 'net_len_add_stack'])
+        results = numerator_result.merge(denominator_results)
+        results['result'] = (results['numerator_result'] / results['denominator_result'])
 
-            denominator_results = scif_with_display_name.groupby('template_fk', as_index=False)[
-                ['final_linear_feet']].sum().rename(columns={'final_linear_feet': 'denominator_result'})
+        results['result'] = (results['numerator_result'] / results['denominator_result'])
+        results = results[results['result'] != 0]
 
-            numerator_result = scif_with_display_name.groupby(
-                ['template_fk', 'product_fk'], as_index=False).sum().rename(
-                columns={'final_linear_feet': 'numerator_result'})
-
-            results = numerator_result.merge(denominator_results)
-            results['result'] = (results['numerator_result'] / results['denominator_result'])
-
-            results['result'] = (results['numerator_result'] / results['denominator_result'])
-            results = results[results['result'] != 0]
-
-            kpi_fk = self.common.get_kpi_fk_by_kpi_type('Tyson_SOS')
-            a = 1
-            for row in results.itertuples():
-                self.common.write_to_db_result(fk=kpi_fk, score=1, result=getattr(row, 'result'), should_enter=True,
-                                               numerator_result=getattr(row, 'numerator_result'),
-                                               denominator_result=getattr(row, 'denominator_result'),
-                                               numerator_id=getattr(row, 'product_fk'),
-                                               denominator_id=getattr(row, 'template_fk'),
-                                               by_scene=True)
+        kpi_fk = self.common.get_kpi_fk_by_kpi_type('Tyson_SOS')
+        a = 1
+        for row in results.itertuples():
+            self.common.write_to_db_result(fk=kpi_fk, score=1, result=getattr(row, 'result'), should_enter=True,
+                                           numerator_result=getattr(row, 'numerator_result'),
+                                           denominator_result=getattr(row, 'denominator_result'),
+                                           numerator_id=getattr(row, 'product_fk'),
+                                           denominator_id=getattr(row, 'template_fk'),
+                                           by_scene=True)
 
     def main_calculation(self, *args, **kwargs):
         """
