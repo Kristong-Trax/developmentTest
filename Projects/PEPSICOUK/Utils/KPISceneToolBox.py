@@ -330,6 +330,7 @@ class PEPSICOUKSceneToolBox:
             self.block_results = self.block_results.append(pd.DataFrame([{'Group Name': row['Group Name'],
                                                                           'Score': result_df['is_block'].values[0]
                                                                           if not result_df.empty else False}]))
+            self.add_kpi_result_to_kpi_results_df([kpi_fk, group_fk, self.store_id, result, score])
 
     def calculate_adjacency_new(self):
         block_pairs = self.get_group_pairs()
@@ -351,6 +352,7 @@ class PEPSICOUKSceneToolBox:
                 result = self.commontools.get_yes_no_result(score)
             self.common.write_to_db_result(fk=kpi_fk, numerator_id=group_1_fk, denominator_id=group_2_fk,
                                            result=result, score=score, by_scene=True)
+            self.add_kpi_result_to_kpi_results_df([kpi_fk, group_1_fk, group_2_fk, result, score])
 
     def calculate_product_blocking(self):
         external_targets = self.commontools.all_targets_unpacked[self.commontools.all_targets_unpacked['type']
