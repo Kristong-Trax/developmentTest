@@ -239,7 +239,7 @@ class SceneGenerator:
 
     @log_runtime('Total Calculations', log_start=True)
     def scene_score(self):
-        if self.scene_tool_box.match_product_in_scene.empty:
+        if self.scene_tool_box.matches.empty:
             Log.warning('Match product in scene is empty for this scene')
         self.scene_tool_box.main_function()
         self.scene_tool_box.commit_results()
