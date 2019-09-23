@@ -23,7 +23,6 @@ from KPIUtils_v2.Calculations.BlockCalculations import Block
 from KPIUtils_v2.Utils.Decorators.Decorators import kpi_runtime
 
 
-
 __author__ = 'Israel'
 
 KPI_RESULT = 'report.kpi_results'
