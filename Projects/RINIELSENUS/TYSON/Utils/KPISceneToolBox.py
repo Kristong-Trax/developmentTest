@@ -16,6 +16,7 @@ __author__ = 'krishna'
 
 
 class TYSONToolBox:
+
     def __init__(self, data_provider, common, output):
         self.output = output
         self.data_provider = data_provider
@@ -40,7 +41,7 @@ class TYSONToolBox:
 
         filtered_scif[
             filtered_scif[ScifConsts.TEMPLATE_NAME].isin(["Frozen Meat and Frozen Breakfast - Secondary Locations",
-                                                         'Frozen Meat and Frozen Breakfast - Main Aisle'])]
+                                                          'Frozen Meat and Frozen Breakfast - Main Aisle'])]
         if filtered_scif.empty:
             return
 
@@ -62,7 +63,7 @@ class TYSONToolBox:
 
         scif_with_display_name.loc[scif_with_display_name['display_name'] == 'Bunker Cooler', 'final_linear_feet'] = \
             scif_with_display_name.loc[
-                scif_with_display_name['display_name'] == 'Bunker Cooler', 'net_len_add_stack']
+                scif_with_display_name['display_name'] == 'Bunker Cooler', ScifConsts.NET_LEN_ADD_STACK]
 
         scif_with_display_name.loc[scif_with_display_name['display_name'] != 'Bunker Cooler', 'final_linear_feet'] = \
             scif_with_display_name.loc[
@@ -90,8 +91,8 @@ class TYSONToolBox:
             self.common.write_to_db_result(fk=kpi_fk, score=1, result=getattr(row, 'result'), should_enter=True,
                                            numerator_result=getattr(row, 'numerator_result'),
                                            denominator_result=getattr(row, 'denominator_result'),
-                                           numerator_id=getattr(row, 'product_fk'),
-                                           denominator_id=getattr(row, 'template_fk'),
+                                           numerator_id=getattr(row, ScifConsts.PRODUCT_FK),
+                                           denominator_id=getattr(row, ScifConsts.TEMPLATE_FK),
                                            by_scene=True)
 
     def main_calculation(self, *args, **kwargs):
