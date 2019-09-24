@@ -90,10 +90,11 @@ class MARSRU_PRODKPIToolBox:
             pass
         self.kpi_fetcher = MARSRU_PRODKPIFetcher(self.project_name, self.kpi_templates, self.scif, self.match_product_in_scene,
                                                   self.products, self.session_uid)
-        self.survey_response = self.data_provider[Data.SURVEY_RESPONSES]
         self.sales_rep_fk = self.data_provider[Data.SESSION_INFO]['s_sales_rep_fk'].iloc[0]
         self.session_fk = self.data_provider[Data.SESSION_INFO]['pk'].iloc[0]
         self.store_type = self.data_provider[Data.STORE_INFO]['store_type'].iloc[0]
+        self.survey_response = self.data_provider[Data.SURVEY_RESPONSES]
+        self.survey_response_scene = self.kpi_fetcher.get_scene_survey_responses(self.session_fk)
         self.ignore_stacking = ignore_stacking
         self.facings_field = 'facings' if not self.ignore_stacking else 'facings_ign_stack'
         self.region = self.get_store_att5()
@@ -342,7 +343,7 @@ class MARSRU_PRODKPIToolBox:
 
         """
         availability_types = ['SKUs', 'BRAND', 'MAN', 'CAT', 'MAN in CAT', 'BRAND in CAT']
-        formula_types = ['number of SKUs', 'number of facings']
+        formula_types = ['number of SKUs', 'number of facings', 'number of facings on the first scene']
         for p in params:
             if p.get('Type') not in availability_types or p.get('Formula') not in formula_types:
                 continue
@@ -369,6 +370,9 @@ class MARSRU_PRODKPIToolBox:
 
         if not scenes:
             scenes = self.get_relevant_scenes(params)
+
+        if formula == 'number of facings on the first scene':
+            scenes = [self.get_first_created_scene(scenes)]
 
         if params.get("Manufacturer"):
             manufacturers = [str(manufacturer)
@@ -443,6 +447,11 @@ class MARSRU_PRODKPIToolBox:
     def get_relevant_scenes(self, params):
         scif = self.scif
 
+        locations = unicode(params.get('Template group')).split(
+            ', ') if params.get('Template group') else None
+        if locations:
+            scif = scif.loc[scif['template_group'].isin(locations)]
+
         locations = str(params.get('Location type')).split(
             ', ') if params.get('Location type') else None
         if locations:
@@ -504,12 +513,19 @@ class MARSRU_PRODKPIToolBox:
              'No': [u'Нет', u'НЕТ', u'нет', u'No', u'NO', u'no', u'False', u'FALSE', u'false', u'0']}
         for p in params:
 
-            if p.get('Formula') != 'answer for survey':
+            if p.get('Formula') not in ['answer for survey', 'answer for survey on the first scene']:
                 continue
 
             survey_question_code = str(int(p.get('Values')))
-            survey_data = self.survey_response.loc[self.survey_response['code']
-                                                   == survey_question_code]
+
+            if p.get('Formula') == 'answer for survey on the first scene':
+                scene = self.get_first_created_scene(self.get_relevant_scenes(p))
+                survey_data = \
+                    self.survey_response_scene.loc[(self.survey_response_scene['scene_fk'] == scene) &
+                                                   (self.survey_response_scene['code'] == survey_question_code)]
+            else:
+                survey_data = self.survey_response.loc[self.survey_response['code'] == survey_question_code]
+
             if not survey_data.empty:
 
                 if p.get('Type') == 'SURVEY BOOLEAN':
@@ -2441,19 +2457,15 @@ class MARSRU_PRODKPIToolBox:
 
         return
 
-    @kpi_runtime()
-    def calculate_mars_facings_per_scene_type(self):
-        kpi_fk = self.common.get_kpi_fk_by_kpi_type(MARS_FACINGS_PER_SCENE_TYPE_KPI_NAME)
-        dict_to_calculate = {'population': {'include': [{'template_group': MOTIVATION_PROGRAM_SCENE_TYPE_NAME,
-                                                         'manufacturer_name': MARS}]}}
+    def get_first_created_scene(self, scenes):
+        if not scenes:
+            return None
+        dict_to_calculate = {'population': {'include': [{'scene_fk': scenes}]}}
         df = self.parser.filter_df(dict_to_calculate, self.scif)
         if df.empty:
-            return
+            return None
         first_creation_time = df['creation_time'].min()
         dict_to_calculate = {'population': {'include': [{'creation_time': first_creation_time}]}}
         df = self.parser.filter_df(dict_to_calculate, df)
         scene_id = df['scene_fk'].values[0]
-        scene_type = df['template_fk'].values[0]
-        result = df['facings'].sum()
-        self.common.write_to_db_result(fk=kpi_fk, numerator_id=scene_type, denominator_id=self.store_id,
-                                       numerator_result=scene_id, result=result, score=result)
+        return scene_id

@@ -28,7 +28,7 @@ from Projects.RINIELSENUS.Utils.Const import FACINGS
 
 
 class Results(object):
-    def __init__(self, tools, data_provider, mpip_sr, common, writer, min_face, preferred_range=None):
+    def __init__(self, tools, data_provider, common, writer, min_face, preferred_range=None):
         self._tools = tools
         self._data_provider = data_provider
         self.common = common
@@ -36,9 +36,9 @@ class Results(object):
         self._preferred_range = preferred_range
         self.min_face = min_face
         self.dependency_tracker = defaultdict(int)
-        self.mpip_sr = mpip_sr
         self.mpis = self._data_provider['matches']
-        self._data_provider.set_shared_data(self.mpip_sr)
+        self.mpip_sr = self._data_provider._shared_data
+
 
     def calculate(self, hierarchy):
         atomic_results = self._get_atomic_results(hierarchy)
@@ -67,8 +67,13 @@ class Results(object):
             #                         # 'Is the Meaty Dog Treats segment blocked?',
             #                         # 'Is NUTRO Dry Dog blocked in the Ingredient Transparency feeding philosophy segment?'
             #                         # 'Is PEDIGREE Dry Dog Food shelved with the Basic & Balanced feeding philosophy segment?'
-            #                         'What percent of non-negotiable items are shelved in the preferred range? - numerator'
-            #                         ]:
+            #                         # 'What percent of non-negotiable items are shelved in the preferred range? - numerator'
+            #     # 'Is Nutro Dry Cat food blocked within the Ingredient Transparency feeding philosophy segment?'
+            #     'Is the Culinary Wet Dog Food feeding philosophy segment blocked (weighted)?'
+            #     # 'What percent of non-negotiable items are shelved in the preferred range?',
+            # # 'What percent of non-negotiable items are shelved in the preferred range no pr?'
+            #
+            # ]:
             #     continue
             # print('~~~~~~~~~~~~~~~~~~~~****************~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~')
             # print(atomic['atomic'])
@@ -105,7 +110,6 @@ class Results(object):
                 errata = [i for i in kpi_res[1:]]
                 kpi_res = kpi_res[0]
             # print('||||| Result for {} is: {}'.format(atomic['atomic'], kpi_res))
-
             result = {'result': kpi_res,
                       'set': atomic['set'],
                       'kpi': atomic['kpi'],

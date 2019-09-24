@@ -10,9 +10,12 @@ from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
 from KPIUtils.DIAGEO.ToolBox import DIAGEOToolBox, DIAGEOConsts
 from KPIUtils.GlobalProjects.DIAGEO.Utils.Fetcher import DIAGEOQueries
 from KPIUtils.GlobalProjects.DIAGEO.KPIGenerator import DIAGEOGenerator
-from KPIUtils.GlobalProjects.DIAGEO.Utils.ParseTemplates import parse_template # if needed
+from KPIUtils.GlobalProjects.DIAGEO.Utils.ParseTemplates import parse_template  # if needed
 from KPIUtils.DB.Common import Common
 from KPIUtils_v2.DB.CommonV2 import Common as CommonV2
+from OutOfTheBox.Calculations.ManufacturerSOS import ManufacturerFacingsSOSInWholeStore, \
+    ManufacturerFacingsSOSPerSubCategoryInStore
+from OutOfTheBox.Calculations.SubCategorySOS import SubCategoryFacingsSOSPerCategory
 
 __author__ = 'Yasmin'
 
@@ -46,7 +49,9 @@ def log_runtime(description, log_start=False):
             calc_end_time = datetime.utcnow()
             Log.info('{} took {}'.format(description, calc_end_time - calc_start_time))
             return result
+
         return wrapper
+
     return decorator
 
 
@@ -130,7 +135,7 @@ class DIAGEOGTRToolBox:
         self.survey_questions_data = self.data_provider[Data.SURVEY_RESPONSES]
         self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         self.template_data = pd.read_excel(TEMPLATE_PATH, 'KPIs').fillna('')
-        self.template_data.columns =map(str.lower, self.template_data.columns)
+        self.template_data.columns = map(str.lower, self.template_data.columns)
         self.set_templates_data = {}
         self.store_info = self.data_provider[Data.STORE_INFO]
         self.match_display_in_scene = self.get_match_display()
@@ -142,7 +147,7 @@ class DIAGEOGTRToolBox:
         self.product_attribute_price_data = self.get_product_attribute_price_data()
         self.product_atrribute_length_data = self.get_product_attribute_length_data()
 
-        self.product_attribute_price_with_scene_data =  self.get_product_attribute_price_with_scene_data()
+        self.product_attribute_price_with_scene_data = self.get_product_attribute_price_with_scene_data()
         self.product_attribute_length_with_scene_data = self.get_product_attribute_length_with_scene_data()
 
         self.common = Common(self.data_provider)
@@ -151,11 +156,11 @@ class DIAGEOGTRToolBox:
                                    match_display_in_scene=self.match_display_in_scene)  # replace the old one
         self.diageo_generator = DIAGEOGenerator(self.data_provider, self.output, self.common)
         self.kpi_results_queries = []
-        self.scores = {self.LEVEL1: {},self.LEVEL2: {},self.LEVEL3: {}}
+        self.scores = {self.LEVEL1: {}, self.LEVEL2: {}, self.LEVEL3: {}}
 
     def get_product_attribute_length_data(self):
         ##replace(json_extract(p.labels, '$.sub_brand'), '"', "") sub_brand,
-        query= """
+        query = """
         SELECT  		
             session_fk,
             p.pk product_fk,
@@ -265,7 +270,7 @@ class DIAGEOGTRToolBox:
 
         product_attribute_price_data = pd.read_sql_query(query, self.rds_conn.db)
 
-        return product_attribute_price_data;
+        return product_attribute_price_data
 
     def get_product_attribute_price_with_scene_data(self):
         """
@@ -324,8 +329,15 @@ class DIAGEOGTRToolBox:
         """
         This function calculates the KPI results.
         # """
+        # SOS Out Of The Box kpis
+        self.activate_ootb_kpis()
+
         assortment_res_dict = self.diageo_generator.diageo_global_assortment_function_v2()
         self.commonV2.save_json_to_new_tables(assortment_res_dict)
+
+        # Global assortment kpis - v3 for NEW MOBILE REPORTS use
+        assortment_res_dict_v3 = self.diageo_generator.diageo_global_assortment_function_v3()
+        self.commonV2.save_json_to_new_tables(assortment_res_dict_v3)
 
         self.mpis = self.data_provider[Data.MATCHES].merge(
             self.data_provider[Data.SCENES_INFO][['scene_fk', 'template_fk']], on='scene_fk', how='left')
@@ -335,15 +347,15 @@ class DIAGEOGTRToolBox:
         self.mpis['product_fk'] = self.mpis['product_fk'].astype(int)
         self.products['product_fk'] = self.products['product_fk'].astype(int)
 
-        self.mpis=self.mpis.merge(self.products, on='product_fk', how='left')
+        self.mpis = self.mpis.merge(self.products, on='product_fk', how='left')
 
         for kpi_set_name in kpi_set_names:
             if kpi_set_name == SOWB:
                 self.calculate_share_of_wall_bay(kpi_set_name)
             elif kpi_set_name == PRICE_PROMOTION:
                 self.calculate_number_of_price_promotion(kpi_set_name)
-            elif kpi_set_name == FSOS:
-                self.calculate_facings_sos(kpi_set_name)
+            # elif kpi_set_name == FSOS:
+            #     self.calculate_facings_sos(kpi_set_name)
             elif kpi_set_name == SOD:
                 self.calculate_share_of_display(kpi_set_name)
             elif kpi_set_name == SOD_GROUPED_SCENES:
@@ -352,86 +364,86 @@ class DIAGEOGTRToolBox:
                 continue
         self.commonV2.commit_results_data()
 
-    def calculate_facings_sos(self, kpi_set_name):
-        template_kpis = self.template_data[self.template_data[DIAGEOGTRConsts.KPI_SET_NAME] == kpi_set_name]
-
-        for row, template_kpi in template_kpis.iterrows():
-            entity_1 = template_kpi[DIAGEOGTRConsts.ENTITY_1].strip().lower()
-
-            kpi_name = template_kpi[DIAGEOGTRConsts.KPI_NAME]
-
-            template = template_kpi[DIAGEOGTRConsts.SCENE_POLICY].split(",")
-            template_names = [scene.strip().encode(DIAGEOGTRConsts.UTF_8) for scene in template]
-
-            entity_key_1 = entities[entity_1] if entity_1 in entities.keys() else None
-
-            self.calculate_facings_sos_entity(kpi_name, template_names, entity_key_1)
-
-    def calculate_facings_sos_entity(self, kpi_name, template_names, entity_key_1):
-        kpi_results = {}
-        # new static kpi table check
-        kpi_static_new = self.kpi_static_data_new[self.kpi_static_data_new[DIAGEOGTRConsts.TYPE] == kpi_name]
-
-        if kpi_static_new.empty:
-            if DIAGEOGTRToolBox.DEBUG:
-                print("kpi_name(type - new KPI)={} not found in DB".format(kpi_name))
-            kpi_level_2_fk = 0
-        else:
-            kpi_level_2_fk = kpi_static_new['pk'].iloc[0]
-
-        for template_name in template_names:
-            df_scene_info = self.scene_info[self.scene_info[DIAGEOGTRConsts.TEMPLATE_NAME] == template_name]
-
-            if df_scene_info.empty:
-                if DIAGEOGTRToolBox.DEBUG:
-                    print (" scene_policy:{} is not matching with template_name(in DB) ".format(template_name))
-                continue
-
-            for row, scene_info in df_scene_info.iterrows():
-                scene_fk = scene_info[DIAGEOGTRConsts.SCENE_FK]
-                template_fk = scene_info[DIAGEOGTRConsts.TEMPLATE_FK]
-
-                df_scene = self.scif[self.scif[DIAGEOGTRConsts.SCENE_FK] == scene_fk]
-
-                if df_scene.empty:
-                    if DIAGEOGTRToolBox.DEBUG:
-                        print("scene_fk:{} not matching".format(scene_fk))
-                    continue
-
-                df_fsos = df_scene.groupby([entity_key_1], as_index=False)[DIAGEOGTRConsts.FACINGS].sum()
-
-                if df_fsos.empty:
-                    if DIAGEOGTRToolBox.DEBUG:
-                        print "No SKUs"
-                    continue
-
-                for row_num, row_data in df_fsos.iterrows():
-                    entity_key_value = str(int(template_fk)) + "-" + str(int(row_data[entity_key_1]))
-                    kpi_result = kpi_results.get(entity_key_value, dict())
-                    kpi_result[DIAGEOGTRConsts.NUMERATOR_ID] = row_data[entity_key_1]
-                    kpi_result[DIAGEOGTRConsts.DENOMINATOR_ID] = template_fk
-                    kpi_result[DIAGEOGTRConsts.CONTEXT_ID] = self.store_id
-
-                    if DIAGEOGTRConsts.FACINGS in kpi_result.keys():
-                        kpi_result[DIAGEOGTRConsts.FACINGS] = kpi_result[DIAGEOGTRConsts.FACINGS] + \
-                                                              row_data[DIAGEOGTRConsts.FACINGS]
-                    else:
-                        kpi_result[DIAGEOGTRConsts.FACINGS] = row_data[DIAGEOGTRConsts.FACINGS]
-
-                    kpi_results[entity_key_value] = kpi_result
-
-        for key, kpi_result in kpi_results.items():
-            kpi_result[DIAGEOGTRConsts.KPI_LEVEL_2_FK] = kpi_level_2_fk
-
-            if kpi_level_2_fk != 0:
-                self.commonV2.write_to_db_result(fk=kpi_result[DIAGEOGTRConsts.KPI_LEVEL_2_FK],
-                                                 numerator_id=kpi_result[DIAGEOGTRConsts.NUMERATOR_ID],
-                                                 denominator_id=kpi_result[DIAGEOGTRConsts.DENOMINATOR_ID],
-                                                 context_id=kpi_result[DIAGEOGTRConsts.CONTEXT_ID],
-                                                 numerator_result=kpi_result[DIAGEOGTRConsts.FACINGS],
-                                                 result=kpi_result[DIAGEOGTRConsts.FACINGS],
-                                                 score=0)
-        kpi_results = {}
+    # def calculate_facings_sos(self, kpi_set_name):
+    #     template_kpis = self.template_data[self.template_data[DIAGEOGTRConsts.KPI_SET_NAME] == kpi_set_name]
+    #
+    #     for row, template_kpi in template_kpis.iterrows():
+    #         entity_1 = template_kpi[DIAGEOGTRConsts.ENTITY_1].strip().lower()
+    #
+    #         kpi_name = template_kpi[DIAGEOGTRConsts.KPI_NAME]
+    #
+    #         template = template_kpi[DIAGEOGTRConsts.SCENE_POLICY].split(",")
+    #         template_names = [scene.strip().encode(DIAGEOGTRConsts.UTF_8) for scene in template]
+    #
+    #         entity_key_1 = entities[entity_1] if entity_1 in entities.keys() else None
+    #
+    #         self.calculate_facings_sos_entity(kpi_name, template_names, entity_key_1)
+    #
+    # def calculate_facings_sos_entity(self, kpi_name, template_names, entity_key_1):
+    #     kpi_results = {}
+    #     # new static kpi table check
+    #     kpi_static_new = self.kpi_static_data_new[self.kpi_static_data_new[DIAGEOGTRConsts.TYPE] == kpi_name]
+    #
+    #     if kpi_static_new.empty:
+    #         if DIAGEOGTRToolBox.DEBUG:
+    #             print("kpi_name(type - new KPI)={} not found in DB".format(kpi_name))
+    #         kpi_level_2_fk = 0
+    #     else:
+    #         kpi_level_2_fk = kpi_static_new['pk'].iloc[0]
+    #
+    #     for template_name in template_names:
+    #         df_scene_info = self.scene_info[self.scene_info[DIAGEOGTRConsts.TEMPLATE_NAME] == template_name]
+    #
+    #         if df_scene_info.empty:
+    #             if DIAGEOGTRToolBox.DEBUG:
+    #                 print (" scene_policy:{} is not matching with template_name(in DB) ".format(template_name))
+    #             continue
+    #
+    #         for row, scene_info in df_scene_info.iterrows():
+    #             scene_fk = scene_info[DIAGEOGTRConsts.SCENE_FK]
+    #             template_fk = scene_info[DIAGEOGTRConsts.TEMPLATE_FK]
+    #
+    #             df_scene = self.scif[self.scif[DIAGEOGTRConsts.SCENE_FK] == scene_fk]
+    #
+    #             if df_scene.empty:
+    #                 if DIAGEOGTRToolBox.DEBUG:
+    #                     print("scene_fk:{} not matching".format(scene_fk))
+    #                 continue
+    #
+    #             df_fsos = df_scene.groupby([entity_key_1], as_index=False)[DIAGEOGTRConsts.FACINGS].sum()
+    #
+    #             if df_fsos.empty:
+    #                 if DIAGEOGTRToolBox.DEBUG:
+    #                     print "No SKUs"
+    #                 continue
+    #
+    #             for row_num, row_data in df_fsos.iterrows():
+    #                 entity_key_value = str(int(template_fk)) + "-" + str(int(row_data[entity_key_1]))
+    #                 kpi_result = kpi_results.get(entity_key_value, dict())
+    #                 kpi_result[DIAGEOGTRConsts.NUMERATOR_ID] = row_data[entity_key_1]
+    #                 kpi_result[DIAGEOGTRConsts.DENOMINATOR_ID] = template_fk
+    #                 kpi_result[DIAGEOGTRConsts.CONTEXT_ID] = self.store_id
+    #
+    #                 if DIAGEOGTRConsts.FACINGS in kpi_result.keys():
+    #                     kpi_result[DIAGEOGTRConsts.FACINGS] = kpi_result[DIAGEOGTRConsts.FACINGS] + \
+    #                                                           row_data[DIAGEOGTRConsts.FACINGS]
+    #                 else:
+    #                     kpi_result[DIAGEOGTRConsts.FACINGS] = row_data[DIAGEOGTRConsts.FACINGS]
+    #
+    #                 kpi_results[entity_key_value] = kpi_result
+    #
+    #     for key, kpi_result in kpi_results.items():
+    #         kpi_result[DIAGEOGTRConsts.KPI_LEVEL_2_FK] = kpi_level_2_fk
+    #
+    #         if kpi_level_2_fk != 0:
+    #             self.commonV2.write_to_db_result(fk=kpi_result[DIAGEOGTRConsts.KPI_LEVEL_2_FK],
+    #                                              numerator_id=kpi_result[DIAGEOGTRConsts.NUMERATOR_ID],
+    #                                              denominator_id=kpi_result[DIAGEOGTRConsts.DENOMINATOR_ID],
+    #                                              context_id=kpi_result[DIAGEOGTRConsts.CONTEXT_ID],
+    #                                              numerator_result=kpi_result[DIAGEOGTRConsts.FACINGS],
+    #                                              result=kpi_result[DIAGEOGTRConsts.FACINGS],
+    #                                              score=0)
+    #     kpi_results = {}
 
     def calculate_assortment_sets(self, set_name):
         """
@@ -608,13 +620,13 @@ class DIAGEOGTRToolBox:
                     df_bay = df_bay[[entity_key_0, entity_key_1, entity_key_2, entity_key_3, entity_key_4]]
 
                     if exclude_empty == 'y':
-                        df_bay = df_bay[df_bay[DIAGEOGTRConsts.PRODUCT_FK]!=DIAGEOGTRConsts.EMPTY]
+                        df_bay = df_bay[df_bay[DIAGEOGTRConsts.PRODUCT_FK] != DIAGEOGTRConsts.EMPTY]
 
                     if exclude_irrelevant == 'y':
                         df_bay = df_bay[df_bay[DIAGEOGTRConsts.PRODUCT_FK] != DIAGEOGTRConsts.IRRELEVANT]
 
                     df_bay = df_bay.fillna(DIAGEOGTRConsts.EMPTY_ENTITY)
-                    df_bay_gb_columns = [entity_key_0, entity_key_1, entity_key_2,entity_key_3]
+                    df_bay_gb_columns = [entity_key_0, entity_key_1, entity_key_2, entity_key_3]
                     df_bay_group = pd.DataFrame(df_bay.groupby(df_bay_gb_columns).size().reset_index(name="count"))
 
                     if df_bay_group.empty:
@@ -656,7 +668,7 @@ class DIAGEOGTRToolBox:
                 if denominator_count != 0:
                     numerator = kpi_result[DIAGEOGTRConsts.NUM_OF_DISPLAYS]
                     denominator = float(denominator_count)
-                    score_pure_displays = round(numerator/denominator, 6)
+                    score_pure_displays = round(numerator / denominator, 6)
                 else:
                     score_pure_displays = 0
 
@@ -670,8 +682,10 @@ class DIAGEOGTRToolBox:
                                                      context_id=kpi_result[DIAGEOGTRConsts.CONTEXT_ID],
                                                      numerator_result=kpi_result[DIAGEOGTRConsts.NUM_OF_DISPLAYS],
                                                      denominator_result=denominator_count,
-                                                     denominator_result_after_actions=kpi_result[DIAGEOGTRConsts.DENOMINATOR_RESULT_AFTER_ACTIONS],
-                                                     score_after_actions=kpi_result[DIAGEOGTRConsts.SCORE_AFTER_ACTIONS],
+                                                     denominator_result_after_actions=kpi_result[
+                                                         DIAGEOGTRConsts.DENOMINATOR_RESULT_AFTER_ACTIONS],
+                                                     score_after_actions=kpi_result[
+                                                         DIAGEOGTRConsts.SCORE_AFTER_ACTIONS],
                                                      result=kpi_result['score_per_displays'],
                                                      score=kpi_result['score_per_displays'])
 
@@ -749,7 +763,7 @@ class DIAGEOGTRToolBox:
 
                     if exclude_irrelevant == 'y':
                         df_bay = df_bay[df_bay[DIAGEOGTRConsts.PRODUCT_FK] != DIAGEOGTRConsts.IRRELEVANT]  # ex-empty
-                    
+
                     df_bay_group = pd.DataFrame(df_bay.fillna(-1).groupby(
                         [entity_key_0, entity_key_1]).size().reset_index(name="count"))
 
@@ -760,7 +774,7 @@ class DIAGEOGTRToolBox:
 
                     if len(df_bay_group) == 1:
                         entity_key_value = str(int(template_fk))
-                        entity_key_value += "-" + str(int(df_bay_group.iloc[0][entity_key_1])) # sub_category
+                        entity_key_value += "-" + str(int(df_bay_group.iloc[0][entity_key_1]))  # sub_category
                         kpi_result = kpi_results.get(entity_key_value, dict())
                         kpi_result[DIAGEOGTRConsts.NUMERATOR_ID] = df_bay_group.iloc[0][entity_key_1]
                         kpi_result[DIAGEOGTRConsts.DENOMINATOR_ID] = template_fk
@@ -924,9 +938,9 @@ class DIAGEOGTRToolBox:
             entity_2 = template_kpi[DIAGEOGTRConsts.ENTITY_2].strip().lower()
             entity_3 = template_kpi[DIAGEOGTRConsts.ENTITY_3].strip().lower()
 
-            entity_1 = entities[entity_1] if len(entity_1)!=0 else ""
-            entity_2 = entities[entity_2] if len(entity_2)!=0 else ""
-            entity_3 = entities[entity_3] if len(entity_3)!=0 else ""
+            entity_1 = entities[entity_1] if len(entity_1) != 0 else ""
+            entity_2 = entities[entity_2] if len(entity_2) != 0 else ""
+            entity_3 = entities[entity_3] if len(entity_3) != 0 else ""
 
             kpi_name = template_kpi[DIAGEOGTRConsts.KPI_NAME]
 
@@ -1102,7 +1116,8 @@ class DIAGEOGTRToolBox:
                                       columns=['kps_name', 'session_uid', 'store_fk', 'visit_date', 'score_1',
                                                'kpi_set_fk'])
         elif level == self.LEVEL2:
-            kpi_name = self.kpi_static_data[self.kpi_static_data['kpi_fk'] == fk]['kpi_name'].values[0].replace("'", "\\'")
+            kpi_name = self.kpi_static_data[self.kpi_static_data['kpi_fk'] == fk]['kpi_name'].values[0].replace("'",
+                                                                                                                "\\'")
             attributes = pd.DataFrame([(self.session_uid, self.store_id, self.visit_date.isoformat(),
                                         fk, kpi_name, score)],
                                       columns=['session_uid', 'store_fk', 'visit_date', 'kpi_fk', 'kpk_name', 'score'])
@@ -1229,14 +1244,15 @@ class DIAGEOGTRToolBox:
         if kpi_static_new.empty:
             if DIAGEOGTRToolBox.DEBUG:
                 print("kpi_name(type - new KPI)={} not found in DB".format(kpi_name))
-            kpi_level_2_fk=0
+            kpi_level_2_fk = 0
         else:
             kpi_level_2_fk = kpi_static_new['pk'].iloc[0]
 
         if DIAGEOGTRToolBox.DEBUG:
             print "atomic_kpi_fk={}, kpi_level_2_fk={}".format(atomic_kpi_fk, kpi_level_2_fk)
 
-        df_total_length = pd.DataFrame(self.product_attribute_length_with_scene_data.groupby('session_id')['length_in_mm'].sum().reset_index())
+        df_total_length = pd.DataFrame(
+            self.product_attribute_length_with_scene_data.groupby('session_id')['length_in_mm'].sum().reset_index())
 
         if df_total_length.empty:
             if DIAGEOGTRToolBox.DEBUG:
@@ -1245,7 +1261,8 @@ class DIAGEOGTRToolBox:
 
         entity_total_length = df_total_length.iloc[0].length_in_mm
 
-        df_sowb = pd.DataFrame(self.product_attribute_length_with_scene_data.groupby(entity_key_1)['length_in_mm'].sum().reset_index())
+        df_sowb = pd.DataFrame(
+            self.product_attribute_length_with_scene_data.groupby(entity_key_1)['length_in_mm'].sum().reset_index())
 
         if df_sowb.empty:
             if DIAGEOGTRToolBox.DEBUG:
@@ -1285,3 +1302,152 @@ class DIAGEOGTRToolBox:
                                              numerator_result=kpi_result['entity_length'],
                                              denominator_result=kpi_result['entity_total_length'],
                                              result=kpi_result['score'])
+
+    def activate_ootb_kpis(self):
+        # FACINGS_SOS_MANUFACTURER_IN_WHOLE_STORE - level 1
+        sos_store_fk = self.commonV2.get_kpi_fk_by_kpi_name('SOS OUT OF STORE')
+        sos_store = ManufacturerFacingsSOSInWholeStore(data_provider=self.data_provider,
+                                                       kpi_definition_fk=sos_store_fk).calculate()
+        # FACINGS_SOS_CATEGORY_IN_WHOLE_STORE - level 2
+        sos_cat_out_of_store_fk = self.commonV2.get_kpi_fk_by_kpi_name('SOS CATEGORY OUT OF STORE')
+        sos_cat_out_of_store = self.calculate_sos_of_cat_of_out_of_store_new(sos_cat_out_of_store_fk)
+
+        # FACINGS_SOS_SUB_CATEGORY_OUT_OF_CATEGORY - level 3
+        sos_sub_cat_out_of_cat_fk = self.commonV2.get_kpi_fk_by_kpi_name('SOS SUB CATEGORY OUT OF CATEGORY')
+        sos_sub_cat_out_of_cat = SubCategoryFacingsSOSPerCategory(data_provider=self.data_provider,
+                                                                  kpi_definition_fk=sos_sub_cat_out_of_cat_fk).calculate()
+
+        # FACINGS_SOS_MANUFACTURER_OUT_OF_SUB_CATEGORY - level 4
+        sos_man_out_of_sub_cat_fk = self.commonV2.get_kpi_fk_by_kpi_name('SOS MANUFACTURER OUT OF SUB CATEGORY')
+        sos_man_out_of_sub_cat = ManufacturerFacingsSOSPerSubCategoryInStore(
+            data_provider=self.data_provider, kpi_definition_fk=sos_man_out_of_sub_cat_fk).calculate()
+
+        # FACINGS_SOS_BRAND_OUT_OF_SUB_CATEGORY_IN_WHOLE_STORE - level 5
+        sos_brand_out_of_sub_cat_fk = self.commonV2.get_kpi_fk_by_kpi_name('SOS BRAND OUT OF MANUFACTURER')
+        sos_brand_out_of_sub_cat = self.calculate_sos_of_brand_out_of_manufacturer_in_sub_cat(
+            sos_brand_out_of_sub_cat_fk)
+
+        # Savings results in Hierarchy
+        self.save_hierarchy(sos_store, sos_cat_out_of_store, sos_sub_cat_out_of_cat, sos_man_out_of_sub_cat,
+                            sos_brand_out_of_sub_cat)
+
+    def calculate_sos_of_brand_out_of_manufacturer_in_sub_cat(self, kpi_fk):
+        res_list = []
+        res_dict = dict()
+        # Get rid of Irrelevant and Empty types and keep only facings > 1
+        filtered_scif = self.scif[
+            ~self.scif['product_type'].isin(['Irrelevant', 'Empty']) & self.scif['facings_ign_stack'] > 0]
+
+        # Filter by each Sub Category and Manufacturer
+        sub_cat_fk_list = filtered_scif['sub_category_fk'].unique().tolist()
+        for sub_cat in sub_cat_fk_list:
+            filtered_scif_by_sub_cat = filtered_scif[filtered_scif['sub_category_fk'] == sub_cat]
+            list_of_relevant_manufacturers = filtered_scif_by_sub_cat['manufacturer_fk'].unique().tolist()
+            for manu_fk in list_of_relevant_manufacturers:
+                filtered_scif_by_sub_cat_and_manufacturer = filtered_scif_by_sub_cat[
+                    filtered_scif_by_sub_cat['manufacturer_fk'] == manu_fk]
+                denominator_result = filtered_scif_by_sub_cat_and_manufacturer['facings_ign_stack'].sum()
+
+                # Calculate results per Brand
+                list_of_relevant_brands = filtered_scif_by_sub_cat_and_manufacturer['brand_fk'].unique().tolist()
+                for brand_fk in list_of_relevant_brands:
+                    filtered_scif_by_brand = filtered_scif_by_sub_cat_and_manufacturer[
+                        filtered_scif_by_sub_cat_and_manufacturer['brand_fk'] == brand_fk]
+                    facings_brand_results = filtered_scif_by_brand['facings_ign_stack'].sum()
+                    result_for_brand = facings_brand_results / denominator_result
+
+                    # Preparing the results' dictionary
+                    res_dict['kpi_definition_fk'] = kpi_fk
+                    res_dict['numerator_id'] = brand_fk
+                    res_dict['numerator_result'] = facings_brand_results
+                    res_dict['denominator_id'] = int(sub_cat)
+                    res_dict['denominator_result'] = denominator_result
+                    res_dict['identifier_result'] = (int(brand_fk), int(sub_cat), int(manu_fk))
+                    res_dict['identifier_parent'] = int(manu_fk), (int(sub_cat))
+                    res_dict['result'] = result_for_brand
+                    res_dict['score'] = result_for_brand
+                    res_list.append(res_dict.copy())
+        return res_list
+
+    def calculate_sos_of_cat_of_out_of_store_new(self, kpi_fk):
+        res_list = []
+        res_dict = dict()
+        # Get rid of Irrelevant and Empty types and keep only facings ignore stacking > 1
+        filtered_scif = self.scif[
+            ~self.scif['product_type'].isin(['Irrelevant', 'Empty']) & self.scif['facings_ign_stack'] > 0]
+        denominator_result = filtered_scif['facings_ign_stack'].sum()
+        categories_fk_list = filtered_scif['category_fk'].unique().tolist()
+
+        # Calculate result per category (using facings_ign_stack!)
+        for category_fk in categories_fk_list:
+            filtered_scif_by_category = filtered_scif[filtered_scif['category_fk'] == category_fk]
+            facings_category_result = filtered_scif_by_category['facings_ign_stack'].sum()
+            result_for_category = facings_category_result / denominator_result
+
+            # Preparing the results' dictionary
+            res_dict['kpi_definition_fk'] = kpi_fk
+            res_dict['numerator_id'] = category_fk
+            res_dict['numerator_result'] = facings_category_result
+            res_dict['denominator_id'] = self.store_id
+            res_dict['denominator_result'] = denominator_result
+            res_dict['result'] = result_for_category
+            res_dict['score'] = result_for_category
+            res_list.append(res_dict.copy())
+        return res_list
+
+    def save_hierarchy(self, level_1, level_2, level_3, level_4, level_5):
+        for i in level_1:
+            res = i.to_dict
+            kpi_identifier = "level_1"
+            self.commonV2.write_to_db_result(fk=res['kpi_definition_fk'], numerator_id=res['numerator_id'],
+                                             denominator_id=res['denominator_id'],
+                                             numerator_result=res['numerator_result'],
+                                             denominator_result=res['denominator_result'], result=res['result'],
+                                             score=res['result'],
+                                             identifier_result=kpi_identifier, should_enter=False)
+
+        for res in level_2:
+            kpi_identifier = "level_2_" + str(int(res['numerator_id']))
+            parent_identifier = "level_1"
+            self.commonV2.write_to_db_result(fk=res['kpi_definition_fk'], numerator_id=res['numerator_id'],
+                                             denominator_id=res['denominator_id'],
+                                             numerator_result=res['numerator_result'],
+                                             denominator_result=res['denominator_result'], result=res['result'],
+                                             score=res['result'],
+                                             identifier_result=kpi_identifier,
+                                             identifier_parent=parent_identifier, should_enter=True)
+
+        for i in level_3:
+            res = i.to_dict
+            kpi_identifier = str(int(res['numerator_id']))
+            parent_identifier = "level_2_" + str(int(res['denominator_id']))
+            self.commonV2.write_to_db_result(fk=res['kpi_definition_fk'], numerator_id=res['numerator_id'],
+                                             denominator_id=res['denominator_id'],
+                                             numerator_result=res['numerator_result'],
+                                             denominator_result=res['denominator_result'], result=res['result'],
+                                             score=res['result'],
+                                             identifier_result=kpi_identifier,
+                                             identifier_parent=parent_identifier, should_enter=True)
+
+        for i in level_4:
+            res = i.to_dict
+            kpi_identifier = "level_4_" + str((int(res['numerator_id']), int(res['denominator_id'])))
+            parent_identifier = str(int(res['denominator_id']))
+            self.commonV2.write_to_db_result(fk=res['kpi_definition_fk'], numerator_id=res['numerator_id'],
+                                             denominator_id=res['denominator_id'],
+                                             numerator_result=res['numerator_result'],
+                                             denominator_result=res['denominator_result'], result=res['result'],
+                                             score=res['result'],
+                                             identifier_result=kpi_identifier,
+                                             identifier_parent=parent_identifier, should_enter=True)
+
+        for res in level_5:
+            kpi_identifier = "level_5_" + str(res['identifier_result'])
+            parent_identifier = "level_4_" + str(res['identifier_parent'])
+            self.commonV2.write_to_db_result(fk=res['kpi_definition_fk'], numerator_id=res['numerator_id'],
+                                             denominator_id=res['denominator_id'],
+                                             numerator_result=res['numerator_result'],
+                                             denominator_result=res['denominator_result'], result=res['result'],
+                                             score=res['result'],
+                                             identifier_result=kpi_identifier, identifier_parent=parent_identifier,
+                                             should_enter=True)

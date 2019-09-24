@@ -10,6 +10,8 @@ from collections import Counter
 from Trax.Utils.Logging.Logger import Log
 from KPIUtils_v2.Utils.Parsers import ParseInputKPI
 from Trax.Algo.Calculations.Core.DataProvider import Data
+from KPIUtils_v2.Utils.Decorators.Decorators import kpi_runtime
+
 import pandas as pd
 
 __author__ = 'idanr'
@@ -37,6 +39,7 @@ class TNUVAILToolBox:
         self._calculate_assortment()
         self.common_v2.commit_results_data()
 
+    @kpi_runtime()
     def _calculate_facings_sos(self):
         """
         This kpi calculates SOS in 3 levels: Manufacturer out of store, Manufacturer Out of Category and
@@ -45,6 +48,7 @@ class TNUVAILToolBox:
         self._calculate_sos_by_policy(Consts.MILKY_POLICY)
         self._calculate_sos_by_policy(Consts.TIRAT_TSVI_POLICY)
 
+    @kpi_runtime()
     def _calculate_assortment(self):
         """
         This is the main function for assortment calculation. It prepares the data and calculating all of the relevant
@@ -67,19 +71,19 @@ class TNUVAILToolBox:
         """
         if not self.oos_store_results:
             return
-        store_level_no_policy_kpi_fk = self.common_v2.get_kpi_fk_by_kpi_type(Consts.OOS_STORE_LEVEL)
+        store_level_fk = self.common_v2.get_kpi_fk_by_kpi_type(Consts.OOS_STORE_LEVEL)
         total_res = Counter()
         for result in self.oos_store_results:
             total_res.update(result)
         total_res[SessionResultsConsts.DENOMINATOR_ID] = self.store_id
         total_res[ProductsConsts.MANUFACTURER_FK] = self.own_manufacturer_fk
         total_res = [dict(total_res)]
-        self._save_results_for_assortment(ProductsConsts.MANUFACTURER_FK, total_res, store_level_no_policy_kpi_fk)
+        self._save_results_for_assortment(ProductsConsts.MANUFACTURER_FK, total_res, store_level_fk, None, True)
 
     def _prepare_data_for_assortment_calculation(self):
         """ This method gets the level 3 assortment results (SKU level), adding category_fk and returns the DataFrame"""
         lvl3_result = self.assortment.calculate_lvl3_assortment()
-        category_per_product = self.all_products[[ProductsConsts.PRODUCT_FK,ScifConsts.CATEGORY_FK]]
+        category_per_product = self.all_products[[ProductsConsts.PRODUCT_FK, ScifConsts.CATEGORY_FK]]
         lvl3_result = pd.merge(lvl3_result, category_per_product, how='left')
         return lvl3_result
 
@@ -133,7 +137,8 @@ class TNUVAILToolBox:
         """
         # Products with the relevant policy attribute
         product_with_policy_attr = self.all_products.loc[
-            self.all_products[Consts.PRODUCT_POLICY_ATTR].str.encode(HelperConsts.UTF8) == policy.encode(HelperConsts.UTF8)]
+            self.all_products[Consts.PRODUCT_POLICY_ATTR].str.encode(HelperConsts.UTF8) == policy.encode(
+                HelperConsts.UTF8)]
         product_with_policy_attr = product_with_policy_attr.product_fk.unique().tolist()
         # Products that appear in scenes with the relevant policy
         filtered_scif = self._get_filtered_scif_per_scene_type(policy)
@@ -186,8 +191,9 @@ class TNUVAILToolBox:
         store_result_dict[ProductsConsts.MANUFACTURER_FK] = self.own_manufacturer_fk
         store_result_dict[SessionResultsConsts.DENOMINATOR_ID] = self.store_id
         if not is_distribution:  # In OOS the numerator is total - distribution
-            store_result_dict[SessionResultsConsts.NUMERATOR_RESULT] = store_result_dict[SessionResultsConsts.DENOMINATOR_RESULT] - \
-                                                         store_result_dict[SessionResultsConsts.NUMERATOR_RESULT]
+            store_result_dict[SessionResultsConsts.NUMERATOR_RESULT] = \
+                store_result_dict[SessionResultsConsts.DENOMINATOR_RESULT] - store_result_dict[
+                    SessionResultsConsts.NUMERATOR_RESULT]
             self.oos_store_results.append(store_result_dict)
         return [store_result_dict]
 
@@ -200,14 +206,16 @@ class TNUVAILToolBox:
         denominator_result.
         """
         in_store_per_category = lvl3_data[[ScifConsts.CATEGORY_FK, Consts.IN_STORE]].fillna(0)
-        in_store_per_category = in_store_per_category.groupby(ScifConsts.CATEGORY_FK, as_index=False).agg(['sum', 'count'])
+        in_store_per_category = in_store_per_category.groupby(ScifConsts.CATEGORY_FK, as_index=False).agg(
+            ['sum', 'count'])
         in_store_per_category.columns = in_store_per_category.columns.droplevel(0)
         in_store_per_category.reset_index(inplace=True)
         in_store_per_category = in_store_per_category.assign(denominator_id=self.own_manufacturer_fk)
         in_store_per_category.rename(Consts.AGGREGATION_COLUMNS_RENAMING, inplace=True, axis=1)
         if not is_distribution:  # In OOS the numerator is total - distribution
-            in_store_per_category[SessionResultsConsts.NUMERATOR_RESULT] = in_store_per_category[SessionResultsConsts.DENOMINATOR_RESULT] - \
-                                                             in_store_per_category[SessionResultsConsts.NUMERATOR_RESULT]
+            in_store_per_category[SessionResultsConsts.NUMERATOR_RESULT] = \
+                in_store_per_category[SessionResultsConsts.DENOMINATOR_RESULT] - in_store_per_category[
+                    SessionResultsConsts.NUMERATOR_RESULT]
         in_store_per_category = in_store_per_category.to_dict('records')
         return in_store_per_category
 
@@ -221,7 +229,8 @@ class TNUVAILToolBox:
         :return: A dictionary - which contains the following keys: product_fk, denominator_id, numerator_result and
         denominator_result.
         """
-        sku_level_res = lvl3_data[[ProductsConsts.PRODUCT_FK, Consts.IN_STORE, ScifConsts.CATEGORY_FK, ScifConsts.FACINGS]]
+        sku_level_res = lvl3_data[
+            [ProductsConsts.PRODUCT_FK, Consts.IN_STORE, ScifConsts.CATEGORY_FK, ScifConsts.FACINGS]]
         sku_level_res.rename(Consts.SOS_SKU_LVL_RENAME, axis=1, inplace=True)
         if not is_distribution:
             sku_level_res = sku_level_res.assign(denominator_result=1)
@@ -238,15 +247,33 @@ class TNUVAILToolBox:
             Log.warning(Consts.LOG_EMPTY_ASSORTMENT_DATA_PER_POLICY.format(policy.encode(HelperConsts.UTF8)))
             return
         store_level_kpi_fk, cat_lvl_fk, sku_level_fk = self._get_assortment_kpi_fks(policy, is_distribution=is_dist)
-        store_results = self._calculate_store_level_assortment(lvl3_data, is_distribution=is_dist)
-        category_results = self._calculate_category_level_assortment(lvl3_data, is_distribution=is_dist)
-        sku_level_results = self._calculate_sku_level_assortment(lvl3_data, is_distribution=is_dist)
-        self._save_results_for_assortment(ProductsConsts.MANUFACTURER_FK, store_results, store_level_kpi_fk)
-        self._save_results_for_assortment(ScifConsts.CATEGORY_FK, category_results, cat_lvl_fk, store_level_kpi_fk)
-        self._save_results_for_assortment(ProductsConsts.PRODUCT_FK, sku_level_results, sku_level_fk, cat_lvl_fk, not is_dist)
-        if not is_dist:  # New addition in order to support OOS reasons
-            sku_no_policy_kpi_fk = self.common_v2.get_kpi_fk_by_kpi_type(Consts.OOS_SKU_IN_STORE_LEVEL)
-            self._save_results_for_assortment(ProductsConsts.PRODUCT_FK, sku_level_results, sku_no_policy_kpi_fk, None, True)
+        store_res = self._calculate_store_level_assortment(lvl3_data, is_distribution=is_dist)
+        category_res = self._calculate_category_level_assortment(lvl3_data, is_distribution=is_dist)
+        sku_level_res = self._calculate_sku_level_assortment(lvl3_data, is_distribution=is_dist)
+        self._save_results_for_assortment(ProductsConsts.MANUFACTURER_FK, store_res, store_level_kpi_fk)
+        self._save_results_for_assortment(ScifConsts.CATEGORY_FK, category_res, cat_lvl_fk, store_level_kpi_fk)
+        self._save_results_for_assortment(ProductsConsts.PRODUCT_FK, sku_level_res, sku_level_fk, cat_lvl_fk)
+        if not is_dist:  # New addition in order to support OOS reasons and NCC report
+            sku_no_policy_kpi, policy_level_kpi, sku_level_kpi = self._get_oos_reason_and_ncc_kpis(policy)
+            self._save_results_for_assortment(ProductsConsts.PRODUCT_FK, sku_level_res, sku_no_policy_kpi, None, True)
+            self._save_results_for_assortment(ProductsConsts.PRODUCT_FK, sku_level_res, sku_level_kpi, None, True)
+            self._save_results_for_assortment(ProductsConsts.MANUFACTURER_FK, store_res, policy_level_kpi, None, True)
+
+    def _get_oos_reason_and_ncc_kpis(self, policy):
+        """
+        This fetcher gets the relevant policy and returns the relevant OOS KPIs.
+        :param policy:  חלבי או טירת צבי - this policy is matching for scene types and products as well
+        :return: A tuple with 3 KPIs: (store_level, policy_level, sku_level)
+        """
+        if policy == Consts.MILKY_POLICY:
+            sku_no_policy_kpi = self.common_v2.get_kpi_fk_by_kpi_type(Consts.OOS_SKU_IN_STORE_LEVEL)
+            category_level_fk = self.common_v2.get_kpi_fk_by_kpi_type(Consts.OOS_STORE_DAIRY_PREV_RES)
+            sku_level_fk = self.common_v2.get_kpi_fk_by_kpi_type(Consts.OOS_SKU_DAIRY_PREV_RES)
+        else:
+            sku_no_policy_kpi = self.common_v2.get_kpi_fk_by_kpi_type(Consts.OOS_SKU_IN_STORE_LEVEL)
+            category_level_fk = self.common_v2.get_kpi_fk_by_kpi_type(Consts.OOS_STORE_TIRAT_TSVI_PREV_RES)
+            sku_level_fk = self.common_v2.get_kpi_fk_by_kpi_type(Consts.OOS_SKU_TIRAT_TSVI_PREV_RES)
+        return sku_no_policy_kpi, category_level_fk, sku_level_fk
 
     def _save_results_for_assortment(self, numerator_entity, results_list, kpi_fk, parent_kpi_fk=None, prev_res=False):
         """
@@ -260,7 +287,8 @@ class TNUVAILToolBox:
         should_enter = True if parent_kpi_fk is not None else False
         for result in results_list:
             numerator_id, denominator_id = result[numerator_entity], result[SessionResultsConsts.DENOMINATOR_ID]
-            num_res, denominator_res = result[SessionResultsConsts.NUMERATOR_RESULT], result[SessionResultsConsts.DENOMINATOR_RESULT]
+            num_res = result[SessionResultsConsts.NUMERATOR_RESULT]
+            denominator_res = result[SessionResultsConsts.DENOMINATOR_RESULT]
             score, result = self._calculate_assortment_score_and_result(numerator_entity, num_res, denominator_res)
             score = self._get_previous_oos_score(kpi_fk, numerator_id) if prev_res else score   # Only for OOS-SKU!
             self.common_v2.write_to_db_result(fk=kpi_fk, numerator_id=numerator_id, numerator_result=num_res,
@@ -297,10 +325,7 @@ class TNUVAILToolBox:
             return 0
         prev_result = self.previous_oos_results.loc[(self.previous_oos_results.kpi_level_2_fk == kpi_fk) & (
                 self.previous_oos_results.numerator_id == numerator_id)]
-        if prev_result.empty:
-            return 0
-        else:
-            return prev_result.result.values[0]
+        return prev_result.result.values[0] if not prev_result.empty else 0
 
     def _get_sos_kpi_fks(self, policy):
         """
@@ -397,7 +422,8 @@ class TNUVAILToolBox:
         """
         for res_dict in results:
             manufacturer_id, category_id = res_dict[ProductsConsts.MANUFACTURER_FK], res_dict[ScifConsts.CATEGORY_FK]
-            numerator_res, denominator_res = res_dict[SessionResultsConsts.NUMERATOR_RESULT], res_dict[SessionResultsConsts.DENOMINATOR_RESULT]
+            numerator_res = res_dict[SessionResultsConsts.NUMERATOR_RESULT]
+            denominator_res = res_dict[SessionResultsConsts.DENOMINATOR_RESULT]
             sos_score = round(numerator_res / float(denominator_res)*100, 2) if denominator_res else 0
             if res_dict[ProductsConsts.MANUFACTURER_FK] == self.own_manufacturer_fk:
                 self.common_v2.write_to_db_result(fk=own_manu_out_of_category_fk, numerator_id=category_id,

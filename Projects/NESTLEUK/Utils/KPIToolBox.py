@@ -13,6 +13,7 @@ from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
 from Projects.NESTLEUK.Utils.ParseTemplates import NESTLEUKParseTemplates
 from Projects.NESTLEUK.Utils.Fetcher import NESTLEUKQueries
 from Projects.NESTLEUK.Utils.GeneralToolBox import NESTLEUKGENERALToolBox
+from KPIUtils_v2.Utils.Decorators.Decorators import kpi_runtime
 
 
 __author__ = 'uri'
@@ -204,6 +205,7 @@ class NESTLEUKToolBox(NESTLEUKConsts):
         set_fk = self.kpi_static_data[self.kpi_static_data['kpi_set_name'] == set_name]['kpi_set_fk'].values[0]
         self.write_to_db_result(set_fk, set_score, level=self.LEVEL1)
 
+    @kpi_runtime()
     def calculate_ava(self):
         """
         This function calculates the KPI results.
@@ -388,6 +390,7 @@ class NESTLEUKToolBox(NESTLEUKConsts):
                 self.get_custom_query(scene_fk=scene, product_fk=product_fk,
                                       in_assortment_OSA=in_assortment_osa, mha_in_assortment=mha_in_assortment)
 
+    @kpi_runtime()
     def calculate_block_together_sets(self, kpi):
         """
         This function calculates every block-together-typed KPI from the relevant sets, and returns the set final score.
@@ -407,6 +410,7 @@ class NESTLEUKToolBox(NESTLEUKConsts):
 
         return score
 
+    @kpi_runtime()
     def calculate_facing_count(self, kpi):
         """
         This function calculates every block-together-typed KPI from the relevant sets, and returns the set final score.
@@ -425,6 +429,7 @@ class NESTLEUKToolBox(NESTLEUKConsts):
 
         return score
 
+    @kpi_runtime()
     def calculate_availability(self, kpi):
         """
         This function calculates every block-together-typed KPI from the relevant sets, and returns the set final score.
@@ -464,6 +469,7 @@ class NESTLEUKToolBox(NESTLEUKConsts):
 
         return final_score
 
+    @kpi_runtime()
     def calculate_shelf_position(self, kpi):
         """
         This function calculates every block-together-typed KPI from the relevant sets, and returns the set final score.
@@ -495,6 +501,7 @@ class NESTLEUKToolBox(NESTLEUKConsts):
 
         return final_score
 
+    @kpi_runtime()
     def calculate_facing_sos(self, kpi):
         """
         This function calculates every block-together-typed KPI from the relevant sets, and returns the set final score.
