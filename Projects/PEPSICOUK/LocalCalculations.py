@@ -8,7 +8,7 @@ from Trax.Algo.Calculations.Core.Constants import Keys, Fields, SCENE_ITEM_FACTS
 import pandas as pd
 from Trax.Algo.Calculations.Core.Vanilla.Output import VanillaOutput
 from Trax.Algo.Calculations.Core.Vanilla.Calculations import SceneVanillaCalculations
-from datetime import datetime
+# from datetime import datetime
 
 
 def save_scene_item_facts_to_data_provider(data_provider, output):
@@ -34,18 +34,18 @@ if __name__ == '__main__':
     # session = '58272289-5f9a-4fb6-b8e0-a7f3bfa2e07c' # session with DF error on _set_scif
     # session = '8699c793-8a71-4a18-b24c-3785146075c4'
     # session = 'aa9d2ad8-61d5-4167-a4f1-e753ef366b39'
-    session = '0f9e8898-0f30-4d96-a169-c4cf3e516150'
+    session = '56d070bb-36ad-4590-bf83-4161d68cdb3c'
     data_provider.load_session_data(session)
     # output = Output()
     # PEPSICOUKCalculations(data_provider, output).run_project_calculations()
     # # scenes = data_provider.scenes_info.scene_fk.tolist()
-    scenes = [11074]
+    scenes = [64294]
     for scene in scenes:
         data_provider.load_scene_data(session, scene)
         output = VanillaOutput()
         SceneVanillaCalculations(data_provider, output).run_project_calculations()
         save_scene_item_facts_to_data_provider(data_provider, output)
-        t0=datetime.now()
+        # t0=datetime.now()
         PEPSICOUKSceneCalculations(data_provider).calculate_kpis()
-        t1=datetime.now()
-        print 'scene_calc_time', t1-t0
+        # t1=datetime.now()
+        # print 'scene_calc_time', t1-t0

@@ -348,6 +348,8 @@ class PEPSICOUKSceneToolBox:
             score = 0
             result = self.commontools.get_yes_no_result(0)
             if not adjacency_results.empty:
+                adjacency_results = adjacency_results[adjacency_results['is_adj']==True]
+            if not adjacency_results.empty:
                 score = 1 if adjacency_results['is_adj'].values[0] else 0
                 result = self.commontools.get_yes_no_result(score)
             self.common.write_to_db_result(fk=kpi_fk, numerator_id=group_1_fk, denominator_id=group_2_fk,
@@ -424,6 +426,8 @@ class PEPSICOUKSceneToolBox:
                                                                            additional=additional_block_params)
                 score = 0
                 result = self.commontools.get_yes_no_result(0)
+                if not result_df.empty:
+                    result_df = result_df[result_df['is_adj'] == True]
                 if not result_df.empty:
                     score = 1 if result_df['is_adj'].values[0] else 0
                     result = self.commontools.get_yes_no_result(score)
