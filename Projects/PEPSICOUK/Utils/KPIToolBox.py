@@ -15,6 +15,7 @@ from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
 from Projects.PEPSICOUK.Utils.Fetcher import PEPSICOUK_Queries
 from Projects.PEPSICOUK.Utils.CommonToolBox import PEPSICOUKCommonToolBox
 from KPIUtils_v2.GlobalDataProvider.PsDataProvider import PsDataProvider
+from KPIUtils_v2.Utils.Decorators.Decorators import kpi_runtime
 # from KPIUtils_v2.Calculations.AvailabilityCalculations import Availability
 # from KPIUtils_v2.Calculations.NumberOfScenesCalculations import NumberOfScenes
 # from KPIUtils_v2.Calculations.PositionGraphsCalculations import PositionGraphs
@@ -164,6 +165,7 @@ class PEPSICOUKToolBox:
         self.calculate_hero_sku_information_kpis() # uses filtered matches
         self.calculate_hero_sku_stacking_by_sequence_number()
 
+    @kpi_runtime()
     def calculate_brand_full_bay(self):
         brand_full_bay_kpi_fks = [self.common.get_kpi_fk_by_kpi_type(kpi) for kpi in self.BRAND_FULL_BAY_KPIS]
         external_kpi_targets = self.commontools.all_targets_unpacked[self.commontools.all_targets_unpacked['kpi_level_2_fk'].isin(brand_full_bay_kpi_fks)]
@@ -215,6 +217,7 @@ class PEPSICOUKToolBox:
             output_targets_df = full_bay_targets.merge(parameters_df, on='pk', how='left')
         return output_targets_df
 
+    @kpi_runtime()
     def calculate_hero_sku_information_kpis(self):
         if not self.lvl3_ass_result.empty:
             hero_sku_list = self.lvl3_ass_result[self.lvl3_ass_result['in_store'] == 1]['product_fk'].values.tolist()
@@ -254,6 +257,7 @@ class PEPSICOUKToolBox:
         self.common.write_to_db_result(fk=kpi_fk, numerator_id=sku, result=price)
         self.add_kpi_result_to_kpi_results_df([kpi_fk, sku, None, price, None])
 
+    @kpi_runtime()
     def calculate_hero_sku_stacking_by_sequence_number(self):
         if not self.lvl3_ass_result.empty:
             hero_list = self.lvl3_ass_result[self.lvl3_ass_result['in_store'] == 1]['product_fk'].unique().tolist()
@@ -323,6 +327,7 @@ class PEPSICOUKToolBox:
         self.common.write_to_db_result(fk=kpi_fk, numerator_id=sku, score=score, result=score)
         self.add_kpi_result_to_kpi_results_df([kpi_fk, sku, None, score, score])
 
+    @kpi_runtime()
     def calculate_shelf_placement_hero_skus(self):
         if not self.lvl3_ass_result.empty:
         # if not self.filtered_scif.empty:
@@ -479,6 +484,7 @@ class PEPSICOUKToolBox:
             output_targets_df = output_targets_df.merge(kpi_data, left_on='kpi_level_2_fk', right_on='pk', how='left')
         return output_targets_df
 
+    @kpi_runtime()
     def calculate_linear_brand_vs_brand_index(self):
         # index_targets = self.get_relevant_sos_index_kpi_targets_data()
         index_targets = self.get_relevant_sos_vs_target_kpi_targets(brand_vs_brand=True)
@@ -524,6 +530,7 @@ class PEPSICOUKToolBox:
         assortment_result.loc[assortment_result['product_fk'].isin(products_in_session), 'in_store'] = 1
         return assortment_result
 
+    @kpi_runtime()
     def calculate_assortment(self):
         oos_sku_fk = self.common.get_kpi_fk_by_kpi_type(self.HERO_SKU_OOS_SKU)
         oos_fk = self.common.get_kpi_fk_by_kpi_type(self.HERO_SKU_OOS)
@@ -568,6 +575,7 @@ class PEPSICOUKToolBox:
                                                result=100 - res, score=(100 - res), identifier_result=oos_identifier_parent,
                                                should_enter=True)
 
+    @kpi_runtime()
     def calculate_sos_vs_target_kpis(self):
         sos_targets = self.get_relevant_sos_vs_target_kpi_targets()
         sos_targets = sos_targets.drop_duplicates(subset=['kpi_operation_type_fk', 'kpi_level_2_fk', 'numerator_value', 'denominator_value',

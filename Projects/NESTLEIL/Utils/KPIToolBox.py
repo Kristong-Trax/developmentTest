@@ -4,6 +4,7 @@ from Trax.Algo.Calculations.Core.DataProvider import Data
 from Projects.NESTLEIL_SAND.Utils.Consts import Consts
 from KPIUtils_v2.DB.CommonV2 import Common
 from Trax.Utils.Logging.Logger import Log
+from KPIUtils_v2.Utils.Decorators.Decorators import kpi_runtime
 
 __author__ = 'idanr'
 
@@ -26,6 +27,7 @@ class NESTLEILToolBox:
         self._calculate_assortment()
         self.common_v2.commit_results_data()
 
+    @kpi_runtime()
     def _calculate_assortment(self):
         """
         This method calculates and saves results into the DB.
