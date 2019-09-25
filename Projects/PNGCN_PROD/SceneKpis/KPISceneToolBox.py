@@ -187,7 +187,7 @@ class PngcnSceneKpis(object):
                 filter_row_for_sub_brand = {'population': {
                     'include': [block_filters], 'include_operator': 'and'}}
                 filtered_df = self.parser.filter_df(filter_row_for_sub_brand, complete_df)
-                #filtered_df = filtered_df[filtered_df['stacking_layer'] == 1]
+                filtered_df = filtered_df[filtered_df['stacking_layer'] == 1]
                 if filtered_df.empty:
                     continue
 
@@ -200,7 +200,7 @@ class PngcnSceneKpis(object):
                     additional={'allowed_products_filters': {'product_type': ['Empty']},
                                 'minimum_block_ratio': 0.0,
                                 'minimum_facing_for_block': 3,
-                                'include_stacking': True,
+                                'include_stacking': False,
                                 'check_vertical_horizontal': False})
                 for j, row in filter_block_result.iterrows():
                     if not row['is_block']:
@@ -233,12 +233,26 @@ class PngcnSceneKpis(object):
                                            score=sub_block['number_of_facings'],
                                            by_scene=True)
 
+    def calculate_block_facing_include_stacking(self, block_df, block_filters):
+        filter_row_for_sub_brand = {'population': {
+            'include': [block_filters], 'include_operator': 'and'}}
+        relevant_columns_block_df = block_df[['scene_fk', 'bay_number', 'shelf_number', 'facing_sequence_number']]
+        block_df_all_stacking_layers = self.matches_from_data_provider.set_index(
+                ['scene_fk', 'bay_number', 'shelf_number', 'facing_sequence_number']).sort_index().loc[
+                [tuple(x) for x in relevant_columns_block_df.values]]
+        complete_df = pd.merge(block_df_all_stacking_layers,
+                               self.scif, on='product_fk', how="left")
+        filtered_block_df_all_stacking_layers = self.parser.filter_df(filter_row_for_sub_brand,
+                                                                      complete_df)
+        return filtered_block_df_all_stacking_layers
+
     def handle_node_in_variant_block(self, row_in_template, row, node, filter_results, block_filters):
         product_matches_fks = []
         node_data = node[1]
         product_matches_fks += (list(node_data['members']))
         block_df = self.matches_from_data_provider[
             self.matches_from_data_provider['scene_match_fk'].isin(product_matches_fks)]
+
         shelves = set(block_df['shelf_number'])
 
         # filter blocks without the minimum shelves spreading number
@@ -257,7 +271,9 @@ class PngcnSceneKpis(object):
         if block_flag:
             point = node_data['polygon'].centroid
             row['x'], row['y'] = point.x, point.y
-            row['number_of_facings'] = len(product_matches_fks)
+            bfacing_include_stacking = self.calculate_block_facing_include_stacking(block_df, block_filters)
+            #row['number_of_facings'] = len(product_matches_fks)
+            row['number_of_facings'] = len(bfacing_include_stacking)
             for filter_val, value in block_filters.iteritems():
                 row[filter_val] = value
             filter_results.append(row)
