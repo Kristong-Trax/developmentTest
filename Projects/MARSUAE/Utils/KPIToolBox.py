@@ -12,6 +12,7 @@ import copy
 from KPIUtils_v2.DB.CommonV2 import Common
 from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
 from KPIUtils_v2.Calculations.BlockCalculations_v2 import Block
+from KPIUtils_v2.Utils.Decorators.Decorators import kpi_runtime
 # from KPIUtils_v2.Calculations.AvailabilityCalculations import Availability
 # from KPIUtils_v2.Calculations.NumberOfScenesCalculations import NumberOfScenes
 # from KPIUtils_v2.Calculations.PositionGraphsCalculations import PositionGraphs
@@ -511,6 +512,7 @@ class MARSUAEToolBox:
             kpi_type = param_row[self.KPI_FAMILY]
             self.atomic_function[kpi_type](param_row)
 
+    @kpi_runtime()
     def calculate_availability(self, param_row):
         if self.lvl3_assortment.empty:
             Log.warning("Assortment list is empty for store type {}".format(self.store_info_dict['store_type']))
@@ -622,6 +624,7 @@ class MARSUAEToolBox:
         score = 1 if result >= target else 0
         return score
 
+    @kpi_runtime()
     def calculate_linear_sos(self, param_row):
         general_filters = self.get_general_filters(param_row)
         sos_filters, additional_filters = self.get_sos_filters(param_row)
@@ -663,6 +666,7 @@ class MARSUAEToolBox:
                                                result=result * 100, score=score * weight, weight=weight,
                                                identifier_parent=identifier_result, should_enter=True)
 
+    @kpi_runtime()
     def calculate_displays(self, param_row):
         general_filters = self.get_general_filters(param_row)
         filtered_scif = filter_df(general_filters, self.scif)
@@ -692,6 +696,7 @@ class MARSUAEToolBox:
             identifier_result = {'kpi_fk': param_row['kpi_level_2_fk']}
         return identifier_result
 
+    @kpi_runtime()
     def calculate_checkouts(self, param_row):
         filters = self.get_general_filters(param_row)
         all_ch_o = len(filter_df(filters, self.match_product_in_scene).drop_duplicates(subset=[self.SCENE_FK,
@@ -722,6 +727,7 @@ class MARSUAEToolBox:
                                            denominator_id=self.store_id, score=score * weight, weight=weight,
                                            identifier_parent=identifier_result, should_enter=True)
 
+    @kpi_runtime()
     def calculate_block(self, param_row):
         if self.lvl3_assortment.empty:
             return
@@ -776,6 +782,7 @@ class MARSUAEToolBox:
             map(lambda x: sku_types.update(x), product_list)
             cluster_skus_list.append(len(sku_types))
 
+    @kpi_runtime()
     def calculate_kpi_combination_score(self, param_row):
         child_kpis = param_row[self.CHILD_KPI] if isinstance(param_row[self.CHILD_KPI], (list, tuple)) \
                                                     else [param_row[self.CHILD_KPI]]
