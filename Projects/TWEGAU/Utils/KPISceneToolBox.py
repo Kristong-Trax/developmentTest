@@ -271,10 +271,10 @@ class TWEGAUSceneToolBox:
                                 if int(prod_id) not in self.empty_product_ids:
                                     in_assort_sc_values = self.scif.query(
                                         "item_id=={prod_id}".format(prod_id=prod_id)).in_assort_sc
+                                    in_assort_sc = 0
                                     if not in_assort_sc_values.empty:
-                                        in_assort_sc = int(in_assort_sc_values.values[0])
-                                    else:
-                                        in_assort_sc = 0
+                                        if not is_nan(in_assort_sc_values.values[0]):
+                                            in_assort_sc = int(in_assort_sc_values.values[0])
                                     self.common.write_to_db_result(
                                         fk=int(zone_data['fk']),
                                         numerator_id=int(prod_id),  # product ID
