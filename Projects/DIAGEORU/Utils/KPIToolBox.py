@@ -28,6 +28,9 @@ class DIAGEORUToolBox:
         # SOS Out Of The Box kpis
         self.diageo_generator.activate_ootb_kpis(self.commonV2)
 
+        # sos by scene type
+        self.diageo_generator.sos_by_scene_type(self.commonV2)
+
         log_runtime('Updating templates')
         self.template_handler.update_templates()
 

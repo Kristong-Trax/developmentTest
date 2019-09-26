@@ -10,6 +10,8 @@ from Trax.Utils.Conf.Configuration import Config
 from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
 from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScript
 from Trax.Utils.Logging.Logger import Log
+#from Projects.RINIELSENUS.TYSON.Utils.KPIToolBox import TYSONToolBox
+
 import time
 
 
@@ -94,7 +96,12 @@ if __name__ == '__main__':
 
     ]
 
-    sessions = ['39c656e1-1663-44bc-b28e-dcb31aeaa9ec']
+    sessions = ['f920817e-3539-49aa-88c7-cade84e21ef4',
+                '4c6e4746-835e-41d6-96fb-677a5a26cd0f',
+                '74be7e6d-18af-4e31-9e41-f8b8aaf2241c',
+                'ff26ffe8-58e7-4118-bcac-5985ed2d9250',
+                '8c355431-6bb3-4c85-a608-722dbbe763be',
+]
 
 
     for session in sessions:

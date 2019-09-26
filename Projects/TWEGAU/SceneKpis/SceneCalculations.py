@@ -1,8 +1,5 @@
-
 from Trax.Apps.Services.KEngine.Handlers.Utils.Scripts import SceneBaseClass
-from Projects.HBCDE.KPISceneGenerator import SceneGenerator
-
-__author__ = 'ilays'
+from Projects.TWEGAU.KPISceneGenerator import SceneGenerator
 
 
 class SceneCalculations(SceneBaseClass):
@@ -11,5 +8,4 @@ class SceneCalculations(SceneBaseClass):
         self.scene_generator = SceneGenerator(self._data_provider)
 
     def calculate_kpis(self):
-        self.scene_generator.scene_score()
-
+        self.scene_generator.scene_main_calculation()
