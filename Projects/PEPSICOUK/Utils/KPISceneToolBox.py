@@ -306,7 +306,7 @@ class PEPSICOUKSceneToolBox:
             # group_fk = self.custom_entities[self.custom_entities['name'] == row['Group Name']]
             group_fk = self.custom_entities[self.custom_entities['name'] == row['Group Name']]['pk'].values[0]
             filters = self.get_block_and_adjacency_filters(row)
-            target = row['Target'] # check case in temaplate
+            target = row['Target']
             additional_block_params.update({'minimum_block_ratio': float(target)/100})
 
             result_df = self.block.network_x_block_together(filters, additional=additional_block_params)
@@ -368,7 +368,7 @@ class PEPSICOUKSceneToolBox:
             # group_fk = self.custom_entities[self.custom_entities['name'] == row['Group Name']]
             group_fk = self.custom_entities[self.custom_entities['name'] == row['Group Name']]['pk'].values[0]
             filters = self.get_block_and_adjacency_filters(row)
-            target = row['Target'] # check case in temaplate
+            target = row['Target']
             additional_block_params.update({'minimum_block_ratio': float(target)/100})
 
             result_df = self.block.network_x_block_together(filters, additional=additional_block_params)
@@ -388,7 +388,8 @@ class PEPSICOUKSceneToolBox:
                                            score=score, result=result, target=target, by_scene=True)
 
             self.block_results = self.block_results.append(pd.DataFrame([{'Group Name': row['Group Name'],
-                                                                          'Score': result_df['is_block'].values[0] if not result_df.empty else False}]))
+                                                                          'Score': result_df['is_block'].values[0]
+                                                                          if not result_df.empty else False}]))
 
     @staticmethod
     def get_block_and_adjacency_filters(target_series):
