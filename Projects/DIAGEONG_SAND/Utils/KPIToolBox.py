@@ -10,8 +10,8 @@ class DIAGEONGSANDToolBox:
     def __init__(self, data_provider, output):
         self.data_provider = data_provider
         self.output = output
-        self.diageo_generator = DIAGEOGenerator(self.data_provider, self.output, self.commonV2)
         self.commonV2 = CommonV2(self.data_provider)
+        self.diageo_generator = DIAGEOGenerator(self.data_provider, self.output, self.commonV2)
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
 
     def main_calculation(self):
