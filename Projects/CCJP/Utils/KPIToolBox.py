@@ -10,7 +10,8 @@ from KPIUtils_v2.Utils.Consts.DB import SessionResultsConsts
 from KPIUtils_v2.Utils.Consts.GlobalConsts import BasicConsts, HelperConsts, ProductTypeConsts
 from KPIUtils_v2.Utils.Consts.DataProvider import SessionInfoConsts, ProductsConsts, ScifConsts, MatchesConsts
 from KPIUtils_v2.Utils.Consts.PS import AssortmentProductConsts
-
+from Trax.Utils.Conf.Keys import DbUsers
+from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
 from KPIUtils_v2.GlobalDataProvider.PsDataProvider import PsDataProvider
 from KPIUtils_v2.Calculations.CalculationsUtils.GENERALToolBoxCalculations import GENERALToolBox
@@ -25,8 +26,13 @@ class ToolBox(GlobalSessionToolBox):
     def __init__(self, data_provider, output, set_up_file):
         GlobalSessionToolBox.__init__(self, data_provider, output)
         self.output = output
+        self.poc_template = pd.read_excel(os.path.join(os.path.dirname(os.path.realpath(__file__)),
+                                        '..', 'Data', "template.xlsx"),
+                                        sheet_name='poc_config',
+                                        keep_default_na=False)
         self.data_provider = data_provider
         self.project_name = self.data_provider.project_name
+        self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         self.session_uid = self.data_provider.session_uid
         self.products = self.data_provider[Data.PRODUCTS]
         self.all_products = self.data_provider[Data.ALL_PRODUCTS]
@@ -66,6 +72,9 @@ class ToolBox(GlobalSessionToolBox):
         """
         This function calculates the KPI results.
         """
+        point_of_store_dict = self.point_of_connection()
+        self.common.save_json_to_new_tables(point_of_store_dict)
+
         assortment_store_dict = self.availability_store_function()
         self.common.save_json_to_new_tables(assortment_store_dict)
 
@@ -368,6 +377,65 @@ class ToolBox(GlobalSessionToolBox):
             return self.availability_calculation(Consts.SUB_CATEGORY)
         except Exception as e:
             Log.error('{}'.format(e))
+
+    @staticmethod
+    def get_store_area_query():
+        return """
+        SELECT
+        template_fk,
+        temp.name template_name,
+        store_task_area_group_item_fk store_area_group_item_fk,
+        sttagi.name store_area_group_item_name,
+        count(1) store_area_item_count
+        FROM 
+        probedata.scene sce, 
+        probedata.scene_store_task_area_group_items scetagi,
+        static.template temp,
+        static.store_task_area_group_items sttagi 
+        WHERE 1=1 
+        AND sce.session_uid ='{}'
+        AND sce.pk = scetagi.scene_fk
+        AND sce.template_fk = temp.pk 
+        AND scetagi.store_task_area_group_item_fk = sttagi.pk
+        AND temp.name in ({})
+        GROUP BY 
+        template_fk,
+        temp.name,
+        store_task_area_group_item_fk,
+        sttagi.name"""
+
+    def get_store_area_data(self, scene_types):
+        query = self.get_store_area_query().format(self.session_uid, scene_types)
+        print query
+        store_area_data = pd.read_sql_query(query, self.rds_conn.db)
+        return store_area_data
+
+    @staticmethod
+    def get_store_area_score_query():
+        return """
+           SELECT
+           template_fk,
+           count(distinct(sttagi.name))  count,
+           {} target,
+           count(distinct(sttagi.name)) / {} result
+           FROM 
+           probedata.scene sce, 
+           probedata.scene_store_task_area_group_items scetagi,
+           static.template temp,
+           static.store_task_area_group_items sttagi 
+           WHERE 1=1 
+           AND sce.session_uid ='{}'
+           AND sce.pk = scetagi.scene_fk
+           AND sce.template_fk = temp.pk 
+           AND scetagi.store_task_area_group_item_fk = sttagi.pk
+           AND temp.name in ({})
+           AND sttagi.name in ({})"""
+
+    def get_store_area_score_data(self, scene_types, store_location, target):
+        query = self.get_store_area_score_query().format(target, target, self.session_uid, scene_types, store_location)
+        print query
+        store_area_score_data = pd.read_sql_query(query, self.rds_conn.db)
+        return store_area_score_data
 
     def get_assortment_data_provider(self):
         try:
@@ -778,20 +846,80 @@ class ToolBox(GlobalSessionToolBox):
         results = self.calculate_sos(df, filters_num, filter_sos_first_level, sos_policy)
         return self.create_db_result(kpi_product_pk, product_fk, kpi_denominator, results, identifier_parent)
 
+    def point_of_connection(self):
+
+        if self.store_info.empty or self.poc_template.empty:
+            return
+
+        store_type = str(self.store_info.iloc[0]['store_type'])
+        address_city = str(self.store_info.iloc[0]['address_city'])
+        store_size = str(self.store_info.iloc[0]['additional_attribute_15'])
+
+        policy = self.poc_template[(self.poc_template['store_type'] == store_type) &
+                                   (self.poc_template['address_city'] == address_city) &
+                                   (self.poc_template['additional_attribute_15'] == store_size)]
+        if policy.empty:
+            return
+
+        store_locations = [x.strip() for x in policy.iloc[0]['store_area_location'].split(',')]
+        target = int(policy.iloc[0]['target'])
+        store_locations = ", ".join("'" + str(x) + "'" for x in store_locations)
+
+        scene_types_count = [x.strip() for x in policy.iloc[0]['scene_type_count'].split(',')]
+        scene_types_count = ", ".join("'" + str(x) + "'" for x in scene_types_count)
+
+        scene_types_score = [x.strip() for x in policy.iloc[0]['scene_type_score'].split(',')]
+        scene_types_score = ", ".join("'" + str(x) + "'" for x in scene_types_score)
+
+        return self.point_of_connection_calc(scene_types_count, scene_types_score, store_locations, target)
+
+    def point_of_connection_calc(self, scene_types_count, scene_types_score, store_locations, target):
+        dict_list = []
+        kpi_poc_count_fk = self.common.get_kpi_fk_by_kpi_type('CCJP_POC_COUNT_BY_STORE_AREA')
+        store_area_data = self.get_store_area_data(scene_types_count)
+
+        kpi_poc_score_fk = self.common.get_kpi_fk_by_kpi_type('CCJP_POC_SCORE_BY_TARGET')
+        store_area_score_data = self.get_store_area_score_data(scene_types_score, store_locations, target)
+
+        for row_num, row_data in store_area_data.iterrows():
+            dict_list.append(self.build_dictionary_for_db_insert_v2(fk=kpi_poc_count_fk,
+                                                                    numerator_id=row_data['store_area_group_item_fk'],
+                                                                    numerator_result=row_data['store_area_item_count'],
+                                                                    result=row_data['store_area_item_count'],
+                                                                    denominator_id=row_data['template_fk'],
+                                                                    denominator_result=0,
+                                                                    score=row_data['store_area_item_count']))
+
+        for row_num, row_data in store_area_score_data.iterrows():
+            dict_list.append(self.build_dictionary_for_db_insert_v2(fk=kpi_poc_score_fk,
+                                                                    numerator_id=row_data['template_fk'],
+                                                                    numerator_result=row_data['count'],
+                                                                    result=row_data['result'],
+                                                                    denominator_id=self.store_id,
+                                                                    denominator_result=row_data['target'],
+                                                                    score=row_data['result']))
+
+        return dict_list
+
     @staticmethod
-    def create_db_result(kpi_fk, numerator_id, denominator_id, results,
-                         identifier_parent=None, identifier_result=None):
+    def create_db_result(kpi_fk, numerator_id, denominator_id, results, identifier_parent=None, identifier_result=None):
         """
-       The function build db result for sos result
-             :param kpi_fk: pk of kpi
-             :param numerator_id
-             :param denominator_id
-             :param results: array of 3 parameters [int , int ,float]
-             :param identifier_parent : dictionary of filters of level above  in calculation
-             :param identifier_result : dictionary of filters of first level in calculation
-             :returns dict in format of db result
-         """
-        return {'fk': kpi_fk, SessionResultsConsts.NUMERATOR_ID: numerator_id, SessionResultsConsts.DENOMINATOR_ID: denominator_id,
-                SessionResultsConsts.DENOMINATOR_RESULT: results[1], SessionResultsConsts.NUMERATOR_RESULT: results[0], SessionResultsConsts.RESULT:
-                    results[2], SessionResultsConsts.SCORE: results[3], 'identifier_parent': identifier_parent, 'identifier_result':
-                    identifier_result, 'should_enter': True}
+        The function build db result for sos result
+        :param kpi_fk: pk of kpi
+        :param numerator_id
+        :param denominator_id
+        :param results: array of 3 parameters [int , int ,float]
+        :param identifier_parent : dictionary of filters of level above  in calculation
+        :param identifier_result : dictionary of filters of first level in calculation
+        :returns dict in format of db result
+        """
+        return {'fk': kpi_fk,
+                SessionResultsConsts.NUMERATOR_ID: numerator_id,
+                SessionResultsConsts.DENOMINATOR_ID: denominator_id,
+                SessionResultsConsts.DENOMINATOR_RESULT: results[1],
+                SessionResultsConsts.NUMERATOR_RESULT: results[0],
+                SessionResultsConsts.RESULT: results[2],
+                SessionResultsConsts.SCORE: results[3],
+                'identifier_parent': identifier_parent,
+                'identifier_result': identifier_result,
+                'should_enter': True}
