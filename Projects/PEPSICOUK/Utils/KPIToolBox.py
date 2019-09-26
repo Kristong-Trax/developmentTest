@@ -188,11 +188,13 @@ class PEPSICOUKToolBox:
                     result_df['ratio'] = result_df['count'] / result_df['total_facings']
                     result_100 = len(result_df[result_df['ratio'] >= 1])
                     result_90 = len(result_df[result_df['ratio'] >= 0.9])
-                    self.common.write_to_db_result(fk=row['kpi_level_2_fk'], numerator_id=row['group_fk'], score=result_100)
+                    self.common.write_to_db_result(fk=row['kpi_level_2_fk'], numerator_id=row['group_fk'],
+                                                   score=result_100)
                     kpi_90_fk = self.common.get_kpi_fk_by_kpi_type('Brand Full Bay_90')
                     self.common.write_to_db_result(fk=kpi_90_fk,  numerator_id=row['group_fk'], score=result_90)
 
-                    self.add_kpi_result_to_kpi_results_df([row['kpi_level_2_fk'], row['group_fk'], None, None, result_100])
+                    self.add_kpi_result_to_kpi_results_df([row['kpi_level_2_fk'], row['group_fk'], None, None,
+                                                           result_100])
                     self.add_kpi_result_to_kpi_results_df([kpi_90_fk, row['group_fk'], None, None, result_90])
 
     @staticmethod
@@ -211,9 +213,11 @@ class PEPSICOUKToolBox:
                                                                     'key_json', 'data_json'])
         output_targets_df = pd.DataFrame(columns=full_bay_targets.columns.values.tolist())
         if not full_bay_targets.empty:
-            groups_df = self.commontools.unpack_external_targets_json_fields_to_df(full_bay_targets, field_name='key_json')
+            groups_df = self.commontools.unpack_external_targets_json_fields_to_df(full_bay_targets,
+                                                                                   field_name='key_json')
             full_bay_targets = full_bay_targets.merge(groups_df, on='pk', how='left')
-            parameters_df = self.commontools.unpack_external_targets_json_fields_to_df(full_bay_targets, field_name='data_json')
+            parameters_df = self.commontools.unpack_external_targets_json_fields_to_df(full_bay_targets,
+                                                                                       field_name='data_json')
             output_targets_df = full_bay_targets.merge(parameters_df, on='pk', how='left')
         return output_targets_df
 
@@ -268,8 +272,8 @@ class PEPSICOUKToolBox:
                 relevant_matches['facing_sequence_number'] = relevant_matches['facing_sequence_number'].astype(str)
                 relevant_matches['all_sequences'] = relevant_matches.groupby(['scene_fk', 'bay_number', 'shelf_number', 'product_fk']) \
                                                         ['facing_sequence_number'].apply(lambda x: (x + ',').cumsum().str.strip())
-                grouped_matches = relevant_matches.drop_duplicates(subset=['scene_fk', 'bay_number', 'shelf_number', 'product_fk'],
-                                                                   keep='last')
+                grouped_matches = relevant_matches.drop_duplicates(subset=['scene_fk', 'bay_number', 'shelf_number',
+                                                                           'product_fk'], keep='last')
                 grouped_matches['is_stack'] = grouped_matches.apply(self.get_stack_data, axis=1)
                 stacking_kpi_fk = self.common.get_kpi_fk_by_kpi_type(self.HERO_SKU_STACKING)
                 for sku in hero_list:
@@ -351,29 +355,32 @@ class PEPSICOUKToolBox:
 
                     for i, row in hero_results.iterrows():
                         self.common.write_to_db_result(fk=row['kpi_level_2_fk'], numerator_id=row['numerator_id'],
-                                                       denominator_id=row['numerator_id'], denominator_result=row['denominator_result'],
+                                                       denominator_id=row['numerator_id'],
+                                                       denominator_result=row['denominator_result'],
                                                        numerator_result=row['numerator_result'], result=row['ratio'],
                                                        score=row['ratio'], identifier_parent=row['identifier_parent'],
                                                        should_enter=True)
-                        self.add_kpi_result_to_kpi_results_df([row.kpi_level_2_fk, row.numerator_id, row['numerator_id'], row['ratio'],
-                                                               row['ratio']])
+                        self.add_kpi_result_to_kpi_results_df([row.kpi_level_2_fk, row.numerator_id,
+                                                               row['numerator_id'], row['ratio'], row['ratio']])
                     hero_parent_results = hero_results.groupby(['numerator_id', 'KPI Parent'], as_index=False).agg({'ratio': np.sum})
                     hero_parent_results['identifier_parent'] = hero_parent_results.apply(self.construct_hero_identifier_dict, axis=1)
 
                     top_sku_parent = self.common.get_kpi_fk_by_kpi_type(self.HERO_PLACEMENT)
                     top_parent_identifier_par = self.common.get_dictionary(kpi_fk=top_sku_parent)
                     for i, row in hero_parent_results.iterrows():
-                        self.common.write_to_db_result(fk=row['KPI Parent'], numerator_id=row['numerator_id'], result=row['ratio'],
-                                                       score=row['ratio'], identifier_result=row['identifier_parent'],
-                                                       identifier_parent=top_parent_identifier_par, denominator_id=self.store_id,
-                                                       should_enter=True)
-                        self.add_kpi_result_to_kpi_results_df([row['KPI Parent'], row.numerator_id, self.store_id, row['ratio'],
-                                                                row['ratio']])
-                    self.common.write_to_db_result(fk=top_sku_parent, numerator_id=self.own_manuf_fk, denominator_id=self.store_id,
+                        self.common.write_to_db_result(fk=row['KPI Parent'], numerator_id=row['numerator_id'],
+                                                       result=row['ratio'], score=row['ratio'],
+                                                       identifier_result=row['identifier_parent'],
+                                                       identifier_parent=top_parent_identifier_par,
+                                                       denominator_id=self.store_id, should_enter=True)
+                        self.add_kpi_result_to_kpi_results_df([row['KPI Parent'], row.numerator_id,
+                                                               self.store_id, row['ratio'], row['ratio']])
+                    self.common.write_to_db_result(fk=top_sku_parent, numerator_id=self.own_manuf_fk,
+                                                   denominator_id=self.store_id,
                                                    result=len(hero_parent_results), score=len(hero_parent_results),
                                                    identifier_result=top_parent_identifier_par, should_enter=True)
-                    self.add_kpi_result_to_kpi_results_df([top_sku_parent, self.own_manuf_fk, self.store_id, len(hero_parent_results),
-                                                           len(hero_parent_results)])
+                    self.add_kpi_result_to_kpi_results_df([top_sku_parent, self.own_manuf_fk, self.store_id,
+                                                           len(hero_parent_results), len(hero_parent_results)])
 
     @staticmethod
     def construct_hero_identifier_dict(row):
@@ -444,10 +451,10 @@ class PEPSICOUKToolBox:
                                                             right_on='No of Shelves in Fixture (per bay) (key)')
         scene_bay_max_shelves = self.complete_missing_target_shelves(scene_bay_max_shelves)
         scene_bay_max_shelves['shelves_all_placements'] = scene_bay_max_shelves.groupby(['scene_fk', 'bay_number']) \
-                                            ['Shelves From Bottom To Include (data)'].apply(lambda x: ','.join(str(x))) # need to debug
+                                            ['Shelves From Bottom To Include (data)'].apply(lambda x: ','.join(str(x)))
         relevant_scenes = self.filtered_matches['scene_fk'].unique().tolist()
         scene_bay_max_shelves = scene_bay_max_shelves[(scene_bay_max_shelves['scene_fk'].isin(relevant_scenes)) &
-                                                      (~(scene_bay_max_shelves['bay_number']==-1))]
+                                                      (~(scene_bay_max_shelves['bay_number'] == -1))]
         final_df = pd.DataFrame(columns=scene_bay_max_shelves.columns.value.tolist())
         for i, row in scene_bay_max_shelves.iterrows():
             relevant_bays = self.filtered_matches[self.filtered_matches['scene_fk']==row['scene_fk']]['bay_number'].values.tolist()
@@ -475,7 +482,8 @@ class PEPSICOUKToolBox:
                                                                                   'key_json', 'data_json'])
         output_targets_df = pd.DataFrame(columns=shelf_placement_targets.columns.values.tolist())
         if not shelf_placement_targets.empty:
-            shelf_number_df = self.unpack_external_targets_json_fields_to_df(shelf_placement_targets, field_name='key_json')
+            shelf_number_df = self.unpack_external_targets_json_fields_to_df(shelf_placement_targets,
+                                                                             field_name='key_json')
             shelves_to_include_df = self.unpack_external_targets_json_fields_to_df(shelf_placement_targets,
                                                                                    field_name='data_json')
             shelf_placement_targets = shelf_placement_targets.merge(shelf_number_df, on='pk', how='left')
@@ -493,7 +501,7 @@ class PEPSICOUKToolBox:
         index_targets['denominator_id'] = index_targets.apply(self.retrieve_relevant_item_pks, axis=1,
                                                               args=('denominator_type', 'denominator_value'))
         index_targets['identifier_parent'] = index_targets['KPI Parent'].apply(lambda x:
-                                                                           self.common.get_dictionary(
+                                                                               self.common.get_dictionary(
                                                                                kpi_fk=int(float(x))))
         for i, row in index_targets.iterrows():
             general_filters = {row['additional_filter_type_1']: row['additional_filter_value_1']}
@@ -544,8 +552,8 @@ class PEPSICOUKToolBox:
                                            numerator_result=result.in_store, result=custom_res,
                                            denominator_id=self.store_id, should_enter=True,
                                            denominator_result=1, score=score, identifier_parent=identifier_parent)
-            self.add_kpi_result_to_kpi_results_df([result['kpi_fk_lvl3'], result['product_fk'], self.store_id, custom_res,
-                                                   score])
+            self.add_kpi_result_to_kpi_results_df([result['kpi_fk_lvl3'], result['product_fk'], self.store_id,
+                                                   custom_res, score])
             if score == 0:
                 # OOS
                 self.common.write_to_db_result(fk=oos_sku_fk,
@@ -565,21 +573,22 @@ class PEPSICOUKToolBox:
                 score = 100 if res >= 100 else 0
                 self.common.write_to_db_result(fk=result.kpi_fk_lvl2, numerator_id=self.own_manuf_fk,
                                                numerator_result=result.passes, result=res,
-                                               denominator_id=self.store_id, denominator_result=denominator_res, score=score,
-                                               identifier_result=identifier_parent, should_enter=True)
+                                               denominator_id=self.store_id, denominator_result=denominator_res,
+                                               score=score, identifier_result=identifier_parent, should_enter=True)
                 self.add_kpi_result_to_kpi_results_df([result.kpi_fk_lvl2, self.own_manuf_fk, self.store_id, res, score])
 
                 self.common.write_to_db_result(fk=oos_fk, numerator_id=self.own_manuf_fk,
                                                numerator_result=denominator_res - result.passes,
                                                denominator_id=self.store_id, denominator_result=denominator_res,
-                                               result=100 - res, score=(100 - res), identifier_result=oos_identifier_parent,
+                                               result=100 - res, score=(100 - res),
+                                               identifier_result=oos_identifier_parent,
                                                should_enter=True)
 
     @kpi_runtime()
     def calculate_sos_vs_target_kpis(self):
         sos_targets = self.get_relevant_sos_vs_target_kpi_targets()
-        sos_targets = sos_targets.drop_duplicates(subset=['kpi_operation_type_fk', 'kpi_level_2_fk', 'numerator_value', 'denominator_value',
-                                                          'type'], keep='first')
+        sos_targets = sos_targets.drop_duplicates(subset=['kpi_operation_type_fk', 'kpi_level_2_fk', 'numerator_value',
+                                                          'denominator_value', 'type'], keep='first')
         sos_targets = sos_targets.drop(['key_json', 'data_json', 'start_date', 'end_date'], axis=1)
         if not sos_targets.empty:
             sos_targets['numerator_id'] = sos_targets.apply(self.retrieve_relevant_item_pks, axis=1,
@@ -612,9 +621,11 @@ class PEPSICOUKToolBox:
         kpi_hero_parent = self.common.get_kpi_fk_by_kpi_type(self.HERO_SKU_SOS_VS_TARGET)
         additional_rows = []
         for sku in additional_skus:
-            values_to_append = {'numerator_id': sku, 'numerator_type': 'product_fk', 'numerator_value': sku, 'denominator_type': 'category_fk',
+            values_to_append = {'numerator_id': sku, 'numerator_type': 'product_fk', 'numerator_value': sku,
+                                'denominator_type': 'category_fk',
                                 'denominator_value': category_fk, 'Target': None, 'denominator_id': category_fk,
-                                'kpi_level_2_fk': hero_kpi_fk, 'KPI Parent': kpi_hero_parent, 'type': self.HERO_SKU_SPACE_TO_SALES_INDEX,
+                                'kpi_level_2_fk': hero_kpi_fk, 'KPI Parent': kpi_hero_parent,
+                                'type': self.HERO_SKU_SPACE_TO_SALES_INDEX,
                                 'identifier_parent': self.common.get_dictionary(kpi_fk=int(float(kpi_hero_parent)))}
             additional_rows.append(values_to_append)
         df_to_append = pd.DataFrame.from_records(additional_rows)
@@ -682,7 +693,8 @@ class PEPSICOUKToolBox:
             values_to_append = {'numerator_id': brand, 'numerator_type': 'brand_fk', 'numerator_value': brand,
                                 'denominator_type': 'category_fk',
                                 'denominator_value': category_fk, 'Target': None, 'denominator_id': category_fk,
-                                'kpi_level_2_fk': kpi_fk, 'KPI Parent': kpi_parent, 'type': self.BRAND_SPACE_TO_SALES_INDEX,
+                                'kpi_level_2_fk': kpi_fk, 'KPI Parent': kpi_parent,
+                                'type': self.BRAND_SPACE_TO_SALES_INDEX,
                                 'identifier_parent': self.common.get_dictionary(kpi_fk=int(float(kpi_parent)))}
             additional_rows.append(values_to_append)
         df_to_append = pd.DataFrame.from_records(additional_rows)
@@ -714,10 +726,11 @@ class PEPSICOUKToolBox:
             if sub_brand_fk is None:
                 Log.warning('Sub_brand: {} is not in custom_entity table. Please add'.format(sub_brand))
             else:
-                values_to_append = {'numerator_id': sub_brand_fk, 'numerator_type': 'sub_brand', 'numerator_value': sub_brand,
-                                    'denominator_type': 'category_fk',
+                values_to_append = {'numerator_id': sub_brand_fk, 'numerator_type': 'sub_brand',
+                                    'numerator_value': sub_brand, 'denominator_type': 'category_fk',
                                     'denominator_value': category_fk, 'Target': None, 'denominator_id': category_fk,
-                                    'kpi_level_2_fk': kpi_fk, 'KPI Parent': kpi_parent, 'type': self.SUB_BRAND_SPACE_TO_SALES_INDEX,
+                                    'kpi_level_2_fk': kpi_fk, 'KPI Parent': kpi_parent,
+                                    'type': self.SUB_BRAND_SPACE_TO_SALES_INDEX,
                                     'identifier_parent': self.common.get_dictionary(kpi_fk=int(float(kpi_parent)))}
                 additional_rows.append(values_to_append)
 
@@ -747,7 +760,8 @@ class PEPSICOUKToolBox:
             values_to_append = {'numerator_id': self.own_manuf_fk, 'numerator_type': 'manufacturer_fk',
                                 'numerator_value': self.own_manuf_fk, 'denominator_type': 'sub_category_fk',
                                 'denominator_value': sub_category, 'Target': None, 'denominator_id': sub_category,
-                                'kpi_level_2_fk': kpi_fk, 'KPI Parent': kpi_parent, 'type': self.PEPSICO_SEGMENT_SPACE_TO_SALES_INDEX,
+                                'kpi_level_2_fk': kpi_fk, 'KPI Parent': kpi_parent,
+                                'type': self.PEPSICO_SEGMENT_SPACE_TO_SALES_INDEX,
                                 'identifier_parent': self.common.get_dictionary(kpi_fk=int(float(kpi_parent)))}
             additional_rows.append(values_to_append)
         df_to_append = pd.DataFrame.from_records(additional_rows)
@@ -781,7 +795,8 @@ class PEPSICOUKToolBox:
                 values_to_append = {'numerator_id': self.own_manuf_fk, 'numerator_type': 'manufacturer_fk',
                                     'numerator_value': self.own_manuf_fk, 'denominator_type': 'PDH Sub-segment',
                                     'denominator_value': sub_segment, 'Target': None, 'denominator_id': sub_segment_fk,
-                                    'kpi_level_2_fk': kpi_fk, 'KPI Parent': kpi_parent, 'type': self.PEPSICO_SUB_SEGMENT_SPACE_TO_SALES_INDEX,
+                                    'kpi_level_2_fk': kpi_fk, 'KPI Parent': kpi_parent,
+                                    'type': self.PEPSICO_SUB_SEGMENT_SPACE_TO_SALES_INDEX,
                                     'identifier_parent': self.common.get_dictionary(kpi_fk=int(float(kpi_parent)))}
                 additional_rows.append(values_to_append)
         df_to_append = pd.DataFrame.from_records(additional_rows)
