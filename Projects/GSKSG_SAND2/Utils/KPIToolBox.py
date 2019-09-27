@@ -331,10 +331,10 @@ class GSKSGToolBox:
             denominator, numerator, score, shelf_weight = 0, 0, 0, 0
             result = float(numerator) / float(denominator) if numerator and denominator != 0 else 0
             shelf_weight = category_targets['shelf_weight'].iloc[0]
-            results_list.append({'fk': kpi_fk, 'numerator_id': category, 'denominator_id':
-            self.store_id, 'denominator_result': denominator, 'numerator_result': numerator, 'result': result,
-                             'target': shelf_weight, 'score': score,
-                             'identifier_parent': identifier_parent, 'should_enter': True})
+        results_list.append({'fk': kpi_fk, 'numerator_id': category, 'denominator_id':
+        self.store_id, 'denominator_result': denominator, 'numerator_result': numerator, 'result': result,
+                         'target': shelf_weight, 'score': score,
+                         'identifier_parent': identifier_parent, 'should_enter': True})
         return score, results_list, shelf_weight
 
     def planogram(self, category_fk, assortment, category_targets, identifier_parent):
