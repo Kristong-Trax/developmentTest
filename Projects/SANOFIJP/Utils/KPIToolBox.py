@@ -28,7 +28,7 @@ class SanofiJPToolBox:
         This function calculates the KPI results.
         """
         self.record_all_products()
-        self.common.commit_results_data()
+        # self.common.commit_results_data()  # [PROS-11697] No need as its already committed by the Global KPIs
         return 0
 
     def record_all_products(self):
