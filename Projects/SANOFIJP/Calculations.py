@@ -14,10 +14,11 @@ __author__ = 'nidhinb'
 class SANOFIJPCalculations(BaseCalculationsScript):
     def run_project_calculations(self):
         self.timer.start()
+        # For Custom KPI -- PROS-11486 // the custom KPIs are never to commit to the DB. Its done in the global KPIs.
+        Generator(self.data_provider, self.output).main_function()
+        # Global KPI calcs -- the commit is done with this!
         TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), 'SANOFIJP', 'Data', 'Template.xlsx')
         SANOFIGenerator(self.data_provider, self.output, TEMPLATE_PATH).main_function()
-        # For Custom KPI -- PROS-11486
-        Generator(self.data_provider, self.output).main_function()
         self.timer.stop('KPIGenerator.run_project_calculations')
 
 
