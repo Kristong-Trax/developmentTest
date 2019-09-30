@@ -206,7 +206,7 @@ class FSOPToolBox:
             ratio = self.SOS.calculate_share_of_shelf(filters, **general_filters)
 
             if pd.isna(target):
-                score = ratio
+                score = float(ratio)
             else:
                 target = int(target)
 
@@ -214,7 +214,7 @@ class FSOPToolBox:
                     score = 1
                 else:
                     score = 0
-
+            a = 1
             self.common.write_to_db_result(fk=kpi_fk, numerator_id=self.manufacturer_fk, numerator_result=0,
                                            denominator_id=self.store_id,
                                            denominator_result=0, result=ratio, score=score)
