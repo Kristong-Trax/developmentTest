@@ -57,8 +57,8 @@ class ToolBox(GlobalSessionToolBox):
         self.manufacturer_fk = None if self.data_provider[Data.OWN_MANUFACTURER]['param_value'].iloc[0] is None else \
             int(self.data_provider[Data.OWN_MANUFACTURER]['param_value'].iloc[0])
         self.assort_lvl3 = None
-        self.last_session_uid = self.ps_data.get_last_session()
-        self.last_results = self.ps_data.get_last_status(self.last_session_uid, 3)
+        # self.last_session_uid = self.ps_data.get_last_session()
+        # self.last_results = self.get_last_status(self.last_session_uid, 3)
         self.set_up_template = pd.read_excel(os.path.join(os.path.dirname(os.path.realpath(__file__)),
                                                           '..',
                                                           'Data',
@@ -393,6 +393,8 @@ class ToolBox(GlobalSessionToolBox):
         static.template temp,
         static.store_task_area_group_items sttagi 
         WHERE 1=1 
+        AND sce.status = 6
+        AND sce.delete_time is null
         AND sce.session_uid ='{}'
         AND sce.pk = scetagi.scene_fk
         AND sce.template_fk = temp.pk 
@@ -424,6 +426,8 @@ class ToolBox(GlobalSessionToolBox):
            static.template temp,
            static.store_task_area_group_items sttagi 
            WHERE 1=1 
+           AND sce.status = 6
+           AND sce.delete_time is null
            AND sce.session_uid ='{}'
            AND sce.pk = scetagi.scene_fk
            AND sce.template_fk = temp.pk 
@@ -476,13 +480,12 @@ class ToolBox(GlobalSessionToolBox):
         self.assort_lvl3 = lvl3_result
 
     def get_assortment_filtered(self, filter_dict, kpi):
-
         filtered_scif = self.scif
         filtered_scif = self.tests_by_template(kpi, filtered_scif, filter_dict)
         self.assortment.scif = self.scif.drop(self.scif.index,
                                               inplace=False) if filtered_scif is None else filtered_scif
-        lvl3_result = self.assortment.calculate_lvl3_assortment(
-            filter_dict[(Consts.INCLUDE_STACKING, kpi)])
+        # lvl3_result = self.assortment.calculate_lvl3_assortment(filter_dict[(Consts.INCLUDE_STACKING, kpi)])
+        lvl3_result = self.assortment.calculate_lvl3_assortment()
         self.assortment.scif = self.scif
         return lvl3_result, filtered_scif
 
@@ -564,26 +567,26 @@ class ToolBox(GlobalSessionToolBox):
 
         return df
 
-    def get_last_status(self, kpi_pk, numerator, denominator=None):
-        """
-              :param kpi_pk
-              :param numerator
-              :param denominator
-
-              :return result ,from last_results df( data frame that contains results from last completed session from
-              the same store , that has the same  kpi_level_2_fk = kpi_pk and numerator_id=numerator and
-              denominator_id=denominator
-        """
-        if denominator is None:
-            results = self.last_results[(self.last_results[SessionResultsConsts.KPI_LEVEL_2_FK] == kpi_pk) &
-                                        (self.last_results[SessionResultsConsts.NUMERATOR_ID] == numerator)]
-        else:
-            results = self.last_results[(self.last_results[SessionResultsConsts.KPI_LEVEL_2_FK] == kpi_pk) & (
-                    self.last_results[SessionResultsConsts.NUMERATOR_ID] == numerator) &
-                                        (self.last_results[SessionResultsConsts.DENOMINATOR_ID] == denominator)]
-        if results.empty:
-            return None
-        return results[SessionResultsConsts.RESULT].iloc[0]
+    # def get_last_status(self, kpi_pk, numerator, denominator=None):
+    #     """
+    #           :param kpi_pk
+    #           :param numerator
+    #           :param denominator
+    #
+    #           :return result ,from last_results df( data frame that contains results from last completed session from
+    #           the same store , that has the same  kpi_level_2_fk = kpi_pk and numerator_id=numerator and
+    #           denominator_id=denominator
+    #     """
+    #     if denominator is None:
+    #         results = self.last_results[(self.last_results[SessionResultsConsts.KPI_LEVEL_2_FK] == kpi_pk) &
+    #                                     (self.last_results[SessionResultsConsts.NUMERATOR_ID] == numerator)]
+    #     else:
+    #         results = self.last_results[(self.last_results[SessionResultsConsts.KPI_LEVEL_2_FK] == kpi_pk) & (
+    #                 self.last_results[SessionResultsConsts.NUMERATOR_ID] == numerator) &
+    #                                     (self.last_results[SessionResultsConsts.DENOMINATOR_ID] == denominator)]
+    #     if results.empty:
+    #         return None
+    #     return results[SessionResultsConsts.RESULT].iloc[0]
 
     def facings_sos_whole_store_function(self):
         """
@@ -851,13 +854,8 @@ class ToolBox(GlobalSessionToolBox):
         if self.store_info.empty or self.poc_template.empty:
             return
 
-        store_type = str(self.store_info.iloc[0]['store_type'])
-        address_city = str(self.store_info.iloc[0]['address_city'])
-        store_size = str(self.store_info.iloc[0]['additional_attribute_15'])
+        policy = self.get_store_policy()
 
-        policy = self.poc_template[(self.poc_template['store_type'] == store_type) &
-                                   (self.poc_template['address_city'] == address_city) &
-                                   (self.poc_template['additional_attribute_15'] == store_size)]
         if policy.empty:
             return
 
@@ -923,3 +921,26 @@ class ToolBox(GlobalSessionToolBox):
                 'identifier_parent': identifier_parent,
                 'identifier_result': identifier_result,
                 'should_enter': True}
+
+    def get_store_policy(self):
+        store_policy = pd.DataFrame()
+        for row_num, row_data in self.poc_template.iterrows():
+            filter_params = {}
+            for idx in range(1, 7):
+                try:
+                    if len(str(row_data["store_attr_" + str(idx) + "_name"]).strip()) != 0:
+                        filter_params[row_data["store_attr_" + str(idx) + "_name"]] = \
+                            row_data["store_attr_" + str(idx) + "_value"]
+                except Exception as ex:
+                    Log.info("Error:{} filter_params:{}".format(ex, filter_params))
+
+            result = self.store_info.loc[
+                (self.store_info[list(filter_params)] == pd.Series(filter_params)).all(axis=1)]
+
+            if result.empty:
+                continue
+            else:
+                Log.info("store_policy:{} filter_params:{}".format(row_data['store_policy'], filter_params))
+                return row_data
+
+        return store_policy
