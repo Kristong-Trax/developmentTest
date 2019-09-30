@@ -155,7 +155,8 @@ class TWEGAUToolBox:
         # 2. calculate the zone based sheet
         self.calculate_zone_based()
         # Calculate SOS - PROS-11641
-        if not self.targets[self.targets['store_number'] == self.store_info.iloc[0].store_number_1].empty:
+        if not self.targets.empty and \
+                not self.targets[self.targets['store_number'] == self.store_info.iloc[0].store_number_1].empty:
             # If there is a relevant target for this store in external targets,
             # calculate and store the sos
             facings_sos_dict = self.facings_sos_whole_store_function()
