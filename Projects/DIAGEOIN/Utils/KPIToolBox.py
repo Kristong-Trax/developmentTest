@@ -9,6 +9,9 @@ from KPIUtils.GlobalProjects.DIAGEO.Utils.Consts import DiageoKpiNames, Consts
 from KPIUtils.GlobalProjects.DIAGEO.Utils.TemplatesUtil import TemplateHandler
 from KPIUtils.DIAGEO.ParseTemplates import parse_template
 from Trax.Utils.Logging.Logger import Log
+from KPIUtils_v2.DB.Queries import Queries
+from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
+from Trax.Utils.Conf.Keys import DbUsers
 
 __author__ = 'satya'
 
@@ -16,14 +19,16 @@ __author__ = 'satya'
 class DIAGEOINToolBox:
     def __init__(self, data_provider, output):
         self.data_provider = data_provider
+        self.commonV2 = CommonV2(self.data_provider)
+        self.rds_conn = PSProjectConnector(self.data_provider.project_name, DbUsers.CalculationEng)
         self.output = output
+        self.kpi_static_data = self.get_kpi_static_data()
         self.store_id = self.data_provider[Data.STORE_FK]
         self.own_manufacturer_fk = 12
         self.store_info = self.get_store_info(self.store_id)
         self.assortment = self.get_assortment_info()
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
         self.common = Common(self.data_provider)
-        self.commonV2 = CommonV2(self.data_provider)
         self.scene_info = self.data_provider[Data.SCENES_INFO]
         self.diageo_generator = DIAGEOGenerator(self.data_provider, self.output, self.common)
         self.template_handler = TemplateHandler(self.data_provider.project_name)
@@ -31,6 +36,15 @@ class DIAGEOINToolBox:
                                  'Data', 'Template.xlsx')
         self.bpa_store = parse_template(local_template_path, sheet_name='brand_presence_assortments_store')
         self.bpa = parse_template(local_template_path, 'brand_presence_assortments')
+
+    def get_kpi_static_data(self):
+        """
+        This function extracts the static new KPI data (new tables) and saves it into one 'global' data frame.
+        The data is taken from static.kpi_level_2.
+        """
+        query = Queries.get_new_kpi_data()
+        kpi_static_data = pd.read_sql_query(query, self.rds_conn.db)
+        return kpi_static_data
 
     def get_assortment_info(self):
         query = """SELECT pk, assortment_name FROM pservice.assortment"""
@@ -75,14 +89,14 @@ class DIAGEOINToolBox:
         This function calculates the KPI results.
         """
 
-        # # SOS Out Of The Box kpis
+        # # SOS Out Of The Box KPIs
         self.diageo_generator.activate_ootb_kpis(self.commonV2)
 
-        # Global assortment kpis - v2 for API use
+        # Global assortment KPIs - v2 for API use
         assortment_res_dict_v2 = self.diageo_generator.diageo_global_assortment_function_v2()
         self.commonV2.save_json_to_new_tables(assortment_res_dict_v2)
 
-        # Global assortment kpis - v3 for NEW MOBILE REPORTS use
+        # Global assortment KPIs - v3 for NEW MOBILE REPORTS use
         assortment_res_dict_v3 = self.diageo_generator.diageo_global_assortment_function_v3()
         self.commonV2.save_json_to_new_tables(assortment_res_dict_v3)
 
@@ -131,7 +145,7 @@ class DIAGEOINToolBox:
                 continue
             else:
                 Log.info("store_policy:{} filter_params:{}".format(row_data['store_policy'], filter_params))
-                return row_data['store_policy']
+                return str(row_data['store_policy']).strip()
 
         return store_policy
 
@@ -190,7 +204,7 @@ class DIAGEOINToolBox:
                 if len(ean_codes_found) >= int(row_data_brand_group['target']):
                     result = 1
 
-                dict_result['fk'] = 3478
+                dict_result['fk'] = self.get_kpi_fk_by_kpi_type("BRAND_GROUP_PRESENCE_SCENE_LEVEL")
                 if template_name == 'Back Bar':
                     dict_result['numerator_id'] = template_fk
                     dict_result['numerator_result'] = result
@@ -233,8 +247,25 @@ class DIAGEOINToolBox:
 
         print df_results
 
+    def get_kpi_fk_by_kpi_type(self, kpi_type):
+        """
+        convert kpi name to kpi_fk
+        :param kpi_type: string
+        :return: fk
+        """
+        assert isinstance(kpi_type, (unicode, basestring)), "name is not a string: %r" % kpi_type
+        try:
+            return self.kpi_static_data[self.kpi_static_data['type'] == kpi_type]['pk'].values[0]
+        except IndexError:
+            Log.info("Kpi name: {} is not equal to any kpi name in static table".format(kpi_type))
+            return None
+
     def calculate_brand_presence_overall_score(self, df):
-        fk = 3479
+
+        if df.empty:
+            return
+
+        kpi_fk = self.get_kpi_fk_by_kpi_type("BRAND_GROUP_PRESENCE_OWN_MANF_WHOLE_STORE")
         numerator_id = self.own_manufacturer_fk
         numerator_result = df['result'].sum()
         denominator_id = self.store_id
@@ -244,9 +275,9 @@ class DIAGEOINToolBox:
         try:
             score = numerator_result / float(denominator_result)
         except Exception as ex:
-            print (ex)
+            Log.info("Warning: {}".format(ex.message))
 
-        self.commonV2.write_to_db_result(fk=fk,
+        self.commonV2.write_to_db_result(fk=kpi_fk,
                                          numerator_id=numerator_id,
                                          numerator_result=numerator_result,
                                          denominator_id=denominator_id,
