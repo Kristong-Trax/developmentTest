@@ -193,20 +193,22 @@ class FSOPToolBox:
 
             target = row['Target']
 
+            product_type= self.sanitize_values(row['product_type'])
+
             excluded_brands = self.sanitize_values(row['exclude brand'])
 
             filters = {'manufacturer_name': manufacturers, num_param1: num_value1, 'template_name': scene_types,
-                       'brand_name': (excluded_brands, 0), 'product_type': ['SKU', 'OTHER']}
+                       'brand_name': (excluded_brands, 0), 'product_type': product_type}
 
             filters = self.delete_filter_nan(filters)
-            general_filters = {den_param1: den_value1, den_param2: den_value2, 'product_type': ['SKU', 'OTHER'],
+            general_filters = {den_param1: den_value1, den_param2: den_value2, 'product_type': product_type,
                                'template_name': scene_types}
             general_filters = self.delete_filter_nan(general_filters)
 
             ratio = self.SOS.calculate_share_of_shelf(filters, **general_filters)
 
             if pd.isna(target):
-                score = float(ratio)
+                score = ratio
             else:
                 target = int(target)
 
@@ -214,7 +216,7 @@ class FSOPToolBox:
                     score = 1
                 else:
                     score = 0
-            a = 1
+
             self.common.write_to_db_result(fk=kpi_fk, numerator_id=self.manufacturer_fk, numerator_result=0,
                                            denominator_id=self.store_id,
                                            denominator_result=0, result=ratio, score=score)
