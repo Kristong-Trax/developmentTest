@@ -47,8 +47,8 @@ class NESTLEILToolBox:
             dist_store_kpi_fk, oos_store_kpi_fk = self._get_ass_kpis(store_lvl_kpi)
             dist_sku_kpi_fk, oos_sku_kpi_fk = self._get_ass_kpis(sku_lvl_kpi)
             # Calculating the assortment results
-            store_level_res = self._calculated_store_level_results(lvl3_result)
-            sku_level_res = self._calculated_sku_level_results(lvl3_result)
+            store_level_res = self._calculated_store_level_results(relevant_lvl3_res)
+            sku_level_res = self._calculated_sku_level_results(relevant_lvl3_res)
             # Saving to DB
             self._save_results_to_db(store_level_res, dist_store_kpi_fk)
             self._save_results_to_db(sku_level_res, dist_sku_kpi_fk, dist_store_kpi_fk)
