@@ -30,6 +30,7 @@ __author__ = 'Sam'
 class ToolBox:
 
     def __init__(self, data_provider, output, common):
+        self.global_fail = 0
         self.common = common
         self.output = output
         self.data_provider = data_provider
@@ -51,6 +52,7 @@ class ToolBox:
         self.result_values_dict = self.make_result_values_dict()
         self.store_assortment = self.ps_data_provider.get_store_assortment()
         self.store_sos_policies = self.ps_data_provider.get_store_policies()
+        self.states = self.load_state_data()
         self.labels = self.ps_data_provider.get_labels()
         self.scene_info = self.data_provider[Data.SCENES_INFO]
         self.all_products = self.data_provider[Data.ALL_PRODUCTS]
@@ -59,12 +61,6 @@ class ToolBox:
         self.store_id = self.data_provider[Data.STORE_FK]
         self.manufacturer_fk = int(self.data_provider[Data.OWN_MANUFACTURER].iloc[0, 1])
         self.match_product_in_scene = self.data_provider[Data.MATCHES]
-        self.full_mpis = self.match_product_in_scene.merge(self.products, on='product_fk', suffixes=['', '_p']) \
-            .merge(self.scene_info, on='scene_fk', suffixes=['', '_s']) \
-            .merge(self.templates, on='template_fk', suffixes=['', '_t'])
-        self.full_mpis['store_fk'] = self.store_id
-        self.mpis = self.full_mpis[self.full_mpis['product_type'] != 'Irrelevant']
-        self.mpis = self.filter_df(self.mpis, Const.SOS_EXCLUDE_FILTERS, exclude=1)
         # self.add_image_data_to_mpis()
         self.visit_date = self.data_provider[Data.VISIT_DATE]
         self.session_info = self.data_provider[Data.SESSION_INFO]
@@ -72,6 +68,9 @@ class ToolBox:
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
         self.tmb_map = pd.read_excel(Const.TMB_MAP_PATH).set_index('Num Shelves').to_dict('index')
         self.result_values_dict = self.make_result_values_dict()
+        self.full_mpis = pd.DataFrame()
+        self.mpis = pd.DataFrame()
+        self.load_mpis()
         self.blockchain = {}
         self.template = {}
         self.competitive_brands = None
@@ -79,7 +78,6 @@ class ToolBox:
         self.dependencies = {}
         self.dependency_lookup = {}
         self.base_measure = None
-        self.global_fail = 0
         self.circle_kpis = set()
 
         self.store_data = pd.read_sql_query(DATA_QUERY, self.common.rds_conn.db)
@@ -94,7 +92,8 @@ class ToolBox:
             This function gets all the scene results from the SceneKPI, after that calculates every session's KPI,
             and in the end it calls "filter results" to choose every KPI and scene and write the results in DB.
         """
-
+        if self.global_fail:
+            return
         self.template = pd.read_excel(template_path, sheetname=None)
         self.parse_comp_brands(comp_path)
         # self.dependencies = {key: None for key in self.template[Const.KPIS][Const.KPI_NAME]}
@@ -307,10 +306,10 @@ class ToolBox:
     def calculate_distribution(self, kpi_name, kpi_line, level, **kwargs):
         res_2, res_3 = [], []
         lvl3_result = self.assortment.calculate_lvl3_assortment()
-        lvl3_result = lvl3_result.merge(self.common.kpi_static_data[['pk', 'type', 'client_name']], left_on='kpi_fk_lvl2',
-                                        right_on='pk', how='inner')
-        lvl3_result = lvl3_result[lvl3_result['client_name'] == kpi_name]
         if not lvl3_result.empty:
+            lvl3_result = lvl3_result.merge(self.common.kpi_static_data[['pk', 'type', 'client_name']],
+                                            left_on='kpi_fk_lvl2', right_on='pk', how='inner')
+            lvl3_result = lvl3_result[lvl3_result['client_name'] == kpi_name]
             lvl3_result['target'] = 1
             lvl2_result = self.assortment.calculate_lvl2_assortment(lvl3_result)
             res_3 = self.parse_assortment_results(lvl3_result, 'kpi_fk_lvl3', 'product_fk', 'in_store', 'assortment_group_fk',
@@ -941,6 +940,7 @@ class ToolBox:
     def parse_comp_brands(self, path):
         df = pd.read_excel(path, sheetname=None, header=1)
         group = df['Granular Groups link to stores']
+        states = set(self.states['name'].unique())
 
         # Convert assortment style template to one parsable by get_kpi_line_filters
         new_cols = []
@@ -961,7 +961,7 @@ class ToolBox:
             filters = self.get_kpi_line_filters(row.iloc[0, :])
             # Error checking
             bad_fields = [field for field in filters if field not in self.store_data.columns]
-            bad_values = [filters[field] for field in filters if filters[field] not in self.store_data[field].values]
+            bad_values = [state for field in filters for state in filters[field] if state not in states]
             if bad_fields or bad_values:
                 Log.error("Comparable assortment KPIs issue: \nmissing_fields: {} \nmissing_values: {}".format(
                           bad_fields, bad_values))  # logging inside the loop potentially can cause redundant logs, but i kinda want that.
@@ -1041,9 +1041,25 @@ class ToolBox:
 
         return mpip
 
+    def load_state_data(self):
+        query = ''' select * from static.state'''
+        return pd.read_sql_query(query, self.ps_data_provider.rds_conn.db)
+
     def make_result_values_dict(self):
         query = "SELECT * FROM static.kpi_result_value;"
         return pd.read_sql_query(query, self.ps_data_provider.rds_conn.db).set_index('value')['pk'].to_dict()
+
+    def load_mpis(self):
+        try:
+            self.full_mpis = self.match_product_in_scene.merge(self.products, on='product_fk', suffixes=['', '_p']) \
+                .merge(self.scene_info, on='scene_fk', suffixes=['', '_s']) \
+                .merge(self.templates, on='template_fk', suffixes=['', '_t'])
+            self.full_mpis['store_fk'] = self.store_id
+            self.mpis = self.full_mpis[self.full_mpis['product_type'] != 'Irrelevant']
+            self.mpis = self.filter_df(self.mpis, Const.SOS_EXCLUDE_FILTERS, exclude=1)
+        except:
+            Log.warning('Data does not exist for this session')
+            self.global_fail = 1
 
     def get_kpi_function(self, kpi_type):
         """
