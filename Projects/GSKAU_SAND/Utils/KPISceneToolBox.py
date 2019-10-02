@@ -22,7 +22,6 @@ POSM_KEY = 'posm_pk'
 GSK_MANUFACTURER_ID = 2
 EMPTY_PRODUCT_ID = 0
 # the keys are named as per the config file
-# ..ExternalTargetsTemplateLoader/ProjectsDetails/gskau-sand.py
 STORE_IDENTIFIERS = [
     'additional_attribute_1', 'additional_attribute_2',
     'region_fk', 'store_type', 'store_number_1', 'address_city',
@@ -172,9 +171,12 @@ class GSKAUSceneToolBox:
                     # this scene has the posm
                     Log.info('The scene: {scene} is relevant and POSM {pos} is present.'
                              .format(scene=current_scene_fk, pos=posm_to_check))
+                    has_posm_recognized = True
                     # check if this scene has multi posm or multi bays
                     if len(self.match_product_in_scene['bay_number'].unique()) > 1 or \
-                            len(self.scif[self.scif['product_type'] == POS_TYPE]) > 1:
+                            len(self.scif[self.scif['product_type'] == POS_TYPE]) > 1 or \
+                            not self.scif[(self.scif['product_type'] == POS_TYPE) &
+                                          (self.scif['facings'] > 1)].empty:
                         # Its multi posm or bay -- only purity calc per bay is possible
                         Log.info('The scene: {scene} is relevant and POSM {pos} is present but multi_bay_posm is True. '
                                  'Purity per bay is calculated and going to next scene.'
@@ -204,7 +206,6 @@ class GSKAUSceneToolBox:
 
                     Log.info('The scene: {scene} is relevant and POSM {pos} is present with only one bay.'
                              .format(scene=current_scene_fk, pos=posm_to_check))
-                    has_posm_recognized = True
                     # save purity per bay
                     self.save_purity_per_bay(kpi_display_bay_purity)
                     # calculate display per sku for ALL SUCCESS
@@ -294,15 +295,15 @@ class GSKAUSceneToolBox:
     def save_purity_per_bay(self, kpi_bay_purity):
         Log.info('Calculate purity per bay for : {scene}.'.format(scene=self.scene_info.iloc[0].scene_fk))
         # could have done with scif
-        total_prod_in_scene_count = len(
-            self.match_product_in_scene[self.match_product_in_scene['product_fk'] != 0]
-        )
         mpis_grouped_by_bay = self.match_product_in_scene.groupby(['bay_number'])
         for bay_number, mpis in mpis_grouped_by_bay:
+            total_prod_in_bay_count = len(
+                mpis[mpis['product_fk'] != 0]
+            )
             mpis_with_prod = mpis.merge(self.products, how='left', on=['product_fk'], suffixes=('', '_prod'))
             gsk_prod_count = len(mpis_with_prod[mpis_with_prod['manufacturer_fk'] == 2])
-            if total_prod_in_scene_count:
-                purity = gsk_prod_count / float(total_prod_in_scene_count) * 100
+            if total_prod_in_bay_count:
+                purity = gsk_prod_count / float(total_prod_in_bay_count) * 100
                 Log.info('Save purity per bay for scene: {scene}; bay: {bay} & purity: {purity}.'
                          .format(scene=self.scene_info.iloc[0].scene_fk,
                                  bay=bay_number,
