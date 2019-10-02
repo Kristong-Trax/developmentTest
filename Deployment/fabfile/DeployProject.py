@@ -74,6 +74,6 @@ class ProjectDeploy(ProjectDeployment):
 if __name__ == '__main__':
     Config.init()
     LoggerInitializer.init('Deploy')
-    deploy_instance = ProjectDeploy(project='pepsicouk')
+    deploy_instance = ProjectDeploy()
     deploy_instance.deploy()
     pass
