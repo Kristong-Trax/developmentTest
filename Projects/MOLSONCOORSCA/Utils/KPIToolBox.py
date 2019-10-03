@@ -1,7 +1,7 @@
 import pandas as pd
 import operator as op
 from functools import reduce
-from collections import defaultdict, Counter, namedtuple
+from collections import defaultdict, namedtuple
 
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Algo.Calculations.Core.Utils import Validation
@@ -61,13 +61,14 @@ class ToolBox:
         self.store_id = self.data_provider[Data.STORE_FK]
         self.manufacturer_fk = int(self.data_provider[Data.OWN_MANUFACTURER].iloc[0, 1])
         self.match_product_in_scene = self.data_provider[Data.MATCHES]
+        self.result_entities = self.make_result_values_dict()
         # self.add_image_data_to_mpis()
         self.visit_date = self.data_provider[Data.VISIT_DATE]
         self.session_info = self.data_provider[Data.SESSION_INFO]
         self.scenes = self.scene_info['scene_fk'].tolist()
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
         self.tmb_map = pd.read_excel(Const.TMB_MAP_PATH).set_index('Num Shelves').to_dict('index')
-        self.result_values_dict = self.make_result_values_dict()
+        self.res_dict = defaultdict(lambda: defaultdict(int))
         self.full_mpis = pd.DataFrame()
         self.mpis = pd.DataFrame()
         self.load_mpis()
@@ -105,6 +106,8 @@ class ToolBox:
         for i, main_line in main_template.iterrows():
             self.global_fail = 0
             self.calculate_base_data(main_line)
+        for kpi in self.circle_kpis:
+            self.write_to_db(**kpi)
 
         # self.flag_failures()
 
@@ -121,21 +124,21 @@ class ToolBox:
         if relevant_scif.empty:
             return
 
-        # if kpi_name not in [
-        #     # 'Eye Level Availability'
-        #     # 'Flanker Displays', 'Disruptor Displays'
-        #     # 'Innovation Distribution',
-        #     # 'Display by Location'
-        #     # 'Leading Main Section on Left',
-        #     # 'Leading Main Section on Right',
-        #     # 'Leading Cold Room on Left',
-        #     # 'Leading Cold Room on Right',
-        #     # 'Share of Segment Cooler Facings'
-        #     'Share of Segment Warm Facings',
-        #     # 'ABI Share of Display Space'
-        #
-        # ]:
-        #     return
+        if kpi_name not in [
+            # 'Eye Level Availability'
+            # 'Flanker Displays', 'Disruptor Displays'
+            'Innovation Distribution',
+            # 'Display by Location'
+            # 'Leading Main Section on Left',
+            # 'Leading Main Section on Right',
+            # 'Leading Cold Room on Left',
+            # 'Leading Cold Room on Right',
+            # 'Share of Segment Cooler Facings'
+            # 'Share of Segment Warm Facings',
+            # 'ABI Share of Display Space'
+
+        ]:
+            return
 
         if kpi_type not in [
             'Share of Facings',
@@ -171,10 +174,11 @@ class ToolBox:
             calc_lvl,  write_type = self.calculate_main_kpi(**kwargs)
             if calc_lvl >= len(hierarchy):  # Some kpis will handle all levels of hierarchy simultaneously instead of iteratively
                 break
-        if write_type and kpi_type not in self.circle_kpis:  # Kpi type is used to create the top level of the mobile drill down, and we do want to avoid dupes
-            self.write_to_db(**{'kpi_name': kpi_type, 'score': 0, 'numerator_id': self.manufacturer_fk, 'result': 0,
-                                'denominator_id': self.store_id, 'ident_result': kpi_type, 'numerator_result': 0})
-            self.circle_kpis.add(kpi_type)
+        if write_type:  # Kpi type is used to create the top level of the mobile drill down
+            self.circle_kpis[kpi_type] = {'kpi_name': kpi_type, 'score': self.res_dict['score'],
+                                          'numerator_id': self.manufacturer_fk, 'result': self.res_dict['score'],  # score used intentionally here, since only score propagates up the hierarchy
+                                          'denominator_id': self.store_id, 'ident_result': kpi_type,
+                                          'numerator_result': 0}
 
     def calculate_main_kpi(self, kpi_name, kpi_lvl_name, kpi_type, **kwargs):
         kpi_line = self.template[kpi_type].set_index(Const.KPI_NAME).loc[kpi_name]
@@ -207,6 +211,8 @@ class ToolBox:
                     results['kpi_name'] = kpi_lvl_name
                 if 'ident_parent' not in results:
                     results['ident_parent'] = kpi_type
+                self.res_dict[results['ident_parent']]['result'] += results['result']
+                self.res_dict[results['ident_parent']]['score'] += results['score']
                 self.write_to_db(**results)
                 self.dependencies[kpi_name] = results['result']
         return level, write_type
@@ -312,6 +318,11 @@ class ToolBox:
             lvl3_result = lvl3_result[lvl3_result['client_name'] == kpi_name]
             lvl3_result['target'] = 1
             lvl2_result = self.assortment.calculate_lvl2_assortment(lvl3_result)
+            lvl3_result['score'] = lvl3_result['in_store']
+            lvl3_result['in_store'] = ['Fail' if res == 0 else 'Pass' for res in lvl3_result['in_store']]
+            lvl2_result['score'] = lvl2_result['passes']
+            if kpi_line['Metric'] == 'All':
+                lvl2_result['score'] = 1 if lvl2_result['total'] == lvl2_result['passes'] else 0
             res_3 = self.parse_assortment_results(lvl3_result, 'kpi_fk_lvl3', 'product_fk', 'in_store', 'assortment_group_fk',
                                                   'target', None, 'kpi_fk_lvl2')
             res_2 = self.parse_assortment_results(lvl2_result, 'kpi_fk_lvl2', 'assortment_group_fk', 'passes', 'assortment_fk',
@@ -327,7 +338,7 @@ class ToolBox:
                        'numerator_result': row[num_col],
                        'denominator_id': row[den_id_col],
                        'denominator_result': row[den_col],
-                       'score': 1,
+                       'score': row['score'],
                        'result': self.safe_divide(row[num_col], row[den_col]),
                        'ident_result': row[self_id] if self_id else None,
                        }
@@ -392,12 +403,12 @@ class ToolBox:
                     anchor = self.anchor_base(general_filters, num_filter, scenes, 1, ratio=False, edges=edges)
                     if anchor[edge]:
                         total += 1
-                        results.append({'score': 1, 'result': 1, 'numerator_result': result,
+                        results.append({'score': 1, 'result': 'pass', 'numerator_result': result,
                                         'ident_parent': '{}-{}'.format(den, kpi_name),
                                         'numerator_id': item, 'denominator_id': den,
                                         'kpi_name': self.lvl_name(kpi_name, 'Brand')})
             if total > 0:
-                results.append({'score': 1, 'result': 1, 'numerator_result': result, 'ident_result': '{}-{}'.format(den, kpi_name),
+                results.append({'score': 1, 'result': 'pass', 'numerator_result': result, 'ident_result': '{}-{}'.format(den, kpi_name),
                                 'numerator_id': self.manufacturer_fk, 'denominator_id': den,
                                 'kpi_name': self.lvl_name(kpi_name, 'Session')})
         return level['end'], results
@@ -1045,10 +1056,6 @@ class ToolBox:
         query = ''' select * from static.state'''
         return pd.read_sql_query(query, self.ps_data_provider.rds_conn.db)
 
-    def make_result_values_dict(self):
-        query = "SELECT * FROM static.kpi_result_value;"
-        return pd.read_sql_query(query, self.ps_data_provider.rds_conn.db).set_index('value')['pk'].to_dict()
-
     def load_mpis(self):
         try:
             self.full_mpis = self.match_product_in_scene.merge(self.products, on='product_fk', suffixes=['', '_p']) \
@@ -1137,6 +1144,8 @@ class ToolBox:
         print(kpi_name)
         if not kpi_fk and kpi_name:
             kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_name)
+        if isinstance(result, str):
+            result = self.result_entities[result]
         self.common.write_to_db_result(fk=kpi_fk, score=score, result=result, should_enter=True, target=target,
                                        numerator_result=numerator_result, denominator_result=denominator_result,
                                        numerator_id=numerator_id, denominator_id=denominator_id,
