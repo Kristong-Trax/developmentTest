@@ -1790,7 +1790,8 @@ class BATRUToolBox:
         for product in self.p4_posm_to_api_products.keys():
             if self.p4_posm_to_api_products[product] == 0:
                 name = '{};{};{};{}' \
-                       ''.format(equipment_name, DEFAULT_GROUP_NAME, DEFAULT_ATOMIC_NAME, product.encode('utf-8'))
+                       ''.format(equipment_name, DEFAULT_GROUP_NAME, DEFAULT_ATOMIC_NAME,
+                                 unicode(product).encode('utf-8'))
                 self.p4_posm_to_api[name] = 1
 
         kpi_fk = self.kpi_static_data.loc[(self.kpi_static_data['kpi_set_name'] == POSM_AVAILABILITY) &
