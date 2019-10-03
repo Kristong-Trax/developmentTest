@@ -57,8 +57,8 @@ class ToolBox(GlobalSessionToolBox):
         self.manufacturer_fk = None if self.data_provider[Data.OWN_MANUFACTURER]['param_value'].iloc[0] is None else \
             int(self.data_provider[Data.OWN_MANUFACTURER]['param_value'].iloc[0])
         self.assort_lvl3 = None
-        # self.last_session_uid = self.ps_data.get_last_session()
-        # self.last_results = self.get_last_status(self.last_session_uid, 3)
+        self.last_session_uid = self.ps_data.get_last_session()
+        self.last_results = self.ps_data.get_last_status(self.last_session_uid, 3)
         self.set_up_template = pd.read_excel(os.path.join(os.path.dirname(os.path.realpath(__file__)),
                                                           '..',
                                                           'Data',
@@ -567,26 +567,26 @@ class ToolBox(GlobalSessionToolBox):
 
         return df
 
-    # def get_last_status(self, kpi_pk, numerator, denominator=None):
-    #     """
-    #           :param kpi_pk
-    #           :param numerator
-    #           :param denominator
-    #
-    #           :return result ,from last_results df( data frame that contains results from last completed session from
-    #           the same store , that has the same  kpi_level_2_fk = kpi_pk and numerator_id=numerator and
-    #           denominator_id=denominator
-    #     """
-    #     if denominator is None:
-    #         results = self.last_results[(self.last_results[SessionResultsConsts.KPI_LEVEL_2_FK] == kpi_pk) &
-    #                                     (self.last_results[SessionResultsConsts.NUMERATOR_ID] == numerator)]
-    #     else:
-    #         results = self.last_results[(self.last_results[SessionResultsConsts.KPI_LEVEL_2_FK] == kpi_pk) & (
-    #                 self.last_results[SessionResultsConsts.NUMERATOR_ID] == numerator) &
-    #                                     (self.last_results[SessionResultsConsts.DENOMINATOR_ID] == denominator)]
-    #     if results.empty:
-    #         return None
-    #     return results[SessionResultsConsts.RESULT].iloc[0]
+    def get_last_status(self, kpi_pk, numerator, denominator=None):
+        """
+              :param kpi_pk
+              :param numerator
+              :param denominator
+
+              :return result ,from last_results df( data frame that contains results from last completed session from
+              the same store , that has the same  kpi_level_2_fk = kpi_pk and numerator_id=numerator and
+              denominator_id=denominator
+        """
+        if denominator is None:
+            results = self.last_results[(self.last_results[SessionResultsConsts.KPI_LEVEL_2_FK] == kpi_pk) &
+                                        (self.last_results[SessionResultsConsts.NUMERATOR_ID] == numerator)]
+        else:
+            results = self.last_results[(self.last_results[SessionResultsConsts.KPI_LEVEL_2_FK] == kpi_pk) & (
+                    self.last_results[SessionResultsConsts.NUMERATOR_ID] == numerator) &
+                                        (self.last_results[SessionResultsConsts.DENOMINATOR_ID] == denominator)]
+        if results.empty:
+            return None
+        return results[SessionResultsConsts.RESULT].iloc[0]
 
     def facings_sos_whole_store_function(self):
         """
