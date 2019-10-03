@@ -1,17 +1,24 @@
 import os
 import pandas as pd
+import numpy as np
+
+from datetime import datetime
 
 from Trax.Algo.Calculations.Core.DataProvider import Data
-from KPIUtils.GlobalProjects.DIAGEO.KPIGenerator import DIAGEOGenerator
-from KPIUtils.DB.Common import Common
-from KPIUtils_v2.DB.CommonV2 import Common as CommonV2
-from KPIUtils.GlobalProjects.DIAGEO.Utils.Consts import DiageoKpiNames, Consts
-from KPIUtils.GlobalProjects.DIAGEO.Utils.TemplatesUtil import TemplateHandler
-from KPIUtils.DIAGEO.ParseTemplates import parse_template
 from Trax.Utils.Logging.Logger import Log
-from KPIUtils_v2.DB.Queries import Queries
-from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Trax.Utils.Conf.Keys import DbUsers
+
+from KPIUtils.DIAGEO.ParseTemplates import parse_template
+from KPIUtils.GlobalProjects.DIAGEO.KPIGenerator import DIAGEOGenerator
+from KPIUtils.GlobalProjects.DIAGEO.Utils.TemplatesUtil import TemplateHandler
+from KPIUtils_v2.GlobalDataProvider.PSAssortmentProvider import PSAssortmentDataProvider
+
+from KPIUtils.DB.Common import Common
+
+from KPIUtils_v2.DB.CommonV2 import Common as CommonV2
+from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
+from KPIUtils_v2.DB.Queries import Queries
+
 
 __author__ = 'satya'
 
@@ -21,21 +28,24 @@ class DIAGEOINToolBox:
         self.data_provider = data_provider
         self.commonV2 = CommonV2(self.data_provider)
         self.rds_conn = PSProjectConnector(self.data_provider.project_name, DbUsers.CalculationEng)
+        self.store_assortment = PSAssortmentDataProvider(self.data_provider).execute(policy_name=None)
         self.output = output
         self.kpi_static_data = self.get_kpi_static_data()
         self.store_id = self.data_provider[Data.STORE_FK]
         self.own_manufacturer_fk = 12
         self.store_info = self.get_store_info(self.store_id)
-        self.assortment = self.get_assortment_info()
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
+        for column_name in self.scif.columns:
+            print (column_name)
         self.common = Common(self.data_provider)
         self.scene_info = self.data_provider[Data.SCENES_INFO]
         self.diageo_generator = DIAGEOGenerator(self.data_provider, self.output, self.common)
         self.template_handler = TemplateHandler(self.data_provider.project_name)
-        local_template_path = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))),
-                                 'Data', 'Template.xlsx')
-        self.bpa_store = parse_template(local_template_path, sheet_name='brand_presence_assortments_store')
-        self.bpa = parse_template(local_template_path, 'brand_presence_assortments')
+        self.template_path = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), 'Data')
+        self.template_path = os.path.join(self.template_path, "Template.xlsx")
+        self.kpi_template_data = parse_template(self.template_path, sheet_name='KPI')
+        self.store_info = self.data_provider[Data.STORE_INFO]
+        self.current_date = datetime.now()
 
     def get_kpi_static_data(self):
         """
@@ -46,7 +56,7 @@ class DIAGEOINToolBox:
         kpi_static_data = pd.read_sql_query(query, self.rds_conn.db)
         return kpi_static_data
 
-    def get_assortment_info(self):
+    def get_assortment_product_info(self):
         query = """SELECT pk, assortment_name FROM pservice.assortment"""
 
         return self.perform_query(query)
@@ -76,7 +86,6 @@ class DIAGEOINToolBox:
 
     def perform_query(self, query, **kwargs):
         """
-
         This function creates a :class: `pandas.DataFrame` using a given cursor\n
         :param str query: The query
         :return: A newly created :class:`pandas.DataFrame` object with the results of the query
@@ -90,7 +99,7 @@ class DIAGEOINToolBox:
         """
 
         # # SOS Out Of The Box KPIs
-        self.diageo_generator.activate_ootb_kpis(self.commonV2)
+        #self.diageo_generator.activate_ootb_kpis(self.commonV2)
 
         # Global assortment KPIs - v2 for API use
         assortment_res_dict_v2 = self.diageo_generator.diageo_global_assortment_function_v2()
@@ -124,112 +133,94 @@ class DIAGEOINToolBox:
                 if result is not None:
                     self.commonV2.write_to_db_result(**result)
 
-    def get_store_policy(self):
-
-        store_policy = ""
-
-        for row_num, row_data in self.bpa_store.iterrows():
-            filter_params = {}
-            for idx in range(1, 7):
-                try:
-                    if len(str(row_data["store_attr_" + str(idx) + "_name"]).strip()) != 0:
-                        filter_params[row_data["store_attr_" + str(idx) + "_name"]] = \
-                            row_data["store_attr_" + str(idx) + "_value"]
-                except Exception as ex:
-                    Log.info("Error:{} filter_params:{}".format(ex, filter_params))
-
-            result = self.store_info.loc[
-                (self.store_info[list(filter_params)] == pd.Series(filter_params)).all(axis=1)]
-
-            if result.empty:
-                continue
-            else:
-                Log.info("store_policy:{} filter_params:{}".format(row_data['store_policy'], filter_params))
-                return str(row_data['store_policy']).strip()
-
-        return store_policy
-
     def custom_brand_presence(self):
-
-        store_policy = self.get_store_policy().strip()
-
-        if len(store_policy) == 0:
-            message = "store_policy not available for store_fk:{}".format(self.store_id)
-            Log.info(message)
-            return
-
-        brand_group_list = []
-        for row_num_bpa, row_data_bpa in self.bpa.iterrows():
-            store_policies = [x.strip() for x in row_data_bpa['store_policy'].split(',')]
-            if store_policy in store_policies:
-                brand_group_list.append(dict(row_data_bpa))
-
-        brand_groups = pd.DataFrame(brand_group_list)
-
-        if brand_groups.empty:
-            Log.info("No brand groups for the policy:{}".format(store_policy))
-            return
-
-        brand_group_names = brand_groups['brand_group_name'].drop_duplicates()
-
         list_results = []
-        assortment_fk = 0
+        bb_assortment = self.store_assortment[['assortment_fk', 'kpi_fk_lvl2', 'product_fk']]
+        mn_assortment = self.store_assortment[['assortment_fk', 'kpi_fk_lvl2', 'product_fk']]
 
-        for brand_group_name in brand_group_names:
-            brand_group = brand_groups[brand_groups['brand_group_name'] == brand_group_name]
-            dict_result = dict()
+        if bb_assortment.empty and mn_assortment.empty:
+            Log.warning("No assortments for custom brand presence")
+            return
 
-            for row_num_brand_group, row_data_brand_group in brand_group.iterrows():
-                assortment = self.assortment[self.assortment['assortment_name'] == row_data_brand_group['brand_group_name']]
-                if assortment.empty:
-                    continue
+        if self.kpi_template_data.empty:
+            Log.warning("KPI Template is empty")
+            return
 
-                assortment_fk = assortment.iloc[0]['pk']
-                template_name = row_data_brand_group['scene_type']
+        brand_presence_kpis = self.kpi_template_data[self.kpi_template_data['kpi_group'] == 'BRAND_GROUP_PRESENCE']
 
-                df = self.scif[(self.scif['template_name'] == template_name) & (self.scif['facings'] > 0)]
-                if df.empty:
-                    template_fk = 0
+        if brand_presence_kpis.empty:
+            Log.warning("No KPI in the template with kpi_group=BRAND_GROUP_PRESENCE")
+            return
+
+        for kpi_row_num, kpi_row_data in brand_presence_kpis.iterrows():
+            back_bar_template = kpi_row_data['back_bar_scenes'].strip()
+            menu_template = kpi_row_data['menu_scenes'].strip()
+
+            df_scif_back_bar = self.scif[(self.scif['template_name'] == back_bar_template) & (self.scif['facings'] > 0)]
+            df_scif_back_bar = df_scif_back_bar[['product_fk', 'item_id']]
+
+            df_scif_menu = self.scif[(self.scif['template_name'] == menu_template) & (self.scif['facings'] > 0)]
+            df_scif_menu = df_scif_menu[['product_fk', 'item_id']]
+
+            df_bb = bb_assortment.merge(df_scif_back_bar, how='left', on="product_fk")
+
+            df_bb_product = df_bb[['assortment_fk', 'kpi_fk_lvl2', 'product_fk', 'item_id']]
+            df_bb_product = pd.DataFrame(df_bb_product.groupby(['assortment_fk', 'kpi_fk_lvl2'])['product_fk'].count().reset_index())
+            df_bb_product['product_fk'].fillna(0, inplace=True)
+
+            df_bb_item = df_bb[['assortment_fk', 'kpi_fk_lvl2', 'product_fk', 'item_id']]
+            df_bb_item = pd.DataFrame(df_bb_item.groupby(['assortment_fk', 'kpi_fk_lvl2'])['item_id'].count().reset_index())
+            df_bb_item['item_id'].fillna(0, inplace=True)
+
+            df_bb_result = df_bb_product.merge(df_bb_item, how='inner', on="kpi_fk_lvl2")
+
+            print (df_bb_result)
+            dict_result = {}
+            for bb_row_num, bb_row_data in df_bb_result.iterrows():
+                dict_result['fk'] = bb_row_data['kpi_fk_lvl2']
+                dict_result['numerator_id'] = bb_row_data['kpi_fk_lvl2']
+                dict_result['numerator_result'] = bb_row_data['item_id']
+
+                if int(bb_row_data['item_id']) > 0:
+                    dict_result['result'] = 1
                 else:
-                    template_fk = df.iloc[0]['template_fk']
+                    dict_result['result'] = 0
 
-                ean_codes_found = []
-                ean_codes = [x.strip() for x in row_data_brand_group['ean_code_list'].split(',')]
-                for row_num_2, row_data_2 in df.iterrows():
-                    for ean_code in ean_codes:
-                        if row_data_2['product_ean_code'] == ean_code:
-                            ean_codes_found.append(ean_code)
-
-                result = 0
-                if len(ean_codes_found) >= int(row_data_brand_group['target']):
-                    result = 1
-
-                dict_result['fk'] = self.get_kpi_fk_by_kpi_type("BRAND_GROUP_PRESENCE_SCENE_LEVEL")
-                if template_name == 'Back Bar':
-                    dict_result['numerator_id'] = template_fk
-                    dict_result['numerator_result'] = result
-                elif template_name == 'Menu':
-                    dict_result['denominator_id'] = template_fk
-                    dict_result['denominator_result'] = result
-
-            if len(dict_result.keys())>0:
-                # below code is added when Menu is found and Back Bar scene is missing or vice-versa
-                dict_result['numerator_id'] = 0 if 'numerator_id' not in dict_result.keys() else dict_result[
-                    'numerator_id']
-                dict_result['numerator_result'] = 0 if 'numerator_result' not in dict_result.keys() else dict_result[
-                    'numerator_result']
-                dict_result['denominator_id'] = 0 if 'denominator_id' not in dict_result.keys() else dict_result[
-                    'denominator_id']
-                dict_result['denominator_result'] = 0 if 'denominator_result' not in dict_result.keys() else \
-                dict_result['denominator_result']
-
-                net_result = int(dict_result['numerator_result']) + int(dict_result['denominator_result'])
-                net_result = 1 if net_result > 1 else net_result
-
-                dict_result['context_id'] = assortment_fk
-                dict_result['result'] = net_result
-                dict_result['score'] = net_result
+                dict_result['denominator_id'] = bb_row_data['assortment_fk_x']
+                dict_result['denominator_result'] = bb_row_data['product_fk']
+                dict_result['context_id'] = self.store_id
                 list_results.append(dict_result)
+                dict_result = {}
+
+            df_mn = mn_assortment.merge(df_scif_menu, how='left', on="product_fk")
+
+            df_mn_product = df_mn[['assortment_fk', 'kpi_fk_lvl2', 'product_fk', 'item_id']]
+            df_mn_product = pd.DataFrame(df_mn_product.groupby(['assortment_fk', 'kpi_fk_lvl2'])['product_fk'].count().reset_index())
+            df_mn_product['product_fk'].fillna(0, inplace=True)
+
+            df_mn_item = df_mn[['assortment_fk', 'kpi_fk_lvl2', 'product_fk', 'item_id']]
+            df_mn_item = pd.DataFrame(df_mn_item.groupby(['assortment_fk', 'kpi_fk_lvl2'])['item_id'].count().reset_index())
+            df_mn_item['item_id'].fillna(0, inplace=True)
+
+            df_mn_result = df_mn_product.merge(df_mn_item, how='inner', on="kpi_fk_lvl2")
+
+            print (df_mn_result)
+            dict_result = {}
+            for mn_row_num, mn_row_data in df_mn_result.iterrows():
+                dict_result['fk'] = mn_row_data['kpi_fk_lvl2']
+                dict_result['numerator_id'] = mn_row_data['kpi_fk_lvl2']
+                dict_result['numerator_result'] = mn_row_data['item_id']
+
+                if int(mn_row_data['item_id']) > 0:
+                    dict_result['result'] = 1
+                else:
+                    dict_result['result'] = 0
+
+                dict_result['denominator_id'] = mn_row_data['assortment_fk_x']
+                dict_result['denominator_result'] = mn_row_data['product_fk']
+                dict_result['context_id'] = self.store_id
+                list_results.append(dict_result)
+                dict_result = {}
 
         df_results = pd.DataFrame(list_results)
 
@@ -244,8 +235,6 @@ class DIAGEOINToolBox:
                                              context_id=row_data_results['context_id'],
                                              score=row_data_results['result'],
                                              result=row_data_results['result'])
-
-        print df_results
 
     def get_kpi_fk_by_kpi_type(self, kpi_type):
         """
