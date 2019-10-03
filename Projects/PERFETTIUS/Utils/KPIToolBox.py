@@ -100,11 +100,13 @@ class ToolBox(GlobalSessionToolBox):
         products_df = self.scif[(self.scif[config.numerator_param].isin(config.numerator_value)) &
                                 (self.scif['template_fk'] == template_fk)]
 
+        products_list = products_df['product_fk'].unique().tolist()
+
         if shelf_location == 'top':
-            shelf_matches = relevant_matches[(relevant_matches['product_fk'].isin(products_df)) &
+            shelf_matches = relevant_matches[(relevant_matches['product_fk'].isin(products_list)) &
                                              (relevant_matches['shelf_number'] <= (shelves / 3))]
         elif shelf_location == 'middle_bottom':
-            shelf_matches = relevant_matches[(relevant_matches['product_fk'].isin(products_df)) &
+            shelf_matches = relevant_matches[(relevant_matches['product_fk'].isin(products_list)) &
                                              (relevant_matches['shelf_number'] > (shelves / 3))]
         else:
             shelf_matches = pd.DataFrame()
@@ -120,11 +122,12 @@ class ToolBox(GlobalSessionToolBox):
         if config.empty or (template_fk is None):
             return
         location = {'template_fk': template_fk}
-        blocks = self.block.network_x_block_together({config.numerator_param: config.numerator_value}, location)
+        blocks = self.block.network_x_block_together({config.numerator_param: config.numerator_value}, location,
+                                                     additional={'check_vertical_horizontal': True})
         if not blocks.empty:
             blocks = blocks[blocks['is_block']]
             orientation = config.orientation
-            if orientation:
+            if orientation and orientation is not pd.np.nan:
                 blocks = blocks[blocks['orientation'] == orientation]
 
         numerator_id = self.get_brand_fk_from_brand_name(config.numerator_value[0])
@@ -142,7 +145,11 @@ class ToolBox(GlobalSessionToolBox):
                       'tested_products': {config.tested_param: config.tested_value}
                       }
         try:
-            adj_df = self.adjacency.network_x_adjacency_calculation(population, location, {})
+            adj_df = self.adjacency.network_x_adjacency_calculation(population, location,
+                                                                    {'minimum_facings_adjacent': 1,
+                                                                     'minimum_block_ratio': 0,
+                                                                     'minimum_facing_for_block': 1,
+                                                                     'include_stacking': True})
         except AttributeError:
             Log.error("Error calculating adjacency for kpi_fk {} template_fk {}".format(kpi_fk, template_fk))
             return
@@ -154,6 +161,26 @@ class ToolBox(GlobalSessionToolBox):
         self.write_to_db(kpi_fk, numerator_id=numerator_id, denominator_id=template_fk, result=result)
         return
 
+    @run_for_every_scene_type
+    def calculate_brand_facings(self, kpi_fk, template_fk=None):
+        relevant_scif = self.scif[self.scif['template_fk'] == template_fk]
+
+        denominator_results = relevant_scif.groupby('Customer Category', as_index=False)[
+            ['facings']].sum().rename(columns={'facings': 'denominator_result'})
+
+        numerator_result = relevant_scif.groupby(['brand_fk', 'Customer Category'], as_index=False)[
+            ['facings']].sum().rename(columns={'facings': 'numerator_result'})
+
+        results = numerator_result.merge(denominator_results)
+        results['result'] = (results['numerator_result'] / results['denominator_result'])
+        results['result'].fillna(0, inplace=True)
+
+        for index, row in results.iterrows():
+            relevant_perfetti_product_fk = self.get_product_fk_from_perfetti_category(row['Customer Category'])
+            self.write_to_db(fk=kpi_fk, numerator_id=row['brand_fk'], denominator_id=relevant_perfetti_product_fk,
+                             numerator_result=row['numerator_result'], denominator_result=row['denominator_result'],
+                             context_id=template_fk, result=row['result'], score=row['result'])
+
     def get_kpi_function_by_family_fk(self, kpi_family_fk):
         if kpi_family_fk == 19:
             return self.calculate_presence
@@ -163,12 +190,20 @@ class ToolBox(GlobalSessionToolBox):
             return self.calculate_blocking
         elif kpi_family_fk == 22:
             return self.calculate_shelf_location
+        elif kpi_family_fk == 23:
+            return self.calculate_brand_facings
 
     def get_external_target_data_by_kpi_fk(self, kpi_fk):
         return self.external_targets[self.external_targets['kpi_fk'] == kpi_fk].iloc[0]
 
     def get_brand_fk_from_brand_name(self, brand_name):
         return self.all_products[self.all_products['brand_name'] == brand_name]['brand_fk'].iloc[0]
+
+    def get_product_fk_from_perfetti_category(self, perfetti_category):
+        try:
+            return self.all_products[self.all_products['Customer Category'] == perfetti_category]['product_fk'].iloc[0]
+        except IndexError:
+            return None
 
 
 
