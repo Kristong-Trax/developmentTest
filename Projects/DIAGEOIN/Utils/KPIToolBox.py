@@ -133,6 +133,39 @@ class DIAGEOINToolBox:
                 if result is not None:
                     self.commonV2.write_to_db_result(**result)
 
+    @staticmethod
+    def custom_brand_presence_sce_lvl(df):
+        list_results = []
+        df_product = df[['template_fk', 'assortment_fk', 'kpi_fk_lvl2', 'product_fk', 'item_id']]
+        df_product = pd.DataFrame(
+            df_product.groupby(['template_fk', 'assortment_fk', 'kpi_fk_lvl2'])['product_fk'].count().reset_index())
+        df_product['product_fk'].fillna(0, inplace=True)
+
+        df_item = df[['template_fk', 'assortment_fk', 'kpi_fk_lvl2', 'product_fk', 'item_id']]
+        df_item = pd.DataFrame(
+            df_item.groupby(['template_fk', 'assortment_fk', 'kpi_fk_lvl2'])['item_id'].count().reset_index())
+        df_item['item_id'].fillna(0, inplace=True)
+
+        df_result = df_product.merge(df_item, how='left', on="kpi_fk_lvl2")
+
+        dict_result = {}
+        for row_num, row_data in df_result.iterrows():
+            dict_result['fk'] = row_data['kpi_fk_lvl2']
+            dict_result['numerator_id'] = row_data['kpi_fk_lvl2']
+            dict_result['numerator_result'] = row_data['item_id']
+
+            if int(row_data['item_id']) > 0:
+                dict_result['result'] = 1
+            else:
+                dict_result['result'] = 0
+
+            dict_result['denominator_id'] = row_data['assortment_fk_x']
+            dict_result['denominator_result'] = row_data['product_fk']
+            dict_result['context_id'] = row_data['template_fk_x']
+            list_results.append(dict_result)
+            dict_result = {}
+        return list_results
+
     def custom_brand_presence(self):
         list_results = []
         bb_assortment = self.store_assortment[['assortment_fk', 'kpi_fk_lvl2', 'product_fk']]
@@ -157,70 +190,16 @@ class DIAGEOINToolBox:
             menu_template = kpi_row_data['menu_scenes'].strip()
 
             df_scif_back_bar = self.scif[(self.scif['template_name'] == back_bar_template) & (self.scif['facings'] > 0)]
-            df_scif_back_bar = df_scif_back_bar[['product_fk', 'item_id']]
+            df_scif_back_bar = df_scif_back_bar[['template_fk', 'product_fk', 'item_id']]
 
             df_scif_menu = self.scif[(self.scif['template_name'] == menu_template) & (self.scif['facings'] > 0)]
-            df_scif_menu = df_scif_menu[['product_fk', 'item_id']]
+            df_scif_menu = df_scif_menu[['template_fk', 'product_fk', 'item_id']]
 
             df_bb = bb_assortment.merge(df_scif_back_bar, how='left', on="product_fk")
-
-            df_bb_product = df_bb[['assortment_fk', 'kpi_fk_lvl2', 'product_fk', 'item_id']]
-            df_bb_product = pd.DataFrame(df_bb_product.groupby(['assortment_fk', 'kpi_fk_lvl2'])['product_fk'].count().reset_index())
-            df_bb_product['product_fk'].fillna(0, inplace=True)
-
-            df_bb_item = df_bb[['assortment_fk', 'kpi_fk_lvl2', 'product_fk', 'item_id']]
-            df_bb_item = pd.DataFrame(df_bb_item.groupby(['assortment_fk', 'kpi_fk_lvl2'])['item_id'].count().reset_index())
-            df_bb_item['item_id'].fillna(0, inplace=True)
-
-            df_bb_result = df_bb_product.merge(df_bb_item, how='inner', on="kpi_fk_lvl2")
-
-            print (df_bb_result)
-            dict_result = {}
-            for bb_row_num, bb_row_data in df_bb_result.iterrows():
-                dict_result['fk'] = bb_row_data['kpi_fk_lvl2']
-                dict_result['numerator_id'] = bb_row_data['kpi_fk_lvl2']
-                dict_result['numerator_result'] = bb_row_data['item_id']
-
-                if int(bb_row_data['item_id']) > 0:
-                    dict_result['result'] = 1
-                else:
-                    dict_result['result'] = 0
-
-                dict_result['denominator_id'] = bb_row_data['assortment_fk_x']
-                dict_result['denominator_result'] = bb_row_data['product_fk']
-                dict_result['context_id'] = self.store_id
-                list_results.append(dict_result)
-                dict_result = {}
+            list_results = self.custom_brand_presence_sce_lvl(df_bb)
 
             df_mn = mn_assortment.merge(df_scif_menu, how='left', on="product_fk")
-
-            df_mn_product = df_mn[['assortment_fk', 'kpi_fk_lvl2', 'product_fk', 'item_id']]
-            df_mn_product = pd.DataFrame(df_mn_product.groupby(['assortment_fk', 'kpi_fk_lvl2'])['product_fk'].count().reset_index())
-            df_mn_product['product_fk'].fillna(0, inplace=True)
-
-            df_mn_item = df_mn[['assortment_fk', 'kpi_fk_lvl2', 'product_fk', 'item_id']]
-            df_mn_item = pd.DataFrame(df_mn_item.groupby(['assortment_fk', 'kpi_fk_lvl2'])['item_id'].count().reset_index())
-            df_mn_item['item_id'].fillna(0, inplace=True)
-
-            df_mn_result = df_mn_product.merge(df_mn_item, how='inner', on="kpi_fk_lvl2")
-
-            print (df_mn_result)
-            dict_result = {}
-            for mn_row_num, mn_row_data in df_mn_result.iterrows():
-                dict_result['fk'] = mn_row_data['kpi_fk_lvl2']
-                dict_result['numerator_id'] = mn_row_data['kpi_fk_lvl2']
-                dict_result['numerator_result'] = mn_row_data['item_id']
-
-                if int(mn_row_data['item_id']) > 0:
-                    dict_result['result'] = 1
-                else:
-                    dict_result['result'] = 0
-
-                dict_result['denominator_id'] = mn_row_data['assortment_fk_x']
-                dict_result['denominator_result'] = mn_row_data['product_fk']
-                dict_result['context_id'] = self.store_id
-                list_results.append(dict_result)
-                dict_result = {}
+            list_results.extend(self.custom_brand_presence_sce_lvl(df_mn))
 
         df_results = pd.DataFrame(list_results)
 
