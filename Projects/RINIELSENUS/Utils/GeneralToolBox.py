@@ -820,7 +820,6 @@ class MarsUsGENERALToolBox:
         scene_filter = {'scene_fk': relevant_scenes}
         sub_allowed = {key.split(';')[-1]: filters.pop(key)
                        for key in dict(filters) if 'ALLOWED;' in key}
-        # print('~~~~~~~~~~~~~~~~~~~~{}~~~~~~~~~~~~~~~'.format(scene_filter))
         mpis_filter = {'scene_fk': relevant_scenes}
         mpis_filter.update(filters)
         mpis = self.match_product_in_scene.copy()
@@ -850,6 +849,7 @@ class MarsUsGENERALToolBox:
         if not clusters.empty:
             clusters = self.parse_net_x_block(clusters, mpis)
             # Debugging bits
+            # print('~~~~~~~~~~~~~~~~~~~~{}~~~~~~~~~~~~~~~'.format(scene_filter))
             # c = 0
             # for cluster in clusters:
             #     print('\n\n')

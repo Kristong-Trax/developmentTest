@@ -398,12 +398,43 @@ class MARSUAE_SANDToolBox:
         #            'population': {'exclude': {'template_name': 'Checkout Chocolate'},
         #                           'include': [{'category_fk': 6, 'manufacturer_fk': 3}]}}
 
+    # def update_sos_filters_with_additional_filters(self, final_filters, param_row):
+    #     main_filters = copy.deepcopy(final_filters)
+    #     main_filters.get(self.DENOM_FILTERS).get(self.POPULATION).get(self.EXCLUDE). \
+    #         update({param_row[self.EXCLUDE_TYPE_2]: param_row[self.EXCLUDE_VALUE_2]})
+    #     main_filters.get(self.NUM_FILTERS).get(self.POPULATION).get(self.EXCLUDE). \
+    #         update({param_row[self.EXCLUDE_TYPE_2]: param_row[self.EXCLUDE_VALUE_2]})
+    #     if not param_row[self.EXCLUDE_EXCEPTION_TYPE_2] or not\
+    #             param_row[self.EXCLUDE_EXCEPTION_TYPE_2] == param_row[self.EXCLUDE_EXCEPTION_TYPE_2]:
+    #         return main_filters, None
+    #
+    #     additional_filters = copy.deepcopy(final_filters)
+    #     additional_filters.get(self.DENOM_FILTERS).get(self.POPULATION).get(self.INCLUDE)[0]. \
+    #         update({param_row[self.EXCLUDE_TYPE_2]: param_row[self.EXCLUDE_VALUE_2],
+    #                 param_row[self.EXCLUDE_EXCEPTION_TYPE_2]: param_row[self.EXCLUDE_EXCEPTION_VALUE_2]})
+    #     additional_filters.get(self.NUM_FILTERS).get(self.POPULATION).get(self.INCLUDE)[0]. \
+    #         update({param_row[self.EXCLUDE_TYPE_2]: param_row[self.EXCLUDE_VALUE_2],
+    #                 param_row[self.EXCLUDE_EXCEPTION_TYPE_2]: param_row[self.EXCLUDE_EXCEPTION_VALUE_2]})
+    #     return main_filters, additional_filters
+
     def update_sos_filters_with_additional_filters(self, final_filters, param_row):
         main_filters = copy.deepcopy(final_filters)
-        main_filters.get(self.DENOM_FILTERS).get(self.POPULATION).get(self.EXCLUDE). \
-            update({param_row[self.EXCLUDE_TYPE_2]: param_row[self.EXCLUDE_VALUE_2]})
-        main_filters.get(self.NUM_FILTERS).get(self.POPULATION).get(self.EXCLUDE). \
-            update({param_row[self.EXCLUDE_TYPE_2]: param_row[self.EXCLUDE_VALUE_2]})
+        main_denom_exclude_filters = main_filters.get(self.DENOM_FILTERS).get(self.POPULATION).get(self.EXCLUDE)
+        if param_row[self.EXCLUDE_TYPE_2] != param_row[self.EXCLUDE_TYPE_1]:
+            main_denom_exclude_filters.update({param_row[self.EXCLUDE_TYPE_2]: param_row[self.EXCLUDE_VALUE_2]})
+        else:
+            excl_value_list = [param_row[self.EXCLUDE_VALUE_1]]
+            excl_value_list.append(param_row[self.EXCLUDE_VALUE_2])
+            main_denom_exclude_filters.update({param_row[self.EXCLUDE_TYPE_1]: excl_value_list})
+
+        main_num_exclude_filters = main_filters.get(self.NUM_FILTERS).get(self.POPULATION).get(self.EXCLUDE)
+        if param_row[self.EXCLUDE_TYPE_2] != param_row[self.EXCLUDE_TYPE_1]:
+            main_num_exclude_filters.update({param_row[self.EXCLUDE_TYPE_2]: param_row[self.EXCLUDE_VALUE_2]})
+        else:
+            excl_value_list = [param_row[self.EXCLUDE_VALUE_1]]
+            excl_value_list.append(param_row[self.EXCLUDE_VALUE_2])
+            main_num_exclude_filters.update({param_row[self.EXCLUDE_TYPE_1]: excl_value_list})
+
         if not param_row[self.EXCLUDE_EXCEPTION_TYPE_2] or not\
                 param_row[self.EXCLUDE_EXCEPTION_TYPE_2] == param_row[self.EXCLUDE_EXCEPTION_TYPE_2]:
             return main_filters, None
@@ -599,10 +630,19 @@ class MARSUAE_SANDToolBox:
         # in case the rule is >= step...
         kpi_name = param_row[self.KPI_TYPE]
         tiers = self.atomic_tiers_df[self.atomic_tiers_df[self.KPI_TYPE] == kpi_name]
-        relevant_step = min(tiers[tiers['step_value'] >= result]['step_value'].values.tolist())
+        relevant_step = min(tiers[tiers['step_value'] > result]['step_value'].values.tolist())
         tier_score_value = tiers[tiers['step_value'] == relevant_step]['step_score_value'].values[0]
         score = tier_score_value
         return score
+
+    # def get_tiered_score(self, param_row, result):
+    #     # in case the rule is >= step...
+    #     kpi_name = param_row[self.KPI_TYPE]
+    #     tiers = self.atomic_tiers_df[self.atomic_tiers_df[self.KPI_TYPE] == kpi_name]
+    #     relevant_step = min(tiers[tiers['step_value'] >= result]['step_value'].values.tolist())
+    #     tier_score_value = tiers[tiers['step_value'] == relevant_step]['step_score_value'].values[0]
+    #     score = tier_score_value
+    #     return score
 
     def get_relative_score(self, param_row, result):
         target = float(param_row[self.TARGET])

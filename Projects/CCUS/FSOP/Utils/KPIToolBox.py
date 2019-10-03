@@ -27,7 +27,8 @@ Availability = 'Availability'
 SOS = 'SOS'
 Survey = 'Survey'
 Sheets = [Availability, SOS]
-TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'Coke_FSOP_v1.xlsx')
+# TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'Coke_FSOP_v1.xlsx')
+TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'Coke_FSOP_wave2.xlsx')
 CCNA = 'CCNA'
 
 
@@ -79,7 +80,8 @@ class FSOPToolBox:
         self.match_product_in_scene = self._position_graphs.match_product_in_scene
         self.ignore_stacking = False
         self.facings_field = 'facings' if not self.ignore_stacking else 'facings_ign_stack'
-        self.manufacturer_fk = self.all_products['manufacturer_fk'][self.all_products['manufacturer_name'] == 'CCNA'].iloc[0]
+        self.manufacturer_fk = \
+            self.all_products['manufacturer_fk'][self.all_products['manufacturer_name'] == 'CCNA'].iloc[0]
         # self.scene_data = self.load_scene_data()
         # self.kpi_set_fk = kpi_set_fk
         self.templates = {}
@@ -87,8 +89,6 @@ class FSOPToolBox:
         self.toolbox = GENERALToolBox(self.data_provider)
         self.SOS = SOS_calc(self.data_provider)
         self.survey = Survey_calc(self.data_provider)
-
-
 
     def parse_template(self):
         for sheet in Sheets:
@@ -103,28 +103,30 @@ class FSOPToolBox:
         self.calculate_sos()
 
     def calculate_availability(self):
-        for i, row in  self.templates[Availability].iterrows():
+        for i, row in self.templates[Availability].iterrows():
             kpi_name = row['KPI Name']
             kpi_fk = self.common.get_kpi_fk_by_kpi_name(kpi_name)
-            manufacturers =  self.sanitize_values(row['manufacturer'])
+            manufacturers = self.sanitize_values(row['manufacturer'])
             brands = self.sanitize_values(row['Brand'])
-            container = self.sanitize_values(row['Container'])
+            container = self.sanitize_values(row['CONTAINER'])
             attributte_4 = self.sanitize_values(row['att4'])
             scene_types = self.sanitize_values(row['scene Type'])
             required_brands = row['number_required_brands']
             required_sparkling = row['number_required_Sparkling']
             required_still = row['number_required_Still']
             required_sku = row['number_required_SKU']
-            excluded_brands= self.sanitize_values(row['exclude brand'])
+            excluded_brands = self.sanitize_values(row['exclude brand'])
+            category = self.sanitize_values(row['category'])
 
-            #Bandaid Fix - Hunter Approved
+            # Bandaid Fix - Hunter Approved
             if isinstance(brands, float):
                 brands_value = (excluded_brands, 0)
             else:
                 brands_value = brands
 
-            filters = {'manufacturer_name': manufacturers, 'brand_name': brands_value, 'CONTAINER': container, 'att4': attributte_4,
-                       'template_name': scene_types}
+            filters = {'manufacturer_name': manufacturers, 'brand_name': brands_value, 'CONTAINER': container,
+                       'att4': attributte_4,
+                       'template_name': scene_types, 'category': category}
 
             filters = self.delete_filter_nan(filters)
 
@@ -143,10 +145,11 @@ class FSOPToolBox:
 
             if pd.notna(required_sparkling and required_still):
                 if required_sparkling <= len(available_df[available_df['att4'] == 'SSD']):
-                    if required_still <= len(available_df[available_df['att4'] == 'Still']):
+                    if (required_still <= len(available_df[available_df['att4'] == 'Still'])) or (
+                            required_still <= len(available_df[available_df['att4'] == 'STILL'])):
                         score = 1
                 else:
-                    score =0
+                    score = 0
             elif pd.notna(required_sparkling):
                 if required_sparkling <= len(available_df[available_df['att4'] == 'SSD']):
                     score = 1
@@ -154,11 +157,11 @@ class FSOPToolBox:
                     score = 0
 
             elif pd.notna(required_still):
-                if required_still <= len(available_df[available_df['att4'] == 'Still']):
+                if (required_still <= len(available_df[available_df['att4'] == 'Still'])) or (
+                        required_still <= len(available_df[available_df['att4'] == 'STILL'])):
                     score = 1
                 else:
                     score = 0
-
 
             if pd.notna(required_sku):
                 if required_sku <= len(available_df['product_fk'].unique()):
@@ -166,9 +169,9 @@ class FSOPToolBox:
                 else:
                     score = 0
 
-            self.common.write_to_db_result(fk=kpi_fk, numerator_id=self.manufacturer_fk, numerator_result=0, denominator_id=self.store_id,
-                                                         denominator_result=0, score=score )
-
+            self.common.write_to_db_result(fk=kpi_fk, numerator_id=self.manufacturer_fk, numerator_result=0,
+                                           denominator_id=self.store_id,
+                                           denominator_result=0, score=score)
 
     def calculate_sos(self):
         for i, row in self.templates[SOS].iterrows():
@@ -179,33 +182,44 @@ class FSOPToolBox:
 
             scene_types = self.sanitize_values(row['scene Type'])
 
-            param1 = row['numerator param1'] #attributte_4
-            value1 = self.sanitize_values(row['numerator value1']) #attributte_4
+            num_param1 = row['numerator param1']  # attributte_4
+            num_value1 = self.sanitize_values(row['numerator value1'])  # attributte_4
 
-            param2 = row['denominator param1']
-            value2 = self.sanitize_values(row['denominator value1'])
+            den_param1 = row['denominator param1']
+            den_value1 = self.sanitize_values(row['denominator value1'])
 
-            target = int(row['% SOS'])
+            den_param2 = row['denominator param2']
+            den_value2 = self.sanitize_values(row['denominator value2'])
 
-            excluded_brands= self.sanitize_values(row['exclude brand'])
+            target = row['Target']
 
-            filters = {'manufacturer_name': manufacturers, param1: value1, 'template_name': scene_types,
-                       'brand_name': (excluded_brands, 0), 'product_type': ['SKU','OTHER']}
+            product_type= self.sanitize_values(row['product_type'])
+
+            excluded_brands = self.sanitize_values(row['exclude brand'])
+
+            filters = {'manufacturer_name': manufacturers, num_param1: num_value1, 'template_name': scene_types,
+                       'brand_name': (excluded_brands, 0), 'product_type': product_type}
 
             filters = self.delete_filter_nan(filters)
-            general_filters = {param2:value2, 'product_type': ['SKU','OTHER'], 'template_name': scene_types }
+            general_filters = {den_param1: den_value1, den_param2: den_value2, 'product_type': product_type,
+                               'template_name': scene_types}
             general_filters = self.delete_filter_nan(general_filters)
 
             ratio = self.SOS.calculate_share_of_shelf(filters, **general_filters)
-            if (100 * ratio) >= target:
-                score = 1
+
+            if pd.isna(target):
+                score = ratio
             else:
-                score = 0
+                target = int(target)
+
+                if (100 * ratio) >= target:
+                    score = 1
+                else:
+                    score = 0
 
             self.common.write_to_db_result(fk=kpi_fk, numerator_id=self.manufacturer_fk, numerator_result=0,
                                            denominator_id=self.store_id,
                                            denominator_result=0, result=ratio, score=score)
-
 
     def sanitize_values(self, item):
         if pd.isna(item):
@@ -214,23 +228,12 @@ class FSOPToolBox:
             items = [x.strip() for x in item.split(',')]
             return items
 
-
     def delete_filter_nan(self, filters):
         for key in filters.keys():
             if type(filters[key]) is not list:
                 if pd.isna(filters[key]):
                     del filters[key]
         return filters
-
-    def main_calculation(self):
-        """
-        This function calculates the KPI results.
-        """
-
-        self.calculate_availability()
-        self.calculate_sos()
-
-
 
     def calculate_availability_df(self, **filters):
         """
@@ -239,7 +242,8 @@ class FSOPToolBox:
         """
         if set(filters.keys()).difference(self.scif.keys()):
             scif_mpis_diff = self.match_product_in_scene[['scene_fk', 'product_fk'] +
-                                             list(self.match_product_in_scene.keys().difference(self.scif.keys()))]
+                                                         list(self.match_product_in_scene.keys().difference(
+                                                             self.scif.keys()))]
 
             # a patch for the item_id field which became item_id_x since it was added to product table as attribute.
             item_id = 'item_id' if 'item_id' in self.scif.columns else 'item_id_x'
@@ -256,4 +260,3 @@ class FSOPToolBox:
         else:
             availability_df = filtered_df
         return availability_df
-

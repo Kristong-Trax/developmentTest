@@ -47,19 +47,36 @@ class Test_PEPSICOUKScene(TestFunctionalCase):
         self.kpi_scores_values_mock = self.mock_kpi_score_value_table()
         self.mock_all_products()
         self.mock_all_templates()
-        self.mock_block()
-        self.mock_adjacency()
+        # self.mock_block()
+        # self.mock_adjacency()
+        self.mock_position_graph()
+        self.mock_position_graph_block()
+        self.mock_position_graph_adjacency()
+        self.mock_project_connector_base_calc()
+
+    def mock_position_graph(self):
+        self.mock_object('PositionGraphs', path='KPIUtils_v2.Calculations.AssortmentCalculations')
+
+    def mock_position_graph_block(self):
+        self.mock_object('PositionGraphs', path='KPIUtils_v2.Calculations.BlockCalculations')
+
+    def mock_position_graph_adjacency(self):
+        self.mock_object('PositionGraphs', path='KPIUtils_v2.Calculations.AdjacencyCalculations')
+
+    def mock_project_connector_base_calc(self):
+        self.mock_object('PSProjectConnector', path='KPIUtils_v2.Calculations.BaseCalculations')
+        self.mock_object('PSProjectConnector', path='KPIUtils_v2.GlobalDataProvider.PsDataProvider')
 
     def mock_store_data(self):
         store_data = self.mock_object('PEPSICOUKCommonToolBox.get_store_data_by_store_id')
         store_data.return_value = DataTestUnitPEPSICOUK.store_data
         return store_data.return_value
 
-    def mock_block(self):
-        self.mock_object('Block')
-
-    def mock_adjacency(self):
-        self.mock_object('Adjancency')
+    # def mock_block(self):
+    #     self.mock_object('Block')
+    #
+    # def mock_adjacency(self):
+    #     self.mock_object('Adjancency')
 
     def mock_probe_group(self, data):
         probe_group = self.mock_object('PEPSICOUKSceneToolBox.get_probe_group')
@@ -77,7 +94,8 @@ class Test_PEPSICOUKScene(TestFunctionalCase):
         self.data_provider_mock.__getitem__.side_effect = get_item
 
     def mock_db_users(self):
-        return self.mock_object('DbUsers', path='KPIUtils_v2.DB.CommonV2'), self.mock_object('DbUsers')
+        return self.mock_object('DbUsers', path='KPIUtils_v2.DB.CommonV2'), \
+               self.mock_object('DbUsers', path='KPIUtils_v2.Calculations.BaseCalculations')
 
     def mock_project_connector(self):
         return self.mock_object('PSProjectConnector')
@@ -144,6 +162,24 @@ class Test_PEPSICOUKScene(TestFunctionalCase):
 
     def mock_match_product_in_scene(self, data):
         self.data_provider_data_mock['matches'] = data.where(data.notnull(), None)
+
+    def mock_block_results(self, data):
+        block_results = self.mock_object('Block.network_x_block_together',
+                                         path='KPIUtils_v2.Calculations.BlockCalculations')
+        block_results.side_effect = data
+        return
+
+    # def mock_adjacency_results(self, data):
+    #     adjacency_results = self.mock_object('Adjancency.network_x_adjacency_calculation',
+    #                                          path='KPIUtils_v2.Calculations.AdjacencyCalculations')
+    #     adjacency_results.return_value = data
+    #     return
+
+    def mock_adjacency_results(self, data):
+        adjacency_results = self.mock_object('Adjancency._is_block_adjacent',
+                                             path='KPIUtils_v2.Calculations.AdjacencyCalculations')
+        adjacency_results.side_effect = data
+        return
 
     def create_scene_scif_matches_stitch_groups_data_mocks(self, test_case_file_path, scene_number):
         scif_test_case = pd.read_excel(test_case_file_path, sheetname='scif')
@@ -364,3 +400,160 @@ class Test_PEPSICOUKScene(TestFunctionalCase):
         query = ' & '.join('{} {} {}'.format(i, j, k) for i, j, k in zip(column, expression, condition))
         filtered_df = kpi_results_df.query(query)
         return len(filtered_df)
+
+    def test_get_group_pairs_3_pass(self):
+        probe_group, matches, scif = self.create_scene_scif_matches_stitch_groups_data_mocks(
+            DataTestUnitPEPSICOUK.test_case_1, 1)
+        scene_tb = PEPSICOUKSceneToolBox(self.data_provider_mock, self.output)
+        scene_tb.block_results = DataTestUnitPEPSICOUK.blocks_combinations_3_pass_all
+        pairs = scene_tb.get_group_pairs()
+        self.assertEquals(len(pairs), 3)
+        expected_result = [frozenset(['Group 3', 'Group 1']), frozenset(['Group 2', 'Group 1']),
+                           frozenset(['Group 2', 'Group 3'])]
+        self.assertItemsEqual(pairs, expected_result)
+
+    def test_get_group_pairs_2_pass_out_of_3(self):
+        probe_group, matches, scif = self.create_scene_scif_matches_stitch_groups_data_mocks(
+            DataTestUnitPEPSICOUK.test_case_1, 1)
+        scene_tb = PEPSICOUKSceneToolBox(self.data_provider_mock, self.output)
+        scene_tb.block_results = DataTestUnitPEPSICOUK.blocks_combinations_2_pass_of_3
+        pairs = scene_tb.get_group_pairs()
+        expected_result = [frozenset(['Group 2', 'Group 1'])]
+        self.assertEquals(len(pairs), 1)
+        self.assertItemsEqual(pairs, expected_result)
+
+    def test_get_group_pairs_1_pass_out_of_3(self):
+        probe_group, matches, scif = self.create_scene_scif_matches_stitch_groups_data_mocks(
+            DataTestUnitPEPSICOUK.test_case_1, 1)
+        scene_tb = PEPSICOUKSceneToolBox(self.data_provider_mock, self.output)
+        scene_tb.block_results = DataTestUnitPEPSICOUK.blocks_combinations_1_pass_of_3
+        pairs = scene_tb.get_group_pairs()
+        self.assertEquals(len(pairs), 0)
+
+    def test_get_group_pairs_4_pass_out_of_4(self):
+        probe_group, matches, scif = self.create_scene_scif_matches_stitch_groups_data_mocks(
+            DataTestUnitPEPSICOUK.test_case_1, 1)
+        self.mock_object('PositionGraphs', path='KPIUtils_v2.Calculations.AdjacencyCalculations')
+        scene_tb = PEPSICOUKSceneToolBox(self.data_provider_mock, self.output)
+        scene_tb.block_results = DataTestUnitPEPSICOUK.blocks_combinations_4_pass_of_4
+        pairs = scene_tb.get_group_pairs()
+        expected = [frozenset(['Group 3', 'Group 1']), frozenset(['Group 4', 'Group 2']),
+                    frozenset(['Group 4', 'Group 3']), frozenset(['Group 2', 'Group 3']),
+                    frozenset(['Group 4', 'Group 1']), frozenset(['Group 2', 'Group 1'])]
+        self.assertEquals(len(pairs), 6)
+        self.assertItemsEqual(pairs, expected)
+
+    def test_block_together_blocks_fail(self):
+        probe_group, matches, scif = self.create_scene_scif_matches_stitch_groups_data_mocks(
+            DataTestUnitPEPSICOUK.test_case_1, 1)
+
+        self.mock_block_results([DataTestUnitPEPSICOUK.block_results_empty, DataTestUnitPEPSICOUK.block_results_failed])
+        scene_tb = PEPSICOUKSceneToolBox(self.data_provider_mock, self.output)
+        scene_tb.calculate_product_blocking_new()
+        kpi_result = scene_tb.kpi_results
+        self.assertEquals(len(kpi_result), 2)
+        expected_list = list()
+        expected_list.append(
+            {'kpi_fk': 319, 'numerator': 165, 'result': 5, 'score': 0})
+        expected_list.append(
+            {'kpi_fk': 319, 'numerator': 166, 'result': 5, 'score': 0})
+        test_result_list = []
+        for expected_result in expected_list:
+            test_result_list.append(self.check_kpi_results(kpi_result, expected_result) == 1)
+        self.assertTrue(all(test_result_list))
+
+        expected_util_result = list()
+        expected_util_result.append({'Group Name': 'Pringles_FTT_Tubes', 'Score': 0})
+        expected_util_result.append({'Group Name': 'Hula Hoops_LMP_Snacks', 'Score': 0})
+        test_result_list = list()
+        for exp_res in expected_util_result:
+            test_result_list.append(
+                len(scene_tb.block_results[(scene_tb.block_results['Group Name'] == exp_res['Group Name']) &
+                                           (scene_tb.block_results['Score'] == exp_res[
+                                               'Score'])]) == 1)
+        self.assertTrue(all(test_result_list))
+
+        self.assertFalse(scene_tb.passed_blocks)
+
+    def test_block_together_vertical_and_horizontal(self):
+        probe_group, matches, scif = self.create_scene_scif_matches_stitch_groups_data_mocks(
+            DataTestUnitPEPSICOUK.test_case_1, 1)
+
+        self.mock_block_results([DataTestUnitPEPSICOUK.block_results, DataTestUnitPEPSICOUK.block_results_2])
+        scene_tb = PEPSICOUKSceneToolBox(self.data_provider_mock, self.output)
+        scene_tb.calculate_product_blocking_new()
+        kpi_result = pd.DataFrame(scene_tb.kpi_results)
+        self.assertEquals(len(kpi_result), 2)
+        expected_list = list()
+        expected_list.append({'kpi_fk': 319, 'numerator': 165, 'result': 4, 'score': 7})
+        expected_list.append({'kpi_fk': 319, 'numerator': 166, 'result': 4, 'score': 6})
+        test_result_list = []
+        for expected_result in expected_list:
+            test_result_list.append(self.check_kpi_results(kpi_result, expected_result) == 1)
+        self.assertTrue(all(test_result_list))
+
+        expected_util_result = list()
+        expected_util_result.append({'Group Name': 'Pringles_FTT_Tubes', 'Score': 1})
+        expected_util_result.append({'Group Name': 'Hula Hoops_LMP_Snacks', 'Score': 1})
+        test_result_list = list()
+        for exp_res in expected_util_result:
+            test_result_list.append(
+                len(scene_tb.block_results[(scene_tb.block_results['Group Name'] == exp_res['Group Name']) &
+                                           (scene_tb.block_results['Score'] == exp_res[
+                                               'Score'])]) == 1)
+        self.assertTrue(all(test_result_list))
+        self.assertItemsEqual(scene_tb.passed_blocks.keys(), ['Pringles_FTT_Tubes', 'Hula Hoops_LMP_Snacks'])
+
+    def test_adjacency_no_results_if_one_block_passes(self):
+        probe_group, matches, scif = self.create_scene_scif_matches_stitch_groups_data_mocks(
+            DataTestUnitPEPSICOUK.test_case_1, 1)
+        scene_tb = PEPSICOUKSceneToolBox(self.data_provider_mock, self.output)
+        scene_tb.block_results = DataTestUnitPEPSICOUK.blocks_one_passes
+        scene_tb.calculate_adjacency_new()
+        self.assertTrue(scene_tb.kpi_results.empty)
+
+    def test_adjacency_no_results_if_no_blocks_pass(self):
+        probe_group, matches, scif = self.create_scene_scif_matches_stitch_groups_data_mocks(
+            DataTestUnitPEPSICOUK.test_case_1, 1)
+        scene_tb = PEPSICOUKSceneToolBox(self.data_provider_mock, self.output)
+        scene_tb.block_results = DataTestUnitPEPSICOUK.blocks_none_passes
+        scene_tb.calculate_adjacency_new()
+        self.assertTrue(scene_tb.kpi_results.empty)
+
+    def test_adjacency_fails(self):
+        probe_group, matches, scif = self.create_scene_scif_matches_stitch_groups_data_mocks(
+            DataTestUnitPEPSICOUK.test_case_1, 1)
+        self.mock_adjacency_results([DataTestUnitPEPSICOUK.adjacency_results_false])
+        scene_tb = PEPSICOUKSceneToolBox(self.data_provider_mock, self.output)
+        scene_tb.passed_blocks = {'Pringles_FTT_Tubes': DataTestUnitPEPSICOUK.block_results,
+                                  'Hula Hoops_LMP_Snacks': DataTestUnitPEPSICOUK.block_results_2}
+        scene_tb.block_results = DataTestUnitPEPSICOUK.blocks_all_pass
+        scene_tb.calculate_adjacency_new()
+        kpi_result = scene_tb.kpi_results
+        self.assertEquals(len(kpi_result), 1)
+        expected_list = list()
+        expected_list.append({'kpi_fk': 320, 'numerator': 166, 'denominator': 165, 'result': 5,
+                              'score': 0})
+        test_result_list = []
+        for expected_result in expected_list:
+            test_result_list.append(self.check_kpi_results(kpi_result, expected_result) == 1)
+        self.assertTrue(all(test_result_list))
+
+    def test_adjacency_passes(self):
+        probe_group, matches, scif = self.create_scene_scif_matches_stitch_groups_data_mocks(
+            DataTestUnitPEPSICOUK.test_case_1, 1)
+        self.mock_adjacency_results([DataTestUnitPEPSICOUK.adjacency_results_true])
+        scene_tb = PEPSICOUKSceneToolBox(self.data_provider_mock, self.output)
+        scene_tb.passed_blocks = {'Pringles_FTT_Tubes': DataTestUnitPEPSICOUK.block_results,
+                                  'Hula Hoops_LMP_Snacks': DataTestUnitPEPSICOUK.block_results_2}
+        scene_tb.block_results = DataTestUnitPEPSICOUK.blocks_all_pass
+        scene_tb.calculate_adjacency_new()
+        kpi_result = scene_tb.kpi_results
+        self.assertEquals(len(kpi_result), 1)
+        expected_list = list()
+        expected_list.append({'kpi_fk': 320, 'numerator': 166, 'denominator': 165, 'result': 4,
+                              'score': 1})
+        test_result_list = []
+        for expected_result in expected_list:
+            test_result_list.append(self.check_kpi_results(kpi_result, expected_result) == 1)
+        self.assertTrue(all(test_result_list))

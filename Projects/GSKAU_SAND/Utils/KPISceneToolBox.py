@@ -22,10 +22,9 @@ POSM_KEY = 'posm_pk'
 GSK_MANUFACTURER_ID = 2
 EMPTY_PRODUCT_ID = 0
 # the keys are named as per the config file
-# ..ExternalTargetsTemplateLoader/ProjectsDetails/gskau-sand.py
 STORE_IDENTIFIERS = [
     'additional_attribute_1', 'additional_attribute_2',
-    'region_pk', 'store_type', 'store_number', 'city',
+    'region_fk', 'store_type', 'store_number_1', 'address_city',
     'retailer_fk',
 ]
 SCENE_IDENTIFIERS = [
@@ -33,12 +32,12 @@ SCENE_IDENTIFIERS = [
 ]
 POSM_PK_KEY = 'posm_pk'
 # ALLOWED_POSM_EAN_KEY = 'allowed_posm_eans'
-OPTIONAN_EAN_KEY = 'optional_eans'
+OPTIONAL_EAN_KEY = 'optional_eans'
 MANDATORY_EANS_KEY = 'mandatory_eans'
 POSM_IDENTIFIERS = [
     POSM_PK_KEY,
     # ALLOWED_POSM_EAN_KEY,
-    OPTIONAN_EAN_KEY,
+    OPTIONAL_EAN_KEY,
     MANDATORY_EANS_KEY,
 ]
 
@@ -101,15 +100,15 @@ class GSKAUSceneToolBox:
             Log.warning('There is no target policy for calculating secondary display compliance.')
             return False
         else:
-            has_posm_recognized = False
-            multi_posm_or_bay = False
-            mandatory_sku_compliance = False
-            optional_sku_compliance = False
-            price_compliance = False
             current_scene_fk = self.scene_info.iloc[0].scene_fk
-            display_per_sku_calculated = False
+            display_per_sku_per_scene_calculated = False
             for idx, each_target in secondary_display_targets.iterrows():
                 # loop through each external target to fit the current store
+                has_posm_recognized = False
+                multi_posm_or_bay = False
+                mandatory_sku_compliance = False
+                optional_sku_compliance = False
+                price_compliance = False
                 is_scene_relevant = False
                 scene_relevant_targets = pd.DataFrame()
                 # check store relevance
@@ -130,7 +129,9 @@ class GSKAUSceneToolBox:
                              .format(sess=self.session_uid, scene=current_scene_fk))
                     posm_relevant_targets = each_target[POSM_IDENTIFIERS].dropna()
                     mandatory_eans = _sanitize_csv(posm_relevant_targets[MANDATORY_EANS_KEY])
-                    optional_posm_eans = _sanitize_csv(posm_relevant_targets[OPTIONAN_EAN_KEY])
+                    optional_posm_eans = []
+                    if OPTIONAL_EAN_KEY in posm_relevant_targets:
+                        optional_posm_eans = _sanitize_csv(posm_relevant_targets[OPTIONAL_EAN_KEY])
                     # save detailed sku presence
                     posm_to_check = each_target[POSM_PK_KEY]
                     # FIND THE SCENES WHICH HAS THE POSM to check for multiposm or multibays
@@ -140,10 +141,11 @@ class GSKAUSceneToolBox:
                                  'Save and start new scene.'
                                  .format(scene=current_scene_fk, pos=posm_to_check))
                         # calculate display per sku -- POSM is absent
-                        display_per_sku_calculated = self.save_display_presence_per_sku(
-                            kpi=kpi_display_presence_sku,
-                            numerator_result=0,
-                        )
+                        if not display_per_sku_per_scene_calculated:
+                            display_per_sku_per_scene_calculated = self.save_display_presence_per_sku(
+                                kpi=kpi_display_presence_sku,
+                                numerator_result=0,  # 0 posm not recognized
+                            )
                         if len(self.match_product_in_scene['bay_number'].unique()) > 1 or \
                                 len(self.scif[self.scif['product_type'] == POS_TYPE]) > 1:
                             Log.info(
@@ -172,16 +174,20 @@ class GSKAUSceneToolBox:
                     has_posm_recognized = True
                     # check if this scene has multi posm or multi bays
                     if len(self.match_product_in_scene['bay_number'].unique()) > 1 or \
-                            len(self.scif[self.scif['product_type'] == POS_TYPE]) > 1:
+                            len(self.scif[self.scif['product_type'] == POS_TYPE]) > 1 or \
+                            not self.scif[(self.scif['product_type'] == POS_TYPE) &
+                                          (self.scif['facings'] > 1)].empty:
                         # Its multi posm or bay -- only purity calc per bay is possible
                         Log.info('The scene: {scene} is relevant and POSM {pos} is present but multi_bay_posm is True. '
                                  'Purity per bay is calculated and going to next scene.'
                                  .format(scene=current_scene_fk, pos=posm_to_check))
+                        multi_posm_or_bay = True
                         # calculate display per sku for multi posm/multi bay
-                        display_per_sku_calculated = self.save_display_presence_per_sku(
-                            kpi=kpi_display_presence_sku,
-                            numerator_result=2,
-                        )
+                        if not display_per_sku_per_scene_calculated:
+                            display_per_sku_per_scene_calculated = self.save_display_presence_per_sku(
+                                kpi=kpi_display_presence_sku,
+                                numerator_result=2,  # 2 multi posm
+                            )
                         self.save_display_compliance_data(
                             [
                                 {'pk': kpi_display_presence.iloc[0].pk, 'result': int(has_posm_recognized),
@@ -195,7 +201,6 @@ class GSKAUSceneToolBox:
                                  'denominator_result': posm_to_check},
                             ]
                         )
-                        multi_posm_or_bay = True
                         self.save_purity_per_bay(kpi_display_bay_purity)
                         continue
 
@@ -204,12 +209,13 @@ class GSKAUSceneToolBox:
                     # save purity per bay
                     self.save_purity_per_bay(kpi_display_bay_purity)
                     # calculate display per sku for ALL SUCCESS
-                    display_per_sku_calculated = self.save_display_presence_per_sku(
-                        kpi=kpi_display_presence_sku,
-                        posm_to_check=posm_to_check,
-                        numerator_result=1,
-                        mandatory_eans=mandatory_eans,
-                        optional_posm_eans=optional_posm_eans)
+                    if not display_per_sku_per_scene_calculated:
+                        display_per_sku_per_scene_calculated = self.save_display_presence_per_sku(
+                            kpi=kpi_display_presence_sku,
+                            posm_to_check=posm_to_check,
+                            numerator_result=1,  # 1--one one posm
+                            mandatory_eans=mandatory_eans,
+                            optional_posm_eans=optional_posm_eans)
                     # calculate compliance
                     mandatory_sku_compliance = self.get_ean_presence_rate(mandatory_eans)
                     optional_sku_compliance = self.get_ean_presence_rate(optional_posm_eans)
@@ -248,7 +254,7 @@ class GSKAUSceneToolBox:
                         ))
                     continue
             else:
-                if not display_per_sku_calculated:
+                if not display_per_sku_per_scene_calculated:
                     # check if its secondary display type
                     if not self.templates.loc[(self.templates['template_group'] == 'Secondary display') &
                                               (~self.templates['template_name'].isin(['Clipstrip', 'Hangsell']))].empty:
@@ -256,8 +262,9 @@ class GSKAUSceneToolBox:
                                  "any external targets.".format(sess=self.session_uid,
                                                                 scene=self.scene_info.iloc[0].scene_fk,
                                                                 ))
-                        self.save_display_presence_per_sku(kpi=kpi_display_presence_sku,
-                                                           numerator_result=0)
+                        display_per_sku_per_scene_calculated = self.save_display_presence_per_sku(
+                            kpi=kpi_display_presence_sku,
+                            numerator_result=0)  # 0--posm not recognized
 
     def get_ean_presence_rate(self, ean_list):
         """
@@ -288,15 +295,15 @@ class GSKAUSceneToolBox:
     def save_purity_per_bay(self, kpi_bay_purity):
         Log.info('Calculate purity per bay for : {scene}.'.format(scene=self.scene_info.iloc[0].scene_fk))
         # could have done with scif
-        total_prod_in_scene_count = len(
-            self.match_product_in_scene[self.match_product_in_scene['product_fk'] != 0]
-        )
         mpis_grouped_by_bay = self.match_product_in_scene.groupby(['bay_number'])
         for bay_number, mpis in mpis_grouped_by_bay:
+            total_prod_in_bay_count = len(
+                mpis[mpis['product_fk'] != 0]
+            )
             mpis_with_prod = mpis.merge(self.products, how='left', on=['product_fk'], suffixes=('', '_prod'))
             gsk_prod_count = len(mpis_with_prod[mpis_with_prod['manufacturer_fk'] == 2])
-            if total_prod_in_scene_count:
-                purity = gsk_prod_count / float(total_prod_in_scene_count) * 100
+            if total_prod_in_bay_count:
+                purity = gsk_prod_count / float(total_prod_in_bay_count) * 100
                 Log.info('Save purity per bay for scene: {scene}; bay: {bay} & purity: {purity}.'
                          .format(scene=self.scene_info.iloc[0].scene_fk,
                                  bay=bay_number,
@@ -337,14 +344,14 @@ class GSKAUSceneToolBox:
 
     def save_display_presence_per_sku(self, kpi, posm_to_check=None, numerator_result=None,
                                       mandatory_eans=None, optional_posm_eans=None):
-        # numerator_result => [0--not recognized; 1--one onlt;  2--multi posm]
+        # This should be done once only per scene
         current_scene_fk = self.scene_info.iloc[0].scene_fk
         context_fk = self.scene_info.iloc[0].template_fk
         if posm_to_check and (mandatory_eans or optional_posm_eans):
             # the scene is valid as per external targets template
             # PER SCENE which are secondary display
             # save POSM as numerator; each product as denominator and template as context
-            Log.info(' Calculate display presence per sku. The session: {sess} - scene: {scene} is valid.'
+            Log.info('Calculate display presence per sku. The session: {sess} - scene: {scene} is valid.'
                      .format(sess=self.session_uid, scene=current_scene_fk))
             numerator_id = posm_to_check
         else:
@@ -354,14 +361,14 @@ class GSKAUSceneToolBox:
             Log.info('Calculate display presence per sku. The session: {sess} - scene: {scene} is invalid.'
                      .format(sess=self.session_uid, scene=current_scene_fk))
             numerator_id = 0  # General Empty
-
+        # result => [ 0=Optional, 1=mandatory, 2=NA]
+        # numerator_result => [0-- posm not recognized; 1--one one posm;  2--multi posm]
         for idx, each_row in self.scif.iterrows():
-            # result => [ 0=Optional, 1=mandatory, 2=NA]
             result = 2  # NA
-            if optional_posm_eans and each_row.product_ean_code in optional_posm_eans:
-                result = 0  # optional
-            elif mandatory_eans and each_row.product_ean_code in mandatory_eans:
+            if mandatory_eans and each_row.product_ean_code in mandatory_eans:
                 result = 1  # mandatory
+            elif optional_posm_eans and each_row.product_ean_code in optional_posm_eans:
+                result = 0  # optional
             self.common.write_to_db_result(
                 fk=kpi.iloc[0].pk,
                 numerator_id=numerator_id,  # its the POSM to check or General Empty if not recognized
