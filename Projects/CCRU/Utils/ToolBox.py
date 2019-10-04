@@ -3986,9 +3986,8 @@ class CCRUKPIToolBox:
             # Location level KPI
             kpi_fk = self.common.kpi_static_data[self.common.kpi_static_data['type']
                                                  == PROMO_COMPLIANCE_DISPLAY]['pk'].values[0]
-            display_fk = self.promo_displays[self.promo_displays['name']
-                                             == display_target['DISPLAY_NAME']]['pk'].values[0]
-            target_fk = display_target['PK']
+            display_fk = display_target['DISPLAY_NAME']  # DISPLAY_NAME contains pk
+            target_fk = display_target['target_fk']
 
             kpi_identifier_result = self.common.get_dictionary(kpi_fk=kpi_fk, display_fk=display_fk)
 
