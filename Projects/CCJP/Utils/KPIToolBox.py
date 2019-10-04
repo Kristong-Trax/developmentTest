@@ -408,7 +408,6 @@ class ToolBox(GlobalSessionToolBox):
 
     def get_store_area_data(self, scene_types):
         query = self.get_store_area_query().format(self.session_uid, scene_types)
-        print query
         store_area_data = pd.read_sql_query(query, self.rds_conn.db)
         return store_area_data
 
@@ -416,10 +415,10 @@ class ToolBox(GlobalSessionToolBox):
     def get_store_area_score_query():
         return """
            SELECT
-           template_fk,
+           (select pk from static.template where name in ({2})) template_fk,
            count(distinct(sttagi.name))  count,
-           {} target,
-           count(distinct(sttagi.name)) / {} result
+           {0} target,
+           count(distinct(sttagi.name)) / {0} result
            FROM 
            probedata.scene sce, 
            probedata.scene_store_task_area_group_items scetagi,
@@ -428,16 +427,15 @@ class ToolBox(GlobalSessionToolBox):
            WHERE 1=1 
            AND sce.status = 6
            AND sce.delete_time is null
-           AND sce.session_uid ='{}'
+           AND sce.session_uid ='{1}'
            AND sce.pk = scetagi.scene_fk
            AND sce.template_fk = temp.pk 
            AND scetagi.store_task_area_group_item_fk = sttagi.pk
-           AND temp.name in ({})
-           AND sttagi.name in ({})"""
+           AND temp.name in ({2})
+           AND sttagi.name in ({3})"""
 
     def get_store_area_score_data(self, scene_types, store_location, target):
-        query = self.get_store_area_score_query().format(target, target, self.session_uid, scene_types, store_location)
-        print query
+        query = self.get_store_area_score_query().format(target, self.session_uid, scene_types, store_location)
         store_area_score_data = pd.read_sql_query(query, self.rds_conn.db)
         return store_area_score_data
 
@@ -859,14 +857,14 @@ class ToolBox(GlobalSessionToolBox):
         if policy.empty:
             return
 
-        store_locations = [x.strip() for x in policy.iloc[0]['store_area_location'].split(',')]
-        target = int(policy.iloc[0]['target'])
+        store_locations = [x.strip() for x in policy['store_area_location'].split(',')]
+        target = int(policy['target'])
         store_locations = ", ".join("'" + str(x) + "'" for x in store_locations)
 
-        scene_types_count = [x.strip() for x in policy.iloc[0]['scene_type_count'].split(',')]
+        scene_types_count = [x.strip() for x in policy['scene_type_count'].split(',')]
         scene_types_count = ", ".join("'" + str(x) + "'" for x in scene_types_count)
 
-        scene_types_score = [x.strip() for x in policy.iloc[0]['scene_type_score'].split(',')]
+        scene_types_score = [x.strip() for x in policy['scene_type_score'].split(',')]
         scene_types_score = ", ".join("'" + str(x) + "'" for x in scene_types_score)
 
         return self.point_of_connection_calc(scene_types_count, scene_types_score, store_locations, target)
@@ -940,6 +938,7 @@ class ToolBox(GlobalSessionToolBox):
             if result.empty:
                 continue
             else:
+                # As per design - One store can have only one POC policy
                 Log.info("store_policy:{} filter_params:{}".format(row_data['store_policy'], filter_params))
                 return row_data
 
