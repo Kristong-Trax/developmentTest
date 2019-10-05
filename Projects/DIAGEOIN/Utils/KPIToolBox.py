@@ -168,6 +168,11 @@ class DIAGEOINToolBox:
         return list_results
 
     def custom_brand_presence_main(self):
+
+        if self.store_assortment.empty:
+            Log.warning('Store Policy/assortment missing for store_id={}'.format(self.store_id))
+            return
+
         brand_presence_kpis = self.kpi_template_data[self.kpi_template_data['kpi_group'] == 'BRAND_GROUP_PRESENCE']
 
         if brand_presence_kpis.empty:
