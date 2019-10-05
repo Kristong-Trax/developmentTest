@@ -35,8 +35,7 @@ class DIAGEOINToolBox:
         self.own_manufacturer_fk = 12
         self.store_info = self.get_store_info(self.store_id)
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
-        for column_name in self.scif.columns:
-            print (column_name)
+        self.all_templates = self.data_provider[Data.ALL_TEMPLATES]
         self.common = Common(self.data_provider)
         self.scene_info = self.data_provider[Data.SCENES_INFO]
         self.diageo_generator = DIAGEOGenerator(self.data_provider, self.output, self.common)
@@ -97,9 +96,11 @@ class DIAGEOINToolBox:
         """
         This function calculates the KPI results.
         """
+        # Local Custom/Client Brand Group Presence
+        self.custom_brand_presence_main()
 
-        # # SOS Out Of The Box KPIs
-        #self.diageo_generator.activate_ootb_kpis(self.commonV2)
+        # SOS Out Of The Box KPIs
+        self.diageo_generator.activate_ootb_kpis(self.commonV2)
 
         # Global assortment KPIs - v2 for API use
         assortment_res_dict_v2 = self.diageo_generator.diageo_global_assortment_function_v2()
@@ -114,8 +115,6 @@ class DIAGEOINToolBox:
         if res_json:
             self.commonV2.write_to_db_result(fk=res_json['fk'], numerator_id=1, denominator_id=self.store_id,
                                              result=res_json['result'])
-        # Local Custom/Client Brand Group Presence
-        self.custom_brand_presence()
 
         # # Global Brand Blocking KPI
         # template_data = self.template_handler.download_template(DiageoKpiNames.BRAND_BLOCKING)
@@ -124,6 +123,7 @@ class DIAGEOINToolBox:
 
         # committing to new tables
         self.commonV2.commit_results_data()
+
         # committing to the old tables
         #self.common.commit_results_data()
 
@@ -134,16 +134,16 @@ class DIAGEOINToolBox:
                     self.commonV2.write_to_db_result(**result)
 
     @staticmethod
-    def custom_brand_presence_sce_lvl(df):
+    def custom_brand_presence_per_scene(df, template_fk):
         list_results = []
-        df_product = df[['template_fk', 'assortment_fk', 'kpi_fk_lvl2', 'product_fk', 'item_id']]
+        df_product = df[['assortment_fk', 'kpi_fk_lvl2', 'product_fk', 'item_id']]
         df_product = pd.DataFrame(
-            df_product.groupby(['template_fk', 'assortment_fk', 'kpi_fk_lvl2'])['product_fk'].count().reset_index())
+            df_product.groupby(['assortment_fk', 'kpi_fk_lvl2'])['product_fk'].count().reset_index())
         df_product['product_fk'].fillna(0, inplace=True)
 
-        df_item = df[['template_fk', 'assortment_fk', 'kpi_fk_lvl2', 'product_fk', 'item_id']]
+        df_item = df[['assortment_fk', 'kpi_fk_lvl2', 'product_fk', 'item_id']]
         df_item = pd.DataFrame(
-            df_item.groupby(['template_fk', 'assortment_fk', 'kpi_fk_lvl2'])['item_id'].count().reset_index())
+            df_item.groupby(['assortment_fk', 'kpi_fk_lvl2'])['item_id'].count().reset_index())
         df_item['item_id'].fillna(0, inplace=True)
 
         df_result = df_product.merge(df_item, how='left', on="kpi_fk_lvl2")
@@ -154,6 +154,7 @@ class DIAGEOINToolBox:
             dict_result['numerator_id'] = row_data['kpi_fk_lvl2']
             dict_result['numerator_result'] = row_data['item_id']
 
+            # need to implement target per assortment
             if int(row_data['item_id']) > 0:
                 dict_result['result'] = 1
             else:
@@ -161,59 +162,100 @@ class DIAGEOINToolBox:
 
             dict_result['denominator_id'] = row_data['assortment_fk_x']
             dict_result['denominator_result'] = row_data['product_fk']
-            dict_result['context_id'] = row_data['template_fk_x']
+            dict_result['context_id'] = template_fk
             list_results.append(dict_result)
             dict_result = {}
         return list_results
 
-    def custom_brand_presence(self):
-        list_results = []
-        bb_assortment = self.store_assortment[['assortment_fk', 'kpi_fk_lvl2', 'product_fk']]
-        mn_assortment = self.store_assortment[['assortment_fk', 'kpi_fk_lvl2', 'product_fk']]
-
-        if bb_assortment.empty and mn_assortment.empty:
-            Log.warning("No assortments for custom brand presence")
-            return
-
-        if self.kpi_template_data.empty:
-            Log.warning("KPI Template is empty")
-            return
-
+    def custom_brand_presence_main(self):
         brand_presence_kpis = self.kpi_template_data[self.kpi_template_data['kpi_group'] == 'BRAND_GROUP_PRESENCE']
 
         if brand_presence_kpis.empty:
             Log.warning("No KPI in the template with kpi_group=BRAND_GROUP_PRESENCE")
             return
 
-        for kpi_row_num, kpi_row_data in brand_presence_kpis.iterrows():
-            back_bar_template = kpi_row_data['back_bar_scenes'].strip()
-            menu_template = kpi_row_data['menu_scenes'].strip()
+        bp_kpi_scene_lvl = brand_presence_kpis[brand_presence_kpis['kpi_name']=='BRAND_GROUP_PRESENCE_SCENE_LEVEL']
 
-            df_scif_back_bar = self.scif[(self.scif['template_name'] == back_bar_template) & (self.scif['facings'] > 0)]
-            df_scif_back_bar = df_scif_back_bar[['template_fk', 'product_fk', 'item_id']]
+        if bp_kpi_scene_lvl.empty:
+            Log.warning('BRAND_GROUP_PRESENCE_SCENE_LEVEL - KPI not available in KPI template')
+            return
 
-            df_scif_menu = self.scif[(self.scif['template_name'] == menu_template) & (self.scif['facings'] > 0)]
-            df_scif_menu = df_scif_menu[['template_fk', 'product_fk', 'item_id']]
+        kpi_row_data = bp_kpi_scene_lvl.iloc[0]
 
-            df_bb = bb_assortment.merge(df_scif_back_bar, how='left', on="product_fk")
-            list_results = self.custom_brand_presence_sce_lvl(df_bb)
+        df_results = self.custom_brand_presence_scene_lvl(kpi_row_data)
 
-            df_mn = mn_assortment.merge(df_scif_menu, how='left', on="product_fk")
-            list_results.extend(self.custom_brand_presence_sce_lvl(df_mn))
+        bp_kpi_mnf_ws = brand_presence_kpis[brand_presence_kpis['kpi_name'] == 'BRAND_GROUP_PRESENCE_OWN_MANF_WHOLE_STORE']
 
-        df_results = pd.DataFrame(list_results)
+        if bp_kpi_mnf_ws.empty:
+            Log.warning('BRAND_GROUP_PRESENCE_OWN_MANF_WHOLE_STORE - KPI not available in KPI template')
+            return
 
         self.calculate_brand_presence_overall_score(df_results)
 
+    def custom_brand_presence_scene_lvl(self, kpi_row_data):
+        list_results = []
+        kpi_name = kpi_row_data['kpi_name'].strip()
+        back_bar_template = kpi_row_data['back_bar_scenes'].strip()
+        bb_template_name = self.all_templates[self.all_templates['template_name'] == back_bar_template]
+
+        menu_template = kpi_row_data['menu_scenes'].strip()
+        mn_template_name = self.all_templates[self.all_templates['template_name'] == menu_template]
+
+        if bb_template_name.empty or mn_template_name.empty:
+            Log.warning("BackBar:{} OR Menu:{} not matching in static.template".format(bb_template_name, menu_template))
+            return
+
+        bb_template_fk = bb_template_name.iloc[0]["template_fk"]
+        mn_template_fk = mn_template_name.iloc[0]["template_fk"]
+
+        bb_assortment = self.store_assortment[['assortment_fk', 'kpi_fk_lvl2', 'product_fk']]
+        mn_assortment = self.store_assortment[['assortment_fk', 'kpi_fk_lvl2', 'product_fk']]
+
+        if bb_assortment.empty and mn_assortment.empty:
+            Log.warning("No assortments for custom brand presence")
+            return pd.DataFrame(list_results)
+
+        if self.kpi_template_data.empty:
+            Log.warning("KPI Template is empty")
+            return pd.DataFrame(list_results)
+
+        df_scif_back_bar = self.scif[(self.scif['template_fk'] == bb_template_fk) & (self.scif['facings'] > 0) &
+                                     (self.scif['product_type'] == 'SKU')]
+        df_scif_back_bar = df_scif_back_bar[['product_fk', 'item_id']]
+
+        df_scif_menu = self.scif[(self.scif['template_fk'] == mn_template_fk) & (self.scif['facings'] > 0) &
+                                 (self.scif['product_type'] == 'POS')]
+        df_scif_menu = df_scif_menu[['product_fk', 'item_id']]
+
+        df_bb = bb_assortment.merge(df_scif_back_bar, how='left', on="product_fk")
+        df_bb_results = pd.DataFrame(self.custom_brand_presence_per_scene(df_bb, bb_template_fk))
+        df_bb_results = df_bb_results[['numerator_id', 'result']]
+        df_bb_results.columns = ['numerator_id', 'numerator_result']
+
+        df_mn = mn_assortment.merge(df_scif_menu, how='left', on="product_fk")
+        df_mn_results = pd.DataFrame(self.custom_brand_presence_per_scene(df_mn, mn_template_fk))
+        df_mn_results = df_mn_results[['numerator_id', 'result']]
+        df_mn_results.columns = ['denominator_id', 'denominator_result']
+
+        df_results = pd.merge(df_bb_results, df_mn_results,
+                              left_on=['numerator_id'],
+                              right_on=['denominator_id'],
+                              how='left')
+        df_results['result'] = df_results['numerator_result'] + df_results['denominator_result']
+        df_results['result'] = df_results['result'].apply(lambda x: 1 if x > 1 else x)
+
+        kpi_fk = self.get_kpi_fk_by_kpi_type(kpi_name)
+
         for row_num_results, row_data_results in df_results.iterrows():
-            self.commonV2.write_to_db_result(fk=row_data_results['fk'],
+            self.commonV2.write_to_db_result(fk=kpi_fk,
                                              numerator_id=row_data_results['numerator_id'],
                                              numerator_result=row_data_results['numerator_result'],
                                              denominator_id=row_data_results['denominator_id'],
                                              denominator_result=row_data_results['denominator_result'],
-                                             context_id=row_data_results['context_id'],
+                                             context_id=self.store_id,
                                              score=row_data_results['result'],
                                              result=row_data_results['result'])
+        return df_results
 
     def get_kpi_fk_by_kpi_type(self, kpi_type):
         """
@@ -229,10 +271,8 @@ class DIAGEOINToolBox:
             return None
 
     def calculate_brand_presence_overall_score(self, df):
-
         if df.empty:
             return
-
         kpi_fk = self.get_kpi_fk_by_kpi_type("BRAND_GROUP_PRESENCE_OWN_MANF_WHOLE_STORE")
         numerator_id = self.own_manufacturer_fk
         numerator_result = df['result'].sum()
