@@ -193,6 +193,7 @@ class DIAGEOINToolBox:
         self.calculate_brand_presence_overall_score(df_results)
 
     def custom_brand_presence_scene_lvl(self, kpi_row_data):
+        df_results = pd.DataFrame()
         list_results = []
         kpi_name = kpi_row_data['kpi_name'].strip()
         back_bar_template = kpi_row_data['back_bar_scenes'].strip()
