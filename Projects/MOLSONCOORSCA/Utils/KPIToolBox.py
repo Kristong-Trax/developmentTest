@@ -1,7 +1,7 @@
 import pandas as pd
 import operator as op
 from functools import reduce
-from collections import defaultdict, Counter, namedtuple
+from collections import defaultdict, namedtuple
 
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Algo.Calculations.Core.Utils import Validation
@@ -61,13 +61,14 @@ class ToolBox:
         self.store_id = self.data_provider[Data.STORE_FK]
         self.manufacturer_fk = int(self.data_provider[Data.OWN_MANUFACTURER].iloc[0, 1])
         self.match_product_in_scene = self.data_provider[Data.MATCHES]
+        self.result_entities = self.make_result_values_dict()
         # self.add_image_data_to_mpis()
         self.visit_date = self.data_provider[Data.VISIT_DATE]
         self.session_info = self.data_provider[Data.SESSION_INFO]
         self.scenes = self.scene_info['scene_fk'].tolist()
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
         self.tmb_map = pd.read_excel(Const.TMB_MAP_PATH).set_index('Num Shelves').to_dict('index')
-        self.result_values_dict = self.make_result_values_dict()
+        self.res_dict = defaultdict(lambda: defaultdict(int))
         self.full_mpis = pd.DataFrame()
         self.mpis = pd.DataFrame()
         self.load_mpis()
@@ -78,7 +79,7 @@ class ToolBox:
         self.dependencies = {}
         self.dependency_lookup = {}
         self.base_measure = None
-        self.circle_kpis = set()
+        self.circle_kpis = {}
 
         self.store_data = pd.read_sql_query(DATA_QUERY, self.common.rds_conn.db)
         self.rel_store_data = self.store_data[self.store_data['pk'] == self.store_id]
@@ -105,6 +106,8 @@ class ToolBox:
         for i, main_line in main_template.iterrows():
             self.global_fail = 0
             self.calculate_base_data(main_line)
+        for k, v in self.circle_kpis.items():
+            self.write_to_db(**v)
 
         # self.flag_failures()
 
@@ -125,14 +128,19 @@ class ToolBox:
         #     # 'Eye Level Availability'
         #     # 'Flanker Displays', 'Disruptor Displays'
         #     # 'Innovation Distribution',
+        #     # 'Display by Location',
         #     # 'Display by Location'
         #     # 'Leading Main Section on Left',
+        #     # 'Leading Cooler on Left',
+        #     # 'Leading Cooler on Right',
         #     # 'Leading Main Section on Right',
         #     # 'Leading Cold Room on Left',
         #     # 'Leading Cold Room on Right',
         #     # 'Share of Segment Cooler Facings'
-        #     'Share of Segment Warm Facings',
+        #     # 'Share of Segment Warm Facings',
         #     # 'ABI Share of Display Space'
+        #     'Sleeman Share of Display Space'
+        #     # 'Share of Total Space'
         #
         # ]:
         #     return
@@ -146,11 +154,11 @@ class ToolBox:
         ]:
             return
 
-        if 'POP Seasonal Programs' in kpi_name:
+        if kpi_name in ['POP Seasonal Programs', 'Molson Coors Cooler Compliance']:
             return
 
-        print('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~')
-        print('_____{}_____'.format(kpi_name))
+        # print('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~')
+        # print('_____{}_____'.format(kpi_name))
 
         # dependent_kpis = self.read_cell_from_line(main_line, Const.DEPENDENT)
         # dependent_results = self.read_cell_from_line(main_line, Const.DEPENDENT_RESULT)
@@ -171,10 +179,12 @@ class ToolBox:
             calc_lvl,  write_type = self.calculate_main_kpi(**kwargs)
             if calc_lvl >= len(hierarchy):  # Some kpis will handle all levels of hierarchy simultaneously instead of iteratively
                 break
-        if write_type and kpi_type not in self.circle_kpis:  # Kpi type is used to create the top level of the mobile drill down, and we do want to avoid dupes
-            self.write_to_db(**{'kpi_name': kpi_type, 'score': 0, 'numerator_id': self.manufacturer_fk, 'result': 0,
-                                'denominator_id': self.store_id, 'ident_result': kpi_type, 'numerator_result': 0})
-            self.circle_kpis.add(kpi_type)
+        if write_type:  # Kpi type is used to create the top level of the mobile drill down
+            self.circle_kpis[kpi_type] = {'kpi_name': kpi_type, 'score': self.res_dict[kpi_type]['score'],
+                                          'numerator_id': self.manufacturer_fk, 'numerator_result': 0,
+                                          'result': self.res_dict[kpi_type]['score'],  # score used intentionally here, since only score propagates up the hierarchy
+                                          'denominator_id': self.store_id, 'ident_result': kpi_type,
+                                          }
 
     def calculate_main_kpi(self, kpi_name, kpi_lvl_name, kpi_type, **kwargs):
         kpi_line = self.template[kpi_type].set_index(Const.KPI_NAME).loc[kpi_name]
@@ -207,8 +217,13 @@ class ToolBox:
                     results['kpi_name'] = kpi_lvl_name
                 if 'ident_parent' not in results:
                     results['ident_parent'] = kpi_type
-                self.write_to_db(**results)
+                if write_type is True:
+                    self.write_to_db(**results)
+                    if kpi_line.get('Scored') == 'Y':
+                        # self.res_dict[results['ident_parent']]['result'] += results['result']
+                        self.res_dict[results['ident_parent']]['score'] += results['score']
                 self.dependencies[kpi_name] = results['result']
+                # print('-              {}'.format(results['result']))
         return level, write_type
 
     def flag_failures(self):
@@ -244,6 +259,12 @@ class ToolBox:
                 elif 'den' in kpi_line['Iterative']:
                     general_filters[iter_col] = item
             results.append(self.calculate_base_sos(kpi_name, kpi_line, general_filters, col, level, main_line,**kwargs))
+        if len(items) == 0 and level['ind'] == level['end'] and level['ind'] > 1:
+            df = self.filter_df(self.products, self.get_kpi_line_filters(kpi_line))
+            res = self.calculate_base_sos(kpi_name, kpi_line, general_filters, col, level, main_line, **kwargs)
+            res['numerator_id'] = self.get_fk(df, main_line[level['num_col']])
+            results.append(res)
+
         return level['ind'], results
 
     def calculate_base_sos(self, kpi_name, kpi_line, general_filters, col, level,  main_line, **kwargs):
@@ -312,14 +333,24 @@ class ToolBox:
             lvl3_result = lvl3_result[lvl3_result['client_name'] == kpi_name]
             lvl3_result['target'] = 1
             lvl2_result = self.assortment.calculate_lvl2_assortment(lvl3_result)
-            res_3 = self.parse_assortment_results(lvl3_result, 'kpi_fk_lvl3', 'product_fk', 'in_store', 'assortment_group_fk',
-                                                  'target', None, 'kpi_fk_lvl2')
-            res_2 = self.parse_assortment_results(lvl2_result, 'kpi_fk_lvl2', 'assortment_group_fk', 'passes', 'assortment_fk',
-                                                 'total', 'kpi_fk_lvl2', None)
+            lvl3_result['score'] = lvl3_result['in_store']
+            lvl3_result['in_store'] = ['Fail' if res == 0 else 'Pass' for res in lvl3_result['in_store']]
+            lvl2_result['score'] = lvl2_result['passes']
+
+            if kpi_line['Metric'] == 'All':
+                lvl2_result['in_store'] = 'Pass' if lvl2_result['total'].iloc[0] == lvl2_result['passes'].iloc[0] else 'Fail'
+                lvl2_result['score'] = 1 if lvl2_result['total'].iloc[0] == lvl2_result['passes'].iloc[0] else 0
+            elif kpi_line['Metric'] == 'Any':
+                lvl2_result['in_store'] = 'Pass' if lvl2_result['passes'].iloc[0] >= 1 else 'Fail'
+
+            res_3 = self.parse_assortment_results(lvl3_result, 'in_store', 'score', 'kpi_fk_lvl3', 'product_fk',
+                                                  'score', 'assortment_group_fk', 'target', None, 'kpi_fk_lvl2')
+            res_2 = self.parse_assortment_results(lvl2_result, 'in_store', 'score', 'kpi_fk_lvl2', 'assortment_group_fk',
+                                                  'passes', 'assortment_fk', 'total', 'kpi_fk_lvl2', None)
         return level['end'], res_3 + res_2
 
-
-    def parse_assortment_results(self, df, kpi_col, num_id_col, num_col, den_id_col, den_col, self_id, parent):
+    def parse_assortment_results(self, df, result, score, kpi_col, num_id_col, num_col, den_id_col, den_col, self_id,
+                                 parent):
         ret = []
         for i, row in df.iterrows():
             kpi_res = {'kpi_fk': row[kpi_col],
@@ -327,8 +358,8 @@ class ToolBox:
                        'numerator_result': row[num_col],
                        'denominator_id': row[den_id_col],
                        'denominator_result': row[den_col],
-                       'score': 1,
-                       'result': self.safe_divide(row[num_col], row[den_col]),
+                       'score': row[score],
+                       'result': row[result],  # self.safe_divide(row[num_col], row[den_col]),
                        'ident_result': row[self_id] if self_id else None,
                        }
             if parent is not None:
@@ -375,31 +406,34 @@ class ToolBox:
     def calculate_anchor(self, kpi_name, kpi_line, relevant_scif, general_filters, main_line, level, **kwargs):
         results = []
         scenes = relevant_scif['scene_fk'].unique()
-        parent_filters = self.get_kpi_line_filters(kpi_line, 'numerator')
+        parent_filters = self.get_kpi_line_filters(kpi_line)
         num_col = main_line[level['num_col']]
         den_col = main_line[level['den_col']]
         dens = self.filter_df(relevant_scif, general_filters)[den_col].unique()
         for den in dens:
             total = 0
+            score = 0
+            result = 'Fail'
             general_filters[den_col] = den
             den_scif = self.filter_df(relevant_scif, general_filters)
             items = self.filter_df(den_scif, parent_filters)[num_col].unique()
             for item in items:
                 num_filter = {'brand_fk': item}
                 edges = self.splitter(kpi_line[Const.EDGES].strip())
-                result = 0
                 for edge in edges:
                     anchor = self.anchor_base(general_filters, num_filter, scenes, 1, ratio=False, edges=edges)
                     if anchor[edge]:
                         total += 1
-                        results.append({'score': 1, 'result': 1, 'numerator_result': result,
+                        result = 'Pass'
+                        score = 1
+                        results.append({'score': 1, 'result': 'Pass', 'numerator_result': 1,
                                         'ident_parent': '{}-{}'.format(den, kpi_name),
                                         'numerator_id': item, 'denominator_id': den,
                                         'kpi_name': self.lvl_name(kpi_name, 'Brand')})
-            if total > 0:
-                results.append({'score': 1, 'result': 1, 'numerator_result': result, 'ident_result': '{}-{}'.format(den, kpi_name),
-                                'numerator_id': self.manufacturer_fk, 'denominator_id': den,
-                                'kpi_name': self.lvl_name(kpi_name, 'Session')})
+            results.append({'score': score, 'result': result, 'numerator_result': total,
+                            'ident_result': '{}-{}'.format(den, kpi_name),
+                            'numerator_id': self.manufacturer_fk, 'denominator_id': den,
+                            'kpi_name': self.lvl_name(kpi_name, 'Session')})
         return level['end'], results
 
 
@@ -1045,10 +1079,6 @@ class ToolBox:
         query = ''' select * from static.state'''
         return pd.read_sql_query(query, self.ps_data_provider.rds_conn.db)
 
-    def make_result_values_dict(self):
-        query = "SELECT * FROM static.kpi_result_value;"
-        return pd.read_sql_query(query, self.ps_data_provider.rds_conn.db).set_index('value')['pk'].to_dict()
-
     def load_mpis(self):
         try:
             self.full_mpis = self.match_product_in_scene.merge(self.products, on='product_fk', suffixes=['', '_p']) \
@@ -1134,9 +1164,11 @@ class ToolBox:
         :param result: str
         :param threshold: int
         """
-        print(kpi_name)
+        # print(kpi_name)
         if not kpi_fk and kpi_name:
             kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_name)
+        if isinstance(result, str):
+            result = self.result_entities[result]
         self.common.write_to_db_result(fk=kpi_fk, score=score, result=result, should_enter=True, target=target,
                                        numerator_result=numerator_result, denominator_result=denominator_result,
                                        numerator_id=numerator_id, denominator_id=denominator_id,
