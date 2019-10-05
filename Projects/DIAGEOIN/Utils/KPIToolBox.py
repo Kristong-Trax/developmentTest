@@ -116,16 +116,11 @@ class DIAGEOINToolBox:
             self.commonV2.write_to_db_result(fk=res_json['fk'], numerator_id=1, denominator_id=self.store_id,
                                              result=res_json['result'])
 
-        # # Global Brand Blocking KPI
-        # template_data = self.template_handler.download_template(DiageoKpiNames.BRAND_BLOCKING)
-        # results_list = self.diageo_generator.diageo_global_block_together(DiageoKpiNames.BRAND_BLOCKING, template_data)
-        # self.save_results_to_db(results_list)
-
-        # committing to new tables
+        # Committing to new tables
         self.commonV2.commit_results_data()
 
-        # committing to the old tables
-        #self.common.commit_results_data()
+        # Committing to the old tables
+        # self.common.commit_results_data()
 
     def save_results_to_db(self, results_list):
         if results_list:
