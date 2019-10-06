@@ -104,6 +104,7 @@ class NESTLEILToolBox:
         result[Consts.DENOMINATOR_ID] = self.store_id
         return [result]
 
+    # the oos and distribution sku results are the same due to presentation requirements (was initially like this)
     def _calculated_sku_level_results(self, lvl3_result):
         """
         This method calculates the assortment results in the sku level
