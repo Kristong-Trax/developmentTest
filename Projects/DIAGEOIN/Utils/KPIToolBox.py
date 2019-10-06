@@ -116,16 +116,11 @@ class DIAGEOINToolBox:
             self.commonV2.write_to_db_result(fk=res_json['fk'], numerator_id=1, denominator_id=self.store_id,
                                              result=res_json['result'])
 
-        # # Global Brand Blocking KPI
-        # template_data = self.template_handler.download_template(DiageoKpiNames.BRAND_BLOCKING)
-        # results_list = self.diageo_generator.diageo_global_block_together(DiageoKpiNames.BRAND_BLOCKING, template_data)
-        # self.save_results_to_db(results_list)
-
-        # committing to new tables
+        # Committing to new tables
         self.commonV2.commit_results_data()
 
-        # committing to the old tables
-        #self.common.commit_results_data()
+        # Committing to the old tables
+        # self.common.commit_results_data()
 
     def save_results_to_db(self, results_list):
         if results_list:
@@ -168,6 +163,11 @@ class DIAGEOINToolBox:
         return list_results
 
     def custom_brand_presence_main(self):
+
+        if self.store_assortment.empty:
+            Log.warning('Store Policy/assortment missing for store_id={}'.format(self.store_id))
+            return
+
         brand_presence_kpis = self.kpi_template_data[self.kpi_template_data['kpi_group'] == 'BRAND_GROUP_PRESENCE']
 
         if brand_presence_kpis.empty:
@@ -193,6 +193,7 @@ class DIAGEOINToolBox:
         self.calculate_brand_presence_overall_score(df_results)
 
     def custom_brand_presence_scene_lvl(self, kpi_row_data):
+        df_results = pd.DataFrame()
         list_results = []
         kpi_name = kpi_row_data['kpi_name'].strip()
         back_bar_template = kpi_row_data['back_bar_scenes'].strip()
