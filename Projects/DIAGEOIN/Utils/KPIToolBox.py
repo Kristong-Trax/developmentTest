@@ -204,7 +204,7 @@ class DIAGEOINToolBox:
 
         if bb_template_name.empty or mn_template_name.empty:
             Log.warning("BackBar:{} OR Menu:{} not matching in static.template".format(bb_template_name, menu_template))
-            return
+            return pd.DataFrame()
 
         bb_template_fk = bb_template_name.iloc[0]["template_fk"]
         mn_template_fk = mn_template_name.iloc[0]["template_fk"]
