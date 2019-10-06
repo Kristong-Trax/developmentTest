@@ -11,11 +11,11 @@ class Consts(object):
     ENTITIES_FOR_DB = [NUMERATOR_ID, DENOMINATOR_ID, NUMERATOR_RESULT, DENOMINATOR_RESULT]
     SOS_SKU_LVL_RENAME = {PRODUCT_FK: NUMERATOR_ID, IN_STORE: NUMERATOR_RESULT}
 
-    # KPI names
-    # DISTRIBUTION_STORE_LEVEL = 'Distribution'
-    # DISTRIBUTION_SKU_LEVEL = 'Distribution - SKU'
-    # OOS_STORE_LEVEL = 'OOS'
-    # OOS_SKU_LEVEL = 'OOS - SKU'
+    # KPI names - old
+    DISTRIBUTION_STORE_LEVEL = 'Distribution'
+    DISTRIBUTION_SKU_LEVEL = 'Distribution - SKU'
+    OOS_STORE_LEVEL = 'OOS'
+    OOS_SKU_LEVEL = 'OOS - SKU'
 
     DISTR_SNACKS = 'Distribution Snacks'
     DISTR_SNACKS_SKU = 'Distribution Snacks - SKU'
@@ -28,7 +28,8 @@ class Consts(object):
     OOS_SABRA_SKU = 'OOS Sabra - SKU'
 
     DIST_OOS_KPIS_MAP = {DISTR_SNACKS: OOS_SNACKS, DISTR_SABRA: OOS_SABRA, DISTR_SNACKS_SKU: OOS_SNACKS_SKU,
-                         DISTR_SABRA_SKU: OOS_SABRA_SKU}
+                         DISTR_SABRA_SKU: OOS_SABRA_SKU, DISTRIBUTION_STORE_LEVEL: OOS_STORE_LEVEL,
+                         DISTRIBUTION_SKU_LEVEL: OOS_SKU_LEVEL}
 
     # KPI result values
     OOS_VALUE = 'OOS'
