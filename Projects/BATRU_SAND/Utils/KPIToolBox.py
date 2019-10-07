@@ -16,6 +16,8 @@ from Projects.BATRU_SAND.Utils.GeneralToolBox import BATRU_SANDGENERALToolBox
 from Projects.BATRU_SAND.Utils.PositionGraph import BATRU_SANDPositionGraphs
 from KPIUtils_v2.Utils.Decorators.Decorators import kpi_runtime, log_runtime
 import numpy as np
+from KPIUtils_v2.DB.CommonV2 import Common
+from KPIUtils_v2.Utils.Consts.DB import StaticKpis
 
 __author__ = 'uri'
 
@@ -200,6 +202,12 @@ class BATRU_SANDToolBox:
 
         self.all_templates = self.get_templates_from_db()
         self.template_warnings = set()
+
+        self.own_manufacturer_fk = int(self.data_provider.own_manufacturer.param_value.values[0])
+        self.non_bat_fk = self.all_products[self.all_products['manufacturer_name'] == 'Other']\
+                                                                    ['manufacturer_fk'].values[0]
+        self.common = Common(self.data_provider)
+        self.new_static_kpis = self.common.kpi_static_data[['pk', StaticKpis.TYPE]]
 
 # init functions
 
@@ -1884,6 +1892,9 @@ class BATRU_SANDToolBox:
             kpi_template, 'KPI Name(scene type attribute 1)')
         score = 0
         set_score = 0
+
+        parent_fk = self.common.get_kpi_fk_by_kpi_type(SHARE_OF)
+        identifier_parent = self.common.get_dictionary(kpi_fk=parent_fk)
         for i in xrange(len(kpi_template)):
             row = kpi_template.iloc[i]
             kpi_name = row['KPI Name(scene type attribute 1)']
@@ -1901,7 +1912,20 @@ class BATRU_SANDToolBox:
                                     score_2=format(score, '.2f'), level=self.LEVEL3)
             self.write_to_db_result(kpi_fk, result=format(score, '.0f'),
                                     score_2=format(score, '.2f'), level=self.LEVEL2)
+
+            # kpis to new tables
+            new_kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_name)
+            numerator_id = self.own_manufacturer_fk if row['Manufacturer'] == 'BAT' else self.non_bat_fk
+            self.common.write_to_db_result(fk=new_kpi_fk, numerator_id=numerator_id, denominator_id=self.store_id,
+                                           result=round(score * 100, 2), identifier_parent=identifier_parent,
+                                           should_enter=True)
+
         self.write_to_db_result(set_fk, result=format(set_score * 100, '.2f'), level=self.LEVEL1)
+
+        #set to new tables
+        self.common.write_to_db_result(fk=parent_fk, result=round(set_score * 100, 2), denominator_id=self.store_id,
+                                       numerator_id=self.own_manufacturer_fk, identifier_result=identifier_parent,
+                                       score=round(set_score * 100, 2), should_enter=True)
 
     def calculate_soa(self, row):
         manufacturer = row['Manufacturer']
