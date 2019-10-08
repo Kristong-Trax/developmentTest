@@ -98,7 +98,7 @@ PROMO_COMPLIANCE_PRICE_AVAILABILITY = 'PROMO_COMPLIANCE_PRICE_AVAILABILITY'
 PROMO_COMPLIANCE_PRICE_AVAILABILITY_TOTAL = 'PROMO_COMPLIANCE_PRICE_AVAILABILITY_TOTAL'
 PROMO_COMPLIANCE_PRICE_TARGET = 'PROMO_COMPLIANCE_PRICE_TARGET'
 
-PROMO_LOC_DISPLAY = 'Display'
+PROMO_LOC_DISPLAY = 'Promo Display'
 PROMO_LOC_MAIN_SHELF = 'Main Shelf'
 
 
@@ -4130,7 +4130,7 @@ class CCRUKPIToolBox:
     def check_promo_compliance_display_presence(self, location, scif, kpis, kpi_target, kpi_identifier_parent):
         kpi_fk = self.common.kpi_static_data[
             self.common.kpi_static_data['type'] == PROMO_COMPLIANCE_DISPLAY_PRESENCE]['pk'].values[0]
-        kpi_result_type_fk_prod = self.common.kpi_static_data[self.common.kpi_static_data['pk'] == kpi_fk][
+        kpi_result_type_fk = self.common.kpi_static_data[self.common.kpi_static_data['pk'] == kpi_fk][
             'kpi_result_type_fk'].values[0]
 
         display_fk = kpi_identifier_parent['display_fk']
@@ -4138,22 +4138,22 @@ class CCRUKPIToolBox:
         kpi_identifier_result = \
             self.common.get_dictionary(kpi_fk=kpi_fk, display_fk=display_fk, location_fk=location_fk)
 
-        total_facings_fact = scif.sum('facings')[0]
+        total_facings_fact = scif.agg({'facings': 'sum'})[0]
         total_facings_target = kpi_target['TOTAL_FACINGS']
 
         if total_facings_fact >= total_facings_target:
-            result = 'AVAILABLE'
+            result = 'DISTRIBUTED'
             score = 100
         else:
             result = 'OOS'
             score = 0
         result = \
-            self.kpi_result_values[(self.kpi_result_values['result_type_fk'] == kpi_result_type_fk_prod) &
+            self.kpi_result_values[(self.kpi_result_values['result_type_fk'] == kpi_result_type_fk) &
                                    (self.kpi_result_values['result_value'] == result)][
                 'result_value_fk'].values[0]
 
         weight = kpis[(kpis['Location'] == location) &
-                      (kpis['KPI'] == PROMO_COMPLIANCE_DISPLAY_PRESENCE)]['Weight'].values[0]
+                      (kpis['KPI'] == PROMO_COMPLIANCE_DISPLAY_PRESENCE)]['Weight'].values[0]/100.0
         score = round(score * float(weight), 2)
         target = round(float(weight) * 100, 2)
 
@@ -4208,7 +4208,7 @@ class CCRUKPIToolBox:
             if not product_group_scif.empty:
                 product_groups_fact += [product_group_fk]
                 result_prod_value = 1
-                result_prod = 'AVAILABLE'
+                result_prod = 'DISTRIBUTED'
                 score_prod = 100
                 target_prod = 100
             else:
@@ -4236,7 +4236,7 @@ class CCRUKPIToolBox:
                                            should_enter=True)
 
             # SKU level KPIs
-            for i, row in product_group_scif.iterrow():
+            for i, row in product_group_scif.iterrows():
 
                 product_fk = row['product_fk']
                 facings = row['facings']
@@ -4261,7 +4261,7 @@ class CCRUKPIToolBox:
 
         result = round(len(product_groups_fact) / float(len(product_groups_target)) * 100, 2)
         weight = kpis[(kpis['Location'] == location) &
-                      (kpis['KPI'] == PROMO_COMPLIANCE_DISTRIBUTION_TARGET)]['Weight'].values[0]
+                      (kpis['KPI'] == PROMO_COMPLIANCE_DISTRIBUTION_TARGET)]['Weight'].values[0]/100.0
         score = round(result * float(weight), 2)
         target = round(float(weight) * 100, 2)
 
@@ -4311,7 +4311,7 @@ class CCRUKPIToolBox:
 
             product_group_scif = scif[(scif['product_group'] == product_group_fk) & (scif['facings'] > 0)]
 
-            product_group_facings_fact = product_group_scif.sum('facings')
+            product_group_facings_fact = product_group_scif.agg({'facings': 'sum'})[0]
             product_group_facings_target = kpi_target['PRODUCT_GROUP'][product_group_fk].get('FACINGS')
 
             if product_group_facings_fact >= product_group_facings_target:
@@ -4339,7 +4339,7 @@ class CCRUKPIToolBox:
                                            should_enter=True)
 
             # SKU level KPIs
-            for i, row in product_group_scif.iterrow():
+            for i, row in product_group_scif.iterrows():
 
                 product_fk = row['product_fk']
                 facings = row['facings']
@@ -4365,7 +4365,7 @@ class CCRUKPIToolBox:
         # Upper level KPI
         result = round(len(product_groups_fact) / float(len(product_groups_target)) * 100, 2)
         weight = kpis[(kpis['Location'] == location) &
-                      (kpis['KPI'] == PROMO_COMPLIANCE_FACINGS_TARGET)]['Weight'].values[0]
+                      (kpis['KPI'] == PROMO_COMPLIANCE_FACINGS_TARGET)]['Weight'].values[0]/100.0
         score = round(result * float(weight), 2)
         target = round(float(weight) * 100, 2)
 
@@ -4421,7 +4421,7 @@ class CCRUKPIToolBox:
             if not product_group_scif.empty:
                 product_groups_fact += [product_group_fk]
                 result_prod_value = 1
-                result_prod = 'AVAILABLE'
+                result_prod = 'DISTRIBUTED'
                 score_prod = 100
                 target_prod = 100
             else:
@@ -4449,7 +4449,7 @@ class CCRUKPIToolBox:
                                            should_enter=True)
 
             # SKU level KPIs
-            for i, row in product_group_scif.iterrow():
+            for i, row in product_group_scif.iterrows():
 
                 product_fk = row['product_fk']
                 facings = row['facings']
@@ -4474,32 +4474,35 @@ class CCRUKPIToolBox:
                                                should_enter=True)
 
         # Upper level KPI
-        result = round(len(product_groups_fact) / float(len(product_groups_target)) * 100, 2)
-        weight = kpis[(kpis['Location'] == location) &
-                      (kpis['KPI'] == PROMO_COMPLIANCE_PRICE_AVAILABILITY)]['Weight'].values[0]
-        score = round(result * float(weight), 2)
-        target = round(float(weight) * 100, 2)
+        if not product_groups_target:
+            score = 0
+        else:
+            result = round(len(product_groups_fact) / float(len(product_groups_target)) * 100, 2)
+            weight = kpis[(kpis['Location'] == location) &
+                          (kpis['KPI'] == PROMO_COMPLIANCE_PRICE_AVAILABILITY)]['Weight'].values[0]/100.0
+            score = round(result * float(weight), 2)
+            target = round(float(weight) * 100, 2)
 
-        self.common.write_to_db_result(fk=kpi_fk,
-                                       numerator_id=self.own_manufacturer_id,
-                                       numerator_result=len(product_groups_fact),
-                                       denominator_id=display_fk,
-                                       denominator_result=len(product_groups_target),
-                                       context_id=location_fk,
-                                       target=target,
-                                       weight=weight,
-                                       result=result,
-                                       score=score,
-                                       identifier_result=kpi_identifier_result,
-                                       identifier_parent=kpi_identifier_parent,
-                                       should_enter=True)
+            self.common.write_to_db_result(fk=kpi_fk,
+                                           numerator_id=self.own_manufacturer_id,
+                                           numerator_result=len(product_groups_fact),
+                                           denominator_id=display_fk,
+                                           denominator_result=len(product_groups_target),
+                                           context_id=location_fk,
+                                           target=target,
+                                           weight=weight,
+                                           result=result,
+                                           score=score,
+                                           identifier_result=kpi_identifier_result,
+                                           identifier_parent=kpi_identifier_parent,
+                                           should_enter=True)
 
         return score
 
     def check_promo_compliance_price_availability_total(self, location, scif, kpis, kpi_target, kpi_identifier_parent):
         kpi_fk = self.common.kpi_static_data[
             self.common.kpi_static_data['type'] == PROMO_COMPLIANCE_PRICE_AVAILABILITY_TOTAL]['pk'].values[0]
-        kpi_result_type_fk_prod = self.common.kpi_static_data[self.common.kpi_static_data['pk'] == kpi_fk][
+        kpi_result_type_fk = self.common.kpi_static_data[self.common.kpi_static_data['pk'] == kpi_fk][
             'kpi_result_type_fk'].values[0]
 
         display_fk = kpi_identifier_parent['display_fk']
@@ -4507,37 +4510,47 @@ class CCRUKPIToolBox:
         kpi_identifier_result = \
             self.common.get_dictionary(kpi_fk=kpi_fk, display_fk=display_fk, location_fk=location_fk)
 
-        total_price_count = scif[~scif['price'].isnull()]['price'].count()[0]
+        product_groups_target = []
+        for k in kpi_target['PRODUCT_GROUP'].keys():
+            if kpi_target['PRODUCT_GROUP'][k].get('PRICE') is not None:
+                product_groups_target += [k]
 
-        if total_price_count > 0:
-            result = 'AVAILABLE'
-            score = 100
-        else:
-            result = 'OOS'
+        if not product_groups_target:
             score = 0
-        result = \
-            self.kpi_result_values[(self.kpi_result_values['result_type_fk'] == kpi_result_type_fk_prod) &
-                                   (self.kpi_result_values['result_value'] == result)][
-                'result_value_fk'].values[0]
+        else:
 
-        weight = kpis[(kpis['Location'] == location) &
-                      (kpis['KPI'] == PROMO_COMPLIANCE_PRICE_AVAILABILITY_TOTAL)]['Weight'].values[0]
-        score = round(score * float(weight), 2)
-        target = round(float(weight) * 100, 2)
+            total_price_count = scif[scif['product_group'].isin(product_groups_target) &
+                                     ~scif['price'].isnull()]['price'].agg({'price': 'count'})[0]
 
-        self.common.write_to_db_result(fk=kpi_fk,
-                                       numerator_id=self.own_manufacturer_id,
-                                       numerator_result=total_price_count,
-                                       denominator_id=display_fk,
-                                       denominator_result=1,
-                                       context_id=location_fk,
-                                       target=target,
-                                       weight=weight,
-                                       result=result,
-                                       score=score,
-                                       identifier_result=kpi_identifier_result,
-                                       identifier_parent=kpi_identifier_parent,
-                                       should_enter=True)
+            if total_price_count > 0:
+                result = 'DISTRIBUTED'
+                score = 100
+            else:
+                result = 'OOS'
+                score = 0
+            result = \
+                self.kpi_result_values[(self.kpi_result_values['result_type_fk'] == kpi_result_type_fk) &
+                                       (self.kpi_result_values['result_value'] == result)][
+                    'result_value_fk'].values[0]
+
+            weight = kpis[(kpis['Location'] == location) &
+                          (kpis['KPI'] == PROMO_COMPLIANCE_PRICE_AVAILABILITY_TOTAL)]['Weight'].values[0]/100.0
+            score = round(score * float(weight), 2)
+            target = round(float(weight) * 100, 2)
+
+            self.common.write_to_db_result(fk=kpi_fk,
+                                           numerator_id=self.own_manufacturer_id,
+                                           numerator_result=total_price_count,
+                                           denominator_id=display_fk,
+                                           denominator_result=1,
+                                           context_id=location_fk,
+                                           target=target,
+                                           weight=weight,
+                                           result=result,
+                                           score=score,
+                                           identifier_result=kpi_identifier_result,
+                                           identifier_parent=kpi_identifier_parent,
+                                           should_enter=True)
 
         return score
 
@@ -4555,10 +4568,11 @@ class CCRUKPIToolBox:
         kpi_identifier_result = \
             self.common.get_dictionary(kpi_fk=kpi_fk, display_fk=display_fk, location_fk=location_fk)
 
-        product_groups_fact = 0
-        product_groups_target = 0
+        total_price_facings_fact = 0
+        total_price_facings_target = 0
+        product_groups_target = []
         for k in kpi_target['PRODUCT_GROUP'].keys():
-            if kpi_target['PRODUCT_GROUP'][k].get('FACINGS') is not None:
+            if kpi_target['PRODUCT_GROUP'][k].get('PRICE') is not None:
                 product_groups_target += [k]
 
         # Product Group level KPIs
@@ -4574,35 +4588,48 @@ class CCRUKPIToolBox:
             product_group_scif['price_facings'] = product_group_scif['price'] * product_group_scif['facings']
 
             if not product_group_scif.empty:
-                product_group_price_fact = \
-                    product_group_scif.sum('price_facings')[0] / product_group_scif.sum('facings')[0]
+                product_group_price_facings_fact = product_group_scif.agg({'price_facings': 'sum'})[0]
+                product_group_facings_fact = product_group_scif.agg({'facings': 'sum'})[0]
+                product_group_price_fact = product_group_price_facings_fact / product_group_facings_fact
             else:
+                product_group_price_facings_fact = 0
+                product_group_facings_fact = 0
                 product_group_price_fact = None
             product_group_price_target = kpi_target['PRODUCT_GROUP'][product_group_fk].get('PRICE')
 
             if product_group_price_fact:
-                product_groups_fact += product_group_price_fact
-                product_groups_target += product_group_price_target
-                score_prod = round(product_group_price_fact / float(product_group_price_target), 2)
+                total_price_facings_fact += product_group_price_facings_fact
+                # Deviation
+                if product_group_price_target > 0:
+                    total_price_facings_target += product_group_price_target * product_group_facings_fact
+                    result_prod = \
+                        abs(round(1 - product_group_price_fact / float(product_group_price_target) * 100, 2))
+                else:
+                    total_price_facings_target += product_group_price_facings_fact
+                    result_prod = 0
+                score_prod = 100 - result_prod
             else:
+                result_prod = 0
                 score_prod = 0
 
+            numerator_result = product_group_price_fact * 100 if product_group_price_fact is not None else None
+            denominator_result = product_group_price_target * 100
             self.common.write_to_db_result(fk=kpi_fk,
                                            numerator_id=product_group_fk,
-                                           numerator_result=None,
+                                           numerator_result=numerator_result,
                                            denominator_id=display_fk,
-                                           denominator_result=None,
+                                           denominator_result=denominator_result,
                                            context_id=location_fk,
-                                           target=product_group_price_target,
+                                           target=100,
                                            weight=None,
-                                           result=product_group_price_fact,
+                                           result=result_prod,
                                            score=score_prod,
                                            identifier_result=kpi_identifier_result_prod,
                                            identifier_parent=kpi_identifier_result,
                                            should_enter=True)
 
             # SKU level KPIs
-            for i, row in product_group_scif.iterrow():
+            for i, row in product_group_scif.iterrows():
 
                 product_fk = row['product_fk']
                 facings = row['facings']
@@ -4613,10 +4640,13 @@ class CCRUKPIToolBox:
                         kpi_fk=kpi_fk_sku, display_fk=display_fk, location_fk=location_fk,
                         product_group_fk=product_group_fk, product_fk=product_fk)
 
+                numerator_result = price * 100
+                denominator_result = facings
                 self.common.write_to_db_result(fk=kpi_fk,
                                                numerator_id=product_fk,
-                                               numerator_result=facings,
+                                               numerator_result=numerator_result,
                                                denominator_id=display_fk,
+                                               denominator_result=denominator_result,
                                                context_id=location_fk,
                                                target=None,
                                                weight=None,
@@ -4627,25 +4657,30 @@ class CCRUKPIToolBox:
                                                should_enter=True)
 
         # Upper level KPI
-        result = round((1 - abs(1 - product_groups_fact / float(product_groups_target))) * 100, 2)
-        weight = kpis[(kpis['Location'] == location) &
-                      (kpis['KPI'] == PROMO_COMPLIANCE_PRICE_TARGET)]['Weight'].values[0]
-        score = round(result * float(weight), 2)
-        target = round(float(weight) * 100, 2)
+        if not (product_groups_target and total_price_facings_target):
+            score = 0
+        else:
+            # Deviation
+            result = \
+                round(abs(1 - total_price_facings_fact / float(total_price_facings_target)) * 100, 2)
+            weight = kpis[(kpis['Location'] == location) &
+                          (kpis['KPI'] == PROMO_COMPLIANCE_PRICE_TARGET)]['Weight'].values[0]/100.0
+            score = round((100 - result) * float(weight), 2)
+            target = round(float(weight) * 100, 2)
 
-        self.common.write_to_db_result(fk=kpi_fk,
-                                       numerator_id=self.own_manufacturer_id,
-                                       numerator_result=product_groups_fact * 100,
-                                       denominator_id=display_fk,
-                                       denominator_result=product_groups_target * 100,
-                                       context_id=location_fk,
-                                       target=target,
-                                       weight=weight,
-                                       result=result,
-                                       score=score,
-                                       identifier_result=kpi_identifier_result,
-                                       identifier_parent=kpi_identifier_parent,
-                                       should_enter=True)
+            self.common.write_to_db_result(fk=kpi_fk,
+                                           numerator_id=self.own_manufacturer_id,
+                                           numerator_result=None,
+                                           denominator_id=display_fk,
+                                           denominator_result=None,
+                                           context_id=location_fk,
+                                           target=target,
+                                           weight=weight,
+                                           result=result,
+                                           score=score,
+                                           identifier_result=kpi_identifier_result,
+                                           identifier_parent=kpi_identifier_parent,
+                                           should_enter=True)
 
         return score
 
