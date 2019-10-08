@@ -144,19 +144,25 @@ class ToolBox(GlobalSessionToolBox):
         population = {'anchor_products': {config.anchor_param: config.anchor_value},
                       'tested_products': {config.tested_param: config.tested_value}
                       }
-        try:
-            adj_df = self.adjacency.network_x_adjacency_calculation(population, location,
-                                                                    {'minimum_facings_adjacent': 1,
-                                                                     'minimum_block_ratio': 0,
-                                                                     'minimum_facing_for_block': 1,
-                                                                     'include_stacking': True})
-        except AttributeError:
-            Log.error("Error calculating adjacency for kpi_fk {} template_fk {}".format(kpi_fk, template_fk))
-            return
-        if adj_df.empty:
-            result = 0
+
+        # this function is only needed until the adjacency function is enhanced to not crash when an empty population
+        # is provided
+        if self.check_population_exists(config, template_fk):
+            try:
+                adj_df = self.adjacency.network_x_adjacency_calculation(population, location,
+                                                                        {'minimum_facings_adjacent': 1,
+                                                                         'minimum_block_ratio': 0,
+                                                                         'minimum_facing_for_block': 1,
+                                                                         'include_stacking': True})
+            except AttributeError:
+                Log.error("Error calculating adjacency for kpi_fk {} template_fk {}".format(kpi_fk, template_fk))
+                return
+            if adj_df.empty:
+                result = 0
+            else:
+                result = 1 if not adj_df[adj_df['is_adj']].empty else 0
         else:
-            result = 1 if not adj_df[adj_df['is_adj']].empty else 0
+            result = 0
         numerator_id = self.get_brand_fk_from_brand_name(config.anchor_value[0])
         self.write_to_db(kpi_fk, numerator_id=numerator_id, denominator_id=template_fk, result=result)
         return
@@ -204,6 +210,15 @@ class ToolBox(GlobalSessionToolBox):
             return self.all_products[self.all_products['Customer Category'] == perfetti_category]['product_fk'].iloc[0]
         except IndexError:
             return None
+
+    def check_population_exists(self, config, template_fk):
+        relevant_scif = self.scif[self.scif['template_fk'] == template_fk]
+        anchor_scif = relevant_scif[relevant_scif[config.anchor_param].isin(config.anchor_value)]
+        tested_scif = relevant_scif[relevant_scif[config.tested_param].isin(config.tested_param)]
+        if anchor_scif.empty or tested_scif.empty:
+            return False
+        else:
+            return True
 
 
 
