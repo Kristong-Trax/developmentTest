@@ -684,13 +684,14 @@ class VerticalBlockOneSceneAtomicKpiCalculation(BlockBaseCalculation):
 class VerticalPreCalcBlockAtomicKpiCalculation(BlockBaseCalculation):
     def calculate_atomic_kpi(self, atomic_kpi_data):
         filters = atomic_kpi_data['filters']
-        biggest_scene = self.get_biggest_scene(filters)
-        scene_avg_num_of_shelves = self._get_relevant_scenes_avg_shelf(filters).set_index(
-            'scene_fk')['scene_avg_num_of_shelves'].to_dict()[biggest_scene]
-        if 'results' not in atomic_kpi_data or atomic_kpi_data['results'].empty:
+        if 'results' not in atomic_kpi_data or atomic_kpi_data['results'].empty \
+                or pd.isna(atomic_kpi_data['results'].loc[0, 'result']):
             Log.error('kpi: "{}" not calculated. PreCalc Vertical Block requires Biggest Scene Block dependency'
                       .format(atomic_kpi_data['atomic']))
             return 0
+        biggest_scene = self.get_biggest_scene(filters)
+        scene_avg_num_of_shelves = self._get_relevant_scenes_avg_shelf(filters).set_index(
+            'scene_fk')['scene_avg_num_of_shelves'].to_dict()[biggest_scene]
 
         results = atomic_kpi_data['results']
         blocks = sum(results['errata'].values, [])
