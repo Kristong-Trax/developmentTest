@@ -155,7 +155,8 @@ class ToolBox(GlobalSessionToolBox):
                                                                          'minimum_facing_for_block': 1,
                                                                          'include_stacking': True})
             except AttributeError:
-                Log.error("Error calculating adjacency for kpi_fk {} template_fk {}".format(kpi_fk, template_fk))
+                Log.info("Error calculating adjacency for kpi_fk {} template_fk {}".format(kpi_fk, template_fk))
+                result = 0
                 return
             if adj_df.empty:
                 result = 0
@@ -214,7 +215,7 @@ class ToolBox(GlobalSessionToolBox):
     def check_population_exists(self, config, template_fk):
         relevant_scif = self.scif[self.scif['template_fk'] == template_fk]
         anchor_scif = relevant_scif[relevant_scif[config.anchor_param].isin(config.anchor_value)]
-        tested_scif = relevant_scif[relevant_scif[config.tested_param].isin(config.tested_param)]
+        tested_scif = relevant_scif[relevant_scif[config.tested_param].isin(config.tested_value)]
         if anchor_scif.empty or tested_scif.empty:
             return False
         else:
