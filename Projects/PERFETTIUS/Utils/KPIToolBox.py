@@ -156,7 +156,6 @@ class ToolBox(GlobalSessionToolBox):
                                                                          'include_stacking': True})
             except AttributeError:
                 Log.info("Error calculating adjacency for kpi_fk {} template_fk {}".format(kpi_fk, template_fk))
-                result = 0
                 return
             if adj_df.empty:
                 result = 0
