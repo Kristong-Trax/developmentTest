@@ -9,10 +9,7 @@ import igraph
 import datetime
 import pandas as pd
 
-
-
 __author__ = 'Nimrod'
-
 
 
 class PNGJPPositionGraphs:

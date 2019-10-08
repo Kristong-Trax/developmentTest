@@ -191,6 +191,16 @@ class PNGJPKpiQualitative_ToolBox(Consts):
         self.calculation_per_entity(category)
         self.category_aggregation_calculation(category)
 
+    def scene_type_not_exists(self, sfs):
+        result = True
+        session_scene_types = self.scif["template_name"].unique().tolist()
+
+        for session_scene_type in session_scene_types:
+            for sf in sfs:
+                if session_scene_type == sf:
+                    return False
+        return result
+
     def calculation_per_entity(self, category):
         template_data = self.template_data[
             self.template_data['Category Name'].str.encode(HelperConsts.UTF8) == category.encode(HelperConsts.UTF8)]
@@ -201,44 +211,48 @@ class PNGJPKpiQualitative_ToolBox(Consts):
             entity_filters = filters
 
             for p in xrange(len(entity_kpis)):
-                try:
-                    score = threshold = result = None
-                    params = entity_kpis.iloc[p]
-                    set_name = params[self.SET_NAME]
-                    kpi_type = params[self.KPI_TYPE]
-                    scenes_filters = self.get_scenes_filters(params)
-                    kpi_filters = dict(scenes_filters, **entity_filters)
+                # try:
+                score = threshold = result = None
+                params = entity_kpis.iloc[p]
+                set_name = params[self.SET_NAME]
+                kpi_type = params[self.KPI_TYPE]
+                scenes_filters = self.get_scenes_filters(params)
+                kpi_filters = dict(scenes_filters, **entity_filters)
 
-                    if kpi_type == self.GOLDEN_ZONE:
-                        kpi_params = self.golden_zone_data[
-                            self.golden_zone_data['fixed KPI name'].str.encode(HelperConsts.UTF8) == kpi.encode(HelperConsts.UTF8)]
-                        score, result, threshold= self.calculate_golden_zone(kpi, kpi_filters, kpi_params)
+                if self.scene_type_not_exists(scenes_filters['template_name']):
+                    continue
 
-                    elif kpi_type == self.BLOCK:
-                        kpi_params = self.block_data[
-                            self.block_data['fixed KPI name'].str.encode(HelperConsts.UTF8) == kpi.encode(HelperConsts.UTF8)]
-                        score, result, threshold = self.calculate_block(kpi, kpi_filters, kpi_params)
+                if kpi_type == self.GOLDEN_ZONE:
+                    kpi_params = self.golden_zone_data[
+                        self.golden_zone_data['fixed KPI name'].str.encode(HelperConsts.UTF8) == kpi.encode(HelperConsts.UTF8)]
+                    score, result, threshold= self.calculate_golden_zone(kpi, kpi_filters, kpi_params)
 
-                    elif kpi_type == self.ANCHOR:
-                        kpi_params = self.anchor_data[
-                            self.anchor_data['fixed KPI name'].str.encode(HelperConsts.UTF8) == kpi.encode(HelperConsts.UTF8)]
-                        score, result, threshold = self.calculate_anchor(kpi, kpi_filters, kpi_params)
+                elif kpi_type == self.BLOCK:
+                    kpi_params = self.block_data[
+                        self.block_data['fixed KPI name'].str.encode(HelperConsts.UTF8) == kpi.encode(HelperConsts.UTF8)]
+                    score, result, threshold = self.calculate_block(kpi, kpi_filters, kpi_params)
 
-                    elif kpi_type == self.ADJACENCY:
-                        kpi_params = self.adjacency_data[
-                            self.adjacency_data['fixed KPI name'].str.encode(HelperConsts.UTF8) == kpi.encode(HelperConsts.UTF8)]
-                        score, result, threshold = self.calculate_adjacency(kpi, kpi_filters, kpi_params)
+                elif kpi_type == self.ANCHOR:
+                    kpi_params = self.anchor_data[
+                        self.anchor_data['fixed KPI name'].str.encode(HelperConsts.UTF8) == kpi.encode(HelperConsts.UTF8)]
+                    score, result, threshold = self.calculate_anchor(kpi, kpi_filters, kpi_params)
 
-                    else:
-                        Log.debug("KPI type '{}' is not supported".format(kpi_type))
-                        continue
+                elif kpi_type == self.ADJACENCY:
+                    kpi_params = self.adjacency_data[
+                        self.adjacency_data['fixed KPI name'].str.encode(HelperConsts.UTF8) == kpi.encode(HelperConsts.UTF8)]
+                    score, result, threshold = self.calculate_adjacency(kpi, kpi_filters, kpi_params)
 
-                    extra_data = self.get_extra_data_from_params(kpi_params)
-                    self.kpi_scores.update({kpi: score})
-                    self.write_result(score, result, threshold, kpi,
-                                      category, set_name, template_data, extra_data=extra_data)
-                except:
-                    Log.warning("no score/result for '{}'".format(kpi_type))
+                else:
+                    Log.debug("KPI type '{}' is not supported".format(kpi_type))
+                    continue
+
+                extra_data = self.get_extra_data_from_params(kpi_params)
+
+                self.kpi_scores.update({kpi: score})
+                self.write_result(score, result, threshold, kpi,
+                                  category, set_name, template_data, extra_data=extra_data)
+                # except Exception as ex:
+                #     Log.warning("Exception:{} no score/result for '{}'".format(ex.message, kpi_type))
 
     def category_aggregation_calculation(self, category):
         template_data = self.template_data[
@@ -246,6 +260,9 @@ class PNGJPKpiQualitative_ToolBox(Consts):
                     self.template_data['Set Name'] == 'Perfect Execution')]
         for kpi in template_data['fixed KPI name'].unique().tolist():
             entity_kpis = template_data.loc[template_data['fixed KPI name'].str.encode(HelperConsts.UTF8) == kpi.encode(HelperConsts.UTF8)]
+
+            if self.scene_type_not_exists(entity_kpis):
+                continue
 
             for p in xrange(len(entity_kpis)):
                 score = threshold = result = None
@@ -437,6 +454,7 @@ class PNGJPKpiQualitative_ToolBox(Consts):
 
     @kpi_runtime(kpi_desc='calculate_golden_zone', project_name='pngjp')
     def calculate_golden_zone(self, kpi, kpi_filters, params):
+
         kpi_filter = kpi_filters.copy()
         assortment_entity = ProductsConsts.PRODUCT_EAN_CODE
         if params[self.BRANDS].values[0]:
@@ -564,9 +582,14 @@ class PNGJPKpiQualitative_ToolBox(Consts):
         group_b = {ProductsConsts.PRODUCT_EAN_CODE: self._get_ean_codes_by_product_group_id(
             'Product Group Id;B', **params)}
 
-        # allowed_filter = self._get_allowed_products({ProductsConsts.PRODUCT_TYPE: ([self.EMPTY, self.IRRELEVANT], self.EXCLUDE_FILTER)})
+        # allowed_filter = self._get_allowed_products({ProductsConsts.PRODUCT_TYPE:
+        # ([self.EMPTY, self.IRRELEVANT], self.EXCLUDE_FILTER)})
+
         allowed_filter = self._get_allowed_products(
-            {ProductsConsts.PRODUCT_TYPE: [ProductTypeConsts.IRRELEVANT, ProductTypeConsts.EMPTY, ProductTypeConsts.OTHER]})
+            {ProductsConsts.PRODUCT_TYPE: [ProductTypeConsts.IRRELEVANT,
+                                           ProductTypeConsts.EMPTY,
+                                           ProductTypeConsts.OTHER]})
+
         allowed_filter_without_other = self._get_allowed_products(
             {ProductsConsts.PRODUCT_TYPE: [ProductTypeConsts.IRRELEVANT, ProductTypeConsts.EMPTY]})
         scene_filters = {TemplatesConsts.TEMPLATE_NAME: kpi_filter[TemplatesConsts.TEMPLATE_NAME]}
@@ -575,8 +598,12 @@ class PNGJPKpiQualitative_ToolBox(Consts):
             **scene_filters)
 
         for scene in relevant_scenes:
-            adjacency = self.tools.calculate_adjacency(group_a, group_b, {SceneInfoConsts.SCENE_FK: scene}, allowed_filter,
-                                                       allowed_filter_without_other, a_target, b_target, target)
+            adjacency = self.tools.calculate_adjacency(group_a, group_b,
+                                                       {SceneInfoConsts.SCENE_FK: scene},
+                                                       allowed_filter,
+                                                       allowed_filter_without_other,
+                                                       a_target, b_target,
+                                                       target)
             if adjacency:
                 direction = params.get('Direction', 'All').values[0]
                 if direction == 'All':

@@ -35,7 +35,8 @@ class PNGJPGENERALToolBox:
         self.all_products = self.data_provider[Data.ALL_PRODUCTS]
         self.survey_response = self.data_provider[Data.SURVEY_RESPONSES]
         self.scenes_info = self.data_provider[Data.SCENES_INFO].merge(self.data_provider[Data.ALL_TEMPLATES],
-                                                                      how='left', on=SceneInfoConsts.TEMPLATE_FK, suffixes=['', '_y'])
+                                                                      how='left', on=SceneInfoConsts.TEMPLATE_FK,
+                                                                      suffixes=['', '_y'])
         self.ignore_stacking = ignore_stacking
         self.facings_field = ScifConsts.FACINGS if not self.ignore_stacking else ScifConsts.FACINGS_IGN_STACK
         self.front_facing = front_facing
@@ -49,6 +50,80 @@ class PNGJPGENERALToolBox:
         if not hasattr(self, '_position_graphs'):
             self._position_graphs = PNGJPPositionGraphs(self.data_provider, rds_conn=self.rds_conn)
         return self._position_graphs
+
+    def _get_group_product_list(self, filters):
+        products = self.data_provider.products.copy()
+        # filter_.update({'Sub-section': filters['all']['Sub-section']})
+        product_list = products[self.get_filter_condition(products, **filters)]['product_fk'].tolist()
+        return product_list
+
+    def get_products_by_filters(self, return_value='product_name', **filters):
+        if filters:
+            scif = self.data_provider.scene_item_facts
+            return scif[self.get_filter_condition(scif, **filters)][return_value]
+
+    def calculate_adjacency(self, filter_group_a, filter_group_b, scene_type_filter, allowed_filter,
+                            allowed_filter_without_other, a_target, b_target, target):
+
+        a_product_list = self._get_group_product_list(filter_group_a)
+        b_product_list = self._get_group_product_list(filter_group_b)
+
+        adjacency = self._check_groups_adjacency(a_product_list, b_product_list, scene_type_filter, allowed_filter,
+                                                 allowed_filter_without_other, a_target, b_target, target)
+        if adjacency:
+            return 100
+        return 0
+
+    def _check_groups_adjacency(self, a_product_list, b_product_list, scene_type_filter, allowed_filter,
+                                allowed_filter_without_other, a_target, b_target, target):
+        a_b_union = list(set(a_product_list) | set(b_product_list))
+
+        a_filter = {'product_fk': a_product_list}
+        b_filter = {'product_fk': b_product_list}
+        a_b_filter = {'product_fk': a_b_union}
+        a_b_filter.update(scene_type_filter)
+
+        matches = self.data_provider.matches
+        relevant_scenes = matches[self.get_filter_condition(matches, **a_b_filter)][
+            'scene_fk'].unique().tolist()
+
+        result = False
+        for scene in relevant_scenes:
+            a_filter_for_block = a_filter.copy()
+            a_filter_for_block.update({'scene_fk': scene})
+            b_filter_for_block = b_filter.copy()
+            b_filter_for_block.update({'scene_fk': scene})
+            try:
+                a_products = self.get_products_by_filters('product_fk', **a_filter_for_block)
+                b_products = self.get_products_by_filters('product_fk', **b_filter_for_block)
+                if sorted(a_products.tolist()) == sorted(b_products.tolist()):
+                    return False
+            except:
+                pass
+            if a_target:
+                brand_a_blocked = self.calculate_block_together(allowed_products_filters=allowed_filter,
+                                                                minimum_block_ratio=a_target,
+                                                                vertical=False, **a_filter_for_block)
+                if not brand_a_blocked:
+                    continue
+
+            if b_target:
+                brand_b_blocked = self.calculate_block_together(allowed_products_filters=allowed_filter,
+                                                                minimum_block_ratio=b_target,
+                                                                vertical=False, **b_filter_for_block)
+                if not brand_b_blocked:
+                    continue
+
+            a_b_filter_for_block = a_b_filter.copy()
+            a_b_filter_for_block.update({'scene_fk': scene})
+
+            block = self.calculate_block_together(allowed_products_filters=allowed_filter_without_other,
+                                                  minimum_block_ratio=target, block_of_blocks=True,
+                                                  block_products1=a_filter, block_products2=b_filter,
+                                                  **a_b_filter_for_block)
+            if block:
+                return True
+        return result
 
     @property
     def match_product_in_scene(self):
@@ -657,6 +732,7 @@ class PNGJPGENERALToolBox:
             values = filters[field] if isinstance(filters[field], (list, tuple)) else [filters[field]]
             for value in values:
                 vertices = [v.index for v in graph.vs.select(**{field: value})]
+
                 field_vertices = field_vertices.union(vertices)
             if vertices_indexes is None:
                 vertices_indexes = field_vertices
