@@ -161,6 +161,7 @@ class DIAGEOBEERUSToolBox:
         total_skus = 0
         passed_skus = 0
         result_dict_list = self.diageo_generator.diageo_global_assortment_function_v2()
+        self.calculate_distribution(result_dict_list)
         # kpi_fks for hierarchy
         mpa_fk = self.common.get_kpi_fk_by_kpi_type(Const.MPA_MR)
         mpa_sku_fk = self.common.get_kpi_fk_by_kpi_type(Const.MPA_SKU_MR)
@@ -180,6 +181,7 @@ class DIAGEOBEERUSToolBox:
                 result_dict.update({'identifier_parent': total_identifier, 'should_enter': True,
                                     'weight': weight * 100, 'identifier_result': mpa_identifier,
                                     'score': score})
+                self.common.write_to_db_result(**result_dict)
             if result_dict['fk'] == mpa_sku_fk_without_hierarchy:
                 total_skus = total_skus + 1
                 if result_dict['result'] == 100:
@@ -193,7 +195,7 @@ class DIAGEOBEERUSToolBox:
                 # change kpi_fk and continue to save with hierarchy
                 result_dict['fk'] = mpa_sku_fk
                 result_dict.update({'identifier_parent': mpa_identifier, 'should_enter': True})
-            self.common.write_to_db_result(**result_dict)
+                self.common.write_to_db_result(**result_dict)
 
         return (passed_skus / float(total_skus)) * weight * 100 if total_skus > 0 else 0
 
@@ -221,6 +223,7 @@ class DIAGEOBEERUSToolBox:
                 result_dict.update({'identifier_parent': total_identifier, 'should_enter': True,
                                     'weight': weight * 100, 'identifier_result': dist_identifier,
                                     'score': score})
+                self.common.write_to_db_result(**result_dict)
             if result_dict['fk'] == dist_sku_fk_without_hierarchy:
                 total_skus = total_skus + 1
                 if result_dict['result'] == 100:
@@ -234,7 +237,7 @@ class DIAGEOBEERUSToolBox:
                 # change kpi_fk and continue to save with hierarchy
                 result_dict['fk'] = dist_sku_fk
                 result_dict.update({'identifier_parent': dist_identifier, 'should_enter': True})
-            self.common.write_to_db_result(**result_dict)
+                self.common.write_to_db_result(**result_dict)
 
     # display share:
     def calculate_total_display_share(self, scene_types, weight, target):
