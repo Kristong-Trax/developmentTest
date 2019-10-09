@@ -197,6 +197,45 @@ class DIAGEOBEERUSToolBox:
 
         return (passed_skus / float(total_skus)) * weight * 100 if total_skus > 0 else 0
 
+    # distribution:
+    def calculate_distribution(self, result_dict_list):
+        weight = 0
+        total_skus = 0
+        passed_skus = 0
+        # kpi_fks for hierarchy
+        dist_fk = self.common.get_kpi_fk_by_kpi_type(Const.DIST_MR)
+        dist_sku_fk = self.common.get_kpi_fk_by_kpi_type(Const.DIST_SKU_MR)
+        # kpi_fks without hierarchy
+        dist_fk_without_hierarchy = self.common.get_kpi_fk_by_kpi_type(Const.DIST)
+        dist_sku_fk_without_hierarchy = self.common.get_kpi_fk_by_kpi_type(Const.DIST_SKU)
+
+        total_identifier = self.common.get_dictionary(name=Const.TOTAL)
+        dist_identifier = self.common.get_dictionary(name=Const.DIST_MR)
+        for result_dict in result_dict_list:
+            if result_dict['fk'] == dist_fk_without_hierarchy:
+                # save results without hierarchy first
+                score = result_dict['result'] * weight
+                self.common.write_to_db_result(**result_dict)
+                # change kpi_fk and continue to save with hierarchy
+                result_dict['fk'] = dist_fk
+                result_dict.update({'identifier_parent': total_identifier, 'should_enter': True,
+                                    'weight': weight * 100, 'identifier_result': dist_identifier,
+                                    'score': score})
+            if result_dict['fk'] == dist_sku_fk_without_hierarchy:
+                total_skus = total_skus + 1
+                if result_dict['result'] == 100:
+                    passed_skus = passed_skus + 1
+                if result_dict['result'] == 100:
+                    result_dict.update({'result': self.get_pks_of_result(Const.ON_SHELF)})
+                elif result_dict['result'] == 0:
+                    result_dict.update({'result': self.get_pks_of_result(Const.NOT_ON_SHELF)})
+                # save results without hierarchy first
+                self.common.write_to_db_result(**result_dict)
+                # change kpi_fk and continue to save with hierarchy
+                result_dict['fk'] = dist_sku_fk
+                result_dict.update({'identifier_parent': dist_identifier, 'should_enter': True})
+            self.common.write_to_db_result(**result_dict)
+
     # display share:
     def calculate_total_display_share(self, scene_types, weight, target):
         """
