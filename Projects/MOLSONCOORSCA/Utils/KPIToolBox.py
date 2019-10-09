@@ -124,26 +124,26 @@ class ToolBox:
         if relevant_scif.empty:
             return
 
-        # if kpi_name not in [
-        #     # 'Eye Level Availability'
-        #     # 'Flanker Displays', 'Disruptor Displays'
-        #     # 'Innovation Distribution',
-        #     # 'Display by Location',
-        #     # 'Display by Location'
-        #     # 'Leading Main Section on Left',
-        #     # 'Leading Cooler on Left',
-        #     # 'Leading Cooler on Right',
-        #     # 'Leading Main Section on Right',
-        #     # 'Leading Cold Room on Left',
-        #     # 'Leading Cold Room on Right',
-        #     # 'Share of Segment Cooler Facings'
-        #     # 'Share of Segment Warm Facings',
-        #     # 'ABI Share of Display Space'
-        #     'Sleeman Share of Display Space'
-        #     # 'Share of Total Space'
-        #
-        # ]:
-        #     return
+        if kpi_name not in [
+            # 'Eye Level Availability'
+            # 'Flanker Displays', 'Disruptor Displays'
+            # 'Innovation Distribution',
+            # 'Display by Location',
+            'Display by Location'
+            # 'Leading Main Section on Left',
+            # 'Leading Cooler on Left',
+            # 'Leading Cooler on Right',
+            # 'Leading Main Section on Right',
+            # 'Leading Cold Room on Left',
+            # 'Leading Cold Room on Right',
+            # 'Share of Segment Cooler Facings'
+            # 'Share of Segment Warm Facings',
+            # 'ABI Share of Display Space'
+            # 'Sleeman Share of Display Space'
+            # 'Share of Total Space'
+
+        ]:
+            return
 
         if kpi_type not in [
             'Share of Facings',
@@ -324,10 +324,15 @@ class ToolBox:
                                                                  comp_filter=comp_filt))
         return results
 
-    def calculate_distribution(self, kpi_name, kpi_line, level, **kwargs):
+    def calculate_distribution(self, kpi_name, kpi_line, relevant_scif, level, main_line, scene=None, **kwargs):
+        if scene:
+            self.assortment.scif = relevant_scif[relevant_scif['scene_fk'] == scene]
+        else:
+            self.assortment.scif = relevant_scif
         res_2, res_3 = [], []
         lvl3_result = self.assortment.calculate_lvl3_assortment()
         if not lvl3_result.empty:
+            lvl3_result = scene
             lvl3_result = lvl3_result.merge(self.common.kpi_static_data[['pk', 'type', 'client_name']],
                                             left_on='kpi_fk_lvl2', right_on='pk', how='inner')
             lvl3_result = lvl3_result[lvl3_result['client_name'] == kpi_name]
@@ -343,10 +348,15 @@ class ToolBox:
             elif kpi_line['Metric'] == 'Any':
                 lvl2_result['in_store'] = 'Pass' if lvl2_result['passes'].iloc[0] >= 1 else 'Fail'
 
-            res_3 = self.parse_assortment_results(lvl3_result, 'in_store', 'score', 'kpi_fk_lvl3', 'product_fk',
-                                                  'score', 'assortment_group_fk', 'target', None, 'kpi_fk_lvl2')
-            res_2 = self.parse_assortment_results(lvl2_result, 'in_store', 'score', 'kpi_fk_lvl2', 'assortment_group_fk',
-                                                  'passes', 'assortment_fk', 'total', 'kpi_fk_lvl2', None)
+            num_3 = main_line['Numerator 1']
+            den_3 = main_line['Denominator 1']
+            num_2 = main_line['Numerator 2']
+            den_2 = main_line['Denominator 2']
+
+            res_3 = self.parse_assortment_results(lvl3_result, 'in_store', 'score', 'kpi_fk_lvl3', num_3,
+                                                  'score', den_3, 'target', None, 'kpi_fk_lvl2')
+            res_2 = self.parse_assortment_results(lvl2_result, 'in_store', 'score', 'kpi_fk_lvl2', num_2,
+                                                  'passes', den_2, 'total', 'kpi_fk_lvl2', None)
         return level['end'], res_3 + res_2
 
     def parse_assortment_results(self, df, result, score, kpi_col, num_id_col, num_col, den_id_col, den_col, self_id,
