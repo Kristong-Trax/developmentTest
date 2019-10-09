@@ -10,7 +10,7 @@ if __name__ == '__main__':
     Config.init()
     project_name = 'molsoncoorsca'
 
-    # AtomicSpeculator(project_name, '/home/samk/Downloads/KPI Overview Molson Coors v5.3.xlsx').run()
+    # AtomicSpeculator(project_name, '/home/samk/dev/kpi_factory/Projects/MOLSONCOORSCA/Data/KPI Overview Molson Coors v5.3.xlsx').run()
 
     # from Trax.Data.Projects.Store import ProjectStore
     # ProjectStore.get_project(project_name)['rds_name'] = ProjectStore.get_project(project_name)['rds_name'].replace(

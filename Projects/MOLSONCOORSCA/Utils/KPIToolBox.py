@@ -129,7 +129,7 @@ class ToolBox:
         #     # 'Flanker Displays', 'Disruptor Displays'
         #     # 'Innovation Distribution',
         #     # 'Display by Location',
-        #     # 'Display by Location'
+        #     'Display by Location'
         #     # 'Leading Main Section on Left',
         #     # 'Leading Cooler on Left',
         #     # 'Leading Cooler on Right',
@@ -139,7 +139,7 @@ class ToolBox:
         #     # 'Share of Segment Cooler Facings'
         #     # 'Share of Segment Warm Facings',
         #     # 'ABI Share of Display Space'
-        #     'Sleeman Share of Display Space'
+        #     # 'Sleeman Share of Display Space'
         #     # 'Share of Total Space'
         #
         # ]:
@@ -188,7 +188,7 @@ class ToolBox:
 
     def calculate_main_kpi(self, kpi_name, kpi_lvl_name, kpi_type, **kwargs):
         kpi_line = self.template[kpi_type].set_index(Const.KPI_NAME).loc[kpi_name]
-        function = self.get_kpi_function(kpi_type)
+        function = self.get_kpi_function(kpi_type, kpi_name)
         write_type = True
         try:
             level, all_results = function(kpi_name, kpi_line, **kwargs)
@@ -324,7 +324,32 @@ class ToolBox:
                                                                  comp_filter=comp_filt))
         return results
 
-    def calculate_distribution(self, kpi_name, kpi_line, level, **kwargs):
+    def calculate_distribution_by_scene(self, kpi_name, kpi_line, relevant_scif, general_filters, **kwargs):
+        count = {'total': 0, 'pass': 0}
+        all_results = []
+        for scene in relevant_scif.scene_fk.unique():
+            relevant_scif = self.filter_df(relevant_scif, {'scene_fk': scene})
+            l, results = self.calculate_distribution(kpi_name, kpi_line, relevant_scif, scene=scene, **kwargs)
+            for res in results:
+                if 'ident_parent' not in res:
+                    count['total'] += 1
+                    count['pass'] += res['score']
+                    res['ident_parent'] = kpi_name
+                    num = res['numerator_id']
+                    kpi_fk = res['kpi_fk']
+                    res['kpi_fk'] = 30086
+                all_results += [res]
+        all_results.append({'score': count['pass'], 'result': count['pass'], 'numerator_result': count['pass'],
+                            'ident_result': kpi_name, 'denominator_result': count['total'], 'kpi_fk': kpi_fk,
+                            'numerator_id': self.manufacturer_fk, 'denominator_id': self.store_id,
+                            'kpi_name': self.lvl_name(kpi_name, 'Session')})
+        return l, all_results
+
+    def calculate_distribution(self, kpi_name, kpi_line, relevant_scif, level, main_line, scene=None, **kwargs):
+        if scene:
+            self.assortment.scif = relevant_scif[relevant_scif['scene_fk'] == scene]
+        else:
+            self.assortment.scif = relevant_scif
         res_2, res_3 = [], []
         lvl3_result = self.assortment.calculate_lvl3_assortment()
         if not lvl3_result.empty:
@@ -337,16 +362,26 @@ class ToolBox:
             lvl3_result['in_store'] = ['Fail' if res == 0 else 'Pass' for res in lvl3_result['in_store']]
             lvl2_result['score'] = lvl2_result['passes']
 
+            for df in [lvl3_result, lvl2_result]:
+                df['scene_fk'] = scene
+                df['store_fk'] = self.store_id
+                df['hierarchy'] = df['kpi_fk_lvl2'].astype(str) + df['scene_fk'].astype(str)
+
             if kpi_line['Metric'] == 'All':
                 lvl2_result['in_store'] = 'Pass' if lvl2_result['total'].iloc[0] == lvl2_result['passes'].iloc[0] else 'Fail'
                 lvl2_result['score'] = 1 if lvl2_result['total'].iloc[0] == lvl2_result['passes'].iloc[0] else 0
             elif kpi_line['Metric'] == 'Any':
                 lvl2_result['in_store'] = 'Pass' if lvl2_result['passes'].iloc[0] >= 1 else 'Fail'
 
-            res_3 = self.parse_assortment_results(lvl3_result, 'in_store', 'score', 'kpi_fk_lvl3', 'product_fk',
-                                                  'score', 'assortment_group_fk', 'target', None, 'kpi_fk_lvl2')
-            res_2 = self.parse_assortment_results(lvl2_result, 'in_store', 'score', 'kpi_fk_lvl2', 'assortment_group_fk',
-                                                  'passes', 'assortment_fk', 'total', 'kpi_fk_lvl2', None)
+            num_3 = main_line['Numerator 1']
+            den_3 = main_line['Denominator 1']
+            num_2 = main_line['Numerator 2']
+            den_2 = main_line['Denominator 2']
+
+            res_3 = self.parse_assortment_results(lvl3_result, 'in_store', 'score', 'kpi_fk_lvl3', num_3,
+                                                  'score', den_3, 'target', None, 'hierarchy')
+            res_2 = self.parse_assortment_results(lvl2_result, 'in_store', 'score', 'kpi_fk_lvl2', num_2,
+                                                  'passes', den_2, 'total', 'hierarchy', None)
         return level['end'], res_3 + res_2
 
     def parse_assortment_results(self, df, result, score, kpi_col, num_id_col, num_col, den_id_col, den_col, self_id,
@@ -1091,7 +1126,7 @@ class ToolBox:
             Log.warning('Data does not exist for this session')
             self.global_fail = 1
 
-    def get_kpi_function(self, kpi_type):
+    def get_kpi_function(self, kpi_type, kpi_name):
         """
         transfers every kpi to its own function
         :param kpi_type: value from "sheet" column in the main sheet
@@ -1109,7 +1144,10 @@ class ToolBox:
         elif kpi_type == Const.BAY_COUNT:
             return self.calculate_bay_count
         elif kpi_type == Const.DISTRIBUTION:
-            return self.calculate_distribution
+            if kpi_name == 'Display by Location':
+                return self.calculate_distribution_by_scene
+            else:
+                return self.calculate_distribution
         elif kpi_type == Const.ANCHOR:
             return self.calculate_anchor
 
