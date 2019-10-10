@@ -3960,30 +3960,6 @@ class CCRUKPIToolBox:
         # Display level KPIs
         for i, display_target in display_targets.iterrows():
 
-            # Keep relevant data for scif
-            # scif = self.scif[(self.scif['template_fk'] == display_target['SCENE_TYPE']) |
-            #                  (~self.scif['template_name'].isin(PROMO_SCENE_TYPES_DISPLAY))]
-            scif = self.scif[(self.scif['template_fk'] == display_target['SCENE_TYPE']) |
-                             (self.scif['template_name'].isin(PROMO_SCENE_TYPES_MAIN_SHELF))]
-
-            if scif.empty:
-                Log.warning('Session cannot be calculated. No promo data found in session')
-                return
-
-            # Add promo product groups and prices to scif
-            product_groups = self.get_promo_product_groups_to_skus(display_target)
-            scif = pd.merge(scif, product_groups, on='product_fk', how='inner')
-            scene_list = scif['scene_fk'].unique().tolist()
-            if scene_list:
-                scip = self.kpi_fetcher.get_scene_item_prices(scene_list)
-                if not scip.empty:
-                    scif = pd.merge(scif, scip, on=['scene_fk', 'product_fk'], how='left')
-                else:
-                    scif['price'] = pd.np.nan
-            else:
-                scif['price'] = pd.np.nan
-
-            # Location level KPI
             kpi_fk = self.common.kpi_static_data[self.common.kpi_static_data['type']
                                                  == PROMO_COMPLIANCE_DISPLAY]['pk'].values[0]
             display_fk = display_target['DISPLAY_NAME']  # DISPLAY_NAME contains pk
@@ -3991,26 +3967,57 @@ class CCRUKPIToolBox:
 
             kpi_identifier_result = self.common.get_dictionary(kpi_fk=kpi_fk, display_fk=display_fk)
 
-            # Calculate Display location score
-            score, target = self.check_promo_compliance_location(PROMO_LOC_DISPLAY,
-                                                                 scif, kpis, display_target, kpi_identifier_result)
+            # Keep relevant data for scif
+            scif = self.scif[(self.scif['template_fk'] == display_target['SCENE_TYPE']) |
+                             (self.scif['template_name'].isin(PROMO_SCENE_TYPES_MAIN_SHELF))]
 
-            if score >= target:
-                result = 1
+            if scif.empty:
+                result = 0
             else:
 
-                # Calculate Main Shelf location score
-                score, target = self.check_promo_compliance_location(PROMO_LOC_MAIN_SHELF,
-                                                                     scif, kpis, display_target, kpi_identifier_result)
+                # Add promo product groups to scif
+                product_groups = self.get_promo_product_groups_to_skus(display_target)
+                scif = pd.merge(scif, product_groups, on='product_fk', how='inner')
+
+                # Add median prices from scene_item_fact
+                scif['price'] = scif['median_price']
+                scif.loc[scif['price'].isnull(), 'price'] = scif['median_promo_price']
+
+                # # Add prices from match_product_in_probe_price_attribute_value
+                # # with outliers detection
+                # scene_list = scif['scene_fk'].unique().tolist()
+                # if scene_list:
+                #     scip = self.kpi_fetcher.get_scene_item_prices(scene_list)
+                #     if not scip.empty:
+                #         scif = pd.merge(scif, scip, on=['scene_fk', 'product_fk'], how='left')
+                #     else:
+                #         scif['price'] = pd.np.nan
+                # else:
+                #     scif['price'] = pd.np.nan
+
+                # Location level KPI
+                # Calculate Promo Display Location Score
+                score, target = self.check_promo_compliance_location(PROMO_LOC_DISPLAY,
+                                                                     scif, kpis, display_target,
+                                                                     kpi_identifier_result)
 
                 if score >= target:
-                    result = 2
+                    result = 1
                 else:
-                    result = 0
+
+                    # Calculate Main Shelf Location Score
+                    score, target = self.check_promo_compliance_location(PROMO_LOC_MAIN_SHELF,
+                                                                         scif, kpis, display_target,
+                                                                         kpi_identifier_result)
+
+                    if score >= target:
+                        result = 2
+                    else:
+                        result = 0
 
             # Write Display level KPI
             self.common.write_to_db_result(fk=kpi_fk,
-                                           numerator_id=None,
+                                           numerator_id=self.own_manufacturer_id,
                                            numerator_result=None,
                                            denominator_id=display_fk,
                                            context_id=None,
@@ -4021,23 +4028,23 @@ class CCRUKPIToolBox:
                                            identifier_result=kpi_identifier_result,
                                            identifier_parent=kpi_identifier_result_0,
                                            should_enter=True,
-                                           kpi_level_2_target_fk=target_fk)
+                                           kpi_external_targets_fk=target_fk)
             number_of_displays += 1
 
         # Write Store level KPI
-        if number_of_displays > 0:
-            self.common.write_to_db_result(fk=kpi_fk_0,
-                                           numerator_id=self.own_manufacturer_id,
-                                           numerator_result=None,
-                                           denominator_id=self.store_id,
-                                           context_id=None,
-                                           target=None,
-                                           weight=None,
-                                           result=number_of_displays,
-                                           score=None,
-                                           identifier_result=kpi_identifier_result_0,
-                                           identifier_parent=None,
-                                           should_enter=True)
+        # if number_of_displays > 0:
+        self.common.write_to_db_result(fk=kpi_fk_0,
+                                       numerator_id=self.own_manufacturer_id,
+                                       numerator_result=None,
+                                       denominator_id=self.store_id,
+                                       context_id=None,
+                                       target=None,
+                                       weight=None,
+                                       result=number_of_displays,
+                                       score=None,
+                                       identifier_result=kpi_identifier_result_0,
+                                       identifier_parent=None,
+                                       should_enter=True)
 
         return
 
@@ -4064,6 +4071,7 @@ class CCRUKPIToolBox:
     @staticmethod
     def get_relevant_promo_scif(location, kpi_target, scif):
         if location == PROMO_LOC_DISPLAY:
+            # Filtering for the most relevant scene
             scif_loc = scif[scif['template_fk'] == kpi_target['SCENE_TYPE']]
             if not scif_loc.empty:
                 scif_loc = scif_loc \
@@ -4079,7 +4087,7 @@ class CCRUKPIToolBox:
                 scenes = [scif_loc['scene_fk'].values[0]]
                 scif_loc = scif[scif['scene_fk'].isin(scenes)]
         else:
-            # scif_loc = scif[scif['template_fk'] != kpi_target['SCENE_TYPE']]
+            # Taking all relevant scenes
             scif_loc = scif[scif['template_name'].isin(PROMO_SCENE_TYPES_MAIN_SHELF)]
         return scif_loc
 
@@ -4093,12 +4101,11 @@ class CCRUKPIToolBox:
             self.common.get_dictionary(kpi_fk=kpi_fk, display_fk=display_fk, location_fk=location_fk)
 
         score = 0
-        target = kpis[(kpis['Location'] == PROMO_LOC_DISPLAY) &
+        target = kpis[(kpis['Location'] == location) &
                       (kpis['KPI'] == PROMO_COMPLIANCE_LOCATION)]['Target'].values[0]
 
-        scif_loc = self.get_relevant_promo_scif(PROMO_LOC_DISPLAY, kpi_target, scif)
+        scif_loc = self.get_relevant_promo_scif(location, kpi_target, scif)
 
-        # if not scif.empty:
         score += self.check_promo_compliance_display_presence(
             location, scif_loc, kpis, kpi_target, kpi_identifier_result)
         score += self.check_promo_compliance_distribution_target(
@@ -4130,8 +4137,8 @@ class CCRUKPIToolBox:
     def check_promo_compliance_display_presence(self, location, scif, kpis, kpi_target, kpi_identifier_parent):
         kpi_fk = self.common.kpi_static_data[
             self.common.kpi_static_data['type'] == PROMO_COMPLIANCE_DISPLAY_PRESENCE]['pk'].values[0]
-        kpi_result_type_fk = self.common.kpi_static_data[self.common.kpi_static_data['pk'] == kpi_fk][
-            'kpi_result_type_fk'].values[0]
+        # kpi_result_type_fk = self.common.kpi_static_data[self.common.kpi_static_data['pk'] == kpi_fk][
+        #     'kpi_result_type_fk'].values[0]
 
         display_fk = kpi_identifier_parent['display_fk']
         location_fk = kpi_identifier_parent['location_fk']
@@ -4142,15 +4149,15 @@ class CCRUKPIToolBox:
         total_facings_target = kpi_target['TOTAL_FACINGS']
 
         if total_facings_fact >= total_facings_target:
-            result = 'DISTRIBUTED'
+            result = 100
             score = 100
         else:
-            result = 'OOS'
+            result = 0
             score = 0
-        result = \
-            self.kpi_result_values[(self.kpi_result_values['result_type_fk'] == kpi_result_type_fk) &
-                                   (self.kpi_result_values['result_value'] == result)][
-                'result_value_fk'].values[0]
+        # result = \
+        #     self.kpi_result_values[(self.kpi_result_values['result_type_fk'] == kpi_result_type_fk) &
+        #                            (self.kpi_result_values['result_value'] == result)][
+        #         'result_value_fk'].values[0]
 
         weight = kpis[(kpis['Location'] == location) &
                       (kpis['KPI'] == PROMO_COMPLIANCE_DISPLAY_PRESENCE)]['Weight'].values[0]/100.0
@@ -4221,7 +4228,7 @@ class CCRUKPIToolBox:
                                        (self.kpi_result_values['result_value'] == result_prod)][
                     'result_value_fk'].values[0]
 
-            self.common.write_to_db_result(fk=kpi_fk,
+            self.common.write_to_db_result(fk=kpi_fk_prod,
                                            numerator_id=product_group_fk,
                                            numerator_result=result_prod_value,
                                            denominator_id=display_fk,
@@ -4246,14 +4253,17 @@ class CCRUKPIToolBox:
                         kpi_fk=kpi_fk_sku, display_fk=display_fk, location_fk=location_fk,
                         product_group_fk=product_group_fk, product_fk=product_fk)
 
-                self.common.write_to_db_result(fk=kpi_fk,
+                numerator_result = facings
+                denominator_result = None
+                self.common.write_to_db_result(fk=kpi_fk_sku,
                                                numerator_id=product_fk,
-                                               numerator_result=facings,
+                                               numerator_result=numerator_result,
                                                denominator_id=display_fk,
+                                               denominator_result=denominator_result,
                                                context_id=location_fk,
                                                target=None,
                                                weight=None,
-                                               result=facings,
+                                               result=None,
                                                score=None,
                                                identifier_result=kpi_identifier_result_sku,
                                                identifier_parent=kpi_identifier_result_prod,
@@ -4324,7 +4334,7 @@ class CCRUKPIToolBox:
                 score_prod = result_prod
                 target_prod = 100
 
-            self.common.write_to_db_result(fk=kpi_fk,
+            self.common.write_to_db_result(fk=kpi_fk_prod,
                                            numerator_id=product_group_fk,
                                            numerator_result=product_group_facings_fact,
                                            denominator_id=display_fk,
@@ -4349,14 +4359,17 @@ class CCRUKPIToolBox:
                         kpi_fk=kpi_fk_sku, display_fk=display_fk, location_fk=location_fk,
                         product_group_fk=product_group_fk, product_fk=product_fk)
 
-                self.common.write_to_db_result(fk=kpi_fk,
+                numerator_result = facings
+                denominator_result = None
+                self.common.write_to_db_result(fk=kpi_fk_sku,
                                                numerator_id=product_fk,
-                                               numerator_result=facings,
+                                               numerator_result=numerator_result,
                                                denominator_id=display_fk,
+                                               denominator_result=denominator_result,
                                                context_id=location_fk,
                                                target=None,
                                                weight=None,
-                                               result=facings,
+                                               result=None,
                                                score=None,
                                                identifier_result=kpi_identifier_result_sku,
                                                identifier_parent=kpi_identifier_result_prod,
@@ -4416,7 +4429,8 @@ class CCRUKPIToolBox:
                     kpi_fk=kpi_fk_prod, display_fk=display_fk, location_fk=location_fk,
                     product_group_fk=product_group_fk)
 
-            product_group_scif = scif[(scif['product_group'] == product_group_fk) & (~scif['price'].isnull())]
+            product_group_scif = scif[(scif['product_group'] == product_group_fk) &
+                                      (~scif['price'].isnull()) & (scif['price'] > 0)]
 
             if not product_group_scif.empty:
                 product_groups_fact += [product_group_fk]
@@ -4434,7 +4448,7 @@ class CCRUKPIToolBox:
                                        (self.kpi_result_values['result_value'] == result_prod)][
                     'result_value_fk'].values[0]
 
-            self.common.write_to_db_result(fk=kpi_fk,
+            self.common.write_to_db_result(fk=kpi_fk_prod,
                                            numerator_id=product_group_fk,
                                            numerator_result=result_prod_value,
                                            denominator_id=display_fk,
@@ -4460,10 +4474,13 @@ class CCRUKPIToolBox:
                         kpi_fk=kpi_fk_sku, display_fk=display_fk, location_fk=location_fk,
                         product_group_fk=product_group_fk, product_fk=product_fk)
 
-                self.common.write_to_db_result(fk=kpi_fk,
+                numerator_result = price * 100 if price else None
+                denominator_result = facings
+                self.common.write_to_db_result(fk=kpi_fk_sku,
                                                numerator_id=product_fk,
-                                               numerator_result=facings,
+                                               numerator_result=numerator_result,
                                                denominator_id=display_fk,
+                                               denominator_result=denominator_result,
                                                context_id=location_fk,
                                                target=None,
                                                weight=None,
@@ -4502,8 +4519,8 @@ class CCRUKPIToolBox:
     def check_promo_compliance_price_availability_total(self, location, scif, kpis, kpi_target, kpi_identifier_parent):
         kpi_fk = self.common.kpi_static_data[
             self.common.kpi_static_data['type'] == PROMO_COMPLIANCE_PRICE_AVAILABILITY_TOTAL]['pk'].values[0]
-        kpi_result_type_fk = self.common.kpi_static_data[self.common.kpi_static_data['pk'] == kpi_fk][
-            'kpi_result_type_fk'].values[0]
+        # kpi_result_type_fk = self.common.kpi_static_data[self.common.kpi_static_data['pk'] == kpi_fk][
+        #     'kpi_result_type_fk'].values[0]
 
         display_fk = kpi_identifier_parent['display_fk']
         location_fk = kpi_identifier_parent['location_fk']
@@ -4519,19 +4536,20 @@ class CCRUKPIToolBox:
             score = 0
         else:
 
-            total_price_count = scif[scif['product_group'].isin(product_groups_target) &
-                                     ~scif['price'].isnull()]['price'].agg({'price': 'count'})[0]
+            total_price_count = \
+                scif[scif['product_group'].isin(product_groups_target) &
+                     ~scif['price'].isnull() & (scif['price'] > 0)]['price'].agg({'price': 'count'})[0]
 
             if total_price_count > 0:
-                result = 'DISTRIBUTED'
+                result = 100
                 score = 100
             else:
-                result = 'OOS'
+                result = 0
                 score = 0
-            result = \
-                self.kpi_result_values[(self.kpi_result_values['result_type_fk'] == kpi_result_type_fk) &
-                                       (self.kpi_result_values['result_value'] == result)][
-                    'result_value_fk'].values[0]
+            # result = \
+            #     self.kpi_result_values[(self.kpi_result_values['result_type_fk'] == kpi_result_type_fk) &
+            #                            (self.kpi_result_values['result_value'] == result)][
+            #         'result_value_fk'].values[0]
 
             weight = kpis[(kpis['Location'] == location) &
                           (kpis['KPI'] == PROMO_COMPLIANCE_PRICE_AVAILABILITY_TOTAL)]['Weight'].values[0]/100.0
@@ -4603,7 +4621,7 @@ class CCRUKPIToolBox:
                 if product_group_price_target > 0:
                     total_price_facings_target += product_group_price_target * product_group_facings_fact
                     result_prod = \
-                        abs(round(1 - product_group_price_fact / float(product_group_price_target) * 100, 2))
+                        round(abs((1 - product_group_price_fact / float(product_group_price_target)) * 100), 2)
                 else:
                     total_price_facings_target += product_group_price_facings_fact
                     result_prod = 0
@@ -4614,7 +4632,7 @@ class CCRUKPIToolBox:
 
             numerator_result = product_group_price_fact * 100 if product_group_price_fact is not None else None
             denominator_result = product_group_price_target * 100
-            self.common.write_to_db_result(fk=kpi_fk,
+            self.common.write_to_db_result(fk=kpi_fk_prod,
                                            numerator_id=product_group_fk,
                                            numerator_result=numerator_result,
                                            denominator_id=display_fk,
@@ -4640,9 +4658,9 @@ class CCRUKPIToolBox:
                         kpi_fk=kpi_fk_sku, display_fk=display_fk, location_fk=location_fk,
                         product_group_fk=product_group_fk, product_fk=product_fk)
 
-                numerator_result = price * 100
+                numerator_result = price * 100 if price else None
                 denominator_result = facings
-                self.common.write_to_db_result(fk=kpi_fk,
+                self.common.write_to_db_result(fk=kpi_fk_sku,
                                                numerator_id=product_fk,
                                                numerator_result=numerator_result,
                                                denominator_id=display_fk,

@@ -223,7 +223,11 @@ class CCRUProjectCalculations:
         self.json.create_kpi_data_json('promo', 'KPI_Promo_Tracking.xlsx', sheet_name='2019')
         kpi_data = self.json.project_kpi_dict.get('promo')
 
+        Log.debug('KPI calculation stage: {}'.format('Promo'))
         self.tool_box.calculate_promo_compliance_store(kpi_data)
+
+        Log.debug('KPI calculation stage: {}'.format('Committing results new'))
+        self.tool_box.common.commit_results_data()
 
     def rds_connection(self):
         if not hasattr(self, '_rds_conn'):
