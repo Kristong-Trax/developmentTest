@@ -3979,11 +3979,32 @@ class CCRUKPIToolBox:
                 product_groups = self.get_promo_product_groups_to_skus(display_target)
                 scif = pd.merge(scif, product_groups, on='product_fk', how='inner')
 
-                # Add median prices from scene_item_fact
-                scif['price'] = scif['median_price']
-                scif.loc[scif['price'].isnull(), 'price'] = scif['median_promo_price']
+                # Add median prices from match_product_in_scene table
+                scene_list = scif['scene_fk'].unique().tolist()
+                if scene_list:
+                    prices = self.matches[self.matches['scene_fk'].isin(scene_list) &
+                                          ~self.matches['outlier'].isin([-2, 2]) &
+                                          (self.matches['price'].notnull() |
+                                           self.matches['promotion_price'].notnull())][
+                        ['scene_fk', 'product_fk', 'price', 'promotion_price']]
+                    prices.loc[prices['price'].isnull(), 'price'] = prices['promotion_price']
+                    prices = prices.astype({'price': float})
+                    prices = prices[['scene_fk', 'product_fk', 'price']]\
+                        .groupby(['scene_fk', 'product_fk'])\
+                        .agg({'price': ['sum', 'count']})\
+                        .reset_index()
+                    prices['price', 'avg'] = prices['price', 'sum'] / prices['price', 'count']
+                    prices.columns = ['scene_fk', 'product_fk', 'price_sum', 'price_count', 'price']
+                    if not prices.empty:
+                        scif = pd.merge(scif, prices[['scene_fk', 'product_fk', 'price']],
+                                        on=['scene_fk', 'product_fk'],
+                                        how='left')
+                    else:
+                        scif['price'] = pd.np.nan
+                else:
+                    scif['price'] = pd.np.nan
 
-                # # Add prices from match_product_in_probe_price_attribute_value
+                # # Add prices from match_product_in_probe_price_attribute_value as in QV
                 # # with outliers detection
                 # scene_list = scif['scene_fk'].unique().tolist()
                 # if scene_list:
@@ -4602,10 +4623,9 @@ class CCRUKPIToolBox:
                     product_group_fk=product_group_fk)
 
             product_group_scif = scif[(scif['product_group'] == product_group_fk)
-                                      & (scif['facings'] > 0) & (~scif['price'].isnull())]
-            product_group_scif['price_facings'] = product_group_scif['price'] * product_group_scif['facings']
-
+                                      & (scif['facings'] > 0) & (scif['price'] > 0)]
             if not product_group_scif.empty:
+                product_group_scif['price_facings'] = product_group_scif['price'] * product_group_scif['facings']
                 product_group_price_facings_fact = product_group_scif.agg({'price_facings': 'sum'})[0]
                 product_group_facings_fact = product_group_scif.agg({'facings': 'sum'})[0]
                 product_group_price_fact = product_group_price_facings_fact / product_group_facings_fact
