@@ -129,7 +129,7 @@ class ToolBox:
             # 'Flanker Displays', 'Disruptor Displays'
             # 'Innovation Distribution',
             # 'Display by Location',
-            'Display by Location'
+            # 'Display by Location'
             # 'Leading Main Section on Left',
             # 'Leading Cooler on Left',
             # 'Leading Cooler on Right',
@@ -138,7 +138,7 @@ class ToolBox:
             # 'Leading Cold Room on Right',
             # 'Share of Segment Cooler Facings'
             # 'Share of Segment Warm Facings',
-            # 'ABI Share of Display Space'
+            'ABI Share of Display Space'
             # 'Sleeman Share of Display Space'
             # 'Share of Total Space'
 
@@ -260,7 +260,7 @@ class ToolBox:
                     general_filters[iter_col] = item
             results.append(self.calculate_base_sos(kpi_name, kpi_line, general_filters, col, level, main_line,**kwargs))
         if len(items) == 0 and level['ind'] == level['end'] and level['ind'] > 1:
-            df = self.filter_df(self.products, self.get_kpi_line_filters(kpi_line))
+            df = self.filter_df(self.all_products, self.get_kpi_line_filters(kpi_line))
             res = self.calculate_base_sos(kpi_name, kpi_line, general_filters, col, level, main_line, **kwargs)
             res['numerator_id'] = self.get_fk(df, main_line[level['num_col']])
             results.append(res)
@@ -324,15 +324,11 @@ class ToolBox:
                                                                  comp_filter=comp_filt))
         return results
 
-    def calculate_distribution(self, kpi_name, kpi_line, relevant_scif, level, main_line, scene=None, **kwargs):
-        if scene:
-            self.assortment.scif = relevant_scif[relevant_scif['scene_fk'] == scene]
-        else:
-            self.assortment.scif = relevant_scif
+    def calculate_distribution(self, kpi_name, kpi_line, relevant_scif, level, main_line, **kwargs):
+        self.assortment.scif = relevant_scif
         res_2, res_3 = [], []
         lvl3_result = self.assortment.calculate_lvl3_assortment()
         if not lvl3_result.empty:
-            lvl3_result = scene
             lvl3_result = lvl3_result.merge(self.common.kpi_static_data[['pk', 'type', 'client_name']],
                                             left_on='kpi_fk_lvl2', right_on='pk', how='inner')
             lvl3_result = lvl3_result[lvl3_result['client_name'] == kpi_name]
@@ -342,11 +338,12 @@ class ToolBox:
             lvl3_result['in_store'] = ['Fail' if res == 0 else 'Pass' for res in lvl3_result['in_store']]
             lvl2_result['score'] = lvl2_result['passes']
 
-            if kpi_line['Metric'] == 'All':
-                lvl2_result['in_store'] = 'Pass' if lvl2_result['total'].iloc[0] == lvl2_result['passes'].iloc[0] else 'Fail'
-                lvl2_result['score'] = 1 if lvl2_result['total'].iloc[0] == lvl2_result['passes'].iloc[0] else 0
-            elif kpi_line['Metric'] == 'Any':
-                lvl2_result['in_store'] = 'Pass' if lvl2_result['passes'].iloc[0] >= 1 else 'Fail'
+            for df in [lvl3_result, lvl2_result]:
+                df['store_fk'] = self.store_id
+
+            lvl2_result['result'] = lvl2_result['passes']
+            if kpi_line['Metric'] == 'Cap':
+                lvl2_result['result'] = 'Pass' if lvl2_result['passes'].iloc[0] >= 1 else 'Fail'
 
             num_3 = main_line['Numerator 1']
             den_3 = main_line['Denominator 1']
@@ -355,7 +352,7 @@ class ToolBox:
 
             res_3 = self.parse_assortment_results(lvl3_result, 'in_store', 'score', 'kpi_fk_lvl3', num_3,
                                                   'score', den_3, 'target', None, 'kpi_fk_lvl2')
-            res_2 = self.parse_assortment_results(lvl2_result, 'in_store', 'score', 'kpi_fk_lvl2', num_2,
+            res_2 = self.parse_assortment_results(lvl2_result, 'result', 'score', 'kpi_fk_lvl2', num_2,
                                                   'passes', den_2, 'total', 'kpi_fk_lvl2', None)
         return level['end'], res_3 + res_2
 
