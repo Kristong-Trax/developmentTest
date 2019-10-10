@@ -14,7 +14,7 @@ from Trax.Apps.Core.Testing.BaseCase import TestFunctionalCase
 from Tests.TestUtils import remove_cache_and_storage
 
 
-__author__ = 'avrahama'
+__author__ = 'sathiyanarayanan'
 
 
 class TestKEngineOutOfTheBox(TestFunctionalCase):

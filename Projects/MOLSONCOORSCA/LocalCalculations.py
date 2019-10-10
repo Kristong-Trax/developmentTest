@@ -10,7 +10,7 @@ if __name__ == '__main__':
     Config.init()
     project_name = 'molsoncoorsca'
 
-    # AtomicSpeculator(project_name, '/home/samk/Downloads/KPI Overview Molson Coors v5.3.xlsx').run()
+    # AtomicSpeculator(project_name, '/home/samk/dev/kpi_factory/Projects/MOLSONCOORSCA/Data/KPI Overview Molson Coors v5.3.xlsx').run()
 
     # from Trax.Data.Projects.Store import ProjectStore
     # ProjectStore.get_project(project_name)['rds_name'] = ProjectStore.get_project(project_name)['rds_name'].replace(
@@ -21,9 +21,10 @@ if __name__ == '__main__':
         # '9F19D5B1-B95D-40E6-A7EA-B36E963A0770',
         # 'F3ABA765-DEF6-46A4-8C1E-BC818532398A',
         # '26F8B85F-F6B9-4BAE-89EC-4A3C499BAE19',
+        '8B46BA22-FFC6-438B-9B5B-AAB189F4F498'
 
 
-        '29A696E0-DE1D-4796-8492-64E44B99E1F3'
+        # '39D117D6-B2A0-4523-92CE-E286CFC4AB60'
 
                 ]
 
