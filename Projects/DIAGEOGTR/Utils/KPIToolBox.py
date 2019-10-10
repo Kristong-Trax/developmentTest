@@ -155,6 +155,7 @@ class DIAGEOGTRToolBox:
         self.tools = DIAGEOToolBox(self.data_provider, output,
                                    match_display_in_scene=self.match_display_in_scene)  # replace the old one
         self.diageo_generator = DIAGEOGenerator(self.data_provider, self.output, self.common)
+
         self.kpi_results_queries = []
         self.scores = {self.LEVEL1: {}, self.LEVEL2: {}, self.LEVEL3: {}}
 
@@ -1217,7 +1218,7 @@ class DIAGEOGTRToolBox:
 
         for row_num, kpi_result in df_sowb.iterrows():
             self.commonV2.write_to_db_result(fk=kpi_level_2_fk,
-                                             numerator_id=kpi_result['product_fk'],
+                                             numerator_id=kpi_result['sub_brand_fk'],
                                              denominator_id=kpi_result['manufacturer_fk'],
                                              context_id=kpi_result['sub_category_fk'],
                                              numerator_result=0,

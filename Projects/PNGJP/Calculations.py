@@ -14,15 +14,15 @@ class PNGJPCalculations(BaseCalculationsScript):
         PNGJPGenerator(self.data_provider, self.output).main_function()
         self.timer.stop('KPIGenerator.run_project_calculations')
 
-
 # if __name__ == '__main__':
 #     LoggerInitializer.init('pngjp calculations')
 #     Config.init()
 #     project_name = 'pngjp'
 #     data_provider = KEngineDataProvider(project_name)
-#     # session = 'FF92150A-8246-4753-BE0B-6A820A51D879'
-#     # session = 'B3456AAE-50B3-49D0-B5CD-FBF6244DB57C'
-#     session = '735A01C1-A05F-4891-922B-1118D6DB97C3'
-#     data_provider.load_session_data(session)
-#     output = Output()
-#     PNGJPCalculations(data_provider, output).run_project_calculations()
+#     sessions = ["3323D6AE-BBFA-4A12-B0A2-9803DD7C52CC",
+#                 "180DF2CD-7BC9-492C-A4F6-D4418DBBCBCA"]
+#
+#     for session in sessions:
+#         data_provider.load_session_data(session)
+#         output = Output()
+#         PNGJPCalculations(data_provider, output).run_project_calculations()
