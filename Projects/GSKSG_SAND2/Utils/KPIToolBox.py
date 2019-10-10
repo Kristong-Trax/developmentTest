@@ -7,6 +7,9 @@ from KPIUtils.GlobalProjects.GSK.Utils.KPIToolBox import Const
 from KPIUtils.GlobalProjects.GSK.KPIGenerator import GSKGenerator
 from KPIUtils_v2.GlobalDataProvider.PsDataProvider import PsDataProvider
 from KPIUtils_v2.Utils.Consts import GlobalConsts, DataProvider as DataProviderConsts, DB
+from KPIUtils_v2.Utils.Consts.DataProvider import ProductsConsts, TemplatesConsts
+from KPIUtils_v2.Utils.Consts.DB import SessionResultsConsts
+from KPIUtils_v2.Calculations.SequenceCalculationsV2 import Sequence
 
 __author__ = 'limorc'
 
@@ -39,6 +42,7 @@ class GSKSGToolBox:
 
         self.gsk_generator = GSKGenerator(self.data_provider, self.output, self.common, self.set_up_template)
         self.targets = self.ps_data_provider.get_kpi_external_targets()
+        self.sequence = Sequence(self.data_provider)
         self.set_up_data = {('planogram', Const.KPI_TYPE_COLUMN): Const.NO_INFO,
                             ('secondary_display', Const.KPI_TYPE_COLUMN):
                                 Const.NO_INFO, ('promo', Const.KPI_TYPE_COLUMN):
@@ -354,7 +358,7 @@ class GSKSGToolBox:
                                                                                               category_targets,
                                                                                               identifier_result)
         results_list.extend(shelf_compliance_result)
-        sequence_kpi, sequence_weight = 0, self.sequence(category_targets)
+        sequence_kpi, sequence_weight = self._calculate_sequence(category_targets, category_fk, identifier_result)
         planogram_score = shelf_compliance_score + sequence_kpi
         planogram_weight = shelf_weight + sequence_weight
         results_list.append({'fk': kpi_fk, 'numerator_id': category_fk, 'denominator_id':
@@ -365,17 +369,81 @@ class GSKSGToolBox:
                                 , 'should_enter': True})
         return planogram_score, results_list
 
-    def sequence(self, category_targets):
+    def _calculate_sequence(self, targets, cat_fk, planogram_identifier):
         """
-            this function calculate sequence  #TODO SEQUENCE
+        This method calculated the sequence KPIs using the external targets' data and sequence calculation algorithm.
         """
-        seq_1_target = 0 if category_targets['seq_1_weight'].empty else category_targets['seq_1_weight'].iloc[0]
-        seq_2_target = 0 if category_targets['seq_2_weight'].empty else category_targets['seq_2_weight'].iloc[0]
-        seq_3_target = 0 if category_targets['seq_3_weight'].empty else category_targets['seq_3_weight'].iloc[0]
+        sequence_kpi_fk, sequence_sku_kpi_fk = self._get_sequence_kpi_fks()
+        sequence_targets = targets.loc[targets['kpi_fk'] == sequence_kpi_fk]
+        passed_sequences_score, total_weight, total_passed_counter = 0, 0, 0
+        for i, sequence in sequence_targets.iterrows():
+            population, location, sequence_attributes = self._prepare_data_for_sequence_calculation(sequence)
+            sequence_result = self.sequence.sequence_calculation(population, location, sequence_attributes)
+            score, weight = self._save_sequence_results_to_db(sequence_kpi_fk, sequence_sku_kpi_fk, sequence,
+                                                              sequence_result)
+            passed_sequences_score += score
+            total_weight += weight
+            total_passed_counter += 1 if score else 0
+        self._save_sequence_main_level_to_db(sequence_kpi_fk, planogram_identifier, cat_fk, total_passed_counter,
+                                             len(targets), total_weight)
+        return passed_sequences_score, total_weight
 
-        sequence_weight = seq_1_target + seq_2_target + seq_3_target
+    @staticmethod
+    def _prepare_data_for_sequence_calculation(sequence_params):
+        """
+        This method gets the relevant sequ
+        """
+        population = {ProductsConsts.PRODUCT_FK: sequence_params[ProductsConsts.PRODUCT_FK]}
+        location = {TemplatesConsts.TEMPLATE_GROUP: sequence_params[TemplatesConsts.TEMPLATE_GROUP]}
+        additional_attributes = {'strict_mode': sequence_params['strict_mode'],
+                                 'include_stacking': sequence_params['include_stacking'], 'check_all_sequences': True}
+        return population, location, additional_attributes
 
-        return sequence_weight
+    def _extract_target_params(self, sequence_params):
+        """
+        This method extract the relevant category_fk and result value from the sequence parameters.
+        """
+        numerator_id = sequence_params[ProductsConsts.CATEGORY_FK]
+        result_value = self.ps_data_provider.get_pks_of_result(sequence_params['sequence_name'])
+        return numerator_id, result_value
+
+    def _save_sequence_main_level_to_db(self, kpi_fk, planogram_identifier, cat_fk, num_res, den_res, weight):
+        """
+        This method saves the top sequence level to DB.
+        """
+        gsk_benchmark = 0.8
+        score = num_res / float(den_res) if den_res else 0
+        result = weight if score >= gsk_benchmark else 0
+        self.common.write_to_db_result(fk=kpi_fk, numerator_id=cat_fk, numerator_result=num_res,
+                                       result=result, denominator_id=self.store_id, denominator_result=den_res,
+                                       score=score, weight=weight, target=gsk_benchmark, identifier_result=kpi_fk,
+                                       identifier_parent=planogram_identifier, should_enter=True)
+
+    def _save_sequence_results_to_db(self, kpi_fk, parent_kpi_fk, sequence_params, sequence_results):
+        """
+        This method handles the saving of the SKU level sequence KPI.
+        :param kpi_fk: Sequence SKU kpi fk.
+        :param parent_kpi_fk: Total sequence score kpi fk.
+        :param sequence_params: A dictionary with sequence params for the external targets.
+        :param sequence_results: A DataFrame with the results that were received by the sequence algorithm.
+        :return: The score that was saved (0 or 100 * weight).
+        """
+        category_fk, result_value = self._extract_target_params(sequence_params)
+        num_of_sequences = len(sequence_results)
+        target, weight = sequence_params[SessionResultsConsts.TARGET], sequence_params[SessionResultsConsts.WEIGHT]
+        score = 100 * weight if len(sequence_results) >= target else 0
+        self.common.write_to_db_result(fk=kpi_fk, numerator_id=category_fk, numerator_result=num_of_sequences,
+                                       result=result_value, denominator_id=self.store_id, denominator_result=999,
+                                       score=score, weight=weight, parent_fk=parent_kpi_fk, target=target,
+                                       should_enter=True, identifier_parent=parent_kpi_fk,
+                                       identifier_result=(kpi_fk, category_fk))
+        return score, weight
+
+    def _get_sequence_kpi_fks(self):
+        """This method fetches the relevant sequence kpi fks"""
+        sequence_kpi_fk = self.common.get_kpi_fk_by_kpi_type(Consts.SEQUENCE_KPI)
+        sequence_sku_kpi_fk = self.common.get_kpi_fk_by_kpi_type(Consts.SEQUENCE_SKU_KPI)
+        return sequence_kpi_fk, sequence_sku_kpi_fk
 
     def secondary_display(self, category_fk, category_targets, identifier_parent, scif_df):
         """
