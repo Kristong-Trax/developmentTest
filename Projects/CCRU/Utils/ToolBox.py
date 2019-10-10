@@ -1680,7 +1680,7 @@ class CCRUKPIToolBox:
                         atomic_res = self.calculate_sub_atomic_passed(c, params, parent=p)
                     elif c.get("Formula").strip() == "Lead SKU":
                         atomic_res, atomic_target = self.calculate_lead_sku(c)
-                        if atomic_res < atomic_target:
+                        if atomic_res == 0 or atomic_res < atomic_target:
                             atomic_score = 0
                         else:
                             atomic_score = 100
@@ -1778,7 +1778,7 @@ class CCRUKPIToolBox:
                             c, params, [scene], parent=p, same_scene=True)
                     elif c.get("Formula").strip() == "Lead SKU":
                         atomic_res, atomic_target = self.calculate_lead_sku(c, [scene])
-                        if atomic_res < atomic_target:
+                        if atomic_res == 0 or atomic_res < atomic_target:
                             atomic_score = 0
                         else:
                             atomic_score = 100
@@ -1827,7 +1827,7 @@ class CCRUKPIToolBox:
                             c, params, [favorite_scene], parent=p)
                     elif c.get("Formula").strip() == "Lead SKU":
                         atomic_res, atomic_target = self.calculate_lead_sku(c, [favorite_scene])
-                        if atomic_res < atomic_target:
+                        if atomic_res == 0 or atomic_res < atomic_target:
                             atomic_score = 0
                         else:
                             atomic_score = 100
@@ -1910,7 +1910,7 @@ class CCRUKPIToolBox:
                     sub_atomic_res = self.calculate_number_facings_near_food(c, params)
                 elif c.get("Formula").strip() == "Lead SKU":
                     sub_atomic_res, sub_atomic_target = self.calculate_lead_sku(c, scenes)
-                    if sub_atomic_res < sub_atomic_target:
+                    if sub_atomic_res == 0 or sub_atomic_res < sub_atomic_target:
                         sub_atomic_score = 0
                     else:
                         sub_atomic_score = 100

@@ -10,6 +10,8 @@ from collections import Counter
 from Trax.Utils.Logging.Logger import Log
 from KPIUtils_v2.Utils.Parsers import ParseInputKPI
 from Trax.Algo.Calculations.Core.DataProvider import Data
+from KPIUtils_v2.Utils.Decorators.Decorators import kpi_runtime
+
 import pandas as pd
 
 __author__ = 'idanr'
@@ -37,6 +39,7 @@ class TNUVAILToolBox:
         self._calculate_assortment()
         self.common_v2.commit_results_data()
 
+    @kpi_runtime()
     def _calculate_facings_sos(self):
         """
         This kpi calculates SOS in 3 levels: Manufacturer out of store, Manufacturer Out of Category and
@@ -45,6 +48,7 @@ class TNUVAILToolBox:
         self._calculate_sos_by_policy(Consts.MILKY_POLICY)
         self._calculate_sos_by_policy(Consts.TIRAT_TSVI_POLICY)
 
+    @kpi_runtime()
     def _calculate_assortment(self):
         """
         This is the main function for assortment calculation. It prepares the data and calculating all of the relevant

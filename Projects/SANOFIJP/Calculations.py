@@ -4,6 +4,7 @@ from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScrip
 # from Trax.Utils.Conf.Configuration import Config
 # from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
 import os
+from Projects.SANOFIJP.KPIGenerator import Generator
 from KPIUtils.GlobalProjects.SANOFI_2.KPIGenerator import SANOFIGenerator
 
 
@@ -13,6 +14,9 @@ __author__ = 'nidhinb'
 class SANOFIJPCalculations(BaseCalculationsScript):
     def run_project_calculations(self):
         self.timer.start()
+        # For Custom KPI -- PROS-11486 // the custom KPIs are never to commit to the DB. Its done in the global KPIs.
+        Generator(self.data_provider, self.output).main_function()
+        # Global KPI calcs -- the commit is done with this!
         TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), 'SANOFIJP', 'Data', 'Template.xlsx')
         SANOFIGenerator(self.data_provider, self.output, TEMPLATE_PATH).main_function()
         self.timer.stop('KPIGenerator.run_project_calculations')

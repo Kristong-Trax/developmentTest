@@ -882,13 +882,17 @@ class PERNODUSToolBox:
                 if numerator_res is None:
                     pass
                 else:
-                    result = (round(numerator_res / float(denominator_res), 2))
-                    if result >= threshold:
-                        score = 1  # solo
-                    else:
+                    if denominator_res == 0:
+                        result = 0
                         score = 0  # shared
+                    else:
+                        result = (round(numerator_res / float(denominator_res), 2))
+                        if result >= threshold:
+                            score = 1  # solo
+                        else:
+                            score = 0  # shared
 
-                    brand_fk = self.scif[Const.brand_fk][self.scif[Const.brand] == brand].iloc[0]
+                    brand_fk = self.all_products[Const.brand_fk][self.all_products[Const.brand] == brand].iloc[0]
                     self.common.write_to_db_result(fk=kpi_set_fk, numerator_id=brand_fk, numerator_result=numerator_res,
                                                    denominator_id=scene_id, denominator_result=denominator_res,
                                                    result=result, score=score)

@@ -68,8 +68,11 @@ class Results(object):
             #                         # 'Is NUTRO Dry Dog blocked in the Ingredient Transparency feeding philosophy segment?'
             #                         # 'Is PEDIGREE Dry Dog Food shelved with the Basic & Balanced feeding philosophy segment?'
             #                         # 'What percent of non-negotiable items are shelved in the preferred range? - numerator'
+            #     # 'Is Nutro Dry Cat food blocked within the Ingredient Transparency feeding philosophy segment?'
+            #     'Is the Meaty Dog Treats segment blocked?',
+            #     'Is the Meaty Dog Treats segment blocked vertically?'
             #     # 'What percent of non-negotiable items are shelved in the preferred range?',
-            # 'What percent of non-negotiable items are shelved in the preferred range no pr?'
+            # # 'What percent of non-negotiable items are shelved in the preferred range no pr?'
             #
             # ]:
             #     continue
@@ -108,7 +111,6 @@ class Results(object):
                 errata = [i for i in kpi_res[1:]]
                 kpi_res = kpi_res[0]
             # print('||||| Result for {} is: {}'.format(atomic['atomic'], kpi_res))
-            # print('!!!!!!!!!!!!!!!!!!!!!!! New Set !!!!!!!!!!!!!!!!!!!!!!!!!')
             result = {'result': kpi_res,
                       'set': atomic['set'],
                       'kpi': atomic['kpi'],
