@@ -3930,14 +3930,13 @@ class CCRUKPIToolBox:
         return data
 
     def calculate_promo_compliance_store(self, kpis):
-        Log.debug('KPI calculation stage: {}'.format('Promo Compliance'))
         display_targets = KpiTargetFinder(self.project_name,
                                           [self.kpi_fetcher.get_kpi_level_2_fk(PROMO_KPI_LEVEL_2_TYPE)],
                                           self.visit_date,
                                           self.store_id,
                                           PROMO_KPI_OPERATION_TYPE).get_kpi_target_matches()
         if display_targets.empty:
-            Log.debug('Error. Session cannot be calculated. '
+            Log.debug('Warning. Session cannot be calculated. '
                       'Promo targets are not defined. '
                       'Store ID {}.'.format(self.store_id))
             return
