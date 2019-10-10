@@ -204,8 +204,6 @@ class BATRU_SANDToolBox:
         self.template_warnings = set()
 
         self.own_manufacturer_fk = int(self.data_provider.own_manufacturer.param_value.values[0])
-        self.non_bat_fk = self.all_products[self.all_products['manufacturer_name'] == 'Other']\
-                                                                    ['manufacturer_fk'].values[0]
         self.common = Common(self.data_provider)
         self.new_static_kpis = self.common.kpi_static_data[['pk', StaticKpis.TYPE]]
 
@@ -1914,8 +1912,8 @@ class BATRU_SANDToolBox:
                                     score_2=format(score, '.2f'), level=self.LEVEL2)
 
             # kpis to new tables
-            new_kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_name)
-            numerator_id = self.own_manufacturer_fk if row['Manufacturer'] == 'BAT' else self.non_bat_fk
+            new_kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_name.decode('utf8'))
+            numerator_id = self.own_manufacturer_fk if row['Manufacturer'] == 'BAT' else 0
             self.common.write_to_db_result(fk=new_kpi_fk, numerator_id=numerator_id, denominator_id=self.store_id,
                                            result=round(score * 100, 2), identifier_parent=identifier_parent,
                                            should_enter=True)
