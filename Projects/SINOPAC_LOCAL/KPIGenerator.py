@@ -1,9 +1,9 @@
 
 from Trax.Utils.Logging.Logger import Log
 
-from Projects.SANOFIJP.Utils.KPIToolBox import SanofiJPToolBox
+from Projects.SINOPAC_LOCAL.Utils.KPIToolBox import SinoPacificToolBox
 
-from KPIUtils_v2.DB.CommonV2 import Common
+from KPIUtils_v2.DB.Common import Common
 
 from KPIUtils_v2.Utils.Decorators.Decorators import log_runtime
 
@@ -17,7 +17,7 @@ class Generator:
         self.output = output
         self.project_name = data_provider.project_name
         self.session_uid = self.data_provider.session_uid
-        self.tool_box = SanofiJPToolBox(self.data_provider, self.output)
+        self.tool_box = SinoPacificToolBox(self.data_provider, self.output)
         self.common = Common(data_provider)
 
     @log_runtime('Total Calculations', log_start=True)
@@ -30,4 +30,3 @@ class Generator:
             Log.warning('Scene item facts is empty for this session')
         else:
             self.tool_box.main_calculation()
-
