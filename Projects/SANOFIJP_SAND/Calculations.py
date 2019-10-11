@@ -37,8 +37,8 @@ class SanofiJPGenerator(SANOFIGenerator, object):
             Log.warning('Scene item facts is empty for this session')
         self.tool_box.write_time_frame()
         self.tool_box.calculate_perfect_store()
-        SanofiJPToolBox(self.data_provider, self.output, self.tool_box.common).main_calculation()
         # For Custom KPI
+        SanofiJPToolBox(self.data_provider, self.output, self.tool_box.common).main_calculation()
         self.tool_box.commit_results_data()
 
 # if __name__ == '__main__':
