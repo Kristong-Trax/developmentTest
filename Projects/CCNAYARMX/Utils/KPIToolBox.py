@@ -30,10 +30,9 @@ from Projects.CCNAYARMX.Data.LocalConsts import Consts
 
 __author__ = 'krishnat'
 
-
 KPI_TYPE = 'Type'
 
-#Column Name
+# Column Name
 KPI_NAME = 'KPI Name'
 PRODUCT_TYPE = 'product_type'
 NUMERATOR_PARAM_1 = 'numerator param 1'
@@ -42,7 +41,7 @@ DENOMINATOR_PARAM_1 = 'denominator param 1'
 DENOMINATOR_VALUE_1 = 'denominator value 1'
 IGNORE_STACKING = 'Ignore Stacking'
 
-#Sheet names
+# Sheet names
 SOS = 'SOS'
 
 Sheets = [SOS]
@@ -81,14 +80,12 @@ class ToolBox(GlobalSessionToolBox):
         self.calculate_sos
         return
 
-
-
     @property
     def calculate_sos(self):
         for i, row in self.templates[SOS].iterrows():
             # Step 1 Read the excel rows to proces the information
-            kpi_name = row[KPI_NAME]
-            kpi_fk = self.common.get_kpi_fk_by_kpi_name(kpi_name)
+            kpi_name = row["KPI Name"]
+            kpi_fk =  self.common.get_kpi_fk_by_kpi_name(kpi_name)
 
             product_type = self.sanitize_values(row[PRODUCT_TYPE])
 
@@ -100,53 +97,53 @@ class ToolBox(GlobalSessionToolBox):
 
             ignore_stacking = row[IGNORE_STACKING]
 
-
             # Step 2: Filter the self.scif by the columns required
             column_filter_for_scif = ['pk', 'session_id', PRODUCT_TYPE, 'facings', 'facings_ign_stack'] + \
                                      self.delete_filter_nan([numerator_param1, denominator_param1])
 
             filtered_scif = self.scif[column_filter_for_scif]
 
-            #Step 3: Filter each perticular column by the required value
+            # Step 3: Filter each perticular column by the required value
 
-            #3A.Logic for considering stacking or ignore stacking
+            # 3A.Logic for considering stacking or ignore stacking
             if pd.isnull(ignore_stacking):
-                relevant_scif = filtered_scif.drop(columns = ['facings_ign_stack'])
-                relevant_scif = relevant_scif.rename(columns = {'facings': 'final_facings'})
+                relevant_scif = filtered_scif.drop(columns=['facings_ign_stack'])
+                relevant_scif = relevant_scif.rename(columns={'facings': 'final_facings'})
             elif ignore_stacking == 'Y':
-                relevant_scif = filtered_scif.drop(columns = ['facings'])
+                relevant_scif = filtered_scif.drop(columns=['facings'])
                 relevant_scif = relevant_scif.rename(columns={'facings_ign_stack': 'final_facings'})
 
-            #3B.Filters for the product type
+            # 3B.Filters for the product type
             relevant_scif = relevant_scif[relevant_scif[PRODUCT_TYPE].isin(product_type)]
 
-
-            #3C.Filter through the denominator param for the denominator value
+            # 3C.Filter through the denominator param for the denominator value
             if pd.isnull(denominator_param1):
                 denominator_scif = relevant_scif
             else:
                 denominator_scif = relevant_scif[relevant_scif[denominator_param1].isin([denominator_value1])]
 
-
-            #3D.Filter through numerator param for the numerator value
+            # 3D.Filter through numerator param for the numerator value
             if pd.isnull(numerator_param1):
-                numerator_scif =  denominator_scif
+                numerator_scif = denominator_scif
             else:
                 numerator_scif = denominator_scif[denominator_scif[numerator_param1].isin(numerator_value1)]
 
+            pk = numerator_scif['pk']
+            session_fk = numerator_scif['session_id']
 
-            session_id = numerator_scif['session_id']
-            numerator_sum_of_facings = numerator_scif['final_facings'].sum()
-            denominator_sum_of_facings = denominator_scif['final_facings'].sum()
-            result = numerator_sum_of_facings/denominator_sum_of_facings
+            #Verify with hunter
+            numerator_id = row['Numerator Entity']
+            numerator_result = numerator_scif['final_facings'].sum()
 
-            a = 1
+            #Verify with hunter
+            denominator_id = row['Denominator Entity']
+            denominator_result = denominator_scif['final_facings'].sum()
+            result = numerator_result / denominator_result
 
-
-        return
-
-
-
+            self.common.write_to_db_result(kpi_fk,
+                                           numerator_result=numerator_result, denominator_result=denominator_result,
+                                           result=result
+                                           )
 
     def sanitize_values(self, item):
         if pd.isna(item):
@@ -158,5 +155,3 @@ class ToolBox(GlobalSessionToolBox):
     def delete_filter_nan(self, filters):
         filters = [filter for filter in filters if str(filter) != 'nan']
         return filters
-
-
