@@ -85,9 +85,12 @@ class ToolBox(GlobalSessionToolBox):
         for i, row in self.templates[SOS].iterrows():
             # Step 1 Read the excel rows to proces the information
             kpi_name = row["KPI Name"]
-            kpi_fk =  self.common.get_kpi_fk_by_kpi_name(kpi_name)
+            kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_name)
 
             product_type = self.sanitize_values(row[PRODUCT_TYPE])
+            template_group = self.sanitize_values(row['Task/ Template Group'])
+
+            ignore_stacking = row[IGNORE_STACKING]
 
             numerator_param1 = row[NUMERATOR_PARAM_1]
             numerator_value1 = self.sanitize_values(row[NUMERATOR_VALUE_1])
@@ -95,10 +98,9 @@ class ToolBox(GlobalSessionToolBox):
             denominator_param1 = row[DENOMINATOR_PARAM_1]
             denominator_value1 = row[DENOMINATOR_VALUE_1]
 
-            ignore_stacking = row[IGNORE_STACKING]
-
             # Step 2: Filter the self.scif by the columns required
-            column_filter_for_scif = ['pk', 'session_id', PRODUCT_TYPE, 'facings', 'facings_ign_stack'] + \
+            column_filter_for_scif = ['pk', 'session_id', 'template_group', PRODUCT_TYPE, 'facings',
+                                      'facings_ign_stack'] + \
                                      self.delete_filter_nan([numerator_param1, denominator_param1])
 
             filtered_scif = self.scif[column_filter_for_scif]
@@ -113,8 +115,10 @@ class ToolBox(GlobalSessionToolBox):
                 relevant_scif = filtered_scif.drop(columns=['facings'])
                 relevant_scif = relevant_scif.rename(columns={'facings_ign_stack': 'final_facings'})
 
-            # 3B.Filters for the product type
+            # 3B.Filters for the product type and template_group
             relevant_scif = relevant_scif[relevant_scif[PRODUCT_TYPE].isin(product_type)]
+
+            relevant_scif = relevant_scif[relevant_scif['template_group'].isin(template_group)]
 
             # 3C.Filter through the denominator param for the denominator value
             if pd.isnull(denominator_param1):
@@ -128,22 +132,36 @@ class ToolBox(GlobalSessionToolBox):
             else:
                 numerator_scif = denominator_scif[denominator_scif[numerator_param1].isin(numerator_value1)]
 
-            pk = numerator_scif['pk']
-            session_fk = numerator_scif['session_id']
+            # 4. Setting up numerator_entity and the denominator_entity
 
-            #Verify with hunter
-            numerator_id = row['Numerator Entity']
+            # 4A. Find the numerator entity
+            numerator_id = self.scif[row['Numerator Entity']].mode()[0]
+            denominator_id = self.scif[row['Denominator Entity']].mode()[0]
+
+            #Check with Hunter
+            # if row['Numerator Entity'] == 'manufacturer_fk':
+            #     numerator_id = self.scif.manufacturer_name.mode()[0]
+            # elif row['Numerator Entity'] == 'brand_fk':
+            #     numerator_id = self.scif.brand_name.mode()[0]
+            #
+            # if row['Denominator Entity'] == 'template_fk':
+            #     denominator_id = self.scif.template_group.mode()[0]
+            # elif row['Denominator Entity'] == 'manufacturer_fk':
+            #     denominator_id = self.scif.manufacturer_name.mode()[0]
+            #
+
+
             numerator_result = numerator_scif['final_facings'].sum()
 
-            #Verify with hunter
-            denominator_id = row['Denominator Entity']
             denominator_result = denominator_scif['final_facings'].sum()
             result = numerator_result / denominator_result
 
-            self.common.write_to_db_result(kpi_fk,
-                                           numerator_result=numerator_result, denominator_result=denominator_result,
-                                           result=result
-                                           )
+
+
+            self.common.write_to_db_result(kpi_fk, numerator_id=numerator_id,
+                                           numerator_result=numerator_result, denominator_id=denominator_id,
+                                           denominator_result=denominator_result,
+                                           result=result)
 
     def sanitize_values(self, item):
         if pd.isna(item):
