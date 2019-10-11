@@ -120,6 +120,7 @@ class ALTRIAUSToolBox:
         self.calculate_signage_locations_and_widths('Smokeless')
         self.calculate_register_type()
         self.calculate_age_verification()
+        self.calculate_juul_availability()
         self.calculate_assortment()
         self.calculate_vapor_kpis()
 
