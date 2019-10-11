@@ -18,7 +18,6 @@ def save_scene_item_facts_to_data_provider(data_provider, output):
     scene_item_facts.rename(columns={Fields.PRODUCT_FK: 'item_id', Fields.SCENE_FK: 'scene_id'}, inplace=True)
     data_provider.set_scene_item_facts(scene_item_facts)
 
-
 # if __name__ == '__main__':
 #     LoggerInitializer.init('CCJP calculations')
 #     Config.init()
@@ -44,6 +43,7 @@ def save_scene_item_facts_to_data_provider(data_provider, output):
 #             save_scene_item_facts_to_data_provider(data_provider, output)
 #             SceneCalculations(data_provider).calculate_kpis()
 #         print("Session_uid:{}, num:{} ".format(session, num))
+#
 #         data_provider.load_session_data(session)
 #         output = Output()
 #         Calculations(data_provider, output).run_project_calculations()

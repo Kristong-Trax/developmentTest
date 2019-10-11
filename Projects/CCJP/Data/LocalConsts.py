@@ -43,7 +43,7 @@ class Consts(object):
     OOS = 'OOS'
     DISTRIBUTED = 'DISTRIBUTED'
     EXTRA = 'EXTRA'
-
+    COCO_COLA_PK = 58
     #  flags - for use
     NO_INFO = 0
     INFO = 1
