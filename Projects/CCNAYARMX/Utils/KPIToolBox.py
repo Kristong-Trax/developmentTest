@@ -4,6 +4,7 @@ from KPIUtils_v2.Utils.GlobalScripts.Scripts import GlobalSessionToolBox
 from KPIUtils_v2.GlobalDataProvider.PsDataProvider import PsDataProvider
 
 import pandas as pd
+import numpy as np
 import os
 from datetime import datetime
 
@@ -29,20 +30,23 @@ from Projects.CCNAYARMX.Data.LocalConsts import Consts
 
 __author__ = 'krishnat'
 
-KPI_NAME = 'KPI Name'
+
 KPI_TYPE = 'Type'
 
-
-
+#Column Name
+KPI_NAME = 'KPI Name'
 PRODUCT_TYPE = 'product_type'
-NUMERATOR_PARAM = 'numerator param'
-NUMERATOR_VALUE = 'numerator value'
-DENOMINATOR_PARAM = 'denominator param'
-DENOMINATOR_VALUE = 'denominator value'
+NUMERATOR_PARAM_1 = 'numerator param 1'
+NUMERATOR_VALUE_1 = 'numerator value 1'
+DENOMINATOR_PARAM_1 = 'denominator param 1'
+DENOMINATOR_VALUE_1 = 'denominator value 1'
+IGNORE_STACKING = 'Ignore Stacking'
 
+#Sheet names
 SOS = 'SOS'
+
 Sheets = [SOS]
-TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'CC Nayar Template v0.2.xlsx')
+TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'CC Nayar Template v0.3.xlsx')
 
 
 def log_runtime(description, log_start=False):
@@ -74,134 +78,85 @@ class ToolBox(GlobalSessionToolBox):
             self.templates[sheet] = pd.read_excel(TEMPLATE_PATH, sheet_name=sheet)
 
     def main_calculation(self):
-        a = self.calculate_share_of_shelf()
-        return a
-
-    def calculate_share_of_shelf(self):
-        pass
+        self.calculate_sos
+        return
 
 
-    @staticmethod
-    def does_exist(kpi_line, column_name):
-        """
-        checks if kpi_line has values in this column, and if it does -returns a list of these values
-        :param kpi_line: line from template
-        :param column_name: str
-        :return: list of values if there are, otherwise None
-        """
 
-        if column_name in kpi_line.keys() and kpi_line[column_name] != "":
-            cell = kpi_line[column_name]
-            if type(cell) in [int, float]:
-                return [cell]
-            elif type(cell) in [unicode, str]:
-                return [x.strip() for x in cell.split(",")]
-        return None
+    @property
+    def calculate_sos(self):
+        for i, row in self.templates[SOS].iterrows():
+            # Step 1 Read the excel rows to proces the information
+            kpi_name = row[KPI_NAME]
+            kpi_fk = self.common.get_kpi_fk_by_kpi_name(kpi_name)
 
-    def get_numerator_scif(self, kpi_line, denominator_scif):
-        numerator_scif = self.filter_scif_by_template_columns(kpi_line, NUMERATOR_PARAM, NUMERATOR_VALUE,
-                                                              denominator_scif)
-        return numerator_scif
+            product_type = self.sanitize_values(row[PRODUCT_TYPE])
 
-    def get_denominator_scif(self, kpi_line, relevant_scif):
-        denominator_scif = self.filter_scif_by_template_columns(kpi_line, )
-        denominator_scif = self.filter_scif_by_template_columns(kpi_line, DENOMINATOR_PARAM, DENOMINATOR_VALUE,
-                                                                relevant_scif)
+            numerator_param1 = row[NUMERATOR_PARAM_1]
+            numerator_value1 = self.sanitize_values(row[NUMERATOR_VALUE_1])
 
-        return denominator_scif
+            denominator_param1 = row[DENOMINATOR_PARAM_1]
+            denominator_value1 = row[DENOMINATOR_VALUE_1]
 
-    @staticmethod
-    def filter_scif_by_template_columns(kpi_line, type_base, value_base, relevant_scif, exclude=False):
-        filters = {}
+            ignore_stacking = row[IGNORE_STACKING]
 
-        # get the denominator filters
-        for den_column in [col for col in kpi_line.keys() if type_base in col]:
-            if kpi_line[den_column]:  # check to make sure this kpi has the is denominator param
-                filters[kpi_line[den_column]] = \
-                    [value.strip() for value in
-                     kpi_line[den_column.replace(type_base, value_base)].split(',')]  # get associated values
 
-        for key in filters.iterkeys():
-            if key not in relevant_scif.columns.tolist():
-                Log.error("{} is not a valid parameter type").format(key)
-                continue
-            if exclude:
-                relevant_scif = relevant_scif[~(relevant_scif[key].isin(filters[key]))]
+            # Step 2: Filter the self.scif by the columns required
+            column_filter_for_scif = ['pk', 'session_id', PRODUCT_TYPE, 'facings', 'facings_ign_stack'] + \
+                                     self.delete_filter_nan([numerator_param1, denominator_param1])
+
+            filtered_scif = self.scif[column_filter_for_scif]
+
+            #Step 3: Filter each perticular column by the required value
+
+            #3A.Logic for considering stacking or ignore stacking
+            if pd.isnull(ignore_stacking):
+                relevant_scif = filtered_scif.drop(columns = ['facings_ign_stack'])
+                relevant_scif = relevant_scif.rename(columns = {'facings': 'final_facings'})
+            elif ignore_stacking == 'Y':
+                relevant_scif = filtered_scif.drop(columns = ['facings'])
+                relevant_scif = relevant_scif.rename(columns={'facings_ign_stack': 'final_facings'})
+
+            #3B.Filters for the product type
+            relevant_scif = relevant_scif[relevant_scif[PRODUCT_TYPE].isin(product_type)]
+
+
+            #3C.Filter through the denominator param for the denominator value
+            if pd.isnull(denominator_param1):
+                denominator_scif = relevant_scif
             else:
-                relevant_scif = relevant_scif[relevant_scif[key].isin(filters[key])]
+                denominator_scif = relevant_scif[relevant_scif[denominator_param1].isin([denominator_value1])]
+
+
+            #3D.Filter through numerator param for the numerator value
+            if pd.isnull(numerator_param1):
+                numerator_scif =  denominator_scif
+            else:
+                numerator_scif = denominator_scif[denominator_scif[numerator_param1].isin(numerator_value1)]
+
+
+            session_id = numerator_scif['session_id']
+            numerator_sum_of_facings = numerator_scif['final_facings'].sum()
+            denominator_sum_of_facings = denominator_scif['final_facings'].sum()
+            result = numerator_sum_of_facings/denominator_sum_of_facings
+
+            a = 1
+
+
+        return
 
 
 
 
+    def sanitize_values(self, item):
+        if pd.isna(item):
+            return item
+        else:
+            items = [x.strip() for x in item.split(',')]
+            return items
 
-    # def calculate_sos(self):
-    #     for i, row in self.templates[SOS].iterrows():
-    #         kpi_name = row['KPI Name']
-    #         kpi_fk = self.common.get_kpi_fk_by_kpi_name(kpi_name)
-    #
-    #         kpi_type = row['KPI Type']
-    #
-    #         product_type = self.sanitize_values(row['product_type'])
-    #
-    #         num_param1 = self.sanitize_values(row['numerator param 1'])
-    #         num_value1 = self.sanitize_values(row['numerator value 1'])
-    #
-    #         den_param1 = self.sanitize_values(row['denominator param 1'])
-    #         den_value1 = self.sanitize_values(row['denominator value 1'])
-    #
-    #         filters = {'product_type':product_type, num_param1:num_value1}
-    #         filters = self.delete_filter_nan(filters)
-    #
-    #         general_filters = {den_param1:den_value1, 'product_type': product_type}
-    #         general_filters = self.delete_filter_nan(general_filters)
-    #
-    #
-    # def sanitize_values(self, item):
-    #     if pd.isna(item):
-    #         return item
-    #     else:
-    #         items = [x.strip() for x in item.split(',')]
-    #         return items
-    #
+    def delete_filter_nan(self, filters):
+        filters = [filter for filter in filters if str(filter) != 'nan']
+        return filters
 
 
-
-# def calculate_main_kpi(self, main_line):
-    #     """
-    #     This function gets as line from the main_sheet, transfers it to the match function, and checks all of the
-    #     KPIs in the same name in the match sheet.
-    #     :param main_line: series from the template of the main_sheet.
-    #     """
-    #     # kpi_name = main_line[KPI_NAME]
-    #     # relevant_scif = self.scif
-    #     # result = self.calculate_kpi_by_type(main_line, relevant_scif)
-    #     #
-    #     # return result
-    #     pass
-    #
-    # # Determines the kpi to use by the defining the function. Comeback to define it
-    # def calculate_kpi_by_type(self, main_line, filtered_scif):
-    #     """
-    #     the function calculates all the kpis
-    #     :param main_line: one kpi line from the main template
-    #     :param filtered_scif:
-    #     :return: boolean, but it can be None if we don't want to write in the Database
-    #     """
-    #
-    #     # kpi_type = main_line[KPI_TYPE]
-    #     # relevant_template = self.templates[kpi_type]
-    #     # relevant_template = relevant_template[relevant_template[KPI_NAME] == main_line[KPI_NAME]]
-    #     # kpi_function = self.get_kpi_function(kpi_type)
-    #     #
-    #     #
-    #     pass
-    #
-    # #Come back to this function when you get relevant scif
-    # def calculate_sos(self, kpi_line, relevant_scif):
-    #     pass
-    #
-    # #Come back to this function when the finish the sos function
-    # def get_kpi_function(self, kpi_type):
-    #
-    #     if kpi_type == SOS:
-    #         pass
