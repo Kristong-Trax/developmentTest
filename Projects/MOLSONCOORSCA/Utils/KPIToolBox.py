@@ -1172,6 +1172,8 @@ class ToolBox:
         :param threshold: int
         """
         # print(kpi_name)
+        if numerator_result is False:
+            numerator_result = 0
         if not kpi_fk and kpi_name:
             kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_name)
         if isinstance(result, str):
