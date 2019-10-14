@@ -125,7 +125,7 @@ class ToolBox(GlobalSessionToolBox):
 
             # Step 2: Filter the self.scif by the columns required
             column_filter_for_scif = [PK, SESSION_ID, TEMPLATE_GROUP, PRODUCT_TYPE, FACINGS,
-                                      FACINGS_IGN_STACK, NUMERATOR_ENTITY, DENOMINATOR_ENTITY] + \
+                                      FACINGS_IGN_STACK] + \
                                      self.delete_filter_nan([numerator_param1, denominator_param1])
 
             filtered_scif = self.scif[column_filter_for_scif]
@@ -160,37 +160,29 @@ class ToolBox(GlobalSessionToolBox):
             # 4. Setting up numerator_id and denominator_id
 
             # 4A. Find the denominator_id
-            if denominator_param1.empty or denominator_scif.empty:
+            if pd.isnull(denominator_param1) or denominator_scif.empty:
                 denominator_id = self.scif[denominator_entity].mode()[0]
             else:
-                product_data_frame = self.all_products[[denominator_entity,denominator_param1, denominator_value1]]
-                product_data_frame = product_data_frame[product_data_frame[denominator_param1].isin(denominator_value1)]
+                product_data_frame = self.all_products[[denominator_entity,denominator_param1]]
+                product_data_frame = product_data_frame[product_data_frame[denominator_param1].isin([denominator_value1])]
                 denominator_id = product_data_frame[denominator_entity].mode()[0]
 
             #4B. Find the numerator_id
-            if numerator_param1.empty or numerator_scif.empty:
+            if pd.isnull(numerator_param1) or numerator_scif.empty:
                 numerator_id = self.scif[numerator_entity].mode()[0]
             else:
-                product_data_frame = self.all_products[[numerator_entity, numerator_param1,denominator_value1]]
+                product_data_frame = self.all_products[[numerator_entity, numerator_param1]]
                 product_data_frame = product_data_frame[product_data_frame[numerator_param1].isin(numerator_value1)]
                 numerator_id = product_data_frame[numerator_entity].mode()[0]
 
 
-            a = 1
+
+            numerator_result = numerator_scif[FINAL_FACINGS].sum()
+            denominator_result = denominator_scif[FINAL_FACINGS].sum()
+            result = numerator_result / denominator_result
 
 
 
-
-
-
-            #
-            #
-            # numerator_result = numerator_scif[FINAL_FACINGS].sum()
-            # denominator_result = denominator_scif[FINAL_FACINGS].sum()
-            # result = numerator_result / denominator_result
-            #
-            #
-            #
             # self.common.write_to_db_result(kpi_fk, numerator_id=numerator_id,
             #                                numerator_result=numerator_result, denominator_id=denominator_id,
             #                                denominator_result=denominator_result,
