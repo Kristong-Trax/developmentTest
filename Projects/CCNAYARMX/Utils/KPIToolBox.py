@@ -30,9 +30,6 @@ from Projects.CCNAYARMX.Data.LocalConsts import Consts
 
 __author__ = 'krishnat'
 
-
-
-
 # Column Name
 KPI_NAME = 'KPI Name'
 TASK_TEMPLATE_GROUP = 'Task/ Template Group'
@@ -45,11 +42,11 @@ IGNORE_STACKING = 'Ignore Stacking'
 NUMERATOR_ENTITY = 'Numerator Entity'
 DENOMINATOR_ENTITY = 'Denominator Entity'
 
-
 # Sheet names
 SOS = 'SOS'
+BLOCK_TOGETHER = 'Block Together'
 
-#Scif Filters
+# Scif Filters
 BRAND_FK = 'brand_fk'
 FACINGS = 'facings'
 FACINGS_IGN_STACK = 'facings_ign_stack'
@@ -60,13 +57,9 @@ SESSION_ID = 'session_id'
 TEMPLATE_FK = 'template_fk'
 TEMPLATE_GROUP = 'template_group'
 
-
-
-
-
-#Read the sheet
-Sheets = [SOS]
-TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'CC Nayar Template v0.3 .xlsx')
+# Read the sheet
+Sheets = [SOS, BLOCK_TOGETHER]
+TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'CC Nayar Template v0.4 .xlsx')
 
 
 def log_runtime(description, log_start=False):
@@ -98,95 +91,92 @@ class ToolBox(GlobalSessionToolBox):
             self.templates[sheet] = pd.read_excel(TEMPLATE_PATH, sheet_name=sheet)
 
     def main_calculation(self):
-        self.calculate_sos
+        for i, row in self.templates[SOS].iterrows():
+            self.calculate_sos(row)
         return
 
-    @property
-    def calculate_sos(self):
-        for i, row in self.templates[SOS].iterrows():
-            # Step 1 Read the excel rows to proces the information
-            kpi_name = row[KPI_NAME]
-            kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_name)
+    def calculate_sos(self, row):
 
-            product_type = self.sanitize_values(row[PRODUCT_TYPE])
-            template_group = self.sanitize_values(row[TASK_TEMPLATE_GROUP])
+        # Step 1 Read the excel rows to process the information
+        kpi_name = row[KPI_NAME]
+        kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_name)
+        product_type = self.sanitize_values(row[PRODUCT_TYPE])
+        template_group = self.sanitize_values(row[TASK_TEMPLATE_GROUP])
+        ignore_stacking = row[IGNORE_STACKING]
 
-            ignore_stacking = row[IGNORE_STACKING]
+        numerator_param1 = row[NUMERATOR_PARAM_1]
+        numerator_value1 = self.sanitize_values(row[NUMERATOR_VALUE_1])
+        numerator_entity = row[NUMERATOR_ENTITY]
 
-            numerator_param1 = row[NUMERATOR_PARAM_1]
-            numerator_value1 = self.sanitize_values(row[NUMERATOR_VALUE_1])
-            numerator_entity = row[NUMERATOR_ENTITY]
+        denominator_param1 = row[DENOMINATOR_PARAM_1]
+        denominator_value1 = self.sanitize_values(row[DENOMINATOR_VALUE_1])
+        denominator_entity = row[DENOMINATOR_ENTITY]
 
-            denominator_param1 = row[DENOMINATOR_PARAM_1]
-            denominator_value1 = row[DENOMINATOR_VALUE_1]
-            denominator_entity = row[DENOMINATOR_ENTITY]
+        # Step 2: Filter the self.scif by the columns required
+        column_filter_for_scif = [PK, SESSION_ID, TEMPLATE_GROUP, PRODUCT_TYPE, FACINGS,
+                                  FACINGS_IGN_STACK] + \
+                                 self.delete_filter_nan([numerator_param1, denominator_param1]) + \
+                                 [row[NUMERATOR_ENTITY], row[DENOMINATOR_ENTITY]]
 
+        filtered_scif = self.scif[column_filter_for_scif]
 
+        # Step 3: Filter each perticular column by the required value
 
-            # Step 2: Filter the self.scif by the columns required
-            column_filter_for_scif = [PK, SESSION_ID, TEMPLATE_GROUP, PRODUCT_TYPE, FACINGS,
-                                      FACINGS_IGN_STACK] + \
-                                     self.delete_filter_nan([numerator_param1, denominator_param1])
+        # 3A.Logic for considering stacking or ignore stacking
+        if pd.isnull(ignore_stacking):
+            relevant_scif = filtered_scif.drop(columns=[FACINGS_IGN_STACK])
+            relevant_scif = relevant_scif.rename(columns={FACINGS: FINAL_FACINGS})
+        elif ignore_stacking == 'Y':
+            relevant_scif = filtered_scif.drop(columns=[FACINGS])
+            relevant_scif = relevant_scif.rename(columns={FACINGS_IGN_STACK: FINAL_FACINGS})
 
-            filtered_scif = self.scif[column_filter_for_scif]
+        # 3B.Filters for the product type and template_group
+        relevant_scif = relevant_scif[relevant_scif[PRODUCT_TYPE].isin(product_type)]
 
-            # Step 3: Filter each perticular column by the required value
+        relevant_scif = relevant_scif[relevant_scif[TEMPLATE_GROUP].isin(template_group)]
 
-            # 3A.Logic for considering stacking or ignore stacking
-            if pd.isnull(ignore_stacking):
-                relevant_scif = filtered_scif.drop(columns=[FACINGS_IGN_STACK])
-                relevant_scif = relevant_scif.rename(columns={FACINGS: FINAL_FACINGS})
-            elif ignore_stacking == 'Y':
-                relevant_scif = filtered_scif.drop(columns=[FACINGS])
-                relevant_scif = relevant_scif.rename(columns={FACINGS_IGN_STACK: FINAL_FACINGS})
+        # 3C.Filter through the denominator param for the denominator value
+        if pd.isnull(denominator_param1):
+            denominator_scif = relevant_scif
+        else:
+            denominator_scif = relevant_scif[relevant_scif[denominator_param1].isin(denominator_value1)]
 
-            # 3B.Filters for the product type and template_group
-            relevant_scif = relevant_scif[relevant_scif[PRODUCT_TYPE].isin(product_type)]
+        # 3D.Filter through numerator param for the numerator value
+        if pd.isnull(numerator_param1):
+            numerator_scif = denominator_scif
+        else:
+            numerator_scif = denominator_scif[denominator_scif[numerator_param1].isin(numerator_value1)]
 
-            relevant_scif = relevant_scif[relevant_scif[TEMPLATE_GROUP].isin(template_group)]
+        # 4. Setting up numerator_id and denominator_id
 
-            # 3C.Filter through the denominator param for the denominator value
-            if pd.isnull(denominator_param1):
-                denominator_scif = relevant_scif
-            else:
-                denominator_scif = relevant_scif[relevant_scif[denominator_param1].isin([denominator_value1])]
+        # 4A. Find the denominator_id
+        if pd.isnull(denominator_param1):
+            denominator_id = denominator_scif[denominator_entity].mode()[0]
+        else:
+            denominator_id = \
+                self.all_products[self.all_products[denominator_param1] == denominator_value1[0]][
+                    denominator_entity].mode()[0]
 
-            # 3D.Filter through numerator param for the numerator value
-            if pd.isnull(numerator_param1):
-                numerator_scif = denominator_scif
-            else:
-                numerator_scif = denominator_scif[denominator_scif[numerator_param1].isin(numerator_value1)]
+        # 4B. Find the numerator_id
+        if pd.isnull(numerator_param1) or numerator_scif.empty:
+            numerator_id = self.scif[numerator_entity].mode()[0]
+        else:
+            numerator_id = \
+                self.all_products[self.all_products[numerator_param1] == numerator_value1[0]][numerator_entity].mode()[
+                    0]
 
-            # 4. Setting up numerator_id and denominator_id
+        numerator_result = numerator_scif[FINAL_FACINGS].sum()
+        denominator_result = denominator_scif[FINAL_FACINGS].sum()
+        result = numerator_result / denominator_result
 
-            # 4A. Find the denominator_id
-            if pd.isnull(denominator_param1) or denominator_scif.empty:
-                denominator_id = self.scif[denominator_entity].mode()[0]
-            else:
-                product_data_frame = self.all_products[[denominator_entity,denominator_param1]]
-                product_data_frame = product_data_frame[product_data_frame[denominator_param1].isin([denominator_value1])]
-                denominator_id = product_data_frame[denominator_entity].mode()[0]
+        # 5. Save the results in the database
+        self.common.write_to_db_result(kpi_fk, numerator_id=numerator_id,
+                                       numerator_result=numerator_result, denominator_id=denominator_id,
+                                       denominator_result=denominator_result,
+                                       result=result)
 
-            #4B. Find the numerator_id
-            if pd.isnull(numerator_param1) or numerator_scif.empty:
-                numerator_id = self.scif[numerator_entity].mode()[0]
-            else:
-                product_data_frame = self.all_products[[numerator_entity, numerator_param1]]
-                product_data_frame = product_data_frame[product_data_frame[numerator_param1].isin(numerator_value1)]
-                numerator_id = product_data_frame[numerator_entity].mode()[0]
-
-
-
-            numerator_result = numerator_scif[FINAL_FACINGS].sum()
-            denominator_result = denominator_scif[FINAL_FACINGS].sum()
-            result = numerator_result / denominator_result
-
-
-
-            # self.common.write_to_db_result(kpi_fk, numerator_id=numerator_id,
-            #                                numerator_result=numerator_result, denominator_id=denominator_id,
-            #                                denominator_result=denominator_result,
-            #                                result=result)
+    def calculate_block_together(self, row):
+        pass
 
     def sanitize_values(self, item):
         if pd.isna(item):
