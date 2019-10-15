@@ -110,6 +110,8 @@ class BATRU_SANDToolBox:
     ASSORTMENT_DISTRIBUTION_AVAILABILITY = 'Assortment Distribution - Availability'
     ASSORTMENT_DISTRIBUTION_DISTRIBUTION = 'Assortment Distribution - Distribution'
     ASSORTMENT_DISTRIBUTION_OOS = 'Assortment Distribution - OOS'
+    CONTRACTED_SKU = 'Contracted - SKU'
+    CUSTOM_OSA_RESULT_SCORE_TYPE = 'CUSTOM_OSA'
 
     def __init__(self, data_provider, output):
         self.k_engine = BaseCalculationsScript(data_provider, output)
@@ -206,8 +208,36 @@ class BATRU_SANDToolBox:
         self.own_manufacturer_fk = int(self.data_provider.own_manufacturer.param_value.values[0])
         self.common = Common(self.data_provider)
         self.new_static_kpis = self.common.kpi_static_data[['pk', StaticKpis.TYPE]]
+        self.kpi_result_values = self.get_kpi_result_values_df()
+        self.kpi_score_values = self.get_kpi_score_values_df()
 
 # init functions
+
+    def get_kpi_result_values_df(self):
+        query = BATRU_SANDQueries.get_kpi_result_values()
+        query_result = pd.read_sql_query(query, self.rds_conn.db)
+        query_result['value_fk_map'] = query_result.apply(lambda x: {x['result_value']: x['result_fk']}, axis=1)
+        result_types = query_result['result_type'].unique().tolist()
+        result_dict = {}
+        for res_type in result_types:
+            relevant_res_values = query_result[query_result['result_type'] == res_type]['value_fk_map'].values.tolist()
+            result_dict[res_type] = {}
+            for res_value in relevant_res_values:
+                result_dict[res_type].update(res_value)
+        return result_dict
+
+    def get_kpi_score_values_df(self):
+        query = BATRU_SANDQueries.get_kpi_score_values()
+        query_result = pd.read_sql_query(query, self.rds_conn.db)
+        query_result['value_fk_map'] = query_result.apply(lambda x: {x['score_value']: x['score_fk']}, axis=1)
+        score_types = query_result['score_type'].unique().tolist()
+        score_dict = {}
+        for score_type in score_types:
+            relevant_score_values = query_result[query_result['score_type'] == score_type]['value_fk_map'].values.tolist()
+            score_dict[score_type] = {}
+            for score_value in relevant_score_values:
+                score_dict[score_type].update(score_value)
+        return score_dict
 
     def encode_data_frames(self):
         self.kpi_static_data['kpi_name'] = self.encode_column_in_df(
@@ -364,6 +394,15 @@ class BATRU_SANDToolBox:
                            'NA': '5. NA'}
         last_cycles_products = self.calculate_history_based_assortment(self.session_fk)
         contracted_products = self.tools.get_store_assortment_for_store(self.store_id).values()
+
+        #new tables
+        visit_summary_parent = self.common.get_kpi_fk_by_kpi_type(ASSORTMENT_DISTRIBUTION)
+        identifier_parent_visit_sum = self.common.get_dictionary(kpi_fk=visit_summary_parent)
+        contracted_fk = self.common.get_kpi_fk_by_kpi_type(self.CONTRACTED)
+        identifier_parent_contracted = self.common.get_dictionary(kpi_fk=contracted_fk)
+        contracted_sku_fk = self.common.get_kpi_fk_by_kpi_type(self.CONTRACTED_SKU)
+        new_sku_results = {}
+
         for template_group in [EXIT_TEMPLATE_GROUP, ENTRY_TEMPLATE_GROUP]:
             session_product_fks = self.scif.loc[(self.scif['dist_sc'] == 1) &
                                                 (self.scif['template_group'] == template_group.encode('utf-8'))][
@@ -473,6 +512,14 @@ class BATRU_SANDToolBox:
                                                         kpi_set_name=set_for_api,
                                                         kpi_name=contracted_api_mapping[template_group],
                                                         atomic_kpi_name=product)
+                        # new tables
+                        new_sku_results[product_fk] = {} if product_fk not in new_sku_results.keys() \
+                                                                            else new_sku_results[product_fk]
+                        if template_group == EXIT_TEMPLATE_GROUP:
+                            new_sku_results[product_fk]['score'] = self.kpi_score_values[self.CUSTOM_OSA_RESULT_SCORE_TYPE][result]
+                        if template_group == ENTRY_TEMPLATE_GROUP:
+                            new_sku_results[product_fk]['result'] = self.kpi_result_values[self.CUSTOM_OSA_RESULT_SCORE_TYPE][result]
+
                 if assortment == total_assortment:
                     oos = round((sum(oos_rest_score_list.values()) /
                                  float(len(total_assortment))) * 100, 1)
@@ -498,6 +545,13 @@ class BATRU_SANDToolBox:
                                                     kpi_set_name=set_for_api_aggregations,
                                                     kpi_name=contracted_api_mapping[template_group],
                                                     atomic_kpi_name=self.ASSORTMENT_DISTRIBUTION_DISTRIBUTION)
+                    # new tables - lvl 0
+                    if template_group == EXIT_TEMPLATE_GROUP:
+                        self.common.write_to_db_result(fk=visit_summary_parent, numerator_id=self.own_manufacturer_fk,
+                                                       denominator_id=self.store_id, result=availability,
+                                                       score=availability, should_enter=True,
+                                                       identifier_result=identifier_parent_visit_sum)
+
                 elif assortment == contracted_products:
                     if contracted_products:
                         total_contract = len(dist_score_list)
@@ -527,10 +581,42 @@ class BATRU_SANDToolBox:
                                                     kpi_set_name=set_for_api_aggregations,
                                                     kpi_name=contracted_api_mapping[template_group],
                                                     atomic_kpi_name=self.CONTRACTED_DISTRIBUTION)
-
+                    #new tables - lvl 1
+                    if template_group == EXIT_TEMPLATE_GROUP:
+                        self.common.write_to_db_result(fk=contracted_fk, numerator_id=self.own_manufacturer_fk,
+                                                       denominator_id=self.store_id, result=availability,
+                                                       numerator_result=distribution, denominator_result=oos,
+                                                       should_enter=True,
+                                                       identifier_parent=identifier_parent_visit_sum,
+                                                       identifier_result=identifier_parent_contracted)
                 else:
                     pass
+
+        #new tables - lvl 2
+        for product_fk, product_results in new_sku_results.items():
+            self.common.write_to_db_result(fk=contracted_sku_fk, numerator_id=product_fk, denominator_id=self.store_id,
+                                           result=product_results['result'], score=product_results['score'],
+                                           identifier_parent=identifier_parent_contracted, should_enter=True)
         return
+
+    # new tables - remove if not necessary
+    # def get_kpi_result_value_pk_by_value(self, value, result_type):
+    #     pk = None
+    #     result_df = self.kpi_result_values[self.kpi_result_values]
+    #     try:
+    #         pk = self.kpi_result_values[self.kpi_result_values['value'] == value]['pk'].values[0]
+    #     except:
+    #         Log.error('Value {} does not exist for result type {}'.format(value, result_type))
+    #     return pk
+    #
+    # def get_kpi_score_value_pk_by_value(self, value, score_type):
+    #     pk = None
+    #     try:
+    #         pk = self.kpi_score_values[self.kpi_score_values['value'] == value]['pk'].values[0]
+    #     except:
+    #         Log.error('Value {} does not exist for score type {}'.format(value, score_type))
+    #     return pk
+
 
     def calculate_history_based_assortment(self, session_id, required_template_group=None):
         """
