@@ -10,6 +10,7 @@ from KPIUtils_v2.Utils.Consts import GlobalConsts, DataProvider as DataProviderC
 from KPIUtils_v2.Utils.Consts.DataProvider import ProductsConsts, TemplatesConsts
 from KPIUtils_v2.Utils.Consts.DB import SessionResultsConsts
 from KPIUtils_v2.Calculations.SequenceCalculationsV2 import Sequence
+from KPIUtils_v2.Calculations.CalculationsUtils.Constants import AdditionalAttr
 
 __author__ = 'limorc'
 
@@ -196,7 +197,7 @@ class GSKSGToolBox:
             if self.store_info[store_info_col][0].encode(GlobalConsts.HelperConsts.UTF8) == df_param or df_param == '':
                 return True
         if isinstance(df_param, type(None)):
-            return False
+            return True
         return False
 
     def display_distribution(self, display_name, category_fk, category_targets, parent_identifier, kpi_name,
@@ -378,7 +379,7 @@ class GSKSGToolBox:
         passed_sequences_score, total_weight, total_passed_counter = 0, 0, 0
         for i, sequence in sequence_targets.iterrows():
             population, location, sequence_attributes = self._prepare_data_for_sequence_calculation(sequence)
-            sequence_result = self.sequence.sequence_calculation(population, location, sequence_attributes)
+            sequence_result = self.sequence.calculate_sequence(population, location, sequence_attributes)
             score, weight = self._save_sequence_results_to_db(sequence_kpi_fk, sequence_sku_kpi_fk, sequence,
                                                               sequence_result)
             passed_sequences_score += score
@@ -386,17 +387,18 @@ class GSKSGToolBox:
             total_passed_counter += 1 if score else 0
         self._save_sequence_main_level_to_db(sequence_kpi_fk, planogram_identifier, cat_fk, total_passed_counter,
                                              len(targets), total_weight)
-        return passed_sequences_score, total_weight
+        return passed_sequences_score, total_weight*10
 
     @staticmethod
     def _prepare_data_for_sequence_calculation(sequence_params):
         """
-        This method gets the relevant sequ
+        This method gets the relevant targets per sequence and returns the sequence params for calculation.
         """
         population = {ProductsConsts.PRODUCT_FK: sequence_params[ProductsConsts.PRODUCT_FK]}
         location = {TemplatesConsts.TEMPLATE_GROUP: sequence_params[TemplatesConsts.TEMPLATE_GROUP]}
-        additional_attributes = {'strict_mode': sequence_params['strict_mode'],
-                                 'include_stacking': sequence_params['include_stacking'], 'check_all_sequences': True}
+        additional_attributes = {AdditionalAttr.STRICT_MODE: sequence_params['strict_mode'],
+                                 AdditionalAttr.INCLUDE_STACKING: sequence_params['include_stacking'],
+                                 AdditionalAttr.CHECK_ALL_SEQUENCES: True}
         return population, location, additional_attributes
 
     def _extract_target_params(self, sequence_params):
@@ -411,13 +413,12 @@ class GSKSGToolBox:
         """
         This method saves the top sequence level to DB.
         """
-        gsk_benchmark = 0.8
         score = num_res / float(den_res) if den_res else 0
-        result = weight if score >= gsk_benchmark else 0
+        result = weight if score >= Consts.GSK_BENCHMARK else 0
         self.common.write_to_db_result(fk=kpi_fk, numerator_id=cat_fk, numerator_result=num_res,
                                        result=result, denominator_id=self.store_id, denominator_result=den_res,
-                                       score=score, weight=weight, target=gsk_benchmark, identifier_result=kpi_fk,
-                                       identifier_parent=planogram_identifier, should_enter=True)
+                                       score=score, weight=weight, target=Consts.GSK_BENCHMARK,  should_enter=True,
+                                       identifier_result=kpi_fk, identifier_parent=planogram_identifier)
 
     def _save_sequence_results_to_db(self, kpi_fk, parent_kpi_fk, sequence_params, sequence_results):
         """
