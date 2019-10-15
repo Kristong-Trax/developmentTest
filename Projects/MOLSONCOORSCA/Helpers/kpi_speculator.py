@@ -37,8 +37,7 @@ class AtomicSpeculator():
 
 
     def run(self):
-        # pk = 30000
-        pk = max(self.kpi2_table['pk']) + 1
+        pk = 30000
         for i, row in self.template.iterrows():
             kpi_base = row['KPI Name']
             for i, lvl in enumerate([x.strip() for x in row['KPI Ganularity'].split(',')][::-1]):
@@ -53,9 +52,9 @@ class AtomicSpeculator():
                     kpi = kpi.split('-')[0].strip() #  the exceptions to the rules :(
                 self.update_kpi2(kpi, pk, family, num, den, result, 1, 0)
 
-                if kpi not in self.kpi2_set:
-                    self.insert_into_kpi2(kpi, pk, family, num, den, result, 1, 0)
-                    pk += 1
+                # if kpi not in self.kpi2_set:
+                    # self.insert_into_kpi2(kpi, pk, family, num, den, result, 1, 0)
+                    # pk += 1
         for fam in set(self.template['KPI Type']):
             if fam not in self.kpi2_set:
                 self.insert_into_kpi2(fam, pk, family, 3, 5, 'Null', 1, 0)

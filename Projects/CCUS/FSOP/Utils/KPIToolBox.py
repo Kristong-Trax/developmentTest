@@ -222,12 +222,7 @@ class FSOPToolBox:
                                            denominator_id=self.store_id,
                                            denominator_result=0, result=ratio, score=score)
 
-    def sanitize_values(self, item):
-        if pd.isna(item):
-            return item
-        else:
-            items = [x.strip() for x in item.split(',')]
-            return items
+
 
     def delete_filter_nan(self, filters):
         for key in filters.keys():
