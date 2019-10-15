@@ -112,6 +112,9 @@ class BATRU_SANDToolBox:
     ASSORTMENT_DISTRIBUTION_OOS = 'Assortment Distribution - OOS'
     CONTRACTED_SKU = 'Contracted - SKU'
     CUSTOM_OSA_RESULT_SCORE_TYPE = 'CUSTOM_OSA'
+    ASSORTMENT_MR = 'Assortment MR'
+    PRICING_MR = 'Pricing MR'
+    PRICE_SKU = 'Price - SKU'
 
     def __init__(self, data_provider, output):
         self.k_engine = BaseCalculationsScript(data_provider, output)
@@ -396,7 +399,7 @@ class BATRU_SANDToolBox:
         contracted_products = self.tools.get_store_assortment_for_store(self.store_id).values()
 
         #new tables
-        visit_summary_parent = self.common.get_kpi_fk_by_kpi_type(ASSORTMENT_DISTRIBUTION)
+        visit_summary_parent = self.common.get_kpi_fk_by_kpi_type(self.ASSORTMENT_MR)
         identifier_parent_visit_sum = self.common.get_dictionary(kpi_fk=visit_summary_parent)
         contracted_fk = self.common.get_kpi_fk_by_kpi_type(self.CONTRACTED)
         identifier_parent_contracted = self.common.get_dictionary(kpi_fk=contracted_fk)
@@ -545,12 +548,6 @@ class BATRU_SANDToolBox:
                                                     kpi_set_name=set_for_api_aggregations,
                                                     kpi_name=contracted_api_mapping[template_group],
                                                     atomic_kpi_name=self.ASSORTMENT_DISTRIBUTION_DISTRIBUTION)
-                    # new tables - lvl 0
-                    if template_group == EXIT_TEMPLATE_GROUP:
-                        self.common.write_to_db_result(fk=visit_summary_parent, numerator_id=self.own_manufacturer_fk,
-                                                       denominator_id=self.store_id, result=availability,
-                                                       score=availability, should_enter=True,
-                                                       identifier_result=identifier_parent_visit_sum)
 
                 elif assortment == contracted_products:
                     if contracted_products:
@@ -589,6 +586,10 @@ class BATRU_SANDToolBox:
                                                        should_enter=True,
                                                        identifier_parent=identifier_parent_visit_sum,
                                                        identifier_result=identifier_parent_contracted)
+                        self.common.write_to_db_result(fk=visit_summary_parent, numerator_id=self.own_manufacturer_fk,
+                                                       denominator_id=self.store_id, result=availability,
+                                                       score=availability, should_enter=True,
+                                                       identifier_result=identifier_parent_visit_sum)
                 else:
                     pass
 
@@ -899,14 +900,32 @@ class BATRU_SANDToolBox:
             self.merged_additional_data = self.merged_additional_data.loc[
                 self.merged_additional_data['template_name'] == EFFICIENCY_TEMPLATE_NAME.encode('utf-8')]
             if not self.merged_additional_data.empty:
+                # new tables
+                price_top_kpi = self.common.get_kpi_fk_by_kpi_type(self.PRICING_MR)
+                identifier_parent_top_kpi = self.common.get_dictionary(kpi_fk=price_top_kpi)
+                mob_price_monitor_fk = self.common.get_kpi_fk_by_kpi_type(MOBILE_PRICE_MONITORING)
+                identifier_parent_mob_price_monitor = self.common.get_dictionary(kpi_fk=mob_price_monitor_fk)
+
                 score = self.calculate_fulfilment(monitored_sku['product_ean_code_lead'])
                 efficiency_score = self.calculate_efficiency()
                 self.get_raw_data()
-                self.set_p2_sku_mobile_results(monitored_sku)
+                self.set_p2_sku_mobile_results(monitored_sku, identifier_parent_mob_price_monitor)
                 if score or score == 0:
                     self.write_to_db_result(set_fk, format(score, '.2f'), self.LEVEL1)
                     self.write_to_db_result(fk=mobile_set_fk, result=format(score, '.2f'), level=self.LEVEL1,
                                             score_2=format(efficiency_score, '.2f'))
+
+                    #new tables - lvl 0 and 1
+                    self.common.write_to_db_result(fk=price_top_kpi, numerator_id=self.own_manufacturer_fk,
+                                                   denominator_id=self.store_id, result=round(score, 2),
+                                                   score=round(score, 2), identifier_result=identifier_parent_top_kpi,
+                                                   should_enter=True)
+                    self.common.write_to_db_result(fk=mob_price_monitor_fk, numerator_id=self.own_manufacturer_fk,
+                                                   denominator_id=self.store_id, result=round(score, 2),
+                                                   score=round(efficiency_score, 2),
+                                                   identifier_parent=identifier_parent_top_kpi,
+                                                   identifier_result=identifier_parent_mob_price_monitor,
+                                                   should_enter=True)
 
     def get_sku_monitored(self, state):
         # monitored_skus_raw = self.get_custom_template(P2_PATH, 'SKUs')
@@ -1038,10 +1057,12 @@ class BATRU_SANDToolBox:
         self.write_to_db_result_for_api(score=None, level=self.LEVEL1,
                                         level3_score=None, kpi_set_name=P2_SET_DATE)
 
-    def set_p2_sku_mobile_results(self, monitored_sku):
+    def set_p2_sku_mobile_results(self, monitored_sku, identifier_parent):
         new_products = False
         set_name = MOBILE_PRICE_MONITORING
         kpi_fk = MOBILE_PRICE_MONITORING_KPI_FK
+        #new tables
+        price_sku_fk = self.common.get_kpi_fk_by_kpi_type(self.PRICE_SKU)
         try:
             existing_skus = self.all_products[(self.all_products['product_type'].isin([OTHER, SKU, POSM])) &
                                               (self.all_products['product_ean_code'].isin(monitored_sku['product_ean_code_lead'].values))]
@@ -1064,6 +1085,8 @@ class BATRU_SANDToolBox:
             try:
                 product_name = self.all_products[self.all_products['product_ean_code'] == row.product_ean_code_lead][
                     'product_short_name'].drop_duplicates().values[0]
+                product_fk = self.all_products[self.all_products['product_ean_code'] == row.product_ean_code_lead][
+                    'product_fk'].drop_duplicates().values[0]
             except Exception as e:
                 Log.debug('Product ean {} is not defined in the DB'.format(row.product_ean_code))
                 continue
@@ -1098,6 +1121,11 @@ class BATRU_SANDToolBox:
 
                 self.write_to_db_result(fk=kpi_fk, result=result,
                                         level=self.LEVEL3, score=score, result_2=result2)
+                #new tables - lvl 3
+                date_value = round(float(result2), 4) if result2 != '0' else 0
+                self.common.write_to_db_result(fk=price_sku_fk, numerator_id=product_fk, denominator_id=self.store_id,
+                                               numerator_result=score, score=date_value, result=result,
+                                               identifier_parent=identifier_parent, should_enter=True)
             except Exception as e:
                 Log.error('{}'.format(e))
 
