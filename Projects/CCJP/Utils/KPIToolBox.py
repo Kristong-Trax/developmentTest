@@ -1,3 +1,5 @@
+from __builtin__ import unicode
+
 import pandas as pd
 import math
 import numpy as np
@@ -69,15 +71,25 @@ class ToolBox(GlobalSessionToolBox):
         """
         This function calculates the KPI results.
         """
+        red_score_dict = pd.DataFrame()
+        unique_sku_sos = pd.DataFrame()
+
         assortment_store_dict = self.availability_store_function()
         assortment_category_dict = self.availability_category_function()
         facings_sos_whole_store_dict = self.facings_sos_whole_store_function()
         facings_sos_by_category_dict = self.facings_sos_by_category_function()
         point_of_store_dict = self.point_of_connection()
 
-        red_score_dict = self.calculate_red_score(facings_sos_whole_store_dict,
-                                                  point_of_store_dict,
-                                                  assortment_store_dict)
+        kpi_names = self.get_kpi_params()
+
+        for row_num, row_data in kpi_names.iterrows():
+            kpi_name = row_data['kpi_name']
+            if kpi_name == "CCJP_RED_SCORE":
+                red_score_dict = self.calculate_red_score(facings_sos_whole_store_dict,
+                                                          point_of_store_dict,
+                                                          assortment_store_dict, row_data)
+            elif kpi_name == 'CCJP_UNIQUE_DIST_OWN_MANU':
+                unique_sku_sos = self.calculate_unique_sku_sos(row_data)
 
         self.common.save_json_to_new_tables(assortment_store_dict)
         self.common.save_json_to_new_tables(assortment_category_dict)
@@ -101,6 +113,11 @@ class ToolBox(GlobalSessionToolBox):
             Log.warning('Scene item facts is empty for this session')
         else:
             self.common.save_json_to_new_tables(red_score_dict)
+
+        if unique_sku_sos is None:
+            Log.warning('Scene item facts is empty for this session')
+        else:
+            self.common.save_json_to_new_tables(unique_sku_sos)
 
         self.common.commit_results_data()
         score = 0
@@ -757,35 +774,27 @@ class ToolBox(GlobalSessionToolBox):
         for dict_result in lst_results:
             if dict_result['fk'] == kpi_fk:
                 dict_result["weight"] = weight
-                dict_result["score"] = dict_result['result'] * weight
+                dict_result["score"] = float(dict_result['result']) * weight
                 return dict_result['score']
         return result
 
-    def calculate_red_score(self, facings_sos_whole_store_dict, point_of_store_dict, assortment_store_dict):
+    def calculate_red_score(self, facings_sos_whole_store_dict, point_of_store_dict, assortment_store_dict, kpi_data):
         dict_list = []
 
         sovi_kpi_fk = self.common.get_kpi_fk_by_kpi_type("CCJP_FSOS_Own_Manufacturer_In_Whole_Store")
         dist_kpi_fk = self.common.get_kpi_fk_by_kpi_type("CCJP_Dst_Manufacturer_in_Whole_Store")
         poc_kpi_fk = self.common.get_kpi_fk_by_kpi_type("CCJP_POC_SCORE_BY_TARGET")
 
-        if self.kpi_template.empty:
-            Log.warning("KPI Template is empty")
-            return
-
-        sovi_weightage = 0
-        poc_weightage = 0
-        dist_weightage = 0
-
-        for row_num, row_data in self.kpi_template.iterrows():
-            sovi_weightage = row_data['sovi_weightage']
-            poc_weightage = row_data['poc_weightage']
-            dist_weightage = row_data['dist_weightage']
+        sovi_weightage = kpi_data['sovi_weightage']
+        poc_weightage = kpi_data['poc_weightage']
+        dist_weightage = kpi_data['dist_weightage']
+        kpi_name = kpi_data['kpi_name']
 
         sovi_score = self.get_kpi_score(facings_sos_whole_store_dict, sovi_kpi_fk, sovi_weightage)
         dist_score = self.get_kpi_score(assortment_store_dict, dist_kpi_fk, dist_weightage)
         poc_score = self.get_kpi_score(point_of_store_dict, poc_kpi_fk, poc_weightage)
 
-        red_score_kpi_fk = self.common.get_kpi_fk_by_kpi_type("CCJP_RED_SCORE")
+        red_score_kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_name)
 
         red_score = sovi_score + dist_score + poc_score
         dict_list.append(self.build_dictionary_for_db_insert_v2(fk=red_score_kpi_fk,
@@ -795,6 +804,7 @@ class ToolBox(GlobalSessionToolBox):
                                                                 denominator_id=self.store_id,
                                                                 denominator_result=0,
                                                                 score=red_score))
+
         return dict_list
 
     def sos_manufacturer_level(self, df, identifier_parent, parent_filter, sos_policy,
@@ -896,12 +906,51 @@ class ToolBox(GlobalSessionToolBox):
         results = self.calculate_sos(df, filters_num, filter_sos_first_level, sos_policy)
         return self.create_db_result(kpi_product_pk, product_fk, kpi_denominator, results, identifier_parent)
 
+    def calculate_unique_sku_sos(self, kpi_data):
+        dict_list = []
+
+        if kpi_data.empty:
+            Log.warning('CCJP_UNIQUE_DIST_OWN_MANU not found in template/db')
+
+        kpi_unique_dist_fk = self.common.get_kpi_fk_by_kpi_type(kpi_data[Consts.KPI_NAME])
+
+        df_unique_sku_all = self.scif[(self.scif['facings'] > 0)]
+
+        if str(kpi_data[Consts.INCLUDE_EMPTY]).upper() == 'N':
+            df_unique_sku_all = df_unique_sku_all[(df_unique_sku_all['product_fk'] != Consts.EMPTY_PK) |
+                                                  (df_unique_sku_all['product_fk'] != Consts.GENERAL_EMPTY_PK)]
+
+        if str(kpi_data[Consts.INCLUDE_IRRELEVANT]).upper() == 'N':
+            df_unique_sku_all = df_unique_sku_all[df_unique_sku_all['product_fk'] != Consts.IRRELEVANT_PK]
+
+        df_unique_sku_own = df_unique_sku_all[df_unique_sku_all['manufacturer_fk'] == Consts.COCO_COLA_PK]
+
+        numerator_id = Consts.COCO_COLA_PK
+        numerator_result = len(df_unique_sku_own.index)
+
+        denominator_id = self.store_id
+        denominator_result = len(df_unique_sku_all.index)
+
+        try:
+            result = numerator_result / float(denominator_result)
+        except:
+            result = 0
+
+        dict_list.append(self.build_dictionary_for_db_insert_v2(fk=kpi_unique_dist_fk,
+                                                                numerator_id=numerator_id,
+                                                                numerator_result=numerator_result,
+                                                                result=result,
+                                                                denominator_id=denominator_id,
+                                                                denominator_result=denominator_result,
+                                                                score=0))
+        return dict_list
+
     def point_of_connection(self):
 
         if self.store_info.empty or self.poc_template.empty:
             return
 
-        policy = self.get_store_policy()
+        policy = self.get_poc_store_policy()
 
         if policy.empty:
             return
@@ -969,7 +1018,7 @@ class ToolBox(GlobalSessionToolBox):
                 'identifier_result': identifier_result,
                 'should_enter': True}
 
-    def get_store_policy(self):
+    def get_poc_store_policy(self):
         store_policy = pd.DataFrame()
         for row_num, row_data in self.poc_template.iterrows():
             filter_params = {}
@@ -992,3 +1041,37 @@ class ToolBox(GlobalSessionToolBox):
                 return row_data
 
         return store_policy
+
+    def get_kpi_params(self):
+        kpi_params = pd.DataFrame()
+        list_kpis = []
+        dict_kpi = {}
+        for row_num, row_data in self.kpi_template.iterrows():
+            filter_params = {}
+            for idx in range(1, 7):
+                try:
+                    if len(str(row_data["store_attr_" + str(idx) + "_name"]).strip()) != 0:
+                        filter_params[row_data["store_attr_" + str(idx) + "_name"]] = \
+                            row_data["store_attr_" + str(idx) + "_value"]
+                except Exception as ex:
+                    Log.info("Error:{} filter_params:{}".format(ex, filter_params))
+
+            kpi_params = self.store_info.loc[
+                (self.store_info[list(filter_params)] == pd.Series(filter_params)).all(axis=1)]
+
+            if kpi_params.empty:
+                Log.info("No KPIs")
+                continue
+            else:
+                dict_kpi['kpi_name'] = row_data['kpi_name']
+                dict_kpi[Consts.INCLUDE_EMPTY] = row_data[Consts.INCLUDE_EMPTY]
+                dict_kpi[Consts.INCLUDE_IRRELEVANT] = row_data[Consts.INCLUDE_IRRELEVANT]
+                dict_kpi[Consts.POC_WEIGHT] = row_data[Consts.POC_WEIGHT]
+                dict_kpi[Consts.SOVI_WEIGHT] = row_data[Consts.SOVI_WEIGHT]
+                dict_kpi[Consts.DIST_WEIGHT] = row_data[Consts.DIST_WEIGHT]
+                list_kpis.append(dict_kpi)
+                dict_kpi = {}
+
+        df = pd.DataFrame(list_kpis)
+
+        return df

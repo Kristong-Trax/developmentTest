@@ -18,6 +18,7 @@ def save_scene_item_facts_to_data_provider(data_provider, output):
     scene_item_facts.rename(columns={Fields.PRODUCT_FK: 'item_id', Fields.SCENE_FK: 'scene_id'}, inplace=True)
     data_provider.set_scene_item_facts(scene_item_facts)
 
+
 # if __name__ == '__main__':
 #     LoggerInitializer.init('CCJP calculations')
 #     Config.init()

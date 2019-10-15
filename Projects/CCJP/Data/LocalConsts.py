@@ -13,6 +13,10 @@ class Consts(object):
     CATEGORY = "Category"
     SUB_CATEGORY = "SubCategory"
 
+    POC_WEIGHT = 'poc_weightage'
+    DIST_WEIGHT = 'dist_weightage'
+    SOVI_WEIGHT = 'sovi_weightage'
+    KPI_NAME = 'kpi_name'
     MANUFACTURE_NAME = "CC"
     COUNTRY = "JP"
 
@@ -44,9 +48,15 @@ class Consts(object):
     DISTRIBUTED = 'DISTRIBUTED'
     EXTRA = 'EXTRA'
     COCO_COLA_PK = 58
+
+    EMPTY_PK = 445
+    GENERAL_EMPTY_PK = 0
+    IRRELEVANT_PK = 460
+
     #  flags - for use
     NO_INFO = 0
     INFO = 1
+
 
     # table columns filters
     PRODUCTS_COLUMNS = ['product_fk',
