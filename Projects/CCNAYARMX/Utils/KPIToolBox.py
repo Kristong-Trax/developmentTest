@@ -59,7 +59,7 @@ TEMPLATE_GROUP = 'template_group'
 
 # Read the sheet
 Sheets = [SOS, BLOCK_TOGETHER]
-TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'CC Nayar Template v0.4 .xlsx')
+TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'CCNayarTemplatev0.4 .xlsx')
 
 
 def log_runtime(description, log_start=False):
@@ -91,8 +91,9 @@ class ToolBox(GlobalSessionToolBox):
             self.templates[sheet] = pd.read_excel(TEMPLATE_PATH, sheet_name=sheet)
 
     def main_calculation(self):
-        for i, row in self.templates[SOS].iterrows():
-            self.calculate_sos(row)
+        for i, row in self.templates[BLOCK_TOGETHER].iterrows():
+            # self.calculate_sos(row)
+            self.calculate_block_together(row)
         return
 
     def calculate_sos(self, row):
@@ -131,21 +132,20 @@ class ToolBox(GlobalSessionToolBox):
             relevant_scif = relevant_scif.rename(columns={FACINGS_IGN_STACK: FINAL_FACINGS})
 
         # 3B.Filters for the product type and template_group
-        relevant_scif = relevant_scif[relevant_scif[PRODUCT_TYPE].isin(product_type)]
-
-        relevant_scif = relevant_scif[relevant_scif[TEMPLATE_GROUP].isin(template_group)]
+        final_relevant_scif = relevant_scif[relevant_scif[TEMPLATE_GROUP].isin(template_group)]
 
         # 3C.Filter through the denominator param for the denominator value
         if pd.isnull(denominator_param1):
-            denominator_scif = relevant_scif
+            denominator_scif = final_relevant_scif
         else:
-            denominator_scif = relevant_scif[relevant_scif[denominator_param1].isin(denominator_value1)]
+            denominator_scif = final_relevant_scif[final_relevant_scif[denominator_param1].isin(denominator_value1)]
 
         # 3D.Filter through numerator param for the numerator value
         if pd.isnull(numerator_param1):
             numerator_scif = denominator_scif
         else:
-            numerator_scif = denominator_scif[denominator_scif[numerator_param1].isin(numerator_value1)]
+        # Deal with this. It can be null.
+        # numerator_scif = denominator_scif[denominator_scif[numerator_param1].isin(numerator_value1)]
 
         # 4. Setting up numerator_id and denominator_id
 
@@ -167,7 +167,8 @@ class ToolBox(GlobalSessionToolBox):
 
         numerator_result = numerator_scif[FINAL_FACINGS].sum()
         denominator_result = denominator_scif[FINAL_FACINGS].sum()
-        result = numerator_result / denominator_result
+        result = (numerator_result / denominator_result) * 100
+        a = 1
 
         # 5. Save the results in the database
         self.common.write_to_db_result(kpi_fk, numerator_id=numerator_id,
@@ -176,7 +177,19 @@ class ToolBox(GlobalSessionToolBox):
                                        result=result)
 
     def calculate_block_together(self, row):
-        pass
+
+        # Step 1: Initialize the relevent columns from the Excel
+
+        #Returns common columns acro
+        self.standard_values_across_sheets()
+
+        product_type = self.sanitize_values(row[PRODUCT_TYPE])
+        ignore_stacking = row[IGNORE_STACKING]
+
+
+        numerator_entity = row[NUMERATOR_ENTITY]
+
+        denominator_entity = row[DENOMINATOR_ENTITY]
 
     def sanitize_values(self, item):
         if pd.isna(item):
@@ -188,3 +201,16 @@ class ToolBox(GlobalSessionToolBox):
     def delete_filter_nan(self, filters):
         filters = [filter for filter in filters if str(filter) != 'nan']
         return filters
+
+    def standard_values_across_sheets(self, row):
+        kpi_name = row[KPI_NAME]
+        kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_name)
+        template_group = self.sanitize_values(row[TASK_TEMPLATE_GROUP])
+
+        numerator_param1 = row[NUMERATOR_PARAM_1]
+        numerator_value1 = self.sanitize_values(row[NUMERATOR_VALUE_1])
+
+        denominator_param1 = row[DENOMINATOR_PARAM_1]
+        denominator_value1 = self.sanitize_values(row[DENOMINATOR_VALUE_1])
+
+        return kpi_name, kpi_fk, template_group, numerator_param1, numerator_value1, denominator_param1, denominator_value1
