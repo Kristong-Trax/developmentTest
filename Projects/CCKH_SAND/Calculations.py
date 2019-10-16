@@ -18,7 +18,7 @@ class CCKH_SANDCalculations(BaseCalculationsScript):
 
 
 # if __name__ == '__main__':
-#     LoggerInitializer.init('cckh_sand calculations')
+#     LoggerInitializer.init('cckh calculations')
 #     Config.init()
 #     project_name = 'cckh_sand'
 #     data_provider = KEngineDataProvider(project_name)
