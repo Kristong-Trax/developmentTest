@@ -67,3 +67,8 @@ class BATRU_SANDQueries(object):
                 FROM static.kpi_score_value sv
                 join static.kpi_score_type st on sv.kpi_score_type_fk = st.pk
                 """
+
+    @staticmethod
+    def get_test_query(session_uid):
+        return """
+            select * from probedata.session where session_uid = '{}'""".format(session_uid)

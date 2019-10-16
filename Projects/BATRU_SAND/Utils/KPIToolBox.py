@@ -115,6 +115,7 @@ class BATRU_SANDToolBox:
     ASSORTMENT_MR = 'Assortment MR'
     PRICING_MR = 'Pricing MR'
     PRICE_SKU = 'Price - SKU'
+    CUSTOM_DATE = 'CUSTOM_DATE'
 
     def __init__(self, data_provider, output):
         self.k_engine = BaseCalculationsScript(data_provider, output)
@@ -908,7 +909,11 @@ class BATRU_SANDToolBox:
 
                 score = self.calculate_fulfilment(monitored_sku['product_ean_code_lead'])
                 efficiency_score = self.calculate_efficiency()
-                self.get_raw_data()
+                # self.get_raw_data()
+                #new tables - add dates
+                dates_in_session = self.get_raw_data()
+                self.update_result_values_with_new_dates(dates_in_session)
+
                 self.set_p2_sku_mobile_results(monitored_sku, identifier_parent_mob_price_monitor)
                 if score or score == 0:
                     self.write_to_db_result(set_fk, format(score, '.2f'), self.LEVEL1)
@@ -926,6 +931,21 @@ class BATRU_SANDToolBox:
                                                    identifier_parent=identifier_parent_top_kpi,
                                                    identifier_result=identifier_parent_mob_price_monitor,
                                                    should_enter=True)
+
+    def update_result_values_with_new_dates(self, dates_in_session):
+        existing_date_values = set(self.kpi_result_values[self.CUSTOM_DATE].keys())
+        new_dates = dates_in_session.difference(existing_date_values)
+        # date_value_queries = []
+        self.connect_rds_if_disconnected()
+        cur = self.rds_conn.db.cursor()
+        for date in new_dates:
+            query = """ INSERT INTO static.kpi_result_value (value, kpi_result_type_fk) 
+                        values ('{}', 3)""".format(date)
+            cur.execute(query)
+        self.rds_conn.db.commit()
+        self.connect_rds_if_disconnected()
+        self.kpi_result_values = self.get_kpi_result_values_df()
+        self.kpi_score_values = self.get_kpi_score_values_df()
 
     def get_sku_monitored(self, state):
         # monitored_skus_raw = self.get_custom_template(P2_PATH, 'SKUs')
@@ -1028,6 +1048,7 @@ class BATRU_SANDToolBox:
         return (facing_of_recognized / float(facing_of_all)) * 100 if facing_of_all else 0
 
     def get_raw_data(self):
+        dates_in_session = set()
         for index in xrange(len(self.merged_additional_data)):
             row = self.merged_additional_data.iloc[index]
             product_for_db = row['product_ean_code_lead']
@@ -1043,6 +1064,7 @@ class BATRU_SANDToolBox:
                 formatted_date_for_db = '0'
             else:
                 formatted_date_for_db = row['fixed_date'].strftime('%m.%Y')
+            dates_in_session.add(formatted_date_for_db)
 
             self.write_to_db_result_for_api(score=price_value_for_db, level=self.LEVEL3, level3_score=None,
                                             kpi_set_name=P2_SET_PRICE,
@@ -1056,6 +1078,7 @@ class BATRU_SANDToolBox:
         # using P4 save function to save None without problems so will add set name to api.
         self.write_to_db_result_for_api(score=None, level=self.LEVEL1,
                                         level3_score=None, kpi_set_name=P2_SET_DATE)
+        return dates_in_session
 
     def set_p2_sku_mobile_results(self, monitored_sku, identifier_parent):
         new_products = False
@@ -1122,9 +1145,9 @@ class BATRU_SANDToolBox:
                 self.write_to_db_result(fk=kpi_fk, result=result,
                                         level=self.LEVEL3, score=score, result_2=result2)
                 #new tables - lvl 3
-                date_value = round(float(result2), 4) if result2 != '0' else 0
+                custom_score = self.kpi_score_values[self.CUSTOM_DATE][result2]
                 self.common.write_to_db_result(fk=price_sku_fk, numerator_id=product_fk, denominator_id=self.store_id,
-                                               numerator_result=score, score=date_value, result=result,
+                                               numerator_result=score, score=custom_score, result=result,
                                                identifier_parent=identifier_parent, should_enter=True)
             except Exception as e:
                 Log.error('{}'.format(e))
@@ -2385,3 +2408,11 @@ class BATRU_SANDToolBox:
             cur.execute(query)
             # print query
         self.rds_conn.db.commit()
+
+    def connect_rds_if_disconnected(self):
+        query = BATRU_SANDQueries.get_test_query(self.session_uid)
+        try:
+            test_query = pd.read_sql_query(query, self.rds_conn.db)
+        except Exception as e:
+            Log.warning('Lost connection with mysql or error in query. Connecting again {}'.format(repr(e)))
+            self.rds_conn.connect_rds()
