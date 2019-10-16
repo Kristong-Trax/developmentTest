@@ -75,10 +75,24 @@ class ToolBox(GlobalSessionToolBox):
         unique_sku_sos = pd.DataFrame()
 
         assortment_store_dict = self.availability_store_function()
+        if assortment_store_dict is None:
+            assortment_store_dict = []
+
         assortment_category_dict = self.availability_category_function()
+        if assortment_category_dict is None:
+            assortment_category_dict = []
+
         facings_sos_whole_store_dict = self.facings_sos_whole_store_function()
+        if facings_sos_whole_store_dict is None:
+            facings_sos_whole_store_dict = []
+
         facings_sos_by_category_dict = self.facings_sos_by_category_function()
+        if facings_sos_by_category_dict is None:
+            facings_sos_by_category_dict = []
+
         point_of_store_dict = self.point_of_connection()
+        if point_of_store_dict is None:
+            point_of_store_dict = []
 
         kpi_names = self.get_kpi_params()
 
