@@ -25,16 +25,17 @@ class Generator:
 
     @log_runtime('Total Calculations', log_start=True)
     def main_function(self):
-        if self.tool_box.scif.empty:
-            Log.warning('Distribution is empty for this session')
-        else:
-            for cat in self.SUPER_CATS:
-                template_path = self.find_template(cat)
-                # ru = ResultUploader(self.project_name, template_path)
-                # eu = EntityUploader(self.project_name, template_path)
-                # af = AtomicFarse(self.project_name, template_path)
-                self.tool_box.main_calculation(template_path)
-            self.common.commit_results_data()
+        pass
+        # if self.tool_box.scif.empty:
+        #     Log.warning('Distribution is empty for this session')
+        # else:
+        #     for cat in self.SUPER_CATS:
+        #         template_path = self.find_template(cat)
+        #         # ru = ResultUploader(self.project_name, template_path)
+        #         # eu = EntityUploader(self.project_name, template_path)
+        #         # af = AtomicFarse(self.project_name, template_path)
+        #         self.tool_box.main_calculation(template_path)
+        #     self.common.commit_results_data()
 
     def find_template(self, cat):
         ''' screw maintaining 4 hardcoded template paths... '''
