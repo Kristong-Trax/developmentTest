@@ -116,6 +116,9 @@ class BATRU_SANDToolBox:
     PRICING_MR = 'Pricing MR'
     PRICE_SKU = 'Price - SKU'
     CUSTOM_DATE = 'CUSTOM_DATE'
+    POSM_EQUIPMENT_PER_SCENE = 'POSM Equipment per Scene'
+    POSM_EQUIPMENT_PER_GROUP = 'POSM Equipment per Group'
+    POSM_EQUIPMENT_DISPLAY_IN_GROUP = 'POSM Equipment Display in Group'
 
     def __init__(self, data_provider, output):
         self.k_engine = BaseCalculationsScript(data_provider, output)
@@ -214,8 +217,47 @@ class BATRU_SANDToolBox:
         self.new_static_kpis = self.common.kpi_static_data[['pk', StaticKpis.TYPE]]
         self.kpi_result_values = self.get_kpi_result_values_df()
         self.kpi_score_values = self.get_kpi_score_values_df()
+        self.kpi_entity = self.get_kpi_entity_type()
+        self.custom_entity = self.get_and_update_custom_entity()
 
 # init functions
+
+    def get_kpi_entity_type(self):
+        query = BATRU_SANDQueries.get_kpi_entity_type_query()
+        kpi_entity = pd.read_sql_query(query, self.rds_conn.db)
+        return kpi_entity
+
+    def get_and_update_custom_entity(self):
+        query = BATRU_SANDQueries.get_custom_entities_query()
+        custom_entity = pd.read_sql_query(query, self.rds_conn.db)
+
+        # update values for p4 - display_group
+        posm_template = self.get_relevant_template_sheet(P4_TEMPLATE, 'Availability')
+        posm_template['Group Name'] = self.encode_column_in_df(posm_template, 'Group Name')
+        posm_template['Atomic KPI Name'] = self.encode_column_in_df(posm_template, 'Atomic KPI Name')
+        group_update_list = posm_template['Group Name'].unique().tolist()
+        custom_entity = self.update_custom_entity(custom_entity, group_update_list, 'display_group')
+
+        # update values for p4 - display_type
+        display_type_update_list = posm_template['Atomic KPI Name'].unique().tolist()
+        custom_entity = self.update_custom_entity(custom_entity, display_type_update_list, 'display_type_in_group')
+        return custom_entity
+
+    def update_custom_entity(self, custom_entity_df, update_list, entity_type):
+        ent_type_fk = self.kpi_entity[self.kpi_entity['name'] == entity_type]['pk'].values[0]
+        relevant_ce_values = custom_entity_df['name'].unique().tolist()
+        update_list = filter(lambda x: x not in relevant_ce_values, update_list)
+        self.connect_rds_if_disconnected()
+        cur = self.rds_conn.db.cursor()
+        for value in update_list:
+            query = """ INSERT INTO static.custom_entity (name, entity_type_fk) 
+                        values ('{}', {})""".format(value, ent_type_fk)
+            cur.execute(query)
+        self.rds_conn.db.commit()
+        self.connect_rds_if_disconnected()
+        query = BATRU_SANDQueries.get_custom_entities_query()
+        custom_entity = pd.read_sql_query(query, self.rds_conn.db)
+        return custom_entity
 
     def get_kpi_result_values_df(self):
         query = BATRU_SANDQueries.get_kpi_result_values()
@@ -579,7 +621,7 @@ class BATRU_SANDToolBox:
                                                     kpi_set_name=set_for_api_aggregations,
                                                     kpi_name=contracted_api_mapping[template_group],
                                                     atomic_kpi_name=self.CONTRACTED_DISTRIBUTION)
-                    #new tables - lvl 1
+                    #new tables - lvl 1 and lvl 0
                     if template_group == EXIT_TEMPLATE_GROUP:
                         self.common.write_to_db_result(fk=contracted_fk, numerator_id=self.own_manufacturer_fk,
                                                        denominator_id=self.store_id, result=availability,
@@ -1064,7 +1106,7 @@ class BATRU_SANDToolBox:
                 formatted_date_for_db = '0'
             else:
                 formatted_date_for_db = row['fixed_date'].strftime('%m.%Y')
-            dates_in_session.add(formatted_date_for_db)
+            dates_in_session.add('date: {}'.format(formatted_date_for_db))
 
             self.write_to_db_result_for_api(score=price_value_for_db, level=self.LEVEL3, level3_score=None,
                                             kpi_set_name=P2_SET_PRICE,
@@ -1145,7 +1187,7 @@ class BATRU_SANDToolBox:
                 self.write_to_db_result(fk=kpi_fk, result=result,
                                         level=self.LEVEL3, score=score, result_2=result2)
                 #new tables - lvl 3
-                custom_score = self.kpi_score_values[self.CUSTOM_DATE][result2]
+                custom_score = self.kpi_score_values[self.CUSTOM_DATE]['date: {}'.format(result2)]
                 self.common.write_to_db_result(fk=price_sku_fk, numerator_id=product_fk, denominator_id=self.store_id,
                                                numerator_result=score, score=custom_score, result=result,
                                                identifier_parent=identifier_parent, should_enter=True)
@@ -1852,6 +1894,8 @@ class BATRU_SANDToolBox:
         self.posm_in_session = self.tools.get_posm_availability()
         equipment_in_store = 0
         equipments = posm_template['KPI Display Name'].unique().tolist()
+        posm_status_fk= self.common.get_kpi_fk_by_kpi_type(POSM_AVAILABILITY)
+        identif_parent_posm_status = self.common.get_dictionary(kpi_fk=posm_status_fk)
         for equipment in equipments:
             if equipment in self.scif['additional_attribute_1'].unique().tolist():
                 equipment_template = posm_template.loc[posm_template['KPI Display Name'] == equipment]
@@ -1876,7 +1920,8 @@ class BATRU_SANDToolBox:
 
                     if not equipment_template.empty:
                         try:
-                            result = self.calculate_passed_equipments(equipment_template, equipment_to_db, scene)  # has equipment passed?
+                            result = self.calculate_passed_equipments(equipment_template, equipment_to_db, scene,
+                                                                      identif_parent_posm_status)  # has equipment passed?
                         except IndexError:
                             Log.debug('The KPI is not in the DB yet')
                             result = 0
@@ -1887,6 +1932,12 @@ class BATRU_SANDToolBox:
 
         set_score = '{}/{}'.format(score, equipment_in_store)
         self.write_to_db_result(set_fk, set_score, level=self.LEVEL1)
+
+        # new tables
+        score_new_tables = float(score)/equipment_in_store if equipment_in_store else 0
+        self.common.write_to_db_result(fk=posm_status_fk, numerator_id=self.own_manufacturer_fk,
+                                       denominator_id=self.store_id, score=score_new_tables, result=score_new_tables,
+                                       identifier_result=identif_parent_posm_status, should_enter=True)
 
         self.add_posms_not_assigned_to_scenes_in_template()
         # publish POSMs to API
@@ -1911,20 +1962,23 @@ class BATRU_SANDToolBox:
                                         DEFAULT_ATOMIC_NAME, row['display_name'].encode('utf8'))
             self.p4_posm_to_api[name] = 1
 
-    def calculate_passed_equipments(self, equipment_template, equipment_name, scene_fk):
+    def calculate_passed_equipments(self, equipment_template, equipment_name, scene_fk, identifier_parent_posm_status):
         """
         Gets the count for posm products in specific equipment.
         :param equipment_template: a data frame filtered by equipment
         :return: num of passed posm in group
         """
         self.p4_posm_to_api_products = {}
+        equipm_in_scene_kpi_fk = self.common.get_kpi_fk_by_kpi_type(self.POSM_EQUIPMENT_PER_SCENE)
+        identif_parent_equipm_in_scene = self.common.get_dictionary(kpi_fk=equipm_in_scene_kpi_fk, scene=scene_fk)
 
         groups = equipment_template['Group Name'].unique().tolist()
         group_counter = 0
         for group in groups:
             group_template = equipment_template.loc[equipment_template['Group Name'] == group]
             if not group_template.empty:
-                result = self.calculate_passed_groups(group_template, equipment_name, scene_fk)
+                result = self.calculate_passed_groups(group_template, equipment_name, scene_fk,
+                                                      identif_parent_equipm_in_scene)
             else:
                 result = 0
             group_counter = group_counter + 1 if result else group_counter
@@ -1943,9 +1997,18 @@ class BATRU_SANDToolBox:
         score = 1 if group_counter == len(groups) else 0
         threshold = len(groups)
         self.write_to_db_result(kpi_fk, result=group_counter, score_2=score, score_3=threshold, level=self.LEVEL2)
+
+        #new tables - lvl2
+        template_fk = self.scif[self.scif['scene_fk'] == scene_fk]['template_fk'].values[0]
+        custom_result = self.kpi_result_values['PRESENCE']['DISTRIBUTED'] if score == 1 else \
+            self.kpi_result_values['PRESENCE']['OOS']
+        self.common.write_to_db_result(fk=equipm_in_scene_kpi_fk, numerator_id=template_fk, denominator_id=scene_fk,
+                                       numerator_result=group_counter, denominator_result=threshold, score=score,
+                                       result = custom_result, identifier_parent=identifier_parent_posm_status,
+                                       identifier_result=identif_parent_equipm_in_scene, should_enter=True)
         return score
 
-    def calculate_passed_groups(self, group_template, equipment_name, scene_fk):
+    def calculate_passed_groups(self, group_template, equipment_name, scene_fk, identifier_equipment_parent):
         """
         Gets the count for posm products in specific equipment.
         :param group_template: a data frame filtered by group
@@ -1955,10 +2018,13 @@ class BATRU_SANDToolBox:
         """
         group_name = group_template['Group Name'].iloc[0]
         posm_counter = 0
+        group_kpi_fk = self.common.get_kpi_fk_by_kpi_type(self.POSM_EQUIPMENT_PER_GROUP)
+        identifier_group_parent = self.common.get_dictionary(kpi_fk=group_kpi_fk, group_name=group_name)
         for i in xrange(len(group_template)):
             row = group_template.iloc[i]
             if row['Product Name']:
-                result = self.calculate_specific_posm(row, equipment_name, group_name, scene_fk)
+                result = self.calculate_specific_posm(row, equipment_name, group_name, scene_fk,
+                                                      identifier_group_parent)
                 posm_counter += 1 if result else 0
         kpi_fk = self.kpi_static_data.loc[(self.kpi_static_data['kpi_set_name'] == POSM_AVAILABILITY) &
                                           (self.kpi_static_data['kpi_name'] == equipment_name) &
@@ -1966,7 +2032,22 @@ class BATRU_SANDToolBox:
         score = 1 if posm_counter == len(group_template) else 0
         self.write_to_db_result(kpi_fk, result=posm_counter, score=score,
                                 threshold=len(group_template), level=self.LEVEL3)
+
+        #new tables - lvl 3
+        group_fk = self.get_custom_entity_pk_by_value(group_name)
+        template_fk = self.scif[self.scif['scene_fk'] == scene_fk]['template_fk'].values[0]
+        custom_result = self.kpi_result_values['PRESENCE']['DISTRIBUTED'] if score == 1 else \
+                                    self.kpi_result_values['PRESENCE']['OOS']
+        self.common.write_to_db_result(fk=group_kpi_fk, numerator_id=group_fk, denominator_id=template_fk,
+                                       numerator_result=posm_counter, denominator_result=len(group_template),
+                                       result=custom_result, score=score, identifier_parent=identifier_equipment_parent,
+                                       identifier_result=identifier_group_parent, should_enter=True)
         return score
+
+    def get_custom_entity_pk_by_value(self, entity_value):
+        relevant_entity = self.custom_entity[self.custom_entity['name'] == entity_value]
+        entity_fk = relevant_entity['pk'].values[0] if len(relevant_entity) > 0 else 0
+        return entity_fk
 
     def get_posm_filters(self, filters, row):
         posm_filters = {}
@@ -1979,7 +2060,7 @@ class BATRU_SANDToolBox:
                     posm_filters[current_filter] = row[value]
         return posm_filters
 
-    def calculate_specific_posm(self, row, equipment_name, group_name, scene_fk):
+    def calculate_specific_posm(self, row, equipment_name, group_name, scene_fk, identifier_group_parent):
         atomic_name = row['Atomic KPI Name']
         posm_count = 0
         possible_products = row['Product Name'].replace(".jpg", "").replace(".png", "").split(", ")
@@ -2014,6 +2095,15 @@ class BATRU_SANDToolBox:
         except IndexError:
             Log.debug("KPI {}:{}:{}:{} was not found in static.".format(POSM_AVAILABILITY,
                                                                         equipment_name, group_name, atomic_name))
+        #new tables - lvl 4
+        display_in_group_kpi = self.common.get_kpi_fk_by_kpi_type(self.POSM_EQUIPMENT_DISPLAY_IN_GROUP)
+        group_fk = self.get_custom_entity_pk_by_value(group_name)
+        display_in_group_fk = self.get_custom_entity_pk_by_value(atomic_name)
+        custom_result = self.kpi_result_values['PRESENCE']['DISTRIBUTED'] if score == 1 else \
+                                    self.kpi_result_values['PRESENCE']['OOS']
+        self.common.write_to_db_result(fk=display_in_group_kpi, numerator_id=display_in_group_fk,
+                                       denominator_id=group_fk, result=custom_result, score=score,
+                                       identifier_parent=identifier_group_parent, should_enter=True)
         return 1 if posm_count else 0
 
     # P5 KPI

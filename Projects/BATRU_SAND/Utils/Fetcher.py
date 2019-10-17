@@ -72,3 +72,11 @@ class BATRU_SANDQueries(object):
     def get_test_query(session_uid):
         return """
             select * from probedata.session where session_uid = '{}'""".format(session_uid)
+
+    @staticmethod
+    def get_custom_entities_query():
+        return """SELECT * from static.custom_entity"""
+
+    @staticmethod
+    def get_kpi_entity_type_query():
+        return """ SELECT * from static.kpi_entity_type """
