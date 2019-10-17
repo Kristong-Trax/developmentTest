@@ -1,0 +1,4 @@
+
+class Consts(object):
+
+    pass

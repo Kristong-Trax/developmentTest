@@ -57,17 +57,12 @@ class ToolBox:
         self.products = self.data_provider[Data.PRODUCTS]
         self.store_info = self.data_provider[Data.STORE_INFO]
         self.store_id = self.data_provider[Data.STORE_FK]
-        self.match_product_in_scene = self.data_provider[Data.MATCHES]
-        self.full_mpis = self.match_product_in_scene.merge(self.products, on='product_fk', suffixes=['', '_p'])\
-                                                    .merge(self.scene_info, on='scene_fk', suffixes=['', '_s'])\
-                                                    .merge(self.templates, on='template_fk', suffixes=['', '_t'])
-        self.mpis = self.full_mpis[self.full_mpis['product_type'] != 'Irrelevant']
-        self.mpis = self.filter_df(self.mpis, Const.SOS_EXCLUDE_FILTERS, exclude=1)
+        self.mpis, self.full_mpis, self.mpip = pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
+        self.make_mpi()
         self.visit_date = self.data_provider[Data.VISIT_DATE]
         self.session_info = self.data_provider[Data.SESSION_INFO]
         self.scenes = self.scene_info['scene_fk'].tolist()
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
-        self.mpip = self.create_mpip()
         self.tmb_map = pd.read_excel(Const.TMB_MAP_PATH).set_index('Num Shelves').to_dict('index')
         self.template = {}
         self.super_cat = ''
@@ -83,6 +78,8 @@ class ToolBox:
             This function gets all the scene results from the SceneKPI, after that calculates every session's KPI,
             and in the end it calls "filter results" to choose every KPI and scene and write the results in DB.
         """
+        if self.scif.empty:  # indicates that there is no mpis data
+            return
 
         self.template = pd.read_excel(template_path, sheetname=None)
         self.super_cat = template_path.split('/')[-1].split(' ')[0].upper()
@@ -1560,6 +1557,19 @@ class ToolBox:
         # mpip = self.data_provider['mpip'].drop('pk', axis=1).merge(self.data_provider['prod_img'],
         #                                                           left_on='product_image_fk', right_on='pk')
         return mpip
+
+    def make_mpi(self):
+        try:
+            self.match_product_in_scene = self.data_provider[Data.MATCHES]
+            self.full_mpis = self.match_product_in_scene.merge(self.products, on='product_fk', suffixes=['', '_p']) \
+                                                        .merge(self.scene_info, on='scene_fk', suffixes=['', '_s']) \
+                                                        .merge(self.templates, on='template_fk', suffixes=['', '_t'])
+            self.mpis = self.full_mpis[self.full_mpis['product_type'] != 'Irrelevant']
+            self.mpis = self.filter_df(self.mpis, Const.SOS_EXCLUDE_FILTERS, exclude=1)
+            self.mpip = self.create_mpip()
+        except:
+            Log.warning('No mpis data found for session {}'.format(self.session_uid))
+            self.global_fail = 1
 
     def write_to_db(self, kpi_name, score=0, result=None, target=None, numerator_result=0,
                     denominator_result=None, numerator_id=999, denominator_id=999, failed=0):
