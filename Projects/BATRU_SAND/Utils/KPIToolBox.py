@@ -643,25 +643,6 @@ class BATRU_SANDToolBox:
                                            identifier_parent=identifier_parent_contracted, should_enter=True)
         return
 
-    # new tables - remove if not necessary
-    # def get_kpi_result_value_pk_by_value(self, value, result_type):
-    #     pk = None
-    #     result_df = self.kpi_result_values[self.kpi_result_values]
-    #     try:
-    #         pk = self.kpi_result_values[self.kpi_result_values['value'] == value]['pk'].values[0]
-    #     except:
-    #         Log.error('Value {} does not exist for result type {}'.format(value, result_type))
-    #     return pk
-    #
-    # def get_kpi_score_value_pk_by_value(self, value, score_type):
-    #     pk = None
-    #     try:
-    #         pk = self.kpi_score_values[self.kpi_score_values['value'] == value]['pk'].values[0]
-    #     except:
-    #         Log.error('Value {} does not exist for score type {}'.format(value, score_type))
-    #     return pk
-
-
     def calculate_history_based_assortment(self, session_id, required_template_group=None):
         """
         :param int session_id:
