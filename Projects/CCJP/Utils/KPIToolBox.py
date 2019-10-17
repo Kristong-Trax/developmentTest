@@ -72,8 +72,8 @@ class ToolBox(GlobalSessionToolBox):
         """
         This function calculates the KPI results.
         """
-        red_score_dict = pd.DataFrame()
-        unique_sku_sos = pd.DataFrame()
+        red_score_dict = []
+        unique_sku_sos = []
 
         assortment_store_dict = self.availability_store_function()
         if assortment_store_dict is None:
@@ -93,13 +93,20 @@ class ToolBox(GlobalSessionToolBox):
 
         kpi_names = self.get_kpi_params()
 
+        point_of_store_dict = []
         for row_num, row_data in kpi_names.iterrows():
             kpi_name = row_data[Consts.KPI_TYPE_COLUMN]
             if kpi_name == "CCJP_POC_COUNT_BY_STORE_AREA":
                 point_of_store_dict = self.point_of_connection()
                 if point_of_store_dict is None:
                     point_of_store_dict = []
-            elif kpi_name == "CCJP_RED_SCORE":
+
+        # Added additional loop because poc count is required for red score calculation.
+        # Entering the poc kpi in the excel sheet before red score kpi is not working always.
+
+        for row_num, row_data in kpi_names.iterrows():
+            kpi_name = row_data[Consts.KPI_TYPE_COLUMN]
+            if kpi_name == "CCJP_RED_SCORE":
                 red_score_dict = self.calculate_red_score(facings_sos_whole_store_dict,
                                                           point_of_store_dict,
                                                           assortment_store_dict, row_data)
