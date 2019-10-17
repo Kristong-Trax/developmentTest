@@ -460,3 +460,14 @@ class MARSRU_PRODKPIFetcher:
                 where pk = {}""".format(store_fk)
         store_num_1 = pd.read_sql_query(query, self.rds_conn.db)
         return store_num_1.values[0][0]
+
+    def get_scene_survey_responses(self, session_fk):
+        query = """
+                SELECT sr.scene_fk, sq.code, sr.selected_option_text, text_value, number_value
+                FROM probedata.scene_survey_response sr
+                JOIN static.survey_question sq ON sq.pk=sr.question_fk
+                JOIN probedata.scene sc ON sc.pk=sr.scene_fk
+                JOIN probedata.session ss ON ss.session_uid=sc.session_uid 
+                WHERE sr.delete_time IS NULL AND ss.pk = {} """.format(session_fk)
+        data = pd.read_sql_query(query, self.rds_conn.db)
+        return data

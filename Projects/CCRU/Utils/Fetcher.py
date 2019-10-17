@@ -296,3 +296,93 @@ class CCRUCCHKPIFetcher:
                            visit_date)
         data = pd.read_sql_query(query, self.rds_conn.db)
         return data.groupby(['anchor_product_fk']).agg({'product_fks': 'first', 'min_facings': 'first'}).to_dict()
+
+    def get_custom_entity(self, entity_type):
+        query = \
+            """
+            SELECT en.pk, en.name
+            FROM static.custom_entity en
+            JOIN static.kpi_entity_type et ON et.pk=en.entity_type_fk
+            WHERE et.name = '{}';
+            """.format(entity_type)
+        data = pd.read_sql_query(query, self.rds_conn.db)
+        return data
+
+    def get_kpi_level_2_fk(self, kpi_level_2_type):
+        query = \
+            """
+            SELECT pk FROM static.kpi_level_2
+            WHERE type = '{}';
+            """.format(kpi_level_2_type)
+        data = pd.read_sql_query(query, self.rds_conn.db)
+        return None if data.empty else data.values[0][0]
+
+    def get_kpi_operation_type_fk(self, kpi_operation_type):
+        query = \
+            """
+            SELECT pk FROM static.kpi_operation_type
+            WHERE operation_type = '{}';
+            """.format(kpi_operation_type)
+        data = pd.read_sql_query(query, self.rds_conn.db)
+        return None if data.empty else data.values[0][0]
+
+    def get_scene_item_prices(self, scene_list):
+        query = """
+                SELECT
+                scene_fk,
+                product_fk,
+                MIN(IF((is_promotion = 0 AND outlier <> (-2) AND outlier <> 2) 
+                        OR (is_promotion = 0 AND (ISNULL(outlier) OR outlier = 0)), price, NULL)) AS price
+                FROM (
+                    SELECT 
+                     mpip.product_fk AS product_fk
+                    ,mpip.probe_fk AS probe_fk
+                    ,pr.scene_fk AS scene_fk
+                    ,mpippav.value AS price
+                    ,mpippav.is_promotion AS is_promotion
+                    ,IF(ISNULL(tipr.soft_min) OR ISNULL(mpippav.value),NULL
+                        ,IF(mpippav.value > tipr.soft_min AND mpippav.value <= tipr.soft_max, 0 
+                            ,IF(mpippav.value > tipr.hard_min AND mpippav.value <= tipr.soft_min, -1
+                                ,IF(mpippav.value > tipr.soft_max AND mpippav.value <= tipr.hard_max, 1
+                                    ,IF(mpippav.value <= tipr.hard_min, -2
+                                        ,2
+                                        )
+                                    )
+                                )
+                            )
+                        ) 					 AS outlier
+                    FROM probedata.match_product_in_probe  mpip
+                    JOIN probedata.match_product_in_probe_price_attribute_value mpippav ON mpip.pk = mpippav.match_product_in_probe_fk
+                    JOIN probedata.probe pr ON pr.pk = mpip.probe_fk AND ISNULL(pr.delete_time)
+                    LEFT JOIN (
+                        SELECT 
+                             table1.pk
+                            ,table1.product_fk 						AS product_fk
+                            ,table1.soft_min 					 	AS soft_min
+                            ,table1.soft_max 					    AS soft_max
+                            ,table1.hard_min						AS hard_min
+                            ,table1.hard_max						AS hard_max
+                            ,table1.avg_price						AS avg_price
+                            ,table1.creation_time 				 	AS start_date
+                            ,IFNULL(table2.creation_time, NOW()) 	AS end_date
+                        FROM (
+                        SELECT ppr.*, @rownum := @rownum+1 AS rownum
+                        FROM static.product_price_range ppr
+                        JOIN (SELECT @rownum := 0) r
+                        ORDER BY ppr.product_fk,ppr.creation_time
+                        ) table1
+                        LEFT JOIN (
+                        SELECT ppr.*, @rownum2 := @rownum2+1 AS rownum2
+                        FROM static.product_price_range ppr
+                        JOIN (SELECT @rownum2 := -1) r
+                        ORDER BY ppr.product_fk,ppr.creation_time
+                        ) table2 ON table1.product_fk = table2.product_fk AND table1.rownum = table2.rownum2
+                    ) tipr ON tipr.product_fk = mpip.product_fk AND (mpip.creation_time BETWEEN tipr.start_date AND tipr.end_date)
+                    WHERE 1
+                    AND pr.scene_fk IN ({scene_list})
+                ) prices
+                GROUP BY scene_fk, product_fk
+                HAVING price IS NOT NULL;
+                """.format(scene_list=','.join([unicode(x) for x in scene_list]))
+        data = pd.read_sql_query(query, self.rds_conn.db)
+        return data

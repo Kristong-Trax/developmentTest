@@ -15,6 +15,7 @@ from KPIUtils.GeneralToolBox import GENERALToolBox
 from KPIUtils_v2.DB.CommonV2 import Common
 from KPIUtils.Calculations.Assortment import Assortment
 from KPIUtils.GlobalDataProvider.PsDataProvider import PsDataProvider
+from KPIUtils_v2.Utils.Decorators.Decorators import kpi_runtime
 
 __author__ = 'Elyashiv'
 
@@ -121,6 +122,7 @@ class INBEVCIINBEVCIToolBox:
             else:
                 continue
 
+    @kpi_runtime()
     def calculate_sos_aggregate_parent(self, sos_agg_identifier_parent):
         general_filters = {Const.PRODUCT_TYPE: (Const.EMPTY, Const.EXCLUDE_FILTER)}
         numerator_filters = {'manufacturer_fk': self.own_manuf_fk}
@@ -198,31 +200,37 @@ class INBEVCIINBEVCIToolBox:
 
         return sos_per_manufacturer
 
+    @kpi_runtime()
     def calculate_sos_sku_out_of_category_per_location(self):
         kpi_fk = self.common.get_kpi_fk_by_kpi_type(Const.LINEAR_SOS_CATEGORY_LOCATION_TYPE)
         filters = {Const.LOCATION_TYPE: Const.SOS_SKU_LOCATIONS, Const.CATEGORY_FK: self.beer_cat_fk,
                    Const.PRODUCT_TYPE: (Const.EMPTY, Const.EXCLUDE_FILTER)}
         filtered_scif = self.scif[self.tools.get_filter_condition(self.scif, **filters)]
         calculation_scif = filtered_scif.groupby(['product_fk', Const.CATEGORY_FK, Const.LOCATION_TYPE,
-                                                  Const.LOCATION_TYPE_FK], as_index=False).agg({'gross_len_ign_stack': np.sum,
-                                                                                                'gross_len_add_stack': np.sum})
+                                          Const.LOCATION_TYPE_FK], as_index=False).agg({'gross_len_ign_stack': np.sum,
+                                                                                        'gross_len_add_stack': np.sum})
 
         if not calculation_scif.empty:
-            category_location_df = filtered_scif.groupby([Const.CATEGORY_FK, Const.LOCATION_TYPE_FK], as_index=False).agg({'gross_len_ign_stack': np.sum,
-                                                                                                                           'gross_len_add_stack': np.sum})
+            category_location_df = filtered_scif.groupby([Const.CATEGORY_FK, Const.LOCATION_TYPE_FK],
+                                                         as_index=False).agg({'gross_len_ign_stack': np.sum,
+                                                                              'gross_len_add_stack': np.sum})
             category_location_df.rename(columns={'gross_len_ign_stack': 'gross_len_ign_stack_total_location',
-                                                 'gross_len_add_stack': 'gross_len_add_stack_total_location'}, inplace=True)
-            calculation_scif = calculation_scif.merge(category_location_df, on=[Const.CATEGORY_FK, Const.LOCATION_TYPE_FK], how='left')
-            calculation_scif['numerator_result'] = calculation_scif.apply(self.define_length_based_on_location, args=('numerator',),
-                                                                          axis=1)
+                                                 'gross_len_add_stack': 'gross_len_add_stack_total_location'},
+                                        inplace=True)
+            calculation_scif = calculation_scif.merge(category_location_df, on=[Const.CATEGORY_FK,
+                                                                                Const.LOCATION_TYPE_FK], how='left')
+            calculation_scif['numerator_result'] = calculation_scif.apply(self.define_length_based_on_location,
+                                                                          args=('numerator', ), axis=1)
             calculation_scif['denominator_result'] = calculation_scif.apply(self.define_length_based_on_location,
                                                                             args=('denominator',), axis=1)
             calculation_scif['sos'] = calculation_scif.apply(self.calculate_sos, axis=1)
             for i, row in calculation_scif.iterrows():
                 self.common.write_to_db_result(fk=kpi_fk, numerator_id=row['product_fk'],
-                                               denominator_id=row[Const.LOCATION_TYPE_FK], numerator_result=row['numerator_result'],
+                                               denominator_id=row[Const.LOCATION_TYPE_FK],
+                                               numerator_result=row['numerator_result'],
                                                denominator_result=row['denominator_result'],
-                                               context_id=row[Const.CATEGORY_FK], result=row['sos'], score=row['sos'])
+                                               context_id=row[Const.CATEGORY_FK], result=row['sos'],
+                                               score=row['sos'])
 
     @staticmethod
     def calculate_sos(row):
@@ -366,6 +374,7 @@ class INBEVCIINBEVCIToolBox:
                                            score=sos_score, should_enter=True)
         return sos_per_manufacturer
 
+    @kpi_runtime()
     def calculate_manufacturer_displays_count(self):
         """
         This function is the main function for this KPI. It calculates manufacturer_displays_count for Coolers
@@ -378,6 +387,7 @@ class INBEVCIINBEVCIToolBox:
         # Secondary Displays:
         self.calculate_manufacturer_displays_count_per_location_type(displays_count_set_fk, Const.SECONDARY_DISPLAY_FK)
 
+    @kpi_runtime()
     def calculate_sos_vs_target(self, identifier_parent):
         """
         This function calculates the SOS vs Target KPI for both Coolers and Secondary Displays.
@@ -396,6 +406,7 @@ class INBEVCIINBEVCIToolBox:
         self.calculate_sos_vs_target_per_location_type(he_kpi_fk, Const.SECONDARY_DISPLAY_FK, identifier_parent,
                                                        Const.HIGH_END)
 
+    @kpi_runtime()
     def calculate_kpi_level_1(self, set_name):
         sum_of_total, sum_of_passed = 0, 0
         set_fk = self.get_kpi_fk_by_kpi_name(set_name)
@@ -645,6 +656,7 @@ class INBEVCIINBEVCIToolBox:
             entity_fk = row['assortment_group_fk'] if field == 'numerator' else row['assortment_super_group_fk']
         return entity_fk
 
+    @kpi_runtime()
     def main_assortment_calculation(self):
         """
         This function calculates the KPI results.
@@ -818,6 +830,7 @@ class INBEVCIINBEVCIToolBox:
                                        numerator_id=self.own_manuf_fk, denominator_id=self.store_id,
                                        identifier_result=oos_mr_ident_parent, should_enter=True)
 
+    @kpi_runtime()
     def main_sos_calculation(self, identifier_parent):
         """
         calculates the SOS KPIs
@@ -945,6 +958,7 @@ class INBEVCIINBEVCIToolBox:
         self.rds_conn.db.commit()
         self.groups_fk = self.get_groups_fk()
 
+    @kpi_runtime()
     def calculate_block_together_sets(self, set_name):
         """
         This function calculates every block-together-typed KPI from the relevant sets, and returns the set final score.

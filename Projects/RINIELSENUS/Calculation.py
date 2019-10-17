@@ -10,6 +10,8 @@ from Trax.Utils.Conf.Configuration import Config
 from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
 from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScript
 from Trax.Utils.Logging.Logger import Log
+#from Projects.RINIELSENUS.TYSON.Utils.KPIToolBox import TYSONToolBox
+
 import time
 
 
@@ -81,14 +83,26 @@ if __name__ == '__main__':
 
     sessions = ['c1119515-58bc-4655-8469-7afd5ec78c1c']
 
-    sessions = ['c1119515-58bc-4655-8469-7afd5ec78c1c',
-                '8c0cb33d-babe-4741-b359-f9cb98bee7fc',
-                '2e4648d1-2f96-44b7-a8c8-e7e58ff262da',
-                'd6b93fbe-1ff7-4d2f-a773-b1647ea0ce41',
-                '20489f14-a858-4042-9851-7393e8d54977',
-                '16dc84d3-c418-4762-bf9c-73d7d4deef85',
-                '7d395ce3-fa1a-4f09-b476-ade1a36d30ae',
-                ]
+    sessions = [
+        '0508b10a-f02d-401d-aaac-32778f04ea46',
+        '98988859-c7cd-4279-8401-975aece024c8',
+        '34b71f6f-8452-40d9-93a8-9923f5028803',
+        '39c656e1-1663-44bc-b28e-dcb31aeaa9ec',
+        '3be52507-cec6-4ee2-bff0-0bf47a345c78',
+        '45c8c2b6-e8fe-43cb-9274-b76a0d4e3585',
+        '40e51eec-07c7-48c9-91ac-c73305b966cb',
+        'a99acaee-2542-4e59-9507-1b90348c2893',
+        'a419ffbd-ecb2-46b4-b5f0-e33bf07e64ec',
+
+    ]
+
+    sessions = [
+        '7c66fc40-0631-44fe-b92b-4f4d0b4cf1c5',
+        '8d6c5d91-5a2a-4321-b728-9fe61d88e7b8',
+        'aae4e2c3-2c59-488a-8e62-68ec5c041f98',
+        '7e3e6225-8fe3-4f31-adcd-50160f0c0ab6',
+
+    ]
 
 
     for session in sessions:

@@ -12,7 +12,7 @@ BINARY = 2
 
 class PillarsSceneToolBox:
     PROGRAM_TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))),
-                                         'Data', 'CCUS_Templatev2.2.xlsx')
+                                         'Data', 'CCUS_Templatev5_Sept.xlsx')
     BITWISE_RECOGNIZER_SIZE = 6
     RECOGNIZED_BY_POS = BITWISE_RECOGNIZER_SIZE - 1
     RECOGNIZED_BY_SCENE_RECOGNITION = BITWISE_RECOGNIZER_SIZE - 2
@@ -45,7 +45,7 @@ class PillarsSceneToolBox:
 
     def is_scene_belong_to_program(self):
         # Get template (from file or from external targets)
-        relevant_programs = self.get_programs()
+        relevant_programs = self.get_programs(template=True)
 
         for i in xrange(len(relevant_programs)):
 

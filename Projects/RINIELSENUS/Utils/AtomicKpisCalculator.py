@@ -27,16 +27,15 @@ class KpiAtomicKpisCalculator(object):
     def _get_prods_from_filters(self, filters, kpi_name):
         common = self._data_provider['common']
 
-        mpis = self._data_provider['matches'][self._data_provider['matches']['stacking_layer'] == 1]
-        rel_items = mpis[mpis['product_fk'].isin(self._get_filtered_products(filters)[
-                                                 'product_fk'])]['probe_match_fk']
+        rel_items = self._tools.match_product_in_scene[self._tools.get_filter_condition(
+            self._tools.match_product_in_scene, **filters)]['probe_match_fk']
 
         for i, group in enumerate([rel_items]):
             mpip_sr_fk = self.get_mpip_svr_fk(kpi_name, i, common)
             df = pd.DataFrame(zip(group, [mpip_sr_fk]*len(group)), columns=['match_product_in_probe_fk', 'match_product_in_probe_state_reporting_fk'])
             common.match_product_in_probe_state_values = pd.concat(
                 [common.match_product_in_probe_state_values, df])
-            print(mpis[mpis['probe_match_fk'].isin(df.match_product_in_probe_fk.to_list())].scene_fk.unique())
+            # print(mpis[mpis['probe_match_fk'].isin(df.match_product_in_probe_fk.to_list())].scene_fk.unique())
 
 
     def get_mpip_svr_fk(self, kpi, allowed, common):
@@ -301,6 +300,11 @@ class BlockBaseCalculation(KpiAtomicKpisCalculator):
                           0]) if atomic_kpi_data['filters'].get(FACINGS) else 0
         use_probes = atomic_kpi_data['filters'].pop(
             USE_PROBES)[0] if atomic_kpi_data['filters'].get(USE_PROBES) else 0
+        block_by_session = atomic_kpi_data['filters'].pop(
+            'Block by Session')[0] if 'Block by Session' in atomic_kpi_data['filters'] else None
+        use_stack = atomic_kpi_data['filters'].pop(
+            'Stacked Facings - Retailer')[0] if 'Stacked Facings - Retailer' in atomic_kpi_data['filters'] else None
+
         filters = atomic_kpi_data['filters']
         allowed = atomic_kpi_data['allowed']
         target = atomic_kpi_data['target']
@@ -350,9 +354,14 @@ class BlockBaseCalculation(KpiAtomicKpisCalculator):
                 blocked_scenes += 1
                 visited.add(scene['scene_fk'])
 
-        if float(blocked_scenes) == float(num_of_scenes - len(skipped_scenes))\
+        if block_by_session == 'Count':
+            return blocked_scenes
+        elif float(blocked_scenes) == float(num_of_scenes - len(skipped_scenes))\
                 and blocked_scenes > 0:
             return 100
+        elif block_by_session == 'Percent':
+            return float(blocked_scenes) / float(num_of_scenes - len(skipped_scenes)) * 100 if \
+                float(num_of_scenes - len(skipped_scenes)) > 0 else 0
         else:
             return 0
 
@@ -412,6 +421,10 @@ class BiggestSceneBlockAtomicKpiCalculation(BlockBaseCalculation):
                           0]) if atomic_kpi_data['filters'].get(FACINGS) else 0
         use_probes = atomic_kpi_data['filters'].pop(
             USE_PROBES)[0] if atomic_kpi_data['filters'].get(USE_PROBES) else 0
+        block_by_session = atomic_kpi_data['filters'].pop(
+            'Block by Session')[0] if 'Block by Session' in atomic_kpi_data['filters'] else None
+        use_stack = atomic_kpi_data['filters'].pop(
+            'Stacked Facings - Retailer')[0] if 'Stacked Facings - Retailer' in atomic_kpi_data['filters'] else None
         filters = atomic_kpi_data['filters']
         allowed = atomic_kpi_data['allowed']
         target = atomic_kpi_data['target']
@@ -491,6 +504,10 @@ class BlockTargetBaseCalculation(KpiAtomicKpisCalculator):
                           0]) if atomic_kpi_data['filters'].get(FACINGS) else 0
         use_probes = atomic_kpi_data['filters'].pop(
             USE_PROBES)[0] if atomic_kpi_data['filters'].get(USE_PROBES) else 0
+        block_by_session = atomic_kpi_data['filters'].pop(
+            'Block by Session')[0] if 'Block by Session' in atomic_kpi_data['filters'] else None
+        use_stack = atomic_kpi_data['filters'].pop(
+            'Stacked Facings - Retailer')[0] if 'Stacked Facings - Retailer' in atomic_kpi_data['filters'] else None
         filters = atomic_kpi_data['filters']
         allowed = atomic_kpi_data['allowed']
         target = atomic_kpi_data['target']
@@ -591,6 +608,10 @@ class VerticalBlockOneSceneAtomicKpiCalculation(BlockBaseCalculation):
                           0]) if atomic_kpi_data['filters'].get(FACINGS) else 0
         use_probes = atomic_kpi_data['filters'].pop(
             USE_PROBES)[0] if atomic_kpi_data['filters'].get(USE_PROBES) else 0
+        block_by_session = atomic_kpi_data['filters'].pop(
+            'Block by Session')[0] if 'Block by Session' in atomic_kpi_data['filters'] else None
+        use_stack = atomic_kpi_data['filters'].pop(
+            'Stacked Facings - Retailer')[0] if 'Stacked Facings - Retailer' in atomic_kpi_data['filters'] else None
         filters = atomic_kpi_data['filters']
         allowed = atomic_kpi_data['allowed']
         target = atomic_kpi_data['target']
@@ -663,13 +684,14 @@ class VerticalBlockOneSceneAtomicKpiCalculation(BlockBaseCalculation):
 class VerticalPreCalcBlockAtomicKpiCalculation(BlockBaseCalculation):
     def calculate_atomic_kpi(self, atomic_kpi_data):
         filters = atomic_kpi_data['filters']
-        biggest_scene = self.get_biggest_scene(filters)
-        scene_avg_num_of_shelves = self._get_relevant_scenes_avg_shelf(filters).set_index(
-            'scene_fk')['scene_avg_num_of_shelves'].to_dict()[biggest_scene]
-        if 'results' not in atomic_kpi_data or atomic_kpi_data['results'].empty:
+        if 'results' not in atomic_kpi_data or atomic_kpi_data['results'].empty \
+                or pd.isna(atomic_kpi_data['results'].loc[0, 'result']):
             Log.error('kpi: "{}" not calculated. PreCalc Vertical Block requires Biggest Scene Block dependency'
                       .format(atomic_kpi_data['atomic']))
             return 0
+        biggest_scene = self.get_biggest_scene(filters)
+        scene_avg_num_of_shelves = self._get_relevant_scenes_avg_shelf(filters).set_index(
+            'scene_fk')['scene_avg_num_of_shelves'].to_dict()[biggest_scene]
 
         results = atomic_kpi_data['results']
         blocks = sum(results['errata'].values, [])
@@ -1455,6 +1477,7 @@ class ShareOfAssortmentPrAtomicKpiCalculation(KpiAtomicKpisCalculator):
                     return np.nan
                 result = round((float(num_of_assorted_products) /
                                 float(num_of_expected_product)) * 100, 2)
+                self._get_prods_from_filters(filters, '{} {}'.format(atomic_kpi_data['set'].replace(' ', ''), atomic_kpi_data['atomic']))
 
         return result
 
@@ -1498,7 +1521,7 @@ class ShareOfAssortmentPrNumeratorAtomicKpiCalculation(KpiAtomicKpisCalculator):
                             num_of_assorted_products += 1
 
                 result = num_of_assorted_products
-        self._get_prods_from_filters(filters, atomic_kpi_data['atomic'])
+                self._get_prods_from_filters(filters, '{} {}'.format(atomic_kpi_data['set'].replace(' ', ''), atomic_kpi_data['atomic']))
         return result
 
     @classproperty
@@ -1533,6 +1556,7 @@ class ShareOfAssortmentAtomicKpiCalculationNotPR(KpiAtomicKpisCalculator):
                     return np.nan
                 result = round((float(num_of_assorted_products) /
                                 float(num_of_expected_product)) * 100, 2)
+                self._get_prods_from_filters(filters, '{} {}'.format(atomic_kpi_data['set'].replace(' ', ''), atomic_kpi_data['atomic']))
 
         return result
 
@@ -1586,6 +1610,8 @@ class ShareOfAssortmentPrSPTAtomicKpiCalculation(KpiAtomicKpisCalculator):
                     return np.nan
                 result = round((float(num_of_assorted_products) /
                                 float(num_of_expected_product)) * 100, 2)
+                self._get_prods_from_filters(filters, '{} {}'.format(atomic_kpi_data['set'].replace(' ', ''), atomic_kpi_data['atomic']))
+
 
         return result
 
@@ -1629,6 +1655,8 @@ class ShareOfAssortmentPrSPTNumeratorAtomicKpiCalculation(KpiAtomicKpisCalculato
                             num_of_assorted_products += 1
 
                 result = num_of_assorted_products
+                self._get_prods_from_filters(filters, '{} {}'.format(atomic_kpi_data['set'].replace(' ', ''), atomic_kpi_data['atomic']))
+
         return result
 
     @classproperty

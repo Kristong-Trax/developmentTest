@@ -129,18 +129,18 @@ class INBEVTRADMXToolBox:
         # get the session additional_attribute_4 & 13
         additional_attribute_4 = self.store_info.additional_attribute_4.values[0]
         additional_attribute_13 = self.store_info.additional_attribute_13.values[0]
-        set_names = self.choose_correct_sets_to_calculate(additional_attribute_4,
+        set_name = self.choose_correct_sets_to_calculate(additional_attribute_4,
                                                           additional_attribute_13, parsed_template)
 
-        for set_name in set_names:
+        # for set_name in set_names:
             # wrong value in additional attribute 4 - shouldn't calculate
-            if set_name == '':
-                Log.warning('Wrong value in additional attribute 4 - shouldnt calculate')
-                return -1
-            # get only the part of the template that is related to this set
-            set_template_df = parsed_template[parsed_template['KPI Level 1 Name'] == set_name]
-            # start calculating !
-            self.calculate_set_score(set_template_df, set_name)
+        if set_name == '':
+            Log.warning('Wrong value in additional attribute 4 - shouldnt calculate')
+            return -1
+        # get only the part of the template that is related to this set
+        set_template_df = parsed_template[parsed_template['KPI Level 1 Name'] == set_name]
+        # start calculating !
+        self.calculate_set_score(set_template_df, set_name)
 
     @staticmethod
     def choose_correct_sets_to_calculate(additional_attribute_4, additional_attribute_13, template):
@@ -166,17 +166,17 @@ class INBEVTRADMXToolBox:
         if sets.empty:
             return ''
         else:
-            return sets['KPI Level 1 Name'].unique().tolist()
+            sets = sets['KPI Level 1 Name'].unique().tolist()
 
-        # if additional_attribute_4 == 'BC':
-        #     set_name = sets[0]
-        # elif additional_attribute_4 == 'BA':
-        #     set_name = sets[1]
-        # elif additional_attribute_4 == 'MODELORAMA':
-        #     set_name = sets[2]
-        # else:
-        #     return ''
-        # return set_name
+            if additional_attribute_4 == 'BC':
+                set_name = sets[0]
+            elif additional_attribute_4 == 'BA':
+                set_name = sets[1]
+            elif additional_attribute_4 == 'MODELORAMA':
+                set_name = sets[2]
+            else:
+                return ''
+            return set_name
 
     def calculate_set_score(self, set_df, set_name):
         """
@@ -238,6 +238,7 @@ class INBEVTRADMXToolBox:
         atomic_kpi_score = 0
         # get column name to consider in calculation
         relevant_columns = map(str.strip, str(row['column names']).split(','))
+        optional_columns = map(str.strip, str(row['optional column']).split(','))
         is_kpi_passed = 0
         if self.check_store_type(row, relevant_columns):
             # get weight of current atomic kpi
@@ -251,6 +252,9 @@ class INBEVTRADMXToolBox:
                 elif kpi_level_3_name == 'Hay o no hay # frentes':
                     if self.calculate_lead_availability_score(row, relevant_columns):
                         is_kpi_passed = 1
+                elif kpi_level_3_name == 'Adherencia de materiales':
+                    if self.calculate_or_availability(row, relevant_columns, optional_columns):
+                        is_kpi_passed = 1
                 else:
                     if self.calculate_availability_score(row, relevant_columns):
                         is_kpi_passed = 1
@@ -258,7 +262,10 @@ class INBEVTRADMXToolBox:
 
                 ratio = self.calculate_sos_score(row, relevant_columns)
                 if (row['product_type'] == 'Empty') & (ratio <= 0.2):
-                    is_kpi_passed = 1
+                    if self.scif[self.scif['template_name'] == row['template_name']].empty:
+                        is_kpi_passed = 0
+                    else:
+                        is_kpi_passed = 1
                 elif ratio == 1:
                     is_kpi_passed = 1
             elif row['KPI type'] == 'Survey':
@@ -454,6 +461,32 @@ class INBEVTRADMXToolBox:
                 continue
             filters_dict[column_value] = map(str.strip, str(row.loc[column_value]).split(','))
         return filters_dict
+
+
+    def calculate_or_availability(self, row, relevant_columns, optional_columns):
+        """
+                this method calculates availability score according to columns from the data frame
+                :param row: data frame to calculate from
+                :param relevant_columns: columns to check in the excel file
+                :return: boolean
+                """
+        for optional_column in optional_columns:
+            # create filtered dictionary
+            temp_relevant_columns = relevant_columns[:]
+            temp_relevant_columns.append(optional_column)
+            filters_dict = self.create_availability_filtered_dictionary(temp_relevant_columns, row)
+            for key in filters_dict:
+                delete = [key for value in filters_dict[key] if value in ['nan']]
+            for key in delete:
+                del filters_dict[key]
+            # call the generic method from KPIUtils_v2
+            availability_score = self.availability.calculate_availability(**filters_dict)
+            # check if this score should pass or fail
+            if self.decide_availability_score(row, availability_score):
+                return True
+
+
+        return False
 
     def filter_product_names(self, exclude_skus):
         """

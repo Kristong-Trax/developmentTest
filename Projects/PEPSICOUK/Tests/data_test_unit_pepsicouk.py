@@ -119,7 +119,7 @@ class DataTestUnitPEPSICOUK(object):
           'assortment_group_fk': 1, 'assortment_fk': 2, 'assortment_super_group_fk': nan, 'kpi_fk_lvl1': nan,
           'group_target_date': nan, 'super_group_target': nan, 'additional_attributes': nan
           },
-         {'product_fk': 5, 'in_store': 0, 'kpi_fk_lvl3': 290, 'kpi_fk_lvl2': 289, 'ta   rget': nan,
+         {'product_fk': 5, 'in_store': 0, 'kpi_fk_lvl3': 290, 'kpi_fk_lvl2': 289, 'target': nan,
           'assortment_group_fk': 1, 'assortment_fk': 2, 'assortment_super_group_fk': nan, 'kpi_fk_lvl1': nan,
           'group_target_date': nan, 'super_group_target': nan, 'additional_attributes': nan}]
     )
@@ -199,11 +199,11 @@ class DataTestUnitPEPSICOUK(object):
     blocks_one_passes = pd.DataFrame.from_records([{'Group Name': 'Pringles_FTT_Tubes', 'Score': True},
                                                    {'Group Name': 'Hula Hoops_LMP_Snacks', 'Score': False}])
 
-    adjacency_results_true = pd.DataFrame.from_records([{'anchor_block': 1, 'tested_block': 1, 'anchor_facing_percentage': 5,
-                                                   'tested_facing_percentage': 4, 'scene_fk': 1, 'is_adj': True}])
+    adjacency_results_true = pd.DataFrame.from_records([{'anchor_block': 1, 'tested_block': 1, 'anchor_facing_percentage': 0.92,
+                                                   'tested_facing_percentage': 0.95, 'scene_fk': 1, 'is_adj': True}])
     adjacency_results_false = pd.DataFrame.from_records(
-        [{'anchor_block': 1, 'tested_block': 1, 'anchor_facing_percentage': 5,
-          'tested_facing_percentage': 4, 'scene_fk': 1, 'is_adj': False}])
+        [{'anchor_block': 1, 'tested_block': 1, 'anchor_facing_percentage': 0.5,
+          'tested_facing_percentage': 0.4, 'scene_fk': 1, 'is_adj': False}])
 
     blocks_combinations_3_pass_all = pd.DataFrame.from_records([{'Group Name': 'Group 1', 'Score': True},
                                                      {'Group Name': 'Group 2', 'Score': True},

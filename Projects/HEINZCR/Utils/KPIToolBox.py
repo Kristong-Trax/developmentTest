@@ -91,6 +91,8 @@ class HEINZCRToolBox:
         """
         This function calculates the KPI results.
         """
+        if self.scif.empty:
+            return
         # these function must run first
         self.adherence_results = self.heinz_global_price_adherence(pd.read_excel(Const.PRICE_ADHERENCE_TEMPLATE_PATH,
                                                                                  sheetname="Price Adherence"))
@@ -129,9 +131,6 @@ class HEINZCRToolBox:
 
         products_in_store = self.scif[self.scif['facings'] > 0]['product_fk'].unique().tolist()
         pass_count = 0
-
-        assortment_fk = self.store_assortment_without_powerskus['assortment_fk'].iloc[0]
-        assortment_group_fk = self.store_assortment_without_powerskus['assortment_group_fk'].iloc[0]
 
         total_kpi_fk = self.common_v2.get_kpi_fk_by_kpi_type('Distribution')
         identifier_dict = self.common_v2.get_dictionary(kpi_fk=total_kpi_fk)
@@ -352,7 +351,7 @@ class HEINZCRToolBox:
                 #                                           score_after_actions=manufacturer)
                 self.common_v2.write_to_db_result(kpi_fk, numerator_id=numerator_id, numerator_result=numerator,
                                                   denominator_id=denominator_id, denominator_result=denominator,
-                                                  result=target, score=sos,
+                                                  result=target, score=sos, target=target,
                                                   score_after_actions=manufacturer, identifier_parent=identifier_parent,
                                                   should_enter=should_enter)
             except Exception as e:
@@ -519,8 +518,9 @@ class HEINZCRToolBox:
                                                           score=mark_up,
                                                           result=mark_up)
                 else:
-                    Log.warning("Product with ean_code {} is not in the configuration file for customer type {}"
-                                .format(product_in_session, self.store_info.store_type[0].encode('utf-8')))
+                    continue
+                    # Log.warning("Product with ean_code {} is not in the configuration file for customer type {}"
+                    #             .format(product_in_session, self.store_info.store_type[0].encode('utf-8')))
         return results_df
 
     def calculate_perfect_store_extra_spaces(self):
@@ -556,7 +556,7 @@ class HEINZCRToolBox:
                                               should_enter=True)
 
         number_of_extra_spaces = relevant_extra_spaces['sub_category_fk'].nunique()
-        score = 1 if number_of_extra_spaces > 2 else 0
+        score = 1 if number_of_extra_spaces >= 2 else 0
 
         if score == 0:
             if self.survey.check_survey_answer(('question_fk', Const.EXTRA_SPACES_SURVEY_QUESTION_FK), 'Yes,yes,si,Si'):
@@ -589,46 +589,28 @@ class HEINZCRToolBox:
 
         results_df = self.extra_spaces_results
 
-        # kpi_fk = row.kpi
-        scene_types = self.scif.drop_duplicates(subset=['template_fk'], keep='first')
-        for index, row in scene_types.iterrows():
-            template_fk = row['template_fk']
-            location_type = row.get('location_type_fk')
-            if template_fk >= 0 and location_type == float(2):
-                scene_data = self.scif[(self.scif['template_fk'] == template_fk)
-                                       & (self.scif['sub_category_fk'])]
-                categories_in_scene = scene_data.drop_duplicates(
-                    subset=['sub_category_fk'], keep='last')
-                winner = []
-                max_count = -1
-                for index1, category_row in categories_in_scene.iterrows():
-                    category = category_row['sub_category_fk']
-                    if not pd.isnull(category):
-                        df = scene_data[scene_data['sub_category_fk'] == category]
-                        item_count = len(df)
-                        if item_count > max_count:
-                            max_count = item_count
-                            winner = [{'sub_category_fk': category,
-                                       'count': item_count}]
-                        elif item_count > max_count:
-                            winner.append({'sub_category_fk': category,
-                                           'count': item_count})
+        # limit to only secondary scenes
+        relevant_scif = self.scif[(self.scif['location_type_fk'] == float(2)) &
+                                  (self.scif['facings'] > 0)]
+        if relevant_scif.empty:
+            return results_df
+        # aggregate facings for every scene/sub_category combination in the visit
+        relevant_scif = \
+            relevant_scif.groupby(['scene_fk', 'template_fk', 'sub_category_fk'], as_index=False)['facings'].sum()
+        # sort sub_categories by number of facings, largest first
+        relevant_scif = relevant_scif.sort_values(['facings'], ascending=False)
+        # drop all but the sub_category with the largest number of facings for each scene
+        relevant_scif = relevant_scif.drop_duplicates(subset=['scene_fk'], keep='first')
 
-                for i in winner:
-                    # self.common.write_to_db_result_new_tables(fk=13,
-                    #                                           numerator_id=template_fk,
-                    #                                           numerator_result=i.get('count'),
-                    #                                           denominator_id=i.get('sub_category_fk'),
-                    #                                           denominator_result=i.get('count'),
-                    #                                           result=store_target)
-                    results_df.loc[len(results_df)] = [i.get(
-                        'sub_category_fk'), template_fk, i.get('count')]
+        for row in relevant_scif.itertuples():
+            results_df.loc[len(results_df)] = [row.sub_category_fk, row.template_fk, row.facings]
+            self.common_v2.write_to_db_result(13, numerator_id=row.template_fk,
+                                              numerator_result=row.facings,
+                                              denominator_id=row.sub_category_fk,
+                                              denominator_result=row.facings,
+                                              context_id=row.scene_fk,
+                                              result=store_target)
 
-                    self.common_v2.write_to_db_result(13, numerator_id=template_fk,
-                                                      numerator_result=i.get('count'),
-                                                      denominator_id=i.get('sub_category_fk'),
-                                                      denominator_result=i.get('count'),
-                                                      result=store_target)
         return results_df
 
     def check_bonus_question(self):

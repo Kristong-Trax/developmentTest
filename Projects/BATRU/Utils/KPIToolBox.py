@@ -1789,7 +1789,9 @@ class BATRUToolBox:
         # adding POSMs to API output that are not in the template but are found in the equipment (scene)
         for product in self.p4_posm_to_api_products.keys():
             if self.p4_posm_to_api_products[product] == 0:
-                name = '{};{};{};{}'.format(equipment_name, DEFAULT_GROUP_NAME, DEFAULT_ATOMIC_NAME, product)
+                name = '{};{};{};{}' \
+                       ''.format(equipment_name, DEFAULT_GROUP_NAME, DEFAULT_ATOMIC_NAME,
+                                 unicode(product).encode('utf-8'))
                 self.p4_posm_to_api[name] = 1
 
         kpi_fk = self.kpi_static_data.loc[(self.kpi_static_data['kpi_set_name'] == POSM_AVAILABILITY) &
@@ -1804,6 +1806,8 @@ class BATRUToolBox:
         """
         Gets the count for posm products in specific equipment.
         :param group_template: a data frame filtered by group
+        :param equipment_name: to define KPI name
+        :param scene_fk
         :return: num of passed posm in group
         """
         group_name = group_template['Group Name'].iloc[0]

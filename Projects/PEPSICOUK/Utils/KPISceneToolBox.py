@@ -20,7 +20,7 @@ from Projects.PEPSICOUK.Utils.Fetcher import PEPSICOUK_Queries
 # from KPIUtils_v2.Calculations.SequenceCalculations import Sequence
 # from KPIUtils_v2.Calculations.SurveyCalculations import Survey
 from KPIUtils_v2.Calculations.AdjacencyCalculations import Adjancency
-from KPIUtils_v2.Calculations.AdjacencyCalculations import Block
+from KPIUtils_v2.Calculations.BlockCalculations import Block
 
 # from KPIUtils_v2.Calculations.CalculationsUtils import GENERALToolBoxCalculations
 from KPIUtils_v2.Calculations.CalculationsUtils.GENERALToolBoxCalculations import GENERALToolBox
@@ -105,6 +105,7 @@ class PEPSICOUKSceneToolBox:
         self.adjacency = Adjancency(self.data_provider, custom_scif=self.filtered_scif, custom_matches=self.filtered_matches)
         self.block_results = pd.DataFrame(columns=['Group Name', 'Score'])
         self.kpi_results = pd.DataFrame(columns=['kpi_fk', 'numerator', 'denominator', 'result', 'score'])
+        self.passed_blocks = {}
 
     def get_probe_group(self):
         query = PEPSICOUK_Queries.get_probe_group(self.session_uid)
@@ -123,8 +124,10 @@ class PEPSICOUKSceneToolBox:
             self.calculate_external_kpis()
 
     def calculate_external_kpis(self):
-        self.calculate_product_blocking()
-        self.calculate_adjacency()
+        # self.calculate_product_blocking()
+        # self.calculate_adjacency()
+        self.calculate_product_blocking_new()
+        self.calculate_adjacency_new()
 
     def calculate_internal_kpis(self):
         self.calculate_number_of_facings_and_linear_space()
@@ -291,6 +294,68 @@ class PEPSICOUKSceneToolBox:
         result_df['kpi_fk'] = result_df['position'].apply(lambda x: self.common.get_kpi_fk_by_kpi_type(x))
         return result_df
 
+    def calculate_product_blocking_new(self):
+        external_targets = self.commontools.all_targets_unpacked[self.commontools.all_targets_unpacked['type']
+                                                                        == self.PRODUCT_BLOCKING]
+        additional_block_params = {'check_vertical_horizontal': True, 'minimum_facing_for_block': 3,
+                                   'include_stacking': True,
+                                   'allowed_products_filters': {'product_type': ['Empty']}}
+        kpi_fk = self.common.get_kpi_fk_by_kpi_type(self.PRODUCT_BLOCKING)
+
+        for i, row in external_targets.iterrows():
+            # group_fk = self.custom_entities[self.custom_entities['name'] == row['Group Name']]
+            group_fk = self.custom_entities[self.custom_entities['name'] == row['Group Name']]['pk'].values[0]
+            filters = self.get_block_and_adjacency_filters(row)
+            target = row['Target']
+            additional_block_params.update({'minimum_block_ratio': float(target)/100})
+
+            result_df = self.block.network_x_block_together(filters, additional=additional_block_params)
+            score = max_ratio = 0
+            result = self.commontools.get_yes_no_result(0)
+            if not result_df.empty:
+                max_ratio = result_df['facing_percentage'].max()
+                result_df = result_df[result_df['is_block']==True]
+                if not result_df.empty:
+                    self.passed_blocks[row['Group Name']] = result_df
+
+                    max_ratio = result_df['facing_percentage'].max()
+                    result_df = result_df[result_df['facing_percentage'] == max_ratio]
+                    result = self.commontools.get_yes_no_result(1)
+                    orientation = result_df['orientation'].values[0]
+                    score = self.commontools.get_kpi_result_value_pk_by_value(orientation.upper())
+            self.common.write_to_db_result(fk=kpi_fk, numerator_id=group_fk, denominator_id=self.store_id,
+                                           numerator_result=max_ratio * 100,
+                                           score=score, result=result, target=target, by_scene=True)
+
+            self.block_results = self.block_results.append(pd.DataFrame([{'Group Name': row['Group Name'],
+                                                                          'Score': result_df['is_block'].values[0]
+                                                                          if not result_df.empty else False}]))
+            self.add_kpi_result_to_kpi_results_df([kpi_fk, group_fk, self.store_id, result, score])
+
+    def calculate_adjacency_new(self):
+        block_pairs = self.get_group_pairs()
+        kpi_fk = self.common.get_kpi_fk_by_kpi_type(self.PRODUCT_BLOCKING_ADJACENCY)
+        block_pairs = [list(pair) for pair in block_pairs]
+        for pair in block_pairs:
+            group_1_fk = self.custom_entities[self.custom_entities['name'] == pair[0]]['pk'].values[0]
+            group_2_fk = self.custom_entities[self.custom_entities['name'] == pair[1]]['pk'].values[0]
+
+            adjacency_results = pd.DataFrame(columns=['anchor_block', 'tested_block', 'anchor_facing_percentage',
+                                                      'tested_facing_percentage', 'scene_fk', 'is_adj'])
+            blocks = {'anchor_products': self.passed_blocks[pair[0]], 'tested_products': self.passed_blocks[pair[1]]}
+            merged_blocks = self.adjacency._union_anchor_tested_blocks(blocks)
+            adjacency_results = self.adjacency._is_block_adjacent(adjacency_results, merged_blocks)
+            score = 0
+            result = self.commontools.get_yes_no_result(0)
+            if not adjacency_results.empty:
+                adjacency_results = adjacency_results[adjacency_results['is_adj']==True]
+            if not adjacency_results.empty:
+                score = 1 if adjacency_results['is_adj'].values[0] else 0
+                result = self.commontools.get_yes_no_result(score)
+            self.common.write_to_db_result(fk=kpi_fk, numerator_id=group_1_fk, denominator_id=group_2_fk,
+                                           result=result, score=score, by_scene=True)
+            self.add_kpi_result_to_kpi_results_df([kpi_fk, group_1_fk, group_2_fk, result, score])
+
     def calculate_product_blocking(self):
         external_targets = self.commontools.all_targets_unpacked[self.commontools.all_targets_unpacked['type']
                                                                         == self.PRODUCT_BLOCKING]
@@ -303,7 +368,7 @@ class PEPSICOUKSceneToolBox:
             # group_fk = self.custom_entities[self.custom_entities['name'] == row['Group Name']]
             group_fk = self.custom_entities[self.custom_entities['name'] == row['Group Name']]['pk'].values[0]
             filters = self.get_block_and_adjacency_filters(row)
-            target = row['Target'] # check case in temaplate
+            target = row['Target']
             additional_block_params.update({'minimum_block_ratio': float(target)/100})
 
             result_df = self.block.network_x_block_together(filters, additional=additional_block_params)
@@ -323,7 +388,8 @@ class PEPSICOUKSceneToolBox:
                                            score=score, result=result, target=target, by_scene=True)
 
             self.block_results = self.block_results.append(pd.DataFrame([{'Group Name': row['Group Name'],
-                                                                          'Score': result_df['is_block'].values[0] if not result_df.empty else False}]))
+                                                                          'Score': result_df['is_block'].values[0]
+                                                                          if not result_df.empty else False}]))
 
     @staticmethod
     def get_block_and_adjacency_filters(target_series):
@@ -361,6 +427,8 @@ class PEPSICOUKSceneToolBox:
                                                                            additional=additional_block_params)
                 score = 0
                 result = self.commontools.get_yes_no_result(0)
+                if not result_df.empty:
+                    result_df = result_df[result_df['is_adj'] == True]
                 if not result_df.empty:
                     score = 1 if result_df['is_adj'].values[0] else 0
                     result = self.commontools.get_yes_no_result(score)

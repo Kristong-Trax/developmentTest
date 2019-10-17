@@ -1,10 +1,6 @@
-
 from Trax.Utils.Logging.Logger import Log
-
-from Projects.TWEGAU.Utils.KPIToolBox import TWEGAUToolBox
-
 from KPIUtils_v2.DB.CommonV2 import Common
-
+from Projects.TWEGAU.Utils.KPIToolBox import TWEGAUToolBox
 from KPIUtils_v2.Utils.Decorators.Decorators import log_runtime
 
 __author__ = 'nidhin'
@@ -29,5 +25,5 @@ class Generator:
         if self.tool_box.scif.empty:
             Log.warning('Scene item facts is empty for this session')
         else:
-            score = self.tool_box.main_calculation()
+            return self.tool_box.main_calculation()
 

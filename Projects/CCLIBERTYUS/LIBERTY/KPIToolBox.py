@@ -42,6 +42,8 @@ class LIBERTYToolBox:
         self.additional_attribute_7 = self.store_info['additional_attribute_7'].iloc[0]
         self.body_armor_delivered = self.get_body_armor_delivery_status()
         self.convert_base_size_and_multi_pack()
+        self.session_feedback = self.get_session_feedback()
+        self.probe_review_reasons = self.get_probe_review_reasons()
 
     def read_templates(self):
         templates = {}
@@ -62,6 +64,18 @@ class LIBERTYToolBox:
             This function gets all the scene results from the SceneKPI, after that calculates every session's KPI,
             and in the end it calls "filter results" to choose every KPI and scene and write the results in DB.
         """
+        # check to make sure the session feedback is 'ok', if not, don't calculate the KPIs
+        if not self.session_feedback.empty:
+            if self.session_feedback['answer_key'].iloc[0] != 'ok':
+                Log.info('Session feedback is not OK - Liberty Red Score will not be calculated')
+                return
+
+        # check to make sure there are no probes labeled as 'Supected Fake'. if there are, don't calculate the KPIs
+        if not self.probe_review_reasons.empty:
+            if 'Suspected Fake' in self.probe_review_reasons['reason_text'].tolist():
+                Log.info('Probes suspected as fake - Liberty Red Score will not be calculated')
+                return
+
         red_score = 0
         main_template = self.templates[Const.KPIS]
         for i, main_line in main_template.iterrows():
@@ -425,6 +439,9 @@ class LIBERTYToolBox:
             filtered_scif.groupby(['Base Size', 'Multi-Pack Size', 'scene_id'],
                                   as_index=False)['facings'].sum()
 
+        if filtered_scif.empty:
+            return 0, 0
+
         filtered_scif['passed_displays'] = \
             filtered_scif.apply(lambda row: self._calculate_pass_status_of_display(row), axis=1)
 
@@ -572,6 +589,25 @@ class LIBERTYToolBox:
             Log.warning(
                 "The value '{}' in column sheet in the template is not recognized".format(kpi_type))
             return None
+
+    def get_session_feedback(self):
+        query = """select answer_key from probedata.session_feedback 
+                   where session_uid = '{}';""".format(self.session_uid)
+        return pd.read_sql_query(query, self.ps_data_provider.rds_conn.db)
+
+    def get_probe_review_reasons(self):
+        query = """select 
+                pp.pk as 'probe_fk',
+                pp.scene_fk as 'scene_fk',
+                ppr.reason_fk,
+                sprr.reason_text from probedata.probe pp 
+                left join probedata.probe_review ppr on ppr.probe_fk = pp.pk
+                left join static.probe_reviews_reasons sprr on ppr.reason_fk = sprr.pk
+                where pp.delete_time is null and pp.session_uid = '{}';""".format(self.session_uid)
+        probe_review_reasons = pd.read_sql_query(query, self.ps_data_provider.rds_conn.db)
+        scenes_in_session = self.scif['scene_id'].unique().tolist()
+        probe_review_reasons = probe_review_reasons[probe_review_reasons['scene_fk'].isin(scenes_in_session)]
+        return probe_review_reasons
 
     @staticmethod
     def does_exist(kpi_line, column_name):
