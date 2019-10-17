@@ -11,8 +11,8 @@ from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 
 __author__ = 'nidhin'
 # own check
-OWN_COL_VALUE = 'jri'  # 'sinopacific'  # >{DISTRIBUTOR NAME}< case insensitive
 OWN_CHECK_COL = 'brand_name'  # !column in product dataframe!
+OWN_MANUFACTURER_FK = 1  # SinoPac manufacturer ID
 
 TEMPLATE_PARENT_FOLDER = 'Data'
 TEMPLATE_NAME = 'Template.xlsx'
@@ -50,13 +50,13 @@ PARAM_DB_MAP = {
     'scene_type': {'key': 'template_fk', 'name': 'template_name'},
     'sub_category': {'key': 'sub_category_fk', 'name': 'sub_category'},
     'manufacturer': {'key': 'manufacturer_fk', 'name': 'manufacturer_name'},
-    'distributor': {'key': 'manufacturer_fk', 'name': 'manufacturer_name'},
+    'distributor': {'key': OWN_CHECK_COL, 'name': OWN_CHECK_COL},
     'store': {'key': 'store_fk', 'name': 'store_name'},
 }
 # list of `exclude_include` sheet columns
 INC_EXC_LIST = ['stacking', 'others', 'irrelevant', 'empty',
-                'categories_to_exclude', 'scene_types_to_exclude',
-                'brands_to_exclude', 'ean_codes_to_exclude']
+                'categories_to_include', 'scene_types_to_include',
+                'brands_to_include', 'ean_codes_to_include']
 # assortment KPIs
 # Codes
 OOS_CODE = 1
@@ -106,9 +106,7 @@ class SinoPacificToolBox:
         self.assortment_template_path = os.path.join(os.path.dirname(os.path.realpath(__file__)),
                                                      '..', TEMPLATE_PARENT_FOLDER,
                                                      ASSORTMENT_TEMPLATE_NAME)
-        self.own_man_fk = self.all_products[
-            self.all_products[OWN_CHECK_COL].str.lower() == OWN_COL_VALUE.lower()
-        ]['manufacturer_fk'].values[0]
+        self.own_man_fk = OWN_MANUFACTURER_FK
         self.kpi_template = pd.ExcelFile(self.kpi_template_path)
         self.empty_prod_ids = self.all_products[
             self.all_products.product_name.str.contains('empty', case=False)]['product_fk'].values
@@ -117,7 +115,7 @@ class SinoPacificToolBox:
         self.other_prod_ids = self.all_products[
             self.all_products.product_name.str.contains('other', case=False)]['product_fk'].values
 
-    def main_calculation(self, *args, **kwargs):
+    def main_calculation(self):
         """
         This function calculates the KPI results.
         """
@@ -262,8 +260,8 @@ class SinoPacificToolBox:
     def get_policies(self, kpi_fk):
         query = """ select a.kpi_fk, p.policy_name, p.policy, atag.assortment_group_fk,
                         atp.assortment_fk, atp.product_fk, atp.start_date, atp.end_date
-                    from pservice.assortment_to_product atp 
-                        join pservice.assortment_to_assortment_group atag on atp.assortment_fk = atag.assortment_fk 
+                    from pservice.assortment_to_product atp
+                        join pservice.assortment_to_assortment_group atag on atp.assortment_fk = atag.assortment_fk
                         join pservice.assortment a on a.pk = atag.assortment_group_fk
                         join pservice.policy p on p.pk = a.store_policy_group_fk
                     where a.kpi_fk={kpi_fk};
@@ -332,10 +330,9 @@ class SinoPacificToolBox:
             grouped_data_frame = dataframe_to_process.query(query_string).groupby(groupers)
         else:
             grouped_data_frame = dataframe_to_process.groupby(groupers)
-        # for the two kpis, we need to show zero presence of own manufacturer.
+        # for the two kpis, we need to show zero presence of own distributor.
         # else the flow will be stuck in case own manufacturers are absent altogether.
-        if kpi['kpi_name'].iloc[0].lower() in ["FSOS_OWN_DISTRI_IN_WHOLE_STORE".lower(),
-                                               "FSOS_OWN_DISTRI_ALL_CAT".lower()]:
+        if kpi['kpi_name'].iloc[0].lower() in ["FSOS_OWN_DISTRI_ALL_CAT".lower()]:
             self.scif['store_fk'] = self.store_id
             dataframe_to_process['store_fk'] = self.store_id
             scif_with_den_context = self.scif[[PARAM_DB_MAP[kpi['denominator'].iloc[0]]['key'],
@@ -344,9 +341,10 @@ class SinoPacificToolBox:
                 PARAM_DB_MAP[kpi['denominator'].iloc[0]]['key'],
                 PARAM_DB_MAP[kpi['context'].iloc[0]]['key']
             ]].drop_duplicates()
-            denominators_df_to_save_zero = scif_with_den_context[(~scif_with_den_context[
-                PARAM_DB_MAP[kpi['denominator'].iloc[0]]['key']
-            ].isin(df_with_den_context[PARAM_DB_MAP[kpi['denominator'].iloc[0]]['key']]))]
+            denominators_df_to_save_zero = scif_with_den_context[
+                (~scif_with_den_context[PARAM_DB_MAP[kpi['denominator'].iloc[0]]['key']]
+                 .isin(df_with_den_context[PARAM_DB_MAP[kpi['denominator'].iloc[0]]['key']]))
+            ]
 
             kpi_details = self.kpi_template.parse(KPI_DETAILS_SHEET)
             identifier_parent = None
@@ -426,10 +424,14 @@ class SinoPacificToolBox:
                                                   & (self.kpi_static_data['delete_time'].isnull())]
                 kpi_details = self.kpi_template.parse(KPI_DETAILS_SHEET)
                 kpi_parent_detail = kpi_details[kpi_details[KPI_NAME_COL] == kpi_parent[KPI_TYPE_COL].values[0]]
-                parent_denominator_id = (get_parameter_id(key_value=PARAM_DB_MAP[kpi_parent_detail['denominator'].iloc[0]]['key'],
-                                                          param_id_map=param_id_map) or self.store_id)
-                parent_context_id = (get_parameter_id(key_value=PARAM_DB_MAP[kpi_parent_detail['context'].iloc[0]]['key'],
-                                                      param_id_map=param_id_map) or self.store_id)
+                parent_denominator_id = (
+                        get_parameter_id(
+                            key_value=PARAM_DB_MAP[kpi_parent_detail['denominator'].iloc[0]]['key'],
+                            param_id_map=param_id_map) or self.store_id)
+                parent_context_id = (
+                        get_parameter_id(
+                            key_value=PARAM_DB_MAP[kpi_parent_detail['context'].iloc[0]]['key'],
+                            param_id_map=param_id_map) or self.store_id)
                 self.common.write_to_db_result(fk=kpi['pk'].iloc[0],
                                                numerator_id=numerator_id,
                                                denominator_id=denominator_id,
@@ -471,28 +473,6 @@ class SinoPacificToolBox:
                                                ),
                                                should_enter=True,
                                                )
-
-        return True
-
-    def calculate_count(self, kpi, groupers, query_string, dataframe_to_process):
-        if query_string:
-            grouped_data_frame = dataframe_to_process.query(query_string).groupby(groupers)
-        else:
-            grouped_data_frame = dataframe_to_process.groupby(groupers)
-        for group_id_tup, group_data in grouped_data_frame:
-            param_id_map = dict(zip(groupers, group_id_tup))
-            numerator_id = param_id_map.get(PARAM_DB_MAP[kpi['numerator'].iloc[0]]['key'])
-            denominator_id = param_id_map.get(PARAM_DB_MAP[kpi['denominator'].iloc[0]]['key'])
-            context_id = (get_parameter_id(key_value=PARAM_DB_MAP[kpi['context'].iloc[0]]['key'],
-                                           param_id_map=param_id_map)
-                          or self.store_id)
-            result = len(group_data)
-            self.common.write_to_db_result(fk=kpi['pk'].iloc[0],
-                                           numerator_id=numerator_id,
-                                           denominator_id=denominator_id,
-                                           context_id=context_id,
-                                           result=result,
-                                           )
 
         return True
 
