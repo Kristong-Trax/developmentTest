@@ -27,25 +27,30 @@ from Projects.CCNAYARMX.Data.LocalConsts import Consts
 # from KPIUtils_v2.Calculations.SurveyCalculations import Survey
 
 # from KPIUtils_v2.Calculations.CalculationsUtils import GENERALToolBoxCalculations
-
+from KPIUtils_v2.Calculations.BlockCalculations_v2 import Block
 __author__ = 'krishnat'
 
 # Column Name
 KPI_NAME = 'KPI Name'
 TASK_TEMPLATE_GROUP = 'Task/ Template Group'
+TEMPLATE_NAME = 'template_name'
+MANUFACTURER_NAME = 'manufacturer_name'
 PRODUCT_TYPE = 'product_type'
+#TAMANDO_DEL_PRODUCTO = 'Tamano del Producto'
+IGNORE_STACKING = 'Ignore Stacking'
+SUB_CATEGORY = 'sub_category'
+ITERATE_BY = 'iterate by'
 NUMERATOR_PARAM_1 = 'numerator param 1'
 NUMERATOR_VALUE_1 = 'numerator value 1'
 DENOMINATOR_PARAM_1 = 'denominator param 1'
 DENOMINATOR_VALUE_1 = 'denominator value 1'
-IGNORE_STACKING = 'Ignore Stacking'
 NUMERATOR_ENTITY = 'Numerator Entity'
 DENOMINATOR_ENTITY = 'Denominator Entity'
 
 # Sheet names
 SOS = 'SOS'
 BLOCK_TOGETHER = 'Block Together'
-SHARE_OF_EMPTY = 'Share Of Empty'
+SHARE_OF_EMPTY = 'Share of Empty'
 
 # Scif Filters
 BRAND_FK = 'brand_fk'
@@ -55,13 +60,14 @@ FINAL_FACINGS = 'final_facings'
 MANUFACTURER_FK = 'manufacturer_fk'
 PK = 'pk'
 SESSION_ID = 'session_id'
+SCENE_ID = 'scene_id'
 TEMPLATE_FK = 'template_fk'
 TEMPLATE_GROUP = 'template_group'
 
 # Read the sheet
 Sheets = [SOS, BLOCK_TOGETHER, SHARE_OF_EMPTY]
 
-TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'CCNayarTemplatev0.4 .xlsx')
+TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'CCNayarTemplatev0.5.xlsx')
 
 
 def log_runtime(description, log_start=False):
@@ -80,26 +86,26 @@ def log_runtime(description, log_start=False):
     return decorator
 
 
+
 class ToolBox(GlobalSessionToolBox):
 
     def __init__(self, data_provider, output):
         GlobalSessionToolBox.__init__(self, data_provider, output)
         self.ps_data_provider = PsDataProvider(data_provider)
+        self.block = Block(data_provider)
         self.templates = {}
         self.parse_template()
         self.own_manuf_fk = int(self.data_provider.own_manufacturer.param_value.values[0])
-        a =1
+
     def parse_template(self):
         for sheet in Sheets:
             self.templates[sheet] = pd.read_excel(TEMPLATE_PATH, sheet_name=sheet)
 
     def main_calculation(self):
-        for i, row in self.templates[SHARE_OF_EMPTY].iterrows():
+        for i, row in self.templates[BLOCK_TOGETHER].iterrows():
             # self.calculate_sos(row)
-            # self.calculate_block_together(row)
-            self.calculate_share_of_empty(row)
-
-
+            self.calculate_block_together(row)
+            # self.calculate_share_of_empty(row)
         return
 
     def calculate_sos(self, row):
@@ -115,16 +121,17 @@ class ToolBox(GlobalSessionToolBox):
         kpi_name = row[KPI_NAME]
         kpi_fk = self.common.get_kpi_fk_by_kpi_name(kpi_name)
         template_group = self.sanitize_values(row[TASK_TEMPLATE_GROUP])
-        numerator_param1 = row[NUMERATOR_PARAM_1]
         numerator_value1 = row[NUMERATOR_VALUE_1]
-        denominator_param1 = row[DENOMINATOR_PARAM_1]
         denominator_value1 = row[DENOMINATOR_VALUE_1]
+        numerator_entity = row[NUMERATOR_ENTITY]
+        denominator_entity = row[DENOMINATOR_ENTITY]
 
         # Step 2: Import values that unique to the sheet SOS
         product_type = self.sanitize_values(row[PRODUCT_TYPE])
         ignore_stacking = row[IGNORE_STACKING]
-        numerator_entity = row[NUMERATOR_ENTITY]
-        denominator_entity = row[DENOMINATOR_ENTITY]
+        numerator_param1 = row[NUMERATOR_PARAM_1]
+        denominator_param1 = row[DENOMINATOR_PARAM_1]
+
 
         # Step 3: Filter the self.scif by the columns required
         column_filter_for_scif = [PK, SESSION_ID, TEMPLATE_GROUP, PRODUCT_TYPE, FACINGS, FACINGS_IGN_STACK] + \
@@ -165,6 +172,7 @@ class ToolBox(GlobalSessionToolBox):
         # Step 9: Filter through the numerator param column with numerator value and find the numerator result and id.
         if pd.isna(numerator_param1):
             numerator_scif = denominator_scif
+            numerator_id = numerator_scif[numerator_entity].mode()[0]
             numerator_result = numerator_scif[FINAL_FACINGS].sum()
         else:
             # Sometimes the filter below overfilters, so the if statement was put in place
@@ -187,19 +195,71 @@ class ToolBox(GlobalSessionToolBox):
                                        denominator_result=denominator_result,
                                        result=result)
 
+
     def calculate_block_together(self, row):
 
-        # Step 1: Initialize the relevent columns from the Excel
 
-        # Returns common columns acro
-        self.standard_values_across_sheets()
-
-        product_type = self.sanitize_values(row[PRODUCT_TYPE])
-        ignore_stacking = row[IGNORE_STACKING]
-
+        # Step 1: Read the excel rows to process the information (Common among all the sheets)
+        kpi_name = row[KPI_NAME]
+        kpi_fk = self.common.get_kpi_fk_by_kpi_name(kpi_name)
+        template_group = self.sanitize_values(row[TASK_TEMPLATE_GROUP])
         numerator_entity = row[NUMERATOR_ENTITY]
-
         denominator_entity = row[DENOMINATOR_ENTITY]
+
+        # Step 2: Import values that unique to the sheet Block Together
+        template_name = self.sanitize_values(row[TEMPLATE_NAME])
+        manufacturer_name = self.sanitize_values(row[MANUFACTURER_NAME])
+        # tamano_del_producto = row[TAMANDO_DEL_PRODUCTO]
+        sub_category = self.sanitize_values(row[SUB_CATEGORY])
+        iterate_by = row[ITERATE_BY]
+
+        # Step 3: Find the relevant columns for scif
+        # Take a look at TAMANO_DEL_PRODUCTO and ITERATE_BY
+        # Come back for the numerator param and denominator param
+        columns_filter_for_scif = [PK, SESSION_ID, SCENE_ID, TEMPLATE_FK, TEMPLATE_GROUP, TEMPLATE_NAME,  MANUFACTURER_NAME, SUB_CATEGORY] + self.delete_filter_nan([iterate_by])
+
+        # Step 4: Filter Scif with the relevant columns
+        relevant_scif = self.scif[columns_filter_for_scif]
+
+        # Step 5: Filter denominator_scif with the template group value
+        if pd.notna(template_group):
+            relevant_scif = relevant_scif[relevant_scif[TEMPLATE_GROUP].isin(template_group)]
+
+        # Step 6: Filter denominator_scif with template name value
+        if pd.notna(template_name):
+            relevant_scif = relevant_scif[relevant_scif[TEMPLATE_NAME].isin(template_name)]
+
+        # Step 7: Filter the numerator scif with Tamano del Producto
+        # Check with Hunter and wait for the response
+
+        # Step 8: Establish the variable for the network_x_block_together
+        relevant_filters = {MANUFACTURER_NAME: manufacturer_name, SUB_CATEGORY: sub_category}
+        if pd.notna(template_group):
+            location_name = TEMPLATE_GROUP
+            location_id = template_group
+        else:
+            location_name = TEMPLATE_NAME
+            location_id = template_group
+
+        location = {location_name:location_id}
+
+        # Step 9: Calculate the block kpi per scene level. The If statement accounts for the iterate by column logic.
+        if pd.isna(iterate_by):
+            block = self.block.network_x_block_together(relevant_filters,
+                                                    location = location,
+                                                    additional= {'minimum_block_ratio': 0.9, 'calculate_all_scenes': True})
+        else:
+            for value in relevant_scif[row[ITERATE_BY]].unique().tolist():
+                population = {row[ITERATE_BY].iloc[0]: [value]}
+                final_relevant_filters = self.merge_two_dictionaries(relevant_filters, population)
+                block = self.block.network_x_block_together(relevant_filters,
+                                                    location = location,
+                                                    additional= {'minimum_block_ratio': 0.9, 'calculate_all_scenes': True})
+        a =1
+
+
+
+
 
     def calculate_share_of_empty(self, row):
         # Table of Contents
@@ -209,20 +269,19 @@ class ToolBox(GlobalSessionToolBox):
         # Step 10: Calculates the results
         # Step 11: Saves to the database
 
-
         # Step 1: Read the excel rows to process the information (Common among all the sheets)
         kpi_name = row[KPI_NAME]
         kpi_fk = self.common.get_kpi_fk_by_kpi_name(kpi_name)
         template_group = self.sanitize_values(row[TASK_TEMPLATE_GROUP])
-        numerator_param1 = row[NUMERATOR_PARAM_1]
         numerator_value1 = row[NUMERATOR_VALUE_1]
-        denominator_param1 = row[DENOMINATOR_PARAM_1]
         denominator_value1 = row[DENOMINATOR_VALUE_1]
+        numerator_entity = row[NUMERATOR_ENTITY]
+        denominator_entity = row[DENOMINATOR_ENTITY]
 
         # Step 2: Import values that unique to the sheet SOS
         ignore_stacking = row[IGNORE_STACKING]
-        numerator_entity = row[NUMERATOR_ENTITY]
-        denominator_entity = row[DENOMINATOR_ENTITY]
+        numerator_param1 = row[NUMERATOR_PARAM_1]
+        denominator_param1 = row[DENOMINATOR_PARAM_1]
 
 
         # Step 3: Filter the self.scif by the columns required
@@ -271,7 +330,6 @@ class ToolBox(GlobalSessionToolBox):
                                        denominator_result=denominator_result,
                                        result=result)
 
-
     def sanitize_values(self, item):
         if pd.isna(item):
             return item
@@ -281,4 +339,17 @@ class ToolBox(GlobalSessionToolBox):
 
     def delete_filter_nan(self, filters):
         filters = [filter for filter in filters if str(filter) != 'nan']
-        return filters
+        return list(filters)
+
+    @staticmethod
+    def merge_two_dictionaries(dictionary_one, dictionary_two):
+        final_dictionary = dictionary_one.copy()
+        final_dictionary.update(dictionary_two)
+        return final_dictionary
+
+
+
+
+
+ # for value in denominator_scif[row[INTERATE_BY]].unique().tolist():
+        #     population = {row[ITERATE_BY].iloc[0]: [value]}
