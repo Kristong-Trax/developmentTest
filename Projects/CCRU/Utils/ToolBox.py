@@ -4048,7 +4048,10 @@ class CCRUKPIToolBox:
                                            identifier_result=kpi_identifier_result,
                                            identifier_parent=kpi_identifier_result_0,
                                            should_enter=True,
-                                           kpi_external_targets_fk=target_fk)
+                                           kpi_external_targets_fk=target_fk,
+                                           target_greater_than_or_equal=0,
+                                           target_less_than_than_or_equal=0,
+                                           target_list_of_values=[0])
             number_of_displays += 1
 
         # Write Store level KPI
@@ -4694,12 +4697,13 @@ class CCRUKPIToolBox:
                                                should_enter=True)
 
         # Upper level KPI
-        if not (product_groups_target and total_price_facings_target):
+        if not product_groups_target:
             score = 0
         else:
             # Deviation
             result = \
-                round(abs(1 - total_price_facings_fact / float(total_price_facings_target)) * 100, 2)
+                round(abs(1 - total_price_facings_fact / float(total_price_facings_target)) * 100, 2) \
+                if total_price_facings_target else 100.0
             weight = kpis[(kpis['Location'] == location) &
                           (kpis['KPI'] == PROMO_COMPLIANCE_PRICE_TARGET)]['Weight'].values[0]/100.0
             score = round((100 - result) * float(weight), 2)
