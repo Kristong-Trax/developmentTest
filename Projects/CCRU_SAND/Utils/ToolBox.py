@@ -16,7 +16,7 @@ from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from KPIUtils_v2.Utils.Decorators.Decorators import kpi_runtime
 from KPIUtils_v2.DB.CommonV2 import Common
 from KPIUtils_v2.Utils.TargetFinder.KpiTargetFinder import KpiTargetFinder
-from Trax.Apps.Services.Apollo.Server.Services.CCRU_SAND.Utils.CCRUPromoTargetsUploaderClass import \
+from Trax.Apps.Services.Apollo.Server.Services.CCRU.Utils.CCRUPromoTargetsUploaderClass import \
     KPI_LEVEL_2_TYPE as PROMO_KPI_LEVEL_2_TYPE, \
     KPI_OPERATION_TYPE as PROMO_KPI_OPERATION_TYPE, \
     PROMO_PRODUCT_ENTITY, PROMO_DISPLAY_ENTITY, PROMO_LOCATION_ENTITY

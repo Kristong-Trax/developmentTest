@@ -80,6 +80,7 @@ class CCRU_SANDProjectCalculations:
                         .format(self.pos_kpi_set_name, self.store_id))
 
         elif self.tool_box.visit_type in [self.tool_box.PROMO_VISIT]:
+            # Log.warning('Warning. Session with Promo visit type has no KPI calculations.')
             self.calculate_promo_compliance()
 
         elif self.tool_box.visit_type in [self.tool_box.SEGMENTATION_VISIT]:
