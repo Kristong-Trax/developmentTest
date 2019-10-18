@@ -161,6 +161,7 @@ class ToolBox(GlobalSessionToolBox):
             # Step 7: Filter the filtered scif through the template group
             filtered_scif = filtered_scif[filtered_scif[TEMPLATE_GROUP].isin(template_group)]
 
+
             # Step 8: Filter the filtered scif with the denominator param and denominator value
             if pd.notna(denominator_param1):
                 denominator_scif = filtered_scif[filtered_scif[denominator_param1] == denominator_value1]
