@@ -203,8 +203,8 @@ class ToolBox(GlobalSessionToolBox):
 
 
     def calculate_block_together(self):
-        for i, row in self.templates[BLOCK_TOGETHER].iterrows():
 
+        for i, row in self.templates[BLOCK_TOGETHER].iterrows():
             # Step 1: Read the excel rows to process the information (Common among all the sheets)
             kpi_name = row[KPI_NAME]
             kpi_fk = self.common.get_kpi_fk_by_kpi_name(kpi_name)
