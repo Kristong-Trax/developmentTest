@@ -278,7 +278,7 @@ class ToolBox(GlobalSessionToolBox):
             if block.empty:
                 result = 'NULL'
             else:
-                if False in block['is_block']:
+                if False in block['is_block'].to_list():
                     result = 0
                 else:
                     result = 1
