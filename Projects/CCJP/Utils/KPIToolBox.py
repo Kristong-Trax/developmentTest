@@ -1,10 +1,12 @@
 from __builtin__ import unicode
 
-import pandas as pd
 import math
-import numpy as np
+import ast
 import os
+import pandas as pd
+import numpy as np
 from datetime import datetime
+
 
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from KPIUtils_v2.Utils.GlobalScripts.Scripts import GlobalSessionToolBox
@@ -62,28 +64,48 @@ class ToolBox(GlobalSessionToolBox):
         temp_file_name = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', "template.xlsx")
 
         self.poc_template = pd.read_excel(temp_file_name, sheet_name='poc_config', keep_default_na=False)
-        self.kpi_template = pd.read_excel(temp_file_name, sheet_name='kpi', keep_default_na=False)
-        self.set_up_template = pd.read_excel(set_up_file_name, sheet_name='Functional KPIs', keep_default_na=False)
-        self.set_up_file = self.set_up_template
+        set_up_template = pd.read_excel(set_up_file_name, sheet_name='Functional KPIs', keep_default_na=False)
+        self.set_up_file = set_up_template
         self.store = Consts.STORE
 
     def main_calculation(self):
         """
         This function calculates the KPI results.
         """
-        red_score_dict = pd.DataFrame()
-        unique_sku_sos = pd.DataFrame()
+        red_score_dict = []
+        unique_sku_sos = []
 
         assortment_store_dict = self.availability_store_function()
+        if assortment_store_dict is None:
+            assortment_store_dict = []
+
         assortment_category_dict = self.availability_category_function()
+        if assortment_category_dict is None:
+            assortment_category_dict = []
+
         facings_sos_whole_store_dict = self.facings_sos_whole_store_function()
+        if facings_sos_whole_store_dict is None:
+            facings_sos_whole_store_dict = []
+
         facings_sos_by_category_dict = self.facings_sos_by_category_function()
-        point_of_store_dict = self.point_of_connection()
+        if facings_sos_by_category_dict is None:
+            facings_sos_by_category_dict = []
 
         kpi_names = self.get_kpi_params()
 
+        point_of_store_dict = []
         for row_num, row_data in kpi_names.iterrows():
-            kpi_name = row_data['kpi_name']
+            kpi_name = row_data[Consts.KPI_TYPE_COLUMN]
+            if kpi_name == "CCJP_POC_COUNT_BY_STORE_AREA":
+                point_of_store_dict = self.point_of_connection()
+                if point_of_store_dict is None:
+                    point_of_store_dict = []
+
+        # Added additional loop because poc count is required for red score calculation.
+        # Entering the poc kpi in the excel sheet before red score kpi is not working always.
+
+        for row_num, row_data in kpi_names.iterrows():
+            kpi_name = row_data[Consts.KPI_TYPE_COLUMN]
             if kpi_name == "CCJP_RED_SCORE":
                 red_score_dict = self.calculate_red_score(facings_sos_whole_store_dict,
                                                           point_of_store_dict,
@@ -785,10 +807,13 @@ class ToolBox(GlobalSessionToolBox):
         dist_kpi_fk = self.common.get_kpi_fk_by_kpi_type("CCJP_Dst_Manufacturer_in_Whole_Store")
         poc_kpi_fk = self.common.get_kpi_fk_by_kpi_type("CCJP_POC_SCORE_BY_TARGET")
 
-        sovi_weightage = kpi_data['sovi_weightage']
-        poc_weightage = kpi_data['poc_weightage']
-        dist_weightage = kpi_data['dist_weightage']
-        kpi_name = kpi_data['kpi_name']
+        weights = ast.literal_eval(str(kpi_data['additional_kpi_attributes']))
+
+        sovi_weightage = weights['sovi_weightage']
+        poc_weightage = weights['poc_weightage']
+        dist_weightage = weights['dist_weightage']
+
+        kpi_name = kpi_data[Consts.KPI_TYPE_COLUMN]
 
         sovi_score = self.get_kpi_score(facings_sos_whole_store_dict, sovi_kpi_fk, sovi_weightage)
         dist_score = self.get_kpi_score(assortment_store_dict, dist_kpi_fk, dist_weightage)
@@ -798,7 +823,7 @@ class ToolBox(GlobalSessionToolBox):
 
         red_score = sovi_score + dist_score + poc_score
         dict_list.append(self.build_dictionary_for_db_insert_v2(fk=red_score_kpi_fk,
-                                                                numerator_id=Consts.COCO_COLA_PK,
+                                                                numerator_id=self.manufacturer_fk,
                                                                 numerator_result=red_score,
                                                                 result=red_score,
                                                                 denominator_id=self.store_id,
@@ -912,20 +937,35 @@ class ToolBox(GlobalSessionToolBox):
         if kpi_data.empty:
             Log.warning('CCJP_UNIQUE_DIST_OWN_MANU not found in template/db')
 
-        kpi_unique_dist_fk = self.common.get_kpi_fk_by_kpi_type(kpi_data[Consts.KPI_NAME])
+        kpi_unique_dist_fk = self.common.get_kpi_fk_by_kpi_type(kpi_data[Consts.KPI_TYPE_COLUMN])
 
-        df_unique_sku_all = self.scif[(self.scif['facings'] > 0)]
+        scene_types = [x.strip() for x in kpi_data[Consts.SCENE_TYPE].split(",")]
+        df_unique_sku_all = self.scif[self.scif['template_name'].isin(scene_types)]
 
-        if str(kpi_data[Consts.INCLUDE_EMPTY]).upper() == 'N':
-            df_unique_sku_all = df_unique_sku_all[(df_unique_sku_all['product_fk'] != Consts.EMPTY_PK) |
-                                                  (df_unique_sku_all['product_fk'] != Consts.GENERAL_EMPTY_PK)]
+        if df_unique_sku_all.empty:
+            Log.warning("{} scene_types not found in this session".format(scene_types))
+            return
 
-        if str(kpi_data[Consts.INCLUDE_IRRELEVANT]).upper() == 'N':
-            df_unique_sku_all = df_unique_sku_all[df_unique_sku_all['product_fk'] != Consts.IRRELEVANT_PK]
+        if str(kpi_data[Consts.INCLUDE_STACKING]).lower() == Consts.INCLUDE:
+            df_unique_sku_all = df_unique_sku_all[(self.scif['facings'] > 0)]
+        else:
+            df_unique_sku_all = df_unique_sku_all[(self.scif['facings_ign_stack'] > 0)]
 
-        df_unique_sku_own = df_unique_sku_all[df_unique_sku_all['manufacturer_fk'] == Consts.COCO_COLA_PK]
+        if str(kpi_data[Consts.INCLUDE_EMPTY]).lower() != Consts.INCLUDE:
+            df_unique_sku_all = df_unique_sku_all[(df_unique_sku_all['product_type'] != Consts.EMPTY)]
 
-        numerator_id = Consts.COCO_COLA_PK
+        if str(kpi_data[Consts.INCLUDE_IRRELEVANT]).lower() != Consts.INCLUDE:
+            df_unique_sku_all = df_unique_sku_all[df_unique_sku_all['product_type'] != Consts.IRRELEVANT]
+
+        if str(kpi_data[Consts.INCLUDE_OTHERS]).lower() != Consts.INCLUDE:
+            df_unique_sku_all = df_unique_sku_all[df_unique_sku_all['product_type'] != Consts.OTHER]
+
+        if str(kpi_data[Consts.INCLUDE_POSM]).lower() != Consts.INCLUDE:
+            df_unique_sku_all = df_unique_sku_all[df_unique_sku_all['product_type'] != Consts.POSM]
+
+        df_unique_sku_own = df_unique_sku_all[df_unique_sku_all['manufacturer_fk'] == self.manufacturer_fk]
+
+        numerator_id = self.manufacturer_fk
         numerator_result = len(df_unique_sku_own.index)
 
         denominator_id = self.store_id
@@ -1043,10 +1083,9 @@ class ToolBox(GlobalSessionToolBox):
         return store_policy
 
     def get_kpi_params(self):
-        kpi_params = pd.DataFrame()
         list_kpis = []
-        dict_kpi = {}
-        for row_num, row_data in self.kpi_template.iterrows():
+
+        for row_num, row_data in self.set_up_file.iterrows():
             filter_params = {}
             for idx in range(1, 7):
                 try:
@@ -1063,14 +1102,8 @@ class ToolBox(GlobalSessionToolBox):
                 Log.info("No KPIs")
                 continue
             else:
-                dict_kpi['kpi_name'] = row_data['kpi_name']
-                dict_kpi[Consts.INCLUDE_EMPTY] = row_data[Consts.INCLUDE_EMPTY]
-                dict_kpi[Consts.INCLUDE_IRRELEVANT] = row_data[Consts.INCLUDE_IRRELEVANT]
-                dict_kpi[Consts.POC_WEIGHT] = row_data[Consts.POC_WEIGHT]
-                dict_kpi[Consts.SOVI_WEIGHT] = row_data[Consts.SOVI_WEIGHT]
-                dict_kpi[Consts.DIST_WEIGHT] = row_data[Consts.DIST_WEIGHT]
+                dict_kpi = row_data.to_dict()
                 list_kpis.append(dict_kpi)
-                dict_kpi = {}
 
         df = pd.DataFrame(list_kpis)
 
