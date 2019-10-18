@@ -1,8 +1,12 @@
-import pandas as pd
+from __builtin__ import unicode
+
 import math
-import numpy as np
+import ast
 import os
+import pandas as pd
+import numpy as np
 from datetime import datetime
+
 
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from KPIUtils_v2.Utils.GlobalScripts.Scripts import GlobalSessionToolBox
@@ -26,10 +30,6 @@ class ToolBox(GlobalSessionToolBox):
     def __init__(self, data_provider, output, set_up_file):
         GlobalSessionToolBox.__init__(self, data_provider, output)
         self.output = output
-        self.poc_template = pd.read_excel(os.path.join(os.path.dirname(os.path.realpath(__file__)),
-                                        '..', 'Data', "template.xlsx"),
-                                        sheet_name='poc_config',
-                                        keep_default_na=False)
         self.data_provider = data_provider
         self.project_name = self.data_provider.project_name
         self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
@@ -59,48 +59,88 @@ class ToolBox(GlobalSessionToolBox):
         self.assort_lvl3 = None
         self.last_session_uid = self.ps_data.get_last_session()
         self.last_results = self.ps_data.get_last_status(self.last_session_uid, 3)
-        self.set_up_template = pd.read_excel(os.path.join(os.path.dirname(os.path.realpath(__file__)),
-                                                          '..',
-                                                          'Data',
-                                                          set_up_file),
-                                             sheet_name='Functional KPIs',
-                                             keep_default_na=False)
-        self.set_up_file = self.set_up_template
+
+        set_up_file_name = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..',  'Data', set_up_file)
+        temp_file_name = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', "template.xlsx")
+
+        self.poc_template = pd.read_excel(temp_file_name, sheet_name='poc_config', keep_default_na=False)
+        set_up_template = pd.read_excel(set_up_file_name, sheet_name='Functional KPIs', keep_default_na=False)
+        self.set_up_file = set_up_template
         self.store = Consts.STORE
 
     def main_calculation(self):
         """
         This function calculates the KPI results.
         """
-        point_of_store_dict = self.point_of_connection()
-        self.common.save_json_to_new_tables(point_of_store_dict)
+        red_score_dict = []
+        unique_sku_sos = []
 
         assortment_store_dict = self.availability_store_function()
-        self.common.save_json_to_new_tables(assortment_store_dict)
+        if assortment_store_dict is None:
+            assortment_store_dict = []
 
         assortment_category_dict = self.availability_category_function()
+        if assortment_category_dict is None:
+            assortment_category_dict = []
+
+        facings_sos_whole_store_dict = self.facings_sos_whole_store_function()
+        if facings_sos_whole_store_dict is None:
+            facings_sos_whole_store_dict = []
+
+        facings_sos_by_category_dict = self.facings_sos_by_category_function()
+        if facings_sos_by_category_dict is None:
+            facings_sos_by_category_dict = []
+
+        kpi_names = self.get_kpi_params()
+
+        point_of_store_dict = []
+        for row_num, row_data in kpi_names.iterrows():
+            kpi_name = row_data[Consts.KPI_TYPE_COLUMN]
+            if kpi_name == "CCJP_POC_COUNT_BY_STORE_AREA":
+                point_of_store_dict = self.point_of_connection()
+                if point_of_store_dict is None:
+                    point_of_store_dict = []
+
+        # Added additional loop because poc count is required for red score calculation.
+        # Entering the poc kpi in the excel sheet before red score kpi is not working always.
+
+        for row_num, row_data in kpi_names.iterrows():
+            kpi_name = row_data[Consts.KPI_TYPE_COLUMN]
+            if kpi_name == "CCJP_RED_SCORE":
+                red_score_dict = self.calculate_red_score(facings_sos_whole_store_dict,
+                                                          point_of_store_dict,
+                                                          assortment_store_dict, row_data)
+            elif kpi_name == 'CCJP_UNIQUE_DIST_OWN_MANU':
+                unique_sku_sos = self.calculate_unique_sku_sos(row_data)
+
+        self.common.save_json_to_new_tables(assortment_store_dict)
         self.common.save_json_to_new_tables(assortment_category_dict)
 
-        # assortment_subcategory_dict = self.availability_subcategory_function()
-        # self.common.save_json_to_new_tables(assortment_subcategory_dict)
-
-        facings_sos_dict = self.facings_sos_whole_store_function()
-        if facings_sos_dict is None:
+        if facings_sos_whole_store_dict is None:
             Log.warning('Scene item facts is empty for this session')
         else:
-            self.common.save_json_to_new_tables(facings_sos_dict)
+            self.common.save_json_to_new_tables(facings_sos_whole_store_dict)
 
-        facings_sos_dict = self.facings_sos_by_category_function()
-        if facings_sos_dict is None:
+        if facings_sos_by_category_dict is None:
             Log.warning('Scene item facts is empty for this session')
         else:
-            self.common.save_json_to_new_tables(facings_sos_dict)
+            self.common.save_json_to_new_tables(facings_sos_by_category_dict)
 
-        # facings_sos_dict = self.facings_by_sub_category_function()
-        # if facings_sos_dict is None:
-        #     Log.warning('Scene item facts is empty for this session')
-        # else:
-        #     self.common.save_json_to_new_tables(facings_sos_dict)
+        if point_of_store_dict is None:
+            Log.warning('Scene item facts is empty for this session')
+        else:
+            self.common.save_json_to_new_tables(point_of_store_dict)
+
+        if red_score_dict is None:
+            Log.warning('Scene item facts is empty for this session')
+        else:
+            self.common.save_json_to_new_tables(red_score_dict)
+
+        if unique_sku_sos is None:
+            Log.warning('Scene item facts is empty for this session')
+        else:
+            self.common.save_json_to_new_tables(unique_sku_sos)
+
         self.common.commit_results_data()
         score = 0
         return score
@@ -207,7 +247,7 @@ class ToolBox(GlobalSessionToolBox):
                 if not pd.isnull(result.target) and not pd.isnull(
                         result.group_target_date) and result.group_target_date <= self.current_date:
                     denominator_res = result.target
-                res = np.divide(float(result.passes), float(denominator_res)) * 100
+                res = np.divide(float(result.passes), float(denominator_res))  # * 100
                 if res >= 100:
                     score = 100
                 else:
@@ -271,22 +311,24 @@ class ToolBox(GlobalSessionToolBox):
         """
 
         self.extract_data_set_up_file("Availability")
+
         if self.assort_lvl3 is None:
             self.assortment_lvl3_adjustments1()
             if self.assort_lvl3 is None or self.assort_lvl3.empty:
                 return
         dict_list = []
+
         if availability_type == Consts.STORE:
             return self.assortment_calculation(self.assort_lvl3, self.store_fk, Consts.STORE)
 
-        # if availability_type == Consts.CATEGORY:
-        #     categories = self.all_products['category_fk'].dropna().unique()
-        #     for cat in categories:
-        #         assort_lvl3 = self.assort_lvl3[self.assort_lvl3['category_fk'] == cat]
-        #         if 'total' not in self.assortment.LVL2_HEADERS or 'passes' not in self.assortment.LVL2_HEADERS:
-        #             self.assortment.LVL2_HEADERS.extend(['total', 'passes'])
-        #         dict_list.extend(self.assortment_calculation(assort_lvl3, cat, Consts.CATEGORY))
-        #
+        if availability_type == Consts.CATEGORY:
+            categories = self.all_products['category_fk'].dropna().unique()
+            for cat in categories:
+                assort_lvl3 = self.assort_lvl3[self.assort_lvl3['category_fk'] == cat]
+                if 'total' not in self.assortment.LVL2_HEADERS or 'passes' not in self.assortment.LVL2_HEADERS:
+                    self.assortment.LVL2_HEADERS.extend(['total', 'passes'])
+                dict_list.extend(self.assortment_calculation(assort_lvl3, cat, Consts.CATEGORY))
+
         # if availability_type == Consts.SUB_CATEGORY:
         #     categories = self.assort_lvl3['category_fk'].dropna().unique()
         #     for cat in categories:
@@ -748,6 +790,48 @@ class ToolBox(GlobalSessionToolBox):
                                                                   sos_policy, sub_cat, sos_type, kpi_type))
         return results_df
 
+    @staticmethod
+    def get_kpi_score(lst_results, kpi_fk, weight):
+        result = 0
+        for dict_result in lst_results:
+            if dict_result['fk'] == kpi_fk:
+                dict_result["weight"] = weight
+                dict_result["score"] = float(dict_result['result']) * weight
+                return dict_result['score']
+        return result
+
+    def calculate_red_score(self, facings_sos_whole_store_dict, point_of_store_dict, assortment_store_dict, kpi_data):
+        dict_list = []
+
+        sovi_kpi_fk = self.common.get_kpi_fk_by_kpi_type("CCJP_FSOS_Own_Manufacturer_In_Whole_Store")
+        dist_kpi_fk = self.common.get_kpi_fk_by_kpi_type("CCJP_Dst_Manufacturer_in_Whole_Store")
+        poc_kpi_fk = self.common.get_kpi_fk_by_kpi_type("CCJP_POC_SCORE_BY_TARGET")
+
+        weights = ast.literal_eval(str(kpi_data['additional_kpi_attributes']))
+
+        sovi_weightage = weights['sovi_weightage']
+        poc_weightage = weights['poc_weightage']
+        dist_weightage = weights['dist_weightage']
+
+        kpi_name = kpi_data[Consts.KPI_TYPE_COLUMN]
+
+        sovi_score = self.get_kpi_score(facings_sos_whole_store_dict, sovi_kpi_fk, sovi_weightage)
+        dist_score = self.get_kpi_score(assortment_store_dict, dist_kpi_fk, dist_weightage)
+        poc_score = self.get_kpi_score(point_of_store_dict, poc_kpi_fk, poc_weightage)
+
+        red_score_kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_name)
+
+        red_score = sovi_score + dist_score + poc_score
+        dict_list.append(self.build_dictionary_for_db_insert_v2(fk=red_score_kpi_fk,
+                                                                numerator_id=self.manufacturer_fk,
+                                                                numerator_result=red_score,
+                                                                result=red_score,
+                                                                denominator_id=self.store_id,
+                                                                denominator_result=0,
+                                                                score=red_score))
+
+        return dict_list
+
     def sos_manufacturer_level(self, df, identifier_parent, parent_filter, sos_policy,
                                kpi_denominator, sos_type, kpi_type):
 
@@ -847,12 +931,66 @@ class ToolBox(GlobalSessionToolBox):
         results = self.calculate_sos(df, filters_num, filter_sos_first_level, sos_policy)
         return self.create_db_result(kpi_product_pk, product_fk, kpi_denominator, results, identifier_parent)
 
+    def calculate_unique_sku_sos(self, kpi_data):
+        dict_list = []
+
+        if kpi_data.empty:
+            Log.warning('CCJP_UNIQUE_DIST_OWN_MANU not found in template/db')
+
+        kpi_unique_dist_fk = self.common.get_kpi_fk_by_kpi_type(kpi_data[Consts.KPI_TYPE_COLUMN])
+
+        scene_types = [x.strip() for x in kpi_data[Consts.SCENE_TYPE].split(",")]
+        df_unique_sku_all = self.scif[self.scif['template_name'].isin(scene_types)]
+
+        if df_unique_sku_all.empty:
+            Log.warning("{} scene_types not found in this session".format(scene_types))
+            return
+
+        if str(kpi_data[Consts.INCLUDE_STACKING]).lower() == Consts.INCLUDE:
+            df_unique_sku_all = df_unique_sku_all[(self.scif['facings'] > 0)]
+        else:
+            df_unique_sku_all = df_unique_sku_all[(self.scif['facings_ign_stack'] > 0)]
+
+        if str(kpi_data[Consts.INCLUDE_EMPTY]).lower() != Consts.INCLUDE:
+            df_unique_sku_all = df_unique_sku_all[(df_unique_sku_all['product_type'] != Consts.EMPTY)]
+
+        if str(kpi_data[Consts.INCLUDE_IRRELEVANT]).lower() != Consts.INCLUDE:
+            df_unique_sku_all = df_unique_sku_all[df_unique_sku_all['product_type'] != Consts.IRRELEVANT]
+
+        if str(kpi_data[Consts.INCLUDE_OTHERS]).lower() != Consts.INCLUDE:
+            df_unique_sku_all = df_unique_sku_all[df_unique_sku_all['product_type'] != Consts.OTHER]
+
+        if str(kpi_data[Consts.INCLUDE_POSM]).lower() != Consts.INCLUDE:
+            df_unique_sku_all = df_unique_sku_all[df_unique_sku_all['product_type'] != Consts.POSM]
+
+        df_unique_sku_own = df_unique_sku_all[df_unique_sku_all['manufacturer_fk'] == self.manufacturer_fk]
+
+        numerator_id = self.manufacturer_fk
+        numerator_result = len(df_unique_sku_own.index)
+
+        denominator_id = self.store_id
+        denominator_result = len(df_unique_sku_all.index)
+
+        try:
+            result = numerator_result / float(denominator_result)
+        except:
+            result = 0
+
+        dict_list.append(self.build_dictionary_for_db_insert_v2(fk=kpi_unique_dist_fk,
+                                                                numerator_id=numerator_id,
+                                                                numerator_result=numerator_result,
+                                                                result=result,
+                                                                denominator_id=denominator_id,
+                                                                denominator_result=denominator_result,
+                                                                score=0))
+        return dict_list
+
     def point_of_connection(self):
 
         if self.store_info.empty or self.poc_template.empty:
             return
 
-        policy = self.get_store_policy()
+        policy = self.get_poc_store_policy()
 
         if policy.empty:
             return
@@ -920,7 +1058,7 @@ class ToolBox(GlobalSessionToolBox):
                 'identifier_result': identifier_result,
                 'should_enter': True}
 
-    def get_store_policy(self):
+    def get_poc_store_policy(self):
         store_policy = pd.DataFrame()
         for row_num, row_data in self.poc_template.iterrows():
             filter_params = {}
@@ -943,3 +1081,30 @@ class ToolBox(GlobalSessionToolBox):
                 return row_data
 
         return store_policy
+
+    def get_kpi_params(self):
+        list_kpis = []
+
+        for row_num, row_data in self.set_up_file.iterrows():
+            filter_params = {}
+            for idx in range(1, 7):
+                try:
+                    if len(str(row_data["store_attr_" + str(idx) + "_name"]).strip()) != 0:
+                        filter_params[row_data["store_attr_" + str(idx) + "_name"]] = \
+                            row_data["store_attr_" + str(idx) + "_value"]
+                except Exception as ex:
+                    Log.info("Error:{} filter_params:{}".format(ex, filter_params))
+
+            kpi_params = self.store_info.loc[
+                (self.store_info[list(filter_params)] == pd.Series(filter_params)).all(axis=1)]
+
+            if kpi_params.empty:
+                Log.info("No KPIs")
+                continue
+            else:
+                dict_kpi = row_data.to_dict()
+                list_kpis.append(dict_kpi)
+
+        df = pd.DataFrame(list_kpis)
+
+        return df

@@ -162,31 +162,40 @@ class DIAGEOGTRToolBox:
     def get_product_attribute_length_data(self):
         ##replace(json_extract(p.labels, '$.sub_brand'), '"', "") sub_brand,
         query = """
-        SELECT  		
-            session_fk,
-            p.pk product_fk,
-            mcna.pk mcna_fk,
-            mcna.name mcna_name,
-            sub_category_fk,
-            manufacturer_fk,
-            p.brand_fk,
-            sb.pk sub_brand_fk,
-            value length_in_meters
-        FROM probedata.manual_collection_number mcn
-        INNER JOIN static.manual_collection_number_attributes mcna 
-        ON mcn.manual_collection_number_attributes_fk= mcna.pk 
-        INNER JOIN static_new.product p on p.pk = mcn.product_fk
-        INNER JOIN static_new.brand b on p.brand_fk = b.pk
-        INNER JOIN static.sub_brand sb on sb.name = JSON_UNQUOTE(JSON_Extract(labels, '$.sub_brand'))
-        WHERE 1=1 
-            AND session_fk = (SELECT pk FROM probedata.session ses WHERE ses.session_uid='{}') 
-            AND deleted_time is null
-            AND mcna.pk=1
-        ORDER by 
-            sub_category_fk,
-            manufacturer_fk,
-            brand_fk,
-            length_in_meters
+                SELECT  		
+                session_fk,
+                mcna.pk mcna_fk,
+                mcna.name mcna_name,
+                sub_category_fk,
+                -- m.name manufacturer_name,
+                manufacturer_fk,
+                -- b.name brand_name,
+                p.brand_fk,
+                sum(value) length_in_meters
+                FROM probedata.manual_collection_number mcn
+                INNER JOIN static.manual_collection_number_attributes mcna 
+                ON mcn.manual_collection_number_attributes_fk= mcna.pk 
+                INNER JOIN static_new.product p on p.pk = mcn.product_fk
+                INNER JOIN static_new.brand b on p.brand_fk = b.pk
+                INNER JOIN static_new.manufacturer m on b.manufacturer_fk=m.pk
+                WHERE 1=1 
+                AND session_fk = (SELECT pk FROM probedata.session ses WHERE ses.session_uid='{}') 
+                AND deleted_time is null
+                AND mcna.pk=1
+                Group by 
+                session_fk,
+                mcna.pk,
+                mcna.name,
+                sub_category_fk,
+                -- m.name ,
+                manufacturer_fk,
+                -- b.name,
+                p.brand_fk
+                ORDER by 
+                sub_category_fk,
+                manufacturer_fk,
+                brand_fk,
+                length_in_meters
         """.format(self.session_uid)
 
         product_attribute_length_data = pd.read_sql_query(query, self.rds_conn.db)
@@ -332,6 +341,9 @@ class DIAGEOGTRToolBox:
         # """
         # SOS Out Of The Box kpis
         self.activate_ootb_kpis()
+
+        # sos by scene type
+        self.diageo_generator.sos_by_scene_type(self.commonV2)
 
         assortment_res_dict = self.diageo_generator.diageo_global_assortment_function_v2()
         self.commonV2.save_json_to_new_tables(assortment_res_dict)
@@ -1218,7 +1230,7 @@ class DIAGEOGTRToolBox:
 
         for row_num, kpi_result in df_sowb.iterrows():
             self.commonV2.write_to_db_result(fk=kpi_level_2_fk,
-                                             numerator_id=kpi_result['sub_brand_fk'],
+                                             numerator_id=kpi_result['brand_fk'],
                                              denominator_id=kpi_result['manufacturer_fk'],
                                              context_id=kpi_result['sub_category_fk'],
                                              numerator_result=0,

@@ -129,18 +129,18 @@ class INBEVTRADMXToolBox:
         # get the session additional_attribute_4 & 13
         additional_attribute_4 = self.store_info.additional_attribute_4.values[0]
         additional_attribute_13 = self.store_info.additional_attribute_13.values[0]
-        set_names = self.choose_correct_sets_to_calculate(additional_attribute_4,
+        set_name = self.choose_correct_sets_to_calculate(additional_attribute_4,
                                                           additional_attribute_13, parsed_template)
 
-        for set_name in set_names:
+        # for set_name in set_names:
             # wrong value in additional attribute 4 - shouldn't calculate
-            if set_name == '':
-                Log.warning('Wrong value in additional attribute 4 - shouldnt calculate')
-                return -1
-            # get only the part of the template that is related to this set
-            set_template_df = parsed_template[parsed_template['KPI Level 1 Name'] == set_name]
-            # start calculating !
-            self.calculate_set_score(set_template_df, set_name)
+        if set_name == '':
+            Log.warning('Wrong value in additional attribute 4 - shouldnt calculate')
+            return -1
+        # get only the part of the template that is related to this set
+        set_template_df = parsed_template[parsed_template['KPI Level 1 Name'] == set_name]
+        # start calculating !
+        self.calculate_set_score(set_template_df, set_name)
 
     @staticmethod
     def choose_correct_sets_to_calculate(additional_attribute_4, additional_attribute_13, template):
@@ -166,17 +166,17 @@ class INBEVTRADMXToolBox:
         if sets.empty:
             return ''
         else:
-            return sets['KPI Level 1 Name'].unique().tolist()
+            sets = sets['KPI Level 1 Name'].unique().tolist()
 
-        # if additional_attribute_4 == 'BC':
-        #     set_name = sets[0]
-        # elif additional_attribute_4 == 'BA':
-        #     set_name = sets[1]
-        # elif additional_attribute_4 == 'MODELORAMA':
-        #     set_name = sets[2]
-        # else:
-        #     return ''
-        # return set_name
+            if additional_attribute_4 == 'BC':
+                set_name = sets[0]
+            elif additional_attribute_4 == 'BA':
+                set_name = sets[1]
+            elif additional_attribute_4 == 'MODELORAMA':
+                set_name = sets[2]
+            else:
+                return ''
+            return set_name
 
     def calculate_set_score(self, set_df, set_name):
         """

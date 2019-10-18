@@ -141,8 +141,16 @@ class ToolBox(GlobalSessionToolBox):
         if config.empty or (template_fk is None):
             return
         location = {'template_fk': template_fk}
-        population = {'anchor_products': {config.anchor_param: config.anchor_value},
-                      'tested_products': {config.tested_param: config.tested_value}
+
+        anchor_pks = \
+            self.scif[self.scif[config.anchor_param].isin(config.anchor_value)]['product_fk'].unique().tolist()
+        tested_pks = \
+            self.scif[self.scif[config.tested_param].isin(config.tested_value)]['product_fk'].unique().tolist()
+        # handle populations that are not mutually exclusive
+        tested_pks = [x for x in tested_pks if x not in anchor_pks]
+
+        population = {'anchor_products': {'product_fk': anchor_pks},
+                      'tested_products': {'product_fk': tested_pks}
                       }
 
         # this function is only needed until the adjacency function is enhanced to not crash when an empty population

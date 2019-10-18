@@ -1,16 +1,11 @@
 from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScript
+from Projects.PS3_SAND.KPIGenerator import Generator
 
-from Projects.DIAGEOCO.KPIGenerator import DIAGEOCOGenerator
-
-
-
-__author__ = 'huntery'
+__author__ = 'Eli_Shivi_Sam'
 
 
-class DIAGEOCOCalculations(BaseCalculationsScript):
+class Calculations(BaseCalculationsScript):
     def run_project_calculations(self):
         self.timer.start()
-
-        DIAGEOCOGenerator(self.data_provider, self.output).main_function()
-
-        self.timer.stop('KPIGenerator.run_project_calculations')
+        Generator(self.data_provider, self.output).main_function()
+        self.timer.stop('KPIGOOGLEKRGenerator.run_project_calculations')
