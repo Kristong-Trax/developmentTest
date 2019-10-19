@@ -939,12 +939,24 @@ class ToolBox(GlobalSessionToolBox):
 
         kpi_unique_dist_fk = self.common.get_kpi_fk_by_kpi_type(kpi_data[Consts.KPI_TYPE_COLUMN])
 
-        scene_types = [x.strip() for x in kpi_data[Consts.SCENE_TYPE].split(",")]
-        df_unique_sku_all = self.scif[self.scif['template_name'].isin(scene_types)]
+        scene_types = [x.strip() for x in kpi_data[Consts.SCENE_TYPE].split(",") if len(x.strip()) > 0]
+        category_names = [x.strip() for x in kpi_data[Consts.CATEGORY_INCLUDE].split(",") if len(x.strip()) > 0]
 
-        if df_unique_sku_all.empty:
-            Log.warning("{} scene_types not found in this session".format(scene_types))
-            return
+        df_unique_sku_all = self.scif
+
+        if len(scene_types) > 0:
+            df_unique_sku_all = self.scif[self.scif['template_name'].isin(scene_types)]
+
+            if df_unique_sku_all.empty:
+                Log.warning("{} scene_types not found in this session".format(scene_types))
+                return
+
+        if len(category_names) > 0:
+            df_unique_sku_all = self.scif[self.scif['category'].isin(category_names)]
+
+            if df_unique_sku_all.empty:
+                Log.warning("{} category_names not found in this session".format(category_names))
+                return
 
         if str(kpi_data[Consts.INCLUDE_STACKING]).lower().strip() == Consts.INCLUDE:
             df_unique_sku_all = df_unique_sku_all[(self.scif['facings'] > 0)]
