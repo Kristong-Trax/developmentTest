@@ -4729,17 +4729,18 @@ class CCRU_SANDKPIToolBox:
             score = 0
         else:
             # Deviation
-            result = \
+            deviation = \
                 round(abs(1 - total_price_facings_fact / float(total_price_facings_target)) * 100, 2) \
                 if total_price_facings_target else 100.0
             weight = kpis[(kpis['Location'] == location) &
                           (kpis['KPI'] == PROMO_COMPLIANCE_PRICE_TARGET)]['Weight'].values[0]/100.0
-            score = round((100 - result) * float(weight), 2)
+            result = round((100 - deviation), 2)
+            score = round(result * float(weight), 2)
             target = round(float(weight) * 100, 2)
 
             self.common.write_to_db_result(fk=kpi_fk,
                                            numerator_id=self.own_manufacturer_id,
-                                           numerator_result=None,
+                                           numerator_result=deviation,
                                            denominator_id=display_fk,
                                            denominator_result=None,
                                            context_id=location_fk,
