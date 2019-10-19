@@ -4734,8 +4734,8 @@ class CCRUKPIToolBox:
                 if total_price_facings_target else 100.0
             weight = kpis[(kpis['Location'] == location) &
                           (kpis['KPI'] == PROMO_COMPLIANCE_PRICE_TARGET)]['Weight'].values[0]/100.0
-            result = round(deviation, 2)
-            score = round((100 - deviation) * float(weight), 2)
+            result = round((100 - deviation), 2)
+            score = round(result * float(weight), 2)
             target = round(float(weight) * 100, 2)
 
             self.common.write_to_db_result(fk=kpi_fk,
