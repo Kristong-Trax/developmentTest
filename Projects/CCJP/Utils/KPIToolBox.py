@@ -939,28 +939,40 @@ class ToolBox(GlobalSessionToolBox):
 
         kpi_unique_dist_fk = self.common.get_kpi_fk_by_kpi_type(kpi_data[Consts.KPI_TYPE_COLUMN])
 
-        scene_types = [x.strip() for x in kpi_data[Consts.SCENE_TYPE].split(",")]
-        df_unique_sku_all = self.scif[self.scif['template_name'].isin(scene_types)]
+        scene_types = [x.strip() for x in kpi_data[Consts.SCENE_TYPE].split(",") if len(x.strip()) > 0]
+        category_names = [x.strip() for x in kpi_data[Consts.CATEGORY_INCLUDE].split(",") if len(x.strip()) > 0]
 
-        if df_unique_sku_all.empty:
-            Log.warning("{} scene_types not found in this session".format(scene_types))
-            return
+        df_unique_sku_all = self.scif
 
-        if str(kpi_data[Consts.INCLUDE_STACKING]).lower() == Consts.INCLUDE:
+        if len(scene_types) > 0:
+            df_unique_sku_all = self.scif[self.scif['template_name'].isin(scene_types)]
+
+            if df_unique_sku_all.empty:
+                Log.warning("{} scene_types not found in this session".format(scene_types))
+                return
+
+        if len(category_names) > 0:
+            df_unique_sku_all = self.scif[self.scif['category'].isin(category_names)]
+
+            if df_unique_sku_all.empty:
+                Log.warning("{} category_names not found in this session".format(category_names))
+                return
+
+        if str(kpi_data[Consts.INCLUDE_STACKING]).lower().strip() == Consts.INCLUDE:
             df_unique_sku_all = df_unique_sku_all[(self.scif['facings'] > 0)]
         else:
             df_unique_sku_all = df_unique_sku_all[(self.scif['facings_ign_stack'] > 0)]
 
-        if str(kpi_data[Consts.INCLUDE_EMPTY]).lower() != Consts.INCLUDE:
+        if str(kpi_data[Consts.INCLUDE_EMPTY]).lower().strip() != Consts.INCLUDE:
             df_unique_sku_all = df_unique_sku_all[(df_unique_sku_all['product_type'] != Consts.EMPTY)]
 
-        if str(kpi_data[Consts.INCLUDE_IRRELEVANT]).lower() != Consts.INCLUDE:
+        if str(kpi_data[Consts.INCLUDE_IRRELEVANT]).lower().strip() != Consts.INCLUDE:
             df_unique_sku_all = df_unique_sku_all[df_unique_sku_all['product_type'] != Consts.IRRELEVANT]
 
-        if str(kpi_data[Consts.INCLUDE_OTHERS]).lower() != Consts.INCLUDE:
+        if str(kpi_data[Consts.INCLUDE_OTHERS]).lower().strip() != Consts.INCLUDE:
             df_unique_sku_all = df_unique_sku_all[df_unique_sku_all['product_type'] != Consts.OTHER]
 
-        if str(kpi_data[Consts.INCLUDE_POSM]).lower() != Consts.INCLUDE:
+        if str(kpi_data[Consts.INCLUDE_POSM]).lower().strip() != Consts.INCLUDE:
             df_unique_sku_all = df_unique_sku_all[df_unique_sku_all['product_type'] != Consts.POSM]
 
         df_unique_sku_own = df_unique_sku_all[df_unique_sku_all['manufacturer_fk'] == self.manufacturer_fk]
