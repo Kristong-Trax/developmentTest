@@ -946,21 +946,21 @@ class ToolBox(GlobalSessionToolBox):
             Log.warning("{} scene_types not found in this session".format(scene_types))
             return
 
-        if str(kpi_data[Consts.INCLUDE_STACKING]).lower() == Consts.INCLUDE:
+        if str(kpi_data[Consts.INCLUDE_STACKING]).lower().strip() == Consts.INCLUDE:
             df_unique_sku_all = df_unique_sku_all[(self.scif['facings'] > 0)]
         else:
             df_unique_sku_all = df_unique_sku_all[(self.scif['facings_ign_stack'] > 0)]
 
-        if str(kpi_data[Consts.INCLUDE_EMPTY]).lower() != Consts.INCLUDE:
+        if str(kpi_data[Consts.INCLUDE_EMPTY]).lower().strip() != Consts.INCLUDE:
             df_unique_sku_all = df_unique_sku_all[(df_unique_sku_all['product_type'] != Consts.EMPTY)]
 
-        if str(kpi_data[Consts.INCLUDE_IRRELEVANT]).lower() != Consts.INCLUDE:
+        if str(kpi_data[Consts.INCLUDE_IRRELEVANT]).lower().strip() != Consts.INCLUDE:
             df_unique_sku_all = df_unique_sku_all[df_unique_sku_all['product_type'] != Consts.IRRELEVANT]
 
-        if str(kpi_data[Consts.INCLUDE_OTHERS]).lower() != Consts.INCLUDE:
+        if str(kpi_data[Consts.INCLUDE_OTHERS]).lower().strip() != Consts.INCLUDE:
             df_unique_sku_all = df_unique_sku_all[df_unique_sku_all['product_type'] != Consts.OTHER]
 
-        if str(kpi_data[Consts.INCLUDE_POSM]).lower() != Consts.INCLUDE:
+        if str(kpi_data[Consts.INCLUDE_POSM]).lower().strip() != Consts.INCLUDE:
             df_unique_sku_all = df_unique_sku_all[df_unique_sku_all['product_type'] != Consts.POSM]
 
         df_unique_sku_own = df_unique_sku_all[df_unique_sku_all['manufacturer_fk'] == self.manufacturer_fk]
