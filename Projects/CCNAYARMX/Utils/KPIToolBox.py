@@ -41,6 +41,8 @@ STORE_ADDITIONAL_ATTRIBUTE_2 = 'store_additional_attribute_2'
 TAMANDO_DEL_PRODUCTO = 'TAMANO DEL PRODUCTO'
 IGNORE_STACKING = 'Ignore Stacking'
 ADDITIONAL_SCENE_TYPE = 'Additional Scene Type'
+FACINGS_TARGET = 'facings_target'
+BAY_COUNT_TARGET = 'bay_count_target'
 SUB_CATEGORY = 'sub_category'
 ITERATE_BY = 'iterate by'
 NUMERATOR_PARAM_1 = 'numerator param 1'
@@ -54,10 +56,11 @@ DENOMINATOR_ENTITY = 'Denominator Entity'
 SOS = 'SOS'
 BLOCK_TOGETHER = 'Block Together'
 SHARE_OF_EMPTY = 'Share of Empty'
+BAY_COUNT = 'Bay Count'
 
 # Scif Filters
 BRAND_FK = 'brand_fk'
-FACINGS = 'facings'
+FACINGS = 'facings_'
 FACINGS_IGN_STACK = 'facings_ign_stack'
 FINAL_FACINGS = 'final_facings'
 MANUFACTURER_FK = 'manufacturer_fk'
@@ -68,7 +71,7 @@ TEMPLATE_FK = 'template_fk'
 TEMPLATE_GROUP = 'template_group'
 
 # Read the sheet
-Sheets = [SOS, BLOCK_TOGETHER, SHARE_OF_EMPTY]
+Sheets = [SOS, BLOCK_TOGETHER, SHARE_OF_EMPTY, BAY_COUNT]
 
 TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'CCNayarTemplatev0.5.xlsx')
 
@@ -97,6 +100,7 @@ class ToolBox(GlobalSessionToolBox):
         self.block = Block(data_provider)
         self.templates = {}
         self.parse_template()
+        self.match_product_in_scene = self.data_provider['matches']
         self.own_manuf_fk = int(self.data_provider.own_manufacturer.param_value.values[0])
 
     def parse_template(self):
@@ -104,15 +108,39 @@ class ToolBox(GlobalSessionToolBox):
             self.templates[sheet] = pd.read_excel(TEMPLATE_PATH, sheet_name=sheet)
 
     def main_calculation(self):
-        for i, row in self.templates[BLOCK_TOGETHER].iterrows():
+        for i, row in self.templates[BAY_COUNT].iterrows():
             # self.calculate_sos(row)
-            self.calculate_block_together(row)
+            # self.calculate_block_together(row)
             # self.calculate_share_of_empty(row)
+            self.caculate_bay_count(row)
         return
+
+    def caculate_bay_count(self, row):
+
+        # # Step 1: Read the excel rows to process the information(Common among all the sheets)
+        # kpi_name = row[KPI_NAME]
+        # template_group = row[TASK_TEMPLATE_GROUP]
+        # numerator_entity = row[NUMERATOR_ENTITY]
+        # denominator_entity = row[DENOMINATOR_ENTITY]
+        #
+        # # Step 2: Read the excel rows unique to Bay Count Sheets
+        # facings_target = row[FACINGS_TARGET]
+        # bay_count_target = row[BAY_COUNT_TARGET]
+        # store_additional_attributue_2 = row[STORE_ADDITIONAL_ATTRIBUTE_2]
+        # numerator_param_1 = row[NUMERATOR_PARAM_1]
+        # numerator_value_1 = row[NUMERATOR_VALUE_1]
+        # product_type = row[PRODUCT_TYPE]
+
+        a = self.scif
+        b = self.match_product_in_scene
+        c = 2
+
+
 
     def calculate_sos(self, row):
 
-        #REMINDER Filter scif by additional scene type column
+        # REMINDER Filter scif by additional scene type column
+        # Waiting on Session with with scene type(template_name) with Enfriador Dedicado JDV
 
         # Table of Contents:
         # Step 1 to 2: Declaring all the relevant columns from Sheet SOS
@@ -202,9 +230,9 @@ class ToolBox(GlobalSessionToolBox):
                                        denominator_result=denominator_result,
                                            result=result)
 
-
     def calculate_block_together(self, row):
         # Not finished. Need to write the logic to encode the iterate by column from the template
+        # Waiting on Rifika for the relevant session
 
         # Step 1: Read the excel rows to process the information (Common among all the sheets)
         kpi_name = row[KPI_NAME]
