@@ -11,6 +11,8 @@ if __name__ == '__main__':
     project_name = 'ccru-sand'
     data_provider = KEngineDataProvider(project_name)
     session_uids = [
+        # 'FF05F183-4FBC-48D0-9F78-A418EA8AEE90',
+
         'ff72196b-b28a-46c4-8b25-343380337373',
         'FF5CD17D-EE7D-4BC7-BD92-218CCFF4C40B',
         'ff5a9495-b910-4ffe-b526-69f7c7348d09',
@@ -35,3 +37,4 @@ if __name__ == '__main__':
         data_provider.load_session_data(session)
         output = Output()
         CCRU_SANDCalculations(data_provider, output).run_project_calculations()
+
