@@ -30,13 +30,11 @@ STORE_IDENTIFIERS = [
 SCENE_IDENTIFIERS = [
     'template_fk',
 ]
-POSM_PK_KEY = 'posm_pk'
-# ALLOWED_POSM_EAN_KEY = 'allowed_posm_eans'
+POSM_PK_KEY = 'display_pk'
 OPTIONAL_EAN_KEY = 'optional_eans'
 MANDATORY_EANS_KEY = 'mandatory_eans'
 POSM_IDENTIFIERS = [
     POSM_PK_KEY,
-    # ALLOWED_POSM_EAN_KEY,
     OPTIONAL_EAN_KEY,
     MANDATORY_EANS_KEY,
 ]
@@ -69,13 +67,11 @@ class GSKAUSceneToolBox:
         self.store_info = self.data_provider[Data.STORE_INFO]
         self.store_id = self.store_info.iloc[0].store_fk
         self.store_type = self.data_provider.store_type
+        self.match_display_in_scene = self.data_provider.match_display_in_scene
         self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         self.kpi_static_data = self.common.get_kpi_static_data()
         self.ps_data_provider = PsDataProvider(self.data_provider, self.output)
         self.targets = self.ps_data_provider.get_kpi_external_targets()
-
-        self.kpi_results_queries = []
-        self.missing_products = []
 
     def calculate_display_compliance(self):
         kpi_display_presence = self.kpi_static_data[
@@ -135,7 +131,8 @@ class GSKAUSceneToolBox:
                     # save detailed sku presence
                     posm_to_check = each_target[POSM_PK_KEY]
                     # FIND THE SCENES WHICH HAS THE POSM to check for multiposm or multibays
-                    is_posm_absent = self.scif[self.scif['product_fk'] == posm_to_check].empty
+                    is_posm_absent = self.match_display_in_scene[self.match_display_in_scene['display_fk']
+                                                                 == posm_to_check].empty
                     if is_posm_absent:
                         Log.info('The scene: {scene} is relevant but POSM {pos} is not present. '
                                  'Save and start new scene.'
@@ -174,9 +171,7 @@ class GSKAUSceneToolBox:
                     has_posm_recognized = True
                     # check if this scene has multi posm or multi bays
                     if len(self.match_product_in_scene['bay_number'].unique()) > 1 or \
-                            len(self.scif[self.scif['product_type'] == POS_TYPE]) > 1 or \
-                            not self.scif[(self.scif['product_type'] == POS_TYPE) &
-                                          (self.scif['facings'] > 1)].empty:
+                            len(self.match_display_in_scene) > 1:
                         # Its multi posm or bay -- only purity calc per bay is possible
                         Log.info('The scene: {scene} is relevant and POSM {pos} is present but multi_bay_posm is True. '
                                  'Purity per bay is calculated and going to next scene.'
