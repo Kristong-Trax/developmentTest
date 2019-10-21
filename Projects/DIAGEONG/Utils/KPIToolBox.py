@@ -30,5 +30,8 @@ class DIAGEONGToolBox:
         # Share of Shelf (SOS) %
         self.diageo_generator.activate_ootb_kpis(self.commonV2)
 
+        # sos by scene type
+        self.diageo_generator.sos_by_scene_type(self.commonV2)
+
         # committing to the new tables
         self.commonV2.commit_results_data()

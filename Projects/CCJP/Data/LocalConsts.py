@@ -16,7 +16,6 @@ class Consts(object):
     POC_WEIGHT = 'poc_weightage'
     DIST_WEIGHT = 'dist_weightage'
     SOVI_WEIGHT = 'sovi_weightage'
-    KPI_NAME = 'kpi_name'
     MANUFACTURE_NAME = "CC"
     COUNTRY = "JP"
 
