@@ -1643,7 +1643,6 @@ class BATRU_SANDToolBox:
             self.common.write_to_db_result(fk=sas_fixture_in_scene_fk, numerator_id=fixture_fk, denominator_id=scene,
                                            score=fixture_sas_zone_score, result=custom_sas_fixture_res,
                                            identifier_result=sas_fixture_identifier_par,
-
                                            identifier_parent=sas_identifier_par, should_enter=True)
             # start here
             # for mis_product in misplaced_products:
