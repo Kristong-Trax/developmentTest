@@ -74,6 +74,8 @@ class ToolBox(GlobalSessionToolBox):
         """
         red_score_dict = []
         unique_sku_sos = []
+        facings_sos_whole_store_dict = []
+        facings_sos_by_category_dict = []
 
         assortment_store_dict = self.availability_store_function()
         if assortment_store_dict is None:
@@ -83,15 +85,18 @@ class ToolBox(GlobalSessionToolBox):
         if assortment_category_dict is None:
             assortment_category_dict = []
 
-        facings_sos_whole_store_dict = self.facings_sos_whole_store_function()
-        if facings_sos_whole_store_dict is None:
-            facings_sos_whole_store_dict = []
-
-        facings_sos_by_category_dict = self.facings_sos_by_category_function()
-        if facings_sos_by_category_dict is None:
-            facings_sos_by_category_dict = []
-
         kpi_names = self.get_kpi_params()
+
+        for row_num, row_data in kpi_names.iterrows():
+            kpi_name = row_data[Consts.KPI_TYPE_COLUMN]
+            if kpi_name == "Facings SOS":
+                facings_sos_whole_store_dict = self.facings_sos_whole_store_function()
+                if facings_sos_whole_store_dict is None:
+                    facings_sos_whole_store_dict = []
+
+                facings_sos_by_category_dict = self.facings_sos_by_category_function()
+                if facings_sos_by_category_dict is None:
+                    facings_sos_by_category_dict = []
 
         point_of_store_dict = []
         for row_num, row_data in kpi_names.iterrows():
