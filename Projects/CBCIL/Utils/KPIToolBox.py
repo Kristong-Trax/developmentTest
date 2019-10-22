@@ -90,6 +90,8 @@ class CBCILCBCIL_ToolBox(object):
     SURVEY = 'Survey'
 
     TOTAL_SCORE = 'Total Score'
+    TOTAL_SCORE_FOR_DASHBOARD = 'Total Score 2'
+
     CBCIL = 'Central Bottling Company'
 
     def __init__(self, data_provider, output):
@@ -322,8 +324,18 @@ class CBCILCBCIL_ToolBox(object):
 
             total_score_fk = self.common.get_kpi_fk_by_kpi_type(self.TOTAL_SCORE)
             self.common.write_to_db_result(fk=total_score_fk, numerator_id=self.cbcil_id, denominator_id=self.store_id,
-                                           identifier_result=identifier_result_set, result=final_score,
-                                           score=final_score, should_enter=True, weight=100, target=100)
+                                           identifier_result=identifier_result_set, result=round(final_score, 2),
+                                           weight=round(100, 2), target=round(80, 2), score=final_score,
+                                           should_enter=True)
+
+            # requested for dashboard
+            total_score_fk_for_dashboard = self.common.get_kpi_fk_by_kpi_type(self.TOTAL_SCORE_FOR_DASHBOARD)
+
+            self.common.write_to_db_result(fk=total_score_fk_for_dashboard, numerator_id=self.cbcil_id,
+                                           denominator_id=self.store_id,
+                                           identifier_result=identifier_result_set, result=round(final_score, 2),
+                                           weight=round(100, 2), target=round(80, 2), score=final_score,
+                                           should_enter=True)
 
             self.commit_results_data()
             self.common.commit_results_data()
