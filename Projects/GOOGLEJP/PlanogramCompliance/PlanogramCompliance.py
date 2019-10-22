@@ -3,14 +3,6 @@ from KPIUtils_v2.Calculations.PlanogramAlgorithms.PlanogramComplianceMultiSided 
 
 __author__ = 'Shivi'
 
-IRRELEVANT = "Irrelevant"
-SCENE_BAY = "scene_bay"
-POG_BAY = "pog_bay"
-BAYS_COUPLE = "bays_couple"
-SCORE = "score"
-TAG_COMPLIANCE = "tag_compliance"
-SUM = "SUM"
-
 
 class PlanogramCompliance(PlanogramComplianceBaseClass):
 
