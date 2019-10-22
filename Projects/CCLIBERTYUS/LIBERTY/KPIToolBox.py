@@ -257,7 +257,7 @@ class LIBERTYToolBox:
         relevant_template = template[template[Const.KPI_NAME] == kpi_name]
         # we need this to fix dumb template
         relevant_template[Const.EAN_CODE] = \
-            relevant_template[Const.EAN_CODE].apply(lambda x: str(int(x)) if x != '' else None)
+            relevant_template[Const.EAN_CODE].apply(lambda x: str(x) if x != '' else None)
         primary_ean_codes = \
             relevant_template[relevant_template[Const.SECONDARY_GROUP]
                               != 'Y'][Const.EAN_CODE].unique().tolist()
