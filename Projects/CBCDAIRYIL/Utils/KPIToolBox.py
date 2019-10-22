@@ -210,11 +210,11 @@ class CBCDAIRYILToolBox:
             total_scores.append((atomic_score, atomic_weight))
             atomic_fk_lvl_2 = self.common.get_kpi_fk_by_kpi_type(current_atomic[Consts.KPI_ATOMIC_NAME].strip())
             old_atomic_fk = self.get_kpi_fk_by_kpi_name(current_atomic[Consts.KPI_ATOMIC_NAME].strip(), 3)
-            # self.common.write_to_db_result(fk=atomic_fk_lvl_2, numerator_id=Consts.CBC_MANU,
-            #                                numerator_result=num_result, denominator_id=self.store_id,
-            #                                weight=round(atomic_weight*100, 2), denominator_result=den_result,
-            #                                should_enter=True, identifier_parent=kpi_fk,
-            #                                result=atomic_score, score=atomic_score * atomic_weight)
+            self.common.write_to_db_result(fk=atomic_fk_lvl_2, numerator_id=Consts.CBC_MANU,
+                                           numerator_result=num_result, denominator_id=self.store_id,
+                                           weight=round(atomic_weight*100, 2), denominator_result=den_result,
+                                           should_enter=True, identifier_parent=kpi_fk,
+                                           result=atomic_score, score=atomic_score * atomic_weight)
             self.old_common.old_write_to_db_result(fk=old_atomic_fk, level=3,
                                                    result=str(format(atomic_score * atomic_weight, '.2f')),
                                                    score=atomic_score)
