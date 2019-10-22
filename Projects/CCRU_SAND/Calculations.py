@@ -67,25 +67,31 @@ class CCRU_SANDProjectCalculations:
 
     def main_function(self):
 
-        if self.tool_box.visit_type in (self.tool_box.PROMO_VISIT, self.tool_box.SEGMENTATION_VISIT):
-            Log.info('\'{}\' visit type: no Custom KPI calculation implied'
-                     ''.format(self.tool_box.visit_type))
-            return
-
         if str(self.visit_date) < self.tool_box.MIN_CALC_DATE:
-            Log.warning('Error. Session cannot be calculated. '
+            Log.warning('Warning. Session cannot be calculated. '
                         'Visit date is less than {2} - {0}. '
                         'Store ID {1}.'
                         .format(self.visit_date, self.store_id, self.tool_box.MIN_CALC_DATE))
-            return
 
-        if self.pos_kpi_set_name not in ALLOWED_POS_SETS:
-            Log.warning('Error. Session cannot be calculated. '
+        elif self.pos_kpi_set_name not in ALLOWED_POS_SETS:
+            Log.warning('Warning. Session cannot be calculated. '
                         'POS KPI Set name in store attribute is invalid - {0}. '
                         'Store ID {1}.'
                         .format(self.pos_kpi_set_name, self.store_id))
-            return
 
+        elif self.tool_box.visit_type in [self.tool_box.PROMO_VISIT]:
+            # Log.warning('Warning. Session with Promo visit type has no KPI calculations.')
+            self.calculate_promo_compliance()
+
+        elif self.tool_box.visit_type in [self.tool_box.SEGMENTATION_VISIT]:
+            Log.warning('Warning. Session with Segmentation visit type has no KPI calculations.')
+
+        else:
+            self.calculate_red_score()
+
+        Log.debug('KPI calculation is completed')
+
+    def calculate_red_score(self):
         self.json.create_kpi_data_json('kpi_source', 'KPI_Source.xlsx',
                                        sheet_name=self.pos_kpi_set_name)
         kpi_source_json = self.json.project_kpi_dict.get('kpi_source')
@@ -97,14 +103,14 @@ class CCRU_SANDProjectCalculations:
             pass
 
         # elif self.test_store == "Y":
-        #     Log.warning('Error. Session cannot be calculated: '
+        #     Log.warning('Warning. Session cannot be calculated: '
         #                 'Store is a test store. '
         #                 'Store ID {1}.'
         #                 .format(self.pos_kpi_set_name, self.store_id))
         #     return
 
         else:
-            Log.warning('Error. Session cannot be calculated. '
+            Log.warning('Warning. Session cannot be calculated. '
                         'POS KPI Set name in store attribute is invalid - {0}. '
                         'Store ID {1}.'
                         .format(self.pos_kpi_set_name, self.store_id))
@@ -217,7 +223,15 @@ class CCRU_SANDProjectCalculations:
         Log.debug('KPI calculation stage: {}'.format('Committing results new'))
         self.tool_box.commit_results_data_new()
 
-        Log.debug('KPI calculation is completed')
+    def calculate_promo_compliance(self):
+        self.json.create_kpi_data_json('promo', 'KPI_Promo_Tracking.xlsx', sheet_name='2019')
+        kpi_data = self.json.project_kpi_dict.get('promo')
+
+        Log.debug('KPI calculation stage: {}'.format('Promo Compliance'))
+        self.tool_box.calculate_promo_compliance_store(kpi_data)
+
+        Log.debug('KPI calculation stage: {}'.format('Committing results new'))
+        self.tool_box.common.commit_results_data()
 
     def rds_connection(self):
         if not hasattr(self, '_rds_conn'):
@@ -228,3 +242,4 @@ class CCRU_SANDProjectCalculations:
             self._rds_conn.disconnect_rds()
             self._rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         return self._rds_conn
+

@@ -28,7 +28,7 @@ SOS = 'SOS'
 Survey = 'Survey'
 Sheets = [Availability, SOS]
 # TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'Coke_FSOP_v1.xlsx')
-TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'Coke_FSOP_wave2.xlsx')
+TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'Coke_FSOP_wave2 .xlsx')
 CCNA = 'CCNA'
 
 
@@ -188,6 +188,7 @@ class FSOPToolBox:
             den_param1 = row['denominator param1']
             den_value1 = self.sanitize_values(row['denominator value1'])
 
+
             den_param2 = row['denominator param2']
             den_value2 = self.sanitize_values(row['denominator value2'])
 
@@ -216,17 +217,12 @@ class FSOPToolBox:
                     score = 1
                 else:
                     score = 0
-
+            a = 1
             self.common.write_to_db_result(fk=kpi_fk, numerator_id=self.manufacturer_fk, numerator_result=0,
                                            denominator_id=self.store_id,
                                            denominator_result=0, result=ratio, score=score)
 
-    def sanitize_values(self, item):
-        if pd.isna(item):
-            return item
-        else:
-            items = [x.strip() for x in item.split(',')]
-            return items
+
 
     def delete_filter_nan(self, filters):
         for key in filters.keys():

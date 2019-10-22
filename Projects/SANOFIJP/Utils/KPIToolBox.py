@@ -12,10 +12,10 @@ __author__ = 'nidhin'
 
 class SanofiJPToolBox:
 
-    def __init__(self, data_provider, output):
+    def __init__(self, data_provider, output, common):
         self.output = output
         self.data_provider = data_provider
-        self.common = Common(self.data_provider)
+        self.common = common
         self.project_name = self.data_provider.project_name
         self.session_uid = self.data_provider.session_uid
         self.scene_info = self.data_provider[Data.SCENES_INFO]
