@@ -441,17 +441,60 @@ class ToolBox(GlobalSessionToolBox):
         template_group = self.sanitize_values(row[TASK_TEMPLATE_GROUP])
         numerator_entity = row[NUMERATOR_ENTITY]
         denominator_entity = row[DENOMINATOR_ENTITY]
-
         # Step 2: Read the rows to process unique per bay sos
         template_group = row[TASK_TEMPLATE_GROUP]
         template_name = row[TEMPLATE_NAME]
         product_type = self.sanitize_values(row[PRODUCT_TYPE])
+        numerator_param_1 = row[NUMERATOR_PARAM_1]
         numerator_value_1 = row[NUMERATOR_VALUE_1]
 
+
         # Step 3: Declaring the relevant columns for scif
+        relevant_scif_columns = [TEMPLATE_GROUP, TEMPLATE_NAME, PRODUCT_FK, PRODUCT_TYPE, MANUFACTURER_NAME, numerator_entity, denominator_entity]
+        # Step 4: Index self.scif to get relevant_scif
+        relevant_scif = self.scif[relevant_scif_columns]
+
+        # Step 5:
+        relevant_scif = relevant_scif[relevant_scif[TEMPLATE_GROUP].isin([template_group])]
+        # Step 6:
+        relevant_scif = relevant_scif[relevant_scif[TEMPLATE_NAME].isin([template_name])]
+
+        # Step 7:
+        relevant_scif = relevant_scif[relevant_scif[PRODUCT_TYPE].isin(product_type)]
 
 
+        product_in_scene = self.match_product_in_scene[['product_fk', 'bay_number']]
+        try:
+            bay_count_scif = relevant_scif.merge(product_in_scene, on='product_fk', how='left')[
+                [BAY_NUMBER, MANUFACTURER_NAME, PRODUCT_FK]]
+        except:
+            return
 
+        group_by_bay_number_scif = bay_count_scif.groupby('bay_number').nunique()[MANUFACTURER_NAME]
+
+        bay_count = 0
+        for bay in range(1, len(group_by_bay_number_scif) + 1):
+            if group_by_bay_number_scif[bay] == 1:
+                if 'TCCC' in set(bay_count_scif[bay_count_scif[BAY_NUMBER].isin([bay])][MANUFACTURER_NAME]):
+                    bay_count = bay_count + 1
+                    break
+
+        # Step 8:
+        if bay_count > 0:
+            relevant_scif = relevant_scif[relevant_scif[numerator_param_1].isin([numerator_value_1])]
+            facings_count = relevant_scif[FACINGS_IGN_STACK].sum()
+            if facings_count >= 25:
+                result = 1
+        else:
+            result = 0
+
+        #Step 9:
+        denominator_id = relevant_scif[denominator_entity].mode()[0]
+        numerator_id = relevant_scif[numerator_entity].mode()[0]
+
+        # Step 10. Save the results in the database
+        self.common.write_to_db_result(kpi_fk, numerator_id=numerator_id,
+                                       denominator_id=denominator_id, result=result)
 
     def sanitize_values(self, item):
         if pd.isna(item):
