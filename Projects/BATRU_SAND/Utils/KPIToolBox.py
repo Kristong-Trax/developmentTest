@@ -124,6 +124,7 @@ class BATRU_SANDToolBox:
     SAS_NO_COMPETITOR_KPI = 'No competitors in SAS Zone'
     SK_FIXTURE_IN_SCENE = 'SK Fixture in Scene'
     SK_SECTION_IN_FIXTURE = 'SK Section in Fixture'
+    SK_SKU_PRESENCE_NOT_IN_LIST_SKU = 'SK SKU Presence NOT in List - SKU'
 
     def __init__(self, data_provider, output):
         self.k_engine = BaseCalculationsScript(data_provider, output)
@@ -1232,9 +1233,10 @@ class BATRU_SANDToolBox:
         sk_new_tables_fk = self.common.get_kpi_fk_by_kpi_type(SK)
         sk_identifier_par = self.common.get_dictionary(kpi_fk=sk_new_tables_fk)
 
-        sk_section_presence_fk = self.common.get_dictionary(self.SKU_PRESENCE_KPI_NAME)
-        sk_section_sequence_fk = self.common.get_dictionary(self.SKU_SEQUENCE_KPI_NAME)
-        sk_section_repeating_fk = self.common.get_dictionary(self.SKU_REPEATING_KPI_NAME)
+        sk_section_presence_fk = self.common.get_kpi_fk_by_kpi_type(self.SKU_PRESENCE_KPI_NAME)
+        sk_section_sequence_fk = self.common.get_kpi_fk_by_kpi_type(self.SKU_SEQUENCE_KPI_NAME)
+        sk_section_repeating_fk = self.common.get_kpi_fk_by_kpi_type(self.SKU_REPEATING_KPI_NAME)
+        sk_sku_presence_not_in_list_fk = self.common.get_kpi_fk_by_kpi_type(self.SK_SKU_PRESENCE_NOT_IN_LIST_SKU)
 
         if not self.scif.empty:
             attribute_3 = self.scif['additional_attribute_3'].values[0]
@@ -1386,6 +1388,7 @@ class BATRU_SANDToolBox:
                 no_empties = False
                 sku_repeating_passed = False
                 misplaced_products = []
+                misplaced_products_fks = []
 
                 if not section_shelf_data.empty:
 
@@ -1501,6 +1504,8 @@ class BATRU_SANDToolBox:
                             misplaced_products = \
                                 section_shelf_data[section_shelf_data['product_ean_code_lead'].isin(misplaced_products_eans)][
                                     'product_name'].unique().tolist()
+                            misplaced_products_fks = self.all_products[self.all_products['product_ean_code_lead'].\
+                                isin(misplaced_products_eans)]['product_fk_lead'].unique().tolist()
 
                 # Initial score values
                 sku_presence_score = 0
@@ -1579,12 +1584,24 @@ class BATRU_SANDToolBox:
                                                denominator_id=fixture_fk, context_id=scene, score=sku_repeating_score,
                                                result=repeating_custom_res,
                                                identifier_parent=section_in_fixture_identifier_par, should_enter=True)
+
+                presence_section_identifier_par = self.common.get_dictionary(kpi_fk=sk_section_presence_fk,
+                                                                             section=section_fk, fixture=fixture_fk,
+                                                                             scene_fk=scene)
                 presence_custom_res = self.kpi_result_values['PRESENCE']['OOS'] if sku_presence_score == 0 else \
                     self.kpi_result_values['PRESENCE']['DISTRIBUTED']
                 self.common.write_to_db_result(fk=sk_section_repeating_fk, numerator_id=section_fk,
                                                denominator_id=fixture_fk, context_id=scene, score=sku_presence_score,
                                                result=presence_custom_res,
+                                               identifier_result=presence_section_identifier_par,
                                                identifier_parent=section_in_fixture_identifier_par, should_enter=True)
+
+                # new tables - sk set - lvl 5
+                for product_fk in misplaced_products_fks:
+                    self.common.write_to_db_result(fk=sk_sku_presence_not_in_list_fk, numerator_id=product_fk,
+                                                   denominator_id=section, context_id=scene, result=1, score=1,
+                                                   identifier_parent=presence_section_identifier_par,
+                                                   should_enter=True)
 
                 # Saving to API set
                 self.write_to_db_result_for_api(score=misplaced_products_result, level=self.LEVEL3, kpi_set_name=SK_RAW_DATA,
@@ -1644,8 +1661,6 @@ class BATRU_SANDToolBox:
                                            score=fixture_sas_zone_score, result=custom_sas_fixture_res,
                                            identifier_result=sas_fixture_identifier_par,
                                            identifier_parent=sas_identifier_par, should_enter=True)
-            # start here
-            # for mis_product in misplaced_products:
 
         # Store level results
         if self.sas_zone_statuses_dict:
