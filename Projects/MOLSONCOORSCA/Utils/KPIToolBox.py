@@ -124,32 +124,38 @@ class ToolBox:
         if relevant_scif.empty:
             return
 
-        # if kpi_name not in [
-        #     # 'Eye Level Availability'
-        #     # 'Flanker Displays', 'Disruptor Displays'
-        #     # 'Innovation Distribution',
-        #     # 'Display by Location',
-        #     # 'Display by Location'
-        #     # 'Leading Main Section on Left',
-        #     # 'Leading Cooler on Left',
-        #     # 'Leading Cooler on Right',
-        #     # 'Leading Main Section on Right',
-        #     # 'Leading Cold Room on Left',
-        #     # 'Leading Cold Room on Right',
-        #     # 'Share of Segment Cooler Facings'
-        #     # 'Share of Segment Warm Facings',
-        #     'ABI Share of Display Space'
-        #     # 'Sleeman Share of Display Space'
-        #     # 'Share of Total Space'
-        #
-        # ]:
-        #     return
+        if kpi_name not in [
+            # 'Eye Level Availability'
+            # 'Flanker Displays', 'Disruptor Displays'
+            # 'Innovation Distribution',
+            # 'Display by Location',
+            # 'Display by Location'
+            # 'Leading Main Section on Left',
+            # 'Leading Cooler on Left',
+            # 'Leading Cooler on Right',
+            # 'Leading Main Section on Right',
+            # 'Leading Cold Room on Left',
+            # 'Leading Cold Room on Right',
+            # 'Share of Segment Cooler Facings'
+            # 'Share of Segment Warm Facings',
+            # 'ABI Share of Display Space'
+            # 'Sleeman Share of Display Space'
+            # 'Share of Total Space'
+            # 'Warm Base Measurement'
+            'Warm Bays',
+            'Cold Room Bays',
+            'Cooler Door Count'
+
+        ]:
+            return
 
         if kpi_type not in [
             'Share of Facings',
             'Share of Shelf',
             'Distribution',
-            'Anchor'
+            'Anchor',
+            'Base Measurement',
+            'Bay Count'
 
         ]:
             return
@@ -278,8 +284,8 @@ class ToolBox:
         den = den_df[col].sum()
         num = num_df[col].sum()
         if col == 'width_mm_advance':
-            num /= 304.8
-            den /= 304.8
+            num /= Const.MM_FT
+            den /= Const.MM_FT
         result = self.safe_divide(num, den)
         ret = {'score': 1, 'result': result, "numerator_result": num, "denominator_result": den,
                'numerator_id': num_id,
@@ -291,7 +297,7 @@ class ToolBox:
             ret['ident_result'] = kpi_name
         return ret
 
-    def calculate_bay_count(self, kpi_name, kpi_line, relevant_scif, general_filters):
+    def calculate_bay_count(self, kpi_name, kpi_line, relevant_scif, general_filters, main_line, level, **kwargs):
         """
         :param kpi_name: Dataframe of the KPI name
         :param kpi_line: Dataframe of the KPI type
@@ -299,10 +305,13 @@ class ToolBox:
         :param general_filters: Filters through self.full_mpis to output the nessesary dataframe
         :return: The sum of the unqiue bays (i.e: count of bay number one, count of bay number two) in every scene
         """
-        num = self.filter_df(self.full_mpis, general_filters)
-        count_of_unique_bays_in_scene = num.groupby(['scene_fk', 'bay_number']).first().shape[0]
-
-        return count_of_unique_bays_in_scene
+        df = self.filter_df(self.full_mpis, general_filters)
+        result = df.groupby(['scene_fk', 'bay_number']).first().shape[0]
+        results = {'score': 1, 'result': result, 'numerator_result': result,
+                   'numerator_id': relevant_scif[main_line[level['num_col']]].iloc[0],
+                   'denominator_id': relevant_scif[main_line[level['den_col']]].iloc[0],
+                   'kpi_name': self.lvl_name(kpi_name, level['lvl'])}
+        return level['end'], results
 
     def calculate_adjacency_init(self, kpi_name, kpi_line, relevant_scif, general_filters):
         results = []
@@ -443,6 +452,14 @@ class ToolBox:
                             'kpi_name': self.lvl_name(kpi_name, 'Session')})
         return level['end'], results
 
+    def calculate_base_measure(self, kpi_name, kpi_line, relevant_scif, main_line, level, **kwargs):
+        sum_col = self.read_cell_from_line(kpi_line, 'Sum Col')[0]
+        result = relevant_scif[sum_col].sum() / Const.MM_FT
+        results = {'score': 1, 'result': result, 'numerator_result': result,
+                   'numerator_id': relevant_scif[main_line[level['num_col']]].iloc[0],
+                   'denominator_id': relevant_scif[main_line[level['den_col']]].iloc[0],
+                   'kpi_name': self.lvl_name(kpi_name, level['lvl'])}
+        return level['end'], results
 
 
 
@@ -1119,6 +1136,8 @@ class ToolBox:
             return self.calculate_distribution
         elif kpi_type == Const.ANCHOR:
             return self.calculate_anchor
+        elif kpi_type == Const.BASE_MEASUREMENT:
+            return self.calculate_base_measure
 
 
 
