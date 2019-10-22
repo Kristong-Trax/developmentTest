@@ -122,6 +122,8 @@ class BATRU_SANDToolBox:
     SAS_FIXTURE_PER_SCENE = 'SAS Fixture in Scene'
     SAS_DISPLAY = 'SAS Display'
     SAS_NO_COMPETITOR_KPI = 'No competitors in SAS Zone'
+    SK_FIXTURE_IN_SCENE = 'SK Fixture in Scene'
+    SK_SECTION_IN_FIXTURE = 'SK Section in Fixture'
 
     def __init__(self, data_provider, output):
         self.k_engine = BaseCalculationsScript(data_provider, output)
@@ -252,6 +254,11 @@ class BATRU_SANDToolBox:
         display_type_update_list = list(display_type_update_set)
         custom_entity = self.update_custom_entity(custom_entity, display_type_update_list, 'display_type_in_group')
 
+        #update sections for p3 - sk set
+        sections_template = self.get_relevant_template_sheet(P3_TEMPLATE, 'Sections')
+        sections_template['section_name'] = self.encode_column_in_df(sections_template, 'section_name')
+        sections_update_list = sections_template['section_name'].unique().tolist()
+        custom_entity = self.update_custom_entity(custom_entity, sections_update_list, 'section')
         return custom_entity
 
     def update_custom_entity(self, custom_entity_df, update_list, entity_type):
@@ -1222,6 +1229,13 @@ class BATRU_SANDToolBox:
         sas_new_tables_fk = self.common.get_kpi_fk_by_kpi_type(SAS)
         sas_identifier_par = self.common.get_dictionary(kpi_fk=sas_new_tables_fk)
 
+        sk_new_tables_fk = self.common.get_kpi_fk_by_kpi_type(SK)
+        sk_identifier_par = self.common.get_dictionary(kpi_fk=sk_new_tables_fk)
+
+        sk_section_presence_fk = self.common.get_dictionary(self.SKU_PRESENCE_KPI_NAME)
+        sk_section_sequence_fk = self.common.get_dictionary(self.SKU_SEQUENCE_KPI_NAME)
+        sk_section_repeating_fk = self.common.get_dictionary(self.SKU_REPEATING_KPI_NAME)
+
         if not self.scif.empty:
             attribute_3 = self.scif['additional_attribute_3'].values[0]
             attribute_11 = self.scif['additional_attribute_11'].values[0]
@@ -1280,6 +1294,7 @@ class BATRU_SANDToolBox:
                     product_ean_code))
 
         sas_fixture_in_scene_fk = self.common.get_kpi_fk_by_kpi_type(self.SAS_FIXTURE_PER_SCENE)
+        sk_fixture_in_scene_fk = self.common.get_kpi_fk_by_kpi_type(self.SK_FIXTURE_IN_SCENE)
         for scene in scenes:
 
             if not self.scif.loc[self.scif['scene_fk'] == scene][
@@ -1295,8 +1310,11 @@ class BATRU_SANDToolBox:
                 continue
 
             fixture_fk = self.templates.loc[self.templates['template_name'] == template_name]['template_fk'].values[0]
-            fixture_identifier_par = self.common.get_dictionary(kpi_fk=sas_fixture_in_scene_fk, fixture=fixture_fk,
-                                                                scene_fk=scene)
+            sas_fixture_identifier_par = self.common.get_dictionary(kpi_fk=sas_fixture_in_scene_fk, fixture=fixture_fk,
+                                                                    scene_fk=scene)
+            sk_fixture_identifier_par = self.common.get_dictionary(kpi_fk=sk_fixture_in_scene_fk, fixture=fixture_fk,
+                                                                   scene_fk=scene)
+
             fixture_name_for_db = self.check_fixture_past_present_in_visit(fixture)
 
             if self.state in sections_template_data['State'].unique().tolist():
@@ -1331,6 +1349,14 @@ class BATRU_SANDToolBox:
 
                 section_data = relevant_sections_data.loc[relevant_sections_data['section_number'] == section]
                 section_name = section_data['section_name'].values[0]
+
+                #new tables
+                section_in_fixture_fk = self.common.get_kpi_fk_by_kpi_type(self.SK_SECTION_IN_FIXTURE)
+                section_fk = self.get_custom_entity_pk_by_value(section_name)
+                section_in_fixture_identifier_par = self.common.get_dictionary(kpi_fk=section_in_fixture_fk,
+                                                                               section=section_fk, fixture=fixture_fk,
+                                                                               scene_fk=scene)
+
                 start_sequence, end_sequence, start_shelf, end_shelf = self.get_section_limits(section_data)
 
                 if section_data['Above SAS zone?'].values[0] != 'N':
@@ -1532,6 +1558,34 @@ class BATRU_SANDToolBox:
                                             score=section_score, score_2=section_score_2,
                                             level_3_only=True, level2_name_for_atomic=fixture_name_for_db)
 
+                # new tables - SK set lvl 3
+                section_custom_res = self.kpi_result_values['PRESENCE']['OOS'] if section_score == 0 else \
+                    self.kpi_result_values['PRESENCE']['DISTRIBUTED']
+                self.common.write_to_db_result(fk=section_in_fixture_fk, numerator_id=section_fk,
+                                               denominator_id=fixture_fk, context_id=scene, score=section_score,
+                                               result=section_custom_res, identifier_parent=sk_fixture_identifier_par,
+                                               identifier_result=section_in_fixture_identifier_par,
+                                               should_enter=True)
+                #new tables - SK set lvl 4
+                sequence_custom_res = self.kpi_result_values['PRESENCE']['OOS'] if sku_sequence_score == 0 else \
+                    self.kpi_result_values['PRESENCE']['DISTRIBUTED']
+                self.common.write_to_db_result(fk=sk_section_sequence_fk, numerator_id=section_fk,
+                                               denominator_id=fixture_fk, context_id=scene, score=sku_sequence_score,
+                                               result = sequence_custom_res,
+                                               identifier_parent=section_in_fixture_identifier_par, should_enter=True)
+                repeating_custom_res = self.kpi_result_values['PRESENCE']['OOS'] if sku_repeating_score == 0 else \
+                    self.kpi_result_values['PRESENCE']['DISTRIBUTED']
+                self.common.write_to_db_result(fk=sk_section_repeating_fk, numerator_id=section_fk,
+                                               denominator_id=fixture_fk, context_id=scene, score=sku_repeating_score,
+                                               result=repeating_custom_res,
+                                               identifier_parent=section_in_fixture_identifier_par, should_enter=True)
+                presence_custom_res = self.kpi_result_values['PRESENCE']['OOS'] if sku_presence_score == 0 else \
+                    self.kpi_result_values['PRESENCE']['DISTRIBUTED']
+                self.common.write_to_db_result(fk=sk_section_repeating_fk, numerator_id=section_fk,
+                                               denominator_id=fixture_fk, context_id=scene, score=sku_presence_score,
+                                               result=presence_custom_res,
+                                               identifier_parent=section_in_fixture_identifier_par, should_enter=True)
+
                 # Saving to API set
                 self.write_to_db_result_for_api(score=misplaced_products_result, level=self.LEVEL3, kpi_set_name=SK_RAW_DATA,
                                                 kpi_name=SK_RAW_DATA,
@@ -1570,9 +1624,13 @@ class BATRU_SANDToolBox:
                                             kpi_name=SK_RAW_DATA,
                                             atomic_kpi_name=self.API_EQUIPMENT_KPI_NAME.format(
                                                 fixture=fixture_name_for_db))
+            self.common.write_to_db_result(fk=sk_fixture_in_scene_fk, numerator_id=fixture_fk, denominator_id=scene,
+                                           score=fixture_score, result=fixture_score,
+                                           identifier_result=sk_fixture_identifier_par,
+                                           identifier_parent=sk_identifier_par, should_enter=True)
 
             fixture_sas_zone_score = self.calculate_sas_zone_compliance(
-                fixture_name_for_db, self.sas_zones_scores_dict, scene, fixture_identifier_par)
+                fixture_name_for_db, self.sas_zones_scores_dict, scene, sas_fixture_identifier_par)
             self.save_level2_and_level3(SAS, fixture_name_for_db,
                                         result=fixture_sas_zone_score, level_2_only=True)
             self.write_to_db_result_for_api(score=None, level=self.LEVEL3,
@@ -1584,8 +1642,11 @@ class BATRU_SANDToolBox:
                         self.kpi_result_values['PRESENCE']['DISTRIBUTED']
             self.common.write_to_db_result(fk=sas_fixture_in_scene_fk, numerator_id=fixture_fk, denominator_id=scene,
                                            score=fixture_sas_zone_score, result=custom_sas_fixture_res,
-                                           identifier_result=fixture_identifier_par,
+                                           identifier_result=sas_fixture_identifier_par,
+
                                            identifier_parent=sas_identifier_par, should_enter=True)
+            # start here
+            # for mis_product in misplaced_products:
 
         # Store level results
         if self.sas_zone_statuses_dict:
@@ -1613,6 +1674,10 @@ class BATRU_SANDToolBox:
                                        score=sas_score_new_tables, numerator_result=numerator,
                                        denominator_result=denominator, identifier_result=sas_identifier_par,
                                        should_enter=True)
+
+        self.common.write_to_db_result(fk=sk_new_tables_fk, numerator_id=self.own_manufacturer_fk,
+                                       denominator_id=self.store_id, result=sk_score, score=sk_score,
+                                       identifier_result=sk_identifier_par, should_enter=True)
 
     def check_sku_repeating(self, section_shelf_data, priorities_section):
         """
