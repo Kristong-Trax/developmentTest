@@ -427,6 +427,22 @@ class CCKH_SANDToolBox(CCKH_SANDConsts):
 
     def write_to_db_new_results(self, kpi_fk, result, score, numerator_result, denominator_result, weight=None,
                                 target=None, identifier_parent=None, identifier_result=None, numerator_id=None):
+
+        """
+        This function gets all kpi info  and add the relevant numerator_id and denominator_id and than create the db
+        result
+              :param kpi_fk: pk of kpi
+             :param result
+             :param score
+             :param numerator_result
+             :param denominator_result
+             :param weight
+             :param target
+             :param identifier_parent
+             :param identifier_result
+             :param numerator_id
+             :returns dict in format of db result
+        """
         numerator_id = self.manufacturer if numerator_id is None else numerator_id
         denominator_id = self.store_id
         results = [denominator_result, numerator_result, result, score]

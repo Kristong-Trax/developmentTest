@@ -17,12 +17,12 @@ class CCKH_SANDCalculations(BaseCalculationsScript):
         self.timer.stop('KPIGenerator.run_project_calculations')
 
 
-# if __name__ == '__main__':
-#     LoggerInitializer.init('cckh calculations')
-#     Config.init()
-#     project_name = 'cckh_sand'
-#     data_provider = KEngineDataProvider(project_name)
-#     session = ''
-#     data_provider.load_session_data(session)
-#     output = Output()
-#     CCKH_SANDCalculations(data_provider, output).run_project_calculations()
+if __name__ == '__main__':
+    LoggerInitializer.init('cckh calculations')
+    Config.init()
+    project_name = 'cckh-sand'
+    data_provider = KEngineDataProvider(project_name)
+    session = 'ff0d57ad-a7ed-46ca-9488-1d28f4682500'
+    data_provider.load_session_data(session)
+    output = Output()
+    CCKH_SANDCalculations(data_provider, output).run_project_calculations()
