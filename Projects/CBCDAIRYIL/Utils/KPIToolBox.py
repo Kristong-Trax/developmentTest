@@ -138,7 +138,7 @@ class CBCDAIRYILToolBox:
         total_weight = round(parent_kpi_weight * 100, 2)
         target = None if parent_fk else round(80, 2)  # Requested for visualization
         self.common.write_to_db_result(fk=kpi_fk, numerator_id=Consts.CBC_MANU, numerator_result=kpi_score,
-                                       denominator_id=self.store_id, denominator_result=total_weight, taget=target,
+                                       denominator_id=self.store_id, denominator_result=total_weight, target=target,
                                        identifier_result=kpi_fk, identifier_parent=parent_fk, should_enter=should_enter,
                                        weight=total_weight, result=kpi_score, score=kpi_score)
 
@@ -146,7 +146,7 @@ class CBCDAIRYILToolBox:
             kpi_fk = self.common.get_kpi_fk_by_kpi_type(Consts.TOTAL_SCORE_FOR_DASHBOARD)
             self.common.write_to_db_result(fk=kpi_fk, numerator_id=Consts.CBC_MANU,
                                            numerator_result=kpi_score, denominator_id=self.store_id,
-                                           denominator_result=total_weight, taget=target, identifier_result=kpi_fk,
+                                           denominator_result=total_weight, target=target, identifier_result=kpi_fk,
                                            identifier_parent=parent_fk, should_enter=should_enter,
                                            weight=total_weight, result=kpi_score, score=kpi_score)
 
