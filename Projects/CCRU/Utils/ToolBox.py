@@ -3954,13 +3954,22 @@ class CCRUKPIToolBox:
                                                == PROMO_COMPLIANCE_STORE]['pk'].values[0]
         kpi_identifier_result_0 = self.common.get_dictionary(kpi_fk=kpi_fk_0)
 
-        number_of_displays = 0
+        number_of_displays_target = 0
+        number_of_displays_found = 0
+        number_of_displays_scored = 0
 
         # Display level KPIs
         for i, display_target in display_targets.iterrows():
 
+            number_of_displays_target += 1
+            number_of_locations_calculated = 0
+
             kpi_fk = self.common.kpi_static_data[self.common.kpi_static_data['type']
                                                  == PROMO_COMPLIANCE_DISPLAY]['pk'].values[0]
+
+            kpi_result_type_fk = self.common.kpi_static_data[self.common.kpi_static_data['pk'] == kpi_fk][
+                'kpi_result_type_fk'].values[0]
+
             display_fk = display_target['DISPLAY_NAME']  # DISPLAY_NAME contains pk
             target_fk = display_target['target_fk']
 
@@ -3971,8 +3980,10 @@ class CCRUKPIToolBox:
                              (self.scif['template_name'].isin(PROMO_SCENE_TYPES_MAIN_SHELF))]
 
             if scif.empty:
-                result = 0
+                result_value = 0
             else:
+
+                number_of_displays_found += 1
 
                 # Add promo product groups to scif
                 product_groups = self.get_promo_product_groups_to_skus(display_target)
@@ -4017,39 +4028,53 @@ class CCRUKPIToolBox:
 
                 # Location level KPI
                 # Calculate Promo Display Location Score
-                score, target = self.check_promo_compliance_location(PROMO_LOC_DISPLAY,
-                                                                     scif, kpis, display_target,
-                                                                     kpi_identifier_result)
+                score, target, location_calculated = \
+                    self.check_promo_compliance_location(PROMO_LOC_DISPLAY,
+                                                         scif, kpis, display_target,
+                                                         kpi_identifier_result)
+                number_of_locations_calculated += location_calculated
 
                 if score >= target:
-                    result = 1
+                    result_value = 1
+                    number_of_displays_scored += 1
                 else:
 
                     # Calculate Main Shelf Location Score
-                    score, target = self.check_promo_compliance_location(PROMO_LOC_MAIN_SHELF,
-                                                                         scif, kpis, display_target,
-                                                                         kpi_identifier_result)
+                    score, target, location_calculated = \
+                        self.check_promo_compliance_location(PROMO_LOC_MAIN_SHELF,
+                                                             scif, kpis, display_target,
+                                                             kpi_identifier_result)
+
+                    number_of_locations_calculated += location_calculated
 
                     if score >= target:
-                        result = 2
+                        result_value = 2
+                        number_of_displays_scored += 1
                     else:
-                        result = 0
+                        result_value = 0
 
             # Write Display level KPI
+            result = \
+                self.kpi_result_values[(self.kpi_result_values['result_type_fk'] == kpi_result_type_fk) &
+                                       (self.kpi_result_values['result_value'] == str(result_value))][
+                    'result_value_fk'].values[0]
+            score = result_value
             self.common.write_to_db_result(fk=kpi_fk,
                                            numerator_id=self.own_manufacturer_id,
-                                           numerator_result=None,
+                                           numerator_result=number_of_locations_calculated,
                                            denominator_id=display_fk,
                                            context_id=None,
                                            target=None,
                                            weight=None,
                                            result=result,
-                                           score=None,
+                                           score=score,
                                            identifier_result=kpi_identifier_result,
                                            identifier_parent=kpi_identifier_result_0,
                                            should_enter=True,
-                                           kpi_external_targets_fk=target_fk)
-            number_of_displays += 1
+                                           kpi_external_targets_fk=target_fk,
+                                           target_greater_than_or_equal=0,
+                                           target_less_than_than_or_equal=0,
+                                           target_list_of_values=[0])
 
         # Write Store level KPI
         # if number_of_displays > 0:
@@ -4058,10 +4083,10 @@ class CCRUKPIToolBox:
                                        numerator_result=None,
                                        denominator_id=self.store_id,
                                        context_id=None,
-                                       target=None,
+                                       target=number_of_displays_target,
                                        weight=None,
-                                       result=number_of_displays,
-                                       score=None,
+                                       result=number_of_displays_found,
+                                       score=number_of_displays_scored,
                                        identifier_result=kpi_identifier_result_0,
                                        identifier_parent=None,
                                        should_enter=True)
@@ -4126,33 +4151,39 @@ class CCRUKPIToolBox:
 
         scif_loc = self.get_relevant_promo_scif(location, kpi_target, scif)
 
-        score += self.check_promo_compliance_display_presence(
-            location, scif_loc, kpis, kpi_target, kpi_identifier_result)
-        score += self.check_promo_compliance_distribution_target(
-            location, scif_loc, kpis, kpi_target, kpi_identifier_result)
-        score += self.check_promo_compliance_facings_target(
-            location, scif_loc, kpis, kpi_target, kpi_identifier_result)
-        score += self.check_promo_compliance_price_availability(
-            location, scif_loc, kpis, kpi_target, kpi_identifier_result)
-        score += self.check_promo_compliance_price_availability_total(
-            location, scif_loc, kpis, kpi_target, kpi_identifier_result)
-        score += self.check_promo_compliance_price_target(
-            location, scif_loc, kpis, kpi_target, kpi_identifier_result)
+        if scif_loc.empty:
+            location_calculated = 0
+        else:
 
-        self.common.write_to_db_result(fk=kpi_fk,
-                                       numerator_id=self.own_manufacturer_id,
-                                       numerator_result=None,
-                                       denominator_id=display_fk,
-                                       context_id=location_fk,
-                                       target=target,
-                                       weight=None,
-                                       result=score,
-                                       score=score,
-                                       identifier_result=kpi_identifier_result,
-                                       identifier_parent=kpi_identifier_parent,
-                                       should_enter=True)
+            location_calculated = 1
 
-        return score, target
+            score += self.check_promo_compliance_display_presence(
+                location, scif_loc, kpis, kpi_target, kpi_identifier_result)
+            score += self.check_promo_compliance_distribution_target(
+                location, scif_loc, kpis, kpi_target, kpi_identifier_result)
+            score += self.check_promo_compliance_facings_target(
+                location, scif_loc, kpis, kpi_target, kpi_identifier_result)
+            score += self.check_promo_compliance_price_availability(
+                location, scif_loc, kpis, kpi_target, kpi_identifier_result)
+            score += self.check_promo_compliance_price_availability_total(
+                location, scif_loc, kpis, kpi_target, kpi_identifier_result)
+            score += self.check_promo_compliance_price_target(
+                location, scif_loc, kpis, kpi_target, kpi_identifier_result)
+
+            self.common.write_to_db_result(fk=kpi_fk,
+                                           numerator_id=self.own_manufacturer_id,
+                                           numerator_result=None,
+                                           denominator_id=display_fk,
+                                           context_id=location_fk,
+                                           target=target,
+                                           weight=None,
+                                           result=score,
+                                           score=score,
+                                           identifier_result=kpi_identifier_result,
+                                           identifier_parent=kpi_identifier_parent,
+                                           should_enter=True)
+
+        return score, target, location_calculated
 
     def check_promo_compliance_display_presence(self, location, scif, kpis, kpi_target, kpi_identifier_parent):
         kpi_fk = self.common.kpi_static_data[
@@ -4694,20 +4725,22 @@ class CCRUKPIToolBox:
                                                should_enter=True)
 
         # Upper level KPI
-        if not (product_groups_target and total_price_facings_target):
+        if not product_groups_target:
             score = 0
         else:
             # Deviation
-            result = \
-                round(abs(1 - total_price_facings_fact / float(total_price_facings_target)) * 100, 2)
+            deviation = \
+                round(abs(1 - total_price_facings_fact / float(total_price_facings_target)) * 100, 2) \
+                if total_price_facings_target else 100.0
             weight = kpis[(kpis['Location'] == location) &
                           (kpis['KPI'] == PROMO_COMPLIANCE_PRICE_TARGET)]['Weight'].values[0]/100.0
-            score = round((100 - result) * float(weight), 2)
+            result = round((100 - deviation), 2)
+            score = round(result * float(weight), 2)
             target = round(float(weight) * 100, 2)
 
             self.common.write_to_db_result(fk=kpi_fk,
                                            numerator_id=self.own_manufacturer_id,
-                                           numerator_result=None,
+                                           numerator_result=deviation,
                                            denominator_id=display_fk,
                                            denominator_result=None,
                                            context_id=location_fk,
