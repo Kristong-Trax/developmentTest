@@ -119,6 +119,9 @@ class BATRU_SANDToolBox:
     POSM_EQUIPMENT_PER_SCENE = 'POSM Equipment per Scene'
     POSM_EQUIPMENT_PER_GROUP = 'POSM Equipment per Group'
     POSM_EQUIPMENT_DISPLAY_IN_GROUP = 'POSM Equipment Display in Group'
+    SAS_FIXTURE_PER_SCENE = 'SAS Fixture in Scene'
+    SAS_DISPLAY = 'SAS Display'
+    SAS_NO_COMPETITOR_KPI = 'No competitors in SAS Zone'
 
     def __init__(self, data_provider, output):
         self.k_engine = BaseCalculationsScript(data_provider, output)
@@ -239,8 +242,16 @@ class BATRU_SANDToolBox:
         custom_entity = self.update_custom_entity(custom_entity, group_update_list, 'display_group')
 
         # update values for p4 - display_type
-        display_type_update_list = posm_template['Atomic KPI Name'].unique().tolist()
+        display_type_update_set = set(posm_template['Atomic KPI Name'].unique().tolist())
+        # update values for p3 - sas - display_type
+        sas_template = self.get_relevant_template_sheet(P3_TEMPLATE, 'SAS Zone Compliance')
+        sas_template['display_name'] = self.encode_column_in_df(sas_template, 'display_name')
+        display_type_sas_update_list = sas_template['display_name'].unique().tolist()
+
+        display_type_update_set.update(display_type_sas_update_list)
+        display_type_update_list = list(display_type_update_set)
         custom_entity = self.update_custom_entity(custom_entity, display_type_update_list, 'display_type_in_group')
+
         return custom_entity
 
     def update_custom_entity(self, custom_entity_df, update_list, entity_type):
@@ -1207,6 +1218,9 @@ class BATRU_SANDToolBox:
     # P3 KPI
     @kpi_runtime()
     def handle_priority_3(self):
+        # new tables
+        sas_new_tables_fk = self.common.get_kpi_fk_by_kpi_type(SAS)
+        sas_identifier_par = self.common.get_dictionary(kpi_fk=sas_new_tables_fk)
 
         if not self.scif.empty:
             attribute_3 = self.scif['additional_attribute_3'].values[0]
@@ -1265,6 +1279,7 @@ class BATRU_SANDToolBox:
                 Log.debug('Product ean {} is not defined in the DB for Sequence list'.format(
                     product_ean_code))
 
+        sas_fixture_in_scene_fk = self.common.get_kpi_fk_by_kpi_type(self.SAS_FIXTURE_PER_SCENE)
         for scene in scenes:
 
             if not self.scif.loc[self.scif['scene_fk'] == scene][
@@ -1279,6 +1294,9 @@ class BATRU_SANDToolBox:
             if fixture not in sections_template_data['fixture'].unique().tolist():
                 continue
 
+            fixture_fk = self.templates.loc[self.templates['template_name'] == template_name]['template_fk'].values[0]
+            fixture_identifier_par = self.common.get_dictionary(kpi_fk=sas_fixture_in_scene_fk, fixture=fixture_fk,
+                                                                scene_fk=scene)
             fixture_name_for_db = self.check_fixture_past_present_in_visit(fixture)
 
             if self.state in sections_template_data['State'].unique().tolist():
@@ -1554,7 +1572,7 @@ class BATRU_SANDToolBox:
                                                 fixture=fixture_name_for_db))
 
             fixture_sas_zone_score = self.calculate_sas_zone_compliance(
-                fixture_name_for_db, self.sas_zones_scores_dict, scene)
+                fixture_name_for_db, self.sas_zones_scores_dict, scene, fixture_identifier_par)
             self.save_level2_and_level3(SAS, fixture_name_for_db,
                                         result=fixture_sas_zone_score, level_2_only=True)
             self.write_to_db_result_for_api(score=None, level=self.LEVEL3,
@@ -1562,13 +1580,21 @@ class BATRU_SANDToolBox:
                                             kpi_name=SAS_RAW_DATA,
                                             atomic_kpi_name=self.API_EQUIPMENT_KPI_NAME.format(
                                                 fixture=fixture_name_for_db))
+            custom_sas_fixture_res = self.kpi_result_values['PRESENCE']['OOS'] if fixture_sas_zone_score == 0 else \
+                        self.kpi_result_values['PRESENCE']['DISTRIBUTED']
+            self.common.write_to_db_result(fk=sas_fixture_in_scene_fk, numerator_id=fixture_fk, denominator_id=scene,
+                                           score=fixture_sas_zone_score, result=custom_sas_fixture_res,
+                                           identifier_result=fixture_identifier_par,
+                                           identifier_parent=sas_identifier_par, should_enter=True)
 
         # Store level results
         if self.sas_zone_statuses_dict:
             sas_zone_score = str(sum(self.sas_zone_statuses_dict.values())/100) + '/' +\
                 str(len(self.sas_zone_statuses_dict.values()))
+            numerator = float(sum(self.sas_zone_statuses_dict.values())/100)
         else:
             sas_zone_score = str(0) + '/' + str(len(self.sas_zone_statuses_dict.values()))
+            numerator = 0
 
         if self.fixtures_statuses_dict:
             sk_score = min(self.fixtures_statuses_dict.values())
@@ -1579,6 +1605,14 @@ class BATRU_SANDToolBox:
         self.save_level1(SK_RAW_DATA, score=sk_score)
         self.save_level1(SAS, score=sas_zone_score)
         self.save_level1(SAS_RAW_DATA, score=sas_zone_score)
+
+        denominator = len(self.sas_zone_statuses_dict.values())
+        sas_score_new_tables = numerator / denominator * 100 if self.sas_zone_statuses_dict else 0
+        self.common.write_to_db_result(fk=sas_new_tables_fk, numerator_id=self.own_manufacturer_fk,
+                                       denominator_id=self.store_id, result=sas_score_new_tables,
+                                       score=sas_score_new_tables, numerator_result=numerator,
+                                       denominator_result=denominator, identifier_result=sas_identifier_par,
+                                       should_enter=True)
 
     def check_sku_repeating(self, section_shelf_data, priorities_section):
         """
@@ -1793,7 +1827,7 @@ class BATRU_SANDToolBox:
         else:
             return False
 
-    def calculate_sas_zone_compliance(self, fixture, sas_zone_scores_dict, scene):
+    def calculate_sas_zone_compliance(self, fixture, sas_zone_scores_dict, scene, fixture_identifier_par):
         if fixture in sas_zone_scores_dict.keys():
             no_competitors_status = sas_zone_scores_dict[fixture]
         else:
@@ -1822,6 +1856,7 @@ class BATRU_SANDToolBox:
             status = 0
         else:
             status = 100
+            sas_display_fk = self.common.get_kpi_fk_by_kpi_type(self.SAS_DISPLAY)
             for display in relevant_df['display_name'].unique().tolist():
                 relevant_display = relevant_df.loc[relevant_df['display_name'] == display].iloc[0]
                 if not relevant_display.empty:
@@ -1837,6 +1872,12 @@ class BATRU_SANDToolBox:
                                                     kpi_set_name=SAS_RAW_DATA, kpi_name=SAS_RAW_DATA,
                                                     atomic_kpi_name=self.API_DISPLAY_KPI_NAME.format(
                                                         fixture=fixture, display=display))
+                    custom_presence_result = self.kpi_result_values['PRESENCE']['DISTRIBUTED'] if presence_score == 100 \
+                        else self.kpi_result_values['PRESENCE']['OOS']
+                    numerator_id = self.get_custom_entity_pk_by_value(display)
+                    self.common.write_to_db_result(fk=sas_display_fk, numerator_id=numerator_id, denominator_id=scene,
+                                                   score=presence_score, result=custom_presence_result,
+                                                   identifier_parent=fixture_identifier_par, should_enter=True)
         self.sas_zone_statuses_dict[fixture] = status
         self.save_level2_and_level3(SAS, self.NO_COMPETITORS_IN_SAS_ZONE, result=None, score=no_competitors_status,
                                     level_3_only=True,
@@ -1845,6 +1886,13 @@ class BATRU_SANDToolBox:
                                         kpi_set_name=SAS_RAW_DATA, kpi_name=SAS_RAW_DATA,
                                         atomic_kpi_name=self.API_NO_COMPETITORS_IN_SAS_ZONE.format(
                                             fixture=fixture))
+        sas_no_competitor_fk = self.common.get_kpi_fk_by_kpi_type(self.SAS_NO_COMPETITOR_KPI)
+        custom_no_competitor_result = self.kpi_result_values['PRESENCE']['OOS'] if no_competitors_status == 0 \
+            else self.kpi_result_values['PRESENCE']['DISTRIBUTED']
+        self.common.write_to_db_result(fk=sas_no_competitor_fk, numerator_id=sas_no_competitor_fk,
+                                       denominator_id=scene, score=no_competitors_status,
+                                       result=custom_no_competitor_result,
+                                       identifier_parent=fixture_identifier_par, should_enter=True)
         return status
 
     # P4 KPI
