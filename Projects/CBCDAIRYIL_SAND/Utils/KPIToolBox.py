@@ -18,7 +18,7 @@ import pandas as pd
 __author__ = 'idanr'
 
 
-class CBCDAIRYIL_SANDToolBox:
+class CBCDAIRYILSANDToolBox:
 
     def __init__(self, data_provider, output):
         self.output = output
