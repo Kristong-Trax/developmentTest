@@ -152,8 +152,6 @@ class CBCDAIRYILToolBox:
 
         return kpi_score
 
-
-
     def calculate_kpi_result_by_weight(self, kpi_results, parent_kpi_weight, ignore_weights=False):
         """
         This function aggregates the KPI results by scores and weights.

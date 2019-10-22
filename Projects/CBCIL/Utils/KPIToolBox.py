@@ -340,7 +340,7 @@ class CBCILCBCIL_ToolBox(object):
             self.commit_results_data()
             self.common.commit_results_data()
 
-    #--------new tables functionality--------#
+    # --------new tables functionality--------#
     def get_own_manufacturer_pk(self):
         query = CBCILCBCIL_Queries.get_manufacturer_pk_by_name(self.CBCIL)
         query_result = pd.read_sql_query(query, self.rds_conn.db)
@@ -367,7 +367,7 @@ class CBCILCBCIL_ToolBox(object):
         kpi_name = self.kpi_static_data[self.kpi_static_data['kpi_fk'] == kpi_pk]['kpi_name'].values[0]
         return kpi_name
 
-    #-------- existing calculations----------#
+    # -------- existing calculations----------#
     @staticmethod
     def combine_kpi_details(kpi_fk, scores, denominator_weight):
         kpi_details = dict()
@@ -388,7 +388,7 @@ class CBCILCBCIL_ToolBox(object):
                     kpi['denominator_weight'] = 0
                     kpi['atomic_scores_and_weights'] = [(score[0], 0) for score in kpi['atomic_scores_and_weights']]
                 else:
-                    weight_to_kpi = total_weight_to_reallocate * float(kpi['denominator_weight'])/weight_of_all_kpis_with_scores
+                    weight_to_kpi = total_weight_to_reallocate * float(kpi['denominator_weight']) / weight_of_all_kpis_with_scores
                     kpi['denominator_weight'] = kpi['denominator_weight'] + weight_to_kpi
                     atomics_with_weights = filter(lambda x: x[1] is not None,
                                                   kpi['atomic_scores_and_weights'])
@@ -400,7 +400,8 @@ class CBCILCBCIL_ToolBox(object):
 
     def get_coolers(self, cbc_coller, competitor_cooler):
         cbc = self.scif[self.scif['template_name'].str.encode('utf-8') == cbc_coller]['scene_fk'].unique().tolist()
-        competitor = self.scif[self.scif['template_name'].str.encode('utf-8').isin(competitor_cooler)]['scene_fk'].unique()
+        competitor = self.scif[
+            self.scif['template_name'].str.encode('utf-8').isin(competitor_cooler)]['scene_fk'].unique()
         return len(competitor), len(cbc), cbc
 
     def get_general_filters(self, params):
@@ -428,7 +429,6 @@ class CBCILCBCIL_ToolBox(object):
             params3 = map(float, params[self.PARAMS_VALUE_3].split(','))
         except:
             params3 = map(unicode.strip, params[self.PARAMS_VALUE_3].split(','))
-
 
         result = {self.TARGET: params[self.TARGET],
                   self.SPLIT_SCORE: params[self.SPLIT_SCORE],
@@ -472,8 +472,8 @@ class CBCILCBCIL_ToolBox(object):
                 except:
                     pass
                 block = self.tools.calculate_block_together(include_empty=False, minimum_block_ratio=0.75,
-                                                             allowed_products_filters={'product_type': 'Other'},
-                                                             vertical=True, **filters)
+                                                            allowed_products_filters={'product_type': 'Other'},
+                                                            vertical=True, **filters)
                 if not isinstance(block, dict):
                     return 0
                 if float(len(block['shelves'])) >= float(general_filters[self.TARGET]):
@@ -488,8 +488,8 @@ class CBCILCBCIL_ToolBox(object):
             numerator_filters.update(params['2'])
             numerator_filters.update(params['3'])
             ratio = self.tools.calculate_linear_share_of_display(numerator_filters,
-                                                                   include_empty=True,
-                                                                   **params['All'])
+                                                                 include_empty=True,
+                                                                 **params['All'])
 
             if ratio >= float(general_filters[self.TARGET]):
                 return 100
@@ -541,7 +541,8 @@ class CBCILCBCIL_ToolBox(object):
             filters.update(params['All'])
             for scene in params['All']['scene_id']:
                 filters.update({'scene_id': scene})
-                relevant_shelf = self.match_product_in_scene[self.match_product_in_scene['scene_id'] == scene]['shelf_number'].unique().tolist()
+                relevant_shelf = self.match_product_in_scene[
+                    self.match_product_in_scene['scene_id'] == scene]['shelf_number'].unique().tolist()
                 filters.update({'shelf_number': relevant_shelf[:len(relevant_shelf) / 2]})
                 if self.tools.calculate_availability(**filters) >= 1:
                     return 100
@@ -561,7 +562,8 @@ class CBCILCBCIL_ToolBox(object):
                     scif_filters.update(params['1'])
                     scif_filters.update(params['2'])
                     scif = self.scif.copy()
-                    scene_skus = scif[self.tools.get_filter_condition(scif, **scif_filters)]['product_fk'].unique().tolist()
+                    scene_skus = scif[
+                        self.tools.get_filter_condition(scif, **scif_filters)]['product_fk'].unique().tolist()
                     if scene_skus:
                         matches_filters = {'scene_fk': scene}
                         matches_filters.update({'product_fk': scene_skus})
