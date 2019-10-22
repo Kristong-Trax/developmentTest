@@ -245,7 +245,7 @@ class Results(object):
                 expected = t(expected)
             except:
                 pass
-            if float(actual) == float(expected):
+            if actual == expected:
                 score = 1
         else:
             if expected == '' or expected is None:
