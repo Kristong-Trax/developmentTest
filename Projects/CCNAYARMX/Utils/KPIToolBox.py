@@ -57,23 +57,29 @@ SOS = 'SOS'
 BLOCK_TOGETHER = 'Block Together'
 SHARE_OF_EMPTY = 'Share of Empty'
 BAY_COUNT = 'Bay Count'
+PER_BAY_SOS = 'Per bay SOS'
 
 # Scif Filters
 BRAND_FK = 'brand_fk'
-FACINGS = 'facings_'
+PRODUCT_FK = 'product_fk'
+FACINGS = 'facings'
 FACINGS_IGN_STACK = 'facings_ign_stack'
 FINAL_FACINGS = 'final_facings'
 MANUFACTURER_FK = 'manufacturer_fk'
 PK = 'pk'
+ADDITIONAL_ATTRIBUTE_2 = 'additional_attribute_2'
 SESSION_ID = 'session_id'
 SCENE_ID = 'scene_id'
 TEMPLATE_FK = 'template_fk'
 TEMPLATE_GROUP = 'template_group'
 
-# Read the sheet
-Sheets = [SOS, BLOCK_TOGETHER, SHARE_OF_EMPTY, BAY_COUNT]
+# Match Product In Scene
+BAY_NUMBER = 'bay_number'
 
-TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'CCNayarTemplatev0.5.xlsx')
+# Read the sheet
+Sheets = [SOS, BLOCK_TOGETHER, SHARE_OF_EMPTY, BAY_COUNT, PER_BAY_SOS]
+
+TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'CCNayarTemplatev0.5.1.xlsx')
 
 
 def log_runtime(description, log_start=False):
@@ -108,36 +114,21 @@ class ToolBox(GlobalSessionToolBox):
             self.templates[sheet] = pd.read_excel(TEMPLATE_PATH, sheet_name=sheet)
 
     def main_calculation(self):
-        for i, row in self.templates[BAY_COUNT].iterrows():
+        for i, row in self.templates[PER_BAY_SOS].iterrows():
             # self.calculate_sos(row)
             # self.calculate_block_together(row)
             # self.calculate_share_of_empty(row)
-            self.caculate_bay_count(row)
+            # self.calculate_bay_count(row)
+            self.calculate_per_bay_sos(row)
         return
-
-    def caculate_bay_count(self, row):
-
-        # # Step 1: Read the excel rows to process the information(Common among all the sheets)
-        # kpi_name = row[KPI_NAME]
-        # template_group = row[TASK_TEMPLATE_GROUP]
-        # numerator_entity = row[NUMERATOR_ENTITY]
-        # denominator_entity = row[DENOMINATOR_ENTITY]
-        #
-        # # Step 2: Read the excel rows unique to Bay Count Sheets
-        # facings_target = row[FACINGS_TARGET]
-        # bay_count_target = row[BAY_COUNT_TARGET]
-        # store_additional_attributue_2 = row[STORE_ADDITIONAL_ATTRIBUTE_2]
-        # numerator_param_1 = row[NUMERATOR_PARAM_1]
-        # numerator_value_1 = row[NUMERATOR_VALUE_1]
-        # product_type = row[PRODUCT_TYPE]
-
-        a = self.scif
-        b = self.match_product_in_scene
-        c = 2
 
 
 
     def calculate_sos(self, row):
+        '''
+        :param row: READS THE LINE FROM THE TEMPLATE
+        :return: the sum of numerator scif[final_facings] over the sum of denominator scif[final_facings]
+        '''
 
         # REMINDER Filter scif by additional scene type column
         # Waiting on Session with with scene type(template_name) with Enfriador Dedicado JDV
@@ -189,12 +180,11 @@ class ToolBox(GlobalSessionToolBox):
         # Step 7: Filter the filtered scif through the template group
         filtered_scif = filtered_scif[filtered_scif[TEMPLATE_GROUP].isin(template_group)]
 
-
         # Step 8: Filter the filtered scif with the denominator param and denominator value
         if pd.notna(denominator_param1):
-            denominator_scif = filtered_scif[filtered_scif[denominator_param1] == denominator_value1]
+            denominator_scif = filtered_scif[filtered_scif[denominator_param1].isin([denominator_value1])]
             denominator_id = \
-                self.all_products[self.all_products[denominator_param1] == denominator_value1][
+                self.all_products[self.all_products[denominator_param1].isin([denominator_value1])][
                     denominator_entity].mode()[0]
 
             denominator_result = denominator_scif[FINAL_FACINGS].sum()
@@ -206,13 +196,14 @@ class ToolBox(GlobalSessionToolBox):
         # Step 9: Filter the denominator scif wit the numerator param and numerator param
         if pd.notna(numerator_param1):
             # Sometimes the filter below overfilters, and the df is empty
-            if (denominator_scif[denominator_scif[numerator_param1] == numerator_value1]).empty:
+            if (denominator_scif[denominator_scif[numerator_param1].isin([numerator_value1])]).empty:
                 numerator_id = self.scif[numerator_entity].mode()[0]
                 numerator_result = 0
             else:
-                numerator_scif = denominator_scif[denominator_scif[numerator_param1] == numerator_value1]
+                numerator_scif = denominator_scif[denominator_scif[numerator_param1].isin([numerator_value1])]
                 numerator_id = \
-                    self.all_products[self.all_products[numerator_param1] == numerator_value1][numerator_entity].mode()[
+                    self.all_products[self.all_products[numerator_param1].isin([numerator_value1])][
+                        numerator_entity].mode()[
                         0]
                 numerator_result = numerator_scif[FINAL_FACINGS].sum()
 
@@ -228,11 +219,9 @@ class ToolBox(GlobalSessionToolBox):
         self.common.write_to_db_result(kpi_fk, numerator_id=numerator_id,
                                        numerator_result=numerator_result, denominator_id=denominator_id,
                                        denominator_result=denominator_result,
-                                           result=result)
+                                       result=result)
 
     def calculate_block_together(self, row):
-        # Not finished. Need to write the logic to encode the iterate by column from the template
-        # Waiting on Rifika for the relevant session
 
         # Step 1: Read the excel rows to process the information (Common among all the sheets)
         kpi_name = row[KPI_NAME]
@@ -250,11 +239,13 @@ class ToolBox(GlobalSessionToolBox):
 
         # Step 3: Establish the variable for the network_x_block_together
         if pd.notna(tamano_del_producto):
-            relevant_filters = {MANUFACTURER_NAME: manufacturer_name, SUB_CATEGORY: sub_category, TAMANDO_DEL_PRODUCTO: tamano_del_producto}
+            relevant_filters = {MANUFACTURER_NAME: manufacturer_name, SUB_CATEGORY: sub_category,
+                                TAMANDO_DEL_PRODUCTO: tamano_del_producto}
         else:
             relevant_filters = {MANUFACTURER_NAME: manufacturer_name, SUB_CATEGORY: sub_category}
 
         # Step 4: Establisht the location variables based on the template
+
         if pd.notna(template_group):
             location_name = TEMPLATE_GROUP
             location_id = template_group
@@ -265,36 +256,44 @@ class ToolBox(GlobalSessionToolBox):
         location = {location_name: location_id}
 
         # Step 8: Calculate the block kpi per scene level. The If statement accounts for the iterate by column logic.
-        # if pd.isna(iterate_by):
-        block = self.block.network_x_block_together(relevant_filters,
-                                                    location=location,
-                                                    additional={'minimum_block_ratio': 0.9,
-                                                                'calculate_all_scenes': True})
+        if pd.isna(iterate_by):
+            block = self.block.network_x_block_together(relevant_filters,
+                                                        location=location,
+                                                        additional={'minimum_block_ratio': 0.9,
+                                                                    'calculate_all_scenes': True})
 
-        # Calculates the template_fk
-        # numerator_id = pd.merge(block, self.scif[['scene_fk', 'template_fk']], on='scene_fk')['template_fk'].mode()[0]
-        numerator_id = self.scif['sub_category_fk'].mode()[0]
+            if block.empty:
+                result = 'NULL'
+            else:
+                if False in block['is_block'].to_list():
+                    result = 0
+                else:
+                    result = 1
+
+            template_fk = self.scif[self.scif['template_group'] == template_group]['template_fk'].mode()[0]
+        else:
+
+            sub_category_fk_in_session = self.scif[iterate_by].unique().tolist()
+            sub_category_fk_in_session = filter(None, sub_category_fk_in_session)
+
+            result = 1
+            for value in sub_category_fk_in_session:
+                population = {iterate_by: value}
+                final_relevant_filters = self.merge_two_dictionaries(relevant_filters, population)
+                block = self.block.network_x_block_together(relevant_filters,
+                                                            location=location,
+                                                            additional={'minimum_block_ratio': 0.9,
+                                                                        'calculate_all_scenes': True})
+                if False in block['is_block'].to_list():
+                    result = 0
+                    break
+
+            template_fk = self.scif[self.scif['template_name'] == template_name]['template_fk'].mode()[0]
+
         sub_category_fk = self.get_sub_cat_fk_from_sub_cat(sub_category[0])
 
-        # Ignore for now. Till a session is relevant
-
-        #     for value in relevant_scif[row[ITERATE_BY]].unique().tolist():
-        #         population = {row[ITERATE_BY].iloc[0]: [value]}
-        #         final_relevant_filters = self.merge_two_dictionaries(relevant_filters, population)
-        #         block = self.block.network_x_block_together(relevant_filters,
-        #                                                     location=location,
-        #                                                     additional={'minimum_block_ratio': 0.9,
-        #                                                                 'calculate_all_scenes': True})
-        if block.empty:
-            result = 'NULL'
-        else:
-            if False in block['is_block'].to_list():
-                result = 0
-            else:
-                result = 1
-
-        self.common.write_to_db_result(kpi_fk, numerator_id=numerator_id,
-                                        denominator_id=sub_category_fk,
+        self.common.write_to_db_result(kpi_fk, numerator_id=sub_category_fk,
+                                       denominator_id=template_fk,
                                        result=result)
 
     def calculate_share_of_empty(self, row):
@@ -346,10 +345,10 @@ class ToolBox(GlobalSessionToolBox):
         denominator_id = denominator_scif[denominator_entity].mode()[0]
 
         # Step 8: Filter through the numerator param column with numerator value and calculate the numerator result
-        if denominator_scif[denominator_scif[numerator_param1] == numerator_value1].empty:
+        if denominator_scif[denominator_scif[numerator_param1].isin([numerator_value1])].empty:
             numerator_result = 0
         else:
-            numerator_scif = denominator_scif[denominator_scif[numerator_param1] == numerator_value1]
+            numerator_scif = denominator_scif[denominator_scif[numerator_param1].isin([numerator_value1])]
             numerator_result = numerator_scif[FINAL_FACINGS].sum()
 
         # Step 9: Find the numerator_id
@@ -363,6 +362,96 @@ class ToolBox(GlobalSessionToolBox):
                                        numerator_result=numerator_result, denominator_id=denominator_id,
                                        denominator_result=denominator_result,
                                        result=result)
+
+    def calculate_bay_count(self, row):
+
+        # Step 1: Read the excel rows to process the information(Common among all the sheets)
+        kpi_name = row[KPI_NAME]
+        kpi_fk = self.common.get_kpi_fk_by_kpi_name(kpi_name)
+        template_group = self.sanitize_values(row[TASK_TEMPLATE_GROUP])
+        numerator_entity = row[NUMERATOR_ENTITY]
+        denominator_entity = row[DENOMINATOR_ENTITY]
+
+        # Step 2: Read the excel rows unique to Bay Count Sheets
+        numerator_param_1 = row[NUMERATOR_PARAM_1]
+        numerator_value_1 = row[NUMERATOR_VALUE_1]
+        product_type = self.sanitize_values(row[PRODUCT_TYPE])
+
+        # Step 3: Establish the targets in order to calculate
+        store_type = self.store_info[ADDITIONAL_ATTRIBUTE_2].iloc[0]
+        facings_target, bay_count_target = self.calculate_targets_for_bay_count_kpi(store_type)
+
+        # Step 4: Declaring the scif columns
+        relevant_scif_columns = [TEMPLATE_GROUP, PRODUCT_TYPE, FACINGS_IGN_STACK, PRODUCT_FK] + [numerator_param_1,
+                                                                                                 numerator_entity,
+                                                                                                 denominator_entity]
+
+        # Step 5: Indexing the relevant_scif_columns in self.scif
+        relevant_scif = self.scif[relevant_scif_columns]
+
+        # Step 6: Filter by the Template Group
+        relevant_scif = relevant_scif[relevant_scif[TEMPLATE_GROUP].isin(template_group)]
+
+        # Step 7: Filter by the Product Type
+        relevant_scif = relevant_scif[relevant_scif[PRODUCT_TYPE].isin(product_type)]
+
+        # Step 8: Calculate the bay count
+        product_in_scene = self.match_product_in_scene[['product_fk', 'bay_number']]
+
+        try:
+            bay_count_scif = relevant_scif.merge(product_in_scene, on='product_fk', how='left')[
+                [BAY_NUMBER, MANUFACTURER_NAME, PRODUCT_FK, FACINGS_IGN_STACK]]
+        except:
+            return
+
+        group_by_bay_number_scif = bay_count_scif.groupby('bay_number').nunique()[MANUFACTURER_NAME]
+
+        bay_count = 0
+        for bay in range(1, len(group_by_bay_number_scif) + 1):
+            if group_by_bay_number_scif[bay] == 1:
+                if 'TCCC' in set(bay_count_scif[bay_count_scif[BAY_NUMBER].isin([bay])][MANUFACTURER_NAME]):
+                    bay_count = bay_count + 1
+
+        # Step 9: Filter by the numerator param
+        relevant_scif = relevant_scif[relevant_scif[numerator_param_1].isin([numerator_value_1])]
+        facings = relevant_scif[FACINGS_IGN_STACK].sum()
+
+        # Step 10: Calculate the scoring
+        if facings >= facings_target:
+            result = 15
+        else:
+            result = 15 * (1 + (facings / facings_target))
+
+        if bay_count < bay_count_target:
+            result = result - 2
+
+        # Step 11: Calculate the numerator entity and denominator entity
+        numerator_id = relevant_scif[MANUFACTURER_FK].mode()[0]
+        denominator_id = relevant_scif[TEMPLATE_FK].mode()[0]
+
+        # Step 12. Save the results in the database
+        self.common.write_to_db_result(kpi_fk, numerator_id=numerator_id,
+                                       denominator_id=denominator_id, result=result)
+
+    def calculate_per_bay_sos(self, row):
+
+        # Step 1: Read the excel rows to process the information(Common among all the sheets)
+        kpi_name = row[KPI_NAME]
+        kpi_fk = self.common.get_kpi_fk_by_kpi_name(kpi_name)
+        template_group = self.sanitize_values(row[TASK_TEMPLATE_GROUP])
+        numerator_entity = row[NUMERATOR_ENTITY]
+        denominator_entity = row[DENOMINATOR_ENTITY]
+
+        # Step 2: Read the rows to process unique per bay sos
+        template_group = row[TASK_TEMPLATE_GROUP]
+        template_name = row[TEMPLATE_NAME]
+        product_type = self.sanitize_values(row[PRODUCT_TYPE])
+        numerator_value_1 = row[NUMERATOR_VALUE_1]
+
+        # Step 3: Declaring the relevant columns for scif
+
+
+
 
     def sanitize_values(self, item):
         if pd.isna(item):
@@ -381,10 +470,22 @@ class ToolBox(GlobalSessionToolBox):
         final_dictionary.update(dictionary_two)
         return final_dictionary
 
-    def get_sub_cat_fk_from_sub_cat(self,sub_category):
-       return self.all_products[self.all_products['sub_category'] == 'COLAS']['sub_category_fk'].iloc[0]
+    def get_sub_cat_fk_from_sub_cat(self, sub_category):
+        return self.all_products[self.all_products['sub_category'] == 'COLAS']['sub_category_fk'].iloc[0]
 
+    @staticmethod
+    def calculate_targets_for_bay_count_kpi(store_size):
+        if store_size == 'Chico':
+            facings_target = 56
+            bay_count_target = 1
+        elif store_size == 'Mediano':
+            facings_target = 100
+            bay_count_target = 2
+        elif store_size == 'Grande':
+            facings_target = 150
+            bay_count_target = 3
 
+        return facings_target, bay_count_target
 
 # for value in denominator_scif[row[INTERATE_BY]].unique().tolist():
 #     population = {row[ITERATE_BY].iloc[0]: [value]}
@@ -398,4 +499,3 @@ class ToolBox(GlobalSessionToolBox):
 #
 # # Step 4: Filter Scif with the relevant columns
 # relevant_scif = self.scif[columns_filter_for_scif]
-
