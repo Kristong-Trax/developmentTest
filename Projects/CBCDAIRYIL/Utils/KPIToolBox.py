@@ -17,8 +17,6 @@ import pandas as pd
 
 __author__ = 'idanr'
 
-TOTAL_SCORE_FOR_DASHBOARD = 704
-
 class CBCDAIRYILToolBox:
 
     def __init__(self, data_provider, output):
