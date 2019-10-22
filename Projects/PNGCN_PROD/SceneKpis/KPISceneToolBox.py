@@ -231,6 +231,7 @@ class PngcnSceneKpis(object):
                                            denominator_result=sub_block['seq_y'],
                                            result=sub_block['facing_percentage'],
                                            score=sub_block['number_of_facings'],
+                                           weight=sub_block['shelf_count'],
                                            by_scene=True)
 
     def calculate_block_facing_include_stacking(self, block_df, block_filters):
@@ -271,9 +272,12 @@ class PngcnSceneKpis(object):
         if block_flag:
             point = node_data['polygon'].centroid
             row['x'], row['y'] = point.x, point.y
-            bfacing_include_stacking = self.calculate_block_facing_include_stacking(block_df, block_filters)
+
+            # Previously facing includes only non stacking, customer want stacking so I remove this line.
             #row['number_of_facings'] = len(product_matches_fks)
-            row['number_of_facings'] = len(bfacing_include_stacking)
+            block_facing_include_stacking = self.calculate_block_facing_include_stacking(block_df, block_filters)
+            row['number_of_facings'] = len(block_facing_include_stacking)
+            row['shelf_count'] = len(shelves)
             for filter_val, value in block_filters.iteritems():
                 row[filter_val] = value
             filter_results.append(row)
