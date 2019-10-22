@@ -337,7 +337,7 @@ class ToolBox(GlobalSessionToolBox):
         for fixture in self.required_fixtures:
             if fixture[Consts.REQUIRED_AMOUNT] == 0:
                 continue
-            entry_nums, entry_dens, exit_nums, exit_dens, entry_score, exit_score = self.get_pog_visit(
+            entry_nums, entry_dens, entry_score, exit_nums, exit_dens, exit_score = self.get_pog_visit(
                 fixture, pog_scene_results)
             entry_scores.append(entry_score)
             exit_scores.append(exit_score)
@@ -387,7 +387,7 @@ class ToolBox(GlobalSessionToolBox):
             identifier_parent=Consts.KPIS_DICT[Consts.POG_COMPLIANCE][Consts.STORE_LEVEL][Consts.EXIT],
             numerator_result=pog_delta, score=exit_score, should_enter=True, identifier_result=identifier_result)
         self.write_chosen_scenes_in_db(exit_scenes=exit_scenes, entry_scenes=entry_scenes)
-        return entry_nums, entry_dens, exit_nums, exit_dens, exit_score, entry_score
+        return entry_nums, entry_dens, entry_score, exit_nums, exit_dens, exit_score
 
     def get_pog_template(self, fixture, pog_scene_results, exit_entry, default_value, fixture_fk, required_amount):
         kpi_fk = self.get_kpi_fk_by_kpi_name(

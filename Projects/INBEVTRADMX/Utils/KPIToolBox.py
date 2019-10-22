@@ -175,7 +175,7 @@ class INBEVTRADMXToolBox:
             elif additional_attribute_4 == 'MODELORAMA':
                 set_name = sets[2]
             else:
-                return ''
+                return sets[0]
             return set_name
 
     def calculate_set_score(self, set_df, set_name):
