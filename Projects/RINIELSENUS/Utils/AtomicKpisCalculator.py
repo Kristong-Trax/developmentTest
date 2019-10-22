@@ -1037,8 +1037,9 @@ class AdjacencyAtomicKpiCalculation(KpiAtomicKpisCalculator):
         filters = self._split_filters(all_filters)
 
         allowed_filter = self._get_allowed_products(atomic_kpi_data['allowed'], filters['all'])
-        allowed_filter_without_other = self._get_allowed_products_without_other(atomic_kpi_data['allowed'],
-                                                                                filters['all'])
+        # allowed_filter_without_other = self._get_allowed_products_without_other(atomic_kpi_data['allowed'],
+        #                                                                         filters['all'])
+        allowed_filter_without_other = self._get_allowed_products(atomic_kpi_data['allowed'], filters['all'])
         scene_type_filter = self._create_filter_dict(
             key=TEMPLATE_NAME, value=atomic_kpi_data['scene_types'])
 
