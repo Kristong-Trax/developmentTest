@@ -69,9 +69,11 @@ class Results(object):
             #                         # 'Is PEDIGREE Dry Dog Food shelved with the Basic & Balanced feeding philosophy segment?'
             #                         # 'What percent of non-negotiable items are shelved in the preferred range? - numerator'
             #     # 'Is Nutro Dry Cat food blocked within the Ingredient Transparency feeding philosophy segment?'
-            #     'Is the Meaty Dog Treats segment blocked?',
-            #     'Is the Meaty Dog Treats segment blocked vertically?'
+            #     # 'Is the Meaty Dog Treats segment blocked?',
+            #     # 'Is the Meaty Dog Treats segment blocked vertically?'
             #     # 'What percent of non-negotiable items are shelved in the preferred range?',
+            #     'How many feet is the Dog Treats Regular category?',
+            #     'Is Pedigree Dentastix Dog Treats blocked within Dental Care?'
             # # 'What percent of non-negotiable items are shelved in the preferred range no pr?'
             #
             # ]:
