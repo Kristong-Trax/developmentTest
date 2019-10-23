@@ -21,9 +21,9 @@ def save_scene_item_facts_to_data_provider(data_provider, output):
 
 
 if __name__ == '__main__':
-    LoggerInitializer.init('marsuae-sand calculations')
+    LoggerInitializer.init('marsuae calculations')
     Config.init()
-    project_name = 'marsuae-sand'
+    project_name = 'marsuae'
     data_provider = KEngineDataProvider(project_name)
     # session = 'baa68060-8464-4841-82ad-f28f28047b06'    #SSS A
     # session = 'D7156E31-F359-4358-A193-0B41E4C8A65F' # sss a
