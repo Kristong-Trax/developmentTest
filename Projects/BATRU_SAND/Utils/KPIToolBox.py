@@ -125,6 +125,9 @@ class BATRU_SANDToolBox:
     SK_FIXTURE_IN_SCENE = 'SK Fixture in Scene'
     SK_SECTION_IN_FIXTURE = 'SK Section in Fixture'
     SK_SKU_PRESENCE_NOT_IN_LIST_SKU = 'SK SKU Presence NOT in List - SKU'
+    PRESENCE = 'PRESENCE'
+    OOS = 'OOS'
+    DISTRIBUTED = 'DISTRIBUTED'
 
     def __init__(self, data_provider, output):
         self.k_engine = BaseCalculationsScript(data_provider, output)
@@ -1564,22 +1567,22 @@ class BATRU_SANDToolBox:
                                             level_3_only=True, level2_name_for_atomic=fixture_name_for_db)
 
                 # new tables - SK set lvl 3
-                section_custom_res = self.kpi_result_values['PRESENCE']['OOS'] if section_score == 0 else \
-                    self.kpi_result_values['PRESENCE']['DISTRIBUTED']
+                section_custom_res = self.kpi_result_values[self.PRESENCE][self.OOS] if section_score == 0 else \
+                    self.kpi_result_values[self.PRESENCE][self.DISTRIBUTED]
                 self.common.write_to_db_result(fk=section_in_fixture_fk, numerator_id=section_fk,
                                                denominator_id=fixture_fk, context_id=scene, score=section_score,
                                                result=section_custom_res, identifier_parent=sk_fixture_identifier_par,
                                                identifier_result=section_in_fixture_identifier_par,
                                                should_enter=True)
                 #new tables - SK set lvl 4
-                sequence_custom_res = self.kpi_result_values['PRESENCE']['OOS'] if sku_sequence_score == 0 else \
-                    self.kpi_result_values['PRESENCE']['DISTRIBUTED']
+                sequence_custom_res = self.kpi_result_values[self.PRESENCE][self.OOS] if sku_sequence_score == 0 else \
+                    self.kpi_result_values[self.PRESENCE][self.DISTRIBUTED]
                 self.common.write_to_db_result(fk=sk_section_sequence_fk, numerator_id=section_fk,
                                                denominator_id=fixture_fk, context_id=scene, score=sku_sequence_score,
                                                result = sequence_custom_res,
                                                identifier_parent=section_in_fixture_identifier_par, should_enter=True)
-                repeating_custom_res = self.kpi_result_values['PRESENCE']['OOS'] if sku_repeating_score == 0 else \
-                    self.kpi_result_values['PRESENCE']['DISTRIBUTED']
+                repeating_custom_res = self.kpi_result_values[self.PRESENCE][self.OOS] if sku_repeating_score == 0 else \
+                    self.kpi_result_values[self.PRESENCE][self.DISTRIBUTED]
                 self.common.write_to_db_result(fk=sk_section_repeating_fk, numerator_id=section_fk,
                                                denominator_id=fixture_fk, context_id=scene, score=sku_repeating_score,
                                                result=repeating_custom_res,
@@ -1588,8 +1591,8 @@ class BATRU_SANDToolBox:
                 presence_section_identifier_par = self.common.get_dictionary(kpi_fk=sk_section_presence_fk,
                                                                              section=section_fk, fixture=fixture_fk,
                                                                              scene_fk=scene)
-                presence_custom_res = self.kpi_result_values['PRESENCE']['OOS'] if sku_presence_score == 0 else \
-                    self.kpi_result_values['PRESENCE']['DISTRIBUTED']
+                presence_custom_res = self.kpi_result_values[self.PRESENCE][self.OOS] if sku_presence_score == 0 else \
+                    self.kpi_result_values[self.PRESENCE][self.DISTRIBUTED]
                 self.common.write_to_db_result(fk=sk_section_presence_fk, numerator_id=section_fk,
                                                denominator_id=fixture_fk, context_id=scene, score=sku_presence_score,
                                                result=presence_custom_res,
@@ -1655,8 +1658,8 @@ class BATRU_SANDToolBox:
                                             kpi_name=SAS_RAW_DATA,
                                             atomic_kpi_name=self.API_EQUIPMENT_KPI_NAME.format(
                                                 fixture=fixture_name_for_db))
-            custom_sas_fixture_res = self.kpi_result_values['PRESENCE']['OOS'] if fixture_sas_zone_score == 0 else \
-                        self.kpi_result_values['PRESENCE']['DISTRIBUTED']
+            custom_sas_fixture_res = self.kpi_result_values[self.PRESENCE][self.OOS] if fixture_sas_zone_score == 0 else \
+                        self.kpi_result_values[self.PRESENCE][self.DISTRIBUTED]
             self.common.write_to_db_result(fk=sas_fixture_in_scene_fk, numerator_id=fixture_fk, denominator_id=scene,
                                            score=fixture_sas_zone_score, result=custom_sas_fixture_res,
                                            identifier_result=sas_fixture_identifier_par,
@@ -1951,8 +1954,8 @@ class BATRU_SANDToolBox:
                                                     kpi_set_name=SAS_RAW_DATA, kpi_name=SAS_RAW_DATA,
                                                     atomic_kpi_name=self.API_DISPLAY_KPI_NAME.format(
                                                         fixture=fixture, display=display))
-                    custom_presence_result = self.kpi_result_values['PRESENCE']['DISTRIBUTED'] if presence_score == 100 \
-                        else self.kpi_result_values['PRESENCE']['OOS']
+                    custom_presence_result = self.kpi_result_values[self.PRESENCE][self.DISTRIBUTED] if \
+                        presence_score == 100 else self.kpi_result_values[self.PRESENCE][self.OOS]
                     numerator_id = self.get_custom_entity_pk_by_value(display)
                     self.common.write_to_db_result(fk=sas_display_fk, numerator_id=numerator_id, denominator_id=scene,
                                                    score=presence_score, result=custom_presence_result,
@@ -1966,8 +1969,8 @@ class BATRU_SANDToolBox:
                                         atomic_kpi_name=self.API_NO_COMPETITORS_IN_SAS_ZONE.format(
                                             fixture=fixture))
         sas_no_competitor_fk = self.common.get_kpi_fk_by_kpi_type(self.SAS_NO_COMPETITOR_KPI)
-        custom_no_competitor_result = self.kpi_result_values['PRESENCE']['OOS'] if no_competitors_status == 0 \
-            else self.kpi_result_values['PRESENCE']['DISTRIBUTED']
+        custom_no_competitor_result = self.kpi_result_values[self.PRESENCE][self.OOS] if no_competitors_status == 0 \
+            else self.kpi_result_values[self.PRESENCE][self.DISTRIBUTED]
         self.common.write_to_db_result(fk=sas_no_competitor_fk, numerator_id=sas_no_competitor_fk,
                                        denominator_id=scene, score=no_competitors_status,
                                        result=custom_no_competitor_result,
@@ -2108,8 +2111,8 @@ class BATRU_SANDToolBox:
 
         #new tables - lvl2
         template_fk = self.scif[self.scif['scene_fk'] == scene_fk]['template_fk'].values[0]
-        custom_result = self.kpi_result_values['PRESENCE']['DISTRIBUTED'] if score == 1 else \
-            self.kpi_result_values['PRESENCE']['OOS']
+        custom_result = self.kpi_result_values[self.PRESENCE][self.DISTRIBUTED] if score == 1 else \
+            self.kpi_result_values[self.PRESENCE][self.OOS]
         self.common.write_to_db_result(fk=equipm_in_scene_kpi_fk, numerator_id=template_fk, denominator_id=scene_fk,
                                        numerator_result=group_counter, denominator_result=threshold, score=score,
                                        result = custom_result, identifier_parent=identifier_parent_posm_status,
@@ -2144,8 +2147,8 @@ class BATRU_SANDToolBox:
         #new tables - lvl 3
         group_fk = self.get_custom_entity_pk_by_value(group_name)
         template_fk = self.scif[self.scif['scene_fk'] == scene_fk]['template_fk'].values[0]
-        custom_result = self.kpi_result_values['PRESENCE']['DISTRIBUTED'] if score == 1 else \
-                                    self.kpi_result_values['PRESENCE']['OOS']
+        custom_result = self.kpi_result_values[self.PRESENCE][self.DISTRIBUTED] if score == 1 else \
+                                    self.kpi_result_values[self.PRESENCE][self.OOS]
         self.common.write_to_db_result(fk=group_kpi_fk, numerator_id=group_fk, denominator_id=template_fk,
                                        numerator_result=posm_counter, denominator_result=len(group_template),
                                        result=custom_result, score=score, identifier_parent=identifier_equipment_parent,
@@ -2207,8 +2210,8 @@ class BATRU_SANDToolBox:
         display_in_group_kpi = self.common.get_kpi_fk_by_kpi_type(self.POSM_EQUIPMENT_DISPLAY_IN_GROUP)
         group_fk = self.get_custom_entity_pk_by_value(group_name)
         display_in_group_fk = self.get_custom_entity_pk_by_value(atomic_name)
-        custom_result = self.kpi_result_values['PRESENCE']['DISTRIBUTED'] if score == 1 else \
-                                    self.kpi_result_values['PRESENCE']['OOS']
+        custom_result = self.kpi_result_values[self.PRESENCE][self.DISTRIBUTED] if score == 1 else \
+                                    self.kpi_result_values[self.PRESENCE][self.OOS]
         self.common.write_to_db_result(fk=display_in_group_kpi, numerator_id=display_in_group_fk,
                                        denominator_id=group_fk, result=custom_result, score=score,
                                        identifier_parent=identifier_group_parent, should_enter=True)
