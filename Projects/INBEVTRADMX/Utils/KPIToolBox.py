@@ -166,17 +166,16 @@ class INBEVTRADMXToolBox:
         if sets.empty:
             return ''
         else:
+
             sets = sets['KPI Level 1 Name'].unique().tolist()
 
-            if additional_attribute_4 == 'BC':
-                set_name = sets[0]
-            elif additional_attribute_4 == 'BA':
-                set_name = sets[1]
-            elif additional_attribute_4 == 'MODELORAMA':
-                set_name = sets[2]
-            else:
+            if len(sets) == 1:
                 return sets[0]
-            return set_name
+
+            else:
+                Log.error('KPI should only run on one KPI set.')
+
+
 
     def calculate_set_score(self, set_df, set_name):
         """
