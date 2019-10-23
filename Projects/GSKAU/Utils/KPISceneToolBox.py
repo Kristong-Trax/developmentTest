@@ -1,4 +1,5 @@
 import pandas as pd
+import numpy as np
 
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Cloud.Services.Connector.Keys import DbUsers
@@ -309,6 +310,8 @@ class GSKAUSceneToolBox:
                                  bay=bay_number,
                                  purity=purity
                                  ))
+                if not bay_number or np.isnan(bay_number):
+                    bay_number = -1
                 self.common.write_to_db_result(
                     fk=kpi_bay_purity.iloc[0].pk,
                     context_id=self.store_id,
@@ -329,14 +332,20 @@ class GSKAUSceneToolBox:
                 sess=self.session_uid,
                 scene=self.scene_info.iloc[0].scene_fk,
             ))
+            score = each_kpi_data.get('score')
+            result = each_kpi_data.get('result')
+            if not score or np.isnan(score):
+                score = -1
+            if not result or np.isnan(result):
+                result = -1
             self.common.write_to_db_result(
                 fk=each_kpi_data.get('pk'),
                 numerator_id=each_kpi_data.get('numerator_id', self.store_id),
                 denominator_id=each_kpi_data.get('denominator_id', self.store_id),
                 numerator_result=each_kpi_data.get('numerator_result', self.store_id),
                 denominator_result=each_kpi_data.get('denominator_result', self.store_id),
-                result=each_kpi_data.get('result', None),
-                score=each_kpi_data.get('score', None),
+                result=result,
+                score=score,
                 context_id=self.store_id,
                 by_scene=True,
             )
@@ -369,12 +378,15 @@ class GSKAUSceneToolBox:
                 result = 1  # mandatory
             elif optional_posm_eans and each_row.product_ean_code in optional_posm_eans:
                 result = 0  # optional
+            score = min(each_row.median_price, each_row.median_promo_price)
+            if not score or np.isnan(score):
+                score = -1
             self.common.write_to_db_result(
                 fk=kpi.iloc[0].pk,
                 numerator_id=numerator_id,  # its the POSM to check or General Empty if not recognized
                 numerator_result=numerator_result,  # whether POSM is 0, 1 or 2
                 denominator_id=each_row.item_id,  # each product in scene
-                score=min(each_row.median_price, each_row.median_promo_price) or -1,  # -1 means not saved in DB
+                score=score,  # -1 means not saved in DB
                 result=result,  # 0-optional, 1-mandatory, 2- NA
                 context_id=context_fk,  # template of scene
                 by_scene=True,
