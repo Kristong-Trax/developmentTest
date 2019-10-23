@@ -19,7 +19,7 @@ from KPIUtils_v2.Utils.TargetFinder.KpiTargetFinder import KpiTargetFinder
 from Trax.Apps.Services.Apollo.Server.Services.CCRU.Utils.CCRUPromoTargetsUploaderClass import \
     KPI_LEVEL_2_TYPE as PROMO_KPI_LEVEL_2_TYPE, \
     KPI_OPERATION_TYPE as PROMO_KPI_OPERATION_TYPE, \
-    PROMO_PRODUCT_ENTITY, PROMO_DISPLAY_ENTITY, PROMO_LOCATION_ENTITY
+    PROMO_PRODUCT_GROUP_ENTITY, PROMO_DISPLAY_ENTITY, PROMO_LOCATION_ENTITY
 
 from Projects.CCRU_SAND.Utils.Fetcher import CCRU_SANDCCHKPIFetcher
 from Projects.CCRU_SAND.Utils.Consts import CCRU_SANDConsts
@@ -44,10 +44,10 @@ TOPSKU = 'TOPSKU'
 KPI_CONVERSION = 'KPI_CONVERSION'
 BENCHMARK = 'BENCHMARK'
 
-SKIP_OLD_CCRU_SANDKPIS_FROM_WRITING = [TARGET, MARKETING]
-SKIP_NEW_CCRU_SANDKPIS_FROM_WRITING = [TARGET, MARKETING]
-NEW_CCRU_SANDKPIS_TO_WRITE_TO_DB = [POS, INTEGRATION, GAPS,
-                               SPIRITS, TOPSKU, EQUIPMENT, CONTRACT, BENCHMARK]
+SKIP_OLD_KPIS_FROM_WRITING = [TARGET, MARKETING]
+SKIP_NEW_KPIS_FROM_WRITING = [TARGET, MARKETING]
+NEW_KPIS_TO_WRITE_TO_DB = [POS, INTEGRATION, GAPS,
+                           SPIRITS, TOPSKU, EQUIPMENT, CONTRACT, BENCHMARK]
 
 BINARY = 'BINARY'
 PROPORTIONAL = 'PROPORTIONAL'
@@ -2141,7 +2141,7 @@ class CCRU_SANDKPIToolBox:
         This function writes KPI results to old tables
 
         """
-        if self.kpi_set_type not in SKIP_OLD_CCRU_SANDKPIS_FROM_WRITING:
+        if self.kpi_set_type not in SKIP_OLD_KPIS_FROM_WRITING:
 
             if level == 'level4':
                 if df['kpi_fk'].values[0] is None:
@@ -2358,7 +2358,7 @@ class CCRU_SANDKPIToolBox:
 
                 atomic_kpi_name = kf.get("name")
                 atomic_kpi_fk = kf.get("atomic_kpi_fk")
-                if not atomic_kpi_fk and self.kpi_set_type not in SKIP_OLD_CCRU_SANDKPIS_FROM_WRITING:
+                if not atomic_kpi_fk and self.kpi_set_type not in SKIP_OLD_KPIS_FROM_WRITING:
                     Log.error(
                         'Atomic KPI Name <{}> is not found for KPI FK <{}> of KPI Set <{}> in static.atomic_kpi table'
                         ''.format(atomic_kpi_name, kpi_fk, self.kpi_set_name))
@@ -2401,7 +2401,7 @@ class CCRU_SANDKPIToolBox:
 
                 # table3 = table3.append(attributes_for_table3)  # for debugging
 
-        if not kpi_fk and self.kpi_set_type not in SKIP_OLD_CCRU_SANDKPIS_FROM_WRITING:
+        if not kpi_fk and self.kpi_set_type not in SKIP_OLD_KPIS_FROM_WRITING:
             Log.error('KPI Name <{}> is not found for KPI Set <{}> in static.kpi table'
                       ''.format(kpi_name, self.kpi_set_name))
         attributes_for_table2 = pd.DataFrame([(self.session_uid,
@@ -2418,7 +2418,7 @@ class CCRU_SANDKPIToolBox:
                                                       'score'])
         self.write_to_kpi_results_old(attributes_for_table2, 'level2')
 
-        if not kpi_set_fk and self.kpi_set_type not in SKIP_OLD_CCRU_SANDKPIS_FROM_WRITING:
+        if not kpi_set_fk and self.kpi_set_type not in SKIP_OLD_KPIS_FROM_WRITING:
             Log.error('KPI Set <{}> is not found in static.kpi_set table'
                       ''.format(self.kpi_set_name))
         attributes_for_table1 = pd.DataFrame([(kpi_set_name,
@@ -2467,7 +2467,7 @@ class CCRU_SANDKPIToolBox:
 
         kpi_name = param.get('KPI name Eng')
 
-        if not kpi_fk and self.kpi_set_type not in SKIP_OLD_CCRU_SANDKPIS_FROM_WRITING:
+        if not kpi_fk and self.kpi_set_type not in SKIP_OLD_KPIS_FROM_WRITING:
             Log.error('KPI Name <{}> is not found for KPI Set <{}> in static.kpi table'
                       ''.format(kpi_name, self.kpi_set_name))
 
@@ -2521,7 +2521,7 @@ class CCRU_SANDKPIToolBox:
         atomic_kpi_fk = self.kpi_fetcher.get_atomic_kpi_fk(atomic_kpi_name, kpi_fk)\
             if atomic_kpi_fk is None else atomic_kpi_fk
 
-        if not atomic_kpi_fk and self.kpi_set_type not in SKIP_OLD_CCRU_SANDKPIS_FROM_WRITING:
+        if not atomic_kpi_fk and self.kpi_set_type not in SKIP_OLD_KPIS_FROM_WRITING:
             Log.error('Atomic KPI Name <{}> is not found for KPI FK <{}> of KPI Set <{}> in static.atomic_kpi table'
                       ''.format(atomic_kpi_name, kpi_fk, self.kpi_set_name))
 
@@ -2957,7 +2957,7 @@ class CCRU_SANDKPIToolBox:
             score = round(score*param.get('K'), 2)
             total_score += score
 
-            # if not atomic_kpi_fk and self.kpi_set_type not in SKIP_OLD_CCRU_SANDKPIS_FROM_WRITING:
+            # if not atomic_kpi_fk and self.kpi_set_type not in SKIP_OLD_KPIS_FROM_WRITING:
             #     Log.error(
             #         'Atomic KPI Name <{}> is not found for KPI FK <{}> of KPI Set <{}> in static.atomic_kpi table'
             #         ''.format(kpi_name, kpi_fk, self.kpi_set_name))
@@ -2987,7 +2987,7 @@ class CCRU_SANDKPIToolBox:
             #                                               'name'])
             # self.write_to_kpi_results_old(attributes_for_table3, 'level3')
 
-            if not kpi_fk and self.kpi_set_type not in SKIP_OLD_CCRU_SANDKPIS_FROM_WRITING:
+            if not kpi_fk and self.kpi_set_type not in SKIP_OLD_KPIS_FROM_WRITING:
                 Log.error('KPI Name <{}> is not found for KPI Set <{}> in static.kpi table'
                           ''.format(kpi_name, self.kpi_set_name))
             attributes_for_table2 = pd.DataFrame([(self.session_uid,
@@ -3013,7 +3013,7 @@ class CCRU_SANDKPIToolBox:
                  'score': score,
                  'level': 1})
 
-        if not kpi_set_fk and self.kpi_set_type not in SKIP_OLD_CCRU_SANDKPIS_FROM_WRITING:
+        if not kpi_set_fk and self.kpi_set_type not in SKIP_OLD_KPIS_FROM_WRITING:
             Log.error('KPI Set <{}> is not found static.kpi_set table'
                       ''.format(self.kpi_set_name))
         attributes_for_table1 = pd.DataFrame([(kpi_set_name,
@@ -3743,7 +3743,7 @@ class CCRU_SANDKPIToolBox:
         return
 
     def write_to_kpi_results_new(self):
-        for kpi_set_type in NEW_CCRU_SANDKPIS_TO_WRITE_TO_DB:
+        for kpi_set_type in NEW_KPIS_TO_WRITE_TO_DB:
             kpis = self.kpi_scores_and_results.get(kpi_set_type)
             if kpis:
                 kpis = pd.DataFrame(kpis.values())
@@ -3948,7 +3948,7 @@ class CCRU_SANDKPIToolBox:
         kpis = pd.DataFrame(kpis)
         self.promo_displays = self.kpi_fetcher.get_custom_entity(PROMO_DISPLAY_ENTITY)
         self.promo_locations = self.kpi_fetcher.get_custom_entity(PROMO_LOCATION_ENTITY)
-        self.promo_products = self.kpi_fetcher.get_custom_entity(PROMO_PRODUCT_ENTITY)
+        self.promo_products = self.kpi_fetcher.get_custom_entity(PROMO_PRODUCT_GROUP_ENTITY)
 
         kpi_fk_0 = self.common.kpi_static_data[self.common.kpi_static_data['type']
                                                == PROMO_COMPLIANCE_STORE]['pk'].values[0]
@@ -4737,7 +4737,7 @@ class CCRU_SANDKPIToolBox:
                                            numerator_id=self.own_manufacturer_id,
                                            numerator_result=deviation,
                                            denominator_id=display_fk,
-                                           denominator_result=None,
+                                           # denominator_result=None,
                                            context_id=location_fk,
                                            target=target,
                                            weight=weight,

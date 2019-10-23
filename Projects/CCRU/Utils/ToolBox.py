@@ -4737,7 +4737,7 @@ class CCRUKPIToolBox:
                                            numerator_id=self.own_manufacturer_id,
                                            numerator_result=deviation,
                                            denominator_id=display_fk,
-                                           denominator_result=None,
+                                           # denominator_result=None,
                                            context_id=location_fk,
                                            target=target,
                                            weight=weight,
