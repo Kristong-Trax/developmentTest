@@ -240,13 +240,13 @@ class ToolBox(GlobalSessionToolBox):
             sub_category = self.sanitize_values(row[SUB_CATEGORY])
             iterate_by = row[ITERATE_BY]
 
+
             # Step 3: Establish the variable for the network_x_block_together
             if pd.notna(tamano_del_producto):
                 relevant_filters = {MANUFACTURER_NAME: manufacturer_name, SUB_CATEGORY: sub_category,
                                     TAMANDO_DEL_PRODUCTO: tamano_del_producto}
             else:
                 relevant_filters = {MANUFACTURER_NAME: manufacturer_name, SUB_CATEGORY: sub_category}
-
 
 
             # Step 4:  the location variables based on the template
