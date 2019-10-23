@@ -376,14 +376,15 @@ class PngcnSceneKpis(object):
             return
         df = self.get_eye_level_shelves(self.matches_from_data_provider)
         full_df = pd.merge(df, self.all_products, on="product_fk")
-
-        self.calculate_facing_eye_level(full_df)
+        max_shelf_count = self.matches_from_data_provider["shelf_number"].max()
+        self.calculate_facing_eye_level(full_df, max_shelf_count)
         self.calculate_sequence_eye_level(entity_df, full_df)
 
-    def calculate_facing_eye_level(self, full_df):
+    def calculate_facing_eye_level(self, full_df, max_shelf_count):
         """
         Summing all facings for each product (includes stackings)
         :param full_df: the two relevant shelves (eye level shelves)
+        :param max_shelf_count: the count of total shelf layer count (max value in all bays)
         :return: save the facing_eye_level results for each shelf (combine all bays)
         """
         kpi_facings_fk = self.common.get_kpi_fk_by_kpi_name(Eye_level_kpi_FACINGS)
@@ -398,7 +399,7 @@ class PngcnSceneKpis(object):
             facings = row['result']
             self.common.write_to_db_result(fk=kpi_facings_fk, numerator_id=product_fk,
                                            denominator_id=category_fk, numerator_result=shelf_number,
-                                           result=facings, score=facings, by_scene=True)
+                                           result=facings, score=max_shelf_count, by_scene=True)
 
     def calculate_sequence_eye_level(self, entity_df, full_df):
         """
