@@ -1590,7 +1590,7 @@ class BATRU_SANDToolBox:
                                                                              scene_fk=scene)
                 presence_custom_res = self.kpi_result_values['PRESENCE']['OOS'] if sku_presence_score == 0 else \
                     self.kpi_result_values['PRESENCE']['DISTRIBUTED']
-                self.common.write_to_db_result(fk=sk_section_repeating_fk, numerator_id=section_fk,
+                self.common.write_to_db_result(fk=sk_section_presence_fk, numerator_id=section_fk,
                                                denominator_id=fixture_fk, context_id=scene, score=sku_presence_score,
                                                result=presence_custom_res,
                                                identifier_result=presence_section_identifier_par,
