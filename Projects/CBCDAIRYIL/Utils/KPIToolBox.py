@@ -17,7 +17,6 @@ import pandas as pd
 
 __author__ = 'idanr'
 
-
 class CBCDAIRYILToolBox:
 
     def __init__(self, data_provider, output):
@@ -132,13 +131,23 @@ class CBCDAIRYILToolBox:
         :return: The aggregated KPI score.
         """
         should_enter = True if parent_fk else False
-        ignore_weight = not should_enter    # Weights should be ignored only in the set level!
+        ignore_weight = not should_enter  # Weights should be ignored only in the set level!
         kpi_score = self.calculate_kpi_result_by_weight(kpi_results, parent_kpi_weight, ignore_weights=ignore_weight)
-        total_weight = target = round(parent_kpi_weight*100, 2)
+        total_weight = round(parent_kpi_weight * 100, 2)
+        target = None if parent_fk else round(80, 2)  # Requested for visualization
         self.common.write_to_db_result(fk=kpi_fk, numerator_id=Consts.CBC_MANU, numerator_result=kpi_score,
                                        denominator_id=self.store_id, denominator_result=total_weight, target=target,
                                        identifier_result=kpi_fk, identifier_parent=parent_fk, should_enter=should_enter,
                                        weight=total_weight, result=kpi_score, score=kpi_score)
+
+        if not parent_fk:  # required only for writing set score in anoter kpi needed for dashboard
+            kpi_fk = self.common.get_kpi_fk_by_kpi_type(Consts.TOTAL_SCORE_FOR_DASHBOARD)
+            self.common.write_to_db_result(fk=kpi_fk, numerator_id=Consts.CBC_MANU,
+                                           numerator_result=kpi_score, denominator_id=self.store_id,
+                                           denominator_result=total_weight, target=target, identifier_result=kpi_fk,
+                                           identifier_parent=parent_fk, should_enter=should_enter,
+                                           weight=total_weight, result=kpi_score, score=kpi_score)
+
         return kpi_score
 
     def calculate_kpi_result_by_weight(self, kpi_results, parent_kpi_weight, ignore_weights=False):

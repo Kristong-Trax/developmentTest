@@ -14,7 +14,9 @@ from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Projects.CBCIL_SAND.Utils.Fetcher import CBCIL_Queries
 from Projects.CBCIL_SAND.Utils.GeneralToolBox import CBCIL_GENERALToolBox
 from Projects.CBCIL_SAND.Utils.ParseTemplates import parse_template
-from KPIUtils.DB.Common import Common
+from KPIUtils_v2.DB.CommonV2 import Common
+from KPIUtils_v2.Utils.Decorators.Decorators import log_runtime, kpi_runtime
+# from KPIUtils.DB.Common import Common
 
 __author__ = 'Israel'
 
@@ -24,21 +26,24 @@ KPS_RESULT = 'report.kps_results'
 
 CUSTOM_GAPS_TABLE = 'pservice.custom_gaps'
 
-TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'Template.xlsx')
+TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data')
+TEMPLATE_NAME_UNTIL_2019_01_15 = 'Template_until_2019-01-15.xlsx'
+TEMPLATE_NAME_BETWEEN_2019_01_15_TO_2019_03_01 = 'Template_until_2019-03-01.xlsx'
+CURRENT_TEMPLATE = 'Template.xlsx'
 
 
-def log_runtime(description, log_start=False):
-    def decorator(func):
-        def wrapper(*args, **kwargs):
-            calc_start_time = datetime.utcnow()
-            if log_start:
-                Log.info('{} started at {}'.format(description, calc_start_time))
-            result = func(*args, **kwargs)
-            calc_end_time = datetime.utcnow()
-            Log.info('{} took {}'.format(description, calc_end_time - calc_start_time))
-            return result
-        return wrapper
-    return decorator
+# def log_runtime(description, log_start=False):
+#     def decorator(func):
+#         def wrapper(*args, **kwargs):
+#             calc_start_time = datetime.utcnow()
+#             if log_start:
+#                 Log.info('{} started at {}'.format(description, calc_start_time))
+#             result = func(*args, **kwargs)
+#             calc_end_time = datetime.utcnow()
+#             Log.info('{} took {}'.format(description, calc_end_time - calc_start_time))
+#             return result
+#         return wrapper
+#     return decorator
 
 
 class CBCIL_ToolBox(object):
@@ -88,6 +93,11 @@ class CBCIL_ToolBox(object):
     BLOCK_BY_BOTTOM_SHELF = 'Block by bottom shelf'
     SURVEY = 'Survey'
 
+    TOTAL_SCORE = 'Total Score'
+    TOTAL_SCORE_FOR_DASHBOARD = 'Total Score 2'
+
+    CBCIL = 'Central Bottling Company'
+
     def __init__(self, data_provider, output):
         self.output = output
         self.data_provider = data_provider
@@ -105,7 +115,6 @@ class CBCIL_ToolBox(object):
         self.scene_info = self.data_provider[Data.SCENES_INFO]
         self.store_id = self.data_provider[Data.STORE_FK]
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
-        # self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         self.tools = CBCIL_GENERALToolBox(self.data_provider, self.output, rds_conn=self.rds_conn)
         self.session_fk = self.session_info['pk'][0]
 
@@ -117,15 +126,20 @@ class CBCIL_ToolBox(object):
 
         self.rds_conn.disconnect_rds()
         self.rds_conn.connect_rds()
-        self.kpis_data = parse_template(TEMPLATE_PATH, 'KPI', lower_headers_row_index=1)
-        self.kpi_weights = parse_template(TEMPLATE_PATH, 'kpi weights', lower_headers_row_index=0)
-        self.gap_data = parse_template(TEMPLATE_PATH, 'Kpi Gap', lower_headers_row_index=0)
+        self.template_path = self.get_relevant_template()
+        self.kpis_data = parse_template(self.template_path, 'KPI', lower_headers_row_index=1)
+        self.kpi_weights = parse_template(self.template_path, 'kpi weights', lower_headers_row_index=0)
+        self.gap_data = parse_template(self.template_path, 'Kpi Gap', lower_headers_row_index=0)
 
         self.store_data = self.get_store_data_by_store_id()
         self.store_type = self.store_data[self.STORE_TYPE].str.encode('utf-8').tolist()
         self.additional_attribute_1 = self.store_data[self.ADDITIONAL_ATTRIBUTE_1].str.encode('utf-8').tolist()
-        self.template_data = self.kpis_data[(self.kpis_data[self.STORE_TYPE].str.encode('utf-8').isin(self.store_type)) &
-                                            (self.kpis_data[self.ADDITIONAL_ATTRIBUTE_1].str.encode('utf-8').isin(self.additional_attribute_1))]
+        self.template_data = self.kpis_data[
+            (self.kpis_data[self.STORE_TYPE].str.encode('utf-8').isin(self.store_type)) &
+            (self.kpis_data[self.ADDITIONAL_ATTRIBUTE_1].str.encode('utf-8').isin(self.additional_attribute_1))]
+
+        self.common = Common(self.data_provider)
+        self.cbcil_id = self.get_own_manufacturer_pk()
 
     def get_kpi_static_data(self):
         """
@@ -178,7 +192,7 @@ class CBCIL_ToolBox(object):
         match_display = pd.read_sql_query(query, self.rds_conn.db)
         return match_display
 
-    def main_calculation(self, *args, **kwargs):
+    def main_calculation(self):
         """
         This function calculates the KPI results.
         """
@@ -187,11 +201,22 @@ class CBCIL_ToolBox(object):
                                                                                 ['מקרר מתחרה', 'מקרר קמעונאי'])
             kpi_scores = {}
             kpi_set = self.template_data[self.KPI_SET].values[0]
-            self.kpi_static_data = self.kpi_static_data[self.kpi_static_data['kpi_set_name'] == kpi_set]
-            kpis = self.template_data[self.template_data[self.KPI_SET] == kpi_set][self.KPI_NAME].unique()
+            self.kpi_static_data = self.kpi_static_data[self.kpi_static_data['kpi_set_name'].str.encode('utf-8') ==
+                                                        kpi_set.encode('utf-8')]
+            kpis = self.template_data[self.template_data[self.KPI_SET].str.encode('utf-8') ==
+                                      kpi_set.encode('utf-8')][self.KPI_NAME].unique()
+            kpis_without_score = {}
+            all_kpis_in_set = []
+
+            identifier_result_set = self.get_identifier_result_set()
+
             for kpi in kpis:
-                atomics = self.template_data[self.template_data[self.KPI_NAME] == kpi]
+                identifier_result_kpi = self.get_identifier_result_kpi_by_name(kpi)
+
+                atomics = self.template_data[self.template_data[self.KPI_NAME].str.encode('utf-8') ==
+                                             kpi.encode('utf-8')]
                 scores = []
+
                 for i in xrange(len(atomics)):
                     atomic = atomics.iloc[i]
                     kpi_type = atomic[self.KPI_TYPE]
@@ -217,8 +242,7 @@ class CBCIL_ToolBox(object):
                             score = self.calculate_availability_by_top_shelf(**general_filters)
                         elif kpi_type == self.AVAILABILITY_FROM_BOTTOM:
                             shelf_number = int(general_filters.get(self.TARGET, 1))
-                            general_filters['filters']['All'].update(
-                                {'shelf_number_from_bottom': range(shelf_number + 1)[1:]})
+                            general_filters['filters']['All'].update({'shelf_number_from_bottom': range(shelf_number + 1)[1:]})
                             score = self.calculate_availability(**general_filters)
                         elif kpi_type == self.MIN_2_AVAILABILITY:
                             score = self.calculate_min_2_availability(**general_filters)
@@ -234,24 +258,45 @@ class CBCIL_ToolBox(object):
                         atomic_weight = None
 
                     if score is not None:
-                        atomic_fk = self.kpi_static_data[self.kpi_static_data['atomic_kpi_name'].str.encode('utf-8') == atomic[self.KPI_ATOMIC_NAME].encode('utf-8')]['atomic_kpi_fk'].values[0]
+                        atomic_fk = self.kpi_static_data[
+                            self.kpi_static_data['atomic_kpi_name'].str.encode('utf-8') == atomic[
+                                self.KPI_ATOMIC_NAME].encode('utf-8')]['atomic_kpi_fk'].values[0]
                         self.write_to_db_result(atomic_fk, self.LEVEL3, score, score)
                         if isinstance(score, tuple):
                             score = score[0]
                         if score == 0:
                             self.add_gap(atomic)
 
+                        atomic_fk_lvl_2 = self.common.get_kpi_fk_by_kpi_type(atomic[self.KPI_ATOMIC_NAME])
+                        self.common.write_to_db_result(fk=atomic_fk_lvl_2, numerator_id=self.cbcil_id,
+                                                       denominator_id=self.store_id,
+                                                       identifier_parent=identifier_result_kpi,
+                                                       result=score, score=score, should_enter=True)
+
                     scores.append((score, atomic_weight))
-                # if scores:
-                pass_atomics = filter(lambda x: x[0] is not None, scores)
+
+                kpi_fk = self.kpi_static_data[self.kpi_static_data['kpi_name'].str.encode('utf-8') ==
+                                              kpi.encode('utf-8')]['kpi_fk'].values[0]
+                denominator_weight = self.get_kpi_weight(kpi, kpi_set)
+
+                kpi_details = self.combine_kpi_details(kpi_fk, scores, denominator_weight)
+                all_kpis_in_set.append(kpi_details)
+
+                if all(map(lambda x: x[0] is None, scores)):
+                    kpis_without_score[kpi_fk] = float(denominator_weight)
+
+            all_kpis_in_set = self.reallocate_weights_to_kpis_with_results(kpis_without_score, all_kpis_in_set)
+
+            for kpi in filter(lambda x: x['denominator_weight'] != 0, all_kpis_in_set):
+                pass_atomics = filter(lambda x: x[0] is not None, kpi['atomic_scores_and_weights'])
                 if len(pass_atomics):
-                    add_weights = sum(
-                        map(lambda y: y[1], filter(lambda x: x[0] is None and x[1] is not None, scores))) / len(
-                        pass_atomics)
+                    add_weights = sum(map(lambda y: y[1], filter(lambda x: x[0] is None and x[1] is not None,
+                                                                 kpi['atomic_scores_and_weights']))) / len(pass_atomics)
                 else:
                     add_weights = 0
+
                 weights = sum(map(lambda x: x[1] is not None and x[1], pass_atomics))
-                denominator_weight = self.get_kpi_weight(kpi, kpi_set)
+                denominator_weight = kpi['denominator_weight']
 
                 if weights:
                     kpi_score = sum(map(lambda x: x[0] * (x[1] + add_weights) * 100, pass_atomics)) / 100
@@ -262,15 +307,102 @@ class CBCIL_ToolBox(object):
                         score_weight = 0
                     kpi_score = sum(map(lambda x: x[0] * score_weight, pass_atomics))
 
-                kpi_fk = self.kpi_static_data[self.kpi_static_data['kpi_name'] == kpi]['kpi_fk'].values[0]
-                kpi_scores[kpi_fk] = kpi_score
-                self.write_to_db_result(kpi_fk, self.LEVEL2, kpi_scores[kpi_fk], float(denominator_weight) * 100)
+                kpi_scores[kpi['kpi_fk']] = kpi_score
+                self.write_to_db_result(kpi['kpi_fk'], self.LEVEL2, kpi_scores[kpi['kpi_fk']],
+                                        float(kpi['denominator_weight']) * 100)
+
+                kpi_name = self.get_kpi_name_by_pk(kpi['kpi_fk'])
+                kpi_lvl_2_fk = self.common.get_kpi_fk_by_kpi_type(kpi_name)
+                identifier_res_kpi_2 = self.get_identifier_result_kpi_by_pk(kpi_lvl_2_fk)
+                self.common.write_to_db_result(fk=kpi_lvl_2_fk, numerator_id=self.cbcil_id,
+                                               denominator_id=self.store_id,
+                                               identifier_parent=identifier_result_set,
+                                               identifier_result=identifier_res_kpi_2,
+                                               weight=round(float(kpi['denominator_weight']) * 100, 2),
+                                               score=round(kpi_scores[kpi['kpi_fk']],2),
+                                               should_enter=True, result=round(kpi_scores[kpi['kpi_fk']],2))
 
             final_score = sum([score for score in kpi_scores.values()])
-            set_fk = self.kpi_static_data[self.kpi_static_data['kpi_set_name'] == kpi_set]['kpi_set_fk'].values[0]
+            set_fk = self.kpi_static_data[self.kpi_static_data['kpi_set_name'].str.encode('utf-8') ==
+                                          kpi_set.encode('utf-8')]['kpi_set_fk'].values[0]
             self.write_to_db_result(set_fk, self.LEVEL1, final_score)
             self.write_gaps_to_db()
+
+            total_score_fk = self.common.get_kpi_fk_by_kpi_type(self.TOTAL_SCORE)
+            self.common.write_to_db_result(fk=total_score_fk, numerator_id=self.cbcil_id, denominator_id=self.store_id,
+                                           identifier_result=identifier_result_set, result=round(final_score,2),
+                                           weight=round(100, 2), target=round(80, 2), score=final_score,
+                                           should_enter=True)
+
+            # requested for dashboard
+            total_score_fk_for_dashboard = self.common.get_kpi_fk_by_kpi_type(self.TOTAL_SCORE_FOR_DASHBOARD)
+
+            self.common.write_to_db_result(fk=total_score_fk_for_dashboard, numerator_id=self.cbcil_id,
+                                           denominator_id=self.store_id,
+                                           identifier_result=identifier_result_set, result=round(final_score, 2),
+                                           weight=round(100, 2), target=round(80, 2), score=final_score,
+                                           should_enter=True)
+
             self.commit_results_data()
+            self.common.commit_results_data()
+
+    #--------new tables functionality--------#
+    def get_own_manufacturer_pk(self):
+        query = CBCIL_Queries.get_manufacturer_pk_by_name(self.CBCIL)
+        query_result = pd.read_sql_query(query, self.rds_conn.db)
+        cbcil_pk = query_result['pk'].values[0]
+        return cbcil_pk
+
+    def get_identifier_result_set(self):
+        kpi_name = self.TOTAL_SCORE
+        identifier_result = self.common.get_dictionary(kpi_fk=self.common.get_kpi_fk_by_kpi_type(kpi_name),
+                                                       manufacturer_id=self.cbcil_id, store_id=self.store_id)
+        return identifier_result
+
+    def get_identifier_result_kpi_by_name(self, kpi_type):
+        identifier_result = self.common.get_dictionary(kpi_fk=self.common.get_kpi_fk_by_kpi_type(kpi_type),
+                                                       manufacturer_id=self.cbcil_id, store_id=self.store_id)
+        return identifier_result
+
+    def get_identifier_result_kpi_by_pk(self, kpi_fk):
+        identifier_result = self.common.get_dictionary(kpi_fk=kpi_fk, manufacturer_id=self.cbcil_id,
+                                                       store_id=self.store_id)
+        return identifier_result
+
+    def get_kpi_name_by_pk(self, kpi_pk):
+        kpi_name = self.kpi_static_data[self.kpi_static_data['kpi_fk'] == kpi_pk]['kpi_name'].values[0]
+        return kpi_name
+
+    #-------- existing calculations----------#
+    @staticmethod
+    def combine_kpi_details(kpi_fk, scores, denominator_weight):
+        kpi_details = {}
+        kpi_details['kpi_fk'] = kpi_fk
+        kpi_details['atomic_scores_and_weights'] = scores
+        kpi_details['denominator_weight'] = float(denominator_weight)
+        return kpi_details
+
+    @staticmethod
+    def reallocate_weights_to_kpis_with_results(kpis_without_score, all_kpis_in_set):
+        if kpis_without_score:
+            total_weight_to_reallocate = sum([weight for weight in kpis_without_score.values()])
+            weight_of_all_kpis_with_scores = sum([kpi['denominator_weight'] for kpi in
+                                                 filter(lambda x: x['kpi_fk'] not in kpis_without_score.keys(),
+                                                        all_kpis_in_set)])
+            for kpi in all_kpis_in_set:
+                if kpi['kpi_fk'] in kpis_without_score.keys():
+                    kpi['denominator_weight'] = 0
+                    kpi['atomic_scores_and_weights'] = [(score[0], 0) for score in kpi['atomic_scores_and_weights']]
+                else:
+                    weight_to_kpi = total_weight_to_reallocate * float(kpi['denominator_weight'])/weight_of_all_kpis_with_scores
+                    kpi['denominator_weight'] = kpi['denominator_weight'] + weight_to_kpi
+                    atomics_with_weights = filter(lambda x: x[1] is not None,
+                                                  kpi['atomic_scores_and_weights'])
+                    if atomics_with_weights:
+                        kpi['atomic_scores_and_weights'] = map(
+                            lambda x: (x[0], x[1] + weight_to_kpi / len(atomics_with_weights)),
+                            atomics_with_weights)
+        return all_kpis_in_set
 
     def get_coolers(self, cbc_coller, competitor_cooler):
         cbc = self.scif[self.scif['template_name'].str.encode('utf-8') == cbc_coller]['scene_fk'].unique().tolist()
@@ -293,41 +425,58 @@ class CBCIL_ToolBox(object):
 
         general_filters = {'scene_id': relative_scenes['scene_id'].unique().tolist()}
 
+        try:
+            params2 = map(float, params[self.PARAMS_VALUE_2].split(','))
+        except:
+            params2 = map(unicode.strip, params[self.PARAMS_VALUE_2].split(','))
+
+        try:
+            params3 = map(float, params[self.PARAMS_VALUE_3].split(','))
+        except:
+            params3 = map(unicode.strip, params[self.PARAMS_VALUE_3].split(','))
+
+
         result = {self.TARGET: params[self.TARGET],
                   self.SPLIT_SCORE: params[self.SPLIT_SCORE],
                   'filters': {
                      '1': {params[self.PARAMS_TYPE_1]: map(unicode.strip, params[self.PARAMS_VALUE_1].split(','))},
-                     '2': {params[self.PARAMS_TYPE_2]: map(unicode.strip, params[self.PARAMS_VALUE_2].split(','))},
-                     '3': {params[self.PARAMS_TYPE_3]: map(unicode.strip, params[self.PARAMS_VALUE_3].split(','))},
+                     '2': {params[self.PARAMS_TYPE_2]: params2},
+                     '3': {params[self.PARAMS_TYPE_3]: params3},
                      'All': general_filters}
                   }
         return result
 
+    @kpi_runtime()
     def calculate_survey(self, **general_filters):
         params = general_filters['filters']
-        filters = params['2']
+        filters = params['2'].copy()
         if not params['All']['scene_id']:
             return None
         try:
-            survey_question = int(filters.get('question_id')[0], 0)
+            survey_question = str(int(filters.get('question_id')[0]))
         except:
-            survey_question = 0
+            survey_question = str(0)
         target_answers = general_filters[self.TARGET].split(self.SEPARATOR)
-        survey_answer = self.tools.get_survey_answer(('question_fk', [survey_question]))
+        survey_answer = self.tools.get_survey_answer(('code', [survey_question]))
         if survey_answer:
             return 100 if survey_answer.strip() in target_answers else False
         else:
             return 0
 
+    @kpi_runtime()
     def calculate_block_by_shelf(self, **general_filters):
         params = general_filters['filters']
         if params['All']['scene_id']:
-            filters = params['1']
+            filters = params['1'].copy()
             filters.update(params['2'])
             filters.update(params['3'])
             filters.update(params['All'])
             for scene in params['All']['scene_id']:
                 filters.update({'scene_id': scene})
+                try:
+                    filters.pop('')
+                except:
+                    pass
                 block = self.tools.calculate_block_together(include_empty=False, minimum_block_ratio=0.75,
                                                              allowed_products_filters={'product_type': 'Other'},
                                                              vertical=True, **filters)
@@ -337,72 +486,62 @@ class CBCIL_ToolBox(object):
                     return 100
         return 0
 
+    @kpi_runtime()
     def calculate_sos(self, **general_filters):
         params = general_filters['filters']
         if params['All']['scene_id']:
-            numerator_filters = params['1']
+            numerator_filters = params['1'].copy()
             numerator_filters.update(params['2'])
             numerator_filters.update(params['3'])
-            denominator_filters = params['3']
-            numerator_width = self.tools.calculate_linear_share_of_display(numerator_filters,
-                                                                           include_empty=True,
-                                                                           **params['All'])
-            denominator_width = self.tools.calculate_linear_share_of_display(denominator_filters,
-                                                                             include_empty=True,
-                                                                             **params['All'])
-            try:
-                ratio = numerator_width / float(denominator_width)
-            except ZeroDivisionError:
-                ratio = 0
+            ratio = self.tools.calculate_linear_share_of_display(numerator_filters,
+                                                                   include_empty=True,
+                                                                   **params['All'])
+
             if ratio >= float(general_filters[self.TARGET]):
                 return 100
+            else:
+                return round(ratio*100, 2)
         return 0
 
+    @kpi_runtime()
     def calculate_sos_cooler(self, competitor_coolers, cbc_coolers, relevant_scenes, **general_filters):
         params = general_filters['filters']
         if params['All']['scene_id']:
-            numerator_filters = params['1']
+            numerator_filters = params['1'].copy()
             numerator_filters.update(params['2'])
-            denominator_filters = params['3']
 
             set_scores = []
             for scene in relevant_scenes:
                 filters = {'scene_fk': scene}
-                numerator_width = self.tools.calculate_linear_share_of_display(numerator_filters,
-                                                                               include_empty=True,
-                                                                               **filters)
-                denominator_width = self.tools.calculate_linear_share_of_display(denominator_filters,
-                                                                                 include_empty=True,
-                                                                                 **filters)
-                try:
-                    ratio = numerator_width / float(denominator_width)
-                except ZeroDivisionError:
-                    ratio = 0
+                ratio = self.tools.calculate_linear_share_of_display(numerator_filters, **filters)
                 set_scores.append(ratio)
-                set_scores.sort()
+            set_scores.sort()
 
-            if competitor_coolers > 0 and 0 < cbc_coolers == set_scores.count(1.0):
-                return 100
-            elif cbc_coolers > 1 and set_scores.count(1.0) >= (cbc_coolers - 1):
-                if set_scores[0] >= 0.8:
-                    return 100
-            elif cbc_coolers == 1 and set_scores[0] > 0.8:
-                return 100
+            if competitor_coolers > 0 and 0 < cbc_coolers:
+                return sum(set_scores)/len(set_scores)*100
+            elif cbc_coolers > 1:
+                if all(score < 0.8 for score in set_scores):
+                    set_scores.sort(reverse=True)
+                return (min(set_scores[0] / 0.8, 1) + sum(set_scores[1:])) / len(set_scores) * 100
+            elif cbc_coolers == 1:
+                return set_scores[0]/0.8*100 if set_scores[0] < 0.8 else 100
         return 0
 
+    @kpi_runtime()
     def calculate_availability(self, **general_filters):
         params = general_filters['filters']
         if params['All']['scene_id']:
-            filters = params['1']
+            filters = params['1'].copy()
             filters.update(params['All'])
             if self.tools.calculate_availability(**filters) >= 1:
                 return 100
         return 0
 
+    @kpi_runtime()
     def calculate_availability_from_mid_and_up(self, **general_filters):
         params = general_filters['filters']
         if params['All']['scene_id']:
-            filters = params['1']
+            filters = params['1'].copy()
             filters.update(params['2'])
             filters.update(params['3'])
             filters.update(params['All'])
@@ -414,46 +553,63 @@ class CBCIL_ToolBox(object):
                     return 100
         return 0
 
+    @kpi_runtime()
     def calculate_availability_by_top_shelf(self, **general_filters):
         params = general_filters['filters']
         if params['All']['scene_id']:
             shelf_number = int(general_filters.get(self.TARGET, 1))
             shelf_numbers = range(shelf_number + 1)[1:]
             if shelf_numbers:
-                filters = params['1']
-                filters.update(params['2'])
-                filters.update(params['3'])
-                filters.update(params['All'])
-                filters.update({'shelf_number': shelf_numbers})
-                result = self.match_product_in_scene[self.tools.get_filter_condition(self.match_product_in_scene, **filters)]
-                result = result['shelf_number'].unique().tolist()
-                if len(result) == len(shelf_numbers):
-                    return 100
+                session_results = []
+                for scene in params['All']['scene_id']:
+                    scene_result = 0
+                    scif_filters = {'scene_fk': scene}
+                    scif_filters.update(params['1'])
+                    scif_filters.update(params['2'])
+                    scif = self.scif.copy()
+                    scene_skus = scif[self.tools.get_filter_condition(scif, **scif_filters)]['product_fk'].unique().tolist()
+                    if scene_skus:
+                        matches_filters = {'scene_fk': scene}
+                        matches_filters.update({'product_fk': scene_skus})
+                        matches_filters.update({'shelf_number': shelf_numbers})
+                        matches = self.match_product_in_scene.copy()
+                        result = matches[self.tools.get_filter_condition(matches, **matches_filters)]
+                        if not result.empty:
+                            shelf_facings_result = result.groupby('shelf_number')['scene_fk'].count().values.tolist()
+                            if len(shelf_facings_result) == len(shelf_numbers):
+                                target_facings_per_shelf = params['3']['facings'][0]
+                                scene_result = 100 if all([facing >= target_facings_per_shelf
+                                                           for facing in shelf_facings_result]) else 0
+                    session_results.append(scene_result)
+                return 100 if any(session_results) else 0
         return 0
 
+    @kpi_runtime()
     def calculate_availability_by_sequence(self, **general_filters):
         params = general_filters['filters']
         if params['All']['scene_id']:
-            filters = params['1']
+            filters = params['1'].copy()
             filters.update(params['2'])
             filters.update(params['All'])
             matches = self.match_product_in_scene.merge(self.scif, on='product_fk')
             result = matches[self.tools.get_filter_condition(matches, **filters)]
             if not result.empty:
-                result = result['shelf_number'].unique().tolist().sort()
+                result = result['shelf_number'].unique().tolist()
+                result.sort()
             if len(result) >= 4:
                 for i in range(len(result) - 3):
                     if result[i] == result[i + 1] - 1 == result[i + 2] - 2 == result[i + 3] - 3:
                         return 100
         return 0
 
+    @kpi_runtime()
     def calculate_min_2_availability(self, **general_filters):
         params = general_filters['filters']
         if params['All']['scene_id']:
-            filters = params['1']
+            filters = params['1'].copy()
             filter_type = filters.keys()[0]
             pass_values = total_values = 0
-            availability_filters = params['All']
+            availability_filters = params['All'].copy()
             for value in filters[filter_type]:
                 availability_filters.update({filter_type: value})
                 availability_result = self.tools.calculate_availability(**availability_filters)
@@ -470,7 +626,8 @@ class CBCIL_ToolBox(object):
     def get_kpi_fk_by_kpi_name(self, kpi_name):
         assert isinstance(kpi_name, unicode), "name is not a string: %r" % kpi_name
         try:
-            return self.kpi_static_data[self.kpi_static_data['atomic_kpi_name'] == kpi_name]['atomic_kpi_fk'].values[0]
+            return self.kpi_static_data[self.kpi_static_data['atomic_kpi_name'].str.encode('utf-8') ==
+                                        kpi_name.encode('utf-8')]['atomic_kpi_fk'].values[0]
         except IndexError:
             Log.info('Kpi name: {}, isnt equal to any kpi name in static table'.format(kpi_name))
             return None
@@ -482,7 +639,7 @@ class CBCIL_ToolBox(object):
         kpi_name = params[self.KPI_NAME]
         kpi_atomic_name = params[self.KPI_ATOMIC_NAME]
         if kpi_name in self.gap_data[self.KPI_NAME].tolist():
-            gap = self.gap_data[self.gap_data[self.KPI_NAME] == kpi_name]
+            gap = self.gap_data[self.gap_data[self.KPI_NAME].str.encode('utf-8') == kpi_name.encode('utf-8')]
             if not gap.empty:
                 gap = gap.iloc[0]['Order']
             else:
@@ -508,7 +665,8 @@ class CBCIL_ToolBox(object):
         """
         priorities = range(1, 6)
         for gap_category in self.gap_data[self.KPI_NAME].tolist():
-            for i, row in self.gaps[self.gaps[self.KPI_NAME] == gap_category].iterrows():
+            for i, row in self.gaps[self.gaps[self.KPI_NAME].str.encode('utf-8') ==
+                                    gap_category.encode('utf-8')].iterrows():
                 if not priorities:
                     break
                 kpi_atomic_name = row[self.KPI_ATOMIC_NAME]
@@ -601,7 +759,8 @@ class CBCIL_ToolBox(object):
         return merged_queries
 
     def get_kpi_weight(self, kpi, kpi_set):
-        row = self.kpi_weights[(self.kpi_weights[self.KPI_SET] == kpi_set) & (self.kpi_weights[self.KPI_NAME] == kpi)]
+        row = self.kpi_weights[(self.kpi_weights[self.KPI_SET].str.encode('utf-8') == kpi_set.encode('utf-8')) &
+                               (self.kpi_weights[self.KPI_NAME].str.encode('utf-8') == kpi.encode('utf-8'))]
         weight = row.get(self.WEIGHT)
         if not weight.empty:
             return weight.values[0]
@@ -612,3 +771,16 @@ class CBCIL_ToolBox(object):
         if params.get(self.SPLIT_SCORE, 0) and not params['filters']['All'].get('scene_id'):
             return False
         return True
+
+    def get_relevant_template(self):
+        """
+        This function returns the relevant template according to it's visit date.
+        Because of a change that was done in the logic there are 3 templates that match different dates.
+        :return: Full template path
+        """
+        if self.visit_date <= datetime.date(datetime(2019, 1, 15)):
+            return "{}/{}".format(TEMPLATE_PATH, TEMPLATE_NAME_UNTIL_2019_01_15)
+        elif self.visit_date <= datetime.date(datetime(2019, 1, 3)):
+            return "{}/{}".format(TEMPLATE_PATH, TEMPLATE_NAME_BETWEEN_2019_01_15_TO_2019_03_01)
+        else:
+            return "{}/{}".format(TEMPLATE_PATH, CURRENT_TEMPLATE)
