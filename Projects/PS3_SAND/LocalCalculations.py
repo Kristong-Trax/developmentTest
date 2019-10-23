@@ -24,7 +24,7 @@ if __name__ == '__main__':
     Config.init()
     project_name = 'ps3-sand'
 
-    sessions = ['FFC36D27-7923-4C15-A6BE-44C9BC4A5319', 'FF1B0385-395B-4C62-9955-BF4ACC6983AD']
+    sessions = ['c5e41777-8a78-4d2d-8726-d4614d42a92d']
 
     for session in sessions:
         data_provider = KEngineDataProvider(project_name)

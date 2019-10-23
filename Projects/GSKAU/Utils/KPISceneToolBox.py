@@ -312,7 +312,7 @@ class GSKAUSceneToolBox:
                     numerator_result=self.store_id,
                     denominator_result=self.store_id,
                     result=purity,
-                    score=bay_number,
+                    score=bay_number or -1,
                     by_scene=True,
                 )
         return True
@@ -330,8 +330,8 @@ class GSKAUSceneToolBox:
                 denominator_id=each_kpi_data.get('denominator_id', self.store_id),
                 numerator_result=each_kpi_data.get('numerator_result', self.store_id),
                 denominator_result=each_kpi_data.get('denominator_result', self.store_id),
-                result=each_kpi_data.get('result', None),
-                score=each_kpi_data.get('score', None),
+                result=each_kpi_data.get('result', -1),
+                score=each_kpi_data.get('score', -1),
                 context_id=self.store_id,
                 by_scene=True,
             )
