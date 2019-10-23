@@ -1,13 +1,18 @@
+# coding=utf-8
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Cloud.Services.Connector.Keys import DbUsers
 from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Trax.Utils.Logging.Logger import Log
 from KPIUtils.ParseTemplates import parse_template
 from KPIUtils_v2.DB.CommonV2 import Common
-from Projects.CBCDAIRYIL_SAND.Utils.Consts import Consts
+from KPIUtils_v2.DB.Common import Common as oldCommon
+
+from Projects.CBCDAIRYIL.Utils.Consts import Consts
 from KPIUtils_v2.Calculations.SurveyCalculations import Survey
 from KPIUtils_v2.Calculations.BlockCalculations import Block
 from KPIUtils_v2.Calculations.CalculationsUtils.GENERALToolBoxCalculations import GENERALToolBox
+from KPIUtils_v2.Utils.Decorators.Decorators import log_runtime, kpi_runtime
+
 import pandas as pd
 
 __author__ = 'idanr'
@@ -20,6 +25,7 @@ class CBCDAIRYILSANDToolBox:
         self.data_provider = data_provider
         self.project_name = self.data_provider.project_name
         self.common = Common(self.data_provider)
+        self.old_common = oldCommon(self.data_provider)
         self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         self.session_fk = self.data_provider.session_id
         self.match_product_in_scene = self.data_provider[Data.MATCHES]
@@ -34,6 +40,7 @@ class CBCDAIRYILSANDToolBox:
         self.template_data = self.parse_template_data()
         self.kpis_gaps = list()
         self.passed_availability = list()
+        self.kpi_static_data = self.old_common.get_kpi_static_data()
 
     @staticmethod
     def get_gap_data():
@@ -58,15 +65,19 @@ class CBCDAIRYILSANDToolBox:
             return
         kpi_set, kpis_list = self.get_relevant_kpis_for_calculation()
         kpi_set_fk = self.common.get_kpi_fk_by_kpi_type(Consts.TOTAL_SCORE)
+        old_kpi_set_fk = self.get_kpi_fk_by_kpi_name(Consts.TOTAL_SCORE, 1)
         total_set_scores = list()
         for kpi_name in kpis_list:
             kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_name)
+            old_kpi_fk = self.get_kpi_fk_by_kpi_name(kpi_name, 2)
             kpi_weight = self.get_kpi_weight(kpi_name, kpi_set)
             atomics_df = self.get_atomics_to_calculate(kpi_name)
             atomic_results = self.calculate_atomic_results(kpi_fk, atomics_df)  # Atomic level
             kpi_results = self.calculate_kpis_and_save_to_db(atomic_results, kpi_fk, kpi_weight, kpi_set_fk)  # KPI lvl
+            self.old_common.old_write_to_db_result(fk=old_kpi_fk, level=2, score=format(kpi_results, '.2f'))
             total_set_scores.append(kpi_results)
-        self.calculate_kpis_and_save_to_db(total_set_scores, kpi_set_fk)  # Set level
+        kpi_set_score = self.calculate_kpis_and_save_to_db(total_set_scores, kpi_set_fk)  # Set level
+        self.old_common.write_to_db_result(fk=old_kpi_set_fk, level=1, score=kpi_set_score)
         self.handle_gaps()
 
     def add_gap(self, atomic_kpi, score, atomic_weight):
@@ -121,13 +132,23 @@ class CBCDAIRYILSANDToolBox:
         :return: The aggregated KPI score.
         """
         should_enter = True if parent_fk else False
-        ignore_weight = not should_enter    # Weights should be ignored only in the set level!
+        ignore_weight = not should_enter  # Weights should be ignored only in the set level!
         kpi_score = self.calculate_kpi_result_by_weight(kpi_results, parent_kpi_weight, ignore_weights=ignore_weight)
-        total_weight = round(parent_kpi_weight*100, 2)
+        total_weight = round(parent_kpi_weight * 100, 2)
+        target = None if parent_fk else round(80, 2)  # Requested for visualization
         self.common.write_to_db_result(fk=kpi_fk, numerator_id=Consts.CBC_MANU, numerator_result=kpi_score,
-                                       denominator_id=self.store_id, denominator_result=total_weight,
+                                       denominator_id=self.store_id, denominator_result=total_weight, taget=target,
                                        identifier_result=kpi_fk, identifier_parent=parent_fk, should_enter=should_enter,
                                        weight=total_weight, result=kpi_score, score=kpi_score)
+
+        if not parent_fk:  # required only for writing set score in anoter kpi needed for dashboard
+            kpi_fk = self.common.get_kpi_fk_by_kpi_type(Consts.TOTAL_SCORE_FOR_DASHBOARD)
+            self.common.write_to_db_result(fk=kpi_fk, numerator_id=Consts.CBC_MANU,
+                                           numerator_result=kpi_score, denominator_id=self.store_id,
+                                           denominator_result=total_weight, taget=target, identifier_result=kpi_fk,
+                                           identifier_parent=parent_fk, should_enter=should_enter,
+                                           weight=total_weight, result=kpi_score, score=kpi_score)
+
         return kpi_score
 
     def calculate_kpi_result_by_weight(self, kpi_results, parent_kpi_weight, ignore_weights=False):
@@ -185,13 +206,39 @@ class CBCDAIRYILSANDToolBox:
                 self.add_gap(current_atomic, atomic_score, atomic_weight)
             total_scores.append((atomic_score, atomic_weight))
             atomic_fk_lvl_2 = self.common.get_kpi_fk_by_kpi_type(current_atomic[Consts.KPI_ATOMIC_NAME].strip())
+            old_atomic_fk = self.get_kpi_fk_by_kpi_name(current_atomic[Consts.KPI_ATOMIC_NAME].strip(), 3)
             self.common.write_to_db_result(fk=atomic_fk_lvl_2, numerator_id=Consts.CBC_MANU,
                                            numerator_result=num_result, denominator_id=self.store_id,
                                            weight=round(atomic_weight*100, 2), denominator_result=den_result,
                                            should_enter=True, identifier_parent=kpi_fk,
                                            result=atomic_score, score=atomic_score * atomic_weight)
-
+            self.old_common.old_write_to_db_result(fk=old_atomic_fk, level=3,
+                                                   result=str(format(atomic_score * atomic_weight, '.2f')),
+                                                   score=atomic_score)
         return total_scores
+
+    def get_kpi_fk_by_kpi_name(self, kpi_name, kpi_level):
+        if kpi_level == 1:
+            column_key = 'kpi_set_fk'
+            column_value = 'kpi_set_name'
+        elif kpi_level == 2:
+            column_key = 'kpi_fk'
+            column_value = 'kpi_name'
+        elif kpi_level == 3:
+            column_key = 'atomic_kpi_fk'
+            column_value = 'atomic_kpi_name'
+        else:
+            raise ValueError('invalid level')
+
+        try:
+            if column_key and column_value:
+                return self.kpi_static_data[
+                    self.kpi_static_data[column_value].str.encode('utf-8') == kpi_name.encode('utf-8')][
+                    column_key].values[0]
+
+        except IndexError:
+            Log.error('Kpi name: {}, isnt equal to any kpi name in static table'.format(kpi_name))
+            return None
 
     def get_relevant_data_per_atomic(self, atomic_series):
         """
@@ -363,6 +410,7 @@ class CBCDAIRYILSANDToolBox:
         merged_df = merged_df[self.general_toolbox.get_filter_condition(merged_df, **kpi_filters)]
         return merged_df
 
+    @kpi_runtime()
     def calculate_eye_level(self, **general_filters):
         """
         This function calculates the Eye level KPI. It filters and products according to the template and
@@ -371,29 +419,37 @@ class CBCDAIRYILSANDToolBox:
         :return: E.g: (10, 20, 50) or (8, 10, 100) --> score >= 75 turns to 100.
         """
         merged_df = self.merge_and_filter_scif_and_matches_for_eye_level(**general_filters[Consts.KPI_FILTERS])
-        total_number_of_facings = len(merged_df)
-        merged_df = self.filter_df_by_shelves(merged_df, Consts.EYE_LEVEL_PER_SHELF)
-        eye_level_facings = len(merged_df)
+        relevant_scenes = merged_df['scene_id'].unique().tolist()
+        total_number_of_facings = eye_level_facings = 0
+        for scene in relevant_scenes:
+            scene_merged_df = merged_df[merged_df['scene_id'] == scene]
+            scene_matches = self.match_product_in_scene[self.match_product_in_scene['scene_fk'] == scene]
+            total_number_of_facings += len(scene_merged_df)
+            scene_merged_df = self.filter_df_by_shelves(scene_merged_df, scene_matches, Consts.EYE_LEVEL_PER_SHELF)
+            eye_level_facings += len(scene_merged_df)
         total_score = eye_level_facings / float(total_number_of_facings) if total_number_of_facings else 0
-        total_score = 100 if total_score >= 0.75 else total_score
+        total_score = 100 if total_score >= 0.75 else total_score * 100
         return eye_level_facings, total_number_of_facings, total_score
 
     @staticmethod
-    def filter_df_by_shelves(df, eye_level_definition):
+    def filter_df_by_shelves(df, scene_matches, eye_level_definition):
         """
         This function filters the df according to the eye-level definition
         :param df: data frame to filter
+        :param scene_matches: match_product_in_scene for particular scene
         :param eye_level_definition: definition for eye level shelves
         :return: filtered data frame
         """
-        number_of_shelves = df.shelf_number_from_bottom.max()
+        # number_of_shelves = df.shelf_number_from_bottom.max()
+        number_of_shelves = max(scene_matches.shelf_number_from_bottom.max(), scene_matches.shelf_number.max())
         top, bottom = 0, 0
         for json_def in eye_level_definition:
             if json_def[Consts.MIN] <= number_of_shelves <= json_def[Consts.MAX]:
                 top = json_def[Consts.TOP]
                 bottom = json_def[Consts.BOTTOM]
-        return df[(df.shelf_number_from_bottom <= number_of_shelves - top) & (df.shelf_number_from_bottom > bottom)]
+        return df[(df.shelf_number > top) & (df.shelf_number_from_bottom > bottom)]
 
+    @kpi_runtime()
     def calculate_availability_from_bottom(self, **general_filters):
         """
         This function checks if *all* of the relevant products are in the lowest shelf.
@@ -407,6 +463,7 @@ class CBCDAIRYILSANDToolBox:
         # Check bottom shelf condition
         return 0 if len(relevant_shelves_to_check) != 1 or Consts.LOWEST_SHELF not in relevant_shelves_to_check else 100
 
+    @kpi_runtime()
     def calculate_brand_block(self, **general_filters):
         """
         This function calculates the brand block KPI. It filters and excluded products according to the template and
@@ -414,12 +471,18 @@ class CBCDAIRYILSANDToolBox:
         :param general_filters: A dictionary with the relevant KPI filters.
         :return: 100 if at least one scene has a block, 0 otherwise.
         """
-        allowed_products_dict = self.get_allowed_product_by_params(**general_filters)
-        block_result = self.block.calculate_block_together(allowed_products_filters=allowed_products_dict,
-                                                           include_empty=False, result_by_scene=False,
-                                                           minimum_block_ratio=Consts.MIN_BLOCK_RATIO,
-                                                           min_facings_in_block=Consts.MIN_FACINGS_IN_BLOCK)
-        return 100 if block_result else 0
+        products_dict = self.get_allowed_product_by_params(**general_filters)
+        block_result = self.block.network_x_block_together(
+                                population=products_dict,
+                                additional={'minimum_block_ratio': Consts.MIN_BLOCK_RATIO,
+                                            'minimum_facing_for_block': Consts.MIN_FACINGS_IN_BLOCK,
+                                            'allowed_products_filters': {'product_type': ['Empty']},
+                                            'calculate_all_scenes': False,
+                                            'include_stacking': True,
+                                            'check_vertical_horizontal': False})
+
+        result = 100 if not block_result.empty and not block_result[block_result.is_block].empty else 0
+        return result
 
     def get_allowed_product_by_params(self, **filters):
         """
@@ -433,6 +496,7 @@ class CBCDAIRYILSANDToolBox:
         allowed_product[Consts.PRODUCT_FK] = filtered_scif[Consts.PRODUCT_FK].unique().tolist()
         return allowed_product
 
+    @kpi_runtime()
     def calculate_survey(self, **general_filters):
         """
         This function calculates the result for Survey KPI.
@@ -456,6 +520,7 @@ class CBCDAIRYILSANDToolBox:
             return 100 if survey_answer.strip() == target_answer else 0
         return 0
 
+    @kpi_runtime()
     def calculate_availability(self, return_df=False, **general_filters):
         """
         This functions checks for availability by filters.
@@ -489,6 +554,7 @@ class CBCDAIRYILSANDToolBox:
         facings_dict = dict(zip(df[Consts.EAN_CODE], df[stacking_field]))
         return facings_dict
 
+    @kpi_runtime()
     def calculate_min_2_availability(self, **general_filters):
         """
         This KPI checks for all of the Availability Atomics KPIs that passed, if the tested products have at least
