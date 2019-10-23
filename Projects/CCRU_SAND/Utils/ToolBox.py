@@ -4304,18 +4304,16 @@ class CCRU_SANDKPIToolBox:
                         kpi_fk=kpi_fk_sku, display_fk=display_fk, location_fk=location_fk,
                         product_group_fk=product_group_fk, product_fk=product_fk)
 
-                numerator_result = facings
-                denominator_result = None
                 self.common.write_to_db_result(fk=kpi_fk_sku,
                                                numerator_id=product_fk,
-                                               numerator_result=numerator_result,
+                                               numerator_result=facings,
                                                denominator_id=display_fk,
-                                               denominator_result=denominator_result,
+                                               # denominator_result=None,
                                                context_id=location_fk,
-                                               target=None,
-                                               weight=None,
-                                               result=None,
-                                               score=None,
+                                               # target=None,
+                                               # weight=None,
+                                               # result=None,
+                                               # score=None,
                                                identifier_result=kpi_identifier_result_sku,
                                                identifier_parent=kpi_identifier_result_prod,
                                                should_enter=True)
@@ -4391,9 +4389,9 @@ class CCRU_SANDKPIToolBox:
                                            denominator_id=display_fk,
                                            denominator_result=product_group_facings_target,
                                            context_id=location_fk,
-                                           target=target_prod,
-                                           weight=None,
-                                           result=result_prod,
+                                           target=product_group_facings_target,  # target_prod,
+                                           # weight=None,
+                                           result=product_group_facings_fact,  # result_prod,
                                            score=score_prod,
                                            identifier_result=kpi_identifier_result_prod,
                                            identifier_parent=kpi_identifier_result,
@@ -4410,18 +4408,16 @@ class CCRU_SANDKPIToolBox:
                         kpi_fk=kpi_fk_sku, display_fk=display_fk, location_fk=location_fk,
                         product_group_fk=product_group_fk, product_fk=product_fk)
 
-                numerator_result = facings
-                denominator_result = None
                 self.common.write_to_db_result(fk=kpi_fk_sku,
                                                numerator_id=product_fk,
-                                               numerator_result=numerator_result,
+                                               numerator_result=facings,
                                                denominator_id=display_fk,
-                                               denominator_result=denominator_result,
+                                               # denominator_result=None,
                                                context_id=location_fk,
-                                               target=None,
-                                               weight=None,
-                                               result=None,
-                                               score=None,
+                                               # target=None,
+                                               # weight=None,
+                                               # result=None,
+                                               # score=None,
                                                identifier_result=kpi_identifier_result_sku,
                                                identifier_parent=kpi_identifier_result_prod,
                                                should_enter=True)
@@ -4506,7 +4502,7 @@ class CCRU_SANDKPIToolBox:
                                            denominator_result=1,
                                            context_id=location_fk,
                                            target=target_prod,
-                                           weight=None,
+                                           # weight=None,
                                            result=result_prod,
                                            score=score_prod,
                                            identifier_result=kpi_identifier_result_prod,
@@ -4519,24 +4515,23 @@ class CCRU_SANDKPIToolBox:
                 product_fk = row['product_fk']
                 facings = row['facings']
                 price = row['price']
+                price_100 = price * 100 if price is not None else None
 
                 kpi_identifier_result_sku = \
                     self.common.get_dictionary(
                         kpi_fk=kpi_fk_sku, display_fk=display_fk, location_fk=location_fk,
                         product_group_fk=product_group_fk, product_fk=product_fk)
 
-                numerator_result = price * 100 if price else None
-                denominator_result = facings
                 self.common.write_to_db_result(fk=kpi_fk_sku,
                                                numerator_id=product_fk,
-                                               numerator_result=numerator_result,
+                                               numerator_result=facings,
                                                denominator_id=display_fk,
-                                               denominator_result=denominator_result,
+                                               denominator_result=price_100,
                                                context_id=location_fk,
-                                               target=None,
-                                               weight=None,
+                                               # target=None,
+                                               # weight=None,
                                                result=price,
-                                               score=None,
+                                               # score=None,
                                                identifier_result=kpi_identifier_result_sku,
                                                identifier_parent=kpi_identifier_result_prod,
                                                should_enter=True)
@@ -4680,17 +4675,18 @@ class CCRU_SANDKPIToolBox:
                 result_prod = 0
                 score_prod = 0
 
-            numerator_result = product_group_price_fact * 100 if product_group_price_fact is not None else None
-            denominator_result = product_group_price_target * 100
+            product_group_price_fact_100 = product_group_price_fact * 100 if product_group_price_fact is not None \
+                else None
+            product_group_price_target_100 = product_group_price_target * 100
             self.common.write_to_db_result(fk=kpi_fk_prod,
                                            numerator_id=product_group_fk,
-                                           numerator_result=numerator_result,
+                                           numerator_result=product_group_price_fact_100,
                                            denominator_id=display_fk,
-                                           denominator_result=denominator_result,
+                                           denominator_result=product_group_price_target_100,
                                            context_id=location_fk,
-                                           target=100,
-                                           weight=None,
-                                           result=result_prod,
+                                           target=product_group_price_target,  # 100,
+                                           # weight=None,
+                                           result=product_group_price_fact,  # result_prod,
                                            score=score_prod,
                                            identifier_result=kpi_identifier_result_prod,
                                            identifier_parent=kpi_identifier_result,
@@ -4702,24 +4698,23 @@ class CCRU_SANDKPIToolBox:
                 product_fk = row['product_fk']
                 facings = row['facings']
                 price = row['price']
+                price_100 = price * 100 if price else None
 
                 kpi_identifier_result_sku = \
                     self.common.get_dictionary(
                         kpi_fk=kpi_fk_sku, display_fk=display_fk, location_fk=location_fk,
                         product_group_fk=product_group_fk, product_fk=product_fk)
 
-                numerator_result = price * 100 if price else None
-                denominator_result = facings
                 self.common.write_to_db_result(fk=kpi_fk_sku,
                                                numerator_id=product_fk,
-                                               numerator_result=numerator_result,
+                                               numerator_result=facings,
                                                denominator_id=display_fk,
-                                               denominator_result=denominator_result,
+                                               denominator_result=price_100,
                                                context_id=location_fk,
-                                               target=None,
-                                               weight=None,
+                                               # target=None,
+                                               # weight=None,
                                                result=price,
-                                               score=None,
+                                               # score=None,
                                                identifier_result=kpi_identifier_result_sku,
                                                identifier_parent=kpi_identifier_result_prod,
                                                should_enter=True)
