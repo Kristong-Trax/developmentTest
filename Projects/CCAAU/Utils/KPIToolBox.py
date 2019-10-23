@@ -5,6 +5,7 @@ import os
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Cloud.Services.Connector.Keys import DbUsers
 from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
+from Trax.Utils.Logging.Logger import Log
 # from Trax.Utils.Logging.Logger import Log
 from KPIUtils_v2.DB.Common import Common
 from KPIUtils_v2.Calculations.CalculationsUtils.GENERALToolBoxCalculations import GENERALToolBox
@@ -24,6 +25,9 @@ KPI_RESULT = 'report.kpi_results'
 KPK_RESULT = 'report.kpk_results'
 KPS_RESULT = 'report.kps_results'
 
+BAY_COUNT_SHEET = 'BayCountKPI'
+BAY_COUNT_KPI = 'BAY_COUNT_BY_SCENE_TYPE_IN_WHOLE_STORE'
+
 
 class CCAAUToolBox:
     LEVEL1 = 1
@@ -39,11 +43,14 @@ class CCAAUToolBox:
         self.common = Common(self.data_provider)
         self.project_name = self.data_provider.project_name
         self.session_uid = self.data_provider.session_uid
+        self.templates_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data')
+        self.excel_file_path = os.path.join(self.templates_path, 'template.xlsx')
         self.products = self.data_provider[Data.PRODUCTS]
         self.all_products = self.data_provider[Data.ALL_PRODUCTS]
         self.match_product_in_scene = self.data_provider[Data.MATCHES]
         self.visit_date = self.data_provider[Data.VISIT_DATE]
         self.session_info = self.data_provider[Data.SESSION_INFO]
+        self.templates = self.data_provider[Data.TEMPLATES]
         self.scene_info = self.data_provider[Data.SCENES_INFO]
         self.store_id = self.data_provider[Data.STORE_FK]
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
@@ -65,6 +72,7 @@ class CCAAUToolBox:
         This function calculates the KPI results.
         """
         self.calculate_sos()
+        self.calculate_bay_kpi()
         self.common.commit_results_data_to_new_tables()
 
     def calculate_sos(self):
@@ -182,3 +190,36 @@ class CCAAUToolBox:
         sum_of_facings = filtered_scif['facings'].sum()
         space_length = filtered_scif['gross_len_split_stack'].sum()
         return sum_of_facings, space_length
+
+    def get_template_details(self, sheet_name):
+        template = pd.read_excel(self.excel_file_path, sheetname=sheet_name)
+        return template
+
+    def calculate_bay_kpi(self):
+        Log.info("Scene based calculations for zone KPIs...")
+        bay_kpi_sheet = self.get_template_details(BAY_COUNT_SHEET)
+        kpi = self.kpi_static_data.loc[self.kpi_static_data['type'] == BAY_COUNT_KPI]
+
+        if kpi.empty:
+            Log.info("KPI Name:{} not found in DB".format(BAY_COUNT_KPI))
+        else:
+            Log.info("KPI Name:{} found in DB".format(BAY_COUNT_KPI))
+            df_results = self.match_product_in_scene.merge(self.scene_info, how='left', on='scene_fk')
+            df_results = df_results.merge(self.templates, how='left', on='template_fk')
+            df_results = df_results.assign(
+                inSceneType=df_results.template_name.isin(bay_kpi_sheet.Scene_type).astype(int))
+            df_results = df_results.loc[df_results['inSceneType'] == 1]
+            df_results.drop_duplicates(subset=['scene_fk', 'bay_number'], inplace=True)
+            df_results['store_fk'] = self.session_info['store_fk'].iloc[0]
+            for ind, row in bay_kpi_sheet.iterrows():
+                df_iter = df_results.loc[df_results['template_name'] == row['Scene_type']]
+                bay_count = len(df_iter.index)
+                if not df_iter.empty:
+                    self.common.write_to_db_result_new_tables(
+                        fk=int(kpi['pk'].iloc[0]),
+                        numerator_id=int(df_iter['template_fk'].iloc[0]),  # product ID
+                        numerator_result=int(bay_count),  # median promo price comes as numerator
+                        denominator_id=int(df_iter['store_fk'].iloc[0]),  # store ID
+                        denominator_result=int(bay_count),  # scene id comes as denominator
+                        result=int(bay_count)
+                )
