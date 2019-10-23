@@ -335,8 +335,8 @@ class GSKAUSceneToolBox:
                 denominator_id=each_kpi_data.get('denominator_id', self.store_id),
                 numerator_result=each_kpi_data.get('numerator_result', self.store_id),
                 denominator_result=each_kpi_data.get('denominator_result', self.store_id),
-                result=each_kpi_data.get('result', -1),
-                score=each_kpi_data.get('score', -1),
+                result=each_kpi_data.get('result', -1) or -1,
+                score=each_kpi_data.get('score', -1) or -1,
                 context_id=self.store_id,
                 by_scene=True,
             )
