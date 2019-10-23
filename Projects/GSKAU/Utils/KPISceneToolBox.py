@@ -317,7 +317,7 @@ class GSKAUSceneToolBox:
                     numerator_result=self.store_id,
                     denominator_result=self.store_id,
                     result=purity,
-                    score=bay_number or -1,
+                    score=bay_number or 5,
                     by_scene=True,
                 )
         return True
@@ -335,8 +335,8 @@ class GSKAUSceneToolBox:
                 denominator_id=each_kpi_data.get('denominator_id', self.store_id),
                 numerator_result=each_kpi_data.get('numerator_result', self.store_id),
                 denominator_result=each_kpi_data.get('denominator_result', self.store_id),
-                result=each_kpi_data.get('result', -1) or -1,
-                score=each_kpi_data.get('score', -1) or -1,
+                result=each_kpi_data.get('result', 5) or 5,
+                score=each_kpi_data.get('score', 5) or 5,
                 context_id=self.store_id,
                 by_scene=True,
             )
@@ -374,7 +374,7 @@ class GSKAUSceneToolBox:
                 numerator_id=numerator_id,  # its the POSM to check or General Empty if not recognized
                 numerator_result=numerator_result,  # whether POSM is 0, 1 or 2
                 denominator_id=each_row.item_id,  # each product in scene
-                score=min(each_row.median_price, each_row.median_promo_price) or -1,  # -1 means not saved in DB
+                score=min(each_row.median_price, each_row.median_promo_price) or 5,  # -1 means not saved in DB
                 result=result,  # 0-optional, 1-mandatory, 2- NA
                 context_id=context_fk,  # template of scene
                 by_scene=True,
