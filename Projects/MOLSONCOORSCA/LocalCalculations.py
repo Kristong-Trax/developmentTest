@@ -27,7 +27,7 @@ if __name__ == '__main__':
 
                 ]
 
-    # sessions = ['F3ABA765-DEF6-46A4-8C1E-BC818532398A']
+    sessions = ['0B8701AE-E15D-44DD-94E7-4954843C2EA1', 'FEDA972C-826F-423D-A158-A8AB7C3EEB8F', 'C1B55A8B-32A0-4380-B18C-94039C2A2FA3']
 
     for session in sessions:
         print('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~{}~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~'.format(session))

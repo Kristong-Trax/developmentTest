@@ -16,6 +16,7 @@ class Const(object):
     ADJACENCY = 'Adjacency'
     DISTRIBUTION = 'Distribution'
     BASE_MEASUREMENT = 'Base Measurement'
+    OUT_OF_STOCK = 'Out of Stock'
 
 
     # Krishna Edits

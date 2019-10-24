@@ -1,5 +1,6 @@
 import pandas as pd
 import operator as op
+from datetime import datetime
 from functools import reduce
 from collections import defaultdict, namedtuple
 
@@ -85,6 +86,8 @@ class ToolBox:
         self.rel_store_data = self.store_data[self.store_data['pk'] == self.store_id]
 
         self.assortment = Assortment(self.data_provider, self.output)
+        self.prev_prods = self.load_prev_prods(self.store_id, self.session_info['visit_date'].iloc[0])
+
 
 
     # main functions:
@@ -124,39 +127,39 @@ class ToolBox:
         if relevant_scif.empty:
             return
 
-        if kpi_name not in [
-            # 'Eye Level Availability'
-            # 'Flanker Displays', 'Disruptor Displays'
-            # 'Innovation Distribution',
-            # 'Display by Location',
-            # 'Display by Location'
-            # 'Leading Main Section on Left',
-            # 'Leading Cooler on Left',
-            # 'Leading Cooler on Right',
-            # 'Leading Main Section on Right',
-            # 'Leading Cold Room on Left',
-            # 'Leading Cold Room on Right',
-            # 'Share of Segment Cooler Facings'
-            # 'Share of Segment Warm Facings',
-            # 'ABI Share of Display Space'
-            # 'Sleeman Share of Display Space'
-            # 'Share of Total Space'
-            # 'Warm Base Measurement'
-            'Warm Bays',
-            'Cold Room Bays',
-            'Cooler Door Count'
-
-        ]:
-            return
+        # if kpi_name not in [
+        #     # 'Eye Level Availability'
+        #     # 'Flanker Displays', 'Disruptor Displays'
+        #     # 'Innovation Distribution',
+        #     # 'Display by Location',
+        #     # 'Display by Location'
+        #     # 'Leading Main Section on Left',
+        #     # 'Leading Cooler on Left',
+        #     # 'Leading Cooler on Right',
+        #     # 'Leading Main Section on Right',
+        #     # 'Leading Cold Room on Left',
+        #     # 'Leading Cold Room on Right',
+        #     # 'Share of Segment Cooler Facings'
+        #     # 'Share of Segment Warm Facings',
+        #     # 'ABI Share of Display Space'
+        #     # 'Sleeman Share of Display Space'
+        #     # 'Share of Total Space'
+        #     # 'Warm Base Measurement'
+        #     # 'Warm Bays',
+        #     'Dynamic Out of Stock'
+        #
+        #
+        # ]:
+        #     return
 
         if kpi_type not in [
-            'Share of Facings',
-            'Share of Shelf',
-            'Distribution',
-            'Anchor',
+            # 'Share of Facings',
+            # 'Share of Shelf',
+            # 'Distribution',
+            # 'Anchor',
             'Base Measurement',
-            'Bay Count'
-
+            'Bay Count',
+            'Out of Stock'
         ]:
             return
 
@@ -193,7 +196,7 @@ class ToolBox:
                                           }
 
     def calculate_main_kpi(self, kpi_name, kpi_lvl_name, kpi_type, **kwargs):
-        kpi_line = self.template[kpi_type].set_index(Const.KPI_NAME).loc[kpi_name]
+        kpi_line = self.template[kpi_type].set_index(Const.KPI_NAME).loc[kpi_name] if kpi_type in self.template else 0
         function = self.get_kpi_function(kpi_type)
         write_type = True
         try:
@@ -459,6 +462,30 @@ class ToolBox:
                    'numerator_id': relevant_scif[main_line[level['num_col']]].iloc[0],
                    'denominator_id': relevant_scif[main_line[level['den_col']]].iloc[0],
                    'kpi_name': self.lvl_name(kpi_name, level['lvl'])}
+        return level['end'], results
+
+    def calculate_dynamic_oos(self, kpi_name, kpi_line, relevant_scif, main_line, level, **kwargs):
+        filters = self.get_kpi_line_filters(kpi_line)
+        prev_prods = self.prev_prods['product_fk'].to_frame().merge(self.all_products, on='product_fk')
+        prev_prods = self.filter_df(prev_prods, filters)
+        matches = self.prev_prods['product_fk'].to_frame().merge(relevant_scif, on='product_fk')\
+            .drop_duplicates(subset='product_fk')
+        matches = self.filter_df(matches, filters)
+        if prev_prods.empty or matches.empty:
+            return
+        oos = set(prev_prods['product_fk'].values) - set(matches['product_fk'].values)
+        ratio = self.safe_divide(len(oos), prev_prods.shape[0])
+        results = []
+        for sku in oos:
+            results.append({'score': 1, 'result': 'OOS', 'ident_parent': self.lvl_name(kpi_name, 'Session'),
+                            'numerator_id': sku, 'denominator_id': self.store_id,
+                            'kpi_name': self.lvl_name(kpi_name, level['lvl'])})
+
+        results.append({'score': 1, 'result': ratio, 'ident_result': self.lvl_name(kpi_name, 'Session'),
+                        'numerator_id': filters['manufacturer_fk'], 'denominator_id': self.store_id,
+                        'kpi_name': self.lvl_name(kpi_name, 'Session'), 'numerator_result': len(oos),
+                        'denominator_result': prev_prods.shape[0]})
+
         return level['end'], results
 
 
@@ -1115,6 +1142,36 @@ class ToolBox:
             Log.warning('Data does not exist for this session')
             self.global_fail = 1
 
+    def load_prev_prods(self, store, visit_date):
+        query = '''
+        select distinct
+        -- sc.session_uid,
+        p.pk as 'original_product_fk',
+        p.substitution_product_fk,
+        case
+            when p.substitution_product_fk is not null
+                then p.substitution_product_fk
+
+            else p.pk
+        end as 'product_fk'
+        from (
+                select *
+                from probedata.session ses
+                where store_fk = {}
+                and visit_date < '{}'
+                and delete_time is null
+                and exclude_status_fk in (1, 4)
+                and status = 'Completed'
+                and number_of_scenes - number_of_ignored_scenes > 0
+                order by visit_date desc
+                limit 1
+              ) ses
+        inner join probedata.scene sc on ses.session_uid = sc.session_uid
+        inner join probedata.match_product_in_scene mpis on sc.pk = mpis.scene_fk
+        inner join static_new.product p on mpis.product_fk = p.pk
+        '''.format(store, datetime.strftime(visit_date, '%Y-%m-%d'), self.manufacturer_fk)
+        return pd.read_sql_query(query, self.ps_data_provider.rds_conn.db)
+
     def get_kpi_function(self, kpi_type):
         """
         transfers every kpi to its own function
@@ -1138,6 +1195,8 @@ class ToolBox:
             return self.calculate_anchor
         elif kpi_type == Const.BASE_MEASUREMENT:
             return self.calculate_base_measure
+        elif kpi_type == Const.OUT_OF_STOCK:
+            return self.calculate_dynamic_oos
 
 
 
