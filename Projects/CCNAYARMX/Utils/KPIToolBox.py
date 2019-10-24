@@ -27,7 +27,8 @@ from Projects.CCNAYARMX.Data.LocalConsts import Consts
 # from KPIUtils_v2.Calculations.SurveyCalculations import Survey
 
 # from KPIUtils_v2.Calculations.CalculationsUtils import GENERALToolBoxCalculations
-from KPIUtils_v2.Calculations.BlockCalculations_v2 import Block
+# from KPIUtils_v2.Calculations.BlockCalculations_v2 import Block
+from BlockCalculations_v3 import Block
 
 __author__ = 'krishnat'
 
@@ -116,12 +117,12 @@ class ToolBox(GlobalSessionToolBox):
             self.templates[sheet] = pd.read_excel(TEMPLATE_PATH, sheet_name=sheet)
 
     def main_calculation(self):
-        for i, row in self.templates[PER_BAY_SOS].iterrows():
+        for i, row in self.templates[BLOCK_TOGETHER].iterrows():
             # self.calculate_sos(row)
-            # self.calculate_block_together(row)
+            self.calculate_block_together(row)
             # self.calculate_share_of_empty(row)
             # self.calculate_bay_count(row)
-            self.calculate_per_bay_sos(row)
+            # self.calculate_per_bay_sos(row)
         return
 
     def calculate_sos(self, row):
@@ -129,8 +130,6 @@ class ToolBox(GlobalSessionToolBox):
         :param row: READS THE LINE FROM THE TEMPLATE
         :return: the sum of numerator scif[final_facings] over the sum of denominator scif[final_facings]
         '''
-
-
 
         # REMINDER Filter scif by additional scene type column
         # Waiting on Session with with scene type(template_name) with Enfriador Dedicado JDV
@@ -225,7 +224,6 @@ class ToolBox(GlobalSessionToolBox):
 
     def calculate_block_together(self, row):
 
-
         # Step 1: Read the excel rows to process the information (Common among all the sheets)
         kpi_name = row[KPI_NAME]
         kpi_fk = self.common.get_kpi_fk_by_kpi_name(kpi_name)
@@ -240,24 +238,86 @@ class ToolBox(GlobalSessionToolBox):
         sub_category = self.sanitize_values(row[SUB_CATEGORY])
         iterate_by = row[ITERATE_BY]
 
+        # Step 3: Declare relevant_scif columns
+        relevant_scif_columns = [PK, SESSION_ID, PRODUCT_FK, PRODUCT_NAME, TEMPLATE_GROUP, TEMPLATE_NAME, MANUFACTURER_NAME,
+                                 TAMANDO_DEL_PRODUCTO, SUB_CATEGORY] + \
+                                [denominator_entity, numerator_entity, denominator_entity, SCENE_FK]
 
-        # Step 3: Establish the variable for the network_x_block_together
-        if pd.notna(tamano_del_producto):
-            relevant_filters = {MANUFACTURER_NAME: manufacturer_name, SUB_CATEGORY: sub_category,
-                                TAMANDO_DEL_PRODUCTO: tamano_del_producto}
-        else:
-            relevant_filters = {MANUFACTURER_NAME: manufacturer_name, SUB_CATEGORY: sub_category}
+        # Step 4:
+        relevant_scif = self.scif[relevant_scif_columns]
+
+        product_in_scene = self.match_product_in_scene[[PRODUCT_FK, BAY_NUMBER, SCENE_FK]]
+
+        bay_count_scif = relevant_scif.merge(product_in_scene, on=[PRODUCT_FK, SCENE_FK], how='right')
+        bay_count_scif = bay_count_scif.dropna()
+
+        unique_scene_fk = list(set(bay_count_scif[SCENE_FK]))
+        for i in unique_scene_fk:
+            unique_bays_in_scene = list(set(bay_count_scif[bay_count_scif[SCENE_FK] == i][BAY_NUMBER]))
+            for j in unique_bays_in_scene:
+
+                # Step 3: Establish the variable for the network_x_block_together
+                if pd.notna(tamano_del_producto):
+                    relevant_filters = {MANUFACTURER_NAME: manufacturer_name, SUB_CATEGORY: sub_category,
+                                        TAMANDO_DEL_PRODUCTO: tamano_del_producto, BAY_NUMBER: [j]}
+                else:
+                    relevant_filters = {MANUFACTURER_NAME: manufacturer_name, SUB_CATEGORY: sub_category, BAY_NUMBER: j}
 
 
-        # Step 4:  the location variables based on the template
-        if pd.notna(template_group):
-            location_name = TEMPLATE_GROUP
-            location_id = template_group
-        else:
-            location_name = TEMPLATE_NAME
-            location_id = template_name
+                # Step 4:  the location variables based on the template
+                if pd.notna(template_group):
+                    location_name = TEMPLATE_GROUP
+                    location_id = template_group
+                else:
+                    location_name = TEMPLATE_NAME
+                    location_id = template_name
 
-        location = {location_name: location_id}
+                location = {location_name: location_id}
+
+                if pd.isna(iterate_by):
+                    block = self.block.network_x_block_together(relevant_filters,
+                                                                location=location,
+                                                                additional={'minimum_block_ratio': 0.9,
+                                                                            'calculate_all_scenes': True})
+
+                    if block.empty:
+                        result = 'NULL'
+                    else:
+                        if False in block['is_block'].to_list():
+                            result = 0
+                        else:
+                            result = 1
+
+                    template_fk = self.scif[self.scif['template_group'] == template_group]['template_fk'].mode()[0]
+
+
+
+
+
+
+
+
+
+
+
+
+        # # Step 3: Establish the variable for the network_x_block_together
+        # if pd.notna(tamano_del_producto):
+        #     relevant_filters = {MANUFACTURER_NAME: manufacturer_name, SUB_CATEGORY: sub_category,
+        #                         TAMANDO_DEL_PRODUCTO: tamano_del_producto}
+        # else:
+        #     relevant_filters = {MANUFACTURER_NAME: manufacturer_name, SUB_CATEGORY: sub_category}
+        #
+        #
+        # # Step 4:  the location variables based on the template
+        # if pd.notna(template_group):
+        #     location_name = TEMPLATE_GROUP
+        #     location_id = template_group
+        # else:
+        #     location_name = TEMPLATE_NAME
+        #     location_id = template_name
+
+        # location = {location_name: location_id}
 
         # Step 8: Calculate the block kpi per scene level. The If statement accounts for the iterate by column logic.
         if pd.isna(iterate_by):
@@ -452,7 +512,6 @@ class ToolBox(GlobalSessionToolBox):
                                        denominator_id=denominator_id, result=result)
 
     def calculate_per_bay_sos(self, row):
-
 
         # Step 1: Read the excel rows to process the information(Common among all the sheets)
         kpi_name = row[KPI_NAME]
