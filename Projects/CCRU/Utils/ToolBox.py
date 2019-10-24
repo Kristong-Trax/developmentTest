@@ -19,7 +19,7 @@ from KPIUtils_v2.Utils.TargetFinder.KpiTargetFinder import KpiTargetFinder
 from Trax.Apps.Services.Apollo.Server.Services.CCRU.Utils.CCRUPromoTargetsUploaderClass import \
     KPI_LEVEL_2_TYPE as PROMO_KPI_LEVEL_2_TYPE, \
     KPI_OPERATION_TYPE as PROMO_KPI_OPERATION_TYPE, \
-    PROMO_PRODUCT_ENTITY, PROMO_DISPLAY_ENTITY, PROMO_LOCATION_ENTITY
+    PROMO_PRODUCT_GROUP_ENTITY, PROMO_DISPLAY_ENTITY, PROMO_LOCATION_ENTITY
 
 from Projects.CCRU.Utils.Fetcher import CCRUCCHKPIFetcher
 from Projects.CCRU.Utils.Consts import CCRUConsts
@@ -44,10 +44,10 @@ TOPSKU = 'TOPSKU'
 KPI_CONVERSION = 'KPI_CONVERSION'
 BENCHMARK = 'BENCHMARK'
 
-SKIP_OLD_CCRUKPIS_FROM_WRITING = [TARGET, MARKETING]
-SKIP_NEW_CCRUKPIS_FROM_WRITING = [TARGET, MARKETING]
-NEW_CCRUKPIS_TO_WRITE_TO_DB = [POS, INTEGRATION, GAPS,
-                               SPIRITS, TOPSKU, EQUIPMENT, CONTRACT, BENCHMARK]
+SKIP_OLD_KPIS_FROM_WRITING = [TARGET, MARKETING]
+SKIP_NEW_KPIS_FROM_WRITING = [TARGET, MARKETING]
+NEW_KPIS_TO_WRITE_TO_DB = [POS, INTEGRATION, GAPS,
+                           SPIRITS, TOPSKU, EQUIPMENT, CONTRACT, BENCHMARK]
 
 BINARY = 'BINARY'
 PROPORTIONAL = 'PROPORTIONAL'
@@ -2141,7 +2141,7 @@ class CCRUKPIToolBox:
         This function writes KPI results to old tables
 
         """
-        if self.kpi_set_type not in SKIP_OLD_CCRUKPIS_FROM_WRITING:
+        if self.kpi_set_type not in SKIP_OLD_KPIS_FROM_WRITING:
 
             if level == 'level4':
                 if df['kpi_fk'].values[0] is None:
@@ -2358,7 +2358,7 @@ class CCRUKPIToolBox:
 
                 atomic_kpi_name = kf.get("name")
                 atomic_kpi_fk = kf.get("atomic_kpi_fk")
-                if not atomic_kpi_fk and self.kpi_set_type not in SKIP_OLD_CCRUKPIS_FROM_WRITING:
+                if not atomic_kpi_fk and self.kpi_set_type not in SKIP_OLD_KPIS_FROM_WRITING:
                     Log.error(
                         'Atomic KPI Name <{}> is not found for KPI FK <{}> of KPI Set <{}> in static.atomic_kpi table'
                         ''.format(atomic_kpi_name, kpi_fk, self.kpi_set_name))
@@ -2401,7 +2401,7 @@ class CCRUKPIToolBox:
 
                 # table3 = table3.append(attributes_for_table3)  # for debugging
 
-        if not kpi_fk and self.kpi_set_type not in SKIP_OLD_CCRUKPIS_FROM_WRITING:
+        if not kpi_fk and self.kpi_set_type not in SKIP_OLD_KPIS_FROM_WRITING:
             Log.error('KPI Name <{}> is not found for KPI Set <{}> in static.kpi table'
                       ''.format(kpi_name, self.kpi_set_name))
         attributes_for_table2 = pd.DataFrame([(self.session_uid,
@@ -2418,7 +2418,7 @@ class CCRUKPIToolBox:
                                                       'score'])
         self.write_to_kpi_results_old(attributes_for_table2, 'level2')
 
-        if not kpi_set_fk and self.kpi_set_type not in SKIP_OLD_CCRUKPIS_FROM_WRITING:
+        if not kpi_set_fk and self.kpi_set_type not in SKIP_OLD_KPIS_FROM_WRITING:
             Log.error('KPI Set <{}> is not found in static.kpi_set table'
                       ''.format(self.kpi_set_name))
         attributes_for_table1 = pd.DataFrame([(kpi_set_name,
@@ -2467,7 +2467,7 @@ class CCRUKPIToolBox:
 
         kpi_name = param.get('KPI name Eng')
 
-        if not kpi_fk and self.kpi_set_type not in SKIP_OLD_CCRUKPIS_FROM_WRITING:
+        if not kpi_fk and self.kpi_set_type not in SKIP_OLD_KPIS_FROM_WRITING:
             Log.error('KPI Name <{}> is not found for KPI Set <{}> in static.kpi table'
                       ''.format(kpi_name, self.kpi_set_name))
 
@@ -2521,7 +2521,7 @@ class CCRUKPIToolBox:
         atomic_kpi_fk = self.kpi_fetcher.get_atomic_kpi_fk(atomic_kpi_name, kpi_fk)\
             if atomic_kpi_fk is None else atomic_kpi_fk
 
-        if not atomic_kpi_fk and self.kpi_set_type not in SKIP_OLD_CCRUKPIS_FROM_WRITING:
+        if not atomic_kpi_fk and self.kpi_set_type not in SKIP_OLD_KPIS_FROM_WRITING:
             Log.error('Atomic KPI Name <{}> is not found for KPI FK <{}> of KPI Set <{}> in static.atomic_kpi table'
                       ''.format(atomic_kpi_name, kpi_fk, self.kpi_set_name))
 
@@ -2957,7 +2957,7 @@ class CCRUKPIToolBox:
             score = round(score*param.get('K'), 2)
             total_score += score
 
-            # if not atomic_kpi_fk and self.kpi_set_type not in SKIP_OLD_CCRUKPIS_FROM_WRITING:
+            # if not atomic_kpi_fk and self.kpi_set_type not in SKIP_OLD_KPIS_FROM_WRITING:
             #     Log.error(
             #         'Atomic KPI Name <{}> is not found for KPI FK <{}> of KPI Set <{}> in static.atomic_kpi table'
             #         ''.format(kpi_name, kpi_fk, self.kpi_set_name))
@@ -2987,7 +2987,7 @@ class CCRUKPIToolBox:
             #                                               'name'])
             # self.write_to_kpi_results_old(attributes_for_table3, 'level3')
 
-            if not kpi_fk and self.kpi_set_type not in SKIP_OLD_CCRUKPIS_FROM_WRITING:
+            if not kpi_fk and self.kpi_set_type not in SKIP_OLD_KPIS_FROM_WRITING:
                 Log.error('KPI Name <{}> is not found for KPI Set <{}> in static.kpi table'
                           ''.format(kpi_name, self.kpi_set_name))
             attributes_for_table2 = pd.DataFrame([(self.session_uid,
@@ -3013,7 +3013,7 @@ class CCRUKPIToolBox:
                  'score': score,
                  'level': 1})
 
-        if not kpi_set_fk and self.kpi_set_type not in SKIP_OLD_CCRUKPIS_FROM_WRITING:
+        if not kpi_set_fk and self.kpi_set_type not in SKIP_OLD_KPIS_FROM_WRITING:
             Log.error('KPI Set <{}> is not found static.kpi_set table'
                       ''.format(self.kpi_set_name))
         attributes_for_table1 = pd.DataFrame([(kpi_set_name,
@@ -3743,7 +3743,7 @@ class CCRUKPIToolBox:
         return
 
     def write_to_kpi_results_new(self):
-        for kpi_set_type in NEW_CCRUKPIS_TO_WRITE_TO_DB:
+        for kpi_set_type in NEW_KPIS_TO_WRITE_TO_DB:
             kpis = self.kpi_scores_and_results.get(kpi_set_type)
             if kpis:
                 kpis = pd.DataFrame(kpis.values())
@@ -3948,7 +3948,7 @@ class CCRUKPIToolBox:
         kpis = pd.DataFrame(kpis)
         self.promo_displays = self.kpi_fetcher.get_custom_entity(PROMO_DISPLAY_ENTITY)
         self.promo_locations = self.kpi_fetcher.get_custom_entity(PROMO_LOCATION_ENTITY)
-        self.promo_products = self.kpi_fetcher.get_custom_entity(PROMO_PRODUCT_ENTITY)
+        self.promo_products = self.kpi_fetcher.get_custom_entity(PROMO_PRODUCT_GROUP_ENTITY)
 
         kpi_fk_0 = self.common.kpi_static_data[self.common.kpi_static_data['type']
                                                == PROMO_COMPLIANCE_STORE]['pk'].values[0]
@@ -4304,18 +4304,16 @@ class CCRUKPIToolBox:
                         kpi_fk=kpi_fk_sku, display_fk=display_fk, location_fk=location_fk,
                         product_group_fk=product_group_fk, product_fk=product_fk)
 
-                numerator_result = facings
-                denominator_result = None
                 self.common.write_to_db_result(fk=kpi_fk_sku,
                                                numerator_id=product_fk,
-                                               numerator_result=numerator_result,
+                                               numerator_result=facings,
                                                denominator_id=display_fk,
-                                               denominator_result=denominator_result,
+                                               # denominator_result=None,
                                                context_id=location_fk,
-                                               target=None,
-                                               weight=None,
-                                               result=None,
-                                               score=None,
+                                               # target=None,
+                                               # weight=None,
+                                               # result=None,
+                                               # score=None,
                                                identifier_result=kpi_identifier_result_sku,
                                                identifier_parent=kpi_identifier_result_prod,
                                                should_enter=True)
@@ -4391,9 +4389,9 @@ class CCRUKPIToolBox:
                                            denominator_id=display_fk,
                                            denominator_result=product_group_facings_target,
                                            context_id=location_fk,
-                                           target=target_prod,
-                                           weight=None,
-                                           result=result_prod,
+                                           target=product_group_facings_target,  # target_prod,
+                                           # weight=None,
+                                           result=product_group_facings_fact,  # result_prod,
                                            score=score_prod,
                                            identifier_result=kpi_identifier_result_prod,
                                            identifier_parent=kpi_identifier_result,
@@ -4410,18 +4408,16 @@ class CCRUKPIToolBox:
                         kpi_fk=kpi_fk_sku, display_fk=display_fk, location_fk=location_fk,
                         product_group_fk=product_group_fk, product_fk=product_fk)
 
-                numerator_result = facings
-                denominator_result = None
                 self.common.write_to_db_result(fk=kpi_fk_sku,
                                                numerator_id=product_fk,
-                                               numerator_result=numerator_result,
+                                               numerator_result=facings,
                                                denominator_id=display_fk,
-                                               denominator_result=denominator_result,
+                                               # denominator_result=None,
                                                context_id=location_fk,
-                                               target=None,
-                                               weight=None,
-                                               result=None,
-                                               score=None,
+                                               # target=None,
+                                               # weight=None,
+                                               # result=None,
+                                               # score=None,
                                                identifier_result=kpi_identifier_result_sku,
                                                identifier_parent=kpi_identifier_result_prod,
                                                should_enter=True)
@@ -4506,7 +4502,7 @@ class CCRUKPIToolBox:
                                            denominator_result=1,
                                            context_id=location_fk,
                                            target=target_prod,
-                                           weight=None,
+                                           # weight=None,
                                            result=result_prod,
                                            score=score_prod,
                                            identifier_result=kpi_identifier_result_prod,
@@ -4519,24 +4515,23 @@ class CCRUKPIToolBox:
                 product_fk = row['product_fk']
                 facings = row['facings']
                 price = row['price']
+                price_100 = price * 100 if price is not None else None
 
                 kpi_identifier_result_sku = \
                     self.common.get_dictionary(
                         kpi_fk=kpi_fk_sku, display_fk=display_fk, location_fk=location_fk,
                         product_group_fk=product_group_fk, product_fk=product_fk)
 
-                numerator_result = price * 100 if price else None
-                denominator_result = facings
                 self.common.write_to_db_result(fk=kpi_fk_sku,
                                                numerator_id=product_fk,
-                                               numerator_result=numerator_result,
+                                               numerator_result=facings,
                                                denominator_id=display_fk,
-                                               denominator_result=denominator_result,
+                                               denominator_result=price_100,
                                                context_id=location_fk,
-                                               target=None,
-                                               weight=None,
+                                               # target=None,
+                                               # weight=None,
                                                result=price,
-                                               score=None,
+                                               # score=None,
                                                identifier_result=kpi_identifier_result_sku,
                                                identifier_parent=kpi_identifier_result_prod,
                                                should_enter=True)
@@ -4680,17 +4675,18 @@ class CCRUKPIToolBox:
                 result_prod = 0
                 score_prod = 0
 
-            numerator_result = product_group_price_fact * 100 if product_group_price_fact is not None else None
-            denominator_result = product_group_price_target * 100
+            product_group_price_fact_100 = product_group_price_fact * 100 if product_group_price_fact is not None \
+                else None
+            product_group_price_target_100 = product_group_price_target * 100
             self.common.write_to_db_result(fk=kpi_fk_prod,
                                            numerator_id=product_group_fk,
-                                           numerator_result=numerator_result,
+                                           numerator_result=product_group_price_fact_100,
                                            denominator_id=display_fk,
-                                           denominator_result=denominator_result,
+                                           denominator_result=product_group_price_target_100,
                                            context_id=location_fk,
-                                           target=100,
-                                           weight=None,
-                                           result=result_prod,
+                                           target=product_group_price_target,  # 100,
+                                           # weight=None,
+                                           result=product_group_price_fact,  # result_prod,
                                            score=score_prod,
                                            identifier_result=kpi_identifier_result_prod,
                                            identifier_parent=kpi_identifier_result,
@@ -4702,24 +4698,23 @@ class CCRUKPIToolBox:
                 product_fk = row['product_fk']
                 facings = row['facings']
                 price = row['price']
+                price_100 = price * 100 if price else None
 
                 kpi_identifier_result_sku = \
                     self.common.get_dictionary(
                         kpi_fk=kpi_fk_sku, display_fk=display_fk, location_fk=location_fk,
                         product_group_fk=product_group_fk, product_fk=product_fk)
 
-                numerator_result = price * 100 if price else None
-                denominator_result = facings
                 self.common.write_to_db_result(fk=kpi_fk_sku,
                                                numerator_id=product_fk,
-                                               numerator_result=numerator_result,
+                                               numerator_result=facings,
                                                denominator_id=display_fk,
-                                               denominator_result=denominator_result,
+                                               denominator_result=price_100,
                                                context_id=location_fk,
-                                               target=None,
-                                               weight=None,
+                                               # target=None,
+                                               # weight=None,
                                                result=price,
-                                               score=None,
+                                               # score=None,
                                                identifier_result=kpi_identifier_result_sku,
                                                identifier_parent=kpi_identifier_result_prod,
                                                should_enter=True)
@@ -4742,7 +4737,7 @@ class CCRUKPIToolBox:
                                            numerator_id=self.own_manufacturer_id,
                                            numerator_result=deviation,
                                            denominator_id=display_fk,
-                                           denominator_result=None,
+                                           # denominator_result=None,
                                            context_id=location_fk,
                                            target=target,
                                            weight=weight,
