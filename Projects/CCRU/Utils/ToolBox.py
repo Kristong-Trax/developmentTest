@@ -16,10 +16,6 @@ from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from KPIUtils_v2.Utils.Decorators.Decorators import kpi_runtime
 from KPIUtils_v2.DB.CommonV2 import Common
 from KPIUtils_v2.Utils.TargetFinder.KpiTargetFinder import KpiTargetFinder
-from Trax.Apps.Services.Apollo.Server.Services.CCRU.Utils.CCRUPromoTargetsUploaderClass import \
-    KPI_LEVEL_2_TYPE as PROMO_KPI_LEVEL_2_TYPE, \
-    KPI_OPERATION_TYPE as PROMO_KPI_OPERATION_TYPE, \
-    PROMO_PRODUCT_GROUP_ENTITY, PROMO_DISPLAY_ENTITY, PROMO_LOCATION_ENTITY
 
 from Projects.CCRU.Utils.Fetcher import CCRUCCHKPIFetcher
 from Projects.CCRU.Utils.Consts import CCRUConsts
@@ -63,6 +59,13 @@ EQUIPMENT_TARGETS_CLOUD_BASE_PATH = 'CCRU/KPIData/Contract/'
 
 ALLOWED_POS_SETS = tuple(CCRUConsts.ALLOWED_POS_SETS)
 
+
+PROMO_KPI_LEVEL_2_TYPE = 'PROMO_COMPLIANCE_DISPLAY'
+PROMO_KPI_OPERATION_TYPE = 'Custom'
+
+PROMO_DISPLAY_ENTITY = 'promo_display'
+PROMO_PRODUCT_GROUP_ENTITY = 'promo_product_group'
+PROMO_LOCATION_ENTITY = 'promo_location'
 
 PROMO_SCENE_TYPES_DISPLAY = \
     [
