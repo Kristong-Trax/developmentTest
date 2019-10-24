@@ -40,7 +40,7 @@ PRODUCT_TYPE = 'product_type'
 STORE_ADDITIONAL_ATTRIBUTE_2 = 'store_additional_attribute_2'
 TAMANDO_DEL_PRODUCTO = 'TAMANO DEL PRODUCTO'
 IGNORE_STACKING = 'Ignore Stacking'
-ADDITIONAL_SCENE_TYPE = 'Additional Scene Type'
+ACTIVATION_SCENE_TYPE = 'Activation Scene Type'
 FACINGS_TARGET = 'facings_target'
 BAY_COUNT_TARGET = 'bay_count_target'
 SUB_CATEGORY = 'sub_category'
@@ -67,9 +67,11 @@ FACINGS_IGN_STACK = 'facings_ign_stack'
 FINAL_FACINGS = 'final_facings'
 MANUFACTURER_FK = 'manufacturer_fk'
 PK = 'pk'
+PRODUCT_NAME = 'product_name'
 ADDITIONAL_ATTRIBUTE_2 = 'additional_attribute_2'
 SESSION_ID = 'session_id'
 SCENE_ID = 'scene_id'
+SCENE_FK = 'scene_fk'
 TEMPLATE_FK = 'template_fk'
 TEMPLATE_GROUP = 'template_group'
 
@@ -122,13 +124,13 @@ class ToolBox(GlobalSessionToolBox):
             self.calculate_per_bay_sos(row)
         return
 
-
-
     def calculate_sos(self, row):
         '''
         :param row: READS THE LINE FROM THE TEMPLATE
         :return: the sum of numerator scif[final_facings] over the sum of denominator scif[final_facings]
         '''
+
+
 
         # REMINDER Filter scif by additional scene type column
         # Waiting on Session with with scene type(template_name) with Enfriador Dedicado JDV
@@ -155,7 +157,7 @@ class ToolBox(GlobalSessionToolBox):
         numerator_param1 = row[NUMERATOR_PARAM_1]
         denominator_param1 = row[DENOMINATOR_PARAM_1]
         ignore_stacking = row[IGNORE_STACKING]
-        additional_scene_type = row[ADDITIONAL_SCENE_TYPE]
+        additional_scene_type = row[ACTIVATION_SCENE_TYPE]
 
         # Step 3: Declare the relevant scif column for the SOS KPI
         relevant_scif_columns = [PK, SESSION_ID, TEMPLATE_GROUP, PRODUCT_TYPE, FACINGS, FACINGS_IGN_STACK] + \
@@ -223,6 +225,7 @@ class ToolBox(GlobalSessionToolBox):
 
     def calculate_block_together(self, row):
 
+
         # Step 1: Read the excel rows to process the information (Common among all the sheets)
         kpi_name = row[KPI_NAME]
         kpi_fk = self.common.get_kpi_fk_by_kpi_name(kpi_name)
@@ -237,6 +240,7 @@ class ToolBox(GlobalSessionToolBox):
         sub_category = self.sanitize_values(row[SUB_CATEGORY])
         iterate_by = row[ITERATE_BY]
 
+
         # Step 3: Establish the variable for the network_x_block_together
         if pd.notna(tamano_del_producto):
             relevant_filters = {MANUFACTURER_NAME: manufacturer_name, SUB_CATEGORY: sub_category,
@@ -244,8 +248,8 @@ class ToolBox(GlobalSessionToolBox):
         else:
             relevant_filters = {MANUFACTURER_NAME: manufacturer_name, SUB_CATEGORY: sub_category}
 
-        # Step 4: Establisht the location variables based on the template
 
+        # Step 4:  the location variables based on the template
         if pd.notna(template_group):
             location_name = TEMPLATE_GROUP
             location_id = template_group
@@ -276,7 +280,7 @@ class ToolBox(GlobalSessionToolBox):
             sub_category_fk_in_session = self.scif[iterate_by].unique().tolist()
             sub_category_fk_in_session = filter(None, sub_category_fk_in_session)
 
-            result = 1
+            result = 'NULL'
             for value in sub_category_fk_in_session:
                 population = {iterate_by: value}
                 final_relevant_filters = self.merge_two_dictionaries(relevant_filters, population)
@@ -287,8 +291,11 @@ class ToolBox(GlobalSessionToolBox):
                 if False in block['is_block'].to_list():
                     result = 0
                     break
+                elif True in block['is_block'].to_list():
+                    result = 1
+                    break
 
-            template_fk = self.scif[self.scif['template_name'] == template_name]['template_fk'].mode()[0]
+            template_fk = self.scif['template_fk'].mode()[0]
 
         sub_category_fk = self.get_sub_cat_fk_from_sub_cat(sub_category[0])
 
@@ -355,7 +362,7 @@ class ToolBox(GlobalSessionToolBox):
         numerator_id = self.own_manuf_fk
 
         # Step 10: Calculate the result
-        result = numerator_result / denominator_result
+        result = (numerator_result / denominator_result) * 100
 
         # Step 11. Save the results in the database
         self.common.write_to_db_result(kpi_fk, numerator_id=numerator_id,
@@ -382,9 +389,10 @@ class ToolBox(GlobalSessionToolBox):
         facings_target, bay_count_target = self.calculate_targets_for_bay_count_kpi(store_type)
 
         # Step 4: Declaring the scif columns
-        relevant_scif_columns = [TEMPLATE_GROUP, PRODUCT_TYPE, FACINGS_IGN_STACK, PRODUCT_FK] + [numerator_param_1,
-                                                                                                 numerator_entity,
-                                                                                                 denominator_entity]
+        relevant_scif_columns = [TEMPLATE_GROUP, PRODUCT_NAME, PRODUCT_TYPE, FACINGS_IGN_STACK, PRODUCT_FK] + [
+            numerator_param_1,
+            numerator_entity,
+            denominator_entity, SCENE_FK]
 
         # Step 5: Indexing the relevant_scif_columns in self.scif
         relevant_scif = self.scif[relevant_scif_columns]
@@ -395,13 +403,23 @@ class ToolBox(GlobalSessionToolBox):
         # Step 7: Filter by the Product Type
         relevant_scif = relevant_scif[relevant_scif[PRODUCT_TYPE].isin(product_type)]
 
-        # Step 8: Calculate the bay count
-        product_in_scene = self.match_product_in_scene[['product_fk', 'bay_number']]
+        relevant_scif = relevant_scif[relevant_scif.product_name != 'Soda Other']
 
-        try:
-            bay_count_scif = relevant_scif.merge(product_in_scene, on='product_fk', how='left')[
-                [BAY_NUMBER, MANUFACTURER_NAME, PRODUCT_FK, FACINGS_IGN_STACK]]
-        except:
+        # Step 8: Calculate the bay count
+        product_in_scene = self.match_product_in_scene[['product_fk', 'bay_number', 'scene_fk']]
+
+        bay_count_scif = relevant_scif.merge(product_in_scene, on=['product_fk', 'scene_fk'], how='right')
+        bay_count_scif = bay_count_scif.dropna()
+        # [[BAY_NUMBER, MANUFACTURER_NAME, PRODUCT_FK, FACINGS_IGN_STACK]]
+
+        if bay_count_scif.empty:
+            result = 'NULL'
+            denominator_id = self.scif[denominator_entity].mode()[0]
+            numerator_id = self.scif[numerator_entity].mode()[0]
+
+            # Step 10. Save the results in the database
+            self.common.write_to_db_result(kpi_fk, numerator_id=numerator_id,
+                                           denominator_id=denominator_id, result=result)
             return
 
         group_by_bay_number_scif = bay_count_scif.groupby('bay_number').nunique()[MANUFACTURER_NAME]
@@ -418,12 +436,12 @@ class ToolBox(GlobalSessionToolBox):
 
         # Step 10: Calculate the scoring
         if facings >= facings_target:
-            result = 15
+            result = 100
         else:
-            result = 15 * (1 + (facings / facings_target))
+            result = 100 * (facings / facings_target)
 
         if bay_count < bay_count_target:
-            result = result - 2
+            result = result - (2 / 15 * 100)
 
         # Step 11: Calculate the numerator entity and denominator entity
         numerator_id = relevant_scif[MANUFACTURER_FK].mode()[0]
@@ -434,6 +452,7 @@ class ToolBox(GlobalSessionToolBox):
                                        denominator_id=denominator_id, result=result)
 
     def calculate_per_bay_sos(self, row):
+
 
         # Step 1: Read the excel rows to process the information(Common among all the sheets)
         kpi_name = row[KPI_NAME]
@@ -448,11 +467,15 @@ class ToolBox(GlobalSessionToolBox):
         numerator_param_1 = row[NUMERATOR_PARAM_1]
         numerator_value_1 = row[NUMERATOR_VALUE_1]
 
-
         # Step 3: Declaring the relevant columns for scif
-        relevant_scif_columns = [TEMPLATE_GROUP, TEMPLATE_NAME, PRODUCT_FK, PRODUCT_TYPE, MANUFACTURER_NAME, numerator_entity, denominator_entity]
+        relevant_scif_columns = [TEMPLATE_GROUP, TEMPLATE_NAME, PRODUCT_FK, PRODUCT_NAME, PRODUCT_TYPE,
+                                 MANUFACTURER_NAME, SCENE_FK, FACINGS_IGN_STACK,
+                                 numerator_entity, denominator_entity, 'category']
+
         # Step 4: Index self.scif to get relevant_scif
         relevant_scif = self.scif[relevant_scif_columns]
+
+        # relevant_scif.rename(columns= {'scene_id': 'scene_fk'}, inplace= True)
 
         # Step 5:
         relevant_scif = relevant_scif[relevant_scif[TEMPLATE_GROUP].isin([template_group])]
@@ -462,12 +485,23 @@ class ToolBox(GlobalSessionToolBox):
         # Step 7:
         relevant_scif = relevant_scif[relevant_scif[PRODUCT_TYPE].isin(product_type)]
 
+        # Step 8: Drop Soda Other because it was recognition issue
+        relevant_scif = relevant_scif[relevant_scif.product_name != 'Soda Other']
 
-        product_in_scene = self.match_product_in_scene[['product_fk', 'bay_number']]
-        try:
-            bay_count_scif = relevant_scif.merge(product_in_scene, on='product_fk', how='left')[
-                [BAY_NUMBER, MANUFACTURER_NAME, PRODUCT_FK]]
-        except:
+        # Step 9:
+        product_in_scene = self.match_product_in_scene[['product_fk', 'bay_number', 'scene_fk']]
+        # bay_count_scif = relevant_scif.merge(product_in_scene, on='product_fk', how = 'left')
+        bay_count_scif = relevant_scif.merge(product_in_scene, on=['product_fk', 'scene_fk'], how='right')
+        bay_count_scif = bay_count_scif.dropna()
+        # [[BAY_NUMBER, MANUFACTURER_NAME, PRODUCT_FK]]
+
+        if bay_count_scif.empty:
+            result = 'NULL'
+            denominator_id = self.scif[denominator_entity].mode()[0]
+            numerator_id = self.scif[numerator_entity].mode()[0]
+
+            self.common.write_to_db_result(kpi_fk, numerator_id=numerator_id,
+                                           denominator_id=denominator_id, result=result)
             return
 
         group_by_bay_number_scif = bay_count_scif.groupby('bay_number').nunique()[MANUFACTURER_NAME]
@@ -488,7 +522,7 @@ class ToolBox(GlobalSessionToolBox):
         else:
             result = 0
 
-        #Step 9:
+        # Step 9:
         denominator_id = relevant_scif[denominator_entity].mode()[0]
         numerator_id = relevant_scif[numerator_entity].mode()[0]
 
@@ -529,16 +563,3 @@ class ToolBox(GlobalSessionToolBox):
             bay_count_target = 3
 
         return facings_target, bay_count_target
-
-# for value in denominator_scif[row[INTERATE_BY]].unique().tolist():
-#     population = {row[ITERATE_BY].iloc[0]: [value]}
-
-
-# # Step 3: Find the relevant columns for scif
-# # Take a look at TAMANO_DEL_PRODUCTO and ITERATE_BY
-# # Come back for the numerator param and denominator param
-# columns_filter_for_scif = [PK, SESSION_ID, SCENE_ID, TEMPLATE_FK, TEMPLATE_GROUP, TEMPLATE_NAME,
-#                            MANUFACTURER_NAME, SUB_CATEGORY, TAMANDO_DEL_PRODUCTO] + self.delete_filter_nan([iterate_by])
-#
-# # Step 4: Filter Scif with the relevant columns
-# relevant_scif = self.scif[columns_filter_for_scif]
