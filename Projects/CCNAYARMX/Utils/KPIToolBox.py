@@ -27,8 +27,8 @@ from Projects.CCNAYARMX.Data.LocalConsts import Consts
 # from KPIUtils_v2.Calculations.SurveyCalculations import Survey
 
 # from KPIUtils_v2.Calculations.CalculationsUtils import GENERALToolBoxCalculations
-# from KPIUtils_v2.Calculations.BlockCalculations_v2 import Block
-from BlockCalculations_v3 import Block
+from KPIUtils_v2.Calculations.BlockCalculations_v2 import Block
+# from BlockCalculations_v3 import Block
 
 __author__ = 'krishnat'
 
@@ -251,117 +251,136 @@ class ToolBox(GlobalSessionToolBox):
         bay_count_scif = relevant_scif.merge(product_in_scene, on=[PRODUCT_FK, SCENE_FK], how='right')
         bay_count_scif = bay_count_scif.dropna()
 
-        unique_scene_fk = list(set(bay_count_scif[SCENE_FK]))
-        for i in unique_scene_fk:
-            unique_bays_in_scene = list(set(bay_count_scif[bay_count_scif[SCENE_FK] == i][BAY_NUMBER]))
-            for j in unique_bays_in_scene:
+        bay_count_scif = bay_count_scif[bay_count_scif[MANUFACTURER_NAME].isin(manufacturer_name)]
 
-                # Step 3: Establish the variable for the network_x_block_together
-                if pd.notna(tamano_del_producto):
-                    relevant_filters = {MANUFACTURER_NAME: manufacturer_name, SUB_CATEGORY: sub_category,
-                                        TAMANDO_DEL_PRODUCTO: tamano_del_producto, BAY_NUMBER: [j]}
-                else:
-                    relevant_filters = {MANUFACTURER_NAME: manufacturer_name, SUB_CATEGORY: sub_category, BAY_NUMBER: j}
+        bay_count_scif = bay_count_scif[bay_count_scif[SUB_CATEGORY].isin(sub_category)]
 
+        if pd.notna(template_group):
+            bay_count_scif = bay_count_scif[bay_count_scif[TEMPLATE_GROUP].isin([template_group])]
 
-                # Step 4:  the location variables based on the template
-                if pd.notna(template_group):
-                    location_name = TEMPLATE_GROUP
-                    location_id = template_group
-                else:
-                    location_name = TEMPLATE_NAME
-                    location_id = template_name
+        if pd.notna(template_name):
+            bay_count_scif = bay_count_scif[bay_count_scif[TEMPLATE_NAME].isin([template_name])]
+
+        if pd.notna(tamano_del_producto):
+            bay_count_scif = bay_count_scif[bay_count_scif[TAMANDO_DEL_PRODUCTO].isin(tamano_del_producto)]
+
+        if bay_count_scif.empty:
+            result = 'NULL'
+
+        else:
+            unique_bay_number = list(set(bay_count_scif[BAY_NUMBER]))
+
+            if pd.isna(iterate_by):
+                location_name = TEMPLATE_GROUP
+                location_id = template_group
 
                 location = {location_name: location_id}
 
-                if pd.isna(iterate_by):
+                for j in unique_bay_number:
+                    # Step 3: Establish the variable for the network_x_block_together
+                    if pd.notna(tamano_del_producto):
+                        relevant_filters = {MANUFACTURER_NAME: manufacturer_name, SUB_CATEGORY: sub_category,
+                                            TAMANDO_DEL_PRODUCTO: tamano_del_producto, BAY_NUMBER: [j]}
+                    else:
+                        relevant_filters = {MANUFACTURER_NAME: manufacturer_name, SUB_CATEGORY: sub_category,
+                                            BAY_NUMBER: [j]}
+
                     block = self.block.network_x_block_together(relevant_filters,
                                                                 location=location,
                                                                 additional={'minimum_block_ratio': 0.9,
                                                                             'calculate_all_scenes': True})
-
-                    if block.empty:
-                        result = 'NULL'
+                    if False in block['is_block'].to_list():
+                        result = 0
+                        break
                     else:
+                        result = 1
+
+            else:
+                location_name = TEMPLATE_NAME
+                location_id = template_name
+                location = {location_name: location_id}
+
+
+                for j in unique_bay_number:
+                    relevant_filters = {MANUFACTURER_NAME: manufacturer_name, SUB_CATEGORY: sub_category,
+                                        BAY_NUMBER: [j]}
+
+
+                    sub_category_fk_in_session = list(set(bay_count_scif[iterate_by]))
+                    sub_category_fk_in_session = filter(None, sub_category_fk_in_session)
+
+                    for value in sub_category_fk_in_session:
+                        population = {iterate_by: value}
+                        final_relevant_filters = self.merge_two_dictionaries(relevant_filters, population)
+                        block = self.block.network_x_block_together(relevant_filters,
+                                                                    location=location,
+                                                                    additional={'minimum_block_ratio': 0.9,
+                                                                                'calculate_all_scenes': True})
                         if False in block['is_block'].to_list():
                             result = 0
+                            break
                         else:
                             result = 1
 
-                    template_fk = self.scif[self.scif['template_group'] == template_group]['template_fk'].mode()[0]
-
-
-
-
-
-
-
-
-
-
-
-
-        # # Step 3: Establish the variable for the network_x_block_together
-        # if pd.notna(tamano_del_producto):
-        #     relevant_filters = {MANUFACTURER_NAME: manufacturer_name, SUB_CATEGORY: sub_category,
-        #                         TAMANDO_DEL_PRODUCTO: tamano_del_producto}
-        # else:
-        #     relevant_filters = {MANUFACTURER_NAME: manufacturer_name, SUB_CATEGORY: sub_category}
-        #
-        #
-        # # Step 4:  the location variables based on the template
-        # if pd.notna(template_group):
-        #     location_name = TEMPLATE_GROUP
-        #     location_id = template_group
-        # else:
-        #     location_name = TEMPLATE_NAME
-        #     location_id = template_name
-
-        # location = {location_name: location_id}
-
-        # Step 8: Calculate the block kpi per scene level. The If statement accounts for the iterate by column logic.
-        if pd.isna(iterate_by):
-            block = self.block.network_x_block_together(relevant_filters,
-                                                        location=location,
-                                                        additional={'minimum_block_ratio': 0.9,
-                                                                    'calculate_all_scenes': True})
-
-            if block.empty:
-                result = 'NULL'
-            else:
-                if False in block['is_block'].to_list():
-                    result = 0
-                else:
-                    result = 1
-
-            template_fk = self.scif[self.scif['template_group'] == template_group]['template_fk'].mode()[0]
-        else:
-
-            sub_category_fk_in_session = self.scif[iterate_by].unique().tolist()
-            sub_category_fk_in_session = filter(None, sub_category_fk_in_session)
-
-            result = 'NULL'
-            for value in sub_category_fk_in_session:
-                population = {iterate_by: value}
-                final_relevant_filters = self.merge_two_dictionaries(relevant_filters, population)
-                block = self.block.network_x_block_together(relevant_filters,
-                                                            location=location,
-                                                            additional={'minimum_block_ratio': 0.9,
-                                                                        'calculate_all_scenes': True})
-                if False in block['is_block'].to_list():
-                    result = 0
-                    break
-                elif True in block['is_block'].to_list():
-                    result = 1
-                    break
-
-            template_fk = self.scif['template_fk'].mode()[0]
+        template_fk = self.scif['template_fk'].mode()[0]
 
         sub_category_fk = self.get_sub_cat_fk_from_sub_cat(sub_category[0])
 
         self.common.write_to_db_result(kpi_fk, numerator_id=sub_category_fk,
                                        denominator_id=template_fk,
                                        result=result)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        #         if False in block['is_block'].to_list():
+        #             result = 0
+        #             break
+        #         else:
+        #             result = 1
+        #
+        # # template_fk = self.scif[self.scif['template_group'] == template_group]['template_fk'].mode()[0]
+        #
+        #     else:
+        #
+        #         sub_category_fk_in_session = self.scif[iterate_by].unique().tolist()
+        #         sub_category_fk_in_session = filter(None, sub_category_fk_in_session)
+        #
+        #
+        #         for value in sub_category_fk_in_session:
+        #             population = {iterate_by: value}
+        #             final_relevant_filters = self.merge_two_dictionaries(relevant_filters, population)
+        #             block = self.block.network_x_block_together(relevant_filters,
+        #                                                         location=location,
+        #                                                         additional={'minimum_block_ratio': 0.9,
+        #                                                                     'calculate_all_scenes': True})
+        #             if False in block['is_block'].to_list():
+        #                 result = 0
+        #                 break
+        #             else:
+        #                 result = 1
+        #
+        #             a = 1
+        #
+        #         template_fk = self.scif['template_fk'].mode()[0]
+        #
+        # sub_category_fk = self.get_sub_cat_fk_from_sub_cat(sub_category[0])
+        #
+        # # self.common.write_to_db_result(kpi_fk, numerator_id=sub_category_fk,
+        # #                                denominator_id=template_fk,
+        # #                                result=result)
 
     def calculate_share_of_empty(self, row):
 
@@ -622,3 +641,23 @@ class ToolBox(GlobalSessionToolBox):
             bay_count_target = 3
 
         return facings_target, bay_count_target
+
+    # # Step 3: Establish the variable for the network_x_block_together
+    # if pd.notna(tamano_del_producto):
+    #     relevant_filters = {MANUFACTURER_NAME: manufacturer_name, SUB_CATEGORY: sub_category,
+    #                         TAMANDO_DEL_PRODUCTO: tamano_del_producto}
+    # else:
+    #     relevant_filters = {MANUFACTURER_NAME: manufacturer_name, SUB_CATEGORY: sub_category}
+    #
+    #
+    # # Step 4:  the location variables based on the template
+    # if pd.notna(template_group):
+    #     location_name = TEMPLATE_GROUP
+    #     location_id = template_group
+    # else:
+    #     location_name = TEMPLATE_NAME
+    #     location_id = template_name
+
+    # location = {location_name: location_id}
+
+    # Step 8: Calculate the block kpi per scene level. The If statement accounts for the iterate by column logic.
