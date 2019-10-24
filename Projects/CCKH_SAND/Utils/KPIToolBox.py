@@ -49,6 +49,7 @@ class CCKH_SANDConsts(object):
     PROPORTIONAL = 'PROPORTIONAL'
 
     RED_SCORE = 'RED SCORE'
+    WEB_HIERARCHY = 'hierarchy'
     AVAILABILITY = 'Availability'
     SURVEY = 'Survey Question'
     SHARE_OF_SHELF = 'SOS Facings'
@@ -213,7 +214,10 @@ class CCKH_SANDToolBox(CCKH_SANDConsts):
         self.write_to_db_result(set_fk, (actual_points, max_points, red_score), level=self.LEVEL1)
         results_list_new_db.append(self.write_to_db_new_results(self.get_new_kpi_fk(final_main_child), red_score,
                                                                 red_score, actual_points, max_points,
-                                                                identifier_result=self.RED_SCORE))
+                                                                identifier_result=self.RED_SCORE, identifier_parent=CCKH_SANDConsts.WEB_HIERARCHY))
+        results_list_new_db.append(self.write_to_db_new_results(self.get_new_kpi_by_name(self.RED_SCORE), red_score,
+                                                                red_score, actual_points, max_points,
+                                                                identifier_result=CCKH_SANDConsts.WEB_HIERARCHY))
         self.commonV2.save_json_to_new_tables(results_list_new_db)
         self.commonV2.commit_results_data()
 
@@ -265,9 +269,9 @@ class CCKH_SANDToolBox(CCKH_SANDConsts):
         """
         atomic_name = params[self.template.TRANSLATION]
         kpi_name = pillar[self.template.TRANSLATION]
-        atomic_fk = self.kpi_static_data[(self.kpi_static_data['kpi_name'].str.encode('utf-8') ==
-                                          kpi_name.encode('utf-8')) & (
-            self.kpi_static_data['atomic_kpi_name'].str.encode('utf-8') == atomic_name.encode('utf-8'))][
+        atomic_fk = self.kpi_static_data[(self.kpi_static_data['kpi_name'].str.encode(HelperConsts.UTF8) ==
+                                          kpi_name.encode(HelperConsts.UTF8)) & (
+            self.kpi_static_data['atomic_kpi_name'].str.encode(HelperConsts.UTF8) == atomic_name.encode(HelperConsts.UTF8))][
             'atomic_kpi_fk']
         if atomic_fk.empty:
             return None
@@ -278,8 +282,11 @@ class CCKH_SANDToolBox(CCKH_SANDConsts):
         This function gets an KPI's FK from new kpi table 'static.kpi_level_2' out of the template data .
         """
         kpi_name = params[self.template.TRANSLATION]
-        kpi_fk = self.kpi_new_static_data[self.kpi_new_static_data['type'].str.encode('utf-8') ==
-                                      kpi_name.encode('utf-8')]['pk']
+        return self.get_new_kpi_by_name(kpi_name)
+
+    def get_new_kpi_by_name(self, kpi_name):
+        kpi_fk = self.kpi_new_static_data[self.kpi_new_static_data['type'].str.encode(HelperConsts.UTF8) ==
+                                          kpi_name.encode(HelperConsts.UTF8)]['pk']
         if kpi_fk.empty:
             return None
         return kpi_fk.values[0]
