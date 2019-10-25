@@ -1,12 +1,12 @@
 import numpy as np
 import pandas as pd
 
-from Trax.Utils.Logging.Logger import Log
-from Trax.Cloud.Services.Connector.Keys import DbUsers
 from Trax.Algo.Calculations.Core.DataProvider import Data
+from Trax.Cloud.Services.Connector.Keys import DbUsers
 from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from KPIUtils_v2.GlobalDataProvider.PsDataProvider import PsDataProvider
 
+from Trax.Utils.Logging.Logger import Log
 
 __author__ = 'nidhinb'
 # The KPIs
@@ -33,10 +33,12 @@ SCENE_IDENTIFIERS = [
     'template_fk',
 ]
 POSM_PK_KEY = 'display_pk'
+# ALLOWED_POSM_EAN_KEY = 'allowed_posm_eans'
 OPTIONAL_EAN_KEY = 'optional_eans'
 MANDATORY_EANS_KEY = 'mandatory_eans'
 POSM_IDENTIFIERS = [
     POSM_PK_KEY,
+    # ALLOWED_POSM_EAN_KEY,
     OPTIONAL_EAN_KEY,
     MANDATORY_EANS_KEY,
 ]
@@ -69,11 +71,11 @@ class GSKAUSceneToolBox:
         self.store_info = self.data_provider[Data.STORE_INFO]
         self.store_id = self.store_info.iloc[0].store_fk
         self.store_type = self.data_provider.store_type
-        self.match_display_in_scene = self.data_provider.match_display_in_scene
         self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         self.kpi_static_data = self.common.get_kpi_static_data()
         self.ps_data_provider = PsDataProvider(self.data_provider, self.output)
         self.targets = self.ps_data_provider.get_kpi_external_targets()
+        self.match_display_in_scene = self.data_provider.match_display_in_scene
 
     def calculate_display_compliance(self):
         kpi_display_presence = self.kpi_static_data[
@@ -140,8 +142,8 @@ class GSKAUSceneToolBox:
                     # save detailed sku presence
                     posm_to_check = each_target[POSM_PK_KEY]
                     # FIND THE SCENES WHICH HAS THE POSM to check for multiposm or multibays
-                    is_posm_absent = self.match_display_in_scene[self.match_display_in_scene['display_fk']
-                                                                 == posm_to_check].empty
+                    is_posm_absent = self.match_display_in_scene[
+                        self.match_display_in_scene['display_fk'] == posm_to_check].empty
                     if is_posm_absent:
                         Log.info('The scene: {scene} is relevant but POSM {pos} is not present. '
                                  'Save and start new scene.'
@@ -299,20 +301,22 @@ class GSKAUSceneToolBox:
     def save_purity_per_bay(self, kpi_bay_purity):
         Log.info('Calculate purity per bay for : {scene}.'.format(scene=self.scene_info.iloc[0].scene_fk))
         # could have done with scif
+        total_prod_in_scene_count = len(
+            self.match_product_in_scene[self.match_product_in_scene['product_fk'] != 0]
+        )
         mpis_grouped_by_bay = self.match_product_in_scene.groupby(['bay_number'])
         for bay_number, mpis in mpis_grouped_by_bay:
-            total_prod_in_bay_count = len(
-                mpis[mpis['product_fk'] != 0]
-            )
             mpis_with_prod = mpis.merge(self.products, how='left', on=['product_fk'], suffixes=('', '_prod'))
             gsk_prod_count = len(mpis_with_prod[mpis_with_prod['manufacturer_fk'] == 2])
-            if total_prod_in_bay_count:
-                purity = gsk_prod_count / float(total_prod_in_bay_count) * 100
+            if total_prod_in_scene_count:
+                purity = gsk_prod_count / float(total_prod_in_scene_count) * 100
                 Log.info('Save purity per bay for scene: {scene}; bay: {bay} & purity: {purity}.'
                          .format(scene=self.scene_info.iloc[0].scene_fk,
                                  bay=bay_number,
                                  purity=purity
                                  ))
+                if not bay_number or np.isnan(bay_number):
+                    bay_number = -1
                 self.common.write_to_db_result(
                     fk=kpi_bay_purity.iloc[0].pk,
                     context_id=self.store_id,
@@ -321,7 +325,7 @@ class GSKAUSceneToolBox:
                     numerator_result=self.store_id,
                     denominator_result=self.store_id,
                     result=purity,
-                    score=bay_number or -1,
+                    score=bay_number,
                     by_scene=True,
                 )
         return True
@@ -345,8 +349,8 @@ class GSKAUSceneToolBox:
                 denominator_id=each_kpi_data.get('denominator_id', self.store_id),
                 numerator_result=each_kpi_data.get('numerator_result', self.store_id),
                 denominator_result=each_kpi_data.get('denominator_result', self.store_id),
-                result=each_kpi_data.get('result', -1),
-                score=each_kpi_data.get('score', -1),
+                result=result,
+                score=score,
                 context_id=self.store_id,
                 by_scene=True,
             )
@@ -379,12 +383,15 @@ class GSKAUSceneToolBox:
                 result = 1  # mandatory
             elif optional_posm_eans and each_row.product_ean_code in optional_posm_eans:
                 result = 0  # optional
+            score = min(each_row.median_price, each_row.median_promo_price)
+            if not score or np.isnan(score):
+                score = -1
             self.common.write_to_db_result(
                 fk=kpi.iloc[0].pk,
                 numerator_id=numerator_id,  # its the POSM to check or {General Empty if not recognized or multi}
                 numerator_result=numerator_result,  # whether POSM is 0, 1 or 2
                 denominator_id=each_row.item_id,  # each product in scene
-                score=min(each_row.median_price, each_row.median_promo_price) or -1,  # -1 means not saved in DB
+                score=score,  # -1 means not saved in DB
                 result=result,  # 0-optional, 1-mandatory, 2- NA
                 context_id=context_fk,  # template of scene
                 by_scene=True,
