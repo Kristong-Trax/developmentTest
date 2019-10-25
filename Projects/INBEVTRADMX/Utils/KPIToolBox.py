@@ -170,10 +170,19 @@ class INBEVTRADMXToolBox:
             sets = sets['KPI Level 1 Name'].unique().tolist()
 
             if len(sets) == 1:
-                return sets[0]
+                set_name = sets[0]
+
+            elif additional_attribute_4 == 'BC':
+                set_name = sets[0]
+            elif additional_attribute_4 == 'BA':
+                set_name = sets[1]
+            elif additional_attribute_4 == 'MODELORAMA':
+                set_name = sets[2]
 
             else:
                 Log.error('KPI should only run on one KPI set.')
+
+            return set_name
 
 
 
