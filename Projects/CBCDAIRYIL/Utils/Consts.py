@@ -34,6 +34,7 @@ class Consts(object):
 
     # KPIs
     TOTAL_SCORE = u'ציון כולל'
+    TOTAL_SCORE_FOR_DASHBOARD = u'ציון כולל 2'
     AVAILABILITY = 'Availability'
     AVAILABILITY_FROM_BOTTOM = 'Availability from bottom'
     MIN_2_AVAILABILITY = 'Min 2 Availability'

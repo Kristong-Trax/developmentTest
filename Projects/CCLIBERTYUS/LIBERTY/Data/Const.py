@@ -5,7 +5,7 @@ __author__ = 'hunter'
 
 class Const(object):
     TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)),
-                                 'Liberty_bottlers_Template_subquestions_added_2019_10_22.xlsx')
+                                 'Liberty_bottlers_Template_subquestions_added_2019_10_23.xlsx')
     LIBERTY = ' - Liberty'
     DRILLDOWN = ' - Drilldown'
     RED_SCORE_PARENT = 'RED SCORE - Liberty'
@@ -58,7 +58,7 @@ class Const(object):
     SIZE_SUBPACKAGES_NUM = 'Base Size;Multi-Pack Size'
     SUBPACKAGES_NUM = 'Multi-Pack Size'
     MINIMUM_FACINGS_REQUIRED = 'facings_threshold'
-    GREATER_THAN_ONE = '>1'
+    GREATER_THAN_ONE = '>001'
     EXCLUDED_CATEGORY = 'excluded_category'
     EXCLUDED_SIZE_SUBPACKAGES_NUM = 'Excluded Base Size; Multi Pack Size'
 
