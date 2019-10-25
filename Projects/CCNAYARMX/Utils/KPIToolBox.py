@@ -2,6 +2,10 @@ from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Utils.Logging.Logger import Log
 from KPIUtils_v2.Utils.GlobalScripts.Scripts import GlobalSessionToolBox
 from KPIUtils_v2.GlobalDataProvider.PsDataProvider import PsDataProvider
+from KPIUtils_v2.Calculations.SurveyCalculations import Survey
+from KPIUtils_v2.Calculations.BlockCalculations_v2 import Block
+# from BlockCalculations_v3 import Block
+
 
 import pandas as pd
 import numpy as np
@@ -27,8 +31,7 @@ from Projects.CCNAYARMX.Data.LocalConsts import Consts
 # from KPIUtils_v2.Calculations.SurveyCalculations import Survey
 
 # from KPIUtils_v2.Calculations.CalculationsUtils import GENERALToolBoxCalculations
-from KPIUtils_v2.Calculations.BlockCalculations_v2 import Block
-# from BlockCalculations_v3 import Block
+
 
 __author__ = 'krishnat'
 
@@ -59,6 +62,7 @@ BLOCK_TOGETHER = 'Block Together'
 SHARE_OF_EMPTY = 'Share of Empty'
 BAY_COUNT = 'Bay Count'
 PER_BAY_SOS = 'Per bay SOS'
+SURVEY = 'Survey'
 
 # Scif Filters
 BRAND_FK = 'brand_fk'
@@ -80,7 +84,7 @@ TEMPLATE_GROUP = 'template_group'
 BAY_NUMBER = 'bay_number'
 
 # Read the sheet
-Sheets = [SOS, BLOCK_TOGETHER, SHARE_OF_EMPTY, BAY_COUNT, PER_BAY_SOS]
+Sheets = [SOS, BLOCK_TOGETHER, SHARE_OF_EMPTY, BAY_COUNT, PER_BAY_SOS, SURVEY]
 
 TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'CCNayarTemplatev0.5.1.xlsx')
 
@@ -111,18 +115,21 @@ class ToolBox(GlobalSessionToolBox):
         self.parse_template()
         self.match_product_in_scene = self.data_provider['matches']
         self.own_manuf_fk = int(self.data_provider.own_manufacturer.param_value.values[0])
+        self.survey = Survey(self.data_provider, output=output, ps_data_provider=self.ps_data_provider,
+                             common=self.common_v2)
 
     def parse_template(self):
         for sheet in Sheets:
             self.templates[sheet] = pd.read_excel(TEMPLATE_PATH, sheet_name=sheet)
 
     def main_calculation(self):
-        for i, row in self.templates[BLOCK_TOGETHER].iterrows():
+        for i, row in self.templates[SURVEY].iterrows():
             # self.calculate_sos(row)
-            self.calculate_block_together(row)
+            # self.calculate_block_together(row)
             # self.calculate_share_of_empty(row)
             # self.calculate_bay_count(row)
             # self.calculate_per_bay_sos(row)
+            self.calcualte_survey(row)
         return
 
     def calculate_sos(self, row):
@@ -239,7 +246,8 @@ class ToolBox(GlobalSessionToolBox):
         iterate_by = row[ITERATE_BY]
 
         # Step 3: Declare relevant_scif columns
-        relevant_scif_columns = [PK, SESSION_ID, PRODUCT_FK, PRODUCT_NAME, TEMPLATE_GROUP, TEMPLATE_NAME, MANUFACTURER_NAME,
+        relevant_scif_columns = [PK, SESSION_ID, PRODUCT_FK, PRODUCT_NAME, TEMPLATE_GROUP, TEMPLATE_NAME,
+                                 MANUFACTURER_NAME,
                                  TAMANDO_DEL_PRODUCTO, SUB_CATEGORY] + \
                                 [denominator_entity, numerator_entity, denominator_entity, SCENE_FK]
 
@@ -300,11 +308,9 @@ class ToolBox(GlobalSessionToolBox):
                 location_id = template_name
                 location = {location_name: location_id}
 
-
                 for j in unique_bay_number:
                     relevant_filters = {MANUFACTURER_NAME: manufacturer_name, SUB_CATEGORY: sub_category,
                                         BAY_NUMBER: [j]}
-
 
                     sub_category_fk_in_session = list(set(bay_count_scif[iterate_by]))
                     sub_category_fk_in_session = filter(None, sub_category_fk_in_session)
@@ -329,21 +335,6 @@ class ToolBox(GlobalSessionToolBox):
         self.common.write_to_db_result(kpi_fk, numerator_id=sub_category_fk,
                                        denominator_id=template_fk,
                                        result=result)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
         #         if False in block['is_block'].to_list():
         #             result = 0
@@ -607,6 +598,34 @@ class ToolBox(GlobalSessionToolBox):
         # Step 10. Save the results in the database
         self.common.write_to_db_result(kpi_fk, numerator_id=numerator_id,
                                        denominator_id=denominator_id, result=result)
+
+    def calcualte_survey(self, row):
+
+        # Step 1:
+        kpi_name = row[KPI_NAME]
+        template_group = row[TASK_TEMPLATE_GROUP]
+
+        # Step 2:
+        template_name = row[TEMPLATE_NAME]
+
+        # Step 3:
+        relevant_scif_columns = [TEMPLATE_GROUP, TEMPLATE_NAME]
+
+        # Step 4:
+        relevant_scif = self.scif[relevant_scif_columns]
+
+        # Step 5:
+        relevant_scif = relevant_scif[relevant_scif[TEMPLATE_GROUP].isin([template_group])]
+
+        # Step 6:
+        relevant_scif = relevant_scif[relevant_scif[TEMPLATE_NAME].isin([template_name])]
+
+        # Step 7:
+        if self.survey.check_survey_answer(('question_fk', Const.BONUS_QUESTION_FK), 'Yes,yes,si,Si'):
+            result = 1
+        else:
+            result = 0
+
 
     def sanitize_values(self, item):
         if pd.isna(item):
