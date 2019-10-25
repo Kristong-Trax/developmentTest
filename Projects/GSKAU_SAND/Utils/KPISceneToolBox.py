@@ -1,16 +1,18 @@
+import numpy as np
 import pandas as pd
 
-from Trax.Algo.Calculations.Core.DataProvider import Data
+from Trax.Utils.Logging.Logger import Log
 from Trax.Cloud.Services.Connector.Keys import DbUsers
+from Trax.Algo.Calculations.Core.DataProvider import Data
 from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from KPIUtils_v2.GlobalDataProvider.PsDataProvider import PsDataProvider
 
-from Trax.Utils.Logging.Logger import Log
 
 __author__ = 'nidhinb'
 # The KPIs
 GSK_DISPLAY_PRESENCE = 'GSK_DISPLAY_PRESENCE'
 GSK_DISPLAY_PRESENCE_SKU = 'GSK_DISPLAY_PRESENCE_SKU'
+GSK_DISPLAYS_ALL_IN_SCENE = 'GSK_DISPLAYS_ALL_IN_SCENE'
 GSK_DISPLAY_SKU_COMPLIANCE = 'GSK_DISPLAY_SKU_COMPLIANCE'
 GSK_DISPLAY_PRICE_COMPLIANCE = 'GSK_DISPLAY_PRICE_COMPLIANCE'
 GSK_DISPLAY_BAY_PURITY = 'GSK_DISPLAY_BAY_PURITY'
@@ -98,7 +100,13 @@ class GSKAUSceneToolBox:
         else:
             current_scene_fk = self.scene_info.iloc[0].scene_fk
             display_per_sku_per_scene_calculated = False
+            target_matched = False
             for idx, each_target in secondary_display_targets.iterrows():
+                if target_matched:
+                    Log.info('The session: {sess} - scene: {scene} has matched one target '
+                             'and won\'t run for another.'
+                             .format(sess=self.session_uid, scene=current_scene_fk))
+                    continue
                 # loop through each external target to fit the current store
                 has_posm_recognized = False
                 multi_posm_or_bay = False
@@ -118,8 +126,9 @@ class GSKAUSceneToolBox:
                     _bool_scene_check_df = self.scene_info[list(scene_relevant_targets.keys())] \
                                            == scene_relevant_targets.values
                     is_scene_relevant = _bool_scene_check_df.all(axis=None)
-                if is_store_relevant and is_scene_relevant:
+                if is_store_relevant and is_scene_relevant and not target_matched:
                     # calculate display compliance for the matched external targets
+                    target_matched = True
                     Log.info('The session: {sess} - scene: {scene} is relevant for calculating '
                              'secondary display compliance.'
                              .format(sess=self.session_uid, scene=current_scene_fk))
@@ -144,7 +153,7 @@ class GSKAUSceneToolBox:
                                 numerator_result=0,  # 0 posm not recognized
                             )
                         if len(self.match_product_in_scene['bay_number'].unique()) > 1 or \
-                                len(self.scif[self.scif['product_type'] == POS_TYPE]) > 1:
+                                len(self.match_display_in_scene) > 1:
                             Log.info(
                                 'The scene: {scene} is relevant and multi_bay_posm is True. '
                                 'Purity per bay is calculated and going to next scene.'
@@ -169,7 +178,7 @@ class GSKAUSceneToolBox:
                     Log.info('The scene: {scene} is relevant and POSM {pos} is present.'
                              .format(scene=current_scene_fk, pos=posm_to_check))
                     has_posm_recognized = True
-                    # check if this scene has multi posm or multi bays
+                    # check if this scene has multi bays or multi posm
                     if len(self.match_product_in_scene['bay_number'].unique()) > 1 or \
                             len(self.match_display_in_scene) > 1:
                         # Its multi posm or bay -- only purity calc per bay is possible
@@ -312,7 +321,7 @@ class GSKAUSceneToolBox:
                     numerator_result=self.store_id,
                     denominator_result=self.store_id,
                     result=purity,
-                    score=bay_number,
+                    score=bay_number or -1,
                     by_scene=True,
                 )
         return True
@@ -324,14 +333,20 @@ class GSKAUSceneToolBox:
                 sess=self.session_uid,
                 scene=self.scene_info.iloc[0].scene_fk,
             ))
+            score = each_kpi_data.get('score')
+            result = each_kpi_data.get('result')
+            if not score or np.isnan(score):
+                score = -1
+            if not result or np.isnan(result):
+                result = 0
             self.common.write_to_db_result(
                 fk=each_kpi_data.get('pk'),
                 numerator_id=each_kpi_data.get('numerator_id', self.store_id),
                 denominator_id=each_kpi_data.get('denominator_id', self.store_id),
                 numerator_result=each_kpi_data.get('numerator_result', self.store_id),
                 denominator_result=each_kpi_data.get('denominator_result', self.store_id),
-                result=each_kpi_data.get('result', None),
-                score=each_kpi_data.get('score', None),
+                result=each_kpi_data.get('result', -1),
+                score=each_kpi_data.get('score', -1),
                 context_id=self.store_id,
                 by_scene=True,
             )
@@ -366,7 +381,7 @@ class GSKAUSceneToolBox:
                 result = 0  # optional
             self.common.write_to_db_result(
                 fk=kpi.iloc[0].pk,
-                numerator_id=numerator_id,  # its the POSM to check or General Empty if not recognized
+                numerator_id=numerator_id,  # its the POSM to check or {General Empty if not recognized or multi}
                 numerator_result=numerator_result,  # whether POSM is 0, 1 or 2
                 denominator_id=each_row.item_id,  # each product in scene
                 score=min(each_row.median_price, each_row.median_promo_price) or -1,  # -1 means not saved in DB
@@ -374,4 +389,22 @@ class GSKAUSceneToolBox:
                 context_id=context_fk,  # template of scene
                 by_scene=True,
             )
+        # Save All Displays in the scene
+        Log.info('Save all displays in the scene. The session: {sess} - scene: {scene}.'
+                 .format(sess=self.session_uid, scene=current_scene_fk))
+        kpi_all_displays_in_scene = self.kpi_static_data[
+            (self.kpi_static_data[KPI_TYPE_COL] == GSK_DISPLAYS_ALL_IN_SCENE)
+            & (self.kpi_static_data['delete_time'].isnull())]
+        for idx, each_row in self.match_display_in_scene.iterrows():
+            self.common.write_to_db_result(
+                fk=kpi_all_displays_in_scene.iloc[0].pk,
+                numerator_id=each_row.display_fk,  # the Display/POSM present in the scene
+                numerator_result=1,  # no meaning
+                denominator_id=each_row.display_brand_fk,  # display brand
+                score=1,  # no meaning
+                result=1,  # no meaning
+                context_id=self.store_id,  # template of scene
+                by_scene=True,
+            )
+
         return True
