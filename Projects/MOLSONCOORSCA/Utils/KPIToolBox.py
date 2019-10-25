@@ -472,7 +472,7 @@ class ToolBox:
             .drop_duplicates(subset='product_fk')
         matches = self.filter_df(matches, filters)
         if prev_prods.empty or matches.empty:
-            return
+            return None, None
         oos = set(prev_prods['product_fk'].values) - set(matches['product_fk'].values)
         ratio = self.safe_divide(len(oos), prev_prods.shape[0])
         results = []
