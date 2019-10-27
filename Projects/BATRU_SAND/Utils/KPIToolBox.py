@@ -81,7 +81,6 @@ P2_TEMPLATE = 'P2_monitored_sku'
 P3_TEMPLATE = 'P3_template'
 P4_TEMPLATE = 'p4_template'
 P5_TEMPLATE = 'p5_template'
-HYPHEN = u'–'.encode('utf-8')
 
 TEMPLATE_PATH_MAPPER = {P2_TEMPLATE: P2_PATH, P3_TEMPLATE: P3_PATH,
                         P4_TEMPLATE: P4_PATH, P5_TEMPLATE: P5_PATH}
@@ -2140,18 +2139,36 @@ class BATRU_SANDToolBox:
         posm_counter = 0
         group_kpi_fk = self.common.get_kpi_fk_by_kpi_type(self.POSM_EQUIPMENT_PER_GROUP)
         identifier_group_parent = self.common.get_dictionary(kpi_fk=group_kpi_fk, group_name=group_name)
+        all_atomics = group_template['Atomic KPI Name'].unique().tolist()
+        atomic_in_group = {}
+        for atomic in all_atomics:
+            atomic_in_group[atomic] = 0
         for i in xrange(len(group_template)):
             row = group_template.iloc[i]
             if row['Product Name']:
                 result = self.calculate_specific_posm(row, equipment_name, group_name, scene_fk,
                                                       identifier_group_parent)
                 posm_counter += 1 if result else 0
+                atomic_in_group[row['Atomic KPI Name']] = max(atomic_in_group[row['Atomic KPI Name']], result)
+
+        # new tables lvl 4
+        display_in_group_kpi = self.common.get_kpi_fk_by_kpi_type(self.POSM_EQUIPMENT_DISPLAY_IN_GROUP)
+        group_fk = self.get_custom_entity_pk_by_value(group_name)
+        for atomic_name, score in atomic_in_group.items():
+            display_in_group_fk = self.get_custom_entity_pk_by_value(atomic_name)
+            custom_result = self.kpi_result_values[self.PRESENCE][self.DISTRIBUTED] if score == 1 else \
+                self.kpi_result_values[self.PRESENCE][self.OOS]
+            self.common.write_to_db_result(fk=display_in_group_kpi, numerator_id=display_in_group_fk,
+                                           denominator_id=group_fk, result=custom_result, score=score,
+                                           identifier_parent=identifier_group_parent, should_enter=True)
+
         kpi_fk = self.kpi_static_data.loc[(self.kpi_static_data['kpi_set_name'] == POSM_AVAILABILITY) &
                                           (self.kpi_static_data['kpi_name'] == equipment_name) &
                                           (self.kpi_static_data['atomic_kpi_name'] == group_name)]['atomic_kpi_fk'].iloc[0]
         score = 1 if posm_counter == len(group_template) else 0
         self.write_to_db_result(kpi_fk, result=posm_counter, score=score,
                                 threshold=len(group_template), level=self.LEVEL3)
+
 
         #new tables - lvl 3
         group_fk = self.get_custom_entity_pk_by_value(group_name)
@@ -2216,14 +2233,14 @@ class BATRU_SANDToolBox:
             Log.debug("KPI {}:{}:{}:{} was not found in static.".format(POSM_AVAILABILITY,
                                                                         equipment_name, group_name, atomic_name))
         #new tables - lvl 4
-        display_in_group_kpi = self.common.get_kpi_fk_by_kpi_type(self.POSM_EQUIPMENT_DISPLAY_IN_GROUP)
-        group_fk = self.get_custom_entity_pk_by_value(group_name)
-        display_in_group_fk = self.get_custom_entity_pk_by_value(atomic_name)
-        custom_result = self.kpi_result_values[self.PRESENCE][self.DISTRIBUTED] if score == 1 else \
-                                    self.kpi_result_values[self.PRESENCE][self.OOS]
-        self.common.write_to_db_result(fk=display_in_group_kpi, numerator_id=display_in_group_fk,
-                                       denominator_id=group_fk, result=custom_result, score=score,
-                                       identifier_parent=identifier_group_parent, should_enter=True)
+        # display_in_group_kpi = self.common.get_kpi_fk_by_kpi_type(self.POSM_EQUIPMENT_DISPLAY_IN_GROUP)
+        # group_fk = self.get_custom_entity_pk_by_value(group_name)
+        # display_in_group_fk = self.get_custom_entity_pk_by_value(atomic_name)
+        # custom_result = self.kpi_result_values[self.PRESENCE][self.DISTRIBUTED] if score == 1 else \
+        #                             self.kpi_result_values[self.PRESENCE][self.OOS]
+        # self.common.write_to_db_result(fk=display_in_group_kpi, numerator_id=display_in_group_fk,
+        #                                denominator_id=group_fk, result=custom_result, score=score,
+        #                                identifier_parent=identifier_group_parent, should_enter=True)
         return 1 if posm_count else 0
 
     # P5 KPI
