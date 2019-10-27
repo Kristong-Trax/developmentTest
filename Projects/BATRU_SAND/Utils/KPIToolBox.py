@@ -1190,7 +1190,8 @@ class BATRU_SANDToolBox:
                 self.write_to_db_result(fk=kpi_fk, result=result,
                                         level=self.LEVEL3, score=score, result_2=result2)
                 #new tables - lvl 3
-                custom_score = self.kpi_score_values[self.CUSTOM_DATE]['date: {}'.format(result2)]
+                custom_score = self.kpi_score_values[self.CUSTOM_DATE]['date: {}'.format(result2)] if result2 != '0' \
+                    else 0
                 self.common.write_to_db_result(fk=price_sku_fk, numerator_id=product_fk, denominator_id=self.store_id,
                                                numerator_result=score, score=custom_score, result=result,
                                                identifier_parent=identifier_parent, should_enter=True)
@@ -1349,6 +1350,9 @@ class BATRU_SANDToolBox:
             if not (relevant_sas_zone_data.empty or scene_products_matrix.empty):
                 self.check_sas_zone_in_fixture(
                     scene_products_matrix, relevant_sas_zone_data, fixture)
+
+            # start here
+            sections_in_fixture = sorted(relevant_sections_data['section_number'].unique().tolist())
 
             for section in sorted(relevant_sections_data['section_number'].unique().tolist()):
 
@@ -1687,7 +1691,7 @@ class BATRU_SANDToolBox:
         denominator = len(self.sas_zone_statuses_dict.values())
         sas_score_new_tables = numerator / denominator * 100 if self.sas_zone_statuses_dict else 0
         self.common.write_to_db_result(fk=sas_new_tables_fk, numerator_id=self.own_manufacturer_fk,
-                                       denominator_id=self.store_id, result=sas_score_new_tables,
+                                       denominator_id=self.store_id, result=numerator, target=denominator,
                                        score=sas_score_new_tables, numerator_result=numerator,
                                        denominator_result=denominator, identifier_result=sas_identifier_par,
                                        should_enter=True)
@@ -2047,7 +2051,8 @@ class BATRU_SANDToolBox:
         # new tables
         score_new_tables = float(score)/equipment_in_store if equipment_in_store else 0
         self.common.write_to_db_result(fk=posm_status_fk, numerator_id=self.own_manufacturer_fk,
-                                       denominator_id=self.store_id, score=score_new_tables, result=score_new_tables,
+                                       denominator_id=self.store_id, score=score_new_tables, result=score,
+                                       target=equipment_in_store,
                                        identifier_result=identif_parent_posm_status, should_enter=True)
 
         self.add_posms_not_assigned_to_scenes_in_template()
