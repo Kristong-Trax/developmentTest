@@ -2232,7 +2232,7 @@ class BATRU_SANDToolBox:
         except IndexError:
             Log.debug("KPI {}:{}:{}:{} was not found in static.".format(POSM_AVAILABILITY,
                                                                         equipment_name, group_name, atomic_name))
-        #new tables - lvl 4
+        #new tables - lvl 4 - remove in prod
         # display_in_group_kpi = self.common.get_kpi_fk_by_kpi_type(self.POSM_EQUIPMENT_DISPLAY_IN_GROUP)
         # group_fk = self.get_custom_entity_pk_by_value(group_name)
         # display_in_group_fk = self.get_custom_entity_pk_by_value(atomic_name)
