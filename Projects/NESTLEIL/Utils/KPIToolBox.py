@@ -71,10 +71,10 @@ class NESTLEILToolBox:
             This method fetches the assortment KPIs in the store level
             :return: A tuple: (Distribution store KPI fk, OOS store KPI fk)
         """
-        distribution_store_level_kpi = self.common_v2.get_kpi_fk_by_kpi_type(distr_kpi_type)
+        distribution_kpi = self.common_v2.get_kpi_fk_by_kpi_type(distr_kpi_type)
         oos_kpi_type = Consts.DIST_OOS_KPIS_MAP[distr_kpi_type]
-        oos_store_level_kpi = self.common_v2.get_kpi_fk_by_kpi_type(oos_kpi_type)
-        return distribution_store_level_kpi, oos_store_level_kpi
+        oos_kpi = self.common_v2.get_kpi_fk_by_kpi_type(oos_kpi_type)
+        return distribution_kpi, oos_kpi
 
     # def _get_store_level_kpis(self):
     #     """
