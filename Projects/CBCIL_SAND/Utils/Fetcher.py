@@ -87,3 +87,11 @@ class CBCIL_Queries(object):
         where SC.exclude_status_fk in (1,4)
         and S.session_uid = '{}'
         """.format(session_uid)
+
+    @staticmethod
+    def get_manufacturer_pk_by_name(manufacturer_name):
+        return """
+                        SELECT pk
+                        FROM static_new.manufacturer 
+                        WHERE name = '{}'
+                        """.format(manufacturer_name)

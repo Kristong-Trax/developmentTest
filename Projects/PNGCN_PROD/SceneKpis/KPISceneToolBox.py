@@ -231,7 +231,21 @@ class PngcnSceneKpis(object):
                                            denominator_result=sub_block['seq_y'],
                                            result=sub_block['facing_percentage'],
                                            score=sub_block['number_of_facings'],
+                                           weight=sub_block['shelf_count'],
                                            by_scene=True)
+
+    def calculate_block_facing_include_stacking(self, block_df, block_filters):
+        filter_row_for_sub_brand = {'population': {
+            'include': [block_filters], 'include_operator': 'and'}}
+        relevant_columns_block_df = block_df[['scene_fk', 'bay_number', 'shelf_number', 'facing_sequence_number']]
+        block_df_all_stacking_layers = self.matches_from_data_provider.set_index(
+                ['scene_fk', 'bay_number', 'shelf_number', 'facing_sequence_number']).sort_index().loc[
+                [tuple(x) for x in relevant_columns_block_df.values]]
+        complete_df = pd.merge(block_df_all_stacking_layers,
+                               self.scif, on='product_fk', how="left")
+        filtered_block_df_all_stacking_layers = self.parser.filter_df(filter_row_for_sub_brand,
+                                                                      complete_df)
+        return filtered_block_df_all_stacking_layers
 
     def handle_node_in_variant_block(self, row_in_template, row, node, filter_results, block_filters):
         product_matches_fks = []
@@ -239,6 +253,7 @@ class PngcnSceneKpis(object):
         product_matches_fks += (list(node_data['members']))
         block_df = self.matches_from_data_provider[
             self.matches_from_data_provider['scene_match_fk'].isin(product_matches_fks)]
+
         shelves = set(block_df['shelf_number'])
 
         # filter blocks without the minimum shelves spreading number
@@ -257,7 +272,12 @@ class PngcnSceneKpis(object):
         if block_flag:
             point = node_data['polygon'].centroid
             row['x'], row['y'] = point.x, point.y
-            row['number_of_facings'] = len(product_matches_fks)
+
+            # Previously facing includes only non stacking, customer want stacking so I remove this line.
+            #row['number_of_facings'] = len(product_matches_fks)
+            block_facing_include_stacking = self.calculate_block_facing_include_stacking(block_df, block_filters)
+            row['number_of_facings'] = len(block_facing_include_stacking)
+            row['shelf_count'] = len(shelves)
             for filter_val, value in block_filters.iteritems():
                 row[filter_val] = value
             filter_results.append(row)
@@ -356,14 +376,15 @@ class PngcnSceneKpis(object):
             return
         df = self.get_eye_level_shelves(self.matches_from_data_provider)
         full_df = pd.merge(df, self.all_products, on="product_fk")
-
-        self.calculate_facing_eye_level(full_df)
+        max_shelf_count = self.matches_from_data_provider["shelf_number"].max()
+        self.calculate_facing_eye_level(full_df, max_shelf_count)
         self.calculate_sequence_eye_level(entity_df, full_df)
 
-    def calculate_facing_eye_level(self, full_df):
+    def calculate_facing_eye_level(self, full_df, max_shelf_count):
         """
         Summing all facings for each product (includes stackings)
         :param full_df: the two relevant shelves (eye level shelves)
+        :param max_shelf_count: the count of total shelf layer count (max value in all bays)
         :return: save the facing_eye_level results for each shelf (combine all bays)
         """
         kpi_facings_fk = self.common.get_kpi_fk_by_kpi_name(Eye_level_kpi_FACINGS)
@@ -378,7 +399,7 @@ class PngcnSceneKpis(object):
             facings = row['result']
             self.common.write_to_db_result(fk=kpi_facings_fk, numerator_id=product_fk,
                                            denominator_id=category_fk, numerator_result=shelf_number,
-                                           result=facings, score=facings, by_scene=True)
+                                           result=facings, score=max_shelf_count, by_scene=True)
 
     def calculate_sequence_eye_level(self, entity_df, full_df):
         """

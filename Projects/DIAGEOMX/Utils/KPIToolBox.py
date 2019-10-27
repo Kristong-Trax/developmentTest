@@ -21,6 +21,9 @@ class DIAGEOMXToolBox:
         # SOS Out Of The Box kpis
         self.diageo_generator.activate_ootb_kpis(self.commonV2)
 
+        # sos by scene type
+        self.diageo_generator.sos_by_scene_type(self.commonV2)
+
         # Global assortment kpis
         assortment_res_dict = self.diageo_generator.diageo_global_assortment_function_v2()
         self.commonV2.save_json_to_new_tables(assortment_res_dict)
@@ -35,7 +38,7 @@ class DIAGEOMXToolBox:
 
         # global touch point kpi
         template_path = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), 'Data',
-                                     'TOUCH POINT 2019 Sep.xlsx')
+                                     'TOUCH POINT Noviembre 2019.xlsx')
         res_dict = self.diageo_generator.diageo_global_touch_point_function(template_path)
         self.commonV2.save_json_to_new_tables(res_dict)
 

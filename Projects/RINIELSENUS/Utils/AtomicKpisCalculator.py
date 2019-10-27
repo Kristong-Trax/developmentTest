@@ -684,13 +684,14 @@ class VerticalBlockOneSceneAtomicKpiCalculation(BlockBaseCalculation):
 class VerticalPreCalcBlockAtomicKpiCalculation(BlockBaseCalculation):
     def calculate_atomic_kpi(self, atomic_kpi_data):
         filters = atomic_kpi_data['filters']
-        biggest_scene = self.get_biggest_scene(filters)
-        scene_avg_num_of_shelves = self._get_relevant_scenes_avg_shelf(filters).set_index(
-            'scene_fk')['scene_avg_num_of_shelves'].to_dict()[biggest_scene]
-        if 'results' not in atomic_kpi_data or atomic_kpi_data['results'].empty:
+        if 'results' not in atomic_kpi_data or atomic_kpi_data['results'].empty \
+                or pd.isna(atomic_kpi_data['results'].loc[0, 'result']):
             Log.error('kpi: "{}" not calculated. PreCalc Vertical Block requires Biggest Scene Block dependency'
                       .format(atomic_kpi_data['atomic']))
             return 0
+        biggest_scene = self.get_biggest_scene(filters)
+        scene_avg_num_of_shelves = self._get_relevant_scenes_avg_shelf(filters).set_index(
+            'scene_fk')['scene_avg_num_of_shelves'].to_dict()[biggest_scene]
 
         results = atomic_kpi_data['results']
         blocks = sum(results['errata'].values, [])
@@ -1036,8 +1037,9 @@ class AdjacencyAtomicKpiCalculation(KpiAtomicKpisCalculator):
         filters = self._split_filters(all_filters)
 
         allowed_filter = self._get_allowed_products(atomic_kpi_data['allowed'], filters['all'])
-        allowed_filter_without_other = self._get_allowed_products_without_other(atomic_kpi_data['allowed'],
-                                                                                filters['all'])
+        # allowed_filter_without_other = self._get_allowed_products_without_other(atomic_kpi_data['allowed'],
+        #                                                                         filters['all'])
+        allowed_filter_without_other = self._get_allowed_products(atomic_kpi_data['allowed'], filters['all'])
         scene_type_filter = self._create_filter_dict(
             key=TEMPLATE_NAME, value=atomic_kpi_data['scene_types'])
 

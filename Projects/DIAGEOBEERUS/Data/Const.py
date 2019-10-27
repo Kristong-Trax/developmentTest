@@ -47,6 +47,10 @@ class Const(object):
     MPA_SKU = 'MPA - SKU'
     MPA_MR = 'MPA - MR'
     MPA_SKU_MR = 'MPA - SKU - MR'
+    DIST = 'Distribution'
+    DIST_SKU = 'Distribution - SKU'
+    DIST_MR = 'Distribution - MR'
+    DIST_SKU_MR = 'Distribution - SKU - MR'
     ON_SHELF = 'On Shelf'
     NOT_ON_SHELF = 'Not on Shelf'
 
