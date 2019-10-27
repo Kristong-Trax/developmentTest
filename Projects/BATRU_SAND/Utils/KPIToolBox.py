@@ -1228,22 +1228,46 @@ class BATRU_SANDToolBox:
 
         return section_data
 
+    # @staticmethod
+    # def get_sections_order_dict(sections_in_fixture):
+        # sections_dict = {}
+        # non_numbered_sections = []
+        # for section in sections_in_fixture:
+        #     section = section.encode('uft-8') if isinstance(section, unicode) else section
+        #     if HYPHEN in section:
+        #         value_to_list = section.split(HYPHEN)
+        #     else:
+        #         value_to_list = section.split('-')
+        #         if len(value_to_list) == 1:
+        #             non_numbered_sections.append(value_to_list[0])
+        #     if value_to_list > 1:
+        #         value_to_list = map(lambda x: x.strip(), value_to_list)
+        #         sec_num = int(float(value_to_list[0]))
+        #         sections_dict.update({section: sec_num})
+        # non_numbered_sections = sorted(non_numbered_sections)
+        # max_num = max(sections_dict.values())
+        # for section in non_numbered_sections:
+        #     sections_dict.update({section: non_numbered_sections.index(section)+max_num})
+        # return sections_dict
+
     @staticmethod
     def get_sections_order_dict(sections_in_fixture):
         sections_dict = {}
         non_numbered_sections = []
         for section in sections_in_fixture:
-            section = section.encode('uft-8') if isinstance(section, unicode) else section
-            if HYPHEN in section:
-                value_to_list = section.split(HYPHEN)
-            else:
-                value_to_list = section.split('-')
-                if len(value_to_list) == 1:
-                    non_numbered_sections.append(value_to_list[0])
-            if value_to_list > 1:
-                value_to_list = map(lambda x: x.strip(), value_to_list)
-                sec_num = int(float(value_to_list[0]))
+            i = 0
+            flag = True
+            sec_num = ''
+            while flag:
+                if len(section[i:]) > 0:
+                    try:
+                        sec_num += int(float(section[i]))
+                    except:
+                        flag = False
+            if sec_num:
                 sections_dict.update({section: sec_num})
+            else:
+                non_numbered_sections.append(section)
         non_numbered_sections = sorted(non_numbered_sections)
         max_num = max(sections_dict.values())
         for section in non_numbered_sections:
