@@ -359,8 +359,8 @@ class BATRU_SANDToolBox:
         """
         This function calculates the KPI results.
         # """
-        self.handle_priority_1()
-        self.handle_priority_2()
+        # self.handle_priority_1()
+        # self.handle_priority_2()
         self.handle_priority_3()
         self.handle_priority_4()
         self.handle_priority_5()
@@ -1228,52 +1228,6 @@ class BATRU_SANDToolBox:
 
         return section_data
 
-    # @staticmethod
-    # def get_sections_order_dict(sections_in_fixture):
-        # sections_dict = {}
-        # non_numbered_sections = []
-        # for section in sections_in_fixture:
-        #     section = section.encode('uft-8') if isinstance(section, unicode) else section
-        #     if HYPHEN in section:
-        #         value_to_list = section.split(HYPHEN)
-        #     else:
-        #         value_to_list = section.split('-')
-        #         if len(value_to_list) == 1:
-        #             non_numbered_sections.append(value_to_list[0])
-        #     if value_to_list > 1:
-        #         value_to_list = map(lambda x: x.strip(), value_to_list)
-        #         sec_num = int(float(value_to_list[0]))
-        #         sections_dict.update({section: sec_num})
-        # non_numbered_sections = sorted(non_numbered_sections)
-        # max_num = max(sections_dict.values())
-        # for section in non_numbered_sections:
-        #     sections_dict.update({section: non_numbered_sections.index(section)+max_num})
-        # return sections_dict
-
-    @staticmethod
-    def get_sections_order_dict(sections_in_fixture):
-        sections_dict = {}
-        non_numbered_sections = []
-        for section in sections_in_fixture:
-            i = 0
-            flag = True
-            sec_num = ''
-            while flag:
-                if len(section[i:]) > 0:
-                    try:
-                        sec_num += int(float(section[i]))
-                    except:
-                        flag = False
-            if sec_num:
-                sections_dict.update({section: sec_num})
-            else:
-                non_numbered_sections.append(section)
-        non_numbered_sections = sorted(non_numbered_sections)
-        max_num = max(sections_dict.values())
-        for section in non_numbered_sections:
-            sections_dict.update({section: non_numbered_sections.index(section)+max_num})
-        return sections_dict
-
     # P3 KPI
     @kpi_runtime()
     def handle_priority_3(self):
@@ -1397,10 +1351,6 @@ class BATRU_SANDToolBox:
             if not (relevant_sas_zone_data.empty or scene_products_matrix.empty):
                 self.check_sas_zone_in_fixture(
                     scene_products_matrix, relevant_sas_zone_data, fixture)
-
-            # start here
-            sections_in_fixture = relevant_sections_data['section_name'].unique().tolist()
-            sections_order_dict = self.get_sections_order_dict(sections_in_fixture)
 
             for section in sorted(relevant_sections_data['section_number'].unique().tolist()):
 
@@ -1627,7 +1577,7 @@ class BATRU_SANDToolBox:
                 #                                identifier_result=section_in_fixture_identifier_par,
                 #                                should_enter=True)
                 self.common.write_to_db_result(fk=section_in_fixture_fk, numerator_id=section_fk,
-                                               denominator_id=sections_order_dict[section_name], context_id=scene,
+                                               denominator_id=section, context_id=scene,
                                                score=section_score, result=section_custom_res,
                                                identifier_parent=sk_fixture_identifier_par,
                                                identifier_result=section_in_fixture_identifier_par,
