@@ -81,6 +81,7 @@ P2_TEMPLATE = 'P2_monitored_sku'
 P3_TEMPLATE = 'P3_template'
 P4_TEMPLATE = 'p4_template'
 P5_TEMPLATE = 'p5_template'
+HYPHEN = u'–'.encode('utf-8')
 
 TEMPLATE_PATH_MAPPER = {P2_TEMPLATE: P2_PATH, P3_TEMPLATE: P3_PATH,
                         P4_TEMPLATE: P4_PATH, P5_TEMPLATE: P5_PATH}
@@ -357,7 +358,7 @@ class BATRU_SANDToolBox:
     def main_calculation(self):
         """
         This function calculates the KPI results.
-        """
+        # """
         self.handle_priority_1()
         self.handle_priority_2()
         self.handle_priority_3()
@@ -1227,6 +1228,28 @@ class BATRU_SANDToolBox:
 
         return section_data
 
+    @staticmethod
+    def get_sections_order_dict(sections_in_fixture):
+        sections_dict = {}
+        non_numbered_sections = []
+        for section in sections_in_fixture:
+            section = section.encode('uft-8') if isinstance(section, unicode) else section
+            if HYPHEN in section:
+                value_to_list = section.split(HYPHEN)
+            else:
+                value_to_list = section.split('-')
+                if len(value_to_list) == 1:
+                    non_numbered_sections.append(value_to_list[0])
+            if value_to_list > 1:
+                value_to_list = map(lambda x: x.strip(), value_to_list)
+                sec_num = int(float(value_to_list[0]))
+                sections_dict.update({section: sec_num})
+        non_numbered_sections = sorted(non_numbered_sections)
+        max_num = max(sections_dict.values())
+        for section in non_numbered_sections:
+            sections_dict.update({section: non_numbered_sections.index(section)+max_num})
+        return sections_dict
+
     # P3 KPI
     @kpi_runtime()
     def handle_priority_3(self):
@@ -1352,7 +1375,8 @@ class BATRU_SANDToolBox:
                     scene_products_matrix, relevant_sas_zone_data, fixture)
 
             # start here
-            sections_in_fixture = sorted(relevant_sections_data['section_number'].unique().tolist())
+            sections_in_fixture = relevant_sections_data['section_name'].unique().tolist()
+            sections_order_dict = self.get_sections_order_dict(sections_in_fixture)
 
             for section in sorted(relevant_sections_data['section_number'].unique().tolist()):
 
@@ -1573,9 +1597,15 @@ class BATRU_SANDToolBox:
                 # new tables - SK set lvl 3
                 section_custom_res = self.kpi_result_values[self.PRESENCE][self.OOS] if section_score == 0 else \
                     self.kpi_result_values[self.PRESENCE][self.DISTRIBUTED]
+                # self.common.write_to_db_result(fk=section_in_fixture_fk, numerator_id=section_fk,
+                #                                denominator_id=fixture_fk, context_id=scene, score=section_score,
+                #                                result=section_custom_res, identifier_parent=sk_fixture_identifier_par,
+                #                                identifier_result=section_in_fixture_identifier_par,
+                #                                should_enter=True)
                 self.common.write_to_db_result(fk=section_in_fixture_fk, numerator_id=section_fk,
-                                               denominator_id=fixture_fk, context_id=scene, score=section_score,
-                                               result=section_custom_res, identifier_parent=sk_fixture_identifier_par,
+                                               denominator_id=sections_order_dict[section_name], context_id=scene,
+                                               score=section_score, result=section_custom_res,
+                                               identifier_parent=sk_fixture_identifier_par,
                                                identifier_result=section_in_fixture_identifier_par,
                                                should_enter=True)
                 #new tables - SK set lvl 4
@@ -1976,7 +2006,7 @@ class BATRU_SANDToolBox:
         custom_no_competitor_result = self.kpi_result_values[self.PRESENCE][self.OOS] if no_competitors_status == 0 \
             else self.kpi_result_values[self.PRESENCE][self.DISTRIBUTED]
         self.common.write_to_db_result(fk=sas_no_competitor_fk, numerator_id=sas_no_competitor_fk,
-                                       denominator_id=scene, score=no_competitors_status,
+                                       denominator_id=scene, score=no_competitors_status*100,
                                        result=custom_no_competitor_result,
                                        identifier_parent=fixture_identifier_par, should_enter=True)
         return status
