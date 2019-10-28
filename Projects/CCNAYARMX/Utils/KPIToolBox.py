@@ -4,6 +4,7 @@ from KPIUtils_v2.Utils.GlobalScripts.Scripts import GlobalSessionToolBox
 from KPIUtils_v2.GlobalDataProvider.PsDataProvider import PsDataProvider
 from KPIUtils_v2.Calculations.SurveyCalculations import Survey
 from KPIUtils_v2.Calculations.BlockCalculations_v2 import Block
+from KPIUtils_v2.DB.CommonV2 import Common as CommonV2
 # from BlockCalculations_v3 import Block
 
 
@@ -109,6 +110,7 @@ class ToolBox(GlobalSessionToolBox):
 
     def __init__(self, data_provider, output):
         GlobalSessionToolBox.__init__(self, data_provider, output)
+        self.common_v2 = CommonV2(self.data_provider)
         self.ps_data_provider = PsDataProvider(data_provider)
         self.block = Block(data_provider)
         self.templates = {}
@@ -129,7 +131,7 @@ class ToolBox(GlobalSessionToolBox):
             # self.calculate_share_of_empty(row)
             # self.calculate_bay_count(row)
             # self.calculate_per_bay_sos(row)
-            self.calcualte_survey(row)
+            self.calculate_survey(row)
         return
 
     def calculate_sos(self, row):
@@ -599,32 +601,44 @@ class ToolBox(GlobalSessionToolBox):
         self.common.write_to_db_result(kpi_fk, numerator_id=numerator_id,
                                        denominator_id=denominator_id, result=result)
 
-    def calcualte_survey(self, row):
+    def calculate_survey(self, row):
 
         # Step 1:
         kpi_name = row[KPI_NAME]
-        template_group = row[TASK_TEMPLATE_GROUP]
+        kpi_fk = self.common.get_kpi_fk_by_kpi_name(kpi_name)
+        numerator_entity = row[NUMERATOR_ENTITY]
+        denominator_entity = row[DENOMINATOR_ENTITY]
 
-        # Step 2:
-        template_name = row[TEMPLATE_NAME]
 
-        # Step 3:
-        relevant_scif_columns = [TEMPLATE_GROUP, TEMPLATE_NAME]
-
-        # Step 4:
-        relevant_scif = self.scif[relevant_scif_columns]
-
-        # Step 5:
-        relevant_scif = relevant_scif[relevant_scif[TEMPLATE_GROUP].isin([template_group])]
-
-        # Step 6:
-        relevant_scif = relevant_scif[relevant_scif[TEMPLATE_NAME].isin([template_name])]
+        # template_group = row[TASK_TEMPLATE_GROUP]
+        #
+        # # Step 2:
+        # template_name = row[TEMPLATE_NAME]
+        #
+        # # Step 3:
+        # relevant_scif_columns = [TEMPLATE_GROUP, TEMPLATE_NAME]
+        #
+        # # Step 4:
+        # relevant_scif = self.scif[relevant_scif_columns]
+        #
+        # # Step 5:
+        # relevant_scif = relevant_scif[relevant_scif[TEMPLATE_GROUP].isin([template_group])]
+        #
+        # # Step 6:
+        # relevant_scif = relevant_scif[relevant_scif[TEMPLATE_NAME].isin([template_name])]
 
         # Step 7:
-        if self.survey.check_survey_answer(('question_fk', Const.BONUS_QUESTION_FK), 'Yes,yes,si,Si'):
-            result = 1
-        else:
-            result = 0
+        survey_result = self.caculate_relevant_survey_result(kpi_name)
+
+        denominator_id = self.scif[denominator_entity].mode()[0]
+        numerator_id = self.scif[numerator_entity].mode()[0]
+
+        # Step 10. Save the results in the database
+        self.common.write_to_db_result(kpi_fk, numerator_id=numerator_id,
+                                       denominator_id=denominator_id, result=survey_result)
+
+
+
 
 
     def sanitize_values(self, item):
@@ -661,22 +675,34 @@ class ToolBox(GlobalSessionToolBox):
 
         return facings_target, bay_count_target
 
-    # # Step 3: Establish the variable for the network_x_block_together
-    # if pd.notna(tamano_del_producto):
-    #     relevant_filters = {MANUFACTURER_NAME: manufacturer_name, SUB_CATEGORY: sub_category,
-    #                         TAMANDO_DEL_PRODUCTO: tamano_del_producto}
-    # else:
-    #     relevant_filters = {MANUFACTURER_NAME: manufacturer_name, SUB_CATEGORY: sub_category}
-    #
-    #
-    # # Step 4:  the location variables based on the template
-    # if pd.notna(template_group):
-    #     location_name = TEMPLATE_GROUP
-    #     location_id = template_group
-    # else:
-    #     location_name = TEMPLATE_NAME
-    #     location_id = template_name
+    def caculate_relevant_survey_result(self, kpi_name):
+        result = 'NULL'
+        if kpi_name == 'Primera posicion - Option 1':
+            for relevant_question_fk in [3, 8]:
+                if self.survey.check_survey_answer(('question_fk', relevant_question_fk), ('Si')):
+                    if result == 0:
+                        result = 0
+                    else:
+                        result = 1
+                else:
+                    result = 0
 
-    # location = {location_name: location_id}
+        elif kpi_name == 'Primera posicion - Option 2':
+            if self.survey.check_survey_answer(('question_fk', 2), ('Si')):
+                result = 1
+            else:
+                result = 0
 
-    # Step 8: Calculate the block kpi per scene level. The If statement accounts for the iterate by column logic.
+        elif kpi_name == 'Primera posicion - Option 3':
+            result = "NULL"
+            for relevant_question_fk in [5,6,7]:
+                if self.survey.check_survey_answer(('question_fk', relevant_question_fk), ('Si')):
+                    if result == 0:
+                        result = 0
+                    else:
+                        result = 1
+                else:
+                    result = 0
+
+        return result
+
