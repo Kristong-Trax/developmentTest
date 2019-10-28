@@ -15,6 +15,8 @@ from Projects.BATRU.Utils.Fetcher import BATRUQueries
 from Projects.BATRU.Utils.GeneralToolBox import BATRUGENERALToolBox
 from Projects.BATRU.Utils.PositionGraph import BATRUPositionGraphs
 from KPIUtils_v2.Utils.Decorators.Decorators import kpi_runtime, log_runtime
+from KPIUtils_v2.DB.CommonV2 import Common
+from KPIUtils_v2.Utils.Consts.DB import StaticKpis
 
 
 __author__ = 'uri'
@@ -108,6 +110,24 @@ class BATRUToolBox:
     ASSORTMENT_DISTRIBUTION_AVAILABILITY = 'Assortment Distribution - Availability'
     ASSORTMENT_DISTRIBUTION_DISTRIBUTION = 'Assortment Distribution - Distribution'
     ASSORTMENT_DISTRIBUTION_OOS = 'Assortment Distribution - OOS'
+    CONTRACTED_SKU = 'Contracted - SKU'
+    CUSTOM_OSA_RESULT_SCORE_TYPE = 'CUSTOM_OSA'
+    ASSORTMENT_MR = 'Assortment MR'
+    PRICING_MR = 'Pricing MR'
+    PRICE_SKU = 'Price - SKU'
+    CUSTOM_DATE = 'CUSTOM_DATE'
+    POSM_EQUIPMENT_PER_SCENE = 'POSM Equipment per Scene'
+    POSM_EQUIPMENT_PER_GROUP = 'POSM Equipment per Group'
+    POSM_EQUIPMENT_DISPLAY_IN_GROUP = 'POSM Equipment Display in Group'
+    SAS_FIXTURE_PER_SCENE = 'SAS Fixture in Scene'
+    SAS_DISPLAY = 'SAS Display'
+    SAS_NO_COMPETITOR_KPI = 'No competitors in SAS Zone'
+    SK_FIXTURE_IN_SCENE = 'SK Fixture in Scene'
+    SK_SECTION_IN_FIXTURE = 'SK Section in Fixture'
+    SK_SKU_PRESENCE_NOT_IN_LIST_SKU = 'SK SKU Presence NOT in List - SKU'
+    PRESENCE = 'PRESENCE'
+    OOS = 'OOS'
+    DISTRIBUTED = 'DISTRIBUTED'
 
     def __init__(self, data_provider, output):
         self.k_engine = BaseCalculationsScript(data_provider, output)
@@ -201,7 +221,91 @@ class BATRUToolBox:
         self.all_templates = self.get_templates_from_db()
         self.template_warnings = set()
 
+        self.own_manufacturer_fk = int(self.data_provider.own_manufacturer.param_value.values[0])
+        self.common = Common(self.data_provider)
+        self.new_static_kpis = self.common.kpi_static_data[['pk', StaticKpis.TYPE]]
+        self.kpi_result_values = self.get_kpi_result_values_df()
+        self.kpi_score_values = self.get_kpi_score_values_df()
+        self.kpi_entity = self.get_kpi_entity_type()
+        self.custom_entity = self.get_and_update_custom_entity()
+
 # init functions
+
+    def get_kpi_entity_type(self):
+        query = BATRUQueries.get_kpi_entity_type_query()
+        kpi_entity = pd.read_sql_query(query, self.rds_conn.db)
+        return kpi_entity
+
+    def get_and_update_custom_entity(self):
+        query = BATRUQueries.get_custom_entities_query()
+        custom_entity = pd.read_sql_query(query, self.rds_conn.db)
+
+        # update values for p4 - display_group
+        posm_template = self.get_relevant_template_sheet(P4_TEMPLATE, 'Availability')
+        posm_template['Group Name'] = self.encode_column_in_df(posm_template, 'Group Name')
+        posm_template['Atomic KPI Name'] = self.encode_column_in_df(posm_template, 'Atomic KPI Name')
+        group_update_list = posm_template['Group Name'].unique().tolist()
+        custom_entity = self.update_custom_entity(custom_entity, group_update_list, 'display_group')
+
+        # update values for p4 - display_type
+        display_type_update_set = set(posm_template['Atomic KPI Name'].unique().tolist())
+        # update values for p3 - sas - display_type
+        sas_template = self.get_relevant_template_sheet(P3_TEMPLATE, 'SAS Zone Compliance')
+        sas_template['display_name'] = self.encode_column_in_df(sas_template, 'display_name')
+        display_type_sas_update_list = sas_template['display_name'].unique().tolist()
+
+        display_type_update_set.update(display_type_sas_update_list)
+        display_type_update_list = list(display_type_update_set)
+        custom_entity = self.update_custom_entity(custom_entity, display_type_update_list, 'display_type_in_group')
+
+        #update sections for p3 - sk set
+        sections_template = self.get_relevant_template_sheet(P3_TEMPLATE, 'Sections')
+        sections_template['section_name'] = self.encode_column_in_df(sections_template, 'section_name')
+        sections_update_list = sections_template['section_name'].unique().tolist()
+        custom_entity = self.update_custom_entity(custom_entity, sections_update_list, 'section')
+        return custom_entity
+
+    def update_custom_entity(self, custom_entity_df, update_list, entity_type):
+        ent_type_fk = self.kpi_entity[self.kpi_entity['name'] == entity_type]['pk'].values[0]
+        relevant_ce_values = custom_entity_df['name'].unique().tolist()
+        update_list = filter(lambda x: x not in relevant_ce_values, update_list)
+        self.connect_rds_if_disconnected()
+        cur = self.rds_conn.db.cursor()
+        for value in update_list:
+            query = """ INSERT INTO static.custom_entity (name, entity_type_fk) 
+                        values ('{}', {})""".format(value, ent_type_fk)
+            cur.execute(query)
+        self.rds_conn.db.commit()
+        self.connect_rds_if_disconnected()
+        query = BATRUQueries.get_custom_entities_query()
+        custom_entity = pd.read_sql_query(query, self.rds_conn.db)
+        return custom_entity
+
+    def get_kpi_result_values_df(self):
+        query = BATRUQueries.get_kpi_result_values()
+        query_result = pd.read_sql_query(query, self.rds_conn.db)
+        query_result['value_fk_map'] = query_result.apply(lambda x: {x['result_value']: x['result_fk']}, axis=1)
+        result_types = query_result['result_type'].unique().tolist()
+        result_dict = {}
+        for res_type in result_types:
+            relevant_res_values = query_result[query_result['result_type'] == res_type]['value_fk_map'].values.tolist()
+            result_dict[res_type] = {}
+            for res_value in relevant_res_values:
+                result_dict[res_type].update(res_value)
+        return result_dict
+
+    def get_kpi_score_values_df(self):
+        query = BATRUQueries.get_kpi_score_values()
+        query_result = pd.read_sql_query(query, self.rds_conn.db)
+        query_result['value_fk_map'] = query_result.apply(lambda x: {x['score_value']: x['score_fk']}, axis=1)
+        score_types = query_result['score_type'].unique().tolist()
+        score_dict = {}
+        for score_type in score_types:
+            relevant_score_values = query_result[query_result['score_type'] == score_type]['value_fk_map'].values.tolist()
+            score_dict[score_type] = {}
+            for score_value in relevant_score_values:
+                score_dict[score_type].update(score_value)
+        return score_dict
 
     def encode_data_frames(self):
         self.kpi_static_data['kpi_name'] = self.encode_column_in_df(
@@ -358,6 +462,14 @@ class BATRUToolBox:
                            'NA': '5. NA'}
         last_cycles_products = self.calculate_history_based_assortment(self.session_fk)
         contracted_products = self.tools.get_store_assortment_for_store(self.store_id).values()
+
+        visit_summary_parent = self.common.get_kpi_fk_by_kpi_type(self.ASSORTMENT_MR)
+        identifier_parent_visit_sum = self.common.get_dictionary(kpi_fk=visit_summary_parent)
+        contracted_fk = self.common.get_kpi_fk_by_kpi_type(self.CONTRACTED)
+        identifier_parent_contracted = self.common.get_dictionary(kpi_fk=contracted_fk)
+        contracted_sku_fk = self.common.get_kpi_fk_by_kpi_type(self.CONTRACTED_SKU)
+        new_sku_results = {}
+
         for template_group in [EXIT_TEMPLATE_GROUP, ENTRY_TEMPLATE_GROUP]:
             session_product_fks = self.scif.loc[(self.scif['dist_sc'] == 1) &
                                                 (self.scif['template_group'] == template_group.encode('utf-8'))][
@@ -467,6 +579,17 @@ class BATRUToolBox:
                                                         kpi_set_name=set_for_api,
                                                         kpi_name=contracted_api_mapping[template_group],
                                                         atomic_kpi_name=product)
+
+                        # new tables
+                        new_sku_results[product_fk] = {} if product_fk not in new_sku_results.keys() \
+                            else new_sku_results[product_fk]
+                        if template_group == EXIT_TEMPLATE_GROUP:
+                            new_sku_results[product_fk]['score'] = \
+                                self.kpi_score_values[self.CUSTOM_OSA_RESULT_SCORE_TYPE][result]
+                        if template_group == ENTRY_TEMPLATE_GROUP:
+                            new_sku_results[product_fk]['result'] = \
+                                self.kpi_result_values[self.CUSTOM_OSA_RESULT_SCORE_TYPE][result]
+
                 if assortment == total_assortment:
                     oos = round((sum(oos_rest_score_list.values()) /
                                  float(len(total_assortment))) * 100, 1)
@@ -521,9 +644,27 @@ class BATRUToolBox:
                                                     kpi_set_name=set_for_api_aggregations,
                                                     kpi_name=contracted_api_mapping[template_group],
                                                     atomic_kpi_name=self.CONTRACTED_DISTRIBUTION)
+                    # new tables - lvl 1 and lvl 0
+                    if template_group == EXIT_TEMPLATE_GROUP:
+                        self.common.write_to_db_result(fk=contracted_fk, numerator_id=self.own_manufacturer_fk,
+                                                       denominator_id=self.store_id, result=availability,
+                                                       numerator_result=distribution, denominator_result=oos,
+                                                       should_enter=True,
+                                                       identifier_parent=identifier_parent_visit_sum,
+                                                       identifier_result=identifier_parent_contracted)
+                        self.common.write_to_db_result(fk=visit_summary_parent, numerator_id=self.own_manufacturer_fk,
+                                                       denominator_id=self.store_id, result=availability,
+                                                       score=availability, should_enter=True,
+                                                       identifier_result=identifier_parent_visit_sum)
 
                 else:
                     pass
+
+        # new tables - lvl 2
+        for product_fk, product_results in new_sku_results.items():
+            self.common.write_to_db_result(fk=contracted_sku_fk, numerator_id=product_fk, denominator_id=self.store_id,
+                                           result=product_results['result'], score=product_results['score'],
+                                           identifier_parent=identifier_parent_contracted, should_enter=True)
         return
 
     def calculate_history_based_assortment(self, session_id, required_template_group=None):
@@ -807,14 +948,48 @@ class BATRUToolBox:
             self.merged_additional_data = self.merged_additional_data.loc[
                 self.merged_additional_data['template_name'] == EFFICIENCY_TEMPLATE_NAME.encode('utf-8')]
             if not self.merged_additional_data.empty:
+                price_top_kpi = self.common.get_kpi_fk_by_kpi_type(self.PRICING_MR)
+                identifier_parent_top_kpi = self.common.get_dictionary(kpi_fk=price_top_kpi)
+                mob_price_monitor_fk = self.common.get_kpi_fk_by_kpi_type(MOBILE_PRICE_MONITORING)
+                identifier_parent_mob_price_monitor = self.common.get_dictionary(kpi_fk=mob_price_monitor_fk)
+
                 score = self.calculate_fulfilment(monitored_sku['product_ean_code_lead'])
                 efficiency_score = self.calculate_efficiency()
-                self.get_raw_data()
-                self.set_p2_sku_mobile_results(monitored_sku)
+                # self.get_raw_data()
+                # self.set_p2_sku_mobile_results(monitored_sku)
+                dates_in_session = self.get_raw_data()
+                self.update_result_values_with_new_dates(dates_in_session)
+                self.set_p2_sku_mobile_results(monitored_sku, identifier_parent_mob_price_monitor)
                 if score or score == 0:
                     self.write_to_db_result(set_fk, format(score, '.2f'), self.LEVEL1)
                     self.write_to_db_result(fk=mobile_set_fk, result=format(score, '.2f'), level=self.LEVEL1,
                                             score_2=format(efficiency_score, '.2f'))
+                    # new tables - lvl 0 and 1
+                    self.common.write_to_db_result(fk=price_top_kpi, numerator_id=self.own_manufacturer_fk,
+                                                   denominator_id=self.store_id, result=round(score, 2),
+                                                   score=round(score, 2), identifier_result=identifier_parent_top_kpi,
+                                                   should_enter=True)
+                    self.common.write_to_db_result(fk=mob_price_monitor_fk, numerator_id=self.own_manufacturer_fk,
+                                                   denominator_id=self.store_id, result=round(score, 2),
+                                                   score=round(efficiency_score, 2),
+                                                   identifier_parent=identifier_parent_top_kpi,
+                                                   identifier_result=identifier_parent_mob_price_monitor,
+                                                   should_enter=True)
+
+    def update_result_values_with_new_dates(self, dates_in_session):
+        existing_date_values = set(self.kpi_result_values[self.CUSTOM_DATE].keys())
+        new_dates = dates_in_session.difference(existing_date_values)
+        # date_value_queries = []
+        self.connect_rds_if_disconnected()
+        cur = self.rds_conn.db.cursor()
+        for date in new_dates:
+            query = """ INSERT INTO static.kpi_result_value (value, kpi_result_type_fk) 
+                        values ('{}', 3)""".format(date)
+            cur.execute(query)
+        self.rds_conn.db.commit()
+        self.connect_rds_if_disconnected()
+        self.kpi_result_values = self.get_kpi_result_values_df()
+        self.kpi_score_values = self.get_kpi_score_values_df()
 
     def get_sku_monitored(self, state):
         # monitored_skus_raw = self.get_custom_template(P2_PATH, 'SKUs')
@@ -917,6 +1092,7 @@ class BATRUToolBox:
         return (facing_of_recognized / float(facing_of_all)) * 100 if facing_of_all else 0
 
     def get_raw_data(self):
+        dates_in_session = set()
         for index in xrange(len(self.merged_additional_data)):
             row = self.merged_additional_data.iloc[index]
             product_for_db = row['product_ean_code_lead']
@@ -932,6 +1108,7 @@ class BATRUToolBox:
                 formatted_date_for_db = '0'
             else:
                 formatted_date_for_db = row['fixed_date'].strftime('%m.%Y')
+            dates_in_session.add('date: {}'.format(formatted_date_for_db))
 
             self.write_to_db_result_for_api(score=price_value_for_db, level=self.LEVEL3, level3_score=None,
                                             kpi_set_name=P2_SET_PRICE,
@@ -945,11 +1122,13 @@ class BATRUToolBox:
         # using P4 save function to save None without problems so will add set name to api.
         self.write_to_db_result_for_api(score=None, level=self.LEVEL1,
                                         level3_score=None, kpi_set_name=P2_SET_DATE)
+        return dates_in_session
 
-    def set_p2_sku_mobile_results(self, monitored_sku):
+    def set_p2_sku_mobile_results(self, monitored_sku, identifier_parent):
         new_products = False
         set_name = MOBILE_PRICE_MONITORING
         kpi_fk = MOBILE_PRICE_MONITORING_KPI_FK
+        price_sku_fk = self.common.get_kpi_fk_by_kpi_type(self.PRICE_SKU)
         try:
             existing_skus = self.all_products[(self.all_products['product_type'].isin([OTHER, SKU, POSM])) &
                                               (self.all_products['product_ean_code'].isin(monitored_sku['product_ean_code_lead'].values))]
@@ -972,6 +1151,8 @@ class BATRUToolBox:
             try:
                 product_name = self.all_products[self.all_products['product_ean_code'] == row.product_ean_code_lead][
                     'product_short_name'].drop_duplicates().values[0]
+                product_fk = self.all_products[self.all_products['product_ean_code'] == row.product_ean_code_lead][
+                    'product_fk'].drop_duplicates().values[0]
             except Exception as e:
                 Log.debug('Product ean {} is not defined in the DB'.format(row.product_ean_code))
                 continue
@@ -1006,6 +1187,12 @@ class BATRUToolBox:
 
                 self.write_to_db_result(fk=kpi_fk, result=result,
                                         level=self.LEVEL3, score=score, result_2=result2)
+                # new tables - lvl 3
+                custom_score = self.kpi_score_values[self.CUSTOM_DATE]['date: {}'.format(result2)] if result2 != '0' \
+                    else 0
+                self.common.write_to_db_result(fk=price_sku_fk, numerator_id=product_fk, denominator_id=self.store_id,
+                                               numerator_result=score, score=custom_score, result=result,
+                                               identifier_parent=identifier_parent, should_enter=True)
             except Exception as e:
                 Log.error('{}'.format(e))
 
@@ -1041,6 +1228,16 @@ class BATRUToolBox:
     # P3 KPI
     @kpi_runtime()
     def handle_priority_3(self):
+        sas_new_tables_fk = self.common.get_kpi_fk_by_kpi_type(SAS)
+        sas_identifier_par = self.common.get_dictionary(kpi_fk=sas_new_tables_fk)
+
+        sk_new_tables_fk = self.common.get_kpi_fk_by_kpi_type(SK)
+        sk_identifier_par = self.common.get_dictionary(kpi_fk=sk_new_tables_fk)
+
+        sk_section_presence_fk = self.common.get_kpi_fk_by_kpi_type(self.SKU_PRESENCE_KPI_NAME)
+        sk_section_sequence_fk = self.common.get_kpi_fk_by_kpi_type(self.SKU_SEQUENCE_KPI_NAME)
+        sk_section_repeating_fk = self.common.get_kpi_fk_by_kpi_type(self.SKU_REPEATING_KPI_NAME)
+        sk_sku_presence_not_in_list_fk = self.common.get_kpi_fk_by_kpi_type(self.SK_SKU_PRESENCE_NOT_IN_LIST_SKU)
 
         if not self.scif.empty:
             attribute_3 = self.scif['additional_attribute_3'].values[0]
@@ -1098,7 +1295,8 @@ class BATRUToolBox:
             except Exception as e:
                 Log.debug('Product ean {} is not defined in the DB for Sequence list'.format(
                     product_ean_code))
-
+        sas_fixture_in_scene_fk = self.common.get_kpi_fk_by_kpi_type(self.SAS_FIXTURE_PER_SCENE)
+        sk_fixture_in_scene_fk = self.common.get_kpi_fk_by_kpi_type(self.SK_FIXTURE_IN_SCENE)
         for scene in scenes:
 
             if not self.scif.loc[self.scif['scene_fk'] == scene][
@@ -1112,6 +1310,12 @@ class BATRUToolBox:
                                          == template_name]['additional_attribute_1'].values[0]
             if fixture not in sections_template_data['fixture'].unique().tolist():
                 continue
+
+            fixture_fk = self.templates.loc[self.templates['template_name'] == template_name]['template_fk'].values[0]
+            sas_fixture_identifier_par = self.common.get_dictionary(kpi_fk=sas_fixture_in_scene_fk, fixture=fixture_fk,
+                                                                    scene_fk=scene)
+            sk_fixture_identifier_par = self.common.get_dictionary(kpi_fk=sk_fixture_in_scene_fk, fixture=fixture_fk,
+                                                                   scene_fk=scene)
 
             fixture_name_for_db = self.check_fixture_past_present_in_visit(fixture)
 
@@ -1149,6 +1353,11 @@ class BATRUToolBox:
                 section_name = section_data['section_name'].values[0]
                 start_sequence, end_sequence, start_shelf, end_shelf = self.get_section_limits(section_data)
 
+                section_in_fixture_fk = self.common.get_kpi_fk_by_kpi_type(self.SK_SECTION_IN_FIXTURE)
+                section_fk = self.get_custom_entity_pk_by_value(section_name)
+                section_in_fixture_identifier_par = self.common.get_dictionary(kpi_fk=section_in_fixture_fk,
+                                                                               section=section_fk, fixture=fixture_fk,
+                                                                               scene_fk=scene)
                 if section_data['Above SAS zone?'].values[0] != 'N':
                     shelf_number = 'shelf_number'
                 else:
@@ -1176,6 +1385,7 @@ class BATRUToolBox:
                 no_empties = False
                 sku_repeating_passed = False
                 misplaced_products = []
+                misplaced_products_fks = []
 
                 if not section_shelf_data.empty:
 
@@ -1291,6 +1501,8 @@ class BATRUToolBox:
                             misplaced_products = \
                                 section_shelf_data[section_shelf_data['product_ean_code_lead'].isin(misplaced_products_eans)][
                                     'product_name'].unique().tolist()
+                            misplaced_products_fks = self.all_products[self.all_products['product_ean_code_lead']. \
+                                isin(misplaced_products_eans)]['product_fk'].unique().tolist()
 
                 # Initial score values
                 sku_presence_score = 0
@@ -1348,6 +1560,47 @@ class BATRUToolBox:
                                             score=section_score, score_2=section_score_2,
                                             level_3_only=True, level2_name_for_atomic=fixture_name_for_db)
 
+                # new tables - SK set lvl 3
+                section_custom_res = self.kpi_result_values[self.PRESENCE][self.OOS] if section_score == 0 else \
+                    self.kpi_result_values[self.PRESENCE][self.DISTRIBUTED]
+                self.common.write_to_db_result(fk=section_in_fixture_fk, numerator_id=section_fk,
+                                               denominator_id=section, context_id=scene,
+                                               score=section_score, result=section_custom_res,
+                                               identifier_parent=sk_fixture_identifier_par,
+                                               identifier_result=section_in_fixture_identifier_par,
+                                               should_enter=True)
+                # new tables - SK set lvl 4
+                sequence_custom_res = self.kpi_result_values[self.PRESENCE][self.OOS] if sku_sequence_score == 0 else \
+                    self.kpi_result_values[self.PRESENCE][self.DISTRIBUTED]
+                self.common.write_to_db_result(fk=sk_section_sequence_fk, numerator_id=section_fk,
+                                               denominator_id=fixture_fk, context_id=scene, score=sku_sequence_score,
+                                               result=sequence_custom_res,
+                                               identifier_parent=section_in_fixture_identifier_par, should_enter=True)
+                repeating_custom_res = self.kpi_result_values[self.PRESENCE][self.OOS] if sku_repeating_score == 0 else \
+                    self.kpi_result_values[self.PRESENCE][self.DISTRIBUTED]
+                self.common.write_to_db_result(fk=sk_section_repeating_fk, numerator_id=section_fk,
+                                               denominator_id=fixture_fk, context_id=scene, score=sku_repeating_score,
+                                               result=repeating_custom_res,
+                                               identifier_parent=section_in_fixture_identifier_par, should_enter=True)
+
+                presence_section_identifier_par = self.common.get_dictionary(kpi_fk=sk_section_presence_fk,
+                                                                             section=section_fk, fixture=fixture_fk,
+                                                                             scene_fk=scene)
+                presence_custom_res = self.kpi_result_values[self.PRESENCE][self.OOS] if sku_presence_score == 0 else \
+                    self.kpi_result_values[self.PRESENCE][self.DISTRIBUTED]
+                self.common.write_to_db_result(fk=sk_section_presence_fk, numerator_id=section_fk,
+                                               denominator_id=fixture_fk, context_id=scene, score=sku_presence_score,
+                                               result=presence_custom_res,
+                                               identifier_result=presence_section_identifier_par,
+                                               identifier_parent=section_in_fixture_identifier_par, should_enter=True)
+
+                # new tables - sk set - lvl 5
+                for product_fk in misplaced_products_fks:
+                    self.common.write_to_db_result(fk=sk_sku_presence_not_in_list_fk, numerator_id=product_fk,
+                                                   denominator_id=section, context_id=scene, result=1, score=1,
+                                                   identifier_parent=presence_section_identifier_par,
+                                                   should_enter=True)
+
                 # Saving to API set
                 self.write_to_db_result_for_api(score=misplaced_products_result, level=self.LEVEL3, kpi_set_name=SK_RAW_DATA,
                                                 kpi_name=SK_RAW_DATA,
@@ -1386,9 +1639,13 @@ class BATRUToolBox:
                                             kpi_name=SK_RAW_DATA,
                                             atomic_kpi_name=self.API_EQUIPMENT_KPI_NAME.format(
                                                 fixture=fixture_name_for_db))
+            self.common.write_to_db_result(fk=sk_fixture_in_scene_fk, numerator_id=fixture_fk, denominator_id=scene,
+                                           score=fixture_score, result=fixture_score,
+                                           identifier_result=sk_fixture_identifier_par,
+                                           identifier_parent=sk_identifier_par, should_enter=True)
 
             fixture_sas_zone_score = self.calculate_sas_zone_compliance(
-                fixture_name_for_db, self.sas_zones_scores_dict, scene)
+                fixture_name_for_db, self.sas_zones_scores_dict, scene, sas_fixture_identifier_par)
             self.save_level2_and_level3(SAS, fixture_name_for_db,
                                         result=fixture_sas_zone_score, level_2_only=True)
             self.write_to_db_result_for_api(score=None, level=self.LEVEL3,
@@ -1396,13 +1653,21 @@ class BATRUToolBox:
                                             kpi_name=SAS_RAW_DATA,
                                             atomic_kpi_name=self.API_EQUIPMENT_KPI_NAME.format(
                                                 fixture=fixture_name_for_db))
+            custom_sas_fixture_res = self.kpi_result_values[self.PRESENCE][self.OOS] if fixture_sas_zone_score == 0 else \
+                self.kpi_result_values[self.PRESENCE][self.DISTRIBUTED]
+            self.common.write_to_db_result(fk=sas_fixture_in_scene_fk, numerator_id=fixture_fk, denominator_id=scene,
+                                           score=fixture_sas_zone_score, result=custom_sas_fixture_res,
+                                           identifier_result=sas_fixture_identifier_par,
+                                           identifier_parent=sas_identifier_par, should_enter=True)
 
         # Store level results
         if self.sas_zone_statuses_dict:
             sas_zone_score = str(sum(self.sas_zone_statuses_dict.values())/100) + '/' +\
                 str(len(self.sas_zone_statuses_dict.values()))
+            numerator = float(sum(self.sas_zone_statuses_dict.values()) / 100)
         else:
             sas_zone_score = str(0) + '/' + str(len(self.sas_zone_statuses_dict.values()))
+            numerator = 0
 
         if self.fixtures_statuses_dict:
             sk_score = min(self.fixtures_statuses_dict.values())
@@ -1413,6 +1678,17 @@ class BATRUToolBox:
         self.save_level1(SK_RAW_DATA, score=sk_score)
         self.save_level1(SAS, score=sas_zone_score)
         self.save_level1(SAS_RAW_DATA, score=sas_zone_score)
+
+        denominator = len(self.sas_zone_statuses_dict.values())
+        sas_score_new_tables = numerator / denominator * 100 if self.sas_zone_statuses_dict else 0
+        self.common.write_to_db_result(fk=sas_new_tables_fk, numerator_id=self.own_manufacturer_fk,
+                                       denominator_id=self.store_id, result=numerator, target=denominator,
+                                       score=sas_score_new_tables, numerator_result=numerator,
+                                       denominator_result=denominator, identifier_result=sas_identifier_par,
+                                       should_enter=True)
+        self.common.write_to_db_result(fk=sk_new_tables_fk, numerator_id=self.own_manufacturer_fk,
+                                       denominator_id=self.store_id, result=sk_score, score=sk_score,
+                                       identifier_result=sk_identifier_par, should_enter=True)
 
     def check_sku_repeating(self, section_shelf_data, priorities_section):
         """
@@ -1627,7 +1903,7 @@ class BATRUToolBox:
         else:
             return False
 
-    def calculate_sas_zone_compliance(self, fixture, sas_zone_scores_dict, scene):
+    def calculate_sas_zone_compliance(self, fixture, sas_zone_scores_dict, scene, fixture_identifier_par):
         if fixture in sas_zone_scores_dict.keys():
             no_competitors_status = sas_zone_scores_dict[fixture]
         else:
@@ -1656,6 +1932,7 @@ class BATRUToolBox:
             status = 0
         else:
             status = 100
+            sas_display_fk = self.common.get_kpi_fk_by_kpi_type(self.SAS_DISPLAY)
             for display in relevant_df['display_name'].unique().tolist():
                 relevant_display = relevant_df.loc[relevant_df['display_name'] == display].iloc[0]
                 if not relevant_display.empty:
@@ -1671,6 +1948,12 @@ class BATRUToolBox:
                                                     kpi_set_name=SAS_RAW_DATA, kpi_name=SAS_RAW_DATA,
                                                     atomic_kpi_name=self.API_DISPLAY_KPI_NAME.format(
                                                         fixture=fixture, display=display))
+                    custom_presence_result = self.kpi_result_values[self.PRESENCE][self.DISTRIBUTED] if \
+                        presence_score == 100 else self.kpi_result_values[self.PRESENCE][self.OOS]
+                    numerator_id = self.get_custom_entity_pk_by_value(display)
+                    self.common.write_to_db_result(fk=sas_display_fk, numerator_id=numerator_id, denominator_id=scene,
+                                                   score=presence_score, result=custom_presence_result,
+                                                   identifier_parent=fixture_identifier_par, should_enter=True)
         self.sas_zone_statuses_dict[fixture] = status
         self.save_level2_and_level3(SAS, self.NO_COMPETITORS_IN_SAS_ZONE, result=None, score=no_competitors_status,
                                     level_3_only=True,
@@ -1679,6 +1962,13 @@ class BATRUToolBox:
                                         kpi_set_name=SAS_RAW_DATA, kpi_name=SAS_RAW_DATA,
                                         atomic_kpi_name=self.API_NO_COMPETITORS_IN_SAS_ZONE.format(
                                             fixture=fixture))
+        sas_no_competitor_fk = self.common.get_kpi_fk_by_kpi_type(self.SAS_NO_COMPETITOR_KPI)
+        custom_no_competitor_result = self.kpi_result_values[self.PRESENCE][self.OOS] if no_competitors_status == 0 \
+            else self.kpi_result_values[self.PRESENCE][self.DISTRIBUTED]
+        self.common.write_to_db_result(fk=sas_no_competitor_fk, numerator_id=sas_no_competitor_fk,
+                                       denominator_id=scene, score=no_competitors_status * 100,
+                                       result=custom_no_competitor_result,
+                                       identifier_parent=fixture_identifier_par, should_enter=True)
         return status
 
     # P4 KPI
@@ -1709,6 +1999,8 @@ class BATRUToolBox:
         self.posm_in_session = self.tools.get_posm_availability()
         equipment_in_store = 0
         equipments = posm_template['KPI Display Name'].unique().tolist()
+        posm_status_fk = self.common.get_kpi_fk_by_kpi_type(POSM_AVAILABILITY)
+        identif_parent_posm_status = self.common.get_dictionary(kpi_fk=posm_status_fk)
         for equipment in equipments:
             if equipment in self.scif['additional_attribute_1'].unique().tolist():
                 equipment_template = posm_template.loc[posm_template['KPI Display Name'] == equipment]
@@ -1733,7 +2025,8 @@ class BATRUToolBox:
 
                     if not equipment_template.empty:
                         try:
-                            result = self.calculate_passed_equipments(equipment_template, equipment_to_db, scene)  # has equipment passed?
+                            result = self.calculate_passed_equipments(equipment_template, equipment_to_db, scene,
+                                                                      identif_parent_posm_status)  # has equipment passed?
                         except IndexError:
                             Log.debug('The KPI is not in the DB yet')
                             result = 0
@@ -1744,6 +2037,12 @@ class BATRUToolBox:
 
         set_score = '{}/{}'.format(score, equipment_in_store)
         self.write_to_db_result(set_fk, set_score, level=self.LEVEL1)
+        # new tables
+        score_new_tables = float(score) / equipment_in_store if equipment_in_store else 0
+        self.common.write_to_db_result(fk=posm_status_fk, numerator_id=self.own_manufacturer_fk,
+                                       denominator_id=self.store_id, score=score_new_tables, result=score,
+                                       target=equipment_in_store,
+                                       identifier_result=identif_parent_posm_status, should_enter=True)
 
         self.add_posms_not_assigned_to_scenes_in_template()
         # publish POSMs to API
@@ -1768,20 +2067,23 @@ class BATRUToolBox:
                                         DEFAULT_ATOMIC_NAME, row['display_name'].encode('utf8'))
             self.p4_posm_to_api[name] = 1
 
-    def calculate_passed_equipments(self, equipment_template, equipment_name, scene_fk):
+    def calculate_passed_equipments(self, equipment_template, equipment_name, scene_fk, identifier_parent_posm_status):
         """
         Gets the count for posm products in specific equipment.
         :param equipment_template: a data frame filtered by equipment
         :return: num of passed posm in group
         """
         self.p4_posm_to_api_products = {}
+        equipm_in_scene_kpi_fk = self.common.get_kpi_fk_by_kpi_type(self.POSM_EQUIPMENT_PER_SCENE)
+        identif_parent_equipm_in_scene = self.common.get_dictionary(kpi_fk=equipm_in_scene_kpi_fk, scene=scene_fk)
 
         groups = equipment_template['Group Name'].unique().tolist()
         group_counter = 0
         for group in groups:
             group_template = equipment_template.loc[equipment_template['Group Name'] == group]
             if not group_template.empty:
-                result = self.calculate_passed_groups(group_template, equipment_name, scene_fk)
+                result = self.calculate_passed_groups(group_template, equipment_name, scene_fk,
+                                                      identif_parent_equipm_in_scene)
             else:
                 result = 0
             group_counter = group_counter + 1 if result else group_counter
@@ -1800,9 +2102,17 @@ class BATRUToolBox:
         score = 1 if group_counter == len(groups) else 0
         threshold = len(groups)
         self.write_to_db_result(kpi_fk, result=group_counter, score_2=score, score_3=threshold, level=self.LEVEL2)
+        # new tables - lvl2
+        template_fk = self.scif[self.scif['scene_fk'] == scene_fk]['template_fk'].values[0]
+        custom_result = self.kpi_result_values[self.PRESENCE][self.DISTRIBUTED] if score == 1 else \
+            self.kpi_result_values[self.PRESENCE][self.OOS]
+        self.common.write_to_db_result(fk=equipm_in_scene_kpi_fk, numerator_id=template_fk, denominator_id=scene_fk,
+                                       numerator_result=group_counter, denominator_result=threshold, score=score,
+                                       result=custom_result, identifier_parent=identifier_parent_posm_status,
+                                       identifier_result=identif_parent_equipm_in_scene, should_enter=True)
         return score
 
-    def calculate_passed_groups(self, group_template, equipment_name, scene_fk):
+    def calculate_passed_groups(self, group_template, equipment_name, scene_fk, identifier_equipment_parent):
         """
         Gets the count for posm products in specific equipment.
         :param group_template: a data frame filtered by group
@@ -1812,18 +2122,51 @@ class BATRUToolBox:
         """
         group_name = group_template['Group Name'].iloc[0]
         posm_counter = 0
+        group_kpi_fk = self.common.get_kpi_fk_by_kpi_type(self.POSM_EQUIPMENT_PER_GROUP)
+        identifier_group_parent = self.common.get_dictionary(kpi_fk=group_kpi_fk, group_name=group_name)
+        all_atomics = group_template['Atomic KPI Name'].unique().tolist()
+        atomic_in_group = {}
+        for atomic in all_atomics:
+            atomic_in_group[atomic] = 0
+
         for i in xrange(len(group_template)):
             row = group_template.iloc[i]
             if row['Product Name']:
                 result = self.calculate_specific_posm(row, equipment_name, group_name, scene_fk)
                 posm_counter += 1 if result else 0
+                atomic_in_group[row['Atomic KPI Name']] = max(atomic_in_group[row['Atomic KPI Name']], result)
+
+        # new tables lvl 4
+        display_in_group_kpi = self.common.get_kpi_fk_by_kpi_type(self.POSM_EQUIPMENT_DISPLAY_IN_GROUP)
+        group_fk = self.get_custom_entity_pk_by_value(group_name)
+        for atomic_name, score in atomic_in_group.items():
+            display_in_group_fk = self.get_custom_entity_pk_by_value(atomic_name)
+            custom_result = self.kpi_result_values[self.PRESENCE][self.DISTRIBUTED] if score == 1 else \
+                self.kpi_result_values[self.PRESENCE][self.OOS]
+            self.common.write_to_db_result(fk=display_in_group_kpi, numerator_id=display_in_group_fk,
+                                           denominator_id=group_fk, result=custom_result, score=score,
+                                           identifier_parent=identifier_group_parent, should_enter=True)
         kpi_fk = self.kpi_static_data.loc[(self.kpi_static_data['kpi_set_name'] == POSM_AVAILABILITY) &
                                           (self.kpi_static_data['kpi_name'] == equipment_name) &
                                           (self.kpi_static_data['atomic_kpi_name'] == group_name)]['atomic_kpi_fk'].iloc[0]
         score = 1 if posm_counter == len(group_template) else 0
         self.write_to_db_result(kpi_fk, result=posm_counter, score=score,
                                 threshold=len(group_template), level=self.LEVEL3)
+        # new tables - lvl 3
+        group_fk = self.get_custom_entity_pk_by_value(group_name)
+        template_fk = self.scif[self.scif['scene_fk'] == scene_fk]['template_fk'].values[0]
+        custom_result = self.kpi_result_values[self.PRESENCE][self.DISTRIBUTED] if score == 1 else \
+            self.kpi_result_values[self.PRESENCE][self.OOS]
+        self.common.write_to_db_result(fk=group_kpi_fk, numerator_id=group_fk, denominator_id=template_fk,
+                                       numerator_result=posm_counter, denominator_result=len(group_template),
+                                       result=custom_result, score=score, identifier_parent=identifier_equipment_parent,
+                                       identifier_result=identifier_group_parent, should_enter=True)
         return score
+
+    def get_custom_entity_pk_by_value(self, entity_value):
+        relevant_entity = self.custom_entity[self.custom_entity['name'] == entity_value]
+        entity_fk = relevant_entity['pk'].values[0] if len(relevant_entity) > 0 else 0
+        return entity_fk
 
     def get_posm_filters(self, filters, row):
         posm_filters = {}
@@ -1884,6 +2227,9 @@ class BATRUToolBox:
             kpi_template, 'KPI Name(scene type attribute 1)')
         score = 0
         set_score = 0
+
+        parent_fk = self.common.get_kpi_fk_by_kpi_type(SHARE_OF)
+        identifier_parent = self.common.get_dictionary(kpi_fk=parent_fk)
         for i in xrange(len(kpi_template)):
             row = kpi_template.iloc[i]
             kpi_name = row['KPI Name(scene type attribute 1)']
@@ -1901,7 +2247,17 @@ class BATRUToolBox:
                                     score_2=format(score, '.2f'), level=self.LEVEL3)
             self.write_to_db_result(kpi_fk, result=format(score, '.0f'),
                                     score_2=format(score, '.2f'), level=self.LEVEL2)
+            # kpis to new tables
+            new_kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_name.decode('utf8'))
+            numerator_id = self.own_manufacturer_fk if row['Manufacturer'] == 'BAT' else 0
+            self.common.write_to_db_result(fk=new_kpi_fk, numerator_id=numerator_id, denominator_id=self.store_id,
+                                           result=round(score * 100, 2), identifier_parent=identifier_parent,
+                                           should_enter=True)
         self.write_to_db_result(set_fk, result=format(set_score * 100, '.2f'), level=self.LEVEL1)
+        # set to new tables
+        self.common.write_to_db_result(fk=parent_fk, result=round(set_score * 100, 2), denominator_id=self.store_id,
+                                       numerator_id=self.own_manufacturer_fk, identifier_result=identifier_parent,
+                                       score=round(set_score * 100, 2), should_enter=True)
 
     def calculate_soa(self, row):
         manufacturer = row['Manufacturer']
@@ -2249,3 +2605,11 @@ class BATRUToolBox:
             cur.execute(query)
             # print query
         self.rds_conn.db.commit()
+
+    def connect_rds_if_disconnected(self):
+        query = BATRUQueries.get_test_query(self.session_uid)
+        try:
+            test_query = pd.read_sql_query(query, self.rds_conn.db)
+        except Exception as e:
+            Log.warning('Lost connection with mysql or error in query. Connecting again {}'.format(repr(e)))
+            self.rds_conn.connect_rds()

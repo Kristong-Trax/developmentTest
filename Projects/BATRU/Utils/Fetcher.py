@@ -51,3 +51,32 @@ class BATRUQueries(object):
         return """
                 select key_json, data_json, start_date, end_date from static.kpi_external_targets where end_date is null
                 """
+
+    @staticmethod
+    def get_kpi_result_values():
+        return """
+                    SELECT rv.pk as result_fk, rv.value as result_value, rv.kpi_result_type_fk, rt.name as result_type
+                    FROM static.kpi_result_value rv
+                    join static.kpi_result_type rt on rv.kpi_result_type_fk = rt.pk
+                    """
+
+    @staticmethod
+    def get_kpi_score_values():
+        return """
+                    SELECT sv.pk as score_fk, sv.value as score_value, sv.kpi_score_type_fk, st.name as score_type
+                    FROM static.kpi_score_value sv
+                    join static.kpi_score_type st on sv.kpi_score_type_fk = st.pk
+                    """
+
+    @staticmethod
+    def get_test_query(session_uid):
+        return """
+                select * from probedata.session where session_uid = '{}'""".format(session_uid)
+
+    @staticmethod
+    def get_custom_entities_query():
+        return """SELECT * from static.custom_entity"""
+
+    @staticmethod
+    def get_kpi_entity_type_query():
+        return """ SELECT * from static.kpi_entity_type """
