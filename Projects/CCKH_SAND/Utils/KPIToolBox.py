@@ -1,4 +1,3 @@
-
 import os
 import pandas as pd
 from datetime import datetime
@@ -12,11 +11,10 @@ from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
 
 from Projects.CCKH_SAND.Utils.Fetcher import CCKH_SANDQueries
 from Projects.CCKH_SAND.Utils.GeneralToolBox import CCKH_SANDGENERALToolBox
-from Projects.CCKH_SAND.Utils.ParseComplexTemplates import parse_template
 from KPIUtils_v2.Utils.Consts.DB import SessionResultsConsts
 from KPIUtils_v2.Utils.Consts.GlobalConsts import HelperConsts
 from KPIUtils_v2.DB.CommonV2 import Common as CommonV2
-
+from KPIUtils_v2.GlobalDataProvider.PsDataProvider import PsDataProvider
 
 __author__ = 'Nimrod'
 
@@ -39,12 +37,13 @@ def log_runtime(description, log_start=False):
             calc_end_time = datetime.utcnow()
             Log.info('{} took {}'.format(description, calc_end_time - calc_start_time))
             return result
+
         return wrapper
+
     return decorator
 
 
 class CCKH_SANDConsts(object):
-
     BINARY = 'BINARY'
     PROPORTIONAL = 'PROPORTIONAL'
 
@@ -57,11 +56,10 @@ class CCKH_SANDConsts(object):
 
 
 class CCKH_SANDTemplateConsts(object):
-
     SEPARATOR = ','
     ALL = 'ALL'
 
-    STORE_TYPE = 'Store Type'
+    STORE_TYPE = 'store_type'
     SEGMENTATION = 'Segmentation (Store.Additional_attribute_2)'
     EXECUTION_CONDITION = 'KPI Execution Condition (When no condition then Mandatory)'
     KPI_NAME = 'KPI Name'
@@ -80,12 +78,15 @@ class CCKH_SANDTemplateConsts(object):
     SCORE = 'SCORE'
     WEIGHT = 'WEIGHT'
     GAP_PRIORITY = 'GAP PRIORITY'
-
+    TEMPLATE_OPERATION = 'operation_type'
     PRODUCTS = 'Products EANs'
+    BASIC_SHEET = 'KPIs'
+    AVAILABILITY_SHEET = 'AVAILABILITY'
+    VISIBILITY_SHEET = 'VISIBILITY'
+    COOLER_SHEET = 'COOLER'
 
 
 class CCKH_SANDToolBox(CCKH_SANDConsts):
-
     LEVEL1 = 1
     LEVEL2 = 2
     LEVEL3 = 3
@@ -109,15 +110,21 @@ class CCKH_SANDToolBox(CCKH_SANDConsts):
         self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         self.general_tools = CCKH_SANDGENERALToolBox(self.data_provider, self.output)
         self.template = CCKH_SANDTemplateConsts()
-        self.templates_data = parse_template(TEMPLATE_PATH, 'KPIs')
-        self.availability_data = parse_template(TEMPLATE_PATH, 'AVAILABILITY', 4)
-        self.visibility_data = parse_template(TEMPLATE_PATH, 'VISIBILITY', 4)
-        self.cooler_data = parse_template(TEMPLATE_PATH, 'COOLER', 4)
+        self.templates_info = self.external_targets[self.external_targets[CCKH_SANDTemplateConsts.TEMPLATE_OPERATION] ==
+                                                    CCKH_SANDTemplateConsts.BASIC_SHEET]
+        self.availability_info = self.external_targets[self.external_targets[CCKH_SANDTemplateConsts.TEMPLATE_OPERATION]
+                                                       == CCKH_SANDTemplateConsts.AVAILABILITY_SHEET]
+        self.visibility_info = self.external_targets[self.external_targets[CCKH_SANDTemplateConsts.TEMPLATE_OPERATION]
+                                                     == CCKH_SANDTemplateConsts.VISIBILITY_SHEET]
+        self.cooler_info = self.external_targets[self.external_targets[CCKH_SANDTemplateConsts.TEMPLATE_OPERATION]
+                                                 == CCKH_SANDTemplateConsts.COOLER_SHEET]
         self.kpi_static_data = self.get_kpi_static_data()
         self.kpi_results_queries = []
         self.commonV2 = CommonV2(self.data_provider)
         self.kpi_new_static_data = self.commonV2.get_new_kpi_static_data()
         self.manufacturer = int(self.data_provider.own_manufacturer.param_value.values[0])
+        self.ps_data_provider = PsDataProvider(self.data_provider, self.output)
+        self.external_targets = self.ps_data_provider.get_kpi_external_targets()
 
     def get_kpi_static_data(self):
         """
@@ -134,14 +141,16 @@ class CCKH_SANDToolBox(CCKH_SANDConsts):
         """
         set_scores = {}
         results_list_new_db = []
-        main_children = self.templates_data[self.templates_data[self.template.KPI_GROUP] == self.RED_SCORE]
-        final_main_child = main_children.iloc[len(main_children)-1]# if fails here -> problem with template
-        for c in xrange(len(main_children)-1):
+        main_children = self.templates_info[self.templates_info[self.template.KPI_GROUP] == self.RED_SCORE]
+        final_main_child = main_children[main_children['Tested KPI Group'] == self.RED_SCORE].iloc[0]
+        for c in xrange(0, len(main_children)):
             main_child = main_children.iloc[c]
-            main_child_kpi_fk = self.get_new_kpi_fk(main_child)# kpi fk from new tables
+            if main_child['Tested KPI Group'] == self.RED_SCORE:
+                continue
+            main_child_kpi_fk = self.get_new_kpi_fk(main_child)  # kpi fk from new tables
             main_kpi_identifier = self.commonV2.get_dictionary(kpi_fk=main_child_kpi_fk)
             if self.validate_store_type(main_child):
-                children = self.templates_data[self.templates_data
+                children = self.templates_info[self.templates_info
                                                [self.template.KPI_GROUP].str.encode(HelperConsts.UTF8) ==
                                                main_child[self.template.KPI_NAME].encode(HelperConsts.UTF8)]
                 scores = []
@@ -214,7 +223,8 @@ class CCKH_SANDToolBox(CCKH_SANDConsts):
         self.write_to_db_result(set_fk, (actual_points, max_points, red_score), level=self.LEVEL1)
         results_list_new_db.append(self.write_to_db_new_results(self.get_new_kpi_fk(final_main_child), red_score,
                                                                 red_score, actual_points, max_points,
-                                                                identifier_result=self.RED_SCORE, identifier_parent=CCKH_SANDConsts.WEB_HIERARCHY))
+                                                                identifier_result=self.RED_SCORE,
+                                                                identifier_parent=CCKH_SANDConsts.WEB_HIERARCHY))
         results_list_new_db.append(self.write_to_db_new_results(self.get_new_kpi_by_name(self.RED_SCORE), red_score,
                                                                 red_score, actual_points, max_points,
                                                                 identifier_result=CCKH_SANDConsts.WEB_HIERARCHY))
@@ -230,7 +240,10 @@ class CCKH_SANDToolBox(CCKH_SANDConsts):
         if not stores:
             validation = True
         elif isinstance(stores, (str, unicode)):
-            if stores.upper() == self.template.ALL or self.store_type in stores.split(self.template.SEPARATOR):
+            if stores.upper() == self.template.ALL:
+                validation = True
+        elif isinstance(stores, list):
+            if self.store_type in stores:
                 validation = True
         return validation
 
@@ -244,19 +257,19 @@ class CCKH_SANDToolBox(CCKH_SANDConsts):
         else:
             kpi_group = params[self.template.KPI_GROUP]
             if kpi_group == 'Visibility':
-                custom_template = self.visibility_data
+                custom_template = self.visibility_info
             elif kpi_group in ('Ambient Space', 'Cooler Space'):
-                custom_template = self.cooler_data
+                custom_template = self.cooler_info
             else:
                 return False
             condition = (custom_template[self.template.KPI_NAME] == params[self.template.KPI_NAME])
-            if self.template.KPI_GROUP in custom_template.keys():
+            if self.template.KPI_GROUP in custom_template.keys() and kpi_group != 'Visibility':
                 condition &= (custom_template[self.template.KPI_GROUP]
                               == params[self.template.KPI_GROUP])
             kpi_data = custom_template[condition]
             if kpi_data.empty:
                 return False
-            weight = kpi_data[self.store_type].values[0]
+            weight = kpi_data[kpi_data['store_type'] == self.store_type]['Target'].values[0]
             try:
                 validation = float(weight)
             except ValueError:
@@ -271,7 +284,8 @@ class CCKH_SANDToolBox(CCKH_SANDConsts):
         kpi_name = pillar[self.template.TRANSLATION]
         atomic_fk = self.kpi_static_data[(self.kpi_static_data['kpi_name'].str.encode(HelperConsts.UTF8) ==
                                           kpi_name.encode(HelperConsts.UTF8)) & (
-            self.kpi_static_data['atomic_kpi_name'].str.encode(HelperConsts.UTF8) == atomic_name.encode(HelperConsts.UTF8))][
+                                                 self.kpi_static_data['atomic_kpi_name'].str.encode(
+                                                     HelperConsts.UTF8) == atomic_name.encode(HelperConsts.UTF8))][
             'atomic_kpi_fk']
         if atomic_fk.empty:
             return None
@@ -293,23 +307,24 @@ class CCKH_SANDToolBox(CCKH_SANDConsts):
 
     def get_scene_types(self, params):
         """
-        This function extracts the relevant scene types (==aditional_attribute_1) from the template.
+        This function extracts the relevant scene types (==additional_attribute_1) from the template.
         """
         scene_types = params[self.template.SCENE_TYPE]
-        if not scene_types or scene_types.upper() == self.template.ALL:
+        if not scene_types or (isinstance(scene_types, (str, unicode)) and scene_types.upper() == self.template.ALL):
             return None
-        return scene_types.split(self.template.SEPARATOR)
+        return scene_types
 
     def calculate_availability(self, params):
         """
         This function calculates Availability typed Atomics from a customized template, and saves the results to the DB.
         """
-        kpi_data = self.availability_data[self.availability_data[self.template.KPI_NAME] ==
-                                          params[self.template.KPI_NAME]]
+        kpi_data = self.availability_info[(self.availability_info[self.template.KPI_NAME] ==
+                                           params[self.template.KPI_NAME]) & (self.availability_info[
+                                                                                  self.template.STORE_TYPE] == self.store_type)]
         if kpi_data.empty:
             return False
         kpi_data = kpi_data.iloc[0]
-        target = kpi_data[self.store_type]
+        target = kpi_data[CCKH_SANDTemplateConsts.TARGET]
         if not target:
             return False
         target = float(target)
