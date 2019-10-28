@@ -127,30 +127,31 @@ class ToolBox:
         if relevant_scif.empty:
             return
 
-        # if kpi_name not in [
-        #     # 'Eye Level Availability'
-        #     # 'Flanker Displays', 'Disruptor Displays'
-        #     # 'Innovation Distribution',
-        #     # 'Display by Location',
-        #     # 'Display by Location'
-        #     # 'Leading Main Section on Left',
-        #     # 'Leading Cooler on Left',
-        #     # 'Leading Cooler on Right',
-        #     # 'Leading Main Section on Right',
-        #     # 'Leading Cold Room on Left',
-        #     # 'Leading Cold Room on Right',
-        #     # 'Share of Segment Cooler Facings'
-        #     # 'Share of Segment Warm Facings',
-        #     # 'ABI Share of Display Space'
-        #     # 'Sleeman Share of Display Space'
-        #     # 'Share of Total Space'
-        #     # 'Warm Base Measurement'
-        #     # 'Warm Bays',
-        #     'Dynamic Out of Stock'
-        #
-        #
-        # ]:
-        #     return
+        if kpi_name not in [
+            # 'Eye Level Availability'
+            # 'Flanker Displays', 'Disruptor Displays'
+            # 'Innovation Distribution',
+            # 'Display by Location',
+            # 'Display by Location'
+            # 'Leading Main Section on Left',
+            # 'Leading Cooler on Left',
+            # 'Leading Cooler on Right',
+            # 'Leading Main Section on Right',
+            # 'Leading Cold Room on Left',
+            # 'Leading Cold Room on Right',
+            # 'Share of Segment Cooler Facings'
+            # 'Share of Segment Warm Facings',
+            # 'ABI Share of Display Space'
+            # 'Sleeman Share of Display Space'
+            # 'Share of Total Space'
+            # 'Warm Base Measurement'
+            # 'Warm Bays',
+            # 'Dynamic Out of Stock',
+            'Pack Distribution vs Competitors'
+
+
+        ]:
+            return
 
         if kpi_type not in [
             # 'Share of Facings',
@@ -159,8 +160,9 @@ class ToolBox:
             # 'Anchor',
             'Base Measurement',
             'Bay Count',
-            'Out of Stock'
-        ]:
+            'Out of Stock',
+            'Pack Distribution'
+            ]:
             return
 
         if kpi_name in ['POP Seasonal Programs', 'Molson Coors Cooler Compliance']:
@@ -488,7 +490,8 @@ class ToolBox:
 
         return level['end'], results
 
-
+    def calculate_pack_distribution(self, kpi_name, kpi_line, relevant_scif, main_line, level, **kwargs):
+        print('asdf')
 
 
 
@@ -1197,6 +1200,8 @@ class ToolBox:
             return self.calculate_base_measure
         elif kpi_type == Const.OUT_OF_STOCK:
             return self.calculate_dynamic_oos
+        elif kpi_type == Const.PACK_DISTRIBUTION:
+            return self.calculate_pack_distribution
 
 
 
