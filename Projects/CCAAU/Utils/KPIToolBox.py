@@ -6,7 +6,6 @@ from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Cloud.Services.Connector.Keys import DbUsers
 from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Trax.Utils.Logging.Logger import Log
-# from Trax.Utils.Logging.Logger import Log
 from KPIUtils_v2.DB.Common import Common
 from KPIUtils_v2.Calculations.CalculationsUtils.GENERALToolBoxCalculations import GENERALToolBox
 # from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
@@ -43,8 +42,6 @@ class CCAAUToolBox:
         self.common = Common(self.data_provider)
         self.project_name = self.data_provider.project_name
         self.session_uid = self.data_provider.session_uid
-        self.templates_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data')
-        self.excel_file_path = os.path.join(self.templates_path, 'template.xlsx')
         self.products = self.data_provider[Data.PRODUCTS]
         self.all_products = self.data_provider[Data.ALL_PRODUCTS]
         self.match_product_in_scene = self.data_provider[Data.MATCHES]
@@ -66,6 +63,8 @@ class CCAAUToolBox:
                                              sheetname="Exclude")
         self.Include_filters = pd.read_excel(os.path.join(kpi_path[:- len(base_file)], 'Data', 'template.xlsx'),
                                              sheetname="Include")
+        self.bay_count_kpi = pd.read_excel(os.path.join(kpi_path[:- len(base_file)], 'Data', 'template.xlsx'),
+                                           sheetname="BayCountKPI")
 
     def main_calculation(self):
         """
@@ -191,35 +190,50 @@ class CCAAUToolBox:
         space_length = filtered_scif['gross_len_split_stack'].sum()
         return sum_of_facings, space_length
 
-    def get_template_details(self, sheet_name):
-        template = pd.read_excel(self.excel_file_path, sheetname=sheet_name)
-        return template
-
     def calculate_bay_kpi(self):
-        Log.info("Scene based calculations for zone KPIs...")
-        bay_kpi_sheet = self.get_template_details(BAY_COUNT_SHEET)
+        bay_kpi_sheet = self.bay_count_kpi
         kpi = self.kpi_static_data.loc[self.kpi_static_data['type'] == BAY_COUNT_KPI]
-
         if kpi.empty:
-            Log.info("KPI Name:{} not found in DB".format(BAY_COUNT_KPI))
+            Log.info("CCAAU Calculate KPI Name:{} not found in DB".format(BAY_COUNT_KPI))
         else:
-            Log.info("KPI Name:{} found in DB".format(BAY_COUNT_KPI))
-            df_results = self.match_product_in_scene.merge(self.scene_info, how='left', on='scene_fk')
-            df_results = df_results.merge(self.templates, how='left', on='template_fk')
-            df_results = df_results.assign(
-                inSceneType=df_results.template_name.isin(bay_kpi_sheet.Scene_type).astype(int))
-            df_results = df_results.loc[df_results['inSceneType'] == 1]
-            df_results.drop_duplicates(subset=['scene_fk', 'bay_number'], inplace=True)
-            df_results['store_fk'] = self.session_info['store_fk'].iloc[0]
-            for ind, row in bay_kpi_sheet.iterrows():
-                df_iter = df_results.loc[df_results['template_name'] == row['Scene_type']]
-                bay_count = len(df_iter.index)
-                if not df_iter.empty:
+            Log.info("CCAAU Calculate KPI Name:{} found in DB".format(BAY_COUNT_KPI))
+            bay_kpi_row = bay_kpi_sheet[bay_kpi_sheet['KPI Name'] == BAY_COUNT_KPI]
+            if not bay_kpi_row.empty:
+                scene_types_to_consider = bay_kpi_row['Scene Type'].iloc[0]
+                if scene_types_to_consider == '*':
+                    # Consider all scene types
+                    scene_types_to_consider = 'all'
+                else:
+                    scene_types_to_consider = [x.strip() for x in scene_types_to_consider.split(',')]
+                mpis_with_scene = self.match_product_in_scene.merge(self.scene_info, how='left', on='scene_fk')
+                mpis_with_scene_and_template = mpis_with_scene.merge(self.templates, how='left', on='template_fk')
+                if scene_types_to_consider != 'all':
+                    mpis_with_scene_and_template = mpis_with_scene_and_template[
+                        mpis_with_scene_and_template['template_name'].isin(scene_types_to_consider)]
+                mpis_template_group = mpis_with_scene_and_template.groupby('template_fk')
+                for template_fk, template_data in mpis_template_group:
+                    Log.info("Running for template ID {templ_id}".format(
+                        templ_id=template_fk,
+                    ))
+                    total_bays_for_scene_type = 0
+                    scene_group = template_data.groupby('scene_fk')
+                    for scene_fk, scene_data in scene_group:
+                        Log.info("KPI Name:{kpi} bay count is {bay_c} for scene ID {scene_id}".format(
+                            kpi=BAY_COUNT_KPI,
+                            bay_c=int(scene_data['bay_number'].max()),
+                            scene_id=scene_fk,
+                        ))
+                        total_bays_for_scene_type += int(scene_data['bay_number'].max())
+                    Log.info("KPI Name:{kpi} total bay count is {bay_c} for template ID {templ_id}".format(
+                        kpi=BAY_COUNT_KPI,
+                        bay_c=total_bays_for_scene_type,
+                        templ_id=template_fk,
+                    ))
                     self.common.write_to_db_result_new_tables(
                         fk=int(kpi['pk'].iloc[0]),
-                        numerator_id=int(df_iter['template_fk'].iloc[0]),  # product ID
-                        numerator_result=int(bay_count),  # median promo price comes as numerator
-                        denominator_id=int(df_iter['store_fk'].iloc[0]),  # store ID
-                        denominator_result=int(bay_count),  # scene id comes as denominator
-                        result=int(bay_count)
-                )
+                        numerator_id=int(template_fk),
+                        numerator_result=total_bays_for_scene_type,
+                        denominator_id=int(self.store_id),
+                        denominator_result=total_bays_for_scene_type,
+                        result=total_bays_for_scene_type,
+                    )
