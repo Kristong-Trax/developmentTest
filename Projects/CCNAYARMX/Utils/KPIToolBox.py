@@ -9,7 +9,6 @@ from KPIUtils_v2.DB.CommonV2 import Common as CommonV2
 
 
 import pandas as pd
-import numpy as np
 import os
 from datetime import datetime
 
@@ -87,7 +86,7 @@ BAY_NUMBER = 'bay_number'
 # Read the sheet
 Sheets = [SOS, BLOCK_TOGETHER, SHARE_OF_EMPTY, BAY_COUNT, PER_BAY_SOS, SURVEY]
 
-TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'CCNayarTemplatev0.5.1.xlsx')
+TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'CCNayarTemplatev0.6.xlsx')
 
 
 def log_runtime(description, log_start=False):
@@ -132,6 +131,10 @@ class ToolBox(GlobalSessionToolBox):
             # self.calculate_bay_count(row)
             # self.calculate_per_bay_sos(row)
             self.calculate_survey(row)
+            self.store_wrong_data_for_parent_kpi_comunicacion()
+            self.store_wrong_data_for_parent_kpi_enfriador()
+            self.store_wrong_data_for_parent_kpi_plataformas()
+            self.store_wrong_data_for_parent_kpi_portafolio_y_precios()
         return
 
     def calculate_sos(self, row):
@@ -635,6 +638,32 @@ class ToolBox(GlobalSessionToolBox):
         # Step 10. Save the results in the database
         self.common.write_to_db_result(kpi_fk, numerator_id=numerator_id,
                                        denominator_id=denominator_id, result=survey_result)
+
+    def store_wrong_data_for_parent_kpi_enfriador(self):
+        kpi_fk = self.common.get_kpi_fk_by_kpi_name('Enfriador')
+        numerator_id = self.scif['manufacturer_fk'].mode()[0]
+        denominator_id = self.scif['template_fk'].mode()[0]
+        self.common.write_to_db_result(kpi_fk, numerator_id=numerator_id,
+                                       denominator_id=denominator_id, result = 0)
+    def store_wrong_data_for_parent_kpi_portafolio_y_precios(self):
+        kpi_fk = self.common.get_kpi_fk_by_kpi_name('Portafolio y Precios')
+        numerator_id = self.scif['manufacturer_fk'].mode()[0]
+        denominator_id = self.scif['template_fk'].mode()[0]
+        self.common.write_to_db_result(kpi_fk, numerator_id=numerator_id,
+                                       denominator_id=denominator_id, result=0)
+    def store_wrong_data_for_parent_kpi_plataformas(self):
+        kpi_fk = self.common.get_kpi_fk_by_kpi_name('Plataformas')
+        numerator_id = self.scif['manufacturer_fk'].mode()[0]
+        denominator_id = self.scif['template_fk'].mode()[0]
+        self.common.write_to_db_result(kpi_fk, numerator_id=numerator_id,
+                                       denominator_id=denominator_id, result=0)
+    def store_wrong_data_for_parent_kpi_comunicacion(self):
+        kpi_fk = self.common.get_kpi_fk_by_kpi_name('Comunicacion')
+        numerator_id = self.scif['manufacturer_fk'].mode()[0]
+        denominator_id = self.scif['template_fk'].mode()[0]
+        self.common.write_to_db_result(kpi_fk, numerator_id=numerator_id,
+                                       denominator_id=denominator_id, result=0)
+
 
     def sanitize_values(self, item):
         if pd.isna(item):
