@@ -609,7 +609,6 @@ class ToolBox(GlobalSessionToolBox):
         numerator_entity = row[NUMERATOR_ENTITY]
         denominator_entity = row[DENOMINATOR_ENTITY]
 
-
         # template_group = row[TASK_TEMPLATE_GROUP]
         #
         # # Step 2:
@@ -636,10 +635,6 @@ class ToolBox(GlobalSessionToolBox):
         # Step 10. Save the results in the database
         self.common.write_to_db_result(kpi_fk, numerator_id=numerator_id,
                                        denominator_id=denominator_id, result=survey_result)
-
-
-
-
 
     def sanitize_values(self, item):
         if pd.isna(item):
@@ -679,11 +674,11 @@ class ToolBox(GlobalSessionToolBox):
         result = 'NULL'
         if kpi_name == 'Primera posicion - Option 1':
             for relevant_question_fk in [3, 8]:
+                if result == 0:
+                    break
+
                 if self.survey.check_survey_answer(('question_fk', relevant_question_fk), ('Si')):
-                    if result == 0:
-                        result = 0
-                    else:
-                        result = 1
+                    result = 1
                 else:
                     result = 0
 
@@ -695,14 +690,12 @@ class ToolBox(GlobalSessionToolBox):
 
         elif kpi_name == 'Primera posicion - Option 3':
             result = "NULL"
-            for relevant_question_fk in [5,6,7]:
+            for relevant_question_fk in [5, 6, 7]:
+                if result == 0:
+                    break
                 if self.survey.check_survey_answer(('question_fk', relevant_question_fk), ('Si')):
-                    if result == 0:
-                        result = 0
-                    else:
-                        result = 1
+                    result = 1
                 else:
                     result = 0
 
         return result
-
