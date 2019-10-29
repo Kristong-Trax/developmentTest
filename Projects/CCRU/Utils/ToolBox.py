@@ -4158,7 +4158,11 @@ class CCRUKPIToolBox:
             location_calculated = 0
         else:
 
-            scene_fk = scif_loc['scene_fk'].values[0]
+            if location == PROMO_LOC_DISPLAY:
+                scene_fk = scif_loc['scene_fk'].values[0]
+            else:
+                scene_fk = None
+
             location_calculated = 1
 
             score += self.check_promo_compliance_display_presence(
