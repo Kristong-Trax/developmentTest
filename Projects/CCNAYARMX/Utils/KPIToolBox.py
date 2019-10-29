@@ -50,6 +50,7 @@ FACINGS_TARGET = 'facings_target'
 BAY_COUNT_TARGET = 'bay_count_target'
 SUB_CATEGORY = 'sub_category'
 ITERATE_BY = 'iterate by'
+RELEVANT_QUESTION_FK = 'relevant_question_fk'
 NUMERATOR_PARAM_1 = 'numerator param 1'
 NUMERATOR_VALUE_1 = 'numerator value 1'
 DENOMINATOR_PARAM_1 = 'denominator param 1'
@@ -717,28 +718,11 @@ class ToolBox(GlobalSessionToolBox):
             # Step 1:
             kpi_name = row[KPI_NAME]
             kpi_fk = self.common.get_kpi_fk_by_kpi_name(kpi_name)
+            relevant_question_fk = self.sanitize_values(row[RELEVANT_QUESTION_FK])
             numerator_entity = row[NUMERATOR_ENTITY]
             denominator_entity = row[DENOMINATOR_ENTITY]
 
-            # template_group = row[TASK_TEMPLATE_GROUP]
-            #
-            # # Step 2:
-            # template_name = row[TEMPLATE_NAME]
-            #
-            # # Step 3:
-            # relevant_scif_columns = [TEMPLATE_GROUP, TEMPLATE_NAME]
-            #
-            # # Step 4:
-            # relevant_scif = self.scif[relevant_scif_columns]
-            #
-            # # Step 5:
-            # relevant_scif = relevant_scif[relevant_scif[TEMPLATE_GROUP].isin([template_group])]
-            #
-            # # Step 6:
-            # relevant_scif = relevant_scif[relevant_scif[TEMPLATE_NAME].isin([template_name])]
-
-            # Step 7:
-            survey_result = self.caculate_relevant_survey_result(kpi_name)
+            survey_result = self.caculate_relevant_survey_result(relevant_question_fk)
 
             denominator_id = self.scif[denominator_entity].mode()[0]
             numerator_id = self.scif[numerator_entity].mode()[0]
@@ -777,8 +761,12 @@ class ToolBox(GlobalSessionToolBox):
         if pd.isna(item):
             return item
         else:
-            items = [x.strip() for x in item.split(',')]
-            return items
+            if type(item) == int:
+                return str(item)
+            else:
+                items = [x.strip() for x in item.split(',')]
+                return items
+
 
     def delete_filter_nan(self, filters):
         filters = [filter for filter in filters if str(filter) != 'nan']
@@ -807,32 +795,17 @@ class ToolBox(GlobalSessionToolBox):
 
         return facings_target, bay_count_target
 
-    def caculate_relevant_survey_result(self, kpi_name):
+    def caculate_relevant_survey_result(self, relevant_question_fk):
         result = 'NULL'
-        if kpi_name == 'Primera posicion - Option 1':
-            for relevant_question_fk in [3, 8]:
-                if result == 0:
-                    break
+        for question_fk in relevant_question_fk:
+            if result == 0:
+                break
 
-                if self.survey.check_survey_answer(('question_fk', relevant_question_fk), ('Si')):
-                    result = 1
-                else:
-                    result = 0
-
-        elif kpi_name == 'Primera posicion - Option 2':
-            if self.survey.check_survey_answer(('question_fk', 2), ('Si')):
+            if self.survey.check_survey_answer(('question_fk', question_fk), ('Si')):
                 result = 1
             else:
                 result = 0
 
-        elif kpi_name == 'Primera posicion - Option 3':
-            result = "NULL"
-            for relevant_question_fk in [5, 6, 7]:
-                if result == 0:
-                    break
-                if self.survey.check_survey_answer(('question_fk', relevant_question_fk), ('Si')):
-                    result = 1
-                else:
-                    result = 0
+
 
         return result
