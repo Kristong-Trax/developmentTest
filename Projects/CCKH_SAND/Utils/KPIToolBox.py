@@ -212,7 +212,7 @@ class CCKH_SANDToolBox(CCKH_SANDConsts):
                                                  percentage), level=self.LEVEL2)
                 set_scores[kpi_name] = (max_points, actual_points)
                 results_list_new_db.append(self.write_to_db_new_results(main_child_kpi_fk, percentage, percentage,
-                                                                        actual_points, max_points,
+                                                                        actual_points*100, max_points*100,
                                                                         identifier_result=main_kpi_identifier,
                                                                         identifier_parent=self.RED_SCORE))
 
@@ -222,11 +222,11 @@ class CCKH_SANDToolBox(CCKH_SANDConsts):
         set_fk = self.kpi_static_data['kpi_set_fk'].values[0]
         self.write_to_db_result(set_fk, (actual_points, max_points, red_score), level=self.LEVEL1)
         results_list_new_db.append(self.write_to_db_new_results(self.get_new_kpi_fk(final_main_child), red_score,
-                                                                red_score, actual_points, max_points,
+                                                                red_score, actual_points*100, max_points*100,
                                                                 identifier_result=self.RED_SCORE,
                                                                 identifier_parent=CCKH_SANDConsts.WEB_HIERARCHY))
         results_list_new_db.append(self.write_to_db_new_results(self.get_new_kpi_by_name(self.RED_SCORE), red_score,
-                                                                red_score, actual_points, max_points,
+                                                                red_score, actual_points*100, max_points*100,
                                                                 identifier_result=CCKH_SANDConsts.WEB_HIERARCHY))
         self.commonV2.save_json_to_new_tables(results_list_new_db)
         self.commonV2.commit_results_data()
