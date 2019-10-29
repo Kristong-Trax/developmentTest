@@ -9,6 +9,7 @@ from KPIUtils_v2.DB.CommonV2 import Common as CommonV2
 
 
 import pandas as pd
+import numpy as np
 import os
 from datetime import datetime
 
@@ -64,6 +65,9 @@ BAY_COUNT = 'Bay Count'
 PER_BAY_SOS = 'Per bay SOS'
 SURVEY = 'Survey'
 
+POS_OPTIONS = 'POS Options'
+TARGETS_AND_CONSTRAINTS = 'Targets and Constraints'
+
 # Scif Filters
 BRAND_FK = 'brand_fk'
 PRODUCT_FK = 'product_fk'
@@ -84,9 +88,13 @@ TEMPLATE_GROUP = 'template_group'
 BAY_NUMBER = 'bay_number'
 
 # Read the sheet
-Sheets = [SOS, BLOCK_TOGETHER, SHARE_OF_EMPTY, BAY_COUNT, PER_BAY_SOS, SURVEY]
+SHEETS = [SOS, BLOCK_TOGETHER, SHARE_OF_EMPTY, BAY_COUNT, PER_BAY_SOS, SURVEY]
+POS_OPTIONS_SHEETS = [POS_OPTIONS, TARGETS_AND_CONSTRAINTS]
+
 
 TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'CCNayarTemplatev0.6.xlsx')
+POS_OPTIONS_TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data',
+                                         'CCNayar_POS_Options_v2.xlsx')
 
 
 def log_runtime(description, log_start=False):
@@ -118,10 +126,13 @@ class ToolBox(GlobalSessionToolBox):
         self.own_manuf_fk = int(self.data_provider.own_manufacturer.param_value.values[0])
         self.survey = Survey(self.data_provider, output=output, ps_data_provider=self.ps_data_provider,
                              common=self.common_v2)
+        self.platformas_data = self.generate_platformas_data()
 
     def parse_template(self):
-        for sheet in Sheets:
+        for sheet in SHEETS:
             self.templates[sheet] = pd.read_excel(TEMPLATE_PATH, sheet_name=sheet)
+        for sheet in POS_OPTIONS_SHEETS:
+            self.templates[sheet] = pd.read_excel(POS_OPTIONS_TEMPLATE_PATH, sheet_name=sheet)
 
     def main_calculation(self):
 
@@ -136,6 +147,102 @@ class ToolBox(GlobalSessionToolBox):
         self.store_wrong_data_for_parent_kpi_plataformas()
         self.store_wrong_data_for_parent_kpi_portafolio_y_precios()
         return
+
+    def generate_platformas_data(self):
+        platformas_data = pd.DataFrame(columns=['scene_id', 'Platform Name', 'POS Option Present',
+                                                'Mandatory SKUs found', 'Minimum facings met', 'Coke purity'])
+        for scene in self.scif[['scene_id', 'template_name']].drop_duplicates().itertuples():
+            scene_scif = self.scif[self.scif['scene_id'] == scene.scene_id]
+            product_names_in_scene = \
+                set(scene_scif['product_name'].unique().tolist())
+
+            relevant_pos_template = self.templates[POS_OPTIONS]
+            relevant_pos_template = relevant_pos_template[
+                relevant_pos_template['template_name'].str.encode('utf-8') == scene.template_name.encode('utf-8')]
+
+            # check the 'POS Option' activation, i.e. 'copete'
+            pos_option_found = 0  # False
+            for index, relevant_row in relevant_pos_template.iterrows():
+                groups = self._get_groups(relevant_row, 'POS Option')
+                for group in groups:
+                    if all(product in product_names_in_scene for product in group):
+                        pos_option_found = 1  # True
+                        break
+            if not pos_option_found:
+                continue
+
+            platform_name = relevant_row['Platform Name']
+
+            targets_and_constraints = self._get_relevant_targets_and_constraints(platform_name, scene.template_name)
+            if targets_and_constraints.empty:
+                # this is needed for the Precios en Cooler KPI
+                platformas_data.loc[len(platformas_data), platformas_data.columns.tolist()] = [
+                    scene.scene_id, platform_name, pos_option_found, 0, 0, 0
+                ]
+                continue
+
+            # calculate the 'empaques' data
+            assortment_groups = self._get_groups(relevant_row, 'Assortment')
+            mandatory_skus_found = 1  # True
+            for assortment in assortment_groups:
+                if not any(product in product_names_in_scene for product in assortment):
+                    mandatory_skus_found = 0  # False
+                    break
+            limited_product = self.sanitize_values(targets_and_constraints['max_facings_product_local_name'].iloc[0])
+            if limited_product and limited_product is not np.nan:
+                if scene_scif[scene_scif['product_name'].isin(limited_product)]['facings'].sum() > \
+                        targets_and_constraints['max_facings'].iloc[0]:
+                    mandatory_skus_found = 0
+            # this should be refactored to be more programmatic
+            if targets_and_constraints['Assortment_Facings_Constraints'].iloc[0] == 'Assortment_2>Assortment_1':
+                assortment_1_facings = \
+                    scene_scif[scene_scif['product_name'].isin[assortment_groups[0]]]['facings'].sum()
+                assortment_2_facings = \
+                    scene_scif[scene_scif['product_name'].isin[assortment_groups[1]]]['facings'].sum()
+                if assortment_1_facings >= assortment_2_facings:
+                    mandatory_skus_found = 0
+
+            # calculate the 'botellas' data
+            total_facings = scene_scif[scene_scif['product_name'].isin(
+                [product for sublist in assortment_groups for product in sublist])]['facings'].sum()
+            if total_facings > targets_and_constraints['Facings_target'].iloc[0]:
+                minimum_facings_met = 1  # True
+            else:
+                minimum_facings_met = 0  # False
+
+            # calculate the coke purity (coke SOS) of this scene
+            coke_purity_for_scene = self._get_coke_purity_for_scene(scene_scif)
+
+            platformas_data.loc[len(platformas_data), platformas_data.columns.tolist()] = [
+                scene.scene_id, platform_name, pos_option_found, mandatory_skus_found,
+                minimum_facings_met, coke_purity_for_scene
+            ]
+        return platformas_data
+
+    @staticmethod
+    def _get_coke_purity_for_scene(scene_scif):
+        coke_facings = scene_scif[scene_scif['manufacturer_name'] == 'TCCC']['facings'].sum()
+        total_facings = scene_scif['facings'].sum()
+        if coke_facings > 0:
+            return coke_facings / float(total_facings)
+        else:
+            return 0
+
+    def _get_relevant_targets_and_constraints(self, platform_name, template_name):
+        relevant_template = self.templates[TARGETS_AND_CONSTRAINTS]
+        relevant_template = relevant_template[(relevant_template['Platform Name'] == platform_name) &
+                                              (relevant_template['store_additional_attribute_2'] ==
+                                               self.store_info['additional_attribute_2'].iloc[0]) &
+                                              (relevant_template['template_name'] == template_name)]
+        return relevant_template
+
+    @staticmethod
+    def _get_groups(series, root_string):
+        groups = []
+        for column in [col for col in series.index.tolist() if root_string in col]:
+            if series[column] not in ['', np.nan]:
+                groups.append([x.strip() for x in series[column].split(',')])
+        return groups
 
     def calculate_sos(self):
         '''
