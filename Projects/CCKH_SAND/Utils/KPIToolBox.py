@@ -110,6 +110,13 @@ class CCKH_SANDToolBox(CCKH_SANDConsts):
         self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         self.general_tools = CCKH_SANDGENERALToolBox(self.data_provider, self.output)
         self.template = CCKH_SANDTemplateConsts()
+        self.kpi_static_data = self.get_kpi_static_data()
+        self.kpi_results_queries = []
+        self.commonV2 = CommonV2(self.data_provider)
+        self.kpi_new_static_data = self.commonV2.get_new_kpi_static_data()
+        self.manufacturer = int(self.data_provider.own_manufacturer.param_value.values[0])
+        self.ps_data_provider = PsDataProvider(self.data_provider, self.output)
+        self.external_targets = self.ps_data_provider.get_kpi_external_targets()
         self.templates_info = self.external_targets[self.external_targets[CCKH_SANDTemplateConsts.TEMPLATE_OPERATION] ==
                                                     CCKH_SANDTemplateConsts.BASIC_SHEET]
         self.availability_info = self.external_targets[self.external_targets[CCKH_SANDTemplateConsts.TEMPLATE_OPERATION]
@@ -118,13 +125,6 @@ class CCKH_SANDToolBox(CCKH_SANDConsts):
                                                      == CCKH_SANDTemplateConsts.VISIBILITY_SHEET]
         self.cooler_info = self.external_targets[self.external_targets[CCKH_SANDTemplateConsts.TEMPLATE_OPERATION]
                                                  == CCKH_SANDTemplateConsts.COOLER_SHEET]
-        self.kpi_static_data = self.get_kpi_static_data()
-        self.kpi_results_queries = []
-        self.commonV2 = CommonV2(self.data_provider)
-        self.kpi_new_static_data = self.commonV2.get_new_kpi_static_data()
-        self.manufacturer = int(self.data_provider.own_manufacturer.param_value.values[0])
-        self.ps_data_provider = PsDataProvider(self.data_provider, self.output)
-        self.external_targets = self.ps_data_provider.get_kpi_external_targets()
 
     def get_kpi_static_data(self):
         """
