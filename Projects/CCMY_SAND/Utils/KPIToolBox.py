@@ -144,7 +144,7 @@ class CCMY_SANDToolBox:
                score = self.calculate_facings_sos(kpi_data)
             elif kpi_type == CCMY_SANDConsts.SHELF_PURITY:
                 score = self.calculate_self_purity(kpi_data)
-                self.common.commit_results_data_to_new_tables()
+ #               self.common.commit_results_data_to_new_tables()
             else:
                 continue
 
@@ -152,6 +152,7 @@ class CCMY_SANDToolBox:
                 total_score += score
                 kpi_fk = self.kpi_static_data[self.kpi_static_data['kpi_name'] == group].iloc[0]['kpi_fk']
                 self.write_to_db_result(kpi_fk, score, level=self.LEVEL2)
+                #self.common.commit_results_data_to_new_tables()
 
         if self.kpi_static_data.empty:
             return
@@ -163,6 +164,7 @@ class CCMY_SANDToolBox:
         validation = True
         store_types = kpi_data[CCMY_SANDConsts.STORE_TYPE]
         if store_types and self.store_type not in store_types.split(CCMY_SANDConsts.SEPARATOR):
+            # if list of stores in template  isnt empty and also this store type in it
             validation = False
         return validation
 
