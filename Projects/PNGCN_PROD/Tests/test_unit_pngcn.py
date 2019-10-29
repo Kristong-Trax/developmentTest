@@ -510,7 +510,7 @@ class TestPngcn(TestUnitCase):
                   'bay_number': 2, 'shelf_number': 2, 'facing_sequence_number': 2, 'sub_category': 'HOLA'}])
         scene_tool_box.get_filterd_matches = MagicMock(return_value=pd.DataFrame(data))
         scene_tool_box.common.write_to_db_result = MagicMock()
-        scene_tool_box.calculate_facing_eye_level(data)
+        scene_tool_box.calculate_facing_eye_level(data, 2)
         kpi_results = scene_tool_box.common.write_to_db_result.mock_calls
         if kpi_results:
             self.assertEqual(len(kpi_results), 2, 'expects to write 2 parameters to db')

@@ -120,6 +120,7 @@ class ALTRIAUSToolBox:
         self.calculate_signage_locations_and_widths('Smokeless')
         self.calculate_register_type()
         self.calculate_age_verification()
+        self.calculate_juul_availability()
         self.calculate_assortment()
         self.calculate_vapor_kpis()
 
@@ -247,6 +248,21 @@ class ALTRIAUSToolBox:
         kpi_fk = self.common_v2.get_kpi_fk_by_kpi_type('Age Verification')
         self.common_v2.write_to_db_result(kpi_fk, numerator_id=product_fk, denominator_id=self.store_id,
                                           result=result)
+
+    def calculate_juul_availability(self):
+        relevant_scif = self.scif[(self.scif['brand_name'].isin(['Juul'])) &
+                                  (self.scif['product_type'].isin(['POS']))]
+        juul_pos = relevant_scif['product_fk'].unique().tolist()
+
+        kpi_fk = self.common_v2.get_kpi_fk_by_kpi_type('Juul POS Availability')
+        if not juul_pos:
+            return
+
+        result = 1
+        for product_fk in juul_pos:
+            self.common_v2.write_to_db_result(kpi_fk, numerator_id=product_fk, denominator_id=self.store_id,
+                                              result=result)
+
 
     def calculate_category_space(self, kpi_set_fk, kpi_name, category, scene_types=None):
         template = self.all_template_data.loc[(self.all_template_data['KPI Level 2 Name'] == kpi_name) &
