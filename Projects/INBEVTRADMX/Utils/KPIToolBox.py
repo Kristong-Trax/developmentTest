@@ -57,7 +57,7 @@ class INBEVTRADMXToolBox:
         self.kpi_static_data = self.common.get_kpi_static_data()
         self.kpi_results_queries = []
         self.templates_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data')
-        self.excel_file_path = os.path.join(self.templates_path, 'inbevtradmx_template_11_v2.xlsx')
+        self.excel_file_path = os.path.join(self.templates_path, 'inbevtradmx_template_11_v3.xlsx')
         self.availability = Availability(self.data_provider)
         self.survey_response = self.data_provider[Data.SURVEY_RESPONSES]
         self.geo = GeoLocation.INBEVTRADMXGeo(self.rds_conn, self.session_uid, self.data_provider,
@@ -170,10 +170,19 @@ class INBEVTRADMXToolBox:
             sets = sets['KPI Level 1 Name'].unique().tolist()
 
             if len(sets) == 1:
-                return sets[0]
+                set_name = sets[0]
+
+            elif additional_attribute_4 == 'BC':
+                set_name = sets[0]
+            elif additional_attribute_4 == 'BA':
+                set_name = sets[1]
+            elif additional_attribute_4 == 'MODELORAMA':
+                set_name = sets[2]
 
             else:
                 Log.error('KPI should only run on one KPI set.')
+
+            return set_name
 
 
 
