@@ -142,15 +142,15 @@ class ToolBox(GlobalSessionToolBox):
             self.templates[sheet] = pd.read_excel(POS_OPTIONS_TEMPLATE_PATH, sheet_name=sheet)
 
     def main_calculation(self):
-        for i, row in self.templates[DISTRIBUTION].iterrows():
+        for i, row in self.templates[BLOCK_TOGETHER].iterrows():
             # self.calculate_sos(row)
-            # self.calculate_block_together(row)
+            self.calculate_block_together(row)
             # self.calculate_share_of_empty(row)
             # self.calculate_bay_count(row)
             # self.calculate_per_bay_sos(row)
             # self.calculate_survey(row)
             # self.calculate_availability(row)
-            self.calculate_assortment(row)
+            # self.calculate_assortment(row)
             self.store_wrong_data_for_parent_kpi_comunicacion()
             self.store_wrong_data_for_parent_kpi_enfriador()
             self.store_wrong_data_for_parent_kpi_plataformas()
@@ -426,6 +426,10 @@ class ToolBox(GlobalSessionToolBox):
 
         bay_count_scif = bay_count_scif[bay_count_scif[SUB_CATEGORY].isin(sub_category)]
 
+        denominator_id = self.scif['template_fk'].mode()[0]
+
+        numerator_id = self.get_sub_cat_fk_from_sub_cat(sub_category[0])
+
         if pd.notna(template_group):
             bay_count_scif = bay_count_scif[bay_count_scif[TEMPLATE_GROUP].isin([template_group])]
 
@@ -471,6 +475,7 @@ class ToolBox(GlobalSessionToolBox):
                 location_id = template_name
                 location = {location_name: location_id}
 
+                block_result_list = []
                 for j in unique_bay_number:
                     relevant_filters = {MANUFACTURER_NAME: manufacturer_name, SUB_CATEGORY: sub_category,
                                         BAY_NUMBER: [j]}
@@ -487,13 +492,17 @@ class ToolBox(GlobalSessionToolBox):
                                                                                 'calculate_all_scenes': True})
                         if False in block['is_block'].to_list():
                             result = 0
-                            break
                         else:
                             result = 1
 
-        denominator_id = self.scif['template_fk'].mode()[0]
+                        numerator_id = value
 
-        numerator_id = self.get_sub_cat_fk_from_sub_cat(sub_category[0])
+                        result_dict = {'kpi_name': kpi_name, 'kpi_fk': kpi_fk, 'numerator_id': numerator_id,
+                                       'denominator_id': denominator_id,
+                                       'result': result}
+                        block_result_list.append(result_dict)
+                return block_result_list
+
 
         result_dict = {'kpi_name': kpi_name, 'kpi_fk': kpi_fk, 'numerator_id': numerator_id,
                        'denominator_id': denominator_id,
