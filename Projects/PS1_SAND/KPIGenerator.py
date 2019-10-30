@@ -1,14 +1,14 @@
 from Trax.Utils.Logging.Logger import Log
-from Projects.DIAGEOMX.Utils.KPIToolBox import DIAGEOMXToolBox
+from Projects.PS1_SAND.Utils.KPIToolBox import ToolBox
 from KPIUtils_v2.Utils.Decorators.Decorators import log_runtime
 
 
-class DIAGEOMXGenerator:
+class Generator:
 
     def __init__(self, data_provider, output):
         self.data_provider = data_provider
         self.output = output
-        self.tool_box = DIAGEOMXToolBox(self.data_provider, self.output)
+        self.tool_box = ToolBox(self.data_provider, self.output)
 
     @log_runtime('Total Calculations', log_start=True)
     def main_function(self):
