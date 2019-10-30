@@ -141,6 +141,8 @@ class CCKH_SANDToolBox(CCKH_SANDConsts):
         """
         set_scores = {}
         results_list_new_db = []
+        if self.templates_info.empty:
+            Log.info("This sessions doesnt have relevant external targets")
         main_children = self.templates_info[self.templates_info[self.template.KPI_GROUP] == self.RED_SCORE]
         final_main_child = main_children[main_children['Tested KPI Group'] == self.RED_SCORE].iloc[0]
         for c in xrange(0, len(main_children)):
