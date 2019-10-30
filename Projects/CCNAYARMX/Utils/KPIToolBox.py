@@ -95,7 +95,6 @@ BAY_NUMBER = 'bay_number'
 SHEETS = [SOS, BLOCK_TOGETHER, SHARE_OF_EMPTY, BAY_COUNT, PER_BAY_SOS, SURVEY, AVAILABILITY]
 POS_OPTIONS_SHEETS = [POS_OPTIONS, TARGETS_AND_CONSTRAINTS]
 
-
 TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'CCNayarTemplatev0.5.2.xlsx')
 POS_OPTIONS_TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data',
                                          'CCNayar_POS_Options_v2.xlsx')
@@ -273,7 +272,6 @@ class ToolBox(GlobalSessionToolBox):
         # Step 10: Calculates the final result
         # Step 11: Saves to the DB
 
-
         # Step 1: Read the excel rows to process the information(Common among all the sheets)
         kpi_name = row[KPI_NAME]
         kpi_fk = self.common.get_kpi_fk_by_kpi_name(kpi_name)
@@ -349,12 +347,11 @@ class ToolBox(GlobalSessionToolBox):
         # Step 10: Calculate the final result
         result = (numerator_result / denominator_result) * 100
 
-        # Step 11. Save the results in the database
-        self.common.write_to_db_result(kpi_fk, numerator_id=numerator_id,
-                                       numerator_result=numerator_result, denominator_id=denominator_id,
-                                       denominator_result=denominator_result,
-                                       result=result)
+        result_dict = {'kpi_fk': kpi_fk, 'numerator_id': numerator_id, 'numerator_result': numerator_result,
+                       'denominator_id': denominator_id, 'denominator_result': denominator_result,
+                       'result': result}
 
+        return result_dict
     def calculate_block_together(self, row):
 
         # Step 1: Read the excel rows to process the information (Common among all the sheets)
@@ -454,13 +451,15 @@ class ToolBox(GlobalSessionToolBox):
                         else:
                             result = 1
 
-        template_fk = self.scif['template_fk'].mode()[0]
+        denominator_id = self.scif['template_fk'].mode()[0]
 
-        sub_category_fk = self.get_sub_cat_fk_from_sub_cat(sub_category[0])
+        numerator_id = self.get_sub_cat_fk_from_sub_cat(sub_category[0])
 
-        self.common.write_to_db_result(kpi_fk, numerator_id=sub_category_fk,
-                                       denominator_id=template_fk,
-                                       result=result)
+        result_dict = {'kpi_fk': kpi_fk, 'numerator_id': numerator_id,
+                       'denominator_id': denominator_id,
+                       'result': result}
+
+        return result_dict
 
     def calculate_share_of_empty(self, row):
 
@@ -528,6 +527,11 @@ class ToolBox(GlobalSessionToolBox):
                                        numerator_result=numerator_result, denominator_id=denominator_id,
                                        denominator_result=denominator_result,
                                        result=result)
+        result_dict = {'kpi_fk': kpi_fk, 'numerator_id': numerator_id, 'numerator_result': numerator_result,
+                       'denominator_id': denominator_id, 'denominator_result': denominator_result,
+                       'result': result}
+
+        return result_dict
 
     def calculate_bay_count(self, row):
 
@@ -606,9 +610,10 @@ class ToolBox(GlobalSessionToolBox):
         numerator_id = relevant_scif[MANUFACTURER_FK].mode()[0]
         denominator_id = relevant_scif[TEMPLATE_FK].mode()[0]
 
-        # Step 12. Save the results in the database
-        self.common.write_to_db_result(kpi_fk, numerator_id=numerator_id,
-                                       denominator_id=denominator_id, result=result)
+        result_dict = {'kpi_fk': kpi_fk, 'numerator_id': numerator_id, 'denominator_id': denominator_id,
+                       'result': result}
+
+        return result_dict
 
     def calculate_per_bay_sos(self, row):
         # Step 1: Read the excel rows to process the information(Common among all the sheets)
@@ -684,9 +689,10 @@ class ToolBox(GlobalSessionToolBox):
         denominator_id = relevant_scif[denominator_entity].mode()[0]
         numerator_id = relevant_scif[numerator_entity].mode()[0]
 
-        # Step 10. Save the results in the database
-        self.common.write_to_db_result(kpi_fk, numerator_id=numerator_id,
-                                       denominator_id=denominator_id, result=result)
+        result_dict = {'kpi_fk': kpi_fk, 'numerator_id': numerator_id, 'denominator_id': denominator_id,
+                       'result': result}
+
+        return result_dict
 
     def calculate_survey(self, row):
 
@@ -702,11 +708,12 @@ class ToolBox(GlobalSessionToolBox):
         denominator_id = self.scif[denominator_entity].mode()[0]
         numerator_id = self.scif[numerator_entity].mode()[0]
 
-        # Step 10. Save the results in the database
-        self.common.write_to_db_result(kpi_fk, numerator_id=numerator_id,
-                                       denominator_id=denominator_id, result=survey_result)
+        result_dict = {'kpi_fk': kpi_fk, 'numerator_id': numerator_id, 'denominator_id': denominator_id,
+                       'result': survey_result}
 
-    def calculate_availability(self,row):
+        return result_dict
+
+    def calculate_availability(self, row):
         kpi_name = row[KPI_NAME]
         template_group = self.sanitize_values(row[TASK_TEMPLATE_GROUP])
         template_name = self.sanitize_values(row[TEMPLATE_NAME])
@@ -724,81 +731,83 @@ class ToolBox(GlobalSessionToolBox):
         if pd.notna(product_type):
             relevant_scif = relevant_scif[relevant_scif[PRODUCT_TYPE].isin(product_type)]
 
-
-
-
-
-
-
-
-
-
     def store_wrong_data_for_parent_kpi_enfriador(self):
         kpi_fk = self.common.get_kpi_fk_by_kpi_name('Enfriador')
         numerator_id = self.scif['manufacturer_fk'].mode()[0]
         denominator_id = self.scif['template_fk'].mode()[0]
         self.common.write_to_db_result(kpi_fk, numerator_id=numerator_id,
-                                       denominator_id=denominator_id, result = 0)
+                                       denominator_id=denominator_id, result=0)
+
     def store_wrong_data_for_parent_kpi_portafolio_y_precios(self):
         kpi_fk = self.common.get_kpi_fk_by_kpi_name('Portafolio y Precios')
         numerator_id = self.scif['manufacturer_fk'].mode()[0]
         denominator_id = self.scif['template_fk'].mode()[0]
         self.common.write_to_db_result(kpi_fk, numerator_id=numerator_id,
                                        denominator_id=denominator_id, result=0)
+
     def store_wrong_data_for_parent_kpi_plataformas(self):
         kpi_fk = self.common.get_kpi_fk_by_kpi_name('Plataformas')
         numerator_id = self.scif['manufacturer_fk'].mode()[0]
         denominator_id = self.scif['template_fk'].mode()[0]
         self.common.write_to_db_result(kpi_fk, numerator_id=numerator_id,
                                        denominator_id=denominator_id, result=0)
+
     def store_wrong_data_for_parent_kpi_comunicacion(self):
         kpi_fk = self.common.get_kpi_fk_by_kpi_name('Comunicacion')
         numerator_id = self.scif['manufacturer_fk'].mode()[0]
         denominator_id = self.scif['template_fk'].mode()[0]
         self.common.write_to_db_result(kpi_fk, numerator_id=numerator_id,
                                        denominator_id=denominator_id, result=0)
+
     def store_wrong_data_for_parent_kpi_primera_posicion(self):
         kpi_fk = self.common.get_kpi_fk_by_kpi_name('Primera posicion')
         numerator_id = self.scif['manufacturer_fk'].mode()[0]
         denominator_id = self.scif['template_fk'].mode()[0]
         self.common.write_to_db_result(kpi_fk, numerator_id=numerator_id,
                                        denominator_id=denominator_id, result=0)
+
     def store_wrong_data_for_parent_kpi_respeto(self):
         kpi_fk = self.common.get_kpi_fk_by_kpi_name('Respeto')
         numerator_id = self.scif['manufacturer_fk'].mode()[0]
         denominator_id = self.scif['template_fk'].mode()[0]
         self.common.write_to_db_result(kpi_fk, numerator_id=numerator_id,
                                        denominator_id=denominator_id, result=0)
+
     def store_wrong_data_for_parent_kpi_acomodo_por_bloques(self):
         kpi_fk = self.common.get_kpi_fk_by_kpi_name('Acomodo por Bloques')
         numerator_id = self.scif['manufacturer_fk'].mode()[0]
         denominator_id = self.scif['template_fk'].mode()[0]
         self.common.write_to_db_result(kpi_fk, numerator_id=numerator_id,
                                        denominator_id=denominator_id, result=0)
+
     def store_wrong_data_for_parent_kpi_bloques_colas_50(self):
         kpi_fk = self.common.get_kpi_fk_by_kpi_name('Bloques Colas 50%')
         numerator_id = self.scif['manufacturer_fk'].mode()[0]
         denominator_id = self.scif['template_fk'].mode()[0]
         self.common.write_to_db_result(kpi_fk, numerator_id=numerator_id,
                                        denominator_id=denominator_id, result=0)
+
     def store_wrong_data_for_parent_kpi_bloques_frutales_25(self):
         kpi_fk = self.common.get_kpi_fk_by_kpi_name('Bloques Frutales 25%')
         numerator_id = self.scif['manufacturer_fk'].mode()[0]
         denominator_id = self.scif['template_fk'].mode()[0]
         self.common.write_to_db_result(kpi_fk, numerator_id=numerator_id,
                                        denominator_id=denominator_id, result=0)
+
     def store_wrong_data_for_parent_kpi_comidas(self):
         kpi_fk = self.common.get_kpi_fk_by_kpi_name('Comidas')
         numerator_id = self.scif['manufacturer_fk'].mode()[0]
         denominator_id = self.scif['template_fk'].mode()[0]
         self.common.write_to_db_result(kpi_fk, numerator_id=numerator_id,
                                        denominator_id=denominator_id, result=0)
+
     def store_wrong_data_for_parent_kpi_plat_dinamicas_one(self):
         kpi_fk = self.common.get_kpi_fk_by_kpi_name('Plat. Dinamicas 1')
         numerator_id = self.scif['manufacturer_fk'].mode()[0]
         denominator_id = self.scif['template_fk'].mode()[0]
         self.common.write_to_db_result(kpi_fk, numerator_id=numerator_id,
                                        denominator_id=denominator_id, result=0)
+
     def store_wrong_data_for_parent_kpi_plat_dinamicas_two(self):
         kpi_fk = self.common.get_kpi_fk_by_kpi_name('Plat. Dinamicas 2')
         numerator_id = self.scif['manufacturer_fk'].mode()[0]
@@ -815,7 +824,6 @@ class ToolBox(GlobalSessionToolBox):
             else:
                 items = [x.strip() for x in item.split(',')]
                 return items
-
 
     def delete_filter_nan(self, filters):
         filters = [filter for filter in filters if str(filter) != 'nan']
@@ -854,7 +862,5 @@ class ToolBox(GlobalSessionToolBox):
                 result = 1
             else:
                 result = 0
-
-
 
         return result
