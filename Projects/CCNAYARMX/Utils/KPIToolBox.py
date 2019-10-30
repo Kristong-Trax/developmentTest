@@ -42,6 +42,8 @@ TASK_TEMPLATE_GROUP = 'Task/ Template Group'
 TEMPLATE_NAME = 'template_name'
 MANUFACTURER_NAME = 'manufacturer_name'
 PRODUCT_TYPE = 'product_type'
+PRODUCT_SHORT_NAME = 'product_short_name'
+PRODUCT_WEIGHT = 'product_weight'
 STORE_ADDITIONAL_ATTRIBUTE_2 = 'store_additional_attribute_2'
 TAMANDO_DEL_PRODUCTO = 'TAMANO DEL PRODUCTO'
 IGNORE_STACKING = 'Ignore Stacking'
@@ -65,6 +67,7 @@ SHARE_OF_EMPTY = 'Share of Empty'
 BAY_COUNT = 'Bay Count'
 PER_BAY_SOS = 'Per bay SOS'
 SURVEY = 'Survey'
+AVAILABILITY = 'Availability'
 
 POS_OPTIONS = 'POS Options'
 TARGETS_AND_CONSTRAINTS = 'Targets and Constraints'
@@ -89,11 +92,11 @@ TEMPLATE_GROUP = 'template_group'
 BAY_NUMBER = 'bay_number'
 
 # Read the sheet
-SHEETS = [SOS, BLOCK_TOGETHER, SHARE_OF_EMPTY, BAY_COUNT, PER_BAY_SOS, SURVEY]
+SHEETS = [SOS, BLOCK_TOGETHER, SHARE_OF_EMPTY, BAY_COUNT, PER_BAY_SOS, SURVEY, AVAILABILITY]
 POS_OPTIONS_SHEETS = [POS_OPTIONS, TARGETS_AND_CONSTRAINTS]
 
 
-TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'CCNayarTemplatev0.6.xlsx')
+TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'CCNayarTemplatev0.5.2.xlsx')
 POS_OPTIONS_TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data',
                                          'CCNayar_POS_Options_v2.xlsx')
 
@@ -136,17 +139,26 @@ class ToolBox(GlobalSessionToolBox):
             self.templates[sheet] = pd.read_excel(POS_OPTIONS_TEMPLATE_PATH, sheet_name=sheet)
 
     def main_calculation(self):
-        for i, row in self.templates[SOS].iterrows():
-            self.calculate_sos(row)
+        for i, row in self.templates[AVAILABILITY].iterrows():
+            # self.calculate_sos(row)
             # self.calculate_block_together(row)
             # self.calculate_share_of_empty(row)
             # self.calculate_bay_count(row)
             # self.calculate_per_bay_sos(row)
             # self.calculate_survey(row)
+            self.calculate_availability(row)
             self.store_wrong_data_for_parent_kpi_comunicacion()
             self.store_wrong_data_for_parent_kpi_enfriador()
             self.store_wrong_data_for_parent_kpi_plataformas()
             self.store_wrong_data_for_parent_kpi_portafolio_y_precios()
+            self.store_wrong_data_for_parent_kpi_primera_posicion()
+            self.store_wrong_data_for_parent_kpi_respeto()
+            self.store_wrong_data_for_parent_kpi_acomodo_por_bloques()
+            self.store_wrong_data_for_parent_kpi_bloques_colas_50()
+            self.store_wrong_data_for_parent_kpi_bloques_frutales_25()
+            self.store_wrong_data_for_parent_kpi_comidas()
+            self.store_wrong_data_for_parent_kpi_plat_dinamicas_one()
+            self.store_wrong_data_for_parent_kpi_plat_dinamicas_two()
         return
 
     def generate_platformas_data(self):
@@ -694,6 +706,33 @@ class ToolBox(GlobalSessionToolBox):
         self.common.write_to_db_result(kpi_fk, numerator_id=numerator_id,
                                        denominator_id=denominator_id, result=survey_result)
 
+    def calculate_availability(self,row):
+        kpi_name = row[KPI_NAME]
+        template_group = self.sanitize_values(row[TASK_TEMPLATE_GROUP])
+        template_name = self.sanitize_values(row[TEMPLATE_NAME])
+        store_additional_attribute_2 = row[STORE_ADDITIONAL_ATTRIBUTE_2]
+        product_type = row[PRODUCT_TYPE]
+
+        relevant_scif = self.scif[[PK, TEMPLATE_GROUP, TEMPLATE_NAME, PRODUCT_TYPE, PRODUCT_SHORT_NAME]]
+
+        if pd.notna(template_group):
+            relevant_scif = relevant_scif[relevant_scif[TEMPLATE_GROUP].isin(template_group)]
+
+        if pd.notna(template_name):
+            relevant_scif = relevant_scif[relevant_scif[TEMPLATE_NAME].isin(template_name)]
+
+        if pd.notna(product_type):
+            relevant_scif = relevant_scif[relevant_scif[PRODUCT_TYPE].isin(product_type)]
+
+
+
+
+
+
+
+
+
+
     def store_wrong_data_for_parent_kpi_enfriador(self):
         kpi_fk = self.common.get_kpi_fk_by_kpi_name('Enfriador')
         numerator_id = self.scif['manufacturer_fk'].mode()[0]
@@ -718,7 +757,54 @@ class ToolBox(GlobalSessionToolBox):
         denominator_id = self.scif['template_fk'].mode()[0]
         self.common.write_to_db_result(kpi_fk, numerator_id=numerator_id,
                                        denominator_id=denominator_id, result=0)
-
+    def store_wrong_data_for_parent_kpi_primera_posicion(self):
+        kpi_fk = self.common.get_kpi_fk_by_kpi_name('Primera posicion')
+        numerator_id = self.scif['manufacturer_fk'].mode()[0]
+        denominator_id = self.scif['template_fk'].mode()[0]
+        self.common.write_to_db_result(kpi_fk, numerator_id=numerator_id,
+                                       denominator_id=denominator_id, result=0)
+    def store_wrong_data_for_parent_kpi_respeto(self):
+        kpi_fk = self.common.get_kpi_fk_by_kpi_name('Respeto')
+        numerator_id = self.scif['manufacturer_fk'].mode()[0]
+        denominator_id = self.scif['template_fk'].mode()[0]
+        self.common.write_to_db_result(kpi_fk, numerator_id=numerator_id,
+                                       denominator_id=denominator_id, result=0)
+    def store_wrong_data_for_parent_kpi_acomodo_por_bloques(self):
+        kpi_fk = self.common.get_kpi_fk_by_kpi_name('Acomodo por Bloques')
+        numerator_id = self.scif['manufacturer_fk'].mode()[0]
+        denominator_id = self.scif['template_fk'].mode()[0]
+        self.common.write_to_db_result(kpi_fk, numerator_id=numerator_id,
+                                       denominator_id=denominator_id, result=0)
+    def store_wrong_data_for_parent_kpi_bloques_colas_50(self):
+        kpi_fk = self.common.get_kpi_fk_by_kpi_name('Bloques Colas 50%')
+        numerator_id = self.scif['manufacturer_fk'].mode()[0]
+        denominator_id = self.scif['template_fk'].mode()[0]
+        self.common.write_to_db_result(kpi_fk, numerator_id=numerator_id,
+                                       denominator_id=denominator_id, result=0)
+    def store_wrong_data_for_parent_kpi_bloques_frutales_25(self):
+        kpi_fk = self.common.get_kpi_fk_by_kpi_name('Bloques Frutales 25%')
+        numerator_id = self.scif['manufacturer_fk'].mode()[0]
+        denominator_id = self.scif['template_fk'].mode()[0]
+        self.common.write_to_db_result(kpi_fk, numerator_id=numerator_id,
+                                       denominator_id=denominator_id, result=0)
+    def store_wrong_data_for_parent_kpi_comidas(self):
+        kpi_fk = self.common.get_kpi_fk_by_kpi_name('Comidas')
+        numerator_id = self.scif['manufacturer_fk'].mode()[0]
+        denominator_id = self.scif['template_fk'].mode()[0]
+        self.common.write_to_db_result(kpi_fk, numerator_id=numerator_id,
+                                       denominator_id=denominator_id, result=0)
+    def store_wrong_data_for_parent_kpi_plat_dinamicas_one(self):
+        kpi_fk = self.common.get_kpi_fk_by_kpi_name('Plat. Dinamicas 1')
+        numerator_id = self.scif['manufacturer_fk'].mode()[0]
+        denominator_id = self.scif['template_fk'].mode()[0]
+        self.common.write_to_db_result(kpi_fk, numerator_id=numerator_id,
+                                       denominator_id=denominator_id, result=0)
+    def store_wrong_data_for_parent_kpi_plat_dinamicas_two(self):
+        kpi_fk = self.common.get_kpi_fk_by_kpi_name('Plat. Dinamicas 2')
+        numerator_id = self.scif['manufacturer_fk'].mode()[0]
+        denominator_id = self.scif['template_fk'].mode()[0]
+        self.common.write_to_db_result(kpi_fk, numerator_id=numerator_id,
+                                       denominator_id=denominator_id, result=0)
 
     def sanitize_values(self, item):
         if pd.isna(item):
