@@ -347,11 +347,13 @@ class ToolBox(GlobalSessionToolBox):
         # Step 10: Calculate the final result
         result = (numerator_result / denominator_result) * 100
 
-        result_dict = {'kpi_fk': kpi_fk, 'numerator_id': numerator_id, 'numerator_result': numerator_result,
+        result_dict = {'kpi_name': kpi_name, 'kpi_fk': kpi_fk, 'numerator_id': numerator_id,
+                       'numerator_result': numerator_result,
                        'denominator_id': denominator_id, 'denominator_result': denominator_result,
                        'result': result}
 
         return result_dict
+
     def calculate_block_together(self, row):
 
         # Step 1: Read the excel rows to process the information (Common among all the sheets)
@@ -455,7 +457,7 @@ class ToolBox(GlobalSessionToolBox):
 
         numerator_id = self.get_sub_cat_fk_from_sub_cat(sub_category[0])
 
-        result_dict = {'kpi_fk': kpi_fk, 'numerator_id': numerator_id,
+        result_dict = {'kpi_name': kpi_name, 'kpi_fk': kpi_fk, 'numerator_id': numerator_id,
                        'denominator_id': denominator_id,
                        'result': result}
 
@@ -527,7 +529,8 @@ class ToolBox(GlobalSessionToolBox):
                                        numerator_result=numerator_result, denominator_id=denominator_id,
                                        denominator_result=denominator_result,
                                        result=result)
-        result_dict = {'kpi_fk': kpi_fk, 'numerator_id': numerator_id, 'numerator_result': numerator_result,
+        result_dict = {'kpi_name': kpi_name, 'kpi_fk': kpi_fk, 'numerator_id': numerator_id,
+                       'numerator_result': numerator_result,
                        'denominator_id': denominator_id, 'denominator_result': denominator_result,
                        'result': result}
 
@@ -610,7 +613,8 @@ class ToolBox(GlobalSessionToolBox):
         numerator_id = relevant_scif[MANUFACTURER_FK].mode()[0]
         denominator_id = relevant_scif[TEMPLATE_FK].mode()[0]
 
-        result_dict = {'kpi_fk': kpi_fk, 'numerator_id': numerator_id, 'denominator_id': denominator_id,
+        result_dict = {'kpi_name': kpi_name, 'kpi_fk': kpi_fk, 'numerator_id': numerator_id,
+                       'denominator_id': denominator_id,
                        'result': result}
 
         return result_dict
@@ -689,7 +693,8 @@ class ToolBox(GlobalSessionToolBox):
         denominator_id = relevant_scif[denominator_entity].mode()[0]
         numerator_id = relevant_scif[numerator_entity].mode()[0]
 
-        result_dict = {'kpi_fk': kpi_fk, 'numerator_id': numerator_id, 'denominator_id': denominator_id,
+        result_dict = {'kpi_name': kpi_name, 'kpi_fk': kpi_fk, 'numerator_id': numerator_id,
+                       'denominator_id': denominator_id,
                        'result': result}
 
         return result_dict
@@ -722,14 +727,10 @@ class ToolBox(GlobalSessionToolBox):
 
         relevant_scif = self.scif[[PK, TEMPLATE_GROUP, TEMPLATE_NAME, PRODUCT_TYPE, PRODUCT_SHORT_NAME]]
 
-        if pd.notna(template_group):
-            relevant_scif = relevant_scif[relevant_scif[TEMPLATE_GROUP].isin(template_group)]
-
-        if pd.notna(template_name):
-            relevant_scif = relevant_scif[relevant_scif[TEMPLATE_NAME].isin(template_name)]
-
-        if pd.notna(product_type):
-            relevant_scif = relevant_scif[relevant_scif[PRODUCT_TYPE].isin(product_type)]
+        relevant_scif = relevant_scif[relevant_scif[TEMPLATE_GROUP].isin(template_group)]
+        relevant_scif = relevant_scif[relevant_scif[TEMPLATE_NAME].isin(template_name)]
+        relevant_scif = relevant_scif[relevant_scif[PRODUCT_TYPE].isin(product_type)]
+        a = 1
 
     def store_wrong_data_for_parent_kpi_enfriador(self):
         kpi_fk = self.common.get_kpi_fk_by_kpi_name('Enfriador')
