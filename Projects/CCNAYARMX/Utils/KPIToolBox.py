@@ -48,6 +48,7 @@ PRODUCT_WEIGHT = 'product_weight'
 STORE_ADDITIONAL_ATTRIBUTE_2 = 'store_additional_attribute_2'
 TAMANDO_DEL_PRODUCTO = 'TAMANO DEL PRODUCTO'
 IGNORE_STACKING = 'Ignore Stacking'
+KPI_FK_LEVEL2 = 'kpi_fk_lvl2'
 ACTIVATION_SCENE_TYPE = 'Activation Scene Type'
 FACINGS_TARGET = 'facings_target'
 BAY_COUNT_TARGET = 'bay_count_target'
@@ -141,14 +142,14 @@ class ToolBox(GlobalSessionToolBox):
             self.templates[sheet] = pd.read_excel(POS_OPTIONS_TEMPLATE_PATH, sheet_name=sheet)
 
     def main_calculation(self):
-        for i, row in self.templates[AVAILABILITY].iterrows():
+        for i, row in self.templates[DISTRIBUTION].iterrows():
             # self.calculate_sos(row)
             # self.calculate_block_together(row)
             # self.calculate_share_of_empty(row)
             # self.calculate_bay_count(row)
             # self.calculate_per_bay_sos(row)
             # self.calculate_survey(row)
-            self.calculate_availability(row)
+            # self.calculate_availability(row)
             self.calculate_assortment(row)
             self.store_wrong_data_for_parent_kpi_comunicacion()
             self.store_wrong_data_for_parent_kpi_enfriador()
@@ -261,8 +262,37 @@ class ToolBox(GlobalSessionToolBox):
         return groups
 
     def calculate_assortment(self, row):
+        kpi_name = row[KPI_NAME]
+        kpi_fk = self.common.get_kpi_fk_by_kpi_name(kpi_name)
+        kpi_fk_level2 = row[KPI_FK_LEVEL2]
+        template_group = self.sanitize_values(row[TASK_TEMPLATE_GROUP])
+        numerator_entity = row[NUMERATOR_ENTITY]
+        denominator_entity = row[DENOMINATOR_ENTITY]
+
+        relevant_scif = self.scif[self.scif[TEMPLATE_GROUP].isin(template_group)]
+
+        # relevant_scif = self.scif[self.scif[KPI_FK_LEVEL2].isin([kpi_fk_level2])]
+        self.assortment.scif = relevant_scif
+
         self.store_assortment = self.assortment.store_assortment
-        a = 1
+        lvl3_result = self.assortment.calculate_lvl3_assortment()
+        if not lvl3_result.empty:
+            numerator_id = lvl3_result[lvl3_result[KPI_FK_LEVEL2].isin([kpi_fk_level2])][numerator_entity].mode()[0]
+            lvl2_result = self.assortment.calculate_lvl2_assortment(lvl3_result)
+            lvl2_kpi_result = lvl2_result[lvl2_result[KPI_FK_LEVEL2].isin([kpi_fk_level2])]
+            denominator_id = int(lvl2_kpi_result[denominator_entity])
+            result = float(lvl2_kpi_result['passes']/lvl2_kpi_result['total']) * 100
+
+        else:
+            result = 'NULL'
+            numerator_id = 0
+            denominator_id = 0
+
+        result_dict = {'kpi_name': kpi_name, 'kpi_fk': kpi_fk, 'numerator_id': numerator_id,
+                       'denominator_id': denominator_id,
+                       'result': result}
+
+
 
     def calculate_sos(self, row):
         '''
