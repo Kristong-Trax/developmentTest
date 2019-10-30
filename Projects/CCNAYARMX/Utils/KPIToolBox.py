@@ -720,24 +720,54 @@ class ToolBox(GlobalSessionToolBox):
 
     def calculate_availability(self, row):
         kpi_name = row[KPI_NAME]
+        kpi_fk = self.common.get_kpi_fk_by_kpi_name(kpi_name)
         template_group = self.sanitize_values(row[TASK_TEMPLATE_GROUP])
         template_name = self.sanitize_values(row[TEMPLATE_NAME])
         store_additional_attribute_2 = row[STORE_ADDITIONAL_ATTRIBUTE_2]
         product_type = row[PRODUCT_TYPE]
         product_short_name = self.sanitize_values(row[PRODUCT_SHORT_NAME])
+        relevant_question_fk = row[RELEVANT_QUESTION_FK]
+        numerator_entity = row[NUMERATOR_ENTITY]
+        denominator_entity = row[DENOMINATOR_ENTITY]
 
         relevant_scif = self.scif[[PK, TEMPLATE_GROUP, TEMPLATE_NAME, PRODUCT_TYPE, PRODUCT_SHORT_NAME]]
 
         relevant_scif = relevant_scif[relevant_scif[TEMPLATE_GROUP].isin(template_group)]
         relevant_scif = relevant_scif[relevant_scif[TEMPLATE_NAME].isin(template_name)]
-        # relevant_scif = relevant_scif[relevant_scif[PRODUCT_TYPE].isin([product_type])]
+        relevant_scif = relevant_scif[relevant_scif[PRODUCT_TYPE].isin([product_type])]
         relevant_scif = relevant_scif[relevant_scif[PRODUCT_SHORT_NAME].isin(product_short_name)]
 
-        if relevant_scif.empty:
-            result = 0
-        else:
-            unique_product_name_category = list(set(relevant_scif[PRODUCT_SHORT_NAME]))
-            a = 1
+
+        result = 0
+        if not relevant_scif.empty:
+            unique_product_name_category = set(relevant_scif[PRODUCT_SHORT_NAME])
+            if "Coca-Cola POS Other" in unique_product_name_category:
+                result = 1
+            else:
+                if "Totem 1 CSD's" in unique_product_name_category:
+                    result = result + .4
+                if "Totem 2 CSD's" in unique_product_name_category:
+                    result = result + .4
+                if "Totem 3 CSD's" in unique_product_name_category:
+                    result = result + .2
+
+        if pd.notna(relevant_question_fk):
+            result = self.calculate_relevant_availability_survey_result(relevant_question_fk) + result
+
+        denominator_id = self.scif[denominator_entity].mode()[0]
+        numerator_id = self.scif[numerator_entity].mode()[0]
+
+        result_dict = {'kpi_name': kpi_name, 'kpi_fk': kpi_fk, 'numerator_id': numerator_id,
+                       'denominator_id': denominator_id,
+                       'result': result}
+
+
+        return result_dict
+
+
+
+
+
 
 
 
@@ -874,4 +904,11 @@ class ToolBox(GlobalSessionToolBox):
             else:
                 result = 0
 
+        return result
+
+    def calculate_relevant_availability_survey_result(self, relevant_question_fk):
+        result = 0
+        for question_fk in relevant_question_fk:
+            if self.survey.check_survey_answer(('question_fk', question_fk), ('Si',1, 2)):
+                result = result + 1
         return result
