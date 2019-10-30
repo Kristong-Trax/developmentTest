@@ -197,7 +197,8 @@ class CCKH_SANDToolBox(CCKH_SANDConsts):
                             child_kpi_fk = self.get_new_kpi_fk(child)  # kpi fk from new tables
                             results_list_new_db.append(self.write_to_db_new_results(child_kpi_fk, result_new_db, score,
                                                                                     numerator, denominator,
-                                                                                    weight=points, target=threshold,
+                                                                                    weight=points, target=denominator,
+                                                                                    score_after_action=numerator,
                                                                                     identifier_parent=identifier_parent
                                                                                     , numerator_id=numerator_id))
                 max_points = sum([score[0] for score in scores])
@@ -212,7 +213,9 @@ class CCKH_SANDToolBox(CCKH_SANDConsts):
                                                  percentage), level=self.LEVEL2)
                 set_scores[kpi_name] = (max_points, actual_points)
                 results_list_new_db.append(self.write_to_db_new_results(main_child_kpi_fk, percentage, percentage,
-                                                                        actual_points*100, max_points*100,
+                                                                        actual_points, max_points,
+                                                                        target=max_points,
+                                                                        score_after_action=actual_points,
                                                                         identifier_result=main_kpi_identifier,
                                                                         identifier_parent=self.RED_SCORE))
 
@@ -222,11 +225,14 @@ class CCKH_SANDToolBox(CCKH_SANDConsts):
         set_fk = self.kpi_static_data['kpi_set_fk'].values[0]
         self.write_to_db_result(set_fk, (actual_points, max_points, red_score), level=self.LEVEL1)
         results_list_new_db.append(self.write_to_db_new_results(self.get_new_kpi_fk(final_main_child), red_score,
-                                                                red_score, actual_points*100, max_points*100,
+                                                                red_score, actual_points, max_points,
+                                                                target=max_points,
+                                                                score_after_action=actual_points,
                                                                 identifier_result=self.RED_SCORE,
                                                                 identifier_parent=CCKH_SANDConsts.WEB_HIERARCHY))
         results_list_new_db.append(self.write_to_db_new_results(self.get_new_kpi_by_name(self.RED_SCORE), red_score,
-                                                                red_score, actual_points*100, max_points*100,
+                                                                red_score, actual_points, max_points,
+                                                                target=max_points, score_after_action=actual_points,
                                                                 identifier_result=CCKH_SANDConsts.WEB_HIERARCHY))
         self.commonV2.save_json_to_new_tables(results_list_new_db)
         self.commonV2.commit_results_data()
@@ -447,8 +453,9 @@ class CCKH_SANDToolBox(CCKH_SANDConsts):
             cur.execute(query)
         self.rds_conn.db.commit()
 
-    def write_to_db_new_results(self, kpi_fk, result, score, numerator_result, denominator_result, weight=None,
-                                target=None, identifier_parent=None, identifier_result=None, numerator_id=None):
+    def write_to_db_new_results(self, kpi_fk, result, score, numerator_result, denominator_result,
+                                score_after_action=0, weight=None, target=None, identifier_parent=None,
+                                identifier_result=None, numerator_id=None):
 
         """
         This function gets all kpi info  and add the relevant numerator_id and denominator_id and than create the db
@@ -463,18 +470,19 @@ class CCKH_SANDToolBox(CCKH_SANDConsts):
              :param identifier_parent
              :param identifier_result
              :param numerator_id
+             :param score_after_action
              :returns dict in format of db result
         """
         numerator_id = self.manufacturer if numerator_id is None else numerator_id
         denominator_id = self.store_id
         results = [denominator_result, numerator_result, result, score]
         result_dict = self.create_db_result(kpi_fk, numerator_id, denominator_id, results, weight, target,
-                                            identifier_parent, identifier_result)
+                                            identifier_parent, identifier_result, score_after_action)
         return result_dict
 
     @staticmethod
     def create_db_result(kpi_fk, numerator_id, denominator_id, results, weight, target, identifier_parent=None,
-                         identifier_result=None):
+                         identifier_result=None, score_after_action=0):
         """
        The function build db result for sos result
              :param kpi_fk: pk of kpi
@@ -482,9 +490,10 @@ class CCKH_SANDToolBox(CCKH_SANDConsts):
              :param denominator_id
              :param results: array of 4 parameters [denominator , numerator ,result,score]
              :param weight : weight of kpi result for kpi parent
-             :param target : kpi target
+             :param target : this case we will save denominator result (decinal)
              :param identifier_parent : dictionary of filters of level above  in calculation
              :param identifier_result : dictionary of filters of first level in calculation
+             :param score_after_action :  in this case we will save numerator result(decimal)
              :returns dict in format of db result
          """
         return {'fk': kpi_fk, SessionResultsConsts.NUMERATOR_ID: numerator_id,
@@ -492,4 +501,5 @@ class CCKH_SANDToolBox(CCKH_SANDConsts):
                 SessionResultsConsts.DENOMINATOR_RESULT: results[0], SessionResultsConsts.NUMERATOR_RESULT: results[1],
                 SessionResultsConsts.RESULT: results[2], SessionResultsConsts.SCORE: results[3],
                 'identifier_parent': identifier_parent, 'identifier_result': identifier_result, 'should_enter': True,
-                SessionResultsConsts.TARGET: target, SessionResultsConsts.WEIGHT: weight}
+                SessionResultsConsts.TARGET: target, SessionResultsConsts.WEIGHT: weight,
+                'score_after_actions':score_after_action}
