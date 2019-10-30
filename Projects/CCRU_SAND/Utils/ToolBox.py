@@ -4099,8 +4099,8 @@ class CCRU_SANDKPIToolBox:
     def get_promo_product_groups_to_skus(self, target):
         product_groups = target['PRODUCT_GROUP']
         product_groups_df = pd.DataFrame()
-        query = PROMO_PRODUCT_GROUP_FILTER['QUERY']
         for p in product_groups.keys():
+            query = PROMO_PRODUCT_GROUP_FILTER['QUERY']
             filters = product_groups[p].get('PROD_INCL')
             if filters:
                 for f in filters.keys():
