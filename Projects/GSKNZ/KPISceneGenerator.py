@@ -1,6 +1,6 @@
 from Trax.Utils.Logging.Logger import Log
 from KPIUtils_v2.DB.CommonV2 import Common
-from Projects.GSKAU.Utils.KPISceneToolBox import GSKAUSceneToolBox
+from Projects.GSKNZ.Utils.KPISceneToolBox import GSKAUSceneToolBox
 from KPIUtils_v2.Utils.Decorators.Decorators import log_runtime
 
 
@@ -23,6 +23,5 @@ class SceneGenerator:
         if self.scene_tool_box.match_product_in_scene.empty:
             Log.warning('Match product in scene is empty for this scene')
         else:
-            # self.scene_tool_box.calculate_display_compliance()
-            # self.common.commit_results_data(result_entity='scene')
-            pass
+            self.scene_tool_box.calculate_display_compliance()
+            self.common.commit_results_data(result_entity='scene')

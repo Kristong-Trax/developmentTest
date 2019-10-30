@@ -4158,6 +4158,11 @@ class CCRU_SANDKPIToolBox:
             location_calculated = 0
         else:
 
+            if location == PROMO_LOC_DISPLAY:
+                scene_fk = scif_loc['scene_fk'].values[0]
+            else:
+                scene_fk = None
+
             location_calculated = 1
 
             score += self.check_promo_compliance_display_presence(
@@ -4177,6 +4182,7 @@ class CCRU_SANDKPIToolBox:
                                            numerator_id=self.own_manufacturer_id,
                                            numerator_result=None,
                                            denominator_id=display_fk,
+                                           denominator_result=scene_fk,
                                            context_id=location_fk,
                                            target=target,
                                            weight=None,
@@ -4656,7 +4662,8 @@ class CCRU_SANDKPIToolBox:
                 product_group_scif['price_facings'] = product_group_scif['price'] * product_group_scif['facings']
                 product_group_price_facings_fact = product_group_scif.agg({'price_facings': 'sum'})[0]
                 product_group_facings_fact = product_group_scif.agg({'facings': 'sum'})[0]
-                product_group_price_fact = product_group_price_facings_fact / product_group_facings_fact
+                product_group_price_fact = \
+                    round(product_group_price_facings_fact / float(product_group_facings_fact), 2)
             else:
                 product_group_price_facings_fact = 0
                 product_group_facings_fact = 0
@@ -4675,7 +4682,7 @@ class CCRU_SANDKPIToolBox:
                     result_prod = 0
                 score_prod = 100 - result_prod
             else:
-                result_prod = 0
+                # result_prod = 0
                 score_prod = 0
 
             product_group_price_fact_100 = product_group_price_fact * 100 if product_group_price_fact is not None \
