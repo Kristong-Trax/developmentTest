@@ -139,12 +139,12 @@ class CCMY_SANDToolBox:
                 continue
 
             if kpi_type == CCMY_SANDConsts.AVAILABILITY:
-               score = self.calculate_availability(kpi_data)
+                score = self.calculate_availability(kpi_data)
             elif kpi_type == CCMY_SANDConsts.FACINGS_SOS:
-               score = self.calculate_facings_sos(kpi_data)
+                score = self.calculate_facings_sos(kpi_data)
             elif kpi_type == CCMY_SANDConsts.SHELF_PURITY:
                 score = self.calculate_self_purity(kpi_data)
- #               self.common.commit_results_data_to_new_tables()
+
             else:
                 continue
 
@@ -152,13 +152,16 @@ class CCMY_SANDToolBox:
                 total_score += score
                 kpi_fk = self.kpi_static_data[self.kpi_static_data['kpi_name'] == group].iloc[0]['kpi_fk']
                 self.write_to_db_result(kpi_fk, score, level=self.LEVEL2)
-                #self.common.commit_results_data_to_new_tables()
+                # todo insert db results
 
         if self.kpi_static_data.empty:
             return
         else:
             set_fk = self.kpi_static_data.iloc[0]['kpi_set_fk']
+            # todo insert db results
             self.write_to_db_result(set_fk, total_score, level=self.LEVEL1)
+
+        self.common.commit_results_data_to_new_tables()
 
     def validate_kpi(self, kpi_data):
         validation = True
@@ -200,7 +203,11 @@ class CCMY_SANDToolBox:
                 group_score += result
                 atomic_fk = self.kpi_static_data[(self.kpi_static_data['atomic_kpi_name'] == params[CCMY_SANDConsts.KPI_NAME]) &
                                                  (self.kpi_static_data['kpi_name'] == group_name)].iloc[0]['atomic_kpi_fk']
+
                 self.write_to_db_result(atomic_fk, (score, result, 1), level=self.LEVEL3)
+
+                # writing results to new tables
+                self.insert_db_new_results(params, result, score, score, 1)
 
         else:
             for x, params in kpi_data.iterrows():
@@ -217,14 +224,36 @@ class CCMY_SANDToolBox:
                                                  (self.kpi_static_data['kpi_name'] == group_name)].iloc[0]['atomic_kpi_fk']
                 self.write_to_db_result(atomic_fk, (score, result, target_min), level=self.LEVEL3)
 
+                # writing results to new tables
+                self.insert_db_new_results(params, result, score, score, 1, target_min)
+
         return group_score
+
+    def get_kpi_fk_new_table(self, kpi_name):
+        kpi_level_2_fk = \
+            self.kpi_static_data_new[self.kpi_static_data_new['KPI Name'] == kpi_name]
+        if not kpi_level_2_fk.empty:
+            return kpi_level_2_fk['fk'].iloc[0]
+        return None
+
+    def insert_db_new_results(self, params, result, score, numerator_result, denominator_result, target=None):
+
+        kpi_level_2_fk = self.get_kpi_fk_new_table(params['KPI Name'])
+        if kpi_level_2_fk is None:
+            Log.warning("kpi {} from template, doesn't exist in DB".format(params['KPI Name']))
+            return
+
+        self.common.write_to_db_result_new_tables(fk=kpi_level_2_fk,
+                                                  numerator_id=self.manufacturer_fk,
+                                                  denominator_id=self.store_id,
+                                                  numerator_result=numerator_result,
+                                                  denominator_result=denominator_result,
+                                                  result=result,
+                                                  score=score,
+                                                  target=target)
 
     def calculate_self_purity(self, kpi_data):
         score = 0
-        atomic_kpi_fk_1 = 0
-        atomic_kpi_fk_2 = 0
-        kpi_level_2_fk = 0
-
         if kpi_data.empty:
             return
 
@@ -236,7 +265,7 @@ class CCMY_SANDToolBox:
         template_fk = self.scene_info[self.scene_info['template_name'].isin(scene_types)][
             CCMY_SANDConsts.TEMPLATE_FK].unique().tolist()
 
-        df_all_shelfs = self.match_product_in_scene;
+        df_all_shelfs = self.match_product_in_scene
 
         if self.match_product_in_scene.empty:
             return
@@ -272,7 +301,8 @@ class CCMY_SANDToolBox:
                     elif ((row_data_x[CCMY_SANDConsts.SCENE_FK] == row_data_y[CCMY_SANDConsts.SCENE_FK]) &
                           (row_data_x[CCMY_SANDConsts.BAY_NUMBER] == row_data_y[CCMY_SANDConsts.BAY_NUMBER]) &
                           (row_data_x[CCMY_SANDConsts.SHELF_NUMBER] == row_data_y[CCMY_SANDConsts.SHELF_NUMBER]) &
-                          (row_data_y[CCMY_SANDConsts.MANUFACTURER_FK] not in [CCMY_SANDConsts.CCBM, CCMY_SANDConsts.GENERAL_MANUFACTURER]) &
+                          (row_data_y[CCMY_SANDConsts.MANUFACTURER_FK] not in [CCMY_SANDConsts.CCBM,
+                                                                               CCMY_SANDConsts.GENERAL_MANUFACTURER]) &
                           (row_data_y[CCMY_SANDConsts.PRODUCT_FK] != CCMY_SANDConsts.GENERAL_EMPTY_PRODUCT) &
                           (row_data_x[CCMY_SANDConsts.IS_PURE] == CCMY_SANDConsts.PURE)):
 
@@ -295,10 +325,8 @@ class CCMY_SANDToolBox:
                 kpi_level_2_fk = 0
             else:
                 kpi_level_2_fk = df_kpi_level_2.iloc[0]
-
-            #if params[CCMY_SANDConsts.KPI_NAME] == CCMY_SANDConsts.KPI_NUM_PURE_SHELVES:
             df_atomic_kpi = self.kpi_static_data[
-                (self.kpi_static_data[CCMY_SANDConsts.ATOMIC_KPI_NAME] ==CCMY_SANDConsts.KPI_NUM_PURE_SHELVES) & (
+                (self.kpi_static_data[CCMY_SANDConsts.ATOMIC_KPI_NAME] == CCMY_SANDConsts.KPI_NUM_PURE_SHELVES) & (
                     self.kpi_static_data['kpi_name'] == group_name)]
 
             if df_atomic_kpi.empty:
@@ -321,25 +349,31 @@ class CCMY_SANDToolBox:
                 total_num_of_shelfs = 0
 
                 # KPI old tables
-                if atomic_kpi_fk_1!= 0:
+                if atomic_kpi_fk_1 != 0:
                     if params[CCMY_SANDConsts.KPI_NAME] == CCMY_SANDConsts.KPI_NUM_PURE_SHELVES:
-                        self.write_to_db_result(atomic_kpi_fk_1,(num_of_pure_shelfs, num_of_pure_shelfs, 0),
+                        self.write_to_db_result(atomic_kpi_fk_1, (num_of_pure_shelfs, num_of_pure_shelfs, 0),
                                                 level=self.LEVEL3)
-                if atomic_kpi_fk_2!=0:
+                if atomic_kpi_fk_2 != 0:
                     if params[CCMY_SANDConsts.KPI_NAME] == CCMY_SANDConsts.KPI_TOTAL_NUM_OF_SHELVES:
                         self.write_to_db_result(atomic_kpi_fk_2, (total_num_of_shelfs, total_num_of_shelfs, 0),
-                                            level=self.LEVEL3)
+                                                level=self.LEVEL3)
 
                 # KPI new tables - Only
-                if kpi_level_2_fk!=0:
-                    self.common.write_to_db_result_new_tables(fk=kpi_level_2_fk,
-                                                              numerator_id=0,
-                                                              denominator_id=0,
-                                                              numerator_result=num_of_pure_shelfs,
-                                                              denominator_result=total_num_of_shelfs,
-                                                              result=score,
-                                                              score=score
-                                                              )
+                if kpi_level_2_fk != 0:
+                    # writing results to new tables
+                    self.insert_db_new_results(params, score, score, num_of_pure_shelfs, total_num_of_shelfs)
+
+                    # self.common.write_to_db_result_new_tables(fk=kpi_level_2_fk,
+                    #                                           numerator_id=0,
+                    #                                           denominator_id=0,
+                    #                                           numerator_result=num_of_pure_shelfs,
+                    #                                           denominator_result=total_num_of_shelfs,
+                    #                                           result=score,
+                    #                                           score=score
+                    #                                           )
+
+
+                    # todo schange numerator_id = self.manufucatirere , denominator_id = self.store_id
             else:
                 num_of_pure_shelfs = df_shelf_pure[CCMY_SANDConsts.IS_PURE].sum()
                 total_num_of_shelfs = len(df_shelf_pure)
@@ -353,7 +387,7 @@ class CCMY_SANDToolBox:
                                                 level=self.LEVEL3)
                 if atomic_kpi_fk_2 != 0:
                         self.write_to_db_result(atomic_kpi_fk_2, (total_num_of_shelfs, total_num_of_shelfs, 0),
-                                            level=self.LEVEL3)
+                                                level=self.LEVEL3)
 
                 # KPI new tables
                 if kpi_level_2_fk!=0:
@@ -388,6 +422,9 @@ class CCMY_SANDToolBox:
             atomic_fk = self.kpi_static_data[(self.kpi_static_data['atomic_kpi_name'] == params[CCMY_SANDConsts.KPI_NAME]) &
                                              (self.kpi_static_data['kpi_name'] == group_name)].iloc[0]['atomic_kpi_fk']
             self.write_to_db_result(atomic_fk, (score, result, target_min), level=self.LEVEL3)
+
+            # insert result to new table
+            self.insert_db_new_results(params, result, score, score, 1, target_min)
 
         return group_score
 

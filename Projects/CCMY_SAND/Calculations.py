@@ -20,7 +20,7 @@ if __name__ == '__main__':
     Config.init()
     project_name = 'ccmy-sand'
     data_provider = KEngineDataProvider(project_name)
-    sessions = ['0a76e406-29ac-4cb5-a576-b327eaf2ffb0']
+    sessions = ['d3c791a2-c34b-4be1-8995-59dd4e89cd77']
 
     for session in sessions:
         data_provider.load_session_data(session)
