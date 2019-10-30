@@ -731,6 +731,9 @@ class ToolBox(GlobalSessionToolBox):
         numerator_entity = row[NUMERATOR_ENTITY]
         denominator_entity = row[DENOMINATOR_ENTITY]
 
+        store_type = self.store_info[ADDITIONAL_ATTRIBUTE_2].iloc[0]
+        target = self.calculate_targets_for_availability_kpi(store_type)
+
         relevant_scif = self.scif[[PK, TEMPLATE_GROUP, TEMPLATE_NAME, PRODUCT_TYPE, PRODUCT_SHORT_NAME]]
 
         relevant_scif = relevant_scif[relevant_scif[TEMPLATE_GROUP].isin(template_group)]
@@ -741,9 +744,9 @@ class ToolBox(GlobalSessionToolBox):
         result = 0
         if not relevant_scif.empty:
             unique_product_name_category = set(relevant_scif[PRODUCT_SHORT_NAME])
-            if "Coca-Cola POS Other" in unique_product_name_category:
+            if "Coca-Cola POS Other" in unique_product_name_category: # for kpi number 56
                 result = 1
-            else:
+            else: # for kpi number 57
                 if "Totem 1 CSD's" in unique_product_name_category:
                     result = result + .4
                 if "Totem 2 CSD's" in unique_product_name_category:
@@ -752,7 +755,11 @@ class ToolBox(GlobalSessionToolBox):
                     result = result + .2
 
         if pd.notna(relevant_question_fk):
-            result = self.calculate_relevant_availability_survey_result(relevant_question_fk) + result
+            calculation = self.calculate_relevant_availability_survey_result(relevant_question_fk) + result
+            if calculation >= target:
+                result = 1
+            else:
+                result = 0
 
         denominator_id = self.scif[denominator_entity].mode()[0]
         numerator_id = self.scif[numerator_entity].mode()[0]
@@ -903,3 +910,14 @@ class ToolBox(GlobalSessionToolBox):
             if self.survey.check_survey_answer(('question_fk', question_fk), ('Si', 1, 2)):
                 result = result + 1
         return result
+
+    @staticmethod
+    def calculate_targets_for_availability_kpi(store_size):
+        if store_size == 'Chico':
+            target = 1
+        elif store_size == 'Mediano':
+            target = 2
+        elif store_size == 'Grande':
+            target = 3
+
+        return target
