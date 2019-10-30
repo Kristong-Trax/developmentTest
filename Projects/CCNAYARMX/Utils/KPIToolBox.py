@@ -95,7 +95,7 @@ BAY_NUMBER = 'bay_number'
 SHEETS = [SOS, BLOCK_TOGETHER, SHARE_OF_EMPTY, BAY_COUNT, PER_BAY_SOS, SURVEY, AVAILABILITY]
 POS_OPTIONS_SHEETS = [POS_OPTIONS, TARGETS_AND_CONSTRAINTS]
 
-TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'CCNayarTemplatev0.5.2.xlsx')
+TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'CCNayarTemplatev0.5.3.xlsx')
 POS_OPTIONS_TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data',
                                          'CCNayar_POS_Options_v2.xlsx')
 
@@ -713,7 +713,7 @@ class ToolBox(GlobalSessionToolBox):
         denominator_id = self.scif[denominator_entity].mode()[0]
         numerator_id = self.scif[numerator_entity].mode()[0]
 
-        result_dict = {'kpi_fk': kpi_fk, 'numerator_id': numerator_id, 'denominator_id': denominator_id,
+        result_dict = {'kpi_name': kpi_name, 'kpi_fk': kpi_fk, 'numerator_id': numerator_id, 'denominator_id': denominator_id,
                        'result': survey_result}
 
         return result_dict
@@ -724,13 +724,23 @@ class ToolBox(GlobalSessionToolBox):
         template_name = self.sanitize_values(row[TEMPLATE_NAME])
         store_additional_attribute_2 = row[STORE_ADDITIONAL_ATTRIBUTE_2]
         product_type = row[PRODUCT_TYPE]
+        product_short_name = self.sanitize_values(row[PRODUCT_SHORT_NAME])
 
         relevant_scif = self.scif[[PK, TEMPLATE_GROUP, TEMPLATE_NAME, PRODUCT_TYPE, PRODUCT_SHORT_NAME]]
 
         relevant_scif = relevant_scif[relevant_scif[TEMPLATE_GROUP].isin(template_group)]
         relevant_scif = relevant_scif[relevant_scif[TEMPLATE_NAME].isin(template_name)]
-        relevant_scif = relevant_scif[relevant_scif[PRODUCT_TYPE].isin(product_type)]
-        a = 1
+        # relevant_scif = relevant_scif[relevant_scif[PRODUCT_TYPE].isin([product_type])]
+        relevant_scif = relevant_scif[relevant_scif[PRODUCT_SHORT_NAME].isin(product_short_name)]
+
+        if relevant_scif.empty:
+            result = 0
+        else:
+            unique_product_name_category = list(set(relevant_scif[PRODUCT_SHORT_NAME]))
+            a = 1
+
+
+
 
     def store_wrong_data_for_parent_kpi_enfriador(self):
         kpi_fk = self.common.get_kpi_fk_by_kpi_name('Enfriador')
