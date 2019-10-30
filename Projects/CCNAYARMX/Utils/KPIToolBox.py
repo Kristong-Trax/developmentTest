@@ -4,6 +4,7 @@ from KPIUtils_v2.Utils.GlobalScripts.Scripts import GlobalSessionToolBox
 from KPIUtils_v2.GlobalDataProvider.PsDataProvider import PsDataProvider
 from KPIUtils_v2.Calculations.SurveyCalculations import Survey
 from KPIUtils_v2.Calculations.BlockCalculations_v2 import Block
+from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
 from KPIUtils_v2.DB.CommonV2 import Common as CommonV2
 # from BlockCalculations_v3 import Block
 
@@ -68,6 +69,7 @@ BAY_COUNT = 'Bay Count'
 PER_BAY_SOS = 'Per bay SOS'
 SURVEY = 'Survey'
 AVAILABILITY = 'Availability'
+DISTRIBUTION = 'Distribution'
 
 POS_OPTIONS = 'POS Options'
 TARGETS_AND_CONSTRAINTS = 'Targets and Constraints'
@@ -92,7 +94,7 @@ TEMPLATE_GROUP = 'template_group'
 BAY_NUMBER = 'bay_number'
 
 # Read the sheet
-SHEETS = [SOS, BLOCK_TOGETHER, SHARE_OF_EMPTY, BAY_COUNT, PER_BAY_SOS, SURVEY, AVAILABILITY]
+SHEETS = [SOS, BLOCK_TOGETHER, SHARE_OF_EMPTY, BAY_COUNT, PER_BAY_SOS, SURVEY, AVAILABILITY, DISTRIBUTION]
 POS_OPTIONS_SHEETS = [POS_OPTIONS, TARGETS_AND_CONSTRAINTS]
 
 TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'CCNayarTemplatev0.5.3.xlsx')
@@ -130,6 +132,7 @@ class ToolBox(GlobalSessionToolBox):
         self.survey = Survey(self.data_provider, output=output, ps_data_provider=self.ps_data_provider,
                              common=self.common_v2)
         self.platformas_data = self.generate_platformas_data()
+        self.assortment = Assortment(self.data_provider, common=self.common)
 
     def parse_template(self):
         for sheet in SHEETS:
@@ -146,6 +149,7 @@ class ToolBox(GlobalSessionToolBox):
             # self.calculate_per_bay_sos(row)
             # self.calculate_survey(row)
             self.calculate_availability(row)
+            self.calculate_assortment(row)
             self.store_wrong_data_for_parent_kpi_comunicacion()
             self.store_wrong_data_for_parent_kpi_enfriador()
             self.store_wrong_data_for_parent_kpi_plataformas()
@@ -255,6 +259,10 @@ class ToolBox(GlobalSessionToolBox):
             if series[column] not in ['', np.nan]:
                 groups.append([x.strip() for x in series[column].split(',')])
         return groups
+
+    def calculate_assortment(self, row):
+        self.store_assortment = self.assortment.store_assortment
+        a = 1
 
     def calculate_sos(self, row):
         '''
