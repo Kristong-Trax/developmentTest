@@ -713,7 +713,8 @@ class ToolBox(GlobalSessionToolBox):
         denominator_id = self.scif[denominator_entity].mode()[0]
         numerator_id = self.scif[numerator_entity].mode()[0]
 
-        result_dict = {'kpi_name': kpi_name, 'kpi_fk': kpi_fk, 'numerator_id': numerator_id, 'denominator_id': denominator_id,
+        result_dict = {'kpi_name': kpi_name, 'kpi_fk': kpi_fk, 'numerator_id': numerator_id,
+                       'denominator_id': denominator_id,
                        'result': survey_result}
 
         return result_dict
@@ -736,7 +737,6 @@ class ToolBox(GlobalSessionToolBox):
         relevant_scif = relevant_scif[relevant_scif[TEMPLATE_NAME].isin(template_name)]
         relevant_scif = relevant_scif[relevant_scif[PRODUCT_TYPE].isin([product_type])]
         relevant_scif = relevant_scif[relevant_scif[PRODUCT_SHORT_NAME].isin(product_short_name)]
-
 
         result = 0
         if not relevant_scif.empty:
@@ -761,16 +761,7 @@ class ToolBox(GlobalSessionToolBox):
                        'denominator_id': denominator_id,
                        'result': result}
 
-
         return result_dict
-
-
-
-
-
-
-
-
 
     def store_wrong_data_for_parent_kpi_enfriador(self):
         kpi_fk = self.common.get_kpi_fk_by_kpi_name('Enfriador')
@@ -909,6 +900,6 @@ class ToolBox(GlobalSessionToolBox):
     def calculate_relevant_availability_survey_result(self, relevant_question_fk):
         result = 0
         for question_fk in relevant_question_fk:
-            if self.survey.check_survey_answer(('question_fk', question_fk), ('Si',1, 2)):
+            if self.survey.check_survey_answer(('question_fk', question_fk), ('Si', 1, 2)):
                 result = result + 1
         return result
