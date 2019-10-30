@@ -7,7 +7,7 @@ from Trax.Utils.Conf.Keys import DbUsers
 from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Trax.Utils.Logging.Logger import Log
 from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
-from KPIUtils_v2.DB.Common import Common
+from KPIUtils_v2.DB.CommonV2 import Common
 
 from Projects.CCMY_SAND.Utils.Fetcher import CCMY_SANDQueries
 from Projects.CCMY_SAND.Utils.GeneralToolBox import CCMY_SANDGENERALToolBox
@@ -92,7 +92,8 @@ class CCMY_SANDToolBox:
         self.data_provider = data_provider
         self.project_name = self.data_provider.project_name
         self.session_uid = self.data_provider.session_uid
-        self.manufacturer_fk = CCMY_SANDConsts.MANUFACTURER_FK
+        self.manufacturer_fk = None if self.data_provider[Data.OWN_MANUFACTURER]['param_value'].iloc[0] is None else \
+            int(self.data_provider[Data.OWN_MANUFACTURER]['param_value'].iloc[0])
         self.products = self.data_provider[Data.PRODUCTS]
         self.all_products = self.data_provider[Data.ALL_PRODUCTS]
         self.match_product_in_scene = self.data_provider[Data.MATCHES]
@@ -152,14 +153,16 @@ class CCMY_SANDToolBox:
                 total_score += score
                 kpi_fk = self.kpi_static_data[self.kpi_static_data['kpi_name'] == group].iloc[0]['kpi_fk']
                 self.write_to_db_result(kpi_fk, score, level=self.LEVEL2)
-                # todo insert db results
+
+                # insert db results to new tables
+                self.insert_db_new_results(kpi_data.iloc[0][CCMY_SANDConsts.KPI_GROUP], score, score, score, 1)
 
         if self.kpi_static_data.empty:
             return
         else:
             set_fk = self.kpi_static_data.iloc[0]['kpi_set_fk']
-            # todo insert db results
             self.write_to_db_result(set_fk, total_score, level=self.LEVEL1)
+            self.insert_db_new_results('Red Score', score, score, score, 1)
 
         self.common.commit_results_data_to_new_tables()
 
@@ -207,7 +210,7 @@ class CCMY_SANDToolBox:
                 self.write_to_db_result(atomic_fk, (score, result, 1), level=self.LEVEL3)
 
                 # writing results to new tables
-                self.insert_db_new_results(params, result, score, score, 1)
+                self.insert_db_new_results(params['KPI Name'], result, score, score, 1)
 
         else:
             for x, params in kpi_data.iterrows():
@@ -225,22 +228,22 @@ class CCMY_SANDToolBox:
                 self.write_to_db_result(atomic_fk, (score, result, target_min), level=self.LEVEL3)
 
                 # writing results to new tables
-                self.insert_db_new_results(params, result, score, score, 1, target_min)
+                self.insert_db_new_results(params['KPI Name'], result, score, score, 1, target_min)
 
         return group_score
 
     def get_kpi_fk_new_table(self, kpi_name):
         kpi_level_2_fk = \
-            self.kpi_static_data_new[self.kpi_static_data_new['KPI Name'] == kpi_name]
+            self.kpi_static_data_new[self.kpi_static_data_new['type'] == kpi_name]
         if not kpi_level_2_fk.empty:
-            return kpi_level_2_fk['fk'].iloc[0]
+            return kpi_level_2_fk['pk'].iloc[0]
         return None
 
-    def insert_db_new_results(self, params, result, score, numerator_result, denominator_result, target=None):
+    def insert_db_new_results(self, kpi_name, result, score, numerator_result, denominator_result, target=None):
 
-        kpi_level_2_fk = self.get_kpi_fk_new_table(params['KPI Name'])
+        kpi_level_2_fk = self.get_kpi_fk_new_table(kpi_name)
         if kpi_level_2_fk is None:
-            Log.warning("kpi {} from template, doesn't exist in DB".format(params['KPI Name']))
+            Log.warning("kpi {} from template, doesn't exist in DB".format(kpi_name))
             return
 
         self.common.write_to_db_result_new_tables(fk=kpi_level_2_fk,
@@ -361,7 +364,7 @@ class CCMY_SANDToolBox:
                 # KPI new tables - Only
                 if kpi_level_2_fk != 0:
                     # writing results to new tables
-                    self.insert_db_new_results(params, score, score, num_of_pure_shelfs, total_num_of_shelfs)
+                    self.insert_db_new_results(params['KPI Name'], score, score, num_of_pure_shelfs, total_num_of_shelfs)
 
                     # self.common.write_to_db_result_new_tables(fk=kpi_level_2_fk,
                     #                                           numerator_id=0,
@@ -424,7 +427,7 @@ class CCMY_SANDToolBox:
             self.write_to_db_result(atomic_fk, (score, result, target_min), level=self.LEVEL3)
 
             # insert result to new table
-            self.insert_db_new_results(params, result, score, score, 1, target_min)
+            self.insert_db_new_results(params['KPI Name'], result, score, score, 1, target_min)
 
         return group_score
 
