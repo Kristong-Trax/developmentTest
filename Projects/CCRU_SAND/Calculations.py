@@ -180,18 +180,6 @@ class CCRU_SANDProjectCalculations:
                  'weighted_score': score,
                  'level': 0})
 
-            # self.tool_box.update_kpi_scores_and_results(
-            #     {'KPI ID': 0,
-            #      'KPI name Eng': kpi_source[kpi_set_type][SET],
-            #      'KPI name Rus': kpi_source[kpi_set_type][SET],
-            #      'Parent': 'root'},
-            #     {'target': 100,
-            #      'weight': None,
-            #      'result': score,
-            #      'score': score,
-            #      'weighted_score': score,
-            #      'level': 0})
-
             if kpi_set_type == POS:
                 Log.debug('KPI calculation stage: {}'.format(kpi_source[INTEGRATION][SET]))
                 self.tool_box.prepare_hidden_set(kpi_data, kpi_source[INTEGRATION][SET])

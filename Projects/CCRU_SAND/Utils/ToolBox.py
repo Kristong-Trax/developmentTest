@@ -3279,7 +3279,7 @@ class CCRU_SANDKPIToolBox:
                                                               'kpi_set_fk'])
                 self.write_to_kpi_results_old(attributes_for_table1, 'level1')
 
-                set_target = self.mr_targets.get(kpi_set_name) if self.mr_targets.get(kpi_set_name) is not None else 100
+                set_target = self.mr_targets.get(CONTRACT) if self.mr_targets.get(CONTRACT) is not None else 100
 
                 self.update_kpi_scores_and_results(
                     {'KPI ID': CONTRACT,
@@ -3292,18 +3292,6 @@ class CCRU_SANDKPIToolBox:
                      'score': score,
                      'weighted_score': score,
                      'level': 0})
-
-                # self.update_kpi_scores_and_results(
-                #     {'KPI ID': CONTRACT,
-                #      'KPI name Eng': kpi_set_name,
-                #      'KPI name Rus': kpi_set_name,
-                #      'Parent': 'root'},
-                #     {'target': 100,
-                #      'weight': 1,
-                #      'result': score,
-                #      'score': score,
-                #      'weighted_score': score,
-                #      'level': 0})
 
     @staticmethod
     def get_kpi_conversion(kpi_conversion_file):
@@ -3629,7 +3617,7 @@ class CCRU_SANDKPIToolBox:
                                            identifier_parent=identifier_parent,
                                            should_enter=True)
         else:
-            target = self.mr_targets.get(kpi_set_name) if self.mr_targets.get(kpi_set_name) is not None else target
+            target = self.mr_targets.get(TOPSKU) if self.mr_targets.get(TOPSKU) is not None else target
             self.update_kpi_scores_and_results(
                 {'KPI ID': TOPSKU,
                  'KPI name Eng': kpi_set_name,
