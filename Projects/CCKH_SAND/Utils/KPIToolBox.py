@@ -200,7 +200,6 @@ class CCKH_SANDToolBox(CCKH_SANDConsts):
                             results_list_new_db.append(self.write_to_db_new_results(child_kpi_fk, result_new_db, score,
                                                                                     numerator, denominator,
                                                                                     weight=points, target=denominator,
-                                                                                    score_after_action=numerator,
                                                                                     identifier_parent=identifier_parent
                                                                                     , numerator_id=numerator_id))
                 max_points = sum([score[0] for score in scores])
@@ -217,7 +216,7 @@ class CCKH_SANDToolBox(CCKH_SANDConsts):
                 results_list_new_db.append(self.write_to_db_new_results(main_child_kpi_fk, percentage, percentage,
                                                                         actual_points, max_points,
                                                                         target=max_points,
-                                                                        score_after_action=actual_points,
+                                                                        weight=actual_points,
                                                                         identifier_result=main_kpi_identifier,
                                                                         identifier_parent=self.RED_SCORE))
 
@@ -229,12 +228,12 @@ class CCKH_SANDToolBox(CCKH_SANDConsts):
         results_list_new_db.append(self.write_to_db_new_results(self.get_new_kpi_fk(final_main_child), red_score,
                                                                 red_score, actual_points, max_points,
                                                                 target=max_points,
-                                                                score_after_action=actual_points,
+                                                                weight=actual_points,
                                                                 identifier_result=self.RED_SCORE,
                                                                 identifier_parent=CCKH_SANDConsts.WEB_HIERARCHY))
         results_list_new_db.append(self.write_to_db_new_results(self.get_new_kpi_by_name(self.RED_SCORE), red_score,
                                                                 red_score, actual_points, max_points,
-                                                                target=max_points, score_after_action=actual_points,
+                                                                target=max_points, weight=actual_points,
                                                                 identifier_result=CCKH_SANDConsts.WEB_HIERARCHY))
         self.commonV2.save_json_to_new_tables(results_list_new_db)
         self.commonV2.commit_results_data()
