@@ -164,7 +164,7 @@ class CCMY_SANDToolBox:
             self.write_to_db_result(set_fk, total_score, level=self.LEVEL1)
             self.insert_db_new_results('Red Score', score, score, score, 1)
 
-        self.common.commit_results_data_to_new_tables()
+        self.common.commit_results_data()
 
     def validate_kpi(self, kpi_data):
         validation = True
@@ -228,7 +228,7 @@ class CCMY_SANDToolBox:
                 self.write_to_db_result(atomic_fk, (score, result, target_min), level=self.LEVEL3)
 
                 # writing results to new tables
-                self.insert_db_new_results(params['KPI Name'], result, score, score, 1, target_min)
+                self.insert_db_new_results(params['KPI Name'], result, score, score, 1, target_min,group_name)
 
         return group_score
 
@@ -239,14 +239,14 @@ class CCMY_SANDToolBox:
             return kpi_level_2_fk['pk'].iloc[0]
         return None
 
-    def insert_db_new_results(self, kpi_name, result, score, numerator_result, denominator_result, target=None):
+    def insert_db_new_results(self, kpi_name, result, score, numerator_result, denominator_result,identifier_parent=None, target=None):
 
         kpi_level_2_fk = self.get_kpi_fk_new_table(kpi_name)
         if kpi_level_2_fk is None:
             Log.warning("kpi {} from template, doesn't exist in DB".format(kpi_name))
             return
 
-        self.common.write_to_db_result_new_tables(fk=kpi_level_2_fk,
+        self.common.write_to_db_result(fk=kpi_level_2_fk,
                                                   numerator_id=self.manufacturer_fk,
                                                   denominator_id=self.store_id,
                                                   numerator_result=numerator_result,
@@ -366,17 +366,6 @@ class CCMY_SANDToolBox:
                     # writing results to new tables
                     self.insert_db_new_results(params['KPI Name'], score, score, num_of_pure_shelfs, total_num_of_shelfs)
 
-                    # self.common.write_to_db_result_new_tables(fk=kpi_level_2_fk,
-                    #                                           numerator_id=0,
-                    #                                           denominator_id=0,
-                    #                                           numerator_result=num_of_pure_shelfs,
-                    #                                           denominator_result=total_num_of_shelfs,
-                    #                                           result=score,
-                    #                                           score=score
-                    #                                           )
-
-
-                    # todo schange numerator_id = self.manufucatirere , denominator_id = self.store_id
             else:
                 num_of_pure_shelfs = df_shelf_pure[CCMY_SANDConsts.IS_PURE].sum()
                 total_num_of_shelfs = len(df_shelf_pure)
@@ -393,14 +382,13 @@ class CCMY_SANDToolBox:
                                                 level=self.LEVEL3)
 
                 # KPI new tables
-                if kpi_level_2_fk!=0:
+                if kpi_level_2_fk != 0:
                     if params[CCMY_SANDConsts.KPI_NAME] == CCMY_SANDConsts.KPI_NUM_PURE_SHELVES:
-                        self.common.write_to_db_result_new_tables(fk=kpi_level_2_fk,
+                        self.common.write_to_db_result(fk=kpi_level_2_fk,
                                                                   numerator_id=template_fk[0],
                                                                   denominator_id=self.store_id,
                                                                   numerator_result=num_of_pure_shelfs,
                                                                   denominator_result=total_num_of_shelfs,
-                                                                  #numerator_result_after_actions=0,
                                                                   result=score,
                                                                   score=score)
                 return score
