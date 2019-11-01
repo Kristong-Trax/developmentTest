@@ -76,6 +76,8 @@ AVAILABILITY = 'Availability'
 DISTRIBUTION = 'Distribution'
 COMBO = 'Combo'
 SCORING = 'Scoring'
+PLATFORMAS = 'Platformas'
+PLATFORMAS_SCORING = 'Platformas Scoring'
 
 POS_OPTIONS = 'POS Options'
 TARGETS_AND_CONSTRAINTS = 'Targets and Constraints'
@@ -100,10 +102,11 @@ TEMPLATE_GROUP = 'template_group'
 BAY_NUMBER = 'bay_number'
 
 # Read the sheet
-SHEETS = [SOS, BLOCK_TOGETHER, SHARE_OF_EMPTY, BAY_COUNT, PER_BAY_SOS, SURVEY, AVAILABILITY, DISTRIBUTION]
+SHEETS = [SOS, BLOCK_TOGETHER, SHARE_OF_EMPTY, BAY_COUNT, PER_BAY_SOS, SURVEY, AVAILABILITY, DISTRIBUTION,
+          COMBO, SCORING, PLATFORMAS, PLATFORMAS_SCORING, KPIS]
 POS_OPTIONS_SHEETS = [POS_OPTIONS, TARGETS_AND_CONSTRAINTS]
 
-TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'CCNayarTemplatev0.5.3.xlsx')
+TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'CCNayarTemplatev0.6.4.xlsx')
 POS_OPTIONS_TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data',
                                          'CCNayar_POS_Options_v2.xlsx')
 
@@ -140,7 +143,7 @@ class ToolBox(GlobalSessionToolBox):
         self.platformas_data = self.generate_platformas_data()
         self.assortment = Assortment(self.data_provider, common=self.common)
         self.results_df = pd.DataFrame(columns=['kpi_name', 'kpi_fk', 'numerator_id', 'numerator_result',
-                                                'denominator_id', 'denominator_id', 'result', 'score',
+                                                'denominator_id', 'denominator_result', 'result', 'score',
                                                 'identifier_result', 'identifier_parent', 'should_enter'])
 
     def parse_template(self):
@@ -174,15 +177,18 @@ class ToolBox(GlobalSessionToolBox):
 
         relevant_kpi_template = self.templates[KPIS]
         att2 = self.store_info['additional_attribute_2'].iloc[0]
-        relevant_kpi_template = relevant_kpi_template[relevant_kpi_template[STORE_ADDITIONAL_ATTRIBUTE_2] == att2]
+        relevant_kpi_template = relevant_kpi_template[(relevant_kpi_template[STORE_ADDITIONAL_ATTRIBUTE_2] == att2) |
+                                                      (relevant_kpi_template[STORE_ADDITIONAL_ATTRIBUTE_2].isnull())]
         foundation_kpi_types = [BAY_COUNT, SOS, PER_BAY_SOS, BLOCK_TOGETHER, AVAILABILITY, SURVEY,
                                 DISTRIBUTION, SHARE_OF_EMPTY]
 
         foundation_kpi_template = relevant_kpi_template[relevant_kpi_template[KPI_TYPE].isin(foundation_kpi_types)]
+        platformas_kpi_template = relevant_kpi_template[relevant_kpi_template[KPI_TYPE] == PLATFORMAS_SCORING]
         combo_kpi_template = relevant_kpi_template[relevant_kpi_template[KPI_TYPE] == COMBO]
         scoring_kpi_template = relevant_kpi_template[relevant_kpi_template[KPI_TYPE] == SCORING]
 
         self._calculate_kpis_from_template(foundation_kpi_template)
+        self._calculate_kpis_from_template(platformas_kpi_template)
         self._calculate_kpis_from_template(combo_kpi_template)
         self._calculate_kpis_from_template(scoring_kpi_template)
 
@@ -198,20 +204,27 @@ class ToolBox(GlobalSessionToolBox):
     def _calculate_kpis_from_template(self, template_df):
         for i, row in template_df.iterrows():
             calculation_function = self._get_calculation_function_by_kpi_type(row[KPI_TYPE])
-            kpi_row = self.templates[row[KPI_TYPE]][self.templates[row[KPI_TYPE]][KPI_NAME] == row[KPI_NAME]]
+            kpi_row = self.templates[row[KPI_TYPE]][
+                self.templates[row[KPI_TYPE]][KPI_NAME].str.encode('utf-8') == row[KPI_NAME].encode('utf-8')].iloc[0]
             result_data = calculation_function(kpi_row)
             if result_data:
                 if isinstance(result_data, dict):
-                    if 'score' not in result_data.keys():
-                        result_data['score'] = row['Score'] * result_data['result']
-                    result_data['identifier_parent'] = row[PARENT_KPI]
+                    weight = row['Score']
+                    if weight and 'score' not in result_data.keys():
+                        result_data['score'] = weight * result_data['result']
+                    parent_kpi_name = self._get_parent_name_from_kpi_name(row[KPI_NAME])
+                    if parent_kpi_name:
+                        result_data['identifier_parent'] = parent_kpi_name
                     result_data['identifier_result'] = row[KPI_NAME]
                     self.results_df.loc[len(self.results_df), result_data.keys()] = result_data
                 else:  # must be a list
                     for result in result_data:
-                        if 'score' not in result.keys():
-                            result['score'] = row['Score'] * result['result']
-                        result_data['identifier_parent'] = row[PARENT_KPI]
+                        weight = row['Score']
+                        if weight and 'score' not in result.keys():
+                            result['score'] = weight * result['result']
+                        parent_kpi_name = self._get_parent_name_from_kpi_name(row[KPI_NAME])
+                        if parent_kpi_name:
+                            result_data['identifier_parent'] = parent_kpi_name
                         result_data['identifier_result'] = row[KPI_NAME]
                         self.results_df.loc[len(self.results_df), result.keys()] = result
 
@@ -236,6 +249,57 @@ class ToolBox(GlobalSessionToolBox):
             return self.calculate_combo
         elif kpi_type == SCORING:
             return self.calculate_scoring
+        elif kpi_type == PLATFORMAS_SCORING:
+            return self
+
+    def calculate_platformas_scoring(self, row):
+        results_list = []
+        kpi_name = row[KPI_NAME]
+        relevant_platforms = self.sanitize_values(row['Platform'])
+        relevant_platformas_data = \
+            self.platformas_data[(self.platformas_data['Platform Name'].isin(relevant_platforms)) &
+                                 (self.platformas_data['consumed'] == 'no')].iloc[0]
+        for i, child_row in self.templates[PLATFORMAS][self.templates[PLATFORMAS][PARENT_KPI] == kpi_name]:
+            child_kpi_fk = self.get_kpi_fk_by_kpi_name(child_row[KPI_NAME])
+            if not relevant_platformas_data.empty:
+                result = relevant_platformas_data[child_row['data_column']]
+            else:
+                result = 0
+            result_dict = {'kpi_name': child_row[KPI_NAME], 'kpi_fk': child_kpi_fk,
+                           'numerator_id': self.own_manuf_fk, 'denominator_id': self.store_id,
+                           'result': result}
+            results_list.append(result_dict)
+
+        self.platformas_data.loc[relevant_platformas_data.index.values()[0], 'consumed'] = 'yes'
+
+        return results_list
+
+    def calculate_scoring(self, row):
+        kpi_name = row[KPI_NAME]
+        kpi_fk = self.common.get_kpi_fk_by_kpi_name(kpi_name)
+        numerator_id = self.own_manuf_fk
+        denominator_id = self.store_id
+
+        result_dict = {'kpi_name': kpi_name, 'kpi_fk': kpi_fk, 'numerator_id': numerator_id,
+                       'denominator_id': denominator_id}
+
+        component_kpis = self.sanitize_values(row['Component KPIs'])
+        relevant_results = self.results_df[self.results_df['kpi_name'].isin(component_kpis)]
+        passing_results = relevant_results[relevant_results['result'] != 0]
+        if row['Component aggregation'] == 'one-passed':
+            if len(relevant_results) > 0 and len(passing_results) > 0:
+                result_dict['result'] = 1
+            else:
+                result_dict['result'] = 0
+        elif row['Component aggregation'] == 'sum':
+            if len(relevant_results) > 0:
+                result_dict['score'] = relevant_results['score'].sum()
+                result_dict['result'] = result_dict['score']
+            else:
+                result_dict['score'] = 0
+                result_dict['result'] = result_dict['score']
+
+        return result_dict
 
     def calculate_combo(self, row):
         component_kpis = self.sanitize_values(row['Prerequisite'])
@@ -256,9 +320,19 @@ class ToolBox(GlobalSessionToolBox):
                        'result': result}
         return result_dict
 
+    def _get_parent_name_from_kpi_name(self, kpi_name):
+        template = self.templates[KPIS]
+        parent_kpi_name = \
+            template[template[KPI_NAME].str.encode('utf-8') == kpi_name.encode('utf-8')][PARENT_KPI].iloc[0]
+        if parent_kpi_name and parent_kpi_name is not pd.np.nan:
+            return parent_kpi_name
+        else:
+            return None
+
     def generate_platformas_data(self):
-        platformas_data = pd.DataFrame(columns=['scene_id', 'Platform Name', 'POS Option Present',
-                                                'Mandatory SKUs found', 'Minimum facings met', 'Coke purity'])
+        platformas_data = pd.DataFrame(columns=['scene_id', 'Platform Name', 'POS option present',
+                                                'Mandatory SKUs found', 'Minimum facings met', 'Coke purity',
+                                                'consumed'])
         for scene in self.scif[['scene_id', 'template_name']].drop_duplicates().itertuples():
             scene_scif = self.scif[self.scif['scene_id'] == scene.scene_id]
             product_names_in_scene = \
@@ -285,7 +359,7 @@ class ToolBox(GlobalSessionToolBox):
             if targets_and_constraints.empty:
                 # this is needed for the Precios en Cooler KPI
                 platformas_data.loc[len(platformas_data), platformas_data.columns.tolist()] = [
-                    scene.scene_id, platform_name, pos_option_found, 0, 0, 0
+                    scene.scene_id, platform_name, pos_option_found, 0, 0, 0, 'no'
                 ]
                 continue
 
@@ -323,8 +397,14 @@ class ToolBox(GlobalSessionToolBox):
 
             platformas_data.loc[len(platformas_data), platformas_data.columns.tolist()] = [
                 scene.scene_id, platform_name, pos_option_found, mandatory_skus_found,
-                minimum_facings_met, coke_purity_for_scene
+                minimum_facings_met, coke_purity_for_scene, 'no'
             ]
+
+        platformas_data['passing_results'] = platformas_data['POS option present'] + \
+                                             platformas_data['Mandatory SKUs found'] + \
+                                             platformas_data['Minimum facings met'] + \
+                                             platformas_data['Coke purity']
+        platformas_data.sort_values(by=['passing_results'], ascending=False, inplace=True)
         return platformas_data
 
     @staticmethod
@@ -763,8 +843,8 @@ class ToolBox(GlobalSessionToolBox):
         kpi_name = row[KPI_NAME]
         kpi_fk = self.common.get_kpi_fk_by_kpi_name(kpi_name)
         template_group = self.sanitize_values(row[TASK_TEMPLATE_GROUP])
-        numerator_entity = row[NUMERATOR_ENTITY]
-        denominator_entity = row[DENOMINATOR_ENTITY]
+        numerator_entity = 'manufacturer_fk'
+        denominator_entity = 'store_id'
         # Step 2: Read the rows to process unique per bay sos
         template_group = row[TASK_TEMPLATE_GROUP]
         template_name = row[TEMPLATE_NAME]
@@ -848,8 +928,8 @@ class ToolBox(GlobalSessionToolBox):
 
         survey_result = self.calculate_relevant_survey_result(relevant_question_fk)
 
-        denominator_id = self.scif[denominator_entity].mode()[0]
-        numerator_id = self.scif[numerator_entity].mode()[0]
+        denominator_id = self.store_id
+        numerator_id = self.own_manuf_fk
 
         result_dict = {'kpi_name': kpi_name, 'kpi_fk': kpi_fk, 'numerator_id': numerator_id,
                        'denominator_id': denominator_id,
