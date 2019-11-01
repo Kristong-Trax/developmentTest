@@ -40,6 +40,7 @@ __author__ = 'krishnat'
 # Column Name
 KPI_NAME = 'KPI Name'
 KPI_TYPE = 'KPI Type'
+PARENT_KPI = 'Parent KPI'
 TASK_TEMPLATE_GROUP = 'Task/ Template Group'
 TEMPLATE_NAME = 'template_name'
 MANUFACTURER_NAME = 'manufacturer_name'
@@ -73,6 +74,8 @@ PER_BAY_SOS = 'Per bay SOS'
 SURVEY = 'Survey'
 AVAILABILITY = 'Availability'
 DISTRIBUTION = 'Distribution'
+COMBO = 'Combo'
+SCORING = 'Scoring'
 
 POS_OPTIONS = 'POS Options'
 TARGETS_AND_CONSTRAINTS = 'Targets and Constraints'
@@ -174,26 +177,84 @@ class ToolBox(GlobalSessionToolBox):
         relevant_kpi_template = relevant_kpi_template[relevant_kpi_template[STORE_ADDITIONAL_ATTRIBUTE_2] == att2]
         foundation_kpi_types = [BAY_COUNT, SOS, PER_BAY_SOS, BLOCK_TOGETHER, AVAILABILITY, SURVEY,
                                 DISTRIBUTION, SHARE_OF_EMPTY]
+
         foundation_kpi_template = relevant_kpi_template[relevant_kpi_template[KPI_TYPE].isin(foundation_kpi_types)]
-        for i, row in foundation_kpi_template.iterrows():
+        combo_kpi_template = relevant_kpi_template[relevant_kpi_template[KPI_TYPE] == COMBO]
+        scoring_kpi_template = relevant_kpi_template[relevant_kpi_template[KPI_TYPE] == SCORING]
+
+        self._calculate_kpis_from_template(foundation_kpi_template)
+        self._calculate_kpis_from_template(combo_kpi_template)
+        self._calculate_kpis_from_template(scoring_kpi_template)
+
+        self.save_results_to_db()
+        return
+
+    def save_results_to_db(self):
+        self.results_df.drop(columns=['kpi_name'], inplace=True)
+        results = self.results_df.to_dict('records')
+        for result in results:
+            self.write_to_db(**result)
+
+    def _calculate_kpis_from_template(self, template_df):
+        for i, row in template_df.iterrows():
             calculation_function = self._get_calculation_function_by_kpi_type(row[KPI_TYPE])
-            result_data = calculation_function(row)
+            kpi_row = self.templates[row[KPI_TYPE]][self.templates[row[KPI_TYPE]][KPI_NAME] == row[KPI_NAME]]
+            result_data = calculation_function(kpi_row)
             if result_data:
                 if isinstance(result_data, dict):
                     if 'score' not in result_data.keys():
-                        result_data['score'] = row['score'] * result_data['result']
+                        result_data['score'] = row['Score'] * result_data['result']
+                    result_data['identifier_parent'] = row[PARENT_KPI]
+                    result_data['identifier_result'] = row[KPI_NAME]
                     self.results_df.loc[len(self.results_df), result_data.keys()] = result_data
-                else: # must be a list
+                else:  # must be a list
                     for result in result_data:
                         if 'score' not in result.keys():
-                            result['score'] = row['score'] * result['result']
+                            result['score'] = row['Score'] * result['result']
+                        result_data['identifier_parent'] = row[PARENT_KPI]
+                        result_data['identifier_result'] = row[KPI_NAME]
                         self.results_df.loc[len(self.results_df), result.keys()] = result
 
-
-        return
+    def _get_calculation_function_by_kpi_type(self, kpi_type):
+        if kpi_type == SOS:
+            return self.calculate_sos
+        elif kpi_type == BAY_COUNT:
+            return self.calculate_bay_count
+        elif kpi_type == PER_BAY_SOS:
+            return self.calculate_per_bay_sos
+        elif kpi_type == BLOCK_TOGETHER:
+            return self.calculate_block_together
+        elif kpi_type == AVAILABILITY:
+            return self.calculate_availability
+        elif kpi_type == SURVEY:
+            return self.calculate_survey
+        elif kpi_type == DISTRIBUTION:
+            return self.calculate_assortment
+        elif kpi_type == SHARE_OF_EMPTY:
+            return self.calculate_share_of_empty
+        elif kpi_type == COMBO:
+            return self.calculate_combo
+        elif kpi_type == SCORING:
+            return self.calculate_scoring
 
     def calculate_combo(self, row):
+        component_kpis = self.sanitize_values(row['Prerequisite'])
+        relevant_results = self.results_df[self.results_df[KPI_NAME].isin(component_kpis)]
+        passing_results = relevant_results[relevant_results['result'] != 0]
+        if len(relevant_results) > 0 and len(relevant_results) == len(passing_results):
+            result = 1
+        else:
+            result = 0
 
+        kpi_name = row[KPI_NAME]
+        kpi_fk = self.common.get_kpi_fk_by_kpi_name(kpi_name)
+        numerator_id = self.own_manuf_fk
+        denominator_id = self.store_id
+
+        result_dict = {'kpi_name': kpi_name, 'kpi_fk': kpi_fk, 'numerator_id': numerator_id,
+                       'denominator_id': denominator_id,
+                       'result': result}
+        return result_dict
 
     def generate_platformas_data(self):
         platformas_data = pd.DataFrame(columns=['scene_id', 'Platform Name', 'POS Option Present',
