@@ -299,6 +299,7 @@ class ToolBox(GlobalSessionToolBox):
                        'denominator_id': denominator_id}
 
         component_kpis = self.sanitize_values(row['Component KPIs'])
+        dependency_kpis = self.sanitize_values(row['Dependency'])
         relevant_results = self.results_df[self.results_df['kpi_name'].isin(component_kpis)]
         passing_results = relevant_results[relevant_results['result'] != 0]
         if row['Component aggregation'] == 'one-passed':
@@ -313,6 +314,13 @@ class ToolBox(GlobalSessionToolBox):
             else:
                 result_dict['score'] = 0
                 result_dict['result'] = result_dict['score']
+        if dependency_kpis and dependency_kpis is not pd.np.nan:
+            dependency_results = self.results_df[self.results_df['kpi_name'].isin(dependency_kpis)]
+            passing_dependency_results = dependency_results[dependency_results['result'] != 0]
+            if len(dependency_results) > 0 and len(dependency_results) == len(passing_dependency_results):
+                result_dict['result'] = 1
+            else:
+                result_dict['result'] = 0
 
         return result_dict
 
