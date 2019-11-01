@@ -455,7 +455,7 @@ class ToolBox(GlobalSessionToolBox):
             result = float(lvl2_kpi_result['passes']/lvl2_kpi_result['total']) * 100
 
         else:
-            result = 'NULL'
+            result = pd.np.nan
             numerator_id = 0
             denominator_id = 0
 
@@ -611,7 +611,7 @@ class ToolBox(GlobalSessionToolBox):
             bay_count_scif = bay_count_scif[bay_count_scif[TAMANDO_DEL_PRODUCTO].isin(tamano_del_producto)]
 
         if bay_count_scif.empty:
-            result = 'NULL'
+            result = pd.np.nan
 
         else:
             unique_bay_number = list(set(bay_count_scif[BAY_NUMBER]))
@@ -797,7 +797,7 @@ class ToolBox(GlobalSessionToolBox):
         # [[BAY_NUMBER, MANUFACTURER_NAME, PRODUCT_FK, FACINGS_IGN_STACK]]
 
         if bay_count_scif.empty:
-            result = 'NULL'
+            result = pd.np.nan
             denominator_id = self.scif[denominator_entity].mode()[0]
             numerator_id = self.scif[numerator_entity].mode()[0]
 
@@ -881,7 +881,7 @@ class ToolBox(GlobalSessionToolBox):
         # [[BAY_NUMBER, MANUFACTURER_NAME, PRODUCT_FK]]
 
         if bay_count_scif.empty:
-            result = 'NULL'
+            result = pd.np.nan
             denominator_id = self.scif[denominator_entity].mode()[0]
             numerator_id = self.scif[numerator_entity].mode()[0]
 
@@ -1110,7 +1110,7 @@ class ToolBox(GlobalSessionToolBox):
         return facings_target, bay_count_target
 
     def calculate_relevant_survey_result(self, relevant_question_fk):
-        result = 'NULL'
+        result = pd.np.nan
         for question_fk in relevant_question_fk:
             if result == 0:
                 break
