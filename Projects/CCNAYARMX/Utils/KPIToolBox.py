@@ -197,6 +197,7 @@ class ToolBox(GlobalSessionToolBox):
 
     def save_results_to_db(self):
         self.results_df.drop(columns=['kpi_name'], inplace=True)
+        self.results['should_enter'] = True
         results = self.results_df.to_dict('records')
         for result in results:
             self.write_to_db(**result)
@@ -204,8 +205,11 @@ class ToolBox(GlobalSessionToolBox):
     def _calculate_kpis_from_template(self, template_df):
         for i, row in template_df.iterrows():
             calculation_function = self._get_calculation_function_by_kpi_type(row[KPI_TYPE])
-            kpi_row = self.templates[row[KPI_TYPE]][
-                self.templates[row[KPI_TYPE]][KPI_NAME].str.encode('utf-8') == row[KPI_NAME].encode('utf-8')].iloc[0]
+            try:
+                kpi_row = self.templates[row[KPI_TYPE]][
+                    self.templates[row[KPI_TYPE]][KPI_NAME].str.encode('utf-8') == row[KPI_NAME].encode('utf-8')].iloc[0]
+            except IndexError:
+                pass
             result_data = calculation_function(kpi_row)
             if result_data:
                 if isinstance(result_data, dict):
@@ -255,19 +259,30 @@ class ToolBox(GlobalSessionToolBox):
     def calculate_platformas_scoring(self, row):
         results_list = []
         kpi_name = row[KPI_NAME]
+        kpi_fk = self.get_kpi_fk_by_kpi_type(kpi_name)
         relevant_platforms = self.sanitize_values(row['Platform'])
         relevant_platformas_data = \
             self.platformas_data[(self.platformas_data['Platform Name'].isin(relevant_platforms)) &
                                  (self.platformas_data['consumed'] == 'no')]
-        for i, child_row in self.templates[PLATFORMAS][self.templates[PLATFORMAS][PARENT_KPI] == kpi_name]:
+        for i, child_row in self.templates[PLATFORMAS][self.templates[PLATFORMAS][PARENT_KPI] == kpi_name].iterrows():
             child_kpi_fk = self.get_kpi_fk_by_kpi_type(child_row[KPI_NAME])
             if not relevant_platformas_data.empty:
-                relevant_platformas_data = relevant_platformas_data.iloc[0]
-                result = relevant_platformas_data[child_row['data_column']]
+                child_result = relevant_platformas_data[child_row['data_column']].iloc[0]
                 self.platformas_data.loc[relevant_platformas_data.index.values()[0], 'consumed'] = 'yes'
             else:
-                result = 0
+                child_result = 0
             result_dict = {'kpi_name': child_row[KPI_NAME], 'kpi_fk': child_kpi_fk,
+                           'numerator_id': self.own_manuf_fk, 'denominator_id': self.store_id,
+                           'result': child_result}
+            results_list.append(result_dict)
+
+        if kpi_name != 'Precios en cooler':
+            if self.platformas_data.loc[relevant_platformas_data.index.values()[0], 'passing_results'] == 4:
+                result = 1
+            else:
+                result = 0
+
+            result_dict = {'kpi_name': kpi_name, 'kpi_fk': kpi_fk,
                            'numerator_id': self.own_manuf_fk, 'denominator_id': self.store_id,
                            'result': result}
             results_list.append(result_dict)
@@ -303,7 +318,7 @@ class ToolBox(GlobalSessionToolBox):
 
     def calculate_combo(self, row):
         component_kpis = self.sanitize_values(row['Prerequisite'])
-        relevant_results = self.results_df[self.results_df[KPI_NAME].isin(component_kpis)]
+        relevant_results = self.results_df[self.results_df['kpi_name'].isin(component_kpis)]
         passing_results = relevant_results[relevant_results['result'] != 0]
         if len(relevant_results) > 0 and len(relevant_results) == len(passing_results):
             result = 1
