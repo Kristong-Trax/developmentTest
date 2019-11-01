@@ -554,7 +554,7 @@ class ToolBox(GlobalSessionToolBox):
             numerator_result = numerator_scif[FINAL_FACINGS].sum()
 
         # Step 10: Calculate the final result
-        result = (numerator_result / denominator_result) * 100
+        result = (numerator_result / denominator_result)
 
         result_dict = {'kpi_name': kpi_name, 'kpi_fk': kpi_fk, 'numerator_id': numerator_id,
                        'numerator_result': numerator_result,
@@ -741,7 +741,7 @@ class ToolBox(GlobalSessionToolBox):
         numerator_id = self.own_manuf_fk
 
         # Step 10: Calculate the result
-        result = (numerator_result / denominator_result) * 100
+        result = (numerator_result / denominator_result)
 
         # Step 11. Save the results in the database
         self.common.write_to_db_result(kpi_fk, numerator_id=numerator_id,
@@ -821,12 +821,12 @@ class ToolBox(GlobalSessionToolBox):
 
         # Step 10: Calculate the scoring
         if facings >= facings_target:
-            result = 100
+            result = 1
         else:
-            result = 100 * (facings / facings_target)
+            result =  (facings / facings_target)
 
         if bay_count < bay_count_target:
-            result = result - (2 / 15 * 100)
+            result = result - (2 / 15 )
 
         # Step 11: Calculate the numerator entity and denominator entity
         numerator_id = relevant_scif[MANUFACTURER_FK].mode()[0]
