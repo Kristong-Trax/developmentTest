@@ -666,6 +666,7 @@ class ToolBox(GlobalSessionToolBox):
                         else:
                             result = 1
 
+
                         numerator_id = value
 
                         result_dict = {'kpi_name': kpi_name, 'kpi_fk': kpi_fk, 'numerator_id': numerator_id,
