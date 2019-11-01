@@ -210,7 +210,7 @@ class ToolBox(GlobalSessionToolBox):
             if result_data:
                 if isinstance(result_data, dict):
                     weight = row['Score']
-                    if weight and 'score' not in result_data.keys():
+                    if weight and 'score' not in result_data.keys() and result_data['result'] is not pd.np.nan:
                         result_data['score'] = weight * result_data['result']
                     parent_kpi_name = self._get_parent_name_from_kpi_name(row[KPI_NAME])
                     if parent_kpi_name:
@@ -220,7 +220,7 @@ class ToolBox(GlobalSessionToolBox):
                 else:  # must be a list
                     for result in result_data:
                         weight = row['Score']
-                        if weight and 'score' not in result.keys():
+                        if weight and 'score' not in result_data.keys() and result_data['result'] is not pd.np.nan:
                             result['score'] = weight * result['result']
                         parent_kpi_name = self._get_parent_name_from_kpi_name(row[KPI_NAME])
                         if parent_kpi_name:
@@ -276,7 +276,7 @@ class ToolBox(GlobalSessionToolBox):
 
     def calculate_scoring(self, row):
         kpi_name = row[KPI_NAME]
-        kpi_fk = self.common.get_kpi_fk_by_kpi_name(kpi_name)
+        kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_name)
         numerator_id = self.own_manuf_fk
         denominator_id = self.store_id
 
@@ -311,7 +311,7 @@ class ToolBox(GlobalSessionToolBox):
             result = 0
 
         kpi_name = row[KPI_NAME]
-        kpi_fk = self.common.get_kpi_fk_by_kpi_name(kpi_name)
+        kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_name)
         numerator_id = self.own_manuf_fk
         denominator_id = self.store_id
 
@@ -434,7 +434,7 @@ class ToolBox(GlobalSessionToolBox):
 
     def calculate_assortment(self, row):
         kpi_name = row[KPI_NAME]
-        kpi_fk = self.common.get_kpi_fk_by_kpi_name(kpi_name)
+        kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_name)
         kpi_fk_level2 = row[KPI_FK_LEVEL2]
         template_group = self.sanitize_values(row[TASK_TEMPLATE_GROUP])
         numerator_entity = row[NUMERATOR_ENTITY]
@@ -483,7 +483,7 @@ class ToolBox(GlobalSessionToolBox):
 
         # Step 1: Read the excel rows to process the information(Common among all the sheets)
         kpi_name = row[KPI_NAME]
-        kpi_fk = self.common.get_kpi_fk_by_kpi_name(kpi_name)
+        kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_name)
         template_group = self.sanitize_values(row[TASK_TEMPLATE_GROUP])
         numerator_value1 = row[NUMERATOR_VALUE_1]
         denominator_value1 = row[DENOMINATOR_VALUE_1]
@@ -567,7 +567,7 @@ class ToolBox(GlobalSessionToolBox):
 
         # Step 1: Read the excel rows to process the information (Common among all the sheets)
         kpi_name = row[KPI_NAME]
-        kpi_fk = self.common.get_kpi_fk_by_kpi_name(kpi_name)
+        kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_name)
         template_group = row[TASK_TEMPLATE_GROUP]
         numerator_entity = row[NUMERATOR_ENTITY]
         denominator_entity = row[DENOMINATOR_ENTITY]
@@ -692,7 +692,7 @@ class ToolBox(GlobalSessionToolBox):
 
         # Step 1: Read the excel rows to process the information (Common among all the sheets)
         kpi_name = row[KPI_NAME]
-        kpi_fk = self.common.get_kpi_fk_by_kpi_name(kpi_name)
+        kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_name)
         template_group = self.sanitize_values(row[TASK_TEMPLATE_GROUP])
         numerator_value1 = row[NUMERATOR_VALUE_1]
         denominator_value1 = row[DENOMINATOR_VALUE_1]
@@ -758,7 +758,7 @@ class ToolBox(GlobalSessionToolBox):
 
         # Step 1: Read the excel rows to process the information(Common among all the sheets)
         kpi_name = row[KPI_NAME]
-        kpi_fk = self.common.get_kpi_fk_by_kpi_name(kpi_name)
+        kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_name)
         template_group = self.sanitize_values(row[TASK_TEMPLATE_GROUP])
         numerator_entity = row[NUMERATOR_ENTITY]
         denominator_entity = row[DENOMINATOR_ENTITY]
@@ -841,7 +841,7 @@ class ToolBox(GlobalSessionToolBox):
         # Step 1: Read the excel rows to process the information(Common among all the sheets)
 
         kpi_name = row[KPI_NAME]
-        kpi_fk = self.common.get_kpi_fk_by_kpi_name(kpi_name)
+        kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_name)
         template_group = self.sanitize_values(row[TASK_TEMPLATE_GROUP])
         numerator_entity = 'manufacturer_fk'
         denominator_entity = 'store_id'
@@ -921,7 +921,7 @@ class ToolBox(GlobalSessionToolBox):
 
         # Step 1:
         kpi_name = row[KPI_NAME]
-        kpi_fk = self.common.get_kpi_fk_by_kpi_name(kpi_name)
+        kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_name)
         relevant_question_fk = self.sanitize_values(row[RELEVANT_QUESTION_FK])
         numerator_entity = row[NUMERATOR_ENTITY]
         denominator_entity = row[DENOMINATOR_ENTITY]
@@ -939,7 +939,7 @@ class ToolBox(GlobalSessionToolBox):
 
     def calculate_availability(self, row):
         kpi_name = row[KPI_NAME]
-        kpi_fk = self.common.get_kpi_fk_by_kpi_name(kpi_name)
+        kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_name)
         template_group = self.sanitize_values(row[TASK_TEMPLATE_GROUP])
         template_name = self.sanitize_values(row[TEMPLATE_NAME])
         store_additional_attribute_2 = row[STORE_ADDITIONAL_ATTRIBUTE_2]
@@ -989,84 +989,84 @@ class ToolBox(GlobalSessionToolBox):
         return result_dict
 
     def store_wrong_data_for_parent_kpi_enfriador(self):
-        kpi_fk = self.common.get_kpi_fk_by_kpi_name('Enfriador')
+        kpi_fk = self.common.get_kpi_fk_by_kpi_type('Enfriador')
         numerator_id = self.scif['manufacturer_fk'].mode()[0]
         denominator_id = self.scif['template_fk'].mode()[0]
         self.common.write_to_db_result(kpi_fk, numerator_id=numerator_id,
                                        denominator_id=denominator_id, result=0)
 
     def store_wrong_data_for_parent_kpi_portafolio_y_precios(self):
-        kpi_fk = self.common.get_kpi_fk_by_kpi_name('Portafolio y Precios')
+        kpi_fk = self.common.get_kpi_fk_by_kpi_type('Portafolio y Precios')
         numerator_id = self.scif['manufacturer_fk'].mode()[0]
         denominator_id = self.scif['template_fk'].mode()[0]
         self.common.write_to_db_result(kpi_fk, numerator_id=numerator_id,
                                        denominator_id=denominator_id, result=0)
 
     def store_wrong_data_for_parent_kpi_plataformas(self):
-        kpi_fk = self.common.get_kpi_fk_by_kpi_name('Plataformas')
+        kpi_fk = self.common.get_kpi_fk_by_kpi_type('Plataformas')
         numerator_id = self.scif['manufacturer_fk'].mode()[0]
         denominator_id = self.scif['template_fk'].mode()[0]
         self.common.write_to_db_result(kpi_fk, numerator_id=numerator_id,
                                        denominator_id=denominator_id, result=0)
 
     def store_wrong_data_for_parent_kpi_comunicacion(self):
-        kpi_fk = self.common.get_kpi_fk_by_kpi_name('Comunicacion')
+        kpi_fk = self.common.get_kpi_fk_by_kpi_type('Comunicacion')
         numerator_id = self.scif['manufacturer_fk'].mode()[0]
         denominator_id = self.scif['template_fk'].mode()[0]
         self.common.write_to_db_result(kpi_fk, numerator_id=numerator_id,
                                        denominator_id=denominator_id, result=0)
 
     def store_wrong_data_for_parent_kpi_primera_posicion(self):
-        kpi_fk = self.common.get_kpi_fk_by_kpi_name('Primera posicion')
+        kpi_fk = self.common.get_kpi_fk_by_kpi_type('Primera posicion')
         numerator_id = self.scif['manufacturer_fk'].mode()[0]
         denominator_id = self.scif['template_fk'].mode()[0]
         self.common.write_to_db_result(kpi_fk, numerator_id=numerator_id,
                                        denominator_id=denominator_id, result=0)
 
     def store_wrong_data_for_parent_kpi_respeto(self):
-        kpi_fk = self.common.get_kpi_fk_by_kpi_name('Respeto')
+        kpi_fk = self.common.get_kpi_fk_by_kpi_type('Respeto')
         numerator_id = self.scif['manufacturer_fk'].mode()[0]
         denominator_id = self.scif['template_fk'].mode()[0]
         self.common.write_to_db_result(kpi_fk, numerator_id=numerator_id,
                                        denominator_id=denominator_id, result=0)
 
     def store_wrong_data_for_parent_kpi_acomodo_por_bloques(self):
-        kpi_fk = self.common.get_kpi_fk_by_kpi_name('Acomodo por Bloques')
+        kpi_fk = self.common.get_kpi_fk_by_kpi_type('Acomodo por Bloques')
         numerator_id = self.scif['manufacturer_fk'].mode()[0]
         denominator_id = self.scif['template_fk'].mode()[0]
         self.common.write_to_db_result(kpi_fk, numerator_id=numerator_id,
                                        denominator_id=denominator_id, result=0)
 
     def store_wrong_data_for_parent_kpi_bloques_colas_50(self):
-        kpi_fk = self.common.get_kpi_fk_by_kpi_name('Bloques Colas 50%')
+        kpi_fk = self.common.get_kpi_fk_by_kpi_type('Bloques Colas 50%')
         numerator_id = self.scif['manufacturer_fk'].mode()[0]
         denominator_id = self.scif['template_fk'].mode()[0]
         self.common.write_to_db_result(kpi_fk, numerator_id=numerator_id,
                                        denominator_id=denominator_id, result=0)
 
     def store_wrong_data_for_parent_kpi_bloques_frutales_25(self):
-        kpi_fk = self.common.get_kpi_fk_by_kpi_name('Bloques Frutales 25%')
+        kpi_fk = self.common.get_kpi_fk_by_kpi_type('Bloques Frutales 25%')
         numerator_id = self.scif['manufacturer_fk'].mode()[0]
         denominator_id = self.scif['template_fk'].mode()[0]
         self.common.write_to_db_result(kpi_fk, numerator_id=numerator_id,
                                        denominator_id=denominator_id, result=0)
 
     def store_wrong_data_for_parent_kpi_comidas(self):
-        kpi_fk = self.common.get_kpi_fk_by_kpi_name('Comidas')
+        kpi_fk = self.common.get_kpi_fk_by_kpi_type('Comidas')
         numerator_id = self.scif['manufacturer_fk'].mode()[0]
         denominator_id = self.scif['template_fk'].mode()[0]
         self.common.write_to_db_result(kpi_fk, numerator_id=numerator_id,
                                        denominator_id=denominator_id, result=0)
 
     def store_wrong_data_for_parent_kpi_plat_dinamicas_one(self):
-        kpi_fk = self.common.get_kpi_fk_by_kpi_name('Plat. Dinamicas 1')
+        kpi_fk = self.common.get_kpi_fk_by_kpi_type('Plat. Dinamicas 1')
         numerator_id = self.scif['manufacturer_fk'].mode()[0]
         denominator_id = self.scif['template_fk'].mode()[0]
         self.common.write_to_db_result(kpi_fk, numerator_id=numerator_id,
                                        denominator_id=denominator_id, result=0)
 
     def store_wrong_data_for_parent_kpi_plat_dinamicas_two(self):
-        kpi_fk = self.common.get_kpi_fk_by_kpi_name('Plat. Dinamicas 2')
+        kpi_fk = self.common.get_kpi_fk_by_kpi_type('Plat. Dinamicas 2')
         numerator_id = self.scif['manufacturer_fk'].mode()[0]
         denominator_id = self.scif['template_fk'].mode()[0]
         self.common.write_to_db_result(kpi_fk, numerator_id=numerator_id,
