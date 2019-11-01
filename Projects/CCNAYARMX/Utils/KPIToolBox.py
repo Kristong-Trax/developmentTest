@@ -197,7 +197,7 @@ class ToolBox(GlobalSessionToolBox):
 
     def save_results_to_db(self):
         self.results_df.drop(columns=['kpi_name'], inplace=True)
-        self.results['should_enter'] = True
+        self.results_df['should_enter'] = True
         results = self.results_df.to_dict('records')
         for result in results:
             self.write_to_db(**result)
@@ -268,7 +268,7 @@ class ToolBox(GlobalSessionToolBox):
             child_kpi_fk = self.get_kpi_fk_by_kpi_type(child_row[KPI_NAME])
             if not relevant_platformas_data.empty:
                 child_result = relevant_platformas_data[child_row['data_column']].iloc[0]
-                self.platformas_data.loc[relevant_platformas_data.index.values()[0], 'consumed'] = 'yes'
+                self.platformas_data.loc[relevant_platformas_data.index.values[0], 'consumed'] = 'yes'
             else:
                 child_result = 0
             result_dict = {'kpi_name': child_row[KPI_NAME], 'kpi_fk': child_kpi_fk,
@@ -277,7 +277,7 @@ class ToolBox(GlobalSessionToolBox):
             results_list.append(result_dict)
 
         if kpi_name != 'Precios en cooler':
-            if self.platformas_data.loc[relevant_platformas_data.index.values()[0], 'passing_results'] == 4:
+            if self.platformas_data.loc[relevant_platformas_data.index.values[0], 'passing_results'] == 4:
                 result = 1
             else:
                 result = 0
