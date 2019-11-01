@@ -209,7 +209,8 @@ class ToolBox(GlobalSessionToolBox):
             calculation_function = self._get_calculation_function_by_kpi_type(row[KPI_TYPE])
             try:
                 kpi_row = self.templates[row[KPI_TYPE]][
-                    self.templates[row[KPI_TYPE]][KPI_NAME].str.encode('utf-8') == row[KPI_NAME].encode('utf-8')].iloc[0]
+                    self.templates[row[KPI_TYPE]][KPI_NAME].str.encode('utf-8') == row[KPI_NAME].encode('utf-8')].iloc[
+                    0]
             except IndexError:
                 pass
             result_data = calculation_function(kpi_row)
@@ -475,10 +476,23 @@ class ToolBox(GlobalSessionToolBox):
         self.store_assortment = self.assortment.store_assortment
         lvl3_result = self.assortment.calculate_lvl3_assortment()
         if not lvl3_result.empty:
+            result_dict_list = []
+            kpi_id = kpi_fk_level2 + 1
+            relevant_df = lvl3_result[lvl3_result['kpi_fk_lvl3'].isin([kpi_id])]
+            for row in relevant_df.itertuples():
+                numerator_id = row.product_fk
+                denominator_id = row.assortment_fk
+                result = row.in_store
+
+                result_dict = {'kpi_name': kpi_name + " - SKU", 'kpi_fk': kpi_id, 'numerator_id': numerator_id,
+                               'denominator_id': denominator_id,
+                               'result': result}
+                result_dict_list.append(result_dict)
+
             numerator_id = lvl3_result[lvl3_result[KPI_FK_LEVEL2].isin([kpi_fk_level2])][numerator_entity].mode()[0]
             lvl2_result = self.assortment.calculate_lvl2_assortment(lvl3_result)
             lvl2_kpi_result = lvl2_result[lvl2_result[KPI_FK_LEVEL2].isin([kpi_fk_level2])]
-            denominator_id = int(lvl2_kpi_result[denominator_entity])
+            denominator_id = self.scif['sub_category_fk'].mode()[0]
             result = float(lvl2_kpi_result['passes'] / lvl2_kpi_result['total']) * 100
 
         else:
@@ -489,6 +503,9 @@ class ToolBox(GlobalSessionToolBox):
         result_dict = {'kpi_name': kpi_name, 'kpi_fk': kpi_fk, 'numerator_id': numerator_id,
                        'denominator_id': denominator_id,
                        'result': result}
+        result_dict_list.append(result_dict)
+
+        return result_dict_list
 
     def calculate_sos(self, row):
         '''
