@@ -281,6 +281,7 @@ class ToolBox(GlobalSessionToolBox):
                            'result': child_result}
             results_list.append(result_dict)
 
+
         if kpi_name != 'Precios en cooler':
             if self.platformas_data.loc[relevant_platformas_data.index.values[0], 'passing_results'] == 4:
                 result = 1
@@ -493,7 +494,7 @@ class ToolBox(GlobalSessionToolBox):
             lvl2_result = self.assortment.calculate_lvl2_assortment(lvl3_result)
             lvl2_kpi_result = lvl2_result[lvl2_result[KPI_FK_LEVEL2].isin([kpi_fk_level2])]
             denominator_id = self.scif['sub_category_fk'].mode()[0]
-            result = float(lvl2_kpi_result['passes'] / lvl2_kpi_result['total']) * 100
+            result = float(lvl2_kpi_result['passes'] / lvl2_kpi_result['total'])
 
         else:
             result = pd.np.nan
