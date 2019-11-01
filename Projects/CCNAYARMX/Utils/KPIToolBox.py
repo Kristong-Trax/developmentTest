@@ -176,9 +176,11 @@ class ToolBox(GlobalSessionToolBox):
         # #     self.store_wrong_data_for_parent_kpi_plat_dinamicas_two()
 
         relevant_kpi_template = self.templates[KPIS]
-        att2 = self.sanitize_values(self.store_info['additional_attribute_2'].iloc[0])
-        relevant_kpi_template = relevant_kpi_template[(relevant_kpi_template[STORE_ADDITIONAL_ATTRIBUTE_2].isin(att2)) |
-                                                      (relevant_kpi_template[STORE_ADDITIONAL_ATTRIBUTE_2].isnull())]
+        att2 = self.store_info['additional_attribute_2'].iloc[0]
+        relevant_kpi_template = relevant_kpi_template[(relevant_kpi_template[STORE_ADDITIONAL_ATTRIBUTE_2].isnull()) |
+                                                      (relevant_kpi_template[STORE_ADDITIONAL_ATTRIBUTE_2].str.contains(
+                                                          att2))
+                                                      ]
         foundation_kpi_types = [BAY_COUNT, SOS, PER_BAY_SOS, BLOCK_TOGETHER, AVAILABILITY, SURVEY,
                                 DISTRIBUTION, SHARE_OF_EMPTY]
 
@@ -281,9 +283,10 @@ class ToolBox(GlobalSessionToolBox):
                            'result': child_result}
             results_list.append(result_dict)
 
-
         if kpi_name != 'Precios en cooler':
-            if self.platformas_data.loc[relevant_platformas_data.index.values[0], 'passing_results'] == 4:
+            if relevant_platformas_data.empty:
+                result = 0
+            elif self.platformas_data.loc[relevant_platformas_data.index.values[0], 'passing_results'] == 4:
                 result = 1
             else:
                 result = 0
