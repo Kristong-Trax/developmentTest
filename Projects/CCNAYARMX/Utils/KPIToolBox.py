@@ -197,7 +197,8 @@ class ToolBox(GlobalSessionToolBox):
 
     def save_results_to_db(self):
         self.results_df.drop(columns=['kpi_name'], inplace=True)
-        self.results_df['should_enter'] = True
+        self.results_df.loc[~self.results_df['identifier_parent'].isnan(), 'should_enter'] = True
+        self.results_df.fillna(0)
         results = self.results_df.to_dict('records')
         for result in results:
             self.write_to_db(**result)
