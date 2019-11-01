@@ -452,7 +452,7 @@ class ToolBox(GlobalSessionToolBox):
             lvl2_result = self.assortment.calculate_lvl2_assortment(lvl3_result)
             lvl2_kpi_result = lvl2_result[lvl2_result[KPI_FK_LEVEL2].isin([kpi_fk_level2])]
             denominator_id = int(lvl2_kpi_result[denominator_entity])
-            result = float(lvl2_kpi_result['passes']/lvl2_kpi_result['total']) * 100
+            result = float(lvl2_kpi_result['passes'] / lvl2_kpi_result['total']) * 100
 
         else:
             result = pd.np.nan
@@ -462,8 +462,6 @@ class ToolBox(GlobalSessionToolBox):
         result_dict = {'kpi_name': kpi_name, 'kpi_fk': kpi_fk, 'numerator_id': numerator_id,
                        'denominator_id': denominator_id,
                        'result': result}
-
-
 
     def calculate_sos(self, row):
         '''
@@ -554,7 +552,7 @@ class ToolBox(GlobalSessionToolBox):
             numerator_result = numerator_scif[FINAL_FACINGS].sum()
 
         # Step 10: Calculate the final result
-        result = (numerator_result / denominator_result) * 100
+        result = (numerator_result / denominator_result)
 
         result_dict = {'kpi_name': kpi_name, 'kpi_fk': kpi_fk, 'numerator_id': numerator_id,
                        'numerator_result': numerator_result,
@@ -666,7 +664,6 @@ class ToolBox(GlobalSessionToolBox):
                         else:
                             result = 1
 
-
                         numerator_id = value
 
                         result_dict = {'kpi_name': kpi_name, 'kpi_fk': kpi_fk, 'numerator_id': numerator_id,
@@ -674,7 +671,6 @@ class ToolBox(GlobalSessionToolBox):
                                        'result': result}
                         block_result_list.append(result_dict)
                 return block_result_list
-
 
         result_dict = {'kpi_name': kpi_name, 'kpi_fk': kpi_fk, 'numerator_id': numerator_id,
                        'denominator_id': denominator_id,
@@ -741,7 +737,7 @@ class ToolBox(GlobalSessionToolBox):
         numerator_id = self.own_manuf_fk
 
         # Step 10: Calculate the result
-        result = (numerator_result / denominator_result) * 100
+        result = (numerator_result / denominator_result)
 
         # Step 11. Save the results in the database
         self.common.write_to_db_result(kpi_fk, numerator_id=numerator_id,
@@ -821,12 +817,12 @@ class ToolBox(GlobalSessionToolBox):
 
         # Step 10: Calculate the scoring
         if facings >= facings_target:
-            result = 100
+            result = 1
         else:
-            result = 100 * (facings / facings_target)
+            result = (facings / facings_target)
 
         if bay_count < bay_count_target:
-            result = result - (2 / 15 * 100)
+            result = result - (2 / 15)
 
         # Step 11: Calculate the numerator entity and denominator entity
         numerator_id = relevant_scif[MANUFACTURER_FK].mode()[0]
@@ -963,9 +959,9 @@ class ToolBox(GlobalSessionToolBox):
         result = 0
         if not relevant_scif.empty:
             unique_product_name_category = set(relevant_scif[PRODUCT_SHORT_NAME])
-            if "Coca-Cola POS Other" in unique_product_name_category: # for kpi number 56
+            if "Coca-Cola POS Other" in unique_product_name_category:  # for kpi number 56
                 result = 1
-            else: # for kpi number 57
+            else:  # for kpi number 57
                 if "Totem 1 CSD's" in unique_product_name_category:
                     result = result + .4
                 if "Totem 2 CSD's" in unique_product_name_category:
