@@ -39,6 +39,7 @@ __author__ = 'krishnat'
 
 # Column Name
 KPI_NAME = 'KPI Name'
+KPI_TYPE = 'KPI Type'
 TASK_TEMPLATE_GROUP = 'Task/ Template Group'
 TEMPLATE_NAME = 'template_name'
 MANUFACTURER_NAME = 'manufacturer_name'
@@ -63,6 +64,7 @@ NUMERATOR_ENTITY = 'Numerator Entity'
 DENOMINATOR_ENTITY = 'Denominator Entity'
 
 # Sheet names
+KPIS = 'KPIs'
 SOS = 'SOS'
 BLOCK_TOGETHER = 'Block Together'
 SHARE_OF_EMPTY = 'Share of Empty'
@@ -134,6 +136,9 @@ class ToolBox(GlobalSessionToolBox):
                              common=self.common_v2)
         self.platformas_data = self.generate_platformas_data()
         self.assortment = Assortment(self.data_provider, common=self.common)
+        self.results_df = pd.DataFrame(columns=['kpi_name', 'kpi_fk', 'numerator_id', 'numerator_result',
+                                                'denominator_id', 'denominator_id', 'result', 'score',
+                                                'identifier_result', 'identifier_parent', 'should_enter'])
 
     def parse_template(self):
         for sheet in SHEETS:
@@ -142,28 +147,53 @@ class ToolBox(GlobalSessionToolBox):
             self.templates[sheet] = pd.read_excel(POS_OPTIONS_TEMPLATE_PATH, sheet_name=sheet)
 
     def main_calculation(self):
-        for i, row in self.templates[BLOCK_TOGETHER].iterrows():
-            # self.calculate_sos(row)
-            self.calculate_block_together(row)
-            # self.calculate_share_of_empty(row)
-            # self.calculate_bay_count(row)
-            # self.calculate_per_bay_sos(row)
-            # self.calculate_survey(row)
-            # self.calculate_availability(row)
-            # self.calculate_assortment(row)
-            self.store_wrong_data_for_parent_kpi_comunicacion()
-            self.store_wrong_data_for_parent_kpi_enfriador()
-            self.store_wrong_data_for_parent_kpi_plataformas()
-            self.store_wrong_data_for_parent_kpi_portafolio_y_precios()
-            self.store_wrong_data_for_parent_kpi_primera_posicion()
-            self.store_wrong_data_for_parent_kpi_respeto()
-            self.store_wrong_data_for_parent_kpi_acomodo_por_bloques()
-            self.store_wrong_data_for_parent_kpi_bloques_colas_50()
-            self.store_wrong_data_for_parent_kpi_bloques_frutales_25()
-            self.store_wrong_data_for_parent_kpi_comidas()
-            self.store_wrong_data_for_parent_kpi_plat_dinamicas_one()
-            self.store_wrong_data_for_parent_kpi_plat_dinamicas_two()
+        # for i, row in self.templates[BLOCK_TOGETHER].iterrows():
+        #     # self.calculate_sos(row)
+        #     self.calculate_block_together(row)
+        #     # self.calculate_share_of_empty(row)
+        #     # self.calculate_bay_count(row)
+        #     # self.calculate_per_bay_sos(row)
+        #     # self.calculate_survey(row)
+        #     # self.calculate_availability(row)
+        #     # self.calculate_assortment(row)
+        #     self.store_wrong_data_for_parent_kpi_comunicacion()
+        #     self.store_wrong_data_for_parent_kpi_enfriador()
+        #     self.store_wrong_data_for_parent_kpi_plataformas()
+        #     self.store_wrong_data_for_parent_kpi_portafolio_y_precios()
+        #     self.store_wrong_data_for_parent_kpi_primera_posicion()
+        #     self.store_wrong_data_for_parent_kpi_respeto()
+        #     self.store_wrong_data_for_parent_kpi_acomodo_por_bloques()
+        #     self.store_wrong_data_for_parent_kpi_bloques_colas_50()
+        #     self.store_wrong_data_for_parent_kpi_bloques_frutales_25()
+        #     self.store_wrong_data_for_parent_kpi_comidas()
+        #     self.store_wrong_data_for_parent_kpi_plat_dinamicas_one()
+        #     self.store_wrong_data_for_parent_kpi_plat_dinamicas_two()
+
+        relevant_kpi_template = self.templates[KPIS]
+        att2 = self.store_info['additional_attribute_2'].iloc[0]
+        relevant_kpi_template = relevant_kpi_template[relevant_kpi_template[STORE_ADDITIONAL_ATTRIBUTE_2] == att2]
+        foundation_kpi_types = [BAY_COUNT, SOS, PER_BAY_SOS, BLOCK_TOGETHER, AVAILABILITY, SURVEY,
+                                DISTRIBUTION, SHARE_OF_EMPTY]
+        foundation_kpi_template = relevant_kpi_template[relevant_kpi_template[KPI_TYPE].isin(foundation_kpi_types)]
+        for i, row in foundation_kpi_template.iterrows():
+            calculation_function = self._get_calculation_function_by_kpi_type(row[KPI_TYPE])
+            result_data = calculation_function(row)
+            if result_data:
+                if isinstance(result_data, dict):
+                    if 'score' not in result_data.keys():
+                        result_data['score'] = row['score'] * result_data['result']
+                    self.results_df.loc[len(self.results_df), result_data.keys()] = result_data
+                else: # must be a list
+                    for result in result_data:
+                        if 'score' not in result.keys():
+                            result['score'] = row['score'] * result['result']
+                        self.results_df.loc[len(self.results_df), result.keys()] = result
+
+
         return
+
+    def calculate_combo(self, row):
+
 
     def generate_platformas_data(self):
         platformas_data = pd.DataFrame(columns=['scene_id', 'Platform Name', 'POS Option Present',
