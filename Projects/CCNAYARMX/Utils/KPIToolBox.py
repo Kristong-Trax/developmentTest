@@ -220,12 +220,12 @@ class ToolBox(GlobalSessionToolBox):
                 else:  # must be a list
                     for result in result_data:
                         weight = row['Score']
-                        if weight and 'score' not in result_data.keys() and result_data['result'] is not pd.np.nan:
+                        if weight and 'score' not in result.keys() and result['result'] is not pd.np.nan:
                             result['score'] = weight * result['result']
                         parent_kpi_name = self._get_parent_name_from_kpi_name(row[KPI_NAME])
                         if parent_kpi_name:
-                            result_data['identifier_parent'] = parent_kpi_name
-                        result_data['identifier_result'] = row[KPI_NAME]
+                            result['identifier_parent'] = parent_kpi_name
+                        result['identifier_result'] = row[KPI_NAME]
                         self.results_df.loc[len(self.results_df), result.keys()] = result
 
     def _get_calculation_function_by_kpi_type(self, kpi_type):
@@ -250,7 +250,7 @@ class ToolBox(GlobalSessionToolBox):
         elif kpi_type == SCORING:
             return self.calculate_scoring
         elif kpi_type == PLATFORMAS_SCORING:
-            return self
+            return self.calculate_platformas_scoring
 
     def calculate_platformas_scoring(self, row):
         results_list = []
@@ -258,19 +258,19 @@ class ToolBox(GlobalSessionToolBox):
         relevant_platforms = self.sanitize_values(row['Platform'])
         relevant_platformas_data = \
             self.platformas_data[(self.platformas_data['Platform Name'].isin(relevant_platforms)) &
-                                 (self.platformas_data['consumed'] == 'no')].iloc[0]
+                                 (self.platformas_data['consumed'] == 'no')]
         for i, child_row in self.templates[PLATFORMAS][self.templates[PLATFORMAS][PARENT_KPI] == kpi_name]:
             child_kpi_fk = self.get_kpi_fk_by_kpi_type(child_row[KPI_NAME])
             if not relevant_platformas_data.empty:
+                relevant_platformas_data = relevant_platformas_data.iloc[0]
                 result = relevant_platformas_data[child_row['data_column']]
+                self.platformas_data.loc[relevant_platformas_data.index.values()[0], 'consumed'] = 'yes'
             else:
                 result = 0
             result_dict = {'kpi_name': child_row[KPI_NAME], 'kpi_fk': child_kpi_fk,
                            'numerator_id': self.own_manuf_fk, 'denominator_id': self.store_id,
                            'result': result}
             results_list.append(result_dict)
-
-        self.platformas_data.loc[relevant_platformas_data.index.values()[0], 'consumed'] = 'yes'
 
         return results_list
 
