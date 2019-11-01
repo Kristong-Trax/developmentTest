@@ -260,7 +260,7 @@ class ToolBox(GlobalSessionToolBox):
             self.platformas_data[(self.platformas_data['Platform Name'].isin(relevant_platforms)) &
                                  (self.platformas_data['consumed'] == 'no')].iloc[0]
         for i, child_row in self.templates[PLATFORMAS][self.templates[PLATFORMAS][PARENT_KPI] == kpi_name]:
-            child_kpi_fk = self.get_kpi_fk_by_kpi_name(child_row[KPI_NAME])
+            child_kpi_fk = self.get_kpi_fk_by_kpi_type(child_row[KPI_NAME])
             if not relevant_platformas_data.empty:
                 result = relevant_platformas_data[child_row['data_column']]
             else:
