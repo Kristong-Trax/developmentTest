@@ -176,8 +176,8 @@ class ToolBox(GlobalSessionToolBox):
         # #     self.store_wrong_data_for_parent_kpi_plat_dinamicas_two()
 
         relevant_kpi_template = self.templates[KPIS]
-        att2 = self.store_info['additional_attribute_2'].iloc[0]
-        relevant_kpi_template = relevant_kpi_template[(relevant_kpi_template[STORE_ADDITIONAL_ATTRIBUTE_2] == att2) |
+        att2 = self.sanitize_values(self.store_info['additional_attribute_2'].iloc[0])
+        relevant_kpi_template = relevant_kpi_template[(relevant_kpi_template[STORE_ADDITIONAL_ATTRIBUTE_2].isin(att2)) |
                                                       (relevant_kpi_template[STORE_ADDITIONAL_ATTRIBUTE_2].isnull())]
         foundation_kpi_types = [BAY_COUNT, SOS, PER_BAY_SOS, BLOCK_TOGETHER, AVAILABILITY, SURVEY,
                                 DISTRIBUTION, SHARE_OF_EMPTY]
@@ -218,20 +218,22 @@ class ToolBox(GlobalSessionToolBox):
                     weight = row['Score']
                     if weight and 'score' not in result_data.keys() and result_data['result'] is not pd.np.nan:
                         result_data['score'] = weight * result_data['result']
-                    parent_kpi_name = self._get_parent_name_from_kpi_name(row[KPI_NAME])
-                    if parent_kpi_name:
+                    parent_kpi_name = self._get_parent_name_from_kpi_name(result_data['kpi_name'])
+                    if parent_kpi_name and 'identifier_parent' not in result_data.keys():
                         result_data['identifier_parent'] = parent_kpi_name
-                    result_data['identifier_result'] = row[KPI_NAME]
+                    if 'identifier_result' not in result_data.keys():
+                        result_data['identifier_result'] = result_data['kpi_name']
                     self.results_df.loc[len(self.results_df), result_data.keys()] = result_data
                 else:  # must be a list
                     for result in result_data:
                         weight = row['Score']
                         if weight and 'score' not in result.keys() and result['result'] is not pd.np.nan:
                             result['score'] = weight * result['result']
-                        parent_kpi_name = self._get_parent_name_from_kpi_name(row[KPI_NAME])
-                        if parent_kpi_name:
+                        parent_kpi_name = self._get_parent_name_from_kpi_name(result['kpi_name'])
+                        if parent_kpi_name and 'identifier_parent' not in result.keys():
                             result['identifier_parent'] = parent_kpi_name
-                        result['identifier_result'] = row[KPI_NAME]
+                        if 'identifier_result' not in result.keys():
+                            result['identifier_result'] = result['kpi_name']
                         self.results_df.loc[len(self.results_df), result.keys()] = result
 
     def _get_calculation_function_by_kpi_type(self, kpi_type):
