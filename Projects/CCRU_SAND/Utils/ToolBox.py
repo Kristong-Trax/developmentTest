@@ -3576,11 +3576,12 @@ class CCRU_SANDKPIToolBox:
                                                should_enter=True)
 
                 # category kpis MR
-                # self.common.get_kpi_fk_by_kpi_type(OSA_CAT_FOR_MR)
-                # self.common.write_to_db_result(fk=kpi_fk, numerator_id=self.own_manufacturer_id,
-                #                                denominator_id=numerator_id,
-                #                                result=result, score=score,
-                #                                )
+                # start here
+                cat_kpi_fk = self.common.get_kpi_fk_by_kpi_type(OSA_CAT_FOR_MR)
+                if row['category'] in CATEGORIES_LIST:
+                    self.common.write_to_db_result(fk=cat_kpi_fk, numerator_id=self.own_manufacturer_id,
+                                                   denominator_id=numerator_id, context_id=context_id,
+                                                   result=result, score=score)
 
             top_sku_total = top_sku_anchor_products\
                 .agg({'in_assortment': 'sum',
