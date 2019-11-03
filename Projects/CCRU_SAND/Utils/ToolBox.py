@@ -3576,10 +3576,10 @@ class CCRU_SANDKPIToolBox:
                                                should_enter=True)
 
                 # category kpis MR
-                self.common.get_kpi_fk_by_kpi_type(OSA_CAT_FOR_MR)
-                # start here
+                # self.common.get_kpi_fk_by_kpi_type(OSA_CAT_FOR_MR)
                 # self.common.write_to_db_result(fk=kpi_fk, numerator_id=self.own_manufacturer_id,
                 #                                denominator_id=numerator_id,
+                #                                result=result, score=score,
                 #                                )
 
             top_sku_total = top_sku_anchor_products\
