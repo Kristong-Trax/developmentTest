@@ -143,10 +143,12 @@ class CCMY_SANDToolBox:
 
             if kpi_type == CCMY_SANDConsts.AVAILABILITY:
                 score = self.calculate_availability(kpi_data)
+                numerator = score
             elif kpi_type == CCMY_SANDConsts.FACINGS_SOS:
                 score = self.calculate_facings_sos(kpi_data)
+                numerator = score
             elif kpi_type == CCMY_SANDConsts.SHELF_PURITY:
-                score, numerator, denominator, templates = self.calculate_self_purity(kpi_data)
+                numerator, denominator, score, templates = self.calculate_self_purity(kpi_data)
                 numerator_id = templates[0]
 
             else:
@@ -158,7 +160,7 @@ class CCMY_SANDToolBox:
                 self.write_to_db_result(kpi_fk, score, level=self.LEVEL2)
                 identifier_result = self.common.get_dictionary(kpi_name=group)
                 # insert db results to new tables
-                self.insert_db_new_results(kpi_data.iloc[0][CCMY_SANDConsts.KPI_GROUP], score, score, score, 1,
+                self.insert_db_new_results(kpi_data.iloc[0][CCMY_SANDConsts.KPI_GROUP], score, numerator, score, 1,
                                            identifier_result=identifier_result, identifier_parent=identifier_parent,
                                            numerator_id=numerator_id)
 
@@ -167,7 +169,8 @@ class CCMY_SANDToolBox:
         else:
             set_fk = self.kpi_static_data.iloc[0]['kpi_set_fk']
             self.write_to_db_result(set_fk, total_score, level=self.LEVEL1)
-            self.insert_db_new_results('Red Score', score, score, score, 1, identifier_result=identifier_parent)
+            self.insert_db_new_results('Red Score', total_score, total_score, total_score, 1,
+                                       identifier_result=identifier_parent)
 
         self.common.commit_results_data()
 
@@ -348,7 +351,7 @@ class CCMY_SANDToolBox:
             self.write_to_db_result(atomic_kpi_fk, (result, result, 0),
                                     level=self.LEVEL3)
 
-            self.insert_db_new_results(params['KPI Name'], result, result, result, 1, target=0,
+            self.insert_db_new_results(params['KPI Name'], score, score, result, result, target=0,
                                        identifier_parent=identifier_parent)
 
             return num_of_pure_shelves, total_num_of_shelves, score, template_fk
