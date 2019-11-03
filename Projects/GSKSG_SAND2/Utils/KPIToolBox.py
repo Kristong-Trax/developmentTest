@@ -80,14 +80,14 @@ class GSKSGToolBox:
         return score
 
     def msl_compliance_score(self, category, categories_results_json, cat_targets, parent_result_identifier):
-        category_targets = self._filter_out_sequence_targets(cat_targets)
         results_list = []
         msl_kpi_fk = self.common.get_kpi_fk_by_kpi_type(Consts.MSL_ORANGE_SCORE)
+        msl_categories = self._filter_targets_by_kpi(cat_targets, msl_kpi_fk)
         if category not in categories_results_json:
             dst_result = 0
         else:
             dst_result = categories_results_json[category]
-        weight = category_targets['msl_weight'].iloc[0]
+        weight = msl_categories['msl_weight'].iloc[0]
         result = dst_result * weight
         results_list.append({'fk': msl_kpi_fk, 'numerator_id': category, 'denominator_id':
             self.store_id, 'denominator_result': 1, 'numerator_result': result, 'result': result,
@@ -103,9 +103,9 @@ class GSKSGToolBox:
                :param categories_results_json: type of the desired kpi
                :return category json :  number-category_fk,number-result
            """
-        category_targets = self._filter_out_sequence_targets(cat_targets)
         results_list = []
         fsos_kpi_fk = self.common.get_kpi_fk_by_kpi_type(Consts.FSOS_ORANGE_SCORE)
+        category_targets = self._filter_targets_by_kpi(cat_targets, fsos_kpi_fk)
         dst_result = categories_results_json[category] if category in categories_results_json.keys() else 0
         benchmark = category_targets['fsos_benchmark'].iloc[0]
         weight = category_targets['fsos_weight'].iloc[0]
@@ -203,7 +203,7 @@ class GSKSGToolBox:
             return True
         return False
 
-    def display_distribution(self, display_name, category_fk, cat_targets, parent_identifier, kpi_name,
+    def display_distribution(self, display_name, category_fk, category_targets, parent_identifier, kpi_name,
                              parent_kpi_name, scif_df):
 
         """
@@ -211,14 +211,13 @@ class GSKSGToolBox:
           if sum facings is equal/bigger than benchmark that gets weight.
             :param display_name display name (in external targets this key contains relevant substrings)
             :param category_fk
-            :param cat_targets-targets df for the specific category
+            :param category_targets-targets df for the specific category
             :param parent_identifier  - result identifier for this kpi parent
             :param kpi_name - kpi name
             :param parent_kpi_name - this parent kpi name
             :param scif_df - scif filtered by promo activation settings
 
         """
-        category_targets = self._filter_out_sequence_targets(cat_targets)
         kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_name + Consts.COMPLIANCE_KPI)
         results_list = []
         identifier_result = self.common.get_dictionary(category_fk=category_fk, kpi_fk=kpi_fk)
@@ -324,9 +323,9 @@ class GSKSGToolBox:
             :param identifier_parent - result identifier for shelf compliance kpi parent .
 
         """
-        category_targets = self._filter_out_sequence_targets(cat_targets)
         results_list = []
         kpi_fk = self.common.get_kpi_fk_by_kpi_type(Consts.SHELF_COMPLIANCE)
+        category_targets = self._filter_targets_by_kpi(cat_targets, kpi_fk)
         if assortment_df is not None:
             assortment_cat = assortment_df[assortment_df['category_fk'] == category]
             shelf_weight = category_targets['shelf_weight'].iloc[0]
@@ -380,7 +379,7 @@ class GSKSGToolBox:
         This method calculated the sequence KPIs using the external targets' data and sequence calculation algorithm.
         """
         sequence_kpi_fk, sequence_sku_kpi_fk = self._get_sequence_kpi_fks()
-        sequence_targets = targets.loc[targets['kpi_fk'] == sequence_kpi_fk]
+        sequence_targets = self._filter_targets_by_kpi(targets, sequence_kpi_fk)
         passed_sequences_score, total_weight, total_passed_counter = 0, 0, 0
         for i, sequence in sequence_targets.iterrows():
             population, location, sequence_attributes = self._prepare_data_for_sequence_calculation(sequence)
@@ -461,11 +460,11 @@ class GSKSGToolBox:
             :param scif_df : scif filtered by promo activation settings
 
         """
-        category_targets = self._filter_out_sequence_targets(cat_targets)
         results_list = []
         parent_kpi_name = 'display'
-        weight = category_targets['display_weight'].iloc[0]
         total_kpi_fk = self.common.get_kpi_fk_by_kpi_type(Consts.DISPLAY_SUMMARY)
+        category_targets = self._filter_targets_by_kpi(cat_targets, total_kpi_fk)
+        weight = category_targets['display_weight'].iloc[0]
         result_identifier = self.common.get_dictionary(category_fk=category_fk, kpi_fk=total_kpi_fk)
 
         dispenser_score, dispenser_res = self.display_distribution(Consts.DISPENSER_TARGET, category_fk,
@@ -500,8 +499,8 @@ class GSKSGToolBox:
             :param scif_df : scif filtered by promo activation settings
 
         """
-        category_targets = self._filter_out_sequence_targets(cat_targets)
         total_kpi_fk = self.common.get_kpi_fk_by_kpi_type(Consts.PROMO_SUMMARY)
+        category_targets = self._filter_targets_by_kpi(cat_targets, total_kpi_fk)
         result_identifier = self.common.get_dictionary(category_fk=category_fk, kpi_fk=total_kpi_fk)
         results_list = []
         parent_kpi_name = 'promo'
@@ -527,11 +526,9 @@ class GSKSGToolBox:
         return results_list, promo_score
 
     @staticmethod
-    def _filter_out_sequence_targets(targets):
-        """ This is a temporary function that filters out the Sequence targets.
-        This is in order to support the current structure of the calculation.
-        It will be removed in the future"""
-        filtered_targets = targets.loc[~(targets.kpi_fk == 2475)]
+    def _filter_targets_by_kpi(targets, kpi_fk):
+        """ This function filter all targets but targets which related to relevant kpi"""
+        filtered_targets = targets.loc[targets.kpi_fk == kpi_fk]
         return filtered_targets
 
     def orange_score_category(self, assortment_category_res, fsos_category_res):
