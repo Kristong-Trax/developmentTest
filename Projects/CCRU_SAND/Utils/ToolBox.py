@@ -104,6 +104,11 @@ PROMO_COMPLIANCE_PRICE_TARGET = 'PROMO_COMPLIANCE_PRICE_TARGET'
 PROMO_LOC_DISPLAY = 'Promo Display'
 PROMO_LOC_MAIN_SHELF = 'Main Shelf'
 
+CATEGORIES_LIST = ['SSD', 'Water', 'ice tea', 'Juices', 'Energy']
+SOS_CAT_FOR_MR = 'SOS_MANUFACTURER_OUT_OF_CAT_CUSTOM_MR'
+AVAILABILITY_CAT_FOR_MR = 'AVAILABILITY_MANUFACTURER_OUT_OF_CAT_CUSTOM_MR'
+OSA_CAT_FOR_MR = 'OSA_MANUFACTURER_OUT_OF_CAT_CUSTOM_MR'
+
 
 class CCRU_SANDKPIToolBox:
 
@@ -3569,6 +3574,13 @@ class CCRU_SANDKPIToolBox:
                                                identifier_result=identifier_result,
                                                identifier_parent=identifier_parent,
                                                should_enter=True)
+
+                # category kpis MR
+                self.common.get_kpi_fk_by_kpi_type(OSA_CAT_FOR_MR)
+                # start here
+                # self.common.write_to_db_result(fk=kpi_fk, numerator_id=self.own_manufacturer_id,
+                #                                denominator_id=numerator_id,
+                #                                )
 
             top_sku_total = top_sku_anchor_products\
                 .agg({'in_assortment': 'sum',
