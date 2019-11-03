@@ -1609,7 +1609,7 @@ class BATRU_SANDToolBox:
                 # new tables - sk set - lvl 5
                 for product_fk in misplaced_products_fks:
                     self.common.write_to_db_result(fk=sk_sku_presence_not_in_list_fk, numerator_id=product_fk,
-                                                   denominator_id=section, context_id=scene, result=1, score=1,
+                                                   denominator_id=section_fk, context_id=scene, result=1, score=1,
                                                    identifier_parent=presence_section_identifier_par,
                                                    should_enter=True)
 
