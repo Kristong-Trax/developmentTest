@@ -1508,7 +1508,7 @@ class BATRU_SANDToolBox:
                             misplaced_products = \
                                 section_shelf_data[section_shelf_data['product_ean_code_lead'].isin(misplaced_products_eans)][
                                     'product_name'].unique().tolist()
-                            misplaced_products_fks = self.all_products[self.all_products['product_ean_code_lead'].\
+                            misplaced_products_fks = section_shelf_data[section_shelf_data['product_ean_code_lead'].\
                                 isin(misplaced_products_eans)]['product_fk'].unique().tolist()
 
                 # Initial score values
