@@ -31,12 +31,13 @@ def log_runtime(description, log_start=False):
             calc_end_time = datetime.utcnow()
             Log.info('{} took {}'.format(description, calc_end_time - calc_start_time))
             return result
+
         return wrapper
+
     return decorator
 
 
 class CCMY_SANDConsts(object):
-
     STORE_TYPE = 'Store Type'
     KPI_NAME = 'KPI Name'
     KPI_GROUP = 'KPI Group'
@@ -79,9 +80,9 @@ class CCMY_SANDConsts(object):
     IS_PURE = 'is_pure'
     PURE = 1
     IMPURE = 0
-    
-class CCMY_SANDToolBox:
 
+
+class CCMY_SANDToolBox:
     LEVEL1 = 1
     LEVEL2 = 2
     LEVEL3 = 3
@@ -149,7 +150,7 @@ class CCMY_SANDToolBox:
                 numerator = score
             elif kpi_type == CCMY_SANDConsts.SHELF_PURITY:
                 numerator, denominator, score, templates = self.calculate_self_purity(kpi_data)
-                numerator_id = templates[0]
+                numerator_id = templates
 
             else:
                 continue
@@ -213,8 +214,9 @@ class CCMY_SANDToolBox:
                 score = 100 if availability > 0 else 0
                 result = weight if score != 0 else 0
                 group_score += result
-                atomic_fk = self.kpi_static_data[(self.kpi_static_data['atomic_kpi_name'] == params[CCMY_SANDConsts.KPI_NAME]) &
-                                                 (self.kpi_static_data['kpi_name'] == group_name)].iloc[0]['atomic_kpi_fk']
+                atomic_fk = \
+                self.kpi_static_data[(self.kpi_static_data['atomic_kpi_name'] == params[CCMY_SANDConsts.KPI_NAME]) &
+                                     (self.kpi_static_data['kpi_name'] == group_name)].iloc[0]['atomic_kpi_fk']
 
                 self.write_to_db_result(atomic_fk, (score, result, 1), level=self.LEVEL3)
 
@@ -227,14 +229,16 @@ class CCMY_SANDToolBox:
                 availability = self.tools.calculate_availability(manufacturer_name=params[CCMY_SANDConsts.MANUFACTURER],
                                                                  template_name=scene_types)
                 target_min = float(params[CCMY_SANDConsts.TARGET_MIN])
-                target_max = float(1000 if not params[CCMY_SANDConsts.TARGET_MAX] else params[CCMY_SANDConsts.TARGET_MAX])
+                target_max = float(
+                    1000 if not params[CCMY_SANDConsts.TARGET_MAX] else params[CCMY_SANDConsts.TARGET_MAX])
                 score = 100 if target_min <= availability < target_max else 0
                 result = float(params[CCMY_SANDConsts.SCORE]) if score != 0 else 0
                 if not result and params[CCMY_SANDConsts.ONLY_IF_PASS]:
                     continue
                 group_score += result
-                atomic_fk = self.kpi_static_data[(self.kpi_static_data['atomic_kpi_name'] == params[CCMY_SANDConsts.KPI_NAME]) &
-                                                 (self.kpi_static_data['kpi_name'] == group_name)].iloc[0]['atomic_kpi_fk']
+                atomic_fk = \
+                self.kpi_static_data[(self.kpi_static_data['atomic_kpi_name'] == params[CCMY_SANDConsts.KPI_NAME]) &
+                                     (self.kpi_static_data['kpi_name'] == group_name)].iloc[0]['atomic_kpi_fk']
                 self.write_to_db_result(atomic_fk, (score, result, target_min), level=self.LEVEL3)
 
                 # writing results to new tables
@@ -281,12 +285,14 @@ class CCMY_SANDToolBox:
             CCMY_SANDConsts.SCENE_FK].unique().tolist()
         template_fk = self.scene_info[self.scene_info['template_name'].isin(scene_types)][
             CCMY_SANDConsts.TEMPLATE_FK].unique().tolist()
-        #todo  decide what to put in numerator id in case template fk is empty
+        template_fk = template_fk if template_fk != [] else \
+            self.data_provider.all_templates[self.data_provider.all_templates['template_name'].isin(
+                scene_types)]['template_fk'].iloc[0]
 
         df_all_shelfs = self.match_product_in_scene
 
         if self.match_product_in_scene.empty:
-            return
+            return 0, 0, 0, template_fk
 
         df_all_shelfs_products = df_all_shelfs.merge(self.products, how='inner', on=CCMY_SANDConsts.PRODUCT_FK)
         list_columns = [CCMY_SANDConsts.SCENE_FK, CCMY_SANDConsts.BAY_NUMBER, CCMY_SANDConsts.SHELF_NUMBER,
@@ -306,11 +312,11 @@ class CCMY_SANDToolBox:
             for row_num_x, row_data_x in df_shelf_pure.iterrows():
                 for row_num_y, row_data_y in df_all_shelfs_products.iterrows():
                     if ((row_data_x[CCMY_SANDConsts.SCENE_FK] == row_data_y[CCMY_SANDConsts.SCENE_FK]) &
-                            (row_data_x[CCMY_SANDConsts.BAY_NUMBER] == row_data_y [CCMY_SANDConsts.BAY_NUMBER]) &
+                            (row_data_x[CCMY_SANDConsts.BAY_NUMBER] == row_data_y[CCMY_SANDConsts.BAY_NUMBER]) &
                             (row_data_x[CCMY_SANDConsts.SHELF_NUMBER] == row_data_y[CCMY_SANDConsts.SHELF_NUMBER]) &
                             (row_data_y[CCMY_SANDConsts.MANUFACTURER_FK] == CCMY_SANDConsts.GENERAL_MANUFACTURER) &
                             (row_data_y[CCMY_SANDConsts.PRODUCT_FK] == CCMY_SANDConsts.IRRELEVANT) &
-                            (row_data_x[CCMY_SANDConsts.IS_PURE]==CCMY_SANDConsts.PURE)):
+                            (row_data_x[CCMY_SANDConsts.IS_PURE] == CCMY_SANDConsts.PURE)):
 
                         row_data_x[CCMY_SANDConsts.IS_PURE] = CCMY_SANDConsts.IMPURE
                         print "Impure Shelf={}".format(row_data_y[CCMY_SANDConsts.SHELF_NUMBER])
@@ -327,11 +333,11 @@ class CCMY_SANDToolBox:
                         print "Impure Shelf={}".format(row_data_y[CCMY_SANDConsts.SHELF_NUMBER])
                         continue
                     elif ((row_data_x[CCMY_SANDConsts.SCENE_FK] == row_data_y[CCMY_SANDConsts.SCENE_FK]) &
-                      (row_data_x[CCMY_SANDConsts.BAY_NUMBER] == row_data_y[CCMY_SANDConsts.BAY_NUMBER]) &
-                      (row_data_x[CCMY_SANDConsts.SHELF_NUMBER] == row_data_y[CCMY_SANDConsts.SHELF_NUMBER]) &
-                      (row_data_y[CCMY_SANDConsts.MANUFACTURER_FK] == CCMY_SANDConsts.GENERAL_MANUFACTURER) &
-                      (row_data_y[CCMY_SANDConsts.PRODUCT_FK] != CCMY_SANDConsts.GENERAL_EMPTY_PRODUCT) &
-                      (row_data_x[CCMY_SANDConsts.IS_PURE] == CCMY_SANDConsts.PURE)):
+                          (row_data_x[CCMY_SANDConsts.BAY_NUMBER] == row_data_y[CCMY_SANDConsts.BAY_NUMBER]) &
+                          (row_data_x[CCMY_SANDConsts.SHELF_NUMBER] == row_data_y[CCMY_SANDConsts.SHELF_NUMBER]) &
+                          (row_data_y[CCMY_SANDConsts.MANUFACTURER_FK] == CCMY_SANDConsts.GENERAL_MANUFACTURER) &
+                          (row_data_y[CCMY_SANDConsts.PRODUCT_FK] != CCMY_SANDConsts.GENERAL_EMPTY_PRODUCT) &
+                          (row_data_x[CCMY_SANDConsts.IS_PURE] == CCMY_SANDConsts.PURE)):
                         row_data_x[CCMY_SANDConsts.IS_PURE] = CCMY_SANDConsts.IMPURE
                         print "Impure Shelf={}".format(row_data_y[CCMY_SANDConsts.SHELF_NUMBER])
                         continue
@@ -347,7 +353,7 @@ class CCMY_SANDToolBox:
                 return 0
             atomic_kpi_fk = df_atomic_kpi.iloc[0][CCMY_SANDConsts.ATOMIC_KPI_FK]
             result = num_of_pure_shelves if df_atomic_kpi[CCMY_SANDConsts.ATOMIC_KPI_NAME].iloc[0] == \
-                                           CCMY_SANDConsts.KPI_NUM_PURE_SHELVES else total_num_of_shelves
+                                            CCMY_SANDConsts.KPI_NUM_PURE_SHELVES else total_num_of_shelves
             self.write_to_db_result(atomic_kpi_fk, (result, result, 0),
                                     level=self.LEVEL3)
 
@@ -371,11 +377,12 @@ class CCMY_SANDToolBox:
             score = 100 if target_min <= facings_sos <= target_max else 0
             result = float(params[CCMY_SANDConsts.SCORE]) if score != 0 else 0
             if not score and params[CCMY_SANDConsts.ONLY_IF_PASS]:
-                    continue
+                continue
             group_score += result
 
-            atomic_fk = self.kpi_static_data[(self.kpi_static_data['atomic_kpi_name'] == params[CCMY_SANDConsts.KPI_NAME]) &
-                                             (self.kpi_static_data['kpi_name'] == group_name)].iloc[0]['atomic_kpi_fk']
+            atomic_fk = \
+            self.kpi_static_data[(self.kpi_static_data['atomic_kpi_name'] == params[CCMY_SANDConsts.KPI_NAME]) &
+                                 (self.kpi_static_data['kpi_name'] == group_name)].iloc[0]['atomic_kpi_fk']
             self.write_to_db_result(atomic_fk, (score, result, target_min), level=self.LEVEL3)
 
             # insert result to new table
@@ -441,7 +448,6 @@ class CCMY_SANDToolBox:
             if data.empty:
                 return {}
             atomic_kpi_name = data['atomic_kpi_name'].values[0]
-
 
             kpi_fk = data['kpi_fk'].values[0]
             kpi_set_name = self.kpi_static_data[self.kpi_static_data['atomic_kpi_fk'] == fk]['kpi_set_name'].values[0]
