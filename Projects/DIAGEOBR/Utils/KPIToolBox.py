@@ -13,12 +13,15 @@ class DIAGEOBRToolBox:
         self.output = output
         self.common = Common(self.data_provider)
         self.commonV2 = CommonV2(self.data_provider)
-        self.diageo_generator = DIAGEOGenerator(self.data_provider, self.output, self.common)
+        self.diageo_generator = DIAGEOGenerator(self.data_provider, self.output, self.common, menu=True)
 
     def main_calculation(self):
         """ This function calculates the KPI results """
         # SOS Out Of The Box kpis
         self.diageo_generator.activate_ootb_kpis(self.commonV2)
+
+        # sos by scene type
+        self.diageo_generator.sos_by_scene_type(self.commonV2)
 
         # Global assortment kpis
         assortment_res_dict = self.diageo_generator.diageo_global_assortment_function_v2()
@@ -33,6 +36,12 @@ class DIAGEOBRToolBox:
         if res_json:
             self.commonV2.write_to_db_result(fk=res_json['fk'], numerator_id=1, denominator_id=self.store_id,
                                              result=res_json['result'])
+
+        # Global Menu kpis
+        menus_res_dict = self.diageo_generator.diageo_global_share_of_menu_cocktail_function(
+            cocktail_product_level=True)
+        self.commonV2.save_json_to_new_tables(menus_res_dict)
+
         # committing to new tables
         self.commonV2.commit_results_data()
         # committing to the old tables

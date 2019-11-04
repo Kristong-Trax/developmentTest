@@ -96,12 +96,15 @@ if __name__ == '__main__':
 
     ]
 
-    sessions = ['f920817e-3539-49aa-88c7-cade84e21ef4',
-                '4c6e4746-835e-41d6-96fb-677a5a26cd0f',
-                '74be7e6d-18af-4e31-9e41-f8b8aaf2241c',
-                'ff26ffe8-58e7-4118-bcac-5985ed2d9250',
-                '8c355431-6bb3-4c85-a608-722dbbe763be',
-]
+    sessions = [
+        '7c66fc40-0631-44fe-b92b-4f4d0b4cf1c5',
+        '8d6c5d91-5a2a-4321-b728-9fe61d88e7b8',
+        'aae4e2c3-2c59-488a-8e62-68ec5c041f98',
+        '7e3e6225-8fe3-4f31-adcd-50160f0c0ab6',
+
+    ]
+
+    sessions = ['14b29a3d-2cfd-4f5a-a8b2-53e124f676a6']
 
 
     for session in sessions:

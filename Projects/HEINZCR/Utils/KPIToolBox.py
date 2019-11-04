@@ -300,6 +300,14 @@ class HEINZCRToolBox:
 
             if numerator_key == 'manufacturer':
                 numerator_key = numerator_key + '_name'
+                # we need to include 'Philadelphia' as a manufacturer for all countries EXCEPT Chile
+                if self.country == 'Chile':
+                    numerator_values = [numerator_val]
+                else:
+                    numerator_values = [numerator_val, 'Philadelphia']
+            else:
+                # if the numerator isn't 'manufacturer', we just need to convert the value to a list
+                numerator_values = [numerator_val]
 
             if denominator_key == 'sub_category' and denominator_val.lower() == 'all':
                 # Here we are talkin on a KPI when the target have no denominator,
@@ -311,7 +319,7 @@ class HEINZCRToolBox:
                 denominator = None
                 denominator_id = None
             else:
-                numerator = self.scif[(self.scif[numerator_key] == numerator_val) &
+                numerator = self.scif[(self.scif[numerator_key].isin(numerator_values)) &
                                       (self.scif[denominator_key] == denominator_val) &
                                       (self.scif['location_type'] == 'Primary Shelf')]['facings_ign_stack'].sum()
                 denominator = self.scif[(self.scif[denominator_key] == denominator_val) &

@@ -28,7 +28,8 @@ class Consts(object):
     OOS_SABRA_SKU = 'OOS Sabra - SKU'
 
     DIST_OOS_KPIS_MAP = {DISTR_SNACKS: OOS_SNACKS, DISTR_SABRA: OOS_SABRA, DISTR_SNACKS_SKU: OOS_SNACKS_SKU,
-                         DISTR_SABRA_SKU: OOS_SABRA_SKU}
+                         DISTR_SABRA_SKU: OOS_SABRA_SKU, DISTRIBUTION_STORE_LEVEL: OOS_STORE_LEVEL,
+                         DISTRIBUTION_SKU_LEVEL: OOS_SKU_LEVEL}
 
     # KPI result values
     OOS_VALUE = 'OOS'

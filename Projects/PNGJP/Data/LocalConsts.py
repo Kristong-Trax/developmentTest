@@ -5,8 +5,19 @@ class Consts(object):
     FLEXIBLE_MODE = 'Flexible Mode'
     STRICT_MODE = 'Strict Mode'
 
-    ATTRIBUTES_TO_SAVE = [MatchesConsts.SCENE_MATCH_FK, ProductsConsts.PRODUCT_NAME, ProductsConsts.PRODUCT_FK, ProductsConsts.PRODUCT_TYPE, ProductsConsts.PRODUCT_EAN_CODE, 'sub_brand_name',
-                          MatchesConsts.BAY_NUMBER, MatchesConsts.WIDTH_MM_ADVANCE, MatchesConsts.HEIGHT_MM_ADVANCE]
+    ATTRIBUTES_TO_SAVE = [MatchesConsts.SCENE_MATCH_FK,
+                          ProductsConsts.PRODUCT_NAME,
+                          ProductsConsts.PRODUCT_FK,
+                          ProductsConsts.PRODUCT_TYPE,
+                          ProductsConsts.CATEGORY_LOCAL_NAME,
+                          ProductsConsts.PRODUCT_EAN_CODE,
+                          'sub_brand_name',
+                          MatchesConsts.SHELF_NUMBER,
+                          MatchesConsts.BAY_NUMBER,
+                          MatchesConsts.X_MM,
+                          MatchesConsts.Y_MM,
+                          MatchesConsts.WIDTH_MM_ADVANCE,
+                          MatchesConsts.HEIGHT_MM_ADVANCE]
     KPI_RESULT = 'report.kpi_results'
     KPK_RESULT = 'report.kpk_results'
     KPS_RESULT = 'report.kps_results'
