@@ -584,8 +584,10 @@ class BATRU_SANDToolBox:
                         new_sku_results[product_fk] = {} if product_fk not in new_sku_results.keys() \
                                                                             else new_sku_results[product_fk]
                         if template_group == EXIT_TEMPLATE_GROUP:
+                            new_sku_results[product_fk]['initial_score'] = result
                             new_sku_results[product_fk]['score'] = self.kpi_score_values[self.CUSTOM_OSA_RESULT_SCORE_TYPE][result]
                         if template_group == ENTRY_TEMPLATE_GROUP:
+                            new_sku_results[product_fk]['initial_result'] = result
                             new_sku_results[product_fk]['result'] = self.kpi_result_values[self.CUSTOM_OSA_RESULT_SCORE_TYPE][result]
 
                 if assortment == total_assortment:
@@ -660,7 +662,7 @@ class BATRU_SANDToolBox:
 
         #new tables - lvl 2
         for product_fk, product_results in new_sku_results.items():
-            if product_results['result'] in [8, '8'] and product_results['score'] in [8, '8']:
+            if product_results['initial_result'] == 'NA' and product_results['initial_score'] == 'NA':
                 self.common.write_to_db_result(fk=contracted_sku_fk, numerator_id=product_fk,
                                                denominator_id=self.store_id,
                                                result=product_results['result'], score=product_results['score'])
