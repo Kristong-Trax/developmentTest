@@ -579,11 +579,11 @@ class ToolBox(GlobalSessionToolBox):
             filtered_scif = filtered_scif[filtered_scif[PRODUCT_TYPE].isin(product_type)]
 
         # Step 7: Filter the filtered scif through the template group
-        # if pd.notna(template_group):
-        #     filtered_scif = filtered_scif[filtered_scif[TEMPLATE_GROUP].isin(template_group)]
-        #
-        # if pd.notna(template_name):
-        #     filtered_scif = filtered_scif[filtered_scif[TEMPLATE_NAME].isin(template_name)]
+        if template_group and template_group is not pd.np.nan:
+            filtered_scif = filtered_scif[filtered_scif[TEMPLATE_GROUP].isin(template_group)]
+
+        if template_name and template_name is not pd.np.nan:
+            filtered_scif = filtered_scif[filtered_scif[TEMPLATE_NAME].isin(template_name)]
 
         # Step 8: Filter the filtered scif with the denominator param and denominator value
         if pd.notna(denominator_param1):
