@@ -2047,10 +2047,15 @@ class CCRU_SANDKPIToolBox:
             kpi_type = POS_CAT_KPI_DICT.get(params.get(CAT_KPI_TYPE))
             if kpi_type is not None:
                 cat_kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_type)
-                category_fk = self.products[self.products['category'] ==
-                                            params.get(CAT_KPI_VALUE)]['category_fk'].values[0]
-                self.common.write_to_db_result(cat_kpi_fk, numerator_id=self.own_manufacturer_id,
-                                               denominator_id=category_fk, result=result, score=score)
+                category_fk_array = self.products[self.products['category'] ==
+                                                    params.get(CAT_KPI_VALUE)]['category_fk'].values
+                if len(category_fk_array) > 0:
+                    category_fk = category_fk_array[0]
+                    self.common.write_to_db_result(cat_kpi_fk, numerator_id=self.own_manufacturer_id,
+                                                   denominator_id=category_fk, result=result, score=score)
+                if len(category_fk_array) == 0:
+                    Log.warning('Category {} does not exist in the DB. '
+                                'Check kpi template'.format(params.get(CAT_KPI_VALUE)))
 
     @kpi_runtime()
     def check_number_of_scenes_no_tagging(self, params, level=2):
