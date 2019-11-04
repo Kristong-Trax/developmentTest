@@ -300,16 +300,15 @@ class GSKAUSceneToolBox:
 
     def save_purity_per_bay(self, kpi_bay_purity):
         Log.info('Calculate purity per bay for : {scene}.'.format(scene=self.scene_info.iloc[0].scene_fk))
-        # could have done with scif
-        total_prod_in_scene_count = len(
-            self.match_product_in_scene[self.match_product_in_scene['product_fk'] != 0]
-        )
         mpis_grouped_by_bay = self.match_product_in_scene.groupby(['bay_number'])
         for bay_number, mpis in mpis_grouped_by_bay:
+            total_prod_in_bay_count = len(
+                mpis[mpis['product_fk'] != 0]
+            )
             mpis_with_prod = mpis.merge(self.products, how='left', on=['product_fk'], suffixes=('', '_prod'))
             gsk_prod_count = len(mpis_with_prod[mpis_with_prod['manufacturer_fk'] == 2])
-            if total_prod_in_scene_count:
-                purity = gsk_prod_count / float(total_prod_in_scene_count) * 100
+            if total_prod_in_bay_count:
+                purity = gsk_prod_count / float(total_prod_in_bay_count) * 100
                 Log.info('Save purity per bay for scene: {scene}; bay: {bay} & purity: {purity}.'
                          .format(scene=self.scene_info.iloc[0].scene_fk,
                                  bay=bay_number,
