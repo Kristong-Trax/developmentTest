@@ -277,11 +277,11 @@ class CCMY_SANDToolBox:
         group_name = kpi_data.iloc[0][CCMY_SANDConsts.KPI_GROUP]
         identifier_parent = self.common.get_dictionary(kpi_name=group_name)
         scene_types = self.get_scene_types(kpi_data.iloc[0])
-
         self_purity_scene_list = self.scene_info[self.scene_info['template_name'].isin(scene_types)][
             CCMY_SANDConsts.SCENE_FK].unique().tolist()
         template_fk = self.scene_info[self.scene_info['template_name'].isin(scene_types)][
             CCMY_SANDConsts.TEMPLATE_FK].unique().tolist()
+        #todo  decide what to put in numerator id in case template fk is empty
 
         df_all_shelfs = self.match_product_in_scene
 
