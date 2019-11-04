@@ -2047,7 +2047,8 @@ class CCRU_SANDKPIToolBox:
             kpi_type = POS_CAT_KPI_DICT.get(params.get(CAT_KPI_TYPE))
             if kpi_type is not None:
                 cat_kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_type)
-                category_fk = self.products[self.products['category'] == params.get(CAT_KPI_VALUE)].values[0]
+                category_fk = self.products[self.products['category'] ==
+                                            params.get(CAT_KPI_VALUE)]['category_fk'].values[0]
                 self.common.write_to_db_result(cat_kpi_fk, numerator_id=self.own_manufacturer_id,
                                                denominator_id=category_fk, result=result, score=score)
 
