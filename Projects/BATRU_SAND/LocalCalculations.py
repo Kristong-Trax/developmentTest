@@ -9,7 +9,7 @@ if __name__ == '__main__':
     LoggerInitializer.init('BATRU calculations')
     Config.init()
 
-    project_name = 'batru'
+    project_name = 'batru-sand'
     data_provider = KEngineDataProvider(project_name)
     sessions = \
         [
