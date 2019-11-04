@@ -140,6 +140,7 @@ class ToolBox(GlobalSessionToolBox):
         self.own_manuf_fk = int(self.data_provider.own_manufacturer.param_value.values[0])
         self.survey = Survey(self.data_provider, output=output, ps_data_provider=self.ps_data_provider,
                              common=self.common_v2)
+        self.ps_data_provider = PsDataProvider(self.data_provider, self.output)
         self.platformas_data = self.generate_platformas_data()
         self.assortment = Assortment(self.data_provider, common=self.common)
         self.results_df = pd.DataFrame(columns=['kpi_name', 'kpi_fk', 'numerator_id', 'numerator_result',
@@ -1018,6 +1019,7 @@ class ToolBox(GlobalSessionToolBox):
                     result = result + .2
 
         if pd.notna(relevant_question_fk):
+            relevant_question_fk = self.sanitize_values(relevant_question_fk)
             calculation = self.calculate_relevant_availability_survey_result(relevant_question_fk) + result
             if calculation >= target:
                 result = 1
@@ -1156,22 +1158,39 @@ class ToolBox(GlobalSessionToolBox):
 
     def calculate_relevant_survey_result(self, relevant_question_fk):
         result = pd.np.nan
+        survey_response_df = self.get_scene_survey_response()
         for question_fk in relevant_question_fk:
             if result == 0:
                 break
 
-            if self.survey.check_survey_answer(('question_fk', question_fk), ('Si')):
-                result = 1
+            relevant_survey_response = survey_response_df[survey_response_df['question_fk'].isin([question_fk])]
+
+            if question_fk in [5,6,7]:
+                if relevant_survey_response.iloc[0, 2] == "Si":
+                    result = 0
+                else:
+                    result = 1
+
             else:
-                result = 0
+                if relevant_survey_response.iloc[0, 2] == "Si":
+                    result = 1
+                else:
+                    result = 0
 
         return result
 
     def calculate_relevant_availability_survey_result(self, relevant_question_fk):
         result = 0
+        survey_response_df = self.get_scene_survey_response()
+        accepted_results = ['Si', 1, 2]
+
         for question_fk in relevant_question_fk:
-            if self.survey.check_survey_answer(('question_fk', question_fk), ('Si', 1, 2)):
-                result = result + 1
+            relevant_survey_response = survey_response_df[survey_response_df['question_fk'].isin([question_fk])]
+            if not relevant_survey_response.empty:
+                if relevant_survey_response.iloc[0, 2] in accepted_results:
+                    result = result + 1
+
+
         return result
 
     @staticmethod
@@ -1184,3 +1203,12 @@ class ToolBox(GlobalSessionToolBox):
             target = 3
 
         return target
+
+    def get_scene_survey_response(self):
+        query = """SELECT session_uid,question_fk,selected_option_text
+                FROM probedata.scene_survey_response res
+                LEFT JOIN probedata.scene sce ON res.scene_fk =  sce.pk
+                WHERE session_uid = '{}';""".format(self.session_uid)
+
+        scene_survey_response = pd.read_sql_query(query, self.ps_data_provider.rds_conn.db)
+        return scene_survey_response
