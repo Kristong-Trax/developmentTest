@@ -106,7 +106,7 @@ SHEETS = [SOS, BLOCK_TOGETHER, SHARE_OF_EMPTY, BAY_COUNT, PER_BAY_SOS, SURVEY, A
           COMBO, SCORING, PLATFORMAS, PLATFORMAS_SCORING, KPIS]
 POS_OPTIONS_SHEETS = [POS_OPTIONS, TARGETS_AND_CONSTRAINTS]
 
-TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'CCNayarTemplatev0.6.4.xlsx')
+TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'CCNayarTemplatev0.6.6.xlsx')
 POS_OPTIONS_TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data',
                                          'CCNayar_POS_Options_v2.xlsx')
 
@@ -532,6 +532,7 @@ class ToolBox(GlobalSessionToolBox):
         kpi_name = row[KPI_NAME]
         kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_name)
         template_group = self.sanitize_values(row[TASK_TEMPLATE_GROUP])
+        template_name = self.sanitize_values(row[TEMPLATE_NAME])
         numerator_value1 = row[NUMERATOR_VALUE_1]
         denominator_value1 = row[DENOMINATOR_VALUE_1]
         numerator_entity = row[NUMERATOR_ENTITY]
@@ -546,7 +547,8 @@ class ToolBox(GlobalSessionToolBox):
         additional_scene_type = row[ACTIVATION_SCENE_TYPE]
 
         # Step 3: Declare the relevant scif column for the SOS KPI
-        relevant_scif_columns = [PK, SESSION_ID, TEMPLATE_GROUP, PRODUCT_TYPE, FACINGS, FACINGS_IGN_STACK] + \
+        relevant_scif_columns = [PK, SESSION_ID, TEMPLATE_GROUP, TEMPLATE_NAME, PRODUCT_TYPE, FACINGS,
+                                 FACINGS_IGN_STACK] + \
                                 [denominator_entity, numerator_entity] + self.delete_filter_nan(
             [numerator_param1, denominator_param1])
 
@@ -566,7 +568,11 @@ class ToolBox(GlobalSessionToolBox):
             filtered_scif = filtered_scif[filtered_scif[PRODUCT_TYPE].isin(product_type)]
 
         # Step 7: Filter the filtered scif through the template group
-        filtered_scif = filtered_scif[filtered_scif[TEMPLATE_GROUP].isin(template_group)]
+        if pd.notna(template_group):
+            filtered_scif = filtered_scif[filtered_scif[TEMPLATE_GROUP].isin(template_group)]
+
+        if pd.notna(template_name):
+            filtered_scif = filtered_scif[filtered_scif[TEMPLATE_NAME].isin(template_name)]
 
         # Step 8: Filter the filtered scif with the denominator param and denominator value
         if pd.notna(denominator_param1):
@@ -615,7 +621,6 @@ class ToolBox(GlobalSessionToolBox):
         # Step 1: Read the excel rows to process the information (Common among all the sheets)
         kpi_name = row[KPI_NAME]
         kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_name)
-        template_group = row[TASK_TEMPLATE_GROUP]
         numerator_entity = row[NUMERATOR_ENTITY]
         denominator_entity = row[DENOMINATOR_ENTITY]
 
@@ -648,9 +653,6 @@ class ToolBox(GlobalSessionToolBox):
 
         numerator_id = self.get_sub_cat_fk_from_sub_cat(sub_category[0])
 
-        if pd.notna(template_group):
-            bay_count_scif = bay_count_scif[bay_count_scif[TEMPLATE_GROUP].isin([template_group])]
-
         if pd.notna(template_name):
             bay_count_scif = bay_count_scif[bay_count_scif[TEMPLATE_NAME].isin([template_name])]
 
@@ -664,8 +666,8 @@ class ToolBox(GlobalSessionToolBox):
             unique_bay_number = list(set(bay_count_scif[BAY_NUMBER]))
 
             if pd.isna(iterate_by):
-                location_name = TEMPLATE_GROUP
-                location_id = template_group
+                location_name = TEMPLATE_NAME
+                location_id = template_name
 
                 location = {location_name: location_id}
 
@@ -805,7 +807,7 @@ class ToolBox(GlobalSessionToolBox):
         # Step 1: Read the excel rows to process the information(Common among all the sheets)
         kpi_name = row[KPI_NAME]
         kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_name)
-        template_group = self.sanitize_values(row[TASK_TEMPLATE_GROUP])
+        template_group = self.sanitize_values(row[TEMPLATE_NAME])
         numerator_entity = row[NUMERATOR_ENTITY]
         denominator_entity = row[DENOMINATOR_ENTITY]
 
