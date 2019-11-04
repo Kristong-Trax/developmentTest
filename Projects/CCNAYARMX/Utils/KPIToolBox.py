@@ -227,6 +227,8 @@ class ToolBox(GlobalSessionToolBox):
                         result_data['identifier_parent'] = parent_kpi_name
                     if 'identifier_result' not in result_data.keys():
                         result_data['identifier_result'] = result_data['kpi_name']
+                    if result_data['result'] <= 1:
+                        result_data['result'] = result_data['result'] * 100
                     self.results_df.loc[len(self.results_df), result_data.keys()] = result_data
                 else:  # must be a list
                     for result in result_data:
@@ -238,6 +240,8 @@ class ToolBox(GlobalSessionToolBox):
                             result['identifier_parent'] = parent_kpi_name
                         if 'identifier_result' not in result.keys():
                             result['identifier_result'] = result['kpi_name']
+                        if result['result'] <= 1:
+                            result['result'] = result['result'] * 100
                         self.results_df.loc[len(self.results_df), result.keys()] = result
 
     def _get_calculation_function_by_kpi_type(self, kpi_type):
@@ -276,24 +280,31 @@ class ToolBox(GlobalSessionToolBox):
             child_kpi_fk = self.get_kpi_fk_by_kpi_type(child_row[KPI_NAME])
             if not relevant_platformas_data.empty:
                 child_result = relevant_platformas_data[child_row['data_column']].iloc[0]
+                scene_id = relevant_platformas_data['scene_id'].iloc[0]
                 self.platformas_data.loc[relevant_platformas_data.index.values[0], 'consumed'] = 'yes'
             else:
                 child_result = 0
+                scene_id = 0
             result_dict = {'kpi_name': child_row[KPI_NAME], 'kpi_fk': child_kpi_fk,
                            'numerator_id': self.own_manuf_fk, 'denominator_id': self.store_id,
+                           'denominator_result': scene_id,
                            'result': child_result}
             results_list.append(result_dict)
 
         if kpi_name != 'Precios en cooler':
             if relevant_platformas_data.empty:
                 result = 0
+                scene_id = 0
             elif self.platformas_data.loc[relevant_platformas_data.index.values[0], 'passing_results'] == 4:
                 result = 1
+                scene_id = relevant_platformas_data['scene_id'].iloc[0]
             else:
                 result = 0
+                scene_id = relevant_platformas_data['scene_id'].iloc[0]
 
             result_dict = {'kpi_name': kpi_name, 'kpi_fk': kpi_fk,
                            'numerator_id': self.own_manuf_fk, 'denominator_id': self.store_id,
+                           'denominator_result': scene_id,
                            'result': result}
             results_list.append(result_dict)
 
@@ -568,11 +579,11 @@ class ToolBox(GlobalSessionToolBox):
             filtered_scif = filtered_scif[filtered_scif[PRODUCT_TYPE].isin(product_type)]
 
         # Step 7: Filter the filtered scif through the template group
-        if pd.notna(template_group):
-            filtered_scif = filtered_scif[filtered_scif[TEMPLATE_GROUP].isin(template_group)]
-
-        if pd.notna(template_name):
-            filtered_scif = filtered_scif[filtered_scif[TEMPLATE_NAME].isin(template_name)]
+        # if pd.notna(template_group):
+        #     filtered_scif = filtered_scif[filtered_scif[TEMPLATE_GROUP].isin(template_group)]
+        #
+        # if pd.notna(template_name):
+        #     filtered_scif = filtered_scif[filtered_scif[TEMPLATE_NAME].isin(template_name)]
 
         # Step 8: Filter the filtered scif with the denominator param and denominator value
         if pd.notna(denominator_param1):
