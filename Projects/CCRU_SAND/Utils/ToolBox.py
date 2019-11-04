@@ -108,6 +108,9 @@ CATEGORIES_LIST = ['SSD', 'Water', 'ice tea', 'Juices', 'Energy']
 SOS_CAT_FOR_MR = 'SOS_MANUFACTURER_OUT_OF_CAT_CUSTOM_MR'
 AVAILABILITY_CAT_FOR_MR = 'AVAILABILITY_MANUFACTURER_OUT_OF_CAT_CUSTOM_MR'
 OSA_CAT_FOR_MR = 'OSA_MANUFACTURER_OUT_OF_CAT_CUSTOM_MR'
+CAT_KPI_TYPE = 'Category KPI Type'
+CAT_KPI_VALUE = 'Category KPI Value'
+POS_CAT_KPI_DICT = {'Availability': AVAILABILITY_CAT_FOR_MR, 'SOS': SOS_CAT_FOR_MR}
 
 
 class CCRU_SANDKPIToolBox:
@@ -903,7 +906,7 @@ class CCRU_SANDKPIToolBox:
             atomic_result = attributes_for_level3['result']
             if p.get("KPI ID") in params.values()[2]["SESSION LEVEL"]:
                 self.write_to_kpi_facts_hidden(p.get("KPI ID"), None, atomic_result, score)
-
+            self.write_to_db_category_kpis_for_mr(p, result=score, score=set_total_res)
         return set_total_res
 
     def calculate_facings_sos(self, params, scenes=None, all_params=None):
@@ -2036,7 +2039,17 @@ class CCRU_SANDKPIToolBox:
             if kpi_fk:
                 attributes_for_level2 = self.create_attributes_for_level2_df(p, kpi_score, kpi_fk)
                 self.write_to_kpi_results_old(attributes_for_level2, 'level2')
+            self.write_to_db_category_kpis_for_mr(p, result=kpi_score, score=set_total_res)
         return set_total_res
+
+    def write_to_db_category_kpis_for_mr(self, params, result, score):
+        if params.get(CAT_KPI_TYPE) is not None and params.get(CAT_KPI_VALUE) is not None and params.get('level') == 2:
+            kpi_type = POS_CAT_KPI_DICT.get(params.get(CAT_KPI_TYPE))
+            if kpi_type is not None:
+                cat_kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_type)
+                category_fk = self.products[self.products['category'] == params.get(CAT_KPI_VALUE)].values[0]
+                self.common.write_to_db_result(cat_kpi_fk, numerator_id=self.own_manufacturer_id,
+                                               denominator_id=category_fk, result=result, score=score)
 
     @kpi_runtime()
     def check_number_of_scenes_no_tagging(self, params, level=2):
