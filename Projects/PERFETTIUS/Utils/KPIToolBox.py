@@ -155,7 +155,7 @@ class ToolBox(GlobalSessionToolBox):
 
         # this function is only needed until the adjacency function is enhanced to not crash when an empty population
         # is provided
-        if self.check_population_exists(config, template_fk):
+        if self.check_population_exists(population, template_fk):
             try:
                 adj_df = self.adjacency.network_x_adjacency_calculation(population, location,
                                                                         {'minimum_facings_adjacent': 1,
@@ -219,10 +219,10 @@ class ToolBox(GlobalSessionToolBox):
         except IndexError:
             return None
 
-    def check_population_exists(self, config, template_fk):
+    def check_population_exists(self, population, template_fk):
         relevant_scif = self.scif[self.scif['template_fk'] == template_fk]
-        anchor_scif = relevant_scif[relevant_scif[config.anchor_param].isin(config.anchor_value)]
-        tested_scif = relevant_scif[relevant_scif[config.tested_param].isin(config.tested_value)]
+        anchor_scif = relevant_scif[relevant_scif['product_fk'].isin(population['anchor_products']['product_fk'])]
+        tested_scif = relevant_scif[relevant_scif['product_fk'].isin(population['tested_products']['product_fk'])]
         if anchor_scif.empty or tested_scif.empty:
             return False
         else:

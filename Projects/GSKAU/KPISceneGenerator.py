@@ -25,4 +25,3 @@ class SceneGenerator:
         else:
             self.scene_tool_box.calculate_display_compliance()
             self.common.commit_results_data(result_entity='scene')
-

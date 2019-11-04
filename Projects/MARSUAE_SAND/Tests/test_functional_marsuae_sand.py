@@ -299,7 +299,7 @@ class TestMarsuaeSand(TestFunctionalCase):
 
     def test_calculate_checkouts_considers_stitch_groups_for_calculations_groups_less_then_target(self):
         probe_group, matches, scene = self.create_scif_matches_stitch_groups_data_mocks(
-            DataTestUnitMarsuae.test_case_1, [1, 2])
+            DataTestUnitMarsuae.test_case_1, [1, 2, 12])
         tool_box = MARSUAE_SANDToolBox(self.data_provider_mock, self.output)
         tool_box.common.write_to_db_result = MagicMock()
         store_atomics = tool_box.get_store_atomic_kpi_parameters()
@@ -319,7 +319,7 @@ class TestMarsuaeSand(TestFunctionalCase):
 
     def test_calculate_checkouts_considers_stitch_groups_for_calculations_groups_more_than_target(self):
         probe_group, matches, scene = self.create_scif_matches_stitch_groups_data_mocks(
-            DataTestUnitMarsuae.test_case_1, [1, 2, 3])
+            DataTestUnitMarsuae.test_case_1, [1, 2, 3, 12])
         tool_box = MARSUAE_SANDToolBox(self.data_provider_mock, self.output)
         tool_box.common.write_to_db_result = MagicMock()
         store_atomics = tool_box.get_store_atomic_kpi_parameters()

@@ -73,20 +73,21 @@ class CCRU_SANDProjectCalculations:
                         'Store ID {1}.'
                         .format(self.visit_date, self.store_id, self.tool_box.MIN_CALC_DATE))
 
-        elif self.pos_kpi_set_name not in ALLOWED_POS_SETS:
-            Log.warning('Warning. Session cannot be calculated. '
-                        'POS KPI Set name in store attribute is invalid - {0}. '
-                        'Store ID {1}.'
-                        .format(self.pos_kpi_set_name, self.store_id))
-
-        elif self.tool_box.visit_type in [self.tool_box.PROMO_VISIT]:
-            self.calculate_promo_compliance()
-
         elif self.tool_box.visit_type in [self.tool_box.SEGMENTATION_VISIT]:
             Log.warning('Warning. Session with Segmentation visit type has no KPI calculations.')
 
+        elif self.tool_box.visit_type in [self.tool_box.PROMO_VISIT]:
+            # Log.warning('Warning. Session with Promo visit type has no KPI calculations.')
+            self.calculate_promo_compliance()
+
         else:
-            self.calculate_red_score()
+            if self.pos_kpi_set_name not in ALLOWED_POS_SETS:
+                Log.warning('Warning. Session cannot be calculated. '
+                            'POS KPI Set name in store attribute is invalid - {0}. '
+                            'Store ID {1}.'
+                            .format(self.pos_kpi_set_name, self.store_id))
+            else:
+                self.calculate_red_score()
 
         Log.debug('KPI calculation is completed')
 
