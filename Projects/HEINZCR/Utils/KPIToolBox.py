@@ -309,21 +309,30 @@ class HEINZCRToolBox:
                 # if the numerator isn't 'manufacturer', we just need to convert the value to a list
                 numerator_values = [numerator_val]
 
+            if denominator_key == 'sub_category':
+                include_stacking_list = ['Nuts', 'BULK', 'DRY CHEESE', 'IWSN', 'IWSP', 'Shredded', 'SNACK']
+                if denominator_val in include_stacking_list:
+                    facings_field = 'facings'
+                else:
+                    facings_field = 'facings_ign_stack'
+            else:
+                facings_field = 'facings_ign_stack'
+
             if denominator_key == 'sub_category' and denominator_val.lower() == 'all':
                 # Here we are talkin on a KPI when the target have no denominator,
                 # the calculation should be done on Numerator only
                 numerator = self.scif[(self.scif[numerator_key] == numerator_val) &
                                       (self.scif['location_type'] == 'Primary Shelf')
-                                      ]['facings_ign_stack'].sum()
+                                      ][facings_field].sum()
                 kpi_fk = 9
                 denominator = None
                 denominator_id = None
             else:
                 numerator = self.scif[(self.scif[numerator_key].isin(numerator_values)) &
                                       (self.scif[denominator_key] == denominator_val) &
-                                      (self.scif['location_type'] == 'Primary Shelf')]['facings_ign_stack'].sum()
+                                      (self.scif['location_type'] == 'Primary Shelf')][facings_field].sum()
                 denominator = self.scif[(self.scif[denominator_key] == denominator_val) &
-                                        (self.scif['location_type'] == 'Primary Shelf')]['facings_ign_stack'].sum()
+                                        (self.scif['location_type'] == 'Primary Shelf')][facings_field].sum()
 
             try:
                 if denominator is not None:
