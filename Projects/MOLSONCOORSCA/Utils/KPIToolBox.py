@@ -63,7 +63,6 @@ class ToolBox:
         self.manufacturer_fk = int(self.data_provider[Data.OWN_MANUFACTURER].iloc[0, 1])
         self.match_product_in_scene = self.data_provider[Data.MATCHES]
         self.result_entities = self.make_result_values_dict()
-        # self.add_image_data_to_mpis()
         self.visit_date = self.data_provider[Data.VISIT_DATE]
         self.session_info = self.data_provider[Data.SESSION_INFO]
         self.scenes = self.scene_info['scene_fk'].tolist()
@@ -154,14 +153,14 @@ class ToolBox:
             return
 
         if kpi_type not in [
-            # 'Share of Facings',
-            # 'Share of Shelf',
-            # 'Distribution',
-            # 'Anchor',
+            'Share of Facings',
+            'Share of Shelf',
+            'Distribution',
+            'Anchor',
             'Base Measurement',
             'Bay Count',
             'Out of Stock',
-            'Pack Distribution'
+            # 'Pack Distribution'
             ]:
             return
 
@@ -457,9 +456,18 @@ class ToolBox:
                             'kpi_name': self.lvl_name(kpi_name, 'Session')})
         return level['end'], results
 
-    def calculate_base_measure(self, kpi_name, kpi_line, relevant_scif, main_line, level, **kwargs):
+    def calculate_base_measure(self, kpi_name, kpi_line, relevant_scif, general_filters, main_line, level, **kwargs):
         sum_col = self.read_cell_from_line(kpi_line, 'Sum Col')[0]
-        result = relevant_scif[sum_col].sum() / Const.MM_FT
+        general_filters.update({'stacking_layer': 1})
+        mpis = self.filter_df(self.full_mpis, general_filters)
+
+        # z = self.scif.merge(self.full_mpis.groupby(['scene_fk', 'product_fk'])['face_count'].sum(),
+        #                     on=['scene_fk', 'product_fk'])
+        # x = z[z.facings.astype(int) != z.face_count.astype(int)][['scene_fk', 'product_fk', 'facings', 'face_count']]
+        # a = self.scif
+
+        # result = relevant_scif[sum_col].sum() / Const.MM_FT
+        result = mpis[sum_col].sum() / Const.MM_FT
         results = {'score': 1, 'result': result, 'numerator_result': result,
                    'numerator_id': relevant_scif[main_line[level['num_col']]].iloc[0],
                    'denominator_id': relevant_scif[main_line[level['den_col']]].iloc[0],
@@ -1123,9 +1131,9 @@ class ToolBox:
                   '''.format(self.session_uid)
         mpip = pd.read_sql_query(query, self.ps_data_provider.rds_conn.db).merge(self.products, how='left',
                                                                                  on='product_fk', suffixes=['', '_p'])
-        self.mpis = self.mpis.merge(mpip[['pk', Const.FACE_COUNT]], left_on='probe_match_fk', right_on='pk', how='left')
-        self.mpis[Const.FACE_COUNT].fillna(1, inplace=True)
-        self.mpis[Const.COUNT] = 1
+        self.full_mpis = self.full_mpis.merge(mpip[['pk', Const.FACE_COUNT]], left_on='probe_match_fk', right_on='pk', how='left')
+        self.full_mpis[Const.FACE_COUNT].fillna(1, inplace=True)
+        self.full_mpis[Const.COUNT] = 1
 
         return mpip
 
@@ -1139,6 +1147,8 @@ class ToolBox:
                 .merge(self.scene_info, on='scene_fk', suffixes=['', '_s']) \
                 .merge(self.templates, on='template_fk', suffixes=['', '_t'])
             self.full_mpis['store_fk'] = self.store_id
+            self.full_mpis['face_count'].fillna(1, inplace=True)
+            # self.add_image_data_to_mpis()
             self.mpis = self.full_mpis[self.full_mpis['product_type'] != 'Irrelevant']
             self.mpis = self.filter_df(self.mpis, Const.SOS_EXCLUDE_FILTERS, exclude=1)
         except:
