@@ -1147,6 +1147,7 @@ class ToolBox:
                 .merge(self.scene_info, on='scene_fk', suffixes=['', '_s']) \
                 .merge(self.templates, on='template_fk', suffixes=['', '_t'])
             self.full_mpis['store_fk'] = self.store_id
+            self.full_mpis['store_id'] = self.store_id
             self.full_mpis['face_count'].fillna(1, inplace=True)
             # self.add_image_data_to_mpis()
             self.mpis = self.full_mpis[self.full_mpis['product_type'] != 'Irrelevant']
