@@ -67,6 +67,7 @@ class ToolBox:
         self.session_info = self.data_provider[Data.SESSION_INFO]
         self.scenes = self.scene_info['scene_fk'].tolist()
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
+        self.scif['store_fk'] = self.scif['store_id']
         self.tmb_map = pd.read_excel(Const.TMB_MAP_PATH).set_index('Num Shelves').to_dict('index')
         self.res_dict = defaultdict(lambda: defaultdict(int))
         self.full_mpis = pd.DataFrame()
@@ -1147,7 +1148,6 @@ class ToolBox:
                 .merge(self.scene_info, on='scene_fk', suffixes=['', '_s']) \
                 .merge(self.templates, on='template_fk', suffixes=['', '_t'])
             self.full_mpis['store_fk'] = self.store_id
-            self.full_mpis['store_id'] = self.store_id
             self.full_mpis['face_count'].fillna(1, inplace=True)
             # self.add_image_data_to_mpis()
             self.mpis = self.full_mpis[self.full_mpis['product_type'] != 'Irrelevant']
