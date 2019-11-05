@@ -55,7 +55,7 @@ class CCKH_SANDGENERALToolBox:
         :param survey_data:     1) str - The name of the survey in the DB.
                                 2) tuple - (The field name, the field value). For example: ('question_fk', 13)
         :param answer_field: The DB field from which the answer is extracted. Default is the usual hierarchy.
-        :return: The required survey response.
+        :return: The required survey response, fk of survey response
         """
         if not isinstance(survey_data, (list, tuple)):
             entity = 'question_text'
@@ -64,12 +64,13 @@ class CCKH_SANDGENERALToolBox:
             entity, value = survey_data
         survey = self.survey_response[self.survey_response[entity] == value]
         if survey.empty:
-            return None
+            return None, None
         survey = survey.iloc[0]
         if answer_field is None or answer_field not in survey.keys():
             answer_field = 'selected_option_text' if survey['selected_option_text'] else 'number_value'
         survey_answer = survey[answer_field]
-        return survey_answer
+        survey_answer_fk = survey['selected_option_fk']
+        return survey_answer, survey_answer_fk
 
     def check_survey_answer(self, survey_text, target_answer):
         """
