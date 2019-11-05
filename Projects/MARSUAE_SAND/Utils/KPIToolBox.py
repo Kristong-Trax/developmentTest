@@ -726,13 +726,15 @@ class MARSUAE_SANDToolBox:
 
     def calculate_checkouts(self, param_row):
         filters = self.get_general_filters(param_row)
-        all_ch_o = len(filter_df(filters, self.match_product_in_scene).drop_duplicates(subset=[self.SCENE_FK,
-                                                                                               'probe_group_id']))
+        # all_ch_o = len(filter_df(filters, self.match_product_in_scene).drop_duplicates(subset=[self.SCENE_FK,
+        #                                                                                        'probe_group_id']))
+        all_ch_o = len(filter_df(filters, self.match_product_in_scene).drop_duplicates(subset=[self.SCENE_FK]))
         kpi_filters = self.get_non_sos_kpi_filters(param_row)
         filters.update(kpi_filters)
         filtered_matches = filter_df(filters, self.matches_products)
         filtered_matches = filtered_matches[filtered_matches['stacking_layer'] == 1]
-        scene_probe_groups = len(filtered_matches.drop_duplicates(subset=[self.SCENE_FK, 'probe_group_id']))
+        # scene_probe_groups = len(filtered_matches.drop_duplicates(subset=[self.SCENE_FK, 'probe_group_id']))
+        scene_probe_groups = len(filtered_matches.drop_duplicates(subset=[self.SCENE_FK]))
         result = float(scene_probe_groups) / all_ch_o if all_ch_o else 0
         score, weight = self.get_score(param_row=param_row, result=result)
         target = param_row[self.TARGET] * 100 if param_row[self.TARGET] else None

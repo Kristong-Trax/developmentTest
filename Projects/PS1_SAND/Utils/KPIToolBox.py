@@ -5,7 +5,7 @@ from KPIUtils.DB.Common import Common
 from KPIUtils_v2.DB.CommonV2 import Common as CommonV2
 
 
-class DIAGEOMXToolBox:
+class ToolBox:
 
     def __init__(self, data_provider, output):
         self.data_provider = data_provider
@@ -28,6 +28,10 @@ class DIAGEOMXToolBox:
         # Global assortment kpis - v3 for NEW MOBILE REPORTS use
         assortment_res_dict_v3 = self.diageo_generator.diageo_global_assortment_function_v3()
         self.commonV2.save_json_to_new_tables(assortment_res_dict_v3)
+
+        # global SOM kpi
+        res_dict = self.diageo_generator.diageo_global_new_share_of_menu_function()
+        self.commonV2.save_json_to_new_tables(res_dict)
 
         # global SOS kpi
         res_dict = self.diageo_generator.diageo_global_share_of_shelf_function()

@@ -15,6 +15,7 @@ from Trax.Utils.Logging.Logger import Log
 from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from KPIUtils_v2.Utils.Decorators.Decorators import kpi_runtime
 from KPIUtils_v2.DB.CommonV2 import Common
+from KPIUtils_v2.Utils.TargetFinder.KpiTargetFinder import KpiTargetFinder
 
 from Projects.CCRU_SAND.Utils.Fetcher import CCRU_SANDCCHKPIFetcher
 from Projects.CCRU_SAND.Utils.Consts import CCRU_SANDConsts
@@ -39,10 +40,10 @@ TOPSKU = 'TOPSKU'
 KPI_CONVERSION = 'KPI_CONVERSION'
 BENCHMARK = 'BENCHMARK'
 
-SKIP_OLD_CCRU_SANDKPIS_FROM_WRITING = [TARGET, MARKETING]
-SKIP_NEW_CCRU_SANDKPIS_FROM_WRITING = [TARGET, MARKETING]
-NEW_CCRU_SANDKPIS_TO_WRITE_TO_DB = [POS, INTEGRATION, GAPS,
-                               SPIRITS, TOPSKU, EQUIPMENT, CONTRACT, BENCHMARK]
+SKIP_OLD_KPIS_FROM_WRITING = [TARGET, MARKETING]
+SKIP_NEW_KPIS_FROM_WRITING = [TARGET, MARKETING]
+NEW_KPIS_TO_WRITE_TO_DB = [POS, INTEGRATION, GAPS,
+                           SPIRITS, TOPSKU, EQUIPMENT, CONTRACT, BENCHMARK]
 
 BINARY = 'BINARY'
 PROPORTIONAL = 'PROPORTIONAL'
@@ -57,6 +58,51 @@ EQUIPMENT_TARGETS_BUCKET = 'traxuscalc'
 EQUIPMENT_TARGETS_CLOUD_BASE_PATH = 'CCRU/KPIData/Contract/'
 
 ALLOWED_POS_SETS = tuple(CCRU_SANDConsts.ALLOWED_POS_SETS)
+
+
+PROMO_KPI_LEVEL_2_TYPE = 'PROMO_COMPLIANCE_DISPLAY'
+PROMO_KPI_OPERATION_TYPE = 'Custom'
+
+PROMO_DISPLAY_ENTITY = 'promo_display'
+PROMO_PRODUCT_GROUP_ENTITY = 'promo_product_group'
+PROMO_LOCATION_ENTITY = 'promo_location'
+
+PROMO_SCENE_TYPES_DISPLAY = \
+    [
+        'Company Display Promo Energy',
+        'Company Display Promo Ice Tea',
+        'Company Display Promo Juice',
+        'Company Display Promo SSD',
+        'Company Display Promo Water'
+    ]
+PROMO_SCENE_TYPES_MAIN_SHELF =\
+    [
+        'Company Display Promo Price'
+    ]
+
+PROMO_PRODUCT_GROUP_FILTER = \
+    {
+        'QUERY': 'select pk as product_fk from static_new.product where 1 ',
+        'CATEGORY': 'and product.category_fk {} in ({}) ',
+        'BRAND': 'and product.brand_fk {} in ({}) ',
+        'SUB_BRAND': """and REPLACE(JSON_EXTRACT(product.labels, '$.sub_brand'), '"', '') {} in ({}) """,
+        'SIZE': 'and CAST(product.size AS CHAR(10)) {} in ({}) ',
+        'FORM_FACTOR' : 'and product.form_factor {} in ({}) ',
+        'EAN_CODE': 'and product.pk {} in ({}) '
+    }
+
+PROMO_COMPLIANCE_STORE = 'PROMO_COMPLIANCE_STORE'
+PROMO_COMPLIANCE_DISPLAY = 'PROMO_COMPLIANCE_DISPLAY'
+PROMO_COMPLIANCE_LOCATION = 'PROMO_COMPLIANCE_LOCATION'
+PROMO_COMPLIANCE_DISPLAY_PRESENCE = 'PROMO_COMPLIANCE_DISPLAY_PRESENCE'
+PROMO_COMPLIANCE_DISTRIBUTION_TARGET = 'PROMO_COMPLIANCE_DISTRIBUTION_TARGET'
+PROMO_COMPLIANCE_FACINGS_TARGET = 'PROMO_COMPLIANCE_FACINGS_TARGET'
+PROMO_COMPLIANCE_PRICE_AVAILABILITY = 'PROMO_COMPLIANCE_PRICE_AVAILABILITY'
+PROMO_COMPLIANCE_PRICE_AVAILABILITY_TOTAL = 'PROMO_COMPLIANCE_PRICE_AVAILABILITY_TOTAL'
+PROMO_COMPLIANCE_PRICE_TARGET = 'PROMO_COMPLIANCE_PRICE_TARGET'
+
+PROMO_LOC_DISPLAY = 'Promo Display'
+PROMO_LOC_MAIN_SHELF = 'Main Shelf'
 
 
 class CCRU_SANDKPIToolBox:
@@ -141,6 +187,10 @@ class CCRU_SANDKPIToolBox:
         self.top_sku_queries = []
         self.equipment_execution_score = None
         self.top_sku_score = None
+
+        self.promo_displays = None
+        self.promo_locations = None
+        self.promo_products = None
 
     def set_kpi_set(self, kpi_set_name, kpi_set_type, empty_kpi_scores_and_results=True):
         self.kpi_set_name = kpi_set_name
@@ -1633,7 +1683,7 @@ class CCRU_SANDKPIToolBox:
                         atomic_res = self.calculate_sub_atomic_passed(c, params, parent=p)
                     elif c.get("Formula").strip() == "Lead SKU":
                         atomic_res, atomic_target = self.calculate_lead_sku(c)
-                        if atomic_res < atomic_target:
+                        if atomic_res == 0 or atomic_res < atomic_target:
                             atomic_score = 0
                         else:
                             atomic_score = 100
@@ -1731,7 +1781,7 @@ class CCRU_SANDKPIToolBox:
                             c, params, [scene], parent=p, same_scene=True)
                     elif c.get("Formula").strip() == "Lead SKU":
                         atomic_res, atomic_target = self.calculate_lead_sku(c, [scene])
-                        if atomic_res < atomic_target:
+                        if atomic_res == 0 or atomic_res < atomic_target:
                             atomic_score = 0
                         else:
                             atomic_score = 100
@@ -1780,7 +1830,7 @@ class CCRU_SANDKPIToolBox:
                             c, params, [favorite_scene], parent=p)
                     elif c.get("Formula").strip() == "Lead SKU":
                         atomic_res, atomic_target = self.calculate_lead_sku(c, [favorite_scene])
-                        if atomic_res < atomic_target:
+                        if atomic_res == 0 or atomic_res < atomic_target:
                             atomic_score = 0
                         else:
                             atomic_score = 100
@@ -1863,7 +1913,7 @@ class CCRU_SANDKPIToolBox:
                     sub_atomic_res = self.calculate_number_facings_near_food(c, params)
                 elif c.get("Formula").strip() == "Lead SKU":
                     sub_atomic_res, sub_atomic_target = self.calculate_lead_sku(c, scenes)
-                    if sub_atomic_res < sub_atomic_target:
+                    if sub_atomic_res == 0 or sub_atomic_res < sub_atomic_target:
                         sub_atomic_score = 0
                     else:
                         sub_atomic_score = 100
@@ -2094,7 +2144,7 @@ class CCRU_SANDKPIToolBox:
         This function writes KPI results to old tables
 
         """
-        if self.kpi_set_type not in SKIP_OLD_CCRU_SANDKPIS_FROM_WRITING:
+        if self.kpi_set_type not in SKIP_OLD_KPIS_FROM_WRITING:
 
             if level == 'level4':
                 if df['kpi_fk'].values[0] is None:
@@ -2136,22 +2186,22 @@ class CCRU_SANDKPIToolBox:
             self.session_uid, self.session_fk)
         for query in delete_queries:
             cur.execute(query)
-        self.rds_conn.db.commit()
+        # self.rds_conn.db.commit()
         # self.rds_conn.disconnect_rds()
-        self.rds_conn = self.rds_connection()
-        cur = self.rds_conn.db.cursor()
+        # self.rds_conn = self.rds_connection()
+        # cur = self.rds_conn.db.cursor()
         for query in self.kpi_results_queries:
             cur.execute(query)
-        self.rds_conn.db.commit()
+        # self.rds_conn.db.commit()
         # self.rds_conn.disconnect_rds()
-        self.rds_conn = self.rds_connection()
-        cur = self.rds_conn.db.cursor()
+        # self.rds_conn = self.rds_connection()
+        # cur = self.rds_conn.db.cursor()
         for query in set(self.gaps_queries):
             cur.execute(query)
-        self.rds_conn.db.commit()
+        # self.rds_conn.db.commit()
         # self.rds_conn.disconnect_rds()
-        self.rds_conn = self.rds_connection()
-        cur = self.rds_conn.db.cursor()
+        # self.rds_conn = self.rds_connection()
+        # cur = self.rds_conn.db.cursor()
         top_sku_queries = self.merge_insert_queries(self.top_sku_queries)
         for query in top_sku_queries:
             cur.execute(query)
@@ -2251,7 +2301,8 @@ class CCRU_SANDKPIToolBox:
                 for scene in scenes:
                     scene_uid = self.scenes_info[self.scenes_info['scene_fk']
                                                  == scene]['scene_uid'].values[0]
-                    kpi_facts.append({"id": atomic_kpi_id, "name": atomic_kpi_name, "display_text": atomic_kpi_name + "@" + scene_uid,
+                    kpi_facts.append({"id": atomic_kpi_id, "name": atomic_kpi_name,
+                                      "display_text": atomic_kpi_name + "@" + scene_uid,
                                       "atomic_kpi_fk": atomic_kpi_fk, "result": p.get("Values"),
                                       "scene_uid": scene_uid, "scene_id": scene,
                                       "format": p.get("Result Format")})
@@ -2266,7 +2317,8 @@ class CCRU_SANDKPIToolBox:
                                                     == scene]['template_fk'].values[0]
                         result = self.templates[self.templates['template_fk']
                                                 == template]['additional_attribute_1'].values[0]
-                        kpi_facts.append({"id": atomic_kpi_id, "name": atomic_kpi_name, "display_text": atomic_kpi_name + "@" + scene_uid,
+                        kpi_facts.append({"id": atomic_kpi_id, "name": atomic_kpi_name,
+                                          "display_text": atomic_kpi_name + "@" + scene_uid,
                                           "atomic_kpi_fk": atomic_kpi_fk, "result": result,
                                           "scene_uid": scene_uid, "scene_id": scene,
                                           "format": p.get("Result Format")})
@@ -2286,7 +2338,8 @@ class CCRU_SANDKPIToolBox:
                                 result = passed_failed[1]
                             else:
                                 result = ""
-                            kpi_facts.append({"id": atomic_kpi_id, "name": atomic_kpi_name, "display_text": atomic_kpi_name + "@" + scene_uid,
+                            kpi_facts.append({"id": atomic_kpi_id, "name": atomic_kpi_name,
+                                              "display_text": atomic_kpi_name + "@" + scene_uid,
                                               "atomic_kpi_fk": atomic_kpi_fk, "result": result,
                                               "scene_uid": scene_uid, "scene_id": scene,
                                               "format": p.get("Result Format")})
@@ -2308,7 +2361,7 @@ class CCRU_SANDKPIToolBox:
 
                 atomic_kpi_name = kf.get("name")
                 atomic_kpi_fk = kf.get("atomic_kpi_fk")
-                if not atomic_kpi_fk and self.kpi_set_type not in SKIP_OLD_CCRU_SANDKPIS_FROM_WRITING:
+                if not atomic_kpi_fk and self.kpi_set_type not in SKIP_OLD_KPIS_FROM_WRITING:
                     Log.error(
                         'Atomic KPI Name <{}> is not found for KPI FK <{}> of KPI Set <{}> in static.atomic_kpi table'
                         ''.format(atomic_kpi_name, kpi_fk, self.kpi_set_name))
@@ -2351,7 +2404,7 @@ class CCRU_SANDKPIToolBox:
 
                 # table3 = table3.append(attributes_for_table3)  # for debugging
 
-        if not kpi_fk and self.kpi_set_type not in SKIP_OLD_CCRU_SANDKPIS_FROM_WRITING:
+        if not kpi_fk and self.kpi_set_type not in SKIP_OLD_KPIS_FROM_WRITING:
             Log.error('KPI Name <{}> is not found for KPI Set <{}> in static.kpi table'
                       ''.format(kpi_name, self.kpi_set_name))
         attributes_for_table2 = pd.DataFrame([(self.session_uid,
@@ -2368,7 +2421,7 @@ class CCRU_SANDKPIToolBox:
                                                       'score'])
         self.write_to_kpi_results_old(attributes_for_table2, 'level2')
 
-        if not kpi_set_fk and self.kpi_set_type not in SKIP_OLD_CCRU_SANDKPIS_FROM_WRITING:
+        if not kpi_set_fk and self.kpi_set_type not in SKIP_OLD_KPIS_FROM_WRITING:
             Log.error('KPI Set <{}> is not found in static.kpi_set table'
                       ''.format(self.kpi_set_name))
         attributes_for_table1 = pd.DataFrame([(kpi_set_name,
@@ -2417,7 +2470,7 @@ class CCRU_SANDKPIToolBox:
 
         kpi_name = param.get('KPI name Eng')
 
-        if not kpi_fk and self.kpi_set_type not in SKIP_OLD_CCRU_SANDKPIS_FROM_WRITING:
+        if not kpi_fk and self.kpi_set_type not in SKIP_OLD_KPIS_FROM_WRITING:
             Log.error('KPI Name <{}> is not found for KPI Set <{}> in static.kpi table'
                       ''.format(kpi_name, self.kpi_set_name))
 
@@ -2471,7 +2524,7 @@ class CCRU_SANDKPIToolBox:
         atomic_kpi_fk = self.kpi_fetcher.get_atomic_kpi_fk(atomic_kpi_name, kpi_fk)\
             if atomic_kpi_fk is None else atomic_kpi_fk
 
-        if not atomic_kpi_fk and self.kpi_set_type not in SKIP_OLD_CCRU_SANDKPIS_FROM_WRITING:
+        if not atomic_kpi_fk and self.kpi_set_type not in SKIP_OLD_KPIS_FROM_WRITING:
             Log.error('Atomic KPI Name <{}> is not found for KPI FK <{}> of KPI Set <{}> in static.atomic_kpi table'
                       ''.format(atomic_kpi_name, kpi_fk, self.kpi_set_name))
 
@@ -2907,7 +2960,7 @@ class CCRU_SANDKPIToolBox:
             score = round(score*param.get('K'), 2)
             total_score += score
 
-            # if not atomic_kpi_fk and self.kpi_set_type not in SKIP_OLD_CCRU_SANDKPIS_FROM_WRITING:
+            # if not atomic_kpi_fk and self.kpi_set_type not in SKIP_OLD_KPIS_FROM_WRITING:
             #     Log.error(
             #         'Atomic KPI Name <{}> is not found for KPI FK <{}> of KPI Set <{}> in static.atomic_kpi table'
             #         ''.format(kpi_name, kpi_fk, self.kpi_set_name))
@@ -2937,7 +2990,7 @@ class CCRU_SANDKPIToolBox:
             #                                               'name'])
             # self.write_to_kpi_results_old(attributes_for_table3, 'level3')
 
-            if not kpi_fk and self.kpi_set_type not in SKIP_OLD_CCRU_SANDKPIS_FROM_WRITING:
+            if not kpi_fk and self.kpi_set_type not in SKIP_OLD_KPIS_FROM_WRITING:
                 Log.error('KPI Name <{}> is not found for KPI Set <{}> in static.kpi table'
                           ''.format(kpi_name, self.kpi_set_name))
             attributes_for_table2 = pd.DataFrame([(self.session_uid,
@@ -2963,7 +3016,7 @@ class CCRU_SANDKPIToolBox:
                  'score': score,
                  'level': 1})
 
-        if not kpi_set_fk and self.kpi_set_type not in SKIP_OLD_CCRU_SANDKPIS_FROM_WRITING:
+        if not kpi_set_fk and self.kpi_set_type not in SKIP_OLD_KPIS_FROM_WRITING:
             Log.error('KPI Set <{}> is not found static.kpi_set table'
                       ''.format(self.kpi_set_name))
         attributes_for_table1 = pd.DataFrame([(kpi_set_name,
@@ -3328,6 +3381,7 @@ class CCRU_SANDKPIToolBox:
                 .reset_index()
 
             product_name_anchor = None
+            sort_order = 0
             for i, row in top_sku_products.iterrows():
 
                 if product_name_anchor != row['product_name_anchor']:
@@ -3692,7 +3746,7 @@ class CCRU_SANDKPIToolBox:
         return
 
     def write_to_kpi_results_new(self):
-        for kpi_set_type in NEW_CCRU_SANDKPIS_TO_WRITE_TO_DB:
+        for kpi_set_type in NEW_KPIS_TO_WRITE_TO_DB:
             kpis = self.kpi_scores_and_results.get(kpi_set_type)
             if kpis:
                 kpis = pd.DataFrame(kpis.values())
@@ -3877,3 +3931,837 @@ class CCRU_SANDKPIToolBox:
             data = json.load(f)
         os.remove(temp_path)
         return data
+
+    def calculate_promo_compliance_store(self, kpis):
+        display_targets = KpiTargetFinder(self.project_name,
+                                          [self.kpi_fetcher.get_kpi_level_2_fk(PROMO_KPI_LEVEL_2_TYPE)],
+                                          self.visit_date,
+                                          self.store_id,
+                                          PROMO_KPI_OPERATION_TYPE).get_kpi_target_matches()
+        if display_targets.empty:
+            Log.debug('Warning. Session cannot be calculated. '
+                      'Promo targets are not defined. '
+                      'Store ID {}.'.format(self.store_id))
+            return
+
+        # Remove duplicate display targets by leaving the last uploaded
+        display_targets_list = display_targets.groupby('DISPLAY_NAME').agg({'target_fk': 'max'})['target_fk'].tolist()
+        display_targets = display_targets[display_targets['target_fk'].isin(display_targets_list)]
+
+        kpis = pd.DataFrame(kpis)
+        self.promo_displays = self.kpi_fetcher.get_custom_entity(PROMO_DISPLAY_ENTITY)
+        self.promo_locations = self.kpi_fetcher.get_custom_entity(PROMO_LOCATION_ENTITY)
+        self.promo_products = self.kpi_fetcher.get_custom_entity(PROMO_PRODUCT_GROUP_ENTITY)
+
+        kpi_fk_0 = self.common.kpi_static_data[self.common.kpi_static_data['type']
+                                               == PROMO_COMPLIANCE_STORE]['pk'].values[0]
+        kpi_identifier_result_0 = self.common.get_dictionary(kpi_fk=kpi_fk_0)
+
+        number_of_displays_target = 0
+        number_of_displays_found = 0
+        number_of_displays_scored = 0
+
+        # Display level KPIs
+        for i, display_target in display_targets.iterrows():
+
+            number_of_displays_target += 1
+            number_of_locations_calculated = 0
+
+            kpi_fk = self.common.kpi_static_data[self.common.kpi_static_data['type']
+                                                 == PROMO_COMPLIANCE_DISPLAY]['pk'].values[0]
+
+            kpi_result_type_fk = self.common.kpi_static_data[self.common.kpi_static_data['pk'] == kpi_fk][
+                'kpi_result_type_fk'].values[0]
+
+            display_fk = display_target['DISPLAY_NAME']  # DISPLAY_NAME contains pk
+            target_fk = display_target['target_fk']
+
+            kpi_identifier_result = self.common.get_dictionary(kpi_fk=kpi_fk, display_fk=display_fk)
+
+            # Keep relevant data for scif
+            scif = self.scif[(self.scif['template_fk'] == display_target['SCENE_TYPE']) |
+                             (self.scif['template_name'].isin(PROMO_SCENE_TYPES_MAIN_SHELF))]
+
+            if scif.empty:
+                result_value = 0
+            else:
+
+                number_of_displays_found += 1
+
+                # Add promo product groups to scif
+                product_groups = self.get_promo_product_groups_to_skus(display_target)
+                scif = pd.merge(scif, product_groups, on='product_fk', how='inner')
+
+                # Add median prices from match_product_in_scene table
+                scene_list = scif['scene_fk'].unique().tolist()
+                if scene_list:
+                    prices = self.matches[self.matches['scene_fk'].isin(scene_list) &
+                                          ~self.matches['outlier'].isin([-2, 2]) &
+                                          (self.matches['price'].notnull() |
+                                           self.matches['promotion_price'].notnull())][
+                        ['scene_fk', 'product_fk', 'price', 'promotion_price']]
+                    prices.loc[prices['price'].isnull(), 'price'] = prices['promotion_price']
+                    prices = prices.astype({'price': float})
+                    prices = prices[['scene_fk', 'product_fk', 'price']]\
+                        .groupby(['scene_fk', 'product_fk'])\
+                        .agg({'price': ['sum', 'count']})\
+                        .reset_index()
+                    prices['price', 'avg'] = prices['price', 'sum'] / prices['price', 'count']
+                    prices.columns = ['scene_fk', 'product_fk', 'price_sum', 'price_count', 'price']
+                    if not prices.empty:
+                        scif = pd.merge(scif, prices[['scene_fk', 'product_fk', 'price']],
+                                        on=['scene_fk', 'product_fk'],
+                                        how='left')
+                    else:
+                        scif['price'] = pd.np.nan
+                else:
+                    scif['price'] = pd.np.nan
+
+                # # Add prices from match_product_in_probe_price_attribute_value as in QV
+                # # with outliers detection
+                # scene_list = scif['scene_fk'].unique().tolist()
+                # if scene_list:
+                #     scip = self.kpi_fetcher.get_scene_item_prices(scene_list)
+                #     if not scip.empty:
+                #         scif = pd.merge(scif, scip, on=['scene_fk', 'product_fk'], how='left')
+                #     else:
+                #         scif['price'] = pd.np.nan
+                # else:
+                #     scif['price'] = pd.np.nan
+
+                # Location level KPI
+                # Calculate Promo Display Location Score
+                score, target, location_calculated = \
+                    self.check_promo_compliance_location(PROMO_LOC_DISPLAY,
+                                                         scif, kpis, display_target,
+                                                         kpi_identifier_result)
+                number_of_locations_calculated += location_calculated
+
+                if score >= target:
+                    result_value = 1
+                    number_of_displays_scored += 1
+                else:
+
+                    # Calculate Main Shelf Location Score
+                    score, target, location_calculated = \
+                        self.check_promo_compliance_location(PROMO_LOC_MAIN_SHELF,
+                                                             scif, kpis, display_target,
+                                                             kpi_identifier_result)
+
+                    number_of_locations_calculated += location_calculated
+
+                    if score >= target:
+                        result_value = 2
+                        number_of_displays_scored += 1
+                    else:
+                        result_value = 0
+
+            # Write Display level KPI
+            result = \
+                self.kpi_result_values[(self.kpi_result_values['result_type_fk'] == kpi_result_type_fk) &
+                                       (self.kpi_result_values['result_value'] == str(result_value))][
+                    'result_value_fk'].values[0]
+            score = result_value
+            self.common.write_to_db_result(fk=kpi_fk,
+                                           numerator_id=self.own_manufacturer_id,
+                                           numerator_result=number_of_locations_calculated,
+                                           denominator_id=display_fk,
+                                           context_id=None,
+                                           target=None,
+                                           weight=None,
+                                           result=result,
+                                           score=score,
+                                           identifier_result=kpi_identifier_result,
+                                           identifier_parent=kpi_identifier_result_0,
+                                           should_enter=True,
+                                           kpi_external_targets_fk=target_fk,
+                                           target_greater_than_or_equal=0,
+                                           target_less_than_than_or_equal=0,
+                                           target_list_of_values=[0])
+
+        # Write Store level KPI
+        # if number_of_displays > 0:
+        self.common.write_to_db_result(fk=kpi_fk_0,
+                                       numerator_id=self.own_manufacturer_id,
+                                       numerator_result=None,
+                                       denominator_id=self.store_id,
+                                       context_id=None,
+                                       target=number_of_displays_target,
+                                       weight=None,
+                                       result=number_of_displays_found,
+                                       score=number_of_displays_scored,
+                                       identifier_result=kpi_identifier_result_0,
+                                       identifier_parent=None,
+                                       should_enter=True)
+
+        return
+
+    def get_promo_product_groups_to_skus(self, target):
+        product_groups = target['PRODUCT_GROUP']
+        product_groups_df = pd.DataFrame()
+        for p in product_groups.keys():
+            query = PROMO_PRODUCT_GROUP_FILTER['QUERY']
+            filters = product_groups[p].get('PROD_INCL')
+            if filters:
+                for f in filters.keys():
+                    query += ' ' + PROMO_PRODUCT_GROUP_FILTER[f] \
+                        .format('', "'" + "','".join([unicode(x) for x in filters[f]]) + "'")
+            filters = product_groups[p].get('PROD_EXCL')
+            if filters:
+                for f in filters.keys():
+                    query += ' ' + PROMO_PRODUCT_GROUP_FILTER[f] \
+                        .format('not', "'" + "','".join([unicode(x) for x in filters[f]]) + "'")
+            data = pd.read_sql_query(query, self.rds_conn.db)
+            data['product_group'] = p
+            product_groups_df = product_groups_df.append(data)
+        return product_groups_df
+
+    @staticmethod
+    def get_relevant_promo_scif(location, kpi_target, scif):
+        if location == PROMO_LOC_DISPLAY:
+            # Filtering for the most relevant scene
+            scif_loc = scif[scif['template_fk'] == kpi_target['SCENE_TYPE']]
+            if not scif_loc.empty:
+                scif_loc = scif_loc \
+                    .groupby(['scene_fk', 'product_group']) \
+                    .agg({'facings': 'sum', 'price': 'max'}) \
+                    .reset_index() \
+                    .groupby('scene_fk') \
+                    .agg({'facings': ('count', 'sum'), 'price': 'count'}) \
+                    .reset_index()
+                scif_loc.columns = scif_loc.columns.map('_'.join).str.strip('_')
+                scif_loc = scif_loc.sort_values(by=['facings_count', 'facings_sum', 'price_count'],
+                                                ascending=[False, False, False])
+                scenes = [scif_loc['scene_fk'].values[0]]
+                scif_loc = scif[scif['scene_fk'].isin(scenes)]
+        else:
+            # Taking all relevant scenes
+            scif_loc = scif[scif['template_name'].isin(PROMO_SCENE_TYPES_MAIN_SHELF)]
+        return scif_loc
+
+    def check_promo_compliance_location(self, location, scif, kpis, kpi_target, kpi_identifier_parent):
+
+        kpi_fk = self.common.kpi_static_data[
+            self.common.kpi_static_data['type'] == PROMO_COMPLIANCE_LOCATION]['pk'].values[0]
+        display_fk = kpi_identifier_parent['display_fk']
+        location_fk = self.promo_locations[self.promo_locations['name'] == location]['pk'].values[0]
+        kpi_identifier_result = \
+            self.common.get_dictionary(kpi_fk=kpi_fk, display_fk=display_fk, location_fk=location_fk)
+
+        score = 0
+        target = kpis[(kpis['Location'] == location) &
+                      (kpis['KPI'] == PROMO_COMPLIANCE_LOCATION)]['Target'].values[0]
+
+        scif_loc = self.get_relevant_promo_scif(location, kpi_target, scif)
+
+        if scif_loc.empty:
+            location_calculated = 0
+        else:
+
+            if location == PROMO_LOC_DISPLAY:
+                scene_fk = scif_loc['scene_fk'].values[0]
+            else:
+                scene_fk = None
+
+            location_calculated = 1
+
+            score += self.check_promo_compliance_display_presence(
+                location, scif_loc, kpis, kpi_target, kpi_identifier_result)
+            score += self.check_promo_compliance_distribution_target(
+                location, scif_loc, kpis, kpi_target, kpi_identifier_result)
+            score += self.check_promo_compliance_facings_target(
+                location, scif_loc, kpis, kpi_target, kpi_identifier_result)
+            score += self.check_promo_compliance_price_availability(
+                location, scif_loc, kpis, kpi_target, kpi_identifier_result)
+            score += self.check_promo_compliance_price_availability_total(
+                location, scif_loc, kpis, kpi_target, kpi_identifier_result)
+            score += self.check_promo_compliance_price_target(
+                location, scif_loc, kpis, kpi_target, kpi_identifier_result)
+
+            self.common.write_to_db_result(fk=kpi_fk,
+                                           numerator_id=self.own_manufacturer_id,
+                                           numerator_result=None,
+                                           denominator_id=display_fk,
+                                           denominator_result=scene_fk,
+                                           context_id=location_fk,
+                                           target=target,
+                                           weight=None,
+                                           result=score,
+                                           score=score,
+                                           identifier_result=kpi_identifier_result,
+                                           identifier_parent=kpi_identifier_parent,
+                                           should_enter=True)
+
+        return score, target, location_calculated
+
+    def check_promo_compliance_display_presence(self, location, scif, kpis, kpi_target, kpi_identifier_parent):
+        kpi_fk = self.common.kpi_static_data[
+            self.common.kpi_static_data['type'] == PROMO_COMPLIANCE_DISPLAY_PRESENCE]['pk'].values[0]
+        # kpi_result_type_fk = self.common.kpi_static_data[self.common.kpi_static_data['pk'] == kpi_fk][
+        #     'kpi_result_type_fk'].values[0]
+
+        display_fk = kpi_identifier_parent['display_fk']
+        location_fk = kpi_identifier_parent['location_fk']
+        kpi_identifier_result = \
+            self.common.get_dictionary(kpi_fk=kpi_fk, display_fk=display_fk, location_fk=location_fk)
+
+        total_facings_fact = scif.agg({'facings': 'sum'})[0]
+        total_facings_target = kpi_target['TOTAL_FACINGS']
+
+        if total_facings_fact >= total_facings_target:
+            result = 100
+            score = 100
+        else:
+            result = 0
+            score = 0
+        # result = \
+        #     self.kpi_result_values[(self.kpi_result_values['result_type_fk'] == kpi_result_type_fk) &
+        #                            (self.kpi_result_values['result_value'] == result)][
+        #         'result_value_fk'].values[0]
+
+        weight = kpis[(kpis['Location'] == location) &
+                      (kpis['KPI'] == PROMO_COMPLIANCE_DISPLAY_PRESENCE)]['Weight'].values[0]/100.0
+        score = round(score * float(weight), 2)
+        target = round(float(weight) * 100, 2)
+
+        self.common.write_to_db_result(fk=kpi_fk,
+                                       numerator_id=self.own_manufacturer_id,
+                                       numerator_result=total_facings_fact,
+                                       denominator_id=display_fk,
+                                       denominator_result=total_facings_target,
+                                       context_id=location_fk,
+                                       target=target,
+                                       weight=weight,
+                                       result=result,
+                                       score=score,
+                                       identifier_result=kpi_identifier_result,
+                                       identifier_parent=kpi_identifier_parent,
+                                       should_enter=True)
+
+        return score
+
+    def check_promo_compliance_distribution_target(self, location, scif, kpis, kpi_target, kpi_identifier_parent):
+
+        kpi_fk = self.common.kpi_static_data[
+            self.common.kpi_static_data['type'] == PROMO_COMPLIANCE_DISTRIBUTION_TARGET]['pk'].values[0]
+        kpi_fk_prod = self.common.kpi_static_data[
+            self.common.kpi_static_data['type'] == (PROMO_COMPLIANCE_DISTRIBUTION_TARGET + '_PROD')]['pk'].values[0]
+        kpi_fk_sku = self.common.kpi_static_data[
+            self.common.kpi_static_data['type'] == (PROMO_COMPLIANCE_DISTRIBUTION_TARGET + '_SKU')]['pk'].values[0]
+
+        kpi_result_type_fk_prod = self.common.kpi_static_data[self.common.kpi_static_data['pk'] == kpi_fk_prod][
+            'kpi_result_type_fk'].values[0]
+
+        display_fk = kpi_identifier_parent['display_fk']
+        location_fk = kpi_identifier_parent['location_fk']
+        kpi_identifier_result = \
+            self.common.get_dictionary(kpi_fk=kpi_fk, display_fk=display_fk, location_fk=location_fk)
+
+        product_groups_fact = []
+        product_groups_target = []
+        for k in kpi_target['PRODUCT_GROUP'].keys():
+            if kpi_target['PRODUCT_GROUP'][k].get('FACINGS') is not None:
+                product_groups_target += [k]
+
+        # Product Group level KPIs
+        for product_group_fk in product_groups_target:
+
+            kpi_identifier_result_prod = \
+                self.common.get_dictionary(kpi_fk=kpi_fk_prod, display_fk=display_fk, location_fk=location_fk,
+                                           product_group_fk=product_group_fk)
+
+            product_group_scif = scif[(scif['product_group'] == product_group_fk) & (scif['facings'] > 0)]
+
+            if not product_group_scif.empty:
+                product_groups_fact += [product_group_fk]
+                result_prod_value = 1
+                result_prod = 'DISTRIBUTED'
+                score_prod = 100
+                target_prod = 100
+            else:
+                result_prod_value = 0
+                result_prod = 'OOS'
+                score_prod = 0
+                target_prod = 100
+            result_prod = \
+                self.kpi_result_values[(self.kpi_result_values['result_type_fk'] == kpi_result_type_fk_prod) &
+                                       (self.kpi_result_values['result_value'] == result_prod)][
+                    'result_value_fk'].values[0]
+
+            self.common.write_to_db_result(fk=kpi_fk_prod,
+                                           numerator_id=product_group_fk,
+                                           numerator_result=result_prod_value,
+                                           denominator_id=display_fk,
+                                           denominator_result=1,
+                                           context_id=location_fk,
+                                           target=target_prod,
+                                           weight=None,
+                                           result=result_prod,
+                                           score=score_prod,
+                                           identifier_result=kpi_identifier_result_prod,
+                                           identifier_parent=kpi_identifier_result,
+                                           should_enter=True)
+
+            # SKU level KPIs
+            for i, row in product_group_scif.iterrows():
+
+                product_fk = row['product_fk']
+                facings = row['facings']
+
+                kpi_identifier_result_sku = \
+                    self.common.get_dictionary(
+                        kpi_fk=kpi_fk_sku, display_fk=display_fk, location_fk=location_fk,
+                        product_group_fk=product_group_fk, product_fk=product_fk)
+
+                self.common.write_to_db_result(fk=kpi_fk_sku,
+                                               numerator_id=product_fk,
+                                               numerator_result=facings,
+                                               denominator_id=display_fk,
+                                               # denominator_result=None,
+                                               context_id=location_fk,
+                                               # target=None,
+                                               # weight=None,
+                                               # result=None,
+                                               # score=None,
+                                               identifier_result=kpi_identifier_result_sku,
+                                               identifier_parent=kpi_identifier_result_prod,
+                                               should_enter=True)
+
+        result = round(len(product_groups_fact) / float(len(product_groups_target)) * 100, 2)
+        weight = kpis[(kpis['Location'] == location) &
+                      (kpis['KPI'] == PROMO_COMPLIANCE_DISTRIBUTION_TARGET)]['Weight'].values[0]/100.0
+        score = round(result * float(weight), 2)
+        target = round(float(weight) * 100, 2)
+
+        self.common.write_to_db_result(fk=kpi_fk,
+                                       numerator_id=self.own_manufacturer_id,
+                                       numerator_result=len(product_groups_fact),
+                                       denominator_id=display_fk,
+                                       denominator_result=len(product_groups_target),
+                                       context_id=location_fk,
+                                       target=target,
+                                       weight=weight,
+                                       result=result,
+                                       score=score,
+                                       identifier_result=kpi_identifier_result,
+                                       identifier_parent=kpi_identifier_parent,
+                                       should_enter=True)
+
+        return score
+
+    def check_promo_compliance_facings_target(self, location, scif, kpis, kpi_target, kpi_identifier_parent):
+
+        kpi_fk = self.common.kpi_static_data[
+            self.common.kpi_static_data['type'] == PROMO_COMPLIANCE_FACINGS_TARGET]['pk'].values[0]
+        kpi_fk_prod = self.common.kpi_static_data[
+            self.common.kpi_static_data['type'] == (PROMO_COMPLIANCE_FACINGS_TARGET + '_PROD')]['pk'].values[0]
+        kpi_fk_sku = self.common.kpi_static_data[
+            self.common.kpi_static_data['type'] == (PROMO_COMPLIANCE_FACINGS_TARGET + '_SKU')]['pk'].values[0]
+
+        display_fk = kpi_identifier_parent['display_fk']
+        location_fk = kpi_identifier_parent['location_fk']
+        kpi_identifier_result = \
+            self.common.get_dictionary(kpi_fk=kpi_fk, display_fk=display_fk, location_fk=location_fk)
+
+        product_groups_fact = []
+        product_groups_target = []
+        for k in kpi_target['PRODUCT_GROUP'].keys():
+            if kpi_target['PRODUCT_GROUP'][k].get('FACINGS') is not None:
+                product_groups_target += [k]
+
+        # Product Group level KPIs
+        for product_group_fk in product_groups_target:
+
+            kpi_identifier_result_prod = \
+                self.common.get_dictionary(
+                    kpi_fk=kpi_fk_prod, display_fk=display_fk, location_fk=location_fk,
+                    product_group_fk=product_group_fk)
+
+            product_group_scif = scif[(scif['product_group'] == product_group_fk) & (scif['facings'] > 0)]
+
+            product_group_facings_fact = product_group_scif.agg({'facings': 'sum'})[0]
+            product_group_facings_target = kpi_target['PRODUCT_GROUP'][product_group_fk].get('FACINGS')
+
+            if product_group_facings_fact >= product_group_facings_target:
+                product_groups_fact += [product_group_fk]
+                result_prod = 100
+                score_prod = result_prod
+                target_prod = 100
+            else:
+                result_prod = 0
+                score_prod = result_prod
+                target_prod = 100
+
+            self.common.write_to_db_result(fk=kpi_fk_prod,
+                                           numerator_id=product_group_fk,
+                                           numerator_result=product_group_facings_fact,
+                                           denominator_id=display_fk,
+                                           denominator_result=product_group_facings_target,
+                                           context_id=location_fk,
+                                           target=product_group_facings_target,  # target_prod,
+                                           # weight=None,
+                                           result=product_group_facings_fact,  # result_prod,
+                                           score=score_prod,
+                                           identifier_result=kpi_identifier_result_prod,
+                                           identifier_parent=kpi_identifier_result,
+                                           should_enter=True)
+
+            # SKU level KPIs
+            for i, row in product_group_scif.iterrows():
+
+                product_fk = row['product_fk']
+                facings = row['facings']
+
+                kpi_identifier_result_sku = \
+                    self.common.get_dictionary(
+                        kpi_fk=kpi_fk_sku, display_fk=display_fk, location_fk=location_fk,
+                        product_group_fk=product_group_fk, product_fk=product_fk)
+
+                self.common.write_to_db_result(fk=kpi_fk_sku,
+                                               numerator_id=product_fk,
+                                               numerator_result=facings,
+                                               denominator_id=display_fk,
+                                               # denominator_result=None,
+                                               context_id=location_fk,
+                                               # target=None,
+                                               # weight=None,
+                                               # result=None,
+                                               # score=None,
+                                               identifier_result=kpi_identifier_result_sku,
+                                               identifier_parent=kpi_identifier_result_prod,
+                                               should_enter=True)
+
+        # Upper level KPI
+        result = round(len(product_groups_fact) / float(len(product_groups_target)) * 100, 2)
+        weight = kpis[(kpis['Location'] == location) &
+                      (kpis['KPI'] == PROMO_COMPLIANCE_FACINGS_TARGET)]['Weight'].values[0]/100.0
+        score = round(result * float(weight), 2)
+        target = round(float(weight) * 100, 2)
+
+        self.common.write_to_db_result(fk=kpi_fk,
+                                       numerator_id=self.own_manufacturer_id,
+                                       numerator_result=len(product_groups_fact),
+                                       denominator_id=display_fk,
+                                       denominator_result=len(product_groups_target),
+                                       context_id=location_fk,
+                                       target=target,
+                                       weight=weight,
+                                       result=result,
+                                       score=score,
+                                       identifier_result=kpi_identifier_result,
+                                       identifier_parent=kpi_identifier_parent,
+                                       should_enter=True)
+
+        return score
+
+    def check_promo_compliance_price_availability(self, location, scif, kpis, kpi_target, kpi_identifier_parent):
+
+        kpi_fk = self.common.kpi_static_data[
+            self.common.kpi_static_data['type'] == PROMO_COMPLIANCE_PRICE_AVAILABILITY]['pk'].values[0]
+        kpi_fk_prod = self.common.kpi_static_data[
+            self.common.kpi_static_data['type'] == (PROMO_COMPLIANCE_PRICE_AVAILABILITY + '_PROD')]['pk'].values[0]
+        kpi_fk_sku = self.common.kpi_static_data[
+            self.common.kpi_static_data['type'] == (PROMO_COMPLIANCE_PRICE_AVAILABILITY + '_SKU')]['pk'].values[0]
+
+        kpi_result_type_fk_prod = self.common.kpi_static_data[self.common.kpi_static_data['pk'] == kpi_fk_prod][
+            'kpi_result_type_fk'].values[0]
+
+        display_fk = kpi_identifier_parent['display_fk']
+        location_fk = kpi_identifier_parent['location_fk']
+        kpi_identifier_result = \
+            self.common.get_dictionary(kpi_fk=kpi_fk, display_fk=display_fk, location_fk=location_fk)
+
+        product_groups_fact = []
+        product_groups_target = []
+        for k in kpi_target['PRODUCT_GROUP'].keys():
+            if kpi_target['PRODUCT_GROUP'][k].get('PRICE') is not None:
+                product_groups_target += [k]
+
+        # Product Group level KPIs
+        for product_group_fk in product_groups_target:
+
+            kpi_identifier_result_prod = \
+                self.common.get_dictionary(
+                    kpi_fk=kpi_fk_prod, display_fk=display_fk, location_fk=location_fk,
+                    product_group_fk=product_group_fk)
+
+            product_group_scif = scif[(scif['product_group'] == product_group_fk) &
+                                      (~scif['price'].isnull()) & (scif['price'] > 0)]
+
+            if not product_group_scif.empty:
+                product_groups_fact += [product_group_fk]
+                result_prod_value = 1
+                result_prod = 'DISTRIBUTED'
+                score_prod = 100
+                target_prod = 100
+            else:
+                result_prod_value = 0
+                result_prod = 'OOS'
+                score_prod = 0
+                target_prod = 100
+            result_prod = \
+                self.kpi_result_values[(self.kpi_result_values['result_type_fk'] == kpi_result_type_fk_prod) &
+                                       (self.kpi_result_values['result_value'] == result_prod)][
+                    'result_value_fk'].values[0]
+
+            self.common.write_to_db_result(fk=kpi_fk_prod,
+                                           numerator_id=product_group_fk,
+                                           numerator_result=result_prod_value,
+                                           denominator_id=display_fk,
+                                           denominator_result=1,
+                                           context_id=location_fk,
+                                           target=target_prod,
+                                           # weight=None,
+                                           result=result_prod,
+                                           score=score_prod,
+                                           identifier_result=kpi_identifier_result_prod,
+                                           identifier_parent=kpi_identifier_result,
+                                           should_enter=True)
+
+            # SKU level KPIs
+            for i, row in product_group_scif.iterrows():
+
+                product_fk = row['product_fk']
+                facings = row['facings']
+                price = row['price']
+                price_100 = price * 100 if price is not None else None
+
+                kpi_identifier_result_sku = \
+                    self.common.get_dictionary(
+                        kpi_fk=kpi_fk_sku, display_fk=display_fk, location_fk=location_fk,
+                        product_group_fk=product_group_fk, product_fk=product_fk)
+
+                self.common.write_to_db_result(fk=kpi_fk_sku,
+                                               numerator_id=product_fk,
+                                               numerator_result=facings,
+                                               denominator_id=display_fk,
+                                               denominator_result=price_100,
+                                               context_id=location_fk,
+                                               # target=None,
+                                               # weight=None,
+                                               result=price,
+                                               # score=None,
+                                               identifier_result=kpi_identifier_result_sku,
+                                               identifier_parent=kpi_identifier_result_prod,
+                                               should_enter=True)
+
+        # Upper level KPI
+        if not product_groups_target:
+            score = 0
+        else:
+            result = round(len(product_groups_fact) / float(len(product_groups_target)) * 100, 2)
+            weight = kpis[(kpis['Location'] == location) &
+                          (kpis['KPI'] == PROMO_COMPLIANCE_PRICE_AVAILABILITY)]['Weight'].values[0]/100.0
+            score = round(result * float(weight), 2)
+            target = round(float(weight) * 100, 2)
+
+            self.common.write_to_db_result(fk=kpi_fk,
+                                           numerator_id=self.own_manufacturer_id,
+                                           numerator_result=len(product_groups_fact),
+                                           denominator_id=display_fk,
+                                           denominator_result=len(product_groups_target),
+                                           context_id=location_fk,
+                                           target=target,
+                                           weight=weight,
+                                           result=result,
+                                           score=score,
+                                           identifier_result=kpi_identifier_result,
+                                           identifier_parent=kpi_identifier_parent,
+                                           should_enter=True)
+
+        return score
+
+    def check_promo_compliance_price_availability_total(self, location, scif, kpis, kpi_target, kpi_identifier_parent):
+        kpi_fk = self.common.kpi_static_data[
+            self.common.kpi_static_data['type'] == PROMO_COMPLIANCE_PRICE_AVAILABILITY_TOTAL]['pk'].values[0]
+        # kpi_result_type_fk = self.common.kpi_static_data[self.common.kpi_static_data['pk'] == kpi_fk][
+        #     'kpi_result_type_fk'].values[0]
+
+        display_fk = kpi_identifier_parent['display_fk']
+        location_fk = kpi_identifier_parent['location_fk']
+        kpi_identifier_result = \
+            self.common.get_dictionary(kpi_fk=kpi_fk, display_fk=display_fk, location_fk=location_fk)
+
+        product_groups_target = []
+        for k in kpi_target['PRODUCT_GROUP'].keys():
+            if kpi_target['PRODUCT_GROUP'][k].get('PRICE') is not None:
+                product_groups_target += [k]
+
+        if not product_groups_target:
+            score = 0
+        else:
+
+            total_price_count = \
+                scif[scif['product_group'].isin(product_groups_target) &
+                     ~scif['price'].isnull() & (scif['price'] > 0)]['price'].agg({'price': 'count'})[0]
+
+            if total_price_count > 0:
+                result = 100
+                score = 100
+            else:
+                result = 0
+                score = 0
+            # result = \
+            #     self.kpi_result_values[(self.kpi_result_values['result_type_fk'] == kpi_result_type_fk) &
+            #                            (self.kpi_result_values['result_value'] == result)][
+            #         'result_value_fk'].values[0]
+
+            weight = kpis[(kpis['Location'] == location) &
+                          (kpis['KPI'] == PROMO_COMPLIANCE_PRICE_AVAILABILITY_TOTAL)]['Weight'].values[0]/100.0
+            score = round(score * float(weight), 2)
+            target = round(float(weight) * 100, 2)
+
+            self.common.write_to_db_result(fk=kpi_fk,
+                                           numerator_id=self.own_manufacturer_id,
+                                           numerator_result=total_price_count,
+                                           denominator_id=display_fk,
+                                           denominator_result=1,
+                                           context_id=location_fk,
+                                           target=target,
+                                           weight=weight,
+                                           result=result,
+                                           score=score,
+                                           identifier_result=kpi_identifier_result,
+                                           identifier_parent=kpi_identifier_parent,
+                                           should_enter=True)
+
+        return score
+
+    def check_promo_compliance_price_target(self, location, scif, kpis, kpi_target, kpi_identifier_parent):
+
+        kpi_fk = self.common.kpi_static_data[
+            self.common.kpi_static_data['type'] == PROMO_COMPLIANCE_PRICE_TARGET]['pk'].values[0]
+        kpi_fk_prod = self.common.kpi_static_data[
+            self.common.kpi_static_data['type'] == (PROMO_COMPLIANCE_PRICE_TARGET + '_PROD')]['pk'].values[0]
+        kpi_fk_sku = self.common.kpi_static_data[
+            self.common.kpi_static_data['type'] == (PROMO_COMPLIANCE_PRICE_TARGET + '_SKU')]['pk'].values[0]
+
+        display_fk = kpi_identifier_parent['display_fk']
+        location_fk = kpi_identifier_parent['location_fk']
+        kpi_identifier_result = \
+            self.common.get_dictionary(kpi_fk=kpi_fk, display_fk=display_fk, location_fk=location_fk)
+
+        total_price_facings_fact = 0
+        total_price_facings_target = 0
+        product_groups_target = []
+        for k in kpi_target['PRODUCT_GROUP'].keys():
+            if kpi_target['PRODUCT_GROUP'][k].get('PRICE') is not None:
+                product_groups_target += [k]
+
+        # Product Group level KPIs
+        for product_group_fk in product_groups_target:
+
+            kpi_identifier_result_prod = \
+                self.common.get_dictionary(
+                    kpi_fk=kpi_fk_prod, display_fk=display_fk, location_fk=location_fk,
+                    product_group_fk=product_group_fk)
+
+            product_group_scif = scif[(scif['product_group'] == product_group_fk)
+                                      & (scif['facings'] > 0) & (scif['price'] > 0)]
+            if not product_group_scif.empty:
+                product_group_scif['price_facings'] = product_group_scif['price'] * product_group_scif['facings']
+                product_group_price_facings_fact = product_group_scif.agg({'price_facings': 'sum'})[0]
+                product_group_facings_fact = product_group_scif.agg({'facings': 'sum'})[0]
+                product_group_price_fact = \
+                    round(product_group_price_facings_fact / float(product_group_facings_fact), 2)
+            else:
+                product_group_price_facings_fact = 0
+                product_group_facings_fact = 0
+                product_group_price_fact = None
+            product_group_price_target = kpi_target['PRODUCT_GROUP'][product_group_fk].get('PRICE')
+
+            if product_group_price_fact:
+                total_price_facings_fact += product_group_price_facings_fact
+                # Deviation
+                if product_group_price_target > 0:
+                    total_price_facings_target += product_group_price_target * product_group_facings_fact
+                    result_prod = \
+                        round(abs((1 - product_group_price_fact / float(product_group_price_target)) * 100), 2)
+                else:
+                    total_price_facings_target += product_group_price_facings_fact
+                    result_prod = 0
+                score_prod = 100 - result_prod
+            else:
+                # result_prod = 0
+                score_prod = 0
+
+            product_group_price_fact_100 = product_group_price_fact * 100 if product_group_price_fact is not None \
+                else None
+            product_group_price_target_100 = product_group_price_target * 100
+            self.common.write_to_db_result(fk=kpi_fk_prod,
+                                           numerator_id=product_group_fk,
+                                           numerator_result=product_group_price_fact_100,
+                                           denominator_id=display_fk,
+                                           denominator_result=product_group_price_target_100,
+                                           context_id=location_fk,
+                                           target=product_group_price_target,  # 100,
+                                           # weight=None,
+                                           result=product_group_price_fact,  # result_prod,
+                                           score=score_prod,
+                                           identifier_result=kpi_identifier_result_prod,
+                                           identifier_parent=kpi_identifier_result,
+                                           should_enter=True)
+
+            # SKU level KPIs
+            for i, row in product_group_scif.iterrows():
+
+                product_fk = row['product_fk']
+                facings = row['facings']
+                price = row['price']
+                price_100 = price * 100 if price else None
+
+                kpi_identifier_result_sku = \
+                    self.common.get_dictionary(
+                        kpi_fk=kpi_fk_sku, display_fk=display_fk, location_fk=location_fk,
+                        product_group_fk=product_group_fk, product_fk=product_fk)
+
+                self.common.write_to_db_result(fk=kpi_fk_sku,
+                                               numerator_id=product_fk,
+                                               numerator_result=facings,
+                                               denominator_id=display_fk,
+                                               denominator_result=price_100,
+                                               context_id=location_fk,
+                                               # target=None,
+                                               # weight=None,
+                                               result=price,
+                                               # score=None,
+                                               identifier_result=kpi_identifier_result_sku,
+                                               identifier_parent=kpi_identifier_result_prod,
+                                               should_enter=True)
+
+        # Upper level KPI
+        if not product_groups_target:
+            score = 0
+        else:
+            # Deviation
+            deviation = \
+                round(abs(1 - total_price_facings_fact / float(total_price_facings_target)) * 100, 2) \
+                if total_price_facings_target else 100.0
+            weight = kpis[(kpis['Location'] == location) &
+                          (kpis['KPI'] == PROMO_COMPLIANCE_PRICE_TARGET)]['Weight'].values[0]/100.0
+            result = round((100 - deviation), 2)
+            score = round(result * float(weight), 2)
+            target = round(float(weight) * 100, 2)
+
+            self.common.write_to_db_result(fk=kpi_fk,
+                                           numerator_id=self.own_manufacturer_id,
+                                           numerator_result=deviation,
+                                           denominator_id=display_fk,
+                                           # denominator_result=None,
+                                           context_id=location_fk,
+                                           target=target,
+                                           weight=weight,
+                                           result=result,
+                                           score=score,
+                                           identifier_result=kpi_identifier_result,
+                                           identifier_parent=kpi_identifier_parent,
+                                           should_enter=True)
+
+        return score
+
+
+
+
+
+
+

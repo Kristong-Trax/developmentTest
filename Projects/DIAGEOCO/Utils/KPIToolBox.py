@@ -32,6 +32,9 @@ class DIAGEOCOToolBox:
         # SOS Out Of The Box kpis
         self.diageo_generator.activate_ootb_kpis(self.common_v2)
 
+        # sos by scene type
+        self.diageo_generator.sos_by_scene_type(self.common_v2)
+
         # Global assortment kpis
         assortment_res_dict = self.diageo_generator.diageo_global_assortment_function_v2()
         self.common_v2.save_json_to_new_tables(assortment_res_dict)

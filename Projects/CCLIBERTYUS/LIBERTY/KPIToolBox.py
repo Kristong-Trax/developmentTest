@@ -64,34 +64,37 @@ class LIBERTYToolBox:
             This function gets all the scene results from the SceneKPI, after that calculates every session's KPI,
             and in the end it calls "filter results" to choose every KPI and scene and write the results in DB.
         """
-        # check to make sure the session feedback is 'ok', if not, don't calculate the KPIs
-        if not self.session_feedback.empty:
-            if self.session_feedback['answer_key'].iloc[0] != 'ok':
-                Log.info('Session feedback is not OK - Liberty Red Score will not be calculated')
-                return
+        if not self.scif.empty:
+            # check to make sure the session feedback is 'ok', if not, don't calculate the KPIs
+            if not self.session_feedback.empty:
+                if self.session_feedback['answer_key'].iloc[0] != 'ok':
+                    Log.info('Session feedback is not OK - Liberty Red Score will not be calculated')
+                    return
 
-        # check to make sure there are no probes labeled as 'Supected Fake'. if there are, don't calculate the KPIs
-        if not self.probe_review_reasons.empty:
-            if 'Suspected Fake' in self.probe_review_reasons['reason_text'].tolist():
-                Log.info('Probes suspected as fake - Liberty Red Score will not be calculated')
-                return
+            # check to make sure there are no probes labeled as 'Supected Fake'. if there are, don't calculate the KPIs
+            if not self.probe_review_reasons.empty:
+                if 'Suspected Fake' in self.probe_review_reasons['reason_text'].tolist():
+                    Log.info('Probes suspected as fake - Liberty Red Score will not be calculated')
+                    return
 
-        red_score = 0
-        main_template = self.templates[Const.KPIS]
-        for i, main_line in main_template.iterrows():
-            relevant_store_types = self.does_exist(main_line, Const.ADDITIONAL_ATTRIBUTE_7)
-            if relevant_store_types and self.additional_attribute_7 not in relevant_store_types:
-                continue
-            result = self.calculate_main_kpi(main_line)
-            if result:
-                red_score += main_line[Const.WEIGHT] * result
+            red_score = 0
+            main_template = self.templates[Const.KPIS]
+            for i, main_line in main_template.iterrows():
+                relevant_store_types = self.does_exist(main_line, Const.ADDITIONAL_ATTRIBUTE_7)
+                if relevant_store_types and self.additional_attribute_7 not in relevant_store_types:
+                    continue
+                result = self.calculate_main_kpi(main_line)
+                if result:
+                    red_score += main_line[Const.WEIGHT] * result
 
-        if len(self.common_db.kpi_results) > 0:
-            kpi_fk = self.common_db.get_kpi_fk_by_kpi_type(Const.RED_SCORE_PARENT)
-            self.common_db.write_to_db_result(kpi_fk, numerator_id=self.manufacturer_fk, denominator_id=self.store_id,
-                                              result=red_score,
-                                              identifier_result=Const.RED_SCORE_PARENT, should_enter=True)
-        return
+            if len(self.common_db.kpi_results) > 0:
+                kpi_fk = self.common_db.get_kpi_fk_by_kpi_type(Const.RED_SCORE_PARENT)
+                self.common_db.write_to_db_result(kpi_fk, numerator_id=self.manufacturer_fk, denominator_id=self.store_id,
+                                                  result=red_score,
+                                                  identifier_result=Const.RED_SCORE_PARENT, should_enter=True)
+            return
+        else:
+            Log.info('Scif is empty')
 
     def calculate_main_kpi(self, main_line):
         """
@@ -181,7 +184,7 @@ class LIBERTYToolBox:
 
         numerator_facings = filtered_scif['facings'].sum()
         sos_value = numerator_facings / float(denominator_facings)
-        result = 1 if sos_value > market_share_target else 0
+        result = 1 if sos_value >= market_share_target else 0
 
         parent_kpi_name = kpi_line[Const.KPI_NAME] + Const.LIBERTY
         kpi_fk = self.common_db.get_kpi_fk_by_kpi_type(parent_kpi_name + Const.DRILLDOWN)
@@ -236,7 +239,7 @@ class LIBERTYToolBox:
             if secondary_unique_skus:
                 length_of_unique_skus = len(secondary_unique_skus)
                 minimum_number_of_skus = kpi_line[Const.SECONDARY_MINIMUM_NUMBER_OF_SKUS]
-                result = 1 if length_of_unique_skus > minimum_number_of_skus else 0
+                result = 1 if length_of_unique_skus >= minimum_number_of_skus else 0
             else:
                 result = 1
         else:
@@ -257,7 +260,7 @@ class LIBERTYToolBox:
         relevant_template = template[template[Const.KPI_NAME] == kpi_name]
         # we need this to fix dumb template
         relevant_template[Const.EAN_CODE] = \
-            relevant_template[Const.EAN_CODE].apply(lambda x: str(int(x)) if x != '' else None)
+            relevant_template[Const.EAN_CODE].apply(lambda x: str(x) if x != '' else None)
         primary_ean_codes = \
             relevant_template[relevant_template[Const.SECONDARY_GROUP]
                               != 'Y'][Const.EAN_CODE].unique().tolist()
@@ -415,7 +418,7 @@ class LIBERTYToolBox:
             else:
                 share_of_displays = 0
 
-            result = 1 if share_of_displays > market_share_target else 0
+            result = 1 if share_of_displays >= market_share_target else 0
 
             parent_kpi_name = kpi_line[Const.KPI_NAME] + Const.LIBERTY
             kpi_fk = self.common_db.get_kpi_fk_by_kpi_type(parent_kpi_name + Const.DRILLDOWN)
@@ -502,7 +505,7 @@ class LIBERTYToolBox:
             passing_coolers += cooler_result
 
         coke_market_share = passing_coolers / float(total_coolers)
-        result = 1 if coke_market_share > market_share_target else 0
+        result = 1 if coke_market_share >= market_share_target else 0
 
         parent_kpi_name = kpi_line[Const.KPI_NAME] + Const.LIBERTY
         kpi_fk = self.common_db.get_kpi_fk_by_kpi_type(parent_kpi_name + Const.DRILLDOWN)
