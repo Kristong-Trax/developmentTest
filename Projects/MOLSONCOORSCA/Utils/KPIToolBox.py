@@ -503,8 +503,9 @@ class ToolBox:
         filters = self.get_kpi_line_filters(kpi_line)
         opposition = self.dictify_competitive_brands('Disruptors')
         num_type = main_line[level['num_col']]
-
-        iter_group = self.filter_df(relevant_scif, filters)[num_type].unique()
+        num_scif = self.filter_df(relevant_scif, filters)
+        num_brands = num_scif['brand_fk']
+        iter_group = num_scif[num_type].unique()
         # num_type = self.get_fk(den_df, ]
         print('asdf')
 
