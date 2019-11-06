@@ -337,8 +337,6 @@ class CBCILCBCIL_ToolBox(object):
                                            identifier_result=identifier_result_set, result=round(final_score, 2),
                                            weight=round(100, 2), target=round(80, 2), score=final_score,
                                            should_enter=True)
-            # recalc fails due to the code being too fast :/ adding 2 seconds delay to the code
-            time.sleep(2)
             self.commit_results_data()
             self.common.commit_results_data()
 
