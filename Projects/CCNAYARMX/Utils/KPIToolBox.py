@@ -983,7 +983,7 @@ class ToolBox(GlobalSessionToolBox):
         denominator_id = relevant_scif[TEMPLATE_FK].mode()[0]
 
         result_dict = {'kpi_name': kpi_name, 'kpi_fk': kpi_fk, 'numerator_id': numerator_id,
-                       'denominator_id': denominator_id,
+                       'numerator_result': facings,'denominator_id': denominator_id, 'denominator_result': facings_target,
                        'result': result}
 
         return result_dict
