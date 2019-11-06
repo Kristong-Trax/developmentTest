@@ -2052,7 +2052,7 @@ class CCRU_SANDKPIToolBox:
                 if len(category_fk_array) > 0:
                     category_fk = category_fk_array[0]
                     self.common.write_to_db_result(cat_kpi_fk, numerator_id=self.own_manufacturer_id,
-                                                   denominator_id=category_fk, result=result, score=score)
+                                                   denominator_id=category_fk, result=round(result, 0), score=score)
                 if len(category_fk_array) == 0:
                     Log.warning('Category {} does not exist in the DB. '
                                 'Check kpi template'.format(params.get(CAT_KPI_VALUE)))
