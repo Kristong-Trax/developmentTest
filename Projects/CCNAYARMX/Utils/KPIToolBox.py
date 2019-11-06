@@ -723,7 +723,7 @@ class ToolBox(GlobalSessionToolBox):
         denominator_entity = row[DENOMINATOR_ENTITY]
 
         # Step 2: Import values that unique to the sheet Block Together
-        template_name = row[TEMPLATE_NAME]
+        template_name = self.sanitize_values(row[TEMPLATE_NAME])
         manufacturer_name = [row[MANUFACTURER_NAME]]
         tamano_del_producto = [row[TAMANDO_DEL_PRODUCTO]]
         sub_category = self.sanitize_values(row[SUB_CATEGORY])
@@ -751,8 +751,8 @@ class ToolBox(GlobalSessionToolBox):
 
         numerator_id = self.get_sub_cat_fk_from_sub_cat(sub_category[0])
 
-        if pd.notna(template_name):
-            bay_count_scif = bay_count_scif[bay_count_scif[TEMPLATE_NAME].isin([template_name])]
+
+        bay_count_scif = bay_count_scif[bay_count_scif[TEMPLATE_NAME].isin(template_name)]
 
         if pd.notna(tamano_del_producto):
             bay_count_scif = bay_count_scif[bay_count_scif[TAMANDO_DEL_PRODUCTO].isin(tamano_del_producto)]
