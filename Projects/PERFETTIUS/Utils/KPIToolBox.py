@@ -141,7 +141,6 @@ class ToolBox(GlobalSessionToolBox):
         if config.empty or (template_fk is None):
             return
         location = {'template_fk': template_fk}
-
         anchor_pks = \
             self.scif[self.scif[config.anchor_param].isin(config.anchor_value)]['product_fk'].unique().tolist()
         tested_pks = \

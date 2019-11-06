@@ -1,5 +1,6 @@
 import pandas as pd
 import operator as op
+from datetime import datetime
 from functools import reduce
 from collections import defaultdict, namedtuple
 
@@ -62,11 +63,11 @@ class ToolBox:
         self.manufacturer_fk = int(self.data_provider[Data.OWN_MANUFACTURER].iloc[0, 1])
         self.match_product_in_scene = self.data_provider[Data.MATCHES]
         self.result_entities = self.make_result_values_dict()
-        # self.add_image_data_to_mpis()
         self.visit_date = self.data_provider[Data.VISIT_DATE]
         self.session_info = self.data_provider[Data.SESSION_INFO]
         self.scenes = self.scene_info['scene_fk'].tolist()
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
+        self.scif['store_fk'] = self.scif['store_id']
         self.tmb_map = pd.read_excel(Const.TMB_MAP_PATH).set_index('Num Shelves').to_dict('index')
         self.res_dict = defaultdict(lambda: defaultdict(int))
         self.full_mpis = pd.DataFrame()
@@ -85,6 +86,8 @@ class ToolBox:
         self.rel_store_data = self.store_data[self.store_data['pk'] == self.store_id]
 
         self.assortment = Assortment(self.data_provider, self.output)
+        self.prev_prods = self.load_prev_prods(self.store_id, self.session_info['visit_date'].iloc[0])
+
 
 
     # main functions:
@@ -138,9 +141,14 @@ class ToolBox:
         #     # 'Leading Cold Room on Right',
         #     # 'Share of Segment Cooler Facings'
         #     # 'Share of Segment Warm Facings',
-        #     'ABI Share of Display Space'
+        #     # 'ABI Share of Display Space'
         #     # 'Sleeman Share of Display Space'
         #     # 'Share of Total Space'
+        #     # 'Warm Base Measurement'
+        #     # 'Warm Bays',
+        #     # 'Dynamic Out of Stock',
+        #     'Pack Distribution vs Competitors'
+        #
         #
         # ]:
         #     return
@@ -149,9 +157,12 @@ class ToolBox:
             'Share of Facings',
             'Share of Shelf',
             'Distribution',
-            'Anchor'
-
-        ]:
+            'Anchor',
+            'Base Measurement',
+            'Bay Count',
+            'Out of Stock',
+            # 'Pack Distribution'
+            ]:
             return
 
         if kpi_name in ['POP Seasonal Programs', 'Molson Coors Cooler Compliance']:
@@ -187,7 +198,7 @@ class ToolBox:
                                           }
 
     def calculate_main_kpi(self, kpi_name, kpi_lvl_name, kpi_type, **kwargs):
-        kpi_line = self.template[kpi_type].set_index(Const.KPI_NAME).loc[kpi_name]
+        kpi_line = self.template[kpi_type].set_index(Const.KPI_NAME).loc[kpi_name] if kpi_type in self.template else 0
         function = self.get_kpi_function(kpi_type)
         write_type = True
         try:
@@ -278,8 +289,8 @@ class ToolBox:
         den = den_df[col].sum()
         num = num_df[col].sum()
         if col == 'width_mm_advance':
-            num /= 304.8
-            den /= 304.8
+            num /= Const.MM_FT
+            den /= Const.MM_FT
         result = self.safe_divide(num, den)
         ret = {'score': 1, 'result': result, "numerator_result": num, "denominator_result": den,
                'numerator_id': num_id,
@@ -291,7 +302,7 @@ class ToolBox:
             ret['ident_result'] = kpi_name
         return ret
 
-    def calculate_bay_count(self, kpi_name, kpi_line, relevant_scif, general_filters):
+    def calculate_bay_count(self, kpi_name, kpi_line, relevant_scif, general_filters, main_line, level, **kwargs):
         """
         :param kpi_name: Dataframe of the KPI name
         :param kpi_line: Dataframe of the KPI type
@@ -299,10 +310,13 @@ class ToolBox:
         :param general_filters: Filters through self.full_mpis to output the nessesary dataframe
         :return: The sum of the unqiue bays (i.e: count of bay number one, count of bay number two) in every scene
         """
-        num = self.filter_df(self.full_mpis, general_filters)
-        count_of_unique_bays_in_scene = num.groupby(['scene_fk', 'bay_number']).first().shape[0]
-
-        return count_of_unique_bays_in_scene
+        df = self.filter_df(self.full_mpis, general_filters)
+        result = df.groupby(['scene_fk', 'bay_number']).first().shape[0]
+        results = {'score': 1, 'result': result, 'numerator_result': result,
+                   'numerator_id': relevant_scif[main_line[level['num_col']]].iloc[0],
+                   'denominator_id': relevant_scif[main_line[level['den_col']]].iloc[0],
+                   'kpi_name': self.lvl_name(kpi_name, level['lvl'])}
+        return level['end'], results
 
     def calculate_adjacency_init(self, kpi_name, kpi_line, relevant_scif, general_filters):
         results = []
@@ -443,8 +457,50 @@ class ToolBox:
                             'kpi_name': self.lvl_name(kpi_name, 'Session')})
         return level['end'], results
 
+    def calculate_base_measure(self, kpi_name, kpi_line, relevant_scif, general_filters, main_line, level, **kwargs):
+        sum_col = self.read_cell_from_line(kpi_line, 'Sum Col')[0]
+        general_filters.update({'stacking_layer': 1})
+        mpis = self.filter_df(self.full_mpis, general_filters)
 
+        # z = self.scif.merge(self.full_mpis.groupby(['scene_fk', 'product_fk'])['face_count'].sum(),
+        #                     on=['scene_fk', 'product_fk'])
+        # x = z[z.facings.astype(int) != z.face_count.astype(int)][['scene_fk', 'product_fk', 'facings', 'face_count']]
+        # a = self.scif
 
+        # result = relevant_scif[sum_col].sum() / Const.MM_FT
+        result = mpis[sum_col].sum() / Const.MM_FT
+        results = {'score': 1, 'result': result, 'numerator_result': result,
+                   'numerator_id': relevant_scif[main_line[level['num_col']]].iloc[0],
+                   'denominator_id': relevant_scif[main_line[level['den_col']]].iloc[0],
+                   'kpi_name': self.lvl_name(kpi_name, level['lvl'])}
+        return level['end'], results
+
+    def calculate_dynamic_oos(self, kpi_name, kpi_line, relevant_scif, main_line, level, **kwargs):
+        filters = self.get_kpi_line_filters(kpi_line)
+        prev_prods = self.prev_prods['product_fk'].to_frame().merge(self.all_products, on='product_fk')
+        prev_prods = self.filter_df(prev_prods, filters)
+        matches = self.prev_prods['product_fk'].to_frame().merge(relevant_scif, on='product_fk')\
+            .drop_duplicates(subset='product_fk')
+        matches = self.filter_df(matches, filters)
+        if prev_prods.empty or matches.empty:
+            return None, None
+        oos = set(prev_prods['product_fk'].values) - set(matches['product_fk'].values)
+        ratio = self.safe_divide(len(oos), prev_prods.shape[0])
+        results = []
+        for sku in oos:
+            results.append({'score': 1, 'result': 'OOS', 'ident_parent': self.lvl_name(kpi_name, 'Session'),
+                            'numerator_id': sku, 'denominator_id': self.store_id,
+                            'kpi_name': self.lvl_name(kpi_name, level['lvl'])})
+
+        results.append({'score': 1, 'result': ratio, 'ident_result': self.lvl_name(kpi_name, 'Session'),
+                        'numerator_id': filters['manufacturer_fk'], 'denominator_id': self.store_id,
+                        'kpi_name': self.lvl_name(kpi_name, 'Session'), 'numerator_result': len(oos),
+                        'denominator_result': prev_prods.shape[0]})
+
+        return level['end'], results
+
+    def calculate_pack_distribution(self, kpi_name, kpi_line, relevant_scif, main_line, level, **kwargs):
+        print('asdf')
 
 
 
@@ -1076,9 +1132,9 @@ class ToolBox:
                   '''.format(self.session_uid)
         mpip = pd.read_sql_query(query, self.ps_data_provider.rds_conn.db).merge(self.products, how='left',
                                                                                  on='product_fk', suffixes=['', '_p'])
-        self.mpis = self.mpis.merge(mpip[['pk', Const.FACE_COUNT]], left_on='probe_match_fk', right_on='pk', how='left')
-        self.mpis[Const.FACE_COUNT].fillna(1, inplace=True)
-        self.mpis[Const.COUNT] = 1
+        self.full_mpis = self.full_mpis.merge(mpip[['pk', Const.FACE_COUNT]], left_on='probe_match_fk', right_on='pk', how='left')
+        self.full_mpis[Const.FACE_COUNT].fillna(1, inplace=True)
+        self.full_mpis[Const.COUNT] = 1
 
         return mpip
 
@@ -1092,11 +1148,43 @@ class ToolBox:
                 .merge(self.scene_info, on='scene_fk', suffixes=['', '_s']) \
                 .merge(self.templates, on='template_fk', suffixes=['', '_t'])
             self.full_mpis['store_fk'] = self.store_id
+            self.full_mpis['face_count'].fillna(1, inplace=True)
+            # self.add_image_data_to_mpis()
             self.mpis = self.full_mpis[self.full_mpis['product_type'] != 'Irrelevant']
             self.mpis = self.filter_df(self.mpis, Const.SOS_EXCLUDE_FILTERS, exclude=1)
         except:
             Log.warning('Data does not exist for this session')
             self.global_fail = 1
+
+    def load_prev_prods(self, store, visit_date):
+        query = '''
+        select distinct
+        -- sc.session_uid,
+        p.pk as 'original_product_fk',
+        p.substitution_product_fk,
+        case
+            when p.substitution_product_fk is not null
+                then p.substitution_product_fk
+
+            else p.pk
+        end as 'product_fk'
+        from (
+                select *
+                from probedata.session ses
+                where store_fk = {}
+                and visit_date < '{}'
+                and delete_time is null
+                and exclude_status_fk in (1, 4)
+                and status = 'Completed'
+                and number_of_scenes - number_of_ignored_scenes > 0
+                order by visit_date desc
+                limit 1
+              ) ses
+        inner join probedata.scene sc on ses.session_uid = sc.session_uid
+        inner join probedata.match_product_in_scene mpis on sc.pk = mpis.scene_fk
+        inner join static_new.product p on mpis.product_fk = p.pk
+        '''.format(store, datetime.strftime(visit_date, '%Y-%m-%d'), self.manufacturer_fk)
+        return pd.read_sql_query(query, self.ps_data_provider.rds_conn.db)
 
     def get_kpi_function(self, kpi_type):
         """
@@ -1119,6 +1207,12 @@ class ToolBox:
             return self.calculate_distribution
         elif kpi_type == Const.ANCHOR:
             return self.calculate_anchor
+        elif kpi_type == Const.BASE_MEASUREMENT:
+            return self.calculate_base_measure
+        elif kpi_type == Const.OUT_OF_STOCK:
+            return self.calculate_dynamic_oos
+        elif kpi_type == Const.PACK_DISTRIBUTION:
+            return self.calculate_pack_distribution
 
 
 
@@ -1172,6 +1266,8 @@ class ToolBox:
         :param threshold: int
         """
         # print(kpi_name)
+        if numerator_result is False:
+            numerator_result = 0
         if not kpi_fk and kpi_name:
             kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_name)
         if isinstance(result, str):
