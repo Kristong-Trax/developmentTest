@@ -440,7 +440,7 @@ class ToolBox(GlobalSessionToolBox):
                 minimum_facings_met = 0  # False
 
             # calculate the coke purity (coke SOS) of this scene
-            coke_purity_for_scene = self._get_coke_purity_for_scene(scene_scif)
+            coke_purity_for_scene = self._get_coke_purity_for_scene(scene_scif, assortment_groups)
 
             platformas_data.loc[len(platformas_data), platformas_data.columns.tolist()] = [
                 scene.scene_id, platform_name, pos_option_found, mandatory_skus_found,
@@ -455,13 +455,14 @@ class ToolBox(GlobalSessionToolBox):
         return platformas_data
 
     @staticmethod
-    def _get_coke_purity_for_scene(scene_scif):
-        coke_facings = scene_scif[scene_scif['manufacturer_name'] == 'TCCC']['facings'].sum()
-        total_facings = scene_scif['facings'].sum()
-        if coke_facings > 0:
-            return coke_facings / float(total_facings)
-        else:
+    def _get_coke_purity_for_scene(scene_scif, assortment_groups):
+        relevant_scif = scene_scif[scene_scif['product_type'].isin(['SKU', 'Other'])]
+        scene_products = relevant_scif['product_name'].unique().tolist()
+        flat_assortment = [product for subgroup in assortment_groups for product in subgroup]
+        if any(product not in flat_assortment for product in scene_products):
             return 0
+        else:
+            return 1
 
     def _get_relevant_targets_and_constraints(self, platform_name, template_name):
         relevant_template = self.templates[TARGETS_AND_CONSTRAINTS]
