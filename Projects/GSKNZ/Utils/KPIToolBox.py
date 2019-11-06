@@ -1,4 +1,3 @@
-
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Cloud.Services.Connector.Keys import DbUsers
 from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
@@ -21,10 +20,6 @@ from KPIUtils.GlobalProjects.GSK.KPIGenerator import GSKGenerator
 from Trax.Utils.Logging.Logger import Log
 
 __author__ = 'avrahama'
-
-KPI_RESULT = 'report.kpi_results'
-KPK_RESULT = 'report.kpk_results'
-KPS_RESULT = 'report.kps_results'
 
 
 class GSKNZToolBox:

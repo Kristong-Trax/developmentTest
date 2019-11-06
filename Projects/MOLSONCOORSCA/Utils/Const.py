@@ -15,6 +15,9 @@ class Const(object):
     SHARE_OF_SHELF = 'Share of Shelf'
     ADJACENCY = 'Adjacency'
     DISTRIBUTION = 'Distribution'
+    BASE_MEASUREMENT = 'Base Measurement'
+    OUT_OF_STOCK = 'Out of Stock'
+    PACK_DISTRIBUTION = 'Pack Distribution'
 
 
     # Krishna Edits
