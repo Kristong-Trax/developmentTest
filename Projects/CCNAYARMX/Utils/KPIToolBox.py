@@ -389,15 +389,16 @@ class ToolBox(GlobalSessionToolBox):
             # check the 'POS Option' activation, i.e. 'copete'
             pos_option_found = 0  # False
             for index, relevant_row in relevant_pos_template.iterrows():
+                if pos_option_found:
+                    break
                 groups = self._get_groups(relevant_row, 'POS Option')
                 for group in groups:
                     if all(product in product_names_in_scene for product in group):
                         pos_option_found = 1  # True
+                        platform_name = relevant_row['Platform Name']
                         break
             if not pos_option_found:
                 continue
-
-            platform_name = relevant_row['Platform Name']
 
             targets_and_constraints = self._get_relevant_targets_and_constraints(platform_name, scene.template_name)
             if targets_and_constraints.empty:
@@ -462,7 +463,9 @@ class ToolBox(GlobalSessionToolBox):
 
     def _get_relevant_targets_and_constraints(self, platform_name, template_name):
         relevant_template = self.templates[TARGETS_AND_CONSTRAINTS]
-        relevant_template = relevant_template[(relevant_template['Platform Name'] == platform_name) &
+
+        relevant_template = relevant_template[(relevant_template['Platform Name'].str.encode('utf-8') ==
+                                               platform_name.encode('utf-8')) &
                                               (relevant_template['store_additional_attribute_2'] ==
                                                self.store_info['additional_attribute_2'].iloc[0]) &
                                               (relevant_template['template_name'] == template_name)]
