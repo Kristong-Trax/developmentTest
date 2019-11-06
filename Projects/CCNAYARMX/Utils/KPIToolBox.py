@@ -106,9 +106,9 @@ SHEETS = [SOS, BLOCK_TOGETHER, SHARE_OF_EMPTY, BAY_COUNT, PER_BAY_SOS, SURVEY, A
           COMBO, SCORING, PLATFORMAS, PLATFORMAS_SCORING, KPIS]
 POS_OPTIONS_SHEETS = [POS_OPTIONS, TARGETS_AND_CONSTRAINTS]
 
-TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'CCNayarTemplatev0.8.2.xlsx')
+TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'CCNayarTemplatev0.8.3.xlsx')
 POS_OPTIONS_TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data',
-                                         'CCNayar_POS_Options_v3.xlsx')
+                                         'CCNayar_POS_Options_v4.xlsx')
 
 
 def log_runtime(description, log_start=False):
@@ -331,10 +331,12 @@ class ToolBox(GlobalSessionToolBox):
         elif row['Component aggregation'] == 'sum':
             if len(relevant_results) > 0:
                 result_dict['score'] = relevant_results['score'].sum()
-                result_dict['result'] = result_dict['score']
+                if 'result' not in result_dict.keys():
+                    result_dict['result'] = result_dict['score']
             else:
                 result_dict['score'] = 0
-                result_dict['result'] = result_dict['score']
+                if 'result' not in result_dict.keys():
+                    result_dict['result'] = result_dict['score']
         if dependency_kpis and dependency_kpis is not pd.np.nan:
             dependency_results = self.results_df[self.results_df['kpi_name'].isin(dependency_kpis)]
             passing_dependency_results = dependency_results[dependency_results['result'] != 0]
