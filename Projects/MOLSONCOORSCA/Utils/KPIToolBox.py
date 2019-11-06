@@ -500,14 +500,52 @@ class ToolBox:
         return level['end'], results
 
     def calculate_pack_distribution(self, kpi_name, kpi_line, relevant_scif, main_line, level, **kwargs):
+        results = []
+        relevant_scif = self.filter_df(relevant_scif, {'product_type': 'SKU'})  # Only skus have a pack type
+        relevant_scif['package'] = relevant_scif['form_factor'] + relevant_scif['size'].astype(str) +\
+                                   relevant_scif['size_unit'] + relevant_scif['number_of_sub_packages'].astype(str)
         filters = self.get_kpi_line_filters(kpi_line)
-        opposition = self.dictify_competitive_brands('Disruptors')
-        num_type = main_line[level['num_col']]
         num_scif = self.filter_df(relevant_scif, filters)
-        num_brands = num_scif['brand_fk']
-        iter_group = num_scif[num_type].unique()
-        # num_type = self.get_fk(den_df, ]
-        print('asdf')
+        if num_scif.empty:
+            return
+        opposition = self.dictify_competitive_brands('Disruptors')
+
+        brands = [brand for brand in num_scif['brand_name'].unique() if brand in opposition.keys()]
+        brand_dict = num_scif.set_index('brand_name')['brand_fk'].to_dict()
+
+        total = {'num': 0, 'den': 0}
+        for brand in brands:
+            brand_fk = brand_dict[brand]
+            adversary_df = self.filter_df(relevant_scif, {'brand_name': opposition[brand]})
+            if adversary_df.empty:
+                continue
+            our_packs = set(num_scif['package'].values)
+            enemy_packs = set(adversary_df['package'].values)
+            missing = enemy_packs - our_packs
+            num = len(enemy_packs) - len(missing)
+            results.append({'score': 1, 'result': self.safe_divide(num, len(enemy_packs)), 'numerator_result': num,
+                            'denominator_result': len(enemy_packs), 'ident_result': self.lvl_name(kpi_name, brand),
+                            'numerator_id': brand_fk, 'kpi_name': self.lvl_name(kpi_name, 'Brand'),
+                            'denominator_id': adversary_df.set_index('brand_name')['brand_fk'].iloc[0],
+                            'ident_parent': self.lvl_name(kpi_name, self.manufacturer_fk)})
+
+            missing_df = adversary_df[adversary_df['package'].isin(missing)].groupby('package').first()
+            for i, row in missing_df.iterrows():
+                results.append({'score': 1, 'result': 0, 'ident_parent': self.lvl_name(kpi_name, brand),
+                                'numerator_id': row['product_fk'], 'denominator_id': brand_fk,
+                                'kpi_name': self.lvl_name(kpi_name, 'SKU')})
+            total['num'] += num
+            total['den'] += len(enemy_packs)
+
+        results.append({'score': 1, 'result': self.safe_divide(total['num'], total['den']),
+                        'numerator_result': total['num'], 'denominator_result': total['den'],
+                        'ident_result': self.lvl_name(kpi_name, self.manufacturer_fk),
+                        'numerator_id': self.manufacturer_fk, 'denominator_id': self.store_id,
+                        'kpi_name': self.lvl_name(kpi_name, 'Session')})
+        return level['end'], results
+
+
+
 
 
 
@@ -1017,7 +1055,7 @@ class ToolBox:
 
     @staticmethod
     def lvl_name(kpi, lvl):
-        return '{} - {}'.format(kpi, lvl)
+        return '{} - {}'.format(str(kpi), str(lvl))
 
     @staticmethod
     def get_fk(df, col):
