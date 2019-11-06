@@ -196,6 +196,9 @@ class CCKH_SANDToolBox(CCKH_SANDConsts):
                             self.write_to_db_result(
                                 atomic_fk, (score, result, threshold, points), level=self.LEVEL3)
                             identifier_parent = main_kpi_identifier
+                            child_name = '{}-{}'.format(child[self.template.TRANSLATION], 'Atomic')\
+                                if main_child[self.template.KPI_NAME] == child[self.template.KPI_NAME] else child[self.template.TRANSLATION]
+                            child.set_value(self.template.TRANSLATION, child_name)
                             child_kpi_fk = self.get_new_kpi_fk(child)  # kpi fk from new tables
                             results_list_new_db.append(self.write_to_db_new_results(child_kpi_fk, result_new_db, score,
                                                                                     numerator, denominator,
