@@ -890,6 +890,10 @@ class ToolBox(GlobalSessionToolBox):
 
         # Step 10: Calculate the result
         result = (numerator_result / denominator_result)
+        if result <= .25:
+            actual_result = 1
+        else:
+            actual_result = 0
 
         # Step 11. Save the results in the database
         self.common.write_to_db_result(kpi_fk, numerator_id=numerator_id,
