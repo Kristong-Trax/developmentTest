@@ -127,41 +127,41 @@ class ToolBox:
         if relevant_scif.empty:
             return
 
-        # if kpi_name not in [
-        #     # 'Eye Level Availability'
-        #     # 'Flanker Displays', 'Disruptor Displays'
-        #     # 'Innovation Distribution',
-        #     # 'Display by Location',
-        #     # 'Display by Location'
-        #     # 'Leading Main Section on Left',
-        #     # 'Leading Cooler on Left',
-        #     # 'Leading Cooler on Right',
-        #     # 'Leading Main Section on Right',
-        #     # 'Leading Cold Room on Left',
-        #     # 'Leading Cold Room on Right',
-        #     # 'Share of Segment Cooler Facings'
-        #     # 'Share of Segment Warm Facings',
-        #     # 'ABI Share of Display Space'
-        #     # 'Sleeman Share of Display Space'
-        #     # 'Share of Total Space'
-        #     # 'Warm Base Measurement'
-        #     # 'Warm Bays',
-        #     # 'Dynamic Out of Stock',
-        #     'Pack Distribution vs Competitors'
-        #
-        #
-        # ]:
-        #     return
+        if kpi_name not in [
+            # 'Eye Level Availability'
+            # 'Flanker Displays', 'Disruptor Displays'
+            # 'Innovation Distribution',
+            # 'Display by Location',
+            # 'Display by Location'
+            # 'Leading Main Section on Left',
+            # 'Leading Cooler on Left',
+            # 'Leading Cooler on Right',
+            # 'Leading Main Section on Right',
+            # 'Leading Cold Room on Left',
+            # 'Leading Cold Room on Right',
+            # 'Share of Segment Cooler Facings'
+            # 'Share of Segment Warm Facings',
+            # 'ABI Share of Display Space'
+            # 'Sleeman Share of Display Space'
+            # 'Share of Total Space'
+            # 'Warm Base Measurement'
+            # 'Warm Bays',
+            # 'Dynamic Out of Stock',
+            'Pack Distribution vs Competitors'
+
+
+        ]:
+            return
 
         if kpi_type not in [
-            'Share of Facings',
-            'Share of Shelf',
-            'Distribution',
-            'Anchor',
-            'Base Measurement',
-            'Bay Count',
-            'Out of Stock',
-            # 'Pack Distribution'
+            # 'Share of Facings',
+            # 'Share of Shelf',
+            # 'Distribution',
+            # 'Anchor',
+            # 'Base Measurement',
+            # 'Bay Count',
+            # 'Out of Stock',
+            'Pack Distribution'
             ]:
             return
 
@@ -462,10 +462,10 @@ class ToolBox:
         general_filters.update({'stacking_layer': 1})
         mpis = self.filter_df(self.full_mpis, general_filters)
 
-        # z = self.scif.merge(self.full_mpis.groupby(['scene_fk', 'product_fk'])['face_count'].sum(),
-        #                     on=['scene_fk', 'product_fk'])
-        # x = z[z.facings.astype(int) != z.face_count.astype(int)][['scene_fk', 'product_fk', 'facings', 'face_count']]
-        # a = self.scif
+        z = self.scif.merge(self.full_mpis.groupby(['scene_fk', 'product_fk'])['face_count'].sum(),
+                            on=['scene_fk', 'product_fk'])
+        x = z[z.facings.astype(int) != z.face_count.astype(int)][['scene_fk', 'product_fk', 'facings', 'face_count']]
+        a = self.scif
 
         # result = relevant_scif[sum_col].sum() / Const.MM_FT
         result = mpis[sum_col].sum() / Const.MM_FT
@@ -500,6 +500,12 @@ class ToolBox:
         return level['end'], results
 
     def calculate_pack_distribution(self, kpi_name, kpi_line, relevant_scif, main_line, level, **kwargs):
+        filters = self.get_kpi_line_filters(kpi_line)
+        opposition = self.dictify_competitive_brands('Disruptors')
+        num_type = main_line[level['num_col']]
+
+        iter_group = self.filter_df(relevant_scif, filters)[num_type].unique()
+        # num_type = self.get_fk(den_df, ]
         print('asdf')
 
 
@@ -1071,6 +1077,12 @@ class ToolBox:
             Log.warning('No Comparable Assortment found, Comparable KPIs skipped.')
             return
         self.competitive_brands = self.filter_df(df['Granular Groups'], {'Granular Group Name': ggn_match})
+
+    def dictify_competitive_brands(self, comp_type):
+        opposition = self.competitive_brands[(self.competitive_brands['Start Date'] <= datetime.now()) &
+                                             (self.competitive_brands['End Date'] >= datetime.now()) &
+                                             (self.competitive_brands['Comparable Type'] == comp_type)]
+        return opposition.set_index('Comparable Brand')['Target Brand'].to_dict()
 
 
 

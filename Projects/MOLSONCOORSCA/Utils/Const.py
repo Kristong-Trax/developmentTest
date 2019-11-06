@@ -64,7 +64,7 @@ class Const(object):
     COMMA_SPACE = ', '
     COMMA = ','
     KEEP = 'keep'
-    SOS_EXCLUDE_FILTERS = {'product_type': ['Irrelevant', 'Empty']}
+    SOS_EXCLUDE_FILTERS = {'product_type': ['Irrelevant']}
     ALLOWED_FILTERS = {'product_type': ['Other', 'Empty']}
     IGN_STACKING = {"stacking_layer": 1}
     ORIENTS = {'vertically', 'horizontally'}
