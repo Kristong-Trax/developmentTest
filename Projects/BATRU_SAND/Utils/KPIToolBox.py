@@ -584,8 +584,10 @@ class BATRU_SANDToolBox:
                         new_sku_results[product_fk] = {} if product_fk not in new_sku_results.keys() \
                                                                             else new_sku_results[product_fk]
                         if template_group == EXIT_TEMPLATE_GROUP:
+                            new_sku_results[product_fk]['initial_score'] = result
                             new_sku_results[product_fk]['score'] = self.kpi_score_values[self.CUSTOM_OSA_RESULT_SCORE_TYPE][result]
                         if template_group == ENTRY_TEMPLATE_GROUP:
+                            new_sku_results[product_fk]['initial_result'] = result
                             new_sku_results[product_fk]['result'] = self.kpi_result_values[self.CUSTOM_OSA_RESULT_SCORE_TYPE][result]
 
                 if assortment == total_assortment:
@@ -660,9 +662,20 @@ class BATRU_SANDToolBox:
 
         #new tables - lvl 2
         for product_fk, product_results in new_sku_results.items():
-            self.common.write_to_db_result(fk=contracted_sku_fk, numerator_id=product_fk, denominator_id=self.store_id,
-                                           result=product_results['result'], score=product_results['score'],
-                                           identifier_parent=identifier_parent_contracted, should_enter=True)
+            if product_results['initial_result'] == 'NA' and product_results['initial_score'] == 'NA':
+                self.common.write_to_db_result(fk=contracted_sku_fk, numerator_id=product_fk,
+                                               denominator_id=self.store_id,
+                                               result=product_results['result'], score=product_results['score'])
+            else:
+                self.common.write_to_db_result(fk=contracted_sku_fk, numerator_id=product_fk,
+                                               denominator_id=self.store_id, result=product_results['result'],
+                                               score=product_results['score'],
+                                               identifier_parent=identifier_parent_contracted, should_enter=True)
+
+        # for product_fk, product_results in new_sku_results.items():
+        #     self.common.write_to_db_result(fk=contracted_sku_fk, numerator_id=product_fk, denominator_id=self.store_id,
+        #                                    result=product_results['result'], score=product_results['score'],
+        #                                    identifier_parent=identifier_parent_contracted, should_enter=True)
         return
 
     def calculate_history_based_assortment(self, session_id, required_template_group=None):
@@ -1508,7 +1521,7 @@ class BATRU_SANDToolBox:
                             misplaced_products = \
                                 section_shelf_data[section_shelf_data['product_ean_code_lead'].isin(misplaced_products_eans)][
                                     'product_name'].unique().tolist()
-                            misplaced_products_fks = self.all_products[self.all_products['product_ean_code_lead'].\
+                            misplaced_products_fks = section_shelf_data[section_shelf_data['product_ean_code_lead'].\
                                 isin(misplaced_products_eans)]['product_fk'].unique().tolist()
 
                 # Initial score values
@@ -1609,7 +1622,7 @@ class BATRU_SANDToolBox:
                 # new tables - sk set - lvl 5
                 for product_fk in misplaced_products_fks:
                     self.common.write_to_db_result(fk=sk_sku_presence_not_in_list_fk, numerator_id=product_fk,
-                                                   denominator_id=section, context_id=scene, result=1, score=1,
+                                                   denominator_id=section_fk, context_id=scene, result=1, score=1,
                                                    identifier_parent=presence_section_identifier_par,
                                                    should_enter=True)
 
