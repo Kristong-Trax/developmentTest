@@ -398,6 +398,7 @@ class ToolBox(GlobalSessionToolBox):
                     if all(product in product_names_in_scene for product in group):
                         pos_option_found = 1  # True
                         platform_name = relevant_row['Platform Name']
+                        platform_row = relevant_row.copy()
                         break
             if not pos_option_found:
                 continue
@@ -411,7 +412,7 @@ class ToolBox(GlobalSessionToolBox):
                 continue
 
             # calculate the 'empaques' data
-            assortment_groups = self._get_groups(relevant_row, 'Assortment')
+            assortment_groups = self._get_groups(platform_row, 'Assortment')
             mandatory_skus_found = 1  # True
             for assortment in assortment_groups:
                 if not any(product in product_names_in_scene for product in assortment):
