@@ -16,10 +16,6 @@ from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from KPIUtils_v2.Utils.Decorators.Decorators import kpi_runtime
 from KPIUtils_v2.DB.CommonV2 import Common
 from KPIUtils_v2.Utils.TargetFinder.KpiTargetFinder import KpiTargetFinder
-from Trax.Apps.Services.Apollo.Server.Services.CCRU.Utils.CCRUPromoTargetsUploaderClass import \
-    KPI_LEVEL_2_TYPE as PROMO_KPI_LEVEL_2_TYPE, \
-    KPI_OPERATION_TYPE as PROMO_KPI_OPERATION_TYPE, \
-    PROMO_PRODUCT_ENTITY, PROMO_DISPLAY_ENTITY, PROMO_LOCATION_ENTITY
 
 from Projects.CCRU_SAND.Utils.Fetcher import CCRU_SANDCCHKPIFetcher
 from Projects.CCRU_SAND.Utils.Consts import CCRU_SANDConsts
@@ -44,10 +40,10 @@ TOPSKU = 'TOPSKU'
 KPI_CONVERSION = 'KPI_CONVERSION'
 BENCHMARK = 'BENCHMARK'
 
-SKIP_OLD_CCRU_SANDKPIS_FROM_WRITING = [TARGET, MARKETING]
-SKIP_NEW_CCRU_SANDKPIS_FROM_WRITING = [TARGET, MARKETING]
-NEW_CCRU_SANDKPIS_TO_WRITE_TO_DB = [POS, INTEGRATION, GAPS,
-                               SPIRITS, TOPSKU, EQUIPMENT, CONTRACT, BENCHMARK]
+SKIP_OLD_KPIS_FROM_WRITING = [TARGET, MARKETING]
+SKIP_NEW_KPIS_FROM_WRITING = [TARGET, MARKETING]
+NEW_KPIS_TO_WRITE_TO_DB = [POS, INTEGRATION, GAPS,
+                           SPIRITS, TOPSKU, EQUIPMENT, CONTRACT, BENCHMARK]
 
 BINARY = 'BINARY'
 PROPORTIONAL = 'PROPORTIONAL'
@@ -63,6 +59,13 @@ EQUIPMENT_TARGETS_CLOUD_BASE_PATH = 'CCRU/KPIData/Contract/'
 
 ALLOWED_POS_SETS = tuple(CCRU_SANDConsts.ALLOWED_POS_SETS)
 
+
+PROMO_KPI_LEVEL_2_TYPE = 'PROMO_COMPLIANCE_DISPLAY'
+PROMO_KPI_OPERATION_TYPE = 'Custom'
+
+PROMO_DISPLAY_ENTITY = 'promo_display'
+PROMO_PRODUCT_GROUP_ENTITY = 'promo_product_group'
+PROMO_LOCATION_ENTITY = 'promo_location'
 
 PROMO_SCENE_TYPES_DISPLAY = \
     [
@@ -100,6 +103,14 @@ PROMO_COMPLIANCE_PRICE_TARGET = 'PROMO_COMPLIANCE_PRICE_TARGET'
 
 PROMO_LOC_DISPLAY = 'Promo Display'
 PROMO_LOC_MAIN_SHELF = 'Main Shelf'
+
+CATEGORIES_LIST = ['SSD', 'Water', 'ice tea', 'Juices', 'Energy']
+SOS_CAT_FOR_MR = 'SOS_MANUFACTURER_OUT_OF_CAT_CUSTOM_MR'
+AVAILABILITY_CAT_FOR_MR = 'AVAILABILITY_MANUFACTURER_OUT_OF_CAT_CUSTOM_MR'
+OSA_CAT_FOR_MR = 'OSA_MANUFACTURER_OUT_OF_CAT_CUSTOM_MR'
+CAT_KPI_TYPE = 'Category KPI Type'
+CAT_KPI_VALUE = 'Category KPI Value'
+POS_CAT_KPI_DICT = {'Availability': AVAILABILITY_CAT_FOR_MR, 'SOS': SOS_CAT_FOR_MR}
 
 
 class CCRU_SANDKPIToolBox:
@@ -895,7 +906,7 @@ class CCRU_SANDKPIToolBox:
             atomic_result = attributes_for_level3['result']
             if p.get("KPI ID") in params.values()[2]["SESSION LEVEL"]:
                 self.write_to_kpi_facts_hidden(p.get("KPI ID"), None, atomic_result, score)
-
+            self.write_to_db_category_kpis_for_mr(p, result=score, score=set_total_res)
         return set_total_res
 
     def calculate_facings_sos(self, params, scenes=None, all_params=None):
@@ -2028,7 +2039,23 @@ class CCRU_SANDKPIToolBox:
             if kpi_fk:
                 attributes_for_level2 = self.create_attributes_for_level2_df(p, kpi_score, kpi_fk)
                 self.write_to_kpi_results_old(attributes_for_level2, 'level2')
+            self.write_to_db_category_kpis_for_mr(p, result=kpi_score, score=set_total_res)
         return set_total_res
+
+    def write_to_db_category_kpis_for_mr(self, params, result, score):
+        if params.get(CAT_KPI_TYPE) is not None and params.get(CAT_KPI_VALUE) is not None and params.get('level') == 2:
+            kpi_type = POS_CAT_KPI_DICT.get(params.get(CAT_KPI_TYPE))
+            if kpi_type is not None:
+                cat_kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_type)
+                category_fk_array = self.products[self.products['category'] ==
+                                                    params.get(CAT_KPI_VALUE)]['category_fk'].values
+                if len(category_fk_array) > 0:
+                    category_fk = category_fk_array[0]
+                    self.common.write_to_db_result(cat_kpi_fk, numerator_id=self.own_manufacturer_id,
+                                                   denominator_id=category_fk, result=round(result, 0), score=score)
+                if len(category_fk_array) == 0:
+                    Log.warning('Category {} does not exist in the DB. '
+                                'Check kpi template'.format(params.get(CAT_KPI_VALUE)))
 
     @kpi_runtime()
     def check_number_of_scenes_no_tagging(self, params, level=2):
@@ -2141,7 +2168,7 @@ class CCRU_SANDKPIToolBox:
         This function writes KPI results to old tables
 
         """
-        if self.kpi_set_type not in SKIP_OLD_CCRU_SANDKPIS_FROM_WRITING:
+        if self.kpi_set_type not in SKIP_OLD_KPIS_FROM_WRITING:
 
             if level == 'level4':
                 if df['kpi_fk'].values[0] is None:
@@ -2358,7 +2385,7 @@ class CCRU_SANDKPIToolBox:
 
                 atomic_kpi_name = kf.get("name")
                 atomic_kpi_fk = kf.get("atomic_kpi_fk")
-                if not atomic_kpi_fk and self.kpi_set_type not in SKIP_OLD_CCRU_SANDKPIS_FROM_WRITING:
+                if not atomic_kpi_fk and self.kpi_set_type not in SKIP_OLD_KPIS_FROM_WRITING:
                     Log.error(
                         'Atomic KPI Name <{}> is not found for KPI FK <{}> of KPI Set <{}> in static.atomic_kpi table'
                         ''.format(atomic_kpi_name, kpi_fk, self.kpi_set_name))
@@ -2401,7 +2428,7 @@ class CCRU_SANDKPIToolBox:
 
                 # table3 = table3.append(attributes_for_table3)  # for debugging
 
-        if not kpi_fk and self.kpi_set_type not in SKIP_OLD_CCRU_SANDKPIS_FROM_WRITING:
+        if not kpi_fk and self.kpi_set_type not in SKIP_OLD_KPIS_FROM_WRITING:
             Log.error('KPI Name <{}> is not found for KPI Set <{}> in static.kpi table'
                       ''.format(kpi_name, self.kpi_set_name))
         attributes_for_table2 = pd.DataFrame([(self.session_uid,
@@ -2418,7 +2445,7 @@ class CCRU_SANDKPIToolBox:
                                                       'score'])
         self.write_to_kpi_results_old(attributes_for_table2, 'level2')
 
-        if not kpi_set_fk and self.kpi_set_type not in SKIP_OLD_CCRU_SANDKPIS_FROM_WRITING:
+        if not kpi_set_fk and self.kpi_set_type not in SKIP_OLD_KPIS_FROM_WRITING:
             Log.error('KPI Set <{}> is not found in static.kpi_set table'
                       ''.format(self.kpi_set_name))
         attributes_for_table1 = pd.DataFrame([(kpi_set_name,
@@ -2467,7 +2494,7 @@ class CCRU_SANDKPIToolBox:
 
         kpi_name = param.get('KPI name Eng')
 
-        if not kpi_fk and self.kpi_set_type not in SKIP_OLD_CCRU_SANDKPIS_FROM_WRITING:
+        if not kpi_fk and self.kpi_set_type not in SKIP_OLD_KPIS_FROM_WRITING:
             Log.error('KPI Name <{}> is not found for KPI Set <{}> in static.kpi table'
                       ''.format(kpi_name, self.kpi_set_name))
 
@@ -2521,7 +2548,7 @@ class CCRU_SANDKPIToolBox:
         atomic_kpi_fk = self.kpi_fetcher.get_atomic_kpi_fk(atomic_kpi_name, kpi_fk)\
             if atomic_kpi_fk is None else atomic_kpi_fk
 
-        if not atomic_kpi_fk and self.kpi_set_type not in SKIP_OLD_CCRU_SANDKPIS_FROM_WRITING:
+        if not atomic_kpi_fk and self.kpi_set_type not in SKIP_OLD_KPIS_FROM_WRITING:
             Log.error('Atomic KPI Name <{}> is not found for KPI FK <{}> of KPI Set <{}> in static.atomic_kpi table'
                       ''.format(atomic_kpi_name, kpi_fk, self.kpi_set_name))
 
@@ -2957,7 +2984,7 @@ class CCRU_SANDKPIToolBox:
             score = round(score*param.get('K'), 2)
             total_score += score
 
-            # if not atomic_kpi_fk and self.kpi_set_type not in SKIP_OLD_CCRU_SANDKPIS_FROM_WRITING:
+            # if not atomic_kpi_fk and self.kpi_set_type not in SKIP_OLD_KPIS_FROM_WRITING:
             #     Log.error(
             #         'Atomic KPI Name <{}> is not found for KPI FK <{}> of KPI Set <{}> in static.atomic_kpi table'
             #         ''.format(kpi_name, kpi_fk, self.kpi_set_name))
@@ -2987,7 +3014,7 @@ class CCRU_SANDKPIToolBox:
             #                                               'name'])
             # self.write_to_kpi_results_old(attributes_for_table3, 'level3')
 
-            if not kpi_fk and self.kpi_set_type not in SKIP_OLD_CCRU_SANDKPIS_FROM_WRITING:
+            if not kpi_fk and self.kpi_set_type not in SKIP_OLD_KPIS_FROM_WRITING:
                 Log.error('KPI Name <{}> is not found for KPI Set <{}> in static.kpi table'
                           ''.format(kpi_name, self.kpi_set_name))
             attributes_for_table2 = pd.DataFrame([(self.session_uid,
@@ -3013,7 +3040,7 @@ class CCRU_SANDKPIToolBox:
                  'score': score,
                  'level': 1})
 
-        if not kpi_set_fk and self.kpi_set_type not in SKIP_OLD_CCRU_SANDKPIS_FROM_WRITING:
+        if not kpi_set_fk and self.kpi_set_type not in SKIP_OLD_KPIS_FROM_WRITING:
             Log.error('KPI Set <{}> is not found static.kpi_set table'
                       ''.format(self.kpi_set_name))
         attributes_for_table1 = pd.DataFrame([(kpi_set_name,
@@ -3567,6 +3594,13 @@ class CCRU_SANDKPIToolBox:
                                                identifier_parent=identifier_parent,
                                                should_enter=True)
 
+                # category kpis MR
+                cat_kpi_fk = self.common.get_kpi_fk_by_kpi_type(OSA_CAT_FOR_MR)
+                if row['category'] in CATEGORIES_LIST:
+                    self.common.write_to_db_result(fk=cat_kpi_fk, numerator_id=self.own_manufacturer_id,
+                                                   denominator_id=numerator_id, context_id=context_id,
+                                                   result=result, score=score)
+
             top_sku_total = top_sku_anchor_products\
                 .agg({'in_assortment': 'sum',
                       'distributed': 'sum'})
@@ -3743,7 +3777,7 @@ class CCRU_SANDKPIToolBox:
         return
 
     def write_to_kpi_results_new(self):
-        for kpi_set_type in NEW_CCRU_SANDKPIS_TO_WRITE_TO_DB:
+        for kpi_set_type in NEW_KPIS_TO_WRITE_TO_DB:
             kpis = self.kpi_scores_and_results.get(kpi_set_type)
             if kpis:
                 kpis = pd.DataFrame(kpis.values())
@@ -3948,7 +3982,7 @@ class CCRU_SANDKPIToolBox:
         kpis = pd.DataFrame(kpis)
         self.promo_displays = self.kpi_fetcher.get_custom_entity(PROMO_DISPLAY_ENTITY)
         self.promo_locations = self.kpi_fetcher.get_custom_entity(PROMO_LOCATION_ENTITY)
-        self.promo_products = self.kpi_fetcher.get_custom_entity(PROMO_PRODUCT_ENTITY)
+        self.promo_products = self.kpi_fetcher.get_custom_entity(PROMO_PRODUCT_GROUP_ENTITY)
 
         kpi_fk_0 = self.common.kpi_static_data[self.common.kpi_static_data['type']
                                                == PROMO_COMPLIANCE_STORE]['pk'].values[0]
@@ -4096,8 +4130,8 @@ class CCRU_SANDKPIToolBox:
     def get_promo_product_groups_to_skus(self, target):
         product_groups = target['PRODUCT_GROUP']
         product_groups_df = pd.DataFrame()
-        query = PROMO_PRODUCT_GROUP_FILTER['QUERY']
         for p in product_groups.keys():
+            query = PROMO_PRODUCT_GROUP_FILTER['QUERY']
             filters = product_groups[p].get('PROD_INCL')
             if filters:
                 for f in filters.keys():
@@ -4155,6 +4189,11 @@ class CCRU_SANDKPIToolBox:
             location_calculated = 0
         else:
 
+            if location == PROMO_LOC_DISPLAY:
+                scene_fk = scif_loc['scene_fk'].values[0]
+            else:
+                scene_fk = None
+
             location_calculated = 1
 
             score += self.check_promo_compliance_display_presence(
@@ -4174,6 +4213,7 @@ class CCRU_SANDKPIToolBox:
                                            numerator_id=self.own_manufacturer_id,
                                            numerator_result=None,
                                            denominator_id=display_fk,
+                                           denominator_result=scene_fk,
                                            context_id=location_fk,
                                            target=target,
                                            weight=None,
@@ -4304,18 +4344,16 @@ class CCRU_SANDKPIToolBox:
                         kpi_fk=kpi_fk_sku, display_fk=display_fk, location_fk=location_fk,
                         product_group_fk=product_group_fk, product_fk=product_fk)
 
-                numerator_result = facings
-                denominator_result = None
                 self.common.write_to_db_result(fk=kpi_fk_sku,
                                                numerator_id=product_fk,
-                                               numerator_result=numerator_result,
+                                               numerator_result=facings,
                                                denominator_id=display_fk,
-                                               denominator_result=denominator_result,
+                                               # denominator_result=None,
                                                context_id=location_fk,
-                                               target=None,
-                                               weight=None,
-                                               result=None,
-                                               score=None,
+                                               # target=None,
+                                               # weight=None,
+                                               # result=None,
+                                               # score=None,
                                                identifier_result=kpi_identifier_result_sku,
                                                identifier_parent=kpi_identifier_result_prod,
                                                should_enter=True)
@@ -4391,9 +4429,9 @@ class CCRU_SANDKPIToolBox:
                                            denominator_id=display_fk,
                                            denominator_result=product_group_facings_target,
                                            context_id=location_fk,
-                                           target=target_prod,
-                                           weight=None,
-                                           result=result_prod,
+                                           target=product_group_facings_target,  # target_prod,
+                                           # weight=None,
+                                           result=product_group_facings_fact,  # result_prod,
                                            score=score_prod,
                                            identifier_result=kpi_identifier_result_prod,
                                            identifier_parent=kpi_identifier_result,
@@ -4410,18 +4448,16 @@ class CCRU_SANDKPIToolBox:
                         kpi_fk=kpi_fk_sku, display_fk=display_fk, location_fk=location_fk,
                         product_group_fk=product_group_fk, product_fk=product_fk)
 
-                numerator_result = facings
-                denominator_result = None
                 self.common.write_to_db_result(fk=kpi_fk_sku,
                                                numerator_id=product_fk,
-                                               numerator_result=numerator_result,
+                                               numerator_result=facings,
                                                denominator_id=display_fk,
-                                               denominator_result=denominator_result,
+                                               # denominator_result=None,
                                                context_id=location_fk,
-                                               target=None,
-                                               weight=None,
-                                               result=None,
-                                               score=None,
+                                               # target=None,
+                                               # weight=None,
+                                               # result=None,
+                                               # score=None,
                                                identifier_result=kpi_identifier_result_sku,
                                                identifier_parent=kpi_identifier_result_prod,
                                                should_enter=True)
@@ -4506,7 +4542,7 @@ class CCRU_SANDKPIToolBox:
                                            denominator_result=1,
                                            context_id=location_fk,
                                            target=target_prod,
-                                           weight=None,
+                                           # weight=None,
                                            result=result_prod,
                                            score=score_prod,
                                            identifier_result=kpi_identifier_result_prod,
@@ -4519,24 +4555,23 @@ class CCRU_SANDKPIToolBox:
                 product_fk = row['product_fk']
                 facings = row['facings']
                 price = row['price']
+                price_100 = price * 100 if price is not None else None
 
                 kpi_identifier_result_sku = \
                     self.common.get_dictionary(
                         kpi_fk=kpi_fk_sku, display_fk=display_fk, location_fk=location_fk,
                         product_group_fk=product_group_fk, product_fk=product_fk)
 
-                numerator_result = price * 100 if price else None
-                denominator_result = facings
                 self.common.write_to_db_result(fk=kpi_fk_sku,
                                                numerator_id=product_fk,
-                                               numerator_result=numerator_result,
+                                               numerator_result=facings,
                                                denominator_id=display_fk,
-                                               denominator_result=denominator_result,
+                                               denominator_result=price_100,
                                                context_id=location_fk,
-                                               target=None,
-                                               weight=None,
+                                               # target=None,
+                                               # weight=None,
                                                result=price,
-                                               score=None,
+                                               # score=None,
                                                identifier_result=kpi_identifier_result_sku,
                                                identifier_parent=kpi_identifier_result_prod,
                                                should_enter=True)
@@ -4658,7 +4693,8 @@ class CCRU_SANDKPIToolBox:
                 product_group_scif['price_facings'] = product_group_scif['price'] * product_group_scif['facings']
                 product_group_price_facings_fact = product_group_scif.agg({'price_facings': 'sum'})[0]
                 product_group_facings_fact = product_group_scif.agg({'facings': 'sum'})[0]
-                product_group_price_fact = product_group_price_facings_fact / product_group_facings_fact
+                product_group_price_fact = \
+                    round(product_group_price_facings_fact / float(product_group_facings_fact), 2)
             else:
                 product_group_price_facings_fact = 0
                 product_group_facings_fact = 0
@@ -4677,20 +4713,21 @@ class CCRU_SANDKPIToolBox:
                     result_prod = 0
                 score_prod = 100 - result_prod
             else:
-                result_prod = 0
+                # result_prod = 0
                 score_prod = 0
 
-            numerator_result = product_group_price_fact * 100 if product_group_price_fact is not None else None
-            denominator_result = product_group_price_target * 100
+            product_group_price_fact_100 = product_group_price_fact * 100 if product_group_price_fact is not None \
+                else None
+            product_group_price_target_100 = product_group_price_target * 100
             self.common.write_to_db_result(fk=kpi_fk_prod,
                                            numerator_id=product_group_fk,
-                                           numerator_result=numerator_result,
+                                           numerator_result=product_group_price_fact_100,
                                            denominator_id=display_fk,
-                                           denominator_result=denominator_result,
+                                           denominator_result=product_group_price_target_100,
                                            context_id=location_fk,
-                                           target=100,
-                                           weight=None,
-                                           result=result_prod,
+                                           target=product_group_price_target,  # 100,
+                                           # weight=None,
+                                           result=product_group_price_fact,  # result_prod,
                                            score=score_prod,
                                            identifier_result=kpi_identifier_result_prod,
                                            identifier_parent=kpi_identifier_result,
@@ -4702,24 +4739,23 @@ class CCRU_SANDKPIToolBox:
                 product_fk = row['product_fk']
                 facings = row['facings']
                 price = row['price']
+                price_100 = price * 100 if price else None
 
                 kpi_identifier_result_sku = \
                     self.common.get_dictionary(
                         kpi_fk=kpi_fk_sku, display_fk=display_fk, location_fk=location_fk,
                         product_group_fk=product_group_fk, product_fk=product_fk)
 
-                numerator_result = price * 100 if price else None
-                denominator_result = facings
                 self.common.write_to_db_result(fk=kpi_fk_sku,
                                                numerator_id=product_fk,
-                                               numerator_result=numerator_result,
+                                               numerator_result=facings,
                                                denominator_id=display_fk,
-                                               denominator_result=denominator_result,
+                                               denominator_result=price_100,
                                                context_id=location_fk,
-                                               target=None,
-                                               weight=None,
+                                               # target=None,
+                                               # weight=None,
                                                result=price,
-                                               score=None,
+                                               # score=None,
                                                identifier_result=kpi_identifier_result_sku,
                                                identifier_parent=kpi_identifier_result_prod,
                                                should_enter=True)
@@ -4742,7 +4778,7 @@ class CCRU_SANDKPIToolBox:
                                            numerator_id=self.own_manufacturer_id,
                                            numerator_result=deviation,
                                            denominator_id=display_fk,
-                                           denominator_result=None,
+                                           # denominator_result=None,
                                            context_id=location_fk,
                                            target=target,
                                            weight=weight,
