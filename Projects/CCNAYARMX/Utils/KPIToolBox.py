@@ -106,9 +106,9 @@ SHEETS = [SOS, BLOCK_TOGETHER, SHARE_OF_EMPTY, BAY_COUNT, PER_BAY_SOS, SURVEY, A
           COMBO, SCORING, PLATFORMAS, PLATFORMAS_SCORING, KPIS]
 POS_OPTIONS_SHEETS = [POS_OPTIONS, TARGETS_AND_CONSTRAINTS]
 
-TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'CCNayarTemplatev0.8.2.xlsx')
+TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'CCNayarTemplatev0.8.3.xlsx')
 POS_OPTIONS_TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data',
-                                         'CCNayar_POS_Options_v3.xlsx')
+                                         'CCNayar_POS_Options_v4.xlsx')
 
 
 def log_runtime(description, log_start=False):
@@ -331,10 +331,12 @@ class ToolBox(GlobalSessionToolBox):
         elif row['Component aggregation'] == 'sum':
             if len(relevant_results) > 0:
                 result_dict['score'] = relevant_results['score'].sum()
-                result_dict['result'] = result_dict['score']
+                if 'result' not in result_dict.keys():
+                    result_dict['result'] = result_dict['score']
             else:
                 result_dict['score'] = 0
-                result_dict['result'] = result_dict['score']
+                if 'result' not in result_dict.keys():
+                    result_dict['result'] = result_dict['score']
         if dependency_kpis and dependency_kpis is not pd.np.nan:
             dependency_results = self.results_df[self.results_df['kpi_name'].isin(dependency_kpis)]
             passing_dependency_results = dependency_results[dependency_results['result'] != 0]
@@ -389,15 +391,16 @@ class ToolBox(GlobalSessionToolBox):
             # check the 'POS Option' activation, i.e. 'copete'
             pos_option_found = 0  # False
             for index, relevant_row in relevant_pos_template.iterrows():
+                if pos_option_found:
+                    break
                 groups = self._get_groups(relevant_row, 'POS Option')
                 for group in groups:
                     if all(product in product_names_in_scene for product in group):
                         pos_option_found = 1  # True
+                        platform_name = relevant_row['Platform Name']
                         break
             if not pos_option_found:
                 continue
-
-            platform_name = relevant_row['Platform Name']
 
             targets_and_constraints = self._get_relevant_targets_and_constraints(platform_name, scene.template_name)
             if targets_and_constraints.empty:
@@ -437,7 +440,7 @@ class ToolBox(GlobalSessionToolBox):
                 minimum_facings_met = 0  # False
 
             # calculate the coke purity (coke SOS) of this scene
-            coke_purity_for_scene = self._get_coke_purity_for_scene(scene_scif)
+            coke_purity_for_scene = self._get_coke_purity_for_scene(scene_scif, assortment_groups)
 
             platformas_data.loc[len(platformas_data), platformas_data.columns.tolist()] = [
                 scene.scene_id, platform_name, pos_option_found, mandatory_skus_found,
@@ -452,17 +455,20 @@ class ToolBox(GlobalSessionToolBox):
         return platformas_data
 
     @staticmethod
-    def _get_coke_purity_for_scene(scene_scif):
-        coke_facings = scene_scif[scene_scif['manufacturer_name'] == 'TCCC']['facings'].sum()
-        total_facings = scene_scif['facings'].sum()
-        if coke_facings > 0:
-            return coke_facings / float(total_facings)
-        else:
+    def _get_coke_purity_for_scene(scene_scif, assortment_groups):
+        relevant_scif = scene_scif[scene_scif['product_type'].isin(['SKU', 'Other'])]
+        scene_products = relevant_scif['product_name'].unique().tolist()
+        flat_assortment = [product for subgroup in assortment_groups for product in subgroup]
+        if any(product not in flat_assortment for product in scene_products):
             return 0
+        else:
+            return 1
 
     def _get_relevant_targets_and_constraints(self, platform_name, template_name):
         relevant_template = self.templates[TARGETS_AND_CONSTRAINTS]
-        relevant_template = relevant_template[(relevant_template['Platform Name'] == platform_name) &
+
+        relevant_template = relevant_template[(relevant_template['Platform Name'].str.encode('utf-8') ==
+                                               platform_name.encode('utf-8')) &
                                               (relevant_template['store_additional_attribute_2'] ==
                                                self.store_info['additional_attribute_2'].iloc[0]) &
                                               (relevant_template['template_name'] == template_name)]
@@ -723,7 +729,7 @@ class ToolBox(GlobalSessionToolBox):
         denominator_entity = row[DENOMINATOR_ENTITY]
 
         # Step 2: Import values that unique to the sheet Block Together
-        template_name = row[TEMPLATE_NAME]
+        template_name = self.sanitize_values(row[TEMPLATE_NAME])
         manufacturer_name = [row[MANUFACTURER_NAME]]
         tamano_del_producto = [row[TAMANDO_DEL_PRODUCTO]]
         sub_category = self.sanitize_values(row[SUB_CATEGORY])
@@ -751,8 +757,8 @@ class ToolBox(GlobalSessionToolBox):
 
         numerator_id = self.get_sub_cat_fk_from_sub_cat(sub_category[0])
 
-        if pd.notna(template_name):
-            bay_count_scif = bay_count_scif[bay_count_scif[TEMPLATE_NAME].isin([template_name])]
+
+        bay_count_scif = bay_count_scif[bay_count_scif[TEMPLATE_NAME].isin(template_name)]
 
         if pd.notna(tamano_del_producto):
             bay_count_scif = bay_count_scif[bay_count_scif[TAMANDO_DEL_PRODUCTO].isin(tamano_del_producto)]
@@ -887,16 +893,16 @@ class ToolBox(GlobalSessionToolBox):
 
         # Step 10: Calculate the result
         result = (numerator_result / denominator_result)
+        if result <= .25:
+            actual_result = 1
+        else:
+            actual_result = 0
 
-        # Step 11. Save the results in the database
-        self.common.write_to_db_result(kpi_fk, numerator_id=numerator_id,
-                                       numerator_result=numerator_result, denominator_id=denominator_id,
-                                       denominator_result=denominator_result,
-                                       result=result)
+
         result_dict = {'kpi_name': kpi_name, 'kpi_fk': kpi_fk, 'numerator_id': numerator_id,
                        'numerator_result': numerator_result,
                        'denominator_id': denominator_id, 'denominator_result': denominator_result,
-                       'result': result}
+                       'result': actual_result}
 
         return result_dict
 
@@ -978,7 +984,7 @@ class ToolBox(GlobalSessionToolBox):
         denominator_id = relevant_scif[TEMPLATE_FK].mode()[0]
 
         result_dict = {'kpi_name': kpi_name, 'kpi_fk': kpi_fk, 'numerator_id': numerator_id,
-                       'denominator_id': denominator_id,
+                       'numerator_result': facings,'denominator_id': denominator_id, 'denominator_result': facings_target,
                        'result': result}
 
         return result_dict
