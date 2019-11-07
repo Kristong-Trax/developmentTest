@@ -106,7 +106,7 @@ SHEETS = [SOS, BLOCK_TOGETHER, SHARE_OF_EMPTY, BAY_COUNT, PER_BAY_SOS, SURVEY, A
           COMBO, SCORING, PLATFORMAS, PLATFORMAS_SCORING, KPIS]
 POS_OPTIONS_SHEETS = [POS_OPTIONS, TARGETS_AND_CONSTRAINTS]
 
-TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'CCNayarTemplatev0.8.3.xlsx')
+TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'CCNayarTemplatev0.8.4.xlsx')
 POS_OPTIONS_TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data',
                                          'CCNayar_POS_Options_v4.xlsx')
 
@@ -202,6 +202,8 @@ class ToolBox(GlobalSessionToolBox):
         self.results_df.drop(columns=['kpi_name'], inplace=True)
         self.results_df.rename(columns={'kpi_fk': 'fk'}, inplace=True)
         self.results_df.loc[~self.results_df['identifier_parent'].isnull(), 'should_enter'] = True
+        # get rid of 'not applicable' results
+        self.results_df.dropna(subset=['result'], inplace=True)
         self.results_df.fillna(0)
         results = self.results_df.to_dict('records')
         for result in results:
@@ -351,7 +353,10 @@ class ToolBox(GlobalSessionToolBox):
         component_kpis = self.sanitize_values(row['Prerequisite'])
         relevant_results = self.results_df[self.results_df['kpi_name'].isin(component_kpis)]
         passing_results = relevant_results[relevant_results['result'] != 0]
-        if len(relevant_results) > 0 and len(relevant_results) == len(passing_results):
+        nan_results = relevant_results[relevant_results['result'].isna()]
+        if len(nan_results) == len(passing_results):
+            result = pd.np.nan
+        elif len(relevant_results) > 0 and len(relevant_results) == len(passing_results):
             result = 1
         else:
             result = 0
@@ -455,9 +460,11 @@ class ToolBox(GlobalSessionToolBox):
         platformas_data.sort_values(by=['passing_results'], ascending=False, inplace=True)
         return platformas_data
 
-    @staticmethod
-    def _get_coke_purity_for_scene(scene_scif, assortment_groups):
-        relevant_scif = scene_scif[scene_scif['product_type'].isin(['SKU', 'Other'])]
+    def _get_coke_purity_for_scene(self, scene_scif, assortment_groups):
+        sku_scif = scene_scif[scene_scif['product_type'].isin(['SKU'])]
+        other_scif = scene_scif[scene_scif['product_type'].isin(['Other']) &
+                                scene_scif['manufacturer_fk'] == self.own_manuf_fk]
+        relevant_scif = pd.concat([sku_scif, other_scif])
         scene_products = relevant_scif['product_name'].unique().tolist()
         flat_assortment = [product for subgroup in assortment_groups for product in subgroup]
         if any(product not in flat_assortment for product in scene_products):
