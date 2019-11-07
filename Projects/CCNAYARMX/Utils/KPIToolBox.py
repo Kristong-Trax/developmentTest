@@ -732,7 +732,7 @@ class ToolBox(GlobalSessionToolBox):
         # Step 2: Import values that unique to the sheet Block Together
         template_name = self.sanitize_values(row[TEMPLATE_NAME])
         manufacturer_name = [row[MANUFACTURER_NAME]]
-        tamano_del_producto = [row[TAMANDO_DEL_PRODUCTO]]
+        tamano_del_producto = row[TAMANDO_DEL_PRODUCTO]
         sub_category = self.sanitize_values(row[SUB_CATEGORY])
         iterate_by = row[ITERATE_BY]
 
@@ -762,7 +762,9 @@ class ToolBox(GlobalSessionToolBox):
         bay_count_scif = bay_count_scif[bay_count_scif[TEMPLATE_NAME].isin(template_name)]
 
         if pd.notna(tamano_del_producto):
-            bay_count_scif = bay_count_scif[bay_count_scif[TAMANDO_DEL_PRODUCTO].isin(tamano_del_producto)]
+            bay_count_scif = bay_count_scif[bay_count_scif[TAMANDO_DEL_PRODUCTO].str.contains(tamano_del_producto)]
+
+        relevant_product_names = list(set(bay_count_scif['product_name']))
 
         if bay_count_scif.empty:
             result = pd.np.nan
@@ -780,7 +782,7 @@ class ToolBox(GlobalSessionToolBox):
                     # Step 3: Establish the variable for the network_x_block_together
                     if pd.notna(tamano_del_producto):
                         relevant_filters = {MANUFACTURER_NAME: manufacturer_name, SUB_CATEGORY: sub_category,
-                                            TAMANDO_DEL_PRODUCTO: tamano_del_producto, BAY_NUMBER: [j]}
+                                            TAMANDO_DEL_PRODUCTO: [tamano_del_producto], BAY_NUMBER: [j], PRODUCT_NAME: relevant_product_names}
                     else:
                         relevant_filters = {MANUFACTURER_NAME: manufacturer_name, SUB_CATEGORY: sub_category,
                                             BAY_NUMBER: [j]}
