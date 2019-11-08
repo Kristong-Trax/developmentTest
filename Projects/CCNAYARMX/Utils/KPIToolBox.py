@@ -202,6 +202,11 @@ class ToolBox(GlobalSessionToolBox):
         self.results_df.drop(columns=['kpi_name'], inplace=True)
         self.results_df.rename(columns={'kpi_fk': 'fk'}, inplace=True)
         self.results_df.loc[~self.results_df['identifier_parent'].isnull(), 'should_enter'] = True
+        # set result to NaN for records that do not have a parent
+        identifier_results = self.results_df[self.results_df['result'].notna()]['identifier_result'].unique().tolist()
+        self.results_df['result'] = self.results_df.apply(
+            lambda row: pd.np.nan if row['identifier_parent'] is not pd.np.nan and row[
+                'identifier_parent'] not in identifier_results else row['result'], axis=1)
         # get rid of 'not applicable' results
         self.results_df.dropna(subset=['result'], inplace=True)
         self.results_df.fillna(0)
@@ -324,8 +329,13 @@ class ToolBox(GlobalSessionToolBox):
         component_kpis = self.sanitize_values(row['Component KPIs'])
         dependency_kpis = self.sanitize_values(row['Dependency'])
         relevant_results = self.results_df[self.results_df['kpi_name'].isin(component_kpis)]
-        passing_results = relevant_results[relevant_results['result'] != 0]
-        if row['Component aggregation'] == 'one-passed':
+        passing_results = relevant_results[(relevant_results['result'] != 0) &
+                                           (relevant_results['result'].notna()) &
+                                           (relevant_results['score'] != 0)]
+        nan_results = relevant_results[relevant_results['result'].isna()]
+        if len(relevant_results) > 0 and len(relevant_results) == len(nan_results):
+            result_dict['result'] = pd.np.nan
+        elif row['Component aggregation'] == 'one-passed':
             if len(relevant_results) > 0 and len(passing_results) > 0:
                 result_dict['result'] = 1
             else:
@@ -352,9 +362,11 @@ class ToolBox(GlobalSessionToolBox):
     def calculate_combo(self, row):
         component_kpis = self.sanitize_values(row['Prerequisite'])
         relevant_results = self.results_df[self.results_df['kpi_name'].isin(component_kpis)]
-        passing_results = relevant_results[relevant_results['result'] != 0]
+        passing_results = relevant_results[(relevant_results['result'] != 0) &
+                                           (relevant_results['result'].notna()) &
+                                           (relevant_results['score'] != 0)]
         nan_results = relevant_results[relevant_results['result'].isna()]
-        if len(nan_results) == len(passing_results):
+        if len(passing_results) == 0 and not nan_results.empty:
             result = pd.np.nan
         elif len(relevant_results) > 0 and len(relevant_results) == len(passing_results):
             result = 1
@@ -566,6 +578,7 @@ class ToolBox(GlobalSessionToolBox):
         # Step 2: Import the values that are unique to the sheet SOS
         product_type = self.sanitize_values(row[PRODUCT_TYPE])
         store_additional_attribute_2 = self.sanitize_values(row[STORE_ADDITIONAL_ATTRIBUTE_2])
+        target = str(row['target'])
         numerator_param1 = row[NUMERATOR_PARAM_1]
         denominator_param1 = row[DENOMINATOR_PARAM_1]
         ignore_stacking = row[IGNORE_STACKING]
@@ -610,7 +623,6 @@ class ToolBox(GlobalSessionToolBox):
                     denominator_scif = filtered_scif[filtered_scif[denominator_param1].isin([denominator_value1])]
 
                     if denominator_scif.empty:
-
                         result_dict = {'kpi_name': kpi_name, 'kpi_fk': kpi_fk, 'result': pd.np.nan}
                         return result_dict
 
@@ -645,16 +657,16 @@ class ToolBox(GlobalSessionToolBox):
 
                 # Step 10: Calculate the final result
                 result = (numerator_result / denominator_result)
+                score = self.calculate_score_for_sos(target, result)
 
                 result_dict = {'kpi_name': kpi_name, 'kpi_fk': kpi_fk, 'numerator_id': numerator_id,
                                'numerator_result': numerator_result,
                                'denominator_id': denominator_id, 'denominator_result': denominator_result,
-                               'result': result}
+                               'result': result, 'score': score}
 
                 return result_dict
 
             else:
-
 
                 result_dict = {'kpi_name': kpi_name, 'kpi_fk': kpi_fk, 'result': pd.np.nan}
                 return result_dict
@@ -732,10 +744,12 @@ class ToolBox(GlobalSessionToolBox):
             # Step 10: Calculate the final result
             result = (numerator_result / denominator_result)
 
+            score = self.calculate_score_for_sos(target, result)
+
             result_dict = {'kpi_name': kpi_name, 'kpi_fk': kpi_fk, 'numerator_id': numerator_id,
                            'numerator_result': numerator_result,
                            'denominator_id': denominator_id, 'denominator_result': denominator_result,
-                           'result': result}
+                           'result': result, 'score': score}
 
             return result_dict
 
@@ -799,7 +813,8 @@ class ToolBox(GlobalSessionToolBox):
                     # Step 3: Establish the variable for the network_x_block_together
                     if pd.notna(tamano_del_producto):
                         relevant_filters = {MANUFACTURER_NAME: manufacturer_name, SUB_CATEGORY: sub_category,
-                                            TAMANDO_DEL_PRODUCTO: [tamano_del_producto], BAY_NUMBER: [j], PRODUCT_NAME: relevant_product_names}
+                                            TAMANDO_DEL_PRODUCTO: [tamano_del_producto], BAY_NUMBER: [j],
+                                            PRODUCT_NAME: relevant_product_names}
                     else:
                         relevant_filters = {MANUFACTURER_NAME: manufacturer_name, SUB_CATEGORY: sub_category,
                                             BAY_NUMBER: [j]}
@@ -999,7 +1014,8 @@ class ToolBox(GlobalSessionToolBox):
         denominator_id = relevant_scif[TEMPLATE_FK].mode()[0]
 
         result_dict = {'kpi_name': kpi_name, 'kpi_fk': kpi_fk, 'numerator_id': numerator_id,
-                       'numerator_result': facings,'denominator_id': denominator_id, 'denominator_result': facings_target,
+                       'numerator_result': facings, 'denominator_id': denominator_id,
+                       'denominator_result': facings_target,
                        'result': result}
 
         return result_dict
@@ -1250,3 +1266,19 @@ class ToolBox(GlobalSessionToolBox):
 
         scene_survey_response = pd.read_sql_query(query, self.ps_data_provider.rds_conn.db)
         return scene_survey_response
+
+    @staticmethod
+    def calculate_score_for_sos(target, result):
+        if len(target) > 3:
+            min_target, max_target = target.split('-')
+            if result * 100 >= int(min_target) and result * 100 <= int(max_target):
+                score = 1
+            else:
+                score = 0
+        else:
+            if result * 100 >= int(target):
+                score = 1
+            else:
+                score = 0
+
+        return score
