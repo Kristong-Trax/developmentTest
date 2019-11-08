@@ -330,7 +330,8 @@ class ToolBox(GlobalSessionToolBox):
         dependency_kpis = self.sanitize_values(row['Dependency'])
         relevant_results = self.results_df[self.results_df['kpi_name'].isin(component_kpis)]
         passing_results = relevant_results[(relevant_results['result'] != 0) &
-                                           (relevant_results['result'].notna())]
+                                           (relevant_results['result'].notna()) &
+                                           (relevant_results['score'] != 0)]
         nan_results = relevant_results[relevant_results['result'].isna()]
         if len(relevant_results) > 0 and len(relevant_results) == len(nan_results):
             result_dict['result'] = pd.np.nan
@@ -362,7 +363,8 @@ class ToolBox(GlobalSessionToolBox):
         component_kpis = self.sanitize_values(row['Prerequisite'])
         relevant_results = self.results_df[self.results_df['kpi_name'].isin(component_kpis)]
         passing_results = relevant_results[(relevant_results['result'] != 0) &
-                                           (relevant_results['result'].notna())]
+                                           (relevant_results['result'].notna()) &
+                                           (relevant_results['score'] != 0)]
         nan_results = relevant_results[relevant_results['result'].isna()]
         if len(passing_results) == 0 and not nan_results.empty:
             result = pd.np.nan
