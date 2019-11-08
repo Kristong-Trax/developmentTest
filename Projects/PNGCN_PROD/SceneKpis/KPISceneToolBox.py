@@ -43,52 +43,12 @@ HANDWASH_SUB_CATEGORY = 'Handwash'
 BODYWASH_SUB_CATEGORY = 'Bodywash'
 OTHER_SUB_CATEGORY = 'Other'
 PCC_BAR_SUB_CATEGORY = 'PCC-Bar'
-PCC_FILTERS = {
-    'SFG Bodywash': {'population': {'include': [{"manufacturer_name": [PNG_MANUFACTURER], "category": [PCC_CATEGORY],
-                                                 "brand_name": [SAFEGUARD_BRAND],
-                                                 'sub_category': [BODYWASH_SUB_CATEGORY]}],
-                                    'exclude': {},
-                                    'include_operator': 'and'}},
-    'SFG Handwash': {'population': {'include': [{"manufacturer_name": [PNG_MANUFACTURER], "category": [PCC_CATEGORY],
-                                                 "brand_name": [SAFEGUARD_BRAND],
-                                                 'sub_category': [HANDWASH_SUB_CATEGORY]}],
-                                    'exclude': {},
-                                    'include_operator': 'and'}},
-    'SFG Other': {'population': {'include': [{"manufacturer_name": [PNG_MANUFACTURER], "category": [PCC_CATEGORY],
-                                              "brand_name": [SAFEGUARD_BRAND], 'sub_category': [OTHER_SUB_CATEGORY]}],
-                                 'exclude': {},
-                                 'include_operator': 'and'}},
-    'SFG PCCBAR': {'population': {'include': [{"manufacturer_name": [PNG_MANUFACTURER], "category": [PCC_CATEGORY],
-                                               "brand_name": [SAFEGUARD_BRAND],
-                                               'sub_category': [PCC_BAR_SUB_CATEGORY]}],
-                                  'exclude': {},
-                                  'include_operator': 'and'}},
-    'OLAY Bodywash': {'population': {'include': [{"manufacturer_name": [PNG_MANUFACTURER], "category": [PCC_CATEGORY],
-                                                  "brand_name": [OLAY_BRAND], 'sub_category': [BODYWASH_SUB_CATEGORY]}],
-                                     'exclude': {},
-                                     'include_operator': 'and'}},
-    'OLAY Handwash': {'population': {'include': [{"manufacturer_name": [PNG_MANUFACTURER], "category": [PCC_CATEGORY],
-                                                  "brand_name": [OLAY_BRAND], 'sub_category': [HANDWASH_SUB_CATEGORY]}],
-                                     'exclude': {},
-                                     'include_operator': 'and'}},
-    'OLAY Other': {'population': {'include': [{"manufacturer_name": [PNG_MANUFACTURER], "category": [PCC_CATEGORY],
-                                               "brand_name": [OLAY_BRAND], 'sub_category': [OTHER_SUB_CATEGORY]}],
-                                  'exclude': {},
-                                  'include_operator': 'and'}},
-    'OLAY PCCBAR': {'population': {'include': [{"manufacturer_name": [PNG_MANUFACTURER], "category": [PCC_CATEGORY],
-                                                "brand_name": [OLAY_BRAND], 'sub_category': [PCC_BAR_SUB_CATEGORY]}],
-                                   'exclude': {},
-                                   'include_operator': 'and'}},
-    'Competitor PCC': {'population': {'include': [{"category": [PCC_CATEGORY]}],
-                                      'exclude': {"manufacturer_name": [PNG_MANUFACTURER]},
-                                      'include_operator': 'and'}},
-    'PNGOTHER': {'population': {'include': [{"manufacturer_name": [PNG_MANUFACTURER]}],
-                                'exclude': {"category": [PCC_CATEGORY]},
-                                'include_operator': 'and'}},
-    'Competitor Other': {'population': {'include': [{}],
-                                        'exclude': {"manufacturer_name": [PNG_MANUFACTURER],
-                                                    "category": [PCC_CATEGORY]},
-                                        'include_operator': 'and'}}}
+
+CREST_BRAND = 'Crest'
+ORALB_BRAND = 'Oral-B'
+
+OC_CATEGORY = 'Oral Care'
+EYE_LEVEL_RELEVANT_CATEGORIES = [PCC_CATEGORY, OC_CATEGORY]
 
 # Block_Variant KPI
 VARIANT_BLOCK_TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)),
@@ -101,6 +61,60 @@ MATCH_PRODUCT_IN_PROBE_STATE_REPORTING_FK = 'match_product_in_probe_state_report
 
 
 class PngcnSceneKpis(object):
+
+    PCC_FILTERS = {
+        'SFG Bodywash': {
+            'population': {'include': [{"manufacturer_name": [PNG_MANUFACTURER], "category": [PCC_CATEGORY],
+                                        "brand_name": [SAFEGUARD_BRAND],
+                                        'sub_category': [BODYWASH_SUB_CATEGORY]}],
+                           'exclude': {},
+                           'include_operator': 'and'}},
+        'SFG Handwash': {
+            'population': {'include': [{"manufacturer_name": [PNG_MANUFACTURER], "category": [PCC_CATEGORY],
+                                        "brand_name": [SAFEGUARD_BRAND],
+                                        'sub_category': [HANDWASH_SUB_CATEGORY]}],
+                           'exclude': {},
+                           'include_operator': 'and'}},
+        'SFG Other': {'population': {'include': [{"manufacturer_name": [PNG_MANUFACTURER], "category": [PCC_CATEGORY],
+                                                  "brand_name": [SAFEGUARD_BRAND],
+                                                  'sub_category': [OTHER_SUB_CATEGORY]}],
+                                     'exclude': {},
+                                     'include_operator': 'and'}},
+        'SFG PCCBAR': {'population': {'include': [{"manufacturer_name": [PNG_MANUFACTURER], "category": [PCC_CATEGORY],
+                                                   "brand_name": [SAFEGUARD_BRAND],
+                                                   'sub_category': [PCC_BAR_SUB_CATEGORY]}],
+                                      'exclude': {},
+                                      'include_operator': 'and'}},
+        'OLAY Bodywash': {
+            'population': {'include': [{"manufacturer_name": [PNG_MANUFACTURER], "category": [PCC_CATEGORY],
+                                        "brand_name": [OLAY_BRAND], 'sub_category': [BODYWASH_SUB_CATEGORY]}],
+                           'exclude': {},
+                           'include_operator': 'and'}},
+        'OLAY Handwash': {
+            'population': {'include': [{"manufacturer_name": [PNG_MANUFACTURER], "category": [PCC_CATEGORY],
+                                        "brand_name": [OLAY_BRAND], 'sub_category': [HANDWASH_SUB_CATEGORY]}],
+                           'exclude': {},
+                           'include_operator': 'and'}},
+        'OLAY Other': {'population': {'include': [{"manufacturer_name": [PNG_MANUFACTURER], "category": [PCC_CATEGORY],
+                                                   "brand_name": [OLAY_BRAND], 'sub_category': [OTHER_SUB_CATEGORY]}],
+                                      'exclude': {},
+                                      'include_operator': 'and'}},
+        'OLAY PCCBAR': {'population': {'include': [{"manufacturer_name": [PNG_MANUFACTURER], "category": [PCC_CATEGORY],
+                                                    "brand_name": [OLAY_BRAND],
+                                                    'sub_category': [PCC_BAR_SUB_CATEGORY]}],
+                                       'exclude': {},
+                                       'include_operator': 'and'}},
+        'Competitor PCC': {'population': {'include': [{"category": [PCC_CATEGORY]}],
+                                          'exclude': {"manufacturer_name": [PNG_MANUFACTURER]},
+                                          'include_operator': 'and'}},
+        'PNGOTHER': {'population': {'include': [{"manufacturer_name": [PNG_MANUFACTURER]}],
+                                    'exclude': {"category": [PCC_CATEGORY]},
+                                    'include_operator': 'and'}},
+        'Competitor Other': {'population': {'include': [{}],
+                                            'exclude': {"manufacturer_name": [PNG_MANUFACTURER],
+                                                        "category": [PCC_CATEGORY]},
+                                            'include_operator': 'and'}}}
+
     def __init__(self, project_connector, common, scene_id, data_provider=None):
         # self.session_uid = session_uid
         self.scene_id = scene_id
@@ -362,23 +376,71 @@ class PngcnSceneKpis(object):
         """
         if self.matches_from_data_provider.empty:
             return
-        relevant_templates = self.psdataprovider.get_scene_category_data(PCC_CATEGORY)[
-            'template_fk'].tolist()
+
+        # Get category of scene, check if relevant, if not return
         try:
-            template_fk = self.data_provider.scenes_info['template_fk'].values[0]
-            if template_fk not in relevant_templates:
+            scene_category = self._get_scene_category(self.scene_id)
+            if not scene_category or scene_category not in EYE_LEVEL_RELEVANT_CATEGORIES:
                 return
         except Exception as ex:
-            Log.error("Couldn't find scene type for scene number {}, error {}".format(str(self.scene_id), ex))
+            Log.error("Couldn't find scene category for scene number {}, error {}".format(str(self.scene_id), ex))
             return
-        entity_df = self.psdataprovider.get_custom_entities_df('eye_level_fragments')
+        entity_df = self._get_cateory_specific_entities(scene_category)
         if entity_df.empty:
             return
         df = self.get_eye_level_shelves(self.matches_from_data_provider)
         full_df = pd.merge(df, self.all_products, on="product_fk")
         max_shelf_count = self.matches_from_data_provider["shelf_number"].max()
         self.calculate_facing_eye_level(full_df, max_shelf_count)
-        self.calculate_sequence_eye_level(entity_df, full_df)
+
+
+        self.calculate_sequence_eye_level(entity_df, full_df, scene_category)
+
+    def _get_cateory_specific_entities(self, scene_category):
+        eye_level_fragments = self.psdataprovider.get_custom_entities_df('eye_level_fragments')
+        if scene_category == PCC_CATEGORY:
+            return eye_level_fragments
+        elif scene_category == OC_CATEGORY:
+            sub_brands_entity = self.psdataprovider.get_custom_entities_df('sub_brand')
+            return eye_level_fragments.append(sub_brands_entity)
+
+    def _get_category_specific_filters(self, scene_category, full_df):
+        if scene_category == PCC_CATEGORY:
+            return PngcnSceneKpis.PCC_FILTERS
+        elif scene_category == OC_CATEGORY:
+            return self._get_oc_filter(full_df)
+
+    def _get_oc_filter(self, full_df):
+        oc_brand_filer = {'population': {'include': [{"manufacturer_name": [PNG_MANUFACTURER],
+                                                      "category": [OC_CATEGORY],
+                                                      "brand_name": [CREST_BRAND, ORALB_BRAND],
+                                                      }], 'include_operator': 'and'}}
+        frag_df = self.parser.filter_df(oc_brand_filer, full_df)
+        sub_brand_df = frag_df[['manufacturer_name', 'category', 'sub_brand_name', 'brand_name']].drop_duplicates()
+        sub_brand_df = sub_brand_df[sub_brand_df['sub_brand_name'].notnull()][sub_brand_df['sub_brand_name'] != '']
+        result_df = {}
+        for index, row in sub_brand_df.iterrows():
+            result_df[row['sub_brand_name']] = {
+                            'population': {'include': [
+                                                        {"manufacturer_name":[row['manufacturer_name']],
+                                                         "category":[row['category']],
+                                                         "sub_brand":[row['sub_brand_name']],
+                                                         "brand_name":[row['brand_name']], }
+
+                                                    ], 'exclude': {}, 'include_operator': 'and', }}
+        result_df['Competitor Oral Care'] = {'population': {'include': [{"category": [OC_CATEGORY]}],
+                                          'exclude': {"manufacturer_name": [PNG_MANUFACTURER]},
+                                          'include_operator': 'and'}}
+
+        result_df['PNGOTHER'] = {'population': {'include': [{"manufacturer_name": [PNG_MANUFACTURER]}],
+                                    'exclude': {"category": [OC_CATEGORY]},
+                                    'include_operator': 'and'}}
+
+        result_df['Competitor Other'] = {'population': {'include': [{}],
+                                            'exclude': {"manufacturer_name": [PNG_MANUFACTURER],
+                                                        "category": [OC_CATEGORY]},
+                                            'include_operator': 'and'}}
+        return result_df
 
     def calculate_facing_eye_level(self, full_df, max_shelf_count):
         """
@@ -401,11 +463,12 @@ class PngcnSceneKpis(object):
                                            denominator_id=category_fk, numerator_result=shelf_number,
                                            result=facings, score=max_shelf_count, by_scene=True)
 
-    def calculate_sequence_eye_level(self, entity_df, full_df):
+    def calculate_sequence_eye_level(self, entity_df, full_df, scene_category):
         """
         Saving sequence of brand-sub_category blocks (not including stackings)
         :param entity_df: the sub_-category-brand custom_entety fields, to save the correct entity
         :param full_df: The df to work on
+        :param category_specific_filter: the specific category filter
         :return: saves the sequence of each shelf (combine all bays)
         """
         kpi_sequence_fk = self.common.get_kpi_fk_by_kpi_name(Eye_level_kpi_SEQUENCE)
@@ -413,9 +476,9 @@ class PngcnSceneKpis(object):
             columns=['fk', 'numerator_id', 'denominator_id', 'numerator_result', 'result',
                      'score', 'by_scene', 'temp_bay_number'])
         full_df = full_df[full_df['stacking_layer'] == 1]
-
-        for key in PCC_FILTERS.keys():
-            frag_df = self.parser.filter_df(PCC_FILTERS[key], full_df)
+        category_specific_filter = self.get_category_specific_filters(scene_category, full_df)
+        for key in category_specific_filter.keys():
+            frag_df = self.parser.filter_df(category_specific_filter[key], full_df)
             if frag_df.empty:
                 continue
             full_df.drop(frag_df.index, axis=0, inplace=True)
@@ -1339,6 +1402,18 @@ class PngcnSceneKpis(object):
             """.format('additional display', scene_id)
         df = pd.read_sql_query(query, self.project_connector.db)
         return df
+
+    def _get_scene_category(self, scene_pk):
+
+        query = """SELECT category.name  as scene_category FROM probedata.scene 
+            LEFT JOIN static.template ON template_fk = template.pk 
+            LEFT JOIN static_new.category ON product_category_fk = category.pk
+            WHERE scene.pk = {};""".format(scene_pk)
+
+        # Explicit connect db, otherwise db gone error will be thrown
+        self.project_connector.connect_rds()
+        df = pd.read_sql_query(query, self.project_connector.db)
+        return None if df is None else df['scene_category'][0]
 
 # if __name__ == '__main__':
 #     # Config.init()
