@@ -202,6 +202,11 @@ class ToolBox(GlobalSessionToolBox):
         self.results_df.drop(columns=['kpi_name'], inplace=True)
         self.results_df.rename(columns={'kpi_fk': 'fk'}, inplace=True)
         self.results_df.loc[~self.results_df['identifier_parent'].isnull(), 'should_enter'] = True
+        # set result to NaN for records that do not have a parent
+        identifier_results = self.results_df[self.results_df['result'].notna()]['identifier_result'].unique().tolist()
+        self.results_df['result'] = self.results_df.apply(
+            lambda row: pd.np.nan if row['identifier_parent'] is not pd.np.nan and row[
+                'identifier_parent'] not in identifier_results else row['result'], axis=1)
         # get rid of 'not applicable' results
         self.results_df.dropna(subset=['result'], inplace=True)
         self.results_df.fillna(0)
@@ -324,8 +329,12 @@ class ToolBox(GlobalSessionToolBox):
         component_kpis = self.sanitize_values(row['Component KPIs'])
         dependency_kpis = self.sanitize_values(row['Dependency'])
         relevant_results = self.results_df[self.results_df['kpi_name'].isin(component_kpis)]
-        passing_results = relevant_results[relevant_results['result'] != 0]
-        if row['Component aggregation'] == 'one-passed':
+        passing_results = relevant_results[(relevant_results['result'] != 0) &
+                                           (relevant_results['result'].notna())]
+        nan_results = relevant_results[relevant_results['result'].isna()]
+        if len(relevant_results) > 0 and len(relevant_results) == len(nan_results):
+            result_dict['result'] = pd.np.nan
+        elif row['Component aggregation'] == 'one-passed':
             if len(relevant_results) > 0 and len(passing_results) > 0:
                 result_dict['result'] = 1
             else:
