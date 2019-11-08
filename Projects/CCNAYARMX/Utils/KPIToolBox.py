@@ -595,15 +595,25 @@ class ToolBox(GlobalSessionToolBox):
                     filtered_scif = filtered_scif[filtered_scif[PRODUCT_TYPE].isin(product_type)]
 
                 # Step 7: Filter the filtered scif through the template group
-                if template_group and template_group is not pd.np.nan:
+                if template_group is not pd.np.nan:
                     filtered_scif = filtered_scif[filtered_scif[TEMPLATE_GROUP].isin(template_group)]
 
-                if template_name and template_name is not pd.np.nan:
+                if template_name is not pd.np.nan:
                     filtered_scif = filtered_scif[filtered_scif[TEMPLATE_NAME].isin(template_name)]
+
+                if filtered_scif.empty:
+                    result_dict = {'kpi_name': kpi_name, 'kpi_fk': kpi_fk, 'result': pd.np.nan}
+                    return result_dict
 
                 # Step 8: Filter the filtered scif with the denominator param and denominator value
                 if pd.notna(denominator_param1):
                     denominator_scif = filtered_scif[filtered_scif[denominator_param1].isin([denominator_value1])]
+
+                    if denominator_scif.empty:
+
+                        result_dict = {'kpi_name': kpi_name, 'kpi_fk': kpi_fk, 'result': pd.np.nan}
+                        return result_dict
+
                     denominator_id = \
                         self.all_products[self.all_products[denominator_param1].isin([denominator_value1])][
                             denominator_entity].mode()[0]
@@ -618,8 +628,8 @@ class ToolBox(GlobalSessionToolBox):
                 if pd.notna(numerator_param1):
                     # Sometimes the filter below overfilters, and the df is empty
                     if (denominator_scif[denominator_scif[numerator_param1].isin([numerator_value1])]).empty:
-                        numerator_id = self.scif[numerator_entity].mode()[0]
-                        numerator_result = 0
+                        result_dict = {'kpi_name': kpi_name, 'kpi_fk': kpi_fk, 'result': pd.np.nan}
+                        return result_dict
                     else:
                         numerator_scif = denominator_scif[denominator_scif[numerator_param1].isin([numerator_value1])]
                         numerator_id = \
@@ -644,19 +654,10 @@ class ToolBox(GlobalSessionToolBox):
                 return result_dict
 
             else:
-                numerator_id = 0
-                numerator_result = pd.np.nan
-                denominator_id = 0
-                denominator_result = pd.np.nan
-                result = pd.np.nan
 
-                result_dict = {'kpi_name': kpi_name, 'kpi_fk': kpi_fk, 'numerator_id': numerator_id,
-                               'numerator_result': numerator_result,
-                               'denominator_id': denominator_id, 'denominator_result': denominator_result,
-                               'result': result}
 
+                result_dict = {'kpi_name': kpi_name, 'kpi_fk': kpi_fk, 'result': pd.np.nan}
                 return result_dict
-
         else:
             # Step 3: Declare the relevant scif column for the SOS KPI
             relevant_scif_columns = [PK, SESSION_ID, TEMPLATE_GROUP, TEMPLATE_NAME, PRODUCT_TYPE, FACINGS,
@@ -689,6 +690,9 @@ class ToolBox(GlobalSessionToolBox):
             # Step 8: Filter the filtered scif with the denominator param and denominator value
             if pd.notna(denominator_param1):
                 denominator_scif = filtered_scif[filtered_scif[denominator_param1].isin([denominator_value1])]
+                if denominator_scif.empty:
+                    result_dict = {'kpi_name': kpi_name, 'kpi_fk': kpi_fk, 'result': pd.np.nan}
+                    return result_dict
                 denominator_id = \
                     self.all_products[self.all_products[denominator_param1].isin([denominator_value1])][
                         denominator_entity].mode()[0]
@@ -706,10 +710,14 @@ class ToolBox(GlobalSessionToolBox):
             if pd.notna(numerator_param1):
                 # Sometimes the filter below overfilters, and the df is empty
                 if (denominator_scif[denominator_scif[numerator_param1].isin([numerator_value1])]).empty:
-                    numerator_id = self.scif[numerator_entity].mode()[0]
-                    numerator_result = 0
+                    if denominator_scif.empty:
+                        result_dict = {'kpi_name': kpi_name, 'kpi_fk': kpi_fk, 'result': pd.np.nan}
+                        return result_dict
                 else:
                     numerator_scif = denominator_scif[denominator_scif[numerator_param1].isin([numerator_value1])]
+                    if numerator_scif.empty:
+                        result_dict = {'kpi_name': kpi_name, 'kpi_fk': kpi_fk, 'result': pd.np.nan}
+                        return result_dict
                     numerator_id = \
                         self.all_products[self.all_products[numerator_param1].isin([numerator_value1])][
                             numerator_entity].mode()[
@@ -859,30 +867,22 @@ class ToolBox(GlobalSessionToolBox):
         kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_name)
         template_group = self.sanitize_values(row[TASK_TEMPLATE_GROUP])
         numerator_value1 = row[NUMERATOR_VALUE_1]
-        denominator_value1 = row[DENOMINATOR_VALUE_1]
         numerator_entity = row[NUMERATOR_ENTITY]
         denominator_entity = row[DENOMINATOR_ENTITY]
 
         # Step 2: Import values that unique to the sheet SOS
-        ignore_stacking = row[IGNORE_STACKING]
         numerator_param1 = row[NUMERATOR_PARAM_1]
         denominator_param1 = row[DENOMINATOR_PARAM_1]
 
         # Step 3: Filter the self.scif by the columns required
-        column_filter_for_scif = [PK, SESSION_ID, TEMPLATE_GROUP, FACINGS, FACINGS_IGN_STACK] + \
+        column_filter_for_scif = [PK, SESSION_ID, TEMPLATE_GROUP, FACINGS_IGN_STACK] + \
                                  [numerator_entity, denominator_entity] + \
                                  self.delete_filter_nan([numerator_param1, denominator_param1])
 
         # Step 4: Apply the filters to scif
         filtered_scif = self.scif[column_filter_for_scif]
 
-        # Step 5: Determing where to use the facings or facings ignore stack column
-        if pd.isna(ignore_stacking):
-            filtered_scif = filtered_scif.drop(columns=[FACINGS_IGN_STACK])
-            filtered_scif = filtered_scif.rename(columns={FACINGS: FINAL_FACINGS})
-        elif ignore_stacking == 'Y':
-            filtered_scif = filtered_scif.drop(columns=[FACINGS])
-            filtered_scif = filtered_scif.rename(columns={FACINGS_IGN_STACK: FINAL_FACINGS})
+        filtered_scif = filtered_scif.rename(columns={FACINGS_IGN_STACK: FINAL_FACINGS})
 
         # Step 6: Filtering the relevant columns with the relevant rows
         relevant_scif = filtered_scif[filtered_scif[TEMPLATE_GROUP].isin(template_group)]
@@ -898,7 +898,8 @@ class ToolBox(GlobalSessionToolBox):
 
         # Step 8: Filter through the numerator param column with numerator value and calculate the numerator result
         if denominator_scif[denominator_scif[numerator_param1].isin([numerator_value1])].empty:
-            numerator_result = 0
+            result_dict = {'kpi_name': kpi_name, 'kpi_fk': kpi_fk, 'result': pd.np.nan}
+            return result_dict
         else:
             numerator_scif = denominator_scif[denominator_scif[numerator_param1].isin([numerator_value1])]
             numerator_result = numerator_scif[FINAL_FACINGS].sum()
