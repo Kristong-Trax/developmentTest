@@ -76,6 +76,7 @@ class ToolBox:
         self.blockchain = {}
         self.template = {}
         self.competitive_brands = None
+        self.adj_brands = None
         self.overview = None
         self.dependencies = {}
         self.dependency_lookup = {}
@@ -91,7 +92,7 @@ class ToolBox:
 
 
     # main functions:
-    def main_calculation(self, template_path, comp_path):
+    def main_calculation(self, template_path, comp_path, adj_path):
         """
             This function gets all the scene results from the SceneKPI, after that calculates every session's KPI,
             and in the end it calls "filter results" to choose every KPI and scene and write the results in DB.
@@ -99,7 +100,8 @@ class ToolBox:
         if self.global_fail:
             return
         self.template = pd.read_excel(template_path, sheetname=None)
-        self.parse_comp_brands(comp_path)
+        self.competitive_brands = self.parse_comp_brands(self.competitive_brands, comp_path)
+        self.adj_brands = self.parse_comp_brands(self.adj_brands, adj_path)
         # self.dependencies = {key: None for key in self.template[Const.KPIS][Const.KPI_NAME]}
         # self.dependency_reorder()
         main_template = self.template[Const.KPIS]
@@ -508,7 +510,7 @@ class ToolBox:
         num_scif = self.filter_df(relevant_scif, filters)
         if num_scif.empty:
             return
-        opposition = self.dictify_competitive_brands('Disruptors')
+        opposition = self.dictify_competitive_brands('Adjacencies', self.adj_brands)
 
         brands = [brand for brand in num_scif['brand_name'].unique() if brand in opposition.keys()]
         brand_dict = num_scif.set_index('brand_name')['brand_fk'].to_dict()
@@ -1079,8 +1081,10 @@ class ToolBox:
 
         return ratio, num, den
 
-    def parse_comp_brands(self, path):
+    def parse_comp_brands(self, out_df, path):
         df = pd.read_excel(path, sheetname=None, header=1)
+        df['Granular Groups']['Comparable Brand'] = df['Granular Groups']['Comparable Brand'].apply(lambda x:
+                                                                                                    self.splitter(x))
         group = df['Granular Groups link to stores']
         states = set(self.states['name'].unique())
 
@@ -1115,13 +1119,13 @@ class ToolBox:
         if not ggn_match:
             Log.warning('No Comparable Assortment found, Comparable KPIs skipped.')
             return
-        self.competitive_brands = self.filter_df(df['Granular Groups'], {'Granular Group Name': ggn_match})
+        return self.filter_df(df['Granular Groups'], {'Granular Group Name': ggn_match})
 
-    def dictify_competitive_brands(self, comp_type):
-        opposition = self.competitive_brands[(self.competitive_brands['Start Date'] <= datetime.now()) &
-                                             (self.competitive_brands['End Date'] >= datetime.now()) &
-                                             (self.competitive_brands['Comparable Type'] == comp_type)]
-        return opposition.set_index('Comparable Brand')['Target Brand'].to_dict()
+    def dictify_competitive_brands(self, comp_type, assort):
+        opposition = assort[(assort['Start Date'] <= datetime.now()) &
+                            (assort['End Date'] >= datetime.now()) &
+                            (assort['Comparable Type'] == comp_type)]
+        return opposition.set_index('Target Brand')['Comparable Brand'].to_dict()
 
 
 
