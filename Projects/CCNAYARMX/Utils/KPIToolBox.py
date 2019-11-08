@@ -576,6 +576,7 @@ class ToolBox(GlobalSessionToolBox):
         # Step 2: Import the values that are unique to the sheet SOS
         product_type = self.sanitize_values(row[PRODUCT_TYPE])
         store_additional_attribute_2 = self.sanitize_values(row[STORE_ADDITIONAL_ATTRIBUTE_2])
+        target = str(row['target'])
         numerator_param1 = row[NUMERATOR_PARAM_1]
         denominator_param1 = row[DENOMINATOR_PARAM_1]
         ignore_stacking = row[IGNORE_STACKING]
@@ -655,11 +656,13 @@ class ToolBox(GlobalSessionToolBox):
 
                 # Step 10: Calculate the final result
                 result = (numerator_result / denominator_result)
+                score = self.calculate_score_for_sos(target, result)
 
                 result_dict = {'kpi_name': kpi_name, 'kpi_fk': kpi_fk, 'numerator_id': numerator_id,
                                'numerator_result': numerator_result,
                                'denominator_id': denominator_id, 'denominator_result': denominator_result,
-                               'result': result}
+                               'result': result, 'score': score}
+
 
                 return result_dict
 
@@ -742,10 +745,12 @@ class ToolBox(GlobalSessionToolBox):
             # Step 10: Calculate the final result
             result = (numerator_result / denominator_result)
 
+            score = self.calculate_score_for_sos(target, result)
+
             result_dict = {'kpi_name': kpi_name, 'kpi_fk': kpi_fk, 'numerator_id': numerator_id,
                            'numerator_result': numerator_result,
                            'denominator_id': denominator_id, 'denominator_result': denominator_result,
-                           'result': result}
+                           'result': result, 'score': score}
 
             return result_dict
 
@@ -1260,3 +1265,19 @@ class ToolBox(GlobalSessionToolBox):
 
         scene_survey_response = pd.read_sql_query(query, self.ps_data_provider.rds_conn.db)
         return scene_survey_response
+
+    @staticmethod
+    def calculate_score_for_sos(target, result):
+        if len(target) > 3:
+            min_target, max_target = target.split('-')
+            if result * 100 >= int(min_target) and result * 100 <= int(max_target):
+                score = 1
+            else:
+                score = 0
+        else:
+            if result * 100 >= int(target):
+                score = 1
+            else:
+                score = 0
+
+        return score
