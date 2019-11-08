@@ -623,7 +623,6 @@ class ToolBox(GlobalSessionToolBox):
                     denominator_scif = filtered_scif[filtered_scif[denominator_param1].isin([denominator_value1])]
 
                     if denominator_scif.empty:
-
                         result_dict = {'kpi_name': kpi_name, 'kpi_fk': kpi_fk, 'result': pd.np.nan}
                         return result_dict
 
@@ -665,11 +664,9 @@ class ToolBox(GlobalSessionToolBox):
                                'denominator_id': denominator_id, 'denominator_result': denominator_result,
                                'result': result, 'score': score}
 
-
                 return result_dict
 
             else:
-
 
                 result_dict = {'kpi_name': kpi_name, 'kpi_fk': kpi_fk, 'result': pd.np.nan}
                 return result_dict
@@ -816,7 +813,8 @@ class ToolBox(GlobalSessionToolBox):
                     # Step 3: Establish the variable for the network_x_block_together
                     if pd.notna(tamano_del_producto):
                         relevant_filters = {MANUFACTURER_NAME: manufacturer_name, SUB_CATEGORY: sub_category,
-                                            TAMANDO_DEL_PRODUCTO: [tamano_del_producto], BAY_NUMBER: [j], PRODUCT_NAME: relevant_product_names}
+                                            TAMANDO_DEL_PRODUCTO: [tamano_del_producto], BAY_NUMBER: [j],
+                                            PRODUCT_NAME: relevant_product_names}
                     else:
                         relevant_filters = {MANUFACTURER_NAME: manufacturer_name, SUB_CATEGORY: sub_category,
                                             BAY_NUMBER: [j]}
@@ -1016,7 +1014,8 @@ class ToolBox(GlobalSessionToolBox):
         denominator_id = relevant_scif[TEMPLATE_FK].mode()[0]
 
         result_dict = {'kpi_name': kpi_name, 'kpi_fk': kpi_fk, 'numerator_id': numerator_id,
-                       'numerator_result': facings,'denominator_id': denominator_id, 'denominator_result': facings_target,
+                       'numerator_result': facings, 'denominator_id': denominator_id,
+                       'denominator_result': facings_target,
                        'result': result}
 
         return result_dict
