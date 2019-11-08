@@ -361,9 +361,10 @@ class ToolBox(GlobalSessionToolBox):
     def calculate_combo(self, row):
         component_kpis = self.sanitize_values(row['Prerequisite'])
         relevant_results = self.results_df[self.results_df['kpi_name'].isin(component_kpis)]
-        passing_results = relevant_results[relevant_results['result'] != 0]
+        passing_results = relevant_results[(relevant_results['result'] != 0) &
+                                           (relevant_results['result'].notna())]
         nan_results = relevant_results[relevant_results['result'].isna()]
-        if len(nan_results) == len(passing_results):
+        if len(passing_results) == 0 and not nan_results.empty:
             result = pd.np.nan
         elif len(relevant_results) > 0 and len(relevant_results) == len(passing_results):
             result = 1
