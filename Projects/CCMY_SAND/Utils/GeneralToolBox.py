@@ -786,7 +786,7 @@ class CCMY_SANDGENERALToolBox:
         :param df: The data frame to be filters.
         :param filters: These are the parameters which the data frame is filtered by.
                        Every parameter would be a tuple of the value and an include/exclude flag.
-                       INPUT EXAMPLE (1):   manufacturer_name = ('Diageo', DIAGEOAUCCMY_SANDGENERALToolBox.INCLUDE_FILTER)
+                       INPUT EXAMPLE (1):   manufacturer_name = ('Diageo', DIAGEOAUCCMYGENERALToolBox.INCLUDE_FILTER)
                        INPUT EXAMPLE (2):   manufacturer_name = 'Diageo'
         :return: a filtered Scene Item Facts data frame.
         """
