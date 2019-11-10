@@ -380,6 +380,7 @@ class GSKSGToolBox:
         """
         sequence_kpi_fk, sequence_sku_kpi_fk = self._get_sequence_kpi_fks()
         sequence_targets = self._filter_targets_by_kpi(self.targets, sequence_kpi_fk)
+        sequence_targets = sequence_targets.loc[sequence_targets.category_fk == cat_fk]
         passed_sequences_score, total_weight, total_passed_counter = 0, 0, 0
         for i, sequence in sequence_targets.iterrows():
             population, location, sequence_attributes = self._prepare_data_for_sequence_calculation(sequence)
