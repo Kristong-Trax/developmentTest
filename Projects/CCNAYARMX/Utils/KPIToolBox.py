@@ -355,7 +355,7 @@ class ToolBox(GlobalSessionToolBox):
                 result_dict['score'] = 0
                 if 'result' not in result_dict.keys():
                     result_dict['result'] = result_dict['score']
-        if dependency_kpis and pd.notna(dependency_kpis):
+        if dependency_kpis and dependency_kpis is not pd.np.nan:
             dependency_results = self.results_df[self.results_df['kpi_name'].isin(dependency_kpis)]
             passing_dependency_results = dependency_results[dependency_results['result'] != 0]
             if len(dependency_results) > 0 and len(dependency_results) == len(passing_dependency_results):
