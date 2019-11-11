@@ -106,7 +106,7 @@ SHEETS = [SOS, BLOCK_TOGETHER, SHARE_OF_EMPTY, BAY_COUNT, PER_BAY_SOS, SURVEY, A
           COMBO, SCORING, PLATFORMAS, PLATFORMAS_SCORING, KPIS]
 POS_OPTIONS_SHEETS = [POS_OPTIONS, TARGETS_AND_CONSTRAINTS]
 
-TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'CCNayarTemplatev0.8.4.xlsx')
+TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'CCNayarTemplatev0.8.5.xlsx')
 POS_OPTIONS_TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data',
                                          'CCNayar_POS_Options_v4.xlsx')
 
@@ -511,7 +511,6 @@ class ToolBox(GlobalSessionToolBox):
     def calculate_assortment(self, row):
         kpi_name = row[KPI_NAME]
         kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_name)
-        kpi_fk_level2 = row[KPI_FK_LEVEL2]
         template_group = self.sanitize_values(row[TASK_TEMPLATE_GROUP])
         numerator_entity = row[NUMERATOR_ENTITY]
         denominator_entity = row[DENOMINATOR_ENTITY]
@@ -525,7 +524,7 @@ class ToolBox(GlobalSessionToolBox):
         lvl3_result = self.assortment.calculate_lvl3_assortment()
         if not lvl3_result.empty:
             result_dict_list = []
-            kpi_id = kpi_fk_level2 + 1
+            kpi_id = kpi_fk + 1
             relevant_df = lvl3_result[lvl3_result['kpi_fk_lvl3'].isin([kpi_id])]
             for row in relevant_df.itertuples():
                 numerator_id = row.product_fk
@@ -537,10 +536,13 @@ class ToolBox(GlobalSessionToolBox):
                                'result': result}
                 result_dict_list.append(result_dict)
 
-            numerator_id = lvl3_result[lvl3_result[KPI_FK_LEVEL2].isin([kpi_fk_level2])][numerator_entity].mode()[0]
+            numerator_id = lvl3_result[lvl3_result[KPI_FK_LEVEL2].isin([kpi_fk])][numerator_entity].mode()[0]
             lvl2_result = self.assortment.calculate_lvl2_assortment(lvl3_result)
-            lvl2_kpi_result = lvl2_result[lvl2_result[KPI_FK_LEVEL2].isin([kpi_fk_level2])]
-            denominator_id = self.scif['sub_category_fk'].mode()[0]
+            lvl2_kpi_result = lvl2_result[lvl2_result[KPI_FK_LEVEL2].isin([kpi_fk])]
+            if self.scif.empty:
+                denominator_id = 0
+            else:
+                denominator_id = self.scif['sub_category_fk'].mode()[0]
             result = float(lvl2_kpi_result['passes'] / lvl2_kpi_result['total'])
 
         else:
@@ -783,6 +785,15 @@ class ToolBox(GlobalSessionToolBox):
         relevant_scif = self.scif[relevant_scif_columns]
 
         product_in_scene = self.match_product_in_scene[[PRODUCT_FK, BAY_NUMBER, SCENE_FK]]
+        if relevant_scif.empty:
+            result = pd.np.nan
+            denominator_id = 0
+            numerator_id = 0
+
+            # Step 10. Save the results in the database
+            result_dict = {'kpi_name': kpi_name, 'kpi_fk': kpi_fk, 'numerator_id': numerator_id,
+                           'denominator_id': denominator_id, 'result': result}
+            return result_dict
 
         bay_count_scif = relevant_scif.merge(product_in_scene, on=[PRODUCT_FK, SCENE_FK], how='right')
         bay_count_scif = bay_count_scif.dropna()
@@ -886,6 +897,7 @@ class ToolBox(GlobalSessionToolBox):
         kpi_name = row[KPI_NAME]
         kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_name)
         template_group = self.sanitize_values(row[TASK_TEMPLATE_GROUP])
+        target = row['target']
         numerator_value1 = row[NUMERATOR_VALUE_1]
         numerator_entity = row[NUMERATOR_ENTITY]
         denominator_entity = row[DENOMINATOR_ENTITY]
@@ -929,15 +941,14 @@ class ToolBox(GlobalSessionToolBox):
 
         # Step 10: Calculate the result
         result = (numerator_result / denominator_result)
-        if result <= .25:
-            actual_result = 1
-        else:
-            actual_result = 0
+
+
+        score = self.calculate_score_for_sos(target, result)
 
         result_dict = {'kpi_name': kpi_name, 'kpi_fk': kpi_fk, 'numerator_id': numerator_id,
                        'numerator_result': numerator_result,
                        'denominator_id': denominator_id, 'denominator_result': denominator_result,
-                       'result': actual_result}
+                       'result': result}
 
         return result_dict
 
@@ -975,6 +986,16 @@ class ToolBox(GlobalSessionToolBox):
         relevant_scif = relevant_scif[relevant_scif[PRODUCT_TYPE].isin(product_type)]
 
         relevant_scif = relevant_scif[relevant_scif.product_name != 'Soda Other']
+
+        if relevant_scif.empty:
+            result = pd.np.nan
+            denominator_id = 0
+            numerator_id = 0
+
+            # Step 10. Save the results in the database
+            result_dict = {'kpi_name': kpi_name, 'kpi_fk': kpi_fk, 'numerator_id': numerator_id,
+                           'denominator_id': denominator_id, 'result': result}
+            return result_dict
 
         # Step 8: Calculate the bay count
         product_in_scene = self.match_product_in_scene[['product_fk', 'bay_number', 'scene_fk']]
@@ -1062,8 +1083,8 @@ class ToolBox(GlobalSessionToolBox):
         relevant_scif = relevant_scif[relevant_scif.product_name != 'Soda Other']
         if relevant_scif.empty:
             result = pd.np.nan
-            denominator_id = self.scif[denominator_entity].mode()[0]
-            numerator_id = self.scif[numerator_entity].mode()[0]
+            denominator_id = 0
+            numerator_id = 0
 
             result_dict = {'kpi_name': kpi_name, 'kpi_fk': kpi_fk, 'numerator_id': numerator_id,
                            'denominator_id': denominator_id, 'result': result}
@@ -1088,7 +1109,7 @@ class ToolBox(GlobalSessionToolBox):
         group_by_bay_number_scif = bay_count_scif.groupby('bay_number').nunique()[MANUFACTURER_NAME]
 
         bay_count = 0
-        for bay in range(1, len(group_by_bay_number_scif) + 1):
+        for bay in list(group_by_bay_number_scif.index):
             if group_by_bay_number_scif[bay] == 1:
                 if 'TCCC' in set(bay_count_scif[bay_count_scif[BAY_NUMBER].isin([bay])][MANUFACTURER_NAME]):
                     bay_count = bay_count + 1
@@ -1176,8 +1197,12 @@ class ToolBox(GlobalSessionToolBox):
             else:
                 result = 0
 
-        denominator_id = self.scif[denominator_entity].mode()[0]
-        numerator_id = self.scif[numerator_entity].mode()[0]
+        if self.scif.empty:
+            denominator_id = 0
+            numerator_id = 0
+        else:
+            denominator_id = self.scif[denominator_entity].mode()[0]
+            numerator_id = self.scif[numerator_entity].mode()[0]
 
         result_dict = {'kpi_name': kpi_name, 'kpi_fk': kpi_fk, 'numerator_id': numerator_id,
                        'denominator_id': denominator_id,
@@ -1285,7 +1310,7 @@ class ToolBox(GlobalSessionToolBox):
         return scene_survey_response
 
     @staticmethod
-    def calculate_score_for_sos(target, result):
+    def  calculate_score_for_sos(target, result):
         if len(target) > 3:
             min_target, max_target = target.split('-')
             if result * 100 >= int(min_target) and result * 100 <= int(max_target):
