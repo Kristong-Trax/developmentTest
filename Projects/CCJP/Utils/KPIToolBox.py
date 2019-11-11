@@ -30,6 +30,7 @@ class ToolBox(GlobalSessionToolBox):
     def __init__(self, data_provider, output, set_up_file):
         GlobalSessionToolBox.__init__(self, data_provider, output)
         self.output = output
+        self.new_kpi_date = '2019-11-05'
         self.data_provider = data_provider
         self.project_name = self.data_provider.project_name
         self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
@@ -38,6 +39,7 @@ class ToolBox(GlobalSessionToolBox):
         self.all_products = self.data_provider[Data.ALL_PRODUCTS]
         self.match_product_in_scene = self.data_provider[Data.MATCHES]
         self.visit_date = self.data_provider[Data.VISIT_DATE]
+        print("Visit Date Type:{}".format(type(self.visit_date)))
         self.session_info = self.data_provider[Data.SESSION_INFO]
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
         self.scene_info = self.data_provider[Data.SCENES_INFO]
@@ -101,7 +103,11 @@ class ToolBox(GlobalSessionToolBox):
         point_of_store_dict = []
         for row_num, row_data in kpi_names.iterrows():
             kpi_name = row_data[Consts.KPI_TYPE_COLUMN]
-            if kpi_name == "CCJP_POC_COUNT_BY_STORE_AREA":
+            if kpi_name == "CCJP_POC_COUNT_BY_STORE_AREA" and self.visit_date < datetime.strptime(self.new_kpi_date, '%Y-%m-%d').date():
+                point_of_store_dict = self.point_of_connection()
+                if point_of_store_dict is None:
+                    point_of_store_dict = []
+            if kpi_name == "CCJP_POC_COUNT_BY_TASK" and self.visit_date >= datetime.strptime(self.new_kpi_date, '%Y-%m-%d').date():
                 point_of_store_dict = self.point_of_connection()
                 if point_of_store_dict is None:
                     point_of_store_dict = []
@@ -425,61 +431,96 @@ class ToolBox(GlobalSessionToolBox):
         except Exception as e:
             Log.error('{}'.format(e))
 
-    @staticmethod
-    def get_store_area_query():
-        return """
-        SELECT
-        template_fk,
-        temp.name template_name,
-        store_task_area_group_item_fk store_area_group_item_fk,
-        sttagi.name store_area_group_item_name,
-        count(1) store_area_item_count
-        FROM 
-        probedata.scene sce, 
-        probedata.scene_store_task_area_group_items scetagi,
-        static.template temp,
-        static.store_task_area_group_items sttagi 
-        WHERE 1=1 
-        AND sce.status = 6
-        AND sce.delete_time is null
-        AND sce.session_uid ='{}'
-        AND sce.pk = scetagi.scene_fk
-        AND sce.template_fk = temp.pk 
-        AND scetagi.store_task_area_group_item_fk = sttagi.pk
-        AND temp.name in ({})
-        GROUP BY 
-        template_fk,
-        temp.name,
-        store_task_area_group_item_fk,
-        sttagi.name"""
+    def get_store_area_query(self):
+        if self.visit_date < datetime.strptime(self.new_kpi_date, '%Y-%m-%d').date():
+            return """
+            SELECT
+            template_fk,
+            temp.name template_name,
+            store_task_area_group_item_fk store_area_group_item_fk,
+            sttagi.name store_area_group_item_name,
+            count(1) store_area_item_count
+            FROM 
+            probedata.scene sce, 
+            probedata.scene_store_task_area_group_items scetagi,
+            static.template temp,
+            static.store_task_area_group_items sttagi 
+            WHERE 1=1 
+            AND sce.status = 6
+            AND sce.delete_time is null
+            AND sce.session_uid ='{}'
+            AND sce.pk = scetagi.scene_fk
+            AND sce.template_fk = temp.pk 
+            AND scetagi.store_task_area_group_item_fk = sttagi.pk
+            AND temp.name in ({})
+            GROUP BY 
+            template_fk,
+            temp.name,
+            store_task_area_group_item_fk,
+            sttagi.name"""
+        else:
+            return """SELECT
+                      template_fk ,
+                      additional_attribute_1 template_name,
+                      template_fk as store_area_group_item_fk,
+                      temp.name store_area_group_item_name,
+                      count(1) store_area_item_count
+                      FROM
+                      probedata.scene sce,
+                      static.template temp
+                      WHERE 1=1
+                      AND sce.status = 6
+                      AND sce.delete_time is null
+                      AND sce.session_uid ='{}'
+                      AND sce.template_fk = temp.pk
+                      AND temp.additional_attribute_1 in ({})
+                      GROUP BY
+                      template_fk,
+                      temp.name"""
 
     def get_store_area_data(self, scene_types):
         query = self.get_store_area_query().format(self.session_uid, scene_types)
         store_area_data = pd.read_sql_query(query, self.rds_conn.db)
         return store_area_data
 
-    @staticmethod
-    def get_store_area_score_query():
-        return """
-           SELECT
-           (select pk from static.template where name in ({2})) template_fk,
-           count(distinct(sttagi.name))  count,
-           {0} target,
-           count(distinct(sttagi.name)) / {0} result
-           FROM 
-           probedata.scene sce, 
-           probedata.scene_store_task_area_group_items scetagi,
-           static.template temp,
-           static.store_task_area_group_items sttagi 
-           WHERE 1=1 
-           AND sce.status = 6
-           AND sce.delete_time is null
-           AND sce.session_uid ='{1}'
-           AND sce.pk = scetagi.scene_fk
-           AND sce.template_fk = temp.pk 
-           AND scetagi.store_task_area_group_item_fk = sttagi.pk
-           AND temp.name in ({2})
-           AND sttagi.name in ({3})"""
+    def get_store_area_score_query(self):
+        if self.visit_date < datetime.strptime(self.new_kpi_date, '%Y-%m-%d').date():
+            return """
+               SELECT
+               (select pk from static.template where name in ({2})) template_fk,
+               count(distinct(sttagi.name))  count,
+               {0} target,
+               count(distinct(sttagi.name)) / {0} result
+               FROM 
+               probedata.scene sce, 
+               probedata.scene_store_task_area_group_items scetagi,
+               static.template temp,
+               static.store_task_area_group_items sttagi 
+               WHERE 1=1 
+               AND sce.status = 6
+               AND sce.delete_time is null
+               AND sce.session_uid ='{1}'
+               AND sce.pk = scetagi.scene_fk
+               AND sce.template_fk = temp.pk 
+               AND scetagi.store_task_area_group_item_fk = sttagi.pk
+               AND temp.name in ({2})
+               AND sttagi.name in ({3})"""
+        else:
+            return """SELECT
+                        (select pk from static.template where additional_attribute_1 in ({2}) limit 1) template_fk,
+                        count(distinct(temp.name))  count,
+                        {0} target,
+                        count(distinct(temp.name)) / {0} result
+                        FROM 
+                        probedata.scene sce, 
+                        static.template temp
+                        WHERE 1=1 
+                        AND sce.status = 6
+                        AND sce.delete_time is null
+                        AND sce.session_uid ='{1}'
+                        AND sce.template_fk = temp.pk 
+                        AND temp.additional_attribute_1 in ({2})
+                        AND temp.name in ({3})"""
 
     def get_store_area_score_data(self, scene_types, store_location, target):
         query = self.get_store_area_score_query().format(target, self.session_uid, scene_types, store_location)
@@ -1026,8 +1067,12 @@ class ToolBox(GlobalSessionToolBox):
 
     def point_of_connection_calc(self, scene_types_count, scene_types_score, store_locations, target):
         dict_list = []
-        kpi_poc_count_fk = self.common.get_kpi_fk_by_kpi_type('CCJP_POC_COUNT_BY_STORE_AREA')
-        store_area_data = self.get_store_area_data(scene_types_count)
+        if self.visit_date < datetime.strptime(self.new_kpi_date, '%Y-%m-%d').date():
+            kpi_poc_count_fk = self.common.get_kpi_fk_by_kpi_type('CCJP_POC_COUNT_BY_STORE_AREA')
+            store_area_data = self.get_store_area_data(scene_types_count)
+        else:
+            kpi_poc_count_fk = self.common.get_kpi_fk_by_kpi_type('CCJP_POC_COUNT_BY_TASK')
+            store_area_data = self.get_store_area_data(scene_types_count)
 
         kpi_poc_score_fk = self.common.get_kpi_fk_by_kpi_type('CCJP_POC_SCORE_BY_TARGET')
         store_area_score_data = self.get_store_area_score_data(scene_types_score, store_locations, target)
