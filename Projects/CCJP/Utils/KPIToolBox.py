@@ -39,7 +39,6 @@ class ToolBox(GlobalSessionToolBox):
         self.all_products = self.data_provider[Data.ALL_PRODUCTS]
         self.match_product_in_scene = self.data_provider[Data.MATCHES]
         self.visit_date = self.data_provider[Data.VISIT_DATE]
-        print("Visit Date Type:{}".format(type(self.visit_date)))
         self.session_info = self.data_provider[Data.SESSION_INFO]
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
         self.scene_info = self.data_provider[Data.SCENES_INFO]
@@ -487,7 +486,7 @@ class ToolBox(GlobalSessionToolBox):
         if self.visit_date < datetime.strptime(self.new_kpi_date, '%Y-%m-%d').date():
             return """
                SELECT
-               (select pk from static.template where name in ({2})) template_fk,
+               (select pk from static.template where name in ({2}) limit 1) template_fk,
                count(distinct(sttagi.name))  count,
                {0} target,
                count(distinct(sttagi.name)) / {0} result
