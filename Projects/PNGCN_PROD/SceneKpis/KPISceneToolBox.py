@@ -188,7 +188,7 @@ class PngcnSceneKpis(object):
             filter_row_dict = {'population': {'include': [row_dict], 'include_operator': 'and'}}
             sub_brands = set(self.parser.filter_df(filter_row_dict, self.scif)['sub_brand_name'])
             if len(sub_brands) == 0:
-                return
+                continue
             legal_sub_brands = [x for x in sub_brands if x is not None]
             for sub_brand in legal_sub_brands:
                 sub_brand_dict = row_dict.copy()
@@ -392,8 +392,6 @@ class PngcnSceneKpis(object):
         full_df = pd.merge(df, self.all_products, on="product_fk")
         max_shelf_count = self.matches_from_data_provider["shelf_number"].max()
         self.calculate_facing_eye_level(full_df, max_shelf_count)
-
-
         self.calculate_sequence_eye_level(entity_df, full_df, scene_category)
 
     def _get_cateory_specific_entities(self, scene_category):
@@ -468,7 +466,7 @@ class PngcnSceneKpis(object):
         Saving sequence of brand-sub_category blocks (not including stackings)
         :param entity_df: the sub_-category-brand custom_entety fields, to save the correct entity
         :param full_df: The df to work on
-        :param category_specific_filter: the specific category filter
+        :param scene_category: scene category to get the specific category filter
         :return: saves the sequence of each shelf (combine all bays)
         """
         kpi_sequence_fk = self.common.get_kpi_fk_by_kpi_name(Eye_level_kpi_SEQUENCE)
@@ -476,7 +474,8 @@ class PngcnSceneKpis(object):
             columns=['fk', 'numerator_id', 'denominator_id', 'numerator_result', 'result',
                      'score', 'by_scene', 'temp_bay_number'])
         full_df = full_df[full_df['stacking_layer'] == 1]
-        category_specific_filter = self.get_category_specific_filters(scene_category, full_df)
+
+        category_specific_filter = self._get_category_specific_filters(scene_category, full_df)
         for key in category_specific_filter.keys():
             frag_df = self.parser.filter_df(category_specific_filter[key], full_df)
             if frag_df.empty:
@@ -491,7 +490,8 @@ class PngcnSceneKpis(object):
             frag_df = seq_df.groupby(by=['group']).first()
             for i, row in frag_df.iterrows():
                 facing_sequence_number = row['facing_sequence_number']
-                entity_fk = entity_df[entity_df['entity_name'] == key]['entity_fk'].values[0]
+                entity_fk = entity_df[entity_df['entity_name'].str.encode("utf8")
+                                      == key.encode("utf8")]['entity_fk'].values[0]
                 bay_number = row['bay_number']
                 shelf_number = row['shelf_number']
                 category_fk = row['category_fk']

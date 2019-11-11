@@ -478,7 +478,7 @@ class TestPngcn(TestUnitCase):
                  {'scene_fk': 16588190, 'manufacturer_name': 'P&G\xe5\xae\x9d\xe6\xb4\x81', 'brand_name': 'hola',
                   'category': 'Personal Cleaning Care', 'product_fk': 173, 'stacking_layer': 1, 'category_fk': 101,
                   'bay_number': 2, 'shelf_number': 2, 'facing_sequence_number': 2, 'sub_category': 'HOLA'}])
-        scene_tool_box.get_category_specific_filters = MagicMock(return_value=pd.DataFrame(scene_tool_box.PCC_FILTERS))
+        scene_tool_box._get_category_specific_filters = MagicMock(return_value=pd.DataFrame(scene_tool_box.PCC_FILTERS))
         scene_tool_box.get_filterd_matches = MagicMock(return_value=pd.DataFrame(data))
         scene_tool_box.common.write_to_db_result = MagicMock()
         scene_tool_box.calculate_sequence_eye_level(entity_df, data, 'Personal Cleaning Care')
