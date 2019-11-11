@@ -1054,6 +1054,14 @@ class ToolBox(GlobalSessionToolBox):
 
         # Step 8: Drop Soda Other because it was recognition issue
         relevant_scif = relevant_scif[relevant_scif.product_name != 'Soda Other']
+        if relevant_scif.empty:
+            result = pd.np.nan
+            denominator_id = self.scif[denominator_entity].mode()[0]
+            numerator_id = self.scif[numerator_entity].mode()[0]
+
+            result_dict = {'kpi_name': kpi_name, 'kpi_fk': kpi_fk, 'numerator_id': numerator_id,
+                           'denominator_id': denominator_id, 'result': result}
+            return result_dict
 
         # Step 9:
         product_in_scene = self.match_product_in_scene[['product_fk', 'bay_number', 'scene_fk']]
@@ -1213,6 +1221,8 @@ class ToolBox(GlobalSessionToolBox):
     def calculate_relevant_survey_result(self, relevant_question_fk):
         result = pd.np.nan
         survey_response_df = self.get_scene_survey_response()
+        if survey_response_df.empty:
+            return 0
         for question_fk in relevant_question_fk:
             if result == 0:
                 break
@@ -1236,6 +1246,8 @@ class ToolBox(GlobalSessionToolBox):
     def calculate_relevant_availability_survey_result(self, relevant_question_fk):
         result = 0
         survey_response_df = self.get_scene_survey_response()
+        if survey_response_df.empty:
+            return 0
         accepted_results = ['Si', 1, 2]
 
         for question_fk in relevant_question_fk:
