@@ -929,19 +929,14 @@ class ToolBox(GlobalSessionToolBox):
         denominator_id = denominator_scif[denominator_entity].mode()[0]
 
         # Step 8: Filter through the numerator param column with numerator value and calculate the numerator result
-        if denominator_scif[denominator_scif[numerator_param1].isin([numerator_value1])].empty:
-            result_dict = {'kpi_name': kpi_name, 'kpi_fk': kpi_fk, 'result': pd.np.nan}
-            return result_dict
-        else:
-            numerator_scif = denominator_scif[denominator_scif[numerator_param1].isin([numerator_value1])]
-            numerator_result = numerator_scif[FINAL_FACINGS].sum()
+        numerator_scif = denominator_scif[denominator_scif[numerator_param1].isin([numerator_value1])]
+        numerator_result = numerator_scif[FINAL_FACINGS].sum()
 
         # Step 9: Find the numerator_id
         numerator_id = self.own_manuf_fk
 
         # Step 10: Calculate the result
         result = (numerator_result / denominator_result)
-
 
         score = self.calculate_score_for_sos(target, result)
 
