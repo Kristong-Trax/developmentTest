@@ -363,7 +363,7 @@ class GSKSGToolBox:
                                                                                               category_targets,
                                                                                               identifier_result)
         results_list.extend(shelf_compliance_result)
-        sequence_kpi, sequence_weight = self._calculate_sequence(category_targets, category_fk, identifier_result)
+        sequence_kpi, sequence_weight = self._calculate_sequence(category_fk, identifier_result)
         planogram_score = shelf_compliance_score + sequence_kpi
         planogram_weight = shelf_weight + sequence_weight
         results_list.append({'fk': kpi_fk, 'numerator_id': category_fk, 'denominator_id':
@@ -374,23 +374,24 @@ class GSKSGToolBox:
                                 , 'should_enter': True})
         return planogram_score, results_list
 
-    def _calculate_sequence(self, targets, cat_fk, planogram_identifier):
+    def _calculate_sequence(self, cat_fk, planogram_identifier):
         """
         This method calculated the sequence KPIs using the external targets' data and sequence calculation algorithm.
         """
         sequence_kpi_fk, sequence_sku_kpi_fk = self._get_sequence_kpi_fks()
-        sequence_targets = self._filter_targets_by_kpi(targets, sequence_kpi_fk)
+        sequence_targets = self._filter_targets_by_kpi(self.targets, sequence_kpi_fk)
+        sequence_targets = sequence_targets.loc[sequence_targets.category_fk == cat_fk]
         passed_sequences_score, total_weight, total_passed_counter = 0, 0, 0
         for i, sequence in sequence_targets.iterrows():
             population, location, sequence_attributes = self._prepare_data_for_sequence_calculation(sequence)
             sequence_result = self.sequence.calculate_sequence(population, location, sequence_attributes)
-            score, weight = self._save_sequence_results_to_db(sequence_kpi_fk, sequence_sku_kpi_fk, sequence,
+            score, weight = self._save_sequence_results_to_db(sequence_sku_kpi_fk, sequence_kpi_fk, sequence,
                                                               sequence_result)
             passed_sequences_score += score
             total_weight += weight
             total_passed_counter += 1 if score else 0
         self._save_sequence_main_level_to_db(sequence_kpi_fk, planogram_identifier, cat_fk, total_passed_counter,
-                                             len(targets), total_weight)
+                                             len(sequence_targets), total_weight)
         return passed_sequences_score, total_weight*10
 
     @staticmethod

@@ -248,11 +248,11 @@ class PngcnSceneKpis(object):
         return filtered_block_df_all_stacking_layers
 
     def handle_node_in_variant_block(self, row_in_template, row, node, filter_results, block_filters):
-        product_matches_fks = []
+        scene_matches_fks = []
         node_data = node[1]
-        product_matches_fks += (list(node_data['members']))
+        scene_matches_fks += (list(node_data['scene_match_fk']))
         block_df = self.matches_from_data_provider[
-            self.matches_from_data_provider['scene_match_fk'].isin(product_matches_fks)]
+            self.matches_from_data_provider['scene_match_fk'].isin(scene_matches_fks)]
 
         shelves = set(block_df['shelf_number'])
 
