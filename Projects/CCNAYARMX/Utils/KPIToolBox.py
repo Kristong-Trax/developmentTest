@@ -948,7 +948,7 @@ class ToolBox(GlobalSessionToolBox):
         result_dict = {'kpi_name': kpi_name, 'kpi_fk': kpi_fk, 'numerator_id': numerator_id,
                        'numerator_result': numerator_result,
                        'denominator_id': denominator_id, 'denominator_result': denominator_result,
-                       'result': result}
+                       'result': result, 'score': score}
 
         return result_dict
 
