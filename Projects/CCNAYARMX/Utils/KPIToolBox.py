@@ -227,8 +227,11 @@ class ToolBox(GlobalSessionToolBox):
             if result_data:
                 if isinstance(result_data, dict):
                     weight = row['Score']
-                    if weight and 'score' not in result_data.keys() and result_data['result'] is not pd.np.nan:
-                        result_data['score'] = weight * result_data['result']
+                    if weight and result_data['result'] is not pd.np.nan:
+                        if row[KPI_TYPE] == SCORING and 'score' not in result_data.keys():
+                            result_data['score'] = weight * result_data['result']
+                        elif row[KPI_TYPE] != SCORING:
+                            result_data['score'] = weight * result_data['result']
                     parent_kpi_name = self._get_parent_name_from_kpi_name(result_data['kpi_name'])
                     if parent_kpi_name and 'identifier_parent' not in result_data.keys():
                         result_data['identifier_parent'] = parent_kpi_name
@@ -240,8 +243,11 @@ class ToolBox(GlobalSessionToolBox):
                 else:  # must be a list
                     for result in result_data:
                         weight = row['Score']
-                        if weight and 'score' not in result.keys() and result['result'] is not pd.np.nan:
-                            result['score'] = weight * result['result']
+                        if weight and result['result'] is not pd.np.nan:
+                            if row[KPI_TYPE] == SCORING and 'score' not in result.keys():
+                                result['score'] = weight * result['result']
+                            elif row[KPI_TYPE] != SCORING:
+                                result['score'] = weight * result['result']
                         parent_kpi_name = self._get_parent_name_from_kpi_name(result['kpi_name'])
                         if parent_kpi_name and 'identifier_parent' not in result.keys():
                             result['identifier_parent'] = parent_kpi_name
