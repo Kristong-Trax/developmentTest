@@ -991,7 +991,7 @@ class ToolBox(GlobalSessionToolBox):
         group_by_bay_number_scif = bay_count_scif.groupby('bay_number').nunique()[MANUFACTURER_NAME]
 
         bay_count = 0
-        for bay in range(1, len(group_by_bay_number_scif) + 1):
+        for bay in list(group_by_bay_number_scif.index):
             if group_by_bay_number_scif[bay] == 1:
                 if 'TCCC' in set(bay_count_scif[bay_count_scif[BAY_NUMBER].isin([bay])][MANUFACTURER_NAME]):
                     bay_count = bay_count + 1
