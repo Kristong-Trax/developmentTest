@@ -722,14 +722,10 @@ class ToolBox(GlobalSessionToolBox):
             if pd.notna(numerator_param1):
                 # Sometimes the filter below overfilters, and the df is empty
                 if (denominator_scif[denominator_scif[numerator_param1].isin([numerator_value1])]).empty:
-                    if denominator_scif.empty:
-                        result_dict = {'kpi_name': kpi_name, 'kpi_fk': kpi_fk, 'result': pd.np.nan}
-                        return result_dict
+                    result_dict = {'kpi_name': kpi_name, 'kpi_fk': kpi_fk, 'result': pd.np.nan}
+                    return result_dict
                 else:
                     numerator_scif = denominator_scif[denominator_scif[numerator_param1].isin([numerator_value1])]
-                    if numerator_scif.empty:
-                        result_dict = {'kpi_name': kpi_name, 'kpi_fk': kpi_fk, 'result': pd.np.nan}
-                        return result_dict
                     numerator_id = \
                         self.all_products[self.all_products[numerator_param1].isin([numerator_value1])][
                             numerator_entity].mode()[
@@ -741,7 +737,10 @@ class ToolBox(GlobalSessionToolBox):
                 numerator_id = numerator_scif[numerator_entity].mode()[0]
                 numerator_result = numerator_scif[FINAL_FACINGS].sum()
 
+            a = 1
+
             # Step 10: Calculate the final result
+
             result = (numerator_result / denominator_result)
 
             score = self.calculate_score_for_sos(target, result)
