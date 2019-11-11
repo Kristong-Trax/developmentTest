@@ -381,18 +381,16 @@ class GSKSGToolBox:
         sequence_kpi_fk, sequence_sku_kpi_fk = self._get_sequence_kpi_fks()
         sequence_targets = self._filter_targets_by_kpi(self.targets, sequence_kpi_fk)
         sequence_targets = sequence_targets.loc[sequence_targets.category_fk == cat_fk]
-        passed_sequences_score, total_weight, total_passed_counter = 0, 0, 0
+        passed_sequences_score, total_passed_counter = 0, 0
         for i, sequence in sequence_targets.iterrows():
             population, location, sequence_attributes = self._prepare_data_for_sequence_calculation(sequence)
             sequence_result = self.sequence.calculate_sequence(population, location, sequence_attributes)
-            score, weight = self._save_sequence_results_to_db(sequence_sku_kpi_fk, sequence_kpi_fk, sequence,
-                                                              sequence_result)
+            score = self._save_sequence_results_to_db(sequence_sku_kpi_fk, sequence_kpi_fk, sequence, sequence_result)
             passed_sequences_score += score
-            total_weight += weight
             total_passed_counter += 1 if score else 0
         self._save_sequence_main_level_to_db(sequence_kpi_fk, planogram_identifier, cat_fk, total_passed_counter,
-                                             len(sequence_targets), total_weight)
-        return passed_sequences_score, total_weight*10
+                                             len(sequence_targets))
+        return passed_sequences_score, Consts.SEQUENCE_TOTAL_WEIGHT
 
     @staticmethod
     def _prepare_data_for_sequence_calculation(sequence_params):
@@ -414,15 +412,16 @@ class GSKSGToolBox:
         result_value = self.ps_data_provider.get_pks_of_result(sequence_params['sequence_name'])
         return numerator_id, result_value
 
-    def _save_sequence_main_level_to_db(self, kpi_fk, planogram_identifier, cat_fk, num_res, den_res, weight):
+    def _save_sequence_main_level_to_db(self, kpi_fk, planogram_identifier, cat_fk, num_res, den_res):
         """
         This method saves the top sequence level to DB.
         """
-        score = num_res / float(den_res) if den_res else 0
-        result = weight if score >= Consts.GSK_BENCHMARK else 0
+        score = (num_res / float(den_res))/Consts.SEQUENCE_TOTAL_WEIGHT if den_res else 0
+        result = Consts.SEQUENCE_TOTAL_WEIGHT if score >= Consts.GSK_BENCHMARK else 0
         self.common.write_to_db_result(fk=kpi_fk, numerator_id=cat_fk, numerator_result=num_res,
                                        result=result, denominator_id=self.store_id, denominator_result=den_res,
-                                       score=score, weight=weight, target=Consts.GSK_BENCHMARK,  should_enter=True,
+                                       score=score, weight=Consts.SEQUENCE_TOTAL_WEIGHT,
+                                       target=Consts.SEQUENCE_TOTAL_WEIGHT, should_enter=True,
                                        identifier_result=kpi_fk, identifier_parent=planogram_identifier)
 
     def _save_sequence_results_to_db(self, kpi_fk, parent_kpi_fk, sequence_params, sequence_results):
@@ -443,7 +442,7 @@ class GSKSGToolBox:
                                        score=score, weight=weight, parent_fk=parent_kpi_fk, target=target,
                                        should_enter=True, identifier_parent=parent_kpi_fk,
                                        identifier_result=(kpi_fk, category_fk))
-        return score, weight
+        return score
 
     def _get_sequence_kpi_fks(self):
         """This method fetches the relevant sequence kpi fks"""
