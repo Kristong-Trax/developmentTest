@@ -205,7 +205,7 @@ class ToolBox(GlobalSessionToolBox):
         # set result to NaN for records that do not have a parent
         identifier_results = self.results_df[self.results_df['result'].notna()]['identifier_result'].unique().tolist()
         self.results_df['result'] = self.results_df.apply(
-            lambda row: pd.np.nan if row['identifier_parent'] is not pd.np.nan and row[
+            lambda row: pd.np.nan if pd.notna(row['identifier_parent']) and row[
                 'identifier_parent'] not in identifier_results else row['result'], axis=1)
         # get rid of 'not applicable' results
         self.results_df.dropna(subset=['result'], inplace=True)
@@ -227,7 +227,7 @@ class ToolBox(GlobalSessionToolBox):
             if result_data:
                 if isinstance(result_data, dict):
                     weight = row['Score']
-                    if weight and result_data['result'] is not pd.np.nan:
+                    if weight and pd.notna(weight) and pd.notna(result_data['result']):
                         if row[KPI_TYPE] == SCORING and 'score' not in result_data.keys():
                             result_data['score'] = weight * result_data['result']
                         elif row[KPI_TYPE] != SCORING:
@@ -243,7 +243,7 @@ class ToolBox(GlobalSessionToolBox):
                 else:  # must be a list
                     for result in result_data:
                         weight = row['Score']
-                        if weight and result['result'] is not pd.np.nan:
+                        if weight and pd.notna(weight) and pd.notna(result['result']):
                             if row[KPI_TYPE] == SCORING and 'score' not in result.keys():
                                 result['score'] = weight * result['result']
                             elif row[KPI_TYPE] != SCORING:
@@ -355,7 +355,7 @@ class ToolBox(GlobalSessionToolBox):
                 result_dict['score'] = 0
                 if 'result' not in result_dict.keys():
                     result_dict['result'] = result_dict['score']
-        if dependency_kpis and dependency_kpis is not pd.np.nan:
+        if dependency_kpis and pd.notna(dependency_kpis):
             dependency_results = self.results_df[self.results_df['kpi_name'].isin(dependency_kpis)]
             passing_dependency_results = dependency_results[dependency_results['result'] != 0]
             if len(dependency_results) > 0 and len(dependency_results) == len(passing_dependency_results):
@@ -393,7 +393,7 @@ class ToolBox(GlobalSessionToolBox):
         template = self.templates[KPIS]
         parent_kpi_name = \
             template[template[KPI_NAME].str.encode('utf-8') == kpi_name.encode('utf-8')][PARENT_KPI].iloc[0]
-        if parent_kpi_name and parent_kpi_name is not pd.np.nan:
+        if parent_kpi_name and pd.notna(parent_kpi_name):
             return parent_kpi_name
         else:
             return None
