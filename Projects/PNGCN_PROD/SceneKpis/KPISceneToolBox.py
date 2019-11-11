@@ -385,7 +385,7 @@ class PngcnSceneKpis(object):
         except Exception as ex:
             Log.error("Couldn't find scene category for scene number {}, error {}".format(str(self.scene_id), ex))
             return
-        entity_df = self._get_cateory_specific_entities(scene_category)
+        entity_df = self._get_category_specific_entities(scene_category)
         if entity_df.empty:
             return
         df = self.get_eye_level_shelves(self.matches_from_data_provider)
@@ -394,7 +394,7 @@ class PngcnSceneKpis(object):
         self.calculate_facing_eye_level(full_df, max_shelf_count)
         self.calculate_sequence_eye_level(entity_df, full_df, scene_category)
 
-    def _get_cateory_specific_entities(self, scene_category):
+    def _get_category_specific_entities(self, scene_category):
         eye_level_fragments = self.psdataprovider.get_custom_entities_df('eye_level_fragments')
         if scene_category == PCC_CATEGORY:
             return eye_level_fragments
