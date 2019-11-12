@@ -38,7 +38,7 @@ if __name__ == '__main__':
     #                 "e4e5e230-4b51-4908-a959-51a46fa5f54f", "fb6f25a7-2d03-49e9-8216-25bb9dede3e2",
     #                 "494773A6-6E17-418C-B965-F0847B6701AB", "82AA237B-040C-434F-BF57-9421F481168B",
     #                 "228ae67a-c47d-468b-9964-05e913d7c847", "5C98034A-3F49-4606-AB5C-409CE210A6BC"]
-    session_list = ['88E9E898-0474-476D-B929-86CA1243177B']
+    session_list = ['F65C2806-9427-4885-AACA-F7DD4AC7E2A4', '5B325EF4-BE9C-43A9-A198-F3734D9A80A2']
     # session_list = ["d83743b9-1f36-4586-b0de-cd93d6bc84a2"]
     for session in session_list:
         data_provider.load_session_data(session)

@@ -104,6 +104,14 @@ PROMO_COMPLIANCE_PRICE_TARGET = 'PROMO_COMPLIANCE_PRICE_TARGET'
 PROMO_LOC_DISPLAY = 'Promo Display'
 PROMO_LOC_MAIN_SHELF = 'Main Shelf'
 
+CATEGORIES_LIST = ['SSD', 'Water', 'ice tea', 'Juices', 'Energy']
+SOS_CAT_FOR_MR = 'SOS_MANUFACTURER_OUT_OF_CAT_CUSTOM_MR'
+AVAILABILITY_CAT_FOR_MR = 'AVAILABILITY_MANUFACTURER_OUT_OF_CAT_CUSTOM_MR'
+OSA_CAT_FOR_MR = 'OSA_MANUFACTURER_OUT_OF_CAT_CUSTOM_MR'
+CAT_KPI_TYPE = 'Category KPI Type'
+CAT_KPI_VALUE = 'Category KPI Value'
+POS_CAT_KPI_DICT = {'Availability': AVAILABILITY_CAT_FOR_MR, 'SOS': SOS_CAT_FOR_MR}
+
 
 class CCRU_SANDKPIToolBox:
 
@@ -191,6 +199,7 @@ class CCRU_SANDKPIToolBox:
         self.promo_displays = None
         self.promo_locations = None
         self.promo_products = None
+        self.mr_targets = {}
 
     def set_kpi_set(self, kpi_set_name, kpi_set_type, empty_kpi_scores_and_results=True):
         self.kpi_set_name = kpi_set_name
@@ -898,7 +907,7 @@ class CCRU_SANDKPIToolBox:
             atomic_result = attributes_for_level3['result']
             if p.get("KPI ID") in params.values()[2]["SESSION LEVEL"]:
                 self.write_to_kpi_facts_hidden(p.get("KPI ID"), None, atomic_result, score)
-
+            self.write_to_db_category_kpis_for_mr(p, result=score, score=set_total_res)
         return set_total_res
 
     def calculate_facings_sos(self, params, scenes=None, all_params=None):
@@ -2031,7 +2040,23 @@ class CCRU_SANDKPIToolBox:
             if kpi_fk:
                 attributes_for_level2 = self.create_attributes_for_level2_df(p, kpi_score, kpi_fk)
                 self.write_to_kpi_results_old(attributes_for_level2, 'level2')
+            self.write_to_db_category_kpis_for_mr(p, result=kpi_score, score=set_total_res)
         return set_total_res
+
+    def write_to_db_category_kpis_for_mr(self, params, result, score):
+        if params.get(CAT_KPI_TYPE) is not None and params.get(CAT_KPI_VALUE) is not None and params.get('level') == 2:
+            kpi_type = POS_CAT_KPI_DICT.get(params.get(CAT_KPI_TYPE))
+            if kpi_type is not None:
+                cat_kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_type)
+                category_fk_array = self.products[self.products['category'] ==
+                                                    params.get(CAT_KPI_VALUE)]['category_fk'].values
+                if len(category_fk_array) > 0:
+                    category_fk = category_fk_array[0]
+                    self.common.write_to_db_result(cat_kpi_fk, numerator_id=self.own_manufacturer_id,
+                                                   denominator_id=category_fk, result=round(result, 0), score=score)
+                if len(category_fk_array) == 0:
+                    Log.warning('Category {} does not exist in the DB. '
+                                'Check kpi template'.format(params.get(CAT_KPI_VALUE)))
 
     @kpi_runtime()
     def check_number_of_scenes_no_tagging(self, params, level=2):
@@ -3278,12 +3303,14 @@ class CCRU_SANDKPIToolBox:
                                                               'kpi_set_fk'])
                 self.write_to_kpi_results_old(attributes_for_table1, 'level1')
 
+                set_target = self.mr_targets.get(CONTRACT) if self.mr_targets.get(CONTRACT) is not None else 100
+
                 self.update_kpi_scores_and_results(
                     {'KPI ID': CONTRACT,
                      'KPI name Eng': kpi_set_name,
                      'KPI name Rus': kpi_set_name,
                      'Parent': 'root'},
-                    {'target': 100,
+                    {'target': set_target,
                      'weight': 1,
                      'result': score,
                      'score': score,
@@ -3570,6 +3597,13 @@ class CCRU_SANDKPIToolBox:
                                                identifier_parent=identifier_parent,
                                                should_enter=True)
 
+                # category kpis MR
+                cat_kpi_fk = self.common.get_kpi_fk_by_kpi_type(OSA_CAT_FOR_MR)
+                if row['category'] in CATEGORIES_LIST:
+                    self.common.write_to_db_result(fk=cat_kpi_fk, numerator_id=self.own_manufacturer_id,
+                                                   denominator_id=numerator_id, context_id=context_id,
+                                                   result=result, score=score)
+
             top_sku_total = top_sku_anchor_products\
                 .agg({'in_assortment': 'sum',
                       'distributed': 'sum'})
@@ -3614,6 +3648,7 @@ class CCRU_SANDKPIToolBox:
                                            identifier_parent=identifier_parent,
                                            should_enter=True)
         else:
+            target = self.mr_targets.get(TOPSKU) if self.mr_targets.get(TOPSKU) is not None else target
             self.update_kpi_scores_and_results(
                 {'KPI ID': TOPSKU,
                  'KPI name Eng': kpi_set_name,
@@ -3833,6 +3868,9 @@ class CCRU_SANDKPIToolBox:
 
             group_score += score if score else 0
             group_weight += weight if weight else 0
+
+            if kpi['parent'] == 'root' and self.mr_targets.get(kpi_set_type) is not None:
+                target = kpi['target']
 
             self.common.write_to_db_result(fk=kpi_fk,
                                            numerator_id=numerator_id,
