@@ -199,6 +199,7 @@ class CCRU_SANDKPIToolBox:
         self.promo_displays = None
         self.promo_locations = None
         self.promo_products = None
+        self.mr_targets = {}
 
     def set_kpi_set(self, kpi_set_name, kpi_set_type, empty_kpi_scores_and_results=True):
         self.kpi_set_name = kpi_set_name
@@ -3302,12 +3303,14 @@ class CCRU_SANDKPIToolBox:
                                                               'kpi_set_fk'])
                 self.write_to_kpi_results_old(attributes_for_table1, 'level1')
 
+                set_target = self.mr_targets.get(CONTRACT) if self.mr_targets.get(CONTRACT) is not None else 100
+
                 self.update_kpi_scores_and_results(
                     {'KPI ID': CONTRACT,
                      'KPI name Eng': kpi_set_name,
                      'KPI name Rus': kpi_set_name,
                      'Parent': 'root'},
-                    {'target': 100,
+                    {'target': set_target,
                      'weight': 1,
                      'result': score,
                      'score': score,
@@ -3645,6 +3648,7 @@ class CCRU_SANDKPIToolBox:
                                            identifier_parent=identifier_parent,
                                            should_enter=True)
         else:
+            target = self.mr_targets.get(TOPSKU) if self.mr_targets.get(TOPSKU) is not None else target
             self.update_kpi_scores_and_results(
                 {'KPI ID': TOPSKU,
                  'KPI name Eng': kpi_set_name,
@@ -3864,6 +3868,9 @@ class CCRU_SANDKPIToolBox:
 
             group_score += score if score else 0
             group_weight += weight if weight else 0
+
+            if kpi['parent'] == 'root' and self.mr_targets.get(kpi_set_type) is not None:
+                target = kpi['target']
 
             self.common.write_to_db_result(fk=kpi_fk,
                                            numerator_id=numerator_id,
