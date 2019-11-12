@@ -89,6 +89,9 @@ class ToolBox:
         self.assortment = Assortment(self.data_provider, self.output)
         self.prev_prods = self.load_prev_prods(self.store_id, self.session_info['visit_date'].iloc[0])
 
+        self.mcc_cooler_fk = self.assortment.get_assortment_fk_by_name('MCC Cooler')
+
+
 
 
     # main functions:
@@ -149,8 +152,9 @@ class ToolBox:
             # 'Warm Base Measurement'
             # 'Warm Bays',
             # 'Dynamic Out of Stock',
-            'Pack Distribution vs Competitors'
-
+            # 'Pack Distribution vs Competitors'
+            'Molson Coors Cooler Compliance',
+            'Molson Coors Cooler Purity'
 
         ]:
             return
@@ -163,15 +167,16 @@ class ToolBox:
             # 'Base Measurement',
             # 'Bay Count',
             # 'Out of Stock',
-            'Pack Distribution'
+            # 'Pack Distribution'
+            'Purity'
             ]:
             return
 
         if kpi_name in ['POP Seasonal Programs', 'Molson Coors Cooler Compliance']:
             return
 
-        # print('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~')
-        # print('_____{}_____'.format(kpi_name))
+        print('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~')
+        print('_____{}_____'.format(kpi_name))
 
         # dependent_kpis = self.read_cell_from_line(main_line, Const.DEPENDENT)
         # dependent_results = self.read_cell_from_line(main_line, Const.DEPENDENT_RESULT)
@@ -464,10 +469,10 @@ class ToolBox:
         general_filters.update({'stacking_layer': 1})
         mpis = self.filter_df(self.full_mpis, general_filters)
 
-        z = self.scif.merge(self.full_mpis.groupby(['scene_fk', 'product_fk'])['face_count'].sum(),
-                            on=['scene_fk', 'product_fk'])
-        x = z[z.facings.astype(int) != z.face_count.astype(int)][['scene_fk', 'product_fk', 'facings', 'face_count']]
-        a = self.scif
+        # z = self.scif.merge(self.full_mpis.groupby(['scene_fk', 'product_fk'])['face_count'].sum(),
+        #                     on=['scene_fk', 'product_fk'])
+        # x = z[z.facings.astype(int) != z.face_count.astype(int)][['scene_fk', 'product_fk', 'facings', 'face_count']]
+        # a = self.scif
 
         # result = relevant_scif[sum_col].sum() / Const.MM_FT
         result = mpis[sum_col].sum() / Const.MM_FT
@@ -545,6 +550,45 @@ class ToolBox:
                         'numerator_id': self.manufacturer_fk, 'denominator_id': self.store_id,
                         'kpi_name': self.lvl_name(kpi_name, 'Session')})
         return level['end'], results
+
+    def calculate_purity(self, kpi_name, kpi_line, relevant_scif, main_line, level, **kwargs):
+        remaining = self.get_relevant_prod(kpi_line, relevant_scif)
+        result = 0
+        if len(remaining) == 0:
+            result = 100
+        results = {'score': 1, 'result': result, 'numerator_result': len(remaining),
+                   'numerator_id': relevant_scif[main_line[level['num_col']]].iloc[0],
+                   'denominator_id': relevant_scif[main_line[level['den_col']]].iloc[0],
+                   'kpi_name': self.lvl_name(kpi_name, level['lvl'])}
+        return level['end'], results
+
+    def calculate_negative_distribution(self, kpi_name, kpi_line, relevant_scif, main_line, level, **kwargs):
+        results = []
+        relevant_scif['assortment'] = self.mcc_cooler_fk
+        remaining = self.get_relevant_prod(kpi_line, relevant_scif)
+        results.append({'score': 1, 'result': len(remaining), 'numerator_result': len(remaining),
+                        'numerator_id': relevant_scif[main_line['Numerator 2']].iloc[0],
+                        'denominator_id': relevant_scif[main_line['Denominator 2']].iloc[0],
+                        'kpi_name': self.lvl_name(kpi_name, 'Session'),
+                        'ident_result': self.lvl_name(kpi_name, 'Session')})
+        for prod in remaining:
+            results.append({'score': 1, 'result': 0, 'numerator_result': 0, 'numerator_id': prod,
+                            'denominator_id': relevant_scif[main_line[level['den_col']]].iloc[0],
+                            'kpi_name': self.lvl_name(kpi_name, 'SKU'),
+                            'ident_parent': self.lvl_name(kpi_name, 'SKU')})
+
+    def get_relevant_prod(self, kpi_line, relevant_scif):
+        filters = self.get_kpi_line_filters(kpi_line)
+        if not filters:
+            assortment = self.store_assortment.merge(self.common.kpi_static_data[['pk', 'type', 'client_name']],
+                                                     left_on='kpi_fk_lvl2', right_on='pk', how='inner')
+            relevant_prod = assortment[assortment['kpi_type'] == 'MCC Cooler']['product_fk']
+        else:
+            relevant_prod = self.filter_df(relevant_scif, filters)['product_fk']
+        relevant_prod = set(relevant_prod.values())
+        relevant_prod = self.get_relevant_prod(kpi_line, relevant_scif)
+        total_prod = set(relevant_scif['product_fk'])
+        return relevant_prod - total_prod
 
 
 
@@ -1268,6 +1312,10 @@ class ToolBox:
             return self.calculate_dynamic_oos
         elif kpi_type == Const.PACK_DISTRIBUTION:
             return self.calculate_pack_distribution
+        elif kpi_type == Const.PURITY:
+            return self.calculate_purity
+        elif kpi_type == Const.NEGATIVE_DISTRIBUTION:
+            return self.calculate_negative_distribution()
 
 
 

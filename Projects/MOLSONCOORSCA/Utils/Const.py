@@ -18,6 +18,8 @@ class Const(object):
     BASE_MEASUREMENT = 'Base Measurement'
     OUT_OF_STOCK = 'Out of Stock'
     PACK_DISTRIBUTION = 'Pack Distribution'
+    PURITY = 'Purity'
+    NEGATIVE_DISTRIBUTION = 'Negative Distribution'
 
 
     # Krishna Edits

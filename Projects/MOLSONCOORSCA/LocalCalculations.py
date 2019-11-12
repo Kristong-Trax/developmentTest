@@ -23,11 +23,12 @@ if __name__ == '__main__':
         # '26F8B85F-F6B9-4BAE-89EC-4A3C499BAE19',
         '8B46BA22-FFC6-438B-9B5B-AAB189F4F498',
         '39D117D6-B2A0-4523-92CE-E286CFC4AB60',
-        'F3ABA765-DEF6-46A4-8C1E-BC818532398A'
+        'F3ABA765-DEF6-46A4-8C1E-BC818532398A',
+        'A7C7232E-06C8-43DB-BE2A-FB241E4736F0'
 
                 ]
 
-    # sessions = ['39D117D6-B2A0-4523-92CE-E286CFC4AB60']
+    sessions = ['4B02965C-290D-4221-B91E-B430A51E2498']
 
     for session in sessions:
         print('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~{}~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~'.format(session))
