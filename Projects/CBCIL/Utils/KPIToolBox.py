@@ -1,22 +1,19 @@
 # coding=utf-8
 import os
 from datetime import datetime
-
 import pandas as pd
-
+import time
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Utils.Conf.Keys import DbUsers
-# from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Trax.Utils.Logging.Logger import Log
 from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
 from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
-
 from Projects.CBCIL.Utils.Fetcher import CBCILCBCIL_Queries
 from Projects.CBCIL.Utils.GeneralToolBox import CBCILCBCIL_GENERALToolBox
 from Projects.CBCIL.Utils.ParseTemplates import parse_template
 from KPIUtils_v2.DB.CommonV2 import Common
 from KPIUtils_v2.Utils.Decorators.Decorators import log_runtime, kpi_runtime
-# from KPIUtils.DB.Common import Common
+from Projects.CBCIL.Utils.Consts import Consts
 
 __author__ = 'Israel'
 
@@ -94,6 +91,8 @@ class CBCILCBCIL_ToolBox(object):
     SURVEY = 'Survey'
 
     TOTAL_SCORE = 'Total Score'
+    TOTAL_SCORE_FOR_DASHBOARD = 'Total Score 2'
+
     CBCIL = 'Central Bottling Company'
 
     def __init__(self, data_provider, output):
@@ -250,11 +249,7 @@ class CBCILCBCIL_ToolBox(object):
                             Log.warning("KPI of type '{}' is not supported".format(kpi_type))
                             continue
 
-                    try:
-                        atomic_weight = float(atomic[self.WEIGHT])
-                    except:
-                        atomic_weight = None
-
+                    atomic_weight = float(atomic[self.WEIGHT]) if atomic[self.WEIGHT] else 0
                     if score is not None:
                         atomic_fk = self.kpi_static_data[
                             self.kpi_static_data['atomic_kpi_name'].str.encode('utf-8') == atomic[
@@ -263,13 +258,14 @@ class CBCILCBCIL_ToolBox(object):
                         if isinstance(score, tuple):
                             score = score[0]
                         if score == 0:
-                            self.add_gap(atomic)
-
+                            self.add_gap(atomic, score)
                         atomic_fk_lvl_2 = self.common.get_kpi_fk_by_kpi_type(atomic[self.KPI_ATOMIC_NAME])
                         self.common.write_to_db_result(fk=atomic_fk_lvl_2, numerator_id=self.cbcil_id,
                                                        denominator_id=self.store_id,
+                                                       weight=round(atomic_weight * 100, 2),
                                                        identifier_parent=identifier_result_kpi,
-                                                       result=score, score=score, should_enter=True)
+                                                       result=score, score=round(score * atomic_weight, 2),
+                                                       should_enter=True)
 
                     scores.append((score, atomic_weight))
 
@@ -312,11 +308,12 @@ class CBCILCBCIL_ToolBox(object):
                 kpi_name = self.get_kpi_name_by_pk(kpi['kpi_fk'])
                 kpi_lvl_2_fk = self.common.get_kpi_fk_by_kpi_type(kpi_name)
                 identifier_res_kpi_2 = self.get_identifier_result_kpi_by_pk(kpi_lvl_2_fk)
+                kpi_weight = float(kpi['denominator_weight']) * 100
                 self.common.write_to_db_result(fk=kpi_lvl_2_fk, numerator_id=self.cbcil_id,
                                                denominator_id=self.store_id,
                                                identifier_parent=identifier_result_set,
                                                identifier_result=identifier_res_kpi_2,
-                                               weight=float(kpi['denominator_weight']) * 100,
+                                               weight=kpi_weight,  target=kpi_weight,
                                                score=kpi_scores[kpi['kpi_fk']],
                                                should_enter=True, result=kpi_scores[kpi['kpi_fk']])
 
@@ -328,13 +325,22 @@ class CBCILCBCIL_ToolBox(object):
 
             total_score_fk = self.common.get_kpi_fk_by_kpi_type(self.TOTAL_SCORE)
             self.common.write_to_db_result(fk=total_score_fk, numerator_id=self.cbcil_id, denominator_id=self.store_id,
-                                           identifier_result=identifier_result_set, result=final_score,
-                                           score=final_score, should_enter=True)
+                                           identifier_result=identifier_result_set, result=round(final_score, 2),
+                                           weight=round(100, 2), target=round(80, 2), score=final_score,
+                                           should_enter=True)
 
+            # requested for dashboard
+            total_score_fk_for_dashboard = self.common.get_kpi_fk_by_kpi_type(self.TOTAL_SCORE_FOR_DASHBOARD)
+
+            self.common.write_to_db_result(fk=total_score_fk_for_dashboard, numerator_id=self.cbcil_id,
+                                           denominator_id=self.store_id,
+                                           identifier_result=identifier_result_set, result=round(final_score, 2),
+                                           weight=round(100, 2), target=round(80, 2), score=final_score,
+                                           should_enter=True)
             self.commit_results_data()
             self.common.commit_results_data()
 
-    #--------new tables functionality--------#
+    # --------new tables functionality--------#
     def get_own_manufacturer_pk(self):
         query = CBCILCBCIL_Queries.get_manufacturer_pk_by_name(self.CBCIL)
         query_result = pd.read_sql_query(query, self.rds_conn.db)
@@ -361,10 +367,10 @@ class CBCILCBCIL_ToolBox(object):
         kpi_name = self.kpi_static_data[self.kpi_static_data['kpi_fk'] == kpi_pk]['kpi_name'].values[0]
         return kpi_name
 
-    #-------- existing calculations----------#
+    # -------- existing calculations----------#
     @staticmethod
     def combine_kpi_details(kpi_fk, scores, denominator_weight):
-        kpi_details = {}
+        kpi_details = dict()
         kpi_details['kpi_fk'] = kpi_fk
         kpi_details['atomic_scores_and_weights'] = scores
         kpi_details['denominator_weight'] = float(denominator_weight)
@@ -382,7 +388,7 @@ class CBCILCBCIL_ToolBox(object):
                     kpi['denominator_weight'] = 0
                     kpi['atomic_scores_and_weights'] = [(score[0], 0) for score in kpi['atomic_scores_and_weights']]
                 else:
-                    weight_to_kpi = total_weight_to_reallocate * float(kpi['denominator_weight'])/weight_of_all_kpis_with_scores
+                    weight_to_kpi = total_weight_to_reallocate * float(kpi['denominator_weight']) / weight_of_all_kpis_with_scores
                     kpi['denominator_weight'] = kpi['denominator_weight'] + weight_to_kpi
                     atomics_with_weights = filter(lambda x: x[1] is not None,
                                                   kpi['atomic_scores_and_weights'])
@@ -394,7 +400,8 @@ class CBCILCBCIL_ToolBox(object):
 
     def get_coolers(self, cbc_coller, competitor_cooler):
         cbc = self.scif[self.scif['template_name'].str.encode('utf-8') == cbc_coller]['scene_fk'].unique().tolist()
-        competitor = self.scif[self.scif['template_name'].str.encode('utf-8').isin(competitor_cooler)]['scene_fk'].unique()
+        competitor = self.scif[
+            self.scif['template_name'].str.encode('utf-8').isin(competitor_cooler)]['scene_fk'].unique()
         return len(competitor), len(cbc), cbc
 
     def get_general_filters(self, params):
@@ -422,7 +429,6 @@ class CBCILCBCIL_ToolBox(object):
             params3 = map(float, params[self.PARAMS_VALUE_3].split(','))
         except:
             params3 = map(unicode.strip, params[self.PARAMS_VALUE_3].split(','))
-
 
         result = {self.TARGET: params[self.TARGET],
                   self.SPLIT_SCORE: params[self.SPLIT_SCORE],
@@ -466,8 +472,8 @@ class CBCILCBCIL_ToolBox(object):
                 except:
                     pass
                 block = self.tools.calculate_block_together(include_empty=False, minimum_block_ratio=0.75,
-                                                             allowed_products_filters={'product_type': 'Other'},
-                                                             vertical=True, **filters)
+                                                            allowed_products_filters={'product_type': 'Other'},
+                                                            vertical=True, **filters)
                 if not isinstance(block, dict):
                     return 0
                 if float(len(block['shelves'])) >= float(general_filters[self.TARGET]):
@@ -482,8 +488,8 @@ class CBCILCBCIL_ToolBox(object):
             numerator_filters.update(params['2'])
             numerator_filters.update(params['3'])
             ratio = self.tools.calculate_linear_share_of_display(numerator_filters,
-                                                                   include_empty=True,
-                                                                   **params['All'])
+                                                                 include_empty=True,
+                                                                 **params['All'])
 
             if ratio >= float(general_filters[self.TARGET]):
                 return 100
@@ -535,7 +541,8 @@ class CBCILCBCIL_ToolBox(object):
             filters.update(params['All'])
             for scene in params['All']['scene_id']:
                 filters.update({'scene_id': scene})
-                relevant_shelf = self.match_product_in_scene[self.match_product_in_scene['scene_id'] == scene]['shelf_number'].unique().tolist()
+                relevant_shelf = self.match_product_in_scene[
+                    self.match_product_in_scene['scene_id'] == scene]['shelf_number'].unique().tolist()
                 filters.update({'shelf_number': relevant_shelf[:len(relevant_shelf) / 2]})
                 if self.tools.calculate_availability(**filters) >= 1:
                     return 100
@@ -555,7 +562,8 @@ class CBCILCBCIL_ToolBox(object):
                     scif_filters.update(params['1'])
                     scif_filters.update(params['2'])
                     scif = self.scif.copy()
-                    scene_skus = scif[self.tools.get_filter_condition(scif, **scif_filters)]['product_fk'].unique().tolist()
+                    scene_skus = scif[
+                        self.tools.get_filter_condition(scif, **scif_filters)]['product_fk'].unique().tolist()
                     if scene_skus:
                         matches_filters = {'scene_fk': scene}
                         matches_filters.update({'product_fk': scene_skus})
@@ -620,12 +628,14 @@ class CBCILCBCIL_ToolBox(object):
             Log.info('Kpi name: {}, isnt equal to any kpi name in static table'.format(kpi_name))
             return None
 
-    def add_gap(self, params):
+    def add_gap(self, params, score):
         """
         This function extracts a failed KPI's priority, and saves it in a general dictionary.
         """
         kpi_name = params[self.KPI_NAME]
         kpi_atomic_name = params[self.KPI_ATOMIC_NAME]
+        weight = float(params[self.WEIGHT]) if params[self.WEIGHT] else 0
+        rlv_kpi_level_2_fk = self.common.get_kpi_fk_by_kpi_type(kpi_atomic_name)
         if kpi_name in self.gap_data[self.KPI_NAME].tolist():
             gap = self.gap_data[self.gap_data[self.KPI_NAME].str.encode('utf-8') == kpi_name.encode('utf-8')]
             if not gap.empty:
@@ -644,7 +654,8 @@ class CBCILCBCIL_ToolBox(object):
                 #     self.gaps[kpi_name] = {}
                 # self.gaps[kpi_name][gap] = kpi_atomic_name
                 kpi_atomic_name = int(self.get_kpi_fk_by_kpi_name(kpi_atomic_name))
-                atomic_gap = {self.KPI_NAME: kpi_name, self.KPI_ATOMIC_NAME: kpi_atomic_name, self.GAPS: gap}
+                atomic_gap = {self.KPI_NAME: kpi_name, self.KPI_ATOMIC_NAME: kpi_atomic_name, self.GAPS: gap,
+                              Consts.LEVEL_2_FK: rlv_kpi_level_2_fk, self.WEIGHT: weight, Consts.SCORE: score}
                 self.gaps = self.gaps.append(atomic_gap, ignore_index=True)
 
     def write_gaps_to_db(self):
@@ -662,6 +673,7 @@ class CBCILCBCIL_ToolBox(object):
                                           columns=['session_fk', 'gap_category', 'name', 'priority'])
                 query = insert(attributes.to_dict(), CUSTOM_GAPS_TABLE)
                 self.gaps_queries.append(query)
+        self._saving_gaps_to_the_new_tables()
 
     def write_to_db_result(self, fk, level, score=None, result=None, result_2=None):
         """
@@ -772,3 +784,48 @@ class CBCILCBCIL_ToolBox(object):
             return "{}/{}".format(TEMPLATE_PATH, TEMPLATE_NAME_BETWEEN_2019_01_15_TO_2019_03_01)
         else:
             return "{}/{}".format(TEMPLATE_PATH, CURRENT_TEMPLATE)
+
+    def sort_by_priority(self, gap_dict):
+        """ This is a util function for the kpi's gaps sorting by priorities.
+        At the moment score will be equal to 0 but we added this option in order support partial score as well. """
+        return gap_dict[self.GAPS], gap_dict[Consts.SCORE]
+
+    def _validate_gap(self, gap):
+        """
+        This method validate that a gap has all of the relevant attributes.
+        :param gap: A dictionary with relevant attribute to save.
+        :return: True in case of a valid gap, False otherwise.
+        """
+        required_values = [self.WEIGHT, Consts.LEVEL_2_FK]
+        if not set(required_values).issubset(gap.keys()):
+            return False
+        for key in required_values:
+            if not gap[key]:
+                return False
+        return True
+
+    def _saving_gaps_to_the_new_tables(self):
+        """ This function takes the top 5 gaps (by priority) and saves it to the DB """
+        self.gaps = self.gaps.to_dict('records')
+        self.gaps.sort(key=self.sort_by_priority)
+        gaps_total_score = 0
+        gaps_per_kpi_fk = self.common.get_kpi_fk_by_kpi_type(Consts.GAP_PER_ATOMIC_KPI)
+        gaps_total_score_kpi_fk = self.common.get_kpi_fk_by_kpi_type(Consts.GAPS_TOTAL_SCORE_KPI)
+        for gap in self.gaps[:5]:
+            if not self._validate_gap(gap):
+                continue
+            current_gap_score = gap[self.WEIGHT] - (gap[Consts.SCORE] * gap[self.WEIGHT])
+            gaps_total_score += current_gap_score
+            self._insert_gap_results(gaps_per_kpi_fk, current_gap_score, gap[self.WEIGHT],
+                                     numerator_id=gap[Consts.LEVEL_2_FK], parent_fk=gaps_total_score_kpi_fk)
+        total_weight = sum(map(lambda res: res[self.WEIGHT], self.gaps[:5]))
+        self._insert_gap_results(gaps_total_score_kpi_fk, gaps_total_score, total_weight, self.cbcil_id)
+
+    def _insert_gap_results(self, gap_kpi_fk, score, weight, numerator_id, parent_fk=None):
+        """ This is a utility function that insert results to the DB for the GAPs KPIs """
+        should_enter = True if parent_fk else False
+        score, weight = round(score * 100, 2), round(weight * 100, 2)
+        self.common.write_to_db_result(fk=gap_kpi_fk, numerator_id=numerator_id, numerator_result=score,
+                                       denominator_id=self.store_id, denominator_result=weight, weight=weight,
+                                       identifier_result=gap_kpi_fk, identifier_parent=parent_fk, result=score,
+                                       score=score, should_enter=should_enter)

@@ -1,22 +1,23 @@
 from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScript
+from Projects.PS1_SAND.KPIGenerator import Generator
+
+
+class Calculations(BaseCalculationsScript):
+    def run_project_calculations(self):
+        self.timer.start()
+        Generator(self.data_provider, self.output).main_function()
+        self.timer.stop('KPIGenerator.run_project_calculations')
+
+
 # from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
 # from Trax.Utils.Conf.Configuration import Config
 # from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
-from Projects.DIAGEOMX.KPIGenerator import DIAGEOMXGenerator
-
-
-class DIAGEOMXCalculations(BaseCalculationsScript):
-    def run_project_calculations(self):
-        self.timer.start()
-        DIAGEOMXGenerator(self.data_provider, self.output).main_function()
-        self.timer.stop('KPIGenerator.run_project_calculations')
-
 # if __name__ == '__main__':
-#     LoggerInitializer.init('diageomx calculations')
+#     LoggerInitializer.init('ps1-sand calculations')
 #     Config.init()
-#     project_name = 'diageomx'
+#     project_name = 'ps1-sand'
 #     data_provider = KEngineDataProvider(project_name)
-#     session = 'fd7d2a19-3a1c-40fd-a7d1-3a01260392d1'
+#     session = '39600BB2-2891-43DD-8A80-ACDF9DD514FC'
 #     data_provider.load_session_data(session)
 #     output = Output()
-#     DIAGEOMXCalculations(data_provider, output).run_project_calculations()
+#     Calculations(data_provider, output).run_project_calculations()

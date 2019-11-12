@@ -57,7 +57,7 @@ class INBEVTRADMXToolBox:
         self.kpi_static_data = self.common.get_kpi_static_data()
         self.kpi_results_queries = []
         self.templates_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data')
-        self.excel_file_path = os.path.join(self.templates_path, 'inbevtradmx_template_11_v2.xlsx')
+        self.excel_file_path = os.path.join(self.templates_path, 'inbevtradmx_template_11_v3.xlsx')
         self.availability = Availability(self.data_provider)
         self.survey_response = self.data_provider[Data.SURVEY_RESPONSES]
         self.geo = GeoLocation.INBEVTRADMXGeo(self.rds_conn, self.session_uid, self.data_provider,
@@ -70,6 +70,13 @@ class INBEVTRADMXToolBox:
             ['product_fk', 'shelf_number', 'scene_fk', 'facing_sequence_number']],
                                  how="inner", left_on=['item_id', 'scene_id'],
                                  right_on=['product_fk', 'scene_fk']).drop_duplicates()
+        self.ignore_stacking = False
+        self.facings_field = 'facings' if not self.ignore_stacking else 'facings_ign_stack'
+        self.INCLUDE_FILTER = 1
+        self.EXCLUDE_FILTER = 0
+        self.CONTAIN_FILTER = 2
+        self.EXCLUDE_EMPTY = False
+        self.INCLUDE_EMPTY = True
 
     # init functions:
 
@@ -129,18 +136,18 @@ class INBEVTRADMXToolBox:
         # get the session additional_attribute_4 & 13
         additional_attribute_4 = self.store_info.additional_attribute_4.values[0]
         additional_attribute_13 = self.store_info.additional_attribute_13.values[0]
-        set_names = self.choose_correct_sets_to_calculate(additional_attribute_4,
+        set_name = self.choose_correct_sets_to_calculate(additional_attribute_4,
                                                           additional_attribute_13, parsed_template)
 
-        for set_name in set_names:
+        # for set_name in set_names:
             # wrong value in additional attribute 4 - shouldn't calculate
-            if set_name == '':
-                Log.warning('Wrong value in additional attribute 4 - shouldnt calculate')
-                return -1
-            # get only the part of the template that is related to this set
-            set_template_df = parsed_template[parsed_template['KPI Level 1 Name'] == set_name]
-            # start calculating !
-            self.calculate_set_score(set_template_df, set_name)
+        if set_name == '':
+            Log.warning('Wrong value in additional attribute 4 - shouldnt calculate')
+            return -1
+        # get only the part of the template that is related to this set
+        set_template_df = parsed_template[parsed_template['KPI Level 1 Name'] == set_name]
+        # start calculating !
+        self.calculate_set_score(set_template_df, set_name)
 
     @staticmethod
     def choose_correct_sets_to_calculate(additional_attribute_4, additional_attribute_13, template):
@@ -166,17 +173,25 @@ class INBEVTRADMXToolBox:
         if sets.empty:
             return ''
         else:
-            return sets['KPI Level 1 Name'].unique().tolist()
 
-        # if additional_attribute_4 == 'BC':
-        #     set_name = sets[0]
-        # elif additional_attribute_4 == 'BA':
-        #     set_name = sets[1]
-        # elif additional_attribute_4 == 'MODELORAMA':
-        #     set_name = sets[2]
-        # else:
-        #     return ''
-        # return set_name
+            sets = sets['KPI Level 1 Name'].unique().tolist()
+
+            if len(sets) == 1:
+                set_name = sets[0]
+
+            elif additional_attribute_4 == 'BC':
+                set_name = sets[0]
+            elif additional_attribute_4 == 'BA':
+                set_name = sets[1]
+            elif additional_attribute_4 == 'MODELORAMA':
+                set_name = sets[2]
+
+            else:
+                Log.error('KPI should only run on one KPI set.')
+
+            return set_name
+
+
 
     def calculate_set_score(self, set_df, set_name):
         """
@@ -238,6 +253,7 @@ class INBEVTRADMXToolBox:
         atomic_kpi_score = 0
         # get column name to consider in calculation
         relevant_columns = map(str.strip, str(row['column names']).split(','))
+        optional_columns = map(str.strip, str(row['optional column']).split(','))
         is_kpi_passed = 0
         if self.check_store_type(row, relevant_columns):
             # get weight of current atomic kpi
@@ -251,9 +267,16 @@ class INBEVTRADMXToolBox:
                 elif kpi_level_3_name == 'Hay o no hay # frentes':
                     if self.calculate_lead_availability_score(row, relevant_columns):
                         is_kpi_passed = 1
+                elif kpi_level_3_name == 'Adherencia de materiales':
+                    if self.calculate_or_availability(row, relevant_columns, optional_columns):
+                        is_kpi_passed = 1
                 else:
                     if self.calculate_availability_score(row, relevant_columns):
                         is_kpi_passed = 1
+                        if kpi_level_3_name == '100% Marcas HE':
+                            curr_weight = self.unique_brand_count
+
+
             elif row['KPI type'] == 'SOS':
 
                 ratio = self.calculate_sos_score(row, relevant_columns)
@@ -437,6 +460,12 @@ class INBEVTRADMXToolBox:
             del filters_dict[key]
         # call the generic method from KPIUtils_v2
         availability_score = self.availability.calculate_availability(**filters_dict)
+
+        filtered_df = self.scif[self.get_filter_condition(self.scif, **filters_dict)]
+        self.unique_brand_count = len(filtered_df['brand_name'].unique())
+
+
+
         # check if this score should pass or fail
         return self.decide_availability_score(row, availability_score)
 
@@ -457,6 +486,32 @@ class INBEVTRADMXToolBox:
                 continue
             filters_dict[column_value] = map(str.strip, str(row.loc[column_value]).split(','))
         return filters_dict
+
+
+    def calculate_or_availability(self, row, relevant_columns, optional_columns):
+        """
+                this method calculates availability score according to columns from the data frame
+                :param row: data frame to calculate from
+                :param relevant_columns: columns to check in the excel file
+                :return: boolean
+                """
+        for optional_column in optional_columns:
+            # create filtered dictionary
+            temp_relevant_columns = relevant_columns[:]
+            temp_relevant_columns.append(optional_column)
+            filters_dict = self.create_availability_filtered_dictionary(temp_relevant_columns, row)
+            for key in filters_dict:
+                delete = [key for value in filters_dict[key] if value in ['nan']]
+            for key in delete:
+                del filters_dict[key]
+            # call the generic method from KPIUtils_v2
+            availability_score = self.availability.calculate_availability(**filters_dict)
+            # check if this score should pass or fail
+            if self.decide_availability_score(row, availability_score):
+                return True
+
+
+        return False
 
     def filter_product_names(self, exclude_skus):
         """
@@ -621,3 +676,48 @@ class INBEVTRADMXToolBox:
             return mpis
         except:
             pass
+
+    def get_filter_condition(self, df, **filters):
+        """
+        :param df: The data frame to be filters.
+        :param filters: These are the parameters which the data frame is filtered by.
+                       Every parameter would be a tuple of the value and an include/exclude flag.
+                       INPUT EXAMPLE (1):   manufacturer_name = ('Diageo', DIAGEOAUGENERALToolBox.INCLUDE_FILTER)
+                       INPUT EXAMPLE (2):   manufacturer_name = 'Diageo'
+        :return: a filtered Scene Item Facts data frame.
+        """
+        if not filters:
+            return df['pk'].apply(bool)
+        if self.facings_field in df.keys():
+            filter_condition = (df[self.facings_field] > 0)
+        else:
+            filter_condition = None
+        for field in filters.keys():
+            if field in df.keys():
+                if isinstance(filters[field], tuple):
+                    value, exclude_or_include = filters[field]
+                else:
+                    value, exclude_or_include = filters[field], self.INCLUDE_FILTER
+                if not value:
+                    continue
+                if not isinstance(value, list):
+                    value = [value]
+                if exclude_or_include == self.INCLUDE_FILTER:
+                    condition = (df[field].isin(value))
+                elif exclude_or_include == self.EXCLUDE_FILTER:
+                    condition = (~df[field].isin(value))
+                elif exclude_or_include == self.CONTAIN_FILTER:
+                    condition = (df[field].str.contains(value[0], regex=False))
+                    for v in value[1:]:
+                        condition |= df[field].str.contains(v, regex=False)
+                else:
+                    continue
+                if filter_condition is None:
+                    filter_condition = condition
+                else:
+                    filter_condition &= condition
+            else:
+                pass
+                # Log.warning('field {} is not in the Data Frame'.format(field))
+
+        return filter_condition

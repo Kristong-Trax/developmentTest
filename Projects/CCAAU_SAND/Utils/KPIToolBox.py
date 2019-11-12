@@ -1,7 +1,7 @@
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Cloud.Services.Connector.Keys import DbUsers
 from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
-# from Trax.Utils.Logging.Logger import Log
+from Trax.Utils.Logging.Logger import Log
 import pandas as pd
 import os
 from KPIUtils_v2.DB.Common import Common
@@ -23,6 +23,9 @@ KPI_RESULT = 'report.kpi_results'
 KPK_RESULT = 'report.kpk_results'
 KPS_RESULT = 'report.kps_results'
 
+BAY_COUNT_SHEET = 'BayCountKPI'
+BAY_COUNT_KPI = 'BAY_COUNT_BY_SCENE_TYPE_IN_WHOLE_STORE'
+
 
 class CCAAUToolBox:
     LEVEL1 = 1
@@ -43,6 +46,7 @@ class CCAAUToolBox:
         self.match_product_in_scene = self.data_provider[Data.MATCHES]
         self.visit_date = self.data_provider[Data.VISIT_DATE]
         self.session_info = self.data_provider[Data.SESSION_INFO]
+        self.templates = self.data_provider[Data.TEMPLATES]
         self.scene_info = self.data_provider[Data.SCENES_INFO]
         self.store_id = self.data_provider[Data.STORE_FK]
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
@@ -58,6 +62,8 @@ class CCAAUToolBox:
                                              sheetname="Exclude")
         self.Include_filters = pd.read_excel(os.path.join(kpi_path[:- len(base_file)], 'Data', 'template.xlsx'),
                                              sheetname="Include")
+        self.bay_count_kpi = pd.read_excel(os.path.join(kpi_path[:- len(base_file)], 'Data', 'template.xlsx'),
+                                           sheetname="BayCountKPI")
 
     def main_calculation(self):
         """
@@ -170,3 +176,51 @@ class CCAAUToolBox:
         sum_of_facings = filtered_scif['facings'].sum()
         space_length = filtered_scif['gross_len_add_stack'].sum()
         return sum_of_facings, space_length
+
+    def calculate_bay_kpi(self):
+        bay_kpi_sheet = self.bay_count_kpi
+        kpi = self.kpi_static_data.loc[self.kpi_static_data['type'] == BAY_COUNT_KPI]
+        if kpi.empty:
+            Log.info("CCAAU Calculate KPI Name:{} not found in DB".format(BAY_COUNT_KPI))
+        else:
+            Log.info("CCAAU Calculate KPI Name:{} found in DB".format(BAY_COUNT_KPI))
+            bay_kpi_row = bay_kpi_sheet[bay_kpi_sheet['KPI Name'] == BAY_COUNT_KPI]
+            if not bay_kpi_row.empty:
+                scene_types_to_consider = bay_kpi_row['Scene Type'].iloc[0]
+                if scene_types_to_consider == '*':
+                    # Consider all scene types
+                    scene_types_to_consider = 'all'
+                else:
+                    scene_types_to_consider = [x.strip() for x in scene_types_to_consider.split(',')]
+                mpis_with_scene = self.match_product_in_scene.merge(self.scene_info, how='left', on='scene_fk')
+                mpis_with_scene_and_template = mpis_with_scene.merge(self.templates, how='left', on='template_fk')
+                if scene_types_to_consider != 'all':
+                    mpis_with_scene_and_template = mpis_with_scene_and_template[
+                        mpis_with_scene_and_template['template_name'].isin(scene_types_to_consider)]
+                mpis_template_group = mpis_with_scene_and_template.groupby('template_fk')
+                for template_fk, template_data in mpis_template_group:
+                    Log.info("Running for template ID {templ_id}".format(
+                        templ_id=template_fk,
+                    ))
+                    total_bays_for_scene_type = 0
+                    scene_group = template_data.groupby('scene_fk')
+                    for scene_fk, scene_data in scene_group:
+                        Log.info("KPI Name:{kpi} bay count is {bay_c} for scene ID {scene_id}".format(
+                            kpi=BAY_COUNT_KPI,
+                            bay_c=int(scene_data['bay_number'].max()),
+                            scene_id=scene_fk,
+                        ))
+                        total_bays_for_scene_type += int(scene_data['bay_number'].max())
+                    Log.info("KPI Name:{kpi} total bay count is {bay_c} for template ID {templ_id}".format(
+                        kpi=BAY_COUNT_KPI,
+                        bay_c=total_bays_for_scene_type,
+                        templ_id=template_fk,
+                    ))
+                    self.common.write_to_db_result_new_tables(
+                        fk=int(kpi['pk'].iloc[0]),
+                        numerator_id=int(template_fk),
+                        numerator_result=total_bays_for_scene_type,
+                        denominator_id=int(self.store_id),
+                        denominator_result=total_bays_for_scene_type,
+                        result=total_bays_for_scene_type,
+                    )

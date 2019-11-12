@@ -120,6 +120,7 @@ class ALTRIAUSToolBox:
         self.calculate_signage_locations_and_widths('Smokeless')
         self.calculate_register_type()
         self.calculate_age_verification()
+        self.calculate_juul_availability()
         self.calculate_assortment()
         self.calculate_vapor_kpis()
 
@@ -247,6 +248,21 @@ class ALTRIAUSToolBox:
         kpi_fk = self.common_v2.get_kpi_fk_by_kpi_type('Age Verification')
         self.common_v2.write_to_db_result(kpi_fk, numerator_id=product_fk, denominator_id=self.store_id,
                                           result=result)
+
+    def calculate_juul_availability(self):
+        relevant_scif = self.scif[(self.scif['brand_name'].isin(['Juul'])) &
+                                  (self.scif['product_type'].isin(['POS']))]
+        juul_pos = relevant_scif['product_fk'].unique().tolist()
+
+        kpi_fk = self.common_v2.get_kpi_fk_by_kpi_type('Juul POS Availability')
+        if not juul_pos:
+            return
+
+        result = 1
+        for product_fk in juul_pos:
+            self.common_v2.write_to_db_result(kpi_fk, numerator_id=product_fk, denominator_id=self.store_id,
+                                              result=result)
+
 
     def calculate_category_space(self, kpi_set_fk, kpi_name, category, scene_types=None):
         template = self.all_template_data.loc[(self.all_template_data['KPI Level 2 Name'] == kpi_name) &
@@ -566,6 +582,7 @@ class ALTRIAUSToolBox:
                                           result=total_shelves)
 
     def calculate_fixture_width(self, relevant_pos, longest_shelf, category):
+        correction_factor = 1 if category == 'Smokeless' else 2
         longest_shelf = longest_shelf[longest_shelf['stacking_layer'] == 1]
         category_fk = self.get_category_fk_by_name(category)
         # this is needed to remove intentionally duplicated 'Menu Board' POS 'Headers'
@@ -577,7 +594,8 @@ class ALTRIAUSToolBox:
             width = 0
 
         if relevant_pos.empty or width == 0:
-            width = round(len(longest_shelf) / float(self.facings_to_feet_template[category + ' Facings'].iloc[0]))
+            width = round(len(longest_shelf) + correction_factor / float(
+                self.facings_to_feet_template[category + ' Facings'].iloc[0]))
 
         kpi_fk = self.common_v2.get_kpi_fk_by_kpi_name('Fixture Width')
         self.common_v2.write_to_db_result(kpi_fk, numerator_id=category_fk, denominator_id=self.store_id,
@@ -680,7 +698,7 @@ class ALTRIAUSToolBox:
 
     def get_length_of_pos(self, row, longest_shelf, category):
         width_in_facings = len(longest_shelf[(longest_shelf['rect_x'] > row['left_bound']) &
-                                             (longest_shelf['rect_x'] < row['right_bound'])]) + 0.75
+                                             (longest_shelf['rect_x'] < row['right_bound'])]) + 2
         category_facings = category + ' Facings'
         return self.facings_to_feet_template.loc[(self.facings_to_feet_template[category_facings]
                                                   - width_in_facings).abs().argsort()[:1]]['POS Width (ft)'].iloc[0]

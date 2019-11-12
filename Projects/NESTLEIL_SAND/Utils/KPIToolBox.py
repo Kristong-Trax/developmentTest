@@ -4,6 +4,7 @@ from Trax.Algo.Calculations.Core.DataProvider import Data
 from Projects.NESTLEIL_SAND.Utils.Consts import Consts
 from KPIUtils_v2.DB.CommonV2 import Common
 from Trax.Utils.Logging.Logger import Log
+from KPIUtils_v2.Utils.Consts.DB import StaticKpis
 
 __author__ = 'idanr'
 
@@ -20,6 +21,7 @@ class NESTLEILToolBox:
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
         self.assortment = Assortment(self.data_provider)
         self.own_manufacturer_fk = int(self.data_provider.own_manufacturer.param_value.values[0])
+        self.kpi_static_data = self.common_v2.kpi_static_data[['pk', StaticKpis.TYPE]]
 
     def main_calculation(self):
         """ This function calculates the KPI results."""
@@ -36,35 +38,59 @@ class NESTLEILToolBox:
         if lvl3_result.empty:
             Log.warning(Consts.EMPTY_ASSORTMENT_DATA)
             return
+        lvl3_result = self._add_kpi_types_to_assortment_result(lvl3_result)
         # Getting KPI fks
-        dist_store_kpi_fk, oos_store_kpi_fk = self._get_store_level_kpis()
-        dist_sku_kpi_fk, oos_sku_kpi_fk = self._get_sku_level_kpis()
-        # Calculating the assortment results
-        store_level_res = self._calculated_store_level_results(lvl3_result)
-        sku_level_res = self._calculated_sku_level_results(lvl3_result)
-        # Saving to DB
-        self._save_results_to_db(store_level_res, dist_store_kpi_fk)
-        self._save_results_to_db(sku_level_res, dist_sku_kpi_fk, dist_store_kpi_fk)
-        self._save_results_to_db(store_level_res, oos_store_kpi_fk, is_complementary=True)
-        self._save_results_to_db(sku_level_res, oos_sku_kpi_fk, oos_store_kpi_fk)
+        store_lvl_kpi_list = lvl3_result[Consts.STORE_ASS_KPI_TYPE].unique().tolist()
+        for store_lvl_kpi in store_lvl_kpi_list:
+            relevant_lvl3_res = lvl3_result[lvl3_result[Consts.STORE_ASS_KPI_TYPE] == store_lvl_kpi]
+            sku_lvl_kpi = relevant_lvl3_res[Consts.SKU_ASS_KPI_TYPE].values[0]
+            dist_store_kpi_fk, oos_store_kpi_fk = self._get_ass_kpis(store_lvl_kpi)
+            dist_sku_kpi_fk, oos_sku_kpi_fk = self._get_ass_kpis(sku_lvl_kpi)
+            # Calculating the assortment results
+            store_level_res = self._calculated_store_level_results(relevant_lvl3_res)
+            sku_level_res = self._calculated_sku_level_results(relevant_lvl3_res)
+            # Saving to DB
+            self._save_results_to_db(store_level_res, dist_store_kpi_fk)
+            self._save_results_to_db(sku_level_res, dist_sku_kpi_fk, dist_store_kpi_fk)
+            self._save_results_to_db(store_level_res, oos_store_kpi_fk, is_complementary=True)
+            self._save_results_to_db(sku_level_res, oos_sku_kpi_fk, oos_store_kpi_fk)
 
-    def _get_store_level_kpis(self):
+    def _add_kpi_types_to_assortment_result(self, lvl3_result):
+        lvl3_result = lvl3_result.merge(self.kpi_static_data, left_on=Consts.KPI_FK_LVL2, right_on='pk', how='left')
+        lvl3_result = lvl3_result.drop(['pk'], axis=1)
+        lvl3_result.rename(columns={StaticKpis.TYPE: Consts.STORE_ASS_KPI_TYPE}, inplace=True)
+        lvl3_result = lvl3_result.merge(self.kpi_static_data, left_on=Consts.KPI_FK_LVL3, right_on='pk', how='left')
+        lvl3_result = lvl3_result.drop(['pk'], axis=1)
+        lvl3_result.rename(columns={StaticKpis.TYPE: Consts.SKU_ASS_KPI_TYPE}, inplace=True)
+        return lvl3_result
+
+    def _get_ass_kpis(self, distr_kpi_type):
         """
-        This method fetches the assortment KPIs in the store level
-        :return: A tuple: (Distribution store KPI fk, OOS store KPI fk)
+            This method fetches the assortment KPIs in the store level
+            :return: A tuple: (Distribution store KPI fk, OOS store KPI fk)
         """
-        distribution_store_level_kpi = self.common_v2.get_kpi_fk_by_kpi_type(Consts.DISTRIBUTION_STORE_LEVEL)
-        oos_store_level_kpi = self.common_v2.get_kpi_fk_by_kpi_type(Consts.OOS_STORE_LEVEL)
+        distribution_store_level_kpi = self.common_v2.get_kpi_fk_by_kpi_type(distr_kpi_type)
+        oos_kpi_type = Consts.DIST_OOS_KPIS_MAP[distr_kpi_type]
+        oos_store_level_kpi = self.common_v2.get_kpi_fk_by_kpi_type(oos_kpi_type)
         return distribution_store_level_kpi, oos_store_level_kpi
 
-    def _get_sku_level_kpis(self):
-        """
-        This method fetches the assortment KPIs in the SKU level
-        :return: A tuple: (Distribution SKU KPI fk, OOS SKU KPI fk)
-        """
-        distribution_sku_level_kpi = self.common_v2.get_kpi_fk_by_kpi_type(Consts.DISTRIBUTION_SKU_LEVEL)
-        oos_sku_level_kpi = self.common_v2.get_kpi_fk_by_kpi_type(Consts.OOS_SKU_LEVEL)
-        return distribution_sku_level_kpi, oos_sku_level_kpi
+    # def _get_store_level_kpis(self):
+    #     """
+    #     This method fetches the assortment KPIs in the store level
+    #     :return: A tuple: (Distribution store KPI fk, OOS store KPI fk)
+    #     """
+    #     distribution_store_level_kpi = self.common_v2.get_kpi_fk_by_kpi_type(Consts.DISTRIBUTION_STORE_LEVEL)
+    #     oos_store_level_kpi = self.common_v2.get_kpi_fk_by_kpi_type(Consts.OOS_STORE_LEVEL)
+    #     return distribution_store_level_kpi, oos_store_level_kpi
+    #
+    # def _get_sku_level_kpis(self):
+    #     """
+    #     This method fetches the assortment KPIs in the SKU level
+    #     :return: A tuple: (Distribution SKU KPI fk, OOS SKU KPI fk)
+    #     """
+    #     distribution_sku_level_kpi = self.common_v2.get_kpi_fk_by_kpi_type(Consts.DISTRIBUTION_SKU_LEVEL)
+    #     oos_sku_level_kpi = self.common_v2.get_kpi_fk_by_kpi_type(Consts.OOS_SKU_LEVEL)
+    #     return distribution_sku_level_kpi, oos_sku_level_kpi
 
     def _calculated_store_level_results(self, lvl3_result):
         """
@@ -78,6 +104,7 @@ class NESTLEILToolBox:
         result[Consts.DENOMINATOR_ID] = self.store_id
         return [result]
 
+    # the oos and distribution sku results are the same due to presentation requirements (was initially like this)
     def _calculated_sku_level_results(self, lvl3_result):
         """
         This method calculates the assortment results in the sku level
