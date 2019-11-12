@@ -938,12 +938,12 @@ class ToolBox(GlobalSessionToolBox):
         # Step 10: Calculate the result
         result = (numerator_result / denominator_result)
 
-        score = self.calculate_score_for_sos(target, result)
+        actual_result = self.calculate_score_for_sos(target, result)
 
         result_dict = {'kpi_name': kpi_name, 'kpi_fk': kpi_fk, 'numerator_id': numerator_id,
                        'numerator_result': numerator_result,
                        'denominator_id': denominator_id, 'denominator_result': denominator_result,
-                       'result': result, 'score': score}
+                       'result': actual_result}
 
         return result_dict
 
@@ -1305,7 +1305,7 @@ class ToolBox(GlobalSessionToolBox):
         return scene_survey_response
 
     @staticmethod
-    def  calculate_score_for_sos(target, result):
+    def calculate_score_for_sos(target, result):
         if len(target) > 3:
             min_target, max_target = target.split('-')
             if result * 100 >= int(min_target) and result * 100 <= int(max_target):
