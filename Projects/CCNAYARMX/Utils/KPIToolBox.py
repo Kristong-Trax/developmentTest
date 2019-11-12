@@ -864,7 +864,7 @@ class ToolBox(GlobalSessionToolBox):
                         block = self.block.network_x_block_together(relevant_filters,
                                                                     location=location,
                                                                     additional={'minimum_block_ratio': 0.9,
-                                                                                'calculate_all_scenes': True})
+                                                                                'calculate_all_scenes': True,'minimum_facing_for_block': 1})
                         if False in block['is_block'].to_list():
                             result = 0
                         else:
