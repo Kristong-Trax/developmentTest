@@ -1,7 +1,7 @@
 
 from Trax.Utils.Logging.Logger import Log
 
-from Projects.SINOPAC_LOCAL.Utils.KPIToolBox import SinoPacificToolBox
+from Projects.SINOTH.Utils.KPIToolBox import SinoPacificToolBox
 
 from KPIUtils_v2.DB.Common import Common
 

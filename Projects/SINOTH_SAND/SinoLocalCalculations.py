@@ -2,11 +2,11 @@
 from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
 from Trax.Utils.Conf.Configuration import Config
 from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
-from Projects.SINOPAC_LOCAL.Calculations import Calculations
+from Projects.SINOTH_SAND.Calculations import Calculations
 
 
 if __name__ == '__main__':
-    project_name = 'sinopacificTH'  # 10.4.4.151
+    project_name = 'sinoth-sand'
     LoggerInitializer.init('{} Local Calculations'.format(project_name.upper()))
     Config.init()
     data_provider = KEngineDataProvider(project_name)
