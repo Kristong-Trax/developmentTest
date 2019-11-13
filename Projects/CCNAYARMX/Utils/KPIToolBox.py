@@ -63,6 +63,7 @@ DENOMINATOR_PARAM_1 = 'denominator param 1'
 DENOMINATOR_VALUE_1 = 'denominator value 1'
 NUMERATOR_ENTITY = 'Numerator Entity'
 DENOMINATOR_ENTITY = 'Denominator Entity'
+UNIQUE_PRODUCTS_TARGETS = 'Unique Products Targets'
 
 # Sheet names
 KPIS = 'KPIs'
@@ -78,6 +79,7 @@ COMBO = 'Combo'
 SCORING = 'Scoring'
 PLATFORMAS = 'Platformas'
 PLATFORMAS_SCORING = 'Platformas Scoring'
+AVAILABILITY_COMBO = 'Availability Combo'
 
 POS_OPTIONS = 'POS Options'
 TARGETS_AND_CONSTRAINTS = 'Targets and Constraints'
@@ -103,10 +105,10 @@ BAY_NUMBER = 'bay_number'
 
 # Read the sheet
 SHEETS = [SOS, BLOCK_TOGETHER, SHARE_OF_EMPTY, BAY_COUNT, PER_BAY_SOS, SURVEY, AVAILABILITY, DISTRIBUTION,
-          COMBO, SCORING, PLATFORMAS, PLATFORMAS_SCORING, KPIS]
+          COMBO, SCORING, PLATFORMAS, PLATFORMAS_SCORING, KPIS, AVAILABILITY_COMBO]
 POS_OPTIONS_SHEETS = [POS_OPTIONS, TARGETS_AND_CONSTRAINTS]
 
-TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'CCNayarTemplatev0.8.5.xlsx')
+TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'CCNayarTemplatev0.8.6.xlsx')
 POS_OPTIONS_TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data',
                                          'CCNayar_POS_Options_v4.xlsx')
 
@@ -183,7 +185,7 @@ class ToolBox(GlobalSessionToolBox):
                                                           att2))
                                                       ]
         foundation_kpi_types = [BAY_COUNT, SOS, PER_BAY_SOS, BLOCK_TOGETHER, AVAILABILITY, SURVEY,
-                                DISTRIBUTION, SHARE_OF_EMPTY]
+                                DISTRIBUTION, SHARE_OF_EMPTY, AVAILABILITY_COMBO]
 
         foundation_kpi_template = relevant_kpi_template[relevant_kpi_template[KPI_TYPE].isin(foundation_kpi_types)]
         platformas_kpi_template = relevant_kpi_template[relevant_kpi_template[KPI_TYPE] == PLATFORMAS_SCORING]
@@ -280,6 +282,8 @@ class ToolBox(GlobalSessionToolBox):
             return self.calculate_scoring
         elif kpi_type == PLATFORMAS_SCORING:
             return self.calculate_platformas_scoring
+        elif kpi_type == AVAILABILITY_COMBO:
+            return self.calculate_availability_combo
 
     def calculate_platformas_scoring(self, row):
         results_list = []
@@ -507,6 +511,50 @@ class ToolBox(GlobalSessionToolBox):
             if series[column] not in ['', np.nan]:
                 groups.append([x.strip() for x in series[column].split(',')])
         return groups
+
+    def calculate_availability_combo(self, row):
+        kpi_name = row[KPI_NAME]
+        kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_name)
+        template_group = self.sanitize_values(row[TASK_TEMPLATE_GROUP])
+
+        relevant_scif = self.scif[self.scif[TEMPLATE_GROUP].isin(template_group)]
+        if relevant_scif.empty:
+            result_dict = {'kpi_name': kpi_name, 'kpi_fk': kpi_fk, 'result': pd.np.nan}
+            return result_dict
+
+        relevant_product_names = set(relevant_scif['product_name'].unique().tolist())
+
+        # check the 'POS Option' activation
+        result = 1  # start as passing
+        pos_option_found = 0  # False
+        groups = self._get_groups(row, 'POS Option')
+        for group in groups:
+            if all(product in relevant_product_names for product in group):
+                pos_option_found = 1  # True
+                break
+        if not pos_option_found:
+            result = 0
+        else:
+            unique_product_targets = row[UNIQUE_PRODUCTS_TARGETS]
+            sub_category_targets = self._get_target_mapping(unique_product_targets)
+
+            for sub_category, target in sub_category_targets.iteritems():
+                unique_skus_by_category = \
+                    len(relevant_scif[relevant_scif['sub_category'] == sub_category]['product_name'].unique().tolist())
+                if unique_skus_by_category < target:
+                    result = 0
+
+        result_dict = {'kpi_name': kpi_name, 'kpi_fk': kpi_fk, 'numerator_id': self.own_manuf_fk,
+                       'denominator_id': self.store_id, 'result': result}
+        return result_dict
+
+    @staticmethod
+    def _get_target_mapping(column_value):
+        target_dict = {}
+        for pair in column_value.split(','):
+            key, value = pair.split(';')
+            target_dict.update({key: int(value)})
+        return target_dict
 
     def calculate_assortment(self, row):
         kpi_name = row[KPI_NAME]
@@ -838,7 +886,7 @@ class ToolBox(GlobalSessionToolBox):
                     block = self.block.network_x_block_together(relevant_filters,
                                                                 location=location,
                                                                 additional={'minimum_block_ratio': 0.9,
-                                                                            'calculate_all_scenes': True})
+                                                                            'calculate_all_scenes': True, 'minimum_facing_for_block': 1})
                     if False in block['is_block'].to_list():
                         result = 0
                         break
@@ -864,7 +912,7 @@ class ToolBox(GlobalSessionToolBox):
                         block = self.block.network_x_block_together(relevant_filters,
                                                                     location=location,
                                                                     additional={'minimum_block_ratio': 0.9,
-                                                                                'calculate_all_scenes': True})
+                                                                                'calculate_all_scenes': True,'minimum_facing_for_block': 1})
                         if False in block['is_block'].to_list():
                             result = 0
                         else:
@@ -938,12 +986,12 @@ class ToolBox(GlobalSessionToolBox):
         # Step 10: Calculate the result
         result = (numerator_result / denominator_result)
 
-        score = self.calculate_score_for_sos(target, result)
+        actual_result = self.calculate_score_for_sos(target, result)
 
         result_dict = {'kpi_name': kpi_name, 'kpi_fk': kpi_fk, 'numerator_id': numerator_id,
                        'numerator_result': numerator_result,
                        'denominator_id': denominator_id, 'denominator_result': denominator_result,
-                       'result': result, 'score': score}
+                       'result': actual_result}
 
         return result_dict
 
@@ -1305,7 +1353,7 @@ class ToolBox(GlobalSessionToolBox):
         return scene_survey_response
 
     @staticmethod
-    def  calculate_score_for_sos(target, result):
+    def calculate_score_for_sos(target, result):
         if len(target) > 3:
             min_target, max_target = target.split('-')
             if result * 100 >= int(min_target) and result * 100 <= int(max_target):

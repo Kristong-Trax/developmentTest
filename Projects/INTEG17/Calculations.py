@@ -1,3 +1,4 @@
+from Projects.RINIELSENUS.Calculation import MarsUsCalculations
 from Trax.Algo.Calculations import KpiCalculation, KpiResult
 from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScript
 from Trax.Utils.DesignPatterns.Decorators import classproperty
@@ -39,3 +40,4 @@ class INTEG17INBEVBECalculations(BaseCalculationsScript):
     """
     def run_project_calculations(self):
         Log.info('Inside integ17 project specific calculations')
+        MarsUsCalculations(self.data_provider, self.output).run_project_calculations()

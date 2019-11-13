@@ -14,13 +14,13 @@ import pandas as pd
 __author__ = 'ilays'
 
 if __name__ == '__main__':
-    LoggerInitializer.init('PNGCNTEST calculations')
+    LoggerInitializer.init('Png-cn calculations')
     Config.init()
     project_name = 'pngcntest'
     data_provider = KEngineDataProvider(project_name)
     output = Output()
     sessions = {
-                '96784027-4AAC-4636-9B4E-35B403ECCFF8': [20847158],
+                'b956ca49-21b5-4dc1-b81d-082b81f7f4e2': [21714149],
                 # '4E75E4F1-F5F0-4B77-8337-513F61913864': ['19626328'],
                 # '2af37e81-529d-43ce-b3e2-8b3307838830':[],
                 # '173e66d3-5b63-4482-b1ab-4fbc6674aa70':[],
