@@ -1,4 +1,4 @@
-# from Trax.Analytics.Calculation.PNGCN_PROD.EmptySpacesKpi import EmptySpaceKpiGenerator
+# from Trax.Analytics.Calculation.PNGCNTEST.EmptySpacesKpi import EmptySpaceKpiGenerator
 #from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
 from Projects.PNGCNTEST.ShareOfDisplay.ExcludeDataProvider import ShareOfDisplayDataProvider, Fields
 from Trax.Utils.Logging.Logger import Log
