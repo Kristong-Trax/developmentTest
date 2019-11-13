@@ -39,12 +39,16 @@ class TestMarsuaeSand(TestFunctionalCase):
         self.mock_position_graph()
         self.mock_lvl3_ass_base_df()
         self.mock_position_graph_block()
+        self.mock_all_scenes_in_session(pd.DataFrame(columns=['scene_fk', 'template_fk']))
 
     # def mock_lvl3_ass_result(self):
     #     ass_res = self.mock_object('Assortment.calculate_lvl3_assortment',
     #                                path='KPIUtils_v2.Calculations.AssortmentCalculations')
     #     ass_res.return_value = DataTestUnitMarsuae.test_case_1_ass_result
     #     return ass_res.return_value
+
+    def mock_all_scenes_in_session(self, data):
+        self.data_provider_data_mock['scenes_info'] = data
 
     def mock_position_graph_block(self):
         self.mock_object('PositionGraphs', path='KPIUtils_v2.Calculations.BlockCalculations_v2')
@@ -415,6 +419,7 @@ class TestMarsuaeSand(TestFunctionalCase):
     def test_calculate_display_number_if_displays_equals_target(self):
         probe_group, matches, scene = self.create_scif_matches_stitch_groups_data_mocks(
             DataTestUnitMarsuae.test_case_1, [1, 2, 3, 4])
+        self.mock_all_scenes_in_session(DataTestUnitMarsuae.scenes_for_display_1)
         tool_box = MARSUAE_SANDToolBox(self.data_provider_mock, self.output)
         store_atomics = tool_box.get_store_atomic_kpi_parameters()
         store_atomics = tool_box.add_duplicate_kpi_fk_where_applicable(store_atomics)
@@ -428,6 +433,7 @@ class TestMarsuaeSand(TestFunctionalCase):
     def test_calculate_display_number_if_no_relevant_displays_in_session(self):
         probe_group, matches, scene = self.create_scif_matches_stitch_groups_data_mocks(
             DataTestUnitMarsuae.test_case_1, [1, 2, 3])
+        self.mock_all_scenes_in_session(DataTestUnitMarsuae.scenes_for_display_2)
         tool_box = MARSUAE_SANDToolBox(self.data_provider_mock, self.output)
         store_atomics = tool_box.get_store_atomic_kpi_parameters()
         store_atomics = tool_box.add_duplicate_kpi_fk_where_applicable(store_atomics)
@@ -441,6 +447,7 @@ class TestMarsuaeSand(TestFunctionalCase):
     def test_calculate_display_display_number_more_than_target(self):
         probe_group, matches, scene = self.create_scif_matches_stitch_groups_data_mocks(
             DataTestUnitMarsuae.test_case_1, [1, 2, 3, 4, 5])
+        self.mock_all_scenes_in_session(DataTestUnitMarsuae.scenes_for_display_3)
         tool_box = MARSUAE_SANDToolBox(self.data_provider_mock, self.output)
         store_atomics = tool_box.get_store_atomic_kpi_parameters()
         store_atomics = tool_box.add_duplicate_kpi_fk_where_applicable(store_atomics)
@@ -448,6 +455,20 @@ class TestMarsuaeSand(TestFunctionalCase):
                                                                   'POI Compliance - Chocolate / Ice Cream')
         tool_box.calculate_atomic_results(param_row)
         expected_result = {'kpi_fk': 3025, 'result': 2, 'score': 2, 'weight': 5, 'score_by_weight': 10}
+        check = self.check_results(tool_box.atomic_kpi_results, expected_result)
+        self.assertEquals(check, 1)
+
+    def test_calculate_display_number_if_displays_equals_target_no_tags_in_scif(self):
+        probe_group, matches, scene = self.create_scif_matches_stitch_groups_data_mocks(
+            DataTestUnitMarsuae.test_case_1, [1, 2, 3, 13])
+        self.mock_all_scenes_in_session(DataTestUnitMarsuae.scenes_for_display_including_no_tags)
+        tool_box = MARSUAE_SANDToolBox(self.data_provider_mock, self.output)
+        store_atomics = tool_box.get_store_atomic_kpi_parameters()
+        store_atomics = tool_box.add_duplicate_kpi_fk_where_applicable(store_atomics)
+        param_row = self.get_parameter_series_for_kpi_calculation(store_atomics,
+                                                                  'POI Compliance - Chocolate / Ice Cream')
+        tool_box.calculate_atomic_results(param_row)
+        expected_result = {'kpi_fk': 3025, 'result': 1, 'score': 1, 'weight': 5, 'score_by_weight': 5}
         check = self.check_results(tool_box.atomic_kpi_results, expected_result)
         self.assertEquals(check, 1)
 
