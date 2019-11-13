@@ -20,6 +20,7 @@ class Const(object):
     PACK_DISTRIBUTION = 'Pack Distribution'
     PURITY = 'Purity'
     NEGATIVE_DISTRIBUTION = 'Negative Distribution'
+    ADJACENCY = 'Adjacency'
 
 
     # Krishna Edits
