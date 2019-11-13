@@ -2,7 +2,8 @@
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Utils.Logging.Logger import Log
 from KPIUtils_v2.Utils.GlobalScripts.Scripts import GlobalSessionToolBox
-# import pandas as pd
+import pandas as pd
+import os
 
 from Projects.CCNAYARMX_SAND2.Data.LocalConsts import Consts
 
@@ -26,21 +27,52 @@ from Projects.CCNAYARMX_SAND2.Data.LocalConsts import Consts
 
 __author__ = 'huntery'
 
+KPIS = 'KPIs'
+PER_SCENE_SOS = 'Per Scene SOS'
+SOS = 'SOS'
+SURVEY = 'Survey'
+SURVEY_PASSTHROUGH = 'Survey Passthrough'
+AVAILABILITY = 'Availability'
+PLATFORMAS = 'Platformas'
+PLATFORMAS_SCORING = 'Platformas Scoring'
+SCORING = 'Scoring'
+ROLLBACKS = 'Rollbacks'
+BAY_COUNT = 'Bay Count'
+
+SHEETS = [PER_SCENE_SOS, SOS, SURVEY, SURVEY_PASSTHROUGH, AVAILABILITY, PLATFORMAS, PLATFORMAS_SCORING, ROLLBACKS,
+          BAY_COUNT, SCORING, KPIS]
+
+TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'INSERTSTUFFHERE')
+
+STORE_TYPE = 'store_type'
+KPI_NAME = 'KPI Name'
+KPI_TYPE = 'KPI Type'
+PARENT_KPI = 'Parent KPI'
+
 
 class ToolBox(GlobalSessionToolBox):
 
     def __init__(self, data_provider, output):
         GlobalSessionToolBox.__init__(self, data_provider, output)
+        self.results_df = pd.DataFrame(columns=['kpi_name', 'kpi_fk', 'numerator_id', 'numerator_result',
+                                                'denominator_id', 'denominator_result', 'result', 'score',
+                                                'identifier_result', 'identifier_parent', 'should_enter'])
+        self.templates = {}
+        self.parse_template()
+
+    def parse_template(self):
+        for sheet in SHEETS:
+            self.templates[sheet] = pd.read_excel(TEMPLATE_PATH, sheet_name=sheet)
 
     def main_calculation(self):
         relevant_kpi_template = self.templates[KPIS]
         att2 = self.store_info['additional_attribute_2'].iloc[0]
-        relevant_kpi_template = relevant_kpi_template[(relevant_kpi_template[STORE_ADDITIONAL_ATTRIBUTE_2].isnull()) |
-                                                      (relevant_kpi_template[STORE_ADDITIONAL_ATTRIBUTE_2].str.contains(
+        relevant_kpi_template = relevant_kpi_template[(relevant_kpi_template[STORE_TYPE].isnull()) |
+                                                      (relevant_kpi_template[STORE_TYPE].str.contains(
                                                           att2))
                                                       ]
-        foundation_kpi_types = [BAY_COUNT, SOS, PER_BAY_SOS, BLOCK_TOGETHER, AVAILABILITY, SURVEY,
-                                DISTRIBUTION, SHARE_OF_EMPTY, AVAILABILITY_COMBO]
+        foundation_kpi_types = [PER_SCENE_SOS, BAY_COUNT, SURVEY, SURVEY_PASSTHROUGH, AVAILABILITY, SOS,
+                                ROLLBACKS]
 
         foundation_kpi_template = relevant_kpi_template[relevant_kpi_template[KPI_TYPE].isin(foundation_kpi_types)]
         platformas_kpi_template = relevant_kpi_template[relevant_kpi_template[KPI_TYPE] == PLATFORMAS_SCORING]
@@ -119,23 +151,40 @@ class ToolBox(GlobalSessionToolBox):
             return self.calculate_sos
         elif kpi_type == BAY_COUNT:
             return self.calculate_bay_count
-        elif kpi_type == PER_BAY_SOS:
-            return self.calculate_per_bay_sos
-        elif kpi_type == BLOCK_TOGETHER:
-            return self.calculate_block_together
+        elif kpi_type == PER_SCENE_SOS:
+            return self.calculate_per_scene_sos
         elif kpi_type == AVAILABILITY:
             return self.calculate_availability
         elif kpi_type == SURVEY:
             return self.calculate_survey
-        elif kpi_type == DISTRIBUTION:
-            return self.calculate_assortment
-        elif kpi_type == SHARE_OF_EMPTY:
-            return self.calculate_share_of_empty
-        elif kpi_type == COMBO:
-            return self.calculate_combo
         elif kpi_type == SCORING:
             return self.calculate_scoring
         elif kpi_type == PLATFORMAS_SCORING:
             return self.calculate_platformas_scoring
-        elif kpi_type == AVAILABILITY_COMBO:
-            return self.calculate_availability_combo
+
+    def _get_parent_name_from_kpi_name(self, kpi_name):
+        template = self.templates[KPIS]
+        parent_kpi_name = \
+            template[template[KPI_NAME].str.encode('utf-8') == kpi_name.encode('utf-8')][PARENT_KPI].iloc[0]
+        if parent_kpi_name and pd.notna(parent_kpi_name):
+            return parent_kpi_name
+        else:
+            return None
+
+    def calculate_availability(self, row):
+        kpi_name = row[KPI_NAME]
+        kpi_fk = self.get_kpi_fk_by_kpi_type(kpi_name)
+
+    def calculate_sos(self, row):
+        pass
+
+    def calculate_per_scene_sos(self, row):
+        pass
+
+    def calculate_bay_count(self, row):
+        pass
+
+    def calculate_survey(self, row):
+        pass
+
+
