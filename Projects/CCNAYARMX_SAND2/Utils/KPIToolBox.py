@@ -39,8 +39,10 @@ SCORING = 'Scoring'
 ROLLBACKS = 'Rollbacks'
 BAY_COUNT = 'Bay Count'
 
+PORTAFOLIO_PRODUCTS = 'Portafolio Products Details'
+
 SHEETS = [PER_SCENE_SOS, SOS, SURVEY, SURVEY_PASSTHROUGH, AVAILABILITY, PLATFORMAS, PLATFORMAS_SCORING, ROLLBACKS,
-          BAY_COUNT, SCORING, KPIS]
+          BAY_COUNT, SCORING, KPIS, PORTAFOLIO_PRODUCTS]
 
 TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'INSERTSTUFFHERE')
 
@@ -59,6 +61,7 @@ class ToolBox(GlobalSessionToolBox):
                                                 'identifier_result', 'identifier_parent', 'should_enter'])
         self.templates = {}
         self.parse_template()
+        self.own_manuf_fk = int(self.data_provider.own_manufacturer.param_value.values[0])
 
     def parse_template(self):
         for sheet in SHEETS:
@@ -174,6 +177,43 @@ class ToolBox(GlobalSessionToolBox):
     def calculate_availability(self, row):
         kpi_name = row[KPI_NAME]
         kpi_fk = self.get_kpi_fk_by_kpi_type(kpi_name)
+        sku_kpi_name = kpi_name + ' - SKU'
+        sku_kpi_fk = self.get_kpi_fk_by_kpi_type(sku_kpi_name)
+        results_list = []
+
+        relevant_scif = self.scif.copy()
+
+        template_group = self.does_exist(row, TEMPLATE_GROUP)
+        if template_group:
+            relevant_scif = relevant_scif[relevant_scif['template_group'].isin(template_group)]
+
+        template_name = self.does_exist(row, TEMPLATE_NAME)
+        if template_group:
+            relevant_scif = relevant_scif[relevant_scif['template_name'].isin(template_name)]
+
+        sub_category = row['sub_category']
+
+        relevant_template = self.templates[PORTAFOLIO_PRODUCTS]
+        relevant_template = relevant_template[relevant_template['Client Subcategory'] == sub_category]
+
+        passing_products = 0
+        for i, sku_row in relevant_template.iterrows():
+            facings = relevant_scif[relevant_scif['product_name'] == sku_row['Product Local Name']]['facings'].sum()
+            product_fk = self._get_product_fk_from_name(sku_row['Product Local Name'])
+            target = sku_row['Minimum Number of Facings']
+            score = 1 if facings >= target else 0
+            result_dict = {'kpi_name': sku_kpi_name, 'kpi_fk': sku_kpi_fk, 'numerator_id': product_fk,
+                           'denominator_id': self.store_id, 'result': facings, 'score': score, 'target': target,
+                           'identifier_parent': kpi_name}
+            results_list.append(result_dict)
+            if score == 1:
+                passing_products += 1
+
+        result = 1 if passing_products == len(relevant_template) else 0
+        result_dict = {'kpi_name': kpi_name, 'kpi_fk': kpi_fk, 'numerator_id': self.own_manuf_fk,
+                       'denominator_id': self.store_id, 'result': result}
+        results_list.append(result_dict)
+        return results_list
 
     def calculate_sos(self, row):
         pass
@@ -186,5 +226,24 @@ class ToolBox(GlobalSessionToolBox):
 
     def calculate_survey(self, row):
         pass
+
+    def _get_product_fk_from_name(self, product_name):
+        return self.all_products[self.all_products['product_name'] == product_name]['product_fk'].iloc[0]
+
+    @staticmethod
+    def does_exist(kpi_line, column_name):
+        """
+        checks if kpi_line has values in this column, and if it does - returns a list of these values
+        :param kpi_line: line from template
+        :param column_name: str
+        :return: list of values if there are, otherwise None
+        """
+        if column_name in kpi_line.keys() and kpi_line[column_name] != "":
+            cell = kpi_line[column_name]
+            if type(cell) in [int, float]:
+                return [cell]
+            elif type(cell) in [unicode, str]:
+                return [x.strip() for x in cell.split(",")]
+        return None
 
 
