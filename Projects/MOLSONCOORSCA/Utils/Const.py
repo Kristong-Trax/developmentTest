@@ -21,6 +21,8 @@ class Const(object):
     PURITY = 'Purity'
     NEGATIVE_DISTRIBUTION = 'Negative Distribution'
     ADJACENCY = 'Adjacency'
+    BLOCKING = 'Blocking'
+
 
 
     # Krishna Edits
@@ -31,7 +33,6 @@ class Const(object):
     SHELF_REGION = 'Shelf Region'
     BLOCKING = 'Blocking'
     MAX_BLOCK_ADJ = 'Max Block Adjacency'
-    BLOCKED_TOGETHER = 'Blocked Together'
     BLOCKING_PERCENT = 'Blocking Percent'
     BLOCK_ORIENTATION = 'Block Orientation'
     MULTI_BLOCK = 'Multi Block'

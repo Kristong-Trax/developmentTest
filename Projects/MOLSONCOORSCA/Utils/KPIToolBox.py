@@ -130,49 +130,52 @@ class ToolBox:
         if relevant_scif.empty:
             return
 
-        if kpi_name not in [
-            # 'Eye Level Availability'
-            # 'Flanker Displays', 'Disruptor Displays'
-            # 'Innovation Distribution',
-            # 'Display by Location',
-            # 'Display by Location'
-            # 'Leading Main Section on Left',
-            # 'Leading Cooler on Left',
-            # 'Leading Cooler on Right',
-            # 'Leading Main Section on Right',
-            # 'Leading Cold Room on Left',
-            # 'Leading Cold Room on Right',
-            # 'Share of Segment Cooler Facings'
-            # 'Share of Segment Warm Facings',
-            # 'ABI Share of Display Space'
-            # 'Sleeman Share of Display Space'
-            # 'Share of Total Space'
-            # 'Warm Base Measurement'
-            # 'Warm Bays',
-            # 'Dynamic Out of Stock',
-            # 'Pack Distribution vs Competitors'
-            # 'Molson Coors Cooler Compliance',
-            # 'Molson Coors Cooler Purity',
-            # 'Molson Coors Cooler Violations',
-            # 'Molson Coors Cooler Exceptions'
-            'Flanker Displays',
-            'Disruptor Displays'
-
-        ]:
-            return
+        # if kpi_name not in [
+        #     # 'Eye Level Availability'
+        #     # 'Flanker Displays', 'Disruptor Displays'
+        #     # 'Innovation Distribution',
+        #     # 'Display by Location',
+        #     # 'Display by Location'
+        #     # 'Leading Main Section on Left',
+        #     # 'Leading Cooler on Left',
+        #     # 'Leading Cooler on Right',
+        #     # 'Leading Main Section on Right',
+        #     # 'Leading Cold Room on Left',
+        #     # 'Leading Cold Room on Right',
+        #     # 'Share of Segment Cooler Facings'
+        #     # 'Share of Segment Warm Facings',
+        #     # 'ABI Share of Display Space'
+        #     # 'Sleeman Share of Display Space'
+        #     # 'Share of Total Space'
+        #     # 'Warm Base Measurement'
+        #     # 'Warm Bays',
+        #     # 'Dynamic Out of Stock',
+        #     # 'Pack Distribution vs Competitors'
+        #     # 'Molson Coors Cooler Compliance',
+        #     # 'Molson Coors Cooler Purity',
+        #     # 'Molson Coors Cooler Violations',
+        #     # 'Molson Coors Cooler Exceptions'
+        #     # 'Flanker Displays',
+        #     # 'Disruptor Displays',
+        #     # 'Brand Blocking'
+        #     'Adjacencies'
+        #
+        # ]:
+        #     return
 
         if kpi_type not in [
-            # 'Share of Facings',
-            # 'Share of Shelf',
-            # 'Distribution',
-            # 'Anchor',
-            # 'Base Measurement',
-            # 'Bay Count',
-            # 'Out of Stock',
-            # 'Pack Distribution'
-            # 'Purity',
-            # 'Negative Distribution'
-            'Adjacency'
+            'Share of Facings',
+            'Share of Shelf',
+            'Distribution',
+            'Anchor',
+            'Base Measurement',
+            'Bay Count',
+            'Out of Stock',
+            'Pack Distribution',
+            'Purity',
+            'Negative Distribution',
+            'Adjacency',
+            # 'Blocking',
             ]:
             return
 
@@ -599,24 +602,27 @@ class ToolBox:
         comparable_type = self.read_cell_from_line(kpi_line, 'Comparable Type')[0]
         assort_template = self.read_cell_from_line(kpi_line, 'Assortment')
         assort = self.competitive_brands
-        if 'Adjacencies' == assort_template:
+        if 'Adjacencies' == assort_template[0]:
             assort = self.adj_brands
         assort = self.dictify_competitive_brands(comparable_type, assort)
         brands_dict = self.all_products.set_index('brand_name')[['brand_fk', 'manufacturer_fk']].drop_duplicates()\
             .to_dict('index')
+        existing_brands = set(relevant_scif.brand_name.values)
         for k in assort.keys():
-            if k not in brands_dict:
+            if k not in existing_brands:
                 del assort[k]
         den = len(assort.keys())
         results = []
         total = 0
         for k, v in assort.items():
-            comp_filter = {'A': {'brand_name': [k]}, 'B': {'brand_name': v}}
-            result = self.calculate_adj_base(kpi_name, kpi_line, relevant_scif, general_filters, comp_filter)
+            result = 0
+            if sum([1 for i in v if i in existing_brands]):
+                comp_filter = {'A': {'brand_name': [k]}, 'B': {'brand_name': v}}
+                result = self.calculate_adj_base(kpi_name, kpi_line, relevant_scif, general_filters, comp_filter)
             results.append({'score': result, 'result': result, 'numerator_result': result,
                             'numerator_id': brands_dict[k][main_line[level['num_col']]],
-                            'denominator_id': brands_dict[v[-1]][main_line[level['den_col']]],  # -1 used because of template error
-                            'kpi_name': self.lvl_name(kpi_name, 'SKU'),
+                            'denominator_id': brands_dict[v[0]][main_line[level['den_col']]],
+                            'kpi_name': self.lvl_name(kpi_name, 'Brand'),
                             'ident_parent': self.lvl_name(kpi_name, 'Session')})
             total += result
         result = 0
@@ -626,11 +632,11 @@ class ToolBox:
             result = self.safe_divide(total, den)
 
         results.append({'score': result, 'result': result, 'numerator_result': total, 'denominator_result': den,
-                        'numerator_id': brands_dict[k][main_line['Numerator 2']],
+                        'numerator_id': self.manufacturer_fk,
                         'denominator_id': self.store_id,
                         'kpi_name': self.lvl_name(kpi_name, 'Session'),
-                        'ident_self': self.lvl_name(kpi_name, 'Session')})
-        return level['end'], result
+                        'ident_result': self.lvl_name(kpi_name, 'Session')})
+        return level['end'], results
 
     def calculate_adj_base(self, kpi_name, kpi_line, relevant_scif, general_filters, comp_filter={}):
         allowed_edges = [x.upper() for x in self.read_cell_from_line(kpi_line, Const.EDGES)]
@@ -662,8 +668,18 @@ class ToolBox:
             result = 1
         return result
 
+    def calculate_blocking(self, kpi_name, kpi_line, relevant_scif, general_filters, main_line, level, **kwargs):
+        filters = self.get_kpi_line_filters(kpi_line, 'Num')
+        exclude = self.get_kpi_line_filters(kpi_line, 'Exclude')
+        for k in exclude:
+            if exclude[k] == ['None']:
+                exclude[k] = [None]
+        _, _, mpis_dict, blocks, results = self.base_block(kpi_name, kpi_line, relevant_scif, general_filters,
+                                                           filters=filters, exclude=exclude, check_orient=0)
+        print('asdf')
+
     def base_block(self, kpi_name, kpi_line, relevant_scif, general_filters_base, check_orient=1, other=1, filters={},
-                   multi=0):
+                   exclude={}, multi=0):
         result = pd.DataFrame()
         general_filters = dict(general_filters_base)
         blocks = pd.DataFrame()
@@ -699,7 +715,8 @@ class ToolBox:
                                                                                 'allowed_products_filters': allowed_filter,
                                                                                 'include_stacking': False,
                                                                                 'check_vertical_horizontal': check_orient,
-                                                                                'minimum_facing_for_block': 1})])
+                                                                                'minimum_facing_for_block': 1,
+                                                                                'exclude_filter': exclude})])
             blocks = result[result['is_block'] == True]
             valid_scene_found = 1
             if not blocks.empty and not multi:
@@ -1210,8 +1227,8 @@ class ToolBox:
         return self.filter_df(df['Granular Groups'], {'Granular Group Name': ggn_match})
 
     def dictify_competitive_brands(self, comp_type, assort):
-        opposition = assort[(assort['Start Date'] <= datetime.now()) &
-                            (assort['End Date'] >= datetime.now()) &
+        opposition = assort[(assort['Start Date'] <= pd.Timestamp(self.visit_date)) &
+                            (assort['End Date'] >= pd.Timestamp(self.visit_date)) &
                             (assort['Comparable Type'] == comp_type)]
         return opposition.set_index('Target Brand')['Comparable Brand'].to_dict()
 
@@ -1360,6 +1377,8 @@ class ToolBox:
             return self.calculate_negative_distribution
         elif kpi_type == Const.ADJACENCY:
             return self.calculate_adjacency
+        elif kpi_type == Const.BLOCKING:
+            return self.calculate_blocking
 
 
 
@@ -1380,8 +1399,7 @@ class ToolBox:
         #     return self.calculate_max_block_adj
         # elif kpi_type == Const.INTEGRATED:
         #     return self.calculate_integrated_core
-        # elif kpi_type == Const.BLOCKED_TOGETHER:
-        #     return self.calculate_block_together
+
         # elif kpi_type == Const.SERIAL:
         #     return self.calculate_serial_adj
         # elif kpi_type == Const.SEQUENCE:
