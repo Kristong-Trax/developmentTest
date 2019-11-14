@@ -285,7 +285,7 @@ class CCMY_SANDToolBox:
             CCMY_SANDConsts.SCENE_FK].unique().tolist()
         template_fk = self.scene_info[self.scene_info['template_name'].isin(scene_types)][
             CCMY_SANDConsts.TEMPLATE_FK].unique().tolist()
-        template_fk = template_fk if template_fk != [] else \
+        template_fk = template_fk[0] if template_fk != [] else \
             self.data_provider.all_templates[self.data_provider.all_templates['template_name'].isin(
                 scene_types)]['template_fk'].iloc[0]
 
