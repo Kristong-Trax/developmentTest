@@ -516,6 +516,7 @@ class MARSUAE_SANDToolBox:
 
     def get_atomics_for_template_groups_present_in_store(self, store_atomics):
         session_template_groups = self.scif['template_group'].unique().tolist()
+        # session_template_groups = self.scenes_in_session['template_group'].unique().tolist()
         category_kpis_df = self.kpi_category_df[self.kpi_category_df['template_group'].isin(session_template_groups)]
         visit_category_kpis = category_kpis_df[self.KPI_LVL_2_NAME].unique().tolist()
         store_atomics = store_atomics[store_atomics[self.KPI_LVL_2_NAME].isin(visit_category_kpis)]
