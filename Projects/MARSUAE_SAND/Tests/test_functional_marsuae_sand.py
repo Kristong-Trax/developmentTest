@@ -301,9 +301,10 @@ class TestMarsuaeSand(TestFunctionalCase):
         for expected_result in expected_list:
             self.assertTrue(expected_result in test_result_list)
 
-    def test_calculate_checkouts_considers_stitch_groups_for_calculations_groups_less_then_target(self):
+    def test_calculate_checkouts_less_then_target(self):
         probe_group, matches, scene = self.create_scif_matches_stitch_groups_data_mocks(
             DataTestUnitMarsuae.test_case_1, [1, 2, 12])
+        self.mock_all_scenes_in_session(DataTestUnitMarsuae.scenes_for_checkout_1)
         tool_box = MARSUAE_SANDToolBox(self.data_provider_mock, self.output)
         tool_box.common.write_to_db_result = MagicMock()
         store_atomics = tool_box.get_store_atomic_kpi_parameters()
@@ -321,9 +322,33 @@ class TestMarsuaeSand(TestFunctionalCase):
         self.assertEquals(duplicate_res['fk'], 3035)
         self.check_duplicate_kpi_results_mirrors_parent(duplicate_parent_res, duplicate_res)
 
-    def test_calculate_checkouts_considers_stitch_groups_for_calculations_groups_more_than_target(self):
+    def test_calculate_checkouts_more_than_target(self):
         probe_group, matches, scene = self.create_scif_matches_stitch_groups_data_mocks(
             DataTestUnitMarsuae.test_case_1, [1, 2, 3, 12])
+        self.mock_all_scenes_in_session(DataTestUnitMarsuae.scenes_for_checkout_2)
+        tool_box = MARSUAE_SANDToolBox(self.data_provider_mock, self.output)
+        tool_box.common.write_to_db_result = MagicMock()
+        store_atomics = tool_box.get_store_atomic_kpi_parameters()
+        store_atomics = tool_box.add_duplicate_kpi_fk_where_applicable(store_atomics)
+        param_row = self.get_parameter_series_for_kpi_calculation(store_atomics, 'Checkout Penetration - Chocolate')
+        tool_box.calculate_checkouts(param_row)
+        atomic_res = tool_box.atomic_kpi_results
+        atomic_res['result'] = atomic_res['result'].apply(lambda x: round(x, 5))
+        expected_result = {'kpi_fk': 3005, 'result': round(2/3.0 * 100, 5), 'score': 1, 'weight': 7.5, 'score_by_weight': 7.5}
+        check = self.check_results(tool_box.atomic_kpi_results, expected_result)
+        self.assertEquals(check, 1)
+
+        duplicate_parent_res = tool_box.common.write_to_db_result.mock_calls[0][2]
+        duplicate_res = tool_box.common.write_to_db_result.mock_calls[1][2]
+        self.assertEquals(duplicate_res['numerator_result'], 2)
+        self.assertEquals(duplicate_res['denominator_result'], 3)
+        self.assertEquals(duplicate_res['fk'], 3035)
+        self.check_duplicate_kpi_results_mirrors_parent(duplicate_parent_res, duplicate_res)
+
+    def test_calculate_checkouts_one_scene_wo_tags(self):
+        probe_group, matches, scene = self.create_scif_matches_stitch_groups_data_mocks(
+            DataTestUnitMarsuae.test_case_1, [2, 3, 14])
+        self.mock_all_scenes_in_session(DataTestUnitMarsuae.scenes_for_checkout_count_including_no_tags)
         tool_box = MARSUAE_SANDToolBox(self.data_provider_mock, self.output)
         tool_box.common.write_to_db_result = MagicMock()
         store_atomics = tool_box.get_store_atomic_kpi_parameters()

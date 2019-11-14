@@ -708,7 +708,7 @@ class MARSUAE_SANDToolBox:
     def calculate_displays(self, param_row):
         general_filters = self.get_general_filters(param_row, scif_flag=False)
         filtered_scenes = filter_df(general_filters, self.scenes_in_session)
-        result = len(filtered_scenes[self.SCENE_FK].unique().tolist())
+        result = len(filtered_scenes[self.SCENE_FK].unique())
         # filtered_scif = filter_df(general_filters, self.scif)
         # result = len(filtered_scif[self.SCENE_FK].unique().tolist())
         score, weight = self.get_score(result, param_row)
@@ -737,15 +737,16 @@ class MARSUAE_SANDToolBox:
         return identifier_result
 
     def calculate_checkouts(self, param_row):
+        denom_filters = self.get_general_filters(param_row, scif_flag=False)
+        filtered_scenes = filter_df(denom_filters, self.scenes_in_session)
+        all_ch_o = len(filtered_scenes[self.SCENE_FK].unique())
+
         filters = self.get_general_filters(param_row)
-        # all_ch_o = len(filter_df(filters, self.match_product_in_scene).drop_duplicates(subset=[self.SCENE_FK,
-        #                                                                                        'probe_group_id']))
-        all_ch_o = len(filter_df(filters, self.match_product_in_scene).drop_duplicates(subset=[self.SCENE_FK]))
+        # all_ch_o = len(filter_df(filters, self.match_product_in_scene).drop_duplicates(subset=[self.SCENE_FK]))
         kpi_filters = self.get_non_sos_kpi_filters(param_row)
         filters.update(kpi_filters)
         filtered_matches = filter_df(filters, self.matches_products)
         filtered_matches = filtered_matches[filtered_matches['stacking_layer'] == 1]
-        # scene_probe_groups = len(filtered_matches.drop_duplicates(subset=[self.SCENE_FK, 'probe_group_id']))
         scene_probe_groups = len(filtered_matches.drop_duplicates(subset=[self.SCENE_FK]))
         result = float(scene_probe_groups) / all_ch_o if all_ch_o else 0
         score, weight = self.get_score(param_row=param_row, result=result)

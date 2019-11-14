@@ -367,3 +367,16 @@ class DataTestUnitMarsuae(object):
         {'scene_fk': 1, 'template_fk': 1}, {'scene_fk': 2, 'template_fk': 2}, {'scene_fk': 3, 'template_fk': 2},
         {'scene_fk': 13, 'template_fk': 4}
     ])
+
+    scenes_for_checkout_count_including_no_tags = pd.DataFrame.from_records([
+        {'scene_fk': 2, 'template_fk': 2}, {'scene_fk': 3, 'template_fk': 2}, {'scene_fk': 14, 'template_fk': 2}
+    ])
+
+    scenes_for_checkout_1 = pd.DataFrame.from_records([
+        {'scene_fk': 1, 'template_fk': 1}, {'scene_fk': 2, 'template_fk': 2}, {'scene_fk': 12, 'template_fk': 2}
+    ])
+
+    scenes_for_checkout_2 = pd.DataFrame.from_records([
+        {'scene_fk': 1, 'template_fk': 1}, {'scene_fk': 2, 'template_fk': 2}, {'scene_fk': 3, 'template_fk': 2},
+        {'scene_fk': 12, 'template_fk': 2}
+    ])
