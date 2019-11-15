@@ -223,7 +223,7 @@ class SinoPacificToolBox:
         product_map = {
             OOS_CODE: oos_products,
             PRESENT_CODE: present_products,
-            EXTRA_CODE: extra_products
+            # EXTRA_CODE: extra_products
         }
         # save product presence; with distribution % kpi as parent
         for assortment_code, product_fks in product_map.iteritems():
@@ -305,7 +305,7 @@ class SinoPacificToolBox:
             product_map = {
                 OOS_CODE: oos_products,
                 PRESENT_CODE: present_products,
-                EXTRA_CODE: extra_products
+                # EXTRA_CODE: extra_products
             }
             # save product presence; with distribution % kpi as parent
             for assortment_code, product_fks in product_map.iteritems():
@@ -525,7 +525,12 @@ class SinoPacificToolBox:
                 # convert to a tuple
                 group_id_tup = group_id_tup,
             param_id_map = dict(zip(groupers, group_id_tup))
-            numerator_id = param_id_map.get(PARAM_DB_MAP[kpi['numerator'].iloc[0]]['key'])
+            # the ugly hack!
+            if OWN_CHECK_COL in param_id_map:
+                param_id_map.pop(OWN_CHECK_COL)
+                param_id_map['manufacturer_fk'] = OWN_MANUFACTURER_FK
+            numerator_id = param_id_map.get(
+                PARAM_DB_MAP[kpi['numerator'].iloc[0]]['key'])
             denominator_id = get_parameter_id(key_value=PARAM_DB_MAP[kpi['denominator'].iloc[0]]['key'],
                                               param_id_map=param_id_map)
             if denominator_id is None:
