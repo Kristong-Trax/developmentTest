@@ -325,6 +325,10 @@ class ToolBox(GlobalSessionToolBox):
 
         denominator_scif = self.scif[(self.scif['template_name'] == template_name) &
                                      (self.scif['product_type'] != 'POS')]
+
+        ignored_types = self.does_exist(row, 'ignored_types')
+        if ignored_types:
+            denominator_scif = denominator_scif[~denominator_scif['product_type'].isin(ignored_types)]
         if denominator_scif.empty:
             return {'kpi_name': kpi_name, 'kpi_fk': kpi_fk, 'result': pd.np.nan}
 
@@ -551,7 +555,8 @@ class ToolBox(GlobalSessionToolBox):
 
         passing_results = 0
         for question_fk, product_fk in product_questions.iteritems():
-            relevant_results = self.session_survey_results[self.session_survey_results['question_fk'] == question_fk]
+            relevant_results = \
+                self.session_survey_results[self.session_survey_results['question_fk'] == int(question_fk)]
             if len(relevant_results) == 2 and len(relevant_results['number_value'].unique()) == 1:
                 result = 1
                 passing_results += 1
@@ -585,7 +590,7 @@ class ToolBox(GlobalSessionToolBox):
         scenes = relevant_scif['scene_id'].unique().tolist()
         for scene in scenes:
             result_dict = {'kpi_name': kpi_name, 'kpi_fk': kpi_fk, 'numerator_id': self.own_manuf_fk,
-                           'denominator_id': scene, 'denominator_reuslt': scene, 'result': 1, 'score': 1,
+                           'denominator_id': scene, 'denominator_result': scene, 'result': 1, 'score': 1,
                            'identifier_result': scene}
             results_list.append(result_dict)
 
@@ -620,7 +625,7 @@ class ToolBox(GlobalSessionToolBox):
 
             result_dict = {'kpi_name': kpi_name, 'kpi_fk': kpi_fk, 'numerator_id': self.own_manuf_fk,
                            'denominator_id': scene, 'denominator_result': scene,
-                           'result': result, 'identifier_result': scene}
+                           'result': result, 'identifier_parent': scene}
             results_list.append(result_dict)
 
         return results_list
@@ -654,7 +659,7 @@ class ToolBox(GlobalSessionToolBox):
             numerator_result = row['numerator']
             denominator_result = row['denominator']
             result = row['sos']
-            score = row['passing']
+            score = 1 if row['passing'] else 0
 
             result_dict = {'kpi_name': kpi_name, 'kpi_fk': kpi_fk, 'numerator_id': self.own_manuf_fk,
                            'numerator_result': numerator_result,
