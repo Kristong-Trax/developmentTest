@@ -34,17 +34,25 @@ SOS = 'SOS'
 SURVEY = 'Survey'
 SURVEY_PASSTHROUGH = 'Survey Passthrough'
 AVAILABILITY = 'Availability'
+ASSORTMENT = 'Assortment'
 PLATFORMAS = 'Platformas'
 PLATFORMAS_SCORING = 'Platformas Scoring'
 SCORING = 'Scoring'
 ROLLBACKS = 'Rollbacks'
 BAY_COUNT = 'Bay Count'
 TOTEM = 'Totem'
+SCENE_SURVEY = 'Scene Survey'
+SCORING_SURVEY = 'Scoring Survey'
+COOLER_CC = 'Cooler CC'
+PLANOGRAMA = 'Planograma'
+COMMUNICACION = 'Communicacion'
+
 
 PORTAFOLIO_PRODUCTS = 'Portafolio Products Details'
 
 SHEETS = [PER_SCENE_SOS, SOS, SURVEY, SURVEY_PASSTHROUGH, AVAILABILITY, PLATFORMAS, PLATFORMAS_SCORING, ROLLBACKS,
-          BAY_COUNT, SCORING, KPIS, PORTAFOLIO_PRODUCTS, TOTEM]
+          BAY_COUNT, SCORING, KPIS, PORTAFOLIO_PRODUCTS, TOTEM, ASSORTMENT, SCENE_SURVEY, SCORING_SURVEY, COOLER_CC,
+          PLANOGRAMA, COMMUNICACION]
 
 TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'INSERTSTUFFHERE')
 
@@ -76,22 +84,22 @@ class ToolBox(GlobalSessionToolBox):
 
     def main_calculation(self):
         relevant_kpi_template = self.templates[KPIS]
-        att2 = self.store_info['additional_attribute_2'].iloc[0]
+        store_type = self.store_info['store_type'].iloc[0]
         relevant_kpi_template = relevant_kpi_template[(relevant_kpi_template[STORE_TYPE].isnull()) |
                                                       (relevant_kpi_template[STORE_TYPE].str.contains(
-                                                          att2))
+                                                          store_type))
                                                       ]
         foundation_kpi_types = [PER_SCENE_SOS, BAY_COUNT, SURVEY, SURVEY_PASSTHROUGH, AVAILABILITY, SOS,
                                 ROLLBACKS]
 
         foundation_kpi_template = relevant_kpi_template[relevant_kpi_template[KPI_TYPE].isin(foundation_kpi_types)]
-        platformas_kpi_template = relevant_kpi_template[relevant_kpi_template[KPI_TYPE] == PLATFORMAS_SCORING]
-        combo_kpi_template = relevant_kpi_template[relevant_kpi_template[KPI_TYPE] == COMBO]
+        # platformas_kpi_template = relevant_kpi_template[relevant_kpi_template[KPI_TYPE] == PLATFORMAS_SCORING]
+        # combo_kpi_template = relevant_kpi_template[relevant_kpi_template[KPI_TYPE] == COMBO]
         scoring_kpi_template = relevant_kpi_template[relevant_kpi_template[KPI_TYPE] == SCORING]
 
         self._calculate_kpis_from_template(foundation_kpi_template)
-        self._calculate_kpis_from_template(platformas_kpi_template)
-        self._calculate_kpis_from_template(combo_kpi_template)
+        # self._calculate_kpis_from_template(platformas_kpi_template)
+        # self._calculate_kpis_from_template(combo_kpi_template)
         self._calculate_kpis_from_template(scoring_kpi_template)
 
         self.save_results_to_db()
@@ -155,6 +163,45 @@ class ToolBox(GlobalSessionToolBox):
                         if result['result'] <= 1:
                             result['result'] = result['result'] * 100
                         self.results_df.loc[len(self.results_df), result.keys()] = result
+
+    def calculate_scoring(self, row):
+        kpi_name = row[KPI_NAME]
+        kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_name)
+        numerator_id = self.own_manuf_fk
+        denominator_id = self.store_id
+
+        result_dict = {'kpi_name': kpi_name, 'kpi_fk': kpi_fk, 'numerator_id': numerator_id,
+                       'denominator_id': denominator_id}
+
+        component_kpis = self.does_exist(row, 'Component KPIs')
+        relevant_results = self.results_df[self.results_df['kpi_name'].isin(component_kpis)]
+        passing_results = relevant_results[(relevant_results['result'] != 0) &
+                                           (relevant_results['result'].notna()) &
+                                           (relevant_results['score'] != 0)]
+        nan_results = relevant_results[relevant_results['result'].isna()]
+        if len(relevant_results) > 0 and len(relevant_results) == len(nan_results):
+            result_dict['result'] = pd.np.nan
+        elif row['Component aggregation'] == 'one-passed':
+            if len(relevant_results) > 0 and len(passing_results) > 0:
+                result_dict['result'] = 1
+            else:
+                result_dict['result'] = 0
+        elif row['Component aggregation'] == 'sum':
+            if len(relevant_results) > 0:
+                result_dict['score'] = relevant_results['score'].sum()
+                if 'result' not in result_dict.keys():
+                    result_dict['result'] = result_dict['score']
+            else:
+                result_dict['score'] = 0
+                if 'result' not in result_dict.keys():
+                    result_dict['result'] = result_dict['score']
+        elif row['Component aggregation'] == 'all-passed':
+            if len(relevant_results) == len(passing_results):
+                result_dict['result'] = 1
+            else:
+                result_dict['result'] = 0
+
+        return result_dict
 
     def _get_calculation_function_by_kpi_type(self, kpi_type):
         if kpi_type == SOS:
@@ -377,7 +424,39 @@ class ToolBox(GlobalSessionToolBox):
         return result_dict
 
     def calculate_communicacion(self, row):
-        pass
+        kpi_name = row[KPI_NAME]
+        kpi_fk = self.get_kpi_fk_by_kpi_type(kpi_name)
+
+        template_name = self.does_exist(row, 'Template_name')
+        relevant_scif = self.scif[self.scif['template_name'].isin(template_name)]
+        if relevant_scif.empty:
+            return {'kpi_name': kpi_name, 'kpi_fk': kpi_fk, 'result': pd.np.nan}
+
+        product_names_in_scene_type = relevant_scif['product_name'].unique().tolist()
+
+        pos_option_found = 0
+        groups = self._get_groups(row, 'POS Option')
+        for group in groups:
+            if all(product in product_names_in_scene_type for product in group):
+                pos_option_found = 1  # True
+                break
+
+        if pos_option_found:
+            result = 1
+        else:
+            result = 0
+
+        result_dict = {'kpi_name': kpi_name, 'kpi_fk': kpi_fk, 'numerator_id': self.own_manuf_fk,
+                       'denominator_id': self.store_id, 'result': result}
+        return result_dict
+
+    @staticmethod
+    def _get_groups(series, root_string):
+        groups = []
+        for column in [col for col in series.index.tolist() if root_string in col]:
+            if series[column] not in ['', pd.np.nan]:
+                groups.append([x.strip() for x in series[column].split(',')])
+        return groups
 
     def calculate_cooler_cc(self, row):
         kpi_name = row[KPI_NAME]
