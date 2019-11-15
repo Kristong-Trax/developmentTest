@@ -31,8 +31,6 @@ __author__ = 'huntery'
 KPIS = 'KPIs'
 PER_SCENE_SOS = 'Per Scene SOS'
 SOS = 'SOS'
-SURVEY = 'Survey'
-SURVEY_PASSTHROUGH = 'Survey Passthrough'
 AVAILABILITY = 'Availability'
 ASSORTMENT = 'Assortment'
 PLATFORMAS = 'Platformas'
@@ -50,16 +48,17 @@ COMMUNICACION = 'Communicacion'
 
 PORTAFOLIO_PRODUCTS = 'Portafolio Products Details'
 
-SHEETS = [PER_SCENE_SOS, SOS, SURVEY, SURVEY_PASSTHROUGH, AVAILABILITY, PLATFORMAS, PLATFORMAS_SCORING, ROLLBACKS,
+SHEETS = [PER_SCENE_SOS, SOS, AVAILABILITY,
           BAY_COUNT, SCORING, KPIS, PORTAFOLIO_PRODUCTS, TOTEM, ASSORTMENT, SCENE_SURVEY, SCORING_SURVEY, COOLER_CC,
           PLANOGRAMA, COMMUNICACION]
 
-TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'INSERTSTUFFHERE')
+TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'CCMX_v5.xlsx')
 
 STORE_TYPE = 'store_type'
 KPI_NAME = 'KPI Name'
 KPI_TYPE = 'KPI Type'
 PARENT_KPI = 'Parent KPI'
+TEMPLATE_NAME = 'Template_name'
 
 
 class ToolBox(GlobalSessionToolBox):
@@ -69,7 +68,8 @@ class ToolBox(GlobalSessionToolBox):
         self.ps_data_provider = PsDataProvider(self.data_provider, self.output)
         self.results_df = pd.DataFrame(columns=['kpi_name', 'kpi_fk', 'numerator_id', 'numerator_result',
                                                 'denominator_id', 'denominator_result', 'result', 'score',
-                                                'identifier_result', 'identifier_parent', 'should_enter'])
+                                                'identifier_result', 'identifier_parent', 'should_enter',
+                                                'target'])
         self.templates = {}
         self.parse_template()
         self.own_manuf_fk = int(self.data_provider.own_manufacturer.param_value.values[0])
@@ -89,8 +89,8 @@ class ToolBox(GlobalSessionToolBox):
                                                       (relevant_kpi_template[STORE_TYPE].str.contains(
                                                           store_type))
                                                       ]
-        foundation_kpi_types = [PER_SCENE_SOS, BAY_COUNT, SURVEY, SURVEY_PASSTHROUGH, AVAILABILITY, SOS,
-                                ROLLBACKS]
+        foundation_kpi_types = [SOS, PER_SCENE_SOS, ASSORTMENT, AVAILABILITY, BAY_COUNT, SCENE_SURVEY,
+                                SCORING_SURVEY, COOLER_CC, PLANOGRAMA, COMMUNICACION]
 
         foundation_kpi_template = relevant_kpi_template[relevant_kpi_template[KPI_TYPE].isin(foundation_kpi_types)]
         # platformas_kpi_template = relevant_kpi_template[relevant_kpi_template[KPI_TYPE] == PLATFORMAS_SCORING]
@@ -139,9 +139,10 @@ class ToolBox(GlobalSessionToolBox):
                             result_data['score'] = weight * result_data['result']
                         elif row[KPI_TYPE] != SCORING:
                             result_data['score'] = weight * result_data['result']
-                    parent_kpi_name = self._get_parent_name_from_kpi_name(result_data['kpi_name'])
-                    if parent_kpi_name and 'identifier_parent' not in result_data.keys():
-                        result_data['identifier_parent'] = parent_kpi_name
+                    if 'identifier_parent' not in result_data.keys():
+                        parent_kpi_name = self._get_parent_name_from_kpi_name(result_data['kpi_name'])
+                        if parent_kpi_name:
+                            result_data['identifier_parent'] = parent_kpi_name
                     if 'identifier_result' not in result_data.keys():
                         result_data['identifier_result'] = result_data['kpi_name']
                     if result_data['result'] <= 1:
@@ -155,9 +156,10 @@ class ToolBox(GlobalSessionToolBox):
                                 result['score'] = weight * result['result']
                             elif row[KPI_TYPE] != SCORING:
                                 result['score'] = weight * result['result']
-                        parent_kpi_name = self._get_parent_name_from_kpi_name(result['kpi_name'])
-                        if parent_kpi_name and 'identifier_parent' not in result.keys():
-                            result['identifier_parent'] = parent_kpi_name
+                        if 'identifier_parent' not in result.keys():
+                            parent_kpi_name = self._get_parent_name_from_kpi_name(result['kpi_name'])
+                            if parent_kpi_name:
+                                result['identifier_parent'] = parent_kpi_name
                         if 'identifier_result' not in result.keys():
                             result['identifier_result'] = result['kpi_name']
                         if result['result'] <= 1:
@@ -212,12 +214,20 @@ class ToolBox(GlobalSessionToolBox):
             return self.calculate_per_scene_sos
         elif kpi_type == AVAILABILITY:
             return self.calculate_availability
-        elif kpi_type == SURVEY:
-            return self.calculate_survey
+        elif kpi_type == ASSORTMENT:
+            return self.calculate_assortment
+        elif kpi_type == SCENE_SURVEY:
+            return self.calculate_scene_survey
+        elif kpi_type == SCORING_SURVEY:
+            return self.calculate_scoring_survey
+        elif kpi_type == COOLER_CC:
+            return self.calculate_cooler_cc
+        elif kpi_type == PLANOGRAMA:
+            return self.calculate_planograma
+        elif kpi_type == COMMUNICACION:
+            return self.calculate_communicacion
         elif kpi_type == SCORING:
             return self.calculate_scoring
-        elif kpi_type == PLATFORMAS_SCORING:
-            return self.calculate_platformas_scoring
 
     def _get_parent_name_from_kpi_name(self, kpi_name):
         template = self.templates[KPIS]
@@ -241,10 +251,10 @@ class ToolBox(GlobalSessionToolBox):
         if template_name:
             relevant_scif = relevant_scif[relevant_scif['template_name'].isin(template_name)]
 
-        sub_category = row['sub_category']
+        sub_category = row['Client Subcategory Local Name']
 
         relevant_template = self.templates[PORTAFOLIO_PRODUCTS]
-        relevant_template = relevant_template[relevant_template['Client Subcategory'] == sub_category]
+        relevant_template = relevant_template[relevant_template['Client Subcategory Local Name'] == sub_category]
 
         passing_products = 0
         for i, sku_row in relevant_template.iterrows():
@@ -269,11 +279,11 @@ class ToolBox(GlobalSessionToolBox):
         kpi_name = row[KPI_NAME]
         kpi_fk = self.get_kpi_fk_by_kpi_type(kpi_name)
 
-        template_name = row['Template_name']
+        template_name = row[TEMPLATE_NAME]
 
         totem_products = self.templates[TOTEM]['POSM'].unique().tolist()
 
-        relevant_scif = self.scif[self.scif['template_name'] == template_name]
+        relevant_scif = self.scif[self.scif['template_name'].str.encode('utf-8') == template_name.encode('utf-8')]
         if relevant_scif.empty:
             return {'kpi_name': kpi_name, 'kpi_fk': kpi_fk, 'result': pd.np.nan}
 
@@ -295,7 +305,7 @@ class ToolBox(GlobalSessionToolBox):
         kpi_name = row[KPI_NAME]
         kpi_fk = self.get_kpi_fk_by_kpi_type(kpi_name)
 
-        template_name = row['Template_name']
+        template_name = row[TEMPLATE_NAME]
 
         denominator_scif = self.scif[(self.scif['template_name'] == template_name) &
                                      (self.scif['product_type'] != 'POS')]
@@ -305,15 +315,18 @@ class ToolBox(GlobalSessionToolBox):
         denominator_id = denominator_scif['template_fk'].iloc[0]
         denominator_facings = denominator_scif['facings'].sum()
 
-        sub_category = row['sub_category']
-        if pd.notna(sub_category):
-            numerator_scif = denominator_scif[denominator_scif['sub_category'] == sub_category]
-            numerator_id = numerator_scif['sub_category_fk'].iloc[0]
+        sub_category = self.does_exist(row, 'sub_category')
+        if sub_category:
+            numerator_scif = denominator_scif[denominator_scif['sub_category'].isin(sub_category)]
+            numerator_id = \
+                self.all_products[self.all_products['sub_category'].isin(sub_category)]['sub_category_fk'].iloc[0]
 
         manufacturer_name = row['manufacturer_name']
         if pd.notna(manufacturer_name):
             numerator_scif = denominator_scif[denominator_scif['manufacturer_name'] == manufacturer_name]
-            numerator_id = numerator_scif['manufacturer_fk'].iloc[0]
+            numerator_id = \
+                self.all_products[self.all_products['manufacturer_name'] == manufacturer_name][
+                    'manufacturer_fk'].iloc[0]
 
         numerator_facings = numerator_scif['facings'].sum()
 
@@ -326,7 +339,8 @@ class ToolBox(GlobalSessionToolBox):
             score = 0
 
         result_dict = {'kpi_name': kpi_name, 'kpi_fk': kpi_fk, 'numerator_id': numerator_id,
-                       'denominator_id': denominator_id, 'result': result, 'score': score}
+                       'denominator_id': denominator_id, 'numerator_result': numerator_facings,
+                       'denominator_result': denominator_facings, 'result': result, 'score': score}
         return result_dict
 
     @staticmethod
@@ -338,13 +352,13 @@ class ToolBox(GlobalSessionToolBox):
         kpi_name = row[KPI_NAME]
         kpi_fk = self.get_kpi_fk_by_kpi_type(kpi_name)
 
-        template_name = row['Template_name']
+        template_name = row[TEMPLATE_NAME]
         relevant_scif = self.scif[(self.scif['template_name'] == template_name) &
                                   (self.scif['product_type'] != 'POS')]
         if relevant_scif.empty:
             return {'kpi_name': kpi_name, 'kpi_fk': kpi_fk, 'result': pd.np.nan}
 
-        denominator_scif = relevant_scif.groupyby('scene_id', as_index=False)['facings'].sum()
+        denominator_scif = relevant_scif.groupby('scene_id', as_index=False)['facings'].sum()
         denominator_scif.rename(columns={'facings': 'denominator'}, inplace=True)
 
         numerator_scif = relevant_scif[relevant_scif['manufacturer_name'] == 'TCCC']
@@ -356,7 +370,7 @@ class ToolBox(GlobalSessionToolBox):
 
         min_target, max_target = self._get_target_range(row['target'])
 
-        merged_df['passing'] = merged_df['sos'].apply(lambda x: min_target <= x <= max_target)
+        merged_df['passing'] = merged_df['sos'].apply(lambda x: min_target <= x * 100 <= max_target)
 
         failing_scenes = merged_df[~merged_df['passing']]
         if failing_scenes.empty:
@@ -372,7 +386,7 @@ class ToolBox(GlobalSessionToolBox):
         kpi_name = row[KPI_NAME]
         kpi_fk = self.get_kpi_fk_by_kpi_type(kpi_name)
 
-        template_name = self.does_exist(row, 'Template_name')
+        template_name = self.does_exist(row, TEMPLATE_NAME)
         relevant_scif = self.scif[self.scif['template_name'].isin(template_name)]
         if relevant_scif.empty:
             return {'kpi_name': kpi_name, 'kpi_fk': kpi_fk, 'result': pd.np.nan}
@@ -380,29 +394,32 @@ class ToolBox(GlobalSessionToolBox):
         scenes = relevant_scif['scene_id'].unique().tolist()
         products = relevant_scif['product_fk'].unique().tolist()
 
-        bay_mpis = self.matches[(self.matches['scene_id'].isin(scenes)) &
+        bay_mpis = self.matches[(self.matches['scene_fk'].isin(scenes)) &
                                 (self.matches['product_fk'].isin(products))]
 
-        bays = len(bay_mpis['bay_number'].unique().tolist())
+        bay_mpis.drop_duplicates(subset=['bay_number', 'scene_fk'], inplace=True)
+
+        number_of_bays = len(bay_mpis)
         target_mapping = self._get_target_mapping(row['targets'])
         target = target_mapping.get(self.store_info['additional_attribute_1'].iloc[0])
         if not target:
             return {'kpi_name': kpi_name, 'kpi_fk': kpi_fk, 'result': pd.np.nan}
 
-        if bays > target:
+        if number_of_bays > target:
             result = 1
         else:
             result = 0
 
         result_dict = {'kpi_name': kpi_name, 'kpi_fk': kpi_fk, 'numerator_id': self.own_manuf_fk,
-                       'denominator_id': self.store_id, 'result': result}
+                       'numerator_result': number_of_bays,
+                       'denominator_id': self.store_id, 'result': result, 'target': target}
         return result_dict
 
     def calculate_planograma(self, row):
         kpi_name = row[KPI_NAME]
         kpi_fk = self.get_kpi_fk_by_kpi_type(kpi_name)
 
-        template_name = self.does_exist(row, 'Template_name')
+        template_name = self.does_exist(row, TEMPLATE_NAME)
         relevant_scif = self.scif[self.scif['template_name'].isin(template_name)]
         if relevant_scif.empty:
             return {'kpi_name': kpi_name, 'kpi_fk': kpi_fk, 'result': pd.np.nan}
@@ -420,14 +437,15 @@ class ToolBox(GlobalSessionToolBox):
             result = 0
 
         result_dict = {'kpi_name': kpi_name, 'kpi_fk': kpi_fk, 'numerator_id': self.own_manuf_fk,
-                       'denominator_id': self.store_id, 'result': result}
+                       'numerator_result': len(unique_brands),
+                       'denominator_id': self.store_id, 'result': result, 'target': minimum_brands_required}
         return result_dict
 
     def calculate_communicacion(self, row):
         kpi_name = row[KPI_NAME]
         kpi_fk = self.get_kpi_fk_by_kpi_type(kpi_name)
 
-        template_name = self.does_exist(row, 'Template_name')
+        template_name = self.does_exist(row, TEMPLATE_NAME)
         relevant_scif = self.scif[self.scif['template_name'].isin(template_name)]
         if relevant_scif.empty:
             return {'kpi_name': kpi_name, 'kpi_fk': kpi_fk, 'result': pd.np.nan}
@@ -479,12 +497,13 @@ class ToolBox(GlobalSessionToolBox):
                                    'denominator_id': self.store_id, 'result': 1, 'identifier_parent': kpi_name}
                     results_list.append(result_dict)
 
-        if len(cooler_brands) > 1:
+        if len(relevant_results) > 1:
             result = 1
         else:
             result = 0
 
         result_dict = {'kpi_name': kpi_name, 'kpi_fk': kpi_fk, 'numerator_id': self.own_manuf_fk,
+                       'numerator_result': len(relevant_results),
                        'denominator_id': self.store_id, 'result': result}
         results_list.append(result_dict)
         return results_list
@@ -543,7 +562,7 @@ class ToolBox(GlobalSessionToolBox):
             result = 0
             score = 0
         else:
-            score = len(relevant_results['selected_option_text'].iloc[0]) / float(3)
+            score = len(relevant_results['selected_option_text'].iloc[0])
             result = 1
 
         result_dict = {'kpi_name': kpi_name, 'kpi_fk': kpi_fk, 'numerator_id': self.own_manuf_fk,
@@ -578,9 +597,9 @@ class ToolBox(GlobalSessionToolBox):
         :param column_name: str
         :return: list of values if there are, otherwise None
         """
-        if column_name in kpi_line.keys() and kpi_line[column_name] != "":
+        if column_name in kpi_line.keys() and kpi_line[column_name] != "" and pd.notna(kpi_line[column_name]):
             cell = kpi_line[column_name]
-            if type(cell) in [int, float]:
+            if type(cell) in [int, float, pd.np.int64]:
                 return [cell]
             elif type(cell) in [unicode, str]:
                 return [x.strip() for x in cell.split(",")]
