@@ -44,11 +44,16 @@ SCORING_SURVEY = 'Scoring Survey'
 COOLER_CC = 'Cooler CC'
 PLANOGRAMA = 'Planograma'
 COMMUNICACION = 'Communicacion'
+PLATFORMAS_SURVEY = 'Platformas Survey'
+PLATFORMAS_SOS = 'Platformas SOS'
+SCENE_IDENTITY = 'Scene Identity'
+PLATFORMAS_AVAILABILITY = 'Platformas Availability'
 
 
 PORTAFOLIO_PRODUCTS = 'Portafolio Products Details'
 
-SHEETS = [PER_SCENE_SOS, SOS, AVAILABILITY, ROLLBACKS,
+SHEETS = [PER_SCENE_SOS, SOS, AVAILABILITY, ROLLBACKS, PLATFORMAS_SURVEY, PLATFORMAS_SOS, SCENE_IDENTITY,
+          PLATFORMAS_AVAILABILITY,
           BAY_COUNT, SCORING, KPIS, PORTAFOLIO_PRODUCTS, TOTEM, ASSORTMENT, SCENE_SURVEY, SCORING_SURVEY, COOLER_CC,
           PLANOGRAMA, COMMUNICACION]
 
@@ -90,7 +95,8 @@ class ToolBox(GlobalSessionToolBox):
                                                           store_type))
                                                       ]
         foundation_kpi_types = [SOS, PER_SCENE_SOS, ASSORTMENT, AVAILABILITY, BAY_COUNT, SCENE_SURVEY,
-                                SCORING_SURVEY, COOLER_CC, PLANOGRAMA, COMMUNICACION]
+                                SCORING_SURVEY, COOLER_CC, PLANOGRAMA, COMMUNICACION, ROLLBACKS, PLATFORMAS_SURVEY,
+                                PLATFORMAS_SOS, SCENE_IDENTITY, PLATFORMAS_AVAILABILITY]
 
         foundation_kpi_template = relevant_kpi_template[relevant_kpi_template[KPI_TYPE].isin(foundation_kpi_types)]
         # platformas_kpi_template = relevant_kpi_template[relevant_kpi_template[KPI_TYPE] == PLATFORMAS_SCORING]
@@ -228,6 +234,16 @@ class ToolBox(GlobalSessionToolBox):
             return self.calculate_communicacion
         elif kpi_type == SCORING:
             return self.calculate_scoring
+        elif kpi_type == ROLLBACKS:
+            return self.calculate_rollbacks
+        elif kpi_type == PLATFORMAS_SURVEY:
+            return self.calculate_platformas_survey
+        elif kpi_type == PLATFORMAS_SOS:
+            return self.calculate_platformas_sos
+        elif kpi_type == SCENE_IDENTITY:
+            return self.calculate_scene_identity
+        elif kpi_type == PLATFORMAS_AVAILABILITY:
+            return self.calculate_platformas_availability
 
     def _get_parent_name_from_kpi_name(self, kpi_name):
         template = self.templates[KPIS]
@@ -554,6 +570,118 @@ class ToolBox(GlobalSessionToolBox):
         result_dict = {'kpi_name': kpi_name, 'kpi_fk': kpi_fk, 'numerator_id': self.own_manuf_fk,
                        'denominator_id': self.store_id, 'result': result}
         results_list.append(result_dict)
+        return results_list
+
+    def calculate_scene_identity(self, row):
+        kpi_name = row[KPI_NAME]
+        kpi_fk = self.get_kpi_fk_by_kpi_type(kpi_name)
+        results_list = []
+
+        template_name = self.does_exist(row, TEMPLATE_NAME)
+        relevant_scif = self.scif[self.scif['template_name'].isin(template_name)]
+        if relevant_scif.empty:
+            return {'kpi_name': kpi_name, 'kpi_fk': kpi_fk, 'result': pd.np.nan}
+
+        scenes = relevant_scif['scene_id'].unique().tolist()
+        for scene in scenes:
+            result_dict = {'kpi_name': kpi_name, 'kpi_fk': kpi_fk, 'numerator_id': self.own_manuf_fk,
+                           'denominator_id': scene, 'denominator_reuslt': scene, 'result': 1, 'score': 1,
+                           'identifier_result': scene}
+            results_list.append(result_dict)
+
+        return results_list
+
+    def calculate_platformas_availability(self, row):
+        kpi_name = row[KPI_NAME]
+        kpi_fk = self.get_kpi_fk_by_kpi_type(kpi_name)
+        results_list = []
+
+        template_name = self.does_exist(row, TEMPLATE_NAME)
+        relevant_scif = self.scif[self.scif['template_name'].isin(template_name)]
+        if relevant_scif.empty:
+            return {'kpi_name': kpi_name, 'kpi_fk': kpi_fk, 'result': pd.np.nan}
+
+        scenes = relevant_scif['scene_id'].unique().tolist()
+        for scene in scenes:
+            product_names_in_scene = \
+                relevant_scif[relevant_scif['scene_id'] == scene]['product_name'].unique().tolist()
+
+            pos_option_found = 0
+            groups = self._get_groups(row, 'POS Option')
+            for group in groups:
+                if all(product in product_names_in_scene for product in group):
+                    pos_option_found = 1  # True
+                    break
+
+            if pos_option_found:
+                result = 1
+            else:
+                result = 0
+
+            result_dict = {'kpi_name': kpi_name, 'kpi_fk': kpi_fk, 'numerator_id': self.own_manuf_fk,
+                           'denominator_id': scene, 'denominator_result': scene,
+                           'result': result, 'identifier_result': scene}
+            results_list.append(result_dict)
+
+        return results_list
+
+    def calculate_platformas_sos(self, row):
+        kpi_name = row[KPI_NAME]
+        kpi_fk = self.get_kpi_fk_by_kpi_type(kpi_name)
+        results_list = []
+
+        template_name = self.does_exist(row, TEMPLATE_NAME)
+        relevant_scif = self.scif[self.scif['template_name'].isin(template_name)]
+        if relevant_scif.empty:
+            return {'kpi_name': kpi_name, 'kpi_fk': kpi_fk, 'result': pd.np.nan}
+
+        denominator_scif = relevant_scif.groupby('scene_id', as_index=False)['facings'].sum()
+        denominator_scif.rename(columns={'facings': 'denominator'}, inplace=True)
+
+        numerator_scif = relevant_scif[relevant_scif['manufacturer_name'] == 'TCCC']
+        numerator_scif = numerator_scif.groupby('scene_id', as_index=False)['facings'].sum()
+        numerator_scif.rename(columns={'facings': 'numerator'}, inplace=True)
+
+        merged_df = pd.merge(denominator_scif, numerator_scif, how='left', on='scene_id').fillna(0)
+        merged_df['sos'] = (merged_df['numerator'] / merged_df['denominator'])
+
+        min_target, max_target = self._get_target_range(row['target'])
+
+        merged_df['passing'] = merged_df['sos'].apply(lambda x: min_target <= x * 100 <= max_target)
+
+        for i, row in merged_df.iterrows():
+            scene_id = row['scene_id']
+            numerator_result = row['numerator']
+            denominator_result = row['denominator']
+            result = row['sos']
+            score = row['passing']
+
+            result_dict = {'kpi_name': kpi_name, 'kpi_fk': kpi_fk, 'numerator_id': self.own_manuf_fk,
+                           'numerator_result': numerator_result,
+                           'denominator_id': scene_id, 'denominator_result': denominator_result, 'result': result,
+                           'identifier_parent': scene_id, 'score': score}
+            results_list.append(result_dict)
+
+        return results_list
+
+    def calculate_platformas_survey(self, row):
+        kpi_name = row[KPI_NAME]
+        kpi_fk = self.get_kpi_fk_by_kpi_type(kpi_name)
+        results_list = []
+
+        relevant_question_fks = self.does_exist(row, 'Survey Question PK')
+        relevant_results = \
+            self.scene_survey_results[self.scene_survey_results['question_fk'].isin(relevant_question_fks)]
+        relevant_results.drop_duplicates(subset=['scene_id'], inplace=True)
+        for i, row in relevant_results.iterrows():
+            numerator_fk = self._get_cooler_brand_fk_by_cooler_brand_name(row['selected_option_text'])
+            scene_id = row['scene_id']
+            if numerator_fk:
+                result_dict = {'kpi_name': kpi_name, 'kpi_fk': kpi_fk, 'numerator_id': numerator_fk,
+                               'denominator_id': scene_id, 'denominator_result': scene_id, 'result': 1,
+                               'identifier_parent': scene_id}
+                results_list.append(result_dict)
+
         return results_list
 
     def calculate_scene_survey(self, row):
