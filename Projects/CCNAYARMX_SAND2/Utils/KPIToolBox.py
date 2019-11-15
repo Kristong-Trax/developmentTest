@@ -48,11 +48,11 @@ COMMUNICACION = 'Communicacion'
 
 PORTAFOLIO_PRODUCTS = 'Portafolio Products Details'
 
-SHEETS = [PER_SCENE_SOS, SOS, AVAILABILITY,
+SHEETS = [PER_SCENE_SOS, SOS, AVAILABILITY, ROLLBACKS,
           BAY_COUNT, SCORING, KPIS, PORTAFOLIO_PRODUCTS, TOTEM, ASSORTMENT, SCENE_SURVEY, SCORING_SURVEY, COOLER_CC,
           PLANOGRAMA, COMMUNICACION]
 
-TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'CCMX_v5.xlsx')
+TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'CCMX_v5.1.xlsx')
 
 STORE_TYPE = 'store_type'
 KPI_NAME = 'KPI Name'
@@ -523,8 +523,38 @@ class ToolBox(GlobalSessionToolBox):
             target_dict.update({key: int(value)})
         return target_dict
 
-    def calculate_survey(self, row):
-        pass
+    def calculate_rollbacks(self, row):
+        kpi_name = row[KPI_NAME]
+        kpi_fk = self.get_kpi_fk_by_kpi_type(kpi_name)
+        sku_kpi_name = kpi_name + ' - SKU'
+        sku_kpi_fk = self.get_kpi_fk_by_kpi_type(sku_kpi_name)
+
+        results_list = []
+
+        product_questions = self._get_target_mapping(row['Survey Product Pairing'])
+
+        passing_results = 0
+        for question_fk, product_fk in product_questions.iteritems():
+            relevant_results = self.session_survey_results[self.session_survey_results['question_fk'] == question_fk]
+            if len(relevant_results) == 2 and len(relevant_results['number_value'].unique()) == 1:
+                result = 1
+                passing_results += 1
+            else:
+                result = 0
+
+            result_dict = {'kpi_name': sku_kpi_name, 'kpi_fk': sku_kpi_fk, 'numerator_id': product_fk,
+                           'denominator_id': self.store_id, 'result': result, 'identifier_parent': kpi_name}
+            results_list.append(result_dict)
+
+        if passing_results == len(product_questions.keys()):
+            result = 1
+        else:
+            result = 0
+
+        result_dict = {'kpi_name': kpi_name, 'kpi_fk': kpi_fk, 'numerator_id': self.own_manuf_fk,
+                       'denominator_id': self.store_id, 'result': result}
+        results_list.append(result_dict)
+        return results_list
 
     def calculate_scene_survey(self, row):
         kpi_name = row[KPI_NAME]
@@ -582,7 +612,7 @@ class ToolBox(GlobalSessionToolBox):
         return scene_survey_response
 
     def get_session_survey_response(self):
-        query = """SELECT session_uid,question_fk,selected_option_text
+        query = """SELECT session_uid,question_fk,selected_option_text,number_value
                         FROM probedata.survey_response res
                         WHERE session_uid = '{}';""".format(self.session_uid)
 
