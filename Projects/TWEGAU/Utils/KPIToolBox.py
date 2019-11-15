@@ -159,13 +159,13 @@ class TWEGAUToolBox:
         # remove target check -- PROS-12476
         facings_sos_dict = self.facings_sos_whole_store_function()
         if facings_sos_dict is None:
-            Log.warning('Scene item facts is empty for this session')
+            Log.warning('facings_sos_whole_store not saved for session {}'.format(self.session_uid))
         else:
             self.common.save_json_to_new_tables(facings_sos_dict)
 
         facings_sos_dict = self.facings_sos_by_category_function()
         if facings_sos_dict is None:
-            Log.warning('Scene item facts is empty for this session')
+            Log.warning('facings_sos_by_category not saved for session {}'.format(self.session_uid))
         else:
             Log.info('Saving result...')
             self.common.save_json_to_new_tables(facings_sos_dict)
