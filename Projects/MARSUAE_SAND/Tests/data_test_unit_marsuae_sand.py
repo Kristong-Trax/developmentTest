@@ -349,55 +349,66 @@ class DataTestUnitMarsuae(object):
          'is_block': True}
     ])
 
-# -------start here----------------
-#     blocks_all_pass = pd.DataFrame.from_records([{'Group Name': 'Pringles_FTT_Tubes', 'Score': True},
-#                                                  {'Group Name': 'Hula Hoops_LMP_Snacks', 'Score': True}])
-#
-#
-#     scene_info = pd.DataFrame([{'scene_fk': 1,  'template_fk': 1}, {'scene_fk': 2,  'template_fk': 1},
-#                                {'scene_fk': 3, 'template_fk': 2}])
-#
-#     block_results = pd.DataFrame.from_records([{'cluster': 1, 'scene_fk': 1, 'orientation': '',
-#                                                 'facing_percentage': 0.08, 'is_block': False},
-#                                                {'cluster': 2, 'scene_fk': 1, 'orientation': 'VERTICAL',
-#                                                 'facing_percentage': 0.92, 'is_block': True}
-#                                                ])
-#
-#     block_results_2 = pd.DataFrame.from_records([{'cluster': 1, 'scene_fk': 1, 'orientation': '',
-#                                                 'facing_percentage': 0.05, 'is_block': False},
-#                                                 {'cluster': 2, 'scene_fk': 1, 'orientation': 'HORIZONTAL',
-#                                                 'facing_percentage': 0.95, 'is_block': True}
-#                                                 ])
-#
-#     block_results_empty = pd.DataFrame(columns=['cluster','scene_fk', 'orientation',
-#                                                 'facing_percentage', 'is_block'])
+    scenes_for_display_1 = pd.DataFrame.from_records([
+        {'scene_fk': 1, 'template_fk': 1, 'template_group': 'Chocolate'}, {'scene_fk': 2, 'template_fk': 2,
+                                                                           'template_group': 'Chocolate'},
+        {'scene_fk': 3, 'template_fk': 2, 'template_group': 'Chocolate'},
+        {'scene_fk': 4, 'template_fk': 4, 'template_group': 'Chocolate'}
+    ])
 
-#
-#     blocks_none_passes = pd.DataFrame.from_records([{'Group Name': 'Pringles_FTT_Tubes', 'Score': False},
-#                                                     {'Group Name': 'Hula Hoops_LMP_Snacks', 'Score': False}])
-#     blocks_one_passes = pd.DataFrame.from_records([{'Group Name': 'Pringles_FTT_Tubes', 'Score': True},
-#                                                    {'Group Name': 'Hula Hoops_LMP_Snacks', 'Score': False}])
-#
-#     adjacency_results_true = pd.DataFrame.from_records([{'anchor_block': 1, 'tested_block': 1, 'anchor_facing_percentage': 5,
-#                                                    'tested_facing_percentage': 4, 'scene_fk': 1, 'is_adj': True}])
-#     adjacency_results_false = pd.DataFrame.from_records(
-#         [{'anchor_block': 1, 'tested_block': 1, 'anchor_facing_percentage': 5,
-#           'tested_facing_percentage': 4, 'scene_fk': 1, 'is_adj': False}])
-#
-#     blocks_combinations_3_pass_all = pd.DataFrame.from_records([{'Group Name': 'Group 1', 'Score': True},
-#                                                      {'Group Name': 'Group 2', 'Score': True},
-#                                                      {'Group Name': 'Group 3', 'Score': True}])
-#
-#     blocks_combinations_2_pass_of_3 = pd.DataFrame.from_records([{'Group Name': 'Group 1', 'Score': True},
-#                                                             {'Group Name': 'Group 2', 'Score': True},
-#                                                             {'Group Name': 'Group 3', 'Score': False}])
-#
-#     blocks_combinations_1_pass_of_3 = pd.DataFrame.from_records([{'Group Name': 'Group 1', 'Score': True},
-#                                                                  {'Group Name': 'Group 2', 'Score': False},
-#                                                                  {'Group Name': 'Group 3', 'Score': False}])
-#
-#     blocks_combinations_4_pass_of_4 = pd.DataFrame.from_records([{'Group Name': 'Group 1', 'Score': True},
-#                                                                  {'Group Name': 'Group 2', 'Score': True},
-#                                                                  {'Group Name': 'Group 3', 'Score': True},
-#                                                                  {'Group Name': 'Group 4', 'Score': True},
-#                                                                  ])
+    scenes_for_display_2 = pd.DataFrame.from_records([
+        {'scene_fk': 1, 'template_fk': 1, 'template_group': 'Chocolate'},
+        {'scene_fk': 2, 'template_fk': 2, 'template_group': 'Chocolate'},
+        {'scene_fk': 3, 'template_fk': 2, 'template_group': 'Chocolate'}
+    ])
+
+    scenes_for_display_3 = pd.DataFrame.from_records([
+        {'scene_fk': 1, 'template_fk': 1, 'template_group': 'Chocolate'},
+        {'scene_fk': 2, 'template_fk': 2, 'template_group': 'Chocolate'},
+        {'scene_fk': 3, 'template_fk': 2, 'template_group': 'Chocolate'},
+        {'scene_fk': 4, 'template_fk': 4, 'template_group': 'Chocolate'},
+        {'scene_fk': 5, 'template_fk': 4, 'template_group': 'Chocolate'}
+    ])
+
+    scenes_for_display_including_no_tags = pd.DataFrame.from_records([
+        {'scene_fk': 1, 'template_fk': 1, 'template_group': 'Chocolate'},
+        {'scene_fk': 2, 'template_fk': 2, 'template_group': 'Chocolate'},
+        {'scene_fk': 3, 'template_fk': 2, 'template_group': 'Chocolate'},
+        {'scene_fk': 13, 'template_fk': 4, 'template_group': 'Chocolate'}
+    ])
+
+    scenes_for_checkout_count_including_no_tags = pd.DataFrame.from_records([
+        {'scene_fk': 2, 'template_fk': 2, 'template_group': 'Chocolate'},
+        {'scene_fk': 3, 'template_fk': 2, 'template_group': 'Chocolate'},
+        {'scene_fk': 14, 'template_fk': 2, 'template_group': 'Chocolate'}
+    ])
+
+    scenes_for_checkout_1 = pd.DataFrame.from_records([
+        {'scene_fk': 1, 'template_fk': 1, 'template_group': 'Chocolate'},
+        {'scene_fk': 2, 'template_fk': 2, 'template_group': 'Chocolate'},
+        {'scene_fk': 12, 'template_fk': 2, 'template_group': 'Chocolate'}
+    ])
+
+    scenes_for_checkout_2 = pd.DataFrame.from_records([
+        {'scene_fk': 1, 'template_fk': 1, 'template_group': 'Chocolate'},
+        {'scene_fk': 2, 'template_fk': 2, 'template_group': 'Chocolate'},
+        {'scene_fk': 3, 'template_fk': 2, 'template_group': 'Chocolate'},
+        {'scene_fk': 12, 'template_fk': 2, 'template_group': 'Chocolate'}
+    ])
+
+    scenes_full_df = pd.DataFrame.from_records([
+        {'scene_fk': 1, 'template_fk': 1, 'template_group': 'Chocolate'},
+        {'scene_fk': 2, 'template_fk': 2, 'template_group': 'Chocolate'},
+        {'scene_fk': 3, 'template_fk': 2, 'template_group': 'Chocolate'},
+        {'scene_fk': 4, 'template_fk': 4, 'template_group': 'Chocolate'},
+        {'scene_fk': 5, 'template_fk': 4, 'template_group': 'Chocolate'},
+        {'scene_fk': 6, 'template_fk': 7, 'template_group': 'Gum and Confectionary'},
+        {'scene_fk': 7, 'template_fk': 5, 'template_group': 'Gum and Confectionary'},
+        {'scene_fk': 8, 'template_fk': 5, 'template_group': 'Gum and Confectionary'},
+        {'scene_fk': 9, 'template_fk': 5, 'template_group': 'Gum and Confectionary'},
+        {'scene_fk': 10, 'template_fk': 5, 'template_group': 'Gum and Confectionary'},
+        {'scene_fk': 11, 'template_fk': 5, 'template_group': 'Gum and Confectionary'},
+        {'scene_fk': 12, 'template_fk': 2, 'template_group': 'Chocolate'},
+        {'scene_fk': 13, 'template_fk': 4, 'template_group': 'Chocolate'},
+        {'scene_fk': 14, 'template_fk': 2, 'template_group': 'Chocolate'}
+    ])
