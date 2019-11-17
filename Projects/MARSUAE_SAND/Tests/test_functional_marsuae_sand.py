@@ -287,6 +287,47 @@ class TestMarsuaeSand(TestFunctionalCase):
         self.assertItemsEqual(store_atomics['pk'].values.tolist(), expected_result)
         self.assertItemsEqual(store_atomics['KPI Level 2 Name'].unique().tolist(), ['Chocolate & Ice Cream'])
 
+    def test_get_atomics_for_template_groups_present_in_store_returns_atomic_kpis_if_scene_in_scene_info(self):
+        self.mock_all_scenes_in_session(
+            DataTestUnitMarsuae.scenes_full_df[DataTestUnitMarsuae.scenes_full_df['scene_fk'].isin([7, 13])])
+        probe_group, matches, scene = self.create_scif_matches_stitch_groups_data_mocks(
+                DataTestUnitMarsuae.test_case_1, [7, 13])
+        tool_box = MARSUAE_SANDToolBox(self.data_provider_mock, self.output)
+        store_atomics = tool_box.get_store_atomic_kpi_parameters()
+        store_atomics = tool_box.get_atomics_for_template_groups_present_in_store(store_atomics)
+        expected_result = range(55, 64) + range(71, 79)
+        self.assertItemsEqual(store_atomics['pk'].values.tolist(), expected_result)
+        self.assertItemsEqual(store_atomics['KPI Level 2 Name'].unique().tolist(), ['Chocolate & Ice Cream',
+                                                                                    'Gum & Fruity'])
+
+    def test_main_calculation_calculates_2_category_lvl_even_if_one_scene_has_no_scif(self):
+        self.mock_all_scenes_in_session(
+            DataTestUnitMarsuae.scenes_full_df[DataTestUnitMarsuae.scenes_full_df['scene_fk'].isin([7, 13])])
+        probe_group, matches, scene = self.create_scif_matches_stitch_groups_data_mocks(
+                DataTestUnitMarsuae.test_case_1, [7, 13])
+        tool_box = MARSUAE_SANDToolBox(self.data_provider_mock, self.output)
+        tool_box.main_calculation()
+        self.assertItemsEqual(tool_box.cat_lvl_res['kpi_type'].unique().tolist(), ['Chocolate & Ice Cream',
+                                                                                   'Gum & Fruity'])
+
+    def test_main_calculation_scif_empty_one_scene_without_tags(self):
+        self.mock_scene_item_facts(pd.DataFrame(columns=['pk', 'session_id', 'store_id', 'visit_date', 'scene_id',
+                                                         'item_id', 'template_fk', 'template_name', 'facings',
+                                                         'product_fk', 'scene_fk', 'gross_len_ign_stack',
+                                                         'category_fk', 'manufacturer_fk', 'sub_category_fk',
+                                                         'brand_fk']))
+        self.mock_match_product_in_scene(pd.DataFrame(columns=['scene_match_fk', 'scene_fk', 'product_fk',
+                                                               'probe_match_fk', 'stacking_layer']))
+        probe_group = self.mock_probe_group(pd.DataFrame(columns=['probe_group_id', 'probe_match_fk']))
+        self.mock_all_scenes_in_session(
+            DataTestUnitMarsuae.scenes_full_df[DataTestUnitMarsuae.scenes_full_df['scene_fk'].isin([13])])
+        tool_box = MARSUAE_SANDToolBox(self.data_provider_mock, self.output)
+        tool_box.main_calculation()
+        self.assertEquals(tool_box.total_score, 5)
+        self.assertEquals(tool_box.cat_lvl_res['kpi_type'].values.tolist(), ['Chocolate & Ice Cream'])
+        self.assertItemsEqual(tool_box.atomic_kpi_results.kpi_fk.values.tolist(), [3011, 3014, 3030, 3029, 3005,
+                                                                                   3009, 3010, 3028, 3025])
+
     def test_build_tiers_for_atomics(self):
         tool_box = MARSUAE_SANDToolBox(self.data_provider_mock, self.output)
         store_atomics = tool_box.get_store_atomic_kpi_parameters()
