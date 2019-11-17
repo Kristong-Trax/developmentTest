@@ -337,3 +337,67 @@ class DataTestUnitMarsuae(object):
         {'cluster': pd.Series({'nodes': cluster_10_2}), 'scene_fk': 10, 'orientation': '', 'facing_percentage': 4/7.0,
          'is_block': True}
     ])
+
+    scenes_for_display_1 = pd.DataFrame.from_records([
+        {'scene_fk': 1, 'template_fk': 1, 'template_group': 'Chocolate'}, {'scene_fk': 2, 'template_fk': 2,
+                                                                           'template_group': 'Chocolate'},
+        {'scene_fk': 3, 'template_fk': 2, 'template_group': 'Chocolate'},
+        {'scene_fk': 4, 'template_fk': 4, 'template_group': 'Chocolate'}
+    ])
+
+    scenes_for_display_2 = pd.DataFrame.from_records([
+        {'scene_fk': 1, 'template_fk': 1, 'template_group': 'Chocolate'},
+        {'scene_fk': 2, 'template_fk': 2, 'template_group': 'Chocolate'},
+        {'scene_fk': 3, 'template_fk': 2, 'template_group': 'Chocolate'}
+    ])
+
+    scenes_for_display_3 = pd.DataFrame.from_records([
+        {'scene_fk': 1, 'template_fk': 1, 'template_group': 'Chocolate'},
+        {'scene_fk': 2, 'template_fk': 2, 'template_group': 'Chocolate'},
+        {'scene_fk': 3, 'template_fk': 2, 'template_group': 'Chocolate'},
+        {'scene_fk': 4, 'template_fk': 4, 'template_group': 'Chocolate'},
+        {'scene_fk': 5, 'template_fk': 4, 'template_group': 'Chocolate'}
+    ])
+
+    scenes_for_display_including_no_tags = pd.DataFrame.from_records([
+        {'scene_fk': 1, 'template_fk': 1, 'template_group': 'Chocolate'},
+        {'scene_fk': 2, 'template_fk': 2, 'template_group': 'Chocolate'},
+        {'scene_fk': 3, 'template_fk': 2, 'template_group': 'Chocolate'},
+        {'scene_fk': 13, 'template_fk': 4, 'template_group': 'Chocolate'}
+    ])
+
+    scenes_for_checkout_count_including_no_tags = pd.DataFrame.from_records([
+        {'scene_fk': 2, 'template_fk': 2, 'template_group': 'Chocolate'},
+        {'scene_fk': 3, 'template_fk': 2, 'template_group': 'Chocolate'},
+        {'scene_fk': 14, 'template_fk': 2, 'template_group': 'Chocolate'}
+    ])
+
+    scenes_for_checkout_1 = pd.DataFrame.from_records([
+        {'scene_fk': 1, 'template_fk': 1, 'template_group': 'Chocolate'},
+        {'scene_fk': 2, 'template_fk': 2, 'template_group': 'Chocolate'},
+        {'scene_fk': 12, 'template_fk': 2, 'template_group': 'Chocolate'}
+    ])
+
+    scenes_for_checkout_2 = pd.DataFrame.from_records([
+        {'scene_fk': 1, 'template_fk': 1, 'template_group': 'Chocolate'},
+        {'scene_fk': 2, 'template_fk': 2, 'template_group': 'Chocolate'},
+        {'scene_fk': 3, 'template_fk': 2, 'template_group': 'Chocolate'},
+        {'scene_fk': 12, 'template_fk': 2, 'template_group': 'Chocolate'}
+    ])
+
+    scenes_full_df = pd.DataFrame.from_records([
+        {'scene_fk': 1, 'template_fk': 1, 'template_group': 'Chocolate'},
+        {'scene_fk': 2, 'template_fk': 2, 'template_group': 'Chocolate'},
+        {'scene_fk': 3, 'template_fk': 2, 'template_group': 'Chocolate'},
+        {'scene_fk': 4, 'template_fk': 4, 'template_group': 'Chocolate'},
+        {'scene_fk': 5, 'template_fk': 4, 'template_group': 'Chocolate'},
+        {'scene_fk': 6, 'template_fk': 7, 'template_group': 'Gum and Confectionary'},
+        {'scene_fk': 7, 'template_fk': 5, 'template_group': 'Gum and Confectionary'},
+        {'scene_fk': 8, 'template_fk': 5, 'template_group': 'Gum and Confectionary'},
+        {'scene_fk': 9, 'template_fk': 5, 'template_group': 'Gum and Confectionary'},
+        {'scene_fk': 10, 'template_fk': 5, 'template_group': 'Gum and Confectionary'},
+        {'scene_fk': 11, 'template_fk': 5, 'template_group': 'Gum and Confectionary'},
+        {'scene_fk': 12, 'template_fk': 2, 'template_group': 'Chocolate'},
+        {'scene_fk': 13, 'template_fk': 4, 'template_group': 'Chocolate'},
+        {'scene_fk': 14, 'template_fk': 2, 'template_group': 'Chocolate'}
+    ])
