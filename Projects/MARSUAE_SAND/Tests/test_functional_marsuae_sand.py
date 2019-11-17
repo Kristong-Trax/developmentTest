@@ -39,7 +39,7 @@ class TestMarsuaeSand(TestFunctionalCase):
         self.mock_position_graph()
         self.mock_lvl3_ass_base_df()
         self.mock_position_graph_block()
-        self.mock_all_scenes_in_session(pd.DataFrame(columns=['scene_fk', 'template_fk']))
+        self.mock_all_scenes_in_session(pd.DataFrame(columns=['scene_fk', 'template_fk', 'template_group']))
 
     # def mock_lvl3_ass_result(self):
     #     ass_res = self.mock_object('Assortment.calculate_lvl3_assortment',
@@ -168,6 +168,7 @@ class TestMarsuaeSand(TestFunctionalCase):
         ass_res = self.mock_object('Assortment.get_lvl3_relevant_ass',
                                    path='KPIUtils_v2.Calculations.AssortmentCalculations')
         ass_res.return_value = pd.DataFrame()
+        self.mock_all_scenes_in_session(DataTestUnitMarsuae.scenes_full_df[DataTestUnitMarsuae.scenes_full_df['scene_fk'].isin([3])])
         probe_group, matches, scene = self.create_scif_matches_stitch_groups_data_mocks(
             DataTestUnitMarsuae.test_case_1, [3])
         tool_box = MARSUAE_SANDToolBox(self.data_provider_mock, self.output)
@@ -265,6 +266,8 @@ class TestMarsuaeSand(TestFunctionalCase):
         self.assertTrue(store_atomics.empty)
 
     def test_calculate_atomics_does_not_calculate_atomics_if_no_relevant_atomics_for_policy(self):
+        self.mock_all_scenes_in_session(
+            DataTestUnitMarsuae.scenes_full_df[DataTestUnitMarsuae.scenes_full_df['scene_fk'].isin([1, 2])])
         probe_group, matches, scene = self.create_scif_matches_stitch_groups_data_mocks(
             DataTestUnitMarsuae.test_case_1, [1, 2])
         tool_box = MARSUAE_SANDToolBox(self.data_provider_mock, self.output)
@@ -273,6 +276,8 @@ class TestMarsuaeSand(TestFunctionalCase):
         self.assertTrue(tool_box.atomic_kpi_results.empty)
 
     def test_get_atomics_for_template_groups_present_in_store_returns_both_choc_and_ice_cream_atomic_kpis(self):
+        self.mock_all_scenes_in_session(
+            DataTestUnitMarsuae.scenes_full_df[DataTestUnitMarsuae.scenes_full_df['scene_fk'].isin([1, 2])])
         probe_group, matches, scene = self.create_scif_matches_stitch_groups_data_mocks(
                 DataTestUnitMarsuae.test_case_1, [1, 2])
         tool_box = MARSUAE_SANDToolBox(self.data_provider_mock, self.output)
@@ -371,6 +376,8 @@ class TestMarsuaeSand(TestFunctionalCase):
     def test_calculate_availability_no_products_from_list_in_session(self):
         probe_group, matches, scene = self.create_scif_matches_stitch_groups_data_mocks(
             DataTestUnitMarsuae.test_case_1, [3])
+        self.mock_all_scenes_in_session(
+            DataTestUnitMarsuae.scenes_full_df[DataTestUnitMarsuae.scenes_full_df['scene_fk'].isin([3])])
         tool_box = MARSUAE_SANDToolBox(self.data_provider_mock, self.output)
         store_atomics = tool_box.get_store_atomic_kpi_parameters()
         tool_box.build_tiers_for_atomics(store_atomics)
@@ -381,6 +388,8 @@ class TestMarsuaeSand(TestFunctionalCase):
         self.assertEquals(check, 1)
 
     def test_calculate_availability_sku_lvl_no_products_in_list(self):
+        self.mock_all_scenes_in_session(
+            DataTestUnitMarsuae.scenes_full_df[DataTestUnitMarsuae.scenes_full_df['scene_fk'].isin([3])])
         probe_group, matches, scene = self.create_scif_matches_stitch_groups_data_mocks(
             DataTestUnitMarsuae.test_case_1, [3])
         tool_box = MARSUAE_SANDToolBox(self.data_provider_mock, self.output)
@@ -398,6 +407,8 @@ class TestMarsuaeSand(TestFunctionalCase):
         self.assertTrue(all(test_result_list))
 
     def test_calculate_availability_products_from_list_exist_in_session(self):
+        self.mock_all_scenes_in_session(
+            DataTestUnitMarsuae.scenes_full_df[DataTestUnitMarsuae.scenes_full_df['scene_fk'].isin([1, 2, 3])])
         probe_group, matches, scene = self.create_scif_matches_stitch_groups_data_mocks(
             DataTestUnitMarsuae.test_case_1, [1, 2, 3])
         tool_box = MARSUAE_SANDToolBox(self.data_provider_mock, self.output)
@@ -410,6 +421,8 @@ class TestMarsuaeSand(TestFunctionalCase):
         self.assertEquals(check, 1)
 
     def test_calculate_availability_products_from_list_exist_in_session_tiers(self):
+        self.mock_all_scenes_in_session(
+            DataTestUnitMarsuae.scenes_full_df[DataTestUnitMarsuae.scenes_full_df['scene_fk'].isin([1, 2, 3])])
         probe_group, matches, scene = self.create_scif_matches_stitch_groups_data_mocks(
             DataTestUnitMarsuae.test_case_1, [1, 2, 3])
         tool_box = MARSUAE_SANDToolBox(self.data_provider_mock, self.output)
@@ -424,6 +437,8 @@ class TestMarsuaeSand(TestFunctionalCase):
         self.assertEquals(check, 1)
 
     def test_calculate_availability_sku_lvl_products_in_list_in_session(self):
+        self.mock_all_scenes_in_session(
+            DataTestUnitMarsuae.scenes_full_df[DataTestUnitMarsuae.scenes_full_df['scene_fk'].isin([1, 2, 3])])
         probe_group, matches, scene = self.create_scif_matches_stitch_groups_data_mocks(
             DataTestUnitMarsuae.test_case_1, [1, 2, 3])
         tool_box = MARSUAE_SANDToolBox(self.data_provider_mock, self.output)
@@ -500,6 +515,8 @@ class TestMarsuaeSand(TestFunctionalCase):
     def test_calculate_linear_sos(self):
         probe_group, matches, scene = self.create_scif_matches_stitch_groups_data_mocks(
             DataTestUnitMarsuae.test_case_1, [1, 2, 3, 4, 5, 6])
+        self.mock_all_scenes_in_session(
+            DataTestUnitMarsuae.scenes_full_df[DataTestUnitMarsuae.scenes_full_df['scene_fk'].isin([1, 2, 3, 4, 5, 6])])
         tool_box = MARSUAE_SANDToolBox(self.data_provider_mock, self.output)
         tool_box.common.write_to_db_result = MagicMock()
         store_atomics = tool_box.get_store_atomic_kpi_parameters()
@@ -525,6 +542,8 @@ class TestMarsuaeSand(TestFunctionalCase):
     def test_calculate_kpi_combination_score_two_child_kpis_pass(self):
         probe_group, matches, scene = self.create_scif_matches_stitch_groups_data_mocks(
             DataTestUnitMarsuae.test_case_1, [1, 2, 3, 4, 5, 6])
+        self.mock_all_scenes_in_session(
+            DataTestUnitMarsuae.scenes_full_df[DataTestUnitMarsuae.scenes_full_df['scene_fk'].isin([1, 2, 3, 4, 5, 6])])
         tool_box = MARSUAE_SANDToolBox(self.data_provider_mock, self.output)
         store_atomics = tool_box.get_store_atomic_kpi_parameters()
         tool_box.atomic_kpi_results = DataTestUnitMarsuae.kpi_results_df_for_kpi_combination_test_1
@@ -538,6 +557,8 @@ class TestMarsuaeSand(TestFunctionalCase):
     def test_calculate_kpi_combination_score_one_child_kpi_passes(self):
         probe_group, matches, scene = self.create_scif_matches_stitch_groups_data_mocks(
             DataTestUnitMarsuae.test_case_1, [1, 2, 3, 4, 5, 6])
+        self.mock_all_scenes_in_session(
+            DataTestUnitMarsuae.scenes_full_df[DataTestUnitMarsuae.scenes_full_df['scene_fk'].isin([1, 2, 3, 4, 5, 6])])
         tool_box = MARSUAE_SANDToolBox(self.data_provider_mock, self.output)
         store_atomics = tool_box.get_store_atomic_kpi_parameters()
         tool_box.atomic_kpi_results = DataTestUnitMarsuae.kpi_results_df_for_kpi_combination_test_2
@@ -551,6 +572,8 @@ class TestMarsuaeSand(TestFunctionalCase):
     def test_calculate_kpi_combination_score_none_child_kpi_passes(self):
         probe_group, matches, scene = self.create_scif_matches_stitch_groups_data_mocks(
             DataTestUnitMarsuae.test_case_1, [1, 2, 3, 4, 5, 6])
+        self.mock_all_scenes_in_session(
+            DataTestUnitMarsuae.scenes_full_df[DataTestUnitMarsuae.scenes_full_df['scene_fk'].isin([1, 2, 3, 4, 5, 6])])
         tool_box = MARSUAE_SANDToolBox(self.data_provider_mock, self.output)
         store_atomics = tool_box.get_store_atomic_kpi_parameters()
         tool_box.atomic_kpi_results = DataTestUnitMarsuae.kpi_results_df_for_kpi_combination_test_3
@@ -716,6 +739,8 @@ class TestMarsuaeSand(TestFunctionalCase):
     def test_calculate_block_results_empty(self):
         probe_group, matches, scene = self.create_scif_matches_stitch_groups_data_mocks(
             DataTestUnitMarsuae.test_case_1, [1, 9])
+        self.mock_all_scenes_in_session(
+            DataTestUnitMarsuae.scenes_full_df[DataTestUnitMarsuae.scenes_full_df['scene_fk'].isin([1, 9])])
         self.mock_block_results([DataTestUnitMarsuae.block_results_empty])
         tool_box = MARSUAE_SANDToolBox(self.data_provider_mock, self.output)
         store_atomics = tool_box.get_store_atomic_kpi_parameters()
@@ -730,6 +755,8 @@ class TestMarsuaeSand(TestFunctionalCase):
     def test_calculate_block_all_blocks_fail(self):
         probe_group, matches, scene = self.create_scif_matches_stitch_groups_data_mocks(
             DataTestUnitMarsuae.test_case_1, [1, 9])
+        self.mock_all_scenes_in_session(
+            DataTestUnitMarsuae.scenes_full_df[DataTestUnitMarsuae.scenes_full_df['scene_fk'].isin([1, 9])])
         self.mock_block_results([DataTestUnitMarsuae.block_results_failed])
         tool_box = MARSUAE_SANDToolBox(self.data_provider_mock, self.output)
         store_atomics = tool_box.get_store_atomic_kpi_parameters()
@@ -744,6 +771,8 @@ class TestMarsuaeSand(TestFunctionalCase):
     def test_calculate_block_one_block_passes_one_scene_2_sku_types(self):
         probe_group, matches, scene = self.create_scif_matches_stitch_groups_data_mocks(
             DataTestUnitMarsuae.test_case_1, [1, 7])
+        self.mock_all_scenes_in_session(
+            DataTestUnitMarsuae.scenes_full_df[DataTestUnitMarsuae.scenes_full_df['scene_fk'].isin([1, 7])])
         self.mock_block_results([DataTestUnitMarsuae.block_results_sc_7])
         tool_box = MARSUAE_SANDToolBox(self.data_provider_mock, self.output)
         store_atomics = tool_box.get_store_atomic_kpi_parameters()
@@ -758,6 +787,8 @@ class TestMarsuaeSand(TestFunctionalCase):
     def test_calculate_block_one_block_passes_one_scene_one_sku_type(self):
         probe_group, matches, scene = self.create_scif_matches_stitch_groups_data_mocks(
             DataTestUnitMarsuae.test_case_1, [1, 8])
+        self.mock_all_scenes_in_session(
+            DataTestUnitMarsuae.scenes_full_df[DataTestUnitMarsuae.scenes_full_df['scene_fk'].isin([1, 8])])
         self.mock_block_results([DataTestUnitMarsuae.block_results_sc_8])
         tool_box = MARSUAE_SANDToolBox(self.data_provider_mock, self.output)
         store_atomics = tool_box.get_store_atomic_kpi_parameters()
@@ -772,6 +803,8 @@ class TestMarsuaeSand(TestFunctionalCase):
     def test_calculate_block_two_scenes_returns_result_for_largest_number_of_skus(self):
         probe_group, matches, scene = self.create_scif_matches_stitch_groups_data_mocks(
             DataTestUnitMarsuae.test_case_1, [1, 7, 8])
+        self.mock_all_scenes_in_session(
+            DataTestUnitMarsuae.scenes_full_df[DataTestUnitMarsuae.scenes_full_df['scene_fk'].isin([1, 7, 8])])
         self.mock_block_results([DataTestUnitMarsuae.block_results_sc_7, DataTestUnitMarsuae.block_results_sc_8])
         tool_box = MARSUAE_SANDToolBox(self.data_provider_mock, self.output)
         store_atomics = tool_box.get_store_atomic_kpi_parameters()
@@ -786,6 +819,8 @@ class TestMarsuaeSand(TestFunctionalCase):
     def test_calculate_block_two_blocks_pass_in_one_scene_returns_share_for_max_sku_types(self):
         probe_group, matches, scene = self.create_scif_matches_stitch_groups_data_mocks(
             DataTestUnitMarsuae.test_case_1, [1, 10])
+        self.mock_all_scenes_in_session(
+            DataTestUnitMarsuae.scenes_full_df[DataTestUnitMarsuae.scenes_full_df['scene_fk'].isin([1, 10])])
         self.mock_block_results([DataTestUnitMarsuae.block_results_sc_10])
         tool_box = MARSUAE_SANDToolBox(self.data_provider_mock, self.output)
         store_atomics = tool_box.get_store_atomic_kpi_parameters()
@@ -800,6 +835,8 @@ class TestMarsuaeSand(TestFunctionalCase):
     def test_calculate_block_3_scenes_max_block(self):
         probe_group, matches, scene = self.create_scif_matches_stitch_groups_data_mocks(
             DataTestUnitMarsuae.test_case_1, [1, 7, 8, 10])
+        self.mock_all_scenes_in_session(
+            DataTestUnitMarsuae.scenes_full_df[DataTestUnitMarsuae.scenes_full_df['scene_fk'].isin([1, 7, 8, 10])])
         self.mock_block_results([DataTestUnitMarsuae.block_results_sc_7, DataTestUnitMarsuae.block_results_sc_8,
                                  DataTestUnitMarsuae.block_results_sc_10])
         tool_box = MARSUAE_SANDToolBox(self.data_provider_mock, self.output)
@@ -815,6 +852,8 @@ class TestMarsuaeSand(TestFunctionalCase):
     def test_sos_gum_with_additional_exclusion_parameter(self):
         probe_group, matches, scene = self.create_scif_matches_stitch_groups_data_mocks(
             DataTestUnitMarsuae.test_case_1, [11])
+        self.mock_all_scenes_in_session(
+            DataTestUnitMarsuae.scenes_full_df[DataTestUnitMarsuae.scenes_full_df['scene_fk'].isin([11])])
         self.mock_store_data_test_case(DataTestUnitMarsuae.store_data_supers_a)
         tool_box = MARSUAE_SANDToolBox(self.data_provider_mock, self.output)
         tool_box.common.write_to_db_result = MagicMock()
