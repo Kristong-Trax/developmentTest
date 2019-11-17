@@ -3104,7 +3104,7 @@ class CCRU_SANDKPIToolBox:
                                                               == kpi_name]['kpi_fk'].values[0]
                     kpi_name = param.get('KPI name Eng')
                     kpi_weight = param.get('KPI Weight')
-                    children = param.get('Children').replace('\n', '').replace(' ', '').split(',')
+                    children = str(param.get('Children')).replace('\n', '').replace(' ', '').split(',')
 
                     sum_of_scores = 0
                     sum_of_weights = 0
