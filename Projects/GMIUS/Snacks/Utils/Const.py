@@ -81,6 +81,11 @@ class Const(object):
     COMMA_SPACE = ', '
     COMMA = ','
     KEEP = 'keep'
+
+
+    ALLOWED_FLAGS = ['unconnected', 'connected', 'encapsulated']
+
+
     INTEGRATED = 'Fully Integrated'
     ADJACENT = 'Adjacent Section'
     SAME_AISLE = 'Same Aisle, Not Adjacent'

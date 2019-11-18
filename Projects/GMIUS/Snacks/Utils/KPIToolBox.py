@@ -200,24 +200,33 @@ class ToolBox:
             result = 'Non-Integrated Bars Set Present'
         return {'score': 1, 'result': result}
 
-    def calculate_max_block_adj_base(self, kpi_name, kpi_line, relevant_scif, general_filters, thresh={}):
+    def calculate_max_block_adj_base(self, kpi_name, kpi_line, relevant_scif, general_filters, comp_filter={}, thresh={}):
         allowed_edges = [x.upper() for x in self.read_cell_from_line(kpi_line, Const.EDGES)]
         d = {'A': {}, 'B': {}}
         for k, v in d.items():
-            filters = self.get_kpi_line_filters(kpi_line, k)
+            if comp_filter:
+                filters = comp_filter[k]
+            else:
+                filters = self.get_kpi_line_filters(kpi_line, k)
             _, _, mpis_dict, _, results = self.base_block(kpi_name, kpi_line, relevant_scif,
                                                           general_filters,
                                                           filters=filters,
                                                           check_orient=0)
-            v['row'] = results.sort_values('facing_percentage', ascending=False).iloc[0, :]
+            v['df'] = results.sort_values('facing_percentage', ascending=False)
+            if self.read_cell_from_line(kpi_line, 'Max Block')[0] == 'Y':
+                v['df'] = pd.DataFrame(v['df'].iloc[0, :]).T
             if k in thresh:
-                if v['row']['facing_percentage'] <= thresh[k]:
+                if v['df']['facing_percentage'].iloc[0] <= thresh[k]:
                     return 0
-            v['items'] = sum([list(n['match_fk']) for i, n in v['row']['cluster'].nodes(data=True)
+            v['items'] = sum([list(n['match_fk']) for j, row in v['df'].iterrows()
+                              for i, n in row['cluster'].nodes(data=True)
                               if n['block_key'].value not in Const.ALLOWED_FLAGS], [])
-            scene_graph = self.block.adj_graphs_by_scene[d[k]['row']['scene_fk']]
-            matches = [(edge, scene_graph[item][edge]['direction']) for item in v['items']
-                       for edge in scene_graph[item].keys() if scene_graph[item][edge]['direction'] in allowed_edges]
+            matches = []
+            for scene in d[k]['df']['scene_fk'].values:
+                scene_key = [key for key in self.block.adj_graphs_by_scene.keys() if str(scene) in key][0]
+                scene_graph = self.block.adj_graphs_by_scene[scene_key]
+                matches += [(edge, scene_graph[item][edge]['direction']) for item in v['items'] if item in scene_graph
+                            for edge in scene_graph[item].keys() if scene_graph[item][edge]['direction'] in allowed_edges]
             v['edge_matches'], v['directions'] = zip(*matches) if matches else ([], [])
         result = 0
         if set(d['A']['edge_matches']) & set(d['B']['items']):
