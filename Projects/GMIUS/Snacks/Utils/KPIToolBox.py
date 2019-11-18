@@ -10,7 +10,7 @@ from Trax.Utils.Logging.Logger import Log
 from Projects.GMIUS.Snacks.Utils.Const import Const
 from KPIUtils_v2.GlobalDataProvider.PsDataProvider import PsDataProvider
 
-from KPIUtils_v2.Calculations.BlockCalculations import Block
+from KPIUtils_v2.Calculations.BlockCalculations_v2 import Block
 from Trax.Algo.Calculations.Core.GraphicalModel.AdjacencyGraphs import AdjacencyGraph
 
 from shapely.strtree import STRtree
@@ -190,12 +190,39 @@ class ToolBox:
         b_filters = self.get_kpi_line_filters(kpi_line, 'B')
         a_req = self.get_kpi_line_filters(kpi_line, 'A Required')
         b_req = self.get_kpi_line_filters(kpi_line, 'B Required')
+        thresh = {'A': self.read_cell_from_line(kpi_line, 'A Threshold')[0]}
         if self.filter_df(relevant_scif, a_req).empty or self.filter_df(relevant_scif, b_req).empty:
             return {'score': 1, 'result': result}
-        _, _, _, _, clusters = self.base_block(kpi_name, kpi_line, relevant_scif, general_filters,
-                                               filters=filters, check_orient=0)
+        adj = self.calculate_max_block_adj_base(kpi_name, kpi_line, relevant_scif, general_filters, thresh=thresh)
+        if adj:
+            result = 'Integrated Bars Set Present'
+        else:
+            result = 'Non-Integrated Bars Set Present'
+        return {'score': 1, 'result': result}
 
-   
+    def calculate_max_block_adj_base(self, kpi_name, kpi_line, relevant_scif, general_filters, thresh={}):
+        allowed_edges = [x.upper() for x in self.read_cell_from_line(kpi_line, Const.EDGES)]
+        d = {'A': {}, 'B': {}}
+        for k, v in d.items():
+            filters = self.get_kpi_line_filters(kpi_line, k)
+            _, _, mpis_dict, _, results = self.base_block(kpi_name, kpi_line, relevant_scif,
+                                                          general_filters,
+                                                          filters=filters,
+                                                          check_orient=0)
+            v['row'] = results.sort_values('facing_percentage', ascending=False).iloc[0, :]
+            if k in thresh:
+                if v['row']['facing_percentage'] <= thresh[k]:
+                    return 0
+            v['items'] = sum([list(n['match_fk']) for i, n in v['row']['cluster'].nodes(data=True)
+                              if n['block_key'].value not in Const.ALLOWED_FLAGS], [])
+            scene_graph = self.block.adj_graphs_by_scene[d[k]['row']['scene_fk']]
+            matches = [(edge, scene_graph[item][edge]['direction']) for item in v['items']
+                       for edge in scene_graph[item].keys() if scene_graph[item][edge]['direction'] in allowed_edges]
+            v['edge_matches'], v['directions'] = zip(*matches) if matches else ([], [])
+        result = 0
+        if set(d['A']['edge_matches']) & set(d['B']['items']):
+            result = 1
+        return result
 
     def calculate_block(self, kpi_name, kpi_line, relevant_scif, general_filters):
         score, orientation, mpis_dict, _, _ = self.base_block(
