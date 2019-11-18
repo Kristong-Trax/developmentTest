@@ -22,6 +22,7 @@ class Const(object):
     NEGATIVE_DISTRIBUTION = 'Negative Distribution'
     ADJACENCY = 'Adjacency'
     BLOCKING = 'Blocking'
+    PRODUCT_SEQUENCE = 'Product Sequence'
 
 
 

@@ -33,16 +33,6 @@ class ToolBox:
         self.common = common
         self.output = output
         self.data_provider = data_provider
-
-        # ----------- fix for nan types in dataprovider -----------
-        # all_products = self.data_provider._static_data_provider.all_products.where(
-        #     (pd.notnull(self.data_provider._static_data_provider.all_products)), None)
-        # self.data_provider._set_all_products(all_products)
-        # self.data_provider._init_session_data(None, True)
-        # self.data_provider._init_report_data(self.data_provider.session_uid)
-        # self.data_provider._init_reporting_data(self.data_provider.session_id)
-        # ----------- fix for nan types in dataprovider -----------
-
         self.block = Block(self.data_provider)
         self.project_name = self.data_provider.project_name
         self.session_uid = self.data_provider.session_uid
@@ -80,14 +70,13 @@ class ToolBox:
         self.dependency_lookup = {}
         self.base_measure = None
         self.circle_kpis = {}
-
         self.store_data = pd.read_sql_query(DATA_QUERY, self.common.rds_conn.db)
         self.rel_store_data = self.store_data[self.store_data['pk'] == self.store_id]
-
         self.assortment = Assortment(self.data_provider, self.output)
         self.prev_prods = self.load_prev_prods(self.store_id, self.session_info['visit_date'].iloc[0])
-
         self.mcc_cooler_fk = self.assortment.get_assortment_fk_by_name('MCC Cooler')
+        self.brands_dict = self.all_products.set_index('brand_name')[['brand_fk', 'manufacturer_fk']].drop_duplicates()\
+            .to_dict('index')
 
 
 
@@ -158,24 +147,25 @@ class ToolBox:
         #     # 'Flanker Displays',
         #     # 'Disruptor Displays',
         #     # 'Brand Blocking'
-        #     'Adjacencies'
+        #     # 'Adjacencies'
         #
         # ]:
         #     return
 
         if kpi_type not in [
-            'Share of Facings',
-            'Share of Shelf',
-            'Distribution',
-            'Anchor',
-            'Base Measurement',
-            'Bay Count',
-            'Out of Stock',
-            'Pack Distribution',
-            'Purity',
-            'Negative Distribution',
-            'Adjacency',
-            # 'Blocking',
+            # 'Share of Facings',
+            # 'Share of Shelf',
+            # 'Distribution',
+            # 'Anchor',
+            # 'Base Measurement',
+            # 'Bay Count',
+            # 'Out of Stock',
+            # 'Pack Distribution',
+            # 'Purity',
+            # 'Negative Distribution',
+            # 'Adjacency',
+            #
+            'Product Sequence'
             ]:
             return
 
@@ -521,7 +511,7 @@ class ToolBox:
         filters = self.get_kpi_line_filters(kpi_line)
         num_scif = self.filter_df(relevant_scif, filters)
         if num_scif.empty:
-            return
+            return None, None
         opposition = self.dictify_competitive_brands('Adjacencies', self.adj_brands)
 
         brands = [brand for brand in num_scif['brand_name'].unique() if brand in opposition.keys()]
@@ -605,8 +595,6 @@ class ToolBox:
         if 'Adjacencies' == assort_template[0]:
             assort = self.adj_brands
         assort = self.dictify_competitive_brands(comparable_type, assort)
-        brands_dict = self.all_products.set_index('brand_name')[['brand_fk', 'manufacturer_fk']].drop_duplicates()\
-            .to_dict('index')
         existing_brands = set(relevant_scif.brand_name.values)
         for k in assort.keys():
             if k not in existing_brands:
@@ -620,8 +608,8 @@ class ToolBox:
                 comp_filter = {'A': {'brand_name': [k]}, 'B': {'brand_name': v}}
                 result = self.calculate_adj_base(kpi_name, kpi_line, relevant_scif, general_filters, comp_filter)
             results.append({'score': result, 'result': result, 'numerator_result': result,
-                            'numerator_id': brands_dict[k][main_line[level['num_col']]],
-                            'denominator_id': brands_dict[v[0]][main_line[level['den_col']]],
+                            'numerator_id': self.brands_dict[k][main_line[level['num_col']]],
+                            'denominator_id': self.brands_dict[v[0]][main_line[level['den_col']]],
                             'kpi_name': self.lvl_name(kpi_name, 'Brand'),
                             'ident_parent': self.lvl_name(kpi_name, 'Session')})
             total += result
@@ -668,15 +656,59 @@ class ToolBox:
             result = 1
         return result
 
-    def calculate_blocking(self, kpi_name, kpi_line, relevant_scif, general_filters, main_line, level, **kwargs):
+    def calculate_blocking(self, kpi_name, kpi_line, relevant_scif, general_filters, level, **kwargs):
         filters = self.get_kpi_line_filters(kpi_line, 'Num')
         exclude = self.get_kpi_line_filters(kpi_line, 'Exclude')
         for k in exclude:
             if exclude[k] == ['None']:
                 exclude[k] = [None]
-        _, _, mpis_dict, blocks, results = self.base_block(kpi_name, kpi_line, relevant_scif, general_filters,
-                                                           filters=filters, exclude=exclude, check_orient=0)
+        relevant_scif = self.filter_df(relevant_scif, filters)
+        if relevant_scif.empty:
+            return None, None
+        brands = relevant_scif.brand_name.unique()
+        total = 0
+        results = []
+        for brand in brands:
+            result = 0
+            filters['brand_name'] = [brand]
+            _, _, _, _, clusters = self.base_block(kpi_name, kpi_line, relevant_scif, general_filters,
+                                                   filters=filters, exclude=exclude, check_orient=0)
+            if sum(clusters['is_block']) >= 1:
+                result = 1
+            total += result
+            results.append({'score': result, 'result': result, 'numerator_result': result,
+                            'numerator_id': self.brands_dict[brand]['brand_fk'],
+                            'denominator_id': self.store_id,
+                            'kpi_name': self.lvl_name(kpi_name, 'Brand'),
+                            'ident_parent': self.lvl_name(kpi_name, 'Session')})
+        result = 0
+        if total == len(brands):
+            result = 1
+        results.append({'score': result, 'result': result, 'numerator_result': total, 'denominator_id': len(brands),
+                        'numerator_id': self.manufacturer_fk,
+                        'denominator_id': self.store_id,
+                        'kpi_name': self.lvl_name(kpi_name, 'Session'),
+                        'ident_result': self.lvl_name(kpi_name, 'Session')})
+        return level['end'], results
+
+
         print('asdf')
+
+    def calculate_product_sequence(self, kpi_name, kpi_line, relevant_scif, general_filters, level, **kwargs):
+        filters = self.get_kpi_line_filters(kpi_line)
+        relevant_scif = self.filter_df(relevant_scif, filters)
+        if relevant_scif.empty:
+            return None, None
+        col = self.read_cell_from_line(kpi_line, 'Iterative')[0]
+        things = relevant_scif[col].unique()
+        for thing in things:
+            B_filters = {col: [thing]}
+            _, _, _, _, clusters = self.base_block(kpi_name, kpi_line, relevant_scif, general_filters,
+                                                   filters=filters, check_orient=0)
+            block = clusters.sort_values('block_facings').iloc[0, :]
+
+            print{'asdf'}
+
 
     def base_block(self, kpi_name, kpi_line, relevant_scif, general_filters_base, check_orient=1, other=1, filters={},
                    exclude={}, multi=0):
@@ -1379,6 +1411,8 @@ class ToolBox:
             return self.calculate_adjacency
         elif kpi_type == Const.BLOCKING:
             return self.calculate_blocking
+        elif kpi_type == Const.PRODUCT_SEQUENCE:
+            return self.calculate_product_sequence
 
 
 
