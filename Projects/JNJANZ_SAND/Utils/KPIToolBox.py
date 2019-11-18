@@ -8,8 +8,8 @@ from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Trax.Utils.Logging.Logger import Log
 from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
 
-from Projects.JNJAU_SAND.Utils.Fetcher import JNJAUQueries
-from Projects.JNJAU_SAND.Utils.GeneralToolBox import JNJAUGENERALToolBox
+from Projects.JNJANZ_SAND.Utils.Fetcher import JNJANZQueries
+from Projects.JNJANZ_SAND.Utils.GeneralToolBox import JNJANZGENERALToolBox
 
 __author__ = 'nissand'
 
@@ -32,7 +32,7 @@ def log_runtime(description, log_start=False):
     return decorator
 
 
-class JNJAUToolBox:
+class JNJANZToolBox:
     LEVEL1 = 1
     LEVEL2 = 2
     LEVEL3 = 3
@@ -51,7 +51,7 @@ class JNJAUToolBox:
         self.store_id = self.data_provider[Data.STORE_FK]
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
         self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
-        self.tools = JNJAUGENERALToolBox(self.data_provider, self.output, rds_conn=self.rds_conn)
+        self.tools = JNJANZGENERALToolBox(self.data_provider, self.output, rds_conn=self.rds_conn)
         self.kpi_static_data = self.get_kpi_static_data()
         self.kpi_results_queries = []
 
@@ -60,7 +60,7 @@ class JNJAUToolBox:
         This function extracts the static KPI data and saves it into one global data frame.
         The data is taken from static.kpi / static.atomic_kpi / static.kpi_set.
         """
-        query = JNJAUQueries.get_all_kpi_data()
+        query = JNJANZQueries.get_all_kpi_data()
         kpi_static_data = pd.read_sql_query(query, self.rds_conn.db)
         return kpi_static_data
 
@@ -125,7 +125,7 @@ class JNJAUToolBox:
         """
         insert_queries = self.merge_insert_queries(self.kpi_results_queries)
         cur = self.rds_conn.db.cursor()
-        delete_queries = JNJAUQueries.get_delete_session_results_query(self.session_uid)
+        delete_queries = JNJANZQueries.get_delete_session_results_query(self.session_uid)
         for query in delete_queries:
             cur.execute(query)
         for query in insert_queries:

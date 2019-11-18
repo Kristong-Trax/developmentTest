@@ -13,7 +13,7 @@ from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScrip
 __author__ = 'nissand'
 
 
-class JNJAUCalculations(BaseCalculationsScript):
+class JNJANZCalculations(BaseCalculationsScript):
 
     @log_runtime(description="Total Calculation")
     def run_project_calculations(self):
@@ -38,7 +38,7 @@ class JNJAUCalculations(BaseCalculationsScript):
     def _parse_templates_for_calculations():
         """ This method parse the local relevant template for the global code calculation"""
         data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'Data')
-        eye_hand_lvl_template_path = os.path.join(data_path, 'eye_level_jnjau.xlsx')
+        eye_hand_lvl_template_path = os.path.join(data_path, 'eye_level_jnjanz.xlsx')
         exclusive_template_path = os.path.join(data_path, 'KPI Exclusions Template.xlsx')
         survey_template_path = os.path.join(data_path, 'SurveyTemplate.xlsx')
         eye_hand_lvl_template = pd.read_excel(eye_hand_lvl_template_path)
@@ -48,12 +48,12 @@ class JNJAUCalculations(BaseCalculationsScript):
 
 
 # if __name__ == '__main__':
-#     LoggerInitializer.init('jnjau calculations')
+#     LoggerInitializer.init('jnjanz calculations')
 #     Config.init()
-#     project_name = 'jnjau-sand'
+#     project_name = 'jnjanz-sand'
 #     data_provider = KEngineDataProvider(project_name)
 #     session = 'b3ff7bc7-cbe1-46fe-ada7-712f0f9f070d'
 #     # session = 'f850397b-6b79-47e9-897b-9edb2632efda' # 60 sec for promocalc
 #     data_provider.load_session_data(session)
 #     output = Output()
-#     JNJAUCalculations(data_provider, output).run_project_calculations()
+#     JNJANZCalculations(data_provider, output).run_project_calculations()
