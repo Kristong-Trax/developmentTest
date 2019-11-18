@@ -69,6 +69,7 @@ class ToolBox:
         self.dependency_lookup = {}
         self.base_measure = None
         self.global_fail = 0
+        self.MSL = {}
 
         # self.att_dict = self.make_att_dict()
         # self.tmb_map = pd.read_excel(Const.TMB_MAP_PATH).set_index('Num Shelves').to_dict('index')
@@ -101,12 +102,12 @@ class ToolBox:
     def calculate_main_kpi(self, main_line):
         kpi_name = main_line[Const.KPI_NAME]
         kpi_type = main_line[Const.TYPE]
-        scene_types = self.read_cell_from_line(main_line, Const.SCENE_TYPE)
+        scene_types = self.read_cell_from_line(main_line, 'Found Scene')
         general_filters = {}
         relevant_scif = self.filter_df(self.scif.copy(), Const.SOS_EXCLUDE_FILTERS, exclude=1)
         if scene_types:
-            relevant_scif = relevant_scif[relevant_scif['template_name'].isin(scene_types)]
-            general_filters['template_name'] = scene_types
+            relevant_scif = relevant_scif[relevant_scif['template_name'] == self.MSL[scene_types[0]]]
+            general_filters['template_name'] = [self.MSL[scene_types[0]]]
         if relevant_scif.empty:
             return
 
@@ -118,7 +119,7 @@ class ToolBox:
 
         # if kpi_type == Const.AGGREGATION:
         # if kpi_type:
-        if (self.super_cat in ['SNACKS']) and (kpi_type in[Const.PRIMARY_LOCATION]):
+        if (self.super_cat in ['SNACKS']) and (kpi_type in[Const.PRIMARY_LOCATION, Const.MAX_BLOCK_ADJACENCY]):
             # if (self.super_cat in ['MEXICAN']) or (kpi_type in[Const.BASE_MEASURE, Const.BLOCKING, Const.AGGREGATION]):
             # if kpi_name == 'How is RTS Progresso blocked?':
             # if kpi_type in[Const.COUNT_SHELVES]: # Const.COUNT_SHELVES:
@@ -165,23 +166,32 @@ class ToolBox:
                     kpi, self.session_uid))
 
     def calculate_primary_location(self, kpi_name, kpi_line, relevant_scif, general_filters):
+        self.MSL[self.read_cell_from_line(kpi_line, 'Short Name')[0]] = 'Not Found'
         filters = self.get_kpi_line_filters(kpi_line)
         scif = self.filter_df(relevant_scif, filters)
         if scif.empty:
             return
-        scene = scif.groupby('template_name')['facings'].sum()\
-            .sort_values(ascending=False).index[0].split(' ')
+        scene = scif.groupby('template_name')['facings'].sum().sort_values(ascending=False).index[0]
         potential_results = self.get_results_value(kpi_line)
         scores = {}
         for result in potential_results:
             scores[result] = 0
             substrs = result.split(' ')
-            for word in scene:
+            for word in scene.split(' '):
                 if word in substrs:
                     scores[result] += 1
         top = sorted(scores.items(), key=lambda x: x[1])[-1][0]
+        self.MSL[self.read_cell_from_line(kpi_line, 'Short Name')[0]] = scene
         return {'score': 1, 'result': top}
 
+    def calculate_max_block_adj(self, kpi_name, kpi_line, relevant_scif, general_filters):
+        result = 'Could not determine'
+        a_filters = self.get_kpi_line_filters(kpi_line, 'A')
+        b_filters = self.get_kpi_line_filters(kpi_line, 'B')
+        a_req = self.get_kpi_line_filters(kpi_line, 'A Required')
+        b_req = self.get_kpi_line_filters(kpi_line, 'B Required')
+        if self.filter_df(relevant_scif, a_req).empty or self.filter_df(relevant_scif, b_req).empty:
+            return
 
 
 
@@ -1481,9 +1491,10 @@ class ToolBox:
         """
         if kpi_type == Const.PRIMARY_LOCATION:
             return self.calculate_primary_location
+        if kpi_type == Const.MAX_BLOCK_ADJACENCY:
+            return self.calculate_max_block_adj
 
-        # if kpi_type == Const.AGGREGATION:
-        #     return self.calculate_sos
+
         # elif kpi_type == Const.TMB:
         #     return self.calculate_topmiddlebottom
         # elif kpi_type == Const.ADJACENCY:
