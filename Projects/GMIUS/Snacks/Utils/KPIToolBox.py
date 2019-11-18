@@ -1551,7 +1551,7 @@ class ToolBox:
     def splitter(text_str, delimiter=','):
         ret = [text_str]
         if hasattr(text_str, 'split'):
-            ret = text_str.split(delimiter)
+            ret = [x.strip() for x in text_str.split(delimiter)]
         return ret
 
     def sos_with_num_and_dem(self, kpi_line, relevant_scif, general_filters, facings_field):
