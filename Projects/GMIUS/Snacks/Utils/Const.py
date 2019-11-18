@@ -13,6 +13,8 @@ class Const(object):
     ''' Sheets '''
 
     PRIMARY_LOCATION = 'Primary Location'
+    MAX_BLOCK_ADJACENCY = 'Max Block Adjacency'
+
 
 
     KPIS = 'KPIs'
@@ -79,7 +81,11 @@ class Const(object):
     COMMA_SPACE = ', '
     COMMA = ','
     KEEP = 'keep'
-    MAX_BLOCK = 'max_block'
+
+
+    ALLOWED_FLAGS = ['unconnected', 'connected', 'encapsulated']
+
+
     INTEGRATED = 'Fully Integrated'
     ADJACENT = 'Adjacent Section'
     SAME_AISLE = 'Same Aisle, Not Adjacent'
