@@ -191,7 +191,93 @@ class ToolBox:
         a_req = self.get_kpi_line_filters(kpi_line, 'A Required')
         b_req = self.get_kpi_line_filters(kpi_line, 'B Required')
         if self.filter_df(relevant_scif, a_req).empty or self.filter_df(relevant_scif, b_req).empty:
-            return
+            return {'score': 1, 'result': result}
+        _, _, _, _, clusters = self.base_block(kpi_name, kpi_line, relevant_scif, general_filters,
+                                               filters=filters, check_orient=0)
+
+   
+
+    def calculate_block(self, kpi_name, kpi_line, relevant_scif, general_filters):
+        score, orientation, mpis_dict, _, _ = self.base_block(
+            kpi_name, kpi_line, relevant_scif, general_filters)
+        # result_fk = self.result_values_dict[orientation]
+        kwargs = {'numerator_id': 999, 'numerator_result': score, 'score': score, 'result': orientation,
+                  'target': 1}
+        return kwargs
+
+
+    def base_block(self, kpi_name, kpi_line, relevant_scif, general_filters_base, check_orient=1, other=1, filters={},
+                   exclude={}, multi=0):
+        result = pd.DataFrame()
+        general_filters = dict(general_filters_base)
+        blocks = pd.DataFrame()
+        result = pd.DataFrame()
+        orientation = 'Not Blocked'
+        scenes = self.filter_df(relevant_scif, general_filters).scene_fk.unique()
+        if 'template_name' in general_filters:
+            del general_filters['template_name']
+        if 'scene_fk' in general_filters:
+            del general_filters['scene_fk']
+        mpis_dict = {}
+        valid_scene_found = 0
+        for scene in scenes:
+            score = 0
+            empty_check = 0
+            scene_filter = {'scene_fk': scene}
+            if not filters:
+                filters = self.get_kpi_line_filters(kpi_line)
+            filters.update(general_filters)
+            # mpis is only here for debugging purposes
+            mpis = self.filter_df(self.mpis, scene_filter)
+            mpis = self.filter_df(mpis, filters)
+            mpis = self.filter_df(mpis, {'stacking_layer': 1})
+            mpis_dict[scene] = mpis
+            if mpis.empty:
+                empty_check = -1
+                continue
+            allowed_filter = Const.ALLOWED_FILTERS
+            if not other:
+                allowed_filter = {'product_type': 'Empty'}
+            result = pd.concat([result, self.block.network_x_block_together(filters, location=scene_filter,
+                                                                            additional={
+                                                                                'allowed_products_filters': allowed_filter,
+                                                                                'include_stacking': False,
+                                                                                'check_vertical_horizontal': check_orient,
+                                                                                'minimum_facing_for_block': 1,
+                                                                                'exclude_filter': exclude})])
+            blocks = result[result['is_block'] == True]
+            valid_scene_found = 1
+            if not blocks.empty and not multi:
+                score = 1
+                orientation = blocks.loc[0, 'orientation']
+                # break
+        if empty_check == -1 and not valid_scene_found:
+            self.global_fail = 1
+            raise TypeError('No Data Found fo kpi "'.format(kpi_name))
+        return score, orientation, mpis_dict, blocks, result
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -808,61 +894,54 @@ class ToolBox:
                 score = 1
         return score
 
-    def base_block(self, kpi_name, kpi_line, relevant_scif, general_filters_base, check_orient=1, other=0, filters={},
-                   multi=0):
-        result = pd.DataFrame()
-        general_filters = dict(general_filters_base)
-        blocks = pd.DataFrame()
-        result = pd.DataFrame()
-        orientation = 'Not Blocked'
-        scenes = self.filter_df(self.scif, general_filters).scene_fk.unique()
-        if 'template_name' in general_filters:
-            del general_filters['template_name']
-        mpis_dict = {}
-        if self.read_cell_from_line(kpi_line, 'MSL'):
-            scenes = self.find_MSL(relevant_scif)
-        valid_scene_found = 0
-        for scene in scenes:
-            score = 0
-            scene_filter = {'scene_fk': scene}
-            if not filters:
-                filters = self.get_kpi_line_filters(kpi_line)
-                filters.update(general_filters)
-            # mpis is only here for debugging purposes
-            mpis = self.filter_df(self.mpis, scene_filter)
-            mpis = self.filter_df(mpis, filters)
-            mpis = self.filter_df(mpis, {'stacking_layer': 1})
-            mpis_dict[scene] = mpis
-            if mpis.empty:
-                score = -1
-                continue
-            allowed_filter = Const.ALLOWED_FILTERS
-            if not other:
-                allowed_filter = {'product_type': 'Empty'}
-            result = pd.concat([result, self.block.network_x_block_together(filters, location=scene_filter,
-                                                                            additional={
-                                                                                'allowed_products_filters': allowed_filter,
-                                                                                'include_stacking': False,
-                                                                                'check_vertical_horizontal': check_orient,
-                                                                                'minimum_facing_for_block': 1})])
-            blocks = result[result['is_block'] == True]
-            valid_scene_found = 1
-            if not blocks.empty and not multi:
-                score = 1
-                orientation = blocks.loc[0, 'orientation']
-                break
-        if score == -1 and not valid_scene_found:
-            self.global_fail = 1
-            raise TypeError('No Data Found fo kpi "'.format(kpi_name))
-        return score, orientation, mpis_dict, blocks, result
+    # def base_block(self, kpi_name, kpi_line, relevant_scif, general_filters_base, check_orient=1, other=0, filters={},
+    #                multi=0):
+    #     result = pd.DataFrame()
+    #     general_filters = dict(general_filters_base)
+    #     blocks = pd.DataFrame()
+    #     result = pd.DataFrame()
+    #     orientation = 'Not Blocked'
+    #     scenes = self.filter_df(self.scif, general_filters).scene_fk.unique()
+    #     if 'template_name' in general_filters:
+    #         del general_filters['template_name']
+    #     mpis_dict = {}
+    #     if self.read_cell_from_line(kpi_line, 'MSL'):
+    #         scenes = self.find_MSL(relevant_scif)
+    #     valid_scene_found = 0
+    #     for scene in scenes:
+    #         score = 0
+    #         scene_filter = {'scene_fk': scene}
+    #         if not filters:
+    #             filters = self.get_kpi_line_filters(kpi_line)
+    #             filters.update(general_filters)
+    #         # mpis is only here for debugging purposes
+    #         mpis = self.filter_df(self.mpis, scene_filter)
+    #         mpis = self.filter_df(mpis, filters)
+    #         mpis = self.filter_df(mpis, {'stacking_layer': 1})
+    #         mpis_dict[scene] = mpis
+    #         if mpis.empty:
+    #             score = -1
+    #             continue
+    #         allowed_filter = Const.ALLOWED_FILTERS
+    #         if not other:
+    #             allowed_filter = {'product_type': 'Empty'}
+    #         result = pd.concat([result, self.block.network_x_block_together(filters, location=scene_filter,
+    #                                                                         additional={
+    #                                                                             'allowed_products_filters': allowed_filter,
+    #                                                                             'include_stacking': False,
+    #                                                                             'check_vertical_horizontal': check_orient,
+    #                                                                             'minimum_facing_for_block': 1})])
+    #         blocks = result[result['is_block'] == True]
+    #         valid_scene_found = 1
+    #         if not blocks.empty and not multi:
+    #             score = 1
+    #             orientation = blocks.loc[0, 'orientation']
+    #             break
+    #     if score == -1 and not valid_scene_found:
+    #         self.global_fail = 1
+    #         raise TypeError('No Data Found fo kpi "'.format(kpi_name))
+    #     return score, orientation, mpis_dict, blocks, result
 
-    def calculate_block(self, kpi_name, kpi_line, relevant_scif, general_filters):
-        score, orientation, mpis_dict, _, _ = self.base_block(
-            kpi_name, kpi_line, relevant_scif, general_filters)
-        # result_fk = self.result_values_dict[orientation]
-        kwargs = {'numerator_id': 999, 'numerator_result': score, 'score': score, 'result': orientation,
-                  'target': 1}
-        return kwargs
 
     def calculate_tub_block(self, kpi_name, kpi_line, relevant_scif, general_filters):
         score, orientation, mpis_dict, _, _ = self.base_block(
