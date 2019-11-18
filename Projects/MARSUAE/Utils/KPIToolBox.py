@@ -24,6 +24,7 @@ from KPIUtils_v2.Utils.Decorators.Decorators import kpi_runtime
 from KPIUtils_v2.Utils.Parsers.ParseInputKPI import filter_df
 from Projects.MARSUAE.Utils.Fetcher import MARSUAE_Queries
 from Projects.MARSUAE.Utils.Nodes import Node
+from KPIUtils_v2.Utils.Consts.DataProvider import ScifConsts
 
 
 __author__ = 'natalyak'
@@ -124,6 +125,13 @@ class MARSUAEToolBox:
         self.cat_lvl_res = pd.DataFrame()
         self.kpi_result_values = self.get_kpi_result_values_df()
         self.total_score = 0
+        self.scenes_in_session = self.get_all_scenes_in_session()
+
+    def get_all_scenes_in_session(self):
+        scenes_in_ses = self.data_provider[Data.SCENES_INFO][[ScifConsts.SCENE_FK, ScifConsts.TEMPLATE_FK]]
+        scenes_in_ses = scenes_in_ses.merge(self.data_provider[Data.ALL_TEMPLATES],
+                                                on=ScifConsts.TEMPLATE_FK, how='left')
+        return scenes_in_ses
 
     def get_kpi_result_values_df(self):
         query = MARSUAE_Queries.get_kpi_result_values()
@@ -334,13 +342,15 @@ class MARSUAEToolBox:
                     attr_name_match_dict.update({col: value_col})
         return attr_name_match_dict
 
-    def get_general_filters(self, param_row):
+    def get_general_filters(self, param_row, scif_flag=True):
         templates = param_row[self.TEMPLATE_NAME_T]
         if templates:
             conditions = {'location': {'template_name': templates}}
-            relevant_scenes = filter_df(conditions, self.scif)[self.SCENE_FK].unique().tolist()
+            relevant_scenes = filter_df(conditions, self.scif)[self.SCENE_FK].unique().tolist() if scif_flag else \
+                filter_df(conditions, self.scenes_in_session)[self.SCENE_FK].unique().tolist()
         else:
-            relevant_scenes = self.scif[self.SCENE_FK].unique().tolist()
+            relevant_scenes = self.scif[self.SCENE_FK].unique().tolist() if scif_flag else \
+                self.scenes_in_session[self.SCENE_FK].unique().tolist()
         general_filters = {'location': {self.SCENE_FK: relevant_scenes}}
         return general_filters
 
@@ -483,7 +493,7 @@ class MARSUAEToolBox:
                                            numerator_result=result[self.WEIGHT])
 
     def get_atomics_for_template_groups_present_in_store(self, store_atomics):
-        session_template_groups = self.scif['template_group'].unique().tolist()
+        session_template_groups = self.scenes_in_session['template_group'].unique().tolist()
         category_kpis_df = self.kpi_category_df[self.kpi_category_df['template_group'].isin(session_template_groups)]
         visit_category_kpis = category_kpis_df[self.KPI_LVL_2_NAME].unique().tolist()
         store_atomics = store_atomics[store_atomics[self.KPI_LVL_2_NAME].isin(visit_category_kpis)]
@@ -668,9 +678,9 @@ class MARSUAEToolBox:
 
     @kpi_runtime()
     def calculate_displays(self, param_row):
-        general_filters = self.get_general_filters(param_row)
-        filtered_scif = filter_df(general_filters, self.scif)
-        result = len(filtered_scif[self.SCENE_FK].unique().tolist())
+        general_filters = self.get_general_filters(param_row, scif_flag=False)
+        filtered_scenes = filter_df(general_filters, self.scenes_in_session)
+        result = len(filtered_scenes[self.SCENE_FK].unique())
         score, weight = self.get_score(result, param_row)
         identifier_parent = self.get_identifier_parent_for_atomic(param_row)
         target = param_row[self.TARGET] if param_row[self.TARGET] else None
@@ -698,15 +708,16 @@ class MARSUAEToolBox:
 
     @kpi_runtime()
     def calculate_checkouts(self, param_row):
+        denom_filters = self.get_general_filters(param_row, scif_flag=False)
+        filtered_scenes = filter_df(denom_filters, self.scenes_in_session)
+        all_ch_o = len(filtered_scenes[self.SCENE_FK].unique())
+
         filters = self.get_general_filters(param_row)
-        # all_ch_o = len(filter_df(filters, self.match_product_in_scene).drop_duplicates(subset=[self.SCENE_FK,
-        #                                                                                        'probe_group_id']))
-        all_ch_o = len(filter_df(filters, self.match_product_in_scene).drop_duplicates(subset=[self.SCENE_FK]))
         kpi_filters = self.get_non_sos_kpi_filters(param_row)
         filters.update(kpi_filters)
         filtered_matches = filter_df(filters, self.matches_products)
         filtered_matches = filtered_matches[filtered_matches['stacking_layer'] == 1]
-        # scene_probe_groups = len(filtered_matches.drop_duplicates(subset=[self.SCENE_FK, 'probe_group_id']))
+
         scene_probe_groups = len(filtered_matches.drop_duplicates(subset=[self.SCENE_FK]))
         result = float(scene_probe_groups) / all_ch_o if all_ch_o else 0
         score, weight = self.get_score(param_row=param_row, result=result)
