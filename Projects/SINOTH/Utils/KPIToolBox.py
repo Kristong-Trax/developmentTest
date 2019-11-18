@@ -12,7 +12,9 @@ from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 __author__ = 'nidhin'
 # own check
 OWN_CHECK_COL = 'att1'  # !column in product dataframe!
-OWN_MANUFACTURER_FK = 60  # SinoPac manufacturer ID
+OWN_DISTRIBUTOR_FK = 60  # SinoPac distributor ID in custom entity table as well as manuf ID.
+OTHER_DISTRIBUTOR_FK = 2  # Non SinoPac distributor ID in custom entity table.
+OWN_DISTRIBUTOR = 'SINO PACIFIC'
 
 TEMPLATE_PARENT_FOLDER = 'Data'
 TEMPLATE_NAME = 'Template.xlsx'
@@ -31,6 +33,7 @@ KPI_FAMILY_COL = 'kpi_family'
 STORE_POLICY = 'store_policy'
 OUTPUT_TYPE = 'output'
 # FAMILIES ALLOWED
+ASSORTMENTS = 'ASSORTMENTS'
 FSOS = 'FSOS'
 DISTRIBUTION = 'Distrbution'
 OOS = 'OOS'
@@ -109,7 +112,7 @@ class SinoPacificToolBox:
         self.kpi_template_path = os.path.join(os.path.dirname(os.path.realpath(__file__)),
                                               '..', TEMPLATE_PARENT_FOLDER,
                                               TEMPLATE_NAME)
-        self.own_man_fk = OWN_MANUFACTURER_FK
+        self.own_man_fk = OWN_DISTRIBUTOR_FK
         self.kpi_template = pd.ExcelFile(self.kpi_template_path)
         self.empty_prod_ids = self.all_products[
             self.all_products.product_name.str.contains('empty', case=False)]['product_fk'].values
@@ -130,6 +133,11 @@ class SinoPacificToolBox:
         return 0  # to mark successful run of script
 
     def calculate_assortment_kpis(self):
+        kpi_include_exclude = self.kpi_template.parse(KPI_INC_EXC_SHEET)
+        valid_scenes = kpi_include_exclude[
+            kpi_include_exclude[KPI_NAME_COL] == ASSORTMENTS]['scene_types_to_include'].values[0]
+        valid_scenes = [x.strip() for x in valid_scenes.split(',') if x]
+        valid_scif = self.scif[self.scif['template_name'].isin(valid_scenes)]
         distribution_kpi = self.kpi_static_data[(self.kpi_static_data[KPI_TYPE_COL] == DST_MAN_BY_STORE_PERC)
                                                 & (self.kpi_static_data['delete_time'].isnull())]
         oos_kpi = self.kpi_static_data[(self.kpi_static_data[KPI_TYPE_COL] == OOS_MAN_BY_STORE_PERC)
@@ -183,12 +191,14 @@ class SinoPacificToolBox:
             return 0
         # calculate and save the percentage values for distribution and oos
         self.calculate_and_save_distribution_and_oos(
+            valid_scif=valid_scif,
             assortment_product_fks=valid_policy_data['product_fk'],
             distribution_kpi_fk=distribution_kpi.iloc[0].pk,
             oos_kpi_fk=oos_kpi.iloc[0].pk
         )
         # calculate and save prod presence and oos products
         self.calculate_and_save_prod_presence_and_oos_products(
+            valid_scif=valid_scif,
             assortment_product_fks=valid_policy_data['product_fk'],
             prod_presence_kpi_fk=prod_presence_kpi.iloc[0].pk,
             oos_prod_kpi_fk=oos_prod_kpi.iloc[0].pk,
@@ -197,12 +207,14 @@ class SinoPacificToolBox:
         )
         # calculate and save the percentage values for distribution and oos
         self.calculate_and_save_distribution_and_oos_category(
+            valid_scif=valid_scif,
             assortment_product_fks=valid_policy_data['product_fk'],
             distribution_kpi_fk=distribution_by_cat_kpi.iloc[0].pk,
             oos_kpi_fk=oos_by_cat_kpi.iloc[0].pk
         )
         # calculate and save prod presence and oos products
         self.calculate_and_save_prod_presence_and_oos_products_category(
+            valid_scif=valid_scif,
             assortment_product_fks=valid_policy_data['product_fk'],
             prod_presence_kpi_fk=prod_presence_by_cat_kpi.iloc[0].pk,
             oos_prod_kpi_fk=oos_by_cat_prod_kpi.iloc[0].pk,
@@ -210,13 +222,13 @@ class SinoPacificToolBox:
             oos_kpi_name=OOS_MAN_BY_CATEGORY_PERC
         )
 
-    def calculate_and_save_prod_presence_and_oos_products(self, assortment_product_fks,
+    def calculate_and_save_prod_presence_and_oos_products(self, valid_scif, assortment_product_fks,
                                                           prod_presence_kpi_fk, oos_prod_kpi_fk,
                                                           distribution_kpi_name, oos_kpi_name):
         # all assortment products are only in own manufacturers context;
         # but we have the products and hence no need to filter out denominator
         Log.info("Calculate product presence and OOS products for {}".format(self.project_name))
-        total_products_in_scene = self.scif["item_id"].unique()
+        total_products_in_scene = valid_scif["item_id"].unique()
         present_products = np.intersect1d(total_products_in_scene, assortment_product_fks)
         extra_products = np.setdiff1d(total_products_in_scene, present_products)
         oos_products = np.setdiff1d(assortment_product_fks, present_products)
@@ -252,12 +264,13 @@ class SinoPacificToolBox:
                                                    should_enter=True
                                                    )
 
-    def calculate_and_save_distribution_and_oos(self, assortment_product_fks, distribution_kpi_fk, oos_kpi_fk):
+    def calculate_and_save_distribution_and_oos(self, valid_scif, assortment_product_fks,
+                                                distribution_kpi_fk, oos_kpi_fk):
         """Function to calculate distribution and OOS percentage.
         Saves distribution and oos percentage as values.
         """
         Log.info("Calculate distribution and OOS for {}".format(self.project_name))
-        scene_products = pd.Series(self.scif["item_id"].unique())
+        scene_products = pd.Series(valid_scif["item_id"].unique())
         total_products_in_assortment = len(assortment_product_fks)
         count_of_assortment_prod_in_scene = assortment_product_fks.isin(scene_products).sum()
         oos_count = total_products_in_assortment - count_of_assortment_prod_in_scene
@@ -290,13 +303,13 @@ class SinoPacificToolBox:
                                        should_enter=True
                                        )
 
-    def calculate_and_save_prod_presence_and_oos_products_category(self, assortment_product_fks,
+    def calculate_and_save_prod_presence_and_oos_products_category(self, valid_scif, assortment_product_fks,
                                                                    prod_presence_kpi_fk, oos_prod_kpi_fk,
                                                                    distribution_kpi_name, oos_kpi_name):
         # all assortment products are only in own manufacturers context;
         # but we have the products and hence no need to filter out denominator
         Log.info("Calculate product presence and OOS products per Category for {}".format(self.project_name))
-        scene_category_group = self.scif.groupby('category_fk')
+        scene_category_group = valid_scif.groupby('category_fk')
         for category_fk, each_scif_data in scene_category_group:
             total_products_in_scene = each_scif_data["item_id"].unique()
             present_products = np.intersect1d(total_products_in_scene, assortment_product_fks)
@@ -334,12 +347,13 @@ class SinoPacificToolBox:
                                                        should_enter=True
                                                        )
 
-    def calculate_and_save_distribution_and_oos_category(self, assortment_product_fks, distribution_kpi_fk, oos_kpi_fk):
+    def calculate_and_save_distribution_and_oos_category(self, valid_scif, assortment_product_fks,
+                                                         distribution_kpi_fk, oos_kpi_fk):
         """Function to calculate distribution and OOS percentage by Category.
         Saves distribution and oos percentage as values.
         """
         Log.info("Calculate distribution and OOS per Category for {}".format(self.project_name))
-        scene_category_group = self.scif.groupby('category_fk')
+        scene_category_group = valid_scif.groupby('category_fk')
         for category_fk, each_scif_data in scene_category_group:
             scene_products = pd.Series(each_scif_data["item_id"].unique())
             total_products_in_assortment = len(assortment_product_fks)
@@ -423,6 +437,7 @@ class SinoPacificToolBox:
                 detail['pk'] = kpi['pk'].iloc[0]
                 # gather details
                 groupers, query_string = get_groupers_and_query_string(detail)
+                kpi_include_exclude = kpi_include_exclude[kpi_include_exclude.kpi_name != ASSORTMENTS]
                 _include_exclude = kpi_include_exclude[kpi_details[KPI_NAME_COL]
                                                        == kpi[KPI_TYPE_COL].values[0]]
                 # gather include exclude
@@ -450,7 +465,8 @@ class SinoPacificToolBox:
             grouped_data_frame = dataframe_to_process.groupby(groupers)
         # for the two kpis, we need to show zero presence of own distributor.
         # else the flow will be stuck in case own manufacturers are absent altogether.
-        if kpi['kpi_name'].iloc[0].lower() in ["fsos_own_distributor_all_cat", "fsos_all_manuf_in_whole_store"]:
+        if kpi['kpi_name'].iloc[0].lower() in ["fsos_own_distributor_all_cat",
+                                               "fsos_all_distributor_all_brand_in_whole_store"]:
             self.scif['store_fk'] = self.store_id
             dataframe_to_process['store_fk'] = self.store_id
             scif_with_den_context = self.scif[[PARAM_DB_MAP[kpi['denominator'].iloc[0]]['key'],
@@ -519,22 +535,28 @@ class SinoPacificToolBox:
                                                identifier_parent=identifier_parent,
                                                should_enter=True,
                                                )
-
         for group_id_tup, group_data in grouped_data_frame:
             if type(group_id_tup) not in [tuple, list]:
                 # convert to a tuple
                 group_id_tup = group_id_tup,
             param_id_map = dict(zip(groupers, group_id_tup))
-            # the ugly hack!
+            # the ugly hack! This casts the value of distributor to that in DB as custom entity.
             if OWN_CHECK_COL in param_id_map:
-                param_id_map.pop(OWN_CHECK_COL)
-                param_id_map['manufacturer_fk'] = OWN_MANUFACTURER_FK
-            numerator_id = param_id_map.get(
-                PARAM_DB_MAP[kpi['numerator'].iloc[0]]['key'])
+                distributor_name = param_id_map.pop(OWN_CHECK_COL)
+                if distributor_name == OWN_DISTRIBUTOR:
+                    param_id_map[OWN_CHECK_COL] = self.own_man_fk  # as per custom entity
+                    param_id_map['manufacturer_fk'] = self.own_man_fk
+                else:
+                    param_id_map[OWN_CHECK_COL] = OTHER_DISTRIBUTOR_FK  # as per custom entity
+                    param_id_map['manufacturer_fk'] = OTHER_DISTRIBUTOR_FK
+            # SET THE numerator, denominator and context
+            numerator_id = param_id_map.get(PARAM_DB_MAP[kpi['numerator'].iloc[0]]['key'])
+            if not numerator_id:
+                raise Exception("This is down again!")
             denominator_id = get_parameter_id(key_value=PARAM_DB_MAP[kpi['denominator'].iloc[0]]['key'],
                                               param_id_map=param_id_map)
             if denominator_id is None:
-                # because 0 is good
+                # because 0 is good; check None specifically
                 denominator_id = self.store_id
             context_id = get_parameter_id(key_value=PARAM_DB_MAP[kpi['context'].iloc[0]]['key'],
                                           param_id_map=param_id_map)
