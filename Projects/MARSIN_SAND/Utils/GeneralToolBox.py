@@ -7,12 +7,12 @@ from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Algo.Calculations.Core.Shortcuts import BaseCalculationsGroup
 from Trax.Utils.Logging.Logger import Log
 
-from Projects.MARSIN_SAND.Utils.PositionGraph import MARSINPositionGraphs
+from Projects.MARSIN_SAND.Utils.PositionGraph import MARSIN_SANDPositionGraphs
 
 __author__ = 'Nimrod'
 
 
-class MARSINGENERALToolBox:
+class MARSIN_SANDGENERALToolBox:
 
     EXCLUDE_FILTER = 0
     INCLUDE_FILTER = 1
@@ -42,7 +42,7 @@ class MARSINGENERALToolBox:
     @property
     def position_graphs(self):
         if not hasattr(self, '_position_graphs'):
-            self._position_graphs = MARSINPositionGraphs(self.data_provider, rds_conn=self.rds_conn)
+            self._position_graphs = MARSIN_SANDPositionGraphs(self.data_provider, rds_conn=self.rds_conn)
         return self._position_graphs
 
     @property

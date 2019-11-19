@@ -2,7 +2,7 @@
 __author__ = 'Nimrod'
 
 
-class MARSINQueries(object):
+class MARSIN_SANDQueries(object):
 
     @staticmethod
     def get_all_kpi_data():

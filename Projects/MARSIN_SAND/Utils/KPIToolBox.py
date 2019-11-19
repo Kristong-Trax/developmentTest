@@ -6,12 +6,14 @@ from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScript
 from Trax.Cloud.Services.Connector.Keys import DbUsers
 from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
+from KPIUtils_v2.DB.CommonV2 import Common
 from Trax.Utils.Logging.Logger import Log
 from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
 
-from Projects.MARSIN_SAND.Utils.Fetcher import MARSINQueries
-from Projects.MARSIN_SAND.Utils.GeneralToolBox import MARSINGENERALToolBox
+from Projects.MARSIN_SAND.Utils.Fetcher import MARSIN_SANDQueries
+from Projects.MARSIN_SAND.Utils.GeneralToolBox import MARSIN_SANDGENERALToolBox
 from Projects.MARSIN_SAND.Utils.ParseComplexTemplates import parse_template
+
 
 __author__ = 'Nimrod'
 
@@ -37,7 +39,7 @@ def log_runtime(description, log_start=False):
     return decorator
 
 
-class MARSINKPIConsts(object):
+class MARSIN_SANDKPIConsts(object):
 
     PICOS = 'PicOS'
     SURVEY = 'Survey'
@@ -50,7 +52,7 @@ class MARSINKPIConsts(object):
     THRESHOLD = 0.5
     NewScore =['Availability','SOS Facings']
 
-class MARSINTemplateConsts(object):
+class MARSIN_SANDTemplateConsts(object):
 
     # HEADERS #
     STORE_TYPE = 'Store Type'
@@ -98,7 +100,7 @@ class MARSINTemplateConsts(object):
     SEPARATOR3 = ' / '    # Or
 
 
-class MARSINToolBox(MARSINTemplateConsts, MARSINKPIConsts):
+class MARSIN_SANDToolBox(MARSIN_SANDTemplateConsts, MARSIN_SANDKPIConsts):
 
     LEVEL1 = 1
     LEVEL2 = 2
@@ -131,12 +133,15 @@ class MARSINToolBox(MARSINTemplateConsts, MARSINKPIConsts):
         self.scif = self.scif.merge(self.get_missing_attributes(), on='product_fk', how='left', suffixes=['', '_1'])
         self.kpi_static_data = self.get_kpi_static_data()
         self.match_display_in_scene = self.get_match_display()
-        self.tools = MARSINGENERALToolBox(self.data_provider, self.output, rds_conn=self.rds_conn, scif=self.scif)
+        self.tools = MARSIN_SANDGENERALToolBox(self.data_provider, self.output, rds_conn=self.rds_conn, scif=self.scif)
         self.weights = parse_template(TEMPLATE_PATH, 'Weight')
         self.kpi_data = parse_template(TEMPLATE_PATH, 'KPIs')
         self.template_id = self.store_type + (';{}'.format(self.outlet_class) if self.outlet_class else '')
         self.kpi_results_queries = []
         self.results = {}
+        self.common = Common(data_provider)
+        self.manufacturer_fk = None if self.data_provider[Data.OWN_MANUFACTURER]['param_value'].iloc[0] is None else \
+            int(self.data_provider[Data.OWN_MANUFACTURER]['param_value'].iloc[0])
 
     def get_template_data(self, name):
         if not hasattr(self, '_templates_data'):
@@ -147,7 +152,7 @@ class MARSINToolBox(MARSINTemplateConsts, MARSINKPIConsts):
         return self._templates_data[name]
 
     def get_missing_attributes(self):
-        query = MARSINQueries.get_missing_attributes_data()
+        query = MARSIN_SANDQueries.get_missing_attributes_data()
         data = pd.read_sql_query(query, self.rds_conn.db)
         return data
 
@@ -156,7 +161,7 @@ class MARSINToolBox(MARSINTemplateConsts, MARSINKPIConsts):
         This function extracts the display matches data and saves it into one global data frame.
         The data is taken from probedata.match_display_in_scene.
         """
-        query = MARSINQueries.get_match_display(self.session_uid)
+        query = MARSIN_SANDQueries.get_match_display(self.session_uid)
         match_display = pd.read_sql_query(query, self.rds_conn.db)
         return match_display
 
@@ -165,7 +170,7 @@ class MARSINToolBox(MARSINTemplateConsts, MARSINKPIConsts):
         This function extracts the static KPI data and saves it into one global data frame.
         The data is taken from static.kpi / static.atomic_kpi / static.kpi_set.
         """
-        query = MARSINQueries.get_all_kpi_data()
+        query = MARSIN_SANDQueries.get_all_kpi_data()
         kpi_static_data = pd.read_sql_query(query, self.rds_conn.db)
         return kpi_static_data
 
@@ -195,7 +200,7 @@ class MARSINToolBox(MARSINTemplateConsts, MARSINKPIConsts):
                     kpi_score = self.calculate_sequence_within_block(params, atomics)
                 elif kpi_type == self.AVAILABILITY_AND_SURVEY:
                     survey = self.check_survey_answer(params, atomics[0])
-                    availability = self.calculate_availability(params, atomics[1:])
+                    availability = self.calculate_availability(params, atomics[1:])  # availability posm
                     kpi_score = 0 if availability == 0 or survey == 0 else 1
                 else:
                     Log.warning("KPI type '{}' is not supported".format(kpi_type))
@@ -205,13 +210,22 @@ class MARSINToolBox(MARSINTemplateConsts, MARSINKPIConsts):
                     number_of_atomics = len(self.results.get(kpi_fk, []))
                     number_of_passed_atomics = self.results.get(kpi_fk, []).count(1)
                     new_atomic = (1 if kpi_score > 0 and kpi_type in self.NewScore else kpi_score)
-                    if kpi_type == self.SHARE_OF_SHELF:
-                        self.write_to_db_result(kpi_fk, (kpi_score * 100, new_atomic, number_of_atomics),
-                                                level=self.LEVEL2)
-                    else:
-
-                        self.write_to_db_result(kpi_fk, (kpi_score, number_of_passed_atomics, number_of_atomics),
-                                                level=self.LEVEL2)
+                    result = kpi_score*100 if kpi_type == self.SHARE_OF_SHELF else kpi_score
+                    numerator_result = new_atomic if kpi_type == self.SHARE_OF_SHELF else number_of_passed_atomics
+                    self.write_to_db_result(kpi_fk, (result, numerator_result, number_of_atomics),
+                                            level=self.LEVEL2)
+                    # new db results
+                    identifier_parent = self.common.get_dictionary(kpi_name=kpi_group)
+                    # self.common.write_to_db_result(fk=kpi_level_2_fk,
+                    #                                numerator_id=self.manufacturer_fk,
+                    #                                denominator_id=self.store_id,
+                    #                                numerator_result=numerator_result,
+                    #                                denominator_result=number_of_atomics,
+                    #                                identifier_result=identifier_result,
+                    #                                identifier_parent=identifier_parent,
+                    #                                result=result,
+                    #                                score=result,
+                    #                                should_enter=True)
                     if kpi_group not in group_scores.keys():
                         group_scores[kpi_group] = [0, 0]
                     # this line was commented out according to Nakul's request in 2/7 that we will count KPIS even if
@@ -228,6 +242,20 @@ class MARSINToolBox(MARSINTemplateConsts, MARSINKPIConsts):
             set_score = round((actual_points / float(max_points)) * 100, 2)
             group_scores[group_name].insert(0, set_score)
             self.write_to_db_result(set_fk, (set_score, actual_points, max_points), level=self.LEVEL1)
+
+            # writing results to new db
+            identifier_parent = self.common.get_dictionary(kpi_name=MARSIN_SANDKPIConsts.PICOS)
+            identifier_result = self.common.get_dictionary(kpi_name=group_name)
+            # self.common.write_to_db_result(fk=kpi_level_2_fk,
+            #                                numerator_id=self.manufacturer_fk,
+            #                                denominator_id=self.store_id,
+            #                                numerator_result=actual_points,
+            #                                denominator_result=max_points,
+            #                                identifier_result=identifier_result,
+            #                                identifier_parent=identifier_parent,
+            #                                result=set_score,
+            #                                score=set_score,
+            #                                should_enter=True)
         self.save_picos_hierarchy(group_scores)
 
     def save_picos_hierarchy(self, pillar_scores):
@@ -236,6 +264,17 @@ class MARSINToolBox(MARSINTemplateConsts, MARSINKPIConsts):
         total_points = sum(map(lambda x: x[2], pillar_scores.values()))
         picos_score = round((actual_points / float(total_points)) * 100, 2), actual_points, total_points
         self.write_to_db_result(picos_static_data['kpi_set_fk'].iloc[0], picos_score, level=self.LEVEL1)
+        #  writing set name result to db
+        identifier_result = self.common.get_dictionary(kpi_name=MARSIN_SANDKPIConsts.PICOS)
+        # self.common.write_to_db_result(fk=kpi_level_2_fk,
+        #                                numerator_id=self.manufacturer_fk,
+        #                                denominator_id=self.store_id,
+        #                                numerator_result=actual_points,
+        #                                denominator_result=total_points,
+        #                                identifier_result=identifier_result,
+        #                                result=picos_score,
+        #                                score=picos_score,
+        #                                should_enter=True)
         for pillar in pillar_scores.keys():
             pillar_static_data = picos_static_data[picos_static_data['kpi_name'] == pillar]
             self.write_to_db_result(pillar_static_data['kpi_fk'].iloc[0], pillar_scores[pillar], level=self.LEVEL2)
@@ -269,6 +308,11 @@ class MARSINToolBox(MARSINTemplateConsts, MARSINKPIConsts):
         kpi_data = template_data[(template_data[self.KPI_GROUP] == params[self.KPI_GROUP]) &
                                  (template_data[self.KPI_NAME] == params[self.KPI_NAME]) &
                                  (~template_data[self.template_id].isin(['']))]
+        # todo  chnage fks to names
+        #for new tables
+        kpi_level_2_fks = ['Block in Sequence - Block', 'Block in Sequence - Seq']
+        identifier_parent = self.common.get_dictionary(group_name=params[MARSIN_SANDTemplateConsts.KPI_GROUP],
+                                                       brand_sub=params[MARSIN_SANDTemplateConsts.KPI_NAME])
         if kpi_data.empty:
             return None
         kpi_data = kpi_data.iloc[0]
@@ -294,7 +338,17 @@ class MARSINToolBox(MARSINTemplateConsts, MARSINKPIConsts):
             if isinstance(block_result, (int, tuple)):
                 block_result = round(block_result*100, 1)
             self.write_to_db_result(atomics[0], (block_score, block_result, block_target*100), level=self.LEVEL3)
-
+            # level_2_results
+            # self.common.write_to_db_result(fk=kpi_level_2_fks[0],
+            #                                numerator_id=self.manufacturer_fk,
+            #                                denominator_id=self.store_id,
+            #                                numerator_result=block_result,
+            #                                denominator_result=1,
+            #                                identifier_parent=identifier_parent,
+            #                                target=block_target*100,
+            #                                result=block_result,
+            #                                score=block_score,
+            #                                should_enter=True)
             if kpi_data[self.SEQUENCE_ENTITY]:
                 sequence_filters = (kpi_data[self.SEQUENCE_ENTITY], kpi_data[self.SEQUENCE_VALUES].split(self.SEPARATOR))
                 if graph is not None:
@@ -310,6 +364,19 @@ class MARSINToolBox(MARSINTemplateConsts, MARSINKPIConsts):
                                                                             min_required_to_pass=self.tools.STRICT_MODE)
                 sequence_score = 1 if sequence_result else 0
                 self.write_to_db_result(atomics[1], (sequence_score, sequence_score, 1), level=self.LEVEL3)
+
+                # write results to new db
+                # self.common.write_to_db_result(fk=kpi_level_2_fks[1],
+                #                                numerator_id=self.manufacturer_fk,
+                #                                denominator_id=self.store_id,
+                #                                numerator_result=sequence_result,
+                #                                denominator_result=1,
+                #                                identifier_parent=identifier_parent,
+                #                                target=1,
+                #                                result=sequence_result,
+                #                                score=sequence_score,
+                #                                should_enter=True)
+
                 score = 1 if block_score and sequence_result else 0
             else:
                 score = block_score
@@ -317,6 +384,18 @@ class MARSINToolBox(MARSINTemplateConsts, MARSINKPIConsts):
         else:
             for atomic_fk in atomics:
                 self.write_to_db_result(atomic_fk, (0, 0, 1), level=self.LEVEL3)
+            # for new tables
+            # for new_kpi in kpi_level_2_fks:
+            #     self.common.write_to_db_result(fk=new_kpi,
+            #                                    numerator_id=self.manufacturer_fk,
+            #                                    denominator_id=self.store_id,
+            #                                    numerator_result=0,
+            #                                    denominator_result=1,
+            #                                    identifier_parent=identifier_parent,
+            #                                    target=1,
+            #                                    result=0,
+            #                                    score=0,
+            #                                    should_enter=True)
             score = 0
         return score
 
@@ -330,6 +409,11 @@ class MARSINToolBox(MARSINTemplateConsts, MARSINKPIConsts):
         kpi_data = template_data[(template_data[self.KPI_GROUP] == params[self.KPI_GROUP]) &
                                  (template_data[self.KPI_NAME] == params[self.KPI_NAME]) &
                                  (~template_data[self.template_id].isin(['']))]
+        # todo  change fks to names
+        kpi_level_2_fks = ['First Block', 'Second Block', 'Adjacency']
+        identifier_parent = self.common.get_dictionary(group_name=params[MARSIN_SANDTemplateConsts.KPI_GROUP],
+                                                       brand_sub=params[MARSIN_SANDTemplateConsts.KPI_NAME])
+
         if kpi_data.empty:
             return None
         kpi_data = kpi_data.iloc[0]
@@ -353,12 +437,34 @@ class MARSINToolBox(MARSINTemplateConsts, MARSINKPIConsts):
                                                                 **group1_filters)
             block1_score = 1 if block1_result else 0
             self.write_to_db_result(atomics[0], (block1_score, block1_score, 1), level=self.LEVEL3)
+            # results  to new db tables
+            # self.common.write_to_db_result(fk=kpi_level_2_fks[0],
+            #                                numerator_id=self.manufacturer_fk,
+            #                                denominator_id=self.store_id,
+            #                                numerator_result=block1_result,
+            #                                denominator_result=1,
+            #                                identifier_parent=identifier_parent,
+            #                                target=1,
+            #                                result=block1_result,
+            #                                score=block1_score,
+            #                                should_enter=True)
 
             block2_result = self.tools.calculate_block_together(allowed_products_filters={'front_facing': 'N'},
                                                                 front_facing='Y', scene_fk=relevant_scenes,
                                                                 **group2_filters)
             block2_score = 1 if block2_result else 0
             self.write_to_db_result(atomics[1], (block2_score, block2_score, 1), level=self.LEVEL3)
+            # results  to new db tables
+            # self.common.write_to_db_result(fk=kpi_level_2_fks[1],
+            #                                numerator_id=self.manufacturer_fk,
+            #                                denominator_id=self.store_id,
+            #                                numerator_result=block2_result,
+            #                                denominator_result=1,
+            #                                identifier_parent=identifier_parent,
+            #                                target=1,
+            #                                result=block2_result,
+            #                                score=block2_score,
+            #                                should_enter=True)
 
             if block1_result and block2_result:
                 merged_filters = group1_filters.copy()
@@ -372,12 +478,35 @@ class MARSINToolBox(MARSINTemplateConsts, MARSINKPIConsts):
                                                                           **merged_filters)
                 score = 1 if merged_block_result else 0
                 self.write_to_db_result(atomics[2], (score, score, 1), level=self.LEVEL3)
+                # results  to new db tables
+                # self.common.write_to_db_result(fk=kpi_level_2_fks[2],
+                #                                numerator_id=self.manufacturer_fk,
+                #                                denominator_id=self.store_id,
+                #                                numerator_result=merged_block_result,
+                #                                denominator_result=1,
+                #                                identifier_parent=identifier_parent,
+                #                                target=1,
+                #                                result=merged_block_result,
+                #                                score=score,
+                #                                should_enter=True)
             else:
                 score = 0
 
         else:
             for atomic_fk in atomics:
                 self.write_to_db_result(atomic_fk, (0, 0, 1), level=self.LEVEL3)
+            # for new tables
+            # for new_kpi in kpi_level_2_fks:
+            #     self.common.write_to_db_result(fk=new_kpi,
+            #                                    numerator_id=self.manufacturer_fk,
+            #                                    denominator_id=self.store_id,
+            #                                    numerator_result=0,
+            #                                    denominator_result=1,
+            #                                    identifier_parent=identifier_parent,
+            #                                    target=1,
+            #                                    result=0,
+            #                                    score=0,
+            #                                    should_enter=True)
             score = 0
         return score
 
@@ -441,9 +570,8 @@ class MARSINToolBox(MARSINTemplateConsts, MARSINKPIConsts):
                     if s is None and len(product.split(self.SEPARATOR3)) == 1:
                         product_result += 1
 
-
                 result += product_result
-            if target > 0 :
+            if target > 0:
                 result = round(float(result) / float(target), 2)
             score = 0 if result < self.THRESHOLD else 1 if result >= 1 else result
 
@@ -507,6 +635,22 @@ class MARSINToolBox(MARSINTemplateConsts, MARSINKPIConsts):
         threshold = 1 if not str(params[self.TARGET]).isdigit() else int(params[self.TARGET])
         score = 1 if result >= threshold else 0
         self.write_to_db_result(atomic_fk, (score, result, threshold), level=self.LEVEL3)
+
+        # write results to new db
+        identifier_result = self.common.get_dictionary(group_name=params[MARSIN_SANDTemplateConsts.KPI_GROUP],
+                                                       brand_sub=params[MARSIN_SANDTemplateConsts.KPI_NAME])
+        identifier_parent = self.common.get_dictionary(group_name=params[MARSIN_SANDTemplateConsts.KPI_GROUP])
+        # self.common.write_to_db_result(fk=kpi_level_2_fk,
+        #                                numerator_id=self.manufacturer_fk,
+        #                                denominator_id=self.store_id,
+        #                                numerator_result=result,
+        #                                denominator_result=threshold,
+        #                                identifier_result=identifier_result,
+        #                                identifier_parent=identifier_parent,
+        #                                target=threshold,
+        #                                result=result,
+        #                                score=score,
+        #                                should_enter=True)
         return score
 
     def check_survey_answer(self, params, atomic_fk):
@@ -611,7 +755,7 @@ class MARSINToolBox(MARSINTemplateConsts, MARSINKPIConsts):
         This function writes all KPI results to the DB, and commits the changes.
         """
         cur = self.rds_conn.db.cursor()
-        delete_queries = MARSINQueries.get_delete_session_results_query(self.session_uid)
+        delete_queries = MARSIN_SANDQueries.get_delete_session_results_query(self.session_uid)
         for query in delete_queries:
             cur.execute(query)
         for query in self.kpi_results_queries:
