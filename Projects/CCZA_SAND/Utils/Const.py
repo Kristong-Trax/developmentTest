@@ -72,3 +72,9 @@ class Const(object):
     column_name2 = 'kpi_name'
     column_key3 = 'atomic_kpi_fk'
     column_name3 = 'atomic_kpi_name'
+
+    IGNORE_STACKING = True
+    SOS_OWN_MANUF_OUT_OF_STORE = 'SOS OWN MANUFACTURER OUT OF STORE'
+    SOS_CAT_OUT_OF_STORE = 'SOS CATEGORY OUT OF STORE'
+    SOS_MANUF_OUT_OF_CAT = 'SOS MANUFACTURER OUT OF CATEGORY'
+    SOS_BRAND_OUT_CAT = 'SOS BRAND OUT OF CATEGORY'

@@ -14,6 +14,9 @@ from KPIUtils.GeneralToolBox import GENERALToolBox
 from KPIUtils.DB.Common import Common
 from KPIUtils.Calculations.Survey import Survey
 from KPIUtils_v2.Utils.Decorators.Decorators import kpi_runtime
+from KPIUtils_v2.DB.CommonV2 import Common as CommonV2
+from KPIUtils_v2.Utils.Parsers.ParseInputKPI import filter_df
+from KPIUtils_v2.Utils.Consts.DataProvider import ScifConsts
 
 __author__ = 'Elyashiv'
 
@@ -52,8 +55,86 @@ class CCZAToolBox:
         self.survey_handler = Survey(self.data_provider, self.output, self.kpi_sheets[Const.SURVEY_QUESTIONS])
         self.kpi_static_data = self.common.kpi_static_data
         self.kpi_results_queries = []
+        self.common_v2 = CommonV2(self.data_provider)
+        self.own_manuf_fk = self.get_own_manufacturer_fk()
 
-    def main_calculation(self, *args, **kwargs):
+    def get_own_manufacturer_fk(self):
+        own_manufacturer_fk = self.data_provider.own_manufacturer.param_value.values[0]
+        # own_manufacturer_fk = self.all_products[self.all_products['manufacturer_name'] ==
+        #                                         'MARS GCC']['manufacturer_fk'].values[0]
+        return own_manufacturer_fk
+
+    def sos_main_calculation(self):
+        manuf_out_of_store_fk = self.common_v2.get_kpi_fk_by_kpi_type(Const.SOS_OWN_MANUF_OUT_OF_STORE)
+        store_sos_ident_par = self.common_v2.get_dictionary(kpi_fk=manuf_out_of_store_fk)
+        num_filters, denom_filters = self.construct_sos_filters(('manufacturer', self.own_manuf_fk), ('', ''))
+        num_result, denom_result, sos_result = self.calculate_sos_custom(num_filters, denom_filters,
+                                                                         Const.IGNORE_STACKING)
+        self.common_v2.write_to_db_result(fk=manuf_out_of_store_fk, numerator_id=self.own_manuf_fk,
+                                          denominator_id=self.store_id, numerator_result=num_result,
+                                          denominator_result=denom_result, score = sos_result, result=sos_result,
+                                          identifier_result=store_sos_ident_par, should_enter=True)
+
+
+        pass
+
+    def calculate_sos_custom(self, num_filters, denom_filters, ignore_stacking):
+        num_result = self.calculate_facings_space(num_filters, ignore_stacking)
+        denom_result = self.calculate_facings_space(denom_filters, ignore_stacking)
+        sos_result = num_result / denom_result if denom_result else 0
+        return num_result, denom_result, sos_result
+
+    def calculate_facings_space(self, filters, ignore_stack_flag):
+        filtered_scif = filter_df(filters, self.scif)
+        length_field = ScifConsts.FACINGS_IGN_STACK if ignore_stack_flag else ScifConsts.FACINGS
+        space_length = filtered_scif[length_field].sum()
+        return float(space_length)
+
+    @staticmethod
+    def construct_sos_filters((num_entity, num_value), (denom_entity, denom_value)):
+        num_filter_key = '{}_fk'.format(num_entity) if num_entity else None
+        denom_filter_key = '{}_fk'.format(denom_entity) if denom_entity else None
+
+        num_filters = {num_filter_key: num_value} if num_filter_key is not None else {}
+        denom_filters = {denom_filter_key: denom_value} if denom_filter_key is not None else {}
+
+        num_filters.update(denom_filters)
+        return num_filters, denom_filters
+
+    def main_calculation_red_score(self):
+        set_score = 0
+        try:
+            set_name = self.kpi_sheets[Const.KPIS].iloc[len(self.kpi_sheets[Const.KPIS]) - 1][
+                Const.KPI_NAME]
+            kpi_fk = self.common_v2.get_kpi_fk_by_kpi_type(set_name)
+            set_identifier_res = self.common_v2.get_dictionary(kpi_fk=kpi_fk)
+            if self.store_type in self.kpi_sheets[Const.KPIS].keys().tolist():
+                for i in xrange(len(self.kpi_sheets[Const.KPIS]) - 1):
+                    params = self.kpi_sheets[Const.KPIS].iloc[i]
+                    percent = self.get_percent(params[self.store_type])
+                    if percent == 0:
+                        continue
+                    kpi_score = self.main_calculation_lvl_2(identifier_parent=set_identifier_res, params=params)
+                    set_score += kpi_score * percent
+            else:
+                Log.warning('The store-type "{}" is not recognized in the template'.format(self.store_type))
+                return
+            kpi_names = {Const.column_name1: set_name}
+            set_fk = self.get_kpi_fk_by_kpi_path(self.common.LEVEL1, kpi_names)
+            if set_fk:
+                try:
+                    self.common.write_to_db_result(score=set_score, level=self.common.LEVEL1, fk=set_fk)
+                except Exception as exception:
+                    Log.error('Exception in the set {} writing to DB: {}'.format(set_name, exception.message))
+            self.common_v2.write_to_db_result(fk=kpi_fk, numerator_id=self.own_manuf_fk,
+                                              denominator_id=self.store_id, score=set_score,
+                                              result=set_score, identifier_result=set_identifier_res,
+                                              should_enter=True)
+        except Exception as exception:
+            Log.error('Exception in the kpi-set calculating: {}'.format(exception.message))
+            pass
+
+    def main_calculation_lvl_2(self, identifier_parent,  *args, **kwargs):
         """
             :param kwargs: dict - kpi line from the template.
             the function gets the kpi (level 2) row, and calculates its children.
@@ -65,6 +146,8 @@ class CCZAToolBox:
         set_name = kpi_params[Const.KPI_GROUP]
         kpi_type = kpi_params[Const.KPI_TYPE]
         target = kpi_params[Const.TARGET]
+        kpi_fk_lvl_2 = self.common_v2.get_kpi_fk_by_kpi_type(kpi_name)
+        lvl_2_identifier_par = self.common_v2.get_dictionary(kpi_fk=kpi_fk_lvl_2)
         if target.strip():
             for i in xrange(len(self.kpi_sheets[target])):
                 if kpi_params[Const.WEIGHT_SHEET].strip():
@@ -76,7 +159,7 @@ class CCZAToolBox:
                 if percent == 0.0 or atomic_params[Const.KPI_NAME] != kpi_name:
                     continue
                 atomic_params[Const.type] = kpi_type
-                atomic_score = self.calculate_atomic(atomic_params, set_name)
+                atomic_score = self.calculate_atomic(atomic_params, set_name, lvl_2_identifier_par)
                 if atomic_score is None:
                     atomic_score = 0.0
                     Log.error('The calculated score is not good.')
@@ -84,7 +167,7 @@ class CCZAToolBox:
         elif kpi_name == Const.FLOW:
             kpi_score = self.calculate_atomic({Const.ATOMIC_NAME: kpi_name,
                                                Const.KPI_NAME: kpi_name,
-                                               Const.type: kpi_name}, set_name)
+                                               Const.type: kpi_name}, set_name, lvl_2_identifier_par)
         kpi_names = {Const.column_name1: set_name, Const.column_name2: kpi_name}
         kpi_fk = self.get_kpi_fk_by_kpi_path(self.common.LEVEL2, kpi_names)
         if kpi_fk:
@@ -92,9 +175,12 @@ class CCZAToolBox:
                 self.common.write_to_db_result(score=kpi_score, level=self.common.LEVEL2, fk=kpi_fk)
             except Exception as e:
                 Log.error('Exception in the kpi {} writing to DB: {}'.format(kpi_name, e.message))
+        self.common_v2.write_to_db_result(fk=kpi_fk_lvl_2, numerator_id=self.own_manuf_fk, denominator_id=self.store_id,
+                                          score=kpi_score, result=kpi_score, identifier_parent=identifier_parent,
+                                          identifier_result=lvl_2_identifier_par, should_enter=True)
         return kpi_score
 
-    def calculate_atomic(self, atomic_params, set_name):
+    def calculate_atomic(self, atomic_params, set_name, lvl_2_identifier_parent):
         """
             :param atomic_params: dict - atomic kpi line from the template
             :param set_name: str - name of the set, for DB.
@@ -125,6 +211,10 @@ class CCZAToolBox:
                 self.common.write_to_db_result(score=atomic_score, level=self.common.LEVEL3, fk=atomic_fk)
             except Exception as e:
                 Log.error('Exception in the atomic-kpi {} writing to DB: {}'.format(atomic_name, e.message))
+        kpi_fk_lvl_3 = self.common_v2.get_kpi_fk_by_kpi_type(atomic_name)
+        self.common_v2.write_to_db_result(fk=kpi_fk_lvl_3, numerator_id=self.own_manuf_fk, denominator_id=self.store_id,
+                                          result=atomic_score, score=atomic_score,
+                                          identifier_parent=lvl_2_identifier_parent, should_enter=True)
         return atomic_score
 
     @kpi_runtime()
