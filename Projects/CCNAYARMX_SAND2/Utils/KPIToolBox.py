@@ -434,14 +434,14 @@ class ToolBox(GlobalSessionToolBox):
 
         result_dict = {'kpi_name': detalle_kpi_name, 'kpi_fk': detalle_kpi_fk, 'numerator_id': self.own_manuf_fk,
                        'numerator_result': number_of_bays,
-                       'denominator_id': self.store_id, 'result': number_of_bays / 100, 'target': target,
+                       'denominator_id': self.store_id, 'result': number_of_bays, 'target': target,
                        'identifier_parent': kpi_name}
         results_list.append(result_dict)
 
         result_dict = {'kpi_name': kpi_name, 'kpi_fk': kpi_fk, 'numerator_id': self.own_manuf_fk,
                        'numerator_result': number_of_bays,
-                       'denominator_id': self.store_id, 'result': result, 'target': target,
-                       'identifier_result': detalle_kpi_name}
+                       'denominator_id': self.store_id, 'result': result, 'target': target
+                       }
         results_list.append(result_dict)
 
         return results_list
