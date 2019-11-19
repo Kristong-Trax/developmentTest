@@ -16,10 +16,6 @@ from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from KPIUtils_v2.Utils.Decorators.Decorators import kpi_runtime
 from KPIUtils_v2.DB.CommonV2 import Common
 from KPIUtils_v2.Utils.TargetFinder.KpiTargetFinder import KpiTargetFinder
-from Trax.Apps.Services.Apollo.Server.Services.CCRU.Utils.CCRUPromoTargetsUploaderClass import \
-    KPI_LEVEL_2_TYPE as PROMO_KPI_LEVEL_2_TYPE, \
-    KPI_OPERATION_TYPE as PROMO_KPI_OPERATION_TYPE, \
-    PROMO_PRODUCT_GROUP_ENTITY, PROMO_DISPLAY_ENTITY, PROMO_LOCATION_ENTITY
 
 from Projects.CCRU.Utils.Fetcher import CCRUCCHKPIFetcher
 from Projects.CCRU.Utils.Consts import CCRUConsts
@@ -64,6 +60,13 @@ EQUIPMENT_TARGETS_CLOUD_BASE_PATH = 'CCRU/KPIData/Contract/'
 ALLOWED_POS_SETS = tuple(CCRUConsts.ALLOWED_POS_SETS)
 
 
+PROMO_KPI_LEVEL_2_TYPE = 'PROMO_COMPLIANCE_DISPLAY'
+PROMO_KPI_OPERATION_TYPE = 'Custom'
+
+PROMO_DISPLAY_ENTITY = 'promo_display'
+PROMO_PRODUCT_GROUP_ENTITY = 'promo_product_group'
+PROMO_LOCATION_ENTITY = 'promo_location'
+
 PROMO_SCENE_TYPES_DISPLAY = \
     [
         'Company Display Promo Energy',
@@ -100,6 +103,14 @@ PROMO_COMPLIANCE_PRICE_TARGET = 'PROMO_COMPLIANCE_PRICE_TARGET'
 
 PROMO_LOC_DISPLAY = 'Promo Display'
 PROMO_LOC_MAIN_SHELF = 'Main Shelf'
+
+CATEGORIES_LIST = ['SSD', 'Water', 'ice tea', 'Juices', 'Energy']
+SOS_CAT_FOR_MR = 'SOS_MANUFACTURER_OUT_OF_CAT_CUSTOM_MR'
+AVAILABILITY_CAT_FOR_MR = 'AVAILABILITY_MANUFACTURER_OUT_OF_CAT_CUSTOM_MR'
+OSA_CAT_FOR_MR = 'OSA_MANUFACTURER_OUT_OF_CAT_CUSTOM_MR'
+CAT_KPI_TYPE = 'Category KPI Type'
+CAT_KPI_VALUE = 'Category KPI Value'
+POS_CAT_KPI_DICT = {'Availability': AVAILABILITY_CAT_FOR_MR, 'SOS': SOS_CAT_FOR_MR}
 
 
 class CCRUKPIToolBox:
@@ -188,6 +199,7 @@ class CCRUKPIToolBox:
         self.promo_displays = None
         self.promo_locations = None
         self.promo_products = None
+        self.mr_targets = {}
 
     def set_kpi_set(self, kpi_set_name, kpi_set_type, empty_kpi_scores_and_results=True):
         self.kpi_set_name = kpi_set_name
@@ -895,7 +907,7 @@ class CCRUKPIToolBox:
             atomic_result = attributes_for_level3['result']
             if p.get("KPI ID") in params.values()[2]["SESSION LEVEL"]:
                 self.write_to_kpi_facts_hidden(p.get("KPI ID"), None, atomic_result, score)
-
+            self.write_to_db_category_kpis_for_mr(p, result=score, score=set_total_res)
         return set_total_res
 
     def calculate_facings_sos(self, params, scenes=None, all_params=None):
@@ -2028,7 +2040,23 @@ class CCRUKPIToolBox:
             if kpi_fk:
                 attributes_for_level2 = self.create_attributes_for_level2_df(p, kpi_score, kpi_fk)
                 self.write_to_kpi_results_old(attributes_for_level2, 'level2')
+            self.write_to_db_category_kpis_for_mr(p, result=kpi_score, score=set_total_res)
         return set_total_res
+
+    def write_to_db_category_kpis_for_mr(self, params, result, score):
+        if params.get(CAT_KPI_TYPE) is not None and params.get(CAT_KPI_VALUE) is not None and params.get('level') == 2:
+            kpi_type = POS_CAT_KPI_DICT.get(params.get(CAT_KPI_TYPE))
+            if kpi_type is not None:
+                cat_kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_type)
+                category_fk_array = self.products[self.products['category'] ==
+                                                    params.get(CAT_KPI_VALUE)]['category_fk'].values
+                if len(category_fk_array) > 0:
+                    category_fk = category_fk_array[0]
+                    self.common.write_to_db_result(cat_kpi_fk, numerator_id=self.own_manufacturer_id,
+                                                   denominator_id=category_fk, result=round(result, 0), score=score)
+                if len(category_fk_array) == 0:
+                    Log.warning('Category {} does not exist in the DB. '
+                                'Check kpi template'.format(params.get(CAT_KPI_VALUE)))
 
     @kpi_runtime()
     def check_number_of_scenes_no_tagging(self, params, level=2):
@@ -3076,7 +3104,8 @@ class CCRUKPIToolBox:
                                                               == kpi_name]['kpi_fk'].values[0]
                     kpi_name = param.get('KPI name Eng')
                     kpi_weight = param.get('KPI Weight')
-                    children = param.get('Children').replace('\n', '').replace(' ', '').split(',')
+                    # children = param.get('Children').replace('\n', '').replace(' ', '').split(',')
+                    children = str(param.get('Children')).replace('\n', '').replace(' ', '').split(',')
 
                     sum_of_scores = 0
                     sum_of_weights = 0
@@ -3275,12 +3304,14 @@ class CCRUKPIToolBox:
                                                               'kpi_set_fk'])
                 self.write_to_kpi_results_old(attributes_for_table1, 'level1')
 
+                set_target = self.mr_targets.get(CONTRACT) if self.mr_targets.get(CONTRACT) is not None else 100
+
                 self.update_kpi_scores_and_results(
                     {'KPI ID': CONTRACT,
                      'KPI name Eng': kpi_set_name,
                      'KPI name Rus': kpi_set_name,
                      'Parent': 'root'},
-                    {'target': 100,
+                    {'target': set_target,
                      'weight': 1,
                      'result': score,
                      'score': score,
@@ -3567,6 +3598,13 @@ class CCRUKPIToolBox:
                                                identifier_parent=identifier_parent,
                                                should_enter=True)
 
+                # category kpis MR
+                cat_kpi_fk = self.common.get_kpi_fk_by_kpi_type(OSA_CAT_FOR_MR)
+                if row['category'] in CATEGORIES_LIST:
+                    self.common.write_to_db_result(fk=cat_kpi_fk, numerator_id=self.own_manufacturer_id,
+                                                   denominator_id=numerator_id, context_id=context_id,
+                                                   result=result, score=score)
+
             top_sku_total = top_sku_anchor_products\
                 .agg({'in_assortment': 'sum',
                       'distributed': 'sum'})
@@ -3611,6 +3649,7 @@ class CCRUKPIToolBox:
                                            identifier_parent=identifier_parent,
                                            should_enter=True)
         else:
+            target = self.mr_targets.get(TOPSKU) if self.mr_targets.get(TOPSKU) is not None else target
             self.update_kpi_scores_and_results(
                 {'KPI ID': TOPSKU,
                  'KPI name Eng': kpi_set_name,
@@ -3830,6 +3869,9 @@ class CCRUKPIToolBox:
 
             group_score += score if score else 0
             group_weight += weight if weight else 0
+
+            if kpi['parent'] == 'root' and self.mr_targets.get(kpi_set_type) is not None:
+                target = kpi['target']
 
             self.common.write_to_db_result(fk=kpi_fk,
                                            numerator_id=numerator_id,
@@ -4096,8 +4138,8 @@ class CCRUKPIToolBox:
     def get_promo_product_groups_to_skus(self, target):
         product_groups = target['PRODUCT_GROUP']
         product_groups_df = pd.DataFrame()
-        query = PROMO_PRODUCT_GROUP_FILTER['QUERY']
         for p in product_groups.keys():
+            query = PROMO_PRODUCT_GROUP_FILTER['QUERY']
             filters = product_groups[p].get('PROD_INCL')
             if filters:
                 for f in filters.keys():
@@ -4155,6 +4197,11 @@ class CCRUKPIToolBox:
             location_calculated = 0
         else:
 
+            if location == PROMO_LOC_DISPLAY:
+                scene_fk = scif_loc['scene_fk'].values[0]
+            else:
+                scene_fk = None
+
             location_calculated = 1
 
             score += self.check_promo_compliance_display_presence(
@@ -4174,6 +4221,7 @@ class CCRUKPIToolBox:
                                            numerator_id=self.own_manufacturer_id,
                                            numerator_result=None,
                                            denominator_id=display_fk,
+                                           denominator_result=scene_fk,
                                            context_id=location_fk,
                                            target=target,
                                            weight=None,
@@ -4653,7 +4701,8 @@ class CCRUKPIToolBox:
                 product_group_scif['price_facings'] = product_group_scif['price'] * product_group_scif['facings']
                 product_group_price_facings_fact = product_group_scif.agg({'price_facings': 'sum'})[0]
                 product_group_facings_fact = product_group_scif.agg({'facings': 'sum'})[0]
-                product_group_price_fact = product_group_price_facings_fact / product_group_facings_fact
+                product_group_price_fact = \
+                    round(product_group_price_facings_fact / float(product_group_facings_fact), 2)
             else:
                 product_group_price_facings_fact = 0
                 product_group_facings_fact = 0
@@ -4672,7 +4721,7 @@ class CCRUKPIToolBox:
                     result_prod = 0
                 score_prod = 100 - result_prod
             else:
-                result_prod = 0
+                # result_prod = 0
                 score_prod = 0
 
             product_group_price_fact_100 = product_group_price_fact * 100 if product_group_price_fact is not None \

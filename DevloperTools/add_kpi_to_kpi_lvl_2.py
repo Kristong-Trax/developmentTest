@@ -201,6 +201,6 @@ Validations: all validations are in validate_template() function:
 if __name__ == '__main__':
     LoggerInitializer.init('test')
     Config.init()
-    project_name = 'ccbottlersus'
-    template_path = '/home/huntery/Downloads/ccbottlers_new_drilldown_kpis.xlsx'
-    AddKPIs(project_name, template_path=template_path).add_kpis_from_template()
+    project_name = 'batru-sand'
+    template_path = '/home/natalyak/Desktop/batru/migration/kpis_to_db_template_new_kpi.xlsx'
+    AddKPIs(project_name, template_path=template_path, add_kpi_pks=True).add_kpis_from_template()

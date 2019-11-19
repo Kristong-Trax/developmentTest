@@ -33,12 +33,8 @@ if __name__ == '__main__':
     # session = '8C545C66-D892-4173-8354-0B6BF97B189D' # sss a all templates
     # session = '84e3fd3e-ae17-438d-8f52-5db0623f32a0' # convenience b
     # session = '8E742C0B-5AAC-4CE6-8C5D-1E31246E54B1' # discounter
-    # session_list = ["730A6FDB-3ED5-474A-88AD-BB89243A4C50", "422C31C6-1118-4271-9852-A72CB03955FE",
-    #                 "1B46DE0A-6440-4639-BE0F-7B44F2162E6B", "C0394F77-8A3C-4AAA-A5EB-9821D085F24F",
-    #                 "e4e5e230-4b51-4908-a959-51a46fa5f54f", "fb6f25a7-2d03-49e9-8216-25bb9dede3e2",
-    #                 "494773A6-6E17-418C-B965-F0847B6701AB", "82AA237B-040C-434F-BF57-9421F481168B",
-    #                 "228ae67a-c47d-468b-9964-05e913d7c847", "5C98034A-3F49-4606-AB5C-409CE210A6BC"]
-    session_list = ['88E9E898-0474-476D-B929-86CA1243177B']
+    session_list = ["730A6FDB-3ED5-474A-88AD-BB89243A4C50"]
+    # session_list = ['F65C2806-9427-4885-AACA-F7DD4AC7E2A4']
     # session_list = ["d83743b9-1f36-4586-b0de-cd93d6bc84a2"]
     for session in session_list:
         data_provider.load_session_data(session)

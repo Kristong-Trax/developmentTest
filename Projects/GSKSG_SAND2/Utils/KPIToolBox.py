@@ -7,6 +7,10 @@ from KPIUtils.GlobalProjects.GSK.Utils.KPIToolBox import Const
 from KPIUtils.GlobalProjects.GSK.KPIGenerator import GSKGenerator
 from KPIUtils_v2.GlobalDataProvider.PsDataProvider import PsDataProvider
 from KPIUtils_v2.Utils.Consts import GlobalConsts, DataProvider as DataProviderConsts, DB
+from KPIUtils_v2.Utils.Consts.DataProvider import ProductsConsts, TemplatesConsts
+from KPIUtils_v2.Utils.Consts.DB import SessionResultsConsts
+from KPIUtils_v2.Calculations.SequenceCalculationsV2 import Sequence
+from KPIUtils_v2.Calculations.CalculationsUtils.Constants import AdditionalAttr
 
 __author__ = 'limorc'
 
@@ -39,6 +43,7 @@ class GSKSGToolBox:
 
         self.gsk_generator = GSKGenerator(self.data_provider, self.output, self.common, self.set_up_template)
         self.targets = self.ps_data_provider.get_kpi_external_targets()
+        self.sequence = Sequence(self.data_provider)
         self.set_up_data = {('planogram', Const.KPI_TYPE_COLUMN): Const.NO_INFO,
                             ('secondary_display', Const.KPI_TYPE_COLUMN):
                                 Const.NO_INFO, ('promo', Const.KPI_TYPE_COLUMN):
@@ -74,14 +79,15 @@ class GSKSGToolBox:
         score = 0
         return score
 
-    def msl_compliance_score(self, category, categories_results_json, category_targets, parent_result_identifier):
+    def msl_compliance_score(self, category, categories_results_json, cat_targets, parent_result_identifier):
         results_list = []
         msl_kpi_fk = self.common.get_kpi_fk_by_kpi_type(Consts.MSL_ORANGE_SCORE)
+        msl_categories = self._filter_targets_by_kpi(cat_targets, msl_kpi_fk)
         if category not in categories_results_json:
             dst_result = 0
         else:
             dst_result = categories_results_json[category]
-        weight = category_targets['msl_weight'].iloc[0]
+        weight = msl_categories['msl_weight'].iloc[0]
         result = dst_result * weight
         results_list.append({'fk': msl_kpi_fk, 'numerator_id': category, 'denominator_id':
             self.store_id, 'denominator_result': 1, 'numerator_result': result, 'result': result,
@@ -89,15 +95,17 @@ class GSKSGToolBox:
                              'identifier_parent': parent_result_identifier, 'should_enter': True})
         return result, results_list
 
-    def fsos_compliance_score(self, category, categories_results_json, category_targets, parent_result_identifier):
+    def fsos_compliance_score(self, category, categories_results_json, cat_targets, parent_result_identifier):
         """
                This function return json of keys- categories and values -  kpi result for category
+               :param cat_targets-targets df for the specific category
                :param category: pk of category
                :param categories_results_json: type of the desired kpi
                :return category json :  number-category_fk,number-result
            """
         results_list = []
         fsos_kpi_fk = self.common.get_kpi_fk_by_kpi_type(Consts.FSOS_ORANGE_SCORE)
+        category_targets = self._filter_targets_by_kpi(cat_targets, fsos_kpi_fk)
         dst_result = categories_results_json[category] if category in categories_results_json.keys() else 0
         benchmark = category_targets['fsos_benchmark'].iloc[0]
         weight = category_targets['fsos_weight'].iloc[0]
@@ -192,7 +200,7 @@ class GSKSGToolBox:
             if self.store_info[store_info_col][0].encode(GlobalConsts.HelperConsts.UTF8) == df_param or df_param == '':
                 return True
         if isinstance(df_param, type(None)):
-            return False
+            return True
         return False
 
     def display_distribution(self, display_name, category_fk, category_targets, parent_identifier, kpi_name,
@@ -306,17 +314,18 @@ class GSKSGToolBox:
         kpi_results = pd.merge(shelf_data, kpi_results, how='right', on=['product_fk'])  # also problematic
         return kpi_results
 
-    def shelf_compliance(self, category, assortment_df, category_targets, identifier_parent):
+    def shelf_compliance(self, category, assortment_df, cat_targets, identifier_parent):
         """
             This function calculate how many assortment products available on specific shelves
             :param category
-            :param category_targets : targets df for the specific category
+            :param cat_targets : targets df for the specific category
             :param assortment_df :relevant assortment based on filtered scif
             :param identifier_parent - result identifier for shelf compliance kpi parent .
 
         """
         results_list = []
         kpi_fk = self.common.get_kpi_fk_by_kpi_type(Consts.SHELF_COMPLIANCE)
+        category_targets = self._filter_targets_by_kpi(cat_targets, kpi_fk)
         if assortment_df is not None:
             assortment_cat = assortment_df[assortment_df['category_fk'] == category]
             shelf_weight = category_targets['shelf_weight'].iloc[0]
@@ -354,7 +363,7 @@ class GSKSGToolBox:
                                                                                               category_targets,
                                                                                               identifier_result)
         results_list.extend(shelf_compliance_result)
-        sequence_kpi, sequence_weight = 0, self.sequence(category_targets)
+        sequence_kpi, sequence_weight = self._calculate_sequence(category_fk, identifier_result)
         planogram_score = shelf_compliance_score + sequence_kpi
         planogram_weight = shelf_weight + sequence_weight
         results_list.append({'fk': kpi_fk, 'numerator_id': category_fk, 'denominator_id':
@@ -365,32 +374,98 @@ class GSKSGToolBox:
                                 , 'should_enter': True})
         return planogram_score, results_list
 
-    def sequence(self, category_targets):
+    def _calculate_sequence(self, cat_fk, planogram_identifier):
         """
-            this function calculate sequence  #TODO SEQUENCE
+        This method calculated the sequence KPIs using the external targets' data and sequence calculation algorithm.
         """
-        seq_1_target = 0 if category_targets['seq_1_weight'].empty else category_targets['seq_1_weight'].iloc[0]
-        seq_2_target = 0 if category_targets['seq_2_weight'].empty else category_targets['seq_2_weight'].iloc[0]
-        seq_3_target = 0 if category_targets['seq_3_weight'].empty else category_targets['seq_3_weight'].iloc[0]
+        sequence_kpi_fk, sequence_sku_kpi_fk = self._get_sequence_kpi_fks()
+        sequence_targets = self._filter_targets_by_kpi(self.targets, sequence_kpi_fk)
+        sequence_targets = sequence_targets.loc[sequence_targets.category_fk == cat_fk]
+        passed_sequences_score, total_weight, total_passed_counter = 0, 0, 0
+        for i, sequence in sequence_targets.iterrows():
+            population, location, sequence_attributes = self._prepare_data_for_sequence_calculation(sequence)
+            sequence_result = self.sequence.calculate_sequence(population, location, sequence_attributes)
+            score, weight = self._save_sequence_results_to_db(sequence_sku_kpi_fk, sequence_kpi_fk, sequence,
+                                                              sequence_result)
+            passed_sequences_score += score
+            total_weight += weight
+            total_passed_counter += 1 if score else 0
+        self._save_sequence_main_level_to_db(sequence_kpi_fk, planogram_identifier, cat_fk, total_passed_counter,
+                                             len(sequence_targets), total_weight)
+        return passed_sequences_score, total_weight*10
 
-        sequence_weight = seq_1_target + seq_2_target + seq_3_target
+    @staticmethod
+    def _prepare_data_for_sequence_calculation(sequence_params):
+        """
+        This method gets the relevant targets per sequence and returns the sequence params for calculation.
+        """
+        population = {ProductsConsts.PRODUCT_FK: sequence_params[ProductsConsts.PRODUCT_FK]}
+        location = {TemplatesConsts.TEMPLATE_GROUP: sequence_params[TemplatesConsts.TEMPLATE_GROUP]}
+        additional_attributes = {AdditionalAttr.STRICT_MODE: sequence_params['strict_mode'],
+                                 AdditionalAttr.INCLUDE_STACKING: sequence_params['include_stacking'],
+                                 AdditionalAttr.CHECK_ALL_SEQUENCES: True}
+        return population, location, additional_attributes
 
-        return sequence_weight
+    def _extract_target_params(self, sequence_params):
+        """
+        This method extract the relevant category_fk and result value from the sequence parameters.
+        """
+        numerator_id = sequence_params[ProductsConsts.CATEGORY_FK]
+        result_value = self.ps_data_provider.get_pks_of_result(sequence_params['sequence_name'])
+        return numerator_id, result_value
 
-    def secondary_display(self, category_fk, category_targets, identifier_parent, scif_df):
+    def _save_sequence_main_level_to_db(self, kpi_fk, planogram_identifier, cat_fk, num_res, den_res, weight):
+        """
+        This method saves the top sequence level to DB.
+        """
+        score = num_res / float(den_res) if den_res else 0
+        result = weight if score >= Consts.GSK_BENCHMARK else 0
+        self.common.write_to_db_result(fk=kpi_fk, numerator_id=cat_fk, numerator_result=num_res,
+                                       result=result, denominator_id=self.store_id, denominator_result=den_res,
+                                       score=score, weight=weight, target=Consts.GSK_BENCHMARK,  should_enter=True,
+                                       identifier_result=kpi_fk, identifier_parent=planogram_identifier)
+
+    def _save_sequence_results_to_db(self, kpi_fk, parent_kpi_fk, sequence_params, sequence_results):
+        """
+        This method handles the saving of the SKU level sequence KPI.
+        :param kpi_fk: Sequence SKU kpi fk.
+        :param parent_kpi_fk: Total sequence score kpi fk.
+        :param sequence_params: A dictionary with sequence params for the external targets.
+        :param sequence_results: A DataFrame with the results that were received by the sequence algorithm.
+        :return: The score that was saved (0 or 100 * weight).
+        """
+        category_fk, result_value = self._extract_target_params(sequence_params)
+        num_of_sequences = len(sequence_results)
+        target, weight = sequence_params[SessionResultsConsts.TARGET], sequence_params[SessionResultsConsts.WEIGHT]
+        score = 100 * weight if len(sequence_results) >= target else 0
+        self.common.write_to_db_result(fk=kpi_fk, numerator_id=category_fk, numerator_result=num_of_sequences,
+                                       result=result_value, denominator_id=self.store_id, denominator_result=999,
+                                       score=score, weight=weight, parent_fk=parent_kpi_fk, target=target,
+                                       should_enter=True, identifier_parent=parent_kpi_fk,
+                                       identifier_result=(kpi_fk, category_fk))
+        return score, weight
+
+    def _get_sequence_kpi_fks(self):
+        """This method fetches the relevant sequence kpi fks"""
+        sequence_kpi_fk = self.common.get_kpi_fk_by_kpi_type(Consts.SEQUENCE_KPI)
+        sequence_sku_kpi_fk = self.common.get_kpi_fk_by_kpi_type(Consts.SEQUENCE_SKU_KPI)
+        return sequence_kpi_fk, sequence_sku_kpi_fk
+
+    def secondary_display(self, category_fk, cat_targets, identifier_parent, scif_df):
         """
             This function calculate secondary score -  0  or full weight if at least
             one of it's child kpis equal to weight.
             :param category_fk
-            :param category_targets : targets df for the specific category
+            :param cat_targets : targets df for the specific category
             :param identifier_parent : result identifier for promo activation kpi parent .
             :param scif_df : scif filtered by promo activation settings
 
         """
         results_list = []
         parent_kpi_name = 'display'
-        weight = category_targets['display_weight'].iloc[0]
         total_kpi_fk = self.common.get_kpi_fk_by_kpi_type(Consts.DISPLAY_SUMMARY)
+        category_targets = self._filter_targets_by_kpi(cat_targets, total_kpi_fk)
+        weight = category_targets['display_weight'].iloc[0]
         result_identifier = self.common.get_dictionary(category_fk=category_fk, kpi_fk=total_kpi_fk)
 
         dispenser_score, dispenser_res = self.display_distribution(Consts.DISPENSER_TARGET, category_fk,
@@ -415,18 +490,18 @@ class GSKSGToolBox:
 
         return results_list, display_score
 
-    def promo_activation(self, category_fk, category_targets, identifier_parent, scif_df):
+    def promo_activation(self, category_fk, cat_targets, identifier_parent, scif_df):
         """
             This function calculate promo activation score -  0  or full weight if at least
             one of it's child kpis equal to weight.
             :param category_fk
-            :param category_targets : targets df for the specific category
+            :param cat_targets : targets df for the specific category
             :param identifier_parent : result identifier for promo activation kpi parent .
             :param scif_df : scif filtered by promo activation settings
 
         """
-
         total_kpi_fk = self.common.get_kpi_fk_by_kpi_type(Consts.PROMO_SUMMARY)
+        category_targets = self._filter_targets_by_kpi(cat_targets, total_kpi_fk)
         result_identifier = self.common.get_dictionary(category_fk=category_fk, kpi_fk=total_kpi_fk)
         results_list = []
         parent_kpi_name = 'promo'
@@ -450,6 +525,12 @@ class GSKSGToolBox:
                              'identifier_result': result_identifier, 'should_enter': True})
 
         return results_list, promo_score
+
+    @staticmethod
+    def _filter_targets_by_kpi(targets, kpi_fk):
+        """ This function filter all targets but targets which related to relevant kpi"""
+        filtered_targets = targets.loc[targets.kpi_fk == kpi_fk]
+        return filtered_targets
 
     def orange_score_category(self, assortment_category_res, fsos_category_res):
         """

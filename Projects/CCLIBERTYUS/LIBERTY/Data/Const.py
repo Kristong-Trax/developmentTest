@@ -58,7 +58,7 @@ class Const(object):
     SIZE_SUBPACKAGES_NUM = 'Base Size;Multi-Pack Size'
     SUBPACKAGES_NUM = 'Multi-Pack Size'
     MINIMUM_FACINGS_REQUIRED = 'facings_threshold'
-    GREATER_THAN_ONE = '>1'
+    GREATER_THAN_ONE = '>001'
     EXCLUDED_CATEGORY = 'excluded_category'
     EXCLUDED_SIZE_SUBPACKAGES_NUM = 'Excluded Base Size; Multi Pack Size'
 

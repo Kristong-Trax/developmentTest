@@ -1757,11 +1757,27 @@ class BATRUToolBox:
 
         return
 
+    # def add_posms_not_assigned_to_scenes_in_template(self):
+    #     add_posms = self.posm_in_session[(~(self.posm_in_session['additional_attribute_1'].isin(self.p4_display_count.keys()))) &
+    #                                      (~(self.posm_in_session['display_name'].isnull())) &
+    #                                      (~(self.posm_in_session['additional_attribute_1'].isnull())) &
+    #                                      (self.posm_in_session['template_group'] == EXIT_TEMPLATE_GROUP.encode('utf8'))]
+    #     add_posms = add_posms[['additional_attribute_1', 'display_name']].drop_duplicates()
+    #     for i, row in add_posms.iterrows():
+    #         name = '{};{};{};{}'.format(row['additional_attribute_1'].encode('utf8'), DEFAULT_GROUP_NAME,
+    #                                     DEFAULT_ATOMIC_NAME, row['display_name'].encode('utf8'))
+    #         self.p4_posm_to_api[name] = 1
+
     def add_posms_not_assigned_to_scenes_in_template(self):
-        add_posms = self.posm_in_session[(~(self.posm_in_session['additional_attribute_1'].isin(self.p4_display_count.keys()))) &
-                                         (~(self.posm_in_session['display_name'].isnull())) &
-                                         (~(self.posm_in_session['additional_attribute_1'].isnull())) &
-                                         (self.posm_in_session['template_group'] == EXIT_TEMPLATE_GROUP.encode('utf8'))]
+        scenes_in_session = self.data_provider.scenes_info[['scene_fk', 'template_fk']]
+        scenes_in_session = scenes_in_session.merge(self.data_provider.all_templates, on='template_fk', how='left')
+        posm_in_session = self.match_display_in_scene.merge(scenes_in_session, on='scene_fk', how='left')
+        posm_in_session['additional_attribute_1'] = self.encode_column_in_df(posm_in_session, 'additional_attribute_1')
+        add_posms = posm_in_session[
+            (~(posm_in_session['additional_attribute_1'].isin(self.p4_display_count.keys()))) &
+            (~(posm_in_session['display_name'].isnull())) &
+            (~(posm_in_session['additional_attribute_1'].isnull())) &
+            (posm_in_session['template_group'].str.encode('utf8') == EXIT_TEMPLATE_GROUP.encode('utf8'))]
         add_posms = add_posms[['additional_attribute_1', 'display_name']].drop_duplicates()
         for i, row in add_posms.iterrows():
             name = '{};{};{};{}'.format(row['additional_attribute_1'].encode('utf8'), DEFAULT_GROUP_NAME,

@@ -31,6 +31,7 @@ INTEGRATION = 'INTEGRATION'
 TOPSKU = 'TOPSKU'
 KPI_CONVERSION = 'KPI_CONVERSION'
 BENCHMARK = 'BENCHMARK'
+MR_TARGET = 'MR TARGET'
 
 ALLOWED_POS_SETS = tuple(CCRUConsts.ALLOWED_POS_SETS)
 
@@ -73,21 +74,21 @@ class CCRUProjectCalculations:
                         'Store ID {1}.'
                         .format(self.visit_date, self.store_id, self.tool_box.MIN_CALC_DATE))
 
-        elif self.pos_kpi_set_name not in ALLOWED_POS_SETS:
-            Log.warning('Warning. Session cannot be calculated. '
-                        'POS KPI Set name in store attribute is invalid - {0}. '
-                        'Store ID {1}.'
-                        .format(self.pos_kpi_set_name, self.store_id))
+        elif self.tool_box.visit_type in [self.tool_box.SEGMENTATION_VISIT]:
+            Log.warning('Warning. Session with Segmentation visit type has no KPI calculations.')
 
         elif self.tool_box.visit_type in [self.tool_box.PROMO_VISIT]:
             # Log.warning('Warning. Session with Promo visit type has no KPI calculations.')
             self.calculate_promo_compliance()
 
-        elif self.tool_box.visit_type in [self.tool_box.SEGMENTATION_VISIT]:
-            Log.warning('Warning. Session with Segmentation visit type has no KPI calculations.')
-
         else:
-            self.calculate_red_score()
+            if self.pos_kpi_set_name not in ALLOWED_POS_SETS:
+                Log.warning('Warning. Session cannot be calculated. '
+                            'POS KPI Set name in store attribute is invalid - {0}. '
+                            'Store ID {1}.'
+                            .format(self.pos_kpi_set_name, self.store_id))
+            else:
+                self.calculate_red_score()
 
         Log.debug('KPI calculation is completed')
 
@@ -115,6 +116,13 @@ class CCRUProjectCalculations:
                         'Store ID {1}.'
                         .format(self.pos_kpi_set_name, self.store_id))
             return
+
+        mr_targets = {}
+        for kpi_set, params in kpi_source.items():
+            if params.get(MR_TARGET) is not None:
+                mr_targets.update({kpi_set: params[MR_TARGET]})
+                mr_targets.update({params[SET]: params[MR_TARGET]})
+        self.tool_box.mr_targets = mr_targets
 
         kpi_sets_types_to_calculate = [POS, TARGET, SPIRITS]
         for kpi_set_type in kpi_sets_types_to_calculate:
@@ -158,12 +166,14 @@ class CCRUProjectCalculations:
                                       'score_1',
                                       'kpi_set_fk']), 'level1')
 
+            set_target = mr_targets.get(kpi_set_type) if mr_targets.get(kpi_set_type) is not None else 100
+
             self.tool_box.update_kpi_scores_and_results(
                 {'KPI ID': 0,
                  'KPI name Eng': kpi_source[kpi_set_type][SET],
                  'KPI name Rus': kpi_source[kpi_set_type][SET],
                  'Parent': 'root'},
-                {'target': 100,
+                {'target': set_target,
                  'weight': None,
                  'result': score,
                  'score': score,

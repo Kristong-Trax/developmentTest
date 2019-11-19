@@ -57,7 +57,7 @@ class INBEVTRADMXToolBox:
         self.kpi_static_data = self.common.get_kpi_static_data()
         self.kpi_results_queries = []
         self.templates_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data')
-        self.excel_file_path = os.path.join(self.templates_path, 'inbevtradmx_template_11_v2.xlsx')
+        self.excel_file_path = os.path.join(self.templates_path, 'inbevtradmx_template_11_v3.xlsx')
         self.availability = Availability(self.data_provider)
         self.survey_response = self.data_provider[Data.SURVEY_RESPONSES]
         self.geo = GeoLocation.INBEVTRADMXGeo(self.rds_conn, self.session_uid, self.data_provider,
@@ -70,6 +70,13 @@ class INBEVTRADMXToolBox:
             ['product_fk', 'shelf_number', 'scene_fk', 'facing_sequence_number']],
                                  how="inner", left_on=['item_id', 'scene_id'],
                                  right_on=['product_fk', 'scene_fk']).drop_duplicates()
+        self.ignore_stacking = False
+        self.facings_field = 'facings' if not self.ignore_stacking else 'facings_ign_stack'
+        self.INCLUDE_FILTER = 1
+        self.EXCLUDE_FILTER = 0
+        self.CONTAIN_FILTER = 2
+        self.EXCLUDE_EMPTY = False
+        self.INCLUDE_EMPTY = True
 
     # init functions:
 
@@ -166,17 +173,25 @@ class INBEVTRADMXToolBox:
         if sets.empty:
             return ''
         else:
+
             sets = sets['KPI Level 1 Name'].unique().tolist()
 
-            if additional_attribute_4 == 'BC':
+            if len(sets) == 1:
+                set_name = sets[0]
+
+            elif additional_attribute_4 == 'BC':
                 set_name = sets[0]
             elif additional_attribute_4 == 'BA':
                 set_name = sets[1]
             elif additional_attribute_4 == 'MODELORAMA':
                 set_name = sets[2]
+
             else:
-                return sets[0]
+                Log.error('KPI should only run on one KPI set.')
+
             return set_name
+
+
 
     def calculate_set_score(self, set_df, set_name):
         """
@@ -258,6 +273,10 @@ class INBEVTRADMXToolBox:
                 else:
                     if self.calculate_availability_score(row, relevant_columns):
                         is_kpi_passed = 1
+                        if kpi_level_3_name == '100% Marcas HE':
+                            curr_weight = self.unique_brand_count
+
+
             elif row['KPI type'] == 'SOS':
 
                 ratio = self.calculate_sos_score(row, relevant_columns)
@@ -441,6 +460,12 @@ class INBEVTRADMXToolBox:
             del filters_dict[key]
         # call the generic method from KPIUtils_v2
         availability_score = self.availability.calculate_availability(**filters_dict)
+
+        filtered_df = self.scif[self.get_filter_condition(self.scif, **filters_dict)]
+        self.unique_brand_count = len(filtered_df['brand_name'].unique())
+
+
+
         # check if this score should pass or fail
         return self.decide_availability_score(row, availability_score)
 
@@ -651,3 +676,48 @@ class INBEVTRADMXToolBox:
             return mpis
         except:
             pass
+
+    def get_filter_condition(self, df, **filters):
+        """
+        :param df: The data frame to be filters.
+        :param filters: These are the parameters which the data frame is filtered by.
+                       Every parameter would be a tuple of the value and an include/exclude flag.
+                       INPUT EXAMPLE (1):   manufacturer_name = ('Diageo', DIAGEOAUGENERALToolBox.INCLUDE_FILTER)
+                       INPUT EXAMPLE (2):   manufacturer_name = 'Diageo'
+        :return: a filtered Scene Item Facts data frame.
+        """
+        if not filters:
+            return df['pk'].apply(bool)
+        if self.facings_field in df.keys():
+            filter_condition = (df[self.facings_field] > 0)
+        else:
+            filter_condition = None
+        for field in filters.keys():
+            if field in df.keys():
+                if isinstance(filters[field], tuple):
+                    value, exclude_or_include = filters[field]
+                else:
+                    value, exclude_or_include = filters[field], self.INCLUDE_FILTER
+                if not value:
+                    continue
+                if not isinstance(value, list):
+                    value = [value]
+                if exclude_or_include == self.INCLUDE_FILTER:
+                    condition = (df[field].isin(value))
+                elif exclude_or_include == self.EXCLUDE_FILTER:
+                    condition = (~df[field].isin(value))
+                elif exclude_or_include == self.CONTAIN_FILTER:
+                    condition = (df[field].str.contains(value[0], regex=False))
+                    for v in value[1:]:
+                        condition |= df[field].str.contains(v, regex=False)
+                else:
+                    continue
+                if filter_condition is None:
+                    filter_condition = condition
+                else:
+                    filter_condition &= condition
+            else:
+                pass
+                # Log.warning('field {} is not in the Data Frame'.format(field))
+
+        return filter_condition
