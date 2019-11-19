@@ -106,8 +106,8 @@ class ToolBox:
         general_filters = {}
         relevant_scif = self.filter_df(self.scif.copy(), Const.SOS_EXCLUDE_FILTERS, exclude=1)
         if scene_types:
-            relevant_scif = relevant_scif[relevant_scif['template_name'] == self.MSL[scene_types[0]]]
-            general_filters['template_name'] = [self.MSL[scene_types[0]]]
+            relevant_scif = relevant_scif[relevant_scif['scene_fk'] == self.MSL[scene_types[0]]]
+            general_filters['scene_fk'] = [self.MSL[scene_types[0]]]
         if relevant_scif.empty:
             return
 
@@ -171,13 +171,13 @@ class ToolBox:
         scif = self.filter_df(relevant_scif, filters)
         if scif.empty:
             return
-        scene = scif.groupby('template_name')['facings'].sum().sort_values(ascending=False).index[0]
+        scene = scif.groupby(['scene_fk'])['facings'].sum().sort_values(ascending=False).index[0]
         potential_results = self.get_results_value(kpi_line)
         scores = {}
         for result in potential_results:
             scores[result] = 0
             substrs = result.split(' ')
-            for word in scene.split(' '):
+            for word in self.filter_df(scif, {'scene_fk': scene})['template_name'].iloc[0].split(' '):
                 if word in substrs:
                     scores[result] += 1
         top = sorted(scores.items(), key=lambda x: x[1])[-1][0]
@@ -186,21 +186,25 @@ class ToolBox:
 
     def calculate_max_block_adj(self, kpi_name, kpi_line, relevant_scif, general_filters):
         result = 'Could not determine'
-        a_filters = self.get_kpi_line_filters(kpi_line, 'A')
-        b_filters = self.get_kpi_line_filters(kpi_line, 'B')
         a_req = self.get_kpi_line_filters(kpi_line, 'A Required')
         b_req = self.get_kpi_line_filters(kpi_line, 'B Required')
         thresh = {'A': self.read_cell_from_line(kpi_line, 'A Threshold')[0]}
-        if self.filter_df(relevant_scif, a_req).empty or self.filter_df(relevant_scif, b_req).empty:
+        mpis = self.filter_df(self.mpis, general_filters)
+        a_mpis = self.filter_df(mpis, a_req)
+        b_mpis = self.filter_df(mpis, b_req)
+        if a_mpis.empty or b_mpis.empty:
             return {'score': 1, 'result': result}
-        adj = self.calculate_max_block_adj_base(kpi_name, kpi_line, relevant_scif, general_filters, thresh=thresh)
+        req = {'A': set(a_mpis.scene_match_fk.unique()), 'B': set(b_mpis.scene_match_fk.unique())}
+        adj = self.calculate_max_block_adj_base(kpi_name, kpi_line, relevant_scif, general_filters, thresh=thresh,
+                                                require=req)
         if adj:
             result = 'Integrated Bars Set Present'
         else:
             result = 'Non-Integrated Bars Set Present'
         return {'score': 1, 'result': result}
 
-    def calculate_max_block_adj_base(self, kpi_name, kpi_line, relevant_scif, general_filters, comp_filter={}, thresh={}):
+    def calculate_max_block_adj_base(self, kpi_name, kpi_line, relevant_scif, general_filters, comp_filter={},
+                                     thresh={}, require={}):
         allowed_edges = [x.upper() for x in self.read_cell_from_line(kpi_line, Const.EDGES)]
         d = {'A': {}, 'B': {}}
         for k, v in d.items():
@@ -221,6 +225,9 @@ class ToolBox:
             v['items'] = sum([list(n['match_fk']) for j, row in v['df'].iterrows()
                               for i, n in row['cluster'].nodes(data=True)
                               if n['block_key'].value not in Const.ALLOWED_FLAGS], [])
+            if require:
+                if not require[k] & set(v['items']):
+                    return 0
             matches = []
             for scene in d[k]['df']['scene_fk'].values:
                 scene_key = [key for key in self.block.adj_graphs_by_scene.keys() if str(scene) in key][0]
@@ -1551,7 +1558,7 @@ class ToolBox:
     def splitter(text_str, delimiter=','):
         ret = [text_str]
         if hasattr(text_str, 'split'):
-            ret = text_str.split(delimiter)
+            ret = [x.strip() for x in text_str.split(delimiter)]
         return ret
 
     def sos_with_num_and_dem(self, kpi_line, relevant_scif, general_filters, facings_field):
