@@ -10,8 +10,7 @@ if __name__ == '__main__':
     Config.init()
     project_name = 'ccnayarmx-sand2'
     data_provider = KEngineDataProvider(project_name)
-    session_list = ['b8e4649b-ad07-4d35-95bd-78743ea47066',
-                    '2d280928-791c-438b-99e5-040c7503150e']
+    session_list = ['b8e4649b-ad07-4d35-95bd-78743ea47066']
     for session in session_list:
         data_provider.load_session_data(session)
         output = Output()
