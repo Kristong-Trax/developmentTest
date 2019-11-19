@@ -8,8 +8,8 @@ from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Trax.Utils.Logging.Logger import Log
 from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
 
-from Projects.JNJANZ_SAND.Utils.Fetcher import JNJANZQueries
-from Projects.JNJANZ_SAND.Utils.GeneralToolBox import JNJANZGENERALToolBox
+from Projects.JNJANZ.Utils.Fetcher import JNJANZQueries
+from Projects.JNJANZ.Utils.GeneralToolBox import JNJANZGENERALToolBox
 
 __author__ = 'ilays'
 

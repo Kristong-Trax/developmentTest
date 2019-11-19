@@ -1,7 +1,7 @@
 
 from Trax.Utils.Logging.Logger import Log
 
-from Projects.JNJANZ_SAND.Utils.KPIToolBox import JNJANZToolBox, log_runtime
+from Projects.JNJANZ.Utils.KPIToolBox import JNJANZToolBox, log_runtime
 
 __author__ = 'ilays'
 

@@ -31,8 +31,8 @@ class JNJUKCalculations(BaseCalculationsScript):
         # jnj_generator.calculate_auto_assortment(in_balde=False)
         # jnj_generator.promo_calc_recovery()
         jnj_generator.eye_hand_level_sos_calculation(eye_hand_lvl_template)
-        jnj_generator.general_assortment_calculation()
-        jnj_generator.osa_calculation()
+        # jnj_generator.general_assortment_calculation()
+        # jnj_generator.osa_calculation()
         common.commit_results_data()
         jnj_generator.tool_box.commit_osa_queries()
         self.timer.stop('KPIGenerator.run_project_calculations')
@@ -44,8 +44,7 @@ if __name__ == '__main__':
     project_name = 'jnjuk-sand'
     data_provider = KEngineDataProvider(project_name)
     session = "cff3c170-1ba9-4ce4-bb24-f784827d953d"
-    sessions = ["788b26b7-25a2-4140-ac5d-61b67a3852c4", "7c8d5ef2-3881-4cef-a7bc-8c2512c3ed74", "62e4df75-2345-414e-aac5-bfeab3b51634",
-                "d5108b7f-fbeb-4f21-bfeb-4998ede09e4b", "30c1b027-a44a-4060-b19b-bf806ff19075"]
+    sessions = ["788b26b7-25a2-4140-ac5d-61b67a3852c4"]
     for session in sessions:
         data_provider.load_session_data(session)
         output = Output()
