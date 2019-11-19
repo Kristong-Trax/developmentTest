@@ -7,7 +7,7 @@ from KPIUtils.GlobalProjects.SANOFI_2.KPIGenerator import SANOFIGenerator
 __author__ = 'idanr'
 
 
-class SANOFIUZCalculations(BaseCalculationsScript):
+class SANOFIOCalculations(BaseCalculationsScript):
     def run_project_calculations(self):
         self.timer.start()
         template_path = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), 'SANOFIJO', 'Data',
