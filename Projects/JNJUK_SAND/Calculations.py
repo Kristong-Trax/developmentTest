@@ -29,7 +29,7 @@ class JNJUKCalculations(BaseCalculationsScript):
         # jnj_generator.secondary_placement_location_visibility_quality(survey_template)
         # jnj_generator.share_of_shelf_manufacturer_out_of_sub_category()
         # jnj_generator.calculate_auto_assortment(in_balde=False)
-        # jnj_generator.promo_calc_recovery()
+        jnj_generator.promo_calc_recovery()
         jnj_generator.eye_hand_level_sos_calculation(eye_hand_lvl_template)
         # jnj_generator.general_assortment_calculation()
         # jnj_generator.osa_calculation()
@@ -43,8 +43,7 @@ if __name__ == '__main__':
     Config.init()
     project_name = 'jnjuk-sand'
     data_provider = KEngineDataProvider(project_name)
-    session = "cff3c170-1ba9-4ce4-bb24-f784827d953d"
-    sessions = ["788b26b7-25a2-4140-ac5d-61b67a3852c4"]
+    sessions = ["30c1b027-a44a-4060-b19b-bf806ff19075"]
     for session in sessions:
         data_provider.load_session_data(session)
         output = Output()
