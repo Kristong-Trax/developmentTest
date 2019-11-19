@@ -13,6 +13,7 @@ from Projects.CCZA_SAND.Utils.Converters import Converters
 from KPIUtils.GeneralToolBox import GENERALToolBox
 from KPIUtils.DB.Common import Common
 from KPIUtils.Calculations.Survey import Survey
+from KPIUtils_v2.Utils.Decorators.Decorators import kpi_runtime
 
 __author__ = 'Elyashiv'
 
@@ -33,12 +34,12 @@ class CCZAToolBox:
         self.session_info = self.data_provider[Data.SESSION_INFO]
         self.scene_info = self.data_provider[Data.SCENES_INFO]
         self.store_id = self.data_provider[Data.STORE_FK]
-        # self.store_type = self.data_provider[Data.STORE_INFO]['store_type'].iloc[0]
-        self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
         self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
+        # self.store_type = self.data_provider[Data.STORE_INFO]['store_type'].iloc[0]
         query_store_type = CCZAQueries.get_attr3(self.session_uid)
         store_type = pd.read_sql_query(query_store_type, self.rds_conn.db)
         self.store_type = store_type[Const.ATTR3].iloc[0]
+        self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
         self.tools = GENERALToolBox(self.data_provider, self.output, rds_conn=self.rds_conn)
         self.survey_response = self.data_provider[Data.SURVEY_RESPONSES]
         self.tool_box_for_flow = ToolBox
@@ -126,6 +127,7 @@ class CCZAToolBox:
                 Log.error('Exception in the atomic-kpi {} writing to DB: {}'.format(atomic_name, e.message))
         return atomic_score
 
+    @kpi_runtime()
     def calculate_availability(self, atomic_params):
         """
             :param atomic_params: dict - atomic kpi line from the template
@@ -142,25 +144,28 @@ class CCZAToolBox:
 
     def calculate_all_availability(self, type1, value1, type2, value2, in_or_not, filter_type, filter_value):
         """
-            :param types&values - str. in_or_not - "In"/"Not in".
-            the function gets type and value (and one more pair that can be empty), add to filter include or exclude by
-            in_or_not and return facings.
-            :return: integer of the amount of this product.
+            :param atomic_params: dict - atomic kpi line from the template.
+            checks the kind of the survey and sends it to the match function
+            :return: float - score.
         """
         if not type1 or not value1:
             Log.warning('There is no type and value in the atomic availability')
             return 0.0
         type1 = Converters.convert_type(type1)
         value1 = value1.split(', ')
+        value1 = map(lambda x: x.strip(), value1)
         type2 = Converters.convert_type(type2)
         value2 = value2
         filters = {type1: value1}
         if type2 and value2:
-            filters[type2] = value2.split(', ')
+            value2 = value2.split(', ')
+            value2 = map(lambda x: x.strip(), value2)
+            filters[type2] = value2
         if in_or_not:
             filters = self.update_filters(filters, in_or_not, filter_type, filter_value)
         return self.tools.calculate_availability(**filters)
 
+    @kpi_runtime()
     def calculate_survey_with_types(self, atomic_params):
         """
             :param atomic_params: dict - atomic kpi line from the template.
@@ -195,6 +200,7 @@ class CCZAToolBox:
             Log.warning('The type "{}" is not recognized'.format(atomic_type))
         return atomic_score
 
+    @kpi_runtime()
     def calculate_survey_with_codes(self, atomic_params):
         """
             :param atomic_params: dict - atomic kpi line from the template.
@@ -263,6 +269,7 @@ class CCZAToolBox:
         scene_count = self.tools.calculate_number_of_scenes(**filters)
         return scene_count
 
+    @kpi_runtime()
     def calculate_sos(self, atomic_params):
         """
             :param atomic_params: dict - atomic kpi line from the template
@@ -313,16 +320,20 @@ class CCZAToolBox:
             Log.warning('The value in "In/Not In" in the template should be "Not in", "In" or empty')
         return filters
 
+    @kpi_runtime()
     def calculate_flow(self):
         """
             checking if the shelf is sorted like the brands list.
             :return: 100 if it's fine, 0 otherwise.
         """
-        progression_list = ['COCA-COLA', 'COCA-COLA Life', 'COKE ZERO', 'COKE LIGHT', 'SPRITE',
-                            'SPRITE ZERO', 'FANTA ORANGE', 'FANTA ZERO']
+        # progression_list = ['COCA-COLA', 'COCA-COLA Life', 'COKE ZERO', 'COKE LIGHT', 'TAB', 'SPRITE',
+        #                     'SPRITE ZERO', 'FANTA ORANGE', 'FANTA ZERO', 'FANTA Grape', 'FANTA Pinapple']
+        progression_list = ['COCA-COLA', 'COCA COLA PLUS COFFEE', 'COKE ZERO', 'COKE LIGHT',
+                            'COCA COLA NO SUGAR NO CAFFEINE', 'TAB', 'SPRITE', 'SPRITE ZERO', 'FANTA ORANGE',
+                            'Fanta Mango', 'FANTA Pinapple', 'FANTA Grape', 'STONEY']
 
         filtered_scif = self.scif[
-            (self.scif['location_type'] != "Pricing Scene Types") &
+            (~self.scif['location_type'].isin(["Pricing Scene Types", "Not For Flow"])) &
             (self.scif['tagged'] >= 1) &
             (self.scif['brand_name'].isin(progression_list))]
         join_on = ['scene_fk', 'product_fk']
@@ -362,9 +373,9 @@ class CCZAToolBox:
                     Const.column_key2].values[0]
             elif kpi_level == self.common.LEVEL3:
                 return self.kpi_static_data[
-                    (self.kpi_static_data[Const.column_name1] == kpi_names[Const.column_name1]) &
-                    (self.kpi_static_data[Const.column_name2] == kpi_names[Const.column_name2]) &
-                    (self.kpi_static_data[Const.column_name3] == kpi_names[Const.column_name3])][
+                    (self.kpi_static_data[Const.column_name1].str.encode('utf8') == kpi_names[Const.column_name1].encode('utf8')) &
+                    (self.kpi_static_data[Const.column_name2].str.encode('utf8') == kpi_names[Const.column_name2].encode('utf8')) &
+                    (self.kpi_static_data[Const.column_name3].str.encode('utf8') == kpi_names[Const.column_name3].encode('utf8'))][
                     Const.column_key3].values[0]
             else:
                 raise ValueError, 'invalid level'
@@ -391,6 +402,8 @@ class CCZAToolBox:
                     filters[Converters.convert_type(types[i])] = values[i]
         else:
             filters = {Converters.convert_type(type_name): value_name.split(', ')}
+        # list_of_negative = list(self.scif[self.scif['rlv_sos_sc'] != 0]['rlv_sos_sc'].unique())
+        # filters['rlv_sos_sc'] = list_of_negative # perhaps we don't need it - if we need, to enter it to the initializer
         return filters
 
     @staticmethod
