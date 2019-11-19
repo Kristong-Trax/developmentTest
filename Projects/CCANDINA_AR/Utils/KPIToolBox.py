@@ -61,42 +61,45 @@ class ToolBox(GlobalSessionToolBox):
             operation_type = row['operator']
             scene_types = self.split_values(row['template_name'], encode=True)
 
-
             if not pd.isnull(parent_kpi_name):
                 self.scene_kpi_results_fix[kpi_name] = 1
 
                 for scene in scene_list:
                     filtered_matches = matches_df[(matches_df['template_name'].isin(scene_types)) &
-                                                    (matches_df['scene_id'] == scene)]
+                                                  (matches_df['scene_id'] == scene)]
                     if filtered_matches.empty:
                         pass
                     else:
+
+                        filtered_matches.loc[filtered_matches.size_unit == 'l', 'size'] *= 1000
+                        filtered_matches.loc[filtered_matches.size_unit == 'l', 'size_unit'] = 'ml'
                         template_fk = filtered_matches['template_fk'].iloc[0]
                         if operation_type == '<':
                             size_matches = filtered_matches[['size']][
                                 (filtered_matches['shelf_number'] == 1) &
                                 (filtered_matches['product_type'] == 'SKU') &
                                 (filtered_matches['size_unit'] == size_unit_filter) &
-                                (filtered_matches['size'] < size_filter)]
+                                (filtered_matches['size'] >= size_filter)]
 
                         if operation_type == '>':
                             size_matches = filtered_matches[['size']][
                                 (filtered_matches['shelf_number'] == 1) &
                                 (filtered_matches['product_type'] == 'SKU') &
                                 (filtered_matches['size_unit'] == size_unit_filter) &
-                                (filtered_matches['size'] > size_filter)]
+                                (filtered_matches['size'] <= size_filter)]
 
                         if size_matches.empty:
-                            score = 0
-                            self.scene_kpi_results_fix[kpi_name] = 0
-
-                        else:
                             score = 1
 
 
+                        else:
+                            score = 0
+                            self.scene_kpi_results_fix[kpi_name] = 0
+
                         if not pd.isnull(parent_kpi_name):
                             self.common.write_to_db_result(kpi_fk, numerator_id=template_fk,
-                                                           denominator_id=scene, denominator_result=scene, identifier_parent=parent_kpi_name,
+                                                           denominator_id=scene, denominator_result=scene,
+                                                           identifier_parent=parent_kpi_name,
                                                            result=score, score=score,
                                                            should_enter=True)
 
@@ -110,15 +113,13 @@ class ToolBox(GlobalSessionToolBox):
                     score = 0
 
                 self.common.write_to_db_result(kpi_fk, numerator_id=self.manufacturer_fk,
-                                                   denominator_id=self.store_id,
-                                                   result=score, score=score,
-                                                   should_enter=True, identifier_result=kpi_name)
-
-
+                                               denominator_id=self.store_id,
+                                               result=score, score=score,
+                                               should_enter=True, identifier_result=kpi_name)
 
     def calculate_bay_count(self):
         scenes_templates_df = self.scif[['scene_fk', 'template_name']]
-        scenes_templates_df.drop_duplicates(inplace = True)
+        scenes_templates_df.drop_duplicates(inplace=True)
 
         self.matches = pd.merge(scenes_templates_df, self.matches, how='right', on='scene_fk')
 
@@ -128,16 +129,15 @@ class ToolBox(GlobalSessionToolBox):
             parent_kpi_name = row['Parent KPI']
             scene_list = self.matches['scene_fk'].unique().tolist()
 
-
             scene_types = self.split_values(row['template_name'])
             overall_bay_count = 0
-
 
             if not pd.isnull(parent_kpi_name):
                 parent_fk = self.get_kpi_fk_by_kpi_name(parent_kpi_name)
 
             for scene in scene_list:
-                filtered_matches = self.matches[(self.matches['scene_fk'] == scene) & (self.matches['template_name'].isin(scene_types))]
+                filtered_matches = self.matches[
+                    (self.matches['scene_fk'] == scene) & (self.matches['template_name'].isin(scene_types))]
                 if filtered_matches.empty:
                     pass
                 else:
@@ -148,16 +148,16 @@ class ToolBox(GlobalSessionToolBox):
 
                     if not pd.isnull(parent_kpi_name):
                         self.common.write_to_db_result(kpi_fk, numerator_id=self.manufacturer_fk,
-                                                   denominator_id=scene, identifier_parent=parent_kpi_name,
-                                                   result=bays_found, score=bays_found,
-                                                   should_enter=True)
+                                                       denominator_id=scene, denominator_result=scene,
+                                                       identifier_parent=parent_kpi_name,
+                                                       result=bays_found, score=bays_found,
+                                                       should_enter=True)
 
             if pd.isnull(parent_kpi_name):
-
-                    self.common.write_to_db_result(kpi_fk, numerator_id=self.manufacturer_fk,
-                                                      denominator_id=self.store_id,
-                                                      result=overall_bay_count, score=overall_bay_count,
-                                                      should_enter=True, identifier_result=kpi_name)
+                self.common.write_to_db_result(kpi_fk, numerator_id=self.manufacturer_fk,
+                                               denominator_id=self.store_id,
+                                               result=overall_bay_count, score=overall_bay_count,
+                                               should_enter=True, identifier_result=kpi_name)
 
     def split_values(self, row, encode=False):
         try:
@@ -173,4 +173,3 @@ class ToolBox(GlobalSessionToolBox):
 
         except:
             return []
-

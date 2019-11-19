@@ -57,10 +57,7 @@ class ToolBox(GlobalSceneToolBox):
             size_unit_filter = row['size_unit']
             operation_type = row['operator']
 
-
             scene_types = self.split_values(row['template_name'], encode=True)
-
-
 
             filtered_matches = self.matches[(self.matches['template_name'].isin(scene_types))]
             if filtered_matches.empty:
@@ -98,12 +95,6 @@ class ToolBox(GlobalSceneToolBox):
                                                    denominator_id=scene,
                                                    result=score, score=score,
                                                    should_enter=True, identifier_result=kpi_name)
-
-
-
-
-
-
 
     def split_values(self, row, encode=False):
         try:
