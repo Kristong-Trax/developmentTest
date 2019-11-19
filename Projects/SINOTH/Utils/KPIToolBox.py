@@ -127,8 +127,8 @@ class SinoPacificToolBox:
         """
         pd.reset_option('mode.chained_assignment')
         with pd.option_context('mode.chained_assignment', None):
-            self.filter_and_send_kpi_to_calc()
             self.calculate_assortment_kpis()
+            self.filter_and_send_kpi_to_calc()
         self.common.commit_results_data()
         return 0  # to mark successful run of script
 
@@ -444,6 +444,9 @@ class SinoPacificToolBox:
                 include_exclude_data_dict = get_include_exclude(_include_exclude)
                 dataframe_to_process = self.get_sanitized_match_prod_scene(
                     include_exclude_data_dict)
+            # hack to cast all other than OWN_DISTRIBUTOR to non-sino
+            non_sino_index = dataframe_to_process[OWN_CHECK_COL] != OWN_DISTRIBUTOR
+            dataframe_to_process.loc[non_sino_index, OWN_CHECK_COL] = 'non-sino'
             if kpi_sheet_row[KPI_FAMILY_COL] == FSOS:
                 self.calculate_fsos(detail, groupers, query_string, dataframe_to_process)
             else:
@@ -466,7 +469,7 @@ class SinoPacificToolBox:
         # for the two kpis, we need to show zero presence of own distributor.
         # else the flow will be stuck in case own manufacturers are absent altogether.
         if kpi['kpi_name'].iloc[0].lower() in ["fsos_own_distributor_all_cat",
-                                               "fsos_all_distributor_all_brand_in_whole_store"]:
+                                               "fsos_all_distributor_all_brand_in_whole_store", ]:
             self.scif['store_fk'] = self.store_id
             dataframe_to_process['store_fk'] = self.store_id
             scif_with_den_context = self.scif[[PARAM_DB_MAP[kpi['denominator'].iloc[0]]['key'],
@@ -525,12 +528,13 @@ class SinoPacificToolBox:
                                                result=result,
                                                numerator_result=numerator_result,
                                                denominator_result=denominator_result,
-                                               identifier_result="{}_{}_{}_{}".format(
+                                               identifier_result="{}_{}_{}_{}_{}".format(
                                                    kpi['kpi_name'].iloc[0],
                                                    kpi['pk'].iloc[0],
                                                    # numerator_id,
                                                    each_den_fk,
-                                                   context_id
+                                                   context_id,
+                                                   self.own_man_fk
                                                ),
                                                identifier_parent=identifier_parent,
                                                should_enter=True,
@@ -540,19 +544,18 @@ class SinoPacificToolBox:
                 # convert to a tuple
                 group_id_tup = group_id_tup,
             param_id_map = dict(zip(groupers, group_id_tup))
-            # the ugly hack! This casts the value of distributor to that in DB as custom entity.
+            # the hack! This casts the value of distributor to that in DB as custom entity.
             if OWN_CHECK_COL in param_id_map:
                 distributor_name = param_id_map.pop(OWN_CHECK_COL)
                 if distributor_name == OWN_DISTRIBUTOR:
                     param_id_map[OWN_CHECK_COL] = self.own_man_fk  # as per custom entity
-                    param_id_map['manufacturer_fk'] = self.own_man_fk
                 else:
                     param_id_map[OWN_CHECK_COL] = OTHER_DISTRIBUTOR_FK  # as per custom entity
-                    param_id_map['manufacturer_fk'] = OTHER_DISTRIBUTOR_FK
+                param_id_map['manufacturer_fk'] = param_id_map[OWN_CHECK_COL]
             # SET THE numerator, denominator and context
             numerator_id = param_id_map.get(PARAM_DB_MAP[kpi['numerator'].iloc[0]]['key'])
-            if not numerator_id:
-                raise Exception("This is down again!")
+            if numerator_id is None:
+                raise Exception("Numerator cannot be null. Check SinoTH KPIToolBox [calculate_fsos].")
             denominator_id = get_parameter_id(key_value=PARAM_DB_MAP[kpi['denominator'].iloc[0]]['key'],
                                               param_id_map=param_id_map)
             if denominator_id is None:
@@ -570,11 +573,11 @@ class SinoPacificToolBox:
                     key=PARAM_DB_MAP[kpi['denominator'].iloc[0]]['key'],
                     value=denominator_id))
             if not len(denominator_df):
-                Log.info("No denominator data for session {sess} to calculate  {name}".format(
+                Log.error("No denominator data for session {sess} to calculate  {name}".format(
                     sess=self.session_uid,
                     name=kpi.kpi_name.iloc[0]
                 ))
-                continue
+                raise Exception("Denominator data cannot be null. Check SinoTH KPIToolBox [calculate_fsos].")
             result = len(group_data) / float(len(denominator_df))
             if not is_nan(kpi[KPI_PARENT_COL].iloc[0]):
                 kpi_parent = self.kpi_static_data[(self.kpi_static_data[KPI_TYPE_COL] == kpi[KPI_PARENT_COL].iloc[0])
@@ -589,6 +592,25 @@ class SinoPacificToolBox:
                         get_parameter_id(
                             key_value=PARAM_DB_MAP[kpi_parent_detail['context'].iloc[0]]['key'],
                             param_id_map=param_id_map) or self.store_id)
+
+                if kpi['kpi_name'].iloc[0].lower() in ['fsos_all_distributor_all_brand_in_whole_store',
+                                                       'fsos_all_distributor_all_cat_all_brand']:
+                    parent_identifier = "{}_{}_{}_{}".format(
+                                                   kpi_parent_detail['kpi_name'].iloc[0],
+                                                   kpi_parent['pk'].iloc[0],
+                                                   # parent_numerator_id,
+                                                   parent_denominator_id,
+                                                   parent_context_id,
+                                               )
+                else:
+                    parent_identifier = "{}_{}_{}_{}_{}".format(
+                                                   kpi_parent_detail['kpi_name'].iloc[0],
+                                                   kpi_parent['pk'].iloc[0],
+                                                   # parent_numerator_id,
+                                                   parent_denominator_id,
+                                                   parent_context_id,
+                                                   param_id_map.get(OWN_CHECK_COL, '')
+                                               )
                 self.common.write_to_db_result(fk=kpi['pk'].iloc[0],
                                                numerator_id=numerator_id,
                                                denominator_id=denominator_id,
@@ -596,20 +618,15 @@ class SinoPacificToolBox:
                                                result=result,
                                                numerator_result=len(group_data),
                                                denominator_result=len(denominator_df),
-                                               identifier_result="{}_{}_{}_{}".format(
+                                               identifier_result="{}_{}_{}_{}_{}".format(
                                                    kpi['kpi_name'].iloc[0],
                                                    kpi['pk'].iloc[0],
                                                    # numerator_id,
                                                    denominator_id,
-                                                   context_id
+                                                   context_id,
+                                                   param_id_map.get(OWN_CHECK_COL, '')
                                                ),
-                                               identifier_parent="{}_{}_{}_{}".format(
-                                                   kpi_parent_detail['kpi_name'].iloc[0],
-                                                   kpi_parent['pk'].iloc[0],
-                                                   # parent_numerator_id,
-                                                   parent_denominator_id,
-                                                   parent_context_id
-                                               ),
+                                               identifier_parent=parent_identifier,
                                                should_enter=True,
                                                )
             else:
@@ -626,7 +643,7 @@ class SinoPacificToolBox:
                                                    kpi['pk'].iloc[0],
                                                    # numerator_id,
                                                    denominator_id,
-                                                   context_id
+                                                   context_id,
                                                ),
                                                should_enter=True,
                                                )
