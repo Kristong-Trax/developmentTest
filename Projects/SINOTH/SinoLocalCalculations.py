@@ -12,10 +12,7 @@ if __name__ == '__main__':
     Config.init()
     data_provider = KEngineDataProvider(project_name)
     sessions = [
-        '36951936-c432-4b48-a92c-9bbe916accf7',
-        '3e1fd576-b31b-49d7-873c-2f52ade7d93d',
-        'b8dde4fe-bc78-4692-9161-f2a78d291b33',
-        'dd6d643d-e628-404a-83b5-82d09e1e9126'
+        'C03F39B0-E9B7-49BE-9F59-EF28C4E5477F'
     ]
     for session in sessions:
         Log.info("Running for session >>>> {}".format(session))
