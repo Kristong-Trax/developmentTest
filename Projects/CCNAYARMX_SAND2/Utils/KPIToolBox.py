@@ -518,6 +518,7 @@ class ToolBox(GlobalSessionToolBox):
 
         relevant_results = \
             self.scene_survey_results[self.scene_survey_results['question_fk'].isin(relevant_question_fks)]
+        count_cooler_brands =relevant_results['selected_option_text'].value_counts()
 
         cooler_brands = relevant_results['selected_option_text'].unique().tolist()
         if cooler_brands:
@@ -525,7 +526,7 @@ class ToolBox(GlobalSessionToolBox):
                 if cooler_brand_name and pd.notna(cooler_brand_name):
                     cooler_brand_fk = self._get_cooler_brand_fk_by_cooler_brand_name(cooler_brand_name)
                     result_dict = {'kpi_name': brand_kpi_name, 'kpi_fk': brand_kpi_fk, 'numerator_id': cooler_brand_fk,
-                                   'denominator_id': self.store_id, 'result': 1, 'identifier_parent': kpi_name}
+                                   'denominator_id': self.store_id, 'result': count_cooler_brands[cooler_brand_name], 'identifier_parent': kpi_name}
                     results_list.append(result_dict)
 
         if len(relevant_results) > 1:
