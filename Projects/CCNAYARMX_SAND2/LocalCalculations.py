@@ -7,9 +7,15 @@ if __name__ == '__main__':
     LoggerInitializer.init('ccnayarmx-sand2 calculations')
     Config.init()
     project_name = 'ccnayarmx-sand2'
+
+    from Trax.Data.Projects.Store import ProjectStore
+
+    ProjectStore.get_project(project_name)['rds_name'] = ProjectStore.get_project(project_name)['rds_name'].replace(
+        'mysql.vpn.', 'mysql.')
+
     data_provider = KEngineDataProvider(project_name)
     session_list = [
-        'fc2039bb-9fb2-4062-9427-dc85530a123b',
+        'c2323d65-b6dc-46c4-bc3e-d3d3d9a15302',
         #             'e1f58875-2b5b-4b93-a596-ae5baca33b09'
         # '9c558394-4305-4f5e-94de-5fd8101db0e7'
     ]
