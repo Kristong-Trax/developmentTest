@@ -1,7 +1,7 @@
 from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScript
-# from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
-# from Trax.Utils.Conf.Configuration import Config
-# from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
+from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
+from Trax.Utils.Conf.Configuration import Config
+from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
 import os
 import pandas as pd
 
@@ -38,15 +38,13 @@ class JNJUKCalculations(BaseCalculationsScript):
         self.timer.stop('KPIGenerator.run_project_calculations')
 
 
-# if __name__ == '__main__':
-#     LoggerInitializer.init('jnjuk-sand calculations')
-#     Config.init()
-#     project_name = 'jnjuk-sand'
-#     data_provider = KEngineDataProvider(project_name)
-#     session = "cff3c170-1ba9-4ce4-bb24-f784827d953d"
-#     sessions = ["788b26b7-25a2-4140-ac5d-61b67a3852c4", "7c8d5ef2-3881-4cef-a7bc-8c2512c3ed74", "62e4df75-2345-414e-aac5-bfeab3b51634",
-#                 "d5108b7f-fbeb-4f21-bfeb-4998ede09e4b", "30c1b027-a44a-4060-b19b-bf806ff19075"]
-#     for session in sessions:
-#         data_provider.load_session_data(session)
-#         output = Output()
-#         JNJUKCalculations(data_provider, output).run_project_calculations()
+if __name__ == '__main__':
+    LoggerInitializer.init('jnjuk-sand calculations')
+    Config.init()
+    project_name = 'jnjuk-sand'
+    data_provider = KEngineDataProvider(project_name)
+    sessions = ["30c1b027-a44a-4060-b19b-bf806ff19075"]
+    for session in sessions:
+        data_provider.load_session_data(session)
+        output = Output()
+        JNJUKCalculations(data_provider, output).run_project_calculations()
