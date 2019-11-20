@@ -171,7 +171,7 @@ class CCKH_SANDToolBox(CCKH_SANDConsts):
                         elif kpi_type == self.SURVEY:
                             score, result, threshold, survey_answer_fk = self.check_survey(child)
                             threshold = None
-                            numerator, denominator, result_new_db = 1, 1, score
+                            numerator, denominator, result_new_db = 1, 1, score*100
                             numerator_id = survey_answer_fk
                         elif kpi_type == self.SHARE_OF_SHELF:
                             score, result, threshold, result_new_db, numerator, denominator = \
