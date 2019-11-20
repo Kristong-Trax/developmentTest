@@ -11,7 +11,7 @@ __author__ = 'nidhin'
 
 class TestSINOTH(TestCase):
 
-    @mock.patch('Projects.SINOPAC_LOCAL.Utils.KPIToolBox.ProjectConnector')
+    @mock.patch('Projects.SINOTH.Utils.KPIToolBox.ProjectConnector')
     def setUp(self, x):
         Config.init('')
         self.data_provider_mock = MagicMock()
