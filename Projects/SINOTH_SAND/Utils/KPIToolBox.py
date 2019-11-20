@@ -35,6 +35,7 @@ OUTPUT_TYPE = 'output'
 # FAMILIES ALLOWED
 ASSORTMENTS = 'ASSORTMENTS'
 FSOS = 'FSOS'
+SIMON ='SIMON'
 DISTRIBUTION = 'Distrbution'
 OOS = 'OOS'
 Count = 'Count'
@@ -462,7 +463,7 @@ class SinoPacificToolBox:
             # hack to cast all other than OWN_DISTRIBUTOR to non-sino
             non_sino_index = dataframe_to_process[OWN_CHECK_COL] != OWN_DISTRIBUTOR
             dataframe_to_process.loc[non_sino_index, OWN_CHECK_COL] = 'non-sino'
-            if kpi_sheet_row[KPI_FAMILY_COL] == FSOS:
+            if kpi_sheet_row[KPI_FAMILY_COL] in [FSOS, SIMON]:
                 self.calculate_fsos(detail, groupers, query_string, dataframe_to_process)
             else:
                 Log.error("From project: {proj}. Unexpected kpi_family: {type}. Please check.".format(
