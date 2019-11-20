@@ -15,9 +15,16 @@ class Const(object):
     SHARE_OF_SHELF = 'Share of Shelf'
     ADJACENCY = 'Adjacency'
     DISTRIBUTION = 'Distribution'
-    BASE_MEASUREMENT = 'Base Measurement'
+    LINEAR_MEASUREMENT = 'Linear Measurement'
     OUT_OF_STOCK = 'Out of Stock'
     PACK_DISTRIBUTION = 'Pack Distribution'
+    PURITY = 'Purity'
+    NEGATIVE_DISTRIBUTION = 'Negative Distribution'
+    ADJACENCY = 'Adjacency'
+    BLOCKING = 'Blocking'
+    SHELF_PLACEMENT = 'Shelf Placement'
+    PRODUCT_SEQUENCE = 'Product Sequence'
+
 
 
     # Krishna Edits
@@ -28,7 +35,6 @@ class Const(object):
     SHELF_REGION = 'Shelf Region'
     BLOCKING = 'Blocking'
     MAX_BLOCK_ADJ = 'Max Block Adjacency'
-    BLOCKED_TOGETHER = 'Blocked Together'
     BLOCKING_PERCENT = 'Blocking Percent'
     BLOCK_ORIENTATION = 'Block Orientation'
     MULTI_BLOCK = 'Multi Block'
@@ -64,7 +70,7 @@ class Const(object):
     COMMA_SPACE = ', '
     COMMA = ','
     KEEP = 'keep'
-    SOS_EXCLUDE_FILTERS = {'product_type': ['Irrelevant', 'Empty']}
+    SOS_EXCLUDE_FILTERS = {'product_type': ['Irrelevant']}
     ALLOWED_FILTERS = {'product_type': ['Other', 'Empty']}
     IGN_STACKING = {"stacking_layer": 1}
     ORIENTS = {'vertically', 'horizontally'}
