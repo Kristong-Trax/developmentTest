@@ -543,7 +543,7 @@ class ToolBox(GlobalSessionToolBox):
 
     def _get_cooler_brand_fk_by_cooler_brand_name(self, cooler_brand_name):
         try:
-            entity = self.custom_entities[self.custom_entities['name'].str.encode('utf-8') == cooler_brand_name]
+            entity = self.custom_entities[self.custom_entities['name'] == cooler_brand_name]
         except:
             entity = self.custom_entities[
                 self.custom_entities['name'].str.encode('utf-8') == cooler_brand_name.encode('utf-8')]
