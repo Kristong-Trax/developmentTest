@@ -122,7 +122,7 @@ class ToolBox:
         # if kpi_name not in [
         #     # 'Eye Level Availability'
         #     # 'Flanker Displays', 'Disruptor Displays'
-        #     # 'Innovation Distribution',
+        #     'Innovation Distribution',
         #     # 'Display by Location',
         #     # 'Display by Location'
         #     # 'Leading Main Section on Left',
@@ -152,22 +152,22 @@ class ToolBox:
         # ]:
         #     return
 
-        if kpi_type not in [
-            # 'Share of Facings',
-            # 'Share of Shelf',
-            # 'Distribution',
-            # 'Anchor',
-            # 'Base Measurement',
-            # 'Bay Count',
-            # 'Out of Stock',
-            # 'Pack Distribution',
-            # 'Purity',
-            # 'Negative Distribution',
-            # 'Adjacency',
-            #
-            'Product Sequence'
-            ]:
-            return
+        # if kpi_type not in [
+        #     'Share of Facings',
+        #     'Share of Shelf',
+        #     'Distribution',
+        #     'Anchor',
+        #     'Base Measurement',
+        #     'Bay Count',
+        #     'Out of Stock',
+        #     'Pack Distribution',
+        #     'Purity',
+        #     'Negative Distribution',
+        #     'Adjacency',
+        #     'Product Sequence',
+        #     'Shelf Placement'
+        #     ]:
+        #     return
 
         if kpi_name in ['POP Seasonal Programs']:
             return
@@ -354,14 +354,19 @@ class ToolBox:
             lvl2_result = self.assortment.calculate_lvl2_assortment(lvl3_result)
             lvl3_result['score'] = lvl3_result['in_store']
             lvl3_result['in_store'] = ['Fail' if res == 0 else 'Pass' for res in lvl3_result['in_store']]
-            lvl2_result['score'] = lvl2_result['passes']
-
             for df in [lvl3_result, lvl2_result]:
                 df['store_fk'] = self.store_id
 
             lvl2_result['result'] = lvl2_result['passes']
-            if kpi_line['Metric'] == 'Cap':
+            if kpi_line['Result Metric'] == 'Cap':
                 lvl2_result['result'] = 'Pass' if lvl2_result['passes'].iloc[0] >= 1 else 'Fail'
+            elif kpi_line['Result Metric'] == 'Percent':
+                lvl2_result['result'] = lvl2_result['passes'] / lvl2_result['total']
+
+            if kpi_line['Score Metric'] == 'Cap':
+                lvl2_result['score'] = 1 if lvl2_result['passes'].iloc[0] >= 1 else 0
+            elif kpi_line['Score Metric'] == 'Sum':
+                lvl2_result['score'] = lvl2_result['passes']
 
             num_3 = main_line['Numerator 1']
             den_3 = main_line['Denominator 1']
@@ -606,7 +611,7 @@ class ToolBox:
             result = 0
             if sum([1 for i in v if i in existing_brands]):
                 comp_filter = {'A': {'brand_name': [k]}, 'B': {'brand_name': v}}
-                result = self.calculate_adj_base(kpi_name, kpi_line, relevant_scif, general_filters, comp_filter)
+                result = self.calculate_max_block_adj_base(kpi_name, kpi_line, relevant_scif, general_filters, comp_filter)
             results.append({'score': result, 'result': result, 'numerator_result': result,
                             'numerator_id': self.brands_dict[k][main_line[level['num_col']]],
                             'denominator_id': self.brands_dict[v[0]][main_line[level['den_col']]],
@@ -714,7 +719,7 @@ class ToolBox:
         result = 0
         if total == len(brands):
             result = 1
-        results.append({'score': result, 'result': result, 'numerator_result': total, 'denominator_id': len(brands),
+        results.append({'score': result, 'result': result, 'numerator_result': total, 'denominator_result': len(brands),
                         'numerator_id': self.manufacturer_fk,
                         'denominator_id': self.store_id,
                         'kpi_name': self.lvl_name(kpi_name, 'Session'),
@@ -725,22 +730,45 @@ class ToolBox:
         print('asdf')
 
     def calculate_product_sequence(self, kpi_name, kpi_line, relevant_scif, general_filters, level, **kwargs):
+        results = []
         A_filters = self.get_kpi_line_filters(kpi_line)
         relevant_scif = self.filter_df(relevant_scif, A_filters)
         if relevant_scif.empty:
             return None, None
+        mpis = self.filter_df(self.mpis, A_filters)
         col = self.read_cell_from_line(kpi_line, 'Iterative')[0]
         things = relevant_scif[col].unique()
         for thing in things:
+            total = 0
             B_filters = {col: [thing]}
-            mpis = self.filter_df(self.mpis, A_filters)
-            mpis = self.filter_df(mpis, B_filters)
+            seg_mpis = self.filter_df(mpis, B_filters)
             _, _, _, _, clusters = self.base_block(kpi_name, kpi_line, relevant_scif, general_filters,
                                                    filters=B_filters, check_orient=0)
-            block = clusters.sort_values('block_facings').iloc[0, :]
+            block = clusters.sort_values('block_facings', ascending=False)['cluster'].iloc[0]
+            items = set(sum([list(n['match_fk']) for i, n in block.nodes(data=True)], []))
+            brands = seg_mpis.brand_fk.unique()
+            for brand in brands:
+                result = 0
+                b_mpis = self.filter_df(seg_mpis, {'brand_fk': brand})
+                in_block = set(mpis.scene_match_fk.values) & items
+                if self.safe_divide(len(in_block), b_mpis.shape[0]) >= .75:
+                    result = 1
+                total += result
+                results.append({'score': result, 'result': result, 'numerator_result': len(in_block),
+                                'numerator_id': brand,  'denominator_result': len(brands),
+                                'denominator_id': b_mpis['product_fk'].iloc[0],  # segment configured as custom entity
+                                'kpi_name': self.lvl_name(kpi_name, 'Brand'),
+                                'ident_parent': self.lvl_name(kpi_name, 'Session')})
+            result = 0
+            if total == len(brands):
+                result = 1
+            results.append({'score': result, 'result': result, 'numerator_result': total,
+                            'numerator_id': self.manufacturer_fk, 'denominator_result': len(brands),
+                            'denominator_id': b_mpis['product_fk'].iloc[0],  # segment configured as custom entity
+                            'kpi_name': self.lvl_name(kpi_name, 'Session'),
+                            'ident_result': self.lvl_name(kpi_name, 'Session')})
 
-
-            print{'asdf'}
+            return level['end'], results
 
 
     def base_block(self, kpi_name, kpi_line, relevant_scif, general_filters_base, check_orient=1, other=1, filters={},
@@ -793,30 +821,8 @@ class ToolBox:
             raise TypeError('No Data Found fo kpi "'.format(kpi_name))
         return score, orientation, mpis_dict, blocks, result
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-    def calculate_same_aisle(self, kpi_name, kpi_line, relevant_scif, general_filters):
-        filters = self.get_kpi_line_filters(kpi_line)
-        relevant_scif = self.filter_df(self.scif, filters)
-        if relevant_scif.empty:
-            return
-        result = 0
-        if len(relevant_scif.scene_fk.unique()) == 1:
-            result = 1
-        return {'score': 1, 'result': result}
-
-    def calculate_shelf_placement(self, kpi_name, kpi_line, relevant_scif, general_filters):
+    def calculate_shelf_placement(self, kpi_name, kpi_line, relevant_scif, general_filters, main_line, level, **kwargs):
+        results = []
         location = kpi_line['Shelf Placement'].lower()
         tmb_map = pd.read_excel(Const.TMB_MAP_PATH).melt(id_vars=['Num Shelves'], var_name=['Shelf']) \
             .set_index(['Num Shelves', 'Shelf']).reset_index()
@@ -840,8 +846,40 @@ class ToolBox:
         mpis = mpis.merge(bay_shelf, on=['bay_number', 'scene_fk'])
         mpis['true_shelf'] = mpis['shelf_number_from_bottom'] + mpis['shelf_offset']
         mpis = mpis.merge(tmb_map, on=['max_shelves', 'shelf_number_from_bottom'])
+        eye = self.filter_df(mpis, {'TMB': location})
+        for i, row in eye.iterrows():
+            results.append({'score': 1, 'result': 1, 'numerator_result': 1,
+                            'numerator_id': row[main_line[level['num_col']]],
+                            'denominator_id': row[main_line[level['den_col']]],  # segment configured as custom entity
+                            'kpi_name': self.lvl_name(kpi_name, 'SKU'),
+                            'ident_parent': self.lvl_name(kpi_name, 'Session')})
+        result = self.safe_divide(eye.shape[0], mpis.shape[0])
+        results.append({'score': result, 'result': result, 'numerator_result': eye.shape[0],
+                        'numerator_id': self.manufacturer_fk, 'denominator_result': mpis.shape[0],
+                        'denominator_id': self.store_id,
+                        'kpi_name': self.lvl_name(kpi_name, 'Session'),
+                        'ident_result': self.lvl_name(kpi_name, 'Session')})
+        return level['end'], results
 
-        result = self.safe_divide(self.filter_df(mpis, {'TMB': location}).shape[0], mpis.shape[0])
+
+
+
+
+
+
+
+
+
+
+
+    def calculate_same_aisle(self, kpi_name, kpi_line, relevant_scif, general_filters):
+        filters = self.get_kpi_line_filters(kpi_line)
+        relevant_scif = self.filter_df(self.scif, filters)
+        if relevant_scif.empty:
+            return
+        result = 0
+        if len(relevant_scif.scene_fk.unique()) == 1:
+            result = 1
         return {'score': 1, 'result': result}
 
     def calulate_shelf_region(self, kpi_name, kpi_line, relevant_scif, general_filters):
@@ -1430,7 +1468,7 @@ class ToolBox:
             return self.calculate_distribution
         elif kpi_type == Const.ANCHOR:
             return self.calculate_anchor
-        elif kpi_type == Const.BASE_MEASUREMENT:
+        elif kpi_type == Const.LINEAR_MEASUREMENT:
             return self.calculate_base_measure
         elif kpi_type == Const.OUT_OF_STOCK:
             return self.calculate_dynamic_oos
@@ -1446,6 +1484,8 @@ class ToolBox:
             return self.calculate_blocking
         elif kpi_type == Const.PRODUCT_SEQUENCE:
             return self.calculate_product_sequence
+        elif kpi_type == Const.SHELF_PLACEMENT:
+            return self.calculate_shelf_placement
 
 
 

@@ -15,13 +15,14 @@ class Const(object):
     SHARE_OF_SHELF = 'Share of Shelf'
     ADJACENCY = 'Adjacency'
     DISTRIBUTION = 'Distribution'
-    BASE_MEASUREMENT = 'Base Measurement'
+    LINEAR_MEASUREMENT = 'Linear Measurement'
     OUT_OF_STOCK = 'Out of Stock'
     PACK_DISTRIBUTION = 'Pack Distribution'
     PURITY = 'Purity'
     NEGATIVE_DISTRIBUTION = 'Negative Distribution'
     ADJACENCY = 'Adjacency'
     BLOCKING = 'Blocking'
+    SHELF_PLACEMENT = 'Shelf Placement'
     PRODUCT_SEQUENCE = 'Product Sequence'
 
 
