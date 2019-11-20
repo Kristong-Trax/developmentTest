@@ -136,8 +136,12 @@ class SinoPacificToolBox:
         kpi_include_exclude = self.kpi_template.parse(KPI_INC_EXC_SHEET)
         valid_scenes = kpi_include_exclude[
             kpi_include_exclude[KPI_NAME_COL] == ASSORTMENTS]['scene_types_to_include'].values[0]
+        valid_categories = kpi_include_exclude[
+            kpi_include_exclude[KPI_NAME_COL] == ASSORTMENTS]['categories_to_include'].values[0]
         valid_scenes = [x.strip() for x in valid_scenes.split(',') if x]
-        valid_scif = self.scif[self.scif['template_name'].isin(valid_scenes)]
+        valid_categories = [x.strip() for x in valid_categories.split(',') if x]
+        valid_scif = self.scif[(self.scif['template_name'].isin(valid_scenes)) &
+                               (self.scif['category'].isin(valid_categories))]
         distribution_kpi = self.kpi_static_data[(self.kpi_static_data[KPI_TYPE_COL] == DST_MAN_BY_STORE_PERC)
                                                 & (self.kpi_static_data['delete_time'].isnull())]
         oos_kpi = self.kpi_static_data[(self.kpi_static_data[KPI_TYPE_COL] == OOS_MAN_BY_STORE_PERC)
@@ -311,10 +315,14 @@ class SinoPacificToolBox:
         Log.info("Calculate product presence and OOS products per Category for {}".format(self.project_name))
         scene_category_group = valid_scif.groupby('category_fk')
         for category_fk, each_scif_data in scene_category_group:
-            total_products_in_scene = each_scif_data["item_id"].unique()
-            present_products = np.intersect1d(total_products_in_scene, assortment_product_fks)
-            extra_products = np.setdiff1d(total_products_in_scene, present_products)
-            oos_products = np.setdiff1d(assortment_product_fks, present_products)
+            total_products_in_scene_for_cat = each_scif_data["item_id"].unique()
+            curr_category_products_in_assortment_df = self.all_products[
+                (self.all_products.product_fk.isin(assortment_product_fks))
+                & (self.all_products.category_fk == category_fk)]
+            curr_category_products_in_assortment = curr_category_products_in_assortment_df['product_fk'].unique()
+            present_products = np.intersect1d(total_products_in_scene_for_cat, curr_category_products_in_assortment)
+            extra_products = np.setdiff1d(total_products_in_scene_for_cat, present_products)
+            oos_products = np.setdiff1d(curr_category_products_in_assortment, present_products)
             product_map = {
                 OOS_CODE: oos_products,
                 PRESENT_CODE: present_products,
@@ -356,20 +364,27 @@ class SinoPacificToolBox:
         scene_category_group = valid_scif.groupby('category_fk')
         for category_fk, each_scif_data in scene_category_group:
             scene_products = pd.Series(each_scif_data["item_id"].unique())
-            total_products_in_assortment = len(assortment_product_fks)
+            # find products in assortment belonging to categor_fk
+            curr_category_products_in_assortment = len(self.all_products[
+                (self.all_products.product_fk.isin(assortment_product_fks))
+                & (self.all_products.category_fk == category_fk)])
             count_of_assortment_prod_in_scene = assortment_product_fks.isin(scene_products).sum()
-            oos_count = total_products_in_assortment - count_of_assortment_prod_in_scene
+            oos_count = curr_category_products_in_assortment - count_of_assortment_prod_in_scene
             #  count of lion sku / all sku assortment count
-            if not total_products_in_assortment:
-                Log.info("No assortments applicable for session {sess}.".format(sess=self.session_uid))
-                return 0
-            distribution_perc = count_of_assortment_prod_in_scene / float(total_products_in_assortment) * 100
+            if not curr_category_products_in_assortment:
+                Log.info("No products from assortment with category: {cat} found in session {sess}.".format(
+                    cat=category_fk,
+                    sess=self.session_uid))
+                distribution_perc = 0
+                continue
+            else:
+                distribution_perc = count_of_assortment_prod_in_scene / float(curr_category_products_in_assortment) * 100
             oos_perc = 100 - distribution_perc
             self.common.write_to_db_result(fk=distribution_kpi_fk,
                                            numerator_id=self.own_man_fk,
                                            numerator_result=count_of_assortment_prod_in_scene,
                                            denominator_id=category_fk,
-                                           denominator_result=total_products_in_assortment,
+                                           denominator_result=curr_category_products_in_assortment,
                                            context_id=self.store_id,
                                            result=distribution_perc,
                                            score=distribution_perc,
@@ -380,7 +395,7 @@ class SinoPacificToolBox:
                                            numerator_id=self.own_man_fk,
                                            numerator_result=oos_count,
                                            denominator_id=category_fk,
-                                           denominator_result=total_products_in_assortment,
+                                           denominator_result=curr_category_products_in_assortment,
                                            context_id=self.store_id,
                                            result=oos_perc,
                                            score=oos_perc,
