@@ -279,7 +279,7 @@ class CCKH_SANDToolBox(CCKH_SANDConsts):
             kpi_data = custom_template[condition]
             if kpi_data.empty:
                 return False
-            weight = kpi_data[kpi_data['store_type'] == self.store_type]['Target'].values[0]
+            weight = kpi_data[kpi_data['store_type'].str.encode(HelperConsts.UTF8) == self.store_type.encode(HelperConsts.UTF8)]['Target'].values[0]
             try:
                 validation = float(weight)
             except ValueError:
@@ -330,7 +330,9 @@ class CCKH_SANDToolBox(CCKH_SANDConsts):
         """
         kpi_data = self.availability_info[(self.availability_info[self.template.KPI_NAME] ==
                                            params[self.template.KPI_NAME]) & (self.availability_info[
-                                                                                  self.template.STORE_TYPE] == self.store_type)]
+                                                                                  self.template.STORE_TYPE].str.
+                                                                              encode(HelperConsts.UTF8) ==
+                                                                              self.store_type.encode(HelperConsts.UTF8))]
         if kpi_data.empty:
             return False
         kpi_data = kpi_data.iloc[0]
