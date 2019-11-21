@@ -17,7 +17,7 @@ from KPIUtils.Calculations.Survey import Survey
 from KPIUtils_v2.Utils.Decorators.Decorators import kpi_runtime
 from KPIUtils_v2.DB.CommonV2 import Common as CommonV2
 from KPIUtils_v2.Utils.Parsers.ParseInputKPI import filter_df
-from KPIUtils_v2.Utils.Consts.DataProvider import ScifConsts
+from KPIUtils_v2.Utils.Consts.DataProvider import ScifConsts, MatchesConsts
 
 __author__ = 'Elyashiv'
 
@@ -416,6 +416,21 @@ class CCZAToolBox:
             if count >= wanted_answer:
                 return 100.0
         return 0.0
+
+    def calculate_planogram_new(self, atomic_params):
+        """
+            :param atomic_params: dict - atomic kpi line from the template
+            :return: 100 if there is scene which has at least one correctly positioned product, 0 otherwise.
+        """
+        type_name = Converters.convert_type(atomic_params[Const.ENTITY_TYPE])
+        values = atomic_params[Const.ENTITY_VAL].split(', ')
+        wanted_answer = float(atomic_params[Const.ACCEPTED_ANSWER_RESULT])
+        filtered_scenes = self.scif[self.scif[type_name].isin(values)][ScifConsts.SCENE_FK].unique()
+        p_matches = self.match_product_in_scene[self.match_product_in_scene[ScifConsts.SCENE_FK].isin(filtered_scenes)]
+        planogram_matches_passing = p_matches[p_matches[MatchesConsts.COMPLIANCE_STATUS_FK] == 3]
+        scenes_passing = len(planogram_matches_passing[ScifConsts.SCENE_FK].unique())
+        score = 100 if scenes_passing >= wanted_answer else 0
+        return score
 
     def calculate_scene_count(self, atomic_params):
         """
