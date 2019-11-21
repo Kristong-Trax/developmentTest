@@ -49,7 +49,7 @@ ORALB_BRAND = 'Oral-B'
 
 OC_CATEGORY = 'Oral Care'
 FEM_CATEGORY = 'Fem Care'
-EYE_LEVEL_RELEVANT_CATEGORIES = [PCC_CATEGORY, OC_CATEGORY, FEM_CATEGORY]
+EYE_LEVEL_RELEVANT_CATEGORIES = [PCC_CATEGORY, OC_CATEGORY]
 
 # Block_Variant KPI
 VARIANT_BLOCK_TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)),
@@ -523,6 +523,14 @@ class PngcnSceneKpis(object):
             frag_df = seq_df.groupby(by=['group']).first()
             for i, row in frag_df.iterrows():
                 facing_sequence_number = row['facing_sequence_number']
+                entity_search_rs = entity_df[entity_df['entity_name'].str.encode("utf8")
+                                      == key.encode("utf8")]['entity_fk']
+                entity_fk = 'dummy'
+                if entity_search_rs.empty:
+                    Log.info("Entity {} is not found in database, for scene {}".format(key, self.scene_id))
+                    continue
+                else:
+                    entity_fk = entity_search_rs.values[0]
                 entity_fk = entity_df[entity_df['entity_name'].str.encode("utf8")
                                       == key.encode("utf8")]['entity_fk'].values[0]
                 bay_number = row['bay_number']
