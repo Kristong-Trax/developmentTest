@@ -14,8 +14,8 @@ if __name__ == '__main__':
         'mysql.vpn.', 'mysql.')
 
     data_provider = KEngineDataProvider(project_name)
-    session_list = [
-        'c2323d65-b6dc-46c4-bc3e-d3d3d9a15302',
+    session_list = ['163a89fc-8376-4778-b27f-a5bc4184a3bc',
+        # '01a17635-a3e1-47aa-8efe-2e3af4ff11cf',
         #             'e1f58875-2b5b-4b93-a596-ae5baca33b09'
         # '9c558394-4305-4f5e-94de-5fd8101db0e7'
     ]

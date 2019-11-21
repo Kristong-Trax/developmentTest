@@ -167,7 +167,7 @@ class ToolBox(GlobalSessionToolBox):
                         if 'identifier_result' not in result.keys():
                             result['identifier_result'] = result['kpi_name']
                         if result['result'] <= 1:
-                            if row[PARENT_KPI] != 'Portafolio':
+                            if row[PARENT_KPI] != 'Portafolio' and result['kpi_name'] != 'Capacidad Fria (Detalle)':
                                 result['result'] = result['result'] * 100
                         self.results_df.loc[len(self.results_df), result.keys()] = result
 
@@ -427,7 +427,7 @@ class ToolBox(GlobalSessionToolBox):
         if not target:
             return {'kpi_name': kpi_name, 'kpi_fk': kpi_fk, 'result': pd.np.nan}
 
-        if number_of_bays > target:
+        if number_of_bays >= target:
             result = 1
         else:
             result = 0
