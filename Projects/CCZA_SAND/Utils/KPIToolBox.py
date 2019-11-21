@@ -66,21 +66,68 @@ class CCZAToolBox:
         return own_manufacturer_fk
 
     def sos_main_calculation(self):
-        store_sos_ident_par = self.calculate_own_manufacturer_out_of_store()
-        self.calculate_sos_category_out_of_store(store_sos_ident_par)
-        pass
+        store_sos_ident_par, store_facings = self.calculate_own_manufacturer_out_of_store()
+        category_df = self.calculate_sos_category_out_of_store(store_sos_ident_par, store_facings)
+        manufacturer_cat_df = self.calculate_sos_manufacturer_out_of_category(category_df)
+        self.calculate_sos_brand_out_of_manufacturer(manufacturer_cat_df)
 
     def calculate_own_manufacturer_out_of_store(self):
         manuf_out_of_store_fk = self.common_v2.get_kpi_fk_by_kpi_type(Const.SOS_OWN_MANUF_OUT_OF_STORE)
         store_sos_ident_par = self.common_v2.get_dictionary(kpi_fk=manuf_out_of_store_fk)
-        num_filters, denom_filters = self.construct_sos_filters(('manufacturer', self.own_manuf_fk), ('', ''))
+        # num_filters, denom_filters = self.construct_sos_filters(('manufacturer', self.own_manuf_fk), ('', ''))
+        num_filters = {ScifConsts.MANUFACTURER_FK: self.own_manuf_fk}
+        denom_filters = {}
         num_result, denom_result, sos_result = self.calculate_sos_custom(num_filters, denom_filters,
                                                                          Const.IGNORE_STACKING)
         self.common_v2.write_to_db_result(fk=manuf_out_of_store_fk, numerator_id=self.own_manuf_fk,
                                           denominator_id=self.store_id, numerator_result=num_result,
                                           denominator_result=denom_result, score=sos_result, result=sos_result,
                                           identifier_result=store_sos_ident_par, should_enter=True)
-        return store_sos_ident_par
+        return store_sos_ident_par, denom_result
+
+    def calculate_sos_brand_out_of_manufacturer(self, manuf_df):
+        kpi_fk = self.common_v2.get_kpi_fk_by_kpi_type(Const.SOS_BRAND_OUT_CAT)
+        brand_man_cat_df = self.scif.groupby([ScifConsts.CATEGORY_FK, ScifConsts.MANUFACTURER_FK, ScifConsts.BRAND_FK],
+                                             as_index=False).agg({ScifConsts.FACINGS_IGN_STACK: np.sum})
+        brand_man_cat_df = brand_man_cat_df.merge(manuf_df, on=[ScifConsts.CATEGORY_FK, ScifConsts.MANUFACTURER_FK],
+                                                  how='left')
+        brand_man_cat_df['sos'] = brand_man_cat_df[ScifConsts.FACINGS_IGN_STACK] / brand_man_cat_df['man_cat_facings']
+        for i, row in brand_man_cat_df.iterrows():
+            self.common_v2.write_to_db_result(fk=kpi_fk, numerator_id=row[ScifConsts.BRAND_FK],
+                                              denominator_id=row[ScifConsts.MANUFACTURER_FK],
+                                              numerator_result=row[ScifConsts.FACINGS_IGN_STACK],
+                                              denominator_result=row['man_cat_facings'], result=row['sos'],
+                                              context_id=row[ScifConsts.CATEGORY_FK],
+                                              score=row['sos'], identifier_parent=row['manuf_id_parent'],
+                                              should_enter=True)
+
+    def calculate_sos_manufacturer_out_of_category(self, cat_df):
+        kpi_fk = self.common_v2.get_kpi_fk_by_kpi_type(Const.SOS_MANUF_OUT_OF_CAT)
+        manuf_in_cat_df = self.scif.groupby([ScifConsts.CATEGORY_FK, ScifConsts.MANUFACTURER_FK],
+                                            as_index=False).agg({ScifConsts.FACINGS_IGN_STACK: np.sum})
+        manuf_in_cat_df = manuf_in_cat_df.merge(cat_df, on=ScifConsts.CATEGORY_FK, how='left')
+        manuf_in_cat_df['sos'] = manuf_in_cat_df[ScifConsts.FACINGS_IGN_STACK] / manuf_in_cat_df['category_facings']
+        manuf_in_cat_df['id_result'] = manuf_in_cat_df.apply(self.build_identifier_parent_man_in_cat,
+                                                             axis=1, args=(kpi_fk,))
+        for i, row in manuf_in_cat_df.iterrows():
+            self.common_v2.write_to_db_result(fk=kpi_fk, numerator_id=row[ScifConsts.MANUFACTURER_FK],
+                                              denominator_id=row[ScifConsts.CATEGORY_FK],
+                                              numerator_result=row[ScifConsts.FACINGS_IGN_STACK],
+                                              denominator_result=row['category_facings'], result=row['sos'],
+                                              score=row['sos'], identifier_parent=row['cat_id_parent'],
+                                              identifier_result=row['id_result'],
+                                              should_enter=True)
+        manuf_in_cat_df.rename(columns={ScifConsts.FACINGS_IGN_STACK: 'man_cat_facings',
+                                        'id_result': 'manuf_id_parent'}, inplace=True)
+        manuf_in_cat_df = manuf_in_cat_df[[ScifConsts.MANUFACTURER_FK, ScifConsts.CATEGORY_FK,
+                                           'man_cat_facings', 'manuf_id_parent']]
+        return manuf_in_cat_df
+
+    @staticmethod
+    def build_identifier_parent_man_in_cat(row, kpi_fk):
+        id_result_dict = {Const.KPI_FK: kpi_fk, ScifConsts.CATEGORY_FK: row[ScifConsts.CATEGORY_FK],
+                          ScifConsts.MANUFACTURER_FK: row[ScifConsts.MANUFACTURER_FK]}
+        return id_result_dict
 
     def calculate_sos_category_out_of_store(self, store_sos_ident_par, store_facings):
         kpi_fk = self.common_v2.get_kpi_fk_by_kpi_type(Const.SOS_CAT_OUT_OF_STORE)
@@ -95,6 +142,9 @@ class CCZAToolBox:
                                               denominator_result=store_facings, result=row['sos'], score=row['sos'],
                                               identifier_parent=store_sos_ident_par, identifier_result=row['id_result'],
                                               should_enter=True)
+        cat_df.rename(columns={ScifConsts.FACINGS_IGN_STACK: 'category_facings', 'id_result': 'id_parent'}, inplace=True)
+        cat_df = cat_df[[ScifConsts.CATEGORY_FK, 'category_facings', 'cat_id_parent']]
+        return cat_df
 
     def calculate_sos_custom(self, num_filters, denom_filters, ignore_stacking):
         num_result = self.calculate_facings_space(num_filters, ignore_stacking)
@@ -108,16 +158,16 @@ class CCZAToolBox:
         space_length = filtered_scif[length_field].sum()
         return float(space_length)
 
-    @staticmethod
-    def construct_sos_filters((num_entity, num_value), (denom_entity, denom_value)):
-        num_filter_key = '{}_fk'.format(num_entity) if num_entity else None
-        denom_filter_key = '{}_fk'.format(denom_entity) if denom_entity else None
-
-        num_filters = {num_filter_key: num_value} if num_filter_key is not None else {}
-        denom_filters = {denom_filter_key: denom_value} if denom_filter_key is not None else {}
-
-        num_filters.update(denom_filters)
-        return num_filters, denom_filters
+    # @staticmethod
+    # def construct_sos_filters((num_entity, num_value), (denom_entity, denom_value)):
+    #     num_filter_key = '{}_fk'.format(num_entity) if num_entity else None
+    #     denom_filter_key = '{}_fk'.format(denom_entity) if denom_entity else None
+    #
+    #     num_filters = {num_filter_key: num_value} if num_filter_key is not None else {}
+    #     denom_filters = {denom_filter_key: denom_value} if denom_filter_key is not None else {}
+    #
+    #     num_filters.update(denom_filters)
+    #     return num_filters, denom_filters
 
     def main_calculation_red_score(self):
         set_score = 0
