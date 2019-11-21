@@ -1,5 +1,6 @@
 import os
 import pandas as pd
+import numpy as np
 
 from Trax.Algo.Calculations.Core.Utils import ToolBox
 from Trax.Algo.Calculations.Core.DataProvider import Data
@@ -65,6 +66,11 @@ class CCZAToolBox:
         return own_manufacturer_fk
 
     def sos_main_calculation(self):
+        store_sos_ident_par = self.calculate_own_manufacturer_out_of_store()
+        self.calculate_sos_category_out_of_store(store_sos_ident_par)
+        pass
+
+    def calculate_own_manufacturer_out_of_store(self):
         manuf_out_of_store_fk = self.common_v2.get_kpi_fk_by_kpi_type(Const.SOS_OWN_MANUF_OUT_OF_STORE)
         store_sos_ident_par = self.common_v2.get_dictionary(kpi_fk=manuf_out_of_store_fk)
         num_filters, denom_filters = self.construct_sos_filters(('manufacturer', self.own_manuf_fk), ('', ''))
@@ -72,11 +78,23 @@ class CCZAToolBox:
                                                                          Const.IGNORE_STACKING)
         self.common_v2.write_to_db_result(fk=manuf_out_of_store_fk, numerator_id=self.own_manuf_fk,
                                           denominator_id=self.store_id, numerator_result=num_result,
-                                          denominator_result=denom_result, score = sos_result, result=sos_result,
+                                          denominator_result=denom_result, score=sos_result, result=sos_result,
                                           identifier_result=store_sos_ident_par, should_enter=True)
+        return store_sos_ident_par
 
-
-        pass
+    def calculate_sos_category_out_of_store(self, store_sos_ident_par, store_facings):
+        kpi_fk = self.common_v2.get_kpi_fk_by_kpi_type(Const.SOS_CAT_OUT_OF_STORE)
+        cat_df = self.scif.groupby([ScifConsts.CATEGORY_FK], as_index=False).agg({ScifConsts.FACINGS_IGN_STACK: np.sum})
+        cat_df['sos'] = cat_df[ScifConsts.FACINGS_IGN_STACK] / store_facings
+        cat_df['id_result'] = cat_df[ScifConsts.CATEGORY_FK].apply(lambda x: {ScifConsts.CATEGORY_FK: x,
+                                                                              Const.KPI_FK: kpi_fk})
+        for i, row in cat_df.iterrows():
+            self.common_v2.write_to_db_result(fk=kpi_fk, numerator_id=row[ScifConsts.CATEGORY_FK],
+                                              denominator_id=self.store_id,
+                                              numerator_result=row[ScifConsts.FACINGS_IGN_STACK],
+                                              denominator_result=store_facings, result=row['sos'], score=row['sos'],
+                                              identifier_parent=store_sos_ident_par, identifier_result=row['id_result'],
+                                              should_enter=True)
 
     def calculate_sos_custom(self, num_filters, denom_filters, ignore_stacking):
         num_result = self.calculate_facings_space(num_filters, ignore_stacking)
