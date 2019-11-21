@@ -18,7 +18,6 @@ OWN_DISTRIBUTOR = 'SINO PACIFIC'
 
 TEMPLATE_PARENT_FOLDER = 'Data'
 TEMPLATE_NAME = 'Template.xlsx'
-ASSORTMENT_TEMPLATE_NAME = 'Assortments.xlsx'
 
 KPI_NAMES_SHEET = 'kpis'
 ASSORTMENT_SHEET = 'assortment'
@@ -36,7 +35,6 @@ OUTPUT_TYPE = 'output'
 ASSORTMENTS = 'ASSORTMENTS'
 FSOS = 'FSOS'
 SIMON ='SIMON'
-DISTRIBUTION = 'Distrbution'
 OOS = 'OOS'
 Count = 'Count'
 # Output Type
@@ -428,12 +426,12 @@ class SinoPacificToolBox:
                     continue
             kpi = self.kpi_static_data[(self.kpi_static_data[KPI_TYPE_COL] == kpi_sheet_row[KPI_NAME_COL])
                                        & (self.kpi_static_data['delete_time'].isnull())]
-            if kpi.empty:
-                Log.warning("*** KPI Name:{name} not found in DB for session {sess} ***".format(
+            if kpi.empty or kpi.scene_relevance.values[0] == 1:
+                Log.info("*** KPI Name:{name} not found in DB or is a SCENE LEVEL KPI for session {sess} ***".format(
                     name=kpi_sheet_row[KPI_NAME_COL],
                     sess=self.session_uid
                 ))
-                return False
+                continue
             else:
                 Log.info("KPI Name:{name} found in DB for session {sess}".format(
                     name=kpi_sheet_row[KPI_NAME_COL],
