@@ -20,10 +20,10 @@ class JNJANZCalculations(BaseCalculationsScript):
         eye_level_data, exclusion_data, survey_data = self._parse_templates_for_calculations()
         common = Common(self.data_provider)
         jnj_generator = JNJGenerator(self.data_provider, self.output, common, exclusion_data)
-        jnj_generator.calculate_auto_assortment(in_balde=False, only_oos=True,
+        jnj_generator.calculate_auto_assortment(in_balde=False, hierarchy=True,
                                                 just_primary=False, filter_sub_categories=False)
         jnj_generator.eye_hand_level_sos_calculation(eye_level_data, hierarchy=True)
-        # jnj_generator.promo_calc_recovery()
+        jnj_generator.promo_calc(hierarchy=True)
         # jnj_generator.linear_sos_out_of_store_discovery_report()
         # jnj_generator.share_of_shelf_manufacturer_out_of_sub_category()
         common.commit_results_data()
