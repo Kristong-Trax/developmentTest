@@ -14,6 +14,9 @@ class Const(object):
 
     PRIMARY_LOCATION = 'Primary Location'
     MAX_BLOCK_ADJACENCY = 'Max Block Adjacency'
+    MAX_BLOCK_COMPOSITION = 'Max Block Composition'
+    EXISTS_IN_MAX_BLOCK = 'Exists in Max Block'
+    BLOCKING = 'Blocking'
 
 
 
@@ -21,7 +24,6 @@ class Const(object):
     TMB = 'Top-Middle-Bottom'
     COUNT = 'Count of'
     SET_COUNT = 'Set Count of'
-    BLOCKING = 'Blocking'
     BASE_MEASURE = 'Base Measure'
     SURVEY = 'Survey Question'
     ORIENT = 'Product Orientation'
