@@ -1079,7 +1079,7 @@ class ToolBox(GlobalSessionToolBox):
             result = result - (2 / 15)
 
         # Step 11: Calculate the numerator entity and denominator entity
-        numerator_id = relevant_scif[MANUFACTURER_FK].mode()[0]
+        numerator_id = self.scif[MANUFACTURER_FK].mode()[0]
         denominator_id = relevant_scif[TEMPLATE_FK].mode()[0]
 
         result_dict = {'kpi_name': kpi_name, 'kpi_fk': kpi_fk, 'numerator_id': numerator_id,
