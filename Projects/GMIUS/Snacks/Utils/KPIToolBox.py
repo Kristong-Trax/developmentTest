@@ -122,8 +122,8 @@ class ToolBox:
                             if dependent_results or self.dependencies[dependent_kpi] is None:
                                 return
                     else:
-                        if self.dependencies[dependent_kpi] != dependent_results \
-                                and self.dependencies[dependent_kpi] is not None:
+                        if self.dependencies[dependent_kpi] == dependent_results \
+                                or self.dependencies[dependent_kpi] is None:
                             return
 
             kpi_line = self.template[kpi_type].set_index(Const.KPI_NAME).loc[kpi_name]
