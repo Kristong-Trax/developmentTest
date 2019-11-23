@@ -17,14 +17,19 @@ class Const(object):
     MAX_BLOCK_COMPOSITION = 'Max Block Composition'
     EXISTS_IN_MAX_BLOCK = 'Exists in Max Block'
     BLOCKING = 'Blocking'
+    BASE_MEASURE = 'Base Measure'
+    BLOCK_ORIENTATION = 'Block Orientation'
+    BLOCK_PERCENT = 'Block Percent'
 
+
+
+    EMPTY_BLOCKS_ERROR = 'No Data Found fo kpi {}'
 
 
     KPIS = 'KPIs'
     TMB = 'Top-Middle-Bottom'
     COUNT = 'Count of'
     SET_COUNT = 'Set Count of'
-    BASE_MEASURE = 'Base Measure'
     SURVEY = 'Survey Question'
     ORIENT = 'Product Orientation'
     PRESENCE = 'Presence'
