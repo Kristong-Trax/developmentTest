@@ -8,6 +8,7 @@ from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Algo.Calculations.Core.Utils import Validation
 from Trax.Utils.Logging.Logger import Log
 from Projects.GMIUS.Snacks.Utils.Const import Const
+from Projects.GMIUS.Utils.CustomError import NoDataForBlockError
 from Projects.GMIUS.Snacks.Utils.Deco import empty_scif_decorator
 from KPIUtils_v2.GlobalDataProvider.PsDataProvider import PsDataProvider
 
@@ -77,7 +78,7 @@ class ToolBox:
         self.template = pd.read_excel(template_path, sheetname=None)
         self.super_cat = template_path.split('/')[-1].split(' ')[0].upper()
         self.dependencies = {key: None for key in self.template[Const.KPIS][Const.KPI_NAME]}
-        # self.dependency_reorder()
+        self.dependency_reorder()
         main_template = self.template[Const.KPIS]
         self.dependency_lookup = main_template.set_index(Const.KPI_NAME)[Const.DEPENDENT].to_dict()
         self.res_dict = self.template[Const.RESULT].set_index('Result Key').to_dict('index')
@@ -100,7 +101,7 @@ class ToolBox:
         if relevant_scif.empty and main_line['Run on Empty SCIF'] != 'Y':
             return
 
-        # print(kpi_name)
+        print(kpi_name)
         # if kpi_name != 'When there is a Non-Integrated Bars set, what Nutrition segments are present in the Nutrition MSL?':
         #     return
 
@@ -110,21 +111,25 @@ class ToolBox:
                     Const.MAX_BLOCK_ADJACENCY,
                     Const.MAX_BLOCK_COMPOSITION,
                     Const.EXISTS_IN_MAX_BLOCK,
-                    Const.BLOCKING
+                    Const.BLOCKING,
+                    Const.BASE_MEASURE,
+                    Const.BLOCK_ORIENTATION,
+                    Const.BLOCK_PERCENT
                 ]):
 
             dependent_kpis = self.read_cell_from_line(main_line, Const.DEPENDENT)
             dependent_results = self.read_cell_from_line(main_line, Const.DEPENDENT_RESULT)
             if dependent_kpis:
-                for dependent_kpi in dependent_kpis:
-                    if dependent_results[0][0] != '!':
-                        if self.dependencies[dependent_kpi] not in dependent_results:
-                            if dependent_results or self.dependencies[dependent_kpi] is None:
+                for i, dependent_kpi in enumerate(dependent_kpis):
+                    # if dependent_results[0][0] != '!':
+                        if dependent_results[i]:
+                            if self.dependencies[dependent_kpi] != dependent_results[i]:
+                                # if self.dependencies[dependent_kpi] is None:
                                 return
-                    else:
-                        if self.dependencies[dependent_kpi] == dependent_results \
-                                or self.dependencies[dependent_kpi] is None:
-                            return
+                        # else:
+                        #     if self.dependencies[dependent_kpi] == dependent_results \
+                        #             or self.dependencies[dependent_kpi] is None:
+                        #         return
 
             kpi_line = self.template[kpi_type].set_index(Const.KPI_NAME).loc[kpi_name]
             function = self.get_kpi_function(kpi_type, kpi_line[Const.RESULT])
@@ -151,8 +156,8 @@ class ToolBox:
                     self.dependencies[kpi_name] = kwargs['result']
 
 
-                    # print(kwargs)
-                    # print('\n')
+                    print(kwargs)
+                    print('\n')
 
     def flag_failures(self):
         for kpi, val in self.dependencies.items():
@@ -178,6 +183,30 @@ class ToolBox:
         top = sorted(scores.items(), key=lambda x: x[1])[-1][0]
         self.MSL[self.read_cell_from_line(kpi_line, 'Short Name')[0]] = scene
         return {'score': 1, 'result': top}
+
+    def calculate_base_measure(self, kpi_name, kpi_line, relevant_scif, general_filters):
+        unit = kpi_line['Unit']
+        max_res = kpi_line['Max']
+        filters = self.get_kpi_line_filters(kpi_line)
+        filters.update(general_filters)
+        shelves = self.filter_df(self.full_mpis, general_filters).groupby('bay_number')['shelf_number'].max().to_dict()
+        bays = self.filter_df(self.mpis, filters).groupby('bay_number')['width_mm_advance']
+        total = 0
+        for i, bay in bays:
+            total += bay.sum() / shelves[i]
+        total = total / Const.MM_TO_FT
+        unit_base = total // unit
+        ft = int(unit_base * unit)
+        if total < unit:
+            result = 'LESS THAN OR EQUAL TO {} FT'.format(unit)
+        elif total > max_res:
+            result = 'GREATER THAN {} FT'.format(max_res)
+        elif total % unit == 0:
+            result = '{} FT > AND <= {} FT'.format(ft - unit, ft)
+        else:
+            result = '{} FT > AND <= {} FT'.format(ft, ft + unit)
+
+        return {'numerator_result': total, 'score': 1, 'result': result}
 
     def calculate_max_block_adj(self, kpi_name, kpi_line, relevant_scif, general_filters):
         result = 'Could not determine'
@@ -273,14 +302,48 @@ class ToolBox:
             result = 1
         return result
 
+    @empty_scif_decorator
     def calculate_blocking(self, kpi_name, kpi_line, relevant_scif, general_filters):
         _, _, _, blocks, _, = self.base_block(kpi_name, kpi_line, relevant_scif, general_filters)
         result = 'Not Blocked'
         if not blocks.empty:
             result = 'Blocked'
-        kwargs = {'score': 1, 'result': result}
-        return kwargs
+        return {'score': 1, 'result': result}
 
+    @empty_scif_decorator
+    def calculate_blocking_percent(self, kpi_name, kpi_line, relevant_scif, general_filters):
+        shelves = self.filter_df(self.full_mpis, general_filters).groupby('bay_number')['shelf_number'].max().to_dict()
+        _, _, mpis_dict, blocks, _, = self.base_block(kpi_name, kpi_line, relevant_scif, general_filters)
+        result = 'Not Blocked'
+        if not blocks.empty:
+            block = blocks.cluster.iloc[0]
+            items = sum([list(n['scene_match_fk'].values) for i, n in block.nodes(data=True)], [])
+            block_mpis = self.filter_df(self.mpis, {'scene_match_fk': items})
+            block_mpis = pd.DataFrame(block_mpis.groupby('bay_number')['shelf_number'].nunique())
+            block_mpis['real_shelf_number'] = [shelves[bay] for bay in block_mpis.index]
+            block_mpis['ratio'] = block_mpis['shelf_number'] / block_mpis['real_shelf_number']
+            block_mpis['passed'] = block_mpis.ratio.apply(lambda x: 1 if x >= .75 else 0)
+            if block_mpis.passed.sum() / block_mpis.shape[0] > .5:
+                result = 'Vertical'
+            else:
+                result = 'Not Vertical'
+        return {'score': 1, 'result': result}
+
+    def calculate_blocking_orientation(self, kpi_name, kpi_line, relevant_scif, general_filters):
+        children = self.generic_split(self.dependency_lookup[kpi_name])
+        total = 0
+        vertical = 0
+        for child in children:
+            total += 1
+            skull_hat = self.dependencies[child]
+            if skull_hat == 'Not Blocked':
+                return {'score': 1, 'result': 'Not Blocked'}
+            elif skull_hat == 'Vertical':
+                vertical += 1
+        result = 'Not Vertical'
+        if vertical / total > .5:
+            result = 'Vertical'
+        return {'score': 1, 'result': result}
 
     def base_block(self, kpi_name, kpi_line, relevant_scif, general_filters_base, check_orient=1, other=1, filters={},
                    exclude={}, multi=0, add_cols=[]):
@@ -330,7 +393,7 @@ class ToolBox:
                 # break
         if empty_check == -1 and not valid_scene_found:
             self.global_fail = 1
-            raise TypeError('No Data Found fo kpi "'.format(kpi_name))
+            raise NoDataForBlockError(Const.EMPTY_BLOCKS_ERROR.format(kpi_name))
         return score, orientation, mpis_dict, blocks, result
 
 
@@ -1201,51 +1264,6 @@ class ToolBox:
         self.common.write_to_db_result(**result_dict)
         return
 
-    def calculate_base_measure(self, kpi_name, kpi_line, relevant_scif, general_filters):
-        mpis = self.make_mpis(kpi_line, general_filters)
-        master_mpis = self.filter_df(self.full_mpis.copy(), Const.IGN_STACKING)
-        if sum([1 if 'ignore' in x else 0 for x in kpi_line.index]):
-            ign_filter = self.get_kpi_line_filters(kpi_line, 'ignore')
-            mpis = self.filter_df(mpis, ign_filter, exclude=1)
-            master_mpis = self.filter_df(master_mpis, ign_filter, exclude=1)
-        mm_sum = 0
-        if mpis.empty:
-            return {"score": None}
-        for scene in mpis.scene_fk.unique():
-            smpis = self.filter_df(mpis, {'scene_fk': scene})
-            master_smpis = self.filter_df(master_mpis, {'scene_fk': scene})
-
-            for bay in smpis['bay_number'].unique().tolist():
-                bmpis = self.filter_df(smpis, {'bay_number': bay})
-                master_bmpis = self.filter_df(master_smpis, {'bay_number': bay})
-                num_shelves = len(master_bmpis['shelf_number'].unique().tolist())
-                linear_mm = float(bmpis['width_mm_advance'].sum())
-                master_linear_mm = float(master_bmpis['width_mm_advance'].sum())
-                # if linear_mm / master_linear_mm >= .5:
-                #     mm_sum += linear_mm / num_shelves
-                mm_sum += (linear_mm / num_shelves) * (linear_mm / master_linear_mm)
-        ft_sum = mm_sum / Const.MM_TO_FT
-        self.base_measure = ft_sum
-        potential_results = self.get_results_value(kpi_line)
-        cleaned_results = [(i, x.replace('Feet', '').replace('and', 'ft_sum').replace('>', '<').strip())
-                           for i, x in enumerate(potential_results)
-                           if '>' in x and '<=' in x]
-        result = None
-        for i, res in cleaned_results:
-            if eval(res):
-                result = potential_results[i]
-                break
-        if not result:
-            if ft_sum <= int(cleaned_results[0][1].split(' ')[0]):
-                result = potential_results[0]
-            else:
-                result = potential_results[-1]
-
-        # result_fk = self.result_values_dict[result]
-        kwargs = {'numerator_result': ft_sum, 'score': 1, 'result': result,
-                  'target': None}
-        return kwargs
-
     def calculate_count_of_shelves(self, kpi_name, kpi_line, relevant_scif, general_filters):
         filters = self.get_kpi_line_filters(kpi_line)
         filters.update(general_filters)
@@ -1544,21 +1562,25 @@ class ToolBox:
         score = 1 if ratio >= target and target else 0
         return ratio, score
 
-    @staticmethod
-    def read_cell_from_line(line, col):
+    def read_cell_from_line(self, line, col):
         try:
             val = line[col] if not pd.isnull(line[col]) else []
         except:
             val = []
         if val:
-            if hasattr(val, 'split'):
-                if ', ' in val:
-                    val = val.split(', ')
-                elif ',' in val:
-                    val = val.split(',')
-            if not isinstance(val, list):
-                val = [val]
+            val = self.generic_split(val)
 
+        return val
+
+    @staticmethod
+    def generic_split(val):
+        if hasattr(val, 'split'):
+            if ';' in val:
+                val = [x.strip() for x in val.split(';')]
+            elif ',' in val:
+                val = [x.strip() for x in val.split(',')]
+        if not isinstance(val, list):
+            val = [val]
         return val
 
     def find_MSL(self, scif):
@@ -1655,6 +1677,12 @@ class ToolBox:
             return self.calculate_exists_in_max_block
         elif kpi_type == Const.BLOCKING:
             return self.calculate_blocking
+        elif kpi_type == Const.BASE_MEASURE:
+            return self.calculate_base_measure
+        elif kpi_type == Const.BLOCK_PERCENT:
+            return self.calculate_blocking_percent
+        elif kpi_type == Const.BLOCK_ORIENTATION:
+            return self.calculate_blocking_orientation
 
 
         # elif kpi_type == Const.TMB:
@@ -1687,8 +1715,7 @@ class ToolBox:
         #         return self.calculate_blocking_all_shelves
         #     elif result.lower() == 'multi-block':
         #         return self.calculate_multi_block
-        # elif kpi_type == Const.BASE_MEASURE:
-        #     return self.calculate_base_measure
+
         # elif kpi_type == Const.ORIENT:
         #     return self.calculate_product_orientation
         # elif kpi_type == Const.COUNT_SHELVES:
