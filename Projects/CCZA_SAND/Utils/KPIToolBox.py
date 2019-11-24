@@ -279,7 +279,8 @@ class CCZAToolBox:
                 self.common.write_to_db_result(score=atomic_score, level=self.common.LEVEL3, fk=atomic_fk)
             except Exception as e:
                 Log.error('Exception in the atomic-kpi {} writing to DB: {}'.format(atomic_name, e.message))
-        kpi_fk_lvl_3 = self.common_v2.get_kpi_fk_by_kpi_type(atomic_name)
+        kpi_fk_lvl_3 = self.common_v2.get_kpi_fk_by_kpi_type(atomic_name) if atomic_name != Const.FLOW \
+            else self.common_v2.get_kpi_fk_by_kpi_type(Const.FLOW_LVL_3)
         self.common_v2.write_to_db_result(fk=kpi_fk_lvl_3, numerator_id=self.own_manuf_fk, denominator_id=self.store_id,
                                           result=atomic_score, score=atomic_score,
                                           identifier_parent=lvl_2_identifier_parent, should_enter=True)
@@ -353,7 +354,7 @@ class CCZAToolBox:
             count = self.calculate_scene_count(atomic_params)
             atomic_score = 100.0 * (count >= float(accepted_answer))
         elif atomic_type == Const.PLANOGRAM:
-            atomic_score = self.calculate_planogram(atomic_params)
+            atomic_score = self.calculate_planogram_new(atomic_params)
         else:
             Log.warning('The type "{}" is not recognized'.format(atomic_type))
         return atomic_score

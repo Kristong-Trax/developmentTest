@@ -79,4 +79,5 @@ class Const(object):
     SOS_MANUF_OUT_OF_CAT = 'SOS MANUFACTURER OUT OF CATEGORY'
     SOS_BRAND_OUT_CAT = 'SOS BRAND OUT OF CATEGORY'
     KPI_FK = 'kpi_fk'
+    FLOW_LVL_3 = 'Flow Level 3'
 
