@@ -52,7 +52,7 @@ def _sanitize_csv(data):
         return [each.strip() for each in data.split(',') if each.strip()]
 
 
-class GSKAUSceneToolBox:
+class GSKAU_SANDSceneToolBox:
 
     def __init__(self, data_provider, output, common):
         self.output = output

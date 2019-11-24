@@ -52,7 +52,7 @@ class SceneMONDELEZDMIUSToolBox:
         self.mdis = self.get_match_display_in_scene()
         self.mpis = self.get_mpis()
         self.manufacturer_fk = self.products['manufacturer_fk'][self.products['manufacturer_name'] ==
-                                                                'MONDELEZ INTERNATIONAL, INC.'].iloc[0]
+                                                                'MONDELEZ INTERNATIONAL INC'].iloc[0]
         self.static_task_area_location = self.get_store_task_area()
         # self.vtw_points_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data',
         #                                 "VTW_POINTS_SCORE.xlsx")

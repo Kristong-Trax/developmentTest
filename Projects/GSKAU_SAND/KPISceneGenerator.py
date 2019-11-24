@@ -1,6 +1,6 @@
 from Trax.Utils.Logging.Logger import Log
 from KPIUtils_v2.DB.CommonV2 import Common
-from Projects.GSKAU_SAND.Utils.KPISceneToolBox import GSKAUSceneToolBox
+from Projects.GSKAU_SAND.Utils.KPISceneToolBox import GSKAU_SANDSceneToolBox
 from KPIUtils_v2.Utils.Decorators.Decorators import log_runtime
 
 
@@ -12,7 +12,7 @@ class SceneGenerator:
         self.project_name = data_provider.project_name
         self.session_uid = self.data_provider.session_uid
         self.common = Common(data_provider)
-        self.scene_tool_box = GSKAUSceneToolBox(self.data_provider, self.output, self.common)
+        self.scene_tool_box = GSKAU_SANDSceneToolBox(self.data_provider, self.output, self.common)
 
 
     @log_runtime('Total Calculations', log_start=True)
@@ -25,4 +25,3 @@ class SceneGenerator:
         else:
             self.scene_tool_box.calculate_display_compliance()
             self.common.commit_results_data(result_entity='scene')
-

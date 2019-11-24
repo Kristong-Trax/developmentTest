@@ -1,4 +1,3 @@
-
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Utils.Logging.Logger import Log
 from KPIUtils_v2.Utils.GlobalScripts.Scripts import GlobalSessionToolBox
@@ -48,7 +47,6 @@ PLATFORMAS_SURVEY = 'Platformas Survey'
 PLATFORMAS_SOS = 'Platformas SOS'
 SCENE_IDENTITY = 'Scene Identity'
 PLATFORMAS_AVAILABILITY = 'Platformas Availability'
-
 
 PORTAFOLIO_PRODUCTS = 'Portafolio Products Details'
 
@@ -169,7 +167,8 @@ class ToolBox(GlobalSessionToolBox):
                         if 'identifier_result' not in result.keys():
                             result['identifier_result'] = result['kpi_name']
                         if result['result'] <= 1:
-                            result['result'] = result['result'] * 100
+                            if row[PARENT_KPI] != 'Portafolio' and result['kpi_name'] != 'Capacidad Fria (Detalle)':
+                                result['result'] = result['result'] * 100
                         self.results_df.loc[len(self.results_df), result.keys()] = result
 
     def calculate_scoring(self, row):
@@ -405,6 +404,9 @@ class ToolBox(GlobalSessionToolBox):
     def calculate_bay_count(self, row):
         kpi_name = row[KPI_NAME]
         kpi_fk = self.get_kpi_fk_by_kpi_type(kpi_name)
+        detalle_kpi_name = kpi_name + ' (Detalle)'
+        detalle_kpi_fk = self.get_kpi_fk_by_kpi_type(detalle_kpi_name)
+        results_list = []
 
         template_name = self.does_exist(row, TEMPLATE_NAME)
         relevant_scif = self.scif[self.scif['template_name'].isin(template_name)]
@@ -425,15 +427,24 @@ class ToolBox(GlobalSessionToolBox):
         if not target:
             return {'kpi_name': kpi_name, 'kpi_fk': kpi_fk, 'result': pd.np.nan}
 
-        if number_of_bays > target:
+        if number_of_bays >= target:
             result = 1
         else:
             result = 0
 
+        result_dict = {'kpi_name': detalle_kpi_name, 'kpi_fk': detalle_kpi_fk, 'numerator_id': self.own_manuf_fk,
+                       'numerator_result': number_of_bays,
+                       'denominator_id': self.store_id, 'result': number_of_bays, 'target': target,
+                       'identifier_parent': kpi_name}
+        results_list.append(result_dict)
+
         result_dict = {'kpi_name': kpi_name, 'kpi_fk': kpi_fk, 'numerator_id': self.own_manuf_fk,
                        'numerator_result': number_of_bays,
-                       'denominator_id': self.store_id, 'result': result, 'target': target}
-        return result_dict
+                       'denominator_id': self.store_id, 'result': result, 'target': target
+                       }
+        results_list.append(result_dict)
+
+        return results_list
 
     def calculate_planograma(self, row):
         kpi_name = row[KPI_NAME]
@@ -507,6 +518,7 @@ class ToolBox(GlobalSessionToolBox):
 
         relevant_results = \
             self.scene_survey_results[self.scene_survey_results['question_fk'].isin(relevant_question_fks)]
+        count_cooler_brands = relevant_results['selected_option_text'].value_counts()
 
         cooler_brands = relevant_results['selected_option_text'].unique().tolist()
         if cooler_brands:
@@ -514,7 +526,8 @@ class ToolBox(GlobalSessionToolBox):
                 if cooler_brand_name and pd.notna(cooler_brand_name):
                     cooler_brand_fk = self._get_cooler_brand_fk_by_cooler_brand_name(cooler_brand_name)
                     result_dict = {'kpi_name': brand_kpi_name, 'kpi_fk': brand_kpi_fk, 'numerator_id': cooler_brand_fk,
-                                   'denominator_id': self.store_id, 'result': 1, 'identifier_parent': kpi_name}
+                                   'denominator_id': self.store_id, 'result': count_cooler_brands[cooler_brand_name],
+                                   'identifier_parent': kpi_name}
                     results_list.append(result_dict)
 
         if len(relevant_results) > 1:
@@ -529,7 +542,11 @@ class ToolBox(GlobalSessionToolBox):
         return results_list
 
     def _get_cooler_brand_fk_by_cooler_brand_name(self, cooler_brand_name):
-        entity = self.custom_entities[self.custom_entities['name'] == cooler_brand_name]
+        try:
+            entity = self.custom_entities[self.custom_entities['name'] == cooler_brand_name]
+        except:
+            entity = self.custom_entities[
+                self.custom_entities['name'].str.encode('utf-8') == cooler_brand_name.encode('utf-8')]
         if entity.empty:
             return None
         else:
@@ -672,19 +689,31 @@ class ToolBox(GlobalSessionToolBox):
     def calculate_platformas_survey(self, row):
         kpi_name = row[KPI_NAME]
         kpi_fk = self.get_kpi_fk_by_kpi_type(kpi_name)
+        survey_kpi_name = kpi_name + ' - Survey'
+        survey_kpi_fk = self.get_kpi_fk_by_kpi_type(survey_kpi_name)
         results_list = []
 
         relevant_question_fks = self.does_exist(row, 'Survey Question PK')
         relevant_results = \
             self.scene_survey_results[self.scene_survey_results['question_fk'].isin(relevant_question_fks)]
         relevant_results.drop_duplicates(subset=['scene_id'], inplace=True)
+
+        for i, row in relevant_results.iterrows():
+            numerator_fk = self._get_cooler_brand_fk_by_cooler_brand_name(row['selected_option_text'])
+            scene_id = row['scene_id']
+            if numerator_fk:
+                result_dict = {'kpi_name': survey_kpi_name, 'kpi_fk': survey_kpi_fk, 'numerator_id': numerator_fk,
+                               'denominator_id': scene_id, 'denominator_result': scene_id, 'result': 1,
+                               'identifier_parent': str(scene_id) + " " + kpi_name}
+                results_list.append(result_dict)
+
         for i, row in relevant_results.iterrows():
             numerator_fk = self._get_cooler_brand_fk_by_cooler_brand_name(row['selected_option_text'])
             scene_id = row['scene_id']
             if numerator_fk:
                 result_dict = {'kpi_name': kpi_name, 'kpi_fk': kpi_fk, 'numerator_id': numerator_fk,
                                'denominator_id': scene_id, 'denominator_result': scene_id, 'result': 1,
-                               'identifier_parent': scene_id}
+                               'identifier_parent': scene_id, 'identifier_result': str(scene_id) + " " + kpi_name}
                 results_list.append(result_dict)
 
         return results_list
@@ -767,5 +796,3 @@ class ToolBox(GlobalSessionToolBox):
             elif type(cell) in [unicode, str]:
                 return [x.strip() for x in cell.split(",")]
         return None
-
-

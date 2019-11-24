@@ -256,3 +256,11 @@ class FSOPToolBox:
         else:
             availability_df = filtered_df
         return availability_df
+
+    @staticmethod
+    def sanitize_values(item):
+        if pd.isna(item):
+            return item
+        else:
+            items = [x.strip() for x in item.split(',')]
+            return items

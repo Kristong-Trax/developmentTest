@@ -477,7 +477,11 @@ class TestPngcn(TestUnitCase):
                  'bay_number': 2, 'shelf_number': 2, 'facing_sequence_number': 3, 'sub_category': 'Handwash'},
                  {'scene_fk': 16588190, 'manufacturer_name': 'P&G\xe5\xae\x9d\xe6\xb4\x81', 'brand_name': 'hola',
                   'category': 'Personal Cleaning Care', 'product_fk': 173, 'stacking_layer': 1, 'category_fk': 101,
-                  'bay_number': 2, 'shelf_number': 2, 'facing_sequence_number': 2, 'sub_category': 'HOLA'}])
+                  'bay_number': 2, 'shelf_number': 2, 'facing_sequence_number': 2, 'sub_category': 'HOLA'},
+                 {'scene_fk': 16588190, 'manufacturer_name': 'P&G\xe5\xae\x9d\xe6\xb4\x81', 'brand_name': 'hola',
+                  'category': 'Personal Cleaning Care', 'product_fk': 173, 'stacking_layer': 1, 'category_fk': 101,
+                  'bay_number': 2, 'shelf_number': 2, 'facing_sequence_number': 2, 'sub_category': 'HOLA'}
+                 ])
         scene_tool_box._get_category_specific_filters = MagicMock(return_value=pd.DataFrame(scene_tool_box.PCC_FILTERS))
         scene_tool_box.get_filterd_matches = MagicMock(return_value=pd.DataFrame(data))
         scene_tool_box.common.write_to_db_result = MagicMock()
@@ -488,6 +492,43 @@ class TestPngcn(TestUnitCase):
             self.assertEqual(kpi_results[2][2]['numerator_id'], 17, "numerator_id !=17, sequence written isn't correct")
         else:
             raise Exception('No results were saved')
+
+    # Test for case no entity found
+    def test_calculate_sequence_eye_level_dynamic_entity(self):
+
+        scene_tool_box = PngcnSceneKpis(self.ProjectConnector_mock,
+                                        self.common_mock, 16588190,
+                                        self.data_provider_mock)
+        entity_df = pd.DataFrame([{'entity_fk': 17, 'entity_name': 'sb1', 'entity_type_fk': 1002,
+                      'entity_type_name': u'eye_level_fragments'},
+                      {'entity_fk': 18, 'entity_name': 'sb2', 'entity_type_fk': 1002,
+                       'entity_type_name': u'eye_level_fragments'},
+                     {'entity_fk': 27, 'entity_name': u'Competitor Other', 'entity_type_fk': 1002,
+                      'entity_type_name': u'eye_level_fragments'}])
+        data = pd.DataFrame(
+            [{'scene_fk': 16588190, 'manufacturer_name': 'P&G\xe5\xae\x9d\xe6\xb4\x81', 'brand_name': 'Crest',
+              'category': 'Oral Care', 'product_fk': 252, 'stacking_layer': 1, 'category_fk': 101,
+              'bay_number': 1, 'shelf_number': 2, 'facing_sequence_number': 3, 'sub_brand_name': 'sb1'},
+             {'scene_fk': 16588190, 'manufacturer_name': 'P&G\xe5\xae\x9d\xe6\xb4\x81', 'brand_name': 'Oral-B',
+              'category': 'Oral Care', 'product_fk': 132, 'stacking_layer': 1, 'category_fk': 101,
+              'bay_number': 1, 'shelf_number': 2, 'facing_sequence_number': 3, 'sub_brand_name': 'sb2'},
+             {'scene_fk': 16588190, 'manufacturer_name': 'P&G\xe5\xae\x9d\xe6\xb4\x81', 'brand_name': 'Oral-B',
+              'category': 'Oral Care', 'product_fk': 999, 'stacking_layer': 1, 'category_fk': 101,
+              'bay_number': 1, 'shelf_number': 2, 'facing_sequence_number': 3, 'sub_brand_name': ''},
+             {'scene_fk': 16588190, 'manufacturer_name': 'P&G\xe5\xae\x9d\xe6\xb4\x81', 'brand_name': 'Crest',
+              'category': 'Oral Care', 'product_fk': 152, 'stacking_layer': 1, 'category_fk': 102,
+              'bay_number': 2, 'shelf_number': 2, 'facing_sequence_number': 1, 'sub_category': 'Bodywash'},
+             {'scene_fk': 16588190, 'manufacturer_name': 'P&G\xe5\xae\x9d\xe6\xb4\x81', 'brand_name': 'Safeguard',
+              'category': 'Personal Cleaning Care', 'product_fk': 172, 'stacking_layer': 1, 'category_fk': 101,
+              'bay_number': 2, 'shelf_number': 2, 'facing_sequence_number': 3, 'sub_category': 'Handwash'},
+             {'scene_fk': 16588190, 'manufacturer_name': 'P&G\xe5\xae\x9d\xe6\xb4\x81', 'brand_name': 'hola',
+              'category': 'Oral Care', 'product_fk': 173, 'stacking_layer': 1, 'category_fk': 101,
+              'bay_number': 2, 'shelf_number': 2, 'facing_sequence_number': 2, 'sub_brand_name': 'HOLA'}])
+
+        scene_tool_box.get_filterd_matches = MagicMock(return_value=pd.DataFrame(data))
+        scene_tool_box.common.write_to_db_result = MagicMock()
+        scene_tool_box.calculate_sequence_eye_level(entity_df, data, 'Oral Care')
+        self.assertEqual(1, 1, 'Expects no exception')
 
     def test__get_oc_filter(self):
         scene_tool_box = PngcnSceneKpis(self.ProjectConnector_mock,
@@ -514,6 +555,35 @@ class TestPngcn(TestUnitCase):
               'bay_number': 2, 'shelf_number': 2, 'facing_sequence_number': 2, 'sub_category': 'HOLA'}])
         filters = scene_tool_box._get_category_specific_filters('Oral Care', data)
         self.assertEqual(len(filters), 5, 'expects 5 filter entry created.')
+        self.assertEqual(len(filters['Competitor Oral Care']), 1, 'expects 1 filter entry for Competitor Oral Care.')
+
+
+    def test__get_fc_filter(self):
+        scene_tool_box = PngcnSceneKpis(self.ProjectConnector_mock,
+                                        self.common_mock, 16588190,
+                                        self.data_provider_mock)
+        data = pd.DataFrame(
+            [{'scene_fk': 16588190, 'manufacturer_name': 'P&G\xe5\xae\x9d\xe6\xb4\x81', 'brand_name': 'FEM1',
+              'category': 'Oral Care', 'product_fk': 252, 'stacking_layer': 1, 'category_fk': 101,
+              'bay_number': 1, 'shelf_number': 2, 'facing_sequence_number': 3, 'att3': 'sb1'},
+             {'scene_fk': 16588190, 'manufacturer_name': 'P&G\xe5\xae\x9d\xe6\xb4\x81', 'brand_name': 'FEM2',
+              'category': 'Fem Care', 'product_fk': 132, 'stacking_layer': 1, 'category_fk': 101,
+              'bay_number': 1, 'shelf_number': 2, 'facing_sequence_number': 3, 'att3': 'sb2'},
+             {'scene_fk': 16588190, 'manufacturer_name': 'P&G\xe5\xae\x9d\xe6\xb4\x81', 'brand_name': 'FEM3',
+              'category': 'Fem Care', 'product_fk': 999, 'stacking_layer': 1, 'category_fk': 101,
+              'bay_number': 1, 'shelf_number': 2, 'facing_sequence_number': 3, 'att3': ''},
+             {'scene_fk': 16588190, 'manufacturer_name': 'P&G\xe5\xae\x9d\xe6\xb4\x81', 'brand_name': 'Crest',
+              'category': 'Oral Care', 'product_fk': 152, 'stacking_layer': 1, 'category_fk': 102,
+              'bay_number': 2, 'shelf_number': 2, 'facing_sequence_number': 1, 'sub_category': 'Bodywash'},
+             {'scene_fk': 16588190, 'manufacturer_name': 'XXXX', 'brand_name': 'Safeguard',
+              'category': 'Fem Care', 'product_fk': 172, 'stacking_layer': 1, 'category_fk': 101,
+              'bay_number': 2, 'shelf_number': 2, 'facing_sequence_number': 3, 'sub_category': 'Handwash'},
+             {'scene_fk': 16588190, 'manufacturer_name': 'XXXX2', 'brand_name': 'hola',
+              'category': 'Personal Cleaning Care', 'product_fk': 173, 'stacking_layer': 1, 'category_fk': 101,
+              'bay_number': 2, 'shelf_number': 2, 'facing_sequence_number': 2, 'sub_category': 'HOLA'}])
+        filters = scene_tool_box._get_category_specific_filters('Fem Care', data)
+        self.assertEqual(len(filters), 4, 'expects 4 filter entry created.')
+        self.assertEqual(len(filters['Competitor Fem Care']), 1, 'expects 1 filter entry for Competitor Fem Care.')
 
     def test_calculate_facing_eye_level(self):
         scene_tool_box = PngcnSceneKpis(self.ProjectConnector_mock,
