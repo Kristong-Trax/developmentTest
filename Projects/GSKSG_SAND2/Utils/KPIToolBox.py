@@ -88,12 +88,13 @@ class GSKSGToolBox:
         else:
             dst_result = categories_results_json[category]
         weight = msl_categories['msl_weight'].iloc[0]
-        result = dst_result * weight
+        score = dst_result * weight
+        result = score/weight
         results_list.append({'fk': msl_kpi_fk, 'numerator_id': category, 'denominator_id':
             self.store_id, 'denominator_result': 1, 'numerator_result': result, 'result': result,
-                             'target': weight, 'score': result,
+                             'target': weight, 'score': score,
                              'identifier_parent': parent_result_identifier, 'should_enter': True})
-        return result, results_list
+        return score, results_list
 
     def fsos_compliance_score(self, category, categories_results_json, cat_targets, parent_result_identifier):
         """
@@ -109,12 +110,13 @@ class GSKSGToolBox:
         dst_result = categories_results_json[category] if category in categories_results_json.keys() else 0
         benchmark = category_targets['fsos_benchmark'].iloc[0]
         weight = category_targets['fsos_weight'].iloc[0]
-        result = weight if dst_result >= benchmark else 0
+        score = weight if dst_result >= benchmark else 0
+        result = score/weight
         results_list.append({'fk': fsos_kpi_fk, 'numerator_id': category, 'denominator_id':
             self.store_id, 'denominator_result': 1, 'numerator_result': result, 'result': result,
-                             'target': weight, 'score': result,
+                             'target': weight, 'score': score,
                              'identifier_parent': parent_result_identifier, 'should_enter': True})
-        return result, results_list
+        return score, results_list
 
     def extract_json_results_by_kpi(self, general_kpi_results, kpi_type):
         """
