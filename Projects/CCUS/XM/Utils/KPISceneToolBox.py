@@ -1,6 +1,9 @@
 from Trax.Algo.Calculations.Core.DataProvider import Data
+from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
+from Trax.Cloud.Services.Connector.Keys import DbUsers
 from Trax.Utils.Logging.Logger import Log
 from Projects.CCUS.XM.Utils.Const import Const
+import pandas as pd
 
 __author__ = 'Shivi'
 
@@ -12,6 +15,9 @@ class CCUSSceneToolBox:
         self.data_provider = data_provider
         self.common = common
         self.project_name = self.data_provider.project_name
+
+        self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
+
         self.session_uid = self.data_provider.session_uid
         self.products = self.data_provider[Data.PRODUCTS]
         self.templates = self.data_provider[Data.TEMPLATES]
@@ -41,5 +47,19 @@ class CCUSSceneToolBox:
     def count_products(self, relevant_match_products):
         for product_fk in relevant_match_products['product_fk'].unique().tolist():
             facings = len(relevant_match_products[relevant_match_products['product_fk'] == product_fk])
+            context_id = self.get_store_area_df(relevant_match_products['scene_fk'].iloc[0]).iloc[0, 2]
             self.common.write_to_db_result(fk=self.kpi_fk, numerator_id=product_fk, denominator_id=self.template_fk,
+                                           context_id=context_id,
                                            numerator_result=facings, result=self.poc_number, by_scene=True)
+
+    def get_store_area_df(self, scene_fk):
+        query = """
+                    select * 
+    from probedata.scene_store_task_area_group_items
+    where scene_fk = {};
+                    """.format(scene_fk)
+        cur = self.rds_conn.db.cursor()
+        cur.execute(query)
+        res = cur.fetchall()
+        df = pd.DataFrame(list(res))
+        return df

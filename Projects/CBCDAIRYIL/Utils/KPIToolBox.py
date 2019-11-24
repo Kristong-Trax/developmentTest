@@ -105,7 +105,7 @@ class CBCDAIRYILToolBox:
         gaps_per_kpi_fk = self.common.get_kpi_fk_by_kpi_type(Consts.GAP_PER_ATOMIC_KPI)
         gaps_total_score_kpi_fk = self.common.get_kpi_fk_by_kpi_type(Consts.GAPS_TOTAL_SCORE_KPI)
         for gap in self.kpis_gaps[:5]:
-            current_gap_score = gap[Consts.WEIGHT] - (gap[Consts.SCORE] * gap[Consts.WEIGHT])
+            current_gap_score = gap[Consts.WEIGHT] - (gap[Consts.SCORE]/100 * gap[Consts.WEIGHT])
             gaps_total_score += current_gap_score
             self.insert_gap_results(gaps_per_kpi_fk, current_gap_score, gap[Consts.WEIGHT],
                                     numerator_id=gap[Consts.ATOMIC_FK], parent_fk=gaps_total_score_kpi_fk)

@@ -13,14 +13,23 @@ class Const(object):
     ''' Sheets '''
 
     PRIMARY_LOCATION = 'Primary Location'
+    MAX_BLOCK_ADJACENCY = 'Max Block Adjacency'
+    MAX_BLOCK_COMPOSITION = 'Max Block Composition'
+    EXISTS_IN_MAX_BLOCK = 'Exists in Max Block'
+    BLOCKING = 'Blocking'
+    BASE_MEASURE = 'Base Measure'
+    BLOCK_ORIENTATION = 'Block Orientation'
+    BLOCK_PERCENT = 'Block Percent'
+
+
+
+    EMPTY_BLOCKS_ERROR = 'No Data Found fo kpi {}'
 
 
     KPIS = 'KPIs'
     TMB = 'Top-Middle-Bottom'
     COUNT = 'Count of'
     SET_COUNT = 'Set Count of'
-    BLOCKING = 'Blocking'
-    BASE_MEASURE = 'Base Measure'
     SURVEY = 'Survey Question'
     ORIENT = 'Product Orientation'
     PRESENCE = 'Presence'
@@ -79,7 +88,11 @@ class Const(object):
     COMMA_SPACE = ', '
     COMMA = ','
     KEEP = 'keep'
-    MAX_BLOCK = 'max_block'
+
+
+    ALLOWED_FLAGS = ['unconnected', 'connected', 'encapsulated']
+
+
     INTEGRATED = 'Fully Integrated'
     ADJACENT = 'Adjacent Section'
     SAME_AISLE = 'Same Aisle, Not Adjacent'
