@@ -391,7 +391,7 @@ class GSKSGToolBox:
             total_sequence_weight += sequence[SessionResultsConsts.WEIGHT]
         self._save_sequence_main_level_to_db(sequence_kpi_fk, planogram_identifier, cat_fk, passed_sequences_score,
                                              total_sequence_weight)
-        return passed_sequences_score, Consts.SEQUENCE_TOTAL_WEIGHT
+        return passed_sequences_score, total_sequence_weight
 
     @staticmethod
     def _prepare_data_for_sequence_calculation(sequence_params):
