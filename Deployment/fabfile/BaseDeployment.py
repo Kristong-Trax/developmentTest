@@ -32,10 +32,7 @@ class ProjectDeployment(object):
 
     @staticmethod
     def delete_pyc_files(root_dir):
-        for subdir, dirs, files in os.walk(root_dir):
-            for f in files:
-                if f.endswith('.pyc'):
-                    os.remove(os.path.join(subdir, f))
+        os.system("find {path} -type f -name '*.pyc' -delete".format(path=root_dir))
 
     @staticmethod
     def ignore_files(files):
