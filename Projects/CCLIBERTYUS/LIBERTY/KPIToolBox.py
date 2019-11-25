@@ -64,34 +64,37 @@ class LIBERTYToolBox:
             This function gets all the scene results from the SceneKPI, after that calculates every session's KPI,
             and in the end it calls "filter results" to choose every KPI and scene and write the results in DB.
         """
-        # check to make sure the session feedback is 'ok', if not, don't calculate the KPIs
-        if not self.session_feedback.empty:
-            if self.session_feedback['answer_key'].iloc[0] != 'ok':
-                Log.info('Session feedback is not OK - Liberty Red Score will not be calculated')
-                return
+        if not self.scif.empty:
+            # check to make sure the session feedback is 'ok', if not, don't calculate the KPIs
+            if not self.session_feedback.empty:
+                if self.session_feedback['answer_key'].iloc[0] != 'ok':
+                    Log.info('Session feedback is not OK - Liberty Red Score will not be calculated')
+                    return
 
-        # check to make sure there are no probes labeled as 'Supected Fake'. if there are, don't calculate the KPIs
-        if not self.probe_review_reasons.empty:
-            if 'Suspected Fake' in self.probe_review_reasons['reason_text'].tolist():
-                Log.info('Probes suspected as fake - Liberty Red Score will not be calculated')
-                return
+            # check to make sure there are no probes labeled as 'Supected Fake'. if there are, don't calculate the KPIs
+            if not self.probe_review_reasons.empty:
+                if 'Suspected Fake' in self.probe_review_reasons['reason_text'].tolist():
+                    Log.info('Probes suspected as fake - Liberty Red Score will not be calculated')
+                    return
 
-        red_score = 0
-        main_template = self.templates[Const.KPIS]
-        for i, main_line in main_template.iterrows():
-            relevant_store_types = self.does_exist(main_line, Const.ADDITIONAL_ATTRIBUTE_7)
-            if relevant_store_types and self.additional_attribute_7 not in relevant_store_types:
-                continue
-            result = self.calculate_main_kpi(main_line)
-            if result:
-                red_score += main_line[Const.WEIGHT] * result
+            red_score = 0
+            main_template = self.templates[Const.KPIS]
+            for i, main_line in main_template.iterrows():
+                relevant_store_types = self.does_exist(main_line, Const.ADDITIONAL_ATTRIBUTE_7)
+                if relevant_store_types and self.additional_attribute_7 not in relevant_store_types:
+                    continue
+                result = self.calculate_main_kpi(main_line)
+                if result:
+                    red_score += main_line[Const.WEIGHT] * result
 
-        if len(self.common_db.kpi_results) > 0:
-            kpi_fk = self.common_db.get_kpi_fk_by_kpi_type(Const.RED_SCORE_PARENT)
-            self.common_db.write_to_db_result(kpi_fk, numerator_id=self.manufacturer_fk, denominator_id=self.store_id,
-                                              result=red_score,
-                                              identifier_result=Const.RED_SCORE_PARENT, should_enter=True)
-        return
+            if len(self.common_db.kpi_results) > 0:
+                kpi_fk = self.common_db.get_kpi_fk_by_kpi_type(Const.RED_SCORE_PARENT)
+                self.common_db.write_to_db_result(kpi_fk, numerator_id=self.manufacturer_fk, denominator_id=self.store_id,
+                                                  result=red_score,
+                                                  identifier_result=Const.RED_SCORE_PARENT, should_enter=True)
+            return
+        else:
+            Log.info('Scif is empty')
 
     def calculate_main_kpi(self, main_line):
         """

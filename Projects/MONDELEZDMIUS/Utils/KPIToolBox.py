@@ -53,7 +53,7 @@ class MONDELEZDMIUSToolBox:
         self.kpi_static_data = self.common.get_kpi_static_data()
         self.kpi_results_queries = []
         self.manufacturer_fk = self.products['manufacturer_fk'][self.products['manufacturer_name'] ==
-                                                                'MONDELEZ INTERNATIONAL, INC.'].iloc[0]
+                                                                'MONDELEZ INTERNATIONAL INC'].iloc[0]
         self.store_assortment = pd.DataFrame()
         self.assortment = Assortment(self.data_provider, common=self.common)
         self.store_number = self.get_store_number()

@@ -101,7 +101,3 @@ class Consts(object):
                          ('DIST', SUB_CATEGORY_PARENT): [SUB_CATEGORY_PARENT]
 
                          }
-
-    def __init__(self):
-        pass
-

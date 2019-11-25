@@ -1,7 +1,6 @@
 import os
 from Trax.Utils.Logging.Logger import Log
 from KPIUtils_v2.Utils.Decorators.Decorators import log_runtime
-from Projects.GMIUS.Utils.KPIToolBox import ToolBox
 from KPIUtils_v2.DB.CommonV2 import Common
 from Projects.GMIUS.Helpers.Result_Uploader import ResultUploader
 from Projects.GMIUS.Helpers.Entity_Uploader import EntityUploader
@@ -14,6 +13,7 @@ class Generator:
     # SUPER_CATS = ['Yogurt', 'RBG', 'Mexican', 'Soup']
     SUPER_CATS = ['Yogurt', 'RBG', 'Soup', 'Mexican']
     # SUPER_CATS = ['Mexican'] # Overwriting for testing purposes
+    SUPER_CATS = ['Snacks']
 
     def __init__(self, data_provider, output):
         self.data_provider = data_provider
@@ -21,21 +21,27 @@ class Generator:
         self.common = Common(self.data_provider)
         self.project_name = data_provider.project_name
         self.session_uid = self.data_provider.session_uid
-        self.tool_box = ToolBox(self.data_provider, self.output, self.common)
+        self.toolboxes = {}
+        self.load_toolboxes()
 
     @log_runtime('Total Calculations', log_start=True)
     def main_function(self):
-        pass
-        # if self.tool_box.scif.empty:
-        #     Log.warning('Distribution is empty for this session')
-        # else:
-        #     for cat in self.SUPER_CATS:
-        #         template_path = self.find_template(cat)
-        #         # ru = ResultUploader(self.project_name, template_path)
-        #         # eu = EntityUploader(self.project_name, template_path)
-        #         # af = AtomicFarse(self.project_name, template_path)
-        #         self.tool_box.main_calculation(template_path)
-        #     self.common.commit_results_data()
+            for cat in self.SUPER_CATS:
+                if self.toolboxes[cat].scif.empty:
+                    Log.warning('Distribution is empty for this session')
+                    continue
+                template_path = self.find_template(cat)
+                # ResultUploader(self.project_name, template_path)
+                # EntityUploader(self.project_name, template_path)
+                # AtomicFarse(self.project_name, template_path)
+                self.toolboxes[cat].main_calculation(template_path)
+            self.common.commit_results_data()
+
+    def load_toolboxes(self):
+        ToolBox = 'imma lazy and no like red lines'
+        for cat in self.SUPER_CATS:
+            exec('from Projects.GMIUS.{0}.Utils.KPIToolBox import ToolBox'.format(cat))
+            self.toolboxes[cat] = ToolBox(self.data_provider, self.output, self.common)
 
     def find_template(self, cat):
         ''' screw maintaining 4 hardcoded template paths... '''

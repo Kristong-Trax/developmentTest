@@ -104,7 +104,9 @@ if __name__ == '__main__':
 
     ]
 
-    sessions = ['14b29a3d-2cfd-4f5a-a8b2-53e124f676a6']
+    sessions = ['f920817e-3539-49aa-88c7-cade84e21ef4',
+'4c6e4746-835e-41d6-96fb-677a5a26cd0f'
+]
 
 
     for session in sessions:

@@ -8,8 +8,8 @@ from Projects.RINIELSENUS.Utils.PositionGraph import MarsUsPositionGraphs
 from Projects.RINIELSENUS.Utils.Const import ALLOWED_TYPES
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Algo.Calculations.Core.Shortcuts import BaseCalculationsGroup
-# from KPIUtils_v2.Calculations.BlockCalculations_v2 import Block as Block
-from Projects.RINIELSENUS.Utils.BlockCalculations_v3 import Block
+from KPIUtils_v2.Calculations.BlockCalculations_v2 import Block as Block
+# from Projects.RINIELSENUS.Utils.BlockCalculations_v3 import Block
 from Trax.Utils.Logging.Logger import Log
 
 

@@ -171,7 +171,7 @@ class CCKH_SANDToolBox(CCKH_SANDConsts):
                         elif kpi_type == self.SURVEY:
                             score, result, threshold, survey_answer_fk = self.check_survey(child)
                             threshold = None
-                            numerator, denominator, result_new_db = 1, 1, score
+                            numerator, denominator, result_new_db = 1, 1, score*100
                             numerator_id = survey_answer_fk
                         elif kpi_type == self.SHARE_OF_SHELF:
                             score, result, threshold, result_new_db, numerator, denominator = \
@@ -196,6 +196,9 @@ class CCKH_SANDToolBox(CCKH_SANDConsts):
                             self.write_to_db_result(
                                 atomic_fk, (score, result, threshold, points), level=self.LEVEL3)
                             identifier_parent = main_kpi_identifier
+                            child_name = '{}-{}'.format(child[self.template.TRANSLATION], 'Atomic')\
+                                if main_child[self.template.KPI_NAME] == child[self.template.KPI_NAME] else child[self.template.TRANSLATION]
+                            child.set_value(self.template.TRANSLATION, child_name)
                             child_kpi_fk = self.get_new_kpi_fk(child)  # kpi fk from new tables
                             results_list_new_db.append(self.write_to_db_new_results(child_kpi_fk, result_new_db, score,
                                                                                     numerator, denominator,
@@ -276,7 +279,7 @@ class CCKH_SANDToolBox(CCKH_SANDConsts):
             kpi_data = custom_template[condition]
             if kpi_data.empty:
                 return False
-            weight = kpi_data[kpi_data['store_type'] == self.store_type]['Target'].values[0]
+            weight = kpi_data[kpi_data['store_type'].str.encode(HelperConsts.UTF8) == self.store_type.encode(HelperConsts.UTF8)]['Target'].values[0]
             try:
                 validation = float(weight)
             except ValueError:
@@ -327,7 +330,9 @@ class CCKH_SANDToolBox(CCKH_SANDConsts):
         """
         kpi_data = self.availability_info[(self.availability_info[self.template.KPI_NAME] ==
                                            params[self.template.KPI_NAME]) & (self.availability_info[
-                                                                                  self.template.STORE_TYPE] == self.store_type)]
+                                                                                  self.template.STORE_TYPE].str.
+                                                                              encode(HelperConsts.UTF8) ==
+                                                                              self.store_type.encode(HelperConsts.UTF8))]
         if kpi_data.empty:
             return False
         kpi_data = kpi_data.iloc[0]

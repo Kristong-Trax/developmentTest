@@ -23,9 +23,6 @@ if __name__ == '__main__':
         "f457897a-1d02-43c2-9edb-7d69d6a4a634",
         "ba752521-924f-4a5a-9507-013aa517696d"
     ]
-    session_list = [
-        '1d0b2814-b100-4095-8b41-1cc8843a6703'
-    ]
     for session in session_list:
         data_provider.load_session_data(session)
         output = Output()

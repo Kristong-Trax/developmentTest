@@ -146,7 +146,7 @@ class CSTOREToolBox:
 
                 lvl2_result = self.assortment.calculate_lvl2_assortment(lvl3_result)
                 if not lvl2_result['kpi_fk_lvl1'].any():
-                    lvl3_result['assortment_group_fk'] = self.manufacturer_fk
+                    # lvl3_result['assortment_group_fk'] = self.manufacturer_fk
                     lvl2_result['assortment_group_fk'] = self.manufacturer_fk
                     lvl2_result['assortment_super_group_fk'] = self.store_id
                 else:

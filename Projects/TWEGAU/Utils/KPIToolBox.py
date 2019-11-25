@@ -155,24 +155,20 @@ class TWEGAUToolBox:
         # 2. calculate the zone based sheet
         self.calculate_zone_based()
         # Calculate SOS - PROS-11641
-        if not self.targets.empty and \
-                not self.targets[self.targets['store_number'] == self.store_info.iloc[0].store_number_1].empty:
-            # If there is a relevant target for this store in external targets,
-            # calculate and store the sos
-            facings_sos_dict = self.facings_sos_whole_store_function()
-            if facings_sos_dict is None:
-                Log.warning('Scene item facts is empty for this session')
-            else:
-                self.common.save_json_to_new_tables(facings_sos_dict)
-
-            facings_sos_dict = self.facings_sos_by_category_function()
-            if facings_sos_dict is None:
-                Log.warning('Scene item facts is empty for this session')
-            else:
-                Log.info('Saving result...')
-                self.common.save_json_to_new_tables(facings_sos_dict)
+        # calculate and store the sos
+        # remove target check -- PROS-12476
+        facings_sos_dict = self.facings_sos_whole_store_function()
+        if facings_sos_dict is None:
+            Log.warning('facings_sos_whole_store not saved for session {}'.format(self.session_uid))
         else:
-            Log.info("Session {} has no relevant target to calculate SOS".format(self.session_uid))
+            self.common.save_json_to_new_tables(facings_sos_dict)
+
+        facings_sos_dict = self.facings_sos_by_category_function()
+        if facings_sos_dict is None:
+            Log.warning('facings_sos_by_category not saved for session {}'.format(self.session_uid))
+        else:
+            Log.info('Saving result...')
+            self.common.save_json_to_new_tables(facings_sos_dict)
         self.common.commit_results_data()
         return 0
 
@@ -377,9 +373,7 @@ class TWEGAUToolBox:
 
         result = round(float(numerator_result) / float(denominator_result), 4) \
             if denominator_result != 0 and denominator_result != 0 else 0
-        target = float(self.targets[self.targets['store_number']==self.store_info['store_number_1']
-                       .iloc[0]].iloc[0].sos_target)
-        return [numerator_result, denominator_result, result, front_facing, target/100.0]
+        return [numerator_result, denominator_result, result, front_facing]
 
     def sos_manufacturer_level(self, df, identifier_parent, parent_filter, sos_policy,
                                kpi_denominator, sos_type, kpi_type):
@@ -553,7 +547,6 @@ class TWEGAUToolBox:
                 SessionResultsConsts.NUMERATOR_RESULT: results[0],
                 SessionResultsConsts.RESULT: results[2],
                 SessionResultsConsts.SCORE: results[3],
-                SessionResultsConsts.TARGET: results[4],
                 'identifier_parent': identifier_parent,
                 'identifier_result': identifier_result,
                 'should_enter': True}

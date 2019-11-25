@@ -26,12 +26,11 @@ class MARSUAE_SANDGenerator:
         This is the main KPI calculation function.
         It calculates the score for every KPI set and saves it to the DB.
         """
+        if self.tool_box.data_provider.scenes_info.empty:
+            Log.warning('Session without scenes. Kpis will not be calcualated')
+            return
         if self.tool_box.scif.empty:
             Log.warning('Scene item facts is empty for this session')
-        else:
-            self.tool_box.main_calculation()
-            self.tool_box.common.commit_results_data()
-        # for kpi_set_fk in self.tool_box.kpi_static_data['kpi_set_fk'].unique().tolist():
-        #     score = self.tool_box.main_calculation(kpi_set_fk=kpi_set_fk)
-        #     self.common.write_to_db_result(kpi_set_fk, self.tool_box.LEVEL1, score)
-        # self.common.commit_results_data()
+
+        self.tool_box.main_calculation()
+        self.tool_box.common.commit_results_data()
