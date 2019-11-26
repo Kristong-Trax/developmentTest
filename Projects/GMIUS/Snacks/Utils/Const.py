@@ -20,6 +20,11 @@ class Const(object):
     BASE_MEASURE = 'Base Measure'
     BLOCK_ORIENTATION = 'Block Orientation'
     BLOCK_PERCENT = 'Block Percent'
+    ANCHOR = 'Anchor'
+    PRODUCT_SEQUENCE = 'Product Sequence'
+    MAX_BLOCK_ADJACENCY_SUBCAT = 'Max Block Adjacency SubCat'
+    STOCKED_LOCATION = 'Stocked Location'
+
 
 
 
@@ -44,7 +49,6 @@ class Const(object):
     IADJACENCY = 'IAdjacency'
     STOCKING = 'Stocking Location'
     YOGURT_MAP = 'Yogurt Location Map'
-    ANCHOR = 'Anchor'
     ANCHOR_LIST = 'Anchor List'
     SURVEY_QUESTION = 'Survey Question'
     VARIETY_COUNT = 'Variety Count'
