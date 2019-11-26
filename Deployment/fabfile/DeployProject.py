@@ -20,10 +20,13 @@ def deploy_single_project(ace_live_git_folder, ace_live_repo, project_name, sdk_
     root_path = os.path.join(ace_live_git_folder, 'Projects', converted_project_name)
     print "root path={}".format(root_path)
     ProjectDeployment.delete_pyc_files(ace_live_git_folder)
+    ProjectDeployment.delete_pyc_files(sdk_factory_git_folder)
+    ProjectDeployment.delete_pyc_files(kpi_factory_git_folder)
     copy_to_ace_live(sdk_factory_git_folder, ace_live_git_folder, kpi_factory_git_folder,
                      converted_project_name)
     ProjectValidator.modules_checkup(root_path)
     kpi_tag = ''
+    ProjectDeployment.delete_pyc_files(ace_live_git_folder)
     if environment == 'prod':
         kpi_tag = ProjectDeploy.push_factory_new_tag(converted_project_name, kpi_repo)
         ProjectDeploy.upload_to_live_git(ace_live_git_folder, ace_live_repo,
