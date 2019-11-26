@@ -516,7 +516,7 @@ class MARSIN_SANDToolBox(MARSIN_SANDTemplateConsts, MARSIN_SANDKPIConsts):
                 merged_block_result = self.tools.calculate_block_together(allowed_products_filters={'front_facing': 'N'},
                                                                           front_facing='Y', scene_fk=relevant_scenes,
                                                                           **merged_filters)
-                score = 1 if merged_block_result else 0
+                score = 100 if merged_block_result else 0
                 self.write_to_db_result(atomics[2], (score, score, 1), level=self.LEVEL3)
                 # results  to new db tables
                 self.common.write_to_db_result(fk=kpi_level_2_fks[2],
