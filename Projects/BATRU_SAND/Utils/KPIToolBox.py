@@ -455,12 +455,13 @@ class BATRU_SANDToolBox:
         lvl3_result = lvl3_result[lvl3_result['kpi_fk_lvl2'] == oos_kpi_fk]
         for result_row in lvl3_result.itertuples():
             res = 1 - result_row.in_store
-            score = res * 100
             # talk to ido whether we should write all skus or only missing ones
-            self.common.write_to_db_result(fk=result_row.kpi_fk_lvl3, numerator_id=result_row.product_fk,
-                                           denominator_id=self.store_id, numerator_result=res,
-                                           denominator_result=1, result=res, score=score,
-                                           identifier_parent=identifier_parent, should_enter=True)
+            if res == 1:
+                score = res * 100
+                self.common.write_to_db_result(fk=result_row.kpi_fk_lvl3, numerator_id=result_row.product_fk,
+                                               denominator_id=self.store_id, numerator_result=res,
+                                               denominator_result=1, result=res, score=score,
+                                               identifier_parent=identifier_parent, should_enter=True)
         if not lvl3_result.empty:
             lvl2_result = self.assortment.calculate_lvl2_assortment(lvl3_result)
             for row in lvl2_result.itertuples():
@@ -475,8 +476,6 @@ class BATRU_SANDToolBox:
                                                numerator_result=denominator_res - row.passes, result=oos_result * 100,
                                                denominator_id=self.store_id, denominator_result=denominator_res,
                                                score=oos_score, identifier_result=identifier_parent, should_enter=True)
-
-        pass
 
     # P1 KPI
     @kpi_runtime()
