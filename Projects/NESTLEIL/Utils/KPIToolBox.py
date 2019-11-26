@@ -147,6 +147,6 @@ class NESTLEILToolBox:
             score, result = self._calculate_assortment_score_and_result(num_res, den_res, save_result_values)
             identifier_parent = (parent_kpi_fk, denominator_id) if should_enter else None
             self.common_v2.write_to_db_result(fk=kpi_fk, numerator_id=numerator_id, numerator_result=num_res,
-                                              denominator_id=self.store_id, denominator_result=den_res,
+                                              denominator_id=denominator_id, denominator_result=den_res,
                                               score=score, result=result, identifier_result=(kpi_fk, numerator_id),
                                               should_enter=should_enter, identifier_parent=identifier_parent)
