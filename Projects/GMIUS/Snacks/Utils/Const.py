@@ -21,6 +21,9 @@ class Const(object):
     BLOCK_ORIENTATION = 'Block Orientation'
     BLOCK_PERCENT = 'Block Percent'
     ANCHOR = 'Anchor'
+    PRODUCT_SEQUENCE = 'Product Sequence'
+    MAX_BLOCK_ADJACENCY_SUBCAT = 'Max Block Adjacency SubCat'
+    STOCKED_LOCATION = 'Stocked Location'
 
 
 

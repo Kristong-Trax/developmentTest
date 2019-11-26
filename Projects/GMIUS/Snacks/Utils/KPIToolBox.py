@@ -3,7 +3,7 @@ import pandas as pd
 import numpy as np
 from functools import reduce
 import operator as op
-from collections import defaultdict, Counter
+from collections import defaultdict, Counter, namedtuple
 
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Algo.Calculations.Core.Utils import Validation
@@ -86,7 +86,14 @@ class ToolBox:
 
         for i, main_line in main_template.iterrows():
             self.global_fail = 0
-            self.calculate_main_kpi(main_line)
+            all_kwargs = self.calculate_main_kpi(main_line)
+            if not isinstance(all_kwargs, list) or not all_kwargs:
+                all_kwargs = [all_kwargs]
+            for kwargs in all_kwargs:
+                if not kwargs or kwargs['score'] is None:
+                    kwargs = {'score': 0, 'result': 'Not Applicable', 'failed': 0}
+                self.write_to_db(main_line['KPI Name'], **kwargs)
+                self.dependencies[main_line['KPI Name']] = kwargs['result']
 
         # self.flag_failures()
 
@@ -109,14 +116,17 @@ class ToolBox:
         if (self.super_cat in ['SNACKS']) and \
                 (kpi_type in[
                     Const.PRIMARY_LOCATION,
-                    # Const.MAX_BLOCK_ADJACENCY,
+                    Const.MAX_BLOCK_ADJACENCY,
                     # Const.MAX_BLOCK_COMPOSITION,
                     # Const.EXISTS_IN_MAX_BLOCK,
                     # Const.BLOCKING,
                     # Const.BASE_MEASURE,
                     # Const.BLOCK_ORIENTATION,
                     # Const.BLOCK_PERCENT,
-                    Const.ANCHOR
+                    # Const.ANCHOR,
+                    # Const.PRODUCT_SEQUENCE,
+                    # Const.MAX_BLOCK_ADJACENCY_SUBCAT,
+                    Const.STOCKED_LOCATION,
                 ]):
 
             dependent_kpis = self.read_cell_from_line(main_line, Const.DEPENDENT)
@@ -126,7 +136,8 @@ class ToolBox:
                     # if dependent_results[0][0] != '!':
                         if dependent_results[i]:
                             if self.dependencies[dependent_kpi] != dependent_results[i]:
-                                # if self.dependencies[dependent_kpi] is None:
+                                if not pd.isna(main_line['Dependency Fail Result']):
+                                    return {'score': 1, 'result': main_line['Dependency Fail Result']}
                                 return
                         # else:
                         #     if self.dependencies[dependent_kpi] == dependent_results \
@@ -149,17 +160,9 @@ class ToolBox:
                         kpi_name, self.super_cat, e))
 
             finally:
-                if not isinstance(all_kwargs, list) or not all_kwargs:
-                    all_kwargs = [all_kwargs]
-                for kwargs in all_kwargs:
-                    if not kwargs or kwargs['score'] is None:
-                        kwargs = {'score': 0, 'result': 'Not Applicable', 'failed': 0}
-                    self.write_to_db(kpi_name, **kwargs)
-                    self.dependencies[kpi_name] = kwargs['result']
-
-
-                    print(kwargs)
-                    print('\n')
+                print(all_kwargs)
+                print('\n')
+                return all_kwargs
 
     def flag_failures(self):
         for kpi, val in self.dependencies.items():
@@ -267,6 +270,23 @@ class ToolBox:
         result = 'Not Stocked with Kids Grain'
         if num & found:
             result = 'Stocked with Kids Grain'
+        return {'score': 1, 'result': result}
+
+    def calculate_max_block_adjacency_subcat(self, kpi_name, kpi_line, relevant_scif, general_filters):
+        a_filters = self.get_kpi_line_filters(kpi_line, 'A')
+        check_filters = self.get_kpi_line_filters(kpi_line, 'B')
+        result = 'Other'
+        for subcat in check_filters.values()[0]:
+            b_filters = {check_filters.keys()[0]: [subcat]}
+            mpis = self.filter_df(self.mpis, general_filters)
+            a_mpis = self.filter_df(mpis, a_filters)
+            b_mpis = self.filter_df(mpis, b_filters)
+            if a_mpis.empty or b_mpis.empty:
+                continue
+            adj = self.calculate_max_block_adj_base(kpi_name, kpi_line, relevant_scif, general_filters)
+            if adj:
+                result = ' '.join([x.capitalize() for x in subcat.replace('GRAIN', '').split(' ') if x])
+                break
         return {'score': 1, 'result': result}
 
     def calculate_max_block_adj_base(self, kpi_name, kpi_line, relevant_scif, general_filters, comp_filter={},
@@ -398,50 +418,6 @@ class ToolBox:
             raise NoDataForBlockError(Const.EMPTY_BLOCKS_ERROR.format(kpi_name))
         return score, orientation, mpis_dict, blocks, result
 
-    def anchor_base(self, general_filters, potential_end, scenes, min_shelves, ratio=False, edges=[]):
-        results = {}
-        cat_filters = dict(general_filters)
-        func_dict = {'left': [min, op.lt, float('inf')], 'right': [max, op.gt, 0]}
-        results['left'], results['right'] = 0, 0
-        for scene in scenes:
-            cat_filters['scene_fk'] = scene
-            cat_mpis = self.filter_df(self.mpis, cat_filters)
-            # cat_mpis = self.filter_df(cat_mpis, Const.ALLOWED_FILTERS, exclude=1)
-            cat_mpis = self.filter_df(cat_mpis, {'product_type': 'Empty'}, exclude=1)
-            cat_mpis = self.filter_df(cat_mpis, {'stacking_layer': 1})
-            bays = {'left': cat_mpis['bay_number'].min(), 'right': cat_mpis['bay_number'].max()}
-            for dir, bay in bays.items():
-                results[dir] = {}
-                if edges and dir not in edges:
-                    continue
-                agg_func, operator, fill_val = func_dict[dir]
-                bay_mpis = self.filter_df(cat_mpis, {'bay_number': bay})
-
-
-
-                smpis = self.filter_df(bay_mpis, potential_end).groupby(
-                    ['scene_fk', 'bay_number', 'shelf_number'])['facing_sequence_number'].agg(agg_func)
-                if smpis.empty:
-                    continue
-                rmpis = self.filter_df(bay_mpis, potential_end, exclude=1) \
-                    .groupby(['scene_fk', 'bay_number', 'shelf_number'])['facing_sequence_number'].agg(agg_func)
-                locs = pd.concat([smpis, rmpis], axis=1)
-                locs.columns = ['A', 'B']
-                locs.dropna(subset=['A'], inplace=True)
-
-
-
-                if ratio:
-                    min_shelves = max(self.filter_df(
-                        self.mpis, {'scene_fk': scene, 'bay_number': bay})['shelf_number'])
-                    min_shelves = round(min_shelves / 2.0)
-
-                locs.fillna(fill_val, inplace=True)
-                results[dir][scene] = 0
-                if sum(operator(locs['A'], locs['B'])) >= min_shelves:
-                    results[dir][scene] = 1
-        return results
-
     def calculate_anchor(self, kpi_name, kpi_line, relevant_scif, general_filters):
         results = []
         edge = kpi_line['Edges']
@@ -466,9 +442,47 @@ class ToolBox:
             results.append({'score': 1, 'result': result, 'denominator_id': scene})
         return results
 
+    def calculate_product_sequence(self, kpi_name, kpi_line, relevant_scif, general_filters):
+        # this attribute should be pulled from the template once the template is updated
+        vector = kpi_line['Vector']
+        orth = (set(['x', 'y']) - set(vector)).pop()
+        filters = self.get_kpi_line_filters(kpi_line)
+        scene = relevant_scif.scene_fk.iloc[0]
+        Segment = namedtuple('Segment', 'seg position facings orth_min orth_max matches')
+        segments = filters.values()[0]
+        seg_list = []
+        for seg in segments:
+            seg_filters = {filters.keys()[0]: [seg]}
+            _, _, mpis_dict, _, results = self.base_block(kpi_name, kpi_line, relevant_scif,
+                                                          general_filters,
+                                                          filters=seg_filters,
+                                                          check_orient=0)
+            cluster = results.sort_values('facing_percentage', ascending=False).iloc[0, 0]
+            df = pd.DataFrame([(n['polygon'].centroid.x, n['polygon'].centroid.y, n['facings'],
+                              list(n['match_fk'].values)) + n['polygon'].bounds
+                              for i, n in cluster.nodes(data=True) if n['block_key'].value
+                              not in Const.ALLOWED_FLAGS],
+                              columns=['x', 'y', 'facings', 'matches', 'x_min', 'y_min', 'x_max', 'y_max'])
+            facings = df.facings.sum()
+            seg_list.append(Segment(seg=seg, position=(df[vector]*df['facings']).sum()/facings, facings=facings,
+                            orth_min=mpis_dict[scene]['rect_{}'.format(orth)].min(),
+                            orth_max=mpis_dict[scene]['rect_{}'.format(orth)].max(),
+                            matches=df['matches'].sum()))
 
+        order = [x.seg for x in sorted(seg_list, key=lambda x: x.position)]
+        result = ', '.join([' '.join([y.capitalize() for y in x.replace('GRAIN', '').split(' ') if y]) for x in order])
+        return {'result': result, 'score': 1}
 
-
+    def calculate_stocked_location(self, kpi_name, kpi_line, relevant_scif, general_filters):
+        thresh = kpi_line['Threshold']
+        filters = self.get_kpi_line_filters(kpi_line)
+        num_df = self.filter_df(relevant_scif, filters)
+        den_df = self.filter_df(self.scif, filters)
+        ratio, res = self.ratio_score(num_df.facings_ign_stack.sum(), den_df.facings_ign_stack.sum(), thresh)
+        result = kpi_line['Fail']
+        if res:
+            result = kpi_line['Pass']
+        return {'result': result, 'score': 1}
 
 
 
@@ -1612,11 +1626,6 @@ class ToolBox:
         self.template[Const.KPIS] = kpis.reindex(index=pd.Index(kpis_index)).reset_index(drop=True)
 
     def get_kpi_function(self, kpi_type, result):
-        """
-        transfers every kpi to its own function
-        :param kpi_type: value from "sheet" column in the main sheet
-        :return: function
-        """
         if kpi_type == Const.PRIMARY_LOCATION:
             return self.calculate_primary_location
         elif kpi_type == Const.MAX_BLOCK_ADJACENCY:
@@ -1635,7 +1644,17 @@ class ToolBox:
             return self.calculate_blocking_orientation
         elif kpi_type == Const.ANCHOR:
             return self.calculate_anchor
-
+        elif kpi_type == Const.PRODUCT_SEQUENCE:
+            return self.calculate_product_sequence
+        elif kpi_type == Const.MAX_BLOCK_ADJACENCY_SUBCAT:
+            return self.calculate_max_block_adjacency_subcat
+        elif kpi_type == Const.STOCKED_LOCATION:
+            return self.calculate_stocked_location
+        """
+        transfers every kpi to its own function
+        :param kpi_type: value from "sheet" column in the main sheet
+        :return: function
+        """
 
         # elif kpi_type == Const.TMB:
         #     return self.calculate_topmiddlebottom
