@@ -135,6 +135,9 @@ class HEINZCRToolBox:
         total_kpi_fk = self.common_v2.get_kpi_fk_by_kpi_type('Distribution')
         identifier_dict = self.common_v2.get_dictionary(kpi_fk=total_kpi_fk)
 
+        oos_kpi_fk = self.common_v2.get_kpi_fk_by_kpi_type('OOS')
+        oos_identifier_dict = self.common_v2.get_dictionary(kpi_fk=oos_kpi_fk)
+
         for row in self.store_assortment_without_powerskus.itertuples():
             result = 0
             if row.product_fk in products_in_store:
@@ -145,16 +148,32 @@ class HEINZCRToolBox:
             self.common_v2.write_to_db_result(sku_kpi_fk, numerator_id=row.product_fk, denominator_id=row.assortment_fk,
                                               result=result, identifier_parent=identifier_dict, should_enter=True)
 
+            oos_result = 0 if result else 1
+            oos_sku_kpi_fk = self.common_v2.get_kpi_fk_by_kpi_type('OOS - SKU')
+            self.common_v2.write_to_db_result(oos_sku_kpi_fk, numerator_id=row.product_fk,
+                                              denominator_id=row.assortment_fk,
+                                              result=oos_result, identifier_parent=oos_identifier_dict,
+                                              should_enter=True)
+
         number_of_products_in_assortment = len(self.store_assortment_without_powerskus)
         if number_of_products_in_assortment:
             total_result = (pass_count / float(number_of_products_in_assortment)) * 100
+            oos_products = number_of_products_in_assortment - pass_count
+            oos_result = (oos_products / float(number_of_products_in_assortment)) * 100
         else:
             total_result = 0
+            oos_products = number_of_products_in_assortment
+            oos_result = number_of_products_in_assortment
         self.common_v2.write_to_db_result(total_kpi_fk, numerator_id=Const.OWN_MANUFACTURER_FK,
                                           denominator_id=self.store_id,
                                           numerator_result=pass_count,
                                           denominator_result=number_of_products_in_assortment,
                                           result=total_result, identifier_result=identifier_dict)
+        self.common_v2.write_to_db_result(oos_kpi_fk, numerator_id=Const.OWN_MANUFACTURER_FK,
+                                          denominator_id=self.store_id,
+                                          numerator_result=oos_products,
+                                          denominator_result=number_of_products_in_assortment,
+                                          result=oos_result, identifier_result=oos_identifier_dict)
 
     def calculate_powersku_assortment(self):
         if self.sub_category_assortment.empty:
