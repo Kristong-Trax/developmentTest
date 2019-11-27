@@ -218,16 +218,19 @@ class ToolBox:
         result = 'Could not determine'
         a_req = self.get_kpi_line_filters(kpi_line, 'A Required')
         b_req = self.get_kpi_line_filters(kpi_line, 'B Required')
+        a_filters = self.get_kpi_line_filters(kpi_line, 'A')
         thresh = {'A': self.read_cell_from_line(kpi_line, 'A Threshold')[0]}
         mpis = self.filter_df(self.mpis, general_filters)
         a_all_mpis = self.filter_df(self.mpis, a_req) #  Larabar can be anywhere
-        a_mpis = self.filter_df(mpis, a_req) #  Larabar can be anywhere
+        a_mpis = self.filter_df(mpis, a_req)
         b_mpis = self.filter_df(mpis, b_req)
         if a_all_mpis.empty or b_mpis.empty:
             return {'score': 1, 'result': result}
+        if a_mpis.empty:
+            return {'score': 1, 'result': 'Non-Integrated Bars Set Present'}
         req = {'A': set(a_mpis.scene_match_fk.unique()), 'B': set(b_mpis.scene_match_fk.unique())}
-        adj = self.calculate_max_block_adj_base(kpi_name, kpi_line, relevant_scif, general_filters, thresh=thresh,
-                                                require=req)
+        adj = self.calculate_max_block_adj_base(kpi_name, kpi_line, relevant_scif, general_filters, require=req,
+                                                thresh=thresh)
         if adj:
             result = 'Integrated Bars Set Present'
         else:
@@ -306,7 +309,7 @@ class ToolBox:
             if self.read_cell_from_line(kpi_line, 'Max Block')[0] == 'Y':
                 v['df'] = pd.DataFrame(v['df'].iloc[0, :]).T
             if k in thresh:
-                if v['df']['facing_percentage'].iloc[0] <= thresh[k]:
+                if v['df']['total_facings'].iloc[0] / float(self.filter_df(self.mpis, filters).shape[0]) <= thresh[k]:
                     return 0
             v['items'] = sum([list(n['match_fk']) for j, row in v['df'].iterrows()
                               for i, n in row['cluster'].nodes(data=True)
@@ -350,7 +353,7 @@ class ToolBox:
             block_mpis['real_shelf_number'] = [shelves[bay] for bay in block_mpis.index]
             block_mpis['ratio'] = block_mpis['shelf_number'] / block_mpis['real_shelf_number']
             block_mpis['passed'] = block_mpis.ratio.apply(lambda x: 1 if x >= .75 else 0)
-            if block_mpis.passed.sum() / block_mpis.shape[0] > .5:
+            if block_mpis.passed.sum() / float(block_mpis.shape[0]) > .5:
                 result = 'Vertical'
             else:
                 result = 'Not Vertical'
