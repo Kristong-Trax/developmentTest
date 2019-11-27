@@ -450,19 +450,19 @@ class BATRU_SANDToolBox:
     # OOS KPI
     def handle_oos(self):
         lvl3_result = self.assortment.calculate_lvl3_assortment()
-        oos_kpi_fk = self.common.get_kpi_fk_by_kpi_type(self.OOS)
-        identifier_parent = self.common.get_dictionary(kpi_fk=oos_kpi_fk)
-        lvl3_result = lvl3_result[lvl3_result['kpi_fk_lvl2'] == oos_kpi_fk]
-        for result_row in lvl3_result.itertuples():
-            res = 1 - result_row.in_store
-            # talk to ido whether we should write all skus or only missing ones
-            if res == 1:
-                score = res * 100
-                self.common.write_to_db_result(fk=result_row.kpi_fk_lvl3, numerator_id=result_row.product_fk,
-                                               denominator_id=self.store_id, numerator_result=res,
-                                               denominator_result=1, result=res, score=score,
-                                               identifier_parent=identifier_parent, should_enter=True)
         if not lvl3_result.empty:
+            oos_kpi_fk = self.common.get_kpi_fk_by_kpi_type(self.OOS)
+            identifier_parent = self.common.get_dictionary(kpi_fk=oos_kpi_fk)
+            lvl3_result = lvl3_result[lvl3_result['kpi_fk_lvl2'] == oos_kpi_fk]
+            for result_row in lvl3_result.itertuples():
+                res = 1 - result_row.in_store
+                if res == 1:
+                    score = res * 100
+                    self.common.write_to_db_result(fk=result_row.kpi_fk_lvl3, numerator_id=result_row.product_fk,
+                                                   denominator_id=self.store_id, numerator_result=res,
+                                                   denominator_result=1, result=res, score=score,
+                                                   identifier_parent=identifier_parent, should_enter=True)
+
             lvl2_result = self.assortment.calculate_lvl2_assortment(lvl3_result)
             for row in lvl2_result.itertuples():
                 denominator_res = row.total
