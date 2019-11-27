@@ -109,7 +109,7 @@ class ToolBox:
         if relevant_scif.empty and main_line['Run on Empty SCIF'] != 'Y':
             return
 
-        print(kpi_name)
+        # print(kpi_name)
         # if kpi_name != 'When there is a Non-Integrated Bars set, what Nutrition segments are present in the Nutrition MSL?':
         #     return
 
@@ -160,8 +160,8 @@ class ToolBox:
                         kpi_name, self.super_cat, e))
 
             finally:
-                print(all_kwargs)
-                print('\n')
+                # print(all_kwargs)
+                # print('\n')
                 return all_kwargs
 
     def flag_failures(self):
@@ -194,6 +194,7 @@ class ToolBox:
         max_res = kpi_line['Max']
         filters = self.get_kpi_line_filters(kpi_line)
         filters.update(general_filters)
+        filters.update({'stacking_layer': 1})
         shelves = self.filter_df(self.full_mpis, general_filters).groupby('bay_number')['shelf_number'].max().to_dict()
         bays = self.filter_df(self.mpis, filters).groupby('bay_number')['width_mm_advance']
         total = 0
@@ -438,8 +439,10 @@ class ToolBox:
                 bmpis['facing_sequence_number'] = bmpis['n_shelf_items'] - bmpis['facing_sequence_number']
             bmpis = bmpis[bmpis['facing_sequence_number'] == min(bmpis['facing_sequence_number'])]
             counts = bmpis.groupby(potential_end.keys()[0])['scene_match_fk'].count().sort_values(ascending=False)
-            result = ' '.join([sub.capitalize() for sub in counts.index[0].split(' ')])
-            results.append({'score': 1, 'result': result, 'denominator_id': scene})
+            counts = counts[counts == max(counts)]
+            for count in counts.index:
+                result = ' '.join([sub.capitalize() for sub in count.split(' ')])
+                results.append({'score': 1, 'result': result, 'denominator_id': scene, 'numerator_result': max(counts)})
         return results
 
     def calculate_product_sequence(self, kpi_name, kpi_line, relevant_scif, general_filters):
@@ -478,6 +481,8 @@ class ToolBox:
         filters = self.get_kpi_line_filters(kpi_line)
         num_df = self.filter_df(relevant_scif, filters)
         den_df = self.filter_df(self.scif, filters)
+        if den_df.empty:
+            return
         ratio, res = self.ratio_score(num_df.facings_ign_stack.sum(), den_df.facings_ign_stack.sum(), thresh)
         result = kpi_line['Fail']
         if res:
@@ -1776,6 +1781,7 @@ class ToolBox:
                                                         .merge(self.templates, on='template_fk', suffixes=['', '_t'])
             self.mpis = self.full_mpis[self.full_mpis['product_type'] != 'Irrelevant']
             self.mpis = self.filter_df(self.mpis, Const.SOS_EXCLUDE_FILTERS, exclude=1)
+            self.mpis = self.filter_df(self.mpis, {'stacking_layer': 1})
             self.mpip = self.create_mpip()
         except:
             Log.warning('No mpis data found for session {}'.format(self.session_uid))
