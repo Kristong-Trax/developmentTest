@@ -296,6 +296,8 @@ class MARSIN_SANDToolBox(MARSIN_SANDTemplateConsts, MARSIN_SANDKPIConsts):
                                        denominator_id=self.store_id,
                                        numerator_result=actual_points,
                                        denominator_result=total_points,
+                                       target=total_points,
+                                       weight=actual_points,
                                        identifier_result=identifier_result,
                                        identifier_parent=identifier_parent,
                                        result=picos_score[0],
@@ -381,11 +383,11 @@ class MARSIN_SANDToolBox(MARSIN_SANDTemplateConsts, MARSIN_SANDKPIConsts):
             self.common.write_to_db_result(fk=kpi_level_2_fks[0],
                                            numerator_id=self.manufacturer_fk,
                                            denominator_id=self.store_id,
-                                           numerator_result=block_result,
+                                           numerator_result=int(block_result),
                                            denominator_result=1,
                                            identifier_parent=identifier_parent,
                                            target=block_target*100,
-                                           result=block_result,
+                                           result=int(block_result),
                                            score=block_score,
                                            should_enter=True)
             if kpi_data[self.SEQUENCE_ENTITY]:
@@ -412,7 +414,7 @@ class MARSIN_SANDToolBox(MARSIN_SANDTemplateConsts, MARSIN_SANDKPIConsts):
                                                denominator_result=1,
                                                identifier_parent=identifier_parent,
                                                target=1,
-                                               result=sequence_result,
+                                               result=int(sequence_result),
                                                score=sequence_score,
                                                should_enter=True)
 
@@ -475,13 +477,13 @@ class MARSIN_SANDToolBox(MARSIN_SANDTemplateConsts, MARSIN_SANDKPIConsts):
             block1_result = self.tools.calculate_block_together(allowed_products_filters={'front_facing': 'N'},
                                                                 front_facing='Y', scene_fk=relevant_scenes,
                                                                 **group1_filters)
-            block1_score = 1 if block1_result else 0
+            block1_score = 100 if block1_result else 0
             self.write_to_db_result(atomics[0], (block1_score, block1_score, 1), level=self.LEVEL3)
             # results  to new db tables
             self.common.write_to_db_result(fk=kpi_level_2_fks[0],
                                            numerator_id=self.manufacturer_fk,
                                            denominator_id=self.store_id,
-                                           numerator_result=block1_score,
+                                           numerator_result=int(block1_score),
                                            denominator_result=1,
                                            identifier_parent=identifier_parent,
                                            target=1,
@@ -492,13 +494,13 @@ class MARSIN_SANDToolBox(MARSIN_SANDTemplateConsts, MARSIN_SANDKPIConsts):
             block2_result = self.tools.calculate_block_together(allowed_products_filters={'front_facing': 'N'},
                                                                 front_facing='Y', scene_fk=relevant_scenes,
                                                                 **group2_filters)
-            block2_score = 1 if block2_result else 0
+            block2_score = 100 if block2_result else 0
             self.write_to_db_result(atomics[1], (block2_score, block2_score, 1), level=self.LEVEL3)
             # results  to new db tables
             self.common.write_to_db_result(fk=kpi_level_2_fks[1],
                                            numerator_id=self.manufacturer_fk,
                                            denominator_id=self.store_id,
-                                           numerator_result=block2_score,
+                                           numerator_result=int(block2_score),
                                            denominator_result=1,
                                            identifier_parent=identifier_parent,
                                            target=1,
@@ -516,18 +518,20 @@ class MARSIN_SANDToolBox(MARSIN_SANDTemplateConsts, MARSIN_SANDKPIConsts):
                 merged_block_result = self.tools.calculate_block_together(allowed_products_filters={'front_facing': 'N'},
                                                                           front_facing='Y', scene_fk=relevant_scenes,
                                                                           **merged_filters)
-                score = 100 if merged_block_result else 0
+                score = 1 if merged_block_result else 0
+                result = 100 if merged_block_result else 0
+
                 self.write_to_db_result(atomics[2], (score, score, 1), level=self.LEVEL3)
                 # results  to new db tables
                 self.common.write_to_db_result(fk=kpi_level_2_fks[2],
                                                numerator_id=self.manufacturer_fk,
                                                denominator_id=self.store_id,
-                                               numerator_result=score,
+                                               numerator_result=int(merged_block_result),
                                                denominator_result=1,
                                                identifier_parent=identifier_parent,
                                                target=1,
-                                               result=score,
-                                               score=score,
+                                               result=result,
+                                               score=result,
                                                should_enter=True)
             else:
                 score = 0
@@ -635,7 +639,7 @@ class MARSIN_SANDToolBox(MARSIN_SANDTemplateConsts, MARSIN_SANDKPIConsts):
         else:
             scores = []
             if params[self.KPI_TYPE] == self.AVAILABILITY_AND_SURVEY:
-                atomics_new_kpis = ['availability - POSM', 'Availability - Availability & Survey ']
+                atomics_new_kpis = ['Availability - Availability & Survey ', 'Availability - POSM']
             else:
                 if params[self.KPI_TYPE] == self.AVAILABILITY:
                     atomics_new_kpis = ['First Availability', 'Second Availability', 'Third Availability']
@@ -651,7 +655,10 @@ class MARSIN_SANDToolBox(MARSIN_SANDTemplateConsts, MARSIN_SANDKPIConsts):
                 filters = self.get_filters(group, (self.ENTITY, self.VALUES))
                 target = int(group[self.template_id])
                 if group[self.ENTITY] == 'display_name':
+
                     atomic_fk = atomics.pop(-1)
+                    new_kpi = atomics_new_kpis.pop(-1)
+
                     condition = (self.match_display_in_scene['display_name'].isin(filters['display_name']))
                     if scene_types:
                         scenes = self.scif[self.scif['template_name'].isin(scene_types)]['scene_id'].unique().tolist()
@@ -659,6 +666,7 @@ class MARSIN_SANDToolBox(MARSIN_SANDTemplateConsts, MARSIN_SANDKPIConsts):
                     result = len(self.match_display_in_scene[condition])
                 else:
                     atomic_fk = atomics.pop(0)
+                    new_kpi = atomics_new_kpis.pop(0)
                     try:
                         min_facings = int(float(group[self.MIN_FACINGS]))
                     except ValueError:
@@ -667,7 +675,6 @@ class MARSIN_SANDToolBox(MARSIN_SANDTemplateConsts, MARSIN_SANDKPIConsts):
                                                              front_facing='Y', template_name=scene_types, **filters)
                 score = 1 if result >= target else 0
                 self.write_to_db_result(atomic_fk, (score, result, target), level=self.LEVEL3)
-                new_kpi = atomics_new_kpis.pop(0)
                 self.common.write_to_db_result(fk=new_kpi,
                                                numerator_id=self.manufacturer_fk,
                                                denominator_id=self.store_id,
