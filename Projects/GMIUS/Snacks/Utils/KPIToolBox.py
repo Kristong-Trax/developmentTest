@@ -442,7 +442,7 @@ class ToolBox:
             counts = counts[counts == max(counts)]
             for count in counts.index:
                 result = ' '.join([sub.capitalize() for sub in count.split(' ')])
-                results.append({'score': 1, 'result': result, 'denominator_id': scene})
+                results.append({'score': 1, 'result': result, 'denominator_id': scene, 'numerator_result': max(counts)})
         return results
 
     def calculate_product_sequence(self, kpi_name, kpi_line, relevant_scif, general_filters):
