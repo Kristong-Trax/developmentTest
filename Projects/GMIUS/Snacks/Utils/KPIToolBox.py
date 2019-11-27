@@ -220,9 +220,10 @@ class ToolBox:
         b_req = self.get_kpi_line_filters(kpi_line, 'B Required')
         thresh = {'A': self.read_cell_from_line(kpi_line, 'A Threshold')[0]}
         mpis = self.filter_df(self.mpis, general_filters)
-        a_mpis = self.filter_df(mpis, a_req)
+        a_all_mpis = self.filter_df(self.mpis, a_req) #  Larabar can be anywhere
+        a_mpis = self.filter_df(mpis, a_req) #  Larabar can be anywhere
         b_mpis = self.filter_df(mpis, b_req)
-        if a_mpis.empty or b_mpis.empty:
+        if a_all_mpis.empty or b_mpis.empty:
             return {'score': 1, 'result': result}
         req = {'A': set(a_mpis.scene_match_fk.unique()), 'B': set(b_mpis.scene_match_fk.unique())}
         adj = self.calculate_max_block_adj_base(kpi_name, kpi_line, relevant_scif, general_filters, thresh=thresh,
