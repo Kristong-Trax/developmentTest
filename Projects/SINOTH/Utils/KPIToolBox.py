@@ -18,7 +18,6 @@ OWN_DISTRIBUTOR = 'SINO PACIFIC'
 
 TEMPLATE_PARENT_FOLDER = 'Data'
 TEMPLATE_NAME = 'Template.xlsx'
-ASSORTMENT_TEMPLATE_NAME = 'Assortments.xlsx'
 
 KPI_NAMES_SHEET = 'kpis'
 ASSORTMENT_SHEET = 'assortment'
@@ -35,7 +34,7 @@ OUTPUT_TYPE = 'output'
 # FAMILIES ALLOWED
 ASSORTMENTS = 'ASSORTMENTS'
 FSOS = 'FSOS'
-DISTRIBUTION = 'Distrbution'
+SIMON ='SIMON'
 OOS = 'OOS'
 Count = 'Count'
 # Output Type
@@ -427,12 +426,12 @@ class SinoPacificToolBox:
                     continue
             kpi = self.kpi_static_data[(self.kpi_static_data[KPI_TYPE_COL] == kpi_sheet_row[KPI_NAME_COL])
                                        & (self.kpi_static_data['delete_time'].isnull())]
-            if kpi.empty:
-                Log.warning("*** KPI Name:{name} not found in DB for session {sess} ***".format(
+            if kpi.empty or kpi.scene_relevance.values[0] == 1:
+                Log.info("*** KPI Name:{name} not found in DB or is a SCENE LEVEL KPI for session {sess} ***".format(
                     name=kpi_sheet_row[KPI_NAME_COL],
                     sess=self.session_uid
                 ))
-                return False
+                continue
             else:
                 Log.info("KPI Name:{name} found in DB for session {sess}".format(
                     name=kpi_sheet_row[KPI_NAME_COL],
@@ -462,7 +461,7 @@ class SinoPacificToolBox:
             # hack to cast all other than OWN_DISTRIBUTOR to non-sino
             non_sino_index = dataframe_to_process[OWN_CHECK_COL] != OWN_DISTRIBUTOR
             dataframe_to_process.loc[non_sino_index, OWN_CHECK_COL] = 'non-sino'
-            if kpi_sheet_row[KPI_FAMILY_COL] == FSOS:
+            if kpi_sheet_row[KPI_FAMILY_COL] in [FSOS, SIMON]:
                 self.calculate_fsos(detail, groupers, query_string, dataframe_to_process)
             else:
                 Log.error("From project: {proj}. Unexpected kpi_family: {type}. Please check.".format(

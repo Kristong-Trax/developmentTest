@@ -2,12 +2,15 @@
 import pandas as pd
 import numpy as np
 from functools import reduce
-from collections import defaultdict, Counter
+import operator as op
+from collections import defaultdict, Counter, namedtuple
 
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Algo.Calculations.Core.Utils import Validation
 from Trax.Utils.Logging.Logger import Log
 from Projects.GMIUS.Snacks.Utils.Const import Const
+from Projects.GMIUS.Utils.CustomError import NoDataForBlockError
+from Projects.GMIUS.Snacks.Utils.Deco import empty_scif_decorator
 from KPIUtils_v2.GlobalDataProvider.PsDataProvider import PsDataProvider
 
 from KPIUtils_v2.Calculations.BlockCalculations_v2 import Block
@@ -30,16 +33,6 @@ class ToolBox:
         self.common = common
         self.output = output
         self.data_provider = data_provider
-
-        # ----------- fix for nan types in dataprovider -----------
-        all_products = self.data_provider._static_data_provider.all_products.where(
-            (pd.notnull(self.data_provider._static_data_provider.all_products)), None)
-        self.data_provider._set_all_products(all_products)
-        self.data_provider._init_session_data(None, True)
-        self.data_provider._init_report_data(self.data_provider.session_uid)
-        self.data_provider._init_reporting_data(self.data_provider.session_id)
-        # ----------- fix for nan types in dataprovider -----------
-
         self.block = Block(self.data_provider)
         self.project_name = self.data_provider.project_name
         self.session_uid = self.data_provider.session_uid
@@ -74,8 +67,6 @@ class ToolBox:
         # self.att_dict = self.make_att_dict()
         # self.tmb_map = pd.read_excel(Const.TMB_MAP_PATH).set_index('Num Shelves').to_dict('index')
 
-
-
     # main functions:
     def main_calculation(self, template_path):
         """
@@ -88,14 +79,21 @@ class ToolBox:
         self.template = pd.read_excel(template_path, sheetname=None)
         self.super_cat = template_path.split('/')[-1].split(' ')[0].upper()
         self.dependencies = {key: None for key in self.template[Const.KPIS][Const.KPI_NAME]}
-        # self.dependency_reorder()
+        self.dependency_reorder()
         main_template = self.template[Const.KPIS]
         self.dependency_lookup = main_template.set_index(Const.KPI_NAME)[Const.DEPENDENT].to_dict()
         self.res_dict = self.template[Const.RESULT].set_index('Result Key').to_dict('index')
 
         for i, main_line in main_template.iterrows():
             self.global_fail = 0
-            self.calculate_main_kpi(main_line)
+            all_kwargs = self.calculate_main_kpi(main_line)
+            if not isinstance(all_kwargs, list) or not all_kwargs:
+                all_kwargs = [all_kwargs]
+            for kwargs in all_kwargs:
+                if not kwargs or kwargs['score'] is None:
+                    kwargs = {'score': 0, 'result': 'Not Applicable', 'failed': 0}
+                self.write_to_db(main_line['KPI Name'], **kwargs)
+                self.dependencies[main_line['KPI Name']] = kwargs['result']
 
         # self.flag_failures()
 
@@ -108,32 +106,43 @@ class ToolBox:
         if scene_types:
             relevant_scif = relevant_scif[relevant_scif['scene_fk'] == self.MSL[scene_types[0]]]
             general_filters['scene_fk'] = [self.MSL[scene_types[0]]]
-        if relevant_scif.empty:
+        if relevant_scif.empty and main_line['Run on Empty SCIF'] != 'Y':
             return
 
-        # print(kpi_name)
-        # if kpi_name != 'Do Kid AND ASH Both Anchor End of Category?':
-        # if kpi_name != 'In the MSL for Yogurt, which of the following is adjacent to Kite Hill?':
-        # if kpi_name not in ('How is Progresso RTS Rich and Hearty blocked?'):
+        print(kpi_name)
+        # if kpi_name != 'When there is a Non-Integrated Bars set, what Nutrition segments are present in the Nutrition MSL?':
         #     return
 
-        # if kpi_type == Const.AGGREGATION:
-        # if kpi_type:
-        if (self.super_cat in ['SNACKS']) and (kpi_type in[Const.PRIMARY_LOCATION, Const.MAX_BLOCK_ADJACENCY]):
-            # if (self.super_cat in ['MEXICAN']) or (kpi_type in[Const.BASE_MEASURE, Const.BLOCKING, Const.AGGREGATION]):
-            # if kpi_name == 'How is RTS Progresso blocked?':
-            # if kpi_type in[Const.COUNT_SHELVES]: # Const.COUNT_SHELVES:
-            # if kpi_type in[Const.BASE_MEASURE, Const.SET_COUNT]: # Const.COUNT_SHELVES:
-            # if kpi_type in[Const.BLOCKING]: # Const.COUNT_SHELVES:
-            #     print(kpi_name)
+        if (self.super_cat in ['SNACKS']) and \
+                (kpi_type in[
+                    Const.PRIMARY_LOCATION,
+                    Const.MAX_BLOCK_ADJACENCY,
+                    Const.MAX_BLOCK_COMPOSITION,
+                    Const.EXISTS_IN_MAX_BLOCK,
+                    Const.BLOCKING,
+                    Const.BASE_MEASURE,
+                    Const.BLOCK_ORIENTATION,
+                    Const.BLOCK_PERCENT,
+                    Const.ANCHOR,
+                    Const.PRODUCT_SEQUENCE,
+                    Const.MAX_BLOCK_ADJACENCY_SUBCAT,
+                    Const.STOCKED_LOCATION,
+                ]):
 
             dependent_kpis = self.read_cell_from_line(main_line, Const.DEPENDENT)
             dependent_results = self.read_cell_from_line(main_line, Const.DEPENDENT_RESULT)
             if dependent_kpis:
-                for dependent_kpi in dependent_kpis:
-                    if self.dependencies[dependent_kpi] not in dependent_results:
-                        if dependent_results or self.dependencies[dependent_kpi] is None:
-                            return
+                for i, dependent_kpi in enumerate(dependent_kpis):
+                    # if dependent_results[0][0] != '!':
+                        if dependent_results[i]:
+                            if self.dependencies[dependent_kpi] != dependent_results[i]:
+                                if not pd.isna(main_line['Dependency Fail Result']):
+                                    return {'score': 1, 'result': main_line['Dependency Fail Result']}
+                                return
+                        # else:
+                        #     if self.dependencies[dependent_kpi] == dependent_results \
+                        #             or self.dependencies[dependent_kpi] is None:
+                        #         return
 
             kpi_line = self.template[kpi_type].set_index(Const.KPI_NAME).loc[kpi_name]
             function = self.get_kpi_function(kpi_type, kpi_line[Const.RESULT])
@@ -151,13 +160,9 @@ class ToolBox:
                         kpi_name, self.super_cat, e))
 
             finally:
-                if not isinstance(all_kwargs, list) or not all_kwargs:
-                    all_kwargs = [all_kwargs]
-                for kwargs in all_kwargs:
-                    if not kwargs or kwargs['score'] is None:
-                        kwargs = {'score': 0, 'result': 'Not Applicable', 'failed': 0}
-                    self.write_to_db(kpi_name, **kwargs)
-                    self.dependencies[kpi_name] = kwargs['result']
+                print(all_kwargs)
+                print('\n')
+                return all_kwargs
 
     def flag_failures(self):
         for kpi, val in self.dependencies.items():
@@ -182,7 +187,31 @@ class ToolBox:
                     scores[result] += 1
         top = sorted(scores.items(), key=lambda x: x[1])[-1][0]
         self.MSL[self.read_cell_from_line(kpi_line, 'Short Name')[0]] = scene
-        return {'score': 1, 'result': top}
+        return {'score': 1, 'result': top, 'denominator_id': scene}
+
+    def calculate_base_measure(self, kpi_name, kpi_line, relevant_scif, general_filters):
+        unit = kpi_line['Unit']
+        max_res = kpi_line['Max']
+        filters = self.get_kpi_line_filters(kpi_line)
+        filters.update(general_filters)
+        shelves = self.filter_df(self.full_mpis, general_filters).groupby('bay_number')['shelf_number'].max().to_dict()
+        bays = self.filter_df(self.mpis, filters).groupby('bay_number')['width_mm_advance']
+        total = 0
+        for i, bay in bays:
+            total += bay.sum() / shelves[i]
+        total = total / Const.MM_TO_FT
+        unit_base = total // unit
+        ft = int(unit_base * unit)
+        if total < unit:
+            result = 'LESS THAN OR EQUAL TO {} FT'.format(unit)
+        elif total > max_res:
+            result = 'GREATER THAN {} FT'.format(max_res)
+        elif total % unit == 0:
+            result = '{} FT > AND <= {} FT'.format(ft - unit, ft)
+        else:
+            result = '{} FT > AND <= {} FT'.format(ft, ft + unit)
+
+        return {'numerator_result': total, 'score': 1, 'result': result}
 
     def calculate_max_block_adj(self, kpi_name, kpi_line, relevant_scif, general_filters):
         result = 'Could not determine'
@@ -203,6 +232,63 @@ class ToolBox:
             result = 'Non-Integrated Bars Set Present'
         return {'score': 1, 'result': result}
 
+    @empty_scif_decorator
+    def calculate_max_block_composition(self, kpi_name, kpi_line, relevant_scif, general_filters):
+        filters = self.get_kpi_line_filters(kpi_line)
+        segment = kpi_line['Segment']
+        _, _, mpis_dict, _, results = self.base_block(kpi_name, kpi_line, relevant_scif, general_filters,
+                                                      filters=filters, check_orient=0, add_cols=segment)
+        maxblock = results.sort_values('facing_percentage', ascending=False).iloc[0, :].cluster
+        subcats = set(sum([list(n[segment].values) for i, n in maxblock.nodes(data=True)], []))
+        potential_results = self.get_results_value(kpi_line)
+        components = set(y.strip().upper() for x in potential_results for y in x.split(','))
+        found = [comp for cat in subcats if cat for comp in components if comp in cat]
+        if not found:
+            found = [comp for cat in subcats-components if cat for comp in components if cat in comp]
+        if not found:
+            result = 'COULD NOT DETERMINE'
+        else:
+            result = self.results_matching(found, potential_results)
+        return {'score': 1, 'result': result}
+
+
+    def results_matching(self, found, possible):
+        return sorted(Counter((res for cat in found if cat for res in possible
+                               if cat in res.upper() and len(res.split(',')) == len(found))).items(),
+                       key=lambda x: x[1])[-1][0]
+
+    def calculate_exists_in_max_block(self, kpi_name, kpi_line, relevant_scif, general_filters):
+        num_filters = self.get_kpi_line_filters(kpi_line, 'Numerator')
+        den_filters = self.get_kpi_line_filters(kpi_line, 'Denominator')
+        num_filters.update(den_filters)
+        num_filters.update(general_filters)
+        _, _, _, _, results = self.base_block(kpi_name, kpi_line, relevant_scif, general_filters,
+                                              filters=den_filters, check_orient=0)
+        maxblock = results.sort_values('block_facings', ascending=False).iloc[0, :].cluster
+        found = set(sum([list(n['scene_match_fk'].values) for i, n in maxblock.nodes(data=True)], []))
+        num = set(self.filter_df(self.mpis, num_filters).scene_match_fk.values)
+        result = 'Not Stocked with Kids Grain'
+        if num & found:
+            result = 'Stocked with Kids Grain'
+        return {'score': 1, 'result': result}
+
+    def calculate_max_block_adjacency_subcat(self, kpi_name, kpi_line, relevant_scif, general_filters):
+        a_filters = self.get_kpi_line_filters(kpi_line, 'A')
+        check_filters = self.get_kpi_line_filters(kpi_line, 'B')
+        result = 'Other'
+        for subcat in check_filters.values()[0]:
+            b_filters = {check_filters.keys()[0]: [subcat]}
+            mpis = self.filter_df(self.mpis, general_filters)
+            a_mpis = self.filter_df(mpis, a_filters)
+            b_mpis = self.filter_df(mpis, b_filters)
+            if a_mpis.empty or b_mpis.empty:
+                continue
+            adj = self.calculate_max_block_adj_base(kpi_name, kpi_line, relevant_scif, general_filters)
+            if adj:
+                result = ' '.join([x.capitalize() for x in subcat.replace('GRAIN', '').split(' ') if x])
+                break
+        return {'score': 1, 'result': result}
+
     def calculate_max_block_adj_base(self, kpi_name, kpi_line, relevant_scif, general_filters, comp_filter={},
                                      thresh={}, require={}):
         allowed_edges = [x.upper() for x in self.read_cell_from_line(kpi_line, Const.EDGES)]
@@ -212,10 +298,8 @@ class ToolBox:
                 filters = comp_filter[k]
             else:
                 filters = self.get_kpi_line_filters(kpi_line, k)
-            _, _, mpis_dict, _, results = self.base_block(kpi_name, kpi_line, relevant_scif,
-                                                          general_filters,
-                                                          filters=filters,
-                                                          check_orient=0)
+            _, _, _, _, results = self.base_block(kpi_name, kpi_line, relevant_scif, general_filters, filters=filters,
+                                                  check_orient=0)
             v['df'] = results.sort_values('facing_percentage', ascending=False)
             if self.read_cell_from_line(kpi_line, 'Max Block')[0] == 'Y':
                 v['df'] = pd.DataFrame(v['df'].iloc[0, :]).T
@@ -240,17 +324,51 @@ class ToolBox:
             result = 1
         return result
 
-    def calculate_block(self, kpi_name, kpi_line, relevant_scif, general_filters):
-        score, orientation, mpis_dict, _, _ = self.base_block(
-            kpi_name, kpi_line, relevant_scif, general_filters)
-        # result_fk = self.result_values_dict[orientation]
-        kwargs = {'numerator_id': 999, 'numerator_result': score, 'score': score, 'result': orientation,
-                  'target': 1}
-        return kwargs
+    @empty_scif_decorator
+    def calculate_blocking(self, kpi_name, kpi_line, relevant_scif, general_filters):
+        _, _, _, blocks, _, = self.base_block(kpi_name, kpi_line, relevant_scif, general_filters)
+        result = 'Not Blocked'
+        if not blocks.empty:
+            result = 'Blocked'
+        return {'score': 1, 'result': result}
 
+    @empty_scif_decorator
+    def calculate_blocking_percent(self, kpi_name, kpi_line, relevant_scif, general_filters):
+        shelves = self.filter_df(self.full_mpis, general_filters).groupby('bay_number')['shelf_number'].max().to_dict()
+        _, _, mpis_dict, blocks, _, = self.base_block(kpi_name, kpi_line, relevant_scif, general_filters)
+        result = 'Not Blocked'
+        if not blocks.empty:
+            block = blocks.cluster.iloc[0]
+            items = sum([list(n['scene_match_fk'].values) for i, n in block.nodes(data=True)], [])
+            block_mpis = self.filter_df(self.mpis, {'scene_match_fk': items})
+            block_mpis = pd.DataFrame(block_mpis.groupby('bay_number')['shelf_number'].nunique())
+            block_mpis['real_shelf_number'] = [shelves[bay] for bay in block_mpis.index]
+            block_mpis['ratio'] = block_mpis['shelf_number'] / block_mpis['real_shelf_number']
+            block_mpis['passed'] = block_mpis.ratio.apply(lambda x: 1 if x >= .75 else 0)
+            if block_mpis.passed.sum() / block_mpis.shape[0] > .5:
+                result = 'Vertical'
+            else:
+                result = 'Not Vertical'
+        return {'score': 1, 'result': result}
+
+    def calculate_blocking_orientation(self, kpi_name, kpi_line, relevant_scif, general_filters):
+        children = self.generic_split(self.dependency_lookup[kpi_name])
+        total = 0
+        vertical = 0
+        for child in children:
+            total += 1
+            skull_hat = self.dependencies[child]
+            if skull_hat == 'Not Blocked':
+                return {'score': 1, 'result': 'Not Blocked'}
+            elif skull_hat == 'Vertical':
+                vertical += 1
+        result = 'Not Vertical'
+        if vertical / total > .5:
+            result = 'Vertical'
+        return {'score': 1, 'result': result}
 
     def base_block(self, kpi_name, kpi_line, relevant_scif, general_filters_base, check_orient=1, other=1, filters={},
-                   exclude={}, multi=0):
+                   exclude={}, multi=0, add_cols=[]):
         result = pd.DataFrame()
         general_filters = dict(general_filters_base)
         blocks = pd.DataFrame()
@@ -287,7 +405,8 @@ class ToolBox:
                                                                                 'include_stacking': False,
                                                                                 'check_vertical_horizontal': check_orient,
                                                                                 'minimum_facing_for_block': 1,
-                                                                                'exclude_filter': exclude})])
+                                                                                'exclude_filter': exclude,
+                                                                                'additional_columns': add_cols})])
             blocks = result[result['is_block'] == True]
             valid_scene_found = 1
             if not blocks.empty and not multi:
@@ -296,12 +415,74 @@ class ToolBox:
                 # break
         if empty_check == -1 and not valid_scene_found:
             self.global_fail = 1
-            raise TypeError('No Data Found fo kpi "'.format(kpi_name))
+            raise NoDataForBlockError(Const.EMPTY_BLOCKS_ERROR.format(kpi_name))
         return score, orientation, mpis_dict, blocks, result
 
+    def calculate_anchor(self, kpi_name, kpi_line, relevant_scif, general_filters):
+        results = []
+        edge = kpi_line['Edges']
+        op = min if edge == 'left' else max
+        scenes = relevant_scif['scene_fk'].unique()
+        potential_end = self.get_kpi_line_filters(kpi_line)
+        general_filters.update(potential_end)
+        for scene in scenes:
+            general_filters['scene_fk'] = scene
+            mpis = self.filter_df(self.mpis, general_filters)
+            if mpis.empty:
+                continue
+            bay = op(mpis['bay_number'])
+            bmpis = self.filter_df(mpis, {'bay_number': bay})
+            impis = bmpis.groupby('shelf_number').idxmin() if edge == 'left' else bmpis.groupby('shelf_number').idxmax()
+            bmpis = bmpis.loc[impis['scene_match_fk']]
+            if edge == 'right':
+                bmpis['facing_sequence_number'] = bmpis['n_shelf_items'] - bmpis['facing_sequence_number']
+            bmpis = bmpis[bmpis['facing_sequence_number'] == min(bmpis['facing_sequence_number'])]
+            counts = bmpis.groupby(potential_end.keys()[0])['scene_match_fk'].count().sort_values(ascending=False)
+            result = ' '.join([sub.capitalize() for sub in counts.index[0].split(' ')])
+            results.append({'score': 1, 'result': result, 'denominator_id': scene})
+        return results
 
+    def calculate_product_sequence(self, kpi_name, kpi_line, relevant_scif, general_filters):
+        # this attribute should be pulled from the template once the template is updated
+        vector = kpi_line['Vector']
+        orth = (set(['x', 'y']) - set(vector)).pop()
+        filters = self.get_kpi_line_filters(kpi_line)
+        scene = relevant_scif.scene_fk.iloc[0]
+        Segment = namedtuple('Segment', 'seg position facings orth_min orth_max matches')
+        segments = filters.values()[0]
+        seg_list = []
+        for seg in segments:
+            seg_filters = {filters.keys()[0]: [seg]}
+            _, _, mpis_dict, _, results = self.base_block(kpi_name, kpi_line, relevant_scif,
+                                                          general_filters,
+                                                          filters=seg_filters,
+                                                          check_orient=0)
+            cluster = results.sort_values('facing_percentage', ascending=False).iloc[0, 0]
+            df = pd.DataFrame([(n['polygon'].centroid.x, n['polygon'].centroid.y, n['facings'],
+                              list(n['match_fk'].values)) + n['polygon'].bounds
+                              for i, n in cluster.nodes(data=True) if n['block_key'].value
+                              not in Const.ALLOWED_FLAGS],
+                              columns=['x', 'y', 'facings', 'matches', 'x_min', 'y_min', 'x_max', 'y_max'])
+            facings = df.facings.sum()
+            seg_list.append(Segment(seg=seg, position=(df[vector]*df['facings']).sum()/facings, facings=facings,
+                            orth_min=mpis_dict[scene]['rect_{}'.format(orth)].min(),
+                            orth_max=mpis_dict[scene]['rect_{}'.format(orth)].max(),
+                            matches=df['matches'].sum()))
 
+        order = [x.seg for x in sorted(seg_list, key=lambda x: x.position)]
+        result = ', '.join([' '.join([y.capitalize() for y in x.replace('GRAIN', '').split(' ') if y]) for x in order])
+        return {'result': result, 'score': 1}
 
+    def calculate_stocked_location(self, kpi_name, kpi_line, relevant_scif, general_filters):
+        thresh = kpi_line['Threshold']
+        filters = self.get_kpi_line_filters(kpi_line)
+        num_df = self.filter_df(relevant_scif, filters)
+        den_df = self.filter_df(self.scif, filters)
+        ratio, res = self.ratio_score(num_df.facings_ign_stack.sum(), den_df.facings_ign_stack.sum(), thresh)
+        result = kpi_line['Fail']
+        if res:
+            result = kpi_line['Pass']
+        return {'result': result, 'score': 1}
 
 
 
@@ -570,33 +751,7 @@ class ToolBox:
             # result_fk = self.result_values_dict[result]
             result_fk = result
 
-    def base_adj_graph(self, scene, kpi_line, general_filters, use_allowed=0, gmi_only=0, super_cat_only=0,
-                       additional_attributes=None, item_filters={}):
-        product_attributes = ['rect_x', 'rect_y']
-        if additional_attributes is not None:
-            product_attributes = product_attributes + additional_attributes
-        filters = self.get_kpi_line_filters(kpi_line)
-        filters.update(general_filters)
-        mpis_filter = {'scene_fk': scene, 'stacking_layer': 1}
-        if super_cat_only:
-            mpis_filter.update({'Super Category': self.super_cat})
-        if gmi_only:
-            mpis_filter.update({'manufacturer_name': 'GENERAL MILLS'})
-        mpis = self.filter_df(self.mpis, mpis_filter)
-        items = self.filter_df(mpis, filters)
-        items = self.filter_df(items, item_filters)
-        if items.empty:
-            return None, None, None, None
-        items = set(items['scene_match_fk'].values)
-        if use_allowed:
-            # allowed = Const.ALLOWED_FILTERS
-            allowed = {'product_type': ['Empty']}
-            allowed_items = set(self.filter_df(mpis, allowed)['scene_match_fk'].values)
-            items.update(allowed_items)
-        all_graph = AdjacencyGraph(mpis, None, self.products,
-                                   product_attributes=product_attributes + list(filters.keys()),
-                                   name=None, adjacency_overlap_ratio=.4)
-        return items, mpis, all_graph, filters
+
 
     def calculate_sequence(self, kpi_name, kpi_line, relevant_scif, general_filters):
         # this attribute should be pulled from the template once the template is updated
@@ -668,42 +823,6 @@ class ToolBox:
             kwargs_list.append({'result': result, 'score': 1})
         return kwargs_list
 
-    def base_adjacency(self, kpi_name, kpi_line, relevant_scif, general_filters, limit_potential=1, use_allowed=1,
-                       item_filters={}, col_list=['brand_name']):
-        allowed_edges = self.read_cell_from_line(kpi_line, Const.EDGES)
-        scenes = relevant_scif.scene_fk.unique()
-        if self.read_cell_from_line(kpi_line, 'MSL'):
-            scenes = self.find_MSL(relevant_scif)
-        all_results = {}
-        for scene in scenes:
-            items, mpis, all_graph, filters = self.base_adj_graph(scene, kpi_line, general_filters,
-                                                                  item_filters=item_filters, use_allowed=use_allowed,
-                                                                  gmi_only=0)
-            if not items:
-                continue
-            z_debug = mpis[mpis['scene_match_fk'].isin(items)]
-            for edge_dir in allowed_edges:
-                g = self.prune_edges(all_graph.base_adjacency_graph.copy(), [edge_dir])
-
-                match_to_node = {int(node['match_fk']): i for i, node in g.nodes(data=True)}
-                node_to_match = {val: key for key, val in match_to_node.items()}
-                edge_matches = set(sum([[node_to_match[i] for i in g[match_to_node[item]].keys()]
-                                        for item in items], []))
-                adjacent_items = edge_matches - items
-                adj_mpis = mpis[(mpis['scene_match_fk'].isin(adjacent_items))]
-                adj_mpis = self.filter_df(adj_mpis, Const.SOS_EXCLUDE_FILTERS, exclude=1)
-                adj_mpis = self.filter_df(adj_mpis, {'product_type': 'Empty'}, exclude=1)
-                # adj_mpis = self.filter_df(adj_mpis, Const.ALLOWED_FILTERS, exclude=1)
-
-                adjacent_sections = list(
-                    set(sum([list(adj_mpis[col].unique()) for col in col_list], [])))
-
-                if limit_potential:
-                    adjacent_sections = self.results_contorter(adj_mpis, kpi_line)
-                #     potential_results = set(self.get_results_value(kpi_line))
-                #     adjacent_sections = list(adjacent_sections & potential_results)
-                all_results[edge_dir] = [adjacent_sections, len(adjacent_items)/float(len(items))]
-        return all_results
 
     def results_contorter(self, df, kpi_line):
         found_results = []
@@ -797,65 +916,7 @@ class ToolBox:
         kwargs = {'score': 1, 'result': result}
         return kwargs
 
-    def anchor_base(self, general_filters, potential_end, scenes, min_shelves):
-        results = {}
-        cat_filters = dict(general_filters)
-        results['left'], results['right'] = 0, 0
-        for scene in scenes:
-            cat_filters['scene_fk'] = scene
-            cat_mpis = self.filter_df(self.mpis, cat_filters)
-            cat_mpis = self.filter_df(cat_mpis, Const.ALLOWED_FILTERS, exclude=1)
-            cat_mpis = self.filter_df(cat_mpis, {'stacking_layer': 1})
-            bays = {'left': cat_mpis['bay_number'].min(), 'right': cat_mpis['bay_number'].max()}
-            for dir, bay in bays.items():
-                bay_mpis = self.filter_df(cat_mpis, {'bay_number': bay})
 
-                smpis = self.filter_df(bay_mpis, potential_end).groupby(
-                    ['scene_fk', 'bay_number', 'shelf_number'])['facing_sequence_number'].min()
-                if smpis.empty:
-                    continue
-                rmpis = self.filter_df(bay_mpis, potential_end, exclude=1) \
-                    .groupby(['scene_fk', 'bay_number', 'shelf_number'])['facing_sequence_number'].min()
-                locs = pd.concat([smpis, rmpis], axis=1)
-                locs.columns = ['A', 'B']
-                locs.dropna(subset=['A'], inplace=True)
-                if dir == 'left':
-                    locs.fillna(float('inf'), inplace=True)
-                    if sum(locs['A'] < locs['B']) >= min_shelves:
-                        results[dir] = 1
-                else:
-                    locs.fillna(0, inplace=True)
-                    if sum(locs['A'] > locs['B']) >= min_shelves:
-                        results[dir] = 1
-        return results
-
-    def calculate_anchor(self, kpi_name, kpi_line, relevant_scif, general_filters):
-        map = self.template['Anchor Map'].fillna(0).replace(
-            'Y', 1).set_index('Result').to_dict('index')
-        potential_ends = self.get_kpi_line_filters(kpi_line)
-        potential_ends = [{key: val} for key, vals in potential_ends.items() for val in vals]
-        cat_filters = {'Super Category': self.super_cat}
-        cat_filters.update(general_filters)
-        scenes = relevant_scif['scene_fk'].unique()
-        res_dict = {}
-        for potential_end in potential_ends:
-            results = self.anchor_base(general_filters, potential_end, scenes, 2)
-            for dir, res in results.items():
-                res_dict['{}_{}'.format(dir, potential_end.values()[0])] = res
-
-        kwargs = None
-        for result, conditions in map.items():
-            is_true = 1
-            for key, val in conditions.items():
-                if val != res_dict[key]:
-                    is_true = 0
-            if is_true:
-                kwargs = {'score': 1, 'result': result, 'target': 0}
-                break
-
-        return kwargs
-
-    # i think this should probably be removed now and replaced with calculate_vertical_block_adjacencies() - hunter
 
     def adjacency_by_block(self, kpi_name, kpi_line, relevant_scif, general_filters):
         ''' variant limited by block '''
@@ -1167,51 +1228,6 @@ class ToolBox:
         self.common.write_to_db_result(**result_dict)
         return
 
-    def calculate_base_measure(self, kpi_name, kpi_line, relevant_scif, general_filters):
-        mpis = self.make_mpis(kpi_line, general_filters)
-        master_mpis = self.filter_df(self.full_mpis.copy(), Const.IGN_STACKING)
-        if sum([1 if 'ignore' in x else 0 for x in kpi_line.index]):
-            ign_filter = self.get_kpi_line_filters(kpi_line, 'ignore')
-            mpis = self.filter_df(mpis, ign_filter, exclude=1)
-            master_mpis = self.filter_df(master_mpis, ign_filter, exclude=1)
-        mm_sum = 0
-        if mpis.empty:
-            return {"score": None}
-        for scene in mpis.scene_fk.unique():
-            smpis = self.filter_df(mpis, {'scene_fk': scene})
-            master_smpis = self.filter_df(master_mpis, {'scene_fk': scene})
-
-            for bay in smpis['bay_number'].unique().tolist():
-                bmpis = self.filter_df(smpis, {'bay_number': bay})
-                master_bmpis = self.filter_df(master_smpis, {'bay_number': bay})
-                num_shelves = len(master_bmpis['shelf_number'].unique().tolist())
-                linear_mm = float(bmpis['width_mm_advance'].sum())
-                master_linear_mm = float(master_bmpis['width_mm_advance'].sum())
-                # if linear_mm / master_linear_mm >= .5:
-                #     mm_sum += linear_mm / num_shelves
-                mm_sum += (linear_mm / num_shelves) * (linear_mm / master_linear_mm)
-        ft_sum = mm_sum / Const.MM_TO_FT
-        self.base_measure = ft_sum
-        potential_results = self.get_results_value(kpi_line)
-        cleaned_results = [(i, x.replace('Feet', '').replace('and', 'ft_sum').replace('>', '<').strip())
-                           for i, x in enumerate(potential_results)
-                           if '>' in x and '<=' in x]
-        result = None
-        for i, res in cleaned_results:
-            if eval(res):
-                result = potential_results[i]
-                break
-        if not result:
-            if ft_sum <= int(cleaned_results[0][1].split(' ')[0]):
-                result = potential_results[0]
-            else:
-                result = potential_results[-1]
-
-        # result_fk = self.result_values_dict[result]
-        kwargs = {'numerator_result': ft_sum, 'score': 1, 'result': result,
-                  'target': None}
-        return kwargs
-
     def calculate_count_of_shelves(self, kpi_name, kpi_line, relevant_scif, general_filters):
         filters = self.get_kpi_line_filters(kpi_line)
         filters.update(general_filters)
@@ -1510,21 +1526,25 @@ class ToolBox:
         score = 1 if ratio >= target and target else 0
         return ratio, score
 
-    @staticmethod
-    def read_cell_from_line(line, col):
+    def read_cell_from_line(self, line, col):
         try:
             val = line[col] if not pd.isnull(line[col]) else []
         except:
             val = []
         if val:
-            if hasattr(val, 'split'):
-                if ', ' in val:
-                    val = val.split(', ')
-                elif ',' in val:
-                    val = val.split(',')
-            if not isinstance(val, list):
-                val = [val]
+            val = self.generic_split(val)
 
+        return val
+
+    @staticmethod
+    def generic_split(val):
+        if hasattr(val, 'split'):
+            if ';' in val:
+                val = [x.strip() for x in val.split(';')]
+            elif ',' in val:
+                val = [x.strip() for x in val.split(',')]
+        if not isinstance(val, list):
+            val = [val]
         return val
 
     def find_MSL(self, scif):
@@ -1606,16 +1626,35 @@ class ToolBox:
         self.template[Const.KPIS] = kpis.reindex(index=pd.Index(kpis_index)).reset_index(drop=True)
 
     def get_kpi_function(self, kpi_type, result):
+        if kpi_type == Const.PRIMARY_LOCATION:
+            return self.calculate_primary_location
+        elif kpi_type == Const.MAX_BLOCK_ADJACENCY:
+            return self.calculate_max_block_adj
+        elif kpi_type == Const.MAX_BLOCK_COMPOSITION:
+            return self.calculate_max_block_composition
+        elif kpi_type == Const.EXISTS_IN_MAX_BLOCK:
+            return self.calculate_exists_in_max_block
+        elif kpi_type == Const.BLOCKING:
+            return self.calculate_blocking
+        elif kpi_type == Const.BASE_MEASURE:
+            return self.calculate_base_measure
+        elif kpi_type == Const.BLOCK_PERCENT:
+            return self.calculate_blocking_percent
+        elif kpi_type == Const.BLOCK_ORIENTATION:
+            return self.calculate_blocking_orientation
+        elif kpi_type == Const.ANCHOR:
+            return self.calculate_anchor
+        elif kpi_type == Const.PRODUCT_SEQUENCE:
+            return self.calculate_product_sequence
+        elif kpi_type == Const.MAX_BLOCK_ADJACENCY_SUBCAT:
+            return self.calculate_max_block_adjacency_subcat
+        elif kpi_type == Const.STOCKED_LOCATION:
+            return self.calculate_stocked_location
         """
         transfers every kpi to its own function
         :param kpi_type: value from "sheet" column in the main sheet
         :return: function
         """
-        if kpi_type == Const.PRIMARY_LOCATION:
-            return self.calculate_primary_location
-        if kpi_type == Const.MAX_BLOCK_ADJACENCY:
-            return self.calculate_max_block_adj
-
 
         # elif kpi_type == Const.TMB:
         #     return self.calculate_topmiddlebottom
@@ -1628,8 +1667,7 @@ class ToolBox:
         #     return self.calculate_adjacency_mix
         # elif kpi_type == Const.ANCHOR_LIST:
         #     return self.calculate_adjacency_list
-        # elif kpi_type == Const.ANCHOR:
-        #     return self.calculate_anchor
+
         # elif kpi_type == Const.IADJACENCY:
         #     return self.calculate_new_integrated_adjacency
         # elif kpi_type == Const.STOCKING:
@@ -1647,8 +1685,7 @@ class ToolBox:
         #         return self.calculate_blocking_all_shelves
         #     elif result.lower() == 'multi-block':
         #         return self.calculate_multi_block
-        # elif kpi_type == Const.BASE_MEASURE:
-        #     return self.calculate_base_measure
+
         # elif kpi_type == Const.ORIENT:
         #     return self.calculate_product_orientation
         # elif kpi_type == Const.COUNT_SHELVES:

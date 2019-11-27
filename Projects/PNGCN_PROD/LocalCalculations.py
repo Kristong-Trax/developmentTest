@@ -20,11 +20,13 @@ if __name__ == '__main__':
     data_provider = KEngineDataProvider(project_name)
     output = Output()
     sessions = {
-                'd16a0359-4d0f-4fed-bfe4-0afecca6843e': [14431246],
-                # '4E75E4F1-F5F0-4B77-8337-513F61913864': ['19626328'],
-                # '2af37e81-529d-43ce-b3e2-8b3307838830':[],
-                # '173e66d3-5b63-4482-b1ab-4fbc6674aa70':[],
-                # '4d157f69-a754-41d8-9f93-6ed9d7486bb5':[],
+                'd16a0359-4d0f-4fed-bfe4-0afecca6843e': ['14431283']
+                # 'd16a0359-4d0f-4fed-bfe4-0afecca6843e': ['14431283', '14431246', '14431264'],
+                # 'c3b7fd33-8ff5-40fb-bf9a-5e7b58193dd0': ['14433134'],
+                # '077c0582-76d8-4f96-861a-6c2b52787900': ['14436056'],
+                # '1a9bfc80-db62-4ca1-a412-ce68de389805': ['14431888'],
+                # '1ab8d620-93ac-4efc-b115-b99bed743fd1': ['14439705'],
+                # 'bbe0262f-8565-4bd3-8b6a-6352ada59daa': ['14435972'],
                 # '050a5b18-acd1-4c4d-867a-e833368d8cdc':[],
                 # '7d9bca6b-c3a6-4c74-901c-8dffd151d551':[]
 

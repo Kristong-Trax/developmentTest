@@ -14,15 +14,27 @@ class Const(object):
 
     PRIMARY_LOCATION = 'Primary Location'
     MAX_BLOCK_ADJACENCY = 'Max Block Adjacency'
+    MAX_BLOCK_COMPOSITION = 'Max Block Composition'
+    EXISTS_IN_MAX_BLOCK = 'Exists in Max Block'
+    BLOCKING = 'Blocking'
+    BASE_MEASURE = 'Base Measure'
+    BLOCK_ORIENTATION = 'Block Orientation'
+    BLOCK_PERCENT = 'Block Percent'
+    ANCHOR = 'Anchor'
+    PRODUCT_SEQUENCE = 'Product Sequence'
+    MAX_BLOCK_ADJACENCY_SUBCAT = 'Max Block Adjacency SubCat'
+    STOCKED_LOCATION = 'Stocked Location'
 
+
+
+
+    EMPTY_BLOCKS_ERROR = 'No Data Found fo kpi {}'
 
 
     KPIS = 'KPIs'
     TMB = 'Top-Middle-Bottom'
     COUNT = 'Count of'
     SET_COUNT = 'Set Count of'
-    BLOCKING = 'Blocking'
-    BASE_MEASURE = 'Base Measure'
     SURVEY = 'Survey Question'
     ORIENT = 'Product Orientation'
     PRESENCE = 'Presence'
@@ -37,7 +49,6 @@ class Const(object):
     IADJACENCY = 'IAdjacency'
     STOCKING = 'Stocking Location'
     YOGURT_MAP = 'Yogurt Location Map'
-    ANCHOR = 'Anchor'
     ANCHOR_LIST = 'Anchor List'
     SURVEY_QUESTION = 'Survey Question'
     VARIETY_COUNT = 'Variety Count'

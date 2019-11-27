@@ -310,7 +310,7 @@ class HEINZCRToolBox:
                 numerator_values = [numerator_val]
 
             if denominator_key == 'sub_category':
-                include_stacking_list = ['Nuts', 'BULK', 'DRY CHEESE', 'IWSN', 'IWSP', 'Shredded', 'SNACK']
+                include_stacking_list = ['Nuts', 'DRY CHEESE', 'IWSN', 'Shredded', 'SNACK']
                 if denominator_val in include_stacking_list:
                     facings_field = 'facings'
                 else:
@@ -391,16 +391,21 @@ class HEINZCRToolBox:
         # save total score for sos sub_category
         number_of_passing_sub_categories = results_df['score'].sum()
         number_of_possible_sub_categories = len(results_df)
+
+        # this ensures that this KPI doesn't return more than 3 possible points max for stores that have
+        # multiple sub category policies
+        store_result = (number_of_passing_sub_categories / float(number_of_possible_sub_categories)) * 3
+
         self.common_v2.write_to_db_result(total_sos_sub_category_kpi_fk, numerator_id=Const.OWN_MANUFACTURER_FK,
                                           denominator_id=self.store_id,
                                           numerator_result=number_of_passing_sub_categories,
                                           denominator_result=number_of_possible_sub_categories,
-                                          result=number_of_passing_sub_categories,
-                                          score=number_of_passing_sub_categories,
+                                          result=store_result,
+                                          score=store_result,
                                           identifier_result=total_dict, identifier_parent=Const.PERFECT_STORE,
                                           should_enter=True)
 
-        return number_of_passing_sub_categories
+        return store_result
 
     def calculate_powersku_price_adherence(self):
         adherence_kpi_fk = self.common_v2.get_kpi_fk_by_kpi_type(Const.POWER_SKU_PRICE_ADHERENCE)
