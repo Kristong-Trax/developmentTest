@@ -187,14 +187,15 @@ class PNGHKToolBox:
         if len(results_dict) == 0:
             return
 
-        results_as_df = pd.DataFrame.from_dict(results_dict, orient="index")
+        self.save_result_to_kpi_table(kpi_fk, results_dict)
 
+    def save_result_to_kpi_table(self, kpi_fk, results_dict):
+        results_as_df = pd.DataFrame.from_dict(results_dict, orient="index")
         # numerator became column 0, denominator column 1, result will enter column 2
         filtered_results_as_df = results_as_df[results_as_df[0] != 0]
         filtered_df = filtered_results_as_df.copy()
         filtered_df[2] = filtered_results_as_df[0] / filtered_results_as_df[1]
         filtered_results_as_dict = filtered_df.to_dict(orient="index")
-
         for numerator_id, denominator_id, context_id in filtered_results_as_dict.keys():
             result_row = filtered_results_as_dict[numerator_id, denominator_id, context_id]
             result, numerator, denominator = result_row[2], result_row[0], result_row[1]
@@ -424,20 +425,7 @@ class PNGHKToolBox:
         if len(results_dict) == 0:
             return
 
-        results_as_df = pd.DataFrame.from_dict(results_dict, orient="index")
-
-        # numerator became column 0, denominator column 1, result will enter column 2
-        filtered_results_as_df = results_as_df[results_as_df[0] != 0]
-        filtered_df = filtered_results_as_df.copy()
-        filtered_df[2] = filtered_results_as_df[0] / filtered_results_as_df[1]
-        filtered_results_as_dict = filtered_df.to_dict(orient="index")
-
-        for numerator_id, denominator_id, context_id in filtered_results_as_dict.keys():
-            result_row = filtered_results_as_dict[numerator_id, denominator_id, context_id]
-            result, numerator, denominator = result_row[2], result_row[0], result_row[1]
-            self.common.write_to_db_result(fk=kpi_fk, numerator_id=numerator_id, denominator_id=denominator_id,
-                                           context_id=context_id, numerator_result=numerator,
-                                           denominator_result=denominator, result=result, score=result)
+        self.save_result_to_kpi_table(kpi_fk, results_dict)
 
     def filter_df(self, kpi_df):
         df = self.df.copy()
