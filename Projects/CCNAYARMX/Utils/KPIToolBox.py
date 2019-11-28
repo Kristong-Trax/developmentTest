@@ -80,6 +80,7 @@ SCORING = 'Scoring'
 PLATFORMAS = 'Platformas'
 PLATFORMAS_SCORING = 'Platformas Scoring'
 AVAILABILITY_COMBO = 'Availability Combo'
+NUMERO_DE_PUERTAS = 'Numero De Puertas'
 
 POS_OPTIONS = 'POS Options'
 TARGETS_AND_CONSTRAINTS = 'Targets and Constraints'
@@ -105,10 +106,10 @@ BAY_NUMBER = 'bay_number'
 
 # Read the sheet
 SHEETS = [SOS, BLOCK_TOGETHER, SHARE_OF_EMPTY, BAY_COUNT, PER_BAY_SOS, SURVEY, AVAILABILITY, DISTRIBUTION,
-          COMBO, SCORING, PLATFORMAS, PLATFORMAS_SCORING, KPIS, AVAILABILITY_COMBO]
+          COMBO, SCORING, PLATFORMAS, PLATFORMAS_SCORING, KPIS, AVAILABILITY_COMBO, NUMERO_DE_PUERTAS]
 POS_OPTIONS_SHEETS = [POS_OPTIONS, TARGETS_AND_CONSTRAINTS]
 
-TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'CCNayarTemplatev0.8.6.xlsx')
+TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'CCNayarTemplatev0.8.7.xlsx')
 POS_OPTIONS_TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data',
                                          'CCNayar_POS_Options_v4.xlsx')
 
@@ -185,7 +186,7 @@ class ToolBox(GlobalSessionToolBox):
                                                           att2))
                                                       ]
         foundation_kpi_types = [BAY_COUNT, SOS, PER_BAY_SOS, BLOCK_TOGETHER, AVAILABILITY, SURVEY,
-                                DISTRIBUTION, SHARE_OF_EMPTY, AVAILABILITY_COMBO]
+                                DISTRIBUTION, SHARE_OF_EMPTY, AVAILABILITY_COMBO, NUMERO_DE_PUERTAS]
 
         foundation_kpi_template = relevant_kpi_template[relevant_kpi_template[KPI_TYPE].isin(foundation_kpi_types)]
         platformas_kpi_template = relevant_kpi_template[relevant_kpi_template[KPI_TYPE] == PLATFORMAS_SCORING]
@@ -284,6 +285,33 @@ class ToolBox(GlobalSessionToolBox):
             return self.calculate_platformas_scoring
         elif kpi_type == AVAILABILITY_COMBO:
             return self.calculate_availability_combo
+        elif kpi_type == NUMERO_DE_PUERTAS:
+            return self.calculate_numero_de_puertas
+
+    def calculate_numero_de_puertas(self,row):
+        kpi_name = row[KPI_NAME]
+        kpi_fk = self.get_kpi_fk_by_kpi_type(kpi_name)
+        template_name = self.sanitize_values(row[TEMPLATE_NAME])
+
+        relevant_scif = self.scif[self.scif[TEMPLATE_NAME].isin(template_name)][[PK,SESSION_ID,TEMPLATE_FK, TEMPLATE_NAME,PRODUCT_FK,SCENE_FK]]
+
+        product_in_scene = self.match_product_in_scene[['bay_number', 'scene_fk']]
+
+        bay_count_scif = relevant_scif.merge(product_in_scene, on=['scene_fk'], how='right')
+        bay_count_scif.dropna(inplace= True)
+
+        for relevant_template_fk in set(bay_count_scif[TEMPLATE_FK]):
+            #Result related the number of bays in a specifc template
+            relevant_template_fk_scif = bay_count_scif[bay_count_scif[TEMPLATE_FK].isin([relevant_template_fk])]
+            count_of_bays_in_template = 0
+
+            for relevant_scene_fk in set(relevant_template_fk_scif[SCENE_FK]):
+                bay_count = len(set(relevant_template_fk_scif[relevant_template_fk_scif[SCENE_FK].isin([relevant_scene_fk])][BAY_NUMBER]))
+                count_of_bays_in_template = count_of_bays_in_template + bay_count
+
+            self.common.write_to_db_result(fk=kpi_fk, numerator_id=relevant_template_fk,
+                                           denominator_id=self.store_id,
+                                           result=count_of_bays_in_template)
 
     def calculate_platformas_scoring(self, row):
         results_list = []
@@ -1079,8 +1107,12 @@ class ToolBox(GlobalSessionToolBox):
             result = result - (2 / 15)
 
         # Step 11: Calculate the numerator entity and denominator entity
-        numerator_id = relevant_scif[MANUFACTURER_FK].mode()[0]
-        denominator_id = relevant_scif[TEMPLATE_FK].mode()[0]
+        try:
+            numerator_id = relevant_scif[MANUFACTURER_FK].mode()[0]
+            denominator_id = relevant_scif[TEMPLATE_FK].mode()[0]
+        except:
+            numerator_id = self.scif[MANUFACTURER_FK].mode()[0]
+            denominator_id = self.scif[TEMPLATE_FK].mode()[0]
 
         result_dict = {'kpi_name': kpi_name, 'kpi_fk': kpi_fk, 'numerator_id': numerator_id,
                        'numerator_result': facings, 'denominator_id': denominator_id,
@@ -1322,7 +1354,7 @@ class ToolBox(GlobalSessionToolBox):
         survey_response_df = self.get_scene_survey_response()
         if survey_response_df.empty:
             return 0
-        accepted_results = ['Si', 1, 2]
+        accepted_results = ['Si', 1, 2, u'1', u'2']
 
         for question_fk in relevant_question_fk:
             relevant_survey_response = survey_response_df[survey_response_df['question_fk'].isin([question_fk])]

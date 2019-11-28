@@ -16,11 +16,9 @@ from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
 from Trax.Tools.ProfessionalServices.TemplatesLoaders.Assortment.AssortmentTemplateLoader import \
     assortment_template_loader
 
-# from KPIUtils_v2.Calculations.BlockCalculations import Block
-# from Projects.MOLSONCOORSCA.Utils.BlockCalculations_v3 import Block
+from KPIUtils_v2.Calculations.BlockCalculations_v2 import Block
 # from Trax.Algo.Calculations.Core.GraphicalModel.AdjacencyGraphs import AdjacencyGraph
 
-from networkx import nx
 
 __author__ = 'Sam'
 
@@ -35,17 +33,7 @@ class ToolBox:
         self.common = common
         self.output = output
         self.data_provider = data_provider
-
-        # ----------- fix for nan types in dataprovider -----------
-        # all_products = self.data_provider._static_data_provider.all_products.where(
-        #     (pd.notnull(self.data_provider._static_data_provider.all_products)), None)
-        # self.data_provider._set_all_products(all_products)
-        # self.data_provider._init_session_data(None, True)
-        # self.data_provider._init_report_data(self.data_provider.session_uid)
-        # self.data_provider._init_reporting_data(self.data_provider.session_id)
-        # ----------- fix for nan types in dataprovider -----------
-
-        # self.block = Block(self.data_provider)
+        self.block = Block(self.data_provider)
         self.project_name = self.data_provider.project_name
         self.session_uid = self.data_provider.session_uid
         self.templates = self.data_provider.all_templates
@@ -76,22 +64,25 @@ class ToolBox:
         self.blockchain = {}
         self.template = {}
         self.competitive_brands = None
+        self.adj_brands = None
         self.overview = None
         self.dependencies = {}
         self.dependency_lookup = {}
         self.base_measure = None
         self.circle_kpis = {}
-
         self.store_data = pd.read_sql_query(DATA_QUERY, self.common.rds_conn.db)
         self.rel_store_data = self.store_data[self.store_data['pk'] == self.store_id]
-
         self.assortment = Assortment(self.data_provider, self.output)
         self.prev_prods = self.load_prev_prods(self.store_id, self.session_info['visit_date'].iloc[0])
+        self.mcc_cooler_fk = self.assortment.get_assortment_fk_by_name('MCC Cooler')
+        self.brands_dict = self.all_products.set_index('brand_name')[['brand_fk', 'manufacturer_fk']].drop_duplicates()\
+            .to_dict('index')
+
 
 
 
     # main functions:
-    def main_calculation(self, template_path, comp_path):
+    def main_calculation(self, template_path, comp_path, adj_path):
         """
             This function gets all the scene results from the SceneKPI, after that calculates every session's KPI,
             and in the end it calls "filter results" to choose every KPI and scene and write the results in DB.
@@ -99,7 +90,8 @@ class ToolBox:
         if self.global_fail:
             return
         self.template = pd.read_excel(template_path, sheetname=None)
-        self.parse_comp_brands(comp_path)
+        self.competitive_brands = self.parse_comp_brands(self.competitive_brands, comp_path)
+        self.adj_brands = self.parse_comp_brands(self.adj_brands, adj_path)
         # self.dependencies = {key: None for key in self.template[Const.KPIS][Const.KPI_NAME]}
         # self.dependency_reorder()
         main_template = self.template[Const.KPIS]
@@ -130,7 +122,7 @@ class ToolBox:
         # if kpi_name not in [
         #     # 'Eye Level Availability'
         #     # 'Flanker Displays', 'Disruptor Displays'
-        #     # 'Innovation Distribution',
+        #     'Innovation Distribution',
         #     # 'Display by Location',
         #     # 'Display by Location'
         #     # 'Leading Main Section on Left',
@@ -147,29 +139,41 @@ class ToolBox:
         #     # 'Warm Base Measurement'
         #     # 'Warm Bays',
         #     # 'Dynamic Out of Stock',
-        #     'Pack Distribution vs Competitors'
-        #
+        #     # 'Pack Distribution vs Competitors'
+        #     # 'Molson Coors Cooler Compliance',
+        #     # 'Molson Coors Cooler Purity',
+        #     # 'Molson Coors Cooler Violations',
+        #     # 'Molson Coors Cooler Exceptions'
+        #     # 'Flanker Displays',
+        #     # 'Disruptor Displays',
+        #     # 'Brand Blocking'
+        #     # 'Adjacencies'
         #
         # ]:
         #     return
 
-        if kpi_type not in [
-            'Share of Facings',
-            'Share of Shelf',
-            'Distribution',
-            'Anchor',
-            'Base Measurement',
-            'Bay Count',
-            'Out of Stock',
-            # 'Pack Distribution'
-            ]:
+        # if kpi_type not in [
+        #     'Share of Facings',
+        #     'Share of Shelf',
+        #     'Distribution',
+        #     'Anchor',
+        #     'Base Measurement',
+        #     'Bay Count',
+        #     'Out of Stock',
+        #     'Pack Distribution',
+        #     'Purity',
+        #     'Negative Distribution',
+        #     'Adjacency',
+        #     'Product Sequence',
+        #     'Shelf Placement'
+        #     ]:
+        #     return
+
+        if kpi_name in ['POP Seasonal Programs']:
             return
 
-        if kpi_name in ['POP Seasonal Programs', 'Molson Coors Cooler Compliance']:
-            return
-
-        # print('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~')
-        # print('_____{}_____'.format(kpi_name))
+        print('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~')
+        print('_____{}_____'.format(kpi_name))
 
         # dependent_kpis = self.read_cell_from_line(main_line, Const.DEPENDENT)
         # dependent_results = self.read_cell_from_line(main_line, Const.DEPENDENT_RESULT)
@@ -350,14 +354,19 @@ class ToolBox:
             lvl2_result = self.assortment.calculate_lvl2_assortment(lvl3_result)
             lvl3_result['score'] = lvl3_result['in_store']
             lvl3_result['in_store'] = ['Fail' if res == 0 else 'Pass' for res in lvl3_result['in_store']]
-            lvl2_result['score'] = lvl2_result['passes']
-
             for df in [lvl3_result, lvl2_result]:
                 df['store_fk'] = self.store_id
 
             lvl2_result['result'] = lvl2_result['passes']
-            if kpi_line['Metric'] == 'Cap':
+            if kpi_line['Result Metric'] == 'Cap':
                 lvl2_result['result'] = 'Pass' if lvl2_result['passes'].iloc[0] >= 1 else 'Fail'
+            elif kpi_line['Result Metric'] == 'Percent':
+                lvl2_result['result'] = lvl2_result['passes'] / lvl2_result['total']
+
+            if kpi_line['Score Metric'] == 'Cap':
+                lvl2_result['score'] = 1 if lvl2_result['passes'].iloc[0] >= 1 else 0
+            elif kpi_line['Score Metric'] == 'Sum':
+                lvl2_result['score'] = lvl2_result['passes']
 
             num_3 = main_line['Numerator 1']
             den_3 = main_line['Denominator 1']
@@ -500,31 +509,320 @@ class ToolBox:
         return level['end'], results
 
     def calculate_pack_distribution(self, kpi_name, kpi_line, relevant_scif, main_line, level, **kwargs):
+        results = []
+        relevant_scif = self.filter_df(relevant_scif, {'product_type': 'SKU'})  # Only skus have a pack type
+        relevant_scif['package'] = relevant_scif['form_factor'] + relevant_scif['size'].astype(str) +\
+                                   relevant_scif['size_unit'] + relevant_scif['number_of_sub_packages'].astype(str)
+        filters = self.get_kpi_line_filters(kpi_line)
+        num_scif = self.filter_df(relevant_scif, filters)
+        if num_scif.empty:
+            return None, None
+        opposition = self.dictify_competitive_brands('Adjacencies', self.adj_brands)
+
+        brands = [brand for brand in num_scif['brand_name'].unique() if brand in opposition.keys()]
+        brand_dict = num_scif.set_index('brand_name')['brand_fk'].to_dict()
+
+        total = {'num': 0, 'den': 0}
+        for brand in brands:
+            brand_fk = brand_dict[brand]
+            adversary_df = self.filter_df(relevant_scif, {'brand_name': opposition[brand]})
+            if adversary_df.empty:
+                continue
+            our_packs = set(num_scif['package'].values)
+            enemy_packs = set(adversary_df['package'].values)
+            missing = enemy_packs - our_packs
+            num = len(enemy_packs) - len(missing)
+            results.append({'score': 1, 'result': self.safe_divide(num, len(enemy_packs)), 'numerator_result': num,
+                            'denominator_result': len(enemy_packs), 'ident_result': self.lvl_name(kpi_name, brand),
+                            'numerator_id': brand_fk, 'kpi_name': self.lvl_name(kpi_name, 'Brand'),
+                            'denominator_id': adversary_df.set_index('brand_name')['brand_fk'].iloc[0],
+                            'ident_parent': self.lvl_name(kpi_name, self.manufacturer_fk)})
+
+            missing_df = adversary_df[adversary_df['package'].isin(missing)].groupby('package').first()
+            for i, row in missing_df.iterrows():
+                results.append({'score': 1, 'result': 0, 'ident_parent': self.lvl_name(kpi_name, brand),
+                                'numerator_id': row['product_fk'], 'denominator_id': brand_fk,
+                                'kpi_name': self.lvl_name(kpi_name, 'SKU')})
+            total['num'] += num
+            total['den'] += len(enemy_packs)
+
+        results.append({'score': 1, 'result': self.safe_divide(total['num'], total['den']),
+                        'numerator_result': total['num'], 'denominator_result': total['den'],
+                        'ident_result': self.lvl_name(kpi_name, self.manufacturer_fk),
+                        'numerator_id': self.manufacturer_fk, 'denominator_id': self.store_id,
+                        'kpi_name': self.lvl_name(kpi_name, 'Session')})
+        return level['end'], results
+
+    def calculate_purity(self, kpi_name, kpi_line, relevant_scif, main_line, level, **kwargs):
+        relevant_scif['assortment'] = self.mcc_cooler_fk
+        remaining = self.get_relevant_prod(kpi_line, relevant_scif)
+        result = 0
+        if len(remaining) == 0:
+            result = 100
+        results = {'score': 1, 'result': result, 'numerator_result': len(remaining),
+                   'numerator_id': relevant_scif[main_line[level['num_col']]].iloc[0],
+                   'denominator_id': relevant_scif[main_line[level['den_col']]].iloc[0],
+                   'kpi_name': self.lvl_name(kpi_name, level['lvl'])}
+        return level['end'], results
+
+    def calculate_negative_distribution(self, kpi_name, kpi_line, relevant_scif, main_line, level, **kwargs):
+        results = []
+        relevant_scif['assortment'] = self.mcc_cooler_fk
+        remaining = self.get_relevant_prod(kpi_line, relevant_scif)
+        results.append({'score': 1, 'result': len(remaining), 'numerator_result': len(remaining),
+                        'numerator_id': relevant_scif[main_line['Numerator 2']].iloc[0],
+                        'denominator_id': relevant_scif[main_line['Denominator 2']].iloc[0],
+                        'kpi_name': self.lvl_name(kpi_name, 'Session'),
+                        'ident_result': self.lvl_name(kpi_name, 'Session')})
+        for prod in remaining:
+            results.append({'score': 1, 'result': 0, 'numerator_result': 0, 'numerator_id': prod,
+                            'denominator_id': relevant_scif[main_line[level['den_col']]].iloc[0],
+                            'kpi_name': self.lvl_name(kpi_name, 'SKU'),
+                            'ident_parent': self.lvl_name(kpi_name, 'Session')})
+        return level['end'], results
+
+    def get_relevant_prod(self, kpi_line, relevant_scif):
+        filters = self.get_kpi_line_filters(kpi_line)
+        if not filters:
+            assortment = self.store_assortment.merge(self.common.kpi_static_data[['pk', 'type', 'client_name']],
+                                                     left_on='kpi_fk_lvl2', right_on='pk', how='inner')
+            relevant_prod = assortment[assortment['type'] == 'MCC Cooler']['product_fk']
+        else:
+            relevant_prod = self.filter_df(relevant_scif, filters)['product_fk']
+        relevant_prod = set(relevant_prod.values)
+        total_prod = set(relevant_scif['product_fk'])
+        return relevant_prod - total_prod
+
+    def calculate_adjacency(self, kpi_name, kpi_line, relevant_scif, general_filters, main_line, level, **kwargs):
+        comparable_type = self.read_cell_from_line(kpi_line, 'Comparable Type')[0]
+        assort_template = self.read_cell_from_line(kpi_line, 'Assortment')
+        assort = self.competitive_brands
+        if 'Adjacencies' == assort_template[0]:
+            assort = self.adj_brands
+        assort = self.dictify_competitive_brands(comparable_type, assort)
+        existing_brands = set(relevant_scif.brand_name.values)
+        for k in assort.keys():
+            if k not in existing_brands:
+                del assort[k]
+        den = len(assort.keys())
+        results = []
+        total = 0
+        for k, v in assort.items():
+            result = 0
+            if sum([1 for i in v if i in existing_brands]):
+                comp_filter = {'A': {'brand_name': [k]}, 'B': {'brand_name': v}}
+                result = self.calculate_max_block_adj_base(kpi_name, kpi_line, relevant_scif, general_filters, comp_filter)
+            results.append({'score': result, 'result': result, 'numerator_result': result,
+                            'numerator_id': self.brands_dict[k][main_line[level['num_col']]],
+                            'denominator_id': self.brands_dict[v[0]][main_line[level['den_col']]],
+                            'kpi_name': self.lvl_name(kpi_name, 'Brand'),
+                            'ident_parent': self.lvl_name(kpi_name, 'Session')})
+            total += result
+        result = 0
+        if total == den:
+            result = 1
+        elif assort_template == 'Adjacencies':
+            result = self.safe_divide(total, den)
+
+        results.append({'score': result, 'result': result, 'numerator_result': total, 'denominator_result': den,
+                        'numerator_id': self.manufacturer_fk,
+                        'denominator_id': self.store_id,
+                        'kpi_name': self.lvl_name(kpi_name, 'Session'),
+                        'ident_result': self.lvl_name(kpi_name, 'Session')})
+        return level['end'], results
+
+    def calculate_max_block_adj_base(self, kpi_name, kpi_line, relevant_scif, general_filters, comp_filter={}):
+        allowed_edges = [x.upper() for x in self.read_cell_from_line(kpi_line, Const.EDGES)]
+        d = {'A': {}, 'B': {}}
+        for k, v in d.items():
+            if comp_filter:
+                filters = comp_filter[k]
+            else:
+                filters = self.get_kpi_line_filters(kpi_line, k)
+            _, _, mpis_dict, _, results = self.base_block(kpi_name, kpi_line, relevant_scif,
+                                                          general_filters,
+                                                          filters=filters,
+                                                          check_orient=0)
+            v['df'] = results.sort_values('facing_percentage', ascending=False)
+            if self.read_cell_from_line(kpi_line, 'Max Block')[0] == 'Y':
+                v['df'] = pd.DataFrame(v['df'].iloc[0, :]).T
+            v['items'] = sum([list(n['match_fk']) for j, row in v['df'].iterrows()
+                              for i, n in row['cluster'].nodes(data=True)
+                              if n['block_key'].value not in Const.ALLOWED_FLAGS], [])
+            matches = []
+            for scene in d[k]['df']['scene_fk'].values:
+                scene_key = [key for key in self.block.adj_graphs_by_scene.keys() if str(scene) in key][0]
+                scene_graph = self.block.adj_graphs_by_scene[scene_key]
+                matches += [(edge, scene_graph[item][edge]['direction']) for item in v['items'] if item in scene_graph
+                            for edge in scene_graph[item].keys() if scene_graph[item][edge]['direction'] in allowed_edges]
+            v['edge_matches'], v['directions'] = zip(*matches) if matches else ([], [])
+        result = 0
+        if set(d['A']['edge_matches']) & set(d['B']['items']):
+            result = 1
+        return result
+
+    # def calculate_adj_base(self, kpi_name, kpi_line, relevant_scif, general_filters, comp_filter={}):
+    #     allowed_edges = [x.upper() for x in self.read_cell_from_line(kpi_line, Const.EDGES)]
+    #     d = {'A': {}, 'B': {}}
+    #     for k, v in d.items():
+    #         if comp_filter:
+    #             filters = comp_filter[k]
+    #         else:
+    #             filters = self.get_kpi_line_filters(kpi_line, k)
+    #         _, _, mpis_dict, _, results = self.base_block(kpi_name, kpi_line, relevant_scif,
+    #                                                       general_filters,
+    #                                                       filters=filters,
+    #                                                       check_orient=0)
+    #         v['df'] = results.sort_values('facing_percentage', ascending=False)
+    #         if self.read_cell_from_line(kpi_line, 'Max Block') == 'Y':
+    #             v['df'] = pd.DataFrame(v['df'].iloc[0, :])
+    #         v['items'] = sum([list(n['match_fk']) for j, row in v['df'].iterrows()
+    #                           for i, n in row['cluster'].nodes(data=True)
+    #                           if n['block_key'].value not in Const.ALLOWED_FLAGS], [])
+    #         matches = []
+    #         for scene in d[k]['df']['scene_fk'].values:
+    #             scene_key = [key for key in self.block.adj_graphs_by_scene.keys() if str(scene) in key][0]
+    #             scene_graph = self.block.adj_graphs_by_scene[scene_key]
+    #             matches += [(edge, scene_graph[item][edge]['direction']) for item in v['items'] if item in scene_graph
+    #                         for edge in scene_graph[item].keys() if scene_graph[item][edge]['direction'] in allowed_edges]
+    #         v['edge_matches'], v['directions'] = zip(*matches) if matches else ([], [])
+    #     result = 0
+    #     if set(d['A']['edge_matches']) & set(d['B']['items']):
+    #         result = 1
+    #     return result
+
+    def calculate_blocking(self, kpi_name, kpi_line, relevant_scif, general_filters, level, **kwargs):
+        filters = self.get_kpi_line_filters(kpi_line, 'Num')
+        exclude = self.get_kpi_line_filters(kpi_line, 'Exclude')
+        for k in exclude:
+            if exclude[k] == ['None']:
+                exclude[k] = [None]
+        relevant_scif = self.filter_df(relevant_scif, filters)
+        if relevant_scif.empty:
+            return None, None
+        brands = relevant_scif.brand_name.unique()
+        total = 0
+        results = []
+        for brand in brands:
+            result = 0
+            filters['brand_name'] = [brand]
+            _, _, _, _, clusters = self.base_block(kpi_name, kpi_line, relevant_scif, general_filters,
+                                                   filters=filters, exclude=exclude, check_orient=0)
+            if sum(clusters['is_block']) >= 1:
+                result = 1
+            total += result
+            results.append({'score': result, 'result': result, 'numerator_result': result,
+                            'numerator_id': self.brands_dict[brand]['brand_fk'],
+                            'denominator_id': self.store_id,
+                            'kpi_name': self.lvl_name(kpi_name, 'Brand'),
+                            'ident_parent': self.lvl_name(kpi_name, 'Session')})
+        result = 0
+        if total == len(brands):
+            result = 1
+        results.append({'score': result, 'result': result, 'numerator_result': total, 'denominator_result': len(brands),
+                        'numerator_id': self.manufacturer_fk,
+                        'denominator_id': self.store_id,
+                        'kpi_name': self.lvl_name(kpi_name, 'Session'),
+                        'ident_result': self.lvl_name(kpi_name, 'Session')})
+        return level['end'], results
+
+
         print('asdf')
 
-
-
-
-
-
-
-
-
-
-
-
-
-    def calculate_same_aisle(self, kpi_name, kpi_line, relevant_scif, general_filters):
-        filters = self.get_kpi_line_filters(kpi_line)
-        relevant_scif = self.filter_df(self.scif, filters)
+    def calculate_product_sequence(self, kpi_name, kpi_line, relevant_scif, general_filters, level, **kwargs):
+        results = []
+        A_filters = self.get_kpi_line_filters(kpi_line)
+        relevant_scif = self.filter_df(relevant_scif, A_filters)
         if relevant_scif.empty:
-            return
-        result = 0
-        if len(relevant_scif.scene_fk.unique()) == 1:
-            result = 1
-        return {'score': 1, 'result': result}
+            return None, None
+        mpis = self.filter_df(self.mpis, A_filters)
+        col = self.read_cell_from_line(kpi_line, 'Iterative')[0]
+        things = relevant_scif[col].unique()
+        for thing in things:
+            total = 0
+            B_filters = {col: [thing]}
+            seg_mpis = self.filter_df(mpis, B_filters)
+            _, _, _, _, clusters = self.base_block(kpi_name, kpi_line, relevant_scif, general_filters,
+                                                   filters=B_filters, check_orient=0)
+            block = clusters.sort_values('block_facings', ascending=False)['cluster'].iloc[0]
+            items = set(sum([list(n['match_fk']) for i, n in block.nodes(data=True)], []))
+            brands = seg_mpis.brand_fk.unique()
+            for brand in brands:
+                result = 0
+                b_mpis = self.filter_df(seg_mpis, {'brand_fk': brand})
+                in_block = set(mpis.scene_match_fk.values) & items
+                if self.safe_divide(len(in_block), b_mpis.shape[0]) >= .75:
+                    result = 1
+                total += result
+                results.append({'score': result, 'result': result, 'numerator_result': len(in_block),
+                                'numerator_id': brand,  'denominator_result': len(brands),
+                                'denominator_id': b_mpis['product_fk'].iloc[0],  # segment configured as custom entity
+                                'kpi_name': self.lvl_name(kpi_name, 'Brand'),
+                                'ident_parent': self.lvl_name(kpi_name, 'Session')})
+            result = 0
+            if total == len(brands):
+                result = 1
+            results.append({'score': result, 'result': result, 'numerator_result': total,
+                            'numerator_id': self.manufacturer_fk, 'denominator_result': len(brands),
+                            'denominator_id': b_mpis['product_fk'].iloc[0],  # segment configured as custom entity
+                            'kpi_name': self.lvl_name(kpi_name, 'Session'),
+                            'ident_result': self.lvl_name(kpi_name, 'Session')})
 
-    def calculate_shelf_placement(self, kpi_name, kpi_line, relevant_scif, general_filters):
+            return level['end'], results
+
+
+    def base_block(self, kpi_name, kpi_line, relevant_scif, general_filters_base, check_orient=1, other=1, filters={},
+                   exclude={}, multi=0):
+        result = pd.DataFrame()
+        general_filters = dict(general_filters_base)
+        blocks = pd.DataFrame()
+        result = pd.DataFrame()
+        orientation = 'Not Blocked'
+        scenes = self.filter_df(relevant_scif, general_filters).scene_fk.unique()
+        if 'template_name' in general_filters:
+            del general_filters['template_name']
+        if 'scene_fk' in general_filters:
+            del general_filters['scene_fk']
+        mpis_dict = {}
+        valid_scene_found = 0
+        for scene in scenes:
+            score = 0
+            empty_check = 0
+            scene_filter = {'scene_fk': scene}
+            if not filters:
+                filters = self.get_kpi_line_filters(kpi_line)
+            filters.update(general_filters)
+            # mpis is only here for debugging purposes
+            mpis = self.filter_df(self.mpis, scene_filter)
+            mpis = self.filter_df(mpis, filters)
+            mpis = self.filter_df(mpis, {'stacking_layer': 1})
+            mpis_dict[scene] = mpis
+            if mpis.empty:
+                empty_check = -1
+                continue
+            allowed_filter = Const.ALLOWED_FILTERS
+            if not other:
+                allowed_filter = {'product_type': 'Empty'}
+            result = pd.concat([result, self.block.network_x_block_together(filters, location=scene_filter,
+                                                                            additional={
+                                                                                'allowed_products_filters': allowed_filter,
+                                                                                'include_stacking': False,
+                                                                                'check_vertical_horizontal': check_orient,
+                                                                                'minimum_facing_for_block': 1,
+                                                                                'exclude_filter': exclude})])
+            blocks = result[result['is_block'] == True]
+            valid_scene_found = 1
+            if not blocks.empty and not multi:
+                score = 1
+                orientation = blocks.loc[0, 'orientation']
+                # break
+        if empty_check == -1 and not valid_scene_found:
+            self.global_fail = 1
+            raise TypeError('No Data Found fo kpi "'.format(kpi_name))
+        return score, orientation, mpis_dict, blocks, result
+
+    def calculate_shelf_placement(self, kpi_name, kpi_line, relevant_scif, general_filters, main_line, level, **kwargs):
+        results = []
         location = kpi_line['Shelf Placement'].lower()
         tmb_map = pd.read_excel(Const.TMB_MAP_PATH).melt(id_vars=['Num Shelves'], var_name=['Shelf']) \
             .set_index(['Num Shelves', 'Shelf']).reset_index()
@@ -548,8 +846,40 @@ class ToolBox:
         mpis = mpis.merge(bay_shelf, on=['bay_number', 'scene_fk'])
         mpis['true_shelf'] = mpis['shelf_number_from_bottom'] + mpis['shelf_offset']
         mpis = mpis.merge(tmb_map, on=['max_shelves', 'shelf_number_from_bottom'])
+        eye = self.filter_df(mpis, {'TMB': location})
+        for i, row in eye.iterrows():
+            results.append({'score': 1, 'result': 1, 'numerator_result': 1,
+                            'numerator_id': row[main_line[level['num_col']]],
+                            'denominator_id': row[main_line[level['den_col']]],  # segment configured as custom entity
+                            'kpi_name': self.lvl_name(kpi_name, 'SKU'),
+                            'ident_parent': self.lvl_name(kpi_name, 'Session')})
+        result = self.safe_divide(eye.shape[0], mpis.shape[0])
+        results.append({'score': result, 'result': result, 'numerator_result': eye.shape[0],
+                        'numerator_id': self.manufacturer_fk, 'denominator_result': mpis.shape[0],
+                        'denominator_id': self.store_id,
+                        'kpi_name': self.lvl_name(kpi_name, 'Session'),
+                        'ident_result': self.lvl_name(kpi_name, 'Session')})
+        return level['end'], results
 
-        result = self.safe_divide(self.filter_df(mpis, {'TMB': location}).shape[0], mpis.shape[0])
+
+
+
+
+
+
+
+
+
+
+
+    def calculate_same_aisle(self, kpi_name, kpi_line, relevant_scif, general_filters):
+        filters = self.get_kpi_line_filters(kpi_line)
+        relevant_scif = self.filter_df(self.scif, filters)
+        if relevant_scif.empty:
+            return
+        result = 0
+        if len(relevant_scif.scene_fk.unique()) == 1:
+            result = 1
         return {'score': 1, 'result': result}
 
     def calulate_shelf_region(self, kpi_name, kpi_line, relevant_scif, general_filters):
@@ -633,34 +963,6 @@ class ToolBox:
                          (seg_list[j].orth_min <= self.mpis['rect_{}'.format(orth)]) &
                          (self.mpis['rect_{}'.format(orth)] <= seg_list[j].orth_max)].shape[0]
 
-    def calculate_max_block_adj_base(self, kpi_name, kpi_line, relevant_scif, general_filters, comp_filter={}):
-        allowed_edges = [x.upper() for x in self.read_cell_from_line(kpi_line, Const.EDGES)]
-        d = {'A': {}, 'B': {}}
-        for k, v in d.items():
-            if comp_filter:
-                filters = comp_filter[k]
-            else:
-                filters = self.get_kpi_line_filters(kpi_line, k)
-            _, _, mpis_dict, _, results = self.base_block(kpi_name, kpi_line, relevant_scif,
-                                                          general_filters,
-                                                          filters=filters,
-                                                          check_orient=0)
-            v['row'] = results.sort_values('facing_percentage', ascending=False).iloc[0, :]
-            v['items'] = sum([list(n['match_fk']) for i, n in v['row']['cluster'].nodes(data=True)
-                              if n['block_key'].value not in Const.ALLOWED_FLAGS], [])
-            scene_graph = self.block.adj_graphs_by_scene[d[k]['row']['scene_fk']]
-            matches = [(edge, scene_graph[item][edge]['direction']) for item in v['items']
-                       for edge in scene_graph[item].keys() if scene_graph[item][edge]['direction'] in allowed_edges]
-            v['edge_matches'], v['directions'] = zip(*matches) if matches else ([], [])
-        result = 0
-        if set(d['A']['edge_matches']) & set(d['B']['items']):
-            result = 1
-        return {'score': 1, 'result': result}, set(d['A']['directions'])
-
-    def calculate_max_block_adj(self, kpi_name, kpi_line, relevant_scif, general_filters):
-        result, _ = self.calculate_max_block_adj_base(kpi_name, kpi_line, relevant_scif, general_filters)
-        return result
-
     def calculate_integrated_core(self, kpi_name, kpi_line, relevant_scif, general_filters):
         result, dirs = self.calculate_max_block_adj_base(kpi_name, kpi_line, relevant_scif, general_filters)
         if len(dirs) < 2:
@@ -741,54 +1043,7 @@ class ToolBox:
         return kwargs_list
 
 
-    def base_block(self, kpi_name, kpi_line, relevant_scif, general_filters_base, check_orient=1, other=1, filters={},
-                   multi=0):
-        result = pd.DataFrame()
-        general_filters = dict(general_filters_base)
-        blocks = pd.DataFrame()
-        result = pd.DataFrame()
-        orientation = 'Not Blocked'
-        scenes = self.filter_df(relevant_scif, general_filters).scene_fk.unique()
-        if 'template_name' in general_filters:
-            del general_filters['template_name']
-        if 'scene_fk' in general_filters:
-            del general_filters['scene_fk']
-        mpis_dict = {}
-        valid_scene_found = 0
-        for scene in scenes:
-            score = 0
-            empty_check = 0
-            scene_filter = {'scene_fk': scene}
-            if not filters:
-                filters = self.get_kpi_line_filters(kpi_line)
-            filters.update(general_filters)
-            # mpis is only here for debugging purposes
-            mpis = self.filter_df(self.mpis, scene_filter)
-            mpis = self.filter_df(mpis, filters)
-            mpis = self.filter_df(mpis, {'stacking_layer': 1})
-            mpis_dict[scene] = mpis
-            if mpis.empty:
-                empty_check = -1
-                continue
-            allowed_filter = Const.ALLOWED_FILTERS
-            if not other:
-                allowed_filter = {'product_type': 'Empty'}
-            result = pd.concat([result, self.block.network_x_block_together(filters, location=scene_filter,
-                                                                            additional={
-                                                                                'allowed_products_filters': allowed_filter,
-                                                                                'include_stacking': False,
-                                                                                'check_vertical_horizontal': check_orient,
-                                                                                'minimum_facing_for_block': 1})])
-            blocks = result[result['is_block'] == True]
-            valid_scene_found = 1
-            if not blocks.empty and not multi:
-                score = 1
-                orientation = blocks.loc[0, 'orientation']
-                break
-        if empty_check == -1 and not valid_scene_found:
-            self.global_fail = 1
-            raise TypeError('No Data Found fo kpi "'.format(kpi_name))
-        return score, orientation, mpis_dict, blocks, result
+
 
     def calculate_block(self, kpi_name, kpi_line, relevant_scif, general_filters):
         base = self.get_base_name(kpi_name, Const.ORIENTS)
@@ -1010,7 +1265,7 @@ class ToolBox:
 
     @staticmethod
     def lvl_name(kpi, lvl):
-        return '{} - {}'.format(kpi, lvl)
+        return '{} - {}'.format(str(kpi), str(lvl))
 
     @staticmethod
     def get_fk(df, col):
@@ -1034,8 +1289,10 @@ class ToolBox:
 
         return ratio, num, den
 
-    def parse_comp_brands(self, path):
+    def parse_comp_brands(self, out_df, path):
         df = pd.read_excel(path, sheetname=None, header=1)
+        df['Granular Groups']['Comparable Brand'] = df['Granular Groups']['Comparable Brand'].apply(lambda x:
+                                                                                                    self.splitter(x))
         group = df['Granular Groups link to stores']
         states = set(self.states['name'].unique())
 
@@ -1070,7 +1327,13 @@ class ToolBox:
         if not ggn_match:
             Log.warning('No Comparable Assortment found, Comparable KPIs skipped.')
             return
-        self.competitive_brands = self.filter_df(df['Granular Groups'], {'Granular Group Name': ggn_match})
+        return self.filter_df(df['Granular Groups'], {'Granular Group Name': ggn_match})
+
+    def dictify_competitive_brands(self, comp_type, assort):
+        opposition = assort[(assort['Start Date'] <= pd.Timestamp(self.visit_date)) &
+                            (assort['End Date'] >= pd.Timestamp(self.visit_date)) &
+                            (assort['Comparable Type'] == comp_type)]
+        return opposition.set_index('Target Brand')['Comparable Brand'].to_dict()
 
 
 
@@ -1197,8 +1460,6 @@ class ToolBox:
             return self.calculate_sos_facings
         elif kpi_type == Const.SHARE_OF_SHELF:
             return self.calculate_sos_shelf
-        elif kpi_type == Const.ADJACENCY:
-            return self.calculate_adjacency_init
         elif kpi_type == Const.SHELF_PLACEMENT:
             return self.calculate_shelf_placement
         elif kpi_type == Const.BAY_COUNT:
@@ -1207,12 +1468,24 @@ class ToolBox:
             return self.calculate_distribution
         elif kpi_type == Const.ANCHOR:
             return self.calculate_anchor
-        elif kpi_type == Const.BASE_MEASUREMENT:
+        elif kpi_type == Const.LINEAR_MEASUREMENT:
             return self.calculate_base_measure
         elif kpi_type == Const.OUT_OF_STOCK:
             return self.calculate_dynamic_oos
         elif kpi_type == Const.PACK_DISTRIBUTION:
             return self.calculate_pack_distribution
+        elif kpi_type == Const.PURITY:
+            return self.calculate_purity
+        elif kpi_type == Const.NEGATIVE_DISTRIBUTION:
+            return self.calculate_negative_distribution
+        elif kpi_type == Const.ADJACENCY:
+            return self.calculate_adjacency
+        elif kpi_type == Const.BLOCKING:
+            return self.calculate_blocking
+        elif kpi_type == Const.PRODUCT_SEQUENCE:
+            return self.calculate_product_sequence
+        elif kpi_type == Const.SHELF_PLACEMENT:
+            return self.calculate_shelf_placement
 
 
 
@@ -1233,8 +1506,7 @@ class ToolBox:
         #     return self.calculate_max_block_adj
         # elif kpi_type == Const.INTEGRATED:
         #     return self.calculate_integrated_core
-        # elif kpi_type == Const.BLOCKED_TOGETHER:
-        #     return self.calculate_block_together
+
         # elif kpi_type == Const.SERIAL:
         #     return self.calculate_serial_adj
         # elif kpi_type == Const.SEQUENCE:

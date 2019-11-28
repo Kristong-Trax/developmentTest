@@ -18,6 +18,7 @@ from KPIUtils_v2.Utils.Decorators.Decorators import kpi_runtime, log_runtime
 import numpy as np
 from KPIUtils_v2.DB.CommonV2 import Common
 from KPIUtils_v2.Utils.Consts.DB import StaticKpis
+from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
 
 __author__ = 'uri'
 
@@ -228,6 +229,7 @@ class BATRU_SANDToolBox:
         self.kpi_score_values = self.get_kpi_score_values_df()
         self.kpi_entity = self.get_kpi_entity_type()
         self.custom_entity = self.get_and_update_custom_entity()
+        self.assortment = Assortment(self.data_provider, self.output)
 
 # init functions
 
@@ -363,6 +365,7 @@ class BATRU_SANDToolBox:
         self.handle_priority_3()
         self.handle_priority_4()
         self.handle_priority_5()
+        self.handle_oos()
 
 # general functions:
 
@@ -443,6 +446,36 @@ class BATRU_SANDToolBox:
     @staticmethod
     def encode_column_in_df(df, column_name):
         return df[column_name].str.encode('utf-8')
+
+    # OOS KPI
+    def handle_oos(self):
+        lvl3_result = self.assortment.calculate_lvl3_assortment()
+        if not lvl3_result.empty:
+            oos_kpi_fk = self.common.get_kpi_fk_by_kpi_type(self.OOS)
+            identifier_parent = self.common.get_dictionary(kpi_fk=oos_kpi_fk)
+            lvl3_result = lvl3_result[lvl3_result['kpi_fk_lvl2'] == oos_kpi_fk]
+            for result_row in lvl3_result.itertuples():
+                res = 1 - result_row.in_store
+                if res == 1:
+                    score = res * 100
+                    self.common.write_to_db_result(fk=result_row.kpi_fk_lvl3, numerator_id=result_row.product_fk,
+                                                   denominator_id=self.store_id, numerator_result=res,
+                                                   denominator_result=1, result=res, score=score,
+                                                   identifier_parent=identifier_parent, should_enter=True)
+
+            lvl2_result = self.assortment.calculate_lvl2_assortment(lvl3_result)
+            for row in lvl2_result.itertuples():
+                denominator_res = row.total
+                if row.target and not np.math.isnan(row.target):
+                    if row.group_target_date <= self.visit_date:
+                        denominator_res = row.target
+                distr_result = float(row.passes) / float(denominator_res) if denominator_res else 0
+                oos_result = 1.0 - distr_result
+                oos_score = 100 if oos_result == 1 else 100
+                self.common.write_to_db_result(fk=row.kpi_fk_lvl2, numerator_id=self.own_manufacturer_fk,
+                                               numerator_result=denominator_res - row.passes, result=oos_result * 100,
+                                               denominator_id=self.store_id, denominator_result=denominator_res,
+                                               score=oos_score, identifier_result=identifier_parent, should_enter=True)
 
     # P1 KPI
     @kpi_runtime()
@@ -2083,14 +2116,29 @@ class BATRU_SANDToolBox:
 
         return
 
+    # def add_posms_not_assigned_to_scenes_in_template(self):
+    #     add_posms = self.posm_in_session[(~(self.posm_in_session['additional_attribute_1'].isin(self.p4_display_count.keys()))) &
+    #                                      (~(self.posm_in_session['display_name'].isnull())) &
+    #                                      (~(self.posm_in_session['additional_attribute_1'].isnull())) &
+    #                                      (self.posm_in_session['template_group'] == EXIT_TEMPLATE_GROUP.encode('utf8'))]
+    #     add_posms = add_posms[['additional_attribute_1', 'display_name']].drop_duplicates()
+    #     for i, row in add_posms.iterrows():
+    #         name = '{};{};{};{}'.format(row['additional_attribute_1'].encode('utf8'), DEFAULT_GROUP_NAME,
+    #                                     DEFAULT_ATOMIC_NAME, row['display_name'].encode('utf8'))
+    #         self.p4_posm_to_api[name] = 1
+
     def add_posms_not_assigned_to_scenes_in_template(self):
-        add_posms = self.posm_in_session[(~(self.posm_in_session['additional_attribute_1'].isin(self.p4_display_count.keys()))) &
-                                         (~(self.posm_in_session['display_name'].isnull())) &
-                                         (~(self.posm_in_session['additional_attribute_1'].isnull())) &
-                                         (self.posm_in_session['template_group'] == EXIT_TEMPLATE_GROUP.encode('utf8'))]
+        scenes_in_session = self.data_provider.scenes_info[['scene_fk', 'template_fk']]
+        scenes_in_session = scenes_in_session.merge(self.data_provider.all_templates, on='template_fk', how='left')
+        posm_in_session = self.match_display_in_scene.merge(scenes_in_session, on='scene_fk', how='left')
+        add_posms = posm_in_session[
+            (~(posm_in_session['additional_attribute_1'].isin(self.p4_display_count.keys()))) &
+            (~(posm_in_session['display_name'].isnull())) &
+            (~(posm_in_session['additional_attribute_1'].isnull())) &
+            (posm_in_session['template_group'].str.encode('utf8') == EXIT_TEMPLATE_GROUP.encode('utf8'))]
         add_posms = add_posms[['additional_attribute_1', 'display_name']].drop_duplicates()
         for i, row in add_posms.iterrows():
-            name = '{};{};{};{}'.format(row['additional_attribute_1'].encode('utf8'), DEFAULT_GROUP_NAME,
+            name = '{};{};{};{}'.format(row['additional_attribute_1'], DEFAULT_GROUP_NAME,
                                         DEFAULT_ATOMIC_NAME, row['display_name'].encode('utf8'))
             self.p4_posm_to_api[name] = 1
 

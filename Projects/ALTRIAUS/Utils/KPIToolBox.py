@@ -34,7 +34,7 @@ CATEGORIES = ['Cigarettes', 'Vapor', 'Cigars', 'Smokeless']
 KPI_LEVEL_2_cat_space = ['Category Space - Cigarettes', 'Category Space - Vapor',
                          'Category Space - Smokeless', 'Category Space - Cigars']
 
-TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'KENGINE_ALTRIA_V1.xlsx')
+TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'KENGINE_ALTRIA_V2.xlsx')
 FIXTURE_WIDTH_TEMPLATE = \
     os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'Fixture_Width_Dimensions_v3.xlsx')
 
@@ -91,6 +91,7 @@ class ALTRIAUSToolBox:
         self.kpi_results_queries = []
         self.all_template_data = parse_template(TEMPLATE_PATH, "KPI")
         self.spacing_template_data = parse_template(TEMPLATE_PATH, "Spacing")
+        self.empty_data_template = parse_template(TEMPLATE_PATH, "Empty")
         self.fixture_width_template = pd.read_excel(FIXTURE_WIDTH_TEMPLATE, "Fixture Width", dtype=pd.Int64Dtype())
         self.facings_to_feet_template = pd.read_excel(FIXTURE_WIDTH_TEMPLATE, "Conversion Table", dtype=pd.Int64Dtype())
         self.header_positions_template = pd.read_excel(FIXTURE_WIDTH_TEMPLATE, "Header Positions")
@@ -116,6 +117,7 @@ class ALTRIAUSToolBox:
         """
                This function calculates the KPI results.
                """
+
         self.calculate_signage_locations_and_widths('Cigarettes')
         self.calculate_signage_locations_and_widths('Smokeless')
         self.calculate_register_type()
@@ -123,6 +125,7 @@ class ALTRIAUSToolBox:
         self.calculate_juul_availability()
         self.calculate_assortment()
         self.calculate_vapor_kpis()
+        self.calculate_empty_brand()
 
         kpi_set_fk = 2
         set_name = \
@@ -248,6 +251,29 @@ class ALTRIAUSToolBox:
         kpi_fk = self.common_v2.get_kpi_fk_by_kpi_type('Age Verification')
         self.common_v2.write_to_db_result(kpi_fk, numerator_id=product_fk, denominator_id=self.store_id,
                                           result=result)
+
+    def calculate_empty_brand(self):
+        product_type = ['Empty']
+        for i, row in self.empty_data_template.iterrows():
+
+            kpi_name = row['KPI Level 2 Name']
+            param1 = row['Param1']
+            value1 = row['Value1']
+            kpi_fk = self.common_v2.get_kpi_fk_by_kpi_name(kpi_name)
+
+            if value1.find(',') != -1:
+                value1 = value1.split(',')
+            for value in value1:
+                relevant_scif = self.scif[(self.scif[param1] == value) & (self.scif['product_type'].isin(product_type))]
+                if relevant_scif.empty:
+                    pass
+                else:
+                    result = empty_facings = relevant_scif['facings'].sum()
+                    brand_fk = relevant_scif['brand_fk'].iloc[0]
+
+
+                    self.common_v2.write_to_db_result(kpi_fk, numerator_id=brand_fk, numerator_result=empty_facings,  denominator_id=self.store_id,
+                                                  result=result, score=0)
 
     def calculate_juul_availability(self):
         relevant_scif = self.scif[(self.scif['brand_name'].isin(['Juul'])) &

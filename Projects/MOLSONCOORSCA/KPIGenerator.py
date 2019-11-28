@@ -25,9 +25,10 @@ class Generator:
         else:
             template_path = self.find_template('Template')
             comp_path = self.find_template('Competitive')
+            adj_path = self.find_template('Adjacencies')
             # EntityUploader(self.project_name, template_path)
             # AtomicFarse(self.project_name, template_path)
-            self.tool_box.main_calculation(template_path, comp_path)
+            self.tool_box.main_calculation(template_path, comp_path, adj_path)
             self.common.commit_results_data()
 
     def find_template(self, name):

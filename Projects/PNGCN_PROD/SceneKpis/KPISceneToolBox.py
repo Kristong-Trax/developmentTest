@@ -48,6 +48,7 @@ CREST_BRAND = 'Crest'
 ORALB_BRAND = 'Oral-B'
 
 OC_CATEGORY = 'Oral Care'
+FEM_CATEGORY = 'Fem Care'
 EYE_LEVEL_RELEVANT_CATEGORIES = [PCC_CATEGORY, OC_CATEGORY]
 
 # Block_Variant KPI
@@ -401,12 +402,17 @@ class PngcnSceneKpis(object):
         elif scene_category == OC_CATEGORY:
             sub_brands_entity = self.psdataprovider.get_custom_entities_df('sub_brand')
             return eye_level_fragments.append(sub_brands_entity)
+        elif scene_category == FEM_CATEGORY:
+            att3_entity = self.psdataprovider.get_custom_entities_df('att3')
+            return eye_level_fragments.append(att3_entity)
 
     def _get_category_specific_filters(self, scene_category, full_df):
         if scene_category == PCC_CATEGORY:
             return PngcnSceneKpis.PCC_FILTERS
         elif scene_category == OC_CATEGORY:
             return self._get_oc_filter(full_df)
+        elif scene_category == FEM_CATEGORY:
+            return self._get_fc_filter(full_df)
 
     def _get_oc_filter(self, full_df):
         oc_brand_filer = {'population': {'include': [{"manufacturer_name": [PNG_MANUFACTURER],
@@ -417,27 +423,54 @@ class PngcnSceneKpis(object):
         sub_brand_df = frag_df[['manufacturer_name', 'category', 'sub_brand_name', 'brand_name']].drop_duplicates()
         sub_brand_df = sub_brand_df[sub_brand_df['sub_brand_name'].notnull()][sub_brand_df['sub_brand_name'] != '']
         result_df = {}
+
         for index, row in sub_brand_df.iterrows():
             result_df[row['sub_brand_name']] = {
                             'population': {'include': [
                                                         {"manufacturer_name":[row['manufacturer_name']],
                                                          "category":[row['category']],
-                                                         "sub_brand":[row['sub_brand_name']],
+                                                         "sub_brand_name":[row['sub_brand_name']],
                                                          "brand_name":[row['brand_name']], }
 
                                                     ], 'exclude': {}, 'include_operator': 'and', }}
-        result_df['Competitor Oral Care'] = {'population': {'include': [{"category": [OC_CATEGORY]}],
-                                          'exclude': {"manufacturer_name": [PNG_MANUFACTURER]},
-                                          'include_operator': 'and'}}
+
+        return self._add_other_competitor_filter(OC_CATEGORY, result_df)
+
+    def _get_fc_filter(self, full_df):
+        oc_brand_filer = {'population': {'include': [{"manufacturer_name": [PNG_MANUFACTURER],
+                                                      "category": [FEM_CATEGORY],
+                                                      }], 'include_operator': 'and'}}
+        frag_df = self.parser.filter_df(oc_brand_filer, full_df)
+        sub_dimension_df = frag_df[['manufacturer_name', 'category', 'att3', 'brand_name']].drop_duplicates()
+        sub_dimension_df = sub_dimension_df[sub_dimension_df['att3'].notnull()][sub_dimension_df['att3'] != '']
+        result_df = {}
+
+        for index, row in sub_dimension_df.iterrows():
+            result_df[row['att3']] = {
+                            'population': {'include': [
+                                                        {"manufacturer_name":[row['manufacturer_name']],
+                                                         "category":[row['category']],
+                                                         "att3":[row['att3']],
+                                                         "brand_name":[row['brand_name']], }
+
+                                                    ], 'exclude': {}, 'include_operator': 'and', }}
+
+        return self._add_other_competitor_filter(FEM_CATEGORY, result_df)
+
+    def _add_other_competitor_filter(self, category, result_df):
+        competitor_category = 'Competitor {}'.format(category)
+        result_df[competitor_category] = {'population': {'include': [{"category": [category]}],
+                                                         'exclude': {"manufacturer_name": [PNG_MANUFACTURER]},
+                                                         'include_operator': 'and'}}
 
         result_df['PNGOTHER'] = {'population': {'include': [{"manufacturer_name": [PNG_MANUFACTURER]}],
-                                    'exclude': {"category": [OC_CATEGORY]},
-                                    'include_operator': 'and'}}
+                                                'exclude': {"category": [category]},
+                                                'include_operator': 'and'}}
 
         result_df['Competitor Other'] = {'population': {'include': [{}],
-                                            'exclude': {"manufacturer_name": [PNG_MANUFACTURER],
-                                                        "category": [OC_CATEGORY]},
-                                            'include_operator': 'and'}}
+                                                        'exclude': {"manufacturer_name": [PNG_MANUFACTURER],
+                                                                    "category": [category]},
+                                                        'include_operator': 'and'}}
         return result_df
 
     def calculate_facing_eye_level(self, full_df, max_shelf_count):
@@ -490,6 +523,14 @@ class PngcnSceneKpis(object):
             frag_df = seq_df.groupby(by=['group']).first()
             for i, row in frag_df.iterrows():
                 facing_sequence_number = row['facing_sequence_number']
+                entity_search_rs = entity_df[entity_df['entity_name'].str.encode("utf8")
+                                      == key.encode("utf8")]['entity_fk']
+                entity_fk = 'dummy'
+                if entity_search_rs.empty:
+                    Log.info("Entity {} is not found in database, for scene {}".format(key, self.scene_id))
+                    continue
+                else:
+                    entity_fk = entity_search_rs.values[0]
                 entity_fk = entity_df[entity_df['entity_name'].str.encode("utf8")
                                       == key.encode("utf8")]['entity_fk'].values[0]
                 bay_number = row['bay_number']
