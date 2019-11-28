@@ -378,16 +378,18 @@ class MARSIN_SANDToolBox(MARSIN_SANDTemplateConsts, MARSIN_SANDKPIConsts):
             block_score = 1 if block_result >= block_target else 0
             if isinstance(block_result, (int, tuple)):
                 block_result = round(block_result*100, 1)
+            if isinstance(block_result, bool):
+                block_result = int(block_result)
             self.write_to_db_result(atomics[0], (block_score, block_result, block_target*100), level=self.LEVEL3)
             # level_2_results
             self.common.write_to_db_result(fk=kpi_level_2_fks[0],
                                            numerator_id=self.manufacturer_fk,
                                            denominator_id=self.store_id,
-                                           numerator_result=int(block_result),
+                                           numerator_result=block_result,
                                            denominator_result=1,
                                            identifier_parent=identifier_parent,
                                            target=block_target*100,
-                                           result=int(block_result),
+                                           result=block_result,
                                            score=block_score,
                                            should_enter=True)
             if kpi_data[self.SEQUENCE_ENTITY]:
@@ -404,6 +406,8 @@ class MARSIN_SANDToolBox(MARSIN_SANDTemplateConsts, MARSIN_SANDKPIConsts):
                                                                             irrelevant_allowed=False,
                                                                             min_required_to_pass=self.tools.STRICT_MODE)
                 sequence_score = 1 if sequence_result else 0
+                if isinstance(sequence_result, bool):
+                    sequence_result = int(sequence_result)
                 self.write_to_db_result(atomics[1], (sequence_score, sequence_score, 1), level=self.LEVEL3)
 
                 # write results to new db
@@ -477,7 +481,7 @@ class MARSIN_SANDToolBox(MARSIN_SANDTemplateConsts, MARSIN_SANDKPIConsts):
             block1_result = self.tools.calculate_block_together(allowed_products_filters={'front_facing': 'N'},
                                                                 front_facing='Y', scene_fk=relevant_scenes,
                                                                 **group1_filters)
-            block1_score = 100 if block1_result else 0
+            block1_score = 1 if block1_result else 0
             self.write_to_db_result(atomics[0], (block1_score, block1_score, 1), level=self.LEVEL3)
             # results  to new db tables
             self.common.write_to_db_result(fk=kpi_level_2_fks[0],
@@ -494,7 +498,7 @@ class MARSIN_SANDToolBox(MARSIN_SANDTemplateConsts, MARSIN_SANDKPIConsts):
             block2_result = self.tools.calculate_block_together(allowed_products_filters={'front_facing': 'N'},
                                                                 front_facing='Y', scene_fk=relevant_scenes,
                                                                 **group2_filters)
-            block2_score = 100 if block2_result else 0
+            block2_score = 1 if block2_result else 0
             self.write_to_db_result(atomics[1], (block2_score, block2_score, 1), level=self.LEVEL3)
             # results  to new db tables
             self.common.write_to_db_result(fk=kpi_level_2_fks[1],
@@ -519,7 +523,6 @@ class MARSIN_SANDToolBox(MARSIN_SANDTemplateConsts, MARSIN_SANDKPIConsts):
                                                                           front_facing='Y', scene_fk=relevant_scenes,
                                                                           **merged_filters)
                 score = 1 if merged_block_result else 0
-                result = 100 if merged_block_result else 0
 
                 self.write_to_db_result(atomics[2], (score, score, 1), level=self.LEVEL3)
                 # results  to new db tables
@@ -530,8 +533,8 @@ class MARSIN_SANDToolBox(MARSIN_SANDTemplateConsts, MARSIN_SANDKPIConsts):
                                                denominator_result=1,
                                                identifier_parent=identifier_parent,
                                                target=1,
-                                               result=result,
-                                               score=result,
+                                               result=score,
+                                               score=score,
                                                should_enter=True)
             else:
                 score = 0
