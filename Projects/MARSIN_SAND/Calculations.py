@@ -21,7 +21,7 @@ if __name__ == '__main__':
     Config.init()
     project_name = 'marsin-sand'
     data_provider = KEngineDataProvider(project_name)
-    session = 'ff5e03ab-9bb5-4c7c-adc0-19f400a887f0'
+    session = 'ffd24994-11f1-4a37-a127-9ecdb271490e'
     data_provider.load_session_data(session)
     output = Output()
     MARSIN_SANDCalculations(data_provider, output).run_project_calculations()

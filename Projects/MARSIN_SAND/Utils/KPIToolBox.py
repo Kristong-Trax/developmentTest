@@ -270,6 +270,7 @@ class MARSIN_SANDToolBox(MARSIN_SANDTemplateConsts, MARSIN_SANDKPIConsts):
                                            denominator_id=self.store_id,
                                            numerator_result=actual_points,
                                            denominator_result=max_points,
+                                           weight=actual_points,
                                            identifier_result=identifier_result,
                                            identifier_parent=identifier_parent,
                                            result=set_score,
@@ -388,6 +389,7 @@ class MARSIN_SANDToolBox(MARSIN_SANDTemplateConsts, MARSIN_SANDKPIConsts):
                                            numerator_result=block_result,
                                            denominator_result=1,
                                            identifier_parent=identifier_parent,
+                                           weight=block_result,
                                            target=block_target*100,
                                            result=block_result,
                                            score=block_score,
@@ -418,6 +420,7 @@ class MARSIN_SANDToolBox(MARSIN_SANDTemplateConsts, MARSIN_SANDKPIConsts):
                                                denominator_result=1,
                                                identifier_parent=identifier_parent,
                                                target=1,
+                                               weight=sequence_score,
                                                result=int(sequence_result),
                                                score=sequence_score,
                                                should_enter=True)
@@ -459,7 +462,7 @@ class MARSIN_SANDToolBox(MARSIN_SANDTemplateConsts, MARSIN_SANDKPIConsts):
 
         identifier_parent = self.common.get_dictionary(group_name=params[MARSIN_SANDTemplateConsts.KPI_GROUP],
                                                        brand_sub=params[MARSIN_SANDTemplateConsts.KPI_NAME])
-
+        atomics.sort()
         if kpi_data.empty:
             return None
         kpi_data = kpi_data.iloc[0]
@@ -540,9 +543,9 @@ class MARSIN_SANDToolBox(MARSIN_SANDTemplateConsts, MARSIN_SANDKPIConsts):
                 score = 0
 
         else:
-            for atomic_fk in atomics:
+            for atomic_fk in atomics[:-1]:
                 self.write_to_db_result(atomic_fk, (0, 0, 1), level=self.LEVEL3)
-            #for new tables
+            #  for new tables
             for new_kpi in kpi_level_2_fks:
                 self.common.write_to_db_result(fk=new_kpi,
                                                numerator_id=self.manufacturer_fk,
