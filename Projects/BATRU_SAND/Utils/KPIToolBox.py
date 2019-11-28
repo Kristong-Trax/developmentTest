@@ -129,6 +129,8 @@ class BATRU_SANDToolBox:
     PRESENCE = 'PRESENCE'
     OOS = 'OOS'
     DISTRIBUTED = 'DISTRIBUTED'
+    POSM_REST = 'POSM Rest'
+    POSM_REST_DISPLAY = 'POSM Rest Display'
 
     def __init__(self, data_provider, output):
         self.k_engine = BaseCalculationsScript(data_provider, output)
@@ -2114,7 +2116,31 @@ class BATRU_SANDToolBox:
                                             kpi_name=P4_API_SET,
                                             atomic_kpi_name=name)
 
+        # extend P4 for MR to POSM Rest
+        self.calculate_posm_rest_for_displays_out_of_template()
         return
+
+    def calculate_posm_rest_for_displays_out_of_template(self):
+        kpis_out_of_template = filter(lambda x: DEFAULT_ATOMIC_NAME in x, self.p4_posm_to_api.keys())
+        if len(kpis_out_of_template) > 0:
+            posm_rest_kpi_fk = self.common.get_kpi_fk_by_kpi_type(self.POSM_REST)
+            identifier_parent = self.common.get_dictionary(kpi_fk=posm_rest_kpi_fk)
+            kpis_out_of_template = filter(lambda x: '{};{}'.format(DEFAULT_GROUP_NAME, DEFAULT_ATOMIC_NAME) in x,
+                                          self.p4_posm_to_api.keys())
+            displays_out_of_template = set(map(lambda x: x.split(';')[3], kpis_out_of_template))
+            display_kpi_fk = self.common.get_kpi_fk_by_kpi_type(self.POSM_REST_DISPLAY)
+            # displays_dict = self.match_display_in_scene[['display_fk', 'display_name']].to_dict()
+            for display in displays_out_of_template:
+                display_fk = self.match_display_in_scene[self.match_display_in_scene['display_name']
+                                                          == display]['display_fk'].values[0]
+                self.common.write_to_db_result(fk=display_kpi_fk, numerator_id=display_fk,
+                                               denominator_id=self.store_id, result=1,
+                                               identifier_parent=identifier_parent, should_enter=True)
+            posm_rest_result = len(displays_out_of_template)
+            self.common.write_to_db_result(fk=posm_rest_kpi_fk, numerator_id=self.own_manufacturer_fk,
+                                           denominator_id=self.store_id, result=posm_rest_result,
+                                           score=posm_rest_result, identifier_result=identifier_parent,
+                                           should_enter=True)
 
     # def add_posms_not_assigned_to_scenes_in_template(self):
     #     add_posms = self.posm_in_session[(~(self.posm_in_session['additional_attribute_1'].isin(self.p4_display_count.keys()))) &
