@@ -439,7 +439,7 @@ class CCZAToolBox:
             :return: 100 if there is scene which has at least one correctly positioned product, 0 otherwise.
         """
         type_name = Converters.convert_type(atomic_params[Const.ENTITY_TYPE])
-        values = atomic_params[Const.ENTITY_VAL].split(', ')
+        values = map(lambda x: x.strip(), atomic_params[Const.ENTITY_VAL].split(', '))
         wanted_answer = float(atomic_params[Const.ACCEPTED_ANSWER_RESULT])
         filtered_scenes = self.scif[self.scif[type_name].isin(values)][ScifConsts.SCENE_FK].unique()
         p_matches = self.match_product_in_scene[self.match_product_in_scene[ScifConsts.SCENE_FK].isin(filtered_scenes)]
@@ -454,7 +454,7 @@ class CCZAToolBox:
             :return: int - amount of scenes.
         """
         filters = {Converters.convert_type(
-            atomic_params[Const.ENTITY_TYPE]): atomic_params[Const.ENTITY_VAL].split(', ')}
+            atomic_params[Const.ENTITY_TYPE]): map(lambda x: x.strip(), atomic_params[Const.ENTITY_VAL].split(', '))}
         scene_count = self.tools.calculate_number_of_scenes(**filters)
         return scene_count
 
@@ -584,7 +584,9 @@ class CCZAToolBox:
         """
         if ',' in type_name:
             types = type_name.split(', ')
+            types = map(lambda x: x.strip(), types)
             values = value_name.split(', ')
+            values = map(lambda x: x.strip(), values)
             filters = {}
             if len(types) != len(values):
                 Log.warning('there are {} types and {} values, should be the same amount'.format(
@@ -593,7 +595,7 @@ class CCZAToolBox:
                 for i in xrange(len(types)):
                     filters[Converters.convert_type(types[i])] = values[i]
         else:
-            filters = {Converters.convert_type(type_name): value_name.split(', ')}
+            filters = {Converters.convert_type(type_name): map(lambda x: x.strip(), value_name.split(', '))}
         # list_of_negative = list(self.scif[self.scif['rlv_sos_sc'] != 0]['rlv_sos_sc'].unique())
         # filters['rlv_sos_sc'] = list_of_negative # perhaps we don't need it - if we need, to enter it to the initializer
         return filters
