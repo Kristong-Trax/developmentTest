@@ -117,7 +117,6 @@ class CCRU_SANDProjectCalculations:
                         .format(self.pos_kpi_set_name, self.store_id))
             return
 
-        #added mr targets
         mr_targets = {}
         for kpi_set, params in kpi_source.items():
             if params.get(MR_TARGET) is not None:
@@ -168,6 +167,7 @@ class CCRU_SANDProjectCalculations:
                                       'kpi_set_fk']), 'level1')
 
             set_target = mr_targets.get(kpi_set_type) if mr_targets.get(kpi_set_type) is not None else 100
+
             self.tool_box.update_kpi_scores_and_results(
                 {'KPI ID': 0,
                  'KPI name Eng': kpi_source[kpi_set_type][SET],
