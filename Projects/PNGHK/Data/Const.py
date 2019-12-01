@@ -2,7 +2,7 @@
 class Const(object):
 
     # template path
-    TEMPLATE_PATH = '09_PNGHK_template_2019_09_25.xlsx'
+    TEMPLATE_PATH = '09_PNGHK_template_2019_11_26.xlsx'
 
     # sheet names
     KPIS = 'KPIS'
@@ -46,7 +46,7 @@ class Const(object):
     FSOS = 'Facing Share of Shelf'
     LSOS = 'Linear Share of Shelf'
     DISPLAY_NUMBER = 'Display Number'
-
+    DISPLAY_FACING = 'Display Facing'
     # Entities types
     MANUFACTURER = 'manufacturer_name'
     BRAND = 'brand_name'
