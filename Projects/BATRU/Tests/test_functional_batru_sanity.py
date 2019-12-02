@@ -67,13 +67,13 @@ class TestKEngineOutOfTheBox(TestFunctionalCase):
     def test_batru_sanity(self):
         project_name = ProjectsSanityData.project_name
         data_provider = KEngineDataProvider(project_name)
-        sessions = {u'f4524e91-1b8d-4dfa-aa55-506cea384e16': []}
+        sessions = {u'1d61441f-c23b-4a16-842d-2414fcf6e8c7': []}
         for session in sessions.keys():
             data_provider.load_session_data(str(session))
             output = Output()
             BATRUCalculations(data_provider, output).run_project_calculations()
             self._assert_old_tables_kpi_results_filled()
-            # self._assert_new_tables_kpi_results_filled()
+            self._assert_new_tables_kpi_results_filled()
             # for scene in sessions[session]:
             #     data_provider.load_scene_data(str(session), scene_id=scene)
             #     SceneCalculations(data_provider).calculate_kpis()

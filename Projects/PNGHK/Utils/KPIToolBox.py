@@ -74,6 +74,134 @@ class PNGHKToolBox:
             self.calculate_linear_sos_kpi(kpi_df)
         if kpi_type == Const.DISPLAY_NUMBER:
             self.calculate_display_kpi(kpi_df)
+        if kpi_type == Const.DISPLAY_FACING:
+            self.calculate_display_facing(kpi_df)
+
+    def calculate_display_facing(self, kpi_df):
+
+        kpi_name = kpi_df[Const.KPI_NAME].values[0]
+        kpi_fk = self.common.get_kpi_fk_by_kpi_name(kpi_name, get_numerator=False)
+        if kpi_fk is None:
+            Log.warning("There is no matching Kpi fk for kpi name: " + kpi_name)
+            return
+        entity_name = kpi_df[Const.NUMERATOR_ENTITY].values[0]
+        entity_name_for_fk = Const.NAME_TO_FK[entity_name]
+        results_dict = {}
+
+        # Iterate all rows of the KPI, each is calculated differently,
+        # added to an aggregated dictionary on the end of the loops
+        for i, row in kpi_df.iterrows():
+            scene_size = row[Const.SCENE_SIZE]
+            self.kpi_excluding = row[[Const.EXCLUDE_EMPTY, Const.EXCLUDE_HANGER, Const.EXCLUDE_IRRELEVANT,
+                                      Const.EXCLUDE_POSM, Const.EXCLUDE_OTHER, Const.STACKING, Const.EXCLUDE_SKU,
+                                      Const.EXCLUDE_STOCK, Const.EXCLUDE_OSD]]
+            # filter df to the specific template row
+            df = self.filter_df(row)
+            df = df[df['width_mm_advance'] != -1]
+            if df.empty:
+                continue
+            number_of_scenes = len(df['scene_fk'].unique())
+
+            if row[Const.PER_SCENE_TYPE] == Const.EACH:
+                scene_types = row[Const.SCENE_TYPE].split(",")
+                scene_types = [item.strip() for item in scene_types]
+                scene_types = set(scene_types).intersection(set(df['template_name']))
+            else:
+                scene_types = [""]
+
+            # Iterate scene types
+            for sc in scene_types:
+                filters = {}
+                if sc != "":
+                    try:
+                        context_id = self.templates[self.templates['template_name']
+                                                    == sc]['template_fk'].iloc[0]
+                    except Exception as ex:
+                        Log.warning("No scene type with the following name: " + str(sc) + ", warning: " + str(ex))
+                        continue
+                    filters['template_name'] = sc
+                    if scene_size != "":
+                        scenes = df['scene_fk'].unique()
+                    else:
+                        scenes = [""]
+                else:
+                    context_id = 0
+                    # if scene_size != "":
+                    #     scene_size *= number_of_scenes
+                    scenes = [""]
+
+                # Iterate scenes, inorder to get exact ratios between each scene with fixed 4000 mm size
+                for scene in scenes:
+                    # If iterating scenes, replacing all current filters with {scene_fk: scene}
+                    if scene != "":
+                        filters = {'scene_fk': scene}
+                    category = row[Const.CATEGORY]
+                    if category != "":
+                        if category == Const.EACH:
+                            categories = set(self.df['category'])
+                        else:
+                            categories = [category]
+                    else:
+                        categories = [""]
+
+                    # Iterate categories
+                    for category in categories:
+                        if category != "":
+                            denominator_id = self.all_products[self.all_products['category'] ==
+                                                               category]['category_fk'].iloc[0]
+                            filters['category'] = category
+                            all_numerators = self.df[self.df['category'] ==
+                                                     category][entity_name].drop_duplicates().values.tolist()
+                        else:
+                            denominator_id = self.store_id
+                            all_numerators = df[entity_name].drop_duplicates().values.tolist()
+
+                        if row[Const.NUMERATOR] != "":
+                            all_numerators = [row[Const.NUMERATOR]]
+                        denominator = df[self.tools.get_filter_condition(df, **filters)].shape[0]
+                        if denominator == 0:
+                            continue
+                        elif scene_size != "":
+                            denominator *= scene_size
+
+                        # Iterate entities (manufacturer / product_fk...)
+                        for entity in all_numerators:
+                            filters[entity_name] = entity
+                            numerator = df[self.tools.get_filter_condition(df, **filters)].shape[0]
+                            del filters[entity_name]
+                            if scene_size != "":
+                                numerator *= scene_size
+                            try:
+                                numerator_id = self.all_products[self.all_products[entity_name] ==
+                                                                 entity][entity_name_for_fk].values[0]
+                            except Exception as ex:
+                                Log.warning("No entity in this name " + entity + ", warning: " + str(ex))
+                                numerator_id = -1
+                            if (numerator_id, denominator_id, context_id) not in results_dict.keys():
+                                results_dict[numerator_id, denominator_id,
+                                             context_id] = [numerator, denominator]
+                            else:
+                                results_dict[numerator_id, denominator_id, context_id] = \
+                                    map(sum, zip(results_dict[numerator_id, denominator_id, context_id],
+                                                 [numerator, denominator]))
+        if len(results_dict) == 0:
+            return
+
+        self.save_result_to_kpi_table(kpi_fk, results_dict)
+
+    def save_result_to_kpi_table(self, kpi_fk, results_dict):
+        results_as_df = pd.DataFrame.from_dict(results_dict, orient="index")
+        # numerator became column 0, denominator column 1, result will enter column 2
+        filtered_results_as_df = results_as_df[results_as_df[0] != 0]
+        filtered_df = filtered_results_as_df.copy()
+        filtered_df[2] = filtered_results_as_df[0] / filtered_results_as_df[1]
+        filtered_results_as_dict = filtered_df.to_dict(orient="index")
+        for numerator_id, denominator_id, context_id in filtered_results_as_dict.keys():
+            result_row = filtered_results_as_dict[numerator_id, denominator_id, context_id]
+            result, numerator, denominator = result_row[2], result_row[0], result_row[1]
+            self.common.write_to_db_result(fk=kpi_fk, numerator_id=numerator_id, denominator_id=denominator_id,
+                                           context_id=context_id, numerator_result=numerator,
+                                           denominator_result=denominator, result=result, score=result)
 
     def calculate_display_kpi(self, kpi_df):
         total_numerator = 0
@@ -297,20 +425,7 @@ class PNGHKToolBox:
         if len(results_dict) == 0:
             return
 
-        results_as_df = pd.DataFrame.from_dict(results_dict, orient="index")
-
-        # numerator became column 0, denominator column 1, result will enter column 2
-        filtered_results_as_df = results_as_df[results_as_df[0] != 0]
-        filtered_df = filtered_results_as_df.copy()
-        filtered_df[2] = filtered_results_as_df[0] / filtered_results_as_df[1]
-        filtered_results_as_dict = filtered_df.to_dict(orient="index")
-
-        for numerator_id, denominator_id, context_id in filtered_results_as_dict.keys():
-            result_row = filtered_results_as_dict[numerator_id, denominator_id, context_id]
-            result, numerator, denominator = result_row[2], result_row[0], result_row[1]
-            self.common.write_to_db_result(fk=kpi_fk, numerator_id=numerator_id, denominator_id=denominator_id,
-                                           context_id=context_id, numerator_result=numerator,
-                                           denominator_result=denominator, result=result, score=result)
+        self.save_result_to_kpi_table(kpi_fk, results_dict)
 
     def filter_df(self, kpi_df):
         df = self.df.copy()
