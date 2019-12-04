@@ -29,8 +29,6 @@ class JNJANZCalculations(BaseCalculationsScript):
         jnj_generator.lsos_with_hierarchy()
 
         # API global KPIs
-        jnj_generator.linear_sos_out_of_store_discovery_report()
-        jnj_generator.share_of_shelf_manufacturer_out_of_sub_category()
         jnj_generator.calculate_auto_assortment(in_balde=False)
         jnj_generator.promo_calc_recovery()
         jnj_generator.eye_hand_level_sos_calculation(eye_level_data)
