@@ -17,7 +17,7 @@ class JNJANZCalculations(BaseCalculationsScript):
     @log_runtime(description="Total Calculation")
     def run_project_calculations(self):
         self.timer.start()
-        eye_level_data, exclusion_data, survey_data = self._parse_templates_for_calculations()
+        eye_level_data, exclusion_data = self._parse_templates_for_calculations()
         common = Common(self.data_provider)
         jnj_generator = JNJGenerator(self.data_provider, self.output, common, exclusion_data)
 
@@ -29,8 +29,6 @@ class JNJANZCalculations(BaseCalculationsScript):
         jnj_generator.lsos_with_hierarchy()
 
         # API global KPIs
-        jnj_generator.linear_sos_out_of_store_discovery_report()
-        jnj_generator.share_of_shelf_manufacturer_out_of_sub_category()
         jnj_generator.calculate_auto_assortment(in_balde=False)
         jnj_generator.promo_calc_recovery()
         jnj_generator.eye_hand_level_sos_calculation(eye_level_data)
@@ -44,11 +42,9 @@ class JNJANZCalculations(BaseCalculationsScript):
         data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'Data')
         eye_hand_lvl_template_path = os.path.join(data_path, 'eye_level_jnjanz.xlsx')
         exclusive_template_path = os.path.join(data_path, 'KPI Exclusions Template.xlsx')
-        survey_template_path = os.path.join(data_path, 'SurveyTemplate.xlsx')
         eye_hand_lvl_template = pd.read_excel(eye_hand_lvl_template_path)
         exclusion_template = pd.read_excel(exclusive_template_path)
-        survey_template = pd.read_excel(survey_template_path, sheetname='Sheet1')
-        return eye_hand_lvl_template, exclusion_template, survey_template
+        return eye_hand_lvl_template, exclusion_template
 
 
 # if __name__ == '__main__':
