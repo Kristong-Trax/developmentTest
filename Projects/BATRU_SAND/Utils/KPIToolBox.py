@@ -129,6 +129,8 @@ class BATRU_SANDToolBox:
     PRESENCE = 'PRESENCE'
     OOS = 'OOS'
     DISTRIBUTED = 'DISTRIBUTED'
+    NO_COMPETITORS_KPI_LVL2 = 'No competitors'
+    EMPTY_SPACES_KPI_LVL2 = 'Empty spaces'
 
     def __init__(self, data_provider, output):
         self.k_engine = BaseCalculationsScript(data_provider, output)
