@@ -3163,6 +3163,7 @@ class CCRUKPIToolBox:
                         count_of_kpis += 1
 
             if count_of_kpis:
+                total_weight = total_weight if total_weight > 0 else 1
                 score = round(total_score / float(total_weight), 2)
                 attributes_for_table1 = pd.DataFrame([(kpi_set_name,
                                                        self.session_uid,

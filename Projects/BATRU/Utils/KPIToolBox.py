@@ -2053,8 +2053,8 @@ class BATRUToolBox:
         # new tables
         score_new_tables = float(score) / equipment_in_store if equipment_in_store else 0
         self.common.write_to_db_result(fk=posm_status_fk, numerator_id=self.own_manufacturer_fk,
-                                       denominator_id=self.store_id, score=score_new_tables, result=score,
-                                       target=equipment_in_store,
+                                       denominator_id=self.store_id, score=score_new_tables * 100, result=score,
+                                       # target=equipment_in_store,
                                        identifier_result=identif_parent_posm_status, should_enter=True)
 
         self.add_posms_not_assigned_to_scenes_in_template()
