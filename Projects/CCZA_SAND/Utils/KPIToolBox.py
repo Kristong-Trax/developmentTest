@@ -501,7 +501,7 @@ class CCZAToolBox:
         """
         filter_type = Converters.convert_type(filter_type)
         if "Not" in in_or_not:
-            list_of_negative = list(self.scif[self.scif[filter_type] != filter_value][filter_type].unique())
+            list_of_negative = list(self.scif[~(self.scif[filter_type] == filter_value)][filter_type].unique())
             filters[filter_type] = list_of_negative
         elif "In" in in_or_not:
             filters[filter_type] = filter_value
