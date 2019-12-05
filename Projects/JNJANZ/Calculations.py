@@ -30,7 +30,7 @@ class JNJANZCalculations(BaseCalculationsScript):
 
         # API global KPIs
         jnj_generator.calculate_auto_assortment(in_balde=False)
-        jnj_generator.promo_calc_recovery()
+        jnj_generator.promo_calc()
         jnj_generator.eye_hand_level_sos_calculation(eye_level_data)
         common.commit_results_data()
         self.timer.stop('KPIGenerator.run_project_calculations')
