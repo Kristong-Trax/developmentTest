@@ -86,6 +86,9 @@ P5_TEMPLATE = 'p5_template'
 TEMPLATE_PATH_MAPPER = {P2_TEMPLATE: P2_PATH, P3_TEMPLATE: P3_PATH,
                         P4_TEMPLATE: P4_PATH, P5_TEMPLATE: P5_PATH}
 
+PLACEMENT_SECTION_RANKS_TEMPL = 'placement_section_ranks'
+RANKING_SHEET = 'Ranking'
+
 
 class BATRU_SANDToolBox:
     LEVEL1 = 1
@@ -129,8 +132,15 @@ class BATRU_SANDToolBox:
     PRESENCE = 'PRESENCE'
     OOS = 'OOS'
     DISTRIBUTED = 'DISTRIBUTED'
+
     NO_COMPETITORS_KPI_LVL2 = 'No competitors'
     EMPTY_SPACES_KPI_LVL2 = 'Empty spaces'
+    NO_COMPETITORS_COL = 'No competitors'
+    AVAILABILITY_COL = 'Availability'
+    EMPTY_SPACES_COL = 'Empty spaces'
+    SEQUENCE_COL = 'Sequence'
+    REPEATING_COL = 'Repeating'
+    SECTION_COMBINATIONS = [NO_COMPETITORS_COL, AVAILABILITY_COL, EMPTY_SPACES_COL, SEQUENCE_COL, REPEATING_COL]
 
     def __init__(self, data_provider, output):
         self.k_engine = BaseCalculationsScript(data_provider, output)
@@ -1559,6 +1569,12 @@ class BATRU_SANDToolBox:
                             misplaced_products_fks = section_shelf_data[section_shelf_data['product_ean_code_lead'].\
                                 isin(misplaced_products_eans)]['product_fk'].unique().tolist()
 
+                # NEW PLACEMENT LOGIC
+                no_competitors_lvl2_fk = self.common.get_kpi_fk_by_kpi_type(self.NO_COMPETITORS_KPI_LVL2)
+                empty_spaces_lvl2_fk = self.common.get_kpi_fk_by_kpi_type(self.EMPTY_SPACES_KPI_LVL2)
+                section_ranks_scores = self.all_templates[PLACEMENT_SECTION_RANKS_TEMPL][RANKING_SHEET]
+
+
                 # Initial score values
                 sku_presence_score = 0
                 sku_sequence_score = 0
@@ -1750,6 +1766,13 @@ class BATRU_SANDToolBox:
         self.common.write_to_db_result(fk=sk_new_tables_fk, numerator_id=self.own_manufacturer_fk,
                                        denominator_id=self.store_id, result=sk_score, score=sk_score,
                                        identifier_result=sk_identifier_par, should_enter=True)
+
+    def get_placement_section_rank_template(self):
+        template_db = self.all_templates[PLACEMENT_SECTION_RANKS_TEMPL][RANKING_SHEET]
+        template_db['Combinations'] = ''
+        for col in Consts.SECTION_COMBINATIONS:
+            template_db['Combinations'] = template_db['Combinations'].map(str) + template_db[col].map(str)
+        return template_db
 
     def check_sku_repeating(self, section_shelf_data, priorities_section):
         """
