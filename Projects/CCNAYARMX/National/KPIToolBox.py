@@ -594,14 +594,14 @@ class NationalToolBox(GlobalSessionToolBox):
                                'result': result}
                 result_dict_list.append(result_dict)
 
-            numerator_id = lvl3_result[lvl3_result[KPI_FK_LEVEL2].isin([kpi_fk])][numerator_entity].mode()[0]
+            numerator_id = lvl3_result[lvl3_result[KPI_FK_LEVEL2].isin([kpi_fk])][numerator_entity].mode()[0] if any(lvl3_result[KPI_FK_LEVEL2].isin([kpi_fk])) else 0
             lvl2_result = self.assortment.calculate_lvl2_assortment(lvl3_result)
             lvl2_kpi_result = lvl2_result[lvl2_result[KPI_FK_LEVEL2].isin([kpi_fk])]
             if self.scif.empty:
                 denominator_id = 0
             else:
                 denominator_id = self.scif['sub_category_fk'].mode()[0]
-            result = float(lvl2_kpi_result['passes'] / lvl2_kpi_result['total'])
+            result = float(lvl2_kpi_result['passes'] / lvl2_kpi_result['total']) if not lvl2_kpi_result.empty else 0
 
         else:
             result = pd.np.nan
