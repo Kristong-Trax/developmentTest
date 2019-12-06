@@ -73,11 +73,6 @@ class ToolBox(GlobalSessionToolBox):
         """
         This function calculates the KPI results.
         """
-
-        if self.scif.empty:
-            Log.info("No scenes found for session:{}".format(self.last_session_uid))
-            return
-
         red_score_dict = []
         unique_sku_sos = []
         facings_sos_whole_store_dict = []
