@@ -84,6 +84,9 @@ AVAILABILITY_COMBO = 'Availability Combo'
 POS_OPTIONS = 'POS Options'
 TARGETS_AND_CONSTRAINTS = 'Targets and Constraints'
 
+ASSORTMENTS = 'Assortments'
+CONSTRAINTS = 'Constraints'
+
 # Scif Filters
 BRAND_FK = 'brand_fk'
 PRODUCT_FK = 'product_fk'
@@ -107,10 +110,14 @@ BAY_NUMBER = 'bay_number'
 SHEETS = [SOS, BLOCK_TOGETHER, SHARE_OF_EMPTY, BAY_COUNT, PER_BAY_SOS, SURVEY, AVAILABILITY, DISTRIBUTION,
           COMBO, SCORING, PLATFORMAS, PLATFORMAS_SCORING, KPIS, AVAILABILITY_COMBO]
 POS_OPTIONS_SHEETS = [POS_OPTIONS, TARGETS_AND_CONSTRAINTS]
+PORTAFOLIO_SHEETS = [ASSORTMENTS,CONSTRAINTS]
+
 
 TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'CCNayarTemplate_Nationalv0.1.xlsx')
 POS_OPTIONS_TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data',
                                          'CCNayar_POS_Options_v4.xlsx')
+PORTAFOLIO_Y_PRECIOUS_PATH =  os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data',
+                                         'CCNayarNational_Portafolios_y_Precios.xlsx')
 
 
 def log_runtime(description, log_start=False):
@@ -154,6 +161,8 @@ class NationalToolBox(GlobalSessionToolBox):
             self.templates[sheet] = pd.read_excel(TEMPLATE_PATH, sheet_name=sheet)
         for sheet in POS_OPTIONS_SHEETS:
             self.templates[sheet] = pd.read_excel(POS_OPTIONS_TEMPLATE_PATH, sheet_name=sheet)
+        for sheet in PORTAFOLIO_SHEETS:
+            self.templates[sheet] = pd.read_excel(PORTAFOLIO_Y_PRECIOUS_PATH, sheet_name = sheet)
 
     def main_calculation(self):
         # for i, row in self.templates[DISTRIBUTION].iterrows():
