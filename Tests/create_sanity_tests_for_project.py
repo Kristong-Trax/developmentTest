@@ -300,11 +300,8 @@ if __name__ == '__main__':
     Config.init()
     project_to_test = 'jnjanz'
     creator = SeedCreator(project_to_test)
-    # creator.activate_exporter(specific_sessions_and_scenes={'443782B5-44DB-47E8-B40B-E4C498DA5A4A': []}
-                              # {'6e4dc935-ab56-45ef-9408-caaddb963874': [17888508],
-                              #  'C544B5DB-B61F-4B02-B03A-6D8748B3B636': []}
-                              # )
-    # creator.rds_conn.disconnect_rds()
+    creator.activate_exporter(specific_sessions_and_scenes={'1F113395-8F4D-48E2-953F-0DE401734D31': []})
+    creator.rds_conn.disconnect_rds()
     data_class = CreateTestDataProjectSanity(project_to_test)
     data_class.create_data_class()
 
