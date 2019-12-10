@@ -13,7 +13,7 @@ if __name__ == '__main__':
     data_provider = KEngineDataProvider(project_name)
     sessions = \
         [
-            '70cf9d34-719f-48e3-b9dd-3f0d6ef1637c',
+            'fd65bdec-5a7b-4347-aa61-2cb27b99df83',
         ]
     for session in sessions:
         data_provider.load_session_data(session)

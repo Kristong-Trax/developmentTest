@@ -1,18 +1,18 @@
 
 from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScript
-from KPIUtils.GlobalProjects.SANOFI_2.KPIGenerator import SANOFIGenerator
+from KPIUtils.GlobalProjects.SANOFI_2.KPIGeneratorTestTemporary import SANOFIGeneratorTest
 import os
 
 
 __author__ = 'Shani'
 
 
-class SANOFIRUSandCalculations(BaseCalculationsScript):
+class SanofiRUSandCalculations(BaseCalculationsScript):
     def run_project_calculations(self):
         self.timer.start()
-        TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), 'SANOFIRU_SAND',
+        template_path = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), 'SANOFIRU',
                                      'Data', 'Template.xlsx')
-        SANOFIGenerator(self.data_provider, self.output, TEMPLATE_PATH).main_function()
+        SANOFIGeneratorTest(self.data_provider, self.output, template_path).main_function()
         self.timer.stop('KPIGenerator.run_project_calculations')
 
 
@@ -25,7 +25,7 @@ class SANOFIRUSandCalculations(BaseCalculationsScript):
 #     Config.init()
 #     project_name = 'sanofiru-sand'
 #     data_provider = KEngineDataProvider(project_name)
-#     session = 'C18C862E-ECCA-4181-98CF-DB595FBFE1FD'
+#     session = 'C9DB6885-DC8F-43E6-85BD-74A31DC23430'
 #     data_provider.load_session_data(session)
 #     output = Output()
-#     SANOFIRUCalculations(data_provider, output).run_project_calculations()
+#     SanofiRUSandCalculations(data_provider, output).run_project_calculations()
