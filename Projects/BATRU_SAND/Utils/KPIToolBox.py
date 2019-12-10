@@ -2225,7 +2225,7 @@ class BATRU_SANDToolBox:
         group_name = group_template['Group Name'].iloc[0]
         posm_counter = 0
         group_kpi_fk = self.common.get_kpi_fk_by_kpi_type(self.POSM_EQUIPMENT_PER_GROUP)
-        identifier_group_parent = self.common.get_dictionary(kpi_fk=group_kpi_fk, group_name=group_name)
+        identifier_group_parent = self.common.get_dictionary(kpi_fk=group_kpi_fk, group_name=group_name, scene=scene_fk)
         all_atomics = group_template['Atomic KPI Name'].unique().tolist()
         atomic_in_group = {}
         for atomic in all_atomics:
@@ -2247,6 +2247,7 @@ class BATRU_SANDToolBox:
                 self.kpi_result_values[self.PRESENCE][self.OOS]
             self.common.write_to_db_result(fk=display_in_group_kpi, numerator_id=display_in_group_fk,
                                            denominator_id=group_fk, result=custom_result, score=score,
+                                           context_id=scene_fk,
                                            identifier_parent=identifier_group_parent, should_enter=True)
 
         kpi_fk = self.kpi_static_data.loc[(self.kpi_static_data['kpi_set_name'] == POSM_AVAILABILITY) &
@@ -2263,7 +2264,7 @@ class BATRU_SANDToolBox:
         custom_result = self.kpi_result_values[self.PRESENCE][self.DISTRIBUTED] if score == 1 else \
                                     self.kpi_result_values[self.PRESENCE][self.OOS]
         self.common.write_to_db_result(fk=group_kpi_fk, numerator_id=group_fk, denominator_id=template_fk,
-                                       numerator_result=posm_counter, denominator_result=len(group_template),
+                                       numerator_result=posm_counter, denominator_result=len(group_template), context_id=scene_fk,
                                        result=custom_result, score=score, identifier_parent=identifier_equipment_parent,
                                        identifier_result=identifier_group_parent, should_enter=True)
         return score
