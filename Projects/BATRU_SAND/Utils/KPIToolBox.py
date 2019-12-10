@@ -1299,7 +1299,13 @@ class BATRU_SANDToolBox:
         sk_section_sequence_fk = self.common.get_kpi_fk_by_kpi_type(self.SKU_SEQUENCE_KPI_NAME)
         sk_section_repeating_fk = self.common.get_kpi_fk_by_kpi_type(self.SKU_REPEATING_KPI_NAME)
         sk_sku_presence_not_in_list_fk = self.common.get_kpi_fk_by_kpi_type(self.SK_SKU_PRESENCE_NOT_IN_LIST_SKU)
+
+        # get ranking template and exit the calculations and exist if does not exist
         section_placement_rank_templ = self.get_placement_section_rank_template()
+        if section_placement_rank_templ.empty:
+            Log.error('Section ranking template ranking is empty. SK and SAS will not be calculated.'
+                      ' Please upload the template')
+            return
 
         if not self.scif.empty:
             attribute_3 = self.scif['additional_attribute_3'].values[0]
@@ -1410,7 +1416,10 @@ class BATRU_SANDToolBox:
                 self.check_sas_zone_in_fixture(
                     scene_products_matrix, relevant_sas_zone_data, fixture)
 
-            for section in sorted(relevant_sections_data['section_number'].unique().tolist()):
+            sections_in_fixture = sorted(relevant_sections_data['section_number'].unique().tolist())
+            weight_per_section = 1.0 / len(sections_in_fixture)
+
+            for section in sections_in_fixture:
 
                 section_data = relevant_sections_data.loc[relevant_sections_data['section_number'] == section]
                 section_name = section_data['section_name'].values[0]
@@ -1573,7 +1582,15 @@ class BATRU_SANDToolBox:
                 # NEW PLACEMENT LOGIC
                 no_competitors_lvl2_fk = self.common.get_kpi_fk_by_kpi_type(self.NO_COMPETITORS_KPI_LVL2)
                 empty_spaces_lvl2_fk = self.common.get_kpi_fk_by_kpi_type(self.EMPTY_SPACES_KPI_LVL2)
-                section_ranks_scores = self.all_templates[PLACEMENT_SECTION_RANKS_TEMPL][RANKING_SHEET]
+                empty_spaces_res = 1 - no_empties
+                no_competitors_res = no_competitors
+                section_result = str(int(no_competitors_res)) + str(int(sku_presence_passed)) \
+                                 + str(int(empty_spaces_res)) + str(int(sku_sequence_passed)) \
+                                 + str(int(sku_repeating_passed))
+
+                section_rank = section_placement_rank_templ[section_placement_rank_templ['Combination'] \
+                                                            == section_result]['Rank, %'].values[0]
+                section_weighted_score = section_rank * weight_per_section
 
 
                 # Initial score values
@@ -1769,10 +1786,11 @@ class BATRU_SANDToolBox:
                                        identifier_result=sk_identifier_par, should_enter=True)
 
     def get_placement_section_rank_template(self):
-        template_db = self.all_templates[PLACEMENT_SECTION_RANKS_TEMPL][RANKING_SHEET]
-        template_db['Combinations'] = ''
-        for col in self.SECTION_COMBINATIONS:
-            template_db['Combinations'] = template_db['Combinations'].map(str) + template_db[col].map(str)
+        template_db = self.all_templates.get(PLACEMENT_SECTION_RANKS_TEMPL, {}).get(RANKING_SHEET, pd.DataFrame())
+        if not template_db.empty:
+            template_db['Combinations'] = ''
+            for col in self.SECTION_COMBINATIONS:
+                template_db['Combinations'] = template_db['Combinations'].map(str) + template_db[col].map(str)
         return template_db
 
     def check_sku_repeating(self, section_shelf_data, priorities_section):
