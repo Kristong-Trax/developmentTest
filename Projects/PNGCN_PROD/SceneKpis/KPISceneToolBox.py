@@ -242,13 +242,14 @@ class PngcnSceneKpis(object):
                 'sub_brand_name', sub_block['sub_brand_name'])
             self.common.write_to_db_result(fk=block_variant_kpi_fk,
                                            numerator_id=brand_fk,
-                                           denominator_id=sub_block['number_of_facings_non_stacking'],
+                                           denominator_id=category_fk,
                                            context_id=sub_brand_fk,
                                            numerator_result=sub_block['seq_x'],
                                            denominator_result=sub_block['seq_y'],
                                            result=sub_block['facing_percentage'],
                                            score=sub_block['number_of_facings'],
                                            weight=sub_block['shelf_count'],
+                                           target=sub_block['number_of_facings_non_stacking'],
                                            by_scene=True)
 
     def calculate_block_facing_include_stacking(self, block_df, block_filters):
