@@ -8,6 +8,7 @@ import pandas as pd
 import KPIUtils_v2.Utils.Parsers.ParseInputKPI as Parser
 from KPIUtils_v2.GlobalDataProvider.PsDataProvider import PsDataProvider
 from KPIUtils_v2.Calculations.BlockCalculations_v2 import Block as Block
+from KPIUtils_v2.Utils.Consts.DataProvider import MatchesConsts
 
 __Author__ = 'Dudi_s and ilays'
 
@@ -240,13 +241,15 @@ class PngcnSceneKpis(object):
             sub_brand_fk = self.get_attribute_fk_from_name(
                 'sub_brand_name', sub_block['sub_brand_name'])
             self.common.write_to_db_result(fk=block_variant_kpi_fk,
-                                           numerator_id=brand_fk, denominator_id=category_fk,
+                                           numerator_id=brand_fk,
+                                           denominator_id=category_fk,
                                            context_id=sub_brand_fk,
                                            numerator_result=sub_block['seq_x'],
                                            denominator_result=sub_block['seq_y'],
                                            result=sub_block['facing_percentage'],
                                            score=sub_block['number_of_facings'],
                                            weight=sub_block['shelf_count'],
+                                           target=sub_block['number_of_facings_non_stacking'],
                                            by_scene=True)
 
     def calculate_block_facing_include_stacking(self, block_df, block_filters):
@@ -288,10 +291,11 @@ class PngcnSceneKpis(object):
             point = node_data['polygon'].centroid
             row['x'], row['y'] = point.x, point.y
 
-            # Previously facing includes only non stacking, customer want stacking so I remove this line.
-            #row['number_of_facings'] = len(product_matches_fks)
             block_facing_include_stacking = self.calculate_block_facing_include_stacking(block_df, block_filters)
             row['number_of_facings'] = len(block_facing_include_stacking)
+            row['number_of_facings_non_stacking'] = len(block_facing_include_stacking
+                                                        [block_facing_include_stacking
+                                                         [MatchesConsts.STACKING_LAYER] == 1])
             row['shelf_count'] = len(shelves)
             for filter_val, value in block_filters.iteritems():
                 row[filter_val] = value
