@@ -1299,6 +1299,7 @@ class BATRU_SANDToolBox:
         sk_section_sequence_fk = self.common.get_kpi_fk_by_kpi_type(self.SKU_SEQUENCE_KPI_NAME)
         sk_section_repeating_fk = self.common.get_kpi_fk_by_kpi_type(self.SKU_REPEATING_KPI_NAME)
         sk_sku_presence_not_in_list_fk = self.common.get_kpi_fk_by_kpi_type(self.SK_SKU_PRESENCE_NOT_IN_LIST_SKU)
+        section_placement_rank_templ = self.get_placement_section_rank_template()
 
         if not self.scif.empty:
             attribute_3 = self.scif['additional_attribute_3'].values[0]
@@ -1770,7 +1771,7 @@ class BATRU_SANDToolBox:
     def get_placement_section_rank_template(self):
         template_db = self.all_templates[PLACEMENT_SECTION_RANKS_TEMPL][RANKING_SHEET]
         template_db['Combinations'] = ''
-        for col in Consts.SECTION_COMBINATIONS:
+        for col in self.SECTION_COMBINATIONS:
             template_db['Combinations'] = template_db['Combinations'].map(str) + template_db[col].map(str)
         return template_db
 
