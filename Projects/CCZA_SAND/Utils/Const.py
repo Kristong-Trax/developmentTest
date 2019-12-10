@@ -16,6 +16,7 @@ class Const(object):
     PRICING_WEIGHTS = "Pricing_weights"
     PRICING_TARGETS = "Pricing_targets"
     SURVEY_QUESTIONS = "survey_questions"
+    FLOW_PARAMETERS = 'flow_parameters'
     # main sheet fields
     KPI_NAME = "KPI Name"
     KPI_GROUP = "KPI Group"
@@ -58,7 +59,7 @@ class Const(object):
     type = "type"
 
     sheet_names_and_rows = {KPIS: 1, LIST_OF_ENTITIES: 3, SOS_WEIGHTS: 3, SOS_TARGETS: 3,
-                            PRICING_WEIGHTS: 3, PRICING_TARGETS: 3, SURVEY_QUESTIONS: 3}
+                            PRICING_WEIGHTS: 3, PRICING_TARGETS: 3, SURVEY_QUESTIONS: 3, FLOW_PARAMETERS: 0}
     #for fix_type function
     templateNames_realFieldNames = {'SKU': 'product_ean_code', 'EAN': 'product_ean_code', 'Category': 'category',
                                     'Sub-Cateogry': 'sub_category', 'Sub_Category': 'sub_category',
@@ -72,3 +73,12 @@ class Const(object):
     column_name2 = 'kpi_name'
     column_key3 = 'atomic_kpi_fk'
     column_name3 = 'atomic_kpi_name'
+
+    IGNORE_STACKING = True
+    SOS_OWN_MANUF_OUT_OF_STORE = 'SOS OWN MANUFACTURER OUT OF STORE'
+    SOS_CAT_OUT_OF_STORE = 'SOS CATEGORY OUT OF STORE'
+    SOS_MANUF_OUT_OF_CAT = 'SOS MANUFACTURER OUT OF CATEGORY'
+    SOS_BRAND_OUT_CAT = 'SOS BRAND OUT OF CATEGORY'
+    KPI_FK = 'kpi_fk'
+    FLOW_LVL_3 = 'Flow Level 3'
+
