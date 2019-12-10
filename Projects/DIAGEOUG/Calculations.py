@@ -5,7 +5,7 @@ from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScrip
 
 from Projects.DIAGEOUG.KPIGenerator import DIAGEOUGGenerator
 
-__author__ = 'Elyashiv'
+__author__ = 'Jasmine'
 
 
 class DIAGEOUGCalculations(BaseCalculationsScript):
@@ -16,7 +16,7 @@ class DIAGEOUGCalculations(BaseCalculationsScript):
 
 
 # if __name__ == '__main__':
-#     LoggerInitializer.init('diageug calculations')
+#     LoggerInitializer.init('diageoug calculations')
 #     Config.init()
 #     project_name = 'diageoug'
 #     data_provider = KEngineDataProvider(project_name)
