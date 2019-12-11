@@ -26,7 +26,7 @@ class Generator:
         #     Log.warning('Scene item facts is empty for this session')
         # self.tool_box.main_calculation()
         # self.tool_box.commit_results()
-        # self.caculate_original_nayar()
+        self.caculate_original_nayar()
         self.calculate_national_nayar()
 
     @log_runtime('Original Nayar Calculations')
