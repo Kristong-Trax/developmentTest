@@ -1418,6 +1418,7 @@ class BATRU_SANDToolBox:
 
             sections_in_fixture = sorted(relevant_sections_data['section_number'].unique().tolist())
             weight_per_section = 1.0 / len(sections_in_fixture)
+            fixture_weighted_score = 0
 
             for section in sections_in_fixture:
 
@@ -1579,7 +1580,7 @@ class BATRU_SANDToolBox:
                             misplaced_products_fks = section_shelf_data[section_shelf_data['product_ean_code_lead'].\
                                 isin(misplaced_products_eans)]['product_fk'].unique().tolist()
 
-                # NEW PLACEMENT LOGIC
+                # NEW PLACEMENT LOGIC - start here
                 no_competitors_lvl2_fk = self.common.get_kpi_fk_by_kpi_type(self.NO_COMPETITORS_KPI_LVL2)
                 empty_spaces_lvl2_fk = self.common.get_kpi_fk_by_kpi_type(self.EMPTY_SPACES_KPI_LVL2)
                 empty_spaces_res = 1 - no_empties
@@ -1591,7 +1592,7 @@ class BATRU_SANDToolBox:
                 section_rank = section_placement_rank_templ[section_placement_rank_templ['Combination'] \
                                                             == section_result]['Rank, %'].values[0]
                 section_weighted_score = section_rank * weight_per_section
-
+                fixture_weighted_score += section_weighted_score
 
                 # Initial score values
                 sku_presence_score = 0
