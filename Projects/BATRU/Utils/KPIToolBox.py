@@ -463,19 +463,20 @@ class BATRUToolBox:
                                                    denominator_result=1, result=res, score=score,
                                                    identifier_parent=identifier_parent, should_enter=True)
 
-            lvl2_result = self.assortment.calculate_lvl2_assortment(lvl3_result)
-            for row in lvl2_result.itertuples():
-                denominator_res = row.total
-                if row.target and not np.math.isnan(row.target):
-                    if row.group_target_date <= self.visit_date:
-                        denominator_res = row.target
-                distr_result = float(row.passes) / float(denominator_res) if denominator_res else 0
-                oos_result = 1.0 - distr_result
-                oos_score = 100 if oos_result == 1 else 100
-                self.common.write_to_db_result(fk=row.kpi_fk_lvl2, numerator_id=self.own_manufacturer_fk,
-                                               numerator_result=denominator_res - row.passes, result=oos_result * 100,
-                                               denominator_id=self.store_id, denominator_result=denominator_res,
-                                               score=oos_score, identifier_result=identifier_parent, should_enter=True)
+            if not lvl3_result.empty:
+                lvl2_result = self.assortment.calculate_lvl2_assortment(lvl3_result)
+                for row in lvl2_result.itertuples():
+                    denominator_res = row.total
+                    if row.target and not np.math.isnan(row.target):
+                        if row.group_target_date <= self.visit_date:
+                            denominator_res = row.target
+                    distr_result = float(row.passes) / float(denominator_res) if denominator_res else 0
+                    oos_result = 1.0 - distr_result
+                    oos_score = 100 if oos_result == 1 else 100
+                    self.common.write_to_db_result(fk=row.kpi_fk_lvl2, numerator_id=self.own_manufacturer_fk,
+                                                   numerator_result=denominator_res - row.passes, result=oos_result * 100,
+                                                   denominator_id=self.store_id, denominator_result=denominator_res,
+                                                   score=oos_score, identifier_result=identifier_parent, should_enter=True)
 
     # P1 KPI
     @kpi_runtime()
