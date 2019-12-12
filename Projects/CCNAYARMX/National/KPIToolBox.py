@@ -285,36 +285,40 @@ class NationalToolBox(GlobalSessionToolBox):
         relevant_platformas_data = \
             self.platformas_data[(self.platformas_data['Platform Name'].isin(relevant_platforms)) &
                                  (self.platformas_data['consumed'] == 'no')]
-        for i, child_row in self.templates[PLATFORMAS][self.templates[PLATFORMAS][PARENT_KPI] == kpi_name].iterrows():
+        platformas_template = self.templates[PLATFORMAS]
+        platformas_template = platformas_template[(platformas_template[PARENT_KPI] == kpi_name) &
+                                                  (platformas_template[STORE_ADDITIONAL_ATTRIBUTE_2] == self.att2)]
+        total_score = 0
+        for i, child_row in platformas_template.iterrows():
             child_kpi_fk = self.get_kpi_fk_by_kpi_type(child_row[KPI_NAME])
             if not relevant_platformas_data.empty:
                 child_result = relevant_platformas_data[child_row['data_column']].iloc[0]
                 scene_id = relevant_platformas_data['scene_id'].iloc[0]
+                score = child_row['Score']
+                total_score += score
                 self.platformas_data.loc[relevant_platformas_data.index.values[0], 'consumed'] = 'yes'
             else:
                 child_result = 0
                 scene_id = 0
+                score = 0
             result_dict = {'kpi_name': child_row[KPI_NAME], 'kpi_fk': child_kpi_fk,
                            'numerator_id': self.own_manuf_fk, 'denominator_id': self.store_id,
                            'denominator_result': scene_id,
-                           'result': child_result}
+                           'result': child_result, 'score': score}
             results_list.append(result_dict)
 
-        if kpi_name != 'Precios en cooler':
+        if kpi_name != 'Precios en cooler-Nacional':
             if relevant_platformas_data.empty:
-                result = 0
+                result = total_score
                 scene_id = 0
-            elif self.platformas_data.loc[relevant_platformas_data.index.values[0], 'passing_results'] == 4:
-                result = 1
-                scene_id = relevant_platformas_data['scene_id'].iloc[0]
             else:
-                result = 0
+                result = total_score
                 scene_id = relevant_platformas_data['scene_id'].iloc[0]
 
             result_dict = {'kpi_name': kpi_name, 'kpi_fk': kpi_fk,
                            'numerator_id': self.own_manuf_fk, 'denominator_id': self.store_id,
                            'denominator_result': scene_id,
-                           'result': result}
+                           'result': result, 'score': total_score}
             results_list.append(result_dict)
 
         return results_list
