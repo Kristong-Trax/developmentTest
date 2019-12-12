@@ -2,7 +2,7 @@ from Trax.Utils.Logging.Logger import Log
 from KPIUtils_v2.Utils.Decorators.Decorators import log_runtime
 from Projects.CCNAYARMX.Utils.KPIToolBox import ToolBox
 from Projects.CCNAYARMX.National.KPIToolBox import NationalToolBox
-
+from KPIUtils_v2.DB.CommonV2 import Common
 __author__ = 'krishnat'
 
 
@@ -15,7 +15,6 @@ class Generator:
         self.session_uid = self.data_provider.session_uid
         # self.tool_box = ToolBox(self.data_provider, self.output)
 
-
     @log_runtime('Total Calculations', log_start=True)
     def main_function(self):
         """
@@ -26,17 +25,22 @@ class Generator:
         #     Log.warning('Scene item facts is empty for this session')
         # self.tool_box.main_calculation()
         # self.tool_box.commit_results()
-        self.caculate_original_nayar()
-        self.calculate_national_nayar()
-
-    @log_runtime('Original Nayar Calculations')
-    def caculate_original_nayar(self):
-        tool_box = ToolBox(self.data_provider, self.output)
+        common = Common(self.data_provider)
+        tool_box = ToolBox(self.data_provider, self.output, common)
         tool_box.main_calculation()
-        tool_box.commit_results()
 
-    @log_runtime('National Nayar Calculations')
-    def calculate_national_nayar(self):
-        tool_box = NationalToolBox(self.data_provider, self.output)
-        tool_box.main_calculation()
-        tool_box.commit_results()
+        nayar_tool_box = NationalToolBox(self.data_provider, self.output, common)
+        nayar_tool_box.main_calculation()
+        nayar_tool_box.commit_results()
+
+
+    # @log_runtime('Original Nayar Calculations')
+    # def caculate_original_nayar(self):
+    #     tool_box = ToolBox(self.data_provider, self.output)
+    #     tool_box.main_calculation()
+
+    # @log_runtime('National Nayar Calculations')
+    # def calculate_national_nayar(self):
+    #     tool_box = NationalToolBox(self.data_provider, self.output)
+    #     tool_box.main_calculation()
+    #     tool_box.commit_results()

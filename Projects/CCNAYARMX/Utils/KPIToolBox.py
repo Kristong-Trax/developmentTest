@@ -132,9 +132,9 @@ def log_runtime(description, log_start=False):
 
 class ToolBox(GlobalSessionToolBox):
 
-    def __init__(self, data_provider, output):
-        GlobalSessionToolBox.__init__(self, data_provider, output)
-        self.common_v2 = CommonV2(self.data_provider)
+    def __init__(self, data_provider, output, common):
+        GlobalSessionToolBox.__init__(self, data_provider, output, common)
+        self.common_v2 = common
         self.ps_data_provider = PsDataProvider(data_provider)
         self.block = Block(data_provider)
         self.templates = {}

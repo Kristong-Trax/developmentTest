@@ -18,7 +18,10 @@ if __name__ == '__main__':
 # '43913E06-9CFF-48C2-B768-F1924EB32D9C',
 #         'ce010a22-c9bb-4763-827b-002efc4ec2d0'
 #         '6a81037a-0090-43ab-bb13-71c4944925ba'
-        'fee2ab0a-d288-45c4-9635-6e9700c0f347'
+#         'fee2ab0a-d288-45c4-9635-6e9700c0f347',
+        '8e040506-972b-4bab-b677-ffd389a67249',
+        '8fdc9d71-b173-4bde-aa5c-b2a0fa296d98',
+        '018f437c-718e-4f15-9e2f-fd03bb3b4404'
     ]
 
     for session in session_list:
