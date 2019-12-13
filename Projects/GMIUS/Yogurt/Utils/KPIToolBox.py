@@ -11,7 +11,7 @@ from Trax.Utils.Logging.Logger import Log
 from Projects.GMIUS.Yogurt.Utils.Const import Const
 from Projects.GMIUS.Utils.CustomError import NoDataForBlockError
 from Projects.GMIUS.Yogurt.Utils.Deco import empty_scif_decorator
-
+from collections import Counter
 
 from KPIUtils_v2.GlobalDataProvider.PsDataProvider import PsDataProvider
 
@@ -289,17 +289,23 @@ class ToolBox:
         a_filters = self.get_kpi_line_filters(kpi_line, 'A')
         check_filters = self.get_kpi_line_filters(kpi_line, 'B')
         result = 'Other'
-        for subcat in check_filters.values()[0]:
-            b_filters = {check_filters.keys()[0]: [subcat]}
-            mpis = self.filter_df(self.mpis, general_filters)
-            a_mpis = self.filter_df(mpis, a_filters)
-            b_mpis = self.filter_df(mpis, b_filters)
-            if a_mpis.empty or b_mpis.empty:
-                continue
-            adj = self.calculate_max_block_adj_base(kpi_name, kpi_line, relevant_scif, general_filters)
-            if adj:
-                result = ' '.join([x.capitalize() for x in subcat.replace('GRAIN', '').split(' ') if x])
-                break
+
+        b_filters = {check_filters.keys()[0]: check_filters.values()[0]}
+        mpis = self.filter_df(self.mpis, general_filters)
+        a_mpis = self.filter_df(mpis, a_filters)
+        b_mpis = self.filter_df(mpis, b_filters)
+        if a_mpis.empty or b_mpis.empty:
+            pass
+        adj = self.calculate_max_block_adj_base(kpi_name, kpi_line, relevant_scif, general_filters)
+        if adj:
+
+            result_substring = adj.replace('TTL VS ',"").split(' ')[0]
+            potential_results = self.get_results_value(kpi_line)
+            match = [res for res in potential_results if result_substring in res]
+            if len(match) > 0:
+                result = match[0]
+
+
         return {'score': 1, 'result': result}
 
     def calculate_max_block_adj_base(self, kpi_name, kpi_line, relevant_scif, general_filters, comp_filter={},
@@ -334,7 +340,11 @@ class ToolBox:
             v['edge_matches'], v['directions'] = zip(*matches) if matches else ([], [])
         result = 0
         if set(d['A']['edge_matches']) & set(d['B']['items']):
-            result = 1
+            edge_matches  = set(d['A']['edge_matches']) & set(d['B']['items'])
+            segments_list = self.mpis['GMI_VISION SEGMENT'][self.mpis['scene_match_fk'].isin(edge_matches)]
+            counted_segments = Counter(segments_list)
+            result = counted_segments.most_common(1)[0][0]
+
         return result
 
     @empty_scif_decorator
@@ -350,7 +360,19 @@ class ToolBox:
         _, orientation, mpis_dict, blocks, blocking_results, = self.base_block(kpi_name, kpi_line, relevant_scif, general_filters)
         potential_results = self.get_results_value(kpi_line)
 
+        if type(orientation) == pd.core.series.Series:
+            orientation = orientation.iloc[0]
 
+        if orientation.capitalize() in ['Horizontal', 'Vertical']:
+            mpis_scene_key = mpis_dict.keys()[0]
+            all_shelves_count = self.mpis['shelf_number'].max()
+            blocked_shelves_count = len(mpis_dict[mpis_scene_key]['shelf_number'].unique().tolist())
+            shelf_block_ratio = float(blocked_shelves_count) / all_shelves_count
+
+            if shelf_block_ratio > .5:
+                orientation = 'Vertical'
+            else:
+                orientation = 'Horizontal'
         if not blocks.empty:
             match = [res for res in potential_results if orientation.capitalize() in res]
             if len(match) > 0:
@@ -371,8 +393,9 @@ class ToolBox:
     @empty_scif_decorator
     def calculate_blocking_percent(self, kpi_name, kpi_line, relevant_scif, general_filters):
         shelves = self.filter_df(self.full_mpis, general_filters).groupby('bay_number')['shelf_number'].max().to_dict()
-        _, _, mpis_dict, blocks, _, = self.base_block(kpi_name, kpi_line, relevant_scif, general_filters)
+        _, orientation, mpis_dict, blocks, _, = self.base_block(kpi_name, kpi_line, relevant_scif, general_filters)
         result = 'Not Blocked'
+        potential_results = self.get_results_value(kpi_line)
         if not blocks.empty:
             block = blocks.cluster.iloc[0]
             items = sum([list(n['scene_match_fk'].values) for i, n in block.nodes(data=True)], [])
@@ -384,10 +407,23 @@ class ToolBox:
             block_mpis['real_shelf_number'] = [shelves[bay] for bay in block_mpis.index]
             block_mpis['ratio'] = block_mpis['shelf_number'] / block_mpis['real_shelf_number']
             block_mpis['passed'] = block_mpis.ratio.apply(lambda x: 1 if x >= .75 else 0)
-            if block_mpis.passed.sum() / float(block_mpis.shape[0]) > .5:
-                result = 'Vertical Block'
-            else:
-                result = 'Horizontal Block'
+
+            # if block_mpis.passed.sum() / float(block_mpis.shape[0]) > .5:
+            #     result = 'Vertical Block'
+            # else:
+            #     result = 'Horizontal Block'
+
+            if type(orientation) == pd.core.series.Series:
+                orientation = orientation.iloc[0]
+
+            orientation = orientation.capitalize()
+            if orientation in ['Horizontal', 'Vertical']:
+                match = [res for res in potential_results if orientation.capitalize() in res]
+                if len(match) > 0:
+                    result = match[0]
+
+
+
         return {'score': 1, 'result': result}
 
     def calculate_blocking_orientation(self, kpi_name, kpi_line, relevant_scif, general_filters):
@@ -539,9 +575,9 @@ class ToolBox:
         number_of_shelves = filtered_mpis.shelf_number.max()
         score = number_of_shelves
 
-        potential_results = [res.replace(' Shelves', '')
-                             for res in self.get_results_value(kpi_line)]
-        result = self.semi_numerical_results(number_of_shelves, potential_results, form='{} Shelves')
+        potential_results = self.get_results_value(kpi_line)
+        potential_results = [s[0] for s in potential_results ]
+        result = self.semi_numerical_results(number_of_shelves, potential_results, extract_result_int= True, form='{} Shelves')
 
         return {'result': result, 'score': score }
 
@@ -684,9 +720,9 @@ class ToolBox:
         res = x.network_x_block_together(relevant_filter, location=scene_filter,
                                          additional={'allowed_products_filters': allowed_filter, 'include_stacking': False})
 
-    def semi_numerical_results(self, val, potential_results, form='{}'):
-        min_cap, max_cap = self.find_caps(potential_results)
-        if val < min_cap:
+    def semi_numerical_results(self, val, potential_results, extract_result_int = False,  form='{}'):
+        min_cap, max_cap = self.find_caps(potential_results, extract_result_int)
+        if val <= min_cap:
             result = potential_results[0]
         elif val > max_cap:
             result = potential_results[-1]
@@ -714,9 +750,13 @@ class ToolBox:
                             g.remove_edge(node, edge_id)
         return g
 
-    def find_caps(self, potential_results):
+    def find_caps(self, potential_results, extract_result_int = False):
         ''' This function only handles bookended lists, eg ['not num', '1', '2', '3', 'not num']'''
         is_int = False
+
+        if extract_result_int == True: #For use with shelves results that are string based.
+            potential_results = [s[0] for s in potential_results]
+
         max_cap = potential_results[-1]
         for i, res in enumerate(potential_results):
             prev = is_int
@@ -902,8 +942,8 @@ class ToolBox:
             return self.calculate_count_shelves
         elif kpi_type == Const.COUNT:
             return self.calculate_count_of
-        # elif kpi_type == Const.MAX_BLOCK_ADJACENCY:
-        #     return self.calculate_max_block_adj
+        elif kpi_type == Const.MAX_BLOCK_ADJACENCY:
+            return self.calculate_max_block_adjacency_subcat
         # elif kpi_type == Const.MAX_BLOCK_COMPOSITION:
         #     return self.calculate_max_block_composition
         # elif kpi_type == Const.EXISTS_IN_MAX_BLOCK:
