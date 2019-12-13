@@ -19,3 +19,4 @@ class DIAGEOMXGenerator:
         if self.tool_box.scif.empty:
             Log.warning('Scene item facts is empty for this session')
         self.tool_box.main_calculation()
+        # self.tool_box.commit_results()
