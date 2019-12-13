@@ -257,8 +257,130 @@ class MARSRU_PRODKPIFetcher:
 
         return final_answers
 
-    def get_must_range_skus_by_region_and_store(self, store_type, region, kpi_name, kpi_results):
-        targets = self.kpi_templates['must_range_skus'].get(kpi_name)
+    def get_kpi_value_parameters(self, store_type, region, params, kpi_results):
+        kpi_name = params.get('#Mars KPI NAME')
+        kpi_type = params.get('Type')
+        kpi_values = params.get('Values')
+
+        targets = self.kpi_templates['range_targets'].get(kpi_name)
+
+        store_type = store_type if store_type else ''
+        region = region if region else ''
+
+        values = {}
+        eans = None
+        shelves = None
+        shelf_length = None
+
+        if kpi_values:
+            if kpi_type == 'SKU_LIST' and kpi_values:
+                for row in self.kpi_templates['sku_lists']:
+                    if row['SKU List'] == kpi_values:
+                        eans = row['EAN']
+                        break
+            elif kpi_type == 'SKUs' and kpi_values:
+                eans = kpi_values
+
+        if targets:  # Validation check
+
+            if kpi_name in [2254, 4254]:
+                shelf_length = []
+                for row in targets:
+                    if region.encode('utf-8') != row.get('Attribute 5').encode('utf-8').strip() or \
+                            store_type.encode('utf-8') != row.get('Store type').encode('utf-8').strip():
+                        continue
+                    try:
+                        shelf_length_from = float(row.get('Shelf length FROM INCLUDING'))
+                    except ValueError:
+                        shelf_length_from = 0
+                    try:
+                        shelf_length_to = float(row.get('Shelf length TO EXCLUDING'))
+                    except ValueError:
+                        shelf_length_to = 10000
+                    result = str(row.get('Result')).strip()
+                    length_condition = str(row.get('Length condition')).strip()
+                    shelf_length.append({
+                                            'shelf from': shelf_length_from,
+                                            'shelf to': shelf_length_to,
+                                            'result': result,
+                                            'length_condition': length_condition
+                                        })
+
+            else:
+
+                if ('EAN' or 'SKU List') in targets[0] and not eans \
+                        or 'Shelf # from the bottom' in targets[0] and not shelves:
+
+                    for row in targets:
+
+                        if 'Store type' in row:
+                            store_types = str(row.get('Store type').encode(
+                                'utf-8')).strip().replace('\n', '').split(',')
+                        else:
+                            store_types = []
+
+                        if 'Region' in row:
+                            regions = str(row.get('Region').encode(
+                                'utf-8')).strip().replace('\n', '').split(',')
+                        else:
+                            regions = []
+
+                        if (not store_types or store_type.encode('utf-8') in store_types) and\
+                                (not regions or region.encode('utf-8') in regions):
+
+                            if 'KPI name' in row:
+
+                                kpi_name_to_check = str(row.get('KPI name')).encode('utf-8').strip()
+                                kpi_results_to_check = str(row.get('KPI result'))\
+                                    .encode('utf-8').strip().replace('\n', '').split(',')
+                                kpi_result = str(kpi_results.get(kpi_name_to_check).get('result'))\
+                                    if kpi_results.get(kpi_name_to_check) else None
+                                if kpi_result:
+                                    if kpi_result in kpi_results_to_check:
+                                        if not eans and 'EAN' in row:
+                                            eans = row['EAN']
+                                        elif not eans and 'SKU List' in row:
+                                            for sku_list_row in self.kpi_templates['sku_lists']:
+                                                if sku_list_row['SKU List'] == row['SKU List']:
+                                                    eans = sku_list_row['EAN']
+                                                    break
+                                        if not shelves and 'Shelf # from the bottom' in row:
+                                            shelves = row['Shelf # from the bottom']
+                                        break
+                                    else:
+                                        continue
+                                else:
+                                    continue
+
+                            else:
+                                if not eans and 'EAN' in row:
+                                    eans = row['EAN']
+                                elif not eans and 'SKU List' in row:
+                                    for sku_list_row in self.kpi_templates['sku_lists']:
+                                        if sku_list_row['SKU List'] == row['SKU List']:
+                                            eans = row['SKU List']
+                                            break
+                                if not shelves and 'Shelf # from the bottom' in row:
+                                    shelves = row['Shelf # from the bottom']
+                                break
+                        else:
+                            continue
+
+        if eans and type(eans) in (str, unicode):
+            eans = [x.strip()
+                    for x in str(eans).replace(',', '\n').replace('\n\n', '\n').replace('\n\n', '\n').split('\n')]
+            values['eans'] = eans
+
+        if shelves and type(shelves) in (str, unicode):
+                values['shelves'] = shelves.strip()
+
+        if shelf_length and type(shelf_length) in (list, tuple):
+                values['shelf_length'] = shelf_length
+
+        return values
+
+    def get_shelf_value_list(self, store_type, region, kpi_name, kpi_results):
+        targets = self.kpi_templates['range_targets'].get(kpi_name)
         values_list = []
 
         store_type = store_type if store_type else ''
