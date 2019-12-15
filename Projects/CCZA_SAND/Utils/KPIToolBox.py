@@ -237,7 +237,7 @@ class CCZAToolBox:
                     #                              ].iloc[0]
                     # atomic_params[Const.targets_line] = target_series
                     atomic_params = self.kpi_sheets[kpi_params[Const.WEIGHT_SHEET]].iloc[i]
-                    atomic_params[Const.targets_line] = self.kpi_sheets[target].iloc[i]  # talk to ilay
+                    atomic_params[Const.targets_line] = self.kpi_sheets[target].iloc[i]
                 else:
                     atomic_params = self.kpi_sheets[target].iloc[i]
                 percent = self.get_percent(atomic_params[self.store_type])
