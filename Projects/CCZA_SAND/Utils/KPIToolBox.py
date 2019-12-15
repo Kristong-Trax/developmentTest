@@ -447,7 +447,6 @@ class CCZAToolBox:
         """
         type_name = Converters.convert_type(atomic_params[Const.ENTITY_TYPE])
         values = map(lambda x: x.strip(), atomic_params[Const.ENTITY_VAL].split(','))
-        values = map(lambda x: x.strip(), values)
         wanted_answer = float(atomic_params[Const.ACCEPTED_ANSWER_RESULT])
         filtered_scenes = self.scif[self.scif[type_name].isin(values)][ScifConsts.SCENE_FK].unique()
         scenes_passing = 0
