@@ -202,5 +202,5 @@ if __name__ == '__main__':
     LoggerInitializer.init('test')
     Config.init()
     project_name = 'batru-sand'
-    template_path = '/home/natalyak/Desktop/batru/migration/kpis_to_db_template_new_kpi.xlsx'
-    AddKPIs(project_name, template_path=template_path, add_kpi_pks=True).add_kpis_from_template()
+    template_path = '/home/natalyak/Desktop/batru/P3_changes/kpis_to_db_template_new_kpi.xlsx'
+    AddKPIs(project_name, template_path=template_path).add_kpis_from_template()

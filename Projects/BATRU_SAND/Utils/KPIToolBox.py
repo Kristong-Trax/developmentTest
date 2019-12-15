@@ -1592,7 +1592,7 @@ class BATRU_SANDToolBox:
                                  + str(int(empty_spaces_res)) + str(int(sku_sequence_passed)) \
                                  + str(int(sku_repeating_passed))
 
-                section_rank = section_placement_rank_templ[section_placement_rank_templ['Combination'] \
+                section_rank = section_placement_rank_templ[section_placement_rank_templ['Combinations'] \
                                                             == section_result]['Rank, %'].values[0]
                 section_weighted_score = section_rank * weight_per_section
                 fixture_total_score += section_weighted_score
@@ -1651,6 +1651,14 @@ class BATRU_SANDToolBox:
                                             score=sku_repeating_score, score_2=sku_repeating_score_2,
                                             level_3_only=True, level2_name_for_atomic=fixture_name_for_db,
                                             model_id=section_name)
+                self.save_level2_and_level3(SK, self.NO_COMPETITORS_KPI_LVL2, result=None,
+                                            score=sku_sequence_score, score_2=sku_sequence_score_2,
+                                            level_3_only=True, level2_name_for_atomic=fixture_name_for_db,
+                                            model_id=section_name)
+                self.save_level2_and_level3(SK, self.EMPTY_SPACES_KPI_LVL2, result=None,
+                                            score=sku_repeating_score, score_2=sku_repeating_score_2,
+                                            level_3_only=True, level2_name_for_atomic=fixture_name_for_db,
+                                            model_id=section_name)
                 # self.save_level2_and_level3(SK, section_name, result=None,
                 #                             score=section_score, score_2=section_score_2,
                 #                             level_3_only=True, level2_name_for_atomic=fixture_name_for_db)
@@ -1682,7 +1690,7 @@ class BATRU_SANDToolBox:
                     self.kpi_result_values[self.PRESENCE][self.DISTRIBUTED]
                 self.common.write_to_db_result(fk=sk_section_sequence_fk, numerator_id=section_fk,
                                                denominator_id=fixture_fk, context_id=scene, score=sku_sequence_score,
-                                               result = sequence_custom_res,
+                                               result=sequence_custom_res,
                                                identifier_parent=section_in_fixture_identifier_par, should_enter=True)
                 repeating_custom_res = self.kpi_result_values[self.PRESENCE][self.OOS] if sku_repeating_score == 0 \
                                         else self.kpi_result_values[self.PRESENCE][self.DISTRIBUTED]
@@ -1773,7 +1781,7 @@ class BATRU_SANDToolBox:
 
             # self.fixtures_statuses_dict[fixture] = fixture_score
             self.fixtures_statuses_dict[fixture] = min(fixture_score, self.fixtures_statuses_dict[fixture]) \
-                if self.fixtures_statuses_dict.get(fixture) is not None else self.fixtures_statuses_dict.get(fixture)
+                if self.fixtures_statuses_dict.get(fixture) is not None else fixture_score
 
             self.save_level2_and_level3(SK, fixture_name_for_db,
                                         result=fixture_score, level_2_only=True)
