@@ -15,6 +15,7 @@ class Const(object):
     PRICING_WEIGHTS = "Pricing_weights"
     PRICING_TARGETS = "Pricing_targets"
     SURVEY_QUESTIONS = "survey_questions"
+    FLOW_PARAMETERS = 'flow_parameters'
     # main sheet fields
     KPI_NAME = "KPI Name"
     KPI_GROUP = "KPI Group"
