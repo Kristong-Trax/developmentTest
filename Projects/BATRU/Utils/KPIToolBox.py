@@ -17,6 +17,7 @@ from Projects.BATRU.Utils.PositionGraph import BATRUPositionGraphs
 from KPIUtils_v2.Utils.Decorators.Decorators import kpi_runtime, log_runtime
 from KPIUtils_v2.DB.CommonV2 import Common
 from KPIUtils_v2.Utils.Consts.DB import StaticKpis
+from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
 
 
 __author__ = 'uri'
@@ -228,6 +229,7 @@ class BATRUToolBox:
         self.kpi_score_values = self.get_kpi_score_values_df()
         self.kpi_entity = self.get_kpi_entity_type()
         self.custom_entity = self.get_and_update_custom_entity()
+        self.assortment = Assortment(self.data_provider, self.output)
 
 # init functions
 
@@ -363,6 +365,7 @@ class BATRUToolBox:
         self.handle_priority_3()
         self.handle_priority_4()
         self.handle_priority_5()
+        self.handle_oos()
 
 # general functions:
 
@@ -443,6 +446,37 @@ class BATRUToolBox:
     @staticmethod
     def encode_column_in_df(df, column_name):
         return df[column_name].str.encode('utf-8')
+
+    #OOS kpi
+    def handle_oos(self):
+        lvl3_result = self.assortment.calculate_lvl3_assortment()
+        if not lvl3_result.empty:
+            oos_kpi_fk = self.common.get_kpi_fk_by_kpi_type(self.OOS)
+            identifier_parent = self.common.get_dictionary(kpi_fk=oos_kpi_fk)
+            lvl3_result = lvl3_result[lvl3_result['kpi_fk_lvl2'] == oos_kpi_fk]
+            for result_row in lvl3_result.itertuples():
+                res = 1 - result_row.in_store
+                if res == 1:
+                    score = res * 100
+                    self.common.write_to_db_result(fk=result_row.kpi_fk_lvl3, numerator_id=result_row.product_fk,
+                                                   denominator_id=self.store_id, numerator_result=res,
+                                                   denominator_result=1, result=res, score=score,
+                                                   identifier_parent=identifier_parent, should_enter=True)
+
+            if not lvl3_result.empty:
+                lvl2_result = self.assortment.calculate_lvl2_assortment(lvl3_result)
+                for row in lvl2_result.itertuples():
+                    denominator_res = row.total
+                    if row.target and not np.math.isnan(row.target):
+                        if row.group_target_date <= self.visit_date:
+                            denominator_res = row.target
+                    distr_result = float(row.passes) / float(denominator_res) if denominator_res else 0
+                    oos_result = 1.0 - distr_result
+                    oos_score = 100 if oos_result == 1 else 100
+                    self.common.write_to_db_result(fk=row.kpi_fk_lvl2, numerator_id=self.own_manufacturer_fk,
+                                                   numerator_result=denominator_res - row.passes, result=oos_result * 100,
+                                                   denominator_id=self.store_id, denominator_result=denominator_res,
+                                                   score=oos_score, identifier_result=identifier_parent, should_enter=True)
 
     # P1 KPI
     @kpi_runtime()
@@ -2152,7 +2186,7 @@ class BATRUToolBox:
         group_name = group_template['Group Name'].iloc[0]
         posm_counter = 0
         group_kpi_fk = self.common.get_kpi_fk_by_kpi_type(self.POSM_EQUIPMENT_PER_GROUP)
-        identifier_group_parent = self.common.get_dictionary(kpi_fk=group_kpi_fk, group_name=group_name)
+        identifier_group_parent = self.common.get_dictionary(kpi_fk=group_kpi_fk, group_name=group_name, scene=scene_fk)
         all_atomics = group_template['Atomic KPI Name'].unique().tolist()
         atomic_in_group = {}
         for atomic in all_atomics:
@@ -2174,7 +2208,8 @@ class BATRUToolBox:
                 self.kpi_result_values[self.PRESENCE][self.OOS]
             self.common.write_to_db_result(fk=display_in_group_kpi, numerator_id=display_in_group_fk,
                                            denominator_id=group_fk, result=custom_result, score=score,
-                                           identifier_parent=identifier_group_parent, should_enter=True)
+                                           context_id=scene_fk, identifier_parent=identifier_group_parent,
+                                           should_enter=True)
         kpi_fk = self.kpi_static_data.loc[(self.kpi_static_data['kpi_set_name'] == POSM_AVAILABILITY) &
                                           (self.kpi_static_data['kpi_name'] == equipment_name) &
                                           (self.kpi_static_data['atomic_kpi_name'] == group_name)]['atomic_kpi_fk'].iloc[0]
@@ -2188,7 +2223,8 @@ class BATRUToolBox:
             self.kpi_result_values[self.PRESENCE][self.OOS]
         self.common.write_to_db_result(fk=group_kpi_fk, numerator_id=group_fk, denominator_id=template_fk,
                                        numerator_result=posm_counter, denominator_result=len(group_template),
-                                       result=custom_result, score=score, identifier_parent=identifier_equipment_parent,
+                                       result=custom_result, score=score, context_id=scene_fk,
+                                       identifier_parent=identifier_equipment_parent,
                                        identifier_result=identifier_group_parent, should_enter=True)
         return score
 

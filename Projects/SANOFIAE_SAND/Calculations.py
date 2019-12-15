@@ -4,7 +4,7 @@ from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScrip
 # from Trax.Utils.Conf.Configuration import Config
 # from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
 import os
-from KPIUtils.GlobalProjects.SANOFI_2.KPIGenerator import SANOFIGenerator
+from KPIUtils.GlobalProjects.SANOFI_3.KPIGenerator import SANOFIGenerator
 
 
 __author__ = 'Shani'
@@ -23,7 +23,8 @@ class SANOFIAE_SANDCalculations(BaseCalculationsScript):
 #     Config.init()
 #     project_name = 'sanofiae-sand'
 #     data_provider = KEngineDataProvider(project_name)
-#     session = '31eb50cd-e799-4798-a27f-dc5ea557ccc7'
-#     data_provider.load_session_data(session)
-#     output = Output()
-#     SANOFIAE_SANDCalculations(data_provider, output).run_project_calculations()
+#     sessions = ['67103399-80CD-429C-A085-2BA7ED6320C2', 'C2D64D76-08D0-4573-8B1E-46DD4A3397E2', 'a633f183-ac3c-4703-ad9a-3db3237c8605', '5E1AADB2-5DFE-4EC5-89EF-F2986ED1EF07', '2BA885DE-A45B-4F70-9BEF-6A3B195797DD']
+#     for session in sessions:
+#         data_provider.load_session_data(session)
+#         output = Output()
+#         SANOFIAE_SANDCalculations(data_provider, output).run_project_calculations()

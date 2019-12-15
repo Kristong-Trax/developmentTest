@@ -25,7 +25,7 @@ class CCZACalculations(BaseCalculationsScript):
 #                 # 'FF39172D-EE62-4184-ABF7-91CD2D05800B',
 #                 # 'FE8E0E52-9DF1-40BF-81E2-C6F618682806',
 #                 # 'FE1CF09E-272A-4B15-9BF4-E9E4228A2BF2'
-#                 'dcb9bc75-768c-47fa-aa1c-ad81081520a1' # wholesaler for new kpis
+#                 'F031B961-12D6-4648-A22B-7F13872799DE' # wholesaler for new kpis
 #     ]
 #     for session in sessions:
 #         data_provider = KEngineDataProvider(project_name)
