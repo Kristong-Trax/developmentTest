@@ -21,6 +21,7 @@ class CczaTemplateValidator(Main_Template):
         self.kpis_old = self.get_kpis_old_tables()
         self.db_static_data = {}
         self.get_static_db_table_contents()
+        self.type_function_map = self.map_validation_function_to_valid_type()
 
     def get_static_db_table_contents(self):
         # all_tables = map(lambda y: '{}.{}'.format(y[0], y[1]), map(lambda x: x.split('.'),
@@ -32,6 +33,13 @@ class CczaTemplateValidator(Main_Template):
             query = """ select * from {} """.format(table_name)
             table_contents = pd.read_sql_query(query, self.rds_conn.db)
             self.db_static_data[entity] = table_contents[table_col[-1]]
+
+        for templ_column, table in Parameters.COLUMN_DB_MAP.items():
+            table_col = table.split('.')
+            table_name = '{}.{}'.format(table_col[0], table_col[1])
+            query = """ select * from {} """.format(table_name)
+            table_contents = pd.read_sql_query(query, self.rds_conn.db)
+            self.db_static_data[templ_column] = table_contents[table_col[-1]]
 
     def get_kpis_new_tables(self):
         query = """select * from static.kpi_level_2 """
@@ -86,21 +94,101 @@ class CczaTemplateValidator(Main_Template):
 
     def check_kpis_sheets(self):
         for sheet, template_df in self.kpi_sheets.items():
-            self.perform_configurable_validations()
-            self.perform_additional_validations()
+            self.perform_configurable_validations(sheet, template_df)
+            self.perform_additional_validations(sheet, template_df)
         pass
 
-    def perform_configurable_validations(self):
+    def perform_configurable_validations(self, sheet, template_df):
+        columns_to_validate = filter(lambda x: x in Parameters.SHEETS_COL_MAP[sheet],template_df.columns.values)
+        for templ_column in columns_to_validate:
+            validation_params = Parameters.SHEETS_COL_VALID_TYPE[Parameters.ALL][templ_column] if \
+                templ_column in Parameters.SHEETS_COL_VALID_TYPE[Parameters.ALL].keys() else \
+                Parameters.SHEETS_COL_VALID_TYPE[sheet][templ_column]
+
+            if validation_params.get('filter_out'):
+                filtering_param = validation_params.get('filter_out')
+                template_df = template_df[~(template_df[templ_column].isin(filtering_param))]
+
+            self.validate_empty(sheet, template_df, templ_column, validation_params)
+            self.validate_particular_values(sheet, template_df, templ_column, validation_params)
+
         pass
 
-    def perform_additional_validations(self):
+    def validate_particular_values(self, sheet, template_df, templ_column, validation_params):
+        val_types = validation_params.get('type')
+        val_sources = validation_params.get('source')
+        if val_types is not None:
+            for i in range(len(val_types)):
+                val_type = val_types[i]
+                val_source = val_sources[i]
+                self.type_function_map[val_type](sheet, template_df, templ_column, val_source)
+
+    def check_value_based_on_type(self, sheet, template_df, templ_column, val_source):
+        type_source_col = val_source['column']
+        sheet_df = template_df[[type_source_col, templ_column]]
+        sheet_df = sheet_df[(~(sheet_df[templ_column].isnull())) |
+                            (~(sheet_df[templ_column] == ''))]
+        sheet_df = sheet_df.sort_values(by=[type_source_col])
+        sheet_df['accumulated_values'] = sheet_df.groupby(type_source_col)[templ_column].apply(
+            lambda x: (x + ',').cumsum().str.strip())
+        sheet_df = sheet_df.drop_duplicates(subset=[type_source_col], keep='last')
+        sheet_df = sheet_df.reset_index(drop=True)
+        for i, row in sheet_df.iterrows():
+            validated_entity = row[type_source_col]
+            template_values = set(row[templ_column].split(','))
+
+            db_col = val_source['db'][validated_entity].split('.')[-1]
+            db_values = set(self.db_static_data[validated_entity][db_col].values)
+            diff = template_values.difference(db_values)
+            if len(diff) > 0:
+                self.errorHandler.log_error('Sheet: {}, Column: {}, Entity: {} '
+                                            'does not match DB: {}'.format(sheet, templ_column, type_source_col, diff))
+
+    def check_value_based_on_property(self, sheet, template_df, templ_column, val_source):
+        prop_name, col = val_source.split('.')
+        source_values = set(self.__getattribute__(prop_name)[col].values)
+        template_values = filter(lambda x: x == x or x != '' or x is not None, template_df[templ_column].values)
+        template_values = set(template_values)
+        diff = template_values.difference(source_values)
+        if len(diff) > 0:
+            self.errorHandler.log_error('{} values do not match {} of {} '
+                                        'in sheet {}: {}'.format(templ_column, col, prop_name, sheet, diff))
+
+    def check_db_values(self, sheet, template_df, templ_column, val_source):
+        db_col = val_source.split('.')[-1]
+        db_col_values = set(self.db_static_data[templ_column][db_col].values)
+        template_values = filter(lambda x: x==x or x != '' or x is not None, template_df[templ_column].values)
+        template_values = set(template_values)
+        diff = template_values.difference(db_col_values)
+        if len(diff) > 0:
+            self.errorHandler.log_error('Values in column {} in sheet {} do not match values of '
+                                        ' column {} in DB table {}: '
+                                        '{}'.format(templ_column, sheet, db_col, val_source, diff))
+
+    def validate_list(self, sheet, template_df, templ_column, val_source):
+        template_values = filter(lambda x: x == x or x != '' or x is not None, template_df[templ_column].values)
+        template_values = set(template_values)
+        val_values = set(val_source)
+        diff = template_values.difference(val_values)
+        if len(diff) > 0:
+            self.errorHandler.log_error('Values in column {} in sheet {} do not match the allowed values {}: '
+                                        '{}'.format(templ_column, sheet, val_values, val_source, diff))
+
+    def validate_empty(self, sheet, template_df, templ_column, validation_params):
+        if validation_params.get('disallow_empty'):
+            empty_values = filter(lambda x: ('' in x) or (None in x) or (x != x),  template_df[templ_column].values)
+            if len(empty_values) > 0:
+                self.errorHandler.log_error('Column {} in sheet {} has empty values'.format(templ_column, sheet))
+
+
+    def perform_additional_validations(self, sheet, template_df):
         pass
 
     def check_all_tabs_exist_and_have_relevant_columns(self):
         for name in Const.sheet_names_and_rows:
             try:
                 template_df = parse_template(self.template_path, sheet_name=name,
-                                                       lower_headers_row_index=Const.sheet_names_and_rows[name])
+                                             lower_headers_row_index=Const.sheet_names_and_rows[name])
                 columns = template_df.columns.values
                 columns = filter(lambda x: 'Unnamed' not in x, columns)
                 template_df = template_df[columns]
@@ -129,18 +217,18 @@ class CczaTemplateValidator(Main_Template):
                                             'exist in the template for sheet {}'.format(db_vs_template, sheet))
 
     # simple validations
-    def check_list(self):
-        pass
 
-    def check_db_values(self):
-        pass
 
     def check_column_vs_column(self, sheet_col_1, sheet_col_2):
         pass
 
-    def check_empty_values(self):
+    def check_empty_values(self, sheet, template_df, templ_column, validation_params):
         pass
 
+    def map_validation_function_to_valid_type(self):
+        type_func_map = {'db': self.check_db_values, 'list': self.validate_list,
+                         'type_value': self.check_value_based_on_type, 'prop': self.check_value_based_on_property}
+        return type_func_map
     # complex validations
 
 class Parameters(object):
@@ -152,6 +240,8 @@ class Parameters(object):
                    'Manufacturer': 'static_new.manufacturer.name',  'Sub_category': 'static_new.sub_category.name',
                    'Product_type': 'static_new.product.type', 'Template Name': 'static.template.name',
                    'Survey': 'static.survey_question.code', 'Location Types': 'static.location_types'}
+    COLUMN_DB_MAP = {Const.SURVEY_Q_CODE:  'static.survey_question.code',
+                     Const.SURVEY_Q_ID: 'static.survey_question.code'}
     # TYPE_PROPERTY_MAP = {'SKU': 'product.ean_code', 'EAN': 'product.ean_code',
     #                      'Brand': 'static_new.brand.name', 'Category': 'static_new.category.name',
     #                       'Manufacturer': 'static_new.manufacturer.name',  'Sub_category': 'static_new.sub_category.name',
@@ -188,9 +278,9 @@ class Parameters(object):
             Const.ENTITY_VAL: {'type': ('type_value',), 'source': ({'db': TYPE_DB_MAP, 'column': Const.ENTITY_TYPE}),
                                'disallow_empty': False},
             Const.ENTITY_TYPE2: {'type': ('list',), 'source': (TYPE_DB_MAP.keys(),),
-                                'disallow_empty': False},
+                                 'disallow_empty': False},
             Const.ENTITY_VAL2: {'type': ('type_value',), 'source': ({'db': TYPE_DB_MAP, 'column': Const.ENTITY_TYPE2}),
-                               'disallow_empty': False},
+                                'disallow_empty': False},
             Const.IN_NOT_IN: {'type': ('list',), 'source': (['In', 'Not in']),
                               'disallow_empty': False},
             Const.TYPE_FILTER: {'type': ('list',), 'source': (TYPE_DB_MAP.keys(),),
@@ -218,8 +308,8 @@ class Parameters(object):
             Const.ENTITY_TYPE_DENOMINATOR: {'type': ('list',), 'source': (TYPE_DB_MAP.keys(),),
                                             'disallow_empty': False},
             Const.DENOMINATOR: {'type': ('type_value',),
-                              'source': ({'db': TYPE_DB_MAP, 'column': Const.ENTITY_TYPE_DENOMINATOR}),
-                              'disallow_empty': False},
+                                'source': ({'db': TYPE_DB_MAP, 'column': Const.ENTITY_TYPE_DENOMINATOR}),
+                                'disallow_empty': False},
             Const.SCORE: {'type': ('list',), 'source': (['numeric', 'binary']),
                           'disallow_empty': True},
         },
