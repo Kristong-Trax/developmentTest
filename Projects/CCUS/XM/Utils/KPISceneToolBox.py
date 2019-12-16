@@ -62,4 +62,5 @@ class CCUSSceneToolBox:
         cur.execute(query)
         res = cur.fetchall()
         df = pd.DataFrame(list(res))
+
         return df
