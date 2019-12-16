@@ -1098,7 +1098,7 @@ class ToolBox:
         elif kpi_type == Const.SHELF_LENGTH:
             return self.calculate_base_measure
         elif kpi_type == Const.BLOCKING_PRESENCE:
-            return  self.calculate_blocking_presence
+            return self.calculate_blocking_presence
         elif kpi_type == Const.ADJACENCY:
             return self.calculate_max_block_adjacency
         elif kpi_type == Const.ANCHOR:
@@ -1274,7 +1274,9 @@ class ToolBox:
                                                        parent_fk=self.entity_dict[self.super_cat.lower()])
                 else:
                     result = self.result_values_dict[result]
-                    self.common.write_to_db_result(fk=kpi_fk, score=score, result=result, should_enter=True, target=target,
-                                                   numerator_result=numerator_result, denominator_result=denominator_result,
+                    self.common.write_to_db_result(fk=kpi_fk, score=score, result=result, should_enter=True,
+                                                   target=target,
+                                                   numerator_result=numerator_result,
+                                                   denominator_result=denominator_result,
                                                    numerator_id=numerator_id, denominator_id=denominator_id,
                                                    parent_fk=self.entity_dict[self.super_cat.lower()])
