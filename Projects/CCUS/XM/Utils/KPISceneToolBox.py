@@ -50,7 +50,7 @@ class CCUSSceneToolBox:
             try:
                 context_id = self.get_store_area_df(relevant_match_products['scene_fk'].iloc[0])
             except:
-                context_id = 0
+                context_id = None
             self.common.write_to_db_result(fk=self.kpi_fk, numerator_id=product_fk, denominator_id=self.template_fk,
                                            context_id=context_id,
                                            numerator_result=facings, result=self.poc_number, by_scene=True)
