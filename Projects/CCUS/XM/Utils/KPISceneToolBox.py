@@ -47,9 +47,11 @@ class CCUSSceneToolBox:
     def count_products(self, relevant_match_products):
         for product_fk in relevant_match_products['product_fk'].unique().tolist():
             facings = len(relevant_match_products[relevant_match_products['product_fk'] == product_fk])
-            try:
-                context_id = self.get_store_area_df(relevant_match_products['scene_fk'].iloc[0])
-            except:
+            if not relevant_match_products.empty:
+                relevant_scene_fk = relevant_match_products['scene_fk'].iloc[0]
+                store_task_area_group_item_df = self.get_store_area_df(relevant_scene_fk)
+                context_id = self.get_context_id(store_task_area_group_item_df)
+            else:
                 context_id = None
             self.common.write_to_db_result(fk=self.kpi_fk, numerator_id=product_fk, denominator_id=self.template_fk,
                                            context_id=context_id,
@@ -65,8 +67,11 @@ class CCUSSceneToolBox:
         cur.execute(query)
         res = cur.fetchall()
         scene_store_task_area_group_df = pd.DataFrame(list(res))
+        return scene_store_task_area_group_df
+
+    def get_context_id(self, store_task_area_df):
         try:
-            context_id = scene_store_task_area_group_df.iloc[0, 2]
+            context_id = store_task_area_df.iloc[0, 2]
         except IndexError:
             context_id = None
         return context_id
