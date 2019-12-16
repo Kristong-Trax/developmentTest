@@ -228,16 +228,16 @@ class CCZAToolBox:
         kpi_fk_lvl_2 = self.common_v2.get_kpi_fk_by_kpi_type(kpi_name)
         lvl_2_identifier_par = self.common_v2.get_dictionary(kpi_fk=kpi_fk_lvl_2)
         if kpi_name != Const.FLOW:
-            for i in xrange(len(self.kpi_sheets[target])):
+            for i in range(len(self.kpi_sheets[target])):
                 if kpi_params[Const.WEIGHT_SHEET].strip():
-                    # target_series = self.kpi_sheets[target].iloc[i]
-                    # weight_sheet = self.kpi_sheets[kpi_params[Const.WEIGHT_SHEET]]
-                    # atomic_params = weight_sheet[(weight_sheet[Const.KPI_NAME] == target_series[Const.KPI_NAME]) &
-                    #                              (weight_sheet[Const.ATOMIC_NAME] == target_series[Const.ATOMIC_NAME])
-                    #                              ].iloc[0]
-                    # atomic_params[Const.targets_line] = target_series
-                    atomic_params = self.kpi_sheets[kpi_params[Const.WEIGHT_SHEET]].iloc[i]
-                    atomic_params[Const.targets_line] = self.kpi_sheets[target].iloc[i]
+                    target_series = self.kpi_sheets[target].iloc[i]
+                    weight_sheet = self.kpi_sheets[kpi_params[Const.WEIGHT_SHEET]]
+                    atomic_params = weight_sheet[(weight_sheet[Const.KPI_NAME] == target_series[Const.KPI_NAME]) &
+                                                 (weight_sheet[Const.ATOMIC_NAME] == target_series[Const.ATOMIC_NAME])
+                                                 ].iloc[0]
+                    atomic_params[Const.targets_line] = target_series
+                    # atomic_params = self.kpi_sheets[kpi_params[Const.WEIGHT_SHEET]].iloc[i]
+                    # atomic_params[Const.targets_line] = self.kpi_sheets[target].iloc[i]
                 else:
                     atomic_params = self.kpi_sheets[target].iloc[i]
                 percent = self.get_percent(atomic_params[self.store_type])
