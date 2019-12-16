@@ -89,7 +89,7 @@ class ToolBox:
 
         for i, main_line in main_template.iterrows():
             self.global_fail = 0
-            print(main_line['KPI Name'])  # DEEEEEEEEEEEELLLLLLLLEEEEEEEETTTTTTTTTEEEEEEEEE
+
             all_kwargs = self.calculate_main_kpi(main_line)
             if not isinstance(all_kwargs, list) or not all_kwargs:
                 all_kwargs = [all_kwargs]
@@ -299,7 +299,7 @@ class ToolBox:
             pass
         adj = self.calculate_max_block_adj_base(kpi_name, kpi_line, relevant_scif, general_filters)
         if adj == 0:
-            pass
+            return {'score': None, 'result': result}
 
         elif len(adj) > 0:
             pre_result_list = []
@@ -312,7 +312,7 @@ class ToolBox:
 
             result = pre_result_list
 
-        return {'score': 1, 'result': result}
+            return {'score': 1, 'result': result}
 
     def calculate_max_block_adjacency(self, kpi_name, kpi_line, relevant_scif, general_filters):
         a_filters = self.get_kpi_line_filters(kpi_line, 'A')
@@ -320,7 +320,7 @@ class ToolBox:
         check_c_filters = self.get_kpi_line_filters(kpi_line, 'C')
         exclude_filters = self.get_kpi_line_filters(kpi_line, 'Exclude')
         result = 'Other'
-
+        score = 1
         b_filters = {check_b_filters.keys()[0]: check_b_filters.values()[0]}
         c_filters = {check_c_filters.keys()[0]: check_c_filters.values()[0]}
 
@@ -339,7 +339,7 @@ class ToolBox:
         if a_mpis.empty:
             result = 'NO DISTRIBUTION'
 
-        if (b_mpis.empty and c_mpis.empty):
+        elif (b_mpis.empty and c_mpis.empty):
             result = 'NOT ADJACENT TO EITHER'
         else:
             adj = self.calculate_max_block_adj_base_adjacency_compare(kpi_name, kpi_line, relevant_scif,
@@ -358,8 +358,10 @@ class ToolBox:
                 match = [res for res in potential_results if result_query_word in res]
                 if len(match) > 0:
                     result = match[0]
+            else:
+                score = None
 
-        return {'score': 1, 'result': result}
+        return {'score': score, 'result': result}
 
     def calculate_max_block_adj_base(self, kpi_name, kpi_line, relevant_scif, general_filters, comp_filter={},
                                      thresh={}, require={}):
