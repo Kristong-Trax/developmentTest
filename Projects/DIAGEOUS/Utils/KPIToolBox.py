@@ -773,7 +773,10 @@ class ToolBox:
                 Log.error("The store has no products for shelf_facings.")
                 return 0, 0, 0
         else:
-            if self.state_fk in relevant_competitions[Consts.EX_STATE_FK].unique().tolist():
+            if self.state_fk is None or self.state_fk == 'N/A':
+                Log.error("The store's state_fk value is null - Shelf Facings will not be calculated")
+                return 0, 0, 0
+            elif self.state_fk in relevant_competitions[Consts.EX_STATE_FK].unique().tolist():
                 relevant_competitions = relevant_competitions[relevant_competitions[Consts.EX_STATE_FK] == self.state_fk]
             else:
                 default_state = relevant_competitions[Consts.EX_STATE_FK].iloc[0]
@@ -992,7 +995,10 @@ class ToolBox:
         if relevant_competitions.empty:
             Log.warning("No MSRP list for this visit_date.")
             return 0, 0, 0
-        if self.state_fk in relevant_competitions[Consts.EX_STATE_FK].unique().tolist():
+        if self.attr11 != Consts.NATIONAL_STORE and self.state_fk is None:
+            Log.error("The store is not NATIONAL and the state_fk value is null - MSRP will not be calculated")
+            return 0, 0, 0
+        elif self.state_fk in relevant_competitions[Consts.EX_STATE_FK].unique().tolist():
             relevant_competitions = relevant_competitions[relevant_competitions[Consts.EX_STATE_FK] == self.state_fk]
         else:
             default_state = relevant_competitions[Consts.EX_STATE_FK].iloc[0]
