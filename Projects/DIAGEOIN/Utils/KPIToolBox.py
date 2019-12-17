@@ -29,7 +29,6 @@ class DIAGEOINToolBox:
         self.commonV2 = CommonV2(self.data_provider)
         self.rds_conn = PSProjectConnector(self.data_provider.project_name, DbUsers.CalculationEng)
         self.store_assortment = PSAssortmentDataProvider(self.data_provider).execute(policy_name=None)
-        self.policy = PSAssortmentDataProvider(self.data_provider).get_policies()
         self.output = output
         self.kpi_static_data = self.get_kpi_static_data()
         self.store_id = self.data_provider[Data.STORE_FK]
@@ -97,11 +96,20 @@ class DIAGEOINToolBox:
         """
         This function calculates the KPI results.
         """
-        # Local Custom/Client Brand Group Presence
-        self.policy = self.policy[self.policy['policy_type'] == 7]
-
-        if not self.policy.empty:
-            self.custom_brand_presence_main()
+        try:
+            all_policies = PSAssortmentDataProvider(self.data_provider).get_policies()
+        except KeyError:
+            Log.warning("No assortment policies found for session {}".format(self.data_provider.session_uid))
+            pass
+        except Exception as e:
+            if 'No assortment policies were found' not in e.message:
+                raise e
+            Log.warning("No assortment policies found for session {}".format(self.data_provider.session_uid))
+        else:
+            # Local Custom/Client Brand Group Presence
+            brand_presence_policies = all_policies[all_policies['policy_type'] == 7]
+            if not brand_presence_policies.empty:
+                self.custom_brand_presence_main()
 
         # SOS Out Of The Box KPIs
         self.diageo_generator.activate_ootb_kpis(self.commonV2)
