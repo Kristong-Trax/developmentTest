@@ -373,7 +373,7 @@ class ToolBox:
             else:
                 filters = self.get_kpi_line_filters(kpi_line, k)
             _, _, _, _, results = self.base_block(kpi_name, kpi_line, relevant_scif, general_filters, filters=filters,
-                                                  check_orient=0)
+                                                  check_orient=0, stacking=True)
             v['df'] = results.sort_values('facing_percentage', ascending=False)
             if self.read_cell_from_line(kpi_line, 'Max Block')[0] == 'Y':
                 v['df'] = pd.DataFrame(v['df'].iloc[0, :]).T
@@ -395,11 +395,19 @@ class ToolBox:
                             scene_graph[item][edge]['direction'] in allowed_edges]
             v['edge_matches'], v['directions'] = zip(*matches) if matches else ([], [])
         result = 0
-        if set(d['A']['edge_matches']) & set(d['B']['items']):
-            edge_matches = set(d['A']['edge_matches']) & set(d['B']['items'])
-            segments_list = self.mpis['GMI_VISION SEGMENT'][self.mpis['scene_match_fk'].isin(edge_matches)]
+        if d['A']['edge_matches']:
+            b_filters = self.get_kpi_line_filters(kpi_line, 'B')
+
+            edge_products_df = self.full_mpis[['product_name', 'bay_number', 'shelf_number', 'GMI_VISION SEGMENT']][
+                self.full_mpis['scene_match_fk'].isin(d['A']['edge_matches'])]
+
+            segments_list = edge_products_df['GMI_VISION SEGMENT'][
+                edge_products_df['GMI_VISION SEGMENT'].isin(b_filters['GMI_VISION SEGMENT'])]
+
+            # edge_matches = set(d['A']['edge_matches'])
+            # segments_list = self.mpis['GMI_VISION SEGMENT'][self.mpis['scene_match_fk'].isin(edge_matches)]
             counted_segments = Counter(segments_list)
-            result = counted_segments.most_common(1)[0][0]
+            # result = counted_segments.most_common(1)[0][0]
 
             segments_found = counted_segments.most_common(2)
             result = []
