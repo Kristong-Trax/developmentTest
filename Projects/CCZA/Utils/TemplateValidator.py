@@ -181,8 +181,22 @@ class CczaTemplateValidator(Main_Template):
         if sheet == Const.KPIS:
             self.validate_weights_in_kpis_sheet(sheet, template_df)
         if sheet != Const.KPIS:
-            pass
-            # self.check_duplicate_atomics()
+            self.check_duplicate_atomics(sheet, template_df)
+        if sheet in Parameters.TARGET_SHEET_WEIGHT_SHEET_MAP.keys():
+            self.compare_kpi_lists(sheet, template_df)
+
+    def compare_kpi_lists(self, sheet, template_df):
+        pass
+        # weight_sheet =
+
+    def check_duplicate_atomics(self, sheet, template_df):
+        atomics_df = template_df[[Const.ATOMIC_NAME]]
+        atomics_df['count'] = 1
+        atomics_df = atomics_df.groupby([Const.ATOMIC_NAME], as_index=False).agg({'count': np.sum})
+        atomics_df = atomics_df[atomics_df['count']>1]
+        for i, row in atomics_df.iterrows():
+            self.errorHandler.log_error('Sheet {} has duplicate atomic kpi rows for '
+                                        'kpi {}'.format(sheet, row[Const.ATOMIC_NAME]))
 
     def validate_weights_in_kpis_sheet(self, sheet, template_df):
         store_weights_df = template_df.drop(Parameters.SHEETS_COL_MAP[sheet], axis=1)
@@ -279,6 +293,7 @@ class Parameters(object):
                                                Const.ACCEPTED_ANSWER_RESULT],
                       Const.FLOW_PARAMETERS: [Const.KPI_NAME, Const.ATOMIC_NAME, Const.ENTITY_TYPE, Const.ENTITY_VAL,
                                               Const.IN_NOT_IN, Const.TYPE_FILTER, Const.VALUE_FILTER]}
+    TARGET_SHEET_WEIGHT_SHEET_MAP = {Const.SOS_TARGETS: Const.SOS_WEIGHTS, Const.PRICING_TARGETS: Const.PRICING_WEIGHTS}
 
     SHEETS_COL_VALID_TYPE = {
         ALL: {
