@@ -183,11 +183,79 @@ class CczaTemplateValidator(Main_Template):
         if sheet != Const.KPIS:
             self.check_duplicate_atomics(sheet, template_df)
         if sheet in Parameters.TARGET_SHEET_WEIGHT_SHEET_MAP.keys():
-            self.compare_kpi_lists(sheet, template_df)
+            self.compare_weights_vs_targets_sheet(sheet, template_df)
+        if sheet in [Const.LIST_OF_ENTITIES, Const.SOS_WEIGHTS, Const.PRICING_WEIGHTS, Const.SURVEY_QUESTIONS]:
+            self.check_weights_for_lvl2_kpis_add_to_100(sheet, template_df)
 
-    def compare_kpi_lists(self, sheet, template_df):
-        pass
-        # weight_sheet =
+    def check_weights_for_lvl2_kpis_add_to_100(self, sheet, template_df):
+        non_store_columns = list(filter(lambda x: x in Parameters.SHEETS_COL_MAP[sheet], template_df.columns.values))
+        non_store_columns.remove(Const.KPI_NAME)
+        template_df = template_df.drop(non_store_columns, axis=1)
+        groupby_dict = {}
+        store_col = filter(lambda x: x != Const.KPI_NAME, template_df.columns.values)
+        for col in store_col:
+            groupby_dict.update({col: np.sum})
+        aggregate_df = template_df.groupby([Const.KPI_NAME], as_index=False).agg(groupby_dict)
+        for i, row in aggregate_df.iterrows():
+            all_100 = all(map(lambda x: x == 100, row[store_col].values))
+            if not all_100:
+                self.errorHandler.log_error('Sheet {}. KPI Name: {} . Not '
+                                            'all weights per stores add up to 100'.format(sheet, row[Const.KPI_NAME]))
+
+    def compare_weights_vs_targets_sheet(self, target_sheet, targets_df):
+        weight_sheet = Parameters.TARGET_SHEET_WEIGHT_SHEET_MAP[target_sheet]
+        weights_df = self.kpi_sheets[weight_sheet]
+        self.compare_kpi_lists(target_sheet, targets_df, weight_sheet, weights_df)
+        self.compare_weights_and_targets_store_sections(target_sheet, targets_df, weight_sheet, weights_df)
+
+    def compare_weights_and_targets_store_sections(self, target_sheet, targets_df, weight_sheet, weights_df):
+        target_non_store_columns = filter(lambda x: x in Parameters.SHEETS_COL_MAP[target_sheet],
+                                          targets_df.columns.values)
+        target_stores_df = targets_df.drop(target_non_store_columns, axis=1)
+        store_columns_t = target_stores_df.columns.values.sort()
+        target_stores_df = target_stores_df[store_columns_t]
+        target_values = target_stores_df.values
+        target_values = target_values.astype(np.bool)
+
+        weight_non_store_columns = filter(lambda x: x in Parameters.SHEETS_COL_MAP[weight_sheet],
+                                          targets_df.columns.values)
+        weight_stores_df = weights_df.drop(weight_non_store_columns, axis=1)
+        store_columns_w = weight_stores_df.columns.values.sort()
+        weight_stores_df = weight_stores_df[store_columns_w]
+        weight_values = weight_stores_df.values
+        weight_values = weight_values.astype(np.bool)
+        if np.array_equal(store_columns_t, store_columns_w) and target_values.shape == weight_values.shape:
+            compare = np.isclose(target_values, weight_values)
+            compare_df = pd.DataFrame(compare, columns=store_columns_t)
+            if not all(compare):
+                self.errorHandler.log_error('weights and targets are not aligned in sheets'
+                                            ' {} and {}'.format(target_sheet, weight_sheet))
+                for col in compare_df.columns.values:
+                    compare_df = compare_df[compare_df[col]]
+                    if len(compare_df) > 0:
+                        self.errorHandler.log_error('Sheets: {} and {}. Fix weights or targets '
+                                                    'for store {}:'.format(weight_sheet, target_sheet, col))
+        else:
+            self.errorHandler.log_error('Stores are not the same in '
+                                        'sheets {} and {}'.format(target_sheet, weight_sheet))
+
+    def compare_kpi_lists(self, target_sheet, targets_df, weight_sheet, weights_df):
+        weights_df = weights_df[[Const.KPI_NAME, Const.ATOMIC_NAME]].rename(columns={Const.KPI_NAME:
+                                                                                         'KPI_Name_Weights'},
+                                                                            inplace=True)
+        targets_df = targets_df[[Const.KPI_NAME,
+                                 Const.ATOMIC_NAME]].rename(columns={Const.KPI_NAME: 'KPI_Name_Targets'}, inplace=True)
+        validation_df = pd.merge(targets_df, weights_df, on=['Const.ATOMIC_NAME'], how='outer')
+        missing_weights = validation_df[validation_df['KPI_Name_Targets'].isnull()]
+        if len(missing_weights) > 0:
+            atomics = missing_weights[Const.ATOMIC_NAME].values.tolist()
+            self.errorHandler.log_error('Sheet: {} has atomics that are missing '
+                                        'from Sheet {}: {}'.format(target_sheet, weight_sheet, atomics))
+        missing_targets = validation_df[validation_df['KPI_Name_Weights'].isnull()]
+        if len(missing_targets) > 0:
+            atomics = missing_weights[Const.ATOMIC_NAME].values.tolist()
+            self.errorHandler.log_error('Sheet: {} has atomics that are missing '
+                                        'from Sheet {}: {}'.format(weight_sheet, target_sheet, atomics))
 
     def check_duplicate_atomics(self, sheet, template_df):
         atomics_df = template_df[[Const.ATOMIC_NAME]]
@@ -222,7 +290,7 @@ class CczaTemplateValidator(Main_Template):
                 self.check_template_columns(name, columns)
                 self.kpi_sheets[name] = template_df
             except Exception as e: # look up the type of exception in case sheet name is missing
-                self.errorHandler.lgiog_error('Sheet {} is missing in the file'.format(name))
+                self.errorHandler.log_error('Sheet {} is missing in the file'.format(name))
 
     def check_template_columns(self, sheet, columns):
         missing_columns = filter(lambda x: x not in columns, Parameters.SHEETS_COL_MAP[sheet])
