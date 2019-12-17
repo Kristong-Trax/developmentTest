@@ -311,20 +311,10 @@ class CczaTemplateValidator(Main_Template):
                 self.errorHandler.log_error('Store types {} exist in db but do not '
                                             'exist in the template for sheet {}'.format(db_vs_template, sheet))
 
-    # simple validations
-
-
-    def check_column_vs_column(self, sheet_col_1, sheet_col_2):
-        pass
-
-    def check_empty_values(self, sheet, template_df, templ_column, validation_params):
-        pass
-
     def map_validation_function_to_valid_type(self):
         type_func_map = {'db': self.check_db_values, 'list': self.validate_list,
                          'type_value': self.check_value_based_on_type, 'prop': self.check_value_based_on_property}
         return type_func_map
-    # complex validations
 
 class Parameters(object):
     ALL = 'ALL'
