@@ -1051,17 +1051,19 @@ class NationalToolBox(GlobalSessionToolBox):
                            'denominator_id': denominator_id, 'result': result}
             return result_dict
 
-        group_by_bay_number_scif = bay_count_scif.groupby('bay_number').nunique()[MANUFACTURER_NAME]
+        group_by_bay_number_scif = bay_count_scif.groupby(['scene_fk', 'bay_number']).nunique()[MANUFACTURER_NAME]
 
         bay_count = 0
-        for bay in list(group_by_bay_number_scif.index):
-            if group_by_bay_number_scif[bay] == 1:
-                if 'TCCC' in set(bay_count_scif[bay_count_scif[BAY_NUMBER].isin([bay])][MANUFACTURER_NAME]):
+        for scene_fk, bay in group_by_bay_number_scif.index:
+            if group_by_bay_number_scif[scene_fk, bay] == 1:
+                if 'TCCC' in set(
+                        bay_count_scif[(bay_count_scif[BAY_NUMBER] == bay) & (bay_count_scif[SCENE_FK] == scene_fk)][
+                            MANUFACTURER_NAME]):
                     bay_count = bay_count + 1
 
         # Step 9: Filter by the numerator param
         relevant_scif = relevant_scif[relevant_scif[numerator_param_1].isin([numerator_value_1])]
-        facings = relevant_scif[FACINGS_IGN_STACK].sum()
+        # facings = relevant_scif[FACINGS_IGN_STACK].sum()
 
         # Step 10: Calculate the result
         result = 1 if bay_count >= bay_count_target else 0
