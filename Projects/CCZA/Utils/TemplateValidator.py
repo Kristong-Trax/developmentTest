@@ -96,7 +96,6 @@ class CczaTemplateValidator(Main_Template):
         for sheet, template_df in self.kpi_sheets.items():
             self.perform_configurable_validations(sheet, template_df)
             self.perform_additional_validations(sheet, template_df)
-        pass
 
     def perform_configurable_validations(self, sheet, template_df):
         columns_to_validate = filter(lambda x: x in Parameters.SHEETS_COL_MAP[sheet],template_df.columns.values)
@@ -111,8 +110,6 @@ class CczaTemplateValidator(Main_Template):
 
             self.validate_empty(sheet, template_df, templ_column, validation_params)
             self.validate_particular_values(sheet, template_df, templ_column, validation_params)
-
-        pass
 
     def validate_particular_values(self, sheet, template_df, templ_column, validation_params):
         val_types = validation_params.get('type')
@@ -180,9 +177,25 @@ class CczaTemplateValidator(Main_Template):
             if len(empty_values) > 0:
                 self.errorHandler.log_error('Column {} in sheet {} has empty values'.format(templ_column, sheet))
 
-
     def perform_additional_validations(self, sheet, template_df):
-        pass
+        if sheet == Const.KPIS:
+            self.validate_weights_in_kpis_sheet(sheet, template_df)
+        if sheet != Const.KPIS:
+            pass
+            # self.check_duplicate_atomics()
+
+    def validate_weights_in_kpis_sheet(self, sheet, template_df):
+        store_weights_df = template_df.drop(Parameters.SHEETS_COL_MAP[sheet], axis=1)
+        store_weights = store_weights_df.values
+        try:
+            store_weights.astype(float)
+        except (ValueError, TypeError):
+            self.errorHandler.log_error('Sheet: {}. Not all weights in KPIs sheet are filled or '
+                                        'are numeric'.format(sheet))
+        total_weights = store_weights[store_weights.shape[0]-1:store_weights.shape[0]][0]
+        validate_100 = all(map(lambda x: x == 100, total_weights))
+        if not validate_100:
+            self.errorHandler.log_error('Sheet: {}. Total weights per store type are not equal to 100'.format(sheet))
 
     def check_all_tabs_exist_and_have_relevant_columns(self):
         for name in Const.sheet_names_and_rows:
@@ -323,7 +336,7 @@ class Parameters(object):
                                 'disallow_empty': True},
         },
         Const.SURVEY_QUESTIONS: {
-            Const.ACCEPTED_ANSWER_RESULT: {'disallow_empty': True, 'filter_out': [Const.AVAILABILITY]},
+            Const.ACCEPTED_ANSWER_RESULT: {'disallow_empty': False, 'filter_out': [Const.AVAILABILITY]},
             Const.KPI_TYPE: {'type': ('list',), 'source': ([Const.AVAILABILITY, Const.SCENE_COUNT, Const.SURVEY,
                                                             Const.PLANOGRAM]),
                              'disallow_empty': True},
