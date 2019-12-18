@@ -145,6 +145,8 @@ class BATRU_SANDToolBox:
     SECTION_COMBINATIONS = [NO_COMPETITORS_COL, AVAILABILITY_COL, EMPTY_SPACES_COL, SEQUENCE_COL, REPEATING_COL]
     API_SKU_NO_COMPETITORS_KPI_NAME = '{fixture};{section_name};No competitors'
     API_SKU_EMPTY_SPACES_KPI_NAME = '{fixture};{section_name};Empty spaces'
+    COMBINATIONS = 'Combinations'
+    RANK_PERCENT = 'Rank, %'
 
     def __init__(self, data_provider, output):
         self.k_engine = BaseCalculationsScript(data_provider, output)
@@ -1585,7 +1587,7 @@ class BATRU_SANDToolBox:
                             misplaced_products_fks = section_shelf_data[section_shelf_data['product_ean_code_lead'].\
                                 isin(misplaced_products_eans)]['product_fk'].unique().tolist()
 
-                # NEW PLACEMENT LOGIC - start here
+                # NEW PLACEMENT LOGIC
                 no_competitors_lvl2_fk = self.common.get_kpi_fk_by_kpi_type(self.NO_COMPETITORS_KPI_LVL2)
                 empty_spaces_lvl2_fk = self.common.get_kpi_fk_by_kpi_type(self.EMPTY_SPACES_KPI_LVL2)
                 empty_spaces_res = 1 - no_empties
@@ -1594,8 +1596,8 @@ class BATRU_SANDToolBox:
                                  + str(int(empty_spaces_res)) + str(int(sku_sequence_passed)) \
                                  + str(int(sku_repeating_passed))
 
-                section_rank = section_placement_rank_templ[section_placement_rank_templ['Combinations'] \
-                                                            == section_result]['Rank, %'].values[0]
+                section_rank = section_placement_rank_templ[section_placement_rank_templ[self.COMBINATIONS] \
+                                                            == section_result][self.RANK_PERCENT].values[0]
                 section_weighted_score = section_rank * weight_per_section
                 fixture_total_score += section_weighted_score
                 sections_scores_new[section] = {'section_score': section_weighted_score,
@@ -1661,24 +1663,13 @@ class BATRU_SANDToolBox:
                                             score=sku_repeating_score, score_2=sku_repeating_score_2,
                                             level_3_only=True, level2_name_for_atomic=fixture_name_for_db,
                                             model_id=section_name)
-                # self.save_level2_and_level3(SK, section_name, result=None,
-                #                             score=section_score, score_2=section_score_2,
-                #                             level_3_only=True, level2_name_for_atomic=fixture_name_for_db)
+
                 # replace section_score atomic - new change
                 self.save_level2_and_level3(SK, section_name, result=None,
                                             score=section_weighted_score, score_2=section_rank,
                                             level_3_only=True, level2_name_for_atomic=fixture_name_for_db)
 
                 # new tables - SK set lvl 3
-                # section_custom_res = self.kpi_result_values[self.PRESENCE][self.OOS] if section_score == 0 else \
-                #     self.kpi_result_values[self.PRESENCE][self.DISTRIBUTED]
-
-                # self.common.write_to_db_result(fk=section_in_fixture_fk, numerator_id=section_fk,
-                #                                denominator_id=section, context_id=scene,
-                #                                score=section_score, result=section_custom_res,
-                #                                identifier_parent=sk_fixture_identifier_par,
-                #                                identifier_result=section_in_fixture_identifier_par,
-                #                                should_enter=True)
                 self.common.write_to_db_result(fk=section_in_fixture_fk, numerator_id=section_fk,
                                                denominator_id=section, context_id=scene,
                                                score=section_weighted_score, result=section_rank,
@@ -1776,12 +1767,6 @@ class BATRU_SANDToolBox:
                 if all(map(lambda x: x['competitors'], sections_scores_new.values())):
                     fixture_score = sum(map(lambda x: x['section_score'], sections_scores_new.values()))
 
-            # if sections_statuses:
-            #     fixture_score = min(sections_statuses.values())
-            # else:
-            #     fixture_score = 0
-
-            # self.fixtures_statuses_dict[fixture] = fixture_score
             self.fixtures_statuses_dict[fixture] = min(fixture_score, self.fixtures_statuses_dict[fixture]) \
                 if self.fixtures_statuses_dict.get(fixture) is not None else fixture_score
 
@@ -1846,9 +1831,9 @@ class BATRU_SANDToolBox:
     def get_placement_section_rank_template(self):
         template_db = self.all_templates.get(PLACEMENT_SECTION_RANKS_TEMPL, {}).get(RANKING_SHEET, pd.DataFrame())
         if not template_db.empty:
-            template_db['Combinations'] = ''
+            template_db[self.COMBINATIONS] = ''
             for col in self.SECTION_COMBINATIONS:
-                template_db['Combinations'] = template_db['Combinations'].map(str) + template_db[col].map(str)
+                template_db[self.COMBINATIONS] = template_db[self.COMBINATIONS].map(str) + template_db[col].map(str)
         return template_db
 
     def check_sku_repeating(self, section_shelf_data, priorities_section):
