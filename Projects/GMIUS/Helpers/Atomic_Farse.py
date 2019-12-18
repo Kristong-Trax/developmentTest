@@ -106,10 +106,12 @@ class AtomicFarse():
                       '    "{}"'.format(group, item, e))
 
     def get_aux(self, item):
-        print(item)
+        # print(item)
+
         main_line = self.indexed_template[Const.KPIS].loc[item]
         session_lvl = self.read_cell_from_line(main_line, Const.SESSION_LEVEL) if Const.SESSION_LEVEL in main_line.index else 'Y'
         family = self.read_cell_from_line(main_line, Const.TYPE)[0]
+        # print(family)
         kpi_line = self.indexed_template[family].loc[item]
         # num_check = 'numerator' if [x for x in kpi_line.index if 'numerator' in x.lower()] else ''
         # den_check = [x for x in kpi_line.index if 'denominator' in x.lower()]
