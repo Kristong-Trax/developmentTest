@@ -4,7 +4,12 @@ from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Trax.Utils.Conf.Keys import DbUsers
 import pandas as pd
 import numpy as np
+import os
 from Projects.CCZA_SAND.Utils.Const import Const
+from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
+from Trax.Utils.Conf.Configuration import Config
+from Trax.Tools.ProfessionalServices.Utils.Util import Utilities
+
 
 
 class CczaTemplateValidator(Main_Template):
@@ -26,19 +31,28 @@ class CczaTemplateValidator(Main_Template):
     def get_static_db_table_contents(self):
         # all_tables = map(lambda y: '{}.{}'.format(y[0], y[1]), map(lambda x: x.split('.'),
         #                                                            Parameters.TYPE_DB_MAP.values()))
+        table_data = {}
 
         for entity, table in Parameters.TYPE_DB_MAP.items():
             table_col = table.split('.')
             table_name = '{}.{}'.format(table_col[0], table_col[1])
-            query = """ select * from {} """.format(table_name)
-            table_contents = pd.read_sql_query(query, self.rds_conn.db)
+            if table_data.get(table_name) is None:
+                query = """ select * from {} """.format(table_name)
+                table_contents = pd.read_sql_query(query, self.rds_conn.db)
+                table_data.update({table_name: table_contents})
+            else:
+                table_contents = table_data.get(table_name)
             self.db_static_data[entity] = table_contents[table_col[-1]]
 
         for templ_column, table in Parameters.COLUMN_DB_MAP.items():
             table_col = table.split('.')
             table_name = '{}.{}'.format(table_col[0], table_col[1])
-            query = """ select * from {} """.format(table_name)
-            table_contents = pd.read_sql_query(query, self.rds_conn.db)
+            if not table_data.get(table_name):
+                query = """ select * from {} """.format(table_name)
+                table_contents = pd.read_sql_query(query, self.rds_conn.db)
+                table_data.update({table_name: table_contents})
+            else:
+                table_contents = table_data.get(table_name)
             self.db_static_data[templ_column] = table_contents[table_col[-1]]
 
     def get_kpis_new_tables(self):
@@ -83,18 +97,26 @@ class CczaTemplateValidator(Main_Template):
         self.check_all_tabs_exist_and_have_relevant_columns()
         self.errorHandler.log_info('Checking store_types')
         self.check_store_types()
+        self.errorHandler.log_info('Checking sheets data')
         self.check_kpis_sheets()
+        error_file_link = self.dump_logs_to_file_and_upload_to_bucket()
+        print error_file_link
+        return
 
-        # validate sheets contents against sheet contents
-        # validate kpi names in the db both against old tables and new tables
-        # validate specific template parameters
-        # validate all weights and targets are aligned
-        #
-        pass
+    def dump_logs_to_file_and_upload_to_bucket(self):
+        file_path = self.errorHandler.dump_to_file()
+        error_file_link = Utilities.upload_file_to_s3(file_path, '{}.log'.format(self.execution_unique_id),
+                                                      os.path.join(Parameters.BUCKET_FOLDER,
+                                                                   Config.get_environment().upper(),
+                                                                   self.project.upper()),
+                                                      Parameters.LOG_FILE_BUCKET)
+        return error_file_link
 
     def check_kpis_sheets(self):
         for sheet, template_df in self.kpi_sheets.items():
+            self.errorHandler.log_info('Checking configurable validations')
             self.perform_configurable_validations(sheet, template_df)
+            self.errorHandler.log_info('Checking additional validations')
             self.perform_additional_validations(sheet, template_df)
 
     def perform_configurable_validations(self, sheet, template_df):
@@ -316,7 +338,10 @@ class CczaTemplateValidator(Main_Template):
                          'type_value': self.check_value_based_on_type, 'prop': self.check_value_based_on_property}
         return type_func_map
 
+
 class Parameters(object):
+    BUCKET_FOLDER = 'PS_CUSTOM_METADATA'
+    LOG_FILE_BUCKET = 'traxusapi'
     ALL = 'ALL'
     TARGET_TABS = [Const.LIST_OF_ENTITIES, Const.SOS_TARGETS, Const.PRICING_TARGETS, Const.SURVEY_QUESTIONS,
                    Const.FLOW_PARAMETERS]
@@ -324,7 +349,7 @@ class Parameters(object):
                    'Brand': 'static_new.brand.name', 'Category': 'static_new.category.name',
                    'Manufacturer': 'static_new.manufacturer.name',  'Sub_category': 'static_new.sub_category.name',
                    'Product_type': 'static_new.product.type', 'Template Name': 'static.template.name',
-                   'Survey': 'static.survey_question.code', 'Location Types': 'static.location_types'}
+                   'Survey': 'static.survey_question.code', 'Location Types': 'static.location_types.name'}
     COLUMN_DB_MAP = {Const.SURVEY_Q_CODE:  'static.survey_question.code',
                      Const.SURVEY_Q_ID: 'static.survey_question.code'}
     # TYPE_PROPERTY_MAP = {'SKU': 'product.ean_code', 'EAN': 'product.ean_code',
@@ -420,3 +445,12 @@ class Parameters(object):
         }
 
     }
+
+
+if __name__ == '__main__':
+    LoggerInitializer.init('ccza calculations')
+    Config.init()
+    project_name = 'ccza-sand'
+    file_path = '/home/natalyak/dev/kpi_factory/Projects/CCZA_SAND/Data/Template.xlsx'
+    validator = CczaTemplateValidator(project_name=project_name, file_url=file_path)
+    validator.validate_template_data()
