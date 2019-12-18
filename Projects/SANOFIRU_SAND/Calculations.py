@@ -1,6 +1,6 @@
 
 from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScript
-from KPIUtils.GlobalProjects.SANOFI_2.KPIGeneratorTestTemporary import SANOFIGeneratorTest
+from KPIUtils.GlobalProjects.SANOFI_2.KPIGenerator import SANOFIGenerator
 import os
 
 
@@ -12,7 +12,7 @@ class SanofiRUSandCalculations(BaseCalculationsScript):
         self.timer.start()
         template_path = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), 'SANOFIRU',
                                      'Data', 'Template.xlsx')
-        SANOFIGeneratorTest(self.data_provider, self.output, template_path).main_function()
+        SANOFIGenerator(self.data_provider, self.output, template_path).main_function()
         self.timer.stop('KPIGenerator.run_project_calculations')
 
 
