@@ -94,12 +94,23 @@ class CczaTemplateValidator(Main_Template):
     #     return self.store_data
 
     def validate_template_data(self):
-        self.errorHandler.log_info('Checking tabs and columms')
-        self.check_all_tabs_exist_and_have_relevant_columns()
-        self.errorHandler.log_info('Checking store_types')
-        self.check_store_types_and_extra_columns()
-        self.errorHandler.log_info('Checking sheets data')
-        self.check_kpis_sheets()
+        try:
+            self.errorHandler.log_info('Checking tabs and columns')
+            self.check_all_tabs_exist_and_have_relevant_columns()
+        except Exception as e:
+            self.errorHandler.log_error('Unhandled error in format checking: {}'.format(e))
+
+        try:
+            self.errorHandler.log_info('Checking store_types')
+            self.check_store_types_and_extra_columns()
+        except Exception as e:
+            self.errorHandler.log_error('Unhandled error in store type validation: {}'.format(e))
+
+        try:
+            self.errorHandler.log_info('Checking sheets data')
+            self.check_kpis_sheets()
+        except Exception as e:
+            self.errorHandler.log_error('Unhandled error in sheet data validation: {}'.format(e))
         error_file_link = self.dump_logs_to_file_and_upload_to_bucket()
         print error_file_link
         return
@@ -115,14 +126,16 @@ class CczaTemplateValidator(Main_Template):
 
     def check_kpis_sheets(self):
         for sheet, template_df in self.kpi_sheets.items():
+            self.errorHandler.log_info('Validating Sheet: {}'.format(sheet))
             self.errorHandler.log_info('Checking configurable validations')
             self.perform_configurable_validations(sheet, template_df)
             self.errorHandler.log_info('Checking additional validations')
             self.perform_additional_validations(sheet, template_df)
 
     def perform_configurable_validations(self, sheet, template_df):
-        columns_to_validate = filter(lambda x: x in Parameters.SHEETS_COL_MAP[sheet],template_df.columns.values)
+        columns_to_validate = filter(lambda x: x in Parameters.SHEETS_COL_MAP[sheet], template_df.columns.values)
         for templ_column in columns_to_validate:
+            self.errorHandler.log_info('Validating sheet {}, column: {}'.format(sheet, templ_column))
             validation_params = Parameters.SHEETS_COL_VALID_TYPE[Parameters.ALL][templ_column] if \
                 templ_column in Parameters.SHEETS_COL_VALID_TYPE[Parameters.ALL].keys() else \
                 Parameters.SHEETS_COL_VALID_TYPE[sheet][templ_column]
@@ -145,24 +158,53 @@ class CczaTemplateValidator(Main_Template):
 
     def check_value_based_on_type(self, sheet, template_df, templ_column, val_source):
         type_source_col = val_source['column']
+        empty_type_records = template_df[(template_df[type_source_col] == '') |
+                                         (template_df[type_source_col].isnull())]
+        if len(empty_type_records) > 0:
+            self.errorHandler.log_error('Sheet: {}. Entity types are not completed for kpis: '
+                                        '{}'.format(sheet, empty_type_records[Const.ATOMIC_NAME].values))
+
         sheet_df = template_df[[type_source_col, templ_column]]
-        sheet_df = sheet_df[(~(sheet_df[templ_column].isnull())) |
+        sheet_df = sheet_df[(~(sheet_df[type_source_col].isnull())) &
+                            (~(sheet_df[type_source_col] == ''))]
+        sheet_df = sheet_df[(~(sheet_df[templ_column].isnull())) &
                             (~(sheet_df[templ_column] == ''))]
+
+        # handle double entity
+        double_entity_df = sheet_df[sheet_df[type_source_col].str.contains(',')]
+        if not double_entity_df.empty:
+            missing_values_df = double_entity_df[~(double_entity_df[templ_column].str.contains(','))]
+            if len(missing_values_df) > 0:
+                self.errorHandler.log_error('Sheet {}. One of multiple values is missing '
+                                            'in column {}'.format(sheet, templ_column))
+            double_entity_df = double_entity_df[double_entity_df[templ_column].str.contains(',')]
+            duplicate_df = double_entity_df.copy()
+            double_entity_df[type_source_col] = double_entity_df[type_source_col].apply(lambda x: x.split(',')[0].strip())
+            double_entity_df[templ_column] = double_entity_df[templ_column].apply(lambda x: x.split(',')[0].strip())
+            duplicate_df[type_source_col] = duplicate_df[type_source_col].apply(lambda x: x.split(',')[1].strip())
+            duplicate_df[templ_column] = duplicate_df[templ_column].apply(lambda x: x.split(',')[1].strip())
+            joined_template_df = pd.concat([double_entity_df, duplicate_df])
+            self.check_value_based_on_type(sheet, joined_template_df, templ_column, val_source)
+
+        # handle single entity
+        sheet_df = sheet_df[~(sheet_df[type_source_col].str.contains(','))]
         sheet_df = sheet_df.sort_values(by=[type_source_col])
         sheet_df['accumulated_values'] = sheet_df.groupby(type_source_col)[templ_column].apply(
             lambda x: (x + ',').cumsum().str.strip())
         sheet_df = sheet_df.drop_duplicates(subset=[type_source_col], keep='last')
         sheet_df = sheet_df.reset_index(drop=True)
+
         for i, row in sheet_df.iterrows():
             validated_entity = row[type_source_col]
-            template_values = set(row[templ_column].split(','))
+            template_values = row['accumulated_values'][0:-1].split(',')
+            template_values = set(map(lambda z: z.strip(), template_values))
 
             db_col = val_source['db'][validated_entity].split('.')[-1]
-            db_values = set(self.db_static_data[validated_entity][db_col].values)
+            db_values = set(self.db_static_data[validated_entity].values)
             diff = template_values.difference(db_values)
             if len(diff) > 0:
                 self.errorHandler.log_error('Sheet: {}, Column: {}, Entity: {} '
-                                            'does not match DB: {}'.format(sheet, templ_column, type_source_col, diff))
+                                            'does not match DB: {}'.format(sheet, templ_column, validated_entity, diff))
 
     def check_value_based_on_property(self, sheet, template_df, templ_column, val_source):
         prop_name, col = val_source.split('.')
@@ -187,7 +229,7 @@ class CczaTemplateValidator(Main_Template):
                                         '{}'.format(templ_column, sheet, db_col, val_source, diff))
 
     def validate_list(self, sheet, template_df, templ_column, val_source):
-        template_values = filter(lambda x: x == x or x != '' or x is not None, template_df[templ_column].values)
+        template_values = filter(lambda x: x == x and x != '' and x is not None, template_df[templ_column].values)
         template_values = set(template_values)
         val_values = set(val_source)
         diff = template_values.difference(val_values)
@@ -236,46 +278,49 @@ class CczaTemplateValidator(Main_Template):
         # target_non_store_columns = filter(lambda x: x in Parameters.SHEETS_COL_MAP[target_sheet],
         #                                   targets_df.columns.values)
         # target_stores_df = targets_df.drop(target_non_store_columns, axis=1)
+        if Const.KPI_NAME in targets_df.columns.values and Const.ATOMIC_NAME in targets_df.columns.values:
+            targets_df = targets_df.sort_values([Const.KPI_NAME, Const.ATOMIC_NAME])
+            existing_store_types = filter(lambda x: x in self.store_types_db, targets_df.columns.values)
+            target_stores_df = targets_df[existing_store_types]
+            store_columns_t = target_stores_df.columns.values
+            store_columns_t.sort()
+            target_stores_df = target_stores_df[store_columns_t]
+            target_values = target_stores_df.values
+            target_values = target_values.astype(np.bool)
 
-        existing_store_types = filter(lambda x: x in self.store_types_db, targets_df.columns.values)
-        target_stores_df = targets_df[existing_store_types]
-        store_columns_t = target_stores_df.columns.values.sort()
-        target_stores_df = target_stores_df[store_columns_t]
-        target_values = target_stores_df.values
-        target_values = target_values.astype(np.bool)
+            # weight_non_store_columns = filter(lambda x: x in Parameters.SHEETS_COL_MAP[weight_sheet],
+            #                                   targets_df.columns.values)
+            # weight_stores_df = weights_df.drop(weight_non_store_columns, axis=1)
 
-        # weight_non_store_columns = filter(lambda x: x in Parameters.SHEETS_COL_MAP[weight_sheet],
-        #                                   targets_df.columns.values)
-        # weight_stores_df = weights_df.drop(weight_non_store_columns, axis=1)
-
-        existing_store_types = filter(lambda x: x in self.store_types_db, weights_df.columns.values)
-        weight_stores_df = targets_df[existing_store_types]
-        store_columns_w = weight_stores_df.columns.values.sort()
-        weight_stores_df = weight_stores_df[store_columns_w]
-        weight_values = weight_stores_df.values
-        weight_values = weight_values.astype(np.bool)
-        if np.array_equal(store_columns_t, store_columns_w) and target_values.shape == weight_values.shape:
-            compare = np.isclose(target_values, weight_values)
-            compare_df = pd.DataFrame(compare, columns=store_columns_t)
-            if not all(compare):
-                self.errorHandler.log_error('weights and targets are not aligned in sheets'
-                                            ' {} and {}'.format(target_sheet, weight_sheet))
-                for col in compare_df.columns.values:
-                    compare_df = compare_df[compare_df[col]]
-                    if len(compare_df) > 0:
-                        self.errorHandler.log_error('Sheets: {} and {}. Fix weights or targets '
-                                                    'for store {}:'.format(weight_sheet, target_sheet, col))
-        else:
-            self.errorHandler.log_error('Stores are not the same in '
-                                        'sheets {} and {}'.format(target_sheet, weight_sheet))
+            weights_df = weights_df.sort_values([Const.KPI_NAME, Const.ATOMIC_NAME])
+            existing_store_types = filter(lambda x: x in self.store_types_db, weights_df.columns.values)
+            weight_stores_df = targets_df[existing_store_types]
+            store_columns_w = weight_stores_df.columns.values
+            store_columns_w.sort()
+            weight_stores_df = weight_stores_df[store_columns_w]
+            weight_values = weight_stores_df.values
+            weight_values = weight_values.astype(np.bool)
+            if np.array_equal(store_columns_t, store_columns_w) and target_values.shape == weight_values.shape:
+                compare = np.isclose(target_values, weight_values)
+                compare_df = pd.DataFrame(compare, columns=store_columns_t)
+                if not compare.all():
+                    self.errorHandler.log_error('weights and targets are not aligned in sheets'
+                                                ' {} and {}'.format(target_sheet, weight_sheet))
+                    for col in compare_df.columns.values:
+                        compare_df = compare_df[compare_df[col]]
+                        if len(compare_df) > 0:
+                            self.errorHandler.log_error('Sheets: {} and {}. Fix weights or targets '
+                                                        'for store {}:'.format(weight_sheet, target_sheet, col))
+            else:
+                self.errorHandler.log_error('Stores are not the same in '
+                                            'sheets {} and {}'.format(target_sheet, weight_sheet))
 
     def compare_kpi_lists(self, target_sheet, targets_df, weight_sheet, weights_df):
-        weights_df = weights_df[[Const.KPI_NAME, Const.ATOMIC_NAME]].rename(columns={Const.KPI_NAME:
-                                                                                         'KPI_Name_Weights'},
-                                                                            inplace=True)
-        targets_df = targets_df[[Const.KPI_NAME,
-                                 Const.ATOMIC_NAME]].rename(columns={Const.KPI_NAME: 'KPI_Name_Targets'}, inplace=True)
-        validation_df = pd.merge(targets_df, weights_df, on=['Const.ATOMIC_NAME'], how='outer')
+        weights_df = weights_df[[Const.KPI_NAME, Const.ATOMIC_NAME]]
+        weights_df.rename(columns={Const.KPI_NAME: 'KPI_Name_Weights'}, inplace=True)
+        targets_df = targets_df[[Const.KPI_NAME, Const.ATOMIC_NAME]]
+        targets_df.rename(columns={Const.KPI_NAME: 'KPI_Name_Targets'}, inplace=True)
+        validation_df = pd.merge(targets_df, weights_df, on=[Const.ATOMIC_NAME], how='outer')
         missing_weights = validation_df[validation_df['KPI_Name_Targets'].isnull()]
         if len(missing_weights) > 0:
             atomics = missing_weights[Const.ATOMIC_NAME].values.tolist()
@@ -370,7 +415,7 @@ class Parameters(object):
     #                       'Survey': 'static.survey_question.code'}
 
     WEIGHT_TABS = [Const.SOS_WEIGHTS, Const.PRICING_WEIGHTS]
-    SHEETS_COL_MAP = {Const.KPIS: [Const.KPI_NAME, Const.KPI_GROUP, Const.KPI_TYPE, 'Tested KPI Group',
+    SHEETS_COL_MAP = {Const.KPIS: [Const.KPI_NAME, Const.KPI_GROUP, Const.KPI_TYPE,
                                    Const.TARGET, Const.WEIGHT_SHEET, 'SCORE'],
                       Const.LIST_OF_ENTITIES: [Const.KPI_NAME, Const.ATOMIC_NAME, Const.ENTITY_TYPE, Const.ENTITY_VAL,
                                                Const.ENTITY_TYPE2, Const.ENTITY_VAL2, Const.IN_NOT_IN,
@@ -393,29 +438,29 @@ class Parameters(object):
         ALL: {
             Const.KPI_NAME: {'type': ('prop', 'prop'), 'source': ('kpis_lvl2.type', 'kpis_old.kpi_name'),
                              'disallow_empty': True, 'filter_out': [Const.RED_SCORE]},
-            Const.ATOMIC_NAME: {'type': ('prop', 'prop'), 'source': ('kpis_lvl2.name', 'kpis_old.atomic_kpi_name'),
+            Const.ATOMIC_NAME: {'type': ('prop', 'prop'), 'source': ('kpis_lvl2.type', 'kpis_old.atomic_kpi_name'),
                                 'disallow_empty': True},
             Const.ENTITY_TYPE: {'type': ('list',), 'source': (TYPE_DB_MAP.keys(),),
                                 'disallow_empty': False},
-            Const.ENTITY_VAL: {'type': ('type_value',), 'source': ({'db': TYPE_DB_MAP, 'column': Const.ENTITY_TYPE}),
+            Const.ENTITY_VAL: {'type': ('type_value',), 'source': ({'db': TYPE_DB_MAP, 'column': Const.ENTITY_TYPE},),
                                'disallow_empty': False},
             Const.ENTITY_TYPE2: {'type': ('list',), 'source': (TYPE_DB_MAP.keys(),),
                                  'disallow_empty': False},
-            Const.ENTITY_VAL2: {'type': ('type_value',), 'source': ({'db': TYPE_DB_MAP, 'column': Const.ENTITY_TYPE2}),
+            Const.ENTITY_VAL2: {'type': ('type_value',), 'source': ({'db': TYPE_DB_MAP, 'column': Const.ENTITY_TYPE2},),
                                 'disallow_empty': False},
-            Const.IN_NOT_IN: {'type': ('list',), 'source': (['In', 'Not in']),
+            Const.IN_NOT_IN: {'type': ('list',), 'source': (['In', 'Not in'],),
                               'disallow_empty': False},
             Const.TYPE_FILTER: {'type': ('list',), 'source': (TYPE_DB_MAP.keys(),),
                                 'disallow_empty': False},
-            Const.VALUE_FILTER: {'type': ('type_value',), 'source': ({'db': TYPE_DB_MAP, 'column': Const.TYPE_FILTER}),
+            Const.VALUE_FILTER: {'type': ('type_value',), 'source': ({'db': TYPE_DB_MAP, 'column': Const.TYPE_FILTER},),
                                  'disallow_empty': False}
         },
         Const.KPIS: {
-            # Const.KPI_NAME: {'type': ('prop', 'prop'),'source': ('kpis_lvl2.name', 'kpis_old.kpi_name'),
-            #                           'disallow_empty': True, 'filter_out': [Const.RED_SCORE]},
-            Const.KPI_GROUP: {'type': ('list',), 'source': ([Const.RED_SCORE]), 'disallow_empty': False},
+            'SCORE': {'type': ('list',), 'source': (['numeric', 'binary'],),
+                                    'disallow_empty': True},
+            Const.KPI_GROUP: {'type': ('list',), 'source': ([Const.RED_SCORE],), 'disallow_empty': False},
             Const.KPI_TYPE: {'type': ('list',), 'source': ([Const.AVAILABILITY, Const.SOS_FACINGS,
-                                                            Const.SURVEY_QUESTION, Const.FLOW]),
+                                                            Const.SURVEY_QUESTION, Const.FLOW],),
                                       'disallow_empty': True, 'filter_out': ['Weighted SUM KPIs in GROUP']},
             Const.TARGET: {'type': ('list',),'source': (TARGET_TABS, ), 'disallow_empty': False},
             Const.WEIGHT_SHEET: {'type': ('list',), 'source': (WEIGHT_TABS, ), 'disallow_empty': False}
@@ -425,14 +470,14 @@ class Parameters(object):
             Const.ENTITY_TYPE_NUMERATOR: {'type': ('list',), 'source': (TYPE_DB_MAP.keys(),),
                                           'disallow_empty': False},
             Const.NUMERATOR: {'type': ('type_value',),
-                              'source': ({'db': TYPE_DB_MAP, 'column': Const.ENTITY_TYPE_NUMERATOR}),
+                              'source': ({'db': TYPE_DB_MAP, 'column': Const.ENTITY_TYPE_NUMERATOR},),
                               'disallow_empty': False},
             Const.ENTITY_TYPE_DENOMINATOR: {'type': ('list',), 'source': (TYPE_DB_MAP.keys(),),
                                             'disallow_empty': False},
             Const.DENOMINATOR: {'type': ('type_value',),
-                                'source': ({'db': TYPE_DB_MAP, 'column': Const.ENTITY_TYPE_DENOMINATOR}),
+                                'source': ({'db': TYPE_DB_MAP, 'column': Const.ENTITY_TYPE_DENOMINATOR},),
                                 'disallow_empty': False},
-            Const.SCORE: {'type': ('list',), 'source': (['numeric', 'binary']),
+            Const.SCORE: {'type': ('list',), 'source': (['numeric', 'binary'],),
                           'disallow_empty': True},
         },
         Const.SOS_TARGETS: {},
@@ -445,10 +490,12 @@ class Parameters(object):
                                 'disallow_empty': True},
         },
         Const.SURVEY_QUESTIONS: {
-            Const.ACCEPTED_ANSWER_RESULT: {'disallow_empty': False, 'filter_out': [Const.AVAILABILITY]},
+            Const.ACCEPTED_ANSWER_RESULT: {'disallow_empty': False},
             Const.KPI_TYPE: {'type': ('list',), 'source': ([Const.AVAILABILITY, Const.SCENE_COUNT, Const.SURVEY,
                                                             Const.PLANOGRAM]),
                              'disallow_empty': True},
+            Const.SURVEY_Q_CODE: {'type': ('db',), 'source': ('static.survey_question.code',),
+                                  'disallow_empty': True},
         },
         Const.FLOW_PARAMETERS: {
             Const.KPI_TYPE: {'type': ('list',), 'source': ([Const.FLOW],),
