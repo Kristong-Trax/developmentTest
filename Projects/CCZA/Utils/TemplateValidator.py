@@ -20,6 +20,7 @@ class CczaTemplateValidator(Main_Template):
         self.template_path = file_url
         self.rds_conn = self.rds_connect
         self.store_data = self.get_store_data()
+        self.store_types_db = self.store_data[Const.ATTR3].values.tolist()
         # self.all_products = self.get_product_data
         self.kpi_sheets = {}
         self.kpis_lvl2 = self.get_kpis_new_tables()
@@ -47,7 +48,7 @@ class CczaTemplateValidator(Main_Template):
         for templ_column, table in Parameters.COLUMN_DB_MAP.items():
             table_col = table.split('.')
             table_name = '{}.{}'.format(table_col[0], table_col[1])
-            if not table_data.get(table_name):
+            if table_data.get(table_name) is None:
                 query = """ select * from {} """.format(table_name)
                 table_contents = pd.read_sql_query(query, self.rds_conn.db)
                 table_data.update({table_name: table_contents})
@@ -96,7 +97,7 @@ class CczaTemplateValidator(Main_Template):
         self.errorHandler.log_info('Checking tabs and columms')
         self.check_all_tabs_exist_and_have_relevant_columns()
         self.errorHandler.log_info('Checking store_types')
-        self.check_store_types()
+        self.check_store_types_and_extra_columns()
         self.errorHandler.log_info('Checking sheets data')
         self.check_kpis_sheets()
         error_file_link = self.dump_logs_to_file_and_upload_to_bucket()
@@ -165,7 +166,8 @@ class CczaTemplateValidator(Main_Template):
 
     def check_value_based_on_property(self, sheet, template_df, templ_column, val_source):
         prop_name, col = val_source.split('.')
-        source_values = set(self.__getattribute__(prop_name)[col].values)
+        # source_values = set(self.__getattribute__(prop_name)[col].values)
+        source_values = set(getattr(self, prop_name)[col].values)
         template_values = filter(lambda x: x == x or x != '' or x is not None, template_df[templ_column].values)
         template_values = set(template_values)
         diff = template_values.difference(source_values)
@@ -175,8 +177,8 @@ class CczaTemplateValidator(Main_Template):
 
     def check_db_values(self, sheet, template_df, templ_column, val_source):
         db_col = val_source.split('.')[-1]
-        db_col_values = set(self.db_static_data[templ_column][db_col].values)
-        template_values = filter(lambda x: x==x or x != '' or x is not None, template_df[templ_column].values)
+        db_col_values = set(self.db_static_data[templ_column].values)
+        template_values = filter(lambda x: x == x or x != '' or x is not None, template_df[templ_column].values)
         template_values = set(template_values)
         diff = template_values.difference(db_col_values)
         if len(diff) > 0:
@@ -195,7 +197,7 @@ class CczaTemplateValidator(Main_Template):
 
     def validate_empty(self, sheet, template_df, templ_column, validation_params):
         if validation_params.get('disallow_empty'):
-            empty_values = filter(lambda x: ('' in x) or (None in x) or (x != x),  template_df[templ_column].values)
+            empty_values = filter(lambda x: (x == '') or (x is None) or (x != x),  template_df[templ_column].values)
             if len(empty_values) > 0:
                 self.errorHandler.log_error('Column {} in sheet {} has empty values'.format(templ_column, sheet))
 
@@ -231,17 +233,23 @@ class CczaTemplateValidator(Main_Template):
         self.compare_weights_and_targets_store_sections(target_sheet, targets_df, weight_sheet, weights_df)
 
     def compare_weights_and_targets_store_sections(self, target_sheet, targets_df, weight_sheet, weights_df):
-        target_non_store_columns = filter(lambda x: x in Parameters.SHEETS_COL_MAP[target_sheet],
-                                          targets_df.columns.values)
-        target_stores_df = targets_df.drop(target_non_store_columns, axis=1)
+        # target_non_store_columns = filter(lambda x: x in Parameters.SHEETS_COL_MAP[target_sheet],
+        #                                   targets_df.columns.values)
+        # target_stores_df = targets_df.drop(target_non_store_columns, axis=1)
+
+        existing_store_types = filter(lambda x: x in self.store_types_db, targets_df.columns.values)
+        target_stores_df = targets_df[existing_store_types]
         store_columns_t = target_stores_df.columns.values.sort()
         target_stores_df = target_stores_df[store_columns_t]
         target_values = target_stores_df.values
         target_values = target_values.astype(np.bool)
 
-        weight_non_store_columns = filter(lambda x: x in Parameters.SHEETS_COL_MAP[weight_sheet],
-                                          targets_df.columns.values)
-        weight_stores_df = weights_df.drop(weight_non_store_columns, axis=1)
+        # weight_non_store_columns = filter(lambda x: x in Parameters.SHEETS_COL_MAP[weight_sheet],
+        #                                   targets_df.columns.values)
+        # weight_stores_df = weights_df.drop(weight_non_store_columns, axis=1)
+
+        existing_store_types = filter(lambda x: x in self.store_types_db, weights_df.columns.values)
+        weight_stores_df = targets_df[existing_store_types]
         store_columns_w = weight_stores_df.columns.values.sort()
         weight_stores_df = weight_stores_df[store_columns_w]
         weight_values = weight_stores_df.values
@@ -289,7 +297,9 @@ class CczaTemplateValidator(Main_Template):
                                         'kpi {}'.format(sheet, row[Const.ATOMIC_NAME]))
 
     def validate_weights_in_kpis_sheet(self, sheet, template_df):
-        store_weights_df = template_df.drop(Parameters.SHEETS_COL_MAP[sheet], axis=1)
+        # store_weights_df = template_df.drop(Parameters.SHEETS_COL_MAP[sheet], axis=1)
+        existing_store_types = filter(lambda x: x in self.store_types_db, template_df.columns.values)
+        store_weights_df = template_df[existing_store_types]
         store_weights = store_weights_df.values
         try:
             store_weights.astype(float)
@@ -320,18 +330,19 @@ class CczaTemplateValidator(Main_Template):
             self.errorHandler.log_error('The following columns are missing '
                                         'from sheet {}: {}'.format(sheet, missing_columns))
 
-    def check_store_types(self):
+    def check_store_types_and_extra_columns(self):
         for sheet, template_df in self.kpi_sheets.items():
             store_types = set(template_df.columns.values).difference(set(Parameters.SHEETS_COL_MAP[sheet]))
             store_types_in_db = set(self.store_data[Const.ATTR3].values)
             template_vs_db = store_types.difference(store_types_in_db)
             if len(template_vs_db) > 0:
-                self.errorHandler.log_error('Store types {} exist in template but do not '
-                                            'exist in DB for sheet {}'.format(template_vs_db, sheet))
+                self.errorHandler.log_error('Sheet: {}. Store types {} exist in template but do not '
+                                            'exist in DB / or extra columns exist. Only data related to stores types '
+                                            'existing in DB will be further validated'.format(sheet, template_vs_db))
             db_vs_template = store_types_in_db.difference(store_types)
             if len(db_vs_template) > 0:
-                self.errorHandler.log_error('Store types {} exist in db but do not '
-                                            'exist in the template for sheet {}'.format(db_vs_template, sheet))
+                self.errorHandler.log_error('Sheet: {}. Store types {} exist in db but do not '
+                                            'exist in the template / or extra columns exist'.format(sheet, template_vs_db))
 
     def map_validation_function_to_valid_type(self):
         type_func_map = {'db': self.check_db_values, 'list': self.validate_list,
@@ -375,12 +386,12 @@ class Parameters(object):
                                                Const.TYPE_FILTER, Const.VALUE_FILTER, Const.SURVEY_Q_CODE,
                                                Const.ACCEPTED_ANSWER_RESULT],
                       Const.FLOW_PARAMETERS: [Const.KPI_NAME, Const.ATOMIC_NAME, Const.ENTITY_TYPE, Const.ENTITY_VAL,
-                                              Const.IN_NOT_IN, Const.TYPE_FILTER, Const.VALUE_FILTER]}
+                                              Const.IN_NOT_IN, Const.TYPE_FILTER, Const.VALUE_FILTER, Const.KPI_TYPE]}
     TARGET_SHEET_WEIGHT_SHEET_MAP = {Const.SOS_TARGETS: Const.SOS_WEIGHTS, Const.PRICING_TARGETS: Const.PRICING_WEIGHTS}
 
     SHEETS_COL_VALID_TYPE = {
         ALL: {
-            Const.KPI_NAME: {'type': ('prop', 'prop'), 'source': ('kpis_lvl2.name', 'kpis_old.kpi_name'),
+            Const.KPI_NAME: {'type': ('prop', 'prop'), 'source': ('kpis_lvl2.type', 'kpis_old.kpi_name'),
                              'disallow_empty': True, 'filter_out': [Const.RED_SCORE]},
             Const.ATOMIC_NAME: {'type': ('prop', 'prop'), 'source': ('kpis_lvl2.name', 'kpis_old.atomic_kpi_name'),
                                 'disallow_empty': True},
@@ -451,6 +462,6 @@ if __name__ == '__main__':
     LoggerInitializer.init('ccza calculations')
     Config.init()
     project_name = 'ccza-sand'
-    file_path = '/home/natalyak/dev/kpi_factory/Projects/CCZA_SAND/Data/Template.xlsx'
+    file_path = '/home/natalyak/Desktop/CCZA/Template_to_test.xlsx'
     validator = CczaTemplateValidator(project_name=project_name, file_url=file_path)
     validator.validate_template_data()
