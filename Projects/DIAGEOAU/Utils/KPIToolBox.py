@@ -15,9 +15,6 @@ class DIAGEOAUToolBox:
         self.diageo_generator = DIAGEOGenerator(self.data_provider, self.output, self.common)
 
     def main_calculation(self):
-        """
-        This function calculates the KPI results.
-        """
         # SOS Out Of The Box kpis
         self.diageo_generator.activate_ootb_kpis(self.commonV2)
 

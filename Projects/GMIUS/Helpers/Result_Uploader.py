@@ -63,7 +63,7 @@ class ResultUploader():
     def load_template_results(self, template_path):
         df = pd.read_excel(template_path, Const.RESULT)
         df = df[df['Entity'] == 'Y']
-        data = sum([[item.strip() for item in row['Results Value'].split(row['Delimiter'])]
+        data = sum([[item.strip() for item in row['Results Value'].split(row['Delimiter'].strip())]
                         for i, row in df.iterrows()], [])
         return data
 

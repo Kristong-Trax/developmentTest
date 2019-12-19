@@ -86,6 +86,9 @@ P5_TEMPLATE = 'p5_template'
 TEMPLATE_PATH_MAPPER = {P2_TEMPLATE: P2_PATH, P3_TEMPLATE: P3_PATH,
                         P4_TEMPLATE: P4_PATH, P5_TEMPLATE: P5_PATH}
 
+PLACEMENT_SECTION_RANKS_TEMPL = 'placement_section_ranks'
+RANKING_SHEET = 'Ranking'
+
 
 class BATRU_SANDToolBox:
     LEVEL1 = 1
@@ -129,6 +132,21 @@ class BATRU_SANDToolBox:
     PRESENCE = 'PRESENCE'
     OOS = 'OOS'
     DISTRIBUTED = 'DISTRIBUTED'
+    POSM_REST = 'POSM Rest'
+    POSM_REST_DISPLAY = 'POSM Rest Display'
+
+    NO_COMPETITORS_KPI_LVL2 = 'No competitors'
+    EMPTY_SPACES_KPI_LVL2 = 'Empty spaces'
+    NO_COMPETITORS_COL = 'No competitors'
+    AVAILABILITY_COL = 'Availability'
+    EMPTY_SPACES_COL = 'Empty spaces'
+    SEQUENCE_COL = 'Sequence'
+    REPEATING_COL = 'Repeating'
+    SECTION_COMBINATIONS = [NO_COMPETITORS_COL, AVAILABILITY_COL, EMPTY_SPACES_COL, SEQUENCE_COL, REPEATING_COL]
+    API_SKU_NO_COMPETITORS_KPI_NAME = '{fixture};{section_name};No competitors'
+    API_SKU_EMPTY_SPACES_KPI_NAME = '{fixture};{section_name};Empty spaces'
+    COMBINATIONS = 'Combinations'
+    RANK_PERCENT = 'Rank, %'
 
     def __init__(self, data_provider, output):
         self.k_engine = BaseCalculationsScript(data_provider, output)
@@ -1288,6 +1306,13 @@ class BATRU_SANDToolBox:
         sk_section_repeating_fk = self.common.get_kpi_fk_by_kpi_type(self.SKU_REPEATING_KPI_NAME)
         sk_sku_presence_not_in_list_fk = self.common.get_kpi_fk_by_kpi_type(self.SK_SKU_PRESENCE_NOT_IN_LIST_SKU)
 
+        # get ranking template and exit the calculations and exist if does not exist
+        section_placement_rank_templ = self.get_placement_section_rank_template()
+        if section_placement_rank_templ.empty:
+            Log.error('Section ranking template ranking is empty. SK and SAS will not be calculated.'
+                      ' Please upload the template')
+            return
+
         if not self.scif.empty:
             attribute_3 = self.scif['additional_attribute_3'].values[0]
             attribute_11 = self.scif['additional_attribute_11'].values[0]
@@ -1355,6 +1380,7 @@ class BATRU_SANDToolBox:
 
             self.sas_zones_scores_dict = {}
             sections_statuses = {}
+            sections_scores_new = {}
             template_name = self.scif[self.scif['scene_fk'] == scene]['template_name'].values[0]
             fixture = self.templates.loc[self.templates['template_name']
                                          == template_name]['additional_attribute_1'].values[0]
@@ -1397,7 +1423,11 @@ class BATRU_SANDToolBox:
                 self.check_sas_zone_in_fixture(
                     scene_products_matrix, relevant_sas_zone_data, fixture)
 
-            for section in sorted(relevant_sections_data['section_number'].unique().tolist()):
+            sections_in_fixture = sorted(relevant_sections_data['section_number'].unique().tolist())
+            weight_per_section = 1.0 / len(sections_in_fixture) if sections_in_fixture else 0
+            fixture_total_score = 0
+
+            for section in sections_in_fixture:
 
                 section_data = relevant_sections_data.loc[relevant_sections_data['section_number'] == section]
                 section_name = section_data['section_name'].values[0]
@@ -1557,6 +1587,22 @@ class BATRU_SANDToolBox:
                             misplaced_products_fks = section_shelf_data[section_shelf_data['product_ean_code_lead'].\
                                 isin(misplaced_products_eans)]['product_fk'].unique().tolist()
 
+                # NEW PLACEMENT LOGIC
+                no_competitors_lvl2_fk = self.common.get_kpi_fk_by_kpi_type(self.NO_COMPETITORS_KPI_LVL2)
+                empty_spaces_lvl2_fk = self.common.get_kpi_fk_by_kpi_type(self.EMPTY_SPACES_KPI_LVL2)
+                empty_spaces_res = 1 - no_empties
+                no_competitors_res = no_competitors
+                section_result = str(int(no_competitors_res)) + str(int(sku_presence_passed)) \
+                                 + str(int(empty_spaces_res)) + str(int(sku_sequence_passed)) \
+                                 + str(int(sku_repeating_passed))
+
+                section_rank = section_placement_rank_templ[section_placement_rank_templ[self.COMBINATIONS] \
+                                                            == section_result][self.RANK_PERCENT].values[0]
+                section_weighted_score = section_rank * weight_per_section
+                fixture_total_score += section_weighted_score
+                sections_scores_new[section] = {'section_score': section_weighted_score,
+                                                'competitors': no_competitors_res}
+
                 # Initial score values
                 sku_presence_score = 0
                 sku_sequence_score = 0
@@ -1609,33 +1655,38 @@ class BATRU_SANDToolBox:
                                             score=sku_repeating_score, score_2=sku_repeating_score_2,
                                             level_3_only=True, level2_name_for_atomic=fixture_name_for_db,
                                             model_id=section_name)
+                self.save_level2_and_level3(SK, self.NO_COMPETITORS_KPI_LVL2, result=None,
+                                            score=sku_sequence_score, score_2=sku_sequence_score_2,
+                                            level_3_only=True, level2_name_for_atomic=fixture_name_for_db,
+                                            model_id=section_name)
+                self.save_level2_and_level3(SK, self.EMPTY_SPACES_KPI_LVL2, result=None,
+                                            score=sku_repeating_score, score_2=sku_repeating_score_2,
+                                            level_3_only=True, level2_name_for_atomic=fixture_name_for_db,
+                                            model_id=section_name)
+
+                # replace section_score atomic - new change
                 self.save_level2_and_level3(SK, section_name, result=None,
-                                            score=section_score, score_2=section_score_2,
+                                            score=section_weighted_score, score_2=section_rank,
                                             level_3_only=True, level2_name_for_atomic=fixture_name_for_db)
 
                 # new tables - SK set lvl 3
-                section_custom_res = self.kpi_result_values[self.PRESENCE][self.OOS] if section_score == 0 else \
-                    self.kpi_result_values[self.PRESENCE][self.DISTRIBUTED]
-                # self.common.write_to_db_result(fk=section_in_fixture_fk, numerator_id=section_fk,
-                #                                denominator_id=fixture_fk, context_id=scene, score=section_score,
-                #                                result=section_custom_res, identifier_parent=sk_fixture_identifier_par,
-                #                                identifier_result=section_in_fixture_identifier_par,
-                #                                should_enter=True)
                 self.common.write_to_db_result(fk=section_in_fixture_fk, numerator_id=section_fk,
                                                denominator_id=section, context_id=scene,
-                                               score=section_score, result=section_custom_res,
+                                               score=section_weighted_score, result=section_rank,
+                                               weight=weight_per_section * 100,
                                                identifier_parent=sk_fixture_identifier_par,
                                                identifier_result=section_in_fixture_identifier_par,
                                                should_enter=True)
+
                 #new tables - SK set lvl 4
                 sequence_custom_res = self.kpi_result_values[self.PRESENCE][self.OOS] if sku_sequence_score == 0 else \
                     self.kpi_result_values[self.PRESENCE][self.DISTRIBUTED]
                 self.common.write_to_db_result(fk=sk_section_sequence_fk, numerator_id=section_fk,
                                                denominator_id=fixture_fk, context_id=scene, score=sku_sequence_score,
-                                               result = sequence_custom_res,
+                                               result=sequence_custom_res,
                                                identifier_parent=section_in_fixture_identifier_par, should_enter=True)
-                repeating_custom_res = self.kpi_result_values[self.PRESENCE][self.OOS] if sku_repeating_score == 0 else \
-                    self.kpi_result_values[self.PRESENCE][self.DISTRIBUTED]
+                repeating_custom_res = self.kpi_result_values[self.PRESENCE][self.OOS] if sku_repeating_score == 0 \
+                                        else self.kpi_result_values[self.PRESENCE][self.DISTRIBUTED]
                 self.common.write_to_db_result(fk=sk_section_repeating_fk, numerator_id=section_fk,
                                                denominator_id=fixture_fk, context_id=scene, score=sku_repeating_score,
                                                result=repeating_custom_res,
@@ -1651,6 +1702,19 @@ class BATRU_SANDToolBox:
                                                result=presence_custom_res,
                                                identifier_result=presence_section_identifier_par,
                                                identifier_parent=section_in_fixture_identifier_par, should_enter=True)
+                # no competitors new kpi
+                no_competitors_custom_res = self.kpi_result_values[self.PRESENCE][self.OOS] if no_competitors_res == 0 \
+                                else self.kpi_result_values[self.PRESENCE][self.DISTRIBUTED]
+                self.common.write_to_db_result(fk=no_competitors_lvl2_fk, numerator_id=section_fk,
+                                               denominator_id=fixture_fk, context_id=scene, score=no_competitors_res,
+                                               result=no_competitors_custom_res,
+                                               identifier_parent=section_in_fixture_identifier_par, should_enter=True)
+                empty_spaces_custom_res = self.kpi_result_values[self.PRESENCE][self.OOS] if empty_spaces_res == 0 \
+                                else self.kpi_result_values[self.PRESENCE][self.DISTRIBUTED]
+                self.common.write_to_db_result(fk=empty_spaces_lvl2_fk, numerator_id=section_fk,
+                                               denominator_id=fixture_fk, context_id=scene, score=empty_spaces_res,
+                                               result=empty_spaces_custom_res,
+                                               identifier_parent=section_in_fixture_identifier_par, should_enter=True)
 
                 # new tables - sk set - lvl 5
                 for product_fk in misplaced_products_fks:
@@ -1660,8 +1724,8 @@ class BATRU_SANDToolBox:
                                                    should_enter=True)
 
                 # Saving to API set
-                self.write_to_db_result_for_api(score=misplaced_products_result, level=self.LEVEL3, kpi_set_name=SK_RAW_DATA,
-                                                kpi_name=SK_RAW_DATA,
+                self.write_to_db_result_for_api(score=misplaced_products_result, level=self.LEVEL3,
+                                                kpi_set_name=SK_RAW_DATA, kpi_name=SK_RAW_DATA,
                                                 atomic_kpi_name=self.API_SKU_PRESENCE_KPI_NAME.format(
                                                     fixture=fixture_name_for_db,
                                                     section_name=section_name),
@@ -1680,17 +1744,32 @@ class BATRU_SANDToolBox:
                                                 level3_score=sku_repeating_score)
                 self.write_to_db_result_for_api(score=None, level=self.LEVEL3, kpi_set_name=SK_RAW_DATA,
                                                 kpi_name=SK_RAW_DATA,
+                                                atomic_kpi_name=self.API_SKU_NO_COMPETITORS_KPI_NAME.format(
+                                                    fixture=fixture_name_for_db,
+                                                    section_name=section_name),
+                                                level3_score=no_competitors_res)
+                self.write_to_db_result_for_api(score=None, level=self.LEVEL3, kpi_set_name=SK_RAW_DATA,
+                                                kpi_name=SK_RAW_DATA,
+                                                atomic_kpi_name=self.API_SKU_EMPTY_SPACES_KPI_NAME.format(
+                                                    fixture=fixture_name_for_db,
+                                                    section_name=section_name),
+                                                level3_score=empty_spaces_res)
+                self.write_to_db_result_for_api(score=None, level=self.LEVEL3, kpi_set_name=SK_RAW_DATA,
+                                                kpi_name=SK_RAW_DATA,
                                                 atomic_kpi_name=self.API_SECTION_KPI_NAME.format(
                                                     fixture=fixture_name_for_db,
                                                     section_name=section_name),
                                                 level3_score=section_score)
 
             # Equipment level results
-            if sections_statuses:
-                fixture_score = min(sections_statuses.values())
-            else:
-                fixture_score = 0
-            self.fixtures_statuses_dict[fixture] = fixture_score
+            fixture_score = 0
+            if sections_scores_new:
+                if all(map(lambda x: x['competitors'], sections_scores_new.values())):
+                    fixture_score = sum(map(lambda x: x['section_score'], sections_scores_new.values()))
+
+            self.fixtures_statuses_dict[fixture] = min(fixture_score, self.fixtures_statuses_dict[fixture]) \
+                if self.fixtures_statuses_dict.get(fixture) is not None else fixture_score
+
             self.save_level2_and_level3(SK, fixture_name_for_db,
                                         result=fixture_score, level_2_only=True)
             self.write_to_db_result_for_api(score=fixture_score, level=self.LEVEL3, kpi_set_name=SK_RAW_DATA,
@@ -1748,6 +1827,14 @@ class BATRU_SANDToolBox:
         self.common.write_to_db_result(fk=sk_new_tables_fk, numerator_id=self.own_manufacturer_fk,
                                        denominator_id=self.store_id, result=sk_score, score=sk_score,
                                        identifier_result=sk_identifier_par, should_enter=True)
+
+    def get_placement_section_rank_template(self):
+        template_db = self.all_templates.get(PLACEMENT_SECTION_RANKS_TEMPL, {}).get(RANKING_SHEET, pd.DataFrame())
+        if not template_db.empty:
+            template_db[self.COMBINATIONS] = ''
+            for col in self.SECTION_COMBINATIONS:
+                template_db[self.COMBINATIONS] = template_db[self.COMBINATIONS].map(str) + template_db[col].map(str)
+        return template_db
 
     def check_sku_repeating(self, section_shelf_data, priorities_section):
         """
@@ -2100,8 +2187,8 @@ class BATRU_SANDToolBox:
         # new tables
         score_new_tables = float(score)/equipment_in_store if equipment_in_store else 0
         self.common.write_to_db_result(fk=posm_status_fk, numerator_id=self.own_manufacturer_fk,
-                                       denominator_id=self.store_id, score=score_new_tables, result=score,
-                                       target=equipment_in_store,
+                                       denominator_id=self.store_id, score=score_new_tables * 100, result=score,
+                                       # target=equipment_in_store,
                                        identifier_result=identif_parent_posm_status, should_enter=True)
 
         self.add_posms_not_assigned_to_scenes_in_template()
@@ -2114,7 +2201,31 @@ class BATRU_SANDToolBox:
                                             kpi_name=P4_API_SET,
                                             atomic_kpi_name=name)
 
+        # extend P4 for MR to POSM Rest
+        self.calculate_posm_rest_for_displays_out_of_template()
         return
+
+    def calculate_posm_rest_for_displays_out_of_template(self):
+        kpis_out_of_template = filter(lambda x: DEFAULT_ATOMIC_NAME in x, self.p4_posm_to_api.keys())
+        if len(kpis_out_of_template) > 0:
+            posm_rest_kpi_fk = self.common.get_kpi_fk_by_kpi_type(self.POSM_REST)
+            identifier_parent = self.common.get_dictionary(kpi_fk=posm_rest_kpi_fk)
+            kpis_out_of_template = filter(lambda x: '{};{}'.format(DEFAULT_GROUP_NAME, DEFAULT_ATOMIC_NAME) in x,
+                                          self.p4_posm_to_api.keys())
+            displays_out_of_template = set(map(lambda x: x.split(';')[3], kpis_out_of_template))
+            display_kpi_fk = self.common.get_kpi_fk_by_kpi_type(self.POSM_REST_DISPLAY)
+            # displays_dict = self.match_display_in_scene[['display_fk', 'display_name']].to_dict()
+            for display in displays_out_of_template:
+                display_fk = self.match_display_in_scene[self.match_display_in_scene['display_name']
+                                                          == display]['display_fk'].values[0]
+                self.common.write_to_db_result(fk=display_kpi_fk, numerator_id=display_fk,
+                                               denominator_id=self.store_id, result=1,
+                                               identifier_parent=identifier_parent, should_enter=True)
+            posm_rest_result = len(displays_out_of_template)
+            self.common.write_to_db_result(fk=posm_rest_kpi_fk, numerator_id=self.own_manufacturer_fk,
+                                           denominator_id=self.store_id, result=posm_rest_result,
+                                           score=posm_rest_result, identifier_result=identifier_parent,
+                                           should_enter=True)
 
     # def add_posms_not_assigned_to_scenes_in_template(self):
     #     add_posms = self.posm_in_session[(~(self.posm_in_session['additional_attribute_1'].isin(self.p4_display_count.keys()))) &
@@ -2199,7 +2310,7 @@ class BATRU_SANDToolBox:
         group_name = group_template['Group Name'].iloc[0]
         posm_counter = 0
         group_kpi_fk = self.common.get_kpi_fk_by_kpi_type(self.POSM_EQUIPMENT_PER_GROUP)
-        identifier_group_parent = self.common.get_dictionary(kpi_fk=group_kpi_fk, group_name=group_name)
+        identifier_group_parent = self.common.get_dictionary(kpi_fk=group_kpi_fk, group_name=group_name, scene=scene_fk)
         all_atomics = group_template['Atomic KPI Name'].unique().tolist()
         atomic_in_group = {}
         for atomic in all_atomics:
@@ -2221,6 +2332,7 @@ class BATRU_SANDToolBox:
                 self.kpi_result_values[self.PRESENCE][self.OOS]
             self.common.write_to_db_result(fk=display_in_group_kpi, numerator_id=display_in_group_fk,
                                            denominator_id=group_fk, result=custom_result, score=score,
+                                           context_id=scene_fk,
                                            identifier_parent=identifier_group_parent, should_enter=True)
 
         kpi_fk = self.kpi_static_data.loc[(self.kpi_static_data['kpi_set_name'] == POSM_AVAILABILITY) &
@@ -2237,7 +2349,7 @@ class BATRU_SANDToolBox:
         custom_result = self.kpi_result_values[self.PRESENCE][self.DISTRIBUTED] if score == 1 else \
                                     self.kpi_result_values[self.PRESENCE][self.OOS]
         self.common.write_to_db_result(fk=group_kpi_fk, numerator_id=group_fk, denominator_id=template_fk,
-                                       numerator_result=posm_counter, denominator_result=len(group_template),
+                                       numerator_result=posm_counter, denominator_result=len(group_template), context_id=scene_fk,
                                        result=custom_result, score=score, identifier_parent=identifier_equipment_parent,
                                        identifier_result=identifier_group_parent, should_enter=True)
         return score

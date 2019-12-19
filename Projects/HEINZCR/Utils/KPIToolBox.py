@@ -482,6 +482,10 @@ class HEINZCRToolBox:
         return number_of_categories_meeting_price_adherence
 
     def heinz_global_price_adherence(self, config_df):
+        # =============== remove after updating logic to support promotional pricing ===============
+        self.match_product_in_scene.loc[self.match_product_in_scene['price'].isna(), 'price'] = \
+            self.match_product_in_scene.loc[self.match_product_in_scene['price'].isna(), 'promotion_price']
+        # =============== remove after updating logic to support promotional pricing ===============
         results_df = self.adherence_results
         my_config_df = \
             config_df[config_df['STORETYPE'].str.encode('utf-8') == self.store_info.store_type[0].encode('utf-8')]
@@ -514,7 +518,7 @@ class HEINZCRToolBox:
                     count = 0
                     trax_average = None
                     for price in mpisc_df_price:
-                        if price:
+                        if price and pd.notna(price):
                             prices_sum += price
                             count += 1
 
@@ -578,9 +582,15 @@ class HEINZCRToolBox:
                                               identifier_result=total_dict, should_enter=True)
             return 0
 
-        relevant_sub_categories = [x.strip() for x in self.extra_spaces_template[
-            self.extra_spaces_template['country'].str.encode('utf-8') == self.country.encode('utf-8')][
-            'sub_category'].iloc[0].split(',')]
+        try:
+            relevant_sub_categories = [x.strip() for x in self.extra_spaces_template[
+                self.extra_spaces_template['country'].str.encode('utf-8') == self.country.encode('utf-8')][
+                'sub_category'].iloc[0].split(',')]
+        except IndexError:
+            Log.warning(
+                'No relevant sub_categories for the Extra Spaces KPI found for the following country: {}'.format(
+                    self.country))
+            return 0
 
         self.extra_spaces_results = pd.merge(self.extra_spaces_results,
                                              self.all_products.loc[:, [
