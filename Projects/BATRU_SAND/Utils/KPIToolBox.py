@@ -1424,7 +1424,7 @@ class BATRU_SANDToolBox:
                     scene_products_matrix, relevant_sas_zone_data, fixture)
 
             sections_in_fixture = sorted(relevant_sections_data['section_number'].unique().tolist())
-            weight_per_section = 1.0 / len(sections_in_fixture)
+            weight_per_section = 1.0 / len(sections_in_fixture) if sections_in_fixture else 0
             fixture_total_score = 0
 
             for section in sections_in_fixture:
