@@ -21,7 +21,8 @@ if __name__ == '__main__':
 #         'fee2ab0a-d288-45c4-9635-6e9700c0f347',
         '8e040506-972b-4bab-b677-ffd389a67249',
         '8fdc9d71-b173-4bde-aa5c-b2a0fa296d98',
-        '018f437c-718e-4f15-9e2f-fd03bb3b4404'
+        '018f437c-718e-4f15-9e2f-fd03bb3b4404',
+        '9ba32139-c2bd-4d36-96b3-6268628960ee'
     ]
 
     for session in session_list:
