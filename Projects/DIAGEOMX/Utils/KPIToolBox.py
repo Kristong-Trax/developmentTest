@@ -9,7 +9,7 @@ from KPIUtils_v2.GlobalDataProvider.PsDataProvider import PsDataProvider
 from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 
 
-class DIAGEOMXToolBox():
+class DIAGEOMXToolBox:
 
     def __init__(self, data_provider, output):
         self.data_provider = data_provider
