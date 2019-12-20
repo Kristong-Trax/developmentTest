@@ -11,14 +11,14 @@ class DIAGEOMXCalculations(BaseCalculationsScript):
         DIAGEOMXGenerator(self.data_provider, self.output).main_function()
         self.timer.stop('KPIGenerator.run_project_calculations')
 
-
-if __name__ == '__main__':
-    LoggerInitializer.init('diageomx calculations')
-    Config.init()
-    project_name = 'diageomx'
-    data_provider = KEngineDataProvider(project_name)
-    session = '7e5b72d5-7678-47fb-86a5-dc6f8ad0ccac'
-    data_provider.load_session_data(session)
-    output = Output()
-    DIAGEOMXCalculations(data_provider, output).run_project_calculations()
+#
+# if __name__ == '__main__':
+#     LoggerInitializer.init('diageomx calculations')
+#     Config.init()
+#     project_name = 'diageomx'
+#     data_provider = KEngineDataProvider(project_name)
+#     session = '7e5b72d5-7678-47fb-86a5-dc6f8ad0ccac'
+#     data_provider.load_session_data(session)
+#     output = Output()
+#     DIAGEOMXCalculations(data_provider, output).run_project_calculations()
 
