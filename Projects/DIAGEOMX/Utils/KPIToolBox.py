@@ -7,10 +7,9 @@ from KPIUtils.DB.Common import Common
 from KPIUtils_v2.DB.CommonV2 import Common as CommonV2
 from KPIUtils_v2.GlobalDataProvider.PsDataProvider import PsDataProvider
 from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
-from KPIUtils_v2.Utils.GlobalScripts.Scripts import GlobalSessionToolBox
 
 
-class DIAGEOMXToolBox(GlobalSessionToolBox):
+class DIAGEOMXToolBox():
 
     def __init__(self, data_provider, output):
         self.data_provider = data_provider
