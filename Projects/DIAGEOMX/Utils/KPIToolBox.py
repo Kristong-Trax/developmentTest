@@ -68,11 +68,13 @@ class DIAGEOMXToolBox(GlobalSessionToolBox):
         cur = self.rds_conn.db.cursor()
         cur.execute(query)
         res = cur.fetchall()
-        relevant_survey_resonponse_df = pd.DataFrame(list(res))
+        if res:
+            relevant_response_df = pd.DataFrame(list(res))
 
-        try:
-            survey_response = relevant_survey_resonponse_df.iloc[0, 2]
-        except IndexError:
+            try:
+                survey_response = relevant_response_df.iloc[0, 2]
+            except IndexError:
+                survey_response = None
+        else:
             survey_response = None
-
         return survey_response
