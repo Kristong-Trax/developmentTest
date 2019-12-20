@@ -287,7 +287,7 @@ class NationalToolBox(GlobalSessionToolBox):
                                  (self.platformas_data['consumed'] == 'no')]
         platformas_template = self.templates[PLATFORMAS]
         platformas_template = platformas_template[(platformas_template[PARENT_KPI] == kpi_name) &
-                                                  (platformas_template[STORE_ADDITIONAL_ATTRIBUTE_2] == self.att2)]
+                                                  (platformas_template[STORE_ADDITIONAL_ATTRIBUTE_2].str.contains(self.att2))]
         total_score = 0
         for i, child_row in platformas_template.iterrows():
             child_kpi_fk = self.get_kpi_fk_by_kpi_type(child_row[KPI_NAME])
