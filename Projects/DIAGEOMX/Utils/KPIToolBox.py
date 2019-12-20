@@ -68,6 +68,7 @@ class DIAGEOMXToolBox(GlobalSessionToolBox):
         cur = self.rds_conn.db.cursor()
         cur.execute(query)
         res = cur.fetchall()
+
         if res:
             relevant_response_df = pd.DataFrame(list(res))
 
