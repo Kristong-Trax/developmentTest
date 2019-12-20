@@ -161,9 +161,9 @@ class JEFFToolBox:
 
                 ratio = self.SOS.calculate_share_of_shelf(filters, **general_filters)
 
-                shelf_count = max(
-                    (self.match_product_in_scene['shelf_number'][self.match_product_in_scene['scene_fk'] == scene].
-                        unique()).tolist())
+                shelf_count_list = (self.match_product_in_scene['shelf_number'][self.match_product_in_scene['scene_fk'] == scene].
+                        unique()).tolist()
+                shelf_count = max(shelf_count_list) if shelf_count_list else 0
 
                 result = ratio
                 score = (ratio * shelf_count)

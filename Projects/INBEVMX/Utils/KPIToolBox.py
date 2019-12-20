@@ -290,12 +290,12 @@ class INBEVMXToolBox:
 
         # filter all the empty cells
         for key in filters.keys():
-            if (filters[key] == ""):
+            if any(filters[key] == ""):
                 del filters[key]
             elif isinstance(filters[key], tuple):
                 filters[key] = (filters[key][0].split(","), filters[key][1])
             else:
-                filters[key] = filters[key].split(",")
+                # filters[key] = filters[key].split(",")
                 filters[key] = [item.strip() for item in filters[key]]
 
         return self.create_filters_according_to_scif(filters)
