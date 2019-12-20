@@ -50,10 +50,10 @@ class MARSRU_PRODKPIFetcher:
             return False
         return True
 
-    def get_object_facings(self, scenes, objects, object_type, formula, form_factors=[], shelves=None,
-                           manufacturers=None, categories=None, sub_brands=[], sub_brands_to_exclude=[],
-                           cl_sub_cats=[], cl_sub_cats_to_exclude=[], include_stacking=False,
-                           form_factors_to_exclude=[], linear=False):
+    def get_object_facings(self, scenes, objects, object_type, formula, form_factors=None, shelves=None,
+                           manufacturers=None, categories=None, sub_brands=None, sub_brands_to_exclude=None,
+                           cl_sub_cats=None, cl_sub_cats_to_exclude=None, include_stacking=False,
+                           form_factors_to_exclude=None, linear=False):
 
         object_type_conversion = {'SKUs': 'product_ean_code',
                                   'BRAND': 'brand_name',
@@ -286,7 +286,7 @@ class MARSRU_PRODKPIFetcher:
             if kpi_name in [2254, 4254]:
                 shelf_length = []
                 for row in targets:
-                    if region.encode('utf-8') != row.get('Attribute 5').encode('utf-8').strip() or \
+                    if region.encode('utf-8') != row.get('Region').encode('utf-8').strip() or \
                             store_type.encode('utf-8') != row.get('Store type').encode('utf-8').strip():
                         continue
                     try:
@@ -379,124 +379,6 @@ class MARSRU_PRODKPIFetcher:
 
         return values
 
-    def get_shelf_value_list(self, store_type, region, kpi_name, kpi_results):
-        targets = self.kpi_templates['range_targets'].get(kpi_name)
-        values_list = []
-
-        store_type = store_type if store_type else ''
-        region = region if region else ''
-
-        if targets:  # Validation check
-
-            if 'EAN' in targets[0]:
-
-                for row in targets:
-
-                    if 'Store type' in row:
-                        store_types = str(row.get('Store type').encode(
-                            'utf-8')).strip().replace('\n', '').split(',')
-                    else:
-                        store_types = []
-
-                    if 'Region' in row:
-                        regions = str(row.get('Region').encode(
-                            'utf-8')).strip().replace('\n', '').split(',')
-                    else:
-                        regions = []
-
-                    if (not store_types or store_type.encode('utf-8') in store_types) and\
-                            (not regions or region.encode('utf-8') in regions):
-
-                        if 'KPI name' in row:
-
-                            kpi_name_to_check = str(row.get('KPI name')).encode('utf-8').strip()
-                            kpi_results_to_check = str(row.get('KPI result')).encode('utf-8').strip().replace('\n', '').split(',')
-                            kpi_result = str(kpi_results.get(kpi_name_to_check).get('result'))\
-                                if kpi_results.get(kpi_name_to_check) else None
-                            if kpi_result:
-                                if kpi_result in kpi_results_to_check:
-                                    values_list = str(row.get('EAN')).strip().replace(
-                                        '\n', '').split(',')
-                                    break
-                                else:
-                                    continue
-                            else:
-                                continue
-
-                        else:
-                            values_list = str(row.get('EAN')).strip().replace('\n', '').split(',')
-                            break
-                    else:
-                        continue
-
-            elif 'Shelf # from the bottom' in targets[0]:
-                # for row in targets:
-                #     store_types = str(row.get('Store type').encode('utf-8')).strip().replace('\n', '').split(',')
-                #     if store_type.encode('utf-8') in store_types:
-                #         values_list = row.get('Shelf # from the bottom')
-                #         break
-                #     else:
-                #         continue
-                for row in targets:
-
-                    if 'Store type' in row:
-                        store_types = str(row.get('Store type').encode(
-                            'utf-8')).strip().replace('\n', '').split(',')
-                    else:
-                        store_types = []
-
-                    if 'Region' in row:
-                        regions = str(row.get('Region').encode(
-                            'utf-8')).strip().replace('\n', '').split(',')
-                    else:
-                        regions = []
-
-                    if (not store_types or store_type.encode('utf-8') in store_types) and\
-                            (not regions or region.encode('utf-8') in regions):
-
-                        if 'KPI name' in row:
-
-                            kpi_name_to_check = str(row.get('KPI name')).encode('utf-8').strip()
-                            kpi_results_to_check = str(row.get('KPI result')).encode(
-                                'utf-8').strip().replace('\n', '').split(',')
-                            kpi_result = str(kpi_results.get(kpi_name_to_check).get('result'))
-                            if kpi_result:
-                                if kpi_result in kpi_results_to_check:
-                                    values_list = str(row.get('Shelf # from the bottom')).strip()
-                                    break
-                                else:
-                                    continue
-                            else:
-                                continue
-
-                        else:
-                            values_list = str(row.get('Shelf # from the bottom')).strip()
-                            break
-                    else:
-                        continue
-
-            elif 'Attribute 5' in targets[0]:
-                for row in targets:
-                    if region.encode('utf-8') != row.get('Attribute 5').encode('utf-8').strip() or \
-                            store_type.encode('utf-8') != row.get('Store type').encode('utf-8').strip():
-                        continue
-                    try:
-                        shelf_length_from = float(row.get('Shelf length FROM INCLUDING'))
-                    except ValueError:
-                        shelf_length_from = 0
-                    try:
-                        shelf_length_to = float(row.get('Shelf length TO EXCLUDING'))
-                    except ValueError:
-                        shelf_length_to = 10000
-                    result = str(row.get('Result')).strip()
-                    length_condition = str(row.get('Length condition')).strip()
-                    values_list.append({'shelf from': shelf_length_from,
-                                        'shelf to': shelf_length_to,
-                                        'result': result,
-                                        'length_condition': length_condition})
-
-        return values_list
-
     def get_filtered_matches(self, include_stacking=True):
         self.rds_conn = PSProjectConnector(self.project, DbUsers.CalculationEng)
         matches = self.matches
@@ -525,16 +407,24 @@ class MARSRU_PRODKPIFetcher:
                 select additional_attribute_5
                 from static.stores
                 where pk = {}""".format(store_fk)
-        store_att5 = pd.read_sql_query(query, self.rds_conn.db)
-        return store_att5.values[0][0]
+        store_att = pd.read_sql_query(query, self.rds_conn.db)
+        return store_att.values[0][0]
 
     def get_store_att6(self, store_fk):
         query = """
                 select additional_attribute_6
                 from static.stores
                 where pk = {}""".format(store_fk)
-        store_att5 = pd.read_sql_query(query, self.rds_conn.db)
-        return store_att5.values[0][0]
+        store_att = pd.read_sql_query(query, self.rds_conn.db)
+        return store_att.values[0][0]
+
+    def get_store_att10(self, store_fk):
+        query = """
+                select additional_attribute_10
+                from static.stores
+                where pk = {}""".format(store_fk)
+        store_att = pd.read_sql_query(query, self.rds_conn.db)
+        return store_att.values[0][0]
 
     def get_store_assortment(self, attribute, visit_date):
         self.check_connection(self.rds_conn)
@@ -545,7 +435,7 @@ class MARSRU_PRODKPIFetcher:
         assortments = pd.read_sql_query(query, self.rds_conn.db)
         return assortments['product_fk'].tolist()
 
-    def get_relevant_assortment_group(self, assortment_groups, store_id):
+    def get_relevant_assortment_group(self, assortment_groups):
         assortment_groups = tuple(assortment_groups)
         self.check_connection(self.rds_conn)
         query = """

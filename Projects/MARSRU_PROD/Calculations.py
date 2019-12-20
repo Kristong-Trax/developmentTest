@@ -22,8 +22,8 @@ class MARSRU_PRODCalculations(BaseCalculationsScript):
             kpi_range_targets_sheet_names = [2217, 2220, 2390, 2391, 2317, 2254]
             kpi_channels = None
 
-        elif self.data_provider.visit_date.isoformat() < '2019-12-30':
-            kpi_file_name = '2020/MARS KPIs.xlsx'
+        elif self.data_provider.visit_date.isoformat() < '2019-12-29':
+            kpi_file_name = '2019/MARS KPIs.xlsx'
             kpi_range_targets_sheet_names = [4317, 4650, 4254]  # , 4388, 4389
             kpi_channels = [kpi_file_name, 'channels', 'channels']
 
@@ -77,21 +77,21 @@ class MARSRU_PRODCalculations(BaseCalculationsScript):
         tool_box = MARSRU_PRODKPIToolBox(kpi_templates, self.data_provider, self.output)
 
         # Todo - Uncomment the OSA before deploying!!!
-        # tool_box.handle_update_custom_scif()
-        # tool_box.calculate_osa()
+        tool_box.handle_update_custom_scif()
+        tool_box.calculate_osa()
         tool_box.check_availability(kpi_templates.get('kpi_data'))
         tool_box.check_survey_answer(kpi_templates.get('kpi_data'))
         tool_box.check_number_of_scenes(kpi_templates.get('kpi_data'))
         tool_box.custom_average_shelves(kpi_templates.get('kpi_data'))
         tool_box.custom_number_bays(kpi_templates.get('kpi_data'))
-        tool_box.check_price(kpi_templates.get('kpi_data'))
-        tool_box.brand_blocked_in_rectangle(kpi_templates.get('kpi_data'))
+        # tool_box.check_price(kpi_templates.get('kpi_data'))
+        # tool_box.brand_blocked_in_rectangle(kpi_templates.get('kpi_data'))
         tool_box.custom_marsru_1(kpi_templates.get('kpi_data'))
         tool_box.check_layout_size(kpi_templates.get('kpi_data'))
         tool_box.golden_shelves(kpi_templates.get('kpi_data'))
         tool_box.facings_by_brand(kpi_templates.get('kpi_data'))
-        tool_box.multiple_brands_blocked_in_rectangle(kpi_templates.get('kpi_data'))
-        tool_box.negative_neighbors(kpi_templates.get('kpi_data'))
+        # tool_box.multiple_brands_blocked_in_rectangle(kpi_templates.get('kpi_data'))
+        # tool_box.negative_neighbors(kpi_templates.get('kpi_data'))
         tool_box.get_total_linear(kpi_templates.get('kpi_data'))
         tool_box.get_placed_near(kpi_templates.get('kpi_data'))
         tool_box.check_availability_on_golden_shelves(kpi_templates.get('kpi_data'))
