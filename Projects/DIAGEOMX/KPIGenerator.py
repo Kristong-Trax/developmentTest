@@ -3,6 +3,7 @@ from Projects.DIAGEOMX.Utils.KPIToolBox import DIAGEOMXToolBox
 from KPIUtils_v2.Utils.Decorators.Decorators import log_runtime
 
 
+
 class DIAGEOMXGenerator:
 
     def __init__(self, data_provider, output):
@@ -19,3 +20,4 @@ class DIAGEOMXGenerator:
         if self.tool_box.scif.empty:
             Log.warning('Scene item facts is empty for this session')
         self.tool_box.main_calculation()
+

@@ -907,7 +907,8 @@ class ToolBox:
         product_fk_with_substs = [product_fk]
         product_fk_with_substs += self.all_products[self.all_products[ProductsConsts.SUBSTITUTION_PRODUCT_FK]
                                                     == product_fk][MatchesConsts.PRODUCT_FK].tolist()
-        relevant_products = relevant_matches[relevant_matches[MatchesConsts.PRODUCT_FK].isin(product_fk_with_substs)]
+        relevant_products = relevant_matches[(relevant_matches[MatchesConsts.PRODUCT_FK].isin(product_fk_with_substs)) &
+                                             (relevant_matches[ScifConsts.PRODUCT_TYPE] != ProductTypeConsts.POS)]
         if relevant_products.empty:
             passed, result = 0, Consts.NO_PLACEMENT
         else:
@@ -968,6 +969,9 @@ class ToolBox:
         scene = match_product_line[MatchesConsts.SCENE_FK]
         if shelf_from_bottom > len(min_max_shleves):
             shelf_from_bottom = len(min_max_shleves)
+        if shelf_from_bottom < 0:
+            # this is needed to prevent index errors, and should never happen under normal circumstances
+            shelf_from_bottom = 1
         amount_of_shelves = self.scenes_with_shelves[scene] \
             if self.scenes_with_shelves[scene] <= len(min_max_shleves.columns) else len(min_max_shleves.columns)
         group_for_product = min_max_shleves[amount_of_shelves].iloc[shelf_from_bottom - 1]

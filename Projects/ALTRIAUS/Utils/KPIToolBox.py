@@ -40,6 +40,9 @@ FIXTURE_WIDTH_TEMPLATE = \
 
 NO_FLIP_SIGN_PK = 11161
 
+MATCH_PRODUCT_IN_PROBE_FK = 'match_product_in_probe_fk'
+MATCH_PRODUCT_IN_PROBE_STATE_REPORTING_FK = 'match_product_in_probe_state_reporting_fk'
+
 
 def log_runtime(description, log_start=False):
     def decorator(func):
@@ -80,6 +83,7 @@ class ALTRIAUSToolBox:
         self.template_info = self.data_provider.all_templates
         self.rds_conn = ProjectConnector(self.project_name, DbUsers.CalculationEng)
         self.ps_data_provider = PsDataProvider(self.data_provider)
+        self.match_product_in_probe_state_reporting = self.ps_data_provider.get_match_product_in_probe_state_reporting()
         self.thresholds_and_results = {}
         self.result_df = []
         self.writing_to_db_time = datetime.timedelta(0)
@@ -608,24 +612,53 @@ class ALTRIAUSToolBox:
                                           result=total_shelves)
 
     def calculate_fixture_width(self, relevant_pos, longest_shelf, category):
-        correction_factor = 1 if category == 'Smokeless' else 2
         longest_shelf = longest_shelf[longest_shelf['stacking_layer'] == 1]
         category_fk = self.get_category_fk_by_name(category)
+        # ======== old method for synchronizing fixture width to header data ========
         # this is needed to remove intentionally duplicated 'Menu Board' POS 'Headers'
-        relevant_pos = relevant_pos.drop_duplicates(subset=['position'])
-        try:
-            width = relevant_pos[relevant_pos['type'] == 'Header']['width'].sum()
-        except KeyError:
-            # needed for when 'width' doesn't exist
-            width = 0
+        # relevant_pos = relevant_pos.drop_duplicates(subset=['position'])
+        # try:
+        #     width = relevant_pos[relevant_pos['type'] == 'Header']['width'].sum()
+        # except KeyError:
+        #     # needed for when 'width' doesn't exist
+        #     width = 0
+        #
+        # if relevant_pos.empty or width == 0:
+        #     correction_factor = 1 if category == 'Smokeless' else 2
+        #     width = round(len(longest_shelf) + correction_factor / float(
+        #         self.facings_to_feet_template[category + ' Facings'].iloc[0]))
+        # ======== old method for synchronizing fixture width to header data ========
 
-        if relevant_pos.empty or width == 0:
-            width = round(len(longest_shelf) + correction_factor / float(
-                self.facings_to_feet_template[category + ' Facings'].iloc[0]))
+        width = len(longest_shelf) / float(self.facings_to_feet_template[category + ' Facings'].iloc[0])
+
+        self.mark_tags_in_explorer(longest_shelf['probe_match_fk'].tolist(), 'Longest Shelf - ' + category)
 
         kpi_fk = self.common_v2.get_kpi_fk_by_kpi_name('Fixture Width')
         self.common_v2.write_to_db_result(kpi_fk, numerator_id=category_fk, denominator_id=self.store_id,
                                           result=width)
+
+    def mark_tags_in_explorer(self, probe_match_fk_list, mpipsr_name):
+        if not probe_match_fk_list:
+            return
+        try:
+            match_type_fk = \
+                self.match_product_in_probe_state_reporting[
+                    self.match_product_in_probe_state_reporting['name'] == mpipsr_name][
+                    'match_product_in_probe_state_reporting_fk'].values[0]
+        except IndexError:
+            Log.warning('Name not found in match_product_in_probe_state_reporting table: {}'.format(mpipsr_name))
+            return
+
+        match_product_in_probe_state_values_old = self.common_v2.match_product_in_probe_state_values
+        match_product_in_probe_state_values_new = pd.DataFrame(columns=[MATCH_PRODUCT_IN_PROBE_FK,
+                                                                        MATCH_PRODUCT_IN_PROBE_STATE_REPORTING_FK])
+        match_product_in_probe_state_values_new[MATCH_PRODUCT_IN_PROBE_FK] = probe_match_fk_list
+        match_product_in_probe_state_values_new[MATCH_PRODUCT_IN_PROBE_STATE_REPORTING_FK] = match_type_fk
+
+        self.common_v2.match_product_in_probe_state_values = pd.concat([match_product_in_probe_state_values_old,
+                                                                        match_product_in_probe_state_values_new])
+
+        return
 
     def get_category_fk_by_name(self, category_name):
         return self.all_products[self.all_products['category'] == category_name]['category_fk'].iloc[0]
