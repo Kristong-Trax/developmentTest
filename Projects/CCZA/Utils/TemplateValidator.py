@@ -10,11 +10,12 @@ from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
 from Trax.Utils.Conf.Configuration import Config
 from Trax.Tools.ProfessionalServices.Utils.Util import Utilities
 
+DEFAULT_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'Template.xlsx')
 
 
 class CczaTemplateValidator(Main_Template):
 
-    def __init__(self, project_name, file_url):
+    def __init__(self, project_name, file_url=DEFAULT_PATH):
         Main_Template.__init__(self)
         self.project = project_name
         self.template_path = file_url
@@ -161,8 +162,8 @@ class CczaTemplateValidator(Main_Template):
         empty_type_records = template_df[(template_df[type_source_col] == '') |
                                          (template_df[type_source_col].isnull())]
         if len(empty_type_records) > 0:
-            self.errorHandler.log_error('Sheet: {}. Entity types are not completed for kpis: '
-                                        '{}'.format(sheet, empty_type_records[Const.ATOMIC_NAME].values))
+            self.errorHandler.log_error('Sheet: {}. Column: {}. Entity types are not completed for kpis: '
+                                        '{}'.format(sheet, type_source_col, empty_type_records[Const.ATOMIC_NAME].values))
 
         sheet_df = template_df[[type_source_col, templ_column]]
         sheet_df = sheet_df[(~(sheet_df[type_source_col].isnull())) &
@@ -264,6 +265,8 @@ class CczaTemplateValidator(Main_Template):
         template_df = template_df.drop(non_store_columns, axis=1)
         groupby_dict = {}
         store_col = filter(lambda x: x != Const.KPI_NAME, template_df.columns.values)
+        template_df[store_col] = template_df[store_col].replace('', 0.0)
+        template_df[store_col] = template_df[store_col].astype(float)
         for col in store_col:
             groupby_dict.update({col: np.sum})
         aggregate_df = template_df.groupby([Const.KPI_NAME], as_index=False).agg(groupby_dict)
@@ -299,7 +302,7 @@ class CczaTemplateValidator(Main_Template):
 
             weights_df = weights_df.sort_values([Const.KPI_NAME, Const.ATOMIC_NAME])
             existing_store_types = filter(lambda x: x in self.store_types_db, weights_df.columns.values)
-            weight_stores_df = targets_df[existing_store_types]
+            weight_stores_df = weights_df[existing_store_types]
             store_columns_w = weight_stores_df.columns.values
             store_columns_w.sort()
             weight_stores_df = weight_stores_df[store_columns_w]
@@ -356,10 +359,16 @@ class CczaTemplateValidator(Main_Template):
         except (ValueError, TypeError):
             self.errorHandler.log_error('Sheet: {}. Not all weights in KPIs sheet are filled or '
                                         'are numeric'.format(sheet))
-        total_weights = store_weights[store_weights.shape[0]-1:store_weights.shape[0]][0]
+        total_weights = store_weights[store_weights.shape[0]-1:store_weights.shape[0]][0].astype(float)
         validate_100 = all(map(lambda x: x == 100, total_weights))
         if not validate_100:
-            self.errorHandler.log_error('Sheet: {}. Total weights per store type are not equal to 100'.format(sheet))
+            self.errorHandler.log_error('Sheet: {}. Certain weights per store type are not equal to 100'.format(sheet))
+
+        total_weights_summed = store_weights[0:-1].astype(float)
+        total_weights_summed = total_weights_summed.sum(axis=0)
+        validate_100 = all(map(lambda x: x == 100, total_weights_summed))
+        if not validate_100:
+            self.errorHandler.log_error('Sheet: {}. Certain weights per store type do not add up to 100'.format(sheet))
 
     def check_all_tabs_exist_and_have_relevant_columns(self):
         for name in Const.sheet_names_and_rows:
@@ -413,11 +422,7 @@ class Parameters(object):
                    'Survey': 'static.survey_question.code', 'Location Types': 'static.location_types.name'}
     COLUMN_DB_MAP = {Const.SURVEY_Q_CODE:  'static.survey_question.code',
                      Const.SURVEY_Q_ID: 'static.survey_question.code'}
-    # TYPE_PROPERTY_MAP = {'SKU': 'product.ean_code', 'EAN': 'product.ean_code',
-    #                      'Brand': 'static_new.brand.name', 'Category': 'static_new.category.name',
-    #                       'Manufacturer': 'static_new.manufacturer.name',  'Sub_category': 'static_new.sub_category.name',
-    #                       'Product_type': 'static_new.product.type', 'Template Name': 'static.template.name',
-    #                       'Survey': 'static.survey_question.code'}
+
 
     WEIGHT_TABS = [Const.SOS_WEIGHTS, Const.PRICING_WEIGHTS]
     SHEETS_COL_MAP = {Const.KPIS: [Const.KPI_NAME, Const.KPI_GROUP, Const.KPI_TYPE,
@@ -431,7 +436,7 @@ class Parameters(object):
                       Const.SOS_TARGETS: [Const.KPI_NAME, Const.ATOMIC_NAME],
                       Const.PRICING_WEIGHTS: [Const.KPI_NAME, Const.ATOMIC_NAME, Const.SURVEY_Q_CODE],
                       Const.PRICING_TARGETS: [Const.KPI_NAME, Const.ATOMIC_NAME, Const.SURVEY_Q_ID],
-                      Const.SURVEY_QUESTIONS: [Const.KPI_NAME, Const.ATOMIC_NAME, Const.ENTITY_TYPE, Const.ENTITY_VAL,
+                      Const.SURVEY_QUESTIONS: [Const.KPI_NAME, Const.ATOMIC_NAME, Const.KPI_TYPE, Const.ENTITY_TYPE, Const.ENTITY_VAL,
                                                Const.ENTITY_TYPE2, Const.ENTITY_VAL2, Const.IN_NOT_IN,
                                                Const.TYPE_FILTER, Const.VALUE_FILTER, Const.SURVEY_Q_CODE,
                                                Const.ACCEPTED_ANSWER_RESULT],
@@ -497,7 +502,7 @@ class Parameters(object):
         Const.SURVEY_QUESTIONS: {
             Const.ACCEPTED_ANSWER_RESULT: {'disallow_empty': False},
             Const.KPI_TYPE: {'type': ('list',), 'source': ([Const.AVAILABILITY, Const.SCENE_COUNT, Const.SURVEY,
-                                                            Const.PLANOGRAM]),
+                                                            Const.PLANOGRAM],),
                              'disallow_empty': True},
             Const.SURVEY_Q_CODE: {'type': ('db',), 'source': ('static.survey_question.code',),
                                   'disallow_empty': True},
@@ -509,6 +514,26 @@ class Parameters(object):
 
     }
 
+
+"""
+project_name: ccza or ccza
+file_url: optional attribute. Path to the template that needs to be validated. 
+         By default, it takes the path to the template used by the code in PROD
+
+Validation types performed: 
+1. Template format validation: checks that all tabs and columns are present in the template
+2. Store types: check that the store types (attribute_3) in the template are compliant with the DB
+3. Data in each particular sheet:
+        3.1. Configurable Validations: validations that are configured per template sheet and columns in Parameters class
+        3.2. Additional Validations: validations that are necessary based on the practice of using the template:
+            a. Sheet 'KPIs': checks that all weights exist for all stores and that the Red Score line is 100
+            b. Sheets except 'KPIs': check that there are no duplicate atomics on the sheet
+            c. Sheets that have both targets and weights: 
+                    - checks that the lists of kpis match, 
+                    - checks that if there are targets per store type the weights also exist for this store_type
+                    - checks that weights for lvl 2 kpis add up to 100 for each store type
+            
+"""
 
 if __name__ == '__main__':
     LoggerInitializer.init('ccza calculations')
