@@ -230,12 +230,17 @@ class CczaTemplateValidator(Main_Template):
 
     def validate_list(self, sheet, template_df, templ_column, val_source):
         template_values = filter(lambda x: x == x and x != '' and x is not None, template_df[templ_column].values)
-        template_values = set(template_values)
+        template_values_final = []
+        for raw_value in template_values:
+            values = map(lambda x: x.strip(), raw_value.split(','))
+            for value in values:
+                template_values_final.append(value)
+        template_values = set(template_values_final)
         val_values = set(val_source)
         diff = template_values.difference(val_values)
         if len(diff) > 0:
             self.errorHandler.log_error('Values in column {} in sheet {} do not match the allowed values {}: '
-                                        '{}'.format(templ_column, sheet, val_values, val_source, diff))
+                                        '{}'.format(templ_column, sheet, val_values, diff))
 
     def validate_empty(self, sheet, template_df, templ_column, validation_params):
         if validation_params.get('disallow_empty'):
