@@ -293,33 +293,23 @@ class CczaTemplateValidator(Main_Template):
         self.compare_weights_and_targets_store_sections(target_sheet, targets_df, weight_sheet, weights_df)
 
     def compare_weights_and_targets_store_sections(self, target_sheet, targets_df, weight_sheet, weights_df):
-        # target_non_store_columns = filter(lambda x: x in Parameters.SHEETS_COL_MAP[target_sheet],
-        #                                   targets_df.columns.values)
-        # target_stores_df = targets_df.drop(target_non_store_columns, axis=1)
         if Const.KPI_NAME in targets_df.columns.values and Const.ATOMIC_NAME in targets_df.columns.values:
             targets_df = targets_df.sort_values([Const.KPI_NAME, Const.ATOMIC_NAME])
             existing_store_types = filter(lambda x: x in self.store_types_db, targets_df.columns.values)
             target_stores_df = targets_df[existing_store_types]
             target_stores_df = target_stores_df.sort_index(axis=1)
             store_columns_t = target_stores_df.columns.values
-            # store_columns_t.sort()
-            # target_stores_df = target_stores_df[list(store_columns_t)]
             target_values = target_stores_df.values
             target_values = target_values.astype(np.bool)
-
-            # weight_non_store_columns = filter(lambda x: x in Parameters.SHEETS_COL_MAP[weight_sheet],
-            #                                   targets_df.columns.values)
-            # weight_stores_df = weights_df.drop(weight_non_store_columns, axis=1)
 
             weights_df = weights_df.sort_values([Const.KPI_NAME, Const.ATOMIC_NAME])
             existing_store_types = filter(lambda x: x in self.store_types_db, weights_df.columns.values)
             weight_stores_df = weights_df[existing_store_types]
             weight_stores_df = weight_stores_df.sort_index(axis=1)
             store_columns_w = weight_stores_df.columns.values
-            # store_columns_w.sort()
-            # weight_stores_df = weight_stores_df[store_columns_w]
             weight_values = weight_stores_df.values
             weight_values = weight_values.astype(np.bool)
+
             if np.array_equal(store_columns_t, store_columns_w) and target_values.shape == weight_values.shape:
                 compare = np.isclose(target_values, weight_values)
                 compare_df = pd.DataFrame(compare, columns=store_columns_t)
