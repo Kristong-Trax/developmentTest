@@ -220,14 +220,24 @@ class CczaTemplateValidator(Main_Template):
 
     def check_db_values(self, sheet, template_df, templ_column, val_source):
         db_col = val_source.split('.')[-1]
-        db_col_values = set(self.db_static_data[templ_column].values)
-        template_values = filter(lambda x: x == x or x != '' or x is not None, template_df[templ_column].values)
+        db_col_values = filter(lambda x: x == x and x != '' and x is not None, self.db_static_data[templ_column].values)
+        db_col_values = set(db_col_values)
+        template_values = filter(lambda x: x == x and x != '' and x is not None, template_df[templ_column].values)
         template_values = set(template_values)
         diff = template_values.difference(db_col_values)
         if len(diff) > 0:
-            self.errorHandler.log_error('Values in column {} in sheet {} do not match values of '
-                                        ' column {} in DB table {}: '
-                                        '{}'.format(templ_column, sheet, db_col, val_source, diff))
+            try:
+                template_values1 = set(map(lambda x: float(x), list(template_values)))
+                db_col_values1 = set(map(lambda x: float(x), list(db_col_values)))
+                diff1 = template_values1.difference(db_col_values1)
+                if len(diff1) > 0:
+                    self.errorHandler.log_error('Sheet {}: . Column: {}. Values do not match values of'
+                                                ' column {} in DB table {}: '
+                                                '{}'.format(sheet, templ_column, db_col, val_source, diff))
+            except Exception:
+                self.errorHandler.log_error('Sheet {}: . Column: {}. Values do not match values of'
+                                            ' column {} in DB table {}: '
+                                            '{}'.format(sheet, templ_column, db_col, val_source, diff))
 
     def validate_list(self, sheet, template_df, templ_column, val_source):
         template_values = filter(lambda x: x == x and x != '' and x is not None, template_df[templ_column].values)
@@ -505,7 +515,7 @@ class Parameters(object):
                                                             Const.PLANOGRAM],),
                              'disallow_empty': True},
             Const.SURVEY_Q_CODE: {'type': ('db',), 'source': ('static.survey_question.code',),
-                                  'disallow_empty': True},
+                                  'disallow_empty': False},
         },
         Const.FLOW_PARAMETERS: {
             Const.KPI_TYPE: {'type': ('list',), 'source': ([Const.FLOW],),
@@ -538,7 +548,7 @@ Validation types performed:
 if __name__ == '__main__':
     LoggerInitializer.init('ccza calculations')
     Config.init()
-    project_name = 'ccza-sand'
-    file_path = '/home/natalyak/Desktop/CCZA/Template_to_test.xlsx'
+    project_name = 'ccza'
+    file_path = '/home/natalyak/Desktop/CCZA/Template_in_prod.xlsx'
     validator = CczaTemplateValidator(project_name=project_name, file_url=file_path)
     validator.validate_template_data()
