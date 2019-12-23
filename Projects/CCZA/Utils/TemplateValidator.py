@@ -281,7 +281,7 @@ class CczaTemplateValidator(Main_Template):
             groupby_dict.update({col: np.sum})
         aggregate_df = template_df.groupby([Const.KPI_NAME], as_index=False).agg(groupby_dict)
         for i, row in aggregate_df.iterrows():
-            all_100 = all(map(lambda x: x == 100, row[store_col].values))
+            all_100 = all(map(lambda x: x == 100 or x == 1, row[store_col].values))
             if not all_100:
                 self.errorHandler.log_error('Sheet {}. KPI Name: {} . Not '
                                             'all weights per stores add up to 100'.format(sheet, row[Const.KPI_NAME]))
