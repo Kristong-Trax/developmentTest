@@ -2120,8 +2120,10 @@ class BATRUToolBox:
             displays_out_of_template = set(map(lambda x: x.split(';')[3], kpis_out_of_template))
             display_kpi_fk = self.common.get_kpi_fk_by_kpi_type(self.POSM_REST_DISPLAY)
             # displays_dict = self.match_display_in_scene[['display_fk', 'display_name']].to_dict()
+            match_display_in_scene = self.match_display_in_scene.copy()
+            match_display_in_scene['display_name'] = self.encode_column_in_df(match_display_in_scene, 'display_name')
             for display in displays_out_of_template:
-                display_fk = self.match_display_in_scene[self.match_display_in_scene['display_name']
+                display_fk = match_display_in_scene[match_display_in_scene['display_name']
                                                           == display]['display_fk'].values[0]
                 self.common.write_to_db_result(fk=display_kpi_fk, numerator_id=display_fk,
                                                denominator_id=self.store_id, result=1,
@@ -2144,8 +2146,12 @@ class BATRUToolBox:
             (posm_in_session['template_group'].str.encode('utf8') == EXIT_TEMPLATE_GROUP.encode('utf8'))]
         add_posms = add_posms[['additional_attribute_1', 'display_name']].drop_duplicates()
         for i, row in add_posms.iterrows():
-            name = '{};{};{};{}'.format(row['additional_attribute_1'], DEFAULT_GROUP_NAME,
+            try:
+                name = '{};{};{};{}'.format(row['additional_attribute_1'], DEFAULT_GROUP_NAME,
                                         DEFAULT_ATOMIC_NAME, row['display_name'].decode('utf8').encode('utf8'))
+            except (UnicodeDecodeError, UnicodeEncodeError, UnicodeError):
+                name = '{};{};{};{}'.format(row['additional_attribute_1'], DEFAULT_GROUP_NAME,
+                                            DEFAULT_ATOMIC_NAME, row['display_name'].encode('utf8'))
             self.p4_posm_to_api[name] = 1
 
     def calculate_passed_equipments(self, equipment_template, equipment_name, scene_fk, identifier_parent_posm_status):
