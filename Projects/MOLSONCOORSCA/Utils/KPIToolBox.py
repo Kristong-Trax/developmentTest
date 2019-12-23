@@ -253,26 +253,26 @@ class ToolBox:
                    'kpi_name': self.lvl_name(kpi_name, level['lvl'])}
         return level['end'], results
 
-    def calculate_adjacency_init(self, kpi_name, kpi_line, relevant_scif, general_filters):
-        results = []
-        kpi_type = kpi_name.replace('Displays', '').strip()
-        comps = self.competitive_brands[self.competitive_brands['Comparable Type'].str.contains(kpi_type)]
-        for i, comp in comps.iterrows():
-            if comp['Target Brand'] == comp[
-                'Comparable Brand']:  # Client has specified this as a specific case with it's own logic- check if any sub brands are adjacent
-                sub_brands = set(relevant_scif[relevant_scif['brand_name'] == comp['Target Brand']].sub_brand.unique())
-                if len(sub_brands) > 1:  # no point if only one sub_brand exists
-                    for sb in sub_brands:
-                        comp_filt = {'A': {'sub_brand': [sb]},
-                                     'B': {'sub_brand': list(set(sub_brands) - set(sb))}}
-                        results.append(self.calculate_max_block_adj_base(kpi_name, kpi_line, relevant_scif,
-                                                                         general_filters, comp_filter=comp_filt))
-            else:
-                comp_filt = {'A': {'brand_name': self.splitter(comp['Target Brand'])},
-                             'B': {'brand_name': self.splitter(comp['Comparable Brand'])}}
-                results.append(self.calculate_max_block_adj_base(kpi_name, kpi_line, relevant_scif, general_filters,
-                                                                 comp_filter=comp_filt))
-        return results
+    # def calculate_adjacency_init(self, kpi_name, kpi_line, relevant_scif, general_filters):
+    #     results = []
+    #     kpi_type = kpi_name.replace('Displays', '').strip()
+    #     comps = self.competitive_brands[self.competitive_brands['Comparable Type'].str.contains(kpi_type)]
+    #     for i, comp in comps.iterrows():
+    #         if comp['Target Brand'] == comp[
+    #             'Comparable Brand']:  # Client has specified this as a specific case with it's own logic- check if any sub brands are adjacent
+    #             sub_brands = set(relevant_scif[relevant_scif['brand_name'] == comp['Target Brand']].sub_brand.unique())
+    #             if len(sub_brands) > 1:  # no point if only one sub_brand exists
+    #                 for sb in sub_brands:
+    #                     comp_filt = {'A': {'sub_brand': [sb]},
+    #                                  'B': {'sub_brand': list(set(sub_brands) - set(sb))}}
+    #                     results.append(self.calculate_max_block_adj_base(kpi_name, kpi_line, relevant_scif,
+    #                                                                      general_filters, comp_filter=comp_filt))
+    #         else:
+    #             comp_filt = {'A': {'brand_name': self.splitter(comp['Target Brand'])},
+    #                          'B': {'brand_name': self.splitter(comp['Comparable Brand'])}}
+    #             results.append(self.calculate_max_block_adj_base(kpi_name, kpi_line, relevant_scif, general_filters,
+    #                                                              comp_filter=comp_filt))
+    #     return results
 
     def calculate_distribution(self, kpi_name, kpi_line, relevant_scif, level, main_line, **kwargs):
         self.assortment.scif = relevant_scif
@@ -581,21 +581,29 @@ class ToolBox:
             population={'anchor_products': filters_brand_a,
                         'tested_products': filters_brand_b},
             location={'scene_fk': scene},
-            additional={'allowed_products_filters': {'product_type': ['Irrelevant']}})
+            additional={'allowed_products_filters': {'product_type': ['Irrelevant']}, 'minimum_block_ratio': 0,
+                        'use_masking_only': True, 'minimum_facings_adjacent': 1, 'include_stacking': True})
+
         if blocks_adjacent.empty:
             return 0
         # anchor block must be the one with the most facings in Adjacency
-        blocks_adjacent.sort_values(by=['anchor_facing_percentage'], ascending=False, inplace=True)
-        blocks_adjacent = blocks_adjacent.head(1).loc[0]
-
-        if not blocks_adjacent.is_adj:
+        # todo : if adjacency  doesnt need it than move it under questions
+        if blocks_adjacent.loc[blocks_adjacent.is_adj].empty:
             return 0
         # if there is an adj, and direction doesnt matter -> true
         if len(allowed_edges) == 4:
             return 1
-        return self.adjacency_flankor_disruptor(blocks_adjacent, allowed_edges)
+        # blocks_adjacent.sort_values(by=['anchor_facing_percentage', 'tested_facing_percentage'], ascending=False, inplace=True)
+        # max_facing = blocks_adjacent.head(1).anchor_facing_percentage.iloc[0]
+        # adjacent_max_block = blocks_adjacent.loc[(blocks_adjacent.anchor_facing_percentage == max_facing) & blocks_adjacent.is_adj]
+        # if we dont need biggest block
+        adjacent_max_block = blocks_adjacent.loc[blocks_adjacent.is_adj]
+        for index, block in adjacent_max_block.iterrows():
+            if self.adjacency_flankor_disruptor(block, allowed_edges, filters_brand_a, filters_brand_b) == 1:
+                return 1
+        return 0
 
-    def adjacency_flankor_disruptor(self, biggest_adjacent_block, allowed_edges):
+    def adjacency_flankor_disruptor(self, biggest_adj_block, allowed_edges, filters_brand_a, filters_brand_b):
         """
           This function receive df with: anchor_block (Graph), tested_block (Graph) , which has adj between them. the df
           contain more fields such as:  anchor_facing_percentage, tested_facing_percentage, scene_fk, is_adj that is True.
@@ -604,18 +612,31 @@ class ToolBox:
               * Anchor and tested products should be in block with minimum 2 facings
               * Anchor can be on the right/left of the tested product.
         """
-        if biggest_adjacent_block.anchor_block.node(data=True)[0]['facings'] < 2 or \
-                biggest_adjacent_block.tested_block.node(data=True)[0]['facings'] < 2:
+
+        anchor_graph = biggest_adj_block.anchor_block
+        tested_graph = biggest_adj_block.tested_block
+        anchor_key = self._find_block_node(anchor_graph, filters_brand_a)
+        tested_key = self._find_block_node(tested_graph, filters_brand_b)
+        if anchor_key is None or tested_key is None:
+            return 0
+
+        if biggest_adj_block.anchor_block.node(data=True)[anchor_key]['facings'] < 2 or \
+                biggest_adj_block.tested_block.node(data=True)[tested_key]['facings'] < 2:
+            return 0
+
+        # make sure tested_block facings are smaller than anchor_block facings
+        if biggest_adj_block.anchor_block.node(data=True)[anchor_key]['facings'] < \
+                biggest_adj_block.tested_block.node(data=True)[tested_key]['facings']:
             return 0
 
         # extract graph edges  in scene
-        adj_scene = biggest_adjacent_block.scene_fk
-        scene_key = [key for key in self.block.adj_graphs_by_scene.keys() if str(adj_scene) in key][0]
-        scene_graph = self.block.adj_graphs_by_scene[scene_key]
+        adj_scene = biggest_adj_block.scene_fk
+        scene_key = [key for key in self.adjacency_builder.block.adj_graphs_by_scene.keys() if str(adj_scene) in key][0]
+        scene_graph = self.adjacency_builder.block.adj_graphs_by_scene[scene_key]
 
         # anchor and tested nodes in the desired blocks
-        anchor_nodes = biggest_adjacent_block.anchor_block.node(data=True)[0]['scene_match_fk']
-        tested_nodes = biggest_adjacent_block.tested_block.node(data=True)[0]['scene_match_fk']
+        anchor_nodes = biggest_adj_block.anchor_block.node(data=True)[anchor_key]['scene_match_fk']
+        tested_nodes = biggest_adj_block.tested_block.node(data=True)[tested_key]['scene_match_fk']
 
         # From scene edges extract only edges of  anchor and  tested nodes in relevant block  and in allowed direction
         scene_graph_adj = pd.DataFrame(scene_graph.adj.items())
@@ -628,6 +649,12 @@ class ToolBox:
         if scene_adj_in_tested_block.empty:
             return 0
         return 1
+
+    def _find_block_node(self, graph, filters):
+        for key in graph.nodes.keys():
+            if list(graph.node(data=True)[key]['block_key'].values) == filters['brand_name']:
+                return key
+        return None
 
     def calculate_blocking(self, kpi_name, kpi_line, relevant_scif, general_filters, level, **kwargs):
         filters = self.get_kpi_line_filters(kpi_line, 'Num')
@@ -887,10 +914,10 @@ class ToolBox:
                          (self.mpis['rect_{}'.format(orth)] <= seg_list[j].orth_max)].shape[0]
 
 
-    def calculate_block_together(self, kpi_name, kpi_line, relevant_scif, general_filters):
-        result, _ = self.calculate_max_block_adj_base(kpi_name, kpi_line, relevant_scif, general_filters)
-        result['result'] = result['result'] ^ 1  # this kpi is reversed (is not blocked together?) so we xor
-        return result
+    # def calculate_block_together(self, kpi_name, kpi_line, relevant_scif, general_filters):
+    #     result, _ = self.calculate_max_block_adj_base(kpi_name, kpi_line, relevant_scif, general_filters)
+    #     result['result'] = result['result'] ^ 1  # this kpi is reversed (is not blocked together?) so we xor
+    #     return result
 
 
     def calculate_adjacency_list(self, kpi_name, kpi_line, relevant_scif, general_filters):
