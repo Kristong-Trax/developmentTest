@@ -447,7 +447,11 @@ class BATRUToolBox:
 
     @staticmethod
     def encode_column_in_df(df, column_name):
-        return df[column_name].str.encode('utf-8')
+        try:
+            return df[column_name].str.encode('utf-8')
+        except UnicodeDecodeError:
+            df[column_name] = df[column_name].str.decode('utf-8')
+            return df[column_name].str.encode('utf-8')
 
     #OOS kpi
     def handle_oos(self):
