@@ -300,9 +300,10 @@ class CczaTemplateValidator(Main_Template):
             targets_df = targets_df.sort_values([Const.KPI_NAME, Const.ATOMIC_NAME])
             existing_store_types = filter(lambda x: x in self.store_types_db, targets_df.columns.values)
             target_stores_df = targets_df[existing_store_types]
+            target_stores_df = target_stores_df.sort_index(axis=1)
             store_columns_t = target_stores_df.columns.values
-            store_columns_t.sort()
-            target_stores_df = target_stores_df[store_columns_t]
+            # store_columns_t.sort()
+            # target_stores_df = target_stores_df[list(store_columns_t)]
             target_values = target_stores_df.values
             target_values = target_values.astype(np.bool)
 
@@ -313,9 +314,10 @@ class CczaTemplateValidator(Main_Template):
             weights_df = weights_df.sort_values([Const.KPI_NAME, Const.ATOMIC_NAME])
             existing_store_types = filter(lambda x: x in self.store_types_db, weights_df.columns.values)
             weight_stores_df = weights_df[existing_store_types]
+            weight_stores_df = weight_stores_df.sort_index(axis=1)
             store_columns_w = weight_stores_df.columns.values
-            store_columns_w.sort()
-            weight_stores_df = weight_stores_df[store_columns_w]
+            # store_columns_w.sort()
+            # weight_stores_df = weight_stores_df[store_columns_w]
             weight_values = weight_stores_df.values
             weight_values = weight_values.astype(np.bool)
             if np.array_equal(store_columns_t, store_columns_w) and target_values.shape == weight_values.shape:
@@ -325,12 +327,12 @@ class CczaTemplateValidator(Main_Template):
                     self.errorHandler.log_error('weights and targets are not aligned in sheets'
                                                 ' {} and {}'.format(target_sheet, weight_sheet))
                     for col in compare_df.columns.values:
-                        compare_df = compare_df[compare_df[col]]
-                        if len(compare_df) > 0:
+                        compare_col_res = all(compare_df[col].values.tolist())
+                        if not compare_col_res:
                             self.errorHandler.log_error('Sheets: {} and {}. Fix weights or targets '
                                                         'for store {}:'.format(weight_sheet, target_sheet, col))
             else:
-                self.errorHandler.log_error('Stores are not the same in '
+                self.errorHandler.log_error('Stores or kpi lists are not the same in '
                                             'sheets {} and {}'.format(target_sheet, weight_sheet))
 
     def compare_kpi_lists(self, target_sheet, targets_df, weight_sheet, weights_df):
@@ -549,6 +551,6 @@ if __name__ == '__main__':
     LoggerInitializer.init('ccza calculations')
     Config.init()
     project_name = 'ccza'
-    file_path = '/home/natalyak/Desktop/CCZA/Template_in_prod.xlsx'
+    file_path = '/home/natalyak/Desktop/CCZA/PS KPI Template JANUARY 2020.xlsx'
     validator = CczaTemplateValidator(project_name=project_name, file_url=file_path)
     validator.validate_template_data()
