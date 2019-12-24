@@ -295,6 +295,8 @@ class CczaTemplateValidator(Main_Template):
     def compare_weights_and_targets_store_sections(self, target_sheet, targets_df, weight_sheet, weights_df):
         if Const.KPI_NAME in targets_df.columns.values and Const.ATOMIC_NAME in targets_df.columns.values:
             targets_df = targets_df.sort_values([Const.KPI_NAME, Const.ATOMIC_NAME])
+            targets_df = targets_df.reset_index(drop=True)
+            atomics_ordered = targets_df[Const.ATOMIC_NAME].values
             existing_store_types = filter(lambda x: x in self.store_types_db, targets_df.columns.values)
             target_stores_df = targets_df[existing_store_types]
             target_stores_df = target_stores_df.sort_index(axis=1)
@@ -303,6 +305,7 @@ class CczaTemplateValidator(Main_Template):
             target_values = target_values.astype(np.bool)
 
             weights_df = weights_df.sort_values([Const.KPI_NAME, Const.ATOMIC_NAME])
+            weights_df = weights_df.reset_index(drop=True)
             existing_store_types = filter(lambda x: x in self.store_types_db, weights_df.columns.values)
             weight_stores_df = weights_df[existing_store_types]
             weight_stores_df = weight_stores_df.sort_index(axis=1)
@@ -317,10 +320,13 @@ class CczaTemplateValidator(Main_Template):
                     self.errorHandler.log_error('weights and targets are not aligned in sheets'
                                                 ' {} and {}'.format(target_sheet, weight_sheet))
                     for col in compare_df.columns.values:
-                        compare_col_res = all(compare_df[col].values.tolist())
+                        store_values = compare_df[col].values
+                        compare_col_res = store_values.all()
+                        # compare_col_res = all(compare_df[col].values.tolist())
                         if not compare_col_res:
+                            atomics = atomics_ordered[np.where(~store_values)]
                             self.errorHandler.log_error('Sheets: {} and {}. Fix weights or targets '
-                                                        'for store {}:'.format(weight_sheet, target_sheet, col))
+                                                        'for store {}: {}'.format(weight_sheet, target_sheet, col, atomics))
             else:
                 self.errorHandler.log_error('Stores or kpi lists are not the same in '
                                             'sheets {} and {}'.format(target_sheet, weight_sheet))
