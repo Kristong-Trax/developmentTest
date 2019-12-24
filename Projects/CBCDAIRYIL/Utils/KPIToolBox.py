@@ -77,22 +77,24 @@ class CBCDAIRYILToolBox:
         if self.template_data.empty:
             Log.warning(Consts.EMPTY_TEMPLATE_DATA_LOG.format(self.store_id))
             return
-        kpi_set, kpis_list = self.get_relevant_kpis_for_calculation()
+        kpi_dict = self.get_relevant_kpis_for_calculation()
         kpi_set_fk = self.common.get_kpi_fk_by_kpi_type(Consts.TOTAL_SCORE)
         old_kpi_set_fk = self.get_kpi_fk_by_kpi_name(Consts.TOTAL_SCORE, 1)
         total_set_scores = list()
-        for kpi_name in kpis_list:
-            kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_name)
-            old_kpi_fk = self.get_kpi_fk_by_kpi_name(kpi_name, 2)
-            kpi_weight = self.get_kpi_weight(kpi_name, kpi_set)
-            atomics_df = self.get_atomics_to_calculate(kpi_name)
-            atomic_results = self.calculate_atomic_results(kpi_fk, atomics_df)  # Atomic level
-            kpi_results = self.calculate_kpis_and_save_to_db(atomic_results, kpi_fk, kpi_weight, kpi_set_fk)  # KPI lvl
-            self.old_common.old_write_to_db_result(fk=old_kpi_fk, level=2, score=format(kpi_results, '.2f'))
-            total_set_scores.append(kpi_results)
-        kpi_set_score = self.calculate_kpis_and_save_to_db(total_set_scores, kpi_set_fk)  # Set level
-        self.old_common.write_to_db_result(fk=old_kpi_set_fk, level=1, score=kpi_set_score)
-        self.handle_gaps()
+        for kpi_set in kpi_dict.keys():
+            kpis = kpi_dict[kpi_set]
+            for kpi_name in kpis:
+                kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_name)
+                old_kpi_fk = self.get_kpi_fk_by_kpi_name(kpi_name, 2)
+                kpi_weight = self.get_kpi_weight(kpi_name, kpi_set)
+                atomics_df = self.get_atomics_to_calculate(kpi_name)
+                atomic_results = self.calculate_atomic_results(kpi_fk, atomics_df)  # Atomic level
+                kpi_results = self.calculate_kpis_and_save_to_db(atomic_results, kpi_fk, kpi_weight, kpi_set_fk)  # KPI lvl
+                self.old_common.old_write_to_db_result(fk=old_kpi_fk, level=2, score=format(kpi_results, '.2f'))
+                total_set_scores.append(kpi_results)
+            kpi_set_score = self.calculate_kpis_and_save_to_db(total_set_scores, kpi_set_fk)  # Set level
+            self.old_common.write_to_db_result(fk=old_kpi_set_fk, level=1, score=kpi_set_score)
+            self.handle_gaps()
 
     def add_gap(self, atomic_kpi, score, atomic_weight):
         """
@@ -295,13 +297,23 @@ class CBCDAIRYILToolBox:
         This function retrieve the relevant KPIs to calculate from the template
         :return: A tuple: (set_name, [kpi1, kpi2, kpi3...]) to calculate.
         """
-        kpi_set = self.template_data[Consts.KPI_SET].values[0]
-        kpis = self.template_data[self.template_data[Consts.KPI_SET].str.encode('utf-8') ==
+        kpi_sets = set(self.template_data[Consts.KPI_SET])
+        kpis_dict = {}
+        for kpi_set in kpi_sets:
+            kpis = self.template_data[self.template_data[Consts.KPI_SET].str.encode('utf-8') ==
                                   kpi_set.encode('utf-8')][Consts.KPI_NAME].unique().tolist()
-        # Planogram KPI should be calculated last because of the MINIMUM 2 FACINGS KPI.
-        if Consts.PLANOGRAM_KPI in kpis and kpis.index(Consts.PLANOGRAM_KPI) != len(kpis) - 1:
-            kpis.append(kpis.pop(kpis.index(Consts.PLANOGRAM_KPI)))
-        return kpi_set, kpis
+            # Planogram KPI should be calculated last because of the MINIMUM 2 FACINGS KPI.
+            if Consts.PLANOGRAM_KPI in kpis and kpis.index(Consts.PLANOGRAM_KPI) != len(kpis) - 1:
+                kpis.append(kpis.pop(kpis.index(Consts.PLANOGRAM_KPI)))
+            kpis_dict[kpi_set] = kpis
+        return kpis_dict
+        # kpi_set = self.template_data[Consts.KPI_SET].values[0]
+        # kpis = self.template_data[self.template_data[Consts.KPI_SET].str.encode('utf-8') ==
+        #                           kpi_set.encode('utf-8')][Consts.KPI_NAME].unique().tolist()
+        # # Planogram KPI should be calculated last because of the MINIMUM 2 FACINGS KPI.
+        # if Consts.PLANOGRAM_KPI in kpis and kpis.index(Consts.PLANOGRAM_KPI) != len(kpis) - 1:
+        #     kpis.append(kpis.pop(kpis.index(Consts.PLANOGRAM_KPI)))
+        # return kpi_set, kpis
 
     def get_atomics_to_calculate(self, kpi_name):
         """
@@ -343,7 +355,8 @@ class CBCDAIRYILToolBox:
         :return: A filtered DataFrame.
         """
         for store_att, store_val in store_attributes.iteritems():
-            kpis_template = kpis_template[kpis_template[store_att].str.encode('utf-8') == store_val.encode('utf-8')]
+            kpis_template = kpis_template[(kpis_template[store_att].str.encode('utf-8') == store_val.encode('utf-8')) |
+                                          (kpis_template[store_att] == "")]
         return kpis_template
 
     def get_relevant_scenes_by_params(self, params):
