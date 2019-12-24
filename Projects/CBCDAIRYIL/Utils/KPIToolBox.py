@@ -14,8 +14,10 @@ from KPIUtils_v2.Calculations.CalculationsUtils.GENERALToolBoxCalculations impor
 from KPIUtils_v2.Utils.Decorators.Decorators import log_runtime, kpi_runtime
 
 import pandas as pd
+from datetime import datetime
 
 __author__ = 'idanr'
+
 
 class CBCDAIRYILToolBox:
 
@@ -35,11 +37,25 @@ class CBCDAIRYILToolBox:
         self.block = Block(self.data_provider)
         self.general_toolbox = GENERALToolBox(self.data_provider)
         self.gap_data = self.get_gap_data()
-        self.kpi_weights = parse_template(Consts.TEMPLATE_PATH, Consts.KPI_WEIGHT, lower_headers_row_index=0)
+        self.visit_date = self.data_provider[Data.VISIT_DATE]
+        self.template_path = self.get_relevant_template()
+        self.kpi_weights = parse_template(self.template_path, Consts.KPI_WEIGHT, lower_headers_row_index=0)
         self.template_data = self.parse_template_data()
         self.kpis_gaps = list()
         self.passed_availability = list()
         self.kpi_static_data = self.old_common.get_kpi_static_data()
+
+    def get_relevant_template(self):
+        """
+        This function returns the relevant template according to it's visit date.
+        Because of a change that was done in the logic there are 3 templates that match different dates.
+        :return: Full template path
+        """
+        if self.visit_date <= datetime.date(datetime(2019, 12, 20)):
+            return "{}/{}/{}".format(Consts.TEMPLATE_PATH, Consts.PREVIOUS_TEMPLATES,
+                                     Consts.PROJECT_TEMPLATE_NAME_UNTIL_2019_12_20)
+        else:
+            return "{}/{}".format(Consts.TEMPLATE_PATH, Consts.CURRENT_TEMPLATE)
 
     @staticmethod
     def get_gap_data():

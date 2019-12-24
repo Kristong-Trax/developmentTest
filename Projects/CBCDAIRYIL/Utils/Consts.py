@@ -4,9 +4,11 @@ import os
 
 class Consts(object):
     # Template consts
-    PROJECT_TEMPLATE_NAME = 'template_22_12.xlsx'
-    TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), 'Data',
-                                 PROJECT_TEMPLATE_NAME)
+    PROJECT_TEMPLATE_NAME_UNTIL_2019_12_20 = 'Template_until_2019-12-20.xlsx'
+    PREVIOUS_TEMPLATES = 'Previous Templates'
+    CURRENT_TEMPLATE = 'Template.xlsx'
+    TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), 'Data')
+
     KPI_SHEET = 'KPI'
     KPI_WEIGHT = 'kpi weights'
     KPI_GAP = 'Kpi Gap'

@@ -24,9 +24,11 @@ KPS_RESULT = 'report.kps_results'
 CUSTOM_GAPS_TABLE = 'pservice.custom_gaps'
 
 TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data')
+PREVIOUS_TEMPLATES = 'Previous Templates'
 TEMPLATE_NAME_UNTIL_2019_01_15 = 'Template_until_2019-01-15.xlsx'
 TEMPLATE_NAME_BETWEEN_2019_01_15_TO_2019_03_01 = 'Template_until_2019-03-01.xlsx'
-CURRENT_TEMPLATE = 'template_22_12_cbcil.xlsx'
+TEMPLATE_NAME_BETWEEN_2019_03_01_TO_2019_12_20 = 'Template_until_2019-12-20.xlsx'
+CURRENT_TEMPLATE = 'Template.xlsx'
 
 
 # def log_runtime(description, log_start=False):
@@ -782,9 +784,11 @@ class CBCILCBCIL_ToolBox(object):
         :return: Full template path
         """
         if self.visit_date <= datetime.date(datetime(2019, 1, 15)):
-            return "{}/{}".format(TEMPLATE_PATH, TEMPLATE_NAME_UNTIL_2019_01_15)
+            return "{}/{}/{}".format(TEMPLATE_PATH, PREVIOUS_TEMPLATES, TEMPLATE_NAME_UNTIL_2019_01_15)
         elif self.visit_date <= datetime.date(datetime(2019, 1, 3)):
-            return "{}/{}".format(TEMPLATE_PATH, TEMPLATE_NAME_BETWEEN_2019_01_15_TO_2019_03_01)
+            return "{}/{}/{}".format(TEMPLATE_PATH, PREVIOUS_TEMPLATES, TEMPLATE_NAME_BETWEEN_2019_01_15_TO_2019_03_01)
+        elif self.visit_date <= datetime.date(datetime(2019, 12, 20)):
+            return "{}/{}/{}".format(TEMPLATE_PATH, PREVIOUS_TEMPLATES, TEMPLATE_NAME_BETWEEN_2019_03_01_TO_2019_12_20)
         else:
             return "{}/{}".format(TEMPLATE_PATH, CURRENT_TEMPLATE)
 
