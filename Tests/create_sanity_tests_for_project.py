@@ -161,6 +161,31 @@ class TestKEngineOutOfTheBox(TestFunctionalCase):
             result = all(elem in exisitng_results for elem in list_of_kpi_names)
             self.assertTrue(result)
         connector.disconnect_rds()
+    
+    def _assert_test_results_matches_reality(self):
+        real_res_dict = pd.DataFrame(%(real_results)s)
+
+        real_results = pd.DataFrame(real_res_dict)
+
+        connector = PSProjectConnector(TestProjectsNames().TEST_PROJECT_1, DbUsers.Docker)
+        cursor = connector.db.cursor(MySQLdb.cursors.DictCursor)
+        cursor.execute('''
+                        SELECT 
+                            distinct kpi.client_name,res.kpi_level_2_fk, numerator_id, denominator_id, context_id, result
+                        FROM
+                            report.kpi_level_2_results res
+                                LEFT JOIN
+                            static.kpi_level_2 kpi ON kpi.pk = res.kpi_level_2_fk
+                                LEFT JOIN
+                            probedata.session ses ON ses.pk = res.session_fk
+           ''')
+        kpi_results = cursor.fetchall()
+        kpi_results = pd.DataFrame(kpi_results)
+        kpi_results = kpi_results.to_dict('records')
+
+        for i in range(len(real_results)):
+            kpi = real_results.iloc[i]
+            self.assertIn(dict(kpi), kpi_results, "kpi_level_2_{} not found".format(str(kpi.get('kpi_level_2_fk'))))
 
     def _assert_scene_tables_kpi_results_filled(self, distinct_kpis_num=None):
         connector = PSProjectConnector(TestProjectsNames().TEST_PROJECT_1, DbUsers.Docker)
@@ -175,7 +200,7 @@ class TestKEngineOutOfTheBox(TestFunctionalCase):
         else:
             self.assertNotEquals(len(kpi_results), 0)
         connector.disconnect_rds()
-    
+        
     @seeder.seed(["%(seed)s"%(need_pnb)s], ProjectsSanityData())
     def test_%(project)s_sanity(self):
         project_name = ProjectsSanityData.project_name
@@ -193,7 +218,7 @@ class TestKEngineOutOfTheBox(TestFunctionalCase):
             #     self._assert_scene_tables_kpi_results_filled(distinct_kpis_num=None)
 """
 
-    def __init__(self, project, sessions_scenes_list, need_pnb=True):
+    def __init__(self, project, sessions_scenes_list, need_pnb=True, kpi_results=None):
         self.project = project.lower().replace('-', '_')
         self.project_capital = self.project.upper().replace('-', '_')
         self.user = os.environ.get('USER')
@@ -201,6 +226,7 @@ class TestKEngineOutOfTheBox(TestFunctionalCase):
         self.main_class_name = '{}Calculations'.format(self.project_capital)
         self.sessions_scenes_list = sessions_scenes_list
         self.need_pnb = ', "mongodb_products_and_brands_seed"' if need_pnb else ""
+        self.kpi_results = str(kpi_results) if kpi_results else ""
 
     def create_test_class(self):
         """
@@ -214,7 +240,8 @@ class TestKEngineOutOfTheBox(TestFunctionalCase):
                            'project': self.project,
                            'sessions': str(self.sessions_scenes_list),
                            'scene_import': self._import_scene_calculation(),
-                           'need_pnb': self.need_pnb
+                           'need_pnb': self.need_pnb,
+                           'results': self.kpi_results
                            }
 
         test_path = ('/home/{0}/dev/kpi_factory/Tests/test_functional_{1}_sanity'.format(self.user, self.project))
@@ -283,6 +310,65 @@ class ProjectsSanityData(BaseSeedData):
             f.write(data_class_content)
 
 
+class GetKpisDataForTesting:
+
+    def __init__(self, project):
+        self.project = project
+        self.rds_conn = PSProjectConnector(project, DbUsers.CalculationEng)
+        self.session = ""
+
+    def get_session_with_max_kpis(self, days_back=7):
+        Log.info('Fetching recent session with max number of kpis')
+        query = """
+                SELECT 
+                    res.session_fk,
+                    ses.session_uid,
+                    COUNT(DISTINCT client_name) AS kpi_count
+                FROM
+                    report.kpi_level_2_results res
+                        LEFT JOIN
+                    static.kpi_level_2 kpi ON kpi.pk = res.kpi_level_2_fk
+                        LEFT JOIN
+                    probedata.session ses ON ses.pk = res.session_fk
+                WHERE
+                    kpi.initiated_by <> 'OutOfTheBox'
+                    and ses.visit_date between date_add(now(), interval -{0} day) and now()
+                    and ses.status = 'Completed'
+                GROUP BY res.session_fk , session_uid
+                
+                ORDER BY kpi_count desc limit 1;
+               """.format(days_back)
+        sessions_df = pd.read_sql(query, self.rds_conn.db)
+        if sessions_df.empty:
+            Log.warning("No sessions were found (with Non-OOTB KPIs) in the last {0} days.".format(days_back))
+            return
+        session_chosen = sessions_df['session_uid'].values[0]
+        self.session = session_chosen
+        return self.session
+
+    def get_one_result_per_kpi(self):
+        Log.info('Fetching kpis results to check')
+        query = """
+                SELECT 
+                    distinct kpi.client_name,res.kpi_level_2_fk, numerator_id, denominator_id, context_id, result
+                FROM
+                    report.kpi_level_2_results res
+                        LEFT JOIN
+                    static.kpi_level_2 kpi ON kpi.pk = res.kpi_level_2_fk
+                        LEFT JOIN
+                    probedata.session ses ON ses.pk = res.session_fk
+                    
+                WHERE ses.session_uid='{}'
+                GROUP BY 1;
+                       """.format(self.session)
+        kpi_results_df = pd.read_sql(query, self.rds_conn.db)
+        if kpi_results_df.empty:
+            Log.warning("No kpis were found for session: .".format(self.session))
+            return
+
+        return kpi_results_df
+
+
 if __name__ == '__main__':
     """
     Before running the script, go to /home/your_user/dev/traxdatabase/traxExport/tableMappings/sceneTableMappingsWprobes
@@ -298,14 +384,21 @@ if __name__ == '__main__':
     """
     LoggerInitializer.init('')
     Config.init()
-    project_to_test = 'jnjanz'
+    project_to_test = 'diageoug'
     creator = SeedCreator(project_to_test)
-    creator.activate_exporter(specific_sessions_and_scenes={'1F113395-8F4D-48E2-953F-0DE401734D31': []})
+    session_kpi_data_getter = GetKpisDataForTesting(project_to_test)
+    session = session_kpi_data_getter.get_session_with_max_kpis()
+    kpi_results = session_kpi_data_getter.get_one_result_per_kpi()
+    kpi_results_as_str = str(kpi_results.to_dict())
+    creator.activate_exporter(specific_sessions_and_scenes={session: []})
+    # creator.activate_exporter(specific_sessions_and_scenes={'1F113395-8F4D-48E2-953F-0DE401734D31': []})
+
     creator.rds_conn.disconnect_rds()
     data_class = CreateTestDataProjectSanity(project_to_test)
     data_class.create_data_class()
 
     # products_and_brands is needed for some projects, if you don't need it, put False in the script,
     # the tests will run much faster without it
-    sanity = SanityTestsCreator(project_to_test, creator.TOP_SESSIONS_AND_SCENES, need_pnb=True)
+    sanity = SanityTestsCreator(project_to_test, creator.TOP_SESSIONS_AND_SCENES, need_pnb=True,
+                                kpi_results=kpi_results_as_str if kpi_results_as_str else None)
     sanity.create_test_class()
