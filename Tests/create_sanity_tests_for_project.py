@@ -163,7 +163,7 @@ class TestKEngineOutOfTheBox(TestFunctionalCase):
         connector.disconnect_rds()
     
     def _assert_test_results_matches_reality(self):
-        real_res_dict = pd.DataFrame(%(real_results)s)
+        real_res_dict = pd.DataFrame(%(kpi_results)s)
 
         real_results = pd.DataFrame(real_res_dict)
 
@@ -212,6 +212,7 @@ class TestKEngineOutOfTheBox(TestFunctionalCase):
             %(main_class_name)s(data_provider, output).run_project_calculations()
             # self._assert_old_tables_kpi_results_filled(distinct_kpis_num=None)
             # self._assert_new_tables_kpi_results_filled(distinct_kpis_num=None, list_of_kpi_names=None)
+            # self._assert_test_results_matches_reality()
             # for scene in sessions[session]:
             #     data_provider.load_scene_data(str(session), scene_id=scene)
             #     SceneCalculations(data_provider).calculate_kpis()
@@ -241,7 +242,7 @@ class TestKEngineOutOfTheBox(TestFunctionalCase):
                            'sessions': str(self.sessions_scenes_list),
                            'scene_import': self._import_scene_calculation(),
                            'need_pnb': self.need_pnb,
-                           'results': self.kpi_results
+                           'kpi_results': self.kpi_results
                            }
 
         test_path = ('/home/{0}/dev/kpi_factory/Tests/test_functional_{1}_sanity'.format(self.user, self.project))
@@ -389,7 +390,7 @@ if __name__ == '__main__':
     session_kpi_data_getter = GetKpisDataForTesting(project_to_test)
     session = session_kpi_data_getter.get_session_with_max_kpis()
     kpi_results = session_kpi_data_getter.get_one_result_per_kpi()
-    kpi_results_as_str = str(kpi_results.to_dict())
+    kpi_results_as_str = str(kpi_results.to_dict()).replace('nan', 'None')
     creator.activate_exporter(specific_sessions_and_scenes={session: []})
     # creator.activate_exporter(specific_sessions_and_scenes={'1F113395-8F4D-48E2-953F-0DE401734D31': []})
 
