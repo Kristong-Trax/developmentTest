@@ -36,9 +36,9 @@ class CBCDAIRYILToolBox:
         self.survey = Survey(self.data_provider)
         self.block = Block(self.data_provider)
         self.general_toolbox = GENERALToolBox(self.data_provider)
-        self.gap_data = self.get_gap_data()
         self.visit_date = self.data_provider[Data.VISIT_DATE]
         self.template_path = self.get_relevant_template()
+        self.gap_data = self.get_gap_data()
         self.kpi_weights = parse_template(self.template_path, Consts.KPI_WEIGHT, lower_headers_row_index=0)
         self.template_data = self.parse_template_data()
         self.kpis_gaps = list()
@@ -57,13 +57,12 @@ class CBCDAIRYILToolBox:
         else:
             return "{}/{}".format(Consts.TEMPLATE_PATH, Consts.CURRENT_TEMPLATE)
 
-    @staticmethod
-    def get_gap_data():
+    def get_gap_data(self):
         """
         This function parse the gap data template and returns the gap priorities.
         :return: A dict with the priorities according to kpi_names. E.g: {kpi_name1: 1, kpi_name2: 2 ...}
         """
-        gap_sheet = parse_template(Consts.TEMPLATE_PATH, Consts.KPI_GAP, lower_headers_row_index=0)
+        gap_sheet = parse_template(self.template_path, Consts.KPI_GAP, lower_headers_row_index=0)
         gap_data = zip(gap_sheet[Consts.KPI_NAME], gap_sheet[Consts.ORDER])
         gap_data = {kpi_name: int(order) for kpi_name, order in gap_data}
         return gap_data
@@ -330,7 +329,7 @@ class CBCDAIRYILToolBox:
         This function responsible to filter the relevant template data..
         :return: A DataFrame with filtered Data by store attributes.
         """
-        kpis_template = parse_template(Consts.TEMPLATE_PATH, Consts.KPI_SHEET, lower_headers_row_index=1)
+        kpis_template = parse_template(self.template_path, Consts.KPI_SHEET, lower_headers_row_index=1)
         relevant_store_info = self.get_store_attributes(Consts.STORE_ATTRIBUTES_TO_FILTER_BY)
         filtered_data = self.filter_template_by_store_att(kpis_template, relevant_store_info)
         return filtered_data
