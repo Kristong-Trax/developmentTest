@@ -14,6 +14,7 @@ from Projects.CCKH_SAND.Utils.GeneralToolBox import CCKH_SANDGENERALToolBox
 from KPIUtils_v2.Utils.Consts.DB import SessionResultsConsts
 from KPIUtils_v2.Utils.Consts.GlobalConsts import HelperConsts
 from KPIUtils_v2.DB.CommonV2 import Common as CommonV2
+from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
 from KPIUtils_v2.GlobalDataProvider.PsDataProvider import PsDataProvider
 
 __author__ = 'Nimrod'
@@ -117,6 +118,8 @@ class CCKH_SANDToolBox(CCKH_SANDConsts):
         self.manufacturer = int(self.data_provider.own_manufacturer.param_value.values[0])
         self.ps_data_provider = PsDataProvider(self.data_provider, self.output)
         self.external_targets = self.ps_data_provider.get_kpi_external_targets()
+        self.store_assortments = self.ps_data_provider.get_store_assortment()
+        self.assortment = Assortment(self.data_provider, self.output)
         self.templates_info = self.external_targets[self.external_targets[CCKH_SANDTemplateConsts.TEMPLATE_OPERATION] ==
                                                     CCKH_SANDTemplateConsts.BASIC_SHEET]
         self.availability_info = self.external_targets[self.external_targets[CCKH_SANDTemplateConsts.TEMPLATE_OPERATION]
@@ -328,6 +331,7 @@ class CCKH_SANDToolBox(CCKH_SANDConsts):
         """
         This function calculates Availability typed Atomics from a customized template, and saves the results to the DB.
         """
+        availability_assortment_df = self.assortment.calculate_lvl3_assortment()
         kpi_data = self.availability_info[(self.availability_info[self.template.KPI_NAME] ==
                                            params[self.template.KPI_NAME]) & (self.availability_info[
                                                                                   self.template.STORE_TYPE].str.
