@@ -1,7 +1,7 @@
 
 __author__ = 'Israel'
 
-class CBCIL_Queries(object):
+class CBCILCBCIL_Queries(object):
     @staticmethod
     def get_all_kpi_data():
         return """
