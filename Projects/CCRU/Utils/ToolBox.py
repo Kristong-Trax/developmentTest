@@ -1065,7 +1065,8 @@ class CCRUKPIToolBox:
         for p in params.values()[0]:
             if p.get('level') != level:
                 continue
-            if p.get('Formula').strip() != 'Share of CCH doors which have 98% TCCC facings' and p.get('Formula').strip() != 'number of pure Coolers':
+            if p.get('Formula').strip() != 'Share of CCH doors which have 98% TCCC facings' \
+                    and p.get('Formula').strip() != 'number of pure Coolers':
                 continue
             scenes = None
             if p.get('depends on'):
