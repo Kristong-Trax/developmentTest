@@ -4,7 +4,7 @@ from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScrip
 # from Trax.Utils.Conf.Configuration import Config
 # from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
 
-from Projects.CBCIL_SAND.KPIGenerator import CBCILGenerator
+from Projects.CBCIL_SAND.KPIGenerator import CBCILSANDGenerator
 
 __author__ = 'Israel'
 
@@ -12,7 +12,7 @@ __author__ = 'Israel'
 class CBCILCalculations(BaseCalculationsScript):
     def run_project_calculations(self):
         self.timer.start()
-        CBCILGenerator(self.data_provider, self.output).main_function()
+        CBCILSANDGenerator(self.data_provider, self.output).main_function()
         self.timer.stop('KPIGenerator.run_project_calculations')
 
 
