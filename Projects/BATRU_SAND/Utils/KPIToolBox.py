@@ -1479,6 +1479,10 @@ class BATRU_SANDToolBox:
 
                     else:  # No Competitors
 
+                        # Checking empty
+                        empty_tags = section_shelf_data[section_shelf_data['product_type'] == EMPTY]
+                        no_empties = True if len(empty_tags) == 0 else False
+
                         # Checking SKU Presence
                         outside_shelf_data = self.match_product_in_scene\
                             .merge(self.scene_info[['scene_fk', 'template_name']], how='left', left_on='scene_fk', right_on='scene_fk')
@@ -1515,7 +1519,7 @@ class BATRU_SANDToolBox:
                             # Checking SKU Sequence and Empties
                             last_prod_seq_ind = 0
                             sku_sequence_passed = True
-                            no_empties = True
+                            # no_empties = True
                             for sequence in sorted(section_shelf_data['sequence'].unique().tolist()):
 
                                 product_ean_code = section_shelf_data\
@@ -1528,8 +1532,8 @@ class BATRU_SANDToolBox:
                                 if manufacturer_name == BAT and product_type == OTHER:
                                     continue
 
-                                if product_type == EMPTY:
-                                    no_empties = False
+                                # if product_type == EMPTY:
+                                #     no_empties = False
 
                                 if product_ean_code in sequence_template_data['product_ean_code_lead'].unique().tolist():
                                     prod_seq_ind = sequence_template_data\
