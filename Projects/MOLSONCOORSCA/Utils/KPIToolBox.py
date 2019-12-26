@@ -711,6 +711,7 @@ class ToolBox:
             if sum(clusters['is_block']) >= 1:
                 result = 1
             total += result
+            result = 5 if result == 0 else 4  # 5 is fail and 4 is Pass in DB (check self.result_values_dict)
             results.append({'score': result, 'result': result, 'numerator_result': result,
                             'numerator_id': self.brands_dict[brand]['brand_fk'],
                             'denominator_id': self.store_id,
@@ -719,6 +720,7 @@ class ToolBox:
         result = 0
         if total == len(brands):
             result = 1
+        result = 5 if result == 0 else 4  # 5 is fail and 4 is Pass in DB (check self.result_values_dict)
         results.append({'score': result, 'result': result, 'numerator_result': total, 'denominator_result': len(brands),
                         'numerator_id': self.manufacturer_fk,
                         'denominator_id': self.store_id,
