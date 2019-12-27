@@ -13,6 +13,8 @@ __author__ = 'sergey'
 
 sys.path.append('.')
 
+PROJECT = 'ccru'
+
 POS_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data/KPIs_2020')
 POS_PATH_INPUT = os.path.join(POS_PATH, 'INPUT')
 POS_OUTPUT_PATH = os.path.join(POS_PATH, 'OUTPUT')
@@ -38,14 +40,14 @@ POS_COLUMNS = [
 
     'Formula',
     'Logical Operator',
-    'score_func',
-    'score_min',
-    'score_max',
 
     'Result Format',
     'Target',
     'target_min',
     'target_max',
+    'score_func',
+    'score_min',
+    'score_max',
 
     'depends on',
 
@@ -77,7 +79,18 @@ POS_COLUMNS = [
     'SAP KPI',
 ]
 
-RESTRICTED_SYMBOLS_KPI_NAMES = '\'\"#$?!*,;'
+ALLOWED_SYMBOLS_KPI_NAME_ENG = ' ' \
+                            '0123456789' \
+                            'ABCDEFGHIJKLMNOPQRSTUVWXWZ' \
+                            'abcdefghigklmnopqrstuvwxyz' \
+                            '%&()[]-_+/<>.:'
+ALLOWED_SYMBOLS_KPI_NAME_RUS = u' ' \
+                               u'0123456789' \
+                               u'ABCDEFGHIJKLMNOPQRSTUVWXWZ' \
+                               u'abcdefghigklmnopqrstuvwxyz' \
+                               u'%&()[]-_+/<>.:' \
+                               u'АБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ' \
+                               u'абвгдеёжзийклмнопрстуфхцчшщъыьэюя'
 ALLOWED_FORMULAS = \
     [
         'check_number_of_scenes_with_facings_target',
@@ -103,15 +116,32 @@ ALLOWED_FORMULAS = \
         'Weighted Average',
     ]
 
+ALLOWED_CATEGORY_KPI_TYPES = \
+    [
+        'Availability',
+        'SOS'
+    ]
+
+ALLOWED_LOGICAL_OPERATORS = \
+    [
+        'OR',
+        'AND',
+        'MAX',
+        'SUM'
+    ]
+
 
 class CCRUKPIS:
 
     def __init__(self):
 
+        self.project = PROJECT
+
         self.rds_conn = OrmSession(self.project, writable=False)
 
         self.kpi_names = self.get_kpi_names()
         self.kpi_level_2_names = self.get_kpi_level_2_names()['type'].unique().tolist()
+        self.categories = self.get_categories()['name'].unique().tolist()
 
     @staticmethod
     def xl_col_num_to_ltr(num):
@@ -135,7 +165,14 @@ class CCRUKPIS:
             file_out = row['File_out']
             sheet_out = row['Sheet_out'] if row['Sheet_out'] else 'Sheet1'
 
-            pos = pd.read_excel(os.path.join(POS_PATH_INPUT, file_in), sheet_name=sheet_in)
+            pos = pd.read_excel(os.path.join(POS_PATH_INPUT, file_in),
+                                sheet_name=sheet_in,
+                                converters={
+                                    'KPI ID': int,
+                                    'Parent': int,
+                                    'Children': str,
+                                    'level': int
+                                })
             pos = pos.where((pd.notnull(pos)), None)
             pos = pos.reset_index(drop=True)
             pos['PoS name'] = pos_name
@@ -143,79 +180,76 @@ class CCRUKPIS:
             pos['00_File_out'] = file_out
             pos['00_Sheet_out'] = sheet_out
 
+            structure_is_ok = True
+            contents_is_ok = True
+
+            # stripping all data from leading and trailing extra spaces
+            columns = pos.columns
+            for i, r in pos.iterrows():
+                for c in columns:
+                    if type(r[c]) in (str, unicode):
+                        pos.loc[i, c] = r[c].strip()
+
             # fixing Sorting
             pos['Sorting'] = range(1, len(pos.index) + 1)
 
             # fixing Children
             for i, r in pos.iterrows():
                 children = pos[pos['Parent'] == r['KPI ID']]['KPI ID'].tolist()
-                children = '\n'.join(children) if children else None
+                children = list(set(children) - {None})
+                if children:
+                    children = [(unicode(int(x))) for x in children]
+                    children = '\n'.join(children)
+                else:
+                    children = None
                 pos.loc[i, 'Children'] = children
 
-            # calculating weights for all levels
-            pos['2_weight'] = None
-            pos[(pos['level'] == 4) & (pos['Weight'].notnull())]['2_weight'] = \
-                pos[(pos['level'] == 4) & (pos['Weight'].notnull())]['Weight']
-            pos[(pos['level'] == 3) & (pos['Weight'].notnull())]['2_weight'] = \
-                pos[(pos['level'] == 3) & (pos['Weight'].notnull())]['Weight']
-            pos[(pos['level'] == 2) & (pos['Weight'].notnull())]['2_weight'] = \
-                pos[(pos['level'] == 2) & (pos['Weight'].notnull())]['Weight']
-            for i, r in pos[(pos['level'] == 3) & (pos['Weight'].isnull()) & (pos['Children'].notnull())]:
-                if len(pos[(pos['Parent'] == r['KPI ID']) & (pos['Weight'].notnull())]) > 0:
-                    pos.loc[i, '2_weight'] = pos[pos['Parent'] == r['KPI ID']]['Weight'].sum()
-            for i, r in pos[(pos['level'] == 2) & (pos['Weight'].isnull()) & (pos['Children'].notnull())]:
-                if len(pos[(pos['Parent'] == r['KPI ID']) & pos['Weight'].notnull()]) > 0:
-                    pos.loc[i, '2_weight'] = pos[pos['Parent'] == r['KPI ID']]['Weight'].sum()
-
-            # building old kpi structure columns
-            for i, r in pos[(pos['level'] == 2) & (pos['Children'].isnull())].iterrows():
-                pos.loc[i, '99_kpi_set_name'] = pos_name
-                pos.loc[i, '99_kpi_name'] = r['KPI name Eng']
-                pos.loc[i, '99_kpi_weight'] = r['2_weight']
-                pos.loc[i, '99_kpi_atomic_name'] = r['KPI name Eng']
-                pos.loc[i, '99_kpi_atomic_display_name'] = r['KPI name Eng']
-                pos.loc[i, '99_kpi_atomic_display_name_rus'] = r['KPI name Rus']
-                pos.loc[i, '99_kpi_atomic_wight'] = r['2_weight']
-            for i, r in pos[pos['level'] == 3].iterrows():
-                pos.loc[i, '99_kpi_set_name'] = pos_name
-                pos.loc[i, '99_kpi_name'] = pos[pos['kpi_id'] == r['Parent']]['KPI name Eng'].values[0]
-                pos.loc[i, '99_kpi_weight'] = pos[pos['kpi_id'] == r['Parent']]['2_weight'].values[0]
-                pos.loc[i, '99_kpi_atomic_name'] = r['KPI name Eng']
-                pos.loc[i, '99_kpi_atomic_display_name'] = r['KPI name Eng']
-                pos.loc[i, '99_kpi_atomic_display_name_rus'] = r['KPI name Rus']
-                pos.loc[i, '99_kpi_atomic_wight'] = r['2_weight']
-            for i, r in pos[pos['level'] == 4].iterrows():
-                pos.loc[i, '99_kpi_set_name'] = pos_name
-                pos.loc[i, '99_kpi_name'] = pos[pos['kpi_id'] == r['Parent']]['2_kpi_name'].values[0]
-                pos.loc[i, '99_kpi_weight'] = pos[pos['kpi_id'] == r['Parent']]['2_kpi_weight'].values[0]
-                pos.loc[i, '99_kpi_atomic_name'] = r['KPI name Eng']
-                pos.loc[i, '99_kpi_atomic_display_name'] = r['KPI name Eng']
-                pos.loc[i, '99_kpi_atomic_display_name_rus'] = r['KPI name Rus']
-                pos.loc[i, '99_kpi_atomic_wight'] = r['2_weight']
-
-            # checking KPI IDs
-            field_name = 'KPI ID'
-            error_name = '01_ERROR KPI ID INCORRECT'
-            kpi_id_list = []
+            # fixing internal extra spaces in KPI names Eng
+            field_name = 'KPI name Eng'
             for i, r in pos.iterrows():
-                if r[field_name] is None or r[field_name] in kpi_id_list:
-                    if error_name not in pos.columns:
-                        pos[error_name] = None
-                    pos.loc[i, error_name] = str(r[field_name])
-                else:
-                    kpi_id_list += [r[field_name]]
+                kpi_name_stripped = unicode(r[field_name])\
+                    .replace('\n', ' ').replace('  ', ' ').replace('  ', ' ').strip()
+                pos.loc[i, field_name] = kpi_name_stripped
 
-            # checking levels
+            # fixing internal extra spaces in KPI names Rus
+            field_name = 'KPI name Rus'
+            for i, r in pos.iterrows():
+                kpi_name_stripped = unicode(r[field_name])\
+                    .replace('\n', ' ').replace('  ', ' ').replace('  ', ' ').strip()
+                pos.loc[i, field_name] = kpi_name_stripped
+
+            # checking KPI ID
+            field_name = 'KPI ID'
+            error_name = '01_ERROR {} EMPTY OR DUPLICATE'.format(field_name)
+            duplicates = pos[[field_name, 'Sorting']].groupby(field_name).count()\
+                .reset_index().rename(columns={'Sorting': 'count'})
+            duplicates_list = duplicates[duplicates['count'] > 1][field_name].unique().tolist()
+            if duplicates_list:
+                if error_name not in pos.columns:
+                    pos[error_name] = None
+                pos.loc[pos[field_name].isin(duplicates_list), error_name] = \
+                    pos[pos[field_name].isin(duplicates_list)][field_name].astype(unicode)
+                structure_is_ok = False
+
+            # checking level
             pos['00_checked'] = None
             field_name = 'level'
-            error_name = '02_ERROR level INCORRECT'
+            error_name = '02_ERROR {} INCORRECT'.format(field_name)
+            incorrect_levels_mask = (pos['level'].isnull()) | ~(pos['level'].isin([1, 2, 3, 4]))
+            incorrect_levels = pos[incorrect_levels_mask]['level'].astype(unicode)
+            if len(incorrect_levels):
+                if error_name not in pos.columns:
+                    pos[error_name] = None
+                pos.loc[incorrect_levels_mask, 'level'] = incorrect_levels
+                structure_is_ok = False
             for i, r0 in pos[pos['Children'].notnull()].iterrows():
                 if r0['level'] == 1 and r0['Parent'] is None:
                     pos.loc[i, '00_checked'] = 1
                 if r0['level'] == 4:
                     if error_name not in pos.columns:
                         pos[error_name] = None
-                    pos.loc[i, error_name] = r0[field_name]
+                    pos.loc[i, error_name] = unicode(r0[field_name])
+                    structure_is_ok = False
                 level = None
                 for j, r1 in pos[pos['Parent'] == r0['KPI ID']].iterrows():
                     pos.loc[j, '00_checked'] = 1
@@ -226,106 +260,218 @@ class CCRUKPIS:
                                     level in [4] and r0['level'] == 3):
                         if error_name not in pos.columns:
                             pos[error_name] = None
-                        pos.loc[j, error_name] = r1[field_name]
+                        pos.loc[j, error_name] = unicode(r1[field_name])
+                        structure_is_ok = False
 
             # checking loose Parent
             field_name = 'Parent'
-            error_name = '03_ERROR Parent INCORRECT'
+            error_name = '03_ERROR {} LOOSE'.format(field_name)
             if len(pos[pos['00_checked'].isnull()]) > 0:
                 if error_name not in pos.columns:
                     pos[error_name] = None
-                pos[pos['00_checked'].isnull()][error_name] = pos[pos['00_checked'].isnull()][field_name]
+                pos.loc[pos['00_checked'].isnull(), error_name] = \
+                    pos[pos['00_checked'].isnull()][field_name].astype(unicode)
+                structure_is_ok = False
 
-            # checking for extra spaces in KPI names Eng
+            # checking length of KPI name Eng
             field_name = 'KPI name Eng'
-            error_name = '04_ERROR KPI name Eng EXTRA SPACES'
+            error_name = '04_ERROR {} TOO SHORT'.format(field_name)
             for i, r in pos.iterrows():
-                kpi_name_stripped = unicode(r[field_name]).replace('\n', ' ').replace('  ', ' ').replace('  ', ' ').strip()
-                if len(unicode(r[field_name])) != len(kpi_name_stripped):
+                if len(unicode(r[field_name])) < 5:
                     if error_name not in pos.columns:
                         pos[error_name] = None
-                    pos.loc[i, error_name] = r[field_name]
+                    pos.loc[i, error_name] = unicode(r[field_name])
+                    contents_is_ok = False
 
-            # checking for extra spaces in KPI names Rus
+            # checking length of KPI nam Rus
             field_name = 'KPI name Rus'
-            error_name = '05_ERROR KPI name Rus EXTRA SPACES'
+            error_name = '05_ERROR {} TOO SHORT'.format(field_name)
             for i, r in pos.iterrows():
-                kpi_name_stripped = unicode(r[field_name]).replace('\n', ' ').replace('  ', ' ').replace('  ', ' ').strip()
-                if len(unicode(r[field_name])) != len(kpi_name_stripped):
+                if len(unicode(r[field_name])) < 5:
                     if error_name not in pos.columns:
                         pos[error_name] = None
-                    pos.loc[i, error_name] = r[field_name]
+                    pos.loc[i, error_name] = unicode(r[field_name])
+                    contents_is_ok = False
 
             # checking for restricted symbols in KPI names Eng
             field_name = 'KPI name Eng'
-            error_name = '06_ERROR KPI name Eng RESTRICTED SYMBOLS'
+            error_name = '06_ERROR {} RESTRICTED SYMBOLS'.format(field_name)
             for i, r in pos.iterrows():
-                if any(s in unicode(r[field_name]) for s in RESTRICTED_SYMBOLS_KPI_NAMES):
+                if any((s not in ALLOWED_SYMBOLS_KPI_NAME_ENG) for s in unicode(r[field_name])):
                     if error_name not in pos.columns:
                         pos[error_name] = None
-                    pos.loc[i, error_name] = r[field_name]
+                    pos.loc[i, error_name] = unicode(r[field_name])
+                    contents_is_ok = False
 
             # checking for restricted symbols in KPI names Rus
             field_name = 'KPI name Rus'
-            error_name = '07_ERROR KPI name Rus RESTRICTED SYMBOLS'
+            error_name = '07_ERROR {} RESTRICTED SYMBOLS'.format(field_name)
             for i, r in pos.iterrows():
-                if any(s in unicode(r[field_name]) for s in RESTRICTED_SYMBOLS_KPI_NAMES):
+                if any((s not in ALLOWED_SYMBOLS_KPI_NAME_RUS) for s in unicode(r[field_name])):
                     if error_name not in pos.columns:
                         pos[error_name] = None
-                    pos.loc[i, error_name] = r[field_name]
+                    pos.loc[i, error_name] = unicode(r[field_name])
+                    contents_is_ok = False
 
-            # checking POS name in the DB
-            field_name = 'PoS name'
-            error_name = '08_ERROR PoS name NOT IN DB kpi_set'
-            if pos_name not in self.kpi_names['kpi_set_name'].unique().tolist():
-                pos[error_name] = pos[field_name]
-
-            # checking KPI name Eng names in the DB kpis
+            # checking for duplicate KPI name Eng
             field_name = 'KPI name Eng'
-            error_name = '09_ERROR KPI name Eng NOT IN DB kpi'
-            check_list = self.kpi_names[self.kpi_names['kpi_set_name'] == pos_name]['kpi_name'].unique().tolist()
-            for i, r in pos[pos['level'] == 2].iterrows():
-                if r[field_name] not in check_list:
-                    if error_name not in pos.columns:
-                        pos[error_name] = None
-                    pos.loc[i, error_name] = r[field_name]
+            error_name = '08_ERROR {} DUPLICATE'.format(field_name)
+            duplicates = pos[[field_name, 'Sorting']].groupby(field_name).count()\
+                .reset_index().rename(columns={'Sorting': 'count'})
+            duplicates_list = duplicates[duplicates['count'] > 1][field_name].unique().tolist()
+            if duplicates_list:
+                if error_name not in pos.columns:
+                    pos[error_name] = None
+                pos.loc[pos[field_name].isin(duplicates_list), error_name] = \
+                    pos[pos[field_name].isin(duplicates_list)][field_name].astype(unicode)
+                contents_is_ok = False
 
-            # checking KPI name Eng names in the DB atomic_kpi
-            field_name = 'KPI name Eng'
-            error_name = '10_ERROR KPI name Eng NOT IN DB atomic_kpi'
-            for i, r in pos[pos['level'] in [3, 4]].iterrows():
-                check_list = self.kpi_names[(self.kpi_names['kpi_set_name'] == r['99_kpi_set_name']) &
-                                            (self.kpi_names['kpi_name'] == r['99_kpi_name'])][
-                    'atomic_kpi_name'].unique().tolist()
-                if r[field_name] not in check_list:
-                    if error_name not in pos.columns:
-                        pos[error_name] = None
-                    pos.loc[i, error_name] = r[field_name]
+            # checking total KPI Weight == 1.0
+            field_name = 'KPI Weight'
+            error_name = '09_ERROR {} TOTAL != 1.0'.format(field_name)
+            if pos[field_name].sum() != 1.0:
+                if error_name not in pos.columns:
+                    pos[error_name] = None
+                pos.loc[error_name] = unicode(pos[field_name])
+                contents_is_ok = False
 
-            # checking KPI name Eng names in the DB kpi_level_2
-            field_name = 'KPI name Eng'
-            error_name = '11_ERROR KPI name Eng NOT IN DB kpi_level_2'
-            check_list = self.kpi_level_2_names
-            for i, r in pos.iterrows():
-                if r[field_name] not in check_list:
+            # checking KPI Weight for decimals
+            field_name = 'KPI Weight'
+            error_name = '10_ERROR {} DECIMALS > 6 DIGITS'.format(field_name)
+            weights = pos['KPI Weight'].astype(unicode).str.split('.', 1, True)
+            weights[2] = weights[1].str.len()
+            incorrect_precision_mask = (weights[2] > 2)
+            if len(incorrect_precision_mask) > 0:
+                if error_name not in pos.columns:
+                    pos[error_name] = None
+                pos.loc[incorrect_precision_mask, error_name] = \
+                    pos[incorrect_precision_mask][field_name].astype(unicode)
+                contents_is_ok = False
+
+            # checking Category KPI Type
+            field_name = 'Category KPI Type'
+            error_name = '11_ERROR {} NOT ALLOWED'.format(field_name)
+            for i, r in pos[pos[field_name].notnull()].iterrows():
+                if r[field_name] not in ALLOWED_CATEGORY_KPI_TYPES:
                     if error_name not in pos.columns:
                         pos[error_name] = None
-                    pos.loc[i, error_name] = r[field_name]
+                    pos.loc[i, error_name] = unicode(r[field_name])
+
+            # checking Category KPI Value
+            field_name = 'Category KPI Value'
+            error_name = '12_ERROR {} NOT ALLOWED'.format(field_name)
+            for i, r in pos[pos['Category KPI Type'].notnull()].iterrows():
+                if r[field_name] not in self.categories:
+                    if error_name not in pos.columns:
+                        pos[error_name] = None
+                    pos.loc[i, error_name] = unicode(r[field_name])
 
             # checking Formula
             field_name = 'Formula'
-            error_name = '12_ERROR Formula NOT ALLOWED'
+            error_name = '12_ERROR {} NOT ALLOWED'.format(field_name)
             for i, r in pos.iterrows():
                 if r[field_name] not in ALLOWED_FORMULAS:
                     if error_name not in pos.columns:
                         pos[error_name] = None
                     pos.loc[i, error_name] = r[field_name]
 
-            # checking total weight == 1
-            field_name = 'Weight'
-            error_name = '01_ERROR Total Weight INCORRECT'
-            if pos[field_name].sum() != 1:
-                pos.loc[error_name] = 'INCORRECT'
+            # checking Logical Operator
+            field_name = 'Logical Operator'
+            error_name = '13_ERROR {} NOT ALLOWED'.format(field_name)
+            for i, r in pos[pos[field_name].notnull()].iterrows():
+                if r[field_name] not in ALLOWED_LOGICAL_OPERATORS:
+                    if error_name not in pos.columns:
+                        pos[error_name] = None
+                    pos.loc[i, error_name] = r[field_name]
+
+            if structure_is_ok:
+                # building old kpi structure columns
+                pos['99_kpi_set_name'] = None
+                pos['99_kpi_name'] = None
+                pos['99_kpi_weight'] = None
+                pos['99_kpi_atomic_name'] = None
+                pos['99_kpi_atomic_display_name'] = None
+                pos['99_kpi_atomic_display_name_rus'] = None
+                pos['99_kpi_atomic_wight'] = None
+                for i, r in pos[(pos['level'] == 2) & (pos['Children'].isnull())].iterrows():
+                    pos.loc[i, '99_kpi_set_name'] = pos_name
+                    pos.loc[i, '99_kpi_name'] = r['KPI name Eng']
+                    pos.loc[i, '99_kpi_weight'] = r['99_weight']
+                    pos.loc[i, '99_kpi_atomic_name'] = r['KPI name Eng']
+                    pos.loc[i, '99_kpi_atomic_display_name'] = r['KPI name Eng']
+                    pos.loc[i, '99_kpi_atomic_display_name_rus'] = r['KPI name Rus']
+                    pos.loc[i, '99_kpi_atomic_wight'] = r['99_weight']
+                for i, r in pos[pos['level'] == 3].iterrows():
+                    pos.loc[i, '99_kpi_set_name'] = pos_name
+                    pos.loc[i, '99_kpi_name'] = pos[pos['KPI ID'] == r['Parent']]['KPI name Eng'].values[0]
+                    pos.loc[i, '99_kpi_weight'] = pos[pos['KPI ID'] == r['Parent']]['99_weight'].values[0]
+                    pos.loc[i, '99_kpi_atomic_name'] = r['KPI name Eng']
+                    pos.loc[i, '99_kpi_atomic_display_name'] = r['KPI name Eng']
+                    pos.loc[i, '99_kpi_atomic_display_name_rus'] = r['KPI name Rus']
+                    pos.loc[i, '99_kpi_atomic_wight'] = r['99_weight']
+                for i, r in pos[pos['level'] == 4].iterrows():
+                    pos.loc[i, '99_kpi_set_name'] = pos_name
+                    pos.loc[i, '99_kpi_name'] = pos[pos['KPI ID'] == r['Parent']]['99_kpi_name'].values[0]
+                    pos.loc[i, '99_kpi_weight'] = pos[pos['KPI ID'] == r['Parent']]['99_kpi_weight'].values[0]
+                    pos.loc[i, '99_kpi_atomic_name'] = r['KPI name Eng']
+                    pos.loc[i, '99_kpi_atomic_display_name'] = r['KPI name Eng']
+                    pos.loc[i, '99_kpi_atomic_display_name_rus'] = r['KPI name Rus']
+                    pos.loc[i, '99_kpi_atomic_wight'] = r['99_weight']
+
+                # calculating weights for all levels
+                pos['99_weight'] = None
+                pos.loc[(pos['level'] == 4) & (pos['KPI Weight'].notnull()), '99_weight'] = \
+                    pos[(pos['level'] == 4) & (pos['KPI Weight'].notnull())]['KPI Weight']
+                pos.loc[(pos['level'] == 3) & (pos['KPI Weight'].notnull()), '99_weight'] = \
+                    pos[(pos['level'] == 3) & (pos['KPI Weight'].notnull())]['KPI Weight']
+                pos.loc[(pos['level'] == 2) & (pos['KPI Weight'].notnull()), '99_weight'] = \
+                    pos[(pos['level'] == 2) & (pos['KPI Weight'].notnull())]['KPI Weight']
+                for i, r in pos[(pos['level'] == 3) & (pos['KPI Weight'].isnull()) & (pos['Children'].notnull())]\
+                        .iterrows():
+                    if len(pos[(pos['Parent'] == r['KPI ID']) & (pos['KPI Weight'].notnull())]) > 0:
+                        pos.loc[i, '99_weight'] = pos[pos['Parent'] == r['KPI ID']]['KPI Weight'].sum()
+                for i, r in pos[(pos['level'] == 2) & (pos['KPI Weight'].isnull()) & (pos['Children'].notnull())]\
+                        .iterrows():
+                    if len(pos[(pos['Parent'] == r['KPI ID']) & pos['KPI Weight'].notnull()]) > 0:
+                        pos.loc[i, '99_weight'] = pos[pos['Parent'] == r['KPI ID']]['KPI Weight'].sum()
+
+                # checking POS name in the DB
+                field_name = 'PoS name'
+                error_name = '08_ERROR PoS name NOT IN DB kpi_set'
+                if pos_name not in self.kpi_names['kpi_set_name'].unique().tolist():
+                    pos[error_name] = pos[field_name]
+
+                # checking KPI name Eng names in the DB kpis
+                field_name = 'KPI name Eng'
+                error_name = '09_ERROR KPI name Eng NOT IN DB kpi'
+                check_list = self.kpi_names[self.kpi_names['kpi_set_name'] == pos_name]['kpi_name'].unique().tolist()
+                for i, r in pos[pos['level'] == 2].iterrows():
+                    if r[field_name] not in check_list:
+                        if error_name not in pos.columns:
+                            pos[error_name] = None
+                        pos.loc[i, error_name] = r[field_name]
+
+                # checking KPI name Eng names in the DB atomic_kpi
+                field_name = 'KPI name Eng'
+                error_name = '10_ERROR KPI name Eng NOT IN DB atomic_kpi'
+                for i, r in pos[pos['level'] in [3, 4]].iterrows():
+                    check_list = self.kpi_names[(self.kpi_names['kpi_set_name'] == r['99_kpi_set_name']) &
+                                                (self.kpi_names['kpi_name'] == r['99_kpi_name'])][
+                        'atomic_kpi_name'].unique().tolist()
+                    if r[field_name] not in check_list:
+                        if error_name not in pos.columns:
+                            pos[error_name] = None
+                        pos.loc[i, error_name] = r[field_name]
+
+                # checking KPI name Eng names in the DB kpi_level_2
+                field_name = 'KPI name Eng'
+                error_name = '11_ERROR KPI name Eng NOT IN DB kpi_level_2'
+                check_list = self.kpi_level_2_names
+                for i, r in pos.iterrows():
+                    if r[field_name] not in check_list:
+                        if error_name not in pos.columns:
+                            pos[error_name] = None
+                        pos.loc[i, error_name] = r[field_name]
 
             pos_all = pos_all.append(pos, ignore_index=True)
 
@@ -467,6 +613,15 @@ class CCRUKPIS:
         data = pd.DataFrame.from_records(list(query_results), columns=[x for x in list(query_results.keys())])
         return data
 
+    def get_categories(self):
+        query = """
+                SELECT name 
+                FROM static_new.category 
+                WHERE delete_date IS NULL;
+                """
+        query_results = self.rds_conn.execute(query.replace('\n', ' '))
+        data = pd.DataFrame.from_records(list(query_results), columns=[x for x in list(query_results.keys())])
+        return data
 
 if __name__ == '__main__':
     kpis_list = CCRUKPIS()
