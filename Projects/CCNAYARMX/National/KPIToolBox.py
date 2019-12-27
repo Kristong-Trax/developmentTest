@@ -294,7 +294,7 @@ class NationalToolBox(GlobalSessionToolBox):
             if not relevant_platformas_data.empty:
                 child_result = relevant_platformas_data[child_row['data_column']].iloc[0]
                 scene_id = relevant_platformas_data['scene_id'].iloc[0]
-                score = child_row['Score']
+                score = child_row['Score'] * child_result
                 total_score += score
                 self.platformas_data.loc[relevant_platformas_data.index.values[0], 'consumed'] = 'yes'
             else:
