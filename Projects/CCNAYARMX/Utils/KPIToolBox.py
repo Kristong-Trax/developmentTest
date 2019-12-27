@@ -1399,4 +1399,3 @@ class ToolBox(GlobalSessionToolBox):
                 score = 0
 
         return score
-
