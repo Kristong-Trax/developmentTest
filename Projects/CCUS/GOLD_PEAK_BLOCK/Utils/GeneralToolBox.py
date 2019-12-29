@@ -2,11 +2,11 @@ import json
 
 import pandas as pd
 import xlrd
+from KPIUtils_v2.Calculations.PositionGraphsCalculations import PositionGraphs
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Algo.Calculations.Core.Shortcuts import BaseCalculationsGroup
 from Trax.Utils.Logging.Logger import Log
 from Projects.CCUS.GOLD_PEAK_BLOCK.Utils.Fetcher import GOLD_PEAK_BLOCKQueries
-from Projects.CCUS.GOLD_PEAK_BLOCK.Utils.PositionGraph import GOLD_PEAK_BLOCKPositionGraphs
 
 __author__ = 'Ortal'
 
@@ -33,6 +33,8 @@ class GOLD_PEAK_BLOCKGeneralToolBox:
         self.project_name = self.data_provider.project_name
         self.session_uid = self.data_provider.session_uid
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
+        self.match_product_in_scene = self.data_provider[Data.MATCHES]
+        self.position_graphs = PositionGraphs(self.data_provider, rds_conn=self.rds_conn)
         self.all_products = self.data_provider[Data.ALL_PRODUCTS]
         self.survey_response = self.data_provider[Data.SURVEY_RESPONSES]
         self.scenes_info = self.data_provider[Data.SCENES_INFO].merge(self.data_provider[Data.ALL_TEMPLATES],
@@ -53,23 +55,6 @@ class GOLD_PEAK_BLOCKGeneralToolBox:
         product_att3 = pd.read_sql_query(query, self.rds_conn.db)
         self.scif = self.scif.merge(product_att3, how='left', left_on='product_ean_code',
                                     right_on='product_ean_code')
-
-
-    @property
-    def position_graphs(self):
-        if not hasattr(self, '_position_graphs'):
-            self._position_graphs = GOLD_PEAK_BLOCKPositionGraphs(self.data_provider, rds_conn=self.rds_conn)
-        return self._position_graphs
-
-    @property
-    def match_product_in_scene(self):
-        if not hasattr(self, '_match_product_in_scene'):
-            self._match_product_in_scene = self.position_graphs.match_product_in_scene
-            if self.front_facing:
-                self._match_product_in_scene = self._match_product_in_scene[self._match_product_in_scene['front_facing'] == 'Y']
-            if self.ignore_stacking:
-                self._match_product_in_scene = self._match_product_in_scene[self._match_product_in_scene['stacking_layer'] == 1]
-        return self._match_product_in_scene
 
     def get_survey_answer(self, survey_data, answer_field=None):
         """

@@ -5,9 +5,8 @@ import xlrd
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Algo.Calculations.Core.Shortcuts import BaseCalculationsGroup
 from Trax.Utils.Logging.Logger import Log
-from Projects.CCUS.MSC.Utils.Fetcher import MSCQueries
 
-from Projects.CCUS.MSC.Utils.PositionGraph import MSCPositionGraphs
+from Projects.CCUS.MSC.Utils.Fetcher import MSCQueries
 
 __author__ = 'Nimrod'
 
@@ -34,6 +33,7 @@ class MSCGENERALToolBox:
         self.project_name = self.data_provider.project_name
         self.session_uid = self.data_provider.session_uid
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
+        self.match_product_in_scene = self.data_provider[Data.MATCHES]
         self.all_products = self.data_provider[Data.ALL_PRODUCTS]
         self.survey_response = self.data_provider[Data.SURVEY_RESPONSES]
         self.scenes_info = self.data_provider[Data.SCENES_INFO].merge(self.data_provider[Data.ALL_TEMPLATES],
@@ -54,23 +54,6 @@ class MSCGENERALToolBox:
         product_att3 = pd.read_sql_query(query, self.rds_conn.db)
         self.scif = self.scif.merge(product_att3, how='left', left_on='product_ean_code',
                                     right_on='product_ean_code')
-
-
-    @property
-    def position_graphs(self):
-        if not hasattr(self, '_position_graphs'):
-            self._position_graphs = MSCPositionGraphs(self.data_provider, rds_conn=self.rds_conn)
-        return self._position_graphs
-
-    @property
-    def match_product_in_scene(self):
-        if not hasattr(self, '_match_product_in_scene'):
-            self._match_product_in_scene = self.position_graphs.match_product_in_scene
-            if self.front_facing:
-                self._match_product_in_scene = self._match_product_in_scene[self._match_product_in_scene['front_facing'] == 'Y']
-            if self.ignore_stacking:
-                self._match_product_in_scene = self._match_product_in_scene[self._match_product_in_scene['stacking_layer'] == 1]
-        return self._match_product_in_scene
 
     def get_survey_answer(self, survey_data, answer_field=None):
         """
@@ -333,139 +316,6 @@ class MSCGENERALToolBox:
                 result = 1
         return result
 
-    def calculate_product_sequence(self, sequence_filters, direction, empties_allowed=True, irrelevant_allowed=False,
-                                   min_required_to_pass=STRICT_MODE, custom_graph=None, **general_filters):
-        """
-        :param sequence_filters: One of the following:
-                        1- a list of dictionaries, each containing the filters values of an organ in the sequence.
-                        2- a tuple of (entity_type, [value1, value2, value3...]) in case every organ in the sequence
-                           is defined by only one filter (and of the same entity, such as brand_name, etc).
-        :param direction: left/right/top/bottom - the direction of the sequence.
-        :param empties_allowed: This dictates whether or not the sequence can be interrupted by Empty facings.
-        :param irrelevant_allowed: This dictates whether or not the sequence can be interrupted by facings which are
-                                   not in the sequence.
-        :param min_required_to_pass: The number of sequences needed to exist in order for KPI to pass.
-                                     If STRICT_MODE is activated, the KPI passes only if it has NO rejects.
-        :param custom_graph: A filtered Positions graph - given in case only certain vertices need to be checked.
-        :param general_filters: These are the parameters which the general data frame is filtered by.
-        :return: True if the KPI passes; otherwise False.
-        """
-        if isinstance(sequence_filters, (list, tuple)) and isinstance(sequence_filters[0], (str, unicode)):
-            sequence_filters = [{sequence_filters[0]: values} for values in sequence_filters[1]]
-
-        pass_counter = 0
-        reject_counter = 0
-
-        if not custom_graph:
-            filtered_scif = self.scif[self.get_filter_condition(self.scif, **general_filters)]
-            scenes = set(filtered_scif['scene_id'].unique())
-            for filters in sequence_filters:
-                scene_for_filters = filtered_scif[self.get_filter_condition(filtered_scif, **filters)]['scene_id'].unique()
-                scenes = scenes.intersection(scene_for_filters)
-                if not scenes:
-                    Log.debug('None of the scenes include products from all types relevant for sequence')
-                    return True
-
-            for scene in scenes:
-                scene_graph = self.position_graphs.get(scene)
-                scene_passes, scene_rejects = self.calculate_sequence_for_graph(scene_graph, sequence_filters, direction,
-                                                                                empties_allowed, irrelevant_allowed)
-                pass_counter += scene_passes
-                reject_counter += scene_rejects
-
-                if pass_counter >= min_required_to_pass:
-                    return True
-                elif min_required_to_pass == self.STRICT_MODE and reject_counter > 0:
-                    return False
-
-        else:
-            scene_passes, scene_rejects = self.calculate_sequence_for_graph(custom_graph, sequence_filters, direction,
-                                                                            empties_allowed, irrelevant_allowed)
-            pass_counter += scene_passes
-            reject_counter += scene_rejects
-
-        if pass_counter >= min_required_to_pass or reject_counter == 0:
-            return True
-        else:
-            return False
-
-    def calculate_sequence_for_graph(self, graph, sequence_filters, direction, empties_allowed, irrelevant_allowed):
-        """
-        This function checks for a sequence given a position graph (either a full scene graph or a customized one).
-        """
-        pass_counter = 0
-        reject_counter = 0
-
-        # removing unnecessary edges
-        filtered_scene_graph = graph.copy()
-        edges_to_remove = filtered_scene_graph.es.select(direction_ne=direction)
-        filtered_scene_graph.delete_edges([edge.index for edge in edges_to_remove])
-
-        reversed_scene_graph = graph.copy()
-        edges_to_remove = reversed_scene_graph.es.select(direction_ne=self._reverse_direction(direction))
-        reversed_scene_graph.delete_edges([edge.index for edge in edges_to_remove])
-
-        vertices_list = []
-        for filters in sequence_filters:
-            vertices_list.append(self.filter_vertices_from_graph(graph, **filters))
-        tested_vertices, sequence_vertices = vertices_list[0], vertices_list[1:]
-        vertices_list = reduce(lambda x, y: x + y, sequence_vertices)
-
-        sequences = []
-        for vertex in tested_vertices:
-            previous_sequences = self.get_positions_by_direction(reversed_scene_graph, vertex)
-            if previous_sequences and set(vertices_list).intersection(reduce(lambda x, y: x + y, previous_sequences)):
-                reject_counter += 1
-                continue
-
-            next_sequences = self.get_positions_by_direction(filtered_scene_graph, vertex)
-            sequences.extend(next_sequences)
-
-        sequences = self._filter_sequences(sequences)
-        for sequence in sequences:
-            all_products_appeared = True
-            empties_found = False
-            irrelevant_found = False
-            full_sequence = False
-            broken_sequence = False
-            current_index = 0
-            previous_vertices = list(tested_vertices)
-
-            for vertices in sequence_vertices:
-                if not set(sequence).intersection(vertices):
-                    all_products_appeared = False
-                    break
-
-            for vindex in sequence:
-                vertex = graph.vs[vindex]
-                if vindex not in vertices_list and vindex not in tested_vertices:
-                    if current_index < len(sequence_vertices):
-                        if vertex['product_type'] == self.EMPTY:
-                            empties_found = True
-                        else:
-                            irrelevant_found = True
-                elif vindex in previous_vertices:
-                    pass
-                elif vindex in sequence_vertices[current_index]:
-                    previous_vertices = list(sequence_vertices[current_index])
-                    current_index += 1
-                else:
-                    broken_sequence = True
-
-            if current_index == len(sequence_vertices):
-                full_sequence = True
-
-            if broken_sequence:
-                reject_counter += 1
-            elif full_sequence:
-                if not empties_allowed and empties_found:
-                    reject_counter += 1
-                elif not irrelevant_allowed and irrelevant_found:
-                    reject_counter += 1
-                elif all_products_appeared:
-                    pass_counter += 1
-        return pass_counter, reject_counter
-
     @staticmethod
     def _reverse_direction(direction):
         """
@@ -515,75 +365,6 @@ class MSCGENERALToolBox:
                 filtered_sequences.append(sequence)
         return filtered_sequences
 
-    def calculate_non_proximity(self, tested_filters, anchor_filters, allowed_diagonal=False, **general_filters):
-        """
-        :param tested_filters: The tested SKUs' filters.
-        :param anchor_filters: The anchor SKUs' filters.
-        :param allowed_diagonal: True - a tested SKU can be in a direct diagonal from an anchor SKU in order
-                                        for the KPI to pass;
-                                 False - a diagonal proximity is NOT allowed.
-        :param general_filters: These are the parameters which the general data frame is filtered by.
-        :return:
-        """
-        direction_data = []
-        if allowed_diagonal:
-            direction_data.append({'top': (0, 1), 'bottom': (0, 1)})
-            direction_data.append({'right': (0, 1), 'left': (0, 1)})
-        else:
-            direction_data.append({'top': (0, 1), 'bottom': (0, 1), 'right': (0, 1), 'left': (0, 1)})
-        is_proximity = self.calculate_relative_position(tested_filters, anchor_filters, direction_data,
-                                                        min_required_to_pass=1, **general_filters)
-        return not is_proximity
-
-    def calculate_relative_position(self, tested_filters, anchor_filters, direction_data, min_required_to_pass=1,
-                                    **general_filters):
-        """
-        :param tested_filters: The tested SKUs' filters.
-        :param anchor_filters: The anchor SKUs' filters.
-        :param direction_data: The allowed distance between the tested and anchor SKUs.
-                               In form: {'top': 4, 'bottom: 0, 'left': 100, 'right': 0}
-                               Alternative form: {'top': (0, 1), 'bottom': (1, 1000), ...} - As range.
-        :param min_required_to_pass: The number of appearances needed to be True for relative position in order for KPI
-                                     to pass. If all appearances are required: ==a string or a big number.
-        :param general_filters: These are the parameters which the general data frame is filtered by.
-        :return: True if (at least) one pair of relevant SKUs fits the distance requirements; otherwise - returns False.
-        """
-        filtered_scif = self.scif[self.get_filter_condition(self.scif, **general_filters)]
-        tested_scenes = filtered_scif[self.get_filter_condition(filtered_scif, **tested_filters)]['scene_id'].unique()
-        anchor_scenes = filtered_scif[self.get_filter_condition(filtered_scif, **anchor_filters)]['scene_id'].unique()
-        relevant_scenes = set(tested_scenes).intersection(anchor_scenes)
-
-        if relevant_scenes:
-            pass_counter = 0
-            reject_counter = 0
-            for scene in relevant_scenes:
-                scene_graph = self.position_graphs.get(scene)
-                tested_vertices = self.filter_vertices_from_graph(scene_graph, **tested_filters)
-                anchor_vertices = self.filter_vertices_from_graph(scene_graph, **anchor_filters)
-                for tested_vertex in tested_vertices:
-                    for anchor_vertex in anchor_vertices:
-                        moves = {'top': 0, 'bottom': 0, 'left': 0, 'right': 0}
-                        path = scene_graph.get_shortest_paths(anchor_vertex, tested_vertex, output='epath')
-                        if path:
-                            path = path[0]
-                            for edge in path:
-                                moves[scene_graph.es[edge]['direction']] += 1
-                            if self.validate_moves(moves, direction_data):
-                                pass_counter += 1
-                                if isinstance(min_required_to_pass, int) and pass_counter >= min_required_to_pass:
-                                    return True
-                            else:
-                                reject_counter += 1
-                        else:
-                            Log.debug('Tested and Anchor have no direct path')
-            if pass_counter > 0 and reject_counter == 0:
-                return True
-            else:
-                return False
-        else:
-            Log.debug('None of the scenes contain both anchor and tested SKUs')
-            return False
-
     def filter_vertices_from_graph(self, graph, **filters):
         """
         This function is given a graph and returns a set of vertices calculated by a given set of filters.
@@ -624,75 +405,6 @@ class MSCGENERALToolBox:
                 validated = True
                 break
         return validated
-
-    def calculate_block_together(self, allowed_products_filters=None, include_empty=EXCLUDE_EMPTY,
-                                 minimum_block_ratio=1, result_by_scene=False, **filters):
-        """
-        :param allowed_products_filters: These are the parameters which are allowed to corrupt the block without failing it.
-        :param include_empty: This parameter dictates whether or not to discard Empty-typed products.
-        :param minimum_block_ratio: The minimum (block number of facings / total number of relevant facings) ratio
-                                    in order for KPI to pass (if ratio=1, then only one block is allowed).
-        :param result_by_scene: True - The result is a tuple of (number of passed scenes, total relevant scenes);
-                                False - The result is True if at least one scene has a block, False - otherwise.
-        :param filters: These are the parameters which the blocks are checked for.
-        :return: see 'result_by_scene' above.
-        """
-        filters, relevant_scenes = self.separate_location_filters_from_product_filters(**filters)
-        if len(relevant_scenes) == 0:
-            if result_by_scene:
-                return 0, 0
-            else:
-                Log.debug('Block Together: No relevant SKUs were found for these filters {}'.format(filters))
-                return True
-        number_of_blocked_scenes = 0
-        cluster_ratios = []
-        for scene in relevant_scenes:
-            scene_graph = self.position_graphs.get(scene).copy()
-
-            relevant_vertices = set(self.filter_vertices_from_graph(scene_graph, **filters))
-            if allowed_products_filters:
-                allowed_vertices = self.filter_vertices_from_graph(scene_graph, **allowed_products_filters)
-            else:
-                allowed_vertices = set()
-
-            if include_empty == self.EXCLUDE_EMPTY:
-                empty_vertices = {v.index for v in scene_graph.vs.select(product_type='Empty')}
-                allowed_vertices = set(allowed_vertices).union(empty_vertices)
-
-            all_vertices = {v.index for v in scene_graph.vs}
-            vertices_to_remove = all_vertices.difference(relevant_vertices.union(allowed_vertices))
-            scene_graph.delete_vertices(vertices_to_remove)
-            # removing clusters including 'allowed' SKUs only
-            clusters = [cluster for cluster in scene_graph.clusters() if set(cluster).difference(allowed_vertices)]
-            new_relevant_vertices = self.filter_vertices_from_graph(scene_graph, **filters)
-            for cluster in clusters:
-                relevant_vertices_in_cluster = set(cluster).intersection(new_relevant_vertices)
-                if len(new_relevant_vertices) > 0:
-                    cluster_ratio = len(relevant_vertices_in_cluster) / float(len(new_relevant_vertices))
-                else:
-                    cluster_ratio = 0
-                cluster_ratios.append(cluster_ratio)
-                if cluster_ratio >= minimum_block_ratio:
-                    if result_by_scene:
-                        number_of_blocked_scenes += 1
-                        break
-                    else:
-                        if minimum_block_ratio == 1:
-                            return True
-                        else:
-                            all_vertices = {v.index for v in scene_graph.vs}
-                            non_cluster_vertices = all_vertices.difference(cluster)
-                            scene_graph.delete_vertices(non_cluster_vertices)
-                            return cluster_ratio, scene_graph
-        if result_by_scene:
-            return number_of_blocked_scenes, len(relevant_scenes)
-        else:
-            if minimum_block_ratio == 1:
-                return False
-            elif cluster_ratios:
-                return max(cluster_ratios)
-            else:
-                return None
 
     def get_product_unique_position_on_shelf(self, scene_id, shelf_number, include_empty=False, **filters):
         """
