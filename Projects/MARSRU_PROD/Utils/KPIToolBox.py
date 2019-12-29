@@ -368,10 +368,12 @@ class MARSRU_PRODKPIToolBox:
     def calculate_availability(self, params, scenes=None, formula=None, values_list=None, object_type=None,
                                include_stacking=False):
         if not values_list:
-            if '*' in str(params.get('Values')):
-                values_list = str(params.get('Values')).split(', *')
+            val = params.get('Values')
+            val = str(val.encode('utf8')) if isinstance(val, (str, unicode)) else str(val)
+            if '*' in val:
+                values_list = val.split(', *')
             else:
-                values_list = str(params.get('Values')).split(', ') if params.get('Values') else []
+                values_list = val.split(', ') if params.get('Values') else []
 
         if not formula:
             formula = params.get('Formula')
