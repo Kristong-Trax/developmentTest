@@ -325,6 +325,7 @@ class NewTemplate:
 
 
 # if __name__ == '__main__':
+#     from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
 #     for project_name in ['ccus']:
 #         LoggerInitializer.init('{} New Template'.format(project_name))
 #         template = NewTemplate(project_name)
@@ -343,4 +344,4 @@ class NewTemplate:
 #             if not r:
 #                 quit()
 #         template.upload_new_templates()
-
+#

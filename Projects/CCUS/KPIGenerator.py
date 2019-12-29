@@ -21,6 +21,7 @@ class CCUSGenerator:
         self.data_provider = data_provider
         self.output = output
         self.common = Common(self.data_provider)
+
     @log_runtime('Total Calculations', log_start=True)
     def main_function(self):
         """

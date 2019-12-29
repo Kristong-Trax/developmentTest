@@ -64,7 +64,6 @@ class JEFFToolBox:
         self.templates = self.data_provider[Data.TEMPLATES]
         self.store_id = self.data_provider[Data.STORE_FK]
         self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
-        self.tools = NEW_OBBOGENERALToolBox(self.data_provider, self.output, rds_conn=self.rds_conn)
         # self.kpi_static_data = self.get_kpi_static_data()
         self.kpi_results_queries = []
         self.store_info = self.data_provider[Data.STORE_INFO]

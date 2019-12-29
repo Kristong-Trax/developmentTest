@@ -135,7 +135,7 @@ class NEW_OBBOGENERALToolBox:
         :param assortment_entity: This is the entity on which the assortment is calculated.
         :param minimum_assortment_for_entity: This is the number of assortment per each unique entity in order for it
                                               to be counted in the final assortment result (default is 1).
-        :param filters: These are the paself.k_enginerameters which the Data frame is filtered by.
+        :param filters: These are the parameters which the Data frame is filtered by.
         :return: Number of unique SKUs appeared in the filtered Scene Item Facts Data frame.
         """
         if set(filters.keys()).difference(self.scif.keys()):
