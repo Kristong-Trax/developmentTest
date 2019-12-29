@@ -82,6 +82,13 @@ class JEFFToolBox:
         self.toolbox = GENERALToolBox(self.data_provider)
         self.SOS = SOS_calc(self.data_provider)
         self.survey = Survey_calc(self.data_provider)
+        self._merge_matches_and_all_product()
+
+    def _merge_matches_and_all_product(self):
+        """
+        This method merges the all product data with the match product in scene DataFrame
+        """
+        self.match_product_in_scene = self.match_product_in_scene.merge(self.all_products, on='product_fk', how='left')
 
     def parse_template(self):
         self.templates['SOS'] = pd.read_excel(TEMPLATE_PATH)
@@ -200,7 +207,7 @@ class JEFFToolBox:
             # a patch for the item_id field which became item_id_x since it was added to product table as attribute.
             item_id = 'item_id' if 'item_id' in self.scif.columns else 'item_id_x'
             merged_df = pd.merge(self.scif[self.scif.facings != 0], scif_mpis_diff, how='outer',
-                                 left_on=['scene_id', item_id], right_on=['scene_fk', 'product_fk'])
+                                 left_on=['scene_fk', item_id], right_on=['scene_fk', 'product_fk'])
             filtered_df = \
                 merged_df[self.toolbox.get_filter_condition(merged_df, **filters)]
             # filtered_df = \

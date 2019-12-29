@@ -46,6 +46,13 @@ class SpecialProgramsGENERALToolBox:
             setattr(self, data, kwargs[data])
         if self.front_facing:
             self.scif = self.scif[self.scif['front_face_count'] == 1]
+        self._merge_matches_and_all_product()
+
+    def _merge_matches_and_all_product(self):
+        """
+        This method merges the all product data with the match product in scene DataFrame
+        """
+        self.match_product_in_scene = self.match_product_in_scene.merge(self.all_products, on='product_fk', how='left')
 
     def get_atts(self):
 
