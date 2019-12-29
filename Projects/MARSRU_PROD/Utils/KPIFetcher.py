@@ -63,6 +63,7 @@ class MARSRU_PRODKPIFetcher:
                                   'MAN': 'manufacturer_name',
                                   'SCENE_TYPE': 'template_name'}
         object_field = object_type_conversion[object_type]
+        self.scif[object_field] = self.scif[object_field].str.encode('utf8')
 
         if not objects:
             objects = self.scif[object_field].unique().tolist()
