@@ -1,15 +1,14 @@
 from Trax.Cloud.Services.Connector.Keys import DbUsers
 from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
 from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
+from Trax.Utils.Conf.Configuration import Config
 from Trax.Utils.Logging.Logger import Log
 
-import sys
 import os
 import pandas as pd
 import shutil
-import autopep8
 
-__author__ = 'yoava'
+__author__ = 'yoava and Ilay'
 
 """
 this module creates dump file and sanity test classes for a specific project.
@@ -22,7 +21,6 @@ class SeedCreator:
     """
     this class creates seed file
     """
-
     def __init__(self, project):
         self.project = project
         self.rds_conn = PSProjectConnector(project, DbUsers.CalculationEng)
@@ -252,16 +250,10 @@ class TestKEngineOutOfTheBox(TestFunctionalCase):
                            'need_pnb': self.need_pnb,
                            'kpi_results': self.kpi_results
                            }
-        project_name = self.project.upper().replace("-", "_")
-        data_class_directory_path = '/home/{0}/dev/kpi_factory/Projects/{1}/Tests'.format(self.user, project_name)
-        file_name = 'test_functional_{0}_sanity.py'.format(self.project)
-        if not os.path.exists(data_class_directory_path):
-            os.makedirs(data_class_directory_path)
-            with open(os.path.join(data_class_directory_path, '__init__.py'), 'wb') as f:
-                f.write("")
-        with open(os.path.join(data_class_directory_path, file_name), 'wb') as f:
-            f.write(autopep8.fix_code(source=(SanityTestsCreator.TEST_CLASS % formatting_dict),
-                                      options={"max_line_length": 100}))
+
+        test_path = ('/home/{0}/dev/kpi_factory/Tests/test_functional_{1}_sanity'.format(self.user, self.project))
+        with open(test_path + '.py', 'wb') as f:
+            f.write(SanityTestsCreator.TEST_CLASS % formatting_dict)
 
     def _import_scene_calculation(self):
         total_values = [j for i in self.sessions_scenes_list.values() for j in i]
@@ -275,7 +267,6 @@ class CreateTestDataProjectSanity:
     """
     this classs creates project sanity data class
     """
-
     def __init__(self, project):
         self.project = project
         self.user = os.environ.get('USER')
@@ -295,7 +286,7 @@ class CreateTestDataProjectSanity:
         mongo_data = """DATA: [{"_id": ObjectId("5824dd6bc9b9128805964eab"),
                                                 "project_name": TestProjectsNames().TEST_PROJECT_1, 
                                                 Keys.PRODUCTS_AND_BRANDS: True}]}"""
-
+        
         data_class_content = """
 from Trax.Algo.Calculations.Core.Constants import Keys
 from Trax.DB.Mongo.Connector import MongoConnector
@@ -316,17 +307,15 @@ class ProjectsSanityData(BaseSeedData):
                                         COLLECTION_NAME: 'projects_project',
                                         {4}
 """.format(self.user, self.project.replace('-', '_'), seed_data, "{", mongo_data)
-        project_name = self.project.upper().replace("-", "_")
-        data_class_directory_path = '/home/{0}/dev/kpi_factory/Projects/{1}/Tests/Data'.format(self.user, project_name)
-        file_name = 'test_data_{0}_sanity.py'.format(self.project)
-        if not os.path.exists(data_class_directory_path):
-            os.makedirs(data_class_directory_path)
-            with open(os.path.join(data_class_directory_path.replace('Data', '__init__.py')), 'wb') as f:
-                f.write("")
-            with open(os.path.join(data_class_directory_path, '__init__.py'), 'wb') as f:
-                f.write("")
-        with open(os.path.join(data_class_directory_path, file_name), 'wb') as f:
+
+        data_class_path = \
+            ('/home/{0}/dev/kpi_factory/Tests/Data/TestData/test_data_{1}_sanity'.format(self.user,
+                                                                                         self.project.
+                                                                                         replace('-', '_')))
+
+        with open(data_class_path + '.py', 'wb') as f:
             f.write(data_class_content)
+
 
 class GetKpisDataForTesting:
     def __init__(self, project):
@@ -336,7 +325,6 @@ class GetKpisDataForTesting:
 
     def get_session_with_max_kpis(self, days_back=7):
         Log.info('Fetching recent session with max number of kpis')
-        number_of_sessions = 1
         query = """
                 SELECT 
                     res.session_fk,
@@ -354,23 +342,19 @@ class GetKpisDataForTesting:
                     and ses.status = 'Completed'
                 GROUP BY res.session_fk , session_uid
                 
-                ORDER BY kpi_count desc limit {1};
-               """.format(days_back, number_of_sessions)
+                ORDER BY kpi_count desc limit 1;
+               """.format(days_back)
         sessions_df = pd.read_sql(query, self.rds_conn.db)
         if sessions_df.empty:
             Log.warning("No sessions were found (with Non-OOTB KPIs) in the last {0} days.".format(days_back))
             return
-        sessions_chosen = set(sessions_df['session_uid'])
-        sessions_chosen_dict = dict.fromkeys(sessions_chosen, [])
-        Log.info("The chosen sessions are: {}".format(list(sessions_chosen)))
-        return sessions_chosen_dict
+        session_chosen = sessions_df['session_uid'].values[0]
+        self.session = session_chosen
+        Log.info("The chosen session is: {}".format(self.session))
+        return self.session
 
-    def get_one_result_per_kpi(self, sessions):
+    def get_one_result_per_kpi(self):
         Log.info('Fetching kpis results to check')
-        if len(sessions.keys()) > 1:
-            sessions_for_query = "in " + str(tuple(sessions.keys()))
-        else:
-            sessions_for_query = "= '" + str(sessions.keys()[0]) + "'"
         query = """
                 SELECT 
                     distinct kpi.client_name,res.kpi_level_2_fk, numerator_id, denominator_id, context_id, result
@@ -380,59 +364,16 @@ class GetKpisDataForTesting:
                     static.kpi_level_2 kpi ON kpi.pk = res.kpi_level_2_fk
                         LEFT JOIN
                     probedata.session ses ON ses.pk = res.session_fk
-                WHERE ses.session_uid {}
+                    
+                WHERE ses.session_uid='{}'
                 GROUP BY 1;
-                       """.format(sessions_for_query)
+                       """.format(self.session)
         kpi_results_df = pd.read_sql(query, self.rds_conn.db)
         if kpi_results_df.empty:
-            Log.error("No results were found for sessions: {}, "
-                      "try to recalculate the sessions".format(str(sessions.keys())))
+            Log.warning("No kpis were found for session: .".format(self.session))
             return
+
         return kpi_results_df
-
-
-def get_sessions_in_correct_format(sessions_param):
-    if type(sessions_param) == dict:
-        return sessions_param
-    elif type(sessions_param) == str:
-        return {sessions_param: []}
-    elif type(sessions_param) == list:
-        return dict.fromkeys(sessions_param, [])
-    else:
-        return None
-
-
-def create_seed(project, sessions_from_user=None):
-    kpisData = GetKpisDataForTesting(project=project)
-    if not sessions_from_user or len(sessions_from_user) == 0:
-        sessions_to_use = kpisData.get_session_with_max_kpis()
-    else:
-        sessions_to_use = get_sessions_in_correct_format(sessions_from_user)
-    kpi_results = kpisData.get_one_result_per_kpi(sessions=sessions_to_use)
-    if not kpi_results:
-        return None, None
-    creator = SeedCreator(project=project)
-    creator.activate_exporter(specific_sessions_and_scenes=sessions_to_use)
-    creator.rds_conn.disconnect_rds()
-    return sessions_to_use, kpi_results
-
-
-def create_sanity_test(project, sessions_to_use, kpi_results):
-    if len(kpi_results) == 0:
-        kpi_results = GetKpisDataForTesting(project=project).get_one_result_per_kpi(sessions=sessions_to_use)
-    if kpi_results.empty:
-        return
-    kpi_results_as_str = str(kpi_results.to_dict()).replace('nan', 'None')
-
-    # products_and_brands is needed for some projects, if you don't need it, put False in the script,
-    # the tests will run much faster without it
-    data_class = CreateTestDataProjectSanity(project=project)
-    data_class.create_data_class()
-
-    # Create functional-sanity test
-    sanity = SanityTestsCreator(project=project, sessions_scenes_list=sessions_to_use, need_pnb=True,
-                                kpi_results=kpi_results_as_str if kpi_results_as_str else None)
-    sanity.create_test_class()
 
 
 if __name__ == '__main__':
@@ -445,17 +386,24 @@ if __name__ == '__main__':
     For example, if you have scene KPIs, add (or edit if they already appears) the following rows:
         report	scene_kpi_results	scene_fk	
         report	kpi_level_2_results	session_fk	
-
     ** Pay attention that the file is highly sensitive to tabs
     """
-    LoggerInitializer.init('running sanity creator script')
-    project = 'diageoug'
-    kpi_results = pd.DataFrame()
-    # Insert a session_uid / list of session_uids / dict of session_uid and scenes in the following format {'a': [1, 3]}
-    sessions = ['f9d6b8a5-7964-4ef5-afe4-8580df97f57c']
-    # In case you don't need to generate a new seed, just comment out the below row
-    # sessions, kpi_results = create_seed(project=project, sessions_from_user=sessions)
-    if kpi_results is None:
-        sys.exit(1)
-    sessions = get_sessions_in_correct_format(sessions)
-    create_sanity_test(project=project, sessions_to_use=sessions, kpi_results=kpi_results)
+    LoggerInitializer.init('')
+    Config.init()
+    project_to_test = 'diageoug'
+    creator = SeedCreator(project_to_test)
+    session_kpi_data_getter = GetKpisDataForTesting(project_to_test)
+    session = session_kpi_data_getter.get_session_with_max_kpis()
+    session = 'f9d6b8a5-7964-4ef5-afe4-8580df97f57c'
+    creator.activate_exporter(specific_sessions_and_scenes={session: []})
+    creator.rds_conn.disconnect_rds()
+    data_class = CreateTestDataProjectSanity(project_to_test)
+    data_class.create_data_class()
+
+    # products_and_brands is needed for some projects, if you don't need it, put False in the script,
+    # the tests will run much faster without it
+    kpi_results = session_kpi_data_getter.get_one_result_per_kpi()
+    kpi_results_as_str = str(kpi_results.to_dict()).replace('nan', 'None')
+    sanity = SanityTestsCreator(project_to_test, creator.TOP_SESSIONS_AND_SCENES, need_pnb=True,
+                                kpi_results=kpi_results_as_str if kpi_results_as_str else None)
+    sanity.create_test_class()
