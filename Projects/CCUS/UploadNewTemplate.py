@@ -8,7 +8,6 @@ from Trax.Cloud.Services.Connector.Keys import DbUsers
 from Trax.Cloud.Services.Storage.Factory import StorageFactory
 from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Trax.Utils.Logging.Logger import Log
-#from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
 from Projects.CCUS.Utils.ToolBox import ToolBox as Consts
 
 __author__ = 'Nimrod'

@@ -1,15 +1,14 @@
-from datetime import datetime
-import pandas as pd
 import os
+from datetime import datetime
+
+from KPIUtils.GlobalDataProvider.PsDataProvider import PsDataProvider
+from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScript
 from Trax.Algo.Calculations.Core.DataProvider import Data
-from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Trax.Utils.Conf.Keys import DbUsers
 from Trax.Utils.Logging.Logger import Log
-from KPIUtils.GlobalDataProvider.PsDataProvider import PsDataProvider
+
 from Projects.CCUS.Pillars.Utils.Const import Const
-
-
 
 __author__ = 'Ortal'
 

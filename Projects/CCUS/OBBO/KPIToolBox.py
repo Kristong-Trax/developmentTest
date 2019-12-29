@@ -2,15 +2,15 @@ import os
 from datetime import datetime
 
 import pandas as pd
+from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScript
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Cloud.Services.Connector.Keys import DbUsers
-from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
 from Trax.Utils.Logging.Logger import Log
 
-from Projects.CCUS.OBBO.GeneralToolBox import OBBOGENERALToolBox
 from Projects.CCUS.OBBO.Fetcher import OBBOQueries
+from Projects.CCUS.OBBO.GeneralToolBox import OBBOGENERALToolBox
 from Projects.CCUS.OBBO.ParseTemplates import parse_template
 
 __author__ = 'Nimrod'

@@ -1,21 +1,18 @@
-from datetime import datetime
-import pandas as pd
 import os
-from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScript
-from Trax.Algo.Calculations.Core.DataProvider import Data
-from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
-from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
-from Trax.Utils.Conf.Keys import DbUsers
-from Trax.Utils.Logging.Logger import Log
-from Projects.CCUS.Programs.Utils.Fetcher import NEW_OBBOQueries
-from Projects.CCUS.Programs.Utils.GeneralToolBox import NEW_OBBOGENERALToolBox
-from Projects.CCUS.Programs.Utils.ParseTemplates import parse_template
+from datetime import datetime
+
+import pandas as pd
 from KPIUtils.GlobalDataProvider.PsDataProvider import PsDataProvider
-from KPIUtils_v2.DB.CommonV2 import Common as CommonV2
 from KPIUtils_v2.Calculations.CalculationsUtils.GENERALToolBoxCalculations import GENERALToolBox
-from KPIUtils_v2.Calculations.PositionGraphsCalculations import PositionGraphs
 from KPIUtils_v2.Calculations.SOSCalculations import SOS as SOS_calc
 from KPIUtils_v2.Calculations.SurveyCalculations import Survey as Survey_calc
+from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
+from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScript
+from Trax.Algo.Calculations.Core.DataProvider import Data
+from Trax.Utils.Conf.Keys import DbUsers
+from Trax.Utils.Logging.Logger import Log
+
+from Projects.CCUS.Programs.Utils.GeneralToolBox import NEW_OBBOGENERALToolBox
 
 __author__ = 'nicolaske'
 
@@ -76,8 +73,7 @@ class FSOPToolBox:
         # self.rules = pd.read_excel(TEMPLATE_PATH).set_index('store_type').to_dict('index')
         self.ps_data_provider = PsDataProvider(self.data_provider, self.output)
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
-        self._position_graphs = PositionGraphs(self.data_provider)
-        self.match_product_in_scene = self._position_graphs.match_product_in_scene
+        self.match_product_in_scene = self.data_provider[Data.MATCHES]
         self.ignore_stacking = False
         self.facings_field = 'facings' if not self.ignore_stacking else 'facings_ign_stack'
         self.manufacturer_fk = \
@@ -188,7 +184,6 @@ class FSOPToolBox:
             den_param1 = row['denominator param1']
             den_value1 = self.sanitize_values(row['denominator value1'])
 
-
             den_param2 = row['denominator param2']
             den_value2 = self.sanitize_values(row['denominator value2'])
 
@@ -221,8 +216,6 @@ class FSOPToolBox:
             self.common.write_to_db_result(fk=kpi_fk, numerator_id=self.manufacturer_fk, numerator_result=0,
                                            denominator_id=self.store_id,
                                            denominator_result=0, result=ratio, score=score)
-
-
 
     def delete_filter_nan(self, filters):
         for key in filters.keys():
