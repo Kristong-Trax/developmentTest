@@ -236,7 +236,7 @@ class OBBOToolBox(OBBOConsts):
         data = category_template[category_template[self.PROGRAM] == program]
         number_of_categories = 0
         for i, category_data in data.iterrows():
-            filters = dict(scene_id=scene)
+            filters = dict(scene_fk=scene)
             if category_data[self.ATT2]:
                 filters['att2'] = category_data[self.ATT2].split(self.SEPARATOR)
             if category_data[self.ATT3]:
@@ -258,7 +258,7 @@ class OBBOToolBox(OBBOConsts):
         for i, row in data.iterrows():
             if self.tools.calculate_assortment(brand_name=row[self.BRAND_NAME],
                                                product_type=row[self.PRODUCT_TYPE],
-                                               scene_id=scene):
+                                               scene_fk=scene):
                 status = True
                 break
         return 'Y' if status else 'N'

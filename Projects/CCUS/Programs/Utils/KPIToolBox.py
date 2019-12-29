@@ -89,10 +89,10 @@ class PROGRAMSToolBox:
         """
         This function calculates the KPI results.
         """
-        scenes = self.scif['scene_id'].unique().tolist()
+        scenes = self.scif['scene_fk'].unique().tolist()
         if scenes:
             for scene in scenes:
-                scene_data = self.scif.loc[self.scif['scene_id'] == scene]
+                scene_data = self.scif.loc[self.scif['scene_fk'] == scene]
                 pop_result = self.calculate_pop(scene_data)
                 self.calculate_Adjacency(scene_data)
                 self.calculate_Pathway(pop_result, scene_data)
@@ -113,15 +113,15 @@ class PROGRAMSToolBox:
                                     set(store_areas) & set(store_areas_in_scene):
                         ean_codes_list = row['product ean code'].split(',')
                         filters = {'product_ean_code': ean_codes_list,
-                                   'scene_id': scene_data['scene_id'].unique().tolist()}
+                                   'scene_fk': scene_data['scene_fk'].unique().tolist()}
                         result = self.tools.calculate_availability(**filters)
                         if result > 0:
-                            self.write_to_db_result(name='{} POP'.format(scene_data['scene_id'].values[0]),
+                            self.write_to_db_result(name='{} POP'.format(scene_data['scene_fk'].values[0]),
                                                     result=row['result'],
                                                     score=1, level=self.LEVEL3)
                             return row['pop result']
                 break
-        self.write_to_db_result(name='{} POP'.format(scene_data['scene_id'].values[0]), result='No POP',
+        self.write_to_db_result(name='{} POP'.format(scene_data['scene_fk'].values[0]), result='No POP',
                                 score=0, level=self.LEVEL3)
         return
 
@@ -140,7 +140,7 @@ class PROGRAMSToolBox:
                 if store_areas_in_scene:
                     if set(store_areas) & set(store_areas_in_scene):
                         if Adjacency_data['result'] is not None:
-                            self.write_to_db_result(name='{} Adjacency'.format(scene_data['scene_id'].values[0]),
+                            self.write_to_db_result(name='{} Adjacency'.format(scene_data['scene_fk'].values[0]),
                                                     result=Adjacency_data['result'],
                                                     score=1, level=self.LEVEL3)
                             return
@@ -148,7 +148,7 @@ class PROGRAMSToolBox:
                     if set(Adjacency_data['Template group'].split(',')) & set(
                             scene_data['template_group'].unique().tolist()):
                         if Adjacency_data['result'] is not None:
-                            self.write_to_db_result(name='{} Adjacency'.format(scene_data['scene_id'].values[0]),
+                            self.write_to_db_result(name='{} Adjacency'.format(scene_data['scene_fk'].values[0]),
                                                     result=Adjacency_data['result'],
                                                     score=1, level=self.LEVEL3)
                             return
@@ -161,7 +161,7 @@ class PROGRAMSToolBox:
                             #         return
             else:
                 continue
-        self.write_to_db_result(name='{} Adjacency'.format(scene_data['scene_id'].values[0]), result='N/A',
+        self.write_to_db_result(name='{} Adjacency'.format(scene_data['scene_fk'].values[0]), result='N/A',
                                 score=0, level=self.LEVEL3)
         return
         # Adjacency_data = self.adj_data.loc[self.adj_data['Template name'] == scene_data['template_name'].values[0]]
@@ -221,12 +221,12 @@ class PROGRAMSToolBox:
                                                 return
 
         if not result:
-            self.write_to_db_result(name='{} Pathway'.format(scene_data['scene_id'].values[0]), result='No Pathway',
+            self.write_to_db_result(name='{} Pathway'.format(scene_data['scene_fk'].values[0]), result='No Pathway',
                                     score=0, level=self.LEVEL3)
         return False
 
     def check_path_way(self, path_data, scene_data):
-        filters = {'scene_id': scene_data['scene_id'].values[0]}
+        filters = {'scene_fk': scene_data['scene_fk'].values[0]}
         filters2 = {}
         filters3 = {}
         filters4 = {}
@@ -239,19 +239,19 @@ class PROGRAMSToolBox:
         if path_data['param2'].values[0]:
             if path_data['param2'].values[0] == path_data['param1'].values[0]:
                 filters2 = {path_data['param2'].values[0]: [str(g) for g in path_data['value2'].values[0].split(",")],
-                            'scene_id': scene_data['scene_id'].values[0]}
+                            'scene_fk': scene_data['scene_fk'].values[0]}
             else:
                 filters[path_data['param2'].values[0]] = [str(g) for g in path_data['value2'].values[0].split(",")]
         if path_data['param3'].values[0]:
             if path_data['param3'].values[0] == path_data['param2'].values[0]:
                 filters3 = {path_data['param3'].values[0]: [str(g) for g in path_data['value3'].values[0].split(",")],
-                            'scene_id': scene_data['scene_id'].values[0]}
+                            'scene_fk': scene_data['scene_fk'].values[0]}
             else:
                 filters[path_data['param3'].values[0]] = [str(g) for g in path_data['value3'].values[0].split(",")]
         if path_data['param4'].values[0]:
             if path_data['param4'].values[0] == path_data['param3'].values[0]:
                 filters4 = {path_data['param4'].values[0]: [str(g) for g in path_data['value4'].values[0].split(",")],
-                            'scene_id': scene_data['scene_id'].values[0]}
+                            'scene_fk': scene_data['scene_fk'].values[0]}
             else:
                 filters[path_data['param4'].values[0]] = [str(g) for g in path_data['value4'].values[0].split(",")]
         if path_data['Target'].values[0]:
@@ -276,7 +276,7 @@ class PROGRAMSToolBox:
                     result4 = 1
             if result1 + result2 + result3 + result4 >= target:
                 result = 1
-                self.write_to_db_result(name='{} Pathway'.format(scene_data['scene_id'].values[0]),
+                self.write_to_db_result(name='{} Pathway'.format(scene_data['scene_fk'].values[0]),
                                         result=path_data['result'].values[0],
                                         score=1, level=self.LEVEL3)
                 return result
@@ -285,7 +285,7 @@ class PROGRAMSToolBox:
             result1 = self.tools.calculate_assortment()
             if result1 >= target:
                 result = 1
-                self.write_to_db_result(name='{} Pathway'.format(scene_data['scene_id'].values[0]),
+                self.write_to_db_result(name='{} Pathway'.format(scene_data['scene_fk'].values[0]),
                                         result=path_data['result'].values[0],
                                         score=1, level=self.LEVEL3)
                 return result

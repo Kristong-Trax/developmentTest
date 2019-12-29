@@ -1,7 +1,4 @@
-import json
 
-import pandas as pd
-import xlrd
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Algo.Calculations.Core.Shortcuts import BaseCalculationsGroup
 from Trax.Utils.Logging.Logger import Log
@@ -10,7 +7,6 @@ __author__ = 'Nimrod'
 
 
 class OBBOGENERALToolBox:
-
     EXCLUDE_FILTER = 0
     INCLUDE_FILTER = 1
     CONTAIN_FILTER = 2
@@ -43,6 +39,13 @@ class OBBOGENERALToolBox:
             setattr(self, data, kwargs[data])
         if self.front_facing:
             self.scif = self.scif[self.scif['front_face_count'] == 1]
+        self._merge_matches_and_all_product()
+
+    def _merge_matches_and_all_product(self):
+        """
+        This method merges the all product data with the match product in scene DataFrame
+        """
+        self.match_product_in_scene = self.match_product_in_scene.merge(self.all_products, on='product_fk', how='left')
 
     def calculate_assortment(self, assortment_entity='product_ean_code', minimum_assortment_for_entity=1, **filters):
         """

@@ -88,8 +88,6 @@ class PillarsPROGRAMSToolBox:
                                            result=scene_count, by_scene=False, denominator_id=self.store_id,
                                            score=1 if scene_count > 0 else 0)
 
-
-
     def count_specific_program_scenes(self, program_id):
         current_program_result = self.scenes_result.loc[self.scenes_result['numerator_id'] == program_id]
         program_scene_count = current_program_result['score'].sum()
@@ -97,6 +95,3 @@ class PillarsPROGRAMSToolBox:
 
     def get_brand_name_from_fk(self, brand_fk):
         return self.all_brand[brand_fk]
-
-
-
