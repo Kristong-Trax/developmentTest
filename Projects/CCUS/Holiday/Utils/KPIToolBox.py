@@ -91,6 +91,7 @@ class HOLIDAYToolBox:
                     scene_data = self.scif.loc[self.scif['scene_fk'] == scene]
                     pop_result = self.calculate_pop(scene_data)
                     self.calculate_Pathway(pop_result, scene_data)
+                    del scene_data
             return
         return
 
@@ -111,6 +112,7 @@ class HOLIDAYToolBox:
                                                     result=row['result'],
                                                     score=1, level=self.LEVEL3)
                             return row['result']
+                del pop_new_data
                 break
         self.write_to_db_result(name='{} POP'.format(scene_data['scene_fk'].values[0]), result='No POP',
                                                      score=0, level=self.LEVEL3)
@@ -135,6 +137,8 @@ class HOLIDAYToolBox:
                                 result = self.check_path_way(path_data, scene_data)
                                 if result == 1:
                                     return
+                        del path_data
+                    del pathways
 
         if not result:
             self.write_to_db_result(name='{} Pathway'.format(scene_data['scene_fk'].values[0]), result='No Pathway',
