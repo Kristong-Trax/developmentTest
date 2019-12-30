@@ -13,7 +13,7 @@ __author__ = 'Nimrod'
 VERTEX_FK_FIELD = 'scene_match_fk'
 
 
-class CBCIL_PositionGraphs:
+class CBCILCBCIL_PositionGraphs:
 
     TOP = 'shelf_px_top'
     BOTTOM = 'shelf_px_bottom'
@@ -25,7 +25,7 @@ class CBCIL_PositionGraphs:
 
     ATTRIBUTES_TO_SAVE = ['product_name', 'product_type', 'product_ean_code', 'sub_brand_name',
                           'brand_name', 'category', 'sub_category', 'manufacturer_name', 'front_facing',
-                          'Form', 'Segment', 'Type', TOP, BOTTOM, LEFT, RIGHT]
+                          'shelf_number', 'size', TOP, BOTTOM, LEFT, RIGHT]
 
     def __init__(self, data_provider, flexibility=1, proximity_mode=FLEXIBLE_MODE, rds_conn=None):
         self.data_provider = data_provider
