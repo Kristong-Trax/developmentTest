@@ -2,14 +2,13 @@ from Trax.Cloud.Services.Connector.Keys import DbUsers
 from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
 from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Trax.Utils.Logging.Logger import Log
-
 import sys
 import os
 import pandas as pd
 import shutil
 import autopep8
 
-__author__ = 'yoava'
+__author__ = 'yoava and ilays'
 
 """
 this module creates dump file and sanity test classes for a specific project.
@@ -173,7 +172,7 @@ class TestKEngineOutOfTheBox(TestFunctionalCase):
         cursor = connector.db.cursor(MySQLdb.cursors.DictCursor)
         cursor.execute('''
                         SELECT 
-                            distinct kpi.client_name,res.kpi_level_2_fk, numerator_id, denominator_id, context_id, result
+                        distinct kpi.client_name,res.kpi_level_2_fk, numerator_id, denominator_id, context_id, result
                         FROM
                             report.kpi_level_2_results res
                                 LEFT JOIN
@@ -328,6 +327,7 @@ class ProjectsSanityData(BaseSeedData):
         with open(os.path.join(data_class_directory_path, file_name), 'wb') as f:
             f.write(data_class_content)
 
+
 class GetKpisDataForTesting:
     def __init__(self, project):
         self.project = project
@@ -360,7 +360,7 @@ class GetKpisDataForTesting:
         if sessions_df.empty:
             Log.warning("No sessions were found (with Non-OOTB KPIs) in the last {0} days.".format(days_back))
             return
-        sessions_chosen = set(sessions_df['session_uid'])
+        sessions_chosen = list(sessions_df['session_uid'])
         sessions_chosen_dict = dict.fromkeys(sessions_chosen, [])
         Log.info("The chosen sessions are: {}".format(list(sessions_chosen)))
         return sessions_chosen_dict
@@ -437,16 +437,7 @@ def create_sanity_test(project, sessions_to_use, kpi_results):
 
 if __name__ == '__main__':
     """
-    Before running the script, go to /home/your_user/dev/traxdatabase/traxExport/tableMappings/sceneTableMappingsWprobes
-    Change the configuration according to what needs to appear in the script
-    All - all data in this table (in the DB)
-    scene_fk - all data that related to the scenes level data
-    session_fk - all data in the session level data (lowest level)
-    For example, if you have scene KPIs, add (or edit if they already appears) the following rows:
-        report	scene_kpi_results	scene_fk	
-        report	kpi_level_2_results	session_fk	
-
-    ** Pay attention that the file is highly sensitive to tabs
+    This script was made to create a sanity test per project.
     """
     LoggerInitializer.init('running sanity creator script')
     project = 'diageoug'
