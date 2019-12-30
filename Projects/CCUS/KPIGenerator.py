@@ -44,27 +44,32 @@ class CCUSGenerator:
         self.calculate_jeff()
 
         self.common.commit_results_data()
+
     @log_runtime('Manufacturer Displays Calculations')
     def calculate_manufacturer_displays(self):
         tool_box = DISPLAYSToolBox(self.data_provider, self.output)
         tool_box.main_calculation()
         tool_box.commit_results_data()
+        del tool_box
 
     @log_runtime('MONSTER Calculations')
     def calculate_monster(self):
         tool_box = MONSTERToolBox(self.data_provider, self.output)
         tool_box.main_calculation()
         tool_box.commit_results_data(kpi_set_fk=27)
+        del tool_box
 
     @log_runtime('FSOP Calculations')
     def calculate_fsop(self):
         tool_box = FSOPToolBox(self.data_provider, self.output, self.common)
         tool_box.main_calculation()
+        del tool_box
 
     @log_runtime('JEFF Calculations')
     def calculate_jeff(self):
         tool_box = JEFFToolBox(self.data_provider, self.output, self.common)
         tool_box.main_calculation()
+        del tool_box
 
     # @log_runtime('OBBO Calculations')
     # def calculate_obbo(self):
@@ -90,11 +95,13 @@ class CCUSGenerator:
         tool_box = PROGRAMSToolBox(self.data_provider, self.output)
         tool_box.main_calculation()
         tool_box.commit_results_data(kpi_set_fk=28)
+        del tool_box
 
     @log_runtime('Pillars Programs Calculations')
     def calculate_pillars_programs(self):
         tool_box = PillarsPROGRAMSToolBox(self.data_provider, self.output, self.common)
         tool_box.main_calculation()
+        del tool_box
 
     # @log_runtime('MSC New Calculations')
     # def calculate_msc_new(self):
@@ -107,6 +114,7 @@ class CCUSGenerator:
         tool_box = HOLIDAYToolBox(self.data_provider, self.output)
         tool_box.main_calculation()
         tool_box.commit_results_data(kpi_set_fk=31)
+        del tool_box
 
     # @log_runtime('Programs Calculations')
     # def calculate_gold_peak_block(self):
@@ -119,6 +127,7 @@ class CCUSGenerator:
         tool_box = SpecialProgramsToolBox(self.data_provider, self.output)
         tool_box.main_calculation()
         tool_box.commit_results_data(kpi_set_fk=32)
+        del tool_box
 
 
     @log_runtime('Special Programs Calculations')
@@ -126,3 +135,4 @@ class CCUSGenerator:
         tool_box = VALIDATIONToolBox(self.data_provider, self.output, kpi_set_fk=34)
         tool_box.main_calculation()
         tool_box.commit_results_data()
+        del tool_box
