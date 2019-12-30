@@ -1,4 +1,3 @@
-
 import igraph
 import datetime
 import pandas as pd
@@ -13,7 +12,7 @@ __author__ = 'Nimrod'
 VERTEX_FK_FIELD = 'scene_match_fk'
 
 
-class INTEG21INBEVBEPositionGraphs:
+class MarsUsPositionGraphs:
     TOP = 'shelf_px_top'
     BOTTOM = 'shelf_px_bottom'
     LEFT = 'shelf_px_left'
@@ -22,8 +21,12 @@ class INTEG21INBEVBEPositionGraphs:
     FLEXIBLE_MODE = 'Flexible Mode'
     STRICT_MODE = 'Strict Mode'
 
-    ATTRIBUTES_TO_SAVE = ['product_name', 'product_type', 'product_ean_code', 'sub_brand_name',
-                          'brand_name', 'category', 'sub_category', 'manufacturer_name', 'front_facing']
+    ATTRIBUTES_TO_SAVE = ['product_name', 'product_type', 'product_ean_code', 'Sub Brand',
+                          'Customer Brand', 'category', 'sub_category', 'manufacturer_name', 'front_facing',
+                          TOP, BOTTOM, LEFT, RIGHT, 'Sub-section', 'Segment', 'shelf_number', 'bay_number', 'Pack Type',
+                          'product_fk', 'Section', 'Private Label', 'size', 'Breed Size', 'Package Size',
+                          'Price Segment', 'Segment_SPT', 'Life Stage'
+                          ]
 
     def __init__(self, data_provider, flexibility=1, proximity_mode=FLEXIBLE_MODE, rds_conn=None):
         self.data_provider = data_provider
@@ -47,55 +50,82 @@ class INTEG21INBEVBEPositionGraphs:
             self._match_product_in_scene = self.get_filtered_matches()
         return self._match_product_in_scene
 
-    def get(self, scene_id):
+    def get(self, scene_id, probe_id=None):
         """
         This function returns a position graph for a given scene
         """
         if scene_id not in self.position_graphs.keys():
-            self.create_position_graphs(scene_id)
-        return self.position_graphs.get(scene_id)
+            self.create_position_graphs(scene_id, probe_id)
+        return self.position_graphs.get(scene_id, probe_id)
 
-    def get_filtered_matches(self, include_stacking=False):
+    def get_filtered_matches(self):
         matches = self.data_provider[Data.MATCHES]
         matches = matches.sort_values(by=['bay_number', 'shelf_number', 'facing_sequence_number'])
-        matches = matches[matches['status'] == 1]
-        if not include_stacking:
-            matches = matches[matches['stacking_layer'] == 1]
-        matches = matches.merge(self.get_match_product_in_scene(), how='left', on='scene_match_fk', suffixes=['', '_2'])
         matches = matches.merge(self.data_provider[Data.ALL_PRODUCTS], how='left', on='product_fk', suffixes=['', '_3'])
-        matches = matches.merge(self.data_provider[Data.SCENE_ITEM_FACTS][['template_name', 'location_type',
-                                                                           'scene_id', 'scene_fk']],
-                                how='left', on='scene_fk', suffixes=['', '_4'])
+        scene_template = self.data_provider.scenes_info[['scene_fk', 'template_fk']]
+        scene_template = scene_template.merge(self.data_provider.templates[['template_name',
+                                                                            'template_fk', 'location_type']],
+                                              how='left', on='template_fk')
+        scene_template['scene_id'] = scene_template['scene_fk']
+        matches = matches.merge(scene_template, how='left', on='scene_fk', suffixes=['', '_4'])
+        matches = matches.merge(self.data_provider.probe_groups, how='left', on='probe_match_fk')
         if set(self.ATTRIBUTES_TO_SAVE).difference(matches.keys()):
             missing_data = self.get_missing_data()
             matches = matches.merge(missing_data, on='product_fk', how='left', suffixes=['', '_5'])
+        matches = self.pos_scrubber(matches)
+        matches = matches[matches['status'] == 1]
         matches = matches.drop_duplicates(subset=[VERTEX_FK_FIELD])
+
+        return matches
+
+    def pos_scrubber(self, matches):
+        matches = matches[matches['stacking_layer'] > 0]
+        columns_of_import = ['scene_fk', 'bay_number', 'shelf_number', 'facing_sequence_number']
+        pos_mask = matches['product_type'] == 'POS'
+        pos = matches[pos_mask]
+        for i, row in pos.iterrows():
+            row = matches.loc[i]
+            if row[columns_of_import].iloc[1:].sum() != -3:  # We can ignore POS that was correctly not given shelfspace
+                base_mask = ((matches['scene_fk'] == row['scene_fk']) &
+                             (matches['bay_number'] == row['bay_number']) &
+                             (matches['shelf_number'] == row['shelf_number']))
+                type_mask = (base_mask & (matches['facing_sequence_number'] == row['facing_sequence_number']))
+                stacking_mask = (type_mask & (matches['stacking_layer'] >= row['stacking_layer']))
+                matches.loc[stacking_mask, 'stacking_layer'] -= 1
+
+                if len(set(matches[type_mask]['product_type'])) <= 1:
+                    sequence_mask = (base_mask & (matches['facing_sequence_number'] > row['facing_sequence_number']))
+                    matches.loc[sequence_mask, 'facing_sequence_number'] -= 1
+                    matches.loc[base_mask, 'n_shelf_items'] -= 1
+
+        matches = matches[matches['product_type'] != 'POS']
+        matches.loc[matches['stacking_layer'] == 1, 'status'] = 1
         return matches
 
     def get_missing_data(self):
         query = """
-                    select p.pk as product_fk, p.product_name, p.product_type,
-                           p.product_ean_code, p.sub_category, sb.name as sub_brand_name,
-                           b.name as brand_name, c.name as category, m.name as manufacturer_name
-                    from static.product p
-                    join static.brand b on b.pk = p.brand_fk
-                    join static.sub_brand sb on sb.pk = p.sub_brand_fk
-                    join static.product_categories c on c.pk = b.category_fk
-                    join static.manufacturers m on m.pk = b.manufacturer_fk
-                    """
+                select p.pk as product_fk, p.product_name, p.product_type,
+                       p.product_ean_code, p.sub_category, sb.name as sub_brand_name,
+                       b.name as brand_name, c.name as category, m.name as manufacturer_name
+                from static.product p
+                join static.brand b on b.pk = p.brand_fk
+                join static.sub_brand sb on sb.pk = p.sub_brand_fk
+                join static.product_categories c on c.pk = b.category_fk
+                join static.manufacturers m on m.pk = b.manufacturer_fk
+                """
         data = pd.read_sql_query(query, self.rds_conn.db)
         return data
 
     def get_match_product_in_scene(self):
         query = """
-                    select ms.pk as scene_match_fk, ms.*
-                    from probedata.match_product_in_scene ms
-                    join probedata.scene s on s.pk = ms.scene_fk
-                    where s.session_uid = '{}'""".format(self.session_uid)
+                select ms.pk as scene_match_fk, ms.*
+                from probedata.match_product_in_scene ms
+                join probedata.scene s on s.pk = ms.scene_fk
+                where s.session_uid = '{}'""".format(self.session_uid)
         matches = pd.read_sql_query(query, self.rds_conn.db)
         return matches
 
-    def create_position_graphs(self, scene_id=None):
+    def create_position_graphs(self, scene_id=None, probe_id=None):
         """
         This function creates a facings Graph for each scene of the given session.
         """
@@ -104,8 +134,13 @@ class INTEG21INBEVBEPositionGraphs:
             scenes = [scene_id]
         else:
             scenes = self.match_product_in_scene['scene_fk'].unique()
+
         for scene in scenes:
-            matches = self.match_product_in_scene[self.match_product_in_scene['scene_fk'] == scene]
+            matches = self.match_product_in_scene[(self.match_product_in_scene['scene_fk'] == scene) &
+                                                  (self.match_product_in_scene['stacking_layer'] == 1)]
+            if probe_id is not None:
+                matches = matches[matches['probe_group_id'] == probe_id]
+
             matches['distance_from_end_of_shelf'] = matches['n_shelf_items'] - matches['facing_sequence_number']
             scene_graph = igraph.Graph(directed=True)
             edges = []
@@ -169,11 +204,11 @@ class INTEG21INBEVBEPositionGraphs:
         if anchor_shelf_number == 1:
             surrounding_top = []
         else:
-            surrounding_top = filtered_matches[matches['shelf_number'] == anchor_shelf_number - 1][VERTEX_FK_FIELD]
+            surrounding_top = filtered_matches[filtered_matches['shelf_number'] == anchor_shelf_number - 1][VERTEX_FK_FIELD]
         if anchor_shelf_number_from_bottom == 1:
             surrounding_bottom = []
         else:
-            surrounding_bottom = filtered_matches[matches['shelf_number'] == anchor_shelf_number + 1][VERTEX_FK_FIELD]
+            surrounding_bottom = filtered_matches[filtered_matches['shelf_number'] == anchor_shelf_number + 1][VERTEX_FK_FIELD]
 
         # checking left & right
         filtered_matches = matches[(matches['shelf_number'] == anchor_shelf_number) &
@@ -231,6 +266,8 @@ class INTEG21INBEVBEPositionGraphs:
             Log.warning("Entity '{}' is not set as an attribute in the graph".format(entity))
             return None
         graph = self.get(scene_id).copy()
+        if len(graph.es) == 0:
+            return []
         edges_to_remove = graph.es.select(direction_ne='left')
         graph.delete_edges([edge.index for edge in edges_to_remove])
 
@@ -252,4 +289,3 @@ class INTEG21INBEVBEPositionGraphs:
                 row[y] = graph.vs[index][entity]
             matrix[i] = row
         return matrix
-
