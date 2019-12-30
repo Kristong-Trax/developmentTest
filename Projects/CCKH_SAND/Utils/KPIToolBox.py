@@ -1,21 +1,22 @@
+# -*- coding: utf-8 -*-
 import os
-import pandas as pd
 from datetime import datetime
 
-from Trax.Algo.Calculations.Core.DataProvider import Data
-from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScript
-from Trax.Cloud.Services.Connector.Keys import DbUsers
+import pandas as pd
+from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
+from KPIUtils_v2.DB.CommonV2 import Common as CommonV2
 from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
-from Trax.Utils.Logging.Logger import Log
+from KPIUtils_v2.GlobalDataProvider.PsDataProvider import PsDataProvider
+from KPIUtils_v2.Utils.Consts.DB import SessionResultsConsts
+from KPIUtils_v2.Utils.Consts.GlobalConsts import HelperConsts
+from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScript
+from Trax.Algo.Calculations.Core.DataProvider import Data
+from Trax.Cloud.Services.Connector.Keys import DbUsers
 from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
+from Trax.Utils.Logging.Logger import Log
 
 from Projects.CCKH_SAND.Utils.Fetcher import CCKH_SANDQueries
 from Projects.CCKH_SAND.Utils.GeneralToolBox import CCKH_SANDGENERALToolBox
-from KPIUtils_v2.Utils.Consts.DB import SessionResultsConsts
-from KPIUtils_v2.Utils.Consts.GlobalConsts import HelperConsts
-from KPIUtils_v2.DB.CommonV2 import Common as CommonV2
-from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
-from KPIUtils_v2.GlobalDataProvider.PsDataProvider import PsDataProvider
 
 __author__ = 'Nimrod'
 
@@ -85,6 +86,7 @@ class CCKH_SANDTemplateConsts(object):
     AVAILABILITY_SHEET = 'AVAILABILITY'
     VISIBILITY_SHEET = 'VISIBILITY'
     COOLER_SHEET = 'COOLER'
+    AVAILABILITY_KPI_TYPE = u'ផលិតផលត្រូវមានលក់ (Availability)'
 
 
 class CCKH_SANDToolBox(CCKH_SANDConsts):
@@ -118,7 +120,6 @@ class CCKH_SANDToolBox(CCKH_SANDConsts):
         self.manufacturer = int(self.data_provider.own_manufacturer.param_value.values[0])
         self.ps_data_provider = PsDataProvider(self.data_provider, self.output)
         self.external_targets = self.ps_data_provider.get_kpi_external_targets()
-        self.store_assortments = self.ps_data_provider.get_store_assortment()
         self.assortment = Assortment(self.data_provider, self.output)
         self.templates_info = self.external_targets[self.external_targets[CCKH_SANDTemplateConsts.TEMPLATE_OPERATION] ==
                                                     CCKH_SANDTemplateConsts.BASIC_SHEET]
@@ -146,11 +147,9 @@ class CCKH_SANDToolBox(CCKH_SANDConsts):
         availability_assortment_df = self.assortment.calculate_lvl3_assortment()
         if availability_assortment_df.empty:
             Log.info("This session does not have relevant assortments.")
-            score = False
-        # availability_static_kpi_fk = 1  # static.kpi - availability kpi
-        availability_new_kpi_fk = 437  # static.kpi_level_2
-        availability_kpi_name = self.kpi_new_static_data[self.kpi_new_static_data['pk'] ==
-                                                         availability_new_kpi_fk].iloc[0].type
+        availability_kpi = self.kpi_new_static_data[self.kpi_new_static_data['type'].str.encode(
+            HelperConsts.UTF8) == self.template.AVAILABILITY_KPI_TYPE.encode(HelperConsts.UTF8)].iloc[0]
+        availability_new_kpi_fk = availability_kpi.pk
         scores = []
         # no need to validate_kpi_run because Availability is 1; seems it was added for the other KPIs
         kpi_availability_group = availability_assortment_df.groupby('kpi_fk_lvl2')
@@ -167,7 +166,7 @@ class CCKH_SANDToolBox(CCKH_SANDConsts):
                                                            kpi_fk_lvl2].iloc[0].type
                 Log.info('Save availability atomic kpi: {}'.format(atomic_kpi_name))
                 atomic_kpi = self.kpi_static_data[(self.kpi_static_data['kpi_name'].str.encode(HelperConsts.UTF8) ==
-                                                   availability_kpi_name.encode(HelperConsts.UTF8)) &
+                                                   self.template.AVAILABILITY_KPI_TYPE.encode(HelperConsts.UTF8)) &
                                                   (self.kpi_static_data['atomic_kpi_name'] == atomic_kpi_name)]
                 atomic_fk = atomic_kpi.iloc[0].atomic_kpi_fk
                 self.write_to_db_result(atomic_fk, (score, result, threshold, points), level=self.LEVEL3)
@@ -185,10 +184,10 @@ class CCKH_SANDToolBox(CCKH_SANDConsts):
             (actual_points / float(max_points)) * 100, 2)
 
         kpi_fk = self.kpi_static_data[self.kpi_static_data['kpi_name'].str.encode(HelperConsts.UTF8) ==
-                                      availability_kpi_name.encode(HelperConsts.UTF8)]['kpi_fk'].values[0]
+                                      self.template.AVAILABILITY_KPI_TYPE.encode(HelperConsts.UTF8)]['kpi_fk'].values[0]
         self.write_to_db_result(kpi_fk, (actual_points, max_points,
                                          percentage), level=self.LEVEL2)
-        set_scores[availability_kpi_name] = (max_points, actual_points)
+        set_scores[self.template.AVAILABILITY_KPI_TYPE] = (max_points, actual_points)
         results_list_new_db.append(self.get_new_kpi_dict(availability_new_kpi_fk, percentage, percentage,
                                                          actual_points, max_points,
                                                          target=max_points,
@@ -222,7 +221,7 @@ class CCKH_SANDToolBox(CCKH_SANDConsts):
                         if kpi_type == self.SURVEY:
                             score, result, threshold, survey_answer_fk = self.check_survey(child)
                             threshold = None
-                            numerator, denominator, result_new_db = 1, 1, score*100
+                            numerator, denominator, result_new_db = 1, 1, score * 100
                             numerator_id = survey_answer_fk
                         elif kpi_type == self.SHARE_OF_SHELF:
                             score, result, threshold, result_new_db, numerator, denominator = \
@@ -247,8 +246,9 @@ class CCKH_SANDToolBox(CCKH_SANDConsts):
                             self.write_to_db_result(
                                 atomic_fk, (score, result, threshold, points), level=self.LEVEL3)
                             identifier_parent = main_kpi_identifier
-                            child_name = '{}-{}'.format(child[self.template.TRANSLATION], 'Atomic')\
-                                if main_child[self.template.KPI_NAME] == child[self.template.KPI_NAME] else child[self.template.TRANSLATION]
+                            child_name = '{}-{}'.format(child[self.template.TRANSLATION], 'Atomic') \
+                                if main_child[self.template.KPI_NAME] == child[self.template.KPI_NAME] else child[
+                                self.template.TRANSLATION]
                             child.set_value(self.template.TRANSLATION, child_name)
                             child_kpi_fk = self.get_new_kpi_fk(child)  # kpi fk from new tables
                             results_list_new_db.append(self.get_new_kpi_dict(child_kpi_fk, result_new_db, score,
