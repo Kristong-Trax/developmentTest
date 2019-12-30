@@ -141,12 +141,43 @@ class CCKH_SANDToolBox(CCKH_SANDConsts):
         """
         This function calculates the KPI results.
         """
-        set_scores = {}
+        scores_dict = {}
         results_list_new_db = []
-        # assortments for availability
+        # assortments based calculations for availability
+        availability_kpi_dict, availability_score_dict = self.get_availability_kpi_data()
+        results_list_new_db.extend(availability_kpi_dict)
+        scores_dict.update(availability_score_dict)
+        # external target based calculations
+        final_main_child = self.templates_info[self.templates_info['Tested KPI Group'] == self.RED_SCORE].iloc[0]
+        all_kpi_dict, all_score_dict = self.get_all_kpi_data()
+        results_list_new_db.extend(all_kpi_dict)
+        scores_dict.update(all_score_dict)
+        # aggregation to calculate red score
+        max_points = sum([score[0] for score in scores_dict.values()])
+        actual_points = sum([score[1] for score in scores_dict.values()])
+        red_score = 0 if max_points == 0 else round((actual_points / float(max_points)) * 100, 2)
+        set_fk = self.kpi_static_data['kpi_set_fk'].values[0]
+        self.write_to_db_result(set_fk, (actual_points, max_points, red_score), level=self.LEVEL1)
+        results_list_new_db.append(self.get_new_kpi_dict(self.get_new_kpi_fk(final_main_child), red_score,
+                                                         red_score, actual_points, max_points,
+                                                         target=max_points,
+                                                         weight=actual_points,
+                                                         identifier_result=self.RED_SCORE,
+                                                         identifier_parent=CCKH_SANDConsts.WEB_HIERARCHY))
+        results_list_new_db.append(self.get_new_kpi_dict(self.get_new_kpi_by_name(self.RED_SCORE), red_score,
+                                                         red_score, actual_points, max_points,
+                                                         target=max_points, weight=actual_points,
+                                                         identifier_result=CCKH_SANDConsts.WEB_HIERARCHY))
+        self.commonV2.save_json_to_new_tables(results_list_new_db)
+        self.commonV2.commit_results_data()
+
+    def get_availability_kpi_data(self):
+        availability_results_list = []
+        scores_dict = {}
         availability_assortment_df = self.assortment.calculate_lvl3_assortment()
         if availability_assortment_df.empty:
-            Log.info("This session does not have relevant assortments.")
+            Log.info("Availability KPI: session: {} does not have relevant assortments.".format(self.session_uid))
+            return [], {}
         availability_kpi = self.kpi_new_static_data[self.kpi_new_static_data['type'].str.encode(
             HelperConsts.UTF8) == self.template.AVAILABILITY_KPI_TYPE.encode(HelperConsts.UTF8)].iloc[0]
         availability_new_kpi_fk = availability_kpi.pk
@@ -173,33 +204,39 @@ class CCKH_SANDToolBox(CCKH_SANDConsts):
                 child_name = atomic_kpi.atomic_kpi_name.iloc[0]
                 child_kpi_fk = self.get_new_kpi_by_name(child_name)  # kpi fk from new tables
                 Log.info('Save availability for {} ID: {}'.format(child_name, child_kpi_fk))
-                results_list_new_db.append(self.get_new_kpi_dict(child_kpi_fk, result_new_db, score,
-                                                                 numerator, denominator,
-                                                                 weight=points, target=denominator,
-                                                                 identifier_parent={'kpi_fk': availability_new_kpi_fk},
-                                                                 ))
+                availability_results_list.append(self.get_new_kpi_dict(child_kpi_fk, result_new_db, score,
+                                                                       numerator, denominator,
+                                                                       weight=points, target=denominator,
+                                                                       identifier_parent={
+                                                                           'kpi_fk': availability_new_kpi_fk},
+                                                                       ))
         max_points = sum([score[0] for score in scores])
         actual_points = sum([score[0] * score[1] for score in scores])
         percentage = 0 if max_points == 0 else round(
             (actual_points / float(max_points)) * 100, 2)
 
         kpi_fk = self.kpi_static_data[self.kpi_static_data['kpi_name'].str.encode(HelperConsts.UTF8) ==
-                                      self.template.AVAILABILITY_KPI_TYPE.encode(HelperConsts.UTF8)]['kpi_fk'].values[0]
+                                      self.template.AVAILABILITY_KPI_TYPE.encode(HelperConsts.UTF8)][
+            'kpi_fk'].values[0]
         self.write_to_db_result(kpi_fk, (actual_points, max_points,
                                          percentage), level=self.LEVEL2)
-        set_scores[self.template.AVAILABILITY_KPI_TYPE] = (max_points, actual_points)
-        results_list_new_db.append(self.get_new_kpi_dict(availability_new_kpi_fk, percentage, percentage,
-                                                         actual_points, max_points,
-                                                         target=max_points,
-                                                         weight=actual_points,
-                                                         identifier_result={'kpi_fk': availability_new_kpi_fk},
-                                                         identifier_parent=self.RED_SCORE))
-        # external target based calc
+        scores_dict[self.template.AVAILABILITY_KPI_TYPE] = (max_points, actual_points)
+        availability_results_list.append(self.get_new_kpi_dict(availability_new_kpi_fk, percentage, percentage,
+                                                               actual_points, max_points,
+                                                               target=max_points,
+                                                               weight=actual_points,
+                                                               identifier_result={
+                                                                   'kpi_fk': availability_new_kpi_fk},
+                                                               identifier_parent=self.RED_SCORE))
+        return availability_results_list, scores_dict
+
+    def get_all_kpi_data(self):
+        results_list_new_db = []
+        scores_dict = {}
         if self.templates_info.empty:
-            Log.info("This sessions doesnt have relevant external targets")
-            return False
+            Log.info("All KPI: session: {} doesnt have relevant external targets".format(self.session_uid))
+            return [], {}
         main_children = self.templates_info[self.templates_info[self.template.KPI_GROUP] == self.RED_SCORE]
-        final_main_child = main_children[main_children['Tested KPI Group'] == self.RED_SCORE].iloc[0]
         for c in xrange(0, len(main_children)):
             main_child = main_children.iloc[c]
             if main_child['Tested KPI Group'] == self.RED_SCORE:
@@ -266,32 +303,14 @@ class CCKH_SANDToolBox(CCKH_SANDConsts):
                                               kpi_name.encode(HelperConsts.UTF8)]['kpi_fk'].values[0]
                 self.write_to_db_result(kpi_fk, (actual_points, max_points,
                                                  percentage), level=self.LEVEL2)
-                set_scores[kpi_name] = (max_points, actual_points)
+                scores_dict[kpi_name] = (max_points, actual_points)
                 results_list_new_db.append(self.get_new_kpi_dict(main_child_kpi_fk, percentage, percentage,
                                                                  actual_points, max_points,
                                                                  target=max_points,
                                                                  weight=actual_points,
                                                                  identifier_result=main_kpi_identifier,
                                                                  identifier_parent=self.RED_SCORE))
-
-        # aggregation to calculate red score
-        max_points = sum([score[0] for score in set_scores.values()])
-        actual_points = sum([score[1] for score in set_scores.values()])
-        red_score = 0 if max_points == 0 else round((actual_points / float(max_points)) * 100, 2)
-        set_fk = self.kpi_static_data['kpi_set_fk'].values[0]
-        self.write_to_db_result(set_fk, (actual_points, max_points, red_score), level=self.LEVEL1)
-        results_list_new_db.append(self.get_new_kpi_dict(self.get_new_kpi_fk(final_main_child), red_score,
-                                                         red_score, actual_points, max_points,
-                                                         target=max_points,
-                                                         weight=actual_points,
-                                                         identifier_result=self.RED_SCORE,
-                                                         identifier_parent=CCKH_SANDConsts.WEB_HIERARCHY))
-        results_list_new_db.append(self.get_new_kpi_dict(self.get_new_kpi_by_name(self.RED_SCORE), red_score,
-                                                         red_score, actual_points, max_points,
-                                                         target=max_points, weight=actual_points,
-                                                         identifier_result=CCKH_SANDConsts.WEB_HIERARCHY))
-        self.commonV2.save_json_to_new_tables(results_list_new_db)
-        self.commonV2.commit_results_data()
+        return results_list_new_db, scores_dict
 
     def validate_store_type(self, params):
         """

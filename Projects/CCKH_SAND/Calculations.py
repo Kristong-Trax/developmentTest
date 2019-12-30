@@ -22,6 +22,7 @@ if __name__ == '__main__':
     Config.init()
     project_name = 'cckh-sand'
     data_provider = KEngineDataProvider(project_name)
+    # session = 'BAD33A37-A17D-493F-B5A8-112D947062D1'
     session = 'ff0d57ad-a7ed-46ca-9488-1d28f4682500'
     # session = 'f073ac15-3121-4c86-bb59-cc6dc6b6e4b5'
     data_provider.load_session_data(session)
