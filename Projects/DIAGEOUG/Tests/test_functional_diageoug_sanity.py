@@ -2,7 +2,6 @@
 from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
 from Projects.DIAGEOUG.Tests.Data.test_data_diageoug_sanity import ProjectsSanityData
 from Projects.DIAGEOUG.Calculations import DIAGEOUGCalculations
-
 from DevloperTools.SanityTests.PsSanityTests import PsSanityTestsFuncs
 from Projects.DIAGEOUG.Tests.Data.kpi_results import DIAGEOUGKpiResults
 

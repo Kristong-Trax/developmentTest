@@ -108,10 +108,10 @@ class %(project_capital)sKpiResults:
 """
 
     TEST_CLASS = """  
+%(scene_import)s
 from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
 from Projects.%(project_capital)s.Tests.Data.test_data_%(project)s_sanity import ProjectsSanityData
 from Projects.%(project_capital)s.Calculations import %(main_class_name)s
-%(scene_import)s
 from DevloperTools.SanityTests.PsSanityTests import PsSanityTestsFuncs 
 from Projects.%(project_capital)s.Tests.Data.kpi_results import %(project_capital)sKpiResults
 
