@@ -1,1470 +1,287 @@
 import pandas as pd
-from datetime import datetime, timedelta
 
+from Projects.INTEG21.Utils.Const import SET_CATEGORIES, FILTER_NAMING_DICT, \
+    SET_PRE_CALC_CHECKS, DOG_MAIN_MEAL_WET, SPT_DOG_TREATS, SPT_CAT_TREATS, \
+    SPT_CAT_MAIN_MEAL, SPT_DOG_MAIN_MEAL, CAT_TREATS, CAT_MAIN_MEAL_DRY, \
+    CAT_MAIN_MEAL_WET, DOG_MAIN_MEAL_DRY, DOG_TREATS, BDB_RETAILERS, BDB_CHANNELS, SPT_RETAILERS, \
+    SPT_CHANNELS  # SPT_DOG_TREATS_Q1_2018, SPT_CAT_TREATS_Q1_2018, SPT_CAT_MAIN_MEAL_Q1_2018, SPT_DOG_MAIN_MEAL_Q1_2018
+
+from Projects.INTEG21.Utils.Fetcher import MarsUsQueries
+from Projects.INTEG21.Utils.GeneralToolBox import MarsUsGENERALToolBox
+from Projects.INTEG21.Utils.Loader import Definition
+from Projects.INTEG21.Utils.ParseTemplates import ParseMarsUsTemplates, KPIConsts
+from Projects.INTEG21.Utils.Runner import Results
+from Projects.INTEG21.Utils.Writer import KpiResultsWriter as KpiResultsWriter
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Cloud.Services.Connector.Keys import DbUsers
 from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
+from Projects.INTEG21.Utils.Fake_Common import NotCommon as Common
 from Trax.Utils.Logging.Logger import Log
-from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
-from Trax.Algo.Calculations.Core.Shortcuts import BaseCalculationsGroup
-from Projects.INTEG21.Utils.Fetcher import INTEG21INBEVBEQueries
-from Projects.INTEG21.Utils.INBEVBEJSON import INTEG21INBEVBEJsonGenerator
-from Projects.INTEG21.Utils.ToolBox import INTEG21INBEVBEINBEVToolBox
 
-__author__ = 'urid'
-
-KPI_RESULT = 'report.kpi_results'
-KPK_RESULT = 'report.kpk_results'
-KPS_RESULT = 'report.kps_results'
-CUSTOM_OSA = 'pservice.custom_store_assortments_products'
-OSA = 'OSA'
-PALLET = 'Full Pallet'
-HALF_PALLET = 'Half Pallet'
-PALLET_WEIGHT = 1
-HALF_PALLET_WEIGHT = 0.5
-COMMERCIAL_GROUP = 'ABI_SFA_External_ID__c'
-EMPTY = 'Empty'
-OTHER = 'Other'
+__author__ = 'nethanel'
 
 
-def log_runtime(description, log_start=False):
-    def decorator(func):
-        def wrapper(*args, **kwargs):
-            calc_start_time = datetime.utcnow()
-            if log_start:
-                Log.info('{} started at {}'.format(description, calc_start_time))
-            result = func(*args, **kwargs)
-            calc_end_time = datetime.utcnow()
-            Log.info('{} took {}'.format(description, calc_end_time - calc_start_time))
-            return result
-
-        return wrapper
-
-    return decorator
-
-
-class INTEG21INBEVBEToolBox:
-    LEVEL1 = 1
-    LEVEL2 = 2
-    LEVEL3 = 3
-    CUSTOM_SCENE_ITEM_FACTS = 'pservice.custom_scene_item_facts'
-    ABINBEV = 'AB INBEV'
-    DELISTED_MESSAGE_TYPE = 'DVOID'
-    PALLET_SIZE_MM = 1200
-    HALF_PALLET_SIZE_MM = 600
-    NOT_OOS = 'Not OOS'
-    SHELF_IMPACT_SCORE = 'Shelf Impact Score'
-
+class MarsUsDogMainMealWet(object):
     def __init__(self, data_provider, output):
-        self.k_engine = BaseCalculationsGroup(data_provider, output)
-        self.data_provider = data_provider
-        self.project_name = self.data_provider.project_name
-        self.session_uid = self.data_provider.session_uid
-        self.products = self.data_provider[Data.PRODUCTS]
-        self.all_project_products = self.data_provider[Data.ALL_PRODUCTS]
+        self._data_provider = data_provider
+        self.common = Common(self._data_provider)
+        self._data_provider.set_shared_data(self.common.read_custom_query(MarsUsQueries.get_updated_mvp_sr()))
+        self.project_name = self._data_provider.project_name
         self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
-        self.all_products = self.get_all_products()
-        self.match_product_in_scene = self.data_provider[Data.MATCHES]
-        self.visit_date = self.data_provider[Data.VISIT_DATE]
-        self.session_info = self.data_provider[Data.SESSION_INFO]
-        self.store_info = self.data_provider[Data.STORE_INFO]
-        self.store_type = self.store_info['store_type'].values[0]
-        self.business_unit = self.get_business_unit()
-        self.scene_info = self.data_provider[Data.SCENES_INFO]
-        self.store_id = self.data_provider[Data.STORE_FK]
-        self.store_number = self.get_store_number_1()
-        self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
-        self.match_display_in_scene = self.get_match_display()
-        self.set_templates_data = {}
-        self.kpi_static_data = self.get_kpi_static_data()
-        self.tools = INTEG21INBEVBEINBEVToolBox(self.data_provider, output,
-                                         kpi_static_data=self.kpi_static_data,
-                                         match_display_in_scene=self.match_display_in_scene)
-        self.kpi_results_queries = []
-        self.download_time = timedelta(0)
-        self.osa_table = self.get_osa_records()
-        self.oos_messages = self.get_oos_messages()
-        self.shelf_impact_score_results = {}
-        self.scene_item_length_mm_dict = {}
-        self.osa_scene_item_results = {}
-        self.session_fk = self.data_provider[Data.SESSION_INFO]['pk'].iloc[0]
-        self.must_have_assortment_score_range = {(0, 70): 0, (71, 90): 15, (90, 101): 30}
-        self.linear_share_of_shelf_score_range = {(0, 95): 0, (95, 100): 15, (100, 103): 25,
-                                                  (103, 500): 30}
-        self.osa_score_range = {(0, 95): 0, (95, 97): 10, (90, 101): 15}
-        self.shelf_level_score_range = {(0, 95): 0, (95, 97): 10, (90, 101): 15}
-        self.product_blocking_score_range = {(0, 75): 0, (75, 100): 5, (100, 200): 10}
-        self.products_to_add = []
-        self.mha_product_results = {}
-        self.has_assortment_list = []
-        self.delisted_products = []
-        self.missing_bundle_leads = []
-        self.shelf_impact_score_thresholds = {}
-        self.osa_product_dist_dict = {}
-        self.linear_sos_value = 0
-        self.must_have_assortment_list = []
-        self.rect_values = self.get_rect_values()
-        self.extra_bundle_leads = []
+        self._output = output
+        self._template = ParseMarsUsTemplates()
+        self._writer = self._get_writer()
+        self.store_id = self._data_provider[Data.STORE_FK]
+        self._data_provider.channel = self.get_store_att17(self.store_id)
+        self._data_provider.retailer = self.get_store_retailer(self.store_id)
+        self._data_provider.probe_groups = self.get_probe_group(self._data_provider.session_uid)
+        self.store_type = data_provider.store_type
+        self.rds_conn.disconnect_rds()
+        self._data_provider.trace_container = pd.DataFrame(columns=['kpi_display_text', 'scene_id',
+                                                                    'products&brands', 'allowed_products', 'kpi_pass'])
+        self._tools = MarsUsGENERALToolBox(self._data_provider, self._output, ignore_stacking=True)
+        self._data_provider['common'] = self.common
 
-    @staticmethod
-    def inrange(x, min, max):
-        return (min is None or min <= x) and (max is None or max >= x)
 
-    @staticmethod
-    def get_max_value_from_dict_of_dicts(values):
-        optional_factors = []
-        for value in values:
-            optional_factors.append(value)
-        return max(optional_factors)
 
-    def get_points_by_score_range(self, score, score_dict=None, max_point=None):
-        points = 0
-        if score_dict:
-            for score_range in score_dict.keys():
-                if self.inrange(score, score_range[0], score_range[1]):
-                    points = score_dict[score_range]
-        elif max_point:
-            point = (float(score) / float(max_point)) * 100
-            points = round(point)
-        else:
-            return
+    def get_store_att17(self, store_fk):
+        query = MarsUsQueries.get_store_attribute(17, store_fk)
+        att15 = pd.read_sql_query(query, self.rds_conn.db)
+        return att15.values[0][0]
 
-        return points
+    def get_store_att8(self, store_fk):
+        query = MarsUsQueries.get_store_attribute(8, store_fk)
+        att10 = pd.read_sql_query(query, self.rds_conn.db)
+        return att10.values[0][0]
 
-    def get_business_unit(self):
-        """
-        This function returns the session's business unit (equal to store type for some KPIs)
-        """
-        query = INTEG21INBEVBEQueries.get_business_unit_data(self.store_info['store_fk'].values[0])
-        business_unit = pd.read_sql_query(query, self.rds_conn.db)['name']
-        if not business_unit.empty:
-            return business_unit.values[0]
-        else:
-            return ''
+    def get_store_retailer(self, store_fk):
+        query = MarsUsQueries.get_store_retailer(store_fk)
+        att10 = pd.read_sql_query(query, self.rds_conn.db)
+        return att10.values[0][0]
 
-    def get_kpi_static_data(self):
-        """
-        This function extracts the static KPI data and saves it into one global data frame.
-        The data is taken from static.kpi / static.atomic_kpi / static.kpi_set.
-        """
-        query = INTEG21INBEVBEQueries.get_all_kpi_data()
-        kpi_static_data = pd.read_sql_query(query, self.rds_conn.db)
-        return kpi_static_data
+    def get_probe_group(self, session_uid):
+        query = MarsUsQueries.get_probe_group(session_uid)
+        probe_group = pd.read_sql_query(query, self.rds_conn.db)
+        return probe_group
 
-    def get_match_display(self):
-        """
-        This function extracts the display matches data and saves it into one global data frame.
-        The data is taken from probedata.match_display_in_scene.
-        """
-        query = INTEG21INBEVBEQueries.get_match_display(self.session_uid)
-        match_display = pd.read_sql_query(query, self.rds_conn.db)
-        return match_display
+    @property
+    def _get_store_channel(self):
+        return self._data_provider.channel
 
-    def get_osa_records(self):
-        query = INTEG21INBEVBEQueries.get_osa_table(self.store_id)
-        osa_table = pd.read_sql_query(query, self.rds_conn.db)
-        return osa_table
+    @property
+    def _get_store_type(self):
+        return self._data_provider.store_type
 
-    def get_must_have_records(self):
-        query = INTEG21INBEVBEQueries.get_must_have_table(self.store_id)
-        must_have_records = pd.read_sql_query(query, self.rds_conn.db)
-        return must_have_records
+    @property
+    def _get_retailer_name(self):
+        return self._data_provider.retailer
 
-    def get_oos_messages(self):
-        query = INTEG21INBEVBEQueries.get_oos_messages(self.session_uid)
-        oos_messages = pd.read_sql_query(query, self.rds_conn.db)
-        return oos_messages
+    def _get_writer(self):
+        return KpiResultsWriter(session_uid=self._data_provider.session_uid,
+                                project_name=self._data_provider.project_name,
+                                store_id=self._data_provider[Data.STORE_FK],
+                                visit_date=self._data_provider[Data.VISIT_DATE])
 
-    def get_store_number_1(self):
-        query = INTEG21INBEVBEQueries.get_store_number_1(self.store_id)
-        store_number = pd.read_sql_query(query, self.rds_conn.db)
-        return store_number.values[0]
-
-    def get_eye_level_shelves(self, shelves_num):
-        jg = INTEG21INBEVBEJsonGenerator('inbevbe')
-        jg.create_targets_json('golden_shelves.xlsx', 'golden_shelves')
-        targets = jg.project_kpi_dict['golden_shelves']
-        final_shelves = []
-        for row in targets:
-            if row.get('num. of shelves min') <= shelves_num <= row.get('num. of shelves max'):
-                start_shelf = row.get('num. ignored from top') + 1
-                end_shelf = shelves_num - row.get('num. ignored from bottom')
-                final_shelves = range(start_shelf, end_shelf + 1)
-            else:
-                continue
-        return final_shelves
-
-    # def test_new_bundles(self):
-    #     json_data = self.tools.download_template('OSA')
-    #     # json_data = self.tools.get_json_data('/home/uri/trax_ace_factory/Projects/INBEVBE_SAND/Data/OSA.xlsx')
-    #     # new_assortment_df = pd.DataFrame.from_dict(json_data, orient='index')
-    #     new_assortment_df = pd.DataFrame(json_data)
-    #     # ass_prod_list = new_assortment_df.loc[new_assortment_df['store'] == self.store_number[0]][
-    #     #     'EAN'].unique().tolist()
-    #
-    #     initial_ass_prod_list = new_assortment_df.loc[new_assortment_df['store'] == self.store_number[0]][
-    #         COMMERCIAL_GROUP].unique().tolist()
-    #     ass_prod_list = []
-    #     for product in initial_ass_prod_list:
-    #         product_fk = self.get_bundle_lead_by_att1(product)
-    #         if product_fk is not None:
-    #             ass_prod_list.append(product_fk)
-
-    def check_on_shelf_availability(self, set_name):
-        """
-        This function is used for OSA set calculations
-        :param set_name:
-        :return:
-        """
-        try:
-            store_assortment_df = self.osa_table.loc[self.osa_table['store_fk'] == self.store_id]
-        except KeyError as e:
-            store_assortment_df = pd.DataFrame([])
-        if store_assortment_df.empty:
-            json_data = self.tools.download_template(set_name)
-            # json_data = self.tools.get_json_data('/home/uri/trax_ace_factory/Projects/INBEVBE_SAND/Data/OSA.xlsx')
-            # new_assortment_df = pd.DataFrame.from_dict(json_data, orient='index')
-            new_assortment_df = pd.DataFrame(json_data)
-            # ass_prod_list = new_assortment_df.loc[new_assortment_df['store'] == self.store_number[0]][
-            #     'EAN'].unique().tolist()
-
-            initial_ass_prod_list = new_assortment_df.loc[new_assortment_df['store'] == self.store_number[0]][
-                COMMERCIAL_GROUP].unique().tolist()
-            ass_prod_list = []
-            for group in initial_ass_prod_list:
-                product_fk = self.get_bundle_lead_by_att1(group)
-                if product_fk is not None:
-                    ass_prod_list.append(product_fk)
-            self.has_assortment_list = ass_prod_list
-            object_type = 'product_fk'
-            self.add_product_to_store_assortment(ass_prod_list, object_type)  # Insert all data from file
-        else:
-            ass_prod_list = store_assortment_df['product_fk'].unique().tolist()
-            self.has_assortment_list = ass_prod_list
-            object_type = 'product_fk'
-        ass_prod_present_in_store = self.scif.loc[self.scif[object_type].isin(ass_prod_list)][
-            'product_fk'].unique().tolist()
-        new_products_df = self.scif.loc[
-            (~self.scif[object_type].isin(ass_prod_list)) & (self.scif['manufacturer_name'] == self.ABINBEV) & (
-                ~self.scif['product_type'].isin([EMPTY, OTHER]))]
-        if not new_products_df.empty:
-            # self.products_to_add = new_products_df['product_fk'].unique().tolist()
-            for product in new_products_df['product_fk'].unique().tolist():
-                bundle_product_fk = self.get_bundle_lead(product)
-                if bundle_product_fk is not None and bundle_product_fk not in ass_prod_list:
-                    self.products_to_add.append(bundle_product_fk)
-            self.add_product_to_store_assortment(list(set(self.products_to_add)), 'product_fk')
-        delisted_products = self.oos_messages.loc[self.oos_messages['description'] == self.DELISTED_MESSAGE_TYPE]
-        if not delisted_products.empty:
-            products_to_remove = delisted_products['product_fk'].unique().tolist()
-            self.remove_product_from_store_assortment(products_to_remove)
-        falsely_recognized_products = self.oos_messages.loc[
-            self.oos_messages['description'] == self.NOT_OOS]
-        if not falsely_recognized_products.empty:
-            falsely_recognized_products_list = falsely_recognized_products['product_fk'].unique().tolist()
-        else:
-            falsely_recognized_products_list = []
-        # products_without_oos_reasons = self.oos_messages.loc[
-        #     (~self.scif['product_fk'].isin(ass_prod_present_in_store)) & (
-        #         ~self.oos_messages['product_fk'].isin(self.has_assortment_list)) & (
-        #         self.scif[object_type].isin(ass_prod_list))]
-        # if not products_without_oos_reasons.empty:
-        #     products_without_oos_reasons_list = products_without_oos_reasons['product_fk'].unique().tolist()
-        # else:
-        #     products_without_oos_reasons_list = []
-        ass_prod_present_in_store.extend(self.products_to_add)
-        ass_prod_list.extend(self.products_to_add)
-        set_score = 0
-        self.check_on_shelf_availability_on_scene_level(OSA)
-        if set_name == OSA:
-            self.calculate_osa_assortment_and_oos(ass_prod_list, ass_prod_present_in_store, object_type,
-                                                  falsely_recognized_prods=falsely_recognized_products_list)
-            # self.calculate_osa_assortment_and_oos(ass_prod_list, ass_prod_present_in_store, object_type,
-            #                                       falsely_recognized_prods=falsely_recognized_products_list,
-            #                                       products_without_oos_reasons=products_without_oos_reasons_list)
-            # updated_ass_prod_list = self.all_products.loc[(self.all_products['product_fk'].isin(ass_prod_list)) & (
-            #     (self.all_products['att3'] == 'YES') | (
-            #         self.all_products['product_fk'].isin(self.missing_bundle_leads)))][
-            #     'product_fk'].unique().tolist()
-
-            updated_ass_prod_list = self.all_products.loc[(self.all_products['product_fk'].isin(ass_prod_list)) & (
-                (self.all_products['att3'] == 'YES'))]['product_fk'].unique().tolist()
-            updated_ass_prod_list.extend(set(self.extra_bundle_leads))
-            if not updated_ass_prod_list:
-                set_score = 0
-                target = 0
-            else:
-                # set_score = (len(ass_prod_present_in_store) / float(len(set(updated_ass_prod_list)))) * 100
-                set_score = (sum(self.osa_product_dist_dict.values()) / float(len(set(updated_ass_prod_list)))) * 100
-                target = len(set(updated_ass_prod_list))
-            self.shelf_impact_score_thresholds[OSA] = target
-        self.shelf_impact_score_results[OSA] = round(sum(self.osa_product_dist_dict.values()), 2)
-
-        return round(set_score, 2)
-
-    def check_on_shelf_availability_on_scene_level(self, set_name):
-        """
-        This function is used for pservice.custom_scene_item_facts table calculations
-        :param set_name:
-        :return:
-        """
-        try:
-            store_assortment_df = self.osa_table.loc[self.osa_table['store_fk'] == self.store_id]
-        except KeyError as e:
-            store_assortment_df = pd.DataFrame([])
-        if store_assortment_df.empty:
-            json_data = self.tools.download_template(set_name)
-            # json_data = self.tools.get_json_data('/home/uri/trax_ace_factory/Projects/INBEVBE_SAND/Data/OSA.xlsx')
-            # new_assortment_df = pd.DataFrame.from_dict(json_data, orient='index')
-            new_assortment_df = pd.DataFrame(json_data)
-            # init_ass_prod_list = new_assortment_df.loc[new_assortment_df['store'] == self.store_number[0]][
-            #     'EAN'].unique().tolist()
-            object_type = 'product_fk'
-            # self.add_product_to_store_assortment(ass_prod_list, object_type)  # Insert all data from file
-            # ass_prod_list = self.all_products.loc[self.all_products['product_ean_code'].isin(init_ass_prod_list)][
-            #     'product_fk'].unique().tolist()
-
-            initial_ass_prod_list = new_assortment_df.loc[new_assortment_df['store'] == self.store_number[0]][
-                COMMERCIAL_GROUP].unique().tolist()
-            ass_prod_list = []
-            for product in initial_ass_prod_list:
-                product_fk = self.get_bundle_lead_by_att1(product)
-                if product_fk is not None:
-                    ass_prod_list.append(product_fk)
-
-        else:
-            ass_prod_list = store_assortment_df['product_fk'].unique().tolist()
-            object_type = 'product_fk'
-        scenes_to_check = self.scif['scene_fk'].unique().tolist()
-        ass_prod_list.extend(self.products_to_add)
-        ass_prod_present_in_store_in_all_scenes = \
-            self.scif.loc[
-                (self.scif[object_type].isin(ass_prod_list)) & (self.scif['scene_fk'].isin(scenes_to_check))][
-                'product_fk'].unique().tolist()
-        scif_with_oos_messages = self.oos_messages.merge(self.scif, on='product_fk', how='left')
-        falsely_recognized_products = scif_with_oos_messages.loc[
-            (scif_with_oos_messages['description'] == self.NOT_OOS)]
-        if not falsely_recognized_products.empty:
-            falsely_recognized_products_list = falsely_recognized_products['product_fk'].unique().tolist()
-        else:
-            falsely_recognized_products_list = []
-        products_without_oos_reasons = scif_with_oos_messages.loc[
-            (~scif_with_oos_messages['product_fk'].isin(ass_prod_present_in_store_in_all_scenes)) & (
-                ~scif_with_oos_messages['product_fk'].isin(ass_prod_list)) & (
-                scif_with_oos_messages['product_fk'].isin(ass_prod_list))]
-        if not products_without_oos_reasons.empty:
-            products_without_oos_reasons_list = products_without_oos_reasons['product_fk'].unique().tolist()
-        else:
-            products_without_oos_reasons_list = []
-        for scene in scenes_to_check:
-            ass_prod_present_in_store_per_scene = \
-                self.scif.loc[(self.scif[object_type].isin(ass_prod_list)) & (self.scif['scene_fk'] == scene)][
-                    'product_fk'].unique().tolist()
-            # Saving product results for custom_scene_item_facts table
-            self.calculate_osa_assortment_and_oos(ass_prod_list, ass_prod_present_in_store_per_scene, object_type,
-                                                  falsely_recognized_prods=falsely_recognized_products_list,
-                                                  products_without_oos_reasons=products_without_oos_reasons_list,
-                                                  scene=scene)
-
-    def calculate_osa_assortment_and_oos(self, products_list, products_present_in_store, object_type,
-                                         falsely_recognized_prods=[],
-                                         products_without_oos_reasons=[], scene=None):
-        for product in products_list:
-            dist_score = 0
-            product_bundle_name = self.get_bundle_lead(product)
-            if product_bundle_name:
-                bundle_products = self.get_bundle_products(product)
-                if scene:
-                    self.osa_scene_item_results[scene, product] = {'in_assortment': 0, 'oos': 1}
-                if product_bundle_name not in products_list:
-                    self.extra_bundle_leads.append(product_bundle_name)
-                product = product_bundle_name
-            else:
-                # bundle_products = [product]
-                if product in self.all_products['product_fk'].unique().tolist():
-                    self.missing_bundle_leads.append(product)
-                continue
-            try:
-                product_fk = self.all_products.loc[self.all_products[object_type] == product]['product_fk'].values[0]
-                product_ean_code = \
-                    self.all_products.loc[self.all_products[object_type] == product]['product_ean_code'].values[0]
-            except IndexError as e:
-                Log.info('Product with the {} number {} is not defined in the DB'.format(object_type, product))
-                continue
-            assortment_kpi_name = str(product_ean_code) + ' - In Assortment'
-            oos_kpi_name = str(product_ean_code) + ' - OOS'
-            if scene:
-                bundle_number_of_skus = self.tools.calculate_assortment(product_fk=bundle_products, scene_id=scene)
-            else:
-                bundle_number_of_skus = self.tools.calculate_assortment(product_fk=bundle_products,
-                                                                        session_id=self.session_fk)
-            if (bundle_number_of_skus > 0):
-                dist_score = 1
-                assortment_result = 1
-                oos_result = 0
-            elif (product in falsely_recognized_prods):
-                dist_score = 1
-                assortment_result = 1
-                oos_result = 0
-            elif (bundle_number_of_skus == 0) and not (product in falsely_recognized_prods):
-                assortment_result = 1
-                oos_result = 1
-            # elif product in ass_prod_list:
-            #     mha_in_ass = 1
-            #     mha_oos = 1
-            else:
-                assortment_result = 0
-                oos_result = 0
-            if not scene:
-                self.save_level2_and_level3(OSA, assortment_kpi_name, assortment_result)
-                self.save_level2_and_level3(OSA, oos_kpi_name, oos_result)
-            else:
-                if product in self.osa_product_dist_dict:
-                    existing_dist = self.osa_product_dist_dict[product]
-                    self.osa_product_dist_dict[product] = max(dist_score, existing_dist)
-                else:
-                    self.osa_product_dist_dict[product] = dist_score
-                if (scene, product_bundle_name) in self.osa_scene_item_results:
-                    existing_ass = self.osa_scene_item_results[scene, product].get('in_assortment')
-                    existing_oos = self.osa_scene_item_results[scene, product].get('oos')
-                    in_ass = max(existing_ass, assortment_result)
-                    oos = min(existing_oos, oos_result)
-                    self.osa_scene_item_results[scene, product_fk] = {'in_assortment': in_ass, 'oos': oos}
-                else:
-                    self.osa_scene_item_results[scene, product_fk] = {'in_assortment': assortment_result,
-                                                                      'oos': oos_result}
-
-    def add_product_to_store_assortment(self, products_list, object_type):
-        for product in products_list:
-            try:
-                product_fk = self.all_products.loc[self.all_products[object_type] == product]['product_fk'].values[0]
-                self.write_to_osa_table(product_fk)
-            except Exception as e:
-                Log.info('Product {} is not defined'.format(product))
-
-        return
-
-    def remove_product_from_store_assortment(self, products_list):
-        for product in products_list:
-            custom_osa_query = INTEG21INBEVBEQueries.get_delete_osa_records_query(product, self.store_id, datetime.utcnow())
-            self.kpi_results_queries.append(custom_osa_query)
-            self.delisted_products.append(product)
-
-        return
-
-    def main_calculation(self, set_name):
+    def calculate_scores(self):
         """
         This function calculates the KPI results.
         """
-        if set_name not in self.tools.KPI_SETS_WITHOUT_A_TEMPLATE and set_name not in self.set_templates_data.keys():
-            calc_start_time = datetime.utcnow()
-            self.set_templates_data[set_name] = self.tools.download_template(set_name)
-            self.download_time += datetime.utcnow() - calc_start_time
-
-        if set_name in ('OSA',):
-            set_score = self.check_on_shelf_availability(set_name)
-            # self.check_on_shelf_availability_on_scene_level(set_name)
-        elif set_name in ('Linear Share of Shelf vs. Target', 'Linear Share of Shelf'):
-            set_score = self.custom_share_of_shelf(set_name)
-        elif set_name in ('Shelf Level',):
-            set_score = self.calculate_eye_level_availability(set_name)
-        elif set_name in ('Product Blocking',):
-            set_score = self.calculate_block_together_sets(set_name)
-        elif set_name == 'Pallet Presence':
-            set_score, pallet_score, half_pallet_score = self.calculate_pallet_presence()
-            self.save_level2_and_level3(set_name, PALLET, pallet_score)
-            self.save_level2_and_level3(set_name, HALF_PALLET, half_pallet_score)
-        elif set_name == 'Share of Assortment':
-            set_score = self.calculate_share_of_assortment()
-            self.save_level2_and_level3(set_name, set_name, set_score)
-        elif set_name == 'Shelf Impact Score':
-            set_score = self.shelf_impact_score()
-
-        else:
+        if not self.is_relevant_retailer_channel():
+            Log.warning('retailer: {} and channel: {} are are not relevant'.format(self._get_retailer_name,
+                                                                                   self._get_store_channel))
+            self._writer.commit_results_data()
             return
-        # if not set_score:
+
+        # if self._is_pet_food_category_excluded():
+        #     Log.warning('pet food category does not exists or it was excluded by decision unit')
+        #     self._writer.commit_results_data()
         #     return
-        set_fk = self.kpi_static_data[self.kpi_static_data['kpi_set_name'] == set_name]['kpi_set_fk'].values[0]
-        self.write_to_db_result(set_fk, set_score, self.LEVEL1)
-        return set_score
 
-    def save_level2_and_level3(self, set_name, kpi_name, result, score=None, threshold=None, level_2_only=False,
-                               level_3_only=False, level2_name_for_atomic=None):
-        """
-        Given KPI data and a score, this functions writes the score for both KPI level 2 and 3 in the DB.
-        """
-        # kpi_data = self.kpi_static_data[(self.kpi_static_data['kpi_set_name'] == set_name) &
-        #                                 (self.kpi_static_data['kpi_name'] == kpi_name)]
-        #
-        # kpi_fk = kpi_data['kpi_fk'].values[0]
-        # atomic_kpi_fk = kpi_data['atomic_kpi_fk'].values[0]
-        # self.write_to_db_result(kpi_fk, result, self.LEVEL2)
-        # if not result and not threshold:
-        #     self.write_to_db_result(atomic_kpi_fk, result, self.LEVEL3)
-        # else:
-        #     self.write_to_db_result(atomic_kpi_fk, result, self.LEVEL3, score=score, threshold=threshold)
-        try:
-            if level_2_only:
-                kpi_data = self.kpi_static_data[(self.kpi_static_data['kpi_set_name'] == set_name) &
-                                                (self.kpi_static_data['kpi_name'] == kpi_name)]
-                kpi_fk = kpi_data['kpi_fk'].values[0]
-                self.write_to_db_result(kpi_fk, result, self.LEVEL2)
-            elif level_3_only:
-                kpi_data = self.kpi_static_data[(self.kpi_static_data['kpi_set_name'] == set_name) &
-                                                (self.kpi_static_data['kpi_name'] == level2_name_for_atomic) & (
-                                                    self.kpi_static_data['atomic_kpi_name'] == kpi_name)]
-                # kpi_fk = kpi_data['kpi_fk'].values[0]
-                atomic_kpi_fk = kpi_data['atomic_kpi_fk'].values[0]
-                # self.write_to_db_result(atomic_kpi_fk, result, self.LEVEL3, score=score)
-                if score is None and threshold is None:
-                    self.write_to_db_result(atomic_kpi_fk, result, self.LEVEL3)
-                elif score is not None and threshold is None:
-                    self.write_to_db_result(atomic_kpi_fk, result, self.LEVEL3, score=score)
-                else:
-                    self.write_to_db_result(atomic_kpi_fk, result, self.LEVEL3, score=score, threshold=threshold)
-            else:
-                kpi_data = self.kpi_static_data[(self.kpi_static_data['kpi_set_name'] == set_name) &
-                                                (self.kpi_static_data['kpi_name'] == kpi_name)]
-                kpi_fk = kpi_data['kpi_fk'].values[0]
-                atomic_kpi_fk = kpi_data['atomic_kpi_fk'].values[0]
-                self.write_to_db_result(kpi_fk, result, self.LEVEL2)
-                if score is None and threshold is None:
-                    self.write_to_db_result(atomic_kpi_fk, result, self.LEVEL3)
-                elif score is not None and threshold is None:
-                    self.write_to_db_result(atomic_kpi_fk, result, self.LEVEL3, score=score)
-                else:
-                    self.write_to_db_result(atomic_kpi_fk, result, self.LEVEL3, score=score, threshold=threshold)
-        except IndexError as e:
-            Log.info('KPI {} is not defined in the DB'.format(kpi_name))
-
-    def save_level1(self, set_name, score):
-        kpi_data = self.kpi_static_data[self.kpi_static_data['kpi_set_name'] == set_name]
-        kpi_set_fk = kpi_data['kpi_set_fk'].values[0]
-        self.write_to_db_result(kpi_set_fk, score, self.LEVEL1)
-
-    def calculate_eye_level_availability(self, set_name):
-        total_inbev_prods_counter = 0
-        results = []
-        scene_recognition_flag = False
-        for params in self.set_templates_data[set_name]:  # todo add handler for bays without pallets
-            try:
-                if params.get(self.store_type) in self.tools.RELEVANT_FOR_STORE:
-                    scenes_results_dict = {}
-                    # scenes_to_check = self.match_display_in_scene.loc[
-                    #     self.match_display_in_scene['name'].isin([PALLET, HALF_PALLET])][
-                    #     'scene_fk'].unique().tolist()
-                    # else:  # if there is no relevant scene recognition data in this session
-                    scenes_to_check = self.match_product_in_scene['scene_fk'].unique().tolist()
-                    object_type = self.tools.ENTITY_TYPE_CONVERTER.get(params.get(self.tools.ENTITY_TYPE),
-                                                                       'product_ean_code')
-                    objects = str(params.get(self.tools.PRODUCT_EAN_CODE, params.get(self.tools.PRODUCT_EAN_CODE2, '')))
-                    for scene in scenes_to_check:
-                        if set([PALLET, HALF_PALLET]) & set(
-                                [display for display in
-                                 self.match_display_in_scene.loc[self.match_display_in_scene['scene_fk'] == scene][
-                                     'name'].values]):
-                            scene_recognition_flag = True
-                        bays = self.match_product_in_scene[(self.match_product_in_scene['scene_fk'] == scene)][
-                            'bay_number'].unique().tolist()
-                        bays_results_dict = {}
-                        for bay in bays:
-                            # products_sos_dict = {}
-                            shelves_result_dict = {}
-                            bay_data = self.match_product_in_scene.loc[
-                                (self.match_product_in_scene['scene_fk'] == scene) & (
-                                    self.match_product_in_scene['bay_number'] == bay)]
-                            if scene_recognition_flag:
-                                bay_match_display_in_scene = self.match_display_in_scene.loc[
-                                    (self.match_display_in_scene['scene_fk'] == scene) &
-                                    (self.match_display_in_scene['bay_number'] == bay)]
-                                bay_displays = bay_match_display_in_scene['display_name'].unique().tolist()
-                                if len(bay_displays) > 1:
-                                    factors = self.get_product_factor_by_lowest_shelf(bay_data,
-                                                                                      display_unit=bay_displays,
-                                                                                      display_data=bay_match_display_in_scene)
-                                    factor = self.get_max_value_from_dict_of_dicts(factors.values())
-                                else:  # case where there is only one unique display unit
-                                    factors_dict = self.get_product_factor_by_lowest_shelf(bay_data)
-                                    factor = factors_dict.values()[0]
-                                try:
-                                    if not (type(factor) == int):
-                                        factor = 1
-                                except Exception as e:
-                                    factor = 1
-                                number_of_shelves = len(bay_data['shelf_number'].unique()) + (int(factor) - 1)
-                            else:
-                                number_of_shelves = len(bay_data['shelf_number'].unique())
-                            bay_eye_level_shelves = self.get_eye_level_shelves(number_of_shelves)
-                            for shelf in bay_eye_level_shelves:
-                                filters = {object_type: objects, 'bay_number': bay, 'shelf_number': shelf}
-                                object_facings = self.tools.calculate_assortment(**filters)  # todo: validate
-                                if object_facings > 0:
-                                    shelves_result_dict[shelf] = 1
-                                else:
-                                    shelves_result_dict[shelf] = 0
-                            if 1 in shelves_result_dict.values():
-                                bays_results_dict[bay] = 1
-                            else:
-                                bays_results_dict[bay] = 0
-                        if 1 in bays_results_dict.values():
-                            scenes_results_dict[scene] = 1
-                        else:
-                            scenes_results_dict[scene] = 0
-                    if 1 in scenes_results_dict.values():  # If not all SKUs are at eye level
-                        result = 1  # TRUE
-                    else:
-                        result = 0  # FALSE
-                    results.append(result)
-                    # result = product_presence_counter
-                    # total_inbev_prods_counter += product_presence_counter
-                    if set_name == 'Shelf Level':
-                        self.save_level2_and_level3(set_name, params.get('SKU Name (Description)'), result,
-                                                    score=result)
-                    elif set_name == 'Shelf Impact Score':
-                        self.save_level2_and_level3(set_name, params.get('SKU Name (Description)'), result)
-                    else:
-                        pass
-            except Exception as e:
-                Log.info('Store type {} does not exist in the template'.format(self.store_type))
-        if results:
-            set_score = (sum(results) / float(len(results))) * 100
-            target = len(results)
-        else:
-            set_score = 0
-            target = 0
-        # self.save_level1('Shelf Level', set_score)
-        self.shelf_impact_score_results[set_name] = round(sum(results), 2)
-        self.shelf_impact_score_thresholds[set_name] = target
-
-        return round(set_score, 2)
-
-    def custom_share_of_shelf(self, set_name):
-        set_score = 0
-        if set_name == 'Linear Share of Shelf vs. Target':
-            store_attribute_8 = self.get_store_attribute_8(self.store_id)
-            self.shelf_impact_score_results[set_name] = round(set_score, 2)
-            self.shelf_impact_score_thresholds[set_name] = 0
-            targets_df = pd.DataFrame(self.set_templates_data[set_name])
-            relevant_df = targets_df.loc[targets_df['Sales Rep'] == store_attribute_8]
-            if not relevant_df.empty:
-                target = relevant_df['Target'].values[0]
-                linear_sos_value = self.linear_sos_value
-                final_result = (linear_sos_value / float(target)) * 100
-                set_score = round(final_result, 2)
-                # self.save_level1(set_name=set_name, score=final_result)
-                self.save_level2_and_level3(set_name=set_name, kpi_name=set_name, result=linear_sos_value,
-                                            score=round(final_result, 2), threshold=target, level_3_only=True,
-                                            level2_name_for_atomic=set_name)
-                self.save_level2_and_level3(set_name=set_name, kpi_name=set_name, result=final_result,
-                                            level_2_only=True)
-                self.shelf_impact_score_results[set_name] = round(linear_sos_value, 2)
-                self.shelf_impact_score_thresholds[set_name] = target
-        elif set_name == 'Linear Share of Shelf':
-            set_score = self.calculate_custom_share_of_shelf(set_name)
-        else:
-            return
-
-        return set_score
-
-    def calculate_custom_share_of_shelf(self, set_name, target=None):
-        pallet_size_dict = {'Full Pallet1': self.PALLET_SIZE_MM, 'Half Pallet1': self.HALF_PALLET_SIZE_MM,
-                            'Half Pallet2': self.HALF_PALLET_SIZE_MM}
-        nominator = 0
-        denominator = 0
-        scenes_to_check = self.scif['scene_fk'].unique().tolist()
-        # scenes_results_dict = {}
-        for scene in scenes_to_check:
-            matches = self.match_product_in_scene.loc[self.match_product_in_scene['scene_fk'] == scene]
-            bays = matches['bay_number'].unique().tolist()
-            # bays_linear_sos_dict = {}
-            for bay in bays:
-                # shelves_linear_sos_dict = {}
-                custom_bay_data = matches.loc[(matches['bay_number'] == bay) & (matches['stacking_layer'] == 1)]
-                bay_filter = custom_bay_data.merge(self.rect_values,
-                                                 on=['scene_match_fk'],
-                                                 suffixes=['', '_1'])
-                shelves = bay_filter['shelf_number'].unique().tolist()
-                filtered_products = pd.merge(bay_filter, self.all_products, on=['product_fk', 'product_fk'])
-                bay_match_display_in_scene = self.match_display_in_scene.loc[
-                    (self.match_display_in_scene['scene_fk'] == scene) &
-                    (self.match_display_in_scene['bay_number'] == bay)]
-                bay_displays = bay_match_display_in_scene['display_name'].unique().tolist()
-                if bay_displays:
-                    lowest_shelf = max(shelves)
-                    products_with_zero_length = \
-                        filtered_products.loc[filtered_products['shelf_number'] == lowest_shelf][
-                            'product_fk'].unique().tolist()
-                    if len(bay_displays) > 1:
-                        factors = self.get_product_factor_by_lowest_shelf(filtered_products,
-                                                                          display_unit=bay_displays,
-                                                                          display_data=bay_match_display_in_scene)
-                        for display, factor_dict in factors.items():
-                            try:
-                                if type(int(factor_dict.values()[0])) == int:
-                                    if factor_dict.values()[0] > 1:
-                                        denominator += pallet_size_dict[display] * factors[factor_dict.values()[0]] * \
-                                                       (self.scif.loc[(self.scif['scene_id'] == scene) &
-                                                                      (
-                                                                      self.scif['product_fk'] == factor_dict.keys()[0])]
-                                                        ['rlv_sos_sc'].values[0])
-                                        if self.all_products.loc[self.all_products['product_fk'] ==
-                                                factor_dict.keys()[0]]['manufacturer_name'].values[0] == self.ABINBEV:
-                                            nominator += pallet_size_dict[display] * factors[factor_dict.values()[0]] * \
-                                                         (self.scif.loc[(self.scif['scene_id'] == scene) &
-                                                                        (self.scif['product_fk'] == factor_dict.keys()[
-                                                                            0])]
-                                                          ['rlv_sos_sc'].values[0])
-                                        self.scene_item_length_mm_dict[scene, factor_dict.keys()[0]] = \
-                                            pallet_size_dict[display] * factors[factor_dict.values()[0]]
-                                        products_with_zero_length.remove(factor_dict.keys()[0])
-                                    else:
-                                        denominator += pallet_size_dict[display] * \
-                                                       (self.scif.loc[(self.scif['scene_id'] == scene) &
-                                                                      (
-                                                                      self.scif['product_fk'] == factor_dict.keys()[0])]
-                                                        ['rlv_sos_sc'].values[0])
-                                        if self.all_products.loc[self.all_products['product_fk'] ==
-                                                factor_dict.keys()[0]]['manufacturer_name'].values[0] == self.ABINBEV:
-                                            nominator += pallet_size_dict[display] * \
-                                                         (self.scif.loc[(self.scif['scene_id'] == scene) &
-                                                                        (self.scif['product_fk'] == factor_dict.keys()[
-                                                                            0])]
-                                                          ['rlv_sos_sc'].values[0])
-                                        self.scene_item_length_mm_dict[scene, factor_dict.keys()[0]] = \
-                                            pallet_size_dict[display] * factors[factor_dict.values()[0]]
-                                        products_with_zero_length.remove(factor_dict.keys()[0])
-                            except Exception as e:
-                                denominator += pallet_size_dict[display] * (
-                                self.scif.loc[(self.scif['scene_id'] == scene) &
-                                              (self.scif['product_fk'] == factor_dict.keys()[0])]['rlv_sos_sc'].values[
-                                    0])
-                                if self.all_products.loc[self.all_products['product_fk'] ==
-                                        factor_dict.keys()[0]]['manufacturer_name'].values[0] == self.ABINBEV:
-                                    nominator += pallet_size_dict[display] * (
-                                    self.scif.loc[(self.scif['scene_id'] == scene) &
-                                                  (self.scif['product_fk'] == factor_dict.keys()[0])]
-                                    ['rlv_sos_sc'].values[0])
-                                self.scene_item_length_mm_dict[scene, factor_dict.keys()[0]] = pallet_size_dict[display]
-                                products_with_zero_length.remove(factor_dict.keys()[0])
-                    else:
-                        factors = self.get_product_factor_by_lowest_shelf(filtered_products)
-                        try:
-                            if type(int(factors.values()[0])) == int:
-                                if int(factors.values()[0]) > 1:
-                                    denominator += pallet_size_dict[bay_displays[0]] * int(factors.values()[0]) * \
-                                                   (self.scif.loc[(self.scif['scene_id'] == scene) &
-                                                                  (self.scif['product_fk'] == factors.keys()[0])]
-                                                    ['rlv_sos_sc'].values[0])
-                                    if self.all_products.loc[self.all_products['product_fk'] ==
-                                            factors.keys()[0]]['manufacturer_name'].values[0] == self.ABINBEV:
-                                        nominator += pallet_size_dict[bay_displays[0]] * int(factors.values()[0]) * \
-                                                     (self.scif.loc[(self.scif['scene_id'] == scene) &
-                                                                    (self.scif['product_fk'] == factors.keys()[0])]
-                                                      ['rlv_sos_sc'].values[0])
-                                    self.scene_item_length_mm_dict[scene, factors.keys()[0]] = \
-                                        pallet_size_dict[bay_displays[0]] * int(factors.values()[0])
-                                    products_with_zero_length.remove(factors.keys()[0])
-                                else:
-                                    if self.all_products.loc[self.all_products['product_fk'] ==
-                                            factors.keys()[0]]['manufacturer_name'].values[0] == self.ABINBEV:
-                                        nominator += pallet_size_dict[bay_displays[0]] * \
-                                                     (self.scif.loc[(self.scif['scene_id'] == scene) &
-                                                                    (self.scif['product_fk'] == factors.keys()[0])]
-                                                      ['rlv_sos_sc'].values[0])
-                                    denominator += pallet_size_dict[bay_displays[0]] * \
-                                                   (self.scif.loc[(self.scif['scene_id'] == scene) &
-                                                                  (self.scif['product_fk'] == factors.keys()[0])]
-                                                    ['rlv_sos_sc'].values[0])
-                                    self.scene_item_length_mm_dict[scene, factors.keys()[0]] = \
-                                        pallet_size_dict[bay_displays[0]]
-                                    products_with_zero_length.remove(factors.keys()[0])
-                        except Exception as e:
-                            denominator += pallet_size_dict[bay_displays[0]] * \
-                                           (self.scif.loc[(self.scif['scene_id'] == scene) &
-                                                          (self.scif['product_fk'] == factors.keys()[0])]
-                                            ['rlv_sos_sc'].values[0])
-                            if self.all_products.loc[self.all_products['product_fk'] ==
-                                    factors.keys()[0]]['manufacturer_name'].values[0] == self.ABINBEV:
-                                nominator += pallet_size_dict[bay_displays[0]] * \
-                                             (self.scif.loc[(self.scif['scene_id'] == scene) &
-                                                            (self.scif['product_fk'] == factors.keys()[0])]
-                                              ['rlv_sos_sc'].values[0])
-                            self.scene_item_length_mm_dict[scene, factors.keys()[0]] = pallet_size_dict[
-                                bay_displays[0]]
-                            products_with_zero_length.remove(factors.keys()[0])
-                    for product in products_with_zero_length:
-                        self.scene_item_length_mm_dict[scene, product] = 0
-                    shelves.remove(lowest_shelf)
-                for shelf in shelves:
-                    products_in_shelf = \
-                        filtered_products.loc[(filtered_products['shelf_number'] == shelf)][
-                            'product_fk'].unique().tolist()
-                    for product in products_in_shelf:  # Saving results to custom scene item facts table
-                        nominator += (filtered_products.loc[(filtered_products['manufacturer_name'] == self.ABINBEV) & (
-                            filtered_products['shelf_number'] == shelf) & (filtered_products['product_fk'] == product)][
-                                          'width_mm_advance'].sum()) * (self.scif.loc[(self.scif['scene_id'] == scene) &
-                                                                                (self.scif['product_fk'] == product)][
-                                                                      'rlv_sos_sc'].values[0])
-                        denominator += (filtered_products.loc[(filtered_products['shelf_number'] == shelf) & (
-                            filtered_products['product_fk'] == product)]
-                                        ['width_mm_advance'].sum()) * (self.scif.loc[(self.scif['scene_id'] == scene) &
-                                                                               (self.scif['product_fk'] == product)][
-                                                                     'rlv_sos_sc'].values[0])
-                        custom_mm_length = (filtered_products.loc[(filtered_products['shelf_number'] == shelf) & (
-                            filtered_products['product_fk'] == product)][
-                                                'width_mm_advance'].sum()) * (self.scif.loc[(self.scif['scene_id'] == scene) &
-                                                                                      (self.scif[
-                                                                                           'product_fk'] == product)][
-                                                                            'rlv_sos_sc'].values[0])
-                        product_bundle_lead = self.get_bundle_lead(product)
-                        if not product_bundle_lead:
-                            product_bundle_lead = product
-                        if (scene, product_bundle_lead) in self.scene_item_length_mm_dict:
-                            current_value = self.scene_item_length_mm_dict[scene, product_bundle_lead]
-                            updated_value = current_value + custom_mm_length
-                            self.scene_item_length_mm_dict[scene, product_bundle_lead] = updated_value
-                        else:
-                            self.scene_item_length_mm_dict[scene, product_bundle_lead] = custom_mm_length
-        if denominator:
-            linear_sos_value = (nominator / float(denominator)) * 100
-        else:
-            linear_sos_value = 0
-        if set_name == 'Linear Share of Shelf':
-            set_score = linear_sos_value
-            self.linear_sos_value = linear_sos_value
-            # self.save_level1(set_name=set_name, score=linear_sos_value)
-            self.save_level2_and_level3(set_name=set_name, kpi_name=set_name, result=nominator,
-                                        score=round(linear_sos_value, 2), threshold=denominator)
-        else:
-            set_score = 0
-
-        return round(set_score, 2)
-
-    def get_product_factor_by_lowest_shelf(self, bay_data, display_unit=[], display_data=None):
-        products_sos_dict = {}
-        lowest_shelf = max(bay_data['shelf_number'].values)
-        products_to_check = bay_data.loc[bay_data['shelf_number'] == lowest_shelf][
-            'product_fk'].tolist()
-        factors = {}
-        if display_unit:
-            display_rect_dict = {}
-            product_display_adjacency_dict = {}
-            for display in display_unit:
-                display_rect_x = display_data.loc[display_data['display_name'] == display]['rect_x'].values[0]
-                display_rect_y = display_data.loc[display_data['display_name'] == display]['rect_y'].values[0]
-                display_rect_dict_atts = {'rect_x': display_rect_x, 'rect_y': display_rect_y}
-                display_rect_dict[display] = display_rect_dict_atts
-                # display_rect_dict[display]['rect_x'] = display_rect_x
-                # display_rect_dict[display]['rect_y'] = display_rect_y
-            for product in set(products_to_check):
-                min_dist = 100000  # Initial big number
-                custom_bay_data = bay_data.merge(self.rect_values,
-                                                 on=['scene_match_fk'],
-                                                 suffixes=['', '_1'])
-                # product_rect_x = \
-                #     bay_data.loc[(bay_data['shelf_number'] == lowest_shelf) & (bay_data['product_fk'] == product)][
-                #         'rect_x'].values[0]
-                product_rect_x = \
-                    custom_bay_data.loc[
-                        (custom_bay_data['shelf_number'] == lowest_shelf) & (custom_bay_data['product_fk'] == product)][
-                        'rect_x'].values[0]
-                # product_rect_y = \
-                #     bay_data.loc[(bay_data['shelf_number'] == lowest_shelf) & (bay_data['product_fk'] == product)][
-                #         'rect_y'].values[0]
-                product_rect_y = \
-                    custom_bay_data.loc[
-                        (custom_bay_data['shelf_number'] == lowest_shelf) & (custom_bay_data['product_fk'] == product)][
-                        'rect_y'].values[0]
-                for display in display_unit:
-                    dist = abs(product_rect_x - display_rect_dict[display].get('rect_x')) + abs(
-                        product_rect_y - display_rect_dict[display].get('rect_y'))
-                    if dist < min_dist:
-                        min_dist = dist
-                        product_display_adjacency_dict[product] = display
-            for display in display_unit:
-                relevant_products = [product_fk for product_fk, display_name in product_display_adjacency_dict.items()
-                                     if str(display_name) == str(display)]
-                if relevant_products:
-                    most_common_product = self.most_common(relevant_products)
-                else:
+        # template SPT
+        if self.is_relevant_retailer_channel_spt():
+            set_names = self._get_set_spt_names()
+            for set_name in set_names:
+                if self._is_session_irrelevant_for_set(set_name):
+                    Log.info('Skipping set: {}'.format(set_name))
                     continue
-                # most_common_product = self.most_common(relevant_products)
-                # if self.products.loc[self.products['product_fk'] == most_common_product][
-                #     'manufacturer_name'].values[0] == self.ABINBEV:
-                #     factor = self.get_product_att4(most_common_product)
-                # else:
-                #     factor = 1  # Default factor
-                factor = self.get_product_att4(most_common_product)
-                if factor == 'NO VALUE' or factor is None:
-                    factor = 1
-                factors[display] = {most_common_product: factor}
+                Log.info('Starting set: {}'.format(set_name))
+                if not self.retailer_channel_has_spt_sales_data(set_name):
+                    Log.warning('no sales data for retailer: {},'
+                                ' channel: {}, set: {}'.format(self._get_retailer_name,
+                                                               self._get_store_channel,
+                                                               set_name))
 
-            return factors
+                template_data = self._template.parse_template(set_name, 0)
+                hierarchy = Definition(template_data, self._get_store_channel, self._get_retailer_name,
+                                       self._get_store_type).get_atomic_hierarchy_and_filters(set_name)
+                preferred_range = template_data[KPIConsts.PREFERRED_RANGE_SHEET]
+                min_face = self.load_min_facings(template_data)
+                Results(self._tools, self._data_provider, self.common, self._writer, min_face,
+                        preferred_range[preferred_range['Set name'] == set_name]).calculate(hierarchy)
 
-        # for product in products_to_check:
-        #     nominator = bay_data.loc[
-        #         (bay_data['shelf_number'] == lowest_shelf) & (bay_data['product_fk'] == product)]
-        #     denominator = bay_data.loc[(bay_data['shelf_number'] == lowest_shelf)]
-        #     try:
-        #         ratio = self.k_engine.calculate_sos_by_facings(pop_filter=nominator,
-        #                                                        subset_filter=denominator)
-        #     except:
-        #         ratio = 0
-        #     products_sos_dict[product] = ratio
-        # max_sos_product = max(products_sos_dict.iterkeys(), key=lambda k: products_sos_dict[k])
-        most_common_product = self.most_common(products_to_check)
-        # if self.products.loc[self.products['product_fk'] == most_common_product][
-        #     'manufacturer_name'].values[0] == self.ABINBEV:
-        #     factor = self.get_product_att4(most_common_product)
-        # else:
-        #     factor = 1  # Default factor
-        factor = self.get_product_att4(most_common_product)
-        if factor == 'NO VALUE' or factor is None:
-            factor = 1
-        factors[most_common_product] = factor
+        # template BDB
+        if self.is_relevant_retailer_channel_bdb():
+            set_names = self._get_set_names()
+            for set_name in set_names:
+                if self._is_session_irrelevant_for_set(set_name):
+                    Log.info('Skipping set: {}'.format(set_name))
+                    continue
+                Log.info('Starting set: {}'.format(set_name))
+                if not self.retailer_channel_has_sales_data(set_name):
+                    Log.warning('no sales data for retailer: {},'
+                                ' channel: {}, set: {}'.format(self._get_retailer_name,
+                                                               self._get_store_channel,
+                                                               set_name))
 
-        return factors
+                template_data = self._template.parse_template(set_name, 1)
+                hierarchy = Definition(template_data, self._get_store_channel, self._get_retailer_name,
+                                       self._get_store_type).get_atomic_hierarchy_and_filters(set_name)
+                preferred_range = template_data[KPIConsts.PREFERRED_RANGE_SHEET]
+                min_face = self.load_min_facings(template_data)
+                Results(self._tools, self._data_provider, self.common, self._writer, min_face,
+                        preferred_range[preferred_range['Set name'] == set_name]).calculate(hierarchy)
+
+        # self._data_provider.trace_container.to_csv('/home/Israel/Desktop/trace_block.csv')
+        self._writer.commit_results_data()
+        self.common.commit_results_data()
 
     @staticmethod
-    def most_common(lst):
-        return max(set(lst), key=lst.count)
+    def load_min_facings(template_data):
+        min_face = None
+        if 'Block_Facings_Min' in template_data:
+            min_face = template_data['Block_Facings_Min'].drop('Score Card Name', axis=1).melt(id_vars='KPI Name') \
+                .set_index(['KPI Name', 'value'])
+            min_face['variable'] = min_face['variable'].str.split(',')
+            min_face = min_face.variable.apply(pd.Series).stack().str.strip().reset_index(level=[0, 1]) \
+                .rename(columns={0: 'store_type'}).set_index(['KPI Name', 'store_type'], drop=True).to_dict('index')
+        return min_face
 
-    def product_stacking(self, set_name):
-        kpi_df_include_stacking = self.match_product_in_scene.merge(self.products, on=['product_fk'])
-        results = []
-        for params in self.set_templates_data[set_name]:
-            result = 0
-            product_data = kpi_df_include_stacking.loc[
-                kpi_df_include_stacking['product_ean_code'] == params.get('EAN Number')]
-            if not product_data.empty:
-                max_prod_stacking_layer = max(product_data['stacking_layer'].values)
-                if max_prod_stacking_layer >= int(params.get('Target')):
-                    result = 1
-            self.save_level2_and_level3(set_name, params.get('SKU Name (Description)'), result)
-            results.append(result)
-        if not results:
-            set_score = 0
-        else:
-            set_score = (sum(results) / float(len(results))) * 100
-        # self.save_level1(set_name, set_score)
-        return round(set_score, 2)
+    @staticmethod
+    def _get_set_names():
+        return [
+            DOG_MAIN_MEAL_DRY,
+            DOG_MAIN_MEAL_WET,
+            CAT_TREATS,
+            CAT_MAIN_MEAL_DRY,
+            CAT_MAIN_MEAL_WET,
+            DOG_TREATS
+        ]
 
-    def shelf_impact_score(self):
-        total_score = 0
-        must_have_assortment_score = self.calculate_must_have_assortment()
-        must_have_assortment_points = self.get_points_by_score_range(must_have_assortment_score,
-                                                                     score_dict=self.must_have_assortment_score_range)
-        self.save_level2_and_level3(self.SHELF_IMPACT_SCORE, 'Must Have Assortment',
-                                    result=self.shelf_impact_score_results['must_have_assortment'],
-                                    score=must_have_assortment_points, level_3_only=True,
-                                    level2_name_for_atomic='Must Have Assortment',
-                                    threshold=self.shelf_impact_score_thresholds['must_have_assortment'])
-        self.save_level2_and_level3(self.SHELF_IMPACT_SCORE, 'Must Have Assortment', result=must_have_assortment_points,
-                                    level_2_only=True)
-        total_score += must_have_assortment_points
+    @staticmethod
+    def _get_set_spt_names():
+        # return [
+        #     SPT_DOG_TREATS_Q1_2018,
+        #     SPT_CAT_TREATS_Q1_2018,
+        #     SPT_CAT_MAIN_MEAL_Q1_2018,
+        #     SPT_DOG_MAIN_MEAL_Q1_2018
+        # ]
+        return [
+            SPT_DOG_TREATS,
+            SPT_CAT_TREATS,
+            SPT_CAT_MAIN_MEAL,
+            SPT_DOG_MAIN_MEAL
+        ]
 
-        share_of_shelf_result = self.shelf_impact_score_results['Linear Share of Shelf vs. Target']
-        if self.shelf_impact_score_thresholds['Linear Share of Shelf vs. Target'] > 0:
-            share_of_shelf_score = (share_of_shelf_result / float(
-                self.shelf_impact_score_thresholds['Linear Share of Shelf vs. Target'])) * 100
-        else:
-            share_of_shelf_score = 0
-        share_of_shelf_points = self.get_points_by_score_range(share_of_shelf_score,
-                                                               score_dict=self.linear_share_of_shelf_score_range)
-        self.save_level2_and_level3(self.SHELF_IMPACT_SCORE, 'Share of Shelf', result=share_of_shelf_result,
-                                    score=share_of_shelf_points, level_3_only=True,
-                                    level2_name_for_atomic='Share of Shelf',
-                                    threshold=self.shelf_impact_score_thresholds['Linear Share of Shelf vs. Target'])
-        self.save_level2_and_level3(self.SHELF_IMPACT_SCORE, 'Share of Shelf', result=share_of_shelf_points,
-                                    level_2_only=True)
-        total_score += share_of_shelf_points
+    def _is_pet_food_category_excluded(self):
+        category_fk = 13
+        decision_unit = self._data_provider._decision_unit_data_provider
+        session_category = decision_unit._session_categories_status
+        if session_category[session_category['category_fk'] == category_fk]['exclude_status_fk'].empty:
+            return True
+        category_excluded = \
+            session_category[session_category['category_fk'] ==
+                             category_fk]['exclude_status_fk'].fillna(1).iloc[0] != 1
+        session_excluded = decision_unit._session_exclude_status['exclude_status_fk'].fillna(
+            1).iloc[0] != 1
+        return category_excluded | session_excluded
 
-        osa_result = self.shelf_impact_score_results['OSA']
-        if self.shelf_impact_score_thresholds['OSA'] > 0:
-            osa_score = (osa_result / float(self.shelf_impact_score_thresholds['OSA'])) * 100
-        else:
-            osa_score = 0
-        osa_points = self.get_points_by_score_range(osa_score, score_dict=self.osa_score_range)
-        self.save_level2_and_level3(self.SHELF_IMPACT_SCORE, 'On Shelf Availability', result=osa_result,
-                                    level_3_only=True, level2_name_for_atomic='On Shelf Availability',
-                                    score=osa_points, threshold=self.shelf_impact_score_thresholds['OSA'])
-        self.save_level2_and_level3(self.SHELF_IMPACT_SCORE, 'On Shelf Availability', result=osa_points,
-                                    level_2_only=True)
-        total_score += osa_points
+    def _is_session_irrelevant_for_set(self, set_name):
+        matches = self._tools.match_product_in_scene.copy()
+        relevant_filters = SET_PRE_CALC_CHECKS[set_name]
+        filtered_matches = matches[self._tools.get_filter_condition(matches, **relevant_filters)]
+        if filtered_matches.empty:
+            return True
+        return False
 
-        shelf_level_result = self.shelf_impact_score_results['Shelf Level']
-        if self.shelf_impact_score_thresholds['Shelf Level'] > 0:
-            shelf_level_score = (shelf_level_result / float(self.shelf_impact_score_thresholds['Shelf Level'])) * 100
-        else:
-            shelf_level_score = 0
-        shelf_level_points = self.get_points_by_score_range(shelf_level_score, score_dict=self.shelf_level_score_range)
-        self.save_level2_and_level3(self.SHELF_IMPACT_SCORE, 'Shelf Level Availability', result=shelf_level_result,
-                                    score=shelf_level_points, level_3_only=True,
-                                    level2_name_for_atomic='Shelf Level Availability',
-                                    threshold=self.shelf_impact_score_thresholds['Shelf Level'])
-        self.save_level2_and_level3(self.SHELF_IMPACT_SCORE, 'Shelf Level Availability', result=shelf_level_points,
-                                    level_2_only=True)
-        total_score += shelf_level_points
+    @staticmethod
+    def _get_set_category_fk(set_name):
+        return SET_CATEGORIES[set_name]
 
-        blocked_together_result = self.shelf_impact_score_results['Product Blocking']
-        if self.shelf_impact_score_thresholds['Product Blocking'] > 0:
-            blocked_together_score = (blocked_together_result / float(
-                self.shelf_impact_score_thresholds['Product Blocking'])) * 100
-        else:
-            blocked_together_score = 0
-        blocked_together_points = self.get_points_by_score_range(blocked_together_score,
-                                                                 score_dict=self.product_blocking_score_range)
-        self.save_level2_and_level3(self.SHELF_IMPACT_SCORE, 'Product Blocking', result=blocked_together_result,
-                                    score=blocked_together_points, level_3_only=True,
-                                    level2_name_for_atomic='Product Blocking',
-                                    threshold=self.shelf_impact_score_thresholds['Product Blocking'])
-        self.save_level2_and_level3(self.SHELF_IMPACT_SCORE, 'Product Blocking', result=shelf_level_points,
-                                    level_2_only=True)
-        total_score += blocked_together_points
-
-        return total_score
-
-    def calculate_must_have_assortment(self):
-        product_dist_dict = {}
-
-        # try:
-        #     store_assortment_df = self.osa_table.loc[self.osa_table['store_fk'] == self.store_id]
-        # except KeyError as e:
-        #     store_assortment_df = pd.DataFrame([])
-        # if store_assortment_df.empty:
-        #     json_data = self.tools.download_template(set_name)
-        #     # json_data = self.tools.get_json_data('/home/uri/trax_ace_factory/Projects/INBEVBE_SAND/Data/OSA.xlsx')
-        #     # new_assortment_df = pd.DataFrame.from_dict(json_data, orient='index')
-        #     new_assortment_df = pd.DataFrame(json_data)
-
-
-        mha_json = self.tools.download_template('must_have_assortment')
-        mha_df = pd.DataFrame(mha_json)
-        relevant_store_df = mha_df.loc[mha_df['store'] == self.store_number[0]]
-        ass_prod_list = self.all_products.loc[
-            self.all_products['product_ean_code'].isin(relevant_store_df['EAN'].unique().tolist())][
-            'product_fk'].unique().tolist()
-        scores = []
-        falsely_unrecognized_products = self.oos_messages.loc[
-            self.oos_messages['description'] == self.NOT_OOS]
-        if not falsely_unrecognized_products.empty:
-            falsely_unrecognized_products_list = falsely_unrecognized_products['product_fk'].unique().tolist()
-        else:
-            falsely_unrecognized_products_list = []
-        # ass_prod_present_in_store = self.scif.loc[self.scif['product_fk'].isin(ass_prod_list)][
-        #     'product_fk'].unique().tolist()
-
-        # products_without_oos_reasons = self.oos_messages.loc[(~self.oos_messages['product_fk'].isin(ass_prod_list))][
-        #     'product_fk'].unique().tolist()
-        # products_in_store_not_in_ass = \
-        #     self.scif.loc[(~self.scif['product_fk'].isin(ass_prod_present_in_store))][
-        #         'product_fk'].unique().tolist()
-        # products_without_oos_reasons_for_check = self.all_products.loc[
-        #     (~self.all_products['product_fk'].isin(products_in_store_not_in_ass)) & (
-        #         self.all_products['product_fk'].isin(ass_prod_list))]
-        #
-        # oos_prods_list = self.all_products.loc[(self.all_products['product_fk'].isin(ass_prod_list)) & (
-        #     ~self.all_products['product_fk'].isin(self.scif['product_fk'].unique().tolist()))]
-
-        # products_without_oos_reasons = self.oos_messages.loc[
-        #     (~self.scif['product_fk'].isin(ass_prod_present_in_store)) & (
-        #         ~self.oos_messages['product_fk'].isin(ass_prod_list)) & (
-        #         self.all_products['product_fk'].isin(ass_prod_list))]
-        # if not products_without_oos_reasons.empty:
-        #     products_without_oos_reasons_list = products_without_oos_reasons['product_fk'].unique().tolist()
-        # else:
-        #     products_without_oos_reasons_list = []
-        missing_bundle_leads = []
-        for scene in self.scif['scene_fk'].unique().tolist():
-            scene_products = self.scif.loc[(self.scif['scene_fk'] == scene)]['product_fk'].unique().tolist()
-            # scene_leading_products = self.all_products.loc[
-            #     (self.all_products['product_fk'].isin(scene_products)) & (self.all_products['att3'] == 'YES')][
-            #     'product_fk'].unique().tolist()
-            scene_products.extend(ass_prod_list)
-            for product in set(scene_products):
-                dist_score = 0
-                # product_ean_code = \
-                #     self.all_products.loc[self.all_products['product_fk'] == product]['product_ean_code'].values[0]
-                product_bundle_name = self.get_bundle_lead(product)
-                if product_bundle_name:
-                    bundle_products = self.get_bundle_products(product)
-                    product = product_bundle_name
+    def check_template(self):
+        set_names = self._get_set_names()
+        suspicious = {'kpis with empty filters': [],
+                      'filters with no data': {}, 'kpi with no filters': []}
+        for set_name in set_names:
+            template_data = self._template.parse_template(set_name)
+            hierarchy = Definition(
+                template_data, self._get_store_channel).get_atomic_hierarchy_and_filters(set_name)
+            product = self._data_provider.all_products
+            for kpi in hierarchy:
+                if kpi.has_key('filters'):
+                    fil = kpi['filters']
+                    if len(fil) == 0:
+                        suspicious['kpis with empty filters'].append(
+                            'set {} atomic {} filters are empty'.format(set_name, kpi['atomic']))
+                    for key, value in fil.iteritems():
+                        if key == 'order by':
+                            continue
+                        key = self.split_filter(key)
+                        key = self.rename_filter(key)
+                        if isinstance(value, tuple):
+                            value = value[0]
+                        Log.info('set {} atomic {}, checking {} in {}'.format(
+                            set_name, kpi['atomic'], value, key))
+                        pp = product[product[key].isin(value)]
+                        if len(pp) == 0:
+                            suspicious['filters with no data'].setdefault(key, set()).update(value)
                 else:
-                    bundle_products = [product]
-                    missing_bundle_leads.append(product)
-                bundle_number_of_skus = self.tools.calculate_assortment(product_fk=bundle_products, scene_id=scene)
-                if (bundle_number_of_skus > 0) and (product in ass_prod_list):
-                    dist_score = 1
-                    mha_in_ass = 1
-                    mha_oos = 0
-                elif (product in falsely_unrecognized_products_list) and (product in ass_prod_list):
-                    dist_score = 1
-                    mha_in_ass = 1
-                    mha_oos = 0
-                elif (bundle_number_of_skus == 0) and (
-                            product in ass_prod_list) and not (product in falsely_unrecognized_products_list):
-                    mha_in_ass = 1
-                    mha_oos = 1
-                elif product in ass_prod_list:
-                    mha_in_ass = 1
-                    mha_oos = 1
-                else:
-                    mha_in_ass = 0
-                    mha_oos = 0
-                if product in product_dist_dict:
-                    existing_dist = product_dist_dict[product]
-                    product_dist_dict[product] = max(dist_score, existing_dist)
-                else:
-                    product_dist_dict[product] = dist_score
-                # scores.append(dist_score)
-                if (scene, product) in self.mha_product_results:
-                    existing_in_ass = self.mha_product_results[scene, product].get('in_assortment')
-                    existing_oos = self.mha_product_results[scene, product].get('in_assortment')
-                    in_ass = max(existing_in_ass, mha_in_ass)
-                    oos = min(existing_oos, mha_oos)
-                    self.mha_product_results[scene, product] = {'in_assortment': in_ass, 'oos': oos}
-                else:
-                    self.mha_product_results[scene, product] = {'in_assortment': mha_in_ass, 'oos': mha_oos}
-        updated_ass_prod_list = self.all_products.loc[(self.all_products['product_fk'].isin(ass_prod_list)) & (
-            (self.all_products['att3'] == 'YES') | (self.all_products['product_fk'].isin(missing_bundle_leads)))][
-            'product_fk'].unique().tolist()
-        self.must_have_assortment_list = updated_ass_prod_list
-        if updated_ass_prod_list:
-            set_score = (sum(product_dist_dict.values()) / float(len(updated_ass_prod_list))) * 100
-            target = len(updated_ass_prod_list)
+                    suspicious['kpi with no filters'].append(
+                        'set {} kpi {} has no filters'.format(set_name, kpi['atomic']))
+        return suspicious
+
+    @staticmethod
+    def split_filter(key):
+        key_list = key.split(';')
+        return key_list[0]
+
+    @staticmethod
+    def rename_filter(filter_):
+        if FILTER_NAMING_DICT.has_key(filter_):
+            return FILTER_NAMING_DICT[filter_]
         else:
-            set_score = 0
-            target = 0
-        self.shelf_impact_score_results['must_have_assortment'] = sum(product_dist_dict.values())
-        self.shelf_impact_score_thresholds['must_have_assortment'] = target
+            return filter_
 
-        return round(set_score, 2)
-
-    def get_bundle_products(self, product_fk):
-        try:
-            product_bundle_name = self.all_products.loc[self.all_products['product_fk'] == product_fk]['att1'].values[
-                0]
-            bundle_products = self.all_products.loc[
-                (self.all_products['att1'] == product_bundle_name)]['product_fk'].unique().tolist()
-        except Exception as e:
-            bundle_products = None
-
-        return bundle_products
-
-    def get_bundle_lead(self, product_fk):
-        try:
-            product_bundle_name = self.all_products.loc[self.all_products['product_fk'] == product_fk]['att1'].values[0]
-            bundle_lead = self.all_products.loc[
-                (self.all_products['att1'] == product_bundle_name) & (self.all_products['att3'] == 'YES')][
-                'product_fk'].values[0]
-        except Exception as e:
-            bundle_lead = None
-
-        return bundle_lead
-
-    def get_bundle_lead_by_att1(self, commercial_group):
-        try:
-            bundle_lead = self.all_products.loc[
-                (self.all_products['att1'] == commercial_group) & (self.all_products['att3'] == 'YES')][
-                'product_fk'].values[0]
-        except Exception as e:
-            bundle_lead = None
-
-        return bundle_lead
-
-    def get_store_attribute_8(self, store_fk):
-        query = INTEG21INBEVBEQueries.get_store_attribute_8(store_fk)
-        final_df = pd.read_sql_query(query, self.rds_conn.db)
-        value = final_df.values[0][0]
-        return value
-
-    def get_all_products(self):
-        query = INTEG21INBEVBEQueries.get_att3_att4_for_products()
-        attributes = pd.read_sql_query(query, self.rds_conn.db)
-        final_df = self.all_project_products.merge(attributes, on='product_fk', suffixes=['', '_1'])
-        return final_df
-
-    def save_custom_scene_item_facts_results(self):
-        scenes_to_check = self.scif['scene_fk'].unique().tolist()
-        for scene in scenes_to_check:
-            scene_products = self.scif.loc[(self.scif['scene_fk'] == scene)]['product_fk'].unique().tolist()
-            # scene_products_to_check = self.all_products.loc[
-            #     (self.all_products['product_fk'].isin(scene_products)) & (
-            #         (self.all_products['att3'] == 'YES') | (
-            #             self.all_products['product_type'].isin(['Empty', 'Other'])))]['product_fk'].unique().tolist()
-            # scene_products_to_check = self.all_products.loc[
-            #     (self.all_products['product_fk'].isin(scene_products)) & (
-            #         (self.all_products['att3'] == 'YES') | (
-            #             self.all_products['product_type'].isin(['Empty', 'Other'])) | (~
-            #                                                                            (self.all_products[
-            #                                                                                 'att1'] is not None) & (
-            #                                                                                self.all_products[
-            #                                                                                    'att3'] is None)))][
-            #     'product_fk'].unique().tolist()
-            scene_products_to_check = self.all_products.loc[
-                (self.all_products['product_fk'].isin(scene_products)) & (
-                    (self.all_products['att3'] == 'YES') | (
-                        self.all_products['product_type'].isin(['Empty', 'Other'])) | ((self.all_products[
-                                                                                            'att1'] is not None) & (
-                                                                                           self.all_products[
-                                                                                               'att3'] is None)) | (
-                        self.all_products['manufacturer_name'] != self.ABINBEV))]['product_fk'].unique().tolist()
-            missing_bundle_leads = []
-            scene_products_to_check.extend(self.has_assortment_list)
-            scene_products_to_check.extend(self.must_have_assortment_list)
-            for product in scene_products:
-                product_bundle_lead = self.get_bundle_lead(product)
-                if product_bundle_lead not in scene_products_to_check and product_bundle_lead is not None \
-                        and product_bundle_lead not in missing_bundle_leads:
-                    missing_bundle_leads.append(product_bundle_lead)
-            scene_products_to_check.extend(missing_bundle_leads)
-            for product in set(scene_products_to_check):
-                # product_bundle_lead = self.get_bundle_lead(product)
-                # if not product_bundle_lead:
-                #     product_bundle_lead = product
-                if (scene, product) in self.osa_scene_item_results and not (
-                            product in self.delisted_products):
-                    in_ass_res = self.osa_scene_item_results[scene, product].get('in_assortment')
-                    oos_res = self.osa_scene_item_results[scene, product].get('oos')
-                elif product in self.delisted_products:
-                    in_ass_res = 0
-                    oos_res = 0
-                else:
-                    in_ass_res = 0
-                    oos_res = 0
-                if (scene, product) in self.scene_item_length_mm_dict:
-                    product_length = self.scene_item_length_mm_dict[scene, product]
-                else:
-                    product_length = 0
-                if (scene, product) in self.mha_product_results:
-                    mha_in_ass_res = self.mha_product_results[scene, product].get('in_assortment')
-                    mha_oos_res = self.mha_product_results[scene, product].get('oos')
-                else:
-                    mha_in_ass_res = 0
-                    mha_oos_res = 0
-                attributes = pd.DataFrame(
-                    [(self.session_fk, scene, product, in_ass_res,
-                      oos_res,
-                      product_length, mha_in_ass_res, mha_oos_res)],
-                    columns=['session_fk', 'scene_fk', 'product_fk', 'in_assortment_osa', 'oos_osa',
-                             'length_mm_custom', 'mha_in_assortment', 'mha_oos'])
-                query = insert(attributes.to_dict(), self.CUSTOM_SCENE_ITEM_FACTS)
-                self.kpi_results_queries.append(query)
-
-    def save_linear_length_results(self):
-        scenes_to_check = self.scif['scene_fk'].unique().tolist()
-        session_products = self.scif['product_fk'].unique().tolist()
-        # products_to_check = self.all_products.loc[(self.all_products['product_fk'].isin(session_products)) & (
-        #     (self.all_products['att3'] == 'YES') | (
-        #         self.all_products['product_fk'].isin(self.missing_bundle_leads)))]['product_fk'].unique().tolist()
-        products_to_check = self.all_products.loc[
-            (self.all_products['product_fk'].isin(session_products)) & (
-                (self.all_products['att3'] == 'YES') | (
-                    self.all_products['product_type'].isin(['Empty', 'Other'])) |
-                ((self.all_products['att1'] is not None) & (self.all_products[ 'att3'] is None)) | (
-                    self.all_products['manufacturer_name'] != self.ABINBEV) |
-                ((self.all_products['att1'] is not None) & (self.all_products['att3'] == 'NO')))][
-            'product_fk'].unique().tolist()
-        for product in products_to_check:
-            aggregated_linear_length = 0
-            for scene in scenes_to_check:
-
-                product_bundle_lead = self.get_bundle_lead(product)
-                if not product_bundle_lead:
-                    product_bundle_lead = product
-                if (scene, product_bundle_lead) in self.scene_item_length_mm_dict:
-                    scene_product_length = self.scene_item_length_mm_dict[scene, product_bundle_lead]
-                else:
-                    scene_product_length = 0
-
-                # if (scene, product) in self.scene_item_length_mm_dict:
-                #     scene_product_length = self.scene_item_length_mm_dict[scene, product]
-                # else:
-                #     scene_product_length = 0
-                aggregated_linear_length += scene_product_length
-            try:
-                product_ean_code = \
-                    self.all_products.loc[self.all_products['product_fk'] == product]['product_ean_code'].values[0]
-            except IndexError as e:
-                Log.info('Product {} is not defined'.format(product))
-                continue
-            self.save_level2_and_level3('Linear Share of Shelf', product_ean_code, aggregated_linear_length)
-
-    def calculate_block_together_sets(self, set_name):
-        """
-        This function calculates every block-together-typed KPI from the relevant sets, and returns the set final score.
-        """
-        scores = []
-        parameters_df = pd.DataFrame(self.set_templates_data[set_name])
-        product_groups = parameters_df['Atomic Name'].unique().tolist()
-        for group in product_groups:
-            relevant_df = parameters_df.loc[
-                (parameters_df['Atomic Name'] == group) & (parameters_df['Store Type'] == self.store_type)]
-            if not relevant_df.empty:
-                products_for_block_check = relevant_df['EAN Number'].unique().tolist()
-                result = self.tools.calculate_block_together(product_ean_code=products_for_block_check,
-                                                             template_name=relevant_df['Scene Type'].values[0])
-                # result = self.tools.calculate_block_together(product_ean_code=products_for_block_check,
-                #                                              template_name='test')  # todo remove this
-                score = 1 if result else 0
-                scores.append(score)
-
-                self.save_level2_and_level3(set_name, group, score, level_2_only=True)
-                product_atomic_names = relevant_df['SKU Name'].unique().tolist()
-                for atomic in product_atomic_names:
-                    self.save_level2_and_level3(set_name, atomic, score, score=score, level_3_only=True,
-                                                level2_name_for_atomic=group)
-
-        # for params in self.set_templates_data[set_name]:
-        #     if params.get('Store Type') == self.store_type:
-        #         # filters = {'template_name': params.get(self.tools.LOCATION)}
-        #         # if params.get(self.tools.SUB_BRAND_NAME):
-        #         #     filters['sub_brand_name'] = params.get(self.tools.SUB_BRAND_NAME)
-        #         # else:
-        #         #     filters['brand_name'] = params.get(self.tools.BRAND_NAME)
-        #         # result = self.tools.calculate_block_together(**filters)
-        #
-        #         result = self.tools.calculate_block_together(product_ean_code=[],
-        #                                                      template_name=params.get('Scene Type'))
-        #         score = 1 if result else 0
-        #         scores.append(score)
-        #
-        #         self.save_level2_and_level3(set_name, params.get(self.tools.KPI_NAME), score)
-
-        if not scores:
-            set_score = 0
-            target = 0
+    def retailer_channel_has_sales_data(self, set_name):
+        sales = ParseMarsUsTemplates().get_mars_sales_data()
+        sales = sales[(sales['retailer'] == self._data_provider.retailer) &
+                      (sales['channel'] == self._data_provider.channel) &
+                      (sales['set'] == set_name.upper())]
+        if sales.empty:
+            return False
         else:
-            set_score = (sum(scores) / float(len(scores))) * 100
-            target = len(scores)
-        # self.save_level1(set_name, set_score)
-        self.shelf_impact_score_results[set_name] = round(sum(scores), 2)
-        self.shelf_impact_score_thresholds[set_name] = target
+            return True
 
-        return round(set_score, 2)
-
-    def calculate_pallet_presence(self):
-        """
-        This function calculates every Pallet-Presence typed KPI from the relevant sets, and returns the set final score.
-        """
-        pallet_score = len(self.match_display_in_scene[self.match_display_in_scene['name'] == PALLET])
-        half_pallet_score = len(self.match_display_in_scene[self.match_display_in_scene['name'] == HALF_PALLET])
-        set_score = (PALLET_WEIGHT * pallet_score) + (HALF_PALLET_WEIGHT * half_pallet_score)
-        return set_score, pallet_score, half_pallet_score
-
-    def calculate_share_of_assortment(self):
-        """
-        This function calculates every Share-of-Assortment typed KPI from the relevant sets, and returns the set final score.
-        """
-        assortment_inbev = self.tools.calculate_assortment(product_type=['SKU', 'Other'],
-                                                           manufacturer_name=self.ABINBEV)
-        assortment_all = self.tools.calculate_assortment(product_type=['SKU', 'Other'])
-        if not assortment_all:
-            set_score = 0
+    def retailer_channel_has_spt_sales_data(self, set_name):
+        sales = ParseMarsUsTemplates().get_mars_spt_sales_data()
+        sales = sales[(sales['retailer'] == self._data_provider.retailer) &
+                      (sales['channel'] == self._data_provider.channel) &
+                      (sales['set'] == set_name.upper())]
+        if sales.empty:
+            return False
         else:
-            set_score = (assortment_inbev / float(assortment_all)) * 100
-        return round(set_score, 2)
+            return True
 
-    def get_product_att4(self, product_fk):
-        query = INTEG21INBEVBEQueries.get_product_att4(product_fk)
-        att4 = pd.read_sql_query(query, self.rds_conn.db)
-        return att4.values[0][0]
+    def is_relevant_retailer_channel(self):
+        is_relevant_retailer = self._get_retailer_name in BDB_RETAILERS + SPT_RETAILERS
+        is_relevant_channel = self._get_store_channel in BDB_CHANNELS + SPT_CHANNELS
+        return is_relevant_retailer and is_relevant_channel
 
-    def get_rect_values(self):
-        query = INTEG21INBEVBEQueries.get_rect_values_query(self.session_uid)
-        rect_values = pd.read_sql_query(query, self.rds_conn.db)
-        return rect_values
+    def is_relevant_retailer_channel_bdb(self):
+        is_relevant_retailer = self._get_retailer_name in BDB_RETAILERS
+        is_relevant_channel = self._get_store_channel in BDB_CHANNELS
+        return is_relevant_retailer and is_relevant_channel
 
-    def write_to_db_result(self, fk, result, level, score=None, threshold=None):
-        """
-        This function the result data frame of every KPI (atomic KPI/KPI/KPI set),
-        and appends the insert SQL query into the queries' list, later to be written to the DB.
-        """
-        attributes = self.create_attributes_dict(fk, result, level, score=score, threshold=threshold)
-        if level == self.LEVEL1:
-            table = KPS_RESULT
-        elif level == self.LEVEL2:
-            table = KPK_RESULT
-        elif level == self.LEVEL3:
-            table = KPI_RESULT
-        else:
-            return
-        query = insert(attributes, table)
-        self.kpi_results_queries.append(query)
-
-    def write_to_osa_table(self, product_fk):
-        attributes = pd.DataFrame([(product_fk, self.store_id, datetime.utcnow()), 1],
-                                  columns=['product_fk', 'store_fk', 'start_date', 'assortment_fk'])
-        query = insert(attributes.to_dict(), CUSTOM_OSA)
-        self.kpi_results_queries.append(query)
-
-    def create_attributes_dict(self, fk, result, level, score2=None, score=None, threshold=None):
-        """
-        This function creates a data frame with all attributes needed for saving in KPI results tables.
-
-        """
-        # result = round(result, 2)
-        if level == self.LEVEL1:
-            kpi_set_name = self.kpi_static_data[self.kpi_static_data['kpi_set_fk'] == fk]['kpi_set_name'].values[0]
-            score_type = '%' if kpi_set_name in self.tools.KPI_SETS_WITH_PERCENT_AS_SCORE else ''
-            # attributes = pd.DataFrame([(kpi_set_name, self.session_uid, self.store_id, self.visit_date.isoformat(),
-            #                             format(result, '.2f'), score_type, fk)],
-            #                           columns=['kps_name', 'session_uid', 'store_fk', 'visit_date', 'score_1',
-            #                                    'score_2', 'kpi_set_fk'])
-            attributes = pd.DataFrame([(kpi_set_name, self.session_uid, self.store_id, self.visit_date.isoformat(),
-                                        result, score_type, fk)],
-                                      columns=['kps_name', 'session_uid', 'store_fk', 'visit_date', 'score_1',
-                                               'score_2', 'kpi_set_fk'])
-
-        elif level == self.LEVEL2:
-            kpi_name = self.kpi_static_data[self.kpi_static_data['kpi_fk'] == fk]['kpi_name'].values[0].replace("'",
-                                                                                                                "\\'")
-            attributes = pd.DataFrame([(self.session_uid, self.store_id, self.visit_date.isoformat(),
-                                        fk, kpi_name, result)],
-                                      columns=['session_uid', 'store_fk', 'visit_date', 'kpi_fk', 'kpk_name', 'score'])
-        elif level == self.LEVEL3:
-            data = self.kpi_static_data[self.kpi_static_data['atomic_kpi_fk'] == fk]
-            atomic_kpi_name = data['atomic_kpi_name'].values[0].replace("'", "\\'")
-            kpi_fk = data['kpi_fk'].values[0]
-            kpi_set_name = self.kpi_static_data[self.kpi_static_data['atomic_kpi_fk'] == fk]['kpi_set_name'].values[0]
-            if score is None and threshold is None:
-                attributes = pd.DataFrame([(atomic_kpi_name, self.session_uid, kpi_set_name, self.store_id,
-                                            self.visit_date.isoformat(), datetime.utcnow().isoformat(),
-                                            result, kpi_fk, fk, None, None)],
-                                          columns=['display_text', 'session_uid', 'kps_name', 'store_fk', 'visit_date',
-                                                   'calculation_time', 'result', 'kpi_fk', 'atomic_kpi_fk', 'threshold',
-                                                   'score'])
-            elif score is not None and not threshold:
-                attributes = pd.DataFrame([(atomic_kpi_name, self.session_uid, kpi_set_name, self.store_id,
-                                            self.visit_date.isoformat(), datetime.utcnow().isoformat(),
-                                            result, kpi_fk, fk, None, score)],
-                                          columns=['display_text', 'session_uid', 'kps_name', 'store_fk', 'visit_date',
-                                                   'calculation_time', 'result', 'kpi_fk', 'atomic_kpi_fk', 'threshold',
-                                                   'score'])
-            else:
-                attributes = pd.DataFrame([(atomic_kpi_name, self.session_uid, kpi_set_name, self.store_id,
-                                            self.visit_date.isoformat(), datetime.utcnow().isoformat(),
-                                            result, kpi_fk, fk, threshold, score)],
-                                          columns=['display_text', 'session_uid', 'kps_name', 'store_fk',
-                                                   'visit_date',
-                                                   'calculation_time', 'result', 'kpi_fk', 'atomic_kpi_fk',
-                                                   'threshold',
-                                                   'score'])
-        else:
-            attributes = pd.DataFrame()
-        return attributes.to_dict()
-
-    @log_runtime('Saving to DB')
-    def commit_results_data(self):
-        """
-        This function writes all KPI results to the DB, and commits the changes.
-        """
-        cur = self.rds_conn.db.cursor()
-        delete_queries = INTEG21INBEVBEQueries.get_delete_session_results_query(self.session_uid)
-        pservice_tables_delete_query = INTEG21INBEVBEQueries.get_delete_custom_scif_query(self.session_fk)
-        for query in delete_queries:
-            cur.execute(query)
-        cur.execute(pservice_tables_delete_query)
-        for query in self.kpi_results_queries:
-            cur.execute(query)
-        self.rds_conn.db.commit()
+    def is_relevant_retailer_channel_spt(self):
+        is_relevant_retailer = self._get_retailer_name in SPT_RETAILERS
+        is_relevant_channel = self._get_store_channel in SPT_CHANNELS
+        return is_relevant_retailer and is_relevant_channel

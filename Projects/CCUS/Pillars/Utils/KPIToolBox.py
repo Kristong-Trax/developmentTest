@@ -1,15 +1,14 @@
-from datetime import datetime
-import pandas as pd
 import os
+from datetime import datetime
+
+from KPIUtils.GlobalDataProvider.PsDataProvider import PsDataProvider
+from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScript
 from Trax.Algo.Calculations.Core.DataProvider import Data
-from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Trax.Utils.Conf.Keys import DbUsers
 from Trax.Utils.Logging.Logger import Log
-from KPIUtils.GlobalDataProvider.PsDataProvider import PsDataProvider
+
 from Projects.CCUS.Pillars.Utils.Const import Const
-
-
 
 __author__ = 'Ortal'
 
@@ -89,8 +88,6 @@ class PillarsPROGRAMSToolBox:
                                            result=scene_count, by_scene=False, denominator_id=self.store_id,
                                            score=1 if scene_count > 0 else 0)
 
-
-
     def count_specific_program_scenes(self, program_id):
         current_program_result = self.scenes_result.loc[self.scenes_result['numerator_id'] == program_id]
         program_scene_count = current_program_result['score'].sum()
@@ -98,6 +95,3 @@ class PillarsPROGRAMSToolBox:
 
     def get_brand_name_from_fk(self, brand_fk):
         return self.all_brand[brand_fk]
-
-
-
