@@ -144,6 +144,7 @@ class DISPLAYSToolBox(DISPLAYSConsts):
                                 kpi_results[params[self.KPI_NAME]][x*3 + 2] += s
             else:
                 calculate_all = True
+            del scene_displays
             for d in xrange(len(scene_displays)):
                 display = scene_displays.iloc[d]
                 display_name = display['display_name']

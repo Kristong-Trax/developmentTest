@@ -1,7 +1,7 @@
 
 __author__ = 'Israel'
 
-class CBCIL_Queries(object):
+class CBCILCBCIL_Queries(object):
     @staticmethod
     def get_all_kpi_data():
         return """
@@ -55,7 +55,7 @@ class CBCIL_Queries(object):
     @staticmethod
     def get_store_data_by_store_id(store_fk):
         return """
-                select s.store_type, s.additional_attribute_1, s.additional_attribute_2
+                select s.store_type, s.additional_attribute_1, s.additional_attribute_2, s.additional_attribute_6
                 from static.stores s
                 where s.pk = {}
             """.format(store_fk)

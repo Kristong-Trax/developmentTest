@@ -9,22 +9,26 @@ from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Algo.Calculations.Core.Shortcuts import BaseCalculationsGroup
 from Trax.Utils.Logging.Logger import Log
 
-from Projects.CBCIL_SAND.Utils.PositionGraph import CBCIL_PositionGraphs
+from Projects.CBCIL_SAND.Utils.PositionGraph import CBCILCBCIL_PositionGraphs
 
 __author__ = 'Israel'
 
 
-class CBCIL_GENERALToolBox:
+class CBCILCBCIL_GENERALToolBox:
 
     EXCLUDE_FILTER = 0
     INCLUDE_FILTER = 1
     CONTAIN_FILTER = 2
     EXCLUDE_EMPTY = False
     INCLUDE_EMPTY = True
+    EXCLUDE_IRRELEVANT = False
+    INCLUDE_IRRELEVANT = True
+
 
     STRICT_MODE = ALL = 1000
 
     EMPTY = 'Empty'
+    IRRELEVANT = 'Irrelevant'
     DEFAULT = 'Default'
     TOP = 'Top'
     BOTTOM = 'Bottom'
@@ -51,7 +55,7 @@ class CBCIL_GENERALToolBox:
     @property
     def position_graphs(self):
         if not hasattr(self, '_position_graphs'):
-            self._position_graphs = CBCIL_PositionGraphs(self.data_provider, rds_conn=self.rds_conn)
+            self._position_graphs = CBCILCBCIL_PositionGraphs(self.data_provider, rds_conn=self.rds_conn)
         return self._position_graphs
 
     @property
@@ -207,14 +211,19 @@ class CBCIL_GENERALToolBox:
             ratio = numerator_width / float(denominator_width)
         return ratio
 
-    def calculate_linear_share_of_display(self, sos_filters, include_empty=EXCLUDE_EMPTY, **general_filters):
+    def calculate_linear_share_of_display(self, sos_filters, include_empty=EXCLUDE_EMPTY, include_relevant=EXCLUDE_IRRELEVANT, **general_filters):
         """
         :param sos_filters: These are the parameters on which ths SOS is calculated (out of the general DF).
         :param include_empty: This dictates whether Empty-typed SKUs are included in the calculation.
         :param general_filters: These are the parameters which the general data frame is filtered by.
         :return: The Linear SOS ratio.
         """
-        if include_empty == self.EXCLUDE_EMPTY:
+
+        if include_empty == self.EXCLUDE_EMPTY and include_relevant == self.EXCLUDE_IRRELEVANT:
+            general_filters['product_type'] = ([self.EMPTY, self.IRRELEVANT], self.EXCLUDE_FILTER)
+        elif include_relevant == self.EXCLUDE_IRRELEVANT:
+            general_filters['product_type'] = (self.IRRELEVANT, self.EXCLUDE_FILTER)
+        elif include_empty == self.EXCLUDE_EMPTY:
             general_filters['product_type'] = (self.EMPTY, self.EXCLUDE_FILTER)
 
         numerator_width = self.calculate_share_space_length(**dict(sos_filters, **general_filters))
