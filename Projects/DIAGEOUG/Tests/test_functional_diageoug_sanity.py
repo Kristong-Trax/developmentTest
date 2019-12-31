@@ -11,7 +11,7 @@ __author__ = 'ilays'
 
 class TestKEnginePsCode(PsSanityTestsFuncs):
 
-    @PsSanityTestsFuncs.seeder(["diageoug_seed", "mongodb_products_and_brands_seed"], ProjectsSanityData())
+    @PsSanityTestsFuncs.seeder.seed(["diageoug_seed", "mongodb_products_and_brands_seed"], ProjectsSanityData())
     def test_diageoug_sanity(self):
         project_name = ProjectsSanityData.project_name
         data_provider = KEngineDataProvider(project_name)

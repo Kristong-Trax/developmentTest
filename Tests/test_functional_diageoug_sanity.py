@@ -1,4 +1,3 @@
-
 import os
 import MySQLdb
 import pandas as pd
@@ -12,7 +11,6 @@ from Projects.DIAGEOUG.Calculations import DIAGEOUGCalculations
 
 from Trax.Apps.Core.Testing.BaseCase import TestFunctionalCase
 from Tests.TestUtils import remove_cache_and_storage
-
 
 __author__ = 'ilays'
 
@@ -89,10 +87,11 @@ class TestKEngineOutOfTheBox(TestFunctionalCase):
         if not wrong_results.empty:
             print "The following KPIs had wrong results:"
             for i, res in wrong_results.iterrows():
-                print "kpi_level_2_fk: {0}, client_name: {1}, numerator_id: {2}, denominator_id: {3}, "                       "context_id: {4}".format(str(res['kpi_level_2_fk']), str(res['client_name_x']),
-                                                                                                                                                       str(res['numerator_id']), str(
-                                                                                                                                                           res['denominator_id']),
-                                                                                                                                                       str(res['context_id']))
+                print "kpi_level_2_fk: {0}, client_name: {1}, numerator_id: {2}, denominator_id: {3}, "                       "context_id: {4}".format(
+                    str(res['kpi_level_2_fk']), str(res['client_name_x']),
+                    str(res['numerator_id']), str(
+                        res['denominator_id']),
+                    str(res['context_id']))
         self.assertTrue(wrong_results.empty)
 
     def _assert_scene_tables_kpi_results_filled(self, distinct_kpis_num=None):

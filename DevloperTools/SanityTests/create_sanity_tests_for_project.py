@@ -9,7 +9,6 @@ import shutil
 import autopep8
 
 __author__ = 'yoava and ilays'
-
 """
 this module creates dump file and sanity test classes for a specific project.
 all you have to do is to insert the project name and run it 
@@ -85,8 +84,12 @@ class SeedCreator:
         os.system(export_command)
         os.chdir(self.output_dir)
         os.rename('dump.sql.gz', self.seed_name)
-        shutil.copy2(os.path.join(self.output_dir, self.seed_name),
-                     os.path.join('/home', self.user, 'dev', 'kpi_factory', 'Tests', 'Data', 'Seeds', self.seed_name))
+        project_folder = self.project.upper().replace("-", "_")
+        seed_destination_path = os.path.join('/home', self.user, 'dev', 'kpi_factory', 'Projects', project_folder,
+                                             'Tests', 'Data', 'Seeds')
+        if not os.path.exists(seed_destination_path):
+            os.makedirs(seed_destination_path)
+        shutil.copy2(os.path.join(self.output_dir, self.seed_name), os.path.join(seed_destination_path, self.seed_name))
         Log.info('Done')
 
 
@@ -94,132 +97,42 @@ class SanityTestsCreator:
     """
     this class creates the sanity tests class
     """
-    TEST_CLASS = """
-import os
-import MySQLdb
-import pandas as pd
-from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
-from Trax.Data.Testing.SeedNew import Seeder
+    KPI_RESULTS = """
+class %(project_capital)sKpiResults:
+    def __init__(self):
+        pass
+
+    @staticmethod
+    def get_kpi_results():
+        return %(kpi_results)s
+"""
+
+    TEST_CLASS = """  
 from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
-from Trax.Cloud.Services.Connector.Keys import DbUsers
-from Trax.Data.Testing.TestProjects import TestProjectsNames
-from Tests.Data.TestData.test_data_%(project)s_sanity import ProjectsSanityData
+from Projects.%(project_capital)s.Tests.Data.test_data_%(project)s_sanity import ProjectsSanityData
 from Projects.%(project_capital)s.Calculations import %(main_class_name)s
 %(scene_import)s
-from Trax.Apps.Core.Testing.BaseCase import TestFunctionalCase
-from Tests.TestUtils import remove_cache_and_storage
-
+from DevloperTools.SanityTests.PsSanityTests import PsSanityTestsFuncs 
+from Projects.%(project_capital)s.Tests.Data.kpi_results import %(project_capital)sKpiResults
 
 __author__ = '%(author)s'
 
 
-class TestKEngineOutOfTheBox(TestFunctionalCase):
+class TestKEnginePsCode(PsSanityTestsFuncs):
 
-    def set_up(self):
-        super(TestKEngineOutOfTheBox, self).set_up()
-        remove_cache_and_storage()
-
-    @property
-    def import_path(self):
-        return 'Trax.Apps.Services.KEngine.Handlers.SessionHandler'
-
-    @property
-    def config_file_path(self):
-        return os.path.join(os.path.dirname(os.path.realpath(__file__)), 'k-engine-test.config')
-
-    seeder = Seeder()
-
-    def _assert_old_tables_kpi_results_filled(self, distinct_kpis_num=None):
-        connector = PSProjectConnector(TestProjectsNames().TEST_PROJECT_1, DbUsers.Docker)
-        cursor = connector.db.cursor(MySQLdb.cursors.DictCursor)
-        cursor.execute('''
-           SELECT * FROM report.kpi_results
-           ''')
-        kpi_results = cursor.fetchall()
-        if distinct_kpis_num:
-            df = pd.DataFrame(kpi_results)
-            self.assertEquals(df['kpi_level_2_fk'].unique().__len__(), distinct_kpis_num)
-        else:
-            self.assertNotEquals(len(kpi_results), 0)
-        connector.disconnect_rds()
-
-    def _assert_new_tables_kpi_results_filled(self, distinct_kpis_num=None, list_of_kpi_names=None):
-        connector = PSProjectConnector(TestProjectsNames().TEST_PROJECT_1, DbUsers.Docker)
-        cursor = connector.db.cursor(MySQLdb.cursors.DictCursor)
-        cursor.execute('''
-           SELECT kl2.pk, kl2.client_name, kl2r.kpi_level_2_fk, kl2r.result 
-           FROM report.kpi_level_2_results kl2r left join static.kpi_level_2 kl2 
-           on kpi_level_2_fk = kl2.pk
-           ''')
-        kpi_results = cursor.fetchall()
-        df = pd.DataFrame(kpi_results)
-        if distinct_kpis_num:
-            self.assertEquals(df['kpi_level_2_fk'].unique().__len__(), distinct_kpis_num)
-        else:
-            self.assertNotEquals(len(kpi_results), 0)
-        if list_of_kpi_names:
-            exisitng_results = df['client_name'].unique()
-            result = all(elem in exisitng_results for elem in list_of_kpi_names)
-            self.assertTrue(result)
-        connector.disconnect_rds()
-
-    def _assert_test_results_matches_reality(self):
-        real_res_dict = pd.DataFrame(%(kpi_results)s)
-
-        real_results = pd.DataFrame(real_res_dict)
-
-        connector = PSProjectConnector(TestProjectsNames().TEST_PROJECT_1, DbUsers.Docker)
-        cursor = connector.db.cursor(MySQLdb.cursors.DictCursor)
-        cursor.execute('''
-                        SELECT 
-                        distinct kpi.client_name,res.kpi_level_2_fk, numerator_id, denominator_id, context_id, result
-                        FROM
-                            report.kpi_level_2_results res
-                                LEFT JOIN
-                            static.kpi_level_2 kpi ON kpi.pk = res.kpi_level_2_fk
-                                LEFT JOIN
-                            probedata.session ses ON ses.pk = res.session_fk
-           ''')
-        kpi_results = cursor.fetchall()
-        kpi_results = pd.DataFrame(kpi_results)
-        merged_results = pd.merge(real_results, kpi_results, on=['kpi_level_2_fk', 'numerator_id', 'denominator_id',
-                                                                 'context_id'], how="left")
-        wrong_results = merged_results[merged_results['result_x'] != merged_results['result_y']]
-        if not wrong_results.empty:
-            print "The following KPIs had wrong results:"
-            for i, res in wrong_results.iterrows():
-                print "kpi_level_2_fk: {0}, client_name: {1}, numerator_id: {2}, denominator_id: {3}, " \
-                      "context_id: {4}".format(str(res['kpi_level_2_fk']), str(res['client_name_x']),
-                                               str(res['numerator_id']), str(res['denominator_id']),
-                                               str(res['context_id']))
-        self.assertTrue(wrong_results.empty)
-
-    def _assert_scene_tables_kpi_results_filled(self, distinct_kpis_num=None):
-        connector = PSProjectConnector(TestProjectsNames().TEST_PROJECT_1, DbUsers.Docker)
-        cursor = connector.db.cursor(MySQLdb.cursors.DictCursor)
-        cursor.execute('''
-           SELECT * FROM report.scene_kpi_results
-           ''')
-        kpi_results = cursor.fetchall()
-        if distinct_kpis_num:
-            df = pd.DataFrame(kpi_results)
-            self.assertEquals(df['kpi_level_2_fk'].unique().__len__(), distinct_kpis_num)
-        else:
-            self.assertNotEquals(len(kpi_results), 0)
-        connector.disconnect_rds()
-
-    @seeder.seed(["%(seed)s"%(need_pnb)s], ProjectsSanityData())
+    @PsSanityTestsFuncs.seeder.seed(["%(seed)s"%(need_pnb)s], ProjectsSanityData())
     def test_%(project)s_sanity(self):
         project_name = ProjectsSanityData.project_name
         data_provider = KEngineDataProvider(project_name)
         sessions = %(sessions)s
+        kpi_results = %(project_capital)sKpiResults().get_kpi_results()
         for session in sessions.keys():
             data_provider.load_session_data(str(session))
             output = Output()
             %(main_class_name)s(data_provider, output).run_project_calculations()
+            self._assert_test_results_matches_reality(kpi_results)
             # self._assert_old_tables_kpi_results_filled(distinct_kpis_num=None)
             # self._assert_new_tables_kpi_results_filled(distinct_kpis_num=None, list_of_kpi_names=None)
-            # self._assert_test_results_matches_reality()
             # for scene in sessions[session]:
             #     data_provider.load_scene_data(str(session), scene_id=scene)
             #     SceneCalculations(data_provider).calculate_kpis()
@@ -234,7 +147,7 @@ class TestKEngineOutOfTheBox(TestFunctionalCase):
         self.main_class_name = '{}Calculations'.format(self.project_capital)
         self.sessions_scenes_list = sessions_scenes_list
         self.need_pnb = ', "mongodb_products_and_brands_seed"' if need_pnb else ""
-        self.kpi_results = str(kpi_results) if kpi_results else ""
+        self.kpi_results = autopep8.fix_code(kpi_results, options={"aggressive": 2}) if kpi_results else ""
 
     def create_test_class(self):
         """
@@ -258,6 +171,9 @@ class TestKEngineOutOfTheBox(TestFunctionalCase):
             os.makedirs(data_class_directory_path)
             with open(os.path.join(data_class_directory_path, '__init__.py'), 'wb') as f:
                 f.write("")
+        with open(os.path.join(data_class_directory_path, 'Data', "kpi_results.py"), 'wb') as f:
+            f.write(autopep8.fix_code(source=(SanityTestsCreator.KPI_RESULTS % formatting_dict),
+                                      options={"max_line_length": 100, "aggressive": 2}))
         with open(os.path.join(data_class_directory_path, file_name), 'wb') as f:
             f.write(autopep8.fix_code(source=(SanityTestsCreator.TEST_CLASS % formatting_dict),
                                       options={"max_line_length": 100}))
@@ -325,7 +241,7 @@ class ProjectsSanityData(BaseSeedData):
             with open(os.path.join(data_class_directory_path, '__init__.py'), 'wb') as f:
                 f.write("")
         with open(os.path.join(data_class_directory_path, file_name), 'wb') as f:
-            f.write(data_class_content)
+            f.write(autopep8.fix_code(data_class_content))
 
 
 class GetKpisDataForTesting:
@@ -373,7 +289,8 @@ class GetKpisDataForTesting:
             sessions_for_query = "= '" + str(sessions.keys()[0]) + "'"
         query = """
                 SELECT 
-                    distinct kpi.client_name,res.kpi_level_2_fk, numerator_id, denominator_id, context_id, result
+                    distinct kpi.client_name, res.kpi_level_2_fk, res.session_fk, numerator_id, denominator_id, 
+                    context_id, result
                 FROM
                     report.kpi_level_2_results res
                         LEFT JOIN
@@ -409,7 +326,7 @@ def create_seed(project, sessions_from_user=None):
     else:
         sessions_to_use = get_sessions_in_correct_format(sessions_from_user)
     kpi_results = kpisData.get_one_result_per_kpi(sessions=sessions_to_use)
-    if not kpi_results:
+    if kpi_results is None:
         return None, None
     creator = SeedCreator(project=project)
     creator.activate_exporter(specific_sessions_and_scenes=sessions_to_use)
@@ -426,8 +343,7 @@ def create_sanity_test(project, sessions_to_use, kpi_results):
 
     # products_and_brands is needed for some projects, if you don't need it, put False in the script,
     # the tests will run much faster without it
-    data_class = CreateTestDataProjectSanity(project=project)
-    data_class.create_data_class()
+    CreateTestDataProjectSanity(project=project).create_data_class()
 
     # Create functional-sanity test
     sanity = SanityTestsCreator(project=project, sessions_scenes_list=sessions_to_use, need_pnb=True,
@@ -445,7 +361,7 @@ if __name__ == '__main__':
     # Insert a session_uid / list of session_uids / dict of session_uid and scenes in the following format {'a': [1, 3]}
     sessions = ['f9d6b8a5-7964-4ef5-afe4-8580df97f57c']
     # In case you don't need to generate a new seed, just comment out the below row
-    # sessions, kpi_results = create_seed(project=project, sessions_from_user=sessions)
+    sessions, kpi_results = create_seed(project=project, sessions_from_user=sessions)
     if kpi_results is None:
         sys.exit(1)
     sessions = get_sessions_in_correct_format(sessions)

@@ -84,8 +84,12 @@ class SeedCreator:
         os.system(export_command)
         os.chdir(self.output_dir)
         os.rename('dump.sql.gz', self.seed_name)
-        shutil.copy2(os.path.join(self.output_dir, self.seed_name),
-                     os.path.join('/home', self.user, 'dev', 'kpi_factory', 'Tests', 'Data', 'Seeds', self.seed_name))
+        project_folder = self.project.upper().replace("-", "_")
+        seed_destination_path = os.path.join('/home', self.user, 'dev', 'kpi_factory', 'Projects', project_folder,
+                                             'Tests', 'Data', 'Seeds')
+        if not os.path.exists(seed_destination_path):
+            os.makedirs(seed_destination_path)
+        shutil.copy2(os.path.join(self.output_dir, self.seed_name), os.path.join(seed_destination_path, self.seed_name))
         Log.info('Done')
 
 
@@ -116,7 +120,7 @@ __author__ = '%(author)s'
 
 class TestKEnginePsCode(PsSanityTestsFuncs):
         
-    @PsSanityTestsFuncs.seed(["%(seed)s"%(need_pnb)s], ProjectsSanityData())
+    @PsSanityTestsFuncs.seeder.seed(["%(seed)s"%(need_pnb)s], ProjectsSanityData())
     def test_%(project)s_sanity(self):
         project_name = ProjectsSanityData.project_name
         data_provider = KEngineDataProvider(project_name)
@@ -322,7 +326,7 @@ def create_seed(project, sessions_from_user=None):
     else:
         sessions_to_use = get_sessions_in_correct_format(sessions_from_user)
     kpi_results = kpisData.get_one_result_per_kpi(sessions=sessions_to_use)
-    if not kpi_results:
+    if kpi_results is None:
         return None, None
     creator = SeedCreator(project=project)
     creator.activate_exporter(specific_sessions_and_scenes=sessions_to_use)
@@ -357,9 +361,8 @@ if __name__ == '__main__':
     # Insert a session_uid / list of session_uids / dict of session_uid and scenes in the following format {'a': [1, 3]}
     sessions = ['f9d6b8a5-7964-4ef5-afe4-8580df97f57c']
     # In case you don't need to generate a new seed, just comment out the below row
-    # sessions, kpi_results = create_seed(project=project, sessions_from_user=sessions)
+    sessions, kpi_results = create_seed(project=project, sessions_from_user=sessions)
     if kpi_results is None:
         sys.exit(1)
     sessions = get_sessions_in_correct_format(sessions)
-
     create_sanity_test(project=project, sessions_to_use=sessions, kpi_results=kpi_results)
