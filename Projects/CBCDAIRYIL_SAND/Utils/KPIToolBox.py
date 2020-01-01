@@ -343,6 +343,8 @@ class CBCDAIRYILToolBox:
         :return: A filtered DataFrame.
         """
         for store_att, store_val in store_attributes.iteritems():
+            if store_val is None:
+                store_val = ""
             kpis_template = kpis_template[(kpis_template[store_att].str.encode('utf-8') == store_val.encode('utf-8')) |
                                           (kpis_template[store_att] == "")]
         return kpis_template
