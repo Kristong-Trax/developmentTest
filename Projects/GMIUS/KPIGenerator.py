@@ -13,7 +13,7 @@ class Generator:
     # SUPER_CATS = ['Yogurt', 'RBG', 'Mexican', 'Soup']
     SUPER_CATS = ['Yogurt', 'RBG', 'Soup', 'Mexican']
     # SUPER_CATS = ['Mexican'] # Overwriting for testing purposes
-    SUPER_CATS = ['Snacks']
+    SUPER_CATS = ['Snacks', 'Yogurt']
 
     def __init__(self, data_provider, output):
         self.data_provider = data_provider

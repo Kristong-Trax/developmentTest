@@ -298,9 +298,9 @@ if __name__ == '__main__':
     """
     LoggerInitializer.init('')
     Config.init()
-    project_to_test = 'jnjanz'
+    project_to_test = 'cckh-sand'
     creator = SeedCreator(project_to_test)
-    creator.activate_exporter(specific_sessions_and_scenes={'1F113395-8F4D-48E2-953F-0DE401734D31': []})
+    creator.activate_exporter(specific_sessions_and_scenes={'ff0d57ad-a7ed-46ca-9488-1d28f4682500': []})
     creator.rds_conn.disconnect_rds()
     data_class = CreateTestDataProjectSanity(project_to_test)
     data_class.create_data_class()

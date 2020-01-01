@@ -7,18 +7,19 @@ from KPIUtils.ParseTemplates import parse_template
 from KPIUtils_v2.DB.CommonV2 import Common
 from KPIUtils_v2.DB.Common import Common as oldCommon
 
-from Projects.CBCDAIRYIL.Utils.Consts import Consts
+from Projects.CBCDAIRYIL_SAND.Utils.Consts import Consts
 from KPIUtils_v2.Calculations.SurveyCalculations import Survey
 from KPIUtils_v2.Calculations.BlockCalculations import Block
 from KPIUtils_v2.Calculations.CalculationsUtils.GENERALToolBoxCalculations import GENERALToolBox
 from KPIUtils_v2.Utils.Decorators.Decorators import log_runtime, kpi_runtime
 
 import pandas as pd
+from datetime import datetime
 
 __author__ = 'idanr'
 
 
-class CBCDAIRYILSANDToolBox:
+class CBCDAIRYILToolBox:
 
     def __init__(self, data_provider, output):
         self.output = output
@@ -35,20 +36,33 @@ class CBCDAIRYILSANDToolBox:
         self.survey = Survey(self.data_provider)
         self.block = Block(self.data_provider)
         self.general_toolbox = GENERALToolBox(self.data_provider)
+        self.visit_date = self.data_provider[Data.VISIT_DATE]
+        self.template_path = self.get_relevant_template()
         self.gap_data = self.get_gap_data()
-        self.kpi_weights = parse_template(Consts.TEMPLATE_PATH, Consts.KPI_WEIGHT, lower_headers_row_index=0)
+        self.kpi_weights = parse_template(self.template_path, Consts.KPI_WEIGHT, lower_headers_row_index=0)
         self.template_data = self.parse_template_data()
         self.kpis_gaps = list()
         self.passed_availability = list()
         self.kpi_static_data = self.old_common.get_kpi_static_data()
 
-    @staticmethod
-    def get_gap_data():
+    def get_relevant_template(self):
+        """
+        This function returns the relevant template according to it's visit date.
+        Because of a change that was done in the logic there are 3 templates that match different dates.
+        :return: Full template path
+        """
+        if self.visit_date <= datetime.date(datetime(2019, 12, 31)):
+            return "{}/{}/{}".format(Consts.TEMPLATE_PATH, Consts.PREVIOUS_TEMPLATES,
+                                     Consts.PROJECT_TEMPLATE_NAME_UNTIL_2019_12_31)
+        else:
+            return "{}/{}".format(Consts.TEMPLATE_PATH, Consts.CURRENT_TEMPLATE)
+
+    def get_gap_data(self):
         """
         This function parse the gap data template and returns the gap priorities.
         :return: A dict with the priorities according to kpi_names. E.g: {kpi_name1: 1, kpi_name2: 2 ...}
         """
-        gap_sheet = parse_template(Consts.TEMPLATE_PATH, Consts.KPI_GAP, lower_headers_row_index=0)
+        gap_sheet = parse_template(self.template_path, Consts.KPI_GAP, lower_headers_row_index=0)
         gap_data = zip(gap_sheet[Consts.KPI_NAME], gap_sheet[Consts.ORDER])
         gap_data = {kpi_name: int(order) for kpi_name, order in gap_data}
         return gap_data
@@ -63,11 +77,11 @@ class CBCDAIRYILSANDToolBox:
         if self.template_data.empty:
             Log.warning(Consts.EMPTY_TEMPLATE_DATA_LOG.format(self.store_id))
             return
-        kpi_set, kpis_list = self.get_relevant_kpis_for_calculation()
+        kpi_set, kpis = self.get_relevant_kpis_for_calculation()
         kpi_set_fk = self.common.get_kpi_fk_by_kpi_type(Consts.TOTAL_SCORE)
         old_kpi_set_fk = self.get_kpi_fk_by_kpi_name(Consts.TOTAL_SCORE, 1)
         total_set_scores = list()
-        for kpi_name in kpis_list:
+        for kpi_name in kpis:
             kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_name)
             old_kpi_fk = self.get_kpi_fk_by_kpi_name(kpi_name, 2)
             kpi_weight = self.get_kpi_weight(kpi_name, kpi_set)
@@ -106,7 +120,7 @@ class CBCDAIRYILSANDToolBox:
         gaps_per_kpi_fk = self.common.get_kpi_fk_by_kpi_type(Consts.GAP_PER_ATOMIC_KPI)
         gaps_total_score_kpi_fk = self.common.get_kpi_fk_by_kpi_type(Consts.GAPS_TOTAL_SCORE_KPI)
         for gap in self.kpis_gaps[:5]:
-            current_gap_score = gap[Consts.WEIGHT] - (gap[Consts.SCORE] * gap[Consts.WEIGHT])
+            current_gap_score = gap[Consts.WEIGHT] - (gap[Consts.SCORE]/100 * gap[Consts.WEIGHT])
             gaps_total_score += current_gap_score
             self.insert_gap_results(gaps_per_kpi_fk, current_gap_score, gap[Consts.WEIGHT],
                                     numerator_id=gap[Consts.ATOMIC_FK], parent_fk=gaps_total_score_kpi_fk)
@@ -137,7 +151,7 @@ class CBCDAIRYILSANDToolBox:
         total_weight = round(parent_kpi_weight * 100, 2)
         target = None if parent_fk else round(80, 2)  # Requested for visualization
         self.common.write_to_db_result(fk=kpi_fk, numerator_id=Consts.CBC_MANU, numerator_result=kpi_score,
-                                       denominator_id=self.store_id, denominator_result=total_weight, taget=target,
+                                       denominator_id=self.store_id, denominator_result=total_weight, target=target,
                                        identifier_result=kpi_fk, identifier_parent=parent_fk, should_enter=should_enter,
                                        weight=total_weight, result=kpi_score, score=kpi_score)
 
@@ -145,7 +159,7 @@ class CBCDAIRYILSANDToolBox:
             kpi_fk = self.common.get_kpi_fk_by_kpi_type(Consts.TOTAL_SCORE_FOR_DASHBOARD)
             self.common.write_to_db_result(fk=kpi_fk, numerator_id=Consts.CBC_MANU,
                                            numerator_result=kpi_score, denominator_id=self.store_id,
-                                           denominator_result=total_weight, taget=target, identifier_result=kpi_fk,
+                                           denominator_result=total_weight, target=target, identifier_result=kpi_fk,
                                            identifier_parent=parent_fk, should_enter=should_enter,
                                            weight=total_weight, result=kpi_score, score=kpi_score)
 
@@ -315,7 +329,7 @@ class CBCDAIRYILSANDToolBox:
         This function responsible to filter the relevant template data..
         :return: A DataFrame with filtered Data by store attributes.
         """
-        kpis_template = parse_template(Consts.TEMPLATE_PATH, Consts.KPI_SHEET, lower_headers_row_index=1)
+        kpis_template = parse_template(self.template_path, Consts.KPI_SHEET, lower_headers_row_index=1)
         relevant_store_info = self.get_store_attributes(Consts.STORE_ATTRIBUTES_TO_FILTER_BY)
         filtered_data = self.filter_template_by_store_att(kpis_template, relevant_store_info)
         return filtered_data
@@ -329,7 +343,10 @@ class CBCDAIRYILSANDToolBox:
         :return: A filtered DataFrame.
         """
         for store_att, store_val in store_attributes.iteritems():
-            kpis_template = kpis_template[kpis_template[store_att].str.encode('utf-8') == store_val.encode('utf-8')]
+            if store_val is None:
+                store_val = ""
+            kpis_template = kpis_template[(kpis_template[store_att].str.encode('utf-8') == store_val.encode('utf-8')) |
+                                          (kpis_template[store_att] == "")]
         return kpis_template
 
     def get_relevant_scenes_by_params(self, params):

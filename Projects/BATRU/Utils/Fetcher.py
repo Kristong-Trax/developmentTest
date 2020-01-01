@@ -38,7 +38,7 @@ class BATRUQueries(object):
     @staticmethod
     def get_match_display(session_uid):
         return """
-            select sdb.name, m.scene_fk, d.display_name, m.bay_number, m.rect_x, m.rect_y
+            select sdb.name, m.scene_fk, d.display_name, d.pk as display_fk, m.bay_number, m.rect_x, m.rect_y
             from probedata.match_display_in_scene m
             join probedata.scene s on s.pk = m.scene_fk
             join static.display d on d.pk = m.display_fk

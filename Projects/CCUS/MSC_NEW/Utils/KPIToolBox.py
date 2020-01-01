@@ -83,13 +83,13 @@ class MSC_NEWToolBox:
         for kpi in kpis:
             results[kpi] = 0
         template_scene_types = template['scene type'].unique().tolist()
-        scenes = self.scif['scene_id'].unique().tolist()
+        scenes = self.scif['scene_fk'].unique().tolist()
         if scenes:
             for scene in scenes:
                 bays = self.match_product_in_scene.loc[self.match_product_in_scene['scene_fk'] == scene]['bay_number']\
                                                                                         .unique().tolist()
                 for bay in bays:
-                    scene_data = self.scif.loc[self.scif['scene_id'] == scene]
+                    scene_data = self.scif.loc[self.scif['scene_fk'] == scene]
                     match_data = self.match_product_in_scene.loc[(self.match_product_in_scene['scene_fk'] == scene) &
                                                                  (self.match_product_in_scene['bay_number'] == bay)]
                     if scene_data['template_name'].values[0] in template_scene_types:

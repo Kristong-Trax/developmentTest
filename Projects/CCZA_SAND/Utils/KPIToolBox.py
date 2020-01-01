@@ -228,10 +228,16 @@ class CCZAToolBox:
         kpi_fk_lvl_2 = self.common_v2.get_kpi_fk_by_kpi_type(kpi_name)
         lvl_2_identifier_par = self.common_v2.get_dictionary(kpi_fk=kpi_fk_lvl_2)
         if kpi_name != Const.FLOW:
-            for i in xrange(len(self.kpi_sheets[target])):
+            for i in range(len(self.kpi_sheets[target])):
                 if kpi_params[Const.WEIGHT_SHEET].strip():
-                    atomic_params = self.kpi_sheets[kpi_params[Const.WEIGHT_SHEET]].iloc[i]
-                    atomic_params[Const.targets_line] = self.kpi_sheets[target].iloc[i]
+                    target_series = self.kpi_sheets[target].iloc[i]
+                    weight_sheet = self.kpi_sheets[kpi_params[Const.WEIGHT_SHEET]]
+                    atomic_params = weight_sheet[(weight_sheet[Const.KPI_NAME] == target_series[Const.KPI_NAME]) &
+                                                 (weight_sheet[Const.ATOMIC_NAME] == target_series[Const.ATOMIC_NAME])
+                                                 ].iloc[0]
+                    atomic_params[Const.targets_line] = target_series
+                    # atomic_params = self.kpi_sheets[kpi_params[Const.WEIGHT_SHEET]].iloc[i]
+                    # atomic_params[Const.targets_line] = self.kpi_sheets[target].iloc[i]
                 else:
                     atomic_params = self.kpi_sheets[target].iloc[i]
                 percent = self.get_percent(atomic_params[self.store_type])
@@ -326,13 +332,13 @@ class CCZAToolBox:
             Log.warning('There is no type and value in the atomic availability')
             return 0.0
         type1 = Converters.convert_type(type1)
-        value1 = value1.split(', ')
+        value1 = value1.split(',')
         value1 = map(lambda x: x.strip(), value1)
         type2 = Converters.convert_type(type2)
         value2 = value2
         filters = {type1: value1}
         if type2 and value2:
-            value2 = value2.split(', ')
+            value2 = value2.split(',')
             value2 = map(lambda x: x.strip(), value2)
             filters[type2] = value2
         if in_or_not:
@@ -420,7 +426,8 @@ class CCZAToolBox:
             :return: 100 if there is planogram, 0 otherwise.
         """
         type_name = Converters.convert_type(atomic_params[Const.ENTITY_TYPE])
-        values = atomic_params[Const.ENTITY_VAL].split(', ')
+        values = atomic_params[Const.ENTITY_VAL].split(',')
+        values = map(lambda x: x.strip(), values)
         wanted_answer = float(atomic_params[Const.ACCEPTED_ANSWER_RESULT])
         filtered_scenes = self.scif[self.scif[type_name].isin(values)]['scene_id'].unique()
         count = 0
@@ -439,7 +446,7 @@ class CCZAToolBox:
             :return: 100 if there is scene which has at least one correctly positioned product, 0 otherwise.
         """
         type_name = Converters.convert_type(atomic_params[Const.ENTITY_TYPE])
-        values = map(lambda x: x.strip(), atomic_params[Const.ENTITY_VAL].split(', '))
+        values = map(lambda x: x.strip(), atomic_params[Const.ENTITY_VAL].split(','))
         wanted_answer = float(atomic_params[Const.ACCEPTED_ANSWER_RESULT])
         filtered_scenes = self.scif[self.scif[type_name].isin(values)][ScifConsts.SCENE_FK].unique()
         scenes_passing = 0
@@ -463,7 +470,7 @@ class CCZAToolBox:
             :return: int - amount of scenes.
         """
         filters = {Converters.convert_type(
-            atomic_params[Const.ENTITY_TYPE]): map(lambda x: x.strip(), atomic_params[Const.ENTITY_VAL].split(', '))}
+            atomic_params[Const.ENTITY_TYPE]): map(lambda x: x.strip(), atomic_params[Const.ENTITY_VAL].split(','))}
         scene_count = self.tools.calculate_number_of_scenes(**filters)
         return scene_count
 
@@ -592,9 +599,9 @@ class CCZAToolBox:
             :return: filter as dict.
         """
         if ',' in type_name:
-            types = type_name.split(', ')
+            types = type_name.split(',')
             types = map(lambda x: x.strip(), types)
-            values = value_name.split(', ')
+            values = value_name.split(',')
             values = map(lambda x: x.strip(), values)
             filters = {}
             if len(types) != len(values):
@@ -604,7 +611,7 @@ class CCZAToolBox:
                 for i in xrange(len(types)):
                     filters[Converters.convert_type(types[i])] = values[i]
         else:
-            filters = {Converters.convert_type(type_name): map(lambda x: x.strip(), value_name.split(', '))}
+            filters = {Converters.convert_type(type_name): map(lambda x: x.strip(), value_name.split(','))}
         # list_of_negative = list(self.scif[self.scif['rlv_sos_sc'] != 0]['rlv_sos_sc'].unique())
         # filters['rlv_sos_sc'] = list_of_negative # perhaps we don't need it - if we need, to enter it to the initializer
         return filters
