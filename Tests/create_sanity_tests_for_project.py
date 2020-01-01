@@ -109,6 +109,8 @@ class %(project_capital)sKpiResults:
 
     TEST_CLASS = """  
 %(scene_import)s
+import os
+import json
 from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
 from Projects.%(project_capital)s.Tests.Data.test_data_%(project)s_sanity import ProjectsSanityData
 from Projects.%(project_capital)s.Calculations import %(main_class_name)s
@@ -120,8 +122,19 @@ __author__ = '%(author)s'
 
 class TestKEnginePsCode(PsSanityTestsFuncs):
         
+    def add_mocks(self):
+        # with open(os.path.join('Data', 'Relative Position'), 'rb') as f:
+        #     relative_position_template = json.load(f)
+        # self.mock_object('save_latest_templates',
+        #                  path='KPIUtils.GlobalProjects.DIAGEO.Utils.TemplatesUtil.TemplateHandler')
+        # self.mock_object('download_template',
+        #                  path='KPIUtils.GlobalProjects.DIAGEO.Utils.TemplatesUtil.TemplateHandler').return_value = \\
+        #     relative_position_template
+        return
+    
     @PsSanityTestsFuncs.seeder.seed(["%(seed)s"%(need_pnb)s], ProjectsSanityData())
     def test_%(project)s_sanity(self):
+        self.add_mocks()
         project_name = ProjectsSanityData.project_name
         data_provider = KEngineDataProvider(project_name)
         sessions = %(sessions)s
@@ -302,7 +315,7 @@ class GetKpisDataForTesting:
                     static.kpi_level_2 kpi ON kpi.pk = res.kpi_level_2_fk
                         LEFT JOIN
                     probedata.session ses ON ses.pk = res.session_fk
-                WHERE ses.session_uid {}
+                WHERE ses.session_uid {} and kpi_calculation_stage_fk = 3
                 GROUP BY 1;
                        """.format(sessions_for_query)
         kpi_results_df = pd.read_sql(query, self.rds_conn.db)
@@ -364,7 +377,7 @@ if __name__ == '__main__':
     project = 'diageouk'
     kpi_results = pd.DataFrame()
     # Insert a session_uid / list of session_uids / dict of session_uid and scenes in the following format {'a': [1, 3]}
-    sessions = ['EC312AA7-88C2-4D27-9FDD-AC54D5651493', '8156FB6B-355C-47CC-9713-73F0D05D9FCC']
+    sessions = ['8156FB6B-355C-47CC-9713-73F0D05D9FCC']
     # In case you don't need to generate a new seed, just comment out the below row
     # sessions, kpi_results = create_seed(project=project, sessions_from_user=sessions, number_of_sessions=2)
     if kpi_results is None:

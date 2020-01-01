@@ -102,10 +102,9 @@ class PsSanityTestsFuncs(TestFunctionalCase):
             print "The following KPIs had wrong results:"
             for i, res in wrong_results.iterrows():
                 print ("session_fk: {0}, kpi_level_2_fk: {1}, client_name: {2}, numerator_id: {3}, "
-                       "denominator_id: {4}, context_id: {5}".format(str(res['session_fk']),
-                                                                     str(res['kpi_level_2_fk']),
-                                                                     str(res['client_name_x']),
-                                                                     str(res['numerator_id']),
-                                                                     str(res['denominator_id']),
-                                                                     str(res['context_id'])))
+                       "denominator_id: {4}, context_id: {5}, seed_result: {6}, "
+                       "db_actual_result: {7}".format(str(res['session_fk']), str(res['kpi_level_2_fk']),
+                                                      str(res['client_name_x']), str(res['numerator_id']),
+                                                      str(res['denominator_id']), str(res['context_id']),
+                                                      str(res['result_y']), str(res['result_x'])))
         self.assertTrue(wrong_results.empty)

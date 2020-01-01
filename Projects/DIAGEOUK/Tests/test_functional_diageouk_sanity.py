@@ -1,3 +1,4 @@
+
 import os
 import json
 from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
@@ -11,19 +12,22 @@ __author__ = 'ilays'
 
 class TestKEnginePsCode(PsSanityTestsFuncs):
 
-    @PsSanityTestsFuncs.seeder.seed(["diageouk_seed", "mongodb_products_and_brands_seed"], ProjectsSanityData())
-    def test_diageouk_sanity(self):
-        with open(os.path.join('Data', 'Relative Position'), 'w') as f:
-            relative_position_template = f
+    def add_mocks(self):
+        with open(os.path.join('Data', 'Relative Position'), 'rb') as f:
+            relative_position_template = json.load(f)
         self.mock_object('save_latest_templates',
                          path='KPIUtils.GlobalProjects.DIAGEO.Utils.TemplatesUtil.TemplateHandler')
         self.mock_object('download_template',
-                         path='KPIUtils.GlobalProjects.DIAGEO.Utils.TemplatesUtil.TemplateHandler').return_value =\
-            relative_position_template = json.loads(f)
+                         path='KPIUtils.GlobalProjects.DIAGEO.Utils.TemplatesUtil.TemplateHandler').return_value = \
+            relative_position_template
+        return
+
+    @PsSanityTestsFuncs.seeder.seed(["diageouk_seed", "mongodb_products_and_brands_seed"], ProjectsSanityData())
+    def test_diageouk_sanity(self):
+        self.add_mocks()
         project_name = ProjectsSanityData.project_name
         data_provider = KEngineDataProvider(project_name)
-        sessions = {'EC312AA7-88C2-4D27-9FDD-AC54D5651493': [],
-                    '8156FB6B-355C-47CC-9713-73F0D05D9FCC': []}
+        sessions = {'8156FB6B-355C-47CC-9713-73F0D05D9FCC': []}
         kpi_results = DIAGEOUKKpiResults().get_kpi_results()
         for session in sessions.keys():
             data_provider.load_session_data(str(session))
