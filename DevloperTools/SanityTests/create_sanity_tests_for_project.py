@@ -377,9 +377,9 @@ if __name__ == '__main__':
     project = 'diageouk'
     kpi_results = pd.DataFrame()
     # Insert a session_uid / list of session_uids / dict of session_uid and scenes in the following format {'a': [1, 3]}
-    sessions = ['8156FB6B-355C-47CC-9713-73F0D05D9FCC']
+    sessions = []
     # In case you don't need to generate a new seed, just comment out the below row
-    # sessions, kpi_results = create_seed(project=project, sessions_from_user=sessions, number_of_sessions=2)
+    sessions, kpi_results = create_seed(project=project, sessions_from_user=sessions)
     if kpi_results is None:
         sys.exit(1)
     sessions = get_sessions_in_correct_format(sessions)
