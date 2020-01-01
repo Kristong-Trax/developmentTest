@@ -4,10 +4,10 @@ from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScrip
 # from Trax.Utils.Conf.Configuration import Config
 # from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
 from Trax.Utils.Logging.Logger import Log
-from KPIUtils.GlobalProjects.SANOFI_2.Utils.KPIToolBox import log_runtime
+from KPIUtils.GlobalProjects.SANOFI_3.Utils.KPIToolBox import log_runtime
 from Projects.SANOFIJP.Utils.KPIToolBox import SanofiJPToolBox
 import os
-from KPIUtils.GlobalProjects.SANOFI_2.KPIGenerator import SANOFIGenerator
+from KPIUtils.GlobalProjects.SANOFI_3.KPIGenerator import SANOFIGenerator
 
 
 __author__ = 'nidhinb'
