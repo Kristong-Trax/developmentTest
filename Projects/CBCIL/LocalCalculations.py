@@ -11,7 +11,7 @@ if __name__ == '__main__':
     project_name = 'cbcil'
     data_provider = KEngineDataProvider(project_name)
     session_uids = [
-        'ff600e2b-f155-47c0-8ef3-d0e22e00da73'
+        '3c9bcb32-7775-44cd-9e2a-24e9b896a707'
     ]
     for session in session_uids:
         data_provider.load_session_data(session)

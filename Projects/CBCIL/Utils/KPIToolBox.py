@@ -137,9 +137,10 @@ class CBCILCBCIL_ToolBox(object):
         self.additional_attribute_6 = self.store_data[self.ADDITIONAL_ATTRIBUTE_6].str.encode('utf-8').tolist()
         self.template_data = self.kpis_data[
             (self.kpis_data[self.STORE_TYPE].str.encode('utf-8').isin(self.store_type)) &
-            (self.kpis_data[self.ADDITIONAL_ATTRIBUTE_6].str.encode('utf-8').isin(self.additional_attribute_6)) &
             (self.kpis_data[self.ADDITIONAL_ATTRIBUTE_1].str.encode('utf-8').isin(self.additional_attribute_1))]
-
+        if self.ADDITIONAL_ATTRIBUTE_6 in self.kpis_data:
+            self.template_data = self.template_data[self.template_data[
+                self.ADDITIONAL_ATTRIBUTE_6].str.encode('utf-8').isin(self.additional_attribute_6)]
         self.common = Common(self.data_provider)
         self.cbcil_id = self.get_own_manufacturer_pk()
 
