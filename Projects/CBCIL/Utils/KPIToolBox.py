@@ -24,8 +24,10 @@ KPS_RESULT = 'report.kps_results'
 CUSTOM_GAPS_TABLE = 'pservice.custom_gaps'
 
 TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data')
+PREVIOUS_TEMPLATES = 'Previous Templates'
 TEMPLATE_NAME_UNTIL_2019_01_15 = 'Template_until_2019-01-15.xlsx'
 TEMPLATE_NAME_BETWEEN_2019_01_15_TO_2019_03_01 = 'Template_until_2019-03-01.xlsx'
+TEMPLATE_NAME_BETWEEN_2019_03_01_TO_2019_12_31 = 'Template_until_2019-12-31.xlsx'
 CURRENT_TEMPLATE = 'Template.xlsx'
 
 
@@ -74,6 +76,7 @@ class CBCILCBCIL_ToolBox(object):
     GAPS = 'Gaps'
 
     ADDITIONAL_ATTRIBUTE_1 = 'additional_attribute_1'
+    ADDITIONAL_ATTRIBUTE_6 = 'additional_attribute_6'
     STORE_TYPE = 'store_type'
 
     SOS = 'SOS'
@@ -131,8 +134,10 @@ class CBCILCBCIL_ToolBox(object):
         self.store_data = self.get_store_data_by_store_id()
         self.store_type = self.store_data[self.STORE_TYPE].str.encode('utf-8').tolist()
         self.additional_attribute_1 = self.store_data[self.ADDITIONAL_ATTRIBUTE_1].str.encode('utf-8').tolist()
+        self.additional_attribute_6 = self.store_data[self.ADDITIONAL_ATTRIBUTE_6].str.encode('utf-8').tolist()
         self.template_data = self.kpis_data[
             (self.kpis_data[self.STORE_TYPE].str.encode('utf-8').isin(self.store_type)) &
+            (self.kpis_data[self.ADDITIONAL_ATTRIBUTE_6].str.encode('utf-8').isin(self.additional_attribute_6)) &
             (self.kpis_data[self.ADDITIONAL_ATTRIBUTE_1].str.encode('utf-8').isin(self.additional_attribute_1))]
 
         self.common = Common(self.data_provider)
@@ -779,9 +784,11 @@ class CBCILCBCIL_ToolBox(object):
         :return: Full template path
         """
         if self.visit_date <= datetime.date(datetime(2019, 1, 15)):
-            return "{}/{}".format(TEMPLATE_PATH, TEMPLATE_NAME_UNTIL_2019_01_15)
+            return "{}/{}/{}".format(TEMPLATE_PATH, PREVIOUS_TEMPLATES, TEMPLATE_NAME_UNTIL_2019_01_15)
         elif self.visit_date <= datetime.date(datetime(2019, 1, 3)):
-            return "{}/{}".format(TEMPLATE_PATH, TEMPLATE_NAME_BETWEEN_2019_01_15_TO_2019_03_01)
+            return "{}/{}/{}".format(TEMPLATE_PATH, PREVIOUS_TEMPLATES, TEMPLATE_NAME_BETWEEN_2019_01_15_TO_2019_03_01)
+        elif self.visit_date <= datetime.date(datetime(2019, 12, 31)):
+            return "{}/{}/{}".format(TEMPLATE_PATH, PREVIOUS_TEMPLATES, TEMPLATE_NAME_BETWEEN_2019_03_01_TO_2019_12_31)
         else:
             return "{}/{}".format(TEMPLATE_PATH, CURRENT_TEMPLATE)
 

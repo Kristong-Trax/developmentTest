@@ -51,9 +51,9 @@ class CBCDAIRYILToolBox:
         Because of a change that was done in the logic there are 3 templates that match different dates.
         :return: Full template path
         """
-        if self.visit_date <= datetime.date(datetime(2019, 12, 20)):
+        if self.visit_date <= datetime.date(datetime(2019, 12, 31)):
             return "{}/{}/{}".format(Consts.TEMPLATE_PATH, Consts.PREVIOUS_TEMPLATES,
-                                     Consts.PROJECT_TEMPLATE_NAME_UNTIL_2019_12_20)
+                                     Consts.PROJECT_TEMPLATE_NAME_UNTIL_2019_12_31)
         else:
             return "{}/{}".format(Consts.TEMPLATE_PATH, Consts.CURRENT_TEMPLATE)
 
