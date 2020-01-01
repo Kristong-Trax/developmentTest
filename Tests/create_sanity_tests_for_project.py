@@ -171,6 +171,9 @@ class TestKEnginePsCode(PsSanityTestsFuncs):
             os.makedirs(data_class_directory_path)
             with open(os.path.join(data_class_directory_path, '__init__.py'), 'wb') as f:
                 f.write("")
+        elif not os.path.exists(os.path.join(data_class_directory_path, '__init__.py')):
+            with open(os.path.join(data_class_directory_path, '__init__.py'), 'wb') as f:
+                f.write("")
         with open(os.path.join(data_class_directory_path, 'Data', "kpi_results.py"), 'wb') as f:
             f.write(autopep8.fix_code(source=(SanityTestsCreator.KPI_RESULTS % formatting_dict),
                                       options={"max_line_length": 100, "aggressive": 2}))
@@ -236,9 +239,11 @@ class ProjectsSanityData(BaseSeedData):
         file_name = 'test_data_{0}_sanity.py'.format(self.project)
         if not os.path.exists(data_class_directory_path):
             os.makedirs(data_class_directory_path)
-            with open(os.path.join(data_class_directory_path.replace('Data', '__init__.py')), 'wb') as f:
-                f.write("")
+        if not os.path.exists(os.path.join(data_class_directory_path, '__init__.py')):
             with open(os.path.join(data_class_directory_path, '__init__.py'), 'wb') as f:
+                f.write("")
+        if not os.path.exists(os.path.join(data_class_directory_path.replace("Data", ""), '__init__.py')):
+            with open(os.path.join(data_class_directory_path.replace("Data", ""), '__init__.py'), 'wb') as f:
                 f.write("")
         with open(os.path.join(data_class_directory_path, file_name), 'wb') as f:
             f.write(autopep8.fix_code(data_class_content))
@@ -250,9 +255,8 @@ class GetKpisDataForTesting:
         self.rds_conn = PSProjectConnector(project, DbUsers.CalculationEng)
         self.session = ""
 
-    def get_session_with_max_kpis(self, days_back=7):
+    def get_session_with_max_kpis(self, number_of_sessions, days_back=7):
         Log.info('Fetching recent session with max number of kpis')
-        number_of_sessions = 1
         query = """
                 SELECT 
                     res.session_fk,
@@ -284,7 +288,8 @@ class GetKpisDataForTesting:
     def get_one_result_per_kpi(self, sessions):
         Log.info('Fetching kpis results to check')
         if len(sessions.keys()) > 1:
-            sessions_for_query = "in " + str(tuple(sessions.keys()))
+            sessions = [str(s) for s in sessions.keys()]
+            sessions_for_query = "in " + str(tuple(sessions))
         else:
             sessions_for_query = "= '" + str(sessions.keys()[0]) + "'"
         query = """
@@ -319,10 +324,10 @@ def get_sessions_in_correct_format(sessions_param):
         return None
 
 
-def create_seed(project, sessions_from_user=None):
+def create_seed(project, sessions_from_user=None, number_of_sessions=1):
     kpisData = GetKpisDataForTesting(project=project)
     if not sessions_from_user or len(sessions_from_user) == 0:
-        sessions_to_use = kpisData.get_session_with_max_kpis()
+        sessions_to_use = kpisData.get_session_with_max_kpis(number_of_sessions=number_of_sessions)
     else:
         sessions_to_use = get_sessions_in_correct_format(sessions_from_user)
     kpi_results = kpisData.get_one_result_per_kpi(sessions=sessions_to_use)
@@ -356,12 +361,12 @@ if __name__ == '__main__':
     This script was made to create a sanity test per project.
     """
     LoggerInitializer.init('running sanity creator script')
-    project = 'diageoug'
+    project = 'diageouk'
     kpi_results = pd.DataFrame()
     # Insert a session_uid / list of session_uids / dict of session_uid and scenes in the following format {'a': [1, 3]}
-    sessions = ['f9d6b8a5-7964-4ef5-afe4-8580df97f57c']
+    sessions = ['EC312AA7-88C2-4D27-9FDD-AC54D5651493', '8156FB6B-355C-47CC-9713-73F0D05D9FCC']
     # In case you don't need to generate a new seed, just comment out the below row
-    sessions, kpi_results = create_seed(project=project, sessions_from_user=sessions)
+    # sessions, kpi_results = create_seed(project=project, sessions_from_user=sessions, number_of_sessions=2)
     if kpi_results is None:
         sys.exit(1)
     sessions = get_sessions_in_correct_format(sessions)

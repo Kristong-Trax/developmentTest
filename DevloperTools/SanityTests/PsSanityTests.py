@@ -95,17 +95,17 @@ class PsSanityTestsFuncs(TestFunctionalCase):
         kpi_results = cursor.fetchall()
         self.assertFalse(len(kpi_results) == 0)
         kpi_results = pd.DataFrame(kpi_results)
-        merged_results = pd.merge(real_results, kpi_results, on=['kpi_level_2_fk', 'numerator_id', 'denominator_id',
-                                                                 'context_id'], how="left")
+        merged_results = pd.merge(real_results, kpi_results, on=['session_fk', 'kpi_level_2_fk', 'numerator_id',
+                                                                 'denominator_id', 'context_id'], how="left")
         wrong_results = merged_results[merged_results['result_x'] != merged_results['result_y']]
         if not wrong_results.empty:
             print "The following KPIs had wrong results:"
             for i, res in wrong_results.iterrows():
-                Log.error("session_fk: {0}, kpi_level_2_fk: {1}, client_name: {2}, numerator_id: {3}, "
-                          "denominator_id: {4}, context_id: {5}".format(str(res['session_fk']),
-                                                                        str(res['kpi_level_2_fk']),
-                                                                        str(res['client_name_x']),
-                                                                        str(res['numerator_id']),
-                                                                        str(res['denominator_id']),
-                                                                        str(res['context_id'])))
+                print ("session_fk: {0}, kpi_level_2_fk: {1}, client_name: {2}, numerator_id: {3}, "
+                       "denominator_id: {4}, context_id: {5}".format(str(res['session_fk']),
+                                                                     str(res['kpi_level_2_fk']),
+                                                                     str(res['client_name_x']),
+                                                                     str(res['numerator_id']),
+                                                                     str(res['denominator_id']),
+                                                                     str(res['context_id'])))
         self.assertTrue(wrong_results.empty)
