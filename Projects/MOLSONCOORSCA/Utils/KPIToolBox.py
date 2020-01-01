@@ -569,7 +569,6 @@ class ToolBox:
         """
         This function checks if in the scene exists block of the anchor products that is adjacent to tested products.
         If kpi is different than 'Adjacencies' KPI  function also verified :
-            * The anchor's block should be the one with the max facings.
             * Anchor and tested products should be in block with minimum 2 facings
             * Anchor can be on the right/left of the tested product.
         """
@@ -586,19 +585,15 @@ class ToolBox:
 
         if blocks_adjacent.empty:
             return 0
-        # anchor block must be the one with the most facings in Adjacency
-        # todo : if adjacency  doesnt need it than move it under questions
+
         if blocks_adjacent.loc[blocks_adjacent.is_adj].empty:
             return 0
+
         # if there is an adj, and direction doesnt matter -> true
         if len(allowed_edges) == 4:
             return 1
-        # blocks_adjacent.sort_values(by=['anchor_facing_percentage', 'tested_facing_percentage'], ascending=False, inplace=True)
-        # max_facing = blocks_adjacent.head(1).anchor_facing_percentage.iloc[0]
-        # adjacent_max_block = blocks_adjacent.loc[(blocks_adjacent.anchor_facing_percentage == max_facing) & blocks_adjacent.is_adj]
-        # if we dont need biggest block
-        adjacent_max_block = blocks_adjacent.loc[blocks_adjacent.is_adj]
-        for index, block in adjacent_max_block.iterrows():
+        adjacents_block = blocks_adjacent.loc[blocks_adjacent.is_adj]
+        for index, block in adjacents_block.iterrows():
             if self.adjacency_flankor_disruptor(block, allowed_edges, filters_brand_a, filters_brand_b) == 1:
                 return 1
         return 0
@@ -608,16 +603,15 @@ class ToolBox:
           This function receive df with: anchor_block (Graph), tested_block (Graph) , which has adj between them. the df
           contain more fields such as:  anchor_facing_percentage, tested_facing_percentage, scene_fk, is_adj that is True.
           Function verified:
-              * The anchor's block should be the one with the max facings.
               * Anchor and tested products should be in block with minimum 2 facings
               * Anchor can be on the right/left of the tested product.
         """
-
         anchor_graph = biggest_adj_block.anchor_block
         tested_graph = biggest_adj_block.tested_block
         anchor_key = self._find_block_node(anchor_graph, filters_brand_a)
         tested_key = self._find_block_node(tested_graph, filters_brand_b)
         if anchor_key is None or tested_key is None:
+            Log.warning("Function adjacency_flankor_disruptor cant find graph key based  on brand filter")
             return 0
 
         if biggest_adj_block.anchor_block.node(data=True)[anchor_key]['facings'] < 2 or \
@@ -638,21 +632,34 @@ class ToolBox:
         anchor_nodes = biggest_adj_block.anchor_block.node(data=True)[anchor_key]['scene_match_fk']
         tested_nodes = biggest_adj_block.tested_block.node(data=True)[tested_key]['scene_match_fk']
 
-        # From scene edges extract only edges of  anchor and  tested nodes in relevant block  and in allowed direction
+        # From scene edges extract only edges of  anchor
         scene_graph_adj = pd.DataFrame(scene_graph.adj.items())
         scene_graph_adj.rename(columns={0: 'anchor_node', 1: 'adj_set'}, inplace=True)
         scene_graph_adj_anchor = scene_graph_adj.loc[scene_graph_adj.anchor_node.isin(list(anchor_nodes))]
-        scene_adj_tested = pd.DataFrame.from_dict(dict(scene_graph_adj_anchor.adj_set.values.all()), orient='index')
-        scene_adj_direct = scene_adj_tested.loc[scene_adj_tested.direction.isin(allowed_edges)]
-        scene_adj_in_tested_block = scene_adj_direct[scene_adj_direct.index.isin(tested_nodes)]
 
-        if scene_adj_in_tested_block.empty:
-            return 0
-        return 1
+        #  extract edges information
+        edges_list = []
+        edges = scene_graph_adj_anchor.adj_set.values
+        for edge in edges:
+            edges_list.extend(edge.items())
+
+        # extract only edges to tested nodes
+        scene_adj_tested = pd.DataFrame(edges_list)
+        scene_adj_tested.rename(columns={0: 'test_node', 1: 'edge_info'}, inplace=True)
+        scene_adj_tested = scene_adj_tested[scene_adj_tested['test_node'].isin(tested_nodes)]
+
+        # extract only edges in correct direction
+        for value in scene_adj_tested.edge_info.values:
+            if value.get('direction') in allowed_edges:
+                return 1
+        return 0
 
     def _find_block_node(self, graph, filters):
+        """
+        Function receives graph and filters , based on brand name the function return the block key.
+        """
         for key in graph.nodes.keys():
-            if list(graph.node(data=True)[key]['block_key'].values) == filters['brand_name']:
+            if set(graph.node(data=True)[key]['block_key'].values).issubset(set(filters['brand_name'])):
                 return key
         return None
 
