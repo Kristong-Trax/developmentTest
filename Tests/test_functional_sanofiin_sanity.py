@@ -11,7 +11,7 @@ from Trax.Data.Testing.TestProjects import TestProjectsNames
 from Tests.Data.TestData.test_data_sanofiin_sanity import ProjectsSanityData
 from Projects.SANOFIIN.Calculations import SANOFIINCalculations
 from Trax.Apps.Core.Testing.BaseCase import TestFunctionalCase
-
+from Trax.Utils.Testing.Case import skip
 
 __author__ = 'jasmineg'
 
@@ -37,7 +37,8 @@ class TestKEngineOutOfTheBox(TestFunctionalCase):
         kpi_results = cursor.fetchall()
         self.assertNotEquals(len(kpi_results), 0)
         connector.disconnect_rds()
-    
+
+    @skip('sup')
     @seeder.seed(["sanofiin_seed"], ProjectsSanityData())
     def test_sanofiin_sanity(self):
         project_name = ProjectsSanityData.project_name
