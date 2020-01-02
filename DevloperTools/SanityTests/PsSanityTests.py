@@ -28,18 +28,14 @@ class PsSanityTestsFuncs(TestFunctionalCase):
     def config_file_path(self):
         return os.path.join(os.path.dirname(os.path.realpath(__file__)), 'k-engine-test.config')
 
-    def _assert_old_tables_kpi_results_filled(self, distinct_kpis_num=None):
+    def _assert_old_tables_kpi_results_filled(self):
         connector = PSProjectConnector(TestProjectsNames().TEST_PROJECT_1, DbUsers.Docker)
         cursor = connector.db.cursor(MySQLdb.cursors.DictCursor)
         cursor.execute('''
            SELECT * FROM report.kpi_results
            ''')
         kpi_results = cursor.fetchall()
-        if distinct_kpis_num:
-            df = pd.DataFrame(kpi_results)
-            self.assertEquals(df['kpi_level_2_fk'].unique().__len__(), distinct_kpis_num)
-        else:
-            self.assertNotEquals(len(kpi_results), 0)
+        self.assertNotEquals(len(kpi_results), 0)
         connector.disconnect_rds()
 
     def _assert_new_tables_kpi_results_filled(self, distinct_kpis_num=None, list_of_kpi_names=None):
