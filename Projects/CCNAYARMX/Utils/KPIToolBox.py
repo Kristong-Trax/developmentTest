@@ -615,7 +615,7 @@ class ToolBox(GlobalSessionToolBox):
             numerator_id = lvl3_result[lvl3_result[KPI_FK_LEVEL2].isin([kpi_fk])][numerator_entity].mode()[0]
             lvl2_result = self.assortment.calculate_lvl2_assortment(lvl3_result)
             lvl2_kpi_result = lvl2_result[lvl2_result[KPI_FK_LEVEL2].isin([kpi_fk])]
-            if self.scif.empty:
+            if self.scif.empty or self.scif['sub_category_fk'].mode().empty:
                 denominator_id = 0
             else:
                 denominator_id = self.scif['sub_category_fk'].mode()[0]
