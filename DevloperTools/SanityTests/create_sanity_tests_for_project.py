@@ -109,13 +109,13 @@ class %(project_capital)sKpiResults:
 
     TEST_CLASS = """  
 %(scene_import)s
-import os
-import json
 from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
-from Projects.%(project_capital)s.Tests.Data.test_data_%(project)s_sanity import ProjectsSanityData
+from Projects.%(project_capital)s.Tests.Data.data_test_%(project)s_sanity import ProjectsSanityData
 from Projects.%(project_capital)s.Calculations import %(main_class_name)s
 from DevloperTools.SanityTests.PsSanityTests import PsSanityTestsFuncs 
 from Projects.%(project_capital)s.Tests.Data.kpi_results import %(project_capital)sKpiResults
+# import os
+# import json
 
 __author__ = '%(author)s'
 
@@ -143,13 +143,13 @@ class TestKEnginePsCode(PsSanityTestsFuncs):
             data_provider.load_session_data(str(session))
             output = Output()
             %(main_class_name)s(data_provider, output).run_project_calculations()
-            self._assert_test_results_matches_reality(kpi_results)
-            # self._assert_old_tables_kpi_results_filled(distinct_kpis_num=None)
-            # self._assert_new_tables_kpi_results_filled(distinct_kpis_num=None, list_of_kpi_names=None)
             # for scene in sessions[session]:
-            #     data_provider.load_scene_data(str(session), scene_id=scene)
-            #     SceneCalculations(data_provider).calculate_kpis()
-            #     self._assert_scene_tables_kpi_results_filled(distinct_kpis_num=None)
+            # data_provider.load_scene_data(str(session), scene_id=scene)
+            # SceneCalculations(data_provider).calculate_kpis()
+        self._assert_test_results_matches_reality(kpi_results)
+        # self._assert_old_tables_kpi_results_filled()
+        # self._assert_new_tables_kpi_results_filled(distinct_kpis_num=None, list_of_kpi_names=None)
+        # self._assert_scene_tables_kpi_results_filled(distinct_kpis_num=None)
 """
 
     def __init__(self, project, sessions_scenes_list, need_pnb=True, kpi_results=None):
@@ -249,7 +249,7 @@ class ProjectsSanityData(BaseSeedData):
 """.format(self.user, self.project.replace('-', '_'), seed_data, "{", mongo_data)
         project_name = self.project.upper().replace("-", "_")
         data_class_directory_path = '/home/{0}/dev/kpi_factory/Projects/{1}/Tests/Data'.format(self.user, project_name)
-        file_name = 'test_data_{0}_sanity.py'.format(self.project)
+        file_name = 'data_test_{0}_sanity.py'.format(self.project)
         if not os.path.exists(data_class_directory_path):
             os.makedirs(data_class_directory_path)
         if not os.path.exists(os.path.join(data_class_directory_path, '__init__.py')):
@@ -267,6 +267,21 @@ class GetKpisDataForTesting:
         self.project = project
         self.rds_conn = PSProjectConnector(project, DbUsers.CalculationEng)
         self.session = ""
+
+    def get_session_from_old_tables(self):
+        Log.info('Fetching recent session with max number of kpis')
+        query = """
+                   SELECT session_uid from report.kpi_results where visit_date 
+                   between date_add(now(), interval -7 day) and now() limit 1;
+                       """
+        sessions_df = pd.read_sql(query, self.rds_conn.db)
+        if sessions_df.empty:
+            Log.warning("No sessions were found on old tables")
+            return
+        sessions_chosen = list(sessions_df['session_uid'])
+        sessions_chosen_dict = dict.fromkeys(sessions_chosen, [])
+        Log.info("The chosen session is: {}".format(list(sessions_chosen)))
+        return sessions_chosen_dict
 
     def get_session_with_max_kpis(self, number_of_sessions, days_back=7):
         Log.info('Fetching recent session with max number of kpis')
@@ -316,13 +331,12 @@ class GetKpisDataForTesting:
                         LEFT JOIN
                     probedata.session ses ON ses.pk = res.session_fk
                 WHERE ses.session_uid {} and kpi_calculation_stage_fk = 3
-                GROUP BY 1;
+                GROUP BY session_uid, kpi_level_2_fk;;
                        """.format(sessions_for_query)
         kpi_results_df = pd.read_sql(query, self.rds_conn.db)
         if kpi_results_df.empty:
             Log.error("No results were found for sessions: {}, "
                       "try to recalculate the sessions".format(str(sessions.keys())))
-            return
         return kpi_results_df
 
 
@@ -343,9 +357,14 @@ def create_seed(project, sessions_from_user=None, number_of_sessions=1):
         sessions_to_use = kpisData.get_session_with_max_kpis(number_of_sessions=number_of_sessions)
     else:
         sessions_to_use = get_sessions_in_correct_format(sessions_from_user)
-    kpi_results = kpisData.get_one_result_per_kpi(sessions=sessions_to_use)
-    if kpi_results is None:
-        return None, None
+    if sessions_to_use is None:
+        Log.warning("Couldn't find any sessions on the new tables for project {}".format(project))
+        sessions_to_use = kpisData.get_session_from_old_tables()
+        kpi_results = {}
+    else:
+        kpi_results = kpisData.get_one_result_per_kpi(sessions=sessions_to_use)
+        if kpi_results is None:
+            return None, None
     creator = SeedCreator(project=project)
     creator.activate_exporter(specific_sessions_and_scenes=sessions_to_use)
     creator.rds_conn.disconnect_rds()
@@ -355,8 +374,6 @@ def create_seed(project, sessions_from_user=None, number_of_sessions=1):
 def create_sanity_test(project, sessions_to_use, kpi_results):
     if len(kpi_results) == 0:
         kpi_results = GetKpisDataForTesting(project=project).get_one_result_per_kpi(sessions=sessions_to_use)
-    if kpi_results.empty:
-        return
     kpi_results_as_str = str(kpi_results.to_dict()).replace('nan', 'None')
 
     # products_and_brands is needed for some projects, if you don't need it, put False in the script,
@@ -374,13 +391,18 @@ if __name__ == '__main__':
     This script was made to create a sanity test per project.
     """
     LoggerInitializer.init('running sanity creator script')
-    project = 'diageouk'
-    kpi_results = pd.DataFrame()
-    # Insert a session_uid / list of session_uids / dict of session_uid and scenes in the following format {'a': [1, 3]}
-    sessions = []
-    # In case you don't need to generate a new seed, just comment out the below row
-    sessions, kpi_results = create_seed(project=project, sessions_from_user=sessions)
-    if kpi_results is None:
-        sys.exit(1)
-    sessions = get_sessions_in_correct_format(sessions)
-    create_sanity_test(project=project, sessions_to_use=sessions, kpi_results=kpi_results)
+    projects = ['jnjuk', 'inbevnl', 'sanofiae', 'marsuae']
+    for project in ['ccza']:
+        try:
+            kpi_results = pd.DataFrame()
+            # Insert a session_uid / list of session_uids / dict of session_uid
+            # and scenes in the following format {'a': [1, 3]}
+            sessions = {}
+            # In case you don't need to generate a new seed, just comment out the below row
+            sessions, kpi_results = create_seed(project=project, sessions_from_user=sessions)
+            if kpi_results is None:
+                sys.exit(1)
+            sessions = get_sessions_in_correct_format(sessions)
+            create_sanity_test(project=project, sessions_to_use=sessions, kpi_results=kpi_results)
+        except Exception as e:
+            Log.error("Project {} failed to create sanity test with error {}".format(project, e))
