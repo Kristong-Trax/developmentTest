@@ -323,7 +323,7 @@ class GetKpisDataForTesting:
         query = """
                 SELECT 
                     distinct kpi.client_name, res.kpi_level_2_fk, res.session_fk, numerator_id, denominator_id, 
-                    context_id, result
+                    context_id, numerator_result, denominator_result, result
                 FROM
                     report.kpi_level_2_results res
                         LEFT JOIN
@@ -392,7 +392,7 @@ if __name__ == '__main__':
     """
     LoggerInitializer.init('running sanity creator script')
     projects = ['jnjuk', 'inbevnl', 'sanofiae', 'marsuae']
-    for project in ['ccza']:
+    for project in ['jnjuk']:
         try:
             kpi_results = pd.DataFrame()
             # Insert a session_uid / list of session_uids / dict of session_uid
