@@ -2,6 +2,7 @@ from Trax.Cloud.Services.Connector.Keys import DbUsers
 from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
 from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Trax.Utils.Logging.Logger import Log
+from shutil import copyfile
 import sys
 import os
 import pandas as pd
@@ -391,13 +392,17 @@ if __name__ == '__main__':
     This script was made to create a sanity test per project.
     """
     LoggerInitializer.init('running sanity creator script')
+    copyfile("sceneTableMappingsWprobes",
+             "/home/{}/dev/traxdatabase/traxExport/"
+             "tableMappings/sceneTableMappingsWprobes".format(os.environ.get('USER')))
     projects = ['jnjuk', 'inbevnl', 'sanofiae', 'marsuae']
     for project in ['jnjuk']:
         try:
             kpi_results = pd.DataFrame()
             # Insert a session_uid / list of session_uids / dict of session_uid
             # and scenes in the following format {'a': [1, 3]}
-            sessions = {}
+            sessions = {'51151c00-bbb6-4566-a0fc-ab81749121ee': [],
+                        '7cfc557b-72d6-4631-959d-23807cf200d6': []}
             # In case you don't need to generate a new seed, just comment out the below row
             sessions, kpi_results = create_seed(project=project, sessions_from_user=sessions)
             if kpi_results is None:

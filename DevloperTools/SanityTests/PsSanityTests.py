@@ -101,7 +101,7 @@ class PsSanityTestsFuncs(TestFunctionalCase):
                     print ("session_fk: {0}, kpi_level_2_fk: {1}, client_name: {2}, numerator_id: {3}, "
                            "denominator_id: {4}, context_id: {5}, seed_result: {6}, db_actual_result: {7}, "
                            "seed_numerator_result: {8}, db_numerator_result: {9}, "
-                           "seed_denominator_result: {10}, db_denominator_result: {11}, "
+                           "seed_denominator_result: {10}, db_denominator_result: {11}. \n"
                            "".format(str(res['session_fk']), str(res['kpi_level_2_fk']), str(res['client_name_x']),
                                      str(res['numerator_id']), str(res['denominator_id']), str(res['context_id']),
                                      str(res['result_y']), str(res['result_x']), str(res['numerator_result_y']),
