@@ -392,9 +392,11 @@ if __name__ == '__main__':
     This script was made to create a sanity test per project.
     """
     LoggerInitializer.init('running sanity creator script')
-    copyfile("sceneTableMappingsWprobes",
-             "/home/{}/dev/traxdatabase/traxExport/"
-             "tableMappings/sceneTableMappingsWprobes".format(os.environ.get('USER')))
+    replace_configurations_file = False
+    if replace_configurations_file:
+        copyfile("sceneTableMappingsWprobes",
+                 "/home/{}/dev/traxdatabase/traxExport/"
+                 "tableMappings/sceneTableMappingsWprobes".format(os.environ.get('USER')))
     projects = ['jnjuk', 'inbevnl', 'sanofiae', 'marsuae']
     for project in ['jnjuk']:
         try:
