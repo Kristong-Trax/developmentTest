@@ -10,6 +10,7 @@ from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Algo.Calculations.Core.Shortcuts import BaseCalculationsGroup
 from KPIUtils_v2.Calculations.BlockCalculations_v2 import Block as Block
 # from Projects.RINIELSENUS.Utils.BlockCalculations_v3 import Block
+# from Projects.RINIELSENUS.Utils.BlockCalculations_v_stack import Block
 from Trax.Utils.Logging.Logger import Log
 
 
@@ -50,6 +51,7 @@ class MarsUsGENERALToolBox:
             setattr(self, data, kwargs[data])
         if self.front_facing:
             self.scif = self.scif[self.scif['front_face_count'] == 1]
+        self.use_masking_only = True if self.data_provider.retailer == 'Walmart' else False
 
     @property
     def position_graphs(self):
@@ -843,7 +845,8 @@ class MarsUsGENERALToolBox:
                                                                     'ignore_empty': False,
                                                                     'minimum_block_ratio': minimum_block_ratio,
                                                                     'minimum_facing_for_block': threshold,
-                                                                    'filter_operator': 'and'
+                                                                    'filter_operator': 'and',
+                                                                    'use_masking_only': self.use_masking_only
                                                                     })
 
         if not clusters.empty:
@@ -885,9 +888,11 @@ class MarsUsGENERALToolBox:
                 biggest_block = clusters[0]
                 if biggest_block['is_block']:
                     if vertical:
-                        return {'block': True, 'shelves': len(biggest_block['rel_shelves'])}
+                        return {'block': True, 'shelves': len(biggest_block['rel_shelves']),
+                                'facing_percentage': biggest_block['cluster_ratio']}
                     elif biggest_block:
-                        return {'block': True, 'shelf_numbers': biggest_block['rel_shelves']}
+                        return {'block': True, 'shelf_numbers': biggest_block['rel_shelves'],
+                                'facing_percentage': biggest_block['cluster_ratio']}
                 # return biggest_block['cluster_ratio'], biggest_block # not sure this exit is actually used...
 
         return False
