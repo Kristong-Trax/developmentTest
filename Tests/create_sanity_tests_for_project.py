@@ -143,13 +143,13 @@ class TestKEnginePsCode(PsSanityTestsFuncs):
             data_provider.load_session_data(str(session))
             output = Output()
             %(main_class_name)s(data_provider, output).run_project_calculations()
-            self._assert_test_results_matches_reality(kpi_results)
-            # self._assert_old_tables_kpi_results_filled(distinct_kpis_num=None)
-            # self._assert_new_tables_kpi_results_filled(distinct_kpis_num=None, list_of_kpi_names=None)
             # for scene in sessions[session]:
-            #     data_provider.load_scene_data(str(session), scene_id=scene)
-            #     SceneCalculations(data_provider).calculate_kpis()
-            #     self._assert_scene_tables_kpi_results_filled(distinct_kpis_num=None)
+            # data_provider.load_scene_data(str(session), scene_id=scene)
+            # SceneCalculations(data_provider).calculate_kpis()
+        self._assert_test_results_matches_reality(kpi_results)
+        # self._assert_old_tables_kpi_results_filled(distinct_kpis_num=None)
+        # self._assert_new_tables_kpi_results_filled(distinct_kpis_num=None, list_of_kpi_names=None)
+        # self._assert_scene_tables_kpi_results_filled(distinct_kpis_num=None)
 """
 
     def __init__(self, project, sessions_scenes_list, need_pnb=True, kpi_results=None):
@@ -316,7 +316,7 @@ class GetKpisDataForTesting:
                         LEFT JOIN
                     probedata.session ses ON ses.pk = res.session_fk
                 WHERE ses.session_uid {} and kpi_calculation_stage_fk = 3
-                GROUP BY 1;
+                GROUP BY session_uid, kpi_level_2_fk;;
                        """.format(sessions_for_query)
         kpi_results_df = pd.read_sql(query, self.rds_conn.db)
         if kpi_results_df.empty:
@@ -377,7 +377,7 @@ if __name__ == '__main__':
     project = 'diageouk'
     kpi_results = pd.DataFrame()
     # Insert a session_uid / list of session_uids / dict of session_uid and scenes in the following format {'a': [1, 3]}
-    sessions = ['8156FB6B-355C-47CC-9713-73F0D05D9FCC']
+    sessions = ['25B8E409-0F98-469A-B29D-0634F8640A93', '8156FB6B-355C-47CC-9713-73F0D05D9FCC']
     # In case you don't need to generate a new seed, just comment out the below row
     # sessions, kpi_results = create_seed(project=project, sessions_from_user=sessions, number_of_sessions=2)
     if kpi_results is None:
