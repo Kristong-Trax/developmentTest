@@ -14,8 +14,7 @@ __author__ = 'ilays'
 class TestKEnginePsCode(PsSanityTestsFuncs):
 
     def add_mocks(self):
-
-        with open('/home/{}/dev/kpi_factory/Projects/DIAGEOUK/Tests/Data/Relative Position'.format(self.user), 'rb') as f:
+        with open(os.path.join(os.getcwd(), 'Data', 'Relative Position'), 'rb') as f:
             relative_position_template = json.load(f)
         self.mock_object('save_latest_templates',
                          path='KPIUtils.GlobalProjects.DIAGEO.Utils.TemplatesUtil.TemplateHandler')
