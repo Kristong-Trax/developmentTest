@@ -19,6 +19,7 @@ class PsSanityTestsFuncs(TestFunctionalCase):
     def set_up(self):
         super(PsSanityTestsFuncs, self).set_up()
         remove_cache_and_storage()
+        self.user = os.environ.get('USER')
 
     @property
     def import_path(self):

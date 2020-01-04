@@ -14,7 +14,8 @@ __author__ = 'ilays'
 class TestKEnginePsCode(PsSanityTestsFuncs):
 
     def add_mocks(self):
-        with open(os.path.join('Data', 'Relative Position'), 'rb') as f:
+
+        with open('/home/{}/dev/kpi_factory/Projects/DIAGEOUK/Tests/Data/Relative Position'.format(self.user), 'rb') as f:
             relative_position_template = json.load(f)
         self.mock_object('save_latest_templates',
                          path='KPIUtils.GlobalProjects.DIAGEO.Utils.TemplatesUtil.TemplateHandler')
@@ -39,6 +40,6 @@ class TestKEnginePsCode(PsSanityTestsFuncs):
             # data_provider.load_scene_data(str(session), scene_id=scene)
             # SceneCalculations(data_provider).calculate_kpis()
         self._assert_test_results_matches_reality(kpi_results)
-        self._assert_old_tables_kpi_results_filled(distinct_kpis_num=None)
+        self._assert_old_tables_kpi_results_filled()
         # self._assert_new_tables_kpi_results_filled(distinct_kpis_num=None, list_of_kpi_names=None)
         # self._assert_scene_tables_kpi_results_filled(distinct_kpis_num=None)
