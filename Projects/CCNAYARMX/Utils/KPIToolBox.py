@@ -89,7 +89,7 @@ SHEETS = [SOS, BLOCK_TOGETHER, SHARE_OF_EMPTY, BAY_COUNT, PER_BAY_SOS, SURVEY, A
           COMBO, SCORING, PLATFORMAS, PLATFORMAS_SCORING, KPIS, AVAILABILITY_COMBO, NUMERO_DE_PUERTAS]
 POS_OPTIONS_SHEETS = [POS_OPTIONS, TARGETS_AND_CONSTRAINTS]
 
-TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'CCNayarTemplatev0.8.7.xlsx')
+TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'CCNayarTemplatev0.8.8.xlsx')
 POS_OPTIONS_TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data',
                                          'CCNayar_POS_Options_v4.xlsx')
 
@@ -765,6 +765,7 @@ class ToolBox(GlobalSessionToolBox):
         kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_name)
         numerator_entity = row[NUMERATOR_ENTITY]
         denominator_entity = row[DENOMINATOR_ENTITY]
+        product_type = row[PRODUCT_TYPE]
         template_name = self.sanitize_values(row[TEMPLATE_NAME])
         manufacturer_name = [row[MANUFACTURER_NAME]]
         tamano_del_producto = row[TAMANDO_DEL_PRODUCTO]
@@ -773,7 +774,7 @@ class ToolBox(GlobalSessionToolBox):
 
         relevant_scif_columns = [PK, SESSION_ID, PRODUCT_FK, PRODUCT_NAME, TEMPLATE_GROUP, TEMPLATE_NAME,
                                  MANUFACTURER_NAME,
-                                 TAMANDO_DEL_PRODUCTO, SUB_CATEGORY] + \
+                                 TAMANDO_DEL_PRODUCTO, SUB_CATEGORY, PRODUCT_TYPE] + \
                                 [denominator_entity, numerator_entity, denominator_entity, SCENE_FK]
 
         relevant_scif = self.scif[relevant_scif_columns]
@@ -795,6 +796,8 @@ class ToolBox(GlobalSessionToolBox):
         denominator_id = self.scif['template_fk'].mode()[0]
         numerator_id = self.get_sub_cat_fk_from_sub_cat(sub_category[0])
         bay_count_scif = bay_count_scif[bay_count_scif[TEMPLATE_NAME].isin(template_name)]
+        if pd.notna(product_type):
+            bay_count_scif = bay_count_scif[bay_count_scif[PRODUCT_TYPE].isin([product_type])]
 
         if pd.notna(tamano_del_producto):
             bay_count_scif = bay_count_scif[bay_count_scif[TAMANDO_DEL_PRODUCTO].str.contains(tamano_del_producto)]
