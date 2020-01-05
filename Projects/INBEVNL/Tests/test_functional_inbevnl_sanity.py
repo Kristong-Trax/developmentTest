@@ -25,7 +25,7 @@ class TestKEnginePsCode(PsSanityTestsFuncs):
         project_name = ProjectsSanityData.project_name
         data_provider = KEngineDataProvider(project_name)
         sessions = {u'6cf7526b-bd64-46ac-8ed4-1e010ca16f1e': []}
-        kpi_results = INBEVNLKpiResults().get_kpi_results()
+        # kpi_results = INBEVNLKpiResults().get_kpi_results()
         for session in sessions.keys():
             data_provider.load_session_data(str(session))
             output = Output()
