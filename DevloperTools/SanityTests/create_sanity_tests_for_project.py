@@ -409,9 +409,9 @@ if __name__ == '__main__':
     This script was made to create a sanity test per project.
     """
     LoggerInitializer.init('running sanity creator script')
-    replace_configurations_file = True
+    replace_configurations_file = False
     copy_configuration_file_to_traxexport(replace_configurations_file)
-    projects = ['jnjuk', 'inbevnl']
+    projects = ['inbevnl']
     for project in projects:
         try:
             kpi_results = pd.DataFrame()

@@ -43,7 +43,8 @@ static	retailer	all
 static	custom_entity	all
 static	kpi_result_value	all	
 static	kpi_calculation_stage	all	
-static	match_product_in_probe_attributes_state	all	
+static	match_product_in_probe_attributes_state	all
+static	product_price_range	product_fk
 static	price_attribute_brands_scene_types	all	
 static	match_product_in_probe_price_attribute	all	
 static	reports_additional_entity_info	all	
