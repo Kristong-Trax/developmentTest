@@ -253,26 +253,6 @@ class ToolBox:
                    'kpi_name': self.lvl_name(kpi_name, level['lvl'])}
         return level['end'], results
 
-    # def calculate_adjacency_init(self, kpi_name, kpi_line, relevant_scif, general_filters):
-    #     results = []
-    #     kpi_type = kpi_name.replace('Displays', '').strip()
-    #     comps = self.competitive_brands[self.competitive_brands['Comparable Type'].str.contains(kpi_type)]
-    #     for i, comp in comps.iterrows():
-    #         if comp['Target Brand'] == comp[
-    #             'Comparable Brand']:  # Client has specified this as a specific case with it's own logic- check if any sub brands are adjacent
-    #             sub_brands = set(relevant_scif[relevant_scif['brand_name'] == comp['Target Brand']].sub_brand.unique())
-    #             if len(sub_brands) > 1:  # no point if only one sub_brand exists
-    #                 for sb in sub_brands:
-    #                     comp_filt = {'A': {'sub_brand': [sb]},
-    #                                  'B': {'sub_brand': list(set(sub_brands) - set(sb))}}
-    #                     results.append(self.calculate_max_block_adj_base(kpi_name, kpi_line, relevant_scif,
-    #                                                                      general_filters, comp_filter=comp_filt))
-    #         else:
-    #             comp_filt = {'A': {'brand_name': self.splitter(comp['Target Brand'])},
-    #                          'B': {'brand_name': self.splitter(comp['Comparable Brand'])}}
-    #             results.append(self.calculate_max_block_adj_base(kpi_name, kpi_line, relevant_scif, general_filters,
-    #                                                              comp_filter=comp_filt))
-    #     return results
 
     def calculate_distribution(self, kpi_name, kpi_line, relevant_scif, level, main_line, **kwargs):
         self.assortment.scif = relevant_scif
@@ -545,11 +525,14 @@ class ToolBox:
                 comp_filter = {'A': {'brand_name': [k]}, 'B': {'brand_name': v}}
                 result = self.calculate_max_block_adj_base(kpi_name, kpi_line, relevant_scif, general_filters,
                                                            comp_filter)
-            results.append({'score': result, 'result': result, 'numerator_result': result,
+            score = self.result_values_dict['Fail'] if result == 0 else self.result_values_dict[
+                'Pass']
+            results.append({'score': score, 'result': score, 'numerator_result': result,
                             'numerator_id': self.brands_dict[k][main_line[level['num_col']]],
                             'denominator_id': self.brands_dict[v[0]][main_line[level['den_col']]],
                             'kpi_name': self.lvl_name(kpi_name, 'Brand'),
                             'ident_parent': self.lvl_name(kpi_name, 'Session')})
+
             total += result
         result = 0
         if total == den:
