@@ -39,7 +39,7 @@ class SanofiJPGenerator(SANOFIGenerator, object):
         self.tool_box.calculate_perfect_store()
         # For Custom KPI
         SanofiJPToolBox(self.data_provider, self.output, self.tool_box.common).main_calculation()
-        self.tool_box.commit_results_data()
+        self.tool_box.commit_results()
 
 # if __name__ == '__main__':
 #     LoggerInitializer.init('sanofijp calculations')
