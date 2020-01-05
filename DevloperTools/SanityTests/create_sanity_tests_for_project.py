@@ -352,6 +352,23 @@ def get_sessions_in_correct_format(sessions_param):
         return None
 
 
+def copy_configuration_file_to_traxexport(replace_configurations_file=False):
+    if replace_configurations_file:
+        copyfile("/home/{}/dev/traxdatabase/traxExport/"
+                 "tableMappings/sceneTableMappingsWprobes".format(os.environ.get('USER')),
+                 "/tmp/sceneTableMappingsWprobes")
+        copyfile("sceneTableMappingsWprobes",
+                 "/home/{}/dev/traxdatabase/traxExport/"
+                 "tableMappings/sceneTableMappingsWprobes".format(os.environ.get('USER')))
+
+
+def copy_configuration_file_from_traxexport(replace_configurations_file=False):
+    if replace_configurations_file:
+        copyfile("/tmp/sceneTableMappingsWprobes",
+                 "/home/{}/dev/traxdatabase/traxExport/"
+                 "tableMappings/sceneTableMappingsWprobes".format(os.environ.get('USER')))
+
+
 def create_seed(project, sessions_from_user=None, number_of_sessions=1):
     kpisData = GetKpisDataForTesting(project=project)
     if not sessions_from_user or len(sessions_from_user) == 0:
@@ -392,19 +409,16 @@ if __name__ == '__main__':
     This script was made to create a sanity test per project.
     """
     LoggerInitializer.init('running sanity creator script')
-    replace_configurations_file = False
-    if replace_configurations_file:
-        copyfile("sceneTableMappingsWprobes",
-                 "/home/{}/dev/traxdatabase/traxExport/"
-                 "tableMappings/sceneTableMappingsWprobes".format(os.environ.get('USER')))
-    projects = ['jnjuk', 'inbevnl', 'sanofiae', 'marsuae']
-    for project in ['jnjuk']:
+    replace_configurations_file = True
+    copy_configuration_file_to_traxexport(replace_configurations_file)
+    projects = ['jnjuk', 'inbevnl']
+    for project in projects:
         try:
             kpi_results = pd.DataFrame()
-            # Insert a session_uid / list of session_uids / dict of session_uid
-            # and scenes in the following format {'a': [1, 3]}
-            sessions = {'51151c00-bbb6-4566-a0fc-ab81749121ee': [],
-                        '7cfc557b-72d6-4631-959d-23807cf200d6': []}
+            # Leave sessions param empty if you want the script will find you the optimal session to use.
+            # Otherwise: insert a session_uid / list of session_uids / dict of session_uid
+            #            and scenes in the following format {'a': [1, 3]}
+            sessions = []
             # In case you don't need to generate a new seed, just comment out the below row
             sessions, kpi_results = create_seed(project=project, sessions_from_user=sessions)
             if kpi_results is None:
@@ -413,3 +427,7 @@ if __name__ == '__main__':
             create_sanity_test(project=project, sessions_to_use=sessions, kpi_results=kpi_results)
         except Exception as e:
             Log.error("Project {} failed to create sanity test with error {}".format(project, e))
+        finally:
+            copy_configuration_file_from_traxexport(replace_configurations_file)
+    copy_configuration_file_from_traxexport(replace_configurations_file)
+
