@@ -4,7 +4,7 @@ from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScrip
 # from Trax.Utils.Conf.Configuration import Config
 # from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
 from Trax.Utils.Logging.Logger import Log
-from KPIUtils.GlobalProjects.SANOFI_3.Utils.KPIToolBox import log_runtime
+from KPIUtils_v2.Utils.Decorators.Decorators import log_runtime
 from Projects.SANOFIJP.Utils.KPIToolBox import SanofiJPToolBox
 import os
 from KPIUtils.GlobalProjects.SANOFI_3.KPIGenerator import SANOFIGenerator
@@ -39,7 +39,7 @@ class SanofiJPGenerator(SANOFIGenerator, object):
         self.tool_box.calculate_perfect_store()
         # For Custom KPI
         SanofiJPToolBox(self.data_provider, self.output, self.tool_box.common).main_calculation()
-        self.tool_box.commit_results_data()
+        self.tool_box.commit_results()
 
 # if __name__ == '__main__':
 #     LoggerInitializer.init('sanofijp calculations')
