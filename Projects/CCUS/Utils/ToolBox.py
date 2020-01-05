@@ -7,7 +7,6 @@ from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Cloud.Services.Storage.Factory import StorageFactory
 from Trax.Utils.Logging.Logger import Log
 from Trax.Algo.Calculations.Core.Shortcuts import BaseCalculationsGroup
-from Projects.CCUS.Utils.PositionGraph import CCUSPositionGraphs
 from Projects.CCUS.Utils.GeneralToolBox import CCUSGENERALToolBox
 
 __author__ = 'ortalk'
@@ -91,6 +90,7 @@ class ToolBox:
         self.project_name = self.data_provider.project_name
         self.session_uid = self.data_provider.session_uid
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
+        self.match_product_in_scene = self.data_provider[Data.MATCHES]
         self.all_products = self.data_provider[Data.ALL_PRODUCTS]
         self.survey_response = self.data_provider[Data.SURVEY_RESPONSES]
         self.kpi_static_data = data.get('kpi_static_data')
@@ -101,18 +101,6 @@ class ToolBox:
         self.templates_path = self.TEMPLATES_PATH + self.project_name + '/'
         self.cloud_templates_path = '{}{}/{}'.format(self.TEMPLATES_PATH, self.project_name, {})
         self.local_templates_path = os.path.join(CACHE_PATH, 'templates')
-
-    @property
-    def position_graphs(self):
-        if not hasattr(self, '_position_graphs'):
-            self._position_graphs = CCUSPositionGraphs(self.data_provider)
-        return self._position_graphs
-
-    @property
-    def match_product_in_scene(self):
-        if not hasattr(self, '_match_product_in_scene'):
-            self._match_product_in_scene = self.position_graphs.match_product_in_scene
-        return self._match_product_in_scene
 
     def check_survey_answer(self, survey_text, target_answer):
         """

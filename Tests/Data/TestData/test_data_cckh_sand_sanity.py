@@ -7,7 +7,7 @@ from Trax.Data.Testing.TestProjects import TestProjectsNames
 from Trax.Utils.Environments.DockerGlobal import PROJECT_NAME
 from bson import ObjectId
 
-__author__ = 'limorc'
+__author__ = 'nidhin'
 
 
 class ProjectsSanityData(BaseSeedData):
