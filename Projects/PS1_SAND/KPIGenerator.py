@@ -1,14 +1,15 @@
+
 from Trax.Utils.Logging.Logger import Log
-from Projects.PS1_SAND.Utils.KPIToolBox import ToolBox
+from Projects.PS1_SAND.Utils.KPIToolBox import PS1SandToolBox
 from KPIUtils_v2.Utils.Decorators.Decorators import log_runtime
 
 
-class Generator:
+class PS1Generator:
 
     def __init__(self, data_provider, output):
         self.data_provider = data_provider
         self.output = output
-        self.tool_box = ToolBox(self.data_provider, self.output)
+        self.tool_box = PS1SandToolBox(self.data_provider, self.output)
 
     @log_runtime('Total Calculations', log_start=True)
     def main_function(self):
