@@ -42,7 +42,7 @@ class ToolBox(GlobalSceneToolBox):
             self.templates[sheet] = pd.read_excel(TEMPLATE_PATH, sheet)
             self.templates[sheet] = self.templates[sheet][self.templates[sheet]['Relevance Type'] == 'Scene']
         self.calculate_aggregation()
-        self.calculate_availability()
+        # self.calculate_availability()
 
     def calculate_aggregation(self):
         # The KPI will show an aggregated count of SKUs by scene which also includes an aggregation of empties as well
