@@ -1,7 +1,8 @@
 from Trax.Utils.Logging.Logger import Log
 from KPIUtils_v2.Utils.Decorators.Decorators import log_runtime
 from Projects.CCNAYARMX.Utils.KPIToolBox import ToolBox
-from Projects.CCNAYARMX.National.KPIToolBox import NationalToolBox
+from Projects.CCNAYARMX.National.Utils.KPIToolBox import NationalToolBox
+from Projects.CCNAYARMX.Especializado.Utils.KPIToolBox import EspecializadoToolBox
 from KPIUtils_v2.DB.CommonV2 import Common
 __author__ = 'krishnat'
 
@@ -26,13 +27,15 @@ class Generator:
         # self.tool_box.main_calculation()
         # self.tool_box.commit_results()
         common = Common(self.data_provider)
+        especializado_tool_box = EspecializadoToolBox(self.data_provider,self.output, common)
+        especializado_tool_box.main_calculation()
+
         tool_box = ToolBox(self.data_provider, self.output, common)
         tool_box.main_calculation()
 
         nayar_tool_box = NationalToolBox(self.data_provider, self.output, common)
         nayar_tool_box.main_calculation()
         nayar_tool_box.commit_results()
-
 
     # @log_runtime('Original Nayar Calculations')
     # def caculate_original_nayar(self):
