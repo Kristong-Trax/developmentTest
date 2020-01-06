@@ -72,6 +72,7 @@ class ToolBox(GlobalSceneToolBox):
                                                numerator_result=sku_product_numerator_result,
                                                denominator_result=sku_product_denominator_result,by_scene=True)
 
+
     def calculate_availability(self):
         scenes_templates_df = self.scif[['scene_fk', 'template_name', ]]
         scenes_templates_df.drop_duplicates(inplace=True)
