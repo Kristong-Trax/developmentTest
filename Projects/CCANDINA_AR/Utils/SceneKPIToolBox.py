@@ -42,7 +42,7 @@ class ToolBox(GlobalSceneToolBox):
             self.templates[sheet] = pd.read_excel(TEMPLATE_PATH, sheet)
             self.templates[sheet] = self.templates[sheet][self.templates[sheet]['Relevance Type'] == 'Scene']
         self.calculate_aggregation()
-        self.calculate_availability()
+        # self.calculate_availability()
 
     def calculate_aggregation(self):
         # The KPI will show an aggregated count of SKUs by scene which also includes an aggregation of empties as well
@@ -58,7 +58,7 @@ class ToolBox(GlobalSceneToolBox):
                 self.common.write_to_db_result(kpi_fk, numerator_id=empty_product_id,
                                                denominator_id=empty_product_id, context_id=empty_product_id,
                                                numerator_result=empty_product_numerator_result,
-                                               denominator_result=empty_product_denominator_result)
+                                               denominator_result=empty_product_denominator_result, by_scene=True)
 
             sku_product_type_scif = self.scif[self.scif['product_type'].isin(['SKU'])]
 
@@ -70,7 +70,7 @@ class ToolBox(GlobalSceneToolBox):
                 self.common.write_to_db_result(kpi_fk, numerator_id=sku_product_id,
                                                denominator_id=sku_product_id, context_id=sku_product_id,
                                                numerator_result=sku_product_numerator_result,
-                                               denominator_result=sku_product_denominator_result)
+                                               denominator_result=sku_product_denominator_result,by_scene=True)
 
     def calculate_availability(self):
         scenes_templates_df = self.scif[['scene_fk', 'template_name', ]]
