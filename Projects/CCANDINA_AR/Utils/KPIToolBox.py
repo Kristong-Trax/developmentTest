@@ -3,7 +3,7 @@ from Trax.Utils.Logging.Logger import Log
 from KPIUtils_v2.Utils.GlobalScripts.Scripts import GlobalSessionToolBox
 import pandas as pd
 import os
-from Projects.CCANDINA_AR.Data.LocalConsts import Consts
+# from Projects.CCANDINA_AR.Data.LocalConsts import Consts
 
 # from KPIUtils_v2.Utils.Consts.DataProvider import 
 # from KPIUtils_v2.Utils.Consts.DB import 

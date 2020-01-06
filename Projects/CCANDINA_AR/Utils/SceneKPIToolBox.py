@@ -3,6 +3,7 @@ from Trax.Utils.Logging.Logger import Log
 from KPIUtils_v2.Utils.GlobalScripts.Scripts import GlobalSceneToolBox
 import pandas as pd
 import os
+
 # from Projects.CCANDINA_AR.Data.LocalConsts import Consts
 
 # from KPIUtils_v2.Utils.Consts.DataProvider import
@@ -53,25 +54,25 @@ class ToolBox(GlobalSceneToolBox):
                 pass
             else:
                 empty_product_id = empty_product_type_scif.product_fk.iloc[0]
+                empty_product_numerator_result = sum(empty_product_type_scif['tagged'])
                 empty_product_denominator_result = sum(empty_product_type_scif['facings'])
 
                 self.common.write_to_db_result(kpi_fk, numerator_id=empty_product_id,
-                                               denominator_id=empty_product_id,
-                                               numerator_result=empty_product_denominator_result,
-                                               denominator_result=empty_product_denominator_result,
-                                               by_scene=True, identifier_result=kpi_name)
+                                               denominator_id=empty_product_id, context_id=empty_product_id,
+                                               numerator_result=empty_product_numerator_result,
+                                               denominator_result=empty_product_denominator_result)
 
             sku_product_type_scif = self.scif[self.scif['product_type'].isin(['SKU'])]
 
             for row in sku_product_type_scif.itertuples():
+                sku_product_numerator_result = row.tagged
                 sku_product_denominator_result = row.facings
                 sku_product_id = row.product_fk
 
                 self.common.write_to_db_result(kpi_fk, numerator_id=sku_product_id,
-                                               denominator_id=sku_product_id,
-                                               numerator_result=sku_product_denominator_result,
-                                               denominator_result=sku_product_denominator_result,
-                                               should_enter=True, by_scene=True, identifier_result=kpi_name)
+                                               denominator_id=sku_product_id, context_id=sku_product_id,
+                                               numerator_result=sku_product_numerator_result,
+                                               denominator_result=sku_product_denominator_result)
 
     def calculate_availability(self):
         scenes_templates_df = self.scif[['scene_fk', 'template_name', ]]
