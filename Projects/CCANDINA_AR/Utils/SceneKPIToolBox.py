@@ -50,9 +50,7 @@ class ToolBox(GlobalSceneToolBox):
             kpi_name = row.KPI_Name
             kpi_fk = self.get_kpi_fk_by_kpi_name(kpi_name)
             empty_product_type_scif = self.scif[self.scif['product_type'].isin(['Empty'])]  # product_fk
-            if empty_product_type_scif.empty:
-                pass
-            else:
+            if not empty_product_type_scif.empty:
                 empty_product_id = empty_product_type_scif.product_fk.iloc[0]
                 empty_product_numerator_result = sum(empty_product_type_scif['tagged'])
                 empty_product_denominator_result = sum(empty_product_type_scif['facings'])

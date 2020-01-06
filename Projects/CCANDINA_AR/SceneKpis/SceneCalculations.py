@@ -11,7 +11,7 @@ class SceneCalculations(SceneBaseClass):
 
     def calculate_kpis(self):
         self.scene_generator.main_function()
-
+#
 #
 # from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
 # from Trax.Utils.Conf.Configuration import Config
