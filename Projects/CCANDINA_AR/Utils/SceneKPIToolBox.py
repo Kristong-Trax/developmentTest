@@ -58,7 +58,7 @@ class ToolBox(GlobalSceneToolBox):
                 self.common.write_to_db_result(kpi_fk, numerator_id=empty_product_id,
                                                denominator_id=empty_product_id, context_id=empty_product_id,
                                                numerator_result=empty_product_numerator_result,
-                                               denominator_result=empty_product_denominator_result)
+                                               denominator_result=empty_product_denominator_result, by_scene=True)
 
             sku_product_type_scif = self.scif[self.scif['product_type'].isin(['SKU'])]
 
