@@ -70,7 +70,7 @@ class ToolBox(GlobalSceneToolBox):
                 self.common.write_to_db_result(kpi_fk, numerator_id=sku_product_id,
                                                denominator_id=sku_product_id, context_id=sku_product_id,
                                                numerator_result=sku_product_numerator_result,
-                                               denominator_result=sku_product_denominator_result)
+                                               denominator_result=sku_product_denominator_result,by_scene=True)
 
     def calculate_availability(self):
         scenes_templates_df = self.scif[['scene_fk', 'template_name', ]]
