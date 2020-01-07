@@ -3,7 +3,8 @@ from Trax.Utils.Logging.Logger import Log
 from KPIUtils_v2.Utils.GlobalScripts.Scripts import GlobalSceneToolBox
 import pandas as pd
 import os
-from Projects.CCANDINA_AR.Data.LocalConsts import Consts
+
+# from Projects.CCANDINA_AR.Data.LocalConsts import Consts
 
 # from KPIUtils_v2.Utils.Consts.DataProvider import
 # from KPIUtils_v2.Utils.Consts.DB import
@@ -22,7 +23,7 @@ from Projects.CCANDINA_AR.Data.LocalConsts import Consts
 # from KPIUtils_v2.Calculations.SurveyCalculations import Survey
 
 # from KPIUtils_v2.Calculations.CalculationsUtils import GENERALToolBoxCalculations
-TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'CCAndinaAR_template_v1.xlsx')
+TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'CCAndinaAR_template_v2.xlsx')
 
 __author__ = 'nicolaske'
 
@@ -32,6 +33,7 @@ class ToolBox(GlobalSceneToolBox):
     def __init__(self, data_provider, output):
         GlobalSceneToolBox.__init__(self, data_provider, output)
         self.templates = {}
+        self.match_product_in_scene = self.data_provider[Data.MATCHES]
 
     def main_calculation(self):
         sheet_list = pd.read_excel(TEMPLATE_PATH, None).keys()
@@ -39,7 +41,37 @@ class ToolBox(GlobalSceneToolBox):
         for sheet in sheet_list:
             self.templates[sheet] = pd.read_excel(TEMPLATE_PATH, sheet)
             self.templates[sheet] = self.templates[sheet][self.templates[sheet]['Relevance Type'] == 'Scene']
-        self.calculate_availability()
+        self.calculate_aggregation()
+        # self.calculate_availability()
+
+    def calculate_aggregation(self):
+        # The KPI will show an aggregated count of SKUs by scene which also includes an aggregation of empties as well
+        for row in self.templates['Aggregation'].itertuples():
+            kpi_name = row.KPI_Name
+            kpi_fk = self.get_kpi_fk_by_kpi_name(kpi_name)
+            empty_product_type_scif = self.scif[self.scif['product_type'].isin(['Empty'])]  # product_fk
+            if not empty_product_type_scif.empty:
+                empty_product_id = empty_product_type_scif.product_fk.iloc[0]
+                empty_product_numerator_result = sum(empty_product_type_scif['tagged'])
+                empty_product_denominator_result = sum(empty_product_type_scif['facings'])
+
+                self.common.write_to_db_result(kpi_fk, numerator_id=empty_product_id,
+                                               denominator_id=empty_product_id, context_id=empty_product_id,
+                                               numerator_result=empty_product_numerator_result,
+                                               denominator_result=empty_product_denominator_result, by_scene=True)
+
+            sku_product_type_scif = self.scif[self.scif['product_type'].isin(['SKU'])]
+
+            for row in sku_product_type_scif.itertuples():
+                sku_product_numerator_result = row.tagged
+                sku_product_denominator_result = row.facings
+                sku_product_id = row.product_fk
+
+                self.common.write_to_db_result(kpi_fk, numerator_id=sku_product_id,
+                                               denominator_id=sku_product_id, context_id=sku_product_id,
+                                               numerator_result=sku_product_numerator_result,
+                                               denominator_result=sku_product_denominator_result,by_scene=True)
+
 
     def calculate_availability(self):
         scenes_templates_df = self.scif[['scene_fk', 'template_name', ]]
