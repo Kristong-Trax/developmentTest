@@ -259,18 +259,15 @@ class EspecializadoToolBox(GlobalSessionToolBox):
             return self.calculate_scoring_combo
 
     def calculate_scoring_combo(self, row):
+        kpi_name = row[KPI_NAME]
+        kpi_fk = self.get_kpi_fk_by_kpi_type(kpi_name)
         component_kpis = self.sanitize_values(row['Prerequisite'])
         activation_scene = row['Activation Scene Type']
         if activation_scene in set(self.scif.template_name):
             relevant_results = self.results_df[self.results_df.kpi_name.isin(component_kpis)]['result'].values
             if all(relevant_results) == 1:
-                kpi_name = row[KPI_NAME]
-                kpi_fk = self.get_kpi_fk_by_kpi_type(kpi_name)
                 numerator_entity = self.scif[row[NUMERATOR_ENTITY]].iloc[0] if not self.scif[
                     row[NUMERATOR_ENTITY]].empty else 0
-                denominator_entity = self.scif[row[DENOMINATOR_ENTITY]].iloc[0] if not self.scif[
-                    row[DENOMINATOR_ENTITY]].empty else 0
-
                 result_dict = {'kpi_name': kpi_name, 'kpi_fk': kpi_fk,
                                'numerator_id': numerator_entity, 'denominator_id': self.own_manuf_fk,
                                'result': 1}

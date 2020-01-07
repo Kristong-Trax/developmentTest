@@ -885,9 +885,7 @@ class NationalToolBox(GlobalSessionToolBox):
                                  self.delete_filter_nan([numerator_param1, denominator_param1])
 
         filtered_scif = self.scif[column_filter_for_scif]
-
         filtered_scif = filtered_scif.rename(columns={FACINGS: FINAL_FACINGS})
-
         relevant_scif = filtered_scif[filtered_scif[TEMPLATE_GROUP].isin(template_group)]
 
         # For the KPI 31: Empty Denominator Param
@@ -897,13 +895,11 @@ class NationalToolBox(GlobalSessionToolBox):
             return result_dict
         denominator_result = relevant_scif[FINAL_FACINGS].sum()
         denominator_id = denominator_scif[denominator_entity].mode()[0]
-
         numerator_scif = denominator_scif[denominator_scif[numerator_param1].isin([numerator_value1])]
         numerator_result = numerator_scif[FINAL_FACINGS].sum()
 
         numerator_id = self.own_manuf_fk
         result = (numerator_result / denominator_result)
-
         actual_result = self.calculate_score_for_sos(target, result)
 
         result_dict = {'kpi_name': kpi_name, 'kpi_fk': kpi_fk, 'numerator_id': numerator_id,
