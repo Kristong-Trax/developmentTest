@@ -51,7 +51,7 @@ class ToolBox(GlobalSceneToolBox):
             kpi_fk = self.get_kpi_fk_by_kpi_name(kpi_name)
             empty_product_type_scif = self.scif[self.scif['product_type'].isin(['Empty'])]  # product_fk
             if not empty_product_type_scif.empty:
-                empty_product_id = empty_product_type_scif.product_fk.iloc[0]
+                empty_product_id = 0 #product_fk always to represent General Empty
                 empty_product_numerator_result = sum(empty_product_type_scif['tagged'])
                 empty_product_denominator_result = sum(empty_product_type_scif['facings'])
 
