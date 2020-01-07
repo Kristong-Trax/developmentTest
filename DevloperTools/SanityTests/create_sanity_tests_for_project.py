@@ -411,14 +411,14 @@ if __name__ == '__main__':
     LoggerInitializer.init('running sanity creator script')
     replace_configurations_file = True
     copy_configuration_file_to_traxexport(replace_configurations_file)
-    projects = ['sanofisa']
+    projects = ['diageouk']
     for project in projects:
         try:
             kpi_results = pd.DataFrame()
             # Leave sessions param empty if you want the script will find you the optimal session to use.
             # Otherwise: insert a session_uid / list of session_uids / dict of session_uid
             #            and scenes in the following format {'a': [1, 3]}
-            sessions = []
+            sessions = ['DF1654DF-9A89-40AB-8CE8-100D8D07E0DC']
             # In case you don't need to generate a new seed, just comment out the below row
             sessions, kpi_results = create_seed(project=project, sessions_from_user=sessions)
             if kpi_results is None:

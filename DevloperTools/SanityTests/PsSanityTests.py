@@ -101,7 +101,8 @@ class PsSanityTestsFuncs(TestFunctionalCase):
                                        (merged_results['denominator_result_x'] !=
                                         merged_results['denominator_result_y'])]
         correct_results = merged_results[~merged_results.index.isin(wrong_results.index)]
-        wrong_kpis_without_duplicates = list(set(wrong_results['kpi_level_2_fk']) - set(correct_results['kpi_level_2_fk']))
+        wrong_kpis_without_duplicates = list(set(wrong_results['kpi_level_2_fk']) -
+                                             set(correct_results['kpi_level_2_fk']))
         wrong_results = wrong_results[wrong_results['kpi_level_2_fk'].isin(wrong_kpis_without_duplicates)]
         if not wrong_results.empty:
             try:
