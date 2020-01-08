@@ -14,7 +14,6 @@ from datetime import datetime
 
 from Projects.CCNAYARMX.Data.LocalConsts import Consts
 
-
 __author__ = 'krishnat'
 
 # Column Name
@@ -65,6 +64,9 @@ NUMERO_DE_PUERTAS = 'Numero De Puertas'
 POS_OPTIONS = 'POS Options'
 TARGETS_AND_CONSTRAINTS = 'Targets and Constraints'
 
+GRANULAR_GROUPS = 'Granular Groups'
+GRANULAR_GROUPS_LINK_TO_STORES = 'Granular Groups link to stores'
+
 # Scif Filters
 BRAND_FK = 'brand_fk'
 PRODUCT_FK = 'product_fk'
@@ -88,10 +90,14 @@ BAY_NUMBER = 'bay_number'
 SHEETS = [SOS, BLOCK_TOGETHER, SHARE_OF_EMPTY, BAY_COUNT, PER_BAY_SOS, SURVEY, AVAILABILITY, DISTRIBUTION,
           COMBO, SCORING, PLATFORMAS, PLATFORMAS_SCORING, KPIS, AVAILABILITY_COMBO, NUMERO_DE_PUERTAS]
 POS_OPTIONS_SHEETS = [POS_OPTIONS, TARGETS_AND_CONSTRAINTS]
+ASSORTMENT_SHEETS = [GRANULAR_GROUPS, GRANULAR_GROUPS_LINK_TO_STORES]
 
 TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'CCNayarTemplatev0.8.8.xlsx')
 POS_OPTIONS_TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data',
                                          'CCNayar_POS_Options_v4.xlsx')
+
+ASSORTMENT_TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data',
+                                        'TemplateAssortmentCCNAYARMX_V4.xlsx')
 
 
 def log_runtime(description, log_start=False):
@@ -135,6 +141,8 @@ class ToolBox(GlobalSessionToolBox):
             self.templates[sheet] = pd.read_excel(TEMPLATE_PATH, sheet_name=sheet)
         for sheet in POS_OPTIONS_SHEETS:
             self.templates[sheet] = pd.read_excel(POS_OPTIONS_TEMPLATE_PATH, sheet_name=sheet)
+        for sheet in ASSORTMENT_SHEETS:
+            self.templates[sheet] = pd.read_excel(ASSORTMENT_TEMPLATE_PATH, sheet_name=sheet)
 
     def main_calculation(self):
         relevant_kpi_template = self.templates[KPIS]
@@ -246,25 +254,28 @@ class ToolBox(GlobalSessionToolBox):
         elif kpi_type == NUMERO_DE_PUERTAS:
             return self.calculate_numero_de_puertas
 
-    def calculate_numero_de_puertas(self,row):
+    def calculate_numero_de_puertas(self, row):
         kpi_name = row[KPI_NAME]
         kpi_fk = self.get_kpi_fk_by_kpi_type(kpi_name)
         template_name = self.sanitize_values(row[TEMPLATE_NAME])
 
-        relevant_scif = self.scif[self.scif[TEMPLATE_NAME].isin(template_name)][[PK,SESSION_ID,TEMPLATE_FK, TEMPLATE_NAME,PRODUCT_FK,SCENE_FK]]
+        relevant_scif = self.scif[self.scif[TEMPLATE_NAME].isin(template_name)][
+            [PK, SESSION_ID, TEMPLATE_FK, TEMPLATE_NAME, PRODUCT_FK, SCENE_FK]]
 
         product_in_scene = self.match_product_in_scene[['bay_number', 'scene_fk']]
 
         bay_count_scif = relevant_scif.merge(product_in_scene, on=['scene_fk'], how='right')
-        bay_count_scif.dropna(inplace= True)
+        bay_count_scif.dropna(inplace=True)
 
         for relevant_template_fk in set(bay_count_scif[TEMPLATE_FK]):
-            #Result related the number of bays in a specifc template
+            # Result related the number of bays in a specifc template
             relevant_template_fk_scif = bay_count_scif[bay_count_scif[TEMPLATE_FK].isin([relevant_template_fk])]
             count_of_bays_in_template = 0
 
             for relevant_scene_fk in set(relevant_template_fk_scif[SCENE_FK]):
-                bay_count = len(set(relevant_template_fk_scif[relevant_template_fk_scif[SCENE_FK].isin([relevant_scene_fk])][BAY_NUMBER]))
+                bay_count = len(set(
+                    relevant_template_fk_scif[relevant_template_fk_scif[SCENE_FK].isin([relevant_scene_fk])][
+                        BAY_NUMBER]))
                 count_of_bays_in_template = count_of_bays_in_template + bay_count
 
             self.common.write_to_db_result(fk=kpi_fk, numerator_id=relevant_template_fk,
@@ -547,16 +558,30 @@ class ToolBox(GlobalSessionToolBox):
         kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_name)
         template_group = self.sanitize_values(row[TASK_TEMPLATE_GROUP])
         numerator_entity = row[NUMERATOR_ENTITY]
-        denominator_entity = row[DENOMINATOR_ENTITY]
+        check_possible_sku = row['check_possible_sku']
+        result_dict_list = []
 
         relevant_scif = self.scif[self.scif[TEMPLATE_GROUP].isin(template_group)]
-
         self.assortment.scif = relevant_scif
-
         self.store_assortment = self.assortment.store_assortment
+        if check_possible_sku is not np.nan and check_possible_sku == 'Y':
+            relevant_assortment_template = self.templates[GRANULAR_GROUPS][
+                self.templates[GRANULAR_GROUPS]['Assortment type'].isin([kpi_name])]
+            assortment_ean_code_from_template = relevant_assortment_template['EAN Code'].unique().astype(str)
+            self.store_assortment = self.store_assortment[
+                self.store_assortment.ean_code.isin(assortment_ean_code_from_template)]
+            numerator_id = self.store_assortment[numerator_entity].iloc[
+                0] if not self.store_assortment.empty else np.nan
+            denominator_id = self.scif['sub_category_fk'].iloc[0] if not self.scif.empty else np.nan
+            result = self.store_assortment.product_fk.count()
+
+            result_dict = {'kpi_name': kpi_name, 'kpi_fk': kpi_fk, 'numerator_id': numerator_id,
+                           'denominator_id': denominator_id,
+                           'result': result}
+            result_dict_list.append(result_dict)
+
         lvl3_result = self.assortment.calculate_lvl3_assortment()
         if not lvl3_result.empty:
-            result_dict_list = []
             kpi_id = kpi_fk + 1
             relevant_df = lvl3_result[lvl3_result['kpi_fk_lvl3'].isin([kpi_id])]
             for row in relevant_df.itertuples():
@@ -568,24 +593,28 @@ class ToolBox(GlobalSessionToolBox):
                                'denominator_id': denominator_id,
                                'result': result}
                 result_dict_list.append(result_dict)
-
-            numerator_id = lvl3_result[lvl3_result[KPI_FK_LEVEL2].isin([kpi_fk])][numerator_entity].mode()[0]
-            lvl2_result = self.assortment.calculate_lvl2_assortment(lvl3_result)
-            lvl2_kpi_result = lvl2_result[lvl2_result[KPI_FK_LEVEL2].isin([kpi_fk])]
-            if self.scif.empty or self.scif['sub_category_fk'].mode().empty:
-                denominator_id = 0
-            else:
-                denominator_id = self.scif['sub_category_fk'].mode()[0]
-            result = float(lvl2_kpi_result['passes'] / lvl2_kpi_result['total'])
+            if check_possible_sku is np.nan:
+                numerator_id = lvl3_result[lvl3_result[KPI_FK_LEVEL2].isin([kpi_fk])][numerator_entity].mode()[0]
+                lvl2_result = self.assortment.calculate_lvl2_assortment(lvl3_result)
+                lvl2_kpi_result = lvl2_result[lvl2_result[KPI_FK_LEVEL2].isin([kpi_fk])]
+                if self.scif.empty or self.scif['sub_category_fk'].mode().empty:
+                    denominator_id = 0
+                else:
+                    denominator_id = self.scif['sub_category_fk'].mode()[0]
+                result = float(lvl2_kpi_result['passes'] / lvl2_kpi_result['total'])
+                result_dict = {'kpi_name': kpi_name, 'kpi_fk': kpi_fk, 'numerator_id': numerator_id,
+                               'denominator_id': denominator_id,
+                               'result': result}
 
         else:
             result = pd.np.nan
             numerator_id = 0
             denominator_id = 0
 
-        result_dict = {'kpi_name': kpi_name, 'kpi_fk': kpi_fk, 'numerator_id': numerator_id,
-                       'denominator_id': denominator_id,
-                       'result': result}
+            result_dict = {'kpi_name': kpi_name, 'kpi_fk': kpi_fk, 'numerator_id': numerator_id,
+                           'denominator_id': denominator_id,
+                           'result': result}
+
         result_dict_list.append(result_dict)
 
         return result_dict_list
@@ -828,7 +857,8 @@ class ToolBox(GlobalSessionToolBox):
                     block = self.block.network_x_block_together(relevant_filters,
                                                                 location=location,
                                                                 additional={'minimum_block_ratio': 0.9,
-                                                                            'calculate_all_scenes': True, 'minimum_facing_for_block': 1})
+                                                                            'calculate_all_scenes': True,
+                                                                            'minimum_facing_for_block': 1})
                     if False in block['is_block'].to_list():
                         result = 0
                         break
@@ -854,7 +884,8 @@ class ToolBox(GlobalSessionToolBox):
                         block = self.block.network_x_block_together(relevant_filters,
                                                                     location=location,
                                                                     additional={'minimum_block_ratio': 0.9,
-                                                                                'calculate_all_scenes': True,'minimum_facing_for_block': 1})
+                                                                                'calculate_all_scenes': True,
+                                                                                'minimum_facing_for_block': 1})
                         if False in block['is_block'].to_list():
                             result = 0
                         else:
