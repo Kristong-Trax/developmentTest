@@ -124,7 +124,8 @@ __author__ = '%(author)s'
 class TestKEnginePsCode(PsSanityTestsFuncs):
 
     def add_mocks(self):
-        # with open(os.path.join('Data', 'Relative Position'), 'rb') as f:
+        # with open(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'Data', 'Relative Position.txt'), 
+        #           'rb') as f:
         #     relative_position_template = json.load(f)
         # self.mock_object('save_latest_templates',
         #                  path='KPIUtils.GlobalProjects.DIAGEO.Utils.TemplatesUtil.TemplateHandler')
@@ -284,7 +285,7 @@ class GetKpisDataForTesting:
         Log.info("The chosen session is: {}".format(list(sessions_chosen)))
         return sessions_chosen_dict
 
-    def get_session_with_max_kpis(self, number_of_sessions, days_back=7):
+    def get_session_with_max_kpis(self, number_of_sessions, days_back=10):
         Log.info('Fetching recent session with max number of kpis')
         query = """
                 SELECT 
@@ -409,16 +410,16 @@ if __name__ == '__main__':
     This script was made to create a sanity test per project.
     """
     LoggerInitializer.init('running sanity creator script')
-    replace_configurations_file = False
+    replace_configurations_file = True
     copy_configuration_file_to_traxexport(replace_configurations_file)
-    projects = ['inbevnl']
+    projects = ['diageouk']
     for project in projects:
         try:
             kpi_results = pd.DataFrame()
             # Leave sessions param empty if you want the script will find you the optimal session to use.
             # Otherwise: insert a session_uid / list of session_uids / dict of session_uid
             #            and scenes in the following format {'a': [1, 3]}
-            sessions = []
+            sessions = ['DF1654DF-9A89-40AB-8CE8-100D8D07E0DC']
             # In case you don't need to generate a new seed, just comment out the below row
             sessions, kpi_results = create_seed(project=project, sessions_from_user=sessions)
             if kpi_results is None:

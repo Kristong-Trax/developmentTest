@@ -1,12 +1,8 @@
-
-
 from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
 from Projects.INBEVNL.Tests.Data.data_test_inbevnl_sanity import ProjectsSanityData
 from Projects.INBEVNL.Calculations import INBEVNLINBEVBECalculations
 from DevloperTools.SanityTests.PsSanityTests import PsSanityTestsFuncs
 from Projects.INBEVNL.Tests.Data.kpi_results import INBEVNLKpiResults
-# import os
-# import json
 
 __author__ = 'ilays'
 
@@ -24,8 +20,8 @@ class TestKEnginePsCode(PsSanityTestsFuncs):
         self.add_mocks()
         project_name = ProjectsSanityData.project_name
         data_provider = KEngineDataProvider(project_name)
-        sessions = {u'6cf7526b-bd64-46ac-8ed4-1e010ca16f1e': []}
-        # kpi_results = INBEVNLKpiResults().get_kpi_results()
+        sessions = {u'b56b1723-091a-4a94-baed-8e6488160e8f': []}
+        kpi_results = INBEVNLKpiResults().get_kpi_results()
         for session in sessions.keys():
             data_provider.load_session_data(str(session))
             output = Output()
@@ -33,7 +29,10 @@ class TestKEnginePsCode(PsSanityTestsFuncs):
             # for scene in sessions[session]:
             # data_provider.load_scene_data(str(session), scene_id=scene)
             # SceneCalculations(data_provider).calculate_kpis()
-        # self._assert_test_results_matches_reality(kpi_results)
+        # self._assert_test_results_matches_reality(kpi_results, ignore_kpis=['OSA'])
         # self._assert_old_tables_kpi_results_filled()
         self._assert_new_tables_kpi_results_filled(distinct_kpis_num=None, list_of_kpi_names=None)
         # self._assert_scene_tables_kpi_results_filled(distinct_kpis_num=None)
+
+
+
