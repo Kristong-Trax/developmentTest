@@ -1,10 +1,10 @@
 
 
 from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
-from Projects.MARSUAE.Tests.Data.data_test_marsuae_sanity import ProjectsSanityData
-from Projects.MARSUAE.Calculations import MarsuaeCalculations
+from Projects.SANOFISA.Tests.Data.data_test_sanofisa_sanity import ProjectsSanityData
+from Projects.SANOFISA.Calculations import SANOFISACalculations
 from DevloperTools.SanityTests.PsSanityTests import PsSanityTestsFuncs
-from Projects.MARSUAE.Tests.Data.kpi_results import MARSUAEKpiResults
+from Projects.SANOFISA.Tests.Data.kpi_results import SANOFISAKpiResults
 # import os
 # import json
 
@@ -23,17 +23,17 @@ class TestKEnginePsCode(PsSanityTestsFuncs):
         #     relative_position_template
         return
 
-    @PsSanityTestsFuncs.seeder.seed(["marsuae_seed", "mongodb_products_and_brands_seed"], ProjectsSanityData())
-    def test_marsuae_sanity(self):
+    @PsSanityTestsFuncs.seeder.seed(["sanofisa_seed", "mongodb_products_and_brands_seed"], ProjectsSanityData())
+    def test_sanofisa_sanity(self):
         self.add_mocks()
         project_name = ProjectsSanityData.project_name
         data_provider = KEngineDataProvider(project_name)
-        sessions = {u'7294F357-CB4A-4636-8D79-B2047152D17D': []}
-        kpi_results = MARSUAEKpiResults().get_kpi_results()
+        sessions = {u'718D3AA8-430E-4FE1-B72B-6F957F6429A0': []}
+        kpi_results = SANOFISAKpiResults().get_kpi_results()
         for session in sessions.keys():
             data_provider.load_session_data(str(session))
             output = Output()
-            MarsuaeCalculations(data_provider, output).run_project_calculations()
+            SANOFISACalculations(data_provider, output).run_project_calculations()
             # for scene in sessions[session]:
             # data_provider.load_scene_data(str(session), scene_id=scene)
             # SceneCalculations(data_provider).calculate_kpis()

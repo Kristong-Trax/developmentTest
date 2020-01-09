@@ -73,9 +73,10 @@ class PsSanityTestsFuncs(TestFunctionalCase):
             self.assertNotEquals(len(kpi_results), 0)
         connector.disconnect_rds()
 
-    def _assert_test_results_matches_reality(self, kpi_results):
-        real_res_dict = pd.DataFrame(kpi_results)
-        real_results = pd.DataFrame(real_res_dict)
+    def _assert_test_results_matches_reality(self, kpi_results, ignore_kpis=None):
+        real_results = pd.DataFrame(kpi_results)
+        if ignore_kpis:
+            real_results = real_results[~real_results['client_name'].isin(ignore_kpis)]
         connector = PSProjectConnector(TestProjectsNames().TEST_PROJECT_1, DbUsers.Docker)
         cursor = connector.db.cursor(MySQLdb.cursors.DictCursor)
         cursor.execute("""
@@ -94,20 +95,28 @@ class PsSanityTestsFuncs(TestFunctionalCase):
         kpi_results = pd.DataFrame(kpi_results)
         merged_results = pd.merge(real_results, kpi_results, on=['session_fk', 'kpi_level_2_fk', 'numerator_id',
                                                                  'denominator_id', 'context_id'], how="left")
-        wrong_results = merged_results[merged_results['result_x'] != merged_results['result_y']]
+        merged_results = merged_results.fillna(0)
+        wrong_results = merged_results[(merged_results['result_x'] != merged_results['result_y']) |
+                                       (merged_results['numerator_result_x'] != merged_results['numerator_result_y']) |
+                                       (merged_results['denominator_result_x'] !=
+                                        merged_results['denominator_result_y'])]
+        correct_results = merged_results[~merged_results.index.isin(wrong_results.index)]
+        wrong_kpis_without_duplicates = list(set(wrong_results['kpi_level_2_fk']) -
+                                             set(correct_results['kpi_level_2_fk']))
+        wrong_results = wrong_results[wrong_results['kpi_level_2_fk'].isin(wrong_kpis_without_duplicates)]
         if not wrong_results.empty:
             try:
-                print "The following KPIs had wrong results:"
+                Log.info("The following KPIs had wrong results: ")
                 for i, res in wrong_results.iterrows():
-                    print ("session_fk: {0}, kpi_level_2_fk: {1}, client_name: {2}, numerator_id: {3}, "
-                           "denominator_id: {4}, context_id: {5}, seed_result: {6}, db_actual_result: {7}, "
-                           "seed_numerator_result: {8}, db_numerator_result: {9}, "
-                           "seed_denominator_result: {10}, db_denominator_result: {11}. \n"
-                           "".format(str(res['session_fk']), str(res['kpi_level_2_fk']), str(res['client_name_x']),
-                                     str(res['numerator_id']), str(res['denominator_id']), str(res['context_id']),
-                                     str(res['result_y']), str(res['result_x']), str(res['numerator_result_y']),
-                                     str(res['numerator_result_x']), str(res['denominator_result_y']),
-                                     str(res['denominator_result_x'])))
+                    Log.info("session_fk: {0}, kpi_level_2_fk: {1}, client_name: {2}, numerator_id: {3}, "
+                             "denominator_id: {4}, context_id: {5}, seed_result: {6}, db_actual_result: {7}, "
+                             "seed_numerator_result: {8}, db_numerator_result: {9}, "
+                             "seed_denominator_result: {10}, db_denominator_result: {11}. \n"
+                             "".format(str(res['session_fk']), str(res['kpi_level_2_fk']), str(res['client_name_x']),
+                                       str(res['numerator_id']), str(res['denominator_id']), str(res['context_id']),
+                                       str(res['result_y']), str(res['result_x']), str(res['numerator_result_y']),
+                                       str(res['numerator_result_x']), str(res['denominator_result_y']),
+                                       str(res['denominator_result_x'])))
             except Exception as e:
                 Log.warning("Couldn't print differences, failed with error: {}".format(e))
         self.assertTrue(wrong_results.empty)

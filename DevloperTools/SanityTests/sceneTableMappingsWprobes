@@ -14,7 +14,7 @@ static	regions	all
 static	template	template_fk	pk
 static	template_product_ref	template_fk	
 static	template_product_groups_ref	template_fk	
-static	product	product_fk	pk
+static	product	all
 static	product_image	product_fk	
 static	brand	brand_fk	pk
 static	survey_question	question_fk	pk
