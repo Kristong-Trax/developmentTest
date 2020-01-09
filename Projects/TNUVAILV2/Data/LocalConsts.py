@@ -16,6 +16,8 @@ class Consts(object):
     # DB attributes
     ENTITIES_FOR_DB = [ScifConsts.MANUFACTURER_FK, ScifConsts.CATEGORY_FK,
                        SessionResultsConsts.NUMERATOR_RESULT, SessionResultsConsts.DENOMINATOR_RESULT]
+    NEW_STATUS = 'New'
+    COMPLETED_STATUS = 'Completed'
 
     # Assortment Consts
     IN_STORE = 'in_store'
