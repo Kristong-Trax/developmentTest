@@ -27,7 +27,7 @@ class DBHandler:
             Log.warning(Consts.LOG_EMPTY_PREVIOUS_SESSIONS.format(self.session_uid))
             last_session_fk = None
         else:
-            last_session_fk = last_session_fk.loc[1, 'pk']
+            last_session_fk = last_session_fk.loc[1, BasicConsts.PK]
         return last_session_fk
 
     def _get_oos_results(self, session_fk):
@@ -49,9 +49,9 @@ class DBHandler:
         oos_results = self._get_oos_results(last_session_fk)
         return oos_results
 
-    def get_kpi_result_type(self):
+    def get_kpi_result_value(self):
         """ This method extracts the kpi_result_types from the DB. """
-        result_type_query = self._get_kpi_result_types_query()
+        result_type_query = self._get_kpi_result_value_query()
         result_types = self._execute_db_query(result_type_query)
         return result_types
 
@@ -64,6 +64,11 @@ class DBHandler:
             self.rds_conn.connect_rds()
             result = pd.read_sql_query(query, self.rds_conn.db)
         return result
+
+    def get_oos_reasons_for_session(self, session_uid):
+        oos_reasons_query = self._get_oos_reasons_query(session_uid)
+        oos_reasons = self._execute_db_query(oos_reasons_query)
+        return oos_reasons
 
     # The following are the queries that we are using in order to get the previous
     # sessions relevant results.
@@ -85,14 +90,12 @@ class DBHandler:
                                         pk
                                     FROM
                                         static.kpi_level_2
-                                    WHERE
-                                        kpi_calculation_stage_fk = {}
-                                            AND type LIKE '%OOS%'
-                                            AND type LIKE '%SKU%');""".format(session_fk, Consts.PS_CALC_STAGE)
+                                    WHERE type IN {})
+                                       """.format(session_fk, Consts.PREV_RES_KPIS_FOR_NCC)
         return prev_results_query
 
     @staticmethod
-    def _get_kpi_result_types_query():
+    def _get_kpi_result_value_query():
         kpi_result_type = """SELECT pk, value FROM static.kpi_result_value;"""
         return kpi_result_type
 
@@ -135,3 +138,13 @@ class DBHandler:
                    s1.start_time DESC
                 limit 2;""".format(self.session_uid)
         return last_two_sessions_query
+
+    @staticmethod
+    def _get_oos_reasons_query(session_uid):
+        query = """
+                    SELECT * FROM probedata.oos_exclude oe
+                    JOIN static.oos_message om on om.pk=oe.oos_message_fk
+                    JOIN static.oos_message_type omt on omt.pk=om.type
+                    where oe.session_uid = '{}' and oe.delete_time is null;
+                """.format(session_uid)
+        return query

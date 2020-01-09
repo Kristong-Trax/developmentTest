@@ -66,6 +66,11 @@ class DBHandler:
             result = pd.read_sql_query(query, self.rds_conn.db)
         return result
 
+    def get_oos_reasons_for_session(self, session_uid):
+        oos_reasons_query = self._get_oos_reasons_query(session_uid)
+        oos_reasons = self._execute_db_query(oos_reasons_query)
+        return oos_reasons
+
     # The following are the queries that we are using in order to get the previous
     # sessions relevant results.
 
@@ -134,3 +139,13 @@ class DBHandler:
                    s1.start_time DESC
                 limit 2;""".format(self.session_uid)
         return last_two_sessions_query
+
+    @staticmethod
+    def _get_oos_reasons_query(session_uid):
+        query = """
+                    SELECT * FROM probedata.oos_exclude oe
+                    JOIN static.oos_message om on om.pk=oe.oos_message_fk
+                    JOIN static.oos_message_type omt on omt.pk=om.type
+                    where oe.session_uid = '{}' and oe.delete_time is null;
+                """.format(session_uid)
+        return query
