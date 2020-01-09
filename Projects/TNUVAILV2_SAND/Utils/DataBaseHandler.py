@@ -1,9 +1,10 @@
-import pandas as pd
+from KPIUtils_v2.Utils.Consts.GlobalConsts import BasicConsts
+from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
+from Trax.Cloud.Services.Connector.Keys import DbUsers
+from Projects.TNUVAILV2.Data.LocalConsts import Consts
 from pandas.io.sql import DatabaseError
 from Trax.Utils.Logging.Logger import Log
-from Trax.Cloud.Services.Connector.Keys import DbUsers
-from Projects.TNUVAILV2_SAND.Utils.Consts import Consts
-from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
+import pandas as pd
 
 
 class DBHandler:
