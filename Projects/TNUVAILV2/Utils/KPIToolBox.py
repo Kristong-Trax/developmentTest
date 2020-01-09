@@ -33,12 +33,8 @@ class TNUVAILToolBox:
         self.kpi_result_types = self.db_handler.get_kpi_result_value()
         self.oos_store_results = list()
         self.initial_scif = self.scif.copy()
-        # self.assortment = self.get_relevant_assortment_instance()
 
     def get_relevant_assortment_instance(self, assortment):
-        # if self.data_provider.session_info.status.values[0] == Consts.NEW_STATUS:
-        #     assortment = Assortment(self.data_provider, self.output)
-        #     return assortment
         if self.data_provider.session_info.status.values[0] == Consts.COMPLETED_STATUS:
             self.update_scif_for_assortment()
             assortment = Assortment(self.data_provider, self.output)

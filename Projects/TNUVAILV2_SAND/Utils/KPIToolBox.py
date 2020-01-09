@@ -24,21 +24,18 @@ class TNUVAILSANDToolBox:
         self.all_products = self.data_provider[Data.ALL_PRODUCTS]
         self.store_id = self.data_provider[Data.STORE_FK]
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
-        # self.assortment = Assortment(self.data_provider, self.output)
+        self.assortment = Assortment(self.data_provider, self.output)
         self.own_manufacturer_fk = int(self.data_provider.own_manufacturer.param_value.values[0])
         self.db_handler = DBHandler(self.data_provider.project_name, self.data_provider.session_uid)
         self.previous_oos_results = self.db_handler.get_last_session_oos_results()
         self.kpi_result_types = self.db_handler.get_kpi_result_value()
         self.oos_store_results = list()
-        self.assortment = self.get_relevant_assortment_instance()
+        self.initial_scif = self.scif.copy()
 
-    def get_relevant_assortment_instance(self):
-        if self.data_provider.session_info.status.values[0] == Consts.NEW_STATUS:
+    def get_relevant_assortment_instance(self, assortment):
+        if self.data_provider.session_info.status.values[0] == Consts.COMPLETED_STATUS:
+            self.update_scif_for_assortment()
             assortment = Assortment(self.data_provider, self.output)
-            return assortment
-        self.update_scif_for_assortment()
-        assortment = Assortment(self.data_provider, self.output)
-        self.data_provider._set_scene_item_facts(self.scif)
         return assortment
 
     def update_scif_for_assortment(self):
@@ -53,6 +50,7 @@ class TNUVAILSANDToolBox:
             add_scif_df = selected_products_df.merge(dummy_scif, left_on=Consts.PRODUCT_POLICY_ATTR,
                                                      right_on=ScifConsts.TEMPLATE_NAME, how='inner')
             new_scif = self.scif.append(add_scif_df, ignore_index=True)
+            self.scif = new_scif.copy()
             self.data_provider._set_scene_item_facts(new_scif)
 
     def create_dummy_scif_lines_excluding_product_columns(self):
@@ -69,10 +67,12 @@ class TNUVAILSANDToolBox:
     def main_calculation(self):
         """ This function calculates all of the KPIs' results."""
         self._calculate_facings_sos()
+        self.assortment = self.get_relevant_assortment_instance(self.assortment)
         self._calculate_assortment()
+        self.scif = self.initial_scif
+        self.data_provider._set_scene_item_facts(self.scif)
         self.common_v2.commit_results_data()
 
-    @kpi_runtime()
     def _calculate_facings_sos(self):
         """
         This kpi calculates SOS in 3 levels: Manufacturer out of store, Manufacturer Out of Category and
@@ -81,7 +81,6 @@ class TNUVAILSANDToolBox:
         self._calculate_sos_by_policy(Consts.MILKY_POLICY)
         self._calculate_sos_by_policy(Consts.TIRAT_TSVI_POLICY)
 
-    @kpi_runtime()
     def _calculate_assortment(self):
         """
         This is the main function for assortment calculation. It prepares the data and calculating all of the relevant
