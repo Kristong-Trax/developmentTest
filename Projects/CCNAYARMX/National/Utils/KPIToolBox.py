@@ -95,7 +95,7 @@ PORTAFOLIO_SHEETS = [ASSORTMENTS]
 TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data',
                              'CCNayarTemplate_Nationalv0.1.xlsx')
 POS_OPTIONS_TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data',
-                                         'CCNayar_POS_Options_v4.xlsx')
+                                         'CCNayar_POS_Options_v6.xlsx')
 PORTAFOLIO_Y_PRECIOUS_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data',
                                           'CCNayarNational_Portafolios_y_Precios.xlsx')
 
@@ -395,7 +395,7 @@ class NationalToolBox(GlobalSessionToolBox):
             for index, relevant_row in relevant_pos_template.iterrows():
                 if pos_option_found:
                     break
-                groups = self._get_groups(relevant_row, 'POS Option')
+                groups = self._get_groups(relevant_row.dropna(), 'POS Option')
                 for group in groups:
                     if all(product in product_names_in_scene for product in group):
                         pos_option_found = 1  # True
@@ -414,7 +414,7 @@ class NationalToolBox(GlobalSessionToolBox):
                 continue
 
             # calculate the 'empaques' data
-            assortment_groups = self._get_groups(platform_row, 'Assortment')
+            assortment_groups = self._get_groups(platform_row.dropna(), 'Assortment')
             mandatory_skus_found = 1  # True
             for assortment in assortment_groups:
                 if not any(product in product_names_in_scene for product in assortment):

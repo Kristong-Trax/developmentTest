@@ -94,7 +94,7 @@ TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 
 PORTAFOLIO_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data',
                                'CCNayarEspecializado_Portafolio.xlsx')
 POS_OPTIONS_TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data',
-                                         'CCNayar_POS_Options_Especializado_v4.xlsx')
+                                         'CCNayar_POS_Options_Especializado_v6.xlsx')
 
 
 def log_runtime(description, log_start=False):
@@ -443,7 +443,7 @@ class EspecializadoToolBox(GlobalSessionToolBox):
             for index, relevant_row in relevant_pos_template.iterrows():
                 if pos_option_found:
                     break
-                groups = self._get_groups(relevant_row, 'POS Option')
+                groups = self._get_groups(relevant_row.dropna(), 'POS Option')
                 for group in groups:
                     if all(product in product_names_in_scene for product in group):
                         pos_option_found = 1  # True
