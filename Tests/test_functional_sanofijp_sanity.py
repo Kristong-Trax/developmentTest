@@ -12,7 +12,7 @@ from Projects.SANOFIJP.Calculations import SANOFIJPCalculations
 
 from Trax.Apps.Core.Testing.BaseCase import TestFunctionalCase
 from Tests.TestUtils import remove_cache_and_storage
-
+from Trax.Utils.Testing.Case import skip
 
 __author__ = 'nidhin'
 
@@ -62,7 +62,8 @@ class TestKEngineOutOfTheBox(TestFunctionalCase):
         kpi_results = cursor.fetchall()
         self.assertNotEquals(len(kpi_results), 0)
         connector.disconnect_rds()
-    
+
+    @skip('sup')
     @seeder.seed(["sanofijp_seed", "mongodb_products_and_brands_seed"], ProjectsSanityData())
     def test_sanofijp_sanity(self):
         project_name = ProjectsSanityData.project_name

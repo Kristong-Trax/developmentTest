@@ -6,7 +6,7 @@ from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
 from Trax.Utils.Conf.Configuration import Config
 from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
 
-from KPIUtils.GlobalProjects.SANOFI_2.KPIGenerator import SANOFIGenerator
+from KPIUtils.GlobalProjects.SANOFI_3.KPIGenerator import SANOFIGenerator
 
 
 __author__ = 'Shani'

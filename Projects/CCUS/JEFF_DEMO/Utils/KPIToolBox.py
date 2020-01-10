@@ -1,21 +1,18 @@
-from datetime import datetime
-import pandas as pd
 import os
-from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScript
-from Trax.Algo.Calculations.Core.DataProvider import Data
-from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
-from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
-from Trax.Utils.Conf.Keys import DbUsers
-from Trax.Utils.Logging.Logger import Log
-from Projects.CCUS.Programs.Utils.Fetcher import NEW_OBBOQueries
-from Projects.CCUS.Programs.Utils.GeneralToolBox import NEW_OBBOGENERALToolBox
-from Projects.CCUS.Programs.Utils.ParseTemplates import parse_template
+from datetime import datetime
+
+import pandas as pd
 from KPIUtils.GlobalDataProvider.PsDataProvider import PsDataProvider
-from KPIUtils_v2.DB.CommonV2 import Common as CommonV2
 from KPIUtils_v2.Calculations.CalculationsUtils.GENERALToolBoxCalculations import GENERALToolBox
-from KPIUtils_v2.Calculations.PositionGraphsCalculations import PositionGraphs
 from KPIUtils_v2.Calculations.SOSCalculations import SOS as SOS_calc
 from KPIUtils_v2.Calculations.SurveyCalculations import Survey as Survey_calc
+from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
+from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScript
+from Trax.Algo.Calculations.Core.DataProvider import Data
+from Trax.Utils.Conf.Keys import DbUsers
+from Trax.Utils.Logging.Logger import Log
+
+from Projects.CCUS.Programs.Utils.GeneralToolBox import NEW_OBBOGENERALToolBox
 
 __author__ = 'nicolaske'
 
@@ -67,7 +64,6 @@ class JEFFToolBox:
         self.templates = self.data_provider[Data.TEMPLATES]
         self.store_id = self.data_provider[Data.STORE_FK]
         self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
-        self.tools = NEW_OBBOGENERALToolBox(self.data_provider, self.output, rds_conn=self.rds_conn)
         # self.kpi_static_data = self.get_kpi_static_data()
         self.kpi_results_queries = []
         self.store_info = self.data_provider[Data.STORE_INFO]
@@ -75,8 +71,7 @@ class JEFFToolBox:
         # self.rules = pd.read_excel(TEMPLATE_PATH).set_index('store_type').to_dict('index')
         self.ps_data_provider = PsDataProvider(self.data_provider, self.output)
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
-        self._position_graphs = PositionGraphs(self.data_provider)
-        self.match_product_in_scene = self._position_graphs.match_product_in_scene
+        self.match_product_in_scene = self.data_provider[Data.MATCHES]
         self.ignore_stacking = False
         self.facings_field = 'facings' if not self.ignore_stacking else 'facings_ign_stack'
         self.manufacturer_fk = self.all_products['manufacturer_fk'][self.all_products['manufacturer_name'] == 'CCNA'].iloc[0]
@@ -87,6 +82,13 @@ class JEFFToolBox:
         self.toolbox = GENERALToolBox(self.data_provider)
         self.SOS = SOS_calc(self.data_provider)
         self.survey = Survey_calc(self.data_provider)
+        self._merge_matches_and_all_product()
+
+    def _merge_matches_and_all_product(self):
+        """
+        This method merges the all product data with the match product in scene DataFrame
+        """
+        self.match_product_in_scene = self.match_product_in_scene.merge(self.all_products, on='product_fk', how='left')
 
     def parse_template(self):
         self.templates['SOS'] = pd.read_excel(TEMPLATE_PATH)
@@ -205,7 +207,7 @@ class JEFFToolBox:
             # a patch for the item_id field which became item_id_x since it was added to product table as attribute.
             item_id = 'item_id' if 'item_id' in self.scif.columns else 'item_id_x'
             merged_df = pd.merge(self.scif[self.scif.facings != 0], scif_mpis_diff, how='outer',
-                                 left_on=['scene_id', item_id], right_on=['scene_fk', 'product_fk'])
+                                 left_on=['scene_fk', item_id], right_on=['scene_fk', 'product_fk'])
             filtered_df = \
                 merged_df[self.toolbox.get_filter_condition(merged_df, **filters)]
             # filtered_df = \
@@ -217,4 +219,3 @@ class JEFFToolBox:
         else:
             availability_df = filtered_df
         return availability_df
-

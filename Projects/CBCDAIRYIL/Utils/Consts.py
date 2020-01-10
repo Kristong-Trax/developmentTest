@@ -4,9 +4,11 @@ import os
 
 class Consts(object):
     # Template consts
-    PROJECT_TEMPLATE_NAME = 'Template.xlsx'
-    TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), 'Data',
-                                 PROJECT_TEMPLATE_NAME)
+    PROJECT_TEMPLATE_NAME_UNTIL_2019_12_31 = 'Template_until_2019-12-31.xlsx'
+    PREVIOUS_TEMPLATES = 'Previous Templates'
+    CURRENT_TEMPLATE = 'Template.xlsx'
+    TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), 'Data')
+
     KPI_SHEET = 'KPI'
     KPI_WEIGHT = 'kpi weights'
     KPI_GAP = 'Kpi Gap'
@@ -62,8 +64,11 @@ class Consts(object):
     ADDITIONAL_ATTRIBUTE_1 = 'additional_attribute_1'
     ADDITIONAL_ATTRIBUTE_2 = 'additional_attribute_2'
     ADDITIONAL_ATTRIBUTE_3 = 'additional_attribute_3'
+    ADDITIONAL_ATTRIBUTE_6 = 'additional_attribute_6'
+    ADDITIONAL_ATTRIBUTE_7 = 'additional_attribute_7'
     STORE_TYPE = 'store_type'
-    STORE_ATTRIBUTES_TO_FILTER_BY = [STORE_TYPE, ADDITIONAL_ATTRIBUTE_1, ADDITIONAL_ATTRIBUTE_2, ADDITIONAL_ATTRIBUTE_3]
+    STORE_ATTRIBUTES_TO_FILTER_BY = [STORE_TYPE, ADDITIONAL_ATTRIBUTE_1, ADDITIONAL_ATTRIBUTE_2, ADDITIONAL_ATTRIBUTE_3,
+                                     ADDITIONAL_ATTRIBUTE_6, ADDITIONAL_ATTRIBUTE_7]
 
     # Session attributes
     SCENE_FK = 'scene_fk'

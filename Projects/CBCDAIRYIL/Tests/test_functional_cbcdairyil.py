@@ -64,7 +64,8 @@ class TestCBCDAIRYIL(TestFunctionalCase):
         """ This test is check the validation of the current project's template! """
         # Columns tests
         expected_columns = {'Atomic Name', 'KPI Name', 'KPI Set', 'store_type', 'additional_attribute_1',
-                            'additional_attribute_2', 'additional_attribute_3', 'Template Name', 'Template group',
+                            'additional_attribute_2', 'additional_attribute_3', 'additional_attribute_6',
+                            'additional_attribute_7', 'Template Name', 'Template group',
                             'KPI Family', 'Score Type', 'Param Type (1)/ Numerator', 'Param (1) Values',
                             'Param Type (2)/ Denominator', 'Param (2) Values', 'Param Type (3)', 'Param (3) Values',
                             'Weight', 'Target', 'Split Score'}
@@ -80,7 +81,7 @@ class TestCBCDAIRYIL(TestFunctionalCase):
 
     @staticmethod
     def _check_template_instances(template):
-        columns_to_check = ['additional_attribute_1', 'additional_attribute_2', 'additional_attribute_3', 'Weight',
+        columns_to_check = ['additional_attribute_6', 'Weight',
                             'KPI Family', 'KPI Set']
         for col in columns_to_check:
             attribute_values = template[col].unique().tolist()
@@ -110,25 +111,21 @@ class TestCBCDAIRYIL(TestFunctionalCase):
         """
 
         test_template_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'Data',
-                                          Consts.PROJECT_TEMPLATE_NAME)
+                                          Consts.TEMPLATE_PATH, Consts.CURRENT_TEMPLATE)
         kpis_sheet = parse_template(test_template_path, Consts.KPI_SHEET, lower_headers_row_index=1)
         store_attr_test_1 = ({Consts.STORE_TYPE: Consts.DYNAMO, Consts.ADDITIONAL_ATTRIBUTE_1: Consts.GENERAL,
                               Consts.ADDITIONAL_ATTRIBUTE_2: Consts.HEBREW_YES,
-                              Consts.ADDITIONAL_ATTRIBUTE_3: Consts.HEBREW_YES}, 26)
+                              Consts.ADDITIONAL_ATTRIBUTE_3: Consts.HEBREW_YES}, 185)
         store_attr_test_2 = ({Consts.STORE_TYPE: Consts.MINI_MARKET, Consts.ADDITIONAL_ATTRIBUTE_1: Consts.ARAB,
                               Consts.ADDITIONAL_ATTRIBUTE_2: Consts.HEBREW_YES,
-                              Consts.ADDITIONAL_ATTRIBUTE_3: Consts.HEBREW_YES}, 16)
+                              Consts.ADDITIONAL_ATTRIBUTE_3: Consts.HEBREW_YES}, 175)
         store_attr_test_3 = ({Consts.STORE_TYPE: Consts.DYNAMO, Consts.ADDITIONAL_ATTRIBUTE_1: Consts.GENERAL,
                               Consts.ADDITIONAL_ATTRIBUTE_2: Consts.HEBREW_NO,
-                              Consts.ADDITIONAL_ATTRIBUTE_3: Consts.HEBREW_NO}, 30)
+                              Consts.ADDITIONAL_ATTRIBUTE_3: Consts.HEBREW_NO}, 193)
         store_attr_test_4 = ({Consts.STORE_TYPE: Consts.MINI_MARKET, Consts.ADDITIONAL_ATTRIBUTE_1: Consts.ARAB,
                               Consts.ADDITIONAL_ATTRIBUTE_2: Consts.HEBREW_NO,
-                              Consts.ADDITIONAL_ATTRIBUTE_3: Consts.HEBREW_NO}, 20)
-        store_attr_test_5 = ({Consts.STORE_TYPE: Consts.DYNAMO, Consts.ADDITIONAL_ATTRIBUTE_1: Consts.ORTHODOX,
-                              Consts.ADDITIONAL_ATTRIBUTE_2: Consts.HEBREW_YES,
-                              Consts.ADDITIONAL_ATTRIBUTE_3: Consts.HEBREW_YES}, 24)
-        test_cases_list = [store_attr_test_1, store_attr_test_2, store_attr_test_3, store_attr_test_4,
-                           store_attr_test_5]
+                              Consts.ADDITIONAL_ATTRIBUTE_3: Consts.HEBREW_NO}, 183)
+        test_cases_list = [store_attr_test_1, store_attr_test_2, store_attr_test_3, store_attr_test_4]
         for test_values, expected_result in test_cases_list:
             filtered_template = self.tool_box.filter_template_by_store_att(kpis_sheet, test_values)
             self.assertEqual(expected_result, len(filtered_template))

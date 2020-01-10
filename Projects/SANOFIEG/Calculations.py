@@ -1,6 +1,6 @@
 from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScript
 import os
-from KPIUtils.GlobalProjects.SANOFI_2.KPIGenerator import SANOFIGenerator
+from KPIUtils.GlobalProjects.SANOFI_3.KPIGenerator import SANOFIGenerator
 
 
 __author__ = 'Idan'

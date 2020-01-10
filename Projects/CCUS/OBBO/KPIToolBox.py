@@ -2,15 +2,15 @@ import os
 from datetime import datetime
 
 import pandas as pd
+from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScript
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Cloud.Services.Connector.Keys import DbUsers
-from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
 from Trax.Utils.Logging.Logger import Log
 
-from Projects.CCUS.OBBO.GeneralToolBox import OBBOGENERALToolBox
 from Projects.CCUS.OBBO.Fetcher import OBBOQueries
+from Projects.CCUS.OBBO.GeneralToolBox import OBBOGENERALToolBox
 from Projects.CCUS.OBBO.ParseTemplates import parse_template
 
 __author__ = 'Nimrod'
@@ -236,7 +236,7 @@ class OBBOToolBox(OBBOConsts):
         data = category_template[category_template[self.PROGRAM] == program]
         number_of_categories = 0
         for i, category_data in data.iterrows():
-            filters = dict(scene_id=scene)
+            filters = dict(scene_fk=scene)
             if category_data[self.ATT2]:
                 filters['att2'] = category_data[self.ATT2].split(self.SEPARATOR)
             if category_data[self.ATT3]:
@@ -258,7 +258,7 @@ class OBBOToolBox(OBBOConsts):
         for i, row in data.iterrows():
             if self.tools.calculate_assortment(brand_name=row[self.BRAND_NAME],
                                                product_type=row[self.PRODUCT_TYPE],
-                                               scene_id=scene):
+                                               scene_fk=scene):
                 status = True
                 break
         return 'Y' if status else 'N'

@@ -111,7 +111,7 @@ class ToolBox:
             relevant_scif = relevant_scif[relevant_scif['template_name'].isin(scene_types)]
             general_filters = {'template_name': scene_types}
 
-        if relevant_scif.empty and main_line['Run on Empty SCIF'] != 'Y':
+        if relevant_scif.empty:
             return
 
         # print(kpi_name)
@@ -404,10 +404,7 @@ class ToolBox:
             segments_list = edge_products_df['GMI_VISION SEGMENT'][
                 edge_products_df['GMI_VISION SEGMENT'].isin(b_filters['GMI_VISION SEGMENT'])]
 
-            # edge_matches = set(d['A']['edge_matches'])
-            # segments_list = self.mpis['GMI_VISION SEGMENT'][self.mpis['scene_match_fk'].isin(edge_matches)]
             counted_segments = Counter(segments_list)
-            # result = counted_segments.most_common(1)[0][0]
 
             segments_found = counted_segments.most_common(2)
             result = []

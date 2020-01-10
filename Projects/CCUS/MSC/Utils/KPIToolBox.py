@@ -1,16 +1,15 @@
+import os
 from datetime import datetime
 
 import pandas as pd
-import os
-# from Projects.MSC.Utils.GeneralToolBox import MSCGENERALToolBox  todo: I need this?
+from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScript
 from Trax.Algo.Calculations.Core.DataProvider import Data
-from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
 from Trax.Utils.Conf.Keys import DbUsers
 from Trax.Utils.Logging.Logger import Log
-from Projects.CCUS.MSC.Utils.Fetcher import MSCQueries
 
+from Projects.CCUS.MSC.Utils.Fetcher import MSCQueries
 from Projects.CCUS.MSC.Utils.GeneralToolBox import MSCGENERALToolBox
 from Projects.CCUS.MSC.Utils.ParseTemplates import parse_template
 
@@ -78,7 +77,6 @@ class MSCToolBox:
                 template = parse_template(TEMPLATE_PATH, name, 2)
             self.custom_templates[name] = template
         return self.custom_templates[name]
-
 
     def get_kpi_static_data(self):
         """

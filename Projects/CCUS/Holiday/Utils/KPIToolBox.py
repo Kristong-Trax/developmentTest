@@ -85,12 +85,13 @@ class HOLIDAYToolBox:
         This function calculates the KPI results.
         """
         if str(self.visit_date)>='2017-11-26' and str(self.visit_date)<='2017-12-25':
-            scenes = self.scif['scene_id'].unique().tolist()
+            scenes = self.scif['scene_fk'].unique().tolist()
             if scenes:
                 for scene in scenes:
-                    scene_data = self.scif.loc[self.scif['scene_id'] == scene]
+                    scene_data = self.scif.loc[self.scif['scene_fk'] == scene]
                     pop_result = self.calculate_pop(scene_data)
                     self.calculate_Pathway(pop_result, scene_data)
+                    del scene_data
             return
         return
 
@@ -103,15 +104,17 @@ class HOLIDAYToolBox:
                     template_group = [str(g) for g in row['Template group'].split(',')]
                     if scene_data['template_group'].values[0] in template_group or template_group == ['']:
                         ean_codes_list = row['product ean code'].split(',')
-                        filters = {'product_ean_code': ean_codes_list,'scene_id':scene_data['scene_id'].unique().tolist()}
+                        filters = {'product_ean_code': ean_codes_list,
+                                   'scene_fk': scene_data['scene_fk'].unique().tolist()}
                         result = self.tools.calculate_availability(**filters)
                         if result>0:
-                            self.write_to_db_result(name='{} POP'.format(scene_data['scene_id'].values[0]),
+                            self.write_to_db_result(name='{} POP'.format(scene_data['scene_fk'].values[0]),
                                                     result=row['result'],
                                                     score=1, level=self.LEVEL3)
                             return row['result']
+                del pop_new_data
                 break
-        self.write_to_db_result(name='{} POP'.format(scene_data['scene_id'].values[0]), result='No POP',
+        self.write_to_db_result(name='{} POP'.format(scene_data['scene_fk'].values[0]), result='No POP',
                                                      score=0, level=self.LEVEL3)
         return
 
@@ -134,14 +137,16 @@ class HOLIDAYToolBox:
                                 result = self.check_path_way(path_data, scene_data)
                                 if result == 1:
                                     return
+                        del path_data
+                    del pathways
 
         if not result:
-            self.write_to_db_result(name='{} Pathway'.format(scene_data['scene_id'].values[0]), result='No Pathway',
+            self.write_to_db_result(name='{} Pathway'.format(scene_data['scene_fk'].values[0]), result='No Pathway',
                                 score=0, level=self.LEVEL3)
         return False
 
     def check_path_way(self, path_data, scene_data):
-        filters = {'scene_id':scene_data['scene_id'].values[0]}
+        filters = {'scene_fk':scene_data['scene_fk'].values[0]}
         result = 0
         filters[path_data['param1'].values[0]] = [str(g) for g in path_data['value1'].values[0].split(",")]
         if path_data['Target'].values[0]:
@@ -154,7 +159,7 @@ class HOLIDAYToolBox:
                 result = 1
             if result>= target:
                 result = 1
-                self.write_to_db_result(name='{} Pathway'.format(scene_data['scene_id'].values[0]),
+                self.write_to_db_result(name='{} Pathway'.format(scene_data['scene_fk'].values[0]),
                                         result=path_data['result'].values[0],
                                         score=1, level=self.LEVEL3)
                 return result
@@ -217,5 +222,3 @@ class HOLIDAYToolBox:
         for query in self.kpi_results_queries:
             cur.execute(query)
         self.rds_conn.db.commit()
-
-

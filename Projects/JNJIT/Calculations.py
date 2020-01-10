@@ -27,6 +27,7 @@ class JNJITCalculations(BaseCalculationsScript):
         jnj_generator.calculate_auto_assortment()
         jnj_generator.promo_calc(sales_reps_date='2018-09-30')
         jnj_generator.eye_hand_level_sos_calculation(eye_hand_lvl_template)
+        jnj_generator.linear_sos_out_of_store_discovery_report()
         common.commit_results_data()
         self.timer.stop('KPIGenerator.run_project_calculations')
 
@@ -46,7 +47,7 @@ class JNJITCalculations(BaseCalculationsScript):
 #     Config.init()
 #     project_name = 'jnjit'
 #     data_provider = KEngineDataProvider(project_name)
-#     session = 'EE25A944-7389-482A-95A3-248A077A12D4'
+#     session = '1ADB8F9A-443A-42AB-9AD2-9F91FB29E5F2'
 #     data_provider.load_session_data(session)
 #     output = Output()
 #     JNJITCalculations(data_provider, output).run_project_calculations()

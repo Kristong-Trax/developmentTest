@@ -316,7 +316,7 @@ class CCRUKPIToolBox:
             if params.get('Scenes to include'):
                 scenes_to_include = \
                     [unicode(x).strip().encode('utf-8')
-                     for x in unicode(params.get('Scenes to include')).split(', ')]
+                     for x in unicode(params.get('Scenes to include')).split('; ')]
                 for scene in scenes_to_include:
                     if scene in scenes_data.keys():
                         include_list_candidate.extend(scenes_data[scene])
@@ -376,7 +376,7 @@ class CCRUKPIToolBox:
         exclude_list = []
         if params.get('Scenes to exclude'):
             scenes_to_exclude = \
-                [unicode(x).strip() for x in unicode(params.get('Scenes to exclude')).split(', ')]
+                [unicode(x).strip() for x in unicode(params.get('Scenes to exclude')).split('; ')]
             for scene in scenes_to_exclude:
                 if scene in scenes_data.keys():
                     exclude_list.extend(scenes_data[scene])
@@ -2068,7 +2068,7 @@ class CCRUKPIToolBox:
         if level == 3:
             if params.get('Scenes to include'):
                 values_list = [unicode(x).strip().encode('utf-8')
-                               for x in params.get('Scenes to include').split(', ')]
+                               for x in params.get('Scenes to include').split('; ')]
                 number_relevant_scenes = scenes_info['template_name'].isin(values_list).sum()
                 return number_relevant_scenes
             else:
@@ -2098,7 +2098,7 @@ class CCRUKPIToolBox:
                         final_scenes = scenes_info
                         if p.get('Scenes to include'):
                             scenes_values_list = [unicode(x).strip().encode('utf-8')
-                                                  for x in p.get('Scenes to include').split(', ')]
+                                                  for x in p.get('Scenes to include').split('; ')]
                             final_scenes = scenes_info['template_name'].isin(scenes_values_list)
                             flag = 1
                         if p.get('Locations to include'):
@@ -2115,7 +2115,7 @@ class CCRUKPIToolBox:
                 else:
                     if p.get('Scenes to include'):
                         values_list = [unicode(x).strip().encode('utf-8')
-                                       for x in p.get('Scenes to include').split(', ')]
+                                       for x in p.get('Scenes to include').split('; ')]
                         number_relevant_scenes = scenes_info['template_name'].isin(
                             values_list).sum()
 
