@@ -124,7 +124,7 @@ class CCRUProjectCalculations:
                 mr_targets.update({params[SET]: params[MR_TARGET]})
         self.tool_box.mr_targets = mr_targets
 
-        kpi_sets_types_to_calculate = [POS, TARGET, SPIRITS]
+        kpi_sets_types_to_calculate = [POS, TARGET]  # SPIRITS are excluded from calculation starting 2020
         for kpi_set_type in kpi_sets_types_to_calculate:
             if not kpi_source[kpi_set_type][SET]:
                 continue
@@ -180,9 +180,11 @@ class CCRUProjectCalculations:
                  'weighted_score': score,
                  'level': 0})
 
-            if kpi_set_type == POS:
-                Log.debug('KPI calculation stage: {}'.format(kpi_source[INTEGRATION][SET]))
-                self.tool_box.prepare_hidden_set(kpi_data, kpi_source[INTEGRATION][SET])
+            # INTEGRATION is excluded from calculation starting 2020
+            #
+            # if kpi_set_type == POS:
+            #     Log.debug('KPI calculation stage: {}'.format(kpi_source[INTEGRATION][SET]))
+            #     self.tool_box.prepare_hidden_set(kpi_data, kpi_source[INTEGRATION][SET])
 
         if kpi_source[GAPS][SET]:
             Log.debug('KPI calculation stage: {}'.format(kpi_source[GAPS][SET]))

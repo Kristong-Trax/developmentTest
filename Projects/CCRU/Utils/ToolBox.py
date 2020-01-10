@@ -200,6 +200,18 @@ class CCRUKPIToolBox:
         self.promo_locations = None
         self.promo_products = None
         self.mr_targets = {}
+        
+    @staticmethod
+    def children_to_int_list(children):
+        children = map(int, str(children).strip().replace(
+            " ", "").replace(",", "\n").replace("\n\n", "\n").replace("\n\n", "\n").split("\n"))
+        return children
+
+    @staticmethod
+    def children_to_str_list(children):
+        children = str(children).strip().replace(
+            " ", "").replace(",", "\n").replace("\n\n", "\n").replace("\n\n", "\n").split("\n")
+        return children
 
     def set_kpi_set(self, kpi_set_name, kpi_set_type, empty_kpi_scores_and_results=True):
         self.kpi_set_name = kpi_set_name
@@ -409,7 +421,7 @@ class CCRUKPIToolBox:
 
             if p.get('Children') is not None:
                 is_atomic = True
-                children = [int(child) for child in str(p.get('Children')).split(', ')]
+                children = self.children_to_int_list(p.get("Children"))
                 atomic_scores = []
                 atomic_result_total = 0
                 for child in params.values()[0]:
@@ -417,8 +429,7 @@ class CCRUKPIToolBox:
 
                         if child.get('Children') is not None:  # atomic of atomic
                             atomic_score = 0
-                            atomic_children = [int(a_child) for a_child in str(
-                                child.get('Children')).split(', ')]
+                            atomic_children = self.children_to_int_list(child.get("Children"))
                             for atomic_child in params.values()[0]:
                                 if atomic_child.get('KPI ID') in atomic_children:
                                     atomic_child_res = self.calculate_availability(atomic_child)
@@ -1052,6 +1063,11 @@ class CCRUKPIToolBox:
                     score = 0
                 else:
                     score = ((kpi_total_res - target) + 1) * 100
+            elif params.get('score_func') == BINARY:
+                if kpi_total_res >= target:
+                    score = 100
+                else:
+                    score = 0
             else:
                 if kpi_total_res >= target:
                     score = 100
@@ -1122,10 +1138,6 @@ class CCRUKPIToolBox:
         return set_total_res
 
     def check_number_of_doors_of_filled_coolers(self, params, func=None, proportion=None):
-        """
-        This function calculates number of doors of filled Coolers
-
-        """
         if func == 'get scenes':
             if not proportion:
                 proportion = 0.8
@@ -1139,10 +1151,6 @@ class CCRUKPIToolBox:
         return result
 
     def check_number_of_scenes_given_facings(self, params):
-        """
-        This function calculates number of doors of filled Coolers
-
-        """
         set_total_res = 0
         for p in params.values()[0]:
             if p.get('Formula').strip() != 'number of scenes with have at least target amount of facings':
@@ -1384,7 +1392,7 @@ class CCRUKPIToolBox:
             if p.get('Children') is not None:
                 children_scores = []
                 for child in params.values()[0]:
-                    if child.get('KPI ID') in [int(x) for x in p.get('Children').split(', ')]:
+                    if child.get('KPI ID') in self.children_to_int_list(p.get("Children")):
                         res = self.calculate_number_of_skus_in_single_scene_type(
                             params, child, kpi_fk)
                         children_scores.append(res)
@@ -1604,8 +1612,7 @@ class CCRUKPIToolBox:
             if p.get('Formula').strip() != "sum of atomic KPI result" or not p.get("Children"):
                 continue
             kpi_fk = self.kpi_fetcher.get_kpi_fk(p.get('KPI name Eng'))
-            children = map(int, str(p.get("Children")).strip().replace(
-                " ", "").replace(",", "\n").replace("\n\n", "\n").split("\n"))
+            children = self.children_to_int_list(p.get("Children"))
             kpi_total = 0
             atomic_result_total = 0
             for c in params.values()[0]:
@@ -1680,8 +1687,7 @@ class CCRUKPIToolBox:
             if p.get('Formula').strip() != "number of atomic KPI Passed" or not p.get("Children"):
                 continue
             kpi_fk = self.kpi_fetcher.get_kpi_fk(p.get('KPI name Eng'))
-            children = map(int, str(p.get("Children")).strip().replace(
-                " ", "").replace(",", "\n").replace("\n\n", "\n").split("\n"))
+            children = self.children_to_int_list(p.get("Children"))
             kpi_total = 0
             for c in params.values()[0]:
                 if c.get("KPI ID") in children:
@@ -1713,7 +1719,8 @@ class CCRUKPIToolBox:
                         scenes_list = self.check_number_of_doors_of_filled_coolers(
                             c, func='get scenes')
                         atomic_res = len(scenes_list)
-                    elif c.get("Formula").strip() == "number of SKU per Door RANGE":
+                    elif c.get("Formula").strip() in ('number of SKU per Door RANGE',
+                                                      'number of SKU per Door RANGE TOTAL'):
                         atomic_score = self.check_number_of_skus_per_door_range(params, level=3)
                     elif c.get("Formula").strip() == "Scenes with no tagging":
                         atomic_res = self.check_number_of_scenes_no_tagging(c, level=3)
@@ -1763,8 +1770,7 @@ class CCRUKPIToolBox:
             if p.get('Formula').strip() != "number of atomic KPI Passed on the same scene" or not p.get("Children"):
                 continue
             kpi_fk = self.kpi_fetcher.get_kpi_fk(p.get('KPI name Eng'))
-            children = map(int, str(p.get("Children")).strip().replace(
-                " ", "").replace(",", "\n").replace("\n\n", "\n").split("\n"))
+            children = self.children_to_int_list(p.get("Children"))
             info_by_kpi_id = self.build_dict(params.values()[0], 'KPI ID')
             if p.get('depends on'):
                 depends_on_kpi_name = p.get('depends on')
@@ -1859,8 +1865,7 @@ class CCRUKPIToolBox:
                     kpi_total += atomic_score / 100
                 else:
                     if c.get("Formula").strip() == "number of sub atomic KPI Passed":
-                        sub_atomic_children = map(int, str(c.get("Children")).strip().replace(
-                            " ", "").replace(",", "\n").replace("\n\n", "\n").split("\n"))
+                        sub_atomic_children = self.children_to_int_list(c.get("Children"))
                         for sub_atomic in sub_atomic_children:
                             sub_atomic_info = info_by_kpi_id.get(sub_atomic)
                             sub_atomic_res = 0
@@ -1910,8 +1915,7 @@ class CCRUKPIToolBox:
                             break
                     if doors < 2:
                         return -1
-        children = map(int, str(params.get("Children")).strip().replace(
-            " ", "").replace(",", "\n").replace("\n\n", "\n").split("\n"))
+        children = self.children_to_int_list(params.get("Children"))
         total_res = 0
         for c in all_params.values()[0]:
             if c.get("KPI ID") in children:
@@ -1973,8 +1977,7 @@ class CCRUKPIToolBox:
                                                                                       proportion_param=0.9)
                         break
             kpi_fk = self.kpi_fetcher.get_kpi_fk(p.get('KPI name Eng'))
-            children = map(int, str(p.get("Children")).strip().replace(
-                " ", "").replace(",", "\n").replace("\n\n", "\n").split("\n"))
+            children = self.children_to_int_list(p.get("Children"))
             kpi_total = 0
             kpi_total_weight = 0
             for c in params.values()[0]:
@@ -2240,239 +2243,239 @@ class CCRUKPIToolBox:
             {"KPI ID": kpi_id, "scene_fk": scene, "result": result, "score": score})
         return
 
-    @kpi_runtime()
-    def prepare_hidden_set(self, params, kpi_set_name):
-        # table3 = pd.DataFrame([])  # for debugging
-
-        self.set_kpi_set(kpi_set_name, INTEGRATION)
-        kpi_df = self.kpi_fetcher.kpi_static_data
-
-        kpi_facts = []
-        for p in params.values()[1]:
-            atomic_kpi_id = p.get("KPI ID")
-            atomic_kpi_name = p.get("KPI name Eng").upper().replace(" ", "_")
-            atomic_kpi = kpi_df[kpi_df["atomic_kpi_name"] == atomic_kpi_name]["atomic_kpi_fk"]
-            if atomic_kpi.size > 0:
-                atomic_kpi_fk = atomic_kpi.values[0]
-            else:
-                continue
-
-            if p.get("Formula").strip() == "Plan":
-                result = self.check_planned_visit_flag()
-                kpi_facts.append({"id": atomic_kpi_id, "name": atomic_kpi_name, "display_text": atomic_kpi_name,
-                                  "atomic_kpi_fk": atomic_kpi_fk, "result": result,
-                                  "format": p.get("Result Format")})
-
-            elif p.get("Formula").strip() == "number of KPI Passed" and p.get("Type") == "SESSION LEVEL":  # session level
-                result = 0
-                for k in self.kpi_facts_hidden:
-                    if k.get("KPI ID") in p.get("Children List"):
-                        if k.get("score") == 100:
-                            result += 1
-                kpi_facts.append({"id": atomic_kpi_id, "name": atomic_kpi_name, "display_text": atomic_kpi_name,
-                                  "atomic_kpi_fk": atomic_kpi_fk, "result": result,
-                                  "format": p.get("Result Format")})
-
-            elif p.get("Formula").strip() == "KPI score" and p.get("Type") == "SESSION LEVEL":  # session level
-                for k in self.kpi_facts_hidden:
-                    if k.get("KPI ID") in p.get("Children List"):
-                        result = k.get("score")
-                        kpi_facts.append({"id": atomic_kpi_id, "name": atomic_kpi_name, "display_text": atomic_kpi_name,
-                                          "atomic_kpi_fk": atomic_kpi_fk, "result": result,
-                                          "format": p.get("Result Format")})
-
-            elif p.get("Formula").strip() == "sum of KPI scores" and p.get("Type") == "SESSION LEVEL":  # session level
-                result = 0
-                for k in self.kpi_facts_hidden:
-                    if k.get("KPI ID") in p.get("Children List"):
-                        result += k.get("score")
-                kpi_facts.append({"id": atomic_kpi_id, "name": atomic_kpi_name, "display_text": atomic_kpi_name,
-                                  "atomic_kpi_fk": atomic_kpi_fk, "result": result,
-                                  "format": p.get("Result Format")})
-
-            elif p.get("Formula").strip() == "KPI result" and p.get("Type") == "SESSION LEVEL":  # session level
-                for k in self.kpi_facts_hidden:
-                    if k.get("KPI ID") in p.get("Children List"):
-                        result = k.get("result")
-                        kpi_facts.append({"id": atomic_kpi_id, "name": atomic_kpi_name, "display_text": atomic_kpi_name,
-                                          "atomic_kpi_fk": atomic_kpi_fk, "result": result,
-                                          "format": p.get("Result Format")})
-
-            elif p.get("Formula").strip() == "sum of KPI results" and p.get("Type") == "SESSION LEVEL":  # session level
-                result = 0
-                for k in self.kpi_facts_hidden:
-                    if k.get("KPI ID") in p.get("Children List"):
-                        result += k.get("result")
-                kpi_facts.append({"id": atomic_kpi_id, "name": atomic_kpi_name, "display_text": atomic_kpi_name,
-                                  "atomic_kpi_fk": atomic_kpi_fk, "result": result,
-                                  "format": p.get("Result Format")})
-
-            elif p.get("Formula").strip() == "Passed or Failed Value" and p.get("Type") == "SESSION LEVEL":  # session level
-                for k in self.kpi_facts_hidden:
-                    if k.get("KPI ID") in p.get("Children List"):
-                        passed_failed = str(p.get("Values")).replace(" ", "").replace(
-                            ",", "\n").replace("\n\n", "\n").split("\n")
-                        if k.get("score") == 100:
-                            result = passed_failed[0]
-                        elif len(passed_failed) > 1:
-                            result = passed_failed[1]
-                        else:
-                            result = ""
-                        kpi_facts.append({"id": atomic_kpi_id, "name": atomic_kpi_name, "display_text": atomic_kpi_name,
-                                          "atomic_kpi_fk": atomic_kpi_fk, "result": result,
-                                          "format": p.get("Result Format")})
-
-            elif p.get("Formula").strip() == "Value" and p.get("Type") == "SCENE LEVEL":  # scene level
-                scenes = self.get_relevant_scenes(params)
-                for scene in scenes:
-                    scene_uid = self.scenes_info[self.scenes_info['scene_fk']
-                                                 == scene]['scene_uid'].values[0]
-                    kpi_facts.append({"id": atomic_kpi_id, "name": atomic_kpi_name,
-                                      "display_text": atomic_kpi_name + "@" + scene_uid,
-                                      "atomic_kpi_fk": atomic_kpi_fk, "result": p.get("Values"),
-                                      "scene_uid": scene_uid, "scene_id": scene,
-                                      "format": p.get("Result Format")})
-
-            elif p.get("Formula").strip() == "Attribute" and p.get("Type") == "SCENE LEVEL":  # scene level
-                scenes = self.get_relevant_scenes(params)
-                if p.get("Values") == 'template.additional_attribute_1':
-                    for scene in scenes:
-                        scene_uid = self.scenes_info[self.scenes_info['scene_fk']
-                                                     == scene]['scene_uid'].values[0]
-                        template = self.scenes_info[self.scenes_info['scene_fk']
-                                                    == scene]['template_fk'].values[0]
-                        result = self.templates[self.templates['template_fk']
-                                                == template]['additional_attribute_1'].values[0]
-                        kpi_facts.append({"id": atomic_kpi_id, "name": atomic_kpi_name,
-                                          "display_text": atomic_kpi_name + "@" + scene_uid,
-                                          "atomic_kpi_fk": atomic_kpi_fk, "result": result,
-                                          "scene_uid": scene_uid, "scene_id": scene,
-                                          "format": p.get("Result Format")})
-
-            elif p.get("Formula").strip() == "Passed or Failed Value" and p.get("Type") == "SCENE LEVEL":  # scene level
-                scenes = self.get_relevant_scenes(params)
-                for scene in scenes:
-                    scene_uid = self.scenes_info[self.scenes_info['scene_fk']
-                                                 == scene]['scene_uid'].values[0]
-                    for k in self.kpi_facts_hidden:
-                        if k.get("KPI ID") in p.get("Children List") and k.get("scene_fk") == scene:
-                            passed_failed = str(p.get("Values")).replace(" ", "").replace(
-                                ",", "\n").replace("\n\n", "\n").split("\n")
-                            if k.get("score") == 100:
-                                result = passed_failed[0]
-                            elif len(passed_failed) > 1:
-                                result = passed_failed[1]
-                            else:
-                                result = ""
-                            kpi_facts.append({"id": atomic_kpi_id, "name": atomic_kpi_name,
-                                              "display_text": atomic_kpi_name + "@" + scene_uid,
-                                              "atomic_kpi_fk": atomic_kpi_fk, "result": result,
-                                              "scene_uid": scene_uid, "scene_id": scene,
-                                              "format": p.get("Result Format")})
-
-        kpi_set_fk = kpi_df['kpi_set_fk'].values[0]
-        kpi_fk = kpi_df['kpi_fk'].values[0]
-        kpi_name = kpi_set_name
-        for kf in kpi_facts:
-            if not kf.get("result") is None:
-                if kf.get("format") == "Integer":
-                    result_format = 'NUM'
-                    result_formatted = str(int(kf.get("result")))
-                elif kf.get("format") == "Decimal.2":
-                    result_format = 'NUM'
-                    result_formatted = format(float(kf.get("result")), ".2f")
-                else:
-                    result_format = 'STR'
-                    result_formatted = str(kf.get("result"))
-
-                atomic_kpi_name = kf.get("name")
-                atomic_kpi_fk = kf.get("atomic_kpi_fk")
-                if not atomic_kpi_fk and self.kpi_set_type not in SKIP_OLD_KPIS_FROM_WRITING:
-                    Log.error(
-                        'Atomic KPI Name <{}> is not found for KPI FK <{}> of KPI Set <{}> in static.atomic_kpi table'
-                        ''.format(atomic_kpi_name, kpi_fk, self.kpi_set_name))
-                attributes_for_table3 = pd.DataFrame([(kf.get("display_text"),
-                                                       self.session_uid,
-                                                       kpi_set_name,
-                                                       self.store_id,
-                                                       self.visit_date.isoformat(),
-                                                       dt.datetime.utcnow().isoformat(),
-                                                       None,
-                                                       kpi_fk,
-                                                       atomic_kpi_fk,
-                                                       None,
-                                                       result_formatted,
-                                                       atomic_kpi_name)],
-                                                     columns=['display_text',
-                                                              'session_uid',
-                                                              'kps_name',
-                                                              'store_fk',
-                                                              'visit_date',
-                                                              'calculation_time',
-                                                              'score',
-                                                              'kpi_fk',
-                                                              'atomic_kpi_fk',
-                                                              'threshold',
-                                                              'result',
-                                                              'name'])
-                self.write_to_kpi_results_old(attributes_for_table3, 'level3')
-                self.update_kpi_scores_and_results(
-                    {'KPI ID': kf.get('id'),
-                     'KPI name Eng': kf.get('name'),
-                     'KPI name Rus': kf.get('name'),
-                     'Parent': 0,
-                     'Sorting': 0},
-                    {'scene_uid': kf.get('scene_uid'),
-                     'scene_id': kf.get('scene_id'),
-                     'result': result_formatted,
-                     'format': result_format,
-                     'level': 1})
-
-                # table3 = table3.append(attributes_for_table3)  # for debugging
-
-        if not kpi_fk and self.kpi_set_type not in SKIP_OLD_KPIS_FROM_WRITING:
-            Log.error('KPI Name <{}> is not found for KPI Set <{}> in static.kpi table'
-                      ''.format(kpi_name, self.kpi_set_name))
-        attributes_for_table2 = pd.DataFrame([(self.session_uid,
-                                               self.store_id,
-                                               self.visit_date.isoformat(),
-                                               kpi_fk,
-                                               kpi_name,
-                                               None)],
-                                             columns=['session_uid',
-                                                      'store_fk',
-                                                      'visit_date',
-                                                      'kpi_fk',
-                                                      'kpk_name',
-                                                      'score'])
-        self.write_to_kpi_results_old(attributes_for_table2, 'level2')
-
-        if not kpi_set_fk and self.kpi_set_type not in SKIP_OLD_KPIS_FROM_WRITING:
-            Log.error('KPI Set <{}> is not found in static.kpi_set table'
-                      ''.format(self.kpi_set_name))
-        attributes_for_table1 = pd.DataFrame([(kpi_set_name,
-                                               self.session_uid,
-                                               self.store_id,
-                                               self.visit_date.isoformat(),
-                                               None,
-                                               kpi_set_fk)],
-                                             columns=['kps_name',
-                                                      'session_uid',
-                                                      'store_fk',
-                                                      'visit_date',
-                                                      'score_1',
-                                                      'kpi_set_fk'])
-        self.write_to_kpi_results_old(attributes_for_table1, 'level1')
-
-        self.update_kpi_scores_and_results(
-            {'KPI ID': 0,
-             'KPI name Eng': kpi_set_name,
-             'KPI name Rus': kpi_set_name,
-             'Parent': 'root',
-             'Sorting': 0},
-            {'level': 0})
-
-        return
+    # @kpi_runtime()
+    # def prepare_hidden_set(self, params, kpi_set_name):
+    #     # table3 = pd.DataFrame([])  # for debugging
+    #
+    #     self.set_kpi_set(kpi_set_name, INTEGRATION)
+    #     kpi_df = self.kpi_fetcher.kpi_static_data
+    #
+    #     kpi_facts = []
+    #     for p in params.values()[1]:
+    #         atomic_kpi_id = p.get("KPI ID")
+    #         atomic_kpi_name = p.get("KPI name Eng").upper().replace(" ", "_")
+    #         atomic_kpi = kpi_df[kpi_df["atomic_kpi_name"] == atomic_kpi_name]["atomic_kpi_fk"]
+    #         if atomic_kpi.size > 0:
+    #             atomic_kpi_fk = atomic_kpi.values[0]
+    #         else:
+    #             continue
+    #
+    #         if p.get("Formula").strip() == "Plan":
+    #             result = self.check_planned_visit_flag()
+    #             kpi_facts.append({"id": atomic_kpi_id, "name": atomic_kpi_name, "display_text": atomic_kpi_name,
+    #                               "atomic_kpi_fk": atomic_kpi_fk, "result": result,
+    #                               "format": p.get("Result Format")})
+    #
+    #         elif p.get("Formula").strip() == "number of KPI Passed" and p.get("Type") == "SESSION LEVEL":  # session level
+    #             result = 0
+    #             for k in self.kpi_facts_hidden:
+    #                 if k.get("KPI ID") in p.get("Children List"):
+    #                     if k.get("score") == 100:
+    #                         result += 1
+    #             kpi_facts.append({"id": atomic_kpi_id, "name": atomic_kpi_name, "display_text": atomic_kpi_name,
+    #                               "atomic_kpi_fk": atomic_kpi_fk, "result": result,
+    #                               "format": p.get("Result Format")})
+    #
+    #         elif p.get("Formula").strip() == "KPI score" and p.get("Type") == "SESSION LEVEL":  # session level
+    #             for k in self.kpi_facts_hidden:
+    #                 if k.get("KPI ID") in p.get("Children List"):
+    #                     result = k.get("score")
+    #                     kpi_facts.append({"id": atomic_kpi_id, "name": atomic_kpi_name, "display_text": atomic_kpi_name,
+    #                                       "atomic_kpi_fk": atomic_kpi_fk, "result": result,
+    #                                       "format": p.get("Result Format")})
+    #
+    #         elif p.get("Formula").strip() == "sum of KPI scores" and p.get("Type") == "SESSION LEVEL":  # session level
+    #             result = 0
+    #             for k in self.kpi_facts_hidden:
+    #                 if k.get("KPI ID") in p.get("Children List"):
+    #                     result += k.get("score")
+    #             kpi_facts.append({"id": atomic_kpi_id, "name": atomic_kpi_name, "display_text": atomic_kpi_name,
+    #                               "atomic_kpi_fk": atomic_kpi_fk, "result": result,
+    #                               "format": p.get("Result Format")})
+    #
+    #         elif p.get("Formula").strip() == "KPI result" and p.get("Type") == "SESSION LEVEL":  # session level
+    #             for k in self.kpi_facts_hidden:
+    #                 if k.get("KPI ID") in p.get("Children List"):
+    #                     result = k.get("result")
+    #                     kpi_facts.append({"id": atomic_kpi_id, "name": atomic_kpi_name, "display_text": atomic_kpi_name,
+    #                                       "atomic_kpi_fk": atomic_kpi_fk, "result": result,
+    #                                       "format": p.get("Result Format")})
+    #
+    #         elif p.get("Formula").strip() == "sum of KPI results" and p.get("Type") == "SESSION LEVEL":  # session level
+    #             result = 0
+    #             for k in self.kpi_facts_hidden:
+    #                 if k.get("KPI ID") in p.get("Children List"):
+    #                     result += k.get("result")
+    #             kpi_facts.append({"id": atomic_kpi_id, "name": atomic_kpi_name, "display_text": atomic_kpi_name,
+    #                               "atomic_kpi_fk": atomic_kpi_fk, "result": result,
+    #                               "format": p.get("Result Format")})
+    #
+    #         elif p.get("Formula").strip() == "Passed or Failed Value" and p.get("Type") == "SESSION LEVEL":  # session level
+    #             for k in self.kpi_facts_hidden:
+    #                 if k.get("KPI ID") in p.get("Children List"):
+    #                     passed_failed = str(p.get("Values")).replace(" ", "").replace(
+    #                         ",", "\n").replace("\n\n", "\n").split("\n")
+    #                     if k.get("score") == 100:
+    #                         result = passed_failed[0]
+    #                     elif len(passed_failed) > 1:
+    #                         result = passed_failed[1]
+    #                     else:
+    #                         result = ""
+    #                     kpi_facts.append({"id": atomic_kpi_id, "name": atomic_kpi_name, "display_text": atomic_kpi_name,
+    #                                       "atomic_kpi_fk": atomic_kpi_fk, "result": result,
+    #                                       "format": p.get("Result Format")})
+    #
+    #         elif p.get("Formula").strip() == "Value" and p.get("Type") == "SCENE LEVEL":  # scene level
+    #             scenes = self.get_relevant_scenes(params)
+    #             for scene in scenes:
+    #                 scene_uid = self.scenes_info[self.scenes_info['scene_fk']
+    #                                              == scene]['scene_uid'].values[0]
+    #                 kpi_facts.append({"id": atomic_kpi_id, "name": atomic_kpi_name,
+    #                                   "display_text": atomic_kpi_name + "@" + scene_uid,
+    #                                   "atomic_kpi_fk": atomic_kpi_fk, "result": p.get("Values"),
+    #                                   "scene_uid": scene_uid, "scene_id": scene,
+    #                                   "format": p.get("Result Format")})
+    #
+    #         elif p.get("Formula").strip() == "Attribute" and p.get("Type") == "SCENE LEVEL":  # scene level
+    #             scenes = self.get_relevant_scenes(params)
+    #             if p.get("Values") == 'template.additional_attribute_1':
+    #                 for scene in scenes:
+    #                     scene_uid = self.scenes_info[self.scenes_info['scene_fk']
+    #                                                  == scene]['scene_uid'].values[0]
+    #                     template = self.scenes_info[self.scenes_info['scene_fk']
+    #                                                 == scene]['template_fk'].values[0]
+    #                     result = self.templates[self.templates['template_fk']
+    #                                             == template]['additional_attribute_1'].values[0]
+    #                     kpi_facts.append({"id": atomic_kpi_id, "name": atomic_kpi_name,
+    #                                       "display_text": atomic_kpi_name + "@" + scene_uid,
+    #                                       "atomic_kpi_fk": atomic_kpi_fk, "result": result,
+    #                                       "scene_uid": scene_uid, "scene_id": scene,
+    #                                       "format": p.get("Result Format")})
+    #
+    #         elif p.get("Formula").strip() == "Passed or Failed Value" and p.get("Type") == "SCENE LEVEL":  # scene level
+    #             scenes = self.get_relevant_scenes(params)
+    #             for scene in scenes:
+    #                 scene_uid = self.scenes_info[self.scenes_info['scene_fk']
+    #                                              == scene]['scene_uid'].values[0]
+    #                 for k in self.kpi_facts_hidden:
+    #                     if k.get("KPI ID") in p.get("Children List") and k.get("scene_fk") == scene:
+    #                         passed_failed = str(p.get("Values")).replace(" ", "").replace(
+    #                             ",", "\n").replace("\n\n", "\n").split("\n")
+    #                         if k.get("score") == 100:
+    #                             result = passed_failed[0]
+    #                         elif len(passed_failed) > 1:
+    #                             result = passed_failed[1]
+    #                         else:
+    #                             result = ""
+    #                         kpi_facts.append({"id": atomic_kpi_id, "name": atomic_kpi_name,
+    #                                           "display_text": atomic_kpi_name + "@" + scene_uid,
+    #                                           "atomic_kpi_fk": atomic_kpi_fk, "result": result,
+    #                                           "scene_uid": scene_uid, "scene_id": scene,
+    #                                           "format": p.get("Result Format")})
+    #
+    #     kpi_set_fk = kpi_df['kpi_set_fk'].values[0]
+    #     kpi_fk = kpi_df['kpi_fk'].values[0]
+    #     kpi_name = kpi_set_name
+    #     for kf in kpi_facts:
+    #         if not kf.get("result") is None:
+    #             if kf.get("format") == "Integer":
+    #                 result_format = 'NUM'
+    #                 result_formatted = str(int(kf.get("result")))
+    #             elif kf.get("format") == "Decimal.2":
+    #                 result_format = 'NUM'
+    #                 result_formatted = format(float(kf.get("result")), ".2f")
+    #             else:
+    #                 result_format = 'STR'
+    #                 result_formatted = str(kf.get("result"))
+    #
+    #             atomic_kpi_name = kf.get("name")
+    #             atomic_kpi_fk = kf.get("atomic_kpi_fk")
+    #             if not atomic_kpi_fk and self.kpi_set_type not in SKIP_OLD_KPIS_FROM_WRITING:
+    #                 Log.error(
+    #                     'Atomic KPI Name <{}> is not found for KPI FK <{}> of KPI Set <{}> in static.atomic_kpi table'
+    #                     ''.format(atomic_kpi_name, kpi_fk, self.kpi_set_name))
+    #             attributes_for_table3 = pd.DataFrame([(kf.get("display_text"),
+    #                                                    self.session_uid,
+    #                                                    kpi_set_name,
+    #                                                    self.store_id,
+    #                                                    self.visit_date.isoformat(),
+    #                                                    dt.datetime.utcnow().isoformat(),
+    #                                                    None,
+    #                                                    kpi_fk,
+    #                                                    atomic_kpi_fk,
+    #                                                    None,
+    #                                                    result_formatted,
+    #                                                    atomic_kpi_name)],
+    #                                                  columns=['display_text',
+    #                                                           'session_uid',
+    #                                                           'kps_name',
+    #                                                           'store_fk',
+    #                                                           'visit_date',
+    #                                                           'calculation_time',
+    #                                                           'score',
+    #                                                           'kpi_fk',
+    #                                                           'atomic_kpi_fk',
+    #                                                           'threshold',
+    #                                                           'result',
+    #                                                           'name'])
+    #             self.write_to_kpi_results_old(attributes_for_table3, 'level3')
+    #             self.update_kpi_scores_and_results(
+    #                 {'KPI ID': kf.get('id'),
+    #                  'KPI name Eng': kf.get('name'),
+    #                  'KPI name Rus': kf.get('name'),
+    #                  'Parent': 0,
+    #                  'Sorting': 0},
+    #                 {'scene_uid': kf.get('scene_uid'),
+    #                  'scene_id': kf.get('scene_id'),
+    #                  'result': result_formatted,
+    #                  'format': result_format,
+    #                  'level': 1})
+    #
+    #             # table3 = table3.append(attributes_for_table3)  # for debugging
+    #
+    #     if not kpi_fk and self.kpi_set_type not in SKIP_OLD_KPIS_FROM_WRITING:
+    #         Log.error('KPI Name <{}> is not found for KPI Set <{}> in static.kpi table'
+    #                   ''.format(kpi_name, self.kpi_set_name))
+    #     attributes_for_table2 = pd.DataFrame([(self.session_uid,
+    #                                            self.store_id,
+    #                                            self.visit_date.isoformat(),
+    #                                            kpi_fk,
+    #                                            kpi_name,
+    #                                            None)],
+    #                                          columns=['session_uid',
+    #                                                   'store_fk',
+    #                                                   'visit_date',
+    #                                                   'kpi_fk',
+    #                                                   'kpk_name',
+    #                                                   'score'])
+    #     self.write_to_kpi_results_old(attributes_for_table2, 'level2')
+    #
+    #     if not kpi_set_fk and self.kpi_set_type not in SKIP_OLD_KPIS_FROM_WRITING:
+    #         Log.error('KPI Set <{}> is not found in static.kpi_set table'
+    #                   ''.format(self.kpi_set_name))
+    #     attributes_for_table1 = pd.DataFrame([(kpi_set_name,
+    #                                            self.session_uid,
+    #                                            self.store_id,
+    #                                            self.visit_date.isoformat(),
+    #                                            None,
+    #                                            kpi_set_fk)],
+    #                                          columns=['kps_name',
+    #                                                   'session_uid',
+    #                                                   'store_fk',
+    #                                                   'visit_date',
+    #                                                   'score_1',
+    #                                                   'kpi_set_fk'])
+    #     self.write_to_kpi_results_old(attributes_for_table1, 'level1')
+    #
+    #     self.update_kpi_scores_and_results(
+    #         {'KPI ID': 0,
+    #          'KPI name Eng': kpi_set_name,
+    #          'KPI name Rus': kpi_set_name,
+    #          'Parent': 'root',
+    #          'Sorting': 0},
+    #         {'level': 0})
+    #
+    #     return
 
     @staticmethod
     def merge_insert_queries(insert_queries):
@@ -2622,8 +2625,7 @@ class CCRUKPIToolBox:
             if p.get('Formula').strip() != "number of doors given sos" or not p.get("Children"):
                 continue
             kpi_fk = self.kpi_fetcher.get_kpi_fk(p.get('KPI name Eng'))
-            children = map(int, str(p.get("Children")).strip().replace(
-                " ", "").replace(",", "\n").replace("\n\n", "\n").split("\n"))
+            children = self.children_to_int_list(p.get("Children"))
             first_atomic_score = second_atomic_res = 0
             for c in params.values()[0]:
                 if c.get("KPI ID") in children and c.get("Formula").strip() == "atomic sos":
@@ -2663,8 +2665,7 @@ class CCRUKPIToolBox:
             if p.get('Formula').strip() != "number of doors given number of SKUs" or not p.get("Children"):
                 continue
             kpi_fk = self.kpi_fetcher.get_kpi_fk(p.get('KPI name Eng'))
-            children = map(int, str(p.get("Children")).strip().replace(
-                " ", "").replace(",", "\n").replace("\n\n", "\n").split("\n"))
+            children = self.children_to_int_list(p.get("Children"))
             first_atomic_scores = []
             for c in params.values()[0]:
                 if c.get("KPI ID") in children and c.get("Formula").strip() == "atomic number of SKUs":
@@ -3105,8 +3106,7 @@ class CCRUKPIToolBox:
                                                               == kpi_name]['kpi_fk'].values[0]
                     kpi_name = param.get('KPI name Eng')
                     kpi_weight = param.get('KPI Weight')
-                    # children = param.get('Children').replace('\n', '').replace(' ', '').split(',')
-                    children = str(param.get('Children')).replace('\n', '').replace(' ', '').split(',')
+                    children = self.children_to_str_list(param.get('Children'))
 
                     sum_of_scores = 0
                     sum_of_weights = 0
