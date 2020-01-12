@@ -286,6 +286,8 @@ class Results(object):
     def get_mpip_svr_fk(self, kpi, allowed):
         if allowed:
             kpi = '{}_allowed'.format(kpi)
+        if len(kpi) > 100:
+            kpi = kpi[:100]
         df = self.mpip_sr[self.mpip_sr['name'] == kpi]
         if df.empty:
             if self.mpip_sr.empty:
