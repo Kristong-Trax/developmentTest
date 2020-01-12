@@ -35,6 +35,7 @@ class TNUVAILToolBox:
         self.initial_scif = self.scif.copy()
 
     def get_relevant_assortment_instance(self, assortment):
+        # upon recalculation products with OOS reasons are added to scif for assortment calculation
         if self.data_provider.session_info.status.values[0] == Consts.COMPLETED_STATUS:
             self.update_scif_for_assortment()
             assortment = Assortment(self.data_provider, self.output)
@@ -69,8 +70,10 @@ class TNUVAILToolBox:
     def main_calculation(self):
         """ This function calculates all of the KPIs' results."""
         self._calculate_facings_sos()
+        # update assortment and data_provider with products with OOS reason in the session
         self.assortment = self.get_relevant_assortment_instance(self.assortment)
         self._calculate_assortment()
+        # reset scif property in toolbox and data_provider to initial values
         self.scif = self.initial_scif
         self.data_provider._set_scene_item_facts(self.scif)
         self.common_v2.commit_results_data()
