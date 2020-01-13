@@ -78,8 +78,10 @@ class Const(object):
     REGIONS = ['left', 'center', 'right']
     NUM_REG = 3
     MM_FT = 304.8
+    ALL_DIRECTIONS = 4
     ALLOWED_FLAGS = ['unconnected', 'connected', 'encapsulated']
     ALL_SCENES_REQUIRED = 'All Scenes Required'
+    DIRECTION = 'direction'
 
     COMP_COL_BASE = 'Store_Att_'
 
