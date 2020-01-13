@@ -412,11 +412,8 @@ if __name__ == '__main__':
     LoggerInitializer.init('running sanity creator script')
     replace_configurations_file = True
     copy_configuration_file_to_traxexport(replace_configurations_file)
-    projects = {'jnjes': ['B3A71179-0951-4E53-BC70-74BBFE7B8FB5', 'E364A590-0DBD-4222-A1B6-EF855242552C'],
-                'jnjde': ['16e572b3-bd8a-457f-9e55-153dbe18e406'],
-                'jnjit': ['cf112d55-d277-44d7-9312-b51d3d2a871f', '9694531c-5498-49f1-a585-99cc0820e994'],
-                'inbevci': ['b8bb126d-8aca-42d7-80b7-d1cd26850d2d']}
-    projects = {'inbevci': ['b8bb126d-8aca-42d7-80b7-d1cd26850d2d']}
+    projects = {'jnjes': [],
+                'inbevci': []}
     for project in projects:
         try:
             kpi_results = pd.DataFrame()
