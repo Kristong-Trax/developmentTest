@@ -220,14 +220,49 @@ class TestTnuvailv2(TestUnitCase):
                                                        expected_result) == 1)
         self.assertTrue(all(test_result_list))
 
-    # session has only milk shelf
+    # Test session has only milk shelf. Only SOS with respect to milk products is expected to be calculated
+    # Empties are ignored. Stack is not included.
     def test_calculate_facings_sos_calculates_kpis_only_for_policies_existing_in_store(self):
-        matches, scene = self.create_scif_matches_stitch_groups_data_mocks([2])
+        matches, scene = self.create_scif_matches_stitch_groups_data_mocks([3])
         self.mock_get_last_session_oos_results(DataTestUnitTnuva.previous_results_empty)
         self.mock_get_oos_reasons_for_session(DataTestUnitTnuva.oos_exclude_res_1)
         self.mock_session_info_property(DataTestUnitTnuva.session_info_new)
         tool_box = TNUVAILToolBox(self.data_provider_mock, self.output)
+        tool_box.common_v2.write_to_db_result = MagicMock()
+        tool_box._calculate_facings_sos()
 
+        results_df = self.build_results_df(tool_box)
+        self.assertEquals(len(results_df[results_df['fk'] == 1997]), 1)
+        self.assertEquals(len(results_df[results_df['fk'] == 1998]), 3)
+        self.assertEquals(len(results_df[results_df['fk'] == 1999]), 4)
+        self.assertEquals(len(results_df[results_df['fk'] == 2000]), 0)
+        self.assertEquals(len(results_df[results_df['fk'] == 2001]), 0)
+        self.assertEquals(len(results_df[results_df['fk'] == 2002]), 0)
+
+        expected_list = []
+        expected_list.append({'fk': 1997, 'numerator_id': 810, 'numerator_result': 3,
+                              'denominator_result': 8, 'score': round(3.0/8 * 100, 2),
+                              'result': round(3.0/8 * 100, 2)})
+        expected_list.append({'fk': 1998, 'numerator_id': 262, 'score': 2.0/5 * 100, 'denominator_result': 5,
+                              'numerator_result': 2, 'denominator_id': 810, 'result': 2.0/5 * 100})
+        expected_list.append({'fk': 1998, 'numerator_id': 252, 'score': 0, 'denominator_result': 2,
+                              'numerator_result': 0, 'denominator_id': 810, 'result': 0})
+        expected_list.append({'fk': 1998, 'numerator_id': 269, 'score': 100, 'denominator_result': 1,
+                              'numerator_result': 1, 'denominator_id': 810, 'result': 100})
+
+        expected_list.append({'fk': 1999, 'numerator_id': 810, 'score': 2.0 / 5 * 100, 'denominator_result': 5,
+                              'numerator_result': 2, 'denominator_id': 262, 'result': 2.0 / 5 * 100})
+        expected_list.append({'fk': 1999, 'numerator_id': 2, 'score': 3.0 / 5 * 100, 'denominator_result': 5,
+                              'numerator_result': 3, 'denominator_id': 262, 'result': 3.0 / 5 * 100})
+        expected_list.append({'fk': 1999, 'numerator_id': 2, 'score': 100, 'denominator_result': 2,
+                              'numerator_result': 2, 'denominator_id': 252, 'result': 100})
+        expected_list.append({'fk': 1999, 'numerator_id': 810, 'score': 100, 'denominator_result': 1,
+                              'numerator_result': 1, 'denominator_id': 269, 'result': 100})
+
+        test_result_list = []
+        for expected_result in expected_list:
+            test_result_list.append(self.check_results(results_df, expected_result) == 1)
+        self.assertTrue(all(test_result_list))
 
     @staticmethod
     def check_results(results_df, expected_results_dict):
@@ -241,4 +276,24 @@ class TestTnuvailv2(TestUnitCase):
         query = ' & '.join('{} {} {}'.format(i, j, k) for i, j, k in zip(column, expression, condition))
         filtered_df = results_df.query(query)
         return len(filtered_df)
+
+    @staticmethod
+    def build_results_df(tool_box):
+        results_list = [res[2] for res in tool_box.common_v2.write_to_db_result.mock_calls]
+        results_df = pd.DataFrame.from_records(results_list)
+        return results_df
+
+    # @staticmethod
+    # def build_results_df_and_hierarchies_dict_new_tables(tool_box, *keys_for_hierarchy):
+    #     results_list = [res[2] for res in tool_box.common.write_to_db_result.mock_calls]
+    #     results_df = pd.DataFrame.from_records(results_list)
+    #
+    #     hierarchies_dict = {}
+    #     for res in results_list:
+    #         h_keys = [res.get(k) for k in keys_for_hierarchy]
+    #         h_keys = tuple(filter(lambda x: x == x and x is not None, h_keys))
+    #         # h_keys = tuple([res.get(k) for k in keys_for_hierarchy])
+    #         hierarchies_dict.update({h_keys: res.get('identifier_parent')})
+    #
+    #     return results_df, hierarchies_dict
 
