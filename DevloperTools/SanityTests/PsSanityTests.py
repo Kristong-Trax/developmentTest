@@ -81,7 +81,7 @@ class PsSanityTestsFuncs(TestFunctionalCase):
         cursor = connector.db.cursor(MySQLdb.cursors.DictCursor)
         cursor.execute("""
                         SELECT 
-                        distinct kpi.client_name, res.session_fk, res.kpi_level_2_fk, numerator_id, 
+                        distinct kpi.type, kpi.client_name, res.session_fk, res.kpi_level_2_fk, numerator_id, 
                         denominator_id, context_id, numerator_result, denominator_result, result
                         FROM
                             report.kpi_level_2_results res

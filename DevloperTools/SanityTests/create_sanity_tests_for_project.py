@@ -130,7 +130,7 @@ class TestKEnginePsCode(PsSanityTestsFuncs):
         # self.mock_object('save_latest_templates',
         #                  path='KPIUtils.GlobalProjects.DIAGEO.Utils.TemplatesUtil.TemplateHandler')
         # self.mock_object('download_template',
-        #                  path='KPIUtils.GlobalProjects.DIAGEO.Utils.TemplatesUtil.TemplateHandler').return_value = \\
+        #                  path='KPIUtils.GlobalProjects.DIAGEO.Utils.TemplatesUtil.TemplateHandler').return_value = \\In
         #     relative_position_template
         return
 
@@ -291,7 +291,7 @@ class GetKpisDataForTesting:
                 SELECT 
                     res.session_fk,
                     ses.session_uid,
-                    COUNT(DISTINCT client_name) AS kpi_count
+                    COUNT(DISTINCT kpi.type) AS kpi_count
                 FROM
                     report.kpi_level_2_results res
                         LEFT JOIN
@@ -412,14 +412,18 @@ if __name__ == '__main__':
     LoggerInitializer.init('running sanity creator script')
     replace_configurations_file = True
     copy_configuration_file_to_traxexport(replace_configurations_file)
-    projects = ['diageouk']
+    projects = {'jnjes': ['B3A71179-0951-4E53-BC70-74BBFE7B8FB5', 'E364A590-0DBD-4222-A1B6-EF855242552C'],
+                'jnjde': ['16e572b3-bd8a-457f-9e55-153dbe18e406'],
+                'jnjit': ['cf112d55-d277-44d7-9312-b51d3d2a871f', '9694531c-5498-49f1-a585-99cc0820e994'],
+                'inbevci': ['b8bb126d-8aca-42d7-80b7-d1cd26850d2d']}
+    projects = {'inbevci': ['b8bb126d-8aca-42d7-80b7-d1cd26850d2d']}
     for project in projects:
         try:
             kpi_results = pd.DataFrame()
             # Leave sessions param empty if you want the script will find you the optimal session to use.
             # Otherwise: insert a session_uid / list of session_uids / dict of session_uid
             #            and scenes in the following format {'a': [1, 3]}
-            sessions = ['DF1654DF-9A89-40AB-8CE8-100D8D07E0DC']
+            sessions = projects[project]
             # In case you don't need to generate a new seed, just comment out the below row
             sessions, kpi_results = create_seed(project=project, sessions_from_user=sessions)
             if kpi_results is None:
