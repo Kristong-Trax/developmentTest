@@ -566,14 +566,11 @@ class ToolBox:
             additional={'allowed_products_filters': {'product_type': ['Irrelevant']}, 'minimum_block_ratio': 0,
                         'use_masking_only': True, 'minimum_facings_adjacent': 1, 'include_stacking': True})
 
-        if blocks_adjacent.empty:
-            return 0
-
-        if blocks_adjacent.loc[blocks_adjacent.is_adj].empty:
+        if blocks_adjacent.empty or blocks_adjacent.loc[blocks_adjacent.is_adj].empty:
             return 0
 
         # if there is an adj, and direction doesnt matter -> true
-        if len(allowed_edges) == 4:
+        if len(allowed_edges) == Const.NUM_DIRECTIONS:
             return 1
         adjacents_block = blocks_adjacent.loc[blocks_adjacent.is_adj]
         for index, block in adjacents_block.iterrows():
@@ -581,63 +578,88 @@ class ToolBox:
                 return 1
         return 0
 
-    def adjacency_flankor_disruptor(self, biggest_adj_block, allowed_edges, filters_brand_a, filters_brand_b):
+    def adjacency_flankor_disruptor(self, adj_block, allowed_edges, filters_brand_a, filters_brand_b):
         """
           This function receive df with: anchor_block (Graph), tested_block (Graph) , which has adj between them. the df
           contain more fields such as:  anchor_facing_percentage, tested_facing_percentage, scene_fk, is_adj that is True.
           Function verified:
               * Anchor and tested products should be in block with minimum 2 facings
               * Anchor can be on the right/left of the tested product.
-        """
-        anchor_graph = biggest_adj_block.anchor_block
-        tested_graph = biggest_adj_block.tested_block
+                """
+        anchor_graph = adj_block.anchor_block
+        tested_graph = adj_block.tested_block
         anchor_key = self._find_block_node(anchor_graph, filters_brand_a)
         tested_key = self._find_block_node(tested_graph, filters_brand_b)
-        if anchor_key is None or tested_key is None:
-            Log.warning("Function adjacency_flankor_disruptor cant find graph key based  on brand filter")
-            return 0
 
-        if biggest_adj_block.anchor_block.node(data=True)[anchor_key]['facings'] < 2 or \
-                biggest_adj_block.tested_block.node(data=True)[tested_key]['facings'] < 2:
+        if not self._blocks_adj_basic_validation(adj_block, anchor_key, tested_key):
             return 0
-
-        # make sure tested_block facings are smaller than anchor_block facings
-        if biggest_adj_block.anchor_block.node(data=True)[anchor_key]['facings'] < \
-                biggest_adj_block.tested_block.node(data=True)[tested_key]['facings']:
-            return 0
-
-        # extract graph edges  in scene
-        adj_scene = biggest_adj_block.scene_fk
-        scene_key = [key for key in self.adjacency_builder.block.adj_graphs_by_scene.keys() if str(adj_scene) in key][0]
-        scene_graph = self.adjacency_builder.block.adj_graphs_by_scene[scene_key]
+        scene_graph = self._extract_graph_edges_in_scene(adj_block)
 
         # anchor and tested nodes in the desired blocks
-        anchor_nodes = biggest_adj_block.anchor_block.node(data=True)[anchor_key]['scene_match_fk']
-        tested_nodes = biggest_adj_block.tested_block.node(data=True)[tested_key]['scene_match_fk']
+        anchor_nodes = adj_block.anchor_block.node(data=True)[anchor_key]['scene_match_fk']
+        tested_nodes = adj_block.tested_block.node(data=True)[tested_key]['scene_match_fk']
 
         # From scene edges extract only edges of  anchor
-        scene_graph_adj = pd.DataFrame(scene_graph.adj.items())
-        scene_graph_adj.rename(columns={0: 'anchor_node', 1: 'adj_set'}, inplace=True)
-        scene_graph_adj_anchor = scene_graph_adj.loc[scene_graph_adj.anchor_node.isin(list(anchor_nodes))]
+        scene_graph_adj_anchor = self._extract_only_brand_edges(scene_graph.adj.items(), anchor_nodes)
 
-        #  extract edges information
-        edges_list = []
-        edges = scene_graph_adj_anchor.adj_set.values
-        for edge in edges:
-            edges_list.extend(edge.items())
+        edges_list = self._extract_edges_info(scene_graph_adj_anchor)
 
         # extract only edges to tested nodes
-        scene_adj_tested = pd.DataFrame(edges_list)
-        scene_adj_tested.rename(columns={0: 'test_node', 1: 'edge_info'}, inplace=True)
-        scene_adj_tested = scene_adj_tested[scene_adj_tested['test_node'].isin(tested_nodes)]
+        scene_adj_tested = self._extract_only_brand_edges(edges_list, tested_nodes)
 
         # extract only edges in correct direction
-        for value in scene_adj_tested.edge_info.values:
+        for value in scene_adj_tested.edges.values:
             if value.get('direction') in allowed_edges:
                 return 1
         return 0
 
-    def _find_block_node(self, graph, filters):
+    @staticmethod
+    def _extract_edges_info(scene_graph):
+        """ Extracting all the edges from scene graph , return list of dict  """
+        edges_list = []
+        edges = scene_graph.edges.values
+        for edge in edges:
+            edges_list.extend(edge.items())
+        return edges_list
+
+    @staticmethod
+    def _extract_only_brand_edges(scene_graph, brand_nodes):
+        """ Based on a list of nodes(scene match fks) from the same brand It filters the scene graph and return
+            df with the brand nodes and its edges list
+        """
+        scene_graph_adj = pd.DataFrame(scene_graph)
+        scene_graph_adj.rename(columns={0: 'nodes', 1: 'edges'}, inplace=True)
+        scene_graph_adj_brand = scene_graph_adj.loc[scene_graph_adj.nodes.isin(list(brand_nodes))]
+        return scene_graph_adj_brand
+
+    def _extract_graph_edges_in_scene(self, adj_block):
+        """ Extract from block class the scene graph based on the scene of the current adj_block"""
+        adj_scene = adj_block.scene_fk
+        scene_key = [key for key in self.adjacency_builder.block.adj_graphs_by_scene.keys() if str(adj_scene) in key][0]
+        scene_graph = self.adjacency_builder.block.adj_graphs_by_scene[scene_key]
+        return scene_graph
+
+    @staticmethod
+    def _blocks_adj_basic_validation(adj_block, anchor_key, tested_key):
+        """
+        Doing basic validation for kpi "flankor and disruptor"  ,making sure anchor block and tested block are valid
+        """
+        if anchor_key is None or tested_key is None:
+            Log.warning("Function adjacency_flankor_disruptor cant find graph key based  on brand filter")
+            return 0
+
+        if adj_block.anchor_block.node(data=True)[anchor_key]['facings'] < 2 or \
+                adj_block.tested_block.node(data=True)[tested_key]['facings'] < 2:
+            return 0
+
+            # make sure tested_block facings are smaller than anchor_block facings
+        if adj_block.anchor_block.node(data=True)[anchor_key]['facings'] < \
+                adj_block.tested_block.node(data=True)[tested_key]['facings']:
+            return 0
+        return 1
+
+    @staticmethod
+    def _find_block_node(graph, filters):
         """
         Function receives graph and filters , based on brand name the function return the block key.
         """

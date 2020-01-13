@@ -24,6 +24,7 @@ class Const(object):
     BLOCKING = 'Blocking'
     SHELF_PLACEMENT = 'Shelf Placement'
     PRODUCT_SEQUENCE = 'Product Sequence'
+    NUM_DIRECTIONS = 4
 
 
 
