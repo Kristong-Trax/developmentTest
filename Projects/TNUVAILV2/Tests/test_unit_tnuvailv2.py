@@ -189,7 +189,48 @@ class TestTnuvailv2(TestUnitCase):
         self.assertEquals(len(tool_box.scif), 14)
 
     def test_get_relevant_assortment_instance_does_not_change_scif_and_data_provider_if_session_completed_and_att3_not_eq_scene(self):
-        pass
+        matches, scene = self.create_scif_matches_stitch_groups_data_mocks([1])
+        self.mock_get_last_session_oos_results(DataTestUnitTnuva.previous_results_empty)
+        self.mock_get_oos_reasons_for_session(DataTestUnitTnuva.oos_exclude_res_2)
+        self.mock_session_info_property(DataTestUnitTnuva.session_info_completed)
+        tool_box = TNUVAILToolBox(self.data_provider_mock, self.output)
+        self.assertEquals(len(tool_box.scif), 13)
+        self.assertEquals(len(tool_box.data_provider[Data.SCENE_ITEM_FACTS]), 13)
+        assortment = tool_box.get_relevant_assortment_instance(tool_box.assortment)
+        self.assertEquals(len(assortment.data_provider[Data.SCENE_ITEM_FACTS]), 13)
+        self.assertEquals(len(tool_box.scif), 13)
+
+    def test_get_relevant_assortment_instance_appends_rows_to_scif_and_data_provider_accordingly_based_on_oos_res(self):
+        matches, scene = self.create_scif_matches_stitch_groups_data_mocks([1, 2])
+        self.mock_get_last_session_oos_results(DataTestUnitTnuva.previous_results_empty)
+        self.mock_get_oos_reasons_for_session(DataTestUnitTnuva.oos_exclude_res_3)
+        self.mock_session_info_property(DataTestUnitTnuva.session_info_completed)
+        tool_box = TNUVAILToolBox(self.data_provider_mock, self.output)
+        self.assertEquals(len(tool_box.scif), 18)
+        self.assertEquals(len(tool_box.data_provider[Data.SCENE_ITEM_FACTS]), 18)
+        assortment = tool_box.get_relevant_assortment_instance(tool_box.assortment)
+        self.assertEquals(len(assortment.data_provider[Data.SCENE_ITEM_FACTS]), 20)
+        self.assertEquals(len(tool_box.scif), 20)
+        expected_results = list()
+        expected_results.append({'kpi_fk_lvl3': 3017, 'in_store': 0, 'product_fk': 2})
+        expected_results.append({'kpi_fk_lvl3': 3017, 'in_store': 0, 'product_fk': 3})
+        # test_result_list = []
+        # for expected_result in expected_results:
+        #     test_result_list.append(self.check_results(lvl3_ass_res, expected_result) == 1)
+        # self.assertTrue(all(test_result_list))
+
+    @staticmethod
+    def check_results(results_df, expected_results_dict):
+        column = []
+        expression = []
+        condition = []
+        for key, value in expected_results_dict.items():
+            column.append(key)
+            expression.append('==')
+            condition.append(value)
+        query = ' & '.join('{} {} {}'.format(i, j, k) for i, j, k in zip(column, expression, condition))
+        filtered_df = results_df.query(query)
+        return len(filtered_df)
 
     # def test_calculate_availability_assortment_list_empty(self):
     #     ass_res = self.mock_object('Assortment.get_lvl3_relevant_ass',
@@ -907,19 +948,8 @@ class TestTnuvailv2(TestUnitCase):
     #     self.assertEquals(duplicate_res['fk'], 3042)
     #     self.check_duplicate_kpi_results_mirrors_parent(duplicate_parent_res, duplicate_res)
     #
-    # @staticmethod
-    # def check_results(results_df, expected_results_dict):
-    #     column = []
-    #     expression = []
-    #     condition = []
-    #     for key, value in expected_results_dict.items():
-    #         column.append(key)
-    #         expression.append('==')
-    #         condition.append(value)
-    #     query = ' & '.join('{} {} {}'.format(i, j, k) for i, j, k in zip(column, expression, condition))
-    #     filtered_df = results_df.query(query)
-    #     return len(filtered_df)
-    #
+
+
     # @staticmethod
     # def get_parameter_series_for_kpi_calculation(store_atomics, kpi_name):
     #     param_df = store_atomics[store_atomics['kpi_type'] == kpi_name]

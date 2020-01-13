@@ -129,3 +129,10 @@ class DataTestUnitTnuva(object):
         {'store_fk': 1, 'date': '2019-12-18', 'session_uid': '236c1577-0ecb-4bf9-88b9-c9e87ab17c58',
          'product_fk': 11, 'oos_message_fk': 40, 'type': 3, 'description': 'OOS-Correct Tag'}
     ])
+
+    oos_exclude_res_3 = pd.DataFrame.from_records([
+        {'store_fk': 1, 'date': '2019-12-18', 'session_uid': '236c1577-0ecb-4bf9-88b9-c9e87ab17c58',
+         'product_fk': 6, 'oos_message_fk': 40, 'type': 3, 'description': 'OOS-Correct Tag'},
+        {'store_fk': 1, 'date': '2019-12-18', 'session_uid': '236c1577-0ecb-4bf9-88b9-c9e87ab17c58',
+         'product_fk': 11, 'oos_message_fk': 40, 'type': 3, 'description': 'OOS-Correct Tag'}
+    ])
