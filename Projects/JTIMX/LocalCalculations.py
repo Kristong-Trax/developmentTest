@@ -10,7 +10,7 @@ if __name__ == '__main__':
     Config.init()
     project_name = 'jtimx'
     data_provider = KEngineDataProvider(project_name)
-    session_list = ['2E68E1EF-03C4-4363-97B7-BE84897E0F7F']
+    session_list = ['5eecf0b7-5e05-48a3-9bf7-50bb545196ae']
     for session in session_list:
         data_provider.load_session_data(session)
         output = Output()
