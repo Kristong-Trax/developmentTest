@@ -70,47 +70,47 @@ class DataTestUnitTnuva(object):
     assortment_store = pd.DataFrame.from_records([
         {'additional_attributes': '{}', 'assortment_fk': 108, 'assortment_group_fk': 16,
          'assortment_super_group_fk': nan, 'group_target_date': nan, 'in_store': 0,
-         'kpi_fk_lvl1': nan, 'kpi_fk_lvl2': 3000, 'kpi_fk_lvl3': 3001, 'product_fk': 15603,
+         'kpi_fk_lvl1': nan, 'kpi_fk_lvl2': 3000, 'kpi_fk_lvl3': 3001, 'product_fk': 1,
          'super_group_target': None, 'target': nan},
         {'additional_attributes': '{}', 'assortment_fk': 108, 'assortment_group_fk': 16,
          'assortment_super_group_fk': nan, 'group_target_date': nan, 'in_store': 0,
-         'kpi_fk_lvl1': nan, 'kpi_fk_lvl2': 3000, 'kpi_fk_lvl3': 3001, 'product_fk': 15613,
+         'kpi_fk_lvl1': nan, 'kpi_fk_lvl2': 3000, 'kpi_fk_lvl3': 3001, 'product_fk': 2,
          'super_group_target': None, 'target': nan},
         {'additional_attributes': '{}', 'assortment_fk': 108, 'assortment_group_fk': 16,
          'assortment_super_group_fk': nan, 'group_target_date': nan, 'in_store': 0, 'kpi_fk_lvl1': nan,
-         'kpi_fk_lvl2': 3000, 'kpi_fk_lvl3': 3001, 'product_fk': 15639, 'super_group_target': None,
+         'kpi_fk_lvl2': 3000, 'kpi_fk_lvl3': 3001, 'product_fk': 3, 'super_group_target': None,
          'target': nan},
         {'additional_attributes': '{}', 'assortment_fk': 108, 'assortment_group_fk': 16,
          'assortment_super_group_fk': nan, 'group_target_date': nan, 'in_store': 0, 'kpi_fk_lvl1': nan,
-         'kpi_fk_lvl2': 3000, 'kpi_fk_lvl3': 3001, 'product_fk': 15829, 'super_group_target': None,
+         'kpi_fk_lvl2': 3000, 'kpi_fk_lvl3': 3001, 'product_fk': 4, 'super_group_target': None,
          'target': nan},
         {'additional_attributes': '{}', 'assortment_fk': 168, 'assortment_group_fk': 76,
          'assortment_super_group_fk': nan, 'group_target_date': nan, 'in_store': 0, 'kpi_fk_lvl1': nan,
-         'kpi_fk_lvl2': 3002, 'kpi_fk_lvl3': 3003, 'product_fk': 15628, 'super_group_target': None,
+         'kpi_fk_lvl2': 3002, 'kpi_fk_lvl3': 3003, 'product_fk': 5, 'super_group_target': None,
          'target': nan},
         {'additional_attributes': '{}', 'assortment_fk': 168, 'assortment_group_fk': 76,
          'assortment_super_group_fk': nan, 'group_target_date': nan, 'in_store': 0, 'kpi_fk_lvl1': nan,
-         'kpi_fk_lvl2': 3002, 'kpi_fk_lvl3': 3003, 'product_fk': 15631, 'super_group_target': None,
+         'kpi_fk_lvl2': 3002, 'kpi_fk_lvl3': 3003, 'product_fk': 6, 'super_group_target': None,
          'target': nan},
         {'additional_attributes': '{}', 'assortment_fk': 153, 'assortment_group_fk': 61,
          'assortment_super_group_fk': nan, 'group_target_date': nan, 'in_store': 0, 'kpi_fk_lvl1': nan,
-         'kpi_fk_lvl2': 3000, 'kpi_fk_lvl3': 3001, 'product_fk': 15854, 'super_group_target': None,
+         'kpi_fk_lvl2': 3000, 'kpi_fk_lvl3': 3001, 'product_fk': 7, 'super_group_target': None,
          'target': nan},
         {'additional_attributes': '{}', 'assortment_fk': 153, 'assortment_group_fk': 61,
          'assortment_super_group_fk': nan, 'group_target_date': nan, 'in_store': 0, 'kpi_fk_lvl1': nan,
-         'kpi_fk_lvl2': 3000, 'kpi_fk_lvl3': 3001, 'product_fk': 15874, 'super_group_target': None,
+         'kpi_fk_lvl2': 3000, 'kpi_fk_lvl3': 3001, 'product_fk': 8, 'super_group_target': None,
          'target': nan},
         {'additional_attributes': '{}', 'assortment_fk': 153, 'assortment_group_fk': 61,
          'assortment_super_group_fk': nan, 'group_target_date': nan, 'in_store': 0, 'kpi_fk_lvl1': nan,
-         'kpi_fk_lvl2': 3000, 'kpi_fk_lvl3': 3001, 'product_fk': 15881, 'super_group_target': None,
+         'kpi_fk_lvl2': 3000, 'kpi_fk_lvl3': 3001, 'product_fk': 9, 'super_group_target': None,
          'target': nan},
         {'additional_attributes': '{}', 'assortment_fk': 153, 'assortment_group_fk': 61,
          'assortment_super_group_fk': nan, 'group_target_date': nan, 'in_store': 0, 'kpi_fk_lvl1': nan,
-         'kpi_fk_lvl2': 3000, 'kpi_fk_lvl3': 3001, 'product_fk': 15884, 'super_group_target': None,
+         'kpi_fk_lvl2': 3000, 'kpi_fk_lvl3': 3001, 'product_fk': 10, 'super_group_target': None,
          'target': nan},
         {'additional_attributes': '{}', 'assortment_fk': 153, 'assortment_group_fk': 61,
          'assortment_super_group_fk': nan, 'group_target_date': nan, 'in_store': 0, 'kpi_fk_lvl1': nan,
-         'kpi_fk_lvl2': 3000, 'kpi_fk_lvl3': 3001, 'product_fk': 15915, 'super_group_target': None,
+         'kpi_fk_lvl2': 3000, 'kpi_fk_lvl3': 3001, 'product_fk': 11, 'super_group_target': None,
          'target': nan}])
 
     test_case_1 = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'Data', 'test_case.xlsx')
@@ -118,5 +118,14 @@ class DataTestUnitTnuva(object):
     own_manuf_property = pd.DataFrame.from_records([
         {u'param_group': u'Customer Specifications', u'param_name': u'manufacturer_id', u'param_value': u'810'}])
 
-    # oos_exclude_res_1 = pd.DataFrame.from_records()
-    # previous_results = pd.DataFrame.from_records()
+    oos_exclude_res_empty = pd.DataFrame()
+    previous_results_empty = pd.DataFrame()
+    previous_results_no_session = None
+    oos_exclude_res_1 = pd.DataFrame.from_records([
+        {'store_fk': 1, 'date': '2019-12-18', 'session_uid': '236c1577-0ecb-4bf9-88b9-c9e87ab17c58',
+         'product_fk': 6, 'oos_message_fk': 40, 'type': 3, 'description': 'OOS-Correct Tag'}
+    ])
+    oos_exclude_res_2 = pd.DataFrame.from_records([
+        {'store_fk': 1, 'date': '2019-12-18', 'session_uid': '236c1577-0ecb-4bf9-88b9-c9e87ab17c58',
+         'product_fk': 11, 'oos_message_fk': 40, 'type': 3, 'description': 'OOS-Correct Tag'}
+    ])
