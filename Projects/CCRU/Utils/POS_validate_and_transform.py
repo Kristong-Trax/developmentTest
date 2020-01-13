@@ -318,6 +318,9 @@ class CCRUKPIS:
                                     sheet_name=POS_LIST['sheet_name'], convert_float=True)
         pos_list_df = pos_list_df.where((pd.notnull(pos_list_df)), None)
 
+        structure_ok = True
+        contents_ok = True
+
         pos_all = pd.DataFrame(columns=POS_COLUMNS)
         for index, row in pos_list_df.iterrows():
             pos_name = row['POS']
@@ -345,9 +348,6 @@ class CCRUKPIS:
             pos['00_File_out'] = file_out
             pos['00_Sheet_out'] = sheet_out
 
-            structure_is_ok = True
-            contents_is_ok = True
-
             # stripping all data from leading and trailing extra spaces
             columns = pos.columns
             for i, r in pos.iterrows():
@@ -364,9 +364,9 @@ class CCRUKPIS:
                     if error_field_name not in pos.columns:
                         pos[error_field_name] = None
                     pos[error_field_name] = error_name
-                    structure_is_ok = False
+                    structure_ok &= False
 
-            if structure_is_ok:  # All mandatory columns are in place
+            if structure_ok:  # All mandatory columns are in place
 
                 # fixing Sorting
                 pos['Sorting'] = range(1, len(pos.index) + 1)
@@ -535,12 +535,12 @@ class CCRUKPIS:
                             pos[error_field_name] = None
                         pos.loc[pos[field_name].isin(duplicates_list), error_field_name] = \
                             pos[pos[field_name].isin(duplicates_list)][field_name].astype(unicode)
-                        structure_is_ok = False
+                        structure_ok &= False
 
                 # checking level
                 pos['00_level_checked'] = None
                 field_name = 'level'
-                error_name = 'INCORRECT'
+                error_name = 'INCORRECT VALUE'
                 error_field_name = ERROR_FIELD_NAME.format(field_name, error_name)
                 if field_name in pos.columns:
                     # run 1
@@ -550,7 +550,7 @@ class CCRUKPIS:
                         if error_field_name not in pos.columns:
                             pos[error_field_name] = None
                         pos.loc[incorrect_levels_mask, error_field_name] = incorrect_levels
-                        structure_is_ok = False
+                        structure_ok &= False
                     # run 2
                     for i, r0 in pos[pos['Children'].notnull()].iterrows():
                         if r0['level'] == 1 and r0['Parent'] is None:
@@ -559,7 +559,7 @@ class CCRUKPIS:
                             if error_field_name not in pos.columns:
                                 pos[error_field_name] = None
                             pos.loc[i, error_field_name] = unicode(r0[field_name])
-                            structure_is_ok = False
+                            structure_ok &= False
                         level = None
                         for j, r1 in pos[pos['Parent'] == r0['KPI ID']].iterrows():
                             pos.loc[j, '00_level_checked'] = 1
@@ -571,7 +571,7 @@ class CCRUKPIS:
                                 if error_field_name not in pos.columns:
                                     pos[error_field_name] = None
                                 pos.loc[j, error_field_name] = unicode(r1[field_name])
-                                structure_is_ok = False
+                                structure_ok &= False
 
                 # checking loose Parent
                 field_name = 'Parent'
@@ -583,7 +583,7 @@ class CCRUKPIS:
                             pos[error_field_name] = None
                         pos.loc[pos['00_level_checked'].isnull(), error_field_name] = \
                             pos[pos['00_level_checked'].isnull()][field_name].astype(unicode)
-                        structure_is_ok = False
+                        structure_ok &= False
 
                 # checking length of KPI name Eng
                 field_name = 'KPI name Eng'
@@ -595,9 +595,9 @@ class CCRUKPIS:
                             if error_field_name not in pos.columns:
                                 pos[error_field_name] = None
                             pos.loc[i, error_field_name] = unicode(r[field_name])
-                            contents_is_ok = False
+                            contents_ok &= False
 
-                # checking length of KPI nam Rus
+                # checking length of KPI name Rus
                 field_name = 'KPI name Rus'
                 error_name = 'TOO SHORT (<{})'.format(MIN_KPI_NAME_LENGTH)
                 error_field_name = ERROR_FIELD_NAME.format(field_name, error_name)
@@ -607,7 +607,7 @@ class CCRUKPIS:
                             if error_field_name not in pos.columns:
                                 pos[error_field_name] = None
                             pos.loc[i, error_field_name] = unicode(r[field_name])
-                            contents_is_ok = False
+                            contents_ok &= False
 
                 # checking for restricted symbols in KPI names Eng
                 field_name = 'KPI name Eng'
@@ -619,7 +619,7 @@ class CCRUKPIS:
                             if error_field_name not in pos.columns:
                                 pos[error_field_name] = None
                             pos.loc[i, error_field_name] = unicode(r[field_name])
-                            contents_is_ok = False
+                            contents_ok &= False
 
                 # checking for restricted symbols in KPI names Rus
                 field_name = 'KPI name Rus'
@@ -631,7 +631,7 @@ class CCRUKPIS:
                             if error_field_name not in pos.columns:
                                 pos[error_field_name] = None
                             pos.loc[i, error_field_name] = unicode(r[field_name])
-                            contents_is_ok = False
+                            contents_ok &= False
 
                 # checking for duplicate KPI name Eng
                 field_name = 'KPI name Eng'
@@ -646,7 +646,7 @@ class CCRUKPIS:
                             pos[error_field_name] = None
                         pos.loc[pos[field_name].isin(duplicates_list), error_field_name] = \
                             pos[pos[field_name].isin(duplicates_list)][field_name].astype(unicode)
-                        contents_is_ok = False
+                        contents_ok &= False
 
                 # checking total KPI Weight == 1.0
                 field_name = 'KPI Weight'
@@ -656,7 +656,7 @@ class CCRUKPIS:
                     total_weight = round(pos[field_name].sum(), 7)
                     if total_weight != 1.0:
                         pos[error_field_name] = 'TOTAL = ' + str(total_weight)
-                        contents_is_ok = False
+                        contents_ok &= False
 
                 # checking KPI Weight for decimals
                 field_name = 'KPI Weight'
@@ -671,11 +671,11 @@ class CCRUKPIS:
                             pos[error_field_name] = None
                         pos.loc[incorrect_precision_mask, error_field_name] = \
                             pos[incorrect_precision_mask][field_name].astype(unicode)
-                        contents_is_ok = False
+                        contents_ok &= False
 
                 # checking Category KPI Type
                 field_name = 'Category KPI Type'
-                error_name = 'INCORRECT'
+                error_name = 'INCORRECT VALUE'
                 error_field_name = ERROR_FIELD_NAME.format(field_name, error_name)
                 if field_name in pos.columns:
                     for i, r in pos[pos[field_name].notnull()].iterrows():
@@ -683,11 +683,11 @@ class CCRUKPIS:
                             if error_field_name not in pos.columns:
                                 pos[error_field_name] = None
                             pos.loc[i, error_field_name] = unicode(r[field_name])
-                            contents_is_ok = False
+                            contents_ok &= False
 
                 # checking Category KPI Value
                 field_name = 'Category KPI Value'
-                error_name = 'INCORRECT'
+                error_name = 'INCORRECT VALUE'
                 error_field_name = ERROR_FIELD_NAME.format(field_name, error_name)
                 if field_name in pos.columns:
                     for i, r in pos[pos['Category KPI Type'].notnull()].iterrows():
@@ -695,11 +695,11 @@ class CCRUKPIS:
                             if error_field_name not in pos.columns:
                                 pos[error_field_name] = None
                             pos.loc[i, error_field_name] = unicode(r[field_name])
-                            contents_is_ok = False
+                            contents_ok &= False
 
                 # checking Formula
                 field_name = 'Formula'
-                error_name = 'INCORRECT'
+                error_name = 'INCORRECT VALUE'
                 error_field_name = ERROR_FIELD_NAME.format(field_name, error_name)
                 if field_name in pos.columns:
                     for i, r in pos.iterrows():
@@ -707,7 +707,7 @@ class CCRUKPIS:
                             if error_field_name not in pos.columns:
                                 pos[error_field_name] = None
                             pos.loc[i, error_field_name] = unicode(r[field_name])
-                            contents_is_ok = False
+                            contents_ok &= False
 
                 # checking Formula Parent
                 field_name = 'Formula'
@@ -722,12 +722,12 @@ class CCRUKPIS:
                             if error_field_name not in pos.columns:
                                 pos[error_field_name] = None
                             pos.loc[i, error_field_name] = unicode(parent_formula) + ' X<= ' + unicode(r[field_name])
-                            contents_is_ok = False
-                            structure_is_ok = False
+                            contents_ok &= False
+                            structure_ok &= False
 
                 # checking Logical Operator
                 field_name = 'Logical Operator'
-                error_name = 'INCORRECT'
+                error_name = 'INCORRECT VALUE'
                 error_field_name = ERROR_FIELD_NAME.format(field_name, error_name)
                 if field_name in pos.columns:
                     for i, r in pos[(pos['KPI name Eng'].isin(ALLOWED_LOGICAL_OPERATOR_KPIS) &
@@ -736,7 +736,7 @@ class CCRUKPIS:
                             if error_field_name not in pos.columns:
                                 pos[error_field_name] = None
                             pos.loc[i, error_field_name] = unicode(r[field_name])
-                            contents_is_ok = False
+                            contents_ok &= False
 
                 # checking 'depends on' name
                 field_name = 'depends on'
@@ -749,7 +749,7 @@ class CCRUKPIS:
                             if error_field_name not in pos.columns:
                                 pos[error_field_name] = None
                             pos.loc[i, error_field_name] = unicode(r[field_name])
-                            contents_is_ok = False
+                            contents_ok &= False
 
                 # checking 'depends on' logic
                 field_name = 'depends on'
@@ -769,11 +769,11 @@ class CCRUKPIS:
                             if error_field_name not in pos.columns:
                                 pos[error_field_name] = None
                             pos.loc[i, error_field_name] = unicode(depends_on_formula) + ' X<= ' + unicode(depends_on)
-                            contents_is_ok = False
+                            contents_ok &= False
 
                 # checking Type
                 field_name = 'Type'
-                error_name = 'INCORRECT'
+                error_name = 'INCORRECT VALUE'
                 error_field_name = ERROR_FIELD_NAME.format(field_name, error_name)
                 if field_name in pos.columns:
                     for i, r in pos[pos[field_name].notnull() | pos['Values'].notnull()].iterrows():
@@ -781,11 +781,11 @@ class CCRUKPIS:
                             if error_field_name not in pos.columns:
                                 pos[error_field_name] = None
                             pos.loc[i, error_field_name] = unicode(r[field_name])
-                            contents_is_ok = False
+                            contents_ok &= False
 
                 # checking Values
                 field_name = 'Values'
-                error_name = 'IRRELEVANT VALUES'
+                error_name = 'INCORRECT VALUES'
                 error_field_name = WARNING_FIELD_NAME.format(field_name, error_name)
                 if field_name in pos.columns:
                     for i, r in pos[pos['Type'].notnull()].iterrows():
@@ -860,11 +860,11 @@ class CCRUKPIS:
                             if error_field_name not in pos.columns:
                                 pos[error_field_name] = None
                             pos.loc[i, error_field_name] = r['Type'] + ': ' + ', '.join(error_values)
-                            contents_is_ok = False
+                            contents_ok &= False
 
                 # checking Products to exclude
                 field_name = 'Products to exclude'
-                error_name = 'IRRELEVANT VALUES'
+                error_name = 'INCORRECT VALUES'
                 error_field_name = WARNING_FIELD_NAME.format(field_name, error_name)
                 if field_name in pos.columns:
                     for i, r in pos[pos[field_name].notnull()].iterrows():
@@ -881,11 +881,11 @@ class CCRUKPIS:
                             if error_field_name not in pos.columns:
                                 pos[error_field_name] = None
                             pos.loc[i, error_field_name] = ', '.join(error_values)
-                            contents_is_ok = False
+                            contents_ok &= False
 
                 # checking Size
                 field_name = 'Size'
-                error_name = 'IRRELEVANT VALUES'
+                error_name = 'INCORRECT VALUES'
                 error_field_name = WARNING_FIELD_NAME.format(field_name, error_name)
                 if field_name in pos.columns:
                     for i, r in pos[pos[field_name].notnull()].iterrows():
@@ -901,11 +901,11 @@ class CCRUKPIS:
                             if error_field_name not in pos.columns:
                                 pos[error_field_name] = None
                             pos.loc[i, error_field_name] = ', '.join(error_values)
-                            contents_is_ok = False
+                            contents_ok &= False
 
                 # checking Form Factor
                 field_name = 'Form Factor'
-                error_name = 'IRRELEVANT VALUES'
+                error_name = 'INCORRECT VALUES'
                 error_field_name = WARNING_FIELD_NAME.format(field_name, error_name)
                 if field_name in pos.columns:
                     for i, r in pos[pos[field_name].notnull()].iterrows():
@@ -919,11 +919,11 @@ class CCRUKPIS:
                             if error_field_name not in pos.columns:
                                 pos[error_field_name] = None
                             pos.loc[i, error_field_name] = ', '.join(error_values)
-                            contents_is_ok = False
+                            contents_ok &= False
 
                 # checking Form factors to exclude
                 field_name = 'Form factors to exclude'
-                error_name = 'IRRELEVANT VALUES'
+                error_name = 'INCORRECT VALUES'
                 error_field_name = WARNING_FIELD_NAME.format(field_name, error_name)
                 if field_name in pos.columns:
                     for i, r in pos[pos[field_name].notnull()].iterrows():
@@ -940,11 +940,11 @@ class CCRUKPIS:
                             if error_field_name not in pos.columns:
                                 pos[error_field_name] = None
                             pos.loc[i, error_field_name] = ', '.join(error_values)
-                            contents_is_ok = False
+                            contents_ok &= False
 
                 # checking Brand
                 field_name = 'Sub brand'
-                error_name = 'IRRELEVANT VALUES'
+                error_name = 'INCORRECT VALUES'
                 error_field_name = WARNING_FIELD_NAME.format(field_name, error_name)
                 if field_name in pos.columns:
                     for i, r in pos[pos[field_name].notnull()].iterrows():
@@ -960,11 +960,11 @@ class CCRUKPIS:
                             if error_field_name not in pos.columns:
                                 pos[error_field_name] = None
                             pos.loc[i, error_field_name] = ', '.join(error_values)
-                            contents_is_ok = False
+                            contents_ok &= False
 
                 # checking Brand
                 field_name = 'Brand'
-                error_name = 'IRRELEVANT VALUES'
+                error_name = 'INCORRECT VALUES'
                 error_field_name = WARNING_FIELD_NAME.format(field_name, error_name)
                 if field_name in pos.columns:
                     for i, r in pos[pos[field_name].notnull()].iterrows():
@@ -980,11 +980,11 @@ class CCRUKPIS:
                             if error_field_name not in pos.columns:
                                 pos[error_field_name] = None
                             pos.loc[i, error_field_name] = ', '.join(error_values)
-                            contents_is_ok = False
+                            contents_ok &= False
 
                 # checking Sub category
                 field_name = 'Sub category'
-                error_name = 'IRRELEVANT VALUES'
+                error_name = 'INCORRECT VALUES'
                 error_field_name = WARNING_FIELD_NAME.format(field_name, error_name)
                 if field_name in pos.columns:
                     for i, r in pos[pos[field_name].notnull()].iterrows():
@@ -998,11 +998,11 @@ class CCRUKPIS:
                             if error_field_name not in pos.columns:
                                 pos[error_field_name] = None
                             pos.loc[i, error_field_name] = ', '.join(error_values)
-                            contents_is_ok = False
+                            contents_ok &= False
 
                 # checking Product Category
                 field_name = 'Product Category'
-                error_name = 'IRRELEVANT VALUES'
+                error_name = 'INCORRECT VALUES'
                 error_field_name = WARNING_FIELD_NAME.format(field_name, error_name)
                 if field_name in pos.columns:
                     for i, r in pos[pos[field_name].notnull()].iterrows():
@@ -1016,11 +1016,11 @@ class CCRUKPIS:
                             if error_field_name not in pos.columns:
                                 pos[error_field_name] = None
                             pos.loc[i, error_field_name] = ', '.join(error_values)
-                            contents_is_ok = False
+                            contents_ok &= False
 
                 # checking Manufacturer
                 field_name = 'Manufacturer'
-                error_name = 'IRRELEVANT VALUES'
+                error_name = 'INCORRECT VALUES'
                 error_field_name = WARNING_FIELD_NAME.format(field_name, error_name)
                 if field_name in pos.columns:
                     for i, r in pos[pos[field_name].notnull()].iterrows():
@@ -1034,7 +1034,7 @@ class CCRUKPIS:
                             if error_field_name not in pos.columns:
                                 pos[error_field_name] = None
                             pos.loc[i, error_field_name] = ', '.join(error_values)
-                            contents_is_ok = False
+                            contents_ok &= False
 
                 # checking shelf_number
                 field_name = 'shelf_number'
@@ -1052,11 +1052,11 @@ class CCRUKPIS:
                             if error_field_name not in pos.columns:
                                 pos[error_field_name] = None
                             pos.loc[i, error_field_name] = ', '.join(error_values)
-                            contents_is_ok = False
+                            contents_ok &= False
 
                 # checking Zone to include
                 field_name = 'Zone to include'
-                error_name = 'IRRELEVANT VALUES'
+                error_name = 'INCORRECT VALUES'
                 error_field_name = WARNING_FIELD_NAME.format(field_name, error_name)
                 if field_name in pos.columns:
                     for i, r in pos[pos[field_name].notnull()].iterrows():
@@ -1070,11 +1070,11 @@ class CCRUKPIS:
                             if error_field_name not in pos.columns:
                                 pos[error_field_name] = None
                             pos.loc[i, error_field_name] = ', '.join(error_values)
-                            contents_is_ok = False
+                            contents_ok &= False
 
                 # checking Scenes to include
                 field_name = 'Scenes to include'
-                error_name = 'IRRELEVANT VALUES'
+                error_name = 'INCORRECT VALUES'
                 error_field_name = WARNING_FIELD_NAME.format(field_name, error_name)
                 if field_name in pos.columns:
                     for i, r in pos[pos[field_name].notnull()].iterrows():
@@ -1088,11 +1088,11 @@ class CCRUKPIS:
                             if error_field_name not in pos.columns:
                                 pos[error_field_name] = None
                             pos.loc[i, error_field_name] = '; '.join(error_values)
-                            contents_is_ok = False
+                            contents_ok &= False
 
                 # checking Scenes to exclude
                 field_name = 'Scenes to exclude'
-                error_name = 'IRRELEVANT VALUES'
+                error_name = 'INCORRECT VALUES'
                 error_field_name = WARNING_FIELD_NAME.format(field_name, error_name)
                 if field_name in pos.columns:
                     for i, r in pos[pos[field_name].notnull()].iterrows():
@@ -1109,11 +1109,11 @@ class CCRUKPIS:
                             if error_field_name not in pos.columns:
                                 pos[error_field_name] = None
                             pos.loc[i, error_field_name] = '; '.join(error_values)
-                            contents_is_ok = False
+                            contents_ok &= False
 
                 # checking Sub locations to include
                 field_name = 'Sub locations to include'
-                error_name = 'IRRELEVANT VALUES'
+                error_name = 'INCORRECT VALUES'
                 error_field_name = WARNING_FIELD_NAME.format(field_name, error_name)
                 if field_name in pos.columns:
                     for i, r in pos[pos[field_name].notnull()].iterrows():
@@ -1129,11 +1129,11 @@ class CCRUKPIS:
                             if error_field_name not in pos.columns:
                                 pos[error_field_name] = None
                             pos.loc[i, error_field_name] = ', '.join(error_values)
-                            contents_is_ok = False
+                            contents_ok &= False
 
                 # checking Sub locations to exclude
                 field_name = 'Sub locations to exclude'
-                error_name = 'IRRELEVANT VALUES'
+                error_name = 'INCORRECT VALUES'
                 error_field_name = WARNING_FIELD_NAME.format(field_name, error_name)
                 if field_name in pos.columns:
                     for i, r in pos[pos[field_name].notnull()].iterrows():
@@ -1152,11 +1152,11 @@ class CCRUKPIS:
                             if error_field_name not in pos.columns:
                                 pos[error_field_name] = None
                             pos.loc[i, error_field_name] = ', '.join(error_values)
-                            contents_is_ok = False
+                            contents_ok &= False
 
                 # checking Locations to include
                 field_name = 'Locations to include'
-                error_name = 'IRRELEVANT VALUES'
+                error_name = 'INCORRECT VALUES'
                 error_field_name = WARNING_FIELD_NAME.format(field_name, error_name)
                 if field_name in pos.columns:
                     for i, r in pos[pos[field_name].notnull()].iterrows():
@@ -1170,11 +1170,11 @@ class CCRUKPIS:
                             if error_field_name not in pos.columns:
                                 pos[error_field_name] = None
                             pos.loc[i, error_field_name] = ', '.join(error_values)
-                            contents_is_ok = False
+                            contents_ok &= False
 
                 # checking Locations to exclude
                 field_name = 'Locations to exclude'
-                error_name = 'IRRELEVANT VALUES'
+                error_name = 'INCORRECT VALUES'
                 error_field_name = WARNING_FIELD_NAME.format(field_name, error_name)
                 if field_name in pos.columns:
                     for i, r in pos[pos[field_name].notnull()].iterrows():
@@ -1191,9 +1191,9 @@ class CCRUKPIS:
                             if error_field_name not in pos.columns:
                                 pos[error_field_name] = None
                             pos.loc[i, error_field_name] = ', '.join(error_values)
-                            contents_is_ok = False
+                            contents_ok &= False
 
-            if None and structure_is_ok:  # The structure is consistent
+            if None and structure_ok:  # The structure is consistent
 
                 # calculating weights for all levels
                 pos['00_weight'] = None
@@ -1252,7 +1252,7 @@ class CCRUKPIS:
                 check_list = self.kpi_names['kpi_set_name'].unique().tolist()
                 if pos_name not in check_list:
                     pos[error_field_name] = pos[field_name]
-                    contents_is_ok = False
+                    contents_ok &= False
 
                 # checking KPI name Eng names in the DB static.kpi
                 field_name = 'KPI name Eng'
@@ -1264,7 +1264,7 @@ class CCRUKPIS:
                         if error_field_name not in pos.columns:
                             pos[error_field_name] = None
                         pos.loc[i, error_field_name] = unicode(r[field_name])
-                        contents_is_ok = False
+                        contents_ok &= False
 
                 # checking KPI name Eng names in the DB static.atomic_kpi
                 field_name = 'KPI name Eng'
@@ -1278,7 +1278,7 @@ class CCRUKPIS:
                         if error_field_name not in pos.columns:
                             pos[error_field_name] = None
                         pos.loc[i, error_field_name] = unicode(r[field_name])
-                        contents_is_ok = False
+                        contents_ok &= False
 
                 # checking KPI name Eng names in the DB static.kpi_level_2
                 field_name = 'KPI name Eng'
@@ -1291,7 +1291,7 @@ class CCRUKPIS:
                         if error_field_name not in pos.columns:
                             pos[error_field_name] = None
                         pos.loc[i, error_field_name] = kpi_level_2_name
-                        contents_is_ok = False
+                        contents_ok &= False
 
             pos_all = pos_all.append(pos, ignore_index=True)
 

@@ -563,6 +563,11 @@ class CCRUKPIToolBox:
                 [unicode(x).strip() for x in unicode(params.get("Brand")).split(", ")]
         else:
             product_brands = []
+        if params.get("Sub brand"):
+            product_sub_brands = \
+                [unicode(x).strip() for x in unicode(params.get("Sub brand")).split(", ")]
+        else:
+            product_sub_brands = []
         if params.get("Manufacturer"):
             product_manufacturers = \
                 [unicode(x).strip() for x in unicode(params.get("Manufacturer")).split(", ")]
@@ -583,6 +588,7 @@ class CCRUKPIToolBox:
                                          product_categories=product_categories,
                                          product_sub_categories=product_sub_categories,
                                          product_brands=product_brands,
+                                         product_sub_brands=product_sub_brands,
                                          product_manufacturers=product_manufacturers)
 
         if params.get('Formula').strip() == 'each SKU hits facings target':
@@ -807,7 +813,7 @@ class CCRUKPIToolBox:
                         total_res += num_of_doors
                         scenes_passed.append(scene)
         if scenes_passed:
-            if params.get('depends on') == 'filled collers target':
+            if params.get('depends on') == 'filled coolers target':
                 total_res = 0
                 scenes_passed_filled = self.check_number_of_doors_of_filled_coolers(params,
                                                                                     func='get scenes',
@@ -1081,8 +1087,9 @@ class CCRUKPIToolBox:
         for p in params.values()[0]:
             if p.get('level') != level:
                 continue
-            if p.get('Formula').strip() != 'Share of CCH doors which have 98% TCCC facings' \
-                    and p.get('Formula').strip() != 'number of pure Coolers':
+            if p.get('Formula').strip() not in ['number of pure Coolers',
+                                                'Share of CCH doors which have 98% TCCC facings',
+                                                'Share of CCH doors which have 98% TCCC facings and no FC packs']:
                 continue
             scenes = None
             if p.get('depends on'):
@@ -1110,8 +1117,10 @@ class CCRUKPIToolBox:
                 scenes = self.get_relevant_scenes(p)
             if p.get('Formula').strip() == 'number of pure Coolers':
                 score = self.calculate_share_of_cch(p, scenes, sos=False)
-                # if score >= 1:
-                #     score=1
+            elif p.get('Formula').strip() == 'Share of CCH doors which have 98% TCCC facings':
+                score = self.calculate_share_of_cch(p, scenes)
+            elif p.get('Formula').strip() == 'Share of CCH doors which have 98% TCCC facings and no FC packs':
+                score = self.calculate_share_of_cch(p, scenes, no_fc_packs=True)
             else:
                 score = self.calculate_share_of_cch(p, scenes)
             kpi_fk = self.kpi_fetcher.get_kpi_fk(p.get('KPI name Eng'))
@@ -1177,7 +1186,7 @@ class CCRUKPIToolBox:
 
         return set_total_res
 
-    def calculate_share_of_cch(self, p, scenes, sos=True):
+    def calculate_share_of_cch(self, p, scenes, sos=True, no_fc_packs=False):
         sum_of_passed_doors = 0
         sum_of_passed_scenes = 0
         sum_of_all_doors = 0
@@ -1189,6 +1198,14 @@ class CCRUKPIToolBox:
             all_products = self.scif[(self.scif['scene_id'] == scene) &
                                      (self.scif['location_type'] == p.get('Locations to include')) &
                                      (self.scif['product_type'] != 'Empty')]['facings'].sum()
+            if no_fc_packs:  # If there is a product with size > 1L, the scene fails
+                fc_packs = self.scif[(self.scif['scene_id'] == scene) &
+                                     (self.scif['size_unit'] == 'l') & (self.scif['size'] > 1) &
+                                     (self.scif['location_type'] == p.get('Locations to include')) &
+                                     (self.scif['product_type'] != 'Empty')]['facings'].sum()
+                fc_packs_passed = True if fc_packs > 0 else False
+            else:
+                fc_packs_passed = True
             if products_of_tccc == 0:
                 proportion = 0
             else:
@@ -1202,7 +1219,7 @@ class CCRUKPIToolBox:
             else:
                 num_of_doors = 1
                 sum_of_all_doors += num_of_doors
-            if proportion > 0.98:
+            if proportion > 0.98 and fc_packs_passed:
                 sum_of_passed_doors += num_of_doors
                 sum_of_passed_scenes += 1
         if not sos:
@@ -3726,6 +3743,7 @@ class CCRUKPIToolBox:
                            product_categories=None,
                            product_sub_categories=None,
                            product_brands=None,
+                           product_sub_brands=None,
                            product_manufacturers=None):
         object_type_conversion = {'SKUs': 'product_ean_code',
                                   'BRAND': 'brand_name',
@@ -3758,6 +3776,8 @@ class CCRUKPIToolBox:
             final_result = final_result[final_result['sub_category'].isin(product_sub_categories)]
         if product_brands:
             final_result = final_result[final_result['brand_name'].isin(product_brands)]
+        if product_sub_brands:
+            final_result = final_result[final_result['sub_brand_name'].isin(product_sub_brands)]
 
         try:
             if "number of SKUs" in formula:
