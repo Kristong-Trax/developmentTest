@@ -570,7 +570,7 @@ class ToolBox:
             return 0
 
         # if there is an adj, and direction doesnt matter -> true
-        if len(allowed_edges) == Const.NUM_DIRECTIONS:
+        if len(allowed_edges) == Const.ALL_DIRECTIONS:
             return 1
         adjacents_block = blocks_adjacent.loc[blocks_adjacent.is_adj]
         for index, block in adjacents_block.iterrows():
@@ -609,7 +609,7 @@ class ToolBox:
 
         # extract only edges in correct direction
         for value in scene_adj_tested.edges.values:
-            if value.get('direction') in allowed_edges:
+            if value.get(Const.DIRECTION) in allowed_edges:
                 return 1
         return 0
 
