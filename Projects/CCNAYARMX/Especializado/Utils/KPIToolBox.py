@@ -62,7 +62,6 @@ SCORING = 'Scoring'
 PLATFORMAS = 'Platformas'
 PLATFORMAS_SCORING = 'Platformas Scoring'
 AVAILABILITY_COMBO = 'Availability Combo'
-SCORING_COMBO = 'Scoring Combo'
 
 # Scif Filters
 BRAND_FK = 'brand_fk'
@@ -85,7 +84,7 @@ BAY_NUMBER = 'bay_number'
 
 # Read the sheet
 SHEETS = [SOS, BLOCK_TOGETHER, SHARE_OF_EMPTY, BAY_COUNT, PER_BAY_SOS, SURVEY, AVAILABILITY, DISTRIBUTION,
-          COMBO, SCORING, PLATFORMAS, PLATFORMAS_SCORING, KPIS, AVAILABILITY_COMBO, SCORING_COMBO]
+          COMBO, SCORING, PLATFORMAS, PLATFORMAS_SCORING, KPIS, AVAILABILITY_COMBO]
 POS_OPTIONS_SHEETS = [POS_OPTIONS, TARGETS_AND_CONSTRAINTS]
 PORTAFOLIO_SHEETS = [ESPECIALIZADO]
 
@@ -94,7 +93,7 @@ TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 
 PORTAFOLIO_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data',
                                'CCNayarEspecializado_Portafolio.xlsx')
 POS_OPTIONS_TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data',
-                                         'CCNayar_POS_Options_Especializado_v6.xlsx')
+                                         'CCNayar_POS_Options_Especializado_v7.xlsx')
 
 
 def log_runtime(description, log_start=False):
@@ -160,13 +159,13 @@ class EspecializadoToolBox(GlobalSessionToolBox):
         platformas_kpi_template = relevant_kpi_template[relevant_kpi_template[KPI_TYPE] == PLATFORMAS_SCORING]
         combo_kpi_template = relevant_kpi_template[relevant_kpi_template[KPI_TYPE] == COMBO]
         scoring_kpi_template = relevant_kpi_template[relevant_kpi_template[KPI_TYPE] == SCORING]
-        scoring_combo_kpi_template = relevant_kpi_template[relevant_kpi_template[KPI_TYPE] == SCORING_COMBO]
+        # scoring_combo_kpi_template = relevant_kpi_template[relevant_kpi_template[KPI_TYPE] == SCORING_COMBO]
 
         self._calculate_kpis_from_template(foundation_kpi_template)
         self._calculate_kpis_from_template(platformas_kpi_template)
         self._calculate_kpis_from_template(combo_kpi_template)
         self._calculate_kpis_from_template(scoring_kpi_template)
-        self._calculate_kpis_from_template(scoring_combo_kpi_template)
+        # self._calculate_kpis_from_template(scoring_combo_kpi_template)
 
         self.save_results_to_db()
         return
@@ -348,16 +347,19 @@ class EspecializadoToolBox(GlobalSessionToolBox):
 
         return results_list
 
-        return results_list
-
     def calculate_scoring(self, row):
         kpi_name = row[KPI_NAME]
         kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_name)
+        activation_scene = row[ACTIVATION_SCENE_TYPE]
         numerator_id = self.own_manuf_fk
         denominator_id = self.store_id
 
         result_dict = {'kpi_name': kpi_name, 'kpi_fk': kpi_fk, 'numerator_id': numerator_id,
                        'denominator_id': denominator_id}
+
+        if pd.notna(activation_scene) and activation_scene not in set(self.scif.template_name):
+            result_dict['result'] = 0
+            return result_dict
 
         component_kpis = self.sanitize_values(row['Component KPIs'])
         dependency_kpis = self.sanitize_values(row['Dependency'])
@@ -462,7 +464,7 @@ class EspecializadoToolBox(GlobalSessionToolBox):
                 continue
 
             # calculate the 'empaques' data
-            assortment_groups = self._get_groups(platform_row, 'Assortment')
+            assortment_groups = self._get_groups(platform_row.dropna(), 'Assortment')
             mandatory_skus_found = 1  # True
             for assortment in assortment_groups:
                 if not any(product in product_names_in_scene for product in assortment):
