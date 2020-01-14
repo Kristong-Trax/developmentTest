@@ -4,7 +4,7 @@ from KPIUtils_v2.Utils.GlobalScripts.Scripts import GlobalSceneToolBox
 import pandas as pd
 import os
 
-# from Projects.CCANDINA_AR.Data.LocalConsts import Consts
+# from Projects.CCANDINAAR.Data.LocalConsts import Consts
 
 # from KPIUtils_v2.Utils.Consts.DataProvider import
 # from KPIUtils_v2.Utils.Consts.DB import
@@ -59,6 +59,7 @@ class ToolBox(GlobalSceneToolBox):
                                                denominator_id=empty_product_id, context_id=empty_product_id,
                                                numerator_result=empty_product_numerator_result,
                                                denominator_result=empty_product_denominator_result, by_scene=True)
+
 
             sku_product_type_scif = self.scif[self.scif['product_type'].isin(['SKU'])]
 
