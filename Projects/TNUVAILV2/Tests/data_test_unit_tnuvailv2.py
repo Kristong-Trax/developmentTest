@@ -37,7 +37,12 @@ class DataTestUnitTnuva(object):
          {'pk': 2016, 'type': u'OOS_STORE_LEVEL'},
 
          {'pk': 3000, 'type': OBLIGATORY}, {'pk': 3001, 'type': OBLIGATORY_SKU}, {'pk': 3002, 'type': OPTIONAL},
-         {'pk': 3003, 'type': OPTIONAL_SKU}]
+         {'pk': 3003, 'type': OPTIONAL_SKU},
+         {'pk': 2017, 'type': u'OOS_STORE_LEVEL_DAIRY_WITH_PREVIOUS_RESULTS'},
+         {'pk': 2018, 'type': u'OOS_STORE_LEVEL_TIRAT_TSVI_WITH_PREVIOUS_RESULTS'},
+         {'pk': 2019, 'type': u'OOS_SKU_LEVEL_DAIRY_WITH_PREVIOUS_RESULTS'},
+         {'pk': 2020, 'type': u'OOS_SKU_LEVEL_TIRAT_TSVI_WITH_PREVIOUS_RESULTS'},
+        ]
     )
 
     store_data = pd.DataFrame.from_records(
