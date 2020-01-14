@@ -122,8 +122,9 @@ class TNUVAILToolBox:
     def _prepare_data_for_assortment_calculation(self):
         """ This method gets the level 3 assortment results (SKU level), adding category_fk and returns the DataFrame"""
         lvl3_result = self.assortment.calculate_lvl3_assortment()
-        category_per_product = self.all_products[[ProductsConsts.PRODUCT_FK, ScifConsts.CATEGORY_FK]]
-        lvl3_result = pd.merge(lvl3_result, category_per_product, how='left')
+        if not lvl3_result.empty:
+            category_per_product = self.all_products[[ProductsConsts.PRODUCT_FK, ScifConsts.CATEGORY_FK]]
+            lvl3_result = pd.merge(lvl3_result, category_per_product, how='left')
         return lvl3_result
 
     def _filter_data_for_oos_calculation(self, lvl3_data):

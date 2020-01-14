@@ -25,7 +25,7 @@ def get_scif_matches_stich_groups(xls_file):
     return scif_test_case, matches_test_case, all_products
 
 
-class TestTnuvailv2(TestUnitCase):
+class TestTnuvailv2(TestFunctionalCase):
 
     TEST_CASE = get_test_case_template_all_tests()
     SCIF, MATCHES, ALL_PRODUCTS = get_scif_matches_stich_groups(TEST_CASE)
@@ -83,6 +83,8 @@ class TestTnuvailv2(TestUnitCase):
 
         def _set_scene_item_facts_for_mock(df):
             self.data_provider_data_mock[Data.SCENE_ITEM_FACTS] = df
+            p = PropertyMock(return_value=df)
+            type(self.data_provider_mock).scene_item_facts = p
 
         self.data_provider_mock._set_scene_item_facts = _set_scene_item_facts_for_mock
 
@@ -125,6 +127,8 @@ class TestTnuvailv2(TestUnitCase):
         scif_scene = scif_test_case[scif_test_case['scene_fk'].isin(scenes_list)]
         matches_scene = matches_test_case[matches_test_case['scene_fk'].isin(scenes_list)]
         self.mock_scene_item_facts(scif_scene)
+        self.mock_scif_in_data_provider_as_property(scif_scene)
+
         self.mock_match_product_in_scene(matches_scene)
         return matches_scene, scif_scene
 
@@ -149,6 +153,10 @@ class TestTnuvailv2(TestUnitCase):
     def mock_own_manufacturer_property(self):
         p = PropertyMock(return_value=DataTestUnitTnuva.own_manuf_property)
         type(self.data_provider_mock).own_manufacturer = p
+
+    def mock_scif_in_data_provider_as_property(self, data):
+        p = PropertyMock(return_value=data)
+        type(self.data_provider_mock).scene_item_facts = p
 
     # def test_whatever(self):
     #     matches, scene = self.create_scif_matches_stitch_groups_data_mocks([1])
@@ -263,6 +271,38 @@ class TestTnuvailv2(TestUnitCase):
         for expected_result in expected_list:
             test_result_list.append(self.check_results(results_df, expected_result) == 1)
         self.assertTrue(all(test_result_list))
+
+    def test_calculate_assortment_no_kpi_results_if_assortment_list_empty(self):
+        matches, scene = self.create_scif_matches_stitch_groups_data_mocks([1])
+        ass_res = self.mock_object('Assortment.get_lvl3_relevant_ass',
+                                   path='KPIUtils_v2.Calculations.AssortmentCalculations')
+        ass_res.return_value = pd.DataFrame()
+        self.mock_get_last_session_oos_results(DataTestUnitTnuva.previous_results_empty)
+        self.mock_get_oos_reasons_for_session(DataTestUnitTnuva.oos_exclude_res_empty)
+        self.mock_session_info_property(DataTestUnitTnuva.session_info_new)
+        tool_box = TNUVAILToolBox(self.data_provider_mock, self.output)
+        tool_box._calculate_assortment()
+        self.assertEquals(len(tool_box.common_v2.kpi_results), 0)
+
+    def test_calculate_assortment(self):
+        matches, scene = self.create_scif_matches_stitch_groups_data_mocks([1])
+        self.mock_get_last_session_oos_results(DataTestUnitTnuva.previous_results_no_session)
+        self.mock_get_oos_reasons_for_session(DataTestUnitTnuva.oos_exclude_res_empty)
+        self.mock_session_info_property(DataTestUnitTnuva.session_info_new)
+        tool_box = TNUVAILToolBox(self.data_provider_mock, self.output)
+        tool_box.common_v2.write_to_db_result = MagicMock()
+        tool_box._calculate_assortment()
+        results_df = self.build_results_df(tool_box)
+        print results_df
+
+    # def test_meat_included(self): # when we change the code
+    #     matches, scene = self.create_scif_matches_stitch_groups_data_mocks([2])
+    #     self.mock_get_last_session_oos_results(DataTestUnitTnuva.previous_results_empty)
+    #     self.mock_get_oos_reasons_for_session(DataTestUnitTnuva.oos_exclude_res_1)
+    #     self.mock_session_info_property(DataTestUnitTnuva.session_info_new)
+    #     tool_box = TNUVAILToolBox(self.data_provider_mock, self.output)
+    #     tool_box.common_v2.write_to_db_result = MagicMock()
+    #     tool_box._calculate_facings_sos()
 
     @staticmethod
     def check_results(results_df, expected_results_dict):
