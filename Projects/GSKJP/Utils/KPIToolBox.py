@@ -122,15 +122,15 @@ class GSKJPToolBox:
                    numerator = number of products from brand_fk in shelves
                    denominator = number of products from brand_fk
         """
-        if ('shelves' not in policy.keys()) or policy['shelves'].empty:
+        if (Consts.SHELVES not in policy.keys()) or policy[Consts.SHELVES].empty:
             Log.warning('This sessions have external targets but doesnt have value for shelves position')
             return 0, 0, 0, 0, 0
         if isinstance(policy['shelves'].iloc[0], list):
-            shelf_from_bottom = [int(shelf) for shelf in policy['shelves'].iloc[0]]
+            shelf_from_bottom = [int(shelf) for shelf in policy[Consts.SHELVES].iloc[0]]
         else:
-            shelf_from_bottom = [int(shelf) for shelf in policy['shelves'].iloc[0].split(",")]
+            shelf_from_bottom = [int(shelf) for shelf in policy[Consts.SHELVES].iloc[0].split(",")]
 
-        threshold = policy['position_target'].iloc[0]
+        threshold = policy[Consts.POSITION_TARGET].iloc[0]
         brand_df = df[df[ProductsConsts.BRAND_FK] == brand_fk]
         shelf_df = brand_df[brand_df[MatchesConsts.SHELF_NUMBER].isin(shelf_from_bottom)]
         numerator = shelf_df.shape[0]
