@@ -12,7 +12,7 @@ from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 __author__ = 'nidhin'
 # own check
 OWN_CHECK_COL = 'att1'  # !column in product dataframe!
-OWN_DISTRIBUTOR_FK = 60  # SinoPac distributor ID in custom entity table as well as manuf ID.
+OWN_DISTRIBUTOR_FK = 307  # SinoPac distributor ID in custom entity table as well as manuf ID.
 OTHER_DISTRIBUTOR_FK = 2  # Non SinoPac distributor ID in custom entity table.
 OWN_DISTRIBUTOR = 'SINO PACIFIC'
 
