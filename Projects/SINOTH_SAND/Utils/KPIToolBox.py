@@ -468,7 +468,6 @@ class SinoPacificToolBox:
                     type=kpi_sheet_row[KPI_FAMILY_COL],
                     proj=self.project_name
                 ))
-                pass
         return True
 
     def calculate_fsos(self, kpi, groupers, query_string, dataframe_to_process):
@@ -542,13 +541,12 @@ class SinoPacificToolBox:
                                                result=result,
                                                numerator_result=numerator_result,
                                                denominator_result=denominator_result,
-                                               identifier_result="{}_{}_{}_{}_{}".format(
+                                               identifier_result="{}_{}_{}_{}".format(
                                                    kpi['kpi_name'].iloc[0],
                                                    kpi['pk'].iloc[0],
                                                    # numerator_id,
                                                    each_den_fk,
                                                    context_id,
-                                                   self.own_man_fk
                                                ),
                                                identifier_parent=identifier_parent,
                                                should_enter=True,
