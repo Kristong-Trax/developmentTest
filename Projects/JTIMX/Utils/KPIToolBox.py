@@ -40,6 +40,7 @@ class ToolBox(GlobalSessionToolBox):
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
         self.visit_date = datetime.combine(self.data_provider[Data.VISIT_DATE], datetime.min.time())
         self.relevant_template = self.retrieve_price_target_df()
+        self.mpis = self.data_provider[Data.MATCHES]
 
     def main_calculation(self):
         self.calculate_price_target_kpi()
@@ -48,17 +49,28 @@ class ToolBox(GlobalSessionToolBox):
         kpi_name = 'Price Target'
         kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_name)
 
-        for i, row in self.relevant_template.iterrows():
-            if np.isnan(row[Consts.EAN_CODE]):
-                # do this
-                a = 1
-            else:
-                # do this
-                self.all_products.product_ean_code = self.all_products.product_ean_code.astype('float')
-                denominator_id = self.all_products[self.all_products.product_ean_code.isin([row[Consts.EAN_CODE]])]
-                relevant_scif = self.scif[self.scif.product_ean_code.isin([row[Consts.EAN_CODE]])]
-                if relevant_scif.empty:
-                    self.write_to_db(fk=kpi_fk,numerator_id=denominator_id, denominator_id=denominator_id, numerator_result=denominator_id, denominator_result=0)
+        relevant_mpis = self.mpis[['product_fk', 'price']].drop_duplicates('product_fk')
+        present_products_in_session = self.scif.merge(self.relevant_template, how='left', left_on='product_short_name',
+                                                      right_on='English SKU Name')[
+            ['product_fk', 'brand_fk', 'product_short_name', 'Target Price', 'facings']]
+        present_products_in_session = present_products_in_session.merge(relevant_mpis, how='left', on='product_fk')
+
+        absent_products_in_session = self.relevant_template[
+            ~ self.relevant_template['English SKU Name'].isin(present_products_in_session.product_short_name)]
+        absent_products_in_session = \
+        absent_products_in_session.merge(self.all_products, how='left', left_on='English SKU Name',
+                                         right_on='product_short_name')[
+            ['product_fk', 'brand_fk', 'product_short_name', 'Target Price']]
+        final_mpis = pd.concat([present_products_in_session,absent_products_in_session]).fillna(0)
+
+
+        for i, row in final_mpis.iterrows():
+            recognized_price = row['price']
+            target_price = row['Target Price']
+            score = 1 if target_price == recognized_price else 0
+            self.write_to_db(kpi_fk, numerator_id=row.product_fk, denominator_id=row.brand_fk,
+                             numerator_result=recognized_price, denominator_result=target_price, result=row.facings,
+                             score=score)
 
 
     def retrieve_price_target_df(self):
