@@ -39,8 +39,8 @@ KPI_LEVEL_2_VALUES = "('{}', '{}', 20, 1, " \
 
 MIN_KPI_NAME_LENGTH = 5
 
-ERROR_FIELD_NAME = 'ERROR - {} - {}'
-WARNING_FIELD_NAME = 'WARNING - {} - {}'
+ERROR_INFO = 'ERROR - {} - {}'
+WARNING_INFO = 'WARNING - {} - {}'
 
 POS_COLUMNS = [
     'Sorting',
@@ -116,18 +116,21 @@ MANDATORY_POS_COLUMNS = [
     'Values'
 ]
 
-ALLOWED_SYMBOLS_KPI_NAME_ENG = ' ' \
-                            '0123456789' \
-                            'ABCDEFGHIJKLMNOPQRSTUVWXWZ' \
-                            'abcdefghijklmnopqrstuvwxyz' \
-                            '%&()[]-_+/<>.:'
-ALLOWED_SYMBOLS_KPI_NAME_RUS = u' ' \
-                               u'0123456789' \
-                               u'ABCDEFGHIJKLMNOPQRSTUVWXWZ' \
-                               u'abcdefghigklmnopqrstuvwxyz' \
-                               u'%&()[]-_+/<>.:' \
-                               u'АБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ' \
-                               u'абвгдеёжзийклмнопрстуфхцчшщъыьэюя'
+ALLOWED_SYMBOLS = {
+    'KPI name Eng': u' '
+                    u'0123456789'
+                    u'ABCDEFGHIJKLMNOPQRSTUVWXWZ'
+                    u'abcdefghijklmnopqrstuvwxyz'
+                    u'%&()[]-_+/<>.:',
+    'KPI name Rus': u' '
+                    u'0123456789'
+                    u'ABCDEFGHIJKLMNOPQRSTUVWXWZ'
+                    u'abcdefghigklmnopqrstuvwxyz'
+                    u'%&()[]-_+/<>.:'
+                    u'АБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ'
+                    u'абвгдеёжзийклмнопрстуфхцчшщъыьэюя'
+}
+
 ALLOWED_FORMULAS_PARENTS = \
     {
         'check_number_of_scenes_with_facings_target':
@@ -200,7 +203,7 @@ ALLOWED_FORMULAS = ALLOWED_FORMULAS_PARENTS.keys()
 
 ALLOWED_FORMULAS_DEPENDENCIES = \
     {
-        'filled coolers target':
+        'filled collers target':
             ['number of doors with more than Target facings',
              'number of coolers with facings target and fullness target'],
         'scene type':
@@ -221,7 +224,7 @@ ALLOWED_FORMULAS_DEPENDENCIES = \
         'number of SKU per Door RANGE':
             ['number of doors of filled Coolers',
              'number of coolers with facings target and fullness target',
-             'filled coolers target'],
+             'filled collers target'],
         'number of SKU per Door RANGE TOTAL':
             ['number of doors of filled Coolers',
              'number of coolers with facings target and fullness target'],
@@ -359,206 +362,155 @@ class CCRUKPIS:
             error_name = 'COLUMN IS NOT FOUND'
             for c in MANDATORY_POS_COLUMNS:
                 if c not in pos.columns:
-                    field_name = c
-                    error_field_name = ERROR_FIELD_NAME.format(field_name, error_name)
-                    if error_field_name not in pos.columns:
-                        pos[error_field_name] = None
-                    pos[error_field_name] = error_name
+                    column_name = c
+                    error_column_name = ERROR_INFO.format(column_name, error_name)
+                    if error_column_name not in pos.columns:
+                        pos[error_column_name] = None
+                    pos[error_column_name] = error_name
                     structure_ok &= False
 
             if structure_ok:  # All mandatory columns are in place
 
-                # fixing Sorting
-                pos['Sorting'] = range(1, len(pos.index) + 1)
-
-                # fixing Children
-                for i, r in pos.iterrows():
-                    children = pos[pos['Parent'] == r['KPI ID']]['KPI ID'].tolist()
-                    children = list(set(children) - {None})
-                    if children:
-                        children = [(unicode(int(x))) for x in children]
-                        children = '\n'.join(children)
-                    else:
-                        children = None
-                    pos.loc[i, 'Children'] = children
-
-                # fixing SKUs
-                pos['SKU'] = None
-                for i, r in pos[pos['Type'] == 'SKUs'].iterrows():
-                    eans = unicode(r['Values']).split(', ')
-                    skus = []
-                    for ean in eans:
-                        skus += self.skus[self.skus['ean_code'] == ean]['name'].unique().tolist()
-                    pos.loc[i, 'SKU'] = ', '.join(skus)
-
-                # subsequent formulas
-                for i, r in pos[pos['Children'].notnull() & pos['level'].isin([2, 3])].iterrows():
-                    pos.loc[i, '00_subsequent_formulas'] = \
-                        r['Formula'] + ': ' + ' | '.join(pos[pos['Parent'] == r['KPI ID']]['Formula'].unique().tolist())
-
-                # removing internal extra spaces in KPI names Eng
-                field_name = 'KPI name Eng'
-                error_name = 'EXTRA SPACES REMOVED'
-                error_field_name = WARNING_FIELD_NAME.format(field_name, error_name)
-                if field_name in pos.columns:
-                    for i, r in pos.iterrows():
-                        kpi_name_stripped = unicode(r[field_name])\
-                            .replace('\n', ' ').replace('  ', ' ').replace('  ', ' ').strip() \
-                            if r[field_name] is not None else None
-                        if r[field_name] != kpi_name_stripped:
-                            if error_field_name not in pos.columns:
-                                pos[error_field_name] = None
-                            pos.loc[i, error_field_name] = unicode(r[field_name])
-                            pos.loc[i, field_name] = kpi_name_stripped
-
-                # removing internal extra spaces in KPI names Rus
-                field_name = 'KPI name Rus'
-                error_name = 'EXTRA SPACES REMOVED'
-                error_field_name = WARNING_FIELD_NAME.format(field_name, error_name)
-                if field_name in pos.columns:
-                    for i, r in pos.iterrows():
-                        kpi_name_stripped = unicode(r[field_name])\
-                            .replace('\n', ' ').replace('  ', ' ').replace('  ', ' ').strip() \
-                            if r[field_name] is not None else None
-                        if r[field_name] != kpi_name_stripped:
-                            if error_field_name not in pos.columns:
-                                pos[error_field_name] = None
-                            pos.loc[i, error_field_name] = unicode(r[field_name])
-                            pos.loc[i, field_name] = kpi_name_stripped
+                pos = self.fixing_sorting_column(pos)
+                pos = self.fixing_children_column(pos)
+                pos = self.fixing_sku_column(pos, self.skus)
+                pos = self.creating_subsequent_formulas_column(pos)
+                pos = self.removing_extra_spaces_in_column(pos, 'KPI name Eng', 'EXTRA SPACES REMOVED', WARNING_INFO)
+                pos = self.removing_extra_spaces_in_column(pos, 'KPI name Rus', 'EXTRA SPACES REMOVED', WARNING_INFO)
 
                 # removing irrelevant Logical Operator
-                field_name = 'Logical Operator'
+                column_name = 'Logical Operator'
                 error_name = 'IRRELEVANT VALUES REMOVED'
-                error_field_name = WARNING_FIELD_NAME.format(field_name, error_name)
-                if field_name in pos.columns:
-                    for i, r in pos[pos[field_name].notnull()].iterrows():
+                error_column_name = WARNING_INFO.format(column_name, error_name)
+                if column_name in pos.columns:
+                    for i, r in pos[pos[column_name].notnull()].iterrows():
                         if not (r['KPI name Eng'] in ALLOWED_LOGICAL_OPERATOR_KPIS and r['Children']):
-                            if error_field_name not in pos.columns:
-                                pos[error_field_name] = None
-                            pos.loc[i, error_field_name] = unicode(r[field_name])
-                            pos.loc[i, field_name] = None
+                            if error_column_name not in pos.columns:
+                                pos[error_column_name] = None
+                            pos.loc[i, error_column_name] = unicode(r[column_name])
+                            pos.loc[i, column_name] = None
 
                 # removing irrelevant score_func
-                field_name = 'score_func'
+                column_name = 'score_func'
                 error_name = 'IRRELEVANT VALUES REMOVED'
-                error_field_name = WARNING_FIELD_NAME.format(field_name, error_name)
-                if field_name in pos.columns:
-                    for i, r in pos[pos[field_name].notnull()].iterrows():
+                error_column_name = WARNING_INFO.format(column_name, error_name)
+                if column_name in pos.columns:
+                    for i, r in pos[pos[column_name].notnull()].iterrows():
                         if not r['Target']:
-                            if error_field_name not in pos.columns:
-                                pos[error_field_name] = None
-                            pos.loc[i, error_field_name] = unicode(r[field_name])
-                            pos.loc[i, field_name] = None
+                            if error_column_name not in pos.columns:
+                                pos[error_column_name] = None
+                            pos.loc[i, error_column_name] = unicode(r[column_name])
+                            pos.loc[i, column_name] = None
 
                 # removing irrelevant Manufacturer by Brand
-                field_name = 'Manufacturer'
+                column_name = 'Manufacturer'
                 error_name = 'IRRELEVANT VALUES REMOVED'
-                error_field_name = WARNING_FIELD_NAME.format(field_name, error_name)
-                if field_name in pos.columns:
-                    for i, r in pos[pos[field_name].notnull()].iterrows():
+                error_column_name = WARNING_INFO.format(column_name, error_name)
+                if column_name in pos.columns:
+                    for i, r in pos[pos[column_name].notnull()].iterrows():
                         if r.get('Brand'):
-                            if error_field_name not in pos.columns:
-                                pos[error_field_name] = None
-                            pos.loc[i, error_field_name] = unicode(r[field_name])
-                            pos.loc[i, field_name] = None
+                            if error_column_name not in pos.columns:
+                                pos[error_column_name] = None
+                            pos.loc[i, error_column_name] = unicode(r[column_name])
+                            pos.loc[i, column_name] = None
 
                 # removing irrelevant Manufacturer by Sub brand
-                field_name = 'Manufacturer'
+                column_name = 'Manufacturer'
                 error_name = 'IRRELEVANT VALUES REMOVED'
-                error_field_name = WARNING_FIELD_NAME.format(field_name, error_name)
-                if field_name in pos.columns:
-                    for i, r in pos[pos[field_name].notnull()].iterrows():
+                error_column_name = WARNING_INFO.format(column_name, error_name)
+                if column_name in pos.columns:
+                    for i, r in pos[pos[column_name].notnull()].iterrows():
                         if r.get('Sub brand'):
-                            if error_field_name not in pos.columns:
-                                pos[error_field_name] = None
-                            pos.loc[i, error_field_name] = unicode(r[field_name])
-                            pos.loc[i, field_name] = None
+                            if error_column_name not in pos.columns:
+                                pos[error_column_name] = None
+                            pos.loc[i, error_column_name] = unicode(r[column_name])
+                            pos.loc[i, column_name] = None
 
                 # removing irrelevant Brand by Sub brand
-                field_name = 'Brand'
+                column_name = 'Brand'
                 error_name = 'IRRELEVANT VALUES REMOVED'
-                error_field_name = WARNING_FIELD_NAME.format(field_name, error_name)
-                if field_name in pos.columns:
-                    for i, r in pos[pos[field_name].notnull()].iterrows():
+                error_column_name = WARNING_INFO.format(column_name, error_name)
+                if column_name in pos.columns:
+                    for i, r in pos[pos[column_name].notnull()].iterrows():
                         if r.get('Sub brand'):
-                            if error_field_name not in pos.columns:
-                                pos[error_field_name] = None
-                            pos.loc[i, error_field_name] = unicode(r[field_name])
-                            pos.loc[i, field_name] = None
+                            if error_column_name not in pos.columns:
+                                pos[error_column_name] = None
+                            pos.loc[i, error_column_name] = unicode(r[column_name])
+                            pos.loc[i, column_name] = None
 
                 # removing irrelevant Locations to include by Scenes to include
-                field_name = 'Locations to include'
+                column_name = 'Locations to include'
                 error_name = 'IRRELEVANT VALUES REMOVED'
-                error_field_name = WARNING_FIELD_NAME.format(field_name, error_name)
-                if field_name in pos.columns:
-                    for i, r in pos[pos[field_name].notnull()].iterrows():
+                error_column_name = WARNING_INFO.format(column_name, error_name)
+                if column_name in pos.columns:
+                    for i, r in pos[pos[column_name].notnull()].iterrows():
                         if r.get('Scenes to include'):
-                            if error_field_name not in pos.columns:
-                                pos[error_field_name] = None
-                            pos.loc[i, error_field_name] = unicode(r[field_name])
-                            pos.loc[i, field_name] = None
+                            if error_column_name not in pos.columns:
+                                pos[error_column_name] = None
+                            pos.loc[i, error_column_name] = unicode(r[column_name])
+                            pos.loc[i, column_name] = None
 
                 # removing irrelevant Sub locations to include by Scenes to include
-                field_name = 'Sub locations to include'
+                column_name = 'Sub locations to include'
                 error_name = 'IRRELEVANT VALUES REMOVED'
-                error_field_name = WARNING_FIELD_NAME.format(field_name, error_name)
-                if field_name in pos.columns:
-                    for i, r in pos[pos[field_name].notnull()].iterrows():
+                error_column_name = WARNING_INFO.format(column_name, error_name)
+                if column_name in pos.columns:
+                    for i, r in pos[pos[column_name].notnull()].iterrows():
                         if r.get('Scenes to include'):
-                            if error_field_name not in pos.columns:
-                                pos[error_field_name] = None
-                            pos.loc[i, error_field_name] = unicode(r[field_name])
-                            pos.loc[i, field_name] = None
+                            if error_column_name not in pos.columns:
+                                pos[error_column_name] = None
+                            pos.loc[i, error_column_name] = unicode(r[column_name])
+                            pos.loc[i, column_name] = None
 
                 # removing irrelevant Locations to include by Sub locations to include
-                field_name = 'Locations to include'
+                column_name = 'Locations to include'
                 error_name = 'IRRELEVANT VALUES REMOVED'
-                error_field_name = WARNING_FIELD_NAME.format(field_name, error_name)
-                if field_name in pos.columns:
-                    for i, r in pos[pos[field_name].notnull()].iterrows():
+                error_column_name = WARNING_INFO.format(column_name, error_name)
+                if column_name in pos.columns:
+                    for i, r in pos[pos[column_name].notnull()].iterrows():
                         if r.get('Sub locations to include'):
-                            if error_field_name not in pos.columns:
-                                pos[error_field_name] = None
-                            pos.loc[i, error_field_name] = unicode(r[field_name])
-                            pos.loc[i, field_name] = None
+                            if error_column_name not in pos.columns:
+                                pos[error_column_name] = None
+                            pos.loc[i, error_column_name] = unicode(r[column_name])
+                            pos.loc[i, column_name] = None
 
                 # checking KPI ID
-                field_name = 'KPI ID'
+                column_name = 'KPI ID'
                 error_name = 'EMPTY OR DUPLICATE'
-                error_field_name = ERROR_FIELD_NAME.format(field_name, error_name)
-                if field_name in pos.columns:
-                    duplicates = pos[[field_name, 'Sorting']].groupby(field_name).count()\
+                error_column_name = ERROR_INFO.format(column_name, error_name)
+                if column_name in pos.columns:
+                    duplicates = pos[[column_name, 'Sorting']].groupby(column_name).count()\
                         .reset_index().rename(columns={'Sorting': 'count'})
-                    duplicates_list = duplicates[duplicates['count'] > 1][field_name].unique().tolist()
+                    duplicates_list = duplicates[duplicates['count'] > 1][column_name].unique().tolist()
                     if duplicates_list:
-                        if error_field_name not in pos.columns:
-                            pos[error_field_name] = None
-                        pos.loc[pos[field_name].isin(duplicates_list), error_field_name] = \
-                            pos[pos[field_name].isin(duplicates_list)][field_name].astype(unicode)
+                        if error_column_name not in pos.columns:
+                            pos[error_column_name] = None
+                        pos.loc[pos[column_name].isin(duplicates_list), error_column_name] = \
+                            pos[pos[column_name].isin(duplicates_list)][column_name].astype(unicode)
                         structure_ok &= False
 
                 # checking level
                 pos['00_level_checked'] = None
-                field_name = 'level'
+                column_name = 'level'
                 error_name = 'INCORRECT VALUE'
-                error_field_name = ERROR_FIELD_NAME.format(field_name, error_name)
-                if field_name in pos.columns:
+                error_column_name = ERROR_INFO.format(column_name, error_name)
+                if column_name in pos.columns:
                     # run 1
                     incorrect_levels_mask = (pos['level'].isnull()) | ~(pos['level'].isin([1, 2, 3, 4]))
                     incorrect_levels = pos[incorrect_levels_mask]['level'].astype(unicode)
                     if len(incorrect_levels):
-                        if error_field_name not in pos.columns:
-                            pos[error_field_name] = None
-                        pos.loc[incorrect_levels_mask, error_field_name] = incorrect_levels
+                        if error_column_name not in pos.columns:
+                            pos[error_column_name] = None
+                        pos.loc[incorrect_levels_mask, error_column_name] = incorrect_levels
                         structure_ok &= False
                     # run 2
                     for i, r0 in pos[pos['Children'].notnull()].iterrows():
                         if r0['level'] == 1 and r0['Parent'] is None:
                             pos.loc[i, '00_level_checked'] = 1
                         if r0['level'] == 4:
-                            if error_field_name not in pos.columns:
-                                pos[error_field_name] = None
-                            pos.loc[i, error_field_name] = unicode(r0[field_name])
+                            if error_column_name not in pos.columns:
+                                pos[error_column_name] = None
+                            pos.loc[i, error_column_name] = unicode(r0[column_name])
                             structure_ok &= False
                         level = None
                         for j, r1 in pos[pos['Parent'] == r0['KPI ID']].iterrows():
@@ -568,259 +520,259 @@ class CCRUKPIS:
                                     or not (level in [1, 2] and r0['level'] == 1 or
                                             level in [3] and r0['level'] == 2 or
                                             level in [4] and r0['level'] == 3):
-                                if error_field_name not in pos.columns:
-                                    pos[error_field_name] = None
-                                pos.loc[j, error_field_name] = unicode(r1[field_name])
+                                if error_column_name not in pos.columns:
+                                    pos[error_column_name] = None
+                                pos.loc[j, error_column_name] = unicode(r1[column_name])
                                 structure_ok &= False
 
                 # checking loose Parent
-                field_name = 'Parent'
+                column_name = 'Parent'
                 error_name = 'LOOSE'
-                error_field_name = ERROR_FIELD_NAME.format(field_name, error_name)
-                if field_name in pos.columns:
+                error_column_name = ERROR_INFO.format(column_name, error_name)
+                if column_name in pos.columns:
                     if len(pos[pos['00_level_checked'].isnull()]) > 0:
-                        if error_field_name not in pos.columns:
-                            pos[error_field_name] = None
-                        pos.loc[pos['00_level_checked'].isnull(), error_field_name] = \
-                            pos[pos['00_level_checked'].isnull()][field_name].astype(unicode)
+                        if error_column_name not in pos.columns:
+                            pos[error_column_name] = None
+                        pos.loc[pos['00_level_checked'].isnull(), error_column_name] = \
+                            pos[pos['00_level_checked'].isnull()][column_name].astype(unicode)
                         structure_ok &= False
 
                 # checking length of KPI name Eng
-                field_name = 'KPI name Eng'
+                column_name = 'KPI name Eng'
                 error_name = 'TOO SHORT (<{})'.format(MIN_KPI_NAME_LENGTH)
-                error_field_name = ERROR_FIELD_NAME.format(field_name, error_name)
-                if field_name in pos.columns:
+                error_column_name = ERROR_INFO.format(column_name, error_name)
+                if column_name in pos.columns:
                     for i, r in pos.iterrows():
-                        if len(unicode(r[field_name])) < MIN_KPI_NAME_LENGTH:
-                            if error_field_name not in pos.columns:
-                                pos[error_field_name] = None
-                            pos.loc[i, error_field_name] = unicode(r[field_name])
+                        if len(unicode(r[column_name])) < MIN_KPI_NAME_LENGTH:
+                            if error_column_name not in pos.columns:
+                                pos[error_column_name] = None
+                            pos.loc[i, error_column_name] = unicode(r[column_name])
                             contents_ok &= False
 
                 # checking length of KPI name Rus
-                field_name = 'KPI name Rus'
+                column_name = 'KPI name Rus'
                 error_name = 'TOO SHORT (<{})'.format(MIN_KPI_NAME_LENGTH)
-                error_field_name = ERROR_FIELD_NAME.format(field_name, error_name)
-                if field_name in pos.columns:
+                error_column_name = ERROR_INFO.format(column_name, error_name)
+                if column_name in pos.columns:
                     for i, r in pos.iterrows():
-                        if len(unicode(r[field_name])) < MIN_KPI_NAME_LENGTH:
-                            if error_field_name not in pos.columns:
-                                pos[error_field_name] = None
-                            pos.loc[i, error_field_name] = unicode(r[field_name])
+                        if len(unicode(r[column_name])) < MIN_KPI_NAME_LENGTH:
+                            if error_column_name not in pos.columns:
+                                pos[error_column_name] = None
+                            pos.loc[i, error_column_name] = unicode(r[column_name])
                             contents_ok &= False
 
                 # checking for restricted symbols in KPI names Eng
-                field_name = 'KPI name Eng'
+                column_name = 'KPI name Eng'
                 error_name = 'RESTRICTED SYMBOLS'
-                error_field_name = ERROR_FIELD_NAME.format(field_name, error_name)
-                if field_name in pos.columns:
+                error_column_name = ERROR_INFO.format(column_name, error_name)
+                if column_name in pos.columns:
                     for i, r in pos.iterrows():
-                        if any((s not in ALLOWED_SYMBOLS_KPI_NAME_ENG) for s in unicode(r[field_name])):
-                            if error_field_name not in pos.columns:
-                                pos[error_field_name] = None
-                            pos.loc[i, error_field_name] = unicode(r[field_name])
+                        if any((s not in ALLOWED_SYMBOLS_KPI_NAME_ENG) for s in unicode(r[column_name])):
+                            if error_column_name not in pos.columns:
+                                pos[error_column_name] = None
+                            pos.loc[i, error_column_name] = unicode(r[column_name])
                             contents_ok &= False
 
                 # checking for restricted symbols in KPI names Rus
-                field_name = 'KPI name Rus'
+                column_name = 'KPI name Rus'
                 error_name = 'RESTRICTED SYMBOLS'
-                error_field_name = ERROR_FIELD_NAME.format(field_name, error_name)
-                if field_name in pos.columns:
+                error_column_name = ERROR_INFO.format(column_name, error_name)
+                if column_name in pos.columns:
                     for i, r in pos.iterrows():
-                        if any((s not in ALLOWED_SYMBOLS_KPI_NAME_RUS) for s in unicode(r[field_name])):
-                            if error_field_name not in pos.columns:
-                                pos[error_field_name] = None
-                            pos.loc[i, error_field_name] = unicode(r[field_name])
+                        if any((s not in ALLOWED_SYMBOLS_KPI_NAME_RUS) for s in unicode(r[column_name])):
+                            if error_column_name not in pos.columns:
+                                pos[error_column_name] = None
+                            pos.loc[i, error_column_name] = unicode(r[column_name])
                             contents_ok &= False
 
                 # checking for duplicate KPI name Eng
-                field_name = 'KPI name Eng'
+                column_name = 'KPI name Eng'
                 error_name = 'DUPLICATE'
-                error_field_name = ERROR_FIELD_NAME.format(field_name, error_name)
-                if field_name in pos.columns:
-                    duplicates = pos[[field_name, 'Sorting']].groupby(field_name).count()\
+                error_column_name = ERROR_INFO.format(column_name, error_name)
+                if column_name in pos.columns:
+                    duplicates = pos[[column_name, 'Sorting']].groupby(column_name).count()\
                         .reset_index().rename(columns={'Sorting': 'count'})
-                    duplicates_list = duplicates[duplicates['count'] > 1][field_name].unique().tolist()
+                    duplicates_list = duplicates[duplicates['count'] > 1][column_name].unique().tolist()
                     if duplicates_list:
-                        if error_field_name not in pos.columns:
-                            pos[error_field_name] = None
-                        pos.loc[pos[field_name].isin(duplicates_list), error_field_name] = \
-                            pos[pos[field_name].isin(duplicates_list)][field_name].astype(unicode)
+                        if error_column_name not in pos.columns:
+                            pos[error_column_name] = None
+                        pos.loc[pos[column_name].isin(duplicates_list), error_column_name] = \
+                            pos[pos[column_name].isin(duplicates_list)][column_name].astype(unicode)
                         contents_ok &= False
 
                 # checking total KPI Weight == 1.0
-                field_name = 'KPI Weight'
+                column_name = 'KPI Weight'
                 error_name = 'TOTAL != 1.0'
-                error_field_name = ERROR_FIELD_NAME.format(field_name, error_name)
-                if field_name in pos.columns:
-                    total_weight = round(pos[field_name].sum(), 7)
+                error_column_name = ERROR_INFO.format(column_name, error_name)
+                if column_name in pos.columns:
+                    total_weight = round(pos[column_name].sum(), 7)
                     if total_weight != 1.0:
-                        pos[error_field_name] = 'TOTAL = ' + str(total_weight)
+                        pos[error_column_name] = 'TOTAL = ' + str(total_weight)
                         contents_ok &= False
 
                 # checking KPI Weight for decimals
-                field_name = 'KPI Weight'
+                column_name = 'KPI Weight'
                 error_name = 'DECIMALS > 6 DIGITS'
-                error_field_name = ERROR_FIELD_NAME.format(field_name, error_name)
-                if field_name in pos.columns:
-                    weights = pos[field_name].astype(unicode).str.split('.', 1, True)
+                error_column_name = ERROR_INFO.format(column_name, error_name)
+                if column_name in pos.columns:
+                    weights = pos[column_name].astype(unicode).str.split('.', 1, True)
                     weights[2] = weights[1].str.len()
                     incorrect_precision_mask = (weights[2] > 6)
                     if len(incorrect_precision_mask) > 0:
-                        if error_field_name not in pos.columns:
-                            pos[error_field_name] = None
-                        pos.loc[incorrect_precision_mask, error_field_name] = \
-                            pos[incorrect_precision_mask][field_name].astype(unicode)
+                        if error_column_name not in pos.columns:
+                            pos[error_column_name] = None
+                        pos.loc[incorrect_precision_mask, error_column_name] = \
+                            pos[incorrect_precision_mask][column_name].astype(unicode)
                         contents_ok &= False
 
                 # checking Category KPI Type
-                field_name = 'Category KPI Type'
+                column_name = 'Category KPI Type'
                 error_name = 'INCORRECT VALUE'
-                error_field_name = ERROR_FIELD_NAME.format(field_name, error_name)
-                if field_name in pos.columns:
-                    for i, r in pos[pos[field_name].notnull()].iterrows():
-                        if r[field_name] not in ALLOWED_CATEGORY_KPI_TYPES or r['level'] != 2:
-                            if error_field_name not in pos.columns:
-                                pos[error_field_name] = None
-                            pos.loc[i, error_field_name] = unicode(r[field_name])
+                error_column_name = ERROR_INFO.format(column_name, error_name)
+                if column_name in pos.columns:
+                    for i, r in pos[pos[column_name].notnull()].iterrows():
+                        if r[column_name] not in ALLOWED_CATEGORY_KPI_TYPES or r['level'] != 2:
+                            if error_column_name not in pos.columns:
+                                pos[error_column_name] = None
+                            pos.loc[i, error_column_name] = unicode(r[column_name])
                             contents_ok &= False
 
                 # checking Category KPI Value
-                field_name = 'Category KPI Value'
+                column_name = 'Category KPI Value'
                 error_name = 'INCORRECT VALUE'
-                error_field_name = ERROR_FIELD_NAME.format(field_name, error_name)
-                if field_name in pos.columns:
+                error_column_name = ERROR_INFO.format(column_name, error_name)
+                if column_name in pos.columns:
                     for i, r in pos[pos['Category KPI Type'].notnull()].iterrows():
-                        if r[field_name] not in self.categories:
-                            if error_field_name not in pos.columns:
-                                pos[error_field_name] = None
-                            pos.loc[i, error_field_name] = unicode(r[field_name])
+                        if r[column_name] not in self.categories:
+                            if error_column_name not in pos.columns:
+                                pos[error_column_name] = None
+                            pos.loc[i, error_column_name] = unicode(r[column_name])
                             contents_ok &= False
 
                 # checking Formula
-                field_name = 'Formula'
+                column_name = 'Formula'
                 error_name = 'INCORRECT VALUE'
-                error_field_name = ERROR_FIELD_NAME.format(field_name, error_name)
-                if field_name in pos.columns:
+                error_column_name = ERROR_INFO.format(column_name, error_name)
+                if column_name in pos.columns:
                     for i, r in pos.iterrows():
-                        if r[field_name] not in ALLOWED_FORMULAS:
-                            if error_field_name not in pos.columns:
-                                pos[error_field_name] = None
-                            pos.loc[i, error_field_name] = unicode(r[field_name])
+                        if r[column_name] not in ALLOWED_FORMULAS:
+                            if error_column_name not in pos.columns:
+                                pos[error_column_name] = None
+                            pos.loc[i, error_column_name] = unicode(r[column_name])
                             contents_ok &= False
 
                 # checking Formula Parent
-                field_name = 'Formula'
+                column_name = 'Formula'
                 error_name = 'INCORRECT PARENT FORMULA'
-                error_field_name = ERROR_FIELD_NAME.format(field_name, error_name)
-                if field_name in pos.columns:
+                error_column_name = ERROR_INFO.format(column_name, error_name)
+                if column_name in pos.columns:
                     for i, r in pos[pos['Parent'].notnull()].iterrows():
-                        parent_formula = pos[pos['KPI ID'] == r['Parent']][field_name].tolist()
+                        parent_formula = pos[pos['KPI ID'] == r['Parent']][column_name].tolist()
                         parent_formula = parent_formula[0] if parent_formula else None
-                        allowed_formulas = ALLOWED_FORMULAS_PARENTS.get(r[field_name], [])
+                        allowed_formulas = ALLOWED_FORMULAS_PARENTS.get(r[column_name], [])
                         if parent_formula not in allowed_formulas:
-                            if error_field_name not in pos.columns:
-                                pos[error_field_name] = None
-                            pos.loc[i, error_field_name] = unicode(parent_formula) + ' X<= ' + unicode(r[field_name])
+                            if error_column_name not in pos.columns:
+                                pos[error_column_name] = None
+                            pos.loc[i, error_column_name] = unicode(parent_formula) + ' X<= ' + unicode(r[column_name])
                             contents_ok &= False
                             structure_ok &= False
 
                 # checking Logical Operator
-                field_name = 'Logical Operator'
+                column_name = 'Logical Operator'
                 error_name = 'INCORRECT VALUE'
-                error_field_name = ERROR_FIELD_NAME.format(field_name, error_name)
-                if field_name in pos.columns:
+                error_column_name = ERROR_INFO.format(column_name, error_name)
+                if column_name in pos.columns:
                     for i, r in pos[(pos['KPI name Eng'].isin(ALLOWED_LOGICAL_OPERATOR_KPIS) &
                                      pos['Children'].notnull())].iterrows():
-                        if r[field_name] not in ALLOWED_LOGICAL_OPERATORS:
-                            if error_field_name not in pos.columns:
-                                pos[error_field_name] = None
-                            pos.loc[i, error_field_name] = unicode(r[field_name])
+                        if r[column_name] not in ALLOWED_LOGICAL_OPERATORS:
+                            if error_column_name not in pos.columns:
+                                pos[error_column_name] = None
+                            pos.loc[i, error_column_name] = unicode(r[column_name])
                             contents_ok &= False
 
                 # checking 'depends on' name
-                field_name = 'depends on'
+                column_name = 'depends on'
                 error_name = 'INCORRECT NAME'
-                error_field_name = ERROR_FIELD_NAME.format(field_name, error_name)
-                if field_name in pos.columns:
-                    for i, r in pos[pos[field_name].notnull()].iterrows():
-                        if r[field_name] not in pos['KPI name Eng'].tolist() +\
+                error_column_name = ERROR_INFO.format(column_name, error_name)
+                if column_name in pos.columns:
+                    for i, r in pos[pos[column_name].notnull()].iterrows():
+                        if r[column_name] not in pos['KPI name Eng'].tolist() +\
                                 ['scene type', 'filled collers target']:
-                            if error_field_name not in pos.columns:
-                                pos[error_field_name] = None
-                            pos.loc[i, error_field_name] = unicode(r[field_name])
+                            if error_column_name not in pos.columns:
+                                pos[error_column_name] = None
+                            pos.loc[i, error_column_name] = unicode(r[column_name])
                             contents_ok &= False
 
                 # checking 'depends on' logic
-                field_name = 'depends on'
+                column_name = 'depends on'
                 error_name = 'INCORRECT DEPENDENCY'
-                error_field_name = ERROR_FIELD_NAME.format(field_name, error_name)
-                if field_name in pos.columns:
-                    for i, r in pos[pos[field_name].notnull()].iterrows():
-                        if r[field_name] in ['scene type', 'filled collers target']:
-                            depends_on = r[field_name]
+                error_column_name = ERROR_INFO.format(column_name, error_name)
+                if column_name in pos.columns:
+                    for i, r in pos[pos[column_name].notnull()].iterrows():
+                        if r[column_name] in ['scene type', 'filled collers target']:
+                            depends_on = r[column_name]
                             depends_on_formula = r['Formula']
                         else:
                             depends_on = r['Formula']
-                            depends_on_formula = pos[pos['KPI name Eng'] == r[field_name]]['Formula'].tolist()
+                            depends_on_formula = pos[pos['KPI name Eng'] == r[column_name]]['Formula'].tolist()
                             depends_on_formula = depends_on_formula[0] if depends_on_formula else None
                         allowed_formulas = ALLOWED_FORMULAS_DEPENDENCIES.get(depends_on, [])
                         if depends_on_formula not in allowed_formulas:
-                            if error_field_name not in pos.columns:
-                                pos[error_field_name] = None
-                            pos.loc[i, error_field_name] = unicode(depends_on_formula) + ' X<= ' + unicode(depends_on)
+                            if error_column_name not in pos.columns:
+                                pos[error_column_name] = None
+                            pos.loc[i, error_column_name] = unicode(depends_on_formula) + ' X<= ' + unicode(depends_on)
                             contents_ok &= False
 
                 # checking Type
-                field_name = 'Type'
+                column_name = 'Type'
                 error_name = 'INCORRECT VALUE'
-                error_field_name = ERROR_FIELD_NAME.format(field_name, error_name)
-                if field_name in pos.columns:
-                    for i, r in pos[pos[field_name].notnull() | pos['Values'].notnull()].iterrows():
-                        if r[field_name] not in ALLOWED_VALUES_TYPES:
-                            if error_field_name not in pos.columns:
-                                pos[error_field_name] = None
-                            pos.loc[i, error_field_name] = unicode(r[field_name])
+                error_column_name = ERROR_INFO.format(column_name, error_name)
+                if column_name in pos.columns:
+                    for i, r in pos[pos[column_name].notnull() | pos['Values'].notnull()].iterrows():
+                        if r[column_name] not in ALLOWED_VALUES_TYPES:
+                            if error_column_name not in pos.columns:
+                                pos[error_column_name] = None
+                            pos.loc[i, error_column_name] = unicode(r[column_name])
                             contents_ok &= False
 
                 # checking Values
-                field_name = 'Values'
+                column_name = 'Values'
                 error_name = 'INCORRECT VALUES'
-                error_field_name = WARNING_FIELD_NAME.format(field_name, error_name)
-                if field_name in pos.columns:
+                error_column_name = WARNING_INFO.format(column_name, error_name)
+                if column_name in pos.columns:
                     for i, r in pos[pos['Type'].notnull()].iterrows():
                         error_detected = False
                         error_values = []
-                        values = int(r[field_name]) if type(r[field_name]) == float \
-                            and int(r[field_name]) == r[field_name] else r[field_name]
+                        values = int(r[column_name]) if type(r[column_name]) == float \
+                            and int(r[column_name]) == r[column_name] else r[column_name]
                         if r['Type'] == 'MAN' and not r.get('Manufacturer'):
                             for value in unicode(values).split(', '):
                                 if value not in self.manufacturers:
                                     error_detected = True
                                     error_values += [value]
                         elif r['Type'] in ('CAT', 'MAN in CAT'):
-                            if r.get('Product Category') and r[field_name] != r.get('Product Category'):
+                            if r.get('Product Category') and r[column_name] != r.get('Product Category'):
                                 error_detected = True
                             for value in unicode(values).split(', '):
                                 if value not in self.categories:
                                     error_detected = True
                                     error_values += [value]
                         elif r['Type'] == 'SUB_CATEGORY':
-                            if r.get('Sub category') and r[field_name] != r.get('Sub category'):
+                            if r.get('Sub category') and r[column_name] != r.get('Sub category'):
                                 error_detected = True
                             for value in unicode(values).split(', '):
                                 if value not in self.sub_categories:
                                     error_detected = True
                                     error_values += [value]
                         elif r['Type'] in ('BRAND', 'BRAND_IN_CAT'):
-                            if r.get('Brand') and r[field_name] != r.get('Brand'):
+                            if r.get('Brand') and r[column_name] != r.get('Brand'):
                                 error_detected = True
                             for value in unicode(values).split(', '):
                                 if value not in self.brands:
                                     error_detected = True
                                     error_values += [value]
                         elif r['Type'] in ('SUB_BRAND', 'SUB_BRAND_IN_CAT'):
-                            if r.get('Sub brand') and r[field_name] != r.get('Sub brand'):
+                            if r.get('Sub brand') and r[column_name] != r.get('Sub brand'):
                                 error_detected = True
                             for value in unicode(values).split(', '):
                                 if value not in self.sub_brands:
@@ -832,21 +784,21 @@ class CCRUKPIS:
                                     error_detected = True
                                     error_values += [value]
                         elif r['Type'] == 'SCENE':
-                            if r.get('Scenes to include') and r[field_name] != r.get('Scenes to include'):
+                            if r.get('Scenes to include') and r[column_name] != r.get('Scenes to include'):
                                 error_detected = True
                             for value in unicode(values).split('; '):
                                 if value not in self.scene_types:
                                     error_detected = True
                                     error_values += [value]
                         elif r['Type'] == 'SUB_LOCATION_TYPE':
-                            if r.get('Sub locations to include') and r[field_name] != r.get('Sub locations to include'):
+                            if r.get('Sub locations to include') and r[column_name] != r.get('Sub locations to include'):
                                 error_detected = True
                             for value in unicode(values).split(', '):
                                 if value not in self.sub_locations:
                                     error_detected = True
                                     error_values += [value]
                         elif r['Type'] == 'LOCATION_TYPE':
-                            if r.get('Locations to include') and r[field_name] != r.get('Locations to include'):
+                            if r.get('Locations to include') and r[column_name] != r.get('Locations to include'):
                                 error_detected = True
                             for value in unicode(values).split(', '):
                                 if value not in self.locations:
@@ -857,290 +809,290 @@ class CCRUKPIS:
                                 error_detected = True
                                 error_values += [values]
                         if error_detected:
-                            if error_field_name not in pos.columns:
-                                pos[error_field_name] = None
-                            pos.loc[i, error_field_name] = r['Type'] + ': ' + ', '.join(error_values)
+                            if error_column_name not in pos.columns:
+                                pos[error_column_name] = None
+                            pos.loc[i, error_column_name] = r['Type'] + ': ' + ', '.join(error_values)
                             contents_ok &= False
 
                 # checking Products to exclude
-                field_name = 'Products to exclude'
+                column_name = 'Products to exclude'
                 error_name = 'INCORRECT VALUES'
-                error_field_name = WARNING_FIELD_NAME.format(field_name, error_name)
-                if field_name in pos.columns:
-                    for i, r in pos[pos[field_name].notnull()].iterrows():
+                error_column_name = WARNING_INFO.format(column_name, error_name)
+                if column_name in pos.columns:
+                    for i, r in pos[pos[column_name].notnull()].iterrows():
                         error_detected = False
                         error_values = []
-                        if r[field_name] and r.get('Values') and r.get('Type') == 'SKUs':
+                        if r[column_name] and r.get('Values') and r.get('Type') == 'SKUs':
                             error_detected = True
-                            error_values = [r[field_name]]
-                        for value in unicode(r[field_name]).split(', '):
+                            error_values = [r[column_name]]
+                        for value in unicode(r[column_name]).split(', '):
                             if value not in self.ean_codes:
                                 error_detected = True
                                 error_values += [value]
                         if error_detected:
-                            if error_field_name not in pos.columns:
-                                pos[error_field_name] = None
-                            pos.loc[i, error_field_name] = ', '.join(error_values)
+                            if error_column_name not in pos.columns:
+                                pos[error_column_name] = None
+                            pos.loc[i, error_column_name] = ', '.join(error_values)
                             contents_ok &= False
 
                 # checking Size
-                field_name = 'Size'
+                column_name = 'Size'
                 error_name = 'INCORRECT VALUES'
-                error_field_name = WARNING_FIELD_NAME.format(field_name, error_name)
-                if field_name in pos.columns:
-                    for i, r in pos[pos[field_name].notnull()].iterrows():
+                error_column_name = WARNING_INFO.format(column_name, error_name)
+                if column_name in pos.columns:
+                    for i, r in pos[pos[column_name].notnull()].iterrows():
                         error_detected = False
                         error_values = []
-                        values = int(r[field_name]) if type(r[field_name]) == float \
-                            and int(r[field_name]) == r[field_name] else r[field_name]
+                        values = int(r[column_name]) if type(r[column_name]) == float \
+                            and int(r[column_name]) == r[column_name] else r[column_name]
                         for value in unicode(values).split(', '):
                             if value not in self.sizes:
                                 error_detected = True
                                 error_values += [value]
                         if error_detected:
-                            if error_field_name not in pos.columns:
-                                pos[error_field_name] = None
-                            pos.loc[i, error_field_name] = ', '.join(error_values)
+                            if error_column_name not in pos.columns:
+                                pos[error_column_name] = None
+                            pos.loc[i, error_column_name] = ', '.join(error_values)
                             contents_ok &= False
 
                 # checking Form Factor
-                field_name = 'Form Factor'
+                column_name = 'Form Factor'
                 error_name = 'INCORRECT VALUES'
-                error_field_name = WARNING_FIELD_NAME.format(field_name, error_name)
-                if field_name in pos.columns:
-                    for i, r in pos[pos[field_name].notnull()].iterrows():
+                error_column_name = WARNING_INFO.format(column_name, error_name)
+                if column_name in pos.columns:
+                    for i, r in pos[pos[column_name].notnull()].iterrows():
                         error_detected = False
                         error_values = []
-                        for value in unicode(r[field_name]).split(', '):
+                        for value in unicode(r[column_name]).split(', '):
                             if value not in self.form_factors:
                                 error_detected = True
                                 error_values += [value]
                         if error_detected:
-                            if error_field_name not in pos.columns:
-                                pos[error_field_name] = None
-                            pos.loc[i, error_field_name] = ', '.join(error_values)
+                            if error_column_name not in pos.columns:
+                                pos[error_column_name] = None
+                            pos.loc[i, error_column_name] = ', '.join(error_values)
                             contents_ok &= False
 
                 # checking Form factors to exclude
-                field_name = 'Form factors to exclude'
+                column_name = 'Form factors to exclude'
                 error_name = 'INCORRECT VALUES'
-                error_field_name = WARNING_FIELD_NAME.format(field_name, error_name)
-                if field_name in pos.columns:
-                    for i, r in pos[pos[field_name].notnull()].iterrows():
+                error_column_name = WARNING_INFO.format(column_name, error_name)
+                if column_name in pos.columns:
+                    for i, r in pos[pos[column_name].notnull()].iterrows():
                         error_detected = False
                         error_values = []
-                        if r[field_name] and r.get('Form Factor'):
+                        if r[column_name] and r.get('Form Factor'):
                             error_detected = True
-                            error_values = [r[field_name]]
-                        for value in unicode(r[field_name]).split(', '):
+                            error_values = [r[column_name]]
+                        for value in unicode(r[column_name]).split(', '):
                             if value not in self.form_factors:
                                 error_detected = True
                                 error_values += [value]
                         if error_detected:
-                            if error_field_name not in pos.columns:
-                                pos[error_field_name] = None
-                            pos.loc[i, error_field_name] = ', '.join(error_values)
+                            if error_column_name not in pos.columns:
+                                pos[error_column_name] = None
+                            pos.loc[i, error_column_name] = ', '.join(error_values)
                             contents_ok &= False
 
                 # checking Brand
-                field_name = 'Sub brand'
+                column_name = 'Sub brand'
                 error_name = 'INCORRECT VALUES'
-                error_field_name = WARNING_FIELD_NAME.format(field_name, error_name)
-                if field_name in pos.columns:
-                    for i, r in pos[pos[field_name].notnull()].iterrows():
+                error_column_name = WARNING_INFO.format(column_name, error_name)
+                if column_name in pos.columns:
+                    for i, r in pos[pos[column_name].notnull()].iterrows():
                         error_detected = False
                         error_values = []
-                        values = int(r[field_name]) if type(r[field_name]) == float \
-                            and int(r[field_name]) == r[field_name] else r[field_name]
+                        values = int(r[column_name]) if type(r[column_name]) == float \
+                            and int(r[column_name]) == r[column_name] else r[column_name]
                         for value in unicode(values).split(', '):
                             if value not in self.sub_brands:
                                 error_detected = True
                                 error_values += [value]
                         if error_detected:
-                            if error_field_name not in pos.columns:
-                                pos[error_field_name] = None
-                            pos.loc[i, error_field_name] = ', '.join(error_values)
+                            if error_column_name not in pos.columns:
+                                pos[error_column_name] = None
+                            pos.loc[i, error_column_name] = ', '.join(error_values)
                             contents_ok &= False
 
                 # checking Brand
-                field_name = 'Brand'
+                column_name = 'Brand'
                 error_name = 'INCORRECT VALUES'
-                error_field_name = WARNING_FIELD_NAME.format(field_name, error_name)
-                if field_name in pos.columns:
-                    for i, r in pos[pos[field_name].notnull()].iterrows():
+                error_column_name = WARNING_INFO.format(column_name, error_name)
+                if column_name in pos.columns:
+                    for i, r in pos[pos[column_name].notnull()].iterrows():
                         error_detected = False
                         error_values = []
-                        values = int(r[field_name]) if type(r[field_name]) == float \
-                            and int(r[field_name]) == r[field_name] else r[field_name]
+                        values = int(r[column_name]) if type(r[column_name]) == float \
+                            and int(r[column_name]) == r[column_name] else r[column_name]
                         for value in unicode(values).split(', '):
                             if value not in self.brands:
                                 error_detected = True
                                 error_values += [value]
                         if error_detected:
-                            if error_field_name not in pos.columns:
-                                pos[error_field_name] = None
-                            pos.loc[i, error_field_name] = ', '.join(error_values)
+                            if error_column_name not in pos.columns:
+                                pos[error_column_name] = None
+                            pos.loc[i, error_column_name] = ', '.join(error_values)
                             contents_ok &= False
 
                 # checking Sub category
-                field_name = 'Sub category'
+                column_name = 'Sub category'
                 error_name = 'INCORRECT VALUES'
-                error_field_name = WARNING_FIELD_NAME.format(field_name, error_name)
-                if field_name in pos.columns:
-                    for i, r in pos[pos[field_name].notnull()].iterrows():
+                error_column_name = WARNING_INFO.format(column_name, error_name)
+                if column_name in pos.columns:
+                    for i, r in pos[pos[column_name].notnull()].iterrows():
                         error_detected = False
                         error_values = []
-                        for value in unicode(r[field_name]).split(', '):
+                        for value in unicode(r[column_name]).split(', '):
                             if value not in self.sub_categories:
                                 error_detected = True
                                 error_values += [value]
                         if error_detected:
-                            if error_field_name not in pos.columns:
-                                pos[error_field_name] = None
-                            pos.loc[i, error_field_name] = ', '.join(error_values)
+                            if error_column_name not in pos.columns:
+                                pos[error_column_name] = None
+                            pos.loc[i, error_column_name] = ', '.join(error_values)
                             contents_ok &= False
 
                 # checking Product Category
-                field_name = 'Product Category'
+                column_name = 'Product Category'
                 error_name = 'INCORRECT VALUES'
-                error_field_name = WARNING_FIELD_NAME.format(field_name, error_name)
-                if field_name in pos.columns:
-                    for i, r in pos[pos[field_name].notnull()].iterrows():
+                error_column_name = WARNING_INFO.format(column_name, error_name)
+                if column_name in pos.columns:
+                    for i, r in pos[pos[column_name].notnull()].iterrows():
                         error_detected = False
                         error_values = []
-                        for value in unicode(r[field_name]).split(', '):
+                        for value in unicode(r[column_name]).split(', '):
                             if value not in self.categories:
                                 error_detected = True
                                 error_values += [value]
                         if error_detected:
-                            if error_field_name not in pos.columns:
-                                pos[error_field_name] = None
-                            pos.loc[i, error_field_name] = ', '.join(error_values)
+                            if error_column_name not in pos.columns:
+                                pos[error_column_name] = None
+                            pos.loc[i, error_column_name] = ', '.join(error_values)
                             contents_ok &= False
 
                 # checking Manufacturer
-                field_name = 'Manufacturer'
+                column_name = 'Manufacturer'
                 error_name = 'INCORRECT VALUES'
-                error_field_name = WARNING_FIELD_NAME.format(field_name, error_name)
-                if field_name in pos.columns:
-                    for i, r in pos[pos[field_name].notnull()].iterrows():
+                error_column_name = WARNING_INFO.format(column_name, error_name)
+                if column_name in pos.columns:
+                    for i, r in pos[pos[column_name].notnull()].iterrows():
                         error_detected = False
                         error_values = []
-                        for value in unicode(r[field_name]).split(', '):
+                        for value in unicode(r[column_name]).split(', '):
                             if value not in self.manufacturers:
                                 error_detected = True
                                 error_values += [value]
                         if error_detected:
-                            if error_field_name not in pos.columns:
-                                pos[error_field_name] = None
-                            pos.loc[i, error_field_name] = ', '.join(error_values)
+                            if error_column_name not in pos.columns:
+                                pos[error_column_name] = None
+                            pos.loc[i, error_column_name] = ', '.join(error_values)
                             contents_ok &= False
 
                 # checking shelf_number
-                field_name = 'shelf_number'
+                column_name = 'shelf_number'
                 error_name = 'INCORRECT VALUES'
-                error_field_name = ERROR_FIELD_NAME.format(field_name, error_name)
-                if field_name in pos.columns:
-                    for i, r in pos[pos[field_name].notnull()].iterrows():
+                error_column_name = ERROR_INFO.format(column_name, error_name)
+                if column_name in pos.columns:
+                    for i, r in pos[pos[column_name].notnull()].iterrows():
                         error_detected = False
                         error_values = []
-                        for value in unicode(r[field_name]).split(', '):
+                        for value in unicode(r[column_name]).split(', '):
                             if not value.isdigit():
                                 error_detected = True
                                 error_values += [value]
                         if error_detected:
-                            if error_field_name not in pos.columns:
-                                pos[error_field_name] = None
-                            pos.loc[i, error_field_name] = ', '.join(error_values)
+                            if error_column_name not in pos.columns:
+                                pos[error_column_name] = None
+                            pos.loc[i, error_column_name] = ', '.join(error_values)
                             contents_ok &= False
 
                 # checking Zone to include
-                field_name = 'Zone to include'
+                column_name = 'Zone to include'
                 error_name = 'INCORRECT VALUES'
-                error_field_name = WARNING_FIELD_NAME.format(field_name, error_name)
-                if field_name in pos.columns:
-                    for i, r in pos[pos[field_name].notnull()].iterrows():
+                error_column_name = WARNING_INFO.format(column_name, error_name)
+                if column_name in pos.columns:
+                    for i, r in pos[pos[column_name].notnull()].iterrows():
                         error_detected = False
                         error_values = []
-                        for value in unicode(r[field_name]).split(', '):
+                        for value in unicode(r[column_name]).split(', '):
                             if value not in self.store_zones:
                                 error_detected = True
                                 error_values += [value]
                         if error_detected:
-                            if error_field_name not in pos.columns:
-                                pos[error_field_name] = None
-                            pos.loc[i, error_field_name] = ', '.join(error_values)
+                            if error_column_name not in pos.columns:
+                                pos[error_column_name] = None
+                            pos.loc[i, error_column_name] = ', '.join(error_values)
                             contents_ok &= False
 
                 # checking Scenes to include
-                field_name = 'Scenes to include'
+                column_name = 'Scenes to include'
                 error_name = 'INCORRECT VALUES'
-                error_field_name = WARNING_FIELD_NAME.format(field_name, error_name)
-                if field_name in pos.columns:
-                    for i, r in pos[pos[field_name].notnull()].iterrows():
+                error_column_name = WARNING_INFO.format(column_name, error_name)
+                if column_name in pos.columns:
+                    for i, r in pos[pos[column_name].notnull()].iterrows():
                         error_detected = False
                         error_values = []
-                        for value in unicode(r[field_name]).split('; '):
+                        for value in unicode(r[column_name]).split('; '):
                             if value not in self.scene_types:
                                 error_detected = True
                                 error_values += [value]
                         if error_detected:
-                            if error_field_name not in pos.columns:
-                                pos[error_field_name] = None
-                            pos.loc[i, error_field_name] = '; '.join(error_values)
+                            if error_column_name not in pos.columns:
+                                pos[error_column_name] = None
+                            pos.loc[i, error_column_name] = '; '.join(error_values)
                             contents_ok &= False
 
                 # checking Scenes to exclude
-                field_name = 'Scenes to exclude'
+                column_name = 'Scenes to exclude'
                 error_name = 'INCORRECT VALUES'
-                error_field_name = WARNING_FIELD_NAME.format(field_name, error_name)
-                if field_name in pos.columns:
-                    for i, r in pos[pos[field_name].notnull()].iterrows():
+                error_column_name = WARNING_INFO.format(column_name, error_name)
+                if column_name in pos.columns:
+                    for i, r in pos[pos[column_name].notnull()].iterrows():
                         error_detected = False
                         error_values = []
-                        if r[field_name] and r.get('Scenes to include'):
+                        if r[column_name] and r.get('Scenes to include'):
                             error_detected = True
-                            error_values = [r[field_name]]
-                        for value in unicode(r[field_name]).split('; '):
+                            error_values = [r[column_name]]
+                        for value in unicode(r[column_name]).split('; '):
                             if value not in self.scene_types:
                                 error_detected = True
                                 error_values += [value]
                         if error_detected:
-                            if error_field_name not in pos.columns:
-                                pos[error_field_name] = None
-                            pos.loc[i, error_field_name] = '; '.join(error_values)
+                            if error_column_name not in pos.columns:
+                                pos[error_column_name] = None
+                            pos.loc[i, error_column_name] = '; '.join(error_values)
                             contents_ok &= False
 
                 # checking Sub locations to include
-                field_name = 'Sub locations to include'
+                column_name = 'Sub locations to include'
                 error_name = 'INCORRECT VALUES'
-                error_field_name = WARNING_FIELD_NAME.format(field_name, error_name)
-                if field_name in pos.columns:
-                    for i, r in pos[pos[field_name].notnull()].iterrows():
+                error_column_name = WARNING_INFO.format(column_name, error_name)
+                if column_name in pos.columns:
+                    for i, r in pos[pos[column_name].notnull()].iterrows():
                         error_detected = False
                         error_values = []
-                        values = int(r[field_name]) if type(r[field_name]) == float \
-                            and int(r[field_name]) == r[field_name] else r[field_name]
+                        values = int(r[column_name]) if type(r[column_name]) == float \
+                            and int(r[column_name]) == r[column_name] else r[column_name]
                         for value in unicode(values).split(', '):
                             if value not in self.sub_locations:
                                 error_detected = True
                                 error_values += [value]
                         if error_detected:
-                            if error_field_name not in pos.columns:
-                                pos[error_field_name] = None
-                            pos.loc[i, error_field_name] = ', '.join(error_values)
+                            if error_column_name not in pos.columns:
+                                pos[error_column_name] = None
+                            pos.loc[i, error_column_name] = ', '.join(error_values)
                             contents_ok &= False
 
                 # checking Sub locations to exclude
-                field_name = 'Sub locations to exclude'
+                column_name = 'Sub locations to exclude'
                 error_name = 'INCORRECT VALUES'
-                error_field_name = WARNING_FIELD_NAME.format(field_name, error_name)
-                if field_name in pos.columns:
-                    for i, r in pos[pos[field_name].notnull()].iterrows():
+                error_column_name = WARNING_INFO.format(column_name, error_name)
+                if column_name in pos.columns:
+                    for i, r in pos[pos[column_name].notnull()].iterrows():
                         error_detected = False
                         error_values = []
-                        values = int(r[field_name]) if type(r[field_name]) == float \
-                            and int(r[field_name]) == r[field_name] else r[field_name]
+                        values = int(r[column_name]) if type(r[column_name]) == float \
+                            and int(r[column_name]) == r[column_name] else r[column_name]
                         if values and r.get('Sub locations to include'):
                             error_detected = True
                             error_values = [values]
@@ -1149,48 +1101,48 @@ class CCRUKPIS:
                                 error_detected = True
                                 error_values += [value]
                         if error_detected:
-                            if error_field_name not in pos.columns:
-                                pos[error_field_name] = None
-                            pos.loc[i, error_field_name] = ', '.join(error_values)
+                            if error_column_name not in pos.columns:
+                                pos[error_column_name] = None
+                            pos.loc[i, error_column_name] = ', '.join(error_values)
                             contents_ok &= False
 
                 # checking Locations to include
-                field_name = 'Locations to include'
+                column_name = 'Locations to include'
                 error_name = 'INCORRECT VALUES'
-                error_field_name = WARNING_FIELD_NAME.format(field_name, error_name)
-                if field_name in pos.columns:
-                    for i, r in pos[pos[field_name].notnull()].iterrows():
+                error_column_name = WARNING_INFO.format(column_name, error_name)
+                if column_name in pos.columns:
+                    for i, r in pos[pos[column_name].notnull()].iterrows():
                         error_detected = False
                         error_values = []
-                        for value in unicode(r[field_name]).split(', '):
+                        for value in unicode(r[column_name]).split(', '):
                             if value not in self.locations:
                                 error_detected = True
                                 error_values += [value]
                         if error_detected:
-                            if error_field_name not in pos.columns:
-                                pos[error_field_name] = None
-                            pos.loc[i, error_field_name] = ', '.join(error_values)
+                            if error_column_name not in pos.columns:
+                                pos[error_column_name] = None
+                            pos.loc[i, error_column_name] = ', '.join(error_values)
                             contents_ok &= False
 
                 # checking Locations to exclude
-                field_name = 'Locations to exclude'
+                column_name = 'Locations to exclude'
                 error_name = 'INCORRECT VALUES'
-                error_field_name = WARNING_FIELD_NAME.format(field_name, error_name)
-                if field_name in pos.columns:
-                    for i, r in pos[pos[field_name].notnull()].iterrows():
+                error_column_name = WARNING_INFO.format(column_name, error_name)
+                if column_name in pos.columns:
+                    for i, r in pos[pos[column_name].notnull()].iterrows():
                         error_detected = False
                         error_values = []
-                        if r[field_name] and r.get('Locations to include'):
+                        if r[column_name] and r.get('Locations to include'):
                             error_detected = True
-                            error_values = [r[field_name]]
-                        for value in unicode(r[field_name]).split(', '):
+                            error_values = [r[column_name]]
+                        for value in unicode(r[column_name]).split(', '):
                             if value not in self.locations:
                                 error_detected = True
                                 error_values += [value]
                         if error_detected:
-                            if error_field_name not in pos.columns:
-                                pos[error_field_name] = None
-                            pos.loc[i, error_field_name] = ', '.join(error_values)
+                            if error_column_name not in pos.columns:
+                                pos[error_column_name] = None
+                            pos.loc[i, error_column_name] = ', '.join(error_values)
                             contents_ok &= False
 
             if None and structure_ok:  # The structure is consistent
@@ -1246,51 +1198,51 @@ class CCRUKPIS:
                     pos.loc[i, '00_kpi_atomic_wight'] = r['00_weight']
 
                 # checking POS name in the DB static.kpi_set
-                field_name = 'PoS name'
+                column_name = 'PoS name'
                 error_name = 'NOT IN DB (kpi_set)'
-                error_field_name = ERROR_FIELD_NAME.format(field_name, error_name)
+                error_column_name = ERROR_INFO.format(column_name, error_name)
                 check_list = self.kpi_names['kpi_set_name'].unique().tolist()
                 if pos_name not in check_list:
-                    pos[error_field_name] = pos[field_name]
+                    pos[error_column_name] = pos[column_name]
                     contents_ok &= False
 
                 # checking KPI name Eng names in the DB static.kpi
-                field_name = 'KPI name Eng'
+                column_name = 'KPI name Eng'
                 error_name = 'NOT IN DB (kpi)'
-                error_field_name = ERROR_FIELD_NAME.format(field_name, error_name)
+                error_column_name = ERROR_INFO.format(column_name, error_name)
                 check_list = self.kpi_names[self.kpi_names['kpi_set_name'] == pos_name]['kpi_name'].unique().tolist()
                 for i, r in pos[pos['level'] == 2].iterrows():
-                    if r[field_name] not in check_list:
-                        if error_field_name not in pos.columns:
-                            pos[error_field_name] = None
-                        pos.loc[i, error_field_name] = unicode(r[field_name])
+                    if r[column_name] not in check_list:
+                        if error_column_name not in pos.columns:
+                            pos[error_column_name] = None
+                        pos.loc[i, error_column_name] = unicode(r[column_name])
                         contents_ok &= False
 
                 # checking KPI name Eng names in the DB static.atomic_kpi
-                field_name = 'KPI name Eng'
+                column_name = 'KPI name Eng'
                 error_name = 'NOT IN DB (atomic_kpi)'
-                error_field_name = ERROR_FIELD_NAME.format(field_name, error_name)
+                error_column_name = ERROR_INFO.format(column_name, error_name)
                 for i, r in pos[pos['level'] in [3, 4]].iterrows():
                     check_list = self.kpi_names[(self.kpi_names['kpi_set_name'] == r['00_kpi_set_name']) &
                                                 (self.kpi_names['kpi_name'] == r['00_kpi_name'])][
                         'atomic_kpi_name'].unique().tolist()
-                    if r[field_name] not in check_list:
-                        if error_field_name not in pos.columns:
-                            pos[error_field_name] = None
-                        pos.loc[i, error_field_name] = unicode(r[field_name])
+                    if r[column_name] not in check_list:
+                        if error_column_name not in pos.columns:
+                            pos[error_column_name] = None
+                        pos.loc[i, error_column_name] = unicode(r[column_name])
                         contents_ok &= False
 
                 # checking KPI name Eng names in the DB static.kpi_level_2
-                field_name = 'KPI name Eng'
+                column_name = 'KPI name Eng'
                 error_name = 'NOT IN DB (kpi_level_2)'
-                error_field_name = ERROR_FIELD_NAME.format(field_name, error_name)
+                error_column_name = ERROR_INFO.format(column_name, error_name)
                 check_list = self.kpi_level_2_names
                 for i, r in pos.iterrows():
-                    kpi_level_2_name = unicode(r[field_name]).upper()
+                    kpi_level_2_name = unicode(r[column_name]).upper()
                     if kpi_level_2_name not in check_list:
-                        if error_field_name not in pos.columns:
-                            pos[error_field_name] = None
-                        pos.loc[i, error_field_name] = kpi_level_2_name
+                        if error_column_name not in pos.columns:
+                            pos[error_column_name] = None
+                        pos.loc[i, error_column_name] = kpi_level_2_name
                         contents_ok &= False
 
             pos_all = pos_all.append(pos, ignore_index=True)
@@ -1298,9 +1250,9 @@ class CCRUKPIS:
         if not any([c.find('ERROR') >= 0 for c in pos_all.columns]):
 
             # creating kpis file for the DB old structure
-            kpi_set_name_column = ERROR_FIELD_NAME.format('PoS name', 'NOT IN DB (kpi_set)')
-            kpi_name_column = ERROR_FIELD_NAME.format('KPI name Eng', 'NOT IN DB (kpi)')
-            atomic_kpi_name_column = ERROR_FIELD_NAME.format('KPI name Eng', 'NOT IN DB (atomic_kpi)')
+            kpi_set_name_column = ERROR_INFO.format('PoS name', 'NOT IN DB (kpi_set)')
+            kpi_name_column = ERROR_INFO.format('KPI name Eng', 'NOT IN DB (kpi)')
+            atomic_kpi_name_column = ERROR_INFO.format('KPI name Eng', 'NOT IN DB (atomic_kpi)')
             pos_all['NEW'] = None
             pos_all.loc[pos_all[kpi_set_name_column].notnull() |
                         pos_all[kpi_name_column].notnull() |
@@ -1329,7 +1281,7 @@ class CCRUKPIS:
             pos_all = pos_all.drop(columns=['NEW'])
 
             # creating kpis file for the DB new structure
-            kpi_name_column = ERROR_FIELD_NAME.format('KPI name Eng', 'NOT IN DB (kpi_level_2)')
+            kpi_name_column = ERROR_INFO.format('KPI name Eng', 'NOT IN DB (kpi_level_2)')
             bd_kpis = pos_all[pos_all[kpi_name_column].notnull()][[kpi_name_column, 'KPI name RUS']]
             bd_kpis[KPI_LEVEL_2_INSERT] = \
                 bd_kpis.apply(lambda r: KPI_LEVEL_2_VALUES.format(r[kpi_name_column] + r['KPI name RUS']), axis=1)
@@ -1387,6 +1339,77 @@ class CCRUKPIS:
                 ws.set_zoom(75)
 
             writer.save()
+
+    @staticmethod
+    def fixing_sorting_column(pos):
+        pos['Sorting'] = range(1, len(pos.index) + 1)
+        return pos
+    
+    @staticmethod
+    def fixing_children_column(pos):
+        for i, r in pos.iterrows():
+            children = pos[pos['Parent'] == r['KPI ID']]['KPI ID'].tolist()
+            children = list(set(children) - {None})
+            if children:
+                children = [(unicode(int(x))) for x in children]
+                children = '\n'.join(children)
+            else:
+                children = None
+            pos.loc[i, 'Children'] = children
+        return pos
+
+    @staticmethod
+    def fixing_sku_column(pos, skus):
+        pos['SKU'] = None
+        for i, r in pos[pos['Type'] == 'SKUs'].iterrows():
+            ean_list = unicode(r['Values']).split(', ')
+            sku_list = []
+            for ean in ean_list:
+                sku_list += skus[skus['ean_code'] == ean]['name'].unique().tolist()
+            pos.loc[i, 'SKU'] = ', '.join(skus)
+        return pos
+
+    @staticmethod
+    def creating_subsequent_formulas_column(pos):
+        for i, r in pos[pos['Children'].notnull() & pos['level'].isin([2, 3])].iterrows():
+            pos.loc[i, '00_subsequent_formulas'] = \
+                r['Formula'] + ': ' + ' | '.join(pos[pos['Parent'] == r['KPI ID']]['Formula'].unique().tolist())
+        return pos
+    
+    @staticmethod
+    def removing_extra_spaces_in_column(pos, column_name, info_name, info_column_name):
+        column_name_original = column_name + ' ORIGINAL'
+        info_column_name = info_column_name.format(column_name, info_name)
+        if column_name in pos.columns:
+            pos[column_name_original] = pos[column_name]
+            pos[column_name] = \
+                pos[column_name] \
+                .astype(unicode) \
+                .str.replace('\n', ' ') \
+                .str.replace('  ', ' ') \
+                .str.replace('  ', ' ') \
+                .str.strip()
+            pos_filter = pos[column_name] != pos[column_name_original]
+            pos.loc[pos_filter, info_column_name] = pos[pos_filter][column_name_original].astype(unicode)
+            pos = pos.drop(columns=[column_name_original])
+        return pos
+
+    @staticmethod
+    def removing_irrelevant_logical_operator(pos, column_name, info_name, info_column_name):
+        column_name = 'Logical Operator'
+        error_name = 'IRRELEVANT VALUES REMOVED'
+        info_column_name = WARNING_INFO.format(column_name, info_name)
+        if column_name in pos.columns:
+            pos_filter = pos[column_name].notnull() &
+
+
+
+            for i, r in pos[pos[column_name].notnull()].iterrows():
+                if not (r['KPI name Eng'] in ALLOWED_LOGICAL_OPERATOR_KPIS and r['Children']):
+                    if error_column_name not in pos.columns:
+                        pos[error_column_name] = None
+                    pos.loc[i, error_column_name] = unicode(r[column_name])
+                    pos.loc[i, column_name] = None
 
     def get_kpi_names(self):
         query = """
