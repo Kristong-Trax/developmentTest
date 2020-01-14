@@ -1,4 +1,4 @@
-from Projects.CCANDINA_AR.KPISceneGenerator import SceneGenerator
+from Projects.CCANDINAAR.KPISceneGenerator import SceneGenerator
 from Trax.Apps.Services.KEngine.Handlers.Utils.Scripts import SceneBaseClass
 
 __author__ = 'Nicolas'
@@ -19,7 +19,7 @@ class SceneCalculations(SceneBaseClass):
 # from Trax.Algo.Calculations.Core.Constants import Keys, Fields, SCENE_ITEM_FACTS_COLUMNS
 # from Trax.Algo.Calculations.Core.Vanilla.Calculations import SceneVanillaCalculations
 # from Trax.Algo.Calculations.Core.Vanilla.Output import VanillaOutput
-# from Projects.CCANDINA_AR.Calculations import Calculations
+# from Projects.CCANDINAAR.Calculations import Calculations
 #
 #
 # def save_scene_item_facts_to_data_provider(data_provider, output):
