@@ -24,3 +24,5 @@ class Consts(object):
     KPI_DICT = {"GSK_PLN_BLOCK_SCORE": "GSK_PLN_BLOCK_SCORE", "GSK_ECAPS": "GSK_ECAPS",
                 "GSK_PLN_MSL_SCORE": "GSK_PLN_MSL_SCORE",
                 "GSK_PLN_POSITION_SCORE": "GSK_PLN_POSITION_SCORE", "GSK_PLN_LSOS_SCORE": "GSK_PLN_LSOS_SCORE"}
+    SHELVES = 'shelves'
+    POSITION_TARGET = 'position_target'
