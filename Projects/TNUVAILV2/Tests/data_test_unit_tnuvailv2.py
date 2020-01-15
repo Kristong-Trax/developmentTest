@@ -124,7 +124,7 @@ class DataTestUnitTnuva(object):
         {u'param_group': u'Customer Specifications', u'param_name': u'manufacturer_id', u'param_value': u'810'}])
 
     oos_exclude_res_empty = pd.DataFrame()
-    previous_results_empty = pd.DataFrame()
+    previous_results_empty = pd.DataFrame(columns=['kpi_level_2_fk', 'numerator_id', 'result'])
     previous_results_no_session = None
     oos_exclude_res_1 = pd.DataFrame.from_records([
         {'store_fk': 1, 'date': '2019-12-18', 'session_uid': '236c1577-0ecb-4bf9-88b9-c9e87ab17c58',

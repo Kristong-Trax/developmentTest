@@ -419,8 +419,7 @@ class TestTnuvailv2(TestFunctionalCase):
         tool_box.common_v2.write_to_db_result = MagicMock()
         tool_box._calculate_assortment()
         results_df = self.build_results_df(tool_box)
-        x = results_df[['fk', 'numerator_id', 'numerator_result', 'denominator_id', 'denominator_result', 'result',
-                         'score']]
+
         self.assertEquals(len(results_df[results_df['fk'] == 2006]), 1)
         self.assertEquals(len(results_df[results_df['fk'] == 2003]), 1)
 
@@ -447,6 +446,43 @@ class TestTnuvailv2(TestFunctionalCase):
         for expected_result in expected_list:
             test_result_list.append(self.check_results(results_df, expected_result) == 1)
         self.assertTrue(all(test_result_list))
+
+    # def test_calculate_assortment_previous_results_empty(self):
+    #     matches, scene = self.create_scif_matches_stitch_groups_data_mocks([2])
+    #     self.mock_get_last_session_oos_results(DataTestUnitTnuva.previous_results_empty)
+    #     self.mock_get_oos_reasons_for_session(DataTestUnitTnuva.oos_exclude_res_empty)
+    #     self.mock_session_info_property(DataTestUnitTnuva.session_info_new)
+    #     tool_box = TNUVAILToolBox(self.data_provider_mock, self.output)
+    #     tool_box.common_v2.write_to_db_result = MagicMock()
+    #     tool_box._calculate_assortment()
+    #     results_df = self.build_results_df(tool_box)
+    #     x = results_df[['fk', 'numerator_id', 'numerator_result', 'denominator_id', 'denominator_result', 'result',
+    #                     'score']]
+    #     self.assertEquals(len(results_df[results_df['fk'] == 2017]), 1)
+    #     self.assertEquals(len(results_df[results_df['fk'] == 2018]), 1)
+    #
+    #     self.assertEquals(len(results_df[results_df['fk'] == 2019]), 1)
+    #     self.assertEquals(len(results_df[results_df['fk'] == 2020]), 1)
+    #
+    #     expected_list = []
+    #     expected_list.append({'fk': 2006, 'numerator_id': 810, 'numerator_result': 3,
+    #                           'denominator_result': 5, 'score': round(3.0 / 5 * 100, 2),
+    #                           'result': round(3.0 / 5 * 100, 2)})
+    #     expected_list.append({'fk': 2003, 'numerator_id': 810, 'numerator_result': 2,
+    #                           'denominator_result': 6, 'score': round(2.0 / 6 * 100, 2),
+    #                           'result': round(2.0 / 6 * 100, 2)})
+    #
+    #     expected_list.append({'fk': 2009, 'numerator_id': 810, 'numerator_result': 3,
+    #                           'denominator_result': 4, 'score': 3.0 / 4 * 100, 'result': 3.0 / 4 * 100})
+    #     expected_list.append({'fk': 2012, 'numerator_id': 810, 'numerator_result': 2,
+    #                           'denominator_result': 5, 'score': 2.0 / 5 * 100, 'result': 2.0 / 5 * 100})
+    #     expected_list.append({'fk': 2016, 'numerator_id': 810, 'numerator_result': 5,
+    #                           'denominator_result': 9, 'score': 0, 'result': round(5.0 / 9 * 100, 2)})
+    #
+    #     test_result_list = []
+    #     for expected_result in expected_list:
+    #         test_result_list.append(self.check_results(results_df, expected_result) == 1)
+    #     self.assertTrue(all(test_result_list))
 
     # def test_meat_included(self): # when we change the code
     #     matches, scene = self.create_scif_matches_stitch_groups_data_mocks([2])
