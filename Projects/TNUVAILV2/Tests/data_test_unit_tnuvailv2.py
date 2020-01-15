@@ -141,3 +141,14 @@ class DataTestUnitTnuva(object):
         {'store_fk': 1, 'date': '2019-12-18', 'session_uid': '236c1577-0ecb-4bf9-88b9-c9e87ab17c58',
          'product_fk': 11, 'oos_message_fk': 40, 'type': 3, 'description': 'OOS-Correct Tag'}
     ])
+
+    previous_results_1 = pd.DataFrame.from_records([
+        {'kpi_level_2_fk': 2020, 'numerator_id': 7, 'result': 1},
+        {'kpi_level_2_fk': 2020, 'numerator_id': 8, 'result': 2},
+        {'kpi_level_2_fk': 2020, 'numerator_id': 9, 'result': 1},
+        {'kpi_level_2_fk': 2020, 'numerator_id': 10, 'result': 2},
+        {'kpi_level_2_fk': 2020, 'numerator_id': 11, 'result': 1},
+
+        {'kpi_level_2_fk': 2016, 'numerator_id': 810, 'result': 3.0/5 * 100},
+        {'kpi_level_2_fk': 2018, 'numerator_id': 810, 'result': 3.0/5 * 100}
+    ])
