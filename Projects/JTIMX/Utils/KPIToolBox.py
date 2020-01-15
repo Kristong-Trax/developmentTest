@@ -41,6 +41,7 @@ class ToolBox(GlobalSessionToolBox):
         self.visit_date = datetime.combine(self.data_provider[Data.VISIT_DATE], datetime.min.time())
         self.relevant_template = self.retrieve_price_target_df()
         self.mpis = self.data_provider[Data.MATCHES]
+        self.manufacturer_fk = self.scif.manufacturer_fk.iloc[0] if not self.scif.empty else 0
 
     def main_calculation(self):
         self.calculate_price_target_kpi()
@@ -48,21 +49,25 @@ class ToolBox(GlobalSessionToolBox):
     def calculate_price_target_kpi(self):
         kpi_name = 'Price Target'
         kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_name)
+        # self.write_to_db(self.common.get_kpi_fk_by_kpi_type('Price Target - Parent'), numerator_id=self.manufacturer_fk,
+        #                  denominator_id=self.store_id,
+        #                  result=1, identifier_result=)
 
         relevant_mpis = self.mpis[['product_fk', 'price']].drop_duplicates('product_fk')
         present_products_in_session = self.scif.merge(self.relevant_template, how='left', left_on='product_short_name',
                                                       right_on='English SKU Name')[
-            ['product_fk', 'brand_fk', 'product_short_name', 'Target Price', 'facings']]
+            ['product_fk', 'substitution_product_fk', 'brand_fk', 'product_short_name', 'Target Price', 'facings']]
+        present_products_in_session = self.__address_substitution_product_fk(present_products_in_session)
         present_products_in_session = present_products_in_session.merge(relevant_mpis, how='left', on='product_fk')
-
         absent_products_in_session = self.relevant_template[
             ~ self.relevant_template['English SKU Name'].isin(present_products_in_session.product_short_name)]
         absent_products_in_session = \
-        absent_products_in_session.merge(self.all_products, how='left', left_on='English SKU Name',
-                                         right_on='product_short_name')[
-            ['product_fk', 'brand_fk', 'product_short_name', 'Target Price']]
-        final_mpis = pd.concat([present_products_in_session,absent_products_in_session]).fillna(0)
-
+            absent_products_in_session.merge(self.all_products, how='left', left_on='English SKU Name',
+                                             right_on='product_short_name')[
+                ['product_fk', 'brand_fk', 'product_short_name', 'Target Price']]
+        final_mpis = pd.concat([present_products_in_session, absent_products_in_session]).fillna(0)
+        final_mpis = final_mpis[final_mpis.product_short_name.isin(
+            self.relevant_template['English SKU Name'])]  # Fix the logic in the future
 
         for i, row in final_mpis.iterrows():
             recognized_price = row['price'] if row.price else 0
@@ -71,7 +76,6 @@ class ToolBox(GlobalSessionToolBox):
             self.write_to_db(kpi_fk, numerator_id=row.product_fk, denominator_id=row.brand_fk,
                              numerator_result=recognized_price, denominator_result=target_price, result=row.facings,
                              score=score)
-
 
     def retrieve_price_target_df(self):
         data_name_list = os.listdir(TEMPLATE_PATH)
@@ -93,3 +97,12 @@ class ToolBox(GlobalSessionToolBox):
 
         price_target_df = pd.read_excel(TEMPLATE_PATH + '/' + relevant_price_target_file, sheet_name=0)
         return price_target_df
+
+    @staticmethod
+    def __address_substitution_product_fk(relevant_scif):
+        scif_with_substitution_product_fk = relevant_scif[pd.notna(relevant_scif.substitution_product_fk)]
+        relevant_scif['product_fk'] = \
+        [relevant_scif.product_fk.replace(i.substitution_product_fk, i.product_fk) for i in
+         scif_with_substitution_product_fk.itertuples()][0]
+        relevant_scif.dropna(subset=['facings'], inplace=True)
+        return relevant_scif
