@@ -38,8 +38,7 @@ class DIAGEOBRToolBox:
                                              result=res_json['result'])
 
         # Global Menu kpis
-        menus_res_dict = self.diageo_generator.diageo_global_share_of_menu_cocktail_function(
-            cocktail_product_level=True)
+        menus_res_dict = self.diageo_generator.diageo_global_new_share_of_menu_function()
         self.commonV2.save_json_to_new_tables(menus_res_dict)
 
         # committing to new tables

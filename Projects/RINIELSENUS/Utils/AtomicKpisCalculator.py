@@ -43,6 +43,9 @@ class KpiAtomicKpisCalculator(object):
         from Projects.RINIELSENUS.Utils.Fetcher import MarsUsQueries
         if allowed:
             kpi = '{}_allowed'.format(kpi)
+        # the name and display_name columns in mpip_sr DB table are limited to 100 characters
+        if len(kpi) > 100:
+            kpi = kpi[:100]
         df = mpip_sr[mpip_sr['name'] == kpi]
         if df.empty:
             if mpip_sr.empty:
@@ -54,7 +57,6 @@ class KpiAtomicKpisCalculator(object):
             mpip_sr = self._data_provider._shared_data
             df = mpip_sr[mpip_sr['name'] == kpi]
         return df['pk'].values[0]
-
 
 
     @abc.abstractproperty

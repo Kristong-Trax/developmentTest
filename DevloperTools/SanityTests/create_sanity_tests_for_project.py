@@ -130,7 +130,7 @@ class TestKEnginePsCode(PsSanityTestsFuncs):
         # self.mock_object('save_latest_templates',
         #                  path='KPIUtils.GlobalProjects.DIAGEO.Utils.TemplatesUtil.TemplateHandler')
         # self.mock_object('download_template',
-        #                  path='KPIUtils.GlobalProjects.DIAGEO.Utils.TemplatesUtil.TemplateHandler').return_value = \\
+        #                  path='KPIUtils.GlobalProjects.DIAGEO.Utils.TemplatesUtil.TemplateHandler').return_value = \\In
         #     relative_position_template
         return
 
@@ -291,7 +291,7 @@ class GetKpisDataForTesting:
                 SELECT 
                     res.session_fk,
                     ses.session_uid,
-                    COUNT(DISTINCT client_name) AS kpi_count
+                    COUNT(DISTINCT kpi.type) AS kpi_count
                 FROM
                     report.kpi_level_2_results res
                         LEFT JOIN
@@ -412,14 +412,15 @@ if __name__ == '__main__':
     LoggerInitializer.init('running sanity creator script')
     replace_configurations_file = True
     copy_configuration_file_to_traxexport(replace_configurations_file)
-    projects = ['diageouk']
+    projects = {'jnjes': [],
+                'inbevci': []}
     for project in projects:
         try:
             kpi_results = pd.DataFrame()
             # Leave sessions param empty if you want the script will find you the optimal session to use.
             # Otherwise: insert a session_uid / list of session_uids / dict of session_uid
             #            and scenes in the following format {'a': [1, 3]}
-            sessions = ['DF1654DF-9A89-40AB-8CE8-100D8D07E0DC']
+            sessions = projects[project]
             # In case you don't need to generate a new seed, just comment out the below row
             sessions, kpi_results = create_seed(project=project, sessions_from_user=sessions)
             if kpi_results is None:
