@@ -65,7 +65,7 @@ class ToolBox(GlobalSessionToolBox):
 
 
         for i, row in final_mpis.iterrows():
-            recognized_price = row['price']
+            recognized_price = row['price'] if row.price else 0
             target_price = row['Target Price']
             score = 1 if target_price == recognized_price else 0
             self.write_to_db(kpi_fk, numerator_id=row.product_fk, denominator_id=row.brand_fk,
