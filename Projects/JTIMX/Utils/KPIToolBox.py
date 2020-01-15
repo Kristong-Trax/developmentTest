@@ -49,9 +49,9 @@ class ToolBox(GlobalSessionToolBox):
     def calculate_price_target_kpi(self):
         kpi_name = 'Price Target'
         kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_name)
-        # self.write_to_db(self.common.get_kpi_fk_by_kpi_type('Price Target - Parent'), numerator_id=self.manufacturer_fk,
-        #                  denominator_id=self.store_id,
-        #                  result=1, identifier_result=)
+        self.write_to_db(self.common.get_kpi_fk_by_kpi_type('Price Target - Parent'), numerator_id=self.manufacturer_fk,
+                         denominator_id=self.store_id,
+                         result=1, identifier_result=self.store_id)
 
         relevant_mpis = self.mpis[['product_fk', 'price']].drop_duplicates('product_fk')
         present_products_in_session = self.scif.merge(self.relevant_template, how='left', left_on='product_short_name',
@@ -75,7 +75,7 @@ class ToolBox(GlobalSessionToolBox):
             score = 1 if target_price == recognized_price else 0
             self.write_to_db(kpi_fk, numerator_id=row.product_fk, denominator_id=row.brand_fk,
                              numerator_result=recognized_price, denominator_result=target_price, result=row.facings,
-                             score=score)
+                             score=score, identifier_parent=self.store_id, should_enter=True)
 
     def retrieve_price_target_df(self):
         data_name_list = os.listdir(TEMPLATE_PATH)
