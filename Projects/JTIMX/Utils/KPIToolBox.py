@@ -54,17 +54,23 @@ class ToolBox(GlobalSessionToolBox):
                          result=1, identifier_result=self.store_id)
 
         relevant_mpis = self.mpis[['product_fk', 'price']].drop_duplicates('product_fk')
-        present_products_in_session = self.scif.merge(self.relevant_template, how='left', left_on='product_short_name',
-                                                      right_on='English SKU Name')[
-            ['product_fk', 'substitution_product_fk', 'brand_fk', 'product_short_name', 'Target Price', 'facings']]
-        present_products_in_session = self.__address_substitution_product_fk(present_products_in_session)
-        present_products_in_session = present_products_in_session.merge(relevant_mpis, how='left', on='product_fk')
-        absent_products_in_session = self.relevant_template[
-            ~ self.relevant_template['English SKU Name'].isin(present_products_in_session.product_short_name)]
-        absent_products_in_session = \
-            absent_products_in_session.merge(self.all_products, how='left', left_on='English SKU Name',
-                                             right_on='product_short_name')[
-                ['product_fk', 'brand_fk', 'product_short_name', 'Target Price']]
+        try:
+            present_products_in_session = \
+                self.scif.merge(self.relevant_template, how='left', left_on='product_short_name',
+                                right_on='English SKU Name')[
+                    ['product_fk', 'substitution_product_fk', 'brand_fk', 'product_short_name', 'Target Price',
+                     'facings']]
+            present_products_in_session = self.__address_substitution_product_fk(present_products_in_session)
+            present_products_in_session = present_products_in_session.merge(relevant_mpis, how='left', on='product_fk')
+            absent_products_in_session = self.relevant_template[
+                ~ self.relevant_template['English SKU Name'].isin(present_products_in_session.product_short_name)]
+            absent_products_in_session = \
+                absent_products_in_session.merge(self.all_products, how='left', left_on='English SKU Name',
+                                                 right_on='product_short_name')[
+                    ['product_fk', 'brand_fk', 'product_short_name', 'Target Price']]
+        except IndexError:
+            self.write_to_db(kpi_fk, result=0, score=0, identifier_parent=self.store_id, should_enter=True)
+
         final_mpis = pd.concat([present_products_in_session, absent_products_in_session]).fillna(0)
         final_mpis = final_mpis[final_mpis.product_short_name.isin(
             self.relevant_template['English SKU Name'])]  # Fix the logic in the future
@@ -72,7 +78,12 @@ class ToolBox(GlobalSessionToolBox):
         for i, row in final_mpis.iterrows():
             recognized_price = row['price'] if row.price else 0
             target_price = row['Target Price']
-            score = 1 if target_price == recognized_price else 0
+            if target_price == 0:
+                score = 0
+            elif target_price == recognized_price:
+                score = 1
+            else:
+                score = 0
             self.write_to_db(kpi_fk, numerator_id=row.product_fk, denominator_id=row.brand_fk,
                              numerator_result=recognized_price, denominator_result=target_price, result=row.facings,
                              score=score, identifier_parent=self.store_id, should_enter=True)
@@ -102,7 +113,7 @@ class ToolBox(GlobalSessionToolBox):
     def __address_substitution_product_fk(relevant_scif):
         scif_with_substitution_product_fk = relevant_scif[pd.notna(relevant_scif.substitution_product_fk)]
         relevant_scif['product_fk'] = \
-        [relevant_scif.product_fk.replace(i.substitution_product_fk, i.product_fk) for i in
-         scif_with_substitution_product_fk.itertuples()][0]
+            [relevant_scif.product_fk.replace(i.substitution_product_fk, i.product_fk) for i in
+             scif_with_substitution_product_fk.itertuples()][0]
         relevant_scif.dropna(subset=['facings'], inplace=True)
         return relevant_scif
