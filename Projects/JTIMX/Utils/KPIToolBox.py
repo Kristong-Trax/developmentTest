@@ -35,9 +35,6 @@ class ToolBox(GlobalSessionToolBox):
     def calculate_price_target_kpi(self):
         kpi_name = 'Price Target'
         kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_name)
-        self.write_to_db(self.common.get_kpi_fk_by_kpi_type('Price Target - Parent'), numerator_id=self.manufacturer_fk,
-                         denominator_id=self.store_id,
-                         result=1, identifier_result=self.store_id)
 
         relevant_mpis = self.mpis[['product_fk', 'price']].drop_duplicates('product_fk')
         try:
@@ -69,9 +66,17 @@ class ToolBox(GlobalSessionToolBox):
                 score = 1
             else:
                 score = 0
+
             self.write_to_db(kpi_fk, numerator_id=row.product_fk, denominator_id=row.brand_fk,
                              numerator_result=recognized_price, denominator_result=target_price, result=row.facings,
                              score=score, identifier_parent=self.store_id, should_enter=True)
+
+        parent_kpi_relevant_df = final_mpis[final_mpis['Target Price'] != 0]
+        parent_kpi_relevant_result = float(len(np.where(parent_kpi_relevant_df['Target Price'] == parent_kpi_relevant_df.price)[0])) / len(parent_kpi_relevant_df)
+
+        self.write_to_db(self.common.get_kpi_fk_by_kpi_type('Price Target - Parent'), numerator_id=self.manufacturer_fk,
+                         denominator_id=self.store_id,
+                         result=parent_kpi_relevant_result, identifier_result=self.store_id)
 
     def retrieve_price_target_df(self):
         data_name_list = os.listdir(TEMPLATE_PATH)
@@ -97,8 +102,9 @@ class ToolBox(GlobalSessionToolBox):
     @staticmethod
     def __address_substitution_product_fk(relevant_scif, relevant_mpis):
         scif_with_substitution_product_fk = relevant_scif[pd.notna(relevant_scif.substitution_product_fk)]
-        final_mpis = relevant_mpis.replace(scif_with_substitution_product_fk.product_fk.to_numpy(),
+        relevant_mpis.product_fk = relevant_mpis.product_fk.replace(scif_with_substitution_product_fk.product_fk.to_numpy(),
                                  scif_with_substitution_product_fk.substitution_product_fk.to_numpy())
-        present_products_in_session = relevant_scif.merge(final_mpis, how='left',on='product_fk')
+        present_products_in_session = relevant_scif.merge(relevant_mpis, how='left',on='product_fk')
+        present_products_in_session.dropna(subset=['facings'], inplace=True)
 
         return present_products_in_session
