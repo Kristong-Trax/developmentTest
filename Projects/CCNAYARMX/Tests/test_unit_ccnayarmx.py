@@ -3,7 +3,7 @@ from Trax.Utils.Conf.Configuration import Config
 from Trax.Utils.Testing.Case import TestCase
 from mock import MagicMock, mock
 # import pandas as pd
-from Projects.CCNAYARMX.Utils.KPIToolBox import ToolBox
+from Projects.CCNAYARMX.Utils import ToolBox
 
 
 __author__ = 'krishnat'

@@ -43,6 +43,9 @@ class KpiAtomicKpisCalculator(object):
         from Projects.RINIELSENUS.Utils.Fetcher import MarsUsQueries
         if allowed:
             kpi = '{}_allowed'.format(kpi)
+        # the name and display_name columns in mpip_sr DB table are limited to 100 characters
+        if len(kpi) > 100:
+            kpi = kpi[:100]
         df = mpip_sr[mpip_sr['name'] == kpi]
         if df.empty:
             if mpip_sr.empty:
@@ -54,7 +57,6 @@ class KpiAtomicKpisCalculator(object):
             mpip_sr = self._data_provider._shared_data
             df = mpip_sr[mpip_sr['name'] == kpi]
         return df['pk'].values[0]
-
 
 
     @abc.abstractproperty
@@ -395,23 +397,32 @@ class BlockBaseCalculation(KpiAtomicKpisCalculator):
 
 class TwoBlocksAtomicKpiCalculation(BlockBaseCalculation):
     def calculate_atomic_kpi(self, atomic_kpi_data):
+        if 'Result Type' in atomic_kpi_data['filters']:
+            result_type = atomic_kpi_data['filters']['Result Type'][0]
+        else:
+            result_type = None
         col = atomic_kpi_data['filters'].pop(
             'Two Blocks')[0] if 'Two Blocks' in atomic_kpi_data['filters'] else ''
         if not col:
             col = 'Customer Brand'
         if col in FILTER_NAMING_DICT:
             col = FILTER_NAMING_DICT[col]
+        max_block_values = []
         result = 100
         for filter in atomic_kpi_data['filters'][col]:
             atomic_kpi_data['filters'][col] = [filter]
             score = self.calculate_block(atomic_kpi_data)
+            max_block_values.append(score)
             if not score:
                 result = 0
                 break
             if np.isnan(score):
                 result = np.nan
                 break
-        return result
+        if result_type and result_type == 'Percentage':
+            return min(max_block_values) if max_block_values else 0
+        else:
+            return result
 
     def check_block(self, block, bay):
         return block['block']
@@ -647,6 +658,7 @@ class VerticalBlockOneSceneAtomicKpiCalculation(BlockBaseCalculation):
         vertical_blocked_scenes = 0
         visited = set()
         visited_vert = set()
+        max_block_values = []
 
         for item, scene in iter_groups:
             if scene['scene_fk'] in visited and scene['scene_fk'] in visited_vert:
@@ -669,15 +681,20 @@ class VerticalBlockOneSceneAtomicKpiCalculation(BlockBaseCalculation):
             if self.check_block(block, scene['scene_avg_num_of_shelves']) and scene['scene_fk'] not in visited:
                 blocked_scenes += 1
                 visited.add(scene['scene_fk'])
+                max_block_values.append(block['facing_percentage'])
 
             if self.check_vertical_block(block, scene['scene_avg_num_of_shelves']) and scene['scene_fk'] not in visited_vert:
                 vertical_blocked_scenes += 1
                 visited_vert.add(scene['scene_fk'])
+                max_block_values.append(block['facing_percentage'])
 
-        if float(blocked_scenes) == float(num_of_scenes - len(skipped_scenes)) and float(vertical_blocked_scenes) >= 1:
-            return 100
+        if result_type == 'Percentage':
+            return min(max_block_values) * 100 if max_block_values else 0
         else:
-            return 0
+            if float(blocked_scenes) == float(num_of_scenes - len(skipped_scenes)) and float(vertical_blocked_scenes) >= 1:
+                return 100
+            else:
+                return 0
 
     def check_block(self, block, scene_avg_shelf):
         return block['block']

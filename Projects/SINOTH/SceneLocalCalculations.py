@@ -23,17 +23,12 @@ def save_scene_item_facts_to_data_provider(data_provider, output):
 
 
 if __name__ == '__main__':
-    LoggerInitializer.init('gskau calculations')
+    LoggerInitializer.init('Sinoth Scene Calculations')
     Config.init()
-    project_name = 'gskau'
+    project_name = 'sinoth'
     # RUN for scene level KPIs
     session_scene_map = OrderedDict([
-        ('12076D1D-FA3C-443C-951E-B4D0FBB80213', ['3825280F-A1A7-41A5-B90C-AA205A9A6D1E']),
-        ('3EFA8C57-0FEB-4CFD-A819-2521D8082DFE', ['24F335D0-648C-41C2-A60D-C26D82641928']),
-        ('4E5AA82E-C063-4B92-8C48-FA12761B6560', ['9ACBDCC5-24D4-4C0A-AB89-9B6219D8FE28']),
-        ('56C336BB-9797-4C8F-AC1C-D18E40218404', ['3DEC7521-93F1-4888-9631-4C4808932C30']),
-        ('BC981670-1F6B-485A-8695-A1FE552B07AE', ['2DADAFAE-7526-4AAE-A901-1AA623EA0BB9']),
-        ('F3AAC28E-87C9-4276-9390-BD579B13A64A', ['4902F86D-7FEF-40D2-B08A-4C87D3D708B1'])
+        ('fdf3e395-236a-4afe-a036-7bb72c872ee9', ['568f7cad-3799-4de1-85b2-1347c601c7ab'])
     ])
 
     for session, scenes in session_scene_map.iteritems():

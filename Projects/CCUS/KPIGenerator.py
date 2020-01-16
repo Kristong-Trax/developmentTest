@@ -28,7 +28,7 @@ class CCUSGenerator:
         This is the main KPI calculation function.
         It calculates the score for every KPI set and saves it to the DB.
         """
-        self.calculate_fsop()
+        # self.calculate_fsop()
 
         self.calculate_manufacturer_displays()
         # # self.calculate_obbo()
@@ -39,9 +39,9 @@ class CCUSGenerator:
         # # self.calculate_msc_new()
         # # self.calculate_gold_peak_block()
         self.calculate_special_programs()
-        self.calculate_validation()
+        # self.calculate_validation()
         self.calculate_pillars_programs()
-        self.calculate_jeff()
+        # self.calculate_jeff()
 
         self.common.commit_results_data()
 
