@@ -97,8 +97,8 @@ class ToolBox(GlobalSessionToolBox):
     @staticmethod
     def __address_substitution_product_fk(relevant_scif, relevant_mpis):
         scif_with_substitution_product_fk = relevant_scif[pd.notna(relevant_scif.substitution_product_fk)]
-        final_mpis = relevant_mpis.replace(scif_with_substitution_product_fk.product_fk.to_numpy(),
+        relevant_mpis.product_fk = relevant_mpis.product_fk.replace(scif_with_substitution_product_fk.product_fk.to_numpy(),
                                  scif_with_substitution_product_fk.substitution_product_fk.to_numpy())
-        present_products_in_session = relevant_scif.merge(final_mpis, how='left',on='product_fk')
+        present_products_in_session = relevant_scif.merge(relevant_mpis, how='left',on='product_fk')
 
         return present_products_in_session
