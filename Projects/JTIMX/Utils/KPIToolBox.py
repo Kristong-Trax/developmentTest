@@ -60,8 +60,7 @@ class ToolBox(GlobalSessionToolBox):
                                 right_on='English SKU Name')[
                     ['product_fk', 'substitution_product_fk', 'brand_fk', 'product_short_name', 'Target Price',
                      'facings']]
-            present_products_in_session = self.__address_substitution_product_fk(present_products_in_session)
-            present_products_in_session = present_products_in_session.merge(relevant_mpis, how='left', on='product_fk')
+            present_products_in_session = self.__address_substitution_product_fk(present_products_in_session, relevant_mpis)
             absent_products_in_session = self.relevant_template[
                 ~ self.relevant_template['English SKU Name'].isin(present_products_in_session.product_short_name)]
             absent_products_in_session = \
@@ -76,7 +75,7 @@ class ToolBox(GlobalSessionToolBox):
             self.relevant_template['English SKU Name'])]  # Fix the logic in the future
 
         for i, row in final_mpis.iterrows():
-            recognized_price = row['price'] if row.price else 0
+            recognized_price = row['price'] if row.price and row['Target Price'] != 0 else 0
             target_price = row['Target Price']
             if target_price == 0:
                 score = 0
@@ -110,10 +109,10 @@ class ToolBox(GlobalSessionToolBox):
         return price_target_df
 
     @staticmethod
-    def __address_substitution_product_fk(relevant_scif):
+    def __address_substitution_product_fk(relevant_scif, relevant_mpis):
         scif_with_substitution_product_fk = relevant_scif[pd.notna(relevant_scif.substitution_product_fk)]
-        relevant_scif['product_fk'] = \
-            [relevant_scif.product_fk.replace(i.substitution_product_fk, i.product_fk) for i in
-             scif_with_substitution_product_fk.itertuples()][0]
-        relevant_scif.dropna(subset=['facings'], inplace=True)
-        return relevant_scif
+        final_mpis = relevant_mpis.replace(scif_with_substitution_product_fk.product_fk.to_numpy(),
+                                 scif_with_substitution_product_fk.substitution_product_fk.to_numpy())
+        present_products_in_session = relevant_scif.merge(final_mpis, how='left',on='product_fk')
+
+        return present_products_in_session
