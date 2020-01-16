@@ -8,29 +8,15 @@ from datetime import datetime
 import dateutil.parser as dparser
 import os
 
-from Projects.JTIMX.Data.LocalConsts import Consts
+# from Projects.JTIMX.Data.LocalConsts import Consts
 
-# from KPIUtils_v2.Utils.Consts.DataProvider import
-# from KPIUtils_v2.Utils.Consts.DB import 
-# from KPIUtils_v2.Utils.Consts.PS import 
-# from KPIUtils_v2.Utils.Consts.GlobalConsts import 
-# from KPIUtils_v2.Utils.Consts.Messages import 
-# from KPIUtils_v2.Utils.Consts.Custom import 
-# from KPIUtils_v2.Utils.Consts.OldDB import 
 
-# from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
-# from KPIUtils_v2.Calculations.AvailabilityCalculations import Availability
-# from KPIUtils_v2.Calculations.NumberOfScenesCalculations import NumberOfScenes
-# from KPIUtils_v2.Calculations.PositionGraphsCalculations import PositionGraphs
-# from KPIUtils_v2.Calculations.SOSCalculations import SOS
-# from KPIUtils_v2.Calculations.SequenceCalculations import Sequence
-# from KPIUtils_v2.Calculations.SurveyCalculations import Survey
-
-# from KPIUtils_v2.Calculations.CalculationsUtils import GENERALToolBoxCalculations
 
 __author__ = 'krishnat'
 
 TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data')
+PRICE_TARGET_TEMPLATE = 'Price_Target_Template'
+EAN_CODE = 'EAN Code'
 
 
 class ToolBox(GlobalSessionToolBox):
@@ -41,7 +27,7 @@ class ToolBox(GlobalSessionToolBox):
         self.visit_date = datetime.combine(self.data_provider[Data.VISIT_DATE], datetime.min.time())
         self.relevant_template = self.retrieve_price_target_df()
         self.mpis = self.data_provider[Data.MATCHES]
-        self.manufacturer_fk = self.scif.manufacturer_fk.iloc[0] if not self.scif.empty else 0
+        self.manufacturer_fk = self.data_provider.own_manufacturer.param_value.values[0] if self.data_provider.own_manufacturer.param_value.values[0] else 2
 
     def main_calculation(self):
         self.calculate_price_target_kpi()
@@ -90,7 +76,7 @@ class ToolBox(GlobalSessionToolBox):
     def retrieve_price_target_df(self):
         data_name_list = os.listdir(TEMPLATE_PATH)
         price_target_template_name_index = np.flatnonzero(
-            np.core.defchararray.find(data_name_list, [Consts.PRICE_TARGET_TEMPLATE]) != -1)
+            np.core.defchararray.find(data_name_list, [PRICE_TARGET_TEMPLATE]) != -1)
         price_target_template_name_list = [data_name_list[i] for i in price_target_template_name_index]
         relevant_price_target_templates = {}
         for i, price_target in enumerate(price_target_template_name_list):
