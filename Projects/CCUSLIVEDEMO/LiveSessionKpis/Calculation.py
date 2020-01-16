@@ -7,6 +7,9 @@ class CalculateKpi(LiveSessionBaseClass):
     def calculate_session_live_kpi(self):
         data_provider = self._data_provider
         store_assortment = PSAssortmentDataProvider(data_provider).execute()
+        scif = data_provider.scene_item_facts
+        matche = data_provider.matches
+
         print("ok")
 
     #
