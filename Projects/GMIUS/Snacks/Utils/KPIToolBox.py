@@ -289,7 +289,7 @@ class ToolBox:
             adj = self.calculate_max_block_adj_base(kpi_name, kpi_line, relevant_scif, general_filters, subcat=True)
             if adj:
                 potential_results = self.get_results_value(kpi_line)
-                result_substring = adj.replace('GRAIN', '').strip().capitalize()
+                result_substring = adj.replace('GRAIN', '').strip().title()
                 match = [res for res in potential_results if result_substring in res]
                 result = match[0]
                 break
