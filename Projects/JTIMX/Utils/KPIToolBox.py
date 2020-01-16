@@ -72,7 +72,7 @@ class ToolBox(GlobalSessionToolBox):
                              score=score, identifier_parent=self.store_id, should_enter=True)
 
         parent_kpi_relevant_df = final_mpis[final_mpis['Target Price'] != 0]
-        parent_kpi_relevant_result = float(len(np.where(parent_kpi_relevant_df['Target Price'] == parent_kpi_relevant_df.price)[0])) / len(parent_kpi_relevant_df)
+        parent_kpi_relevant_result = float(len(np.where(parent_kpi_relevant_df['Target Price'] == parent_kpi_relevant_df.price)[0])) / len(parent_kpi_relevant_df) * 100
 
         self.write_to_db(self.common.get_kpi_fk_by_kpi_type('Price Target - Parent'), numerator_id=self.manufacturer_fk,
                          denominator_id=self.store_id,
