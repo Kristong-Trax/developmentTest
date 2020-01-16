@@ -72,3 +72,4 @@ class TestKEngineOutOfTheBox(TestFunctionalCase):
             output = Output()
             CCZACalculations(data_provider, output).run_project_calculations()
             self._assert_old_tables_kpi_results_filled()
+            # self._assert_new_tables_kpi_results_filled()
