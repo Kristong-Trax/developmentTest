@@ -568,7 +568,7 @@ class NationalToolBox(GlobalSessionToolBox):
 
         numerator_id = self.scif[PRODUCT_FK].iat[0]
         denominator_id = self.store_assortment.assortment_fk.iat[0]
-        result = float(sum([a for a in result_dict.values()])) / portafolio_y_precious_data.unique_facings_target
+        result = float(np.sum(result_dict.values())) / portafolio_y_precious_data.unique_facings_target
 
         result_dict = {'kpi_name': kpi_name, 'kpi_fk': kpi_fk, 'numerator_id': numerator_id,
                        'denominator_id': denominator_id,

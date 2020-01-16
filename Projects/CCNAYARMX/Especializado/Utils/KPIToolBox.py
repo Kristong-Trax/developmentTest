@@ -254,8 +254,7 @@ class EspecializadoToolBox(GlobalSessionToolBox):
             return self.calculate_platformas_scoring
         elif kpi_type == AVAILABILITY_COMBO:
             return self.calculate_availability_combo
-        elif kpi_type == SCORING_COMBO:
-            return self.calculate_scoring_combo
+
 
     def calculate_scoring_combo(self, row):
         kpi_name = row[KPI_NAME]
@@ -605,7 +604,7 @@ class EspecializadoToolBox(GlobalSessionToolBox):
         numerator_id = self.scif[PRODUCT_FK].iat[0]
         denominator_id = self.store_assortment.assortment_fk.iat[0]
 
-        result = sum([a for a in result_dict.values()]) / portafolio_data.unique_facings_target
+        result = float(np.sum(result_dict.values()) / portafolio_data.unique_facings_target)
         result_dict = {'kpi_name': kpi_name, 'kpi_fk': kpi_fk, 'numerator_id': numerator_id,
                        'denominator_id': denominator_id,
                        'result': result}
