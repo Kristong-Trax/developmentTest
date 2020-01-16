@@ -142,8 +142,14 @@ class CCMYToolBox:
             elif kpi_type == CCMYConsts.FACINGS_SOS:
                score = self.calculate_facings_sos(kpi_data)
             elif kpi_type == CCMYConsts.SHELF_PURITY:
-                score = self.calculate_self_purity(kpi_data)
-                self.common.commit_results_data_to_new_tables()
+                scene_types = kpi_data[CCMYConsts.TEMPLATE_NAME].unique().tolist()
+                for scene_type in scene_types:
+                    kpi = kpi_data[kpi_data[CCMYConsts.TEMPLATE_NAME] == scene_type]
+                    if kpi.empty:
+                        continue
+                    else:
+                        score = self.calculate_self_purity(kpi)
+                        self.common.commit_results_data_to_new_tables()
             else:
                 continue
 
@@ -230,10 +236,14 @@ class CCMYToolBox:
 
         self_purity_scene_list = self.scene_info[self.scene_info['template_name'].isin(scene_types)][
             CCMYConsts.SCENE_FK].unique().tolist()
+
+        if len(self_purity_scene_list) == 0:
+            return
+
         template_fk = self.scene_info[self.scene_info['template_name'].isin(scene_types)][
             CCMYConsts.TEMPLATE_FK].unique().tolist()
 
-        df_all_shelfs = self.match_product_in_scene;
+        df_all_shelfs = self.match_product_in_scene
 
         if self.match_product_in_scene.empty:
             return
@@ -251,7 +261,6 @@ class CCMYToolBox:
             [CCMYConsts.SCENE_FK, CCMYConsts.BAY_NUMBER, CCMYConsts.SHELF_NUMBER]]
         df_shelf_pure.drop_duplicates(subset=None, keep='first', inplace=True)
         df_shelf_pure[CCMYConsts.IS_PURE] = CCMYConsts.PURE
-
 
         for x, params in kpi_data.iterrows():
             for row_num_x,row_data_x in df_shelf_pure.iterrows():
