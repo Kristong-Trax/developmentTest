@@ -46,10 +46,14 @@ POS_COLUMNS = [
     'Sorting',
     'PoS name',
 
-    'C_Group',
-    'C_Subgroup',
-    'L_Group',
-    'L_Subgroup',
+    'C_Group_Eng',
+    'C_Group_Rus',
+    'C_Subgroup_Eng',
+    'C_Subgroup_Rus',
+    'L_Group_Eng',
+    'L_Group_Rus',
+    'L_Subgroup_Eng',
+    'L_Subgroup_Rus',
 
     'level',
     'KPI ID',
@@ -336,21 +340,21 @@ class CCRUKPIS:
 
         self.rds_conn = OrmSession(self.project, writable=False)
 
-        self.kpi_names = self.get_kpi_names()
-        self.kpi_level_2_names = self.get_kpi_level_2_names()['name'].unique().tolist()
-        self.manufacturers = self.get_manufacturers()['name'].unique().tolist()
-        self.categories = self.get_categories()['name'].unique().tolist()
-        self.sub_categories = self.get_sub_categories()['name'].unique().tolist()
-        self.brands = self.get_brands()['name'].unique().tolist()
-        self.sub_brands = self.get_sub_brands()['name'].unique().tolist()
-        self.skus = self.get_skus()
-        self.ean_codes = self.skus['ean_code'].unique().tolist()
-        self.sizes = self.get_sizes()['size'].unique().tolist()
-        self.form_factors = self.get_form_factors()['name'].unique().tolist()
-        self.scene_types = self.get_scene_types()['name'].unique().tolist()
-        self.sub_locations = self.get_sub_locations()['name'].unique().tolist()
-        self.locations = self.get_locations()['name'].unique().tolist()
-        self.store_zones = self.get_store_zones()['name'].unique().tolist()
+        # self.kpi_names = self.get_kpi_names()
+        # self.kpi_level_2_names = self.get_kpi_level_2_names()['name'].unique().tolist()
+        # self.manufacturers = self.get_manufacturers()['name'].unique().tolist()
+        # self.categories = self.get_categories()['name'].unique().tolist()
+        # self.sub_categories = self.get_sub_categories()['name'].unique().tolist()
+        # self.brands = self.get_brands()['name'].unique().tolist()
+        # self.sub_brands = self.get_sub_brands()['name'].unique().tolist()
+        # self.skus = self.get_skus()
+        # self.ean_codes = self.skus['ean_code'].unique().tolist()
+        # self.sizes = self.get_sizes()['size'].unique().tolist()
+        # self.form_factors = self.get_form_factors()['name'].unique().tolist()
+        # self.scene_types = self.get_scene_types()['name'].unique().tolist()
+        # self.sub_locations = self.get_sub_locations()['name'].unique().tolist()
+        # self.locations = self.get_locations()['name'].unique().tolist()
+        # self.store_zones = self.get_store_zones()['name'].unique().tolist()
 
     @staticmethod
     def xl_col_to_name(num):
@@ -360,6 +364,30 @@ class CCRUKPIS:
             letters += chr(mod + 65)
             num = (num - 1) // 26
         return ''.join(reversed(letters))
+
+    @staticmethod
+    def transform_kpi_source():
+        source_file_in = '/home/sergey/dev/kpi_factory/Projects/CCRU/Data/KPI_Source.xlsx'
+        source_file_out = '/home/sergey/dev/kpi_factory/Projects/CCRU/Data/KPI_Source_2020.xlsx'
+        source_df_in = pd.read_excel(source_file_in, sheet_name=None)
+        source_df_out = pd.DataFrame()
+
+        pos_list = source_df_in.keys()
+        for pos in pos_list:
+            source_df_in[pos]['POS'] = pos
+            source_df_out = source_df_out.append(source_df_in[pos])
+        source_df_out = source_df_out.sort_values(by=['POS'])
+
+        writer = pd.ExcelWriter(source_file_out, engine='xlsxwriter')
+        source_list = source_df_out['SOURCE'].unique().tolist()
+        for source in source_list:
+            source_df_out[source_df_out['SOURCE'] == source][['POS', 'SET', 'FILE', 'SHEET', 'MR TARGET']]\
+                .to_excel(writer, sheet_name=source, index=False)
+
+        writer.save()
+        writer.close()
+
+        return
 
     def validate_and_transform(self):
 
@@ -1597,4 +1625,5 @@ class CCRUKPIS:
 
 if __name__ == '__main__':
     kpis_list = CCRUKPIS()
+    kpis_list.transform_kpi_source()
     kpis_list.validate_and_transform()
