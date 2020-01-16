@@ -70,15 +70,17 @@ class CCMYConsts(object):
     SCENE_FK = 'scene_fk'
     BAY_NUMBER = 'bay_number'
     SHELF_NUMBER = 'shelf_number'
-    PRODUCT_FK ='product_fk'
-    ATOMIC_KPI_NAME ='atomic_kpi_name'
+    PRODUCT_FK = 'product_fk'
+    ATOMIC_KPI_NAME = 'atomic_kpi_name'
     ATOMIC_KPI_FK = 'atomic_kpi_fk'
     TEMPLATE_FK = 'template_fk'
-    KPI_NUM_PURE_SHELVES='CCRM Cooler Number of Pure Shelves'
-    KPI_TOTAL_NUM_OF_SHELVES ='CCRM Cooler Total Number of Shelves'
+    KPI_NUM_PURE_SHELVES = 'CCRM Cooler Number of Pure Shelves'
+    KPI_TOTAL_NUM_OF_SHELVES = 'CCRM Cooler Total Number of Shelves'
     IS_PURE = 'is_pure'
     PURE = 1
     IMPURE = 0
+
+
 class CCMYToolBox:
 
     LEVEL1 = 1
@@ -142,8 +144,14 @@ class CCMYToolBox:
             elif kpi_type == CCMYConsts.FACINGS_SOS:
                score = self.calculate_facings_sos(kpi_data)
             elif kpi_type == CCMYConsts.SHELF_PURITY:
-                score = self.calculate_self_purity(kpi_data)
-                self.common.commit_results_data_to_new_tables()
+                scene_types = kpi_data[CCMYConsts.TEMPLATE_NAME].unique().tolist()
+                for scene_type in scene_types:
+                    kpi = kpi_data[kpi_data[CCMYConsts.TEMPLATE_NAME] == scene_type]
+                    if kpi.empty:
+                        continue
+                    else:
+                        score = self.calculate_self_purity(kpi)
+                        self.common.commit_results_data_to_new_tables()
             else:
                 continue
 
@@ -230,10 +238,14 @@ class CCMYToolBox:
 
         self_purity_scene_list = self.scene_info[self.scene_info['template_name'].isin(scene_types)][
             CCMYConsts.SCENE_FK].unique().tolist()
+
+        if len(self_purity_scene_list) == 0:
+            return
+
         template_fk = self.scene_info[self.scene_info['template_name'].isin(scene_types)][
             CCMYConsts.TEMPLATE_FK].unique().tolist()
 
-        df_all_shelfs = self.match_product_in_scene;
+        df_all_shelfs = self.match_product_in_scene
 
         if self.match_product_in_scene.empty:
             return
@@ -251,7 +263,6 @@ class CCMYToolBox:
             [CCMYConsts.SCENE_FK, CCMYConsts.BAY_NUMBER, CCMYConsts.SHELF_NUMBER]]
         df_shelf_pure.drop_duplicates(subset=None, keep='first', inplace=True)
         df_shelf_pure[CCMYConsts.IS_PURE] = CCMYConsts.PURE
-
 
         for x, params in kpi_data.iterrows():
             for row_num_x,row_data_x in df_shelf_pure.iterrows():
@@ -293,7 +304,7 @@ class CCMYToolBox:
             else:
                 kpi_level_2_fk = df_kpi_level_2.iloc[0]
 
-            #if params[CCMYConsts.KPI_NAME] == CCMYConsts.KPI_NUM_PURE_SHELVES:
+            # if params[CCMYConsts.KPI_NAME] == CCMYConsts.KPI_NUM_PURE_SHELVES:
             df_atomic_kpi = self.kpi_static_data[
                 (self.kpi_static_data[CCMYConsts.ATOMIC_KPI_NAME] ==CCMYConsts.KPI_NUM_PURE_SHELVES) & (
                     self.kpi_static_data['kpi_name'] == group_name)]
@@ -303,7 +314,7 @@ class CCMYToolBox:
             else:
                 atomic_kpi_fk_1 = df_atomic_kpi.iloc[0][CCMYConsts.ATOMIC_KPI_FK]
 
-            #if params[CCMYConsts.KPI_NAME] == CCMYConsts.KPI_TOTAL_NUM_OF_SHELVES:
+            # if params[CCMYConsts.KPI_NAME] == CCMYConsts.KPI_TOTAL_NUM_OF_SHELVES:
             df_atomic_kpi = self.kpi_static_data[
                 (self.kpi_static_data[CCMYConsts.ATOMIC_KPI_NAME] == CCMYConsts.KPI_TOTAL_NUM_OF_SHELVES) & (
                         self.kpi_static_data['kpi_name'] == group_name)]
@@ -360,7 +371,7 @@ class CCMYToolBox:
                                                                   denominator_id=self.store_id,
                                                                   numerator_result=num_of_pure_shelfs,
                                                                   denominator_result=total_num_of_shelfs,
-                                                                  #numerator_result_after_actions=0,
+                                                                  context_id=CCMYConsts.CCBM,
                                                                   result=score,
                                                                   score=score)
                 return score

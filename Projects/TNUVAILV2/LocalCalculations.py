@@ -10,7 +10,7 @@ if __name__ == '__main__':
     Config.init()
     project_name = 'tnuvailv2'
     data_provider = KEngineDataProvider(project_name)
-    sessions = ['af905367-fc67-419e-aeaf-1634f7986dac']
+    sessions = ['4f6046b8-c907-4326-b15f-cd179a50f966']
     for session in sessions:
         data_provider.load_session_data(session)
         output = Output()

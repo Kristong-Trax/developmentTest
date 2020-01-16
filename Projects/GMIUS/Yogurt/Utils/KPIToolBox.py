@@ -539,15 +539,19 @@ class ToolBox:
             block_mpis['ratio'] = block_mpis['shelf_number'] / block_mpis['real_shelf_number']
             block_mpis['passed'] = block_mpis.ratio.apply(lambda x: 1 if x >= .75 else 0)
 
-            # if block_mpis.passed.sum() / float(block_mpis.shape[0]) > .5:
-            #     result = 'Vertical Block'
-            # else:
-            #     result = 'Horizontal Block'
+
 
             if type(orientation) == pd.core.series.Series:
                 orientation = orientation.iloc[0]
 
             orientation = orientation.capitalize()
+
+            if orientation == 'Horizontal':
+                mpis_block_dict_number = list(mpis_dict.keys())[0]
+                if len(mpis_dict[mpis_block_dict_number].shelf_number.unique()) / max(self.mpis.shelf_number) > .5:
+                    orientation = 'Vertical'
+
+
             if orientation in ['Horizontal', 'Vertical']:
                 match = [res for res in potential_results if orientation.capitalize() in res]
                 if len(match) > 0:
