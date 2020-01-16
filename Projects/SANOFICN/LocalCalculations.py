@@ -8,7 +8,7 @@ if __name__ == '__main__':
     Config.init()
     project_name = 'sanoficn'
     data_provider = KEngineDataProvider(project_name)
-    session = "4837DB54-7D04-47E2-884F-9A7A4EA3C80B"
+    session = "A5B576AC-3DEC-4F7A-8217-30D3D4473BC5"
     data_provider.load_session_data(session)
     output = Output()
     SANOFICNCalculations(data_provider, output).run_project_calculations()
