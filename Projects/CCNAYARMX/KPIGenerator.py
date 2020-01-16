@@ -28,8 +28,8 @@ class Generator:
         # self.tool_box.main_calculation()
         # self.tool_box.commit_results()
         common = Common(self.data_provider)
-        especializado_tool_box = EspecializadoToolBox(self.data_provider,self.output, common)
-        especializado_tool_box.main_calculation()
+        # especializado_tool_box = EspecializadoToolBox(self.data_provider,self.output, common)
+        # especializado_tool_box.main_calculation()
 
         tool_box = ToolBox(self.data_provider, self.output, common)
         tool_box.main_calculation()
