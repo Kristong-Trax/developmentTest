@@ -70,15 +70,17 @@ class CCMYConsts(object):
     SCENE_FK = 'scene_fk'
     BAY_NUMBER = 'bay_number'
     SHELF_NUMBER = 'shelf_number'
-    PRODUCT_FK ='product_fk'
-    ATOMIC_KPI_NAME ='atomic_kpi_name'
+    PRODUCT_FK = 'product_fk'
+    ATOMIC_KPI_NAME = 'atomic_kpi_name'
     ATOMIC_KPI_FK = 'atomic_kpi_fk'
     TEMPLATE_FK = 'template_fk'
-    KPI_NUM_PURE_SHELVES='CCRM Cooler Number of Pure Shelves'
-    KPI_TOTAL_NUM_OF_SHELVES ='CCRM Cooler Total Number of Shelves'
+    KPI_NUM_PURE_SHELVES = 'CCRM Cooler Number of Pure Shelves'
+    KPI_TOTAL_NUM_OF_SHELVES = 'CCRM Cooler Total Number of Shelves'
     IS_PURE = 'is_pure'
     PURE = 1
     IMPURE = 0
+
+
 class CCMYToolBox:
 
     LEVEL1 = 1
@@ -302,7 +304,7 @@ class CCMYToolBox:
             else:
                 kpi_level_2_fk = df_kpi_level_2.iloc[0]
 
-            #if params[CCMYConsts.KPI_NAME] == CCMYConsts.KPI_NUM_PURE_SHELVES:
+            # if params[CCMYConsts.KPI_NAME] == CCMYConsts.KPI_NUM_PURE_SHELVES:
             df_atomic_kpi = self.kpi_static_data[
                 (self.kpi_static_data[CCMYConsts.ATOMIC_KPI_NAME] ==CCMYConsts.KPI_NUM_PURE_SHELVES) & (
                     self.kpi_static_data['kpi_name'] == group_name)]
@@ -312,7 +314,7 @@ class CCMYToolBox:
             else:
                 atomic_kpi_fk_1 = df_atomic_kpi.iloc[0][CCMYConsts.ATOMIC_KPI_FK]
 
-            #if params[CCMYConsts.KPI_NAME] == CCMYConsts.KPI_TOTAL_NUM_OF_SHELVES:
+            # if params[CCMYConsts.KPI_NAME] == CCMYConsts.KPI_TOTAL_NUM_OF_SHELVES:
             df_atomic_kpi = self.kpi_static_data[
                 (self.kpi_static_data[CCMYConsts.ATOMIC_KPI_NAME] == CCMYConsts.KPI_TOTAL_NUM_OF_SHELVES) & (
                         self.kpi_static_data['kpi_name'] == group_name)]
@@ -369,7 +371,7 @@ class CCMYToolBox:
                                                                   denominator_id=self.store_id,
                                                                   numerator_result=num_of_pure_shelfs,
                                                                   denominator_result=total_num_of_shelfs,
-                                                                  #numerator_result_after_actions=0,
+                                                                  context_id=CCMYConsts.CCBM,
                                                                   result=score,
                                                                   score=score)
                 return score
