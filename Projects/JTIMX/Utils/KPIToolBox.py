@@ -41,7 +41,7 @@ class ToolBox(GlobalSessionToolBox):
         self.visit_date = datetime.combine(self.data_provider[Data.VISIT_DATE], datetime.min.time())
         self.relevant_template = self.retrieve_price_target_df()
         self.mpis = self.data_provider[Data.MATCHES]
-        self.manufacturer_fk = self.scif.manufacturer_fk.iloc[0] if not self.scif.empty else 0
+        self.manufacturer_fk = self.data_provider.own_manufacturer.param_value.values[0] if self.data_provider.own_manufacturer.param_value.values[0] else 2
 
     def main_calculation(self):
         self.calculate_price_target_kpi()
