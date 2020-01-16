@@ -122,8 +122,15 @@ class GSKJPToolBox:
                    numerator = number of products from brand_fk in shelves
                    denominator = number of products from brand_fk
         """
-        shelf_from_bottom = [int(shelf) for shelf in policy['shelves'].iloc[0].split(",")]
-        threshold = policy['position_target'].iloc[0]
+        if (Consts.SHELVES not in policy.keys()) or policy[Consts.SHELVES].empty:
+            Log.warning('This sessions have external targets but doesnt have value for shelves position')
+            return 0, 0, 0, 0, 0
+        if isinstance(policy[Consts.SHELVES].iloc[0], list):
+            shelf_from_bottom = [int(shelf) for shelf in policy[Consts.SHELVES].iloc[0]]
+        else:
+            shelf_from_bottom = [int(shelf) for shelf in policy[Consts.SHELVES].iloc[0].split(",")]
+
+        threshold = policy[Consts.POSITION_TARGET].iloc[0]
         brand_df = df[df[ProductsConsts.BRAND_FK] == brand_fk]
         shelf_df = brand_df[brand_df[MatchesConsts.SHELF_NUMBER].isin(shelf_from_bottom)]
         numerator = shelf_df.shape[0]
@@ -207,19 +214,6 @@ class GSKJPToolBox:
                                                                               'minimum_facing_for_block': 1
                                                                               })
         result.sort_values('facing_percentage', ascending=False, inplace=True)
-
-        # numerator = len(result['cluster'].values[0].node.keys())
-        # numerator = 0
-        # cluster = result['cluster'].iloc[0]
-        # for node in cluster.nodes.data():
-        #     print node
-        # for dict in cluster._node.values():
-        #     numerator = numerator + dict['group_attributes']['facings']
-
-        # nodes_sum = 0
-        # for node_clust in result['cluster'].values:
-        #     nodes_sum = nodes_sum + node_clust.node.keys()
-        # # numerator
         score = 0 if result[result['is_block']].empty else 1
         numerator = 0 if result.empty else result['block_facings'].iloc[0]
         denominator = 0 if result.empty else result['total_facings'].iloc[0]

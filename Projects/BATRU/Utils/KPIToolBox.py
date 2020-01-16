@@ -86,6 +86,9 @@ P5_TEMPLATE = 'p5_template'
 TEMPLATE_PATH_MAPPER = {P2_TEMPLATE: P2_PATH, P3_TEMPLATE: P3_PATH,
                         P4_TEMPLATE: P4_PATH, P5_TEMPLATE: P5_PATH}
 
+PLACEMENT_SECTION_RANKS_TEMPL = 'placement_section_ranks'
+RANKING_SHEET = 'Ranking'
+
 
 class BATRUToolBox:
     LEVEL1 = 1
@@ -131,6 +134,19 @@ class BATRUToolBox:
     DISTRIBUTED = 'DISTRIBUTED'
     POSM_REST = 'POSM Rest'
     POSM_REST_DISPLAY = 'POSM Rest Display'
+
+    NO_COMPETITORS_KPI_LVL2 = 'No competitors'
+    EMPTY_SPACES_KPI_LVL2 = 'Empty spaces'
+    NO_COMPETITORS_COL = 'No competitors'
+    AVAILABILITY_COL = 'Availability'
+    EMPTY_SPACES_COL = 'Empty spaces'
+    SEQUENCE_COL = 'Sequence'
+    REPEATING_COL = 'Repeating'
+    SECTION_COMBINATIONS = [NO_COMPETITORS_COL, AVAILABILITY_COL, EMPTY_SPACES_COL, SEQUENCE_COL, REPEATING_COL]
+    API_SKU_NO_COMPETITORS_KPI_NAME = '{fixture};{section_name};No competitors'
+    API_SKU_EMPTY_SPACES_KPI_NAME = '{fixture};{section_name};Empty spaces'
+    COMBINATIONS = 'Combinations'
+    RANK_PERCENT = 'Rank, %'
 
     def __init__(self, data_provider, output):
         self.k_engine = BaseCalculationsScript(data_provider, output)
@@ -1292,6 +1308,13 @@ class BATRUToolBox:
         sk_section_repeating_fk = self.common.get_kpi_fk_by_kpi_type(self.SKU_REPEATING_KPI_NAME)
         sk_sku_presence_not_in_list_fk = self.common.get_kpi_fk_by_kpi_type(self.SK_SKU_PRESENCE_NOT_IN_LIST_SKU)
 
+        # get ranking template and exit the calculations and exist if does not exist
+        section_placement_rank_templ = self.get_placement_section_rank_template()
+        if section_placement_rank_templ.empty:
+            Log.error('Section ranking template ranking is empty. SK and SAS will not be calculated.'
+                      ' Please upload the template')
+            return
+
         if not self.scif.empty:
             attribute_3 = self.scif['additional_attribute_3'].values[0]
             attribute_11 = self.scif['additional_attribute_11'].values[0]
@@ -1358,6 +1381,7 @@ class BATRUToolBox:
 
             self.sas_zones_scores_dict = {}
             sections_statuses = {}
+            sections_scores_new = {}
             template_name = self.scif[self.scif['scene_fk'] == scene]['template_name'].values[0]
             fixture = self.templates.loc[self.templates['template_name']
                                          == template_name]['additional_attribute_1'].values[0]
@@ -1400,7 +1424,11 @@ class BATRUToolBox:
                 self.check_sas_zone_in_fixture(
                     scene_products_matrix, relevant_sas_zone_data, fixture)
 
-            for section in sorted(relevant_sections_data['section_number'].unique().tolist()):
+            sections_in_fixture = sorted(relevant_sections_data['section_number'].unique().tolist())
+            weight_per_section = 1.0 / len(sections_in_fixture) if sections_in_fixture else 0
+            fixture_total_score = 0
+
+            for section in sections_in_fixture:
 
                 section_data = relevant_sections_data.loc[relevant_sections_data['section_number'] == section]
                 section_name = section_data['section_name'].values[0]
@@ -1449,6 +1477,10 @@ class BATRUToolBox:
 
                     else:  # No Competitors
 
+                        # Checking empty
+                        empty_tags = section_shelf_data[section_shelf_data['product_type'] == EMPTY]
+                        no_empties = True if len(empty_tags) == 0 else False
+
                         # Checking SKU Presence
                         outside_shelf_data = self.match_product_in_scene\
                             .merge(self.scene_info[['scene_fk', 'template_name']], how='left', left_on='scene_fk', right_on='scene_fk')
@@ -1485,7 +1517,7 @@ class BATRUToolBox:
                             # Checking SKU Sequence and Empties
                             last_prod_seq_ind = 0
                             sku_sequence_passed = True
-                            no_empties = True
+                            # no_empties = True
                             for sequence in sorted(section_shelf_data['sequence'].unique().tolist()):
 
                                 product_ean_code = section_shelf_data\
@@ -1498,8 +1530,8 @@ class BATRUToolBox:
                                 if manufacturer_name == BAT and product_type == OTHER:
                                     continue
 
-                                if product_type == EMPTY:
-                                    no_empties = False
+                                # if product_type == EMPTY:
+                                #     no_empties = False
 
                                 if product_ean_code in sequence_template_data['product_ean_code_lead'].unique().tolist():
                                     prod_seq_ind = sequence_template_data\
@@ -1557,6 +1589,22 @@ class BATRUToolBox:
                             misplaced_products_fks = section_shelf_data[section_shelf_data['product_ean_code_lead']. \
                                 isin(misplaced_products_eans)]['product_fk'].unique().tolist()
 
+                # NEW PLACEMENT LOGIC
+                no_competitors_lvl2_fk = self.common.get_kpi_fk_by_kpi_type(self.NO_COMPETITORS_KPI_LVL2)
+                empty_spaces_lvl2_fk = self.common.get_kpi_fk_by_kpi_type(self.EMPTY_SPACES_KPI_LVL2)
+                empty_spaces_res = 1 - no_empties
+                no_competitors_res = no_competitors
+                section_result = str(int(no_competitors_res)) + str(int(sku_presence_passed)) \
+                                 + str(int(empty_spaces_res)) + str(int(sku_sequence_passed)) \
+                                 + str(int(sku_repeating_passed))
+
+                section_rank = section_placement_rank_templ[section_placement_rank_templ[self.COMBINATIONS] \
+                                                            == section_result][self.RANK_PERCENT].values[0]
+                section_weighted_score = section_rank * weight_per_section
+                fixture_total_score += section_weighted_score
+                sections_scores_new[section] = {'section_score': section_weighted_score,
+                                                'competitors': no_competitors_res}
+
                 # Initial score values
                 sku_presence_score = 0
                 sku_sequence_score = 0
@@ -1609,19 +1657,29 @@ class BATRUToolBox:
                                             score=sku_repeating_score, score_2=sku_repeating_score_2,
                                             level_3_only=True, level2_name_for_atomic=fixture_name_for_db,
                                             model_id=section_name)
+                self.save_level2_and_level3(SK, self.NO_COMPETITORS_KPI_LVL2, result=None,
+                                            score=sku_sequence_score, score_2=sku_sequence_score_2,
+                                            level_3_only=True, level2_name_for_atomic=fixture_name_for_db,
+                                            model_id=section_name)
+                self.save_level2_and_level3(SK, self.EMPTY_SPACES_KPI_LVL2, result=None,
+                                            score=sku_repeating_score, score_2=sku_repeating_score_2,
+                                            level_3_only=True, level2_name_for_atomic=fixture_name_for_db,
+                                            model_id=section_name)
+
+                # replace section_score atomic - new change
                 self.save_level2_and_level3(SK, section_name, result=None,
-                                            score=section_score, score_2=section_score_2,
+                                            score=section_weighted_score, score_2=section_rank,
                                             level_3_only=True, level2_name_for_atomic=fixture_name_for_db)
 
                 # new tables - SK set lvl 3
-                section_custom_res = self.kpi_result_values[self.PRESENCE][self.OOS] if section_score == 0 else \
-                    self.kpi_result_values[self.PRESENCE][self.DISTRIBUTED]
                 self.common.write_to_db_result(fk=section_in_fixture_fk, numerator_id=section_fk,
                                                denominator_id=section, context_id=scene,
-                                               score=section_score, result=section_custom_res,
+                                               score=section_weighted_score, result=section_rank,
+                                               weight=weight_per_section * 100,
                                                identifier_parent=sk_fixture_identifier_par,
                                                identifier_result=section_in_fixture_identifier_par,
                                                should_enter=True)
+
                 # new tables - SK set lvl 4
                 sequence_custom_res = self.kpi_result_values[self.PRESENCE][self.OOS] if sku_sequence_score == 0 else \
                     self.kpi_result_values[self.PRESENCE][self.DISTRIBUTED]
@@ -1629,8 +1687,8 @@ class BATRUToolBox:
                                                denominator_id=fixture_fk, context_id=scene, score=sku_sequence_score,
                                                result=sequence_custom_res,
                                                identifier_parent=section_in_fixture_identifier_par, should_enter=True)
-                repeating_custom_res = self.kpi_result_values[self.PRESENCE][self.OOS] if sku_repeating_score == 0 else \
-                    self.kpi_result_values[self.PRESENCE][self.DISTRIBUTED]
+                repeating_custom_res = self.kpi_result_values[self.PRESENCE][self.OOS] if sku_repeating_score == 0 \
+                    else self.kpi_result_values[self.PRESENCE][self.DISTRIBUTED]
                 self.common.write_to_db_result(fk=sk_section_repeating_fk, numerator_id=section_fk,
                                                denominator_id=fixture_fk, context_id=scene, score=sku_repeating_score,
                                                result=repeating_custom_res,
@@ -1647,6 +1705,20 @@ class BATRUToolBox:
                                                identifier_result=presence_section_identifier_par,
                                                identifier_parent=section_in_fixture_identifier_par, should_enter=True)
 
+                # no competitors new kpi
+                no_competitors_custom_res = self.kpi_result_values[self.PRESENCE][self.OOS] if no_competitors_res == 0 \
+                    else self.kpi_result_values[self.PRESENCE][self.DISTRIBUTED]
+                self.common.write_to_db_result(fk=no_competitors_lvl2_fk, numerator_id=section_fk,
+                                               denominator_id=fixture_fk, context_id=scene, score=no_competitors_res,
+                                               result=no_competitors_custom_res,
+                                               identifier_parent=section_in_fixture_identifier_par, should_enter=True)
+                empty_spaces_custom_res = self.kpi_result_values[self.PRESENCE][self.OOS] if empty_spaces_res == 0 \
+                    else self.kpi_result_values[self.PRESENCE][self.DISTRIBUTED]
+                self.common.write_to_db_result(fk=empty_spaces_lvl2_fk, numerator_id=section_fk,
+                                               denominator_id=fixture_fk, context_id=scene, score=empty_spaces_res,
+                                               result=empty_spaces_custom_res,
+                                               identifier_parent=section_in_fixture_identifier_par, should_enter=True)
+
                 # new tables - sk set - lvl 5
                 for product_fk in misplaced_products_fks:
                     self.common.write_to_db_result(fk=sk_sku_presence_not_in_list_fk, numerator_id=product_fk,
@@ -1655,8 +1727,8 @@ class BATRUToolBox:
                                                    should_enter=True)
 
                 # Saving to API set
-                self.write_to_db_result_for_api(score=misplaced_products_result, level=self.LEVEL3, kpi_set_name=SK_RAW_DATA,
-                                                kpi_name=SK_RAW_DATA,
+                self.write_to_db_result_for_api(score=misplaced_products_result, level=self.LEVEL3,
+                                                kpi_set_name=SK_RAW_DATA, kpi_name=SK_RAW_DATA,
                                                 atomic_kpi_name=self.API_SKU_PRESENCE_KPI_NAME.format(
                                                     fixture=fixture_name_for_db,
                                                     section_name=section_name),
@@ -1675,19 +1747,32 @@ class BATRUToolBox:
                                                 level3_score=sku_repeating_score)
                 self.write_to_db_result_for_api(score=None, level=self.LEVEL3, kpi_set_name=SK_RAW_DATA,
                                                 kpi_name=SK_RAW_DATA,
+                                                atomic_kpi_name=self.API_SKU_NO_COMPETITORS_KPI_NAME.format(
+                                                    fixture=fixture_name_for_db,
+                                                    section_name=section_name),
+                                                level3_score=no_competitors_res)
+                self.write_to_db_result_for_api(score=None, level=self.LEVEL3, kpi_set_name=SK_RAW_DATA,
+                                                kpi_name=SK_RAW_DATA,
+                                                atomic_kpi_name=self.API_SKU_EMPTY_SPACES_KPI_NAME.format(
+                                                    fixture=fixture_name_for_db,
+                                                    section_name=section_name),
+                                                level3_score=empty_spaces_res)
+                self.write_to_db_result_for_api(score=None, level=self.LEVEL3, kpi_set_name=SK_RAW_DATA,
+                                                kpi_name=SK_RAW_DATA,
                                                 atomic_kpi_name=self.API_SECTION_KPI_NAME.format(
                                                     fixture=fixture_name_for_db,
                                                     section_name=section_name),
                                                 level3_score=section_score)
 
             # Equipment level results
-            if sections_statuses:
-                fixture_score = min(sections_statuses.values())
-            else:
-                fixture_score = 0
-            self.fixtures_statuses_dict[fixture] = fixture_score
-            self.save_level2_and_level3(SK, fixture_name_for_db,
-                                        result=fixture_score, level_2_only=True)
+            fixture_score = 0
+            if sections_scores_new:
+                if all(map(lambda x: x['competitors'], sections_scores_new.values())):
+                    fixture_score = sum(map(lambda x: x['section_score'], sections_scores_new.values()))
+
+            self.fixtures_statuses_dict[fixture] = min(fixture_score, self.fixtures_statuses_dict[fixture]) \
+                if self.fixtures_statuses_dict.get(fixture) is not None else fixture_score
+            self.save_level2_and_level3(SK, fixture_name_for_db, result=fixture_score, level_2_only=True)
             self.write_to_db_result_for_api(score=fixture_score, level=self.LEVEL3, kpi_set_name=SK_RAW_DATA,
                                             kpi_name=SK_RAW_DATA,
                                             atomic_kpi_name=self.API_EQUIPMENT_KPI_NAME.format(
@@ -1742,6 +1827,14 @@ class BATRUToolBox:
         self.common.write_to_db_result(fk=sk_new_tables_fk, numerator_id=self.own_manufacturer_fk,
                                        denominator_id=self.store_id, result=sk_score, score=sk_score,
                                        identifier_result=sk_identifier_par, should_enter=True)
+
+    def get_placement_section_rank_template(self):
+        template_db = self.all_templates.get(PLACEMENT_SECTION_RANKS_TEMPL, {}).get(RANKING_SHEET, pd.DataFrame())
+        if not template_db.empty:
+            template_db[self.COMBINATIONS] = ''
+            for col in self.SECTION_COMBINATIONS:
+                template_db[self.COMBINATIONS] = template_db[self.COMBINATIONS].map(str) + template_db[col].map(str)
+        return template_db
 
     def check_sku_repeating(self, section_shelf_data, priorities_section):
         """

@@ -28,13 +28,13 @@ class TestKEngineOutOfTheBox(TestFunctionalCase):
     @property
     def import_path(self):
         return 'Trax.Apps.Services.KEngine.Handlers.SessionHandler'
-    
+
     @property
     def config_file_path(self):
         return os.path.join(os.path.dirname(os.path.realpath(__file__)), 'k-engine-test.config')
-    
+
     seeder = Seeder()
-    
+
     def _assert_old_tables_kpi_results_filled(self):
         connector = PSProjectConnector(TestProjectsNames().TEST_PROJECT_1, DbUsers.Docker)
         cursor = connector.db.cursor(MySQLdb.cursors.DictCursor)
@@ -64,7 +64,7 @@ class TestKEngineOutOfTheBox(TestFunctionalCase):
         kpi_results = cursor.fetchall()
         self.assertNotEquals(len(kpi_results), 0)
         connector.disconnect_rds()
-    
+
     @seeder.seed(["cbcil_seed"], ProjectsSanityData())
     def test_cbcil_sanity(self):
         project_name = ProjectsSanityData.project_name
@@ -77,6 +77,7 @@ class TestKEngineOutOfTheBox(TestFunctionalCase):
             self._assert_old_tables_kpi_results_filled()
             self._assert_new_tables_kpi_results_filled()
 
+
     def test_current_project_template(self):
         """
         This test is check the validation of the current project's template!
@@ -85,12 +86,12 @@ class TestKEngineOutOfTheBox(TestFunctionalCase):
         columns the cannot have nan values! (sheet_name, {col_set}, {col_set2})
         """
         sheets_data = [('KPI', {'Atomic Name', 'KPI Name', 'KPI Set', 'store_type', 'additional_attribute_1',
-                                'Template Name', 'Template group', 'KPI Family', 'Score Type',
+                                'additional_attribute_6', 'Template Name', 'Template group', 'KPI Family', 'Score Type',
                                 'Param Type (1)/ Numerator',
                                 'Param (1) Values', 'Param Type (2)/ Denominator', 'Param (2) Values', 'Param Type (3)',
                                 'Param (3) Values', 'Weight', 'Target', 'Split Score'},
                         {'Atomic Name', 'KPI Name', 'KPI Set', 'store_type', 'additional_attribute_1',
-                         'Param Type (1)/ Numerator', 'KPI Family', 'Weight'}),
+                         'additional_attribute_6', 'Param Type (1)/ Numerator', 'KPI Family', 'Weight'}),
                        ('kpi weights', {'KPI Set', 'KPI Name', 'Weight'}, {'KPI Set', 'KPI Name', 'Weight'}),
                        ('Kpi Gap', {'KPI Name', 'Order'}, {'KPI Name', 'Order'})]
         for sheet_data in sheets_data:

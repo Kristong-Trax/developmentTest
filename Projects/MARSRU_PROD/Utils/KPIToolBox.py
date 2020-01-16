@@ -368,10 +368,12 @@ class MARSRU_PRODKPIToolBox:
     def calculate_availability(self, params, scenes=None, formula=None, values_list=None, object_type=None,
                                include_stacking=False):
         if not values_list:
-            if '*' in str(params.get('Values')):
-                values_list = str(params.get('Values')).split(', *')
+            val = params.get('Values')
+            val = str(val.encode('utf8')) if isinstance(val, (str, unicode)) else str(val)
+            if '*' in val:
+                values_list = val.split(', *')
             else:
-                values_list = str(params.get('Values')).split(', ') if params.get('Values') else []
+                values_list = val.split(', ') if params.get('Values') else []
 
         if not formula:
             formula = params.get('Formula')
@@ -1735,12 +1737,13 @@ class MARSRU_PRODKPIToolBox:
             result = 'TRUE'
             target_linear_size_total = 0
             others_linear_size_total = 0
+            scenes = 'scene_id: ' + ', '.join([str(x) for x in self.get_relevant_scenes(p)]) + '. '
             for values in p.get('Values').split('\nOR\n'):
                 targets, others, percent = values.split('\n')
                 target_filter = self.get_filter_condition(
-                    self.scif, **(self.parse_filter_from_template(targets)))
+                    self.scif, **(self.parse_filter_from_template(scenes + targets)))
                 other_filter = self.get_filter_condition(
-                    self.scif, **(self.parse_filter_from_template(others)))
+                    self.scif, **(self.parse_filter_from_template(scenes + others)))
                 target_linear_size = self.calculate_layout_size_by_filters(target_filter)
                 others_linear_size = self.calculate_layout_size_by_filters(other_filter)
                 target_linear_size_total += target_linear_size

@@ -40,6 +40,7 @@ class CCUSGENERALToolBox:
         self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalcAdmin)
         self.scif = self.scif.merge(self.data_provider[Data.STORE_INFO], how='left', left_on='store_id',
                                     right_on='store_fk')
+        self.match_product_in_scene = self.data_provider[Data.MATCHES]
         self.match_display_in_scene = data.get('match_display_in_scene')
         self.all_products = self.data_provider[Data.ALL_PRODUCTS]
         self.survey_response = self.data_provider[Data.SURVEY_RESPONSES]
@@ -53,34 +54,12 @@ class CCUSGENERALToolBox:
             self.position_graph_data = None
             self.matches = self.data_provider[Data.MATCHES]
         self.matches = self.matches.merge(self.match_display_in_scene, how='left', on=['scene_fk', 'bay_number'])
+
     @property
     def position_graphs(self):
         if not hasattr(self, '_position_graphs'):
             self._position_graphs = CCUSPositionGraphs(self.data_provider)
         return self._position_graphs
-
-    @property
-    def match_product_in_scene(self):
-        if not hasattr(self, '_match_product_in_scene'):
-            self._match_product_in_scene = self.position_graph_data.match_product_in_scene
-        return self._match_product_in_scene
-
-    # @property
-    # def match_product_in_scene(self):
-    #     if not hasattr(self, '_match_product_in_scene'):
-    #         self._match_product_in_scene = self.position_graph_data.match_product_in_scene
-    #     return self._match_product_in_scene
-
-    #
-    # def get_atts(self):
-    #     """
-    #     This function extracts the static KPI data and saves it into one global data frame.
-    #     The data is taken from static.kpi / static.atomic_kpi / static.kpi_set.
-    #     """
-    #     query = CCUSQueries.get_product_atts()
-    #     product_att4 = pd.read_sql_query(query, self.rds_conn.db)
-    #     self.scif = self.scif.merge(product_att4, how='left', left_on='product_ean_code',
-    #                                 right_on='product_ean_code')
 
     def check_survey_answer(self, survey_text, target_answer):
         """

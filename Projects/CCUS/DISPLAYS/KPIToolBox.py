@@ -144,6 +144,7 @@ class DISPLAYSToolBox(DISPLAYSConsts):
                                 kpi_results[params[self.KPI_NAME]][x*3 + 2] += s
             else:
                 calculate_all = True
+            del scene_displays
             for d in xrange(len(scene_displays)):
                 display = scene_displays.iloc[d]
                 display_name = display['display_name']
@@ -169,10 +170,10 @@ class DISPLAYSToolBox(DISPLAYSConsts):
         filters = self.get_filters(params)
         numerator = self.tools.calculate_availability(bay_number=display['bay_number'],
                                                       product_type=('Empty', self.tools.EXCLUDE_FILTER),
-                                                      scene_id=display['scene_fk'], **filters)
+                                                      scene_fk=display['scene_fk'], **filters)
         denominator = self.tools.calculate_availability(bay_number=display['bay_number'],
                                                         product_type=('Empty', self.tools.EXCLUDE_FILTER),
-                                                        scene_id=display['scene_fk'])
+                                                        scene_fk=display['scene_fk'])
         result = 0 if denominator == 0 else numerator / float(denominator)
         target = map(float, str(params[self.SOS_TARGET]).split(self.SEPARATOR))
         scores = []

@@ -9,7 +9,7 @@ if __name__ == '__main__':
     LoggerInitializer.init('MARSRU calculations')
     project_name = 'marsru-prod'
     session_uids = [
-        '738ef110-6d62-494c-9958-d1a971d3e94a',
+        'ffecd08b-2ab7-4e76-b4fc-f2f5caf1de48',
         
         # '20c275a9-afe2-4004-a727-618dee0e5599',
         # '0c5cf562-6209-49af-9a7f-730952c99788',
@@ -67,7 +67,7 @@ if __name__ == '__main__':
         # 'ce1b2831-f3ea-4022-90d8-dddeeaf9c1d7',
         # 'c70d343b-2216-4fba-8c8b-e5dedbc967f5',
         # 'dd6ad61a-2a84-4ba8-843a-e5614a71d6a3',
-        # '0f69341d-1e19-49bb-85dc-067edeb9a1a6',
+
         #
         # '3a82729b-d83f-400f-bb4a-8a24388cba4d',
         # '6d3507e0-72bc-44db-85ec-3a399654bd18',

@@ -30,3 +30,5 @@ class SceneGenerator:
             self.scene_tool_box.scene_score()
             self.pillar_scene_tool_box.is_scene_belong_to_program()
             self.common.commit_results_data(result_entity='scene')
+        del self.scene_tool_box
+        del self.pillar_scene_tool_box
