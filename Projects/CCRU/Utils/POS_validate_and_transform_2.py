@@ -388,6 +388,7 @@ ALLOWED_VALUES_TYPES = [
     'DOORS'
 ]
 
+ADDITIONAL_DEPEND_ON_VALUES = ['scene type', 'filled coolers target']
 
 class CCRUPOSValidator:
 
@@ -488,7 +489,7 @@ class CCRUPOSValidator:
 
                 pos = self.checking_empty_and_duplicate_values(pos, 'KPI ID')
                 pos = self.checking_empty_and_duplicate_values(pos, 'KPI name Eng')
-                pos = self.checking_empty_and_duplicate_values(pos, 'KPI name Rus', info_column_name=WARNING_INFO)
+                pos = self.checking_empty_and_duplicate_values(pos, 'KPI name Rus', info_type=WARNING_INFO)
                 pos = self.checking_level_values(pos)
                 pos = self.checking_level_structure(pos)
                 pos = self.checking_loose_parents(pos)
@@ -502,194 +503,25 @@ class CCRUPOSValidator:
                 pos = self.checking_weight_total(pos)
                 pos = self.checking_weight_decimals(pos)
 
-                # checking Category KPI Type
-                column_name = 'Category KPI Type'
-                error_name = 'INCORRECT VALUE'
-                error_column_name = ERROR_INFO.format(column_name, error_name)
-                if column_name in pos.columns:
-                    for i, r in pos[pos[column_name].notnull()].iterrows():
-                        if r[column_name] not in ALLOWED_CATEGORY_KPI_TYPES or r['level'] != 2:
-                            if error_column_name not in pos.columns:
-                                pos[error_column_name] = None
-                            pos.loc[i, error_column_name] = unicode(r[column_name])
-                            contents_ok &= False
+                pos = self.checking_column_single_values(pos, 'Category KPI Type',
+                                                         info_type=ERROR_INFO, check_list=ALLOWED_CATEGORY_KPI_TYPES)
+                pos = self.checking_column_single_values(pos, 'Category KPI Value',
+                                                         info_type=ERROR_INFO, check_list=self.categories)
+                pos = self.checking_column_single_values(pos, 'Formula',
+                                                         info_type=ERROR_INFO, check_list=ALLOWED_FORMULAS)
+                pos = self.checking_column_single_values(pos, 'Logical Operator',
+                                                         info_type=ERROR_INFO, check_list=ALLOWED_LOGICAL_OPERATORS)
+                pos = self.checking_column_single_values(pos, 'Type',
+                                                         info_type=ERROR_INFO, check_list=ALLOWED_VALUES_TYPES)
+                pos = self.checking_column_single_values(pos, 'depends on',
+                                                         info_type=ERROR_INFO,
+                                                         check_list=
+                                                         pos['KPI name Eng'].tolist() + ADDITIONAL_DEPEND_ON_VALUES)
 
-                # checking Category KPI Value
-                column_name = 'Category KPI Value'
-                error_name = 'INCORRECT VALUE'
-                error_column_name = ERROR_INFO.format(column_name, error_name)
-                if column_name in pos.columns:
-                    for i, r in pos[pos['Category KPI Type'].notnull()].iterrows():
-                        if r[column_name] not in self.categories:
-                            if error_column_name not in pos.columns:
-                                pos[error_column_name] = None
-                            pos.loc[i, error_column_name] = unicode(r[column_name])
-                            contents_ok &= False
-
-                # checking Formula
-                column_name = 'Formula'
-                error_name = 'INCORRECT VALUE'
-                error_column_name = ERROR_INFO.format(column_name, error_name)
-                if column_name in pos.columns:
-                    for i, r in pos.iterrows():
-                        if r[column_name] not in ALLOWED_FORMULAS:
-                            if error_column_name not in pos.columns:
-                                pos[error_column_name] = None
-                            pos.loc[i, error_column_name] = unicode(r[column_name])
-                            contents_ok &= False
-
-                # checking Formula Parent
-                column_name = 'Formula'
-                error_name = 'INCORRECT PARENT FORMULA'
-                error_column_name = ERROR_INFO.format(column_name, error_name)
-                if column_name in pos.columns:
-                    for i, r in pos[pos['Parent'].notnull()].iterrows():
-                        parent_formula = pos[pos['KPI ID'] == r['Parent']][column_name].tolist()
-                        parent_formula = parent_formula[0] if parent_formula else None
-                        allowed_formulas = ALLOWED_FORMULAS_PARENTS.get(r[column_name], [])
-                        if parent_formula not in allowed_formulas:
-                            if error_column_name not in pos.columns:
-                                pos[error_column_name] = None
-                            pos.loc[i, error_column_name] = unicode(parent_formula) + ' X<= ' + unicode(r[column_name])
-                            contents_ok &= False
-                            structure_ok &= False
-
-                # checking Logical Operator
-                column_name = 'Logical Operator'
-                error_name = 'INCORRECT VALUE'
-                error_column_name = ERROR_INFO.format(column_name, error_name)
-                if column_name in pos.columns:
-                    for i, r in pos[(pos['KPI name Eng'].isin(ALLOWED_LOGICAL_OPERATOR_KPIS) &
-                                     pos['Children'].notnull())].iterrows():
-                        if r[column_name] not in ALLOWED_LOGICAL_OPERATORS:
-                            if error_column_name not in pos.columns:
-                                pos[error_column_name] = None
-                            pos.loc[i, error_column_name] = unicode(r[column_name])
-                            contents_ok &= False
-
-                # checking 'depends on' name
-                column_name = 'depends on'
-                error_name = 'INCORRECT NAME'
-                error_column_name = ERROR_INFO.format(column_name, error_name)
-                if column_name in pos.columns:
-                    for i, r in pos[pos[column_name].notnull()].iterrows():
-                        if r[column_name] not in pos['KPI name Eng'].tolist() +\
-                                ['scene type', 'filled collers target']:
-                            if error_column_name not in pos.columns:
-                                pos[error_column_name] = None
-                            pos.loc[i, error_column_name] = unicode(r[column_name])
-                            contents_ok &= False
-
-                # checking 'depends on' logic
-                column_name = 'depends on'
-                error_name = 'INCORRECT DEPENDENCY'
-                error_column_name = ERROR_INFO.format(column_name, error_name)
-                if column_name in pos.columns:
-                    for i, r in pos[pos[column_name].notnull()].iterrows():
-                        if r[column_name] in ['scene type', 'filled collers target']:
-                            depends_on = r[column_name]
-                            depends_on_formula = r['Formula']
-                        else:
-                            depends_on = r['Formula']
-                            depends_on_formula = pos[pos['KPI name Eng'] == r[column_name]]['Formula'].tolist()
-                            depends_on_formula = depends_on_formula[0] if depends_on_formula else None
-                        allowed_formulas = ALLOWED_FORMULAS_DEPENDENCIES.get(depends_on, [])
-                        if depends_on_formula not in allowed_formulas:
-                            if error_column_name not in pos.columns:
-                                pos[error_column_name] = None
-                            pos.loc[i, error_column_name] = unicode(depends_on_formula) + ' X<= ' + unicode(depends_on)
-                            contents_ok &= False
-
-                # checking Type
-                column_name = 'Type'
-                error_name = 'INCORRECT VALUE'
-                error_column_name = ERROR_INFO.format(column_name, error_name)
-                if column_name in pos.columns:
-                    for i, r in pos[pos[column_name].notnull() | pos['Values'].notnull()].iterrows():
-                        if r[column_name] not in ALLOWED_VALUES_TYPES:
-                            if error_column_name not in pos.columns:
-                                pos[error_column_name] = None
-                            pos.loc[i, error_column_name] = unicode(r[column_name])
-                            contents_ok &= False
-
-                # checking Values
-                column_name = 'Values'
-                error_name = 'INCORRECT VALUES'
-                error_column_name = WARNING_INFO.format(column_name, error_name)
-                if column_name in pos.columns:
-                    for i, r in pos[pos['Type'].notnull()].iterrows():
-                        error_detected = False
-                        error_values = []
-                        values = int(r[column_name]) if type(r[column_name]) == float \
-                            and int(r[column_name]) == r[column_name] else r[column_name]
-                        if r['Type'] == 'MAN' and not r.get('Manufacturer'):
-                            for value in unicode(values).split(', '):
-                                if value not in self.manufacturers:
-                                    error_detected = True
-                                    error_values += [value]
-                        elif r['Type'] in ('CAT', 'MAN in CAT'):
-                            if r.get('Product Category') and r[column_name] != r.get('Product Category'):
-                                error_detected = True
-                            for value in unicode(values).split(', '):
-                                if value not in self.categories:
-                                    error_detected = True
-                                    error_values += [value]
-                        elif r['Type'] == 'SUB_CATEGORY':
-                            if r.get('Sub category') and r[column_name] != r.get('Sub category'):
-                                error_detected = True
-                            for value in unicode(values).split(', '):
-                                if value not in self.sub_categories:
-                                    error_detected = True
-                                    error_values += [value]
-                        elif r['Type'] in ('BRAND', 'BRAND_IN_CAT'):
-                            if r.get('Brand') and r[column_name] != r.get('Brand'):
-                                error_detected = True
-                            for value in unicode(values).split(', '):
-                                if value not in self.brands:
-                                    error_detected = True
-                                    error_values += [value]
-                        elif r['Type'] in ('SUB_BRAND', 'SUB_BRAND_IN_CAT'):
-                            if r.get('Sub brand') and r[column_name] != r.get('Sub brand'):
-                                error_detected = True
-                            for value in unicode(values).split(', '):
-                                if value not in self.sub_brands:
-                                    error_detected = True
-                                    error_values += [value]
-                        elif r['Type'] == 'SKUs':
-                            for value in unicode(values).split(', '):
-                                if value not in self.ean_codes:
-                                    error_detected = True
-                                    error_values += [value]
-                        elif r['Type'] == 'SCENE':
-                            if r.get('Scenes to include') and r[column_name] != r.get('Scenes to include'):
-                                error_detected = True
-                            for value in unicode(values).split('; '):
-                                if value not in self.scene_types:
-                                    error_detected = True
-                                    error_values += [value]
-                        elif r['Type'] == 'SUB_LOCATION_TYPE':
-                            if r.get('Sub locations to include') and r[column_name] != r.get('Sub locations to include'):
-                                error_detected = True
-                            for value in unicode(values).split(', '):
-                                if value not in self.sub_locations:
-                                    error_detected = True
-                                    error_values += [value]
-                        elif r['Type'] == 'LOCATION_TYPE':
-                            if r.get('Locations to include') and r[column_name] != r.get('Locations to include'):
-                                error_detected = True
-                            for value in unicode(values).split(', '):
-                                if value not in self.locations:
-                                    error_detected = True
-                                    error_values += [value]
-                        elif r['Type'] in ('NUM_SCENES', 'DOORS'):
-                            if values:
-                                error_detected = True
-                                error_values += [values]
-                        if error_detected:
-                            if error_column_name not in pos.columns:
-                                pos[error_column_name] = None
-                            pos.loc[i, error_column_name] = r['Type'] + ': ' + ', '.join(error_values)
-                            contents_ok &= False
+                pos = self.checking_parent_formula(pos)
+                pos = self.checking_depend_on_logic(pos)
+                pos = self.checking_values_column(pos)
+                pos = self.checking_values_column(pos)
 
                 # checking Products to exclude
                 column_name = 'Products to exclude'
@@ -1258,8 +1090,8 @@ class CCRUPOSValidator:
         if column_name in pos.columns:
 
             info_name = 'EXTRA SPACES REMOVED'
-            info_column_name = WARNING_INFO
-            info_column_name = info_column_name.format(column_name, info_name)
+            info_type = WARNING_INFO
+            info_column_name = info_type.format(column_name, info_name)
             if info_column_name not in pos.columns:
                 pos[info_column_name] = None
 
@@ -1287,8 +1119,8 @@ class CCRUPOSValidator:
         if column_name in pos.columns:
 
             info_name = 'EXTRA SPACES REMOVED'
-            info_column_name = WARNING_INFO
-            info_column_name = info_column_name.format(column_name, info_name)
+            info_type = WARNING_INFO
+            info_column_name = info_type.format(column_name, info_name)
             if info_column_name not in pos.columns:
                 pos[info_column_name] = None
 
@@ -1312,11 +1144,11 @@ class CCRUPOSValidator:
         return pos
 
     @staticmethod
-    def checking_empty_and_duplicate_values(pos, column_name, info_column_name=ERROR_INFO):
+    def checking_empty_and_duplicate_values(pos, column_name, info_type=ERROR_INFO):
         if column_name in pos.columns:
 
             info_name = 'EMPTY OR DUPLICATE'
-            info_column_name = info_column_name.format(column_name, info_name)
+            info_column_name = info_type.format(column_name, info_name)
             if info_column_name not in pos.columns:
                 pos[info_column_name] = None
 
@@ -1341,8 +1173,8 @@ class CCRUPOSValidator:
         if column_name in pos.columns:
 
             info_name = 'INCORRECT VALUE'
-            info_column_name = ERROR_INFO
-            info_column_name = info_column_name.format(column_name, info_name)
+            info_type = ERROR_INFO
+            info_column_name = info_type.format(column_name, info_name)
             if info_column_name not in pos.columns:
                 pos[info_column_name] = None
 
@@ -1360,8 +1192,8 @@ class CCRUPOSValidator:
         if column_name in pos.columns:
 
             info_name = 'INCORRECT STRUCTURE'
-            info_column_name = ERROR_INFO
-            info_column_name = info_column_name.format(column_name, info_name)
+            info_type = ERROR_INFO
+            info_column_name = info_type.format(column_name, info_name)
             if info_column_name not in pos.columns:
                 pos[info_column_name] = None
 
@@ -1390,8 +1222,8 @@ class CCRUPOSValidator:
         if column_name in pos.columns:
 
             info_name = 'LOOSE'
-            info_column_name = ERROR_INFO
-            info_column_name = info_column_name.format(column_name, info_name)
+            info_type = ERROR_INFO
+            info_column_name = info_type.format(column_name, info_name)
             if info_column_name not in pos.columns:
                 pos[info_column_name] = None
 
@@ -1410,8 +1242,8 @@ class CCRUPOSValidator:
         if column_name in pos.columns:
 
             info_name = 'TOO SHORT (<{})'.format(length)
-            info_column_name = WARNING_INFO
-            info_column_name = info_column_name.format(column_name, info_name)
+            info_type = WARNING_INFO
+            info_column_name = info_type.format(column_name, info_name)
             if info_column_name not in pos.columns:
                 pos[info_column_name] = None
 
@@ -1428,8 +1260,8 @@ class CCRUPOSValidator:
         if column_name in pos.columns:
 
             info_name = 'RESTRICTED SYMBOLS'
-            info_column_name = ERROR_INFO
-            info_column_name = info_column_name.format(column_name, info_name)
+            info_type = ERROR_INFO
+            info_column_name = info_type.format(column_name, info_name)
             if info_column_name not in pos.columns:
                 pos[info_column_name] = None
 
@@ -1449,8 +1281,8 @@ class CCRUPOSValidator:
             total_weight = round(pos[column_name].sum(), 7)
             if total_weight != 1.0:
                 info_name = 'TOTAL != 1.0'
-                info_column_name = ERROR_INFO
-                info_column_name = info_column_name.format(column_name, info_name)
+                info_type = ERROR_INFO
+                info_column_name = info_type.format(column_name, info_name)
                 pos[info_column_name] = 'TOTAL = ' + str(total_weight)
         return pos
 
@@ -1460,8 +1292,8 @@ class CCRUPOSValidator:
         if column_name in pos.columns:
 
             info_name = 'DECIMALS > 6 DIGITS'
-            info_column_name = ERROR_INFO
-            info_column_name = info_column_name.format(column_name, info_name)
+            info_type = ERROR_INFO
+            info_column_name = info_type.format(column_name, info_name)
             if info_column_name not in pos.columns:
                 pos[info_column_name] = None
 
@@ -1469,6 +1301,181 @@ class CCRUPOSValidator:
             weights[2] = weights[1].str.len()
             pos_filter = (weights[2] > 6)
             pos.loc[pos_filter, info_column_name] = pos[pos_filter][column_name].astype(unicode)
+
+            if not any(pos[info_column_name]):
+                pos.drop(columns=[info_column_name])
+
+        return pos
+
+    @staticmethod
+    def checking_column_single_values(pos, column_name, check_list=None, info_type=ERROR_INFO):
+        if column_name in pos.columns:
+
+            check_list = check_list if check_list else []
+
+            info_name = 'INCORRECT VALUE'
+            info_column_name = info_type.format(column_name, info_name)
+            if info_column_name not in pos.columns:
+                pos[info_column_name] = None
+
+            if column_name == 'Category KPI Type':
+                pos_filter = pos[column_name].notnull() & \
+                             (~pos[column_name].isin(check_list) | pos['level'] != 2)
+            elif column_name == 'Category KPI Value':
+                pos_filter = pos['Category KPI Type'].notnull() & ~pos[column_name].isin(check_list)
+            elif column_name == 'Formula':
+                pos_filter = ~pos[column_name].isin(check_list)
+            elif column_name == 'Logical Operator':
+                pos_filter = (pos['KPI name Eng'].isin(ALLOWED_LOGICAL_OPERATOR_KPIS) & pos['Children'].notnull()) & \
+                             ~pos[column_name].isin(check_list)
+            elif column_name == 'Type':
+                pos_filter = (pos[column_name].notnull() | pos['Values'].notnull()) & \
+                             ~pos[column_name].isin(check_list)
+            elif column_name == 'depends on':
+                pos_filter = pos[column_name].notnull() & ~pos[column_name].isin(check_list)
+            else:
+                pos[info_column_name] = 'CANNOT BE PROCESSED'
+                return pos
+
+            pos.loc[pos_filter, info_column_name] = pos[pos_filter][column_name].astype(unicode)
+
+            if not any(pos[info_column_name]):
+                pos.drop(columns=[info_column_name])
+
+        return pos
+
+    @staticmethod
+    def checking_parent_formula(pos):
+        column_name = 'Formula'
+        if column_name in pos.columns:
+
+            info_name = 'INCORRECT PARENT FORMULA'
+            info_type = ERROR_INFO
+            info_column_name = info_type.format(column_name, info_name)
+            if info_column_name not in pos.columns:
+                pos[info_column_name] = None
+
+            for i, r in pos[pos['Parent'].notnull()].iterrows():
+                parent_formula = pos[pos['KPI ID'] == r['Parent']][column_name].tolist()
+                parent_formula = parent_formula[0] if parent_formula else None
+                allowed_formulas = ALLOWED_FORMULAS_PARENTS.get(r[column_name], [])
+                if parent_formula not in allowed_formulas:
+                    pos.loc[i, info_column_name] = unicode(parent_formula) + ' X<= ' + unicode(r[column_name])
+
+            if not any(pos[info_column_name]):
+                pos.drop(columns=[info_column_name])
+
+        return pos
+
+    @staticmethod
+    def checking_depend_on_logic(pos):
+        column_name = 'depends on'
+        if column_name in pos.columns:
+
+            info_name = 'INCORRECT DEPENDENCY'
+            info_type = ERROR_INFO
+            info_column_name = info_type.format(column_name, info_name)
+            if info_column_name not in pos.columns:
+                pos[info_column_name] = None
+
+            for i, r in pos[pos[column_name].notnull()].iterrows():
+                if r[column_name] in ADDITIONAL_DEPEND_ON_VALUES:
+                    depends_on = r['Formula']
+                    depends_on_formula = r[column_name]
+                else:
+                    depends_on = r['Formula']
+                    depends_on_formula = pos[pos['KPI name Eng'] == r[column_name]]['Formula'].tolist()
+                    depends_on_formula = depends_on_formula[0] if depends_on_formula else None
+                allowed_formulas = ALLOWED_FORMULAS_DEPENDENCIES.get(depends_on, [])
+                if depends_on_formula not in allowed_formulas:
+                    pos.loc[i, info_column_name] = unicode(depends_on_formula) + ' X<= ' + unicode(depends_on)
+
+            if not any(pos[info_column_name]):
+                pos.drop(columns=[info_column_name])
+
+        return pos
+
+    def checking_values_column(self, pos):
+        column_name = 'Values'
+        if column_name in pos.columns:
+
+            info_name = 'INCORRECT VALUES'
+            info_type = ERROR_INFO
+            info_column_name = info_type.format(column_name, info_name)
+            if info_column_name not in pos.columns:
+                pos[info_column_name] = None
+
+            for i, r in pos[pos['Type'].notnull()].iterrows():
+                error_detected = False
+                error_values = []
+                values = int(r[column_name]) \
+                    if type(r[column_name]) == float and int(r[column_name]) == r[column_name] \
+                    else r[column_name]
+                if r['Type'] == 'MAN' and not r.get('Manufacturer'):
+                    for value in unicode(values).split(', '):
+                        if value not in self.manufacturers:
+                            error_detected = True
+                            error_values += [value]
+                elif r['Type'] in ('CAT', 'MAN in CAT'):
+                    if r.get('Product Category') and r[column_name] != r.get('Product Category'):
+                        error_detected = True
+                    for value in unicode(values).split(', '):
+                        if value not in self.categories:
+                            error_detected = True
+                            error_values += [value]
+                elif r['Type'] == 'SUB_CATEGORY':
+                    if r.get('Sub category') and r[column_name] != r.get('Sub category'):
+                        error_detected = True
+                    for value in unicode(values).split(', '):
+                        if value not in self.sub_categories:
+                            error_detected = True
+                            error_values += [value]
+                elif r['Type'] in ('BRAND', 'BRAND_IN_CAT'):
+                    if r.get('Brand') and r[column_name] != r.get('Brand'):
+                        error_detected = True
+                    for value in unicode(values).split(', '):
+                        if value not in self.brands:
+                            error_detected = True
+                            error_values += [value]
+                elif r['Type'] in ('SUB_BRAND', 'SUB_BRAND_IN_CAT'):
+                    if r.get('Sub brand') and r[column_name] != r.get('Sub brand'):
+                        error_detected = True
+                    for value in unicode(values).split(', '):
+                        if value not in self.sub_brands:
+                            error_detected = True
+                            error_values += [value]
+                elif r['Type'] == 'SKUs':
+                    for value in unicode(values).split(', '):
+                        if value not in self.ean_codes:
+                            error_detected = True
+                            error_values += [value]
+                elif r['Type'] == 'SCENE':
+                    if r.get('Scenes to include') and r[column_name] != r.get('Scenes to include'):
+                        error_detected = True
+                    for value in unicode(values).split('; '):
+                        if value not in self.scene_types:
+                            error_detected = True
+                            error_values += [value]
+                elif r['Type'] == 'SUB_LOCATION_TYPE':
+                    if r.get('Sub locations to include') and r[column_name] != r.get('Sub locations to include'):
+                        error_detected = True
+                    for value in unicode(values).split(', '):
+                        if value not in self.sub_locations:
+                            error_detected = True
+                            error_values += [value]
+                elif r['Type'] == 'LOCATION_TYPE':
+                    if r.get('Locations to include') and r[column_name] != r.get('Locations to include'):
+                        error_detected = True
+                    for value in unicode(values).split(', '):
+                        if value not in self.locations:
+                            error_detected = True
+                            error_values += [value]
+                elif r['Type'] in ('NUM_SCENES', 'DOORS'):
+                    if values:
+                        error_detected = True
+                        error_values += [values]
+                if error_detected:
+                    pos.loc[i, info_column_name] = r['Type'] + ': ' + ', '.join(error_values)
 
             if not any(pos[info_column_name]):
                 pos.drop(columns=[info_column_name])
