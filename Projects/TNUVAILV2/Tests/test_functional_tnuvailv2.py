@@ -40,7 +40,6 @@ class TestTnuvailv2(TestFunctionalCase):
         self.data_provider_mock.project_name = 'Test_Project_1'
         self.data_provider_mock.rds_conn = MagicMock()
         self.mock_db_users()
-        # self.project_connector_mock = self.mock_project_connector()
         self.mock_common_project_connector_mock = self.mock_common_project_connector()
         self.static_kpi_mock = self.mock_static_kpi()
         self.mock_all_products()
@@ -102,9 +101,6 @@ class TestTnuvailv2(TestFunctionalCase):
         self.mock_object('PSProjectConnector', path='KPIUtils_v2.GlobalDataProvider.PsDataProvider')
         self.mock_object('PSProjectConnector', path='Projects.TNUVAILV2.Utils.DataBaseHandler')
 
-    # def mock_project_connector(self):
-    #     return self.mock_object('PSProjectConnector')
-
     def mock_common_project_connector(self):
         return self.mock_object('PSProjectConnector', path='KPIUtils_v2.DB.CommonV2')
 
@@ -161,14 +157,6 @@ class TestTnuvailv2(TestFunctionalCase):
 
     def mock_store_id(self):
         self.data_provider_data_mock[Data.STORE_FK] = 1
-
-    # def test_whatever(self):
-    #     matches, scene = self.create_scif_matches_stitch_groups_data_mocks([1])
-    #     self.mock_get_last_session_oos_results(DataTestUnitTnuva.previous_results_empty)
-    #     self.mock_get_oos_reasons_for_session(DataTestUnitTnuva.oos_exclude_res_empty)
-    #     self.mock_session_info_property(DataTestUnitTnuva.session_info_new)
-    #     tool_box = TNUVAILToolBox(self.data_provider_mock, self.output)
-    #     print tool_box.kpi_result_types
 
     def test_get_relevant_assortment_instance_does_not_change_scif_and_data_provider_if_session_new(self):
         matches, scene = self.create_scif_matches_stitch_groups_data_mocks([1])
@@ -288,10 +276,6 @@ class TestTnuvailv2(TestFunctionalCase):
         tool_box._calculate_assortment()
         self.assertEquals(len(tool_box.common_v2.kpi_results), 0)
 
-
-    # discuss:
-    # SKU lvl ass kpi: denominator is zero if product not in store
-    # all ass kpis have actually denom_id as store_id - does not match DB
     def test_calculate_assortment_if_only_dairy_shelves_in_store(self):
         matches, scene = self.create_scif_matches_stitch_groups_data_mocks([1])
         self.mock_get_last_session_oos_results(DataTestUnitTnuva.previous_results_no_session)
@@ -528,15 +512,6 @@ class TestTnuvailv2(TestFunctionalCase):
         for expected_result in expected_list:
             test_result_list.append(self.check_results(results_df, expected_result) == 1)
         self.assertTrue(all(test_result_list))
-
-    # def test_meat_included(self): # when we change the code
-    #     matches, scene = self.create_scif_matches_stitch_groups_data_mocks([2])
-    #     self.mock_get_last_session_oos_results(DataTestUnitTnuva.previous_results_empty)
-    #     self.mock_get_oos_reasons_for_session(DataTestUnitTnuva.oos_exclude_res_1)
-    #     self.mock_session_info_property(DataTestUnitTnuva.session_info_new)
-    #     tool_box = TNUVAILToolBox(self.data_provider_mock, self.output)
-    #     tool_box.common_v2.write_to_db_result = MagicMock()
-    #     tool_box._calculate_facings_sos()
 
     @staticmethod
     def check_results(results_df, expected_results_dict):
