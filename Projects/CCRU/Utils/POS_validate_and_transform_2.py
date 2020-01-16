@@ -42,79 +42,72 @@ MIN_KPI_NAME_LENGTH = 5
 ERROR_INFO = 'ERROR - {} - {}'
 WARNING_INFO = 'WARNING - {} - {}'
 
-POS_COLUMNS = [
-    'Sorting',
-    'PoS name',
+# POS columns list setting the columns order and MANDATORY_COLUMNS flag
+POS_COLUMNS_LIST = [
+    ['Sorting', False],
+    ['PoS name', False],
 
-    'level',
-    'KPI ID',
-    'Children',
-    'Parent',
+    ['C_Group', False],
+    ['C_Subgroup', False],
+    ['L_Group', False],
+    ['L_Subgroup', False],
 
-    'KPI Weight',
+    ['level', True],
+    ['KPI ID', True],
+    ['Parent', True],
+    ['Children', True],
 
-    'KPI name Eng',
-    'KPI name Rus',
+    ['KPI Weight', True],
 
-    'Category KPI Type',
-    'Category KPI Value',
+    ['KPI name Eng', True],
+    ['KPI name Rus', True],
 
-    'Formula',
-    'Logical Operator',
+    ['Category KPI Type', False],
+    ['Category KPI Value', False],
 
-    # 'Result Format',
-    'Target',
-    'target_min',
-    'target_max',
-    'score_func',
-    'score_min',
-    'score_max',
+    ['Formula', True],
+    ['Logical Operator', False],
 
-    'depends on',
+    ['Target', True],
+    ['target_min', False],
+    ['target_max', False],
+    ['score_func', True],
+    ['score_min', False],
+    ['score_max', False],
 
-    'Type',
-    'Values',
-    'SKU',
+    ['depends on', False],
 
-    'Products to exclude',
-    'Size',
-    'Form Factor',
-    'Sub brand',
-    'Brand',
-    'Manufacturer',
-    'Sub category',
-    'Product Category',
+    ['Type', True],
+    ['Values', True],
+    ['SKU', False],
 
-    'shelf_number',
-    'Zone to include',
-    'Scenes to include',
-    'Scenes to exclude',
-    'Sub locations to include',
-    'Sub locations to exclude',
-    'Locations to exclude',
-    'Locations to include',
+    ['Products to exclude', False],
+    ['Size', False],
+    ['Form Factor', False],
+    ['Sub brand', False],
+    ['Brand', False],
+    ['Manufacturer', False],
+    ['Sub category', False],
+    ['Product Category', False],
 
-    'Comments',
+    ['shelf_number', False],
+    ['Zone to include', False],
+    ['Scenes to include', False],
+    ['Scenes to exclude', False],
+    ['Sub locations to include', False],
+    ['Sub locations to exclude', False],
+    ['Locations to exclude', False],
+    ['Locations to include', False],
 
-    'SAP PoS',
-    'Channel',
-    'KPI Type',
-    'SAP KPI',
+    ['Comments', False],
+
+    ['SAP PoS', False],
+    ['Channel', False],
+    ['KPI Type', False],
+    ['SAP KPI', False],
 ]
-
-MANDATORY_POS_COLUMNS = [
-    'level',
-    'KPI ID',
-    'Parent',
-    'KPI Weight',
-    'KPI name Eng',
-    'KPI name Rus',
-    'Formula',
-    'Target',
-    'score_func',
-    'Type',
-    'Values'
-]
+POS_COLUMNS = [x[0] for x in POS_COLUMNS_LIST]
+MANDATORY_POS_COLUMNS = list(set([x[0] if x[1] else None for x in POS_COLUMNS_LIST]) - {None})
 
 ALLOWED_SYMBOLS = {
     'KPI name Eng': u' '
@@ -131,115 +124,229 @@ ALLOWED_SYMBOLS = {
                     u'абвгдеёжзийклмнопрстуфхцчшщъыьэюя'
 }
 
-ALLOWED_FORMULAS_PARENTS = \
-    {
-        'check_number_of_scenes_with_facings_target':
-            ['sum of atomic KPI result',
+ALLOWED_FORMULAS_LIST = {
+    'check_number_of_scenes_with_facings_target': {
+        'levels': [3],
+        'children': [],
+        'depends_on':
+            ['number of doors with more than Target facings',
+             'number of coolers with facings target and fullness target']
+    },
+    'each SKU hits facings target': {
+        'levels': [3],
+        'children': [],
+        'depends_on':
+            ['number of doors with more than Target facings',
+             'number of coolers with facings target and fullness target']
+    },
+    'facings TCCC/40': {
+        'levels': [2, 3],
+        'children': [],
+        'depends_on': []
+    },
+    'Group': {
+        'levels': [1],
+        'children':
+            ['facings TCCC/40',
              'number of atomic KPI Passed',
-             'Weighted Average'],
-        'each SKU hits facings target':
-            ['Weighted Average'],
-        'facings TCCC/40':
-            ['sum of atomic KPI result',
-             'Group'],
-        'Group':
-            ['Group'],
-        'Lead SKU':
-            ['number of atomic KPI Passed',
              'number of atomic KPI Passed on the same scene',
-             'number of sub atomic KPI Passed'],
-        'number of atomic KPI Passed':
-            ['Group'],
-        'number of atomic KPI Passed on the same scene':
-            ['Group'],
-        'number of coolers with facings target and fullness target':
-            ['sum of atomic KPI result'],
-        'number of doors of filled Coolers':
-            ['sum of atomic KPI result',
-             'number of atomic KPI Passed'],
-        'number of doors with more than Target facings':
-            ['sum of atomic KPI result',
-             'number of atomic KPI Passed',
-             'sum of atomic KPI result'],
-        'number of facings':
-            ['number of facings',
+             'number of facings',
+             'number of pure Coolers',
+             'number of scenes',
+             'number of SKU per Door RANGE',
+             'number of SKU per Door RANGE TOTAL',
+             'Scenes with no tagging',
+             'Share of CCH doors which have 98% TCCC facings and no FC packs',
+             'Share of CCH doors which have 98% TCCC facings',
+             'SOS',
+             'sum of atomic KPI result',
              'Weighted Average',
-             'number of atomic KPI Passed',
-             'number of atomic KPI Passed on the same scene',
+             'Group'],
+        'depends_on': []
+    },
+    'Lead SKU': {
+        'levels': [3, 4],
+        'children': [],
+        'depends_on': []
+    },
+    'number of atomic KPI Passed': {
+        'levels': [2],
+        'children':
+            ['check_number_of_scenes_with_facings_target',
+             'Lead SKU',
+             'number of doors of filled Coolers',
+             'number of doors with more than Target facings',
+             'number of facings',
+             'number of pure Coolers',
+             'number of scenes',
+             'number of SKU per Door RANGE',
+             'number of SKU per Door RANGE TOTAL',
              'number of sub atomic KPI Passed',
-             'Group'],
-        'number of pure Coolers':
-            ['number of atomic KPI Passed',
-             'Group'],
-        'number of scenes':
-            ['number of atomic KPI Passed',
-             'number of atomic KPI Passed on the same scene',
-             'Group'],
-        'number of SKU per Door RANGE':
-            ['Group'],
-        'number of SKU per Door RANGE TOTAL':
-            ['Group'],
-        'number of sub atomic KPI Passed':
-            ['number of atomic KPI Passed',
-             'number of atomic KPI Passed on the same scene',
-             'Weighted Average'],
-        'Scenes with no tagging':
-            ['number of atomic KPI Passed',
-             'Weighted Average',
-             'Group'],
-        # 'Share of CCH doors which do not have FC packs':
-        #     [],
-        'Share of CCH doors which have 98% TCCC facings':
-            ['Group'],
-        'SOS':
-            ['Weighted Average',
-             'Group'],
-        'sum of atomic KPI result':
-            ['Group'],
-        'Weighted Average':
-            ['Group'],
-    }
-ALLOWED_FORMULAS = ALLOWED_FORMULAS_PARENTS.keys()
-
-ALLOWED_FORMULAS_DEPENDENCIES = \
-    {
-        'filled collers target':
+             'Scenes with no tagging',
+             'SOS'],
+        'depends_on': []
+    },
+    'number of atomic KPI Passed on the same scene': {
+        'levels': [2],
+        'children':
+            ['Lead SKU',
+             'number of facings',
+             'number of scenes',
+             'number of sub atomic KPI Passed'],
+        'depends_on': []
+    },
+    'number of coolers with facings target and fullness target': {
+        'levels': [3],
+        'children': [],
+        'depends_on': ['filled coolers target']
+    },
+    'number of doors of filled Coolers': {
+        'levels': [3],
+        'children': [],
+        'depends_on': []
+    },
+    'number of doors with more than Target facings': {
+        'levels': [3],
+        'children': [],
+        'depends_on':  ['filled coolers target']
+    },
+    'number of facings': {
+        'levels': [2, 3, 4],
+        'children': ['number of facings'],
+        'depends_on':
             ['number of doors with more than Target facings',
-             'number of coolers with facings target and fullness target'],
-        'scene type':
-            ['number of sub atomic KPI Passed'],
-        'check_number_of_scenes_with_facings_target':
-            ['number of doors with more than Target facings',
-             'number of coolers with facings target and fullness target'],
-        'each SKU hits facings target':
-            ['number of doors with more than Target facings',
-             'number of coolers with facings target and fullness target'],
-        'number of facings':
-            ['number of doors with more than Target facings',
-             'number of coolers with facings target and fullness target'],
-        'number of pure Coolers':
+             'number of coolers with facings target and fullness target']
+    },
+    'number of pure Coolers': {
+        'levels': [2, 3],
+        'children': [],
+        'depends_on':
             ['number of doors of filled Coolers',
              'number of doors with more than Target facings',
-             'number of coolers with facings target and fullness target'],
-        'number of SKU per Door RANGE':
+             'number of coolers with facings target and fullness target']
+    },
+    'number of scenes': {
+        'levels': [2, 3],
+        'children': [],
+        'depends_on': []
+    },
+    'number of SKU per Door RANGE': {
+        'levels': [2, 3],
+        'children': [],
+        'depends_on':
             ['number of doors of filled Coolers',
              'number of coolers with facings target and fullness target',
-             'filled collers target'],
-        'number of SKU per Door RANGE TOTAL':
+             'filled coolers target']
+    },
+    'number of SKU per Door RANGE TOTAL': {
+        'levels': [2, 3],
+        'children': [],
+        'depends_on':
             ['number of doors of filled Coolers',
-             'number of coolers with facings target and fullness target'],
-        'number of sub atomic KPI Passed':
-            [],
-        # 'Share of CCH doors which do not have FC packs':
-        #     [],
-        'Share of CCH doors which have 98% TCCC facings':
+             'number of coolers with facings target and fullness target',
+             'filled coolers target']
+    },
+    'number of sub atomic KPI Passed': {
+        'levels': [3],
+        'children':
+            ['Lead SKU',
+             'number of facings'],
+        'depends_on': ['scene type']
+    },
+    'number of sub atomic KPI Passed on the same scene': {
+        'levels': [3],
+        'children':
+            ['Lead SKU',
+             'number of facings'],
+        'depends_on': []
+    },
+    'Scenes with no tagging': {
+        'levels': [2, 3],
+        'children': [],
+        'depends_on': []
+    },
+    'Share of CCH doors which have 98% TCCC facings and no FC packs': {
+        'levels': [2, 3],
+        'children': [],
+        'depends_on':
             ['number of doors of filled Coolers',
              'number of doors with more than Target facings',
-             'number of coolers with facings target and fullness target'],
-        'Weighted Average':
+             'number of coolers with facings target and fullness target']
+    },
+    'Share of CCH doors which have 98% TCCC facings': {
+        'levels': [2, 3],
+        'children': [],
+        'depends_on':
+            ['number of doors of filled Coolers',
+             'number of doors with more than Target facings',
+             'number of coolers with facings target and fullness target']
+    },
+    'SOS': {
+        'levels': [2, 3],
+        'children': [],
+        'depends_on':
+            ['number of doors of filled Coolers',
+             'number of doors with more than Target facings',
+             'number of coolers with facings target and fullness target']
+    },
+    'sum of atomic KPI result': {
+        'levels': [2],
+        'children':
+            ['check_number_of_scenes_with_facings_target',
+             'facings TCCC/40',
+             'number of coolers with facings target and fullness target',
+             'number of doors of filled Coolers',
+             'number of doors with more than Target facings'],
+        'depends_on': []
+    },
+    'Weighted Average': {
+        'levels': [2],
+        'children':
+            ['check_number_of_scenes_with_facings_target',
+             'each SKU hits facings target',
+             'number of facings',
+             'number of pure Coolers',
+             'number of SKU per Door RANGE',
+             'number of SKU per Door RANGE TOTAL',
+             'number of sub atomic KPI Passed',
+             'number of sub atomic KPI Passed on the same scene',
+             'Scenes with no tagging',
+             'Share of CCH doors which have 98% TCCC facings and no FC packs',
+             'Share of CCH doors which have 98% TCCC facings',
+             'SOS'],
+        'depends_on':
             ['number of doors with more than Target facings',
-             'number of coolers with facings target and fullness target'],
-    }
+             'number of coolers with facings target and fullness target']
+    },
+}
+
+
+def get_allowed_formulas_parameter(allowed_formulas_list, parameter):
+    allowed_formulas_parameter = {}
+    if parameter == 'parents':
+        parent_to_any_children = []
+        for parent in allowed_formulas_list.keys():
+            for child in allowed_formulas_list[parent]['children']:
+                if child == 'ANY':
+                    parent_to_any_children += [parent]
+                else:
+                    if allowed_formulas_parameter.get(child) is None:
+                        allowed_formulas_parameter[child] = [parent]
+                    else:
+                        allowed_formulas_parameter.update({child: allowed_formulas_parameter[child] + [parent]})
+        if parent_to_any_children:
+            for child in allowed_formulas_parameter.keys():
+                allowed_formulas_parameter.update({child: allowed_formulas_parameter[child] + parent_to_any_children})
+    else:
+        for formula in allowed_formulas_list.keys():
+            allowed_formulas_parameter[formula] = allowed_formulas_list[formula][parameter]
+    return allowed_formulas_parameter
+
+
+ALLOWED_FORMULAS = ALLOWED_FORMULAS_LIST.keys()
+ALLOWED_FORMULAS_PARENTS = get_allowed_formulas_parameter(ALLOWED_FORMULAS_LIST, 'parents')
+ALLOWED_FORMULAS_LEVELS = get_allowed_formulas_parameter(ALLOWED_FORMULAS_LIST, 'levels')
+ALLOWED_FORMULAS_DEPENDENCIES = get_allowed_formulas_parameter(ALLOWED_FORMULAS_LIST, 'depends_on')
 
 ALLOWED_CATEGORY_KPI_TYPES = [
     'Availability',
@@ -282,7 +389,7 @@ ALLOWED_VALUES_TYPES = [
 ]
 
 
-class CCRUKPIS:
+class CCRUPOSValidator:
 
     def __init__(self):
 
@@ -306,23 +413,11 @@ class CCRUKPIS:
         self.locations = self.get_locations()['name'].unique().tolist()
         self.store_zones = self.get_store_zones()['name'].unique().tolist()
 
-    @staticmethod
-    def xl_col_to_name(num):
-        letters = ''
-        while num:
-            mod = (num - 1) % 26
-            letters += chr(mod + 65)
-            num = (num - 1) // 26
-        return ''.join(reversed(letters))
-
     def validate_and_transform(self):
 
         pos_list_df = pd.read_excel(os.path.join(POS_PATH, POS_LIST['file_name']),
                                     sheet_name=POS_LIST['sheet_name'], convert_float=True)
         pos_list_df = pos_list_df.where((pd.notnull(pos_list_df)), None)
-
-        structure_ok = True
-        contents_ok = True
 
         pos_all = pd.DataFrame(columns=POS_COLUMNS)
         for index, row in pos_list_df.iterrows():
@@ -358,6 +453,9 @@ class CCRUKPIS:
                     if type(r[c]) in (str, unicode):
                         pos.loc[i, c] = r[c].strip()
 
+            structure_ok = True
+            contents_ok = True
+
             # checking mandatory columns
             error_name = 'COLUMN IS NOT FOUND'
             for c in MANDATORY_POS_COLUMNS:
@@ -375,255 +473,34 @@ class CCRUKPIS:
                 pos = self.fixing_children_column(pos)
                 pos = self.fixing_sku_column(pos, self.skus)
                 pos = self.creating_subsequent_formulas_column(pos)
-                pos = self.removing_extra_spaces_in_column(pos, 'KPI name Eng', 'EXTRA SPACES REMOVED', WARNING_INFO)
-                pos = self.removing_extra_spaces_in_column(pos, 'KPI name Rus', 'EXTRA SPACES REMOVED', WARNING_INFO)
 
-                # removing irrelevant Logical Operator
-                column_name = 'Logical Operator'
-                error_name = 'IRRELEVANT VALUES REMOVED'
-                error_column_name = WARNING_INFO.format(column_name, error_name)
-                if column_name in pos.columns:
-                    for i, r in pos[pos[column_name].notnull()].iterrows():
-                        if not (r['KPI name Eng'] in ALLOWED_LOGICAL_OPERATOR_KPIS and r['Children']):
-                            if error_column_name not in pos.columns:
-                                pos[error_column_name] = None
-                            pos.loc[i, error_column_name] = unicode(r[column_name])
-                            pos.loc[i, column_name] = None
+                pos = self.removing_extra_spaces_in_column(pos, 'KPI name Eng', )
+                pos = self.removing_extra_spaces_in_column(pos, 'KPI name Rus')
 
-                # removing irrelevant score_func
-                column_name = 'score_func'
-                error_name = 'IRRELEVANT VALUES REMOVED'
-                error_column_name = WARNING_INFO.format(column_name, error_name)
-                if column_name in pos.columns:
-                    for i, r in pos[pos[column_name].notnull()].iterrows():
-                        if not r['Target']:
-                            if error_column_name not in pos.columns:
-                                pos[error_column_name] = None
-                            pos.loc[i, error_column_name] = unicode(r[column_name])
-                            pos.loc[i, column_name] = None
+                pos = self.removing_irrelevant_values(pos, 'Logical Operator')
+                pos = self.removing_irrelevant_values(pos, 'score_func')
+                pos = self.removing_irrelevant_values(pos, 'Manufacturer', by_column='Brand')
+                pos = self.removing_irrelevant_values(pos, 'Manufacturer', by_column='Sub brand')
+                pos = self.removing_irrelevant_values(pos, 'Brand', by_column='Sub brand')
+                pos = self.removing_irrelevant_values(pos, 'Locations to include', by_column='Scenes to include')
+                pos = self.removing_irrelevant_values(pos, 'Sub locations to include', by_column='Scenes to include')
+                pos = self.removing_irrelevant_values(pos, 'Locations to include', by_column='Sub locations to include')
 
-                # removing irrelevant Manufacturer by Brand
-                column_name = 'Manufacturer'
-                error_name = 'IRRELEVANT VALUES REMOVED'
-                error_column_name = WARNING_INFO.format(column_name, error_name)
-                if column_name in pos.columns:
-                    for i, r in pos[pos[column_name].notnull()].iterrows():
-                        if r.get('Brand'):
-                            if error_column_name not in pos.columns:
-                                pos[error_column_name] = None
-                            pos.loc[i, error_column_name] = unicode(r[column_name])
-                            pos.loc[i, column_name] = None
+                pos = self.checking_empty_and_duplicate_values(pos, 'KPI ID')
+                pos = self.checking_empty_and_duplicate_values(pos, 'KPI name Eng')
+                pos = self.checking_empty_and_duplicate_values(pos, 'KPI name Rus', info_column_name=WARNING_INFO)
+                pos = self.checking_level_values(pos)
+                pos = self.checking_level_structure(pos)
+                pos = self.checking_loose_parents(pos)
 
-                # removing irrelevant Manufacturer by Sub brand
-                column_name = 'Manufacturer'
-                error_name = 'IRRELEVANT VALUES REMOVED'
-                error_column_name = WARNING_INFO.format(column_name, error_name)
-                if column_name in pos.columns:
-                    for i, r in pos[pos[column_name].notnull()].iterrows():
-                        if r.get('Sub brand'):
-                            if error_column_name not in pos.columns:
-                                pos[error_column_name] = None
-                            pos.loc[i, error_column_name] = unicode(r[column_name])
-                            pos.loc[i, column_name] = None
+                pos = self.checking_name_length(pos, 'KPI name Eng', MIN_KPI_NAME_LENGTH)
+                pos = self.checking_name_length(pos, 'KPI name Rus', MIN_KPI_NAME_LENGTH)
 
-                # removing irrelevant Brand by Sub brand
-                column_name = 'Brand'
-                error_name = 'IRRELEVANT VALUES REMOVED'
-                error_column_name = WARNING_INFO.format(column_name, error_name)
-                if column_name in pos.columns:
-                    for i, r in pos[pos[column_name].notnull()].iterrows():
-                        if r.get('Sub brand'):
-                            if error_column_name not in pos.columns:
-                                pos[error_column_name] = None
-                            pos.loc[i, error_column_name] = unicode(r[column_name])
-                            pos.loc[i, column_name] = None
+                pos = self.checking_restricted_symbols(pos, 'KPI name Eng', ALLOWED_SYMBOLS['KPI name Eng'])
+                pos = self.checking_restricted_symbols(pos, 'KPI name Rus', ALLOWED_SYMBOLS['KPI name Rus'])
 
-                # removing irrelevant Locations to include by Scenes to include
-                column_name = 'Locations to include'
-                error_name = 'IRRELEVANT VALUES REMOVED'
-                error_column_name = WARNING_INFO.format(column_name, error_name)
-                if column_name in pos.columns:
-                    for i, r in pos[pos[column_name].notnull()].iterrows():
-                        if r.get('Scenes to include'):
-                            if error_column_name not in pos.columns:
-                                pos[error_column_name] = None
-                            pos.loc[i, error_column_name] = unicode(r[column_name])
-                            pos.loc[i, column_name] = None
-
-                # removing irrelevant Sub locations to include by Scenes to include
-                column_name = 'Sub locations to include'
-                error_name = 'IRRELEVANT VALUES REMOVED'
-                error_column_name = WARNING_INFO.format(column_name, error_name)
-                if column_name in pos.columns:
-                    for i, r in pos[pos[column_name].notnull()].iterrows():
-                        if r.get('Scenes to include'):
-                            if error_column_name not in pos.columns:
-                                pos[error_column_name] = None
-                            pos.loc[i, error_column_name] = unicode(r[column_name])
-                            pos.loc[i, column_name] = None
-
-                # removing irrelevant Locations to include by Sub locations to include
-                column_name = 'Locations to include'
-                error_name = 'IRRELEVANT VALUES REMOVED'
-                error_column_name = WARNING_INFO.format(column_name, error_name)
-                if column_name in pos.columns:
-                    for i, r in pos[pos[column_name].notnull()].iterrows():
-                        if r.get('Sub locations to include'):
-                            if error_column_name not in pos.columns:
-                                pos[error_column_name] = None
-                            pos.loc[i, error_column_name] = unicode(r[column_name])
-                            pos.loc[i, column_name] = None
-
-                # checking KPI ID
-                column_name = 'KPI ID'
-                error_name = 'EMPTY OR DUPLICATE'
-                error_column_name = ERROR_INFO.format(column_name, error_name)
-                if column_name in pos.columns:
-                    duplicates = pos[[column_name, 'Sorting']].groupby(column_name).count()\
-                        .reset_index().rename(columns={'Sorting': 'count'})
-                    duplicates_list = duplicates[duplicates['count'] > 1][column_name].unique().tolist()
-                    if duplicates_list:
-                        if error_column_name not in pos.columns:
-                            pos[error_column_name] = None
-                        pos.loc[pos[column_name].isin(duplicates_list), error_column_name] = \
-                            pos[pos[column_name].isin(duplicates_list)][column_name].astype(unicode)
-                        structure_ok &= False
-
-                # checking level
-                pos['00_level_checked'] = None
-                column_name = 'level'
-                error_name = 'INCORRECT VALUE'
-                error_column_name = ERROR_INFO.format(column_name, error_name)
-                if column_name in pos.columns:
-                    # run 1
-                    incorrect_levels_mask = (pos['level'].isnull()) | ~(pos['level'].isin([1, 2, 3, 4]))
-                    incorrect_levels = pos[incorrect_levels_mask]['level'].astype(unicode)
-                    if len(incorrect_levels):
-                        if error_column_name not in pos.columns:
-                            pos[error_column_name] = None
-                        pos.loc[incorrect_levels_mask, error_column_name] = incorrect_levels
-                        structure_ok &= False
-                    # run 2
-                    for i, r0 in pos[pos['Children'].notnull()].iterrows():
-                        if r0['level'] == 1 and r0['Parent'] is None:
-                            pos.loc[i, '00_level_checked'] = 1
-                        if r0['level'] == 4:
-                            if error_column_name not in pos.columns:
-                                pos[error_column_name] = None
-                            pos.loc[i, error_column_name] = unicode(r0[column_name])
-                            structure_ok &= False
-                        level = None
-                        for j, r1 in pos[pos['Parent'] == r0['KPI ID']].iterrows():
-                            pos.loc[j, '00_level_checked'] = 1
-                            level = r1['level'] if level is None else level
-                            if r1['level'] != level \
-                                    or not (level in [1, 2] and r0['level'] == 1 or
-                                            level in [3] and r0['level'] == 2 or
-                                            level in [4] and r0['level'] == 3):
-                                if error_column_name not in pos.columns:
-                                    pos[error_column_name] = None
-                                pos.loc[j, error_column_name] = unicode(r1[column_name])
-                                structure_ok &= False
-
-                # checking loose Parent
-                column_name = 'Parent'
-                error_name = 'LOOSE'
-                error_column_name = ERROR_INFO.format(column_name, error_name)
-                if column_name in pos.columns:
-                    if len(pos[pos['00_level_checked'].isnull()]) > 0:
-                        if error_column_name not in pos.columns:
-                            pos[error_column_name] = None
-                        pos.loc[pos['00_level_checked'].isnull(), error_column_name] = \
-                            pos[pos['00_level_checked'].isnull()][column_name].astype(unicode)
-                        structure_ok &= False
-
-                # checking length of KPI name Eng
-                column_name = 'KPI name Eng'
-                error_name = 'TOO SHORT (<{})'.format(MIN_KPI_NAME_LENGTH)
-                error_column_name = ERROR_INFO.format(column_name, error_name)
-                if column_name in pos.columns:
-                    for i, r in pos.iterrows():
-                        if len(unicode(r[column_name])) < MIN_KPI_NAME_LENGTH:
-                            if error_column_name not in pos.columns:
-                                pos[error_column_name] = None
-                            pos.loc[i, error_column_name] = unicode(r[column_name])
-                            contents_ok &= False
-
-                # checking length of KPI name Rus
-                column_name = 'KPI name Rus'
-                error_name = 'TOO SHORT (<{})'.format(MIN_KPI_NAME_LENGTH)
-                error_column_name = ERROR_INFO.format(column_name, error_name)
-                if column_name in pos.columns:
-                    for i, r in pos.iterrows():
-                        if len(unicode(r[column_name])) < MIN_KPI_NAME_LENGTH:
-                            if error_column_name not in pos.columns:
-                                pos[error_column_name] = None
-                            pos.loc[i, error_column_name] = unicode(r[column_name])
-                            contents_ok &= False
-
-                # checking for restricted symbols in KPI names Eng
-                column_name = 'KPI name Eng'
-                error_name = 'RESTRICTED SYMBOLS'
-                error_column_name = ERROR_INFO.format(column_name, error_name)
-                if column_name in pos.columns:
-                    for i, r in pos.iterrows():
-                        if any((s not in ALLOWED_SYMBOLS_KPI_NAME_ENG) for s in unicode(r[column_name])):
-                            if error_column_name not in pos.columns:
-                                pos[error_column_name] = None
-                            pos.loc[i, error_column_name] = unicode(r[column_name])
-                            contents_ok &= False
-
-                # checking for restricted symbols in KPI names Rus
-                column_name = 'KPI name Rus'
-                error_name = 'RESTRICTED SYMBOLS'
-                error_column_name = ERROR_INFO.format(column_name, error_name)
-                if column_name in pos.columns:
-                    for i, r in pos.iterrows():
-                        if any((s not in ALLOWED_SYMBOLS_KPI_NAME_RUS) for s in unicode(r[column_name])):
-                            if error_column_name not in pos.columns:
-                                pos[error_column_name] = None
-                            pos.loc[i, error_column_name] = unicode(r[column_name])
-                            contents_ok &= False
-
-                # checking for duplicate KPI name Eng
-                column_name = 'KPI name Eng'
-                error_name = 'DUPLICATE'
-                error_column_name = ERROR_INFO.format(column_name, error_name)
-                if column_name in pos.columns:
-                    duplicates = pos[[column_name, 'Sorting']].groupby(column_name).count()\
-                        .reset_index().rename(columns={'Sorting': 'count'})
-                    duplicates_list = duplicates[duplicates['count'] > 1][column_name].unique().tolist()
-                    if duplicates_list:
-                        if error_column_name not in pos.columns:
-                            pos[error_column_name] = None
-                        pos.loc[pos[column_name].isin(duplicates_list), error_column_name] = \
-                            pos[pos[column_name].isin(duplicates_list)][column_name].astype(unicode)
-                        contents_ok &= False
-
-                # checking total KPI Weight == 1.0
-                column_name = 'KPI Weight'
-                error_name = 'TOTAL != 1.0'
-                error_column_name = ERROR_INFO.format(column_name, error_name)
-                if column_name in pos.columns:
-                    total_weight = round(pos[column_name].sum(), 7)
-                    if total_weight != 1.0:
-                        pos[error_column_name] = 'TOTAL = ' + str(total_weight)
-                        contents_ok &= False
-
-                # checking KPI Weight for decimals
-                column_name = 'KPI Weight'
-                error_name = 'DECIMALS > 6 DIGITS'
-                error_column_name = ERROR_INFO.format(column_name, error_name)
-                if column_name in pos.columns:
-                    weights = pos[column_name].astype(unicode).str.split('.', 1, True)
-                    weights[2] = weights[1].str.len()
-                    incorrect_precision_mask = (weights[2] > 6)
-                    if len(incorrect_precision_mask) > 0:
-                        if error_column_name not in pos.columns:
-                            pos[error_column_name] = None
-                        pos.loc[incorrect_precision_mask, error_column_name] = \
-                            pos[incorrect_precision_mask][column_name].astype(unicode)
-                        contents_ok &= False
+                pos = self.checking_weight_total(pos)
+                pos = self.checking_weight_decimals(pos)
 
                 # checking Category KPI Type
                 column_name = 'Category KPI Type'
@@ -1320,7 +1197,7 @@ class CCRUKPIS:
 
                 pos_cols = []  # keeping only relevant columns
                 for c in pos.columns:
-                    if c.find('ERROR') == 0 or c.find('WARNING') == 0 or True:
+                    if c.find('ERROR') == 0 or c.find('WARNING') == 0:
                         if any(pos[c]):
                             pos_cols += [c]
                 pos_cols += POS_COLUMNS
@@ -1377,10 +1254,16 @@ class CCRUKPIS:
         return pos
     
     @staticmethod
-    def removing_extra_spaces_in_column(pos, column_name, info_name, info_column_name):
-        column_name_original = column_name + ' ORIGINAL'
-        info_column_name = info_column_name.format(column_name, info_name)
+    def removing_extra_spaces_in_column(pos, column_name):
         if column_name in pos.columns:
+
+            info_name = 'EXTRA SPACES REMOVED'
+            info_column_name = WARNING_INFO
+            info_column_name = info_column_name.format(column_name, info_name)
+            if info_column_name not in pos.columns:
+                pos[info_column_name] = None
+
+            column_name_original = column_name + ' ORIGINAL'
             pos[column_name_original] = pos[column_name]
             pos[column_name] = \
                 pos[column_name] \
@@ -1389,27 +1272,208 @@ class CCRUKPIS:
                 .str.replace('  ', ' ') \
                 .str.replace('  ', ' ') \
                 .str.strip()
+
             pos_filter = pos[column_name] != pos[column_name_original]
             pos.loc[pos_filter, info_column_name] = pos[pos_filter][column_name_original].astype(unicode)
             pos = pos.drop(columns=[column_name_original])
+
+            if not any(pos[info_column_name]):
+                pos.drop(columns=[info_column_name])
+
         return pos
 
     @staticmethod
-    def removing_irrelevant_logical_operator(pos, column_name, info_name, info_column_name):
-        column_name = 'Logical Operator'
-        error_name = 'IRRELEVANT VALUES REMOVED'
-        info_column_name = WARNING_INFO.format(column_name, info_name)
+    def removing_irrelevant_values(pos, column_name, by_column=None):
         if column_name in pos.columns:
-            pos_filter = pos[column_name].notnull() &
 
+            info_name = 'EXTRA SPACES REMOVED'
+            info_column_name = WARNING_INFO
+            info_column_name = info_column_name.format(column_name, info_name)
+            if info_column_name not in pos.columns:
+                pos[info_column_name] = None
 
+            if column_name == 'Logical operator':
+                pos_filter = pos[column_name].notnull() & \
+                             ~((pos['KPI name Eng'] in ALLOWED_LOGICAL_OPERATOR_KPIS) & pos['Children'].notnull())
+            elif column_name == 'score_func':
+                pos_filter = pos[column_name].notnull() & pos['Target'].isnull()
+            elif column_name in ['score_func', 'Manufacturer', 'Brand', 'Locations to include']:
+                pos_filter = pos[column_name].notnull() & pos[by_column].notnull()
+            else:
+                pos[info_column_name] = 'CANNOT BE PROCESSED'
+                return pos
 
-            for i, r in pos[pos[column_name].notnull()].iterrows():
-                if not (r['KPI name Eng'] in ALLOWED_LOGICAL_OPERATOR_KPIS and r['Children']):
-                    if error_column_name not in pos.columns:
-                        pos[error_column_name] = None
-                    pos.loc[i, error_column_name] = unicode(r[column_name])
-                    pos.loc[i, column_name] = None
+            pos.loc[pos_filter, info_column_name] = pos[pos_filter][column_name].astype(unicode)
+            pos.loc[pos_filter, column_name] = None
+
+            if not any(pos[info_column_name]):
+                pos.drop(columns=[info_column_name])
+
+        return pos
+
+    @staticmethod
+    def checking_empty_and_duplicate_values(pos, column_name, info_column_name=ERROR_INFO):
+        if column_name in pos.columns:
+
+            info_name = 'EMPTY OR DUPLICATE'
+            info_column_name = info_column_name.format(column_name, info_name)
+            if info_column_name not in pos.columns:
+                pos[info_column_name] = None
+
+            duplicates = pos[pos[column_name].notnull()][[column_name, 'Sorting']].groupby(column_name).count() \
+                .reset_index().rename(columns={'Sorting': 'count'})
+            duplicates_list = duplicates[duplicates['count'] > 1][column_name].unique().tolist()
+            if duplicates_list:
+                pos.loc[pos[column_name].isin(duplicates_list), info_column_name] = \
+                    pos[pos[column_name].isin(duplicates_list)][column_name].astype(unicode)
+
+            pos_filter = pos[column_name].isnull()
+            pos.loc[pos_filter, info_column_name] = pos[pos_filter][column_name].astype(unicode)
+
+            if not any(pos[info_column_name]):
+                pos.drop(columns=[info_column_name])
+
+        return pos
+
+    @staticmethod
+    def checking_level_values(pos):
+        column_name = 'level'
+        if column_name in pos.columns:
+
+            info_name = 'INCORRECT VALUE'
+            info_column_name = ERROR_INFO
+            info_column_name = info_column_name.format(column_name, info_name)
+            if info_column_name not in pos.columns:
+                pos[info_column_name] = None
+
+            pos_filter = pos['level'].isnull() | ~pos['level'].isin([1, 2, 3, 4])
+            pos.loc[pos_filter, info_column_name] = pos[pos_filter][column_name].astype(unicode)
+
+            if not any(pos[info_column_name]):
+                pos.drop(columns=[info_column_name])
+        
+        return pos
+
+    @staticmethod
+    def checking_level_structure(pos):
+        column_name = 'level'
+        if column_name in pos.columns:
+
+            info_name = 'INCORRECT STRUCTURE'
+            info_column_name = ERROR_INFO
+            info_column_name = info_column_name.format(column_name, info_name)
+            if info_column_name not in pos.columns:
+                pos[info_column_name] = None
+
+            for i, r0 in pos[pos['Children'].notnull()].iterrows():
+                if r0[column_name] == 4:
+                    pos.loc[i, info_column_name] = unicode(r0[column_name])
+                if r0[column_name] not in ALLOWED_FORMULAS_LEVELS.get(r0['Formula'], []):
+                    pos.loc[i, info_column_name] = unicode(r0[column_name])
+                level = None
+                for j, r1 in pos[pos['Parent'] == r0['KPI ID']].iterrows():
+                    level = r1[column_name] if level is None else level
+                    if r1[column_name] != level \
+                            or not (level in [1, 2] and r0[column_name] == 1 or
+                                    level in [3] and r0[column_name] == 2 or
+                                    level in [4] and r0[column_name] == 3):
+                        pos.loc[j, info_column_name] = unicode(r1[column_name])
+
+            if not any(pos[info_column_name]):
+                pos.drop(columns=[info_column_name])
+        
+        return pos
+
+    @staticmethod
+    def checking_loose_parents(pos):
+        column_name = 'Parent'
+        if column_name in pos.columns:
+
+            info_name = 'LOOSE'
+            info_column_name = ERROR_INFO
+            info_column_name = info_column_name.format(column_name, info_name)
+            if info_column_name not in pos.columns:
+                pos[info_column_name] = None
+
+            kpi_ids = pos['KPI ID'].tolist()
+            pos_filter = ((pos['level'] == 1) & pos[column_name].notnull() | (pos['level'] != 1)) \
+                         & ~pos[column_name].isin(kpi_ids)
+            pos.loc[pos_filter, info_column_name] = pos[pos_filter][column_name].astype(unicode)
+
+            if not any(pos[info_column_name]):
+                pos.drop(columns=[info_column_name])
+
+        return pos
+
+    @staticmethod
+    def checking_name_length(pos, column_name, length):
+        if column_name in pos.columns:
+
+            info_name = 'TOO SHORT (<{})'.format(length)
+            info_column_name = WARNING_INFO
+            info_column_name = info_column_name.format(column_name, info_name)
+            if info_column_name not in pos.columns:
+                pos[info_column_name] = None
+
+            pos_filter = pos[column_name].astype(unicode).str.len() < length
+            pos.loc[pos_filter, info_column_name] = pos[pos_filter][column_name].astype(unicode)
+
+            if not any(pos[info_column_name]):
+                pos.drop(columns=[info_column_name])
+
+        return pos
+
+    @staticmethod
+    def checking_restricted_symbols(pos, column_name, allowed_symbols):
+        if column_name in pos.columns:
+
+            info_name = 'RESTRICTED SYMBOLS'
+            info_column_name = ERROR_INFO
+            info_column_name = info_column_name.format(column_name, info_name)
+            if info_column_name not in pos.columns:
+                pos[info_column_name] = None
+
+            for i, r in pos.iterrows():
+                if any((s not in allowed_symbols) for s in unicode(r[column_name])):
+                    pos.loc[i, info_column_name] = unicode(r[column_name])
+
+            if not any(pos[info_column_name]):
+                pos.drop(columns=[info_column_name])
+
+        return pos
+
+    @staticmethod
+    def checking_weight_total(pos):
+        column_name = 'KPI Weight'
+        if column_name in pos.columns:
+            total_weight = round(pos[column_name].sum(), 7)
+            if total_weight != 1.0:
+                info_name = 'TOTAL != 1.0'
+                info_column_name = ERROR_INFO
+                info_column_name = info_column_name.format(column_name, info_name)
+                pos[info_column_name] = 'TOTAL = ' + str(total_weight)
+        return pos
+
+    @staticmethod
+    def checking_weight_decimals(pos):
+        column_name = 'KPI Weight'
+        if column_name in pos.columns:
+
+            info_name = 'DECIMALS > 6 DIGITS'
+            info_column_name = ERROR_INFO
+            info_column_name = info_column_name.format(column_name, info_name)
+            if info_column_name not in pos.columns:
+                pos[info_column_name] = None
+
+            weights = pos[column_name].astype(unicode).str.split('.', 1, True)
+            weights[2] = weights[1].str.len()
+            pos_filter = (weights[2] > 6)
+            pos.loc[pos_filter, info_column_name] = pos[pos_filter][column_name].astype(unicode)
+
+            if not any(pos[info_column_name]):
+                pos.drop(columns=[info_column_name])
+
+        return pos
 
     def get_kpi_names(self):
         query = """
@@ -1478,9 +1542,10 @@ class CCRUKPIS:
     def get_sub_brands(self):
         query = \
             """
-            SELECT REPLACE(JSON_EXTRACT(product.labels, '$.sub_brand'), '"', '') AS name
+            SELECT DISTINCT REPLACE(JSON_EXTRACT(product.labels, '$.sub_brand'), '"', '') AS name
             FROM static_new.product
-            WHERE delete_date IS NULL;
+            WHERE delete_date IS NULL
+            HAVING name IS NOT NULL;
             """
         query_results = self.rds_conn.execute(query.replace('\n', ' '))
         data = pd.DataFrame.from_records(list(query_results), columns=[x for x in list(query_results.keys())])
@@ -1500,7 +1565,7 @@ class CCRUKPIS:
     def get_sizes(self):
         query = \
             """
-            SELECT CAST(size AS CHAR(10)) AS size
+            SELECT DISTINCT CAST(size AS CHAR(10)) AS size
             FROM static_new.product
             WHERE size IS NOT NULL AND delete_date IS NULL;
             """
@@ -1511,9 +1576,9 @@ class CCRUKPIS:
     def get_form_factors(self):
         query = \
             """
-            SELECT form_factor AS name
+            SELECT DISTINCT form_factor AS name
             FROM static_new.product
-            WHERE size IS NOT NULL AND delete_date IS NULL;
+            WHERE form_factor IS NOT NULL AND delete_date IS NULL;
             """
         query_results = self.rds_conn.execute(query.replace('\n', ' '))
         data = pd.DataFrame.from_records(list(query_results), columns=[x for x in list(query_results.keys())])
@@ -1562,7 +1627,16 @@ class CCRUKPIS:
         data = pd.DataFrame.from_records(list(query_results), columns=[x for x in list(query_results.keys())])
         return data
 
+    @staticmethod
+    def xl_col_to_name(num):
+        letters = ''
+        while num:
+            mod = (num - 1) % 26
+            letters += chr(mod + 65)
+            num = (num - 1) // 26
+        return ''.join(reversed(letters))
+
 
 if __name__ == '__main__':
-    kpis_list = CCRUKPIS()
+    kpis_list = CCRUPOSValidator()
     kpis_list.validate_and_transform()

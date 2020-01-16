@@ -46,10 +46,15 @@ POS_COLUMNS = [
     'Sorting',
     'PoS name',
 
+    'C_Group',
+    'C_Subgroup',
+    'L_Group',
+    'L_Subgroup',
+
     'level',
     'KPI ID',
-    'Children',
     'Parent',
+    'Children',
 
     'KPI Weight',
 
@@ -62,7 +67,6 @@ POS_COLUMNS = [
     'Formula',
     'Logical Operator',
 
-    # 'Result Format',
     'Target',
     'target_min',
     'target_max',
@@ -144,7 +148,8 @@ ALLOWED_FORMULAS_PARENTS = \
         'Lead SKU':
             ['number of atomic KPI Passed',
              'number of atomic KPI Passed on the same scene',
-             'number of sub atomic KPI Passed'],
+             'number of sub atomic KPI Passed',
+             'number of sub atomic KPI Passed on the same scene'],
         'number of atomic KPI Passed':
             ['Group'],
         'number of atomic KPI Passed on the same scene':
@@ -164,39 +169,77 @@ ALLOWED_FORMULAS_PARENTS = \
              'number of atomic KPI Passed',
              'number of atomic KPI Passed on the same scene',
              'number of sub atomic KPI Passed',
+             'number of sub atomic KPI Passed on the same scene',
              'Group'],
         'number of pure Coolers':
             ['number of atomic KPI Passed',
+             'Weighted Average',
              'Group'],
         'number of scenes':
             ['number of atomic KPI Passed',
              'number of atomic KPI Passed on the same scene',
              'Group'],
         'number of SKU per Door RANGE':
-            ['Group'],
+            ['Group',
+             'number of atomic KPI Passed',
+             'Weighted Average'],
         'number of SKU per Door RANGE TOTAL':
-            ['Group'],
+            ['Group',
+             'number of atomic KPI Passed',
+             'Weighted Average'],
         'number of sub atomic KPI Passed':
             ['number of atomic KPI Passed',
              'number of atomic KPI Passed on the same scene',
              'Weighted Average'],
+        'number of sub atomic KPI Passed on the same scene':
+            ['Weighted Average'],
         'Scenes with no tagging':
             ['number of atomic KPI Passed',
              'Weighted Average',
              'Group'],
-        # 'Share of CCH doors which do not have FC packs':
-        #     [],
-        'Share of CCH doors which have 98% TCCC facings':
-            ['Group'],
-        'SOS':
+        'Share of CCH doors which have 98% TCCC facings and no FC packs':
             ['Weighted Average',
+             'Group'],
+        'Share of CCH doors which have 98% TCCC facings':
+            ['Weighted Average',
+             'Group'],
+        'SOS':
+            ['number of atomic KPI Passed',
+             'Weighted Average',
              'Group'],
         'sum of atomic KPI result':
             ['Group'],
         'Weighted Average':
-            ['Group'],
+            ['Group']
     }
 ALLOWED_FORMULAS = ALLOWED_FORMULAS_PARENTS.keys()
+
+ALLOWED_FORMULAS_LEVELS = \
+    {
+        'check_number_of_scenes_with_facings_target': [3],
+        'each SKU hits facings target': [3],
+        'facings TCCC/40': [2, 3],
+        'Group': [1],
+        'Lead SKU': [3, 4],
+        'number of atomic KPI Passed': [2],
+        'number of atomic KPI Passed on the same scene': [2],
+        'number of coolers with facings target and fullness target': [3],
+        'number of doors of filled Coolers': [3],
+        'number of doors with more than Target facings': [3],
+        'number of facings': [2, 3, 4],
+        'number of pure Coolers': [2, 3],
+        'number of scenes': [2, 3],
+        'number of SKU per Door RANGE': [2, 3],
+        'number of SKU per Door RANGE TOTAL': [2, 3],
+        'number of sub atomic KPI Passed': [3],
+        'number of sub atomic KPI Passed on the same scene': [3],
+        'Scenes with no tagging': [2, 3],
+        'Share of CCH doors which have 98% TCCC facings and no FC packs': [2, 3],
+        'Share of CCH doors which have 98% TCCC facings': [2, 3],
+        'SOS': [2, 3],
+        'sum of atomic KPI result': [2],
+        'Weighted Average': [2]
+    }
 
 ALLOWED_FORMULAS_DEPENDENCIES = \
     {
@@ -227,9 +270,15 @@ ALLOWED_FORMULAS_DEPENDENCIES = \
              'number of coolers with facings target and fullness target'],
         'number of sub atomic KPI Passed':
             [],
-        # 'Share of CCH doors which do not have FC packs':
-        #     [],
+        'Share of CCH doors which have 98% TCCC facings and no FC packs':
+            ['number of doors of filled Coolers',
+             'number of doors with more than Target facings',
+             'number of coolers with facings target and fullness target'],
         'Share of CCH doors which have 98% TCCC facings':
+            ['number of doors of filled Coolers',
+             'number of doors with more than Target facings',
+             'number of coolers with facings target and fullness target'],
+        'SOS':
             ['number of doors of filled Coolers',
              'number of doors with more than Target facings',
              'number of coolers with facings target and fullness target'],
@@ -318,9 +367,6 @@ class CCRUKPIS:
                                     sheet_name=POS_LIST['sheet_name'], convert_float=True)
         pos_list_df = pos_list_df.where((pd.notnull(pos_list_df)), None)
 
-        structure_ok = True
-        contents_ok = True
-
         pos_all = pd.DataFrame(columns=POS_COLUMNS)
         for index, row in pos_list_df.iterrows():
             pos_name = row['POS']
@@ -354,6 +400,9 @@ class CCRUKPIS:
                 for c in columns:
                     if type(r[c]) in (str, unicode):
                         pos.loc[i, c] = r[c].strip()
+
+            structure_ok = True
+            contents_ok = True
 
             # checking mandatory columns
             error_name = 'COLUMN IS NOT FOUND'
@@ -556,6 +605,11 @@ class CCRUKPIS:
                         if r0['level'] == 1 and r0['Parent'] is None:
                             pos.loc[i, '00_level_checked'] = 1
                         if r0['level'] == 4:
+                            if error_field_name not in pos.columns:
+                                pos[error_field_name] = None
+                            pos.loc[i, error_field_name] = unicode(r0[field_name])
+                            structure_ok &= False
+                        if r0['level'] not in ALLOWED_FORMULAS_LEVELS.get(r0['Formula'], []):
                             if error_field_name not in pos.columns:
                                 pos[error_field_name] = None
                             pos.loc[i, error_field_name] = unicode(r0[field_name])
@@ -1368,7 +1422,7 @@ class CCRUKPIS:
 
                 pos_cols = []  # keeping only relevant columns
                 for c in pos.columns:
-                    if c.find('ERROR') == 0 or c.find('WARNING') == 0 or True:
+                    if c.find('ERROR') == 0 or c.find('WARNING') == 0:
                         if any(pos[c]):
                             pos_cols += [c]
                 pos_cols += POS_COLUMNS
@@ -1455,9 +1509,10 @@ class CCRUKPIS:
     def get_sub_brands(self):
         query = \
             """
-            SELECT REPLACE(JSON_EXTRACT(product.labels, '$.sub_brand'), '"', '') AS name
+            SELECT DISTINCT REPLACE(JSON_EXTRACT(product.labels, '$.sub_brand'), '"', '') AS name
             FROM static_new.product
-            WHERE delete_date IS NULL;
+            WHERE delete_date IS NULL
+            HAVING name IS NOT NULL;
             """
         query_results = self.rds_conn.execute(query.replace('\n', ' '))
         data = pd.DataFrame.from_records(list(query_results), columns=[x for x in list(query_results.keys())])
@@ -1477,7 +1532,7 @@ class CCRUKPIS:
     def get_sizes(self):
         query = \
             """
-            SELECT CAST(size AS CHAR(10)) AS size
+            SELECT DISTINCT CAST(size AS CHAR(10)) AS size
             FROM static_new.product
             WHERE size IS NOT NULL AND delete_date IS NULL;
             """
@@ -1488,9 +1543,9 @@ class CCRUKPIS:
     def get_form_factors(self):
         query = \
             """
-            SELECT form_factor AS name
+            SELECT DISTINCT form_factor AS name
             FROM static_new.product
-            WHERE size IS NOT NULL AND delete_date IS NULL;
+            WHERE form_factor IS NOT NULL AND delete_date IS NULL;
             """
         query_results = self.rds_conn.execute(query.replace('\n', ' '))
         data = pd.DataFrame.from_records(list(query_results), columns=[x for x in list(query_results.keys())])
