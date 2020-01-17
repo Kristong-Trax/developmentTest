@@ -540,9 +540,7 @@ class NationalToolBox(GlobalSessionToolBox):
             portafolio_y_precious_data[KPI_NAME].isin([kpi_name]) & portafolio_y_precious_data[
                 STORE_ADDITIONAL_ATTRIBUTE_2].str.contains(self.att2)].iloc[0]
 
-        relevant_store_assortment = np.array(
-            self.updated_store_assortment[self.updated_store_assortment['assortment_name'].str.contains(kpi_name[:4])][
-                'product_name'])
+
         relevant_required_assortments = np.array(self._get_groups(portafolio_y_precious_data, 'assortment'))
 
         all_products_needed = self.sanitize_values(portafolio_y_precious_data.all_products_needed) if pd.notna(
@@ -553,7 +551,7 @@ class NationalToolBox(GlobalSessionToolBox):
 
         result_dict = {}
         for i in range(len(relevant_required_assortments)):
-            result_of_current_assortment = sum(np.in1d(relevant_required_assortments[i], relevant_store_assortment))
+            result_of_current_assortment = sum(np.in1d(relevant_required_assortments[i], self.scif.product_name))
             if all_products_needed and 'assortment{}'.format(i + 1) in all_products_needed:
                 result_dict['assortment{}'.format(i + 1)] = result_of_current_assortment
             elif two_unique_products_needed and 'assortment{}'.format(i + 1) in two_unique_products_needed:
