@@ -8,29 +8,15 @@ from datetime import datetime
 import dateutil.parser as dparser
 import os
 
-from Projects.JTIMX.Data.LocalConsts import Consts
+# from Projects.JTIMX.Data.LocalConsts import Consts
 
-# from KPIUtils_v2.Utils.Consts.DataProvider import
-# from KPIUtils_v2.Utils.Consts.DB import 
-# from KPIUtils_v2.Utils.Consts.PS import 
-# from KPIUtils_v2.Utils.Consts.GlobalConsts import 
-# from KPIUtils_v2.Utils.Consts.Messages import 
-# from KPIUtils_v2.Utils.Consts.Custom import 
-# from KPIUtils_v2.Utils.Consts.OldDB import 
 
-# from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
-# from KPIUtils_v2.Calculations.AvailabilityCalculations import Availability
-# from KPIUtils_v2.Calculations.NumberOfScenesCalculations import NumberOfScenes
-# from KPIUtils_v2.Calculations.PositionGraphsCalculations import PositionGraphs
-# from KPIUtils_v2.Calculations.SOSCalculations import SOS
-# from KPIUtils_v2.Calculations.SequenceCalculations import Sequence
-# from KPIUtils_v2.Calculations.SurveyCalculations import Survey
-
-# from KPIUtils_v2.Calculations.CalculationsUtils import GENERALToolBoxCalculations
 
 __author__ = 'krishnat'
 
 TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data')
+PRICE_TARGET_TEMPLATE = 'Price_Target_Template'
+EAN_CODE = 'EAN Code'
 
 
 class ToolBox(GlobalSessionToolBox):
@@ -41,7 +27,7 @@ class ToolBox(GlobalSessionToolBox):
         self.visit_date = datetime.combine(self.data_provider[Data.VISIT_DATE], datetime.min.time())
         self.relevant_template = self.retrieve_price_target_df()
         self.mpis = self.data_provider[Data.MATCHES]
-        self.manufacturer_fk = self.scif.manufacturer_fk.iloc[0] if not self.scif.empty else 0
+        self.manufacturer_fk = self.data_provider.own_manufacturer.param_value.values[0] if self.data_provider.own_manufacturer.param_value.values[0] else 2
 
     def main_calculation(self):
         self.calculate_price_target_kpi()
@@ -49,9 +35,6 @@ class ToolBox(GlobalSessionToolBox):
     def calculate_price_target_kpi(self):
         kpi_name = 'Price Target'
         kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_name)
-        self.write_to_db(self.common.get_kpi_fk_by_kpi_type('Price Target - Parent'), numerator_id=self.manufacturer_fk,
-                         denominator_id=self.store_id,
-                         result=1, identifier_result=self.store_id)
 
         relevant_mpis = self.mpis[['product_fk', 'price']].drop_duplicates('product_fk')
         try:
@@ -83,14 +66,22 @@ class ToolBox(GlobalSessionToolBox):
                 score = 1
             else:
                 score = 0
+
             self.write_to_db(kpi_fk, numerator_id=row.product_fk, denominator_id=row.brand_fk,
                              numerator_result=recognized_price, denominator_result=target_price, result=row.facings,
                              score=score, identifier_parent=self.store_id, should_enter=True)
 
+        parent_kpi_relevant_df = final_mpis[final_mpis['Target Price'] != 0]
+        parent_kpi_relevant_result = float(len(np.where(parent_kpi_relevant_df['Target Price'] == parent_kpi_relevant_df.price)[0])) / len(parent_kpi_relevant_df) * 100
+
+        self.write_to_db(self.common.get_kpi_fk_by_kpi_type('Price Target - Parent'), numerator_id=self.manufacturer_fk,
+                         denominator_id=self.store_id,
+                         result=parent_kpi_relevant_result, identifier_result=self.store_id)
+
     def retrieve_price_target_df(self):
         data_name_list = os.listdir(TEMPLATE_PATH)
         price_target_template_name_index = np.flatnonzero(
-            np.core.defchararray.find(data_name_list, [Consts.PRICE_TARGET_TEMPLATE]) != -1)
+            np.core.defchararray.find(data_name_list, [PRICE_TARGET_TEMPLATE]) != -1)
         price_target_template_name_list = [data_name_list[i] for i in price_target_template_name_index]
         relevant_price_target_templates = {}
         for i, price_target in enumerate(price_target_template_name_list):
@@ -111,8 +102,9 @@ class ToolBox(GlobalSessionToolBox):
     @staticmethod
     def __address_substitution_product_fk(relevant_scif, relevant_mpis):
         scif_with_substitution_product_fk = relevant_scif[pd.notna(relevant_scif.substitution_product_fk)]
-        final_mpis = relevant_mpis.replace(scif_with_substitution_product_fk.product_fk.to_numpy(),
+        relevant_mpis.product_fk = relevant_mpis.product_fk.replace(scif_with_substitution_product_fk.product_fk.to_numpy(),
                                  scif_with_substitution_product_fk.substitution_product_fk.to_numpy())
-        present_products_in_session = relevant_scif.merge(final_mpis, how='left',on='product_fk')
+        present_products_in_session = relevant_scif.merge(relevant_mpis, how='left',on='product_fk')
+        present_products_in_session.dropna(subset=['facings'], inplace=True)
 
         return present_products_in_session

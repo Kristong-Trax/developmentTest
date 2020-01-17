@@ -125,7 +125,7 @@ class GSKJPToolBox:
         if (Consts.SHELVES not in policy.keys()) or policy[Consts.SHELVES].empty:
             Log.warning('This sessions have external targets but doesnt have value for shelves position')
             return 0, 0, 0, 0, 0
-        if isinstance(policy['shelves'].iloc[0], list):
+        if isinstance(policy[Consts.SHELVES].iloc[0], list):
             shelf_from_bottom = [int(shelf) for shelf in policy[Consts.SHELVES].iloc[0]]
         else:
             shelf_from_bottom = [int(shelf) for shelf in policy[Consts.SHELVES].iloc[0].split(",")]
