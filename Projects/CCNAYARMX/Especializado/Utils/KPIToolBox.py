@@ -334,8 +334,11 @@ class EspecializadoToolBox(GlobalSessionToolBox):
             if relevant_platformas_data.empty:
                 result = total_score
                 scene_id = 0
-            else:
-                result = total_score
+            elif relevant_platformas_data['Platform Name'].iloc[0] == 'Hidratacion':
+                result = total_score / 2
+                scene_id = relevant_platformas_data['scene_id'].iloc[0]
+            elif relevant_platformas_data['Platform Name'].iloc[0] == 'Nutricion':
+                result = total_score / 8
                 scene_id = relevant_platformas_data['scene_id'].iloc[0]
 
             result_dict = {'kpi_name': kpi_name, 'kpi_fk': kpi_fk,
@@ -486,7 +489,7 @@ class EspecializadoToolBox(GlobalSessionToolBox):
             # calculate the 'botellas' data
             total_facings = scene_scif[scene_scif['product_name'].isin(
                 [product for sublist in assortment_groups for product in sublist])]['facings'].sum()
-            if total_facings > targets_and_constraints['Facings_target'].iloc[0]:
+            if total_facings >= targets_and_constraints['Facings_target'].iloc[0]:
                 minimum_facings_met = 1  # True
             else:
                 minimum_facings_met = 0  # False

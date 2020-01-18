@@ -94,7 +94,7 @@ POS_OPTIONS_SHEETS = [POS_OPTIONS, TARGETS_AND_CONSTRAINTS]
 PORTAFOLIO_SHEETS = [ASSORTMENTS]
 
 TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data',
-                             'CCNayarTemplate_Nationalv0.1.xlsx')
+                             'CCNayarTemplate_Nationalv.5.xlsx')
 POS_OPTIONS_TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data',
                                          'CCNayar_POS_Options_v6.xlsx')
 PORTAFOLIO_Y_PRECIOUS_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data',
@@ -438,7 +438,7 @@ class NationalToolBox(GlobalSessionToolBox):
             # calculate the 'botellas' data
             total_facings = scene_scif[scene_scif['product_name'].isin(
                 [product for sublist in assortment_groups for product in sublist])]['facings'].sum()
-            if total_facings > targets_and_constraints['Facings_target'].iloc[0]:
+            if total_facings >= targets_and_constraints['Facings_target'].iloc[0]:
                 minimum_facings_met = 1  # True
             else:
                 minimum_facings_met = 0  # False
