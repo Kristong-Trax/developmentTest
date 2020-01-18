@@ -16,26 +16,25 @@ sys.path.append('.')
 PROJECT = 'ccru'
 
 POS_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data/KPIs_2020')
-POS_PATH_INPUT = os.path.join(POS_PATH, 'INPUT')
-POS_OUTPUT_PATH = os.path.join(POS_PATH, 'OUTPUT')
-POS_LIST = {'file_name': 'PoS 2020 List.xlsx', 'sheet_name': 'PoS List'}
-POS_ALL_FILE = 'PoS 2020 ALL.xlsx'
-POS_KPIS_INTO_DB_OLD_FILE = 'PoS 2020 INTO DB kpis.xlsx'
-POS_KPIS_INTO_DB_NEW_FILE = 'PoS 2020 INTO DB kpi_level_2.xlsx'
+POS_PATH_INPUT = os.path.join(POS_PATH, 'POS_VALIDATION/INPUT')
+POS_OUTPUT_PATH = os.path.join(POS_PATH, 'POS_VALIDATION/OUTPUT')
+POS_LIST = {'file_name': 'POS_VALIDATION/PoS 2020 List.xlsx', 'sheet_name': 'PoS List'}
+POS_KPIS_INTO_DB_OLD_FILE = 'KPIs for DB - PoS 2020.xlsx'
+POS_KPIS_INTO_DB_NEW_FILE = 'KPIs for DB - PoS 2020 - kpi_level_2.xlsx'
 
-KPI_LEVEL_2_INSERT = "INSERT IGNORE INTO `static`.`kpi_level_2` (" \
-                     "`type`, `client_name`, `kpi_family_fk`, `version`, " \
-                     "`numerator_type_fk`, `denominator_type_fk`, `kpi_score_type_fk`, " \
-                     "`kpi_result_type_fk`, `valid_from`, `valid_until`, `delete_time`, `initiated_by`, " \
-                     "`context_type_fk`, `kpi_calculation_stage_fk`, `session_relevance`, `scene_relevance`, " \
-                     "`planogram_relevance`, `live_session_relevance`, `live_scene_relevance`, " \
-                     "`kpi_target_type_fk`, `is_percent`) VALUES "
-KPI_LEVEL_2_VALUES = "('{}', '{}', 20, 1, " \
-                     "999, NULL, NULL, " \
-                     "NULL, NULL, NULL, NULL, 'Entity', " \
-                     "NULL, 3, 0, 0, " \
-                     "0, 0, 0, " \
-                     "NULL, 0),"
+KPI_LEVEL_2_INSERT = u"INSERT IGNORE INTO `static`.`kpi_level_2` (" \
+                     u"`type`, `client_name`, `kpi_family_fk`, `version`, " \
+                     u"`numerator_type_fk`, `denominator_type_fk`, `kpi_score_type_fk`, " \
+                     u"`kpi_result_type_fk`, `valid_from`, `valid_until`, `delete_time`, `initiated_by`, " \
+                     u"`context_type_fk`, `kpi_calculation_stage_fk`, `session_relevance`, `scene_relevance`, " \
+                     u"`planogram_relevance`, `live_session_relevance`, `live_scene_relevance`, " \
+                     u"`kpi_target_type_fk`, `is_percent`) VALUES "
+KPI_LEVEL_2_VALUES = u"('{}', '{}', 20, 1, " \
+                     u"999, NULL, NULL, " \
+                     u"NULL, NULL, NULL, NULL, 'Entity', " \
+                     u"NULL, 3, 0, 0, " \
+                     u"0, 0, 0, " \
+                     u"NULL, 0),"
 
 MIN_KPI_NAME_LENGTH = 5
 
@@ -366,9 +365,69 @@ class CCRUKPIS:
         return ''.join(reversed(letters))
 
     @staticmethod
+    def validate_benchmark():
+        bmk_file_in = '../Data/KPIs_2020/POS_VALIDATION/INPUT/Benchmark 2020.xlsx'
+        bmk_file_out = '../Data/KPIs_2020/POS_VALIDATION/OUTPUT/Benchmark 2020.xlsx'
+        bmk_file_kpis = '../Data/KPIs_2020/POS_VALIDATION/OUTPUT/KPIs for DB - Benchmark 2020.xlsx'
+        pos_file = '../Data/KPIs_2020/POS_VALIDATION/OUTPUT/PoS 2020 - ALL.xlsx'
+        source_file = '../Data/KPI_Source.xlsx'
+
+        bmk_df = pd.read_excel(bmk_file_in, sheet_name=None)
+        pos_df = pd.read_excel(pos_file)
+        source_df = pd.read_excel(source_file, sheet_name=None)['BENCHMARK']
+
+        bmk_kpis = pd.DataFrame(columns=['KPI Name'])
+        bmk_sheets = bmk_df.keys()
+        for bmk_sheet in bmk_sheets:
+            pos_list = source_df[(source_df['SET'] == 'Benchmark 2020') &
+                                 (source_df['SHEET'] == bmk_sheet)]['POS'].tolist()
+
+            bmk_kpis = bmk_kpis.append(bmk_df[bmk_sheet][['KPI Name']], ignore_index=True)
+
+            if 'ERROR' not in bmk_df[bmk_sheet].columns:
+                bmk_df[bmk_sheet]['ERROR'] = None
+
+            for i, r in bmk_df[bmk_sheet].iterrows():
+                values = unicode(r['Values']).split(',\n')
+                errors = {}
+                for v in values:
+                    errors[v] = []
+                    for p in pos_list:
+                        found = pos_df[(pos_df['PoS name'] == p) &
+                                       (pos_df['level'] == 2) & (pos_df['KPI name Eng'] == v)]['KPI ID'].tolist()
+                        if not found:
+                            errors[v] += [p]
+                error_text = ',\n'.join(set([v + '(' + ', '.join(errors[v]) + ')' if errors[v] else None
+                                             for v in errors.keys()]) - {None})
+                if error_text:
+                    bmk_df[bmk_sheet].loc[i, 'ERROR'] = error_text
+
+        writer = pd.ExcelWriter(bmk_file_out, engine='xlsxwriter')
+        for bmk_sheet in bmk_sheets:
+            bmk_df[bmk_sheet].to_excel(writer, sheet_name=bmk_sheet, index=False)
+        writer.save()
+        writer.close()
+
+        writer = pd.ExcelWriter(bmk_file_kpis, engine='xlsxwriter')
+        bmk_kpis = bmk_kpis.drop_duplicates()
+        bmk_kpis['KPI Level 1 Name'] = 'Benchmark 2020'
+        bmk_kpis['KPI Level 2 Name'] = bmk_kpis['KPI Name']
+        bmk_kpis['KPI Level 2 Weight'] = 1
+        bmk_kpis['KPI Level 3 Name'] = bmk_kpis['KPI Name']
+        bmk_kpis['KPI Level 3 Display Text'] = bmk_kpis['KPI Name']
+        bmk_kpis['KPI Level 3 Display Text RUS'] = bmk_kpis['KPI Name']
+        bmk_kpis['KPI Level 2 Weight'] = 1
+        bmk_kpis = bmk_kpis.drop(columns=['KPI Name'])
+        bmk_kpis.to_excel(writer, index=False)
+        writer.save()
+        writer.close()
+
+        return
+
+    @staticmethod
     def transform_kpi_source():
-        source_file_in = '/home/sergey/dev/kpi_factory/Projects/CCRU/Data/KPI_Source.xlsx'
-        source_file_out = '/home/sergey/dev/kpi_factory/Projects/CCRU/Data/KPI_Source_2020.xlsx'
+        source_file_in = '../Data/KPI_Source.xlsx'
+        source_file_out = '../Data/KPI_Source_2020.xlsx'
         source_df_in = pd.read_excel(source_file_in, sheet_name=None)
         source_df_out = pd.DataFrame()
 
@@ -748,7 +807,7 @@ class CCRUKPIS:
                     weights = pos[field_name].astype(unicode).str.split('.', 1, True)
                     weights[2] = weights[1].str.len()
                     incorrect_precision_mask = (weights[2] > 6)
-                    if len(incorrect_precision_mask) > 0:
+                    if any(incorrect_precision_mask):
                         if error_field_name not in pos.columns:
                             pos[error_field_name] = None
                         pos.loc[incorrect_precision_mask, error_field_name] = \
@@ -1275,7 +1334,7 @@ class CCRUKPIS:
                             pos.loc[i, error_field_name] = ', '.join(error_values)
                             contents_ok &= False
 
-            if None and structure_ok:  # The structure is consistent
+            if structure_ok:  # The structure is consistent
 
                 # calculating weights for all levels
                 pos['00_weight'] = None
@@ -1328,51 +1387,53 @@ class CCRUKPIS:
                     pos.loc[i, '00_kpi_atomic_wight'] = r['00_weight']
 
                 # checking POS name in the DB static.kpi_set
+                pos['NEW kpi'] = None
                 field_name = 'PoS name'
-                error_name = 'NOT IN DB (kpi_set)'
-                error_field_name = ERROR_FIELD_NAME.format(field_name, error_name)
+                error_name = 'NEW kpi'
+                error_field_name = error_name
                 check_list = self.kpi_names['kpi_set_name'].unique().tolist()
                 if pos_name not in check_list:
-                    pos[error_field_name] = pos[field_name]
+                    pos[error_field_name] = 'NEW'
                     contents_ok &= False
 
                 # checking KPI name Eng names in the DB static.kpi
                 field_name = 'KPI name Eng'
-                error_name = 'NOT IN DB (kpi)'
-                error_field_name = ERROR_FIELD_NAME.format(field_name, error_name)
+                error_name = 'NEW kpi'
+                error_field_name = error_name
                 check_list = self.kpi_names[self.kpi_names['kpi_set_name'] == pos_name]['kpi_name'].unique().tolist()
                 for i, r in pos[pos['level'] == 2].iterrows():
                     if r[field_name] not in check_list:
                         if error_field_name not in pos.columns:
                             pos[error_field_name] = None
-                        pos.loc[i, error_field_name] = unicode(r[field_name])
+                        pos.loc[i, error_field_name] = 'NEW'
                         contents_ok &= False
 
                 # checking KPI name Eng names in the DB static.atomic_kpi
                 field_name = 'KPI name Eng'
-                error_name = 'NOT IN DB (atomic_kpi)'
-                error_field_name = ERROR_FIELD_NAME.format(field_name, error_name)
-                for i, r in pos[pos['level'] in [3, 4]].iterrows():
+                error_name = 'NEW kpi'
+                error_field_name = error_name
+                for i, r in pos[pos['level'].isin([3, 4])].iterrows():
                     check_list = self.kpi_names[(self.kpi_names['kpi_set_name'] == r['00_kpi_set_name']) &
                                                 (self.kpi_names['kpi_name'] == r['00_kpi_name'])][
                         'atomic_kpi_name'].unique().tolist()
                     if r[field_name] not in check_list:
                         if error_field_name not in pos.columns:
                             pos[error_field_name] = None
-                        pos.loc[i, error_field_name] = unicode(r[field_name])
+                        pos.loc[i, error_field_name] = 'NEW'
                         contents_ok &= False
 
                 # checking KPI name Eng names in the DB static.kpi_level_2
+                pos['NEW kpi_level_2'] = None
                 field_name = 'KPI name Eng'
-                error_name = 'NOT IN DB (kpi_level_2)'
-                error_field_name = ERROR_FIELD_NAME.format(field_name, error_name)
+                error_name = 'NEW kpi_level_2'
+                error_field_name = error_name
                 check_list = self.kpi_level_2_names
                 for i, r in pos.iterrows():
                     kpi_level_2_name = unicode(r[field_name]).upper()
                     if kpi_level_2_name not in check_list:
                         if error_field_name not in pos.columns:
                             pos[error_field_name] = None
-                        pos.loc[i, error_field_name] = kpi_level_2_name
+                        pos.loc[i, error_field_name] = 'NEW'
                         contents_ok &= False
 
             pos_all = pos_all.append(pos, ignore_index=True)
@@ -1380,15 +1441,15 @@ class CCRUKPIS:
         if not any([c.find('ERROR') >= 0 for c in pos_all.columns]):
 
             # creating kpis file for the DB old structure
-            kpi_set_name_column = ERROR_FIELD_NAME.format('PoS name', 'NOT IN DB (kpi_set)')
-            kpi_name_column = ERROR_FIELD_NAME.format('KPI name Eng', 'NOT IN DB (kpi)')
-            atomic_kpi_name_column = ERROR_FIELD_NAME.format('KPI name Eng', 'NOT IN DB (atomic_kpi)')
-            pos_all['NEW'] = None
-            pos_all.loc[pos_all[kpi_set_name_column].notnull() |
-                        pos_all[kpi_name_column].notnull() |
-                        pos_all[atomic_kpi_name_column].notnull(), 'NEW'] = 'NEW'
+            # kpi_set_name_column = '00_new_kpi_set'
+            # kpi_name_column = '00_new_kpi'
+            # atomic_kpi_name_column = '00_new_kpi_atomic'
+            # pos_all['NEW'] = None
+            # pos_all.loc[pos_all[kpi_set_name_column].notnull() |
+            #             pos_all[kpi_name_column].notnull() |
+            #             pos_all[atomic_kpi_name_column].notnull(), 'NEW'] = 'NEW'
             db_kpis = pos_all[pos_all['00_kpi_atomic_name'].notnull()][[
-                                'NEW',
+                                'NEW kpi',
                                 '00_kpi_set_name',
                                 '00_kpi_name',
                                 '00_kpi_weight',
@@ -1408,23 +1469,31 @@ class CCRUKPIS:
             writer = pd.ExcelWriter(os.path.join(POS_OUTPUT_PATH, POS_KPIS_INTO_DB_OLD_FILE), engine='xlsxwriter')
             db_kpis.to_excel(writer, sheet_name='Sheet1', index=False)
             writer.save()
-            pos_all = pos_all.drop(columns=['NEW'])
+            writer.close()
+            if not any(pos_all['NEW kpi']):
+                pos_all = pos_all.drop(columns=['NEW kpi'])
 
             # creating kpis file for the DB new structure
-            kpi_name_column = ERROR_FIELD_NAME.format('KPI name Eng', 'NOT IN DB (kpi_level_2)')
-            bd_kpis = pos_all[pos_all[kpi_name_column].notnull()][[kpi_name_column, 'KPI name RUS']]
-            bd_kpis[KPI_LEVEL_2_INSERT] = \
-                bd_kpis.apply(lambda r: KPI_LEVEL_2_VALUES.format(r[kpi_name_column] + r['KPI name RUS']), axis=1)
+            kpi_name_column = 'NEW kpi_level_2'
+            db_kpis = pos_all[[kpi_name_column]]
+            db_kpis.loc[:, 'type'] = pos_all['KPI name Eng'].apply(unicode.upper)
+            db_kpis.loc[:, 'client_name'] = pos_all['KPI name Rus']
+            db_kpis = db_kpis.drop_duplicates(subset='type', keep='first')
+            db_kpis[KPI_LEVEL_2_INSERT] = \
+                db_kpis.apply(lambda r: KPI_LEVEL_2_VALUES.format(r['type'], r['client_name']), axis=1)
             writer = pd.ExcelWriter(os.path.join(POS_OUTPUT_PATH, POS_KPIS_INTO_DB_NEW_FILE), engine='xlsxwriter')
             db_kpis.to_excel(writer, sheet_name='Sheet1', index=False)
             writer.save()
+            writer.close()
+            if not any(pos_all['NEW kpi_level_2']):
+                pos_all = pos_all.drop(columns=['NEW kpi_level_2'])
 
         for c in pos_all.columns:
-            if c.find('00_kpi') == 0 or c in ['00_weight']:
+            if c.find('00') == 0:
                 pos_all = pos_all.drop(columns=[c])
 
         for c in pos_all.columns:
-            if not (c.find('00_') == 0 or c.find('ERROR') == 0 or c.find('WARNING') == 0 or c in POS_COLUMNS):
+            if not (c.find('NEW kpi') == 0 or c.find('ERROR') == 0 or c.find('WARNING') == 0 or c in POS_COLUMNS):
                 pos_all = pos_all.rename(columns={c: 'WARNING - ' + c + ' - IRRELEVANT COLUMN REMOVED'})
 
         pos_all = pos_all.where((pd.notnull(pos_all)), None)
@@ -1469,6 +1538,7 @@ class CCRUKPIS:
                 ws.set_zoom(75)
 
             writer.save()
+            writer.close()
 
     def get_kpi_names(self):
         query = """
@@ -1625,5 +1695,6 @@ class CCRUKPIS:
 
 if __name__ == '__main__':
     kpis_list = CCRUKPIS()
+    # kpis_list.validate_benchmark()
     # kpis_list.transform_kpi_source()
     kpis_list.validate_and_transform()

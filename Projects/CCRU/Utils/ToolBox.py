@@ -127,7 +127,7 @@ class CCRUKPIToolBox:
                   3: SOVI_SOCVI_VISIT,
                   4: SEGMENTATION_VISIT}
 
-    def __init__(self, data_provider, output, kpi_set_name=None, kpi_set_type=None):
+    def __init__(self, data_provider, output, kpi_set_name=None, kpi_set_type=None, update_kpi_set=False):
         self.data_provider = data_provider
         self.output = output
         self.project_name = self.data_provider.project_name
@@ -161,7 +161,7 @@ class CCRUKPIToolBox:
 
         self.matches = self.data_provider[Data.MATCHES].merge(self.products, on='product_fk')
 
-        self.pos_kpi_set_name = self.get_pos_kpi_set_name()
+        self.pos_kpi_set_name = self.get_pos_kpi_set_name(update_kpi_set=update_kpi_set)
         self.kpi_set_name = kpi_set_name if kpi_set_name else self.pos_kpi_set_name
         self.kpi_set_type = kpi_set_type if kpi_set_type else POS
         self.kpi_name_to_id = {kpi_set_type: {}}
@@ -2735,7 +2735,7 @@ class CCRUKPIToolBox:
 
         return set_total_res
 
-    def get_pos_kpi_set_name(self):
+    def get_pos_kpi_set_name(self, update_kpi_set=False):
 
         query = """
                 select s.name 
@@ -2748,17 +2748,17 @@ class CCRUKPIToolBox:
         cur.execute(query)
         res = cur.fetchall()
 
-        if not res:
+        if not res or update_kpi_set:
             if str(self.visit_date) < self.MIN_CALC_DATE:
                 query = """
-                        select ss.additional_attribute_11 
+                        select ss.additional_attribute_12 
                         from static.stores ss
                         join probedata.session ps on ps.store_fk=ss.pk
                         where ss.delete_date is null and ps.session_uid = '{}';
                         """.format(self.session_uid)
             else:  # Todo - Change to additional_attribute_12 for PROD
                 query = """
-                        select ss.additional_attribute_12 
+                        select ss.additional_attribute_11 
                         from static.stores ss
                         join probedata.session ps on ps.store_fk=ss.pk
                         where ss.delete_date is null and ps.session_uid = '{}';
@@ -3109,20 +3109,7 @@ class CCRUKPIToolBox:
         return
 
     @kpi_runtime()
-    def calculate_equipment_execution(self, params, kpi_set_name, kpi_conversion_file):
-
-        target_data_raw = self.get_equipment_targets(str(self.store_id))
-        if target_data_raw:
-            Log.debug('Relevant Contract Execution target file for Store ID {} / Number {} is found'.format(
-                self.store_id, self.store_number))
-
-        target_data = None
-        for data in target_data_raw:
-            start_date = dt.datetime.strptime(data['Start Date'], '%Y-%m-%d').date()
-            end_date = dt.datetime.now().date() if not data['End Date'] else \
-                dt.datetime.strptime(data['End Date'], '%Y-%m-%d').date()
-            if start_date <= self.visit_date <= end_date:
-                target_data = data
+    def calculate_equipment_execution(self, params, kpi_set_name, kpi_conversion_file, target_data):
 
         if target_data is not None:
 
@@ -3245,6 +3232,20 @@ class CCRUKPIToolBox:
                 self.equipment_execution_score = None
 
         return
+
+    def get_equipment_target_data(self):
+        target_data_raw = self.get_equipment_targets(str(self.store_id))
+        if target_data_raw:
+            Log.debug('Relevant Contract Execution target file for Store ID {} / Number {} is found'.format(
+                self.store_id, self.store_number))
+        target_data = None
+        for data in target_data_raw:
+            start_date = dt.datetime.strptime(data['Start Date'], '%Y-%m-%d').date()
+            end_date = dt.datetime.now().date() if not data['End Date'] else \
+                dt.datetime.strptime(data['End Date'], '%Y-%m-%d').date()
+            if start_date <= self.visit_date <= end_date:
+                target_data = data
+        return target_data
 
     @kpi_runtime()
     def calculate_contract_execution(self, params, kpi_set_name):
