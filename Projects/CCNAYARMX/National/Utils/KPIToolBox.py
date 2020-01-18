@@ -94,7 +94,7 @@ POS_OPTIONS_SHEETS = [POS_OPTIONS, TARGETS_AND_CONSTRAINTS]
 PORTAFOLIO_SHEETS = [ASSORTMENTS]
 
 TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data',
-                             'CCNayarTemplate_Nationalv0.1.xlsx')
+                             'CCNayarTemplate_Nationalv.5.xlsx')
 POS_OPTIONS_TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data',
                                          'CCNayar_POS_Options_v6.xlsx')
 PORTAFOLIO_Y_PRECIOUS_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data',
@@ -438,7 +438,7 @@ class NationalToolBox(GlobalSessionToolBox):
             # calculate the 'botellas' data
             total_facings = scene_scif[scene_scif['product_name'].isin(
                 [product for sublist in assortment_groups for product in sublist])]['facings'].sum()
-            if total_facings > targets_and_constraints['Facings_target'].iloc[0]:
+            if total_facings >= targets_and_constraints['Facings_target'].iloc[0]:
                 minimum_facings_met = 1  # True
             else:
                 minimum_facings_met = 0  # False
@@ -540,9 +540,7 @@ class NationalToolBox(GlobalSessionToolBox):
             portafolio_y_precious_data[KPI_NAME].isin([kpi_name]) & portafolio_y_precious_data[
                 STORE_ADDITIONAL_ATTRIBUTE_2].str.contains(self.att2)].iloc[0]
 
-        relevant_store_assortment = np.array(
-            self.updated_store_assortment[self.updated_store_assortment['assortment_name'].str.contains(kpi_name[:4])][
-                'product_name'])
+
         relevant_required_assortments = np.array(self._get_groups(portafolio_y_precious_data, 'assortment'))
 
         all_products_needed = self.sanitize_values(portafolio_y_precious_data.all_products_needed) if pd.notna(
@@ -553,7 +551,7 @@ class NationalToolBox(GlobalSessionToolBox):
 
         result_dict = {}
         for i in range(len(relevant_required_assortments)):
-            result_of_current_assortment = sum(np.in1d(relevant_required_assortments[i], relevant_store_assortment))
+            result_of_current_assortment = sum(np.in1d(relevant_required_assortments[i], self.scif.product_name))
             if all_products_needed and 'assortment{}'.format(i + 1) in all_products_needed:
                 result_dict['assortment{}'.format(i + 1)] = result_of_current_assortment
             elif two_unique_products_needed and 'assortment{}'.format(i + 1) in two_unique_products_needed:
