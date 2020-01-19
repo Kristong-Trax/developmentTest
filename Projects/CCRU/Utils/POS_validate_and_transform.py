@@ -340,20 +340,20 @@ class CCRUKPIS:
         self.rds_conn = OrmSession(self.project, writable=False)
 
         self.kpi_names = self.get_kpi_names()
-        self.kpi_level_2_names = self.get_kpi_level_2_names()['name'].unique().tolist()
-        self.manufacturers = self.get_manufacturers()['name'].unique().tolist()
-        self.categories = self.get_categories()['name'].unique().tolist()
-        self.sub_categories = self.get_sub_categories()['name'].unique().tolist()
-        self.brands = self.get_brands()['name'].unique().tolist()
-        self.sub_brands = self.get_sub_brands()['name'].unique().tolist()
-        self.skus = self.get_skus()
-        self.ean_codes = self.skus['ean_code'].unique().tolist()
-        self.sizes = self.get_sizes()['size'].unique().tolist()
-        self.form_factors = self.get_form_factors()['name'].unique().tolist()
-        self.scene_types = self.get_scene_types()['name'].unique().tolist()
-        self.sub_locations = self.get_sub_locations()['name'].unique().tolist()
-        self.locations = self.get_locations()['name'].unique().tolist()
-        self.store_zones = self.get_store_zones()['name'].unique().tolist()
+        # self.kpi_level_2_names = self.get_kpi_level_2_names()['name'].unique().tolist()
+        # self.manufacturers = self.get_manufacturers()['name'].unique().tolist()
+        # self.categories = self.get_categories()['name'].unique().tolist()
+        # self.sub_categories = self.get_sub_categories()['name'].unique().tolist()
+        # self.brands = self.get_brands()['name'].unique().tolist()
+        # self.sub_brands = self.get_sub_brands()['name'].unique().tolist()
+        # self.skus = self.get_skus()
+        # self.ean_codes = self.skus['ean_code'].unique().tolist()
+        # self.sizes = self.get_sizes()['size'].unique().tolist()
+        # self.form_factors = self.get_form_factors()['name'].unique().tolist()
+        # self.scene_types = self.get_scene_types()['name'].unique().tolist()
+        # self.sub_locations = self.get_sub_locations()['name'].unique().tolist()
+        # self.locations = self.get_locations()['name'].unique().tolist()
+        # self.store_zones = self.get_store_zones()['name'].unique().tolist()
 
     @staticmethod
     def xl_col_to_name(num):
@@ -363,6 +363,80 @@ class CCRUKPIS:
             letters += chr(mod + 65)
             num = (num - 1) // 26
         return ''.join(reversed(letters))
+
+    def transform_top_line(self):
+        top_file_in = '../Data/KPIs_2020/POS_VALIDATION/INPUT/TopLine_ScoreCards.xlsx'
+        top_file_out = '../Data/KPIs_2020/POS_VALIDATION/OUTPUT/TopLine_ScoreCards.xlsx'
+        pos_all_file = '../Data/KPIs_2020/POS_VALIDATION/OUTPUT/PoS 2020 - ALL.xlsx'
+
+        top_df_in = pd.read_excel(top_file_in, sheet_name=None)
+        top_df_out = pd.DataFrame(columns=['Structure', 'KPI Set Name'])
+
+        pos_dict = top_df_in['SC'].set_index('Sheet Name')['KPI Set Name'].to_dict()
+
+        for key in pos_dict.keys():
+            top_df_in[key + ' C']['Structure'] = 'Category'
+            top_df_in[key + ' L']['Structure'] = 'Location'
+            top_df_in[key + ' C']['KPI Set Name'] = pos_dict[key]
+            top_df_in[key + ' L']['KPI Set Name'] = pos_dict[key]
+            top_df_out = top_df_out.append(top_df_in[key + ' C'])
+            top_df_out = top_df_out.append(top_df_in[key + ' L'])
+
+        pos_all_df = pd.read_excel(pos_all_file, sheet_name='ALL')
+        pos_all_df = pos_all_df[pos_all_df['level'] == 2]\
+            .merge(self.kpi_names[['kpi_set_name', 'kpi_name', 'kpi_pk']].drop_duplicates(),
+                   how='left',
+                   left_on=['PoS name', 'KPI name Eng'],
+                   right_on=['kpi_set_name', 'kpi_name'])
+        pos_df_in = pos_all_df[['PoS name',
+                                'C_Group_Eng',
+                                'C_Group_Rus',
+                                'C_Subgroup_Eng',
+                                'C_Subgroup_Rus',
+                                'KPI name Eng',
+                                'KPI name Rus',
+                                'kpi_pk']]\
+            .rename(columns={'PoS name': 'KPI Set Name',
+                             'C_Group_Eng': 'Group',
+                             'C_Group_Rus': 'Group Rus',
+                             'C_Subgroup_Eng': 'Subgroup',
+                             'C_Subgroup_Rus': 'Subgroup Rus',
+                             'KPI name Eng': 'KPI Name',
+                             'KPI name Rus': 'KPI Name Rus',
+                             'kpi_pk': 'KPI Code'})
+        pos_df_in.loc[:, 'Question'] = pos_df_in['KPI Name']
+        pos_df_in['Structure'] = 'Category'
+        top_df_out = top_df_out.append(pos_df_in)
+
+        pos_df_in = pos_all_df[['PoS name',
+                                'L_Group_Eng',
+                                'L_Group_Rus',
+                                'L_Subgroup_Eng',
+                                'L_Subgroup_Rus',
+                                'KPI name Eng',
+                                'KPI name Rus',
+                                'kpi_pk']]\
+            .rename(columns={'PoS name': 'KPI Set Name',
+                             'L_Group_Eng': 'Group',
+                             'L_Group_Rus': 'Group Rus',
+                             'L_Subgroup_Eng': 'Subgroup',
+                             'L_Subgroup_Rus': 'Subgroup Rus',
+                             'KPI name Eng': 'KPI Name',
+                             'KPI name Rus': 'KPI Name Rus',
+                             'kpi_pk': 'KPI Code'})
+        pos_df_in.loc[:, 'Question'] = pos_df_in['KPI Name']
+        pos_df_in['Structure'] = 'Location'
+        top_df_out = top_df_out.append(pos_df_in)
+
+        writer = pd.ExcelWriter(top_file_out, engine='xlsxwriter')
+        for sheet_name in ['SC', 'PY', 'HGMM Groups', 'HGMM Subgroups', 'HGMM Full Structure']:
+            top_df_in[sheet_name].to_excel(writer, sheet_name=sheet_name, index=False)
+        top_df_out[top_df_out['Structure'] == 'Category']\
+            .to_excel(writer, sheet_name='Structure by Category', index=False)
+        top_df_out[top_df_out['Structure'] == 'Location']\
+            .to_excel(writer, sheet_name='Structure by Location', index=False)
+        writer.save()
+        writer.close()
 
     @staticmethod
     def validate_benchmark():
@@ -1543,8 +1617,11 @@ class CCRUKPIS:
     def get_kpi_names(self):
         query = """
                 SELECT 
+                    s.pk as kpi_set_pk, 
                     s.name as kpi_set_name, 
+                    k.pk as kpi_pk,
                     k.display_text as kpi_name,
+                    a.pk as atomic_kpi_pk,
                     a.name as atomic_kpi_name
                 FROM static.kpi_set s
                 JOIN static.kpi k ON k.kpi_set_fk=s.pk
@@ -1695,6 +1772,7 @@ class CCRUKPIS:
 
 if __name__ == '__main__':
     kpis_list = CCRUKPIS()
+    kpis_list.transform_top_line()
     # kpis_list.validate_benchmark()
     # kpis_list.transform_kpi_source()
-    kpis_list.validate_and_transform()
+    # kpis_list.validate_and_transform()
