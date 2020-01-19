@@ -54,7 +54,7 @@ class CCRUProjectCalculations:
         self.project_name = self.data_provider.project_name
         self.rds_conn = self.rds_connection()
 
-        self.tool_box = CCRUKPIToolBox(self.data_provider, self.output, update_kpi_set=True)
+        self.tool_box = CCRUKPIToolBox(self.data_provider, self.output, update_kpi_set=False)
         self.session_uid = self.tool_box.session_uid
         self.visit_date = self.tool_box.visit_date
         self.store_id = self.tool_box.store_id
