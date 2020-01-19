@@ -461,6 +461,34 @@ class ToolBox:
             return 0, 0, 0
         standard_types_results = {Consts.SEGMENT: [], Consts.NATIONAL: []} if self.attr11 == Consts.OPEN else {}
         total_results = []
+        if self.attr11 == Consts.NATIONAL_STORE and kpi_name == Consts.POD:
+            relevant_scif = self.scif[self.scif[ScifConsts.SCENE_ID].isin(relevant_scenes)]
+            specific_substitute_product_pks = \
+                relevant_scif[relevant_scif[ScifConsts.PRODUCT_EAN_CODE].isin(['10024426', '100019'])][
+                    ScifConsts.PRODUCT_FK].unique().tolist()
+            specific_leading_product_pks = \
+                relevant_scif[relevant_scif[ScifConsts.PRODUCT_EAN_CODE].isin(['100046', '100020'])][
+                    ScifConsts.PRODUCT_FK].unique().tolist()
+            # remove relevant substituted products (leading products) that were NOT actually tagged in the session
+            leading_products = \
+                relevant_scif[(relevant_scif[ScifConsts.SUBSTITUTION_PRODUCT_FK].isin(specific_leading_product_pks)) &
+                              (relevant_scif[ScifConsts.PRODUCT_FK].isin(specific_substitute_product_pks))][
+                    ScifConsts.SUBSTITUTION_PRODUCT_FK].unique().tolist()
+            relevant_scif = relevant_scif[~((relevant_scif[ScifConsts.PRODUCT_FK].isin(leading_products)) &
+                                            (relevant_scif[ScifConsts.TAGGED] == 0))]
+            # populate the facings column for the substitution products
+            relevant_scif.loc[(relevant_scif[ScifConsts.FACINGS].isna()) &
+                              (relevant_scif[ScifConsts.PRODUCT_FK].isin(specific_substitute_product_pks)),
+                              ScifConsts.FACINGS] = \
+                relevant_scif.loc[(relevant_scif[ScifConsts.FACINGS].isna()) &
+                                  (relevant_scif[ScifConsts.PRODUCT_FK].isin(specific_substitute_product_pks)),
+                                  ScifConsts.TAGGED]
+            relevant_scif.loc[(relevant_scif[ScifConsts.FACINGS_IGN_STACK].isna()) &
+                              (relevant_scif[ScifConsts.PRODUCT_FK].isin(specific_substitute_product_pks)),
+                              ScifConsts.FACINGS_IGN_STACK] = \
+                relevant_scif.loc[(relevant_scif[ScifConsts.FACINGS_IGN_STACK].isna()) &
+                                  (relevant_scif[ScifConsts.PRODUCT_FK].isin(specific_substitute_product_pks)),
+                                  ScifConsts.TAGGED]
         for brand_fk in relevant_assortment[ProductsConsts.BRAND_FK].unique().tolist():
             brand_assortment = relevant_assortment[relevant_assortment[ProductsConsts.BRAND_FK] == brand_fk]
             standard_types_results, brand_results = self.generic_brand_calculator(
@@ -788,7 +816,37 @@ class ToolBox:
         kpi_db_names = self.pull_kpi_fks_from_names(Consts.DB_OFF_NAMES[kpi_name])
         total_results = []
         standard_types_results = {Consts.SEGMENT: [], Consts.NATIONAL: []} if self.attr11 == Consts.OPEN else {}
-        relevant_scif = self.scif_without_emptys[self.scif_without_emptys[ScifConsts.SCENE_ID].isin(relevant_scenes)]
+        if self.attr11 == Consts.NATIONAL_STORE and kpi_name == Consts.SHELF_FACINGS:
+            relevant_scif = self.scif[self.scif[ScifConsts.SCENE_ID].isin(relevant_scenes)]
+            specific_substitute_product_pks = \
+                relevant_scif[relevant_scif[ScifConsts.PRODUCT_EAN_CODE].isin(['10024426', '100019'])][
+                    ScifConsts.PRODUCT_FK].unique().tolist()
+            specific_leading_product_pks = \
+                relevant_scif[relevant_scif[ScifConsts.PRODUCT_EAN_CODE].isin(['100046', '100020'])][
+                    ScifConsts.PRODUCT_FK].unique().tolist()
+            # remove relevant substituted products (leading products) that were NOT actually tagged in the session
+            leading_products = \
+                relevant_scif[(relevant_scif[ScifConsts.SUBSTITUTION_PRODUCT_FK].isin(specific_leading_product_pks)) &
+                              (relevant_scif[ScifConsts.PRODUCT_FK].isin(specific_substitute_product_pks))][
+                    ScifConsts.SUBSTITUTION_PRODUCT_FK].unique().tolist()
+            relevant_scif = relevant_scif[~((relevant_scif[ScifConsts.PRODUCT_FK].isin(leading_products)) &
+                                            (relevant_scif[ScifConsts.TAGGED] == 0))]
+            # populate the facings column for the substitution products
+            relevant_scif.loc[(relevant_scif[ScifConsts.FACINGS].isna()) &
+                              (relevant_scif[ScifConsts.PRODUCT_FK].isin(specific_substitute_product_pks)),
+                              ScifConsts.FACINGS] = \
+                relevant_scif.loc[(relevant_scif[ScifConsts.FACINGS].isna()) &
+                                  (relevant_scif[ScifConsts.PRODUCT_FK].isin(specific_substitute_product_pks)),
+                                  ScifConsts.TAGGED]
+            relevant_scif.loc[(relevant_scif[ScifConsts.FACINGS_IGN_STACK].isna()) &
+                              (relevant_scif[ScifConsts.PRODUCT_FK].isin(specific_substitute_product_pks)),
+                              ScifConsts.FACINGS_IGN_STACK] = \
+                relevant_scif.loc[(relevant_scif[ScifConsts.FACINGS_IGN_STACK].isna()) &
+                                  (relevant_scif[ScifConsts.PRODUCT_FK].isin(specific_substitute_product_pks)),
+                                  ScifConsts.TAGGED]
+        else:
+            relevant_scif = \
+                self.scif_without_emptys[self.scif_without_emptys[ScifConsts.SCENE_ID].isin(relevant_scenes)]
         for brand_fk in relevant_competitions[ProductsConsts.BRAND_FK].unique().tolist():
             brand_competitions = relevant_competitions[relevant_competitions[ProductsConsts.BRAND_FK] == brand_fk]
             standard_types_results, brand_results = self.generic_brand_calculator(

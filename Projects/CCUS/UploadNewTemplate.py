@@ -8,7 +8,6 @@ from Trax.Cloud.Services.Connector.Keys import DbUsers
 from Trax.Cloud.Services.Storage.Factory import StorageFactory
 from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Trax.Utils.Logging.Logger import Log
-#from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
 from Projects.CCUS.Utils.ToolBox import ToolBox as Consts
 
 __author__ = 'Nimrod'
@@ -326,6 +325,7 @@ class NewTemplate:
 
 
 # if __name__ == '__main__':
+#     from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
 #     for project_name in ['ccus']:
 #         LoggerInitializer.init('{} New Template'.format(project_name))
 #         template = NewTemplate(project_name)
@@ -344,4 +344,4 @@ class NewTemplate:
 #             if not r:
 #                 quit()
 #         template.upload_new_templates()
-
+#

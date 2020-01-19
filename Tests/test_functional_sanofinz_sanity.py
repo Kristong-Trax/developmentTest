@@ -39,7 +39,7 @@ class TestKEngineOutOfTheBox(TestFunctionalCase):
         self.assertNotEquals(len(kpi_results), 0)
         connector.disconnect_rds()
 
-    @skip('fail')
+    @skip('sup')
     @seeder.seed(["sanofinz_seed"], ProjectsSanityData())
     def test_sanofinz_sanity(self):
         project_name = ProjectsSanityData.project_name

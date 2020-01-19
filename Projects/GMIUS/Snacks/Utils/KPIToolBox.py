@@ -1,4 +1,3 @@
-
 import pandas as pd
 import numpy as np
 from functools import reduce
@@ -19,11 +18,11 @@ from Trax.Algo.Calculations.Core.GraphicalModel.AdjacencyGraphs import Adjacency
 from shapely.strtree import STRtree
 from shapely.geometry import Polygon, mapping
 
-
 from networkx import nx
 
-
 __author__ = 'Sam'
+
+
 # if you're looking for template path check kpigenerator.find_template
 
 
@@ -114,7 +113,7 @@ class ToolBox:
         #     return
 
         if (self.super_cat in ['SNACKS']) and \
-                (kpi_type in[
+                (kpi_type in [
                     Const.PRIMARY_LOCATION,
                     Const.MAX_BLOCK_ADJACENCY,
                     Const.MAX_BLOCK_COMPOSITION,
@@ -134,15 +133,15 @@ class ToolBox:
             if dependent_kpis:
                 for i, dependent_kpi in enumerate(dependent_kpis):
                     # if dependent_results[0][0] != '!':
-                        if dependent_results[i]:
-                            if self.dependencies[dependent_kpi] != dependent_results[i]:
-                                if not pd.isna(main_line['Dependency Fail Result']):
-                                    return {'score': 1, 'result': main_line['Dependency Fail Result']}
-                                return
-                        # else:
-                        #     if self.dependencies[dependent_kpi] == dependent_results \
-                        #             or self.dependencies[dependent_kpi] is None:
-                        #         return
+                    if dependent_results[i]:
+                        if self.dependencies[dependent_kpi] != dependent_results[i]:
+                            if not pd.isna(main_line['Dependency Fail Result']):
+                                return {'score': 1, 'result': main_line['Dependency Fail Result']}
+                            return
+                    # else:
+                    #     if self.dependencies[dependent_kpi] == dependent_results \
+                    #             or self.dependencies[dependent_kpi] is None:
+                    #         return
 
             kpi_line = self.template[kpi_type].set_index(Const.KPI_NAME).loc[kpi_name]
             function = self.get_kpi_function(kpi_type, kpi_line[Const.RESULT])
@@ -221,7 +220,7 @@ class ToolBox:
         a_filters = self.get_kpi_line_filters(kpi_line, 'A')
         thresh = {'A': self.read_cell_from_line(kpi_line, 'A Threshold')[0]}
         mpis = self.filter_df(self.mpis, general_filters)
-        a_all_mpis = self.filter_df(self.mpis, a_req) #  Larabar can be anywhere
+        a_all_mpis = self.filter_df(self.mpis, a_req)  # Larabar can be anywhere
         a_mpis = self.filter_df(mpis, a_req)
         b_mpis = self.filter_df(mpis, b_req)
         if a_all_mpis.empty or b_mpis.empty:
@@ -249,18 +248,17 @@ class ToolBox:
         components = set(y.strip().upper() for x in potential_results for y in x.split(','))
         found = [comp for cat in subcats if cat for comp in components if comp in cat]
         if not found:
-            found = [comp for cat in subcats-components if cat for comp in components if cat in comp]
+            found = [comp for cat in subcats - components if cat for comp in components if cat in comp]
         if not found:
             result = 'COULD NOT DETERMINE'
         else:
             result = self.results_matching(found, potential_results)
         return {'score': 1, 'result': result}
 
-
     def results_matching(self, found, possible):
         return sorted(Counter((res for cat in found if cat for res in possible
                                if cat in res.upper() and len(res.split(',')) == len(found))).items(),
-                       key=lambda x: x[1])[-1][0]
+                      key=lambda x: x[1])[-1][0]
 
     def calculate_exists_in_max_block(self, kpi_name, kpi_line, relevant_scif, general_filters):
         num_filters = self.get_kpi_line_filters(kpi_line, 'Numerator')
@@ -288,14 +286,17 @@ class ToolBox:
             b_mpis = self.filter_df(mpis, b_filters)
             if a_mpis.empty or b_mpis.empty:
                 continue
-            adj = self.calculate_max_block_adj_base(kpi_name, kpi_line, relevant_scif, general_filters)
+            adj = self.calculate_max_block_adj_base(kpi_name, kpi_line, relevant_scif, general_filters, subcat=True)
             if adj:
-                result = ' '.join([x.capitalize() for x in subcat.replace('GRAIN', '').split(' ') if x])
+                potential_results = self.get_results_value(kpi_line)
+                result_substring = adj.replace('GRAIN', '').strip().title()
+                match = [res for res in potential_results if result_substring in res]
+                result = match[0]
                 break
         return {'score': 1, 'result': result}
 
     def calculate_max_block_adj_base(self, kpi_name, kpi_line, relevant_scif, general_filters, comp_filter={},
-                                     thresh={}, require={}):
+                                     thresh={}, require={}, subcat=False):
         allowed_edges = [x.upper() for x in self.read_cell_from_line(kpi_line, Const.EDGES)]
         d = {'A': {}, 'B': {}}
         for k, v in d.items():
@@ -322,11 +323,29 @@ class ToolBox:
                 scene_key = [key for key in self.block.adj_graphs_by_scene.keys() if str(scene) in key][0]
                 scene_graph = self.block.adj_graphs_by_scene[scene_key]
                 matches += [(edge, scene_graph[item][edge]['direction']) for item in v['items'] if item in scene_graph
-                            for edge in scene_graph[item].keys() if scene_graph[item][edge]['direction'] in allowed_edges]
+                            for edge in scene_graph[item].keys() if
+                            scene_graph[item][edge]['direction'] in allowed_edges]
             v['edge_matches'], v['directions'] = zip(*matches) if matches else ([], [])
         result = 0
-        if set(d['A']['edge_matches']) & set(d['B']['items']):
-            result = 1
+
+        if subcat == False:
+            if set(d['A']['edge_matches']) & set(d['B']['items']):
+                result = 1
+        else:
+            if set(d['A']['edge_matches']):
+                b_filters = self.get_kpi_line_filters(kpi_line, 'B')
+
+                edge_products_df = \
+                    self.full_mpis[['product_name', 'bay_number', 'shelf_number', 'UPDATED SUBCATEGORY']][
+                        self.full_mpis['scene_match_fk'].isin(d['A']['edge_matches'])]
+
+                segments_list = edge_products_df['UPDATED SUBCATEGORY'][
+                    edge_products_df['UPDATED SUBCATEGORY'].isin(b_filters['UPDATED SUBCATEGORY'])]
+
+                counted_segments = Counter(segments_list)
+
+                segment_found = counted_segments.most_common(1)
+                result = segment_found[0][0]
         return result
 
     @empty_scif_decorator
@@ -469,15 +488,15 @@ class ToolBox:
                                                           check_orient=0)
             cluster = results.sort_values('facing_percentage', ascending=False).iloc[0, 0]
             df = pd.DataFrame([(n['polygon'].centroid.x, n['polygon'].centroid.y, n['facings'],
-                              list(n['match_fk'].values)) + n['polygon'].bounds
-                              for i, n in cluster.nodes(data=True) if n['block_key'].value
-                              not in Const.ALLOWED_FLAGS],
+                                list(n['match_fk'].values)) + n['polygon'].bounds
+                               for i, n in cluster.nodes(data=True) if n['block_key'].value
+                               not in Const.ALLOWED_FLAGS],
                               columns=['x', 'y', 'facings', 'matches', 'x_min', 'y_min', 'x_max', 'y_max'])
             facings = df.facings.sum()
-            seg_list.append(Segment(seg=seg, position=(df[vector]*df['facings']).sum()/facings, facings=facings,
-                            orth_min=mpis_dict[scene]['rect_{}'.format(orth)].min(),
-                            orth_max=mpis_dict[scene]['rect_{}'.format(orth)].max(),
-                            matches=df['matches'].sum()))
+            seg_list.append(Segment(seg=seg, position=(df[vector] * df['facings']).sum() / facings, facings=facings,
+                                    orth_min=mpis_dict[scene]['rect_{}'.format(orth)].min(),
+                                    orth_max=mpis_dict[scene]['rect_{}'.format(orth)].max(),
+                                    matches=df['matches'].sum()))
 
         order = [x.seg for x in sorted(seg_list, key=lambda x: x.position)]
         result = ', '.join([' '.join([y.capitalize() for y in x.replace('GRAIN', '').split(' ') if y]) for x in order])
@@ -628,7 +647,8 @@ class ToolBox:
         allowed_filter = {'product_type': ['Empty', 'Other']}
         scene_filter = {'scene_fk': 78}
         res = x.network_x_block_together(relevant_filter, location=scene_filter,
-                                         additional={'allowed_products_filters': allowed_filter, 'include_stacking': False})
+                                         additional={'allowed_products_filters': allowed_filter,
+                                                     'include_stacking': False})
 
     def semi_numerical_results(self, val, potential_results, form='{}'):
         min_cap, max_cap = self.find_caps(potential_results)
@@ -675,7 +695,7 @@ class ToolBox:
             if prev is False and is_int is True:
                 min_cap = int(res)
             elif prev is True and is_int is False:
-                max_cap = potential_results[i-1]
+                max_cap = potential_results[i - 1]
         return int(min_cap), int(max_cap)
 
     def inequality_results(self, result, potential_results, kpi, mid='-'):
@@ -728,7 +748,7 @@ class ToolBox:
     def filter_join(filters):
         final_filter = defaultdict(list)
         filters = reduce((lambda x, y: x + y.items() if isinstance(x, list)
-                          else x.items() + y.items()), filters)
+        else x.items() + y.items()), filters)
         for (key, val) in filters:
             final_filter[key].append(val)
         return final_filter
@@ -737,7 +757,7 @@ class ToolBox:
     def ratio_score(num, den, target=None):
         ratio = 0
         if den:
-            ratio = round(num*100.0/den, 2)
+            ratio = round(num * 100.0 / den, 2)
         score = 1 if ratio >= target and target else 0
         return ratio, score
 
@@ -779,7 +799,7 @@ class ToolBox:
         kpi_line.index = attribs
         c = 1
         while 1:
-            if '{}param {}'.format(name, c) in attribs and kpi_line['{}param {}'.format(name, c)]\
+            if '{}param {}'.format(name, c) in attribs and kpi_line['{}param {}'.format(name, c)] \
                     and not pd.isnull(kpi_line['{}param {}'.format(name, c)]):
                 filters[kpi_line['{}param {}'.format(
                     name, c)]] += self.splitter(kpi_line['{}value {}'.format(name, c)])
@@ -806,7 +826,7 @@ class ToolBox:
         den = den_scif[facings_field].sum()
         num = num_scif[facings_field].sum()
         if den:
-            ratio = round((num / float(den))*100, 2)
+            ratio = round((num / float(den)) * 100, 2)
         else:
             ratio = 0
 
@@ -969,7 +989,7 @@ class ToolBox:
                 left join static.template t on sc.template_fk = t.pk
                 where sc.session_uid = '{}'
                 '''.format(self.session_uid)
-        return pd.read_sql_query(query, self.ps_data_provider.rds_conn.db)\
+        return pd.read_sql_query(query, self.ps_data_provider.rds_conn.db) \
             .merge(self.products, how='left', on='product_fk', suffixes=['', '_p'])
 
         # self.data_provider.add_resource_from_table('mpip', 'probedata', 'match_product_in_probe', '*',
@@ -987,8 +1007,8 @@ class ToolBox:
         try:
             self.match_product_in_scene = self.data_provider[Data.MATCHES]
             self.full_mpis = self.match_product_in_scene.merge(self.products, on='product_fk', suffixes=['', '_p']) \
-                                                        .merge(self.scene_info, on='scene_fk', suffixes=['', '_s']) \
-                                                        .merge(self.templates, on='template_fk', suffixes=['', '_t'])
+                .merge(self.scene_info, on='scene_fk', suffixes=['', '_s']) \
+                .merge(self.templates, on='template_fk', suffixes=['', '_t'])
             self.mpis = self.full_mpis[self.full_mpis['product_type'] != 'Irrelevant']
             self.mpis = self.filter_df(self.mpis, Const.SOS_EXCLUDE_FILTERS, exclude=1)
             self.mpis = self.filter_df(self.mpis, {'stacking_layer': 1})

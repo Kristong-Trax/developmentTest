@@ -6,7 +6,7 @@ from Projects.MARSRU_PROD.Utils.KPIToolBox import MARSRU_PRODKPIToolBox
 from Projects.MARSRU_PROD.Utils.JSONGenerator import MARSRU_PRODJSONGenerator
 
 
-__author__ = 'urid'
+__author__ = 'sergey'
 
 
 class MARSRU_PRODCalculations(BaseCalculationsScript):
@@ -18,23 +18,31 @@ class MARSRU_PRODCalculations(BaseCalculationsScript):
         project_name = self.data_provider.project_name
 
         if self.data_provider.visit_date.isoformat() < '2019-01-01':
-            # [file name, key, sheet name]
-            kpi_template = ['2018/MARS KPIs.xlsx', 'kpi_data', 'KPI']
+            kpi_file_name = '2018/MARS KPIs.xlsx'
+            kpi_range_targets_sheet_names = [2217, 2220, 2390, 2391, 2317, 2254]
             kpi_channels = None
-            kpi_golden_shelves = ['2018/MARS KPIs.xlsx', 'golden_shelves', 'golden_shelves']
-            kpi_answers_translation = ['2018/MARS KPIs.xlsx',
-                                       'survey_answers_translation', 'survey_answers_translation']
-            kpi_must_range_targets = ['2018/MARS KPIs.xlsx',
-                                      'must_range_skus', [2217, 2220, 2390, 2391, 2317, 2254]]
+
+        elif self.data_provider.visit_date.isoformat() < '2019-12-29':
+            kpi_file_name = '2019/MARS KPIs.xlsx'
+            kpi_range_targets_sheet_names = [4317, 4650, 4254]  # , 4388, 4389
+            kpi_channels = [kpi_file_name, 'channels', 'channels']
+
         else:
-            # [file name, key, sheet name]
-            kpi_template = ['2019/MARS KPIs.xlsx', 'kpi_data', 'KPI']
-            kpi_channels = ['2019/MARS KPIs.xlsx', 'channels', 'channels']
-            kpi_golden_shelves = ['2019/MARS KPIs.xlsx', 'golden_shelves', 'golden_shelves']
-            kpi_answers_translation = ['2019/MARS KPIs.xlsx',
-                                       'survey_answers_translation', 'survey_answers_translation']
-            kpi_must_range_targets = ['2019/MARS KPIs.xlsx',
-                                      'must_range_skus', [4317, 4650, 4254, 4388, 4389]]
+            kpi_file_name = '2020/MARS KPIs.xlsx'
+            kpi_range_targets_sheet_names = [4317, 4650, 4254]
+            kpi_channels = [kpi_file_name, 'channels', 'channels']
+
+        # [file name, key, sheet name]
+        kpi_template = \
+            [kpi_file_name, 'kpi_data', 'KPI']
+        kpi_golden_shelves = \
+            [kpi_file_name, 'golden_shelves', 'golden_shelves']
+        kpi_answers_translation = \
+            [kpi_file_name, 'survey_answers_translation', 'survey_answers_translation']
+        kpi_sku_lists = \
+            [kpi_file_name, 'sku_lists', 'sku_lists']
+        kpi_range_targets = \
+            [kpi_file_name, 'range_targets', kpi_range_targets_sheet_names]
 
         jg = MARSRU_PRODJSONGenerator(project_name)
 
@@ -61,7 +69,9 @@ class MARSRU_PRODCalculations(BaseCalculationsScript):
         jg.create_template_json(
             kpi_answers_translation[0], kpi_answers_translation[1], kpi_answers_translation[2])
         jg.create_template_json(
-            kpi_must_range_targets[0], kpi_must_range_targets[1], kpi_must_range_targets[2])
+            kpi_sku_lists[0], kpi_sku_lists[1], kpi_sku_lists[2])
+        jg.create_template_json(
+            kpi_range_targets[0], kpi_range_targets[1], kpi_range_targets[2])
         kpi_templates = jg.project_kpi_dict
 
         tool_box = MARSRU_PRODKPIToolBox(kpi_templates, self.data_provider, self.output)
@@ -74,21 +84,22 @@ class MARSRU_PRODCalculations(BaseCalculationsScript):
         tool_box.check_number_of_scenes(kpi_templates.get('kpi_data'))
         tool_box.custom_average_shelves(kpi_templates.get('kpi_data'))
         tool_box.custom_number_bays(kpi_templates.get('kpi_data'))
-        tool_box.check_price(kpi_templates.get('kpi_data'))
-        tool_box.brand_blocked_in_rectangle(kpi_templates.get('kpi_data'))
+        # tool_box.check_price(kpi_templates.get('kpi_data'))
+        # tool_box.brand_blocked_in_rectangle(kpi_templates.get('kpi_data'))
         tool_box.custom_marsru_1(kpi_templates.get('kpi_data'))
         tool_box.check_layout_size(kpi_templates.get('kpi_data'))
         tool_box.golden_shelves(kpi_templates.get('kpi_data'))
         tool_box.facings_by_brand(kpi_templates.get('kpi_data'))
-        tool_box.multiple_brands_blocked_in_rectangle(kpi_templates.get('kpi_data'))
-        tool_box.negative_neighbors(kpi_templates.get('kpi_data'))
+        # tool_box.multiple_brands_blocked_in_rectangle(kpi_templates.get('kpi_data'))
+        # tool_box.negative_neighbors(kpi_templates.get('kpi_data'))
         tool_box.get_total_linear(kpi_templates.get('kpi_data'))
         tool_box.get_placed_near(kpi_templates.get('kpi_data'))
         tool_box.check_availability_on_golden_shelves(kpi_templates.get('kpi_data'))
         tool_box.check_for_specific_display(kpi_templates.get('kpi_data'))
+        tool_box.check_block_and_neighbors_by_shelf(kpi_templates.get('kpi_data'))
 
         # the order is important - source KPIs must be calculated first (above)
-        tool_box.must_range_skus(kpi_templates.get('kpi_data'))
+        tool_box.check_range_kpis(kpi_templates.get('kpi_data'))
         tool_box.check_kpi_results(kpi_templates.get('kpi_data'))
 
         kpi_sets = tool_box.results_and_scores.keys()

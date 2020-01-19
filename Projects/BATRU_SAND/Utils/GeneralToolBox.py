@@ -195,11 +195,11 @@ class BATRU_SANDGENERALToolBox:
         :return: Total number of SKUs facings appeared in the filtered Scene Item Facts data frame.
         """
         match_display_in_scene = self.get_match_display()
-        posm_scif = self.scif.merge(match_display_in_scene, how='left', left_on='scene_id',
+        posm_scif = self.scif.merge(match_display_in_scene, how='inner', left_on='scene_id',
                                     right_on='scene_fk')
         if posm_scif.empty:
             Log.debug('scene item fact/ match display in scene is empty')
-            return 0
+            return posm_scif
         if filters:
             filtered_df = self.scif[self.get_filter_condition(posm_scif, **filters)]
         else:

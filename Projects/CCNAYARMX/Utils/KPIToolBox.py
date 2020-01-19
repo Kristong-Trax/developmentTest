@@ -6,8 +6,6 @@ from KPIUtils_v2.Calculations.SurveyCalculations import Survey
 from KPIUtils_v2.Calculations.BlockCalculations_v2 import Block
 from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
 from KPIUtils_v2.DB.CommonV2 import Common as CommonV2
-# from BlockCalculations_v3 import Block
-
 
 import pandas as pd
 import numpy as np
@@ -15,25 +13,6 @@ import os
 from datetime import datetime
 
 from Projects.CCNAYARMX.Data.LocalConsts import Consts
-
-# from KPIUtils_v2.Utils.Consts.DataProvider import 
-# from KPIUtils_v2.Utils.Consts.DB import 
-# from KPIUtils_v2.Utils.Consts.PS import 
-# from KPIUtils_v2.Utils.Consts.GlobalConsts import 
-# from KPIUtils_v2.Utils.Consts.Messages import 
-# from KPIUtils_v2.Utils.Consts.Custom import 
-# from KPIUtils_v2.Utils.Consts.OldDB import 
-
-# from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
-# from KPIUtils_v2.Calculations.AvailabilityCalculations import Availability
-# from KPIUtils_v2.Calculations.NumberOfScenesCalculations import NumberOfScenes
-# from KPIUtils_v2.Calculations.PositionGraphsCalculations import PositionGraphs
-# from KPIUtils_v2.Calculations.SOSCalculations import SOS
-# from KPIUtils_v2.Calculations.SequenceCalculations import Sequence
-# from KPIUtils_v2.Calculations.SurveyCalculations import Survey
-
-# from KPIUtils_v2.Calculations.CalculationsUtils import GENERALToolBoxCalculations
-
 
 __author__ = 'krishnat'
 
@@ -85,6 +64,9 @@ NUMERO_DE_PUERTAS = 'Numero De Puertas'
 POS_OPTIONS = 'POS Options'
 TARGETS_AND_CONSTRAINTS = 'Targets and Constraints'
 
+GRANULAR_GROUPS = 'Granular Groups'
+GRANULAR_GROUPS_LINK_TO_STORES = 'Granular Groups link to stores'
+
 # Scif Filters
 BRAND_FK = 'brand_fk'
 PRODUCT_FK = 'product_fk'
@@ -108,10 +90,14 @@ BAY_NUMBER = 'bay_number'
 SHEETS = [SOS, BLOCK_TOGETHER, SHARE_OF_EMPTY, BAY_COUNT, PER_BAY_SOS, SURVEY, AVAILABILITY, DISTRIBUTION,
           COMBO, SCORING, PLATFORMAS, PLATFORMAS_SCORING, KPIS, AVAILABILITY_COMBO, NUMERO_DE_PUERTAS]
 POS_OPTIONS_SHEETS = [POS_OPTIONS, TARGETS_AND_CONSTRAINTS]
+ASSORTMENT_SHEETS = [GRANULAR_GROUPS, GRANULAR_GROUPS_LINK_TO_STORES]
 
-TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'CCNayarTemplatev0.8.7.xlsx')
+TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'CCNayarTemplatev0.8.9.xlsx')
 POS_OPTIONS_TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data',
-                                         'CCNayar_POS_Options_v4.xlsx')
+                                         'CCNayar_POS_Options_v6.xlsx')
+
+ASSORTMENT_TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data',
+                                        'TemplateAssortmentCCNAYARMX_V4.xlsx')
 
 
 def log_runtime(description, log_start=False):
@@ -132,9 +118,9 @@ def log_runtime(description, log_start=False):
 
 class ToolBox(GlobalSessionToolBox):
 
-    def __init__(self, data_provider, output):
-        GlobalSessionToolBox.__init__(self, data_provider, output)
-        self.common_v2 = CommonV2(self.data_provider)
+    def __init__(self, data_provider, output, common):
+        GlobalSessionToolBox.__init__(self, data_provider, output, common)
+        self.common_v2 = common
         self.ps_data_provider = PsDataProvider(data_provider)
         self.block = Block(data_provider)
         self.templates = {}
@@ -146,6 +132,10 @@ class ToolBox(GlobalSessionToolBox):
         self.ps_data_provider = PsDataProvider(self.data_provider, self.output)
         self.platformas_data = self.generate_platformas_data()
         self.assortment = Assortment(self.data_provider, common=self.common)
+        self.store_assortment = self.assortment.store_assortment
+        self.updated_store_assortment = self.store_assortment.merge(
+            self.data_provider[Data.PRODUCTS][[PRODUCT_NAME, 'product_ean_code']], left_on='ean_code',
+            right_on='product_ean_code', how='left')
         self.results_df = pd.DataFrame(columns=['kpi_name', 'kpi_fk', 'numerator_id', 'numerator_result',
                                                 'denominator_id', 'denominator_result', 'result', 'score',
                                                 'identifier_result', 'identifier_parent', 'should_enter'])
@@ -155,30 +145,10 @@ class ToolBox(GlobalSessionToolBox):
             self.templates[sheet] = pd.read_excel(TEMPLATE_PATH, sheet_name=sheet)
         for sheet in POS_OPTIONS_SHEETS:
             self.templates[sheet] = pd.read_excel(POS_OPTIONS_TEMPLATE_PATH, sheet_name=sheet)
+        for sheet in ASSORTMENT_SHEETS:
+            self.templates[sheet] = pd.read_excel(ASSORTMENT_TEMPLATE_PATH, sheet_name=sheet)
 
     def main_calculation(self):
-        # for i, row in self.templates[DISTRIBUTION].iterrows():
-        # #     # self.calculate_sos(row)
-        # #     self.calculate_block_together(row)
-        # #     # self.calculate_share_of_empty(row)
-        # #     # self.calculate_bay_count(row)
-        # #     # self.calculate_per_bay_sos(row)
-        # #     # self.calculate_survey(row)
-        # #     # self.calculate_availability(row)
-        #     self.calculate_assortment(row)
-        # #     self.store_wrong_data_for_parent_kpi_comunicacion()
-        # #     self.store_wrong_data_for_parent_kpi_enfriador()
-        # #     self.store_wrong_data_for_parent_kpi_plataformas()
-        # #     self.store_wrong_data_for_parent_kpi_portafolio_y_precios()
-        # #     self.store_wrong_data_for_parent_kpi_primera_posicion()
-        # #     self.store_wrong_data_for_parent_kpi_respeto()
-        # #     self.store_wrong_data_for_parent_kpi_acomodo_por_bloques()
-        # #     self.store_wrong_data_for_parent_kpi_bloques_colas_50()
-        # #     self.store_wrong_data_for_parent_kpi_bloques_frutales_25()
-        # #     self.store_wrong_data_for_parent_kpi_comidas()
-        # #     self.store_wrong_data_for_parent_kpi_plat_dinamicas_one()
-        # #     self.store_wrong_data_for_parent_kpi_plat_dinamicas_two()
-
         relevant_kpi_template = self.templates[KPIS]
         att2 = self.store_info['additional_attribute_2'].iloc[0]
         relevant_kpi_template = relevant_kpi_template[(relevant_kpi_template[STORE_ADDITIONAL_ATTRIBUTE_2].isnull()) |
@@ -288,25 +258,28 @@ class ToolBox(GlobalSessionToolBox):
         elif kpi_type == NUMERO_DE_PUERTAS:
             return self.calculate_numero_de_puertas
 
-    def calculate_numero_de_puertas(self,row):
+    def calculate_numero_de_puertas(self, row):
         kpi_name = row[KPI_NAME]
         kpi_fk = self.get_kpi_fk_by_kpi_type(kpi_name)
         template_name = self.sanitize_values(row[TEMPLATE_NAME])
 
-        relevant_scif = self.scif[self.scif[TEMPLATE_NAME].isin(template_name)][[PK,SESSION_ID,TEMPLATE_FK, TEMPLATE_NAME,PRODUCT_FK,SCENE_FK]]
+        relevant_scif = self.scif[self.scif[TEMPLATE_NAME].isin(template_name)][
+            [PK, SESSION_ID, TEMPLATE_FK, TEMPLATE_NAME, PRODUCT_FK, SCENE_FK]]
 
         product_in_scene = self.match_product_in_scene[['bay_number', 'scene_fk']]
 
         bay_count_scif = relevant_scif.merge(product_in_scene, on=['scene_fk'], how='right')
-        bay_count_scif.dropna(inplace= True)
+        bay_count_scif.dropna(inplace=True)
 
         for relevant_template_fk in set(bay_count_scif[TEMPLATE_FK]):
-            #Result related the number of bays in a specifc template
+            # Result related the number of bays in a specifc template
             relevant_template_fk_scif = bay_count_scif[bay_count_scif[TEMPLATE_FK].isin([relevant_template_fk])]
             count_of_bays_in_template = 0
 
             for relevant_scene_fk in set(relevant_template_fk_scif[SCENE_FK]):
-                bay_count = len(set(relevant_template_fk_scif[relevant_template_fk_scif[SCENE_FK].isin([relevant_scene_fk])][BAY_NUMBER]))
+                bay_count = len(set(
+                    relevant_template_fk_scif[relevant_template_fk_scif[SCENE_FK].isin([relevant_scene_fk])][
+                        BAY_NUMBER]))
                 count_of_bays_in_template = count_of_bays_in_template + bay_count
 
             self.common.write_to_db_result(fk=kpi_fk, numerator_id=relevant_template_fk,
@@ -448,7 +421,7 @@ class ToolBox(GlobalSessionToolBox):
             for index, relevant_row in relevant_pos_template.iterrows():
                 if pos_option_found:
                     break
-                groups = self._get_groups(relevant_row, 'POS Option')
+                groups = self._get_groups(relevant_row.dropna(), 'POS Option')
                 for group in groups:
                     if all(product in product_names_in_scene for product in group):
                         pos_option_found = 1  # True
@@ -467,7 +440,7 @@ class ToolBox(GlobalSessionToolBox):
                 continue
 
             # calculate the 'empaques' data
-            assortment_groups = self._get_groups(platform_row, 'Assortment')
+            assortment_groups = self._get_groups(platform_row.dropna(), 'Assortment')
             mandatory_skus_found = 1  # True
             for assortment in assortment_groups:
                 if not any(product in product_names_in_scene for product in assortment):
@@ -490,7 +463,7 @@ class ToolBox(GlobalSessionToolBox):
             # calculate the 'botellas' data
             total_facings = scene_scif[scene_scif['product_name'].isin(
                 [product for sublist in assortment_groups for product in sublist])]['facings'].sum()
-            if total_facings > targets_and_constraints['Facings_target'].iloc[0]:
+            if total_facings >= targets_and_constraints['Facings_target'].iloc[0]:
                 minimum_facings_met = 1  # True
             else:
                 minimum_facings_met = 0  # False
@@ -589,47 +562,63 @@ class ToolBox(GlobalSessionToolBox):
         kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_name)
         template_group = self.sanitize_values(row[TASK_TEMPLATE_GROUP])
         numerator_entity = row[NUMERATOR_ENTITY]
-        denominator_entity = row[DENOMINATOR_ENTITY]
+        check_possible_sku = row['check_possible_sku']
+        result_dict_list = []
 
         relevant_scif = self.scif[self.scif[TEMPLATE_GROUP].isin(template_group)]
-
-        # relevant_scif = self.scif[self.scif[KPI_FK_LEVEL2].isin([kpi_fk_level2])]
         self.assortment.scif = relevant_scif
-
         self.store_assortment = self.assortment.store_assortment
-        lvl3_result = self.assortment.calculate_lvl3_assortment()
-        if not lvl3_result.empty:
-            result_dict_list = []
-            kpi_id = kpi_fk + 1
-            relevant_df = lvl3_result[lvl3_result['kpi_fk_lvl3'].isin([kpi_id])]
-            for row in relevant_df.itertuples():
-                numerator_id = row.product_fk
-                denominator_id = row.assortment_fk
-                result = row.in_store
+        if check_possible_sku is not np.nan and check_possible_sku == 'Y':
+            relevant_assortment_template = self.updated_store_assortment[
+                self.updated_store_assortment.assortment_name.str.contains(kpi_name.replace(" ", "_"))]
+            assortment_ean_code_from_template = relevant_assortment_template['product_fk'].unique().astype(str)
+            relevant_products = relevant_scif[relevant_scif.product_fk.isin(assortment_ean_code_from_template)]
+            numerator_id = relevant_products[numerator_entity].iloc[
+                0] if not relevant_products.empty else np.nan
+            denominator_id = self.scif['sub_category_fk'].iloc[0] if not relevant_products.empty else np.nan
+            result = 1 if relevant_products.product_fk.count() >= 1 else 0
 
-                result_dict = {'kpi_name': kpi_name + " - SKU", 'kpi_fk': kpi_id, 'numerator_id': numerator_id,
+            result_dict = {'kpi_name': kpi_name, 'kpi_fk': kpi_fk, 'numerator_id': numerator_id,
+                           'denominator_id': denominator_id,
+                           'result': result}
+            result_dict_list.append(result_dict)
+
+            lvl3_result = self.assortment.calculate_lvl3_assortment()
+            if not lvl3_result.empty:
+                kpi_id = kpi_fk + 1
+                relevant_df = lvl3_result[lvl3_result['kpi_fk_lvl3'].isin([kpi_id])]
+                for row in relevant_df.itertuples():
+                    numerator_id = row.product_fk
+                    denominator_id = row.assortment_fk
+                    result = row.in_store
+
+                    result_dict = {'kpi_name': kpi_name + " - SKU", 'kpi_fk': kpi_id, 'numerator_id': numerator_id,
+                                   'denominator_id': denominator_id,
+                                   'result': result}
+                    result_dict_list.append(result_dict)
+                if check_possible_sku is np.nan:
+                    numerator_id = lvl3_result[lvl3_result[KPI_FK_LEVEL2].isin([kpi_fk])][numerator_entity].mode()[0]
+                    lvl2_result = self.assortment.calculate_lvl2_assortment(lvl3_result)
+                    lvl2_kpi_result = lvl2_result[lvl2_result[KPI_FK_LEVEL2].isin([kpi_fk])]
+                    if self.scif.empty or self.scif['sub_category_fk'].mode().empty:
+                        denominator_id = 0
+                    else:
+                        denominator_id = self.scif['sub_category_fk'].mode()[0]
+                    result = float(lvl2_kpi_result['passes'] / lvl2_kpi_result['total'])
+                    result_dict = {'kpi_name': kpi_name, 'kpi_fk': kpi_fk, 'numerator_id': numerator_id,
+                                   'denominator_id': denominator_id,
+                                   'result': result}
+
+            else:
+                result = pd.np.nan
+                numerator_id = 0
+                denominator_id = 0
+
+                result_dict = {'kpi_name': kpi_name, 'kpi_fk': kpi_fk, 'numerator_id': numerator_id,
                                'denominator_id': denominator_id,
                                'result': result}
-                result_dict_list.append(result_dict)
 
-            numerator_id = lvl3_result[lvl3_result[KPI_FK_LEVEL2].isin([kpi_fk])][numerator_entity].mode()[0]
-            lvl2_result = self.assortment.calculate_lvl2_assortment(lvl3_result)
-            lvl2_kpi_result = lvl2_result[lvl2_result[KPI_FK_LEVEL2].isin([kpi_fk])]
-            if self.scif.empty:
-                denominator_id = 0
-            else:
-                denominator_id = self.scif['sub_category_fk'].mode()[0]
-            result = float(lvl2_kpi_result['passes'] / lvl2_kpi_result['total'])
-
-        else:
-            result = pd.np.nan
-            numerator_id = 0
-            denominator_id = 0
-
-        result_dict = {'kpi_name': kpi_name, 'kpi_fk': kpi_fk, 'numerator_id': numerator_id,
-                       'denominator_id': denominator_id,
-                       'result': result}
-        result_dict_list.append(result_dict)
+            result_dict_list.append(result_dict)
 
         return result_dict_list
 
@@ -639,17 +628,6 @@ class ToolBox(GlobalSessionToolBox):
         :return: the sum of numerator scif[final_facings] over the sum of denominator scif[final_facings]
         '''
 
-        # REMINDER Filter scif by additional scene type column
-        # Waiting on Session with with scene type(template_name) with Enfriador Dedicado JDV
-
-        # Table of Contents:
-        # Step 1 to 2: Declaring all the relevant columns from Sheet SOS
-        # Step 3 to 5: Filtering scif to get all the relevant columns
-        # Step 6 to 9: Filtering the relevant columns with the relevant rows; the id and result of numerator and denominator were calculated
-        # Step 10: Calculates the final result
-        # Step 11: Saves to the DB
-
-        # Step 1: Read the excel rows to process the information(Common among all the sheets)
         kpi_name = row[KPI_NAME]
         kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_name)
         template_group = self.sanitize_values(row[TASK_TEMPLATE_GROUP])
@@ -659,9 +637,7 @@ class ToolBox(GlobalSessionToolBox):
         numerator_entity = row[NUMERATOR_ENTITY]
         denominator_entity = row[DENOMINATOR_ENTITY]
 
-        # Step 2: Import the values that are unique to the sheet SOS
         product_type = self.sanitize_values(row[PRODUCT_TYPE])
-        store_additional_attribute_2 = self.sanitize_values(row[STORE_ADDITIONAL_ATTRIBUTE_2])
         target = str(row['target'])
         numerator_param1 = row[NUMERATOR_PARAM_1]
         denominator_param1 = row[DENOMINATOR_PARAM_1]
@@ -670,16 +646,13 @@ class ToolBox(GlobalSessionToolBox):
 
         if pd.notna(additional_scene_type):
             if additional_scene_type in set(self.scif.template_name):
-                # Step 3: Declare the relevant scif column for the SOS KPI
                 relevant_scif_columns = [PK, SESSION_ID, TEMPLATE_GROUP, TEMPLATE_NAME, PRODUCT_TYPE, FACINGS,
                                          FACINGS_IGN_STACK] + \
                                         [denominator_entity, numerator_entity] + self.delete_filter_nan(
                     [numerator_param1, denominator_param1])
 
-                # Step 4: Output the relevant scif by the applying relevant_scif_columns
                 filtered_scif = self.scif[relevant_scif_columns]
 
-                # Step 5: Determine Whether to Facings or Facings_ign_stack
                 if pd.isna(ignore_stacking):
                     filtered_scif = filtered_scif.drop(columns=[FACINGS_IGN_STACK])
                     filtered_scif = filtered_scif.rename(columns={FACINGS: FINAL_FACINGS})
@@ -687,11 +660,9 @@ class ToolBox(GlobalSessionToolBox):
                     filtered_scif = filtered_scif.drop(columns=[FACINGS])
                     filtered_scif = filtered_scif.rename(columns={FACINGS_IGN_STACK: FINAL_FACINGS})
 
-                # Step 6: Filter the filtered scif through the product type
                 if pd.notna(any([product_type])):
                     filtered_scif = filtered_scif[filtered_scif[PRODUCT_TYPE].isin(product_type)]
 
-                # Step 7: Filter the filtered scif through the template group
                 if template_group is not pd.np.nan:
                     filtered_scif = filtered_scif[filtered_scif[TEMPLATE_GROUP].isin(template_group)]
 
@@ -702,7 +673,6 @@ class ToolBox(GlobalSessionToolBox):
                     result_dict = {'kpi_name': kpi_name, 'kpi_fk': kpi_fk, 'result': pd.np.nan}
                     return result_dict
 
-                # Step 8: Filter the filtered scif with the denominator param and denominator value
                 if pd.notna(denominator_param1):
                     denominator_scif = filtered_scif[filtered_scif[denominator_param1].isin([denominator_value1])]
 
@@ -720,7 +690,6 @@ class ToolBox(GlobalSessionToolBox):
                     denominator_id = denominator_scif[denominator_entity].mode()[0]
                     denominator_result = denominator_scif[FINAL_FACINGS].sum()
 
-                # Step 9: Filter the denominator scif wit the numerator param and numerator param
                 if pd.notna(numerator_param1):
                     # Sometimes the filter below overfilters, and the df is empty
                     if (denominator_scif[denominator_scif[numerator_param1].isin([numerator_value1])]).empty:
@@ -739,7 +708,6 @@ class ToolBox(GlobalSessionToolBox):
                     numerator_id = numerator_scif[numerator_entity].mode()[0]
                     numerator_result = numerator_scif[FINAL_FACINGS].sum()
 
-                # Step 10: Calculate the final result
                 result = (numerator_result / denominator_result)
                 score = self.calculate_score_for_sos(target, result)
 
@@ -755,16 +723,13 @@ class ToolBox(GlobalSessionToolBox):
                 result_dict = {'kpi_name': kpi_name, 'kpi_fk': kpi_fk, 'result': pd.np.nan}
                 return result_dict
         else:
-            # Step 3: Declare the relevant scif column for the SOS KPI
             relevant_scif_columns = [PK, SESSION_ID, TEMPLATE_GROUP, TEMPLATE_NAME, PRODUCT_TYPE, FACINGS,
                                      FACINGS_IGN_STACK] + \
                                     [denominator_entity, numerator_entity] + self.delete_filter_nan(
                 [numerator_param1, denominator_param1])
 
-            # Step 4: Output the relevant scif by the applying relevant_scif_columns
             filtered_scif = self.scif[relevant_scif_columns]
 
-            # Step 5: Determine Whether to Facings or Facings_ign_stack
             if pd.isna(ignore_stacking):
                 filtered_scif = filtered_scif.drop(columns=[FACINGS_IGN_STACK])
                 filtered_scif = filtered_scif.rename(columns={FACINGS: FINAL_FACINGS})
@@ -772,18 +737,15 @@ class ToolBox(GlobalSessionToolBox):
                 filtered_scif = filtered_scif.drop(columns=[FACINGS])
                 filtered_scif = filtered_scif.rename(columns={FACINGS_IGN_STACK: FINAL_FACINGS})
 
-            # Step 6: Filter the filtered scif through the product type
             if pd.notna(any([product_type])):
                 filtered_scif = filtered_scif[filtered_scif[PRODUCT_TYPE].isin(product_type)]
 
-            # Step 7: Filter the filtered scif through the template group
             if template_group is not pd.np.nan:
                 filtered_scif = filtered_scif[filtered_scif[TEMPLATE_GROUP].isin(template_group)]
 
             if template_name is not pd.np.nan:
                 filtered_scif = filtered_scif[filtered_scif[TEMPLATE_NAME].isin(template_name)]
 
-            # Step 8: Filter the filtered scif with the denominator param and denominator value
             if pd.notna(denominator_param1):
                 denominator_scif = filtered_scif[filtered_scif[denominator_param1].isin([denominator_value1])]
                 if denominator_scif.empty:
@@ -802,7 +764,6 @@ class ToolBox(GlobalSessionToolBox):
                 denominator_id = denominator_scif[denominator_entity].mode()[0]
                 denominator_result = denominator_scif[FINAL_FACINGS].sum()
 
-            # Step 9: Filter the denominator scif wit the numerator param and numerator param
             if pd.notna(numerator_param1):
                 # Sometimes the filter below overfilters, and the df is empty
                 if (denominator_scif[denominator_scif[numerator_param1].isin([numerator_value1])]).empty:
@@ -821,14 +782,8 @@ class ToolBox(GlobalSessionToolBox):
                 numerator_id = numerator_scif[numerator_entity].mode()[0]
                 numerator_result = numerator_scif[FINAL_FACINGS].sum()
 
-            a = 1
-
-            # Step 10: Calculate the final result
-
             result = (numerator_result / denominator_result)
-
             score = self.calculate_score_for_sos(target, result)
-
             result_dict = {'kpi_name': kpi_name, 'kpi_fk': kpi_fk, 'numerator_id': numerator_id,
                            'numerator_result': numerator_result,
                            'denominator_id': denominator_id, 'denominator_result': denominator_result,
@@ -838,26 +793,22 @@ class ToolBox(GlobalSessionToolBox):
 
     def calculate_block_together(self, row):
 
-        # Step 1: Read the excel rows to process the information (Common among all the sheets)
         kpi_name = row[KPI_NAME]
         kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_name)
         numerator_entity = row[NUMERATOR_ENTITY]
         denominator_entity = row[DENOMINATOR_ENTITY]
-
-        # Step 2: Import values that unique to the sheet Block Together
+        product_type = row[PRODUCT_TYPE]
         template_name = self.sanitize_values(row[TEMPLATE_NAME])
         manufacturer_name = [row[MANUFACTURER_NAME]]
         tamano_del_producto = row[TAMANDO_DEL_PRODUCTO]
         sub_category = self.sanitize_values(row[SUB_CATEGORY])
         iterate_by = row[ITERATE_BY]
 
-        # Step 3: Declare relevant_scif columns
         relevant_scif_columns = [PK, SESSION_ID, PRODUCT_FK, PRODUCT_NAME, TEMPLATE_GROUP, TEMPLATE_NAME,
                                  MANUFACTURER_NAME,
-                                 TAMANDO_DEL_PRODUCTO, SUB_CATEGORY] + \
+                                 TAMANDO_DEL_PRODUCTO, SUB_CATEGORY, PRODUCT_TYPE] + \
                                 [denominator_entity, numerator_entity, denominator_entity, SCENE_FK]
 
-        # Step 4:
         relevant_scif = self.scif[relevant_scif_columns]
 
         product_in_scene = self.match_product_in_scene[[PRODUCT_FK, BAY_NUMBER, SCENE_FK]]
@@ -866,23 +817,19 @@ class ToolBox(GlobalSessionToolBox):
             denominator_id = 0
             numerator_id = 0
 
-            # Step 10. Save the results in the database
             result_dict = {'kpi_name': kpi_name, 'kpi_fk': kpi_fk, 'numerator_id': numerator_id,
                            'denominator_id': denominator_id, 'result': result}
             return result_dict
 
         bay_count_scif = relevant_scif.merge(product_in_scene, on=[PRODUCT_FK, SCENE_FK], how='right')
         bay_count_scif = bay_count_scif.dropna()
-
         bay_count_scif = bay_count_scif[bay_count_scif[MANUFACTURER_NAME].isin(manufacturer_name)]
-
         bay_count_scif = bay_count_scif[bay_count_scif[SUB_CATEGORY].isin(sub_category)]
-
         denominator_id = self.scif['template_fk'].mode()[0]
-
         numerator_id = self.get_sub_cat_fk_from_sub_cat(sub_category[0])
-
         bay_count_scif = bay_count_scif[bay_count_scif[TEMPLATE_NAME].isin(template_name)]
+        if pd.notna(product_type):
+            bay_count_scif = bay_count_scif[bay_count_scif[PRODUCT_TYPE].isin([product_type])]
 
         if pd.notna(tamano_del_producto):
             bay_count_scif = bay_count_scif[bay_count_scif[TAMANDO_DEL_PRODUCTO].str.contains(tamano_del_producto)]
@@ -902,7 +849,6 @@ class ToolBox(GlobalSessionToolBox):
                 location = {location_name: location_id}
 
                 for j in unique_bay_number:
-                    # Step 3: Establish the variable for the network_x_block_together
                     if pd.notna(tamano_del_producto):
                         relevant_filters = {MANUFACTURER_NAME: manufacturer_name, SUB_CATEGORY: sub_category,
                                             TAMANDO_DEL_PRODUCTO: [tamano_del_producto], BAY_NUMBER: [j],
@@ -914,7 +860,8 @@ class ToolBox(GlobalSessionToolBox):
                     block = self.block.network_x_block_together(relevant_filters,
                                                                 location=location,
                                                                 additional={'minimum_block_ratio': 0.9,
-                                                                            'calculate_all_scenes': True, 'minimum_facing_for_block': 1})
+                                                                            'calculate_all_scenes': True,
+                                                                            'minimum_facing_for_block': 1})
                     if False in block['is_block'].to_list():
                         result = 0
                         break
@@ -940,7 +887,8 @@ class ToolBox(GlobalSessionToolBox):
                         block = self.block.network_x_block_together(relevant_filters,
                                                                     location=location,
                                                                     additional={'minimum_block_ratio': 0.9,
-                                                                                'calculate_all_scenes': True,'minimum_facing_for_block': 1})
+                                                                                'calculate_all_scenes': True,
+                                                                                'minimum_facing_for_block': 1})
                         if False in block['is_block'].to_list():
                             result = 0
                         else:
@@ -961,15 +909,6 @@ class ToolBox(GlobalSessionToolBox):
         return result_dict
 
     def calculate_share_of_empty(self, row):
-
-        # Table of Contents
-        # Step 1 to 2: Declaring all the relevant columns from Sheet SOS
-        # Step 3 to 6: Filtering scif to get all the relevant columns
-        # Step 7 to 9: Calculating the Numerator Scif and Denominator Scif, and finding the results and id of both
-        # Step 10: Calculates the results
-        # Step 11: Saves to the database
-
-        # Step 1: Read the excel rows to process the information (Common among all the sheets)
         kpi_name = row[KPI_NAME]
         kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_name)
         template_group = self.sanitize_values(row[TASK_TEMPLATE_GROUP])
@@ -978,25 +917,16 @@ class ToolBox(GlobalSessionToolBox):
         numerator_entity = row[NUMERATOR_ENTITY]
         denominator_entity = row[DENOMINATOR_ENTITY]
 
-        # Step 2: Import values that unique to the sheet SOS
         numerator_param1 = row[NUMERATOR_PARAM_1]
         denominator_param1 = row[DENOMINATOR_PARAM_1]
-
-        # Step 3: Filter the self.scif by the columns required
         column_filter_for_scif = [PK, SESSION_ID, TEMPLATE_GROUP, FACINGS_IGN_STACK] + \
                                  [numerator_entity, denominator_entity] + \
                                  self.delete_filter_nan([numerator_param1, denominator_param1])
 
-        # Step 4: Apply the filters to scif
         filtered_scif = self.scif[column_filter_for_scif]
-
         filtered_scif = filtered_scif.rename(columns={FACINGS_IGN_STACK: FINAL_FACINGS})
-
-        # Step 6: Filtering the relevant columns with the relevant rows
         relevant_scif = filtered_scif[filtered_scif[TEMPLATE_GROUP].isin(template_group)]
 
-        # Step 7: Filter through the denominator param column with the denominator value and calculate the result and id
-        # For the KPI 31: Empty Denominator Param
         denominator_scif = relevant_scif
         if denominator_scif.empty:
             result_dict = {'kpi_name': kpi_name, 'kpi_fk': kpi_fk, 'result': pd.np.nan}
@@ -1004,16 +934,10 @@ class ToolBox(GlobalSessionToolBox):
         denominator_result = relevant_scif[FINAL_FACINGS].sum()
         denominator_id = denominator_scif[denominator_entity].mode()[0]
 
-        # Step 8: Filter through the numerator param column with numerator value and calculate the numerator result
         numerator_scif = denominator_scif[denominator_scif[numerator_param1].isin([numerator_value1])]
         numerator_result = numerator_scif[FINAL_FACINGS].sum()
-
-        # Step 9: Find the numerator_id
         numerator_id = self.own_manuf_fk
-
-        # Step 10: Calculate the result
         result = (numerator_result / denominator_result)
-
         actual_result = self.calculate_score_for_sos(target, result)
 
         result_dict = {'kpi_name': kpi_name, 'kpi_fk': kpi_fk, 'numerator_id': numerator_id,
@@ -1024,38 +948,24 @@ class ToolBox(GlobalSessionToolBox):
         return result_dict
 
     def calculate_bay_count(self, row):
-
-        # Step 1: Read the excel rows to process the information(Common among all the sheets)
         kpi_name = row[KPI_NAME]
         kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_name)
         template_group = self.sanitize_values(row[TEMPLATE_NAME])
         numerator_entity = row[NUMERATOR_ENTITY]
         denominator_entity = row[DENOMINATOR_ENTITY]
-
-        # Step 2: Read the excel rows unique to Bay Count Sheets
         numerator_param_1 = row[NUMERATOR_PARAM_1]
         numerator_value_1 = row[NUMERATOR_VALUE_1]
         product_type = self.sanitize_values(row[PRODUCT_TYPE])
-
-        # Step 3: Establish the targets in order to calculate
         store_type = self.store_info[ADDITIONAL_ATTRIBUTE_2].iloc[0]
         facings_target, bay_count_target = self.calculate_targets_for_bay_count_kpi(store_type)
-
-        # Step 4: Declaring the scif columns
         relevant_scif_columns = [TEMPLATE_NAME, PRODUCT_NAME, PRODUCT_TYPE, FACINGS_IGN_STACK, PRODUCT_FK] + [
             numerator_param_1,
             numerator_entity,
             denominator_entity, SCENE_FK]
 
-        # Step 5: Indexing the relevant_scif_columns in self.scif
         relevant_scif = self.scif[relevant_scif_columns]
-
-        # Step 6: Filter by the Template Group
         relevant_scif = relevant_scif[relevant_scif[TEMPLATE_NAME].isin(template_group)]
-
-        # Step 7: Filter by the Product Type
         relevant_scif = relevant_scif[relevant_scif[PRODUCT_TYPE].isin(product_type)]
-
         relevant_scif = relevant_scif[relevant_scif.product_name != 'Soda Other']
 
         if relevant_scif.empty:
@@ -1063,24 +973,20 @@ class ToolBox(GlobalSessionToolBox):
             denominator_id = 0
             numerator_id = 0
 
-            # Step 10. Save the results in the database
             result_dict = {'kpi_name': kpi_name, 'kpi_fk': kpi_fk, 'numerator_id': numerator_id,
                            'denominator_id': denominator_id, 'result': result}
             return result_dict
 
-        # Step 8: Calculate the bay count
         product_in_scene = self.match_product_in_scene[['product_fk', 'bay_number', 'scene_fk']]
 
         bay_count_scif = relevant_scif.merge(product_in_scene, on=['product_fk', 'scene_fk'], how='right')
         bay_count_scif = bay_count_scif.dropna()
-        # [[BAY_NUMBER, MANUFACTURER_NAME, PRODUCT_FK, FACINGS_IGN_STACK]]
 
         if bay_count_scif.empty:
             result = pd.np.nan
             denominator_id = self.scif[denominator_entity].mode()[0]
             numerator_id = self.scif[numerator_entity].mode()[0]
 
-            # Step 10. Save the results in the database
             result_dict = {'kpi_name': kpi_name, 'kpi_fk': kpi_fk, 'numerator_id': numerator_id,
                            'denominator_id': denominator_id, 'result': result}
             return result_dict
@@ -1093,11 +999,9 @@ class ToolBox(GlobalSessionToolBox):
                 if 'TCCC' in set(bay_count_scif[bay_count_scif[BAY_NUMBER].isin([bay])][MANUFACTURER_NAME]):
                     bay_count = bay_count + 1
 
-        # Step 9: Filter by the numerator param
         relevant_scif = relevant_scif[relevant_scif[numerator_param_1].isin([numerator_value_1])]
         facings = relevant_scif[FACINGS_IGN_STACK].sum()
 
-        # Step 10: Calculate the scoring
         if facings >= facings_target:
             result = 1
         else:
@@ -1106,7 +1010,6 @@ class ToolBox(GlobalSessionToolBox):
         if bay_count < bay_count_target:
             result = result - (2 / 15)
 
-        # Step 11: Calculate the numerator entity and denominator entity
         try:
             numerator_id = relevant_scif[MANUFACTURER_FK].mode()[0]
             denominator_id = relevant_scif[TEMPLATE_FK].mode()[0]
@@ -1122,39 +1025,26 @@ class ToolBox(GlobalSessionToolBox):
         return result_dict
 
     def calculate_per_bay_sos(self, row):
-        # Step 1: Read the excel rows to process the information(Common among all the sheets)
-
         kpi_name = row[KPI_NAME]
         kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_name)
         template_group = self.sanitize_values(row[TASK_TEMPLATE_GROUP])
         numerator_entity = 'manufacturer_fk'
         denominator_entity = 'store_id'
-        # Step 2: Read the rows to process unique per bay sos
         template_group = row[TASK_TEMPLATE_GROUP]
         template_name = row[TEMPLATE_NAME]
         product_type = self.sanitize_values(row[PRODUCT_TYPE])
         numerator_param_1 = row[NUMERATOR_PARAM_1]
         numerator_value_1 = row[NUMERATOR_VALUE_1]
 
-        # Step 3: Declaring the relevant columns for scif
         relevant_scif_columns = [TEMPLATE_GROUP, TEMPLATE_NAME, PRODUCT_FK, PRODUCT_NAME, PRODUCT_TYPE,
                                  MANUFACTURER_NAME, SCENE_FK, FACINGS_IGN_STACK,
                                  numerator_entity, denominator_entity, 'category']
 
-        # Step 4: Index self.scif to get relevant_scif
         relevant_scif = self.scif[relevant_scif_columns]
 
-        # relevant_scif.rename(columns= {'scene_id': 'scene_fk'}, inplace= True)
-
-        # Step 5:
         relevant_scif = relevant_scif[relevant_scif[TEMPLATE_GROUP].isin([template_group])]
-        # Step 6:
         relevant_scif = relevant_scif[relevant_scif[TEMPLATE_NAME].isin([template_name])]
-
-        # Step 7:
         relevant_scif = relevant_scif[relevant_scif[PRODUCT_TYPE].isin(product_type)]
-
-        # Step 8: Drop Soda Other because it was recognition issue
         relevant_scif = relevant_scif[relevant_scif.product_name != 'Soda Other']
         if relevant_scif.empty:
             result = pd.np.nan
@@ -1165,12 +1055,9 @@ class ToolBox(GlobalSessionToolBox):
                            'denominator_id': denominator_id, 'result': result}
             return result_dict
 
-        # Step 9:
         product_in_scene = self.match_product_in_scene[['product_fk', 'bay_number', 'scene_fk']]
-        # bay_count_scif = relevant_scif.merge(product_in_scene, on='product_fk', how = 'left')
         bay_count_scif = relevant_scif.merge(product_in_scene, on=['product_fk', 'scene_fk'], how='right')
         bay_count_scif = bay_count_scif.dropna()
-        # [[BAY_NUMBER, MANUFACTURER_NAME, PRODUCT_FK]]
 
         if bay_count_scif.empty:
             result = pd.np.nan
@@ -1190,7 +1077,6 @@ class ToolBox(GlobalSessionToolBox):
                     bay_count = bay_count + 1
                     break
 
-        # Step 8:
         if bay_count > 0:
             relevant_scif = relevant_scif[relevant_scif[numerator_param_1].isin([numerator_value_1])]
             facings_count = relevant_scif[FACINGS_IGN_STACK].sum()
@@ -1199,7 +1085,6 @@ class ToolBox(GlobalSessionToolBox):
         else:
             result = 0
 
-        # Step 9:
         denominator_id = relevant_scif[denominator_entity].mode()[0]
         numerator_id = relevant_scif[numerator_entity].mode()[0]
 
@@ -1210,13 +1095,9 @@ class ToolBox(GlobalSessionToolBox):
         return result_dict
 
     def calculate_survey(self, row):
-
-        # Step 1:
         kpi_name = row[KPI_NAME]
         kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_name)
         relevant_question_fk = self.sanitize_values(row[RELEVANT_QUESTION_FK])
-        numerator_entity = row[NUMERATOR_ENTITY]
-        denominator_entity = row[DENOMINATOR_ENTITY]
 
         survey_result = self.calculate_relevant_survey_result(relevant_question_fk)
 
@@ -1234,7 +1115,6 @@ class ToolBox(GlobalSessionToolBox):
         kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_name)
         template_group = self.sanitize_values(row[TASK_TEMPLATE_GROUP])
         template_name = self.sanitize_values(row[TEMPLATE_NAME])
-        store_additional_attribute_2 = row[STORE_ADDITIONAL_ATTRIBUTE_2]
         product_type = row[PRODUCT_TYPE]
         product_short_name = self.sanitize_values(row[PRODUCT_SHORT_NAME])
         relevant_question_fk = row[RELEVANT_QUESTION_FK]

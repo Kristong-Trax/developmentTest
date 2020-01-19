@@ -26,7 +26,7 @@ if __name__ == '__main__':
     Config.init()
     project_name = 'diageouk'
     data_provider = KEngineDataProvider(project_name)
-    session = '7B55D2B3-3728-4534-A7F7-4A5520748085'
+    session = 'EC312AA7-88C2-4D27-9FDD-AC54D5651493'
     data_provider.load_session_data(session)
     output = Output()
     DIAGEOUKCalculations(data_provider, output).run_project_calculations()

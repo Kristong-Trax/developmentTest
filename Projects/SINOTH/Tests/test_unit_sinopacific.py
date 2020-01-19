@@ -1,7 +1,7 @@
 
 from Trax.Utils.Conf.Configuration import Config
 from Trax.Utils.Testing.Case import TestCase
-from mock import MagicMock, mock
+from mock import MagicMock, patch
 import pandas as pd
 from Projects.SINOTH.Utils.KPIToolBox import SinoPacificToolBox
 
@@ -11,8 +11,8 @@ __author__ = 'nidhin'
 
 class TestSINOTH(TestCase):
 
-    @mock.patch('Projects.SINOTH.Utils.KPIToolBox.ProjectConnector')
-    def setUp(self, x):
+    @patch('Projects.SINOTH.Utils.KPIToolBox.ProjectConnector')
+    def setUp(self):
         Config.init('')
         self.data_provider_mock = MagicMock()
         self.data_provider_mock.project_name = 'sinoth'
