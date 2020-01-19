@@ -168,6 +168,9 @@ def copy_to_ace_live(sdk_factory_folder, ace_live_folder, kpi_factory_folder=Non
     shutil.copytree(os.path.join(sdk_factory_folder, KPI_UTILS), os.path.join(ace_live_folder, KPI_UTILS))
     shutil.copytree(os.path.join(sdk_factory_folder, KPI_UTILS_V2), os.path.join(ace_live_folder, KPI_UTILS_V2))
     shutil.copytree(os.path.join(sdk_factory_folder, OUT_OF_THE_BOX), os.path.join(ace_live_folder, OUT_OF_THE_BOX))
+
+    if os.path.exists(os.path.join(ace_live_folder, DEVELOPER_TOOLS_FOLDER, SANITY_TESTS_FOLDER)):
+        shutil.rmtree(os.path.join(ace_live_folder, DEVELOPER_TOOLS_FOLDER, SANITY_TESTS_FOLDER))
     shutil.copytree(os.path.join(kpi_factory_folder, DEVELOPER_TOOLS_FOLDER, SANITY_TESTS_FOLDER),
                     os.path.join(ace_live_folder, DEVELOPER_TOOLS_FOLDER, SANITY_TESTS_FOLDER))
     if project_name is not None:
