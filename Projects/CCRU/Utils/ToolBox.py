@@ -376,7 +376,8 @@ class CCRUKPIToolBox:
         exclude_list = []
         if params.get('Scenes to exclude'):
             scenes_to_exclude = \
-                [unicode(x).strip() for x in unicode(params.get('Scenes to exclude')).split('; ')]
+                [unicode(x).strip().encode('utf-8')
+                 for x in unicode(params.get('Scenes to exclude')).split('; ')]
             for scene in scenes_to_exclude:
                 if scene in scenes_data.keys():
                     exclude_list.extend(scenes_data[scene])
