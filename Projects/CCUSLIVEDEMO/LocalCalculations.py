@@ -21,8 +21,8 @@ if __name__ == '__main__':
     LoggerInitializer.init('ccuslivesdemo calculations')
     Config.init()
     project_name = 'expd-20191210-410-ccuslivedemo'
-    session = 'b408c67d-246f-4aef-91d7-19b98b50f4ad'
+    session = '0c2decfc-8d2f-4b22-b9d0-8e2e97c9557b'
     data_provider = KEngineSessionDataProviderLive(project_name, None, None)
-    data_provider.load_session_data('b408c67d-246f-4aef-91d7-19b98b50f4ad', [14049099])
+    data_provider.load_session_data('0c2decfc-8d2f-4b22-b9d0-8e2e97c9557b', [14049102])
     output = Output()
     Calculations(data_provider, output).run_project_calculations()
