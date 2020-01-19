@@ -67,8 +67,9 @@ class CCZAToolBox:
     def sos_main_calculation(self):
         store_sos_ident_par, store_facings = self.calculate_own_manufacturer_out_of_store()
         category_df = self.calculate_sos_category_out_of_store(store_sos_ident_par, store_facings)
-        manufacturer_cat_df = self.calculate_sos_manufacturer_out_of_category(category_df)
-        self.calculate_sos_brand_out_of_manufacturer(manufacturer_cat_df)
+        if not category_df.empty:
+            manufacturer_cat_df = self.calculate_sos_manufacturer_out_of_category(category_df)
+            self.calculate_sos_brand_out_of_manufacturer(manufacturer_cat_df)
 
     def calculate_own_manufacturer_out_of_store(self):
         manuf_out_of_store_fk = self.common_v2.get_kpi_fk_by_kpi_type(Const.SOS_OWN_MANUF_OUT_OF_STORE)
