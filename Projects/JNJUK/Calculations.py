@@ -52,7 +52,7 @@ if __name__ == '__main__':
     Config.init()
     project_name = 'jnjuk'
     data_provider = KEngineDataProvider(project_name)
-    session = 'a31b8f7a-9327-4f8e-8495-6c8bba2b4d0e'
+    session = 'ca9b70f5-c59e-44c8-8c1c-da36b9992363'
     # session = 'f850397b-6b79-47e9-897b-9edb2632efda' # 60 sec for promocalc
     data_provider.load_session_data(session)
     output = Output()
