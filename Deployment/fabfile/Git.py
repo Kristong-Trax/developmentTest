@@ -177,6 +177,7 @@ def copy_to_ace_live(sdk_factory_folder, ace_live_folder, kpi_factory_folder=Non
         shutil.copytree(os.path.join(kpi_factory_folder, PROJECT_FOLDER, project_name),
                         os.path.join(ace_live_folder, PROJECT_FOLDER, project_name))
 
+
 def pull_from_repository(repo, origin):
     try:
         with repo.git.custom_environment(GIT_SSH_COMMAND=SSH_CMD):
