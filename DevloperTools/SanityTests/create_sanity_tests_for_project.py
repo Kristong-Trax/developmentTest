@@ -415,8 +415,7 @@ if __name__ == '__main__':
     LoggerInitializer.init('running sanity creator script')
     replace_configurations_file = True
     copy_configuration_file_to_traxexport(replace_configurations_file)
-    projects = {'jnjes': {},
-                'inbevci': {'a': [12], 'b': [2]}
+    projects = {'sinoth': {},
                 }
     for project in projects:
         try:
