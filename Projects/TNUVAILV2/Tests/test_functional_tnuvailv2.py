@@ -220,9 +220,9 @@ class TestTnuvailv2(TestFunctionalCase):
                                                        expected_result) == 1)
         self.assertTrue(all(test_result_list))
 
-    # Test session has only milk shelf. Only SOS with respect to milk products is expected to be calculated
-    # Empties are ignored. Stack is not included.
     def test_calculate_facings_sos_calculates_kpis_only_for_policies_existing_in_store(self):
+        """Test session has only milk shelf. Only SOS with respect to milk products is expected to be calculated.
+           Empties are ignored. Stack is not included."""
         matches, scene = self.create_scif_matches_stitch_groups_data_mocks([3])
         self.mock_get_last_session_oos_results(DataTestUnitTnuva.previous_results_empty)
         self.mock_get_oos_reasons_for_session(DataTestUnitTnuva.oos_exclude_res_1)
