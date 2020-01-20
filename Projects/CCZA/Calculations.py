@@ -15,7 +15,7 @@ class CCZACalculations(BaseCalculationsScript):
         CCZAGenerator(self.data_provider, self.output).main_function()
         self.timer.stop('KPIGenerator.run_project_calculations')
 
-
+#
 # if __name__ == '__main__':
 #     LoggerInitializer.init('ccza calculations')
 #     Config.init()
@@ -25,7 +25,7 @@ class CCZACalculations(BaseCalculationsScript):
 #                 # 'FF39172D-EE62-4184-ABF7-91CD2D05800B',
 #                 # 'FE8E0E52-9DF1-40BF-81E2-C6F618682806',
 #                 # 'FE1CF09E-272A-4B15-9BF4-E9E4228A2BF2'
-#                 '85b8d0ca-4889-48df-aec0-409d74786537' # wholesaler for new kpis
+#                 'e2303112-7f0c-4cc9-952c-ebf62e52b395' # wholesaler for new kpis
 #     ]
 #     for session in sessions:
 #         data_provider = KEngineDataProvider(project_name)
