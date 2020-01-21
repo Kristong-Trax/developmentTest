@@ -22,8 +22,12 @@ class DIAGEOAUToolBox:
         self.diageo_generator.sos_by_scene_type(self.commonV2)
 
         # Global assortment kpis
-        assortment_results = self.diageo_generator.diageo_global_grouping_assortment_calculation()
-        self.commonV2.save_json_to_new_tables(assortment_results)
+        assortment_res_dict = self.diageo_generator.diageo_global_assortment_function_v2()
+        self.commonV2.save_json_to_new_tables(assortment_res_dict)
+
+        # Global assortment kpis - v3 for NEW MOBILE REPORTS use
+        assortment_res_dict_v3 = self.diageo_generator.diageo_global_assortment_function_v3()
+        self.commonV2.save_json_to_new_tables(assortment_res_dict_v3)
 
         # committing to new tables
         self.commonV2.commit_results_data()
