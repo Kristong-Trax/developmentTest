@@ -41,14 +41,16 @@ class LiveAssortmentCalculation:
          'super_group_target', 'additional_attributes']. Indicates whether the product was in the store (1) or not (0).
         """
         assortment_result = self.get_lvl3_relevant_ass()
-
         if assortment_result.empty or self.match_product_in_scene.empty:
-            return assortment_result
+            return pd.DataFrame(columns=self.LVL3_HEADERS)
         mpi_filtered = self.match_product_in_scene.copy() if not stacking else\
             self.match_product_in_scene.loc[self.match_product_in_scene.stacking_layer == 1]
         assortment_result.loc[assortment_result.product_fk.isin(mpi_filtered.product_fk.values), 'in_store'] = 1
-        mpi_filtered = mpi_filtered[['product_fk']].groupby('product_fk').size().reset_index(name='facings')
-        assortment_result = assortment_result.merge(mpi_filtered, on='product_fk')
+
+        mpi_filtered = mpi_filtered[mpi_filtered.product_fk.isin(assortment_result.product_fk.values)]
+        assortment_facings = mpi_filtered[['product_fk']].groupby('product_fk').size().reset_index(name='facings')
+        assortment_result = assortment_result.merge(assortment_facings, how='left', on='product_fk')
+        assortment_result.loc[assortment_result['facings'].isnull(), 'facings'] = 0
         return assortment_result
 
     def calculate_lvl2_assortment(self, lvl3_assortment):
@@ -60,12 +62,17 @@ class LiveAssortmentCalculation:
         Indicates for each assortment group how many products were in the store (passes) out of the total\ target
         (total\ target).
         """
+
+        if lvl3_assortment.empty:
+            return pd.DataFrame(columns=self.LVL2_HEADERS)
         lvl3_res = lvl3_assortment.copy()
         lvl3_res = lvl3_res.fillna(self.EMPTY_VAL)
         lvl2_res = lvl3_res.groupby(self.LVL2_HEADERS)['in_store'].agg([('total', 'sum'), ('passes', 'count')]).reset_index()
         return lvl2_res
 
     def calculate_lvl_1_assortment(self, lvl2_assortment):
+        if lvl2_assortment.empty:
+            return pd.DataFrame(columns=self.LVL1_HEADERS)
         ass_super = lvl2_assortment[~lvl2_assortment['kpi_fk_lvl1'] == self.EMPTY_VAL]
         ass_super = ass_super.groupby(self.LVL1_HEADERS).agg({'total': 'count', 'passes': 'sum'}).reset_index()
         if ass_super.empty:
