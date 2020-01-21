@@ -106,17 +106,19 @@ class PsSanityTestsFuncs(TestFunctionalCase):
         wrong_results = wrong_results[wrong_results['kpi_level_2_fk'].isin(wrong_kpis_without_duplicates)]
         if not wrong_results.empty:
             try:
-                Log.info("The following KPIs had wrong results: ")
+                error_str = "The following KPIs had wrong results: \n"
                 for i, res in wrong_results.iterrows():
-                    Log.info("session_fk: {0}, kpi_level_2_fk: {1}, client_name: {2}, numerator_id: {3}, "
-                             "denominator_id: {4}, context_id: {5}, seed_result: {6}, db_actual_result: {7}, "
-                             "seed_numerator_result: {8}, db_numerator_result: {9}, "
-                             "seed_denominator_result: {10}, db_denominator_result: {11}. \n"
-                             "".format(str(res['session_fk']), str(res['kpi_level_2_fk']), str(res['client_name_x']),
-                                       str(res['numerator_id']), str(res['denominator_id']), str(res['context_id']),
-                                       str(res['result_y']), str(res['result_x']), str(res['numerator_result_y']),
-                                       str(res['numerator_result_x']), str(res['denominator_result_y']),
-                                       str(res['denominator_result_x'])))
+                    error_str += ("session_fk: {0}, kpi_level_2_fk: {1}, client_name: {2}, numerator_id: {3}, "
+                                  "denominator_id: {4}, context_id: {5}, seed_result: {6}, db_actual_result: {7}, "
+                                  "seed_numerator_result: {8}, db_numerator_result: {9}, "
+                                  "seed_denominator_result: {10}, db_denominator_result: {11}. "
+                                  "\n""".format(str(res['session_fk']), str(res['kpi_level_2_fk']),
+                                                str(res['client_name_x']), str(res['numerator_id']),
+                                                str(res['denominator_id']), str(res['context_id']),
+                                                str(res['result_y']), str(res['result_x']),
+                                                str(res['numerator_result_y']), str(res['numerator_result_x']),
+                                                str(res['denominator_result_y']), str(res['denominator_result_x'])))
+                Log.info(error_str)
             except Exception as e:
-                Log.warning("Couldn't print differences, failed with error: {}".format(e))
+                Log.warning("Couldn't log differences, failed with error: {}".format(e))
         self.assertTrue(wrong_results.empty)

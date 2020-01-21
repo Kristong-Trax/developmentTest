@@ -146,8 +146,8 @@ class TestKEnginePsCode(PsSanityTestsFuncs):
             output = Output()
             %(main_class_name)s(data_provider, output).run_project_calculations()
             # for scene in sessions[session]:
-            # data_provider.load_scene_data(str(session), scene_id=scene)
-            # SceneCalculations(data_provider).calculate_kpis()
+                # data_provider.load_scene_data(str(session), scene_id=scene)
+                # SceneCalculations(data_provider).calculate_kpis()
         self._assert_test_results_matches_reality(kpi_results)
         # self._assert_old_tables_kpi_results_filled()
         # self._assert_new_tables_kpi_results_filled(distinct_kpis_num=None, list_of_kpi_names=None)
@@ -408,18 +408,18 @@ def create_sanity_test(project, sessions_to_use, kpi_results):
 if __name__ == '__main__':
     """
     This script was made to create a sanity test per project.
+    Per project, leave sessions param empty if you want the script will find you the optimal session to use.
+    Otherwise: insert a session_uid / dict of session_uids with a list of scenes (can be empty) per session
+    Insert it to projects param in the following format {'a': [1, 3], 'b':[]}
     """
     LoggerInitializer.init('running sanity creator script')
     replace_configurations_file = True
     copy_configuration_file_to_traxexport(replace_configurations_file)
-    projects = {'jnjes': [],
-                'inbevci': []}
+    projects = {'sinoth': {},
+                }
     for project in projects:
         try:
             kpi_results = pd.DataFrame()
-            # Leave sessions param empty if you want the script will find you the optimal session to use.
-            # Otherwise: insert a session_uid / list of session_uids / dict of session_uid
-            #            and scenes in the following format {'a': [1, 3]}
             sessions = projects[project]
             # In case you don't need to generate a new seed, just comment out the below row
             sessions, kpi_results = create_seed(project=project, sessions_from_user=sessions)
