@@ -28,20 +28,15 @@ class CalculateKpi(LiveSessionBaseClass):
         lvl_2_result = self.assortment.calculate_lvl2_assortment(lvl3_result)
         lvl_2_result.rename(columns={'passes': 'numerator_result', 'total': 'denominator_result', 'kpi_fk_lvl2': 'fk'},
                             inplace=True)
+        dist_result_lvl1, dist_results_lvl2 = self.availability(lvl3_result, lvl_2_result)
+        self.write_results_to_db(dist_result_lvl1)
+        self.write_results_to_db(dist_results_lvl2)
 
-        # dist_result = self.assortment_sku_level(lvl3_result.copy())
-        # dist_results_sku = dist_result.to_dict('records')
-        # self.common.save_json_to_new_tables_sessions(dist_results_sku)
+        oos_sku_res = self.oos_sku(dist_result_lvl1)
+        self.write_results_to_db(oos_sku_res)
 
-        oos_sku_res = self.oos_sku(dist_result)
-        self.common.save_json_to_new_tables_sessions(oos_sku_res)
         oos_group_res = self.oos_group_level(lvl_2_result)
-        self.common.save_json_to_new_tables_sessions(oos_group_res)
-
-        # dist_results_lvl2 = self.assortment_group_level(lvl_2_result)
-        # dist_results_lvl2 = dist_results_lvl2.to_dict('records')
-        # self.common.save_json_to_new_tables_sessions(dist_results_lvl2)
-
+        self.write_results_to_db(oos_group_res)
 
         self.common.commit_live_queries()
 
@@ -62,12 +57,15 @@ class CalculateKpi(LiveSessionBaseClass):
         return lvl_2_result
 
     def availability(self, lvl3_result, lvl2_result):
-        dist_result = self.assortment_sku_level(lvl3_result.copy())
-        dist_results_sku = dist_result.to_dict('records')
-        self.common.save_json_to_new_tables_sessions(dist_results_sku)
+        dist_result_lvl1 = self.assortment_sku_level(lvl3_result.copy())
         dist_results_lvl2 = self.assortment_group_level(lvl2_result)
-        dist_results_lvl2 = dist_results_lvl2.to_dict('records')
-        self.common.save_json_to_new_tables_sessions(dist_results_lvl2)
+        return dist_result_lvl1, dist_results_lvl2
+
+    def write_results_to_db(self, res_df):
+        if res_df.empty:
+            return
+        dict_results = res_df.to_dict('records')
+        self.common.save_json_to_new_tables_sessions(dict_results)
 
     def assortment_sku_level(self, lvl_3_result):
 
@@ -87,7 +85,10 @@ class CalculateKpi(LiveSessionBaseClass):
         # filter distrubution kpis
 
         oos_results = lvl_3_result.loc[lvl_3_result['result'] == 0]
+        if oos_results.empty():
+            return None
         oos_results.loc[:, 'fk'] = self.get_kpi_fk('OOS - SKU')
+        return oos_results
 
     def oos_group_level(self, lvl_2_result):
         lvl_2_result = lvl_2_result.copy()
