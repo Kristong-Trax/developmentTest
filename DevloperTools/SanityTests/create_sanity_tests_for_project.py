@@ -285,7 +285,7 @@ class GetKpisDataForTesting:
         Log.info("The chosen session is: {}".format(list(sessions_chosen)))
         return sessions_chosen_dict
 
-    def get_session_with_max_kpis(self, number_of_sessions, days_back=10):
+    def get_session_with_max_kpis(self, number_of_sessions, days_back=3):
         Log.info('Fetching recent session with max number of kpis')
         query = """
                 SELECT 
@@ -415,7 +415,20 @@ if __name__ == '__main__':
     LoggerInitializer.init('running sanity creator script')
     replace_configurations_file = True
     copy_configuration_file_to_traxexport(replace_configurations_file)
-    projects = {'sinoth': {},
+    projects = {
+        'sanofiae': {},
+        'sanofici': {},
+        'sanoficm': {},
+        'sanofilb': {},
+        'sanofima': {},
+        'sanofiru': {},
+        'sanofisa': {},
+        'sanofisn': {},
+        'sanofitn': {},
+        'sanofitr': {},
+        'sanofiua': {},
+        'sanofiuz': {},
+        'sanofiza': {},
                 }
     for project in projects:
         try:
