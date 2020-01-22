@@ -1,9 +1,8 @@
 import pandas as pd
 from datetime import datetime
 from Trax.Apps.Services.KEngine.Handlers.Utils.Scripts import LiveSessionBaseClass
-from KPIUtils_v2.GlobalDataProvider.PSAssortmentProvider import PSAssortmentDataProvider
-from Projects.CCUSLIVEDEMO.LiveSessionKpis.PSAssortmentProvider import LiveAssortmentDataProvider
-from Projects.CCUSLIVEDEMO.LiveSessionKpis.Assortment import LiveAssortmentCalculation
+
+from KPIUtils.Calculations.LiveAssortment import LiveAssortmentCalculation
 from KPIUtils_v2.DB.LiveCommon import LiveCommon
 from Trax.Utils.Logging.Logger import Log
 
@@ -25,6 +24,7 @@ class CalculateKpi(LiveSessionBaseClass):
         self.current_date = datetime.now()
         self.assortment = LiveAssortmentCalculation(data_provider)
         self.manufacturer_fk = 0
+        self.result_value = self.common.get_result_values()
 
     def calculate_session_live_kpi(self):
 
@@ -78,7 +78,7 @@ class CalculateKpi(LiveSessionBaseClass):
 
         lvl_3_result.rename(columns={'product_fk': 'numerator_id', 'assortment_group_fk': 'denominator_id',
                                      'in_store': 'result', 'kpi_fk_lvl3': 'fk'}, inplace=True)
-        lvl_3_result.loc[:, 'result'] *= 100
+        lvl_3_result.loc[:, 'result'] = lvl_3_result.apply(lambda row: self.kpi_result_value(row.result), axis=1)
         lvl_3_result = lvl_3_result.assign(numerator_result=lvl_3_result['result'],
                                            denominator_result=lvl_3_result['result'],
                                            score=lvl_3_result['result'])
@@ -90,7 +90,8 @@ class CalculateKpi(LiveSessionBaseClass):
     def oos_sku(self, lvl_3_result):
 
         # filter distrubution kpis
-        oos_results = lvl_3_result[lvl_3_result['result'] == 0]
+        # oos_results = lvl_3_result[lvl_3_result['result'] == 0]
+        oos_results = lvl_3_result.copy()
         if oos_results.empty:
             return oos_results
         oos_results.loc[:, 'fk'] = self.get_kpi_fk('OOS - SKU')
@@ -135,10 +136,17 @@ class CalculateKpi(LiveSessionBaseClass):
     def get_manufacturer_fk(self, assortment_df):
         manufacturer_df = assortment_df[['product_fk']].merge(self.products[['product_fk', 'manufacturer_fk']],
                                                               how='left', on='product_fk')
-        # manufacturer_df = manufacturer_df.loc[manufacturer_df['manufacturer_fk'].isnull()]
-        # if manufacturer_df.empty:
-        #     Log.warning('Extracting manufacturer failed')
-        #     return None
+        manufacturer_df = manufacturer_df.loc[~manufacturer_df['manufacturer_fk'].isnull()]
+        if manufacturer_df.empty:
+            Log.warning('Extracting manufacturer failed')
+            return None
         Log.info('Manufacturer_fk for this session is {}'.format(manufacturer_df['manufacturer_fk'].loc[0]))
         return manufacturer_df['manufacturer_fk'].loc[0]
         # return 1
+
+    def kpi_result_value(self, value):
+        value = 'OOS' if value == 0 else 'DISTRIBUTED'
+        value_info = self.result_value[self.result_value['value'] == value]
+        if value_info.empty:
+            return
+        return value_info.pk.iloc[0]
