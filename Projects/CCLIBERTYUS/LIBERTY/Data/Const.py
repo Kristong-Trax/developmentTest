@@ -97,3 +97,6 @@ class Const(object):
 
     NOT_NULL = 'NOT NULL'
     NUMERIC_VALUES_TYPES = ['size']
+
+    SCIF_MULTI_PACK_SIZE = 'MULTI-PACK SIZE'
+    SCIF_BASE_SIZE = 'BASE SIZE'
