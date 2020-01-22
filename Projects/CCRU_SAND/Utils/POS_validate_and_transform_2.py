@@ -16,8 +16,9 @@ sys.path.append('.')
 PROJECT = 'ccru_sand'
 
 POS_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data/KPIs_2020')
-POS_PATH_INPUT = os.path.join(POS_PATH, 'INPUT')
-POS_OUTPUT_PATH = os.path.join(POS_PATH, 'OUTPUT')
+POS_PATH_VALIDATION = os.path.join(POS_PATH, 'POS_VALIDATION')
+POS_PATH_VALIDATION_INPUT = os.path.join(POS_PATH, 'INPUT')
+POS_PATH_VALIDATION_OUTPUT = os.path.join(POS_PATH, 'OUTPUT')
 POS_LIST = {'file_name': 'PoS 2020 List.xlsx', 'sheet_name': 'PoS List'}
 POS_ALL_FILE = 'PoS 2020 ALL.xlsx'
 POS_KPIS_INTO_DB_OLD_FILE = 'PoS 2020 INTO DB kpis.xlsx'
@@ -390,6 +391,7 @@ ALLOWED_VALUES_TYPES = [
 
 ADDITIONAL_DEPEND_ON_VALUES = ['scene type', 'filled coolers target']
 
+
 class CCRU_SANDPOSValidator:
 
     def __init__(self):
@@ -416,7 +418,7 @@ class CCRU_SANDPOSValidator:
 
     def validate_and_transform(self):
 
-        pos_list_df = pd.read_excel(os.path.join(POS_PATH, POS_LIST['file_name']),
+        pos_list_df = pd.read_excel(os.path.join(POS_PATH_VALIDATION, POS_LIST['file_name']),
                                     sheet_name=POS_LIST['sheet_name'], convert_float=True)
         pos_list_df = pos_list_df.where((pd.notnull(pos_list_df)), None)
 
@@ -428,7 +430,7 @@ class CCRU_SANDPOSValidator:
             file_out = row['File_out']
             sheet_out = row['Sheet_out'] if row['Sheet_out'] else 'Sheet1'
 
-            pos = pd.read_excel(os.path.join(POS_PATH_INPUT, file_in),
+            pos = pd.read_excel(os.path.join(POS_PATH_VALIDATION_INPUT, file_in),
                                 sheet_name=sheet_in,
                                 converters={
                                     'KPI ID': int,
@@ -984,7 +986,8 @@ class CCRU_SANDPOSValidator:
                                             '00_kpi_atomic_display_name_rus': 'KPI Level 3 Display Text RUS',
                                             '00_kpi_atomic_wight': 'KPI Level 3 Weight'
                                         })
-            writer = pd.ExcelWriter(os.path.join(POS_OUTPUT_PATH, POS_KPIS_INTO_DB_OLD_FILE), engine='xlsxwriter')
+            writer = pd.ExcelWriter(os.path.join(POS_PATH_VALIDATION_OUTPUT, POS_KPIS_INTO_DB_OLD_FILE),
+                                    engine='xlsxwriter')
             db_kpis.to_excel(writer, sheet_name='Sheet1', index=False)
             writer.save()
             pos_all = pos_all.drop(columns=['NEW'])
@@ -994,7 +997,8 @@ class CCRU_SANDPOSValidator:
             bd_kpis = pos_all[pos_all[kpi_name_column].notnull()][[kpi_name_column, 'KPI name RUS']]
             bd_kpis[KPI_LEVEL_2_INSERT] = \
                 bd_kpis.apply(lambda r: KPI_LEVEL_2_VALUES.format(r[kpi_name_column] + r['KPI name RUS']), axis=1)
-            writer = pd.ExcelWriter(os.path.join(POS_OUTPUT_PATH, POS_KPIS_INTO_DB_NEW_FILE), engine='xlsxwriter')
+            writer = pd.ExcelWriter(os.path.join(POS_PATH_VALIDATION_OUTPUT, POS_KPIS_INTO_DB_NEW_FILE),
+                                    engine='xlsxwriter')
             db_kpis.to_excel(writer, sheet_name='Sheet1', index=False)
             writer.save()
 
@@ -1018,7 +1022,7 @@ class CCRU_SANDPOSValidator:
         # creating POS files
         pos_files = pos_list_df['File_out'].unique().tolist()
         for pos_file in pos_files:
-            writer = pd.ExcelWriter(os.path.join(POS_OUTPUT_PATH, pos_file), engine='xlsxwriter')
+            writer = pd.ExcelWriter(os.path.join(POS_PATH_VALIDATION_OUTPUT, pos_file), engine='xlsxwriter')
 
             pos_sheets = pos_list_df[pos_list_df['File_out'] == pos_file]['Sheet_out'].unique().tolist()
             for pos_sheet in pos_sheets:
@@ -1482,11 +1486,38 @@ class CCRU_SANDPOSValidator:
 
         return pos
 
+    def checking_list_values(self, pos):
+
+
+        # checking Products to exclude
+        column_name = 'Products to exclude'
+        error_name = 'INCORRECT VALUES'
+        error_column_name = WARNING_INFO.format(column_name, error_name)
+        if column_name in pos.columns:
+            for i, r in pos[pos[column_name].notnull()].iterrows():
+                error_detected = False
+                error_values = []
+                if r[column_name] and r.get('Values') and r.get('Type') == 'SKUs':
+                    error_detected = True
+                    error_values = [r[column_name]]
+                for value in unicode(r[column_name]).split(', '):
+                    if value not in self.ean_codes:
+                        error_detected = True
+                        error_values += [value]
+                if error_detected:
+                    if error_column_name not in pos.columns:
+                        pos[error_column_name] = None
+                    pos.loc[i, error_column_name] = ', '.join(error_values)
+                    contents_ok &= False
+
     def get_kpi_names(self):
         query = """
                 SELECT 
+                    s.pk as kpi_set_pk, 
                     s.name as kpi_set_name, 
+                    k.pk as kpi_pk,
                     k.display_text as kpi_name,
+                    a.pk as atomic_kpi_pk,
                     a.name as atomic_kpi_name
                 FROM static.kpi_set s
                 JOIN static.kpi k ON k.kpi_set_fk=s.pk
