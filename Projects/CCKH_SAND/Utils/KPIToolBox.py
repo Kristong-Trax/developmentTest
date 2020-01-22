@@ -350,13 +350,19 @@ class CCKH_SANDToolBox(CCKH_SANDConsts):
             kpi_data = custom_template[condition]
             if kpi_data.empty:
                 return False
-            weight = \
-                kpi_data[
-                    kpi_data['store_type'].str.encode(HelperConsts.UTF8) == self.store_type.encode(HelperConsts.UTF8)][
-                    'Target'].values[0]
             try:
+                weight = \
+                    kpi_data[
+                        kpi_data['store_type'].str.encode(HelperConsts.UTF8) == self.store_type.encode(
+                            HelperConsts.UTF8)][
+                        'Target'].values[0]
                 validation = float(weight)
             except ValueError:
+                validation = False
+            except IndexError:
+                Log.warning("{kpi}: No matching external targets for this session: {sess}".format(
+                    kpi=kpi_group,
+                    sess=self.session_uid))
                 validation = False
         return validation
 

@@ -11,7 +11,12 @@ if __name__ == '__main__':
     project_name = 'jtimx'
     data_provider = KEngineDataProvider(project_name)
     session_list = [
-        '09034694-2e5f-4eb7-b80c-a1241e678603'
+
+        #'8c80f46d-b7de-41cb-af8a-b311056354ec',
+        # '6b85a079-a417-4601-9780-f9f96cd960a3'
+        '00f9febe-26fa-4abc-b822-790bbdb341bc',
+        '02f87384-7af5-4f01-88f3-afde526831ac',
+        '12829f49-3c4e-4b56-abba-911a751a9310'
         # '5eecf0b7-5e05-48a3-9bf7-50bb545196ae',
         #             'fb3d78b5-c256-4ef0-a672-1e03fb1b09fa',
         #             'fcfeb334-04f1-4ad6-86b9-7a7632a67b6f',

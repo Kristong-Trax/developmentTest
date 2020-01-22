@@ -154,7 +154,7 @@ class GSKJPToolBox:
         df = pd.merge(self.match_product_in_scene,
                       self.all_products[Const.PRODUCTS_COLUMNS], how='left', on=[MatchesConsts.PRODUCT_FK])
         df = pd.merge(self.scif[Const.SCIF_COLUMNS],
-                      df, how='right', right_on=[ScifConsts.SCENE_FK, ScifConsts.SCENE_FK],
+                      df, how='right', right_on=[ScifConsts.SCENE_FK, ScifConsts.PRODUCT_FK],
                       left_on=[ScifConsts.SCENE_ID, ScifConsts.PRODUCT_FK])
 
         if df.empty:

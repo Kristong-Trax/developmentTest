@@ -28,6 +28,12 @@ class LIBERTYToolBox:
             self.data_provider[Data.STORE_INFO])
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
         self.scif = self.scif[self.scif['product_type'] != "Irrelevant"]
+        #### hotfix for attributes ####
+        self.scif.loc[self.scif[Const.SCIF_BASE_SIZE].isna(), Const.SCIF_BASE_SIZE] = \
+            self.scif.loc[self.scif[Const.SCIF_BASE_SIZE].isna(), 'Base Size']
+        self.scif.loc[self.scif[Const.SCIF_MULTI_PACK_SIZE].isna(), Const.SCIF_MULTI_PACK_SIZE] = \
+            self.scif.loc[self.scif[Const.SCIF_MULTI_PACK_SIZE].isna(), 'Multi-Pack Size']
+        #### hotfix for attributes ####
         self.result_values = self.ps_data_provider.get_result_values()
         self.templates = self.read_templates()
         self.common_db = common_db
@@ -323,8 +329,8 @@ class LIBERTYToolBox:
             # size_subpackages_tuples = [tuple([float(i) for i in x.split(';')]) for x in size_subpackages]
             size_subpackages_tuples = [tuple([self.convert_base_size_values(i) for i in x.split(';')]) for x in
                                        size_subpackages]
-            filtered_scif = filtered_scif[pd.Series(list(zip(filtered_scif['Base Size'],
-                                                             filtered_scif['Multi-Pack Size'])),
+            filtered_scif = filtered_scif[pd.Series(list(zip(filtered_scif[Const.SCIF_BASE_SIZE],
+                                                             filtered_scif[Const.SCIF_MULTI_PACK_SIZE])),
                                                     index=filtered_scif.index).isin(size_subpackages_tuples)]
 
         excluded_size_subpackages = self.does_exist(kpi_line, Const.EXCLUDED_SIZE_SUBPACKAGES_NUM)
@@ -333,18 +339,18 @@ class LIBERTYToolBox:
             # size_subpackages_tuples = [tuple([float(i) for i in x.split(';')]) for x in size_subpackages]
             size_subpackages_tuples = [tuple([self.convert_base_size_values(i) for i in x.split(';')]) for x in
                                        excluded_size_subpackages]
-            filtered_scif = filtered_scif[~pd.Series(list(zip(filtered_scif['Base Size'],
-                                                              filtered_scif['Multi-Pack Size'])),
+            filtered_scif = filtered_scif[~pd.Series(list(zip(filtered_scif[Const.SCIF_BASE_SIZE],
+                                                              filtered_scif[Const.SCIF_MULTI_PACK_SIZE])),
                                                      index=filtered_scif.index).isin(size_subpackages_tuples)]
 
         sub_packages = self.does_exist(kpi_line, Const.SUBPACKAGES_NUM)
         if sub_packages:
             if sub_packages == [Const.NOT_NULL]:
-                filtered_scif = filtered_scif[~filtered_scif['Multi-Pack Size'].isnull()]
+                filtered_scif = filtered_scif[~filtered_scif[Const.SCIF_MULTI_PACK_SIZE].isnull()]
             elif sub_packages == [Const.GREATER_THAN_ONE]:
-                filtered_scif = filtered_scif[filtered_scif['Multi-Pack Size'] > 1]
+                filtered_scif = filtered_scif[filtered_scif[Const.SCIF_MULTI_PACK_SIZE] > 1]
             else:
-                filtered_scif = filtered_scif[filtered_scif['Multi-Pack Size'].isin(
+                filtered_scif = filtered_scif[filtered_scif[Const.SCIF_MULTI_PACK_SIZE].isin(
                     [int(i) for i in sub_packages])]
 
         if self.does_exist(kpi_line, Const.MINIMUM_FACINGS_REQUIRED):
@@ -439,7 +445,7 @@ class LIBERTYToolBox:
             return 0, 0
 
         filtered_scif = \
-            filtered_scif.groupby(['Base Size', 'Multi-Pack Size', 'scene_id'],
+            filtered_scif.groupby([Const.SCIF_BASE_SIZE, Const.SCIF_MULTI_PACK_SIZE, 'scene_id'],
                                   as_index=False)['facings'].sum()
 
         if filtered_scif.empty:
@@ -455,9 +461,9 @@ class LIBERTYToolBox:
 
     def _calculate_pass_status_of_display(self, row):  # need to move to external KPI targets
         template = self.templates[Const.MINIMUM_FACINGS]
-        relevant_template = template[(template[Const.BASE_SIZE_MIN] <= row['Base Size']) &
-                                     (template[Const.BASE_SIZE_MAX] >= row['Base Size']) &
-                                     (template[Const.MULTI_PACK_SIZE] == row['Multi-Pack Size'])]
+        relevant_template = template[(template[Const.BASE_SIZE_MIN] <= row[Const.SCIF_BASE_SIZE]) &
+                                     (template[Const.BASE_SIZE_MAX] >= row[Const.SCIF_BASE_SIZE]) &
+                                     (template[Const.MULTI_PACK_SIZE] == row[Const.SCIF_MULTI_PACK_SIZE])]
         if relevant_template.empty:
             return 0
         minimum_facings = relevant_template[Const.MINIMUM_FACINGS_REQUIRED_FOR_DISPLAY].min()
@@ -525,9 +531,9 @@ class LIBERTYToolBox:
 
     # helper functions
     def convert_base_size_and_multi_pack(self):
-        self.scif.loc[:, 'Base Size'] = self.scif['Base Size'].apply(self.convert_base_size_values)
-        self.scif.loc[:, 'Multi-Pack Size'] = \
-            self.scif['Multi-Pack Size'].apply(lambda x: int(x) if x is not None else None)
+        self.scif.loc[:, Const.SCIF_BASE_SIZE] = self.scif[Const.SCIF_BASE_SIZE].apply(self.convert_base_size_values)
+        self.scif.loc[:, Const.SCIF_MULTI_PACK_SIZE] = \
+            self.scif[Const.SCIF_MULTI_PACK_SIZE].apply(lambda x: int(x) if x is not None else None)
 
     @staticmethod
     def convert_base_size_values(value):
