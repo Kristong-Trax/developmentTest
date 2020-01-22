@@ -2753,15 +2753,15 @@ class CCRUKPIToolBox:
             if str(self.visit_date) < self.MIN_CALC_DATE:
                 query = """
                         select ss.additional_attribute_11 
-                        from static.stores ss
-                        join probedata.session ps on ps.store_fk=ss.pk
+                        from static.stores ss 
+                        join probedata.session ps on ps.store_fk=ss.pk 
                         where ss.delete_date is null and ps.session_uid = '{}';
                         """.format(self.session_uid)
             else:  # Todo - Change to additional_attribute_12 for PROD
                 query = """
                         select ss.additional_attribute_12 
-                        from static.stores ss
-                        join probedata.session ps on ps.store_fk=ss.pk
+                        from static.stores ss 
+                        join probedata.session ps on ps.store_fk=ss.pk 
                         where ss.delete_date is null and ps.session_uid = '{}';
                         """.format(self.session_uid)
 
