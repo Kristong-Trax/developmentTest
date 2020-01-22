@@ -10,7 +10,6 @@ from Trax.Utils.Logging.Logger import Log
 from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
 from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
 from Projects.RISPARKWINEDE_SAND.Utils.Fetcher import RISPARKWINEDEQueries
-# from Projects.RISPARKWINEDE_SAND.Utils.GeneralToolBox import RISPARKWINEDEGENERALToolBox
 from KPIUtils_v2.DB.CommonV2 import Common
 from KPIUtils_v2.Utils.Consts.DB import StaticKpis
 from Projects.RISPARKWINEDE_SAND.Utils.LocalConsts import Consts as LocalConst
@@ -99,15 +98,6 @@ class RISPARKWINEDEToolBox:
                                                denominator_id=result.assortment_fk, denominator_result=1,
                                                score=score)
 
-    # def get_new_kpi_static_data(self):
-    #     """
-    #         This function extracts the static new KPI data (new tables) and saves it into one global data frame.
-    #         The data is taken from static.kpi_level_2.
-    #         """
-    #     query = RISPARKWINEDEQueries.get_new_kpi_data()
-    #     kpi_static_data = pd.read_sql_query(query, self.rds_conn.db)
-    #     return kpi_static_data
-
     def main_assortment_calculation(self, lvl3_result):
         """
         This function calculates the KPI results.
@@ -183,67 +173,3 @@ class RISPARKWINEDEToolBox:
             # self.write_to_db_result_new_tables(fk=dist_kpi_fk, numerator_id=dist_kpi_fk,
             #                                    numerator_result=dist_numerator, result=dist_res,
             #                                    denominator_result=denominator, score=dist_res)
-        # return
-
-    # def write_to_db_result_new_tables(self, fk, numerator_id, numerator_result, result, denominator_id=None,
-    #                                   denominator_result=None, score=None, score_after_actions=None):
-    #     """
-    #         This function creates the result data frame of new rables KPI,
-    #         and appends the insert SQL query into the queries' list, later to be written to the DB.
-    #         """
-    #     table = KPI_NEW_TABLE
-    #     attributes = self.create_attributes_dict_new_tables(fk, numerator_id, numerator_result, denominator_id,
-    #                                                         denominator_result, result, score, score_after_actions)
-    #     query = insert(attributes, table)
-    #     self.kpi_results_new_tables_queries.append(query)
-    #
-    # def create_attributes_dict_new_tables(self, kpi_fk, numerator_id, numerator_result, denominator_id,
-    #                                       denominator_result, result, score, score_after_actions):
-    #     """
-    #     This function creates a data frame with all attributes needed for saving in KPI results new tables.
-    #     """
-    #     attributes = pd.DataFrame([(kpi_fk, self.session_id, numerator_id, numerator_result, denominator_id,
-    #                                 denominator_result, result, score, score_after_actions)], columns=['kpi_level_2_fk', 'session_fk',
-    #                                                                                                    'numerator_id', 'numerator_result',
-    #                                                                                                    'denominator_id',
-    #                                                                                                    'denominator_result', 'result',
-    #                                                                                                    'score', 'score_after_actions'])
-    #     return attributes.to_dict()
-    #
-    # @log_runtime('Saving to DB')
-    # def commit_results_data(self):
-    #     """
-    #     This function writes all KPI results to the DB, and commits the changes.
-    #     """
-    #     insert_queries = self.merge_insert_queries(
-    #         self.kpi_results_new_tables_queries)
-    #     delete_query = RISPARKWINEDEQueries.get_delete_session_results_query(
-    #         self.session_uid, self.session_id)
-    #     Log.info('Start committing results')
-    #     local_con = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
-    #     cur = local_con.db.cursor()
-    #     # for query in delete_queries:
-    #     cur.execute(delete_query)
-    #     total_queries = len(insert_queries)
-    #     counter = 1
-    #     for query in insert_queries:
-    #         Log.info('Executing query {} out of {}'.format(
-    #             counter, total_queries))
-    #         cur.execute(query)
-    #         counter += 1
-    #     local_con.db.commit()
-    #     Log.info('Finish committing results')
-    #
-    # @staticmethod
-    # def merge_insert_queries(insert_queries):
-    #     query_groups = {}
-    #     for query in insert_queries:
-    #         static_data, inserted_data = query.split('VALUES ')
-    #         if static_data not in query_groups:
-    #             query_groups[static_data] = []
-    #         query_groups[static_data].append(inserted_data)
-    #     merged_queries = []
-    #     for group in query_groups:
-    #         merged_queries.append('{0} VALUES {1}'.format(
-    #             group, ',\n'.join(query_groups[group])))
-    #     return merged_queries
