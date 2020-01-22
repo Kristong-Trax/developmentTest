@@ -5,6 +5,7 @@ from KPIUtils_v2.GlobalDataProvider.PSAssortmentProvider import PSAssortmentData
 from Projects.CCUSLIVEDEMO.LiveSessionKpis.PSAssortmentProvider import LiveAssortmentDataProvider
 from Projects.CCUSLIVEDEMO.LiveSessionKpis.Assortment import LiveAssortmentCalculation
 from KPIUtils_v2.DB.LiveCommon import LiveCommon
+from Trax.Utils.Logging.Logger import Log
 
 
 class CalculateKpi(LiveSessionBaseClass):
@@ -30,6 +31,7 @@ class CalculateKpi(LiveSessionBaseClass):
         # getting results
         lvl3_result = self.assortment.calculate_lvl3_assortment(False)
         if lvl3_result.empty:
+            Log.warning('Assortment is Empty for this session')
             return
         lvl_2_result = self.assortment.calculate_lvl2_assortment(lvl3_result)
         lvl_2_result.rename(columns={'passes': 'numerator_result', 'total': 'denominator_result', 'kpi_fk_lvl2': 'fk'},
@@ -58,7 +60,7 @@ class CalculateKpi(LiveSessionBaseClass):
         self.manipulate_result_row(lvl_2_result)
         self.add_visit_summary_kpi_entities(lvl_2_result)
         lvl_2_result = lvl_2_result[self.LVL2_SESSION_RESULTS_COL]
-
+        Log.info('Distribution group level is done ')
         return lvl_2_result
 
     def availability(self, lvl3_result, lvl2_result):
@@ -81,19 +83,19 @@ class CalculateKpi(LiveSessionBaseClass):
                                            denominator_result=lvl_3_result['result'],
                                            score=lvl_3_result['result'])
         lvl_3_result = self.filter_df_by_col(lvl_3_result, self.SKU_LEVEL)
-
+        Log.info('Distribution sku level is done ')
         return lvl_3_result
 
     # todo complete it
     def oos_sku(self, lvl_3_result):
 
         # filter distrubution kpis
-
         oos_results = lvl_3_result[lvl_3_result['result'] == 0]
         if oos_results.empty:
             return oos_results
         oos_results.loc[:, 'fk'] = self.get_kpi_fk('OOS - SKU')
         oos_results = self.filter_df_by_col(oos_results, self.SKU_LEVEL)
+        Log.info('oos_results_sku level Done')
         return oos_results
 
     def oos_group_level(self, lvl_2_result):
@@ -102,8 +104,10 @@ class CalculateKpi(LiveSessionBaseClass):
         lvl_2_result.loc[:, 'result'] = lvl_2_result.numerator_result / lvl_2_result.denominator_result
         self.manipulate_result_row(lvl_2_result)
         lvl_2_result.loc[:, 'fk'] = self.get_kpi_fk('OOS')
+        lvl_2_result.loc[lvl_2_result['target'] == -1, 'target'] = None
         self.add_visit_summary_kpi_entities(lvl_2_result)
         lvl_2_result = self.filter_df_by_col(lvl_2_result, self.GROUPS_LEVEL)
+        Log.info('oos_results group level Done')
         return lvl_2_result
 
     @staticmethod
@@ -131,4 +135,10 @@ class CalculateKpi(LiveSessionBaseClass):
     def get_manufacturer_fk(self, assortment_df):
         manufacturer_df = assortment_df[['product_fk']].merge(self.products[['product_fk', 'manufacturer_fk']],
                                                               how='left', on='product_fk')
+        # manufacturer_df = manufacturer_df.loc[manufacturer_df['manufacturer_fk'].isnull()]
+        # if manufacturer_df.empty:
+        #     Log.warning('Extracting manufacturer failed')
+        #     return None
+        Log.info('Manufacturer_fk for this session is {}'.format(manufacturer_df['manufacturer_fk'].loc[0]))
         return manufacturer_df['manufacturer_fk'].loc[0]
+        # return 1

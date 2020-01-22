@@ -46,7 +46,6 @@ class LiveAssortmentCalculation:
         mpi_filtered = self.match_product_in_scene.copy() if not stacking else\
             self.match_product_in_scene.loc[self.match_product_in_scene.stacking_layer == 1]
         assortment_result.loc[assortment_result.product_fk.isin(mpi_filtered.product_fk.values), 'in_store'] = 1
-
         mpi_filtered = mpi_filtered[mpi_filtered.product_fk.isin(assortment_result.product_fk.values)]
         assortment_facings = mpi_filtered[['product_fk']].groupby('product_fk').size().reset_index(name='facings')
         assortment_result = assortment_result.merge(assortment_facings, how='left', on='product_fk')
@@ -67,7 +66,7 @@ class LiveAssortmentCalculation:
             return pd.DataFrame(columns=self.LVL2_HEADERS)
         lvl3_res = lvl3_assortment.copy()
         lvl3_res = lvl3_res.fillna(self.EMPTY_VAL)
-        lvl2_res = lvl3_res.groupby(self.LVL2_HEADERS)['in_store'].agg([('total', 'sum'), ('passes', 'count')]).reset_index()
+        lvl2_res = lvl3_res.groupby(self.LVL2_HEADERS)['in_store'].agg([('total', 'count'), ('passes', 'sum')]).reset_index()
         return lvl2_res
 
     def calculate_lvl_1_assortment(self, lvl2_assortment):
