@@ -159,7 +159,7 @@ class TestMarsuae(TestFunctionalCase):
             test_result_list.append(self.check_results(results_df, expected_result) == 1)
         self.assertTrue(all(test_result_list))
 
-    def test_wine_assortment_calculation_no_historical_products_in_session(self):
+    def test_main_assortment_calculation_no_historical_products_in_session(self):
         lvl3_result = self.create_assortment_result_data_mock([1])
         tool_box = RISPARKWINEDEToolBox(self.data_provider_mock, self.output)
         tool_box.store_assortment = self.STORE_ASSORTMENT
@@ -202,7 +202,7 @@ class TestMarsuae(TestFunctionalCase):
             test_result_list.append(self.check_results(results_df, expected_result) == 1)
         self.assertTrue(all(test_result_list))
 
-    def test_wine_assortment_calculation_historical_products_present_in_session(self):
+    def test_main_assortment_calculation_historical_products_present_in_session(self):
         lvl3_result = self.create_assortment_result_data_mock([2])
         tool_box = RISPARKWINEDEToolBox(self.data_provider_mock, self.output)
         tool_box.store_assortment = self.STORE_ASSORTMENT
@@ -247,6 +247,27 @@ class TestMarsuae(TestFunctionalCase):
         expected_list.append({'fk': 2, 'score':  2.0/5 * 100, 'result':  2.0/5 * 100, 'numerator_result': 2,
                               'denominator_result': 5})
 
+        test_result_list = []
+        for expected_result in expected_list:
+            test_result_list.append(self.check_results(results_df, expected_result) == 1)
+        self.assertTrue(all(test_result_list))
+
+    def test_assortment_calculation_does_not_add_wine_products_to_distribution_kpi(self):
+        lvl3_result = self.create_assortment_result_data_mock([2])
+        tool_box = RISPARKWINEDEToolBox(self.data_provider_mock, self.output)
+        tool_box.store_assortment = self.STORE_ASSORTMENT
+        tool_box.common.write_to_db_result = MagicMock()
+        tool_box.main_calculation()
+
+        results_df = self.build_results_df(tool_box)
+        results_df['score'] = results_df['score'].apply(lambda x: round(x, 2))
+        results_df['result'] = results_df['result'].apply(lambda x: round(x, 2))
+
+        expected_list = list()
+        expected_list.append({'fk': 3, 'score': 3.0 / 5 * 100, 'result': 3.0 / 5 * 100, 'numerator_result': 3,
+                              'denominator_result': 5})
+        expected_list.append({'fk': 2, 'score': 2.0 / 5 * 100, 'result': 2.0 / 5 * 100, 'numerator_result': 2,
+                              'denominator_result': 5})
         test_result_list = []
         for expected_result in expected_list:
             test_result_list.append(self.check_results(results_df, expected_result) == 1)
