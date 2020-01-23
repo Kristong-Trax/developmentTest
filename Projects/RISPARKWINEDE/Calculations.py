@@ -21,7 +21,7 @@ class RISPARKWINEDECalculations(BaseCalculationsScript):
 #     Config.init()
 #     project_name = 'risparkwinede'
 #     data_provider = KEngineDataProvider(project_name)
-#     session = 'F5FCE512-79A6-4226-AC2F-81FE028751A7'
+#     session = '1805F229-6D9E-4E49-9039-298FF1281B24'
 #     data_provider.load_session_data(session)
 #     output = Output()
 #     RISPARKWINEDECalculations(data_provider, output).run_project_calculations()
