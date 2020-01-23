@@ -95,6 +95,7 @@ class RISPARKWINEDEToolBox:
         lvl3_result = lvl3_result[lvl3_result['kpi_fk_lvl2'] == wine_kpi_fk]
         if not lvl3_result.empty:
             lvl3_result['in_store'] = 0
+            lvl3_result.drop('facings', axis=1, inplace=True)
             filtered_scif = self.scif[self.scif[ScifConsts.TEMPLATE_NAME].isin(LocalConst.WINE_SHELVES)]
             products_in_session = filtered_scif.loc[filtered_scif[ScifConsts.FACINGS] > 0][ScifConsts.PRODUCT_FK].values
             lvl3_result.loc[lvl3_result[ScifConsts.PRODUCT_FK].isin(products_in_session), 'in_store'] = 1
