@@ -64,12 +64,14 @@ class RISPARKWINEDEToolBox:
     def main_calculation(self):
         lvl3_result = self.assortment.calculate_lvl3_assortment()
         if not lvl3_result.empty:
+            # wine assortment - wine shelves only
             wine_kpi_fk = self.common.get_kpi_fk_by_kpi_type(LocalConst.WINE_AVAILABILITY)
             wine_assortment_res = lvl3_result[lvl3_result['kpi_fk_lvl2'] == wine_kpi_fk]
             self.wine_assortment_calculation(lvl3_result=wine_assortment_res)
 
-            # existing assortment
-            self.main_assortment_calculation(lvl3_result=lvl3_result)
+            # existing assortment - whole session
+            non_wine_assortment_res = lvl3_result[~(lvl3_result['kpi_fk_lvl2'] == wine_kpi_fk)]
+            self.main_assortment_calculation(lvl3_result=non_wine_assortment_res)
         self.common.commit_results_data()
 
     def wine_assortment_calculation(self, lvl3_result):
