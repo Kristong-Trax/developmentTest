@@ -125,7 +125,7 @@ class GSKJPToolBox:
         if (Consts.SHELVES not in policy.keys()) or policy[Consts.SHELVES].empty:
             Log.warning('This sessions have external targets but doesnt have value for shelves position')
             return 0, 0, 0, 0, 0
-        if isinstance(policy['shelves'].iloc[0], list):
+        if isinstance(policy[Consts.SHELVES].iloc[0], list):
             shelf_from_bottom = [int(shelf) for shelf in policy[Consts.SHELVES].iloc[0]]
         else:
             shelf_from_bottom = [int(shelf) for shelf in policy[Consts.SHELVES].iloc[0].split(",")]
@@ -154,7 +154,7 @@ class GSKJPToolBox:
         df = pd.merge(self.match_product_in_scene,
                       self.all_products[Const.PRODUCTS_COLUMNS], how='left', on=[MatchesConsts.PRODUCT_FK])
         df = pd.merge(self.scif[Const.SCIF_COLUMNS],
-                      df, how='right', right_on=[ScifConsts.SCENE_FK, ScifConsts.SCENE_FK],
+                      df, how='right', right_on=[ScifConsts.SCENE_FK, ScifConsts.PRODUCT_FK],
                       left_on=[ScifConsts.SCENE_ID, ScifConsts.PRODUCT_FK])
 
         if df.empty:

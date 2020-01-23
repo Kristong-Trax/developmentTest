@@ -52,26 +52,54 @@ class ToolBox(GlobalSceneToolBox):
             empty_product_type_scif = self.scif[self.scif['product_type'].isin(['Empty'])]  # product_fk
             if not empty_product_type_scif.empty:
                 empty_product_id = 0 #product_fk always to represent General Empty
+                empty_template_id = empty_product_type_scif.template_fk.iat[0]
                 empty_product_numerator_result = sum(empty_product_type_scif['tagged'])
                 empty_product_denominator_result = sum(empty_product_type_scif['facings'])
 
                 self.common.write_to_db_result(kpi_fk, numerator_id=empty_product_id,
-                                               denominator_id=empty_product_id, context_id=empty_product_id,
+                                               denominator_id=empty_template_id, context_id=empty_product_id,
                                                numerator_result=empty_product_numerator_result,
                                                denominator_result=empty_product_denominator_result, by_scene=True)
 
 
             sku_product_type_scif = self.scif[self.scif['product_type'].isin(['SKU'])]
+            if not sku_product_type_scif.empty:
+                for row in sku_product_type_scif.itertuples():
+                    sku_product_numerator_result = row.tagged
+                    sku_product_denominator_result = row.facings
+                    sku_product_id = row.product_fk
+                    sku_template_id = row.template_fk
 
-            for row in sku_product_type_scif.itertuples():
-                sku_product_numerator_result = row.tagged
-                sku_product_denominator_result = row.facings
-                sku_product_id = row.product_fk
+                    self.common.write_to_db_result(kpi_fk, numerator_id=sku_product_id,
+                                                   denominator_id=sku_template_id, context_id=sku_product_id,
+                                                   numerator_result=sku_product_numerator_result,
+                                                   denominator_result=sku_product_denominator_result,by_scene=True)
 
-                self.common.write_to_db_result(kpi_fk, numerator_id=sku_product_id,
-                                               denominator_id=sku_product_id, context_id=sku_product_id,
-                                               numerator_result=sku_product_numerator_result,
-                                               denominator_result=sku_product_denominator_result,by_scene=True)
+            other_product_type_scif = self.scif[self.scif.product_type.isin(['Other'])]
+            if not other_product_type_scif.empty:
+                for row in other_product_type_scif.itertuples():
+                    other_product_numerator_result = row.tagged
+                    other_product_denominator_result = row.facings
+                    other_product_id = row.product_fk
+                    other_template_id = row.template_fk
+
+                    self.common.write_to_db_result(kpi_fk, numerator_id=other_product_id,
+                                                   denominator_id=other_template_id, context_id=other_product_id,
+                                                   numerator_result=other_product_numerator_result,
+                                                   denominator_result=other_product_denominator_result, by_scene=True)
+
+            irrelevant_product_type_scif = self.scif[self.scif.product_type.isin(['Irrelevant'])]
+            if not irrelevant_product_type_scif.empty:
+                for row in irrelevant_product_type_scif.itertuples():
+                    irrelevant_product_numerator_result = row.tagged
+                    irrelevant_product_denominator_result = row.facings
+                    irrelevant_product_id = row.product_fk
+                    irrelevant_template_id = row.template_fk
+
+                    self.common.write_to_db_result(kpi_fk, numerator_id=irrelevant_product_id,
+                                                   denominator_id=irrelevant_template_id, context_id=irrelevant_product_id,
+                                                   numerator_result=irrelevant_product_numerator_result,
+                                                   denominator_result=irrelevant_product_denominator_result, by_scene=True)
 
 
     def calculate_availability(self):
