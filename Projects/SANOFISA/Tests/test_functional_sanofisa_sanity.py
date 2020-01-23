@@ -14,12 +14,13 @@ __author__ = 'ilays'
 class TestKEnginePsCode(PsSanityTestsFuncs):
 
     def add_mocks(self):
-        # with open(os.path.join('Data', 'Relative Position'), 'rb') as f:
+        # with open(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'Data', 'Relative Position.txt'),
+        #           'rb') as f:
         #     relative_position_template = json.load(f)
         # self.mock_object('save_latest_templates',
         #                  path='KPIUtils.GlobalProjects.DIAGEO.Utils.TemplatesUtil.TemplateHandler')
         # self.mock_object('download_template',
-        #                  path='KPIUtils.GlobalProjects.DIAGEO.Utils.TemplatesUtil.TemplateHandler').return_value = \
+        #                  path='KPIUtils.GlobalProjects.DIAGEO.Utils.TemplatesUtil.TemplateHandler').return_value = \In
         #     relative_position_template
         return
 
@@ -28,7 +29,7 @@ class TestKEnginePsCode(PsSanityTestsFuncs):
         self.add_mocks()
         project_name = ProjectsSanityData.project_name
         data_provider = KEngineDataProvider(project_name)
-        sessions = {u'718D3AA8-430E-4FE1-B72B-6F957F6429A0': []}
+        sessions = {u'940a6404-5013-4ce2-8ddc-fd2c35c188eb': []}
         kpi_results = SANOFISAKpiResults().get_kpi_results()
         for session in sessions.keys():
             data_provider.load_session_data(str(session))
