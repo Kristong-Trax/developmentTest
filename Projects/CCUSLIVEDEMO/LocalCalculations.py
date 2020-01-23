@@ -24,5 +24,13 @@ if __name__ == '__main__':
     session = '0c2decfc-8d2f-4b22-b9d0-8e2e97c9557b'
     data_provider = KEngineSessionDataProviderLive(project_name, None, None)
     data_provider.load_session_data('0c2decfc-8d2f-4b22-b9d0-8e2e97c9557b', [14049102])
+    # session = 'f90529ec-6ff4-4481-970a-546e0030a41b'
+    # data_provider = KEngineSessionDataProviderLive(project_name, None, None)
+    # data_provider.load_session_data('f90529ec-6ff4-4481-970a-546e0030a41b', [14049726])
+
+    # data provider in server does the kpis loading automatically . locally need to add it
+    # data_provider.load_kpis_hierarchy(lambda x: x.loc[(x['calculation_stage'] == 'LIVE')
+    #                                                   & (x['live_session_relevance'] == 1)].copy(),
+    #                                   'session')
     output = Output()
     Calculations(data_provider, output).run_project_calculations()
