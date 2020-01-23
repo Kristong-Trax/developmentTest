@@ -94,15 +94,6 @@ class RISPARKWINEDEToolBox:
         wine_kpi_fk = self.common.get_kpi_fk_by_kpi_type(LocalConst.WINE_AVAILABILITY)
         lvl3_result = lvl3_result[lvl3_result['kpi_fk_lvl2'] == wine_kpi_fk]
         if not lvl3_result.empty:
-            lvl3_result['in_store'] = 0
-            lvl3_result.drop('facings', axis=1, inplace=True)
-            filtered_scif = self.scif[self.scif[ScifConsts.TEMPLATE_NAME].isin(LocalConst.WINE_SHELVES)]
-            products_in_session = filtered_scif.loc[filtered_scif[ScifConsts.FACINGS] > 0][ScifConsts.PRODUCT_FK].values
-            lvl3_result.loc[lvl3_result[ScifConsts.PRODUCT_FK].isin(products_in_session), 'in_store'] = 1
-
-            products_facings = filtered_scif.groupby([ScifConsts.PRODUCT_FK], as_index=False).agg({ScifConsts.FACINGS:
-                                                                                                       np.sum})
-            lvl3_result = lvl3_result.merge(products_facings, on=ScifConsts.PRODUCT_FK, how='left')
             for result in lvl3_result.itertuples():
                 score = result.in_store * 100
                 self.common.write_to_db_result(fk=result.kpi_fk_lvl3, numerator_id=result.product_fk,
