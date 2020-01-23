@@ -82,18 +82,17 @@ class RISPARKWINEDEToolBox:
         lvl3_result = self.assortment.calculate_lvl3_assortment()
         if not lvl3_result.empty:
             # new wine assortment - on wine shelves only
-            wine_kpi_fk = self.common.get_kpi_fk_by_kpi_type(LocalConst.WINE_AVAILABILITY)
-            wine_assortment_res = lvl3_result[lvl3_result['kpi_fk_lvl2'] == wine_kpi_fk]
-            self.wine_assortment_calculation(lvl3_result=wine_assortment_res)
+            self.wine_assortment_calculation(lvl3_result=lvl3_result)
 
             # historical assortment types - whole session
-            non_wine_assortm_res = lvl3_result[~(lvl3_result['kpi_fk_lvl2'] == wine_kpi_fk)]
-            self.main_assortment_calculation(lvl3_result=non_wine_assortm_res)
+            self.main_assortment_calculation(lvl3_result=lvl3_result)
         self.common.commit_results_data()
 
     # only writing sku level result for Discovery.
     # TODO: Need to add lv2 assortment once we know the MR requirements
     def wine_assortment_calculation(self, lvl3_result):
+        wine_kpi_fk = self.common.get_kpi_fk_by_kpi_type(LocalConst.WINE_AVAILABILITY)
+        lvl3_result = lvl3_result[lvl3_result['kpi_fk_lvl2'] == wine_kpi_fk]
         if not lvl3_result.empty:
             lvl3_result['in_store'] = 0
             filtered_scif = self.scif[self.scif[ScifConsts.TEMPLATE_NAME].isin(LocalConst.WINE_SHELVES)]
@@ -115,6 +114,8 @@ class RISPARKWINEDEToolBox:
         This function calculates the KPI results.
         """
         # lvl3_result = self.assortment.calculate_lvl3_assortment()
+        wine_kpi_fk = self.common.get_kpi_fk_by_kpi_type(LocalConst.WINE_AVAILABILITY)
+        lvl3_result = lvl3_result[~(lvl3_result['kpi_fk_lvl2'] == wine_kpi_fk)]
         if not lvl3_result.empty:
             for result in lvl3_result.itertuples():
                 # start_new_date = datetime(2018, 2, 26) - timedelta(self.TIME_DELTA)
