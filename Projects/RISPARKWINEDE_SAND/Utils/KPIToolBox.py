@@ -55,10 +55,11 @@ class RISPARKWINEDEToolBox:
         self.rds_conn = PSProjectConnector(
             self.project_name, DbUsers.CalculationEng)
         self.kpi_results_new_tables_queries = []
-        self.store_assortment = PSAssortmentDataProvider(self.data_provider).execute()
+        # self.store_assortment = PSAssortmentDataProvider(self.data_provider).execute()
         self.store_info = self.data_provider[Data.STORE_INFO]
         self.current_date = datetime.now()
         self.assortment = Assortment(self.data_provider, self.output)
+        self.store_assortment = self.assortment.store_assortment
         self.common = Common(self.data_provider)
 
     def main_calculation(self):
@@ -74,6 +75,7 @@ class RISPARKWINEDEToolBox:
             self.main_assortment_calculation(lvl3_result=non_wine_assortment_res)
         self.common.commit_results_data()
 
+    # only SKU level assortment results for Discovery purposes
     def wine_assortment_calculation(self, lvl3_result):
         if not lvl3_result.empty:
             lvl3_result['in_store'] = 0
