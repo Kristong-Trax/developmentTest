@@ -1,10 +1,10 @@
 
 
 from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
-from Projects.SANOFISA.Tests.Data.data_test_sanofisa_sanity import ProjectsSanityData
-from Projects.SANOFISA.Calculations import SANOFISACalculations
+from Projects.SANOFIAE.Tests.Data.data_test_sanofiae_sanity import ProjectsSanityData
+from Projects.SANOFIAE.Calculations import SANOFIAECalculations
 from DevloperTools.SanityTests.PsSanityTests import PsSanityTestsFuncs
-from Projects.SANOFISA.Tests.Data.kpi_results import SANOFISAKpiResults
+from Projects.SANOFIAE.Tests.Data.kpi_results import SANOFIAEKpiResults
 # import os
 # import json
 
@@ -24,17 +24,17 @@ class TestKEnginePsCode(PsSanityTestsFuncs):
         #     relative_position_template
         return
 
-    @PsSanityTestsFuncs.seeder.seed(["sanofisa_seed", "mongodb_products_and_brands_seed"], ProjectsSanityData())
-    def test_sanofisa_sanity(self):
+    @PsSanityTestsFuncs.seeder.seed(["sanofiae_seed", "mongodb_products_and_brands_seed"], ProjectsSanityData())
+    def test_sanofiae_sanity(self):
         self.add_mocks()
         project_name = ProjectsSanityData.project_name
         data_provider = KEngineDataProvider(project_name)
-        sessions = {u'940a6404-5013-4ce2-8ddc-fd2c35c188eb': []}
-        kpi_results = SANOFISAKpiResults().get_kpi_results()
+        sessions = {u'96984D90-834E-44D5-84B4-D96A5005E743': []}
+        kpi_results = SANOFIAEKpiResults().get_kpi_results()
         for session in sessions.keys():
             data_provider.load_session_data(str(session))
             output = Output()
-            SANOFISACalculations(data_provider, output).run_project_calculations()
+            SANOFIAECalculations(data_provider, output).run_project_calculations()
             # for scene in sessions[session]:
             # data_provider.load_scene_data(str(session), scene_id=scene)
             # SceneCalculations(data_provider).calculate_kpis()
