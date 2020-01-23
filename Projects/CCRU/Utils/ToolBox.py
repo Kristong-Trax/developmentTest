@@ -925,7 +925,7 @@ class CCRUKPIToolBox:
             atomic_result = attributes_for_level3['result']
             if p.get("KPI ID") in params.values()[2]["SESSION LEVEL"]:
                 self.write_to_kpi_facts_hidden(p.get("KPI ID"), None, atomic_result, score)
-            self.write_to_db_category_kpis_for_mr(p, result=score, score=set_total_res)
+            self.write_to_db_category_kpis_for_mr(p, result=ratio*100, score=ratio*100)
         return set_total_res
 
     def calculate_facings_sos(self, params, scenes=None, all_params=None):
