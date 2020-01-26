@@ -416,19 +416,9 @@ if __name__ == '__main__':
     replace_configurations_file = True
     copy_configuration_file_to_traxexport(replace_configurations_file)
     projects = {
-        'sanofiae': {},
-        'sanofici': {},
-        'sanoficm': {},
-        'sanofilb': {},
-        'sanofima': {},
-        'sanofiru': {},
-        'sanofisa': {},
-        'sanofisn': {},
-        'sanofitn': {},
-        'sanofitr': {},
-        'sanofiua': {},
-        'sanofiuz': {},
-        'sanofiza': {},
+        'cbcil': {},
+        'marsru-prod': {},
+        # 'ccru': {},
                 }
     for project in projects:
         try:
