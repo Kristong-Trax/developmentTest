@@ -128,7 +128,7 @@ class CCMYToolBox:
         This function calculates the KPI results.
         """
         total_score = 0
-        score, numerator_id = 0, None
+        score, numerator_id, numerator = 0, None, None
         identifier_parent = self.common.get_dictionary(kpi_name='Red Score')
 
         for group in self.template_data[CCMYConsts.KPI_GROUP].unique():
@@ -155,8 +155,8 @@ class CCMYToolBox:
                     if kpi.empty:
                         continue
                     else:
-                        score = self.calculate_self_purity(kpi)
-                        self.common.commit_results_data()
+                        numerator, denominator, score, templates = self.calculate_self_purity(kpi_data)
+                        numerator_id = templates
             else:
                 continue
 
