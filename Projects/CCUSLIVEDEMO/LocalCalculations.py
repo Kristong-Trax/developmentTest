@@ -6,15 +6,16 @@ from Trax.Utils.Conf.Configuration import Config
 from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
 from Projects.CCUSLIVEDEMO.LiveSessionKpis.Calculation import CalculateKpi
 
-
 __author__ = 'limorc'
 
 
 class Calculations(BaseCalculationsScript):
     def run_project_calculations(self):
-        self.timer.start()
-        CalculateKpi(self.data_provider).calculate_session_live_kpi()
-        self.timer.stop('KPIGenerator.run_project_calculations')
+        """  This function is activated during regular data provider"""
+        # self.timer.start()
+        # CalculateKpi(self.data_provider).calculate_session_live_kpi()
+        # self.timer.stop('KPIGenerator.run_project_calculations')
+        pass
 
 
 if __name__ == '__main__':
@@ -33,4 +34,5 @@ if __name__ == '__main__':
     #                                                   & (x['live_session_relevance'] == 1)].copy(),
     #                                   'session')
     output = Output()
-    Calculations(data_provider, output).run_project_calculations()
+    # calling live calculation (live data provider)
+    CalculateKpi(data_provider).calculate_session_live_kpi()
