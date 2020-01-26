@@ -167,16 +167,16 @@ class TestCBCDAIRYIL(TestFunctionalCase):
         kpis_sheet = parse_template(test_template_path, Consts.KPI_SHEET, lower_headers_row_index=1)
         store_attr_test_1 = ({Consts.STORE_TYPE: Consts.DYNAMO, Consts.ADDITIONAL_ATTRIBUTE_1: Consts.GENERAL,
                               Consts.ADDITIONAL_ATTRIBUTE_2: Consts.HEBREW_YES,
-                              Consts.ADDITIONAL_ATTRIBUTE_3: Consts.HEBREW_YES}, 185)
+                              Consts.ADDITIONAL_ATTRIBUTE_3: Consts.HEBREW_YES}, 189)
         store_attr_test_2 = ({Consts.STORE_TYPE: Consts.MINI_MARKET, Consts.ADDITIONAL_ATTRIBUTE_1: Consts.ARAB,
                               Consts.ADDITIONAL_ATTRIBUTE_2: Consts.HEBREW_YES,
-                              Consts.ADDITIONAL_ATTRIBUTE_3: Consts.HEBREW_YES}, 175)
+                              Consts.ADDITIONAL_ATTRIBUTE_3: Consts.HEBREW_YES}, 179)
         store_attr_test_3 = ({Consts.STORE_TYPE: Consts.DYNAMO, Consts.ADDITIONAL_ATTRIBUTE_1: Consts.GENERAL,
                               Consts.ADDITIONAL_ATTRIBUTE_2: Consts.HEBREW_NO,
-                              Consts.ADDITIONAL_ATTRIBUTE_3: Consts.HEBREW_NO}, 193)
+                              Consts.ADDITIONAL_ATTRIBUTE_3: Consts.HEBREW_NO}, 197)
         store_attr_test_4 = ({Consts.STORE_TYPE: Consts.MINI_MARKET, Consts.ADDITIONAL_ATTRIBUTE_1: Consts.ARAB,
                               Consts.ADDITIONAL_ATTRIBUTE_2: Consts.HEBREW_NO,
-                              Consts.ADDITIONAL_ATTRIBUTE_3: Consts.HEBREW_NO}, 183)
+                              Consts.ADDITIONAL_ATTRIBUTE_3: Consts.HEBREW_NO}, 187)
         test_cases_list = [store_attr_test_1, store_attr_test_2, store_attr_test_3, store_attr_test_4]
         for test_values, expected_result in test_cases_list:
             filtered_template = self.tool_box.filter_template_by_store_att(kpis_sheet, test_values)

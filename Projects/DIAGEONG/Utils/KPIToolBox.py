@@ -3,6 +3,7 @@ from Trax.Algo.Calculations.Core.DataProvider import Data
 
 from KPIUtils.GlobalProjects.DIAGEO.KPIGenerator import DIAGEOGenerator
 from KPIUtils_v2.DB.CommonV2 import Common as CommonV2
+from KPIUtils.DB.Common import Common as Common
 __author__ = 'michaela'
 
 
@@ -10,8 +11,9 @@ class DIAGEONGToolBox:
     def __init__(self, data_provider, output):
         self.data_provider = data_provider
         self.output = output
+        self.common = Common(self.data_provider)
         self.commonV2 = CommonV2(self.data_provider)
-        self.diageo_generator = DIAGEOGenerator(self.data_provider, self.output, self.commonV2)
+        self.diageo_generator = DIAGEOGenerator(self.data_provider, self.output, self.common)
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
 
     def main_calculation(self):

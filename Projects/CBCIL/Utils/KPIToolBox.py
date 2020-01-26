@@ -2,7 +2,6 @@
 import os
 from datetime import datetime
 import pandas as pd
-import time
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Utils.Conf.Keys import DbUsers
 from Trax.Utils.Logging.Logger import Log

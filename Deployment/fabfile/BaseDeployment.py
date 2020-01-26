@@ -132,15 +132,10 @@ class ProjectDeployment(object):
                 storage_connector = StorageFactory.get_connector(mybucket=STORAGE_BUCKET, region='us-east-1',
                                                                  cloud=cloud)
                 env = Config.get_environment().lower()
-                if env == 'prod':
-                    s3_envs = ENVIRONMENTS
-                else:
-                    s3_envs = [env]
-
-                for s3_env in s3_envs:
-                    storage_folder_name = ProjectDeployment.get_trax_ace_live_folder(s3_env)
-                    print "Uploading file to Remove folder-> {}".format(storage_folder_name)
-                    DeploymentUtils.save_file_stream(storage_connector, storage_folder_name, TAR_FILE_NAME, tar_file_stream)
+                # deploy the project only in one env
+                storage_folder_name = ProjectDeployment.get_trax_ace_live_folder(env)
+                print "Uploading file to Remote folder-> {}".format(storage_folder_name)
+                DeploymentUtils.save_file_stream(storage_connector, storage_folder_name, TAR_FILE_NAME, tar_file_stream)
         except Exception as e:
             print e
             raise
