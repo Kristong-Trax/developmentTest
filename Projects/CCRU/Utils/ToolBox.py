@@ -115,7 +115,7 @@ POS_CAT_KPI_DICT = {'Availability': AVAILABILITY_CAT_FOR_MR, 'SOS': SOS_CAT_FOR_
 
 class CCRUKPIToolBox:
 
-    MIN_CALC_DATE = '2019-06-29'
+    MIN_CALC_DATE = '2020-01-25'
 
     STANDARD_VISIT = 'Standard visit'
     PROMO_VISIT = 'Promo visit'
@@ -2752,14 +2752,14 @@ class CCRUKPIToolBox:
         if not res or update_kpi_set:
             if str(self.visit_date) < self.MIN_CALC_DATE:
                 query = """
-                        select ss.additional_attribute_11 
+                        select ss.additional_attribute_12 
                         from static.stores ss 
                         join probedata.session ps on ps.store_fk=ss.pk 
                         where ss.delete_date is null and ps.session_uid = '{}';
                         """.format(self.session_uid)
-            else:  # Todo - Change to additional_attribute_12 for PROD
+            else:
                 query = """
-                        select ss.additional_attribute_12 
+                        select ss.additional_attribute_11 
                         from static.stores ss 
                         join probedata.session ps on ps.store_fk=ss.pk 
                         where ss.delete_date is null and ps.session_uid = '{}';
