@@ -10,8 +10,8 @@ class CopyCodeToNewProject:
     def __init__(self, src_project, dest_project):
         self.src_project_name, self.src_project = get_project_name_and_directory_name(src_project)
         self.dest_project_name, self.dest_project = get_project_name_and_directory_name(dest_project)
-        # if self.src_project != 'DUMMY' and not self.validate_projects():
-        #     print "Try using CreateNewProject.py instead!"
+        if self.src_project != 'DUMMY' and not self.validate_projects():
+            print "Try using CreateNewProject.py instead!"
         self.projects_path = "{}/Projects/".format(
             os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
         self.classes_names = {}
