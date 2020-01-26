@@ -66,3 +66,4 @@ if __name__ == '__main__':
     dest_project_name = "ccmy"
     a = CopyCodeToNewProject(source_project_name, dest_project_name)
     a.copy_project()
+
