@@ -416,8 +416,7 @@ if __name__ == '__main__':
     replace_configurations_file = True
     copy_configuration_file_to_traxexport(replace_configurations_file)
     projects = {
-        'cbcil': {},
-        'marsru-prod': {},
+        'batru': {},
         # 'ccru': {},
                 }
     for project in projects:
