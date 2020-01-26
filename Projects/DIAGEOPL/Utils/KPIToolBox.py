@@ -26,9 +26,8 @@ class DIAGEOPLToolBox:
         assortment_results = self.diageo_generator.diageo_global_grouping_assortment_calculation()
         self.commonV2.save_json_to_new_tables(assortment_results)
 
-        # Global Menu kpis
-        menus_res_dict = self.diageo_generator.diageo_global_share_of_menu_cocktail_function(
-            cocktail_product_level=True)
+        # Global Share of Menu kpis
+        menus_res_dict = self.diageo_generator.diageo_global_new_share_of_menu_function()
         self.commonV2.save_json_to_new_tables(menus_res_dict)
 
         # Global Visible to Consumer function
