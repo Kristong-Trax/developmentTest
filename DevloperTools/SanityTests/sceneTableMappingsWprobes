@@ -40,6 +40,7 @@ static	kpi_result_type	all
 static	kpi_external_targets	all
 static	kpi_operation_type	all
 static	retailer	all
+static	display_brand	all
 static	district	all
 static	custom_entity	all
 static	kpi_result_value	all
