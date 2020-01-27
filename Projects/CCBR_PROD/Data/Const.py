@@ -35,6 +35,8 @@ class Const(object):
     TEMPLATE_NAME = 'Template Name'
     BRAND = 'Brand'
     CATEGORY = 'Category'
+    SUB_CATEGORY = 'Sub Category'
+    RETURNABLE = 'Returnable'
     EXCLUDE_CATEGORY = 'Exclude category'
     EXCLUDE_PRODUCT = 'Exclude Product'
     MANUFACTURER = 'Manufacturer'
