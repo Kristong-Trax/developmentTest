@@ -334,8 +334,11 @@ class EspecializadoToolBox(GlobalSessionToolBox):
             if relevant_platformas_data.empty:
                 result = total_score
                 scene_id = 0
-            else:
-                result = total_score
+            elif relevant_platformas_data['Platform Name'].iloc[0] == 'Hidratacion':
+                result = total_score / 2
+                scene_id = relevant_platformas_data['scene_id'].iloc[0]
+            elif relevant_platformas_data['Platform Name'].iloc[0] == 'Nutricion':
+                result = total_score / 8
                 scene_id = relevant_platformas_data['scene_id'].iloc[0]
 
             result_dict = {'kpi_name': kpi_name, 'kpi_fk': kpi_fk,
@@ -486,7 +489,7 @@ class EspecializadoToolBox(GlobalSessionToolBox):
             # calculate the 'botellas' data
             total_facings = scene_scif[scene_scif['product_name'].isin(
                 [product for sublist in assortment_groups for product in sublist])]['facings'].sum()
-            if total_facings > targets_and_constraints['Facings_target'].iloc[0]:
+            if total_facings >= targets_and_constraints['Facings_target'].iloc[0]:
                 minimum_facings_met = 1  # True
             else:
                 minimum_facings_met = 0  # False
@@ -598,13 +601,13 @@ class EspecializadoToolBox(GlobalSessionToolBox):
         result_dict = {}
         for i in range(len(relevant_required_assortments)):
             result_of_current_assortment = sum(
-                np.in1d(relevant_required_assortments[i], self.updated_store_assortment.product_name))
+                np.in1d(relevant_required_assortments[i], self.scif.product_name))
             result_dict['assortment{}'.format(i + 1)] = 1 if result_of_current_assortment >= 1 else 0
 
         numerator_id = self.scif[PRODUCT_FK].iat[0]
         denominator_id = self.store_assortment.assortment_fk.iat[0]
 
-        result = float(np.sum(result_dict.values()) / portafolio_data.unique_facings_target)
+        result = float(np.sum(result_dict.values())) / portafolio_data.unique_facings_target
         result_dict = {'kpi_name': kpi_name, 'kpi_fk': kpi_fk, 'numerator_id': numerator_id,
                        'denominator_id': denominator_id,
                        'result': result}

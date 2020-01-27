@@ -10,7 +10,7 @@ if __name__ == '__main__':
     Config.init()
     project_name = 'diageong'
     data_provider = KEngineDataProvider(project_name)
-    session_list = ['8dd865fc-6bc6-4745-aa14-f8eb27874101']
+    session_list = ['6372ba61-456e-4b1e-a3d6-15329222fa5f']
     for session in session_list:
         data_provider.load_session_data(session)
         output = Output()

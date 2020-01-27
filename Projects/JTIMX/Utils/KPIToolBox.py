@@ -11,7 +11,6 @@ import os
 # from Projects.JTIMX.Data.LocalConsts import Consts
 
 
-
 __author__ = 'krishnat'
 
 TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data')
@@ -27,7 +26,8 @@ class ToolBox(GlobalSessionToolBox):
         self.visit_date = datetime.combine(self.data_provider[Data.VISIT_DATE], datetime.min.time())
         self.relevant_template = self.retrieve_price_target_df()
         self.mpis = self.data_provider[Data.MATCHES]
-        self.manufacturer_fk = self.data_provider.own_manufacturer.param_value.values[0] if self.data_provider.own_manufacturer.param_value.values[0] else 2
+        self.manufacturer_fk = self.data_provider.own_manufacturer.param_value.values[0] if \
+        self.data_provider.own_manufacturer.param_value.values[0] else 2
 
     def main_calculation(self):
         self.calculate_price_target_kpi()
@@ -41,15 +41,20 @@ class ToolBox(GlobalSessionToolBox):
             present_products_in_session = \
                 self.scif.merge(self.relevant_template, how='left', left_on='product_short_name',
                                 right_on='English SKU Name')[
-                    ['product_fk', 'substitution_product_fk', 'brand_fk', 'product_short_name', 'Target Price',
+                    ['product_fk', 'EAN Code', 'substitution_product_fk', 'brand_fk', 'product_short_name',
+                     'Target Price',
                      'facings']]
-            present_products_in_session = self.__address_substitution_product_fk(present_products_in_session, relevant_mpis)
+            # Returns all the present products that relvant from the template
+            present_products_in_session = self.__address_substitution_product_fk(present_products_in_session,
+                                                                                 relevant_mpis)
+
+            # Calls the 'absent' products by call the products that are in template but not in scif.
             absent_products_in_session = self.relevant_template[
                 ~ self.relevant_template['English SKU Name'].isin(present_products_in_session.product_short_name)]
             absent_products_in_session = \
-                absent_products_in_session.merge(self.all_products, how='left', left_on='English SKU Name',
+                absent_products_in_session.merge(self.all_products.sort_values(['product_ean_code']).drop_duplicates(['product_name'],keep='first'), how='left', left_on='English SKU Name',
                                                  right_on='product_short_name')[
-                    ['product_fk', 'brand_fk', 'product_short_name', 'Target Price']]
+                    ['product_fk', 'EAN Code', 'brand_fk', 'product_short_name', 'Target Price']]
         except IndexError:
             self.write_to_db(kpi_fk, result=0, score=0, identifier_parent=self.store_id, should_enter=True)
 
@@ -72,7 +77,9 @@ class ToolBox(GlobalSessionToolBox):
                              score=score, identifier_parent=self.store_id, should_enter=True)
 
         parent_kpi_relevant_df = final_mpis[final_mpis['Target Price'] != 0]
-        parent_kpi_relevant_result = float(len(np.where(parent_kpi_relevant_df['Target Price'] == parent_kpi_relevant_df.price)[0])) / len(parent_kpi_relevant_df) * 100
+        parent_kpi_relevant_result = float(
+            len(np.where(parent_kpi_relevant_df['Target Price'] == parent_kpi_relevant_df.price)[0])) / len(
+            parent_kpi_relevant_df) * 100
 
         self.write_to_db(self.common.get_kpi_fk_by_kpi_type('Price Target - Parent'), numerator_id=self.manufacturer_fk,
                          denominator_id=self.store_id,
@@ -80,19 +87,29 @@ class ToolBox(GlobalSessionToolBox):
 
     def retrieve_price_target_df(self):
         data_name_list = os.listdir(TEMPLATE_PATH)
+
+        # Checks all the files in the Data folder.
+        # Returns the positions of all the files with 'Price_Target_Template' in its name
         price_target_template_name_index = np.flatnonzero(
             np.core.defchararray.find(data_name_list, [PRICE_TARGET_TEMPLATE]) != -1)
         price_target_template_name_list = [data_name_list[i] for i in price_target_template_name_index]
         relevant_price_target_templates = {}
+
+        # Takes all the all the files with 'Price_Target_Template' and pares the string for dates.
+        # If the date format isn't recognized, the file is deleted.
         for i, price_target in enumerate(price_target_template_name_list):
             try:
                 relevant_price_target_templates[i] = dparser.parse(price_target, fuzzy=True, dayfirst=False)
             except ValueError:
                 os.remove(TEMPLATE_PATH + '/' + price_target)
 
+        # Sorts the files (descending). Then the session date is used to check against the visit date.
+        # When the session date is greater than or equal to this visit date, that date is added to list.
+        # Due to the fact that the list is sorted, the relevant is at index 0.
         relevant_date_time_value = [date_from_template for date_from_template in
                                     sorted(relevant_price_target_templates.values(), reverse=True) if
                                     self.visit_date >= date_from_template]
+        # Calls the file name by calling the first item at index 0.
         relevant_price_target_file = price_target_template_name_list[relevant_price_target_templates.keys()[
             relevant_price_target_templates.values().index(relevant_date_time_value[0])]]
 
@@ -102,9 +119,10 @@ class ToolBox(GlobalSessionToolBox):
     @staticmethod
     def __address_substitution_product_fk(relevant_scif, relevant_mpis):
         scif_with_substitution_product_fk = relevant_scif[pd.notna(relevant_scif.substitution_product_fk)]
-        relevant_mpis.product_fk = relevant_mpis.product_fk.replace(scif_with_substitution_product_fk.product_fk.to_numpy(),
-                                 scif_with_substitution_product_fk.substitution_product_fk.to_numpy())
-        present_products_in_session = relevant_scif.merge(relevant_mpis, how='left',on='product_fk')
+        relevant_mpis.product_fk = relevant_mpis.product_fk.replace(
+            scif_with_substitution_product_fk.product_fk.to_numpy(),
+            scif_with_substitution_product_fk.substitution_product_fk.to_numpy())
+        present_products_in_session = relevant_scif.merge(relevant_mpis, how='left', on='product_fk')
         present_products_in_session.dropna(subset=['facings'], inplace=True)
 
         return present_products_in_session
