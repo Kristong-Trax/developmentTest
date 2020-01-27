@@ -26,7 +26,7 @@ if __name__ == '__main__':
     
     # all sessions still in new status
     sessions = [
-        '137764e8-cce9-4b38-bd53-c951557b15b4'
+        '5c633af3-81b6-4252-a920-72de6d19a300'
     ]
 
 
@@ -36,7 +36,7 @@ if __name__ == '__main__':
         scif = data_provider['scene_item_facts']
         scenes = scif['scene_id'].unique().tolist()
 
-        for scene in scenes:
+        for scene in [307951]:
             print('scene')
             data_provider = KEngineDataProvider(project_name)
             data_provider.load_scene_data(session, scene)
