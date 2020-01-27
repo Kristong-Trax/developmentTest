@@ -47,9 +47,8 @@ class SanofiJPToolBox:
                 fk=int(kpi.iloc[0].pk),
                 numerator_id=int(each_row.product_fk),
                 numerator_result=int(each_row.facings),
-                denominator_id=int(self.store_id),
-                denominator_result=1,
-                result=int(each_row.scene_id),
+                denominator_id=int(each_row.scene_id),
+                denominator_result=0,
                 score=1,
                 context_id=int(each_row.template_fk),
             )
