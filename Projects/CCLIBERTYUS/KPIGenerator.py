@@ -7,6 +7,7 @@ from KPIUtils_v2.Utils.Decorators.Decorators import log_runtime
 from Projects.CCLIBERTYUS.SOVI.KPIToolBox import SOVIToolBox
 from Projects.CCLIBERTYUS.MSC.KPIToolBox import MSCToolBox
 from Projects.CCLIBERTYUS.LIBERTY.KPIToolBox import LIBERTYToolBox
+from Projects.CCLIBERTYUS.GEOLOCATION.KPIToolBox import LIBERTYGeoToolBox
 
 from KPIUtils_v2.DB.CommonV2 import Common as CommonV2
 
@@ -26,6 +27,7 @@ class CCLIBERTYUSGenerator:
         This is the main KPI calculation function.
         It calculates the score for every KPI set and saves it to the DB.
         """
+        self.c
         self.calculate_sovi()
         self.calculate_msc()
         self.calculate_liberty()
@@ -57,3 +59,13 @@ class CCLIBERTYUSGenerator:
             tool_box.main_calculation()
         except Exception as e:
             Log.error('failed to calculate LIBERTY KPIs due to: {}'.format(e.message))
+
+    @log_runtime('LIBERTY Geolocation Calculations')
+    def calculate_liberty(self):
+        Log.info('starting calculate_liberty geo kpi')
+        try:
+            tool_box = LIBERTYGeoToolBox(self.data_provider, self.output, self.common_v2)
+            tool_box.main_calculation()
+        except Exception as e:
+            Log.error('failed to calculate LIBERTY Geo KPIs due to: {}'.format(e.message))
+
