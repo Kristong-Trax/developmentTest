@@ -15,8 +15,8 @@ class CalculateKpi(LiveSessionBaseClass):
     SKU_LEVEL = 3
     GROUPS_LEVEL = 2
 
-    def __init__(self, data_provider):
-        LiveSessionBaseClass.__init__(self, data_provider)
+    def __init__(self, data_provider, output):
+        LiveSessionBaseClass.__init__(self, data_provider, output)
         self._data_provider = data_provider
         self.products = self._data_provider.products
         self.common = LiveCommon(data_provider)

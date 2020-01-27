@@ -5,7 +5,7 @@ from Trax.Algo.Calculations.Core.LiveSessionDataProvider import KEngineSessionDa
 from Trax.Utils.Conf.Configuration import Config
 from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
 from Projects.CCUSLIVEDEMO.LiveSessionKpis.Calculation import CalculateKpi
-
+from Projects.CCUSLIVEDEMO.Utils.KPIToolBox import CCUSLiveDemoToolBox
 __author__ = 'limorc'
 
 
@@ -13,7 +13,7 @@ class Calculations(BaseCalculationsScript):
     def run_project_calculations(self):
         """  This function is activated during regular data provider"""
         # self.timer.start()
-        # CalculateKpi(self.data_provider).calculate_session_live_kpi()
+        # CCUSLiveDemoToolBox(self.data_provider,self.output).main_calculation()
         # self.timer.stop('KPIGenerator.run_project_calculations')
         pass
 
@@ -34,5 +34,7 @@ if __name__ == '__main__':
     #                                                   & (x['live_session_relevance'] == 1)].copy(),
     #                                   'session')
     output = Output()
+    # calling regular data provider
+    # Calculations(data_provider, output).run_project_calculations()
     # calling live calculation (live data provider)
-    CalculateKpi(data_provider).calculate_session_live_kpi()
+    CalculateKpi(data_provider, output).calculate_session_live_kpi()
