@@ -27,7 +27,7 @@ class CCLIBERTYUSGenerator:
         This is the main KPI calculation function.
         It calculates the score for every KPI set and saves it to the DB.
         """
-        self.c
+        self.calculate_geo_liberty()
         self.calculate_sovi()
         self.calculate_msc()
         self.calculate_liberty()
@@ -61,7 +61,7 @@ class CCLIBERTYUSGenerator:
             Log.error('failed to calculate LIBERTY KPIs due to: {}'.format(e.message))
 
     @log_runtime('LIBERTY Geolocation Calculations')
-    def calculate_liberty(self):
+    def calculate_geo_liberty(self):
         Log.info('starting calculate_liberty geo kpi')
         try:
             tool_box = LIBERTYGeoToolBox(self.data_provider, self.output, self.common_v2)
