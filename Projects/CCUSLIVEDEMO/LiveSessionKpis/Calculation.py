@@ -135,6 +135,10 @@ class CalculateKpi(LiveSessionBaseClass):
         oos_results = lvl_3_result.copy()
         if oos_results.empty:
             return oos_results
+        oos_result = self.kpi_result_value(0)
+        oos_results = oos_results.loc[oos_results['result'] == oos_result]
+        if oos_results.empty:
+            return oos_results
         oos_sku_kpi = self.get_kpi_fk('Live OOS - SKU')
         oos_results.loc[:, 'fk'] = oos_sku_kpi
         oos_results = self.filter_df_by_col(oos_results, self.SKU_LEVEL)
