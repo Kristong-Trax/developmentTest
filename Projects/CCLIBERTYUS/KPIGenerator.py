@@ -1,4 +1,3 @@
-
 from Trax.Utils.Logging.Logger import Log
 
 from KPIUtils_v2.DB.Common import Common
@@ -68,4 +67,3 @@ class CCLIBERTYUSGenerator:
             tool_box.main_calculation()
         except Exception as e:
             Log.error('failed to calculate LIBERTY Geo KPIs due to: {}'.format(e.message))
-
