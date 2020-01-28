@@ -35,14 +35,13 @@ class LIBERTYGeoToolBox:
 
         # store location
         store_uid = probes_location.store_uid.values[
-            0] if not probes_location.empty and not self.is_probes_location_none(probes_location) else 0
+            0] if not self.is_probes_location_none(probes_location) else 0
         stores_query = """SELECT latitude as pos_lat , longitude as pos_long FROM static.stores  WHERE
                                      store_uid = '{}';""".format(store_uid)
         store_location = pd.read_sql_query(stores_query, self.rds_conn.db)
 
         # Accounts for Index Errors and Empty DataFrame
-        if (not store_location.empty and not self.is_store_location_none(store_location)) or (
-                not store_location.empty and not self.is_store_location_none(store_location)):
+        if self.is_store_location_none(store_location) or self.is_probes_location_none(probes_location):
             return self.common_db.write_to_db_result(kpi_fk, result=None)
 
         store_lat_and_long = store_location[['pos_lat', 'pos_long']].values[0]
