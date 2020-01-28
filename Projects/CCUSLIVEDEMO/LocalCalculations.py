@@ -12,9 +12,9 @@ __author__ = 'limorc'
 class Calculations(BaseCalculationsScript):
     def run_project_calculations(self):
         """  This function is activated during regular data provider"""
-        # self.timer.start()
-        # CCUSLiveDemoToolBox(self.data_provider,self.output).main_calculation()
-        # self.timer.stop('KPIGenerator.run_project_calculations')
+        self.timer.start()
+        CCUSLiveDemoToolBox(self.data_provider,self.output).main_calculation()
+        self.timer.stop('KPIGenerator.run_project_calculations')
         pass
 
 
@@ -35,6 +35,6 @@ if __name__ == '__main__':
     #                                   'session')
     output = Output()
     # calling regular data provider
-    # Calculations(data_provider, output).run_project_calculations()
+    Calculations(data_provider, output).run_project_calculations()
     # calling live calculation (live data provider)
     CalculateKpi(data_provider, output).calculate_session_live_kpi()
