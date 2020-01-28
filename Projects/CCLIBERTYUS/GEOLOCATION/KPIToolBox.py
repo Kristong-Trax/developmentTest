@@ -57,9 +57,11 @@ class LIBERTYGeoToolBox:
         rounded_distance = round(threshold, 2)
         result = 1 if rounded_distance < 1 else 0
 
-        return self.common_db.write_to_db_result(kpi_fk, numerator_id=self.manufacturer_fk, denominator_id=self.store_id,
-                                          numerator_result=rounded_distance, denominator_result=relevant_scene_fk,
-                                          result=result)
+        return self.common_db.write_to_db_result(kpi_fk, numerator_id=self.manufacturer_fk,
+                                                 denominator_id=self.store_id,
+                                                 numerator_result=rounded_distance,
+                                                 denominator_result=relevant_scene_fk,
+                                                 result=result)
 
     @property
     def rds_conn(self):
