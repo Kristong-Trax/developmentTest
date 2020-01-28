@@ -44,6 +44,5 @@ class DIAGEOPLToolBox:
 
         # committing to new tables
         self.commonV2.commit_results_data()
-
         # committing to the old tables
         self.common.commit_results_data()
