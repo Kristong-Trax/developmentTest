@@ -38,10 +38,19 @@ class CCUSLiveDemoToolBox:
         self.commonV2.save_json_to_new_tables(assortment_res_dict)
         self.commonV2.commit_results_data()
 
+    def get_oos_action_excluded(self, lvl3_result):
+        excluded_from_oos = self.commonV2.get_oos_exclude_values()
+        if excluded_from_oos.empty:
+            return
+        products_excluded = excluded_from_oos.product_fk.unique()
+        lvl3_result.loc[
+            ((lvl3_result['in_store'] == 0) & (lvl3_result['product_fk'].isin(products_excluded))), 'in_store'] = 1
+
     def assortment_calc(self):
             """
             This function calculates the KPI results.
             """
+
             dict_list = []
             diageo_fk = self.own_manuf_fk
             store_fk = self.store_info[Consts.STORE_FK].iloc[0]
@@ -53,6 +62,8 @@ class CCUSLiveDemoToolBox:
             # remove live session kpis from regular kpi calculation
             live_session_kpis = list(
                 self.new_kpi_static_data[self.new_kpi_static_data['live_session_relevance'] == 1]['pk'])
+
+            self.get_oos_action_excluded(lvl3_result)
             lvl3_result = lvl3_result[~lvl3_result.kpi_fk_lvl2.isin(live_session_kpis)]
             if lvl3_result.empty:
                 return dict_list
