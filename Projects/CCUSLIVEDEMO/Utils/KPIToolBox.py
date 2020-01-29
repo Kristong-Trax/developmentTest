@@ -33,6 +33,7 @@ class CCUSLiveDemoToolBox:
         """
         # Global assortment kpis
         # assortment_res_dict = self.diageo_generator.diageo_global_assortment_function_v3()
+        Log.info('In function main_calculation reg-data provider ')
         assortment_res_dict = self.assortment_calc()
         self.commonV2.save_json_to_new_tables(assortment_res_dict)
         self.commonV2.commit_results_data()
