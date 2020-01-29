@@ -36,11 +36,11 @@ class LIBERTYGeoToolBox:
 
             ''' This is done because of a discrepancy between the coordinate systems used by the probes and store in 
             terms of longitude. The store's longitude is given to Trax by Liberty and is based on the left-handed 
-            cartesian coordinate system. The probe's location is calculated by Trax. The longitude is based on 
-            right-handed cartesian coordinate system, which is used internationally. The main difference is that 
+            cartesian coordinate system. Where as the probe's location is calculated by Trax. The probe's longitude is 
+            based on right-handed cartesian coordinate system, which is used internationally. The main difference is that the
             right-handed cartesian system depicts the Eastern Hemisphere with a positive longitude where the US uses 
-            the system where it depicts the Western Hemisphere with a positive longitude. To convert the store longitude 
-            to the righ-handed Cartesian System, the longitude of the Western Hemisphere needs to be negative.'''
+            the coordinate system where the system depicts the Western Hemisphere with a positive longitude. To convert the 
+            store's longitude to a right-handed Cartesian System, the longitude of the Western Hemisphere needs to be negative.'''
             store_lat_and_long[1] = -store_lat_and_long[1] if store_lat_and_long[1] > 0 else store_lat_and_long[1]
 
             threshold = 0
