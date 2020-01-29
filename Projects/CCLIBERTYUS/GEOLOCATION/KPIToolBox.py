@@ -28,9 +28,9 @@ class LIBERTYGeoToolBox:
         result_dict = {'fk': kpi_fk, 'numerator_id': self.manufacturer_fk, 'denominator_id': self.store_id}
 
         probes_location = self._get_probes_location()
-        store_location = self._get_store_location(probes_location)
+        store_location = self._get_store_location(probes_location) if not probes_location.empty else pd.DataFrame()
 
-        if not (self.is_probes_location_none() and self._get_store_location()):
+        if not (self.is_probes_location_none() and self._get_store_location()) or not store_location.empty:
             store_lat_and_long = store_location[['pos_lat', 'pos_long']].values
             probes_lat_and_long = probes_location[['pos_lat', 'pos_long']].values
 
