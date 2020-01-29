@@ -4,7 +4,6 @@ from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScrip
 # from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
 # from Trax.Utils.Conf.Configuration import Config
 # from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
-
 from KPIUtils.GlobalProjects.JNJ.KPIGenerator_v2 import JNJGenerator
 from KPIUtils_v2.DB.CommonV2 import Common
 
@@ -18,6 +17,7 @@ class JNJESCalculations(BaseCalculationsScript):
         eye_level_data, exclusion_data = self._parse_templates_for_calculations()
         common = Common(self.data_provider)
         jnj_generator = JNJGenerator(self.data_provider, self.output, common, exclusion_data)
+        jnj_generator.msl_availability()
         jnj_generator.linear_sos_out_of_store_discovery_report()
         jnj_generator.share_of_shelf_manufacturer_out_of_sub_category()
         jnj_generator.calculate_auto_assortment()
@@ -42,7 +42,10 @@ class JNJESCalculations(BaseCalculationsScript):
 #     Config.init()
 #     project_name = 'jnjes'
 #     data_provider = KEngineDataProvider(project_name)
-#     session = 'F670CB0D-769B-44F2-89C9-96A16F4FF25E'
-#     data_provider.load_session_data(session)
-#     output = Output()
-#     JNJESCalculations(data_provider, output).run_project_calculations()
+#     sessions = ['C002F40F-56C9-4025-BCBB-03F83D53402A',
+#                 '6109F0FF-D22E-42B4-87B4-3A8CE83EC09B',
+#                 'E7C6ED96-09BC-47B8-A827-D5E79D130473']
+#     for session in sessions:
+#         data_provider.load_session_data(session)
+#         output = Output()
+#         JNJESCalculations(data_provider, output).run_project_calculations()
