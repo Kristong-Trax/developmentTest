@@ -30,7 +30,7 @@ class CalculateKpi(LiveSessionBaseClass):
         """
         Main function of live project
         """
-        Log.warning('The function is in calculate_session_live_kpi')
+        # Log.warning('The function is in calculate_session_live_kpi')
         self.availability_by_assortment_calc()
         self.common.commit_live_queries_session()
 
@@ -56,7 +56,7 @@ class CalculateKpi(LiveSessionBaseClass):
         if lvl3_result.empty:
             Log.warning('Assortment is Empty for this session')
             return
-        self.assortment_result_base_actions(lvl3_result)# this function will have the actions affect on lvl3_result
+        self.assortment_result_base_actions(lvl3_result)  # this function will have the actions affect on lvl3_result
         lvl_2_result = self.assortment.calculate_lvl2_assortment(lvl3_result)
         lvl_2_result.rename(columns={'passes': 'numerator_result', 'total': 'denominator_result', 'kpi_fk_lvl2': 'fk'},
                             inplace=True)

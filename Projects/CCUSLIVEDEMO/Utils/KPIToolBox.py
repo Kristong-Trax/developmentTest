@@ -24,8 +24,8 @@ class CCUSLiveDemoToolBox:
         self.own_manuf_fk = int(self.data_provider.own_manufacturer.param_value.values[0])
         self.store_info = self.data_provider[Data.STORE_INFO]
         self.new_kpi_static_data = self.commonV2.get_new_kpi_static_data()
-        self.all_products_include_deleted =self.data_provider[Data.ALL_PRODUCTS_INCLUDING_DELETED]
-        self.visit_date =  self.data_provider[Data.VISIT_DATE]
+        self.all_products_include_deleted = self.data_provider[Data.ALL_PRODUCTS_INCLUDING_DELETED]
+        self.visit_date = self.data_provider[Data.VISIT_DATE]
 
     def main_calculation(self):
         """

@@ -1,6 +1,6 @@
 
 from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScript
-from Trax.Algo.Calculations.Core.DataProvider import Output
+from Trax.Algo.Calculations.Core.DataProvider import Output, KEngineDataProvider
 from Trax.Algo.Calculations.Core.LiveSessionDataProvider import KEngineSessionDataProviderLive
 from Trax.Utils.Conf.Configuration import Config
 from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
@@ -34,7 +34,12 @@ if __name__ == '__main__':
     #                                                   & (x['live_session_relevance'] == 1)].copy(),
     #                                   'session')
     output = Output()
-    # calling regular data provider
-    Calculations(data_provider, output).run_project_calculations()
+
     # calling live calculation (live data provider)
     CalculateKpi(data_provider, output).calculate_session_live_kpi()
+
+    # calling regular data provider
+    reg_data_provider = KEngineDataProvider(project_name)
+    reg_data_provider.load_session_data(session)
+    Calculations(reg_data_provider, output).run_project_calculations()
+
