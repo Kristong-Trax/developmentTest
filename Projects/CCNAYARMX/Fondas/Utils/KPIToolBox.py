@@ -63,6 +63,7 @@ class FONDASToolBox(GlobalSessionToolBox):
         self.parse_template()
         self.own_manuf_fk = int(self.data_provider.own_manufacturer.param_value.values[0])
         self.survey_response = self.data_provider[Data.SURVEY_RESPONSES]
+        self.assortment_template = self.templates[ASSORTMENT]
         # self.survey = Survey(self.data_provider, output=output, ps_data_provider=self.ps_data_provider,
         #                      common=self.common_v2)
         self.results_df = pd.DataFrame(columns=['kpi_name', 'kpi_fk', 'numerator_id', 'numerator_result',
@@ -156,6 +157,8 @@ class FONDASToolBox(GlobalSessionToolBox):
     def calculate_assortment(self, row):
         kpi_name = row[KPI_NAME]
         kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_name)
+        parent_kpi_name = row[PARENT_KPI]
+        # relevant_assortment = self.assortment_template[self.assortment_template[KPI_NAME].isin([kpi_name])]
 
 
 
