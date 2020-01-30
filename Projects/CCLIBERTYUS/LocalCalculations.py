@@ -31,6 +31,9 @@ if __name__ == '__main__':
                 '96aebd09-7bd8-4263-a0ac-ecbbdc2bb02a',
                 'f9ddea0f-07de-4b0e-a40a-c18f986912c1']
 
+    # geolocation session (fails for being 2 KM away)
+    sessions = ['8f2fdbe3-0654-4c0d-ad76-30d7407b7797']
+
     for session in sessions:
         print('***********************************************************************************')
         print('_______________________ {} ____________________'.format(session))
