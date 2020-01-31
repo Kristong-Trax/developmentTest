@@ -17,7 +17,7 @@ SESSION_LIST = {'F26E2E6B-D12B-415C-AC0C-CAB929BEFC9F': [],
 class TestKEnginePsCode(PsSanityTestsFuncs):
 
     def add_mocks(self):
-        with open('Data/{}'.format(EQUIPMENT_TARGETS_FILE), 'rb') as f:
+        with open('./Data/{}'.format(EQUIPMENT_TARGETS_FILE), 'rb') as f:
             self.mock_object('get_equipment_targets',
                              path='Projects.CCRU.Utils.ToolBox.CCRUKPIToolBox')\
                 .return_value = json.load(f)
