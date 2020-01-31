@@ -164,7 +164,7 @@ class TestKEnginePsCode(PsSanityTestsFuncs):
         self.need_pnb = ', "mongodb_products_and_brands_seed"' if need_pnb else ""
         self.kpi_results = autopep8.fix_code(kpi_results, options={"aggressive": 2}) if kpi_results else ""
 
-    def create_test_class(self):
+    def create_test_class(self, create_test_script=True, create_test_results=True):
         """
         this method create sanity test class
         :return: None
@@ -182,6 +182,7 @@ class TestKEnginePsCode(PsSanityTestsFuncs):
         project_name = self.project.upper().replace("-", "_")
         data_class_directory_path = '/home/{0}/dev/kpi_factory/Projects/{1}/Tests'.format(self.user, project_name)
         file_name = 'test_functional_{0}_sanity.py'.format(self.project)
+
         if not os.path.exists(data_class_directory_path):
             os.makedirs(data_class_directory_path)
             with open(os.path.join(data_class_directory_path, '__init__.py'), 'wb') as f:
@@ -189,12 +190,15 @@ class TestKEnginePsCode(PsSanityTestsFuncs):
         elif not os.path.exists(os.path.join(data_class_directory_path, '__init__.py')):
             with open(os.path.join(data_class_directory_path, '__init__.py'), 'wb') as f:
                 f.write("")
-        with open(os.path.join(data_class_directory_path, 'Data', "kpi_results.py"), 'wb') as f:
-            f.write(autopep8.fix_code(source=(SanityTestsCreator.KPI_RESULTS % formatting_dict),
-                                      options={"max_line_length": 100, "aggressive": 2}))
-        with open(os.path.join(data_class_directory_path, file_name), 'wb') as f:
-            f.write(autopep8.fix_code(source=(SanityTestsCreator.TEST_CLASS % formatting_dict),
-                                      options={"max_line_length": 100}))
+
+        if create_test_results:
+            with open(os.path.join(data_class_directory_path, 'Data', "kpi_results.py"), 'wb') as f:
+                f.write(autopep8.fix_code(source=(SanityTestsCreator.KPI_RESULTS % formatting_dict),
+                                          options={"max_line_length": 100, "aggressive": 2}))
+        if create_test_script:
+            with open(os.path.join(data_class_directory_path, file_name), 'wb') as f:
+                f.write(autopep8.fix_code(source=(SanityTestsCreator.TEST_CLASS % formatting_dict),
+                                          options={"max_line_length": 100}))
 
     def _import_scene_calculation(self):
         total_values = [j for i in self.sessions_scenes_list.values() for j in i]
@@ -390,7 +394,7 @@ def create_seed(project, sessions_from_user=None, number_of_sessions=1):
     return sessions_to_use, kpi_results
 
 
-def create_sanity_test(project, sessions_to_use, kpi_results):
+def create_sanity_test(project, sessions_to_use, kpi_results, create_test_script=True, create_test_results=True):
     if len(kpi_results) == 0:
         kpi_results = GetKpisDataForTesting(project=project).get_one_result_per_kpi(sessions=sessions_to_use)
     kpi_results_as_str = str(kpi_results.to_dict()).replace('nan', 'None')
@@ -402,7 +406,7 @@ def create_sanity_test(project, sessions_to_use, kpi_results):
     # Create functional-sanity test
     sanity = SanityTestsCreator(project=project, sessions_scenes_list=sessions_to_use, need_pnb=True,
                                 kpi_results=kpi_results_as_str if kpi_results_as_str else None)
-    sanity.create_test_class()
+    sanity.create_test_class(create_test_script=create_test_script, create_test_results=create_test_results)
 
 
 if __name__ == '__main__':
@@ -416,20 +420,29 @@ if __name__ == '__main__':
     replace_configurations_file = True
     copy_configuration_file_to_traxexport(replace_configurations_file)
     projects = {
-        # 'batru': {},
-        'ccru': {'F26E2E6B-D12B-415C-AC0C-CAB929BEFC9F': [],
-                 '3b8a8039-2c79-436d-b42f-c72f4ce3b183': []},
+        'batru': {},
+        # 'ccru': {'F26E2E6B-D12B-415C-AC0C-CAB929BEFC9F': [],
+        #          '3b8a8039-2c79-436d-b42f-c72f4ce3b183': []},
                 }
     for project in projects:
         try:
+
             kpi_results = pd.DataFrame()
             sessions = projects[project]
             # In case you don't need to generate a new seed, just comment out the below row
             sessions, kpi_results = create_seed(project=project, sessions_from_user=sessions)
-            # if kpi_results is None:
-            #     sys.exit(1)
-            # sessions = get_sessions_in_correct_format(sessions)
-            # create_sanity_test(project=project, sessions_to_use=sessions, kpi_results=kpi_results)
+            if kpi_results is None:
+                sys.exit(1)
+            sessions = get_sessions_in_correct_format(sessions)
+
+            # Create both the script and kpi test results
+            create_sanity_test(project=project, sessions_to_use=sessions, kpi_results=kpi_results,
+                               create_test_script=True, create_test_results=True)
+
+            # # Create kpi test results only
+            # create_sanity_test(project=project, sessions_to_use=sessions, kpi_results=kpi_results,
+            #                    create_test_script=False, create_test_results=True)
+
         except Exception as e:
             Log.error("Project {} failed to create sanity test with error {}".format(project, e))
         finally:

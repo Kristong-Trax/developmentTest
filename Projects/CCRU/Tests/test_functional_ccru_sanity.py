@@ -5,11 +5,6 @@ from Projects.CCRU.Tests.Data.data_test_ccru_sanity import ProjectsSanityData
 from Projects.CCRU.Calculations import CCRUCalculations
 from DevloperTools.SanityTests.PsSanityTests import PsSanityTestsFuncs
 from Projects.CCRU.Tests.Data.kpi_results import CCRUKpiResults
-from Trax.Cloud.Services.Storage.Factory import StorageFactory
-from Projects.CCRU.Utils.ToolBox import EQUIPMENT_TARGETS_BUCKET, EQUIPMENT_TARGETS_CLOUD_BASE_PATH
-from shutil import copyfile
-
-import os
 import json
 
 __author__ = 'sergey'

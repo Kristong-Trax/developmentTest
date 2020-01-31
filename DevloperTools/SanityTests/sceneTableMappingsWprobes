@@ -113,3 +113,4 @@ pservice	custom_osa	store_fk
 pservice	assortment_to_product	all
 pservice	assortment_to_assortment_group	all
 pservice	policy	all
+pservice	group_names	all
