@@ -26,12 +26,14 @@ if __name__ == '__main__':
         'f6c0247d-64b4-4d11-8e0b-f7616316c08f'
     ]
 
+    # geolocation session (fails for being 2 KM away)
+    sessions = ['8f2fdbe3-0654-4c0d-ad76-30d7407b7797']
+
     sessions = ['D51D704F-6274-49EF-8243-FECE54DF25B8',
                 '1385B157-3E42-4D59-9768-CB1374388B1A',
                 '96aebd09-7bd8-4263-a0ac-ecbbdc2bb02a',
                 'f9ddea0f-07de-4b0e-a40a-c18f986912c1']
 
-    # geolocation session (fails for being 2 KM away)
     sessions = ['48ec3686-8d8b-4a35-8196-7f8d661fc1b9']
 
     for session in sessions:
