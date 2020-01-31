@@ -21,6 +21,11 @@ DISTRIBUTION = 'Distribution'
 ASSORTMENT = 'Assortment'
 SCORING = 'Scoring'
 
+# Excel Column Names
+RELEVANT_ASSORTMNENT = 'Relevent Assortment'
+ASSORTMENT1 = 'Assortment1'
+ASSORTMENT2 = 'Assortment2'
+
 # Dataframe Column Names
 KPI_NAME = 'KPI Name'
 KPI_TYPE = 'KPI Type'
@@ -30,11 +35,13 @@ TEMPLATE_NAME = 'template_name'
 MANUFACTURER_NAME = 'manufacturer_name'
 RELEVANT_QUESTION_FK = 'question_fk'
 
+RESULT = 'result'
+
 # Excel Sheets
 SHEETS = [KPIS, AVALIABILITY, SOS, SHARE_OF_EMPTY, SURVEY, DISTRIBUTION, ASSORTMENT, SCORING]
 
 TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data',
-                             'Nayar_Comidas_Fondas_Template.xlsx')
+                             'Nayar Comidas Fondas Template.xlsx')
 
 
 def log_runtime(description, log_start=False):
@@ -75,8 +82,12 @@ class FONDASToolBox(GlobalSessionToolBox):
             self.templates[sheet] = pd.read_excel(TEMPLATE_PATH, sheet_name=sheet)
 
     def main_calculation(self):
+        store_type = 'Fondas-Rsr'
+        store_additional_attribute = self.sanitize_values(
+            'FONDA / LONCHERÍA / MERENDERO,RSR COMIDA MEXICANA / TACOS,RSR ASIAN,RSR SEAFOOD,RSR LOCAL FOOD,RSR PIZZAS,RSR SANDWICHES / TORTERIA,RSR POLLO,RSR HAMBURGUESAS,RSR OTROS ALIMENTOS')
+        # if ()
         relevant_kpi_template = self.templates[KPIS]
-        foundation_kpi_types = [DISTRIBUTION]
+        foundation_kpi_types = [SURVEY, DISTRIBUTION]
         foundation_kpi_template = relevant_kpi_template[relevant_kpi_template[KPI_TYPE].isin(foundation_kpi_types)]
 
         self._calculate_kpis_from_template(foundation_kpi_template)
@@ -123,6 +134,7 @@ class FONDASToolBox(GlobalSessionToolBox):
                         if result['result'] <= 1:
                             result['result'] = result['result'] * 100
                         self.results_df.loc[len(self.results_df), result.keys()] = result
+
     def _get_calculation_function_by_kpi_type(self, kpi_type):
         if kpi_type == SOS:
             return self.calculate_sos
@@ -158,9 +170,14 @@ class FONDASToolBox(GlobalSessionToolBox):
         kpi_name = row[KPI_NAME]
         kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_name)
         parent_kpi_name = row[PARENT_KPI]
-        # relevant_assortment = self.assortment_template[self.assortment_template[KPI_NAME].isin([kpi_name])]
+        relevant_assortment = self.assortment_template.loc[
+            self.assortment_template[KPI_NAME] == parent_kpi_name, row[RELEVANT_ASSORTMNENT]].values
 
-
+        # write filter for additional attribute 5
+        relevant_scif = self.filter_df(self.scif, {'template_group': row['template_group']})
+        result_of_current_assortment = np.in1d(relevant_assortment, relevant_scif)
+        # self.results_df.loc[self.results_df['kpi_name'] == 'Visible-Fondas-Rsr',RESULT][0]
+        a = 1
 
     def _get_parent_name_from_kpi_name(self, kpi_name):
         template = self.templates[KPIS]
@@ -170,6 +187,20 @@ class FONDASToolBox(GlobalSessionToolBox):
             return parent_kpi_name
         else:
             return None
+
+    @staticmethod
+    def filter_df(df, filters, exclude=0):
+        cols = set(df.columns)
+        for key, val in filters.items():
+            if key not in cols:
+                return pd.DataFrame()
+            if not isinstance(val, list):
+                val = [val]
+            if exclude:
+                df = df[~df[key].isin(val)]
+            else:
+                df = df[df[key].isin(val)]
+        return df
 
     @staticmethod
     def sanitize_values(item):
@@ -182,4 +213,10 @@ class FONDASToolBox(GlobalSessionToolBox):
                 items = [x.strip() for x in item.split(',')]
                 return items
 
-
+    @staticmethod
+    def _get_groups(series, root_string):
+        groups = []
+        for column in [col for col in series.index.tolist() if root_string in col]:
+            if series[column] not in ['', np.nan]:
+                groups.append([x.strip() for x in series[column].split(',')])
+        return groups
