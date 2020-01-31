@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Utils.Logging.Logger import Log
 from KPIUtils_v2.Utils.GlobalScripts.Scripts import GlobalSessionToolBox
@@ -85,10 +86,13 @@ class FONDASToolBox(GlobalSessionToolBox):
         store_type = 'Fondas-Rsr'
         store_additional_attribute = self.sanitize_values(
             'FONDA / LONCHERÍA / MERENDERO,RSR COMIDA MEXICANA / TACOS,RSR ASIAN,RSR SEAFOOD,RSR LOCAL FOOD,RSR PIZZAS,RSR SANDWICHES / TORTERIA,RSR POLLO,RSR HAMBURGUESAS,RSR OTROS ALIMENTOS')
-        # if ()
-        relevant_kpi_template = self.templates[KPIS]
-        foundation_kpi_types = [SURVEY, DISTRIBUTION]
-        foundation_kpi_template = relevant_kpi_template[relevant_kpi_template[KPI_TYPE].isin(foundation_kpi_types)]
+        store_additional_attribute = [unicode(value,'utf-8') for value in store_additional_attribute]
+        if self.store_info.additional_attribute_5.isin(store_additional_attribute).iat[0] and self.store_info.store_type.isin([store_type]).iat[0]:
+            relevant_kpi_template = self.templates[KPIS]
+
+            foundation_kpi_types = [DISTRIBUTION,SURVEY]
+            foundation_kpi_template = relevant_kpi_template[relevant_kpi_template[KPI_TYPE].isin(foundation_kpi_types)]
+            distribution_kpi_template = relevant_kpi_template[relevant_kpi_template[KPI_TYPE].isin([])]
 
         self._calculate_kpis_from_template(foundation_kpi_template)
 
@@ -170,14 +174,24 @@ class FONDASToolBox(GlobalSessionToolBox):
         kpi_name = row[KPI_NAME]
         kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_name)
         parent_kpi_name = row[PARENT_KPI]
-        relevant_assortment = self.assortment_template.loc[
-            self.assortment_template[KPI_NAME] == parent_kpi_name, row[RELEVANT_ASSORTMNENT]].values
 
-        # write filter for additional attribute 5
+        relevant_assortment = self.sanitize_values(self.assortment_template.loc[
+            self.assortment_template[KPI_NAME] == parent_kpi_name, row[RELEVANT_ASSORTMNENT]].iat[0])
         relevant_scif = self.filter_df(self.scif, {'template_group': row['template_group']})
-        result_of_current_assortment = np.in1d(relevant_assortment, relevant_scif)
-        # self.results_df.loc[self.results_df['kpi_name'] == 'Visible-Fondas-Rsr',RESULT][0]
-        a = 1
+        result_of_current_assortment = any(np.in1d(relevant_assortment, relevant_scif))
+        # relevant_survey_result = self.results_df.loc[self.results_df['kpi_name'] == 'Visible-Fondas-Rsr',RESULT][0]
+
+        numerator_id = self.scif.product_fk.iat[0] if not self.scif.product_fk.empty else 0
+        denominator_id = self.scif.sub_category_fk.iat[0] if not self.scif.sub_category_fk.empty else 0
+        if result_of_current_assortment:
+            result = 100
+        else:
+            result = 0
+
+        result_dict = {'kpi_name': kpi_name, 'kpi_fk': kpi_fk, 'numerator_id': numerator_id,
+                       'denominator_id': denominator_id,
+                       'result': result}
+        return result_dict
 
     def _get_parent_name_from_kpi_name(self, kpi_name):
         template = self.templates[KPIS]
