@@ -1,7 +1,5 @@
-from Trax.Utils.Logging.Logger import Log
 import haversine
 import pandas as pd
-from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Cloud.Services.Connector.Keys import DbUsers
 from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
@@ -30,8 +28,9 @@ class LIBERTYGeoToolBox:
         probes_location = self._get_probes_location()
         store_location = self._get_store_location(probes_location) if not probes_location.empty else pd.DataFrame()
 
-        if not (self.is_probes_location_none() and self._get_store_location()) or not store_location.empty:
-            store_lat_and_long = store_location[['pos_lat', 'pos_long']].values
+        if not (self.is_probes_location_none(probes_location) and
+                self._get_store_location(probes_location)) or not store_location.empty:
+            store_lat_and_long = store_location[['pos_lat', 'pos_long']].values[0]
             probes_lat_and_long = probes_location[['pos_lat', 'pos_long']].values
 
             ''' This is done because of a discrepancy between the coordinate systems used by the probes and store in 
@@ -59,7 +58,7 @@ class LIBERTYGeoToolBox:
         else:
             result_dict['result'] = 21  # Not Applicable
 
-        self.write_to_db(**result_dict)
+        self.common_db.write_to_db_result(**result_dict)
 
     def _get_probes_location(self):
         # probe location
@@ -78,12 +77,6 @@ class LIBERTYGeoToolBox:
                                              store_uid = '{}';""".format(store_uid)
         store_location = pd.read_sql_query(stores_query, self.rds_conn.db)
         return store_location
-
-    @property
-    def rds_conn(self):
-        if not hasattr(self, '_rds_conn'):
-            self._rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
-        return self._rds_conn
 
     @staticmethod
     def is_probes_location_none(probes_location):
