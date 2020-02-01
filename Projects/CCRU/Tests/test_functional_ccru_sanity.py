@@ -5,6 +5,7 @@ from Projects.CCRU.Tests.Data.data_test_ccru_sanity import ProjectsSanityData
 from Projects.CCRU.Calculations import CCRUCalculations
 from DevloperTools.SanityTests.PsSanityTests import PsSanityTestsFuncs
 from Projects.CCRU.Tests.Data.kpi_results import CCRUKpiResults
+import os
 import json
 
 __author__ = 'sergey'
@@ -17,7 +18,8 @@ SESSION_LIST = {'F26E2E6B-D12B-415C-AC0C-CAB929BEFC9F': [],
 class TestKEnginePsCode(PsSanityTestsFuncs):
 
     def add_mocks(self):
-        with open('./Data/{}'.format(EQUIPMENT_TARGETS_FILE), 'rb') as f:
+        with open(os.path.join(os.path.dirname(os.path.realpath(__file__)),
+                               'Data', EQUIPMENT_TARGETS_FILE), 'rb') as f:
             self.mock_object('get_equipment_targets',
                              path='Projects.CCRU.Utils.ToolBox.CCRUKPIToolBox')\
                 .return_value = json.load(f)
