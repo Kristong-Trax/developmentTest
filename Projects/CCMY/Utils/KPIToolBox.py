@@ -288,6 +288,8 @@ class CCMYToolBox:
         scene_types = self.get_scene_types(kpi_data.iloc[0])
         self_purity_scene_list = self.scene_info[self.scene_info['template_name'].isin(scene_types)][
             CCMYConsts.SCENE_FK].unique().tolist()
+        if len(self_purity_scene_list) == 0:
+            return 0, 0, 0, 0
         template_fk = self.scene_info[self.scene_info['template_name'].isin(scene_types)][
             CCMYConsts.TEMPLATE_FK].unique().tolist()
         template_fk = template_fk[0] if template_fk != [] else \
@@ -302,7 +304,6 @@ class CCMYToolBox:
         df_all_shelfs_products = df_all_shelfs.merge(self.products, how='inner', on=CCMYConsts.PRODUCT_FK)
         list_columns = [CCMYConsts.SCENE_FK, CCMYConsts.BAY_NUMBER, CCMYConsts.SHELF_NUMBER,
                         CCMYConsts.MANUFACTURER_FK, CCMYConsts.PRODUCT_FK]
-
         df_all_shelfs_products = pd.DataFrame(
             df_all_shelfs_products.groupby(list_columns).size().reset_index(name='count'))
 
