@@ -113,7 +113,6 @@ def log_runtime(description, log_start=False):
             return result
 
         return wrapper
-
     return decorator
 
 
