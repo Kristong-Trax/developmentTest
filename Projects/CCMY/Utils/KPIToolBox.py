@@ -155,7 +155,7 @@ class CCMYToolBox:
                     if kpi.empty:
                         continue
                     else:
-                        numerator, denominator, score, templates = self.calculate_self_purity(kpi_data)
+                        numerator, denominator, score, templates = self.calculate_self_purity(kpi)
                         numerator_id = templates
             else:
                 continue
