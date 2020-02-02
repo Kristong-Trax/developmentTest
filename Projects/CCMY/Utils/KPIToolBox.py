@@ -355,7 +355,7 @@ class CCMYToolBox:
                         self.kpi_static_data['kpi_name'] == group_name)]
             if df_atomic_kpi.empty:
                 Log.warning("kpi {} from template, doesn't exist in DB".format(params['KPI Name']))
-                return 0
+                return 0, 0, 0, 0
             atomic_kpi_fk = df_atomic_kpi.iloc[0][CCMYConsts.ATOMIC_KPI_FK]
             result = num_of_pure_shelves if df_atomic_kpi[CCMYConsts.ATOMIC_KPI_NAME].iloc[0] == \
                                             CCMYConsts.KPI_NUM_PURE_SHELVES else total_num_of_shelves
