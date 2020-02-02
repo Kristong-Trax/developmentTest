@@ -1,11 +1,11 @@
 import os
 import pandas as pd
 from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScript
+from KPIUtils.GlobalProjects.JNJ.KPIGenerator_v2 import JNJGenerator
+from KPIUtils_v2.DB.CommonV2 import Common
 # from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
 # from Trax.Utils.Conf.Configuration import Config
 # from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
-from KPIUtils.GlobalProjects.JNJ.KPIGenerator_v2 import JNJGenerator
-from KPIUtils_v2.DB.CommonV2 import Common
 
 
 __author__ = 'nissand'
