@@ -30,7 +30,6 @@ class CalculateKpi(LiveSessionBaseClass):
         """
         Main function of live project
         """
-        Log.warning('The function is in calculate_session_live_kpi')
         self.availability_by_assortment_calc()
         self.common.commit_live_queries_session()
 
