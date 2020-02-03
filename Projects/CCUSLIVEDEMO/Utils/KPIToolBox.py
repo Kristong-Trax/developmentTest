@@ -18,7 +18,6 @@ class CCUSLiveDemoToolBox:
         self.project_name = self.data_provider.project_name
         self.commonV2 = CommonV2(self.data_provider)
         self.common = Common(self.data_provider)
-        # self.diageo_generator = DIAGEOGenerator(self.data_provider, self.output, self.common)
         self.assortment = Assortment(self.data_provider, self.output)
 
         self.own_manuf_fk = int(self.data_provider.own_manufacturer.param_value.values[0])

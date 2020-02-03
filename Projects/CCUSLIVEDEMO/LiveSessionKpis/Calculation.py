@@ -40,7 +40,7 @@ class CalculateKpi(LiveSessionBaseClass):
         This function manipulate the result in group level to be in the same structure
         :param df: df with column 'result'
         """
-        df[df.result > 1] = 1
+        df.loc[df.result > 1] = 1
         df.loc[:, 'result'] = round(df['result'], 2) * 100
 
     def availability_by_assortment_calc(self):
