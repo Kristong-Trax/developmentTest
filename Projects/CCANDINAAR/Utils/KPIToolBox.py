@@ -33,6 +33,7 @@ class ToolBox(GlobalSessionToolBox):
         GlobalSessionToolBox.__init__(self, data_provider, output)
         self.templates = {}
         self.scene_kpi_results_fix = {}
+        self.scene_kpi_ratio_pass = {}
         self.scenes_result = self.data_provider.scene_kpi_results
 
     def main_calculation(self):
@@ -63,6 +64,7 @@ class ToolBox(GlobalSessionToolBox):
 
             if not pd.isnull(parent_kpi_name):
                 self.scene_kpi_results_fix[kpi_name] = 0
+                passing_scenes = 0
 
                 for scene in scene_list:
 
@@ -105,6 +107,10 @@ class ToolBox(GlobalSessionToolBox):
                                                            result=score, score=score,
                                                            context_id=template_fk,
                                                            should_enter=True)
+                        passing_scenes += 1
+
+                passing_percentage = round((passing_scenes / float(len(scene_list))), 2)
+                self.scene_kpi_results_fix[kpi_name] = passing_percentage
 
             if not pd.isnull(child_kpi_name):
                 kpi_name = row['KPI Name']
@@ -117,7 +123,7 @@ class ToolBox(GlobalSessionToolBox):
 
                 self.common.write_to_db_result(kpi_fk, numerator_id=self.manufacturer_fk,
                                                denominator_id=self.store_id,
-                                               result=score, score=score,
+                                               result=passing_percentage, score=score,
                                                should_enter=True, identifier_result=kpi_name)
 
     def calculate_bay_count(self):
