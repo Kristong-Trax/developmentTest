@@ -1,14 +1,14 @@
 
 
 from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
-from Projects.JNJES.Tests.Data.data_test_jnjes_sanity import ProjectsSanityData
-from Projects.JNJES.Calculations import JNJESCalculations
+from Projects.CCMY.Tests.Data.data_test_ccmy_sanity import ProjectsSanityData
+from Projects.CCMY.Calculations import CCMYCalculations
 from DevloperTools.SanityTests.PsSanityTests import PsSanityTestsFuncs
-from Projects.JNJES.Tests.Data.kpi_results import JNJESKpiResults
+from Projects.CCMY.Tests.Data.kpi_results import CCMYKpiResults
 # import os
 # import json
 
-__author__ = 'ilays'
+__author__ = 'limorc'
 
 
 class TestKEnginePsCode(PsSanityTestsFuncs):
@@ -24,17 +24,17 @@ class TestKEnginePsCode(PsSanityTestsFuncs):
         #     relative_position_template
         return
 
-    @PsSanityTestsFuncs.seeder.seed(["jnjes_seed", "mongodb_products_and_brands_seed"], ProjectsSanityData())
-    def test_jnjes_sanity(self):
+    @PsSanityTestsFuncs.seeder.seed(["ccmy_seed", "mongodb_products_and_brands_seed"], ProjectsSanityData())
+    def test_ccmy_sanity(self):
         self.add_mocks()
         project_name = ProjectsSanityData.project_name
         data_provider = KEngineDataProvider(project_name)
-        sessions = {'6109F0FF-D22E-42B4-87B4-3A8CE83EC09B': []}
-        kpi_results = JNJESKpiResults().get_kpi_results()
+        sessions = {'afa3b599-8228-4ebf-9409-14d2269a01f8': []}
+        kpi_results = CCMYKpiResults().get_kpi_results()
         for session in sessions.keys():
             data_provider.load_session_data(str(session))
             output = Output()
-            JNJESCalculations(data_provider, output).run_project_calculations()
+            CCMYCalculations(data_provider, output).run_project_calculations()
             # for scene in sessions[session]:
             # data_provider.load_scene_data(str(session), scene_id=scene)
             # SceneCalculations(data_provider).calculate_kpis()

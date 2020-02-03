@@ -62,7 +62,8 @@ class CopyCodeToNewProject:
 
 
 if __name__ == '__main__':
-    source_project_name = "avi-sand"
-    dest_project_name = "avisss"
+    source_project_name = "ccmy-sand"
+    dest_project_name = "ccmy"
     a = CopyCodeToNewProject(source_project_name, dest_project_name)
     a.copy_project()
+
