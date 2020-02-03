@@ -416,8 +416,10 @@ if __name__ == '__main__':
     replace_configurations_file = True
     copy_configuration_file_to_traxexport(replace_configurations_file)
     projects = {
-        'cbcdairyil': {'bd2f968c-8c47-4565-8422-82b43729e6a4': []},
-        # 'ccru': {},
+         'sanofike': {},
+         'sanofing': {},
+         'sanofijo': {},        
+         # 'ccru': {},
                 }
     for project in projects:
         try:
