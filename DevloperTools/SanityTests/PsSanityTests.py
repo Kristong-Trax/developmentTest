@@ -122,3 +122,12 @@ class PsSanityTestsFuncs(TestFunctionalCase):
             except Exception as e:
                 Log.warning("Couldn't log differences, failed with error: {}".format(e))
         self.assertTrue(wrong_results.empty)
+
+    def _assert_DIAGEO_test_results_matches_reality(self, kpi_results, ignore_kpis=None):
+        self._assert_test_results_matches_reality(kpi_results, ignore_kpis)
+        return
+
+    def _assert_SANOFI_test_results_matches_reality(self, kpi_results, ignore_kpis=None):
+        self._assert_test_results_matches_reality(kpi_results, ignore_kpis)
+        return
+

@@ -148,7 +148,7 @@ class TestKEnginePsCode(PsSanityTestsFuncs):
             # for scene in sessions[session]:
                 # data_provider.load_scene_data(str(session), scene_id=scene)
                 # SceneCalculations(data_provider).calculate_kpis()
-        self._assert_test_results_matches_reality(kpi_results)
+        self._assert_%(project_type)stest_results_matches_reality(kpi_results)
         # self._assert_old_tables_kpi_results_filled()
         # self._assert_new_tables_kpi_results_filled(distinct_kpis_num=None, list_of_kpi_names=None)
         # self._assert_scene_tables_kpi_results_filled(distinct_kpis_num=None)
@@ -169,11 +169,13 @@ class TestKEnginePsCode(PsSanityTestsFuncs):
         this method create sanity test class
         :return: None
         """
+        project_type = self.get_project_type()
         formatting_dict = {'author': self.user,
                            'main_class_name': self.main_class_name,
                            'project_capital': self.project_capital,
                            'seed': '{}_seed'.format(self.project.replace('-', '_')),
                            'project': self.project,
+                           'project_type': project_type,
                            'sessions': str(self.sessions_scenes_list),
                            'scene_import': self._import_scene_calculation(),
                            'need_pnb': self.need_pnb,
@@ -195,6 +197,14 @@ class TestKEnginePsCode(PsSanityTestsFuncs):
         with open(os.path.join(data_class_directory_path, file_name), 'wb') as f:
             f.write(autopep8.fix_code(source=(SanityTestsCreator.TEST_CLASS % formatting_dict),
                                       options={"max_line_length": 100}))
+    def get_project_type(self):
+        if 'sanofi' in self.project:
+            project_type = 'SANOFI_'
+        elif 'diageo' in self.project:
+            project_type = 'DIAGEO_'
+        else:
+            project_type = ""
+        return project_type
 
     def _import_scene_calculation(self):
         total_values = [j for i in self.sessions_scenes_list.values() for j in i]
@@ -285,7 +295,7 @@ class GetKpisDataForTesting:
         Log.info("The chosen session is: {}".format(list(sessions_chosen)))
         return sessions_chosen_dict
 
-    def get_session_with_max_kpis(self, number_of_sessions, days_back=3):
+    def get_session_with_max_kpis(self, number_of_sessions, days_back=7):
         Log.info('Fetching recent session with max number of kpis')
         query = """
                 SELECT 
@@ -416,10 +426,10 @@ if __name__ == '__main__':
     replace_configurations_file = True
     copy_configuration_file_to_traxexport(replace_configurations_file)
     projects = {
-         'sanofike': {},
-         'sanofing': {},
-         'sanofijo': {},        
-         # 'ccru': {},
+        'sanofike': {},
+        'sanofing': {},
+        'sanofijo': {},
+        # 'ccru': {},
                 }
     for project in projects:
         try:
