@@ -8,9 +8,9 @@ from Trax.Utils.Logging.Logger import Log
 
 
 class CalculateKpi(LiveSessionBaseClass):
-    LVL3_SESSION_RESULTS_COL = ['fk', 'numerator_id', 'numerator_result', 'denominator_id',
+    LVL3_SESSION_RESULTS_COL = ['kpi_level_2_fk', 'numerator_id', 'numerator_result', 'denominator_id',
                                 'denominator_result', 'result', 'score']
-    LVL2_SESSION_RESULTS_COL = ['fk', 'numerator_id', 'numerator_result', 'denominator_id',
+    LVL2_SESSION_RESULTS_COL = ['kpi_level_2_fk', 'numerator_id', 'numerator_result', 'denominator_id',
                                 'denominator_result', 'result', 'target', 'score']
     SKU_LEVEL = 3
     GROUPS_LEVEL = 2
@@ -30,7 +30,6 @@ class CalculateKpi(LiveSessionBaseClass):
         """
         Main function of live project
         """
-        # Log.warning('The function is in calculate_session_live_kpi')
         self.availability_by_assortment_calc()
         self.common.commit_live_queries_session()
 
@@ -58,7 +57,7 @@ class CalculateKpi(LiveSessionBaseClass):
             return
         self.assortment_result_base_actions(lvl3_result)  # this function will have the actions affect on lvl3_result
         lvl_2_result = self.assortment.calculate_lvl2_assortment(lvl3_result)
-        lvl_2_result.rename(columns={'passes': 'numerator_result', 'total': 'denominator_result', 'kpi_fk_lvl2': 'fk'},
+        lvl_2_result.rename(columns={'passes': 'numerator_result', 'total': 'denominator_result', 'kpi_fk_lvl2': 'kpi_level_2_fk'},
                             inplace=True)
 
         dist_result_lvl1, dist_results_lvl2 = self.distribution_calc(lvl3_result, lvl_2_result)
@@ -115,7 +114,7 @@ class CalculateKpi(LiveSessionBaseClass):
             return distribution_db_results df
         """
         lvl_3_result.rename(columns={'product_fk': 'numerator_id', 'assortment_group_fk': 'denominator_id',
-                                     'in_store': 'result', 'kpi_fk_lvl3': 'fk'}, inplace=True)
+                                     'in_store': 'result', 'kpi_fk_lvl3': 'kpi_level_2_fk'}, inplace=True)
         lvl_3_result.loc[:, 'result'] = lvl_3_result.apply(lambda row: self.kpi_result_value(row.result), axis=1)
         lvl_3_result = lvl_3_result.assign(numerator_result=lvl_3_result['result'],
                                            denominator_result=lvl_3_result['result'],
@@ -140,7 +139,7 @@ class CalculateKpi(LiveSessionBaseClass):
         if oos_results.empty:
             return oos_results
         oos_sku_kpi = self.get_kpi_fk('Live OOS - SKU')
-        oos_results.loc[:, 'fk'] = oos_sku_kpi
+        oos_results.loc[:, 'kpi_level_2_fk'] = oos_sku_kpi
         oos_results = self.filter_df_by_col(oos_results, self.SKU_LEVEL)
         Log.info('oos_results_sku level Done')
         return oos_results
@@ -156,7 +155,7 @@ class CalculateKpi(LiveSessionBaseClass):
         lvl_2_result.loc[:, 'result'] = lvl_2_result.numerator_result / lvl_2_result.denominator_result
         self.manipulate_result_row(lvl_2_result)
         oos_group_kpi = self.get_kpi_fk('Live OOS')
-        lvl_2_result.loc[:, 'fk'] = oos_group_kpi
+        lvl_2_result.loc[:, 'kpi_level_2_fk'] = oos_group_kpi
         lvl_2_result.loc[lvl_2_result['target'] == -1, 'target'] = None
         self._add_visit_summary_kpi_entities(lvl_2_result)
         lvl_2_result = self.filter_df_by_col(lvl_2_result, self.GROUPS_LEVEL)
@@ -214,8 +213,8 @@ class CalculateKpi(LiveSessionBaseClass):
           """
         if res_df.empty:
             return
-        dict_results = res_df.to_dict('records')
-        self.common.save_json_to_new_tables_sessions(dict_results)
+        # dict_results = res_df.to_dict('records')
+        self.common.save_to_new_tables_sessions(res_df)
 
     def kpi_result_value(self, value):
         """
@@ -235,4 +234,3 @@ class CalculateKpi(LiveSessionBaseClass):
         if self._data_provider.own_manufacturer.empty:
             Log.warning('This project doesnt have own manufacturer ')
         return int(self._data_provider.own_manufacturer['param_value'].iloc[0])
-
