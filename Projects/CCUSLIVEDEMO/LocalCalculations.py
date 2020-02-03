@@ -21,10 +21,10 @@ class Calculations(BaseCalculationsScript):
 if __name__ == '__main__':
     LoggerInitializer.init('ccuslivesdemo calculations')
     Config.init()
-    project_name = 'expd-20191210-410-ccuslivedemo'
+    project_name = 'ccuslivedemo'
     session = '0c2decfc-8d2f-4b22-b9d0-8e2e97c9557b'
     data_provider = KEngineSessionDataProviderLive(project_name, None, None)
-    data_provider.load_session_data('0c2decfc-8d2f-4b22-b9d0-8e2e97c9557b', [14049102])
+    data_provider.load_session_data('4647a9e5-84c6-4c77-9a2f-11e62000f70a', [])
     # session = 'f90529ec-6ff4-4481-970a-546e0030a41b'
     # data_provider = KEngineSessionDataProviderLive(project_name, None, None)
     # data_provider.load_session_data('f90529ec-6ff4-4481-970a-546e0030a41b', [14049726])
@@ -39,7 +39,7 @@ if __name__ == '__main__':
     CalculateKpi(data_provider, output).calculate_session_live_kpi()
 
     # calling regular data provider
-    reg_data_provider = KEngineDataProvider(project_name)
-    reg_data_provider.load_session_data(session)
-    Calculations(reg_data_provider, output).run_project_calculations()
+    # reg_data_provider = KEngineDataProvider(project_name)
+    # reg_data_provider.load_session_data(session)
+    # Calculations(reg_data_provider, output).run_project_calculations()
 
