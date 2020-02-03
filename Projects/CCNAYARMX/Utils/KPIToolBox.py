@@ -120,7 +120,6 @@ class ToolBox(GlobalSessionToolBox):
 
     def __init__(self, data_provider, output, common):
         GlobalSessionToolBox.__init__(self, data_provider, output, common)
-        self.common_v2 = common
         self.ps_data_provider = PsDataProvider(data_provider)
         self.block = Block(data_provider)
         self.templates = {}
@@ -128,11 +127,13 @@ class ToolBox(GlobalSessionToolBox):
         self.match_product_in_scene = self.data_provider['matches']
         self.own_manuf_fk = int(self.data_provider.own_manufacturer.param_value.values[0])
         self.survey = Survey(self.data_provider, output=output, ps_data_provider=self.ps_data_provider,
-                             common=self.common_v2)
+                             common=self.common)
         self.ps_data_provider = PsDataProvider(self.data_provider, self.output)
         self.platformas_data = self.generate_platformas_data()
         self.assortment = Assortment(self.data_provider, common=self.common)
         self.store_assortment = self.assortment.store_assortment
+        self.ps_data = PsDataProvider(self.data_provider, self.output)
+        self.match_product_in_probe_state_reporting = self.ps_data.get_match_product_in_probe_state_reporting()
         self.updated_store_assortment = self.store_assortment.merge(
             self.data_provider[Data.PRODUCTS][[PRODUCT_NAME, 'product_ean_code']], left_on='ean_code',
             right_on='product_ean_code', how='left')
@@ -790,9 +791,7 @@ class ToolBox(GlobalSessionToolBox):
                            'result': result, 'score': score}
 
             return result_dict
-
     def calculate_block_together(self, row):
-
         kpi_name = row[KPI_NAME]
         kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_name)
         numerator_entity = row[NUMERATOR_ENTITY]
@@ -804,7 +803,7 @@ class ToolBox(GlobalSessionToolBox):
         sub_category = self.sanitize_values(row[SUB_CATEGORY])
         iterate_by = row[ITERATE_BY]
 
-        relevant_scif_columns = [PK, SESSION_ID, PRODUCT_FK, PRODUCT_NAME, TEMPLATE_GROUP, TEMPLATE_NAME,
+        relevant_scif_columns = [PK, SESSION_ID, PRODUCT_FK, PRODUCT_NAME, TEMPLATE_GROUP, TEMPLATE_NAME, BRAND_FK,
                                  MANUFACTURER_NAME,
                                  TAMANDO_DEL_PRODUCTO, SUB_CATEGORY, PRODUCT_TYPE] + \
                                 [denominator_entity, numerator_entity, denominator_entity, SCENE_FK]
@@ -862,6 +861,15 @@ class ToolBox(GlobalSessionToolBox):
                                                                 additional={'minimum_block_ratio': 0.9,
                                                                             'calculate_all_scenes': True,
                                                                             'minimum_facing_for_block': 1})
+                    if pd.notna(row['tagging']):
+                        probes_match = [node[1]['probe_match_fk'] for node in block.cluster[0].nodes(data=True)]
+
+                        match_product_in_probe_state_fk = self._get_probe_state_by_kpi_level_2_fk(kpi_fk)
+                        lst_to_save = [x for sublist in probes_match for x in sublist]
+                        df_for_common = pd.DataFrame({self.common.MATCH_PRODUCT_IN_PROBE_FK: lst_to_save,
+                                                      self.common.MATCH_PRODUCT_IN_PROBE_STATE_REPORTING_FK: match_product_in_probe_state_fk})
+                        self.common.match_product_in_probe_state_values = \
+                            self.common.match_product_in_probe_state_values.append(df_for_common)
                     if False in block['is_block'].to_list():
                         result = 0
                         break
@@ -902,11 +910,17 @@ class ToolBox(GlobalSessionToolBox):
                         block_result_list.append(result_dict)
                 return block_result_list
 
+
+
         result_dict = {'kpi_name': kpi_name, 'kpi_fk': kpi_fk, 'numerator_id': numerator_id,
                        'denominator_id': denominator_id,
                        'result': result}
-
         return result_dict
+
+    def _get_probe_state_by_kpi_level_2_fk(self, kpi_fk):
+        filtered_probe_state = self.match_product_in_probe_state_reporting.loc[
+            self.match_product_in_probe_state_reporting.kpi_level_2_fk == kpi_fk]
+        return 0 if filtered_probe_state.empty else filtered_probe_state.iloc[0,0]
 
     def calculate_share_of_empty(self, row):
         kpi_name = row[KPI_NAME]
