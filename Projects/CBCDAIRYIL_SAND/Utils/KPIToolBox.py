@@ -137,7 +137,7 @@ class CBCDAIRYILToolBox:
             numerator = 0
         else:
             numerator = numerator_df['facings'].sum()
-        result = numerator / float(denominator)
+        result = round(numerator / float(denominator), 2)
         return result, numerator, denominator
 
     def add_gap(self, atomic_kpi, score, atomic_weight):
