@@ -133,6 +133,7 @@ class CBCDAIRYILToolBox:
         denominator_df = self.parser.filter_df(conditions=filters, data_frame_to_filter=df)
         filters['manufacturer_fk'] = self.own_manufacturer_fk
         numerator_df = self.parser.filter_df(conditions=filters, data_frame_to_filter=df)
+        del filters['manufacturer_fk']
         if denominator_df.empty:
             return 0, 0, 0
         denominator = denominator_df['facings'].sum()
