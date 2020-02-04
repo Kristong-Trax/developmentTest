@@ -791,6 +791,7 @@ class ToolBox(GlobalSessionToolBox):
                            'result': result, 'score': score}
 
             return result_dict
+
     def calculate_block_together(self, row):
         kpi_name = row[KPI_NAME]
         kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_name)
@@ -862,14 +863,16 @@ class ToolBox(GlobalSessionToolBox):
                                                                             'calculate_all_scenes': True,
                                                                             'minimum_facing_for_block': 1})
                     if pd.notna(row['tagging']):
-                        probes_match = [node[1]['probe_match_fk'] for node in block.cluster[0].nodes(data=True)]
-
+                        probes_match = [node[1]['probe_match_fk'] for node in
+                                        block.cluster.reset_index().drop(columns=['index']).iloc[i, 0].node(data=True)
+                                        for i in range(len(block.cluster))]
                         match_product_in_probe_state_fk = self._get_probe_state_by_kpi_level_2_fk(kpi_fk)
                         lst_to_save = [x for sublist in probes_match for x in sublist]
                         df_for_common = pd.DataFrame({self.common.MATCH_PRODUCT_IN_PROBE_FK: lst_to_save,
                                                       self.common.MATCH_PRODUCT_IN_PROBE_STATE_REPORTING_FK: match_product_in_probe_state_fk})
                         self.common.match_product_in_probe_state_values = \
                             self.common.match_product_in_probe_state_values.append(df_for_common)
+
                     if False in block['is_block'].to_list():
                         result = 0
                         break
@@ -910,8 +913,6 @@ class ToolBox(GlobalSessionToolBox):
                         block_result_list.append(result_dict)
                 return block_result_list
 
-
-
         result_dict = {'kpi_name': kpi_name, 'kpi_fk': kpi_fk, 'numerator_id': numerator_id,
                        'denominator_id': denominator_id,
                        'result': result}
@@ -920,7 +921,7 @@ class ToolBox(GlobalSessionToolBox):
     def _get_probe_state_by_kpi_level_2_fk(self, kpi_fk):
         filtered_probe_state = self.match_product_in_probe_state_reporting.loc[
             self.match_product_in_probe_state_reporting.kpi_level_2_fk == kpi_fk]
-        return 0 if filtered_probe_state.empty else filtered_probe_state.iloc[0,0]
+        return 0 if filtered_probe_state.empty else filtered_probe_state.iloc[0, 0]
 
     def calculate_share_of_empty(self, row):
         kpi_name = row[KPI_NAME]
