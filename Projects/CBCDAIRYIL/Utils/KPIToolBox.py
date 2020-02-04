@@ -103,19 +103,22 @@ class CBCDAIRYILToolBox:
         self.handle_gaps()
 
     def calculate_hierarchy_sos(self):
+        store_kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_type=Consts.SOS_BY_OWN_MAN)
+        category_kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_type=Consts.SOS_BY_OWN_MAN_CAT)
+        brand_kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_type=Consts.SOS_BY_OWN_MAN_CAT_BRAND)
         sos_df = self.scif[self.scif['rlv_sos_sc'] == 1]
         # filter_row_dict = {'population': {'include': [{'manufacturer_fk': self.own_manufacturer_fk}]}}
         # store level sos
         store_res, store_num, store_den = self.calculate_own_manufacturer_sos(filters={}, df=sos_df)
-        self.common.write_to_db_result(numerator_id=self.own_manufacturer_fk, denominator_id=self.store_id,
-                                       result=store_res, numerator_result=store_num, denominator_result=store_den,
-                                       score=store_res, identifier_result="OWN_SOS")
+        self.common.write_to_db_result(fk=store_kpi_fk, numerator_id=self.own_manufacturer_fk,
+                                       denominator_id=self.store_id, result=store_res, numerator_result=store_num,
+                                       denominator_result=store_den, score=store_res, identifier_result="OWN_SOS")
         # category level sos
         session_categories = self.scif['category_fk'].unique()
         for category_fk in session_categories:
             filters = {'category_fk': category_fk}
             cat_res, cat_num, cat_den = self.calculate_own_manufacturer_sos(filters=filters, df=sos_df)
-            self.common.write_to_db_result(numerator_id=category_fk, denominator_id=self.store_id,
+            self.common.write_to_db_result(fk=category_kpi_fk, numerator_id=category_fk, denominator_id=self.store_id,
                                            result=cat_res, numerator_result=cat_num, denominator_result=cat_den,
                                            score=cat_res, identifier_parent="OWN_SOS", should_enter=True,
                                            identifier_result="OWN_SOS_cat_{}".format(str(category_fk)))
@@ -124,7 +127,7 @@ class CBCDAIRYILToolBox:
             for brand_fk in cat_brands:
                 filters['brand_fk'] = brand_fk
                 brand_res, brand_num, brand_den = self.calculate_own_manufacturer_sos(filters=filters, df=sos_df)
-                self.common.write_to_db_result(numerator_id=brand_fk, denominator_id=category_fk,
+                self.common.write_to_db_result(fk=brand_kpi_fk, numerator_id=brand_fk, denominator_id=category_fk,
                                                result=brand_res, numerator_result=brand_num, should_enter=True,
                                                denominator_result=brand_den, score=brand_res,
                                                identifier_parent="OWN_SOS_cat_{}".format(str(category_fk)))
@@ -141,7 +144,7 @@ class CBCDAIRYILToolBox:
             numerator = 0
         else:
             numerator = numerator_df['facings'].sum()
-        result = round(numerator / float(denominator), 2)
+        result = round(numerator / float(denominator), 3)
         return result, numerator, denominator
 
     def add_gap(self, atomic_kpi, score, atomic_weight):

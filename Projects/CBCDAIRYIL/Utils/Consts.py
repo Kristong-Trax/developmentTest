@@ -45,6 +45,11 @@ class Consts(object):
     EYE_LEVEL = 'Eye Level'
     SURVEY = 'Survey'
     PLANOGRAM_KPI = u'פלנוגרמה'
+    SOS_BY_OWN_MAN = 'SOS_BY_OWN_MAN'
+    SOS_BY_OWN_MAN_CAT = 'SOS_BY_OWN_MAN_CAT'
+    SOS_BY_OWN_MAN_CAT_BRAND = 'SOS_BY_OWN_MAN_CAT_BRAND'
+    OOS = 'OOS'
+    OOS_SKU = 'OOS - SKU'
 
     # General Attributes
     CODE = 'code'
