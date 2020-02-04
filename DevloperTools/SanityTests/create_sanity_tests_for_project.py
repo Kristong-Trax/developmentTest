@@ -148,7 +148,7 @@ class TestKEnginePsCode(PsSanityTestsFuncs):
             # for scene in sessions[session]:
                 # data_provider.load_scene_data(str(session), scene_id=scene)
                 # SceneCalculations(data_provider).calculate_kpis()
-        self._assert_test_results_matches_reality(kpi_results)
+        self._assert_%(project_type)stest_results_matches_reality(kpi_results)
         # self._assert_old_tables_kpi_results_filled()
         # self._assert_new_tables_kpi_results_filled(distinct_kpis_num=None, list_of_kpi_names=None)
         # self._assert_scene_tables_kpi_results_filled(distinct_kpis_num=None)
@@ -164,16 +164,18 @@ class TestKEnginePsCode(PsSanityTestsFuncs):
         self.need_pnb = ', "mongodb_products_and_brands_seed"' if need_pnb else ""
         self.kpi_results = autopep8.fix_code(kpi_results, options={"aggressive": 2}) if kpi_results else ""
 
-    def create_test_class(self):
+    def create_test_class(self, create_test_script=True, create_test_results=True):
         """
         this method create sanity test class
         :return: None
         """
+        project_type = self.get_project_type()
         formatting_dict = {'author': self.user,
                            'main_class_name': self.main_class_name,
                            'project_capital': self.project_capital,
                            'seed': '{}_seed'.format(self.project.replace('-', '_')),
                            'project': self.project,
+                           'project_type': project_type,
                            'sessions': str(self.sessions_scenes_list),
                            'scene_import': self._import_scene_calculation(),
                            'need_pnb': self.need_pnb,
@@ -182,6 +184,7 @@ class TestKEnginePsCode(PsSanityTestsFuncs):
         project_name = self.project.upper().replace("-", "_")
         data_class_directory_path = '/home/{0}/dev/kpi_factory/Projects/{1}/Tests'.format(self.user, project_name)
         file_name = 'test_functional_{0}_sanity.py'.format(self.project)
+
         if not os.path.exists(data_class_directory_path):
             os.makedirs(data_class_directory_path)
             with open(os.path.join(data_class_directory_path, '__init__.py'), 'wb') as f:
@@ -189,12 +192,24 @@ class TestKEnginePsCode(PsSanityTestsFuncs):
         elif not os.path.exists(os.path.join(data_class_directory_path, '__init__.py')):
             with open(os.path.join(data_class_directory_path, '__init__.py'), 'wb') as f:
                 f.write("")
-        with open(os.path.join(data_class_directory_path, 'Data', "kpi_results.py"), 'wb') as f:
-            f.write(autopep8.fix_code(source=(SanityTestsCreator.KPI_RESULTS % formatting_dict),
-                                      options={"max_line_length": 100, "aggressive": 2}))
-        with open(os.path.join(data_class_directory_path, file_name), 'wb') as f:
-            f.write(autopep8.fix_code(source=(SanityTestsCreator.TEST_CLASS % formatting_dict),
-                                      options={"max_line_length": 100}))
+
+        if create_test_results:
+            with open(os.path.join(data_class_directory_path, 'Data', "kpi_results.py"), 'wb') as f:
+                f.write(autopep8.fix_code(source=(SanityTestsCreator.KPI_RESULTS % formatting_dict),
+                                          options={"max_line_length": 100, "aggressive": 2}))
+        if create_test_script:
+            with open(os.path.join(data_class_directory_path, file_name), 'wb') as f:
+                f.write(autopep8.fix_code(source=(SanityTestsCreator.TEST_CLASS % formatting_dict),
+                                          options={"max_line_length": 100}))
+
+    def get_project_type(self):
+        if 'sanofi' in self.project:
+            project_type = 'SANOFI_'
+        elif 'diageo' in self.project:
+            project_type = 'DIAGEO_'
+        else:
+            project_type = ""
+        return project_type
 
     def _import_scene_calculation(self):
         total_values = [j for i in self.sessions_scenes_list.values() for j in i]
@@ -285,7 +300,7 @@ class GetKpisDataForTesting:
         Log.info("The chosen session is: {}".format(list(sessions_chosen)))
         return sessions_chosen_dict
 
-    def get_session_with_max_kpis(self, number_of_sessions, days_back=3):
+    def get_session_with_max_kpis(self, number_of_sessions, days_back=7):
         Log.info('Fetching recent session with max number of kpis')
         query = """
                 SELECT 
@@ -390,7 +405,7 @@ def create_seed(project, sessions_from_user=None, number_of_sessions=1):
     return sessions_to_use, kpi_results
 
 
-def create_sanity_test(project, sessions_to_use, kpi_results):
+def create_sanity_test(project, sessions_to_use, kpi_results, create_test_script=True, create_test_results=True):
     if len(kpi_results) == 0:
         kpi_results = GetKpisDataForTesting(project=project).get_one_result_per_kpi(sessions=sessions_to_use)
     kpi_results_as_str = str(kpi_results.to_dict()).replace('nan', 'None')
@@ -402,7 +417,7 @@ def create_sanity_test(project, sessions_to_use, kpi_results):
     # Create functional-sanity test
     sanity = SanityTestsCreator(project=project, sessions_scenes_list=sessions_to_use, need_pnb=True,
                                 kpi_results=kpi_results_as_str if kpi_results_as_str else None)
-    sanity.create_test_class()
+    sanity.create_test_class(create_test_script=create_test_script, create_test_results=create_test_results)
 
 
 if __name__ == '__main__':
@@ -416,22 +431,11 @@ if __name__ == '__main__':
     replace_configurations_file = True
     copy_configuration_file_to_traxexport(replace_configurations_file)
     projects = {
-        'sanofiae': {},
-        'sanofici': {},
-        'sanoficm': {},
-        'sanofilb': {},
-        'sanofima': {},
-        'sanofiru': {},
-        'sanofisa': {},
-        'sanofisn': {},
-        'sanofitn': {},
-        'sanofitr': {},
-        'sanofiua': {},
-        'sanofiuz': {},
-        'sanofiza': {},
+        'lionnz-sand': {'944A33D9-125B-4B6C-A628-DF3630C3FE19': []},
                 }
     for project in projects:
         try:
+
             kpi_results = pd.DataFrame()
             sessions = projects[project]
             # In case you don't need to generate a new seed, just comment out the below row
@@ -439,7 +443,15 @@ if __name__ == '__main__':
             if kpi_results is None:
                 sys.exit(1)
             sessions = get_sessions_in_correct_format(sessions)
-            create_sanity_test(project=project, sessions_to_use=sessions, kpi_results=kpi_results)
+
+            # Create both the script and kpi test results
+            create_sanity_test(project=project, sessions_to_use=sessions, kpi_results=kpi_results,
+                               create_test_script=True, create_test_results=True)
+
+            # # Create kpi test results only
+            # create_sanity_test(project=project, sessions_to_use=sessions, kpi_results=kpi_results,
+            #                    create_test_script=False, create_test_results=True)
+
         except Exception as e:
             Log.error("Project {} failed to create sanity test with error {}".format(project, e))
         finally:

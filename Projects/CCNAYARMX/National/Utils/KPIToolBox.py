@@ -96,7 +96,7 @@ PORTAFOLIO_SHEETS = [ASSORTMENTS]
 TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data',
                              'CCNayarTemplate_Nationalv.5.xlsx')
 POS_OPTIONS_TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data',
-                                         'CCNayar_POS_Options_v6.xlsx')
+                                         'CCNayar_POS_Options_v7.xlsx')
 PORTAFOLIO_Y_PRECIOUS_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data',
                                           'CCNayarNational_Portafolios_y_Precios.xlsx')
 
@@ -113,7 +113,6 @@ def log_runtime(description, log_start=False):
             return result
 
         return wrapper
-
     return decorator
 
 

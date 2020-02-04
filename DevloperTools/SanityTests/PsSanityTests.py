@@ -29,6 +29,16 @@ class PsSanityTestsFuncs(TestFunctionalCase):
     def config_file_path(self):
         return os.path.join(os.path.dirname(os.path.realpath(__file__)), 'k-engine-test.config')
 
+    def _assert_custom_scif_table_filled(self):
+        connector = PSProjectConnector(TestProjectsNames().TEST_PROJECT_1, DbUsers.Docker)
+        cursor = connector.db.cursor(MySQLdb.cursors.DictCursor)
+        cursor.execute('''
+           SELECT * FROM pservice.custom_scene_item_facts
+           ''')
+        kpi_results = cursor.fetchall()
+        self.assertNotEquals(len(kpi_results), 0)
+        connector.disconnect_rds()
+
     def _assert_old_tables_kpi_results_filled(self):
         connector = PSProjectConnector(TestProjectsNames().TEST_PROJECT_1, DbUsers.Docker)
         cursor = connector.db.cursor(MySQLdb.cursors.DictCursor)
@@ -122,3 +132,12 @@ class PsSanityTestsFuncs(TestFunctionalCase):
             except Exception as e:
                 Log.warning("Couldn't log differences, failed with error: {}".format(e))
         self.assertTrue(wrong_results.empty)
+
+    def _assert_DIAGEO_test_results_matches_reality(self, kpi_results, ignore_kpis=None):
+        self._assert_test_results_matches_reality(kpi_results, ignore_kpis)
+        return
+
+    def _assert_SANOFI_test_results_matches_reality(self, kpi_results, ignore_kpis=None):
+        self._assert_test_results_matches_reality(kpi_results, ignore_kpis)
+        return
+

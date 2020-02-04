@@ -25,7 +25,7 @@ KPK_RESULT = 'report.kpk_results'
 KPS_RESULT = 'report.kps_results'
 KPI_NEW_TABLE = 'report.kpi_level_2_results'
 PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data',
-                    'Femsa template 2019 - KENGINE_DCH v8.7.xlsx')
+                    'Femsa template 2019 - KENGINE_DCH v8.9.xlsx')
 
 
 def log_runtime(description, log_start=False):
@@ -308,6 +308,8 @@ class CCBRToolBox:
         multipack_template = row[Const.MULTIPACK].strip()
         multipack_df = None
 
+
+
         # filter store type
         if store_type_template != "":
             store_types = store_type_template.split(",")
@@ -435,7 +437,9 @@ class CCBRToolBox:
                              Const.CATEGORY: 'category',
                              Const.MANUFACTURER: 'manufacturer_name',
                              Const.PRODUCT_TYPE: 'product_type',
-                             Const.MULTIPACK: 'MPAK'}
+                             Const.MULTIPACK: 'MPAK',
+                             Const.SUB_CATEGORY: 'sub_category',
+                             Const.RETURNABLE: 'Returnable'}
         for key in filters.keys():
             filters[convert_from_scif[key]] = filters.pop(key)
         return filters
