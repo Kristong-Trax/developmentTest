@@ -45,6 +45,8 @@ class CBCDAIRYILToolBox:
         self.kpis_gaps = list()
         self.passed_availability = list()
         self.kpi_static_data = self.old_common.get_kpi_static_data()
+        self.own_manufacturer_fk = int(self.data_provider.own_manufacturer.param_value.values[0])
+        self.parser = Parser
 
     def get_relevant_template(self):
         """
@@ -95,9 +97,6 @@ class CBCDAIRYILToolBox:
         kpi_set_score = self.calculate_kpis_and_save_to_db(total_set_scores, kpi_set_fk)  # Set level
         self.old_common.write_to_db_result(fk=old_kpi_set_fk, level=1, score=kpi_set_score)
         self.handle_gaps()
-        self.own_manufacturer_fk = int(self.data_provider.own_manufacturer.param_value.values[0])
-        self.parser = Parser
-
 
     def calculate_hierarchy_sos(self):
         sos_df = self.scif[self.scif['rlv_sos_sc'] == 1]
