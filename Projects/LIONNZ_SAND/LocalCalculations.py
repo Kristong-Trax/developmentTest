@@ -10,7 +10,7 @@ if __name__ == '__main__':
     project_name = 'lionnz-sand'
     data_provider = KEngineDataProvider(project_name)
     sessions = [
-        '944A33D9-125B-4B6C-A628-DF3630C3FE19',
+        '5281C4DF-8FD9-41E1-84A2-76179B95CA25',
     ]
     for session in sessions:
         print "Running session >>", session

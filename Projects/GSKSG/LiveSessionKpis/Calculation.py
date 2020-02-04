@@ -1,4 +1,3 @@
-import pandas as pd
 from datetime import datetime
 from Trax.Apps.Services.KEngine.Handlers.Utils.Scripts import LiveSessionBaseClass
 
@@ -129,8 +128,6 @@ class CalculateKpi(LiveSessionBaseClass):
         :param lvl_3_result:  df of assortment results in sku level
         :return: df of sql results for oos assortment sku level
         """
-        # filter distrubution kpis
-        # oos_results = lvl_3_result[lvl_3_result['result'] == 0]
         oos_results = lvl_3_result.copy()
         if oos_results.empty:
             return oos_results
@@ -167,7 +164,6 @@ class CalculateKpi(LiveSessionBaseClass):
            all products which excluded from oos will be removed from oos list  and will be added to distribution
           :param lvl3_res : assortment results in sku level
         """
-        #todo  get this info from k-engine
         excluded_from_oos = self.common.get_oos_exclude_values()
         if excluded_from_oos.empty:
             return
@@ -213,7 +209,6 @@ class CalculateKpi(LiveSessionBaseClass):
           """
         if res_df.empty:
             return
-        # dict_results = res_df.to_dict('records')
         self.common.save_to_new_tables_sessions(res_df)
 
     def kpi_result_value(self, value):
