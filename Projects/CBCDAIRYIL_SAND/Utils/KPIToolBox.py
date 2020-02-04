@@ -7,6 +7,7 @@ from KPIUtils.ParseTemplates import parse_template
 from KPIUtils_v2.DB.CommonV2 import Common
 from KPIUtils_v2.DB.Common import Common as oldCommon
 
+from KPIUtils_v2.Utils.Parsers import ParseInputKPI as Parser
 from Projects.CBCDAIRYIL_SAND.Utils.Consts import Consts
 from KPIUtils_v2.Calculations.SurveyCalculations import Survey
 from KPIUtils_v2.Calculations.BlockCalculations import Block
@@ -74,6 +75,7 @@ class CBCDAIRYILToolBox:
         Atomic KPIs based on the project's template.
         Than, It aggregates the result per KPI using the weights and at last aggregates for the set level.
         """
+        self.calculate_hierarchy_sos()
         if self.template_data.empty:
             Log.warning(Consts.EMPTY_TEMPLATE_DATA_LOG.format(self.store_id))
             return
@@ -93,6 +95,51 @@ class CBCDAIRYILToolBox:
         kpi_set_score = self.calculate_kpis_and_save_to_db(total_set_scores, kpi_set_fk)  # Set level
         self.old_common.write_to_db_result(fk=old_kpi_set_fk, level=1, score=kpi_set_score)
         self.handle_gaps()
+        self.own_manufacturer_fk = int(self.data_provider.own_manufacturer.param_value.values[0])
+        self.parser = Parser
+
+
+    def calculate_hierarchy_sos(self):
+        sos_df = self.scif[self.scif['rlv_sos_sc'] == 1]
+        # filter_row_dict = {'population': {'include': [{'manufacturer_fk': self.own_manufacturer_fk}]}}
+        # store level sos
+        store_res, store_num, store_den = self.calculate_own_manufacturer_sos(filters={}, df=sos_df)
+        self.common.write_to_db_result(numerator_id=self.own_manufacturer_fk, denominator_id=self.store_id,
+                                       result=store_res, numerator_result=store_num, denominator_result=store_den,
+                                       score=store_res, identifier_result="OWN_SOS")
+        # category level sos
+        session_categories = self.scif['category_fk'].unique()
+        for category_fk in session_categories:
+            filters = {'category_fk': category_fk}
+            cat_res, cat_num, cat_den = self.calculate_own_manufacturer_sos(filters=filters, df=sos_df)
+            self.common.write_to_db_result(numerator_id=category_fk, denominator_id=self.store_id,
+                                           result=cat_res, numerator_result=cat_num, denominator_result=cat_den,
+                                           score=cat_res, identifier_parent="OWN_SOS", should_enter=True,
+                                           identifier_result="OWN_SOS_cat_{}".format(str(category_fk)))
+            # brand-category level sos
+            cat_brands = self.parser.filter_df(conditions=filters, data_frame_to_filter=sos_df)['brand_fk'].unique()
+            for brand_fk in cat_brands:
+                filters['brand_fk'] = brand_fk
+                brand_res, brand_num, brand_den = self.calculate_own_manufacturer_sos(filters=filters, df=sos_df)
+                self.common.write_to_db_result(numerator_id=brand_fk, denominator_id=category_fk,
+                                               result=brand_res, numerator_result=brand_num, should_enter=True,
+                                               denominator_result=brand_den, score=brand_res,
+                                               identifier_parent="OWN_SOS_cat_{}".format(str(category_fk)))
+            del filters['brand_fk']
+
+    def calculate_own_manufacturer_sos(self, filters, df):
+        denominator_df = self.parser.filter_df(conditions=filters, data_frame_to_filter=df)
+        filters['manufacturer_fk'] = self.own_manufacturer_fk
+        numerator_df = self.parser.filter_df(conditions=filters, data_frame_to_filter=df)
+        if denominator_df.empty:
+            return 0, 0, 0
+        denominator = denominator_df['facings'].sum()
+        if numerator_df.empty:
+            numerator = 0
+        else:
+            numerator = numerator_df['facings'].sum()
+        result = numerator / float(denominator)
+        return result, numerator, denominator
 
     def add_gap(self, atomic_kpi, score, atomic_weight):
         """
