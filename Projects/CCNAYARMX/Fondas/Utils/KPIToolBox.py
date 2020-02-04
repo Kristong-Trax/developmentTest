@@ -87,12 +87,12 @@ class FONDASToolBox(GlobalSessionToolBox):
         store_additional_attribute = self.sanitize_values(
             'FONDA / LONCHERÍA / MERENDERO,RSR COMIDA MEXICANA / TACOS,RSR ASIAN,RSR SEAFOOD,RSR LOCAL FOOD,RSR PIZZAS,RSR SANDWICHES / TORTERIA,RSR POLLO,RSR HAMBURGUESAS,RSR OTROS ALIMENTOS')
         store_additional_attribute = [unicode(value,'utf-8') for value in store_additional_attribute]
-        if self.store_info.additional_attribute_5.isin(store_additional_attribute).iat[0] and self.store_info.store_type.isin([store_type]).iat[0]:
+        if self.store_info.additional_attribute_5.isin(store_additional_attribute)[0] and self.store_info.store_type.isin([store_type])[0]:
             relevant_kpi_template = self.templates[KPIS]
 
             foundation_kpi_types = [DISTRIBUTION,SURVEY]
             foundation_kpi_template = relevant_kpi_template[relevant_kpi_template[KPI_TYPE].isin(foundation_kpi_types)]
-            distribution_kpi_template = relevant_kpi_template[relevant_kpi_template[KPI_TYPE].isin([])]
+            # distribution_kpi_template = relevant_kpi_template[relevant_kpi_template[KPI_TYPE].isin([])]
 
         self._calculate_kpis_from_template(foundation_kpi_template)
 
