@@ -131,7 +131,6 @@ class CBCDAIRYILToolBox:
                                                result=brand_res, numerator_result=brand_num, should_enter=True,
                                                denominator_result=brand_den, score=brand_res,
                                                identifier_parent="OWN_SOS_cat_{}".format(str(category_fk)))
-            del filters['brand_fk']
 
     def calculate_own_manufacturer_sos(self, filters, df):
         denominator_df = self.parser.filter_df(conditions=filters, data_frame_to_filter=df)
