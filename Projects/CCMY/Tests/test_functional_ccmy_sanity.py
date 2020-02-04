@@ -8,7 +8,7 @@ from Projects.CCMY.Tests.Data.kpi_results import CCMYKpiResults
 # import os
 # import json
 
-__author__ = 'limorc'
+__author__ = 'sathiyanarayanan'
 
 
 class TestKEnginePsCode(PsSanityTestsFuncs):
