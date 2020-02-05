@@ -54,7 +54,7 @@ class CCRUProjectCalculations:
         self.project_name = self.data_provider.project_name
         self.rds_conn = self.rds_connection()
 
-        self.tool_box = CCRUKPIToolBox(self.data_provider, self.output, update_kpi_set=False)
+        self.tool_box = CCRUKPIToolBox(self.data_provider, self.output, update_kpi_set=True)
         self.session_uid = self.tool_box.session_uid
         self.visit_date = self.tool_box.visit_date
         self.store_id = self.tool_box.store_id
@@ -68,7 +68,7 @@ class CCRUProjectCalculations:
 
     def main_function(self):
 
-        if str(self.visit_date) < self.tool_box.MIN_CALC_DATE:
+        if False and str(self.visit_date) < self.tool_box.MIN_CALC_DATE:  # ignored
             Log.warning('Warning. Session cannot be calculated. '
                         'Visit date is less than {2} - {0}. '
                         'Store ID {1}.'

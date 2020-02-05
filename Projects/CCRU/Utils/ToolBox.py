@@ -115,7 +115,7 @@ POS_CAT_KPI_DICT = {'Availability': AVAILABILITY_CAT_FOR_MR, 'SOS': SOS_CAT_FOR_
 
 class CCRUKPIToolBox:
 
-    MIN_CALC_DATE = '2019-06-29'
+    MIN_CALC_DATE = '2020-01-25'
 
     STANDARD_VISIT = 'Standard visit'
     PROMO_VISIT = 'Promo visit'
@@ -2752,14 +2752,14 @@ class CCRUKPIToolBox:
         if not res or update_kpi_set:
             if str(self.visit_date) < self.MIN_CALC_DATE:
                 query = """
-                        select ss.additional_attribute_11 
+                        select ss.additional_attribute_12 
                         from static.stores ss 
                         join probedata.session ps on ps.store_fk=ss.pk 
                         where ss.delete_date is null and ps.session_uid = '{}';
                         """.format(self.session_uid)
-            else:  # Todo - Change to additional_attribute_12 for PROD
+            else:
                 query = """
-                        select ss.additional_attribute_12 
+                        select ss.additional_attribute_11 
                         from static.stores ss 
                         join probedata.session ps on ps.store_fk=ss.pk 
                         where ss.delete_date is null and ps.session_uid = '{}';
@@ -3386,7 +3386,7 @@ class CCRUKPIToolBox:
             facings_data = scene_data.groupby('product_fk')['facings'].sum().to_dict()
             for anchor_product_fk in top_skus['product_fks'].keys():
                 min_facings = top_skus['min_facings'][anchor_product_fk]
-                distributed = False
+                distributed_anchor_product_fk = False
                 for product_fk in top_skus['product_fks'][anchor_product_fk].split(','):
                     product_fk = int(product_fk)
                     facings = facings_data.pop(product_fk, 0)
@@ -3394,19 +3394,19 @@ class CCRUKPIToolBox:
                     #     facings = facings_data[product_fk]
                     # else:
                     #     facings = 0
-                    if facings >= min_facings:
-                        distributed = True
+                    distributed_product_fk = True if facings >= min_facings else False
+                    distributed_anchor_product_fk |= True
                     top_sku_products = top_sku_products.append({'anchor_product_fk': anchor_product_fk,
                                                                 'product_fk': product_fk,
                                                                 'facings': facings,
                                                                 'min_facings': min_facings,
                                                                 'in_assortment': 1,
-                                                                'distributed': 1 if distributed else 0,
+                                                                'distributed': 1 if distributed_product_fk else 0,
                                                                 'distributed_extra': 0},
                                                                ignore_index=True)
 
                 query = self.get_custom_scif_query(
-                    self.session_fk, scene_fk, int(anchor_product_fk), in_assortment, distributed)
+                    self.session_fk, scene_fk, int(anchor_product_fk), in_assortment, distributed_anchor_product_fk)
                 self.top_sku_queries.append(query)
 
             if facings_data:

@@ -8,7 +8,7 @@ static	excluded_templates	all
 static	excluded_products_in_template	all	
 static	excluded_products	all	
 static	exclude_include_set	all	
-static	stores	store_fk	pk 
+static	stores	store_fk	pk
 static	atomic_kpi_targets	exclude	
 static	regions	all
 static	template	template_fk	pk
@@ -40,6 +40,7 @@ static	kpi_result_type	all
 static	kpi_external_targets	all
 static	kpi_operation_type	all
 static	retailer	all
+static	display_brand	all
 static	district	all
 static	custom_entity	all
 static	kpi_result_value	all
@@ -52,6 +53,8 @@ static	reports_additional_entity_info	all
 static	report_additional_kpi_attributes	all
 static	report_sales_rep_stores	store_fk
 static	report_operational_hierarchy	sales_rep_fk
+static	store_task_area_group	all
+static	store_task_area_group_items	all
 static_new	brand	all
 static_new	bundle	all
 static_new	bundle_relations	all
@@ -91,6 +94,7 @@ probedata	brand_scenes	scene_fk
 probedata	match_product_in_scene_recognition_duplicates	match_product_in_scene_recognition_fk	match_fk
 probedata	user_sessions	user_session_fk	pk
 probedata	visits	visit_uid
+probedata	scene_store_task_area_group_items	scene_fk
 report	visit_summary	session_uid
 report	bundle_product_substitution	visit_date
 report	match_planogram_compliance	scene_fk
@@ -109,3 +113,4 @@ pservice	custom_osa	store_fk
 pservice	assortment_to_product	all
 pservice	assortment_to_assortment_group	all
 pservice	policy	all
+pservice	group_names	all
