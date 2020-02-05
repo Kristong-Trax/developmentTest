@@ -1,17 +1,17 @@
 
-from Trax.Utils.Logging.Logger import Log
-from Projects.PEPSIUSV2.Utils.KPIToolBox import ToolBox
+from Projects.PEPSIUSV2.Utils.KPIToolBox import PepsiUSV2ToolBox
 from KPIUtils_v2.Utils.Decorators.Decorators import log_runtime
+from Trax.Utils.Logging.Logger import Log
 
 __author__ = 'idanr'
 
 
-class Generator:
+class PepsiUSV2Generator:
 
     def __init__(self, data_provider, output):
         self.data_provider = data_provider
         self.output = output
-        self.tool_box = ToolBox(self.data_provider, self.output)
+        self.tool_box = PepsiUSV2ToolBox(self.data_provider, self.output)
 
     @log_runtime('Total Calculations', log_start=True)
     def main_function(self):

@@ -1,7 +1,6 @@
 
 from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScript
-
-from Projects.PEPSIUSV2.KPIGenerator import Generator
+from Projects.PEPSIUSV2.KPIGenerator import PepsiUSV2Generator as Generator
 
 __author__ = 'idanr'
 
