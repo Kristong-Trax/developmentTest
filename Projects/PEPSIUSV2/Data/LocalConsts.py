@@ -4,12 +4,14 @@ from Trax.Tools.ProfessionalServices.PsConsts.PS import AssortmentGroupConsts as
 
 
 class Consts(object):
+
     # Pepsi Categories
     CSD_CAT = 'CSD'
     TEA_CAT = 'RTD Tea'
     ENERGY_CAT = 'Energy'
 
-    END_CAP_DISPLAY = 'End Cap'
+    # Display for Display Compliance
+    END_CAP_DISPLAY = 'Endcap'
     PALLET_DISPLAY = 'Pallet'
 
     LINEAR_ID_SUFFIX = 'linear'
@@ -21,8 +23,8 @@ class Consts(object):
     # KPI Names
     DISPLAY_COMP_STORE_LEVEL_FK = 'Compliant Displays'
     SOS_OWN_MANUFACTURER_GENERAL_NAME = 'Linear SOS Compliance {}'
-    MANUFACTURERS_SOS_GENERAL_NAME = 'Manufacturer Share of {} Linear'
-    BRAND_SOS_GENERAL_NAME = 'Brand Share of {} Linear'
+    MANUFACTURERS_SOS_GENERAL_NAME = 'Manufacturer Share of {} {}'
+    BRAND_SOS_GENERAL_NAME = 'Brand Share of {} {}'
     FACINGS_SOS_STORE_LEVEL_KPI = 'Facings SOS'
 
     # Assortment Consts

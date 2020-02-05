@@ -10,7 +10,7 @@ if __name__ == '__main__':
     Config.init()
     project_name = 'pepsiusv2'
     data_provider = KEngineDataProvider(project_name)
-    session_list = ['42E1092B-9D2B-4250-9882-1C4E0A216085', '21014D07-CB94-4545-A2B9-108F3AECD7B8']
+    session_list = ['6a07a5bf-7e09-4cbb-855f-4a68c6ffab93', '7f799dad-3a94-4ff0-9f6c-59dd3ed09218']
     for session in session_list:
         data_provider.load_session_data(session)
         output = Output()

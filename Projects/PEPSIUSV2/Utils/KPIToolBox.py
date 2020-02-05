@@ -15,7 +15,9 @@ class PepsiUSV2ToolBox(GlobalSessionToolBox):
     def __init__(self, data_provider, output):
         GlobalSessionToolBox.__init__(self, data_provider, output)
         self.assortment = Assortment(data_provider)
-        self.match_display_in_scene = data_provider.match_display_in_scene
+        self.display_in_scene = data_provider.match_display_in_scene
+        self.static_display = data_provider.static_display
+        self.manufacturer_fk = int(self.manufacturer_fk)
         self._add_display_data_to_scif()
 
     def main_calculation(self):
@@ -26,7 +28,7 @@ class PepsiUSV2ToolBox(GlobalSessionToolBox):
     def _add_display_data_to_scif(self):
         """ This method adds the relevant display pk and name to Scene Item Facts.
         Every scene should have exactly one Display tagged in."""
-        display_data = self.match_display_in_scene.drop_duplicates(Sc.SCENE_FK)
+        display_data = self.display_in_scene.drop_duplicates(Sc.SCENE_FK)[['display_fk', 'display_name', Sc.SCENE_FK]]
         self.scif = self.scif.merge(display_data, on=Sc.SCENE_FK, how='left')
 
     def _calculate_display_compliance(self):
@@ -38,15 +40,16 @@ class PepsiUSV2ToolBox(GlobalSessionToolBox):
         pallet_group_results = self._calculate_assortment_by_display(Lc.PALLET_DISPLAY)
         end_cap_group_results = self._calculate_assortment_by_display(Lc.END_CAP_DISPLAY)
         group_results = pallet_group_results.append(end_cap_group_results)
-        self._calculate_display_compliance_store_result(group_results)
+        if not group_results.empty:
+            self._calculate_display_compliance_store_result(group_results)
 
     def _filter_lvl3_results_by_pallet(self, lvl3_results, display_name):
         """ Every assortment to product has an additional attribute with the pallet the client expect it to be.
         So this method filters the lvl3_results by the relevant display name."""
         lvl3_results[Lc.DISPLAY_NAME] = lvl3_results[Lc.ASSORTMENT_ATTR].map(lambda x: eval(x)[Lc.DISPLAY_TYPE])
         lvl3_results = lvl3_results.loc[lvl3_results[Lc.DISPLAY_NAME] == display_name]
-        filtered_match_display_in_scene = self.match_display_in_scene[[Lc.DISPLAY_FK, Lc.DISPLAY_NAME]]
-        lvl3_results = lvl3_results.merge(filtered_match_display_in_scene, on=Lc.DISPLAY_NAME, how='left')
+        display_static_data = self.static_display[['pk', Lc.DISPLAY_NAME]].rename({'pk': Lc.DISPLAY_FK}, axis=1)
+        lvl3_results = lvl3_results.merge(display_static_data, on=Lc.DISPLAY_NAME, how='left')
         return lvl3_results
 
     def _calculate_display_compliance_store_result(self, group_results):
@@ -72,51 +75,53 @@ class PepsiUSV2ToolBox(GlobalSessionToolBox):
         """
         cols_to_save, cols_rename_dict, denominator_res, kpi_id, parent_id = self._get_ass_consts_by_level(assort_lvl)
         results_df = assortment_res[cols_to_save]
-        self._set_kpi_df_identifiers(results_df, kpi_id, parent_id, Lc.ASSORTMENT_ID_SUFFIX)  # todo: warning
+        self._set_kpi_df_identifiers(results_df, kpi_id, parent_id, assort_lvl, Lc.ASSORTMENT_ID_SUFFIX)  # todo: warn
         results_df.rename(cols_rename_dict, inplace=True, axis=1)
         results_df[Src.SCORE] = results_df.loc[:, Src.RESULT]  # todo: warning
         results_df = results_df.assign(denominator_result=denominator_res)
         self.common.save_json_to_new_tables(results_df.to_dict('records'))
 
-    def _save_sos_results(self, sos_res_df, sos_lvl, suffix_identifier):
+    def _save_sos_results(self, sos_res_df, sos_lvl, category_name, suffix_identifier):
         """
         This method converts the SOS DataFrame to the expected DB results.
         :param sos_res_df: A group SOS DataFrame by manufacturer or brand
         :param sos_lvl: A const with the relevant SOS lvl the being saved. It affects the consts and identifiers.
         """
         cols_rename_dict, kpi_identifier, parent_identifier = self._get_sos_consts_by_level(sos_lvl)
-        self._set_kpi_df_identifiers(sos_res_df, kpi_identifier, parent_identifier, suffix_identifier)  # todo: warning
+        self._set_kpi_df_identifiers(sos_res_df, kpi_identifier, parent_identifier, sos_lvl, suffix_identifier)
         results_df = sos_res_df.rename(cols_rename_dict, inplace=False, axis=1)
         results_df[Src.SCORE] = results_df.apply(
             lambda row: self.get_percentage(row.numerator_result, row.denominator_result), axis=1)
-        results_df[Src.RESULT] = results_df.loc[:, Src.SCORE]
+        results_df[Src.RESULT] = results_df[Src.SCORE]
+        results_df['fk'] = self._get_sos_kpi_fk_by_category_and_lvl(category_name, sos_lvl, suffix_identifier)
         self.common.save_json_to_new_tables(results_df.to_dict('records'))
 
-    def _set_kpi_df_identifiers(self, results_df, kpi_id_cols, parent_id_cols, additional_suffix=''):
+    def _set_kpi_df_identifiers(self, results_df, kpi_id_cols, parent_id_cols, kpi_level, suffix_to_add=''):
         """ This method gets assortment or SIS results and consts with the columns that should be the
         KPI and parent identifiers. It creates the identifier_result and parent_result and adds the
         `Should Enter` columns if necessary"""
         valid_cols = results_df.columns.unique().to_list()
         if kpi_id_cols and set(kpi_id_cols).issubset(valid_cols):
             results_df.loc[:, 'identifier_result'] = results_df.apply(
-                lambda row: self._get_assortment_identifier(row, kpi_id_cols, additional_suffix), axis=1)
+                lambda row: self._get_assortment_identifier(row, kpi_id_cols, kpi_level, suffix_to_add), axis=1)
         if parent_id_cols and set(parent_id_cols).issubset(valid_cols):
             results_df.loc[:, 'identifier_parent'] = results_df.apply(
-                lambda row: self._get_assortment_identifier(row, parent_id_cols, additional_suffix), axis=1)
+                lambda row: self._get_assortment_identifier(row, parent_id_cols, kpi_level-1, suffix_to_add), axis=1)
             results_df.loc[:, 'should_enter'] = True
 
     @staticmethod
-    def _get_assortment_identifier(row, cols_to_concat, additional_suffix=''):
+    def _get_assortment_identifier(row, cols_to_concat, kpi_level, additional_suffix=''):
         """
         This method defines an identifier based on the relevant columns.
         Please note! The columns must by instance of Integer or Float.
         :param cols_to_concat: keys of the series (the row)
-        :param additional_suffix: Additional Suffix to add.
+        :param kpi_level: The relevant kpi level to save
+        :param additional_suffix (Str): Additional Suffix to add.
         @:return A concatenation of the columns' values and the additional_suffix.
         E.g: if additional_suffix='SOS' and cols_to_concat = ['brand_fk'] we can get: '7_sos'.
         """
         res_id = '_'.join([str(int(row[col])) if isinstance(row[col], (int, float)) else '' for col in cols_to_concat])
-        res_id = '_'.join([res_id, additional_suffix]) if additional_suffix else res_id
+        res_id = '_'.join([res_id, str(additional_suffix), str(kpi_level)]) if additional_suffix else res_id
         return res_id
 
     @staticmethod
@@ -147,20 +152,16 @@ class PepsiUSV2ToolBox(GlobalSessionToolBox):
         group_res = group_res.assign(manufacturer_fk=self.manufacturer_fk)
         return group_res
 
-    def _calculate_display_compliance_store_level(self, group_res):
-        """ This method gets the group results and returns a DataFrame with the Store results"""
-        pass
-
     def _calculate_assortment_by_display(self, display_name):
         """This method gets the display name and calculates the assortment for all of the SKUs in this display"""
         filtered_scif = self.scif.loc[self.scif.display_name == display_name]
-        if filtered_scif.empty:
-            return pd.DataFrame()
         sku_lvl_results = self._get_filtered_assortment_lvl3_results(filtered_scif, display_name)
-        group_lvl_results = self._calculate_display_compliance_group_results(sku_lvl_results)
-        self._save_assortment_results(sku_lvl_results, Lc.SKU_LVL)
-        self._save_assortment_results(group_lvl_results, Lc.GROUP_LVL)
-        return group_lvl_results
+        if not sku_lvl_results.empty:
+            group_lvl_results = self._calculate_display_compliance_group_results(sku_lvl_results)
+            self._save_assortment_results(sku_lvl_results, Lc.SKU_LVL)
+            self._save_assortment_results(group_lvl_results, Lc.GROUP_LVL)
+            return group_lvl_results
+        return pd.DataFrame()
 
     def _calculate_sos_sets(self):
         """ This method calculates the linear and the facings SOS kpi sets.
@@ -183,7 +184,7 @@ class PepsiUSV2ToolBox(GlobalSessionToolBox):
         if filtered_scif.empty or not category_fk:
             return []
         self._calculate_linear_sos_results(filtered_scif, category_fk, category_name)
-        self._calculate_facings_sos_results(filtered_scif, category_fk)
+        self._calculate_facings_sos_results(filtered_scif, category_fk, category_name)
 
     def _get_category_fk_by_name(self, category_name):
         """ This method gets category name and returns the relevant fk. If doesn't exist, it returns 0"""
@@ -199,16 +200,16 @@ class PepsiUSV2ToolBox(GlobalSessionToolBox):
         There are three KPIs: 1. Own Manufacturer vs target, 2. All manufacturers in store, all brands in store
         """
         self._calculate_own_manufacturer_vs_target(filtered_scif, category_fk, category_name)
-        self._calculate_manufacturers_sos(filtered_scif, category_fk, sos_attr=Lc.SOS_LINEAR_LEN_ATTR)
-        self._calculate_brands_sos(filtered_scif, category_fk,  sos_attr=Lc.SOS_LINEAR_LEN_ATTR)
+        self._calculate_manufacturers_sos(filtered_scif, category_fk, category_name, sos_attr=Lc.SOS_LINEAR_LEN_ATTR)
+        self._calculate_brands_sos(filtered_scif, category_fk, category_name, sos_attr=Lc.SOS_LINEAR_LEN_ATTR)
 
-    def _calculate_facings_sos_results(self, filtered_scif, category_fk):
+    def _calculate_facings_sos_results(self, filtered_scif, category_name, category_fk):
         """
         This method gets the filtered scif by category and return the Facings SOS results.
         There are three KPIs: 1. Own Manufacturer in store, 2. All manufacturers in store, all brands in store
         """
-        self._calculate_brands_sos(filtered_scif, category_fk, sos_attr=Lc.SOS_FACINGS_ATTR)
-        self._calculate_manufacturers_sos(filtered_scif, category_fk, sos_attr=Lc.SOS_FACINGS_ATTR)
+        self._calculate_brands_sos(filtered_scif, category_fk, category_name, sos_attr=Lc.SOS_FACINGS_ATTR)
+        self._calculate_manufacturers_sos(filtered_scif, category_fk, category_name, sos_attr=Lc.SOS_FACINGS_ATTR)
         self._calculate_own_manufacturer_facings_sos(filtered_scif, category_fk)
 
     def _calculate_own_manufacturer_facings_sos(self, filtered_scif, category_fk):
@@ -229,31 +230,32 @@ class PepsiUSV2ToolBox(GlobalSessionToolBox):
         :return: A DataFrame with one row of SOS results
         """
         # Todo: suggest Tim that target will be saved in target
+        # Todo: store target !! currently mocked
         own_manufacturer_scif = filtered_scif.loc[filtered_scif.manufacturer_fk == self.manufacturer_fk]
-        store_target = self.store_info.additional_attribute_1.values[0]  # Todo: Missing store target
+        store_target = self.store_info.additional_attribute_1.values[0] if 0 else 11000  # Todo: Missing store target
         own_manu_sos = own_manufacturer_scif[Lc.SOS_LINEAR_LEN_ATTR].sum()
         score, result = self._calculate_sos_vs_target_score_and_result(own_manu_sos, store_target)
-        kpi_fk = self._get_sos_kpi_fk_by_category_and_lvl(category_name, Lc.SOS_OWN_MANU_LVL)
-        kpi_identifier = '_'.join([category_fk,  Lc.LINEAR_ID_SUFFIX])
+        kpi_fk = self._get_sos_kpi_fk_by_category_and_lvl(category_name, Lc.SOS_OWN_MANU_LVL, Lc.LINEAR_ID_SUFFIX)
+        kpi_identifier = '_'.join([str(category_fk),  Lc.LINEAR_ID_SUFFIX])
         self.write_to_db(fk=kpi_fk, numerator_id=self.manufacturer_fk, denominator_id=self.store_id,
                          numerator_result=own_manu_sos, denominator_result=store_target, context_id=category_fk,
                          score=score, result=result, identifier_result=kpi_identifier)
 
-    def _calculate_manufacturers_sos(self, filtered_scif, category_fk, sos_attr):
+    def _calculate_manufacturers_sos(self, filtered_scif, category_fk, cat_name, sos_attr):
         """
         This method calculates all of the manufacturers linear sos results
         """
         manu_res_df = self._calculate_sos_by_attr(filtered_scif, category_fk, Sc.MANUFACTURER_FK, sos_attr)
         kpi_suffix_identifier = Lc.FACINGS_ID_SUFFIX if sos_attr == Lc.SOS_FACINGS_ATTR else Lc.LINEAR_ID_SUFFIX
-        self._save_sos_results(manu_res_df, sos_lvl=Lc.SOS_ALL_MANU_LVL, suffix_identifier=kpi_suffix_identifier)
+        self._save_sos_results(manu_res_df, Lc.SOS_ALL_MANU_LVL, cat_name, suffix_identifier=kpi_suffix_identifier)
 
-    def _calculate_brands_sos(self, filtered_scif, cat_fk, sos_attr):
+    def _calculate_brands_sos(self, filtered_scif, cat_fk, cat_name, sos_attr):
         """
         This method calculates all of the manufacturers linear sos results
         """
         brands_res_df = self._calculate_sos_by_attr(filtered_scif, cat_fk, [Sc.BRAND_FK, Sc.MANUFACTURER_FK], sos_attr)
         kpi_suffix_identifier = Lc.FACINGS_ID_SUFFIX if sos_attr == Lc.SOS_FACINGS_ATTR else Lc.LINEAR_ID_SUFFIX
-        self._save_sos_results(brands_res_df, sos_lvl=Lc.SOS_ALL_BRAND_LVL, suffix_identifier=kpi_suffix_identifier)
+        self._save_sos_results(brands_res_df, Lc.SOS_ALL_BRAND_LVL, cat_name, suffix_identifier=kpi_suffix_identifier)
 
     @staticmethod
     def _calculate_sos_by_attr(filtered_scif, category_fk, attr_to_group_by, sos_attr):
@@ -274,15 +276,16 @@ class PepsiUSV2ToolBox(GlobalSessionToolBox):
     def _calculate_sos_vs_target_score_and_result(self, sum_of_linear_sos, store_target):
         """ This method gets the own manufacturer sos sum and the store target and calculates the score and result.
         The score is basically numerator / denominator and the results is 100 if the target was passed"""
-        score = self.get_percentage(sum_of_linear_sos, store_target)
+        score = min(self.get_percentage(sum_of_linear_sos, store_target), 100)
         result = 100 if sum_of_linear_sos >= store_target else 0
         return score, result
 
-    def _get_sos_kpi_fk_by_category_and_lvl(self, category_name, lvl):
+    def _get_sos_kpi_fk_by_category_and_lvl(self, category_name, lvl, sos_attr):
         """This method gets a category name and sos kpi lvl and returns the relevant kpi fk"""
         general_kpi_name = Lc.MAPPER_KPI_LVL_AND_NAME[lvl]
         category_name_in_the_kpi = self._get_category_name_in_kpi(category_name)
-        kpi_fk = self.get_kpi_fk_by_kpi_type(general_kpi_name.format(category_name_in_the_kpi))
+        sos_attr_in_kpi = self._get_sos_attr_in_kpi(sos_attr)
+        kpi_fk = self.get_kpi_fk_by_kpi_type(general_kpi_name.format(category_name_in_the_kpi, sos_attr_in_kpi))
         return kpi_fk
 
     @staticmethod
@@ -298,6 +301,16 @@ class PepsiUSV2ToolBox(GlobalSessionToolBox):
             return 'CSD'
         else:
             Log.error(Lc.MISSING_KPI_FOR_CATEGORY.format(category_name))
+
+    @staticmethod
+    def _get_sos_attr_in_kpi(sos_attr):
+        """ The KPI names are having the sos_attr in it, this method returns the exact name that appears in the
+        KPI. This method created so in case the sos attribute will change, the kpi won't be affected."""
+        upper_category_name = sos_attr.upper()
+        if 'FACINGS' in upper_category_name:
+            return 'Facings'
+        else:
+            return 'Linear'
 
     def _get_relevant_scene_per_category(self, category_name):
         """ This method returns the relevant scenes to consider in the sos calculation.
