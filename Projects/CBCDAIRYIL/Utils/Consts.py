@@ -95,6 +95,7 @@ class Consts(object):
 
     # CBC data
     CBC_MANU = 45
+    LEADING_PRODUCTS = u'מוצרים מובילים'
     CBC_COOLERS = u'מקרר חברה מרכזית'
     COMPETITOR_COOLERS = [u'מקרר מתחרה', u'מקרר קמעונאי']
     SURVEY_ANSWERS_TO_IGNORE = [u'הסידור אינו קטגוריאלי', u'אין מותגים אחרים']

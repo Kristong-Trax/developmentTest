@@ -47,7 +47,7 @@ class CBCDAIRYILToolBox:
         self.kpi_static_data = self.old_common.get_kpi_static_data()
         self.own_manufacturer_fk = int(self.data_provider.own_manufacturer.param_value.values[0])
         self.parser = Parser
-
+        self.all_products = self.data_provider[Data.ALL_PRODUCTS]
 
     def get_relevant_template(self):
         """
@@ -101,6 +101,40 @@ class CBCDAIRYILToolBox:
         kpi_set_score = self.calculate_kpis_and_save_to_db(total_set_scores, kpi_set_fk)  # Set level
         self.old_common.write_to_db_result(fk=old_kpi_set_fk, level=1, score=kpi_set_score)
         self.handle_gaps()
+
+    def calculate_oos(self):
+        numerator = total_facings = 0
+        store_kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_type=Consts.OOS)
+        sku_kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_type=Consts.OOS_SKU)
+        leading_skus_df = self.template_data[self.template_data[Consts.KPI_NAME].str.encode("utf8") ==
+                                             Consts.LEADING_PRODUCTS.encode("utf8")]
+        skus_ean_list = leading_skus_df[Consts.PARAMS_VALUE_1].tolist()
+        skus_ean_set = set([ean_code.strip() for values in skus_ean_list for ean_code in values.split(",")])
+        product_fks = self.all_products[self.all_products['product_ean_code'].isin(skus_ean_set)]['product_fk'].tolist()
+        # sku level oos
+        for sku in product_fks:
+            # 2 for distributed and 1 for oos
+            product_df = self.scif[self.scif['product_fk'] == sku]
+            if product_df.empty:
+                numerator += 1
+                result = 1
+                facings = product_df['facings'].values[0]
+                total_facings += facings
+            else:
+                result = 2
+                facings = 0
+            self.common.write_to_db_result(fk=sku_kpi_fk, numerator_id=sku, denominator_id=self.store_id,
+                                           result=result, numerator_result=result, denominator_result=result,
+                                           score=facings, identifier_parent="OOS", should_enter=True)
+        # store level oos
+        denominator = len(product_fks)
+        if denominator == 0:
+            numerator = result = 0
+        else:
+            result = round(numerator / float(denominator), 4)
+        self.common.write_to_db_result(fk=store_kpi_fk, numerator_id=self.own_manufacturer_fk,
+                                       denominator_id=self.store_id, result=result, numerator_result=numerator,
+                                       denominator_result=denominator, score=total_facings, identifier_result="OOS")
 
     def calculate_hierarchy_sos(self):
         store_kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_type=Consts.SOS_BY_OWN_MAN)
