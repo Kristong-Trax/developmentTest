@@ -83,7 +83,13 @@ class JRIJPToolBox:
         for data_tup, scene_data_df in grouped_data:
             scene_fk, display_fk = data_tup
             posm_count = len(scene_data_df)
-            cur_template_fk = int(self.scene_info[self.scene_info['scene_fk'] == scene_fk].get('template_fk'))
+            template_fk = self.scene_info[self.scene_info['scene_fk'] == scene_fk].get('template_fk')
+            if not template_fk.empty:
+                cur_template_fk = int(template_fk)
+            else:
+                Log.info("JRIJP: Scene ID {scene} is not complete and not found in scene Info.".format(
+                    scene=scene_fk))
+                continue
             self.common.write_to_db_result(fk=kpi_fk,
                                            numerator_id=display_fk,
                                            denominator_id=self.store_id,
