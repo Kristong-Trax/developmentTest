@@ -82,6 +82,7 @@ class CBCDAIRYILToolBox:
         Than, It aggregates the result per KPI using the weights and at last aggregates for the set level.
         """
         # self.calculate_hierarchy_sos()
+        # self.calculate_oos()
         if self.template_data.empty:
             Log.warning(Consts.EMPTY_TEMPLATE_DATA_LOG.format(self.store_id))
             return
@@ -118,11 +119,11 @@ class CBCDAIRYILToolBox:
             if product_df.empty:
                 numerator += 1
                 result = 1
-                facings = product_df['facings'].values[0]
-                total_facings += facings
+                facings = 0
             else:
                 result = 2
-                facings = 0
+                facings = product_df['facings'].values[0]
+                total_facings += facings
             self.common.write_to_db_result(fk=sku_kpi_fk, numerator_id=sku, denominator_id=self.store_id,
                                            result=result, numerator_result=result, denominator_result=result,
                                            score=facings, identifier_parent="OOS", should_enter=True)
