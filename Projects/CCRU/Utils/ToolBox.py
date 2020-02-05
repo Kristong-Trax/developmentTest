@@ -1921,6 +1921,8 @@ class CCRUKPIToolBox:
 
     def calculate_sub_atomic_passed_on_the_same_scene(self, params, all_params, scenes, parent):
         total_res = 0
+        if not scenes:
+            scenes = self.get_relevant_scenes(params)
         for scene in scenes:
             total_res += self.calculate_sub_atomic_passed(params, all_params, scenes=[scene], parent=parent)
         return total_res
