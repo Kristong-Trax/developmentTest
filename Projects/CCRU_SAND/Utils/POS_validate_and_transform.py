@@ -340,20 +340,20 @@ class CCRU_SANDKPIS:
         self.rds_conn = OrmSession(self.project, writable=False)
 
         self.kpi_names = self.get_kpi_names()
-        # self.kpi_level_2_names = self.get_kpi_level_2_names()['name'].unique().tolist()
-        # self.manufacturers = self.get_manufacturers()['name'].unique().tolist()
-        # self.categories = self.get_categories()['name'].unique().tolist()
-        # self.sub_categories = self.get_sub_categories()['name'].unique().tolist()
-        # self.brands = self.get_brands()['name'].unique().tolist()
-        # self.sub_brands = self.get_sub_brands()['name'].unique().tolist()
-        # self.skus = self.get_skus()
-        # self.ean_codes = self.skus['ean_code'].unique().tolist()
-        # self.sizes = self.get_sizes()['size'].unique().tolist()
-        # self.form_factors = self.get_form_factors()['name'].unique().tolist()
-        # self.scene_types = self.get_scene_types()['name'].unique().tolist()
-        # self.sub_locations = self.get_sub_locations()['name'].unique().tolist()
-        # self.locations = self.get_locations()['name'].unique().tolist()
-        # self.store_zones = self.get_store_zones()['name'].unique().tolist()
+        self.kpi_level_2_names = self.get_kpi_level_2_names()['name'].unique().tolist()
+        self.manufacturers = self.get_manufacturers()['name'].unique().tolist()
+        self.categories = self.get_categories()['name'].unique().tolist()
+        self.sub_categories = self.get_sub_categories()['name'].unique().tolist()
+        self.brands = self.get_brands()['name'].unique().tolist()
+        self.sub_brands = self.get_sub_brands()['name'].unique().tolist()
+        self.skus = self.get_skus()
+        self.ean_codes = self.skus['ean_code'].unique().tolist()
+        self.sizes = self.get_sizes()['size'].unique().tolist()
+        self.form_factors = self.get_form_factors()['name'].unique().tolist()
+        self.scene_types = self.get_scene_types()['name'].unique().tolist()
+        self.sub_locations = self.get_sub_locations()['name'].unique().tolist()
+        self.locations = self.get_locations()['name'].unique().tolist()
+        self.store_zones = self.get_store_zones()['name'].unique().tolist()
 
     @staticmethod
     def xl_col_to_name(num):
@@ -368,6 +368,9 @@ class CCRU_SANDKPIS:
         top_file_in = '../Data/KPIs_2020/POS_VALIDATION/INPUT/TopLine_ScoreCards.xlsx'
         top_file_out = '../Data/KPIs_2020/POS_VALIDATION/OUTPUT/TopLine_ScoreCards.xlsx'
         pos_all_file = '../Data/KPIs_2020/POS_VALIDATION/OUTPUT/PoS 2020 - ALL.xlsx'
+        pos_ft_file = '../Data/KPIs_2020/POS_VALIDATION/OUTPUT/PoS 2020 - FT.xlsx'
+        pos_ic_file = '../Data/KPIs_2020/POS_VALIDATION/OUTPUT/PoS 2020 - IC.xlsx'
+        pos_mt_file = '../Data/KPIs_2020/POS_VALIDATION/OUTPUT/PoS 2020 - MT.xlsx'
 
         top_df_in = pd.read_excel(top_file_in, sheet_name=None)
         top_df_out = pd.DataFrame(columns=['Structure', 'KPI Set Name'])
@@ -382,7 +385,11 @@ class CCRU_SANDKPIS:
             top_df_out = top_df_out.append(top_df_in[key + ' C'])
             top_df_out = top_df_out.append(top_df_in[key + ' L'])
 
-        pos_all_df = pd.read_excel(pos_all_file, sheet_name='ALL')
+        pos_all_df = pd.DataFrame()
+        # pos_all_df = pos_all_df.append(pd.read_excel(pos_all_file, sheet_name='ALL'), ignore_index=True)
+        pos_all_df = pos_all_df.append(pd.read_excel(pos_ft_file, sheet_name='ALL'), ignore_index=True)
+        pos_all_df = pos_all_df.append(pd.read_excel(pos_mt_file, sheet_name='ALL'), ignore_index=True)
+        pos_all_df = pos_all_df.append(pd.read_excel(pos_ic_file, sheet_name='ALL'), ignore_index=True)
         pos_all_df = pos_all_df[pos_all_df['level'] == 2]\
             .merge(self.kpi_names[['kpi_set_name', 'kpi_name', 'kpi_pk']].drop_duplicates(),
                    how='left',
@@ -1008,7 +1015,9 @@ class CCRU_SANDKPIS:
                         error_values = []
                         values = int(r[field_name]) if type(r[field_name]) == float \
                             and int(r[field_name]) == r[field_name] else r[field_name]
-                        if r['Type'] == 'MAN' and not r.get('Manufacturer'):
+                        if r['Type'] == 'MAN':
+                            if r.get('Manufacturer') and r[field_name] != r.get('Manufacturer'):
+                                error_detected = True
                             for value in unicode(values).split(', '):
                                 if value not in self.manufacturers:
                                     error_detected = True
@@ -1512,7 +1521,7 @@ class CCRU_SANDKPIS:
 
             pos_all = pos_all.append(pos, ignore_index=True)
 
-        if not any([c.find('ERROR') >= 0 for c in pos_all.columns]):
+        if not any([c.find('ERROR') >= 0 for c in pos_all.columns]) or True:
 
             # creating kpis file for the DB old structure
             # kpi_set_name_column = '00_new_kpi_set'

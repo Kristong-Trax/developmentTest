@@ -9,8 +9,8 @@ from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
 __author__ = 'Sergey'
 
 PROJECT = 'ccru'
-START_DATE = '2019-10-26'
-END_DATE = '2020-01-24'
+START_DATE = '2020-01-25'
+END_DATE = '2021-02-21'
 NUMBER_OF_SCENES_LIMIT = 10000
 BATCH_FILE = '/home/sergey/Documents/Recalc/' + PROJECT + '_sessions_'
 
@@ -70,7 +70,7 @@ class CCRUSessionBatches:
                 FROM probedata.session ss
                 WHERE ss.number_of_scenes > 0 AND delete_time is NULL AND status='Completed'
                 AND ss.visit_date >= '{}' AND ss.visit_date <= '{}'
-                AND visit_type_fk IN (1)
+                AND visit_type_fk IN (1,3,5)
                 ORDER BY ss.pk DESC;
                 """.format(START_DATE, END_DATE)
         # query = """

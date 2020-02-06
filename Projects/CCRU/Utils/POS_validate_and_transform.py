@@ -368,6 +368,9 @@ class CCRUKPIS:
         top_file_in = '../Data/KPIs_2020/POS_VALIDATION/INPUT/TopLine_ScoreCards.xlsx'
         top_file_out = '../Data/KPIs_2020/POS_VALIDATION/OUTPUT/TopLine_ScoreCards.xlsx'
         pos_all_file = '../Data/KPIs_2020/POS_VALIDATION/OUTPUT/PoS 2020 - ALL.xlsx'
+        pos_ft_file = '../Data/KPIs_2020/POS_VALIDATION/OUTPUT/PoS 2020 - FT.xlsx'
+        pos_ic_file = '../Data/KPIs_2020/POS_VALIDATION/OUTPUT/PoS 2020 - IC.xlsx'
+        pos_mt_file = '../Data/KPIs_2020/POS_VALIDATION/OUTPUT/PoS 2020 - MT.xlsx'
 
         top_df_in = pd.read_excel(top_file_in, sheet_name=None)
         top_df_out = pd.DataFrame(columns=['Structure', 'KPI Set Name'])
@@ -382,7 +385,11 @@ class CCRUKPIS:
             top_df_out = top_df_out.append(top_df_in[key + ' C'])
             top_df_out = top_df_out.append(top_df_in[key + ' L'])
 
-        pos_all_df = pd.read_excel(pos_all_file, sheet_name='ALL')
+        pos_all_df = pd.DataFrame()
+        # pos_all_df = pos_all_df.append(pd.read_excel(pos_all_file, sheet_name='ALL'), ignore_index=True)
+        pos_all_df = pos_all_df.append(pd.read_excel(pos_ft_file, sheet_name='ALL'), ignore_index=True)
+        pos_all_df = pos_all_df.append(pd.read_excel(pos_mt_file, sheet_name='ALL'), ignore_index=True)
+        pos_all_df = pos_all_df.append(pd.read_excel(pos_ic_file, sheet_name='ALL'), ignore_index=True)
         pos_all_df = pos_all_df[pos_all_df['level'] == 2]\
             .merge(self.kpi_names[['kpi_set_name', 'kpi_name', 'kpi_pk']].drop_duplicates(),
                    how='left',
@@ -1774,7 +1781,7 @@ class CCRUKPIS:
 
 if __name__ == '__main__':
     kpis_list = CCRUKPIS()
-    # kpis_list.transform_top_line()
+    kpis_list.transform_top_line()
     # kpis_list.validate_benchmark()
     # kpis_list.transform_kpi_source()
-    kpis_list.validate_and_transform()
+    # kpis_list.validate_and_transform()
