@@ -20,5 +20,6 @@ class PepsiUSV2Generator:
         It calculates the score for every KPI set and saves it to the DB.
         """
         if self.tool_box.scif.empty:
-            Log.warning('Scene item facts is empty for this session')
-        self.tool_box.main_calculation()
+            Log.warning('Scene item facts is empty for this session.')
+        else:
+            self.tool_box.main_calculation()

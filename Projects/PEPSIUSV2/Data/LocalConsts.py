@@ -18,6 +18,11 @@ class Consts(object):
     FACINGS_ID_SUFFIX = 'facings'
     ASSORTMENT_ID_SUFFIX = 'assortment'
 
+    CLIENT_BRAND = 'client brand'
+    SUB_BRAND = 'sub_brand'
+    CLIENT_BRAND_FK = 'client_brand_fk'
+    SUB_BRAND_FK = 'sub_brand_fk'
+
     SCENE_CATEGORY_MAPPER = {CSD_CAT: ['Carbonated Soft Drinks'], TEA_CAT: ['RTD Tea'], ENERGY_CAT: ['Energy Drinks']}
 
     # KPI Names
@@ -25,6 +30,7 @@ class Consts(object):
     SOS_OWN_MANUFACTURER_GENERAL_NAME = 'Linear SOS Compliance {}'
     MANUFACTURERS_SOS_GENERAL_NAME = 'Manufacturer Share of {} {}'
     BRAND_SOS_GENERAL_NAME = 'Brand Share of {} {}'
+    SUB_BRAND_SOS_GENERAL_NAME = 'Sub Brand Share of {} {}'
     FACINGS_SOS_STORE_LEVEL_KPI = 'Facings SOS'
 
     # Assortment Consts
@@ -47,18 +53,24 @@ class Consts(object):
     STORE_IDE = [Sc.MANUFACTURER_FK]
 
     # SOS Consts
-    SOS_ALL_BRAND_LVL = 3
-    SOS_ALL_MANU_LVL = 2
+    SOS_SUB_BRAND_LVL = 4
+    SOS_BRAND_LVL = 3
+    SOS_MANU_LVL = 2
     SOS_LINEAR_LEN_ATTR = 'gross_len_ign_stack'
     SOS_FACINGS_ATTR = 'facings'
     TOTAL_SOS = 'total_sos'
 
     MAPPER_KPI_LVL_AND_NAME = {SOS_OWN_MANU_LVL: SOS_OWN_MANUFACTURER_GENERAL_NAME,
-                               SOS_ALL_MANU_LVL: MANUFACTURERS_SOS_GENERAL_NAME,
-                               SOS_ALL_BRAND_LVL: BRAND_SOS_GENERAL_NAME}
+                               SOS_MANU_LVL: MANUFACTURERS_SOS_GENERAL_NAME,
+                               SOS_BRAND_LVL: BRAND_SOS_GENERAL_NAME,
+                               SOS_SUB_BRAND_LVL: SUB_BRAND_SOS_GENERAL_NAME}
 
-    BRAND_SOS_RENAME_DICT = {Sc.BRAND_FK: Src.NUMERATOR_ID, Sc.MANUFACTURER_FK: Src.DENOMINATOR_ID,
-                             Sc.CATEGORY_FK: Src.CONTEXT_ID, SOS_LINEAR_LEN_ATTR: Src.NUMERATOR_RESULT,
+    SUB_BRAND_SOS_RENAME_DICT = {SUB_BRAND_FK: Src.NUMERATOR_ID, Sc.CATEGORY_FK: Src.DENOMINATOR_ID,
+                                 SOS_LINEAR_LEN_ATTR: Src.NUMERATOR_RESULT,
+                                 SOS_FACINGS_ATTR: Src.NUMERATOR_RESULT, TOTAL_SOS: Src.DENOMINATOR_RESULT}
+
+    BRAND_SOS_RENAME_DICT = {CLIENT_BRAND_FK: Src.NUMERATOR_ID, Sc.CATEGORY_FK: Src.DENOMINATOR_ID,
+                             SOS_LINEAR_LEN_ATTR: Src.NUMERATOR_RESULT,
                              SOS_FACINGS_ATTR: Src.NUMERATOR_RESULT, TOTAL_SOS: Src.DENOMINATOR_RESULT}
 
     ALL_MANU_SOS_RENAME_DICT = {Sc.MANUFACTURER_FK: Src.NUMERATOR_ID, Sc.CATEGORY_FK: Src.DENOMINATOR_ID,
