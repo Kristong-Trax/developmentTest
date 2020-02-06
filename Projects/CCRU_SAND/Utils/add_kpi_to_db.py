@@ -328,7 +328,7 @@ if __name__ == '__main__':
     # dbusers_mock.return_value = docker_user
     # kpi_data = CCRU_SANDAddKPIs('ccru_sand', '/home/sergey/dev/kpi_factory/Projects/CCRU/Data/KPIs_2020/KPIs for DB - PoS 2020.xlsx', 'Sheet1')
     # kpi_data = CCRU_SANDAddKPIs('ccru_sand', '/home/sergey/dev/kpi_factory/Projects/CCRU/Data/KPIs_2020/KPIs for DB - Benchmark 2020.xlsx', 'Sheet1')
-    kpi_data = CCRU_SANDAddKPIs('ccru-sand', '/home/sergey/dev/kpi_factory/Projects/CCRU/Data/KPIs_2020/KPIs for DB - Contract Execution 2020.xlsx', '2020')
+    kpi_data = CCRU_SANDAddKPIs('ccru_sand', '/home/sergey/dev/kpi_factory/Projects/CCRU/Data/KPIs_2020/KPIs for DB - Contract Execution 2020.xlsx', '2020')
     # kpi_data = CCRU_SANDAddKPIs('ccru_sand', '/home/sergey/dev/kpi_factory/Projects/CCRU/Data/KPIs_2019/KPIs for DB - CCH Integration 2019.xlsx')
     kpi_data.add_kpis_from_template()
     # kpi_data.update_atomic_kpi_data()

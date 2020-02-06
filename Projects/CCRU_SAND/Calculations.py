@@ -1,4 +1,5 @@
 import pandas as pd
+import os
 
 from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScript
 from Trax.Algo.Calculations.Core.Shortcuts import SessionInfo
@@ -32,6 +33,8 @@ TOPSKU = 'TOPSKU'
 KPI_CONVERSION = 'KPI_CONVERSION'
 BENCHMARK = 'BENCHMARK'
 MR_TARGET = 'MR TARGET'
+COOLER_AUDIT = 'COOLER_AUDIT'
+GROUP_MODEL_MAP = 'GROUP_MODEL_MAP'
 
 ALLOWED_POS_SETS = tuple(CCRU_SANDConsts.ALLOWED_POS_SETS)
 
@@ -68,7 +71,7 @@ class CCRU_SANDProjectCalculations:
 
     def main_function(self):
 
-        if str(self.visit_date) < self.tool_box.MIN_CALC_DATE:
+        if False and str(self.visit_date) < self.tool_box.MIN_CALC_DATE:  # ignored
             Log.warning('Warning. Session cannot be calculated. '
                         'Visit date is less than {2} - {0}. '
                         'Store ID {1}.'
@@ -190,6 +193,11 @@ class CCRU_SANDProjectCalculations:
                 self.tool_box.calculate_contract_execution(self.json.project_kpi_dict.get('contract'),
                                                            kpi_source[CONTRACT][SET])
 
+        # Cooler Audit
+        if kpi_source[COOLER_AUDIT][SET]:
+            self.tool_box.set_kpi_set(kpi_source[COOLER_AUDIT][SET], COOLER_AUDIT)
+            self.calculate_cooler_audit(kpi_source[COOLER_AUDIT])
+
         Log.debug('KPI calculation stage: {}'.format('Committing results old'))
         self.tool_box.commit_results_data_old()
 
@@ -258,6 +266,12 @@ class CCRU_SANDProjectCalculations:
 
         Log.debug('KPI calculation stage: {}'.format('Committing results new'))
         self.tool_box.common.commit_results_data()
+
+    def calculate_cooler_audit(self, kpi_source):
+        self.json.create_kpi_data_json('cooler_audit', kpi_source[FILE], sheet_name=kpi_source[SHEET])
+        kpi_data = self.json.project_kpi_dict.get('cooler_audit')
+        group_model_map = pd.read_excel(os.path.join(self.json.base_path, kpi_source[FILE]), sheet_name=GROUP_MODEL_MAP)
+        self.tool_box.calculate_cooler_kpis(kpi_data, group_model_map)
 
     def rds_connection(self):
         if not hasattr(self, '_rds_conn'):

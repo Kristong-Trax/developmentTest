@@ -78,3 +78,15 @@ class CCRU_SANDConsts(object):
         'PoS 2020 - IC CartMobile',
         'PoS 2020 - IC CoffeePoint',
     )
+
+    # Cooler Audit
+    COOLER = 'Cooler'
+    COOLER_AUDIT = 'COOLER_AUDIT'
+    COOLER_MODEL = 'cooler_model'
+    MIN_NUMBER_DIGITS = 5
+    COOLER_SURVEY_QUESTION = 'What is the cooler number in scene?' #change when we know
+    COOLER_ID = 'Cooler ID'
+    REDUCED_BAR_CODE = 'reduced_bar_code'
+    SURVEY_ANSWER = 'selected_option_text'
+    TEXT_VALUE = 'text_value'
+    NUMBER_VALUE = 'number_value'

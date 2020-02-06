@@ -19,6 +19,8 @@ from KPIUtils_v2.Utils.TargetFinder.KpiTargetFinder import KpiTargetFinder
 
 from Projects.CCRU_SAND.Utils.Fetcher import CCRU_SANDCCHKPIFetcher
 from Projects.CCRU_SAND.Utils.Consts import CCRU_SANDConsts
+from KPIUtils_v2.Utils.Consts.DataProvider import ScifConsts, StoreInfoConsts
+from KPIUtils_v2.GlobalDataProvider.PsDataProvider import PsDataProvider
 
 
 __author__ = 'sergey'
@@ -115,7 +117,7 @@ POS_CAT_KPI_DICT = {'Availability': AVAILABILITY_CAT_FOR_MR, 'SOS': SOS_CAT_FOR_
 
 class CCRU_SANDKPIToolBox:
 
-    MIN_CALC_DATE = '2019-06-29'
+    MIN_CALC_DATE = '2020-01-25'
 
     STANDARD_VISIT = 'Standard visit'
     PROMO_VISIT = 'Promo visit'
@@ -200,7 +202,34 @@ class CCRU_SANDKPIToolBox:
         self.promo_locations = None
         self.promo_products = None
         self.mr_targets = {}
-        
+
+        # For Cooler Audit
+        if self.visit_type not in [self.PROMO_VISIT, self.SEGMENTATION_VISIT]:
+            self.scenes_in_session = self.get_all_scenes_in_session()
+            self.ps_data_provider = PsDataProvider(self.data_provider)
+            self.cooler_assortment = self.ps_data_provider.get_kpi_external_targets([CCRU_SANDConsts.COOLER_AUDIT]) # for now - this will need to be changed when we agree on the approach
+            self.cooler_assortment[CCRU_SANDConsts.REDUCED_BAR_CODE] = \
+                self.cooler_assortment[CCRU_SANDConsts.COOLER_ID].apply(lambda x: x[:-6])
+            self.custom_entities = self.ps_data_provider.get_custom_entities_with_names()
+            self.kpi_result_values = self.ps_data_provider.get_result_values()
+            self.cooler_survey_responses = self.retrieve_scene_survey_responses()
+
+    # -----Cooler Audit----- #
+    def retrieve_scene_survey_responses(self):
+        survey_responses = self.data_provider.survey_responses # check name of attribute
+        if self.data_provider.survey_responses.empty:
+            scenes = self.scenes_in_session[ScifConsts.SCENE_FK].values.tolist()
+            survey_responses = self.kpi_fetcher.get_scene_survey_response(scenes) # revalidate the query itself
+        survey_responses[CCRU_SANDConsts.SURVEY_ANSWER] = survey_responses[CCRU_SANDConsts.SURVEY_ANSWER].astype(str) # what will be the answer field?
+        return survey_responses
+
+    def get_all_scenes_in_session(self):
+        scenes_in_ses = self.data_provider[Data.SCENES_INFO][[ScifConsts.SCENE_FK, ScifConsts.TEMPLATE_FK]]
+        scenes_in_ses = scenes_in_ses.merge(self.data_provider[Data.ALL_TEMPLATES],
+                                            on=ScifConsts.TEMPLATE_FK, how='left')
+        return scenes_in_ses
+    # Cooler Audit - end init #
+
     @staticmethod
     def children_to_int_list(children):
         children = map(int, str(children).strip().replace(
@@ -925,7 +954,7 @@ class CCRU_SANDKPIToolBox:
             atomic_result = attributes_for_level3['result']
             if p.get("KPI ID") in params.values()[2]["SESSION LEVEL"]:
                 self.write_to_kpi_facts_hidden(p.get("KPI ID"), None, atomic_result, score)
-            self.write_to_db_category_kpis_for_mr(p, result=score, score=set_total_res)
+            self.write_to_db_category_kpis_for_mr(p, result=ratio*100, score=ratio*100)
         return set_total_res
 
     def calculate_facings_sos(self, params, scenes=None, all_params=None):
@@ -2752,12 +2781,12 @@ class CCRU_SANDKPIToolBox:
         if not res or update_kpi_set:
             if str(self.visit_date) < self.MIN_CALC_DATE:
                 query = """
-                        select ss.additional_attribute_11 
+                        select ss.additional_attribute_12 
                         from static.stores ss 
                         join probedata.session ps on ps.store_fk=ss.pk 
                         where ss.delete_date is null and ps.session_uid = '{}';
                         """.format(self.session_uid)
-            else:  # Todo - Change to additional_attribute_12 for PROD
+            else:
                 query = """
                         select ss.additional_attribute_11 
                         from static.stores ss 
@@ -3386,7 +3415,7 @@ class CCRU_SANDKPIToolBox:
             facings_data = scene_data.groupby('product_fk')['facings'].sum().to_dict()
             for anchor_product_fk in top_skus['product_fks'].keys():
                 min_facings = top_skus['min_facings'][anchor_product_fk]
-                distributed = False
+                distributed_anchor_product_fk = False
                 for product_fk in top_skus['product_fks'][anchor_product_fk].split(','):
                     product_fk = int(product_fk)
                     facings = facings_data.pop(product_fk, 0)
@@ -3394,19 +3423,19 @@ class CCRU_SANDKPIToolBox:
                     #     facings = facings_data[product_fk]
                     # else:
                     #     facings = 0
-                    if facings >= min_facings:
-                        distributed = True
+                    distributed_product_fk = True if facings >= min_facings else False
+                    distributed_anchor_product_fk |= True
                     top_sku_products = top_sku_products.append({'anchor_product_fk': anchor_product_fk,
                                                                 'product_fk': product_fk,
                                                                 'facings': facings,
                                                                 'min_facings': min_facings,
                                                                 'in_assortment': 1,
-                                                                'distributed': 1 if distributed else 0,
+                                                                'distributed': 1 if distributed_product_fk else 0,
                                                                 'distributed_extra': 0},
                                                                ignore_index=True)
 
                 query = self.get_custom_scif_query(
-                    self.session_fk, scene_fk, int(anchor_product_fk), in_assortment, distributed)
+                    self.session_fk, scene_fk, int(anchor_product_fk), in_assortment, distributed_anchor_product_fk)
                 self.top_sku_queries.append(query)
 
             if facings_data:
@@ -3815,6 +3844,46 @@ class CCRU_SANDKPIToolBox:
         except IndexError:
             object_facings = 0
         return object_facings
+
+    # Cooler Audit
+    def calculate_cooler_kpis(self, kpi_data, group_model_map):
+        cooler_scenes = self.scenes_in_session[self.scenes_in_session[ScifConsts.LOCATION_TYPE]
+                                               == CCRU_SANDConsts.COOLER][ScifConsts.SCENE_FK].values
+        cooler_ass_store = self.cooler_assortment[self.cooler_assortment[StoreInfoConsts.STORE_FK] == self.store_id] # check if I need it
+        if not cooler_ass_store.empty:
+            self.calculate_cooler_presence(cooler_ass_store)
+            self.calculate_cooler_score(kpi_data, group_model_map) # maybe pass cooler scenes
+
+            self.calculate_total_cooler_audit_score()
+
+    def calculate_cooler_presence(self, cooler_ass_store):
+        cooler_ass_store = cooler_ass_store.merge(self.cooler_survey_responses, how='outer',
+                                                  left_on=CCRU_SANDConsts.REDUCED_BAR_CODE,
+                                                  right_on=CCRU_SANDConsts.SURVEY_ANSWER)
+        assortment_df = cooler_ass_store[~(cooler_ass_store[CCRU_SANDConsts.REDUCED_BAR_CODE].isnull())]
+        coolers_out_of_template = cooler_ass_store[cooler_ass_store[CCRU_SANDConsts.REDUCED_BAR_CODE].isnull()]
+        for i, row in assortment_df.iterrows():
+            # write particulart cooler kpi result depending on the CCRU_SANDConsts.SURVEY_ANSWER column value
+            pass
+        visit_cooler_presence_result = \
+            len(~assortment_df[assortment_df[CCRU_SANDConsts.SURVEY_ANSWER].isnull()]) / len(assortment_df) * 100
+        for i, row in coolers_out_of_template.iterrows():
+            extra_cooler = row[CCRU_SANDConsts.SURVEY_ANSWER]
+            cooler_ass_records = self.cooler_assortment[self.cooler_assortment[CCRU_SANDConsts.REDUCED_BAR_CODE] == extra_cooler]
+            if cooler_ass_records.empty:
+                # write result to unidentified coolers kpi - maybe a separate kpi
+                pass
+            else:
+                extra_cooler_row = cooler_ass_records.iloc[0]
+                # numerator  extra_cooler_row[COOLER_ID]
+                # denominator extra_cooler_row[store_fk]
+                # context extra_cooler_row[scene_fk]
+            pass
+
+    def calculate_cooler_score(self, kpi_data, group_model_map):        pass
+
+    def calculate_total_cooler_audit_score(self):
+        pass
 
     def create_kpi_groups(self, kpi_data):
         if kpi_data:
