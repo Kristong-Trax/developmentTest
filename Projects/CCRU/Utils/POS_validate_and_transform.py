@@ -1008,7 +1008,9 @@ class CCRUKPIS:
                         error_values = []
                         values = int(r[field_name]) if type(r[field_name]) == float \
                             and int(r[field_name]) == r[field_name] else r[field_name]
-                        if r['Type'] == 'MAN' and not r.get('Manufacturer'):
+                        if r['Type'] == 'MAN':
+                            if r.get('Manufacturer') and r[field_name] != r.get('Manufacturer'):
+                                error_detected = True
                             for value in unicode(values).split(', '):
                                 if value not in self.manufacturers:
                                     error_detected = True
