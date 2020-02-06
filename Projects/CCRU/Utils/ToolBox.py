@@ -115,7 +115,7 @@ POS_CAT_KPI_DICT = {'Availability': AVAILABILITY_CAT_FOR_MR, 'SOS': SOS_CAT_FOR_
 
 class CCRUKPIToolBox:
 
-    MIN_CALC_DATE = '2020-01-25'
+    MIN_CALC_DATE = '2019-10-26'
 
     STANDARD_VISIT = 'Standard visit'
     PROMO_VISIT = 'Promo visit'
@@ -1921,6 +1921,8 @@ class CCRUKPIToolBox:
 
     def calculate_sub_atomic_passed_on_the_same_scene(self, params, all_params, scenes, parent):
         total_res = 0
+        if not scenes:
+            scenes = self.get_relevant_scenes(params)
         for scene in scenes:
             total_res += self.calculate_sub_atomic_passed(params, all_params, scenes=[scene], parent=parent)
         return total_res
