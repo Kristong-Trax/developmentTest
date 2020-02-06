@@ -115,7 +115,7 @@ POS_CAT_KPI_DICT = {'Availability': AVAILABILITY_CAT_FOR_MR, 'SOS': SOS_CAT_FOR_
 
 class CCRU_SANDKPIToolBox:
 
-    MIN_CALC_DATE = '2019-06-29'
+    MIN_CALC_DATE = '2019-10-26'
 
     STANDARD_VISIT = 'Standard visit'
     PROMO_VISIT = 'Promo visit'
@@ -925,7 +925,7 @@ class CCRU_SANDKPIToolBox:
             atomic_result = attributes_for_level3['result']
             if p.get("KPI ID") in params.values()[2]["SESSION LEVEL"]:
                 self.write_to_kpi_facts_hidden(p.get("KPI ID"), None, atomic_result, score)
-            self.write_to_db_category_kpis_for_mr(p, result=score, score=set_total_res)
+            self.write_to_db_category_kpis_for_mr(p, result=ratio*100, score=ratio*100)
         return set_total_res
 
     def calculate_facings_sos(self, params, scenes=None, all_params=None):
@@ -1921,6 +1921,8 @@ class CCRU_SANDKPIToolBox:
 
     def calculate_sub_atomic_passed_on_the_same_scene(self, params, all_params, scenes, parent):
         total_res = 0
+        if not scenes:
+            scenes = self.get_relevant_scenes(params)
         for scene in scenes:
             total_res += self.calculate_sub_atomic_passed(params, all_params, scenes=[scene], parent=parent)
         return total_res
@@ -2752,12 +2754,12 @@ class CCRU_SANDKPIToolBox:
         if not res or update_kpi_set:
             if str(self.visit_date) < self.MIN_CALC_DATE:
                 query = """
-                        select ss.additional_attribute_11 
+                        select ss.additional_attribute_12 
                         from static.stores ss 
                         join probedata.session ps on ps.store_fk=ss.pk 
                         where ss.delete_date is null and ps.session_uid = '{}';
                         """.format(self.session_uid)
-            else:  # Todo - Change to additional_attribute_12 for PROD
+            else:
                 query = """
                         select ss.additional_attribute_11 
                         from static.stores ss 
@@ -3386,7 +3388,7 @@ class CCRU_SANDKPIToolBox:
             facings_data = scene_data.groupby('product_fk')['facings'].sum().to_dict()
             for anchor_product_fk in top_skus['product_fks'].keys():
                 min_facings = top_skus['min_facings'][anchor_product_fk]
-                distributed = False
+                distributed_anchor_product_fk = False
                 for product_fk in top_skus['product_fks'][anchor_product_fk].split(','):
                     product_fk = int(product_fk)
                     facings = facings_data.pop(product_fk, 0)
@@ -3394,19 +3396,19 @@ class CCRU_SANDKPIToolBox:
                     #     facings = facings_data[product_fk]
                     # else:
                     #     facings = 0
-                    if facings >= min_facings:
-                        distributed = True
+                    distributed_product_fk = True if facings >= min_facings else False
+                    distributed_anchor_product_fk |= True
                     top_sku_products = top_sku_products.append({'anchor_product_fk': anchor_product_fk,
                                                                 'product_fk': product_fk,
                                                                 'facings': facings,
                                                                 'min_facings': min_facings,
                                                                 'in_assortment': 1,
-                                                                'distributed': 1 if distributed else 0,
+                                                                'distributed': 1 if distributed_product_fk else 0,
                                                                 'distributed_extra': 0},
                                                                ignore_index=True)
 
                 query = self.get_custom_scif_query(
-                    self.session_fk, scene_fk, int(anchor_product_fk), in_assortment, distributed)
+                    self.session_fk, scene_fk, int(anchor_product_fk), in_assortment, distributed_anchor_product_fk)
                 self.top_sku_queries.append(query)
 
             if facings_data:

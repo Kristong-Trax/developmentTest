@@ -9,8 +9,8 @@ from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
 __author__ = 'Sergey'
 
 PROJECT = 'ccru_sand'
-START_DATE = '2019-07-27'
-END_DATE = '2019-12-31'
+START_DATE = '2020-01-25'
+END_DATE = '2021-02-21'
 NUMBER_OF_SCENES_LIMIT = 10000
 BATCH_FILE = '/home/sergey/Documents/Recalc/' + PROJECT + '_sessions_'
 
@@ -51,28 +51,28 @@ class CCRU_SANDSessionBatches:
         #         AND delete_time is NULL
         #         ORDER BY ss.pk DESC;
         #         """.format(START_DATE, END_DATE)
-        query = """
-                SELECT ss.visit_date, ss.session_uid, ss.number_of_scenes
-                FROM probedata.session ss
-                JOIN report.kps_results ksr ON ksr.session_uid=ss.session_uid
-                JOIN static.kpi_set ks ON ks.pk=ksr.kpi_set_fk
-                WHERE ss.number_of_scenes > 0 AND delete_time is NULL AND status='Completed'
-                AND ss.visit_type_fk IN (1,3)
-                AND ss.visit_date >= '2019-07-27' AND ss.visit_date <= '2019-08-23' 
-                AND ks.name IN(
-        'PoS 2019 - IC Cinema - CAP',
-        'PoS 2019 - IC Cinema - REG',
-        'PoS 2019 - IC QSR')
-                ORDER BY ss.pk DESC;
-                """.format(START_DATE, END_DATE)
         # query = """
-        #         SELECT DISTINCT ss.visit_date, ss.session_uid, ss.number_of_scenes
+        #         SELECT ss.visit_date, ss.session_uid, ss.number_of_scenes
         #         FROM probedata.session ss
+        #         JOIN report.kps_results ksr ON ksr.session_uid=ss.session_uid
+        #         JOIN static.kpi_set ks ON ks.pk=ksr.kpi_set_fk
         #         WHERE ss.number_of_scenes > 0 AND delete_time is NULL AND status='Completed'
-        #         AND ss.visit_date >= '{}' AND ss.visit_date <= '{}'
-        #         AND visit_type_fk IN (1,3)
+        #         AND ss.visit_type_fk IN (1,3)
+        #         AND ss.visit_date >= '2019-07-27' AND ss.visit_date <= '2019-08-23'
+        #         AND ks.name IN(
+        # 'PoS 2019 - IC Cinema - CAP',
+        # 'PoS 2019 - IC Cinema - REG',
+        # 'PoS 2019 - IC QSR')
         #         ORDER BY ss.pk DESC;
         #         """.format(START_DATE, END_DATE)
+        query = """
+                SELECT DISTINCT ss.visit_date, ss.session_uid, ss.number_of_scenes
+                FROM probedata.session ss
+                WHERE ss.number_of_scenes > 0 AND delete_time is NULL AND status='Completed'
+                AND ss.visit_date >= '{}' AND ss.visit_date <= '{}'
+                AND visit_type_fk IN (1,3,5)
+                ORDER BY ss.pk DESC;
+                """.format(START_DATE, END_DATE)
         # query = """
         #         SELECT ss.visit_date, ss.session_uid, ss.number_of_scenes
         #         FROM probedata.session ss
