@@ -80,9 +80,10 @@ class PepsiUSV2ToolBox(GlobalSessionToolBox):
         passed_groups, total_groups = group_results.result.sum() / float(100), len(group_results)
         score = self.get_percentage(passed_groups, total_groups)
         kpi_fk = self.common.get_kpi_fk_by_kpi_type(Lc.DISPLAY_COMP_STORE_LEVEL_FK)
+        kpi_identifier = '_'.join([str(self.manufacturer_fk), Lc.ASSORTMENT_ID_SUFFIX, str(Lc.STORE_LVL)])
         self.write_to_db(fk=kpi_fk, numerator_id=self.manufacturer_fk, denominator_id=self.store_id,
                          numerator_result=passed_groups, denominator_result=total_groups,
-                         score=score, result=score, identifier_result=self.manufacturer_fk)
+                         score=score, result=score, identifier_result=kpi_identifier)
 
     def _get_filtered_assortment_lvl3_results(self, filtered_scif, display_name):
         """ This method calculates the lvl3 results and filters only the relevant results for the
@@ -111,14 +112,22 @@ class PepsiUSV2ToolBox(GlobalSessionToolBox):
         :param sos_res_df: A group SOS DataFrame by manufacturer or brand
         :param sos_lvl: A const with the relevant SOS lvl the being saved. It affects the consts and identifiers.
         """
-        cols_rename_dict, kpi_identifier, parent_identifier = self._get_sos_consts_by_level(sos_lvl)
-        sos_res_df['identifier_parent'] = '_'.join([category_fk, suffix_identifier])
+        cols_rename_dict = self._get_sos_consts_by_level(sos_lvl)
+        sos_res_df['identifier_parent'] = self._get_sos_identifier_parent(category_fk, suffix_identifier)
         results_df = sos_res_df.rename(cols_rename_dict, inplace=False, axis=1)
         results_df[Src.SCORE] = results_df.apply(
             lambda row: self.get_percentage(row.numerator_result, row.denominator_result), axis=1)
         results_df[Src.RESULT] = results_df[Src.SCORE]
         results_df['fk'] = self._get_sos_kpi_fk_by_category_and_lvl(category_name, sos_lvl, suffix_identifier)
         self.common.save_json_to_new_tables(results_df.to_dict('records'))
+
+    def _get_sos_identifier_parent(self, category_fk, suffix_identifier):
+        """This method returns the relevant KPI parent identifier. There a different hierarchies between the
+        Linear and Facings SOS so this method returns the relevant id"""
+        if suffix_identifier == Lc.LINEAR_ID_SUFFIX:
+            return '_'.join([str(category_fk), suffix_identifier])
+        else:
+            return self.manufacturer_fk
 
     def _set_kpi_df_identifiers(self, results_df, kpi_id_cols, parent_id_cols, kpi_level, suffix_to_add=''):
         """ This method gets assortment or SIS results and consts with the columns that should be the
@@ -150,13 +159,16 @@ class PepsiUSV2ToolBox(GlobalSessionToolBox):
 
     @staticmethod
     def _get_sos_consts_by_level(sos_lvl):
-        """This method gets the SOS lvl (SKU / GROUP / STORE) and returns a tuple of 5 consts:
-        Column to save, rename dict, denominator_result, kpi identifier cols, parent identifier columns
+        """This method gets the SOS lvl (Sub Brand / Brand / Manufacturer) and returns the relevant consts.
+        Currently the only relevant const in the rename dict the renaming all of the columns to match the
+        expected DB cols.
         """
         if sos_lvl == Lc.SOS_BRAND_LVL:
-            return Lc.BRAND_SOS_RENAME_DICT, None, Lc.SOS_ALL_MANU_ID
+            return Lc.BRAND_SOS_RENAME_DICT
         elif sos_lvl == Lc.SOS_MANU_LVL:
-            return Lc.ALL_MANU_SOS_RENAME_DICT, Lc.SOS_ALL_MANU_ID, Lc.SOS_OWN_MANU_ID
+            return Lc.ALL_MANU_SOS_RENAME_DICT
+        elif sos_lvl == Lc.SOS_SUB_BRAND_LVL:
+            return Lc.SUB_BRAND_SOS_RENAME_DICT
 
     @staticmethod
     def _get_ass_consts_by_level(assortment_lvl):
@@ -243,10 +255,9 @@ class PepsiUSV2ToolBox(GlobalSessionToolBox):
         own_manu_facings = own_manufacturer_scif[Lc.SOS_FACINGS_ATTR].sum()
         score = self.get_percentage(own_manu_facings, total_cat_facings)
         kpi_fk = self.get_kpi_fk_by_kpi_type(Lc.FACINGS_SOS_STORE_LEVEL_KPI)
-        kpi_identifier = '_'.join([str(category_fk),  Lc.FACINGS_ID_SUFFIX])
         self.write_to_db(fk=kpi_fk, numerator_id=self.manufacturer_fk, denominator_id=self.store_id,
                          numerator_result=own_manu_facings, denominator_result=total_cat_facings,
-                         context_id=category_fk, score=score, result=score, identifier_result=kpi_identifier)
+                         context_id=category_fk, score=score, result=score, identifier_result=self.manufacturer_fk)
 
     def _calculate_own_manufacturer_vs_target(self, filtered_scif, category_fk, category_name):
         """
@@ -254,10 +265,9 @@ class PepsiUSV2ToolBox(GlobalSessionToolBox):
         :return: A DataFrame with one row of SOS results
         """
         # Todo: suggest Tim that target will be saved in target
-        # Todo: store target !! currently mocked
         total_store_sos = filtered_scif[Lc.SOS_LINEAR_LEN_ATTR].sum()
         own_manufacturer_scif = filtered_scif.loc[filtered_scif.manufacturer_fk == self.manufacturer_fk]
-        store_target = self.store_info.additional_attribute_4.values[0] if 0 else 11000  # Todo: Missing store target
+        store_target = self._get_store_target()
         own_manu_sos = own_manufacturer_scif[Lc.SOS_LINEAR_LEN_ATTR].sum()
         score, result = self._calculate_sos_vs_target_score_and_result(own_manu_sos, total_store_sos, store_target)
         kpi_fk = self._get_sos_kpi_fk_by_category_and_lvl(category_name, Lc.SOS_OWN_MANU_LVL, Lc.LINEAR_ID_SUFFIX)
@@ -265,6 +275,12 @@ class PepsiUSV2ToolBox(GlobalSessionToolBox):
         self.write_to_db(fk=kpi_fk, numerator_id=self.manufacturer_fk, denominator_id=self.store_id,
                          numerator_result=own_manu_sos, denominator_result=store_target, context_id=category_fk,
                          score=score, result=result, identifier_result=kpi_identifier)
+
+    def _get_store_target(self):
+        """ The store linear SOS target percentage is support to be saved in additional_attribute_4.
+        In case it doesn't exist will get 100"""
+        store_target = self.store_info.additional_attribute_4.values[0]
+        return store_target if store_target else 100
 
     def _calculate_manufacturers_sos(self, filtered_scif, cat_fk, cat_name, sos_attr):
         """
