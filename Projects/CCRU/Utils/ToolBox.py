@@ -3388,7 +3388,7 @@ class CCRUKPIToolBox:
             facings_data = scene_data.groupby('product_fk')['facings'].sum().to_dict()
             for anchor_product_fk in top_skus['product_fks'].keys():
                 min_facings = top_skus['min_facings'][anchor_product_fk]
-                distributed = False
+                distributed_anchor_product_fk = False
                 for product_fk in top_skus['product_fks'][anchor_product_fk].split(','):
                     product_fk = int(product_fk)
                     facings = facings_data.pop(product_fk, 0)
@@ -3396,19 +3396,19 @@ class CCRUKPIToolBox:
                     #     facings = facings_data[product_fk]
                     # else:
                     #     facings = 0
-                    if facings >= min_facings:
-                        distributed = True
+                    distributed_product_fk = True if facings >= min_facings else False
+                    distributed_anchor_product_fk |= True
                     top_sku_products = top_sku_products.append({'anchor_product_fk': anchor_product_fk,
                                                                 'product_fk': product_fk,
                                                                 'facings': facings,
                                                                 'min_facings': min_facings,
                                                                 'in_assortment': 1,
-                                                                'distributed': 1 if distributed else 0,
+                                                                'distributed': 1 if distributed_product_fk else 0,
                                                                 'distributed_extra': 0},
                                                                ignore_index=True)
 
                 query = self.get_custom_scif_query(
-                    self.session_fk, scene_fk, int(anchor_product_fk), in_assortment, distributed)
+                    self.session_fk, scene_fk, int(anchor_product_fk), in_assortment, distributed_anchor_product_fk)
                 self.top_sku_queries.append(query)
 
             if facings_data:

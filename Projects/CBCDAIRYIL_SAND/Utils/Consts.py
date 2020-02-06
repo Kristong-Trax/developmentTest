@@ -44,6 +44,11 @@ class Consts(object):
     EYE_LEVEL = 'Eye Level'
     SURVEY = 'Survey'
     PLANOGRAM_KPI = u'פלנוגרמה'
+    SOS_BY_OWN_MAN = 'SOS_BY_OWN_MAN'
+    SOS_BY_OWN_MAN_CAT = 'SOS_BY_OWN_MAN_CAT'
+    SOS_BY_OWN_MAN_CAT_BRAND = 'SOS_BY_OWN_MAN_CAT_BRAND'
+    OOS = 'OOS'
+    OOS_SKU = 'OOS - SKU'
 
     # General Attributes
     CODE = 'code'
@@ -89,6 +94,7 @@ class Consts(object):
 
     # CBC data
     CBC_MANU = 45
+    LEADING_PRODUCTS = u'מוצרים מובילים'
     CBC_COOLERS = u'מקרר חברה מרכזית'
     COMPETITOR_COOLERS = [u'מקרר מתחרה', u'מקרר קמעונאי']
     SURVEY_ANSWERS_TO_IGNORE = [u'הסידור אינו קטגוריאלי', u'אין מותגים אחרים']
