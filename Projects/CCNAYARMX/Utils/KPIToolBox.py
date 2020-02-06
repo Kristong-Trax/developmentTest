@@ -861,11 +861,11 @@ class ToolBox(GlobalSessionToolBox):
                                                                 location=location,
                                                                 additional={'minimum_block_ratio': 0.9,
                                                                             'calculate_all_scenes': True,
-                                                                            'minimum_facing_for_block': 1})
+                                                                            'minimum_facing_for_block': 1,
+                                                                            'use_masking_only':True})
                     if pd.notna(row['tagging']):
-                        probes_match = [node[1]['probe_match_fk'] for node in
-                                        block.cluster.reset_index().drop(columns=['index']).iloc[i, 0].node(data=True)
-                                        for i in range(len(block.cluster))]
+                        probes_match = [node[1]['probe_match_fk'] for i in range(len(block.cluster)) for node in
+                                        block.cluster.reset_index().drop(columns=['index']).iloc[i, 0].node(data=True)]
                         match_product_in_probe_state_fk = self._get_probe_state_by_kpi_level_2_fk(kpi_fk)
                         lst_to_save = [x for sublist in probes_match for x in sublist]
                         df_for_common = pd.DataFrame({self.common.MATCH_PRODUCT_IN_PROBE_FK: lst_to_save,
