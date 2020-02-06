@@ -10,9 +10,9 @@ from KPIUtils_v2.DB.Common import Common as oldCommon
 from KPIUtils_v2.Utils.Parsers import ParseInputKPI as Parser
 from Projects.CBCDAIRYIL_SAND.Utils.Consts import Consts
 from KPIUtils_v2.Calculations.SurveyCalculations import Survey
-from KPIUtils_v2.Calculations.BlockCalculations import Block
+from KPIUtils_v2.Calculations.BlockCalculations_v2 import Block
 from KPIUtils_v2.Calculations.CalculationsUtils.GENERALToolBoxCalculations import GENERALToolBox
-from KPIUtils_v2.Utils.Decorators.Decorators import log_runtime, kpi_runtime
+from KPIUtils_v2.Utils.Decorators.Decorators import kpi_runtime
 
 import pandas as pd
 from datetime import datetime
