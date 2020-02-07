@@ -100,9 +100,9 @@ class PepsiUSV2ToolBox(GlobalSessionToolBox):
         """
         cols_to_save, cols_rename_dict, denominator_res, kpi_id, parent_id = self._get_ass_consts_by_level(assort_lvl)
         results_df = assortment_res[cols_to_save]
-        self._set_kpi_df_identifiers(results_df, kpi_id, parent_id, assort_lvl, Lc.ASSORTMENT_ID_SUFFIX)  # todo: warn
+        results_df = self._set_kpi_df_identifiers(results_df, kpi_id, parent_id, assort_lvl, Lc.ASSORTMENT_ID_SUFFIX)
         results_df.rename(cols_rename_dict, inplace=True, axis=1)
-        results_df[Src.SCORE] = results_df.loc[:, Src.RESULT]  # todo: warning
+        results_df[Src.SCORE] = results_df[Src.RESULT]
         results_df = results_df.assign(denominator_result=denominator_res)
         self.common.save_json_to_new_tables(results_df.to_dict('records'))
 
@@ -140,7 +140,8 @@ class PepsiUSV2ToolBox(GlobalSessionToolBox):
         if parent_id_cols and set(parent_id_cols).issubset(valid_cols):
             results_df.loc[:, 'identifier_parent'] = results_df.apply(
                 lambda row: self._get_assortment_identifier(row, parent_id_cols, kpi_level-1, suffix_to_add), axis=1)
-            results_df.loc[:, 'should_enter'] = True
+            results_df = results_df.assign(should_enter=True)
+        return results_df
 
     @staticmethod
     def _get_assortment_identifier(row, cols_to_concat, kpi_level, additional_suffix=''):
@@ -264,7 +265,6 @@ class PepsiUSV2ToolBox(GlobalSessionToolBox):
         This method calculates Pepsi linear SOS and compares it to the target of the store
         :return: A DataFrame with one row of SOS results
         """
-        # Todo: suggest Tim that target will be saved in target
         total_store_sos = filtered_scif[Lc.SOS_LINEAR_LEN_ATTR].sum()
         own_manufacturer_scif = filtered_scif.loc[filtered_scif.manufacturer_fk == self.manufacturer_fk]
         store_target = self._get_store_target()
@@ -273,20 +273,22 @@ class PepsiUSV2ToolBox(GlobalSessionToolBox):
         kpi_fk = self._get_sos_kpi_fk_by_category_and_lvl(category_name, Lc.SOS_OWN_MANU_LVL, Lc.LINEAR_ID_SUFFIX)
         kpi_identifier = '_'.join([str(category_fk),  Lc.LINEAR_ID_SUFFIX])
         self.write_to_db(fk=kpi_fk, numerator_id=self.manufacturer_fk, denominator_id=self.store_id,
-                         numerator_result=own_manu_sos, denominator_result=store_target, context_id=category_fk,
-                         score=score, result=result, identifier_result=kpi_identifier)
+                         numerator_result=own_manu_sos, denominator_result=total_store_sos, context_id=category_fk,
+                         score=score, result=result, identifier_result=kpi_identifier, target=store_target)
 
     def _get_store_target(self):
         """ The store linear SOS target percentage is support to be saved in additional_attribute_4.
         In case it doesn't exist will get 100"""
         store_target = self.store_info.additional_attribute_4.values[0]
-        return store_target if store_target else 100
+        return float(store_target) if store_target else 100
 
     def _calculate_manufacturers_sos(self, filtered_scif, cat_fk, cat_name, sos_attr):
         """
         This method calculates all of the manufacturers linear sos results
         """
         manu_res_df = self._calculate_sos_by_attr(filtered_scif, cat_fk, Sc.MANUFACTURER_FK, sos_attr)
+        if manu_res_df.empty:
+            return
         kpi_suffix_id = Lc.FACINGS_ID_SUFFIX if sos_attr == Lc.SOS_FACINGS_ATTR else Lc.LINEAR_ID_SUFFIX
         self._save_sos_results(manu_res_df, Lc.SOS_MANU_LVL, cat_fk, cat_name, suffix_identifier=kpi_suffix_id)
 
@@ -295,6 +297,8 @@ class PepsiUSV2ToolBox(GlobalSessionToolBox):
         This method calculates all of the manufacturers linear sos results
         """
         brands_res_df = self._calculate_sos_by_attr(filtered_scif, cat_fk, [Lc.CLIENT_BRAND_FK], sos_attr)
+        if brands_res_df.empty:
+            return
         kpi_suffix_id = Lc.FACINGS_ID_SUFFIX if sos_attr == Lc.SOS_FACINGS_ATTR else Lc.LINEAR_ID_SUFFIX
         self._save_sos_results(brands_res_df, Lc.SOS_BRAND_LVL, cat_fk, cat_name, suffix_identifier=kpi_suffix_id)
 
@@ -303,6 +307,8 @@ class PepsiUSV2ToolBox(GlobalSessionToolBox):
         This method calculates all of the manufacturers linear sos results
         """
         sub_brands_res_df = self._calculate_sos_by_attr(filtered_scif, cat_fk, [Lc.SUB_BRAND_FK], sos_attr)
+        if sub_brands_res_df.empty:
+            return
         kpi_suffix_id = Lc.FACINGS_ID_SUFFIX if sos_attr == Lc.SOS_FACINGS_ATTR else Lc.LINEAR_ID_SUFFIX
         self._save_sos_results(sub_brands_res_df, Lc.SOS_SUB_BRAND_LVL, cat_fk, cat_name, kpi_suffix_id)
 
@@ -319,7 +325,7 @@ class PepsiUSV2ToolBox(GlobalSessionToolBox):
         """
         results_df = filtered_scif.groupby(attr_to_group_by, as_index=False)[sos_attr].sum()
         total_sos = results_df[sos_attr].sum()
-        results_df = results_df.assign(category_fk=category_fk, total_sos=total_sos)
+        results_df = results_df.assign(category_fk=category_fk, total_sos=total_sos, should_enter=True)
         return results_df
 
     def _calculate_sos_vs_target_score_and_result(self, sum_of_linear_sos, total_store_sos, store_target):

@@ -18,7 +18,7 @@ class Consts(object):
     FACINGS_ID_SUFFIX = 'facings'
     ASSORTMENT_ID_SUFFIX = 'assortment'
 
-    CLIENT_BRAND = 'client brand'
+    CLIENT_BRAND = 'client_brand'
     SUB_BRAND = 'sub_brand'
     CLIENT_BRAND_FK = 'client_brand_fk'
     SUB_BRAND_FK = 'sub_brand_fk'
@@ -76,9 +76,6 @@ class Consts(object):
     ALL_MANU_SOS_RENAME_DICT = {Sc.MANUFACTURER_FK: Src.NUMERATOR_ID, Sc.CATEGORY_FK: Src.DENOMINATOR_ID,
                                 SOS_LINEAR_LEN_ATTR: Src.NUMERATOR_RESULT, SOS_FACINGS_ATTR: Src.NUMERATOR_RESULT,
                                 TOTAL_SOS: Src.DENOMINATOR_RESULT}
-
-    SOS_ALL_MANU_ID = [Sc.MANUFACTURER_FK, Sc.CATEGORY_FK]
-    SOS_OWN_MANU_ID = [Sc.CATEGORY_FK]
 
     # Logs
     WRONG_CATEGORY_LOG = "The following category does not exist: {}"
