@@ -14,18 +14,22 @@ from datetime import datetime
 
 # Sheet names
 KPIS = 'KPIs'
-AVALIABILITY = 'Availability'
+AVALIABILITY = 'POS Availability'
 SOS = 'SOS'
 SHARE_OF_EMPTY = 'Share of Empty'
 SURVEY = 'Survey'
 DISTRIBUTION = 'Distribution'
+DISTRIBUTION_SCORING = 'Distribution Scoring'
 ASSORTMENT = 'Assortment'
 SCORING = 'Scoring'
+TARGET = 'target'
 
 # Excel Column Names
 RELEVANT_ASSORTMNENT = 'Relevent Assortment'
 ASSORTMENT1 = 'Assortment1'
 ASSORTMENT2 = 'Assortment2'
+NUMERATOR_PARAM_1 = 'numerator param 1'
+NUMERATOR_VALUE_1 = 'numerator value 1'
 
 # Dataframe Column Names
 KPI_NAME = 'KPI Name'
@@ -35,14 +39,17 @@ TASK_TEMPLATE_GROUP = 'Task/ Template Group'
 TEMPLATE_NAME = 'template_name'
 MANUFACTURER_NAME = 'manufacturer_name'
 RELEVANT_QUESTION_FK = 'question_fk'
+PRODUCT_SHORT_NAME = 'product_short_name'
+PRODUCT_TYPE = 'product_type'
+FACINGS_IGN_STACK = 'facings_ign_stack'
 
 RESULT = 'result'
 
 # Excel Sheets
-SHEETS = [KPIS, AVALIABILITY, SOS, SHARE_OF_EMPTY, SURVEY, DISTRIBUTION, ASSORTMENT, SCORING]
+SHEETS = [KPIS, AVALIABILITY, SOS, SHARE_OF_EMPTY, SURVEY, DISTRIBUTION, DISTRIBUTION_SCORING, ASSORTMENT, SCORING]
 
 TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data',
-                             'Nayar Comidas Fondas Template.xlsx')
+                             'Nayar Comidas Fondas Template_v2.xlsx')
 
 
 def log_runtime(description, log_start=False):
@@ -70,6 +77,7 @@ class FONDASToolBox(GlobalSessionToolBox):
         self.templates = {}
         self.parse_template()
         self.own_manuf_fk = int(self.data_provider.own_manufacturer.param_value.values[0])
+        self.template_fk = self.scif.template_fk.iloc[0]
         self.survey_response = self.data_provider[Data.SURVEY_RESPONSES]
         self.assortment_template = self.templates[ASSORTMENT]
         # self.survey = Survey(self.data_provider, output=output, ps_data_provider=self.ps_data_provider,
@@ -83,18 +91,26 @@ class FONDASToolBox(GlobalSessionToolBox):
             self.templates[sheet] = pd.read_excel(TEMPLATE_PATH, sheet_name=sheet)
 
     def main_calculation(self):
+        # The kpis should only run if store type is Fondas_Rsr and /
+        # store_additional_attribute is one of the following /
+        # 'FONDA / LONCHERÍA / MERENDERO,RSR COMIDA MEXICANA / TACOS,RSR ASIAN,RSR SEAFOOD,RSR LOCAL FOOD,
+        # RSR PIZZAS,RSR SANDWICHES / TORTERIA,RSR POLLO,RSR HAMBURGUESAS,RSR OTROS ALIMENTOS'
         store_type = 'Fondas-Rsr'
         store_additional_attribute = self.sanitize_values(
             'FONDA / LONCHERÍA / MERENDERO,RSR COMIDA MEXICANA / TACOS,RSR ASIAN,RSR SEAFOOD,RSR LOCAL FOOD,RSR PIZZAS,RSR SANDWICHES / TORTERIA,RSR POLLO,RSR HAMBURGUESAS,RSR OTROS ALIMENTOS')
-        store_additional_attribute = [unicode(value,'utf-8') for value in store_additional_attribute]
-        if self.store_info.additional_attribute_5.isin(store_additional_attribute)[0] and self.store_info.store_type.isin([store_type])[0]:
+        store_additional_attribute = [unicode(value, 'utf-8') for value in store_additional_attribute]
+        if self.store_info.additional_attribute_5.isin(store_additional_attribute)[0] and \
+                self.store_info.store_type.isin([store_type])[0]:
             relevant_kpi_template = self.templates[KPIS]
-
-            foundation_kpi_types = [DISTRIBUTION,SURVEY]
+            foundation_kpi_types = [SOS, SHARE_OF_EMPTY, DISTRIBUTION, SURVEY, AVALIABILITY]
             foundation_kpi_template = relevant_kpi_template[relevant_kpi_template[KPI_TYPE].isin(foundation_kpi_types)]
-            # distribution_kpi_template = relevant_kpi_template[relevant_kpi_template[KPI_TYPE].isin([])]
+            distribution_scoring_kpi_template = relevant_kpi_template[
+                relevant_kpi_template[KPI_TYPE] == DISTRIBUTION_SCORING]
+            scoring_kpi_template = relevant_kpi_template[relevant_kpi_template[KPI_TYPE] == SCORING]
 
-        self._calculate_kpis_from_template(foundation_kpi_template)
+            self._calculate_kpis_from_template(foundation_kpi_template)
+            self._calculate_kpis_from_template(distribution_scoring_kpi_template)
+            self._calculate_kpis_from_template(scoring_kpi_template)
 
     def _calculate_kpis_from_template(self, template_df):
         for i, row in template_df.iterrows():
@@ -110,7 +126,7 @@ class FONDASToolBox(GlobalSessionToolBox):
                 if isinstance(result_data, dict):
                     weight = row['Score']
                     if weight and pd.notna(weight) and pd.notna(result_data['result']):
-                        if row[KPI_TYPE] == SCORING and 'score' not in result_data.keys():
+                        if (row[KPI_TYPE] == SCORING and 'score' not in result_data.keys()) or row[KPI_TYPE] == DISTRIBUTION_SCORING:
                             result_data['score'] = weight * result_data['result']
                         elif row[KPI_TYPE] != SCORING:
                             result_data['score'] = weight * result_data['result']
@@ -130,8 +146,8 @@ class FONDASToolBox(GlobalSessionToolBox):
                                 result['score'] = weight * result['result']
                             elif row[KPI_TYPE] != SCORING:
                                 result['score'] = weight * result['result']
-                        parent_kpi_name = self._get_parent_name_from_kpi_name(result['kpi_name'])
-                        if parent_kpi_name and 'identifier_parent' not in result.keys():
+                        if 'identifier_parent' not in result.keys():
+                            parent_kpi_name = self._get_parent_name_from_kpi_name(result['kpi_name'])
                             result['identifier_parent'] = parent_kpi_name
                         if 'identifier_result' not in result.keys():
                             result['identifier_result'] = result['kpi_name']
@@ -152,6 +168,123 @@ class FONDASToolBox(GlobalSessionToolBox):
             return self.calculate_share_of_empty
         elif kpi_type == SCORING:
             return self.calculate_scoring
+        elif kpi_type == DISTRIBUTION_SCORING:
+            return self.calculate_assortment_scoring
+
+    def calculate_scoring(self, row):
+        kpi_name = row[KPI_NAME]
+        kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_name)
+        numerator_id = self.own_manuf_fk
+        denominator_id = self.store_id
+
+        result_dict = {'kpi_name': kpi_name, 'kpi_fk': kpi_fk, 'numerator_id': numerator_id,
+                       'denominator_id': denominator_id}
+
+        component_kpis = self.sanitize_values(row['Component KPIs'])
+        relevant_results = self.results_df[self.results_df['kpi_name'].isin(component_kpis)]
+        passing_results = relevant_results[(relevant_results['result'] != 0) &
+                                           (relevant_results['result'].notna()) &
+                                           (relevant_results['score'] != 0)]
+        nan_results = relevant_results[relevant_results['result'].isna()]
+        if len(relevant_results) > 0 and len(relevant_results) == len(nan_results):
+            result_dict['result'] = pd.np.nan
+        elif row['Component aggregation'] == 'one-passed':
+            if len(relevant_results) > 0 and len(passing_results) > 0:
+                result_dict['result'] = 1
+            else:
+                result_dict['result'] = 0
+        elif row['Component aggregation'] == 'sum':
+            if len(relevant_results) > 0:
+                result_dict['score'] = relevant_results['score'].sum()
+                if 'result' not in result_dict.keys():
+                    result_dict['result'] = result_dict['score']
+            else:
+                result_dict['score'] = 0
+                if 'result' not in result_dict.keys():
+                    result_dict['result'] = result_dict['score']
+
+        return result_dict
+
+
+    def calculate_share_of_empty(self, row):
+        kpi_name = row[KPI_NAME]
+        kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_name)
+        target = str(row[TARGET])
+        template_group = row[TASK_TEMPLATE_GROUP]
+
+        relevant_denominator_scif = self.filter_df(self.scif, {'template_group': template_group})
+        if not relevant_denominator_scif.empty:
+            denominator_result = relevant_denominator_scif[FACINGS_IGN_STACK].sum()
+            relevant_numerator_scif = self.filter_df(relevant_denominator_scif,
+                                                     {row[NUMERATOR_PARAM_1]: row[NUMERATOR_VALUE_1]})
+            if not relevant_numerator_scif.empty:
+                numerator_result = relevant_numerator_scif[FACINGS_IGN_STACK].sum()
+                result = float(numerator_result) / float(denominator_result)
+            else:
+                numerator_result = 0
+                result = 0
+        else:
+            denominator_result = 0
+            numerator_result = 0
+            result = 0
+
+        score = self.calculate_score_for_sos(target, result)
+        result_dict = {'kpi_name': kpi_name, 'kpi_fk': kpi_fk, 'numerator_id': self.own_manuf_fk,
+                       'numerator_result': numerator_result,
+                       'denominator_id': self.template_fk, 'denominator_result': denominator_result,
+                       'result': result, 'score': score}
+
+        return result_dict
+
+    def calculate_sos(self, row):
+        kpi_name = row[KPI_NAME]
+        kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_name)
+        target = str(row[TARGET])
+        template_group = row[TASK_TEMPLATE_GROUP]
+        product_type = self.sanitize_values(row[PRODUCT_TYPE])
+
+        relevant_denominator_scif = self.filter_df(self.scif,
+                                                   {'template_group': template_group, PRODUCT_TYPE: product_type})
+        if not relevant_denominator_scif.empty:
+            denominator_result = relevant_denominator_scif[FACINGS_IGN_STACK].sum()
+            relevant_numerator_scif = self.filter_df(relevant_denominator_scif,
+                                                     {row[NUMERATOR_PARAM_1]: row[NUMERATOR_VALUE_1]})
+            if not relevant_numerator_scif.empty:
+                numerator_result = relevant_numerator_scif[FACINGS_IGN_STACK].sum()
+                result = float(numerator_result) / float(denominator_result)
+            else:
+                numerator_result = 0
+                result = 0
+        else:
+            denominator_result = 0
+            numerator_result = 0
+            result = 0
+
+        score = self.calculate_score_for_sos(target, result)
+        result_dict = {'kpi_name': kpi_name, 'kpi_fk': kpi_fk, 'numerator_id': self.own_manuf_fk,
+                       'numerator_result': numerator_result,
+                       'denominator_id': self.template_fk, 'denominator_result': denominator_result,
+                       'result': result, 'score': score}
+
+        return result_dict
+
+    def calculate_availability(self, row):
+        kpi_name = row[KPI_NAME]
+        kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_name)
+        kpi_type = row[KPI_TYPE]
+        template_name = row[TEMPLATE_NAME]
+        product_short_name = self.sanitize_values(row[PRODUCT_SHORT_NAME])
+
+        relevant_scif = self.filter_df(self.scif, {TEMPLATE_NAME: template_name, KPI_TYPE: kpi_type,
+                                                   PRODUCT_SHORT_NAME: product_short_name})
+        result = 1 if not relevant_scif.empty else 0
+        numerator_id = self.own_manuf_fk
+        denominator_id = self.template_fk
+
+        result_dict = {'kpi_name': kpi_name, 'kpi_fk': kpi_fk, 'numerator_id': numerator_id,
+                       'denominator_id': denominator_id,
+                       'result': result}
+        return result_dict
 
     def calculate_survey(self, row):
         kpi_name = row[KPI_NAME]
@@ -174,23 +307,80 @@ class FONDASToolBox(GlobalSessionToolBox):
         kpi_name = row[KPI_NAME]
         kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_name)
         parent_kpi_name = row[PARENT_KPI]
-
+        result_dict_list = []
         relevant_assortment = self.sanitize_values(self.assortment_template.loc[
-            self.assortment_template[KPI_NAME] == parent_kpi_name, row[RELEVANT_ASSORTMNENT]].iat[0])
+                                                       self.assortment_template[KPI_NAME] == parent_kpi_name, row[
+                                                           RELEVANT_ASSORTMNENT]].iat[0])
         relevant_scif = self.filter_df(self.scif, {'template_group': row['template_group']})
-        result_of_current_assortment = any(np.in1d(relevant_assortment, relevant_scif))
-        # relevant_survey_result = self.results_df.loc[self.results_df['kpi_name'] == 'Visible-Fondas-Rsr',RESULT][0]
+        lst_result_of_assortment_exists = np.in1d(relevant_assortment, relevant_scif)
+        final_result_of_current_assortment = any(lst_result_of_assortment_exists)
+        relevant_survey_result = self.results_df.loc[self.results_df['kpi_name'] == 'Visible-Fondas-Rsr', RESULT][0]
+
+        if row['Relevant_SKU'] == 'Y':
+            # kpi_id = kpi_fk + 1
+            # if final_result_of_current_assortment:
+            existing_prod_in_required_assortment = \
+                np.take(relevant_assortment, np.where(lst_result_of_assortment_exists))[0]
+            for assortment in relevant_assortment:
+                result = 1 if assortment in existing_prod_in_required_assortment else 0
+                product_fk = self.all_products.loc[self.all_products.product_name == assortment, 'product_fk'].iat[
+                    0]
+                sub_category_fk = \
+                    self.all_products.loc[self.all_products.product_name == assortment, 'sub_category_fk'].iat[0]
+                result_dict = {'kpi_name': kpi_name + " - SKU", 'kpi_fk': 0, 'numerator_id': product_fk,
+                               'denominator_id': sub_category_fk,
+                               'result': result, 'identifier_parent': kpi_name}
+                result_dict_list.append(result_dict)
 
         numerator_id = self.scif.product_fk.iat[0] if not self.scif.product_fk.empty else 0
         denominator_id = self.scif.sub_category_fk.iat[0] if not self.scif.sub_category_fk.empty else 0
-        if result_of_current_assortment:
-            result = 100
-        else:
-            result = 0
+
+        '''The Asssortment Right column and Survey Right column was created to help encompass all the different types 
+           of assortment kpis into one method. Some Assortment kpis require the assortment to pass and the survey to pass.
+           Some assortment kpis require they survey to fail and assortments to pass. So if the assortment and the survey 
+            are supposed to pass, the row['Assortment_Right'] and row['Survey_Right'] will be Y (indicating yes).
+            If the assortment is supposed to pass and the survey is supposed to fail, the row['Assortment_Right'] will be 
+            Y (indicating yes) and row['Survey_Right'] will be N(indicating no).
+        '''
+        if row['Assortment_Right'] == 'Y' and row['Survey_Right'] == 'Y':
+            result = 1 if relevant_survey_result == 100 and final_result_of_current_assortment else 0
+        elif row['Assortment_Right'] == 'Y' and row['Survey_Right'] == 'N':
+            result = 1 if relevant_survey_result == 100 and final_result_of_current_assortment == False else 0
 
         result_dict = {'kpi_name': kpi_name, 'kpi_fk': kpi_fk, 'numerator_id': numerator_id,
                        'denominator_id': denominator_id,
-                       'result': result}
+                       'result': result, 'identifier_result': kpi_name + " - SKU"}
+        result_dict_list.append(result_dict)
+        return result_dict_list
+
+    def calculate_assortment_scoring(self, row):
+        kpi_name = row[KPI_NAME]
+        kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_name)
+        numerator_id = self.own_manuf_fk
+        denominator_id = self.store_id
+
+        result_dict = {'kpi_name': kpi_name, 'kpi_fk': kpi_fk, 'numerator_id': numerator_id,
+                       'denominator_id': denominator_id}
+        component_kpis = self.sanitize_values(row['Component KPIs'])
+        dependency_kpis = self.sanitize_values(row['Dependency'])
+        relevant_results = self.results_df[self.results_df['kpi_name'].isin(component_kpis)]
+        count_of_component_kpis = len(component_kpis)
+        potential_results = [1, .5, .5, .25] if count_of_component_kpis == 4 else [1, .5]
+        holder_for_kpi_results = {}
+        for potential_result, result_of_child_kpi in zip(potential_results, relevant_results.result):
+            if result_of_child_kpi != 0:
+                holder_for_kpi_results[potential_result] = result_of_child_kpi
+
+        kpi_result = sorted(holder_for_kpi_results.keys(), reverse=True)[0] if holder_for_kpi_results.keys() else 0
+
+        if dependency_kpis and dependency_kpis is not pd.np.nan:
+            dependency_results = self.results_df[self.results_df['kpi_name'].isin(dependency_kpis)]
+            passing_dependency_results = dependency_results[dependency_results['result'] != 0]
+            if len(dependency_results) > 0 and len(dependency_results) == len(passing_dependency_results):
+                kpi_result = 1
+            else:
+                kpi_result = 0
+        result_dict['result'] = kpi_result
         return result_dict
 
     def _get_parent_name_from_kpi_name(self, kpi_name):
@@ -234,3 +424,18 @@ class FONDASToolBox(GlobalSessionToolBox):
             if series[column] not in ['', np.nan]:
                 groups.append([x.strip() for x in series[column].split(',')])
         return groups
+
+    @staticmethod
+    def calculate_score_for_sos(target, result):
+        if len(target) > 3:
+            min_target, max_target = target.split('-')
+            if result * 100 >= int(min_target) and result * 100 <= int(max_target):
+                score = 1
+            else:
+                score = 0
+        else:
+            if result * 100 >= int(target):
+                score = 1
+            else:
+                score = 0
+        return score
