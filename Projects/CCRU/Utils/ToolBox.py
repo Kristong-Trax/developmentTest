@@ -2556,7 +2556,7 @@ class CCRUKPIToolBox:
                                                       'kpk_name',
                                                       'score'])
 
-        target = 100 * (param.get('KPI Weight') if param.get('KPI Weight') else 1)
+        target = 100 * (param.get('KPI Weight') if param.get('KPI Weight') is not None else 1)
         if self.kpi_scores_and_results[self.kpi_set_type].get(str(param.get('KPI ID'))):
             if self.kpi_scores_and_results[self.kpi_set_type][str(param.get('KPI ID'))].get('target'):
                 target = self.kpi_scores_and_results[self.kpi_set_type][str(
@@ -2567,7 +2567,10 @@ class CCRUKPIToolBox:
                                                    'weight': param.get('KPI Weight'),
                                                    # 'result': round(score),
                                                    'score': round(score),
-                                                   'weighted_score': round(score) * (param.get('KPI Weight') if param.get('KPI Weight') else 1)})
+                                                   'weighted_score':
+                                                       round(score) * (param.get('KPI Weight')
+                                                                       if param.get('KPI Weight') is not None
+                                                                       else 1)})
 
         return attributes_for_table2
 
@@ -2653,7 +2656,10 @@ class CCRUKPIToolBox:
                                                    'weight': param.get('KPI Weight'),
                                                    'result': result,
                                                    'score': round(score),
-                                                   'weighted_score': round(round(score) * (param.get('KPI Weight') if param.get('KPI Weight') else 1), 2),
+                                                   'weighted_score':
+                                                       round(round(score) * (param.get('KPI Weight')
+                                                                             if param.get('KPI Weight') is not None
+                                                                             else 1), 2),
                                                    'additional_level': additional_level})
 
         return attributes_for_table3
@@ -3890,7 +3896,7 @@ class CCRUKPIToolBox:
             if kpi_set_type in [POS, EQUIPMENT, SPIRITS]:
                 score = score if kpi['weighted_score'] is None else kpi['weighted_score']
                 weight = weight if kpi['weight'] is None else kpi['weight']
-                target = weight*100 if weight and kpi['level'] < 3 else kpi['target']
+                target = weight*100 if weight is not None and kpi['level'] < 3 else kpi['target']
             else:
                 score = score if kpi['score'] is None else kpi['score']
                 weight = kpi['weight']
@@ -3905,7 +3911,7 @@ class CCRUKPIToolBox:
                                                     (self.kpi_result_values['result_value'] == result)][
                         'result_value_fk'].values[0]
             else:
-                if kpi_set_type in [POS, EQUIPMENT, SPIRITS] and kpi['level'] in (1, 2):
+                if kpi_set_type in [POS, EQUIPMENT, SPIRITS] and kpi['level'] == 1:
                     result = round(score/weight) if score and weight \
                         else score
                 else:

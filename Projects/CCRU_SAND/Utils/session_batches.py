@@ -9,8 +9,8 @@ from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
 __author__ = 'Sergey'
 
 PROJECT = 'ccru_sand'
-START_DATE = '2020-01-25'
-END_DATE = '2021-02-21'
+START_DATE = '2020-01-01'
+END_DATE = '2020-01-24'
 NUMBER_OF_SCENES_LIMIT = 10000
 BATCH_FILE = '/home/sergey/Documents/Recalc/' + PROJECT + '_sessions_'
 
