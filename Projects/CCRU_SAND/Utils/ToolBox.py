@@ -117,7 +117,7 @@ POS_CAT_KPI_DICT = {'Availability': AVAILABILITY_CAT_FOR_MR, 'SOS': SOS_CAT_FOR_
 
 class CCRU_SANDKPIToolBox:
 
-    MIN_CALC_DATE = '2020-01-25'
+    MIN_CALC_DATE = '2019-10-26'
 
     STANDARD_VISIT = 'Standard visit'
     PROMO_VISIT = 'Promo visit'
@@ -1950,6 +1950,8 @@ class CCRU_SANDKPIToolBox:
 
     def calculate_sub_atomic_passed_on_the_same_scene(self, params, all_params, scenes, parent):
         total_res = 0
+        if not scenes:
+            scenes = self.get_relevant_scenes(params)
         for scene in scenes:
             total_res += self.calculate_sub_atomic_passed(params, all_params, scenes=[scene], parent=parent)
         return total_res
@@ -2583,7 +2585,7 @@ class CCRU_SANDKPIToolBox:
                                                       'kpk_name',
                                                       'score'])
 
-        target = 100 * (param.get('KPI Weight') if param.get('KPI Weight') else 1)
+        target = 100 * (param.get('KPI Weight') if param.get('KPI Weight') is not None else 1)
         if self.kpi_scores_and_results[self.kpi_set_type].get(str(param.get('KPI ID'))):
             if self.kpi_scores_and_results[self.kpi_set_type][str(param.get('KPI ID'))].get('target'):
                 target = self.kpi_scores_and_results[self.kpi_set_type][str(
@@ -2594,7 +2596,10 @@ class CCRU_SANDKPIToolBox:
                                                    'weight': param.get('KPI Weight'),
                                                    # 'result': round(score),
                                                    'score': round(score),
-                                                   'weighted_score': round(score) * (param.get('KPI Weight') if param.get('KPI Weight') else 1)})
+                                                   'weighted_score':
+                                                       round(score) * (param.get('KPI Weight')
+                                                                       if param.get('KPI Weight') is not None
+                                                                       else 1)})
 
         return attributes_for_table2
 
@@ -2680,7 +2685,10 @@ class CCRU_SANDKPIToolBox:
                                                    'weight': param.get('KPI Weight'),
                                                    'result': result,
                                                    'score': round(score),
-                                                   'weighted_score': round(round(score) * (param.get('KPI Weight') if param.get('KPI Weight') else 1), 2),
+                                                   'weighted_score':
+                                                       round(round(score) * (param.get('KPI Weight')
+                                                                             if param.get('KPI Weight') is not None
+                                                                             else 1), 2),
                                                    'additional_level': additional_level})
 
         return attributes_for_table3
@@ -3957,7 +3965,7 @@ class CCRU_SANDKPIToolBox:
             if kpi_set_type in [POS, EQUIPMENT, SPIRITS]:
                 score = score if kpi['weighted_score'] is None else kpi['weighted_score']
                 weight = weight if kpi['weight'] is None else kpi['weight']
-                target = weight*100 if weight and kpi['level'] < 3 else kpi['target']
+                target = weight*100 if weight is not None and kpi['level'] < 3 else kpi['target']
             else:
                 score = score if kpi['score'] is None else kpi['score']
                 weight = kpi['weight']
@@ -3972,7 +3980,7 @@ class CCRU_SANDKPIToolBox:
                                                     (self.kpi_result_values['result_value'] == result)][
                         'result_value_fk'].values[0]
             else:
-                if kpi_set_type in [POS, EQUIPMENT, SPIRITS] and kpi['level'] in (1, 2):
+                if kpi_set_type in [POS, EQUIPMENT, SPIRITS] and kpi['level'] == 1:
                     result = round(score/weight) if score and weight \
                         else score
                 else:

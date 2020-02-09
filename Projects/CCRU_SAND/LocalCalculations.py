@@ -8,11 +8,11 @@ from Projects.CCRU_SAND.Calculations import CCRU_SANDCalculations
 if __name__ == '__main__':
     LoggerInitializer.init('CCRU calculations')
     Config.init()
-    project_name = 'ccru-sand'
+    project_name = 'ccru_sand'
     data_provider = KEngineDataProvider(project_name)
     session_uids = \
         [
-            "b8311226-1c89-42be-b166-c4b579a4345f",
+            "FEF2A68D-E934-48C9-AED7-FCCC847E5815",
 
             # "f97d6aeb-1e6c-4f41-9da0-935f3a7bcb01",
             # "f2e5eb75-3bef-43d6-b195-02099f60c48b",
