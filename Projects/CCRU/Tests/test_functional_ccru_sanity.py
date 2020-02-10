@@ -10,7 +10,8 @@ import json
 
 __author__ = 'sergey'
 
-EQUIPMENT_TARGETS_FILE = '461496'  # by store_fk of 'F26E2E6B-D12B-415C-AC0C-CAB929BEFC9F'
+# Equipment targets file by store_fk=461496 of session_uid='F26E2E6B-D12B-415C-AC0C-CAB929BEFC9F'
+EQUIPMENT_TARGETS_FILE = 'equipment_targtets.txt'
 SESSION_LIST = {'F26E2E6B-D12B-415C-AC0C-CAB929BEFC9F': [],
                 '3b8a8039-2c79-436d-b42f-c72f4ce3b183': []}
 
