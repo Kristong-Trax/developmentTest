@@ -7,6 +7,7 @@ import pandas as pd
 from Projects.STRAUSSIL_SAND.Data.LocalConsts import Consts
 from KPIUtils_v2.Utils.Decorators.Decorators import kpi_runtime
 from KPIUtils_v2.Utils.Parsers import ParseInputKPI as Parser
+from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
 
 
 # from KPIUtils_v2.Utils.Consts.DataProvider import 
@@ -37,6 +38,8 @@ class ToolBox(GlobalSessionToolBox):
         self.own_manufacturer_fk = int(self.data_provider.own_manufacturer.param_value.values[0])
         self.parser = Parser
         self.all_products = self.data_provider[Data.ALL_PRODUCTS]
+        self.assortment = Assortment(self.data_provider, self.output)
+
 
     def main_calculation(self):
         score = 0
@@ -46,8 +49,8 @@ class ToolBox(GlobalSessionToolBox):
         numerator = total_facings = 0
         store_kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_type=Consts.OOS)
         sku_kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_type=Consts.OOS_SKU)
-        leading_skus_df =
-        skus_ean_list = leading_skus_df[Consts.PARAMS_VALUE_1].tolist()
+        assortment_df = self.assortment.get_lvl3_relevant_ass()
+        skus_ean_list = assortment_df['product_ean_code'].tolist()
         skus_ean_set = set([ean_code.strip() for values in skus_ean_list for ean_code in values.split(",")])
         product_fks = self.all_products[self.all_products['product_ean_code'].isin(skus_ean_set)]['product_fk'].tolist()
         # sku level oos
