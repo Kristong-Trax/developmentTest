@@ -1,5 +1,5 @@
 
-class CCRUKpiResults:
+class CCRU_SANDKpiResults:
     def __init__(self):
         pass
 
