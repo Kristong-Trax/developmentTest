@@ -10,7 +10,7 @@ if __name__ == '__main__':
     project_name = 'sinopacificTH'  # 'carlsberg'
     data_provider = KEngineDataProvider(project_name)
     sessions = [
-        '020951DF-D8C6-4439-A8B2-0E18702548A1',
+        '811EF734-CDBB-4A64-AECC-1C4FCB869A9C',
         ]
     for session in sessions:
         print("Running for {}".format(session))
