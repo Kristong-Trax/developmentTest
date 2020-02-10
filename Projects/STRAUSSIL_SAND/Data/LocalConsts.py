@@ -1,0 +1,10 @@
+
+class Consts(object):
+    # OOS KPI
+    OOS = 'OOS'
+    OOS_SKU = 'OOS - SKU'
+
+    # SOS KPI
+    SOS_BY_OWN_MAN = 'SOS_BY_OWN_MAN'
+    SOS_BY_OWN_MAN_CAT = 'SOS_BY_OWN_MAN_CAT'
+    SOS_BY_OWN_MAN_CAT_BRAND = 'SOS_BY_OWN_MAN_CAT_BRAND'
