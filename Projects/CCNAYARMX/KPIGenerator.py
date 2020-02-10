@@ -34,7 +34,7 @@ class Generator:
 
         fondas_tool_box = FONDASToolBox(self.data_provider, self.output, common)
         fondas_tool_box.main_calculation()
-
+        fondas_tool_box.commit_results()
         # tool_box = ToolBox(self.data_provider, self.output, common)
         # tool_box.main_calculation()
 

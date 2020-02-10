@@ -111,6 +111,23 @@ class FONDASToolBox(GlobalSessionToolBox):
             self._calculate_kpis_from_template(foundation_kpi_template)
             self._calculate_kpis_from_template(distribution_scoring_kpi_template)
             self._calculate_kpis_from_template(scoring_kpi_template)
+            self.save_results_to_db()
+
+    def save_results_to_db(self):
+        self.results_df.drop(columns=['kpi_name'], inplace=True)
+        self.results_df.rename(columns={'kpi_fk': 'fk'}, inplace=True)
+        self.results_df.loc[~self.results_df['identifier_parent'].isnull(), 'should_enter'] = True
+        # set result to NaN for records that do not have a parent
+        # identifier_results = self.results_df[self.results_df['result'].notna()]['identifier_result'].unique().tolist()
+        # self.results_df['result'] = self.results_df.apply(
+        #     lambda row: pd.np.nan if pd.notna(row['identifier_parent']) and row[
+        #         'identifier_parent'] not in identifier_results else row['result'], axis=1)
+        # get rid of 'not applicable' results
+        self.results_df.dropna(subset=['result'], inplace=True)
+        self.results_df.fillna(0)
+        results = self.results_df.to_dict('records')
+        for result in results:
+            self.write_to_db(**result)
 
     def _calculate_kpis_from_template(self, template_df):
         for i, row in template_df.iterrows():
@@ -126,7 +143,8 @@ class FONDASToolBox(GlobalSessionToolBox):
                 if isinstance(result_data, dict):
                     weight = row['Score']
                     if weight and pd.notna(weight) and pd.notna(result_data['result']):
-                        if (row[KPI_TYPE] == SCORING and 'score' not in result_data.keys()) or row[KPI_TYPE] == DISTRIBUTION_SCORING:
+                        if (row[KPI_TYPE] == SCORING and 'score' not in result_data.keys()) or row[
+                            KPI_TYPE] == DISTRIBUTION_SCORING:
                             result_data['score'] = weight * result_data['result']
                         elif row[KPI_TYPE] != SCORING:
                             result_data['score'] = weight * result_data['result']
@@ -205,6 +223,35 @@ class FONDASToolBox(GlobalSessionToolBox):
 
         return result_dict
 
+    def calculate_assortment_scoring(self, row):
+        kpi_name = row[KPI_NAME]
+        kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_name)
+        numerator_id = self.own_manuf_fk
+        denominator_id = self.store_id
+
+        result_dict = {'kpi_name': kpi_name, 'kpi_fk': kpi_fk, 'numerator_id': numerator_id,
+                       'denominator_id': denominator_id}
+        component_kpis = self.sanitize_values(row['Component KPIs'])
+        dependency_kpis = self.sanitize_values(row['Dependency'])
+        relevant_results = self.results_df[self.results_df['kpi_name'].isin(component_kpis)]
+        count_of_component_kpis = len(component_kpis)
+        potential_results = [1, .5, .5, .25] if count_of_component_kpis == 4 else [1, .5]
+        holder_for_kpi_results = {}
+        for potential_result, result_of_child_kpi in zip(potential_results, relevant_results.result):
+            if result_of_child_kpi != 0:
+                holder_for_kpi_results[potential_result] = result_of_child_kpi
+
+        kpi_result = sorted(holder_for_kpi_results.keys(), reverse=True)[0] if holder_for_kpi_results.keys() else 0
+
+        if dependency_kpis and dependency_kpis is not pd.np.nan:
+            dependency_results = self.results_df[self.results_df['kpi_name'].isin(dependency_kpis)]
+            passing_dependency_results = dependency_results[dependency_results['result'] != 0]
+            if len(dependency_results) > 0 and len(dependency_results) == len(passing_dependency_results):
+                kpi_result = 1
+            else:
+                kpi_result = 0
+        result_dict['result'] = kpi_result
+        return result_dict
 
     def calculate_share_of_empty(self, row):
         kpi_name = row[KPI_NAME]
@@ -317,7 +364,8 @@ class FONDASToolBox(GlobalSessionToolBox):
         relevant_survey_result = self.results_df.loc[self.results_df['kpi_name'] == 'Visible-Fondas-Rsr', RESULT][0]
 
         if row['Relevant_SKU'] == 'Y':
-            # kpi_id = kpi_fk + 1
+            kpi_sku_name = kpi_name + " - SKU"
+            kpi_id = self.common.get_kpi_fk_by_kpi_type(kpi_sku_name)
             # if final_result_of_current_assortment:
             existing_prod_in_required_assortment = \
                 np.take(relevant_assortment, np.where(lst_result_of_assortment_exists))[0]
@@ -327,7 +375,7 @@ class FONDASToolBox(GlobalSessionToolBox):
                     0]
                 sub_category_fk = \
                     self.all_products.loc[self.all_products.product_name == assortment, 'sub_category_fk'].iat[0]
-                result_dict = {'kpi_name': kpi_name + " - SKU", 'kpi_fk': 0, 'numerator_id': product_fk,
+                result_dict = {'kpi_name': kpi_sku_name, 'kpi_fk': kpi_id, 'numerator_id': product_fk,
                                'denominator_id': sub_category_fk,
                                'result': result, 'identifier_parent': kpi_name}
                 result_dict_list.append(result_dict)
@@ -352,36 +400,6 @@ class FONDASToolBox(GlobalSessionToolBox):
                        'result': result, 'identifier_result': kpi_name + " - SKU"}
         result_dict_list.append(result_dict)
         return result_dict_list
-
-    def calculate_assortment_scoring(self, row):
-        kpi_name = row[KPI_NAME]
-        kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_name)
-        numerator_id = self.own_manuf_fk
-        denominator_id = self.store_id
-
-        result_dict = {'kpi_name': kpi_name, 'kpi_fk': kpi_fk, 'numerator_id': numerator_id,
-                       'denominator_id': denominator_id}
-        component_kpis = self.sanitize_values(row['Component KPIs'])
-        dependency_kpis = self.sanitize_values(row['Dependency'])
-        relevant_results = self.results_df[self.results_df['kpi_name'].isin(component_kpis)]
-        count_of_component_kpis = len(component_kpis)
-        potential_results = [1, .5, .5, .25] if count_of_component_kpis == 4 else [1, .5]
-        holder_for_kpi_results = {}
-        for potential_result, result_of_child_kpi in zip(potential_results, relevant_results.result):
-            if result_of_child_kpi != 0:
-                holder_for_kpi_results[potential_result] = result_of_child_kpi
-
-        kpi_result = sorted(holder_for_kpi_results.keys(), reverse=True)[0] if holder_for_kpi_results.keys() else 0
-
-        if dependency_kpis and dependency_kpis is not pd.np.nan:
-            dependency_results = self.results_df[self.results_df['kpi_name'].isin(dependency_kpis)]
-            passing_dependency_results = dependency_results[dependency_results['result'] != 0]
-            if len(dependency_results) > 0 and len(dependency_results) == len(passing_dependency_results):
-                kpi_result = 1
-            else:
-                kpi_result = 0
-        result_dict['result'] = kpi_result
-        return result_dict
 
     def _get_parent_name_from_kpi_name(self, kpi_name):
         template = self.templates[KPIS]
