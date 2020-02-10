@@ -40,43 +40,76 @@ class ToolBox(GlobalSessionToolBox):
         self.all_products = self.data_provider[Data.ALL_PRODUCTS]
         self.assortment = Assortment(self.data_provider, self.output)
 
-
     def main_calculation(self):
-        score = 0
-        return score
+        self.calculate_core_oos_and_distribution()
 
-    def calculate_oos(self):
-        numerator = total_facings = 0
-        store_kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_type=Consts.OOS)
-        sku_kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_type=Consts.OOS_SKU)
+    def calculate_core_oos_and_distribution(self):
+        dis_numerator = total_facings = 0
+        oos_store_kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_type=Consts.OOS)
+        oos_sku_kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_type=Consts.OOS_SKU)
+        dis_store_kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_type=Consts.DISTRIBUTION)
+        dis_cat_kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_type=Consts.DISTRIBUTION_CAT)
+        dis_sku_kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_type=Consts.DISTRIBUTION_SKU)
         assortment_df = self.assortment.get_lvl3_relevant_ass()
         skus_ean_list = assortment_df['product_ean_code'].tolist()
         skus_ean_set = set([ean_code.strip() for values in skus_ean_list for ean_code in values.split(",")])
         product_fks = self.all_products[self.all_products['product_ean_code'].isin(skus_ean_set)]['product_fk'].tolist()
-        # sku level oos
+        categories = self.all_products[self.all_products['product_fk'].isin(product_fks)]['category_fk'].unqiue()
+        categories_dict = dict.fromkeys(categories, (0,0))
+
+        # sku level distribution
         for sku in product_fks:
             # 2 for distributed and 1 for oos
+            category_fk = self.all_products[self.all_products['product_fk'] == sku]['category_fk']
             product_df = self.scif[self.scif['product_fk'] == sku]
             if product_df.empty:
-                numerator += 1
+                categories_dict[category_fk] = map(sum, zip(categories_dict[category_fk], [0, 1]))
                 result = 1
                 facings = 0
+                # Saving OOS only if product wasn't in store
+                self.common.write_to_db_result(fk=oos_sku_kpi_fk, numerator_id=sku, denominator_id=self.store_id,
+                                               result=result, numerator_result=result, denominator_result=result,
+                                               score=facings, identifier_parent="CORE_OOS", should_enter=True)
             else:
+                categories_dict[category_fk] = map(sum, zip(categories_dict[category_fk], [1, 1]))
                 result = 2
                 facings = product_df['facings'].values[0]
+                dis_numerator += 1
                 total_facings += facings
-            self.common.write_to_db_result(fk=sku_kpi_fk, numerator_id=sku, denominator_id=self.store_id,
+            self.common.write_to_db_result(fk=dis_sku_kpi_fk, numerator_id=sku, denominator_id=category_fk,
                                            result=result, numerator_result=result, denominator_result=result,
-                                           score=facings, identifier_parent="OOS", should_enter=True)
-        # store level oos
+                                           score=facings, should_enter=True,
+                                           identifier_parent="CORE_DIS_CAT_{}".format(str(category_fk)))
+
+        # category level distribution
+        for category_fk in categories_dict.keys():
+            cat_numerator, cat_denominator = categories_dict[category_fk]
+            if cat_denominator == 0:
+                cat_numerator = cat_result = 0
+            else:
+                cat_result = round(cat_numerator / float(cat_denominator), 4)
+            self.common.write_to_db_result(fk=dis_cat_kpi_fk, numerator_id=category_fk,
+                                           denominator_id=self.store_id, result=cat_result,
+                                           numerator_result=cat_numerator, denominator_result=cat_denominator,
+                                           score=cat_result, identifier_parent="CORE_DIS",
+                                           identifier_result="CORE_DIS_CAT_{}".format(str(category_fk)))
+
+        # store level oos and distribution
         denominator = len(product_fks)
         if denominator == 0:
-            numerator = result = 0
+            dis_numerator = dis_result = oos_result = 0
         else:
-            result = round(numerator / float(denominator), 4)
-        self.common.write_to_db_result(fk=store_kpi_fk, numerator_id=self.own_manufacturer_fk,
-                                       denominator_id=self.store_id, result=result, numerator_result=numerator,
-                                       denominator_result=denominator, score=total_facings, identifier_result="OOS")
+            dis_result = round(dis_numerator / float(denominator), 4)
+            oos_result = 1 - dis_result
+        oos_numerator = denominator - dis_numerator
+        self.common.write_to_db_result(fk=oos_store_kpi_fk, numerator_id=self.own_manufacturer_fk,
+                                       denominator_id=self.store_id, result=oos_result, numerator_result=dis_numerator,
+                                       denominator_result=denominator, score=total_facings,
+                                       identifier_result="CORE_OOS")
+        self.common.write_to_db_result(fk=dis_store_kpi_fk, numerator_id=self.own_manufacturer_fk,
+                                       denominator_id=self.store_id, result=dis_result, numerator_result=oos_numerator,
+                                       denominator_result=denominator, score=total_facings,
+                                       identifier_result="CORE_DIS")
 
     def calculate_hierarchy_sos(self):
         store_kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_type=Consts.SOS_BY_OWN_MAN)
