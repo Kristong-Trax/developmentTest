@@ -19,20 +19,6 @@ from OutOfTheBox.Calculations.SubCategorySOS import SubCategoryFacingsSOSPerCate
 
 __author__ = 'Yasmin'
 
-KPI_RESULT = 'report.kpi_results'
-KPK_RESULT = 'report.kpk_results'
-KPS_RESULT = 'report.kps_results'
-
-SOD = 'SHARE_OF_DISPLAY'
-SOD_GROUPED_SCENES = 'SHARE_OF_DISPLAY_GROUPED_SCENES'
-SOWB = 'SHARE_OF_WALL_BAY'
-FSOS = "SHARE_OF_SHELF"
-
-PRICE_PROMOTION = 'PRICE_PROMOTION'
-PRICE_PROMOTION_BRAND_SKU = 'PRICE_PROMOTION_BRAND_SKU'
-PRICE_PROMOTION_SCENE_BRAND_SKU = 'PRICE_PROMOTION_SCENE_BRAND_SKU'
-PRICE_PROMOTION_SKU = 'PRICE_PROMOTION_SKU'
-
 entities = {"category": "category_fk", "sub_category": "sub_category_fk", "manufacturer": "manufacturer_fk",
             "template": "template_fk", "brand": "brand_fk", "product": "product_fk", "scene": "scene_fk"}
 
@@ -49,9 +35,7 @@ def log_runtime(description, log_start=False):
             calc_end_time = datetime.utcnow()
             Log.info('{} took {}'.format(description, calc_end_time - calc_start_time))
             return result
-
         return wrapper
-
     return decorator
 
 
@@ -108,6 +92,26 @@ class DIAGEOGTRConsts:
 
     NUM_OF_DISPLAYS = 'num_of_displays'
     TOTAL_NUM_OF_DISPLAYS = 'total_num_of_displays'
+
+    KPI_RESULT = 'report.kpi_results'
+    KPK_RESULT = 'report.kpk_results'
+    KPS_RESULT = 'report.kps_results'
+
+    SOD = 'SHARE_OF_DISPLAY'
+    SOD_GROUPED_SCENES = 'SHARE_OF_DISPLAY_GROUPED_SCENES'
+    SOWB = 'SHARE_OF_WALL_BAY'
+    FSOS = "SHARE_OF_SHELF"
+    MPC = 'MANUAL_PRICE_CAPTURE'
+
+    PRICE_PROMOTION = 'PRICE_PROMOTION'
+    PRICE_PROMOTION_BRAND_SKU = 'PRICE_PROMOTION_BRAND_SKU'
+    PRICE_PROMOTION_SCENE_BRAND_SKU = 'PRICE_PROMOTION_SCENE_BRAND_SKU'
+    PRICE_PROMOTION_SKU = 'PRICE_PROMOTION_SKU'
+
+    MANUAL_PRICE_CAPTURE_ATTRIBUTE = 'manual_price_capture_attr'
+    MANUAL_PRICE_CAPTURE_ORIGINAL = 'MANUAL_PRICE_CAPTURE_ORIGINAL'
+    MANUAL_PRICE_CAPTURE_PROMOTION = 'MANUAL_PRICE_CAPTURE_PROMOTION'
+    MANUAL_PRICE_CAPTURE_DEPTH = 'MANUAL_PRICE_CAPTURE_DEPTH'
 
 
 class DIAGEOGTRToolBox:
@@ -363,100 +367,20 @@ class DIAGEOGTRToolBox:
         self.mpis = self.mpis.merge(self.products, on='product_fk', how='left')
 
         for kpi_set_name in kpi_set_names:
-            if kpi_set_name == SOWB:
+            if kpi_set_name == DIAGEOGTRConsts.SOWB:
                 self.calculate_share_of_wall_bay(kpi_set_name)
-            elif kpi_set_name == PRICE_PROMOTION:
+            elif kpi_set_name == DIAGEOGTRConsts.PRICE_PROMOTION:
                 self.calculate_number_of_price_promotion(kpi_set_name)
-            # elif kpi_set_name == FSOS:
-            #     self.calculate_facings_sos(kpi_set_name)
-            elif kpi_set_name == SOD:
+            elif kpi_set_name == DIAGEOGTRConsts.SOD:
                 self.calculate_share_of_display(kpi_set_name)
-            elif kpi_set_name == SOD_GROUPED_SCENES:
+            elif kpi_set_name == DIAGEOGTRConsts.SOD_GROUPED_SCENES:
                 self.calculate_share_of_display_grouped_scenes(kpi_set_name)
+            elif kpi_set_name == DIAGEOGTRConsts.MPC:
+                self.calculate_manual_price_capture_depth(kpi_set_name)
             else:
                 continue
-        self.commonV2.commit_results_data()
 
-    # def calculate_facings_sos(self, kpi_set_name):
-    #     template_kpis = self.template_data[self.template_data[DIAGEOGTRConsts.KPI_SET_NAME] == kpi_set_name]
-    #
-    #     for row, template_kpi in template_kpis.iterrows():
-    #         entity_1 = template_kpi[DIAGEOGTRConsts.ENTITY_1].strip().lower()
-    #
-    #         kpi_name = template_kpi[DIAGEOGTRConsts.KPI_NAME]
-    #
-    #         template = template_kpi[DIAGEOGTRConsts.SCENE_POLICY].split(",")
-    #         template_names = [scene.strip().encode(DIAGEOGTRConsts.UTF_8) for scene in template]
-    #
-    #         entity_key_1 = entities[entity_1] if entity_1 in entities.keys() else None
-    #
-    #         self.calculate_facings_sos_entity(kpi_name, template_names, entity_key_1)
-    #
-    # def calculate_facings_sos_entity(self, kpi_name, template_names, entity_key_1):
-    #     kpi_results = {}
-    #     # new static kpi table check
-    #     kpi_static_new = self.kpi_static_data_new[self.kpi_static_data_new[DIAGEOGTRConsts.TYPE] == kpi_name]
-    #
-    #     if kpi_static_new.empty:
-    #         if DIAGEOGTRToolBox.DEBUG:
-    #             print("kpi_name(type - new KPI)={} not found in DB".format(kpi_name))
-    #         kpi_level_2_fk = 0
-    #     else:
-    #         kpi_level_2_fk = kpi_static_new['pk'].iloc[0]
-    #
-    #     for template_name in template_names:
-    #         df_scene_info = self.scene_info[self.scene_info[DIAGEOGTRConsts.TEMPLATE_NAME] == template_name]
-    #
-    #         if df_scene_info.empty:
-    #             if DIAGEOGTRToolBox.DEBUG:
-    #                 print (" scene_policy:{} is not matching with template_name(in DB) ".format(template_name))
-    #             continue
-    #
-    #         for row, scene_info in df_scene_info.iterrows():
-    #             scene_fk = scene_info[DIAGEOGTRConsts.SCENE_FK]
-    #             template_fk = scene_info[DIAGEOGTRConsts.TEMPLATE_FK]
-    #
-    #             df_scene = self.scif[self.scif[DIAGEOGTRConsts.SCENE_FK] == scene_fk]
-    #
-    #             if df_scene.empty:
-    #                 if DIAGEOGTRToolBox.DEBUG:
-    #                     print("scene_fk:{} not matching".format(scene_fk))
-    #                 continue
-    #
-    #             df_fsos = df_scene.groupby([entity_key_1], as_index=False)[DIAGEOGTRConsts.FACINGS].sum()
-    #
-    #             if df_fsos.empty:
-    #                 if DIAGEOGTRToolBox.DEBUG:
-    #                     print "No SKUs"
-    #                 continue
-    #
-    #             for row_num, row_data in df_fsos.iterrows():
-    #                 entity_key_value = str(int(template_fk)) + "-" + str(int(row_data[entity_key_1]))
-    #                 kpi_result = kpi_results.get(entity_key_value, dict())
-    #                 kpi_result[DIAGEOGTRConsts.NUMERATOR_ID] = row_data[entity_key_1]
-    #                 kpi_result[DIAGEOGTRConsts.DENOMINATOR_ID] = template_fk
-    #                 kpi_result[DIAGEOGTRConsts.CONTEXT_ID] = self.store_id
-    #
-    #                 if DIAGEOGTRConsts.FACINGS in kpi_result.keys():
-    #                     kpi_result[DIAGEOGTRConsts.FACINGS] = kpi_result[DIAGEOGTRConsts.FACINGS] + \
-    #                                                           row_data[DIAGEOGTRConsts.FACINGS]
-    #                 else:
-    #                     kpi_result[DIAGEOGTRConsts.FACINGS] = row_data[DIAGEOGTRConsts.FACINGS]
-    #
-    #                 kpi_results[entity_key_value] = kpi_result
-    #
-    #     for key, kpi_result in kpi_results.items():
-    #         kpi_result[DIAGEOGTRConsts.KPI_LEVEL_2_FK] = kpi_level_2_fk
-    #
-    #         if kpi_level_2_fk != 0:
-    #             self.commonV2.write_to_db_result(fk=kpi_result[DIAGEOGTRConsts.KPI_LEVEL_2_FK],
-    #                                              numerator_id=kpi_result[DIAGEOGTRConsts.NUMERATOR_ID],
-    #                                              denominator_id=kpi_result[DIAGEOGTRConsts.DENOMINATOR_ID],
-    #                                              context_id=kpi_result[DIAGEOGTRConsts.CONTEXT_ID],
-    #                                              numerator_result=kpi_result[DIAGEOGTRConsts.FACINGS],
-    #                                              result=kpi_result[DIAGEOGTRConsts.FACINGS],
-    #                                              score=0)
-    #     kpi_results = {}
+        self.commonV2.commit_results_data()
 
     def calculate_assortment_sets(self, set_name):
         """
@@ -957,7 +881,7 @@ class DIAGEOGTRToolBox:
 
             kpi_name = template_kpi[DIAGEOGTRConsts.KPI_NAME]
 
-            if kpi_name == PRICE_PROMOTION_SKU:
+            if kpi_name == DIAGEOGTRConsts.PRICE_PROMOTION_SKU:
                 self.calculate_number_of_price_promotion_entity(kpi_set_name, kpi_name)
             else:
                 self.calculate_number_of_price_promotion_entity_with_scene(kpi_set_name, kpi_name, entity_1, entity_2,
@@ -994,11 +918,11 @@ class DIAGEOGTRToolBox:
 
         df_count = pd.DataFrame()
 
-        if kpi_name == PRICE_PROMOTION_BRAND_SKU:
+        if kpi_name == DIAGEOGTRConsts.PRICE_PROMOTION_BRAND_SKU:
             df_count = pd.DataFrame(
                 self.product_attribute_price_with_scene_data.groupby(
                     [entity_key_1, entity_key_2]).size().reset_index(name="count"))
-        elif kpi_name == PRICE_PROMOTION_SCENE_BRAND_SKU:
+        elif kpi_name == DIAGEOGTRConsts.PRICE_PROMOTION_SCENE_BRAND_SKU:
             df_count = pd.DataFrame(
                 self.product_attribute_price_with_scene_data.groupby(
                     [entity_key_1, entity_key_2, entity_key_3]).size().reset_index(name="count"))
@@ -1007,21 +931,21 @@ class DIAGEOGTRToolBox:
                 print ("kpi_name is not found in DB{}".format(kpi_name))
 
         if df_count.empty:
-            if kpi_name == PRICE_PROMOTION_BRAND_SKU:
+            if kpi_name == DIAGEOGTRConsts.PRICE_PROMOTION_BRAND_SKU:
                 if DIAGEOGTRToolBox.DEBUG:
                     print ("No promotion price for entities:{},{}".format(entity_key_1, entity_key_2))
-            elif kpi_name == PRICE_PROMOTION_SCENE_BRAND_SKU:
+            elif kpi_name == DIAGEOGTRConsts.PRICE_PROMOTION_SCENE_BRAND_SKU:
                 if DIAGEOGTRToolBox.DEBUG:
                     print ("No promotion price for entities:{},{},{}".format(entity_key_1, entity_key_2, entity_key_3))
         else:
             for row_count, row_data in df_count.iterrows():
                 price_promotion_count = row_data['count']
 
-                if kpi_name == PRICE_PROMOTION_BRAND_SKU:
+                if kpi_name == DIAGEOGTRConsts.PRICE_PROMOTION_BRAND_SKU:
                     numerator_id = row_data[entity_key_2]
                     denominator_id = row_data[entity_key_1]
                     context_id = self.store_id
-                elif kpi_name == PRICE_PROMOTION_SCENE_BRAND_SKU:
+                elif kpi_name == DIAGEOGTRConsts.PRICE_PROMOTION_SCENE_BRAND_SKU:
                     numerator_id = row_data[entity_key_3]
                     denominator_id = row_data[entity_key_2]
                     context_id = row_data[entity_key_1]
@@ -1066,7 +990,7 @@ class DIAGEOGTRToolBox:
         if kpi_static_new.empty and kpi_static.empty:
             return None
 
-        if kpi_name == PRICE_PROMOTION_SKU:
+        if kpi_name == DIAGEOGTRConsts.PRICE_PROMOTION_SKU:
             df_price = self.product_attribute_price_data
         else:
             if DIAGEOGTRToolBox.DEBUG:
@@ -1107,11 +1031,11 @@ class DIAGEOGTRToolBox:
         """
         attributes = self.create_attributes_dict(fk, score, level)
         if level == self.LEVEL1:
-            table = KPS_RESULT
+            table = DIAGEOGTRConsts.KPS_RESULT
         elif level == self.LEVEL2:
-            table = KPK_RESULT
+            table = DIAGEOGTRConsts.KPK_RESULT
         elif level == self.LEVEL3:
-            table = KPI_RESULT
+            table = DIAGEOGTRConsts.KPI_RESULT
         else:
             return
         query = insert(attributes, table)
@@ -1464,3 +1388,136 @@ class DIAGEOGTRToolBox:
                                              score=res['result'],
                                              identifier_result=kpi_identifier, identifier_parent=parent_identifier,
                                              should_enter=True)
+
+    def calculate_manual_price_capture_depth(self, kpi_set_name):
+        original_price_kpi_level_2_fk = 0
+        promo_price_kpi_level_2_fk = 0
+        depth_price_kpi_level_2_fk = 0
+
+        original_price_attr = ""
+        promotion_price_attr = ""
+
+        original_price_columns = ['retailer_fk', 'product_fk', 'original_mcpa_fk', 'original_price']
+        promo_price_columns = ['retailer_fk', 'product_fk', 'promo_mcpa_fk', 'promo_price']
+        depth_price_columns = ['retailer_fk', 'product_fk', 'original_mcpa_fk', 'price_depth']
+
+        template_kpis = self.template_data[self.template_data[DIAGEOGTRConsts.KPI_SET_NAME] == kpi_set_name]
+
+        for row_num, row_data in template_kpis.iterrows():
+            if row_data[DIAGEOGTRConsts.KPI_NAME] == DIAGEOGTRConsts.MANUAL_PRICE_CAPTURE_ORIGINAL:
+                original_price_attr = row_data[DIAGEOGTRConsts.MANUAL_PRICE_CAPTURE_ATTRIBUTE]
+            if row_data[DIAGEOGTRConsts.KPI_NAME] == DIAGEOGTRConsts.MANUAL_PRICE_CAPTURE_PROMOTION:
+                promotion_price_attr = row_data[DIAGEOGTRConsts.MANUAL_PRICE_CAPTURE_ATTRIBUTE]
+
+        df_manual_price = self.get_manual_price_capture(original_price_attr, promotion_price_attr)
+
+        if df_manual_price.empty:
+            Log.warning('No manual prices captured for session_uid:{}'.format(self.session_uid))
+            return
+
+        df_original_price = df_manual_price[original_price_columns]
+        df_promo_price = df_manual_price[promo_price_columns]
+        df_depth_price = df_manual_price[depth_price_columns]
+
+        df_original_price.rename(columns={'original_mcpa_fk': 'mcpa_fk', 'original_price': 'price'}, inplace=True)
+        df_promo_price.rename(columns={'promo_mcpa_fk': 'mcpa_fk', 'promo_price': 'price'}, inplace=True)
+        df_depth_price.rename(columns={'original_mcpa_fk': 'mcpa_fk', 'price_depth': 'price'}, inplace=True)
+
+        kpi_name_original_price = DIAGEOGTRConsts.MANUAL_PRICE_CAPTURE_ORIGINAL
+        kpi_static = self.kpi_static_data_new[self.kpi_static_data_new[DIAGEOGTRConsts.TYPE] == kpi_name_original_price]
+        if kpi_static.empty:
+            if DIAGEOGTRToolBox.DEBUG:
+                print("kpi_name(type - new KPI)={} not found in DB".format(kpi_name_original_price))
+        else:
+            original_price_kpi_level_2_fk = kpi_static['pk'].iloc[0]
+
+        kpi_name_promo_price = DIAGEOGTRConsts.MANUAL_PRICE_CAPTURE_PROMOTION
+        kpi_static = self.kpi_static_data_new[self.kpi_static_data_new[DIAGEOGTRConsts.TYPE] == kpi_name_promo_price]
+        if kpi_static.empty:
+            if DIAGEOGTRToolBox.DEBUG:
+                print("kpi_name(type - new KPI)={} not found in DB".format(kpi_name_promo_price))
+        else:
+            promo_price_kpi_level_2_fk = kpi_static['pk'].iloc[0]
+
+        kpi_name_price_depth = DIAGEOGTRConsts.MANUAL_PRICE_CAPTURE_DEPTH
+        kpi_static = self.kpi_static_data_new[self.kpi_static_data_new[DIAGEOGTRConsts.TYPE] == kpi_name_price_depth]
+        if kpi_static.empty:
+            if DIAGEOGTRToolBox.DEBUG:
+                print("kpi_name(type - new KPI)={} not found in DB".format(kpi_name_price_depth))
+        else:
+            depth_price_kpi_level_2_fk = kpi_static['pk'].iloc[0]
+
+        self.result_data_frame_save_db(df_original_price, original_price_kpi_level_2_fk)
+        self.result_data_frame_save_db(df_promo_price, promo_price_kpi_level_2_fk)
+        self.result_data_frame_save_db(df_depth_price, depth_price_kpi_level_2_fk)
+
+    def result_data_frame_save_db(self, df, kpi_fk):
+        if df is None:
+            return
+        if df.empty:
+            return
+
+        for row_num, row_data in df.iterrows():
+            if kpi_fk != 0:
+                self.commonV2.write_to_db_result(fk=kpi_fk,
+                                                 numerator_id=row_data['product_fk'],
+                                                 denominator_id=row_data['retailer_fk'],
+                                                 context_id=row_data['mcpa_fk'],
+                                                 numerator_result=0,
+                                                 denominator_result=0,
+                                                 result=row_data['price'],
+                                                 score=row_data['price'])
+
+    def get_manual_price_capture(self, original_attr, promo_attr):
+        query = """
+                SELECT
+                original.retailer_fk,
+                original.product_fk,
+                original.mcpa_fk original_mcpa_fk,
+                original.price original_price,
+                promo.mcpa_fk promo_mcpa_fk,
+                promo.price promo_price,
+                round((original.price - promo.price),4) price_depth
+                FROM
+                (SELECT 
+                st.retailer_fk,
+                rt.name retailer_name,
+                mcp.product_fk,
+                mcpa.pk mcpa_fk,
+                mcpa.name price_capture_attr,
+                mcp.value price
+                FROM
+                probedata.manual_collection_price mcp 
+                LEFT JOIN static.manual_collection_price_attributes mcpa 
+                ON mcp.manual_collection_price_attributes_fk = mcpa.pk
+                LEFT JOIN probedata.session ses ON ses.pk = session_fk
+                LEFT JOIN static.stores st ON st.pk = ses.store_fk
+                LEFT JOIN static.retailer rt ON rt.pk = st.retailer_fk
+                WHERE 1=1 
+                AND mcpa.delete_date IS NULL
+                AND ses.session_uid = '{session_uid}'
+                AND mcpa.name in ('{original_attr}')) original 
+                LEFT JOIN 
+                (SELECT 
+                st.retailer_fk,
+                rt.name retailer_name,
+                mcp.product_fk,
+                mcpa.pk mcpa_fk,
+                mcpa.name price_capture_attr,
+                mcp.value price
+                FROM
+                probedata.manual_collection_price mcp 
+                LEFT JOIN static.manual_collection_price_attributes mcpa 
+                ON mcp.manual_collection_price_attributes_fk = mcpa.pk
+                LEFT JOIN probedata.session ses ON ses.pk = session_fk
+                LEFT JOIN static.stores st ON st.pk = ses.store_fk
+                LEFT JOIN static.retailer rt ON rt.pk = st.retailer_fk
+                WHERE 1=1 
+                AND mcpa.delete_date IS NULL
+                AND ses.session_uid = '{session_uid}'
+                AND mcpa.name in ('{promo_attr}')) promo 
+                ON original.retailer_fk=promo.retailer_fk and original.product_fk = promo.product_fk
+                """.format(session_uid=self.session_uid, original_attr=original_attr, promo_attr=promo_attr)
+        manual_price_capture_data = pd.read_sql_query(query, self.rds_conn.db)
+
+        return manual_price_capture_data
