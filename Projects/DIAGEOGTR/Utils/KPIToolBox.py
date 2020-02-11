@@ -1399,7 +1399,7 @@ class DIAGEOGTRToolBox:
 
         original_price_columns = ['retailer_fk', 'product_fk', 'original_mcpa_fk', 'original_price']
         promo_price_columns = ['retailer_fk', 'product_fk', 'promo_mcpa_fk', 'promo_price']
-        depth_price_columns = ['retailer_fk', 'product_fk', 'original_mcpa_fk', 'price_depth']
+        depth_price_columns = ['retailer_fk', 'product_fk', 'original_mcpa_fk', 'price_depth', 'price_depth_percentage']
 
         template_kpis = self.template_data[self.template_data[DIAGEOGTRConsts.KPI_SET_NAME] == kpi_set_name]
 
@@ -1447,11 +1447,11 @@ class DIAGEOGTRToolBox:
         else:
             depth_price_kpi_level_2_fk = kpi_static['pk'].iloc[0]
 
-        self.result_data_frame_save_db(df_original_price, original_price_kpi_level_2_fk)
-        self.result_data_frame_save_db(df_promo_price, promo_price_kpi_level_2_fk)
-        self.result_data_frame_save_db(df_depth_price, depth_price_kpi_level_2_fk)
+        self.result_data_frame_save_db(df_original_price, original_price_kpi_level_2_fk, False)
+        self.result_data_frame_save_db(df_promo_price, promo_price_kpi_level_2_fk, False)
+        self.result_data_frame_save_db(df_depth_price, depth_price_kpi_level_2_fk, True)
 
-    def result_data_frame_save_db(self, df, kpi_fk):
+    def result_data_frame_save_db(self, df, kpi_fk, price_depth):
         if df is None:
             return
         if df.empty:
@@ -1459,14 +1459,24 @@ class DIAGEOGTRToolBox:
 
         for row_num, row_data in df.iterrows():
             if kpi_fk != 0:
-                self.commonV2.write_to_db_result(fk=kpi_fk,
-                                                 numerator_id=row_data['product_fk'],
-                                                 denominator_id=row_data['retailer_fk'],
-                                                 context_id=row_data['mcpa_fk'],
-                                                 numerator_result=0,
-                                                 denominator_result=0,
-                                                 result=row_data['price'],
-                                                 score=row_data['price'])
+                if price_depth:
+                    self.commonV2.write_to_db_result(fk=kpi_fk,
+                                                     numerator_id=row_data['product_fk'],
+                                                     denominator_id=row_data['retailer_fk'],
+                                                     context_id=row_data['mcpa_fk'],
+                                                     numerator_result=0,
+                                                     denominator_result=0,
+                                                     result=row_data['price'],
+                                                     score=row_data['price_depth_percentage'])
+                else:
+                    self.commonV2.write_to_db_result(fk=kpi_fk,
+                                                     numerator_id=row_data['product_fk'],
+                                                     denominator_id=row_data['retailer_fk'],
+                                                     context_id=row_data['mcpa_fk'],
+                                                     numerator_result=0,
+                                                     denominator_result=0,
+                                                     result=row_data['price'],
+                                                     score=row_data['price'])
 
     def get_manual_price_capture(self, original_attr, promo_attr):
         query = """
@@ -1477,7 +1487,8 @@ class DIAGEOGTRToolBox:
                 original.price original_price,
                 promo.mcpa_fk promo_mcpa_fk,
                 promo.price promo_price,
-                round((original.price - promo.price),4) price_depth
+                round((original.price - promo.price),4) price_depth,
+                round((original.price - promo.price)/original.price,4) price_depth_percentage
                 FROM
                 (SELECT 
                 st.retailer_fk,
