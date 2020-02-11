@@ -3403,7 +3403,7 @@ class CCRUKPIToolBox:
                     # else:
                     #     facings = 0
                     distributed_product_fk = True if facings >= min_facings else False
-                    distributed_anchor_product_fk |= True
+                    distributed_anchor_product_fk |= distributed_product_fk
                     top_sku_products = top_sku_products.append({'anchor_product_fk': anchor_product_fk,
                                                                 'product_fk': product_fk,
                                                                 'facings': facings,
