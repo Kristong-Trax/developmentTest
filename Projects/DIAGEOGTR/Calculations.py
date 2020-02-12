@@ -21,7 +21,7 @@ class DIAGEOGTRCalculations(BaseCalculationsScript):
 #     LoggerInitializer.init(project_name + ' calculations')
 #     Config.init()
 #     data_provider = KEngineDataProvider(project_name)
-#     sessions = ["ff69d8f3-2fe2-4b5e-a40c-5cee5a613fb6"]
+#     sessions = ["3A258DEB-D7E5-418C-A982-C59F3FBB6076"]
 #     for session in sessions:
 #         data_provider.load_session_data(session)
 #         output = Output()
