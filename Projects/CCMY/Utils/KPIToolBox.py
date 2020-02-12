@@ -259,16 +259,21 @@ class CCMYToolBox:
         return None
 
     def insert_db_new_results(self, kpi_name, result, score, numerator_result, denominator_result,
-                              identifier_parent=None, identifier_result=None, target=None, numerator_id=None):
+                              identifier_parent=None, identifier_result=None, target=None, denominator_id=None, context_id=None, numerator_id=None):
 
         kpi_level_2_fk = self.get_kpi_fk_new_table(kpi_name)
+
         if kpi_level_2_fk is None:
             Log.warning("kpi {} from template, doesn't exist in DB".format(kpi_name))
             return
+
         numerator_id = self.manufacturer_fk if numerator_id is None else numerator_id
+        denominator_id = self.store_id if denominator_id is None else denominator_id
+
         self.common.write_to_db_result(fk=kpi_level_2_fk,
                                        numerator_id=numerator_id,
-                                       denominator_id=self.store_id,
+                                       denominator_id=denominator_id,
+                                       context_id=context_id,
                                        numerator_result=numerator_result,
                                        denominator_result=denominator_result,
                                        identifier_parent=identifier_parent,
@@ -280,6 +285,8 @@ class CCMYToolBox:
 
     def calculate_self_purity(self, kpi_data):
         score = 0
+        num_of_pure_shelves = 0
+        total_num_of_shelves = 0
         if kpi_data.empty:
             return
 
@@ -363,10 +370,17 @@ class CCMYToolBox:
             self.write_to_db_result(atomic_kpi_fk, (result, result, 0),
                                     level=self.LEVEL3)
 
-            self.insert_db_new_results(params['KPI Name'], score, score, result, result, target=0,
-                                       identifier_parent=identifier_parent)
+            self.insert_db_new_results(params['KPI Name'],
+                                       score,
+                                       score,
+                                       num_of_pure_shelves,
+                                       total_num_of_shelves,
+                                       numerator_id=template_fk,
+                                       denominator_id=self.store_id,
+                                       context_id=self.manufacturer_fk,
+                                       target=total_num_of_shelves)
 
-            return num_of_pure_shelves, total_num_of_shelves, score, template_fk
+        return num_of_pure_shelves, total_num_of_shelves, score, template_fk
 
     def calculate_facings_sos(self, kpi_data):
         group_score = 0

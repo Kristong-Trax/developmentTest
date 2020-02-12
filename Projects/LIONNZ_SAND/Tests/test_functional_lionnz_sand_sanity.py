@@ -2,7 +2,7 @@
 
 from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
 from Projects.LIONNZ_SAND.Tests.Data.data_test_lionnz_sand_sanity import ProjectsSanityData
-from Projects.LIONNZ_SAND.Calculations import LIONNZ_SANDCalculations
+from Projects.LIONNZ_SAND.Calculations import Calculations
 from DevloperTools.SanityTests.PsSanityTests import PsSanityTestsFuncs
 from Projects.LIONNZ_SAND.Tests.Data.kpi_results import LIONNZ_SANDKpiResults
 # import os
@@ -34,7 +34,7 @@ class TestKEnginePsCode(PsSanityTestsFuncs):
         for session in sessions.keys():
             data_provider.load_session_data(str(session))
             output = Output()
-            LIONNZ_SANDCalculations(data_provider, output).run_project_calculations()
+            Calculations(data_provider, output).run_project_calculations()
             # for scene in sessions[session]:
             # data_provider.load_scene_data(str(session), scene_id=scene)
             # SceneCalculations(data_provider).calculate_kpis()
