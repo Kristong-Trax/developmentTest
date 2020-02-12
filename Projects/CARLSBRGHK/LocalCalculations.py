@@ -1,7 +1,7 @@
 from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
 from Trax.Utils.Conf.Configuration import Config
 from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
-from Projects.CARLSBERG.Calculations import Calculations
+from Projects.CARLSBRGHK.Calculations import Calculations
 
 
 if __name__ == '__main__':

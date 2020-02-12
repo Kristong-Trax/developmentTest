@@ -1,6 +1,6 @@
 from Trax.Utils.Logging.Logger import Log
 
-from Projects.CARLSBERG.Utils.KPIToolBox import CARLSBERGToolBox
+from Projects.CARLSBRGHK.Utils.KPIToolBox import CARLSBERGToolBox
 
 from KPIUtils_v2.DB.Common import Common
 

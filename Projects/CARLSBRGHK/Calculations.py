@@ -1,6 +1,6 @@
 from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScript
 
-from Projects.CARLSBERG.KPIGenerator import Generator
+from Projects.CARLSBRGHK.KPIGenerator import Generator
 
 __author__ = 'nidhin'
 
