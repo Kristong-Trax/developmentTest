@@ -1,5 +1,6 @@
 import numpy as np
 import networkx as nx
+from collections import Counter
 from Trax.Cloud.Services.Connector.Logger import Log
 from Trax.Algo.Calculations.Core.AdjacencyGraph.Builders import AdjacencyGraphBuilder
 
@@ -11,7 +12,7 @@ class CaseCountCalculator:
         self.project_name = data_provider.project_name
         self.filtered_mdis = self._get_filtered_match_display_in_scene()
         self.filtered_scif = self._get_filtered_scif()
-        self.matches = self._create_matches_with_display_data()
+        self.matches = self.get_filtered_matches()
 
     def _get_filtered_match_display_in_scene(self):
         """ This method filters match display in scene - it saves only "close" and "open" tags"""
@@ -23,9 +24,24 @@ class CaseCountCalculator:
         """This method calculates the entire Case Count KPIs set."""
         if self.filtered_mdis.empty or self.filtered_scif.empty:
             return
+        self._prepare_data_for_calculation()
 
-        total_facings_per_brandres = self._calculate_total_bottler_and_carton_facings()
+        total_facings_per_brand_res = self._calculate_total_bottler_and_carton_facings()
         num_of_cases_per_brand_res = self._count_number_of_cases()
+        implied_shoppable_cases_kpi_res = self._implied_shoppable_cases_kpi()
+        unshoppable_brands_lst = self._non_shoppable_case_kpi()
+        print "down"
+
+    def _prepare_data_for_calculation(self):
+        """This method prepares the data for the case count calculation. Connection between the display
+        data and the tagging data."""
+        self.matches = self._add_brand_fk_to_matches(self.matches)
+        self._add_displays_the_closet_brand_fk()
+        self._add_matches_the_closet_match_display_in_scene_fk(self.matches)
+        mdis = self.filtered_mdis[['pk', 'rect_x', 'rect_y', 'display_name', 'display_brand']]
+        mdis.rename({'rect_x': 'display_rect_x', 'rect_y': 'display_rect_y', 'pk': 'display_in_scene_fk'},
+                    inplace=True, axis=1)
+        self.matches = self.matches.merge(mdis, on='display_in_scene_fk', how='left')
 
     def _calculate_total_bottler_and_carton_facings(self):
         """This method calculates the number of facings for 'Bottler' SKU Type per brand in scenes that
@@ -39,30 +55,28 @@ class CaseCountCalculator:
         """This method counts the number of cases per brand.
         It identify the closest brand tag to every case and using it to define the case's brand
         """
-        self._add_display_the_closet_brand_fk(self.matches, self.filtered_mdis)
-        mdis = self.filtered_mdis.groupby('brand_fk', as_index=False)['brand_fk'].agg(
+        mdis = self.filtered_mdis.groupby('display_brand', as_index=False)['display_brand'].agg(
             {'display_counter': 'count'})
         return mdis
 
-    def _implied_shoppable_cases_kpi(self, filtered_matches):
+    def _implied_shoppable_cases_kpi(self):
         """
         This method calculates the implied shoppable cases KPI. It creates Adjacency graph per scene,
         iterates paths over the cases pile and count the number of hidden cases.
         """
-        scenes_to_calculate = filtered_matches.scene_fk.unique().tolist()
-        total_score = 0
+        scenes_to_calculate = self.matches.scene_fk.unique().tolist()
+        total_score_per_brand = Counter()
         for scene_fk in scenes_to_calculate:
-            adj_g = self._get_graph_per_scene(filtered_matches, scene_fk)
+            adj_g = self._create_adjacency_graph_per_scene(scene_fk)
             paths = self._get_relevant_path_for_calculation(adj_g)
-            total_score += self._calculate_case_count(adj_g, paths)
-        return total_score
+            total_score_per_brand += self._calculate_case_count(adj_g, paths)
+        return total_score_per_brand
 
-    @staticmethod
-    def _non_shoppable_case_kpi(filtered_scif):
+    def _non_shoppable_case_kpi(self):
         """ This method calculates the number of unshoppable cases per brand.
         A brand is considered unshoppable if there are only 'case' SKU Type without bottler or carton"""
         unshoppable_brands = []
-        grouped_scif = filtered_scif.groupby(['brand_fk', 'SKU Type'], as_index=False)['tagged'].sum()
+        grouped_scif = self.filtered_scif.groupby(['brand_fk', 'SKU Type'], as_index=False)['tagged'].sum()
         grouped_scif = grouped_scif.loc[grouped_scif.tagged > 0]
         grouped_scif_dict = grouped_scif.groupby('brand_fk')['SKU Type'].apply(list).to_dict()
         for brand_fk, sku_types in grouped_scif_dict.iteritems():
@@ -113,30 +127,23 @@ class CaseCountCalculator:
             lambda row: self._apply_closet_point_logic_on_row(row, self.filtered_mdis),
             axis=1)
 
-    def _add_display_the_closet_brand_fk(self, filtered_matches, filtered_mdis):
+    def _add_displays_the_closet_brand_fk(self):
         """
         This method calculates the closets match_display_in_scene tag per row and adds
         it to Match Product in Scene DataFrame
         """
-        filtered_mdis['brand_fk'] = filtered_mdis.apply(
-            lambda row: self._apply_closet_point_logic_on_row(row, filtered_matches, 'brand_fk'),
+        self.filtered_mdis['display_brand'] = self.filtered_mdis.apply(
+            lambda row: self._apply_closet_point_logic_on_row(row, self.matches, 'brand_fk'),
             axis=1)
 
     def _get_scenes_with_relevant_displays(self):
         """This method returns only scene with "Open" or "Close" display tags"""
         return self.filtered_mdis.scene_fk.unique().tolist()
 
-    def _create_matches_with_display_data(self):
+    def get_filtered_matches(self):
         """ This method filters and merges Match Product In Scene and Match Display In Scene DataFrames"""
         scenes_with_display = self._get_scenes_with_relevant_displays()
         filtered_matches = self.data_provider.matches.loc[self.data_provider.matches.scene_fk.isin(scenes_with_display)]
-        if not filtered_matches.empty:
-            self._add_matches_the_closet_match_display_in_scene_fk(filtered_matches)
-            mdis = self.filtered_mdis[['pk', 'rect_x', 'rect_y', 'display_name']]
-            mdis.rename({'rect_x': 'display_rect_x', 'rect_y': 'display_rect_y', 'pk': 'display_in_scene_fk'},
-                        inplace=True, axis=1)
-            filtered_matches = filtered_matches.merge(mdis, on='display_in_scene_fk', how='left')
-            filtered_matches = self._add_brand_fk_to_matches(filtered_matches)
         return filtered_matches
 
     @staticmethod
@@ -187,13 +194,13 @@ class CaseCountCalculator:
         return float(list(adj_g.nodes[node_fk]['display_rect_x'])[0]), float(
             list(adj_g.nodes[node_fk]['display_rect_y'])[0])
 
-    def _get_graph_per_scene(self, filtered_matches, scene_fk):
+    def _create_adjacency_graph_per_scene(self, scene_fk):
         """ This method creates the graph for the case count calculation"""
-        filtered_matches = filtered_matches.loc[filtered_matches.scene_fk == scene_fk]
+        filtered_matches = self.matches.loc[self.matches.scene_fk == scene_fk]
         maskings = AdjacencyGraphBuilder._load_maskings(self.project_name, scene_fk)
-        additional_node_attr = ['display_in_scene_fk', 'display_rect_x', 'display_rect_y', 'display_name']
+        add_node_attr = ['display_in_scene_fk', 'display_rect_x', 'display_rect_y', 'display_name', 'display_brand']
         adj_g = AdjacencyGraphBuilder.initiate_graph_by_dataframe(filtered_matches,
-                                                                  maskings, additional_node_attr, use_masking_only=True)
+                                                                  maskings, add_node_attr, use_masking_only=True)
         adj_g = AdjacencyGraphBuilder.condense_graph_by_level('display_in_scene_fk', adj_g)
         filtered_adj_g = adj_g.edge_subgraph(self._filter_edges_by_degree(adj_g, requested_direction='UP'))
         filtered_adj_g = adj_g.edge_subgraph(self._filter_redundant_edges(filtered_adj_g))
@@ -231,7 +238,7 @@ class CaseCountCalculator:
         XC      In this case the score will be 2
         XC
         """
-        case_count_score = 0
+        case_count_score = Counter()
         for path in paths_to_check:
             open_detection_indicator = False
             for stacking_layer, node in enumerate(path):
@@ -240,7 +247,8 @@ class CaseCountCalculator:
                     continue  # Closed case
                 else:
                     if open_detection_indicator:
-                        case_count_score += stacking_layer
+                        current_brand = list(adj_g.nodes[node]['display_brand'])[0]
+                        case_count_score[current_brand] += stacking_layer
                     else:
                         open_detection_indicator = True
         return case_count_score
@@ -269,10 +277,5 @@ if __name__ == '__main__':
     Config.init('')
     data_provider = KEngineDataProvider('diageous-sand2')
     data_provider.load_session_data(session_uid='566FD433-FD02-4C23-95F8-CD26D8BA1A61')
-    for i in range(100):
-        try:
-            case_counter_calculator = CaseCountCalculator(data_provider)
-            case_counter_calculator.main_case_count_calculations()
-        except Exception as e:
-            print(e)
-            print i
+    case_counter_calculator = CaseCountCalculator(data_provider)
+    case_counter_calculator.main_case_count_calculations()
