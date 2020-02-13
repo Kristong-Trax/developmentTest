@@ -27,7 +27,7 @@ class DataTestUnitCCRU(object):
     external_session_id = 'EXT_SESSION_1'
     store_number = '10000000001'
     test_store = None
-    attr15_store = 1.0
+    attr15_store = 1.5
     pos_kpi_set_name = 'POS Test'
     session_user = {'user_position': 'MD', 'user_name': 'USER', 'user_role': 'Sales Rep'}
     planned_visit_flag = 1

@@ -22,13 +22,10 @@ class TestCCRU(TestFunctionalCase):
         super(TestCCRU, self).set_up()
         self.data = DataTestUnitCCRU()
 
-        self.mock_data_provider()
-        self.mock_rds_connection()
-        self.mock_common()
-        self.mock_session_info()
-        self.mock_kpi_fetcher()
-
         self.output = MagicMock()
+
+        self.mock_data_provider()
+        self.mock_tool_box()
 
     def mock_data_provider(self):
         self.data_provider = MagicMock()
@@ -42,61 +39,48 @@ class TestCCRU(TestFunctionalCase):
 
         self.data_provider.__getitem__.side_effect = get_item
 
-    def mock_project_connector(self):
-        self.mock_object('PSProjectConnector',
-                         path='KPIUtils_v2.DB.PsProjectConnector')
-
-    def mock_db_users(self):
-        self.mock_object('DbUsers',
-                         path='Trax.Utils.Conf.Keys')
-
-    def mock_rds_connection(self):
+    def mock_tool_box(self):
         self.mock_object('rds_connection',
                          path='Projects.CCRU.Utils.ToolBox.CCRUKPIToolBox')
+        self.mock_object('get_kpi_entities',
+                         path='Projects.CCRU.Utils.ToolBox.CCRUKPIToolBox')
 
-    def mock_common(self):
+        self.mock_object('get_pos_kpi_set_name',
+                         path='Projects.CCRU.Utils.ToolBox.CCRUKPIToolBox')\
+            .return_value = self.data.pos_kpi_set_name
+
+        self.mock_object('PSProjectConnector',
+                         path='KPIUtils_v2.DB.PsProjectConnector')
         self.mock_object('Common',
                          path='KPIUtils_v2.DB.CommonV2')
-
-    def mock_session_info(self):
         self.mock_object('SessionInfo',
                          path='Trax.Algo.Calculations.Core.Shortcuts')
 
-    def mock_get_pos_kpi_set_name(self):
-        self.mock_object('get_equipment_targets',
-                         path='Projects.CCRU.Utils.ToolBox.CCRUKPIToolBox') \
-            .return_value = self.data.pos_kpi_set_name
-
-    def mock_kpi_fetcher(self):
         self.mock_object('CCRUCCHKPIFetcher',
                          path='Projects.CCRU.Utils.Fetcher')
-        self.mock_object('get_kpi_result_values',
-                         path='Projects.CCRU.Utils.Fetcher.CCRUCCHKPIFetcher')
-        self.mock_object('get_kpi_entity_types',
-                         path='Projects.CCRU.Utils.Fetcher.CCRUCCHKPIFetcher')
-        self.mock_object('get_kpi_entities',
-                         path='Projects.CCRU.Utils.Fetcher.CCRUCCHKPIFetcher')
+        self.mock_object('CCRUCCHKPIFetcher.get_kpi_entity_types',
+                         path='Projects.CCRU.Utils.Fetcher')
 
-        self.mock_object('get_external_session_id',
-                         path='Projects.CCRU.Utils.Fetcher.CCRUCCHKPIFetcher') \
+        self.mock_object('CCRUCCHKPIFetcher.get_external_session_id',
+                         path='Projects.CCRU.Utils.Fetcher')\
             .return_value = self.data.external_session_id
-        self.mock_object('get_store_number',
-                         path='Projects.CCRU.Utils.Fetcher.CCRUCCHKPIFetcher') \
-            .return_value = self.data.external_session_id
-        self.mock_object('get_test_store',
-                         path='Projects.CCRU.Utils.Fetcher.CCRUCCHKPIFetcher') \
-            .return_value = self.data.test_store
-        self.mock_object('get_attr15_store',
-                         path='Projects.CCRU.Utils.Fetcher.CCRUCCHKPIFetcher') \
+        self.mock_object('CCRUCCHKPIFetcher.get_store_number',
+                         path='Projects.CCRU.Utils.Fetcher')\
+            .return_value = self.data.store_number
+        self.mock_object('CCRUCCHKPIFetcher.get_test_store',
+                         path='Projects.CCRU.Utils.Fetcher',
+                         value=self.data.test_store)
+        self.mock_object('CCRUCCHKPIFetcher.get_attr15_store',
+                         path='Projects.CCRU.Utils.Fetcher')\
             .return_value = self.data.attr15_store
-        self.mock_object('get_store_area_df',
-                         path='Projects.CCRU.Utils.Fetcher.CCRUCCHKPIFetcher') \
+        self.mock_object('CCRUCCHKPIFetcher.get_store_area_df',
+                         path='Projects.CCRU.Utils.Fetcher')\
             .return_value = self.data.store_areas
-        self.mock_object('get_session_user',
-                         path='Projects.CCRU.Utils.Fetcher.CCRUCCHKPIFetcher') \
+        self.mock_object('CCRUCCHKPIFetcher.get_session_user',
+                         path='Projects.CCRU.Utils.Fetcher')\
             .return_value = self.data.session_user
-        self.mock_object('get_planned_visit_flag',
-                         path='Projects.CCRU.Utils.Fetcher.CCRUCCHKPIFetcher') \
+        self.mock_object('CCRUCCHKPIFetcher.get_planned_visit_flag',
+                         path='Projects.CCRU.Utils.Fetcher')\
             .return_value = self.data.planned_visit_flag
 
     def get_pos_test_case(self, test_case):
