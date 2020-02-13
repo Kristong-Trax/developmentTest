@@ -102,7 +102,7 @@ class ToolBox:
             self.init_assortment(self.store_number_1)
             if self.attr6 == Consts.ON:
                 self.sales_data = self.ps_data.get_sales_data()
-            elif self.attr11 == Consts.OPEN:
+            elif self.attr11 in [Consts.OPEN, Consts.INDEPENDENT]:
                 scenes = self.scene_info[SceneInfoConsts.SCENE_FK].unique().tolist()
                 self.scenes_with_shelves = {}
                 for scene in scenes:
@@ -183,7 +183,7 @@ class ToolBox:
         self.common.write_to_db_result(
             fk=total_kpi_fk, numerator_id=self.manufacturer_fk, result=total_store_score, denominator_id=self.store_id,
             identifier_result=self.common.get_dictionary(name=Consts.TOTAL), score=total_store_score)
-        if self.attr11 == Consts.OPEN:
+        if self.attr11 in [Consts.OPEN, Consts.INDEPENDENT]:
             segment_kpi_fk = self.common.get_kpi_fk_by_kpi_name(Consts.DB_TOTAL_KPIS[self.attr6][Consts.SEGMENT])
             national_kpi_fk = self.common.get_kpi_fk_by_kpi_name(Consts.DB_TOTAL_KPIS[self.attr6][Consts.NATIONAL])
             self.common.write_to_db_result(
@@ -274,10 +274,12 @@ class ToolBox:
             return 0, 0, 0
         relevant_scenes = self.get_relevant_scenes(scene_types)
         relevant_scif = self.scif_without_emptys[self.scif_without_emptys[ScifConsts.SCENE_ID].isin(relevant_scenes)]
-        assortment_name = Consts.BACK_BAR if kpi_name == Consts.BACK_BAR and self.attr11 == Consts.OPEN else Consts.ON
+        assortment_name = Consts.BACK_BAR if kpi_name == Consts.BACK_BAR and self.attr11 in [
+            Consts.OPEN, Consts.INDEPENDENT] else Consts.ON
         total_on_trade_fk = self.common.get_kpi_fk_by_kpi_name(Consts.DB_ASSORTMENTS_NAMES[assortment_name])
         relevant_assortment = self.assortment_products[self.assortment_products['kpi_fk_lvl2'] == total_on_trade_fk]
-        standard_types_results = {Consts.SEGMENT: [], Consts.NATIONAL: []} if self.attr11 == Consts.OPEN else {}
+        standard_types_results = {Consts.SEGMENT: [], Consts.NATIONAL: []} if self.attr11 in [
+            Consts.OPEN, Consts.INDEPENDENT] else {}
         total_results = []
         if self.attr11 == Consts.NATIONAL_STORE and kpi_name == Consts.BACK_BAR:
             kpi_db_names = self.pull_kpi_fks_from_names(Consts.DB_ON_NAMES[Consts.BACK_BAR_NATIONAL])
@@ -459,7 +461,8 @@ class ToolBox:
             relevant_scif = relevant_scif[relevant_scif[ScifConsts.LOCATION_TYPE] == 'Secondary Shelf']
         if self.assortment_products.empty:
             return 0, 0, 0
-        standard_types_results = {Consts.SEGMENT: [], Consts.NATIONAL: []} if self.attr11 == Consts.OPEN else {}
+        standard_types_results = {Consts.SEGMENT: [], Consts.NATIONAL: []} if self.attr11 in [
+            Consts.OPEN, Consts.INDEPENDENT] else {}
         total_results = []
         if self.attr11 == Consts.NATIONAL_STORE and kpi_name == Consts.POD:
             relevant_scif = self.scif[self.scif[ScifConsts.SCENE_ID].isin(relevant_scenes)]
@@ -815,7 +818,8 @@ class ToolBox:
         relevant_competitions = relevant_competitions.merge(self.relevant_assortment, on=ProductsConsts.PRODUCT_FK)
         kpi_db_names = self.pull_kpi_fks_from_names(Consts.DB_OFF_NAMES[kpi_name])
         total_results = []
-        standard_types_results = {Consts.SEGMENT: [], Consts.NATIONAL: []} if self.attr11 == Consts.OPEN else {}
+        standard_types_results = {Consts.SEGMENT: [], Consts.NATIONAL: []} if self.attr11 in [
+            Consts.OPEN, Consts.INDEPENDENT] else {}
         if self.attr11 == Consts.NATIONAL_STORE and kpi_name == Consts.SHELF_FACINGS:
             relevant_scif = self.scif[self.scif[ScifConsts.SCENE_ID].isin(relevant_scenes)]
             specific_substitute_product_pks = \
@@ -937,7 +941,8 @@ class ToolBox:
         all_products_table = all_products_table.merge(self.relevant_assortment, on=ProductsConsts.PRODUCT_FK)
         kpi_db_names = self.pull_kpi_fks_from_names(Consts.DB_OFF_NAMES[kpi_name])
         total_results = []
-        standard_types_results = {Consts.SEGMENT: [], Consts.NATIONAL: []} if self.attr11 == Consts.OPEN else {}
+        standard_types_results = {Consts.SEGMENT: [], Consts.NATIONAL: []} if self.attr11 in [
+            Consts.OPEN, Consts.INDEPENDENT] else {}
         relevant_matches =\
             self.match_product_in_scene[self.match_product_in_scene[MatchesConsts.SCENE_FK].isin(relevant_scenes)]
         for brand_fk in all_products_table[ProductsConsts.BRAND_FK].unique().tolist():
