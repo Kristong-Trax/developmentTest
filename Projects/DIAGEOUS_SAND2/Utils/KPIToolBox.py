@@ -9,7 +9,7 @@ from KPIUtils_v2.GlobalDataProvider.PsDataProvider import PsDataProvider
 from Trax.Utils.Logging.Logger import Log
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from datetime import datetime
-from Projects.DIAGEOUS_SAND2.Data.LocalConsts import Consts
+from Projects.DIAGEOUS.Data.LocalConsts import Consts
 import os
 import pandas as pd
 import json
@@ -107,7 +107,7 @@ class ToolBox:
                 self.scenes_with_shelves = {}
                 for scene in scenes:
                     shelves = self.match_product_in_scene[
-                        self.match_product_in_scene[MatchesConsts.SCENE_FK]
+                        self.match_product_in_scene[MatchesConsts.SCENE_FK] 
                         == scene][[MatchesConsts.SHELF_NUMBER_FROM_BOTTOM, MatchesConsts.SHELF_NUMBER]].max()
                     self.scenes_with_shelves[scene] = max(shelves)
                 self.converted_groups = self.convert_groups_from_template()
@@ -903,11 +903,11 @@ class ToolBox:
         diageo_facings, comp_facings, temp_comp_facings, temp_target = 0, 0, 0, target
         for template_name in relevant_scif[ScifConsts.TEMPLATE_NAME].unique():
             template_scif = relevant_scif[relevant_scif[ScifConsts.TEMPLATE_NAME] == template_name]
-            temp_diageo_facings = template_scif[template_scif[ScifConsts.PRODUCT_FK]
+            temp_diageo_facings = template_scif[template_scif[ScifConsts.PRODUCT_FK] 
                                                 == product_fk][ScifConsts.FACINGS_IGN_STACK].sum()
             if comp_product_fk:
                 temp_comp_facings = \
-                    template_scif[template_scif[ScifConsts.PRODUCT_FK]
+                    template_scif[template_scif[ScifConsts.PRODUCT_FK] 
                                   == comp_product_fk][ScifConsts.FACINGS_IGN_STACK].sum()
                 temp_target = bench_value * temp_comp_facings
             if temp_diageo_facings >= temp_target and temp_diageo_facings > 0:
@@ -970,7 +970,7 @@ class ToolBox:
         if relevant_products.empty:
             passed, result = 0, Consts.NO_PLACEMENT
         else:
-            relevant_products = pd.merge(relevant_products,
+            relevant_products = pd.merge(relevant_products, 
                                          self.scif[[ScifConsts.SCENE_ID, ScifConsts.TEMPLATE_NAME]], how='left',
                                          left_on=MatchesConsts.SCENE_FK, right_on=ScifConsts.SCENE_ID).drop_duplicates()
             relevant_products = relevant_products.sort_values(by=[ScifConsts.TEMPLATE_NAME])
@@ -1333,7 +1333,7 @@ class ToolBox:
             template = external_template[external_template[Consts.EX_ATTR2] == Consts.OTHER]
         sum_scenes_passed, sum_facings = 0, 0
         product_fk_with_substs = [product_fk]
-        product_fk_with_substs += self.all_products[self.all_products[ProductsConsts.SUBSTITUTION_PRODUCT_FK]
+        product_fk_with_substs += self.all_products[self.all_products[ProductsConsts.SUBSTITUTION_PRODUCT_FK] 
                                                     == product_fk][ScifConsts.PRODUCT_FK].tolist()
         for scene in relevant_products[ScifConsts.SCENE_FK].unique().tolist():
             for product in product_fk_with_substs:

@@ -12,7 +12,7 @@ class DIAGEOUS_SANDTestDiageous(TestCase):
     @mock.patch('Projects.DIAGEOUS_SAND2.Utils.KPIToolBox.ProjectConnector')
     def setUp(self, x):
         self.data_provider_mock = MagicMock()
-        self.data_provider_mock.project_name = 'diageous_sand'
+        self.data_provider_mock.project_name = 'diageous-sand2'
         self.data_provider_mock.rds_conn = MagicMock()
         self.output = MagicMock()
         self.data = Data
