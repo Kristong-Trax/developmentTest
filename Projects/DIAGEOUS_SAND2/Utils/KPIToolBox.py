@@ -52,11 +52,12 @@ class ToolBox:
         else:
             Log.error("The store for this session has no attribute11. Set temporary as Open, fix ASAP")
             self.attr11 = Consts.OPEN
-        if self.store_info[StoreInfoConsts.ADDITIONAL_ATTRIBUTE_2].iloc[0]:
-            self.attr2 = self.store_info[StoreInfoConsts.ADDITIONAL_ATTRIBUTE_2].iloc[0]
-        else:
-            Log.warning("The store for this session has no attribute2. Set temporary as Other, please fix")
-            self.attr2 = Consts.OTHER
+        if self.attr6 == Consts.OFF:
+            if self.store_info[StoreInfoConsts.ADDITIONAL_ATTRIBUTE_2].iloc[0]:
+                self.attr2 = self.store_info[StoreInfoConsts.ADDITIONAL_ATTRIBUTE_2].iloc[0]
+            else:
+                Log.warning("The store for this session has no attribute2. Set temporary as Other, please fix")
+                self.attr2 = Consts.OTHER
         self.templates = {}
         self.get_templates()
         self.kpi_results_queries = []
