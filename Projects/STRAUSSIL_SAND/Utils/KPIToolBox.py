@@ -4,8 +4,8 @@ from Trax.Utils.Logging.Logger import Log
 from KPIUtils_v2.Utils.GlobalScripts.Scripts import GlobalSessionToolBox
 import pandas as pd
 
-from Projects.STRAUSSIL_SAND.Data.LocalConsts import Consts
 from KPIUtils_v2.Utils.Decorators.Decorators import kpi_runtime
+from Projects.STRAUSSIL_SAND.Data.LocalConsts import Consts
 from KPIUtils_v2.Utils.Parsers import ParseInputKPI as Parser
 from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
 
@@ -55,7 +55,7 @@ class ToolBox(GlobalSessionToolBox):
         skus_ean_set = set([ean_code.strip() for values in skus_ean_list for ean_code in values.split(",")])
         product_fks = self.all_products[self.all_products['product_ean_code'].isin(skus_ean_set)]['product_fk'].tolist()
         categories = self.all_products[self.all_products['product_fk'].isin(product_fks)]['category_fk'].unqiue()
-        categories_dict = dict.fromkeys(categories, (0,0))
+        categories_dict = dict.fromkeys(categories, (0, 0))
 
         # sku level distribution
         for sku in product_fks:
