@@ -41,37 +41,14 @@ class PS1SandToolBox:
         menus_res = self.diageo_generator.diageo_global_new_share_of_menu_function()
         self.commonV2.save_json_to_new_tables(menus_res)
 
-        # Global Equipment score kpis
-        equipment_score_scenes = self.get_equipment_score_relevant_scenes()
-        res_dict = self.diageo_generator.diageo_global_equipment_score(save_scene_level=False,
-                                                                       scene_list=equipment_score_scenes)
-        self.commonV2.save_json_to_new_tables(res_dict)
-
-        # Global Relative Position function
-        template_data = self.template_handler.download_template(DiageoKpiNames.RELATIVE_POSITION)
-        res_dict = self.diageo_generator.diageo_global_relative_position_function(
-            template_data, location_type='template_name')
-        self.commonV2.save_json_to_new_tables(res_dict)
-
         # Global Secondary Displays function
         res_json = self.diageo_generator.diageo_global_secondary_display_secondary_function()
         if res_json:
             self.commonV2.write_to_db_result(fk=res_json['fk'], numerator_id=1, denominator_id=self.store_id,
                                              result=res_json['result'])
 
-        # Global Visible to Consumer function
-        sku_list = filter(None, self.scif[self.scif['product_type'] == 'SKU'].product_ean_code.tolist())
-        res_dict = self.diageo_generator.diageo_global_visible_percentage(sku_list)
-        self.commonV2.save_json_to_new_tables(res_dict)
-
         # committing to new tables
         self.commonV2.commit_results_data()
         # committing to the old tables
         self.common.commit_results_data()
 
-    def get_equipment_score_relevant_scenes(self):
-        scenes = []
-        if not self.diageo_generator.scif.empty:
-            scenes = self.diageo_generator.scif[self.diageo_generator.scif['template_name'] ==
-                                                'ON - DRAUGHT TAPS']['scene_fk'].unique().tolist()
-        return scenes
