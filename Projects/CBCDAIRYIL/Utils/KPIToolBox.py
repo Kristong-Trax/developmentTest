@@ -149,7 +149,8 @@ class CBCDAIRYILToolBox:
                                        denominator_id=self.store_id, result=store_res, numerator_result=store_num,
                                        denominator_result=store_den, score=store_res, identifier_result="OWN_SOS")
         # category level sos
-        session_categories = self.scif['category_fk'].unique()
+        session_categories = set(self.parser.filter_df(conditions={'manufacturer_fk': self.own_manufacturer_fk},
+                                                       data_frame_to_filter=self.scif)['category_fk'])
         for category_fk in session_categories:
             filters = {'category_fk': category_fk}
             cat_res, cat_num, cat_den = self.calculate_own_manufacturer_sos(filters=filters, df=sos_df)
@@ -158,7 +159,9 @@ class CBCDAIRYILToolBox:
                                            score=cat_res, identifier_parent="OWN_SOS", should_enter=True,
                                            identifier_result="OWN_SOS_cat_{}".format(str(category_fk)))
             # brand-category level sos
-            cat_brands = self.parser.filter_df(conditions=filters, data_frame_to_filter=sos_df)['brand_fk'].unique()
+            filters['manufacturer_fk'] = self.own_manufacturer_fk
+            cat_brands = set(self.parser.filter_df(conditions=filters, data_frame_to_filter=sos_df)['brand_fk'])
+            del filters['manufacturer_fk']
             for brand_fk in cat_brands:
                 filters['brand_fk'] = brand_fk
                 brand_res, brand_num, brand_den = self.calculate_own_manufacturer_sos(filters=filters, df=sos_df)
