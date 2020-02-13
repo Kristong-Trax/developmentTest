@@ -81,8 +81,8 @@ class CBCDAIRYILToolBox:
         Atomic KPIs based on the project's template.
         Than, It aggregates the result per KPI using the weights and at last aggregates for the set level.
         """
-        # self.calculate_hierarchy_sos()
-        # self.calculate_oos()
+        self.calculate_hierarchy_sos()
+        self.calculate_oos()
         if self.template_data.empty:
             Log.warning(Consts.EMPTY_TEMPLATE_DATA_LOG.format(self.store_id))
             return
