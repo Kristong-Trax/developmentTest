@@ -22,7 +22,12 @@ if __name__ == '__main__':
     Config.init()
     project_name = 'cckh'
     data_provider = KEngineDataProvider(project_name)
-    session = '93d3455f-ee82-430a-b068-dc0298dc85d3'
-    data_provider.load_session_data(session)
-    output = Output()
-    CCKHCalculations(data_provider, output).run_project_calculations()
+    sessions = [
+        # 'FD91D37D-9ACB-43E4-A5E5-339FDB3ADDD3',
+        '48226871-6525-460E-ABF5-B1A1CB16268C'
+    ]
+    for session in sessions:
+        print("Running for session: {}".format(session))
+        data_provider.load_session_data(session)
+        output = Output()
+        CCKHCalculations(data_provider, output).run_project_calculations()

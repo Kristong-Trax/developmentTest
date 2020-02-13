@@ -29,7 +29,7 @@ class TestKEnginePsCode(PsSanityTestsFuncs):
         self.add_mocks()
         project_name = ProjectsSanityData.project_name
         data_provider = KEngineDataProvider(project_name)
-        sessions = {'ff6e11de-1bd8-4325-a29d-df6e10eb920e': []}
+        sessions = {'48226871-6525-460E-ABF5-B1A1CB16268C': []}
         kpi_results = CCKHKpiResults().get_kpi_results()
         for session in sessions.keys():
             data_provider.load_session_data(str(session))
