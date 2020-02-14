@@ -4,6 +4,12 @@ from Trax.Utils.Conf.Configuration import Config
 from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
 from Trax.Algo.Calculations.Core.LiveSessionDataProvider import KEngineSessionDataProviderLive
 from Projects.PNGJPPLAN.LiveSessionKpis.Calculation import CalculateKpi
+from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScript
+
+
+class Calculations(BaseCalculationsScript):
+    def run_project_calculations(self):
+        pass
 
 
 if __name__ == '__main__':
