@@ -3,6 +3,7 @@ from Trax.Utils.Logging.Logger import Log
 from KPIUtils_v2.Utils.GlobalScripts.Scripts import GlobalSessionToolBox
 import pandas as pd
 import os
+import simplejson
 
 from datetime import datetime
 from Projects.NESTLEBEVUS.Data.LocalConsts import Consts
@@ -77,12 +78,18 @@ class ToolBox(GlobalSessionToolBox):
     def save_results_to_db(self):
         self.results_df.drop(columns=['kpi_name'], inplace=True)
         self.results_df.rename(columns={'kpi_fk': 'fk'}, inplace=True)
-        self.results_df.fillna(0, inplace=True)
+        self.results_df[['result']].fillna(0, inplace=True)
+        # self.results_df.fillna(None, inplace=True)
         results = self.results_df.to_dict('records')
         for result in results:
+            # try:
+            # if result['denominator_result'] == 0 and result['numerator_result']:
+            #     del result['denominator_result']
+            #     del result['numerator_result']
+            result = simplejson.loads(simplejson.dumps(result, ignore_nan=True))
             self.write_to_db(**result)
-
-
+            # except:
+            #     a = 1
     def _calculate_kpis_from_template(self, template_df):
         for i, row in template_df.iterrows():
             calculation_function = self._get_calculation_function_by_kpi_type(row[Consts.KPI_TYPE])
@@ -120,13 +127,15 @@ class ToolBox(GlobalSessionToolBox):
         result_dict_list = []
         for present_product_fk in present_products_fk_in_session:
             result = self.scif[self.scif.product_fk.isin([present_product_fk])].facings.iat[0]
-            result_dict = {'kpi_name': kpi_name, 'kpi_fk': kpi_fk, 'numerator_id': present_product_fk, 'denominator_id': self.store_id,
+            result_dict = {'kpi_name': kpi_name, 'kpi_fk': kpi_fk, 'numerator_id': present_product_fk,
+                           'denominator_id': self.store_id,
                            'result': result}
             result_dict_list.append(result_dict)
 
         for absent_products_fk_in_session in absent_products_fk_in_session:
             result = 0
-            result_dict = {'kpi_name': kpi_name, 'kpi_fk': kpi_fk, 'numerator_id': absent_products_fk_in_session, 'denominator_id': self.store_id,
+            result_dict = {'kpi_name': kpi_name, 'kpi_fk': kpi_fk, 'numerator_id': absent_products_fk_in_session,
+                           'denominator_id': self.store_id,
                            'result': result}
             result_dict_list.append(result_dict)
         return result_dict_list
@@ -160,7 +169,8 @@ class ToolBox(GlobalSessionToolBox):
 
             result = float(numerator_result) / denominator_result
             result_dict = {'kpi_name': kpi_name, 'kpi_fk': kpi_fk, 'numerator_id': numerator_id,
-                           'denominator_id': denominator_id,
+                           'denominator_id': denominator_id, 'numerator_result': numerator_result,
+                           'denominator_result': denominator_result,
                            'result': result}
             result_dict_list.append(result_dict)
         return result_dict_list
