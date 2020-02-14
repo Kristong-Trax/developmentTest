@@ -60,6 +60,7 @@ OOS_CODE = 1
 PRESENT_CODE = 2
 EXTRA_CODE = 3
 # KPI Names
+COUNT_SKU_IN_STOCK = 'COUNT_SKU_IN_STOCK'
 DST_MAN_BY_STORE_PERC = 'DST_MAN_BY_STORE_PERC'
 OOS_MAN_BY_STORE_PERC = 'OOS_MAN_BY_STORE_PERC'
 PRODUCT_PRESENCE_BY_STORE_LIST = 'DST_MAN_BY_STORE_PERC - SKU'
@@ -120,12 +121,28 @@ class CARLSBERGToolBox:
         """
         pd.reset_option('mode.chained_assignment')
         with pd.option_context('mode.chained_assignment', None):
-            self.filter_and_send_kpi_to_calc()
+            # self.filter_and_send_kpi_to_calc()
             self.calculate_assortment_kpis()
+            # self.calculate_sku_count_in_stock()
+            # self.calculate_sku_facings_in_floor_stack()
+
         self.common.commit_results_data()
         return 0  # to mark successful run of script
 
+    def calculate_sku_facings_in_floor_stack(self):
+        # get details of COUNT_SKU_FACINGS_FLOOR_STACK
+        # from external targets -- and save.
+        Log.info("Calculate COUNT_SKU_FACINGS_FLOOR_STACK for {} - {}".format(self.project_name, self.session_uid))
+        pass
+
+    def calculate_sku_count_in_stock(self):
+        # find the tables
+        # write for COUNT_SKU_IN_STOCK
+        Log.info("Calculate COUNT_SKU_IN_STOCK for {} - {}".format(self.project_name, self.session_uid))
+        pass
+
     def calculate_assortment_kpis(self):
+        Log.info("Calculate Assortment KPIs for {} - {}".format(self.project_name, self.session_uid))
         distribution_kpi = self.kpi_static_data[(self.kpi_static_data[KPI_TYPE_COL] == DST_MAN_BY_STORE_PERC)
                                                 & (self.kpi_static_data['delete_time'].isnull())]
         oos_kpi = self.kpi_static_data[(self.kpi_static_data[KPI_TYPE_COL] == OOS_MAN_BY_STORE_PERC)
