@@ -2,17 +2,19 @@ import numpy as np
 import networkx as nx
 from collections import Counter
 from Trax.Cloud.Services.Connector.Logger import Log
+from Projects.DIAGEOUS_SAND2.Utils.Const import CaseCountConsts as Ccc
+from KPIUtils_v2.Utils.GlobalScripts.Scripts import GlobalSessionToolBox
 from Trax.Algo.Calculations.Core.AdjacencyGraph.Builders import AdjacencyGraphBuilder
 
 
-class CaseCountCalculator:
+class CaseCountCalculator(GlobalSessionToolBox):
 
-    def __init__(self, data_provider):
-        self.data_provider = data_provider
-        self.project_name = data_provider.project_name
+    def __init__(self, data_provider, common):
+        GlobalSessionToolBox.__init__(self, data_provider, None)
         self.filtered_mdis = self._get_filtered_match_display_in_scene()
         self.filtered_scif = self._get_filtered_scif()
         self.matches = self.get_filtered_matches()
+        self.common = common
 
     def _get_filtered_match_display_in_scene(self):
         """ This method filters match display in scene - it saves only "close" and "open" tags"""
@@ -30,7 +32,32 @@ class CaseCountCalculator:
         num_of_cases_per_brand_res = self._count_number_of_cases()
         implied_shoppable_cases_kpi_res = self._implied_shoppable_cases_kpi()
         unshoppable_brands_lst = self._non_shoppable_case_kpi()
-        print "down"
+        total_cases_res = self._calculate_and_total_cases(num_of_cases_per_brand_res + implied_shoppable_cases_kpi_res)
+        self._save_results_to_db(total_facings_per_brand_res, Ccc.TOTAL_FACINGS_KPI)
+        self._save_results_to_db(num_of_cases_per_brand_res, Ccc.CASE_COUNT_KPI)
+        self._save_results_to_db(implied_shoppable_cases_kpi_res, Ccc.IMPLIED_SHOPPABLE_CASES_KPI)
+        self._save_results_to_db(unshoppable_brands_lst, Ccc.NON_SHOPPABLE_CASES_KPI)
+        self._save_results_to_db(total_cases_res, Ccc.TOTAL_CASES_KPI)
+
+    @staticmethod
+    def _calculate_and_total_cases(kpi_results):
+        """ This method sums # of cases per brand and Implied Shoppable Cases KPIs
+        and saves the main result to the DB"""
+        total_results_per_brand, results_list = Counter(), list()
+        for res in kpi_results:
+            total_results_per_brand[res['brand_fk']] += res['result']
+        for brand_fk, result in total_results_per_brand.iteritems():
+            results_list.append({'brand_fk': brand_fk, 'result': result})
+        return results_list
+
+    def _save_results_to_db(self, results_list, kpi_name, result_key='result'):
+        """This method saves the KPI results to DB"""
+        kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_name)
+        for res in results_list:
+            result = res[result_key]
+            self.common.write_to_db_result(fk=kpi_fk, numerator_id=res['brand_fk'], numerator_result=result,
+                                           result=result, denominator_id=self.store_id, denominator_result=0,
+                                           score=result, identifier_parent=Ccc.TOTAL_CASES_KPI, should_enter=True)
 
     def _prepare_data_for_calculation(self):
         """This method prepares the data for the case count calculation. Connection between the display
@@ -49,39 +76,45 @@ class CaseCountCalculator:
         cols_to_save = ['brand_fk', 'tagged']
         bottle_carton_scif = self.filtered_scif.loc[(self.filtered_scif['SKU Type'].isin(['Bottle', 'Carton']))]
         results_df = bottle_carton_scif[cols_to_save].groupby('brand_fk', as_index=False).sum()
-        return results_df
+        results_df.rename({'tagged': 'result'}, axis=1, inplace=True)
+        return results_df.to_dict('records')
 
     def _count_number_of_cases(self):
         """This method counts the number of cases per brand.
         It identify the closest brand tag to every case and using it to define the case's brand
         """
         mdis = self.filtered_mdis.groupby('display_brand', as_index=False)['display_brand'].agg(
-            {'display_counter': 'count'})
-        return mdis
+            {'result': 'count'})
+        mdis.rename({'display_brand': 'brand_fk'}, axis=1, inplace=True)
+        return mdis.to_dict('records')
 
     def _implied_shoppable_cases_kpi(self):
         """
         This method calculates the implied shoppable cases KPI. It creates Adjacency graph per scene,
         iterates paths over the cases pile and count the number of hidden cases.
         """
+        results = []
         scenes_to_calculate = self.matches.scene_fk.unique().tolist()
         total_score_per_brand = Counter()
         for scene_fk in scenes_to_calculate:
             adj_g = self._create_adjacency_graph_per_scene(scene_fk)
             paths = self._get_relevant_path_for_calculation(adj_g)
             total_score_per_brand += self._calculate_case_count(adj_g, paths)
-        return total_score_per_brand
+        for k, v in total_score_per_brand.iteritems():
+            results.append({'brand_fk': k, 'result': v})
+        return results
 
     def _non_shoppable_case_kpi(self):
         """ This method calculates the number of unshoppable cases per brand.
-        A brand is considered unshoppable if there are only 'case' SKU Type without bottler or carton"""
+        A brand is considered unshoppable if there are only 'case' SKU Type without bottler or carton.
+        If a brand is unshoppable it will get a result of 1."""
         unshoppable_brands = []
         grouped_scif = self.filtered_scif.groupby(['brand_fk', 'SKU Type'], as_index=False)['tagged'].sum()
         grouped_scif = grouped_scif.loc[grouped_scif.tagged > 0]
         grouped_scif_dict = grouped_scif.groupby('brand_fk')['SKU Type'].apply(list).to_dict()
         for brand_fk, sku_types in grouped_scif_dict.iteritems():
             if len(sku_types) == 1 and sku_types[0].lower() == 'case':
-                unshoppable_brands.append(brand_fk)
+                unshoppable_brands.append({'brand_fk': brand_fk, 'result': 1})
         return unshoppable_brands
 
     @staticmethod
@@ -196,7 +229,7 @@ class CaseCountCalculator:
 
     def _create_adjacency_graph_per_scene(self, scene_fk):
         """ This method creates the graph for the case count calculation"""
-        filtered_matches = self.matches.loc[self.matches.scene_fk == scene_fk]
+        filtered_matches = self._prepare_matches_for_graph_creation(scene_fk)
         maskings = AdjacencyGraphBuilder._load_maskings(self.project_name, scene_fk)
         add_node_attr = ['display_in_scene_fk', 'display_rect_x', 'display_rect_y', 'display_name', 'display_brand']
         adj_g = AdjacencyGraphBuilder.initiate_graph_by_dataframe(filtered_matches,
@@ -206,10 +239,10 @@ class CaseCountCalculator:
         filtered_adj_g = adj_g.edge_subgraph(self._filter_redundant_edges(filtered_adj_g))
         return filtered_adj_g
 
-    @staticmethod
-    def _prepare_matches_for_graph_creation(scene_matches):
+    def _prepare_matches_for_graph_creation(self, scene_fk):
         """ This method prepares the Matches DataFrame for the Adjacency Graph creation.
         Adding Displays data and adjust the columns"""
+        scene_matches = self.matches.loc[self.matches.scene_fk == scene_fk]
         scene_matches.drop('pk', axis=1, inplace=True)
         scene_matches.rename({'scene_match_fk': 'pk'}, axis=1, inplace=True)
         return scene_matches
@@ -270,12 +303,18 @@ class CaseCountCalculator:
         return scif
 
 
-
-from Trax.Utils.Conf.Configuration import Config
-from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider
-if __name__ == '__main__':
-    Config.init('')
-    data_provider = KEngineDataProvider('diageous-sand2')
-    data_provider.load_session_data(session_uid='566FD433-FD02-4C23-95F8-CD26D8BA1A61')
-    case_counter_calculator = CaseCountCalculator(data_provider)
-    case_counter_calculator.main_case_count_calculations()
+# from KPIUtils_v2.DB.CommonV2 import Common
+# from Trax.Utils.Conf.Configuration import Config
+# from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider
+# if __name__ == '__main__':
+#     Config.init('')
+#     data_provider = KEngineDataProvider('diageous-sand2')
+#     sessions = []
+#     for session in sessions:
+#         print(session)
+#         data_provider.load_session_data(session_uid=session)
+#         common = Common(data_provider)
+#         case_counter_calculator = CaseCountCalculator(data_provider, common)
+#         case_counter_calculator.main_case_count_calculations()
+#         common.commit_results_data()
+#
