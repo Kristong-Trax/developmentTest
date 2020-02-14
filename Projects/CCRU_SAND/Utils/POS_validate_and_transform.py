@@ -1781,7 +1781,7 @@ class CCRU_SANDKPIS:
 
 if __name__ == '__main__':
     kpis_list = CCRU_SANDKPIS()
-    kpis_list.transform_top_line()
+    # kpis_list.transform_top_line()
     # kpis_list.validate_benchmark()
     # kpis_list.transform_kpi_source()
-    # kpis_list.validate_and_transform()
+    kpis_list.validate_and_transform()
