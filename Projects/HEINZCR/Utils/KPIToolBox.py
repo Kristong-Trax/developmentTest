@@ -116,7 +116,7 @@ class HEINZCRToolBox:
         else:
             target = 0
 
-        result = 1 if perfect_store_score > target else 0
+        result = 1 if perfect_store_score >= target else 0
 
         perfect_store_kpi_fk = self.common_v2.get_kpi_fk_by_kpi_type(Const.PERFECT_STORE)
         self.common_v2.write_to_db_result(perfect_store_kpi_fk, numerator_id=Const.OWN_MANUFACTURER_FK,
