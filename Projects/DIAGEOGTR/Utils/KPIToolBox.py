@@ -1397,9 +1397,9 @@ class DIAGEOGTRToolBox:
         original_price_attr = ""
         promotion_price_attr = ""
 
-        original_price_columns = ['retailer_fk', 'product_fk', 'original_mcpa_fk', 'original_price']
-        promo_price_columns = ['retailer_fk', 'product_fk', 'promo_mcpa_fk', 'promo_price']
-        depth_price_columns = ['retailer_fk', 'product_fk', 'original_mcpa_fk', 'price_depth', 'price_depth_percentage']
+        original_price_columns = ['retailer_fk', 'product_fk', 'country_fk', 'original_price']
+        promo_price_columns = ['retailer_fk', 'product_fk', 'country_fk', 'promo_price']
+        depth_price_columns = ['retailer_fk', 'product_fk', 'country_fk', 'price_depth', 'price_depth_percentage']
 
         template_kpis = self.template_data[self.template_data[DIAGEOGTRConsts.KPI_SET_NAME] == kpi_set_name]
 
@@ -1419,9 +1419,9 @@ class DIAGEOGTRToolBox:
         df_promo_price = df_manual_price[promo_price_columns]
         df_depth_price = df_manual_price[depth_price_columns]
 
-        df_original_price.rename(columns={'original_mcpa_fk': 'mcpa_fk', 'original_price': 'price'}, inplace=True)
-        df_promo_price.rename(columns={'promo_mcpa_fk': 'mcpa_fk', 'promo_price': 'price'}, inplace=True)
-        df_depth_price.rename(columns={'original_mcpa_fk': 'mcpa_fk', 'price_depth': 'price'}, inplace=True)
+        df_original_price.rename(columns={'original_price': 'price'}, inplace=True)
+        df_promo_price.rename(columns={'promo_price': 'price'}, inplace=True)
+        df_depth_price.rename(columns={'price_depth': 'price'}, inplace=True)
 
         kpi_name_original_price = DIAGEOGTRConsts.MANUAL_PRICE_CAPTURE_ORIGINAL
         kpi_static = self.kpi_static_data_new[self.kpi_static_data_new[DIAGEOGTRConsts.TYPE] == kpi_name_original_price]
@@ -1463,7 +1463,7 @@ class DIAGEOGTRToolBox:
                     self.commonV2.write_to_db_result(fk=kpi_fk,
                                                      numerator_id=row_data['product_fk'],
                                                      denominator_id=row_data['retailer_fk'],
-                                                     context_id=row_data['mcpa_fk'],
+                                                     context_id=row_data['country_fk'],
                                                      numerator_result=0,
                                                      denominator_result=0,
                                                      result=row_data['price'],
@@ -1472,7 +1472,7 @@ class DIAGEOGTRToolBox:
                     self.commonV2.write_to_db_result(fk=kpi_fk,
                                                      numerator_id=row_data['product_fk'],
                                                      denominator_id=row_data['retailer_fk'],
-                                                     context_id=row_data['mcpa_fk'],
+                                                     context_id=row_data['country_fk'],
                                                      numerator_result=0,
                                                      denominator_result=0,
                                                      result=row_data['price'],
@@ -1483,18 +1483,17 @@ class DIAGEOGTRToolBox:
                 SELECT
                 original.retailer_fk,
                 original.product_fk,
-                original.mcpa_fk original_mcpa_fk,
+                original.country_fk,
                 original.price original_price,
-                promo.mcpa_fk promo_mcpa_fk,
                 promo.price promo_price,
                 round((original.price - promo.price),4) price_depth,
-                round((original.price - promo.price)/original.price,4) price_depth_percentage
+                round(((original.price - promo.price)/original.price) *100,4) price_depth_percentage
                 FROM
                 (SELECT 
                 st.retailer_fk,
-                rt.name retailer_name,
+                c.pk country_fk,
+                c.name country_name,
                 mcp.product_fk,
-                mcpa.pk mcpa_fk,
                 mcpa.name price_capture_attr,
                 mcp.value price
                 FROM
@@ -1503,7 +1502,8 @@ class DIAGEOGTRToolBox:
                 ON mcp.manual_collection_price_attributes_fk = mcpa.pk
                 LEFT JOIN probedata.session ses ON ses.pk = session_fk
                 LEFT JOIN static.stores st ON st.pk = ses.store_fk
-                LEFT JOIN static.retailer rt ON rt.pk = st.retailer_fk
+                LEFT JOIN static.regions rg on rg.pk = st.region_fk
+                LEFT JOIN static.countries c ON rg.country_fk=c.pk
                 WHERE 1=1 
                 AND mcpa.delete_date IS NULL
                 AND ses.session_uid = '{session_uid}'
@@ -1511,9 +1511,7 @@ class DIAGEOGTRToolBox:
                 LEFT JOIN 
                 (SELECT 
                 st.retailer_fk,
-                rt.name retailer_name,
                 mcp.product_fk,
-                mcpa.pk mcpa_fk,
                 mcpa.name price_capture_attr,
                 mcp.value price
                 FROM
@@ -1523,6 +1521,8 @@ class DIAGEOGTRToolBox:
                 LEFT JOIN probedata.session ses ON ses.pk = session_fk
                 LEFT JOIN static.stores st ON st.pk = ses.store_fk
                 LEFT JOIN static.retailer rt ON rt.pk = st.retailer_fk
+                LEFT join static.regions rg on rg.pk = st.region_fk
+                LEFT JOIN static.countries c ON rg.country_fk=c.pk
                 WHERE 1=1 
                 AND mcpa.delete_date IS NULL
                 AND ses.session_uid = '{session_uid}'

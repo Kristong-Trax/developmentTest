@@ -60,11 +60,18 @@ class CCRUSessionBatches:
                 AND ss.visit_type_fk IN (1,3,5)
                 AND ss.visit_date >= '2019-10-26' AND ss.visit_date <= '2021-02-09'
                 AND ks.name IN(
-'PoS 2020 - IC Petrol - Medium',
-'PoS 2020 - IC Petrol - Large',
-'PoS 2020 - IC QSR - FoodCourt',
-'PoS 2020 - IC QSR - Classic',
-'PoS 2020 - IC QSR - GastroMarket'
+'PoS 2020 - MT ConvBig - CAP',
+'PoS 2020 - MT ConvSmall - CAP',
+'PoS 2020 - MT Hypermarket - CAP',
+'PoS 2020 - MT Supermarket - CAP',
+'PoS 2020 - MT ConvBig - REG',
+'PoS 2020 - MT ConvSmall - REG',
+'PoS 2020 - MT Hypermarket - REG',
+'PoS 2020 - MT Supermarket - REG',
+'PoS 2020 - MT ConvBig - NKA',
+'PoS 2020 - MT ConvSmall - NKA',
+'PoS 2020 - MT Hypermarket - NKA',
+'PoS 2020 - MT Supermarket - NKA',
                 )
                 ORDER BY ss.pk DESC;
                 """.format(START_DATE, END_DATE)
