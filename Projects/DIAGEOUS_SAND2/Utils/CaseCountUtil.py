@@ -62,6 +62,7 @@ class CaseCountCalculator(GlobalSessionToolBox):
     def _prepare_data_for_calculation(self):
         """This method prepares the data for the case count calculation. Connection between the display
         data and the tagging data."""
+        # self.filtered_mdis.bay_number.fillna(1, inplace=True)
         self.matches = self._add_brand_fk_to_matches(self.matches)
         self._add_displays_the_closet_brand_fk()
         self._add_matches_the_closet_match_display_in_scene_fk(self.matches)
@@ -303,18 +304,18 @@ class CaseCountCalculator(GlobalSessionToolBox):
         return scif
 
 
-# from KPIUtils_v2.DB.CommonV2 import Common
-# from Trax.Utils.Conf.Configuration import Config
-# from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider
-# if __name__ == '__main__':
-#     Config.init('')
-#     data_provider = KEngineDataProvider('diageous-sand2')
-#     sessions = []
-#     for session in sessions:
-#         print(session)
-#         data_provider.load_session_data(session_uid=session)
-#         common = Common(data_provider)
-#         case_counter_calculator = CaseCountCalculator(data_provider, common)
-#         case_counter_calculator.main_case_count_calculations()
-#         common.commit_results_data()
-#
+from KPIUtils_v2.DB.CommonV2 import Common
+from Trax.Utils.Conf.Configuration import Config
+from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider
+if __name__ == '__main__':
+    Config.init('')
+    data_provider = KEngineDataProvider('diageous-sand2')
+    sessions = ['A83C7EFA-AA29-41A4-9B78-91B98BF61244']
+    for session in sessions:
+        print(session)
+        data_provider.load_session_data(session_uid=session)
+        common = Common(data_provider)
+        case_counter_calculator = CaseCountCalculator(data_provider, common)
+        case_counter_calculator.main_case_count_calculations()
+        common.commit_results_data()
+
