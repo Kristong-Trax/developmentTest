@@ -273,9 +273,9 @@ class GPUSToolBox:
             new_mpis = new_mpis[Const.MPIS_COLS]
             new_mpis['facings'] = 1
             stack = new_mpis.drop('stacking_layer', axis =1).groupby(['scene_fk', 'product_fk']).sum().rename(
-                columns={'width_mm_advance': 'net_len_add_stack'})
+                columns={'width_mm': 'net_len_add_stack'})
             ign_stack = new_mpis[new_mpis['stacking_layer']==1].drop('stacking_layer', axis =1)\
-                .groupby(['scene_fk', 'product_fk']).sum().rename(columns={'width_mm_advance': 'net_len_ign_stack',
+                .groupby(['scene_fk', 'product_fk']).sum().rename(columns={'width_mm': 'net_len_ign_stack',
                                                                            'facings': Const.FACINGS_IGN_STACKING})
             mpis = stack.join(ign_stack).reset_index()
             mpis.fillna(0, inplace=True)

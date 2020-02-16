@@ -315,7 +315,7 @@ class CCKHToolBox(CCKHConsts):
         if not stores:
             validation = True
         elif isinstance(stores, (str, unicode)):
-            if stores.upper() == self.template.ALL:
+            if stores.upper() == self.template.ALL or self.store_type in stores.split(self.template.SEPARATOR):
                 validation = True
         elif isinstance(stores, list):
             if self.store_type in stores:
@@ -431,6 +431,8 @@ class CCKHToolBox(CCKHConsts):
             sos_filters = {params[self.template.SOS_ENTITY]: params[self.template.SOS_NUMERATOR]}
         general_filters = {}
         scene_types = self.get_scene_types(params)
+        if isinstance(scene_types, (str, unicode)):
+            scene_types = scene_types.split(self.template.SEPARATOR)
         if scene_types:
             general_filters[SCENE_TYPE_FIELD] = scene_types
         products_to_exclude = params[self.template.PRODUCT_TYPES_TO_EXCLUDE]

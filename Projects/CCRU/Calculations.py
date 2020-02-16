@@ -68,7 +68,7 @@ class CCRUProjectCalculations:
 
     def main_function(self):
 
-        if False and str(self.visit_date) < self.tool_box.MIN_CALC_DATE:  # ignored
+        if str(self.visit_date) < self.tool_box.MIN_CALC_DATE:
             Log.warning('Warning. Session cannot be calculated. '
                         'Visit date is less than {2} - {0}. '
                         'Store ID {1}.'

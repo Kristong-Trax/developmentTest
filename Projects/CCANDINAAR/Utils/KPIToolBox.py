@@ -22,7 +22,7 @@ import os
 # from KPIUtils_v2.Calculations.SurveyCalculations import Survey
 
 # from KPIUtils_v2.Calculations.CalculationsUtils import GENERALToolBoxCalculations
-TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'CCAndinaAR_template_v3.xlsx')
+TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'CCAndinaAR_template_v4.xlsx')
 
 __author__ = 'nicolaske'
 
@@ -64,6 +64,7 @@ class ToolBox(GlobalSessionToolBox):
 
             if not pd.isnull(parent_kpi_name):
                 self.scene_kpi_results_fix[kpi_name] = 0
+                total_relevant_scenes = 0
                 passing_scenes = 0
 
                 for scene in scene_list:
@@ -94,6 +95,7 @@ class ToolBox(GlobalSessionToolBox):
 
                         if size_matches.empty:
                             score = 1
+                            passing_scenes += 1
 
 
                         else:
@@ -107,9 +109,9 @@ class ToolBox(GlobalSessionToolBox):
                                                            result=score, score=score,
                                                            context_id=template_fk,
                                                            should_enter=True)
-                        passing_scenes += 1
+                        total_relevant_scenes += 1
 
-                passing_percentage = round((passing_scenes / float(len(scene_list))), 2)
+                passing_percentage = (round((passing_scenes / float(total_relevant_scenes)), 2) * 100)
                 self.scene_kpi_results_fix[kpi_name] = passing_percentage
 
             if not pd.isnull(child_kpi_name):
@@ -176,7 +178,7 @@ class ToolBox(GlobalSessionToolBox):
                 encoded_list = []
                 for item in split_values:
                     encoded_list.append(item.encode('utf-8'))
-                    return encoded_list
+                return encoded_list
             else:
 
                 return split_values
