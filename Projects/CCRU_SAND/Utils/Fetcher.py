@@ -393,7 +393,8 @@ class CCRU_SANDCCHKPIFetcher:
                        select sr.*, sq.question_text, sq.group_name 
                        from probedata.scene_survey_response sr
                        join static.survey_question sq on sr.question_fk=sq.pk
-                       where sq.delete_time is null 
+                       where sq.delete_time is null
+                       and sq.group_name='Cooler Audit'
                        and sr.delete_time is null
                        and sr.scene_fk in ({});
                        """.format(scenes_list[0])
@@ -402,9 +403,43 @@ class CCRU_SANDCCHKPIFetcher:
                        select sr.*, sq.question_text, sq.group_name 
                        from probedata.scene_survey_response sr
                        join static.survey_question sq on sr.question_fk=sq.pk
-                       where sq.delete_time is null 
+                       where sq.delete_time is null
+                       and sq.group_name='Cooler Audit'
                        and sr.delete_time is null
                        and sr.scene_fk in {};
                        """.format(tuple(scenes_list))
+        data = pd.read_sql_query(query, self.rds_conn.db)
+        return data
+
+    def get_all_coolers_from_assortment_list(self, cooler_list):
+        cooler_list = list(map(str, cooler_list))
+        if len(cooler_list) == 1:
+            query = """
+                       select c.pk as cooler_fk, c.cooler_id, c.cooler_model_fk, m.name as cooler_model_name 
+                       from pservice.cooler c
+                       left join pservice.cooler_model m
+                       on c.cooler_model_fk = m.pk
+                       where c.cooler_id in ({});
+                       """.format(cooler_list[0])
+        else:
+            query = """
+                       select c.pk as cooler_fk, c.cooler_id, c.cooler_model_fk, m.name as cooler_model_name 
+                       from pservice.cooler c
+                       left join pservice.cooler_model m
+                       on c.cooler_model_fk = m.pk
+                       where c.cooler_id in {};
+                       """.format(tuple(cooler_list))
+        data = pd.read_sql_query(query, self.rds_conn.db)
+        return data
+
+    def get_kpi_external_targets(self, visit_date, store_fk):
+        query = """SELECT ext.*, ot.operation_type from static.kpi_external_targets ext
+                   LEFT JOIN static.kpi_operation_type ot on ext.kpi_operation_type_fk=ot.pk 
+                   WHERE 
+                   ((ext.start_date<='{}' and ext.end_date is null) or 
+                   (ext.start_date<='{}' and ext.end_date>='{}'))
+                   AND ot.operation_type='COOLER_AUDIT'
+                   AND ext.key_fk={}
+                """.format(visit_date, visit_date, visit_date, store_fk)
         data = pd.read_sql_query(query, self.rds_conn.db)
         return data

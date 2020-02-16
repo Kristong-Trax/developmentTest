@@ -4,6 +4,7 @@ import json
 import numpy as np
 import pandas as pd
 import datetime as dt
+import copy
 
 from Trax.Cloud.Services.Storage.Factory import StorageFactory
 from Trax.Algo.Calculations.Core.Constants import Fields as Fd
@@ -204,23 +205,53 @@ class CCRU_SANDKPIToolBox:
         self.mr_targets = {}
 
         # For Cooler Audit
-        if self.visit_type not in [self.PROMO_VISIT, self.SEGMENTATION_VISIT]:
+        if self.visit_type in [self.STANDARD_VISIT]:
             self.scenes_in_session = self.get_all_scenes_in_session()
-            self.ps_data_provider = PsDataProvider(self.data_provider)
-            self.cooler_assortment = self.ps_data_provider.get_kpi_external_targets([CCRU_SANDConsts.COOLER_AUDIT]) # for now - this will need to be changed when we agree on the approach
-            self.cooler_assortment[CCRU_SANDConsts.REDUCED_BAR_CODE] = \
-                self.cooler_assortment[CCRU_SANDConsts.COOLER_ID].apply(lambda x: x[:-6])
-            self.custom_entities = self.ps_data_provider.get_custom_entities_with_names()
-            self.kpi_result_values = self.ps_data_provider.get_result_values()
-            self.cooler_survey_responses = self.retrieve_scene_survey_responses()
+            self.cooler_scenes = self.scenes_in_session[self.scenes_in_session[ScifConsts.LOCATION_TYPE]
+                                                        == CCRU_SANDConsts.COOLER][ScifConsts.SCENE_FK].values.tolist()
+            self.cooler_assortment = self.retrieve_and_unpack_cooler_assortment_list()
+            if not self.cooler_assortment.empty:
+                self.cooler_info = self.get_all_coolers_in_assortment()
+                # self.ps_data_provider = PsDataProvider(self.data_provider)
+                # self.kpi_result_values = self.ps_data_provider.get_result_values()
+                self.cooler_survey_responses = self.retrieve_scene_survey_responses()
+                self.scif_session = self.scif
+                self.matches_session = self.matches
 
     # -----Cooler Audit----- #
+    def retrieve_and_unpack_cooler_assortment_list(self):
+        cooler_targets = self.kpi_fetcher.get_kpi_external_targets(self.visit_date, self.store_id)
+        key_json_df = self.unpack_kpi_targets_from_db(cooler_targets, 'key_json')
+        cooler_targets = cooler_targets.merge(key_json_df, on='pk', how='left')
+        return cooler_targets
+
+    def unpack_kpi_targets_from_db(self, input_df, field_name):
+        if input_df.empty:
+            return pd.DataFrame(columns=['pk'])
+        input_df['json_dict_with_pk'] = input_df.apply(self.add_pk_to_json, args=(field_name,), axis=1)
+        json_dict_list = input_df['json_dict_with_pk'].values.tolist()
+        output_df = pd.DataFrame(json_dict_list)
+        return output_df
+
+    @staticmethod
+    def add_pk_to_json(row, field_name):
+        json_value = row[field_name]
+        json_to_dict = json.loads(json_value)
+        json_to_dict.update({'pk': row['pk']})
+        return json_to_dict
+
+    def get_all_coolers_in_assortment(self):
+        cooler_list = self.cooler_assortment[CCRU_SANDConsts.COOLER_ID].values.tolist()
+        store_coolers = self.kpi_fetcher.get_all_coolers_from_assortment_list(cooler_list)
+        self.cooler_assortment = self.cooler_assortment.merge(store_coolers, left_on=CCRU_SANDConsts.COOLER_ID,
+                                                              right_on=CCRU_SANDConsts.COOLER_ID_DB, how='left')
+        return store_coolers
+
     def retrieve_scene_survey_responses(self):
         survey_responses = self.data_provider.survey_responses # check name of attribute
         if self.data_provider.survey_responses.empty:
-            scenes = self.scenes_in_session[ScifConsts.SCENE_FK].values.tolist()
-            survey_responses = self.kpi_fetcher.get_scene_survey_response(scenes) # revalidate the query itself
-        survey_responses[CCRU_SANDConsts.SURVEY_ANSWER] = survey_responses[CCRU_SANDConsts.SURVEY_ANSWER].astype(str) # what will be the answer field?
+            survey_responses = self.kpi_fetcher.get_scene_survey_response(self.cooler_scenes)
+        survey_responses[CCRU_SANDConsts.SURVEY_ANSWER] = survey_responses[CCRU_SANDConsts.SURVEY_ANSWER].astype(str)
         return survey_responses
 
     def get_all_scenes_in_session(self):
@@ -434,7 +465,7 @@ class CCRU_SANDKPIToolBox:
         return relevant_scenes
 
     @kpi_runtime()
-    def check_availability(self, params, level=2):
+    def check_availability(self, params, level=2, cooler_dict=None):
         set_total_res = 0
         availability_types = ['SKUs', 'BRAND', 'MAN', 'CAT',
                               'MAN in CAT', 'SUB_BRAND', 'SUB_CATEGORY']
@@ -473,19 +504,20 @@ class CCRU_SANDKPIToolBox:
                             atomic_score = self.calculate_score(atomic_res, child)
 
                         # saving to DB
-                        attributes_for_level3 = self.create_attributes_for_level3_df(
-                            child, atomic_score, kpi_fk)
-                        self.write_to_kpi_results_old(attributes_for_level3, 'level3')
+                        if not cooler_dict:
+                            attributes_for_level3 = self.create_attributes_for_level3_df(
+                                child, atomic_score, kpi_fk)
+                            self.write_to_kpi_results_old(attributes_for_level3, 'level3')
 
-                        atomic_result = attributes_for_level3['result']
-                        if atomic_result.size > 0:
-                            atomic_result_total += atomic_result.values[0]
+                            atomic_result = attributes_for_level3['result']
+                            if atomic_result.size > 0:
+                                atomic_result_total += atomic_result.values[0]
 
-                        if p.get('Logical Operator') in ('OR', 'AND', 'MAX'):
-                            atomic_scores.append(atomic_score)
-                        elif p.get('Logical Operator') == 'SUM':
-                            kpi_total_res += child.get('additional_weight',
-                                                       1 / float(len(children))) * atomic_score
+                            if p.get('Logical Operator') in ('OR', 'AND', 'MAX'):
+                                atomic_scores.append(atomic_score)
+                            elif p.get('Logical Operator') == 'SUM':
+                                kpi_total_res += child.get('additional_weight',
+                                                           1 / float(len(children))) * atomic_score
 
                 if p.get('Logical Operator') == 'OR':
                     if len([sc for sc in atomic_scores if sc > 0]) > 0:
@@ -515,19 +547,26 @@ class CCRU_SANDKPIToolBox:
                 kpi_total_res = self.calculate_availability(p)
                 score = self.calculate_score(kpi_total_res, p)
 
-            if not is_atomic:  # saving also to level3 in case this KPI has only one level
-                attributes_for_table3 = self.create_attributes_for_level3_df(
-                    p, score, kpi_fk, level=2, additional_level=3)
-                self.write_to_kpi_results_old(attributes_for_table3, 'level3')
+            if not cooler_dict:
+                if not is_atomic:  # saving also to level3 in case this KPI has only one level
+                    attributes_for_table3 = self.create_attributes_for_level3_df(
+                        p, score, kpi_fk, level=2, additional_level=3)
+                    self.write_to_kpi_results_old(attributes_for_table3, 'level3')
 
             # Saving to old tables
-            attributes_for_table2 = self.create_attributes_for_level2_df(p, score, kpi_fk)
-            self.write_to_kpi_results_old(attributes_for_table2, 'level2')
+                attributes_for_table2 = self.create_attributes_for_level2_df(p, score, kpi_fk)
+                self.write_to_kpi_results_old(attributes_for_table2, 'level2')
 
-            if p.get("KPI ID") in params.values()[2]["SESSION LEVEL"]:
-                self.write_to_kpi_facts_hidden(p.get("KPI ID"), None, atomic_result_total, score)
+                if p.get("KPI ID") in params.values()[2]["SESSION LEVEL"]:
+                    self.write_to_kpi_facts_hidden(p.get("KPI ID"), None, atomic_result_total, score)
 
             set_total_res += round(score) * p.get('KPI Weight')
+            if cooler_dict is not None:
+                kpi_fk = self.common.get_kpi_fk_by_kpi_type(p['KPI name Eng'])
+                self.common.write_to_db_result(fk=kpi_fk, numerator_id=cooler_dict[CCRU_SANDConsts.COOLER_FK],
+                                               denominator_id=cooler_dict['cooler_model_fk'],
+                                               context_id=cooler_dict[ScifConsts.SCENE_FK], score=score,
+                                               identifier_parent=cooler_dict, should_enter=True)
 
         return set_total_res
 
@@ -677,7 +716,7 @@ class CCRU_SANDKPIToolBox:
         return kpi_total_res
 
     @kpi_runtime()
-    def check_number_of_scenes(self, params, level=2):
+    def check_number_of_scenes(self, params, level=2, cooler_dict=None):
         set_total_res = 0
         for p in params.values()[0]:
             if p.get('level') != level:
@@ -771,25 +810,33 @@ class CCRU_SANDKPIToolBox:
                 set_total_res += round(score)
             else:
                 set_total_res += round(score) * p.get('KPI Weight')
-            kpi_fk = self.kpi_fetcher.get_kpi_fk(p.get('KPI name Eng'))
+            if not cooler_dict:
+                kpi_fk = self.kpi_fetcher.get_kpi_fk(p.get('KPI name Eng'))
 
-            if not p.get('Children'):
-                atomic_kpi_fk = self.kpi_fetcher.get_atomic_kpi_fk(p.get('KPI name Eng'), kpi_fk)
-                attributes_for_level3 = self.create_attributes_for_level3_df(
-                    p, score, kpi_fk, atomic_kpi_fk, level=2, additional_level=3)
-                self.write_to_kpi_results_old(attributes_for_level3, 'level3')
+                if not p.get('Children'):
+                    atomic_kpi_fk = self.kpi_fetcher.get_atomic_kpi_fk(p.get('KPI name Eng'), kpi_fk)
+                    attributes_for_level3 = self.create_attributes_for_level3_df(
+                        p, score, kpi_fk, atomic_kpi_fk, level=2, additional_level=3)
+                    self.write_to_kpi_results_old(attributes_for_level3, 'level3')
 
-            if p.get('level') == 2:
-                attributes_for_level2 = self.create_attributes_for_level2_df(p, score, kpi_fk)
-                self.write_to_kpi_results_old(attributes_for_level2, 'level2')
+                if p.get('level') == 2:
+                    attributes_for_level2 = self.create_attributes_for_level2_df(p, score, kpi_fk)
+                    self.write_to_kpi_results_old(attributes_for_level2, 'level2')
 
-                if p.get("KPI ID") in params.values()[2]["SESSION LEVEL"]:
-                    self.write_to_kpi_facts_hidden(p.get("KPI ID"), None, None, score)
+                    if p.get("KPI ID") in params.values()[2]["SESSION LEVEL"]:
+                        self.write_to_kpi_facts_hidden(p.get("KPI ID"), None, None, score)
+
+            if cooler_dict is not None:
+                kpi_fk = self.common.get_kpi_fk_by_kpi_type(p['KPI name Eng'])
+                self.common.write_to_db_result(fk=kpi_fk, numerator_id=cooler_dict[CCRU_SANDConsts.COOLER_FK],
+                                               denominator_id=cooler_dict['cooler_model_fk'],
+                                               context_id=cooler_dict[ScifConsts.SCENE_FK], score=score,
+                                               identifier_parent=cooler_dict, should_enter=True)
 
         return set_total_res
 
     @kpi_runtime()
-    def check_number_of_doors(self, params, level=2):
+    def check_number_of_doors(self, params, level=2, cooler_dict=None):
         set_total_res = 0
         for p in params.values()[0]:
             if p.get('level') != level:
@@ -800,16 +847,24 @@ class CCRU_SANDKPIToolBox:
             score = self.calculate_score(kpi_total_res, p)
             set_total_res += round(score) * p.get('KPI Weight')
             # saving to DB
-            kpi_fk = self.kpi_fetcher.get_kpi_fk(p.get('KPI name Eng'))
-            if p.get('level') == 2:
-                attributes_for_level3 = self.create_attributes_for_level3_df(
-                    p, score, kpi_fk, level=2, additional_level=3)
-                self.write_to_kpi_results_old(attributes_for_level3, 'level3')
-                attributes_for_level2 = self.create_attributes_for_level2_df(p, score, kpi_fk)
-                self.write_to_kpi_results_old(attributes_for_level2, 'level2')
-            else:
-                attributes_for_level3 = self.create_attributes_for_level3_df(p, score, kpi_fk)
-                self.write_to_kpi_results_old(attributes_for_level3, 'level3')
+            if not cooler_dict:
+                kpi_fk = self.kpi_fetcher.get_kpi_fk(p.get('KPI name Eng'))
+                if p.get('level') == 2:
+                    attributes_for_level3 = self.create_attributes_for_level3_df(
+                        p, score, kpi_fk, level=2, additional_level=3)
+                    self.write_to_kpi_results_old(attributes_for_level3, 'level3')
+                    attributes_for_level2 = self.create_attributes_for_level2_df(p, score, kpi_fk)
+                    self.write_to_kpi_results_old(attributes_for_level2, 'level2')
+                else:
+                    attributes_for_level3 = self.create_attributes_for_level3_df(p, score, kpi_fk)
+                    self.write_to_kpi_results_old(attributes_for_level3, 'level3')
+
+            if cooler_dict is not None:
+                kpi_fk = self.common.get_kpi_fk_by_kpi_type(p['KPI name Eng'])
+                self.common.write_to_db_result(fk=kpi_fk, numerator_id=cooler_dict[CCRU_SANDConsts.COOLER_FK],
+                                               denominator_id=cooler_dict['cooler_model_fk'],
+                                               context_id=cooler_dict[ScifConsts.SCENE_FK], score=score,
+                                               identifier_parent=cooler_dict, should_enter=True)
         return set_total_res
 
     def calculate_number_of_doors(self, params):
@@ -913,7 +968,7 @@ class CCRU_SANDKPIToolBox:
         return set_total_res
 
     @kpi_runtime()
-    def check_facings_sos(self, params, level=2):
+    def check_facings_sos(self, params, level=2, cooler_dict=None):
         set_total_res = 0
         for p in params.values()[0]:
             if p.get('level') != level:
@@ -939,22 +994,32 @@ class CCRU_SANDKPIToolBox:
             # saving to DB
             if np.isnan(score):
                 score = 0
-            kpi_fk = self.kpi_fetcher.get_kpi_fk(p.get('KPI name Eng'))
-            if p.get('level') == 2:
-                attributes_for_level3 = self.create_attributes_for_level3_df(
-                    p, score, kpi_fk, level=2, additional_level=3)
-                self.write_to_kpi_results_old(attributes_for_level3, 'level3')
-                attributes_for_level2 = self.create_attributes_for_level2_df(p, score, kpi_fk)
-                self.write_to_kpi_results_old(attributes_for_level2, 'level2')
-            else:
-                attributes_for_level3 = self.create_attributes_for_level3_df(p, score, kpi_fk)
-                self.write_to_kpi_results_old(attributes_for_level3, 'level3')
+            if not cooler_dict:
+                kpi_fk = self.kpi_fetcher.get_kpi_fk(p.get('KPI name Eng'))
+                if p.get('level') == 2:
+                    attributes_for_level3 = self.create_attributes_for_level3_df(
+                        p, score, kpi_fk, level=2, additional_level=3)
+                    self.write_to_kpi_results_old(attributes_for_level3, 'level3')
+                    attributes_for_level2 = self.create_attributes_for_level2_df(p, score, kpi_fk)
+                    self.write_to_kpi_results_old(attributes_for_level2, 'level2')
+                else:
+                    attributes_for_level3 = self.create_attributes_for_level3_df(p, score, kpi_fk)
+                    self.write_to_kpi_results_old(attributes_for_level3, 'level3')
+
+                atomic_result = attributes_for_level3['result']
+                if p.get("KPI ID") in params.values()[2]["SESSION LEVEL"]:
+                    self.write_to_kpi_facts_hidden(p.get("KPI ID"), None, atomic_result, score)
+
+                self.write_to_db_category_kpis_for_mr(p, result=ratio*100, score=ratio*100)
             set_total_res += round(score) * p.get('KPI Weight')
 
-            atomic_result = attributes_for_level3['result']
-            if p.get("KPI ID") in params.values()[2]["SESSION LEVEL"]:
-                self.write_to_kpi_facts_hidden(p.get("KPI ID"), None, atomic_result, score)
-            self.write_to_db_category_kpis_for_mr(p, result=ratio*100, score=ratio*100)
+            if cooler_dict is not None:
+                kpi_fk = self.common.get_kpi_fk_by_kpi_type(p['KPI name Eng'])
+                self.common.write_to_db_result(fk=kpi_fk, numerator_id=cooler_dict[CCRU_SANDConsts.COOLER_FK],
+                                               denominator_id=cooler_dict['cooler_model_fk'],
+                                               context_id=cooler_dict[ScifConsts.SCENE_FK], score=score,
+                                               identifier_parent=cooler_dict, should_enter=True)
+
         return set_total_res
 
     def calculate_facings_sos(self, params, scenes=None, all_params=None):
@@ -1112,7 +1177,7 @@ class CCRU_SANDKPIToolBox:
         return score
 
     @kpi_runtime()
-    def check_share_of_cch(self, params, level=2):
+    def check_share_of_cch(self, params, level=2, cooler_dict=None):
         set_total_res = 0
         for p in params.values()[0]:
             if p.get('level') != level:
@@ -1160,19 +1225,27 @@ class CCRU_SANDKPIToolBox:
             else:
                 set_total_res += round(score) * p.get('KPI Weight')
             # saving to DB
-            if level == 2:
-                attributes_for_level3 = self.create_attributes_for_level3_df(
-                    p, score, kpi_fk, atomic_kpi_fk, level=2, additional_level=3)
-                self.write_to_kpi_results_old(attributes_for_level3, 'level3')
-                attributes_for_level2 = self.create_attributes_for_level2_df(p, score, kpi_fk)
-                self.write_to_kpi_results_old(attributes_for_level2, 'level2')
-            else:
-                attributes_for_level3 = self.create_attributes_for_level3_df(
-                    p, score, kpi_fk, atomic_kpi_fk)
-                self.write_to_kpi_results_old(attributes_for_level3, 'level3')
+            if not cooler_dict:
+                if level == 2:
+                    attributes_for_level3 = self.create_attributes_for_level3_df(
+                        p, score, kpi_fk, atomic_kpi_fk, level=2, additional_level=3)
+                    self.write_to_kpi_results_old(attributes_for_level3, 'level3')
+                    attributes_for_level2 = self.create_attributes_for_level2_df(p, score, kpi_fk)
+                    self.write_to_kpi_results_old(attributes_for_level2, 'level2')
+                else:
+                    attributes_for_level3 = self.create_attributes_for_level3_df(
+                        p, score, kpi_fk, atomic_kpi_fk)
+                    self.write_to_kpi_results_old(attributes_for_level3, 'level3')
 
-            if p.get("KPI ID") in params.values()[2]["SESSION LEVEL"]:
-                self.write_to_kpi_facts_hidden(p.get("KPI ID"), None, None, score)
+                if p.get("KPI ID") in params.values()[2]["SESSION LEVEL"]:
+                    self.write_to_kpi_facts_hidden(p.get("KPI ID"), None, None, score)
+
+            if cooler_dict is not None:
+                kpi_fk = self.common.get_kpi_fk_by_kpi_type(p['KPI name Eng'])
+                self.common.write_to_db_result(fk=kpi_fk, numerator_id=cooler_dict[CCRU_SANDConsts.COOLER_FK],
+                                               denominator_id=cooler_dict['cooler_model_fk'],
+                                               context_id=cooler_dict[ScifConsts.SCENE_FK], score=score,
+                                               identifier_parent=cooler_dict, should_enter=True)
 
         return set_total_res
 
@@ -1298,7 +1371,7 @@ class CCRU_SANDKPIToolBox:
         return sum_of_passed_scenes
 
     @kpi_runtime()
-    def check_number_of_skus_per_door_range(self, params, level=2):
+    def check_number_of_skus_per_door_range(self, params, level=2, cooler_dict=None):
         set_total_res = 0
         for p in params.values()[0]:
             if p.get('level') != level:
@@ -1338,22 +1411,30 @@ class CCRU_SANDKPIToolBox:
                 return score
 
             # saving to DB
-            if p.get('level') == 2:
-                kpi_fk = self.kpi_fetcher.get_kpi_fk(p.get('KPI name Eng'))
-                atomic_kpi_fk = self.kpi_fetcher.get_atomic_kpi_fk(p.get('KPI name Eng'), kpi_fk)
-                if p.get('KPI Weight') is None:
-                    set_total_res += round(score)
-                else:
-                    set_total_res += round(score) * p.get('KPI Weight')
-                attributes_for_level3 = self.create_attributes_for_level3_df(
-                    p, score, kpi_fk, atomic_kpi_fk, level=2, additional_level=3)
-                self.write_to_kpi_results_old(attributes_for_level3, 'level3')
-                attributes_for_level2 = self.create_attributes_for_level2_df(p, score, kpi_fk)
-                self.write_to_kpi_results_old(attributes_for_level2, 'level2')
+            if p.get('KPI Weight') is None:
+                set_total_res += round(score)
+            else:
+                set_total_res += round(score) * p.get('KPI Weight')
 
-                if p.get("KPI ID") in params.values()[2]["SESSION LEVEL"]:
-                    self.write_to_kpi_facts_hidden(p.get("KPI ID"), None, None, score)
+            if not cooler_dict:
+                if p.get('level') == 2:
+                    kpi_fk = self.kpi_fetcher.get_kpi_fk(p.get('KPI name Eng'))
+                    atomic_kpi_fk = self.kpi_fetcher.get_atomic_kpi_fk(p.get('KPI name Eng'), kpi_fk)
+                    attributes_for_level3 = self.create_attributes_for_level3_df(
+                        p, score, kpi_fk, atomic_kpi_fk, level=2, additional_level=3)
+                    self.write_to_kpi_results_old(attributes_for_level3, 'level3')
+                    attributes_for_level2 = self.create_attributes_for_level2_df(p, score, kpi_fk)
+                    self.write_to_kpi_results_old(attributes_for_level2, 'level2')
 
+                    if p.get("KPI ID") in params.values()[2]["SESSION LEVEL"]:
+                        self.write_to_kpi_facts_hidden(p.get("KPI ID"), None, None, score)
+
+            if cooler_dict is not None:
+                kpi_fk = self.common.get_kpi_fk_by_kpi_type(p['KPI name Eng'])
+                self.common.write_to_db_result(fk=kpi_fk, numerator_id=cooler_dict[CCRU_SANDConsts.COOLER_FK],
+                                               denominator_id=cooler_dict['cooler_model_fk'],
+                                               context_id=cooler_dict[ScifConsts.SCENE_FK], score=score,
+                                               identifier_parent=cooler_dict, should_enter=True)
         return set_total_res
 
     def calculate_number_of_skus_per_door_range(self, p, scenes):
@@ -1604,7 +1685,7 @@ class CCRU_SANDKPIToolBox:
         return float(facings) / 40
 
     @kpi_runtime()
-    def check_customer_cooler_doors(self, params, level=2):
+    def check_customer_cooler_doors(self, params, level=2, cooler_dict=None):
         set_total_res = 0
         for p in params.values()[0]:
             if p.get('level') != level:
@@ -1616,19 +1697,28 @@ class CCRU_SANDKPIToolBox:
             set_total_res += round(score) * p.get('KPI Weight')
             # writing to DB
             kpi_fk = self.kpi_fetcher.get_kpi_fk(p.get('KPI name Eng'))
-            if p.get('level') == 2:
-                attributes_for_level3 = self.create_attributes_for_level3_df(
-                    p, score, kpi_fk, level=2, additional_level=3)
-                self.write_to_kpi_results_old(attributes_for_level3, 'level3')
-                attributes_for_level2 = self.create_attributes_for_level2_df(p, score, kpi_fk)
-                self.write_to_kpi_results_old(attributes_for_level2, 'level2')
-            else:
-                attributes_for_level3 = self.create_attributes_for_level3_df(p, score, kpi_fk)
-                self.write_to_kpi_results_old(attributes_for_level3, 'level3')
+
+            if not cooler_dict:
+                if p.get('level') == 2:
+                    attributes_for_level3 = self.create_attributes_for_level3_df(
+                        p, score, kpi_fk, level=2, additional_level=3)
+                    self.write_to_kpi_results_old(attributes_for_level3, 'level3')
+                    attributes_for_level2 = self.create_attributes_for_level2_df(p, score, kpi_fk)
+                    self.write_to_kpi_results_old(attributes_for_level2, 'level2')
+                else:
+                    attributes_for_level3 = self.create_attributes_for_level3_df(p, score, kpi_fk)
+                    self.write_to_kpi_results_old(attributes_for_level3, 'level3')
+
+            if cooler_dict is not None:
+                kpi_fk = self.common.get_kpi_fk_by_kpi_type(p['KPI name Eng'])
+                self.common.write_to_db_result(fk=kpi_fk, numerator_id=cooler_dict[CCRU_SANDConsts.COOLER_FK],
+                                               denominator_id=cooler_dict['cooler_model_fk'],
+                                               context_id=cooler_dict[ScifConsts.SCENE_FK], score=score,
+                                               identifier_parent=cooler_dict, should_enter=True)
         return set_total_res
 
     @kpi_runtime()
-    def check_dummies(self, params, level=2):
+    def check_dummies(self, params, level=2, cooler_dict=None):
         total_score = 0
         for p in params.values()[0]:
             if p.get('level') != level:
@@ -1638,20 +1728,28 @@ class CCRU_SANDKPIToolBox:
             score = 0
             total_score += round(score) * p.get('KPI Weight')
             # writing to DB
-            kpi_fk = self.kpi_fetcher.get_kpi_fk(p.get('KPI name Eng'))
-            if p.get('level') == 2:
-                attributes_for_level3 = self.create_attributes_for_level3_df(
-                    p, score, kpi_fk, level=2, additional_level=3)
-                self.write_to_kpi_results_old(attributes_for_level3, 'level3')
-                attributes_for_level2 = self.create_attributes_for_level2_df(p, score, kpi_fk)
-                self.write_to_kpi_results_old(attributes_for_level2, 'level2')
-            else:
-                attributes_for_level3 = self.create_attributes_for_level3_df(p, score, kpi_fk)
-                self.write_to_kpi_results_old(attributes_for_level3, 'level3')
+            if not cooler_dict:
+                kpi_fk = self.kpi_fetcher.get_kpi_fk(p.get('KPI name Eng'))
+                if p.get('level') == 2:
+                    attributes_for_level3 = self.create_attributes_for_level3_df(
+                        p, score, kpi_fk, level=2, additional_level=3)
+                    self.write_to_kpi_results_old(attributes_for_level3, 'level3')
+                    attributes_for_level2 = self.create_attributes_for_level2_df(p, score, kpi_fk)
+                    self.write_to_kpi_results_old(attributes_for_level2, 'level2')
+                else:
+                    attributes_for_level3 = self.create_attributes_for_level3_df(p, score, kpi_fk)
+                    self.write_to_kpi_results_old(attributes_for_level3, 'level3')
+
+            if cooler_dict is not None:
+                kpi_fk = self.common.get_kpi_fk_by_kpi_type(p['KPI name Eng'])
+                self.common.write_to_db_result(fk=kpi_fk, numerator_id=cooler_dict[CCRU_SANDConsts.COOLER_FK],
+                                               denominator_id=cooler_dict['cooler_model_fk'],
+                                               context_id=cooler_dict[ScifConsts.SCENE_FK], score=score,
+                                               identifier_parent=cooler_dict, should_enter=True)
         return total_score
 
     @kpi_runtime()
-    def check_sum_atomics(self, params, level=2):
+    def check_sum_atomics(self, params, level=2, cooler_dict=None):
         set_total_res = 0
         for p in params.values()[0]:
             if p.get('level') != level:
@@ -1717,16 +1815,24 @@ class CCRU_SANDKPIToolBox:
             else:
                 set_total_res += round(score) * p.get('KPI Weight')
             # saving to DB
-            attributes_for_level2 = self.create_attributes_for_level2_df(p, score, kpi_fk)
-            self.write_to_kpi_results_old(attributes_for_level2, 'level2')
+            if not cooler_dict:
+                attributes_for_level2 = self.create_attributes_for_level2_df(p, score, kpi_fk)
+                self.write_to_kpi_results_old(attributes_for_level2, 'level2')
 
-            if p.get("KPI ID") in params.values()[2]["SESSION LEVEL"]:
-                self.write_to_kpi_facts_hidden(p.get("KPI ID"), None, atomic_result_total, score)
+                if p.get("KPI ID") in params.values()[2]["SESSION LEVEL"]:
+                    self.write_to_kpi_facts_hidden(p.get("KPI ID"), None, atomic_result_total, score)
+
+            if cooler_dict is not None:
+                kpi_fk = self.common.get_kpi_fk_by_kpi_type(p['KPI name Eng'])
+                self.common.write_to_db_result(fk=kpi_fk, numerator_id=cooler_dict[CCRU_SANDConsts.COOLER_FK],
+                                               denominator_id=cooler_dict['cooler_model_fk'],
+                                               context_id=cooler_dict[ScifConsts.SCENE_FK], score=score,
+                                               identifier_parent=cooler_dict, should_enter=True)
 
         return set_total_res
 
     @kpi_runtime()
-    def check_atomic_passed(self, params, level=2):
+    def check_atomic_passed(self, params, level=2, cooler_dict=None):
         set_total_res = 0
         for p in params.values()[0]:
             if p.get('level') != level:
@@ -1802,16 +1908,24 @@ class CCRU_SANDKPIToolBox:
                 set_total_res += round(score) * p.get('KPI Weight')
 
             # saving to DB
-            attributes_for_level2 = self.create_attributes_for_level2_df(p, score, kpi_fk)
-            self.write_to_kpi_results_old(attributes_for_level2, 'level2')
+            if not cooler_dict:
+                attributes_for_level2 = self.create_attributes_for_level2_df(p, score, kpi_fk)
+                self.write_to_kpi_results_old(attributes_for_level2, 'level2')
 
-            if p.get("KPI ID") in params.values()[2]["SESSION LEVEL"]:
-                self.write_to_kpi_facts_hidden(p.get("KPI ID"), None, kpi_total, score)
+                if p.get("KPI ID") in params.values()[2]["SESSION LEVEL"]:
+                    self.write_to_kpi_facts_hidden(p.get("KPI ID"), None, kpi_total, score)
+
+            if cooler_dict is not None:
+                kpi_fk = self.common.get_kpi_fk_by_kpi_type(p['KPI name Eng'])
+                self.common.write_to_db_result(fk=kpi_fk, numerator_id=cooler_dict[CCRU_SANDConsts.COOLER_FK],
+                                               denominator_id=cooler_dict['cooler_model_fk'],
+                                               context_id=cooler_dict[ScifConsts.SCENE_FK], score=score,
+                                               identifier_parent=cooler_dict, should_enter=True)
 
         return set_total_res
 
     @kpi_runtime()
-    def check_atomic_passed_on_the_same_scene(self, params, level=2):
+    def check_atomic_passed_on_the_same_scene(self, params, level=2, cooler_dict=None):
         set_total_res = 0
         self.passed_scenes_per_kpi = {}
         for p in params.values()[0]:
@@ -1940,11 +2054,19 @@ class CCRU_SANDKPIToolBox:
             else:
                 set_total_res += round(score) * p.get('KPI Weight')
             # saving to DB
-            attributes_for_level2 = self.create_attributes_for_level2_df(p, score, kpi_fk)
-            self.write_to_kpi_results_old(attributes_for_level2, 'level2')
+            if not cooler_dict:
+                attributes_for_level2 = self.create_attributes_for_level2_df(p, score, kpi_fk)
+                self.write_to_kpi_results_old(attributes_for_level2, 'level2')
 
-            if p.get("KPI ID") in params.values()[2]["SESSION LEVEL"]:
-                self.write_to_kpi_facts_hidden(p.get("KPI ID"), None, None, score)
+                if p.get("KPI ID") in params.values()[2]["SESSION LEVEL"]:
+                    self.write_to_kpi_facts_hidden(p.get("KPI ID"), None, None, score)
+
+            if cooler_dict is not None:
+                kpi_fk = self.common.get_kpi_fk_by_kpi_type(p['KPI name Eng'])
+                self.common.write_to_db_result(fk=kpi_fk, numerator_id=cooler_dict[CCRU_SANDConsts.COOLER_FK],
+                                               denominator_id=cooler_dict['cooler_model_fk'],
+                                               context_id=cooler_dict[ScifConsts.SCENE_FK], score=score,
+                                               identifier_parent=cooler_dict, should_enter=True)
 
         return set_total_res
 
@@ -2011,7 +2133,7 @@ class CCRU_SANDKPIToolBox:
         return total_res
 
     @kpi_runtime()
-    def check_weighted_average(self, params, level=2):
+    def check_weighted_average(self, params, level=2, cooler_dict=None):
         set_total_res = 0
         for p in params.values()[0]:
             if p.get('level') != level:
@@ -2088,15 +2210,16 @@ class CCRU_SANDKPIToolBox:
                             kpi_total_weight += 1
 
                     # write to DB
-                    atomic_kpi_fk = self.kpi_fetcher.get_atomic_kpi_fk(
-                        c.get('KPI name Eng'), kpi_fk)
-                    if c.get("Formula").strip() == "each SKU hits facings target":
-                        attributes_for_level3 = self.create_attributes_for_level3_df(c, (atomic_score, atomic_res, 100),
-                                                                                     kpi_fk, atomic_kpi_fk)
-                    else:
-                        attributes_for_level3 = self.create_attributes_for_level3_df(c, atomic_score,
-                                                                                     kpi_fk, atomic_kpi_fk)
-                    self.write_to_kpi_results_old(attributes_for_level3, 'level3')
+                    if not cooler_dict:
+                        atomic_kpi_fk = self.kpi_fetcher.get_atomic_kpi_fk(
+                            c.get('KPI name Eng'), kpi_fk)
+                        if c.get("Formula").strip() == "each SKU hits facings target":
+                            attributes_for_level3 = self.create_attributes_for_level3_df(c, (atomic_score, atomic_res, 100),
+                                                                                         kpi_fk, atomic_kpi_fk)
+                        else:
+                            attributes_for_level3 = self.create_attributes_for_level3_df(c, atomic_score,
+                                                                                         kpi_fk, atomic_kpi_fk)
+                        self.write_to_kpi_results_old(attributes_for_level3, 'level3')
 
             if kpi_total_weight:
                 if p.get('Formula').strip() != "Weighted Sum":
@@ -2110,10 +2233,18 @@ class CCRU_SANDKPIToolBox:
             else:
                 set_total_res += round(kpi_score) * p.get('KPI Weight')
             # saving to DB
-            if kpi_fk:
-                attributes_for_level2 = self.create_attributes_for_level2_df(p, kpi_score, kpi_fk)
-                self.write_to_kpi_results_old(attributes_for_level2, 'level2')
-            self.write_to_db_category_kpis_for_mr(p, result=kpi_score, score=set_total_res)
+            if not cooler_dict:
+                if kpi_fk:
+                    attributes_for_level2 = self.create_attributes_for_level2_df(p, kpi_score, kpi_fk)
+                    self.write_to_kpi_results_old(attributes_for_level2, 'level2')
+                self.write_to_db_category_kpis_for_mr(p, result=kpi_score, score=set_total_res)
+
+            if cooler_dict is not None:
+                kpi_fk = self.common.get_kpi_fk_by_kpi_type(p['KPI name Eng'])
+                self.common.write_to_db_result(fk=kpi_fk, numerator_id=cooler_dict[CCRU_SANDConsts.COOLER_FK],
+                                               denominator_id=cooler_dict['cooler_model_fk'],
+                                               context_id=cooler_dict[ScifConsts.SCENE_FK], score=kpi_score,
+                                               identifier_parent=cooler_dict, should_enter=True)
         return set_total_res
 
     def write_to_db_category_kpis_for_mr(self, params, result, score):
@@ -2132,7 +2263,7 @@ class CCRU_SANDKPIToolBox:
                                 'Check kpi template'.format(params.get(CAT_KPI_VALUE)))
 
     @kpi_runtime()
-    def check_number_of_scenes_no_tagging(self, params, level=2):
+    def check_number_of_scenes_no_tagging(self, params, level=2, cooler_dict=None):
         scenes_info = pd.merge(self.scenes_info, self.templates, on='template_fk')
         if level == 3:
             if params.get('Scenes to include'):
@@ -2194,21 +2325,29 @@ class CCRU_SANDKPIToolBox:
                 else:
                     set_total_res += round(score) * p.get('KPI Weight')
 
-                kpi_fk = self.kpi_fetcher.get_kpi_fk(p.get('KPI name Eng'))
-                atomic_kpi_fk = self.kpi_fetcher.get_atomic_kpi_fk(p.get('KPI name Eng'), kpi_fk)
+                if not cooler_dict:
+                    kpi_fk = self.kpi_fetcher.get_kpi_fk(p.get('KPI name Eng'))
+                    atomic_kpi_fk = self.kpi_fetcher.get_atomic_kpi_fk(p.get('KPI name Eng'), kpi_fk)
 
-                if level == 2:
-                    attributes_for_level3 = self.create_attributes_for_level3_df(
-                        p, score, kpi_fk, atomic_kpi_fk, level=2, additional_level=3)
-                    self.write_to_kpi_results_old(attributes_for_level3, 'level3')
-                    attributes_for_level2 = self.create_attributes_for_level2_df(p, score, kpi_fk)
-                    self.write_to_kpi_results_old(attributes_for_level2, 'level2')
-                # else:
-                #     attributes_for_level3 = self.create_attributes_for_level3_df(p, score, kpi_fk, atomic_kpi_fk)
-                #     self.write_to_kpi_results_old(attributes_for_level3, 'level3')
+                    if level == 2:
+                        attributes_for_level3 = self.create_attributes_for_level3_df(
+                            p, score, kpi_fk, atomic_kpi_fk, level=2, additional_level=3)
+                        self.write_to_kpi_results_old(attributes_for_level3, 'level3')
+                        attributes_for_level2 = self.create_attributes_for_level2_df(p, score, kpi_fk)
+                        self.write_to_kpi_results_old(attributes_for_level2, 'level2')
+                    # else:
+                    #     attributes_for_level3 = self.create_attributes_for_level3_df(p, score, kpi_fk, atomic_kpi_fk)
+                    #     self.write_to_kpi_results_old(attributes_for_level3, 'level3')
 
-                if p.get("KPI ID") in params.values()[2]["SESSION LEVEL"]:
-                    self.write_to_kpi_facts_hidden(p.get("KPI ID"), None, None, score)
+                    if p.get("KPI ID") in params.values()[2]["SESSION LEVEL"]:
+                        self.write_to_kpi_facts_hidden(p.get("KPI ID"), None, None, score)
+
+                if cooler_dict is not None:
+                    kpi_fk = self.common.get_kpi_fk_by_kpi_type(p['KPI name Eng'])
+                    self.common.write_to_db_result(fk=kpi_fk, numerator_id=cooler_dict[CCRU_SANDConsts.COOLER_FK],
+                                                   denominator_id=cooler_dict['cooler_model_fk'],
+                                                   context_id=cooler_dict[ScifConsts.SCENE_FK], score=score,
+                                                   identifier_parent=cooler_dict, should_enter=True)
 
             return set_total_res
 
@@ -3745,7 +3884,7 @@ class CCRU_SANDKPIToolBox:
         return
 
     @kpi_runtime()
-    def check_kpi_scores(self, params, level=2):
+    def check_kpi_scores(self, params, level=2, cooler_dict=None):
         set_total_res = 0
         for p in params.values()[0]:
             if p.get('level') != level:
@@ -3770,23 +3909,30 @@ class CCRU_SANDKPIToolBox:
                             kpi_result += 1
 
                 kpi_score = self.calculate_score(kpi_result, p)
-                kpi_fk = self.kpi_fetcher.get_kpi_fk(p.get('KPI name Eng'))
+                if not cooler_dict:
+                    kpi_fk = self.kpi_fetcher.get_kpi_fk(p.get('KPI name Eng'))
 
-                # saving to DB
-                if level == 2:
-                    attributes_for_level3 = self.create_attributes_for_level3_df(
-                        p, kpi_score, kpi_fk, level=2, additional_level=3)
-                    self.write_to_kpi_results_old(attributes_for_level3, 'level3')
-                    attributes_for_level2 = self.create_attributes_for_level2_df(
-                        p, kpi_score, kpi_fk)
-                    self.write_to_kpi_results_old(attributes_for_level2, 'level2')
-                else:
-                    attributes_for_level3 = self.create_attributes_for_level3_df(
-                        p, kpi_score, kpi_fk)
-                    self.write_to_kpi_results_old(attributes_for_level3, 'level3')
+                    # saving to DB
+                    if level == 2:
+                        attributes_for_level3 = self.create_attributes_for_level3_df(
+                            p, kpi_score, kpi_fk, level=2, additional_level=3)
+                        self.write_to_kpi_results_old(attributes_for_level3, 'level3')
+                        attributes_for_level2 = self.create_attributes_for_level2_df(
+                            p, kpi_score, kpi_fk)
+                        self.write_to_kpi_results_old(attributes_for_level2, 'level2')
+                    else:
+                        attributes_for_level3 = self.create_attributes_for_level3_df(
+                            p, kpi_score, kpi_fk)
+                        self.write_to_kpi_results_old(attributes_for_level3, 'level3')
 
                 set_total_res += round(kpi_score) * p.get('KPI Weight')
 
+                if cooler_dict is not None:
+                    kpi_fk = self.common.get_kpi_fk_by_kpi_type(p['KPI name Eng'])
+                    self.common.write_to_db_result(fk=kpi_fk, numerator_id=cooler_dict[CCRU_SANDConsts.COOLER_FK],
+                                                   denominator_id=cooler_dict['cooler_model_fk'],
+                                                   context_id=cooler_dict[ScifConsts.SCENE_FK], score=kpi_score,
+                                                   identifier_parent=cooler_dict, should_enter=True)
         return set_total_res
 
     def get_object_facings(self,
@@ -3853,45 +3999,191 @@ class CCRU_SANDKPIToolBox:
             object_facings = 0
         return object_facings
 
-    # Cooler Audit
     def calculate_cooler_kpis(self, kpi_data, group_model_map):
-        cooler_scenes = self.scenes_in_session[self.scenes_in_session[ScifConsts.LOCATION_TYPE]
-                                               == CCRU_SANDConsts.COOLER][ScifConsts.SCENE_FK].values
-        cooler_ass_store = self.cooler_assortment[self.cooler_assortment[StoreInfoConsts.STORE_FK] == self.store_id] # check if I need it
+        cooler_ass_store = self.cooler_assortment
         if not cooler_ass_store.empty:
-            self.calculate_cooler_presence(cooler_ass_store)
-            self.calculate_cooler_score(kpi_data, group_model_map) # maybe pass cooler scenes
+            cooler_audit_kpi_fk = self.common.get_kpi_fk_by_kpi_type(CCRU_SANDConsts.COOLER_AUDIT_SCORE)
+            top_idenfifier_parent = {'kpi_fk': cooler_audit_kpi_fk}
+            cooler_ass_store, visit_presence_score = self.calculate_cooler_presence(cooler_ass_store,
+                                                                                    top_idenfifier_parent)
+            visit_cooler_score = self.calculate_cooler_score(kpi_data, group_model_map, cooler_ass_store,
+                                                             top_idenfifier_parent)
+            audit_score = (visit_presence_score + visit_cooler_score) / 2
+            self.common.write_to_db_result(fk=cooler_audit_kpi_fk, numerator_id=self.own_manufacturer_id,
+                                           denominator_id=self.store_id, score=audit_score, result=audit_score,
+                                           identifier_result=top_idenfifier_parent, should_enter=True)
+            cooler_audit_fk_old = self.kpi_fetcher.kpi_static_data['kpi_set_fk'].values[0]
+            attributes_for_table1 = pd.DataFrame([(CCRU_SANDConsts.COOLER_AUDIT_SCORE, self.session_uid, self.store_id,
+                                                   self.visit_date.isoformat(), audit_score, cooler_audit_fk_old)],
+                                                 columns=['kps_name', 'session_uid', 'store_fk', 'visit_date',
+                                                          'score_1', 'kpi_set_fk'])
+            self.write_to_kpi_results_old(attributes_for_table1, 'level1')
 
-            self.calculate_total_cooler_audit_score()
+    def get_presence_type_result(self, result):
+        value = 'EXTRA'
+        if result is not None:
+            value = 'OOS' if not result else 'DISTRIBUTED'
+        custom_result = self.get_kpi_result_value_pk_by_value(value)
+        return custom_result
 
-    def calculate_cooler_presence(self, cooler_ass_store):
-        cooler_ass_store = cooler_ass_store.merge(self.cooler_survey_responses, how='outer',
-                                                  left_on=CCRU_SANDConsts.REDUCED_BAR_CODE,
-                                                  right_on=CCRU_SANDConsts.SURVEY_ANSWER)
-        assortment_df = cooler_ass_store[~(cooler_ass_store[CCRU_SANDConsts.REDUCED_BAR_CODE].isnull())]
-        coolers_out_of_template = cooler_ass_store[cooler_ass_store[CCRU_SANDConsts.REDUCED_BAR_CODE].isnull()]
-        for i, row in assortment_df.iterrows():
-            # write particulart cooler kpi result depending on the CCRU_SANDConsts.SURVEY_ANSWER column value
-            pass
-        visit_cooler_presence_result = \
-            len(~assortment_df[assortment_df[CCRU_SANDConsts.SURVEY_ANSWER].isnull()]) / len(assortment_df) * 100
-        for i, row in coolers_out_of_template.iterrows():
-            extra_cooler = row[CCRU_SANDConsts.SURVEY_ANSWER]
-            cooler_ass_records = self.cooler_assortment[self.cooler_assortment[CCRU_SANDConsts.REDUCED_BAR_CODE] == extra_cooler]
-            if cooler_ass_records.empty:
-                # write result to unidentified coolers kpi - maybe a separate kpi
-                pass
-            else:
-                extra_cooler_row = cooler_ass_records.iloc[0]
-                # numerator  extra_cooler_row[COOLER_ID]
-                # denominator extra_cooler_row[store_fk]
-                # context extra_cooler_row[scene_fk]
-            pass
+    def get_kpi_result_value_pk_by_value(self, value):
+        pk = None
+        try:
+            pk = self.kpi_result_values[self.kpi_result_values['result_value'] == value]['result_value_fk'].values[0]
+        except Exception as e:
+            Log.error('Value {} does not exist: {}'.format(value, e))
+        return pk
 
-    def calculate_cooler_score(self, kpi_data, group_model_map):        pass
+    @staticmethod
+    def match_survey_to_assortment(row,  cooler_ass_arr, assigned_coolers):
+        survey_ans = row[CCRU_SANDConsts.SURVEY_ANSWER]
+        ans_len = len(survey_ans)
+        for cooler in cooler_ass_arr:
+            if len(cooler) > ans_len:
+                if (cooler[-ans_len:] == survey_ans) and (cooler not in assigned_coolers):
+                    assigned_coolers.append(cooler)
+                    return cooler
+        return None
 
-    def calculate_total_cooler_audit_score(self):
-        pass
+    def write_extra_coolers_results(self, extra_coolers_df, identifier_parent):
+        extra_score = None
+        custom_result = self.get_presence_type_result(extra_score)
+        kpi_fk = self.common.get_kpi_fk_by_kpi_type(CCRU_SANDConsts.EXTRA_COOLER_PRESENCE)
+        for i, row in extra_coolers_df.iterrows():
+            numerator_id = row['pk']
+            self.common.write_to_db_result(fk=kpi_fk, numerator_id=numerator_id, context_id=row[ScifConsts.SCENE_FK],
+                                           score=extra_score, result=custom_result, identifier_parent=identifier_parent,
+                                           should_enter=True)
+
+    def calculate_cooler_presence(self, cooler_ass_store, top_identif_parent):
+        visit_kpi_fk = self.common.get_kpi_fk_by_kpi_type(CCRU_SANDConsts.VISIT_COOLER_AVAILABILITY)
+        visit_identif_par = {'kpi_fk': visit_kpi_fk}
+        coolers_survey = self.cooler_survey_responses
+        visit_total_result = 0
+        if not coolers_survey.empty:
+            coolers_survey['answ_len'] = coolers_survey[CCRU_SANDConsts.SURVEY_ANSWER].apply(lambda x: len(str(x)) \
+                                                                                                if x is not None else 0)
+            small_responses = coolers_survey[coolers_survey['answ_len'] < CCRU_SANDConsts.MIN_NUMBER_DIGITS] \
+                                                                        [CCRU_SANDConsts.SURVEY_ANSWER].values.tolist()
+            if len(small_responses) > 0:
+                Log.warning('The answer lengths for the following coolers are below '
+                            'the minimum of 3 digits: {}'.format(small_responses))
+
+            valid_survey_answ = coolers_survey[~(coolers_survey[CCRU_SANDConsts.SURVEY_ANSWER].isin(small_responses))]
+            valid_survey_answ = valid_survey_answ.reset_index(drop=True)
+            valid_survey_answ['assigned_cooler_id'] = np.nan
+            cooler_ass_arr = cooler_ass_store[CCRU_SANDConsts.COOLER_ID].values
+            if not valid_survey_answ.empty:
+                assigned_coolers = []
+                valid_survey_answ['assigned_cooler_id'] = valid_survey_answ.apply(self.match_survey_to_assortment,
+                                                                                  axis=1, args=(cooler_ass_arr,
+                                                                                                assigned_coolers))
+            cooler_ass_store = cooler_ass_store.merge(valid_survey_answ, right_on='assigned_cooler_id',
+                                                      left_on=CCRU_SANDConsts.COOLER_ID, how='left')
+            unassigned_responses = valid_survey_answ[valid_survey_answ['assigned_cooler_id'].isnull()]\
+                                                                    [CCRU_SANDConsts.SURVEY_ANSWER].values.tolist()
+
+            for i, row in cooler_ass_store.iterrows():
+                score = 0 if row['assigned_cooler_id'] is None or np.isnan(row['assigned_cooler_id']) else 100
+                custom_result = self.get_presence_type_result(score)
+                self.common.write_to_db_result(fk=row['kpi_level_2_fk'], numerator_id=row[CCRU_SANDConsts.COOLER_FK],
+                                               denominator_id=row[CCRU_SANDConsts.COOLER_MODEL_FK],
+                                               context_id=row[ScifConsts.SCENE_FK], result=custom_result, score=score,
+                                               identifier_parent=visit_identif_par, should_enter=True)
+            coolers_in_sess = cooler_ass_store[~(cooler_ass_store[CCRU_SANDConsts.SURVEY_ANSWER].isnull())]
+            visit_total_result = len(coolers_in_sess) / len(cooler_ass_store) * 100
+
+            extra_coolers_df = coolers_survey[coolers_survey[CCRU_SANDConsts.SURVEY_ANSWER].isin(small_responses +
+                                                                                                 unassigned_responses)]
+            self.write_extra_coolers_results(extra_coolers_df, top_identif_parent)
+
+        self.common.write_to_db_result(fk=visit_kpi_fk, numerator_id=self.own_manufacturer_id,
+                                       denominator_id=self.store_id, score=visit_total_result,
+                                       result=visit_total_result, identifier_parent=top_identif_parent,
+                                       identifier_result=visit_identif_par, should_enter=True)
+
+        visit_fk_old = self.kpi_fetcher.kpi_static_data[self.kpi_fetcher.kpi_static_data['kpi_name'] \
+                                                        == CCRU_SANDConsts.VISIT_COOLER_AVAILABILITY]['kpi_fk'].values[0]
+        attributes_for_table2 = pd.DataFrame([(self.session_uid, self.store_id, self.visit_date.isoformat(),
+                                               visit_fk_old, CCRU_SANDConsts.VISIT_COOLER_AVAILABILITY,
+                                               visit_total_result)],
+                                             columns=['session_uid', 'store_fk', 'visit_date', 'kpi_fk', 'kpk_name',
+                                                      'score'])
+        self.write_to_kpi_results_old(attributes_for_table2, 'level2')
+
+        return cooler_ass_store, visit_total_result
+
+    def calculate_cooler_score(self, kpi_data, group_model_map, cooler_ass_df, top_identif_parent):
+        visit_kpi_fk = self.common.get_kpi_fk_by_kpi_type(CCRU_SANDConsts.VISIT_COOLER_SCORE)
+        visit_identifier_parent = {'kpi_fk': visit_kpi_fk}
+        cooler_visit_result = 0
+        if not self.cooler_survey_responses.empty:
+            cooler_ass_df = cooler_ass_df[~cooler_ass_df[ScifConsts.SCENE_FK].isnull()]
+            cooler_scores = {}
+            cooler_score_fk = self.common.get_kpi_fk_by_kpi_type(CCRU_SANDConsts.COOLER_SCORE)
+
+            for i, cooler_row in cooler_ass_df.iterrows():
+                cooler_scene = cooler_row[ScifConsts.SCENE_FK]
+                cooler_fk = cooler_row[CCRU_SANDConsts.COOLER_FK]
+                cooler_model_fk = cooler_row['cooler_model_fk']
+                self.set_scif_and_matches_to_scene_lvl(cooler_scene)
+                kpi_group = group_model_map[group_model_map[CCRU_SANDConsts.KPI_GROUP] == \
+                                            cooler_row[CCRU_SANDConsts.COOLER_MODEL_NAME]]['Cooler Model'].values[0]
+                kpi_group_data = copy.deepcopy(kpi_data)
+                kpi_group_data[0] = filter(lambda x: x['Cooler Model'] == kpi_group, kpi_data[0])
+
+                cooler_dict = {ScifConsts.SCENE_FK: cooler_scene, CCRU_SANDConsts.COOLER_FK: cooler_fk,
+                               'cooler_model_fk': cooler_model_fk, 'kpi_fk': cooler_score_fk}
+
+                score = 0
+                score += self.check_availability(kpi_group_data, cooler_dict=cooler_dict)
+                score += self.check_facings_sos(kpi_group_data, cooler_dict=cooler_dict)
+                score += self.check_share_of_cch(kpi_group_data, cooler_dict=cooler_dict)
+                score += self.check_number_of_skus_per_door_range(kpi_group_data, cooler_dict=cooler_dict)
+                score += self.check_number_of_doors(kpi_group_data, cooler_dict=cooler_dict)
+                score += self.check_number_of_scenes(kpi_group_data, cooler_dict=cooler_dict)
+                score += self.check_number_of_scenes_no_tagging(kpi_group_data, cooler_dict=cooler_dict)
+                score += self.check_customer_cooler_doors(kpi_group_data, cooler_dict=cooler_dict)
+                score += self.check_atomic_passed(kpi_group_data, cooler_dict=cooler_dict)
+                score += self.check_atomic_passed_on_the_same_scene(kpi_group_data, cooler_dict=cooler_dict)
+                score += self.check_sum_atomics(kpi_group_data, cooler_dict=cooler_dict)
+                score += self.check_dummies(kpi_group_data, cooler_dict=cooler_dict)
+                score += self.check_weighted_average(kpi_group_data, cooler_dict=cooler_dict)
+                score += self.check_kpi_scores(kpi_group_data, cooler_dict=cooler_dict)
+
+                cooler_scores.update({cooler_fk: score})
+                self.common.write_to_db_result(fk=cooler_score_fk, numerator_id=cooler_fk,
+                                               denominator_id=cooler_model_fk, identifier_parent=visit_identifier_parent,
+                                               identifier_result=cooler_dict, should_enter=True)
+
+            cooler_visit_result = sum(cooler_scores.values()) / float(len(cooler_ass_df)) if not cooler_ass_df.empty \
+                                                                                                            else 0
+        self.common.write_to_db_result(fk=visit_kpi_fk, numerator_id=self.own_manufacturer_id,
+                                       denominator_id=self.store_id, result=cooler_visit_result,
+                                       score=cooler_visit_result, identifier_result=visit_identifier_parent,
+                                       identifier_parent=top_identif_parent, should_enter=True)
+
+        visit_fk_old = self.kpi_fetcher.kpi_static_data[self.kpi_fetcher.kpi_static_data['kpi_name'] \
+                                                        == CCRU_SANDConsts.VISIT_COOLER_SCORE]['kpi_fk'].values[0]
+        attributes_for_table2 = pd.DataFrame([(self.session_uid, self.store_id, self.visit_date.isoformat(),
+                                               visit_fk_old, CCRU_SANDConsts.VISIT_COOLER_SCORE,
+                                               cooler_visit_result)],
+                                             columns=['session_uid', 'store_fk', 'visit_date', 'kpi_fk', 'kpk_name',
+                                                      'score'])
+        self.write_to_kpi_results_old(attributes_for_table2, 'level2')
+
+        self.reset_scif_and_matches_to_initial_values()
+        return cooler_visit_result
+
+    def set_scif_and_matches_to_scene_lvl(self, scene_fk):
+        self.scif = self.scif_session[self.scif_session['scene_fk'] == scene_fk]
+        self.matches = self.matches_session[self.matches_session['scene_fk'] == scene_fk]
+
+    def reset_scif_and_matches_to_initial_values(self):
+        self.scif = self.scif_session
+        self.matches = self.matches_session
+
+    #---------- Cooler Audit end----------
 
     def create_kpi_groups(self, kpi_data):
         if kpi_data:

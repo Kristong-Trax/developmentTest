@@ -12,6 +12,7 @@ from KPIUtils_v2.Utils.Decorators.Decorators import log_runtime
 from Projects.CCRU_SAND.Utils.Consts import CCRU_SANDConsts
 from Projects.CCRU_SAND.Utils.JSON import CCRU_SANDJsonGenerator
 from Projects.CCRU_SAND.Utils.ToolBox import CCRU_SANDKPIToolBox
+from KPIUtils_v2.Utils.Consts.DataProvider import ScifConsts
 
 
 __author__ = 'sergey'
@@ -68,6 +69,7 @@ class CCRU_SANDProjectCalculations:
         self.json = CCRU_SANDJsonGenerator()
 
         self.results = {}
+        self.kpi_source_json = None
 
     def main_function(self):
 
@@ -97,6 +99,7 @@ class CCRU_SANDProjectCalculations:
 
     def calculate_red_score(self):
         kpi_source_json = self.json.create_kpi_source('KPI_Source.xlsx', self.pos_kpi_set_name)
+        self.kpi_source_json = kpi_source_json
         kpi_source = {}
         for row in kpi_source_json:
             # Log.info('SOURCE: {}'.format(row.get(SOURCE)))
@@ -193,10 +196,11 @@ class CCRU_SANDProjectCalculations:
                 self.tool_box.calculate_contract_execution(self.json.project_kpi_dict.get('contract'),
                                                            kpi_source[CONTRACT][SET])
 
-        # Cooler Audit
-        if kpi_source[COOLER_AUDIT][SET]:
-            self.tool_box.set_kpi_set(kpi_source[COOLER_AUDIT][SET], COOLER_AUDIT)
-            self.calculate_cooler_audit(kpi_source[COOLER_AUDIT])
+        if self.tool_box.visit_type in [self.tool_box.STANDARD_VISIT]:
+            if self.tool_box.cooler_scenes:
+                if not self.tool_box.cooler_assortment.empty:
+                    self.tool_box.set_kpi_set(CCRU_SANDConsts.COOLER_AUDIT_SCORE, CCRU_SANDConsts.COOLER_AUDIT_SCORE)
+                    self.calculate_cooler_audit()
 
         Log.debug('KPI calculation stage: {}'.format('Committing results old'))
         self.tool_box.commit_results_data_old()
@@ -267,10 +271,11 @@ class CCRU_SANDProjectCalculations:
         Log.debug('KPI calculation stage: {}'.format('Committing results new'))
         self.tool_box.common.commit_results_data()
 
-    def calculate_cooler_audit(self, kpi_source):
-        self.json.create_kpi_data_json('cooler_audit', kpi_source[FILE], sheet_name=kpi_source[SHEET])
-        kpi_data = self.json.project_kpi_dict.get('cooler_audit')
-        group_model_map = pd.read_excel(os.path.join(self.json.base_path, kpi_source[FILE]), sheet_name=GROUP_MODEL_MAP)
+    def calculate_cooler_audit(self):
+        self.json.create_kpi_data_json('kpi_data', 'Cooler_Quality.xlsx', sheet_name='ALL')
+        kpi_data = self.json.project_kpi_dict.get('kpi_data')
+        group_model_map = pd.read_excel(os.path.join(self.json.base_path, 'Cooler_Quality.xlsx'),
+                                        sheet_name=GROUP_MODEL_MAP)
         self.tool_box.calculate_cooler_kpis(kpi_data, group_model_map)
 
     def rds_connection(self):
