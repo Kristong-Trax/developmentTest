@@ -29,6 +29,7 @@ class DataTestUnitCCRU(object):
     test_store = None
     attr15_store = 1.5
     pos_kpi_set_name = 'POS Test'
+    pos_kpi_set_type = 'POS'
     session_user = {'user_position': 'MD', 'user_name': 'USER', 'user_role': 'Sales Rep'}
     planned_visit_flag = 1
 
