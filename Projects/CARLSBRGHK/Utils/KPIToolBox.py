@@ -8,13 +8,13 @@ from Trax.Utils.Logging.Logger import Log
 from Trax.Cloud.Services.Connector.Keys import DbUsers
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
+from KPIUtils_v2.GlobalDataProvider.PsDataProvider import PsDataProvider
+
 
 __author__ = 'nidhin'
 
-OWN_MAN_NAME = 'Diageo'  # case insensitive
 TEMPLATE_PARENT_FOLDER = 'Data'
 TEMPLATE_NAME = 'Template.xlsx'
-ASSORTMENT_TEMPLATE_NAME = 'Assortments.xlsx'
 
 KPI_NAMES_SHEET = 'kpis'
 ASSORTMENT_SHEET = 'assortment'
@@ -60,16 +60,35 @@ OOS_CODE = 1
 PRESENT_CODE = 2
 EXTRA_CODE = 3
 # KPI Names
+# # Assortment
+MSL_AMBIENT_SHELF_PERC = 'MSL_AMBIENT_SHELF_PERC'
+MSL_COOLER_PERC = 'MSL_COOLER_PERC'
+MSL_FLOOR_STACK_PERC = 'MSL_FLOOR_STACK_PERC'
+
+MSL_AMBIENT_SHELF_LIST = 'MSL_AMBIENT_SHELF_PERC - SKU'
+MSL_COOLER_LIST = 'MSL_COOLER_PERC - SKU'
+MSL_FLOOR_STACK_LIST = 'MSL_FLOOR_STACK_PERC - SKU'
+#  ## Category based Assortment KPIs
+MSL_AMBIENT_SHELF_BY_CATEGORY_PERC = 'MSL_AMBIENT_SHELF_ALL_CATEGORY_PERC'
+MSL_COOLER_BY_CATEGORY_PERC = 'MSL_COOLER_ALL_CATEGORY_PERC'
+MSL_FLOOR_STACK_BY_CATEGORY_PERC = 'MSL_FLOOR_STACK_ALL_CATEGORY_PERC'
+
+MSL_AMBIENT_SHELF_BY_CATEGORY_LIST = 'MSL_AMBIENT_SHELF_ALL_CATEGORY_PERC - SKU'
+MSL_COOLER_BY_CATEGORY_LIST = 'MSL_COOLER_ALL_CATEGORY_PERC - SKU'
+MSL_FLOOR_BY_CATEGORY_LIST = 'MSL_FLOOR_STACK_ALL_CATEGORY_PERC - SKU'
+ASSORTMENT_DATA = [
+    (MSL_AMBIENT_SHELF_PERC, MSL_AMBIENT_SHELF_BY_CATEGORY_PERC),
+    (MSL_COOLER_PERC, MSL_COOLER_BY_CATEGORY_PERC),
+    (MSL_FLOOR_STACK_PERC, MSL_FLOOR_STACK_BY_CATEGORY_PERC),
+    ]
+# # Assortment ends
+
 COUNT_SKU_IN_STOCK = 'COUNT_SKU_IN_STOCK'
-DST_MAN_BY_STORE_PERC = 'DST_MAN_BY_STORE_PERC'
-OOS_MAN_BY_STORE_PERC = 'OOS_MAN_BY_STORE_PERC'
-PRODUCT_PRESENCE_BY_STORE_LIST = 'DST_MAN_BY_STORE_PERC - SKU'
-OOS_PRODUCT_BY_STORE_LIST = 'OOS_MAN_BY_STORE_PERC - SKU'
 # map to save list kpis
-CODE_KPI_MAP = {
-    OOS_CODE: OOS_PRODUCT_BY_STORE_LIST,
-    PRESENT_CODE: PRODUCT_PRESENCE_BY_STORE_LIST,
-}
+# CODE_KPI_MAP = {
+#     OOS_CODE: OOS_PRODUCT_BY_STORE_LIST,
+#     PRESENT_CODE: PRODUCT_PRESENCE_BY_STORE_LIST,
+# }
 # policy JSON map: key is what is in the policy and value corresponds to the one present in the self.store_info below
 POLICY_STORE_MAP = {
     'retailer': 'retailer_name',
@@ -93,6 +112,8 @@ class CARLSBERGToolBox:
         self.store_info = self.data_provider[Data.STORE_INFO]
         self.store_id = self.store_info['store_fk'].values[0]
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
+        self.ps_data_provider = PsDataProvider(self.data_provider, self.output)
+        self.external_targets = self.ps_data_provider.get_kpi_external_targets()
         self.scene_template_info = self.scif[['scene_fk',
                                               'template_fk', 'template_name']].drop_duplicates()
         self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
@@ -101,12 +122,10 @@ class CARLSBERGToolBox:
         self.kpi_template_path = os.path.join(os.path.dirname(os.path.realpath(__file__)),
                                               '..', TEMPLATE_PARENT_FOLDER,
                                               TEMPLATE_NAME)
-        self.assortment_template_path = os.path.join(os.path.dirname(os.path.realpath(__file__)),
-                                                     '..', TEMPLATE_PARENT_FOLDER,
-                                                     ASSORTMENT_TEMPLATE_NAME)
-        self.own_man_fk = self.all_products[
-            self.all_products['manufacturer_name'].str.lower() == OWN_MAN_NAME.lower()
-        ]['manufacturer_fk'].values[0]
+        self.own_man_fk = self.own_manufacturer_fk = int(self.data_provider.own_manufacturer.param_value.values[0])
+        if not self.own_man_fk:
+            # OWN manufacturer is not set
+            Log.error("Own Manufacturer is not set for project: {}".format(self.project_name))
         self.kpi_template = pd.ExcelFile(self.kpi_template_path)
         self.empty_prod_ids = self.all_products[
             self.all_products.product_name.str.contains('empty', case=False)]['product_fk'].values
@@ -121,7 +140,7 @@ class CARLSBERGToolBox:
         """
         pd.reset_option('mode.chained_assignment')
         with pd.option_context('mode.chained_assignment', None):
-            # self.filter_and_send_kpi_to_calc()
+            self.calculate_fsos_kpis()
             self.calculate_assortment_kpis()
             # self.calculate_sku_count_in_stock()
             # self.calculate_sku_facings_in_floor_stack()
@@ -142,66 +161,135 @@ class CARLSBERGToolBox:
         pass
 
     def calculate_assortment_kpis(self):
-        Log.info("Calculate Assortment KPIs for {} - {}".format(self.project_name, self.session_uid))
-        distribution_kpi = self.kpi_static_data[(self.kpi_static_data[KPI_TYPE_COL] == DST_MAN_BY_STORE_PERC)
-                                                & (self.kpi_static_data['delete_time'].isnull())]
-        oos_kpi = self.kpi_static_data[(self.kpi_static_data[KPI_TYPE_COL] == OOS_MAN_BY_STORE_PERC)
-                                       & (self.kpi_static_data['delete_time'].isnull())]
-        prod_presence_kpi = self.kpi_static_data[(self.kpi_static_data[KPI_TYPE_COL] == PRODUCT_PRESENCE_BY_STORE_LIST)
-                                                 & (self.kpi_static_data['delete_time'].isnull())]
-        oos_prod_kpi = self.kpi_static_data[(self.kpi_static_data[KPI_TYPE_COL] == OOS_PRODUCT_BY_STORE_LIST)
-                                            & (self.kpi_static_data['delete_time'].isnull())]
+        for each_assortment in ASSORTMENT_DATA:
+            # each_assortment:
+            # 0 - store level
+            # 1 - category level
+            msl_store_level, msl_cat_level = each_assortment
+            external_target_data = self.external_targets[self.external_targets['kpi_type']==msl_store_level]
+            if external_target_data.empty:
+                Log.info("{} has no external target data to calculate for session {}.".format(msl_store_level,
+                                                                                              self.session_uid))
+                continue
+            external_target_dict = external_target_data.iloc[0].to_dict()
+            valid_category_fks = external_target_dict.get('include_category_fks', False)
+            valid_scene_fks = external_target_dict.get('template_fks', False)
+            valid_brand_fks = external_target_dict.get('include_brand_fks', False)
+            valid_scif = self.scif  # [self.scif['manufacturer_fk']==self.own_man_fk]
+            if valid_scene_fks:
+                valid_scif = valid_scif[(valid_scif['template_fk'].isin(valid_scene_fks))]
+            if valid_category_fks and not is_nan(valid_category_fks):
+                valid_scif = valid_scif[(valid_scif['category_fk'].isin(valid_category_fks))]
+            if valid_brand_fks and not is_nan(valid_brand_fks):
+                valid_scif = valid_scif[(valid_scif['brand_fk'].isin(valid_brand_fks))]
 
-        def __return_valid_store_policies(policy):
-            policy_json = json.loads(policy)
-            store_json = json.loads(self.store_info.reset_index().to_json(orient='records'))[0]
-            valid_store = True
-            # map the necessary keys to those names knows
-            for policy_value, store_info_value in POLICY_STORE_MAP.iteritems():
-                if policy_value in policy_json:
-                    policy_json[store_info_value] = policy_json.pop(policy_value)
-            for key, values in policy_json.iteritems():
-                if str(store_json[key]) in values:
-                    continue
-                else:
-                    valid_store = False
-                    break
-            return valid_store
+            distribution_kpi = self.kpi_static_data[(self.kpi_static_data[KPI_TYPE_COL] == msl_store_level)
+                                                    & (self.kpi_static_data['delete_time'].isnull())]
+            prod_presence_kpi = self.kpi_static_data[(self.kpi_static_data[KPI_TYPE_COL] == msl_store_level + ' - SKU')
+                                                     & (self.kpi_static_data['delete_time'].isnull())]
+            # Category based Assortments
+            distribution_by_cat_kpi = self.kpi_static_data[(self.kpi_static_data[KPI_TYPE_COL] == msl_cat_level)
+                                                           & (self.kpi_static_data['delete_time'].isnull())]
+            prod_presence_by_cat_kpi = self.kpi_static_data[(self.kpi_static_data[KPI_TYPE_COL] ==
+                                                             msl_cat_level + ' - SKU')
+                                                            & (self.kpi_static_data['delete_time'].isnull())]
 
-        policy_data = self.get_policies(distribution_kpi.iloc[0].pk)
-        if policy_data.empty:
-            Log.info("No Assortments Loaded.")
+            def __return_valid_store_policies(policy):
+                valid_store = True
+                policy_json = json.loads(policy)
+                # special case where its only one assortment for all
+                # that is there is only one key and it is is_active => Y
+                if len(policy_json) == 1 and policy_json.get('is_active') == ['Y']:
+                    return valid_store
+
+                store_json = json.loads(self.store_info.reset_index().to_json(orient='records'))[0]
+                # map the necessary keys to those names knows
+                for policy_value, store_info_value in POLICY_STORE_MAP.iteritems():
+                    if policy_value in policy_json:
+                        policy_json[store_info_value] = policy_json.pop(policy_value)
+                for key, values in policy_json.iteritems():
+                    if str(store_json.get(key, 'is_active')) in values:
+                        continue
+                    else:
+                        valid_store = False
+                        break
+                return valid_store
+
+            policy_data = self.get_policies(distribution_kpi.iloc[0].pk)
+            if policy_data.empty:
+                Log.info("No Assortments Loaded.")
+                return 0
+            resp = policy_data['policy'].apply(__return_valid_store_policies)
+            valid_policy_data = policy_data[resp]
+            if valid_policy_data.empty:
+                Log.info("No policy applicable for session {sess} and kpi {kpi}.".format(
+                    sess=self.session_uid,
+                    kpi=distribution_kpi.iloc[0].type))
+                return 0
+            # calculate and save the percentage values for distribution and oos
+            self.calculate_and_save_distribution(
+                valid_scif=valid_scif,
+                assortment_product_fks=valid_policy_data['product_fk'],
+                distribution_kpi_fk=distribution_kpi.iloc[0].pk,
+                dst_kpi_name=msl_store_level
+            )
+            # calculate and save prod presence and oos products
+            self.calculate_and_save_prod_presence(
+                valid_scif=valid_scif,
+                assortment_product_fks=valid_policy_data['product_fk'],
+                prod_presence_kpi_fk=prod_presence_kpi.iloc[0].pk,
+                distribution_kpi_name=msl_store_level,
+            )
+            # calculate and save the percentage values for distribution and oos
+            self.calculate_and_save_distribution_per_category(
+                valid_scif=valid_scif,
+                assortment_product_fks=valid_policy_data['product_fk'],
+                distribution_kpi_fk=distribution_by_cat_kpi.iloc[0].pk,
+                dst_kpi_name=msl_cat_level
+            )
+            # calculate and save prod presence and oos products
+            self.calculate_and_save_prod_presence_per_category(
+                valid_scif=valid_scif,
+                assortment_product_fks=valid_policy_data['product_fk'],
+                prod_presence_kpi_fk=prod_presence_by_cat_kpi.iloc[0].pk,
+                distribution_kpi_name=msl_cat_level,
+            )
+
+    def calculate_and_save_distribution(self, valid_scif, assortment_product_fks,
+                                        distribution_kpi_fk, dst_kpi_name):
+        """Function to calculate distribution percentage.
+        Saves distribution and oos percentage as values.
+        """
+        Log.info("Calculate {} distribution for {}".format(dst_kpi_name, self.session_uid))
+        scene_products = pd.Series(valid_scif["item_id"].unique())
+        total_products_in_assortment = len(assortment_product_fks)
+        count_of_assortment_prod_in_scene = assortment_product_fks.isin(scene_products).sum()
+        #  count of own man sku / all sku assortment count
+        if not total_products_in_assortment:
+            Log.info("No assortments applicable for session {sess}.".format(sess=self.session_uid))
             return 0
-        resp = policy_data['policy'].apply(__return_valid_store_policies)
-        valid_policy_data = policy_data[resp]
-        if valid_policy_data.empty:
-            Log.info("No policy applicable for session {sess} and kpi {kpi}.".format(
-                sess=self.session_uid,
-                kpi=distribution_kpi.iloc[0].type))
-            return 0
-        # calculate and save the percentage values for distribution and oos
-        self.calculate_and_save_distribution_and_oos(
-            assortment_product_fks=valid_policy_data['product_fk'],
-            distribution_kpi_fk=distribution_kpi.iloc[0].pk,
-            oos_kpi_fk=oos_kpi.iloc[0].pk
-        )
-        # calculate and save prod presence and oos products
-        self.calculate_and_save_prod_presence_and_oos_products(
-            assortment_product_fks=valid_policy_data['product_fk'],
-            prod_presence_kpi_fk=prod_presence_kpi.iloc[0].pk,
-            oos_prod_kpi_fk=oos_prod_kpi.iloc[0].pk,
-            distribution_kpi_name=DST_MAN_BY_STORE_PERC,
-            oos_kpi_name=OOS_MAN_BY_STORE_PERC
-        )
+        distribution_perc = count_of_assortment_prod_in_scene / float(total_products_in_assortment) * 100
+        self.common.write_to_db_result(fk=distribution_kpi_fk,
+                                       numerator_id=self.own_man_fk,
+                                       numerator_result=count_of_assortment_prod_in_scene,
+                                       denominator_id=self.store_id,
+                                       denominator_result=total_products_in_assortment,
+                                       context_id=self.store_id,
+                                       result=distribution_perc,
+                                       score=distribution_perc,
+                                       identifier_result="{}_{}".format(dst_kpi_name, self.store_id),
+                                       should_enter=True
+                                       )
 
-    def calculate_and_save_prod_presence_and_oos_products(self, assortment_product_fks,
-                                                          prod_presence_kpi_fk, oos_prod_kpi_fk,
-                                                          distribution_kpi_name, oos_kpi_name):
-        # all assortment products are only in own manufacturers context
-        total_own_products_in_scene = self.scif[
-            self.scif['manufacturer_fk'].astype(int) == self.own_man_fk
-        ]["item_id"].unique()
-        present_products = np.intersect1d(total_own_products_in_scene, assortment_product_fks)
+    def calculate_and_save_prod_presence(self, valid_scif, assortment_product_fks,
+                                         prod_presence_kpi_fk, distribution_kpi_name):
+        # all assortment products are only in own manufacturers context;
+        # but we have the products and hence no need to filter out denominator
+        Log.info("Calculate {} - SKU for {}".format(distribution_kpi_name, self.session_uid))
+        total_products_in_scene = valid_scif["item_id"].unique()
+        # EXTRA is based on own products
+        total_own_products_in_scene = valid_scif[valid_scif['manufacturer_fk']==self.own_man_fk]["item_id"].unique()
+        present_products = np.intersect1d(total_products_in_scene, assortment_product_fks)
         extra_products = np.setdiff1d(total_own_products_in_scene, present_products)
         oos_products = np.setdiff1d(assortment_product_fks, present_products)
         product_map = {
@@ -218,61 +306,78 @@ class CARLSBERGToolBox:
                                                context_id=self.store_id,
                                                result=assortment_code,
                                                score=assortment_code,
-                                               identifier_result=CODE_KPI_MAP.get(assortment_code),
+                                               identifier_result=distribution_kpi_name + ' - SKU',
                                                identifier_parent="{}_{}".format(distribution_kpi_name, self.store_id),
                                                should_enter=True
                                                )
-            if assortment_code == OOS_CODE:
-                # save OOS products; with OOS % kpi as parent
+
+    def calculate_and_save_distribution_per_category(self, valid_scif, assortment_product_fks,
+                                                     distribution_kpi_fk, dst_kpi_name):
+        """Function to calculate distribution and OOS percentage by Category.
+        Saves distribution and oos percentage as values.
+        """
+        Log.info("Calculate {} per Category for {}".format(dst_kpi_name, self.session_uid))
+        scene_category_group = valid_scif.groupby('category_fk')
+        for category_fk, each_scif_data in scene_category_group:
+            scene_products = pd.Series(each_scif_data["item_id"].unique())
+            # find products in assortment belonging to category_fk
+            curr_category_products_in_assortment = len(self.all_products[
+                (self.all_products.product_fk.isin(assortment_product_fks))
+                & (self.all_products.category_fk == category_fk)])
+            count_of_assortment_prod_in_scene = assortment_product_fks.isin(scene_products).sum()
+            #  count of own sku / all sku assortment count
+            if not curr_category_products_in_assortment:
+                Log.info("No products from assortment with category: {cat} found in session {sess}.".format(
+                    cat=category_fk,
+                    sess=self.session_uid))
+                continue
+            else:
+                distribution_perc = count_of_assortment_prod_in_scene / float(curr_category_products_in_assortment) * 100
+            self.common.write_to_db_result(fk=distribution_kpi_fk,
+                                           numerator_id=self.own_man_fk,
+                                           numerator_result=count_of_assortment_prod_in_scene,
+                                           denominator_id=category_fk,
+                                           denominator_result=curr_category_products_in_assortment,
+                                           context_id=self.store_id,
+                                           result=distribution_perc,
+                                           score=distribution_perc,
+                                           identifier_result="{}_{}".format(dst_kpi_name, category_fk),
+                                           should_enter=True
+                                           )
+
+    def calculate_and_save_prod_presence_per_category(self, valid_scif, assortment_product_fks,
+                                                      prod_presence_kpi_fk, distribution_kpi_name):
+        # all assortment products are only in own manufacturers context;
+        # but we have the products and hence no need to filter out denominator
+        Log.info("Calculate {} - SKU per Category for {}".format(distribution_kpi_name, self.session_uid))
+        scene_category_group = valid_scif.groupby('category_fk')
+        for category_fk, each_scif_data in scene_category_group:
+            total_products_in_scene_for_cat = each_scif_data["item_id"].unique()
+            curr_category_products_in_assortment_df = self.all_products[
+                (self.all_products.product_fk.isin(assortment_product_fks))
+                & (self.all_products.category_fk == category_fk)]
+            curr_category_products_in_assortment = curr_category_products_in_assortment_df['product_fk'].unique()
+            present_products = np.intersect1d(total_products_in_scene_for_cat, curr_category_products_in_assortment)
+            extra_products = np.setdiff1d(total_products_in_scene_for_cat, present_products)
+            oos_products = np.setdiff1d(curr_category_products_in_assortment, present_products)
+            product_map = {
+                OOS_CODE: oos_products,
+                PRESENT_CODE: present_products,
+                # EXTRA_CODE: extra_products
+            }
+            # save product presence; with distribution % kpi as parent
+            for assortment_code, product_fks in product_map.iteritems():
                 for each_fk in product_fks:
-                    self.common.write_to_db_result(fk=oos_prod_kpi_fk,
+                    self.common.write_to_db_result(fk=prod_presence_kpi_fk,
                                                    numerator_id=each_fk,
-                                                   denominator_id=self.store_id,
+                                                   denominator_id=category_fk,
                                                    context_id=self.store_id,
                                                    result=assortment_code,
                                                    score=assortment_code,
-                                                   identifier_result=CODE_KPI_MAP.get(assortment_code),
-                                                   identifier_parent="{}_{}".format(oos_kpi_name, self.store_id),
+                                                   identifier_result=distribution_kpi_name + ' - SKU',
+                                                   identifier_parent="{}_{}".format(distribution_kpi_name, category_fk),
                                                    should_enter=True
                                                    )
-
-    def calculate_and_save_distribution_and_oos(self, assortment_product_fks, distribution_kpi_fk, oos_kpi_fk):
-        """Function to calculate distribution and OOS percentage.
-        Saves distribution and oos percentage as values.
-        """
-        Log.info("Calculate distribution and OOS for {}".format(self.project_name))
-        scene_products = pd.Series(self.scif["item_id"].unique())
-        total_products_in_assortment = len(assortment_product_fks)
-        count_of_assortment_prod_in_scene = assortment_product_fks.isin(scene_products).sum()
-        oos_count = total_products_in_assortment - count_of_assortment_prod_in_scene
-        #  count of lion sku / all sku assortment count
-        if not total_products_in_assortment:
-            Log.info("No assortments applicable for session {sess}.".format(sess=self.session_uid))
-            return 0
-        distribution_perc = count_of_assortment_prod_in_scene / float(total_products_in_assortment) * 100
-        oos_perc = 100 - distribution_perc
-        self.common.write_to_db_result(fk=distribution_kpi_fk,
-                                       numerator_id=self.own_man_fk,
-                                       numerator_result=count_of_assortment_prod_in_scene,
-                                       denominator_id=self.store_id,
-                                       denominator_result=total_products_in_assortment,
-                                       context_id=self.store_id,
-                                       result=distribution_perc,
-                                       score=distribution_perc,
-                                       identifier_result="{}_{}".format(DST_MAN_BY_STORE_PERC, self.store_id),
-                                       should_enter=True
-                                       )
-        self.common.write_to_db_result(fk=oos_kpi_fk,
-                                       numerator_id=self.own_man_fk,
-                                       numerator_result=oos_count,
-                                       denominator_id=self.store_id,
-                                       denominator_result=total_products_in_assortment,
-                                       context_id=self.store_id,
-                                       result=oos_perc,
-                                       score=oos_perc,
-                                       identifier_result="{}_{}".format(OOS_MAN_BY_STORE_PERC, self.store_id),
-                                       should_enter=True
-                                       )
 
     def get_policies(self, kpi_fk):
         query = """ select a.kpi_fk, p.policy_name, p.policy, atag.assortment_group_fk,
@@ -286,12 +391,12 @@ class CARLSBERGToolBox:
         policies = pd.read_sql_query(query.format(kpi_fk=kpi_fk), self.rds_conn.db)
         return policies
 
-    def filter_and_send_kpi_to_calc(self):
+    def calculate_fsos_kpis(self):
         kpi_sheet = self.kpi_template.parse(KPI_NAMES_SHEET)
         kpi_sheet[KPI_FAMILY_COL] = kpi_sheet[KPI_FAMILY_COL].fillna(method='ffill')
         kpi_details = self.kpi_template.parse(KPI_DETAILS_SHEET)
         # get exclude include details from external targets
-        kpi_include_exclude = self.kpi_template.parse(KPI_INC_EXC_SHEET)
+        kpi_include_exclude = self.external_targets[self.external_targets['kpi_type'] == 'FSOS_ALL']
         for index, kpi_sheet_row in kpi_sheet.iterrows():
             if not is_nan(kpi_sheet_row[KPI_ACTIVE]):
                 if str(kpi_sheet_row[KPI_ACTIVE]).strip().lower() in ['0.0', 'n', 'no']:
@@ -323,12 +428,12 @@ class CARLSBERGToolBox:
                 detail['pk'] = kpi['pk'].iloc[0]
                 # gather details
                 groupers, query_string = get_groupers_and_query_string(detail)
-                _include_exclude = kpi_include_exclude[kpi_details[KPI_NAME_COL]
-                                                       == kpi[KPI_TYPE_COL].values[0]]
                 # gather include exclude
-                include_exclude_data_dict = get_include_exclude(_include_exclude)
-                dataframe_to_process = self.get_sanitized_match_prod_scene(
-                    include_exclude_data_dict)
+                include_exclude_data_dict = kpi_include_exclude[['include_brand_fks', 'include_category_fks',
+                                                                 'template_fks', 'empty_exclude', 'irrelevant_exclude',
+                                                                 'others_exclude', 'stacking_exclude']
+                                                                ].to_dict('records')[0]
+                dataframe_to_process = self.get_sanitized_match_prod_scene(include_exclude_data_dict)
             if kpi_sheet_row[KPI_FAMILY_COL] == FSOS:
                 self.calculate_fsos(detail, groupers, query_string, dataframe_to_process)
             elif kpi_sheet_row[KPI_FAMILY_COL] == Count:
@@ -536,49 +641,38 @@ class CARLSBERGToolBox:
             self.scene_template_info, how='left', on='scene_fk', suffixes=('', '_scene')
         )
         # flags
-        include_empty = include_exclude_data_dict.get('empty')
-        include_irrelevant = include_exclude_data_dict.get('irrelevant')
-        include_others = include_exclude_data_dict.get('others')
-        include_stacking = include_exclude_data_dict.get('stacking')
+        empty_exclude = bool(int(include_exclude_data_dict.get('empty_exclude', 0)))
+        irrelevant_exclude = bool(int(include_exclude_data_dict.get('irrelevant_exclude', 0)))
+        others_exclude = bool(int(include_exclude_data_dict.get('others_exclude', 0)))
+        stacking_exclude = bool(int(include_exclude_data_dict.get('stacking_exclude', 0)))
+
         # list
-        scene_types_to_exclude = include_exclude_data_dict.get('scene_types_to_exclude', False)
-        categories_to_exclude = include_exclude_data_dict.get('categories_to_exclude', False)
-        brands_to_exclude = include_exclude_data_dict.get('brands_to_exclude', False)
-        ean_codes_to_exclude = include_exclude_data_dict.get('ean_codes_to_exclude', False)
+        scene_types_to_include = include_exclude_data_dict.get('template_fks', False)
+        categories_to_include = include_exclude_data_dict.get('include_category_fks', False)
+        brands_to_include = include_exclude_data_dict.get('include_brand_fks', False)
+        ean_codes_to_exclude = include_exclude_data_dict.get('exclude_sku_fks', False)
         # Start removing items
-        if scene_types_to_exclude:
+        if scene_types_to_include and not is_nan(scene_types_to_include):
             # list of scene types to include is present, otherwise all included
-            Log.info("Exclude template/scene type {}".format(scene_types_to_exclude))
-            sanitized_products_in_scene.drop(
-                sanitized_products_in_scene[sanitized_products_in_scene['template_name'].str.upper().isin(
-                    [x.upper() if type(x) in [unicode, str] else x for x in scene_types_to_exclude]
-                )].index,
-                inplace=True
-            )
-        if not include_stacking:
+            Log.info("Include only template/scene type fks: {}".format(scene_types_to_include))
+            sanitized_products_in_scene = sanitized_products_in_scene[
+                sanitized_products_in_scene['template_fk'].isin(scene_types_to_include)]
+        if stacking_exclude and not is_nan(stacking_exclude):
             # exclude stacking if the flag is set
-            Log.info("Exclude stacking other than in layer 1 or negative stacking [menu]")
+            Log.info("Exclude stacking; exclude other than in layer 1 or negative stacking [menu]")
             sanitized_products_in_scene = sanitized_products_in_scene.loc[
                 sanitized_products_in_scene['stacking_layer'] <= 1]
-        if categories_to_exclude:
+        if categories_to_include and not is_nan(categories_to_include):
             # list of categories to exclude is present, otherwise all included
-            Log.info("Exclude categories {}".format(categories_to_exclude))
-            sanitized_products_in_scene.drop(
-                sanitized_products_in_scene[sanitized_products_in_scene['category'].str.upper().isin(
-                    [x.upper() if type(x) in [unicode, str] else x for x in categories_to_exclude]
-                )].index,
-                inplace=True
-            )
-        if brands_to_exclude:
+            Log.info("Inlcude only categories: {}".format(categories_to_include))
+            sanitized_products_in_scene = sanitized_products_in_scene[
+                sanitized_products_in_scene['category_fk'].isin(categories_to_include)]
+        if brands_to_include and not is_nan(brands_to_include):
             # list of brands to exclude is present, otherwise all included
-            Log.info("Exclude brands {}".format(brands_to_exclude))
-            sanitized_products_in_scene.drop(
-                sanitized_products_in_scene[sanitized_products_in_scene['brand_name'].str.upper().isin(
-                    [x.upper() if type(x) in [unicode, str] else x for x in brands_to_exclude]
-                )].index,
-                inplace=True
-            )
-        if ean_codes_to_exclude:
+            Log.info("Include only brands: {}".format(brands_to_include))
+            sanitized_products_in_scene = sanitized_products_in_scene[
+                sanitized_products_in_scene['brand_fk'].isin(brands_to_include)]
+        if ean_codes_to_exclude and not is_nan(ean_codes_to_exclude):
             # list of ean_codes to exclude is present, otherwise all included
             Log.info("Exclude ean codes {}".format(ean_codes_to_exclude))
             sanitized_products_in_scene.drop(
@@ -588,16 +682,16 @@ class CARLSBERGToolBox:
                 inplace=True
             )
         product_ids_to_exclude = []
-        if not include_irrelevant:
+        if irrelevant_exclude:
             # add product ids to exclude with irrelevant
             product_ids_to_exclude.extend(self.irrelevant_prod_ids)
-        if not include_others:
+        if others_exclude:
             # add product ids to exclude with others
             product_ids_to_exclude.extend(self.other_prod_ids)
-        if not include_empty:
+        if empty_exclude:
             # add product ids to exclude with empty
             product_ids_to_exclude.extend(self.empty_prod_ids)
-        if product_ids_to_exclude:
+        if product_ids_to_exclude and not is_nan(ean_codes_to_exclude):
             Log.info("Exclude product ids {}".format(product_ids_to_exclude))
             sanitized_products_in_scene.drop(
                 sanitized_products_in_scene[
