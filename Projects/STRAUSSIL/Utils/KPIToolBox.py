@@ -3,9 +3,12 @@ from Trax.Utils.Logging.Logger import Log
 from KPIUtils_v2.Utils.GlobalScripts.Scripts import GlobalSessionToolBox
 import pandas as pd
 from KPIUtils_v2.Utils.Decorators.Decorators import kpi_runtime
-from Projects.STRAUSSIL_SAND.Data.LocalConsts import Consts
+from Projects.STRAUSSIL.Data.LocalConsts import Consts
+from KPIUtils_v2.Utils.Consts.PS import ExternalTargetsConsts
+from KPIUtils_v2.Utils.Consts.DB import
 from KPIUtils_v2.Utils.Parsers import ParseInputKPI as Parser
 from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
+from KPIUtils_v2.GlobalDataProvider.PsDataProvider import PsDataProvider
 
 __author__ = 'ilays'
 
@@ -17,8 +20,11 @@ class ToolBox(GlobalSessionToolBox):
         self.parser = Parser
         self.all_products = self.data_provider[Data.ALL_PRODUCTS]
         self.assortment = Assortment(self.data_provider, self.output)
+        self.ps_data = PsDataProvider(self.data_provider, self.output)
+        self.kpi_external_targets = self.ps_data.get_kpi_external_targets()
 
     def main_calculation(self):
+        self.calculate_score_sos()
         self.calculate_core_oos_and_distribution()
 
     def calculate_core_oos_and_distribution(self):
@@ -135,3 +141,35 @@ class ToolBox(GlobalSessionToolBox):
             numerator = numerator_df['facings'].sum()
         result = round(numerator / float(denominator), 3)
         return result, numerator, denominator
+
+    def calculate_score_sos(self):
+        relevant_template = self.kpi_external_targets[self.kpi_external_targets[ExternalTargetsConsts.OPERATION_TYPE]
+                                                      == Consts.SOS_KPIS]
+        for i, kpi_row in relevant_template.iterrows():
+            kpi_fk, num_type, num_value, deno_type, deno_value, target, target_range = kpi_row[Consts.RELEVANT_FIELDS]
+            numerator_filters, denominator_filters = self.get_num_and_den_filters(num_type, num_value, deno_type,
+                                                                                  deno_value)
+            numerator_df = self.parser.filter_df(conditions=numerator_filters, data_frame_to_filter=self.scif)
+            denominator_df = self.parser.filter_df(conditions=denominator_filters, data_frame_to_filter=self.scif)
+            numerator_df = numerator_df[numerator_df['rlv_sos_sc'] == 1]
+            denominator_df = denominator_df[denominator_df['rlv_sos_sc'] == 1]
+            numerator_result = numerator_df['gross_len_ign_stack'].sum()
+            denominator_result = denominator_df['gross_len_ign_stack'].sum()
+            if denominator_result == 0:
+                result = numerator_result = denominator_result = 0
+            else:
+                result = numerator_result / float(denominator_result)
+            self.common.write_to_db_result(fk=kpi_fk, numerator_id=, denominator_id=,
+                                           numerator_result=numerator_result, denominator_result=denominator_result,
+                                           result=result, score=result)
+
+
+
+    def get_num_and_den_filters(self, numerator_type, numerator_value, denominator_type, denominator_value):
+        if type(numerator_value) != list:
+            numerator_value = [numerator_value]
+        if type(denominator_value) != list:
+            denominator_value = [denominator_value]
+        numerator_filters = {numerator_type: numerator_value}
+        denominator_filters = {denominator_type: denominator_value}
+        return numerator_filters, denominator_filters

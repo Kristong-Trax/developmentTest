@@ -8,6 +8,7 @@ from KPIUtils_v2.Utils.Decorators.Decorators import kpi_runtime
 from Projects.STRAUSSIL_SAND.Data.LocalConsts import Consts
 from KPIUtils_v2.Utils.Parsers import ParseInputKPI as Parser
 from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
+from KPIUtils_v2.GlobalDataProvider.PsDataProvider import PsDataProvider
 
 
 # from KPIUtils_v2.Utils.Consts.DataProvider import 
@@ -39,9 +40,12 @@ class ToolBox(GlobalSessionToolBox):
         self.parser = Parser
         self.all_products = self.data_provider[Data.ALL_PRODUCTS]
         self.assortment = Assortment(self.data_provider, self.output)
+        self.ps_data = PsDataProvider(self.data_provider, self.output)
+        self.kpi_external_targets = self.ps_data.get_kpi_external_targets()
 
     def main_calculation(self):
         self.calculate_core_oos_and_distribution()
+        self.calculate_score_sos()
 
     def calculate_core_oos_and_distribution(self):
         dis_numerator = total_facings = 0
@@ -155,3 +159,6 @@ class ToolBox(GlobalSessionToolBox):
             numerator = numerator_df['facings'].sum()
         result = round(numerator / float(denominator), 3)
         return result, numerator, denominator
+
+    def calculate_score_sos(self):
+        pass
