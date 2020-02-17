@@ -143,7 +143,7 @@ class CaseCountCalculator(GlobalSessionToolBox):
         to the point that can be found in the row
         """
         current_point = (row['rect_x'], row['rect_y'])
-        relevant_mdis = mdis.loc[(mdis.scene_fk == row['scene_fk']) & (mdis.bay_number == row['bay_number'])]
+        relevant_mdis = mdis.loc[(mdis.scene_fk == row['scene_fk'])]
         closet_point = self.get_closest_point(current_point, relevant_mdis)
         if not closet_point.empty:
             return closet_point.iloc[0][value_to_return]
