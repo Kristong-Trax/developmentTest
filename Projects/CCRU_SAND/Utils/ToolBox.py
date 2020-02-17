@@ -223,6 +223,7 @@ class CCRU_SANDKPIToolBox:
         cooler_targets = self.kpi_fetcher.get_kpi_external_targets(self.visit_date, self.store_id)
         key_json_df = self.unpack_kpi_targets_from_db(cooler_targets, 'key_json')
         cooler_targets = cooler_targets.merge(key_json_df, on='pk', how='left')
+        cooler_targets = cooler_targets.drop_duplicates(subset=[CCRU_SANDConsts.COOLER_ID], keep='last')
         return cooler_targets
 
     def unpack_kpi_targets_from_db(self, input_df, field_name):
@@ -251,6 +252,7 @@ class CCRU_SANDKPIToolBox:
         survey_responses = self.data_provider.survey_responses # check name of attribute
         if self.data_provider.survey_responses.empty:
             survey_responses = self.kpi_fetcher.get_scene_survey_response(self.cooler_scenes)
+        survey_responses[CCRU_SANDConsts.SURVEY_ANSWER] = survey_responses[CCRU_SANDConsts.SURVEY_ANSWER].astype(int)
         survey_responses[CCRU_SANDConsts.SURVEY_ANSWER] = survey_responses[CCRU_SANDConsts.SURVEY_ANSWER].astype(str)
         return survey_responses
 
@@ -4084,14 +4086,14 @@ class CCRU_SANDKPIToolBox:
                                                                     [CCRU_SANDConsts.SURVEY_ANSWER].values.tolist()
 
             for i, row in cooler_ass_store.iterrows():
-                score = 0 if row['assigned_cooler_id'] is None or np.isnan(row['assigned_cooler_id']) else 100
+                score = 0 if (row['assigned_cooler_id'] is None) or (str(row['assigned_cooler_id']) == 'nan') else 100
                 custom_result = self.get_presence_type_result(score)
                 self.common.write_to_db_result(fk=row['kpi_level_2_fk'], numerator_id=row[CCRU_SANDConsts.COOLER_FK],
                                                denominator_id=row[CCRU_SANDConsts.COOLER_MODEL_FK],
                                                context_id=row[ScifConsts.SCENE_FK], result=custom_result, score=score,
                                                identifier_parent=visit_identif_par, should_enter=True)
             coolers_in_sess = cooler_ass_store[~(cooler_ass_store[CCRU_SANDConsts.SURVEY_ANSWER].isnull())]
-            visit_total_result = len(coolers_in_sess) / len(cooler_ass_store) * 100
+            visit_total_result = len(coolers_in_sess) / float(len(cooler_ass_store)) * 100
 
             extra_coolers_df = coolers_survey[coolers_survey[CCRU_SANDConsts.SURVEY_ANSWER].isin(small_responses +
                                                                                                  unassigned_responses)]
@@ -4127,34 +4129,37 @@ class CCRU_SANDKPIToolBox:
                 cooler_fk = cooler_row[CCRU_SANDConsts.COOLER_FK]
                 cooler_model_fk = cooler_row['cooler_model_fk']
                 self.set_scif_and_matches_to_scene_lvl(cooler_scene)
-                kpi_group = group_model_map[group_model_map[CCRU_SANDConsts.KPI_GROUP] == \
-                                            cooler_row[CCRU_SANDConsts.COOLER_MODEL_NAME]]['Cooler Model'].values[0]
-                kpi_group_data = copy.deepcopy(kpi_data)
-                kpi_group_data[0] = filter(lambda x: x['Cooler Model'] == kpi_group, kpi_data[0])
+                kpi_group_df = group_model_map[group_model_map['Cooler Model'] \
+                                               == cooler_row[CCRU_SANDConsts.COOLER_MODEL_NAME]]
+                if not kpi_group_df.empty:
+                    kpi_group = kpi_group_df[CCRU_SANDConsts.KPI_GROUP].values[0]
+                    kpi_group_data = copy.deepcopy(kpi_data)
+                    kpi_group_data[0] = filter(lambda x: x['Cooler Model'] == kpi_group, kpi_data[0])
 
-                cooler_dict = {ScifConsts.SCENE_FK: cooler_scene, CCRU_SANDConsts.COOLER_FK: cooler_fk,
-                               'cooler_model_fk': cooler_model_fk, 'kpi_fk': cooler_score_fk}
+                    cooler_dict = {ScifConsts.SCENE_FK: cooler_scene, CCRU_SANDConsts.COOLER_FK: cooler_fk,
+                                   'cooler_model_fk': cooler_model_fk, 'kpi_fk': cooler_score_fk}
 
-                score = 0
-                score += self.check_availability(kpi_group_data, cooler_dict=cooler_dict)
-                score += self.check_facings_sos(kpi_group_data, cooler_dict=cooler_dict)
-                score += self.check_share_of_cch(kpi_group_data, cooler_dict=cooler_dict)
-                score += self.check_number_of_skus_per_door_range(kpi_group_data, cooler_dict=cooler_dict)
-                score += self.check_number_of_doors(kpi_group_data, cooler_dict=cooler_dict)
-                score += self.check_number_of_scenes(kpi_group_data, cooler_dict=cooler_dict)
-                score += self.check_number_of_scenes_no_tagging(kpi_group_data, cooler_dict=cooler_dict)
-                score += self.check_customer_cooler_doors(kpi_group_data, cooler_dict=cooler_dict)
-                score += self.check_atomic_passed(kpi_group_data, cooler_dict=cooler_dict)
-                score += self.check_atomic_passed_on_the_same_scene(kpi_group_data, cooler_dict=cooler_dict)
-                score += self.check_sum_atomics(kpi_group_data, cooler_dict=cooler_dict)
-                score += self.check_dummies(kpi_group_data, cooler_dict=cooler_dict)
-                score += self.check_weighted_average(kpi_group_data, cooler_dict=cooler_dict)
-                score += self.check_kpi_scores(kpi_group_data, cooler_dict=cooler_dict)
+                    score = 0
+                    score += self.check_availability(kpi_group_data, cooler_dict=cooler_dict)
+                    score += self.check_facings_sos(kpi_group_data, cooler_dict=cooler_dict)
+                    score += self.check_share_of_cch(kpi_group_data, cooler_dict=cooler_dict)
+                    score += self.check_number_of_skus_per_door_range(kpi_group_data, cooler_dict=cooler_dict)
+                    score += self.check_number_of_doors(kpi_group_data, cooler_dict=cooler_dict)
+                    score += self.check_number_of_scenes(kpi_group_data, cooler_dict=cooler_dict)
+                    score += self.check_number_of_scenes_no_tagging(kpi_group_data, cooler_dict=cooler_dict)
+                    score += self.check_customer_cooler_doors(kpi_group_data, cooler_dict=cooler_dict)
+                    score += self.check_atomic_passed(kpi_group_data, cooler_dict=cooler_dict)
+                    score += self.check_atomic_passed_on_the_same_scene(kpi_group_data, cooler_dict=cooler_dict)
+                    score += self.check_sum_atomics(kpi_group_data, cooler_dict=cooler_dict)
+                    score += self.check_dummies(kpi_group_data, cooler_dict=cooler_dict)
+                    score += self.check_weighted_average(kpi_group_data, cooler_dict=cooler_dict)
+                    score += self.check_kpi_scores(kpi_group_data, cooler_dict=cooler_dict)
 
-                cooler_scores.update({cooler_fk: score})
-                self.common.write_to_db_result(fk=cooler_score_fk, numerator_id=cooler_fk,
-                                               denominator_id=cooler_model_fk, identifier_parent=visit_identifier_parent,
-                                               identifier_result=cooler_dict, should_enter=True)
+                    cooler_scores.update({cooler_fk: score})
+                    self.common.write_to_db_result(fk=cooler_score_fk, numerator_id=cooler_fk,
+                                                   denominator_id=cooler_model_fk, identifier_result=cooler_dict,
+                                                   identifier_parent=visit_identifier_parent,
+                                                   should_enter=True)
 
             cooler_visit_result = sum(cooler_scores.values()) / float(len(cooler_ass_df)) if not cooler_ass_df.empty \
                                                                                                             else 0

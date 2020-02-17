@@ -272,8 +272,8 @@ class CCRU_SANDProjectCalculations:
         self.tool_box.common.commit_results_data()
 
     def calculate_cooler_audit(self):
-        self.json.create_kpi_data_json('kpi_data', 'Cooler_Quality.xlsx', sheet_name='ALL')
-        kpi_data = self.json.project_kpi_dict.get('kpi_data')
+        self.json.create_kpi_data_json('cooler_audit', 'Cooler_Quality.xlsx', sheet_name='ALL')
+        kpi_data = self.json.project_kpi_dict.get('cooler_audit')[0]
         group_model_map = pd.read_excel(os.path.join(self.json.base_path, 'Cooler_Quality.xlsx'),
                                         sheet_name=GROUP_MODEL_MAP)
         self.tool_box.calculate_cooler_kpis(kpi_data, group_model_map)
