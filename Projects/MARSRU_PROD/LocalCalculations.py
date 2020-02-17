@@ -2,6 +2,8 @@ from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
 from Trax.Utils.Conf.Configuration import Config
 from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
 from Projects.MARSRU_PROD.Calculations import MARSRU_PRODCalculations
+from Projects.MARSRU_PROD.LiveSessionKpis.Calculation import CalculateKpi
+from Trax.Algo.Calculations.Core.LiveSessionDataProvider import KEngineSessionDataProviderLive
 
 
 if __name__ == '__main__':
@@ -10,7 +12,7 @@ if __name__ == '__main__':
     project_name = 'marsru-prod'
     session_uids = [
         'ffecd08b-2ab7-4e76-b4fc-f2f5caf1de48',
-        
+
         # '20c275a9-afe2-4004-a727-618dee0e5599',
         # '0c5cf562-6209-49af-9a7f-730952c99788',
         # '8ad39b48-3ebe-4d1c-b8a2-2cce205fc2a4',
@@ -161,3 +163,8 @@ if __name__ == '__main__':
         print session
         data_provider.load_session_data(session)
         MARSRU_PRODCalculations(data_provider, output).run_project_calculations()
+    #
+    # data_provider = KEngineSessionDataProviderLive(project_name, None, None)
+    # data_provider.load_session_data('4647a9e5-84c6-4c77-9a2f-11e62000f70a', [])
+    # output = Output()  # calling live calculation (live data provider)
+    # CalculateKpi(data_provider, output).calculate_session_live_kpi()
