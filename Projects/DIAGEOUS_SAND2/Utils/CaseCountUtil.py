@@ -27,7 +27,6 @@ class CaseCountCalculator(GlobalSessionToolBox):
         if self.filtered_mdis.empty or self.filtered_scif.empty:
             return
         self._prepare_data_for_calculation()
-
         total_facings_per_brand_res = self._calculate_total_bottler_and_carton_facings()
         num_of_cases_per_brand_res = self._count_number_of_cases()
         implied_shoppable_cases_kpi_res = self._implied_shoppable_cases_kpi()
@@ -109,14 +108,14 @@ class CaseCountCalculator(GlobalSessionToolBox):
         """ This method calculates the number of unshoppable cases per brand.
         A brand is considered unshoppable if there are only 'case' SKU Type without bottler or carton.
         If a brand is unshoppable it will get a result of 1."""
-        unshoppable_brands = []
+        unshoppable_brands_results = []
         grouped_scif = self.filtered_scif.groupby(['brand_fk', 'SKU Type'], as_index=False)['tagged'].sum()
         grouped_scif = grouped_scif.loc[grouped_scif.tagged > 0]
         grouped_scif_dict = grouped_scif.groupby('brand_fk')['SKU Type'].apply(list).to_dict()
         for brand_fk, sku_types in grouped_scif_dict.iteritems():
-            if len(sku_types) == 1 and sku_types[0].lower() == 'case':
-                unshoppable_brands.append({'brand_fk': brand_fk, 'result': 1})
-        return unshoppable_brands
+            res = 100 if len(sku_types) == 1 and sku_types[0].lower() == 'case' else 0
+            unshoppable_brands_results.append({'brand_fk': brand_fk, 'result': res})
+        return unshoppable_brands_results
 
     @staticmethod
     def get_closest_point(origin_point, other_points_df):
@@ -304,18 +303,18 @@ class CaseCountCalculator(GlobalSessionToolBox):
         return scif
 
 
-from KPIUtils_v2.DB.CommonV2 import Common
-from Trax.Utils.Conf.Configuration import Config
-from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider
-if __name__ == '__main__':
-    Config.init('')
-    data_provider = KEngineDataProvider('diageous-sand2')
-    sessions = ['A83C7EFA-AA29-41A4-9B78-91B98BF61244']
-    for session in sessions:
-        print(session)
-        data_provider.load_session_data(session_uid=session)
-        common = Common(data_provider)
-        case_counter_calculator = CaseCountCalculator(data_provider, common)
-        case_counter_calculator.main_case_count_calculations()
-        common.commit_results_data()
-
+# from KPIUtils_v2.DB.CommonV2 import Common
+# from Trax.Utils.Conf.Configuration import Config
+# from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider
+# if __name__ == '__main__':
+#     Config.init('')
+#     data_provider = KEngineDataProvider('diageous-sand2')
+#     sessions = ['566FD433-FD02-4C23-95F8-CD26D8BA1A61']
+#     for session in sessions:
+#         print(session)
+#         data_provider.load_session_data(session_uid=session)
+#         common = Common(data_provider)
+#         case_counter_calculator = CaseCountCalculator(data_provider, common)
+#         case_counter_calculator.main_case_count_calculations()
+#         common.commit_results_data()
+#
