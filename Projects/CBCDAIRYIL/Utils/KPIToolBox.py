@@ -10,9 +10,9 @@ from KPIUtils_v2.DB.Common import Common as oldCommon
 from KPIUtils_v2.Utils.Parsers import ParseInputKPI as Parser
 from Projects.CBCDAIRYIL.Utils.Consts import Consts
 from KPIUtils_v2.Calculations.SurveyCalculations import Survey
-from KPIUtils_v2.Calculations.BlockCalculations import Block
+from KPIUtils_v2.Calculations.BlockCalculations_v2 import Block
 from KPIUtils_v2.Calculations.CalculationsUtils.GENERALToolBoxCalculations import GENERALToolBox
-from KPIUtils_v2.Utils.Decorators.Decorators import log_runtime, kpi_runtime
+from KPIUtils_v2.Utils.Decorators.Decorators import kpi_runtime
 
 import pandas as pd
 from datetime import datetime
@@ -118,15 +118,10 @@ class CBCDAIRYILToolBox:
             product_df = self.scif[self.scif['product_fk'] == sku]
             if product_df.empty:
                 numerator += 1
-                result = 1
-                facings = 0
-            else:
-                result = 2
-                facings = product_df['facings'].values[0]
-                total_facings += facings
-            self.common.write_to_db_result(fk=sku_kpi_fk, numerator_id=sku, denominator_id=self.store_id,
-                                           result=result, numerator_result=result, denominator_result=result,
-                                           score=facings, identifier_parent="OOS", should_enter=True)
+                self.common.write_to_db_result(fk=sku_kpi_fk, numerator_id=sku, denominator_id=self.store_id,
+                                               result=1, numerator_result=1, denominator_result=1,
+                                               score=0, identifier_parent="OOS", should_enter=True)
+
         # store level oos
         denominator = len(product_fks)
         if denominator == 0:

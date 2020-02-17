@@ -1451,19 +1451,103 @@ class CCRU_SANDKPIToolBox:
 
         return score
 
+    def get_relevant_products_by_type_and_values(self, params,
+                                                 return_column='product_fk',
+                                                 include_product_types='SKU'):
+        value_type = \
+            {
+                'CAT': 'category',
+                'SUB_CATEGORY': 'sub_category',
+                'MAN in CAT': 'category',
+                'MAN': 'manufacturer_name',
+                'BRAND': 'brand_name',
+                'SUB_BRAND': 'sub_brand_name',
+                'SKUs': 'product_ean_code',
+            }
+
+        if not isinstance(include_product_types, (list, tuple, set)):
+            include_product_types = [include_product_types]
+
+        filtered_products = self.products
+
+        if params.get('Type') in value_type.keys():
+            filter_name = value_type[params.get('Type')]
+            filter_values = [unicode(x).strip() for x in unicode(params.get('Values')).split(', ')]
+            filtered_products = filtered_products[filtered_products[filter_name].isin(filter_values)]
+
+        if include_product_types:
+            filtered_products = filtered_products[filtered_products['product_type'].isin(include_product_types)]
+
+        if return_column in filtered_products.columns:
+            return_list = filtered_products[return_column].unique().tolist()
+        else:
+            return_list = []
+
+        return return_list
+
+    def get_relevant_products_by_product_filters(self, params,
+                                                 return_column='product_fk',
+                                                 include_product_types='SKU'):
+        filters = \
+            {
+                'Manufacturer': 'manufacturer_name',
+                'Brand': 'brand_name',
+                'Sub brand': 'sub_brand_name',
+                'Product Category': 'category',
+                'Sub category': 'sub_category',
+                'Product': 'product_ean_code',
+                'Form Factor': 'form_factor',
+                'Size': 'size',
+
+                'Products to exclude': 'product_ean_code',
+                'Form factors to exclude': 'form_factor',
+
+            }
+
+        if not isinstance(include_product_types, (list, tuple, set)):
+            include_product_types = [include_product_types]
+
+        filtered_products = self.products
+
+        for filter_name in filters.keys():
+            if params.get(filter_name) is not None:
+                if filters[filter_name] == 'size':
+                    filter_values = [float(x) for x in str(params.get(filter_name)).split(', ')]
+                    filter_values = [int(x) if int(x) == x else x for x in filter_values]
+                else:
+                    filter_values = [unicode(x).strip() for x in unicode(params.get(filter_name)).split(', ')]
+                if filter_name.find('exclude') < 0:
+                    filtered_products = filtered_products[filtered_products[filters[filter_name]].isin(filter_values)]
+                else:
+                    filtered_products = filtered_products[~filtered_products[filters[filter_name]].isin(filter_values)]
+
+        if include_product_types:
+            filtered_products = filtered_products[filtered_products['product_type'].isin(include_product_types)]
+
+        if return_column in filtered_products.columns:
+            return_list = filtered_products[return_column].unique().tolist()
+        else:
+            return_list = []
+
+        return return_list
+
     def calculate_lead_sku(self, params, scenes=None):
         if not scenes:
             scenes = self.get_relevant_scenes(params)
-        if params.get('Product Category'):
-            category = [unicode(x).strip() for x in unicode(
-                params.get('Product Category')).split(', ')]
-            relevant_products_and_facings = self.scif[
-                (self.scif['scene_id'].isin(scenes)) & ~(self.scif['product_type'].isin(['Empty', 'Other'])) &
-                (self.scif['category'].isin(category))]
+        relevant_products = self.get_relevant_products_by_product_filters(params,
+                                                                          return_column='product_fk',
+                                                                          include_product_types='SKU')
+        relevant_products_and_facings = self.scif[
+            (self.scif['scene_id'].isin(scenes)) &
+            (self.scif['product_fk'].isin(relevant_products))]
+
+        if params.get('Type') == 'SKUs':
+            values = [unicode(x).strip()
+                      for x in unicode(params.get('Values')).replace(' ', '').replace('=', '\n').split('\n')]
         else:
-            relevant_products_and_facings = self.scif[
-                (self.scif['scene_id'].isin(scenes)) & ~(self.scif['product_type'].isin(['Empty', 'Other']))]
-        values = [unicode(x).strip() for x in unicode(params.get('Values')).replace(' ', '').replace('=', '\n').split('\n')]
+            values = [','.join(self.get_relevant_products_by_type_and_values(params,
+                                                                             return_column='product_ean_code',
+                                                                             include_product_types='SKU'))]
         partner_skus = []
         tested_skus = []
         if values:
