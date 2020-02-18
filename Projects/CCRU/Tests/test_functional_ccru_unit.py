@@ -30,7 +30,7 @@ class TestCCRU(TestFunctionalCase):
         self.data_provider.project_name = self.data.project_name
         self.data_provider.session_uid = self.data.session_uid
 
-        self.data_provider_data = self.data.data_provider_data.copy()
+        self.data_provider_data = self.data.data_provider_data
 
         def get_item(key):
             return self.data_provider_data[key] if key in self.data_provider_data else MagicMock()
