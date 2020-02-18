@@ -5,7 +5,6 @@ import pandas as pd
 from KPIUtils_v2.Utils.Decorators.Decorators import kpi_runtime
 from Projects.STRAUSSIL.Data.LocalConsts import Consts
 from KPIUtils_v2.Utils.Consts.PS import ExternalTargetsConsts
-from KPIUtils_v2.Utils.Consts.DB import
 from KPIUtils_v2.Utils.Parsers import ParseInputKPI as Parser
 from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
 from KPIUtils_v2.GlobalDataProvider.PsDataProvider import PsDataProvider
@@ -27,6 +26,7 @@ class ToolBox(GlobalSessionToolBox):
         self.calculate_score_sos()
         self.calculate_core_oos_and_distribution()
 
+    @kpi_runtime()
     def calculate_core_oos_and_distribution(self):
         dis_numerator = total_facings = 0
         oos_store_kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_type=Consts.OOS)
@@ -97,36 +97,6 @@ class ToolBox(GlobalSessionToolBox):
         for kpi in kpis_list:
             self.common.get_kpi_fk_by_kpi_type(kpi_type=kpi)
 
-    def calculate_hierarchy_sos(self):
-        store_kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_type=Consts.SOS_BY_OWN_MAN)
-        category_kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_type=Consts.SOS_BY_OWN_MAN_CAT)
-        brand_kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_type=Consts.SOS_BY_OWN_MAN_CAT_BRAND)
-        sos_df = self.scif[self.scif['rlv_sos_sc'] == 1]
-        # filter_row_dict = {'population': {'include': [{'manufacturer_fk': self.own_manufacturer_fk}]}}
-        # store level sos
-        store_res, store_num, store_den = self.calculate_own_manufacturer_sos(filters={}, df=sos_df)
-        self.common.write_to_db_result(fk=store_kpi_fk, numerator_id=self.own_manufacturer_fk,
-                                       denominator_id=self.store_id, result=store_res, numerator_result=store_num,
-                                       denominator_result=store_den, score=store_res, identifier_result="OWN_SOS")
-        # category level sos
-        session_categories = self.scif['category_fk'].unique()
-        for category_fk in session_categories:
-            filters = {'category_fk': category_fk}
-            cat_res, cat_num, cat_den = self.calculate_own_manufacturer_sos(filters=filters, df=sos_df)
-            self.common.write_to_db_result(fk=category_kpi_fk, numerator_id=category_fk, denominator_id=self.store_id,
-                                           result=cat_res, numerator_result=cat_num, denominator_result=cat_den,
-                                           score=cat_res, identifier_parent="OWN_SOS", should_enter=True,
-                                           identifier_result="OWN_SOS_cat_{}".format(str(category_fk)))
-            # brand-category level sos
-            cat_brands = self.parser.filter_df(conditions=filters, data_frame_to_filter=sos_df)['brand_fk'].unique()
-            for brand_fk in cat_brands:
-                filters['brand_fk'] = brand_fk
-                brand_res, brand_num, brand_den = self.calculate_own_manufacturer_sos(filters=filters, df=sos_df)
-                self.common.write_to_db_result(fk=brand_kpi_fk, numerator_id=brand_fk, denominator_id=category_fk,
-                                               result=brand_res, numerator_result=brand_num, should_enter=True,
-                                               denominator_result=brand_den, score=brand_res,
-                                               identifier_parent="OWN_SOS_cat_{}".format(str(category_fk)))
-
     def calculate_own_manufacturer_sos(self, filters, df):
         denominator_df = self.parser.filter_df(conditions=filters, data_frame_to_filter=df)
         filters['manufacturer_fk'] = self.own_manufacturer_fk
@@ -142,6 +112,7 @@ class ToolBox(GlobalSessionToolBox):
         result = round(numerator / float(denominator), 3)
         return result, numerator, denominator
 
+    @kpi_runtime()
     def calculate_score_sos(self):
         relevant_template = self.kpi_external_targets[self.kpi_external_targets[ExternalTargetsConsts.OPERATION_TYPE]
                                                       == Consts.SOS_KPIS]
@@ -151,19 +122,17 @@ class ToolBox(GlobalSessionToolBox):
                                                                                   deno_value)
             numerator_df = self.parser.filter_df(conditions=numerator_filters, data_frame_to_filter=self.scif)
             denominator_df = self.parser.filter_df(conditions=denominator_filters, data_frame_to_filter=self.scif)
-            numerator_df = numerator_df[numerator_df['rlv_sos_sc'] == 1]
-            denominator_df = denominator_df[denominator_df['rlv_sos_sc'] == 1]
+            # numerator_df = numerator_df[numerator_df['rlv_sos_sc'] == 1]
+            # denominator_df = denominator_df[denominator_df['rlv_sos_sc'] == 1]
             numerator_result = numerator_df['gross_len_ign_stack'].sum()
             denominator_result = denominator_df['gross_len_ign_stack'].sum()
             if denominator_result == 0:
                 result = numerator_result = denominator_result = 0
             else:
                 result = numerator_result / float(denominator_result)
-            self.common.write_to_db_result(fk=kpi_fk, numerator_id=, denominator_id=,
+            self.common.write_to_db_result(fk=kpi_fk, numerator_id=None, denominator_id=None,
                                            numerator_result=numerator_result, denominator_result=denominator_result,
                                            result=result, score=result)
-
-
 
     def get_num_and_den_filters(self, numerator_type, numerator_value, denominator_type, denominator_value):
         if type(numerator_value) != list:
@@ -173,3 +142,33 @@ class ToolBox(GlobalSessionToolBox):
         numerator_filters = {numerator_type: numerator_value}
         denominator_filters = {denominator_type: denominator_value}
         return numerator_filters, denominator_filters
+
+ # def calculate_hierarchy_sos(self):
+    #     store_kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_type=Consts.SOS_BY_OWN_MAN)
+    #     category_kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_type=Consts.SOS_BY_OWN_MAN_CAT)
+    #     brand_kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_type=Consts.SOS_BY_OWN_MAN_CAT_BRAND)
+    #     sos_df = self.scif[self.scif['rlv_sos_sc'] == 1]
+    #     # filter_row_dict = {'population': {'include': [{'manufacturer_fk': self.own_manufacturer_fk}]}}
+    #     # store level sos
+    #     store_res, store_num, store_den = self.calculate_own_manufacturer_sos(filters={}, df=sos_df)
+    #     self.common.write_to_db_result(fk=store_kpi_fk, numerator_id=self.own_manufacturer_fk,
+    #                                    denominator_id=self.store_id, result=store_res, numerator_result=store_num,
+    #                                    denominator_result=store_den, score=store_res, identifier_result="OWN_SOS")
+    #     # category level sos
+    #     session_categories = self.scif['category_fk'].unique()
+    #     for category_fk in session_categories:
+    #         filters = {'category_fk': category_fk}
+    #         cat_res, cat_num, cat_den = self.calculate_own_manufacturer_sos(filters=filters, df=sos_df)
+    #         self.common.write_to_db_result(fk=category_kpi_fk, numerator_id=category_fk, denominator_id=self.store_id,
+    #                                        result=cat_res, numerator_result=cat_num, denominator_result=cat_den,
+    #                                        score=cat_res, identifier_parent="OWN_SOS", should_enter=True,
+    #                                        identifier_result="OWN_SOS_cat_{}".format(str(category_fk)))
+    #         # brand-category level sos
+    #         cat_brands = self.parser.filter_df(conditions=filters, data_frame_to_filter=sos_df)['brand_fk'].unique()
+    #         for brand_fk in cat_brands:
+    #             filters['brand_fk'] = brand_fk
+    #             brand_res, brand_num, brand_den = self.calculate_own_manufacturer_sos(filters=filters, df=sos_df)
+    #             self.common.write_to_db_result(fk=brand_kpi_fk, numerator_id=brand_fk, denominator_id=category_fk,
+    #                                            result=brand_res, numerator_result=brand_num, should_enter=True,
+    #                                            denominator_result=brand_den, score=brand_res,
+    #                                            identifier_parent="OWN_SOS_cat_{}".format(str(category_fk)))
