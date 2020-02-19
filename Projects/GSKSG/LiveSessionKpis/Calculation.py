@@ -21,7 +21,7 @@ class CalculateKpi(LiveSessionBaseClass):
         self.common = LiveCommon(data_provider)
         self.store_fk = data_provider.store_fk
         self.current_date = datetime.now()
-        self.assortment = LiveAssortmentCalculation(data_provider)
+        self.assortment = LiveAssortmentCalculation(data_provider, False)
         self._own_manufacturer = self._get_own_manufacturer()
         self.result_value = self.common.get_result_values()
 
@@ -49,7 +49,7 @@ class CalculateKpi(LiveSessionBaseClass):
         :return:
         """
         lvl3_result = self.assortment.calculate_lvl3_assortment(False)
-        distribution_live = self.get_kpi_fk('Live Distribution')
+        distribution_live = self.get_kpi_fk('Distribution')
         lvl3_result = lvl3_result[lvl3_result.kpi_fk_lvl2 == distribution_live]
         if lvl3_result.empty:
             Log.warning('Assortment is Empty for this session')
@@ -96,6 +96,10 @@ class CalculateKpi(LiveSessionBaseClass):
            :return: df of sql results for oos assortment group level
         """
         lvl_2_result = lvl_2_result.copy()
+
+        live_kpi_dist = self.get_kpi_fk('Live Distribution')
+        lvl_2_result.loc[:, 'kpi_level_2_fk'] = live_kpi_dist
+
         lvl_2_result.loc[lvl_2_result['target'] == -1, 'target'] = None
         lvl_2_result.loc[:, 'denominator_result'] = \
             lvl_2_result.apply(lambda row: row['target'] if (row['target'] >= 0 and row['group_target_date'] >
@@ -114,6 +118,8 @@ class CalculateKpi(LiveSessionBaseClass):
         """
         lvl_3_result.rename(columns={'product_fk': 'numerator_id', 'assortment_group_fk': 'denominator_id',
                                      'in_store': 'result', 'kpi_fk_lvl3': 'kpi_level_2_fk'}, inplace=True)
+        live_kpi_dist = self.get_kpi_fk('Live Distribution - SKU')
+        lvl_3_result.loc[:, 'kpi_level_2_fk'] = live_kpi_dist
         lvl_3_result.loc[:, 'result'] = lvl_3_result.apply(lambda row: self.kpi_result_value(row.result), axis=1)
         lvl_3_result = lvl_3_result.assign(numerator_result=lvl_3_result['result'],
                                            denominator_result=lvl_3_result['result'],
