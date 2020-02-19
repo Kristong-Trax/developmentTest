@@ -111,7 +111,7 @@ class ToolBox(GlobalSessionToolBox):
                                                            should_enter=True)
                         total_relevant_scenes += 1
 
-                passing_percentage = (round((passing_scenes / float(total_relevant_scenes)), 2) * 100)
+                passing_percentage = (round((passing_scenes / float(total_relevant_scenes)), 2) * 100) if total_relevant_scenes != 0 else 0
                 self.scene_kpi_results_fix[kpi_name] = passing_percentage
 
             if not pd.isnull(child_kpi_name):
