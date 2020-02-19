@@ -1,7 +1,5 @@
 from Trax.Algo.Calculations.Core.DataProvider import Data
-from Trax.Utils.Logging.Logger import Log
 from KPIUtils_v2.Utils.GlobalScripts.Scripts import GlobalSessionToolBox
-import pandas as pd
 from KPIUtils_v2.Utils.Decorators.Decorators import kpi_runtime
 from Projects.STRAUSSIL.Data.LocalConsts import Consts
 from KPIUtils_v2.Utils.Consts.PS import ExternalTargetsConsts
@@ -36,7 +34,7 @@ class ToolBox(GlobalSessionToolBox):
         dis_sku_kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_type=Consts.DISTRIBUTION_SKU)
         assortment_df = self.assortment.get_lvl3_relevant_ass()
         product_fks = assortment_df['product_fk'].tolist()
-        categories = set(self.all_products[self.all_products['product_fk'].isin(product_fks)]['category_fk'])
+        categories = list(set(self.all_products[self.all_products['product_fk'].isin(product_fks)]['category_fk']))
         categories_dict = dict.fromkeys(categories, (0, 0))
 
         # sku level distribution
@@ -66,23 +64,17 @@ class ToolBox(GlobalSessionToolBox):
         # category level distribution
         for category_fk in categories_dict.keys():
             cat_numerator, cat_denominator = categories_dict[category_fk]
-            if cat_denominator == 0:
-                cat_numerator = cat_result = 0
-            else:
-                cat_result = round(cat_numerator / float(cat_denominator), 4)
+            cat_result = self.get_result(cat_numerator, cat_denominator)
             self.common.write_to_db_result(fk=dis_cat_kpi_fk, numerator_id=category_fk,
                                            denominator_id=self.store_id, result=cat_result,
                                            numerator_result=cat_numerator, denominator_result=cat_denominator,
-                                           score=cat_result, identifier_parent="CORE_DIS",
+                                           score=cat_result, identifier_parent="CORE_DIS", should_enter=True,
                                            identifier_result="CORE_DIS_CAT_{}".format(str(category_fk)))
 
         # store level oos and distribution
         denominator = len(product_fks)
-        if denominator == 0:
-            dis_numerator = dis_result = oos_result = 0
-        else:
-            dis_result = round(dis_numerator / float(denominator), 4)
-            oos_result = 1 - dis_result
+        dis_result = self.get_result(dis_numerator, denominator)
+        oos_result = 1 - dis_result
         oos_numerator = denominator - dis_numerator
         self.common.write_to_db_result(fk=oos_store_kpi_fk, numerator_id=self.own_manufacturer_fk,
                                        denominator_id=self.store_id, result=oos_result, numerator_result=dis_numerator,
@@ -105,36 +97,40 @@ class ToolBox(GlobalSessionToolBox):
         if denominator_df.empty:
             return 0, 0, 0
         denominator = denominator_df['facings'].sum()
-        if numerator_df.empty:
-            numerator = 0
-        else:
-            numerator = numerator_df['facings'].sum()
-        result = round(numerator / float(denominator), 3)
+        numerator = numerator_df['facings'].sum()
+        result = self.get_result(numerator, denominator)
         return result, numerator, denominator
 
     @kpi_runtime()
     def calculate_score_sos(self):
         relevant_template = self.kpi_external_targets[self.kpi_external_targets[ExternalTargetsConsts.OPERATION_TYPE]
                                                       == Consts.SOS_KPIS]
+        relevant_rows = relevant_template.copy()
+        lsos_score_kpi_fk = self.common.get_kpi_fk_by_kpi_type(Consts.LSOS_SCORE_KPI)
+        store_denominator = len(relevant_rows)
+        store_numerator = 0
         for i, kpi_row in relevant_template.iterrows():
             kpi_fk, num_type, num_value, deno_type, deno_value, target, target_range = kpi_row[Consts.RELEVANT_FIELDS]
             numerator_filters, denominator_filters = self.get_num_and_den_filters(num_type, num_value, deno_type,
                                                                                   deno_value)
             numerator_df = self.parser.filter_df(conditions=numerator_filters, data_frame_to_filter=self.scif)
             denominator_df = self.parser.filter_df(conditions=denominator_filters, data_frame_to_filter=self.scif)
-            # numerator_df = numerator_df[numerator_df['rlv_sos_sc'] == 1]
-            # denominator_df = denominator_df[denominator_df['rlv_sos_sc'] == 1]
             numerator_result = numerator_df['gross_len_ign_stack'].sum()
             denominator_result = denominator_df['gross_len_ign_stack'].sum()
-            if denominator_result == 0:
-                result = numerator_result = denominator_result = 0
-            else:
-                result = numerator_result / float(denominator_result)
-            self.common.write_to_db_result(fk=kpi_fk, numerator_id=None, denominator_id=None,
+            lsos_result = self.get_result(numerator_result, denominator_result)
+            score = 1 if ((target - target_range) <= lsos_result <= (target + target_range)) else 0
+            store_numerator += score
+            self.common.write_to_db_result(fk=kpi_fk, numerator_id=None, denominator_id=None, should_enter=True,
                                            numerator_result=numerator_result, denominator_result=denominator_result,
-                                           result=result, score=result)
+                                           result=lsos_result, score=score, identifier_parent='LSOS_SCORE')
+        store_result = self.get_result(store_numerator, store_denominator)
+        self.common.write_to_db_result(fk=lsos_score_kpi_fk, numerator_id=self.own_manufacturer_fk,
+                                       denominator_id=self.store_id, should_enter=True, target=store_denominator,
+                                       numerator_result=store_numerator, denominator_result=store_denominator,
+                                       result=store_result, score=store_result, identifier_result='LSOS_SCORE')
 
-    def get_num_and_den_filters(self, numerator_type, numerator_value, denominator_type, denominator_value):
+    @staticmethod
+    def get_num_and_den_filters(numerator_type, numerator_value, denominator_type, denominator_value):
         if type(numerator_value) != list:
             numerator_value = [numerator_value]
         if type(denominator_value) != list:
@@ -143,32 +139,9 @@ class ToolBox(GlobalSessionToolBox):
         denominator_filters = {denominator_type: denominator_value}
         return numerator_filters, denominator_filters
 
- # def calculate_hierarchy_sos(self):
-    #     store_kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_type=Consts.SOS_BY_OWN_MAN)
-    #     category_kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_type=Consts.SOS_BY_OWN_MAN_CAT)
-    #     brand_kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_type=Consts.SOS_BY_OWN_MAN_CAT_BRAND)
-    #     sos_df = self.scif[self.scif['rlv_sos_sc'] == 1]
-    #     # filter_row_dict = {'population': {'include': [{'manufacturer_fk': self.own_manufacturer_fk}]}}
-    #     # store level sos
-    #     store_res, store_num, store_den = self.calculate_own_manufacturer_sos(filters={}, df=sos_df)
-    #     self.common.write_to_db_result(fk=store_kpi_fk, numerator_id=self.own_manufacturer_fk,
-    #                                    denominator_id=self.store_id, result=store_res, numerator_result=store_num,
-    #                                    denominator_result=store_den, score=store_res, identifier_result="OWN_SOS")
-    #     # category level sos
-    #     session_categories = self.scif['category_fk'].unique()
-    #     for category_fk in session_categories:
-    #         filters = {'category_fk': category_fk}
-    #         cat_res, cat_num, cat_den = self.calculate_own_manufacturer_sos(filters=filters, df=sos_df)
-    #         self.common.write_to_db_result(fk=category_kpi_fk, numerator_id=category_fk, denominator_id=self.store_id,
-    #                                        result=cat_res, numerator_result=cat_num, denominator_result=cat_den,
-    #                                        score=cat_res, identifier_parent="OWN_SOS", should_enter=True,
-    #                                        identifier_result="OWN_SOS_cat_{}".format(str(category_fk)))
-    #         # brand-category level sos
-    #         cat_brands = self.parser.filter_df(conditions=filters, data_frame_to_filter=sos_df)['brand_fk'].unique()
-    #         for brand_fk in cat_brands:
-    #             filters['brand_fk'] = brand_fk
-    #             brand_res, brand_num, brand_den = self.calculate_own_manufacturer_sos(filters=filters, df=sos_df)
-    #             self.common.write_to_db_result(fk=brand_kpi_fk, numerator_id=brand_fk, denominator_id=category_fk,
-    #                                            result=brand_res, numerator_result=brand_num, should_enter=True,
-    #                                            denominator_result=brand_den, score=brand_res,
-    #                                            identifier_parent="OWN_SOS_cat_{}".format(str(category_fk)))
+    @staticmethod
+    def get_result(numerator, denominator):
+        if denominator == 0:
+            return 0
+        else:
+            return round(numerator / float(denominator), 4)

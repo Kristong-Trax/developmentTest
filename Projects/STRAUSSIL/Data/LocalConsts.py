@@ -10,6 +10,7 @@ class Consts(object):
     DISTRIBUTION_SKU = 'Core Distribution - SKU'
 
     # SOS KPIs
+    LSOS_SCORE_KPI = 'LSOS_score'
     SOS_KPIS = 'SOS_KPIs'
     KPI_FK = 'kpi_fk'
     NUM_TYPE = 'numerator_type'
