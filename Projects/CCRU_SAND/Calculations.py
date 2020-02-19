@@ -78,13 +78,16 @@ class CCRU_SANDProjectCalculations:
                         'Visit date is less than {2} - {0}. '
                         'Store ID {1}.'
                         .format(self.visit_date, self.store_id, self.tool_box.MIN_CALC_DATE))
+            return
 
         elif self.tool_box.visit_type in [self.tool_box.SEGMENTATION_VISIT]:
             Log.warning('Warning. Session with Segmentation visit type has no KPI calculations.')
+            return
 
         elif self.tool_box.visit_type in [self.tool_box.PROMO_VISIT]:
             # Log.warning('Warning. Session with Promo visit type has no KPI calculations.')
             self.calculate_promo_compliance()
+            return
 
         else:
             if self.pos_kpi_set_name not in ALLOWED_POS_SETS:
@@ -94,6 +97,18 @@ class CCRU_SANDProjectCalculations:
                             .format(self.pos_kpi_set_name, self.store_id))
             else:
                 self.calculate_red_score()
+
+        if self.tool_box.visit_type in [self.tool_box.STANDARD_VISIT]:
+            if self.tool_box.cooler_scenes:
+                if not self.tool_box.cooler_assortment.empty:
+                    self.tool_box.set_kpi_set(CCRU_SANDConsts.COOLER_AUDIT_SCORE, CCRU_SANDConsts.COOLER_AUDIT_SCORE)
+                    self.calculate_cooler_audit()
+
+        Log.debug('KPI calculation stage: {}'.format('Committing results old'))
+        self.tool_box.commit_results_data_old()
+
+        Log.debug('KPI calculation stage: {}'.format('Committing results new'))
+        self.tool_box.commit_results_data_new()
 
         Log.debug('KPI calculation is completed')
 
@@ -196,17 +211,11 @@ class CCRU_SANDProjectCalculations:
                 self.tool_box.calculate_contract_execution(self.json.project_kpi_dict.get('contract'),
                                                            kpi_source[CONTRACT][SET])
 
-        if self.tool_box.visit_type in [self.tool_box.STANDARD_VISIT]:
-            if self.tool_box.cooler_scenes:
-                if not self.tool_box.cooler_assortment.empty:
-                    self.tool_box.set_kpi_set(CCRU_SANDConsts.COOLER_AUDIT_SCORE, CCRU_SANDConsts.COOLER_AUDIT_SCORE)
-                    self.calculate_cooler_audit()
-
-        Log.debug('KPI calculation stage: {}'.format('Committing results old'))
-        self.tool_box.commit_results_data_old()
-
-        Log.debug('KPI calculation stage: {}'.format('Committing results new'))
-        self.tool_box.commit_results_data_new()
+        # Log.debug('KPI calculation stage: {}'.format('Committing results old'))
+        # self.tool_box.commit_results_data_old()
+        #
+        # Log.debug('KPI calculation stage: {}'.format('Committing results new'))
+        # self.tool_box.commit_results_data_new()
 
     def calculate_red_score_kpi_set(self, kpi_data, kpi_set_name, set_target=None):
 

@@ -91,7 +91,7 @@ class CCRU_SANDConsts(object):
     COOLER_SURVEY_QUESTION = u'Введите 3 последние цифры инвентарного номера холодильника:'
     COOLER_ID = 'Cooler ID'
     REDUCED_BAR_CODE = 'reduced_bar_code'
-    SURVEY_ANSWER = 'number_value'
+    SURVEY_ANSWER = 'text_value'
     TEXT_VALUE = 'text_value'
     NUMBER_VALUE = 'number_value'
     COOLER_MODEL_FK = 'cooler_model_fk'
@@ -106,4 +106,5 @@ class CCRU_SANDConsts(object):
     COOLER_AUDIT_SCORE = 'COOLER AUDIT SCORE'
     COOLER_PRESENCE = 'Cooler_Presence'
     EXTRA_COOLER_PRESENCE = 'Extra_Cooler_Presence'
+    COOLER_SCORE_LVL_2 = 'COOLER_SCORE_LVL2'
 

@@ -394,7 +394,7 @@ class CCRU_SANDCCHKPIFetcher:
                        from probedata.scene_survey_response sr
                        join static.survey_question sq on sr.question_fk=sq.pk
                        where sq.delete_time is null
-                       and sq.group_name='Cooler Audit'
+                       and sq.group_name in ('Cooler Audit', 'Cooler Audit Test')
                        and sr.delete_time is null
                        and sr.scene_fk in ({});
                        """.format(scenes_list[0])
@@ -404,7 +404,7 @@ class CCRU_SANDCCHKPIFetcher:
                        from probedata.scene_survey_response sr
                        join static.survey_question sq on sr.question_fk=sq.pk
                        where sq.delete_time is null
-                       and sq.group_name='Cooler Audit'
+                       and sq.group_name in ('Cooler Audit', 'Cooler Audit Test')
                        and sr.delete_time is null
                        and sr.scene_fk in {};
                        """.format(tuple(scenes_list))
