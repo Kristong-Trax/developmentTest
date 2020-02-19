@@ -2860,8 +2860,8 @@ class CCRUKPIToolBox:
                 """.format(self.session_uid, tuple(ALLOWED_POS_SETS))
         cur = self.rds_conn.db.cursor()
         cur.execute(query)
-        res = list(cur.fetchall())
-        pos = res[0] if res else None
+        res = cur.fetchall()
+        pos = res[0][0] if res else None
         return pos
 
     def get_pos_by_store_attribute(self, pos_store_attribute):
@@ -2873,8 +2873,8 @@ class CCRUKPIToolBox:
                 """.format(pos_store_attribute, self.session_uid)
         cur = self.rds_conn.db.cursor()
         cur.execute(query)
-        res = list(cur.fetchall())
-        pos = res[0] if res else None
+        res = cur.fetchall()
+        pos = res[0][0] if res else None
         return pos
 
     @kpi_runtime()
