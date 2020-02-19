@@ -19,4 +19,3 @@ if __name__ == '__main__':
         data_provider.load_session_data(session)
         output = Output()
         BATRUCalculations(data_provider, output).run_project_calculations()
-git
