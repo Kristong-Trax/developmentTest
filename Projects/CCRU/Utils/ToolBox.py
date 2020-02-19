@@ -1831,6 +1831,9 @@ class CCRUKPIToolBox:
                         atomic_res = self.check_number_of_scenes_no_tagging(c, level=3)
                     elif c.get("Formula").strip() == "check_number_of_scenes_with_facings_target":
                         atomic_res = self.calculate_number_of_scenes_with_target(c)
+                    elif c.get("Formula").strip() == "number of sub atomic KPI Passed on the same scene":
+                        atomic_res = self.calculate_sub_atomic_passed_on_the_same_scene(
+                            c, params, parent=p, scenes=[])
                     else:
                         # print "the atomic's formula is ", c.get('Formula').strip()
                         atomic_res = 0
