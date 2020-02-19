@@ -13,9 +13,10 @@ if __name__ == '__main__':
     data_provider = KEngineDataProvider(project_name)
     sessions = [
         '012C162C-B252-4F09-A5C0-3FB714EDDEFE',
-        # '05DB1C22-AD3B-49E1-A004-6EFE70A1E519',
-        # '08CDAE94-6765-4F60-B295-E851801E92FC',
-        # '730BE6BE-FBE5-41C9-8E34-5C79C70D5E85',
+        "08CDAE94-6765-4F60-B295-E851801E92FC",
+        "730BE6BE-FBE5-41C9-8E34-5C79C70D5E85",
+        # excluded '05DB1C22-AD3B-49E1-A004-6EFE70A1E519', '2633487', 'CCA-Standard checkout cooler'
+        "05DB1C22-AD3B-49E1-A004-6EFE70A1E519",
     ]
     for each_sess in sessions:
         print("Running for session ", each_sess)
