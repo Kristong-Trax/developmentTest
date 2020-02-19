@@ -144,8 +144,6 @@ class ToolBox(GlobalSessionToolBox):
         kpi_name = row[Consts.KPI_NAME]
         kpi_fk = self.get_kpi_fk_by_kpi_type(kpi_name)
         iterate_by = self.sanitize_values(row.iterate_by)
-        numerator_id = self.own_manufacturer_fk
-        denominator_id = self.store_id
 
         # Have to save the sos by sku. So each sku will have its result (sos) saved
         # The skus relevant are saved in the iterate(in the template)
@@ -160,12 +158,15 @@ class ToolBox(GlobalSessionToolBox):
             denominator_relevant_scif = \
                 self.scif[self.scif.category_fk.isin(
                     self.scif.category_fk[self.scif.product_fk == unique_product_fk].to_numpy())]
+            # denominator_id = self.scif[self.scif]
+            denominator_id = denominator_relevant_scif.category_fk.iat[0]
             denominator_result = denominator_relevant_scif[
                 row[Consts.OUTPUT]].sum() if not denominator_relevant_scif.empty else 1
 
             relevant_numerator_scif = self.scif[self.scif.product_fk.isin([unique_product_fk])]
             numerator_result = relevant_numerator_scif[
                 row[Consts.OUTPUT]].sum() if not relevant_numerator_scif.empty else 0
+            numerator_id = relevant_numerator_scif.product_fk.iat[0]
 
             result = float(numerator_result) / denominator_result
             result_dict = {'kpi_name': kpi_name, 'kpi_fk': kpi_fk, 'numerator_id': numerator_id,
