@@ -3,8 +3,12 @@ __author__ = 'Nicolas'
 
 
 class Const(object):
+    KPI_TEMPLATE = os.path.join(os.path.dirname(os.path.realpath(__file__)),
+                                '..', 'Data', 'KPI Template - Heineken MX -feb18.xlsx')
 
+    sheetname_template = 'Acomodo_Bebidas'
     RELEVANT_SCENES_TYPES = ['Bebidas - Coca Cola 2 Puertas']
+
     SOS_EXCLUDE_FILTERS = {'product_type': ['Irrelevant', 'Empty']}
     ALLOWED_FILTERS = {'product_type': ['Other', 'Empty']}
     EMPTY = 'Empty'
@@ -24,12 +28,11 @@ class Const(object):
             'Refrescos Coca Cola':'Surtido - RCC',
             'Surtido -  RCC':'Surtido - RCC - SKU'}
 
-    KPI_TEMPLATE = os.path.join(os.path.dirname(os.path.realpath(__file__)),
-                                                  '..', 'Data', 'Data/KPI Template - Heineken MX - v5_feb13.xlsx')
+
 
 
 
     KPI_EMPTY = ['Huecos - RCC']
     KPI_FACINGS = ['Frentes - RCC - SKU']
     KPI_COUNTING = ['Frentes - RCC - SKU']
-    KPI_PRESENSE = ['Invasion - RCC']
+    KPI_INVASION = ['Invasion - RCC']

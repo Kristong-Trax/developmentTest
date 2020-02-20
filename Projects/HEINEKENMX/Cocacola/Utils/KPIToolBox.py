@@ -28,42 +28,45 @@ from Projects.HEINEKENMX.Data.LocalConsts import Consts
 __author__ = 'nicolaske'
 
 
-class ToolBox(GlobalSessionToolBox):
+class CocacolaToolBox(GlobalSessionToolBox):
 
     def __init__(self, data_provider, output):
         GlobalSessionToolBox.__init__(self, data_provider, output)
-        template = self.get_template()
-        manufacturer_pk = self.all_products['manufacturer_name'][self.all_products['manufacturer_name'] == Const.COCACOLA].iloc[0]
-
+        self.template = self.get_template()
+        self.manufacturer_pk = self.all_products['manufacturer_name'][self.all_products['manufacturer_name'] == Const.COCACOLA].iloc[0]
+        self.relevant_scenes_exist_value = self.do_relevant_scenes_exist()
 
     def main_calculation(self):
-
-
-        self.calculate_empty_exist()
+        # self.calculate_empty_exist()
         # self.calculate_distribution()
         # self.calculate_facing_count()
+        self.calculate_invasion()
 
 
 
 
     def calculate_empty_exist(self):
         for kpi_name in Const.KPI_EMPTY:
-            kpi_fk = self.get_kpi_fk_by_kpi_name(kpi_name)
+            kpi_fk = self.get_kpi_fk_by_kpi_type(kpi_name)
             parent_fk = self.get_parent_fk(kpi_name)
 
-            empty_df = self.scif[(self.scif['template_name'] == Const.RELEVANT_SCENES_TYPES) & (self.scif['product_type'] == Const.EMPTY)]
-
-            if empty_df.empty:
-                score = 1
-            else:
+            if self.relevant_scenes_exist_value == False:
                 score = 0
+            else:
+                empty_df = self.scif[(self.scif['template_name'].isin(Const.RELEVANT_SCENES_TYPES)) & (self.scif['product_type'] == Const.EMPTY)]
 
-            self.write_to_db(fk=kpi_fk, numerator_id=self.manufacturer_pk, denominator_id=self.store_id, score=score,
-                             identifier_parent=parent_fk, identifier_result=kpi_fk, should_enter=True)
+                if empty_df.empty:
+                    score = 1
+                else:
+                    score = 0
+
+            self.write_to_db(fk=kpi_fk, numerator_id=self.manufacturer_pk, denominator_id=self.store_id,
+                                     score=score,
+                                     identifier_parent=parent_fk, identifier_result=kpi_fk, should_enter=True)
 
     def calculate_facing_count(self):
         for kpi_name in Const.KPI_FACINGS:
-            kpi_fk = self.get_kpi_fk_by_kpi_name(kpi_name)
+            kpi_fk = self.get_kpi_fk_by_kpi_type(kpi_name)
             parent_fk = self.get_parent_fk(kpi_name)
 
             #place holding these for now, will fix tomorrow feb 19
@@ -76,24 +79,39 @@ class ToolBox(GlobalSessionToolBox):
                              )
 
 
-
-
     def calculate_distribution(self):
         #blah blah
         pass
 
 
     def calculate_invasion(self):
-        score = 0
-        possible_points = 0
-        self.write_to_db(numerator_result=possible_points ,score=score)
+        for kpi_name in Const.KPI_INVASION:
+            kpi_fk = self.get_kpi_fk_by_kpi_type(kpi_name)
+            parent_fk = self.get_parent_fk(kpi_name)
+
+            if self.relevant_scenes_exist_value == False:
+                score = 0
+            else:
+                possible_points = 0
+
+
+            self.write_to_db(fk=kpi_fk, numerator_id=self.manufacturer_pk, denominator_id=self.store_id,
+                                 score=score,
+                                 identifier_parent=parent_fk, identifier_result=kpi_fk, should_enter=True)
 
 
 
     def get_template(self):
-        template_df = pd.read_excel(Const.KPI_TEMPLATE, sheetname='matches')
+        template_df = pd.read_excel(Const.KPI_TEMPLATE, sheetname=Const.sheetname_template)
         return template_df
 
     def get_parent_fk(self, kpi_name):
-        parent_fk = self.get_kpi_fk_by_kpi_name(kpi_name)
+        parent_fk = self.get_kpi_fk_by_kpi_type(kpi_name)
         return parent_fk
+
+    def do_relevant_scenes_exist(self):
+        count_relevant_scenes = len(self.scif['template_name'][self.scif["template_name"].isin(Const.RELEVANT_SCENES_TYPES)].unique())
+        if count_relevant_scenes == 0:
+            return False
+        else:
+            return True
