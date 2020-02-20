@@ -23,6 +23,7 @@ DISTRIBUTION_SCORING = 'Distribution Scoring'
 ASSORTMENT = 'Assortment'
 SCORING = 'Scoring'
 TARGET = 'target'
+PRODUCT_FK = 'product_fk'
 
 # Excel Column Names
 RELEVANT_ASSORTMNENT = 'Relevent Assortment'
@@ -80,6 +81,7 @@ class FONDASToolBox(GlobalSessionToolBox):
         self.template_fk = self.scif.template_fk.iloc[0]
         self.survey_response = self.data_provider[Data.SURVEY_RESPONSES]
         self.assortment_template = self.templates[ASSORTMENT]
+        self.match_product_in_scene = self.data_provider['matches']
         # self.survey = Survey(self.data_provider, output=output, ps_data_provider=self.ps_data_provider,
         #                      common=self.common_v2)
         self.results_df = pd.DataFrame(columns=['kpi_name', 'kpi_fk', 'numerator_id', 'numerator_result',
@@ -318,12 +320,18 @@ class FONDASToolBox(GlobalSessionToolBox):
     def calculate_availability(self, row):
         kpi_name = row[KPI_NAME]
         kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_name)
-        kpi_type = row[KPI_TYPE]
-        template_name = row[TEMPLATE_NAME]
-        product_short_name = self.sanitize_values(row[PRODUCT_SHORT_NAME])
 
-        relevant_scif = self.filter_df(self.scif, {TEMPLATE_NAME: template_name, KPI_TYPE: kpi_type,
-                                                   PRODUCT_SHORT_NAME: product_short_name})
+        product_type = row[PRODUCT_TYPE]
+        template_name = row[TEMPLATE_NAME]
+        product_fk = self.sanitize_values(row[PRODUCT_FK])
+
+        # Have to Join mpis with scif as there in issue in recognition of product_fk = '2805' in scif
+        mpis_merge_with_scif = \
+            self.match_product_in_scene[['scene_fk', PRODUCT_FK]].merge(
+                self.scif[['scene_fk', TEMPLATE_NAME, PRODUCT_TYPE]],how= 'left', on = 'scene_fk')
+            
+        relevant_scif = self.filter_df(mpis_merge_with_scif, {TEMPLATE_NAME: template_name, PRODUCT_TYPE: product_type,
+                                                              PRODUCT_FK: product_fk})
         result = 1 if not relevant_scif.empty else 0
         numerator_id = self.own_manuf_fk
         denominator_id = self.template_fk
