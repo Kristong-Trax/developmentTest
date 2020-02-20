@@ -717,7 +717,6 @@ class BATRUToolBox:
 
                 else:
                     pass
-
         # new tables - lvl 2
         # for product_fk, product_results in new_sku_results.items():
         #     self.common.write_to_db_result(fk=contracted_sku_fk, numerator_id=product_fk, denominator_id=self.store_id,
