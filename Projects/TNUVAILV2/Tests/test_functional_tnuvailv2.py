@@ -1,5 +1,5 @@
 # coding=utf-8
-from Trax.Apps.Core.Testing.BaseCase import TestFunctionalCase, TestUnitCase
+from Trax.Apps.Core.Testing.BaseCase import TestFunctionalCase
 # from Trax.Data.Testing.SeedNew import Seeder
 # from Trax.Utils.Testing.Case import TestUnitCase
 from mock import MagicMock, PropertyMock
