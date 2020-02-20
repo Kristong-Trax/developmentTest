@@ -2,6 +2,7 @@
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Utils.Logging.Logger import Log
 from KPIUtils_v2.Utils.GlobalScripts.Scripts import GlobalSessionToolBox
+from KPIUtils_v2.DB.CommonV2 import Common
 # import pandas as pd
 
 from Projects.HEINEKENMX.Data.LocalConsts import Consts
@@ -24,6 +25,9 @@ from Projects.HEINEKENMX.Data.LocalConsts import Consts
 
 # from KPIUtils_v2.Calculations.CalculationsUtils import GENERALToolBoxCalculations
 
+from Projects.HEINEKENMX.Cerveza.Utils.KPIToolBox import CervezaToolBox
+from Projects.HEINEKENMX.Cocacola.Utils.KPIToolBox import CocacolaToolBox
+
 __author__ = 'nicolaske'
 
 
@@ -33,5 +37,10 @@ class ToolBox(GlobalSessionToolBox):
         GlobalSessionToolBox.__init__(self, data_provider, output)
 
     def main_calculation(self):
-        score = 0
-        return score
+        cerveza_tool_box = CervezaToolBox(self.data_provider, self.output, self.common)
+        cerveza_tool_box.main_calculation()
+
+        cocacola_tool_box = CocacolaToolBox(self.data_provider, self.output, self.common)
+        cocacola_tool_box.main_calculation()
+
+        return

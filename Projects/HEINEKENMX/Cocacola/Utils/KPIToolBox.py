@@ -28,10 +28,10 @@ from Projects.HEINEKENMX.Data.LocalConsts import Consts
 __author__ = 'nicolaske'
 
 
-class ToolBox(GlobalSessionToolBox):
+class CocacolaToolBox(GlobalSessionToolBox):
 
-    def __init__(self, data_provider, output):
-        GlobalSessionToolBox.__init__(self, data_provider, output)
+    def __init__(self, data_provider, output, common):
+        GlobalSessionToolBox.__init__(self, data_provider, output, common)
         template = self.get_template()
         manufacturer_pk = self.all_products['manufacturer_name'][self.all_products['manufacturer_name'] == Const.COCACOLA].iloc[0]
 
