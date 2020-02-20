@@ -671,7 +671,7 @@ class CCRU_SANDKPIToolBox:
         if params.get('Formula').strip() == 'each SKU hits facings target':
             if params.get('Target'):
                 number_of_fails = sum([x < int(params.get('Target')) for x in result])
-                result = 100 - round(number_of_fails / float(len(result)) * 100, 2)
+                result = 100 - round(number_of_fails / float(len(result)) * 100, 2) if len(result) else 0
             else:
                 result = 0
 
@@ -4311,8 +4311,8 @@ class CCRU_SANDKPIToolBox:
             if not (p.get('Formula').strip() in ("each SKU hits facings target",)):
                 continue
             scene = cooler_dict[ScifConsts.SCENE_FK]
-            # result = self.calculate_availability(p, scenes=[scene], all_params=params) # does it make sense to pass like this?
-            result = self.calculate_availability(p, all_params=params)
+            result = self.calculate_availability(p, scenes=[scene], all_params=params) # does it make sense to pass like this?
+            # result = self.calculate_availability(p, all_params=params)
             weight = p.get("KPI Weight")
             score = result * weight
             set_total_res += score
