@@ -49,6 +49,7 @@ KPS_RESULT = 'report.kps_results'
 
 BAY_COUNT_SHEET = 'BayCountKPI'
 BAY_COUNT_KPI = 'BAY_COUNT_BY_SCENE_TYPE_IN_WHOLE_STORE'
+DELTA_KPI = 'OWN_MAN_PRODUCT_PRESENCE_DELTA'
 
 
 class CCAAUToolBox:
@@ -99,6 +100,7 @@ class CCAAUToolBox:
         self.calculate_sos()
         self.calculate_bay_kpi()
         self.calculate_assortment_kpis()
+        self.calculate_prod_delta_prev_session()
         self.common_v2.commit_results_data()
 
     def calculate_sos(self):
@@ -277,7 +279,7 @@ class CCAAUToolBox:
     def calculate_assortment_kpis(self):
         Log.info("Calculate assortment kpis for session: {}".format(self.session_uid))
         # get filter data starts
-        valid_scif = self.scif
+        valid_scif = self.scif[self.scif['facings'] != 0]
         if not self.assortment_data.empty:
             # exclusions start
             scenes_to_exclude = self.assortment_data.iloc[0].scene_types_to_exclude
@@ -396,10 +398,10 @@ class CCAAUToolBox:
         # but we have the products and hence no need to filter out denominator
         Log.info("Calculate product presence and OOS products for {}".format(self.project_name))
         total_products_in_scene = valid_scif["item_id"].unique()
-        # total_own_man_products_in_scene = valid_scif[valid_scif['manufacturer_fk']
-        #                                              ==self.own_manufacturer_fk]["item_id"].unique()
+        total_own_man_products_in_scene = valid_scif[valid_scif['manufacturer_fk']
+                                                     ==self.own_manufacturer_fk]["item_id"].unique()
         present_products = np.intersect1d(total_products_in_scene, assortment_product_fks)
-        extra_products = np.setdiff1d(total_products_in_scene, present_products)
+        extra_products = np.setdiff1d(total_own_man_products_in_scene, present_products)
         oos_products = np.setdiff1d(assortment_product_fks, present_products)
         product_map = {
             OOS_CODE: oos_products,
@@ -423,7 +425,8 @@ class CCAAUToolBox:
                 self.common_v2.write_to_db_result(fk=prod_presence_re_kpi,
                                                   numerator_id=each_fk,
                                                   denominator_id=self.store_id,
-                                                  context_id=self.store_id,
+                                                  context_id=self.all_products[self.all_products['product_fk']
+                                                                               ==each_fk]['category_fk'].iloc[0],
                                                   numerator_result=assortment_code,
                                                   denominator_result=1,
                                                   result=assortment_code,
@@ -494,14 +497,14 @@ class CCAAUToolBox:
         scene_category_group = valid_scif.groupby('category_fk')
         for category_fk, each_scif_data in scene_category_group:
             total_products_in_scene_for_cat = each_scif_data["item_id"].unique()
-            # total_own_man_products_in_scene_for_cat = each_scif_data[each_scif_data['manufacturer_fk']
-            #                                                          ==self.own_manufacturer_fk]["item_id"].unique()
+            total_own_man_products_in_scene_for_cat = each_scif_data[each_scif_data['manufacturer_fk']
+                                                                     ==self.own_manufacturer_fk]["item_id"].unique()
             curr_category_products_in_assortment_df = self.all_products[
                 (self.all_products.product_fk.isin(assortment_product_fks))
                 & (self.all_products.category_fk == category_fk)]
             curr_category_products_in_assortment = curr_category_products_in_assortment_df['product_fk'].unique()
             present_products = np.intersect1d(total_products_in_scene_for_cat, curr_category_products_in_assortment)
-            extra_products = np.setdiff1d(total_products_in_scene_for_cat, present_products)
+            extra_products = np.setdiff1d(total_own_man_products_in_scene_for_cat, present_products)
             oos_products = np.setdiff1d(curr_category_products_in_assortment, present_products)
             product_map = {
                 OOS_CODE: oos_products,
@@ -592,6 +595,50 @@ class CCAAUToolBox:
                                               should_enter=True
                                               )
 
+    def calculate_prod_delta_prev_session(self):
+        prod_delt_kpi = self.kpi_static_data[(self.kpi_static_data[KPI_TYPE_COL] == DELTA_KPI)
+                                            & (self.kpi_static_data['delete_time'].isnull())]
+        if prod_delt_kpi.empty:
+            Log.warning("Cannot find KPI {}".format(DELTA_KPI))
+            return True
+        Log.info("Calculating KPI: {kpi} for session: {sess}".format(
+            kpi=DELTA_KPI,
+            sess=self.session_uid
+        ))
+        prev_session_df = self.get_previous_session()
+        if prev_session_df.empty:
+            Log.warning("No previous session for {}".format(self.session_uid))
+            return True
+
+        prev_session_uid = prev_session_df.iloc[0].session_uid
+        Log.info("Get delta products for session: {cur} with previous: {prev}".format(cur=self.session_uid,
+                                                                                      prev=prev_session_uid))
+        prev_session_own_man_prods = self.get_scif_own_man_products_of_session(prev_session_uid)
+        # prev_session_own_man_prods
+        current_sess_own_man_prods = self.scif[
+            (self.scif.facings != 0) &
+            (self.scif['manufacturer_fk'] == self.own_manufacturer_fk)
+        ]['item_id']
+        # delta_prods are the own manufacturer ones present in prev session
+        # but not present in current session
+        delta_prods = np.setdiff1d(prev_session_own_man_prods['product_fk'], current_sess_own_man_prods)
+        for each_product_fk in delta_prods:
+            Log.info("For session: {ses}, product: {pr} is a delta [present in prev: {prev}].".format(
+                ses=self.session_uid,
+                pr=each_product_fk,
+                prev=prev_session_uid
+            ))
+            self.common_v2.write_to_db_result(
+                fk=int(prod_delt_kpi['pk'].iloc[0]),
+                numerator_id=int(each_product_fk),
+                numerator_result=prev_session_df.iloc[0].pk,
+                denominator_id=int(self.store_id),
+                context_id=self.all_products[self.all_products['product_fk']
+                                             == each_product_fk]['category_fk'].iloc[0],
+                result=1,
+                score=1,
+            )
+
     def get_policies(self, kpi_fk):
         query = """ select a.kpi_fk, p.policy_name, p.policy, atag.assortment_group_fk,
                         atp.assortment_fk, atp.product_fk, atp.start_date, atp.end_date
@@ -603,6 +650,54 @@ class CCAAUToolBox:
                     """
         policies = pd.read_sql_query(query.format(kpi_fk=kpi_fk), self.rds_conn.db)
         return policies
+
+    def get_previous_session(self):
+        query = """
+                SELECT 
+                    pk, session_uid
+                FROM
+                    probedata.session
+                WHERE
+                    store_fk = (SELECT 
+                            store_fk
+                        FROM
+                            probedata.session
+                        WHERE
+                            session_uid = '{}')
+                ORDER BY visit_date DESC
+                LIMIT 1 , 1;
+            """.format(self.session_uid)
+        previous_session = pd.read_sql_query(query, self.rds_conn.db)
+        Log.info("Getting previous session for {c}: => {p}".format(
+            c=self.session_uid,
+            p=previous_session
+        ))
+        return previous_session
+
+    def get_scif_own_man_products_of_session(self, session_uid):
+        Log.info("Getting previous sessions own manufacturer products")
+        query = """
+                SELECT 
+                    item_id as product_fk
+                FROM
+                    reporting.scene_item_facts scif
+                        JOIN
+                    probedata.session sess ON sess.pk = scif.session_id
+                        JOIN
+                    static_new.product prod ON prod.pk = scif.item_id
+                        JOIN
+                    static_new.brand brand ON brand.pk = prod.brand_fk
+                WHERE
+                    sess.session_uid = '{session_uid}'
+                        AND facings <> 0
+                        AND prod.is_active = 1
+                        AND brand.manufacturer_fk = {manuf};
+        """.format(
+            session_uid=session_uid,
+            manuf=self.own_manufacturer_fk
+        )
+        product_df = pd.read_sql_query(query, self.rds_conn.db)
+        return product_df
 
 
 def is_nan(value):
