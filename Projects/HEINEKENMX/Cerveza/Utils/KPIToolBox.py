@@ -2,9 +2,9 @@
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Utils.Logging.Logger import Log
 from KPIUtils_v2.Utils.GlobalScripts.Scripts import GlobalSessionToolBox
-# import pandas as pd
+import pandas as pd
 
-from Projects.HEINEKENMX.Data.LocalConsts import Consts
+from Projects.HEINEKENMX.Cerveza.Data.LocalConsts import Consts
 
 # from KPIUtils_v2.Utils.Consts.DataProvider import
 # from KPIUtils_v2.Utils.Consts.DB import
@@ -31,7 +31,25 @@ class CervezaToolBox(GlobalSessionToolBox):
 
     def __init__(self, data_provider, output, common):
         GlobalSessionToolBox.__init__(self, data_provider, output, common)
+        self.state = self.store_info['state']
+        self.city = self.store_info['city']
+        self.relevant_targets = self._get_relevant_external_targets()
 
     def main_calculation(self):
-        score = 0
+        score = 1
         return score
+
+    def _get_relevant_external_targets(self):
+        template_df = pd.read_excel(Consts.TEMPLATE_PATH, sheetname='Planogram_cerveza', header=1)
+        template_df = template_df[(template_df['GZ'] == self.state) &
+                                  (template_df['Ciudad'] == self.city)]
+
+        template_df['Puertas'] = template_df['Puertas'].fillna(1)
+        return template_df
+
+class CervezaRealogram(object):
+    def __init__(self, mpis, scene_fk, planogram_data):
+        self.scene_fk = scene_fk
+        self.mpis = mpis[mpis['scene_fk'] == self.scene_fk]
+
+
