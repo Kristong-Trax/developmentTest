@@ -6,8 +6,9 @@ class Const(object):
     KPI_TEMPLATE = os.path.join(os.path.dirname(os.path.realpath(__file__)),
                                 '..', 'Data', 'KPI Template - Heineken MX -feb18.xlsx')
 
-    sheetname_template = 'Acomodo_Bebidas'
-    RELEVANT_SCENES_TYPES = ['Bebidas - Coca Cola 2 Puertas']
+    sheetname_Bebidas = 'Acomodo_Bebidas'
+    sheetname_Invasion = 'Invasion'
+    RELEVANT_SCENES_TYPES = 'Coca Cola'
 
     SOS_EXCLUDE_FILTERS = {'product_type': ['Irrelevant', 'Empty']}
     ALLOWED_FILTERS = {'product_type': ['Other', 'Empty']}
@@ -16,17 +17,23 @@ class Const(object):
     IGN_STACKING = {"stacking_layer": 1}
 
 
-    KPIS_HIERACHY  = {'I.E. 6.0':'Refrescos Coca Cola',
-            'Refrescos Coca Cola':'Mercadeo - RCC',
-            'Mercadeo - RCC':'Huecos - RCC',
-            'Mercadeo - RCC':'Frentes - RCC',
-            'Frentes - RCC':'Frentes - RCC - SKU',
-            'Mercadeo - RCC':'Acomodo - RCC',
-            'Acomodo - RCC':'Acomodo Scene - RCC',
-            'Acomodo Scene - RCC':'Acomodo - RCC - SKU',
-            'Mercadeo - RCC':'Invasion - RCC',
-            'Refrescos Coca Cola':'Surtido - RCC',
-            'Surtido -  RCC':'Surtido - RCC - SKU'}
+    KPIS_HIERACHY  = {
+            'Refrescos Coca Cola': 'I.E. 6.0',
+            'Mercadeo - RCC' :'Refrescos Coca Cola',
+
+            'Huecos - RCC' : 'Mercadeo - RCC',
+            'Frentes - RCC' :'Mercadeo - RCC',
+
+            'Frentes - RCC - SKU' : 'Frentes - RCC',
+            'Acomodo - RCC': 'Mercadeo - RCC',
+
+            'Acomodo Scene - RCC' : 'Acomodo - RCC',
+            'Acomodo - RCC - SKU' :'Acomodo Scene - RCC',
+
+            'Invasion - RCC' : 'Mercadeo - RCC',
+
+            'Surtido - RCC' : 'Refrescos Coca Cola',
+            'Surtido - RCC - SKU' : 'Surtido -  RCC'}
 
 
 
@@ -36,3 +43,4 @@ class Const(object):
     KPI_FACINGS = ['Frentes - RCC - SKU']
     KPI_COUNTING = ['Frentes - RCC - SKU']
     KPI_INVASION = ['Invasion - RCC']
+    KPI_POSITION = ['Acomodo - RCC - SKU']
