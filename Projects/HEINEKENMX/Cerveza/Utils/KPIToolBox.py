@@ -59,6 +59,8 @@ class CervezaRealogram(object):
         self.mpis = mpis[mpis['scene_fk'] == self.scene_fk]
         self.scene_type = scene_type
         self.planograms = self._generate_planograms_by_door(planogram_template_data)
+        self.realogram = self._generate_realogram()
+        self.correctly_placed_skus = self._calculate_correctly_placed_skus()
 
     def _get_scene_fk(self, mpis):
         # TODO: raise exception if more than one scene
@@ -87,8 +89,19 @@ class CervezaRealogram(object):
                      getattr(product_line, Consts.TEMPLATE_SEQUENCE_NUMBER) + i]
         return planogram
 
-    def _calculate_out_of_place_skus(self):
-        pass
+    def _generate_realogram(self):
+        realograms = []
+        for door_id, door_planogram in self.planograms:
+            door_realogram = self.mpis[self.mpis['bay_number'] == door_id]
+            door_realogram = pd.merge(door_realogram, door_planogram,
+                                      left_on=['leading_product_fk', 'shelf_number', 'facing_sequence_number'],
+                                      right_on=['leading_product_fk', 'shelf', 'sequence_number'])
+            realograms.append(door_realogram)
+        return pd.concat(realograms)
+
+    def _calculate_correctly_placed_skus(self):
+        return self.realogram[(self.realogram['shelf_number'] == self.realogram['shelf']) &
+                              (self.realogram['facing_sequence_number'] == self.realogram['sequence_number'])]
 
     def _calculate_extra_skus(self):
         pass
