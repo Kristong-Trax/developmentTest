@@ -50,17 +50,26 @@ class MARSRU_PRODKPIFetcher:
             return False
         return True
 
-    def get_object_facings(self, scenes, objects, object_type, formula, form_factors=None, shelves=None,
-                           manufacturers=None, categories=None, sub_brands=None, sub_brands_to_exclude=None,
-                           cl_sub_cats=None, cl_sub_cats_to_exclude=None, include_stacking=False,
-                           form_factors_to_exclude=None, linear=False):
+    def get_object_facings(self, scenes, objects, object_type, formula,
+                           manufacturers=None,
+                           brands=None,
+                           sub_brands=None,
+                           sub_brands_to_exclude=None,
+                           categories=None,
+                           cl_sub_cats=None,
+                           cl_sub_cats_to_exclude=None,
+                           form_factors=None,
+                           form_factors_to_exclude=None,
+                           shelves=None,
+                           include_stacking=False,
+                           linear=False):
 
-        object_type_conversion = {'SKUs': 'product_ean_code',
+        object_type_conversion = {'MAN': 'manufacturer_name',
+                                  'MAN in CAT': 'category',
                                   'BRAND': 'brand_name',
                                   'BRAND in CAT': 'brand_name',
                                   'CAT': 'category',
-                                  'MAN in CAT': 'category',
-                                  'MAN': 'manufacturer_name',
+                                  'SKUs': 'product_ean_code',
                                   'SCENE_TYPE': 'template_name'}
         object_field = object_type_conversion[object_type]
         self.scif[object_field] = self.scif[object_field].str.encode('utf8')
@@ -101,6 +110,20 @@ class MARSRU_PRODKPIFetcher:
         if include_stacking:
             final_result = initial_result
 
+        if manufacturers:
+            final_result = final_result[final_result['manufacturer_name'].isin(manufacturers)]
+        if brands:
+            final_result = final_result[final_result['brand_name'].isin(brands)]
+        if sub_brands:
+            final_result = final_result[final_result['sub_brand'].isin(sub_brands)]
+        if sub_brands_to_exclude:
+            final_result = final_result[~final_result['sub_brand'].isin(sub_brands_to_exclude)]
+        if categories:
+            final_result = final_result[final_result['category'].isin(categories)]
+        if cl_sub_cats:
+            final_result = final_result[final_result['Client Sub Category Name'].isin(cl_sub_cats)]
+        if cl_sub_cats_to_exclude:
+            final_result = final_result[~final_result['Client Sub Category Name'].isin(cl_sub_cats_to_exclude)]
         if form_factors:
             final_result = final_result[final_result['form_factor'].isin(form_factors)]
         if form_factors_to_exclude:
@@ -110,19 +133,6 @@ class MARSRU_PRODKPIFetcher:
             shelves_list = [int(shelf) for shelf in shelves.split(',')]
             merged_filter = merged_dfs.loc[merged_dfs['shelf_number_x'].isin(shelves_list)]
             final_result = merged_filter
-        if manufacturers:
-            final_result = final_result[final_result['manufacturer_name'].isin(manufacturers)]
-        if categories:
-            final_result = final_result[final_result['category'].isin(categories)]
-        if sub_brands:
-            final_result = final_result[final_result['sub_brand'].isin(sub_brands)]
-        if sub_brands_to_exclude:
-            final_result = final_result[~final_result['sub_brand'].isin(sub_brands_to_exclude)]
-        if cl_sub_cats:
-            final_result = final_result[final_result['Client Sub Category Name'].isin(cl_sub_cats)]
-        if cl_sub_cats_to_exclude:
-            final_result = final_result[~final_result['Client Sub Category Name'].isin(
-                cl_sub_cats_to_exclude)]
 
         try:
             if "number of SKUs" in formula:
@@ -144,12 +154,12 @@ class MARSRU_PRODKPIFetcher:
 
     def get_object_price(self, scenes, objects, object_type, match_product_details, form_factors=None,
                          include_stacking=False):
-        object_type_conversion = {'SKUs': 'product_ean_code',
-                                  'BRAND': 'brand_name',
-                                  'CAT': 'category',
-                                  'BRAND in CAT': 'brand_name',
+        object_type_conversion = {'MAN': 'manufacturer_name',
                                   'MAN in CAT': 'category',
-                                  'MAN': 'manufacturer_name'}
+                                  'BRAND': 'brand_name',
+                                  'BRAND in CAT': 'brand_name',
+                                  'CAT': 'category',
+                                  'SKUs': 'product_ean_code'}
         object_field = object_type_conversion[object_type]
         final_result = \
             self.scif.loc[(self.scif['scene_id'].isin(scenes)) &

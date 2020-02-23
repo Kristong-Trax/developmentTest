@@ -136,6 +136,7 @@ class CBCDAIRYILToolBox:
         store_kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_type=Consts.SOS_BY_OWN_MAN)
         category_kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_type=Consts.SOS_BY_OWN_MAN_CAT)
         brand_kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_type=Consts.SOS_BY_OWN_MAN_CAT_BRAND)
+        sku_kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_type=Consts.SOS_BY_OWN_MAN_CAT_BRAND_SKU)
         sos_df = self.scif[self.scif['rlv_sos_sc'] == 1]
         # filter_row_dict = {'population': {'include': [{'manufacturer_fk': self.own_manufacturer_fk}]}}
         # store level sos
@@ -163,7 +164,16 @@ class CBCDAIRYILToolBox:
                 self.common.write_to_db_result(fk=brand_kpi_fk, numerator_id=brand_fk, denominator_id=category_fk,
                                                result=brand_res, numerator_result=brand_num, should_enter=True,
                                                denominator_result=brand_den, score=brand_res,
-                                               identifier_parent="OWN_SOS_cat_{}".format(str(category_fk)))
+                                               identifier_parent="OWN_SOS_cat_{}".format(str(category_fk)),
+                                               identifier_result="OWN_SOS_cat_{}_brand_{}".format(str(category_fk),
+                                                                                                  str(brand_fk)))
+                product_fks = set(self.parser.filter_df(conditions=filters, data_frame_to_filter=sos_df)['product_fk'])
+                for sku in product_fks:
+                    self.common.write_to_db_result(fk=sku_kpi_fk, numerator_id=sku, denominator_id=brand_fk,
+                                                   result=2, numerator_result=2, should_enter=True,
+                                                   denominator_result=2, score=2,
+                                                   identifier_parent="OWN_SOS_cat_{}_brand_{}".format(str(category_fk),
+                                                                                                      str(brand_fk)))
 
     def calculate_own_manufacturer_sos(self, filters, df):
         denominator_df = self.parser.filter_df(conditions=filters, data_frame_to_filter=df)
