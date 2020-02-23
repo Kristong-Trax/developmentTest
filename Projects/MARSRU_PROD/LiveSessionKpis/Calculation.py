@@ -60,11 +60,12 @@ class CalculateKpi(LiveSessionBaseClass):
         lvl_2_result.rename(columns={'passes': 'numerator_result', 'total': 'denominator_result', 'kpi_fk_lvl2': 'kpi_level_2_fk'},
                             inplace=True)
 
-        dist_result_lvl1, dist_results_lvl2 = self.distribution_calc(lvl3_result, lvl_2_result)
+        availability_result_lvl1, dist_results_lvl2 = self.distribution_calc(lvl3_result, lvl_2_result)
+        dist_result_lvl1 = self.filter_oos_results_distribution_kpi(availability_result_lvl1)
         self.write_results_to_db(dist_result_lvl1)
         self.write_results_to_db(dist_results_lvl2)
 
-        oos_sku_res, oos_group_res = self.oos_calc(dist_result_lvl1, lvl_2_result)
+        oos_sku_res, oos_group_res = self.oos_calc(availability_result_lvl1, lvl_2_result)
         self.write_results_to_db(oos_sku_res)
         self.write_results_to_db(oos_group_res)
 
@@ -123,14 +124,24 @@ class CalculateKpi(LiveSessionBaseClass):
         Log.info('Distribution sku level is done ')
         return lvl_3_result
 
+    def filter_oos_results_distribution_kpi(self, dist_result_lvl1):
+        """
+            This function receives results df for availability kpi in sku level, it filters the df
+            from oos results and only distribution results remains
+            :param: dist_result_lvl1 :  availability results df
+            :returns distribution results df
+        """
+        dist_result = self.kpi_result_value(1)
+        dist_result_lvl1 = dist_result_lvl1.loc[dist_result_lvl1['result'] == dist_result]
+        return dist_result_lvl1
+
     def oos_sku_level(self, lvl_3_result):
         """
         This function create df sql results, results of oos on sku level based assortment
         :param lvl_3_result:  df of assortment results in sku level
         :return: df of sql results for oos assortment sku level
         """
-        # filter distrubution kpis
-        # oos_results = lvl_3_result[lvl_3_result['result'] == 0]
+
         oos_results = lvl_3_result.copy()
         if oos_results.empty:
             return oos_results
