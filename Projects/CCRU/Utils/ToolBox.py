@@ -117,15 +117,19 @@ class CCRUKPIToolBox:
 
     MIN_CALC_DATE = '2019-10-26'
 
+    ALLOWED_POS_SETS = tuple(CCRUConsts.ALLOWED_POS_SETS)
+
     STANDARD_VISIT = 'Standard visit'
     PROMO_VISIT = 'Promo visit'
     SOVI_SOCVI_VISIT = 'SOVI/SOCVI'
     SEGMENTATION_VISIT = 'Segmentation'
+    GROWTH_FORMULA = 'Growth formula'
 
     VISIT_TYPE = {1: STANDARD_VISIT,
                   2: PROMO_VISIT,
                   3: SOVI_SOCVI_VISIT,
-                  4: SEGMENTATION_VISIT}
+                  4: SEGMENTATION_VISIT,
+                  5: GROWTH_FORMULA}
 
     def __init__(self, data_provider, output, kpi_set_name=None, kpi_set_type=None, update_kpi_set=False):
         self.data_provider = data_provider
@@ -2832,7 +2836,21 @@ class CCRUKPIToolBox:
         return set_total_res
 
     def get_pos_kpi_set_name(self, update_kpi_set=False):
+        pos = self.get_pos_by_session()
+        if pos not in self.ALLOWED_POS_SETS or update_kpi_set:
+            if self.visit_type == self.GROWTH_FORMULA:
+                if str(self.visit_date) < self.MIN_CALC_DATE:
+                    pos = self.get_pos_by_store_attribute('additional_attribute_22')
+                else:
+                    pos = self.get_pos_by_store_attribute('additional_attribute_21')
+            if pos not in self.ALLOWED_POS_SETS:
+                if str(self.visit_date) < self.MIN_CALC_DATE:
+                    pos = self.get_pos_by_store_attribute('additional_attribute_12')
+                else:
+                    pos = self.get_pos_by_store_attribute('additional_attribute_11')
+        return pos
 
+    def get_pos_by_session(self):
         query = """
                 select s.name 
                 from report.kps_results r
@@ -2843,30 +2861,21 @@ class CCRUKPIToolBox:
         cur = self.rds_conn.db.cursor()
         cur.execute(query)
         res = cur.fetchall()
+        pos = res[0][0] if res else None
+        return pos
 
-        if not res or update_kpi_set:
-            if str(self.visit_date) < self.MIN_CALC_DATE:
-                query = """
-                        select ss.additional_attribute_12 
-                        from static.stores ss 
-                        join probedata.session ps on ps.store_fk=ss.pk 
-                        where ss.delete_date is null and ps.session_uid = '{}';
-                        """.format(self.session_uid)
-            else:
-                query = """
-                        select ss.additional_attribute_11 
-                        from static.stores ss 
-                        join probedata.session ps on ps.store_fk=ss.pk 
-                        where ss.delete_date is null and ps.session_uid = '{}';
-                        """.format(self.session_uid)
-
-            cur = self.rds_conn.db.cursor()
-            cur.execute(query)
-            res = cur.fetchall()
-
-        df = pd.DataFrame(list(res), columns=['POS'])
-
-        return df['POS'][0]
+    def get_pos_by_store_attribute(self, pos_store_attribute):
+        query = """
+                select ss.{} 
+                from static.stores ss 
+                join probedata.session ps on ps.store_fk=ss.pk 
+                where ps.session_uid = '{}';
+                """.format(pos_store_attribute, self.session_uid)
+        cur = self.rds_conn.db.cursor()
+        cur.execute(query)
+        res = cur.fetchall()
+        pos = res[0][0] if res else None
+        return pos
 
     @kpi_runtime()
     def calculate_gaps_old(self, params):
