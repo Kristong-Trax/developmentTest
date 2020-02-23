@@ -212,11 +212,19 @@ class CCRU_SANDKPIToolBox:
             self.cooler_assortment = self.retrieve_and_unpack_cooler_assortment_list()
             if not self.cooler_assortment.empty:
                 self.cooler_info = self.get_all_coolers_in_assortment()
-                self.cooler_survey_responses = self.retrieve_scene_survey_responses()
+                self.coolers_by_bar_code = False    # switch to true when bar code reader solution is introduced
+                if not self.coolers_by_bar_code:
+                    self.cooler_survey_responses = self.retrieve_scene_survey_responses()
+                else:
+                    self.coolers_in_session = self.get_coolers_by_bar_code()
                 self.scif_session = self.scif
                 self.matches_session = self.matches
 
     # -----Cooler Audit----- #
+    # Change once bar code solution is introduced
+    def get_coolers_by_bar_code(self):
+        return pd.DataFrame(columns=[ScifConsts.SCENE_FK, 'cooler_code'])
+
     def retrieve_and_unpack_cooler_assortment_list(self):
         cooler_targets = self.kpi_fetcher.get_kpi_external_targets(self.visit_date, self.store_id)
         key_json_df = self.unpack_kpi_targets_from_db(cooler_targets, 'key_json')
@@ -4171,11 +4179,13 @@ class CCRU_SANDKPIToolBox:
                                            score=extra_score, result=custom_result, identifier_parent=identifier_parent,
                                            should_enter=True)
 
-    def calculate_cooler_presence(self, cooler_ass_store, top_identif_parent):
-        visit_kpi_fk = self.common.get_kpi_fk_by_kpi_type(CCRU_SANDConsts.VISIT_COOLER_AVAILABILITY)
-        visit_identif_par = {'kpi_fk': visit_kpi_fk}
+    # Code to be added once bar code reader solution is implemented
+    def match_coolers_assortment_to_bar_code_reader(self, cooler_ass_store, visit_total_res, extra_coolers_df):
+        # make sure that there is assigned cooler id column in the cooler_ass_store df
+        return cooler_ass_store, visit_total_res, extra_coolers_df
+
+    def match_coolers_assortment_to_survey(self, cooler_ass_store, visit_total_result, extra_coolers_df):
         coolers_survey = self.cooler_survey_responses
-        visit_total_result = 0
         if not coolers_survey.empty:
             coolers_survey['answ_len'] = coolers_survey[CCRU_SANDConsts.SURVEY_ANSWER].apply(lambda x: len(str(x)) \
                                                                                                 if x is not None else 0)
@@ -4198,36 +4208,93 @@ class CCRU_SANDKPIToolBox:
                                                       left_on=CCRU_SANDConsts.COOLER_ID, how='left')
             unassigned_responses = valid_survey_answ[valid_survey_answ['assigned_cooler_id'].isnull()]\
                                                                     [CCRU_SANDConsts.SURVEY_ANSWER].values.tolist()
-
-            for i, row in cooler_ass_store.iterrows():
-                score = 0 if (row['assigned_cooler_id'] is None) or (str(row['assigned_cooler_id']) == 'nan') else 100
-                custom_result = self.get_presence_type_result(score)
-                self.common.write_to_db_result(fk=row['kpi_level_2_fk'], numerator_id=row[CCRU_SANDConsts.COOLER_FK],
-                                               denominator_id=row[CCRU_SANDConsts.COOLER_MODEL_FK],
-                                               context_id=row[ScifConsts.SCENE_FK], result=custom_result, score=score,
-                                               identifier_parent=visit_identif_par, should_enter=True)
             coolers_in_sess = cooler_ass_store[~(cooler_ass_store[CCRU_SANDConsts.SURVEY_ANSWER].isnull())]
             visit_total_result = len(coolers_in_sess) / float(len(cooler_ass_store)) * 100
 
             extra_coolers_df = coolers_survey[coolers_survey[CCRU_SANDConsts.SURVEY_ANSWER].isin(small_responses +
                                                                                                  unassigned_responses)]
-            self.write_extra_coolers_results(extra_coolers_df, top_identif_parent)
+        else:
+            cooler_ass_store['assigned_cooler_id'] = None
+            cooler_ass_store[ScifConsts.SCENE_FK] = None
+        return cooler_ass_store, visit_total_result, extra_coolers_df
+
+    def calculate_cooler_presence(self, cooler_ass_store, top_identif_parent):
+        visit_kpi_fk = self.common.get_kpi_fk_by_kpi_type(CCRU_SANDConsts.VISIT_COOLER_AVAILABILITY)
+        visit_identif_par = {'kpi_fk': visit_kpi_fk}
+        visit_total_res = 0
+        extra_coolers_df = pd.DataFrame(columns=['pk', ScifConsts.SCENE_FK])
+
+        if not self.coolers_by_bar_code:
+            cooler_ass_store, visit_total_res, extra_coolers_df = \
+                self.match_coolers_assortment_to_survey(cooler_ass_store, visit_total_res, extra_coolers_df)
+        else:
+            cooler_ass_store, visit_total_res, extra_coolers_df = \
+                self.match_coolers_assortment_to_bar_code_reader(cooler_ass_store, visit_total_res, extra_coolers_df)
+
+        # if not coolers_survey.empty:
+        #     coolers_survey['answ_len'] = coolers_survey[CCRU_SANDConsts.SURVEY_ANSWER].apply(lambda x: len(str(x)) \
+        #                                                                                         if x is not None else 0)
+        #     small_responses = coolers_survey[coolers_survey['answ_len'] < CCRU_SANDConsts.MIN_NUMBER_DIGITS] \
+        #                                                                 [CCRU_SANDConsts.SURVEY_ANSWER].values.tolist()
+        #     if len(small_responses) > 0:
+        #         Log.warning('The answer lengths for the following coolers are below '
+        #                     'the minimum of 3 digits: {}'.format(small_responses))
+        #
+        #     valid_survey_answ = coolers_survey[~(coolers_survey[CCRU_SANDConsts.SURVEY_ANSWER].isin(small_responses))]
+        #     valid_survey_answ = valid_survey_answ.reset_index(drop=True)
+        #     valid_survey_answ['assigned_cooler_id'] = np.nan
+        #     cooler_ass_arr = cooler_ass_store[CCRU_SANDConsts.COOLER_ID].values
+        #     if not valid_survey_answ.empty:
+        #         assigned_coolers = []
+        #         valid_survey_answ['assigned_cooler_id'] = valid_survey_answ.apply(self.match_survey_to_assortment,
+        #                                                                           axis=1, args=(cooler_ass_arr,
+        #                                                                                         assigned_coolers))
+        #     cooler_ass_store = cooler_ass_store.merge(valid_survey_answ, right_on='assigned_cooler_id',
+        #                                               left_on=CCRU_SANDConsts.COOLER_ID, how='left')
+        #     unassigned_responses = valid_survey_answ[valid_survey_answ['assigned_cooler_id'].isnull()]\
+        #                                                             [CCRU_SANDConsts.SURVEY_ANSWER].values.tolist()
+        #     # for i, row in cooler_ass_store.iterrows():
+        #     #     score = 0 if (row['assigned_cooler_id'] is None) or (str(row['assigned_cooler_id']) == 'nan') else 100
+        #     #     custom_result = self.get_presence_type_result(score)
+        #     #     self.common.write_to_db_result(fk=row['kpi_level_2_fk'], numerator_id=row[CCRU_SANDConsts.COOLER_FK],
+        #     #                                    denominator_id=row[CCRU_SANDConsts.COOLER_MODEL_FK],
+        #     #                                    context_id=row[ScifConsts.SCENE_FK], result=custom_result, score=score,
+        #     #                                    identifier_parent=visit_identif_par, should_enter=True)
+        #     coolers_in_sess = cooler_ass_store[~(cooler_ass_store[CCRU_SANDConsts.SURVEY_ANSWER].isnull())]
+        #     visit_total_result = len(coolers_in_sess) / float(len(cooler_ass_store)) * 100
+        #
+        #     extra_coolers_df = coolers_survey[coolers_survey[CCRU_SANDConsts.SURVEY_ANSWER].isin(small_responses +
+        #                                                                                          unassigned_responses)]
+        #     self.write_extra_coolers_results(extra_coolers_df, top_identif_parent)
+        # else:
+        #     cooler_ass_store['assigned_cooler_id'] = None
+        #     cooler_ass_store[ScifConsts.SCENE_FK] = None
+
+        for i, row in cooler_ass_store.iterrows():
+            score = 0 if (row['assigned_cooler_id'] is None) or (str(row['assigned_cooler_id']) == 'nan') else 100
+            custom_result = self.get_presence_type_result(score)
+            self.common.write_to_db_result(fk=row['kpi_level_2_fk'], numerator_id=row[CCRU_SANDConsts.COOLER_FK],
+                                           denominator_id=row[CCRU_SANDConsts.COOLER_MODEL_FK],
+                                           context_id=row[ScifConsts.SCENE_FK], result=custom_result, score=score,
+                                           identifier_parent=visit_identif_par, should_enter=True)
+
+        self.write_extra_coolers_results(extra_coolers_df, top_identif_parent)
 
         self.common.write_to_db_result(fk=visit_kpi_fk, numerator_id=self.own_manufacturer_id,
-                                       denominator_id=self.store_id, score=visit_total_result,
-                                       result=visit_total_result, identifier_parent=top_identif_parent,
+                                       denominator_id=self.store_id, score=visit_total_res,
+                                       result=visit_total_res, identifier_parent=top_identif_parent,
                                        identifier_result=visit_identif_par, should_enter=True)
 
         visit_fk_old = self.kpi_fetcher.kpi_static_data[self.kpi_fetcher.kpi_static_data['kpi_name'] \
                                                         == CCRU_SANDConsts.VISIT_COOLER_AVAILABILITY]['kpi_fk'].values[0]
         attributes_for_table2 = pd.DataFrame([(self.session_uid, self.store_id, self.visit_date.isoformat(),
                                                visit_fk_old, CCRU_SANDConsts.VISIT_COOLER_AVAILABILITY,
-                                               visit_total_result)],
+                                               visit_total_res)],
                                              columns=['session_uid', 'store_fk', 'visit_date', 'kpi_fk', 'kpk_name',
                                                       'score'])
         self.write_to_kpi_results_old(attributes_for_table2, 'level2')
 
-        return cooler_ass_store, visit_total_result
+        return cooler_ass_store, visit_total_res
 
     def calculate_cooler_score(self, kpi_data, group_model_map, cooler_ass_df, top_identif_parent):
         visit_kpi_fk = self.common.get_kpi_fk_by_kpi_type(CCRU_SANDConsts.VISIT_COOLER_SCORE)
@@ -4269,6 +4336,7 @@ class CCRU_SANDKPIToolBox:
                     score += self.check_weighted_average(kpi_group_data, cooler_dict=cooler_dict)
                     score += self.check_kpi_scores(kpi_group_data, cooler_dict=cooler_dict)
                     score += self.calculate_availability_coolers(kpi_group_data, cooler_dict)
+                    score += self.check_number_of_doors_of_filled_coolers_cooler_audit(kpi_group_data, cooler_dict)
 
                     cooler_scores.update({cooler_fk: score})
                     self.common.write_to_db_result(fk=cooler_score_fk, numerator_id=cooler_fk,
@@ -4303,6 +4371,25 @@ class CCRU_SANDKPIToolBox:
         self.scif = self.scif_session
         self.matches = self.matches_session
 
+    def check_number_of_doors_of_filled_coolers_cooler_audit(self, params, cooler_dict, level=2):
+        set_total_res = 0
+        for p in params.values()[0]:
+            if p.get('level') != level:
+                continue
+            if not (p.get('Formula').strip() in ("number of doors of filled Coolers",)):
+                continue
+            scene = cooler_dict[ScifConsts.SCENE_FK]
+            result = self.check_number_of_doors_of_filled_coolers(params)
+            weight = p.get("KPI Weight")
+            score = result * weight
+            set_total_res += score
+            kpi_fk = self.common.get_kpi_fk_by_kpi_type(CCRU_SANDConsts.COOLER_SCORE_LVL_2)
+            kpi_ref_fk = self.common.get_kpi_fk_by_kpi_type(p['KPI name Eng'])
+            self.common.write_to_db_result(fk=kpi_fk, numerator_id=cooler_dict[CCRU_SANDConsts.COOLER_FK],
+                                           denominator_id=kpi_ref_fk, context_id=scene, result=result, score=score,
+                                           weight=weight, identifier_parent=cooler_dict, should_enter=True)
+        return set_total_res
+
     def calculate_availability_coolers(self, params, cooler_dict, level=2):
         set_total_res = 0
         for p in params.values()[0]:
@@ -4321,11 +4408,6 @@ class CCRU_SANDKPIToolBox:
             self.common.write_to_db_result(fk=kpi_fk, numerator_id=cooler_dict[CCRU_SANDConsts.COOLER_FK],
                                            denominator_id=kpi_ref_fk, context_id=scene, result=result, score=score,
                                            weight=weight, identifier_parent=cooler_dict, should_enter=True)
-
-            # self.common.write_to_db_result(fk=kpi_fk, numerator_id=cooler_dict[CCRU_SANDConsts.COOLER_FK],
-            #                                denominator_id=cooler_dict['cooler_model_fk'],
-            #                                context_id=scene, result=result, score=score, weight=weight,
-            #                                identifier_parent=cooler_dict, should_enter=True)
         return set_total_res
 
     #---------- Cooler Audit end----------
