@@ -1,4 +1,4 @@
-from Projects.GFKDE.Calculations import GFKDECalculations
+# from Projects.GFKDE.Calculations import GFKDECalculations
 from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScript
 from KPIUtils_v2.Utils.Decorators.Decorators import log_runtime
 
@@ -7,7 +7,8 @@ class INTEG32Calculations(BaseCalculationsScript):
 
     @log_runtime("INTEG32 session runtime")
     def run_project_calculations(self):
-        GFKDECalculations(self.data_provider, output=None).run_project_calculations()
+        # GFKDECalculations(self.data_provider, output=None).run_project_calculations()
+        pass
 
 
 # from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider
