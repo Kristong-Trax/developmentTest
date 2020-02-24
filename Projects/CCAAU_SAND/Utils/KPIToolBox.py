@@ -690,6 +690,7 @@ class CCAAUToolBox:
                 WHERE
                     sess.session_uid = '{session_uid}'
                         AND facings <> 0
+                        AND prod.type='SKU'
                         AND prod.is_active = 1
                         AND brand.manufacturer_fk = {manuf};
         """.format(
