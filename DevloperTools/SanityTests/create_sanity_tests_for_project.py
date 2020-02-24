@@ -431,7 +431,8 @@ if __name__ == '__main__':
     replace_configurations_file = True
     copy_configuration_file_to_traxexport(replace_configurations_file)
     projects = {
-        'marsru-prod': {'6cce4ab8-2467-49f2-ae59-718bbdc978c6': []},
+        'marsru-prod': {'ffed4592-47f6-427f-a7e6-29cebafe05af': [],
+                        '5b062170-373c-4363-819b-03104e31af11': []},
                 }
     for project in projects:
         try:
