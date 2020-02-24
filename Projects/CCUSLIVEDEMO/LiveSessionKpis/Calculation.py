@@ -167,7 +167,6 @@ class CalculateKpi(LiveSessionBaseClass):
            all products which excluded from oos will be removed from oos list  and will be added to distribution
           :param lvl3_res : assortment results in sku level
         """
-        #todo  get this info from k-engine
         excluded_from_oos = self.common.get_oos_exclude_values()
         if excluded_from_oos.empty:
             return
