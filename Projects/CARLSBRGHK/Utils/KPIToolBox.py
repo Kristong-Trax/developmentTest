@@ -84,6 +84,7 @@ ASSORTMENT_DATA = [
 # # Assortment ends
 
 COUNT_SKU_IN_STOCK = 'COUNT_SKU_IN_STOCK'
+COUNT_SKU_FACINGS_FLOOR_STACK = 'COUNT_SKU_FACINGS_IN_FLOOR_STACK'
 # map to save list kpis
 # CODE_KPI_MAP = {
 #     OOS_CODE: OOS_PRODUCT_BY_STORE_LIST,
@@ -143,16 +144,46 @@ class CARLSBERGToolBox:
             self.calculate_fsos_kpis()
             self.calculate_assortment_kpis()
             # self.calculate_sku_count_in_stock()
-            # self.calculate_sku_facings_in_floor_stack()
+            self.calculate_sku_facings_in_floor_stack()
 
         self.common.commit_results_data()
         return 0  # to mark successful run of script
 
     def calculate_sku_facings_in_floor_stack(self):
-        # get details of COUNT_SKU_FACINGS_FLOOR_STACK
-        # from external targets -- and save.
-        Log.info("Calculate COUNT_SKU_FACINGS_FLOOR_STACK for {} - {}".format(self.project_name, self.session_uid))
-        pass
+        Log.info("Calculate COUNT_SKU_FACINGS_IN_FLOOR_STACK for {} - {}".format(self.project_name, self.session_uid))
+        external_target_data = self.external_targets[
+            self.external_targets['kpi_type'] == COUNT_SKU_FACINGS_FLOOR_STACK]
+        if external_target_data.empty:
+            Log.warning("Ext Target for COUNT_SKU_FACINGS_IN_FLOOR_STACK not found")
+        include_exclude_data_dict = external_target_data.loc[:, ['include_brand_fks', 'include_category_fks',
+                                                                 'template_fks', 'empty_exclude', 'irrelevant_exclude',
+                                                                 'others_exclude', 'stacking_exclude'
+                                                                 ]].dropna(axis='columns').to_dict('records')[0]
+        for k, v in include_exclude_data_dict.iteritems():
+            if type(v) == float:
+                include_exclude_data_dict[k] = int(v)
+        dataframe_to_process = self.get_sanitized_match_prod_scene(include_exclude_data_dict)
+        if dataframe_to_process.empty:
+            Log.info(
+                "No data to calculate COUNT_SKU_FACINGS_IN_FLOOR_STACK for {} - {}".format(
+                    self.project_name, self.session_uid))
+        for each_prod_fk, prod_group in dataframe_to_process.groupby('product_fk'):
+            # get manufacturer
+            product_df = self.all_products[self.all_products['product_fk']==each_prod_fk]
+            if product_df.empty:
+                Log.warning("Product with pk:{pk} not found during session:{sess}".format(
+                    pk=each_prod_fk,
+                    sess=self.session_uid
+                ))
+                continue
+            self.common.write_to_db_result(fk=external_target_data.iloc[0].kpi_fk,
+                                           numerator_id=each_prod_fk,
+                                           denominator_id=product_df.iloc[0].manufacturer_fk,
+                                           context_id=self.store_id,
+                                           result=len(prod_group),
+                                           score=len(prod_group),
+                                           )
+        return True
 
     def calculate_sku_count_in_stock(self):
         # find the tables
@@ -429,10 +460,11 @@ class CARLSBERGToolBox:
                 # gather details
                 groupers, query_string = get_groupers_and_query_string(detail)
                 # gather include exclude
-                include_exclude_data_dict = kpi_include_exclude[['include_brand_fks', 'include_category_fks',
-                                                                 'template_fks', 'empty_exclude', 'irrelevant_exclude',
-                                                                 'others_exclude', 'stacking_exclude']
-                                                                ].to_dict('records')[0]
+                include_exclude_data_dict = kpi_include_exclude.loc[:, ['include_brand_fks', 'include_category_fks',
+                                                                        'template_fks', 'empty_exclude',
+                                                                        'irrelevant_exclude',
+                                                                        'others_exclude', 'stacking_exclude'
+                                                                        ]].dropna(axis='columns').to_dict('records')[0]
                 dataframe_to_process = self.get_sanitized_match_prod_scene(include_exclude_data_dict)
             if kpi_sheet_row[KPI_FAMILY_COL] == FSOS:
                 self.calculate_fsos(detail, groupers, query_string, dataframe_to_process)
@@ -655,6 +687,8 @@ class CARLSBERGToolBox:
         if scene_types_to_include and not is_nan(scene_types_to_include):
             # list of scene types to include is present, otherwise all included
             Log.info("Include only template/scene type fks: {}".format(scene_types_to_include))
+            if type(scene_types_to_include) != list:
+                scene_types_to_include = [scene_types_to_include]
             sanitized_products_in_scene = sanitized_products_in_scene[
                 sanitized_products_in_scene['template_fk'].isin(scene_types_to_include)]
         if stacking_exclude and not is_nan(stacking_exclude):
@@ -665,11 +699,15 @@ class CARLSBERGToolBox:
         if categories_to_include and not is_nan(categories_to_include):
             # list of categories to exclude is present, otherwise all included
             Log.info("Inlcude only categories: {}".format(categories_to_include))
+            if type(categories_to_include) != list:
+                categories_to_include = [categories_to_include]
             sanitized_products_in_scene = sanitized_products_in_scene[
                 sanitized_products_in_scene['category_fk'].isin(categories_to_include)]
         if brands_to_include and not is_nan(brands_to_include):
             # list of brands to exclude is present, otherwise all included
             Log.info("Include only brands: {}".format(brands_to_include))
+            if type(brands_to_include) != list:
+                brands_to_include = [brands_to_include]
             sanitized_products_in_scene = sanitized_products_in_scene[
                 sanitized_products_in_scene['brand_fk'].isin(brands_to_include)]
         if ean_codes_to_exclude and not is_nan(ean_codes_to_exclude):

@@ -1,7 +1,7 @@
 from Trax.Utils.Conf.Configuration import Config
 from Trax.Utils.Testing.Case import TestCase
 from mock import MagicMock, patch
-from Projects.CARLSBRG_SAND.Utils.KPIToolBox import CARLSBERGToolBox
+from Projects.CARLSBRGHK_SAND.Utils.KPIToolBox import CARLSBERGToolBox
 
 
 __author__ = 'nidhin'
@@ -9,7 +9,7 @@ __author__ = 'nidhin'
 
 class TestCARLSBERG_SAND(TestCase):
 
-    @patch('Projects.CARLSBRG_SAND.Utils.KPIToolBox.ProjectConnector')
+    @patch('Projects.CARLSBRGHK_SAND.Utils.KPIToolBox.ProjectConnector')
     def setUp(self):
         Config.init('')
         self.data_provider_mock = MagicMock()
