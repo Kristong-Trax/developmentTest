@@ -197,8 +197,8 @@ class MARSRU_PRODKPIToolBox:
                 (self.match_product_in_scene['shelf_number_from_bottom'].isin(relevant_shelves))]
 
             if golden_shelves_filtered_df.empty:
-                Log.debug("In the session {} there are not shelves that stands in the "
-                          "criteria for availability_on_golden_shelves KPI".format(self.session_uid))
+                Log.debug('In the session {} there are not shelves that stands in the '
+                          'criteria for availability_on_golden_shelves KPI'.format(self.session_uid))
                 result = 'FALSE'
             else:
                 sku_list = p.get('Values').split()
@@ -245,6 +245,9 @@ class MARSRU_PRODKPIToolBox:
         assortment_products = Assortment(self.data_provider, self.output, common=self.common)\
             .get_lvl3_relevant_ass()
         if not assortment_products.empty:
+            #### ToDO workaround to be removed once fixed - Start - Sergey
+            assortment_products = assortment_products[assortment_products['assortment_fk'] == 4]
+            #### ToDO workaround to be removed once fixed - End Sergey
             assortment_groups = [0] + assortment_products['assortment_group_fk'].unique().tolist()
             assortment_group = self.kpi_fetcher.get_relevant_assortment_group(assortment_groups)
             assortment_products = assortment_products[assortment_products['assortment_group_fk'] == assortment_group]
@@ -308,7 +311,7 @@ class MARSRU_PRODKPIToolBox:
         """
         if not self.store_num_1:
             return
-        Log.debug("Updating PS Custom SCIF... ")
+        Log.debug('Updating PS Custom SCIF... ')
         if not self.assortment_products.empty:
             assortment_products = self.assortment_products['product_fk'].tolist()
             for scene in self.scif['scene_fk'].unique().tolist():
@@ -327,7 +330,7 @@ class MARSRU_PRODKPIToolBox:
                         # The product is not in assortment list and not oos (0,0)
                         self.get_custom_query_values(scene, product, 0, 0)
 
-        Log.debug("Done updating PS Custom SCIF... ")
+        Log.debug('Done updating PS Custom SCIF... ')
         self.commit_custom_scif()
 
     def get_static_list(self, object_type):
@@ -384,51 +387,57 @@ class MARSRU_PRODKPIToolBox:
         if formula == 'number of facings on the first scene':
             scenes = [self.get_first_created_scene(scenes)]
 
-        if params.get("Manufacturer"):
+        if params.get('Manufacturer'):
             manufacturers = [str(manufacturer)
-                             for manufacturer in params.get("Manufacturer").split(", ")]
+                             for manufacturer in params.get('Manufacturer').split(', ')]
         else:
             manufacturers = []
 
-        if params.get("Category"):
-            categories = [str(categories)
-                          for categories in params.get("Category").split(", ")]
+        if params.get('Brand'):
+            brands = [str(brand)
+                      for brand in params.get('Brand').split(', ')]
+        else:
+            brands = []
+
+        if params.get('Category'):
+            categories = [str(category)
+                          for category in params.get('Category').split(', ')]
         else:
             categories = []
 
-        if params.get("Form Factor to include"):
+        if params.get('Form Factor to include'):
             form_factors = [str(form_factor)
-                            for form_factor in params.get("Form Factor to include").split(", ")]
+                            for form_factor in params.get('Form Factor to include').split(', ')]
         else:
             form_factors = []
 
-        if params.get("Form Factor to exclude"):
+        if params.get('Form Factor to exclude'):
             form_factors_to_exclude = [str(form_factor) for form_factor in
-                                       params.get("Form Factor to exclude").split(", ")]
+                                       params.get('Form Factor to exclude').split(', ')]
         else:
             form_factors_to_exclude = []
 
         if params.get('Sub brand to include'):
             sub_brands = [str(sub_brand)
-                          for sub_brand in params.get('Sub brand to include').split(", ")]
+                          for sub_brand in params.get('Sub brand to include').split(', ')]
         else:
             sub_brands = []
 
         if params.get('Sub brand to exclude'):
             sub_brands_to_exclude = [str(sub_brand)
-                                     for sub_brand in params.get('Sub brand to exclude').split(", ")]
+                                     for sub_brand in params.get('Sub brand to exclude').split(', ')]
         else:
             sub_brands_to_exclude = []
 
         if params.get('Client Sub Category Name to include'):
-            cl_sub_cats = [str(cl_sub_cat) for cl_sub_cat in params.get(
-                'Client Sub Category Name to include').split(", ")]
+            cl_sub_cats = [str(cl_sub_cat)
+                           for cl_sub_cat in params.get('Client Sub Category Name to include').split(', ')]
         else:
             cl_sub_cats = []
 
         if params.get('Client Sub Category Name to exclude'):
-            cl_sub_cats_to_exclude = [str(cl_sub_cat) for cl_sub_cat in params.get(
-                'Client Sub Category Name to exclude').split(", ")]
+            cl_sub_cats_to_exclude = [str(cl_sub_cat)
+                                      for cl_sub_cat in params.get('Client Sub Category Name to exclude').split(', ')]
         else:
             cl_sub_cats_to_exclude = []
 
@@ -440,17 +449,17 @@ class MARSRU_PRODKPIToolBox:
         else:
             availability_type = params.get('Type')
 
-        object_facings = self.kpi_fetcher.get_object_facings(scenes, values_list, availability_type,
-                                                             formula=formula,
-                                                             form_factors=form_factors,
+        object_facings = self.kpi_fetcher.get_object_facings(scenes, values_list, availability_type, formula,
                                                              manufacturers=manufacturers,
+                                                             brands=brands,
                                                              sub_brands=sub_brands,
                                                              sub_brands_to_exclude=sub_brands_to_exclude,
+                                                             categories=categories,
                                                              cl_sub_cats=cl_sub_cats,
                                                              cl_sub_cats_to_exclude=cl_sub_cats_to_exclude,
-                                                             include_stacking=include_stacking,
+                                                             form_factors=form_factors,
                                                              form_factors_to_exclude=form_factors_to_exclude,
-                                                             categories=categories)
+                                                             include_stacking=include_stacking)
 
         return object_facings
 
@@ -487,7 +496,7 @@ class MARSRU_PRODKPIToolBox:
             scenes = self.get_relevant_scenes(p)
 
             p_copy = p.copy()
-            p_copy["Formula"] = "number of facings"
+            p_copy['Formula'] = 'number of facings'
             for scene in scenes:
                 if self.calculate_availability(p_copy,
                                                scenes=[scene],
@@ -590,7 +599,7 @@ class MARSRU_PRODKPIToolBox:
             if not scenes:
                 scenes = self.get_relevant_scenes(params)
             form_factors = [str(form_factor)
-                            for form_factor in p.get('Form Factor to include').split(", ")]
+                            for form_factor in p.get('Form Factor to include').split(', ')]
             if p.get('Include Stacking'):
                 max_price = self.kpi_fetcher.get_object_price(scenes, values_list, p.get('Type'),
                                                               self.match_product_in_scene, form_factors,
@@ -759,8 +768,8 @@ class MARSRU_PRODKPIToolBox:
             scenes = self.get_relevant_scenes(p)
             if p.get('Include Stacking'):
                 if p.get('Include Stacking') == -1:
-                    form_factor_filter = {"WET": 'gross_len_ign_stack',
-                                          "DRY": 'gross_len_split_stack'}
+                    form_factor_filter = {'WET': 'gross_len_ign_stack',
+                                          'DRY': 'gross_len_split_stack'}
                     linear_size, products = self.calculate_layout_size_by_form_factor(scenes,
                                                                                       p.get('Type'),
                                                                                       manufacturers,
@@ -952,9 +961,9 @@ class MARSRU_PRODKPIToolBox:
     #         else:
     #             matches = self.kpi_fetcher.get_filtered_matches(include_stacking=False)
     #
-    #         sub_brands = [str(sub_brand) for sub_brand in p.get('Sub brand to exclude').split(", ")]
+    #         sub_brands = [str(sub_brand) for sub_brand in p.get('Sub brand to exclude').split(', ')]
     #         form_factors = [str(form_factor)
-    #                         for form_factor in p.get("Form Factor to include").split(", ")]
+    #                         for form_factor in p.get('Form Factor to include').split(', ')]
     #         for value in values_list:
     #             if p.get('Formula') == 'custom_mars_2' and self.visit_date.year != 2018:
     #                 self.initial_mapping_of_square(scenes, matches, object_field, [value], p,
@@ -1342,13 +1351,13 @@ class MARSRU_PRODKPIToolBox:
     #
     #         if p.get('Sub brand to exclude'):
     #             sub_brands = [str(sub_brand)
-    #                           for sub_brand in p.get('Sub brand to exclude').split(", ")]
+    #                           for sub_brand in p.get('Sub brand to exclude').split(', ')]
     #         else:
     #             sub_brands = []
     #
-    #         if p.get("Form Factor to include"):
+    #         if p.get('Form Factor to include'):
     #             form_factors = [str(form_factor)
-    #                             for form_factor in p.get("Form Factor to include").split(", ")]
+    #                             for form_factor in p.get('Form Factor to include').split(', ')]
     #         else:
     #             form_factors = []
     #
@@ -1413,9 +1422,9 @@ class MARSRU_PRODKPIToolBox:
                     bay_golden_shelves = self.kpi_fetcher.get_golden_shelves(len(shelves))
                     for shelf in bay_golden_shelves:
                         object_facings = self.kpi_fetcher.get_object_facings(scenes, values_list, p.get('Type'),
+                                                                             formula='number of SKUs',
                                                                              form_factors=[
                                                                                  p.get('Form Factor to include')],
-                                                                             formula="number of SKUs",
                                                                              shelves=str(shelf))
                         if object_facings > 0:
                             shelves_result_dict[shelf] = 1
@@ -1450,9 +1459,9 @@ class MARSRU_PRODKPIToolBox:
             brand_facings_dict = {}
             values_list = str(p.get('Values')).split(', ') if p.get('Values') else []
             scenes = self.get_relevant_scenes(p)
-            if p.get("Form Factor to include"):
+            if p.get('Form Factor to include'):
                 form_factors = [str(form_factor)
-                                for form_factor in p.get("Form Factor to include").split(", ")]
+                                for form_factor in p.get('Form Factor to include').split(', ')]
             else:
                 form_factors = []
 
@@ -1469,8 +1478,8 @@ class MARSRU_PRODKPIToolBox:
 
             object_facings = self.kpi_fetcher.get_object_facings(scenes, values_list, p.get('Type'),
                                                                  formula='number of facings',
-                                                                 form_factors=form_factors,
                                                                  categories=categories,
+                                                                 form_factors=form_factors,
                                                                  include_stacking=include_stacking,
                                                                  linear=linear)
             brands_to_check = self.scif.loc[self.scif['scene_id'].isin(scenes) &
@@ -1479,8 +1488,8 @@ class MARSRU_PRODKPIToolBox:
             for brand in brands_to_check:
                 brand_facings = self.kpi_fetcher.get_object_facings(scenes, [brand], p.get('Type'),
                                                                     formula='number of facings',
-                                                                    form_factors=form_factors,
                                                                     categories=categories,
+                                                                    form_factors=form_factors,
                                                                     include_stacking=include_stacking,
                                                                     linear=linear)
                 brand_facings_dict[brand] = brand_facings
@@ -2529,143 +2538,156 @@ class MARSRU_PRODKPIToolBox:
             neighbor_1_products = []
             neighbor_2_products = []
 
+            kpi_set = (p.get('#Mars KPI SET Old'), p.get('#Mars KPI SET New'))
+
             kpi_parameters = json.loads(p.get('Values')) if p.get('Values') else {}
+
             if kpi_parameters:
+                if kpi_parameters['exception']:
+                    exception_kpi_name = kpi_parameters['exception'][0].keys()[0]
+                    exception_kpi_results = kpi_parameters['exception'][0][exception_kpi_name]
+                    kpi_result_to_check = str(self.results_and_scores[kpi_set][exception_kpi_name]['result'])
+                    if kpi_result_to_check in exception_kpi_results:
+                        result = True
 
-                if kpi_parameters['core']:
-                    for row in kpi_parameters['core']:
-                        core_products += self.get_products_fks_by_attributes(row)
-                    core_products = list(set(core_products))
+            if result is None:
 
-                if kpi_parameters['neighbor_1']:
-                    for row in kpi_parameters['neighbor_1']:
-                        neighbor_1_products += self.get_products_fks_by_attributes(row)
-                    neighbor_1_products = list(set(neighbor_1_products) - set(core_products))
+                if kpi_parameters:
 
-                if kpi_parameters['neighbor_2']:
-                    for row in kpi_parameters['neighbor_2']:
-                        neighbor_2_products += self.get_products_fks_by_attributes(row)
-                    neighbor_2_products = list(set(neighbor_2_products) - set(core_products))
+                    if kpi_parameters['core']:
+                        for row in kpi_parameters['core']:
+                            core_products += self.get_products_fks_by_attributes(row)
+                        core_products = list(set(core_products))
 
-            scenes = self.get_relevant_scenes(p)
+                    if kpi_parameters['neighbor_1']:
+                        for row in kpi_parameters['neighbor_1']:
+                            neighbor_1_products += self.get_products_fks_by_attributes(row)
+                        neighbor_1_products = list(set(neighbor_1_products) - set(core_products))
 
-            if core_products and scenes:
-                minimum_facing_for_block = 1  # parameter
-                block_together_results = Block(self.data_provider, rds_conn=self.rds_conn)\
-                    .network_x_block_together(location={'scene_fk': scenes},
-                                              population={'product_fk': core_products},
-                                              additional={'minimum_block_ratio': 1,
-                                                          'minimum_facing_for_block': minimum_facing_for_block})
-                block_together_results['is_block_str'] = block_together_results['is_block'].astype(str)
+                    if kpi_parameters['neighbor_2']:
+                        for row in kpi_parameters['neighbor_2']:
+                            neighbor_2_products += self.get_products_fks_by_attributes(row)
+                        neighbor_2_products = list(set(neighbor_2_products) - set(core_products))
 
-                failed_scenes = \
-                    block_together_results[(block_together_results['total_facings'] >= minimum_facing_for_block) &
-                                           (block_together_results['is_block_str'] == 'False')]['scene_fk'].tolist()
-                passed_scenes = \
-                    block_together_results[(block_together_results['total_facings'] >= minimum_facing_for_block) &
-                                           (block_together_results['is_block_str'] == 'True')]['scene_fk'].tolist()
+                scenes = self.get_relevant_scenes(p)
 
-                if failed_scenes:
-                    result = False
-                elif not passed_scenes:
-                    result = None
-                elif not neighbor_1_products and not neighbor_2_products:
-                    result = True  # The core products are all blocked together and no neighbors defined to check
-                else:
+                if core_products and scenes:
+                    minimum_facing_for_block = 1  # parameter
+                    block_together_results = Block(self.data_provider, rds_conn=self.rds_conn)\
+                        .network_x_block_together(location={'scene_fk': scenes},
+                                                  population={'product_fk': core_products},
+                                                  additional={'minimum_block_ratio': 1,
+                                                              'minimum_facing_for_block': minimum_facing_for_block})
+                    block_together_results['is_block_str'] = block_together_results['is_block'].astype(str)
 
-                    result = True
-                    matches = self.match_product_in_scene[self.match_product_in_scene['stacking_layer'] == 1]
+                    failed_scenes = \
+                        block_together_results[(block_together_results['total_facings'] >= minimum_facing_for_block) &
+                                               (block_together_results['is_block_str'] == 'False')]['scene_fk'].tolist()
+                    passed_scenes = \
+                        block_together_results[(block_together_results['total_facings'] >= minimum_facing_for_block) &
+                                               (block_together_results['is_block_str'] == 'True')]['scene_fk'].tolist()
 
-                    for scene in passed_scenes:
+                    if failed_scenes:
+                        result = False
+                    elif not passed_scenes:
+                        result = None
+                    elif not neighbor_1_products and not neighbor_2_products:
+                        result = True  # The core products are all blocked together and no neighbors defined to check
+                    else:
 
-                        scene_matches = matches[matches['scene_fk'] == scene]
-                        shelves = scene_matches[scene_matches['product_fk'].isin(core_products)][
-                            'shelf_number'].unique().tolist()
+                        result = True
+                        matches = self.match_product_in_scene[self.match_product_in_scene['stacking_layer'] == 1]
 
-                        for shelf in shelves:
+                        for scene in passed_scenes:
 
-                            shelf_matches = scene_matches[scene_matches['shelf_number'] == shelf]\
-                                .merge(self.products[['product_fk', 'product_type']], how='left', on='product_fk')\
-                                .sort_values(by=['bay_number', 'facing_sequence_number'])\
-                                .copy()\
-                                .reset_index(drop=True)
-                            shelf_matches['position'] = shelf_matches.index + 1
+                            scene_matches = matches[matches['scene_fk'] == scene]
+                            shelves = scene_matches[scene_matches['product_fk'].isin(core_products)][
+                                'shelf_number'].unique().tolist()
 
-                            min_position = shelf_matches['position'].min()
-                            max_position = shelf_matches['position'].max()
+                            for shelf in shelves:
 
-                            core_left_position = shelf_matches[shelf_matches['product_fk'].isin(core_products)][
-                                'position'].min()
-                            core_right_position = shelf_matches[shelf_matches['product_fk'].isin(core_products)][
-                                'position'].max()
+                                shelf_matches = scene_matches[scene_matches['shelf_number'] == shelf]\
+                                    .merge(self.products[['product_fk', 'product_type']], how='left', on='product_fk')\
+                                    .sort_values(by=['bay_number', 'facing_sequence_number'])\
+                                    .copy()\
+                                    .reset_index(drop=True)
+                                shelf_matches['position'] = shelf_matches.index + 1
 
-                            if neighbor_1_products and not neighbor_2_products:
-                                neighbor_1_left = self.check_block_neighbor_on_shelf('left',
-                                                                                     core_left_position,
-                                                                                     min_position,
-                                                                                     neighbor_1_products,
-                                                                                     shelf_matches)
-                                if not neighbor_1_left:
-                                    neighbor_1_right = self.check_block_neighbor_on_shelf('right',
-                                                                                          core_right_position,
-                                                                                          max_position,
-                                                                                          neighbor_1_products,
-                                                                                          shelf_matches)
-                                    if not neighbor_1_right:
-                                        result = False
+                                min_position = shelf_matches['position'].min()
+                                max_position = shelf_matches['position'].max()
 
-                            elif neighbor_2_products and not neighbor_1_products:
-                                neighbor_2_left = self.check_block_neighbor_on_shelf('left',
-                                                                                     core_left_position,
-                                                                                     min_position,
-                                                                                     neighbor_2_products,
-                                                                                     shelf_matches)
-                                if not neighbor_2_left:
-                                    neighbor_2_right = self.check_block_neighbor_on_shelf('right',
-                                                                                          core_right_position,
-                                                                                          max_position,
-                                                                                          neighbor_2_products,
-                                                                                          shelf_matches)
-                                    if not neighbor_2_right:
-                                        result = False
+                                core_left_position = shelf_matches[shelf_matches['product_fk'].isin(core_products)][
+                                    'position'].min()
+                                core_right_position = shelf_matches[shelf_matches['product_fk'].isin(core_products)][
+                                    'position'].max()
 
-                            else:
-                                neighbor_1_left = self.check_block_neighbor_on_shelf('left',
-                                                                                     core_left_position,
-                                                                                     min_position,
-                                                                                     neighbor_1_products,
-                                                                                     shelf_matches)
-                                neighbor_2_left = self.check_block_neighbor_on_shelf('left',
-                                                                                     core_left_position,
-                                                                                     min_position,
-                                                                                     neighbor_2_products,
-                                                                                     shelf_matches)
-                                if neighbor_1_left:
-                                    neighbor_2_right = self.check_block_neighbor_on_shelf('right',
-                                                                                          core_right_position,
-                                                                                          max_position,
-                                                                                          neighbor_2_products,
-                                                                                          shelf_matches)
-                                    if not neighbor_2_right:
-                                        result = False
+                                if neighbor_1_products and not neighbor_2_products:
+                                    neighbor_1_left = self.check_block_neighbor_on_shelf('left',
+                                                                                         core_left_position,
+                                                                                         min_position,
+                                                                                         neighbor_1_products,
+                                                                                         shelf_matches)
+                                    if not neighbor_1_left:
+                                        neighbor_1_right = self.check_block_neighbor_on_shelf('right',
+                                                                                              core_right_position,
+                                                                                              max_position,
+                                                                                              neighbor_1_products,
+                                                                                              shelf_matches)
+                                        if not neighbor_1_right:
+                                            result = False
 
-                                elif neighbor_2_left:
-                                    neighbor_1_right = self.check_block_neighbor_on_shelf('right',
-                                                                                          core_right_position,
-                                                                                          max_position,
-                                                                                          neighbor_1_products,
-                                                                                          shelf_matches)
-                                    if not neighbor_1_right:
-                                        result = False
+                                elif neighbor_2_products and not neighbor_1_products:
+                                    neighbor_2_left = self.check_block_neighbor_on_shelf('left',
+                                                                                         core_left_position,
+                                                                                         min_position,
+                                                                                         neighbor_2_products,
+                                                                                         shelf_matches)
+                                    if not neighbor_2_left:
+                                        neighbor_2_right = self.check_block_neighbor_on_shelf('right',
+                                                                                              core_right_position,
+                                                                                              max_position,
+                                                                                              neighbor_2_products,
+                                                                                              shelf_matches)
+                                        if not neighbor_2_right:
+                                            result = False
 
                                 else:
-                                    result = False
+                                    neighbor_1_left = self.check_block_neighbor_on_shelf('left',
+                                                                                         core_left_position,
+                                                                                         min_position,
+                                                                                         neighbor_1_products,
+                                                                                         shelf_matches)
+                                    neighbor_2_left = self.check_block_neighbor_on_shelf('left',
+                                                                                         core_left_position,
+                                                                                         min_position,
+                                                                                         neighbor_2_products,
+                                                                                         shelf_matches)
+                                    if neighbor_1_left:
+                                        neighbor_2_right = self.check_block_neighbor_on_shelf('right',
+                                                                                              core_right_position,
+                                                                                              max_position,
+                                                                                              neighbor_2_products,
+                                                                                              shelf_matches)
+                                        if not neighbor_2_right:
+                                            result = False
+
+                                    elif neighbor_2_left:
+                                        neighbor_1_right = self.check_block_neighbor_on_shelf('right',
+                                                                                              core_right_position,
+                                                                                              max_position,
+                                                                                              neighbor_1_products,
+                                                                                              shelf_matches)
+                                        if not neighbor_1_right:
+                                            result = False
+
+                                    else:
+                                        result = False
+
+                                if not result:
+                                    break
 
                             if not result:
                                 break
-
-                        if not result:
-                            break
 
             if result:
                 result = 'TRUE'

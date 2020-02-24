@@ -1,9 +1,9 @@
 import os
 
 from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScript
-from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
-from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
-from Trax.Utils.Conf.Configuration import Config
+# from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
+# from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
+# from Trax.Utils.Conf.Configuration import Config
 
 from KPIUtils.GlobalProjects.SANOFI_3.KPIGenerator import SANOFIGenerator
 
@@ -21,12 +21,12 @@ class SANOFIPKCalculations(BaseCalculationsScript):
         self.timer.stop('KPIGenerator.run_project_calculations')
 
 
-if __name__ == '__main__':
-    LoggerInitializer.init('sanofipk calculations')
-    Config.init()
-    project_name = 'sanofipk'
-    data_provider = KEngineDataProvider(project_name)
-    session = 'B3988C35-769C-4EAE-8E25-5250AD7E4CBD'
-    data_provider.load_session_data(session)
-    output = Output()
-    SANOFIPKCalculations(data_provider, output).run_project_calculations()
+# if __name__ == '__main__':
+#     LoggerInitializer.init('sanofipk calculations')
+#     Config.init()
+#     project_name = 'sanofipk'
+#     data_provider = KEngineDataProvider(project_name)
+#     session = 'A8D423C9-224E-46F2-8443-E58D96EC9E3D'
+#     data_provider.load_session_data(session)
+#     output = Output()
+#     SANOFIPKCalculations(data_provider, output).run_project_calculations()

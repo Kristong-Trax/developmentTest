@@ -24,8 +24,6 @@ KPI_RESULT = 'report.kpi_results'
 KPK_RESULT = 'report.kpk_results'
 KPS_RESULT = 'report.kps_results'
 
-TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)),
-                             '..', 'Data', 'Template.xlsx')
 SCENE_TYPE_FIELD = 'additional_attribute_1'
 
 
@@ -39,9 +37,7 @@ def log_runtime(description, log_start=False):
             calc_end_time = datetime.utcnow()
             Log.info('{} took {}'.format(description, calc_end_time - calc_start_time))
             return result
-
         return wrapper
-
     return decorator
 
 
@@ -239,8 +235,6 @@ class CCKH_SANDToolBox(CCKH_SANDConsts):
         main_children = self.templates_info[self.templates_info[self.template.KPI_GROUP] == self.RED_SCORE]
         for c in xrange(0, len(main_children)):
             main_child = main_children.iloc[c]
-            if main_child['Tested KPI Group'] == self.RED_SCORE:
-                continue
             main_child_kpi_fk = self.get_new_kpi_fk(main_child)  # kpi fk from new tables
             main_kpi_identifier = self.commonV2.get_dictionary(kpi_fk=main_child_kpi_fk)
             if self.validate_store_type(main_child):
@@ -321,7 +315,7 @@ class CCKH_SANDToolBox(CCKH_SANDConsts):
         if not stores:
             validation = True
         elif isinstance(stores, (str, unicode)):
-            if stores.upper() == self.template.ALL:
+            if stores.upper() == self.template.ALL or self.store_type in stores.split(self.template.SEPARATOR):
                 validation = True
         elif isinstance(stores, list):
             if self.store_type in stores:
@@ -437,6 +431,8 @@ class CCKH_SANDToolBox(CCKH_SANDConsts):
             sos_filters = {params[self.template.SOS_ENTITY]: params[self.template.SOS_NUMERATOR]}
         general_filters = {}
         scene_types = self.get_scene_types(params)
+        if isinstance(scene_types, (str, unicode)):
+            scene_types = scene_types.split(self.template.SEPARATOR)
         if scene_types:
             general_filters[SCENE_TYPE_FIELD] = scene_types
         products_to_exclude = params[self.template.PRODUCT_TYPES_TO_EXCLUDE]
