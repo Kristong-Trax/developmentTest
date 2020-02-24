@@ -556,7 +556,7 @@ class CBCDAIRYILKpiResults:
                 72: 0,
                 73: 3911,
                 74: 336,
-                75: 41,
+                75: 52,
                 76: 75,
                 77: 1},
             'result': {
@@ -635,7 +635,7 @@ class CBCDAIRYILKpiResults:
                 72: 100.0,
                 73: 0.145,
                 74: 0.155,
-                75: 1.0,
+                75: 0.788,
                 76: 0.3333,
                 77: 1.0},
             'denominator_id': {
