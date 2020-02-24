@@ -219,6 +219,7 @@ class CCRU_SANDKPIToolBox:
                     self.coolers_in_session = self.get_coolers_by_bar_code()
                 self.scif_session = self.scif
                 self.matches_session = self.matches
+                self.scenes_session_initial = self.scenes_info
 
     # -----Cooler Audit----- #
     # Change once bar code solution is introduced
@@ -577,7 +578,7 @@ class CCRU_SANDKPIToolBox:
                 #                                weight=p.get("KPI Weight"), score=score * p.get('KPI Weight'),
                 #                                identifier_parent=cooler_dict, should_enter=True)
                 kpi_fk = self.common.get_kpi_fk_by_kpi_type(CCRU_SANDConsts.COOLER_SCORE_LVL_2)
-                kpi_ref_fk = self.common.get_kpi_fk_by_kpi_type(p['KPI name Eng'])
+                kpi_ref_fk = self.common.get_kpi_fk_by_kpi_type(p['KPI name Eng'].upper())
                 self.common.write_to_db_result(fk=kpi_fk, numerator_id=cooler_dict[CCRU_SANDConsts.COOLER_FK],
                                                denominator_id=kpi_ref_fk, context_id=cooler_dict[ScifConsts.SCENE_FK],
                                                result=score, score=score * p.get('KPI Weight'),
@@ -850,7 +851,7 @@ class CCRU_SANDKPIToolBox:
                 #                                weight=p.get("KPI Weight"), score=score * p.get('KPI Weight'),
                 #                                identifier_parent=cooler_dict, should_enter=True)
                 kpi_fk = self.common.get_kpi_fk_by_kpi_type(CCRU_SANDConsts.COOLER_SCORE_LVL_2)
-                kpi_ref_fk = self.common.get_kpi_fk_by_kpi_type(p['KPI name Eng'])
+                kpi_ref_fk = self.common.get_kpi_fk_by_kpi_type(p['KPI name Eng'].upper())
                 self.common.write_to_db_result(fk=kpi_fk, numerator_id=cooler_dict[CCRU_SANDConsts.COOLER_FK],
                                                denominator_id=kpi_ref_fk, context_id=cooler_dict[ScifConsts.SCENE_FK],
                                                result=score, score=score * p.get('KPI Weight'),
@@ -891,7 +892,7 @@ class CCRU_SANDKPIToolBox:
                 #                                weight=p.get("KPI Weight"), score=score * p.get('KPI Weight'),
                 #                                identifier_parent=cooler_dict, should_enter=True)
                 kpi_fk = self.common.get_kpi_fk_by_kpi_type(CCRU_SANDConsts.COOLER_SCORE_LVL_2)
-                kpi_ref_fk = self.common.get_kpi_fk_by_kpi_type(p['KPI name Eng'])
+                kpi_ref_fk = self.common.get_kpi_fk_by_kpi_type(p['KPI name Eng'].upper())
                 self.common.write_to_db_result(fk=kpi_fk, numerator_id=cooler_dict[CCRU_SANDConsts.COOLER_FK],
                                                denominator_id=kpi_ref_fk, context_id=cooler_dict[ScifConsts.SCENE_FK],
                                                result=score, score=score * p.get('KPI Weight'),
@@ -1053,7 +1054,7 @@ class CCRU_SANDKPIToolBox:
                 #                                weight=p.get("KPI Weight"), score=score * p.get('KPI Weight'),
                 #                                identifier_parent=cooler_dict, should_enter=True)
                 kpi_fk = self.common.get_kpi_fk_by_kpi_type(CCRU_SANDConsts.COOLER_SCORE_LVL_2)
-                kpi_ref_fk = self.common.get_kpi_fk_by_kpi_type(p['KPI name Eng'])
+                kpi_ref_fk = self.common.get_kpi_fk_by_kpi_type(p['KPI name Eng'].upper())
                 self.common.write_to_db_result(fk=kpi_fk, numerator_id=cooler_dict[CCRU_SANDConsts.COOLER_FK],
                                                denominator_id=kpi_ref_fk, context_id=cooler_dict[ScifConsts.SCENE_FK],
                                                result=score, score=score * p.get('KPI Weight'),
@@ -1288,7 +1289,7 @@ class CCRU_SANDKPIToolBox:
                 #                                weight=p.get("KPI Weight"), score=score * p.get('KPI Weight'),
                 #                                identifier_parent=cooler_dict, should_enter=True)
                 kpi_fk = self.common.get_kpi_fk_by_kpi_type(CCRU_SANDConsts.COOLER_SCORE_LVL_2)
-                kpi_ref_fk = self.common.get_kpi_fk_by_kpi_type(p['KPI name Eng'])
+                kpi_ref_fk = self.common.get_kpi_fk_by_kpi_type(p['KPI name Eng'].upper())
                 self.common.write_to_db_result(fk=kpi_fk, numerator_id=cooler_dict[CCRU_SANDConsts.COOLER_FK],
                                                denominator_id=kpi_ref_fk, context_id=cooler_dict[ScifConsts.SCENE_FK],
                                                result=score, score=score * p.get('KPI Weight'),
@@ -1485,7 +1486,7 @@ class CCRU_SANDKPIToolBox:
                 #                                weight=p.get("KPI Weight"), score=score * p.get('KPI Weight'),
                 #                                identifier_parent=cooler_dict, should_enter=True)
                 kpi_fk = self.common.get_kpi_fk_by_kpi_type(CCRU_SANDConsts.COOLER_SCORE_LVL_2)
-                kpi_ref_fk = self.common.get_kpi_fk_by_kpi_type(p['KPI name Eng'])
+                kpi_ref_fk = self.common.get_kpi_fk_by_kpi_type(p['KPI name Eng'].upper())
                 self.common.write_to_db_result(fk=kpi_fk, numerator_id=cooler_dict[CCRU_SANDConsts.COOLER_FK],
                                                denominator_id=kpi_ref_fk, context_id=cooler_dict[ScifConsts.SCENE_FK],
                                                result=score, score=score * p.get('KPI Weight'),
@@ -1773,7 +1774,7 @@ class CCRU_SANDKPIToolBox:
                 #                                weight=p.get("KPI Weight"), score=score * p.get('KPI Weight'),
                 #                                identifier_parent=cooler_dict, should_enter=True)
                 kpi_fk = self.common.get_kpi_fk_by_kpi_type(CCRU_SANDConsts.COOLER_SCORE_LVL_2)
-                kpi_ref_fk = self.common.get_kpi_fk_by_kpi_type(p['KPI name Eng'])
+                kpi_ref_fk = self.common.get_kpi_fk_by_kpi_type(p['KPI name Eng'].upper())
                 self.common.write_to_db_result(fk=kpi_fk, numerator_id=cooler_dict[CCRU_SANDConsts.COOLER_FK],
                                                denominator_id=kpi_ref_fk, context_id=cooler_dict[ScifConsts.SCENE_FK],
                                                result=score, score=score * p.get('KPI Weight'),
@@ -1812,7 +1813,7 @@ class CCRU_SANDKPIToolBox:
                 #                                weight=p.get("KPI Weight"), score=score * p.get('KPI Weight'),
                 #                                identifier_parent=cooler_dict, should_enter=True)
                 kpi_fk = self.common.get_kpi_fk_by_kpi_type(CCRU_SANDConsts.COOLER_SCORE_LVL_2)
-                kpi_ref_fk = self.common.get_kpi_fk_by_kpi_type(p['KPI name Eng'])
+                kpi_ref_fk = self.common.get_kpi_fk_by_kpi_type(p['KPI name Eng'].upper())
                 self.common.write_to_db_result(fk=kpi_fk, numerator_id=cooler_dict[CCRU_SANDConsts.COOLER_FK],
                                                denominator_id=kpi_ref_fk, context_id=cooler_dict[ScifConsts.SCENE_FK],
                                                result=score, score=score * p.get('KPI Weight'),
@@ -1902,7 +1903,7 @@ class CCRU_SANDKPIToolBox:
                 #                                weight=p.get("KPI Weight"), score=score * p.get('KPI Weight'),
                 #                                identifier_parent=cooler_dict, should_enter=True)
                 kpi_fk = self.common.get_kpi_fk_by_kpi_type(CCRU_SANDConsts.COOLER_SCORE_LVL_2)
-                kpi_ref_fk = self.common.get_kpi_fk_by_kpi_type(p['KPI name Eng'])
+                kpi_ref_fk = self.common.get_kpi_fk_by_kpi_type(p['KPI name Eng'].upper())
                 self.common.write_to_db_result(fk=kpi_fk, numerator_id=cooler_dict[CCRU_SANDConsts.COOLER_FK],
                                                denominator_id=kpi_ref_fk, context_id=cooler_dict[ScifConsts.SCENE_FK],
                                                result=score, score=score * p.get('KPI Weight'),
@@ -2003,7 +2004,7 @@ class CCRU_SANDKPIToolBox:
                 #                                weight=p.get("KPI Weight"), score=score * p.get('KPI Weight'),
                 #                                identifier_parent=cooler_dict, should_enter=True)
                 kpi_fk = self.common.get_kpi_fk_by_kpi_type(CCRU_SANDConsts.COOLER_SCORE_LVL_2)
-                kpi_ref_fk = self.common.get_kpi_fk_by_kpi_type(p['KPI name Eng'])
+                kpi_ref_fk = self.common.get_kpi_fk_by_kpi_type(p['KPI name Eng'].upper())
                 self.common.write_to_db_result(fk=kpi_fk, numerator_id=cooler_dict[CCRU_SANDConsts.COOLER_FK],
                                                denominator_id=kpi_ref_fk, context_id=cooler_dict[ScifConsts.SCENE_FK],
                                                result=score, score=score * p.get('KPI Weight'),
@@ -2157,7 +2158,7 @@ class CCRU_SANDKPIToolBox:
                 #                                weight=p.get("KPI Weight"), score=score * p.get('KPI Weight'),
                 #                                identifier_parent=cooler_dict, should_enter=True)
                 kpi_fk = self.common.get_kpi_fk_by_kpi_type(CCRU_SANDConsts.COOLER_SCORE_LVL_2)
-                kpi_ref_fk = self.common.get_kpi_fk_by_kpi_type(p['KPI name Eng'])
+                kpi_ref_fk = self.common.get_kpi_fk_by_kpi_type(p['KPI name Eng'].upper())
                 self.common.write_to_db_result(fk=kpi_fk, numerator_id=cooler_dict[CCRU_SANDConsts.COOLER_FK],
                                                denominator_id=kpi_ref_fk, context_id=cooler_dict[ScifConsts.SCENE_FK],
                                                result=score, score=score * p.get('KPI Weight'),
@@ -2343,7 +2344,7 @@ class CCRU_SANDKPIToolBox:
                 #                                score=kpi_score * p.get('KPI Weight'), weight=p.get('KPI Weight'),
                 #                                identifier_parent=cooler_dict, should_enter=True)
                 kpi_fk = self.common.get_kpi_fk_by_kpi_type(CCRU_SANDConsts.COOLER_SCORE_LVL_2)
-                kpi_ref_fk = self.common.get_kpi_fk_by_kpi_type(p['KPI name Eng'])
+                kpi_ref_fk = self.common.get_kpi_fk_by_kpi_type(p['KPI name Eng'].upper())
                 self.common.write_to_db_result(fk=kpi_fk, numerator_id=cooler_dict[CCRU_SANDConsts.COOLER_FK],
                                                denominator_id=kpi_ref_fk, context_id=cooler_dict[ScifConsts.SCENE_FK],
                                                result=kpi_score, score=kpi_score * p.get('KPI Weight'),
@@ -2454,7 +2455,7 @@ class CCRU_SANDKPIToolBox:
                     #                                weight=p.get("KPI Weight"), score=score * p.get('KPI Weight'),
                     #                                identifier_parent=cooler_dict, should_enter=True)
                     kpi_fk = self.common.get_kpi_fk_by_kpi_type(CCRU_SANDConsts.COOLER_SCORE_LVL_2)
-                    kpi_ref_fk = self.common.get_kpi_fk_by_kpi_type(p['KPI name Eng'])
+                    kpi_ref_fk = self.common.get_kpi_fk_by_kpi_type(p['KPI name Eng'].upper())
                     self.common.write_to_db_result(fk=kpi_fk, numerator_id=cooler_dict[CCRU_SANDConsts.COOLER_FK],
                                                    denominator_id=kpi_ref_fk,
                                                    context_id=cooler_dict[ScifConsts.SCENE_FK],
@@ -4048,7 +4049,7 @@ class CCRU_SANDKPIToolBox:
                     #                                weight=p.get("KPI Weight"), score=kpi_score * p.get('KPI Weight'),
                     #                                identifier_parent=cooler_dict, should_enter=True)
                     kpi_fk = self.common.get_kpi_fk_by_kpi_type(CCRU_SANDConsts.COOLER_SCORE_LVL_2)
-                    kpi_ref_fk = self.common.get_kpi_fk_by_kpi_type(p['KPI name Eng'])
+                    kpi_ref_fk = self.common.get_kpi_fk_by_kpi_type(p['KPI name Eng'].upper())
                     self.common.write_to_db_result(fk=kpi_fk, numerator_id=cooler_dict[CCRU_SANDConsts.COOLER_FK],
                                                    denominator_id=kpi_ref_fk,
                                                    context_id=cooler_dict[ScifConsts.SCENE_FK],
@@ -4231,45 +4232,6 @@ class CCRU_SANDKPIToolBox:
             cooler_ass_store, visit_total_res, extra_coolers_df = \
                 self.match_coolers_assortment_to_bar_code_reader(cooler_ass_store, visit_total_res, extra_coolers_df)
 
-        # if not coolers_survey.empty:
-        #     coolers_survey['answ_len'] = coolers_survey[CCRU_SANDConsts.SURVEY_ANSWER].apply(lambda x: len(str(x)) \
-        #                                                                                         if x is not None else 0)
-        #     small_responses = coolers_survey[coolers_survey['answ_len'] < CCRU_SANDConsts.MIN_NUMBER_DIGITS] \
-        #                                                                 [CCRU_SANDConsts.SURVEY_ANSWER].values.tolist()
-        #     if len(small_responses) > 0:
-        #         Log.warning('The answer lengths for the following coolers are below '
-        #                     'the minimum of 3 digits: {}'.format(small_responses))
-        #
-        #     valid_survey_answ = coolers_survey[~(coolers_survey[CCRU_SANDConsts.SURVEY_ANSWER].isin(small_responses))]
-        #     valid_survey_answ = valid_survey_answ.reset_index(drop=True)
-        #     valid_survey_answ['assigned_cooler_id'] = np.nan
-        #     cooler_ass_arr = cooler_ass_store[CCRU_SANDConsts.COOLER_ID].values
-        #     if not valid_survey_answ.empty:
-        #         assigned_coolers = []
-        #         valid_survey_answ['assigned_cooler_id'] = valid_survey_answ.apply(self.match_survey_to_assortment,
-        #                                                                           axis=1, args=(cooler_ass_arr,
-        #                                                                                         assigned_coolers))
-        #     cooler_ass_store = cooler_ass_store.merge(valid_survey_answ, right_on='assigned_cooler_id',
-        #                                               left_on=CCRU_SANDConsts.COOLER_ID, how='left')
-        #     unassigned_responses = valid_survey_answ[valid_survey_answ['assigned_cooler_id'].isnull()]\
-        #                                                             [CCRU_SANDConsts.SURVEY_ANSWER].values.tolist()
-        #     # for i, row in cooler_ass_store.iterrows():
-        #     #     score = 0 if (row['assigned_cooler_id'] is None) or (str(row['assigned_cooler_id']) == 'nan') else 100
-        #     #     custom_result = self.get_presence_type_result(score)
-        #     #     self.common.write_to_db_result(fk=row['kpi_level_2_fk'], numerator_id=row[CCRU_SANDConsts.COOLER_FK],
-        #     #                                    denominator_id=row[CCRU_SANDConsts.COOLER_MODEL_FK],
-        #     #                                    context_id=row[ScifConsts.SCENE_FK], result=custom_result, score=score,
-        #     #                                    identifier_parent=visit_identif_par, should_enter=True)
-        #     coolers_in_sess = cooler_ass_store[~(cooler_ass_store[CCRU_SANDConsts.SURVEY_ANSWER].isnull())]
-        #     visit_total_result = len(coolers_in_sess) / float(len(cooler_ass_store)) * 100
-        #
-        #     extra_coolers_df = coolers_survey[coolers_survey[CCRU_SANDConsts.SURVEY_ANSWER].isin(small_responses +
-        #                                                                                          unassigned_responses)]
-        #     self.write_extra_coolers_results(extra_coolers_df, top_identif_parent)
-        # else:
-        #     cooler_ass_store['assigned_cooler_id'] = None
-        #     cooler_ass_store[ScifConsts.SCENE_FK] = None
-
         for i, row in cooler_ass_store.iterrows():
             score = 0 if (row['assigned_cooler_id'] is None) or (str(row['assigned_cooler_id']) == 'nan') else 100
             custom_result = self.get_presence_type_result(score)
@@ -4315,7 +4277,7 @@ class CCRU_SANDKPIToolBox:
                 if not kpi_group_df.empty:
                     kpi_group = kpi_group_df[CCRU_SANDConsts.KPI_GROUP].values[0]
                     kpi_group_data = copy.deepcopy(kpi_data)
-                    kpi_group_data[0] = filter(lambda x: x['Cooler Model'] == kpi_group, kpi_data[0])
+                    kpi_group_data[0] = filter(lambda x: x['Cooler Group'] == kpi_group, kpi_data[0])
 
                     cooler_dict = {ScifConsts.SCENE_FK: cooler_scene, CCRU_SANDConsts.COOLER_FK: cooler_fk,
                                    'cooler_model_fk': cooler_model_fk, 'kpi_fk': cooler_score_fk}
@@ -4343,6 +4305,9 @@ class CCRU_SANDKPIToolBox:
                                                    denominator_id=cooler_model_fk, identifier_result=cooler_dict,
                                                    identifier_parent=visit_identifier_parent, context_id=cooler_scene,
                                                    score=score, result=score, should_enter=True)
+                if kpi_group_df.empty:
+                    Log.warning('No Kpi Group is assigned for cooler model '
+                                '{}. Please add it to template'.format(cooler_row[CCRU_SANDConsts.COOLER_MODEL_NAME]))
 
             cooler_visit_result = sum(cooler_scores.values()) / float(len(cooler_ass_df)) if not cooler_ass_df.empty \
                                                                                                             else 0
@@ -4366,10 +4331,18 @@ class CCRU_SANDKPIToolBox:
     def set_scif_and_matches_to_scene_lvl(self, scene_fk):
         self.scif = self.scif_session[self.scif_session['scene_fk'] == scene_fk]
         self.matches = self.matches_session[self.matches_session['scene_fk'] == scene_fk]
+        self.scenes_info = self.scenes_session_initial[self.scenes_session_initial['scene_fk'] == scene_fk]
+        self.data_provider._set_scene_item_facts(self.scif)
+        self.data_provider._set_matches(self.matches)
+        self.k_engine = BaseCalculationsGroup(self.data_provider, self.output)
 
     def reset_scif_and_matches_to_initial_values(self):
         self.scif = self.scif_session
         self.matches = self.matches_session
+        self.scenes_info = self.scenes_session_initial
+        self.data_provider._set_scene_item_facts(self.scif_session)
+        self.data_provider._set_matches(self.matches_session)
+        self.k_engine = BaseCalculationsGroup(self.data_provider, self.output)
 
     def check_number_of_doors_of_filled_coolers_cooler_audit(self, params, cooler_dict, level=2):
         set_total_res = 0
@@ -4379,15 +4352,16 @@ class CCRU_SANDKPIToolBox:
             if not (p.get('Formula').strip() in ("number of doors of filled Coolers",)):
                 continue
             scene = cooler_dict[ScifConsts.SCENE_FK]
-            result = self.check_number_of_doors_of_filled_coolers(params)
+            result = self.check_number_of_doors_of_filled_coolers(p)
+            atomic_result = self.calculate_score(result, p)
             weight = p.get("KPI Weight")
-            score = result * weight
+            score = atomic_result * weight
             set_total_res += score
             kpi_fk = self.common.get_kpi_fk_by_kpi_type(CCRU_SANDConsts.COOLER_SCORE_LVL_2)
-            kpi_ref_fk = self.common.get_kpi_fk_by_kpi_type(p['KPI name Eng'])
+            kpi_ref_fk = self.common.get_kpi_fk_by_kpi_type(p['KPI name Eng'].upper())
             self.common.write_to_db_result(fk=kpi_fk, numerator_id=cooler_dict[CCRU_SANDConsts.COOLER_FK],
-                                           denominator_id=kpi_ref_fk, context_id=scene, result=result, score=score,
-                                           weight=weight, identifier_parent=cooler_dict, should_enter=True)
+                                           denominator_id=kpi_ref_fk, context_id=scene, result=atomic_result,
+                                           score=score, weight=weight, identifier_parent=cooler_dict, should_enter=True)
         return set_total_res
 
     def calculate_availability_coolers(self, params, cooler_dict, level=2):
@@ -4398,13 +4372,13 @@ class CCRU_SANDKPIToolBox:
             if not (p.get('Formula').strip() in ("each SKU hits facings target",)):
                 continue
             scene = cooler_dict[ScifConsts.SCENE_FK]
-            result = self.calculate_availability(p, scenes=[scene], all_params=params) # does it make sense to pass like this?
-            # result = self.calculate_availability(p, all_params=params)
+            # result = self.calculate_availability(p, scenes=[scene], all_params=params) # does it make sense to pass like this?
+            result = self.calculate_availability(p, all_params=params)
             weight = p.get("KPI Weight")
             score = result * weight
             set_total_res += score
             kpi_fk = self.common.get_kpi_fk_by_kpi_type(CCRU_SANDConsts.COOLER_SCORE_LVL_2)
-            kpi_ref_fk = self.common.get_kpi_fk_by_kpi_type(p['KPI name Eng'])
+            kpi_ref_fk = self.common.get_kpi_fk_by_kpi_type(p['KPI name Eng'].upper())
             self.common.write_to_db_result(fk=kpi_fk, numerator_id=cooler_dict[CCRU_SANDConsts.COOLER_FK],
                                            denominator_id=kpi_ref_fk, context_id=scene, result=result, score=score,
                                            weight=weight, identifier_parent=cooler_dict, should_enter=True)
