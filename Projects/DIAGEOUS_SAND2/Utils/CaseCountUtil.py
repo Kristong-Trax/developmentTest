@@ -36,7 +36,7 @@ class CaseCountCalculator(GlobalSessionToolBox):
         self._save_results_to_db(num_of_cases_per_brand_res, Ccc.CASE_COUNT_KPI)
         self._save_results_to_db(implied_shoppable_cases_kpi_res, Ccc.IMPLIED_SHOPPABLE_CASES_KPI)
         self._save_results_to_db(unshoppable_brands_lst, Ccc.NON_SHOPPABLE_CASES_KPI)
-        self._save_results_to_db(total_cases_res, Ccc.TOTAL_CASES_KPI)
+        self._save_results_to_db(total_cases_res, Ccc.TOTAL_CASES_KPI, should_enter=False)
 
     @staticmethod
     def _calculate_and_total_cases(kpi_results):
@@ -46,22 +46,25 @@ class CaseCountCalculator(GlobalSessionToolBox):
         for res in kpi_results:
             total_results_per_brand[res['brand_fk']] += res['result']
         for brand_fk, result in total_results_per_brand.iteritems():
-            results_list.append({'brand_fk': brand_fk, 'result': result})
+            kpi_id = '{}_{}'.format(brand_fk, Ccc.TOTAL_CASES_KPI)
+            results_list.append({'brand_fk': brand_fk, 'result': result, 'kpi_id': kpi_id})
         return results_list
 
-    def _save_results_to_db(self, results_list, kpi_name, result_key='result'):
+    def _save_results_to_db(self, results_list, kpi_name, result_key='result', should_enter=True):
         """This method saves the KPI results to DB"""
         kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_name)
         for res in results_list:
+            kpi_id = res.get('kpi_id', None)
+            parent_id = '{}_{}'.format(res['brand_fk'], Ccc.TOTAL_CASES_KPI) if should_enter else None
             result = res[result_key]
             self.common.write_to_db_result(fk=kpi_fk, numerator_id=res['brand_fk'], numerator_result=result,
                                            result=result, denominator_id=self.store_id, denominator_result=0,
-                                           score=result, identifier_parent=Ccc.TOTAL_CASES_KPI, should_enter=True)
+                                           score=result, identifier_result=kpi_id, identifier_parent=parent_id,
+                                           should_enter=True)
 
     def _prepare_data_for_calculation(self):
         """This method prepares the data for the case count calculation. Connection between the display
         data and the tagging data."""
-        # self.filtered_mdis.bay_number.fillna(1, inplace=True)
         self.matches = self._add_brand_fk_to_matches(self.matches)
         self._add_displays_the_closet_brand_fk()
         self._add_matches_the_closet_match_display_in_scene_fk(self.matches)
@@ -74,7 +77,7 @@ class CaseCountCalculator(GlobalSessionToolBox):
         """This method calculates the number of facings for 'Bottler' SKU Type per brand in scenes that
         have displays"""
         cols_to_save = ['brand_fk', 'tagged']
-        bottle_carton_scif = self.filtered_scif.loc[(self.filtered_scif['SKU Type'].isin(['Bottle', 'Carton']))]
+        bottle_carton_scif = self.filtered_scif.loc[(self.filtered_scif['SKU Type'].isin(Ccc.FACINGS_SKU_TYPES))]
         results_df = bottle_carton_scif[cols_to_save].groupby('brand_fk', as_index=False).sum()
         results_df.rename({'tagged': 'result'}, axis=1, inplace=True)
         return results_df.to_dict('records')
@@ -102,7 +105,17 @@ class CaseCountCalculator(GlobalSessionToolBox):
             total_score_per_brand += self._calculate_case_count(adj_g, paths)
         for k, v in total_score_per_brand.iteritems():
             results.append({'brand_fk': k, 'result': v})
+        results += self._add_results_for_brands_without_hidden_displays(results)
         return results
+
+    def _add_results_for_brands_without_hidden_displays(self, results):
+        """ This method gets the _implied_shoppable_cases_kpi and adds all of the brand that has displays assigned
+        to them, however there aren't any hidden displays at all (result should be 0)"""
+        brands_with_results = [res['brand_fk'] for res in results]
+        total_brands_with_displays = self.filtered_mdis.display_brand.dropna().unique().tolist()
+        missing_brands = set(total_brands_with_displays).difference(brands_with_results)
+        new_results = [{'brand_fk': brand, 'result': 0} for brand in missing_brands]
+        return new_results
 
     def _non_shoppable_case_kpi(self):
         """ This method calculates the number of unshoppable cases per brand.
