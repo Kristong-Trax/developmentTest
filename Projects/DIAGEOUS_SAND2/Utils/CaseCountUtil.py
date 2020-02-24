@@ -60,7 +60,7 @@ class CaseCountCalculator(GlobalSessionToolBox):
             self.common.write_to_db_result(fk=kpi_fk, numerator_id=res['brand_fk'], numerator_result=result,
                                            result=result, denominator_id=self.store_id, denominator_result=0,
                                            score=result, identifier_result=kpi_id, identifier_parent=parent_id,
-                                           should_enter=True)
+                                           should_enter=should_enter)
 
     def _prepare_data_for_calculation(self):
         """This method prepares the data for the case count calculation. Connection between the display
