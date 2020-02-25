@@ -92,7 +92,7 @@ class ToolBox(GlobalSessionToolBox):
         template_fk = self.templates.template_fk.iloc[0] if not self.templates.empty else 0
         self.write_to_db(self.common.get_kpi_fk_by_kpi_type('Template_fk'),
                          denominator_id=template_fk,
-                         result=0, identifier_result=self.store_id)
+                         result=0)
 
     def retrieve_price_target_df(self):
         data_name_list = os.listdir(TEMPLATE_PATH)
