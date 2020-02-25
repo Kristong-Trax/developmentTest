@@ -30,7 +30,6 @@ class ToolBox(GlobalSessionToolBox):
         self.data_provider.own_manufacturer.param_value.values[0] else 2
 
     def main_calculation(self):
-        self.save_template_fk()
         self.calculate_price_target_kpi()
 
     def calculate_price_target_kpi(self):
@@ -87,14 +86,6 @@ class ToolBox(GlobalSessionToolBox):
         self.write_to_db(self.common.get_kpi_fk_by_kpi_type('Price Target - Parent'), numerator_id=self.manufacturer_fk,
                          denominator_id=self.store_id, context_id=template_fk,
                          result=parent_kpi_relevant_result, identifier_result= self.store_id)
-
-    # def save_template_fk(self):
-    #     # Need the template fk for the simon report
-    #     # Had to create this kpi for that reason
-    #     template_fk = self.templates.template_fk.iloc[0] if not self.templates.empty else 0
-    #     self.write_to_db(self.common.get_kpi_fk_by_kpi_type('Template_fk'),
-    #                      denominator_id=template_fk,
-    #                      result=0)
 
     def retrieve_price_target_df(self):
         data_name_list = os.listdir(TEMPLATE_PATH)
