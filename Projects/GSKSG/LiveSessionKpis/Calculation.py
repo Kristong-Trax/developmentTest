@@ -13,6 +13,11 @@ class CalculateKpi(LiveSessionBaseClass):
                                 'denominator_result', 'result', 'target', 'score']
     SKU_LEVEL = 3
     GROUPS_LEVEL = 2
+    LIVE_OOS = 'Live OOS'
+    LIVE_OOS_SKU = 'Live OOS - SKU'
+    LIVE_DIST = 'Live Distribution'
+    LIVE_DIST_SKU = 'Live Distribution - SKU'
+    DIST = 'Distribution'
 
     def __init__(self, data_provider, output):
         LiveSessionBaseClass.__init__(self, data_provider, output)
@@ -21,7 +26,7 @@ class CalculateKpi(LiveSessionBaseClass):
         self.common = LiveCommon(data_provider)
         self.store_fk = data_provider.store_fk
         self.current_date = datetime.now()
-        self.assortment = LiveAssortmentCalculation(data_provider)
+        self.assortment = LiveAssortmentCalculation(data_provider, False)
         self._own_manufacturer = self._get_own_manufacturer()
         self.result_value = self.common.get_result_values()
 
@@ -49,7 +54,7 @@ class CalculateKpi(LiveSessionBaseClass):
         :return:
         """
         lvl3_result = self.assortment.calculate_lvl3_assortment(False)
-        distribution_live = self.get_kpi_fk('Live Distribution')
+        distribution_live = self.get_kpi_fk(self.DIST)
         lvl3_result = lvl3_result[lvl3_result.kpi_fk_lvl2 == distribution_live]
         if lvl3_result.empty:
             Log.warning('Assortment is Empty for this session')
@@ -96,6 +101,10 @@ class CalculateKpi(LiveSessionBaseClass):
            :return: df of sql results for oos assortment group level
         """
         lvl_2_result = lvl_2_result.copy()
+
+        live_kpi_dist = self.get_kpi_fk(self.LIVE_DIST)
+        lvl_2_result.loc[:, 'kpi_level_2_fk'] = live_kpi_dist
+
         lvl_2_result.loc[lvl_2_result['target'] == -1, 'target'] = None
         lvl_2_result.loc[:, 'denominator_result'] = \
             lvl_2_result.apply(lambda row: row['target'] if (row['target'] >= 0 and row['group_target_date'] >
@@ -114,6 +123,8 @@ class CalculateKpi(LiveSessionBaseClass):
         """
         lvl_3_result.rename(columns={'product_fk': 'numerator_id', 'assortment_group_fk': 'denominator_id',
                                      'in_store': 'result', 'kpi_fk_lvl3': 'kpi_level_2_fk'}, inplace=True)
+        live_kpi_dist = self.get_kpi_fk(self.LIVE_DIST_SKU)
+        lvl_3_result.loc[:, 'kpi_level_2_fk'] = live_kpi_dist
         lvl_3_result.loc[:, 'result'] = lvl_3_result.apply(lambda row: self.kpi_result_value(row.result), axis=1)
         lvl_3_result = lvl_3_result.assign(numerator_result=lvl_3_result['result'],
                                            denominator_result=lvl_3_result['result'],
@@ -135,7 +146,7 @@ class CalculateKpi(LiveSessionBaseClass):
         oos_results = oos_results.loc[oos_results['result'] == oos_result]
         if oos_results.empty:
             return oos_results
-        oos_sku_kpi = self.get_kpi_fk('Live OOS - SKU')
+        oos_sku_kpi = self.get_kpi_fk(self.LIVE_OOS_SKU)
         oos_results.loc[:, 'kpi_level_2_fk'] = oos_sku_kpi
         oos_results = self.filter_df_by_col(oos_results, self.SKU_LEVEL)
         Log.info('oos_results_sku level Done')
@@ -151,7 +162,7 @@ class CalculateKpi(LiveSessionBaseClass):
         lvl_2_result.loc[:, 'numerator_result'] = lvl_2_result['denominator_result'] - lvl_2_result['numerator_result']
         lvl_2_result.loc[:, 'result'] = lvl_2_result.numerator_result / lvl_2_result.denominator_result
         self.manipulate_result_row(lvl_2_result)
-        oos_group_kpi = self.get_kpi_fk('Live OOS')
+        oos_group_kpi = self.get_kpi_fk(self.LIVE_OOS)
         lvl_2_result.loc[:, 'kpi_level_2_fk'] = oos_group_kpi
         lvl_2_result.loc[lvl_2_result['target'] == -1, 'target'] = None
         self._add_visit_summary_kpi_entities(lvl_2_result)
