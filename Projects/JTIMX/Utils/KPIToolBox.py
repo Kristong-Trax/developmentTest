@@ -62,6 +62,8 @@ class ToolBox(GlobalSessionToolBox):
         final_mpis = pd.concat([present_products_in_session, absent_products_in_session]).fillna(0)
         final_mpis = final_mpis[final_mpis.product_short_name.isin(
             self.relevant_template['English SKU Name'])]  # Fix the logic in the future
+        template_fk = self.templates.template_fk.iloc[0] if not self.templates.empty else 0
+
 
         for i, row in final_mpis.iterrows():
             recognized_price = row['price'] if row.price and row['Target Price'] != 0 else 0
@@ -83,16 +85,16 @@ class ToolBox(GlobalSessionToolBox):
             parent_kpi_relevant_df) * 100
 
         self.write_to_db(self.common.get_kpi_fk_by_kpi_type('Price Target - Parent'), numerator_id=self.manufacturer_fk,
-                         denominator_id=self.store_id,
-                         result=parent_kpi_relevant_result, identifier_result=self.store_id)
+                         denominator_id=self.store_id, context_id=template_fk,
+                         result=parent_kpi_relevant_result, identifier_result= self.store_id)
 
-    def save_template_fk(self):
-        # Need the template fk for the simon report
-        # Had to create this kpi for that reason
-        template_fk = self.templates.template_fk.iloc[0] if not self.templates.empty else 0
-        self.write_to_db(self.common.get_kpi_fk_by_kpi_type('Template_fk'),
-                         denominator_id=template_fk,
-                         result=0)
+    # def save_template_fk(self):
+    #     # Need the template fk for the simon report
+    #     # Had to create this kpi for that reason
+    #     template_fk = self.templates.template_fk.iloc[0] if not self.templates.empty else 0
+    #     self.write_to_db(self.common.get_kpi_fk_by_kpi_type('Template_fk'),
+    #                      denominator_id=template_fk,
+    #                      result=0)
 
     def retrieve_price_target_df(self):
         data_name_list = os.listdir(TEMPLATE_PATH)
