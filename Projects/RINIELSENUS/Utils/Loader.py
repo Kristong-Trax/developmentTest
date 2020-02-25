@@ -97,7 +97,7 @@ class Definition(object):
             'kpi': kpi[KPI_GROUP],
             'atomic': kpi[KPI_NAME],
             'kpi_type': kpi[KPI_TYPE],
-            'weight': kpi[WEIGHT] / 100,
+            'weight': kpi[WEIGHT] / 100 if kpi[WEIGHT] else None,
             'scene_types': str(kpi[RELEVANT_SCENE_TYPES]).split(SEPARATOR),
             'depend_on': str(kpi[DEPEND_ON]).split(SEPARATOR),
             'depend_score': str(kpi[DEPEND_SCORE]).split(SEPARATOR),

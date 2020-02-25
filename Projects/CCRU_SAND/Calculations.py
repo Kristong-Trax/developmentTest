@@ -1,4 +1,5 @@
 import pandas as pd
+import os
 
 from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScript
 from Trax.Algo.Calculations.Core.Shortcuts import SessionInfo
@@ -11,6 +12,7 @@ from KPIUtils_v2.Utils.Decorators.Decorators import log_runtime
 from Projects.CCRU_SAND.Utils.Consts import CCRU_SANDConsts
 from Projects.CCRU_SAND.Utils.JSON import CCRU_SANDJsonGenerator
 from Projects.CCRU_SAND.Utils.ToolBox import CCRU_SANDKPIToolBox
+from KPIUtils_v2.Utils.Consts.DataProvider import ScifConsts
 
 
 __author__ = 'sergey'
@@ -32,8 +34,8 @@ TOPSKU = 'TOPSKU'
 KPI_CONVERSION = 'KPI_CONVERSION'
 BENCHMARK = 'BENCHMARK'
 MR_TARGET = 'MR TARGET'
-
-ALLOWED_POS_SETS = tuple(CCRU_SANDConsts.ALLOWED_POS_SETS)
+COOLER_AUDIT = 'COOLER_AUDIT'
+GROUP_MODEL_MAP = 'GROUP_MODEL_MAP'
 
 
 class CCRU_SANDCalculations(BaseCalculationsScript):
@@ -54,7 +56,7 @@ class CCRU_SANDProjectCalculations:
         self.project_name = self.data_provider.project_name
         self.rds_conn = self.rds_connection()
 
-        self.tool_box = CCRU_SANDKPIToolBox(self.data_provider, self.output)
+        self.tool_box = CCRU_SANDKPIToolBox(self.data_provider, self.output, update_kpi_set=True)
         self.session_uid = self.tool_box.session_uid
         self.visit_date = self.tool_box.visit_date
         self.store_id = self.tool_box.store_id
@@ -65,24 +67,28 @@ class CCRU_SANDProjectCalculations:
         self.json = CCRU_SANDJsonGenerator()
 
         self.results = {}
+        self.kpi_source_json = None
 
     def main_function(self):
 
-        if str(self.visit_date) < self.tool_box.MIN_CALC_DATE:
+        if False and str(self.visit_date) < self.tool_box.MIN_CALC_DATE:  # ignored
             Log.warning('Warning. Session cannot be calculated. '
                         'Visit date is less than {2} - {0}. '
                         'Store ID {1}.'
                         .format(self.visit_date, self.store_id, self.tool_box.MIN_CALC_DATE))
+            return
 
         elif self.tool_box.visit_type in [self.tool_box.SEGMENTATION_VISIT]:
             Log.warning('Warning. Session with Segmentation visit type has no KPI calculations.')
+            return
 
         elif self.tool_box.visit_type in [self.tool_box.PROMO_VISIT]:
             # Log.warning('Warning. Session with Promo visit type has no KPI calculations.')
             self.calculate_promo_compliance()
+            return
 
         else:
-            if self.pos_kpi_set_name not in ALLOWED_POS_SETS:
+            if self.pos_kpi_set_name not in self.tool_box.ALLOWED_POS_SETS:
                 Log.warning('Warning. Session cannot be calculated. '
                             'POS KPI Set name in store attribute is invalid - {0}. '
                             'Store ID {1}.'
@@ -90,12 +96,23 @@ class CCRU_SANDProjectCalculations:
             else:
                 self.calculate_red_score()
 
+        if self.tool_box.visit_type in [self.tool_box.STANDARD_VISIT]:
+            if self.tool_box.cooler_scenes:
+                if not self.tool_box.cooler_assortment.empty:
+                    self.tool_box.set_kpi_set(CCRU_SANDConsts.COOLER_AUDIT_SCORE, CCRU_SANDConsts.COOLER_AUDIT_SCORE)
+                    self.calculate_cooler_audit()
+
+        Log.debug('KPI calculation stage: {}'.format('Committing results old'))
+        self.tool_box.commit_results_data_old()
+
+        Log.debug('KPI calculation stage: {}'.format('Committing results new'))
+        self.tool_box.commit_results_data_new()
+
         Log.debug('KPI calculation is completed')
 
     def calculate_red_score(self):
-        self.json.create_kpi_data_json('kpi_source', 'KPI_Source.xlsx',
-                                       sheet_name=self.pos_kpi_set_name)
-        kpi_source_json = self.json.project_kpi_dict.get('kpi_source')
+        kpi_source_json = self.json.create_kpi_source('KPI_Source.xlsx', self.pos_kpi_set_name)
+        self.kpi_source_json = kpi_source_json
         kpi_source = {}
         for row in kpi_source_json:
             # Log.info('SOURCE: {}'.format(row.get(SOURCE)))
@@ -124,65 +141,18 @@ class CCRU_SANDProjectCalculations:
                 mr_targets.update({params[SET]: params[MR_TARGET]})
         self.tool_box.mr_targets = mr_targets
 
-        kpi_sets_types_to_calculate = [POS, TARGET, SPIRITS]
+        kpi_sets_types_to_calculate = [POS, SPIRITS]
         for kpi_set_type in kpi_sets_types_to_calculate:
-            if not kpi_source[kpi_set_type][SET]:
-                continue
-
-            Log.debug('KPI calculation stage: {}'.format(kpi_source[kpi_set_type][SET]))
-            self.tool_box.set_kpi_set(kpi_source[kpi_set_type][SET], kpi_set_type)
-            self.json.project_kpi_dict['kpi_data'] = []
-            self.json.create_kpi_data_json('kpi_data', kpi_source[kpi_set_type][FILE],
-                                           sheet_name=kpi_source[kpi_set_type][SHEET])
-            kpi_data = self.json.project_kpi_dict.get('kpi_data')[0]
-            score = 0
-            score += self.tool_box.check_availability(kpi_data)
-            score += self.tool_box.check_facings_sos(kpi_data)
-            score += self.tool_box.check_share_of_cch(kpi_data)
-            score += self.tool_box.check_number_of_skus_per_door_range(kpi_data)
-            score += self.tool_box.check_number_of_doors(kpi_data)
-            score += self.tool_box.check_number_of_scenes(kpi_data)
-            score += self.tool_box.check_number_of_scenes_no_tagging(kpi_data)
-            score += self.tool_box.check_customer_cooler_doors(kpi_data)
-            score += self.tool_box.check_atomic_passed(kpi_data)
-            score += self.tool_box.check_atomic_passed_on_the_same_scene(kpi_data)
-            score += self.tool_box.check_sum_atomics(kpi_data)
-            score += self.tool_box.check_dummies(kpi_data)
-            score += self.tool_box.check_weighted_average(kpi_data)
-            score += self.tool_box.check_kpi_scores(kpi_data)
-
-            self.tool_box.create_kpi_groups(kpi_data.values()[0])
-
-            self.tool_box.write_to_kpi_results_old(
-                pd.DataFrame([(kpi_source[kpi_set_type][SET],
-                               self.session_uid,
-                               self.store_id,
-                               self.visit_date.isoformat(),
-                               format(score, '.2f'), None)],
-                             columns=['kps_name',
-                                      'session_uid',
-                                      'store_fk',
-                                      'visit_date',
-                                      'score_1',
-                                      'kpi_set_fk']), 'level1')
-
-            set_target = mr_targets.get(kpi_set_type) if mr_targets.get(kpi_set_type) is not None else 100
-
-            self.tool_box.update_kpi_scores_and_results(
-                {'KPI ID': 0,
-                 'KPI name Eng': kpi_source[kpi_set_type][SET],
-                 'KPI name Rus': kpi_source[kpi_set_type][SET],
-                 'Parent': 'root'},
-                {'target': set_target,
-                 'weight': None,
-                 'result': score,
-                 'score': score,
-                 'weighted_score': score,
-                 'level': 0})
-
-            if kpi_set_type == POS:
-                Log.debug('KPI calculation stage: {}'.format(kpi_source[INTEGRATION][SET]))
-                self.tool_box.prepare_hidden_set(kpi_data, kpi_source[INTEGRATION][SET])
+            if kpi_source[kpi_set_type][SET]:
+                Log.debug('KPI calculation stage: {}'.format(kpi_source[kpi_set_type][SET]))
+                self.tool_box.set_kpi_set(kpi_source[kpi_set_type][SET], kpi_set_type)
+                self.json.project_kpi_dict['kpi_data'] = []
+                self.json.create_kpi_data_json('kpi_data', kpi_source[kpi_set_type][FILE],
+                                               sheet_name=kpi_source[kpi_set_type][SHEET],
+                                               pos_kpi_set_name=self.pos_kpi_set_name)
+                self.calculate_red_score_kpi_set(self.json.project_kpi_dict.get('kpi_data')[0],
+                                                 kpi_source[kpi_set_type][SET],
+                                                 mr_targets.get(kpi_set_type))
 
         if kpi_source[GAPS][SET]:
             Log.debug('KPI calculation stage: {}'.format(kpi_source[GAPS][SET]))
@@ -215,11 +185,23 @@ class CCRU_SANDProjectCalculations:
 
         if self.json.project_kpi_dict.get('contract'):
             if kpi_source[EQUIPMENT][SET]:
-                Log.debug('KPI calculation stage: {}'.format(kpi_source[EQUIPMENT][SET]))
-                self.tool_box.set_kpi_set(kpi_source[EQUIPMENT][SET], EQUIPMENT)
-                self.tool_box.calculate_equipment_execution(self.json.project_kpi_dict.get('contract'),
-                                                            kpi_source[EQUIPMENT][SET],
-                                                            kpi_source[KPI_CONVERSION][FILE])
+                equipment_target_data = self.tool_box.get_equipment_target_data()
+                if equipment_target_data:
+                    if kpi_source[TARGET][SET]:
+                            Log.debug('KPI calculation stage: {}'.format(kpi_source[TARGET][SET]))
+                            self.tool_box.set_kpi_set(kpi_source[TARGET][SET], TARGET)
+                            self.json.project_kpi_dict['kpi_data'] = []
+                            self.json.create_kpi_data_json('kpi_data', kpi_source[TARGET][FILE],
+                                                           sheet_name=kpi_source[TARGET][SHEET])
+                            self.calculate_red_score_kpi_set(self.json.project_kpi_dict.get('kpi_data')[0],
+                                                             kpi_source[TARGET][SET])
+
+                            Log.debug('KPI calculation stage: {}'.format(kpi_source[EQUIPMENT][SET]))
+                            self.tool_box.set_kpi_set(kpi_source[EQUIPMENT][SET], EQUIPMENT)
+                            self.tool_box.calculate_equipment_execution(self.json.project_kpi_dict.get('contract'),
+                                                                        kpi_source[EQUIPMENT][SET],
+                                                                        kpi_source[KPI_CONVERSION][FILE],
+                                                                        equipment_target_data)
 
             if kpi_source[CONTRACT][SET]:
                 Log.debug('KPI calculation stage: {}'.format(kpi_source[CONTRACT][SET]))
@@ -227,11 +209,64 @@ class CCRU_SANDProjectCalculations:
                 self.tool_box.calculate_contract_execution(self.json.project_kpi_dict.get('contract'),
                                                            kpi_source[CONTRACT][SET])
 
-        Log.debug('KPI calculation stage: {}'.format('Committing results old'))
-        self.tool_box.commit_results_data_old()
+        # Log.debug('KPI calculation stage: {}'.format('Committing results old'))
+        # self.tool_box.commit_results_data_old()
+        #
+        # Log.debug('KPI calculation stage: {}'.format('Committing results new'))
+        # self.tool_box.commit_results_data_new()
 
-        Log.debug('KPI calculation stage: {}'.format('Committing results new'))
-        self.tool_box.commit_results_data_new()
+    def calculate_red_score_kpi_set(self, kpi_data, kpi_set_name, set_target=None):
+
+        score = 0
+        score += self.tool_box.check_availability(kpi_data)
+        score += self.tool_box.check_facings_sos(kpi_data)
+        score += self.tool_box.check_share_of_cch(kpi_data)
+        score += self.tool_box.check_number_of_skus_per_door_range(kpi_data)
+        score += self.tool_box.check_number_of_doors(kpi_data)
+        score += self.tool_box.check_number_of_scenes(kpi_data)
+        score += self.tool_box.check_number_of_scenes_no_tagging(kpi_data)
+        score += self.tool_box.check_customer_cooler_doors(kpi_data)
+        score += self.tool_box.check_atomic_passed(kpi_data)
+        score += self.tool_box.check_atomic_passed_on_the_same_scene(kpi_data)
+        score += self.tool_box.check_sum_atomics(kpi_data)
+        score += self.tool_box.check_dummies(kpi_data)
+        score += self.tool_box.check_weighted_average(kpi_data)
+        score += self.tool_box.check_kpi_scores(kpi_data)
+
+        self.tool_box.create_kpi_groups(kpi_data.values()[0])
+
+        self.tool_box.write_to_kpi_results_old(
+            pd.DataFrame([(kpi_set_name,
+                           self.session_uid,
+                           self.store_id,
+                           self.visit_date.isoformat(),
+                           format(score, '.2f'), None)],
+                         columns=['kps_name',
+                                  'session_uid',
+                                  'store_fk',
+                                  'visit_date',
+                                  'score_1',
+                                  'kpi_set_fk']), 'level1')
+
+        set_target = set_target if set_target is not None else 100
+
+        self.tool_box.update_kpi_scores_and_results(
+            {'KPI ID': 0,
+             'KPI name Eng': kpi_set_name,
+             'KPI name Rus': kpi_set_name,
+             'Parent': 'root'},
+            {'target': set_target,
+             'weight': None,
+             'result': score,
+             'score': score,
+             'weighted_score': score,
+             'level': 0})
+
+        # INTEGRATION is excluded from calculation starting 2020
+        #
+        # if kpi_set_type == POS:
+        #     Log.debug('KPI calculation stage: {}'.format(kpi_source[INTEGRATION][SET]))
+        #     self.tool_box.prepare_hidden_set(kpi_data, kpi_source[INTEGRATION][SET])
 
     def calculate_promo_compliance(self):
         self.json.create_kpi_data_json('promo', 'KPI_Promo_Tracking.xlsx', sheet_name='2019')
@@ -242,6 +277,13 @@ class CCRU_SANDProjectCalculations:
 
         Log.debug('KPI calculation stage: {}'.format('Committing results new'))
         self.tool_box.common.commit_results_data()
+
+    def calculate_cooler_audit(self):
+        self.json.create_kpi_data_json('cooler_audit', 'Cooler_Quality.xlsx', sheet_name='ALL')
+        kpi_data = self.json.project_kpi_dict.get('cooler_audit')[0]
+        group_model_map = pd.read_excel(os.path.join(self.json.base_path, 'Cooler_Quality.xlsx'),
+                                        sheet_name=GROUP_MODEL_MAP)
+        self.tool_box.calculate_cooler_kpis(kpi_data, group_model_map)
 
     def rds_connection(self):
         if not hasattr(self, '_rds_conn'):

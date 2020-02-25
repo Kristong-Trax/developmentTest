@@ -1,7 +1,7 @@
 
 from Trax.Utils.Logging.Logger import Log
 
-from Projects.GSKJP_SAND.Utils.KPIToolBox import GSKJPToolBox
+from Projects.GSKJP_SAND.Utils.KPIToolBox import GSKJP_SANDToolBox
 
 from KPIUtils_v2.DB.Common import Common
 
@@ -17,7 +17,7 @@ class Generator:
         self.output = output
         self.project_name = data_provider.project_name
         self.session_uid = self.data_provider.session_uid
-        self.tool_box = GSKJPToolBox(self.data_provider, self.output)
+        self.tool_box = GSKJP_SANDToolBox(self.data_provider, self.output)
         self.common = Common(data_provider)
 
     @log_runtime('Total Calculations', log_start=True)

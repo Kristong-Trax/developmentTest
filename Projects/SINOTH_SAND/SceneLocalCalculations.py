@@ -23,9 +23,9 @@ def save_scene_item_facts_to_data_provider(data_provider, output):
 
 
 if __name__ == '__main__':
-    LoggerInitializer.init('gskau calculations')
+    LoggerInitializer.init('Sinoth Scene Calculations')
     Config.init()
-    project_name = 'gskau'
+    project_name = 'sinoth-sand'
     # RUN for scene level KPIs
     session_scene_map = OrderedDict([
         ('12076D1D-FA3C-443C-951E-B4D0FBB80213', ['3825280F-A1A7-41A5-B90C-AA205A9A6D1E']),

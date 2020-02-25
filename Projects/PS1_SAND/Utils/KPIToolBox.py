@@ -1,49 +1,48 @@
-import os
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from KPIUtils.GlobalProjects.DIAGEO.KPIGenerator import DIAGEOGenerator
+from KPIUtils.GlobalProjects.DIAGEO.Utils.Consts import DiageoKpiNames
 from KPIUtils.DB.Common import Common
 from KPIUtils_v2.DB.CommonV2 import Common as CommonV2
+from KPIUtils_v2.Utils.Decorators.Decorators import log_runtime
+from KPIUtils.GlobalProjects.DIAGEO.Utils.TemplatesUtil import TemplateHandler
 
 
-class ToolBox:
+class PS1SandToolBox:
 
     def __init__(self, data_provider, output):
         self.data_provider = data_provider
+        self.project_name = self.data_provider.project_name
         self.store_id = self.data_provider[Data.STORE_FK]
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
         self.output = output
         self.common = Common(self.data_provider)
         self.commonV2 = CommonV2(self.data_provider)
-        self.diageo_generator = DIAGEOGenerator(self.data_provider, self.output, self.common)
+        self.diageo_generator = DIAGEOGenerator(self.data_provider, self.output, self.common, menu=True)
+        self.template_handler = TemplateHandler(self.project_name)
 
     def main_calculation(self):
-        """ This function calculates the KPI results """
+        """
+        This function calculates the KPI results.
+        """
+        log_runtime('Updating templates')
+        self.template_handler.update_templates()
+
         # SOS Out Of The Box kpis
         self.diageo_generator.activate_ootb_kpis(self.commonV2)
 
+        # sos by scene type
+        self.diageo_generator.sos_by_scene_type(self.commonV2)
+
         # Global assortment kpis
-        assortment_res_dict = self.diageo_generator.diageo_global_assortment_function_v2()
-        self.commonV2.save_json_to_new_tables(assortment_res_dict)
+        assortment_res = self.diageo_generator.diageo_global_grouping_assortment_calculation()
+        self.commonV2.save_json_to_new_tables(assortment_res)
 
-        # Global assortment kpis - v3 for NEW MOBILE REPORTS use
-        assortment_res_dict_v3 = self.diageo_generator.diageo_global_assortment_function_v3()
-        self.commonV2.save_json_to_new_tables(assortment_res_dict_v3)
+        # Global Menu kpis
+        menus_res = self.diageo_generator.diageo_global_new_share_of_menu_function()
+        self.commonV2.save_json_to_new_tables(menus_res)
 
-        # global SOM kpi
-        res_dict = self.diageo_generator.diageo_global_new_share_of_menu_function()
-        self.commonV2.save_json_to_new_tables(res_dict)
-
-        # global SOS kpi
-        res_dict = self.diageo_generator.diageo_global_share_of_shelf_function()
-        self.commonV2.save_json_to_new_tables(res_dict)
-
-        # global touch point kpi
-        template_path = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), 'Data',
-                                     'TOUCH POINT v7.xlsx')
-        res_dict = self.diageo_generator.diageo_global_touch_point_function(template_path)
-        self.commonV2.save_json_to_new_tables(res_dict)
-
-        # committing to the old tables
-        self.common.commit_results_data()  # commit to old tables
         # committing to new tables
         self.commonV2.commit_results_data()
+        # committing to the old tables
+        self.common.commit_results_data()
+

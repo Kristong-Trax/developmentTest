@@ -32,11 +32,50 @@ class TNUVAILToolBox:
         self.previous_oos_results = self.db_handler.get_last_session_oos_results()
         self.kpi_result_types = self.db_handler.get_kpi_result_value()
         self.oos_store_results = list()
+        self.initial_scif = self.scif.copy()
+
+    def get_relevant_assortment_instance(self, assortment):
+        # upon recalculation products with OOS reasons are added to scif for assortment calculation
+        if self.data_provider.session_info.status.values[0] == Consts.COMPLETED_STATUS:
+            self.update_scif_for_assortment()
+            assortment = Assortment(self.data_provider, self.output)
+        return assortment
+
+    def update_scif_for_assortment(self):
+        oos_reasons = self.db_handler.get_oos_reasons_for_session(self.data_provider.session_uid)
+        oos_reason_products = oos_reasons[ProductsConsts.PRODUCT_FK].values
+        selected_products_df = self.all_products[self.all_products[ProductsConsts.PRODUCT_FK].isin(oos_reason_products) &
+                                                 self.all_products[ProductsConsts.SUBSTITUTION_PRODUCT_FK].isnull()]
+        if not selected_products_df.empty:
+            extra_col = list(set(self.all_products.columns.values).difference(set(self.scif.columns.values)))
+            selected_products_df.drop(extra_col, axis=1, inplace=True)
+            dummy_scif = self.create_dummy_scif_lines_excluding_product_columns()
+            add_scif_df = selected_products_df.merge(dummy_scif, left_on=Consts.PRODUCT_POLICY_ATTR,
+                                                     right_on=ScifConsts.TEMPLATE_NAME, how='inner')
+            new_scif = self.scif.append(add_scif_df, ignore_index=True)
+            self.scif = new_scif.copy()
+            self.data_provider._set_scene_item_facts(new_scif)
+
+    def create_dummy_scif_lines_excluding_product_columns(self):
+        policies = [Consts.MILKY_POLICY, Consts.TIRAT_TSVI_POLICY]
+        unique_scenes_df = self.scif[(self.scif[ScifConsts.TEMPLATE_NAME].isin(policies)) &
+                                     (~self.scif[ScifConsts.FACINGS].isnull())].drop_duplicates(
+                            subset=[ScifConsts.TEMPLATE_NAME]).copy()
+        unique_scenes_df[ScifConsts.FACINGS] = 1.0
+        unique_scenes_df[ScifConsts.FACINGS_IGN_STACK] = 1.0
+        non_product_columns = list(set(self.scif.columns.values).difference(set(self.all_products.columns.values)))
+        unique_scenes_df = unique_scenes_df[non_product_columns]
+        return unique_scenes_df
 
     def main_calculation(self):
         """ This function calculates all of the KPIs' results."""
         self._calculate_facings_sos()
+        # update assortment and data_provider with products with OOS reason in the session
+        self.assortment = self.get_relevant_assortment_instance(self.assortment)
         self._calculate_assortment()
+        # reset scif property in toolbox and data_provider to initial values
+        self.scif = self.initial_scif
+        self.data_provider._set_scene_item_facts(self.scif)
         self.common_v2.commit_results_data()
 
     @kpi_runtime()
@@ -83,8 +122,9 @@ class TNUVAILToolBox:
     def _prepare_data_for_assortment_calculation(self):
         """ This method gets the level 3 assortment results (SKU level), adding category_fk and returns the DataFrame"""
         lvl3_result = self.assortment.calculate_lvl3_assortment()
-        category_per_product = self.all_products[[ProductsConsts.PRODUCT_FK, ScifConsts.CATEGORY_FK]]
-        lvl3_result = pd.merge(lvl3_result, category_per_product, how='left')
+        if not lvl3_result.empty:
+            category_per_product = self.all_products[[ProductsConsts.PRODUCT_FK, ScifConsts.CATEGORY_FK]]
+            lvl3_result = pd.merge(lvl3_result, category_per_product, how='left')
         return lvl3_result
 
     def _filter_data_for_oos_calculation(self, lvl3_data):

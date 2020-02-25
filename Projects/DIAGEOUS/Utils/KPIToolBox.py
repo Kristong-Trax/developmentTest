@@ -461,6 +461,34 @@ class ToolBox:
             return 0, 0, 0
         standard_types_results = {Consts.SEGMENT: [], Consts.NATIONAL: []} if self.attr11 == Consts.OPEN else {}
         total_results = []
+        if self.attr11 == Consts.NATIONAL_STORE and kpi_name == Consts.POD:
+            relevant_scif = self.scif[self.scif[ScifConsts.SCENE_ID].isin(relevant_scenes)]
+            specific_substitute_product_pks = \
+                relevant_scif[relevant_scif[ScifConsts.PRODUCT_EAN_CODE].isin(['10024426', '100019'])][
+                    ScifConsts.PRODUCT_FK].unique().tolist()
+            specific_leading_product_pks = \
+                relevant_scif[relevant_scif[ScifConsts.PRODUCT_EAN_CODE].isin(['100046', '100020'])][
+                    ScifConsts.PRODUCT_FK].unique().tolist()
+            # remove relevant substituted products (leading products) that were NOT actually tagged in the session
+            leading_products = \
+                relevant_scif[(relevant_scif[ScifConsts.SUBSTITUTION_PRODUCT_FK].isin(specific_leading_product_pks)) &
+                              (relevant_scif[ScifConsts.PRODUCT_FK].isin(specific_substitute_product_pks))][
+                    ScifConsts.SUBSTITUTION_PRODUCT_FK].unique().tolist()
+            relevant_scif = relevant_scif[~((relevant_scif[ScifConsts.PRODUCT_FK].isin(leading_products)) &
+                                            (relevant_scif[ScifConsts.TAGGED] == 0))]
+            # populate the facings column for the substitution products
+            relevant_scif.loc[(relevant_scif[ScifConsts.FACINGS].isna()) &
+                              (relevant_scif[ScifConsts.PRODUCT_FK].isin(specific_substitute_product_pks)),
+                              ScifConsts.FACINGS] = \
+                relevant_scif.loc[(relevant_scif[ScifConsts.FACINGS].isna()) &
+                                  (relevant_scif[ScifConsts.PRODUCT_FK].isin(specific_substitute_product_pks)),
+                                  ScifConsts.TAGGED]
+            relevant_scif.loc[(relevant_scif[ScifConsts.FACINGS_IGN_STACK].isna()) &
+                              (relevant_scif[ScifConsts.PRODUCT_FK].isin(specific_substitute_product_pks)),
+                              ScifConsts.FACINGS_IGN_STACK] = \
+                relevant_scif.loc[(relevant_scif[ScifConsts.FACINGS_IGN_STACK].isna()) &
+                                  (relevant_scif[ScifConsts.PRODUCT_FK].isin(specific_substitute_product_pks)),
+                                  ScifConsts.TAGGED]
         for brand_fk in relevant_assortment[ProductsConsts.BRAND_FK].unique().tolist():
             brand_assortment = relevant_assortment[relevant_assortment[ProductsConsts.BRAND_FK] == brand_fk]
             standard_types_results, brand_results = self.generic_brand_calculator(
@@ -773,7 +801,10 @@ class ToolBox:
                 Log.error("The store has no products for shelf_facings.")
                 return 0, 0, 0
         else:
-            if self.state_fk in relevant_competitions[Consts.EX_STATE_FK].unique().tolist():
+            if self.state_fk is None or self.state_fk == 'N/A':
+                Log.error("The store's state_fk value is null - Shelf Facings will not be calculated")
+                return 0, 0, 0
+            elif self.state_fk in relevant_competitions[Consts.EX_STATE_FK].unique().tolist():
                 relevant_competitions = relevant_competitions[relevant_competitions[Consts.EX_STATE_FK] == self.state_fk]
             else:
                 default_state = relevant_competitions[Consts.EX_STATE_FK].iloc[0]
@@ -785,7 +816,37 @@ class ToolBox:
         kpi_db_names = self.pull_kpi_fks_from_names(Consts.DB_OFF_NAMES[kpi_name])
         total_results = []
         standard_types_results = {Consts.SEGMENT: [], Consts.NATIONAL: []} if self.attr11 == Consts.OPEN else {}
-        relevant_scif = self.scif_without_emptys[self.scif_without_emptys[ScifConsts.SCENE_ID].isin(relevant_scenes)]
+        if self.attr11 == Consts.NATIONAL_STORE and kpi_name == Consts.SHELF_FACINGS:
+            relevant_scif = self.scif[self.scif[ScifConsts.SCENE_ID].isin(relevant_scenes)]
+            specific_substitute_product_pks = \
+                relevant_scif[relevant_scif[ScifConsts.PRODUCT_EAN_CODE].isin(['10024426', '100019'])][
+                    ScifConsts.PRODUCT_FK].unique().tolist()
+            specific_leading_product_pks = \
+                relevant_scif[relevant_scif[ScifConsts.PRODUCT_EAN_CODE].isin(['100046', '100020'])][
+                    ScifConsts.PRODUCT_FK].unique().tolist()
+            # remove relevant substituted products (leading products) that were NOT actually tagged in the session
+            leading_products = \
+                relevant_scif[(relevant_scif[ScifConsts.SUBSTITUTION_PRODUCT_FK].isin(specific_leading_product_pks)) &
+                              (relevant_scif[ScifConsts.PRODUCT_FK].isin(specific_substitute_product_pks))][
+                    ScifConsts.SUBSTITUTION_PRODUCT_FK].unique().tolist()
+            relevant_scif = relevant_scif[~((relevant_scif[ScifConsts.PRODUCT_FK].isin(leading_products)) &
+                                            (relevant_scif[ScifConsts.TAGGED] == 0))]
+            # populate the facings column for the substitution products
+            relevant_scif.loc[(relevant_scif[ScifConsts.FACINGS].isna()) &
+                              (relevant_scif[ScifConsts.PRODUCT_FK].isin(specific_substitute_product_pks)),
+                              ScifConsts.FACINGS] = \
+                relevant_scif.loc[(relevant_scif[ScifConsts.FACINGS].isna()) &
+                                  (relevant_scif[ScifConsts.PRODUCT_FK].isin(specific_substitute_product_pks)),
+                                  ScifConsts.TAGGED]
+            relevant_scif.loc[(relevant_scif[ScifConsts.FACINGS_IGN_STACK].isna()) &
+                              (relevant_scif[ScifConsts.PRODUCT_FK].isin(specific_substitute_product_pks)),
+                              ScifConsts.FACINGS_IGN_STACK] = \
+                relevant_scif.loc[(relevant_scif[ScifConsts.FACINGS_IGN_STACK].isna()) &
+                                  (relevant_scif[ScifConsts.PRODUCT_FK].isin(specific_substitute_product_pks)),
+                                  ScifConsts.TAGGED]
+        else:
+            relevant_scif = \
+                self.scif_without_emptys[self.scif_without_emptys[ScifConsts.SCENE_ID].isin(relevant_scenes)]
         for brand_fk in relevant_competitions[ProductsConsts.BRAND_FK].unique().tolist():
             brand_competitions = relevant_competitions[relevant_competitions[ProductsConsts.BRAND_FK] == brand_fk]
             standard_types_results, brand_results = self.generic_brand_calculator(
@@ -904,7 +965,8 @@ class ToolBox:
         product_fk_with_substs = [product_fk]
         product_fk_with_substs += self.all_products[self.all_products[ProductsConsts.SUBSTITUTION_PRODUCT_FK]
                                                     == product_fk][MatchesConsts.PRODUCT_FK].tolist()
-        relevant_products = relevant_matches[relevant_matches[MatchesConsts.PRODUCT_FK].isin(product_fk_with_substs)]
+        relevant_products = relevant_matches[(relevant_matches[MatchesConsts.PRODUCT_FK].isin(product_fk_with_substs)) &
+                                             (relevant_matches[ScifConsts.PRODUCT_TYPE] != ProductTypeConsts.POS)]
         if relevant_products.empty:
             passed, result = 0, Consts.NO_PLACEMENT
         else:
@@ -965,6 +1027,9 @@ class ToolBox:
         scene = match_product_line[MatchesConsts.SCENE_FK]
         if shelf_from_bottom > len(min_max_shleves):
             shelf_from_bottom = len(min_max_shleves)
+        if shelf_from_bottom < 0:
+            # this is needed to prevent index errors, and should never happen under normal circumstances
+            shelf_from_bottom = 1
         amount_of_shelves = self.scenes_with_shelves[scene] \
             if self.scenes_with_shelves[scene] <= len(min_max_shleves.columns) else len(min_max_shleves.columns)
         group_for_product = min_max_shleves[amount_of_shelves].iloc[shelf_from_bottom - 1]
@@ -992,7 +1057,10 @@ class ToolBox:
         if relevant_competitions.empty:
             Log.warning("No MSRP list for this visit_date.")
             return 0, 0, 0
-        if self.state_fk in relevant_competitions[Consts.EX_STATE_FK].unique().tolist():
+        if self.attr11 != Consts.NATIONAL_STORE and self.state_fk is None:
+            Log.error("The store is not NATIONAL and the state_fk value is null - MSRP will not be calculated")
+            return 0, 0, 0
+        elif self.state_fk in relevant_competitions[Consts.EX_STATE_FK].unique().tolist():
             relevant_competitions = relevant_competitions[relevant_competitions[Consts.EX_STATE_FK] == self.state_fk]
         else:
             default_state = relevant_competitions[Consts.EX_STATE_FK].iloc[0]
@@ -1243,7 +1311,7 @@ class ToolBox:
                 minimum_products = template[template[Consts.EX_SCENE_TYPE] == scene_type]
                 if minimum_products.empty:
                     minimum_products = template[template[Consts.EX_SCENE_TYPE] == Consts.OTHER]
-                minimum_products = minimum_products[Consts.EX_MIN_FACINGS].iloc[0]
+                minimum_products = self._get_minimum_facings_target(minimum_products, product_fk)
                 facings = len(scene_products)
                 # if the condition is failed, it will "add" 0.
                 sum_scenes_passed += 1 * (facings >= minimum_products)
@@ -1278,12 +1346,22 @@ class ToolBox:
                 minimum_products = template[template[Consts.EX_SCENE_TYPE] == scene_type]
                 if minimum_products.empty:
                     minimum_products = template[template[Consts.EX_SCENE_TYPE] == Consts.OTHER]
-                minimum_products = minimum_products[Consts.EX_MIN_FACINGS].iloc[0]
+                minimum_products = self._get_minimum_facings_target(minimum_products, product_fk)
                 facings = len(scene_products)
                 if facings >= minimum_products:
                     sum_scenes_passed += 1
                     break
         return sum_scenes_passed
+
+    @staticmethod
+    def _get_minimum_facings_target(scene_targets, product_fk):
+        """In the display target KPIs the client can upload targets per scene type OR targets per scene type & SKUs.
+        This method gets the filtered external targets DataFrame by scene type, checks if there a target of the
+        specific product and returns it. In case there are a target of it, it return the target of the scene type.
+        """
+        if Consts.PRODUCT_FK in scene_targets.keys() and product_fk in scene_targets.values:
+            scene_targets = scene_targets.loc[scene_targets.product_fk == product_fk]
+        return scene_targets[Consts.EX_MIN_FACINGS].values[0]
 
     def get_relevant_scenes(self, scene_types):
         """

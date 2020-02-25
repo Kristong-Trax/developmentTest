@@ -44,7 +44,7 @@ class TestKEngineOutOfTheBox(TestFunctionalCase):
         self.assertNotEquals(len(kpi_results), 0)
         connector.disconnect_rds()
 
-    @skip('Test failed in garage')
+    @skip('sup')
     @seeder.seed(["sanofisa_seed"], ProjectsSanityData())
     def test_sanofisa_sanity(self):
         project_name = ProjectsSanityData.project_name

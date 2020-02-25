@@ -1,36 +1,21 @@
-from Projects.PS3_SAND.CommonV2 import Common
-from Projects.PS3_SAND.Utils.KPIToolBox import ToolBox
-from KPIUtils_v2.Utils.Decorators.Decorators import log_runtime
 from Trax.Utils.Logging.Logger import Log
-__author__ = 'Sam_Shivi'
+from Projects.PS3_SAND.Utils.KPIToolBox import PS3SandToolBox
+from KPIUtils_v2.Utils.Decorators.Decorators import log_runtime
 
 
-class Generator:
+class PS3SandGenerator:
 
     def __init__(self, data_provider, output):
         self.data_provider = data_provider
         self.output = output
-        self.common = Common(self.data_provider)
-        self.project_name = data_provider.project_name
-        self.session_uid = self.data_provider.session_uid
-        self.tool_box = ToolBox(self.data_provider, self.output, self.common)
+        self.tool_box = PS3SandToolBox(self.data_provider, self.output)
 
     @log_runtime('Total Calculations', log_start=True)
     def main_function(self):
+        """
+        This is the main KPI calculation function.
+        It calculates the score for every KPI set and saves it to the DB.
+        """
         if self.tool_box.scif.empty:
-            Log.warning('Distribution is empty for this session')
-            return
-        self.run_function(self.tool_box.get_fixture_availability)
-        self.run_function(self.tool_box.get_pog_store)
-        self.run_function(self.tool_box.get_da_store)
-        self.run_function(self.tool_box.get_facings_compliance_store)
-        self.run_function(self.tool_box.get_share_of_competitor_store)
-        self.run_function(self.tool_box.get_missing_denominations_store)
-        self.tool_box.commit_results()
-
-    @staticmethod
-    def run_function(func):
-        try:
-            func()
-        except Exception as e:
-            Log.error('{}'.format(e))
+            Log.warning('Scene item facts is empty for this session')
+        self.tool_box.main_calculation()
