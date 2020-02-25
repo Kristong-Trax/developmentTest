@@ -2543,7 +2543,7 @@ class MARSRU_PRODKPIToolBox:
             kpi_parameters = json.loads(p.get('Values')) if p.get('Values') else {}
 
             if kpi_parameters:
-                if kpi_parameters['exception']:
+                if kpi_parameters.get('exception'):
                     exception_kpi_name = kpi_parameters['exception'][0].keys()[0]
                     exception_kpi_results = kpi_parameters['exception'][0][exception_kpi_name]
                     kpi_result_to_check = str(self.results_and_scores[kpi_set][exception_kpi_name]['result'])
