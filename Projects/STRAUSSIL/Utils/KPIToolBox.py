@@ -131,7 +131,8 @@ class ToolBox(GlobalSessionToolBox):
             lsos_result = self.get_result(numerator_result, denominator_result)
             score = 1 if ((target - target_range) <= lsos_result <= (target + target_range)) else 0
             store_numerator += score
-            self.common.write_to_db_result(fk=kpi_fk, numerator_id=None, denominator_id=None, should_enter=True,
+            self.common.write_to_db_result(fk=kpi_fk, numerator_id=self.own_manufacturer_fk,
+                                           denominator_id=self.store_id, should_enter=True,
                                            numerator_result=numerator_result, denominator_result=denominator_result,
                                            result=lsos_result, score=score, identifier_parent='LSOS_SCORE')
         store_result = self.get_result(store_numerator, store_denominator)
