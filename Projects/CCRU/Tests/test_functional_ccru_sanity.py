@@ -1,3 +1,5 @@
+
+
 from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
 from Projects.CCRU.Tests.Data.data_test_ccru_sanity import ProjectsSanityData
 from Projects.CCRU.Calculations import CCRUCalculations
@@ -6,12 +8,9 @@ from Projects.CCRU.Tests.Data.kpi_results import CCRUKpiResults
 import os
 import json
 
-
 __author__ = 'sergey'
 
-
-# Equipment targets file by store_fk=461496 of session_uid='F26E2E6B-D12B-415C-AC0C-CAB929BEFC9F'
-EQUIPMENT_TARGETS_FILE = 'equipment_targets.txt'
+EQUIPMENT_TARGETS_FILE = 'equipment_targets.txt'  # by store_fk of 'F26E2E6B-D12B-415C-AC0C-CAB929BEFC9F'
 SESSION_LIST = {'F26E2E6B-D12B-415C-AC0C-CAB929BEFC9F': [],
                 '3b8a8039-2c79-436d-b42f-c72f4ce3b183': []}
 
@@ -22,7 +21,7 @@ class TestKEnginePsCode(PsSanityTestsFuncs):
         with open(os.path.join(os.path.dirname(os.path.realpath(__file__)),
                                'Data', EQUIPMENT_TARGETS_FILE), 'rb') as f:
             self.mock_object('get_equipment_targets',
-                             path='Projects.CCRU.Utils.ToolBox.CCRUKPIToolBox')\
+                             path='Projects.CCRU.Utils.ToolBox.CCRUKPIToolBox') \
                 .return_value = json.load(f)
         return
 
