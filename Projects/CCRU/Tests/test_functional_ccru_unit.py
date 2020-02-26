@@ -1,15 +1,12 @@
 # -*- coding: utf-8 -*-
-from mock import MagicMock
-
 import json
-import pandas as pd
 
-from pandas.util.testing import assert_frame_equal
-
+from mock import MagicMock
+# from pandas.util.testing import assert_frame_equal
 from Trax.Apps.Core.Testing.BaseCase import TestFunctionalCase
+# from Trax.Algo.Calculations.Core.DataProvider import Data
 from Projects.CCRU.Tests.Data.data_test_ccru_unit import DataTestUnitCCRU
 from Projects.CCRU.Utils.ToolBox import CCRUKPIToolBox
-from Trax.Algo.Calculations.Core.DataProvider import Data
 
 
 __author__ = 'sergey'
@@ -17,15 +14,17 @@ __author__ = 'sergey'
 
 class TestCCRU(TestFunctionalCase):
 
+    def set_up(self):
+        super(TestCCRU, self).set_up()
+        self.data = DataTestUnitCCRU()
+        self.output = MagicMock()
+
     @property
     def import_path(self):
         return 'Projects.CCRU.Utils.ToolBox'
 
-    def set_up(self):
-        super(TestCCRU, self).set_up()
-        self.data = DataTestUnitCCRU()
-
     def mock_data_provider(self):
+
         self.data_provider = MagicMock()
         self.data_provider.project_name = self.data.project_name
         self.data_provider.session_uid = self.data.session_uid
@@ -49,13 +48,13 @@ class TestCCRU(TestFunctionalCase):
         self.mock_object('Common')
         self.mock_object('SessionInfo')
         self.mock_object('PSProjectConnector')
-        self.mock_object('BaseCalculationsGroup')
+        # self.mock_object('BaseCalculationsGroup')
 
         mock_fetcher = self.mock_object('CCRUCCHKPIFetcher')
         mock_fetcher.get_store_number = self.data.store_number
         mock_fetcher.get_test_store = self.data.test_store
         mock_fetcher.get_attr15_store = self.data.attr15_store
-        mock_fetcher.get_store_area_df = self.data.store_areas
+        mock_fetcher.get_store_area_df = self.data.store_areas.copy()
         mock_fetcher.get_session_user = self.data.session_user
         mock_fetcher.get_planned_visit_flag = self.data.planned_visit_flag
 
@@ -76,13 +75,26 @@ class TestCCRU(TestFunctionalCase):
                 'test_availability_number_of_facings_4'
             ]
         for test_case in test_cases:
-            params, check_result = self.get_pos_test_case(test_case)
-            self.output = MagicMock()
             self.mock_data_provider()
             self.mock_tool_box()
             tool_box = CCRUKPIToolBox(self.data_provider, self.output)
             tool_box.set_kpi_set(self.data.pos_kpi_set_name, self.data.pos_kpi_set_type)
+            params, check_result = self.get_pos_test_case(test_case)
             test_result = tool_box.check_availability(params)
+            self.assertEquals(check_result, test_result)
+
+    def test_check_facings_sos(self):
+        test_cases = \
+            [
+                'test_check_facings_sos_1'
+            ]
+        for test_case in test_cases:
+            self.mock_data_provider()
+            self.mock_tool_box()
+            tool_box = CCRUKPIToolBox(self.data_provider, self.output)
+            tool_box.set_kpi_set(self.data.pos_kpi_set_name, self.data.pos_kpi_set_type)
+            params, check_result = self.get_pos_test_case(test_case)
+            test_result = tool_box.check_facings_sos(params)
             self.assertEquals(check_result, test_result)
 
 # writer = pd.ExcelWriter('./store_areas.xlsx', engine='xlsxwriter')

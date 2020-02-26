@@ -292,7 +292,7 @@ class CCRUKPIToolBox:
             sub_location = list(
                 self.scif.loc[self.scif['template_name'] == scene_type]['additional_attribute_2'].values)
             if sub_location:
-                sub_location = sub_location[0]
+                sub_location = unicode(sub_location[0])
                 if sub_location not in sub_location_data.keys():
                     sub_location_data[sub_location] = []
             sub_location_data[sub_location].append(scene)
@@ -958,28 +958,29 @@ class CCRUKPIToolBox:
         if not relevant_scenes:
             return None
 
+        values_list = [unicode(x).strip()
+                       for x in unicode(params.get('Values')).split(', ')]
+
+        categories = [unicode(x).strip()
+                      for x in unicode(params.get('Product Category')).strip().split(', ')]
+
         if params.get('Manufacturer'):
-            manufacturers = \
-                [unicode(x).strip()
-                 for x in unicode(params.get('Manufacturer')).strip().split(', ')]
+            manufacturers = [unicode(x).strip()
+                             for x in unicode(params.get('Manufacturer')).strip().split(', ')]
         else:
             manufacturers = self.kpi_fetcher.TCCC
+
         if params.get('Formula').strip() == 'sos with empty':
             if params.get('Type') == 'MAN':
                 pop_filter = (self.scif['scene_id'].isin(relevant_scenes))
                 subset_filter = (self.scif[Fd.M_NAME].isin(manufacturers))
             elif params.get('Type') == 'MAN in CAT':
-                pop_filter = ((self.scif[Fd.CAT].isin(params.get('Values'))) &
+                pop_filter = ((self.scif[Fd.CAT].isin(values_list)) &
                               (self.scif['scene_id'].isin(relevant_scenes)))
                 subset_filter = (self.scif[Fd.M_NAME].isin(manufacturers))
             else:
                 return 0
         else:
-            try:
-                values_list = [unicode(x).strip()
-                               for x in unicode(params.get('Values')).split(', ')]
-            except Exception as e:
-                values_list = [params.get('Values')]
             if params.get('Type') == 'MAN':
                 pop_filter = ((self.scif['scene_id'].isin(relevant_scenes)) &
                               (~self.scif['product_type'].isin(['Empty'])))
@@ -992,13 +993,13 @@ class CCRUKPIToolBox:
                 subset_filter = ((self.scif[Fd.M_NAME].isin(manufacturers)) &
                                  (~self.scif['product_type'].isin(['Empty'])))
             elif params.get('Type') == 'SUB_BRAND_IN_CAT':
-                pop_filter = ((self.scif[Fd.CAT] == params.get('Product Category')) &
+                pop_filter = ((self.scif[Fd.CAT].isin(categories)) &
                               (self.scif['scene_id'].isin(relevant_scenes)) &
                               (~self.scif['product_type'].isin(['Empty'])))
                 subset_filter = ((self.scif['sub_brand_name'].isin(values_list)) &
                                  (~self.scif['product_type'].isin(['Empty'])))
             elif params.get('Type') == 'BRAND_IN_CAT':
-                pop_filter = ((self.scif[Fd.CAT] == params.get('Product Category')) &
+                pop_filter = ((self.scif[Fd.CAT].isin(categories)) &
                               (self.scif['scene_id'].isin(relevant_scenes)) &
                               (~self.scif['product_type'].isin(['Empty'])))
                 subset_filter = ((self.scif['brand_name'].isin(values_list)) &
