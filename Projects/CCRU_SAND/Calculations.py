@@ -97,10 +97,10 @@ class CCRU_SANDProjectCalculations:
                 self.calculate_red_score()
 
         if self.tool_box.visit_type in [self.tool_box.STANDARD_VISIT]:
-            if self.tool_box.cooler_scenes:
-                if not self.tool_box.cooler_assortment.empty:
-                    self.tool_box.set_kpi_set(CCRU_SANDConsts.COOLER_AUDIT_SCORE, CCRU_SANDConsts.COOLER_AUDIT_SCORE)
-                    self.calculate_cooler_audit()
+            # if self.tool_box.cooler_scenes:
+            if not self.tool_box.cooler_assortment.empty:
+                self.tool_box.set_kpi_set(CCRU_SANDConsts.COOLER_AUDIT_SCORE, CCRU_SANDConsts.COOLER_AUDIT_SCORE)
+                self.calculate_cooler_audit()
 
         Log.debug('KPI calculation stage: {}'.format('Committing results old'))
         self.tool_box.commit_results_data_old()

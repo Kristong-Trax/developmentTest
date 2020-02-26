@@ -4468,7 +4468,6 @@ class CCRU_SANDKPIToolBox:
             if not (p.get('Formula').strip() in ("each SKU hits facings target",)):
                 continue
             scene = cooler_dict[ScifConsts.SCENE_FK]
-            # result = self.calculate_availability(p, scenes=[scene], all_params=params) # does it make sense to pass like this?
             result = self.calculate_availability(p, all_params=params)
             weight = p.get("KPI Weight")
             score = result * weight
