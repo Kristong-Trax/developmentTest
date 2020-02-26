@@ -50,7 +50,7 @@ RESULT = 'result'
 SHEETS = [KPIS, AVALIABILITY, SOS, SHARE_OF_EMPTY, SURVEY, DISTRIBUTION, DISTRIBUTION_SCORING, ASSORTMENT, SCORING]
 
 TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data',
-                             'Nayar Comidas Fondas Template_v2.xlsx')
+                             'Nayar Comidas Fondas Template_v3.xlsx')
 
 
 def log_runtime(description, log_start=False):
@@ -206,22 +206,24 @@ class FONDASToolBox(GlobalSessionToolBox):
                                            (relevant_results['result'].notna()) &
                                            (relevant_results['score'] != 0)]
         nan_results = relevant_results[relevant_results['result'].isna()]
+
         if len(relevant_results) > 0 and len(relevant_results) == len(nan_results):
             result_dict['result'] = pd.np.nan
-        elif row['Component aggregation'] == 'one-passed':
+        elif row['Component Aggregation'] == 'one-passed':
             if len(relevant_results) > 0 and len(passing_results) > 0:
                 result_dict['result'] = 1
             else:
                 result_dict['result'] = 0
-        elif row['Component aggregation'] == 'sum':
+        elif row['Component Aggregation'] == 'sum':
             if len(relevant_results) > 0:
                 result_dict['score'] = relevant_results['score'].sum()
-                if 'result' not in result_dict.keys():
-                    result_dict['result'] = result_dict['score']
             else:
                 result_dict['score'] = 0
-                if 'result' not in result_dict.keys():
-                    result_dict['result'] = result_dict['score']
+
+            if row['Additional Component Aggregation'] == 'fraction':
+                result_dict['result'] = float(sum(relevant_results.result.to_numpy() > 0)) / len(relevant_results)
+            elif row['Additional Component Aggregation'] == 'match':
+                result_dict['result'] = result_dict['score']
 
         return result_dict
 
@@ -328,8 +330,8 @@ class FONDASToolBox(GlobalSessionToolBox):
         # Have to Join mpis with scif as there in issue in recognition of product_fk = '2805' in scif
         mpis_merge_with_scif = \
             self.match_product_in_scene[['scene_fk', PRODUCT_FK]].merge(
-                self.scif[['scene_fk', TEMPLATE_NAME, PRODUCT_TYPE]],how= 'left', on = 'scene_fk')
-            
+                self.scif[['scene_fk', TEMPLATE_NAME, PRODUCT_TYPE]], how='left', on='scene_fk')
+
         relevant_scif = self.filter_df(mpis_merge_with_scif, {TEMPLATE_NAME: template_name, PRODUCT_TYPE: product_type,
                                                               PRODUCT_FK: product_fk})
         result = 1 if not relevant_scif.empty else 0
@@ -401,7 +403,7 @@ class FONDASToolBox(GlobalSessionToolBox):
         if row['Assortment_Right'] == 'Y' and row['Survey_Right'] == 'Y':
             result = 1 if relevant_survey_result == 100 and final_result_of_current_assortment else 0
         elif row['Assortment_Right'] == 'Y' and row['Survey_Right'] == 'N':
-            result = 1 if relevant_survey_result == 100 and final_result_of_current_assortment == False else 0
+            result = 1 if relevant_survey_result == 0 and final_result_of_current_assortment else 0
 
         result_dict = {'kpi_name': kpi_name, 'kpi_fk': kpi_fk, 'numerator_id': numerator_id,
                        'denominator_id': denominator_id,
