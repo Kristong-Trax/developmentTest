@@ -2,7 +2,7 @@ import numpy as np
 import networkx as nx
 from collections import Counter
 from Trax.Cloud.Services.Connector.Logger import Log
-from Projects.DIAGEOUS_SAND2.Utils.Const import CaseCountConsts as Ccc
+from Projects.DIAGEOUS_SAND2.Data.LocalConsts import CaseCountConsts as Ccc
 from KPIUtils_v2.Utils.GlobalScripts.Scripts import GlobalSessionToolBox
 from Trax.Algo.Calculations.Core.AdjacencyGraph.Builders import AdjacencyGraphBuilder
 
