@@ -419,7 +419,7 @@ class CCRU_SANDCCHKPIFetcher:
                        from pservice.cooler c
                        left join pservice.cooler_model m
                        on c.cooler_model_fk = m.pk
-                       where c.cooler_id in ({});
+                       where c.cooler_id = '{}';
                        """.format(cooler_list[0])
         else:
             query = """
