@@ -1308,9 +1308,11 @@ class ToolBox:
                 if scene_products.empty:
                     continue
                 scene_type = self.scif[self.scif[ScifConsts.SCENE_FK] == scene][ScifConsts.TEMPLATE_NAME].iloc[0]
-                minimum_products = template[template[Consts.EX_SCENE_TYPE] == scene_type]
+                minimum_products = template[(template[Consts.EX_SCENE_TYPE] == scene_type) |
+                                            (template[Consts.EX_PRODUCT_FK] == product_fk)]
                 if minimum_products.empty:
-                    minimum_products = template[template[Consts.EX_SCENE_TYPE] == Consts.OTHER]
+                    minimum_products = template[(template[Consts.EX_SCENE_TYPE] == Consts.OTHER) |
+                                                (template[Consts.EX_PRODUCT_FK] == product_fk)]
                 minimum_products = self._get_minimum_facings_target(minimum_products, product_fk)
                 facings = len(scene_products)
                 # if the condition is failed, it will "add" 0.
@@ -1343,9 +1345,11 @@ class ToolBox:
                 if scene_products.empty:
                     continue
                 scene_type = self.scif[self.scif[ScifConsts.SCENE_FK] == scene][ScifConsts.TEMPLATE_NAME].iloc[0]
-                minimum_products = template[template[Consts.EX_SCENE_TYPE] == scene_type]
+                minimum_products = template[(template[Consts.EX_SCENE_TYPE] == scene_type) |
+                                            (template[Consts.PRODUCT_FK] == product_fk)]
                 if minimum_products.empty:
-                    minimum_products = template[template[Consts.EX_SCENE_TYPE] == Consts.OTHER]
+                    minimum_products = template[(template[Consts.EX_SCENE_TYPE] == Consts.OTHER) |
+                                                (template[Consts.EX_PRODUCT_FK] == product_fk)]
                 minimum_products = self._get_minimum_facings_target(minimum_products, product_fk)
                 facings = len(scene_products)
                 if facings >= minimum_products:
