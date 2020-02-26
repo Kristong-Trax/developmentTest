@@ -97,6 +97,22 @@ class TestCCRU(TestFunctionalCase):
             test_result = tool_box.check_facings_sos(params)
             self.assertEquals(check_result, test_result)
 
+    def test_check_share_of_cch(self):
+        test_cases = \
+            [
+                'test_check_share_of_cch_1',
+                'test_check_share_of_cch_2',
+                'test_check_share_of_cch_3'
+            ]
+        for test_case in test_cases:
+            self.mock_data_provider()
+            self.mock_tool_box()
+            tool_box = CCRUKPIToolBox(self.data_provider, self.output)
+            tool_box.set_kpi_set(self.data.pos_kpi_set_name, self.data.pos_kpi_set_type)
+            params, check_result = self.get_pos_test_case(test_case)
+            test_result = tool_box.check_share_of_cch(params)
+            self.assertEquals(check_result, test_result)
+
 # writer = pd.ExcelWriter('./store_areas.xlsx', engine='xlsxwriter')
 # self.store_areas.to_excel(writer, sheet_name='store_areas', index_label='#')
 # writer.save()
