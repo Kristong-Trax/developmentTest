@@ -23,6 +23,8 @@ class ToolBox(GlobalSessionToolBox):
     def main_calculation(self):
         self.calculate_score_sos()
         self.calculate_core_oos_and_distribution()
+        self.calculate_hierarchy_sos(calculation_type='FACINGS')
+        self.calculate_hierarchy_sos(calculation_type='LINEAR')
 
     @kpi_runtime()
     def calculate_core_oos_and_distribution(self):
@@ -159,9 +161,8 @@ class ToolBox(GlobalSessionToolBox):
         category_kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_type=(calculation_type + Consts.SOS_BY_CAT))
         brand_kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_type=(calculation_type + Consts.SOS_BY_CAT_BRAND))
         sku_kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_type=(calculation_type + Consts.SOS_BY_CAT_BRAND_SKU))
+        calculation_param = "facings" if calculation_type == 'FACINGS' else "gross_len_ign_stack"
         sos_df = self.scif[self.scif['rlv_sos_sc'] == 1]
-
-        calculation_param = "facings" if calculation_type == 'FACINGS' else "linear_gross_ign_stacking"
 
         # category level sos
         session_categories = set(self.parser.filter_df(conditions={'manufacturer_fk': self.own_manufacturer_fk},
