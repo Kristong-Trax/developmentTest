@@ -117,15 +117,19 @@ class CCRUKPIToolBox:
 
     MIN_CALC_DATE = '2019-10-26'
 
+    ALLOWED_POS_SETS = tuple(CCRUConsts.ALLOWED_POS_SETS)
+
     STANDARD_VISIT = 'Standard visit'
     PROMO_VISIT = 'Promo visit'
     SOVI_SOCVI_VISIT = 'SOVI/SOCVI'
     SEGMENTATION_VISIT = 'Segmentation'
+    GROWTH_FORMULA = 'Growth formula'
 
     VISIT_TYPE = {1: STANDARD_VISIT,
                   2: PROMO_VISIT,
                   3: SOVI_SOCVI_VISIT,
-                  4: SEGMENTATION_VISIT}
+                  4: SEGMENTATION_VISIT,
+                  5: GROWTH_FORMULA}
 
     def __init__(self, data_provider, output, kpi_set_name=None, kpi_set_type=None, update_kpi_set=False):
         self.data_provider = data_provider
@@ -1451,19 +1455,103 @@ class CCRUKPIToolBox:
 
         return score
 
+    def get_relevant_products_by_type_and_values(self, params,
+                                                 return_column='product_fk',
+                                                 include_product_types='SKU'):
+        value_type = \
+            {
+                'CAT': 'category',
+                'SUB_CATEGORY': 'sub_category',
+                'MAN in CAT': 'category',
+                'MAN': 'manufacturer_name',
+                'BRAND': 'brand_name',
+                'SUB_BRAND': 'sub_brand_name',
+                'SKUs': 'product_ean_code',
+            }
+
+        if not isinstance(include_product_types, (list, tuple, set)):
+            include_product_types = [include_product_types]
+
+        filtered_products = self.products
+
+        if params.get('Type') in value_type.keys():
+            filter_name = value_type[params.get('Type')]
+            filter_values = [unicode(x).strip() for x in unicode(params.get('Values')).split(', ')]
+            filtered_products = filtered_products[filtered_products[filter_name].isin(filter_values)]
+
+        if include_product_types:
+            filtered_products = filtered_products[filtered_products['product_type'].isin(include_product_types)]
+
+        if return_column in filtered_products.columns:
+            return_list = filtered_products[return_column].unique().tolist()
+        else:
+            return_list = []
+
+        return return_list
+
+    def get_relevant_products_by_product_filters(self, params,
+                                                 return_column='product_fk',
+                                                 include_product_types='SKU'):
+        filters = \
+            {
+                'Manufacturer': 'manufacturer_name',
+                'Brand': 'brand_name',
+                'Sub brand': 'sub_brand_name',
+                'Product Category': 'category',
+                'Sub category': 'sub_category',
+                'Product': 'product_ean_code',
+                'Form Factor': 'form_factor',
+                'Size': 'size',
+
+                'Products to exclude': 'product_ean_code',
+                'Form factors to exclude': 'form_factor',
+
+            }
+
+        if not isinstance(include_product_types, (list, tuple, set)):
+            include_product_types = [include_product_types]
+
+        filtered_products = self.products
+
+        for filter_name in filters.keys():
+            if params.get(filter_name) is not None:
+                if filters[filter_name] == 'size':
+                    filter_values = [float(x) for x in str(params.get(filter_name)).split(', ')]
+                    filter_values = [int(x) if int(x) == x else x for x in filter_values]
+                else:
+                    filter_values = [unicode(x).strip() for x in unicode(params.get(filter_name)).split(', ')]
+                if filter_name.find('exclude') < 0:
+                    filtered_products = filtered_products[filtered_products[filters[filter_name]].isin(filter_values)]
+                else:
+                    filtered_products = filtered_products[~filtered_products[filters[filter_name]].isin(filter_values)]
+
+        if include_product_types:
+            filtered_products = filtered_products[filtered_products['product_type'].isin(include_product_types)]
+
+        if return_column in filtered_products.columns:
+            return_list = filtered_products[return_column].unique().tolist()
+        else:
+            return_list = []
+
+        return return_list
+
     def calculate_lead_sku(self, params, scenes=None):
         if not scenes:
             scenes = self.get_relevant_scenes(params)
-        if params.get('Product Category'):
-            category = [unicode(x).strip() for x in unicode(
-                params.get('Product Category')).split(', ')]
-            relevant_products_and_facings = self.scif[
-                (self.scif['scene_id'].isin(scenes)) & ~(self.scif['product_type'].isin(['Empty', 'Other'])) &
-                (self.scif['category'].isin(category))]
+        relevant_products = self.get_relevant_products_by_product_filters(params,
+                                                                          return_column='product_fk',
+                                                                          include_product_types='SKU')
+        relevant_products_and_facings = self.scif[
+            (self.scif['scene_id'].isin(scenes)) &
+            (self.scif['product_fk'].isin(relevant_products))]
+
+        if params.get('Type') == 'SKUs':
+            values = [unicode(x).strip()
+                      for x in unicode(params.get('Values')).replace(' ', '').replace('=', '\n').split('\n')]
         else:
-            relevant_products_and_facings = self.scif[
-                (self.scif['scene_id'].isin(scenes)) & ~(self.scif['product_type'].isin(['Empty', 'Other']))]
-        values = [unicode(x).strip() for x in unicode(params.get('Values')).replace(' ', '').replace('=', '\n').split('\n')]
+            values = [','.join(self.get_relevant_products_by_type_and_values(params,
+                                                                             return_column='product_ean_code',
+                                                                             include_product_types='SKU'))]
         partner_skus = []
         tested_skus = []
         if values:
@@ -1747,6 +1835,9 @@ class CCRUKPIToolBox:
                         atomic_res = self.check_number_of_scenes_no_tagging(c, level=3)
                     elif c.get("Formula").strip() == "check_number_of_scenes_with_facings_target":
                         atomic_res = self.calculate_number_of_scenes_with_target(c)
+                    elif c.get("Formula").strip() == "number of sub atomic KPI Passed on the same scene":
+                        atomic_res = self.calculate_sub_atomic_passed_on_the_same_scene(
+                            c, params, parent=p, scenes=[])
                     else:
                         # print "the atomic's formula is ", c.get('Formula').strip()
                         atomic_res = 0
@@ -2745,7 +2836,21 @@ class CCRUKPIToolBox:
         return set_total_res
 
     def get_pos_kpi_set_name(self, update_kpi_set=False):
+        pos = self.get_pos_by_session()
+        if pos not in self.ALLOWED_POS_SETS or update_kpi_set:
+            if self.visit_type == self.GROWTH_FORMULA:
+                if str(self.visit_date) < self.MIN_CALC_DATE:
+                    pos = self.get_pos_by_store_attribute('additional_attribute_22')
+                else:
+                    pos = self.get_pos_by_store_attribute('additional_attribute_21')
+            if pos not in self.ALLOWED_POS_SETS:
+                if str(self.visit_date) < self.MIN_CALC_DATE:
+                    pos = self.get_pos_by_store_attribute('additional_attribute_12')
+                else:
+                    pos = self.get_pos_by_store_attribute('additional_attribute_11')
+        return pos
 
+    def get_pos_by_session(self):
         query = """
                 select s.name 
                 from report.kps_results r
@@ -2756,30 +2861,21 @@ class CCRUKPIToolBox:
         cur = self.rds_conn.db.cursor()
         cur.execute(query)
         res = cur.fetchall()
+        pos = res[0][0] if res else None
+        return pos
 
-        if not res or update_kpi_set:
-            if str(self.visit_date) < self.MIN_CALC_DATE:
-                query = """
-                        select ss.additional_attribute_12 
-                        from static.stores ss 
-                        join probedata.session ps on ps.store_fk=ss.pk 
-                        where ss.delete_date is null and ps.session_uid = '{}';
-                        """.format(self.session_uid)
-            else:
-                query = """
-                        select ss.additional_attribute_11 
-                        from static.stores ss 
-                        join probedata.session ps on ps.store_fk=ss.pk 
-                        where ss.delete_date is null and ps.session_uid = '{}';
-                        """.format(self.session_uid)
-
-            cur = self.rds_conn.db.cursor()
-            cur.execute(query)
-            res = cur.fetchall()
-
-        df = pd.DataFrame(list(res), columns=['POS'])
-
-        return df['POS'][0]
+    def get_pos_by_store_attribute(self, pos_store_attribute):
+        query = """
+                select ss.{} 
+                from static.stores ss 
+                join probedata.session ps on ps.store_fk=ss.pk 
+                where ps.session_uid = '{}';
+                """.format(pos_store_attribute, self.session_uid)
+        cur = self.rds_conn.db.cursor()
+        cur.execute(query)
+        res = cur.fetchall()
+        pos = res[0][0] if res else None
+        return pos
 
     @kpi_runtime()
     def calculate_gaps_old(self, params):

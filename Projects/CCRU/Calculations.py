@@ -8,7 +8,7 @@ from Trax.Utils.Logging.Logger import Log
 from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from KPIUtils_v2.Utils.Decorators.Decorators import log_runtime
 
-from Projects.CCRU.Utils.Consts import CCRUConsts
+# from Projects.CCRU.Utils.Consts import CCRUConsts
 from Projects.CCRU.Utils.JSON import CCRUJsonGenerator
 from Projects.CCRU.Utils.ToolBox import CCRUKPIToolBox
 
@@ -31,9 +31,7 @@ INTEGRATION = 'INTEGRATION'
 TOPSKU = 'TOPSKU'
 KPI_CONVERSION = 'KPI_CONVERSION'
 BENCHMARK = 'BENCHMARK'
-MR_TARGET = 'MR TARGET'
-
-ALLOWED_POS_SETS = tuple(CCRUConsts.ALLOWED_POS_SETS)
+MR_TARGET = 'MR TARGET' 
 
 
 class CCRUCalculations(BaseCalculationsScript):
@@ -82,7 +80,7 @@ class CCRUProjectCalculations:
             self.calculate_promo_compliance()
 
         else:
-            if self.pos_kpi_set_name not in ALLOWED_POS_SETS:
+            if self.pos_kpi_set_name not in self.tool_box.ALLOWED_POS_SETS:
                 Log.warning('Warning. Session cannot be calculated. '
                             'POS KPI Set name in store attribute is invalid - {0}. '
                             'Store ID {1}.'

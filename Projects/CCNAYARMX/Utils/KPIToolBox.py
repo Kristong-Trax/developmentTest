@@ -874,7 +874,7 @@ class ToolBox(GlobalSessionToolBox):
                                                                 additional={'minimum_block_ratio': 0.9,
                                                                             'calculate_all_scenes': True,
                                                                             'minimum_facing_for_block': 1,
-                                                                            'use_masking_only': True})
+                                                                            'use_masking_only': True, 'include_stacking': True})
                     if pd.notna(row['tagging']):
                         probes_match = [node[1]['probe_match_fk'] for i in range(len(block.cluster)) for node in
                                         block.cluster.reset_index().drop(columns=['index']).iloc[i, 0].node(data=True)]

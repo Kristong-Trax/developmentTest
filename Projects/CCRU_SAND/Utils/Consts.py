@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 __author__ = 'sergey'
 
 
@@ -78,3 +80,31 @@ class CCRU_SANDConsts(object):
         'PoS 2020 - IC CartMobile',
         'PoS 2020 - IC CoffeePoint',
     )
+
+    # Cooler Audit
+    COOLER = 'Cooler'
+    COOLER_AUDIT = 'COOLER_AUDIT'
+    COOLER_MODEL = 'cooler_model'
+    COOLER_ID_DB = 'cooler_id'
+    COOLER_FK = 'cooler_fk'
+    MIN_NUMBER_DIGITS = 3
+    COOLER_SURVEY_QUESTION = u'Введите 3 последние цифры инвентарного номера холодильника:'
+    COOLER_ID = 'Cooler ID'
+    REDUCED_BAR_CODE = 'reduced_bar_code'
+    SURVEY_ANSWER = 'text_value'
+    TEXT_VALUE = 'text_value'
+    NUMBER_VALUE = 'number_value'
+    COOLER_MODEL_FK = 'cooler_model_fk'
+
+    COOLER_MODEL_NAME = 'cooler_model_name'
+    GROUP_MODEL_MAP = 'GROUP_MODEL_MAP'
+    KPI_GROUP = 'KPI Group'
+
+    VISIT_COOLER_SCORE = 'Visit_Cooler_Score'
+    COOLER_SCORE = 'Cooler_Score'
+    VISIT_COOLER_AVAILABILITY = 'Visit_Cooler_Availability'
+    COOLER_AUDIT_SCORE = 'COOLER AUDIT SCORE'
+    COOLER_PRESENCE = 'Cooler_Presence'
+    EXTRA_COOLER_PRESENCE = 'Extra_Cooler_Presence'
+    COOLER_SCORE_LVL_2 = 'COOLER_SCORE_LVL2'
+
