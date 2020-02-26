@@ -430,10 +430,10 @@ if __name__ == '__main__':
     LoggerInitializer.init('running sanity creator script')
     replace_configurations_file = True
     copy_configuration_file_to_traxexport(replace_configurations_file)
-    projects = {
-        'marsru-prod': {'ffed4592-47f6-427f-a7e6-29cebafe05af': [],
-                        '5b062170-373c-4363-819b-03104e31af11': []},
-                }
+    projects = \
+        {
+            'ccru': {'F26E2E6B-D12B-415C-AC0C-CAB929BEFC9F': [], '3b8a8039-2c79-436d-b42f-c72f4ce3b183': []},
+        }
     for project in projects:
         try:
 
