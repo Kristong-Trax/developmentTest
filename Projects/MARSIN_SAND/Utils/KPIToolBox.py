@@ -256,7 +256,7 @@ class MARSIN_SANDToolBox(MARSIN_SANDTemplateConsts, MARSIN_SANDKPIConsts):
         for group_name in group_scores:
             set_fk = self.kpi_static_data[self.kpi_static_data['kpi_set_name'] == group_name]['kpi_set_fk'].values[0]
             actual_points, max_points = group_scores[group_name]
-            set_score = round((actual_points / float(max_points)) * 100, 2)
+            set_score = 0 if max_points == 0 else round((actual_points / float(max_points)) * 100, 2)
             group_scores[group_name].insert(0, set_score)
             self.write_to_db_result(set_fk, (set_score, actual_points, max_points), level=self.LEVEL1)
 
@@ -284,7 +284,8 @@ class MARSIN_SANDToolBox(MARSIN_SANDTemplateConsts, MARSIN_SANDKPIConsts):
         picos_static_data = self.kpi_static_data[self.kpi_static_data['kpi_set_name'] == self.PICOS]
         actual_points = sum(map(lambda x: x[1], pillar_scores.values()))
         total_points = sum(map(lambda x: x[2], pillar_scores.values()))
-        picos_score = round((actual_points / float(total_points)) * 100, 2), actual_points, total_points
+        divison_score = round((actual_points / float(total_points)) * 100, 2) if total_points != 0 else 0
+        picos_score = divison_score, actual_points, total_points
         self.write_to_db_result(picos_static_data['kpi_set_fk'].iloc[0], picos_score, level=self.LEVEL1)
 
         #  writing set name result to db
