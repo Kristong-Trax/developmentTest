@@ -38,6 +38,10 @@ class CervezaToolBox(GlobalSessionToolBox):
         self.scene_realograms = []
 
     def main_calculation(self):
+        self.calculate_acomodo()
+        return
+
+    def calcualte_acomodo(self):
         for scene_type in self.relevant_targets[Consts.TEMPLATE_SCENE_TYPE].unique().tolist():
             if scene_type in self.scif['template_name'].unique().tolist():
                 # will there ever be more than one of each scene type? assuming no for now
@@ -45,7 +49,6 @@ class CervezaToolBox(GlobalSessionToolBox):
                 scene_mpis = self.matches[self.matches['scene_fk'] == scene_fk]
                 scene_realogram = CervezaRealogram(scene_mpis, scene_type, self.relevant_targets)
                 self.scene_realograms.append(scene_realogram)
-        return
 
     def _get_relevant_external_targets(self):
         template_df = pd.read_excel(Consts.TEMPLATE_PATH, sheetname='Planograma_cerveza', header=1)
