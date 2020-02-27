@@ -1,7 +1,7 @@
 from Trax.Utils.Logging.Logger import Log
 from KPIUtils_v2.Utils.GlobalScripts.Scripts import GlobalSessionToolBox
 import pandas as pd
-from Projects.HEINEKENMX.Refresco.Cocacola.Utils.Const import Const
+from Projects.HEINEKENMX.Refresco.PJ.Utils.Const import Const
 
 # from KPIUtils_v2.Utils.Consts.DataProvider import
 # from KPIUtils_v2.Utils.Consts.DB import 
@@ -24,21 +24,20 @@ from Projects.HEINEKENMX.Refresco.Cocacola.Utils.Const import Const
 __author__ = 'nicolaske'
 
 
-class CocacolaToolBox(GlobalSessionToolBox):
+class PJToolBox(GlobalSessionToolBox):
 
     def __init__(self, data_provider, output, common):
         GlobalSessionToolBox.__init__(self, data_provider, output, common)
         self.main_template, self.invasion_template = self.get_template()
-        self.manufacturer_pk = \
-            self.all_products['manufacturer_name'][self.all_products['manufacturer_name'] == Const.COCACOLA].iloc[0]
+        self.manufacturer_pk = 1
         self.relevant_scenes_exist_value = self.do_relevant_scenes_exist()
         self.relevant_scif = self.scif[self.scif['template_name'].isin(self.relevant_scenes_exist_value)]
 
     def main_calculation(self):
-        ratio = self.calculate_refrescos_coca()
+        ratio = self.calculate_refrescos_pj()
         return ratio
 
-    def calculate_refrescos_coca(self):
+    def calculate_refrescos_pj(self):
         kpi_name = Const.KPI_REFRESCO
         kpi_fk = self.get_kpi_fk_by_kpi_type(kpi_name)
         parent_fk = self.get_parent_fk(kpi_name)
@@ -93,8 +92,6 @@ class CocacolaToolBox(GlobalSessionToolBox):
         else:
             final_ratio = 0
         return final_ratio
-
-
 
     def calculate_empty_exist(self):
         kpi_name = Const.KPI_EMPTY
@@ -151,7 +148,7 @@ class CocacolaToolBox(GlobalSessionToolBox):
                 for ean_code in ean_codes:
                     try:
                         ean_product_target = \
-                        frentes_target_df['FRENTES'][frentes_target_df['PRODUCT EAN'] == ean_code].iloc[0]
+                            frentes_target_df['FRENTES'][frentes_target_df['PRODUCT EAN'] == ean_code].iloc[0]
 
                         found_sku_count = self.relevant_scif['facings'][
                             self.relevant_scif['product_ean_code'] == str(ean_code)].iloc[0]
@@ -159,7 +156,7 @@ class CocacolaToolBox(GlobalSessionToolBox):
                             self.all_products['product_ean_code'] == str(ean_code)].iloc[0]
                         if found_sku_count >= ean_product_target:
                             score = 100
-                            passing_ean +=1
+                            passing_ean += 1
                         else:
                             score = 0
 
@@ -193,9 +190,8 @@ class CocacolaToolBox(GlobalSessionToolBox):
         parent_fk = self.get_parent_fk(kpi_name)
 
         parent_kpi_name = Const.KPIS_HIERACHY[kpi_name]
-        kpi_weight = Const.KPI_WEIGHTS[parent_kpi_name]
         grand_parent_fk = self.get_parent_fk(parent_kpi_name)
-
+        kpi_weight = Const.KPI_WEIGHTS[parent_kpi_name]
 
         # place holding these for now, will fix tomorrow feb 19
         score = 0
@@ -236,13 +232,10 @@ class CocacolaToolBox(GlobalSessionToolBox):
                     except:
                         Log.warning("Distribution KPI Failed.")
 
-
                     self.write_to_db(fk=kpi_fk, numerator_id=scene_id, numerator_result=ean_code,
                                      denominator_id=template_name_fk,
                                      result=score, score=score,
                                      identifier_parent=parent_fk, identifier_result=kpi_fk, should_enter=True)
-
-
 
         if total_ean_codes != 0:
 
@@ -253,12 +246,12 @@ class CocacolaToolBox(GlobalSessionToolBox):
             ratio = 0
 
         score = round(((ratio * .01) * kpi_weight), 2)
+
         self.write_to_db(fk=parent_fk, numerator_id=numerator_facings,
                          denominator_id=denominator_facings,
                          result=ratio, score=score,
                          identifier_parent=grand_parent_fk, identifier_result=parent_fk, should_enter=True)
         return ratio
-
 
     def calculate_shelf_position(self):
         kpi_name = Const.KPI_POSITION
@@ -321,7 +314,9 @@ class CocacolaToolBox(GlobalSessionToolBox):
                                                 relevant_matches['product_fk'] == product_fk)]
 
                                     if filtered_matches_df.empty:
-                                        filtered_product_only_df = relevant_matches[['product_fk', 'bay_number', 'shelf_number']][relevant_matches['product_fk'] == product_fk].drop_duplicates()
+                                        filtered_product_only_df = \
+                                        relevant_matches[['product_fk', 'bay_number', 'shelf_number']][
+                                            relevant_matches['product_fk'] == product_fk].drop_duplicates()
 
                                         if filtered_product_only_df.empty:
 
@@ -331,7 +326,7 @@ class CocacolaToolBox(GlobalSessionToolBox):
                                                              denominator_id=shelf,
                                                              denominator_result=target_shelf,
                                                              score=score, context_id=product_fk,
-                                                             result= ean_code,
+                                                             result=ean_code,
                                                              identifier_parent=parent_fk, identifier_result=kpi_fk,
                                                              should_enter=True)
                                         else:
@@ -355,9 +350,9 @@ class CocacolaToolBox(GlobalSessionToolBox):
                                         shelf = target_shelf
 
                                         self.write_to_db(fk=kpi_fk, numerator_id=bay,
-                                                         numerator_result= target_bay,
-                                                         denominator_id= shelf,
-                                                         denominator_result= target_shelf,
+                                                         numerator_result=target_bay,
+                                                         denominator_id=shelf,
+                                                         denominator_result=target_shelf,
                                                          score=score, context_id=product_fk,
                                                          result=ean_code,
                                                          identifier_parent=parent_fk, identifier_result=kpi_fk,
@@ -386,9 +381,9 @@ class CocacolaToolBox(GlobalSessionToolBox):
                     ratio = 0
                 scene_ratios.append(ratio)
                 self.write_to_db(fk=parent_fk, numerator_id=scene_name_fk,
-                                 numerator_result= passing_ean,
+                                 numerator_result=passing_ean,
                                  denominator_id=scene_id,
-                                 denominator_result= ean_codes_count,
+                                 denominator_result=ean_codes_count,
                                  result=ratio,
                                  score=ratio,
                                  identifier_parent=grand_parent_fk, identifier_result=parent_fk,
@@ -398,12 +393,12 @@ class CocacolaToolBox(GlobalSessionToolBox):
             final_ratio = self.calculate_average_ratio(scene_ratios)
             score = round(((final_ratio * .01) * kpi_weight), 2)
             self.write_to_db(fk=grand_parent_fk, numerator_id=0,
-                                 denominator_id=self.store_id,
-                                 result=final_ratio,
-                                 score=score,
-                                 identifier_parent=great_grand_parent_fk,
-                                 identifier_result=grand_parent_fk,
-                                 should_enter=True)
+                             denominator_id=self.store_id,
+                             result=final_ratio,
+                             score=score,
+                             identifier_parent=great_grand_parent_fk,
+                             identifier_result=grand_parent_fk,
+                             should_enter=True)
         return final_ratio
 
     def calculate_invasion(self):

@@ -21,6 +21,9 @@ import pandas as pd
 
 # from KPIUtils_v2.Calculations.CalculationsUtils import GENERALToolBoxCalculations
 from Projects.HEINEKENMX.Refresco.Cocacola.Utils.KPIToolBox import CocacolaToolBox
+from Projects.HEINEKENMX.Refresco.Pepsi.Utils.KPIToolBox import PepsiToolBox
+from Projects.HEINEKENMX.Refresco.PJ.Utils.KPIToolBox import PJToolBox
+
 from Projects.HEINEKENMX.Refresco.Const import Const
 
 
@@ -44,16 +47,15 @@ class RefrescoToolBox(GlobalSessionToolBox):
         coca_ratio = cocacola_tool_box.main_calculation()
 
 
-        # pepsi_tool_box = PepsiToolBox(self.data_provider, self.output, self.common)
-        # pepsi_ratio = pepsi_tool_box.main_calculation()
-        #
+        pepsi_tool_box = PepsiToolBox(self.data_provider, self.output, self.common)
+        pepsi_ratio = pepsi_tool_box.main_calculation()
+
+
         # pj_tool_box = PJToolBox(self.data_provider, self.output, self.common)
         # pj_ratio = pj_tool_box.main_calculation()
-        #
         # ratios = [coca_ratio, pepsi_ratio, pj_ratio]
-        # ratio = self.calculate_refrescos_coca(ratios)
 
-        ratios = [coca_ratio]
+        ratios = [coca_ratio, pepsi_ratio]
         ratio = self.calculate_average_ratio(ratios)
 
         score = round(((ratio * .01) * kpi_weight), 2)

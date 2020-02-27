@@ -18,20 +18,15 @@ class Const(object):
     IGN_STACKING = {"stacking_layer": 1}
 
     KPIS_HIERACHY = {
-        'Refrescos Coca Cola': 'I.E. 6.0',
+        'Refrescos Coca Cola': 'Refrescos',
         'Mercadeo - RCC': 'Refrescos Coca Cola',
-
         'Huecos - RCC': 'Mercadeo - RCC',
         'Frentes - RCC': 'Mercadeo - RCC',
-
         'Frentes - RCC - SKU': 'Frentes - RCC',
-
         'Acomodo - RCC': 'Mercadeo - RCC',
         'Acomodo Scene - RCC': 'Acomodo - RCC',
         'Acomodo - RCC - SKU': 'Acomodo Scene - RCC',
-
         'Invasion - RCC': 'Mercadeo - RCC',
-
         'Surtido - RCC': 'Refrescos Coca Cola',
         'Surtido - RCC - SKU': 'Surtido - RCC'}
 
