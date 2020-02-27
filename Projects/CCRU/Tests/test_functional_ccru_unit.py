@@ -66,52 +66,186 @@ class TestCCRU(TestFunctionalCase):
                            2: {'SESSION LEVEL': [], 'SCENE LEVEL': []}}
         return test_parameters, test_result
 
-    def test_check_availability(self):
-        test_cases = \
-            [
-                'test_availability_number_of_facings_1',
-                'test_availability_number_of_facings_2',
-                'test_availability_number_of_facings_3',
-                'test_availability_number_of_facings_4'
-            ]
-        for test_case in test_cases:
-            self.mock_data_provider()
-            self.mock_tool_box()
-            tool_box = CCRUKPIToolBox(self.data_provider, self.output)
-            tool_box.set_kpi_set(self.data.pos_kpi_set_name, self.data.pos_kpi_set_type)
-            params, check_result = self.get_pos_test_case(test_case)
-            test_result = tool_box.check_availability(params)
-            self.assertEquals(check_result, test_result)
+    def test_check_availability_1(self):
+        test_case = 'test_check_availability_1'
+        self.mock_data_provider()
+        self.mock_tool_box()
+        tool_box = CCRUKPIToolBox(self.data_provider, self.output)
+        tool_box.set_kpi_set(self.data.pos_kpi_set_name, self.data.pos_kpi_set_type)
+        params, check_result = self.get_pos_test_case(test_case)
+        test_result = tool_box.check_availability(params)
+        self.assertEquals(check_result, test_result)
 
-    def test_check_facings_sos(self):
-        test_cases = \
-            [
-                'test_check_facings_sos_1'
-            ]
-        for test_case in test_cases:
-            self.mock_data_provider()
-            self.mock_tool_box()
-            tool_box = CCRUKPIToolBox(self.data_provider, self.output)
-            tool_box.set_kpi_set(self.data.pos_kpi_set_name, self.data.pos_kpi_set_type)
-            params, check_result = self.get_pos_test_case(test_case)
-            test_result = tool_box.check_facings_sos(params)
-            self.assertEquals(check_result, test_result)
+    def test_check_availability_2(self):
+        test_case = 'test_check_availability_2'
+        self.mock_data_provider()
+        self.mock_tool_box()
+        tool_box = CCRUKPIToolBox(self.data_provider, self.output)
+        tool_box.set_kpi_set(self.data.pos_kpi_set_name, self.data.pos_kpi_set_type)
+        params, check_result = self.get_pos_test_case(test_case)
+        test_result = tool_box.check_availability(params)
+        self.assertEquals(check_result, test_result)
 
-    def test_check_share_of_cch(self):
-        test_cases = \
-            [
-                'test_check_share_of_cch_1',
-                'test_check_share_of_cch_2',
-                'test_check_share_of_cch_3'
-            ]
-        for test_case in test_cases:
-            self.mock_data_provider()
-            self.mock_tool_box()
-            tool_box = CCRUKPIToolBox(self.data_provider, self.output)
-            tool_box.set_kpi_set(self.data.pos_kpi_set_name, self.data.pos_kpi_set_type)
-            params, check_result = self.get_pos_test_case(test_case)
-            test_result = tool_box.check_share_of_cch(params)
-            self.assertEquals(check_result, test_result)
+    def test_check_availability_3(self):
+        test_case = 'test_check_availability_3'
+        self.mock_data_provider()
+        self.mock_tool_box()
+        tool_box = CCRUKPIToolBox(self.data_provider, self.output)
+        tool_box.set_kpi_set(self.data.pos_kpi_set_name, self.data.pos_kpi_set_type)
+        params, check_result = self.get_pos_test_case(test_case)
+        test_result = tool_box.check_availability(params)
+        self.assertEquals(check_result, test_result)
+
+    def test_check_availability_4(self):
+        test_case = 'test_check_availability_4'
+        self.mock_data_provider()
+        self.mock_tool_box()
+        tool_box = CCRUKPIToolBox(self.data_provider, self.output)
+        tool_box.set_kpi_set(self.data.pos_kpi_set_name, self.data.pos_kpi_set_type)
+        params, check_result = self.get_pos_test_case(test_case)
+        test_result = tool_box.check_availability(params)
+        self.assertEquals(check_result, test_result)
+
+    def test_check_facings_sos_1(self):
+        test_case = 'test_check_facings_sos_1'
+        self.mock_data_provider()
+        self.mock_tool_box()
+        tool_box = CCRUKPIToolBox(self.data_provider, self.output)
+        tool_box.set_kpi_set(self.data.pos_kpi_set_name, self.data.pos_kpi_set_type)
+        params, check_result = self.get_pos_test_case(test_case)
+        test_result = tool_box.check_facings_sos(params)
+        self.assertEquals(check_result, test_result)
+
+    def test_check_share_of_cch_1(self):
+        test_case = 'test_check_share_of_cch_1'
+        self.mock_data_provider()
+        self.mock_tool_box()
+        tool_box = CCRUKPIToolBox(self.data_provider, self.output)
+        tool_box.set_kpi_set(self.data.pos_kpi_set_name, self.data.pos_kpi_set_type)
+        params, check_result = self.get_pos_test_case(test_case)
+        test_result = tool_box.check_share_of_cch(params)
+        self.assertEquals(check_result, test_result)
+
+    def test_check_share_of_cch_2(self):
+        test_case = 'test_check_share_of_cch_2'
+        self.mock_data_provider()
+        self.mock_tool_box()
+        tool_box = CCRUKPIToolBox(self.data_provider, self.output)
+        tool_box.set_kpi_set(self.data.pos_kpi_set_name, self.data.pos_kpi_set_type)
+        params, check_result = self.get_pos_test_case(test_case)
+        test_result = tool_box.check_share_of_cch(params)
+        self.assertEquals(check_result, test_result)
+
+    def test_check_share_of_cch_3(self):
+        test_case = 'test_check_share_of_cch_3'
+        self.mock_data_provider()
+        self.mock_tool_box()
+        tool_box = CCRUKPIToolBox(self.data_provider, self.output)
+        tool_box.set_kpi_set(self.data.pos_kpi_set_name, self.data.pos_kpi_set_type)
+        params, check_result = self.get_pos_test_case(test_case)
+        test_result = tool_box.check_share_of_cch(params)
+        self.assertEquals(check_result, test_result)
+
+    def test_check_number_of_skus_per_door_range_1(self):
+        test_case = 'test_check_number_of_skus_per_door_range_1'
+        self.mock_data_provider()
+        self.mock_tool_box()
+        tool_box = CCRUKPIToolBox(self.data_provider, self.output)
+        tool_box.set_kpi_set(self.data.pos_kpi_set_name, self.data.pos_kpi_set_type)
+        params, check_result = self.get_pos_test_case(test_case)
+        test_result = tool_box.check_number_of_skus_per_door_range(params)
+        self.assertEquals(check_result, test_result)
+
+    def test_check_number_of_skus_per_door_range_2(self):
+        test_case = 'test_check_number_of_skus_per_door_range_2'
+        self.mock_data_provider()
+        self.mock_tool_box()
+        tool_box = CCRUKPIToolBox(self.data_provider, self.output)
+        tool_box.set_kpi_set(self.data.pos_kpi_set_name, self.data.pos_kpi_set_type)
+        params, check_result = self.get_pos_test_case(test_case)
+        test_result = tool_box.check_number_of_skus_per_door_range(params)
+        self.assertEquals(check_result, test_result)
+
+    def test_check_number_of_doors_1(self):
+        test_case = 'test_check_number_of_doors_1'
+        self.mock_data_provider()
+        self.mock_tool_box()
+        tool_box = CCRUKPIToolBox(self.data_provider, self.output)
+        tool_box.set_kpi_set(self.data.pos_kpi_set_name, self.data.pos_kpi_set_type)
+        params, check_result = self.get_pos_test_case(test_case)
+        test_result = tool_box.check_number_of_doors(params)
+        self.assertEquals(check_result, test_result)
+
+    def test_check_number_of_scenes_1(self):
+        test_case = 'test_check_number_of_scenes_1'
+        self.mock_data_provider()
+        self.mock_tool_box()
+        tool_box = CCRUKPIToolBox(self.data_provider, self.output)
+        tool_box.set_kpi_set(self.data.pos_kpi_set_name, self.data.pos_kpi_set_type)
+        params, check_result = self.get_pos_test_case(test_case)
+        test_result = tool_box.check_number_of_scenes(params)
+        self.assertEquals(check_result, test_result)
+
+    def test_check_number_of_scenes_2(self):
+        test_case = 'test_check_number_of_scenes_2'
+        self.mock_data_provider()
+        self.mock_tool_box()
+        tool_box = CCRUKPIToolBox(self.data_provider, self.output)
+        tool_box.set_kpi_set(self.data.pos_kpi_set_name, self.data.pos_kpi_set_type)
+        params, check_result = self.get_pos_test_case(test_case)
+        test_result = tool_box.check_number_of_scenes(params)
+        self.assertEquals(check_result, test_result)
+
+    def test_check_number_of_scenes_3(self):
+        test_case = 'test_check_number_of_scenes_3'
+        self.mock_data_provider()
+        self.mock_tool_box()
+        tool_box = CCRUKPIToolBox(self.data_provider, self.output)
+        tool_box.set_kpi_set(self.data.pos_kpi_set_name, self.data.pos_kpi_set_type)
+        params, check_result = self.get_pos_test_case(test_case)
+        test_result = tool_box.check_number_of_scenes(params)
+        self.assertEquals(check_result, test_result)
+
+    def test_check_number_of_scenes_4(self):
+        test_case = 'test_check_number_of_scenes_4'
+        self.mock_data_provider()
+        self.mock_tool_box()
+        tool_box = CCRUKPIToolBox(self.data_provider, self.output)
+        tool_box.set_kpi_set(self.data.pos_kpi_set_name, self.data.pos_kpi_set_type)
+        params, check_result = self.get_pos_test_case(test_case)
+        test_result = tool_box.check_number_of_scenes(params)
+        self.assertEquals(check_result, test_result)
+
+    def test_check_number_of_scenes_5(self):
+        test_case = 'test_check_number_of_scenes_5'
+        self.mock_data_provider()
+        self.mock_tool_box()
+        tool_box = CCRUKPIToolBox(self.data_provider, self.output)
+        tool_box.set_kpi_set(self.data.pos_kpi_set_name, self.data.pos_kpi_set_type)
+        params, check_result = self.get_pos_test_case(test_case)
+        test_result = tool_box.check_number_of_scenes(params)
+        self.assertEquals(check_result, test_result)
+
+    def test_check_number_of_scenes_no_tagging_1(self):
+        test_case = 'test_check_number_of_scenes_no_tagging_1'
+        self.mock_data_provider()
+        self.mock_tool_box()
+        tool_box = CCRUKPIToolBox(self.data_provider, self.output)
+        tool_box.set_kpi_set(self.data.pos_kpi_set_name, self.data.pos_kpi_set_type)
+        params, check_result = self.get_pos_test_case(test_case)
+        test_result = tool_box.check_number_of_scenes_no_tagging(params)
+        self.assertEquals(check_result, test_result)
+
+    def test_check_customer_cooler_doors_1(self):
+        test_case = 'test_check_customer_cooler_doors_1'
+        self.mock_data_provider()
+        self.mock_tool_box()
+        tool_box = CCRUKPIToolBox(self.data_provider, self.output)
+        tool_box.set_kpi_set(self.data.pos_kpi_set_name, self.data.pos_kpi_set_type)
+        params, check_result = self.get_pos_test_case(test_case)
+        test_result = tool_box.check_customer_cooler_doors(params)
+        self.assertEquals(check_result, test_result)
+
 
 # writer = pd.ExcelWriter('./store_areas.xlsx', engine='xlsxwriter')
 # self.store_areas.to_excel(writer, sheet_name='store_areas', index_label='#')
