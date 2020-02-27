@@ -51,30 +51,41 @@ class CCRU_SANDSessionBatches:
         #         AND delete_time is NULL
         #         ORDER BY ss.pk DESC;
         #         """.format(START_DATE, END_DATE)
+#         query = """
+#                 SELECT ss.visit_date, ss.session_uid, ss.number_of_scenes
+#                 FROM probedata.session ss
+#                 JOIN report.kps_results ksr ON ksr.session_uid=ss.session_uid
+#                 JOIN static.kpi_set ks ON ks.pk=ksr.kpi_set_fk
+#                 WHERE ss.number_of_scenes > 0 AND delete_time is NULL AND status='Completed'
+#                 AND ss.visit_type_fk IN (1,3,5)
+#                 AND ss.visit_date >= '2019-10-26' AND ss.visit_date <= '20202-02-14'
+#                 AND ks.name IN(
+# 'PoS 2020 - MT ConvBig - CAP',
+# 'PoS 2020 - MT ConvSmall - CAP',
+# 'PoS 2020 - MT Hypermarket - CAP',
+# 'PoS 2020 - MT Supermarket - CAP',
+# 'PoS 2020 - MT ConvBig - REG',
+# 'PoS 2020 - MT ConvSmall - REG',
+# 'PoS 2020 - MT Hypermarket - REG',
+# 'PoS 2020 - MT Supermarket - REG',
+# 'PoS 2020 - MT ConvBig - NKA',
+# 'PoS 2020 - MT ConvSmall - NKA',
+# 'PoS 2020 - MT Hypermarket - NKA',
+# 'PoS 2020 - MT Supermarket - NKA'
+#                 )
+#                 ORDER BY ss.pk DESC;
+#                 """.format(START_DATE, END_DATE)
         query = """
-                SELECT ss.visit_date, ss.session_uid, ss.number_of_scenes
-                FROM probedata.session ss
-                JOIN report.kps_results ksr ON ksr.session_uid=ss.session_uid
-                JOIN static.kpi_set ks ON ks.pk=ksr.kpi_set_fk
-                WHERE ss.number_of_scenes > 0 AND delete_time is NULL AND status='Completed'
-                AND ss.visit_type_fk IN (1,3,5)
-                AND ss.visit_date >= '2019-10-26' AND ss.visit_date <= '2021-02-09'
-                AND ks.name IN(
-'PoS 2020 - MT ConvBig - CAP',
-'PoS 2020 - MT ConvSmall - CAP',
-'PoS 2020 - MT Hypermarket - CAP',
-'PoS 2020 - MT Supermarket - CAP',
-'PoS 2020 - MT ConvBig - REG',
-'PoS 2020 - MT ConvSmall - REG',
-'PoS 2020 - MT Hypermarket - REG',
-'PoS 2020 - MT Supermarket - REG',
-'PoS 2020 - MT ConvBig - NKA',
-'PoS 2020 - MT ConvSmall - NKA',
-'PoS 2020 - MT Hypermarket - NKA',
-'PoS 2020 - MT Supermarket - NKA',
-                )
-                ORDER BY ss.pk DESC;
-                """.format(START_DATE, END_DATE)
+                        SELECT ss.visit_date, ss.session_uid, ss.number_of_scenes
+                        FROM probedata.session ss
+                        JOIN report.kps_results ksr ON ksr.session_uid=ss.session_uid
+                        JOIN static.kpi_set ks ON ks.pk=ksr.kpi_set_fk
+                        WHERE ss.number_of_scenes > 0 AND delete_time is NULL AND status='Completed'
+                        AND ss.visit_type_fk IN (1,3,5)
+                        AND ss.visit_date >= '2020-02-14' AND ss.visit_date <= '2020-02-16'
+                        AND (ks.name LIKE 'PoS 2020 - MT%' OR ks.name LIKE 'PoS 2020 - IC%')
+                        ORDER BY ss.pk DESC;
+                        """.format(START_DATE, END_DATE)
         # query = """
         #         SELECT DISTINCT ss.visit_date, ss.session_uid, ss.number_of_scenes
         #         FROM probedata.session ss

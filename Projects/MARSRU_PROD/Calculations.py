@@ -96,11 +96,11 @@ class MARSRU_PRODCalculations(BaseCalculationsScript):
         tool_box.get_placed_near(kpi_templates.get('kpi_data'))
         tool_box.check_availability_on_golden_shelves(kpi_templates.get('kpi_data'))
         tool_box.check_for_specific_display(kpi_templates.get('kpi_data'))
-        tool_box.check_block_and_neighbors_by_shelf(kpi_templates.get('kpi_data'))
 
         # the order is important - source KPIs must be calculated first (above)
         tool_box.check_range_kpis(kpi_templates.get('kpi_data'))
         tool_box.check_kpi_results(kpi_templates.get('kpi_data'))
+        tool_box.check_block_and_neighbors_by_shelf(kpi_templates.get('kpi_data'))
 
         kpi_sets = tool_box.results_and_scores.keys()
         kpi_sets.remove('*')

@@ -84,7 +84,7 @@ class CBCDAIRYILKpiResults:
                 74: 19,
                 75: 98,
                 76: 45,
-                77: 2755},
+                77: 3109},
             'kpi_level_2_fk': {
                 0: 339,
                 1: 340,
@@ -479,7 +479,7 @@ class CBCDAIRYILKpiResults:
                 74: 52,
                 75: 41,
                 76: 25,
-                77: 2},
+                77: 1},
             'denominator_result': {
                 0: 7,
                 1: 2,
@@ -556,9 +556,9 @@ class CBCDAIRYILKpiResults:
                 72: 0,
                 73: 3911,
                 74: 336,
-                75: 41,
+                75: 52,
                 76: 75,
-                77: 2},
+                77: 1},
             'result': {
                 0: 7.0,
                 1: 2.0,
@@ -635,9 +635,9 @@ class CBCDAIRYILKpiResults:
                 72: 100.0,
                 73: 0.145,
                 74: 0.155,
-                75: 1.0,
+                75: 0.788,
                 76: 0.3333,
-                77: 2.0},
+                77: 1.0},
             'denominator_id': {
                 0: 3262,
                 1: 3262,
