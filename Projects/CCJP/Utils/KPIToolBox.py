@@ -77,6 +77,7 @@ class ToolBox(GlobalSessionToolBox):
         unique_sku_sos = []
         facings_sos_whole_store_dict = []
         facings_sos_by_category_dict = []
+        point_of_store_dict = []
 
         assortment_store_dict = self.availability_store_function()
         if assortment_store_dict is None:
@@ -87,29 +88,17 @@ class ToolBox(GlobalSessionToolBox):
             assortment_category_dict = []
 
         kpi_names = self.get_kpi_params()
-
         for row_num, row_data in kpi_names.iterrows():
             kpi_name = row_data[Consts.KPI_TYPE_COLUMN]
-            if kpi_name == "Facings SOS":
+            if kpi_name == Consts.FACINGS_SOS:
                 facings_sos_whole_store_dict = self.facings_sos_whole_store_function()
-                if facings_sos_whole_store_dict is None:
-                    facings_sos_whole_store_dict = []
-
                 facings_sos_by_category_dict = self.facings_sos_by_category_function()
-                if facings_sos_by_category_dict is None:
-                    facings_sos_by_category_dict = []
-
-        point_of_store_dict = []
-        for row_num, row_data in kpi_names.iterrows():
-            kpi_name = row_data[Consts.KPI_TYPE_COLUMN]
-            if kpi_name == "CCJP_POC_COUNT_BY_STORE_AREA" and self.visit_date < datetime.strptime(self.new_kpi_date, '%Y-%m-%d').date():
+            elif kpi_name == Consts.FACINGS_SOS_SCENE_TYPE:
+                self.fsos_by_scene_type_function(row_data)
+            elif kpi_name == "CCJP_POC_COUNT_BY_STORE_AREA" and self.visit_date < datetime.strptime(self.new_kpi_date, '%Y-%m-%d').date():
                 point_of_store_dict = self.point_of_connection()
-                if point_of_store_dict is None:
-                    point_of_store_dict = []
-            if kpi_name == "CCJP_POC_COUNT_BY_TASK" and self.visit_date >= datetime.strptime(self.new_kpi_date, '%Y-%m-%d').date():
+            elif kpi_name == "CCJP_POC_COUNT_BY_TASK" and self.visit_date >= datetime.strptime(self.new_kpi_date, '%Y-%m-%d').date():
                 point_of_store_dict = self.point_of_connection()
-                if point_of_store_dict is None:
-                    point_of_store_dict = []
 
         # Added additional loop because poc count is required for red score calculation.
         # Entering the poc kpi in the excel sheet before red score kpi is not working always.
@@ -120,21 +109,13 @@ class ToolBox(GlobalSessionToolBox):
                 red_score_dict = self.calculate_red_score(facings_sos_whole_store_dict,
                                                           point_of_store_dict,
                                                           assortment_store_dict, row_data)
-            elif kpi_name == 'CCJP_UNIQUE_DIST_OWN_MANU':
+            elif kpi_name == "CCJP_UNIQUE_DIST_OWN_MANU":
                 unique_sku_sos = self.calculate_unique_sku_sos(row_data)
 
         self.common.save_json_to_new_tables(assortment_store_dict)
         self.common.save_json_to_new_tables(assortment_category_dict)
-
-        if facings_sos_whole_store_dict is None:
-            Log.warning('Scene item facts is empty for this session')
-        else:
-            self.common.save_json_to_new_tables(facings_sos_whole_store_dict)
-
-        if facings_sos_by_category_dict is None:
-            Log.warning('Scene item facts is empty for this session')
-        else:
-            self.common.save_json_to_new_tables(facings_sos_by_category_dict)
+        self.common.save_json_to_new_tables(facings_sos_whole_store_dict)
+        self.common.save_json_to_new_tables(facings_sos_by_category_dict)
 
         if point_of_store_dict is None:
             Log.warning('Scene item facts is empty for this session')
@@ -319,14 +300,14 @@ class ToolBox(GlobalSessionToolBox):
             Function initialize assortment_level_3 (class attribute) if not initialized before
             and calculate availability results according to availability type
         """
+        dict_list = []
 
         self.extract_data_set_up_file("Availability")
 
         if self.assort_lvl3 is None:
             self.assortment_lvl3_adjustments1()
             if self.assort_lvl3 is None or self.assort_lvl3.empty:
-                return
-        dict_list = []
+                return dict_list
 
         if availability_type == Consts.STORE:
             return self.assortment_calculation(self.assort_lvl3, self.store_fk, Consts.STORE)
@@ -716,11 +697,12 @@ class ToolBox(GlobalSessionToolBox):
          :param sos_type : "FSOS"/"LSOS"
          :returns results_df
         """
+        results_df = []
 
         if self.manufacturer_fk is None:
             Log.warning('Own manufacturer fk is empty')
-            return
-        results_df = []
+            return results_df
+
         sos_policy = Consts.SOS_FACINGS if sos_type == Consts.SOS_FACINGS else MatchesConsts.WIDTH_MM_ADVANCE
         df = pd.merge(self.match_product_in_scene,
                       self.all_products[Consts.PRODUCTS_COLUMNS], how='left', on=[ProductsConsts.PRODUCT_FK])
@@ -730,11 +712,11 @@ class ToolBox(GlobalSessionToolBox):
 
         if df.empty:
             Log.warning('match_product_in_scene is empty ')
-            return
+            return results_df
         self.extract_data_set_up_file(sos_type)
         df = self.tests_by_template(sos_type, df)
         if df is None or df.empty:
-            return
+            return results_df
 
         kpi_fk = self.common.get_kpi_fk_by_kpi_type(sos_type + Consts.OWN_MANUFACTURER + kpi_type)  # adding type
 
@@ -916,6 +898,146 @@ class ToolBox(GlobalSessionToolBox):
 
         return results_df
 
+    def fsos_by_scene_type_function(self, kpi):
+        dict_list = []
+
+        kpi_name = kpi[Consts.KPI_NAME].strip()
+
+        if not self.is_setup_store_valid(kpi_name):
+            return dict_list
+
+        exclude_posm = False if kpi[Consts.INCLUDE_POSM].strip() == Consts.INCLUDE else True
+        exclude_others = False if kpi[Consts.INCLUDE_OTHERS].strip() == Consts.INCLUDE else True
+        exclude_empty = False if kpi[Consts.INCLUDE_EMPTY].strip() == Consts.INCLUDE else True
+        exclude_irrelevant = False if kpi[Consts.INCLUDE_IRRELEVANT].strip() == Consts.INCLUDE else True
+        exclude_stacking = False if kpi[Consts.INCLUDE_STACKING].strip() == Consts.INCLUDE else True
+
+        facings = Consts.FACINGS_IGN_STACK if exclude_stacking else Consts.FACINGS
+        df = self.scif[self.scif[facings] > 0]
+
+        kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_name)
+
+        if exclude_posm:
+            df = df[df[Consts.PRODUCT_TYPE] != Consts.POSM]
+
+        if exclude_irrelevant:
+            df = df[df[Consts.PRODUCT_TYPE] != Consts.IRRELEVANT]
+
+        if exclude_empty:
+            df = df[df[Consts.PRODUCT_TYPE] != Consts.EMPTY]
+
+        if exclude_others:
+            df = df[df[Consts.PRODUCT_TYPE] != Consts.OTHER]
+
+        if len(kpi[Consts.SCENE_TYPE].strip()) != 0:
+            scene_types = [x.strip() for x in kpi[Consts.SCENE_TYPE].split(",")]
+            df = df[df[Consts.TEMPLATE_NAME].isin(scene_types)]
+            if df.empty:
+                Log.info('No products in scene_type(s):{}'.format(scene_types))
+                return dict_list
+        else:
+            scene_types = [x.strip() for x in self.scif[Consts.TEMPLATE_NAME].unique()]
+
+        if len(kpi[Consts.CATEGORY_INCLUDE].strip()) != 0:
+            categories = [x.strip() for x in kpi[Consts.CATEGORY_INCLUDE].split(",")]
+            df = df[df['category'].isin(categories)]
+            if df.empty:
+                Log.info('Categories:{} not present '.format(categories))
+                return dict_list
+        else:
+            categories = [x.strip() for x in self.scif['category'].unique()]
+
+        if df.empty:
+            Log.info('No products in scene_type:{}')
+            return dict_list
+
+        if kpi_name == Consts.SOS_FACINGS_MANUF_BY_ALL_MANUF_IN_SCENE_TYPE:
+            result = self.fsos_manuf_by_all_manuf_in_scene_type_function(df, scene_types, facings, kpi_fk)
+        elif kpi_name == Consts.SOS_FACINGS_MANUF_CAT_BY_ALL_MANU_CAT_IN_SCENE_TYPE:
+            result = self.fsos_manuf_cat_by_all_manuf_cat_in_scene_type_function(df, scene_types, categories,facings, kpi_fk)
+        self.common.save_json_to_new_tables(result)
+
+    def fsos_manuf_by_all_manuf_in_scene_type_function(self, df, scene_types, facings, kpi_fk):
+        dict_list = []
+
+        for scene_type in scene_types:
+            df_scene_type = df[df[Consts.TEMPLATE_NAME] == scene_type]
+
+            if df_scene_type.empty:
+                Log.info('No products in scene_type:{}'.format(scene_type))
+                continue
+
+            denominator_result = int(df_scene_type[[facings]].sum())
+
+            df_manuf = df_scene_type.groupby(['template_fk', 'manufacturer_fk'])[[facings]].sum().reset_index()
+            df_manuf = pd.DataFrame(df_manuf)
+
+            for row_num, row_data in df_manuf.iterrows():
+                numerator_id = row_data[Consts.MANUFACTURER_FK]
+                numerator_result = row_data[facings]
+                denominator_id = row_data[Consts.TEMPLATE_FK]
+                context_id = self.store_fk
+                try:
+                    result = numerator_result / float(denominator_result)
+                    score = result * 100
+                except Exception as e:
+                    print ("ERROR:{}".format(e))
+                    continue
+
+                dict_list.append(self.build_dictionary_for_db_insert_v2(fk=kpi_fk,
+                                                                        numerator_id=numerator_id,
+                                                                        numerator_result=numerator_result,
+                                                                        denominator_id=denominator_id,
+                                                                        denominator_result=denominator_result,
+                                                                        context_id=context_id,
+                                                                        result=result,
+                                                                        score=score))
+        return dict_list
+
+    def fsos_manuf_cat_by_all_manuf_cat_in_scene_type_function(self, df, scene_types, categories, facings, kpi_fk):
+        dict_list = []
+        for scene_type in scene_types:
+            df_scene_type = df[df[Consts.TEMPLATE_NAME] == scene_type]
+
+            if df_scene_type.empty:
+                Log.info('No products in scene_type:{}'.format(scene_type))
+                continue
+
+            for category in categories:
+                df_category = df_scene_type[df_scene_type['category'] == category]
+
+                if df_category.empty:
+                    continue
+
+                df_manuf = df_category.groupby(['template_fk', 'category_fk', 'manufacturer_fk'])[[facings]].sum()
+                df_manuf = pd.DataFrame(df_manuf).reset_index()
+
+                if df_manuf.empty:
+                    continue
+
+                denominator_result = int(df_category[facings].sum())
+                for row_num, row_data in df_manuf.iterrows():
+                    numerator_id = row_data[Consts.MANUFACTURER_FK]
+                    numerator_result = row_data[facings]
+                    denominator_id = row_data[Consts.CATEGORY_FK]
+                    context_id = row_data[Consts.TEMPLATE_FK]
+                    try:
+                        result = numerator_result / float(denominator_result)
+                        score = result * 100
+                    except Exception as e:
+                        print ("ERROR:{}".format(e))
+                        continue
+
+                    dict_list.append(self.build_dictionary_for_db_insert_v2(fk=kpi_fk,
+                                                                            numerator_id=numerator_id,
+                                                                            numerator_result=numerator_result,
+                                                                            denominator_id=denominator_id,
+                                                                            denominator_result=denominator_result,
+                                                                            context_id=context_id,
+                                                                            result=result,
+                                                                            score=score))
+        return dict_list
+
     def sos_brand_level_by_manufacturer(self, df, brand, manufacturer, identifier_parent, kpi_type,
                                         sos_type, sos_policy, filters_sos_level_above, filter_sos_first_level,
                                         kpi_denominator):
@@ -1043,14 +1165,14 @@ class ToolBox(GlobalSessionToolBox):
         return dict_list
 
     def point_of_connection(self):
-
+        dict_list = []
         if self.store_info.empty or self.poc_template.empty:
-            return
+            return dict_list
 
         policy = self.get_poc_store_policy()
 
         if policy.empty:
-            return
+            return dict_list
 
         store_locations = [x.strip() for x in policy['store_area_location'].split(',')]
         target = int(policy['target'])
@@ -1118,6 +1240,35 @@ class ToolBox(GlobalSessionToolBox):
                 'identifier_parent': identifier_parent,
                 'identifier_result': identifier_result,
                 'should_enter': True}
+
+    def is_setup_store_valid(self, kpi_name):
+        df_set_up = self.set_up_file[self.set_up_file[Consts.KPI_NAME] == kpi_name]
+
+        if df_set_up.empty:
+            print("KPI Type:{} not found in setup_file".format(kpi_name))
+            return False
+
+        for row_num, row_data in df_set_up.iterrows():
+            filter_params = {}
+            for idx in range(1, 7):
+                try:
+                    if len(str(row_data["store_attr_" + str(idx) + "_name"]).strip()) != 0:
+                        filter_params[row_data["store_attr_" + str(idx) + "_name"]] = \
+                            row_data["store_attr_" + str(idx) + "_value"]
+                except Exception as ex:
+                    Log.info("Error:{} filter_params:{}".format(ex, filter_params))
+
+            if len(filter_params) == 0:
+                return True
+            else:
+                result = self.store_info.loc[
+                    (self.store_info[list(filter_params)] == pd.Series(filter_params)).all(axis=1)]
+
+            if result.empty:
+                return False
+            else:
+                Log.info("store filter parameters:{}".format(filter_params))
+                return True
 
     def get_poc_store_policy(self):
         store_policy = pd.DataFrame()

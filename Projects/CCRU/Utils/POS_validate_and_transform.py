@@ -195,7 +195,8 @@ ALLOWED_FORMULAS_PARENTS = \
              'number of atomic KPI Passed on the same scene',
              'Weighted Average'],
         'number of sub atomic KPI Passed on the same scene':
-            ['Weighted Average'],
+            ['number of atomic KPI Passed',
+             'Weighted Average'],
         'Scenes with no tagging':
             ['number of atomic KPI Passed',
              'Weighted Average',
@@ -451,10 +452,17 @@ class CCRUKPIS:
         bmk_file_out = '../Data/KPIs_2020/POS_VALIDATION/OUTPUT/Benchmark 2020.xlsx'
         bmk_file_kpis = '../Data/KPIs_2020/POS_VALIDATION/OUTPUT/KPIs for DB - Benchmark 2020.xlsx'
         pos_file = '../Data/KPIs_2020/POS_VALIDATION/OUTPUT/PoS 2020 - ALL.xlsx'
+        pos_ft_file = '../Data/KPIs_2020/POS_VALIDATION/OUTPUT/PoS 2020 - FT.xlsx'
+        pos_ic_file = '../Data/KPIs_2020/POS_VALIDATION/OUTPUT/PoS 2020 - IC.xlsx'
+        pos_mt_file = '../Data/KPIs_2020/POS_VALIDATION/OUTPUT/PoS 2020 - MT.xlsx'
         source_file = '../Data/KPI_Source.xlsx'
 
         bmk_df = pd.read_excel(bmk_file_in, sheet_name=None)
-        pos_df = pd.read_excel(pos_file)
+        pos_df = pd.DataFrame()
+        # pos_df = pos_df.append(pd.read_excel(pos_file, sheet_name='ALL'), ignore_index=True)
+        pos_df = pos_df.append(pd.read_excel(pos_ft_file, sheet_name='ALL'), ignore_index=True)
+        pos_df = pos_df.append(pd.read_excel(pos_mt_file, sheet_name='ALL'), ignore_index=True)
+        pos_df = pos_df.append(pd.read_excel(pos_ic_file, sheet_name='ALL'), ignore_index=True)
         source_df = pd.read_excel(source_file, sheet_name=None)['BENCHMARK']
 
         bmk_kpis = pd.DataFrame(columns=['KPI Name'])
@@ -1781,7 +1789,7 @@ class CCRUKPIS:
 
 if __name__ == '__main__':
     kpis_list = CCRUKPIS()
-    kpis_list.transform_top_line()
+    # kpis_list.transform_top_line()
     # kpis_list.validate_benchmark()
     # kpis_list.transform_kpi_source()
-    # kpis_list.validate_and_transform()
+    kpis_list.validate_and_transform()

@@ -116,7 +116,7 @@ class HEINZCRToolBox:
         else:
             target = 0
 
-        result = 1 if perfect_store_score > target else 0
+        result = 1 if perfect_store_score >= target else 0
 
         perfect_store_kpi_fk = self.common_v2.get_kpi_fk_by_kpi_type(Const.PERFECT_STORE)
         self.common_v2.write_to_db_result(perfect_store_kpi_fk, numerator_id=Const.OWN_MANUFACTURER_FK,
@@ -401,11 +401,16 @@ class HEINZCRToolBox:
         # save aggregated results for each sub category
         total_dict = self.common_v2.get_dictionary(kpi_fk=total_sos_sub_category_kpi_fk)
         for row in results_df.itertuples():
-            identifier_result = self.common_v2.get_dictionary(kpi_fk=sos_sub_category_kpi_fk,
-                                                              sub_category_fk=row.sub_category_fk)
-            self.common_v2.write_to_db_result(sos_sub_category_kpi_fk, numerator_id=row.sub_category_fk,
-                                              denominator_id=self.store_id, result=row.score,
-                                              identifier_parent=total_dict, identifier_result=identifier_result,
+            identifier_result = \
+                self.common_v2.get_dictionary(kpi_fk=sos_sub_category_kpi_fk,
+                                              sub_category_fk=row.sub_category_fk)
+            # limit results so that aggregated results can only add up to 3
+            self.common_v2.write_to_db_result(sos_sub_category_kpi_fk,
+                                              numerator_id=row.sub_category_fk,
+                                              denominator_id=self.store_id,
+                                              result=row.score * (3 / float(len(results_df))),
+                                              identifier_parent=total_dict,
+                                              identifier_result=identifier_result,
                                               should_enter=True)
 
         # save total score for sos sub_category
