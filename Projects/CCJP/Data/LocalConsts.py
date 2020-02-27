@@ -13,6 +13,11 @@ class Consts(object):
     CATEGORY = "Category"
     SUB_CATEGORY = "SubCategory"
 
+    PRODUCT_TYPE = "product_type"
+    TEMPLATE_NAME = "template_name"
+    FACINGS_IGN_STACK = 'facings_ign_stack'
+    FACINGS = 'facings'
+
     POC_WEIGHT = 'poc_weightage'
     DIST_WEIGHT = 'dist_weightage'
     SOVI_WEIGHT = 'sovi_weightage'
@@ -33,7 +38,6 @@ class Consts(object):
     AVAILABILITY_SUFFIX_SUB_CAT_RE = 'In_SubCategory_RE'
     SUB_CATEGORY_PARENT = "By_SubCategory_Category"
     SUFFIX_SUB_CAT = "_Category"
-
     STORE_KPI_SUFFIX = "In_Whole_Store"
     CATEGORY_KPI_SUFFIX = "By_Category"
     SUB_CATEGORY_KPI_SUFFIX = "By_SubCategory"
@@ -41,8 +45,19 @@ class Consts(object):
     ALL_MANUFACTURER = "_All_Manufacturer_"
     ALL_BRAND_KPI = "_All_Brand_"
     ALL_PRODUCT_KPI = "_All_Product_"
+
+    # KPI Type
+    FACINGS_SOS = "Facings SOS"
+    FACINGS_SOS_SCENE_TYPE = "Facings SOS Scene Type"
+
+    # KPI Names
     SOS_FACINGS = MANUFACTURE_NAME + COUNTRY + "_FSOS"
     SOS_LINEAR = MANUFACTURE_NAME + COUNTRY + "_LSOS"
+    SOS_FACINGS_MANUF_BY_ALL_MANUF_IN_SCENE_TYPE = MANUFACTURE_NAME + COUNTRY
+    SOS_FACINGS_MANUF_BY_ALL_MANUF_IN_SCENE_TYPE += "_FSOS_MANUF_BY_ALL_MANUF_IN_SCENE_TYPE"
+    SOS_FACINGS_MANUF_CAT_BY_ALL_MANU_CAT_IN_SCENE_TYPE = MANUFACTURE_NAME + COUNTRY
+    SOS_FACINGS_MANUF_CAT_BY_ALL_MANU_CAT_IN_SCENE_TYPE += "_FSOS_MANUF_CAT_BY_ALL_MANU_CAT_IN_SCENE_TYPE"
+
     OOS = 'OOS'
     DISTRIBUTED = 'DISTRIBUTED'
     EXTRA = 'EXTRA'
@@ -51,11 +66,14 @@ class Consts(object):
     EMPTY_PK = 445
     GENERAL_EMPTY_PK = 0
     IRRELEVANT_PK = 460
-
+    PRODUCT_FK = "product_fk"
+    CATEGORY_FK = "category_fk"
+    TEMPLATE_FK = "template_fk"
+    MANUFACTURER_FK = "manufacturer_fk"
+    STORE_FK = "store_fk"
     #  flags - for use
     NO_INFO = 0
     INFO = 1
-
 
     # table columns filters
     PRODUCTS_COLUMNS = ['product_fk',
@@ -80,6 +98,7 @@ class Consts(object):
     SET_UP_COLUMNS_BOOLEAN_VALUES = ['Include Stacking', 'Include Others',
                                      'Include Empty', 'Include Irrelevant', 'Include POSM']
     KPI_TYPE_COLUMN = 'KPI Type'
+    KPI_NAME = 'KPI Name'
     CHANNEL = 'Channel'
     SCENE_TYPE = 'Scene type / Tasks'
     SUB_CATEGORY_INCLUDE = 'Include SubCategory'
