@@ -1,5 +1,3 @@
-
-
 from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
 from Projects.CCRU.Tests.Data.data_test_ccru_sanity import ProjectsSanityData
 from Projects.CCRU.Calculations import CCRUCalculations
