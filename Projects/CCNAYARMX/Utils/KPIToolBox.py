@@ -568,48 +568,47 @@ class ToolBox(GlobalSessionToolBox):
 
         relevant_scif = self.scif[self.scif[TEMPLATE_GROUP].isin(template_group)]
         self.assortment.scif = relevant_scif
-        self.store_assortment = self.assortment.store_assortment
+
         if check_possible_sku is not np.nan and check_possible_sku == 'Y':
             relevant_assortment_template = self.updated_store_assortment[
                 self.updated_store_assortment.assortment_name.str.contains(kpi_name.replace(" ", "_"))]
             assortment_ean_code_from_template = relevant_assortment_template['product_fk'].unique().astype(str)
             relevant_products = relevant_scif[relevant_scif.product_fk.isin(assortment_ean_code_from_template)]
+
             numerator_id = relevant_products[numerator_entity].iloc[
                 0] if not relevant_products.empty else np.nan
             denominator_id = self.scif['sub_category_fk'].iloc[0] if not relevant_products.empty else np.nan
             result = 1 if relevant_products.product_fk.count() >= 1 else 0
-
             result_dict = {'kpi_name': kpi_name, 'kpi_fk': kpi_fk, 'numerator_id': numerator_id,
                            'denominator_id': denominator_id,
                            'result': result}
             result_dict_list.append(result_dict)
 
+            # Calculation of the Child KPIs
+            kpi_sku_name = kpi_name + " - SKU"
+            kpi_id = self.common.get_kpi_fk_by_kpi_type(kpi_sku_name)
+            for assortment_row in relevant_assortment_template.itertuples():
+                numerator_id = assortment_row.product_fk
+                denominator_id = assortment_row.assortment_fk
+                result = 1 if assortment_row.product_fk in relevant_products.product_fk.values else 0
+                result_dict = {'kpi_name': kpi_sku_name, 'kpi_fk': kpi_id, 'numerator_id': numerator_id,
+                               'denominator_id': denominator_id,
+                               'result': result}
+                result_dict_list.append(result_dict)
+
+        elif check_possible_sku is np.nan:
             lvl3_result = self.assortment.calculate_lvl3_assortment()
             if not lvl3_result.empty:
-                kpi_id = kpi_fk + 1
-                relevant_df = lvl3_result[lvl3_result['kpi_fk_lvl3'].isin([kpi_id])]
-                for row in relevant_df.itertuples():
-                    numerator_id = row.product_fk
-                    denominator_id = row.assortment_fk
-                    result = row.in_store
-
-                    result_dict = {'kpi_name': kpi_name + " - SKU", 'kpi_fk': kpi_id, 'numerator_id': numerator_id,
-                                   'denominator_id': denominator_id,
-                                   'result': result}
-                    result_dict_list.append(result_dict)
-                if check_possible_sku is np.nan:
-                    numerator_id = lvl3_result[lvl3_result[KPI_FK_LEVEL2].isin([kpi_fk])][numerator_entity].mode()[0]
-                    lvl2_result = self.assortment.calculate_lvl2_assortment(lvl3_result)
-                    lvl2_kpi_result = lvl2_result[lvl2_result[KPI_FK_LEVEL2].isin([kpi_fk])]
-                    if self.scif.empty or self.scif['sub_category_fk'].mode().empty:
-                        denominator_id = 0
-                    else:
-                        denominator_id = self.scif['sub_category_fk'].mode()[0]
-                    result = float(lvl2_kpi_result['passes'] / lvl2_kpi_result['total'])
-                    result_dict = {'kpi_name': kpi_name, 'kpi_fk': kpi_fk, 'numerator_id': numerator_id,
-                                   'denominator_id': denominator_id,
-                                   'result': result}
-
+                numerator_id = lvl3_result[lvl3_result[KPI_FK_LEVEL2].isin([kpi_fk])][numerator_entity].mode()[0]
+                lvl2_result = self.assortment.calculate_lvl2_assortment(lvl3_result)
+                lvl2_kpi_result = lvl2_result[lvl2_result[KPI_FK_LEVEL2].isin([kpi_fk])]
+                denominator_id = self.scif['sub_category_fk'].mode()[0] if not self.scif[
+                    'sub_category_fk'].mode().empty else 0
+                result = float(lvl2_kpi_result['passes'] / lvl2_kpi_result['total'])
+                result_dict = {'kpi_name': kpi_name, 'kpi_fk': kpi_fk, 'numerator_id': numerator_id,
+                               'denominator_id': denominator_id,
+                               'result': result}
+                result_dict_list.append(result_dict)
             else:
                 result = pd.np.nan
                 numerator_id = 0
@@ -618,8 +617,21 @@ class ToolBox(GlobalSessionToolBox):
                 result_dict = {'kpi_name': kpi_name, 'kpi_fk': kpi_fk, 'numerator_id': numerator_id,
                                'denominator_id': denominator_id,
                                'result': result}
+                result_dict_list.append(result_dict)
 
-            result_dict_list.append(result_dict)
+            if not lvl3_result.empty:
+                kpi_sku_name = kpi_name + " - SKU"
+                kpi_id = self.common.get_kpi_fk_by_kpi_type(kpi_sku_name)
+                relevant_df = lvl3_result[lvl3_result['kpi_fk_lvl3'].isin([kpi_id])]
+                for lvl3_row in relevant_df.itertuples():
+                    numerator_id = lvl3_row.product_fk
+                    denominator_id = lvl3_row.assortment_fk
+                    result = lvl3_row.in_store
+
+                    result_dict = {'kpi_name': kpi_sku_name, 'kpi_fk': kpi_id, 'numerator_id': numerator_id,
+                                   'denominator_id': denominator_id,
+                                   'result': result}
+                    result_dict_list.append(result_dict)
 
         return result_dict_list
 
@@ -862,7 +874,7 @@ class ToolBox(GlobalSessionToolBox):
                                                                 additional={'minimum_block_ratio': 0.9,
                                                                             'calculate_all_scenes': True,
                                                                             'minimum_facing_for_block': 1,
-                                                                            'use_masking_only':True})
+                                                                            'use_masking_only': True, 'include_stacking': True})
                     if pd.notna(row['tagging']):
                         probes_match = [node[1]['probe_match_fk'] for i in range(len(block.cluster)) for node in
                                         block.cluster.reset_index().drop(columns=['index']).iloc[i, 0].node(data=True)]

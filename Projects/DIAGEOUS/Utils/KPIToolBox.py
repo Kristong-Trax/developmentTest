@@ -1308,10 +1308,12 @@ class ToolBox:
                 if scene_products.empty:
                     continue
                 scene_type = self.scif[self.scif[ScifConsts.SCENE_FK] == scene][ScifConsts.TEMPLATE_NAME].iloc[0]
-                minimum_products = template[template[Consts.EX_SCENE_TYPE] == scene_type]
+                minimum_products = template[(template[Consts.EX_SCENE_TYPE] == scene_type) |
+                                            (template[Consts.EX_PRODUCT_FK] == product_fk)]
                 if minimum_products.empty:
-                    minimum_products = template[template[Consts.EX_SCENE_TYPE] == Consts.OTHER]
-                minimum_products = minimum_products[Consts.EX_MIN_FACINGS].iloc[0]
+                    minimum_products = template[(template[Consts.EX_SCENE_TYPE] == Consts.OTHER) |
+                                                (template[Consts.EX_PRODUCT_FK] == product_fk)]
+                minimum_products = self._get_minimum_facings_target(minimum_products, product_fk)
                 facings = len(scene_products)
                 # if the condition is failed, it will "add" 0.
                 sum_scenes_passed += 1 * (facings >= minimum_products)
@@ -1343,15 +1345,27 @@ class ToolBox:
                 if scene_products.empty:
                     continue
                 scene_type = self.scif[self.scif[ScifConsts.SCENE_FK] == scene][ScifConsts.TEMPLATE_NAME].iloc[0]
-                minimum_products = template[template[Consts.EX_SCENE_TYPE] == scene_type]
+                minimum_products = template[(template[Consts.EX_SCENE_TYPE] == scene_type) |
+                                            (template[Consts.PRODUCT_FK] == product_fk)]
                 if minimum_products.empty:
-                    minimum_products = template[template[Consts.EX_SCENE_TYPE] == Consts.OTHER]
-                minimum_products = minimum_products[Consts.EX_MIN_FACINGS].iloc[0]
+                    minimum_products = template[(template[Consts.EX_SCENE_TYPE] == Consts.OTHER) |
+                                                (template[Consts.EX_PRODUCT_FK] == product_fk)]
+                minimum_products = self._get_minimum_facings_target(minimum_products, product_fk)
                 facings = len(scene_products)
                 if facings >= minimum_products:
                     sum_scenes_passed += 1
                     break
         return sum_scenes_passed
+
+    @staticmethod
+    def _get_minimum_facings_target(scene_targets, product_fk):
+        """In the display target KPIs the client can upload targets per scene type OR targets per scene type & SKUs.
+        This method gets the filtered external targets DataFrame by scene type, checks if there a target of the
+        specific product and returns it. In case there are a target of it, it return the target of the scene type.
+        """
+        if Consts.PRODUCT_FK in scene_targets.keys() and product_fk in scene_targets.values:
+            scene_targets = scene_targets.loc[scene_targets.product_fk == product_fk]
+        return scene_targets[Consts.EX_MIN_FACINGS].values[0]
 
     def get_relevant_scenes(self, scene_types):
         """

@@ -41,7 +41,7 @@ class CCRU_SANDJsonGenerator:
         output = file_input.to_json(orient='records')
         final_json = json.loads(output)
 
-        if kpi_data == 'kpi_data':
+        if kpi_data == 'kpi_data' or kpi_data == 'cooler_audit':
             if not self.project_kpi_dict.get(kpi_data):
                 self.project_kpi_dict[kpi_data] = []
             final_json = self.remove_none_values_from_json(final_json)

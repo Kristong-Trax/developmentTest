@@ -22,7 +22,7 @@ import os
 # from KPIUtils_v2.Calculations.SurveyCalculations import Survey
 
 # from KPIUtils_v2.Calculations.CalculationsUtils import GENERALToolBoxCalculations
-TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'CCAndinaAR_template_v3.xlsx')
+TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'CCAndinaAR_template_v4.xlsx')
 
 __author__ = 'nicolaske'
 
@@ -111,7 +111,7 @@ class ToolBox(GlobalSessionToolBox):
                                                            should_enter=True)
                         total_relevant_scenes += 1
 
-                passing_percentage = (round((passing_scenes / float(total_relevant_scenes)), 2) * 100)
+                passing_percentage = (round((passing_scenes / float(total_relevant_scenes)), 2) * 100) if total_relevant_scenes != 0 else 0
                 self.scene_kpi_results_fix[kpi_name] = passing_percentage
 
             if not pd.isnull(child_kpi_name):
