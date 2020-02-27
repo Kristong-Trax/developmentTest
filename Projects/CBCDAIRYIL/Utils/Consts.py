@@ -6,7 +6,7 @@ class Consts(object):
     # Template consts
     PROJECT_TEMPLATE_NAME_UNTIL_2019_12_31 = 'Template_until_2019-12-31.xlsx'
     PROJECT_TEMPLATE_NAME_UNTIL_2020_02_01 = 'Template_until_2020-02-01.xlsx'
-    PROJECT_TEMPLATE_NAME_UNTIL_2020_02_11 = 'Template_until_2020-02-11.xlsx'
+    PROJECT_TEMPLATE_NAME_UNTIL_2020_02_10 = 'Template_until_2020-02-10.xlsx'
     PREVIOUS_TEMPLATES = 'Previous Templates'
     CURRENT_TEMPLATE = 'Template.xlsx'
     TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), 'Data')
