@@ -474,7 +474,7 @@ class CCRUKPIToolBox:
         return relevant_scenes
 
     @kpi_runtime()
-    def check_availability(self, params, level=2):
+    def check_availability(self, params, level=2, cooler_dict=None):
         set_total_res = 0
         availability_types = ['SKUs', 'BRAND', 'MAN', 'CAT',
                               'MAN in CAT', 'SUB_BRAND', 'SUB_CATEGORY']
@@ -513,19 +513,20 @@ class CCRUKPIToolBox:
                             atomic_score = self.calculate_score(atomic_res, child)
 
                         # saving to DB
-                        attributes_for_level3 = self.create_attributes_for_level3_df(
-                            child, atomic_score, kpi_fk)
-                        self.write_to_kpi_results_old(attributes_for_level3, 'level3')
+                        if not cooler_dict:
+                            attributes_for_level3 = self.create_attributes_for_level3_df(
+                                child, atomic_score, kpi_fk)
+                            self.write_to_kpi_results_old(attributes_for_level3, 'level3')
 
-                        atomic_result = attributes_for_level3['result']
-                        if atomic_result.size > 0:
-                            atomic_result_total += atomic_result.values[0]
+                            atomic_result = attributes_for_level3['result']
+                            if atomic_result.size > 0:
+                                atomic_result_total += atomic_result.values[0]
 
-                        if p.get('Logical Operator') in ('OR', 'AND', 'MAX'):
-                            atomic_scores.append(atomic_score)
-                        elif p.get('Logical Operator') == 'SUM':
-                            kpi_total_res += child.get('additional_weight',
-                                                       1 / float(len(children))) * atomic_score
+                            if p.get('Logical Operator') in ('OR', 'AND', 'MAX'):
+                                atomic_scores.append(atomic_score)
+                            elif p.get('Logical Operator') == 'SUM':
+                                kpi_total_res += child.get('additional_weight',
+                                                           1 / float(len(children))) * atomic_score
 
                 if p.get('Logical Operator') == 'OR':
                     if len([sc for sc in atomic_scores if sc > 0]) > 0:
@@ -555,19 +556,29 @@ class CCRUKPIToolBox:
                 kpi_total_res = self.calculate_availability(p)
                 score = self.calculate_score(kpi_total_res, p)
 
-            if not is_atomic:  # saving also to level3 in case this KPI has only one level
-                attributes_for_table3 = self.create_attributes_for_level3_df(
-                    p, score, kpi_fk, level=2, additional_level=3)
-                self.write_to_kpi_results_old(attributes_for_table3, 'level3')
+            if not cooler_dict:
+                if not is_atomic:  # saving also to level3 in case this KPI has only one level
+                    attributes_for_table3 = self.create_attributes_for_level3_df(
+                        p, score, kpi_fk, level=2, additional_level=3)
+                    self.write_to_kpi_results_old(attributes_for_table3, 'level3')
 
-            # Saving to old tables
-            attributes_for_table2 = self.create_attributes_for_level2_df(p, score, kpi_fk)
-            self.write_to_kpi_results_old(attributes_for_table2, 'level2')
+                # Saving to old tables
+                attributes_for_table2 = self.create_attributes_for_level2_df(p, score, kpi_fk)
+                self.write_to_kpi_results_old(attributes_for_table2, 'level2')
 
-            if p.get("KPI ID") in params.values()[2]["SESSION LEVEL"]:
-                self.write_to_kpi_facts_hidden(p.get("KPI ID"), None, atomic_result_total, score)
+                if p.get("KPI ID") in params.values()[2]["SESSION LEVEL"]:
+                    self.write_to_kpi_facts_hidden(p.get("KPI ID"), None, atomic_result_total, score)
 
             set_total_res += round(score) * p.get('KPI Weight')
+
+            if cooler_dict is not None:
+                kpi_fk = self.common.get_kpi_fk_by_kpi_type(CCRUConsts.COOLER_SCORE_LVL_2)
+                kpi_ref_fk = self.common.get_kpi_fk_by_kpi_type(p['KPI name Eng'].upper())
+                self.common.write_to_db_result(fk=kpi_fk, numerator_id=cooler_dict[CCRUConsts.COOLER_FK],
+                                               denominator_id=kpi_ref_fk, context_id=cooler_dict[ScifConsts.SCENE_FK],
+                                               result=score, score=score * p.get('KPI Weight'),
+                                               weight=p.get("KPI Weight"), identifier_parent=cooler_dict,
+                                               should_enter=True)
 
         return set_total_res
 
@@ -664,7 +675,7 @@ class CCRUKPIToolBox:
         if params.get('Formula').strip() == 'each SKU hits facings target':
             if params.get('Target'):
                 number_of_fails = sum([x < int(params.get('Target')) for x in result])
-                result = 100 - round(number_of_fails / float(len(result)) * 100, 2)
+                result = 100 - round(number_of_fails / float(len(result)) * 100, 2) if len(result) else 0
             else:
                 result = 0
 
@@ -717,7 +728,7 @@ class CCRUKPIToolBox:
         return kpi_total_res
 
     @kpi_runtime()
-    def check_number_of_scenes(self, params, level=2):
+    def check_number_of_scenes(self, params, level=2, cooler_dict=None):
         set_total_res = 0
         for p in params.values()[0]:
             if p.get('level') != level:
@@ -811,20 +822,30 @@ class CCRUKPIToolBox:
                 set_total_res += round(score)
             else:
                 set_total_res += round(score) * p.get('KPI Weight')
-            kpi_fk = self.kpi_fetcher.get_kpi_fk(p.get('KPI name Eng'))
+            if not cooler_dict:
+                kpi_fk = self.kpi_fetcher.get_kpi_fk(p.get('KPI name Eng'))
 
-            if not p.get('Children'):
-                atomic_kpi_fk = self.kpi_fetcher.get_atomic_kpi_fk(p.get('KPI name Eng'), kpi_fk)
-                attributes_for_level3 = self.create_attributes_for_level3_df(
-                    p, score, kpi_fk, atomic_kpi_fk, level=2, additional_level=3)
-                self.write_to_kpi_results_old(attributes_for_level3, 'level3')
+                if not p.get('Children'):
+                    atomic_kpi_fk = self.kpi_fetcher.get_atomic_kpi_fk(p.get('KPI name Eng'), kpi_fk)
+                    attributes_for_level3 = self.create_attributes_for_level3_df(
+                        p, score, kpi_fk, atomic_kpi_fk, level=2, additional_level=3)
+                    self.write_to_kpi_results_old(attributes_for_level3, 'level3')
 
-            if p.get('level') == 2:
-                attributes_for_level2 = self.create_attributes_for_level2_df(p, score, kpi_fk)
-                self.write_to_kpi_results_old(attributes_for_level2, 'level2')
+                if p.get('level') == 2:
+                    attributes_for_level2 = self.create_attributes_for_level2_df(p, score, kpi_fk)
+                    self.write_to_kpi_results_old(attributes_for_level2, 'level2')
 
-                if p.get("KPI ID") in params.values()[2]["SESSION LEVEL"]:
-                    self.write_to_kpi_facts_hidden(p.get("KPI ID"), None, None, score)
+                    if p.get("KPI ID") in params.values()[2]["SESSION LEVEL"]:
+                        self.write_to_kpi_facts_hidden(p.get("KPI ID"), None, None, score)
+
+            if cooler_dict is not None:
+                kpi_fk = self.common.get_kpi_fk_by_kpi_type(CCRUConsts.COOLER_SCORE_LVL_2)
+                kpi_ref_fk = self.common.get_kpi_fk_by_kpi_type(p['KPI name Eng'].upper())
+                self.common.write_to_db_result(fk=kpi_fk, numerator_id=cooler_dict[CCRUConsts.COOLER_FK],
+                                               denominator_id=kpi_ref_fk, context_id=cooler_dict[ScifConsts.SCENE_FK],
+                                               result=score, score=score * p.get('KPI Weight'),
+                                               weight=p.get("KPI Weight"), identifier_parent=cooler_dict,
+                                               should_enter=True)
 
         return set_total_res
 
