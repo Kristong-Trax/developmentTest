@@ -78,6 +78,8 @@ class ToolBox(GlobalSessionToolBox):
         facings_sos_whole_store_dict = []
         facings_sos_by_category_dict = []
         point_of_store_dict = []
+        facings_manuf_by_all_manuf = []
+        facings_manuf_cat_by_all_manuf_cat = []
 
         assortment_store_dict = self.availability_store_function()
         if assortment_store_dict is None:
@@ -94,7 +96,11 @@ class ToolBox(GlobalSessionToolBox):
                 facings_sos_whole_store_dict = self.facings_sos_whole_store_function()
                 facings_sos_by_category_dict = self.facings_sos_by_category_function()
             elif kpi_name == Consts.FACINGS_SOS_SCENE_TYPE:
-                self.fsos_by_scene_type_function(row_data)
+                kpi = row_data[Consts.KPI_NAME]
+                if kpi == 'CCJP_FSOS_MANUF_BY_ALL_MANUF_IN_SCENE_TYPE':
+                    facings_manuf_by_all_manuf = self.fsos_by_scene_type_function(row_data)
+                elif kpi == 'CCJP_FSOS_MANUF_CAT_BY_ALL_MANUF_CAT_IN_SCENE_TYPE':
+                    facings_manuf_cat_by_all_manuf_cat = self.fsos_by_scene_type_function(row_data)
             elif kpi_name == "CCJP_POC_COUNT_BY_STORE_AREA" and self.visit_date < datetime.strptime(self.new_kpi_date, '%Y-%m-%d').date():
                 point_of_store_dict = self.point_of_connection()
             elif kpi_name == "CCJP_POC_COUNT_BY_TASK" and self.visit_date >= datetime.strptime(self.new_kpi_date, '%Y-%m-%d').date():
@@ -116,6 +122,8 @@ class ToolBox(GlobalSessionToolBox):
         self.common.save_json_to_new_tables(assortment_category_dict)
         self.common.save_json_to_new_tables(facings_sos_whole_store_dict)
         self.common.save_json_to_new_tables(facings_sos_by_category_dict)
+        self.common.save_json_to_new_tables(facings_manuf_by_all_manuf)
+        self.common.save_json_to_new_tables(facings_manuf_cat_by_all_manuf_cat)
 
         if point_of_store_dict is None:
             Log.warning('Scene item facts is empty for this session')
@@ -952,10 +960,11 @@ class ToolBox(GlobalSessionToolBox):
             return dict_list
 
         if kpi_name == Consts.SOS_FACINGS_MANUF_BY_ALL_MANUF_IN_SCENE_TYPE:
-            result = self.fsos_manuf_by_all_manuf_in_scene_type_function(df, scene_types, facings, kpi_fk)
-        elif kpi_name == Consts.SOS_FACINGS_MANUF_CAT_BY_ALL_MANU_CAT_IN_SCENE_TYPE:
-            result = self.fsos_manuf_cat_by_all_manuf_cat_in_scene_type_function(df, scene_types, categories,facings, kpi_fk)
-        self.common.save_json_to_new_tables(result)
+            dict_list = self.fsos_manuf_by_all_manuf_in_scene_type_function(df, scene_types, facings, kpi_fk)
+        elif kpi_name == Consts.SOS_FACINGS_MANUF_CAT_BY_ALL_MANUF_CAT_IN_SCENE_TYPE:
+            dict_list = self.fsos_manuf_cat_by_all_manuf_cat_in_scene_type_function(df, scene_types, categories, facings, kpi_fk)
+
+        return dict_list
 
     def fsos_manuf_by_all_manuf_in_scene_type_function(self, df, scene_types, facings, kpi_fk):
         dict_list = []
