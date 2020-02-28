@@ -337,8 +337,8 @@ if __name__ == '__main__':
     sheet_name = 'Sheet1'
 
 
-    kpi_data = CCRUAddKPIs(project_name, file_name, sheet_name)
-    kpi_data.add_kpis_from_template()
+    # kpi_data = CCRUAddKPIs(project_name, file_name, sheet_name)
+    # kpi_data.add_kpis_from_template()
 
     kpi_data = CCRUAddKPIs(project_name, file_name, sheet_name)
     kpi_data.update_kpi_weights()
