@@ -1,7 +1,9 @@
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Utils.Logging.Logger import Log
 from KPIUtils_v2.Utils.GlobalScripts.Scripts import GlobalSessionToolBox
+from KPIUtils_v2.Calculations.BlockCalculations_v2 import Block
 import pandas as pd
+import numpy as np
 import os
 import simplejson
 
@@ -48,7 +50,7 @@ def log_runtime(description, log_start=False):
     return decorator
 
 
-SHEETS = [Consts.KPIS, Consts.SOS, Consts.DISTRIBUTION]
+SHEETS = [Consts.KPIS, Consts.SOS, Consts.DISTRIBUTION, Consts.ADJACENCY_BRAND_WITHIN_BAY]
 
 
 class ToolBox(GlobalSessionToolBox):
@@ -57,6 +59,7 @@ class ToolBox(GlobalSessionToolBox):
         self.templates = {}
         self.parse_template()
         self.match_product_in_scene = self.data_provider[Data.MATCHES]
+        self.block = Block(data_provider)
         self.own_manufacturer_fk = int(self.data_provider.own_manufacturer.param_value.values[0])
         self.results_df = pd.DataFrame(columns=['kpi_name', 'kpi_fk', 'numerator_id', 'numerator_result',
                                                 'denominator_id', 'denominator_result', 'result'])
@@ -67,7 +70,8 @@ class ToolBox(GlobalSessionToolBox):
 
     def main_calculation(self):
         relevant_kpi_template = self.templates[Consts.KPIS]
-        foundation_kpi_types = [Consts.SOS, Consts.DISTRIBUTION]
+        # Consts.SOS, Consts.DISTRIBUTION]
+        foundation_kpi_types = [Consts.ADJACENCY_BRAND_WITHIN_BAY]
         foundation_kpi_template = relevant_kpi_template[
             relevant_kpi_template[Consts.KPI_TYPE].isin(foundation_kpi_types)]
 
@@ -90,6 +94,7 @@ class ToolBox(GlobalSessionToolBox):
             self.write_to_db(**result)
             # except:
             #     a = 1
+
     def _calculate_kpis_from_template(self, template_df):
         for i, row in template_df.iterrows():
             calculation_function = self._get_calculation_function_by_kpi_type(row[Consts.KPI_TYPE])
@@ -102,8 +107,8 @@ class ToolBox(GlobalSessionToolBox):
                 pass
             result_data = calculation_function(kpi_row)
             for result in result_data:
-                if result['result'] <= 1:
-                    result['result'] = result['result'] * 100
+                # if result['result'] <= 1:
+                #     result['result'] = result['result'] * 100
                 self.results_df.loc[len(self.results_df), result.keys()] = result
 
     def _get_calculation_function_by_kpi_type(self, kpi_type):
@@ -111,6 +116,39 @@ class ToolBox(GlobalSessionToolBox):
             return self.calculate_sos
         elif kpi_type == Consts.DISTRIBUTION:
             return self.calculate_distribution
+        elif kpi_type == Consts.ADJACENCY_BRAND_WITHIN_BAY:
+            return self.calculate_adjacency_brand
+
+    def calculate_adjacency_brand(self, row):
+        kpi_name = row[Consts.KPI_NAME]
+        kpi_fk = self.get_kpi_fk_by_kpi_type(kpi_name)
+        relevant_brands = map(int,self.sanitize_values(row['brand_fk']))
+
+        match_scene_item_facts = self.match_product_in_scene.merge(self.scif, how='left', on='scene_fk')
+        relevant_match_scene_item_facts = self.filter_df(match_scene_item_facts, {Consts.BRAND_FK: relevant_brands})
+
+        for relevant_scene in set(relevant_match_scene_item_facts.scene_fk):
+            mcif = relevant_match_scene_item_facts[relevant_match_scene_item_facts.scene_fk.isin([relevant_scene])]
+            unique_bay_numbers = set(mcif.bay_number)
+            location = {Consts.SCENE_FK: relevant_scene}
+            for bay in unique_bay_numbers:
+                #  Consts.BRAND_FK: relevant_brands,, Consts.BAY_NUMBER:bay
+                relevant_filters = {Consts.BRAND_FK:relevant_brands}
+                # block = self.block.network_x_block_together(relevant_filters,
+                #                                             location=location_filters,
+                #                                             additional={'minimum_facing_for_block': 1,
+                #                                                         'use_masking_only': True})
+                block = self.block.network_x_block_together(relevant_filters,
+                                                            location=location,
+                                                            additional={'minimum_facing_for_block': 1, 'use_masking_only':True})
+                # match_fk_list = set(match for cluster in passed_blocks for node in cluster.nodes() for match in
+                #                     cluster.node[node]['group_attributes']['match_fk_list'])
+
+                # for node in adj_g.node:
+                #     print(adj_g.nodes(data=True)[node]['scene_match_fk'])
+                # self.block.adj_graphs_by_scene.values()[0].edges.data('degree')
+
+                a =1
 
     def calculate_distribution(self, row):
         kpi_name = row[Consts.KPI_NAME]
@@ -168,7 +206,7 @@ class ToolBox(GlobalSessionToolBox):
                 row[Consts.OUTPUT]].sum() if not relevant_numerator_scif.empty else 0
             numerator_id = relevant_numerator_scif.product_fk.iat[0]
 
-            result = float(numerator_result) / denominator_result
+            result = (float(numerator_result) / denominator_result) * 100
             result_dict = {'kpi_name': kpi_name, 'kpi_fk': kpi_fk, 'numerator_id': numerator_id,
                            'denominator_id': denominator_id, 'numerator_result': numerator_result,
                            'denominator_result': denominator_result,
@@ -183,3 +221,14 @@ class ToolBox(GlobalSessionToolBox):
         else:
             items = [x.strip() for x in item.split(',')]
             return items
+
+    @staticmethod
+    def filter_df(df, filters, exclude=0):
+        for key, val in filters.items():
+            if not isinstance(val, list):
+                val = [val]
+            if exclude:
+                df = df[~df[key].isin(val)]
+            else:
+                df = df[df[key].isin(val)]
+        return df
