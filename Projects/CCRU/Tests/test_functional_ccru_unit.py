@@ -268,6 +268,57 @@ class TestCCRU(TestFunctionalCase):
         test_result = tool_box.calculate_lead_sku(params[0][0])
         self.assertEquals(check_result, test_result)
 
+    def test_calculate_number_facings_near_food_1(self):
+        test_case = 'test_calculate_number_facings_near_food_1'
+        self.mock_data_provider()
+        self.mock_tool_box()
+        tool_box = CCRUKPIToolBox(self.data_provider, self.output)
+        tool_box.set_kpi_set(self.data.pos_kpi_set_name, self.data.pos_kpi_set_type)
+        params, check_result = self.get_pos_test_case(test_case)
+        test_result = tool_box.calculate_number_facings_near_food(params[0][0], params)
+        self.assertEquals(check_result, test_result)
+
+    def test_calculate_number_of_doors_more_than_target_facings_1(self):
+        test_case = 'test_calculate_number_of_doors_more_than_target_facings_1'
+        self.mock_data_provider()
+        self.mock_tool_box()
+        tool_box = CCRUKPIToolBox(self.data_provider, self.output)
+        tool_box.set_kpi_set(self.data.pos_kpi_set_name, self.data.pos_kpi_set_type)
+        params, check_result = self.get_pos_test_case(test_case)
+        test_result = tool_box.calculate_number_of_doors_more_than_target_facings(params[0][0])
+        self.assertEquals(check_result, test_result)
+
+    def test_check_number_of_doors_of_filled_coolers_1(self):
+        test_case = 'test_check_number_of_doors_of_filled_coolers_1'
+        self.mock_data_provider()
+        self.mock_tool_box()
+        tool_box = CCRUKPIToolBox(self.data_provider, self.output)
+        tool_box.set_kpi_set(self.data.pos_kpi_set_name, self.data.pos_kpi_set_type)
+        params, check_result = self.get_pos_test_case(test_case)
+        test_result = tool_box.check_number_of_doors_of_filled_coolers(params[0][0])
+        self.assertEquals(check_result, test_result)
+
+    def test_check_number_of_doors_of_filled_coolers_2(self):
+        test_case = 'test_check_number_of_doors_of_filled_coolers_2'
+        self.mock_data_provider()
+        self.mock_tool_box()
+        tool_box = CCRUKPIToolBox(self.data_provider, self.output)
+        tool_box.set_kpi_set(self.data.pos_kpi_set_name, self.data.pos_kpi_set_type)
+        params, check_result = self.get_pos_test_case(test_case)
+        check_result = list([int(r) for r in check_result.split(', ')])
+        test_result = tool_box.check_number_of_doors_of_filled_coolers(params[0][0], func='get scenes')
+        self.assertEquals(check_result, test_result)
+
+    def test_check_number_of_scenes_no_tagging_2(self):
+        test_case = 'test_check_number_of_scenes_no_tagging_2'
+        self.mock_data_provider()
+        self.mock_tool_box()
+        tool_box = CCRUKPIToolBox(self.data_provider, self.output)
+        tool_box.set_kpi_set(self.data.pos_kpi_set_name, self.data.pos_kpi_set_type)
+        params, check_result = self.get_pos_test_case(test_case)
+        test_result = tool_box.check_number_of_scenes_no_tagging(params[0][0], level=3)
+        self.assertEquals(check_result, test_result)
+
 
 # writer = pd.ExcelWriter('./store_areas.xlsx', engine='xlsxwriter')
 # self.store_areas.to_excel(writer, sheet_name='store_areas', index_label='#')

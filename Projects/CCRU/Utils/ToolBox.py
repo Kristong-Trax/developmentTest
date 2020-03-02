@@ -1249,7 +1249,7 @@ class CCRUKPIToolBox:
             all_products = self.scif[(self.scif['scene_id'] == scene) &
                                      (self.scif['location_type'] == p.get('Locations to include'))]['facings'].sum()
             if all_products:
-                proportion = products_of_tccc / all_products
+                proportion = products_of_tccc / float(all_products)
             else:
                 proportion = 0
             scene_type = self.scif.loc[self.scif['scene_id'] == scene]['template_name'].values[0]
