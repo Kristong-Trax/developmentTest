@@ -123,10 +123,11 @@ class CARLSBERGToolBox:
         self.kpi_template_path = os.path.join(os.path.dirname(os.path.realpath(__file__)),
                                               '..', TEMPLATE_PARENT_FOLDER,
                                               TEMPLATE_NAME)
-        self.own_man_fk = self.own_manufacturer_fk = int(self.data_provider.own_manufacturer.param_value.values[0])
-        if not self.own_man_fk:
+        own_man_fk_data = self.data_provider.own_manufacturer.param_value.values[0]
+        if not own_man_fk_data:
             # OWN manufacturer is not set
             Log.error("Own Manufacturer is not set for project: {}".format(self.project_name))
+        self.own_man_fk = self.own_manufacturer_fk = int(own_man_fk_data)
         self.kpi_template = pd.ExcelFile(self.kpi_template_path)
         self.empty_prod_ids = self.all_products[
             self.all_products.product_name.str.contains('empty', case=False)]['product_fk'].values
@@ -135,17 +136,19 @@ class CARLSBERGToolBox:
         self.other_prod_ids = self.all_products[
             self.all_products.product_name.str.contains('other', case=False)]['product_fk'].values
 
-    def main_calculation(self, *args, **kwargs):
+    def main_calculation(self, only_stock_calc):
         """
         This function calculates the KPI results.
         """
         pd.reset_option('mode.chained_assignment')
         with pd.option_context('mode.chained_assignment', None):
-            self.calculate_fsos_kpis()
-            self.calculate_assortment_kpis()
-            # self.calculate_sku_count_in_stock()
-            self.calculate_sku_facings_in_floor_stack()
-
+            if only_stock_calc:
+                self.calculate_sku_count_in_stock()
+            else:
+                self.calculate_fsos_kpis()
+                self.calculate_assortment_kpis()
+                self.calculate_sku_facings_in_floor_stack()
+                self.calculate_sku_count_in_stock()
         self.common.commit_results_data()
         return 0  # to mark successful run of script
 
@@ -185,11 +188,57 @@ class CARLSBERGToolBox:
                                            )
         return True
 
+    def get_manual_collection_stock_data(self):
+        """
+            Method to get the manual stock collection data for the current session.
+        """
+        query = """
+            SELECT 
+                *
+            FROM
+                probedata.manual_collection_number collection
+                    JOIN
+                static.manual_collection_number_attributes attr ON attr.pk = 
+                collection.manual_collection_number_attributes_fk
+            WHERE
+                collection.session_fk = {session_fk}
+                AND collection.deleted_time IS NULL
+                AND attr.delete_date IS NULL;
+        """
+        stock_manual_collection_data = pd.read_sql_query(query.format(
+            session_fk=self.session_info.iloc[0].pk), self.rds_conn.db)
+        return stock_manual_collection_data
+
     def calculate_sku_count_in_stock(self):
-        # find the tables
         # write for COUNT_SKU_IN_STOCK
-        Log.info("Calculate COUNT_SKU_IN_STOCK for {} - {}".format(self.project_name, self.session_uid))
-        pass
+        kpi = self.kpi_static_data[(self.kpi_static_data[KPI_TYPE_COL] == COUNT_SKU_IN_STOCK)
+                                   & (self.kpi_static_data['delete_time'].isnull())]
+        if kpi.empty:
+            Log.warning("*** KPI Name:{name} not found in DB for session {sess} ***".format(
+                name=COUNT_SKU_IN_STOCK,
+                sess=self.session_uid
+            ))
+            return False
+        else:
+            Log.info("Calculate COUNT_SKU_IN_STOCK for {} - {}".format(self.project_name, self.session_uid))
+        stock_manual_collection_df = self.get_manual_collection_stock_data()
+        collection_with_prod_df = stock_manual_collection_df.merge(
+            self.all_products, how='left', on=['product_fk'], suffixes=('', '_prod')
+        )
+        for index, row in collection_with_prod_df.iterrows():
+            Log.info("Saving stock value for {product} as {value} in session {sess}".format(
+                product=row.product_name,
+                value=row.value,
+                sess=self.session_uid
+            ))
+            self.common.write_to_db_result(fk=kpi.iloc[0].pk,
+                                           numerator_id=row.product_fk,
+                                           denominator_id=row.manufacturer_fk,
+                                           context_id=self.store_id,
+                                           result=row.value,
+                                           score=row.value,
+                                           )
+        return True
 
     def calculate_assortment_kpis(self):
         for each_assortment in ASSORTMENT_DATA:

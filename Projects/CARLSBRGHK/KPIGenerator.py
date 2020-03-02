@@ -25,7 +25,8 @@ class Generator:
         This is the main KPI calculation function.
         It calculates the score for every KPI set and saves it to the DB.
         """
+        only_stock_calc = False
         if self.tool_box.scif.empty:
-            Log.warning('Scene item facts is empty for this session')
-        else:
-            self.tool_box.main_calculation()
+            only_stock_calc = True
+            Log.warning('Scene item facts is empty for this session. Running to calculate stock collection if any.')
+        self.tool_box.main_calculation(only_stock_calc)
