@@ -26,17 +26,20 @@ class CaseCountCalculator(GlobalSessionToolBox):
         """This method calculates the entire Case Count KPIs set."""
         if self.filtered_mdis.empty or self.filtered_scif.empty:
             return
-        self._prepare_data_for_calculation()
-        total_facings_per_brand_res = self._calculate_total_bottler_and_carton_facings()
-        num_of_cases_per_brand_res = self._count_number_of_cases()
-        implied_shoppable_cases_kpi_res = self._implied_shoppable_cases_kpi()
-        unshoppable_brands_lst = self._non_shoppable_case_kpi()
-        total_cases_res = self._calculate_and_total_cases(num_of_cases_per_brand_res + implied_shoppable_cases_kpi_res)
-        self._save_results_to_db(total_facings_per_brand_res, Ccc.TOTAL_FACINGS_KPI)
-        self._save_results_to_db(num_of_cases_per_brand_res, Ccc.CASE_COUNT_KPI)
-        self._save_results_to_db(implied_shoppable_cases_kpi_res, Ccc.IMPLIED_SHOPPABLE_CASES_KPI)
-        self._save_results_to_db(unshoppable_brands_lst, Ccc.NON_SHOPPABLE_CASES_KPI)
-        self._save_results_to_db(total_cases_res, Ccc.TOTAL_CASES_KPI, should_enter=False)
+        try:
+            self._prepare_data_for_calculation()
+            total_facings_per_brand_res = self._calculate_total_bottler_and_carton_facings()
+            self._save_results_to_db(total_facings_per_brand_res, Ccc.TOTAL_FACINGS_KPI)
+            cases_per_brand_res = self._count_number_of_cases()
+            self._save_results_to_db(cases_per_brand_res, Ccc.CASE_COUNT_KPI)
+            unshoppable_brands_lst = self._non_shoppable_case_kpi()
+            self._save_results_to_db(unshoppable_brands_lst, Ccc.NON_SHOPPABLE_CASES_KPI)
+            implied_shoppable_cases_kpi_res = self._implied_shoppable_cases_kpi()
+            self._save_results_to_db(implied_shoppable_cases_kpi_res, Ccc.IMPLIED_SHOPPABLE_CASES_KPI)
+            total_cases_res = self._calculate_and_total_cases(cases_per_brand_res + implied_shoppable_cases_kpi_res)
+            self._save_results_to_db(total_cases_res, Ccc.TOTAL_CASES_KPI, should_enter=False)
+        except Exception as err:
+            Log.error("DiageoUS Case Count calculation failed with the following error: {}".format(err))
 
     @staticmethod
     def _calculate_and_total_cases(kpi_results):
@@ -243,6 +246,8 @@ class CaseCountCalculator(GlobalSessionToolBox):
     def _create_adjacency_graph_per_scene(self, scene_fk):
         """ This method creates the graph for the case count calculation"""
         filtered_matches = self._prepare_matches_for_graph_creation(scene_fk)
+        if filtered_matches.empty:
+            return None
         maskings = AdjacencyGraphBuilder._load_maskings(self.project_name, scene_fk)
         add_node_attr = ['display_in_scene_fk', 'display_rect_x', 'display_rect_y', 'display_name', 'display_brand']
         adj_g = AdjacencyGraphBuilder.initiate_graph_by_dataframe(filtered_matches,
@@ -256,6 +261,7 @@ class CaseCountCalculator(GlobalSessionToolBox):
         """ This method prepares the Matches DataFrame for the Adjacency Graph creation.
         Adding Displays data and adjust the columns"""
         scene_matches = self.matches.loc[self.matches.scene_fk == scene_fk]
+        scene_matches = scene_matches.loc[scene_matches.stacking_layer > 0]  # For the Graph Creation
         scene_matches.drop('pk', axis=1, inplace=True)
         scene_matches.rename({'scene_match_fk': 'pk'}, axis=1, inplace=True)
         return scene_matches
@@ -269,6 +275,8 @@ class CaseCountCalculator(GlobalSessionToolBox):
         """ This method returns the relevant paths to check from the adj_g.
         First, it extracts the bottom node and then filter only the relevant paths to calculates"""
         bottom_nodes = []
+        if filtered_adj_g is None:
+            return bottom_nodes
         for node_fk, node_data in filtered_adj_g.nodes(data=True):
             if not filtered_adj_g.in_edges(node_fk):
                 bottom_nodes.append(node_fk)
