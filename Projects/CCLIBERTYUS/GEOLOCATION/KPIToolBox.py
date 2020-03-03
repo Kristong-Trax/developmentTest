@@ -28,8 +28,7 @@ class LIBERTYGeoToolBox:
         probes_location = self._get_probes_location()
         store_location = self._get_store_location(probes_location) if not probes_location.empty else pd.DataFrame()
 
-        if not (self.is_probes_location_none(probes_location) and
-                self._get_store_location(probes_location)) or not store_location.empty:
+        if not self.is_probes_location_none(probes_location) and not store_location.empty:
             store_lat_and_long = store_location[['pos_lat', 'pos_long']].values[0]
             probes_lat_and_long = probes_location[['pos_lat', 'pos_long']].values
 
@@ -76,6 +75,7 @@ class LIBERTYGeoToolBox:
         stores_query = """SELECT latitude as pos_lat , longitude as pos_long FROM static.stores  WHERE
                                              store_uid = '{}';""".format(store_uid)
         store_location = pd.read_sql_query(stores_query, self.rds_conn.db)
+        store_location = store_location[store_location['pos_lat'].notnull()]
         return store_location
 
     @staticmethod

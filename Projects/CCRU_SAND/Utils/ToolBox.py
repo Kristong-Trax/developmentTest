@@ -365,7 +365,7 @@ class CCRU_SANDKPIToolBox:
             sub_location = list(
                 self.scif.loc[self.scif['template_name'] == scene_type]['additional_attribute_2'].values)
             if sub_location:
-                sub_location = sub_location[0]
+                sub_location = unicode(sub_location[0])
                 if sub_location not in sub_location_data.keys():
                     sub_location_data[sub_location] = []
             sub_location_data[sub_location].append(scene)
@@ -1097,10 +1097,11 @@ class CCRU_SANDKPIToolBox:
         if not relevant_scenes:
             return None
 
+        values_list = [unicode(x).strip() for x in unicode(params.get('Values')).split(', ')]
+        categories = [unicode(x).strip() for x in unicode(params.get('Product Category')).strip().split(', ')]
+
         if params.get('Manufacturer'):
-            manufacturers = \
-                [unicode(x).strip()
-                 for x in unicode(params.get('Manufacturer')).strip().split(', ')]
+            manufacturers = [unicode(x).strip() for x in unicode(params.get('Manufacturer')).strip().split(', ')]
         else:
             manufacturers = self.kpi_fetcher.TCCC
         if params.get('Formula').strip() == 'sos with empty':
@@ -1108,17 +1109,12 @@ class CCRU_SANDKPIToolBox:
                 pop_filter = (self.scif['scene_id'].isin(relevant_scenes))
                 subset_filter = (self.scif[Fd.M_NAME].isin(manufacturers))
             elif params.get('Type') == 'MAN in CAT':
-                pop_filter = ((self.scif[Fd.CAT].isin(params.get('Values'))) &
+                pop_filter = ((self.scif[Fd.CAT].isin(values_list)) &
                               (self.scif['scene_id'].isin(relevant_scenes)))
                 subset_filter = (self.scif[Fd.M_NAME].isin(manufacturers))
             else:
                 return 0
         else:
-            try:
-                values_list = [unicode(x).strip()
-                               for x in unicode(params.get('Values')).split(', ')]
-            except Exception as e:
-                values_list = [params.get('Values')]
             if params.get('Type') == 'MAN':
                 pop_filter = ((self.scif['scene_id'].isin(relevant_scenes)) &
                               (~self.scif['product_type'].isin(['Empty'])))
@@ -1131,13 +1127,13 @@ class CCRU_SANDKPIToolBox:
                 subset_filter = ((self.scif[Fd.M_NAME].isin(manufacturers)) &
                                  (~self.scif['product_type'].isin(['Empty'])))
             elif params.get('Type') == 'SUB_BRAND_IN_CAT':
-                pop_filter = ((self.scif[Fd.CAT] == params.get('Product Category')) &
+                pop_filter = ((self.scif[Fd.CAT].isin(categories)) &
                               (self.scif['scene_id'].isin(relevant_scenes)) &
                               (~self.scif['product_type'].isin(['Empty'])))
                 subset_filter = ((self.scif['sub_brand_name'].isin(values_list)) &
                                  (~self.scif['product_type'].isin(['Empty'])))
             elif params.get('Type') == 'BRAND_IN_CAT':
-                pop_filter = ((self.scif[Fd.CAT] == params.get('Product Category')) &
+                pop_filter = ((self.scif[Fd.CAT].isin(categories)) &
                               (self.scif['scene_id'].isin(relevant_scenes)) &
                               (~self.scif['product_type'].isin(['Empty'])))
                 subset_filter = ((self.scif['brand_name'].isin(values_list)) &
@@ -1256,13 +1252,14 @@ class CCRU_SANDKPIToolBox:
             else:
                 scenes = self.get_relevant_scenes(p)
             if p.get('Formula').strip() == 'number of pure Coolers':
-                score = self.calculate_share_of_cch(p, scenes, sos=False)
+                result = self.calculate_share_of_cch(p, scenes, sos=False)
             elif p.get('Formula').strip() == 'Share of CCH doors which have 98% TCCC facings':
-                score = self.calculate_share_of_cch(p, scenes)
+                result = self.calculate_share_of_cch(p, scenes)
             elif p.get('Formula').strip() == 'Share of CCH doors which have 98% TCCC facings and no FC packs':
-                score = self.calculate_share_of_cch(p, scenes, no_fc_packs=True)
+                result = self.calculate_share_of_cch(p, scenes, no_fc_packs=True)
             else:
-                score = self.calculate_share_of_cch(p, scenes)
+                result = self.calculate_share_of_cch(p, scenes)
+            score = self.calculate_score(result, p)
             kpi_fk = self.kpi_fetcher.get_kpi_fk(p.get('KPI name Eng'))
             atomic_kpi_fk = self.kpi_fetcher.get_atomic_kpi_fk(p.get('KPI name Eng'), kpi_fk)
             if p.get('KPI Weight') is None:
@@ -1273,13 +1270,13 @@ class CCRU_SANDKPIToolBox:
             if not cooler_dict:
                 if level == 2:
                     attributes_for_level3 = self.create_attributes_for_level3_df(
-                        p, score, kpi_fk, atomic_kpi_fk, level=2, additional_level=3)
+                        p, result, kpi_fk, atomic_kpi_fk, level=2, additional_level=3)
                     self.write_to_kpi_results_old(attributes_for_level3, 'level3')
                     attributes_for_level2 = self.create_attributes_for_level2_df(p, score, kpi_fk)
                     self.write_to_kpi_results_old(attributes_for_level2, 'level2')
                 else:
                     attributes_for_level3 = self.create_attributes_for_level3_df(
-                        p, score, kpi_fk, atomic_kpi_fk)
+                        p, result, kpi_fk, atomic_kpi_fk)
                     self.write_to_kpi_results_old(attributes_for_level3, 'level3')
 
                 if p.get("KPI ID") in params.values()[2]["SESSION LEVEL"]:
@@ -1359,13 +1356,13 @@ class CCRU_SANDKPIToolBox:
                                      (self.scif['size_unit'] == 'l') & (self.scif['size'] > 1) &
                                      (self.scif['location_type'] == p.get('Locations to include')) &
                                      (self.scif['product_type'] != 'Empty')]['facings'].sum()
-                fc_packs_passed = True if fc_packs > 0 else False
+                fc_packs_passed = False if fc_packs > 0 else True
             else:
                 fc_packs_passed = True
             if products_of_tccc == 0:
                 proportion = 0
             else:
-                proportion = products_of_tccc / all_products
+                proportion = products_of_tccc / float(all_products)
             scene_type = self.scif.loc[self.scif['scene_id'] == scene]['template_name'].values[0]
             if any(self.templates[self.templates['template_name'] == scene_type]['additional_attribute_1']):
                 num_of_doors = \
@@ -4468,7 +4465,6 @@ class CCRU_SANDKPIToolBox:
             if not (p.get('Formula').strip() in ("each SKU hits facings target",)):
                 continue
             scene = cooler_dict[ScifConsts.SCENE_FK]
-            # result = self.calculate_availability(p, scenes=[scene], all_params=params) # does it make sense to pass like this?
             result = self.calculate_availability(p, all_params=params)
             weight = p.get("KPI Weight")
             score = result * weight
