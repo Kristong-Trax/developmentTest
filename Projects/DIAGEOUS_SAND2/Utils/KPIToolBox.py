@@ -99,43 +99,41 @@ class ToolBox:
             survey_text=Consts.NO_BACK_BAR_ALLOWED_QUESTION, target_answer=Consts.SURVEY_ANSWER)
         self.no_display_allowed = self.survey.check_survey_answer(
             survey_text=Consts.NO_DISPLAY_ALLOWED_QUESTION, target_answer=Consts.SURVEY_ANSWER)
-        if self.attr11 == Consts.INDEPENDENT and self.attr6 != Consts.ON:
-            self.init_assortment()
-        else:
+        if self.attr11 in Consts.NOT_INDEPENDENT_STORES:
             self.init_assortment(self.store_number_1)
-        if self.attr6 == Consts.ON:
-            self.sales_data = self.ps_data.get_sales_data()
-        elif self.attr11 in [Consts.OPEN, Consts.INDEPENDENT]:
-            scenes = self.scene_info[SceneInfoConsts.SCENE_FK].unique().tolist()
-            self.scenes_with_shelves = {}
-            for scene in scenes:
-                shelves = self.match_product_in_scene[
-                    self.match_product_in_scene[MatchesConsts.SCENE_FK]
-                    == scene][[MatchesConsts.SHELF_NUMBER_FROM_BOTTOM, MatchesConsts.SHELF_NUMBER]].max()
-                self.scenes_with_shelves[scene] = max(shelves)
-            self.converted_groups = self.convert_groups_from_template()
-            self.external_targets = self.ps_data.get_kpi_external_targets(
-                kpi_operation_types=Consts.OPEN_OPERATION_TYPES,
-                key_fields=[Consts.EX_PRODUCT_FK, Consts.EX_STATE_FK, Consts.EX_STORE_NUMBER, Consts.EX_SCENE_TYPE,
-                            Consts.EX_ATTR2],
-                data_fields=[Consts.EX_MIN_FACINGS, Consts.EX_MINIMUM_SHELF, Consts.EX_BENCHMARK_VALUE,
-                             Consts.EX_TARGET_MIN, Consts.EX_COMPETITOR_FK, Consts.EX_RELATIVE_MAX,
-                             Consts.EX_RELATIVE_MIN, Consts.EX_TARGET_MAX])
-            self.external_targets = self.external_targets.fillna("N/A")
-        else:
-            self.external_targets = self.ps_data.get_kpi_external_targets(
-                kpi_operation_types=Consts.OPEN_OPERATION_TYPES,
-                key_fields=[Consts.EX_PRODUCT_FK, Consts.EX_STATE_FK, Consts.EX_STORE_NUMBER, Consts.EX_SCENE_TYPE,
-                            Consts.EX_ATTR2],
-                data_fields=[Consts.EX_MIN_FACINGS, Consts.EX_MINIMUM_SHELF, Consts.EX_BENCHMARK_VALUE,
-                             Consts.EX_COMPETITOR_FK])
-            self.external_targets = self.external_targets.fillna("N/A")
-        # elif self.attr6 != Consts.ON:
-        #         self.init_assortment()
-        #         self.external_targets = self.ps_data.get_kpi_external_targets(
-        #             kpi_operation_types=Consts.INDEPENDENT_OPERATION_TYPES,
-        #             key_fields=[Consts.EX_SCENE_TYPE, Consts.EX_ATTR2], data_fields=[Consts.EX_MIN_FACINGS])
-        #         self.external_targets = self.external_targets.fillna("N/A")
+            if self.attr6 == Consts.ON:
+                self.sales_data = self.ps_data.get_sales_data()
+            elif self.attr11 in [Consts.OPEN, Consts.INDEPENDENT]:
+                scenes = self.scene_info[SceneInfoConsts.SCENE_FK].unique().tolist()
+                self.scenes_with_shelves = {}
+                for scene in scenes:
+                    shelves = self.match_product_in_scene[
+                        self.match_product_in_scene[MatchesConsts.SCENE_FK]
+                        == scene][[MatchesConsts.SHELF_NUMBER_FROM_BOTTOM, MatchesConsts.SHELF_NUMBER]].max()
+                    self.scenes_with_shelves[scene] = max(shelves)
+                self.converted_groups = self.convert_groups_from_template()
+                self.external_targets = self.ps_data.get_kpi_external_targets(
+                    kpi_operation_types=Consts.OPEN_OPERATION_TYPES,
+                    key_fields=[Consts.EX_PRODUCT_FK, Consts.EX_STATE_FK, Consts.EX_STORE_NUMBER, Consts.EX_SCENE_TYPE,
+                                Consts.EX_ATTR2],
+                    data_fields=[Consts.EX_MIN_FACINGS, Consts.EX_MINIMUM_SHELF, Consts.EX_BENCHMARK_VALUE,
+                                 Consts.EX_TARGET_MIN, Consts.EX_COMPETITOR_FK, Consts.EX_RELATIVE_MAX,
+                                 Consts.EX_RELATIVE_MIN, Consts.EX_TARGET_MAX])
+                self.external_targets = self.external_targets.fillna("N/A")
+            else:
+                self.external_targets = self.ps_data.get_kpi_external_targets(
+                    kpi_operation_types=Consts.OPEN_OPERATION_TYPES,
+                    key_fields=[Consts.EX_PRODUCT_FK, Consts.EX_STATE_FK, Consts.EX_STORE_NUMBER, Consts.EX_SCENE_TYPE,
+                                Consts.EX_ATTR2],
+                    data_fields=[Consts.EX_MIN_FACINGS, Consts.EX_MINIMUM_SHELF, Consts.EX_BENCHMARK_VALUE,
+                                 Consts.EX_COMPETITOR_FK])
+                self.external_targets = self.external_targets.fillna("N/A")
+        elif self.attr6 != Consts.ON:
+                self.init_assortment()
+                self.external_targets = self.ps_data.get_kpi_external_targets(
+                    kpi_operation_types=Consts.INDEPENDENT_OPERATION_TYPES,
+                    key_fields=[Consts.EX_SCENE_TYPE, Consts.EX_ATTR2], data_fields=[Consts.EX_MIN_FACINGS])
+                self.external_targets = self.external_targets.fillna("N/A")
         if self.attr6 == Consts.OFF:
             total_off_trade_fk = self.common.get_kpi_fk_by_kpi_name(
                 Consts.DB_ASSORTMENTS_NAMES[Consts.OFF]) if self.attr11 in Consts.NOT_INDEPENDENT_STORES else \
