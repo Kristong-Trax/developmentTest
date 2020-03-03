@@ -39,7 +39,7 @@ class CaseCountCalculator(GlobalSessionToolBox):
             total_cases_res = self._calculate_and_total_cases(cases_per_brand_res + implied_shoppable_cases_kpi_res)
             self._save_results_to_db(total_cases_res, Ccc.TOTAL_CASES_KPI, should_enter=False)
         except Exception as err:
-            Log.error("DiageoUS Case Count calculation failed with the following error: {}".format(err))
+            Log.error("DiageoUS Case Count calculation failed due to the following error: {}".format(err))
 
     @staticmethod
     def _calculate_and_total_cases(kpi_results):
