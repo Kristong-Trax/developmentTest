@@ -47,23 +47,6 @@ class PS3SandToolBox:
         if res_json:
             self.commonV2.write_to_db_result(fk=res_json['fk'], numerator_id=1, denominator_id=self.store_id,
                                              result=res_json['result'])
-        # Brand Blocking Global function
-        template_data = self.template_handler.download_template(DiageoKpiNames.BRAND_BLOCKING)
-        res_dict = self.diageo_generator.diageo_global_block_together(
-            kpi_name=DiageoKpiNames.BRAND_BLOCKING,
-            set_templates_data=template_data)
-        self.commonV2.save_json_to_new_tables(res_dict)
-
-        # Global Relative Position function
-        template_data = self.template_handler.download_template(DiageoKpiNames.RELATIVE_POSITION)
-        res_dict = self.diageo_generator.diageo_global_relative_position_function(
-            template_data, location_type='template_name')
-        self.commonV2.save_json_to_new_tables(res_dict)
-
-        # Global Vertical Shelf Placement function
-        template_data = self.template_handler.download_template(DiageoKpiNames.VERTICAL_SHELF_PLACEMENT)
-        res_dict = self.diageo_generator.diageo_global_vertical_placement(template_data)
-        self.commonV2.save_json_to_new_tables(res_dict)
 
         # committing to the new tables
         self.commonV2.commit_results_data()
