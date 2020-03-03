@@ -26,18 +26,19 @@ if __name__ == '__main__':
     
     # all sessions still in new status
     sessions = [
-        '3cea5b52-5efb-45fb-9955-31e1f6e21e08'
+        # ('c52a5d6f-c434-4aba-bf61-374623ebfb16', [311827, 311843]),
+        # ('a9fd1037-88f6-4c6b-b31e-c72b7eaec8f4', [308047, 308081]),
+        ('be64b68e-f52f-4a29-8ec2-ec0d8a2096f7', [310364, 310371, 310399, 310406])
     ]
 
-
-    for session in sessions:
-        # data_provider = KEngineDataProvider(project_name)
-        # data_provider.load_session_data(session)
-        # scif = data_provider['scene_item_facts']
-        # scenes = scif['scene_id'].unique().tolist()
-        #
-        # for scene in [38007, 38010, 38013, 38016, 38019, 38027, 38032]:
-        #     print('scene')
+    for session, scenes in sessions:
+        # if len(scenes) == 0:
+        #     data_provider = KEngineDataProvider(project_name)
+        #     data_provider.load_session_data(session)
+        #     scif = data_provider['scene_item_facts']
+        #     scenes = scif['scene_id'].unique().tolist()
+        # for scene in scenes:
+        #     print('scene: {}'.format(scene))
         #     data_provider = KEngineDataProvider(project_name)
         #     data_provider.load_scene_data(session, scene)
         #     output = VanillaOutput()
