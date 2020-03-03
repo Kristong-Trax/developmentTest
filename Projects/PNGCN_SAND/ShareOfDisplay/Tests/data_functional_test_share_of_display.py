@@ -16,7 +16,7 @@ QUEUE_REGION = AwsRegions.NORTH_VIRGINIA
 SCENE_ID = 206042
 
 
-class PNGCN_SANDSodTestSeedData(BaseSeedData):
+class SodTestSeedData(BaseSeedData):
 
     schema = {
         DATA_TYPE: BaseSeedData.MYSQL,
@@ -30,7 +30,7 @@ class PNGCN_SANDSodTestSeedData(BaseSeedData):
         PROJECT_NAME: TestProjectsNames().TEST_PROJECT_1}
 
 
-class PNGCN_SANDInsertDataIntoMySqlProjectSOD(object):
+class InsertDataIntoMySqlProjectSOD(object):
     def __init__(self, project):
         self._conn = PSProjectConnector(project, DbUsers.Garage)
         self._cur = self._conn.db.cursor()
