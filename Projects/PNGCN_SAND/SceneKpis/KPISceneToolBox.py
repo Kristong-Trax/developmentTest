@@ -61,6 +61,15 @@ MIN_LAYER_NUMBER = 'Min_layer_#'
 MATCH_PRODUCT_IN_PROBE_FK = 'match_product_in_probe_fk'
 MATCH_PRODUCT_IN_PROBE_STATE_REPORTING_FK = 'match_product_in_probe_state_reporting_fk'
 
+# EYE LEVEL KPIs
+EYE_LEVEL_SE_BR_KPI = 'Eye_level_SEQUENCE_brand'
+EYE_LEVEL_SE_BR_SB_KPI = 'Eye_level_SEQUENCE_brand_subbrand'
+EYE_LEVEL_SE_BR_SC_KPI = 'Eye_level_SEQUENCE_brand_subcategory'
+EYE_LEVEL_SE_BR_SC_SB_KPI = 'Eye_level_SEQUENCE_brand_subcategory_subbrand'
+EYE_LEVEL_SE_BR_SB_FL_KPI = 'Eye_level_SEQUENCE_brand_subbrand_flavor'
+EYE_LEVEL_SE_BR_SC_FL_KPI = 'Eye_level_SEQUENCE_brand_subcategory_flavor'
+EYE_LEVEL_SE_BR_SC_SB_FL_KPI = 'Eye_level_SEQUENCE_brand_subcategory_subbrand_flavor'
+
 
 class PngcnSceneKpis(object):
 
@@ -147,10 +156,13 @@ class PngcnSceneKpis(object):
         self.match_probe_in_scene = self.get_product_special_attribute_data(self.scene_id)
         self.match_product_in_probe_state_reporting = self.psdataprovider.get_match_product_in_probe_state_reporting()
         self.sub_brand_entities = self.psdataprovider.get_custom_entities_df('sub_brand')
+        # self.all_templates = self.data_provider[Data.ALL_TEMPLATES]
+        # self.scenes_info = pd.merge(self.data_provider[Data.SCENES_INFO],
+        #                             self.all_templates, on="template_fk", how="left")
 
     def process_scene(self):
-        self.calculate_variant_block()
-        self.save_nlsos_to_custom_scif()
+        # self.calculate_variant_block()
+        # self.save_nlsos_to_custom_scif()
         self.calculate_eye_level_kpi()
         self.calculate_linear_length()
         self.calculate_presize_linear_length()
@@ -381,23 +393,23 @@ class PngcnSceneKpis(object):
         """
         if self.matches_from_data_provider.empty:
             return
-
-        # Get category of scene, check if relevant, if not return
-        try:
-            scene_category = self._get_scene_category(self.scene_id)
-            if not scene_category or scene_category not in EYE_LEVEL_RELEVANT_CATEGORIES:
-                return
-        except Exception as ex:
-            Log.error("Couldn't find scene category for scene number {}, error {}".format(str(self.scene_id), ex))
-            return
-        entity_df = self._get_category_specific_entities(scene_category)
+        #
+        # # Get category of scene, check if relevant, if not return
+        # try:
+        #     scene_category = self._get_scene_category(self.scene_id)
+        #     if not scene_category or scene_category not in EYE_LEVEL_RELEVANT_CATEGORIES:
+        #         return
+        # except Exception as ex:
+        #     Log.error("Couldn't find scene category for scene number {}, error {}".format(str(self.scene_id), ex))
+        #     return
+        entity_df = self.psdataprovider.get_custom_entities_with_names()
         if entity_df.empty:
             return
         df = self.get_eye_level_shelves(self.matches_from_data_provider)
         full_df = pd.merge(df, self.all_products, on="product_fk")
         max_shelf_count = self.matches_from_data_provider["shelf_number"].max()
         self.calculate_facing_eye_level(full_df, max_shelf_count)
-        self.calculate_sequence_eye_level(entity_df, full_df, scene_category)
+        self.calculate_sequence_eye_level(entity_df, full_df)
 
     def _get_category_specific_entities(self, scene_category):
         eye_level_fragments = self.psdataprovider.get_custom_entities_df('eye_level_fragments')
@@ -409,6 +421,11 @@ class PngcnSceneKpis(object):
         elif scene_category == FEM_CATEGORY:
             att3_entity = self.psdataprovider.get_custom_entities_df('att3')
             return eye_level_fragments.append(att3_entity)
+
+    def _get_custom_entities(self):
+        eye_level_fragments = self.psdataprovider.get_custom_entities_df('eye_level_fragments')
+        return eye_level_fragments
+
 
     def _get_category_specific_filters(self, scene_category, full_df):
         if scene_category == PCC_CATEGORY:
@@ -498,7 +515,7 @@ class PngcnSceneKpis(object):
                                            denominator_id=category_fk, numerator_result=shelf_number,
                                            result=facings, score=max_shelf_count, by_scene=True)
 
-    def calculate_sequence_eye_level(self, entity_df, full_df, scene_category):
+    def calculate_sequence_eye_level(self, entity_df, full_df):
         """
         Saving sequence of brand-sub_category blocks (not including stackings)
         :param entity_df: the sub_-category-brand custom_entety fields, to save the correct entity
@@ -506,11 +523,19 @@ class PngcnSceneKpis(object):
         :param scene_category: scene category to get the specific category filter
         :return: saves the sequence of each shelf (combine all bays)
         """
-        kpi_sequence_fk = self.common.get_kpi_fk_by_kpi_name(Eye_level_kpi_SEQUENCE)
+        kpi_sequence_br_fk = self.common.get_kpi_fk_by_kpi_type(EYE_LEVEL_SE_BR_KPI)
+        kpi_sequence_br_sb_fk = self.common.get_kpi_fk_by_kpi_type(EYE_LEVEL_SE_BR_SB_KPI)
+        kpi_sequence_fk = self.common.get_kpi_fk_by_kpi_type(EYE_LEVEL_SE_BR_SC_KPI)
+        kpi_sequence_fk = self.common.get_kpi_fk_by_kpi_type(EYE_LEVEL_SE_BR_SC_SB_KPI)
+        kpi_sequence_fk = self.common.get_kpi_fk_by_kpi_type(EYE_LEVEL_SE_BR_SB_FL_KPI)
+        kpi_sequence_fk = self.common.get_kpi_fk_by_kpi_type(EYE_LEVEL_SE_BR_SC_FL_KPI)
+        kpi_sequence_fk = self.common.get_kpi_fk_by_kpi_type(EYE_LEVEL_SE_BR_SC_SB_FL_KPI)
         results_sequence_df = pd.DataFrame(
             columns=['fk', 'numerator_id', 'denominator_id', 'numerator_result', 'result',
                      'score', 'by_scene', 'temp_bay_number'])
         full_df = full_df[full_df['stacking_layer'] == 1]
+        categories = set(full_df['category_fk'])
+        for category_fk in categories:
 
         category_specific_filter = self._get_category_specific_filters(scene_category, full_df)
         for key in category_specific_filter.keys():
