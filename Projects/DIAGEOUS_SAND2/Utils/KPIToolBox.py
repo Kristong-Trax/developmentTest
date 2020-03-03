@@ -9,7 +9,7 @@ from KPIUtils_v2.GlobalDataProvider.PsDataProvider import PsDataProvider
 from Trax.Utils.Logging.Logger import Log
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from datetime import datetime
-from Projects.DIAGEOUS.Data.LocalConsts import Consts
+from Projects.DIAGEOUS_SAND2.Data.LocalConsts import Consts
 import os
 import pandas as pd
 import json
