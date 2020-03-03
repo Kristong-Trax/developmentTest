@@ -17,7 +17,6 @@ class Generator:
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
         self.tool_box = ToolBox(self.data_provider, self.output, set_up_file)
 
-
     STORE = "Store"
     @log_runtime('Total Calculations', log_start=True)
     def main_function(self):
@@ -29,7 +28,3 @@ class Generator:
             Log.warning('Scene item facts is empty for this session')
         self.tool_box.main_calculation()
 #        self.tool_box.commit_results()
-
-
-
-

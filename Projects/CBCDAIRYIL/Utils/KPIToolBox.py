@@ -61,6 +61,9 @@ class CBCDAIRYILToolBox:
         elif self.visit_date <= datetime.date(datetime(2020, 02, 01)):
             return "{}/{}/{}".format(Consts.TEMPLATE_PATH, Consts.PREVIOUS_TEMPLATES,
                                      Consts.PROJECT_TEMPLATE_NAME_UNTIL_2020_02_01)
+        elif self.visit_date <= datetime.date(datetime(2020, 02, 10)):
+            return "{}/{}/{}".format(Consts.TEMPLATE_PATH, Consts.PREVIOUS_TEMPLATES,
+                                     Consts.PROJECT_TEMPLATE_NAME_UNTIL_2020_02_10)
         else:
             return "{}/{}".format(Consts.TEMPLATE_PATH, Consts.CURRENT_TEMPLATE)
 

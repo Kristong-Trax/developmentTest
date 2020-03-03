@@ -59,6 +59,8 @@ class LIBERTYToolBox:
             if sheet == Const.MINIMUM_FACINGS:
                 converters = {Const.BASE_SIZE_MIN: self.convert_base_size_values,
                               Const.BASE_SIZE_MAX: self.convert_base_size_values}
+            elif sheet == Const.SURVEY_QUESTION_SKUS:
+                converters = {Const.EAN_CODE: lambda x: str(x)}
             templates[sheet] = \
                 pd.read_excel(Const.TEMPLATE_PATH, sheet_name=sheet,
                               converters=converters).fillna('')
