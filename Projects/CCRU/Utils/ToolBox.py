@@ -2012,13 +2012,13 @@ class CCRUKPIToolBox:
 
         return set_total_res
 
-    def calculate_sub_atomic_passed_on_the_same_scene(self, params, all_params, scenes, parent):
-        total_res = 0
+    def calculate_sub_atomic_passed_on_the_same_scene(self, params, all_params, scenes=None, parent=None):
+        total_res = [0]
         if not scenes:
             scenes = self.get_relevant_scenes(params)
         for scene in scenes:
-            total_res += self.calculate_sub_atomic_passed(params, all_params, scenes=[scene], parent=parent)
-        return total_res
+            total_res += [self.calculate_sub_atomic_passed(params, all_params, scenes=[scene], parent=parent)]
+        return max(total_res)
 
     def calculate_sub_atomic_passed(self, params, all_params, scenes=None, parent=None, same_scene=None):
         if not scenes:

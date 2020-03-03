@@ -319,6 +319,105 @@ class TestCCRU(TestFunctionalCase):
         test_result = tool_box.check_number_of_scenes_no_tagging(params[0][0], level=3)
         self.assertEquals(check_result, test_result)
 
+    def test_calculate_number_of_scenes_with_target_1(self):
+        test_case = 'test_calculate_number_of_scenes_with_target_1'
+        self.mock_data_provider()
+        self.mock_tool_box()
+        tool_box = CCRUKPIToolBox(self.data_provider, self.output)
+        tool_box.set_kpi_set(self.data.pos_kpi_set_name, self.data.pos_kpi_set_type)
+        params, check_result = self.get_pos_test_case(test_case)
+        test_result = tool_box.calculate_number_of_scenes_with_target(params[0][0])
+        self.assertEquals(check_result, test_result)
+
+    def test_calculate_sub_atomic_passed_on_the_same_scene_1(self):
+        test_case = 'test_calculate_sub_atomic_passed_on_the_same_scene_1'
+        self.mock_data_provider()
+        self.mock_tool_box()
+        tool_box = CCRUKPIToolBox(self.data_provider, self.output)
+        tool_box.set_kpi_set(self.data.pos_kpi_set_name, self.data.pos_kpi_set_type)
+        params, check_result = self.get_pos_test_case(test_case)
+        test_result = tool_box.calculate_sub_atomic_passed_on_the_same_scene(params[0][0], params,
+                                                                             scenes=[1, 2, 3], parent=MagicMock())
+        self.assertEquals(check_result, test_result)
+
+    def test_check_atomic_passed_1(self):
+        test_case = 'test_check_atomic_passed_1'
+        self.mock_data_provider()
+        self.mock_tool_box()
+        tool_box = CCRUKPIToolBox(self.data_provider, self.output)
+        tool_box.set_kpi_set(self.data.pos_kpi_set_name, self.data.pos_kpi_set_type)
+        params, check_result = self.get_pos_test_case(test_case)
+        test_result = tool_box.check_atomic_passed(params)
+        self.assertEquals(check_result, test_result)
+
+    def test_check_atomic_passed_on_the_same_scene_1(self):
+        test_case = 'test_check_atomic_passed_on_the_same_scene_1'
+        self.mock_data_provider()
+        self.mock_tool_box()
+        tool_box = CCRUKPIToolBox(self.data_provider, self.output)
+        tool_box.set_kpi_set(self.data.pos_kpi_set_name, self.data.pos_kpi_set_type)
+        params, check_result = self.get_pos_test_case(test_case)
+        test_result = tool_box.check_atomic_passed_on_the_same_scene(params)
+        self.assertEquals(check_result, test_result)
+
+    def test_check_sum_atomics_1(self):
+        test_case = 'test_check_sum_atomics_1'
+        self.mock_data_provider()
+        self.mock_tool_box()
+        tool_box = CCRUKPIToolBox(self.data_provider, self.output)
+        tool_box.set_kpi_set(self.data.pos_kpi_set_name, self.data.pos_kpi_set_type)
+        params, check_result = self.get_pos_test_case(test_case)
+        test_result = tool_box.check_sum_atomics(params)
+        self.assertEquals(check_result, test_result)
+
+    def test_check_weighted_average_1(self):
+        test_case = 'test_check_weighted_average_1'
+        self.mock_data_provider()
+        self.mock_tool_box()
+        tool_box = CCRUKPIToolBox(self.data_provider, self.output)
+        tool_box.set_kpi_set(self.data.pos_kpi_set_name, self.data.pos_kpi_set_type)
+        params, check_result = self.get_pos_test_case(test_case)
+        test_result = tool_box.check_weighted_average(params)
+        self.assertEquals(round(check_result, 6), round(test_result, 6))
+
+    def test_check_dummies_1(self):
+        test_case = 'test_check_dummies_1'
+        self.mock_data_provider()
+        self.mock_tool_box()
+        tool_box = CCRUKPIToolBox(self.data_provider, self.output)
+        tool_box.set_kpi_set(self.data.pos_kpi_set_name, self.data.pos_kpi_set_type)
+        params, check_result = self.get_pos_test_case(test_case)
+        test_result = tool_box.check_dummies(params)
+        self.assertEquals(check_result, test_result)
+
+    def test_check_kpi_scores_1(self):
+        test_case = 'test_check_kpi_scores_1'
+        self.mock_data_provider()
+        self.mock_tool_box()
+        tool_box = CCRUKPIToolBox(self.data_provider, self.output)
+        tool_box.set_kpi_set(self.data.pos_kpi_set_name, self.data.pos_kpi_set_type)
+        tool_box.kpi_name_to_id[self.data.pos_kpi_set_type] = \
+            {'kpi_1': 1, 'kpi_2': 2, 'kpi_3': 3, 'kpi_4': 4, 'kpi_5': 5}
+        tool_box.kpi_scores_and_results[self.data.pos_kpi_set_type] = \
+            {1: {'score': 0}, 2: {'score': 100}, 3: {'score': 30}, 4: {'score': 100}, 5: {'score': 100}}
+        params, check_result = self.get_pos_test_case(test_case)
+        test_result = tool_box.check_kpi_scores(params)
+        self.assertEquals(check_result, test_result)
+
+    def test_check_kpi_scores_2(self):
+        test_case = 'test_check_kpi_scores_2'
+        self.mock_data_provider()
+        self.mock_tool_box()
+        tool_box = CCRUKPIToolBox(self.data_provider, self.output)
+        tool_box.set_kpi_set(self.data.pos_kpi_set_name, self.data.pos_kpi_set_type)
+        tool_box.kpi_name_to_id[self.data.pos_kpi_set_type] = \
+            {'kpi_1': 1, 'kpi_2': 2, 'kpi_3': 3, 'kpi_4': 4, 'kpi_5': 5}
+        tool_box.kpi_scores_and_results[self.data.pos_kpi_set_type] = \
+            {1: {'score': 0}, 2: {'score': 100}, 3: {'score': 30}, 4: {'score': 100}, 5: {'score': 100}}
+        params, check_result = self.get_pos_test_case(test_case)
+        test_result = tool_box.check_kpi_scores(params)
+        self.assertEquals(check_result, test_result)
+
 
 # writer = pd.ExcelWriter('./store_areas.xlsx', engine='xlsxwriter')
 # self.store_areas.to_excel(writer, sheet_name='store_areas', index_label='#')
