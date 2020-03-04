@@ -5,7 +5,7 @@ __author__ = 'hunter'
 
 class Const(object):
     TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)),
-                                 'Liberty_bottlers_Template_subquestions_added_2020_02_27.xlsx')
+                                 'Liberty_bottlers_Template_subquestions_added_2020_03_03.xlsx')
     LIBERTY = ' - Liberty'
     DRILLDOWN = ' - Drilldown'
     RED_SCORE_PARENT = 'RED SCORE - Liberty'
@@ -61,6 +61,8 @@ class Const(object):
     GREATER_THAN_ONE = '>001'
     EXCLUDED_CATEGORY = 'excluded_category'
     EXCLUDED_SIZE_SUBPACKAGES_NUM = 'Excluded Base Size; Multi Pack Size'
+    EXCLUDED_BRAND_MULTIPACK_SIZE = 'Excluded Brand;MULTI-PACK SIZE'
+    EXCLUDED_CATEGORY_MULTIPACK_SIZE = 'Excluded Category;MULTI-PACK SIZE'
 
     # Share of Display columns
     INCLUDE_BODY_ARMOR = 'body_armor_delivered'
@@ -101,3 +103,5 @@ class Const(object):
 
     SCIF_MULTI_PACK_SIZE = 'MULTI-PACK SIZE'
     SCIF_BASE_SIZE = 'BASE SIZE'
+    SCIF_BRAND = 'brand_name'
+    SCIF_CATEGORY = 'category'
