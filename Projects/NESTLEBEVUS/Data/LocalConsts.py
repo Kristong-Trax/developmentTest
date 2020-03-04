@@ -5,6 +5,7 @@ class Consts(object):
     SOS = 'SOS'
     DISTRIBUTION = 'Distribution'
     ADJACENCY_BRAND_WITHIN_BAY = 'Adjacency Brand within Bay'
+    ADJACENCY_CATEGORY_WITHIN_BAY = 'Adjacency Category within Bay'
 
     # Excel Column Names
     KPI_NAME = 'KPI Name'
@@ -13,6 +14,7 @@ class Consts(object):
 
     #Scif Columns
     BRAND_FK = 'brand_fk'
+    BRAND_NAME = 'brand_name'
     SCENE_FK = 'scene_fk'
     BAY_NUMBER = 'bay_number'
 

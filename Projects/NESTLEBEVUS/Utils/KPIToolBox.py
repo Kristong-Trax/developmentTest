@@ -1,4 +1,5 @@
 from Trax.Algo.Calculations.Core.DataProvider import Data
+from Trax.Algo.Calculations.Core.AdjacencyGraph.Builders import AdjacencyGraphBuilder
 from Trax.Utils.Logging.Logger import Log
 from KPIUtils_v2.Utils.GlobalScripts.Scripts import GlobalSessionToolBox
 from KPIUtils_v2.Calculations.BlockCalculations_v2 import Block
@@ -50,7 +51,7 @@ def log_runtime(description, log_start=False):
     return decorator
 
 
-SHEETS = [Consts.KPIS, Consts.SOS, Consts.DISTRIBUTION, Consts.ADJACENCY_BRAND_WITHIN_BAY]
+SHEETS = [Consts.KPIS, Consts.SOS, Consts.DISTRIBUTION, Consts.ADJACENCY_BRAND_WITHIN_BAY, Consts.ADJACENCY_CATEGORY_WITHIN_BAY]
 
 
 class ToolBox(GlobalSessionToolBox):
@@ -61,8 +62,8 @@ class ToolBox(GlobalSessionToolBox):
         self.match_product_in_scene = self.data_provider[Data.MATCHES]
         self.block = Block(data_provider)
         self.own_manufacturer_fk = int(self.data_provider.own_manufacturer.param_value.values[0])
-        self.results_df = pd.DataFrame(columns=['kpi_name', 'kpi_fk', 'numerator_id', 'numerator_result',
-                                                'denominator_id', 'denominator_result', 'result'])
+        self.results_df = pd.DataFrame(columns=['kpi_name', 'kpi_fk', 'numerator_id', 'numerator_result', 'context_id',
+                                                'denominator_id', 'denominator_result', 'result', 'score'])
 
     def parse_template(self):
         for sheet in SHEETS:
@@ -70,8 +71,8 @@ class ToolBox(GlobalSessionToolBox):
 
     def main_calculation(self):
         relevant_kpi_template = self.templates[Consts.KPIS]
-        # Consts.SOS, Consts.DISTRIBUTION]
-        foundation_kpi_types = [Consts.ADJACENCY_BRAND_WITHIN_BAY]
+        # Consts.SOS, Consts.DISTRIBUTION,Consts.ADJACENCY_BRAND_WITHIN_BAY,
+        foundation_kpi_types = [ Consts.ADJACENCY_CATEGORY_WITHIN_BAY]
         foundation_kpi_template = relevant_kpi_template[
             relevant_kpi_template[Consts.KPI_TYPE].isin(foundation_kpi_types)]
 
@@ -118,42 +119,167 @@ class ToolBox(GlobalSessionToolBox):
             return self.calculate_distribution
         elif kpi_type == Consts.ADJACENCY_BRAND_WITHIN_BAY:
             return self.calculate_adjacency_brand
+        elif kpi_type == Consts.ADJACENCY_CATEGORY_WITHIN_BAY:
+            return self.calculate_adjacency_category
 
     def calculate_adjacency_brand(self, row):
         kpi_name = row[Consts.KPI_NAME]
         kpi_fk = self.get_kpi_fk_by_kpi_type(kpi_name)
-        relevant_brands = map(int,self.sanitize_values(row['brand_fk']))
+        relevant_brands = self._sanitize_values(row[Consts.BRAND_NAME])  # Gets the brand name from the template
+        direction = {'UP': 0, 'DOWN': 2, 'RIGHT': 1, 'LEFT': 3}
+        result_dict_list = []
 
-        match_scene_item_facts = self.match_product_in_scene.merge(self.scif, how='left', on='scene_fk')
-        relevant_match_scene_item_facts = self.filter_df(match_scene_item_facts, {Consts.BRAND_FK: relevant_brands})
+        match_scene_item_facts = self.match_product_in_scene.merge(self.scif, how='left',
+                                                                   on='scene_fk')  # Merges scif with mpis on scene fk
+        relevant_match_scene_item_facts = self._filter_df(match_scene_item_facts, {
+            Consts.BRAND_NAME: relevant_brands})  # Filter the merged data frame with the brand to get the relevant dataframe
 
-        for relevant_scene in set(relevant_match_scene_item_facts.scene_fk):
+        for relevant_scene in set(
+                relevant_match_scene_item_facts.scene_fk):  # Iterating through the unique scenes in the merged dataframe
             mcif = relevant_match_scene_item_facts[relevant_match_scene_item_facts.scene_fk.isin([relevant_scene])]
-            unique_bay_numbers = set(mcif.bay_number)
+            unique_bay_numbers = set(mcif.bay_number)  # Getting the unique bay numbers in the the scene
             location = {Consts.SCENE_FK: relevant_scene}
             for bay in unique_bay_numbers:
                 #  Consts.BRAND_FK: relevant_brands,, Consts.BAY_NUMBER:bay
-                relevant_filters = {Consts.BRAND_FK:relevant_brands}
+                # relevant_mpis = self.match_product_in_scene[self.match_product_in_scene.bay_number.isin([bay])]
+                relevant_filters = {Consts.BRAND_NAME: relevant_brands, Consts.BAY_NUMBER: [bay]}
                 # block = self.block.network_x_block_together(relevant_filters,
                 #                                             location=location_filters,
                 #                                             additional={'minimum_facing_for_block': 1,
                 #                                                         'use_masking_only': True})
                 block = self.block.network_x_block_together(relevant_filters,
                                                             location=location,
-                                                            additional={'minimum_facing_for_block': 1, 'use_masking_only':True})
-                # match_fk_list = set(match for cluster in passed_blocks for node in cluster.nodes() for match in
-                #                     cluster.node[node]['group_attributes']['match_fk_list'])
+                                                            additional={'allowed_edge_type': ['connected'],
+                                                                        'calculate_all_scenes': True,
+                                                                        'minimum_facing_for_block': 1,
+                                                                        'use_masking_only': True,
+                                                                        'allowed_products_filters': {
+                                                                            'product_type': 'Empty'},
+                                                                        })
+                passed_block = block[block.is_block == True]
+                if not passed_block.empty:
+                    passed_block = passed_block.iloc[passed_block.block_facings.astype(
+                        int).idxmax()]  # logic to get the block with the largest number of facings in the block
 
-                # for node in adj_g.node:
-                #     print(adj_g.nodes(data=True)[node]['scene_match_fk'])
-                # self.block.adj_graphs_by_scene.values()[0].edges.data('degree')
+                    valid_cluster_for_block = passed_block.cluster.nodes.values()
+                    relevant_scene_match_fks_for_block = [scene_match_fk for item in valid_cluster_for_block for
+                                                          scene_match_fk in item['scene_match_fk']]
 
-                a =1
+                    '''The below line is used to filter the adjacency graph by the closest edges. Specifically since
+                     the edges are determined by masking only, there's a chance that there will be two edges that come
+                     out from a single node.'''
+                    adj_graph = self.block.adj_graphs_by_scene.values()[0].edge_subgraph(
+                        self._filter_redundant_edges(self.block.adj_graphs_by_scene.values()[0]))
+
+                    adj_items = {}  # will contain the scene match fks that are adjacent to the block
+                    for match in relevant_scene_match_fks_for_block:
+                        for node, node_data in adj_graph.adj[match].items():
+                            if node not in relevant_scene_match_fks_for_block:
+                                important_brand = mcif.loc[mcif.scene_match_fk == node, 'brand_fk'].iat[0]
+                                adj_items[node] = [node_data, important_brand]
+
+                    brand_fks_for_adj_items = np.array([nd[1] for nd in adj_items.values()])
+                    node_direction = np.array([nd[0]['direction'] for nd in adj_items.values()])
+
+                    for dir, dir_fk in direction.items():
+                        if dir in node_direction:
+                            index_of_revant_brand_fk = np.where(node_direction == dir)
+                            relevant_brand_fks_for_adj_items = brand_fks_for_adj_items[index_of_revant_brand_fk]
+                            values, counts = np.unique(relevant_brand_fks_for_adj_items, return_counts=True)
+                            for j in range(len(values)):
+                                denominator_id = values[j]
+                                numerator_result = dir_fk
+                                context_id = bay
+                                result = counts[j]
+                                score = relevant_scene
+                                result_dict = {'kpi_fk': kpi_fk, 'numerator_id': denominator_id,
+                                               'denominator_id': denominator_id, 'context_id': context_id,
+                                               'numerator_result': numerator_result,
+                                               'result': result, 'score': score}
+                                result_dict_list.append(result_dict)
+        return result_dict_list
+
+    def calculate_adjacency_category(self, row):
+        kpi_name = row[Consts.KPI_NAME]
+        kpi_fk = self.get_kpi_fk_by_kpi_type(kpi_name)
+        relevant_brands = self._sanitize_values(row[Consts.BRAND_NAME])  # Gets the brand name from the template
+        direction = {'UP': 0, 'DOWN': 2, 'RIGHT': 1, 'LEFT': 3}
+        result_dict_list = []
+
+        match_scene_item_facts = self.match_product_in_scene.merge(self.scif, how='left',
+                                                                   on='scene_fk')  # Merges scif with mpis on scene fk
+        relevant_match_scene_item_facts = self._filter_df(match_scene_item_facts, {
+            Consts.BRAND_NAME: relevant_brands})  # Filter the merged data frame with the brand to get the relevant dataframe
+
+        for relevant_scene in set(
+                relevant_match_scene_item_facts.scene_fk):  # Iterating through the unique scenes in the merged dataframe
+            mcif = relevant_match_scene_item_facts[relevant_match_scene_item_facts.scene_fk.isin([relevant_scene])]
+            unique_bay_numbers = set(mcif.bay_number)  # Getting the unique bay numbers in the the scene
+            location = {Consts.SCENE_FK: relevant_scene}
+            for bay in unique_bay_numbers:
+                #  Consts.BRAND_FK: relevant_brands,, Consts.BAY_NUMBER:bay
+                # relevant_mpis = self.match_product_in_scene[self.match_product_in_scene.bay_number.isin([bay])]
+                relevant_filters = {Consts.BRAND_NAME: relevant_brands, Consts.BAY_NUMBER: [bay]}
+                # block = self.block.network_x_block_together(relevant_filters,
+                #                                             location=location_filters,
+                #                                             additional={'minimum_facing_for_block': 1,
+                #                                                         'use_masking_only': True})
+                block = self.block.network_x_block_together(relevant_filters,
+                                                            location=location,
+                                                            additional={'allowed_edge_type': ['connected'],
+                                                                        'calculate_all_scenes': True,
+                                                                        'minimum_facing_for_block': 1,
+                                                                        'use_masking_only': True,
+                                                                        'allowed_products_filters': {
+                                                                            'product_type': 'Empty'},
+                                                                        })
+                passed_block = block[block.is_block == True]
+                if not passed_block.empty:
+                    passed_block = passed_block.iloc[passed_block.block_facings.astype(
+                        int).idxmax()]  # logic to get the block with the largest number of facings in the block
+
+                    valid_cluster_for_block = passed_block.cluster.nodes.values()
+                    relevant_scene_match_fks_for_block = [scene_match_fk for item in valid_cluster_for_block for
+                                                          scene_match_fk in item['scene_match_fk']]
+
+                    '''The below line is used to filter the adjacency graph by the closest edges. Specifically since
+                     the edges are determined by masking only, there's a chance that there will be two edges that come
+                     out from a single node.'''
+                    adj_graph = self.block.adj_graphs_by_scene.values()[0].edge_subgraph(
+                        self._filter_redundant_edges(self.block.adj_graphs_by_scene.values()[0]))
+
+                    adj_items = {}  # will contain the scene match fks that are adjacent to the block
+                    for match in relevant_scene_match_fks_for_block:
+                        for node, node_data in adj_graph.adj[match].items():
+                            if node not in relevant_scene_match_fks_for_block:
+                                important_brand = mcif.loc[mcif.scene_match_fk == node, 'category_fk'].iat[0]
+                                adj_items[node] = [node_data, important_brand]
+
+                    category_fks_for_adj_items = np.array([nd[1] for nd in adj_items.values()])
+                    node_direction = np.array([nd[0]['direction'] for nd in adj_items.values()])
+
+                    for dir, dir_fk in direction.items():
+                        if dir in node_direction:
+                            index_of_revant_brand_fk = np.where(node_direction == dir)
+                            relevant_category_fks_for_adj_items = category_fks_for_adj_items[index_of_revant_brand_fk]
+                            values, counts = np.unique(relevant_category_fks_for_adj_items, return_counts=True)
+                            for j in range(len(values)):
+                                denominator_id = values[j]
+                                numerator_result = dir_fk
+                                context_id = bay
+                                result = counts[j]
+                                score = relevant_scene
+                                result_dict = {'kpi_fk': kpi_fk, 'numerator_id': denominator_id,
+                                               'denominator_id': denominator_id, 'context_id': context_id,
+                                               'numerator_result': numerator_result,
+                                               'result': result, 'score': score}
+                                result_dict_list.append(result_dict)
+        return result_dict_list
 
     def calculate_distribution(self, row):
         kpi_name = row[Consts.KPI_NAME]
         kpi_fk = self.get_kpi_fk_by_kpi_type(kpi_name)
-        relevant_product_fk = self.sanitize_values(row.product_list_pk)
+        relevant_product_fk = self._sanitize_values(row.product_list_pk)
 
         bool_array_present_products_fk_in_session = pd.np.in1d(relevant_product_fk,
                                                                self.scif.product_fk.unique().tolist())
@@ -181,7 +307,7 @@ class ToolBox(GlobalSessionToolBox):
     def calculate_sos(self, row):
         kpi_name = row[Consts.KPI_NAME]
         kpi_fk = self.get_kpi_fk_by_kpi_type(kpi_name)
-        iterate_by = self.sanitize_values(row.iterate_by)
+        iterate_by = self._sanitize_values(row.iterate_by)
 
         # Have to save the sos by sku. So each sku will have its result (sos) saved
         # The skus relevant are saved in the iterate(in the template)
@@ -215,7 +341,7 @@ class ToolBox(GlobalSessionToolBox):
         return result_dict_list
 
     @staticmethod
-    def sanitize_values(item):
+    def _sanitize_values(item):
         if pd.isna(item):
             return item
         else:
@@ -223,7 +349,7 @@ class ToolBox(GlobalSessionToolBox):
             return items
 
     @staticmethod
-    def filter_df(df, filters, exclude=0):
+    def _filter_df(df, filters, exclude=0):
         for key, val in filters.items():
             if not isinstance(val, list):
                 val = [val]
@@ -232,3 +358,40 @@ class ToolBox(GlobalSessionToolBox):
             else:
                 df = df[df[key].isin(val)]
         return df
+
+    def _filter_redundant_edges(self, adj_g):
+        """Since the edges determines by the masking only, there's a chance that there will be two edges
+        that come out from a single node. This method filters the redundant ones (the ones who skip the
+        closet adjecent node)"""
+        edges_filter = []
+        for node_fk, node_data in adj_g.nodes(data=True):
+            for direction in ['UP', 'DOWN', 'LEFT', 'RIGHT']:
+                edges = [(edge[0], edge[1]) for edge in list(adj_g.edges(node_fk, data=True)) if
+                         edge[2]['direction'] == direction]
+                if len(edges) <= 1:
+                    edges_filter.extend(edges)
+                else:
+                    edges_filter.append(self._get_shortest_path(adj_g, edges))
+        return edges_filter
+
+    def _get_shortest_path(self, adj_g, edges_to_check):
+        """ This method gets a list of edge and returns the one with the minimum distance"""
+        distance_per_edge = {edge: self._get_edge_distance(adj_g, edge) for edge in edges_to_check}
+        shortest_edge = min(distance_per_edge, key=distance_per_edge.get)
+        return shortest_edge
+
+    def _get_edge_distance(self, adj_g, edge):
+        """
+        This method gets an edge and calculate it's length (the distance between it's nodes)
+        """
+        first_node_coordinate = np.array(self._get_node_display_coordinates(adj_g, edge[0]))
+        second_node_coordinate = np.array(self._get_node_display_coordinates(adj_g, edge[1]))
+        distance = np.sqrt(np.sum((first_node_coordinate - second_node_coordinate) ** 2))
+        return distance
+
+    def _get_node_display_coordinates(self, adj_g, node_fk):
+        """
+        This method gets a node and extract the Display coordinates (x and y).
+        Those attributes were added to each node since this is the attributes we condensed the graph by
+        """
+        return float(list(adj_g.nodes[node_fk]['rect_x'])[0]), float(list(adj_g.nodes[node_fk]['rect_y'])[0])
