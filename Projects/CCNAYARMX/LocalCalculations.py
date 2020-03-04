@@ -17,8 +17,15 @@ if __name__ == '__main__':
         # 'E45618DB-39E9-45A4-B541-054C85515A69',
         # '90004fbd-58dd-418f-a359-f2605134291c',
         # '677d0628-9566-4760-8702-821882f74665',
-        # 'f6f086d8-b269-4f2d-8229-144af3b1edf8'
-    ]
+        # 'f6f086d8-b269-4f2d-8229-144af3b1edf8',
+        # '7e117743-0448-447b-9ad3-7c895ca8a0b7',
+        # '543f7eff-309b-419c-8f39-931cc5cbcba6',
+        # '199eda17-4fbb-4c23-b02d-8f3f47e079d9',
+        # '69b028e2-5119-4c11-a846-94ca29adede4',
+          # 'cf7bd046-0acc-4c60-bb33-3ed5dfdd836e',
+        # 'E45618DB-39E9-45A4-B541-054C85515A69',
+        ]
+
 
     for session in session_list:
         data_provider.load_session_data(session)
