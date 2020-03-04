@@ -29,7 +29,7 @@ KPS_RESULT = 'report.kps_results'
 SCORE_TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(
     __file__)), '..', 'Data', 'Score Template_Solar_2019_DH_1.4.xlsx')
 MAIN_TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(
-    __file__)), '..', 'Data', 'KPI Template 2019_DH_1.4.xlsx')
+    __file__)), '..', 'Data', 'KPI Template 2019_DH_1.4_CR.xlsx')
 
 
 class SOLARBRToolBox:
@@ -99,6 +99,11 @@ class SOLARBRToolBox:
         kpi_name = main_line[Const.KPI_NAME]
         kpi_type = main_line[Const.Type]
         template_groups = self.does_exist(main_line, Const.TEMPLATE_GROUP)
+        template_groups = self.does_exist(main_line, Const.TEMPLATE_GROUP)
+        exclude_template_groups = main_line[Const.EXCLUDED_TEMPLATE_GROUPS]
+
+        if exclude_template_groups != None:
+            self.scif = self.scif[~self.scif['template_group'].isin([exclude_template_groups])]
 
         general_filters = {}
 

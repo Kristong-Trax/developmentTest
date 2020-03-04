@@ -5,6 +5,8 @@ import os
 class Consts(object):
     # Template consts
     PROJECT_TEMPLATE_NAME_UNTIL_2019_12_31 = 'Template_until_2019-12-31.xlsx'
+    PROJECT_TEMPLATE_NAME_UNTIL_2020_02_01 = 'Template_until_2020-02-01.xlsx'
+    PROJECT_TEMPLATE_NAME_UNTIL_2020_02_10 = 'Template_until_2020-02-10.xlsx'
     PREVIOUS_TEMPLATES = 'Previous Templates'
     CURRENT_TEMPLATE = 'Template.xlsx'
     TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), 'Data')
@@ -44,6 +46,12 @@ class Consts(object):
     EYE_LEVEL = 'Eye Level'
     SURVEY = 'Survey'
     PLANOGRAM_KPI = u'פלנוגרמה'
+    SOS_BY_OWN_MAN = 'SOS_BY_OWN_MAN'
+    SOS_BY_OWN_MAN_CAT = 'SOS_BY_OWN_MAN_CAT'
+    SOS_BY_OWN_MAN_CAT_BRAND = 'SOS_BY_OWN_MAN_CAT_BRAND'
+    SOS_BY_OWN_MAN_CAT_BRAND_SKU = 'SOS_BY_OWN_MAN_CAT_BRAND_SKU'
+    OOS = 'OOS'
+    OOS_SKU = 'OOS - SKU'
 
     # General Attributes
     CODE = 'code'
@@ -89,6 +97,7 @@ class Consts(object):
 
     # CBC data
     CBC_MANU = 45
+    LEADING_PRODUCTS = u'מוצרים מובילים'
     CBC_COOLERS = u'מקרר חברה מרכזית'
     COMPETITOR_COOLERS = [u'מקרר מתחרה', u'מקרר קמעונאי']
     SURVEY_ANSWERS_TO_IGNORE = [u'הסידור אינו קטגוריאלי', u'אין מותגים אחרים']

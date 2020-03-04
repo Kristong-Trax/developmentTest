@@ -30,7 +30,7 @@ CATEGORIES = []
 TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)),
                              '..', 'Data', "Pernod_US KPI_PS v0.1_Updated 8.29.19.xlsx")
 DISPLAY_TEMPLATE_PATH = os.path.join(os.path.dirname(
-    os.path.realpath(__file__)), '..', 'Data', "Pernod_display_kpi.xlsx")
+    os.path.realpath(__file__)), '..', 'Data', "Pernod_Display1.27.2.xlsx")
 
 
 class PERNODUSToolBox:
@@ -734,34 +734,37 @@ class PERNODUSToolBox:
         score = 0
         numerator_res = 0
         for value1 in values_1:
-
             if param1 == Const.brand:
-                manufacturer_of_brand = self.all_products[Const.manufacturer][self.all_products[param1] == value1].iloc[
-                    0]
-                if manufacturer_of_brand in checked_manufacturers:
+                try:
+                    manufacturer_of_brand = self.all_products[Const.manufacturer][self.all_products[param1] == value1].iloc[
+                        0]
+                    if manufacturer_of_brand in checked_manufacturers:
+                        pass
+                    else:
+
+                        brands_list = self.all_products[Const.brand][
+                            self.all_products[Const.manufacturer] == manufacturer_of_brand].unique().tolist()
+                        for brand in brands_list:
+                            values_2 = self.all_products[Const.sub_category][self.all_products[param1] == brand].unique(
+                            ).tolist()
+                            values_2 = [x for x in values_2 if x is not None]
+                            filter_df_columns = [Const.scene_id,
+                                                 Const.manufacturer, Const.brand, Const.facings]
+                            groupby_df_columns = [Const.scene_id, Const.manufacturer, Const.brand]
+                            filter_param = Const.sub_category
+
+                            # METHOD
+
+                            for value2 in values_2:
+                                general_filters = {filter_param: value2,
+                                                   Const.product_type: [Const.SKU, Const.OTHER]}
+
+                                self.share_of_display_grouping(kpi_set_fk, param1, brand, value2, filter_df_columns,
+                                                               groupby_df_columns, **general_filters)
+                        checked_manufacturers.append(manufacturer_of_brand)
+                except:
+                    value1
                     pass
-                else:
-
-                    brands_list = self.all_products[Const.brand][
-                        self.all_products[Const.manufacturer] == manufacturer_of_brand].unique().tolist()
-                    for brand in brands_list:
-                        values_2 = self.all_products[Const.sub_category][self.all_products[param1] == brand].unique(
-                        ).tolist()
-                        values_2 = [x for x in values_2 if x is not None]
-                        filter_df_columns = [Const.scene_id,
-                                             Const.manufacturer, Const.brand, Const.facings]
-                        groupby_df_columns = [Const.scene_id, Const.manufacturer, Const.brand]
-                        filter_param = Const.sub_category
-
-                        # METHOD
-
-                        for value2 in values_2:
-                            general_filters = {filter_param: value2,
-                                               Const.product_type: [Const.SKU, Const.OTHER]}
-
-                            self.share_of_display_grouping(kpi_set_fk, param1, brand, value2, filter_df_columns,
-                                                           groupby_df_columns, **general_filters)
-                    checked_manufacturers.append(manufacturer_of_brand)
             else:
                 values_2 = self.all_products[Const.category][self.all_products[param1] == value1].unique(
                 ).tolist()
@@ -774,6 +777,7 @@ class PERNODUSToolBox:
                                        Const.product_type: [Const.SKU, Const.OTHER]}
                     self.share_of_display_grouping(kpi_set_fk, param1, value1, value2, filter_df_columns,
                                                    groupby_df_columns, **general_filters)
+
 
     def share_of_display_grouping(self, kpi_set_fk, param_type, param_value, category_sub_category_value,
                                   filter_df_columns, groupby_df_columns, **general_filters):
@@ -1014,13 +1018,10 @@ class PERNODUSToolBox:
                 return numerator, denominator
 
         except Exception as e:
-
             Log.error(e.message)
-
         return True
 
     def check_mpis(self):
-
         if self.scif.empty:
             return None
         else:

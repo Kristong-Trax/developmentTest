@@ -115,17 +115,21 @@ POS_CAT_KPI_DICT = {'Availability': AVAILABILITY_CAT_FOR_MR, 'SOS': SOS_CAT_FOR_
 
 class CCRUKPIToolBox:
 
-    MIN_CALC_DATE = '2020-01-25'
+    MIN_CALC_DATE = '2019-10-26'
+
+    ALLOWED_POS_SETS = tuple(CCRUConsts.ALLOWED_POS_SETS)
 
     STANDARD_VISIT = 'Standard visit'
     PROMO_VISIT = 'Promo visit'
     SOVI_SOCVI_VISIT = 'SOVI/SOCVI'
     SEGMENTATION_VISIT = 'Segmentation'
+    GROWTH_FORMULA = 'Growth formula'
 
     VISIT_TYPE = {1: STANDARD_VISIT,
                   2: PROMO_VISIT,
                   3: SOVI_SOCVI_VISIT,
-                  4: SEGMENTATION_VISIT}
+                  4: SEGMENTATION_VISIT,
+                  5: GROWTH_FORMULA}
 
     def __init__(self, data_provider, output, kpi_set_name=None, kpi_set_type=None, update_kpi_set=False):
         self.data_provider = data_provider
@@ -292,7 +296,7 @@ class CCRUKPIToolBox:
             sub_location = list(
                 self.scif.loc[self.scif['template_name'] == scene_type]['additional_attribute_2'].values)
             if sub_location:
-                sub_location = sub_location[0]
+                sub_location = unicode(sub_location[0])
                 if sub_location not in sub_location_data.keys():
                     sub_location_data[sub_location] = []
             sub_location_data[sub_location].append(scene)
@@ -958,28 +962,29 @@ class CCRUKPIToolBox:
         if not relevant_scenes:
             return None
 
+        values_list = [unicode(x).strip()
+                       for x in unicode(params.get('Values')).split(', ')]
+
+        categories = [unicode(x).strip()
+                      for x in unicode(params.get('Product Category')).strip().split(', ')]
+
         if params.get('Manufacturer'):
-            manufacturers = \
-                [unicode(x).strip()
-                 for x in unicode(params.get('Manufacturer')).strip().split(', ')]
+            manufacturers = [unicode(x).strip()
+                             for x in unicode(params.get('Manufacturer')).strip().split(', ')]
         else:
             manufacturers = self.kpi_fetcher.TCCC
+
         if params.get('Formula').strip() == 'sos with empty':
             if params.get('Type') == 'MAN':
                 pop_filter = (self.scif['scene_id'].isin(relevant_scenes))
                 subset_filter = (self.scif[Fd.M_NAME].isin(manufacturers))
             elif params.get('Type') == 'MAN in CAT':
-                pop_filter = ((self.scif[Fd.CAT].isin(params.get('Values'))) &
+                pop_filter = ((self.scif[Fd.CAT].isin(values_list)) &
                               (self.scif['scene_id'].isin(relevant_scenes)))
                 subset_filter = (self.scif[Fd.M_NAME].isin(manufacturers))
             else:
                 return 0
         else:
-            try:
-                values_list = [unicode(x).strip()
-                               for x in unicode(params.get('Values')).split(', ')]
-            except Exception as e:
-                values_list = [params.get('Values')]
             if params.get('Type') == 'MAN':
                 pop_filter = ((self.scif['scene_id'].isin(relevant_scenes)) &
                               (~self.scif['product_type'].isin(['Empty'])))
@@ -992,13 +997,13 @@ class CCRUKPIToolBox:
                 subset_filter = ((self.scif[Fd.M_NAME].isin(manufacturers)) &
                                  (~self.scif['product_type'].isin(['Empty'])))
             elif params.get('Type') == 'SUB_BRAND_IN_CAT':
-                pop_filter = ((self.scif[Fd.CAT] == params.get('Product Category')) &
+                pop_filter = ((self.scif[Fd.CAT].isin(categories)) &
                               (self.scif['scene_id'].isin(relevant_scenes)) &
                               (~self.scif['product_type'].isin(['Empty'])))
                 subset_filter = ((self.scif['sub_brand_name'].isin(values_list)) &
                                  (~self.scif['product_type'].isin(['Empty'])))
             elif params.get('Type') == 'BRAND_IN_CAT':
-                pop_filter = ((self.scif[Fd.CAT] == params.get('Product Category')) &
+                pop_filter = ((self.scif[Fd.CAT].isin(categories)) &
                               (self.scif['scene_id'].isin(relevant_scenes)) &
                               (~self.scif['product_type'].isin(['Empty'])))
                 subset_filter = ((self.scif['brand_name'].isin(values_list)) &
@@ -1117,13 +1122,14 @@ class CCRUKPIToolBox:
             else:
                 scenes = self.get_relevant_scenes(p)
             if p.get('Formula').strip() == 'number of pure Coolers':
-                score = self.calculate_share_of_cch(p, scenes, sos=False)
+                result = self.calculate_share_of_cch(p, scenes, sos=False)
             elif p.get('Formula').strip() == 'Share of CCH doors which have 98% TCCC facings':
-                score = self.calculate_share_of_cch(p, scenes)
+                result = self.calculate_share_of_cch(p, scenes)
             elif p.get('Formula').strip() == 'Share of CCH doors which have 98% TCCC facings and no FC packs':
-                score = self.calculate_share_of_cch(p, scenes, no_fc_packs=True)
+                result = self.calculate_share_of_cch(p, scenes, no_fc_packs=True)
             else:
-                score = self.calculate_share_of_cch(p, scenes)
+                result = self.calculate_share_of_cch(p, scenes)
+            score = self.calculate_score(result, p)
             kpi_fk = self.kpi_fetcher.get_kpi_fk(p.get('KPI name Eng'))
             atomic_kpi_fk = self.kpi_fetcher.get_atomic_kpi_fk(p.get('KPI name Eng'), kpi_fk)
             if p.get('KPI Weight') is None:
@@ -1133,13 +1139,13 @@ class CCRUKPIToolBox:
             # saving to DB
             if level == 2:
                 attributes_for_level3 = self.create_attributes_for_level3_df(
-                    p, score, kpi_fk, atomic_kpi_fk, level=2, additional_level=3)
+                    p, result, kpi_fk, atomic_kpi_fk, level=2, additional_level=3)
                 self.write_to_kpi_results_old(attributes_for_level3, 'level3')
                 attributes_for_level2 = self.create_attributes_for_level2_df(p, score, kpi_fk)
                 self.write_to_kpi_results_old(attributes_for_level2, 'level2')
             else:
                 attributes_for_level3 = self.create_attributes_for_level3_df(
-                    p, score, kpi_fk, atomic_kpi_fk)
+                    p, result, kpi_fk, atomic_kpi_fk)
                 self.write_to_kpi_results_old(attributes_for_level3, 'level3')
 
             if p.get("KPI ID") in params.values()[2]["SESSION LEVEL"]:
@@ -1204,13 +1210,13 @@ class CCRUKPIToolBox:
                                      (self.scif['size_unit'] == 'l') & (self.scif['size'] > 1) &
                                      (self.scif['location_type'] == p.get('Locations to include')) &
                                      (self.scif['product_type'] != 'Empty')]['facings'].sum()
-                fc_packs_passed = True if fc_packs > 0 else False
+                fc_packs_passed = False if fc_packs > 0 else True
             else:
                 fc_packs_passed = True
             if products_of_tccc == 0:
                 proportion = 0
             else:
-                proportion = products_of_tccc / all_products
+                proportion = products_of_tccc / float(all_products)
             scene_type = self.scif.loc[self.scif['scene_id'] == scene]['template_name'].values[0]
             if any(self.templates[self.templates['template_name'] == scene_type]['additional_attribute_1']):
                 num_of_doors = \
@@ -1451,19 +1457,103 @@ class CCRUKPIToolBox:
 
         return score
 
+    def get_relevant_products_by_type_and_values(self, params,
+                                                 return_column='product_fk',
+                                                 include_product_types='SKU'):
+        value_type = \
+            {
+                'CAT': 'category',
+                'SUB_CATEGORY': 'sub_category',
+                'MAN in CAT': 'category',
+                'MAN': 'manufacturer_name',
+                'BRAND': 'brand_name',
+                'SUB_BRAND': 'sub_brand_name',
+                'SKUs': 'product_ean_code',
+            }
+
+        if not isinstance(include_product_types, (list, tuple, set)):
+            include_product_types = [include_product_types]
+
+        filtered_products = self.products
+
+        if params.get('Type') in value_type.keys():
+            filter_name = value_type[params.get('Type')]
+            filter_values = [unicode(x).strip() for x in unicode(params.get('Values')).split(', ')]
+            filtered_products = filtered_products[filtered_products[filter_name].isin(filter_values)]
+
+        if include_product_types:
+            filtered_products = filtered_products[filtered_products['product_type'].isin(include_product_types)]
+
+        if return_column in filtered_products.columns:
+            return_list = filtered_products[return_column].unique().tolist()
+        else:
+            return_list = []
+
+        return return_list
+
+    def get_relevant_products_by_product_filters(self, params,
+                                                 return_column='product_fk',
+                                                 include_product_types='SKU'):
+        filters = \
+            {
+                'Manufacturer': 'manufacturer_name',
+                'Brand': 'brand_name',
+                'Sub brand': 'sub_brand_name',
+                'Product Category': 'category',
+                'Sub category': 'sub_category',
+                'Product': 'product_ean_code',
+                'Form Factor': 'form_factor',
+                'Size': 'size',
+
+                'Products to exclude': 'product_ean_code',
+                'Form factors to exclude': 'form_factor',
+
+            }
+
+        if not isinstance(include_product_types, (list, tuple, set)):
+            include_product_types = [include_product_types]
+
+        filtered_products = self.products
+
+        for filter_name in filters.keys():
+            if params.get(filter_name) is not None:
+                if filters[filter_name] == 'size':
+                    filter_values = [float(x) for x in str(params.get(filter_name)).split(', ')]
+                    filter_values = [int(x) if int(x) == x else x for x in filter_values]
+                else:
+                    filter_values = [unicode(x).strip() for x in unicode(params.get(filter_name)).split(', ')]
+                if filter_name.find('exclude') < 0:
+                    filtered_products = filtered_products[filtered_products[filters[filter_name]].isin(filter_values)]
+                else:
+                    filtered_products = filtered_products[~filtered_products[filters[filter_name]].isin(filter_values)]
+
+        if include_product_types:
+            filtered_products = filtered_products[filtered_products['product_type'].isin(include_product_types)]
+
+        if return_column in filtered_products.columns:
+            return_list = filtered_products[return_column].unique().tolist()
+        else:
+            return_list = []
+
+        return return_list
+
     def calculate_lead_sku(self, params, scenes=None):
         if not scenes:
             scenes = self.get_relevant_scenes(params)
-        if params.get('Product Category'):
-            category = [unicode(x).strip() for x in unicode(
-                params.get('Product Category')).split(', ')]
-            relevant_products_and_facings = self.scif[
-                (self.scif['scene_id'].isin(scenes)) & ~(self.scif['product_type'].isin(['Empty', 'Other'])) &
-                (self.scif['category'].isin(category))]
+        relevant_products = self.get_relevant_products_by_product_filters(params,
+                                                                          return_column='product_fk',
+                                                                          include_product_types='SKU')
+        relevant_products_and_facings = self.scif[
+            (self.scif['scene_id'].isin(scenes)) &
+            (self.scif['product_fk'].isin(relevant_products))]
+
+        if params.get('Type') == 'SKUs':
+            values = [unicode(x).strip()
+                      for x in unicode(params.get('Values')).replace(' ', '').replace('=', '\n').split('\n')]
         else:
-            relevant_products_and_facings = self.scif[
-                (self.scif['scene_id'].isin(scenes)) & ~(self.scif['product_type'].isin(['Empty', 'Other']))]
-        values = [unicode(x).strip() for x in unicode(params.get('Values')).replace(' ', '').replace('=', '\n').split('\n')]
+            values = [','.join(self.get_relevant_products_by_type_and_values(params,
+                                                                             return_column='product_ean_code',
+                                                                             include_product_types='SKU'))]
         partner_skus = []
         tested_skus = []
         if values:
@@ -1747,6 +1837,9 @@ class CCRUKPIToolBox:
                         atomic_res = self.check_number_of_scenes_no_tagging(c, level=3)
                     elif c.get("Formula").strip() == "check_number_of_scenes_with_facings_target":
                         atomic_res = self.calculate_number_of_scenes_with_target(c)
+                    elif c.get("Formula").strip() == "number of sub atomic KPI Passed on the same scene":
+                        atomic_res = self.calculate_sub_atomic_passed_on_the_same_scene(
+                            c, params, parent=p, scenes=[])
                     else:
                         # print "the atomic's formula is ", c.get('Formula').strip()
                         atomic_res = 0
@@ -1921,6 +2014,8 @@ class CCRUKPIToolBox:
 
     def calculate_sub_atomic_passed_on_the_same_scene(self, params, all_params, scenes, parent):
         total_res = 0
+        if not scenes:
+            scenes = self.get_relevant_scenes(params)
         for scene in scenes:
             total_res += self.calculate_sub_atomic_passed(params, all_params, scenes=[scene], parent=parent)
         return total_res
@@ -2554,7 +2649,7 @@ class CCRUKPIToolBox:
                                                       'kpk_name',
                                                       'score'])
 
-        target = 100 * (param.get('KPI Weight') if param.get('KPI Weight') else 1)
+        target = 100 * (param.get('KPI Weight') if param.get('KPI Weight') is not None else 1)
         if self.kpi_scores_and_results[self.kpi_set_type].get(str(param.get('KPI ID'))):
             if self.kpi_scores_and_results[self.kpi_set_type][str(param.get('KPI ID'))].get('target'):
                 target = self.kpi_scores_and_results[self.kpi_set_type][str(
@@ -2565,7 +2660,10 @@ class CCRUKPIToolBox:
                                                    'weight': param.get('KPI Weight'),
                                                    # 'result': round(score),
                                                    'score': round(score),
-                                                   'weighted_score': round(score) * (param.get('KPI Weight') if param.get('KPI Weight') else 1)})
+                                                   'weighted_score':
+                                                       round(score) * (param.get('KPI Weight')
+                                                                       if param.get('KPI Weight') is not None
+                                                                       else 1)})
 
         return attributes_for_table2
 
@@ -2651,7 +2749,10 @@ class CCRUKPIToolBox:
                                                    'weight': param.get('KPI Weight'),
                                                    'result': result,
                                                    'score': round(score),
-                                                   'weighted_score': round(round(score) * (param.get('KPI Weight') if param.get('KPI Weight') else 1), 2),
+                                                   'weighted_score':
+                                                       round(round(score) * (param.get('KPI Weight')
+                                                                             if param.get('KPI Weight') is not None
+                                                                             else 1), 2),
                                                    'additional_level': additional_level})
 
         return attributes_for_table3
@@ -2737,7 +2838,21 @@ class CCRUKPIToolBox:
         return set_total_res
 
     def get_pos_kpi_set_name(self, update_kpi_set=False):
+        pos = self.get_pos_by_session()
+        if pos not in self.ALLOWED_POS_SETS or update_kpi_set:
+            if self.visit_type == self.GROWTH_FORMULA:
+                if str(self.visit_date) < self.MIN_CALC_DATE:
+                    pos = self.get_pos_by_store_attribute('additional_attribute_22')
+                else:
+                    pos = self.get_pos_by_store_attribute('additional_attribute_21')
+            if pos not in self.ALLOWED_POS_SETS:
+                if str(self.visit_date) < self.MIN_CALC_DATE:
+                    pos = self.get_pos_by_store_attribute('additional_attribute_12')
+                else:
+                    pos = self.get_pos_by_store_attribute('additional_attribute_11')
+        return pos
 
+    def get_pos_by_session(self):
         query = """
                 select s.name 
                 from report.kps_results r
@@ -2748,30 +2863,21 @@ class CCRUKPIToolBox:
         cur = self.rds_conn.db.cursor()
         cur.execute(query)
         res = cur.fetchall()
+        pos = res[0][0] if res else None
+        return pos
 
-        if not res or update_kpi_set:
-            if str(self.visit_date) < self.MIN_CALC_DATE:
-                query = """
-                        select ss.additional_attribute_12 
-                        from static.stores ss 
-                        join probedata.session ps on ps.store_fk=ss.pk 
-                        where ss.delete_date is null and ps.session_uid = '{}';
-                        """.format(self.session_uid)
-            else:
-                query = """
-                        select ss.additional_attribute_11 
-                        from static.stores ss 
-                        join probedata.session ps on ps.store_fk=ss.pk 
-                        where ss.delete_date is null and ps.session_uid = '{}';
-                        """.format(self.session_uid)
-
-            cur = self.rds_conn.db.cursor()
-            cur.execute(query)
-            res = cur.fetchall()
-
-        df = pd.DataFrame(list(res), columns=['POS'])
-
-        return df['POS'][0]
+    def get_pos_by_store_attribute(self, pos_store_attribute):
+        query = """
+                select ss.{} 
+                from static.stores ss 
+                join probedata.session ps on ps.store_fk=ss.pk 
+                where ps.session_uid = '{}';
+                """.format(pos_store_attribute, self.session_uid)
+        cur = self.rds_conn.db.cursor()
+        cur.execute(query)
+        res = cur.fetchall()
+        pos = res[0][0] if res else None
+        return pos
 
     @kpi_runtime()
     def calculate_gaps_old(self, params):
@@ -3386,7 +3492,7 @@ class CCRUKPIToolBox:
             facings_data = scene_data.groupby('product_fk')['facings'].sum().to_dict()
             for anchor_product_fk in top_skus['product_fks'].keys():
                 min_facings = top_skus['min_facings'][anchor_product_fk]
-                distributed = False
+                distributed_anchor_product_fk = False
                 for product_fk in top_skus['product_fks'][anchor_product_fk].split(','):
                     product_fk = int(product_fk)
                     facings = facings_data.pop(product_fk, 0)
@@ -3394,19 +3500,19 @@ class CCRUKPIToolBox:
                     #     facings = facings_data[product_fk]
                     # else:
                     #     facings = 0
-                    if facings >= min_facings:
-                        distributed = True
+                    distributed_product_fk = True if facings >= min_facings else False
+                    distributed_anchor_product_fk |= distributed_product_fk
                     top_sku_products = top_sku_products.append({'anchor_product_fk': anchor_product_fk,
                                                                 'product_fk': product_fk,
                                                                 'facings': facings,
                                                                 'min_facings': min_facings,
                                                                 'in_assortment': 1,
-                                                                'distributed': 1 if distributed else 0,
+                                                                'distributed': 1 if distributed_product_fk else 0,
                                                                 'distributed_extra': 0},
                                                                ignore_index=True)
 
                 query = self.get_custom_scif_query(
-                    self.session_fk, scene_fk, int(anchor_product_fk), in_assortment, distributed)
+                    self.session_fk, scene_fk, int(anchor_product_fk), in_assortment, distributed_anchor_product_fk)
                 self.top_sku_queries.append(query)
 
             if facings_data:
@@ -3888,7 +3994,7 @@ class CCRUKPIToolBox:
             if kpi_set_type in [POS, EQUIPMENT, SPIRITS]:
                 score = score if kpi['weighted_score'] is None else kpi['weighted_score']
                 weight = weight if kpi['weight'] is None else kpi['weight']
-                target = weight*100 if weight and kpi['level'] < 3 else kpi['target']
+                target = weight*100 if weight is not None and kpi['level'] < 3 else kpi['target']
             else:
                 score = score if kpi['score'] is None else kpi['score']
                 weight = kpi['weight']
@@ -3903,7 +4009,7 @@ class CCRUKPIToolBox:
                                                     (self.kpi_result_values['result_value'] == result)][
                         'result_value_fk'].values[0]
             else:
-                if kpi_set_type in [POS, EQUIPMENT, SPIRITS] and kpi['level'] in (1, 2):
+                if kpi_set_type in [POS, EQUIPMENT, SPIRITS] and kpi['level'] == 1:
                     result = round(score/weight) if score and weight \
                         else score
                 else:

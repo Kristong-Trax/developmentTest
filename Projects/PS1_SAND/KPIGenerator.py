@@ -1,10 +1,8 @@
-
 from Trax.Utils.Logging.Logger import Log
-from Projects.PS1_SAND.Utils.KPIToolBox import PS1SandToolBox
-from KPIUtils_v2.Utils.Decorators.Decorators import log_runtime
+from Projects.PS1_SAND.Utils.KPIToolBox import PS1SandToolBox, log_runtime
 
 
-class PS1Generator:
+class PS1SandGenerator:
 
     def __init__(self, data_provider, output):
         self.data_provider = data_provider

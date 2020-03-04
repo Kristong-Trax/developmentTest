@@ -717,23 +717,22 @@ class BATRUToolBox:
 
                 else:
                     pass
-
         # new tables - lvl 2
         # for product_fk, product_results in new_sku_results.items():
         #     self.common.write_to_db_result(fk=contracted_sku_fk, numerator_id=product_fk, denominator_id=self.store_id,
         #                                    result=product_results['result'], score=product_results['score'],
         #                                    identifier_parent=identifier_parent_contracted, should_enter=True)
-
         for product_fk, product_results in new_sku_results.items():
-            if product_results['initial_result'] == 'NA' and product_results['initial_score'] == 'NA':
-                self.common.write_to_db_result(fk=contracted_sku_fk, numerator_id=product_fk,
-                                               denominator_id=self.store_id,
-                                               result=product_results['result'], score=product_results['score'])
-            else:
-                self.common.write_to_db_result(fk=contracted_sku_fk, numerator_id=product_fk,
-                                               denominator_id=self.store_id, result=product_results['result'],
-                                               score=product_results['score'],
-                                               identifier_parent=identifier_parent_contracted, should_enter=True)
+            if product_results.get('initial_result') and product_results.get('initial_score'):
+                if product_results['initial_result'] == 'NA' and product_results['initial_score'] == 'NA':
+                    self.common.write_to_db_result(fk=contracted_sku_fk, numerator_id=product_fk,
+                                                   denominator_id=self.store_id,
+                                                   result=product_results['result'], score=product_results['score'])
+                else:
+                    self.common.write_to_db_result(fk=contracted_sku_fk, numerator_id=product_fk,
+                                                   denominator_id=self.store_id, result=product_results['result'],
+                                                   score=product_results['score'],
+                                                   identifier_parent=identifier_parent_contracted, should_enter=True)
         return
 
     def calculate_history_based_assortment(self, session_id, required_template_group=None):

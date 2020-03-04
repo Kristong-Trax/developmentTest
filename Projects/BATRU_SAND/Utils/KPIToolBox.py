@@ -1594,7 +1594,7 @@ class BATRU_SANDToolBox:
                 # NEW PLACEMENT LOGIC
                 no_competitors_lvl2_fk = self.common.get_kpi_fk_by_kpi_type(self.NO_COMPETITORS_KPI_LVL2)
                 empty_spaces_lvl2_fk = self.common.get_kpi_fk_by_kpi_type(self.EMPTY_SPACES_KPI_LVL2)
-                empty_spaces_res = 1 - no_empties
+                empty_spaces_res = no_empties
                 no_competitors_res = no_competitors
                 section_result = str(int(no_competitors_res)) + str(int(sku_presence_passed)) \
                                  + str(int(empty_spaces_res)) + str(int(sku_sequence_passed)) \
