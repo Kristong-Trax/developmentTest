@@ -49,7 +49,7 @@ class ToolBox(GlobalSessionToolBox):
                 result = 1
                 facings = 0
                 # Saving OOS only if product wasn't in store
-                self.common.write_to_db_result(fk=oos_sku_kpi_fk, numerator_id=sku, denominator_id=self.store_id,
+                self.common.write_to_db_result(fk=oos_sku_kpi_fk, numerator_id=sku, denominator_id=category_fk,
                                                result=result, numerator_result=result, denominator_result=result,
                                                score=facings, identifier_parent="CORE_OOS", should_enter=True)
             else:
@@ -132,9 +132,10 @@ class ToolBox(GlobalSessionToolBox):
             score = 1 if ((target - target_range) <= lsos_result <= (target + target_range)) else 0
             store_numerator += score
             self.common.write_to_db_result(fk=kpi_fk, numerator_id=self.own_manufacturer_fk,
-                                           denominator_id=self.store_id, should_enter=True,
+                                           denominator_id=self.store_id, should_enter=True, target=target,
                                            numerator_result=numerator_result, denominator_result=denominator_result,
-                                           result=lsos_result, score=score, identifier_parent='LSOS_SCORE')
+                                           result=lsos_result, score=score, identifier_parent='LSOS_SCORE',
+                                           weight=target_range)
         store_result = self.get_result(store_numerator, store_denominator)
         self.common.write_to_db_result(fk=lsos_score_kpi_fk, numerator_id=self.own_manufacturer_fk,
                                        denominator_id=self.store_id, should_enter=True, target=store_denominator,
