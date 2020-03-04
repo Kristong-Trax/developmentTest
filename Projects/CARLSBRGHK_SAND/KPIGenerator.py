@@ -1,11 +1,12 @@
-
 from Trax.Utils.Logging.Logger import Log
 
-from Projects.DIAGEOUS_SAND2.Utils.CaseCountUtil import CaseCountCalculator
-from Projects.DIAGEOUS_SAND2.Utils.KPIToolBox import ToolBox
+from Projects.CARLSBRGHK_SAND.Utils.KPIToolBox import CARLSBERGToolBox
+
+from KPIUtils_v2.DB.Common import Common
+
 from KPIUtils_v2.Utils.Decorators.Decorators import log_runtime
 
-__author__ = 'Elyashiv'
+__author__ = 'nidhin'
 
 
 class Generator:
@@ -15,7 +16,8 @@ class Generator:
         self.output = output
         self.project_name = data_provider.project_name
         self.session_uid = self.data_provider.session_uid
-        self.tool_box = ToolBox(self.data_provider, self.output)
+        self.tool_box = CARLSBERGToolBox(self.data_provider, self.output)
+        self.common = Common(data_provider)
 
     @log_runtime('Total Calculations', log_start=True)
     def main_function(self):
@@ -23,9 +25,8 @@ class Generator:
         This is the main KPI calculation function.
         It calculates the score for every KPI set and saves it to the DB.
         """
+        only_stock_calc = False
         if self.tool_box.scif.empty:
-            Log.warning('Scene item facts is empty for this session')
-            return
-        self.tool_box.main_calculation()
-        # CaseCountCalculator(self.data_provider, self.tool_box.common).main_case_count_calculations()
-        self.tool_box.common.commit_results_data()
+            only_stock_calc = True
+            Log.warning('Scene item facts is empty for this session. Running to calculate stock collection if any.')
+        self.tool_box.main_calculation(only_stock_calc)
