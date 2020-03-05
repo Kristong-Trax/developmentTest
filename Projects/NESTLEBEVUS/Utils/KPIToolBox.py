@@ -7,17 +7,18 @@ import pandas as pd
 import numpy as np
 import os
 import simplejson
+from collections import Counter
 
 from datetime import datetime
 from Projects.NESTLEBEVUS.Data.LocalConsts import Consts
 
-# from KPIUtils_v2.Utils.Consts.DataProvider import 
-# from KPIUtils_v2.Utils.Consts.DB import 
-# from KPIUtils_v2.Utils.Consts.PS import 
-# from KPIUtils_v2.Utils.Consts.GlobalConsts import 
-# from KPIUtils_v2.Utils.Consts.Messages import 
-# from KPIUtils_v2.Utils.Consts.Custom import 
-# from KPIUtils_v2.Utils.Consts.OldDB import 
+# from KPIUtils_v2.Utils.Consts.DataProvider import
+# from KPIUtils_v2.Utils.Consts.DB import
+# from KPIUtils_v2.Utils.Consts.PS import
+# from KPIUtils_v2.Utils.Consts.GlobalConsts import
+# from KPIUtils_v2.Utils.Consts.Messages import
+# from KPIUtils_v2.Utils.Consts.Custom import
+# from KPIUtils_v2.Utils.Consts.OldDB import
 
 # from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
 # from KPIUtils_v2.Calculations.AvailabilityCalculations import Availability
@@ -51,7 +52,8 @@ def log_runtime(description, log_start=False):
     return decorator
 
 
-SHEETS = [Consts.KPIS, Consts.SOS, Consts.DISTRIBUTION, Consts.ADJACENCY_BRAND_WITHIN_BAY, Consts.ADJACENCY_CATEGORY_WITHIN_BAY]
+SHEETS = [Consts.KPIS, Consts.SOS, Consts.DISTRIBUTION, Consts.ADJACENCY_BRAND_WITHIN_BAY,
+          Consts.ADJACENCY_CATEGORY_WITHIN_BAY, Consts.SHELF_POSITION, Consts.LEAD_ANCHOR_BY_BAY]
 
 
 class ToolBox(GlobalSessionToolBox):
@@ -60,6 +62,8 @@ class ToolBox(GlobalSessionToolBox):
         self.templates = {}
         self.parse_template()
         self.match_product_in_scene = self.data_provider[Data.MATCHES]
+        self.match_scene_item_facts = self.scif.merge(self.match_product_in_scene, how='left',
+                                                      on='product_fk')  # Merges scif with mpis on product_fk
         self.block = Block(data_provider)
         self.own_manufacturer_fk = int(self.data_provider.own_manufacturer.param_value.values[0])
         self.results_df = pd.DataFrame(columns=['kpi_name', 'kpi_fk', 'numerator_id', 'numerator_result', 'context_id',
@@ -71,8 +75,10 @@ class ToolBox(GlobalSessionToolBox):
 
     def main_calculation(self):
         relevant_kpi_template = self.templates[Consts.KPIS]
-        # Consts.SOS, Consts.DISTRIBUTION,Consts.ADJACENCY_BRAND_WITHIN_BAY, Consts.ADJACENCY_CATEGORY_WITHIN_BAY
-        foundation_kpi_types = [Consts.SOS, Consts.DISTRIBUTION,Consts.ADJACENCY_BRAND_WITHIN_BAY, Consts.ADJACENCY_CATEGORY_WITHIN_BAY]
+        # Consts.SOS, Consts.DISTRIBUTION, Consts.ADJACENCY_BRAND_WITHIN_BAY,
+        #                                 Consts.ADJACENCY_CATEGORY_WITHIN_BAY, Consts.SHELF_POSITION
+        foundation_kpi_types = [Consts.SOS, Consts.DISTRIBUTION, Consts.ADJACENCY_BRAND_WITHIN_BAY,
+          Consts.ADJACENCY_CATEGORY_WITHIN_BAY, Consts.SHELF_POSITION, Consts.LEAD_ANCHOR_BY_BAY]
         foundation_kpi_template = relevant_kpi_template[
             relevant_kpi_template[Consts.KPI_TYPE].isin(foundation_kpi_types)]
 
@@ -100,21 +106,18 @@ class ToolBox(GlobalSessionToolBox):
         for i, row in template_df.iterrows():
             calculation_function = self._get_calculation_function_by_kpi_type(row[Consts.KPI_TYPE])
             try:
-                kpi_row = self.templates[row[Consts.KPI_TYPE]][
+                kpi_rows = self.templates[row[Consts.KPI_TYPE]][
                     self.templates[row[Consts.KPI_TYPE]][Consts.KPI_NAME].str.encode('utf-8') == row[
-                        Consts.KPI_NAME].encode('utf-8')].iloc[
-                    0]
+                        Consts.KPI_NAME].encode('utf-8')]
             except IndexError:
                 pass
-            result_data = calculation_function(kpi_row)
-            if result_data:
-                try:
+            for index, kpi_row in kpi_rows.iterrows():
+                result_data = calculation_function(kpi_row)
+                if result_data:
                     for result in result_data:
                         # if result['result'] <= 1:
                         #     result['result'] = result['result'] * 100
                         self.results_df.loc[len(self.results_df), result.keys()] = result
-                except:
-                    a = 1
 
     def _get_calculation_function_by_kpi_type(self, kpi_type):
         if kpi_type == Consts.SOS:
@@ -125,27 +128,33 @@ class ToolBox(GlobalSessionToolBox):
             return self.calculate_adjacency_brand
         elif kpi_type == Consts.ADJACENCY_CATEGORY_WITHIN_BAY:
             return self.calculate_adjacency_category
+        elif kpi_type == Consts.SHELF_POSITION:
+            return self.calculate_shelf_position
+        elif kpi_type == Consts.LEAD_ANCHOR_BY_BAY:
+            return self.calculate_lead_anchor
 
     def calculate_adjacency_brand(self, row):
         kpi_name = row[Consts.KPI_NAME]
         kpi_fk = self.get_kpi_fk_by_kpi_type(kpi_name)
         relevant_brands = self._sanitize_values(row[Consts.BRAND_NAME])  # Gets the brand name from the template
-        relevant_brand_fk_of_the_relevant_brand = self.all_products.loc[self.all_products.brand_name.isin(relevant_brands), 'brand_fk'].iat[0] # used to save as the denominator id
+        relevant_brand_fk_of_the_relevant_brand = \
+            self.all_products.loc[self.all_products.brand_name.isin(relevant_brands), 'brand_fk'].iat[
+                0]  # used to save as the denominator id
         direction = {'UP': 0, 'DOWN': 2, 'RIGHT': 1, 'LEFT': 3}
         result_dict_list = []
 
-        match_scene_item_facts = self.match_product_in_scene.merge(self.scif, how='left',
-                                                                   on='scene_fk')  # Merges scif with mpis on scene fk
-        relevant_match_scene_item_facts = self._filter_df(match_scene_item_facts, {
+        relevant_match_scene_item_facts = self._filter_df(self.match_scene_item_facts, {
             Consts.BRAND_NAME: relevant_brands})  # Filter the merged data frame with the brand to get the relevant dataframe
 
         if not relevant_match_scene_item_facts.empty:
             for relevant_scene in set(
-                    relevant_match_scene_item_facts.scene_fk):  # Iterating through the unique scenes in the merged dataframe
-                mcif = relevant_match_scene_item_facts[relevant_match_scene_item_facts.scene_fk.isin([relevant_scene])]
+                    relevant_match_scene_item_facts.scene_id):  # Iterating through the unique scenes existin the merged dataframe
+                score = relevant_scene
+                mcif = relevant_match_scene_item_facts[relevant_match_scene_item_facts.scene_id.isin([relevant_scene])]
                 unique_bay_numbers = set(mcif.bay_number)  # Getting the unique bay numbers in the the scene
                 location = {Consts.SCENE_FK: relevant_scene}
                 for bay in unique_bay_numbers:
+                    context_id = bay  # bay number
                     #  Consts.BRAND_FK: relevant_brands,, Consts.BAY_NUMBER:bay
                     # relevant_mpis = self.match_product_in_scene[self.match_product_in_scene.bay_number.isin([bay])]
                     relevant_filters = {Consts.BRAND_NAME: relevant_brands, Consts.BAY_NUMBER: [bay]}
@@ -181,7 +190,8 @@ class ToolBox(GlobalSessionToolBox):
                         for match in relevant_scene_match_fks_for_block:
                             for node, node_data in adj_graph.adj[match].items():
                                 if node not in relevant_scene_match_fks_for_block:
-                                    important_brand = mcif.loc[mcif.scene_match_fk == node, 'brand_fk'].iat[0]
+                                    important_brand = self.match_scene_item_facts.loc[
+                                        self.match_scene_item_facts.scene_match_fk == node, 'brand_fk'].iat[0]
                                     adj_items[node] = [node_data, important_brand]
 
                         brand_fks_for_adj_items = np.array([nd[1] for nd in adj_items.values()])
@@ -193,13 +203,11 @@ class ToolBox(GlobalSessionToolBox):
                                 relevant_brand_fks_for_adj_items = brand_fks_for_adj_items[index_of_revant_brand_fk]
                                 values, counts = np.unique(relevant_brand_fks_for_adj_items, return_counts=True)
                                 for j in range(len(values)):
-                                    denominator_id = relevant_brand_fk_of_the_relevant_brand #brand fk of the relevant brand
-                                    numerator_id_id = values[j] #brand_fk of the adjacency product
-                                    numerator_result = dir_fk # the direction of the adjacency
-                                    context_id = bay # bay number
+                                    denominator_id = relevant_brand_fk_of_the_relevant_brand  # brand fk of the relevant brand
+                                    numerator_id = values[j]  # brand_fk of the adjacency product
+                                    numerator_result = dir_fk  # the direction of the adjacency
                                     result = counts[j]
-                                    score = relevant_scene
-                                    result_dict = {'kpi_fk': kpi_fk, 'numerator_id': denominator_id,
+                                    result_dict = {'kpi_fk': kpi_fk, 'numerator_id': numerator_id,
                                                    'denominator_id': denominator_id, 'context_id': context_id,
                                                    'numerator_result': numerator_result,
                                                    'result': result, 'score': score}
@@ -210,19 +218,19 @@ class ToolBox(GlobalSessionToolBox):
         kpi_name = row[Consts.KPI_NAME]
         kpi_fk = self.get_kpi_fk_by_kpi_type(kpi_name)
         relevant_brands = self._sanitize_values(row[Consts.BRAND_NAME])  # Gets the brand name from the template
-        relevant_brand_fk_of_the_relevant_brand = self.all_products.loc[self.all_products.brand_name.isin(relevant_brands), 'brand_fk'].iat[0] # used to save as the denominator id
+        relevant_brand_fk_of_the_relevant_brand = \
+            self.all_products.loc[self.all_products.brand_name.isin(relevant_brands), 'brand_fk'].iat[
+                0]  # used to save as the denominator id
         direction = {'UP': 0, 'DOWN': 2, 'RIGHT': 1, 'LEFT': 3}
         result_dict_list = []
 
-        match_scene_item_facts = self.match_product_in_scene.merge(self.scif, how='left',
-                                                                   on='scene_fk')  # Merges scif with mpis on scene fk
-        relevant_match_scene_item_facts = self._filter_df(match_scene_item_facts, {
+        relevant_match_scene_item_facts = self._filter_df(self.match_scene_item_facts, {
             Consts.BRAND_NAME: relevant_brands})  # Filter the merged data frame with the brand to get the relevant dataframe
 
         if not relevant_match_scene_item_facts.empty:
             for relevant_scene in set(
-                    relevant_match_scene_item_facts.scene_fk):  # Iterating through the unique scenes in the merged dataframe
-                mcif = relevant_match_scene_item_facts[relevant_match_scene_item_facts.scene_fk.isin([relevant_scene])]
+                    relevant_match_scene_item_facts.scene_id):  # Iterating through the unique scenes in the merged dataframe
+                mcif = relevant_match_scene_item_facts[relevant_match_scene_item_facts.scene_id.isin([relevant_scene])]
                 unique_bay_numbers = set(mcif.bay_number)  # Getting the unique bay numbers in the the scene
                 location = {Consts.SCENE_FK: relevant_scene}
                 for bay in unique_bay_numbers:
@@ -261,8 +269,9 @@ class ToolBox(GlobalSessionToolBox):
                         for match in relevant_scene_match_fks_for_block:
                             for node, node_data in adj_graph.adj[match].items():
                                 if node not in relevant_scene_match_fks_for_block:
-                                    important_brand = mcif.loc[mcif.scene_match_fk == node, 'category_fk'].iat[0]
-                                    adj_items[node] = [node_data, important_brand]
+                                    important_category = self.match_scene_item_facts.loc[
+                                        self.match_scene_item_facts.scene_match_fk == node, 'category_fk'].iat[0]
+                                    adj_items[node] = [node_data, important_category]
 
                         category_fks_for_adj_items = np.array([nd[1] for nd in adj_items.values()])
                         node_direction = np.array([nd[0]['direction'] for nd in adj_items.values()])
@@ -270,17 +279,19 @@ class ToolBox(GlobalSessionToolBox):
                         for dir, dir_fk in direction.items():
                             if dir in node_direction:
                                 index_of_revant_brand_fk = np.where(node_direction == dir)
-                                relevant_category_fks_for_adj_items = category_fks_for_adj_items[index_of_revant_brand_fk]
+                                relevant_category_fks_for_adj_items = category_fks_for_adj_items[
+                                    index_of_revant_brand_fk]
                                 values, counts = np.unique(relevant_category_fks_for_adj_items, return_counts=True)
                                 for j in range(len(values)):
-                                    numerator_id = values[j] #brand_fk of the adjacency product
-                                    denominator_id = relevant_brand_fk_of_the_relevant_brand #brand fk of the relevant brand
-                                    numerator_result = dir_fk # the direction of the adjacency
-                                    context_id = bay # bay number
-                                    result = counts[j] # grouped by category, count
+                                    numerator_id = values[j]  # brand_fk of the adjacency product
+                                    denominator_id = relevant_brand_fk_of_the_relevant_brand  # brand fk of the relevant brand
+                                    numerator_result = dir_fk  # the direction of the adjacency
+                                    context_id = bay  # bay number
+                                    result = counts[j]  # grouped by category, count
                                     score = relevant_scene
                                     result_dict = {'kpi_fk': kpi_fk, 'numerator_id': numerator_id,
-                                                   'denominator_id': relevant_brand_fk_of_the_relevant_brand, 'context_id': context_id,
+                                                   'denominator_id': denominator_id,
+                                                   'context_id': context_id,
                                                    'numerator_result': numerator_result,
                                                    'result': result, 'score': score}
                                     result_dict_list.append(result_dict)
@@ -350,6 +361,67 @@ class ToolBox(GlobalSessionToolBox):
             result_dict_list.append(result_dict)
         return result_dict_list
 
+    def calculate_shelf_position(self, row):
+        kpi_name = row[Consts.KPI_NAME]
+        kpi_fk = self.get_kpi_fk_by_kpi_type(kpi_name)
+        relevant_product_fks = self._sanitize_values(row[Consts.NUMERATOR_VALUE_1])
+        result_dict_list = []
+
+        relevant_mcif = self.match_scene_item_facts[self.match_scene_item_facts.product_fk.isin(relevant_product_fks)]
+        if not relevant_mcif.empty:
+            for unique_scene in set(relevant_mcif.scene_id):
+                context_id = unique_scene
+                relevant_mcif_2 = relevant_mcif[relevant_mcif.scene_id.isin([unique_scene])]
+                for bay in set(relevant_mcif_2.bay_number):
+                    denominator_id = bay
+                    relevant_mcif_3 = relevant_mcif_2[relevant_mcif_2.bay_number.isin([bay])]
+                    group_by_mcif = relevant_mcif_3.groupby(['product_fk', 'shelf_number']).first()
+                    relevant_group_by_mcif = group_by_mcif.reset_index('shelf_number')[['shelf_number', 'facings']]
+                    for unique_product_fk in set(relevant_group_by_mcif.index):
+                        final_mcif_of_product_fk = relevant_group_by_mcif.max()
+                        numerator_id = unique_product_fk
+                        numerator_result = final_mcif_of_product_fk.facings
+                        result = final_mcif_of_product_fk.shelf_number
+                        result_dict = {'kpi_fk': kpi_fk, 'numerator_id': numerator_id,
+                                       'denominator_id': denominator_id, 'context_id': context_id,
+                                       'numerator_result': numerator_result,
+                                       'result': result}
+                        result_dict_list.append(result_dict)
+            return result_dict_list
+
+    def calculate_lead_anchor(self, row):
+        kpi_name = row[Consts.KPI_NAME]
+        kpi_fk = self.get_kpi_fk_by_kpi_type(kpi_name)
+        relevant_template_name = row[Consts.TEMPLATE_NAME]
+        result_dict_list = []
+
+        relevant_mcif = self.match_scene_item_facts[
+            self.match_scene_item_facts.template_name.isin([relevant_template_name])]
+        if not relevant_mcif.empty:
+            for relevant_scene in set(relevant_mcif.scene_id):
+                filtered_mcif = relevant_mcif[relevant_mcif.scene_id.isin([relevant_scene])]
+                for bay in set(filtered_mcif.bay_number):
+                    bay_filtered_mcif = filtered_mcif[filtered_mcif.bay_number.isin([bay])]
+                    product_fks = self._get_the_most_right_or_most_left_product_fks_on_bay(bay_filtered_mcif,
+                                                                                           relevant_template_name)
+                    unique_product = Counter(product_fks).keys()
+                    count_of_product_fks = Counter(product_fks).values()
+
+                    for index in range(len(unique_product)):
+                        numerator_id = unique_product[index] # product fk
+                        denominator_id = bay # bay number
+                        context_id = relevant_scene # scene fk
+                        numerator_result = count_of_product_fks[index] # count of facings of LEAD PRODUCTS  on right or left depending on the scene type
+                        denominator_result = sum(count_of_product_fks) # sum of the total facings of LEAD PRODUCTS
+                        result = numerator_result / denominator_result
+                        result_dict = {'kpi_fk': kpi_fk, 'numerator_id': numerator_id,
+                                       'denominator_id': denominator_id, 'context_id': context_id,
+                                       'numerator_result': numerator_result,
+                                       'result': result}
+                        result_dict_list.append(result_dict)
+
+            return result_dict_list
+
     @staticmethod
     def _sanitize_values(item):
         if pd.isna(item):
@@ -405,3 +477,25 @@ class ToolBox(GlobalSessionToolBox):
         Those attributes were added to each node since this is the attributes we condensed the graph by
         """
         return float(list(adj_g.nodes[node_fk]['rect_x'])[0]), float(list(adj_g.nodes[node_fk]['rect_y'])[0])
+
+    @staticmethod
+    def _get_the_most_right_or_most_left_product_fks_on_bay(bay_filtered_mcif, relevant_template_name):
+        '''
+        :param bay_filtered_mcif: the relevant merge dataframe of mpis and scif
+        :param relevant_template_name: the template name (Right door handle or Left door handle)
+        :return: If it is a right door handle, gets the product fks of all the right most product of each shelf.
+        If it is a left door handle, gets the product fk of all the left most product of each shelf.
+        '''
+
+        product_fks = []
+        for shelf in set(bay_filtered_mcif.shelf_number):
+            shelf_filtered_mcif = bay_filtered_mcif[bay_filtered_mcif.shelf_number.isin([shelf])]
+
+            '''If the template name is 'Right Door Handle', then below loc will get the product fk that
+            is the most right product fk of the shelf. If the template name is Left Door Handle, then the 
+            below loc will get the most left product fk of the shelf.'''
+            most_right_or_left_product_on_shelf = shelf_filtered_mcif.loc[
+                shelf_filtered_mcif.rect_x.idxmax(), 'product_fk'] if relevant_template_name == 'Right Door Handle' else \
+                shelf_filtered_mcif.loc[shelf_filtered_mcif.rect_x.idxmin(), 'product_fk']
+            product_fks.append(most_right_or_left_product_on_shelf)
+        return product_fks
