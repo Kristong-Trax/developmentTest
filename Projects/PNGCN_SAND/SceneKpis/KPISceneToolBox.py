@@ -70,6 +70,11 @@ EYE_LEVEL_SE_BR_SB_FL_KPI = 'Eye_level_SEQUENCE_brand_subbrand_flavor'
 EYE_LEVEL_SE_BR_SC_FL_KPI = 'Eye_level_SEQUENCE_brand_subcategory_flavor'
 EYE_LEVEL_SE_BR_SC_SB_FL_KPI = 'Eye_level_SEQUENCE_brand_subcategory_subbrand_flavor'
 
+EYELEVEL_GROUPING_LEVELS = [['brand_fk'], ['brand_fk', 'sub_brand'], ['brand_fk', 'sub_category_fk'],
+                            ['brand_fk', 'sub_brand', 'sub_category_fk'], ['brand_fk', 'sub_brand', 'att1'],
+                            ['brand_fk', 'sub_category_fk', 'att1'],
+                            ['brand_fk', 'sub_brand', 'sub_category_fk', 'att1']]
+
 
 class PngcnSceneKpis(object):
 
@@ -408,7 +413,7 @@ class PngcnSceneKpis(object):
         df = self.get_eye_level_shelves(self.matches_from_data_provider)
         full_df = pd.merge(df, self.all_products, on="product_fk")
         max_shelf_count = self.matches_from_data_provider["shelf_number"].max()
-        self.calculate_facing_eye_level(full_df, max_shelf_count)
+        # self.calculate_facing_eye_level(full_df, max_shelf_count)
         self.calculate_sequence_eye_level(entity_df, full_df)
 
     def _get_category_specific_entities(self, scene_category):
@@ -525,24 +530,49 @@ class PngcnSceneKpis(object):
         """
         kpi_sequence_br_fk = self.common.get_kpi_fk_by_kpi_type(EYE_LEVEL_SE_BR_KPI)
         kpi_sequence_br_sb_fk = self.common.get_kpi_fk_by_kpi_type(EYE_LEVEL_SE_BR_SB_KPI)
-        kpi_sequence_fk = self.common.get_kpi_fk_by_kpi_type(EYE_LEVEL_SE_BR_SC_KPI)
-        kpi_sequence_fk = self.common.get_kpi_fk_by_kpi_type(EYE_LEVEL_SE_BR_SC_SB_KPI)
-        kpi_sequence_fk = self.common.get_kpi_fk_by_kpi_type(EYE_LEVEL_SE_BR_SB_FL_KPI)
-        kpi_sequence_fk = self.common.get_kpi_fk_by_kpi_type(EYE_LEVEL_SE_BR_SC_FL_KPI)
-        kpi_sequence_fk = self.common.get_kpi_fk_by_kpi_type(EYE_LEVEL_SE_BR_SC_SB_FL_KPI)
+        kpi_sequence_br_sc_fk = self.common.get_kpi_fk_by_kpi_type(EYE_LEVEL_SE_BR_SC_KPI)
+        kpi_sequence_br_sc_sb_fk = self.common.get_kpi_fk_by_kpi_type(EYE_LEVEL_SE_BR_SC_SB_KPI)
+        kpi_sequence_br_sb_fl_fk = self.common.get_kpi_fk_by_kpi_type(EYE_LEVEL_SE_BR_SB_FL_KPI)
+        kpi_sequence_br_sc_fl_fk = self.common.get_kpi_fk_by_kpi_type(EYE_LEVEL_SE_BR_SC_FL_KPI)
+        kpi_sequence_br_sc_sb_fl_fk = self.common.get_kpi_fk_by_kpi_type(EYE_LEVEL_SE_BR_SC_SB_FL_KPI)
         results_sequence_df = pd.DataFrame(
             columns=['fk', 'numerator_id', 'denominator_id', 'numerator_result', 'result',
                      'score', 'by_scene', 'temp_bay_number'])
         full_df = full_df[full_df['stacking_layer'] == 1]
-        categories = set(full_df['category_fk'])
-        for category_fk in categories:
+        # brands = set(full_df['brand_fk'])
+        for grouping_level in EYELEVEL_GROUPING_LEVELS:
+            # frag_df = self.parser.filter_df(filters, full_df)
 
-        category_specific_filter = self._get_category_specific_filters(scene_category, full_df)
-        for key in category_specific_filter.keys():
-            frag_df = self.parser.filter_df(category_specific_filter[key], full_df)
-            if frag_df.empty:
-                continue
-            full_df.drop(frag_df.index, axis=0, inplace=True)
+            # step 1 - join by grouping rules and order the groups in the correct order from left to right
+            frag_def = full_df.drop_duplicates(subset=['bay_number', 'shelf_number'] + grouping_level).sort_values(
+                ['bay_number', 'shelf_number', 'facing_sequence_number'] + grouping_level)
+
+            # step 2 -
+            frag_def = frag_def.sort_values(['shelf_number', 'bay_number', 'facing_sequence_number'] + grouping_level)[
+                ['bay_number', 'shelf_number', 'facing_sequence_number'] + grouping_level]
+
+            full_df['group_order'] = e = ((frag_def.brand_fk != frag_def.brand_fk.shift())
+                                            | (frag_def.shelf_number != frag_def.shelf_number.shift())
+                                            | (frag_def.brand_fk != frag_def.brand_fk.shift())
+                                            | (frag_def.sub_brand != frag_def.sub_brand.shift())
+                                            | (frag_def.bay_number != frag_def.bay_number.shift())).cumsum()
+
+            # for i, row in frag_def.iterrows():
+            #     if row['is_new_sequence']:
+            #         facing_sequence_number = 0
+            #     facing_sequence_number += 1
+            #     results_sequence_df.loc[i, 'result'] = facing_sequence_number
+            # results_sequence_df.drop(['temp_bay_number', 'is_new_sequence'], inplace=True, axis=1)
+
+
+            #
+        # # category_specific_filter = self._get_category_specific_filters(scene_category, full_df)
+        # for key in category_specific_filter.keys():
+        #     frag_df = self.parser.filter_df(category_specific_filter[key], full_df)
+        #     if frag_df.empty:
+        #         continue
+        #     full_df.drop(frag_df.index, axis=0, inplace=True)
+            frag_df = full_df.copy()
             frag_df.sort_values(by=['bay_number', 'shelf_number',
                                     'facing_sequence_number'], inplace=True)
             seq_df = frag_df.copy()
@@ -553,7 +583,7 @@ class PngcnSceneKpis(object):
             for i, row in frag_df.iterrows():
                 facing_sequence_number = row['facing_sequence_number']
                 entity_search_rs = entity_df[entity_df['entity_name'].str.encode("utf8")
-                                      == key.encode("utf8")]['entity_fk']
+                                             == key.encode("utf8")]['entity_fk']
                 entity_fk = 'dummy'
                 if entity_search_rs.empty:
                     Log.info("Entity {} is not found in database, for scene {}".format(key, self.scene_id))
