@@ -163,6 +163,8 @@ class PepsiToolBox(GlobalSessionToolBox):
 
                     except:
                         product_fk = -1
+                        found_sku_count = 0
+                        ean_product_target = 0
 
                     self.write_to_db(fk=kpi_fk, numerator_id=product_fk, numerator_result=ean_code,
                                      denominator_id=scene_id,

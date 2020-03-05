@@ -151,7 +151,7 @@ class CocacolaToolBox(GlobalSessionToolBox):
                 for ean_code in ean_codes:
                     try:
                         ean_product_target = \
-                        frentes_target_df['FRENTES'][frentes_target_df['PRODUCT EAN'] == ean_code].iloc[0]
+                            frentes_target_df['FRENTES'][frentes_target_df['PRODUCT EAN'] == ean_code].iloc[0]
 
                         found_sku_count = self.relevant_scif['facings'][
                             self.relevant_scif['product_ean_code'] == str(ean_code)].iloc[0]
@@ -159,12 +159,14 @@ class CocacolaToolBox(GlobalSessionToolBox):
                             self.all_products['product_ean_code'] == str(ean_code)].iloc[0]
                         if found_sku_count >= ean_product_target:
                             score = 100
-                            passing_ean +=1
+                            passing_ean += 1
                         else:
                             score = 0
 
                     except:
                         product_fk = -1
+                        found_sku_count = 0
+                        ean_product_target = 0
 
                     self.write_to_db(fk=kpi_fk, numerator_id=product_fk, numerator_result=ean_code,
                                      denominator_id=scene_id,

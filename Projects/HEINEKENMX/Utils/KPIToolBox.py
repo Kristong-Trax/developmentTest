@@ -19,6 +19,7 @@ from KPIUtils_v2.Utils.GlobalScripts.Scripts import GlobalSessionToolBox
 
 # from KPIUtils_v2.Calculations.CalculationsUtils import GENERALToolBoxCalculations
 
+from Projects.HEINEKENMX.Data.LocalConsts import Consts
 from Projects.HEINEKENMX.Refresco.KPIToolBox import RefrescoToolBox
 from Projects.HEINEKENMX.Cerveza.Utils.KPIToolBox import CervezaToolBox
 
@@ -31,11 +32,21 @@ class ToolBox(GlobalSessionToolBox):
         GlobalSessionToolBox.__init__(self, data_provider, output)
 
     def main_calculation(self):
-        cerveza_tool_box = CervezaToolBox(self.data_provider, self.output, self.common)
-        cerveza_tool_box.main_calculation()
+        score = 0
+        # cerveza_tool_box = CervezaToolBox(self.data_provider, self.output, self.common)
+        # cerveza_tool_box.main_calculation()
 
-        # refresco_tool_box = RefrescoToolBox(self.data_provider, self.output, self.common)
-        # refresco_tool_box.main_calculation()
+        refresco_tool_box = RefrescoToolBox(self.data_provider, self.output, self.common)
+        score += refresco_tool_box.main_calculation()
+
+        kpi_name = Consts.KPI_IE
+
+        kpi_fk = self.get_kpi_fk_by_kpi_type(kpi_name)
+
+        self.write_to_db(fk=kpi_fk, numerator_id=self.manufacturer_fk, denominator_id=self.store_id,
+                         result=score,
+                         score=score,
+                         identifier_result=kpi_fk, should_enter=True)
 
         # cocacola_tool_box = CocacolaToolBox(self.data_provider, self.output, self.common)
         # cocacola_tool_box.main_calculation()
