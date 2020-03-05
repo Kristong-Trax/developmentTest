@@ -23,6 +23,7 @@ from Projects.HEINEKENMX.Cerveza.Data.LocalConsts import Consts
 # from KPIUtils_v2.Calculations.SurveyCalculations import Survey
 
 # from KPIUtils_v2.Calculations.CalculationsUtils import GENERALToolBoxCalculations
+from Projects.HEINEKENMX.Cerveza.Data.LocalConsts import Consts
 
 __author__ = 'huntery'
 
@@ -69,6 +70,11 @@ class CervezaToolBox(GlobalSessionToolBox):
         self.relevant_targets = pd.merge(self.relevant_targets, leading_products, how='left', left_on='EAN Code',
                                          right_on='product_ean_code')
         self.relevant_targets.dropna(subset=['target_product_fk'], inplace=True)
+
+    def get_parent_fk(self, kpi_name):
+        parent_kpi_name = Consts.KPIS_HIERACHY[kpi_name]
+        parent_fk = self.get_kpi_fk_by_kpi_type(parent_kpi_name)
+        return parent_fk
 
 
 class CervezaRealogram(object):

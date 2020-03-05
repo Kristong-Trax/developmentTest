@@ -33,8 +33,8 @@ class ToolBox(GlobalSessionToolBox):
 
     def main_calculation(self):
         score = 0
-        # cerveza_tool_box = CervezaToolBox(self.data_provider, self.output, self.common)
-        # cerveza_tool_box.main_calculation()
+        cerveza_tool_box = CervezaToolBox(self.data_provider, self.output, self.common)
+        score += cerveza_tool_box.main_calculation()
 
         refresco_tool_box = RefrescoToolBox(self.data_provider, self.output, self.common)
         score += refresco_tool_box.main_calculation()
