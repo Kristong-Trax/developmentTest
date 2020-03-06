@@ -103,6 +103,8 @@ class DataTestUnitCCRU(object):
         self._scenes_info = pd.read_excel(data_file, sheet_name='scenes_info')
         self._store_areas = pd.read_excel(data_file, sheet_name='store_areas')
         self._scif = pd.read_excel(data_file, sheet_name='scif')
+        self._kpi_level_2 = pd.read_excel(data_file, sheet_name='kpi_level_2')
+        self._kpi_result_values = pd.read_excel(data_file, sheet_name='kpi_result_values')
 
     @property
     def pos_data(self):
@@ -111,6 +113,14 @@ class DataTestUnitCCRU(object):
     @property
     def store_areas(self):
         return self._store_areas
+
+    @property
+    def kpi_level_2(self):
+        return self._kpi_level_2
+
+    @property
+    def kpi_result_values(self):
+        return self._kpi_result_values
 
     @property
     def data_provider_data(self):

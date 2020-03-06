@@ -48,6 +48,11 @@ class TestCCRU(TestFunctionalCase):
         # self.mock_object('Common')
         self.mock_object('PSProjectConnector', path='KPIUtils_v2.DB.CommonV2')
 
+        self.mock_object('Common.get_kpi_fk_by_kpi_type') \
+            .side_effect = self.common_get_kpi_fk_by_kpi_type
+        self.mock_object('Common.get_kpi_static_data') \
+            .return_value = self.data.kpi_level_2
+
         self.mock_object('SessionInfo')
         self.mock_object('PSProjectConnector')
         # self.mock_object('BaseCalculationsGroup')
@@ -65,8 +70,15 @@ class TestCCRU(TestFunctionalCase):
             .return_value = self.data.session_user
         self.mock_object('CCRUCCHKPIFetcher.get_planned_visit_flag')\
             .return_value = self.data.planned_visit_flag
-        self.mock_object('CCRUCCHKPIFetcher.get_top_skus_for_store')\
+        self.mock_object('CCRUCCHKPIFetcher.get_top_skus_for_store') \
             .return_value = self.data.top_skus
+        self.mock_object('CCRUCCHKPIFetcher.get_kpi_result_values') \
+            .return_value = self.data.kpi_result_values.rename(columns={'pk': 'result_value_fk',
+                                                                        'value': 'result_value',
+                                                                        'kpi_result_type_fk': 'result_type_fk'})
+
+    def common_get_kpi_fk_by_kpi_type(self, kpi_name):
+        return self.data.kpi_level_2[self.data.kpi_level_2['type'] == kpi_name]['pk'].values[0]
 
     def get_pos_test_case(self, test_case):
         test_parameters = self.data.pos_data[self.data.pos_data['test_case'] == test_case]
