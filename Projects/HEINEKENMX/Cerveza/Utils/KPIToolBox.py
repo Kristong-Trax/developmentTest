@@ -40,17 +40,50 @@ class CervezaToolBox(GlobalSessionToolBox):
         self.scene_realograms = self._calculate_scene_realograms()
 
     def main_calculation(self):
-        self.calculate_mercadeo()
-        self.calculate_sutrido()
-        return
+        kpi_fk = self.get_kpi_fk_by_kpi_type(Consts.CERVEZA)
+        parent_fk = self.get_parent_fk(Consts.CERVEZA)
+
+        score = 0
+        score += self.calculate_mercadeo()
+        score += self.calculate_sutrido()
+
+        self.write_to_db(fk=kpi_fk, numerator_id=self.manufacturer_fk, denominator_id=self.store_id,
+                         result=score,
+                         identifier_result=kpi_fk, identifier_parent=parent_fk, should_enter=True)
+        return score
 
     def calculate_mercadeo(self):
-        result = self.calculate_acomodo()
-        result = self.calculate_frentes()
-        return result
+        kpi_fk = self.get_kpi_fk_by_kpi_type(Consts.MERCADEO)
+        parent_fk = self.get_parent_fk(Consts.MERCADEO)
+
+        score = 0
+        score += self.calculate_acomodo()
+        score += self.calculate_frentes()
+        score += self.calculate_huecos()
+        score += self.calculate_invasion()
+
+        self.write_to_db(fk=kpi_fk, numerator_id=self.manufacturer_fk, denominator_id=self.store_id,
+                         result=score,
+                         identifier_result=kpi_fk, identifier_parent=parent_fk, should_enter=True)
+        return score
 
     def calculate_sutrido(self):
-        pass
+        return 0
+
+    def calculate_invasion(self):
+        return 0
+
+    def calculate_huecos(self):
+        kpi_fk = self.get_kpi_fk_by_kpi_type(Consts.HUECOS)
+        parent_fk = self.get_parent_fk(Consts.HUECOS)
+
+        empty_scif = self.scif[self.scif['product_type'] == 'Empty']
+        result = 0 if empty_scif.empty else 0
+
+        self.write_to_db(fk=kpi_fk, numerator_id=self.manufacturer_fk, denominator_id=self.store_id,
+                         result=result,
+                         identifier_result=kpi_fk, identifier_parent=parent_fk, should_enter=True)
+        return result
 
     def calculate_frentes(self):
         sku_kpi_fk = self.get_kpi_fk_by_kpi_type(Consts.FRENTES_SKU)
@@ -169,7 +202,6 @@ class CervezaToolBox(GlobalSessionToolBox):
                          context_id=scene_realogram.scene_fk,
                          identifier_result=kpi_fk, identifier_parent=parent_fk, should_enter=True)
         return
-
 
     def _calculate_scene_realograms(self):
         scene_realograms = {}
