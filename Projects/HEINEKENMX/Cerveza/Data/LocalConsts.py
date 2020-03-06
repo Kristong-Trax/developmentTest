@@ -36,7 +36,7 @@ class Consts(object):
     COLCADO_CORRECT = 'Colcado Correctamente - Cerveza'
     COLCADO_CORRECT_SKU = 'Colcado Correctamente - Cerveza - SKU'
     COLCADO_INCORRECT = 'Colcado Incorrectamente - Cerveza'
-    COLCACO_INCORRECT_SKU = 'Colcado Incorrectamente - Cerveza - SKU'
+    COLCADO_INCORRECT_SKU = 'Colcado Incorrectamente - Cerveza - SKU'
     EXTRA = 'Extra - Cerveza'
     EXTRA_SKU = 'Extra - Cerveza - SKU'
     INVASION = 'Invasion - Cerveza'
