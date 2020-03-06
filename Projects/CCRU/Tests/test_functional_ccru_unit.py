@@ -45,18 +45,28 @@ class TestCCRU(TestFunctionalCase):
         self.mock_object('CCRUKPIToolBox.get_pos_kpi_set_name')\
             .return_value = self.data.pos_kpi_set_name
 
-        self.mock_object('Common')
+        # self.mock_object('Common')
+        self.mock_object('PSProjectConnector', path='KPIUtils_v2.DB.CommonV2')
+
         self.mock_object('SessionInfo')
         self.mock_object('PSProjectConnector')
         # self.mock_object('BaseCalculationsGroup')
 
-        mock_fetcher = self.mock_object('CCRUCCHKPIFetcher')
-        mock_fetcher.get_store_number = self.data.store_number
-        mock_fetcher.get_test_store = self.data.test_store
-        mock_fetcher.get_attr15_store = self.data.attr15_store
-        mock_fetcher.get_store_area_df = self.data.store_areas.copy()
-        mock_fetcher.get_session_user = self.data.session_user
-        mock_fetcher.get_planned_visit_flag = self.data.planned_visit_flag
+        self.mock_object('CCRUCCHKPIFetcher.rds_connection')
+        self.mock_object('CCRUCCHKPIFetcher.get_store_number')\
+            .return_value = self.data.store_number
+        self.mock_object('CCRUCCHKPIFetcher.get_test_store')\
+            .return_value = self.data.test_store
+        self.mock_object('CCRUCCHKPIFetcher.get_attr15_store')\
+            .return_value = self.data.attr15_store
+        self.mock_object('CCRUCCHKPIFetcher.get_store_area_df')\
+            .return_value = self.data.store_areas.copy()
+        self.mock_object('CCRUCCHKPIFetcher.get_session_user')\
+            .return_value = self.data.session_user
+        self.mock_object('CCRUCCHKPIFetcher.get_planned_visit_flag')\
+            .return_value = self.data.planned_visit_flag
+        self.mock_object('CCRUCCHKPIFetcher.get_top_skus_for_store')\
+            .return_value = self.data.top_skus
 
     def get_pos_test_case(self, test_case):
         test_parameters = self.data.pos_data[self.data.pos_data['test_case'] == test_case]
@@ -396,10 +406,8 @@ class TestCCRU(TestFunctionalCase):
         self.mock_tool_box()
         tool_box = CCRUKPIToolBox(self.data_provider, self.output)
         tool_box.set_kpi_set(self.data.pos_kpi_set_name, self.data.pos_kpi_set_type)
-        tool_box.kpi_name_to_id[self.data.pos_kpi_set_type] = \
-            {'kpi_1': 1, 'kpi_2': 2, 'kpi_3': 3, 'kpi_4': 4, 'kpi_5': 5}
-        tool_box.kpi_scores_and_results[self.data.pos_kpi_set_type] = \
-            {1: {'score': 0}, 2: {'score': 100}, 3: {'score': 30}, 4: {'score': 100}, 5: {'score': 100}}
+        tool_box.kpi_name_to_id[self.data.pos_kpi_set_type] = self.data.kpi_name_to_id
+        tool_box.kpi_scores_and_results[self.data.pos_kpi_set_type] = self.data.kpi_scores_and_results
         params, check_result = self.get_pos_test_case(test_case)
         test_result = tool_box.check_kpi_scores(params)
         self.assertEquals(check_result, test_result)
@@ -410,13 +418,23 @@ class TestCCRU(TestFunctionalCase):
         self.mock_tool_box()
         tool_box = CCRUKPIToolBox(self.data_provider, self.output)
         tool_box.set_kpi_set(self.data.pos_kpi_set_name, self.data.pos_kpi_set_type)
-        tool_box.kpi_name_to_id[self.data.pos_kpi_set_type] = \
-            {'kpi_1': 1, 'kpi_2': 2, 'kpi_3': 3, 'kpi_4': 4, 'kpi_5': 5}
-        tool_box.kpi_scores_and_results[self.data.pos_kpi_set_type] = \
-            {1: {'score': 0}, 2: {'score': 100}, 3: {'score': 30}, 4: {'score': 100}, 5: {'score': 100}}
+        tool_box.kpi_name_to_id[self.data.pos_kpi_set_type] = self.data.kpi_name_to_id
+        tool_box.kpi_scores_and_results[self.data.pos_kpi_set_type] = self.data.kpi_scores_and_results
         params, check_result = self.get_pos_test_case(test_case)
         test_result = tool_box.check_kpi_scores(params)
         self.assertEquals(check_result, test_result)
+
+    def test_calculate_top_sku(self):
+        test_case = 'test_calculate_top_sku'
+        self.mock_data_provider()
+        self.mock_tool_box()
+        tool_box = CCRUKPIToolBox(self.data_provider, self.output)
+        tool_box.set_kpi_set(self.data.top_sku_kpi_set_name, self.data.top_sku_kpi_set_type)
+        tool_box.kpi_name_to_id[self.data.pos_kpi_set_type] = self.data.kpi_name_to_id
+        tool_box.kpi_scores_and_results[self.data.pos_kpi_set_type] = self.data.kpi_scores_and_results
+        # params, check_result = self.get_pos_test_case(test_case)
+        tool_box.calculate_top_sku(False, self.data.top_sku_kpi_set_name)
+        # self.assertEquals(check_result, test_result)
 
 
 # writer = pd.ExcelWriter('./store_areas.xlsx', engine='xlsxwriter')

@@ -30,6 +30,45 @@ POS_KPI_SET_TYPE = 'POS'
 
 PLANNED_VISIT_FLAG = 1
 
+TOP_SKU_KPI_SET_NAME = 'Top SKU'
+TOP_SKU_KPI_SET_TYPE = 'TOPSKU'
+TOP_SKUS = {'product_fks': {1: '1', 2: '2,4', 16: '16,6', 7: '7,17'},
+               'min_facings': {1: 6, 2: 1, 16: 1, 7: 1}}
+
+TOP_SKU_QUERIES = \
+    ["INSERT INTO pservice.custom_scene_item_facts (product_fk, mha_in_assortment, mha_oos, session_fk, in_assortment_osa, length_mm_custom, scene_fk, oos_osa)\n           VALUES ('16', '0', '0', '1', '1', '0', '1', '0')",
+     "INSERT INTO pservice.custom_scene_item_facts (product_fk, mha_in_assortment, mha_oos, session_fk, in_assortment_osa, length_mm_custom, scene_fk, oos_osa)\n           VALUES ('1', '0', '0', '1', '1', '0', '1', '1')",
+     "INSERT INTO pservice.custom_scene_item_facts (product_fk, mha_in_assortment, mha_oos, session_fk, in_assortment_osa, length_mm_custom, scene_fk, oos_osa)\n           VALUES ('2', '0', '0', '1', '1', '0', '1', '0')",
+     "INSERT INTO pservice.custom_scene_item_facts (product_fk, mha_in_assortment, mha_oos, session_fk, in_assortment_osa, length_mm_custom, scene_fk, oos_osa)\n           VALUES ('7', '0', '0', '1', '1', '0', '1', '0')",
+     "INSERT INTO pservice.custom_scene_item_facts (product_fk, mha_in_assortment, mha_oos, session_fk, in_assortment_osa, length_mm_custom, scene_fk, oos_osa)\n           VALUES ('16', '0', '0', '1', '1', '0', '2', '0')",
+     "INSERT INTO pservice.custom_scene_item_facts (product_fk, mha_in_assortment, mha_oos, session_fk, in_assortment_osa, length_mm_custom, scene_fk, oos_osa)\n           VALUES ('1', '0', '0', '1', '1', '0', '2', '1')",
+     "INSERT INTO pservice.custom_scene_item_facts (product_fk, mha_in_assortment, mha_oos, session_fk, in_assortment_osa, length_mm_custom, scene_fk, oos_osa)\n           VALUES ('2', '0', '0', '1', '1', '0', '2', '0')",
+     "INSERT INTO pservice.custom_scene_item_facts (product_fk, mha_in_assortment, mha_oos, session_fk, in_assortment_osa, length_mm_custom, scene_fk, oos_osa)\n           VALUES ('7', '0', '0', '1', '1', '0', '2', '0')",
+     "INSERT INTO pservice.custom_scene_item_facts (product_fk, mha_in_assortment, mha_oos, session_fk, in_assortment_osa, length_mm_custom, scene_fk, oos_osa)\n           VALUES ('16', '0', '0', '1', '1', '0', '3', '0')",
+     "INSERT INTO pservice.custom_scene_item_facts (product_fk, mha_in_assortment, mha_oos, session_fk, in_assortment_osa, length_mm_custom, scene_fk, oos_osa)\n           VALUES ('1', '0', '0', '1', '1', '0', '3', '1')",
+     "INSERT INTO pservice.custom_scene_item_facts (product_fk, mha_in_assortment, mha_oos, session_fk, in_assortment_osa, length_mm_custom, scene_fk, oos_osa)\n           VALUES ('2', '0', '0', '1', '1', '0', '3', '0')",
+     "INSERT INTO pservice.custom_scene_item_facts (product_fk, mha_in_assortment, mha_oos, session_fk, in_assortment_osa, length_mm_custom, scene_fk, oos_osa)\n           VALUES ('7', '0', '0', '1', '1', '0', '3', '0')",
+     "INSERT INTO pservice.custom_scene_item_facts (product_fk, mha_in_assortment, mha_oos, session_fk, in_assortment_osa, length_mm_custom, scene_fk, oos_osa)\n           VALUES ('16', '0', '0', '1', '1', '0', '4', '1')",
+     "INSERT INTO pservice.custom_scene_item_facts (product_fk, mha_in_assortment, mha_oos, session_fk, in_assortment_osa, length_mm_custom, scene_fk, oos_osa)\n           VALUES ('1', '0', '0', '1', '1', '0', '4', '1')",
+     "INSERT INTO pservice.custom_scene_item_facts (product_fk, mha_in_assortment, mha_oos, session_fk, in_assortment_osa, length_mm_custom, scene_fk, oos_osa)\n           VALUES ('2', '0', '0', '1', '1', '0', '4', '0')",
+     "INSERT INTO pservice.custom_scene_item_facts (product_fk, mha_in_assortment, mha_oos, session_fk, in_assortment_osa, length_mm_custom, scene_fk, oos_osa)\n           VALUES ('7', '0', '0', '1', '1', '0', '4', '1')",
+     "INSERT INTO pservice.custom_scene_item_facts (product_fk, mha_in_assortment, mha_oos, session_fk, in_assortment_osa, length_mm_custom, scene_fk, oos_osa)\n           VALUES ('16', '0', '0', '1', '1', '0', '5', '1')",
+     "INSERT INTO pservice.custom_scene_item_facts (product_fk, mha_in_assortment, mha_oos, session_fk, in_assortment_osa, length_mm_custom, scene_fk, oos_osa)\n           VALUES ('1', '0', '0', '1', '1', '0', '5', '1')",
+     "INSERT INTO pservice.custom_scene_item_facts (product_fk, mha_in_assortment, mha_oos, session_fk, in_assortment_osa, length_mm_custom, scene_fk, oos_osa)\n           VALUES ('2', '0', '0', '1', '1', '0', '5', '1')",
+     "INSERT INTO pservice.custom_scene_item_facts (product_fk, mha_in_assortment, mha_oos, session_fk, in_assortment_osa, length_mm_custom, scene_fk, oos_osa)\n           VALUES ('7', '0', '0', '1', '1', '0', '5', '1')"]
+
+KPI_NAME_TO_ID = {'kpi_1': 1,
+                  'kpi_2': 2,
+                  'kpi_3': 3,
+                  'kpi_4': 4,
+                  'kpi_5': 5}
+
+KPI_SCORES_AND_RESULTS = {1: {'score': 0},
+                          2: {'score': 100},
+                          3: {'score': 30},
+                          4: {'score': 100},
+                          5: {'score': 100}}
+
 
 class DataTestUnitCCRU(object):
 
@@ -39,10 +78,19 @@ class DataTestUnitCCRU(object):
     store_number = STORE_NUMBER
     test_store = TEST_STORE
     attr15_store = ATTR15_STORE
-    pos_kpi_set_name = POS_KPI_SET_NAME
-    pos_kpi_set_type = POS_KPI_SET_TYPE
     session_user = SESSION_USER
     planned_visit_flag = PLANNED_VISIT_FLAG
+
+    pos_kpi_set_name = POS_KPI_SET_NAME
+    pos_kpi_set_type = POS_KPI_SET_TYPE
+
+    kpi_name_to_id = KPI_NAME_TO_ID
+    kpi_scores_and_results = KPI_SCORES_AND_RESULTS
+
+    top_sku_kpi_set_name = TOP_SKU_KPI_SET_NAME
+    top_sku_kpi_set_type = TOP_SKU_KPI_SET_TYPE
+    top_skus = TOP_SKUS
+    top_sku_queries = TOP_SKU_QUERIES
 
     def __init__(self):
 
