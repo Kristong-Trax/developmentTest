@@ -21,6 +21,7 @@ class JNJDECalculations(BaseCalculationsScript):
         eye_hand_lvl_template = pd.read_excel(eye_hand_lvl_template_path)
         common = Common(self.data_provider)
         jnj_generator = JNJGenerator(self.data_provider, self.output, common)
+        jnj_generator.linear_sos_out_of_store_discovery_report()
 
         # KPI 2 - Share of Shelf
         jnj_generator.sos_vs_target_calculation()
