@@ -131,7 +131,8 @@ class ToolBox:
                 self.init_assortment()
                 self.external_targets = self.ps_data.get_kpi_external_targets(
                     kpi_operation_types=Consts.INDEPENDENT_OPERATION_TYPES,
-                    key_fields=[Consts.EX_SCENE_TYPE, Consts.EX_ATTR2], data_fields=[Consts.EX_MIN_FACINGS])
+                    key_fields=[Consts.EX_SCENE_TYPE, Consts.EX_ATTR2, Consts.EX_PRODUCT_FK],
+                    data_fields=[Consts.EX_MIN_FACINGS])
                 self.external_targets = self.external_targets.fillna("N/A")
         if self.attr6 == Consts.OFF:
             total_off_trade_fk = self.common.get_kpi_fk_by_kpi_name(

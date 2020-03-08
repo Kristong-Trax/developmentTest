@@ -27,5 +27,5 @@ class Generator:
             Log.warning('Scene item facts is empty for this session')
             return
         self.tool_box.main_calculation()
-        CaseCountCalculator(self.data_provider, self.tool_box.common).main_case_count_calculations()
+        # CaseCountCalculator(self.data_provider, self.tool_box.common).main_case_count_calculations()
         self.tool_box.common.commit_results_data()
