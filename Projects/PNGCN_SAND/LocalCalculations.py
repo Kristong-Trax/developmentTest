@@ -20,7 +20,10 @@ if __name__ == '__main__':
     data_provider = KEngineDataProvider(project_name)
     output = Output()
     sessions = {
-                '4CEE3E53-04B2-4150-B9E1-B95188C640AF': ['19324693'],
+        '13370ddd-7a23-45d1-a0e9-44fda09ce636': ['28098679'],
+
+        # one shelf
+        # '5a1862d6-ed90-4fd9-a7bd-8f5186f293e7': ['28111603'],
     }
     for session in sessions.keys():
         print "Running for {}".format(str(session))
