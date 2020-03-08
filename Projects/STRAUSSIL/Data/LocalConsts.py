@@ -1,13 +1,13 @@
 
 class Consts(object):
     # OOS KPI
-    OOS = 'Core OOS'
-    OOS_SKU = 'Core OOS - SKU'
+    OOS = ' OOS'
+    OOS_SKU = ' OOS - SKU'
 
     # Distribution KPI
-    DISTRIBUTION = 'Core Distribution'
-    DISTRIBUTION_CAT = 'Core Distribution - Category'
-    DISTRIBUTION_SKU = 'Core Distribution - SKU'
+    DISTRIBUTION = ' Distribution'
+    DISTRIBUTION_CAT = ' Distribution - Category'
+    DISTRIBUTION_SKU = ' Distribution - SKU'
 
     # SCORE SOS KPIs
     LSOS_SCORE_KPI = 'LSOS_score'

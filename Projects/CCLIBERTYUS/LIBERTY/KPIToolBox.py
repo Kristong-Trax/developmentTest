@@ -346,6 +346,28 @@ class LIBERTYToolBox:
                                                               filtered_scif[Const.SCIF_MULTI_PACK_SIZE])),
                                                      index=filtered_scif.index).isin(size_subpackages_tuples)]
 
+        excluded_brand_multipack_size = self.does_exist(kpi_line, Const.EXCLUDED_BRAND_MULTIPACK_SIZE)
+        if excluded_brand_multipack_size:
+            excluded_brand_multipack_size_tuples = \
+                [tuple([i for i in x.split(';')]) for x in excluded_brand_multipack_size]
+            excluded_brand_multipack_size_tuples = \
+                self.create_multipack_permuations(excluded_brand_multipack_size_tuples, Const.SCIF_BRAND)
+            filtered_scif = \
+                filtered_scif[~pd.Series(list(zip(filtered_scif[Const.SCIF_BRAND],
+                                                  filtered_scif[Const.SCIF_MULTI_PACK_SIZE])),
+                                         index=filtered_scif.index).isin(excluded_brand_multipack_size_tuples)]
+
+        excluded_category_multipack_size = self.does_exist(kpi_line, Const.EXCLUDED_CATEGORY_MULTIPACK_SIZE)
+        if excluded_category_multipack_size:
+            excluded_category_multipack_size_tuples = \
+                [tuple([i for i in x.split(';')]) for x in excluded_category_multipack_size]
+            excluded_category_multipack_size_tuples = \
+                self.create_multipack_permuations(excluded_category_multipack_size_tuples, Const.SCIF_CATEGORY)
+            filtered_scif = \
+                filtered_scif[~pd.Series(list(zip(filtered_scif[Const.SCIF_CATEGORY],
+                                                  filtered_scif[Const.SCIF_MULTI_PACK_SIZE])),
+                                         index=filtered_scif.index).isin(excluded_category_multipack_size_tuples)]
+
         sub_packages = self.does_exist(kpi_line, Const.SUBPACKAGES_NUM)
         if sub_packages:
             if sub_packages == [Const.NOT_NULL]:
@@ -537,6 +559,18 @@ class LIBERTYToolBox:
         self.scif.loc[:, Const.SCIF_BASE_SIZE] = self.scif[Const.SCIF_BASE_SIZE].apply(self.convert_base_size_values)
         self.scif.loc[:, Const.SCIF_MULTI_PACK_SIZE] = \
             self.scif[Const.SCIF_MULTI_PACK_SIZE].apply(lambda x: int(x) if x is not None else None)
+
+    def create_multipack_permuations(self, list_of_tuples, scif_parameter=None):
+        permuted_list_of_tuples = []
+        for scif_value, multipack_size in list_of_tuples:
+            operator, value = multipack_size.split('=')
+            if operator == '>':
+                df = self.scif[(self.scif[scif_parameter] == scif_value) &
+                               (self.scif[Const.SCIF_MULTI_PACK_SIZE] >= int(value))]
+                for result_tuple in list(zip(df[scif_parameter], df[Const.SCIF_MULTI_PACK_SIZE])):
+                    if result_tuple not in permuted_list_of_tuples:
+                        permuted_list_of_tuples.append(result_tuple)
+        return permuted_list_of_tuples
 
     @staticmethod
     def convert_base_size_values(value):
