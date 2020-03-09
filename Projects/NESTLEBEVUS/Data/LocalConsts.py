@@ -8,6 +8,7 @@ class Consts(object):
     ADJACENCY_CATEGORY_WITHIN_BAY = 'Adjacency Category within Bay'
     SHELF_POSITION = 'Shelf Position'
     LEAD_ANCHOR_BY_BAY = 'Lead-Anchor by Bay'
+    SHELF_MAP = 'Shelf Map'
 
     # Excel Column Names
     KPI_NAME = 'KPI Name'
