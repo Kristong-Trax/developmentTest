@@ -543,10 +543,10 @@ Validation types performed:
             
 """
 
-if __name__ == '__main__':
-    LoggerInitializer.init('ccza calculations')
-    Config.init()
-    project_name = 'ccza'
-    file_path = '/home/natalyak/Desktop/CCZA/PS KPI Template JANUARY 2020.xlsx'
-    validator = CczaTemplateValidator(project_name=project_name, file_url=file_path)
-    validator.validate_template_data()
+# if __name__ == '__main__':
+#     LoggerInitializer.init('ccza calculations')
+#     Config.init()
+#     project_name = 'ccza'
+#     file_path = '/home/natalyak/Desktop/CCZA/PS KPI Template JANUARY 2020.xlsx'
+#     validator = CczaTemplateValidator(project_name=project_name, file_url=file_path)
+#     validator.validate_template_data()
