@@ -67,7 +67,7 @@ class TestKEngineOutOfTheBox(TestFunctionalCase):
     def test_gsksg_sanity(self):
         project_name = ProjectsSanityData.project_name
         data_provider = KEngineDataProvider(project_name)
-        sessions = {'d3ad1ddb-edf0-4530-9514-62d55e2720a4': []}
+        sessions = {'FE849CA4-694F-4F39-8B1E-1CDA5CCF7512': []}
         for session in sessions.keys():
             data_provider.load_session_data(str(session))
             output = Output()
