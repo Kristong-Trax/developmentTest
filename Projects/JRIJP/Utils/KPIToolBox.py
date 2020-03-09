@@ -67,6 +67,10 @@ class JRIJPToolBox:
         return
 
     def calculate_config_related(self):
+        if self.external_targets.empty:
+            Log.info("Not calculating Config related KPIs for Canvas."
+                     "External Targets empty while running session: {}".format(self.session_uid))
+            return True
         product_presence_from_target_pk = self.kpi_static_data[
             (self.kpi_static_data[KPI_FAMILY] == PS_KPI_FAMILY)
             & (self.kpi_static_data[TYPE] == PRODUCT_PRESENCE_FROM_TARGET)
