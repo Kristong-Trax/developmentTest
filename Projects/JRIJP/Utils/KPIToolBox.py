@@ -62,8 +62,8 @@ class JRIJPToolBox:
             if kpi_name is *test_calc*; the function will be *calculate_test_calc*
         """
         self.calculate_config_related()
-        # self.parse_and_send_kpi_to_calc()
-        # self.common.commit_results_data()
+        self.parse_and_send_kpi_to_calc()
+        self.common.commit_results_data()
         return
 
     def calculate_config_related(self):
@@ -94,11 +94,17 @@ class JRIJPToolBox:
             _each_target_dict = each_target.to_dict()
             group_fk = _each_target_dict.get('product_group_fk')
             product_fks = _each_target_dict.get('product_fks')
+            if type(product_fks) != list:
+                product_fks = [product_fks]
             best_shelf_position = _each_target_dict.get('best_shelf_position')
-            facings_presence_count = _each_target_dict.get('group_facings_count')
+            if type(best_shelf_position) != list:
+                best_shelf_position = [best_shelf_position]
+            group_prod_facings_count = _each_target_dict.get('group_facings_count', 0)
             template_fks = _each_target_dict.get('template_fks')
+            if template_fks and type(template_fks) != list:
+                template_fks = [template_fks]
             stacking_exclude = _each_target_dict.get('stacking_exclude')
-            min_group_product_facing = _each_target_dict.get('min_product_facing')
+            min_group_product_facing = _each_target_dict.get('min_product_facing', 0)
             # get mpis based on details
             filtered_mpis = match_prod_in_scene_data
             if template_fks:
@@ -110,7 +116,7 @@ class JRIJPToolBox:
                 filtere_mpis=filtered_mpis,
                 group_fk=group_fk,
                 product_fks=product_fks,
-                facings_presence_count=facings_presence_count
+                group_prod_facings_count=group_prod_facings_count
             )
             product_position_data = self.calculate_product_position(
                 kpi_pk=product_position_from_target_pk,
@@ -136,12 +142,12 @@ class JRIJPToolBox:
                                                     )
         pass
 
-    def calculate_product_presence(self, kpi_pk, filtere_mpis, group_fk, product_fks, facings_presence_count):
+    def calculate_product_presence(self, kpi_pk, filtere_mpis, group_fk, product_fks, group_prod_facings_count):
         data = {}
         for each_product in product_fks:
             prod_data_in_mpis = filtere_mpis[filtere_mpis['product_fk'] == each_product]
             result = 0
-            if len(prod_data_in_mpis) >= int(facings_presence_count):
+            if len(prod_data_in_mpis) >= int(group_prod_facings_count):
                 result = 1
             Log.info("Saving product presence for product: {product} as {result} in session {sess} in group: {group}"
                      .format(product=each_product,
@@ -163,9 +169,12 @@ class JRIJPToolBox:
         data = {}
         for each_product in product_fks:
             prod_data_in_mpis = filtere_mpis[filtere_mpis['product_fk'] == each_product]
-            result = 0
-            score= 0
+            result = 0  # best shelf from top
+            score = 0  # best shelf position from top in CONFIG?
             if prod_data_in_mpis.empty:
+                Log.info("Position KPI => Product: {} not found in session: {} for group: {}".format(
+                    each_product, self.session_uid, group_fk
+                ))
                 result = 0
                 score = 0
             else:
@@ -198,6 +207,9 @@ class JRIJPToolBox:
         for each_product in product_fks:
             prod_data_in_mpis = filtere_mpis[filtere_mpis['product_fk'] == each_product]
             if prod_data_in_mpis.empty:
+                Log.info("Facings KPI => Product: {} not found in session: {} for group: {}".format(
+                    each_product, self.session_uid, group_fk
+                ))
                 result = 0
             else:
                 result = len(prod_data_in_mpis)
@@ -229,13 +241,13 @@ class JRIJPToolBox:
             if _score_products_presence:
                 # find min result among the in config ones
                 _score_products_presence.sort(key=lambda x: x[0])
-                min_level_of_product = _score_products_presence[0][0]
+                min_level_of_product = int(_score_products_presence[0][0])
             else:
                 # score is all 0
-                res_score_tup = product_position_data.values()
-                res_score_tup.sort(key=lambda x: x[0])
-                if res_score_tup:
-                    min_level_of_product = res_score_tup[0][0]
+                _score_products_presence_present = filter(lambda x: x[0] != 0, product_position_data.values())
+                _score_products_presence_present.sort(key=lambda x: x[0])
+                if _score_products_presence_present:
+                    min_level_of_product = _score_products_presence_present[0][0]
         else:
             Log.info("Product presence information is empty for any product in group = {group_fk}".format(
                 group_fk=group_fk
@@ -257,20 +269,23 @@ class JRIJPToolBox:
                          sess=self.session_uid,
                          ))
         is_in_best_shelf = False
-        if is_in_best_shelf:
-            is_in_best_shelf = min_level_of_product.isin(best_shelf_position)
-        facings_more_than_in_config = False
+        if best_shelf_position and min_level_of_product:
+            if type(best_shelf_position) != list:
+                best_shelf_position = [best_shelf_position]
+            is_in_best_shelf = min_level_of_product in map(lambda x: int(x), best_shelf_position)
+        has_minumum_facings_per_config = False
         if not min_group_product_facing or not min_group_product_facing.strip():
             min_group_product_facing = 0
-        if sum(product_facings_data.values()) > int(min_group_product_facing):
-            facings_more_than_in_config = True
-        self.common.write_to_db_result(fk=result_kpi_pk,
+        if sum(product_facings_data.values()) >= int(min_group_product_facing):
+            has_minumum_facings_per_config = True
+        self.common.write_to_db_result(fk=score_kpi_fk,
                                        numerator_id=group_fk,
                                        denominator_id=self.store_id,
                                        context_id=self.store_id,
                                        numerator_result=numerator_result,
                                        denominator_result=is_in_best_shelf,
-                                       result=facings_more_than_in_config,
+                                       result=has_minumum_facings_per_config,
+                                       score=all([numerator_result, is_in_best_shelf, has_minumum_facings_per_config])
                                        )
 
     def parse_and_send_kpi_to_calc(self):
