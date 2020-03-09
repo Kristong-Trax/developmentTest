@@ -13,6 +13,7 @@ PROJECT_NAME = 'Test_Project_1'
 
 VISIT_DATE = datetime.date(2020, 1, 1)
 
+SESSION_ID = 1
 SESSION_UID = 'SESSION_1'
 EXTERNAL_SESSION_ID = 'EXT_SESSION_1'
 
@@ -73,6 +74,7 @@ KPI_SCORES_AND_RESULTS = {1: {'score': 0},
 class DataTestUnitCCRU(object):
 
     project_name = PROJECT_NAME
+    session_id = SESSION_ID
     session_uid = SESSION_UID
     external_session_id = EXTERNAL_SESSION_ID
     store_number = STORE_NUMBER
@@ -105,6 +107,9 @@ class DataTestUnitCCRU(object):
         self._scif = pd.read_excel(data_file, sheet_name='scif')
         self._kpi_level_2 = pd.read_excel(data_file, sheet_name='kpi_level_2')
         self._kpi_result_values = pd.read_excel(data_file, sheet_name='kpi_result_values')
+        self._kpi_entity_types = pd.read_excel(data_file, sheet_name='kpi_entity_types')
+        self._group_names = pd.read_excel(data_file, sheet_name='group_names')
+        self._osa_kpi_results = pd.read_excel(data_file, sheet_name='osa_kpi_results')
 
     @property
     def pos_data(self):
@@ -121,6 +126,22 @@ class DataTestUnitCCRU(object):
     @property
     def kpi_result_values(self):
         return self._kpi_result_values
+
+    @property
+    def kpi_entity_types(self):
+        return self._kpi_entity_types
+
+    @property
+    def group_names(self):
+        return self._group_names
+
+    @property
+    def products(self):
+        return self._products
+
+    @property
+    def osa_kpi_results(self):
+        return self._osa_kpi_results
 
     @property
     def data_provider_data(self):
