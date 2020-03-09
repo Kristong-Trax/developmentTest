@@ -90,6 +90,7 @@ class JRIJPToolBox:
         match_prod_in_scene_data = self.match_product_in_scene \
             .merge(self.scene_info, on='scene_fk', suffixes=('', '_scene')) \
             .merge(self.templates, on='template_fk', suffixes=('', '_template'))
+        self.external_targets.fillna('', inplace=True)
         for index, each_target in self.external_targets.iterrows():
             _each_target_dict = each_target.to_dict()
             group_fk = _each_target_dict.get('product_group_fk')
@@ -260,9 +261,9 @@ class JRIJPToolBox:
                                        numerator_id=group_fk,
                                        denominator_id=self.store_id,
                                        context_id=self.store_id,
-                                       numerator_result=numerator_result,
+                                       numerator_result=int(numerator_result),  # bool to int
                                        denominator_result=min_level_of_product,
-                                       result=sum(product_facings_data.values()),
+                                       result=sum(product_facings_data.values()),  # bool to int
                                        )
         Log.info("Saving Overall Score for group: {group_fk} in session {sess}"
                  .format(group_fk=group_fk,
@@ -282,10 +283,11 @@ class JRIJPToolBox:
                                        numerator_id=group_fk,
                                        denominator_id=self.store_id,
                                        context_id=self.store_id,
-                                       numerator_result=numerator_result,
-                                       denominator_result=is_in_best_shelf,
-                                       result=has_minumum_facings_per_config,
-                                       score=all([numerator_result, is_in_best_shelf, has_minumum_facings_per_config])
+                                       numerator_result=int(numerator_result),  # bool to int
+                                       denominator_result=int(is_in_best_shelf),  # bool to int
+                                       result=int(has_minumum_facings_per_config),  # bool to int
+                                       score=int(all([numerator_result, is_in_best_shelf,
+                                                      has_minumum_facings_per_config]))   # bool to int
                                        )
 
     def parse_and_send_kpi_to_calc(self):
