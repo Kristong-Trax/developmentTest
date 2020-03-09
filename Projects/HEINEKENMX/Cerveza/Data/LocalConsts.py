@@ -48,6 +48,20 @@ class Consts(object):
     OPCIONAL = 'Opcional - Cerveza'
     OPCIONAL_SKU = 'Opcional - Cerveza - SKU'
 
+    KPI_POINTS = {
+        IE_60: 25.0,
+        CERVEZA: 6.0,
+        MERCADEO: 3.0,
+        SUTRIDO: 3.0,
+        HUECOS: 0.3,
+        FRENTES: 1.8,
+        ACOMODO: 0.2,
+        INVASION: 0.3,
+        PRIORITARIO: 1.17,
+        CALIFICADOR: 1.5,
+        OPCIONAL: 0.33
+    }
+
     TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)),
                                  'KPI Template (External Targets) Feb18.xlsx')
 

@@ -32,9 +32,11 @@ class CervezaToolBox(GlobalSessionToolBox):
 
     def __init__(self, data_provider, output, common):
         GlobalSessionToolBox.__init__(self, data_provider, output, common)
+        self.scene_types = self.scif['template_name'].unique().tolist()
         self.gz = self.store_info['additional_attribute_4'].iloc[0]
         self.city = self.store_info['address_city'].iloc[0]
-        self.relevant_targets = self._get_relevant_external_targets()
+        self.relevant_targets = self._get_relevant_external_targets(kpi_operation_type='planograma_cerveza')
+        self.invasion_targets = self._get_relevant_external_targets(kpi_operation_type='invasion')
         self._determine_target_product_fks()
         self.leading_products = self._get_leading_products_from_scif()
         self.scene_realograms = self._calculate_scene_realograms()
@@ -42,19 +44,147 @@ class CervezaToolBox(GlobalSessionToolBox):
     def main_calculation(self):
         kpi_fk = self.get_kpi_fk_by_kpi_type(Consts.CERVEZA)
         parent_fk = self.get_parent_fk(Consts.CERVEZA)
+        weight = self.get_kpi_weight(Consts.CERVEZA)
 
         score = 0
         score += self.calculate_mercadeo()
         score += self.calculate_sutrido()
 
         self.write_to_db(fk=kpi_fk, numerator_id=self.manufacturer_fk, denominator_id=self.store_id,
-                         result=score,
+                         result=score, score=score, weight=weight,
                          identifier_result=kpi_fk, identifier_parent=parent_fk, should_enter=True)
         return score
+
+    def calculate_sutrido(self):
+        kpi_fk = self.get_kpi_fk_by_kpi_type(Consts.SUTRIDO)
+        parent_fk = self.get_parent_fk(Consts.SUTRIDO)
+        weight = self.get_kpi_weight(Consts.SUTRIDO)
+
+        score = 0
+        score += self.calculate_calificador()
+        score += self.calculate_prioritario()
+        score += self.calculate_opcional()
+
+        self.write_to_db(fk=kpi_fk, numerator_id=self.manufacturer_fk, denominator_id=self.store_id,
+                         result=score, score=score, weight=weight,
+                         identifier_result=kpi_fk, identifier_parent=parent_fk, should_enter=True)
+        return score
+
+    def calculate_calificador(self):
+        kpi_fk = self.get_kpi_fk_by_kpi_type(Consts.CALIFICADOR)
+        parent_fk = self.get_parent_fk(Consts.CALIFICADOR)
+        weight = self.get_kpi_weight(Consts.CALIFICADOR)
+
+        relevant_template = self.relevant_targets[(self.relevant_targets['Nombre de Tarea'].isin(self.scene_types)) &
+                                                  (self.relevant_targets['TIPO DE SKU'] == 'C')]
+
+        relevant_template = pd.merge(relevant_template, self.scif[['product_fk', 'facings']],
+                                     how='left', left_on='target_product_fk', right_on='product_fk')
+        relevant_template['facings'].fillna(0, inplace=True)
+        relevant_template['in_session'] = relevant_template['facings'] > 0
+
+        self._calculate_calificador_sku(relevant_template)
+
+        result = relevant_template['in_session'].sum() / len(relevant_template)
+
+        score = result * weight
+
+        self.write_to_db(fk=kpi_fk, numerator_id=self.manufacturer_fk, denominator_id=self.store_id,
+                         numerator_result=relevant_template['in_session'].sum(),
+                         denominator_result=len(relevant_template),
+                         result=result, score=score, weight=weight,
+                         identifier_result=kpi_fk, identifier_parent=parent_fk, should_enter=True)
+
+        return score
+
+    def _calculate_calificador_sku(self, relevant_template):
+        kpi_fk = self.get_kpi_fk_by_kpi_type(Consts.CALIFICADOR_SKU)
+        parent_fk = self.get_parent_fk(Consts.CALIFICADOR_SKU)
+
+        for sku in relevant_template.itertuples():
+            result = 1 if sku.in_session else 0
+            self.write_to_db(fk=kpi_fk, numerator_id=sku.target_product_fk, denominator_id=self.store_id,
+                             result=result, identifier_parent=parent_fk, identifier_result=kpi_fk,
+                             should_enter=True)
+
+    def calculate_prioritario(self):
+        kpi_fk = self.get_kpi_fk_by_kpi_type(Consts.PRIORITARIO)
+        parent_fk = self.get_parent_fk(Consts.PRIORITARIO)
+        weight = self.get_kpi_weight(Consts.PRIORITARIO)
+
+        relevant_template = self.relevant_targets[(self.relevant_targets['Nombre de Tarea'].isin(self.scene_types)) &
+                                                  (self.relevant_targets['TIPO DE SKU'] == 'P')]
+
+        relevant_template = pd.merge(relevant_template, self.scif[['product_fk', 'facings']],
+                                     how='left', left_on='target_product_fk', right_on='product_fk')
+        relevant_template['facings'].fillna(0, inplace=True)
+        relevant_template['in_session'] = relevant_template['facings'] > 0
+
+        self._calculate_calificador_sku(relevant_template)
+
+        result = relevant_template['in_session'].sum() / len(relevant_template)
+
+        score = result * weight
+
+        self.write_to_db(fk=kpi_fk, numerator_id=self.manufacturer_fk, denominator_id=self.store_id,
+                         numerator_result=relevant_template['in_session'].sum(),
+                         denominator_result=len(relevant_template),
+                         result=result, score=score, weight=weight,
+                         identifier_result=kpi_fk, identifier_parent=parent_fk, should_enter=True)
+
+        return score
+
+    def _calculate_prioritario_sku(self, relevant_template):
+        kpi_fk = self.get_kpi_fk_by_kpi_type(Consts.PRIORITARIO_SKU)
+        parent_fk = self.get_parent_fk(Consts.PRIORITARIO_SKU)
+
+        for sku in relevant_template.itertuples():
+            result = 1 if sku.in_session else 0
+            self.write_to_db(fk=kpi_fk, numerator_id=sku.target_product_fk, denominator_id=self.store_id,
+                             result=result, identifier_parent=parent_fk, identifier_result=kpi_fk,
+                             should_enter=True)
+
+    def calculate_opcional(self):
+        kpi_fk = self.get_kpi_fk_by_kpi_type(Consts.OPCIONAL)
+        parent_fk = self.get_parent_fk(Consts.OPCIONAL)
+        weight = self.get_kpi_weight(Consts.OPCIONAL)
+
+        relevant_template = self.relevant_targets[(self.relevant_targets['Nombre de Tarea'].isin(self.scene_types)) &
+                                                  (self.relevant_targets['TIPO DE SKU'] == 'O')]
+
+        relevant_template = pd.merge(relevant_template, self.scif[['product_fk', 'facings']],
+                                     how='left', left_on='target_product_fk', right_on='product_fk')
+        relevant_template['facings'].fillna(0, inplace=True)
+        relevant_template['in_session'] = relevant_template['facings'] > 0
+
+        self._calculate_calificador_sku(relevant_template)
+
+        result = relevant_template['in_session'].sum() / len(relevant_template)
+
+        score = result * weight
+
+        self.write_to_db(fk=kpi_fk, numerator_id=self.manufacturer_fk, denominator_id=self.store_id,
+                         numerator_result=relevant_template['in_session'].sum(),
+                         denominator_result=len(relevant_template),
+                         result=result, score=score, weight=weight,
+                         identifier_result=kpi_fk, identifier_parent=parent_fk, should_enter=True)
+
+        return score
+
+    def _calculate_opcional_sku(self, relevant_template):
+        kpi_fk = self.get_kpi_fk_by_kpi_type(Consts.OPCIONAL_SKU)
+        parent_fk = self.get_parent_fk(Consts.OPCIONAL_SKU)
+
+        for sku in relevant_template.itertuples():
+            result = 1 if sku.in_session else 0
+            self.write_to_db(fk=kpi_fk, numerator_id=sku.target_product_fk, denominator_id=self.store_id,
+                             result=result, identifier_parent=parent_fk, identifier_result=kpi_fk,
+                             should_enter=True)
 
     def calculate_mercadeo(self):
         kpi_fk = self.get_kpi_fk_by_kpi_type(Consts.MERCADEO)
         parent_fk = self.get_parent_fk(Consts.MERCADEO)
+        weight = self.get_kpi_weight(Consts.MERCADEO)
 
         score = 0
         score += self.calculate_acomodo()
@@ -63,32 +193,57 @@ class CervezaToolBox(GlobalSessionToolBox):
         score += self.calculate_invasion()
 
         self.write_to_db(fk=kpi_fk, numerator_id=self.manufacturer_fk, denominator_id=self.store_id,
-                         result=score,
+                         result=score, score=score, weight=weight,
                          identifier_result=kpi_fk, identifier_parent=parent_fk, should_enter=True)
         return score
 
-    def calculate_sutrido(self):
-        return 0
-
     def calculate_invasion(self):
-        return 0
+        kpi_fk = self.get_kpi_fk_by_kpi_type(Consts.INVASION)
+        parent_fk = self.get_parent_fk(Consts.INVASION)
+        weight = self.get_kpi_weight(Consts.INVASION)
+        result = 1
+        for invasion_row in self.invasion_targets:
+            if 'Cerveza' not in getattr(invasion_row, "NOMBRE DE TAREA"):
+                continue
+            relevant_scif = self.scif[self.scif['template_name'] == getattr(invasion_row, "NOMBRE DE TAREA")]
+            if relevant_scif.empty:
+                continue
+            manufacturers = [x.strip() for x in getattr(invasion_row, 'Manufacturer').split(',')]
+            categories = [x.strip() for x in getattr(invasion_row, 'Category').split(',')]
+            relevant_scif = \
+                relevant_scif[(relevant_scif['Manufacturer'].isin(manufacturers)) &
+                              (relevant_scif['Category'].isin(categories))]
+            if not relevant_scif.empty:
+                result = 0
+                break
+
+        score = result * weight
+
+        self.write_to_db(fk=kpi_fk, numerator_id=self.manufacturer_fk, denominator_id=self.store_id,
+                         result=result, score=score, weight=weight,
+                         identifier_result=kpi_fk, identifier_parent=parent_fk, should_enter=True)
+        return score
 
     def calculate_huecos(self):
         kpi_fk = self.get_kpi_fk_by_kpi_type(Consts.HUECOS)
         parent_fk = self.get_parent_fk(Consts.HUECOS)
+        weight = self.get_kpi_weight(Consts.HUECOS)
 
         empty_scif = self.scif[self.scif['product_type'] == 'Empty']
         result = 0 if empty_scif.empty else 0
 
+        score = result * weight
+
         self.write_to_db(fk=kpi_fk, numerator_id=self.manufacturer_fk, denominator_id=self.store_id,
-                         result=result,
+                         result=result, score=score, weight=weight,
                          identifier_result=kpi_fk, identifier_parent=parent_fk, should_enter=True)
-        return result
+        return score
 
     def calculate_frentes(self):
         sku_kpi_fk = self.get_kpi_fk_by_kpi_type(Consts.FRENTES_SKU)
         kpi_fk = self.get_kpi_fk_by_kpi_type(Consts.FRENTES)
         parent_fk = self.get_kpi_fk_by_kpi_type(Consts.FRENTES)
+        weight = self.get_kpi_weight(Consts.FRENTES)
 
         valid_scene_types = self.relevant_targets[Consts.TEMPLATE_SCENE_TYPE].unique().tolist()
         relevant_scif = self.scif[self.scif['template_name'].isin(valid_scene_types)]
@@ -108,17 +263,36 @@ class CervezaToolBox(GlobalSessionToolBox):
                              identifier_parent=kpi_fk, should_enter=True)
 
         result = count_of_passing_skus / len(relevant_target_skus)
+        score = result * weight
         self.write_to_db(fk=kpi_fk, numerator_id=self.manufacturer_fk, denominator_id=self.store_id,
                          numerator_result=count_of_passing_skus, denominator_result=len(relevant_target_skus),
-                         result=result,
+                         result=result, score=score, weight=weight,
                          identifier_parent=parent_fk, identifier_result=kpi_fk, should_enter=True)
-        return result
+        return score
 
     def calculate_acomodo(self):
-        result = 0
+        kpi_fk = self.get_kpi_fk_by_kpi_type(Consts.ACOMODO)
+        parent_fk = self.get_parent_fk(Consts.ACOMODO)
+        weight = self.get_kpi_weight(Consts.ACOMODO)
+
+        scene_result = 0
+        count = 0
         for scene_id, scene_realogram in self.scene_realograms.items():
-            result += self.calculate_acomodo_scene(scene_realogram)
-        return result
+            count += 1
+            scene_result += self.calculate_acomodo_scene(scene_realogram)
+
+        if count == 0:
+            result = 0
+        else:
+            result = scene_result / count
+
+        score = result * weight
+
+        self.write_to_db(fk=kpi_fk, numerator_id=self.manufacturer_fk, denominator_id=self.store_id,
+                         numerator_result=result, denominator_result=count,
+                         result=result, score=score, weight=weight,
+                         identifier_parent=parent_fk, identifier_result=kpi_fk, should_enter=True)
+        return score
 
     def calculate_acomodo_scene(self, scene_realogram):
         kpi_fk = self.get_kpi_fk_by_kpi_type(Consts.ACOMODO_SCENE)
@@ -129,21 +303,15 @@ class CervezaToolBox(GlobalSessionToolBox):
         self.calculate_extra()
 
         self.write_to_db(fk=kpi_fk, numerator_id=scene_realogram.template_fk,
-                         denominator_id=self.store_id, result=result, identifier_parent=parent_fk,
+                         denominator_id=self.store_id, result=result, score=result, identifier_parent=parent_fk,
                          identifier_result=kpi_fk, should_enter=True)
         return result
 
     def calculate_colcado_correct(self, scene_realogram):
-        sku_kpi_fk = self.get_kpi_fk_by_kpi_type(Consts.COLCADO_CORRECT_SKU)
         kpi_fk = self.get_kpi_fk_by_kpi_type(Consts.COLCADO_CORRECT)
         parent_fk = self.get_parent_fk(Consts.COLCADO_CORRECT)
 
-        correctly_placed_skus = scene_realogram.calculate_correctly_placed_skus()
-        for sku_row in correctly_placed_skus.itertuples():
-            self.write_to_db(fk=sku_kpi_fk, numerator_id=sku_row.target_product_fk,
-                             denominator_id=scene_realogram.template_fk, numerator_result=sku_row.facings,
-                             denominator_result=scene_realogram.number_of_skus_in_planogram, result=sku_row.facings,
-                             context_id=scene_realogram.scene_fk, identifier_parent=kpi_fk, should_enter=True)
+        self._calculate_colcado_correct_sku(scene_realogram)
 
         number_of_positions_in_planogram = scene_realogram.number_of_positions_in_planogram
 
@@ -157,17 +325,22 @@ class CervezaToolBox(GlobalSessionToolBox):
 
         return len(scene_realogram.correctly_placed_tags) / number_of_positions_in_planogram
 
+    def _calculate_colcado_correct_sku(self, scene_realogram):
+        kpi_fk = self.get_kpi_fk_by_kpi_type(Consts.COLCADO_CORRECT_SKU)
+        parent_fk = self.get_parent_fk(Consts.COLCADO_CORRECT_SKU)
+
+        correctly_placed_skus = scene_realogram.calculate_correctly_placed_skus()
+        for sku_row in correctly_placed_skus.itertuples():
+            self.write_to_db(fk=kpi_fk, numerator_id=sku_row.target_product_fk,
+                             denominator_id=scene_realogram.template_fk, numerator_result=sku_row.facings,
+                             denominator_result=scene_realogram.number_of_skus_in_planogram, result=sku_row.facings,
+                             context_id=scene_realogram.scene_fk, identifier_parent=parent_fk, should_enter=True)
+
     def calculate_colcado_incorrect(self, scene_realogram):
-        sku_kpi_fk = self.get_kpi_fk_by_kpi_type(Consts.COLCADO_INCORRECT_SKU)
         kpi_fk = self.get_kpi_fk_by_kpi_type(Consts.COLCADO_INCORRECT)
         parent_fk = self.get_parent_fk(Consts.COLCADO_INCORRECT)
 
-        incorrectly_placed_skus = scene_realogram.calculate_incorrectly_placed_skus()
-        for sku_row in incorrectly_placed_skus.itertuples():
-            self.write_to_db(fk=sku_kpi_fk, numerator_id=sku_row.target_product_fk,
-                             denominator_id=scene_realogram.template_fk, numerator_result=sku_row.facings,
-                             denominator_result=scene_realogram.number_of_skus_in_planogram, result=sku_row.facings,
-                             context_id=scene_realogram.scene_fk, identifier_parent=kpi_fk, should_enter=True)
+        self._calculate_colcado_incorrect_sku(scene_realogram)
 
         number_of_positions_in_planogram = scene_realogram.number_of_positions_in_planogram
 
@@ -180,17 +353,23 @@ class CervezaToolBox(GlobalSessionToolBox):
                          identifier_result=kpi_fk, identifier_parent=parent_fk, should_enter=True)
         return
 
+    def _calculate_colcado_incorrect_sku(self, scene_realogram):
+        kpi_fk = self.get_kpi_fk_by_kpi_type(Consts.COLCADO_INCORRECT_SKU)
+        parent_fk = self.get_parent_fk(Consts.COLCADO_INCORRECT_SKU)
+
+        incorrectly_placed_skus = scene_realogram.calculate_incorrectly_placed_skus()
+        for sku_row in incorrectly_placed_skus.itertuples():
+            self.write_to_db(fk=kpi_fk, numerator_id=sku_row.target_product_fk,
+                             denominator_id=scene_realogram.template_fk, numerator_result=sku_row.facings,
+                             denominator_result=scene_realogram.number_of_skus_in_planogram, result=sku_row.facings,
+                             context_id=scene_realogram.scene_fk, identifier_parent=parent_fk, should_enter=True)
+
     def calculate_extra(self, scene_realogram):
         sku_kpi_fk = self.get_kpi_fk_by_kpi_type(Consts.EXTRA_SKU)
         kpi_fk = self.get_kpi_fk_by_kpi_type(Consts.EXTRA)
         parent_fk = self.get_kpi_fk_by_kpi_type(Consts.EXTRA)
 
-        extra_skus = scene_realogram.calculate_extra_skus()
-        for sku_row in extra_skus.itertuples():
-            self.write_to_db(fk=sku_kpi_fk, numerator_id=sku_row.target_product_fk,
-                             denominator_id=scene_realogram.template_fk, numerator_result=sku_row.facings,
-                             denominator_result=scene_realogram.number_of_skus_in_planogram, result=sku_row.facings,
-                             context_id=scene_realogram.scene_fk, identifier_parent=kpi_fk, should_enter=True)
+        self._calculate_extra_sku(scene_realogram)
 
         number_of_positions_in_planogram = scene_realogram.number_of_positions_in_planogram
 
@@ -202,6 +381,17 @@ class CervezaToolBox(GlobalSessionToolBox):
                          context_id=scene_realogram.scene_fk,
                          identifier_result=kpi_fk, identifier_parent=parent_fk, should_enter=True)
         return
+
+    def _calculate_extra_sku(self, scene_realogram):
+        kpi_fk = self.get_kpi_fk_by_kpi_type(Consts.EXTRA_SKU)
+        parent_fk = self.get_parent_fk(Consts.EXTRA_SKU)
+
+        extra_skus = scene_realogram.calculate_extra_skus()
+        for sku_row in extra_skus.itertuples():
+            self.write_to_db(fk=kpi_fk, numerator_id=sku_row.target_product_fk,
+                             denominator_id=scene_realogram.template_fk, numerator_result=sku_row.facings,
+                             denominator_result=scene_realogram.number_of_skus_in_planogram, result=sku_row.facings,
+                             context_id=scene_realogram.scene_fk, identifier_parent=parent_fk, should_enter=True)
 
     def _calculate_scene_realograms(self):
         scene_realograms = {}
@@ -215,15 +405,22 @@ class CervezaToolBox(GlobalSessionToolBox):
                     scene_realograms[scene_fk] = scene_realogram
         return scene_realograms
 
-    def _get_relevant_external_targets(self):
-        template_df = pd.read_excel(Consts.TEMPLATE_PATH, sheetname='Planograma_cerveza', header=1)
-        template_df = template_df[(template_df['GZ'].str.encode('utf-8') == self.gz.encode('utf-8')) &
-                                  (template_df['Ciudad'].str.encode('utf-8') == self.city.encode('utf-8'))]
+    def _get_relevant_external_targets(self, kpi_operation_type=None):
+        if kpi_operation_type == 'planograma_cerveza':
+            template_df = pd.read_excel(Consts.TEMPLATE_PATH, sheetname='Planograma_cerveza', header=1)
+            template_df = template_df[(template_df['GZ'].str.encode('utf-8') == self.gz.encode('utf-8')) &
+                                      (template_df['Ciudad'].str.encode('utf-8') == self.city.encode('utf-8'))]
 
-        template_df['Puertas'] = template_df['Puertas'].fillna(1)
-        template_df = template_df[['GZ', 'Ciudad', 'Nombre de Tarea', 'Puertas', 'EAN Code', 'Product Name',
-                                  'TIPO DE SKU', 'x', 'y', 'Frentes']]
-        return template_df
+            template_df['Puertas'] = template_df['Puertas'].fillna(1)
+            template_df = template_df[['GZ', 'Ciudad', 'Nombre de Tarea', 'Puertas', 'EAN Code', 'Product Name',
+                                      'TIPO DE SKU', 'x', 'y', 'Frentes']]
+            return template_df
+        elif kpi_operation_type == 'invasion':
+            template_df = pd.read_excel(Consts.TEMPLATE_PATH, sheetname='Invasion', header=1)
+            template_df = template_df[(template_df['Category'].str.contains('Cerveza'))]
+            return template_df.dropna(subset=['Manufacturer', 'Category'])
+        else:
+            return pd.DataFrame()
 
     def _determine_target_product_fks(self):
         target_products = self.all_products[['product_fk', 'product_ean_code']]
@@ -251,6 +448,10 @@ class CervezaToolBox(GlobalSessionToolBox):
         parent_kpi_name = Consts.KPIS_HIERARCHY[kpi_name]
         parent_fk = self.get_kpi_fk_by_kpi_type(parent_kpi_name)
         return parent_fk
+
+    def get_kpi_weight(self, kpi_name):
+        weight = Consts.KPI_POINTS[kpi_name]
+        return weight
 
     def _get_template_fk(self, template_name):
         return self.templates[self.templates['template_name'] == template_name]['pk'].iloc[0]
