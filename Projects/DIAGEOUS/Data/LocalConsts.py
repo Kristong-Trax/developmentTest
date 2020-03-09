@@ -4,7 +4,7 @@ __author__ = 'Elyashiv'
 class Consts(object):
 
     OFF, ON, INDEPENDENT, OPEN, NATIONAL_STORE = "off_premise", "on_premise", "Independent", "Open", "National"
-    NOT_INDEPENDENT_STORES = [OPEN, NATIONAL_STORE, INDEPENDENT]
+    NOT_INDEPENDENT_STORES = [OPEN, NATIONAL_STORE]
     # sheets:
     ON_TRADE_OPEN, OFF_TRADE_OPEN = "open - on_trade", "open - off_trade"
     ON_TRADE_INDEPENDENT, OFF_TRADE_INDEPENDENT = "independent - on_trade", "independent - off_trade"
@@ -14,8 +14,7 @@ class Consts(object):
     SHEETS = {
         OPEN: {ON: [ON_TRADE_OPEN], OFF: [OFF_TRADE_OPEN, MINIMUM_SHELF_SHEET, SHELF_GROUPS_SHEET]},
         NATIONAL_STORE: {ON: [ON_TRADE_NATIONAL], OFF: [OFF_TRADE_NATIONAL]},
-        INDEPENDENT: {ON: [ON_TRADE_INDEPENDENT], OFF: [
-            OFF_TRADE_INDEPENDENT, MINIMUM_SHELF_SHEET, SHELF_GROUPS_SHEET]}}
+        INDEPENDENT: {ON: [ON_TRADE_INDEPENDENT], OFF: [OFF_TRADE_INDEPENDENT]}}
     # KPIs columns:
     KPI_NAME, KPI_GROUP, TARGET, WEIGHT = "KPI Name", "KPI Group", "Target", "Weight"
     PREVIOUS_WEIGHT, SWITCH_DATE = "Previous Weight", "Switch Date"

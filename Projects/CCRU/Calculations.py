@@ -83,7 +83,7 @@ class CCRUProjectCalculations:
             return
 
         elif self.tool_box.visit_type in [self.tool_box.PROMO_VISIT]:
-            # Log.warning('Warning. Session with Promo visit type has no KPI calculations.')
+            Log.warning('Warning. Session with Promo visit type has no KPI calculations.')
             self.calculate_promo_compliance()
             return
 

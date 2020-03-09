@@ -9,7 +9,7 @@ from KPIUtils_v2.GlobalDataProvider.PsDataProvider import PsDataProvider
 from Trax.Utils.Logging.Logger import Log
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from datetime import datetime
-from Projects.DIAGEOUS.Data.LocalConsts import Consts
+from Projects.DIAGEOUS_SAND2.Data.LocalConsts import Consts
 import os
 import pandas as pd
 import json
@@ -108,7 +108,7 @@ class ToolBox:
                 self.scenes_with_shelves = {}
                 for scene in scenes:
                     shelves = self.match_product_in_scene[
-                        self.match_product_in_scene[MatchesConsts.SCENE_FK] 
+                        self.match_product_in_scene[MatchesConsts.SCENE_FK]
                         == scene][[MatchesConsts.SHELF_NUMBER_FROM_BOTTOM, MatchesConsts.SHELF_NUMBER]].max()
                     self.scenes_with_shelves[scene] = max(shelves)
                 self.converted_groups = self.convert_groups_from_template()
