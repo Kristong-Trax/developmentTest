@@ -1,8 +1,6 @@
 
 from Trax.Utils.Logging.Logger import Log
-
-from Projects.CBCDAIRYIL_SAND.Utils.KPIToolBox import CBCDAIRYILSANDToolBox
-
+from Projects.CBCDAIRYIL_SAND.Utils.KPIToolBox import CBCDAIRYILToolBox
 from KPIUtils_v2.Utils.Decorators.Decorators import log_runtime
 
 __author__ = 'idanr'
@@ -14,7 +12,7 @@ class Generator:
         self.data_provider = data_provider
         self.output = output
         self.project_name = data_provider.project_name
-        self.tool_box = CBCDAIRYILSANDToolBox(self.data_provider, self.output)
+        self.tool_box = CBCDAIRYILToolBox(self.data_provider, self.output)
 
     @log_runtime('Total Calculations', log_start=True)
     def main_function(self):
@@ -27,3 +25,5 @@ class Generator:
             return
         self.tool_box.main_calculation()
         self.tool_box.common.commit_results_data()
+        self.tool_box.old_common.commit_results_data()
+

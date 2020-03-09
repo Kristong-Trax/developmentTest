@@ -12,7 +12,7 @@ from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 __author__ = 'nidhin'
 # own check
 OWN_CHECK_COL = 'att1'  # !column in product dataframe!
-OWN_DISTRIBUTOR_FK = 60  # SinoPac distributor ID in custom entity table as well as manuf ID.
+OWN_DISTRIBUTOR_FK = 307  # SinoPac distributor ID in custom entity table as well as manuf ID.
 OTHER_DISTRIBUTOR_FK = 2  # Non SinoPac distributor ID in custom entity table.
 OWN_DISTRIBUTOR = 'SINO PACIFIC'
 
@@ -468,7 +468,6 @@ class SinoPacificToolBox:
                     type=kpi_sheet_row[KPI_FAMILY_COL],
                     proj=self.project_name
                 ))
-                pass
         return True
 
     def calculate_fsos(self, kpi, groupers, query_string, dataframe_to_process):
@@ -542,13 +541,12 @@ class SinoPacificToolBox:
                                                result=result,
                                                numerator_result=numerator_result,
                                                denominator_result=denominator_result,
-                                               identifier_result="{}_{}_{}_{}_{}".format(
+                                               identifier_result="{}_{}_{}_{}".format(
                                                    kpi['kpi_name'].iloc[0],
                                                    kpi['pk'].iloc[0],
                                                    # numerator_id,
                                                    each_den_fk,
                                                    context_id,
-                                                   self.own_man_fk
                                                ),
                                                identifier_parent=identifier_parent,
                                                should_enter=True,
@@ -598,15 +596,18 @@ class SinoPacificToolBox:
                                                   & (self.kpi_static_data['delete_time'].isnull())]
                 kpi_details = self.kpi_template.parse(KPI_DETAILS_SHEET)
                 kpi_parent_detail = kpi_details[kpi_details[KPI_NAME_COL] == kpi_parent[KPI_TYPE_COL].values[0]]
-                parent_denominator_id = (
-                        get_parameter_id(
-                            key_value=PARAM_DB_MAP[kpi_parent_detail['denominator'].iloc[0]]['key'],
-                            param_id_map=param_id_map) or self.store_id)
-                parent_context_id = (
-                        get_parameter_id(
-                            key_value=PARAM_DB_MAP[kpi_parent_detail['context'].iloc[0]]['key'],
-                            param_id_map=param_id_map) or self.store_id)
-
+                parent_denominator_id = get_parameter_id(
+                    key_value=PARAM_DB_MAP[kpi_parent_detail['denominator'].iloc[0]]['key'],
+                    param_id_map=param_id_map)
+                if parent_denominator_id is None:
+                    # because it can be 0
+                    parent_denominator_id = self.store_id  # the default
+                parent_context_id = get_parameter_id(
+                    key_value=PARAM_DB_MAP[kpi_parent_detail['context'].iloc[0]]['key'],
+                    param_id_map=param_id_map)
+                if parent_context_id is None:
+                    # because it can be 0
+                    parent_context_id = self.store_id  # the default
                 if kpi['kpi_name'].iloc[0].lower() in ['fsos_all_distributor_all_brand_in_whole_store',
                                                        'fsos_all_distributor_all_cat_all_brand']:
                     parent_identifier = "{}_{}_{}_{}".format(

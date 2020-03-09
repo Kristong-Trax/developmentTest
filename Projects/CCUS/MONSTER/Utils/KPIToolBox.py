@@ -104,18 +104,18 @@ class MONSTERToolBox:
     def calculate_availability(self, filters1, filters2, check_sos=False, type=None):
         score = 0
         scif_scenes = self.scif.loc[self.scif['template_fk'].isin(TEMPLATE_COLD)]
-        scenes = scif_scenes['scene_id'].unique().tolist()
+        scenes = scif_scenes['scene_fk'].unique().tolist()
         bays = self.match_product_in_scene['bay_number'].unique().tolist()
         if scenes:
             for scene in scenes:
                 for bay in bays:
-                    filters1['scene_id'] = scene
+                    filters1['scene_fk'] = scene
                     filters1['bay_number'] = bay
-                    filters2['scene_id'] = scene
+                    filters2['scene_fk'] = scene
                     filters2['bay_number'] = bay
                     if check_sos:
                         numerator_result = self.tools.calculate_availability(front_facing='Y', **filters2)
-                        denominator_filters = {'scene_id': scene, 'bay_number': bay}
+                        denominator_filters = {'scene_fk': scene, 'bay_number': bay}
                         denominator_result = self.tools.calculate_availability(front_facing='Y', **denominator_filters)
                         result = 0 if denominator_result == 0 else (numerator_result / float(denominator_result))
                         if type == "calc1":

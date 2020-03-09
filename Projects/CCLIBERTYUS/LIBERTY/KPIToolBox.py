@@ -28,6 +28,12 @@ class LIBERTYToolBox:
             self.data_provider[Data.STORE_INFO])
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
         self.scif = self.scif[self.scif['product_type'] != "Irrelevant"]
+        #### hotfix for attributes ####
+        self.scif.loc[self.scif[Const.SCIF_BASE_SIZE].isna(), Const.SCIF_BASE_SIZE] = \
+            self.scif.loc[self.scif[Const.SCIF_BASE_SIZE].isna(), 'Base Size']
+        self.scif.loc[self.scif[Const.SCIF_MULTI_PACK_SIZE].isna(), Const.SCIF_MULTI_PACK_SIZE] = \
+            self.scif.loc[self.scif[Const.SCIF_MULTI_PACK_SIZE].isna(), 'Multi-Pack Size']
+        #### hotfix for attributes ####
         self.result_values = self.ps_data_provider.get_result_values()
         self.templates = self.read_templates()
         self.common_db = common_db
@@ -38,6 +44,7 @@ class LIBERTYToolBox:
         self.store_type = self.store_info['store_type'].iloc[0]
         self.retailer = self.store_info['retailer_name'].iloc[0]
         self.branch = self.store_info['branch_name'].iloc[0]
+        self.additional_attribute_3 = self.store_info['additional_attribute_3'].iloc[0]
         self.additional_attribute_4 = self.store_info['additional_attribute_4'].iloc[0]
         self.additional_attribute_7 = self.store_info['additional_attribute_7'].iloc[0]
         self.body_armor_delivered = self.get_body_armor_delivery_status()
@@ -52,6 +59,8 @@ class LIBERTYToolBox:
             if sheet == Const.MINIMUM_FACINGS:
                 converters = {Const.BASE_SIZE_MIN: self.convert_base_size_values,
                               Const.BASE_SIZE_MAX: self.convert_base_size_values}
+            elif sheet == Const.SURVEY_QUESTION_SKUS:
+                converters = {Const.EAN_CODE: lambda x: str(x)}
             templates[sheet] = \
                 pd.read_excel(Const.TEMPLATE_PATH, sheet_name=sheet,
                               converters=converters).fillna('')
@@ -323,8 +332,8 @@ class LIBERTYToolBox:
             # size_subpackages_tuples = [tuple([float(i) for i in x.split(';')]) for x in size_subpackages]
             size_subpackages_tuples = [tuple([self.convert_base_size_values(i) for i in x.split(';')]) for x in
                                        size_subpackages]
-            filtered_scif = filtered_scif[pd.Series(list(zip(filtered_scif['Base Size'],
-                                                             filtered_scif['Multi-Pack Size'])),
+            filtered_scif = filtered_scif[pd.Series(list(zip(filtered_scif[Const.SCIF_BASE_SIZE],
+                                                             filtered_scif[Const.SCIF_MULTI_PACK_SIZE])),
                                                     index=filtered_scif.index).isin(size_subpackages_tuples)]
 
         excluded_size_subpackages = self.does_exist(kpi_line, Const.EXCLUDED_SIZE_SUBPACKAGES_NUM)
@@ -333,18 +342,40 @@ class LIBERTYToolBox:
             # size_subpackages_tuples = [tuple([float(i) for i in x.split(';')]) for x in size_subpackages]
             size_subpackages_tuples = [tuple([self.convert_base_size_values(i) for i in x.split(';')]) for x in
                                        excluded_size_subpackages]
-            filtered_scif = filtered_scif[~pd.Series(list(zip(filtered_scif['Base Size'],
-                                                              filtered_scif['Multi-Pack Size'])),
+            filtered_scif = filtered_scif[~pd.Series(list(zip(filtered_scif[Const.SCIF_BASE_SIZE],
+                                                              filtered_scif[Const.SCIF_MULTI_PACK_SIZE])),
                                                      index=filtered_scif.index).isin(size_subpackages_tuples)]
+
+        excluded_brand_multipack_size = self.does_exist(kpi_line, Const.EXCLUDED_BRAND_MULTIPACK_SIZE)
+        if excluded_brand_multipack_size:
+            excluded_brand_multipack_size_tuples = \
+                [tuple([i for i in x.split(';')]) for x in excluded_brand_multipack_size]
+            excluded_brand_multipack_size_tuples = \
+                self.create_multipack_permuations(excluded_brand_multipack_size_tuples, Const.SCIF_BRAND)
+            filtered_scif = \
+                filtered_scif[~pd.Series(list(zip(filtered_scif[Const.SCIF_BRAND],
+                                                  filtered_scif[Const.SCIF_MULTI_PACK_SIZE])),
+                                         index=filtered_scif.index).isin(excluded_brand_multipack_size_tuples)]
+
+        excluded_category_multipack_size = self.does_exist(kpi_line, Const.EXCLUDED_CATEGORY_MULTIPACK_SIZE)
+        if excluded_category_multipack_size:
+            excluded_category_multipack_size_tuples = \
+                [tuple([i for i in x.split(';')]) for x in excluded_category_multipack_size]
+            excluded_category_multipack_size_tuples = \
+                self.create_multipack_permuations(excluded_category_multipack_size_tuples, Const.SCIF_CATEGORY)
+            filtered_scif = \
+                filtered_scif[~pd.Series(list(zip(filtered_scif[Const.SCIF_CATEGORY],
+                                                  filtered_scif[Const.SCIF_MULTI_PACK_SIZE])),
+                                         index=filtered_scif.index).isin(excluded_category_multipack_size_tuples)]
 
         sub_packages = self.does_exist(kpi_line, Const.SUBPACKAGES_NUM)
         if sub_packages:
             if sub_packages == [Const.NOT_NULL]:
-                filtered_scif = filtered_scif[~filtered_scif['Multi-Pack Size'].isnull()]
+                filtered_scif = filtered_scif[~filtered_scif[Const.SCIF_MULTI_PACK_SIZE].isnull()]
             elif sub_packages == [Const.GREATER_THAN_ONE]:
-                filtered_scif = filtered_scif[filtered_scif['Multi-Pack Size'] > 1]
+                filtered_scif = filtered_scif[filtered_scif[Const.SCIF_MULTI_PACK_SIZE] > 1]
             else:
-                filtered_scif = filtered_scif[filtered_scif['Multi-Pack Size'].isin(
+                filtered_scif = filtered_scif[filtered_scif[Const.SCIF_MULTI_PACK_SIZE].isin(
                     [int(i) for i in sub_packages])]
 
         if self.does_exist(kpi_line, Const.MINIMUM_FACINGS_REQUIRED):
@@ -439,7 +470,7 @@ class LIBERTYToolBox:
             return 0, 0
 
         filtered_scif = \
-            filtered_scif.groupby(['Base Size', 'Multi-Pack Size', 'scene_id'],
+            filtered_scif.groupby([Const.SCIF_BASE_SIZE, Const.SCIF_MULTI_PACK_SIZE, 'scene_id'],
                                   as_index=False)['facings'].sum()
 
         if filtered_scif.empty:
@@ -455,9 +486,9 @@ class LIBERTYToolBox:
 
     def _calculate_pass_status_of_display(self, row):  # need to move to external KPI targets
         template = self.templates[Const.MINIMUM_FACINGS]
-        relevant_template = template[(template[Const.BASE_SIZE_MIN] <= row['Base Size']) &
-                                     (template[Const.BASE_SIZE_MAX] >= row['Base Size']) &
-                                     (template[Const.MULTI_PACK_SIZE] == row['Multi-Pack Size'])]
+        relevant_template = template[(template[Const.BASE_SIZE_MIN] <= row[Const.SCIF_BASE_SIZE]) &
+                                     (template[Const.BASE_SIZE_MAX] >= row[Const.SCIF_BASE_SIZE]) &
+                                     (template[Const.MULTI_PACK_SIZE] == row[Const.SCIF_MULTI_PACK_SIZE])]
         if relevant_template.empty:
             return 0
         minimum_facings = relevant_template[Const.MINIMUM_FACINGS_REQUIRED_FOR_DISPLAY].min()
@@ -525,9 +556,21 @@ class LIBERTYToolBox:
 
     # helper functions
     def convert_base_size_and_multi_pack(self):
-        self.scif.loc[:, 'Base Size'] = self.scif['Base Size'].apply(self.convert_base_size_values)
-        self.scif.loc[:, 'Multi-Pack Size'] = \
-            self.scif['Multi-Pack Size'].apply(lambda x: int(x) if x is not None else None)
+        self.scif.loc[:, Const.SCIF_BASE_SIZE] = self.scif[Const.SCIF_BASE_SIZE].apply(self.convert_base_size_values)
+        self.scif.loc[:, Const.SCIF_MULTI_PACK_SIZE] = \
+            self.scif[Const.SCIF_MULTI_PACK_SIZE].apply(lambda x: int(x) if x is not None else None)
+
+    def create_multipack_permuations(self, list_of_tuples, scif_parameter=None):
+        permuted_list_of_tuples = []
+        for scif_value, multipack_size in list_of_tuples:
+            operator, value = multipack_size.split('=')
+            if operator == '>':
+                df = self.scif[(self.scif[scif_parameter] == scif_value) &
+                               (self.scif[Const.SCIF_MULTI_PACK_SIZE] >= int(value))]
+                for result_tuple in list(zip(df[scif_parameter], df[Const.SCIF_MULTI_PACK_SIZE])):
+                    if result_tuple not in permuted_list_of_tuples:
+                        permuted_list_of_tuples.append(result_tuple)
+        return permuted_list_of_tuples
 
     @staticmethod
     def convert_base_size_values(value):
@@ -540,7 +583,7 @@ class LIBERTYToolBox:
 
     def get_market_share_target(self, ssd_still=None):  # need to move to external KPI targets
         template = self.templates[Const.MARKET_SHARE]
-        relevant_template = template[(template[Const.ADDITIONAL_ATTRIBUTE_4] == self.additional_attribute_4) &
+        relevant_template = template[(template[Const.ADDITIONAL_ATTRIBUTE_3] == self.additional_attribute_3) &
                                      (template[Const.RETAILER] == self.retailer) &
                                      (template[Const.BRANCH] == self.branch)]
 

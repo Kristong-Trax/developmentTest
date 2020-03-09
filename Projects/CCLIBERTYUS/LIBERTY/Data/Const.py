@@ -5,7 +5,7 @@ __author__ = 'hunter'
 
 class Const(object):
     TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)),
-                                 'Liberty_bottlers_Template_subquestions_added_2019_10_23.xlsx')
+                                 'Liberty_bottlers_Template_subquestions_added_2020_03_03.xlsx')
     LIBERTY = ' - Liberty'
     DRILLDOWN = ' - Drilldown'
     RED_SCORE_PARENT = 'RED SCORE - Liberty'
@@ -55,12 +55,14 @@ class Const(object):
 
     # Count of Display columns
     ATT4 = 'att4'
-    SIZE_SUBPACKAGES_NUM = 'Base Size;Multi-Pack Size'
-    SUBPACKAGES_NUM = 'Multi-Pack Size'
+    SIZE_SUBPACKAGES_NUM = 'BASE SIZE;MULTI-PACK SIZE'
+    SUBPACKAGES_NUM = 'MULTI-PACK SIZE'
     MINIMUM_FACINGS_REQUIRED = 'facings_threshold'
     GREATER_THAN_ONE = '>001'
     EXCLUDED_CATEGORY = 'excluded_category'
     EXCLUDED_SIZE_SUBPACKAGES_NUM = 'Excluded Base Size; Multi Pack Size'
+    EXCLUDED_BRAND_MULTIPACK_SIZE = 'Excluded Brand;MULTI-PACK SIZE'
+    EXCLUDED_CATEGORY_MULTIPACK_SIZE = 'Excluded Category;MULTI-PACK SIZE'
 
     # Share of Display columns
     INCLUDE_BODY_ARMOR = 'body_armor_delivered'
@@ -85,6 +87,7 @@ class Const(object):
 
     # market_share columns
     ADDITIONAL_ATTRIBUTE_4 = 'additional_attribute_4'
+    ADDITIONAL_ATTRIBUTE_3 = 'additional_attribute_3'
     RETAILER = 'retailer_name'
     BRANCH = 'branch_name'
     SSD_AND_STILL = 'Total_SSD_and_Still'
@@ -97,3 +100,8 @@ class Const(object):
 
     NOT_NULL = 'NOT NULL'
     NUMERIC_VALUES_TYPES = ['size']
+
+    SCIF_MULTI_PACK_SIZE = 'MULTI-PACK SIZE'
+    SCIF_BASE_SIZE = 'BASE SIZE'
+    SCIF_BRAND = 'brand_name'
+    SCIF_CATEGORY = 'category'

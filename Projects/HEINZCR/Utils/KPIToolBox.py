@@ -116,7 +116,7 @@ class HEINZCRToolBox:
         else:
             target = 0
 
-        result = 1 if perfect_store_score > target else 0
+        result = 1 if perfect_store_score >= target else 0
 
         perfect_store_kpi_fk = self.common_v2.get_kpi_fk_by_kpi_type(Const.PERFECT_STORE)
         self.common_v2.write_to_db_result(perfect_store_kpi_fk, numerator_id=Const.OWN_MANUFACTURER_FK,
@@ -200,17 +200,18 @@ class HEINZCRToolBox:
             columns={'product_fk': 'product_count'})
         aggregated_results['percent_complete'] = \
             aggregated_results.loc[:, 'in_session'] / aggregated_results.loc[:, 'product_count']
+        aggregated_results['result'] = aggregated_results['percent_complete'] * (3.0 / len(aggregated_results))
         for sub_category in aggregated_results.itertuples():
             parent_dict = self.common_v2.get_dictionary(kpi_fk=total_kpi_fk)
             identifier_dict = self.common_v2.get_dictionary(kpi_fk=sub_category_kpi_fk,
                                                             sub_category_fk=sub_category.sub_category_fk)
-            result = sub_category.percent_complete
+            result = sub_category.result
             self.common_v2.write_to_db_result(sub_category_kpi_fk, numerator_id=sub_category.sub_category_fk,
                                               denominator_id=self.store_id, identifier_parent=parent_dict,
                                               identifier_result=identifier_dict, result=result,
                                               should_enter=True)
         # save PowerSKU total score
-        total_score = aggregated_results['percent_complete'].sum()
+        total_score = aggregated_results['result'].sum()
         total_dict = self.common_v2.get_dictionary(kpi_fk=total_kpi_fk)
         self.common_v2.write_to_db_result(total_kpi_fk, numerator_id=Const.OWN_MANUFACTURER_FK,
                                           denominator_id=self.store_id,
@@ -400,11 +401,16 @@ class HEINZCRToolBox:
         # save aggregated results for each sub category
         total_dict = self.common_v2.get_dictionary(kpi_fk=total_sos_sub_category_kpi_fk)
         for row in results_df.itertuples():
-            identifier_result = self.common_v2.get_dictionary(kpi_fk=sos_sub_category_kpi_fk,
-                                                              sub_category_fk=row.sub_category_fk)
-            self.common_v2.write_to_db_result(sos_sub_category_kpi_fk, numerator_id=row.sub_category_fk,
-                                              denominator_id=self.store_id, result=row.score,
-                                              identifier_parent=total_dict, identifier_result=identifier_result,
+            identifier_result = \
+                self.common_v2.get_dictionary(kpi_fk=sos_sub_category_kpi_fk,
+                                              sub_category_fk=row.sub_category_fk)
+            # limit results so that aggregated results can only add up to 3
+            self.common_v2.write_to_db_result(sos_sub_category_kpi_fk,
+                                              numerator_id=row.sub_category_fk,
+                                              denominator_id=self.store_id,
+                                              result=row.score * (3 / float(len(results_df))),
+                                              identifier_parent=total_dict,
+                                              identifier_result=identifier_result,
                                               should_enter=True)
 
         # save total score for sos sub_category

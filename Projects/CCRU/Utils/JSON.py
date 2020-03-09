@@ -16,10 +16,26 @@ class CCRUJsonGenerator:
         self.base_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data')
         self.project_kpi_dict = {}
 
-    def create_kpi_data_json(self, kpi_data, file_name, sheet_name=None):
+    def create_kpi_source(self, file_name, pos_kpi_set):
+        input_df = pd.read_excel(os.path.join(self.base_path, file_name), sheet_name=None)
+
+        output = pd.DataFrame()
+        for source_key in input_df.keys():
+            source_df = input_df[source_key]
+            source_df['SOURCE'] = source_key
+            output = output.append(source_df[source_df['POS'] == pos_kpi_set])
+
+        output = output.to_json(orient='records')
+        output = json.loads(output)
+
+        return output
+
+    def create_kpi_data_json(self, kpi_data, file_name, sheet_name=None, pos_kpi_set_name=None):
         sheet_name = str(sheet_name) if sheet_name else None
         if sheet_name:
             file_input = pd.read_excel(os.path.join(self.base_path, file_name), sheet_name=sheet_name)
+            if 'PoS name' in file_input.columns and pos_kpi_set_name:
+                file_input = file_input[file_input['PoS name'] == pos_kpi_set_name]
         else:
             file_input = pd.read_excel(os.path.join(self.base_path, file_name))
         output = file_input.to_json(orient='records')

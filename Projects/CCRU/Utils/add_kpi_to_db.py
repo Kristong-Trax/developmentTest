@@ -175,7 +175,7 @@ class CCRUAddKPIs(CCRUConsts):
         for kpi in self.data.to_dict('records'):
             kpi_fk = self.kpi_static_data[(self.kpi_static_data['kpi_set_name'] == kpi.get(self.SET_NAME)) &
                                           (self.kpi_static_data['kpi_name'] == kpi.get(self.KPI_NAME))]['kpi_fk'].values[0]
-            if kpi.get(self.KPI_WEIGHT):
+            if kpi.get(self.KPI_WEIGHT) or kpi.get(self.KPI_WEIGHT) == 0:
                 queries.append(update_query.format(kpi.get(self.KPI_WEIGHT), kpi_fk))
             else:
                 queries.append(update_query.format('NULL', kpi_fk))
@@ -195,7 +195,7 @@ class CCRUAddKPIs(CCRUConsts):
             atomic_fk = self.kpi_static_data[(self.kpi_static_data['kpi_set_name'] == atomic.get(self.SET_NAME)) &
                                              (self.kpi_static_data['kpi_name'] == atomic.get(self.KPI_NAME)) &
                                              (self.kpi_static_data['atomic_kpi_name'] == atomic.get(self.ATOMIC_NAME))]['atomic_kpi_fk'].values[0]
-            if atomic.get(self.ATOMIC_WEIGHT):
+            if atomic.get(self.ATOMIC_WEIGHT) or atomic.get(self.ATOMIC_WEIGHT) == 0:
                 queries.append(update_query.format(atomic.get(self.ATOMIC_WEIGHT), atomic_fk))
             else:
                 queries.append(update_query.format('NULL', atomic_fk))
@@ -321,16 +321,29 @@ class CCRUAddKPIs(CCRUConsts):
 if __name__ == '__main__':
     LoggerInitializer.init('Add KPIs to static')
     Config.init()
+
     # docker_user = DbUsers.Docker
     # dbusers_class_path = 'Trax.Utils.Conf.Keys'
     # dbusers_patcher = patch('{0}.DbUser'.format(dbusers_class_path))
     # dbusers_mock = dbusers_patcher.start()
     # dbusers_mock.return_value = docker_user
-    kpi_data = CCRUAddKPIs('ccru', '/home/sergey/dev/kpi_factory/Projects/CCRU/Data/KPIs_2019/KPIs for DB - PoS 2019.xlsx', 'update')
-    # kpi_data = CCRUAddKPIs('ccru-sand', '/home/sergey/dev/kpi_factory/Projects/CCRU/Data/KPIs_2019/KPIs for DB - Benchmark 2019.xlsx')
-    # kpi_data = CCRUAddKPIs('ccru', '/home/sergey/dev/kpi_factory/Projects/CCRU/Data/KPIs_2019/KPIs for DB - Contract Execution 2019.xlsx', '2019-2')
-    # kpi_data = CCRUAddKPIs('ccru', '/home/sergey/dev/kpi_factory/Projects/CCRU/Data/KPIs_2019/KPIs for DB - CCH Integration 2019.xlsx')
+
+    project_name = 'ccru-sand'
+
+    # file_name = '/home/sergey/dev/kpi_factory/Projects/CCRU/Data/KPIs_2020/KPIs for DB - PoS 2020.xlsx'
+    # sheet_name = 'Sheet1'
+
+    file_name = '/home/sergey/dev/kpi_factory/Projects/CCRU/Data/KPIs_2020/KPIs for DB - Benchmark 2020.xlsx'
+    sheet_name = 'Sheet1'
+
+
+    # kpi_data = CCRUAddKPIs(project_name, file_name, sheet_name)
     # kpi_data.add_kpis_from_template()
-    # kpi_data.update_atomic_kpi_data()
-    # kpi_data.update_kpi_weights()
+
+    kpi_data = CCRUAddKPIs(project_name, file_name, sheet_name)
+    kpi_data.update_kpi_weights()
+
+    kpi_data = CCRUAddKPIs(project_name, file_name, sheet_name)
     kpi_data.update_atomic_weights()
+
+    # # kpi_data.update_atomic_kpi_data()

@@ -1,29 +1,23 @@
 # coding=utf-8
+from KPIUtils_v2.Utils.Consts.DataProvider import ScifConsts
+from KPIUtils_v2.Utils.Consts.DB import SessionResultsConsts
+from KPIUtils_v2.Utils.Consts.GlobalConsts import ProductTypeConsts
 
 
 class Consts(object):
-
     # Scene item facts attributes
-    FACINGS = 'facings'
-    TEMPLATE_NAME = 'template_name'
-    MANUFACTURER_FK = 'manufacturer_fk'
-    CATEGORY_FK = 'category_fk'
-    PRODUCT_FK = 'product_fk'
-    PRODUCT_TYPE = 'product_type'
     PRODUCT_POLICY_ATTR = 'att3'
     MILKY_POLICY = u'חלבי'
     TIRAT_TSVI_POLICY = u'טירת צבי'
 
     # SOS
-    TYPES_TO_IGNORE_IN_SOS = ['Irrelevant', 'Empty']
-    FACINGS_FOR_SOS = 'facings_ign_stack'
+    TYPES_TO_IGNORE_IN_SOS = [ProductTypeConsts.IRRELEVANT, ProductTypeConsts.EMPTY]
 
     # DB attributes
-    NUMERATOR_ID = 'numerator_id'
-    DENOMINATOR_ID = 'denominator_id'
-    NUMERATOR_RESULT = 'numerator_result'
-    DENOMINATOR_RESULT = 'denominator_result'
-    ENTITIES_FOR_DB = [MANUFACTURER_FK, CATEGORY_FK, NUMERATOR_RESULT, DENOMINATOR_RESULT]
+    ENTITIES_FOR_DB = [ScifConsts.MANUFACTURER_FK, ScifConsts.CATEGORY_FK,
+                       SessionResultsConsts.NUMERATOR_RESULT, SessionResultsConsts.DENOMINATOR_RESULT]
+    NEW_STATUS = 'New'
+    COMPLETED_STATUS = 'Completed'
 
     # Assortment Consts
     IN_STORE = 'in_store'
@@ -34,9 +28,11 @@ class Consts(object):
     AVAILABLE = 1
     OBLIGATORY_ASSORTMENT = u'חובה'
     OPTIONAL_SKU_ASSORTMENT = u'אופציונאלי'
-    AGGREGATION_COLUMNS_RENAMING = {'sum': NUMERATOR_RESULT, 'count': DENOMINATOR_RESULT}
-    SOS_SKU_LVL_RENAME = {IN_STORE: NUMERATOR_RESULT, CATEGORY_FK: DENOMINATOR_ID, FACINGS: DENOMINATOR_RESULT}
-
+    AGGREGATION_COLUMNS_RENAMING = {'sum': SessionResultsConsts.NUMERATOR_RESULT,
+                                    'count': SessionResultsConsts.DENOMINATOR_RESULT}
+    SOS_SKU_LVL_RENAME = {IN_STORE: SessionResultsConsts.NUMERATOR_RESULT,
+                          ScifConsts.CATEGORY_FK: SessionResultsConsts.DENOMINATOR_ID,
+                          ScifConsts.FACINGS: SessionResultsConsts.DENOMINATOR_RESULT}
     # KPIs names
     OOS_STORE_LEVEL = 'OOS_STORE_LEVEL'
     OOS_SKU_IN_STORE_LEVEL = 'OOS_SKU_IN_STORE_LEVEL'
@@ -58,8 +54,17 @@ class Consts(object):
     OOS_CATEGORY_LEVEL_TIRAT_TSVI = 'OOS_CATEGORY_LEVEL_TIRAT_TSVI'
     OOS_SKU_LEVEL_DAIRY = 'OOS_SKU_LEVEL_DAIRY'
     OOS_SKU_LEVEL_TIRAT_TSVI = 'OOS_SKU_LEVEL_TIRAT_TSVI'
+    # KPIs with previous results for NCC report
+    OOS_STORE_DAIRY_PREV_RES = 'OOS_STORE_LEVEL_DAIRY_WITH_PREVIOUS_RESULTS'
+    OOS_STORE_TIRAT_TSVI_PREV_RES = 'OOS_STORE_LEVEL_TIRAT_TSVI_WITH_PREVIOUS_RESULTS'
+    OOS_SKU_DAIRY_PREV_RES = 'OOS_SKU_LEVEL_DAIRY_WITH_PREVIOUS_RESULTS'
+    OOS_SKU_TIRAT_TSVI_PREV_RES = 'OOS_SKU_LEVEL_TIRAT_TSVI_WITH_PREVIOUS_RESULTS'
 
     # Logs
     EMPTY_ASSORTMENT_DATA = "There isn't relevant assortment data for this visit"
     LOG_EMPTY_ASSORTMENT_DATA_PER_POLICY = "There isn't relevant assortment data for the following policy: {}"
     LOG_EMPTY_PREVIOUS_SESSIONS = "Couldn't fetch previous results for the the following session: {}"
+
+    PREV_RES_KPIS_FOR_NCC = (OOS_STORE_LEVEL,
+                             OOS_STORE_DAIRY_PREV_RES, OOS_STORE_TIRAT_TSVI_PREV_RES, OOS_SKU_DAIRY_PREV_RES,
+                             OOS_SKU_TIRAT_TSVI_PREV_RES)

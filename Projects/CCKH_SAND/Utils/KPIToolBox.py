@@ -1,20 +1,22 @@
+# -*- coding: utf-8 -*-
 import os
-import pandas as pd
 from datetime import datetime
 
-from Trax.Algo.Calculations.Core.DataProvider import Data
-from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScript
-from Trax.Cloud.Services.Connector.Keys import DbUsers
+import pandas as pd
+from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
+from KPIUtils_v2.DB.CommonV2 import Common as CommonV2
 from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
-from Trax.Utils.Logging.Logger import Log
+from KPIUtils_v2.GlobalDataProvider.PsDataProvider import PsDataProvider
+from KPIUtils_v2.Utils.Consts.DB import SessionResultsConsts
+from KPIUtils_v2.Utils.Consts.GlobalConsts import HelperConsts
+from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScript
+from Trax.Algo.Calculations.Core.DataProvider import Data
+from Trax.Cloud.Services.Connector.Keys import DbUsers
 from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
+from Trax.Utils.Logging.Logger import Log
 
 from Projects.CCKH_SAND.Utils.Fetcher import CCKH_SANDQueries
 from Projects.CCKH_SAND.Utils.GeneralToolBox import CCKH_SANDGENERALToolBox
-from KPIUtils_v2.Utils.Consts.DB import SessionResultsConsts
-from KPIUtils_v2.Utils.Consts.GlobalConsts import HelperConsts
-from KPIUtils_v2.DB.CommonV2 import Common as CommonV2
-from KPIUtils_v2.GlobalDataProvider.PsDataProvider import PsDataProvider
 
 __author__ = 'Nimrod'
 
@@ -22,8 +24,6 @@ KPI_RESULT = 'report.kpi_results'
 KPK_RESULT = 'report.kpk_results'
 KPS_RESULT = 'report.kps_results'
 
-TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)),
-                             '..', 'Data', 'Template.xlsx')
 SCENE_TYPE_FIELD = 'additional_attribute_1'
 
 
@@ -37,9 +37,7 @@ def log_runtime(description, log_start=False):
             calc_end_time = datetime.utcnow()
             Log.info('{} took {}'.format(description, calc_end_time - calc_start_time))
             return result
-
         return wrapper
-
     return decorator
 
 
@@ -84,6 +82,7 @@ class CCKH_SANDTemplateConsts(object):
     AVAILABILITY_SHEET = 'AVAILABILITY'
     VISIBILITY_SHEET = 'VISIBILITY'
     COOLER_SHEET = 'COOLER'
+    AVAILABILITY_KPI_TYPE = u'ផលិតផលត្រូវមានលក់ (Availability)'
 
 
 class CCKH_SANDToolBox(CCKH_SANDConsts):
@@ -117,10 +116,9 @@ class CCKH_SANDToolBox(CCKH_SANDConsts):
         self.manufacturer = int(self.data_provider.own_manufacturer.param_value.values[0])
         self.ps_data_provider = PsDataProvider(self.data_provider, self.output)
         self.external_targets = self.ps_data_provider.get_kpi_external_targets()
+        self.assortment = Assortment(self.data_provider, self.output)
         self.templates_info = self.external_targets[self.external_targets[CCKH_SANDTemplateConsts.TEMPLATE_OPERATION] ==
                                                     CCKH_SANDTemplateConsts.BASIC_SHEET]
-        self.availability_info = self.external_targets[self.external_targets[CCKH_SANDTemplateConsts.TEMPLATE_OPERATION]
-                                                       == CCKH_SANDTemplateConsts.AVAILABILITY_SHEET]
         self.visibility_info = self.external_targets[self.external_targets[CCKH_SANDTemplateConsts.TEMPLATE_OPERATION]
                                                      == CCKH_SANDTemplateConsts.VISIBILITY_SHEET]
         self.cooler_info = self.external_targets[self.external_targets[CCKH_SANDTemplateConsts.TEMPLATE_OPERATION]
@@ -139,16 +137,104 @@ class CCKH_SANDToolBox(CCKH_SANDConsts):
         """
         This function calculates the KPI results.
         """
-        set_scores = {}
+        scores_dict = {}
         results_list_new_db = []
+        # assortments based calculations for availability
+        availability_kpi_dict, availability_score_dict = self.get_availability_kpi_data()
+        results_list_new_db.extend(availability_kpi_dict)
+        scores_dict.update(availability_score_dict)
+        # external target based calculations
+        final_main_child = self.templates_info[self.templates_info['Tested KPI Group'] == self.RED_SCORE].iloc[0]
+        all_kpi_dict, all_score_dict = self.get_all_kpi_data()
+        results_list_new_db.extend(all_kpi_dict)
+        scores_dict.update(all_score_dict)
+        # aggregation to calculate red score
+        max_points = sum([score[0] for score in scores_dict.values()])
+        actual_points = sum([score[1] for score in scores_dict.values()])
+        red_score = 0 if max_points == 0 else round((actual_points / float(max_points)) * 100, 2)
+        set_fk = self.kpi_static_data['kpi_set_fk'].values[0]
+        self.write_to_db_result(set_fk, (actual_points, max_points, red_score), level=self.LEVEL1)
+        results_list_new_db.append(self.get_new_kpi_dict(self.get_new_kpi_fk(final_main_child), red_score,
+                                                         red_score, actual_points, max_points,
+                                                         target=max_points,
+                                                         weight=actual_points,
+                                                         identifier_result=self.RED_SCORE,
+                                                         identifier_parent=CCKH_SANDConsts.WEB_HIERARCHY))
+        results_list_new_db.append(self.get_new_kpi_dict(self.get_new_kpi_by_name(self.RED_SCORE), red_score,
+                                                         red_score, actual_points, max_points,
+                                                         target=max_points, weight=actual_points,
+                                                         identifier_result=CCKH_SANDConsts.WEB_HIERARCHY))
+        self.commonV2.save_json_to_new_tables(results_list_new_db)
+        self.commonV2.commit_results_data()
+
+    def get_availability_kpi_data(self):
+        availability_results_list = []
+        scores_dict = {}
+        availability_assortment_df = self.assortment.calculate_lvl3_assortment()
+        if availability_assortment_df.empty:
+            Log.info("Availability KPI: session: {} does not have relevant assortments.".format(self.session_uid))
+            return [], {}
+        availability_kpi = self.kpi_new_static_data[self.kpi_new_static_data['type'].str.encode(
+            HelperConsts.UTF8) == self.template.AVAILABILITY_KPI_TYPE.encode(HelperConsts.UTF8)].iloc[0]
+        availability_new_kpi_fk = availability_kpi.pk
+        scores = []
+        # no need to validate_kpi_run because Availability is 1; seems it was added for the other KPIs
+        kpi_availability_group = availability_assortment_df.groupby('kpi_fk_lvl2')
+        for kpi_fk_lvl2, availability_kpi_df in kpi_availability_group:
+            score, result, threshold = self.calculate_availability(availability_kpi_df)
+            numerator, denominator, result_new_db = result, threshold, result
+            if score is not False:
+                if score is None:
+                    points = 0
+                else:
+                    points = 1
+                    scores.append((points, score))
+                atomic_kpi_name = self.kpi_new_static_data[self.kpi_new_static_data['pk'] ==
+                                                           kpi_fk_lvl2].iloc[0].type
+                Log.info('Save availability atomic kpi: {}'.format(atomic_kpi_name))
+                atomic_kpi = self.kpi_static_data[(self.kpi_static_data['kpi_name'].str.encode(HelperConsts.UTF8) ==
+                                                   self.template.AVAILABILITY_KPI_TYPE.encode(HelperConsts.UTF8)) &
+                                                  (self.kpi_static_data['atomic_kpi_name'] == atomic_kpi_name)]
+                atomic_fk = atomic_kpi.iloc[0].atomic_kpi_fk
+                self.write_to_db_result(atomic_fk, (score, result, threshold, points), level=self.LEVEL3)
+                child_name = atomic_kpi.atomic_kpi_name.iloc[0]
+                child_kpi_fk = self.get_new_kpi_by_name(child_name)  # kpi fk from new tables
+                Log.info('Save availability for {} ID: {}'.format(child_name, child_kpi_fk))
+                availability_results_list.append(self.get_new_kpi_dict(child_kpi_fk, result_new_db, score,
+                                                                       numerator, denominator,
+                                                                       weight=points, target=denominator,
+                                                                       identifier_parent={
+                                                                           'kpi_fk': availability_new_kpi_fk},
+                                                                       ))
+        max_points = sum([score[0] for score in scores])
+        actual_points = sum([score[0] * score[1] for score in scores])
+        percentage = 0 if max_points == 0 else round(
+            (actual_points / float(max_points)) * 100, 2)
+
+        kpi_fk = self.kpi_static_data[self.kpi_static_data['kpi_name'].str.encode(HelperConsts.UTF8) ==
+                                      self.template.AVAILABILITY_KPI_TYPE.encode(HelperConsts.UTF8)][
+            'kpi_fk'].values[0]
+        self.write_to_db_result(kpi_fk, (actual_points, max_points,
+                                         percentage), level=self.LEVEL2)
+        scores_dict[self.template.AVAILABILITY_KPI_TYPE] = (max_points, actual_points)
+        availability_results_list.append(self.get_new_kpi_dict(availability_new_kpi_fk, percentage, percentage,
+                                                               actual_points, max_points,
+                                                               target=max_points,
+                                                               weight=actual_points,
+                                                               identifier_result={
+                                                                   'kpi_fk': availability_new_kpi_fk},
+                                                               identifier_parent=self.RED_SCORE))
+        return availability_results_list, scores_dict
+
+    def get_all_kpi_data(self):
+        results_list_new_db = []
+        scores_dict = {}
         if self.templates_info.empty:
-            Log.info("This sessions doesnt have relevant external targets")
+            Log.info("All KPI: session: {} doesnt have relevant external targets".format(self.session_uid))
+            return [], {}
         main_children = self.templates_info[self.templates_info[self.template.KPI_GROUP] == self.RED_SCORE]
-        final_main_child = main_children[main_children['Tested KPI Group'] == self.RED_SCORE].iloc[0]
         for c in xrange(0, len(main_children)):
             main_child = main_children.iloc[c]
-            if main_child['Tested KPI Group'] == self.RED_SCORE:
-                continue
             main_child_kpi_fk = self.get_new_kpi_fk(main_child)  # kpi fk from new tables
             main_kpi_identifier = self.commonV2.get_dictionary(kpi_fk=main_child_kpi_fk)
             if self.validate_store_type(main_child):
@@ -163,15 +249,10 @@ class CCKH_SANDToolBox(CCKH_SANDConsts):
                     if kpi_weight is not False:
                         kpi_type = child[self.template.KPI_TYPE]
                         result = threshold = None
-                        if kpi_type == self.AVAILABILITY:
-                            score = self.calculate_availability(child)
-                            if score is not False:
-                                score, result, threshold = score
-                                numerator, denominator, result_new_db = result, threshold, result
-                        elif kpi_type == self.SURVEY:
+                        if kpi_type == self.SURVEY:
                             score, result, threshold, survey_answer_fk = self.check_survey(child)
                             threshold = None
-                            numerator, denominator, result_new_db = 1, 1, score*100
+                            numerator, denominator, result_new_db = 1, 1, score * 100
                             numerator_id = survey_answer_fk
                         elif kpi_type == self.SHARE_OF_SHELF:
                             score, result, threshold, result_new_db, numerator, denominator = \
@@ -183,7 +264,7 @@ class CCKH_SANDToolBox(CCKH_SANDConsts):
                             numerator, denominator, result_new_db = result, 1, result
                             score = 1 if result >= 1 else 0
                         else:
-                            Log.warning("KPI of type '{}' is not supported".format(kpi_type))
+                            Log.warning("KPI of type '{}' is not supported via assortments".format(kpi_type))
                             continue
                         if score is not False:
                             if score is None:
@@ -196,15 +277,16 @@ class CCKH_SANDToolBox(CCKH_SANDConsts):
                             self.write_to_db_result(
                                 atomic_fk, (score, result, threshold, points), level=self.LEVEL3)
                             identifier_parent = main_kpi_identifier
-                            child_name = '{}-{}'.format(child[self.template.TRANSLATION], 'Atomic')\
-                                if main_child[self.template.KPI_NAME] == child[self.template.KPI_NAME] else child[self.template.TRANSLATION]
+                            child_name = '{}-{}'.format(child[self.template.TRANSLATION], 'Atomic') \
+                                if main_child[self.template.KPI_NAME] == child[self.template.KPI_NAME] else child[
+                                self.template.TRANSLATION]
                             child.set_value(self.template.TRANSLATION, child_name)
                             child_kpi_fk = self.get_new_kpi_fk(child)  # kpi fk from new tables
-                            results_list_new_db.append(self.write_to_db_new_results(child_kpi_fk, result_new_db, score,
-                                                                                    numerator, denominator,
-                                                                                    weight=points, target=denominator,
-                                                                                    identifier_parent=identifier_parent
-                                                                                    , numerator_id=numerator_id))
+                            results_list_new_db.append(self.get_new_kpi_dict(child_kpi_fk, result_new_db, score,
+                                                                             numerator, denominator,
+                                                                             weight=points, target=denominator,
+                                                                             identifier_parent=identifier_parent,
+                                                                             numerator_id=numerator_id))
                 max_points = sum([score[0] for score in scores])
                 actual_points = sum([score[0] * score[1] for score in scores])
                 percentage = 0 if max_points == 0 else round(
@@ -215,31 +297,14 @@ class CCKH_SANDToolBox(CCKH_SANDConsts):
                                               kpi_name.encode(HelperConsts.UTF8)]['kpi_fk'].values[0]
                 self.write_to_db_result(kpi_fk, (actual_points, max_points,
                                                  percentage), level=self.LEVEL2)
-                set_scores[kpi_name] = (max_points, actual_points)
-                results_list_new_db.append(self.write_to_db_new_results(main_child_kpi_fk, percentage, percentage,
-                                                                        actual_points, max_points,
-                                                                        target=max_points,
-                                                                        weight=actual_points,
-                                                                        identifier_result=main_kpi_identifier,
-                                                                        identifier_parent=self.RED_SCORE))
-
-        max_points = sum([score[0] for score in set_scores.values()])
-        actual_points = sum([score[1] for score in set_scores.values()])
-        red_score = 0 if max_points == 0 else round((actual_points / float(max_points)) * 100, 2)
-        set_fk = self.kpi_static_data['kpi_set_fk'].values[0]
-        self.write_to_db_result(set_fk, (actual_points, max_points, red_score), level=self.LEVEL1)
-        results_list_new_db.append(self.write_to_db_new_results(self.get_new_kpi_fk(final_main_child), red_score,
-                                                                red_score, actual_points, max_points,
-                                                                target=max_points,
-                                                                weight=actual_points,
-                                                                identifier_result=self.RED_SCORE,
-                                                                identifier_parent=CCKH_SANDConsts.WEB_HIERARCHY))
-        results_list_new_db.append(self.write_to_db_new_results(self.get_new_kpi_by_name(self.RED_SCORE), red_score,
-                                                                red_score, actual_points, max_points,
-                                                                target=max_points, weight=actual_points,
-                                                                identifier_result=CCKH_SANDConsts.WEB_HIERARCHY))
-        self.commonV2.save_json_to_new_tables(results_list_new_db)
-        self.commonV2.commit_results_data()
+                scores_dict[kpi_name] = (max_points, actual_points)
+                results_list_new_db.append(self.get_new_kpi_dict(main_child_kpi_fk, percentage, percentage,
+                                                                 actual_points, max_points,
+                                                                 target=max_points,
+                                                                 weight=actual_points,
+                                                                 identifier_result=main_kpi_identifier,
+                                                                 identifier_parent=self.RED_SCORE))
+        return results_list_new_db, scores_dict
 
     def validate_store_type(self, params):
         """
@@ -250,7 +315,7 @@ class CCKH_SANDToolBox(CCKH_SANDConsts):
         if not stores:
             validation = True
         elif isinstance(stores, (str, unicode)):
-            if stores.upper() == self.template.ALL:
+            if stores.upper() == self.template.ALL or self.store_type in stores.split(self.template.SEPARATOR):
                 validation = True
         elif isinstance(stores, list):
             if self.store_type in stores:
@@ -279,10 +344,19 @@ class CCKH_SANDToolBox(CCKH_SANDConsts):
             kpi_data = custom_template[condition]
             if kpi_data.empty:
                 return False
-            weight = kpi_data[kpi_data['store_type'].str.encode(HelperConsts.UTF8) == self.store_type.encode(HelperConsts.UTF8)]['Target'].values[0]
             try:
+                weight = \
+                    kpi_data[
+                        kpi_data['store_type'].str.encode(HelperConsts.UTF8) == self.store_type.encode(
+                            HelperConsts.UTF8)][
+                        'Target'].values[0]
                 validation = float(weight)
             except ValueError:
+                validation = False
+            except IndexError:
+                Log.warning("{kpi}: No matching external targets for this session: {sess}".format(
+                    kpi=kpi_group,
+                    sess=self.session_uid))
                 validation = False
         return validation
 
@@ -324,30 +398,17 @@ class CCKH_SANDToolBox(CCKH_SANDConsts):
             return None
         return scene_types
 
-    def calculate_availability(self, params):
+    def calculate_availability(self, availability_kpi_df):
         """
         This function calculates Availability typed Atomics from a customized template, and saves the results to the DB.
         """
-        kpi_data = self.availability_info[(self.availability_info[self.template.KPI_NAME] ==
-                                           params[self.template.KPI_NAME]) & (self.availability_info[
-                                                                                  self.template.STORE_TYPE].str.
-                                                                              encode(HelperConsts.UTF8) ==
-                                                                              self.store_type.encode(HelperConsts.UTF8))]
-        if kpi_data.empty:
-            return False
-        kpi_data = kpi_data.iloc[0]
-        target = kpi_data[CCKH_SANDTemplateConsts.TARGET]
-        if not target:
-            return False
-        target = float(target)
-        filters = {'product_ean_code': kpi_data[self.template.PRODUCTS].split(
-            self.template.SEPARATOR)}
-        scene_types = self.get_scene_types(params)
-        if scene_types:
-            filters[SCENE_TYPE_FIELD] = scene_types
-        result = self.general_tools.calculate_availability(**filters)
-        score = 1 if result >= target else 0
-        return score, result, target
+        all_targets = availability_kpi_df.target.unique()
+        if not all_targets:
+            return False, False, False
+        target = float(all_targets[0])
+        total_facings_count = availability_kpi_df.facings.sum()
+        score = 1 if total_facings_count >= target else 0
+        return score, total_facings_count, target
 
     def check_survey(self, params):
         """
@@ -370,6 +431,8 @@ class CCKH_SANDToolBox(CCKH_SANDConsts):
             sos_filters = {params[self.template.SOS_ENTITY]: params[self.template.SOS_NUMERATOR]}
         general_filters = {}
         scene_types = self.get_scene_types(params)
+        if isinstance(scene_types, (str, unicode)):
+            scene_types = scene_types.split(self.template.SEPARATOR)
         if scene_types:
             general_filters[SCENE_TYPE_FIELD] = scene_types
         products_to_exclude = params[self.template.PRODUCT_TYPES_TO_EXCLUDE]
@@ -459,14 +522,14 @@ class CCKH_SANDToolBox(CCKH_SANDConsts):
             cur.execute(query)
         self.rds_conn.db.commit()
 
-    def write_to_db_new_results(self, kpi_fk, result, score, numerator_result, denominator_result,
-                                score_after_action=0, weight=None, target=None, identifier_parent=None,
-                                identifier_result=None, numerator_id=None):
+    def get_new_kpi_dict(self, kpi_fk, result, score, numerator_result, denominator_result,
+                         score_after_action=0, weight=None, target=None, identifier_parent=None,
+                         identifier_result=None, numerator_id=None):
 
         """
-        This function gets all kpi info  and add the relevant numerator_id and denominator_id and than create the db
-        result
-              :param kpi_fk: pk of kpi
+        This function gets all kpi info  and add the relevant numerator_id and denominator_id and return a dictionary
+        with the passed data.
+             :param kpi_fk: pk of kpi
              :param result
              :param score
              :param numerator_result
@@ -477,35 +540,18 @@ class CCKH_SANDToolBox(CCKH_SANDConsts):
              :param identifier_result
              :param numerator_id
              :param score_after_action
+
              :returns dict in format of db result
         """
         numerator_id = self.manufacturer if numerator_id is None else numerator_id
         denominator_id = self.store_id
-        results = [denominator_result, numerator_result, result, score]
-        result_dict = self.create_db_result(kpi_fk, numerator_id, denominator_id, results, weight, target,
-                                            identifier_parent, identifier_result, score_after_action)
-        return result_dict
-
-    @staticmethod
-    def create_db_result(kpi_fk, numerator_id, denominator_id, results, weight, target, identifier_parent=None,
-                         identifier_result=None, score_after_action=0):
-        """
-       The function build db result for sos result
-             :param kpi_fk: pk of kpi
-             :param numerator_id
-             :param denominator_id
-             :param results: array of 4 parameters [denominator , numerator ,result,score]
-             :param weight : weight of kpi result for kpi parent
-             :param target : this case we will save denominator result (decinal)
-             :param identifier_parent : dictionary of filters of level above  in calculation
-             :param identifier_result : dictionary of filters of first level in calculation
-             :param score_after_action :  in this case we will save numerator result(decimal)
-             :returns dict in format of db result
-         """
-        return {'fk': kpi_fk, SessionResultsConsts.NUMERATOR_ID: numerator_id,
+        return {'fk': kpi_fk,
+                SessionResultsConsts.NUMERATOR_ID: numerator_id,
                 SessionResultsConsts.DENOMINATOR_ID: denominator_id,
-                SessionResultsConsts.DENOMINATOR_RESULT: results[0], SessionResultsConsts.NUMERATOR_RESULT: results[1],
-                SessionResultsConsts.RESULT: results[2], SessionResultsConsts.SCORE: results[3],
-                'identifier_parent': identifier_parent, 'identifier_result': identifier_result, 'should_enter': True,
+                SessionResultsConsts.DENOMINATOR_RESULT: denominator_result,
+                SessionResultsConsts.NUMERATOR_RESULT: numerator_result,
+                SessionResultsConsts.RESULT: result, SessionResultsConsts.SCORE: score,
                 SessionResultsConsts.TARGET: target, SessionResultsConsts.WEIGHT: weight,
-                'score_after_actions':score_after_action}
+                'identifier_parent': identifier_parent, 'identifier_result': identifier_result,
+                'score_after_actions': score_after_action, 'should_enter': True,
+                }

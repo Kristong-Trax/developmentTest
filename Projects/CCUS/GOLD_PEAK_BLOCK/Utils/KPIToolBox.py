@@ -86,10 +86,11 @@ class GOLD_PEAK_BLOCKToolBox:
         result = 0
         template_group=str(relevant_kpi_data['Template group'].values[0])
         relevant_scenes=self.scif.loc[self.scif['template_group']==template_group]
-        scenes = relevant_scenes['scene_id'].unique().tolist()
+        scenes = relevant_scenes['scene_fk'].unique().tolist()
         if scenes:
             for scene in scenes:
-                if self.scif[self.scif['scene_id']==scene]['template_group'].values[0]==relevant_kpi_data['Template group'].values[0]:
+                if self.scif[self.scif['scene_fk'] == scene]['template_group'].values[0] == \
+                        relevant_kpi_data['Template group'].values[0]:
                     scene_data = self.match_product_in_scene.loc[self.match_product_in_scene['scene_fk'] == scene].merge(self.all_products, on=['product_fk'])
                     if not scene_data.loc[(scene_data['brand_name'] == relevant_kpi_data['Brand'].values[0]) & (scene_data['shelf_number']==1)].empty:
                         score=0
@@ -111,10 +112,11 @@ class GOLD_PEAK_BLOCKToolBox:
         total_facings_on_shelfs=0
         template_group = str(relevant_kpi_data['Template group'].values[0])
         relevant_scenes = self.scif.loc[self.scif['template_group'] == template_group]
-        scenes = relevant_scenes['scene_id'].unique().tolist()
+        scenes = relevant_scenes['scene_fk'].unique().tolist()
         if scenes:
             for scene in scenes:
-                if self.scif[self.scif['scene_id'] == scene]['template_group'].values[0] ==relevant_kpi_data['Template group'].values[0]:
+                if self.scif[self.scif['scene_fk'] == scene]['template_group'].values[0] == \
+                        relevant_kpi_data['Template group'].values[0]:
                     scene_data = self.match_product_in_scene.loc[self.match_product_in_scene['scene_fk'] == scene].merge(
                         self.all_products, on=['product_fk'])
                     numerator_scene_data= scene_data.loc[(scene_data['brand_name'] == relevant_kpi_data['Brand'].values[0]) & (scene_data[
@@ -145,7 +147,7 @@ class GOLD_PEAK_BLOCKToolBox:
     def calculate_gold_peak_tea_block(self, relevant_kpi_data):
         template_group = str(relevant_kpi_data['Template group'].values[0])
         relevant_scenes = self.scif.loc[self.scif['template_group'] == template_group]
-        scenes = relevant_scenes['scene_id'].unique().tolist()
+        scenes = relevant_scenes['scene_fk'].unique().tolist()
         if scenes:
             filters={'brand_name':relevant_kpi_data['Brand'].values[0], 'template_group': relevant_kpi_data['Template group'].values[0]}
             result=self.tools.calculate_block_together(minimum_block_ratio=0.01, vertical=True, horizontal=True, **filters)
@@ -216,5 +218,3 @@ class GOLD_PEAK_BLOCKToolBox:
         for query in self.kpi_results_queries:
             cur.execute(query)
         self.rds_conn.db.commit()
-
-

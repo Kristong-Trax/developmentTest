@@ -1479,6 +1479,10 @@ class BATRU_SANDToolBox:
 
                     else:  # No Competitors
 
+                        # Checking empty
+                        empty_tags = section_shelf_data[section_shelf_data['product_type'] == EMPTY]
+                        no_empties = True if len(empty_tags) == 0 else False
+
                         # Checking SKU Presence
                         outside_shelf_data = self.match_product_in_scene\
                             .merge(self.scene_info[['scene_fk', 'template_name']], how='left', left_on='scene_fk', right_on='scene_fk')
@@ -1515,7 +1519,7 @@ class BATRU_SANDToolBox:
                             # Checking SKU Sequence and Empties
                             last_prod_seq_ind = 0
                             sku_sequence_passed = True
-                            no_empties = True
+                            # no_empties = True
                             for sequence in sorted(section_shelf_data['sequence'].unique().tolist()):
 
                                 product_ean_code = section_shelf_data\
@@ -1528,8 +1532,8 @@ class BATRU_SANDToolBox:
                                 if manufacturer_name == BAT and product_type == OTHER:
                                     continue
 
-                                if product_type == EMPTY:
-                                    no_empties = False
+                                # if product_type == EMPTY:
+                                #     no_empties = False
 
                                 if product_ean_code in sequence_template_data['product_ean_code_lead'].unique().tolist():
                                     prod_seq_ind = sequence_template_data\
@@ -1590,7 +1594,7 @@ class BATRU_SANDToolBox:
                 # NEW PLACEMENT LOGIC
                 no_competitors_lvl2_fk = self.common.get_kpi_fk_by_kpi_type(self.NO_COMPETITORS_KPI_LVL2)
                 empty_spaces_lvl2_fk = self.common.get_kpi_fk_by_kpi_type(self.EMPTY_SPACES_KPI_LVL2)
-                empty_spaces_res = 1 - no_empties
+                empty_spaces_res = no_empties
                 no_competitors_res = no_competitors
                 section_result = str(int(no_competitors_res)) + str(int(sku_presence_passed)) \
                                  + str(int(empty_spaces_res)) + str(int(sku_sequence_passed)) \

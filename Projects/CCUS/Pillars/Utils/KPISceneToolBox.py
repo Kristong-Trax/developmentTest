@@ -12,7 +12,7 @@ BINARY = 2
 
 class PillarsSceneToolBox:
     PROGRAM_TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))),
-                                         'Data', 'CCUS_Templatev6_November.xlsx')
+                                         'Data', 'CCUS_Templatev7_February2020.xlsx')
     BITWISE_RECOGNIZER_SIZE = 6
     RECOGNIZED_BY_POS = BITWISE_RECOGNIZER_SIZE - 1
     RECOGNIZED_BY_SCENE_RECOGNITION = BITWISE_RECOGNIZER_SIZE - 2

@@ -26,24 +26,25 @@ if __name__ == '__main__':
     
     # all sessions still in new status
     sessions = [
-        '137764e8-cce9-4b38-bd53-c951557b15b4'
+        # ('c52a5d6f-c434-4aba-bf61-374623ebfb16', [311827, 311843]),
+        # ('a9fd1037-88f6-4c6b-b31e-c72b7eaec8f4', [308047, 308081]),
+        ('be64b68e-f52f-4a29-8ec2-ec0d8a2096f7', [310364, 310371, 310399, 310406])
     ]
 
-
-    for session in sessions:
-        data_provider = KEngineDataProvider(project_name)
-        data_provider.load_session_data(session)
-        scif = data_provider['scene_item_facts']
-        scenes = scif['scene_id'].unique().tolist()
-
-        for scene in scenes:
-            print('scene')
-            data_provider = KEngineDataProvider(project_name)
-            data_provider.load_scene_data(session, scene)
-            output = VanillaOutput()
-            SceneVanillaCalculations(data_provider, output).run_project_calculations()
-            save_scene_item_facts_to_data_provider(data_provider, output)
-            SceneCalculations(data_provider).calculate_kpis()
+    for session, scenes in sessions:
+        # if len(scenes) == 0:
+        #     data_provider = KEngineDataProvider(project_name)
+        #     data_provider.load_session_data(session)
+        #     scif = data_provider['scene_item_facts']
+        #     scenes = scif['scene_id'].unique().tolist()
+        # for scene in scenes:
+        #     print('scene: {}'.format(scene))
+        #     data_provider = KEngineDataProvider(project_name)
+        #     data_provider.load_scene_data(session, scene)
+        #     output = VanillaOutput()
+        #     SceneVanillaCalculations(data_provider, output).run_project_calculations()
+        #     save_scene_item_facts_to_data_provider(data_provider, output)
+        #     SceneCalculations(data_provider).calculate_kpis()
         data_provider = KEngineDataProvider(project_name)
         data_provider.load_session_data(session)
         output = Output()

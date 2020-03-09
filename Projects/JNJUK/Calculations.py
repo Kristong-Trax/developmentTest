@@ -5,9 +5,9 @@ from KPIUtils_v2.Utils.Decorators.Decorators import log_runtime
 from KPIUtils.GlobalProjects.JNJ.KPIGenerator_v2 import JNJGenerator
 from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScript
 
-# from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
-# from Trax.Utils.Conf.Configuration import Config
-# from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
+from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
+from Trax.Utils.Conf.Configuration import Config
+from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
 
 
 __author__ = 'nissand'
@@ -47,13 +47,13 @@ class JNJUKCalculations(BaseCalculationsScript):
         return eye_hand_lvl_template, exclusion_template, survey_template
 
 
-# if __name__ == '__main__':
-#     LoggerInitializer.init('jnjuk calculations')
-#     Config.init()
-#     project_name = 'jnjuk'
-#     data_provider = KEngineDataProvider(project_name)
-#     session = 'b3ff7bc7-cbe1-46fe-ada7-712f0f9f070d'
-#     # session = 'f850397b-6b79-47e9-897b-9edb2632efda' # 60 sec for promocalc
-#     data_provider.load_session_data(session)
-#     output = Output()
-#     JNJUKCalculations(data_provider, output).run_project_calculations()
+if __name__ == '__main__':
+    LoggerInitializer.init('jnjuk calculations')
+    Config.init()
+    project_name = 'jnjuk'
+    data_provider = KEngineDataProvider(project_name)
+    session = 'ca9b70f5-c59e-44c8-8c1c-da36b9992363'
+    # session = 'f850397b-6b79-47e9-897b-9edb2632efda' # 60 sec for promocalc
+    data_provider.load_session_data(session)
+    output = Output()
+    JNJUKCalculations(data_provider, output).run_project_calculations()

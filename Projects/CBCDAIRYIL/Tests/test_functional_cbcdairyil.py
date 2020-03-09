@@ -1,6 +1,8 @@
 # coding=utf-8
 import os
 import math
+
+import numpy
 import pandas as pd
 from mock import MagicMock
 from KPIUtils.ParseTemplates import parse_template
@@ -15,9 +17,26 @@ class TestConsts(object):
     RETAILER_FRIDGE = u'מקרר קמעונאי'
     OUT_CAT_FRIDGE = u'מקרר חוץ קטגוריה'
     PROJECT_TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'Template.xlsx')
+    KPI_EYE_LEVEL = u'האם גבינה צהובה נמצאת בגובה העיניים (מדפים 3-4)'
+    KPI_BATH = u'האם מאגדות נמצאות באמבטיה'
+    KPI_MIN_2 = u'מינימום 2 פייס למוצרים מובילים'
+
+
+def get_test_case_template_all_tests():
+    test_case_xls_object = pd.ExcelFile(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'Data',
+                                                     'test_case_data.xlsx'))
+    return test_case_xls_object
+
+def get_scif_matches_stich_groups(xls_file):
+    scif_test_case = pd.read_excel(xls_file, sheetname='scif', dtype={'product_ean_code': str})
+    matches_test_case = pd.read_excel(xls_file, sheetname='matches')
+    probe_groups = pd.read_excel(xls_file, sheetname='stitch_groups')
+    return scif_test_case, matches_test_case, probe_groups
 
 
 class TestCBCDAIRYIL(TestFunctionalCase):
+    TEST_CASE = get_test_case_template_all_tests()
+    SCIF, MATCHES, PROBE_GROUPS = get_scif_matches_stich_groups(TEST_CASE)
 
     @property
     def import_path(self):
@@ -25,9 +44,10 @@ class TestCBCDAIRYIL(TestFunctionalCase):
 
     def set_up(self):
         super(TestCBCDAIRYIL, self).set_up()
-        self.data_provider_mock = MagicMock()
+        self.mock_data_provider()
+        # self.data_provider_mock = MagicMock()
         self.data_provider_mock.project_name = 'Test_Project_1'
-        self.data_provider_mock.rds_conn = MagicMock()
+        # self.data_provider_mock.rds_conn = MagicMock()
         self.PSProjectConnector = self.mock_object('PSProjectConnector',
                                                    path='KPIUtils_v2.DB.PsProjectConnector')
         self.common = self.mock_common()
@@ -37,8 +57,42 @@ class TestCBCDAIRYIL(TestFunctionalCase):
         self.survey = self.mock_survey()
         self.block = self.mock_block()
         self.scif = self.get_made_up_scif()
-        self.general_toolbox = self.mock_general_toolbox()
+        # self.general_toolbox = self.mock_general_toolbox()
+        self.mock_parse_template_data()
         self.tool_box = CBCDAIRYILToolBox(self.data_provider_mock, MagicMock())
+
+    def mock_parse_template_data(self):
+        template_mock = self.mock_object('CBCDAIRYILToolBox.parse_template_data')
+        template_data = parse_template(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'Data',
+                                                   'test_template.xlsx'), Consts.KPI_SHEET, lower_headers_row_index=1)
+        template_mock.return_value = template_data
+
+
+    def mock_data_provider(self):
+        self.data_provider_mock = MagicMock()
+        # return self._data_provider
+        self.data_provider_data_mock = {}
+
+        def get_item(key):
+            return self.data_provider_data_mock[key] if key in self.data_provider_data_mock else MagicMock()
+
+        self.data_provider_mock.__getitem__.side_effect = get_item
+
+
+    def mock_scene_item_facts(self, data):
+        self.data_provider_data_mock['scene_item_facts'] = data.where(data.notnull(), None)
+
+    def mock_match_product_in_scene(self, data):
+        self.data_provider_data_mock['matches'] = data.where(data.notnull(), None)
+
+    def create_scif_matches_stitch_groups_data_mocks(self, scenes_list):
+        scif_test_case = self.SCIF
+        matches_test_case = self.MATCHES
+        scif_scene = scif_test_case[scif_test_case['scene_fk'].isin(scenes_list)]
+        matches_scene = matches_test_case[matches_test_case['scene_fk'].isin(scenes_list)]
+        self.mock_scene_item_facts(scif_scene)
+        self.mock_match_product_in_scene(matches_scene)
+        return matches_scene, scif_scene
 
     @staticmethod
     def get_made_up_scif():
@@ -64,7 +118,8 @@ class TestCBCDAIRYIL(TestFunctionalCase):
         """ This test is check the validation of the current project's template! """
         # Columns tests
         expected_columns = {'Atomic Name', 'KPI Name', 'KPI Set', 'store_type', 'additional_attribute_1',
-                            'additional_attribute_2', 'additional_attribute_3', 'Template Name', 'Template group',
+                            'additional_attribute_2', 'additional_attribute_3', 'additional_attribute_6',
+                            'additional_attribute_7', 'Template Name', 'Template group',
                             'KPI Family', 'Score Type', 'Param Type (1)/ Numerator', 'Param (1) Values',
                             'Param Type (2)/ Denominator', 'Param (2) Values', 'Param Type (3)', 'Param (3) Values',
                             'Weight', 'Target', 'Split Score'}
@@ -80,7 +135,7 @@ class TestCBCDAIRYIL(TestFunctionalCase):
 
     @staticmethod
     def _check_template_instances(template):
-        columns_to_check = ['additional_attribute_1', 'additional_attribute_2', 'additional_attribute_3', 'Weight',
+        columns_to_check = ['additional_attribute_6', 'Weight',
                             'KPI Family', 'KPI Set']
         for col in columns_to_check:
             attribute_values = template[col].unique().tolist()
@@ -103,35 +158,6 @@ class TestCBCDAIRYIL(TestFunctionalCase):
                            missing_percentage_3, percentage_with_nones_1, percentage_with_nones_2]
         for test_values, expected_result in test_cases_list:
             self.assertEqual(expected_result, self.tool_box.calculate_kpi_result_by_weight(test_values, 1.0, False))
-
-    def test_template_filters(self):
-        """
-        This test checks for all of the template filtering functions.
-        """
-
-        test_template_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'Data',
-                                          Consts.PROJECT_TEMPLATE_NAME)
-        kpis_sheet = parse_template(test_template_path, Consts.KPI_SHEET, lower_headers_row_index=1)
-        store_attr_test_1 = ({Consts.STORE_TYPE: Consts.DYNAMO, Consts.ADDITIONAL_ATTRIBUTE_1: Consts.GENERAL,
-                              Consts.ADDITIONAL_ATTRIBUTE_2: Consts.HEBREW_YES,
-                              Consts.ADDITIONAL_ATTRIBUTE_3: Consts.HEBREW_YES}, 26)
-        store_attr_test_2 = ({Consts.STORE_TYPE: Consts.MINI_MARKET, Consts.ADDITIONAL_ATTRIBUTE_1: Consts.ARAB,
-                              Consts.ADDITIONAL_ATTRIBUTE_2: Consts.HEBREW_YES,
-                              Consts.ADDITIONAL_ATTRIBUTE_3: Consts.HEBREW_YES}, 16)
-        store_attr_test_3 = ({Consts.STORE_TYPE: Consts.DYNAMO, Consts.ADDITIONAL_ATTRIBUTE_1: Consts.GENERAL,
-                              Consts.ADDITIONAL_ATTRIBUTE_2: Consts.HEBREW_NO,
-                              Consts.ADDITIONAL_ATTRIBUTE_3: Consts.HEBREW_NO}, 30)
-        store_attr_test_4 = ({Consts.STORE_TYPE: Consts.MINI_MARKET, Consts.ADDITIONAL_ATTRIBUTE_1: Consts.ARAB,
-                              Consts.ADDITIONAL_ATTRIBUTE_2: Consts.HEBREW_NO,
-                              Consts.ADDITIONAL_ATTRIBUTE_3: Consts.HEBREW_NO}, 20)
-        store_attr_test_5 = ({Consts.STORE_TYPE: Consts.DYNAMO, Consts.ADDITIONAL_ATTRIBUTE_1: Consts.ORTHODOX,
-                              Consts.ADDITIONAL_ATTRIBUTE_2: Consts.HEBREW_YES,
-                              Consts.ADDITIONAL_ATTRIBUTE_3: Consts.HEBREW_YES}, 24)
-        test_cases_list = [store_attr_test_1, store_attr_test_2, store_attr_test_3, store_attr_test_4,
-                           store_attr_test_5]
-        for test_values, expected_result in test_cases_list:
-            filtered_template = self.tool_box.filter_template_by_store_att(kpis_sheet, test_values)
-            self.assertEqual(expected_result, len(filtered_template))
 
     def test_scif_scenes_filters(self):
         """This test checks the scene filters by template_name and template_group"""
@@ -202,3 +228,131 @@ class TestCBCDAIRYIL(TestFunctionalCase):
             eye_lvl_shelves = filtered_df[Consts.SHELF_NUM].unique().tolist()
             self.assertItemsEqual(expected_shelves, eye_lvl_shelves)
             self.assertEqual(exp_length, len(filtered_df))
+
+    def _get_param_series_by_atomic_name(self, df, atomic_name):
+        df = df.loc[df['Atomic Name'].str.encode('utf-8') == atomic_name.encode('utf-8')]
+        if not df.empty:
+            df = df.iloc[0]
+
+        return df
+
+    def test_calculate_eye_level_passes_if_75_percent_product_on_eye_level(self):
+        expected_case_result = 100
+        matches, scene = self.create_scif_matches_stitch_groups_data_mocks([1])
+        toolbox = CBCDAIRYILToolBox(self.data_provider_mock, self.output)
+        series = self._get_param_series_by_atomic_name(toolbox.template_data, TestConsts.KPI_EYE_LEVEL)
+        if series.size != 0:
+            general_filters = toolbox.get_general_filters(series)
+            num_result, denominator_result, atomic_score = toolbox.calculate_eye_level(**general_filters)
+            self.assertEquals(atomic_score, expected_case_result)
+        else:
+            self.assertFalse(series.empty, True)
+
+    def test_calculate_eye_level_fails_if_not_75_percent_product_on_eye_level(self):
+        expected_case_result = 66.67
+        matches, scene = self.create_scif_matches_stitch_groups_data_mocks([2])
+        toolbox = CBCDAIRYILToolBox(self.data_provider_mock, self.output)
+        series = self._get_param_series_by_atomic_name(toolbox.template_data, TestConsts.KPI_EYE_LEVEL)
+        if series.size != 0:
+            general_filters = toolbox.get_general_filters(series)
+            num_result, denominator_result, atomic_score = toolbox.calculate_eye_level(**general_filters)
+            self.assertEquals(round(atomic_score, 2), expected_case_result)
+        else:
+            self.assertFalse(series.empty, True)
+
+    def test_calculate_eye_level_fails_if_no_product_on_eye_level(self):
+        expected_case_result = 0
+        matches, scene = self.create_scif_matches_stitch_groups_data_mocks([3])
+        toolbox = CBCDAIRYILToolBox(self.data_provider_mock, self.output)
+        series = self._get_param_series_by_atomic_name(toolbox.template_data, TestConsts.KPI_EYE_LEVEL)
+        if series.size != 0:
+            general_filters = toolbox.get_general_filters(series)
+            num_result, denominator_result, atomic_score = toolbox.calculate_eye_level(**general_filters)
+            self.assertEquals(round(atomic_score, 2), expected_case_result)
+        else:
+            self.assertFalse(series.empty, True)
+
+    def test_calculate_eye_level_fails_if_no_products(self):
+        expected_case_result = 0
+        matches, scene = self.create_scif_matches_stitch_groups_data_mocks([4])
+        toolbox = CBCDAIRYILToolBox(self.data_provider_mock, self.output)
+        series = self._get_param_series_by_atomic_name(toolbox.template_data, TestConsts.KPI_EYE_LEVEL)
+        if series.size != 0:
+            general_filters = toolbox.get_general_filters(series)
+            num_result, denominator_result, atomic_score = toolbox.calculate_eye_level(**general_filters)
+            self.assertEquals(round(atomic_score, 2), expected_case_result)
+        else:
+            self.assertFalse(series.empty, True)
+
+    def test_availability_from_bottom_fails_if_product_not_in_bath_exist(self):
+        expected_case_result = 0
+        matches, scene = self.create_scif_matches_stitch_groups_data_mocks([5])
+        toolbox = CBCDAIRYILToolBox(self.data_provider_mock, self.output)
+        series = self._get_param_series_by_atomic_name(toolbox.template_data, TestConsts.KPI_BATH)
+        if series.size != 0:
+            general_filters = toolbox.get_general_filters(series)
+            res = toolbox.calculate_availability_from_bottom(**general_filters)
+            self.assertEquals(res, expected_case_result)
+
+    def test_availability_from_bottom_passes_if_all_products_in_bath(self):
+        expected_case_result = 100
+        matches, scene = self.create_scif_matches_stitch_groups_data_mocks([6])
+        toolbox = CBCDAIRYILToolBox(self.data_provider_mock, self.output)
+        series = self._get_param_series_by_atomic_name(toolbox.template_data, TestConsts.KPI_BATH)
+        if series.size != 0:
+            general_filters = toolbox.get_general_filters(series)
+            res = toolbox.calculate_availability_from_bottom(**general_filters)
+            self.assertEquals(res, expected_case_result)
+
+    def test_availability_from_bottom_fails_if_no_products_in_bath(self):
+        expected_case_result = 0
+        matches, scene = self.create_scif_matches_stitch_groups_data_mocks([7])
+        toolbox = CBCDAIRYILToolBox(self.data_provider_mock, self.output)
+        series = self._get_param_series_by_atomic_name(toolbox.template_data, TestConsts.KPI_BATH)
+        if series.size != 0:
+            general_filters = toolbox.get_general_filters(series)
+            res = toolbox.calculate_availability_from_bottom(**general_filters)
+            self.assertEquals(res, expected_case_result)
+
+    def test_availability_from_bottom_passes_if_products_in_bath_ignore_others(self):
+        expected_case_result = 100
+        matches, scene = self.create_scif_matches_stitch_groups_data_mocks([8])
+        toolbox = CBCDAIRYILToolBox(self.data_provider_mock, self.output)
+        series = self._get_param_series_by_atomic_name(toolbox.template_data, TestConsts.KPI_BATH)
+        if series.size != 0:
+            general_filters = toolbox.get_general_filters(series)
+            res = toolbox.calculate_availability_from_bottom(**general_filters)
+            self.assertEquals(res, expected_case_result)
+
+    def test_min_2_availability_failes_if_only_have_1_facing(self):
+        expected_case_result = (0, 1, 0)
+        matches, scene = self.create_scif_matches_stitch_groups_data_mocks([8])
+        toolbox = CBCDAIRYILToolBox(self.data_provider_mock, self.output)
+        series = self._get_param_series_by_atomic_name(toolbox.template_data, TestConsts.KPI_MIN_2)
+        if series.size != 0:
+            general_filters = toolbox.get_general_filters(series)
+            toolbox.calculate_availability(**general_filters)
+            res = toolbox.calculate_min_2_availability(**general_filters)
+            self.assertEquals(res, expected_case_result)
+
+    def test_min_2_availability_failes_if_products_have_2_facing_in_stacking_only(self):
+        expected_case_result = (0, 1, 0)
+        matches, scene = self.create_scif_matches_stitch_groups_data_mocks([9])
+        toolbox = CBCDAIRYILToolBox(self.data_provider_mock, self.output)
+        series = self._get_param_series_by_atomic_name(toolbox.template_data, TestConsts.KPI_MIN_2)
+        if series.size != 0:
+            general_filters = toolbox.get_general_filters(series)
+            toolbox.calculate_availability(**general_filters)
+            res = toolbox.calculate_min_2_availability(**general_filters)
+            self.assertEquals(res, expected_case_result)
+
+    def test_min_2_availability_passes_if_products_have_2_facing(self):
+        expected_case_result = (1, 1, 100)
+        matches, scene = self.create_scif_matches_stitch_groups_data_mocks([10])
+        toolbox = CBCDAIRYILToolBox(self.data_provider_mock, self.output)
+        series = self._get_param_series_by_atomic_name(toolbox.template_data, TestConsts.KPI_MIN_2)
+        if series.size != 0:
+            general_filters = toolbox.get_general_filters(series)
+            toolbox.calculate_availability(**general_filters)
+            res = toolbox.calculate_min_2_availability(**general_filters)
+            self.assertEquals(res, expected_case_result)

@@ -28,7 +28,7 @@ class RISPARKWINEDEGenerator:
             #     score = self.tool_box.main_calculation(kpi_set_fk=kpi_set_fk)
             #     self.tool_box.write_to_db_result(kpi_set_fk, score, self.tool_box.LEVEL1)
             self.tool_box.main_calculation()
-            self.tool_box.commit_results_data()
+            # self.tool_box.commit_results_data()
         except Exception as e:
             Log.error('{}'.format(e))
 

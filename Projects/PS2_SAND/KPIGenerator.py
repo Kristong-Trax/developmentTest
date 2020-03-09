@@ -1,14 +1,14 @@
 from Trax.Utils.Logging.Logger import Log
-from Projects.PS2_SAND.Utils.KPIToolBox import DIAGEOESToolBox
+from Projects.PS2_SAND.Utils.KPIToolBox import PS2SandToolBox
 from KPIUtils_v2.Utils.Decorators.Decorators import log_runtime
 
 
-class DIAGEOESGenerator:
+class PS2SandGenerator:
 
     def __init__(self, data_provider, output):
         self.data_provider = data_provider
         self.output = output
-        self.tool_box = DIAGEOESToolBox(self.data_provider, self.output)
+        self.tool_box = PS2SandToolBox(self.data_provider, self.output)
 
     @log_runtime('Total Calculations', log_start=True)
     def main_function(self):

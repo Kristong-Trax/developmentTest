@@ -1,5 +1,7 @@
 
 from Trax.Utils.Logging.Logger import Log
+
+from Projects.DIAGEOUS_SAND2.Utils.CaseCountUtil import CaseCountCalculator
 from Projects.DIAGEOUS_SAND2.Utils.KPIToolBox import ToolBox
 from KPIUtils_v2.Utils.Decorators.Decorators import log_runtime
 
@@ -25,4 +27,5 @@ class Generator:
             Log.warning('Scene item facts is empty for this session')
             return
         self.tool_box.main_calculation()
+        # CaseCountCalculator(self.data_provider, self.tool_box.common).main_case_count_calculations()
         self.tool_box.common.commit_results_data()
