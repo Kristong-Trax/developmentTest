@@ -36,8 +36,8 @@ class ToolBox(GlobalSessionToolBox):
         cerveza_tool_box = CervezaToolBox(self.data_provider, self.output, self.common)
         score += cerveza_tool_box.main_calculation()
 
-        refresco_tool_box = RefrescoToolBox(self.data_provider, self.output, self.common)
-        score += refresco_tool_box.main_calculation()
+        # refresco_tool_box = RefrescoToolBox(self.data_provider, self.output, self.common)
+        # score += refresco_tool_box.main_calculation()
 
         kpi_name = Consts.KPI_IE
 

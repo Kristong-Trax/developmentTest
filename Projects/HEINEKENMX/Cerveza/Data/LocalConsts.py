@@ -6,9 +6,9 @@ class Consts(object):
                       'Mercadeo Cerveza': 'Cerveza',
                       'Huecos - Cerveza': 'Mercadeo Cerveza',
                       'Frentes - Cerveza': 'Mercadeo Cerveza',
-                      'Frentes - Cerveza - SKU': 'Frentes Cerveza',
+                      'Frentes - Cerveza - SKU': 'Frentes - Cerveza',
                       'Acomodo - Cerveza': 'Mercadeo Cerveza',
-                      'Acomodo - Scene - Cerveza': 'Acomodo Cerveza',
+                      'Acomodo - Scene - Cerveza': 'Acomodo - Cerveza',
                       'Colcado Correctamente - Cerveza': 'Acomodo - Scene - Cerveza',
                       'Colcado Correctamente - Cerveza - SKU': 'Colcado Correctamente - Cerveza',
                       'Colcado Incorrectamente - Cerveza': 'Acomodo - Scene - Cerveza',
@@ -19,9 +19,9 @@ class Consts(object):
                       'Surtido - Cerveza': 'Cerveza',
                       'Calificador - Cerveza': 'Surtido - Cerveza',
                       'Calificador - Cerveza - SKU': 'Calificador - Cerveza',
-                      'Prioritario - Cerveza': 'Sutrido - Cerveza',
+                      'Prioritario - Cerveza': 'Surtido - Cerveza',
                       'Prioritario - Cerveza - SKU': 'Prioritario - Cerveza',
-                      'Opcional - Cerveza': 'Sutrido - Cerveza',
+                      'Opcional - Cerveza': 'Surtido - Cerveza',
                       'Opcional - Cerveza - SKU': 'Opcional - Cerveza'
                       }
 
@@ -31,7 +31,7 @@ class Consts(object):
     HUECOS = 'Huecos - Cerveza'
     FRENTES = 'Frentes - Cerveza'
     FRENTES_SKU = 'Frentes - Cerveza - SKU'
-    ACOMODO = 'Acomodo - Cerzeza'
+    ACOMODO = 'Acomodo - Cerveza'
     ACOMODO_SCENE = 'Acomodo - Scene - Cerveza'
     COLCADO_CORRECT = 'Colcado Correctamente - Cerveza'
     COLCADO_CORRECT_SKU = 'Colcado Correctamente - Cerveza - SKU'
@@ -40,7 +40,7 @@ class Consts(object):
     EXTRA = 'Extra - Cerveza'
     EXTRA_SKU = 'Extra - Cerveza - SKU'
     INVASION = 'Invasion - Cerveza'
-    SUTRIDO = 'Surtido - Cerveza'
+    SURTIDO = 'Surtido - Cerveza'
     CALIFICADOR = 'Calificador - Cerveza'
     CALIFICADOR_SKU = 'Calificador - Cerveza - SKU'
     PRIORITARIO = 'Prioritario - Cerveza'
@@ -52,7 +52,7 @@ class Consts(object):
         IE_60: 25.0,
         CERVEZA: 6.0,
         MERCADEO: 3.0,
-        SUTRIDO: 3.0,
+        SURTIDO: 3.0,
         HUECOS: 0.3,
         FRENTES: 1.8,
         ACOMODO: 0.2,

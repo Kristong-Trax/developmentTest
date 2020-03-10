@@ -48,17 +48,17 @@ class CervezaToolBox(GlobalSessionToolBox):
 
         score = 0
         score += self.calculate_mercadeo()
-        score += self.calculate_sutrido()
+        score += self.calculate_surtido()
 
         self.write_to_db(fk=kpi_fk, numerator_id=self.manufacturer_fk, denominator_id=self.store_id,
                          result=score, score=score, weight=weight,
                          identifier_result=kpi_fk, identifier_parent=parent_fk, should_enter=True)
         return score
 
-    def calculate_sutrido(self):
-        kpi_fk = self.get_kpi_fk_by_kpi_type(Consts.SUTRIDO)
-        parent_fk = self.get_parent_fk(Consts.SUTRIDO)
-        weight = self.get_kpi_weight(Consts.SUTRIDO)
+    def calculate_surtido(self):
+        kpi_fk = self.get_kpi_fk_by_kpi_type(Consts.SURTIDO)
+        parent_fk = self.get_parent_fk(Consts.SURTIDO)
+        weight = self.get_kpi_weight(Consts.SURTIDO)
 
         score = 0
         score += self.calculate_calificador()
@@ -202,17 +202,17 @@ class CervezaToolBox(GlobalSessionToolBox):
         parent_fk = self.get_parent_fk(Consts.INVASION)
         weight = self.get_kpi_weight(Consts.INVASION)
         result = 1
-        for invasion_row in self.invasion_targets:
-            if 'Cerveza' not in getattr(invasion_row, "NOMBRE DE TAREA"):
+        for invasion_row in self.invasion_targets.itertuples():
+            if 'Cerveza' not in getattr(invasion_row, "_1"):
                 continue
-            relevant_scif = self.scif[self.scif['template_name'] == getattr(invasion_row, "NOMBRE DE TAREA")]
+            relevant_scif = self.scif[self.scif['template_name'] == getattr(invasion_row, "_1")]
             if relevant_scif.empty:
                 continue
             manufacturers = [x.strip() for x in getattr(invasion_row, 'Manufacturer').split(',')]
             categories = [x.strip() for x in getattr(invasion_row, 'Category').split(',')]
             relevant_scif = \
-                relevant_scif[(relevant_scif['Manufacturer'].isin(manufacturers)) &
-                              (relevant_scif['Category'].isin(categories))]
+                relevant_scif[(relevant_scif['manufacturer_name'].isin(manufacturers)) &
+                              (relevant_scif['category'].isin(categories))]
             if not relevant_scif.empty:
                 result = 0
                 break
@@ -230,7 +230,7 @@ class CervezaToolBox(GlobalSessionToolBox):
         weight = self.get_kpi_weight(Consts.HUECOS)
 
         empty_scif = self.scif[self.scif['product_type'] == 'Empty']
-        result = 0 if empty_scif.empty else 0
+        result = 1 if empty_scif.empty else 0
 
         score = result * weight
 
@@ -240,27 +240,23 @@ class CervezaToolBox(GlobalSessionToolBox):
         return score
 
     def calculate_frentes(self):
-        sku_kpi_fk = self.get_kpi_fk_by_kpi_type(Consts.FRENTES_SKU)
         kpi_fk = self.get_kpi_fk_by_kpi_type(Consts.FRENTES)
-        parent_fk = self.get_kpi_fk_by_kpi_type(Consts.FRENTES)
+        parent_fk = self.get_parent_fk(Consts.FRENTES)
         weight = self.get_kpi_weight(Consts.FRENTES)
 
         valid_scene_types = self.relevant_targets[Consts.TEMPLATE_SCENE_TYPE].unique().tolist()
         relevant_scif = self.scif[self.scif['template_name'].isin(valid_scene_types)]
         relevant_scif.groupby('product_fk', as_index=False)['facings'].sum()
-        relevant_target_skus = self.relevant_targets.groupby('product_fk', as_index=False)['Frentes'].sum()
+        relevant_target_skus = self.relevant_targets.groupby('target_product_fk', as_index=False)['Frentes'].sum()
         relevant_target_skus.rename(columns={'Frentes': 'target'}, inplace=True)
         relevant_target_skus = pd.merge(relevant_target_skus, relevant_scif, how='left',
-                                        on='product_fk').fillna(0)
+                                        left_on='target_product_fk',
+                                        right_on='product_fk').fillna(0)
 
-        count_of_passing_skus = 0
+        relevant_target_skus['meets_target'] = relevant_target_skus['facings'] > relevant_target_skus['target']
+        count_of_passing_skus = relevant_target_skus['meets_target'].sum()
 
-        for sku_row in relevant_target_skus.itertuples():
-            sku_result = 1 if sku_row.facings >= sku_row.target else 0
-            count_of_passing_skus += sku_result
-            self.write_to_db(fk=sku_kpi_fk, numerator_id=sku_row.product_fk, denominator_id=self.store_id,
-                             numerator_result=sku_row.facings, result=sku_result, target=sku_row.target,
-                             identifier_parent=kpi_fk, should_enter=True)
+        self._calculate_frentes_sku(relevant_target_skus)
 
         result = count_of_passing_skus / len(relevant_target_skus)
         score = result * weight
@@ -269,6 +265,15 @@ class CervezaToolBox(GlobalSessionToolBox):
                          result=result, score=score, weight=weight,
                          identifier_parent=parent_fk, identifier_result=kpi_fk, should_enter=True)
         return score
+
+    def _calculate_frentes_sku(self, relevant_target_skus):
+        kpi_fk = self.get_kpi_fk_by_kpi_type(Consts.FRENTES_SKU)
+        parent_fk = self.get_parent_fk(Consts.FRENTES_SKU)
+
+        for sku_row in relevant_target_skus.itertuples():
+            self.write_to_db(fk=kpi_fk, numerator_id=sku_row.product_fk, denominator_id=self.store_id,
+                             numerator_result=sku_row.facings, result=sku_row.meets_target, target=sku_row.target,
+                             identifier_parent=parent_fk, should_enter=True)
 
     def calculate_acomodo(self):
         kpi_fk = self.get_kpi_fk_by_kpi_type(Consts.ACOMODO)
@@ -299,11 +304,12 @@ class CervezaToolBox(GlobalSessionToolBox):
         parent_fk = self.get_parent_fk(Consts.ACOMODO_SCENE)
 
         result = self.calculate_colcado_correct(scene_realogram)
-        self.calculate_colcado_incorrect()
-        self.calculate_extra()
+        self.calculate_colcado_incorrect(scene_realogram)
+        self.calculate_extra(scene_realogram)
 
         self.write_to_db(fk=kpi_fk, numerator_id=scene_realogram.template_fk,
-                         denominator_id=self.store_id, result=result, score=result, identifier_parent=parent_fk,
+                         denominator_id=self.store_id, context_id=scene_realogram.scene_fk, result=result,
+                         score=result, identifier_parent=parent_fk,
                          identifier_result=kpi_fk, should_enter=True)
         return result
 
@@ -318,7 +324,7 @@ class CervezaToolBox(GlobalSessionToolBox):
         self.write_to_db(fk=kpi_fk, numerator_id=self.manufacturer_fk,
                          denominator_id=scene_realogram.template_fk,
                          numerator_result=len(scene_realogram.correctly_placed_tags),
-                         denominator_result=len(scene_realogram.number_of_skus_in_planogram),
+                         denominator_result=scene_realogram.number_of_skus_in_planogram,
                          result=len(scene_realogram.correctly_placed_tags) / number_of_positions_in_planogram,
                          context_id=scene_realogram.scene_fk,
                          identifier_result=kpi_fk, identifier_parent=parent_fk, should_enter=True)
@@ -347,7 +353,7 @@ class CervezaToolBox(GlobalSessionToolBox):
         self.write_to_db(fk=kpi_fk, numerator_id=self.manufacturer_fk,
                          denominator_id=scene_realogram.template_fk,
                          numerator_result=len(scene_realogram.incorrectly_placed_tags),
-                         denominator_result=len(scene_realogram.number_of_skus_in_planogram),
+                         denominator_result=scene_realogram.number_of_skus_in_planogram,
                          result=len(scene_realogram.incorrectly_placed_tags) / number_of_positions_in_planogram,
                          context_id=scene_realogram.scene_fk,
                          identifier_result=kpi_fk, identifier_parent=parent_fk, should_enter=True)
@@ -365,7 +371,6 @@ class CervezaToolBox(GlobalSessionToolBox):
                              context_id=scene_realogram.scene_fk, identifier_parent=parent_fk, should_enter=True)
 
     def calculate_extra(self, scene_realogram):
-        sku_kpi_fk = self.get_kpi_fk_by_kpi_type(Consts.EXTRA_SKU)
         kpi_fk = self.get_kpi_fk_by_kpi_type(Consts.EXTRA)
         parent_fk = self.get_kpi_fk_by_kpi_type(Consts.EXTRA)
 
@@ -376,7 +381,7 @@ class CervezaToolBox(GlobalSessionToolBox):
         self.write_to_db(fk=kpi_fk, numerator_id=self.manufacturer_fk,
                          denominator_id=scene_realogram.template_fk,
                          numerator_result=len(scene_realogram.extra_tags),
-                         denominator_result=len(scene_realogram.number_of_skus_in_planogram),
+                         denominator_result=scene_realogram.number_of_skus_in_planogram,
                          result=len(scene_realogram.extra_tags) / number_of_positions_in_planogram,
                          context_id=scene_realogram.scene_fk,
                          identifier_result=kpi_fk, identifier_parent=parent_fk, should_enter=True)
@@ -417,7 +422,7 @@ class CervezaToolBox(GlobalSessionToolBox):
             return template_df
         elif kpi_operation_type == 'invasion':
             template_df = pd.read_excel(Consts.TEMPLATE_PATH, sheetname='Invasion', header=1)
-            template_df = template_df[(template_df['Category'].str.contains('Cerveza'))]
+            template_df = template_df[(template_df['NOMBRE DE TAREA'].str.contains('Cerveza'))]
             return template_df.dropna(subset=['Manufacturer', 'Category'])
         else:
             return pd.DataFrame()
@@ -438,11 +443,10 @@ class CervezaToolBox(GlobalSessionToolBox):
             leading_mappings.loc[leading_mappings['substitution_product_fk'].isna(), 'product_fk']
         return leading_mappings
 
-    def _convert_mpis_product_fks_to_leads(self, mpis):
-        mpis_with_leading_products = pd.merge(mpis, self.leading_products,
-                                              how='left', left_on='product_fk', right_on='substitution_product_fk')
-        mpis_with_leading_products.rename(columns={'substitution_product_fk': 'leading_product_fk'}, inplace=True)
-        return mpis_with_leading_products
+    @staticmethod
+    def _convert_mpis_product_fks_to_leads(mpis):
+        mpis['leading_product_fk'] = mpis['substitution_product_fk']
+        return mpis
 
     def get_parent_fk(self, kpi_name):
         parent_kpi_name = Consts.KPIS_HIERARCHY[kpi_name]
@@ -454,7 +458,7 @@ class CervezaToolBox(GlobalSessionToolBox):
         return weight
 
     def _get_template_fk(self, template_name):
-        return self.templates[self.templates['template_name'] == template_name]['pk'].iloc[0]
+        return self.templates[self.templates['template_name'] == template_name]['template_fk'].iloc[0]
 
 
 class CervezaRealogram(object):
