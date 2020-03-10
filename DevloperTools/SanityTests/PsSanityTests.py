@@ -9,7 +9,6 @@ from Trax.Apps.Core.Testing.BaseCase import TestFunctionalCase
 from Tests.TestUtils import remove_cache_and_storage
 from Trax.Utils.Logging.Logger import Log
 
-
 __author__ = 'ilays'
 
 
