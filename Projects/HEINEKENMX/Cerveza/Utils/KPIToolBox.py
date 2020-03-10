@@ -23,9 +23,13 @@ from Projects.HEINEKENMX.Cerveza.Data.LocalConsts import Consts
 # from KPIUtils_v2.Calculations.SurveyCalculations import Survey
 
 # from KPIUtils_v2.Calculations.CalculationsUtils import GENERALToolBoxCalculations
+from KPIUtils_v2.GlobalDataProvider.PsDataProvider import PsDataProvider
 from Projects.HEINEKENMX.Cerveza.Data.LocalConsts import Consts
 
 __author__ = 'huntery'
+
+MATCH_PRODUCT_IN_PROBE_FK = 'match_product_in_probe_fk'
+MATCH_PRODUCT_IN_PROBE_STATE_REPORTING_FK = 'match_product_in_probe_state_reporting_fk'
 
 
 class CervezaToolBox(GlobalSessionToolBox):
@@ -40,6 +44,8 @@ class CervezaToolBox(GlobalSessionToolBox):
         self._determine_target_product_fks()
         self.leading_products = self._get_leading_products_from_scif()
         self.scene_realograms = self._calculate_scene_realograms()
+        self.ps_data_provider = PsDataProvider(self.data_provider)
+        self.match_product_in_probe_state_reporting = self.ps_data_provider.get_match_product_in_probe_state_reporting()
 
     def main_calculation(self):
         kpi_fk = self.get_kpi_fk_by_kpi_type(Consts.CERVEZA)
@@ -247,13 +253,17 @@ class CervezaToolBox(GlobalSessionToolBox):
         valid_scene_types = self.relevant_targets[Consts.TEMPLATE_SCENE_TYPE].unique().tolist()
         relevant_scif = self.scif[self.scif['template_name'].isin(valid_scene_types)]
         relevant_scif.groupby('product_fk', as_index=False)['facings'].sum()
-        relevant_target_skus = self.relevant_targets.groupby('target_product_fk', as_index=False)['Frentes'].sum()
+        relevant_target_skus = \
+            self.relevant_targets[self.relevant_targets['Nombre de Tarea'].isin(
+                relevant_scif['template_name'].unique().tolist())]
+        relevant_target_skus = relevant_target_skus.groupby('target_product_fk', as_index=False)['Frentes'].sum()
         relevant_target_skus.rename(columns={'Frentes': 'target'}, inplace=True)
         relevant_target_skus = pd.merge(relevant_target_skus, relevant_scif, how='left',
                                         left_on='target_product_fk',
                                         right_on='product_fk').fillna(0)
 
-        relevant_target_skus['meets_target'] = relevant_target_skus['facings'] > relevant_target_skus['target']
+        relevant_target_skus['meets_target'] = relevant_target_skus['facings'] >= relevant_target_skus['target']
+        relevant_target_skus['meets_target'] = relevant_target_skus['meets_target'].apply(lambda x: 1 if x else 0)
         count_of_passing_skus = relevant_target_skus['meets_target'].sum()
 
         self._calculate_frentes_sku(relevant_target_skus)
@@ -302,6 +312,7 @@ class CervezaToolBox(GlobalSessionToolBox):
     def calculate_acomodo_scene(self, scene_realogram):
         kpi_fk = self.get_kpi_fk_by_kpi_type(Consts.ACOMODO_SCENE)
         parent_fk = self.get_parent_fk(Consts.ACOMODO_SCENE)
+        identifier_result = self.get_dictionary(kpi_fk=kpi_fk, scene_fk=scene_realogram.scene_fk)
 
         result = self.calculate_colcado_correct(scene_realogram)
         self.calculate_colcado_incorrect(scene_realogram)
@@ -310,16 +321,21 @@ class CervezaToolBox(GlobalSessionToolBox):
         self.write_to_db(fk=kpi_fk, numerator_id=scene_realogram.template_fk,
                          denominator_id=self.store_id, context_id=scene_realogram.scene_fk, result=result,
                          score=result, identifier_parent=parent_fk,
-                         identifier_result=kpi_fk, should_enter=True)
+                         identifier_result=identifier_result, should_enter=True)
         return result
 
     def calculate_colcado_correct(self, scene_realogram):
         kpi_fk = self.get_kpi_fk_by_kpi_type(Consts.COLCADO_CORRECT)
         parent_fk = self.get_parent_fk(Consts.COLCADO_CORRECT)
+        identifier_result = self.get_dictionary(kpi_fk=kpi_fk, scene_fk=scene_realogram.scene_fk)
+        identifier_parent = self.get_dictionary(kpi_fk=parent_fk, scene_fk=scene_realogram.scene_fk)
 
         self._calculate_colcado_correct_sku(scene_realogram)
 
         number_of_positions_in_planogram = scene_realogram.number_of_positions_in_planogram
+
+        self.mark_tags_in_explorer(scene_realogram.correctly_placed_tags['probe_match_fk'].dropna().unique().tolist(),
+                                   Consts.COLCADO_CORRECT)
 
         self.write_to_db(fk=kpi_fk, numerator_id=self.manufacturer_fk,
                          denominator_id=scene_realogram.template_fk,
@@ -327,28 +343,35 @@ class CervezaToolBox(GlobalSessionToolBox):
                          denominator_result=scene_realogram.number_of_skus_in_planogram,
                          result=len(scene_realogram.correctly_placed_tags) / number_of_positions_in_planogram,
                          context_id=scene_realogram.scene_fk,
-                         identifier_result=kpi_fk, identifier_parent=parent_fk, should_enter=True)
+                         identifier_result=identifier_result, identifier_parent=identifier_parent, should_enter=True)
 
         return len(scene_realogram.correctly_placed_tags) / number_of_positions_in_planogram
 
     def _calculate_colcado_correct_sku(self, scene_realogram):
         kpi_fk = self.get_kpi_fk_by_kpi_type(Consts.COLCADO_CORRECT_SKU)
         parent_fk = self.get_parent_fk(Consts.COLCADO_CORRECT_SKU)
+        identifier_parent = self.get_dictionary(kpi_fk=parent_fk, scene_fk=scene_realogram.scene_fk)
 
         correctly_placed_skus = scene_realogram.calculate_correctly_placed_skus()
         for sku_row in correctly_placed_skus.itertuples():
             self.write_to_db(fk=kpi_fk, numerator_id=sku_row.target_product_fk,
                              denominator_id=scene_realogram.template_fk, numerator_result=sku_row.facings,
                              denominator_result=scene_realogram.number_of_skus_in_planogram, result=sku_row.facings,
-                             context_id=scene_realogram.scene_fk, identifier_parent=parent_fk, should_enter=True)
+                             context_id=scene_realogram.scene_fk,
+                             identifier_parent=identifier_parent, should_enter=True)
 
     def calculate_colcado_incorrect(self, scene_realogram):
         kpi_fk = self.get_kpi_fk_by_kpi_type(Consts.COLCADO_INCORRECT)
         parent_fk = self.get_parent_fk(Consts.COLCADO_INCORRECT)
+        identifier_result = self.get_dictionary(kpi_fk=kpi_fk, scene_fk=scene_realogram.scene_fk)
+        identifier_parent = self.get_dictionary(kpi_fk=parent_fk, scene_fk=scene_realogram.scene_fk)
 
         self._calculate_colcado_incorrect_sku(scene_realogram)
 
         number_of_positions_in_planogram = scene_realogram.number_of_positions_in_planogram
+
+        self.mark_tags_in_explorer(scene_realogram.incorrectly_placed_tags['probe_match_fk'].dropna().unique().tolist(),
+                                   Consts.COLCADO_INCORRECT)
 
         self.write_to_db(fk=kpi_fk, numerator_id=self.manufacturer_fk,
                          denominator_id=scene_realogram.template_fk,
@@ -356,27 +379,34 @@ class CervezaToolBox(GlobalSessionToolBox):
                          denominator_result=scene_realogram.number_of_skus_in_planogram,
                          result=len(scene_realogram.incorrectly_placed_tags) / number_of_positions_in_planogram,
                          context_id=scene_realogram.scene_fk,
-                         identifier_result=kpi_fk, identifier_parent=parent_fk, should_enter=True)
+                         identifier_result=identifier_result, identifier_parent=identifier_parent, should_enter=True)
         return
 
     def _calculate_colcado_incorrect_sku(self, scene_realogram):
         kpi_fk = self.get_kpi_fk_by_kpi_type(Consts.COLCADO_INCORRECT_SKU)
         parent_fk = self.get_parent_fk(Consts.COLCADO_INCORRECT_SKU)
+        identifier_parent = self.get_dictionary(kpi_fk=parent_fk, scene_fk=scene_realogram.scene_fk)
 
         incorrectly_placed_skus = scene_realogram.calculate_incorrectly_placed_skus()
         for sku_row in incorrectly_placed_skus.itertuples():
             self.write_to_db(fk=kpi_fk, numerator_id=sku_row.target_product_fk,
                              denominator_id=scene_realogram.template_fk, numerator_result=sku_row.facings,
                              denominator_result=scene_realogram.number_of_skus_in_planogram, result=sku_row.facings,
-                             context_id=scene_realogram.scene_fk, identifier_parent=parent_fk, should_enter=True)
+                             context_id=scene_realogram.scene_fk,
+                             identifier_parent=identifier_parent, should_enter=True)
 
     def calculate_extra(self, scene_realogram):
         kpi_fk = self.get_kpi_fk_by_kpi_type(Consts.EXTRA)
         parent_fk = self.get_kpi_fk_by_kpi_type(Consts.EXTRA)
+        identifier_result = self.get_dictionary(kpi_fk=kpi_fk, scene_fk=scene_realogram.scene_fk)
+        identifier_parent = self.get_dictionary(kpi_fk=parent_fk, scene_fk=scene_realogram.scene_fk)
 
         self._calculate_extra_sku(scene_realogram)
 
         number_of_positions_in_planogram = scene_realogram.number_of_positions_in_planogram
+
+        self.mark_tags_in_explorer(scene_realogram.extra_tags['probe_match_fk'].dropna().unique().tolist(),
+                                   Consts.EXTRA)
 
         self.write_to_db(fk=kpi_fk, numerator_id=self.manufacturer_fk,
                          denominator_id=scene_realogram.template_fk,
@@ -384,19 +414,21 @@ class CervezaToolBox(GlobalSessionToolBox):
                          denominator_result=scene_realogram.number_of_skus_in_planogram,
                          result=len(scene_realogram.extra_tags) / number_of_positions_in_planogram,
                          context_id=scene_realogram.scene_fk,
-                         identifier_result=kpi_fk, identifier_parent=parent_fk, should_enter=True)
+                         identifier_result=identifier_result, identifier_parent=identifier_parent, should_enter=True)
         return
 
     def _calculate_extra_sku(self, scene_realogram):
         kpi_fk = self.get_kpi_fk_by_kpi_type(Consts.EXTRA_SKU)
         parent_fk = self.get_parent_fk(Consts.EXTRA_SKU)
+        identifier_parent = self.get_dictionary(kpi_fk=parent_fk, scene_fk=scene_realogram.scene_fk)
 
         extra_skus = scene_realogram.calculate_extra_skus()
         for sku_row in extra_skus.itertuples():
             self.write_to_db(fk=kpi_fk, numerator_id=sku_row.target_product_fk,
                              denominator_id=scene_realogram.template_fk, numerator_result=sku_row.facings,
                              denominator_result=scene_realogram.number_of_skus_in_planogram, result=sku_row.facings,
-                             context_id=scene_realogram.scene_fk, identifier_parent=parent_fk, should_enter=True)
+                             context_id=scene_realogram.scene_fk,
+                             identifier_parent=identifier_parent, should_enter=True)
 
     def _calculate_scene_realograms(self):
         scene_realograms = {}
@@ -459,6 +491,29 @@ class CervezaToolBox(GlobalSessionToolBox):
 
     def _get_template_fk(self, template_name):
         return self.templates[self.templates['template_name'] == template_name]['template_fk'].iloc[0]
+
+    def mark_tags_in_explorer(self, probe_match_fk_list, mpipsr_name):
+        if not probe_match_fk_list:
+            return
+        try:
+            match_type_fk = \
+                self.match_product_in_probe_state_reporting[
+                    self.match_product_in_probe_state_reporting['name'] == mpipsr_name][
+                    'match_product_in_probe_state_reporting_fk'].values[0]
+        except IndexError:
+            Log.warning('Name not found in match_product_in_probe_state_reporting table: {}'.format(mpipsr_name))
+            return
+
+        match_product_in_probe_state_values_old = self.common.match_product_in_probe_state_values
+        match_product_in_probe_state_values_new = pd.DataFrame(columns=[MATCH_PRODUCT_IN_PROBE_FK,
+                                                                        MATCH_PRODUCT_IN_PROBE_STATE_REPORTING_FK])
+        match_product_in_probe_state_values_new[MATCH_PRODUCT_IN_PROBE_FK] = probe_match_fk_list
+        match_product_in_probe_state_values_new[MATCH_PRODUCT_IN_PROBE_STATE_REPORTING_FK] = match_type_fk
+
+        self.common.match_product_in_probe_state_values = pd.concat([match_product_in_probe_state_values_old,
+                                                                     match_product_in_probe_state_values_new])
+
+        return
 
 
 class CervezaRealogram(object):
