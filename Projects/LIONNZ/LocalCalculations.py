@@ -10,8 +10,9 @@ if __name__ == '__main__':
     data_provider = KEngineDataProvider(project_name)
     sessions = [
         # '02e04d93-5b92-4e04-b1a3-54c6fba20bb7',  # FSOS has non LION
-        '00675BD2-1633-4B3A-84DF-F0EC22FC9A04',  # categ error
+        # '00675BD2-1633-4B3A-84DF-F0EC22FC9A04',  # categ error
         # '6B1FC097-5406-4A42-BA78-FA3904675B5B',  # categ error
+        '944A33D9-125B-4B6C-A628-DF3630C3FE19'
     ]
     for session in sessions:
         print "Running session >>", session
