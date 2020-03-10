@@ -3,6 +3,7 @@ from KPIUtils_v2.Utils.Decorators.Decorators import log_runtime
 from Projects.CCNAYARMX.Utils.KPIToolBox import ToolBox
 from Projects.CCNAYARMX.National.Utils.KPIToolBox import NationalToolBox
 from Projects.CCNAYARMX.Especializado.Utils.KPIToolBox import EspecializadoToolBox
+from Projects.CCNAYARMX.Fondas.Utils.KPIToolBox import FONDASToolBox
 
 from KPIUtils_v2.DB.CommonV2 import Common
 __author__ = 'krishnat'
@@ -30,6 +31,10 @@ class Generator:
         common = Common(self.data_provider)
         especializado_tool_box = EspecializadoToolBox(self.data_provider,self.output, common)
         especializado_tool_box.main_calculation()
+
+        fondas_tool_box = FONDASToolBox(self.data_provider, self.output, common)
+        fondas_tool_box.main_calculation()
+        # fondas_tool_box.commit_results()
 
         tool_box = ToolBox(self.data_provider, self.output, common)
         tool_box.main_calculation()

@@ -388,27 +388,30 @@ class CCRU_SANDCCHKPIFetcher:
         return data
 
     def get_scene_survey_response(self, scenes_list):
-        if len(scenes_list) == 1:
-            query = """
-                       select sr.*, sq.question_text, sq.group_name 
-                       from probedata.scene_survey_response sr
-                       join static.survey_question sq on sr.question_fk=sq.pk
-                       where sq.delete_time is null
-                       and sq.group_name in ('Cooler Audit', 'Cooler Audit Test')
-                       and sr.delete_time is null
-                       and sr.scene_fk in ({});
-                       """.format(scenes_list[0])
+        if scenes_list:
+            if len(scenes_list) == 1:
+                query = """
+                           select sr.*, sq.question_text, sq.group_name 
+                           from probedata.scene_survey_response sr
+                           join static.survey_question sq on sr.question_fk=sq.pk
+                           where sq.delete_time is null
+                           and sq.group_name in ('Cooler Audit', 'Cooler Audit Test')
+                           and sr.delete_time is null
+                           and sr.scene_fk in ({});
+                           """.format(scenes_list[0])
+            else:
+                query = """
+                           select sr.*, sq.question_text, sq.group_name 
+                           from probedata.scene_survey_response sr
+                           join static.survey_question sq on sr.question_fk=sq.pk
+                           where sq.delete_time is null
+                           and sq.group_name in ('Cooler Audit', 'Cooler Audit Test')
+                           and sr.delete_time is null
+                           and sr.scene_fk in {};
+                           """.format(tuple(scenes_list))
+            data = pd.read_sql_query(query, self.rds_conn.db)
         else:
-            query = """
-                       select sr.*, sq.question_text, sq.group_name 
-                       from probedata.scene_survey_response sr
-                       join static.survey_question sq on sr.question_fk=sq.pk
-                       where sq.delete_time is null
-                       and sq.group_name in ('Cooler Audit', 'Cooler Audit Test')
-                       and sr.delete_time is null
-                       and sr.scene_fk in {};
-                       """.format(tuple(scenes_list))
-        data = pd.read_sql_query(query, self.rds_conn.db)
+            data = pd.DataFrame(columns=['pk', 'text_value', 'question_text', 'group_name'])
         return data
 
     def get_all_coolers_from_assortment_list(self, cooler_list):

@@ -35,12 +35,6 @@ class PS2SandToolBox:
         menus_res = self.diageo_generator.diageo_global_new_share_of_menu_function()
         self.commonV2.save_json_to_new_tables(menus_res)
 
-        # Global Visible to Consumer function
-        sku_list = filter(None, self.scif[self.scif['product_type'] == 'SKU'].product_ean_code.tolist())
-        res_dict = self.diageo_generator.diageo_global_visible_percentage(sku_list)
-        if res_dict:
-            self.commonV2.save_json_to_new_tables(res_dict)
-
         # Global Secondary Displays function
         res_json = self.diageo_generator.diageo_global_secondary_display_secondary_function()
         if res_json:

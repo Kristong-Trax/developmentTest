@@ -22,19 +22,22 @@ class ToolBox(GlobalSessionToolBox):
 
     def main_calculation(self):
         self.calculate_score_sos()
-        self.calculate_core_oos_and_distribution()
+        self.calculate_oos_and_distribution(assortment_type="Core")
+        self.calculate_oos_and_distribution(assortment_type="Launch")
+        self.calculate_oos_and_distribution(assortment_type="Focus")
         self.calculate_hierarchy_sos(calculation_type='FACINGS')
         self.calculate_hierarchy_sos(calculation_type='LINEAR')
 
     @kpi_runtime()
-    def calculate_core_oos_and_distribution(self):
+    def calculate_oos_and_distribution(self, assortment_type):
         dis_numerator = total_facings = 0
-        oos_store_kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_type=Consts.OOS)
-        oos_sku_kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_type=Consts.OOS_SKU)
-        dis_store_kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_type=Consts.DISTRIBUTION)
-        dis_cat_kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_type=Consts.DISTRIBUTION_CAT)
-        dis_sku_kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_type=Consts.DISTRIBUTION_SKU)
+        oos_store_kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_type=assortment_type + Consts.OOS)
+        oos_sku_kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_type=assortment_type + Consts.OOS_SKU)
+        dis_store_kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_type=assortment_type + Consts.DISTRIBUTION)
+        dis_cat_kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_type=assortment_type + Consts.DISTRIBUTION_CAT)
+        dis_sku_kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_type=assortment_type + Consts.DISTRIBUTION_SKU)
         assortment_df = self.assortment.get_lvl3_relevant_ass()
+        assortment_df = assortment_df[assortment_df['kpi_fk_lvl3'] == dis_sku_kpi_fk]
         product_fks = assortment_df['product_fk'].tolist()
         categories = list(set(self.all_products[self.all_products['product_fk'].isin(product_fks)]['category_fk']))
         categories_dict = dict.fromkeys(categories, (0, 0))
@@ -49,9 +52,10 @@ class ToolBox(GlobalSessionToolBox):
                 result = 1
                 facings = 0
                 # Saving OOS only if product wasn't in store
-                self.common.write_to_db_result(fk=oos_sku_kpi_fk, numerator_id=sku, denominator_id=self.store_id,
+                self.common.write_to_db_result(fk=oos_sku_kpi_fk, numerator_id=sku, denominator_id=category_fk,
                                                result=result, numerator_result=result, denominator_result=result,
-                                               score=facings, identifier_parent="CORE_OOS", should_enter=True)
+                                               score=facings, identifier_parent=assortment_type + "_OOS",
+                                               should_enter=True)
             else:
                 categories_dict[category_fk] = map(sum, zip(categories_dict[category_fk], [1, 1]))
                 result = 2
@@ -61,17 +65,17 @@ class ToolBox(GlobalSessionToolBox):
             self.common.write_to_db_result(fk=dis_sku_kpi_fk, numerator_id=sku, denominator_id=category_fk,
                                            result=result, numerator_result=result, denominator_result=result,
                                            score=facings, should_enter=True,
-                                           identifier_parent="CORE_DIS_CAT_{}".format(str(category_fk)))
+                                           identifier_parent=assortment_type + "_DIS_CAT_{}".format(str(category_fk)))
 
         # category level distribution
         for category_fk in categories_dict.keys():
             cat_numerator, cat_denominator = categories_dict[category_fk]
             cat_result = self.get_result(cat_numerator, cat_denominator)
             self.common.write_to_db_result(fk=dis_cat_kpi_fk, numerator_id=category_fk,
-                                           denominator_id=self.store_id, result=cat_result,
+                                           denominator_id=self.store_id, result=cat_result, should_enter=True,
                                            numerator_result=cat_numerator, denominator_result=cat_denominator,
-                                           score=cat_result, identifier_parent="CORE_DIS", should_enter=True,
-                                           identifier_result="CORE_DIS_CAT_{}".format(str(category_fk)))
+                                           score=cat_result, identifier_parent=assortment_type + "_DIS",
+                                           identifier_result=assortment_type + "_DIS_CAT_{}".format(str(category_fk)))
 
         # store level oos and distribution
         denominator = len(product_fks)
@@ -81,11 +85,11 @@ class ToolBox(GlobalSessionToolBox):
         self.common.write_to_db_result(fk=oos_store_kpi_fk, numerator_id=self.own_manufacturer_fk,
                                        denominator_id=self.store_id, result=oos_result, numerator_result=dis_numerator,
                                        denominator_result=denominator, score=total_facings,
-                                       identifier_result="CORE_OOS")
+                                       identifier_result=assortment_type + "_OOS")
         self.common.write_to_db_result(fk=dis_store_kpi_fk, numerator_id=self.own_manufacturer_fk,
                                        denominator_id=self.store_id, result=dis_result, numerator_result=oos_numerator,
                                        denominator_result=denominator, score=total_facings,
-                                       identifier_result="CORE_DIS")
+                                       identifier_result=assortment_type + "_DIS")
 
     def get_kpi_fks(self, kpis_list):
         for kpi in kpis_list:
@@ -132,14 +136,15 @@ class ToolBox(GlobalSessionToolBox):
             score = 1 if ((target - target_range) <= lsos_result <= (target + target_range)) else 0
             store_numerator += score
             self.common.write_to_db_result(fk=kpi_fk, numerator_id=self.own_manufacturer_fk,
-                                           denominator_id=self.store_id, should_enter=True,
+                                           denominator_id=self.store_id, should_enter=True, target=target,
                                            numerator_result=numerator_result, denominator_result=denominator_result,
-                                           result=lsos_result, score=score, identifier_parent='LSOS_SCORE')
+                                           result=lsos_result, score=score, identifier_parent='LSOS_SCORE',
+                                           weight=target_range)
         store_result = self.get_result(store_numerator, store_denominator)
         self.common.write_to_db_result(fk=lsos_score_kpi_fk, numerator_id=self.own_manufacturer_fk,
                                        denominator_id=self.store_id, should_enter=True, target=store_denominator,
                                        numerator_result=store_numerator, denominator_result=store_denominator,
-                                       result=store_result, score=store_result, identifier_result='LSOS_SCORE')
+                                       result=store_numerator, score=store_result, identifier_result='LSOS_SCORE')
 
     @staticmethod
     def get_num_and_den_filters(numerator_type, numerator_value, denominator_type, denominator_value):
