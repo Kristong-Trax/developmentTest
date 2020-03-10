@@ -85,7 +85,7 @@ class ToolBox(GlobalSessionToolBox):
         # Consts.SOS, Consts.DISTRIBUTION, Consts.ADJACENCY_BRAND_WITHIN_BAY,
         #                                 Consts.ADJACENCY_CATEGORY_WITHIN_BAY, Consts.SHELF_POSITION, Consts.LEAD_ANCHOR_BY_BAY
         foundation_kpi_types = [Consts.SOS, Consts.DISTRIBUTION, Consts.ADJACENCY_BRAND_WITHIN_BAY,
-                                        Consts.ADJACENCY_CATEGORY_WITHIN_BAY, Consts.SHELF_POSITION, Consts.LEAD_ANCHOR_BY_BAY]
+                                Consts.ADJACENCY_CATEGORY_WITHIN_BAY, Consts.SHELF_POSITION, Consts.LEAD_ANCHOR_BY_BAY]
         foundation_kpi_template = relevant_kpi_template[
             relevant_kpi_template[Consts.KPI_TYPE].isin(foundation_kpi_types)]
 
@@ -158,7 +158,8 @@ class ToolBox(GlobalSessionToolBox):
                 for relevant_scene in set(
                         relevant_match_scene_item_facts.scene_id):  # Iterating through the unique scenes existin the merged dataframe
                     score = relevant_scene
-                    mcif = relevant_match_scene_item_facts[relevant_match_scene_item_facts.scene_id.isin([relevant_scene])]
+                    mcif = relevant_match_scene_item_facts[
+                        relevant_match_scene_item_facts.scene_id.isin([relevant_scene])]
                     unique_bay_numbers = set(mcif.bay_number)  # Getting the unique bay numbers in the the scene
                     location = {Consts.SCENE_FK: relevant_scene}
                     for bay in unique_bay_numbers:
@@ -200,19 +201,19 @@ class ToolBox(GlobalSessionToolBox):
                                     if node not in relevant_scene_match_fks_for_block:
                                         product_fk = self.match_scene_item_facts.loc[
                                             self.match_scene_item_facts.scene_match_fk == node, 'product_fk'].iat[0]
-                                        if product_fk == 0: # general empty
+                                        if product_fk == 0:  # general empty
                                             # we need visibility in to seeing if the product is empty
                                             # since we are saving the brand. If the product is empty, then it will save
                                             # as General. That is why we are saving brand fk 3431 which is brand: empty
                                             important_brand = 3431
-                                        elif product_fk == 23211: #irrelevant
+                                        elif product_fk == 23211:  # irrelevant
                                             # we need visibility in to seeing if the product is irrelevant
                                             # since we are saving the brand. If the product is irrelevant, then it will save
                                             # as General. That is why we are saving brand fk 3432 which is brand: irrelevant
                                             important_brand = 3432
                                         else:
                                             important_brand = self.match_scene_item_facts.loc[
-                                            self.match_scene_item_facts.scene_match_fk == node, 'brand_fk'].iat[0]
+                                                self.match_scene_item_facts.scene_match_fk == node, 'brand_fk'].iat[0]
 
                                         adj_items[node] = [node_data, important_brand]
 
@@ -237,6 +238,7 @@ class ToolBox(GlobalSessionToolBox):
                 return result_dict_list
         except:
             print(self.session_uid)
+            print(relevant_scene)
             print('brand method')
             return []
 
@@ -257,7 +259,8 @@ class ToolBox(GlobalSessionToolBox):
             if not relevant_match_scene_item_facts.empty:
                 for relevant_scene in set(
                         relevant_match_scene_item_facts.scene_id):  # Iterating through the unique scenes in the merged dataframe
-                    mcif = relevant_match_scene_item_facts[relevant_match_scene_item_facts.scene_id.isin([relevant_scene])]
+                    mcif = relevant_match_scene_item_facts[
+                        relevant_match_scene_item_facts.scene_id.isin([relevant_scene])]
                     unique_bay_numbers = set(mcif.bay_number)  # Getting the unique bay numbers in the the scene
                     location = {Consts.SCENE_FK: relevant_scene}
                     for bay in unique_bay_numbers:
@@ -310,7 +313,8 @@ class ToolBox(GlobalSessionToolBox):
                                             important_category = 27
                                         else:
                                             important_category = self.match_scene_item_facts.loc[
-                                                self.match_scene_item_facts.scene_match_fk == node, 'category_fk'].iat[0]
+                                                self.match_scene_item_facts.scene_match_fk == node, 'category_fk'].iat[
+                                                0]
                                         adj_items[node] = [node_data, important_category]
 
                             category_fks_for_adj_items = np.array([nd[1] for nd in adj_items.values()])
@@ -413,23 +417,22 @@ class ToolBox(GlobalSessionToolBox):
 
         relevant_mcif = self.match_scene_item_facts[self.match_scene_item_facts.product_fk.isin(relevant_product_fks)]
         if not relevant_mcif.empty:
-            shelf_position_dict = {'Bottom':22, 'Middle': 23, 'Eye': 24, 'Top': 25}
+            shelf_position_dict = {'Bottom': 22, 'Middle': 23, 'Eye': 24, 'Top': 25}
             for unique_scene in set(relevant_mcif.scene_id):
                 context_id = unique_scene
                 relevant_mcif_2 = relevant_mcif[relevant_mcif.scene_id.isin([unique_scene])]
                 for bay in set(relevant_mcif_2.bay_number):
-                    denominator_id = self._get_shelf_position_id(unique_scene=unique_scene, unique_bay=bay,
-                                                                 shelf_position_dict=shelf_position_dict) # return the proper shelf position based on number the number of shelfs using the shelf position dict
                     relevant_mcif_3 = relevant_mcif_2[relevant_mcif_2.bay_number.isin([bay])]
                     group_by_mcif = relevant_mcif_3.groupby(['product_fk', 'shelf_number']).first()
                     relevant_group_by_mcif = group_by_mcif.reset_index('shelf_number')[['shelf_number', 'facings']]
                     for unique_product_fk in set(relevant_group_by_mcif.index):
+                        result = self._get_shelf_position_id(unique_scene=unique_scene, unique_bay=bay,
+                                                                     grouped_shelf=relevant_group_by_mcif[relevant_group_by_mcif.index.isin([unique_product_fk])].shelf_number,
+                                                                     shelf_position_dict=shelf_position_dict)  # return the proper shelf position based on number the number of shelfs using the shelf position dict
                         final_mcif_of_product_fk = relevant_group_by_mcif.max()
-                        numerator_id = unique_product_fk
                         numerator_result = final_mcif_of_product_fk.facings
-                        result = final_mcif_of_product_fk.shelf_number
-                        result_dict = {'kpi_fk': kpi_fk, 'numerator_id': numerator_id,
-                                       'denominator_id': denominator_id, 'context_id': context_id,
+                        result_dict = {'kpi_fk': kpi_fk, 'numerator_id': unique_product_fk,
+                                       'denominator_id': bay, 'context_id': context_id,
                                        'numerator_result': numerator_result,
                                        'result': result}
                         result_dict_list.append(result_dict)
@@ -547,11 +550,11 @@ class ToolBox(GlobalSessionToolBox):
             product_fks.append(most_right_or_left_product_on_shelf)
         return product_fks
 
-    def _get_shelf_position_id(self, unique_scene, unique_bay, shelf_position_dict):
+    def _get_shelf_position_id(self, unique_scene, unique_bay,grouped_shelf,shelf_position_dict):
         '''
         :return: Uses the shelf position in the scene and bay and return the id of the shelf
         '''
-        shelf_position_relevant_mcif = self.match_scene_item_facts[
+        max_shelf_position = self.match_scene_item_facts[
             (self.match_scene_item_facts.scene_id.isin([unique_scene])) & (
                 self.match_scene_item_facts.bay_number.isin([unique_bay]))].shelf_number.max()
-        return shelf_position_dict[self.templates['Shelf Map'].loc[shelf_position_relevant_mcif, unique_bay]]
+        return shelf_position_dict[self.templates['Shelf Map'].loc[max_shelf_position, grouped_shelf.iat[0]]]
