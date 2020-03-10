@@ -68,10 +68,8 @@ class ToolBox(GlobalSessionToolBox):
                 passing_scenes = 0
 
                 for scene in scene_list:
-
                     filtered_matches = matches_df[(matches_df['template_name'].isin(scene_types)) &
                                                   (matches_df['scene_id'] == scene)]
-
                     if filtered_matches.empty:
                         pass
                     else:
@@ -79,25 +77,30 @@ class ToolBox(GlobalSessionToolBox):
                         filtered_matches.loc[filtered_matches.size_unit == 'l', 'size'] *= 1000
                         filtered_matches.loc[filtered_matches.size_unit == 'l', 'size_unit'] = 'ml'
                         template_fk = filtered_matches['template_fk'].iloc[0]
-                        if operation_type == '<':
-                            size_matches = filtered_matches[['size']][
-                                (filtered_matches['shelf_number'] == 1) &
-                                (filtered_matches['product_type'] == 'SKU') &
-                                (filtered_matches['size_unit'] == size_unit_filter) &
-                                (filtered_matches['size'] >= size_filter)]
 
-                        if operation_type == '>':
-                            size_matches = filtered_matches[['size']][
-                                (filtered_matches['shelf_number'] == 1) &
-                                (filtered_matches['product_type'] == 'SKU') &
-                                (filtered_matches['size_unit'] == size_unit_filter) &
-                                (filtered_matches['size'] <= size_filter)]
+                        top_shelf_filtered_match = filtered_matches[filtered_matches['shelf_number'] == 1]
 
-                        if size_matches.empty:
-                            score = 1
-                            passing_scenes += 1
+                        if 'SKU' in top_shelf_filtered_match.product_type.values:
+                            if operation_type == '<':
+                                size_matches = top_shelf_filtered_match[['size']][
+                                    (top_shelf_filtered_match['shelf_number'] == 1) &
+                                    (top_shelf_filtered_match['product_type'] == 'SKU') &
+                                    (top_shelf_filtered_match['size_unit'] == size_unit_filter) &
+                                    (top_shelf_filtered_match['size'] >= size_filter)]
 
+                            if operation_type == '>':
+                                size_matches = top_shelf_filtered_match[['size']][
+                                    (top_shelf_filtered_match['shelf_number'] == 1) &
+                                    (top_shelf_filtered_match['product_type'] == 'SKU') &
+                                    (top_shelf_filtered_match['size_unit'] == size_unit_filter) &
+                                    (top_shelf_filtered_match['size'] <= size_filter)]
 
+                            if size_matches.empty:
+                                score = 1
+                                passing_scenes += 1
+                            else:
+                                score = 0
+                                self.scene_kpi_results_fix[kpi_name] = 0
                         else:
                             score = 0
                             self.scene_kpi_results_fix[kpi_name] = 0
