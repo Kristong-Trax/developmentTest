@@ -84,7 +84,7 @@ ASSORTMENT_DATA = [
 # # Assortment ends
 
 COUNT_SKU_IN_STOCK = 'COUNT_SKU_IN_STOCK'
-COUNT_SKU_FACINGS_FLOOR_STACK = 'COUNT_SKU_FACINGS_IN_FLOOR_STACK'
+COUNT_SKU_FACINGS_FLOOR_STACK = 'COUNT_SKU_FACINGS_FLOOR_STACK'
 # map to save list kpis
 # CODE_KPI_MAP = {
 #     OOS_CODE: OOS_PRODUCT_BY_STORE_LIST,
@@ -158,6 +158,7 @@ class CARLSBERGToolBox:
             self.external_targets['kpi_type'] == COUNT_SKU_FACINGS_FLOOR_STACK]
         if external_target_data.empty:
             Log.warning("Ext Target for COUNT_SKU_FACINGS_IN_FLOOR_STACK not found")
+            return True
         include_exclude_data_dict = external_target_data.loc[:, ['include_brand_fks', 'include_category_fks',
                                                                  'template_fks', 'empty_exclude', 'irrelevant_exclude',
                                                                  'others_exclude', 'stacking_exclude'
@@ -253,8 +254,14 @@ class CARLSBERGToolBox:
                 continue
             external_target_dict = external_target_data.iloc[0].to_dict()
             valid_category_fks = external_target_dict.get('include_category_fks', False)
+            if valid_category_fks and type(valid_category_fks) != list:
+                valid_category_fks = [valid_category_fks]
             valid_scene_fks = external_target_dict.get('template_fks', False)
+            if valid_scene_fks and type(valid_scene_fks) != list:
+                valid_scene_fks = [valid_scene_fks]
             valid_brand_fks = external_target_dict.get('include_brand_fks', False)
+            if valid_brand_fks and type(valid_brand_fks) != list:
+                valid_brand_fks = [valid_brand_fks]
             valid_scif = self.scif  # [self.scif['manufacturer_fk']==self.own_man_fk]
             if valid_scene_fks:
                 valid_scif = valid_scif[(valid_scif['template_fk'].isin(valid_scene_fks))]

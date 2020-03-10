@@ -10,8 +10,7 @@ if __name__ == '__main__':
     project_name = 'carlsbrghk'
     data_provider = KEngineDataProvider(project_name)
     sessions = [
-        'B5A1D8EF-9A15-4B17-94C3-868CAC29FF0F',
-        '8BD94E57-821B-4C0B-91A0-F6DD3DBF8413'
+        '64CC70E0-3454-459B-8817-2BC78EDC4256'
         # '811EF734-CDBB-4A64-AECC-1C4FCB869A9C',
         # 'ab611987-1355-4e62-b194-d868885e6597',
         # 'D3B6F6B2-7B36-4492-9E39-DD52C00D18EA',
