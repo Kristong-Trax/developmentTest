@@ -104,12 +104,12 @@ class JRIJPToolBox:
             best_shelf_position = _each_target_dict.get('best_shelf_position')
             if type(best_shelf_position) != list:
                 best_shelf_position = [best_shelf_position]
-            group_prod_facings_count = _each_target_dict.get('group_facings_count', 0)
+            min_product_facing = _each_target_dict.get('min_product_facing', 0)
             template_fks = _each_target_dict.get('template_fks')
             if template_fks and type(template_fks) != list:
                 template_fks = [template_fks]
             stacking_exclude = _each_target_dict.get('stacking_exclude')
-            min_group_product_facing = _each_target_dict.get('min_product_facing', 0)
+            min_group_product_facing = _each_target_dict.get('group_facings_count', 0)
             # get mpis based on details
             filtered_mpis = match_prod_in_scene_data
             if template_fks:
@@ -121,7 +121,7 @@ class JRIJPToolBox:
                 filtere_mpis=filtered_mpis,
                 group_fk=group_fk,
                 product_fks=product_fks,
-                group_prod_facings_count=group_prod_facings_count
+                min_product_facing=min_product_facing
             )
             product_position_data = self.calculate_product_position(
                 kpi_pk=product_position_from_target_pk,
@@ -147,12 +147,12 @@ class JRIJPToolBox:
                                                     )
         pass
 
-    def calculate_product_presence(self, kpi_pk, filtere_mpis, group_fk, product_fks, group_prod_facings_count):
+    def calculate_product_presence(self, kpi_pk, filtere_mpis, group_fk, product_fks, min_product_facing):
         data = {}
         for each_product in product_fks:
             prod_data_in_mpis = filtere_mpis[filtere_mpis['product_fk'] == each_product]
             result = 0
-            if len(prod_data_in_mpis) >= int(group_prod_facings_count):
+            if len(prod_data_in_mpis) >= int(min_product_facing):
                 result = 1
             Log.info("Saving product presence for product: {product} as {result} in session {sess} in group: {group}"
                      .format(product=each_product,
@@ -164,7 +164,8 @@ class JRIJPToolBox:
             self.common.write_to_db_result(fk=kpi_pk,
                                            numerator_id=group_fk,
                                            denominator_id=each_product,
-                                           context_id=self.store_id,
+                                           context_id=self.all_products[self.all_products['product_fk']
+                                                                        ==each_product].category_fk.iloc[0],
                                            result=result,
                                            score=result,
                                            )
@@ -201,7 +202,8 @@ class JRIJPToolBox:
             self.common.write_to_db_result(fk=kpi_pk,
                                            numerator_id=group_fk,
                                            denominator_id=each_product,
-                                           context_id=self.store_id,
+                                           context_id=self.all_products[self.all_products['product_fk']
+                                                                        ==each_product].category_fk.iloc[0],
                                            result=result,
                                            score=score,
                                            )
@@ -228,7 +230,8 @@ class JRIJPToolBox:
             self.common.write_to_db_result(fk=kpi_pk,
                                            numerator_id=group_fk,
                                            denominator_id=each_product,
-                                           context_id=self.store_id,
+                                           context_id=self.all_products[self.all_products['product_fk']
+                                                                        ==each_product].category_fk.iloc[0],
                                            result=result,
                                            score=result,
                                            )
