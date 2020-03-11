@@ -573,8 +573,9 @@ class PngcnSceneKpis(object):
                 shelf_number = row['shelf_number']
                 score = row['facings']
                 category_fk = row['category_fk']
+                brand_fk = row['brand_fk']
                 results_sequence_df = results_sequence_df.append({'fk': kpi_sequence_fk, 'numerator_id': numerator_id,
-                                                                  'denominator_id': denominator_id,
+                                                                  'denominator_id': denominator_id, 'weight': brand_fk,
                                                                   'context_id': context_id, 'target': category_fk,
                                                                   'numerator_result': shelf_number,
                                                                   'denominator_result': max_shelf_count,
