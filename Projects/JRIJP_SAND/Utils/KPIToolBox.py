@@ -164,7 +164,8 @@ class JRIJPToolBox:
             self.common.write_to_db_result(fk=kpi_pk,
                                            numerator_id=group_fk,
                                            denominator_id=each_product,
-                                           context_id=self.store_id,
+                                           context_id=self.all_products[self.all_products['product_fk']
+                                                                        ==each_product].category_fk.iloc[0],
                                            result=result,
                                            score=result,
                                            )
@@ -201,7 +202,8 @@ class JRIJPToolBox:
             self.common.write_to_db_result(fk=kpi_pk,
                                            numerator_id=group_fk,
                                            denominator_id=each_product,
-                                           context_id=self.store_id,
+                                           context_id=self.all_products[self.all_products['product_fk']
+                                                                        ==each_product].category_fk.iloc[0],
                                            result=result,
                                            score=score,
                                            )
@@ -228,7 +230,8 @@ class JRIJPToolBox:
             self.common.write_to_db_result(fk=kpi_pk,
                                            numerator_id=group_fk,
                                            denominator_id=each_product,
-                                           context_id=self.store_id,
+                                           context_id=self.all_products[self.all_products['product_fk']
+                                                                        ==each_product].category_fk.iloc[0],
                                            result=result,
                                            score=result,
                                            )
