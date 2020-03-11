@@ -7,7 +7,7 @@ class JRIJPKpiResults:
     def get_kpi_results():
         return {
             'numerator_id': {
-                0: 1479,
+                0: 1478,
                 1: 1,
                 2: 1,
                 3: 1,
@@ -21,12 +21,12 @@ class JRIJPKpiResults:
                 4: 4003,
                 5: 4004},
             'context_id': {
-                0: 329,
-                1: 7291,
-                2: 7291,
-                3: 7291,
-                4: 7291,
-                5: 7291},
+                0: 392,
+                1: 2,
+                2: 2,
+                3: 2,
+                4: 8199,
+                5: 8199},
             'client_name': {
                 0: u'FACINGS_IN_CELL_PER_PRODUCT',
                 1: u'PRODUCT_PRESENCE_FROM_TARGET',
@@ -35,12 +35,12 @@ class JRIJPKpiResults:
                 4: u'OVERALL_RESULT_FROM_TARGET',
                 5: u'OVERALL_SCORE_FROM_TARGET'},
             'session_fk': {
-                0: 252345,
-                1: 252345,
-                2: 252345,
-                3: 252345,
-                4: 252345,
-                5: 252345},
+                0: 298510,
+                1: 298510,
+                2: 298510,
+                3: 298510,
+                4: 298510,
+                5: 298510},
             'numerator_result': {
                 0: 1,
                 1: 0,
@@ -49,23 +49,23 @@ class JRIJPKpiResults:
                 4: 1,
                 5: 1},
             'denominator_result': {
-                0: 4,
+                0: 2,
                 1: 0,
                 2: 0,
                 3: 0,
-                4: 3,
-                5: 0},
+                4: 1,
+                5: 1},
             'result': {
                 0: 1.0,
                 1: 1.0,
-                2: 5.0,
-                3: 4.0,
-                4: 11.0,
+                2: 1.0,
+                3: 5.0,
+                4: 10.0,
                 5: 1.0},
             'denominator_id': {
-                0: 7291,
-                1: 4978,
-                2: 4978,
-                3: 4978,
-                4: 7291,
-                5: 7291}}
+                0: 8199,
+                1: 9222,
+                2: 9222,
+                3: 9222,
+                4: 8199,
+                5: 8199}}

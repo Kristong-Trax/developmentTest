@@ -60,9 +60,10 @@ class PepsiUSV2ToolBox(GlobalSessionToolBox):
         First, it filtered scif by the relevant display and then calculates the assortment KPIs.
         Please note that the logic is different than the assortment itself, 5 facings are enough to pass.
         """
-        pallet_group_results = self._calculate_assortment_by_display(Lc.PALLET_DISPLAY)
-        end_cap_group_results = self._calculate_assortment_by_display(Lc.END_CAP_DISPLAY)
-        group_results = pallet_group_results.append(end_cap_group_results)
+        group_results = pd.DataFrame()
+        active_displays = self.static_display.display_name.unique().tolist()
+        for display in active_displays:
+            group_results = group_results.append(self._calculate_assortment_by_display(display))
         if not group_results.empty:
             self._calculate_display_compliance_store_result(group_results)
 
