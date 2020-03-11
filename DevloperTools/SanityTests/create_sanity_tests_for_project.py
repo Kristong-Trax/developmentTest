@@ -431,7 +431,7 @@ if __name__ == '__main__':
     replace_configurations_file = True
     copy_configuration_file_to_traxexport(replace_configurations_file)
     projects = {
-        'ccru': {'F26E2E6B-D12B-415C-AC0C-CAB929BEFC9F': []},
+        'jrijp': {'3C868048-A67A-434C-BF6F-7834A40C88F9': []},
                 }
     for project in projects:
         try:
@@ -450,7 +450,7 @@ if __name__ == '__main__':
 
             # Create kpi test results only
             create_sanity_test(project=project, sessions_to_use=sessions, kpi_results=kpi_results,
-                               create_test_script=False, create_test_results=True)
+                               create_test_script=True, create_test_results=True)
 
         except Exception as e:
             Log.error("Project {} failed to create sanity test with error {}".format(project, e))
