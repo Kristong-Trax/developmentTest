@@ -313,12 +313,19 @@ class CARLSBERGToolBox:
                     sess=self.session_uid,
                     kpi=distribution_kpi.iloc[0].type))
                 return 0
+            # Getting Template FK
+            # It is assured there is one KPI for one template fk
+            template_fk = 0
+            if not valid_scif.empty:
+                template_fk = int(valid_scif['template_fk'].unique()[0])
+            Log.info("Calculate Assortment KPI [] for template: {}".format(template_fk))
             # calculate and save the percentage values for distribution and oos
             self.calculate_and_save_distribution(
                 valid_scif=valid_scif,
                 assortment_product_fks=valid_policy_data['product_fk'],
                 distribution_kpi_fk=distribution_kpi.iloc[0].pk,
-                dst_kpi_name=msl_store_level
+                dst_kpi_name=msl_store_level,
+                template_fk=template_fk
             )
             # calculate and save prod presence and oos products
             self.calculate_and_save_prod_presence(
@@ -326,13 +333,15 @@ class CARLSBERGToolBox:
                 assortment_product_fks=valid_policy_data['product_fk'],
                 prod_presence_kpi_fk=prod_presence_kpi.iloc[0].pk,
                 distribution_kpi_name=msl_store_level,
+                template_fk=template_fk
             )
             # calculate and save the percentage values for distribution and oos
             self.calculate_and_save_distribution_per_category(
                 valid_scif=valid_scif,
                 assortment_product_fks=valid_policy_data['product_fk'],
                 distribution_kpi_fk=distribution_by_cat_kpi.iloc[0].pk,
-                dst_kpi_name=msl_cat_level
+                dst_kpi_name=msl_cat_level,
+                template_fk=template_fk
             )
             # calculate and save prod presence and oos products
             self.calculate_and_save_prod_presence_per_category(
@@ -340,16 +349,15 @@ class CARLSBERGToolBox:
                 assortment_product_fks=valid_policy_data['product_fk'],
                 prod_presence_kpi_fk=prod_presence_by_cat_kpi.iloc[0].pk,
                 distribution_kpi_name=msl_cat_level,
+                template_fk=template_fk
             )
 
     def calculate_and_save_distribution(self, valid_scif, assortment_product_fks,
-                                        distribution_kpi_fk, dst_kpi_name):
+                                        distribution_kpi_fk, dst_kpi_name, template_fk):
         """Function to calculate distribution percentage.
         Saves distribution and oos percentage as values.
         """
-        template_fk = 0
-        if not valid_scif.empty:
-            template_fk = int(valid_scif['template_fk'].unique()[0])
+
         Log.info("Calculate {} distribution for {}".format(dst_kpi_name, self.session_uid))
         scene_products = pd.Series(valid_scif["item_id"].unique())
         total_products_in_assortment = len(assortment_product_fks)
@@ -372,7 +380,7 @@ class CARLSBERGToolBox:
                                        )
 
     def calculate_and_save_prod_presence(self, valid_scif, assortment_product_fks,
-                                         prod_presence_kpi_fk, distribution_kpi_name):
+                                         prod_presence_kpi_fk, distribution_kpi_name, template_fk):
         # all assortment products are only in own manufacturers context;
         # but we have the products and hence no need to filter out denominator
         Log.info("Calculate {} - SKU for {}".format(distribution_kpi_name, self.session_uid))
@@ -393,7 +401,7 @@ class CARLSBERGToolBox:
                 self.common.write_to_db_result(fk=prod_presence_kpi_fk,
                                                numerator_id=each_fk,
                                                denominator_id=self.store_id,
-                                               context_id=self.store_id,
+                                               context_id=template_fk,
                                                result=assortment_code,
                                                score=assortment_code,
                                                identifier_result=distribution_kpi_name + ' - SKU',
@@ -402,7 +410,7 @@ class CARLSBERGToolBox:
                                                )
 
     def calculate_and_save_distribution_per_category(self, valid_scif, assortment_product_fks,
-                                                     distribution_kpi_fk, dst_kpi_name):
+                                                     distribution_kpi_fk, dst_kpi_name, template_fk):
         """Function to calculate distribution and OOS percentage by Category.
         Saves distribution and oos percentage as values.
         """
@@ -428,7 +436,7 @@ class CARLSBERGToolBox:
                                            numerator_result=count_of_assortment_prod_in_scene,
                                            denominator_id=category_fk,
                                            denominator_result=curr_category_products_in_assortment,
-                                           context_id=self.store_id,
+                                           context_id=template_fk,
                                            result=distribution_perc,
                                            score=distribution_perc,
                                            identifier_result="{}_{}".format(dst_kpi_name, category_fk),
@@ -436,7 +444,7 @@ class CARLSBERGToolBox:
                                            )
 
     def calculate_and_save_prod_presence_per_category(self, valid_scif, assortment_product_fks,
-                                                      prod_presence_kpi_fk, distribution_kpi_name):
+                                                      prod_presence_kpi_fk, distribution_kpi_name, template_fk):
         # all assortment products are only in own manufacturers context;
         # but we have the products and hence no need to filter out denominator
         Log.info("Calculate {} - SKU per Category for {}".format(distribution_kpi_name, self.session_uid))
@@ -461,7 +469,7 @@ class CARLSBERGToolBox:
                     self.common.write_to_db_result(fk=prod_presence_kpi_fk,
                                                    numerator_id=each_fk,
                                                    denominator_id=category_fk,
-                                                   context_id=self.store_id,
+                                                   context_id=template_fk,
                                                    result=assortment_code,
                                                    score=assortment_code,
                                                    identifier_result=distribution_kpi_name + ' - SKU',
