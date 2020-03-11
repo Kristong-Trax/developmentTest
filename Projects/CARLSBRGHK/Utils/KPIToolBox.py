@@ -347,6 +347,9 @@ class CARLSBERGToolBox:
         """Function to calculate distribution percentage.
         Saves distribution and oos percentage as values.
         """
+        template_fk = 0
+        if not valid_scif.empty:
+            template_fk = int(valid_scif['template_fk'].unique()[0])
         Log.info("Calculate {} distribution for {}".format(dst_kpi_name, self.session_uid))
         scene_products = pd.Series(valid_scif["item_id"].unique())
         total_products_in_assortment = len(assortment_product_fks)
@@ -361,7 +364,7 @@ class CARLSBERGToolBox:
                                        numerator_result=count_of_assortment_prod_in_scene,
                                        denominator_id=self.store_id,
                                        denominator_result=total_products_in_assortment,
-                                       context_id=self.store_id,
+                                       context_id=template_fk,
                                        result=distribution_perc,
                                        score=distribution_perc,
                                        identifier_result="{}_{}".format(dst_kpi_name, self.store_id),
