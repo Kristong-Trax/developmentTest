@@ -13,7 +13,9 @@ class DataTestUnitNestleil(object):
          {'pk': 2005, 'type': u'Distribution Sabra'}, {'pk': 2006, 'type': u'Distribution Snacks - SKU'},
          {'pk': 2007, 'type': u'Distribution Sabra - SKU'}, {'pk': 2008, 'type': u'OOS Snacks'},
          {'pk': 2009, 'type': u'OOS Sabra'}, {'pk': 2010, 'type': u'OOS Snacks - SKU'},
-         {'pk': 2011, 'type': u'OOS Sabra - SKU'}]
+         {'pk': 2011, 'type': u'OOS Sabra - SKU'}, {'pk': 2016, 'type': u'Collection_Completeness_Snacks'},
+         {'pk': 2017, 'type': u'Collection_Completeness_Sabra'}
+        ]
     )
 
     kpi_results_values_table = pd.DataFrame.from_records(
@@ -22,6 +24,7 @@ class DataTestUnitNestleil(object):
     )
 
     test_case_1 = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'Data', 'test_case_1.xlsx')
+    external_target = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'Data', 'external_targets.xlsx')
 
     assortment_res = pd.DataFrame.from_records(
         [{"additional_attributes": "{}",
