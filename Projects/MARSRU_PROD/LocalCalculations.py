@@ -10,7 +10,7 @@ if __name__ == '__main__':
     project_name = 'marsru-prod'
     session_uids = [
 
-        'ffed4592-47f6-427f-a7e6-29cebafe05af',
+        '420c2cd0-9ba6-457f-9239-5428b6889132',
         
         # '20c275a9-afe2-4004-a727-618dee0e5599',
         # '0c5cf562-6209-49af-9a7f-730952c99788',

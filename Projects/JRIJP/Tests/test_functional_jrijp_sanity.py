@@ -29,7 +29,7 @@ class TestKEnginePsCode(PsSanityTestsFuncs):
         self.add_mocks()
         project_name = ProjectsSanityData.project_name
         data_provider = KEngineDataProvider(project_name)
-        sessions = {'B38407B6-FA49-44F3-BD98-EEBC6F3B0F3F': []}
+        sessions = {'3C868048-A67A-434C-BF6F-7834A40C88F9': []}
         kpi_results = JRIJPKpiResults().get_kpi_results()
         for session in sessions.keys():
             data_provider.load_session_data(str(session))
