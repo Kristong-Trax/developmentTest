@@ -27,8 +27,7 @@ class CCMYKpiResults:
                 17: 2,
                 18: 2,
                 19: 2,
-                20: 0,
-                21: 2},
+                20: 2},
             'kpi_level_2_fk': {
                 0: 292,
                 1: 440,
@@ -50,8 +49,7 @@ class CCMYKpiResults:
                 17: 467,
                 18: 468,
                 19: 469,
-                20: 555,
-                21: 556},
+                20: 556},
             'context_id': {
                 0: 2.0,
                 1: None,
@@ -73,8 +71,7 @@ class CCMYKpiResults:
                 17: None,
                 18: None,
                 19: None,
-                20: None,
-                21: None},
+                20: None},
             'client_name': {
                 0: u'SHELF_PURITY',
                 1: u'CCBM Availaiblity',
@@ -96,8 +93,7 @@ class CCMYKpiResults:
                 17: u'Sprite 1.25L',
                 18: u'Heaven and Earth 315ML',
                 19: u'Minute Maid Pulpy 350ML',
-                20: u'Shelf Purity',
-                21: u'Red Score'},
+                20: u'Red Score'},
             'session_fk': {
                 0: 1285943,
                 1: 1285943,
@@ -119,8 +115,7 @@ class CCMYKpiResults:
                 17: 1285943,
                 18: 1285943,
                 19: 1285943,
-                20: 1285943,
-                21: 1285943},
+                20: 1285943},
             'numerator_result': {
                 0: 4,
                 1: 5,
@@ -142,8 +137,7 @@ class CCMYKpiResults:
                 17: 0,
                 18: 100,
                 19: 0,
-                20: 0,
-                21: 17},
+                20: 17},
             'denominator_result': {
                 0: 14,
                 1: 1,
@@ -165,8 +159,7 @@ class CCMYKpiResults:
                 17: 1,
                 18: 1,
                 19: 1,
-                20: 1,
-                21: 1},
+                20: 1},
             'result': {
                 0: 0.285714,
                 1: 5.0,
@@ -188,8 +181,7 @@ class CCMYKpiResults:
                 17: 0.0,
                 18: 5.0,
                 19: 0.0,
-                20: 0.0,
-                21: 17.0},
+                20: 17.0},
             'denominator_id': {
                 0: 51159,
                 1: 51159,
@@ -211,5 +203,4 @@ class CCMYKpiResults:
                 17: 51159,
                 18: 51159,
                 19: 51159,
-                20: 51159,
-                21: 51159}}
+                20: 51159}}
