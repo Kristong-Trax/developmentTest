@@ -144,7 +144,7 @@ class ToolBox(GlobalSessionToolBox):
         self.common.write_to_db_result(fk=lsos_score_kpi_fk, numerator_id=self.own_manufacturer_fk,
                                        denominator_id=self.store_id, should_enter=True, target=store_denominator,
                                        numerator_result=store_numerator, denominator_result=store_denominator,
-                                       result=store_result, score=store_result, identifier_result='LSOS_SCORE')
+                                       result=store_numerator, score=store_result, identifier_result='LSOS_SCORE')
 
     @staticmethod
     def get_num_and_den_filters(numerator_type, numerator_value, denominator_type, denominator_value):
