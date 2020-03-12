@@ -20,7 +20,8 @@ if __name__ == '__main__':
     data_provider = KEngineDataProvider(project_name)
     output = Output()
     sessions = {
-        '13370ddd-7a23-45d1-a0e9-44fda09ce636': ['28098679'],
+        'e8c67437-814e-48cb-bc66-fb8bbf7bf7f9': ['25728621'],
+        # '13370ddd-7a23-45d1-a0e9-44fda09ce636': ['28098679'],
 
         # one shelf
         # '5a1862d6-ed90-4fd9-a7bd-8f5186f293e7': ['28111603'],
@@ -35,6 +36,6 @@ if __name__ == '__main__':
             SceneVanillaCalculations(data_provider, output).run_project_calculations()
             save_scene_item_facts_to_data_provider(data_provider, output)
             SceneCalculations(data_provider).calculate_kpis()
-        data_provider.load_session_data(session)
-        output = Output()
-        PngCNEmptyCalculations(data_provider, output).run_project_calculations()
+        # data_provider.load_session_data(session)
+        # output = Output()
+        # PngCNEmptyCalculations(data_provider, output).run_project_calculations()
