@@ -55,7 +55,7 @@ class Consts(object):
         SURTIDO: 3.0,
         HUECOS: 0.3,
         FRENTES: 1.8,
-        ACOMODO: 0.2,
+        ACOMODO: 0.6,
         INVASION: 0.3,
         PRIORITARIO: 1.17,
         CALIFICADOR: 1.5,

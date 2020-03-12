@@ -126,7 +126,7 @@ class CervezaToolBox(GlobalSessionToolBox):
         relevant_template['facings'].fillna(0, inplace=True)
         relevant_template['in_session'] = relevant_template['facings'] > 0
 
-        self._calculate_calificador_sku(relevant_template)
+        self._calculate_prioritario_sku(relevant_template)
 
         result = relevant_template['in_session'].sum() / len(relevant_template)
 
@@ -163,7 +163,7 @@ class CervezaToolBox(GlobalSessionToolBox):
         relevant_template['facings'].fillna(0, inplace=True)
         relevant_template['in_session'] = relevant_template['facings'] > 0
 
-        self._calculate_calificador_sku(relevant_template)
+        self._calculate_opcional_sku(relevant_template)
 
         result = relevant_template['in_session'].sum() / len(relevant_template)
 
@@ -281,7 +281,7 @@ class CervezaToolBox(GlobalSessionToolBox):
         parent_fk = self.get_parent_fk(Consts.FRENTES_SKU)
 
         for sku_row in relevant_target_skus.itertuples():
-            self.write_to_db(fk=kpi_fk, numerator_id=sku_row.product_fk, denominator_id=self.store_id,
+            self.write_to_db(fk=kpi_fk, numerator_id=sku_row.target_product_fk, denominator_id=self.store_id,
                              numerator_result=sku_row.facings, result=sku_row.meets_target, target=sku_row.target,
                              identifier_parent=parent_fk, should_enter=True)
 
