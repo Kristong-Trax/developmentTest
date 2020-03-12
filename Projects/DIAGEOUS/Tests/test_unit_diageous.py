@@ -7,7 +7,7 @@ from Projects.DIAGEOUS.Utils.KPIToolBox import ToolBox
 __author__ = 'yoava'
 
 
-class DIAGEOUSTest(TestCase):
+class DIAGEOUSSANDTestDiageous(TestCase):
 
     @mock.patch('Projects.DIAGEOUS.Utils.KPIToolBox.ProjectConnector')
     def setUp(self, x):
@@ -20,4 +20,4 @@ class DIAGEOUSTest(TestCase):
 
 
 # if __name__ == '__main__':
-#     tests = DIAGEOUSTest()
+#     tests = DIAGEOUSSANDTestDiageous()
