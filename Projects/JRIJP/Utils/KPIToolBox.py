@@ -48,11 +48,15 @@ class JRIJPToolBox:
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
         self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         self.ps_data_provider = PsDataProvider(self.data_provider, self.output)
-        self.external_targets = self.ps_data_provider.get_kpi_external_targets()
         self.kpi_static_data = self.common.get_kpi_static_data()
         self.kpi_results_queries = []
         self.templates_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data')
         self.excel_file_path = os.path.join(self.templates_path, 'Template.xlsx')
+        self.external_targets = self.ps_data_provider.get_kpi_external_targets(
+            kpi_operation_types=["Target Config"],
+            key_fields=["product_fks", "template_fks", "product_group_fk"],
+            data_fields=["stacking_exclude", "min_product_facing", "best_shelf_position", "group_facings_count"])
+        self.external_targets = self.external_targets.fillna("N/A")
 
     def main_calculation(self, *args, **kwargs):
         """
