@@ -1,4 +1,4 @@
-
+# -*- coding: utf-8 -*-
 
 class Consts(object):
 
@@ -27,9 +27,23 @@ class Consts(object):
     OOS_SABRA = 'OOS Sabra'
     OOS_SABRA_SKU = 'OOS Sabra - SKU'
 
+    # DIST_OOS_KPIS_MAP = {DISTR_SNACKS: OOS_SNACKS, DISTR_SABRA: OOS_SABRA, DISTR_SNACKS_SKU: OOS_SNACKS_SKU,
+    #                      DISTR_SABRA_SKU: OOS_SABRA_SKU, DISTRIBUTION_STORE_LEVEL: OOS_STORE_LEVEL,
+    #                      DISTRIBUTION_SKU_LEVEL: OOS_SKU_LEVEL}
+
     DIST_OOS_KPIS_MAP = {DISTR_SNACKS: OOS_SNACKS, DISTR_SABRA: OOS_SABRA, DISTR_SNACKS_SKU: OOS_SNACKS_SKU,
-                         DISTR_SABRA_SKU: OOS_SABRA_SKU, DISTRIBUTION_STORE_LEVEL: OOS_STORE_LEVEL,
-                         DISTRIBUTION_SKU_LEVEL: OOS_SKU_LEVEL}
+                         DISTR_SABRA_SKU: OOS_SABRA_SKU}
+
+    COLLECTION_COMPLETENESS_SNACKS = 'Collection_Completeness_Snacks'
+    COLLECTION_COMPLETENESS_SABRA = 'Collection_Completeness_Sabra'
+
+    CRISPS_N_SNACKS = 'Crisps & Snacks'
+    SALADS = 'Salads'
+    # TRAX_CATEGORY_PRODUCT_GROUP_MAP = {CRISPS_N_SNACKS: u'חטיפים', SALADS: u'סלטים'}
+    PRODUCT_GROUP_FK = 'product_group_fk'
+    COMPLETENESS_CHECK = 'completeness_check'
+    TRAX_CATEGORY_FK = 'trax_category_fk'
+    IS_INCLUDED = 'is_included'
 
     # KPI result values
     OOS_VALUE = 'OOS'
