@@ -1609,20 +1609,22 @@ class MARSRU_PRODKPIToolBox:
                             (self.scif['scene_fk'].isin(scenes)) &
                             (self.scif['product_ean_code'].isin(top_eans))]['product_fk'].unique().tolist()
 
-                        min_shelf, max_shelf = kpi_parameters.get('shelves').split('-')
-                        min_shelf, max_shelf = int(min_shelf), int(max_shelf)
-                        top_products_on_golden_shelf = self.match_product_in_scene[
-                            (self.match_product_in_scene['scene_fk'].isin(scenes)) &
-                            (self.match_product_in_scene['shelf_number_from_bottom'] >= min_shelf) &
-                            (self.match_product_in_scene['shelf_number_from_bottom'] <= max_shelf) &
-                            (self.match_product_in_scene['product_fk'].isin(top_products_in_store))][
-                            'product_fk'].unique().tolist()
-
-                        if len(top_products_on_golden_shelf) < len(top_products_in_store) \
-                                or len(top_products_in_store) == 0:
-                            result = 'FALSE'
+                        if kpi_parameters.get('shelves'):
+                            min_shelf, max_shelf = kpi_parameters.get('shelves').split('-')
+                            min_shelf, max_shelf = int(min_shelf), int(max_shelf)
+                            top_products_on_golden_shelf = self.match_product_in_scene[
+                                (self.match_product_in_scene['scene_fk'].isin(scenes)) &
+                                (self.match_product_in_scene['shelf_number_from_bottom'] >= min_shelf) &
+                                (self.match_product_in_scene['shelf_number_from_bottom'] <= max_shelf) &
+                                (self.match_product_in_scene['product_fk'].isin(top_products_in_store))][
+                                'product_fk'].unique().tolist()
+                            if len(top_products_on_golden_shelf) < len(top_products_in_store) \
+                                    or len(top_products_in_store) == 0:
+                                result = 'FALSE'
+                            else:
+                                result = 'TRUE'
                         else:
-                            result = 'TRUE'
+                            result = None
 
                     elif p.get('#Mars KPI NAME') == 2254:
                         if self.results_and_scores[kpi_set]['2264']['result'] \
