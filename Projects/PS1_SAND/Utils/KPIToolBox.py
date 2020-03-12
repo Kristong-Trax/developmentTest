@@ -46,7 +46,7 @@ class PS1SandToolBox:
         if res_json:
             self.commonV2.write_to_db_result(fk=res_json['fk'], numerator_id=1, denominator_id=self.store_id,
                                              result=res_json['result'])
-            
+
         # committing to new tables
         self.commonV2.commit_results_data()
         # committing to the old tables
