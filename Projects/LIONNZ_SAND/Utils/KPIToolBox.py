@@ -13,10 +13,8 @@ __author__ = 'nidhin'
 OWN_MAN_NAME = 'Lion'  # case insensitive
 TEMPLATE_PARENT_FOLDER = 'Data'
 TEMPLATE_NAME = 'Template.xlsx'
-ASSORTMENT_TEMPLATE_NAME = 'Assortments.xlsx'
 
 KPI_NAMES_SHEET = 'kpis'
-ASSORTMENT_SHEET = 'assortment'
 KPI_DETAILS_SHEET = 'details'
 KPI_INC_EXC_SHEET = 'exclude_include'
 # Column Name
@@ -99,9 +97,6 @@ class LIONNZToolBox:
         self.kpi_template_path = os.path.join(os.path.dirname(os.path.realpath(__file__)),
                                               '..', TEMPLATE_PARENT_FOLDER,
                                               TEMPLATE_NAME)
-        self.assortment_template_path = os.path.join(os.path.dirname(os.path.realpath(__file__)),
-                                                     '..', TEMPLATE_PARENT_FOLDER,
-                                                     ASSORTMENT_TEMPLATE_NAME)
         self.own_man_fk = self.all_products[
             self.all_products['manufacturer_name'].str.lower() == OWN_MAN_NAME.lower()
         ]['manufacturer_fk'].values[0]
