@@ -298,6 +298,7 @@ class CCRUCCHKPIFetcher:
         return data.groupby(['anchor_product_fk']).agg({'product_fks': 'first', 'min_facings': 'first'}).to_dict()
 
     def get_custom_entity(self, entity_type):
+        self.rds_conn.connect_rds()
         query = \
             """
             SELECT en.pk, en.name

@@ -7,12 +7,65 @@ class JRIJPKpiResults:
     def get_kpi_results():
         return {
             'numerator_id': {
-                0: 549, 1: 94}, 'kpi_level_2_fk': {
-                0: 3000, 1: 3006}, 'context_id': {
-                0: 393, 1: 388}, 'client_name': {
-                    0: u'FACINGS_IN_CELL_PER_PRODUCT', 1: u'COUNT_POSM_PER_SCENE'}, 'session_fk': {
-                        0: 283568, 1: 283568}, 'numerator_result': {
-                            0: 2, 1: 0}, 'denominator_result': {
-                                0: 5, 1: 0}, 'result': {
-                                    0: 1.0, 1: 1.0}, 'denominator_id': {
-                                        0: 5992, 1: 5992}}
+                0: 1478,
+                1: 1,
+                2: 1,
+                3: 1,
+                4: 1,
+                5: 1},
+            'kpi_level_2_fk': {
+                0: 3000,
+                1: 4000,
+                2: 4001,
+                3: 4002,
+                4: 4003,
+                5: 4004},
+            'context_id': {
+                0: 392,
+                1: 2,
+                2: 2,
+                3: 2,
+                4: 8199,
+                5: 8199},
+            'client_name': {
+                0: u'FACINGS_IN_CELL_PER_PRODUCT',
+                1: u'PRODUCT_PRESENCE_FROM_TARGET',
+                2: u'PRODUCT_POSITION_FROM_TARGET',
+                3: u'PRODUCT_FACING_FROM_TARGET',
+                4: u'OVERALL_RESULT_FROM_TARGET',
+                5: u'OVERALL_SCORE_FROM_TARGET'},
+            'session_fk': {
+                0: 298510,
+                1: 298510,
+                2: 298510,
+                3: 298510,
+                4: 298510,
+                5: 298510},
+            'numerator_result': {
+                0: 1,
+                1: 0,
+                2: 0,
+                3: 0,
+                4: 1,
+                5: 1},
+            'denominator_result': {
+                0: 2,
+                1: 0,
+                2: 0,
+                3: 0,
+                4: 1,
+                5: 1},
+            'result': {
+                0: 1.0,
+                1: 1.0,
+                2: 1.0,
+                3: 5.0,
+                4: 10.0,
+                5: 1.0},
+            'denominator_id': {
+                0: 8199,
+                1: 9222,
+                2: 9222,
+                3: 9222,
+                4: 8199,
+                5: 8199}}
