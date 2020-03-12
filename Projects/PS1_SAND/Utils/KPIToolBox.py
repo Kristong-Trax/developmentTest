@@ -24,10 +24,7 @@ class PS1SandToolBox:
         """
         This function calculates the KPI results.
         """
-        log_runtime('Updating templates')
-        self.template_handler.update_templates()
-
-        # SOS Out Of The Box kpis
+         # SOS Out Of The Box kpis
         self.diageo_generator.activate_ootb_kpis(self.commonV2)
 
         # sos by scene type
