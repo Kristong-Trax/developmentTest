@@ -10,9 +10,7 @@ if __name__ == '__main__':
     Config.init()
     project_name = 'cbcil'
     data_provider = KEngineDataProvider(project_name)
-    session_uids = [
-        'a21d1738-7cb6-4f83-9274-7109b483ed09'
-    ]
+    session_uids = ['a21d1738-7cb6-4f83-9274-7109b483ed09']
     for session in session_uids:
         data_provider.load_session_data(session)
         output = Output()
