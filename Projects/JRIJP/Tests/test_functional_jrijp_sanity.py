@@ -2,7 +2,7 @@
 
 from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
 from Projects.JRIJP.Tests.Data.data_test_jrijp_sanity import ProjectsSanityData
-from Projects.JRIJP.Calculations import Calculations
+from Projects.JRIJP.Calculations import Calculations as JRIJPCalculations
 from DevloperTools.SanityTests.PsSanityTests import PsSanityTestsFuncs
 from Projects.JRIJP.Tests.Data.kpi_results import JRIJPKpiResults
 # import os
@@ -29,12 +29,12 @@ class TestKEnginePsCode(PsSanityTestsFuncs):
         self.add_mocks()
         project_name = ProjectsSanityData.project_name
         data_provider = KEngineDataProvider(project_name)
-        sessions = {u'094CA7F0-617C-4ECE-9784-540E77D19B51': []}
+        sessions = {'3C868048-A67A-434C-BF6F-7834A40C88F9': []}
         kpi_results = JRIJPKpiResults().get_kpi_results()
         for session in sessions.keys():
             data_provider.load_session_data(str(session))
             output = Output()
-            Calculations(data_provider, output).run_project_calculations()
+            JRIJPCalculations(data_provider, output).run_project_calculations()
             # for scene in sessions[session]:
             # data_provider.load_scene_data(str(session), scene_id=scene)
             # SceneCalculations(data_provider).calculate_kpis()
