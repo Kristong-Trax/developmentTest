@@ -76,7 +76,6 @@ class CCRUProjectCalculations:
             Log.warning('Warning. Session with Segmentation visit type has no KPI calculations.')
 
         elif self.tool_box.visit_type in [self.tool_box.PROMO_VISIT]:
-            Log.warning('Warning. Session with Promo visit type has no KPI calculations.')
             self.calculate_promo_compliance()
 
         else:
