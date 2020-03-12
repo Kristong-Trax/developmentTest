@@ -3,6 +3,7 @@ from Trax.Algo.Calculations.Core.AdjacencyGraph.Builders import AdjacencyGraphBu
 from Trax.Utils.Logging.Logger import Log
 from KPIUtils_v2.Utils.GlobalScripts.Scripts import GlobalSessionToolBox
 from KPIUtils_v2.Calculations.BlockCalculations_v2 import Block
+
 import pandas as pd
 import numpy as np
 import os
@@ -66,8 +67,9 @@ class ToolBox(GlobalSessionToolBox):
         self.templates = {}
         self.parse_template()
         self.match_product_in_scene = self.data_provider[Data.MATCHES]
-        self.match_scene_item_facts = self.scif.merge(self.match_product_in_scene, how='left',
-                                                      on='product_fk')  # Merges scif with mpis on product_fk
+        self.match_scene_item_facts = pd.merge(self.scif, self.match_product_in_scene, how='right',
+                                               left_on=['item_id', 'scene_id'], right_on=['product_fk',
+                                                                                          'scene_fk'])  # Merges scif with mpis on product_fk
         self.block = Block(data_provider)
         self.own_manufacturer_fk = int(self.data_provider.own_manufacturer.param_value.values[0])
         self.results_df = pd.DataFrame(columns=['kpi_name', 'kpi_fk', 'numerator_id', 'numerator_result', 'context_id',
@@ -187,6 +189,12 @@ class ToolBox(GlobalSessionToolBox):
                         valid_cluster_for_block = passed_block.cluster.nodes.values()
                         relevant_scene_match_fks_for_block = [scene_match_fk for item in valid_cluster_for_block for
                                                               scene_match_fk in item['scene_match_fk']]
+                        relevant_probe_match_fks_for_block = [probe_match_fk for item in valid_cluster_for_block for
+                                                              probe_match_fk in item['probe_match_fk']]
+
+                        # {1: 'block_relevant_brand', 2: 'adjacency_relevant_brand', 3:'block_relecant_category',4:'adjacency_relevant_category'}
+                        self._save_in_match_product_in_probe_state_reporting_for_explorer_filter(
+                            relevant_probe_match_fks_for_block, 1)
 
                         '''The below line is used to filter the adjacency graph by the closest edges. Specifically since
                          the edges are determined by masking only, there's a chance that there will be two edges that come
@@ -194,12 +202,12 @@ class ToolBox(GlobalSessionToolBox):
                         adj_graph = self.block.adj_graphs_by_scene.values()[0].edge_subgraph(
                             self._filter_redundant_edges(self.block.adj_graphs_by_scene.values()[0]))
 
-                        adj_items = {}  # will contain the scene match fks that are adjacent to the block
+                        adj_items = {}  # will contain the scene match fks that are adjacent to the block. key: scene_match_fk | values:[direction, brand_fk]
                         for match in relevant_scene_match_fks_for_block:
                             for node, node_data in adj_graph.adj[match].items():
                                 if node not in relevant_scene_match_fks_for_block:
                                     product_fk = self.match_scene_item_facts.loc[
-                                        self.match_scene_item_facts.scene_match_fk == node, 'product_fk'].iat[0]
+                                        self.match_scene_item_facts.scene_match_fk == node, 'item_id'].iat[0]
                                     if product_fk == 0:  # general empty
                                         # we need visibility in to seeing if the product is empty
                                         # since we are saving the brand. If the product is empty, then it will save
@@ -218,6 +226,12 @@ class ToolBox(GlobalSessionToolBox):
 
                         brand_fks_for_adj_items = np.array([nd[1] for nd in adj_items.values()])
                         node_direction = np.array([nd[0]['direction'] for nd in adj_items.values()])
+
+                        relevant_probe_match_fks_for_adjacent_products = self.match_product_in_scene[
+                            self.match_product_in_scene.scene_match_fk.isin(adj_items.keys())].probe_match_fk.values
+                        # {1: 'block_relevant_brand', 2: 'adjacency_relevant_brand', 3:'block_relecant_category',4:'adjacency_relevant_category'}
+                        self._save_in_match_product_in_probe_state_reporting_for_explorer_filter(
+                            relevant_probe_match_fks_for_adjacent_products, 2)
 
                         for dir, dir_fk in direction.items():
                             if dir in node_direction:
@@ -282,6 +296,13 @@ class ToolBox(GlobalSessionToolBox):
                         relevant_scene_match_fks_for_block = [scene_match_fk for item in valid_cluster_for_block for
                                                               scene_match_fk in item['scene_match_fk']]
 
+                        relevant_probe_match_fks_for_block = [probe_match_fk for item in valid_cluster_for_block for
+                                                              probe_match_fk in item['probe_match_fk']]
+
+                        # {1: 'block_relevant_brand', 2: 'adjacency_relevant_brand', 3:'block_relecant_category',4:'adjacency_relevant_category'}
+                        self._save_in_match_product_in_probe_state_reporting_for_explorer_filter(
+                            relevant_probe_match_fks_for_block, 3)
+
                         '''The below line is used to filter the adjacency graph by the closest edges. Specifically since
                          the edges are determined by masking only, there's a chance that there will be two edges that come
                          out from a single node.'''
@@ -293,7 +314,7 @@ class ToolBox(GlobalSessionToolBox):
                             for node, node_data in adj_graph.adj[match].items():
                                 if node not in relevant_scene_match_fks_for_block:
                                     product_fk = self.match_scene_item_facts.loc[
-                                        self.match_scene_item_facts.scene_match_fk == node, 'product_fk'].iat[0]
+                                        self.match_scene_item_facts.scene_match_fk == node, 'item_id'].iat[0]
                                     if product_fk == 0:  # general empty
                                         # we need visibility in to seeing if the product is empty
                                         # since we are saving the category. If the product is empty, then it will save
@@ -312,6 +333,12 @@ class ToolBox(GlobalSessionToolBox):
 
                         category_fks_for_adj_items = np.array([nd[1] for nd in adj_items.values()])
                         node_direction = np.array([nd[0]['direction'] for nd in adj_items.values()])
+
+                        relevant_probe_match_fks_for_adjacent_products = self.match_product_in_scene[
+                            self.match_product_in_scene.scene_match_fk.isin(adj_items.keys())].probe_match_fk.values
+                        # {1: 'block_relevant_brand', 2: 'adjacency_relevant_brand', 3:'block_relecant_category',4:'adjacency_relevant_category'}
+                        self._save_in_match_product_in_probe_state_reporting_for_explorer_filter(
+                            relevant_probe_match_fks_for_adjacent_products, 4)
 
                         for dir, dir_fk in direction.items():
                             if dir in node_direction:
@@ -404,7 +431,7 @@ class ToolBox(GlobalSessionToolBox):
         relevant_product_fks = self._sanitize_values(row[Consts.NUMERATOR_VALUE_1])
         result_dict_list = []
 
-        relevant_mcif = self.match_scene_item_facts[self.match_scene_item_facts.product_fk.isin(relevant_product_fks)]
+        relevant_mcif = self.match_scene_item_facts[self.match_scene_item_facts.item_id.isin(relevant_product_fks)]
         if not relevant_mcif.empty:
             shelf_position_dict = {'Bottom': 22, 'Middle': 23, 'Eye': 24, 'Top': 25}
             for unique_scene in set(relevant_mcif.scene_id):
@@ -412,14 +439,18 @@ class ToolBox(GlobalSessionToolBox):
                 relevant_mcif_2 = relevant_mcif[relevant_mcif.scene_id.isin([unique_scene])]
                 for bay in set(relevant_mcif_2.bay_number):
                     relevant_mcif_3 = relevant_mcif_2[relevant_mcif_2.bay_number.isin([bay])]
-                    group_by_mcif = relevant_mcif_3.groupby(['product_fk', 'shelf_number']).first()
+                    group_by_mcif = relevant_mcif_3.groupby(['item_id', 'shelf_number']).first()
                     relevant_group_by_mcif = group_by_mcif.reset_index('shelf_number')[['shelf_number', 'facings']]
                     for unique_product_fk in set(relevant_group_by_mcif.index):
                         result = self._get_shelf_position_id(unique_scene=unique_scene, unique_bay=bay,
-                                                                     grouped_shelf=relevant_group_by_mcif[relevant_group_by_mcif.index.isin([unique_product_fk])].shelf_number,
-                                                                     shelf_position_dict=shelf_position_dict)  # return the proper shelf position based on number the number of shelfs using the shelf position dict
-                        final_mcif_of_product_fk = relevant_group_by_mcif.max()
-                        numerator_result = final_mcif_of_product_fk.facings
+                                                             grouped_shelf=relevant_group_by_mcif[
+                                                                 relevant_group_by_mcif.index.isin(
+                                                                     [unique_product_fk])].shelf_number,
+                                                             shelf_position_dict=shelf_position_dict)  # return the proper shelf position based on number the number of shelfs using the shelf position dict
+                        # final_mcif_of_product_fk = relevant_group_by_mcif.max()
+                        numerator_result = \
+                        relevant_group_by_mcif.loc[relevant_group_by_mcif.index == unique_product_fk, 'facings'].values[
+                            0]
                         result_dict = {'kpi_fk': kpi_fk, 'numerator_id': unique_product_fk,
                                        'denominator_id': bay, 'context_id': context_id,
                                        'numerator_result': numerator_result,
@@ -440,11 +471,16 @@ class ToolBox(GlobalSessionToolBox):
                 filtered_mcif = relevant_mcif[relevant_mcif.scene_id.isin([relevant_scene])]
                 for bay in set(filtered_mcif.bay_number):
                     bay_filtered_mcif = filtered_mcif[filtered_mcif.bay_number.isin([bay])]
+
+                    # this function gets the right(or left) most products in the bay
                     product_fks = self._get_the_most_right_or_most_left_product_fks_on_bay(bay_filtered_mcif,
                                                                                            relevant_template_name)
                     unique_product = Counter(product_fks).keys()
                     count_of_product_fks = Counter(product_fks).values()
 
+                    # The logic of lead anchor is the the lead anchor (so the right most or the left most depending
+                    # on the door handle position which is determined by the scene_type) is grouped by product fk and
+                    # we want the count of facings of the product in right corner or left corner
                     for index in range(len(unique_product)):
                         numerator_id = unique_product[index]  # product fk
                         denominator_id = bay  # bay number
@@ -452,10 +488,10 @@ class ToolBox(GlobalSessionToolBox):
                         numerator_result = count_of_product_fks[
                             index]  # count of facings of LEAD PRODUCTS  on right or left depending on the scene type
                         denominator_result = sum(count_of_product_fks)  # sum of the total facings of LEAD PRODUCTS
-                        result = numerator_result / denominator_result
+                        result = (float(numerator_result) / denominator_result) * 100
                         result_dict = {'kpi_fk': kpi_fk, 'numerator_id': numerator_id,
                                        'denominator_id': denominator_id, 'context_id': context_id,
-                                       'numerator_result': numerator_result,
+                                       'numerator_result': numerator_result, 'denominator_result': denominator_result,
                                        'result': result}
                         result_dict_list.append(result_dict)
 
@@ -534,12 +570,12 @@ class ToolBox(GlobalSessionToolBox):
             is the most right product fk of the shelf. If the template name is Left Door Handle, then the 
             below loc will get the most left product fk of the shelf.'''
             most_right_or_left_product_on_shelf = shelf_filtered_mcif.loc[
-                shelf_filtered_mcif.rect_x.idxmax(), 'product_fk'] if relevant_template_name == 'Right Door Handle' else \
-                shelf_filtered_mcif.loc[shelf_filtered_mcif.rect_x.idxmin(), 'product_fk']
+                shelf_filtered_mcif.rect_x.idxmax(), 'item_id'] if relevant_template_name == 'Right Door Handle' else \
+                shelf_filtered_mcif.loc[shelf_filtered_mcif.rect_x.idxmin(), 'item_id']
             product_fks.append(most_right_or_left_product_on_shelf)
         return product_fks
 
-    def _get_shelf_position_id(self, unique_scene, unique_bay,grouped_shelf,shelf_position_dict):
+    def _get_shelf_position_id(self, unique_scene, unique_bay, grouped_shelf, shelf_position_dict):
         '''
         :return: Uses the shelf position in the scene and bay and return the id of the shelf
         '''
@@ -547,3 +583,10 @@ class ToolBox(GlobalSessionToolBox):
             (self.match_scene_item_facts.scene_id.isin([unique_scene])) & (
                 self.match_scene_item_facts.bay_number.isin([unique_bay]))].shelf_number.max()
         return shelf_position_dict[self.templates['Shelf Map'].loc[max_shelf_position, grouped_shelf.iat[0]]]
+
+    def _save_in_match_product_in_probe_state_reporting_for_explorer_filter(self, relevant_probe_match_fks,
+                                                                           match_product_in_probe_state_reporting_fk):
+        df_for_common = pd.DataFrame({self.common.MATCH_PRODUCT_IN_PROBE_FK: relevant_probe_match_fks,
+                                      self.common.MATCH_PRODUCT_IN_PROBE_STATE_REPORTING_FK: match_product_in_probe_state_reporting_fk})  # this is for block_relevant_brand
+        self.common.match_product_in_probe_state_values = \
+            self.common.match_product_in_probe_state_values.append(df_for_common)
