@@ -55,8 +55,8 @@ class JRIJPToolBox:
         self.external_targets = self.ps_data_provider.get_kpi_external_targets(
             kpi_operation_types=["Target Config"],
             key_fields=["product_fks", "template_fks", "product_group_fk"],
-            data_fields=["stacking_exclude", "min_product_facing", "best_shelf_position", "group_facings_count"])
-        self.external_targets = self.external_targets.fillna("N/A")
+            data_fields=["stacking_exclude", "min_product_facing", "best_shelf_position", "group_facings_count"]
+            )
 
     def main_calculation(self, *args, **kwargs):
         """
