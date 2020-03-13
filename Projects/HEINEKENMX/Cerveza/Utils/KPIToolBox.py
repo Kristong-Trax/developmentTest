@@ -64,6 +64,7 @@ class CervezaToolBox(GlobalSessionToolBox):
     def calculate_surtido(self):
         kpi_fk = self.get_kpi_fk_by_kpi_type(Consts.SURTIDO)
         parent_fk = self.get_parent_fk(Consts.SURTIDO)
+        max_kpi_points = self.get_kpi_points(Consts.SURTIDO)
         weight = self.get_kpi_weight(Consts.SURTIDO)
 
         score = 0
@@ -72,13 +73,14 @@ class CervezaToolBox(GlobalSessionToolBox):
         score += self.calculate_opcional()
 
         self.write_to_db(fk=kpi_fk, numerator_id=self.manufacturer_fk, denominator_id=self.store_id,
-                         result=score, score=score, weight=weight,
+                         result=score, score=score, weight=weight, target=max_kpi_points,
                          identifier_result=kpi_fk, identifier_parent=parent_fk, should_enter=True)
         return score
 
     def calculate_calificador(self):
         kpi_fk = self.get_kpi_fk_by_kpi_type(Consts.CALIFICADOR)
         parent_fk = self.get_parent_fk(Consts.CALIFICADOR)
+        max_kpi_points = self.get_kpi_points(Consts.CALIFICADOR)
         weight = self.get_kpi_weight(Consts.CALIFICADOR)
 
         relevant_template = self.relevant_targets[(self.relevant_targets['Nombre de Tarea'].isin(self.scene_types)) &
@@ -93,12 +95,12 @@ class CervezaToolBox(GlobalSessionToolBox):
 
         result = relevant_template['in_session'].sum() / len(relevant_template)
 
-        score = result * weight
+        score = result * max_kpi_points
 
         self.write_to_db(fk=kpi_fk, numerator_id=self.manufacturer_fk, denominator_id=self.store_id,
                          numerator_result=relevant_template['in_session'].sum(),
                          denominator_result=len(relevant_template),
-                         result=result, score=score, weight=weight,
+                         result=result, score=score, weight=weight, target=max_kpi_points,
                          identifier_result=kpi_fk, identifier_parent=parent_fk, should_enter=True)
 
         return score
@@ -116,6 +118,7 @@ class CervezaToolBox(GlobalSessionToolBox):
     def calculate_prioritario(self):
         kpi_fk = self.get_kpi_fk_by_kpi_type(Consts.PRIORITARIO)
         parent_fk = self.get_parent_fk(Consts.PRIORITARIO)
+        max_kpi_points = self.get_kpi_points(Consts.PRIORITARIO)
         weight = self.get_kpi_weight(Consts.PRIORITARIO)
 
         relevant_template = self.relevant_targets[(self.relevant_targets['Nombre de Tarea'].isin(self.scene_types)) &
@@ -130,12 +133,12 @@ class CervezaToolBox(GlobalSessionToolBox):
 
         result = relevant_template['in_session'].sum() / len(relevant_template)
 
-        score = result * weight
+        score = result * max_kpi_points
 
         self.write_to_db(fk=kpi_fk, numerator_id=self.manufacturer_fk, denominator_id=self.store_id,
                          numerator_result=relevant_template['in_session'].sum(),
                          denominator_result=len(relevant_template),
-                         result=result, score=score, weight=weight,
+                         result=result, score=score, weight=weight, target=max_kpi_points,
                          identifier_result=kpi_fk, identifier_parent=parent_fk, should_enter=True)
 
         return score
@@ -153,6 +156,7 @@ class CervezaToolBox(GlobalSessionToolBox):
     def calculate_opcional(self):
         kpi_fk = self.get_kpi_fk_by_kpi_type(Consts.OPCIONAL)
         parent_fk = self.get_parent_fk(Consts.OPCIONAL)
+        max_kpi_points = self.get_kpi_points(Consts.OPCIONAL)
         weight = self.get_kpi_weight(Consts.OPCIONAL)
 
         relevant_template = self.relevant_targets[(self.relevant_targets['Nombre de Tarea'].isin(self.scene_types)) &
@@ -167,12 +171,12 @@ class CervezaToolBox(GlobalSessionToolBox):
 
         result = relevant_template['in_session'].sum() / len(relevant_template)
 
-        score = result * weight
+        score = result * max_kpi_points
 
         self.write_to_db(fk=kpi_fk, numerator_id=self.manufacturer_fk, denominator_id=self.store_id,
                          numerator_result=relevant_template['in_session'].sum(),
                          denominator_result=len(relevant_template),
-                         result=result, score=score, weight=weight,
+                         result=result, score=score, weight=weight, target=max_kpi_points,
                          identifier_result=kpi_fk, identifier_parent=parent_fk, should_enter=True)
 
         return score
@@ -190,6 +194,7 @@ class CervezaToolBox(GlobalSessionToolBox):
     def calculate_mercadeo(self):
         kpi_fk = self.get_kpi_fk_by_kpi_type(Consts.MERCADEO)
         parent_fk = self.get_parent_fk(Consts.MERCADEO)
+        max_kpi_points = self.get_kpi_points(Consts.MERCADEO)
         weight = self.get_kpi_weight(Consts.MERCADEO)
 
         score = 0
@@ -199,14 +204,16 @@ class CervezaToolBox(GlobalSessionToolBox):
         score += self.calculate_invasion()
 
         self.write_to_db(fk=kpi_fk, numerator_id=self.manufacturer_fk, denominator_id=self.store_id,
-                         result=score, score=score, weight=weight,
+                         result=score, score=score, weight=weight, target=max_kpi_points,
                          identifier_result=kpi_fk, identifier_parent=parent_fk, should_enter=True)
         return score
 
     def calculate_invasion(self):
         kpi_fk = self.get_kpi_fk_by_kpi_type(Consts.INVASION)
         parent_fk = self.get_parent_fk(Consts.INVASION)
+        max_kpi_points = self.get_kpi_points(Consts.INVASION)
         weight = self.get_kpi_weight(Consts.INVASION)
+
         result = 1
         for invasion_row in self.invasion_targets.itertuples():
             if 'Cerveza' not in getattr(invasion_row, "_1"):
@@ -223,31 +230,33 @@ class CervezaToolBox(GlobalSessionToolBox):
                 result = 0
                 break
 
-        score = result * weight
+        score = result * max_kpi_points
 
         self.write_to_db(fk=kpi_fk, numerator_id=self.manufacturer_fk, denominator_id=self.store_id,
-                         result=result, score=score, weight=weight,
+                         result=result, score=score, weight=weight, target=max_kpi_points,
                          identifier_result=kpi_fk, identifier_parent=parent_fk, should_enter=True)
         return score
 
     def calculate_huecos(self):
         kpi_fk = self.get_kpi_fk_by_kpi_type(Consts.HUECOS)
         parent_fk = self.get_parent_fk(Consts.HUECOS)
+        max_kpi_points = self.get_kpi_points(Consts.HUECOS)
         weight = self.get_kpi_weight(Consts.HUECOS)
 
         empty_scif = self.scif[self.scif['product_type'] == 'Empty']
         result = 1 if empty_scif.empty else 0
 
-        score = result * weight
+        score = result * max_kpi_points
 
         self.write_to_db(fk=kpi_fk, numerator_id=self.manufacturer_fk, denominator_id=self.store_id,
-                         result=result, score=score, weight=weight,
+                         result=result, score=score, weight=weight, target=max_kpi_points,
                          identifier_result=kpi_fk, identifier_parent=parent_fk, should_enter=True)
         return score
 
     def calculate_frentes(self):
         kpi_fk = self.get_kpi_fk_by_kpi_type(Consts.FRENTES)
         parent_fk = self.get_parent_fk(Consts.FRENTES)
+        max_kpi_points = self.get_kpi_points(Consts.FRENTES)
         weight = self.get_kpi_weight(Consts.FRENTES)
 
         valid_scene_types = self.relevant_targets[Consts.TEMPLATE_SCENE_TYPE].unique().tolist()
@@ -269,10 +278,10 @@ class CervezaToolBox(GlobalSessionToolBox):
         self._calculate_frentes_sku(relevant_target_skus)
 
         result = count_of_passing_skus / len(relevant_target_skus)
-        score = result * weight
+        score = result * max_kpi_points
         self.write_to_db(fk=kpi_fk, numerator_id=self.manufacturer_fk, denominator_id=self.store_id,
                          numerator_result=count_of_passing_skus, denominator_result=len(relevant_target_skus),
-                         result=result, score=score, weight=weight,
+                         result=result, score=score, weight=weight, target=max_kpi_points,
                          identifier_parent=parent_fk, identifier_result=kpi_fk, should_enter=True)
         return score
 
@@ -288,6 +297,7 @@ class CervezaToolBox(GlobalSessionToolBox):
     def calculate_acomodo(self):
         kpi_fk = self.get_kpi_fk_by_kpi_type(Consts.ACOMODO)
         parent_fk = self.get_parent_fk(Consts.ACOMODO)
+        max_kpi_points = self.get_kpi_points(Consts.ACOMODO)
         weight = self.get_kpi_weight(Consts.ACOMODO)
 
         scene_result = 0
@@ -301,11 +311,11 @@ class CervezaToolBox(GlobalSessionToolBox):
         else:
             result = scene_result / count
 
-        score = result * weight
+        score = result * max_kpi_points
 
         self.write_to_db(fk=kpi_fk, numerator_id=self.manufacturer_fk, denominator_id=self.store_id,
                          numerator_result=result, denominator_result=count,
-                         result=result, score=score, weight=weight,
+                         result=result, score=score, weight=weight, target=max_kpi_points,
                          identifier_parent=parent_fk, identifier_result=kpi_fk, should_enter=True)
         return score
 
@@ -485,7 +495,13 @@ class CervezaToolBox(GlobalSessionToolBox):
         parent_fk = self.get_kpi_fk_by_kpi_type(parent_kpi_name)
         return parent_fk
 
-    def get_kpi_weight(self, kpi_name):
+    @staticmethod
+    def get_kpi_weight(kpi_name):
+        weight = Consts.KPI_WEIGHTS[kpi_name]
+        return weight
+
+    @staticmethod
+    def get_kpi_points(kpi_name):
         weight = Consts.KPI_POINTS[kpi_name]
         return weight
 

@@ -62,6 +62,18 @@ class Consts(object):
         OPCIONAL: 0.33
     }
 
+    KPI_WEIGHTS = {
+        MERCADEO: 50,
+        SURTIDO: 50,
+        HUECOS: 10,
+        FRENTES: 60,
+        ACOMODO: 20,
+        INVASION: 10,
+        PRIORITARIO: 39,
+        CALIFICADOR: 50,
+        OPCIONAL: 11
+    }
+
     TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)),
                                  'KPI Template (External Targets) Feb18.xlsx')
 
