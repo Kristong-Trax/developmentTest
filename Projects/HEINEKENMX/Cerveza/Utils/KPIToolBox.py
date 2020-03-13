@@ -50,14 +50,14 @@ class CervezaToolBox(GlobalSessionToolBox):
     def main_calculation(self):
         kpi_fk = self.get_kpi_fk_by_kpi_type(Consts.CERVEZA)
         parent_fk = self.get_parent_fk(Consts.CERVEZA)
-        weight = self.get_kpi_weight(Consts.CERVEZA)
+        kpi_max_points = self.get_kpi_points(Consts.CERVEZA)
 
         score = 0
         score += self.calculate_mercadeo()
         score += self.calculate_surtido()
 
         self.write_to_db(fk=kpi_fk, numerator_id=self.manufacturer_fk, denominator_id=self.store_id,
-                         result=score, score=score, weight=weight,
+                         result=score, score=score, weight=kpi_max_points, target=kpi_max_points,
                          identifier_result=kpi_fk, identifier_parent=parent_fk, should_enter=True)
         return score
 
