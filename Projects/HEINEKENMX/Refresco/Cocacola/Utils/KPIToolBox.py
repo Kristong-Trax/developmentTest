@@ -35,8 +35,8 @@ class CocacolaToolBox(GlobalSessionToolBox):
         self.relevant_scif = self.scif[self.scif['template_name'].isin(self.relevant_scenes_exist_value)]
 
     def main_calculation(self):
-        ratio = self.calculate_refrescos_coca()
-        return ratio
+        score = self.calculate_refrescos_coca()
+        return score
 
     def calculate_refrescos_coca(self):
         kpi_name = Const.KPI_REFRESCO
@@ -47,14 +47,14 @@ class CocacolaToolBox(GlobalSessionToolBox):
         mercadeo = self.calculate_mercadeo()
         surtido = self.calculate_surtido()
 
-        ratios = [surtido, mercadeo]
-        ratio = self.calculate_average_ratio(ratios)
-        score = round(((ratio * .01) * kpi_weight), 2)
+        scores = [surtido, mercadeo]
+        score = self.calculate_sum_scores(scores)
+        # score = round(((ratio * .01) * kpi_weight), 2)
         self.write_to_db(fk=kpi_fk, numerator_id=self.manufacturer_pk, denominator_id=self.store_id,
-                         result=ratio,
+                         result=score,
                          score=score,
                          identifier_parent=parent_fk, identifier_result=kpi_fk, should_enter=True)
-        return ratio
+        return score
 
     def calculate_mercadeo(self):
         kpi_name = Const.KPI_MERCADEO
@@ -67,20 +67,19 @@ class CocacolaToolBox(GlobalSessionToolBox):
         shelf_position_ratio = self.calculate_shelf_position()
         facing_ratio = self.calculate_facing_count()
 
-        ratios = [empty_ratio, invasion_ratio, shelf_position_ratio, facing_ratio]
-        ratio = self.calculate_average_ratio(ratios)
-        score = round(((ratio * .01) * kpi_weight), 2)
+        scores = [empty_ratio, invasion_ratio, shelf_position_ratio, facing_ratio]
+        score = self.calculate_sum_scores(scores)
+        # score = round(((ratio * .01) * kpi_weight), 2)
 
         self.write_to_db(fk=kpi_fk, numerator_id=self.manufacturer_pk, denominator_id=self.store_id,
-                         result=ratio,
+                         result=score,
                          score=score,
                          identifier_parent=parent_fk, identifier_result=kpi_fk, should_enter=True)
-        return ratio
+        return score
 
     def calculate_surtido(self):
-        distribution_ratio = self.calculate_distribution()
-        ratio = distribution_ratio
-        return ratio
+        score = self.calculate_distribution()
+        return score
 
     def calculate_average_ratio(self, ratio_list):
         ratio_sum = 0
@@ -93,6 +92,14 @@ class CocacolaToolBox(GlobalSessionToolBox):
         else:
             final_ratio = 0
         return final_ratio
+
+    def calculate_sum_scores(self, score_list):
+        score_sum = 0
+
+        for score in score_list:
+            score_sum += score
+
+        return score_sum
 
 
 
@@ -114,6 +121,7 @@ class CocacolaToolBox(GlobalSessionToolBox):
 
             score = round(((ratio * .01) * kpi_weight), 2)
         self.write_to_db(fk=kpi_fk, numerator_id=self.manufacturer_pk, denominator_id=self.store_id,
+                         ratio=ratio,
                          score=score,
                          identifier_parent=parent_fk, identifier_result=kpi_fk, should_enter=True)
         return score
@@ -169,7 +177,7 @@ class CocacolaToolBox(GlobalSessionToolBox):
                         ean_product_target = 0
 
                     self.write_to_db(fk=kpi_fk, numerator_id=product_fk, numerator_result=ean_code,
-                                     denominator_id=scene_id,
+                                     denominator_id=self.store_id,
                                      result=found_sku_count, score=score, target=ean_product_target,
                                      identifier_parent=parent_fk, identifier_result=kpi_fk, should_enter=True)
 
@@ -182,8 +190,11 @@ class CocacolaToolBox(GlobalSessionToolBox):
             ratio = 0
 
         score = round(((ratio * .01) * kpi_weight), 2)
-        self.write_to_db(fk=parent_fk, numerator_id=numerator_facings,
-                         denominator_id=denominator_facings,
+        self.write_to_db(fk=parent_fk,
+                         numerator_id=self.manufacturer_fk,
+                         numerator_result=numerator_facings,
+                         denominator_id=self.store_id,
+                         denominator_result=denominator_facings,
                          result=ratio, score=score,
                          identifier_parent=grand_parent_fk, identifier_result=parent_fk, should_enter=True)
 
@@ -223,6 +234,17 @@ class CocacolaToolBox(GlobalSessionToolBox):
                 total_ean_codes += ean_code_count
                 found_ean = 0
                 for ean_code in ean_codes:
+
+                    product_fks = self.all_products['product_fk'][
+                        self.all_products['product_ean_code'] == str(ean_code)]
+
+                    if product_fks.empty:
+                        product_fk = -1
+                    else:
+                        product_fk = self.all_products['product_fk'][
+                            self.all_products['product_ean_code'] == str(ean_code)].iloc[0]
+
+
                     try:
 
                         found_sku_df = self.relevant_scif[
@@ -239,15 +261,13 @@ class CocacolaToolBox(GlobalSessionToolBox):
                         Log.warning("Distribution KPI Failed.")
 
 
-                    self.write_to_db(fk=kpi_fk, numerator_id=scene_id, numerator_result=ean_code,
+                    self.write_to_db(fk=kpi_fk, numerator_id=product_fk, numerator_result=ean_code,
                                      denominator_id=template_name_fk,
                                      result=score, score=score,
+                                     context_id=scene_id,
                                      identifier_parent=parent_fk, identifier_result=kpi_fk, should_enter=True)
 
-
-
         if total_ean_codes != 0:
-
             numerator_facings = found_ean
             denominator_facings = total_ean_codes
             ratio = round(numerator_facings / float(denominator_facings), 2) * 100
@@ -255,11 +275,13 @@ class CocacolaToolBox(GlobalSessionToolBox):
             ratio = 0
 
         score = round(((ratio * .01) * kpi_weight), 2)
-        self.write_to_db(fk=parent_fk, numerator_id=numerator_facings,
-                         denominator_id=denominator_facings,
+        self.write_to_db(fk=parent_fk, numerator_id=self.manufacturer_fk,
+                         numerator_result=numerator_facings,
+                         denominator_id=self.store_id,
+                         denominator_result=denominator_facings,
                          result=ratio, score=score,
                          identifier_parent=grand_parent_fk, identifier_result=parent_fk, should_enter=True)
-        return ratio
+        return score
 
 
     def calculate_shelf_position(self):
@@ -298,10 +320,8 @@ class CocacolaToolBox(GlobalSessionToolBox):
 
                     if score != 0:
                         try:
-
                             bay = 0
                             shelf = 0
-
                             product_fk = self.all_products['product_fk'][
                                 self.all_products['product_ean_code'] == str(ean_code)]
 
@@ -326,7 +346,6 @@ class CocacolaToolBox(GlobalSessionToolBox):
                                         filtered_product_only_df = relevant_matches[['product_fk', 'bay_number', 'shelf_number']][relevant_matches['product_fk'] == product_fk].drop_duplicates()
 
                                         if filtered_product_only_df.empty:
-
                                             score = 0
                                             self.write_to_db(fk=kpi_fk, numerator_id=bay,
                                                              numerator_result=target_bay,
@@ -369,12 +388,14 @@ class CocacolaToolBox(GlobalSessionToolBox):
                                 else:
                                     score = 0
 
-                                    self.write_to_db(fk=kpi_fk, numerator_id=bay,
+                                    self.write_to_db(fk=kpi_fk,
+                                                     numerator_id=product_fk,
                                                      numerator_result=target_bay,
-                                                     denominator_id=shelf,
-                                                     denominator_result=target_shelf,
+                                                     denominator_id=scene_name_fk,
+                                                     denominator_result=bay,
                                                      score=score, context_id=product_fk,
-                                                     result=ean_code,
+                                                     result=shelf,
+                                                     target=target_shelf,
                                                      identifier_parent=parent_fk, identifier_result=kpi_fk,
                                                      should_enter=True)
 
@@ -389,8 +410,9 @@ class CocacolaToolBox(GlobalSessionToolBox):
                 scene_ratios.append(ratio)
                 self.write_to_db(fk=parent_fk, numerator_id=scene_name_fk,
                                  numerator_result= passing_ean,
-                                 denominator_id=scene_id,
-                                 denominator_result= ean_codes_count,
+                                 denominator_id=self.store_id,
+                                 denominator_result=ean_codes_count,
+                                 context_id=scene_id,
                                  result=ratio,
                                  score=ratio,
                                  identifier_parent=grand_parent_fk, identifier_result=parent_fk,
@@ -399,7 +421,7 @@ class CocacolaToolBox(GlobalSessionToolBox):
             kpi_weight = Const.KPI_WEIGHTS[grand_parent_kpi_name]
             final_ratio = self.calculate_average_ratio(scene_ratios)
             score = round(((final_ratio * .01) * kpi_weight), 2)
-            self.write_to_db(fk=grand_parent_fk, numerator_id=0,
+            self.write_to_db(fk=grand_parent_fk, numerator_id=self.manufacturer_fk,
                                  denominator_id=self.store_id,
                                  result=final_ratio,
                                  score=score,
@@ -434,6 +456,7 @@ class CocacolaToolBox(GlobalSessionToolBox):
             score = round(((ratio * .01) * kpi_weight), 2)
 
         self.write_to_db(fk=kpi_fk, numerator_id=self.manufacturer_pk, denominator_id=self.store_id,
+                         ratio=ratio,
                          score=score,
                          identifier_parent=parent_fk, identifier_result=kpi_fk, should_enter=True)
         return score

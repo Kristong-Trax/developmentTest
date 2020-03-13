@@ -55,16 +55,16 @@ class RefrescoToolBox(GlobalSessionToolBox):
         # pj_ratio = pj_tool_box.main_calculation()
         # ratios = [coca_ratio, pepsi_ratio, pj_ratio]
 
-        ratios = [coca_ratio, pepsi_ratio]
-        ratio = self.calculate_average_ratio(ratios)
+        scores = [coca_ratio, pepsi_ratio]
+        score = self.calculate_sum_scores(scores)
 
-        score = round(((ratio * .01) * kpi_weight), 2)
 
-        self.write_to_db(fk=kpi_fk, numerator_id=0, denominator_id=self.store_id,
-                         result=ratio,
+
+        self.write_to_db(fk=kpi_fk, numerator_id=self.manufacturer_fk, denominator_id=self.store_id,
+                         result=score,
                          score=score,
                          identifier_parent=parent_fk, identifier_result=kpi_fk, should_enter=True)
-        return ratio
+        return score
 
 
     def calculate_average_ratio(self, ratio_list):
@@ -84,3 +84,12 @@ class RefrescoToolBox(GlobalSessionToolBox):
         parent_kpi_name = Const.KPIS_HIERACHY[kpi_name]
         parent_fk = self.get_kpi_fk_by_kpi_type(parent_kpi_name)
         return parent_fk
+
+    def calculate_sum_scores(self, score_list):
+        score_sum = 0
+
+        for score in score_list:
+            score_sum += score
+
+        return score_sum
+
