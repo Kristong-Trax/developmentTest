@@ -352,6 +352,7 @@ class CervezaToolBox(GlobalSessionToolBox):
                          numerator_result=len(scene_realogram.correctly_placed_tags),
                          denominator_result=scene_realogram.number_of_skus_in_planogram,
                          result=len(scene_realogram.correctly_placed_tags) / number_of_positions_in_planogram,
+                         score=len(scene_realogram.incorrectly_placed_tags) / number_of_positions_in_planogram,
                          context_id=scene_realogram.scene_fk,
                          identifier_result=identifier_result, identifier_parent=identifier_parent, should_enter=True)
 
@@ -388,6 +389,7 @@ class CervezaToolBox(GlobalSessionToolBox):
                          numerator_result=len(scene_realogram.incorrectly_placed_tags),
                          denominator_result=scene_realogram.number_of_skus_in_planogram,
                          result=len(scene_realogram.incorrectly_placed_tags) / number_of_positions_in_planogram,
+                         score=len(scene_realogram.incorrectly_placed_tags) / number_of_positions_in_planogram,
                          context_id=scene_realogram.scene_fk,
                          identifier_result=identifier_result, identifier_parent=identifier_parent, should_enter=True)
         return
@@ -423,6 +425,7 @@ class CervezaToolBox(GlobalSessionToolBox):
                          numerator_result=len(scene_realogram.extra_tags),
                          denominator_result=scene_realogram.number_of_skus_in_planogram,
                          result=len(scene_realogram.extra_tags) / number_of_positions_in_planogram,
+                         score=len(scene_realogram.extra_tags) / number_of_positions_in_planogram,
                          context_id=scene_realogram.scene_fk,
                          identifier_result=identifier_result, identifier_parent=identifier_parent, should_enter=True)
         return
