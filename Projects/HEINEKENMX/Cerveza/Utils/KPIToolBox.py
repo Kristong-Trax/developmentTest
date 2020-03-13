@@ -59,7 +59,7 @@ class CervezaToolBox(GlobalSessionToolBox):
         result = score / kpi_max_points
 
         self.write_to_db(fk=kpi_fk, numerator_id=self.manufacturer_fk, denominator_id=self.store_id,
-                         result=result, score=score, weight=kpi_max_points, target=kpi_max_points,
+                         result=result * 100, score=score, weight=kpi_max_points, target=kpi_max_points,
                          identifier_result=kpi_fk, identifier_parent=parent_fk, should_enter=True)
         return score
 
@@ -77,7 +77,7 @@ class CervezaToolBox(GlobalSessionToolBox):
         result = score / max_kpi_points
 
         self.write_to_db(fk=kpi_fk, numerator_id=self.manufacturer_fk, denominator_id=self.store_id,
-                         result=result, score=score, weight=weight, target=max_kpi_points,
+                         result=result * 100, score=score, weight=weight, target=max_kpi_points,
                          identifier_result=kpi_fk, identifier_parent=parent_fk, should_enter=True)
         return score
 
