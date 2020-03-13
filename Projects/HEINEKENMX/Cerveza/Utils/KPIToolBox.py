@@ -93,7 +93,7 @@ class CervezaToolBox(GlobalSessionToolBox):
 
         self._calculate_calificador_sku(relevant_template)
 
-        result = relevant_template['in_session'].sum() / len(relevant_template)
+        result = relevant_template['in_session'].sum() / float(len(relevant_template))
 
         score = result * max_kpi_points
 
@@ -131,7 +131,7 @@ class CervezaToolBox(GlobalSessionToolBox):
 
         self._calculate_prioritario_sku(relevant_template)
 
-        result = relevant_template['in_session'].sum() / len(relevant_template)
+        result = relevant_template['in_session'].sum() / float(len(relevant_template))
 
         score = result * max_kpi_points
 
@@ -169,7 +169,7 @@ class CervezaToolBox(GlobalSessionToolBox):
 
         self._calculate_opcional_sku(relevant_template)
 
-        result = relevant_template['in_session'].sum() / len(relevant_template)
+        result = relevant_template['in_session'].sum() / float(len(relevant_template))
 
         score = result * max_kpi_points
 
@@ -277,7 +277,7 @@ class CervezaToolBox(GlobalSessionToolBox):
 
         self._calculate_frentes_sku(relevant_target_skus)
 
-        result = count_of_passing_skus / len(relevant_target_skus)
+        result = count_of_passing_skus / float(len(relevant_target_skus))
         score = result * max_kpi_points
         self.write_to_db(fk=kpi_fk, numerator_id=self.manufacturer_fk, denominator_id=self.store_id,
                          numerator_result=count_of_passing_skus, denominator_result=len(relevant_target_skus),
@@ -309,7 +309,7 @@ class CervezaToolBox(GlobalSessionToolBox):
         if count == 0:
             result = 0
         else:
-            result = scene_result / count
+            result = scene_result / float(count)
 
         score = result * max_kpi_points
 
@@ -342,7 +342,7 @@ class CervezaToolBox(GlobalSessionToolBox):
 
         self._calculate_colcado_correct_sku(scene_realogram)
 
-        number_of_positions_in_planogram = scene_realogram.number_of_positions_in_planogram
+        number_of_positions_in_planogram = float(scene_realogram.number_of_positions_in_planogram)
 
         self.mark_tags_in_explorer(scene_realogram.correctly_placed_tags['probe_match_fk'].dropna().unique().tolist(),
                                    Consts.COLCADO_CORRECT)
@@ -378,7 +378,7 @@ class CervezaToolBox(GlobalSessionToolBox):
 
         self._calculate_colcado_incorrect_sku(scene_realogram)
 
-        number_of_positions_in_planogram = scene_realogram.number_of_positions_in_planogram
+        number_of_positions_in_planogram = float(scene_realogram.number_of_positions_in_planogram)
 
         self.mark_tags_in_explorer(scene_realogram.incorrectly_placed_tags['probe_match_fk'].dropna().unique().tolist(),
                                    Consts.COLCADO_INCORRECT)
@@ -413,7 +413,7 @@ class CervezaToolBox(GlobalSessionToolBox):
 
         self._calculate_extra_sku(scene_realogram)
 
-        number_of_positions_in_planogram = scene_realogram.number_of_positions_in_planogram
+        number_of_positions_in_planogram = float(scene_realogram.number_of_positions_in_planogram)
 
         self.mark_tags_in_explorer(scene_realogram.extra_tags['probe_match_fk'].dropna().unique().tolist(),
                                    Consts.EXTRA)
