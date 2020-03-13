@@ -36,7 +36,7 @@ __author__ = 'krishnat'
 TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data',
                              'NestleRTD_Template_v1.3.xlsx')
 SHELF_POSITION_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data',
-                                   'Shelf Position Nestle RTD.xlsx')
+                                   'Shelf Position Nestle RTD_1.1.xlsx')
 
 
 def log_runtime(description, log_start=False):
@@ -80,7 +80,7 @@ class ToolBox(GlobalSessionToolBox):
             self.templates[sheet] = pd.read_excel(TEMPLATE_PATH, sheet_name=sheet)
 
         for shelf_postion_sheet in SHELF_POSITION_SHEET:
-            self.templates[shelf_postion_sheet] = pd.read_excel(SHELF_POSITION_PATH, sheet_name=shelf_postion_sheet)
+            self.templates[shelf_postion_sheet] = pd.read_excel(SHELF_POSITION_PATH, sheet_name=shelf_postion_sheet,index_col=0)
 
     def main_calculation(self):
         relevant_kpi_template = self.templates[Consts.KPIS]
