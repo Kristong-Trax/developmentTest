@@ -93,7 +93,10 @@ class CervezaToolBox(GlobalSessionToolBox):
 
         self._calculate_calificador_sku(relevant_template)
 
-        result = relevant_template['in_session'].sum() / float(len(relevant_template))
+        if relevant_template.empty:
+            result = 0
+        else:
+            result = relevant_template['in_session'].sum() / float(len(relevant_template))
 
         score = result * max_kpi_points
 
@@ -131,7 +134,10 @@ class CervezaToolBox(GlobalSessionToolBox):
 
         self._calculate_prioritario_sku(relevant_template)
 
-        result = relevant_template['in_session'].sum() / float(len(relevant_template))
+        if relevant_template.empty:
+            result = 0
+        else:
+            result = relevant_template['in_session'].sum() / float(len(relevant_template))
 
         score = result * max_kpi_points
 
@@ -169,7 +175,10 @@ class CervezaToolBox(GlobalSessionToolBox):
 
         self._calculate_opcional_sku(relevant_template)
 
-        result = relevant_template['in_session'].sum() / float(len(relevant_template))
+        if relevant_template.empty:
+            result = 0
+        else:
+            result = relevant_template['in_session'].sum() / float(len(relevant_template))
 
         score = result * max_kpi_points
 
