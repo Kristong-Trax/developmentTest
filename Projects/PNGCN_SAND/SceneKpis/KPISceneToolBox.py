@@ -172,8 +172,10 @@ class PngcnSceneKpis(object):
         self.parser = Parser
         self.match_probe_in_scene = self.get_product_special_attribute_data(self.scene_id)
         self.match_product_in_probe_state_reporting = self.psdataprovider.get_match_product_in_probe_state_reporting()
-        self.sub_brand_entities = self.psdataprovider.get_custom_entities_df('sub_brand')
-        self.att3_entities = self.psdataprovider.get_custom_entities_df('att3')
+        self.sub_brand_entities = self.psdataprovider.get_custom_entities_df('sub_brand').drop_duplicates(
+            subset=['entity_name'], keep='first')
+        self.att3_entities = self.psdataprovider.get_custom_entities_df('att3').drop_duplicates(subset=['entity_name'],
+                                                                                                keep='first')
 
     def process_scene(self):
         self.calculate_variant_block()
