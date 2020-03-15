@@ -318,6 +318,10 @@ class LIONNZToolBox:
             name=kpi.kpi_name.iloc[0],
             sess=self.session_uid
         ))
+        prod_empty_sub_cat = dataframe_to_process[
+            dataframe_to_process['sub_category_fk'].isnull()]['product_fk'].tolist()
+        Log.info('Remove products with empty sub category fk: {}'.format(prod_empty_sub_cat))
+        dataframe_to_process.dropna(subset=['sub_category_fk'], inplace=True)
         dataframe_to_process = dataframe_to_process.astype({'sub_category_fk': 'int64'}, errors='ignore')
         if query_string:
             grouped_data_frame = dataframe_to_process.query(query_string).groupby(groupers)

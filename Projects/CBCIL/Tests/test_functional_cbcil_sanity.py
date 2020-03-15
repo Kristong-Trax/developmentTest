@@ -78,7 +78,7 @@ class TestKEnginePsCode(PsSanityTestsFuncs):
         self.add_mocks()
         project_name = ProjectsSanityData.project_name
         data_provider = KEngineDataProvider(project_name)
-        sessions = {u'021262d4-f6c0-44af-adb8-02f58b17518a': []}
+        sessions = {u'a21d1738-7cb6-4f83-9274-7109b483ed09': []}
         kpi_results = CBCILKpiResults().get_kpi_results()
         for session in sessions.keys():
             data_provider.load_session_data(str(session))
