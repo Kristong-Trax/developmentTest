@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*
 
 from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
 from Trax.Utils.Conf.Configuration import Config
@@ -21,10 +19,13 @@ if __name__ == '__main__':
     project_name = 'pngcn-sand'
     data_provider = KEngineDataProvider(project_name)
     output = Output()
-    sessions = {'6AC1E27A-B2C7-4389-8522-7F1D29642CA4': ['17901923'],
-                '0D9C3FAE-E62D-4467-B279-2FB8FC32A2DD': ['17886164'],
-                '6e4dc935-ab56-45ef-9408-caaddb963874': ['17888505'],
-                'C544B5DB-B61F-4B02-B03A-6D8748B3B636': ['17874115']}
+    sessions = {
+        'e8c67437-814e-48cb-bc66-fb8bbf7bf7f9': ['25728621'],
+        # '13370ddd-7a23-45d1-a0e9-44fda09ce636': ['28098679'],
+
+        # one shelf
+        # '5a1862d6-ed90-4fd9-a7bd-8f5186f293e7': ['28111603'],
+    }
     for session in sessions.keys():
         print "Running for {}".format(str(session))
         for scene in sessions[session]:
@@ -35,6 +36,6 @@ if __name__ == '__main__':
             SceneVanillaCalculations(data_provider, output).run_project_calculations()
             save_scene_item_facts_to_data_provider(data_provider, output)
             SceneCalculations(data_provider).calculate_kpis()
-        data_provider.load_session_data(session)
-        output = Output()
-        PngCNEmptyCalculations(data_provider, output).run_project_calculations()
+        # data_provider.load_session_data(session)
+        # output = Output()
+        # PngCNEmptyCalculations(data_provider, output).run_project_calculations()
