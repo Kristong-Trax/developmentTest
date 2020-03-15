@@ -92,61 +92,7 @@ EYELEVEL_COLUMNS_TO_USE = ['bay_number', 'shelf_number', 'facing_sequence_number
 
 class PngcnSceneKpis(object):
 
-    # PCC_FILTERS = {
-    #     'SFG Bodywash': {
-    #         'population': {'include': [{"manufacturer_name": [PNG_MANUFACTURER], "category": [PCC_CATEGORY],
-    #                                     "brand_name": [SAFEGUARD_BRAND],
-    #                                     'sub_category': [BODYWASH_SUB_CATEGORY]}],
-    #                        'exclude': {},
-    #                        'include_operator': 'and'}},
-    #     'SFG Handwash': {
-    #         'population': {'include': [{"manufacturer_name": [PNG_MANUFACTURER], "category": [PCC_CATEGORY],
-    #                                     "brand_name": [SAFEGUARD_BRAND],
-    #                                     'sub_category': [HANDWASH_SUB_CATEGORY]}],
-    #                        'exclude': {},
-    #                        'include_operator': 'and'}},
-    #     'SFG Other': {'population': {'include': [{"manufacturer_name": [PNG_MANUFACTURER], "category": [PCC_CATEGORY],
-    #                                               "brand_name": [SAFEGUARD_BRAND],
-    #                                               'sub_category': [OTHER_SUB_CATEGORY]}],
-    #                                  'exclude': {},
-    #                                  'include_operator': 'and'}},
-    #     'SFG PCCBAR': {'population': {'include': [{"manufacturer_name": [PNG_MANUFACTURER], "category": [PCC_CATEGORY],
-    #                                                "brand_name": [SAFEGUARD_BRAND],
-    #                                                'sub_category': [PCC_BAR_SUB_CATEGORY]}],
-    #                                   'exclude': {},
-    #                                   'include_operator': 'and'}},
-    #     'OLAY Bodywash': {
-    #         'population': {'include': [{"manufacturer_name": [PNG_MANUFACTURER], "category": [PCC_CATEGORY],
-    #                                     "brand_name": [OLAY_BRAND], 'sub_category': [BODYWASH_SUB_CATEGORY]}],
-    #                        'exclude': {},
-    #                        'include_operator': 'and'}},
-    #     'OLAY Handwash': {
-    #         'population': {'include': [{"manufacturer_name": [PNG_MANUFACTURER], "category": [PCC_CATEGORY],
-    #                                     "brand_name": [OLAY_BRAND], 'sub_category': [HANDWASH_SUB_CATEGORY]}],
-    #                        'exclude': {},
-    #                        'include_operator': 'and'}},
-    #     'OLAY Other': {'population': {'include': [{"manufacturer_name": [PNG_MANUFACTURER], "category": [PCC_CATEGORY],
-    #                                                "brand_name": [OLAY_BRAND], 'sub_category': [OTHER_SUB_CATEGORY]}],
-    #                                   'exclude': {},
-    #                                   'include_operator': 'and'}},
-    #     'OLAY PCCBAR': {'population': {'include': [{"manufacturer_name": [PNG_MANUFACTURER], "category": [PCC_CATEGORY],
-    #                                                 "brand_name": [OLAY_BRAND],
-    #                                                 'sub_category': [PCC_BAR_SUB_CATEGORY]}],
-    #                                    'exclude': {},
-    #                                    'include_operator': 'and'}},
-    #     'Competitor PCC': {'population': {'include': [{"category": [PCC_CATEGORY]}],
-    #                                       'exclude': {"manufacturer_name": [PNG_MANUFACTURER]},
-    #                                       'include_operator': 'and'}},
-    #     'PNGOTHER': {'population': {'include': [{"manufacturer_name": [PNG_MANUFACTURER]}],
-    #                                 'exclude': {"category": [PCC_CATEGORY]},
-    #                                 'include_operator': 'and'}},
-    #     'Competitor Other': {'population': {'include': [{}],
-    #                                         'exclude': {"manufacturer_name": [PNG_MANUFACTURER],
-    #                                                     "category": [PCC_CATEGORY]},
-    #                                         'include_operator': 'and'}}}
-
     def __init__(self, project_connector, common, scene_id, data_provider=None):
-        # self.session_uid = session_uid
         self.scene_id = scene_id
         self.project_connector = project_connector
         if data_provider is not None:

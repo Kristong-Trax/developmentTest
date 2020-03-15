@@ -61,73 +61,46 @@ MIN_LAYER_NUMBER = 'Min_layer_#'
 MATCH_PRODUCT_IN_PROBE_FK = 'match_product_in_probe_fk'
 MATCH_PRODUCT_IN_PROBE_STATE_REPORTING_FK = 'match_product_in_probe_state_reporting_fk'
 
+# EYE LEVEL KPIs
+EYE_LEVEL_SE_BR_KPI = 'Eye_level_SEQUENCE_brand'
+EYE_LEVEL_SE_BR_SB_KPI = 'Eye_level_SEQUENCE_brand_subbrand'
+EYE_LEVEL_SE_BR_SC_KPI = 'Eye_level_SEQUENCE_brand_subcategory'
+EYE_LEVEL_SE_BR_SC_SB_KPI = 'Eye_level_SEQUENCE_brand_subcategory_subbrand'
+EYE_LEVEL_SE_BR_SB_FL_KPI = 'Eye_level_SEQUENCE_brand_subbrand_flavor'
+EYE_LEVEL_SE_BR_SC_FL_KPI = 'Eye_level_SEQUENCE_brand_subcategory_flavor'
+EYE_LEVEL_SE_BR_SC_SB_FL_KPI = 'Eye_level_SEQUENCE_brand_subcategory_subbrand_flavor'
+
+EYE_LEVEL_GROUP_ATTRIBUTES = {
+    EYE_LEVEL_SE_BR_KPI: {'group_level': ['brand_fk'], 'num_den_cont': ['brand_fk', 'store_fk', 'store_fk']},
+    EYE_LEVEL_SE_BR_SB_KPI: {'group_level': ['brand_fk', 'sub_brand'],
+                             'num_den_cont': ['sub_brand_fk', 'brand_fk', 'store_fk']},
+    EYE_LEVEL_SE_BR_SC_KPI: {'group_level': ['brand_fk', 'sub_category_fk'],
+                             'num_den_cont': ['sub_category_fk', 'brand_fk', 'store_fk']},
+    EYE_LEVEL_SE_BR_SC_SB_KPI: {'group_level': ['brand_fk', 'sub_brand', 'sub_category_fk'],
+                                'num_den_cont': ['sub_category_fk', 'sub_brand_fk', 'brand_fk']},
+    EYE_LEVEL_SE_BR_SB_FL_KPI: {'group_level': ['brand_fk', 'sub_brand', 'att3'],
+                                'num_den_cont': ['att3_fk', 'sub_brand_fk', 'brand_fk']},
+    EYE_LEVEL_SE_BR_SC_FL_KPI: {'group_level': ['brand_fk', 'sub_category_fk', 'att3'],
+                                'num_den_cont': ['att3_fk', 'sub_category_fk', 'brand_fk']},
+    EYE_LEVEL_SE_BR_SC_SB_FL_KPI: {'group_level': ['brand_fk', 'sub_brand', 'sub_category_fk', 'att3'],
+                                   'num_den_cont': ['att3_fk', 'sub_brand_fk', 'sub_category_fk']},
+}
+EYE_LEVEL_DUMMY_VALUE = ['brand_fk', 'brand_fk', 'brand_fk']
+
+EYELEVEL_COLUMNS_TO_USE = ['bay_number', 'shelf_number', 'facing_sequence_number', 'stacking_layer',
+                           'category_fk', 'brand_fk', 'sub_brand', 'sub_category_fk', 'att3']
+
 
 class PngcnSceneKpis(object):
 
-    PCC_FILTERS = {
-        'SFG Bodywash': {
-            'population': {'include': [{"manufacturer_name": [PNG_MANUFACTURER], "category": [PCC_CATEGORY],
-                                        "brand_name": [SAFEGUARD_BRAND],
-                                        'sub_category': [BODYWASH_SUB_CATEGORY]}],
-                           'exclude': {},
-                           'include_operator': 'and'}},
-        'SFG Handwash': {
-            'population': {'include': [{"manufacturer_name": [PNG_MANUFACTURER], "category": [PCC_CATEGORY],
-                                        "brand_name": [SAFEGUARD_BRAND],
-                                        'sub_category': [HANDWASH_SUB_CATEGORY]}],
-                           'exclude': {},
-                           'include_operator': 'and'}},
-        'SFG Other': {'population': {'include': [{"manufacturer_name": [PNG_MANUFACTURER], "category": [PCC_CATEGORY],
-                                                  "brand_name": [SAFEGUARD_BRAND],
-                                                  'sub_category': [OTHER_SUB_CATEGORY]}],
-                                     'exclude': {},
-                                     'include_operator': 'and'}},
-        'SFG PCCBAR': {'population': {'include': [{"manufacturer_name": [PNG_MANUFACTURER], "category": [PCC_CATEGORY],
-                                                   "brand_name": [SAFEGUARD_BRAND],
-                                                   'sub_category': [PCC_BAR_SUB_CATEGORY]}],
-                                      'exclude': {},
-                                      'include_operator': 'and'}},
-        'OLAY Bodywash': {
-            'population': {'include': [{"manufacturer_name": [PNG_MANUFACTURER], "category": [PCC_CATEGORY],
-                                        "brand_name": [OLAY_BRAND], 'sub_category': [BODYWASH_SUB_CATEGORY]}],
-                           'exclude': {},
-                           'include_operator': 'and'}},
-        'OLAY Handwash': {
-            'population': {'include': [{"manufacturer_name": [PNG_MANUFACTURER], "category": [PCC_CATEGORY],
-                                        "brand_name": [OLAY_BRAND], 'sub_category': [HANDWASH_SUB_CATEGORY]}],
-                           'exclude': {},
-                           'include_operator': 'and'}},
-        'OLAY Other': {'population': {'include': [{"manufacturer_name": [PNG_MANUFACTURER], "category": [PCC_CATEGORY],
-                                                   "brand_name": [OLAY_BRAND], 'sub_category': [OTHER_SUB_CATEGORY]}],
-                                      'exclude': {},
-                                      'include_operator': 'and'}},
-        'OLAY PCCBAR': {'population': {'include': [{"manufacturer_name": [PNG_MANUFACTURER], "category": [PCC_CATEGORY],
-                                                    "brand_name": [OLAY_BRAND],
-                                                    'sub_category': [PCC_BAR_SUB_CATEGORY]}],
-                                       'exclude': {},
-                                       'include_operator': 'and'}},
-        'Competitor PCC': {'population': {'include': [{"category": [PCC_CATEGORY]}],
-                                          'exclude': {"manufacturer_name": [PNG_MANUFACTURER]},
-                                          'include_operator': 'and'}},
-        'PNGOTHER': {'population': {'include': [{"manufacturer_name": [PNG_MANUFACTURER]}],
-                                    'exclude': {"category": [PCC_CATEGORY]},
-                                    'include_operator': 'and'}},
-        'Competitor Other': {'population': {'include': [{}],
-                                            'exclude': {"manufacturer_name": [PNG_MANUFACTURER],
-                                                        "category": [PCC_CATEGORY]},
-                                            'include_operator': 'and'}}}
-
     def __init__(self, project_connector, common, scene_id, data_provider=None):
-        # self.session_uid = session_uid
         self.scene_id = scene_id
         self.project_connector = project_connector
         if data_provider is not None:
             self.data_provider = data_provider
-            # self.project_connector = data_provider.project_connector
             self.on_ace = True
         else:
             self.on_ace = False
-            # self.data_provider = PNGCN_SANDShareOfDisplayDataProvider(project_connector, self.session_uid)
         self.cur = self.project_connector.db.cursor()
         self.log_prefix = 'Share_of_display for scene: {}, project {}'.format(self.scene_id,
                                                                               self.project_connector.project_name)
@@ -146,7 +119,10 @@ class PngcnSceneKpis(object):
         self.parser = Parser
         self.match_probe_in_scene = self.get_product_special_attribute_data(self.scene_id)
         self.match_product_in_probe_state_reporting = self.psdataprovider.get_match_product_in_probe_state_reporting()
-        self.sub_brand_entities = self.psdataprovider.get_custom_entities_df('sub_brand')
+        self.sub_brand_entities = self.psdataprovider.get_custom_entities_df('sub_brand').drop_duplicates(
+            subset=['entity_name'], keep='first')
+        self.att3_entities = self.psdataprovider.get_custom_entities_df('att3').drop_duplicates(subset=['entity_name'],
+                                                                                                keep='first')
 
     def process_scene(self):
         self.calculate_variant_block()
@@ -381,101 +357,19 @@ class PngcnSceneKpis(object):
         """
         if self.matches_from_data_provider.empty:
             return
-
-        # Get category of scene, check if relevant, if not return
-        try:
-            scene_category = self._get_scene_category(self.scene_id)
-            if not scene_category or scene_category not in EYE_LEVEL_RELEVANT_CATEGORIES:
-                return
-        except Exception as ex:
-            Log.error("Couldn't find scene category for scene number {}, error {}".format(str(self.scene_id), ex))
-            return
-        entity_df = self._get_category_specific_entities(scene_category)
+        entity_df = self.psdataprovider.get_custom_entities_with_names()
         if entity_df.empty:
             return
         df = self.get_eye_level_shelves(self.matches_from_data_provider)
         full_df = pd.merge(df, self.all_products, on="product_fk")
+        full_df = full_df[~(full_df['product_type'].isin(['Irrelevant', 'Empty']))]
         max_shelf_count = self.matches_from_data_provider["shelf_number"].max()
         self.calculate_facing_eye_level(full_df, max_shelf_count)
-        self.calculate_sequence_eye_level(entity_df, full_df, scene_category)
+        self.calculate_sequence_eye_level(max_shelf_count, full_df)
 
-    def _get_category_specific_entities(self, scene_category):
+    def _get_custom_entities(self):
         eye_level_fragments = self.psdataprovider.get_custom_entities_df('eye_level_fragments')
-        if scene_category == PCC_CATEGORY:
-            return eye_level_fragments
-        elif scene_category == OC_CATEGORY:
-            sub_brands_entity = self.psdataprovider.get_custom_entities_df('sub_brand')
-            return eye_level_fragments.append(sub_brands_entity)
-        elif scene_category == FEM_CATEGORY:
-            att3_entity = self.psdataprovider.get_custom_entities_df('att3')
-            return eye_level_fragments.append(att3_entity)
-
-    def _get_category_specific_filters(self, scene_category, full_df):
-        if scene_category == PCC_CATEGORY:
-            return PngcnSceneKpis.PCC_FILTERS
-        elif scene_category == OC_CATEGORY:
-            return self._get_oc_filter(full_df)
-        elif scene_category == FEM_CATEGORY:
-            return self._get_fc_filter(full_df)
-
-    def _get_oc_filter(self, full_df):
-        oc_brand_filer = {'population': {'include': [{"manufacturer_name": [PNG_MANUFACTURER],
-                                                      "category": [OC_CATEGORY],
-                                                      "brand_name": [CREST_BRAND, ORALB_BRAND],
-                                                      }], 'include_operator': 'and'}}
-        frag_df = self.parser.filter_df(oc_brand_filer, full_df)
-        sub_brand_df = frag_df[['manufacturer_name', 'category', 'sub_brand_name', 'brand_name']].drop_duplicates()
-        sub_brand_df = sub_brand_df[sub_brand_df['sub_brand_name'].notnull()][sub_brand_df['sub_brand_name'] != '']
-        result_df = {}
-
-        for index, row in sub_brand_df.iterrows():
-            result_df[row['sub_brand_name']] = {
-                            'population': {'include': [
-                                                        {"manufacturer_name":[row['manufacturer_name']],
-                                                         "category":[row['category']],
-                                                         "sub_brand_name":[row['sub_brand_name']],
-                                                         "brand_name":[row['brand_name']], }
-
-                                                    ], 'exclude': {}, 'include_operator': 'and', }}
-
-        return self._add_other_competitor_filter(OC_CATEGORY, result_df)
-
-    def _get_fc_filter(self, full_df):
-        oc_brand_filer = {'population': {'include': [{"manufacturer_name": [PNG_MANUFACTURER],
-                                                      "category": [FEM_CATEGORY],
-                                                      }], 'include_operator': 'and'}}
-        frag_df = self.parser.filter_df(oc_brand_filer, full_df)
-        sub_dimension_df = frag_df[['manufacturer_name', 'category', 'att3', 'brand_name']].drop_duplicates()
-        sub_dimension_df = sub_dimension_df[sub_dimension_df['att3'].notnull()][sub_dimension_df['att3'] != '']
-        result_df = {}
-
-        for index, row in sub_dimension_df.iterrows():
-            result_df[row['att3']] = {
-                            'population': {'include': [
-                                                        {"manufacturer_name":[row['manufacturer_name']],
-                                                         "category":[row['category']],
-                                                         "att3":[row['att3']],
-                                                         "brand_name":[row['brand_name']], }
-
-                                                    ], 'exclude': {}, 'include_operator': 'and', }}
-
-        return self._add_other_competitor_filter(FEM_CATEGORY, result_df)
-
-    def _add_other_competitor_filter(self, category, result_df):
-        competitor_category = 'Competitor {}'.format(category)
-        result_df[competitor_category] = {'population': {'include': [{"category": [category]}],
-                                                         'exclude': {"manufacturer_name": [PNG_MANUFACTURER]},
-                                                         'include_operator': 'and'}}
-
-        result_df['PNGOTHER'] = {'population': {'include': [{"manufacturer_name": [PNG_MANUFACTURER]}],
-                                                'exclude': {"category": [category]},
-                                                'include_operator': 'and'}}
-
-        result_df['Competitor Other'] = {'population': {'include': [{}],
-                                                        'exclude': {"manufacturer_name": [PNG_MANUFACTURER],
-                                                                    "category": [category]},
-                                                        'include_operator': 'and'}}
-        return result_df
+        return eye_level_fragments
 
     def calculate_facing_eye_level(self, full_df, max_shelf_count):
         """
@@ -498,7 +392,7 @@ class PngcnSceneKpis(object):
                                            denominator_id=category_fk, numerator_result=shelf_number,
                                            result=facings, score=max_shelf_count, by_scene=True)
 
-    def calculate_sequence_eye_level(self, entity_df, full_df, scene_category):
+    def calculate_sequence_eye_level(self, max_shelf_count, full_df):
         """
         Saving sequence of brand-sub_category blocks (not including stackings)
         :param entity_df: the sub_-category-brand custom_entety fields, to save the correct entity
@@ -506,65 +400,51 @@ class PngcnSceneKpis(object):
         :param scene_category: scene category to get the specific category filter
         :return: saves the sequence of each shelf (combine all bays)
         """
-        kpi_sequence_fk = self.common.get_kpi_fk_by_kpi_name(Eye_level_kpi_SEQUENCE)
-        results_sequence_df = pd.DataFrame(
-            columns=['fk', 'numerator_id', 'denominator_id', 'numerator_result', 'result',
-                     'score', 'by_scene', 'temp_bay_number'])
+        results_sequence_df = pd.DataFrame(columns=['fk', 'numerator_id', 'denominator_id', 'context_id',
+                                                    'numerator_result', 'result', 'score', 'by_scene'])
+        full_df = full_df[EYELEVEL_COLUMNS_TO_USE]
         full_df = full_df[full_df['stacking_layer'] == 1]
+        full_df[['att3', 'sub_brand']] = full_df[['att3', 'sub_brand']].fillna("No Value")
+        full_df = full_df.fillna("-1")
+        full_df = full_df.sort_values(["shelf_number", "bay_number", "facing_sequence_number"]).reset_index()
+        full_df['store_fk'] = self.store_id
+        full_df['sub_brand_fk'] = full_df.merge(self.sub_brand_entities, left_on="sub_brand",
+                                                right_on="entity_name", how="left")['entity_fk']
+        full_df['att3_fk'] = full_df.merge(self.att3_entities, left_on="att3", right_on="entity_name",
+                                           how="left")['entity_fk']
+        for grouping_kpi in EYE_LEVEL_GROUP_ATTRIBUTES.keys():
+            frag_df = full_df.copy()
+            kpi_sequence_fk = self.common.get_kpi_fk_by_kpi_type(grouping_kpi)
+            grouping_data = EYE_LEVEL_GROUP_ATTRIBUTES[grouping_kpi]
+            grouping_level = grouping_data['group_level'] + EYE_LEVEL_DUMMY_VALUE
 
-        category_specific_filter = self._get_category_specific_filters(scene_category, full_df)
-        for key in category_specific_filter.keys():
-            frag_df = self.parser.filter_df(category_specific_filter[key], full_df)
-            if frag_df.empty:
-                continue
-            full_df.drop(frag_df.index, axis=0, inplace=True)
-            frag_df.sort_values(by=['bay_number', 'shelf_number',
-                                    'facing_sequence_number'], inplace=True)
-            seq_df = frag_df.copy()
-            seq_df['group'] = ((frag_df.product_fk != frag_df.product_fk.shift())
-                               | (frag_df.shelf_number != frag_df.shelf_number.shift())
-                               | (frag_df.bay_number != frag_df.bay_number.shift())).cumsum()
-            frag_df = seq_df.groupby(by=['group']).first()
-            for i, row in frag_df.iterrows():
-                facing_sequence_number = row['facing_sequence_number']
-                entity_search_rs = entity_df[entity_df['entity_name'].str.encode("utf8")
-                                      == key.encode("utf8")]['entity_fk']
-                entity_fk = 'dummy'
-                if entity_search_rs.empty:
-                    Log.info("Entity {} is not found in database, for scene {}".format(key, self.scene_id))
-                    continue
-                else:
-                    entity_fk = entity_search_rs.values[0]
-                entity_fk = entity_df[entity_df['entity_name'].str.encode("utf8")
-                                      == key.encode("utf8")]['entity_fk'].values[0]
-                bay_number = row['bay_number']
+            frag_df['group_order'] = ((frag_df['brand_fk'] != frag_df['brand_fk'].shift()) |
+                                      (frag_df['shelf_number'] != frag_df['shelf_number'].shift()) |
+                                      (frag_df[grouping_level[1]] != frag_df[grouping_level[1]].shift()) |
+                                      (frag_df[grouping_level[2]] != frag_df[grouping_level[2]].shift()) |
+                                      (frag_df[grouping_level[3]] != frag_df[grouping_level[3]].shift())).cumsum()
+
+            facing_sequence_number = 1
+            facings = frag_df.groupby('group_order', as_index=False).size().reset_index(name='facings')
+            frag_df = frag_df.merge(facings, on="group_order")
+            group_df = frag_df.drop_duplicates(subset=["group_order"], keep="first")
+            max_sequence_shelf_1 = len(group_df[group_df['shelf_number'] == 1])
+            for i, row in group_df.iterrows():
+                numerator_id, denominator_id, context_id = row[grouping_data['num_den_cont']]
                 shelf_number = row['shelf_number']
+                score = row['facings']
                 category_fk = row['category_fk']
-                results_sequence_df = results_sequence_df.append({'fk': kpi_sequence_fk, 'numerator_id': entity_fk,
-                                                                  'denominator_id': category_fk,
+                brand_fk = row['brand_fk']
+                results_sequence_df = results_sequence_df.append({'fk': kpi_sequence_fk, 'numerator_id': numerator_id,
+                                                                  'denominator_id': denominator_id, 'weight': brand_fk,
+                                                                  'context_id': context_id, 'target': category_fk,
                                                                   'numerator_result': shelf_number,
-                                                                  'result': facing_sequence_number, 'score': 0,
-                                                                  'by_scene': True,
-                                                                  'temp_bay_number': bay_number},
-                                                                 ignore_index=True)
-
-        # groupby and setting the sequence kpi to the correct format
-        results_sequence_df.sort_values(
-            by=['numerator_result', 'temp_bay_number', 'result'], inplace=True)
-        results_sequence_df = results_sequence_df[((results_sequence_df.numerator_id !=
-                                                    results_sequence_df.numerator_id.shift()) |
-                                                   (results_sequence_df.numerator_result !=
-                                                    results_sequence_df.numerator_result.shift()))]
-        results_sequence_df['is_new_sequence'] = (
-                results_sequence_df.numerator_result != results_sequence_df.numerator_result.shift())
-        facing_sequence_number = 0
-        for i, row in results_sequence_df.iterrows():
-            if row['is_new_sequence']:
-                facing_sequence_number = 0
-            facing_sequence_number += 1
-            results_sequence_df.loc[i, 'result'] = facing_sequence_number
-        results_sequence_df.drop(['temp_bay_number', 'is_new_sequence'], inplace=True, axis=1)
-
+                                                                  'denominator_result': max_shelf_count,
+                                                                  'result': facing_sequence_number, 'score': score,
+                                                                  'by_scene': True}, ignore_index=True)
+                if (row['shelf_number'] == 1) and (facing_sequence_number == max_sequence_shelf_1):
+                    facing_sequence_number = 0
+                facing_sequence_number += 1
         # saving all results
         for i, row in results_sequence_df.iterrows():
             self.common.write_to_db_result(**row)
