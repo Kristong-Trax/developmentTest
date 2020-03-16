@@ -9,12 +9,12 @@ class Const(object):
 
     sheetname_Bebidas = 'Acomodo_Bebidas'
     sheetname_Invasion = 'Invasion'
-    RELEVANT_SCENES_TYPES = 'Coca Cola'
+    RELEVANT_SCENES_TYPES = ['COCA COLA', 'Coca Cola', 'coca cola']
 
     SOS_EXCLUDE_FILTERS = {'product_type': ['Irrelevant', 'Empty']}
     ALLOWED_FILTERS = {'product_type': ['Other', 'Empty']}
     EMPTY = 'Empty'
-    COCACOLA = 'COCA COLA'
+    COCACOLA = 'Coca Cola'
     IGN_STACKING = {"stacking_layer": 1}
 
     KPIS_HIERACHY = {
@@ -31,8 +31,8 @@ class Const(object):
         'Surtido - RCC - SKU': 'Surtido - RCC'}
 
     KPI_EMPTY = 'Huecos - RCC'
-    KPI_FACINGS = 'Frentes - RCC - SKU'
-    KPI_COUNTING = 'Frentes - RCC - SKU'
+    KPI_FRENTES_SKU = 'Frentes - RCC - SKU'
+    KPI_FRENTES = 'Frentes - RCC'
     KPI_INVASION = 'Invasion - RCC'
     KPI_POSITION = 'Acomodo - RCC - SKU'
     KPI_DISTRIBUTION = 'Surtido - RCC - SKU'
@@ -41,7 +41,16 @@ class Const(object):
     KPI_MERCADEO = 'Mercadeo - RCC'
     KPI_REFRESCO = 'Refrescos Coca Cola'
 
-    KPI_WEIGHTS = {'Refrescos': 7,
+    KPI_WEIGHTS = {
+                   'Mercadeo - RCC': 40,
+                   'Huecos - RCC': 17,
+                   'Frentes - RCC': 17,
+                   'Acomodo - RCC': 33,
+                   'Invasion - RCC': 33,
+                   'Surtido - RCC': 60, }
+
+
+    KPI_POINTS = {'Refrescos': 7,
                    'Refrescos Coca Cola': 2,
                    'Mercadeo - RCC': 0.8,
                    'Huecos - RCC': 0.136,

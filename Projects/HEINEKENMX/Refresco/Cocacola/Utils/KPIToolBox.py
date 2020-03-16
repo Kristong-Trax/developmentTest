@@ -29,8 +29,7 @@ class CocacolaToolBox(GlobalSessionToolBox):
     def __init__(self, data_provider, output, common):
         GlobalSessionToolBox.__init__(self, data_provider, output, common)
         self.main_template, self.invasion_template = self.get_template()
-        self.manufacturer_pk = \
-            self.all_products['manufacturer_name'][self.all_products['manufacturer_name'] == Const.COCACOLA].iloc[0]
+        
         self.relevant_scenes_exist_value = self.do_relevant_scenes_exist()
         self.relevant_scif = self.scif[self.scif['template_name'].isin(self.relevant_scenes_exist_value)]
 
@@ -42,7 +41,8 @@ class CocacolaToolBox(GlobalSessionToolBox):
         kpi_name = Const.KPI_REFRESCO
         kpi_fk = self.get_kpi_fk_by_kpi_type(kpi_name)
         parent_fk = self.get_parent_fk(kpi_name)
-        kpi_weight = Const.KPI_WEIGHTS[kpi_name]
+        # kpi_weight = Const.KPI_WEIGHTS[kpi_name]
+        max_possible_point = Const.KPI_POINTS[kpi_name]
 
         mercadeo = self.calculate_mercadeo()
         surtido = self.calculate_surtido()
@@ -50,9 +50,11 @@ class CocacolaToolBox(GlobalSessionToolBox):
         scores = [surtido, mercadeo]
         score = self.calculate_sum_scores(scores)
         # score = round(((ratio * .01) * kpi_weight), 2)
-        self.write_to_db(fk=kpi_fk, numerator_id=self.manufacturer_pk, denominator_id=self.store_id,
-                         result=score,
-                         score=score,
+
+        ratio = (score / max_possible_point) * 100
+        self.write_to_db(fk=kpi_fk, numerator_id=self.manufacturer_fk, denominator_id=self.store_id,
+                         result=ratio,
+                         score=score, weight=max_possible_point, target=max_possible_point,
                          identifier_parent=parent_fk, identifier_result=kpi_fk, should_enter=True)
         return score
 
@@ -61,19 +63,20 @@ class CocacolaToolBox(GlobalSessionToolBox):
         kpi_fk = self.get_kpi_fk_by_kpi_type(kpi_name)
         parent_fk = self.get_parent_fk(kpi_name)
         kpi_weight = Const.KPI_WEIGHTS[kpi_name]
+        max_possible_point = Const.KPI_POINTS[kpi_name]
+        score = 0
 
-        empty_ratio = self.calculate_empty_exist()
-        invasion_ratio = self.calculate_invasion()
-        shelf_position_ratio = self.calculate_shelf_position()
-        facing_ratio = self.calculate_facing_count()
+        score += self.calculate_empty_exist()
+        score +=self.calculate_invasion()
+        # score += self.calculate_shelf_position()  #acomodo
+        score += self.calculate_facing_count() #frentes
 
-        scores = [empty_ratio, invasion_ratio, shelf_position_ratio, facing_ratio]
-        score = self.calculate_sum_scores(scores)
+        ratio = (score / max_possible_point) * 100
         # score = round(((ratio * .01) * kpi_weight), 2)
 
-        self.write_to_db(fk=kpi_fk, numerator_id=self.manufacturer_pk, denominator_id=self.store_id,
-                         result=score,
-                         score=score,
+        self.write_to_db(fk=kpi_fk, numerator_id=self.manufacturer_fk, denominator_id=self.store_id,
+                         result=ratio,
+                         score=score, weight=kpi_weight, target=max_possible_point,
                          identifier_parent=parent_fk, identifier_result=kpi_fk, should_enter=True)
         return score
 
@@ -108,6 +111,9 @@ class CocacolaToolBox(GlobalSessionToolBox):
         kpi_fk = self.get_kpi_fk_by_kpi_type(kpi_name)
         parent_fk = self.get_parent_fk(kpi_name)
         kpi_weight = Const.KPI_WEIGHTS[kpi_name]
+        kpi_point = Const.KPI_POINTS[kpi_name]
+
+        ratio = 0
 
         if self.relevant_scif.empty:
             score = 0
@@ -119,86 +125,64 @@ class CocacolaToolBox(GlobalSessionToolBox):
             else:
                 ratio = 0
 
-            score = round(((ratio * .01) * kpi_weight), 2)
-        self.write_to_db(fk=kpi_fk, numerator_id=self.manufacturer_pk, denominator_id=self.store_id,
-                         ratio=ratio,
-                         score=score,
+            score = round(((ratio * .01) * kpi_point), 2)
+        self.write_to_db(fk=kpi_fk, numerator_id=self.manufacturer_fk, denominator_id=self.store_id,
+                         result=ratio,
+                         score=score, weight=kpi_weight, target=kpi_point,
                          identifier_parent=parent_fk, identifier_result=kpi_fk, should_enter=True)
         return score
 
     def calculate_facing_count(self):
-        kpi_name = Const.KPI_FACINGS
-        kpi_fk = self.get_kpi_fk_by_kpi_type(kpi_name)
-        parent_fk = self.get_parent_fk(kpi_name)
-        parent_kpi_name = Const.KPIS_HIERACHY[kpi_name]
-        grand_parent_fk = self.get_parent_fk(parent_kpi_name)
-        kpi_weight = Const.KPI_WEIGHTS[parent_kpi_name]
         # place holding these for now, will fix tomorrow feb 19
-        score = 0
-        numerator_facings = 0
-        denominator_facings = 0
-        total_ean_codes = 0
+        kpi_fk = self.get_kpi_fk_by_kpi_type(Const.KPI_FRENTES)
+        parent_fk = self.get_parent_fk(Const.KPI_FRENTES)
+        max_kpi_points = Const.KPI_POINTS[Const.KPI_FRENTES]
+        weight = Const.KPI_WEIGHTS[Const.KPI_FRENTES]
 
-        if self.relevant_scif.empty:
-            score = 0
-            self.write_to_db(fk=kpi_fk, numerator_id=self.manufacturer_pk, numerator_result=numerator_facings,
-                             denominator_id=self.store_id, denominator_result=denominator_facings, score=score,
-                             )
+        valid_scene_types = self.main_template['NOMBRE DE TAREA'].unique().tolist()
+        valid_scene_types = [x for x in valid_scene_types if 'Coca Cola' in x]
+        relevant_scif = self.scif[self.scif['template_name'].isin(valid_scene_types)]
+        relevant_scif.groupby('product_fk', as_index=False)['facings'].sum()
+        relevant_target_skus = \
+            self.main_template[self.main_template['NOMBRE DE TAREA'].isin(
+                relevant_scif['template_name'].unique().tolist())]
+        all_products = self.all_products
+        all_products.product_ean_code.fillna(value=-1, inplace=True)
+        all_products.product_ean_code = all_products.product_ean_code.astype(int)
 
-        else:
+        relevant_target_skus = pd.merge(relevant_target_skus, all_products, how='left',
+                 left_on='PRODUCT EAN',
+                 right_on='product_ean_code')
 
-            scene_ids = list(self.relevant_scif.scene_id.unique())
-            for scene_id in scene_ids:
-                scene_name = self.relevant_scif['template_name'][self.relevant_scif['scene_id'] == scene_id].iloc[0]
-                frentes_target_df = self.main_template[self.main_template['NOMBRE DE TAREA'] == scene_name]
-                ean_codes = frentes_target_df['PRODUCT EAN'].unique().tolist()
-                ean_code_count = len(ean_codes)
-                total_ean_codes += ean_code_count
-                passing_ean = 0
+        relevant_target_skus = relevant_target_skus.groupby('product_fk', as_index=False)['FRENTES'].sum()
+        relevant_target_skus.rename(columns={'FRENTES': 'target'}, inplace=True)
+        relevant_target_skus = pd.merge(relevant_target_skus, relevant_scif, how='left',
+                                        left_on='product_fk',
+                                        right_on='product_fk').fillna(0)
 
-                for ean_code in ean_codes:
-                    try:
-                        ean_product_target = \
-                            frentes_target_df['FRENTES'][frentes_target_df['PRODUCT EAN'] == ean_code].iloc[0]
+        relevant_target_skus['meets_target'] = relevant_target_skus['facings'] >= relevant_target_skus['target']
+        relevant_target_skus['meets_target'] = relevant_target_skus['meets_target'].apply(lambda x: 1 if x else 0)
+        count_of_passing_skus = relevant_target_skus['meets_target'].sum()
 
-                        found_sku_count = self.relevant_scif['facings'][
-                            self.relevant_scif['product_ean_code'] == str(ean_code)].iloc[0]
-                        product_fk = self.all_products['product_fk'][
-                            self.all_products['product_ean_code'] == str(ean_code)].iloc[0]
-                        if found_sku_count >= ean_product_target:
-                            score = 100
-                            passing_ean += 1
-                        else:
-                            score = 0
+        self._calculate_frentes_sku(relevant_target_skus)
 
-                    except:
-                        product_fk = -1
-                        found_sku_count = 0
-                        ean_product_target = 0
+        result = count_of_passing_skus / float(len(relevant_target_skus))
+        score = result * max_kpi_points
+        self.write_to_db(fk=kpi_fk, numerator_id=self.manufacturer_fk, denominator_id=self.store_id,
+                         numerator_result=count_of_passing_skus, denominator_result=len(relevant_target_skus),
+                         result=result * 100, score=score, weight=weight, target=max_kpi_points,
+                         identifier_parent=parent_fk, identifier_result=kpi_fk, should_enter=True)
+        return score
 
-                    self.write_to_db(fk=kpi_fk, numerator_id=product_fk, numerator_result=ean_code,
-                                     denominator_id=self.store_id,
-                                     result=found_sku_count, score=score, target=ean_product_target,
-                                     identifier_parent=parent_fk, identifier_result=kpi_fk, should_enter=True)
 
-        if total_ean_codes != 0:
-            numerator_facings = passing_ean
-            denominator_facings = total_ean_codes
+    def _calculate_frentes_sku(self, relevant_target_skus):
+        kpi_fk = self.get_kpi_fk_by_kpi_type(Const.KPI_FRENTES_SKU)
+        parent_fk = self.get_parent_fk(Const.KPI_FRENTES_SKU)
 
-            ratio = round(passing_ean / float(total_ean_codes), 2) * 100
-        else:
-            ratio = 0
-
-        score = round(((ratio * .01) * kpi_weight), 2)
-        self.write_to_db(fk=parent_fk,
-                         numerator_id=self.manufacturer_fk,
-                         numerator_result=numerator_facings,
-                         denominator_id=self.store_id,
-                         denominator_result=denominator_facings,
-                         result=ratio, score=score,
-                         identifier_parent=grand_parent_fk, identifier_result=parent_fk, should_enter=True)
-
-        return ratio
+        for sku_row in relevant_target_skus.itertuples():
+            self.write_to_db(fk=kpi_fk, numerator_id=sku_row.product_fk, denominator_id=self.store_id,
+                             numerator_result=sku_row.facings, result=sku_row.meets_target, target=sku_row.target,
+                             identifier_parent=parent_fk, should_enter=True)
 
     def calculate_distribution(self):
         kpi_name = Const.KPI_DISTRIBUTION
@@ -207,7 +191,9 @@ class CocacolaToolBox(GlobalSessionToolBox):
 
         parent_kpi_name = Const.KPIS_HIERACHY[kpi_name]
         kpi_weight = Const.KPI_WEIGHTS[parent_kpi_name]
+        kpi_point = Const.KPI_POINTS[parent_kpi_name]
         grand_parent_fk = self.get_parent_fk(parent_kpi_name)
+        max_possible_point = Const.KPI_POINTS[parent_kpi_name]
 
 
         # place holding these for now, will fix tomorrow feb 19
@@ -218,7 +204,7 @@ class CocacolaToolBox(GlobalSessionToolBox):
 
         if self.relevant_scif.empty:
             score = 0
-            self.write_to_db(fk=kpi_fk, numerator_id=self.manufacturer_pk, numerator_result=numerator_facings,
+            self.write_to_db(fk=kpi_fk, numerator_id=self.manufacturer_fk, numerator_result=numerator_facings,
                              denominator_id=self.store_id, denominator_result=denominator_facings, score=score,
                              identifier_parent=parent_fk, identifier_result=kpi_fk, should_enter=True)
         else:
@@ -260,12 +246,12 @@ class CocacolaToolBox(GlobalSessionToolBox):
                     except:
                         Log.warning("Distribution KPI Failed.")
 
-
-                    self.write_to_db(fk=kpi_fk, numerator_id=product_fk, numerator_result=ean_code,
-                                     denominator_id=template_name_fk,
-                                     result=score, score=score,
-                                     context_id=scene_id,
-                                     identifier_parent=parent_fk, identifier_result=kpi_fk, should_enter=True)
+                    if product_fk != -1:
+                        self.write_to_db(fk=kpi_fk, numerator_id=product_fk, numerator_result=ean_code,
+                                         denominator_id=template_name_fk,
+                                         result=score, score=score,
+                                         context_id=scene_id,
+                                         identifier_parent=parent_fk, identifier_result=kpi_fk, should_enter=True)
 
         if total_ean_codes != 0:
             numerator_facings = found_ean
@@ -274,12 +260,12 @@ class CocacolaToolBox(GlobalSessionToolBox):
         else:
             ratio = 0
 
-        score = round(((ratio * .01) * kpi_weight), 2)
+        score = round(((ratio * .01) * kpi_point), 2)
         self.write_to_db(fk=parent_fk, numerator_id=self.manufacturer_fk,
                          numerator_result=numerator_facings,
                          denominator_id=self.store_id,
                          denominator_result=denominator_facings,
-                         result=ratio, score=score,
+                         result=ratio, score=score, weight=kpi_weight, target=max_possible_point,
                          identifier_parent=grand_parent_fk, identifier_result=parent_fk, should_enter=True)
         return score
 
@@ -301,7 +287,7 @@ class CocacolaToolBox(GlobalSessionToolBox):
 
         if self.relevant_scif.empty:
             score = 0
-            self.write_to_db(fk=kpi_fk, numerator_id=self.manufacturer_pk, numerator_result=numerator_facings,
+            self.write_to_db(fk=kpi_fk, numerator_id=self.manufacturer_fk, numerator_result=numerator_facings,
                              denominator_id=self.store_id, denominator_result=denominator_facings, score=score,
                              )
         else:
@@ -315,7 +301,6 @@ class CocacolaToolBox(GlobalSessionToolBox):
                 passing_ean = 0
                 for ean_code in ean_codes:
                     filtered_frentes_df = frentes_target_df[frentes_target_df['PRODUCT EAN'] == ean_code]
-
                     score = 100
 
                     if score != 0:
@@ -326,78 +311,10 @@ class CocacolaToolBox(GlobalSessionToolBox):
                                 self.all_products['product_ean_code'] == str(ean_code)]
 
                             if product_fk.empty:
-                                product_fk = -1
+                                pass
                             else:
-                                product_fk = self.all_products['product_fk'][
-                                    self.all_products['product_ean_code'] == str(ean_code)].iloc[0]
+                                self.calculate_acomodo_sku()
 
-                            for index, row in filtered_frentes_df.iterrows():
-                                target_bay = row['PUERTA']
-                                target_shelf = row['PARRILLA']
-                                if str(ean_code) in self.relevant_scif['product_ean_code'].tolist():
-                                    relevant_matches = self.matches[self.matches['scene_fk'] == scene_id]
-
-                                    filtered_matches_df = relevant_matches[
-                                        (relevant_matches['bay_number'] == target_bay) & (
-                                                relevant_matches['shelf_number'] == target_shelf) & (
-                                                relevant_matches['product_fk'] == product_fk)]
-
-                                    if filtered_matches_df.empty:
-                                        filtered_product_only_df = relevant_matches[['product_fk', 'bay_number', 'shelf_number']][relevant_matches['product_fk'] == product_fk].drop_duplicates()
-
-                                        if filtered_product_only_df.empty:
-                                            score = 0
-                                            self.write_to_db(fk=kpi_fk, numerator_id=bay,
-                                                             numerator_result=target_bay,
-                                                             denominator_id=shelf,
-                                                             denominator_result=target_shelf,
-                                                             score=score, context_id=product_fk,
-                                                             result= ean_code,
-                                                             identifier_parent=parent_fk, identifier_result=kpi_fk,
-                                                             should_enter=True)
-                                        else:
-                                            for p_index, p_row in filtered_product_only_df.iterrows():
-                                                score = 0
-                                                bay = p_row['bay_number']
-                                                shelf = p_row['shelf_number']
-
-                                                self.write_to_db(fk=kpi_fk, numerator_id=bay,
-                                                                 numerator_result=target_bay,
-                                                                 denominator_id=shelf,
-                                                                 denominator_result=target_shelf,
-                                                                 score=score, context_id=product_fk,
-                                                                 result=ean_code,
-                                                                 identifier_parent=parent_fk,
-                                                                 identifier_result=kpi_fk,
-                                                                 should_enter=True)
-                                    else:
-                                        score = 100
-                                        bay = target_bay
-                                        shelf = target_shelf
-
-                                        self.write_to_db(fk=kpi_fk, numerator_id=bay,
-                                                         numerator_result= target_bay,
-                                                         denominator_id= shelf,
-                                                         denominator_result= target_shelf,
-                                                         score=score, context_id=product_fk,
-                                                         result=ean_code,
-                                                         identifier_parent=parent_fk, identifier_result=kpi_fk,
-                                                         should_enter=True)
-
-
-                                else:
-                                    score = 0
-
-                                    self.write_to_db(fk=kpi_fk,
-                                                     numerator_id=product_fk,
-                                                     numerator_result=target_bay,
-                                                     denominator_id=scene_name_fk,
-                                                     denominator_result=bay,
-                                                     score=score, context_id=product_fk,
-                                                     result=shelf,
-                                                     target=target_shelf,
-                                                     identifier_parent=parent_fk, identifier_result=kpi_fk,
-                                                     should_enter=True)
 
 
                         except:
@@ -418,23 +335,100 @@ class CocacolaToolBox(GlobalSessionToolBox):
                                  identifier_parent=grand_parent_fk, identifier_result=parent_fk,
                                  should_enter=True)
 
-            kpi_weight = Const.KPI_WEIGHTS[grand_parent_kpi_name]
-            final_ratio = self.calculate_average_ratio(scene_ratios)
-            score = round(((final_ratio * .01) * kpi_weight), 2)
-            self.write_to_db(fk=grand_parent_fk, numerator_id=self.manufacturer_fk,
-                                 denominator_id=self.store_id,
-                                 result=final_ratio,
-                                 score=score,
-                                 identifier_parent=great_grand_parent_fk,
-                                 identifier_result=grand_parent_fk,
-                                 should_enter=True)
+        kpi_weight = Const.KPI_WEIGHTS[grand_parent_kpi_name]
+        kpi_point = Const.KPI_POINTS[grand_parent_kpi_name]
+        final_ratio = self.calculate_average_ratio(scene_ratios)
+        score = round(((final_ratio * .01) * kpi_point), 2)
+        self.write_to_db(fk=grand_parent_fk, numerator_id=self.manufacturer_fk,
+                             denominator_id=self.store_id,
+                             result=final_ratio,
+                             score=score,
+                             weight=kpi_weight, target=kpi_point,
+                             identifier_parent=great_grand_parent_fk,
+                             identifier_result=grand_parent_fk,
+                             should_enter=True)
         return final_ratio
+
+    def calculate_acomodo_sku(self):
+        product_fk = self.all_products['product_fk'][
+            self.all_products['product_ean_code'] == str(ean_code)].iloc[0]
+
+        for index, row in filtered_frentes_df.iterrows():
+            target_bay = row['PUERTA']
+            target_shelf = row['PARRILLA']
+            if str(ean_code) in self.relevant_scif['product_ean_code'].tolist():
+                relevant_matches = self.matches[self.matches['scene_fk'] == scene_id]
+
+                filtered_matches_df = relevant_matches[
+                    (relevant_matches['bay_number'] == target_bay) & (
+                            relevant_matches['shelf_number'] == target_shelf) & (
+                            relevant_matches['product_fk'] == product_fk)]
+
+                if filtered_matches_df.empty:
+                    filtered_product_only_df = relevant_matches[['product_fk', 'bay_number', 'shelf_number']][
+                        relevant_matches['product_fk'] == product_fk].drop_duplicates()
+
+                    if filtered_product_only_df.empty:
+                        score = 0
+                        self.write_to_db(fk=kpi_fk, numerator_id=bay,
+                                         numerator_result=target_bay,
+                                         denominator_id=shelf,
+                                         denominator_result=target_shelf,
+                                         score=score, context_id=product_fk,
+                                         result=ean_code,
+                                         identifier_parent=parent_fk, identifier_result=kpi_fk,
+                                         should_enter=True)
+                    else:
+                        for p_index, p_row in filtered_product_only_df.iterrows():
+                            score = 0
+                            bay = p_row['bay_number']
+                            shelf = p_row['shelf_number']
+
+                            self.write_to_db(fk=kpi_fk, numerator_id=bay,
+                                             numerator_result=target_bay,
+                                             denominator_id=shelf,
+                                             denominator_result=target_shelf,
+                                             score=score, context_id=product_fk,
+                                             result=ean_code,
+                                             identifier_parent=parent_fk,
+                                             identifier_result=kpi_fk,
+                                             should_enter=True)
+                else:
+                    score = 100
+                    bay = target_bay
+                    shelf = target_shelf
+
+                    self.write_to_db(fk=kpi_fk, numerator_id=bay,
+                                     numerator_result=target_bay,
+                                     denominator_id=shelf,
+                                     denominator_result=target_shelf,
+                                     score=score, context_id=product_fk,
+                                     result=ean_code,
+                                     identifier_parent=parent_fk, identifier_result=kpi_fk,
+                                     should_enter=True)
+
+
+            else:
+                score = 0
+
+                self.write_to_db(fk=kpi_fk,
+                                 numerator_id=product_fk,
+                                 numerator_result=target_bay,
+                                 denominator_id=scene_name_fk,
+                                 denominator_result=bay,
+                                 score=score, context_id=product_fk,
+                                 result=shelf,
+                                 target=target_shelf,
+                                 identifier_parent=parent_fk, identifier_result=kpi_fk,
+                                 should_enter=True)
 
     def calculate_invasion(self):
         kpi_name = Const.KPI_INVASION
         kpi_fk = self.get_kpi_fk_by_kpi_type(kpi_name)
         parent_fk = self.get_parent_fk(kpi_name)
         kpi_weight = Const.KPI_WEIGHTS[kpi_name]
+        kpi_point =  Const.KPI_POINTS[kpi_name]
+        ratio = 0
 
         if self.relevant_scif.empty:
             score = 0
@@ -453,11 +447,11 @@ class CocacolaToolBox(GlobalSessionToolBox):
             else:
                 ratio = 0
 
-            score = round(((ratio * .01) * kpi_weight), 2)
+            score = round(((ratio * .01) * kpi_point), 2)
 
-        self.write_to_db(fk=kpi_fk, numerator_id=self.manufacturer_pk, denominator_id=self.store_id,
-                         ratio=ratio,
-                         score=score,
+        self.write_to_db(fk=kpi_fk, numerator_id=self.manufacturer_fk, denominator_id=self.store_id,
+                         result=ratio,
+                         score=score, weight=kpi_weight, target= kpi_point,
                          identifier_parent=parent_fk, identifier_result=kpi_fk, should_enter=True)
         return score
 
@@ -477,8 +471,9 @@ class CocacolaToolBox(GlobalSessionToolBox):
         return parent_fk
 
     def do_relevant_scenes_exist(self):
+        scene_types = '|'.join(Const.RELEVANT_SCENES_TYPES)
         relevant_scenes = self.scif['template_name'][
-            self.scif["template_name"].str.contains(Const.RELEVANT_SCENES_TYPES)].unique()
+            self.scif["template_name"].str.contains(scene_types)].unique()
         return relevant_scenes
 
     def sanitize_values(self, values):

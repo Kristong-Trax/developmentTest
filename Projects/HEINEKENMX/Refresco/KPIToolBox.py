@@ -37,32 +37,31 @@ class RefrescoToolBox(GlobalSessionToolBox):
 
     def main_calculation(self):
         kpi_name = Const.KPI_REFRESCO
-        kpi_weight = Const.KPI_WEIGHTS[kpi_name]
-
+        max_possible_point = Const.KPI_WEIGHTS[kpi_name]
+        score = 0
         kpi_fk = self.get_kpi_fk_by_kpi_type(kpi_name)
         parent_fk = self.get_parent_fk(kpi_name)
 
 
+
         cocacola_tool_box = CocacolaToolBox(self.data_provider, self.output, self.common)
-        coca_ratio = cocacola_tool_box.main_calculation()
+        score += cocacola_tool_box.main_calculation()
 
 
-        pepsi_tool_box = PepsiToolBox(self.data_provider, self.output, self.common)
-        pepsi_ratio = pepsi_tool_box.main_calculation()
+        # pepsi_tool_box = PepsiToolBox(self.data_provider, self.output, self.common)
+        # score += pepsi_tool_box.main_calculation()
 
 
         # pj_tool_box = PJToolBox(self.data_provider, self.output, self.common)
         # pj_ratio = pj_tool_box.main_calculation()
-        # ratios = [coca_ratio, pepsi_ratio, pj_ratio]
+        # score += [coca_ratio, pepsi_ratio, pj_ratio]
 
-        scores = [coca_ratio, pepsi_ratio]
-        score = self.calculate_sum_scores(scores)
-
+        ratio = (score / max_possible_point) * 100
 
 
         self.write_to_db(fk=kpi_fk, numerator_id=self.manufacturer_fk, denominator_id=self.store_id,
-                         result=score,
-                         score=score,
+                         result=ratio,
+                         score=score, kpi_weight=max_possible_point, target=max_possible_point,
                          identifier_parent=parent_fk, identifier_result=kpi_fk, should_enter=True)
         return score
 
