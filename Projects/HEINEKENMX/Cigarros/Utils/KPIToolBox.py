@@ -33,14 +33,14 @@ MATCH_PRODUCT_IN_PROBE_FK = 'match_product_in_probe_fk'
 MATCH_PRODUCT_IN_PROBE_STATE_REPORTING_FK = 'match_product_in_probe_state_reporting_fk'
 
 
-class CervezaToolBox(GlobalSessionToolBox):
+class CigarrosToolBox(GlobalSessionToolBox):
 
     def __init__(self, data_provider, output, common):
         GlobalSessionToolBox.__init__(self, data_provider, output, common)
         self.scene_types = self.scif['template_name'].unique().tolist()
         self.gz = self.store_info['additional_attribute_4'].iloc[0]
         self.city = self.store_info['address_city'].iloc[0]
-        self.relevant_targets = self._get_relevant_external_targets(kpi_operation_type='planograma_cerveza')
+        self.relevant_targets = self._get_relevant_external_targets(kpi_operation_type='acomodo_cigarros')
         self.invasion_targets = self._get_relevant_external_targets(kpi_operation_type='invasion')
         self._determine_target_product_fks()
         self.leading_products = self._get_leading_products_from_scif()
@@ -472,8 +472,8 @@ class CervezaToolBox(GlobalSessionToolBox):
         return scene_realograms
 
     def _get_relevant_external_targets(self, kpi_operation_type=None):
-        if kpi_operation_type == 'planograma_cerveza':
-            template_df = pd.read_excel(Consts.TEMPLATE_PATH, sheetname='Planograma_cerveza', header=1)
+        if kpi_operation_type == 'acomodo_cigarros':
+            template_df = pd.read_excel(Consts.TEMPLATE_PATH, sheetname='Acomodo_cigarros', header=1)
             template_df = template_df[(template_df['GZ'].str.encode('utf-8') == self.gz.encode('utf-8')) &
                                       (template_df['Ciudad'].str.encode('utf-8') == self.city.encode('utf-8'))]
 
