@@ -24,7 +24,7 @@ from Projects.HEINEKENMX.Cerveza.Data.LocalConsts import Consts
 
 # from KPIUtils_v2.Calculations.CalculationsUtils import GENERALToolBoxCalculations
 from KPIUtils_v2.GlobalDataProvider.PsDataProvider import PsDataProvider
-from Projects.HEINEKENMX.Cerveza.Data.LocalConsts import Consts
+from Projects.HEINEKENMX.Cigarros.Data.LocalConsts import Consts
 from Projects.HEINEKENMX.Utils.PlanogramUtil import HeinekenRealogram
 
 __author__ = 'huntery'
@@ -72,8 +72,8 @@ class CigarrosToolBox(GlobalSessionToolBox):
 
         score = 0
         score += self.calculate_calificador()
-        score += self.calculate_prioritario()
-        score += self.calculate_opcional()
+        # score += self.calculate_prioritario()
+        # score += self.calculate_opcional()
 
         result = score / max_kpi_points
 
