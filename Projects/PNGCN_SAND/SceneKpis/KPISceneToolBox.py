@@ -76,7 +76,7 @@ EYE_LEVEL_GROUP_ATTRIBUTES = {
     EYE_LEVEL_SE_BR_SC_KPI: {'group_level': ['brand_fk', 'sub_category_fk'],
                              'num_den_cont': ['sub_category_fk', 'brand_fk', 'store_fk']},
     EYE_LEVEL_SE_BR_SC_SB_KPI: {'group_level': ['brand_fk', 'sub_brand', 'sub_category_fk'],
-                                'num_den_cont': ['sub_category_fk', 'sub_brand_fk', 'brand_fk']},
+                                'num_den_cont': ['sub_brand_fk', 'sub_category_fk', 'brand_fk']},
     EYE_LEVEL_SE_BR_SB_FL_KPI: {'group_level': ['brand_fk', 'sub_brand', 'att3'],
                                 'num_den_cont': ['att3_fk', 'sub_brand_fk', 'brand_fk']},
     EYE_LEVEL_SE_BR_SC_FL_KPI: {'group_level': ['brand_fk', 'sub_category_fk', 'att3'],
