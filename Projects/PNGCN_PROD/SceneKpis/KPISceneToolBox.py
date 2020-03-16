@@ -355,17 +355,15 @@ class PngcnSceneKpis(object):
         """
         calls the filter eyelevel shelves function, calls both eye_level_sequence and eye_level_facings KPIs
         """
-        if self.matches_from_data_provider.empty:
+        if self.matches_from_data_provider.empty or self.scif.empty or \
+                self.scif.iloc[0]['location_type'] != 'Primary Shelf':
             return
-        entity_df = self.psdataprovider.get_custom_entities_with_names()
-        if entity_df.empty:
-            return
-        df = self.get_eye_level_shelves(self.matches_from_data_provider)
-        full_df = pd.merge(df, self.all_products, on="product_fk")
-        full_df = full_df[~(full_df['product_type'].isin(['Irrelevant', 'Empty']))]
+        eye_level_df = self.get_eye_level_shelves(self.matches_from_data_provider)
+        full_eye_level_df = pd.merge(eye_level_df, self.all_products, on="product_fk")
+        full_eye_level_df = full_eye_level_df[~(full_eye_level_df['product_type'].isin(['Irrelevant', 'Empty']))]
         max_shelf_count = self.matches_from_data_provider["shelf_number"].max()
-        self.calculate_facing_eye_level(full_df, max_shelf_count)
-        self.calculate_sequence_eye_level(max_shelf_count, full_df)
+        self.calculate_facing_eye_level(full_eye_level_df, max_shelf_count)
+        self.calculate_sequence_eye_level(max_shelf_count, full_eye_level_df)
 
     def _get_custom_entities(self):
         eye_level_fragments = self.psdataprovider.get_custom_entities_df('eye_level_fragments')
