@@ -10,9 +10,11 @@ if __name__ == '__main__':
     project_name = 'carlsbrghk'
     data_provider = KEngineDataProvider(project_name)
     sessions = [
-        'B6FB5E83-BBBF-4988-A60D-2A5B62EA8CC5'
+        # 'B6FB5E83-BBBF-4988-A60D-2A5B62EA8CC5'
         # '4DAFCE77-82FA-4A51-B2D3-AD24D561237E',  # 0 msl cooler
         # '64CC70E0-3454-459B-8817-2BC78EDC4256',  # with data
+        # '64CC70E0-3454-459B-8817-2BC78EDC4256',
+        'CC70B248-8C82-42F7-B3C5-C6A61B2B06AE'  # prev - B6FB5E83-BBBF-4988-A60D-2A5B62EA8CC5
     ]
     for session in sessions:
         print("Running for {}".format(session))

@@ -665,7 +665,13 @@ class CARLSBERGToolBox:
                     name=kpi.kpi_name.iloc[0]
                 ))
                 continue
-            result = len(group_data) / float(len(denominator_df))
+            context_denominator_df = dataframe_to_process
+            if len(groupers) > 1:
+                context_denominator_df = dataframe_to_process.query('{key} == {value}'.format(
+                    key=groupers[1],
+                    value=get_parameter_id(key_value=groupers[1], param_id_map=param_id_map)))
+
+            result = len(group_data) / float(len(context_denominator_df))
             if not is_nan(kpi[KPI_PARENT_COL].iloc[0]):
                 kpi_parent = self.kpi_static_data[(self.kpi_static_data[KPI_TYPE_COL] == kpi[KPI_PARENT_COL].iloc[0])
                                                   & (self.kpi_static_data['delete_time'].isnull())]
@@ -685,7 +691,7 @@ class CARLSBERGToolBox:
                                                context_id=context_id,
                                                result=result,
                                                numerator_result=len(group_data),
-                                               denominator_result=len(denominator_df),
+                                               denominator_result=len(context_denominator_df),
                                                identifier_result="{}_{}_{}_{}".format(
                                                    kpi['kpi_name'].iloc[0],
                                                    kpi['pk'].iloc[0],
@@ -710,7 +716,7 @@ class CARLSBERGToolBox:
                                                context_id=context_id,
                                                result=result,
                                                numerator_result=len(group_data),
-                                               denominator_result=len(denominator_df),
+                                               denominator_result=len(context_denominator_df),
                                                identifier_result="{}_{}_{}_{}".format(
                                                    kpi['kpi_name'].iloc[0],
                                                    kpi['pk'].iloc[0],
