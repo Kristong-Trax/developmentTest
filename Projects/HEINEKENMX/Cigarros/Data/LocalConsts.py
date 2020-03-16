@@ -50,28 +50,28 @@ class Consts(object):
 
     KPI_POINTS = {
         IE_60: 25.0,
-        CIGARROS: 6.0,
-        MERCADEO: 3.0,
+        CIGARROS: 5.0,
+        MERCADEO: 2.0,
         SURTIDO: 3.0,
-        HUECOS: 0.3,
-        FRENTES: 1.8,
-        ACOMODO: 0.6,
-        INVASION: 0.3,
-        PRIORITARIO: 1.17,
-        CALIFICADOR: 1.5,
-        OPCIONAL: 0.33
+        HUECOS: 0.2,
+        FRENTES: 0.4,
+        ACOMODO: 0.8,
+        INVASION: 0.6,
+        PRIORITARIO: 3,
+        CALIFICADOR: 0,
+        OPCIONAL: 0
     }
 
     KPI_WEIGHTS = {
-        MERCADEO: 50,
-        SURTIDO: 50,
+        MERCADEO: 40,
+        SURTIDO: 60,
         HUECOS: 10,
-        FRENTES: 60,
-        ACOMODO: 20,
-        INVASION: 10,
-        PRIORITARIO: 39,
-        CALIFICADOR: 50,
-        OPCIONAL: 11
+        FRENTES: 20,
+        ACOMODO: 40,
+        INVASION: 30,
+        PRIORITARIO: 100,
+        CALIFICADOR: 0,
+        OPCIONAL: 0
     }
 
     TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)),
