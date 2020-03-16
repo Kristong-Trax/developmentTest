@@ -247,6 +247,11 @@ class CARLSBERGToolBox:
             # 0 - store level
             # 1 - category level
             msl_store_level, msl_cat_level = each_assortment
+            Log.info("Starting {sess}, calulcation for store level: {s_kpi} and category level: {c_kpi}.".format(
+                sess=self.session_uid,
+                s_kpi=msl_store_level,
+                c_kpi=msl_cat_level,
+            ))
             external_target_data = self.external_targets[self.external_targets['kpi_type']==msl_store_level]
             if external_target_data.empty:
                 Log.info("{} has no external target data to calculate for session {}.".format(msl_store_level,
@@ -269,7 +274,13 @@ class CARLSBERGToolBox:
                 valid_scif = valid_scif[(valid_scif['category_fk'].isin(valid_category_fks))]
             if valid_brand_fks and not is_nan(valid_brand_fks):
                 valid_scif = valid_scif[(valid_scif['brand_fk'].isin(valid_brand_fks))]
-
+            if valid_scif.empty:
+                Log.info("Session {sess} has no data to calculate {st}/{cat}".format(
+                    sess=self.session_uid,
+                    st=msl_store_level,
+                    cat=msl_cat_level
+                ))
+                continue
             distribution_kpi = self.kpi_static_data[(self.kpi_static_data[KPI_TYPE_COL] == msl_store_level)
                                                     & (self.kpi_static_data['delete_time'].isnull())]
             prod_presence_kpi = self.kpi_static_data[(self.kpi_static_data[KPI_TYPE_COL] == msl_store_level + ' - SKU')
