@@ -247,6 +247,11 @@ class CARLSBERGToolBox:
             # 0 - store level
             # 1 - category level
             msl_store_level, msl_cat_level = each_assortment
+            Log.info("Starting {sess}, calulcation for store level: {s_kpi} and category level: {c_kpi}.".format(
+                sess=self.session_uid,
+                s_kpi=msl_store_level,
+                c_kpi=msl_cat_level,
+            ))
             external_target_data = self.external_targets[self.external_targets['kpi_type']==msl_store_level]
             if external_target_data.empty:
                 Log.info("{} has no external target data to calculate for session {}.".format(msl_store_level,
@@ -269,7 +274,13 @@ class CARLSBERGToolBox:
                 valid_scif = valid_scif[(valid_scif['category_fk'].isin(valid_category_fks))]
             if valid_brand_fks and not is_nan(valid_brand_fks):
                 valid_scif = valid_scif[(valid_scif['brand_fk'].isin(valid_brand_fks))]
-
+            if valid_scif.empty:
+                Log.info("Session {sess} has no data to calculate {st}/{cat}".format(
+                    sess=self.session_uid,
+                    st=msl_store_level,
+                    cat=msl_cat_level
+                ))
+                continue
             distribution_kpi = self.kpi_static_data[(self.kpi_static_data[KPI_TYPE_COL] == msl_store_level)
                                                     & (self.kpi_static_data['delete_time'].isnull())]
             prod_presence_kpi = self.kpi_static_data[(self.kpi_static_data[KPI_TYPE_COL] == msl_store_level + ' - SKU')
@@ -450,18 +461,21 @@ class CARLSBERGToolBox:
         Log.info("Calculate {} - SKU per Category for {}".format(distribution_kpi_name, self.session_uid))
         scene_category_group = valid_scif.groupby('category_fk')
         for category_fk, each_scif_data in scene_category_group:
+            # EXTRA is based on own products
+            total_own_products_in_scene_for_cat = each_scif_data[each_scif_data['manufacturer_fk'] == self.own_man_fk][
+                "item_id"].unique()
             total_products_in_scene_for_cat = each_scif_data["item_id"].unique()
             curr_category_products_in_assortment_df = self.all_products[
                 (self.all_products.product_fk.isin(assortment_product_fks))
                 & (self.all_products.category_fk == category_fk)]
             curr_category_products_in_assortment = curr_category_products_in_assortment_df['product_fk'].unique()
             present_products = np.intersect1d(total_products_in_scene_for_cat, curr_category_products_in_assortment)
-            extra_products = np.setdiff1d(total_products_in_scene_for_cat, present_products)
+            extra_products = np.setdiff1d(total_own_products_in_scene_for_cat, present_products)
             oos_products = np.setdiff1d(curr_category_products_in_assortment, present_products)
             product_map = {
                 OOS_CODE: oos_products,
                 PRESENT_CODE: present_products,
-                # EXTRA_CODE: extra_products
+                EXTRA_CODE: extra_products
             }
             # save product presence; with distribution % kpi as parent
             for assortment_code, product_fks in product_map.iteritems():

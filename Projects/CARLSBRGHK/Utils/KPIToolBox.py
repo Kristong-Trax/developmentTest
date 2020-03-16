@@ -461,18 +461,21 @@ class CARLSBERGToolBox:
         Log.info("Calculate {} - SKU per Category for {}".format(distribution_kpi_name, self.session_uid))
         scene_category_group = valid_scif.groupby('category_fk')
         for category_fk, each_scif_data in scene_category_group:
+            # EXTRA is based on own products
+            total_own_products_in_scene_for_cat = each_scif_data[each_scif_data['manufacturer_fk'] == self.own_man_fk][
+                "item_id"].unique()
             total_products_in_scene_for_cat = each_scif_data["item_id"].unique()
             curr_category_products_in_assortment_df = self.all_products[
                 (self.all_products.product_fk.isin(assortment_product_fks))
                 & (self.all_products.category_fk == category_fk)]
             curr_category_products_in_assortment = curr_category_products_in_assortment_df['product_fk'].unique()
             present_products = np.intersect1d(total_products_in_scene_for_cat, curr_category_products_in_assortment)
-            extra_products = np.setdiff1d(total_products_in_scene_for_cat, present_products)
+            extra_products = np.setdiff1d(total_own_products_in_scene_for_cat, present_products)
             oos_products = np.setdiff1d(curr_category_products_in_assortment, present_products)
             product_map = {
                 OOS_CODE: oos_products,
                 PRESENT_CODE: present_products,
-                # EXTRA_CODE: extra_products
+                EXTRA_CODE: extra_products
             }
             # save product presence; with distribution % kpi as parent
             for assortment_code, product_fks in product_map.iteritems():
