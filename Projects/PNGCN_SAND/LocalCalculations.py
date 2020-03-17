@@ -20,11 +20,16 @@ if __name__ == '__main__':
     data_provider = KEngineDataProvider(project_name)
     output = Output()
     sessions = {
-        'e8c67437-814e-48cb-bc66-fb8bbf7bf7f9': ['25728621'],
-        # '13370ddd-7a23-45d1-a0e9-44fda09ce636': ['28098679'],
 
-        # one shelf
-        # '5a1862d6-ed90-4fd9-a7bd-8f5186f293e7': ['28111603'],
+        'EE913E9B-71E7-4A39-A66F-2A9B8DA9B2BB': ['27846171', '27846517', '27848213', '27848280'],
+        '9be106d4-24a3-4876-bfe1-b096510770fd': ['27860731', '27860735', '27860737', '27860729', '27860772', '27860775',
+                                                 '27860790', '27860727', '27860784', '27860789'],
+        'ee91e5a6-f2c6-41f5-b9ad-e1ba865980cc': ['27886925', '27886943'],
+        '31829C7D-C7D7-453A-BF54-1163EDC0C4DE': ['27800831', '27800963', '27800980', '27800995', '27801020',
+                                                 '27801122'],
+        '75D1AB6C-5A7F-4DBD-B220-0938CAB0B2FC': ['27802705', '27802765', '27802775', '27802791', '27802804', '27802814',
+                                                 '27802819', '27802825', '27802845', '27802909'],
+        'e8c67437-814e-48cb-bc66-fb8bbf7bf7f9': ['25728621'],
     }
     for session in sessions.keys():
         print "Running for {}".format(str(session))
@@ -36,6 +41,6 @@ if __name__ == '__main__':
             SceneVanillaCalculations(data_provider, output).run_project_calculations()
             save_scene_item_facts_to_data_provider(data_provider, output)
             SceneCalculations(data_provider).calculate_kpis()
-        # data_provider.load_session_data(session)
-        # output = Output()
-        # PngCNEmptyCalculations(data_provider, output).run_project_calculations()
+        data_provider.load_session_data(session)
+        output = Output()
+        PngCNEmptyCalculations(data_provider, output).run_project_calculations()
