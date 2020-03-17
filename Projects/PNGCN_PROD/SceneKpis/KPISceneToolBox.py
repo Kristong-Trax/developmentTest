@@ -360,7 +360,6 @@ class PngcnSceneKpis(object):
             return
         eye_level_df = self.get_eye_level_shelves(self.matches_from_data_provider)
         full_eye_level_df = pd.merge(eye_level_df, self.all_products, on="product_fk")
-        full_eye_level_df = full_eye_level_df[~(full_eye_level_df['product_type'].isin(['Irrelevant', 'Empty']))]
         max_shelf_count = self.matches_from_data_provider["shelf_number"].max()
         self.calculate_facing_eye_level(full_eye_level_df, max_shelf_count)
         self.calculate_sequence_eye_level(max_shelf_count, full_eye_level_df)
