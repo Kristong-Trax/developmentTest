@@ -22,6 +22,8 @@ from KPIUtils_v2.Utils.GlobalScripts.Scripts import GlobalSessionToolBox
 from Projects.HEINEKENMX.Data.LocalConsts import Consts
 from Projects.HEINEKENMX.Refresco.KPIToolBox import RefrescoToolBox
 from Projects.HEINEKENMX.Cerveza.Utils.KPIToolBox import CervezaToolBox
+from Projects.HEINEKENMX.Cigarros.Utils.KPIToolBox import CigarrosToolBox
+from Projects.HEINEKENMX.RTD.Utils.KPIToolBox import RTDToolBox
 
 __author__ = 'nicolaske'
 
@@ -38,6 +40,12 @@ class ToolBox(GlobalSessionToolBox):
 
         refresco_tool_box = RefrescoToolBox(self.data_provider, self.output, self.common)
         score += refresco_tool_box.main_calculation()
+
+        cigarros_tool_box = CigarrosToolBox(self.data_provider, self.output, self.common)
+        score += cigarros_tool_box.main_calculation()
+
+        rtd_tool_box = RTDToolBox(self.data_provider, self.output, self.common)
+        score += rtd_tool_box.main_calculation()
 
         kpi_name = Consts.KPI_IE
 

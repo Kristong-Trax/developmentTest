@@ -49,9 +49,9 @@ class CigarrosToolBox(GlobalSessionToolBox):
         self.match_product_in_probe_state_reporting = self.ps_data_provider.get_match_product_in_probe_state_reporting()
 
     def main_calculation(self):
-        kpi_fk = self.get_kpi_fk_by_kpi_type(Consts.CERVEZA)
-        parent_fk = self.get_parent_fk(Consts.CERVEZA)
-        kpi_max_points = self.get_kpi_points(Consts.CERVEZA)
+        kpi_fk = self.get_kpi_fk_by_kpi_type(Consts.CIGARROS)
+        parent_fk = self.get_parent_fk(Consts.CIGARROS)
+        kpi_max_points = self.get_kpi_points(Consts.CIGARROS)
 
         score = 0
         score += self.calculate_mercadeo()
@@ -215,38 +215,8 @@ class CigarrosToolBox(GlobalSessionToolBox):
         score += self.calculate_acomodo()
         score += self.calculate_frentes()
         score += self.calculate_huecos()
-        score += self.calculate_invasion()
 
         result = score / max_kpi_points
-
-        self.write_to_db(fk=kpi_fk, numerator_id=self.manufacturer_fk, denominator_id=self.store_id,
-                         result=result * 100, score=score, weight=weight, target=max_kpi_points,
-                         identifier_result=kpi_fk, identifier_parent=parent_fk, should_enter=True)
-        return score
-
-    def calculate_invasion(self):
-        kpi_fk = self.get_kpi_fk_by_kpi_type(Consts.INVASION)
-        parent_fk = self.get_parent_fk(Consts.INVASION)
-        max_kpi_points = self.get_kpi_points(Consts.INVASION)
-        weight = self.get_kpi_weight(Consts.INVASION)
-
-        result = 1
-        for invasion_row in self.invasion_targets.itertuples():
-            if 'Cerveza' not in getattr(invasion_row, "_1"):
-                continue
-            relevant_scif = self.scif[self.scif['template_name'] == getattr(invasion_row, "_1")]
-            if relevant_scif.empty:
-                continue
-            manufacturers = [x.strip() for x in getattr(invasion_row, 'Manufacturer').split(',')]
-            categories = [x.strip() for x in getattr(invasion_row, 'Category').split(',')]
-            relevant_scif = \
-                relevant_scif[(relevant_scif['manufacturer_name'].isin(manufacturers)) &
-                              (relevant_scif['category'].isin(categories))]
-            if not relevant_scif.empty:
-                result = 0
-                break
-
-        score = result * max_kpi_points
 
         self.write_to_db(fk=kpi_fk, numerator_id=self.manufacturer_fk, denominator_id=self.store_id,
                          result=result * 100, score=score, weight=weight, target=max_kpi_points,

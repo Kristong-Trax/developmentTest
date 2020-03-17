@@ -10,13 +10,15 @@ TEMPLATE_FACINGS_COUNT = 'Frentes'
 
 
 class HeinekenRealogram(object):
-    def __init__(self, mpis, scene_type, template_fk, planogram_template_data):
-        self.scene_fk = self._get_scene_fk(mpis)
-        self.mpis = mpis[mpis['scene_fk'] == self.scene_fk]
+    def __init__(self, scene_mpis, scene_type, template_fk, planogram_template_data, products_to_filter_by=None):
+        self.scene_fk = self._get_scene_fk(scene_mpis)
+        self.mpis = scene_mpis[scene_mpis['scene_fk'] == self.scene_fk]
+        self._check_mpis_for_leading_product_fk()
         self.template_fk = template_fk
         self.scene_type = scene_type
         self.planograms = self._generate_planograms_by_door(planogram_template_data)
         self.realogram = self._generate_realogram()
+        self._filter_realogram(products_to_filter_by)
         self.correctly_placed_tags = self._calculate_correctly_placed_tags()
         self.incorrectly_placed_tags = self._calculate_incorrectly_placed_tags()
         self.extra_tags = self._calculate_extra_tags()
@@ -24,8 +26,17 @@ class HeinekenRealogram(object):
         self.number_of_skus_in_planogram = self._get_number_of_skus_in_planogram()
         self.number_of_positions_in_planogram = self._get_number_of_positions_in_planogram()
 
+    def _check_mpis_for_leading_product_fk(self):
+        if 'leading_product_fk' not in self.mpis.columns.tolist():
+            self.mpis['leading_product_fk'] = self.mpis['product_fk']
+
     def _get_scene_fk(self, mpis):
         return mpis['scene_fk'].iloc[0]
+
+    def _filter_realogram(self, products_to_filter_by):
+        if products_to_filter_by:
+            self.realogram = \
+                self.realogram[self.realogram['product_fk'].isin(products_to_filter_by)]
 
     def _generate_planograms_by_door(self, planogram_template_data):
         planograms = {}

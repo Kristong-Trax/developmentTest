@@ -24,7 +24,7 @@ from Projects.HEINEKENMX.Cerveza.Data.LocalConsts import Consts
 
 # from KPIUtils_v2.Calculations.CalculationsUtils import GENERALToolBoxCalculations
 from KPIUtils_v2.GlobalDataProvider.PsDataProvider import PsDataProvider
-from Projects.HEINEKENMX.Cerveza.Data.LocalConsts import Consts
+from Projects.HEINEKENMX.RTD.Data.LocalConsts import Consts
 from Projects.HEINEKENMX.Utils.PlanogramUtil import HeinekenRealogram
 
 __author__ = 'huntery'
@@ -33,7 +33,7 @@ MATCH_PRODUCT_IN_PROBE_FK = 'match_product_in_probe_fk'
 MATCH_PRODUCT_IN_PROBE_STATE_REPORTING_FK = 'match_product_in_probe_state_reporting_fk'
 
 
-class CervezaToolBox(GlobalSessionToolBox):
+class RTDToolBox(GlobalSessionToolBox):
 
     def __init__(self, data_provider, output, common):
         GlobalSessionToolBox.__init__(self, data_provider, output, common)
@@ -49,9 +49,9 @@ class CervezaToolBox(GlobalSessionToolBox):
         self.match_product_in_probe_state_reporting = self.ps_data_provider.get_match_product_in_probe_state_reporting()
 
     def main_calculation(self):
-        kpi_fk = self.get_kpi_fk_by_kpi_type(Consts.CERVEZA)
-        parent_fk = self.get_parent_fk(Consts.CERVEZA)
-        kpi_max_points = self.get_kpi_points(Consts.CERVEZA)
+        kpi_fk = self.get_kpi_fk_by_kpi_type(Consts.RTD)
+        parent_fk = self.get_parent_fk(Consts.RTD)
+        kpi_max_points = self.get_kpi_points(Consts.RTD)
 
         score = 0
         score += self.calculate_mercadeo()
@@ -72,8 +72,8 @@ class CervezaToolBox(GlobalSessionToolBox):
 
         score = 0
         score += self.calculate_calificador()
-        score += self.calculate_prioritario()
-        score += self.calculate_opcional()
+        # score += self.calculate_prioritario()
+        # score += self.calculate_opcional()
 
         result = score / max_kpi_points
 
@@ -232,7 +232,7 @@ class CervezaToolBox(GlobalSessionToolBox):
 
         result = 1
         for invasion_row in self.invasion_targets.itertuples():
-            if 'Cerveza' not in getattr(invasion_row, "_1"):
+            if 'Cerveza' in getattr(invasion_row, "_1"):
                 continue
             relevant_scif = self.scif[self.scif['template_name'] == getattr(invasion_row, "_1")]
             if relevant_scif.empty:
@@ -477,7 +477,7 @@ class CervezaToolBox(GlobalSessionToolBox):
 
     def _get_products_relevant_to_category(self):
         products_relevant_to_category = \
-            self.all_products[self.all_products['category_fk'] == 44]['product_fk'].unique().tolist()
+            self.all_products[self.all_products['category_fk'] != 44]['product_fk'].unique().tolist()
         return products_relevant_to_category
 
     def _get_relevant_external_targets(self, kpi_operation_type=None):
@@ -492,7 +492,8 @@ class CervezaToolBox(GlobalSessionToolBox):
             return template_df
         elif kpi_operation_type == 'invasion':
             template_df = pd.read_excel(Consts.TEMPLATE_PATH, sheetname='Invasion', header=1)
-            template_df = template_df[(template_df['NOMBRE DE TAREA'].str.contains('Cerveza'))]
+            # we need to get everything that isn't Cerveza in this template
+            template_df = template_df[~(template_df['NOMBRE DE TAREA'].str.contains('Cerveza'))]
             return template_df.dropna(subset=['Manufacturer', 'Category'])
         else:
             return pd.DataFrame()
