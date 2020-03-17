@@ -329,7 +329,7 @@ class CARLSBERGToolBox:
             template_fk = 0
             if not valid_scif.empty:
                 template_fk = int(valid_scif['template_fk'].unique()[0])
-            Log.info("Calculate Assortment KPI [] for template: {}".format(template_fk))
+            Log.info("Calculate Assortment KPI for template: {}".format(template_fk))
             # calculate and save the percentage values for distribution and oos
             self.calculate_and_save_distribution(
                 valid_scif=valid_scif,
@@ -621,6 +621,7 @@ class CARLSBERGToolBox:
                 denominator_result = len(dataframe_to_process.query(_query))
                 if not denominator_result:
                     continue
+                cat_fk = param_id_map.get('category_fk', '')
                 self.common.write_to_db_result(fk=kpi['pk'].iloc[0],
                                                numerator_id=numerator_fk,
                                                denominator_id=each_den_fk,
@@ -628,17 +629,18 @@ class CARLSBERGToolBox:
                                                result=result,
                                                numerator_result=numerator_result,
                                                denominator_result=denominator_result,
-                                               identifier_result="{}_{}_{}_{}".format(
+                                               identifier_result="{}_{}_{}_{}_{}".format(
                                                    kpi['kpi_name'].iloc[0],
                                                    kpi['pk'].iloc[0],
                                                    # numerator_id,
                                                    each_den_fk,
-                                                   context_id
+                                                   context_id,
+                                                   cat_fk
                                                ),
                                                identifier_parent=identifier_parent,
                                                should_enter=True,
                                                )
-
+        stop_res_calc = True
         for group_id_tup, group_data in grouped_data_frame:
             if type(group_id_tup) not in [tuple, list]:
                 # convert to a tuple
@@ -670,8 +672,8 @@ class CARLSBERGToolBox:
                 context_denominator_df = dataframe_to_process.query('{key} == {value}'.format(
                     key=groupers[1],
                     value=get_parameter_id(key_value=groupers[1], param_id_map=param_id_map)))
-
             result = len(group_data) / float(len(context_denominator_df))
+            cat_fk = param_id_map.get('category_fk', '')
             if not is_nan(kpi[KPI_PARENT_COL].iloc[0]):
                 kpi_parent = self.kpi_static_data[(self.kpi_static_data[KPI_TYPE_COL] == kpi[KPI_PARENT_COL].iloc[0])
                                                   & (self.kpi_static_data['delete_time'].isnull())]
@@ -692,19 +694,21 @@ class CARLSBERGToolBox:
                                                result=result,
                                                numerator_result=len(group_data),
                                                denominator_result=len(context_denominator_df),
-                                               identifier_result="{}_{}_{}_{}".format(
+                                               identifier_result="{}_{}_{}_{}_{}".format(
                                                    kpi['kpi_name'].iloc[0],
                                                    kpi['pk'].iloc[0],
                                                    # numerator_id,
                                                    denominator_id,
-                                                   context_id
+                                                   context_id,
+                                                   cat_fk
                                                ),
-                                               identifier_parent="{}_{}_{}_{}".format(
+                                               identifier_parent="{}_{}_{}_{}_{}".format(
                                                    kpi_parent_detail['kpi_name'].iloc[0],
                                                    kpi_parent['pk'].iloc[0],
                                                    # parent_numerator_id,
                                                    parent_denominator_id,
-                                                   parent_context_id
+                                                   parent_context_id,
+                                                   cat_fk
                                                ),
                                                should_enter=True,
                                                )
@@ -717,12 +721,13 @@ class CARLSBERGToolBox:
                                                result=result,
                                                numerator_result=len(group_data),
                                                denominator_result=len(context_denominator_df),
-                                               identifier_result="{}_{}_{}_{}".format(
+                                               identifier_result="{}_{}_{}_{}_{}".format(
                                                    kpi['kpi_name'].iloc[0],
                                                    kpi['pk'].iloc[0],
                                                    # numerator_id,
                                                    denominator_id,
-                                                   context_id
+                                                   context_id,
+                                                   cat_fk
                                                ),
                                                should_enter=True,
                                                )
