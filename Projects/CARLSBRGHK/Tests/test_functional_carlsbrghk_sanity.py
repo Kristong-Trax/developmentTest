@@ -2,7 +2,7 @@
 
 from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
 from Projects.CARLSBRGHK.Tests.Data.data_test_carlsbrghk_sanity import ProjectsSanityData
-from Projects.CARLSBRGHK.Calculations import CARLSBRGHKCalculations
+from Projects.CARLSBRGHK.Calculations import Calculations as CARLSBRGHKCalculations
 from DevloperTools.SanityTests.PsSanityTests import PsSanityTestsFuncs
 from Projects.CARLSBRGHK.Tests.Data.kpi_results import CARLSBRGHKKpiResults
 # import os
@@ -29,7 +29,7 @@ class TestKEnginePsCode(PsSanityTestsFuncs):
         self.add_mocks()
         project_name = ProjectsSanityData.project_name
         data_provider = KEngineDataProvider(project_name)
-        sessions = {'64CC70E0-3454-459B-8817-2BC78EDC42569': []}
+        sessions = {'64CC70E0-3454-459B-8817-2BC78EDC4256': []}
         kpi_results = CARLSBRGHKKpiResults().get_kpi_results()
         for session in sessions.keys():
             data_provider.load_session_data(str(session))
