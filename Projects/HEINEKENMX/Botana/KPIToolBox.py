@@ -24,7 +24,7 @@ from Projects.HEINEKENMX.Botana.Barcel.Utils.KPIToolBox import BarcelToolBox
 from Projects.HEINEKENMX.Refresco.Pepsi.Utils.KPIToolBox import PepsiToolBox
 from Projects.HEINEKENMX.Refresco.PJ.Utils.KPIToolBox import PJToolBox
 
-from Projects.HEINEKENMX.Refresco.Const import Const
+from Projects.HEINEKENMX.Botana.Const import Const
 
 
 __author__ = 'nicolaske'
@@ -36,7 +36,7 @@ class BotanaToolBox(GlobalSessionToolBox):
         GlobalSessionToolBox.__init__(self, data_provider, output, common)
 
     def main_calculation(self):
-        kpi_name = Const.KPI_REFRESCO
+        kpi_name = Const.KPI_Botana
         max_possible_point = Const.KPI_WEIGHTS[kpi_name]
         score = 0
         kpi_fk = self.get_kpi_fk_by_kpi_type(kpi_name)
