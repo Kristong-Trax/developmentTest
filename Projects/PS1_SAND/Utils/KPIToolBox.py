@@ -24,10 +24,7 @@ class PS1SandToolBox:
         """
         This function calculates the KPI results.
         """
-        log_runtime('Updating templates')
-        self.template_handler.update_templates()
-
-        # SOS Out Of The Box kpis
+         # SOS Out Of The Box kpis
         self.diageo_generator.activate_ootb_kpis(self.commonV2)
 
         # sos by scene type
@@ -40,6 +37,12 @@ class PS1SandToolBox:
         # Global Menu kpis
         menus_res = self.diageo_generator.diageo_global_new_share_of_menu_function()
         self.commonV2.save_json_to_new_tables(menus_res)
+
+        # Global Secondary Displays function
+        res_json = self.diageo_generator.diageo_global_secondary_display_secondary_function()
+        if res_json:
+            self.commonV2.write_to_db_result(fk=res_json['fk'], numerator_id=1, denominator_id=self.store_id,
+                                             result=res_json['result'])
 
         # committing to new tables
         self.commonV2.commit_results_data()

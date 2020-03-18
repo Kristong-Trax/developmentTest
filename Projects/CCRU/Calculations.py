@@ -1,4 +1,5 @@
 import pandas as pd
+import os
 
 from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScript
 from Trax.Algo.Calculations.Core.Shortcuts import SessionInfo
@@ -8,9 +9,10 @@ from Trax.Utils.Logging.Logger import Log
 from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from KPIUtils_v2.Utils.Decorators.Decorators import log_runtime
 
-# from Projects.CCRU.Utils.Consts import CCRUConsts
+from Projects.CCRU.Utils.Consts import CCRUConsts
 from Projects.CCRU.Utils.JSON import CCRUJsonGenerator
 from Projects.CCRU.Utils.ToolBox import CCRUKPIToolBox
+from KPIUtils_v2.Utils.Consts.DataProvider import ScifConsts
 
 
 __author__ = 'sergey'
@@ -31,7 +33,9 @@ INTEGRATION = 'INTEGRATION'
 TOPSKU = 'TOPSKU'
 KPI_CONVERSION = 'KPI_CONVERSION'
 BENCHMARK = 'BENCHMARK'
-MR_TARGET = 'MR TARGET' 
+MR_TARGET = 'MR TARGET'
+COOLER_AUDIT = 'COOLER_AUDIT'
+GROUP_MODEL_MAP = 'GROUP_MODEL_MAP'
 
 
 class CCRUCalculations(BaseCalculationsScript):
@@ -63,6 +67,7 @@ class CCRUProjectCalculations:
         self.json = CCRUJsonGenerator()
 
         self.results = {}
+        self.kpi_source_json = None
 
     def main_function(self):
 
@@ -71,13 +76,15 @@ class CCRUProjectCalculations:
                         'Visit date is less than {2} - {0}. '
                         'Store ID {1}.'
                         .format(self.visit_date, self.store_id, self.tool_box.MIN_CALC_DATE))
+            return
 
         elif self.tool_box.visit_type in [self.tool_box.SEGMENTATION_VISIT]:
             Log.warning('Warning. Session with Segmentation visit type has no KPI calculations.')
+            return
 
         elif self.tool_box.visit_type in [self.tool_box.PROMO_VISIT]:
-            Log.warning('Warning. Session with Promo visit type has no KPI calculations.')
             self.calculate_promo_compliance()
+            return
 
         else:
             if self.pos_kpi_set_name not in self.tool_box.ALLOWED_POS_SETS:
@@ -87,6 +94,17 @@ class CCRUProjectCalculations:
                             .format(self.pos_kpi_set_name, self.store_id))
             else:
                 self.calculate_red_score()
+
+        if self.tool_box.visit_type in [self.tool_box.STANDARD_VISIT]:
+            if not self.tool_box.cooler_assortment.empty:
+                self.tool_box.set_kpi_set(CCRUConsts.COOLER_AUDIT_SCORE, CCRUConsts.COOLER_AUDIT_SCORE)
+                self.calculate_cooler_audit()
+
+        Log.debug('KPI calculation stage: {}'.format('Committing results old'))
+        self.tool_box.commit_results_data_old()
+
+        Log.debug('KPI calculation stage: {}'.format('Committing results new'))
+        self.tool_box.commit_results_data_new()
 
         Log.debug('KPI calculation is completed')
 
@@ -188,11 +206,11 @@ class CCRUProjectCalculations:
                 self.tool_box.calculate_contract_execution(self.json.project_kpi_dict.get('contract'),
                                                            kpi_source[CONTRACT][SET])
 
-        Log.debug('KPI calculation stage: {}'.format('Committing results old'))
-        self.tool_box.commit_results_data_old()
-
-        Log.debug('KPI calculation stage: {}'.format('Committing results new'))
-        self.tool_box.commit_results_data_new()
+        # Log.debug('KPI calculation stage: {}'.format('Committing results old'))
+        # self.tool_box.commit_results_data_old()
+        #
+        # Log.debug('KPI calculation stage: {}'.format('Committing results new'))
+        # self.tool_box.commit_results_data_new()
 
     def calculate_red_score_kpi_set(self, kpi_data, kpi_set_name, set_target=None):
 
@@ -256,6 +274,13 @@ class CCRUProjectCalculations:
 
         Log.debug('KPI calculation stage: {}'.format('Committing results new'))
         self.tool_box.common.commit_results_data()
+
+    def calculate_cooler_audit(self):
+        self.json.create_kpi_data_json('cooler_audit', 'Cooler_Quality.xlsx', sheet_name='ALL')
+        kpi_data = self.json.project_kpi_dict.get('cooler_audit')[0]
+        group_model_map = pd.read_excel(os.path.join(self.json.base_path, 'Cooler_Quality.xlsx'),
+                                        sheet_name=GROUP_MODEL_MAP)
+        self.tool_box.calculate_cooler_kpis(kpi_data, group_model_map)
 
     def rds_connection(self):
         if not hasattr(self, '_rds_conn'):

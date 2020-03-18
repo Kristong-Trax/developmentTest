@@ -23,4 +23,8 @@ class Consts(object):
     SCENE_FK = 'scene_fk'
     BAY_NUMBER = 'bay_number'
 
+    #Miscellaneous
+    MATCH_PRODUCT_IN_PROBE_FK = 'match_product_in_probe_fk'
+    MATCH_PRODUCT_IN_PROBE_STATE_REPORTING_FK = 'match_product_in_probe_state_reporting_fk'
+    MATCH_PRODUCT_IN_PROBE_STATE_VALUE_REPORTING_TABLE = 'report.match_product_in_probe_state_value_reporting'
     pass
