@@ -431,7 +431,7 @@ if __name__ == '__main__':
     replace_configurations_file = True
     copy_configuration_file_to_traxexport(replace_configurations_file)
     projects = {
-        'lionnz': {'944A33D9-125B-4B6C-A628-DF3630C3FE19': []},
+        'carlsbrghk': {'CC70B248-8C82-42F7-B3C5-C6A61B2B06AE': []},
                 }
     for project in projects:
         try:
