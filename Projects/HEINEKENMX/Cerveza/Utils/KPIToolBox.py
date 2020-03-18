@@ -259,7 +259,10 @@ class CervezaToolBox(GlobalSessionToolBox):
         max_kpi_points = self.get_kpi_points(Consts.HUECOS)
         weight = self.get_kpi_weight(Consts.HUECOS)
 
-        empty_scif = self.scif[self.scif['product_type'] == 'Empty']
+        relevant_scene_types = self.relevant_targets[Consts.TEMPLATE_SCENE_TYPE].unique().tolist()
+
+        empty_scif = self.scif[(self.scif['product_type'] == 'Empty') &
+                               (self.scif['template_name'].isin(relevant_scene_types))]
         result = 1 if empty_scif.empty else 0
 
         score = result * max_kpi_points
@@ -295,7 +298,10 @@ class CervezaToolBox(GlobalSessionToolBox):
 
         self._calculate_frentes_sku(relevant_target_skus)
 
-        result = count_of_passing_skus / float(len(relevant_target_skus))
+        if len(relevant_target_skus) == 0:
+            result = 0
+        else:
+            result = count_of_passing_skus / float(len(relevant_target_skus))
         score = result * max_kpi_points
         self.write_to_db(fk=kpi_fk, numerator_id=self.manufacturer_fk, denominator_id=self.store_id,
                          numerator_result=count_of_passing_skus, denominator_result=len(relevant_target_skus),

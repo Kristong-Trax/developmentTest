@@ -57,7 +57,7 @@ class CigarrosToolBox(GlobalSessionToolBox):
         score += self.calculate_mercadeo()
         score += self.calculate_surtido()
 
-        result = score / kpi_max_points
+        result = score / float(kpi_max_points)
 
         self.write_to_db(fk=kpi_fk, numerator_id=self.manufacturer_fk, denominator_id=self.store_id,
                          result=result * 100, score=score, weight=kpi_max_points, target=kpi_max_points,
@@ -71,11 +71,11 @@ class CigarrosToolBox(GlobalSessionToolBox):
         weight = self.get_kpi_weight(Consts.SURTIDO)
 
         score = 0
-        score += self.calculate_calificador()
-        # score += self.calculate_prioritario()
+        # score += self.calculate_calificador()
+        score += self.calculate_prioritario()
         # score += self.calculate_opcional()
 
-        result = score / max_kpi_points
+        result = score / float(max_kpi_points)
 
         self.write_to_db(fk=kpi_fk, numerator_id=self.manufacturer_fk, denominator_id=self.store_id,
                          result=result * 100, score=score, weight=weight, target=max_kpi_points,
@@ -216,7 +216,7 @@ class CigarrosToolBox(GlobalSessionToolBox):
         score += self.calculate_frentes()
         score += self.calculate_huecos()
 
-        result = score / max_kpi_points
+        result = score / float(max_kpi_points)
 
         self.write_to_db(fk=kpi_fk, numerator_id=self.manufacturer_fk, denominator_id=self.store_id,
                          result=result * 100, score=score, weight=weight, target=max_kpi_points,
@@ -229,7 +229,10 @@ class CigarrosToolBox(GlobalSessionToolBox):
         max_kpi_points = self.get_kpi_points(Consts.HUECOS)
         weight = self.get_kpi_weight(Consts.HUECOS)
 
-        empty_scif = self.scif[self.scif['product_type'] == 'Empty']
+        relevant_scene_types = self.relevant_targets[Consts.TEMPLATE_SCENE_TYPE].unique().tolist()
+
+        empty_scif = self.scif[(self.scif['product_type'] == 'Empty') &
+                               (self.scif['template_name'].isin(relevant_scene_types))]
         result = 1 if empty_scif.empty else 0
 
         score = result * max_kpi_points
@@ -262,8 +265,10 @@ class CigarrosToolBox(GlobalSessionToolBox):
         count_of_passing_skus = relevant_target_skus['meets_target'].sum()
 
         self._calculate_frentes_sku(relevant_target_skus)
-
-        result = count_of_passing_skus / float(len(relevant_target_skus))
+        if len(relevant_target_skus) == 0:
+            result = 0
+        else:
+            result = count_of_passing_skus / float(len(relevant_target_skus))
         score = result * max_kpi_points
         self.write_to_db(fk=kpi_fk, numerator_id=self.manufacturer_fk, denominator_id=self.store_id,
                          numerator_result=count_of_passing_skus, denominator_result=len(relevant_target_skus),
