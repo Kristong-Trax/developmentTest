@@ -329,7 +329,7 @@ class PepsiToolBox(GlobalSessionToolBox):
                 acomodo_merged_df['passed'].loc[(acomodo_merged_df['PUERTA'] == acomodo_merged_df['bay_number']) & (
                         acomodo_merged_df['PARRILLA'] == acomodo_merged_df['shelf_number'])] = 100
 
-                ratio = self.calculate_acomodo_sku(acomodo_merged_df, template_name_fk, scene_id)
+                ratio = self.calculate_acomodo_sku(acomodo_merged_df, template_name_fk)
                 scene_ratios.append(ratio)
 
 
@@ -345,7 +345,7 @@ class PepsiToolBox(GlobalSessionToolBox):
         final_ratio = self.calculate_average_ratio(scene_ratios)
         return final_ratio
 
-    def calculate_acomodo_sku(self, df, template_name_fk, scene_fk):
+    def calculate_acomodo_sku(self, df, template_name_fk):
         kpi_name = Const.KPI_ACAMODO_SKU
         kpi_fk = self.get_kpi_fk_by_kpi_type(kpi_name)
         parent_fk = self.get_parent_fk(kpi_name)

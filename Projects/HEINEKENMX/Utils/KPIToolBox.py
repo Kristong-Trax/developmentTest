@@ -20,6 +20,7 @@ from KPIUtils_v2.Utils.GlobalScripts.Scripts import GlobalSessionToolBox
 # from KPIUtils_v2.Calculations.CalculationsUtils import GENERALToolBoxCalculations
 
 from Projects.HEINEKENMX.Data.LocalConsts import Consts
+from Projects.HEINEKENMX.Botana.KPIToolBox import BotanaToolBox
 from Projects.HEINEKENMX.Refresco.KPIToolBox import RefrescoToolBox
 from Projects.HEINEKENMX.Cerveza.Utils.KPIToolBox import CervezaToolBox
 from Projects.HEINEKENMX.Cigarros.Utils.KPIToolBox import CigarrosToolBox
@@ -40,6 +41,10 @@ class ToolBox(GlobalSessionToolBox):
 
         refresco_tool_box = RefrescoToolBox(self.data_provider, self.output, self.common)
         score += refresco_tool_box.main_calculation()
+
+        botana_tool_box = BotanaToolBox(self.data_provider, self.output, self.common)
+        score += botana_tool_box.main_calculation()
+
 
         cigarros_tool_box = CigarrosToolBox(self.data_provider, self.output, self.common)
         score += cigarros_tool_box.main_calculation()

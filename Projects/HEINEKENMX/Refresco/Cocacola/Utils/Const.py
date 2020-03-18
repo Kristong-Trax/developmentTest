@@ -34,12 +34,16 @@ class Const(object):
     KPI_FRENTES_SKU = 'Frentes - RCC - SKU'
     KPI_FRENTES = 'Frentes - RCC'
     KPI_INVASION = 'Invasion - RCC'
-    KPI_POSITION = 'Acomodo - RCC - SKU'
+
     KPI_DISTRIBUTION = 'Surtido - RCC - SKU'
 
     KPI_SURTIDO = 'Surtido - RCC'
     KPI_MERCADEO = 'Mercadeo - RCC'
     KPI_REFRESCO = 'Refrescos Coca Cola'
+
+    KPI_ACAMODO = 'Acomodo - RCC'
+    KPI_ACAMODO_SCENE = 'Acomodo Scene - RCC'
+    KPI_ACAMODO_SKU = 'Acomodo - RCC - SKU'
 
     KPI_WEIGHTS = {
                    'Mercadeo - RCC': 40,

@@ -20,7 +20,7 @@ import pandas as pd
 # from KPIUtils_v2.Calculations.SurveyCalculations import Survey
 
 # from KPIUtils_v2.Calculations.CalculationsUtils import GENERALToolBoxCalculations
-from Projects.HEINEKENMX.Refresco.Cocacola.Utils.KPIToolBox import CocacolaToolBox
+from Projects.HEINEKENMX.Botana.Barcel.Utils.KPIToolBox import BarcelToolBox
 from Projects.HEINEKENMX.Refresco.Pepsi.Utils.KPIToolBox import PepsiToolBox
 from Projects.HEINEKENMX.Refresco.PJ.Utils.KPIToolBox import PJToolBox
 
@@ -30,7 +30,7 @@ from Projects.HEINEKENMX.Refresco.Const import Const
 __author__ = 'nicolaske'
 
 
-class RefrescoToolBox(GlobalSessionToolBox):
+class BotanaToolBox(GlobalSessionToolBox):
 
     def __init__(self, data_provider, output, common):
         GlobalSessionToolBox.__init__(self, data_provider, output, common)
@@ -44,17 +44,15 @@ class RefrescoToolBox(GlobalSessionToolBox):
 
 
 
-        cocacola_tool_box = CocacolaToolBox(self.data_provider, self.output, self.common)
-        score += cocacola_tool_box.main_calculation()
+        barcel_tool_box = BarcelToolBox(self.data_provider, self.output, self.common)
+        score += barcel_tool_box.main_calculation()
 
         #
         # pepsi_tool_box = PepsiToolBox(self.data_provider, self.output, self.common)
         # score += pepsi_tool_box.main_calculation()
 
 
-        # pj_tool_box = PJToolBox(self.data_provider, self.output, self.common)
-        # pj_ratio = pj_tool_box.main_calculation()
-        # score += [coca_ratio, pepsi_ratio, pj_ratio]
+
 
         ratio = (score / max_possible_point) * 100
 

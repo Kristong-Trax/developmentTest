@@ -1,7 +1,7 @@
 from Trax.Utils.Logging.Logger import Log
 from KPIUtils_v2.Utils.GlobalScripts.Scripts import GlobalSessionToolBox
 import pandas as pd
-from Projects.HEINEKENMX.Refresco.Pepsi.Utils.Const import Const
+from Projects.HEINEKENMX.Botana.Barcel.Utils.Const import Const
 
 # from KPIUtils_v2.Utils.Consts.DataProvider import
 # from KPIUtils_v2.Utils.Consts.DB import 
@@ -24,7 +24,7 @@ from Projects.HEINEKENMX.Refresco.Pepsi.Utils.Const import Const
 __author__ = 'nicolaske'
 
 
-class PepsiToolBox(GlobalSessionToolBox):
+class BarcelToolBox(GlobalSessionToolBox):
 
     def __init__(self, data_provider, output, common):
         GlobalSessionToolBox.__init__(self, data_provider, output, common)
@@ -34,10 +34,10 @@ class PepsiToolBox(GlobalSessionToolBox):
         self.relevant_scif = self.scif[self.scif['template_name'].isin(self.relevant_scenes_exist_value)]
 
     def main_calculation(self):
-        score = self.calculate_refrescos_pepsi()
+        score = self.calculate_barcel()
         return score
 
-    def calculate_refrescos_pepsi(self):
+    def calculate_barcel(self):
         kpi_name = Const.KPI_REFRESCO
         kpi_fk = self.get_kpi_fk_by_kpi_type(kpi_name)
         parent_fk = self.get_parent_fk(kpi_name)
@@ -67,8 +67,7 @@ class PepsiToolBox(GlobalSessionToolBox):
         score = 0
 
         score += self.calculate_empty_exist()
-        score +=self.calculate_invasion()
-        score += self.calculate_acamodo()  #acomodo
+        # score +=self.calculate_invasion()
         score += self.calculate_facing_count() #frentes
 
         ratio = (score / max_possible_point) * 100
@@ -140,7 +139,7 @@ class PepsiToolBox(GlobalSessionToolBox):
         weight = Const.KPI_WEIGHTS[Const.KPI_FRENTES]
 
         valid_scene_types = self.main_template['NOMBRE DE TAREA'].unique().tolist()
-        valid_scene_types = [x for x in valid_scene_types if 'Pepsi' in x]
+        valid_scene_types = [x for x in valid_scene_types if 'Gondola' in x]
         relevant_scif = self.scif[self.scif['template_name'].isin(valid_scene_types)]
         relevant_scif.groupby('product_fk', as_index=False)['facings'].sum()
         relevant_target_skus = \
@@ -351,8 +350,7 @@ class PepsiToolBox(GlobalSessionToolBox):
         parent_fk = self.get_parent_fk(kpi_name)
         numerator = 0
         denominator = 0
-
-        relevant_columns = ['scene_fk', 'product_fk', 'PUERTA', 'PARRILLA', 'shelf_number', 'bay_number', 'passed']
+        relevant_columns = ['scene_fk','product_fk','PUERTA','PARRILLA', 'shelf_number', 'bay_number','passed']
         df_fixed = df[relevant_columns].drop_duplicates()
 
         product_fks = df_fixed.product_fk.unique().tolist()
@@ -366,21 +364,23 @@ class PepsiToolBox(GlobalSessionToolBox):
             else:
                 pass_value = 0
 
+
+
             if not pd.isna(product_fk):
                 denominator += 1
                 if pass_value == 1:
                     numerator += 1
 
-                self.write_to_db(fk=kpi_fk, numerator_id=product_fk,
-                                 # numerator_result=sku_row.PUERTA,
-                                 denominator_id=template_name_fk,
-                                 # denominator_result=sku_row.bay_number,
-                                 # result=sku_row.shelf_number,
-                                 # target=sku_row.PARRILLA,
-                                 score=pass_value, context_id=scene_fk,
-                                 identifier_parent=parent_fk,
-                                 identifier_result=kpi_fk,
-                                 should_enter=True)
+                self.write_to_db(fk=kpi_fk, numerator_id =  product_fk,
+                                        # numerator_result=sku_row.PUERTA,
+                                        denominator_id=template_name_fk,
+                                        # denominator_result=sku_row.bay_number,
+                                        # result=sku_row.shelf_number,
+                                        # target=sku_row.PARRILLA,
+                                        score=pass_value, context_id= scene_fk,
+                                        identifier_parent=parent_fk,
+                                        identifier_result=kpi_fk,
+                                        should_enter=True)
         if denominator != 0:
             ratio = (numerator / float(denominator)) * 100
         else:
