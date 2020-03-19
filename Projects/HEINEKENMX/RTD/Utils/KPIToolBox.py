@@ -375,8 +375,8 @@ class RTDToolBox(GlobalSessionToolBox):
                          denominator_id=scene_realogram.template_fk,
                          numerator_result=len(scene_realogram.correctly_placed_tags),
                          denominator_result=scene_realogram.number_of_skus_in_planogram,
-                         result=len(scene_realogram.correctly_placed_tags) / number_of_positions_in_planogram,
-                         score=len(scene_realogram.incorrectly_placed_tags) / number_of_positions_in_planogram,
+                         result=len(scene_realogram.correctly_placed_tags) / number_of_positions_in_planogram * 100,
+                         score=len(scene_realogram.correctly_placed_tags) / number_of_positions_in_planogram,
                          context_id=scene_realogram.scene_fk,
                          identifier_result=identifier_result, identifier_parent=identifier_parent, should_enter=True)
 
@@ -412,7 +412,7 @@ class RTDToolBox(GlobalSessionToolBox):
                          denominator_id=scene_realogram.template_fk,
                          numerator_result=len(scene_realogram.incorrectly_placed_tags),
                          denominator_result=scene_realogram.number_of_skus_in_planogram,
-                         result=len(scene_realogram.incorrectly_placed_tags) / number_of_positions_in_planogram,
+                         result=len(scene_realogram.incorrectly_placed_tags) / number_of_positions_in_planogram * 100,
                          score=len(scene_realogram.incorrectly_placed_tags) / number_of_positions_in_planogram,
                          context_id=scene_realogram.scene_fk,
                          identifier_result=identifier_result, identifier_parent=identifier_parent, should_enter=True)
@@ -448,7 +448,7 @@ class RTDToolBox(GlobalSessionToolBox):
                          denominator_id=scene_realogram.template_fk,
                          numerator_result=len(scene_realogram.extra_tags),
                          denominator_result=scene_realogram.number_of_skus_in_planogram,
-                         result=len(scene_realogram.extra_tags) / number_of_positions_in_planogram,
+                         result=len(scene_realogram.extra_tags) / number_of_positions_in_planogram * 100,
                          score=len(scene_realogram.extra_tags) / number_of_positions_in_planogram,
                          context_id=scene_realogram.scene_fk,
                          identifier_result=identifier_result, identifier_parent=identifier_parent, should_enter=True)

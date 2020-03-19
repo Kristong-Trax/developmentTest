@@ -18,7 +18,7 @@ class HeinekenRealogram(object):
         self.scene_type = scene_type
         self.planograms = self._generate_planograms_by_door(planogram_template_data)
         self.realogram = self._generate_realogram()
-        self._filter_realogram(products_to_filter_by)
+        self._filter_realogram_and_planogram(products_to_filter_by)
         self.correctly_placed_tags = self._calculate_correctly_placed_tags()
         self.incorrectly_placed_tags = self._calculate_incorrectly_placed_tags()
         self.extra_tags = self._calculate_extra_tags()
@@ -33,10 +33,16 @@ class HeinekenRealogram(object):
     def _get_scene_fk(self, mpis):
         return mpis['scene_fk'].iloc[0]
 
-    def _filter_realogram(self, products_to_filter_by):
+    def _filter_realogram_and_planogram(self, products_to_filter_by):
         if products_to_filter_by:
             self.realogram = \
-                self.realogram[self.realogram['product_fk'].isin(products_to_filter_by)]
+                self.realogram[(self.realogram['product_fk'].isin(products_to_filter_by)) |
+                               (self.realogram['target_product_fk'].isin(products_to_filter_by))]
+            for door_id in self.planograms.keys():
+                filtered_planogram = self.planograms[door_id]
+                filtered_planogram = \
+                    filtered_planogram[filtered_planogram['target_product_fk'].isin(products_to_filter_by)]
+                self.planograms[door_id] = filtered_planogram
 
     def _generate_planograms_by_door(self, planogram_template_data):
         planograms = {}
