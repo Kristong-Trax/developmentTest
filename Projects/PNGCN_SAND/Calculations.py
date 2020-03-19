@@ -15,15 +15,11 @@ class PngCNEmptyCalculations(BaseCalculationsScript):
     @log_runtime('Total Calculations', log_start=True)
     def run_project_calculations(self):
         self.timer.start()
-        tool_box = PNGToolBox(self.data_provider, self.output)
-        if not tool_box.check_validation_of_session():
-            Log.info('Session has no relevant scenes')
-        elif not tool_box.empty_spaces.keys():
-            Log.info('None of the categories is relevant for this visit')
-        else:
-            tool_box.main_calculation()
-        tool_box.commit_results_data()
-        self.timer.stop('PngCNEmptyCalculations.run_project_calculations')
+        return
+        # tool_box = PNGToolBox(self.data_provider, self.output)
+        # tool_box.main_calculation()
+        # tool_box.commit_results_data()
+        # self.timer.stop('PngCNEmptyCalculations.run_project_calculations')
 
 # if __name__ == '__main__':
 #     LoggerInitializer.init('Png-cn calculations')

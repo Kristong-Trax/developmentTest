@@ -247,6 +247,11 @@ class CARLSBERGToolBox:
             # 0 - store level
             # 1 - category level
             msl_store_level, msl_cat_level = each_assortment
+            Log.info("Starting {sess}, calulcation for store level: {s_kpi} and category level: {c_kpi}.".format(
+                sess=self.session_uid,
+                s_kpi=msl_store_level,
+                c_kpi=msl_cat_level,
+            ))
             external_target_data = self.external_targets[self.external_targets['kpi_type']==msl_store_level]
             if external_target_data.empty:
                 Log.info("{} has no external target data to calculate for session {}.".format(msl_store_level,
@@ -269,7 +274,13 @@ class CARLSBERGToolBox:
                 valid_scif = valid_scif[(valid_scif['category_fk'].isin(valid_category_fks))]
             if valid_brand_fks and not is_nan(valid_brand_fks):
                 valid_scif = valid_scif[(valid_scif['brand_fk'].isin(valid_brand_fks))]
-
+            if valid_scif.empty:
+                Log.info("Session {sess} has no data to calculate {st}/{cat}".format(
+                    sess=self.session_uid,
+                    st=msl_store_level,
+                    cat=msl_cat_level
+                ))
+                continue
             distribution_kpi = self.kpi_static_data[(self.kpi_static_data[KPI_TYPE_COL] == msl_store_level)
                                                     & (self.kpi_static_data['delete_time'].isnull())]
             prod_presence_kpi = self.kpi_static_data[(self.kpi_static_data[KPI_TYPE_COL] == msl_store_level + ' - SKU')
@@ -318,7 +329,7 @@ class CARLSBERGToolBox:
             template_fk = 0
             if not valid_scif.empty:
                 template_fk = int(valid_scif['template_fk'].unique()[0])
-            Log.info("Calculate Assortment KPI [] for template: {}".format(template_fk))
+            Log.info("Calculate Assortment KPI for template: {}".format(template_fk))
             # calculate and save the percentage values for distribution and oos
             self.calculate_and_save_distribution(
                 valid_scif=valid_scif,
@@ -375,7 +386,10 @@ class CARLSBERGToolBox:
                                        context_id=template_fk,
                                        result=distribution_perc,
                                        score=distribution_perc,
-                                       identifier_result="{}_{}".format(dst_kpi_name, self.store_id),
+                                       identifier_result="{}_{}_{}_{}".format(dst_kpi_name,
+                                                                              self.store_id,
+                                                                              template_fk,
+                                                                              self.session_uid),
                                        should_enter=True
                                        )
 
@@ -405,7 +419,9 @@ class CARLSBERGToolBox:
                                                result=assortment_code,
                                                score=assortment_code,
                                                identifier_result=distribution_kpi_name + ' - SKU',
-                                               identifier_parent="{}_{}".format(distribution_kpi_name, self.store_id),
+                                               identifier_parent="{}_{}_{}_{}".format(distribution_kpi_name,
+                                                                                      self.store_id, template_fk,
+                                                                                      self.session_uid),
                                                should_enter=True
                                                )
 
@@ -414,7 +430,11 @@ class CARLSBERGToolBox:
         """Function to calculate distribution and OOS percentage by Category.
         Saves distribution and oos percentage as values.
         """
-        Log.info("Calculate {} per Category for {}".format(dst_kpi_name, self.session_uid))
+        Log.info("Calculate {} for {}".format(dst_kpi_name, self.session_uid))
+        categories_in_scif = valid_scif.category_fk.unique()
+        categories_in_assortment = self.all_products[
+            self.all_products.product_fk.isin(assortment_product_fks.tolist())].category_fk.unique()
+        categories_to_save_zero = list(set(categories_in_assortment) - set(categories_in_scif))
         scene_category_group = valid_scif.groupby('category_fk')
         for category_fk, each_scif_data in scene_category_group:
             scene_products = pd.Series(each_scif_data["item_id"].unique())
@@ -439,7 +459,26 @@ class CARLSBERGToolBox:
                                            context_id=template_fk,
                                            result=distribution_perc,
                                            score=distribution_perc,
-                                           identifier_result="{}_{}".format(dst_kpi_name, category_fk),
+                                           identifier_result="{}_{}_{}_{}".format(dst_kpi_name,
+                                                                                  category_fk, template_fk,
+                                                                                  self.session_uid),
+                                           should_enter=True
+                                           )
+        Log.info('Save zero MSL for the categories {} because they were not found in session.'.format(
+            categories_to_save_zero))
+        for each_cat_to_save_zero in categories_to_save_zero:
+            self.common.write_to_db_result(fk=distribution_kpi_fk,
+                                           numerator_id=self.own_man_fk,
+                                           numerator_result=0,
+                                           denominator_id=each_cat_to_save_zero,
+                                           denominator_result=0,
+                                           context_id=template_fk,
+                                           result=0,
+                                           score=0,
+                                           identifier_result="{}_{}_{}_{}".format(dst_kpi_name,
+                                                                                  each_cat_to_save_zero,
+                                                                                  template_fk,
+                                                                                  self.session_uid),
                                            should_enter=True
                                            )
 
@@ -447,21 +486,28 @@ class CARLSBERGToolBox:
                                                       prod_presence_kpi_fk, distribution_kpi_name, template_fk):
         # all assortment products are only in own manufacturers context;
         # but we have the products and hence no need to filter out denominator
-        Log.info("Calculate {} - SKU per Category for {}".format(distribution_kpi_name, self.session_uid))
+        Log.info("Calculate {} - SKU for {}".format(distribution_kpi_name, self.session_uid))
+        categories_in_scif = valid_scif.category_fk.unique()
+        categories_in_assortment = self.all_products[
+            self.all_products.product_fk.isin(assortment_product_fks.tolist())].category_fk.unique()
+        categories_to_save_zero = list(set(categories_in_assortment) - set(categories_in_scif))
         scene_category_group = valid_scif.groupby('category_fk')
         for category_fk, each_scif_data in scene_category_group:
+            # EXTRA is based on own products
+            total_own_products_in_scene_for_cat = each_scif_data[each_scif_data['manufacturer_fk'] == self.own_man_fk][
+                "item_id"].unique()
             total_products_in_scene_for_cat = each_scif_data["item_id"].unique()
             curr_category_products_in_assortment_df = self.all_products[
                 (self.all_products.product_fk.isin(assortment_product_fks))
                 & (self.all_products.category_fk == category_fk)]
             curr_category_products_in_assortment = curr_category_products_in_assortment_df['product_fk'].unique()
             present_products = np.intersect1d(total_products_in_scene_for_cat, curr_category_products_in_assortment)
-            extra_products = np.setdiff1d(total_products_in_scene_for_cat, present_products)
+            extra_products = np.setdiff1d(total_own_products_in_scene_for_cat, present_products)
             oos_products = np.setdiff1d(curr_category_products_in_assortment, present_products)
             product_map = {
                 OOS_CODE: oos_products,
                 PRESENT_CODE: present_products,
-                # EXTRA_CODE: extra_products
+                EXTRA_CODE: extra_products
             }
             # save product presence; with distribution % kpi as parent
             for assortment_code, product_fks in product_map.iteritems():
@@ -473,9 +519,34 @@ class CARLSBERGToolBox:
                                                    result=assortment_code,
                                                    score=assortment_code,
                                                    identifier_result=distribution_kpi_name + ' - SKU',
-                                                   identifier_parent="{}_{}".format(distribution_kpi_name, category_fk),
+                                                   identifier_parent="{}_{}_{}_{}".format(distribution_kpi_name,
+                                                                                          category_fk,
+                                                                                          template_fk,
+                                                                                          self.session_uid),
                                                    should_enter=True
                                                    )
+        # save OOS for products whose category is not present in session.
+        for each_cat in categories_to_save_zero:
+            curr_category_products_in_assortment_df = self.all_products[
+                (self.all_products.product_fk.isin(assortment_product_fks))
+                & (self.all_products.category_fk == each_cat)]
+            curr_category_products_in_assortment = curr_category_products_in_assortment_df['product_fk'].unique()
+            Log.info('Save OOS for products {prods} category {cat} because they were not found in session.'.format(
+                prods=curr_category_products_in_assortment, cat=each_cat))
+            for each_fk in curr_category_products_in_assortment:
+                self.common.write_to_db_result(fk=prod_presence_kpi_fk,
+                                               numerator_id=each_fk,
+                                               denominator_id=each_cat,
+                                               context_id=template_fk,
+                                               result=OOS_CODE,
+                                               score=OOS_CODE,
+                                               identifier_result=distribution_kpi_name + ' - SKU',
+                                               identifier_parent="{}_{}_{}_{}".format(distribution_kpi_name,
+                                                                                      each_cat,
+                                                                                      template_fk,
+                                                                                      self.session_uid),
+                                               should_enter=True
+                                               )
 
     def get_policies(self, kpi_fk):
         query = """ select a.kpi_fk, p.policy_name, p.policy, atag.assortment_group_fk,
@@ -572,8 +643,9 @@ class CARLSBERGToolBox:
             denominators_df_to_save_zero = denominators_df_to_save_zero.astype('int64')
             for idx, each_row in denominators_df_to_save_zero.iterrows():
                 # get parent details
+                param_id_map = dict(each_row.fillna('0'))
+                cat_fk = param_id_map.get('category_fk', '')
                 if not is_nan(kpi[KPI_PARENT_COL].iloc[0]):
-                    param_id_map = dict(each_row.fillna('0'))
                     kpi_parent = self.kpi_static_data[(self.kpi_static_data[KPI_TYPE_COL] == kpi[KPI_PARENT_COL].iloc[0])
                                                       & (self.kpi_static_data['delete_time'].isnull())]
                     kpi_details = self.kpi_template.parse(KPI_DETAILS_SHEET)
@@ -588,12 +660,14 @@ class CARLSBERGToolBox:
                                                          param_id_map=param_id_map)
                     if parent_context_id is None:
                         parent_context_id = self.store_id
-                    identifier_parent = "{}_{}_{}_{}".format(
+                    identifier_parent = "{}_{}_{}_{}_{}_{}".format(
                         kpi_parent_detail['kpi_name'].iloc[0],
                         kpi_parent['pk'].iloc[0],
                         # parent_numerator_id,
                         int(parent_denominator_id),
-                        int(parent_context_id)
+                        int(parent_context_id),
+                        cat_fk,
+                        self.session_uid
                     )
                 context_id = each_row[PARAM_DB_MAP[kpi['context'].iloc[0]]['key']]
                 # query out empty product IDs since FSOS is not interested in them.
@@ -614,17 +688,19 @@ class CARLSBERGToolBox:
                                                result=result,
                                                numerator_result=numerator_result,
                                                denominator_result=denominator_result,
-                                               identifier_result="{}_{}_{}_{}".format(
+                                               identifier_result="{}_{}_{}_{}_{}_{}".format(
                                                    kpi['kpi_name'].iloc[0],
                                                    kpi['pk'].iloc[0],
                                                    # numerator_id,
                                                    each_den_fk,
-                                                   context_id
+                                                   context_id,
+                                                   cat_fk,
+                                                   self.session_uid
                                                ),
                                                identifier_parent=identifier_parent,
                                                should_enter=True,
                                                )
-
+        stop_res_calc = True
         for group_id_tup, group_data in grouped_data_frame:
             if type(group_id_tup) not in [tuple, list]:
                 # convert to a tuple
@@ -651,7 +727,13 @@ class CARLSBERGToolBox:
                     name=kpi.kpi_name.iloc[0]
                 ))
                 continue
-            result = len(group_data) / float(len(denominator_df))
+            context_denominator_df = dataframe_to_process
+            if len(groupers) > 1:
+                context_denominator_df = dataframe_to_process.query('{key} == {value}'.format(
+                    key=groupers[1],
+                    value=get_parameter_id(key_value=groupers[1], param_id_map=param_id_map)))
+            result = len(group_data) / float(len(context_denominator_df))
+            cat_fk = param_id_map.get('category_fk', '')
             if not is_nan(kpi[KPI_PARENT_COL].iloc[0]):
                 kpi_parent = self.kpi_static_data[(self.kpi_static_data[KPI_TYPE_COL] == kpi[KPI_PARENT_COL].iloc[0])
                                                   & (self.kpi_static_data['delete_time'].isnull())]
@@ -671,20 +753,24 @@ class CARLSBERGToolBox:
                                                context_id=context_id,
                                                result=result,
                                                numerator_result=len(group_data),
-                                               denominator_result=len(denominator_df),
-                                               identifier_result="{}_{}_{}_{}".format(
+                                               denominator_result=len(context_denominator_df),
+                                               identifier_result="{}_{}_{}_{}_{}_{}".format(
                                                    kpi['kpi_name'].iloc[0],
                                                    kpi['pk'].iloc[0],
                                                    # numerator_id,
                                                    denominator_id,
-                                                   context_id
+                                                   context_id,
+                                                   cat_fk,
+                                                   self.session_uid
                                                ),
-                                               identifier_parent="{}_{}_{}_{}".format(
+                                               identifier_parent="{}_{}_{}_{}_{}_{}".format(
                                                    kpi_parent_detail['kpi_name'].iloc[0],
                                                    kpi_parent['pk'].iloc[0],
                                                    # parent_numerator_id,
                                                    parent_denominator_id,
-                                                   parent_context_id
+                                                   parent_context_id,
+                                                   cat_fk,
+                                                   self.session_uid
                                                ),
                                                should_enter=True,
                                                )
@@ -696,13 +782,15 @@ class CARLSBERGToolBox:
                                                context_id=context_id,
                                                result=result,
                                                numerator_result=len(group_data),
-                                               denominator_result=len(denominator_df),
-                                               identifier_result="{}_{}_{}_{}".format(
+                                               denominator_result=len(context_denominator_df),
+                                               identifier_result="{}_{}_{}_{}_{}_{}".format(
                                                    kpi['kpi_name'].iloc[0],
                                                    kpi['pk'].iloc[0],
                                                    # numerator_id,
                                                    denominator_id,
-                                                   context_id
+                                                   context_id,
+                                                   cat_fk,
+                                                   self.session_uid
                                                ),
                                                should_enter=True,
                                                )
