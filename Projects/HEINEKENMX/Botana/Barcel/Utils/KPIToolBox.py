@@ -38,7 +38,7 @@ class BarcelToolBox(GlobalSessionToolBox):
         return score
 
     def calculate_barcel(self):
-        kpi_name = Const.KPI_REFRESCO
+        kpi_name = Const.KPI_BOTANA
         kpi_fk = self.get_kpi_fk_by_kpi_type(kpi_name)
         parent_fk = self.get_parent_fk(kpi_name)
         # kpi_weight = Const.KPI_WEIGHTS[kpi_name]
@@ -67,7 +67,7 @@ class BarcelToolBox(GlobalSessionToolBox):
         score = 0
 
         score += self.calculate_empty_exist()
-        # score +=self.calculate_invasion()
+        score +=self.calculate_invasion()
         score += self.calculate_facing_count() #frentes
 
         ratio = (score / max_possible_point) * 100
@@ -165,7 +165,10 @@ class BarcelToolBox(GlobalSessionToolBox):
 
         self._calculate_frentes_sku(relevant_target_skus)
 
-        result = count_of_passing_skus / float(len(relevant_target_skus))
+        if relevant_target_skus.empty:
+            result = 0
+        else:
+            result = count_of_passing_skus / float(len(relevant_target_skus))
         score = result * max_kpi_points
         self.write_to_db(fk=kpi_fk, numerator_id=self.manufacturer_fk, denominator_id=self.store_id,
                          numerator_result=count_of_passing_skus, denominator_result=len(relevant_target_skus),
@@ -404,7 +407,7 @@ class BarcelToolBox(GlobalSessionToolBox):
                 self.invasion_template['NOMBRE DE TAREA'].isin(self.relevant_scenes_exist_value)]
             inv_manufacturer = self.sanitize_values(relevant_invasion_df['Manufacturer '].iloc[0])
             inv_category = self.sanitize_values(relevant_invasion_df['Category'].iloc[0])
-            inv_product = self.sanitize_values(relevant_invasion_df['product_type'].iloc[0])
+            inv_product = self.sanitize_values(relevant_invasion_df['Product_Type'].iloc[0])
 
             invasion_df = self.relevant_scif[(self.relevant_scif['manufacturer_name'].isin(inv_manufacturer)) | (
                 self.relevant_scif['category'].isin(inv_category)) | (
@@ -423,9 +426,11 @@ class BarcelToolBox(GlobalSessionToolBox):
         return score
 
     def get_template(self):
-        template_beidas_df = pd.read_excel(Const.KPI_TEMPLATE, sheetname=Const.sheetname_Bebidas, header=1)
+        template_botana_df = pd.read_excel(Const.KPI_TEMPLATE, sheetname=Const.sheetname_Bebidas, header=1)
         template_invasion_df = pd.read_excel(Const.KPI_TEMPLATE, sheetname=Const.sheetname_Invasion, header=1)
-        return template_beidas_df, template_invasion_df
+
+        template_botana_relevant_df  =  self.botana_filter_out_non_relevant_skus(template_botana_df)
+        return template_botana_relevant_df, template_invasion_df
 
     def get_parent_fk(self, kpi_name):
         parent_kpi_name = Const.KPIS_HIERACHY[kpi_name]
@@ -444,5 +449,12 @@ class BarcelToolBox(GlobalSessionToolBox):
         return relevant_scenes
 
     def sanitize_values(self, values):
+        if pd.isna(values):
+            return []
         list_values = values.split(",")
         return list_values
+
+    def botana_filter_out_non_relevant_skus(self, df):
+        ean_list = self.all_products['product_ean_code'][self.all_products['manufacturer_local_name'] == Const.RELEVANT_MANUFACTURER].unique().tolist()
+        filtered_df = df[df['PRODUCT EAN'].isin(ean_list)]
+        return filtered_df

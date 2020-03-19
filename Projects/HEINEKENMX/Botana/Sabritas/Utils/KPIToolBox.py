@@ -1,7 +1,7 @@
 from Trax.Utils.Logging.Logger import Log
 from KPIUtils_v2.Utils.GlobalScripts.Scripts import GlobalSessionToolBox
 import pandas as pd
-from Projects.HEINEKENMX.Refresco.Pepsi.Utils.Const import Const
+from Projects.HEINEKENMX.Botana.Sabritas.Utils.Const import Const
 
 # from KPIUtils_v2.Utils.Consts.DataProvider import
 # from KPIUtils_v2.Utils.Consts.DB import 
@@ -24,7 +24,7 @@ from Projects.HEINEKENMX.Refresco.Pepsi.Utils.Const import Const
 __author__ = 'nicolaske'
 
 
-class PepsiToolBox(GlobalSessionToolBox):
+class SabritasToolBox(GlobalSessionToolBox):
 
     def __init__(self, data_provider, output, common):
         GlobalSessionToolBox.__init__(self, data_provider, output, common)
@@ -34,11 +34,11 @@ class PepsiToolBox(GlobalSessionToolBox):
         self.relevant_scif = self.scif[self.scif['template_name'].isin(self.relevant_scenes_exist_value)]
 
     def main_calculation(self):
-        score = self.calculate_refrescos_pepsi()
+        score = self.calculate_barcel()
         return score
 
-    def calculate_refrescos_pepsi(self):
-        kpi_name = Const.KPI_REFRESCO
+    def calculate_barcel(self):
+        kpi_name = Const.KPI_BOTANA
         kpi_fk = self.get_kpi_fk_by_kpi_type(kpi_name)
         parent_fk = self.get_parent_fk(kpi_name)
         # kpi_weight = Const.KPI_WEIGHTS[kpi_name]
@@ -68,7 +68,6 @@ class PepsiToolBox(GlobalSessionToolBox):
 
         score += self.calculate_empty_exist()
         score +=self.calculate_invasion()
-        score += self.calculate_acamodo()  #acomodo
         score += self.calculate_facing_count() #frentes
 
         ratio = (score / max_possible_point) * 100
@@ -140,7 +139,7 @@ class PepsiToolBox(GlobalSessionToolBox):
         weight = Const.KPI_WEIGHTS[Const.KPI_FRENTES]
 
         valid_scene_types = self.main_template['NOMBRE DE TAREA'].unique().tolist()
-        valid_scene_types = [x for x in valid_scene_types if 'Pepsi' in x]
+        valid_scene_types = [x for x in valid_scene_types if 'Gondola' in x]
         relevant_scif = self.scif[self.scif['template_name'].isin(valid_scene_types)]
         relevant_scif.groupby('product_fk', as_index=False)['facings'].sum()
         relevant_target_skus = \
@@ -166,7 +165,10 @@ class PepsiToolBox(GlobalSessionToolBox):
 
         self._calculate_frentes_sku(relevant_target_skus)
 
-        result = count_of_passing_skus / float(len(relevant_target_skus))
+        if relevant_target_skus.empty:
+            result = 0
+        else:
+            result = count_of_passing_skus / float(len(relevant_target_skus))
         score = result * max_kpi_points
         self.write_to_db(fk=kpi_fk, numerator_id=self.manufacturer_fk, denominator_id=self.store_id,
                          numerator_result=count_of_passing_skus, denominator_result=len(relevant_target_skus),
@@ -329,7 +331,7 @@ class PepsiToolBox(GlobalSessionToolBox):
                 acomodo_merged_df['passed'].loc[(acomodo_merged_df['PUERTA'] == acomodo_merged_df['bay_number']) & (
                         acomodo_merged_df['PARRILLA'] == acomodo_merged_df['shelf_number'])] = 100
 
-                ratio = self.calculate_acomodo_sku(acomodo_merged_df, template_name_fk)
+                ratio = self.calculate_acomodo_sku(acomodo_merged_df, template_name_fk, scene_id)
                 scene_ratios.append(ratio)
 
 
@@ -345,14 +347,13 @@ class PepsiToolBox(GlobalSessionToolBox):
         final_ratio = self.calculate_average_ratio(scene_ratios)
         return final_ratio
 
-    def calculate_acomodo_sku(self, df, template_name_fk):
+    def calculate_acomodo_sku(self, df, template_name_fk, scene_fk):
         kpi_name = Const.KPI_ACAMODO_SKU
         kpi_fk = self.get_kpi_fk_by_kpi_type(kpi_name)
         parent_fk = self.get_parent_fk(kpi_name)
         numerator = 0
         denominator = 0
-
-        relevant_columns = ['scene_fk', 'product_fk', 'PUERTA', 'PARRILLA', 'shelf_number', 'bay_number', 'passed']
+        relevant_columns = ['scene_fk','product_fk','PUERTA','PARRILLA', 'shelf_number', 'bay_number','passed']
         df_fixed = df[relevant_columns].drop_duplicates()
 
         product_fks = df_fixed.product_fk.unique().tolist()
@@ -366,21 +367,23 @@ class PepsiToolBox(GlobalSessionToolBox):
             else:
                 pass_value = 0
 
+
+
             if not pd.isna(product_fk):
                 denominator += 1
                 if pass_value == 1:
                     numerator += 1
 
-                self.write_to_db(fk=kpi_fk, numerator_id=product_fk,
-                                 # numerator_result=sku_row.PUERTA,
-                                 denominator_id=template_name_fk,
-                                 # denominator_result=sku_row.bay_number,
-                                 # result=sku_row.shelf_number,
-                                 # target=sku_row.PARRILLA,
-                                 score=pass_value, context_id=scene_fk,
-                                 identifier_parent=parent_fk,
-                                 identifier_result=kpi_fk,
-                                 should_enter=True)
+                self.write_to_db(fk=kpi_fk, numerator_id =  product_fk,
+                                        # numerator_result=sku_row.PUERTA,
+                                        denominator_id=template_name_fk,
+                                        # denominator_result=sku_row.bay_number,
+                                        # result=sku_row.shelf_number,
+                                        # target=sku_row.PARRILLA,
+                                        score=pass_value, context_id= scene_fk,
+                                        identifier_parent=parent_fk,
+                                        identifier_result=kpi_fk,
+                                        should_enter=True)
         if denominator != 0:
             ratio = (numerator / float(denominator)) * 100
         else:
@@ -404,7 +407,7 @@ class PepsiToolBox(GlobalSessionToolBox):
                 self.invasion_template['NOMBRE DE TAREA'].isin(self.relevant_scenes_exist_value)]
             inv_manufacturer = self.sanitize_values(relevant_invasion_df['Manufacturer '].iloc[0])
             inv_category = self.sanitize_values(relevant_invasion_df['Category'].iloc[0])
-            inv_product = self.sanitize_values(relevant_invasion_df['product_type'].iloc[0])
+            inv_product = self.sanitize_values(relevant_invasion_df['Product_Type'].iloc[0])
 
             invasion_df = self.relevant_scif[(self.relevant_scif['manufacturer_name'].isin(inv_manufacturer)) | (
                 self.relevant_scif['category'].isin(inv_category)) | (
@@ -423,9 +426,11 @@ class PepsiToolBox(GlobalSessionToolBox):
         return score
 
     def get_template(self):
-        template_beidas_df = pd.read_excel(Const.KPI_TEMPLATE, sheetname=Const.sheetname_Bebidas, header=1)
+        template_botana_df = pd.read_excel(Const.KPI_TEMPLATE, sheetname=Const.sheetname_Bebidas, header=1)
         template_invasion_df = pd.read_excel(Const.KPI_TEMPLATE, sheetname=Const.sheetname_Invasion, header=1)
-        return template_beidas_df, template_invasion_df
+
+        template_botana_relevant_df  =  self.botana_filter_out_non_relevant_skus(template_botana_df)
+        return template_botana_relevant_df, template_invasion_df
 
     def get_parent_fk(self, kpi_name):
         parent_kpi_name = Const.KPIS_HIERACHY[kpi_name]
@@ -444,5 +449,12 @@ class PepsiToolBox(GlobalSessionToolBox):
         return relevant_scenes
 
     def sanitize_values(self, values):
+        if pd.isna(values):
+            return []
         list_values = values.split(",")
         return list_values
+
+    def botana_filter_out_non_relevant_skus(self, df):
+        ean_list = self.all_products['product_ean_code'][self.all_products['manufacturer_local_name'] == Const.RELEVANT_MANUFACTURER].unique().tolist()
+        filtered_df = df[df['PRODUCT EAN'].isin(ean_list)]
+        return filtered_df

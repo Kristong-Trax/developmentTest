@@ -5,11 +5,12 @@ __author__ = 'Nicolas'
 
 class Const(object):
     KPI_TEMPLATE = os.path.join(os.path.dirname(os.path.realpath(__file__)),
-                                '..', 'Data', 'KPI Template - Heineken MX -feb18.xlsx')
+                                '..', 'Data', 'KPI Template - Heineken MX -marzo 18.xlsx')
 
     sheetname_Bebidas = 'Acomodo_Botanas'
     sheetname_Invasion = 'Invasion'
     RELEVANT_SCENES_TYPES = ['Gondola', 'Barcel']
+    RELEVANT_MANUFACTURER = 'BARCEL'
 
     SOS_EXCLUDE_FILTERS = {'product_type': ['Irrelevant', 'Empty']}
     ALLOWED_FILTERS = {'product_type': ['Other', 'Empty']}
@@ -27,7 +28,7 @@ class Const(object):
         'Acomodo Scene - Botana Barcel': 'Acomodo - Botana Barcel',
         'Acomodo - Botana Barcel - SKU': 'Acomodo Scene - Botana Barcel',
         'Invasion - Botana Barcel': 'Mercadeo - Botana Barcel',
-        'Surtido - Botana Barcel': 'Refrescos Coca Cola',
+        'Surtido - Botana Barcel': 'Botana  Barcel',
         'Surtido - Botana Barcel - SKU': 'Surtido - Botana Barcel'}
 
     KPI_EMPTY = 'Huecos - Botana Barcel'
@@ -39,7 +40,7 @@ class Const(object):
 
     KPI_SURTIDO = 'Surtido - Botana Barcel'
     KPI_MERCADEO = 'Mercadeo - Botana Barcel'
-    KPI_REFRESCO = 'Botana Barcel'
+    KPI_BOTANA= 'Botana Barcel'
 
 
 

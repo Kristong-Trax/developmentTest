@@ -21,6 +21,7 @@ import pandas as pd
 
 # from KPIUtils_v2.Calculations.CalculationsUtils import GENERALToolBoxCalculations
 from Projects.HEINEKENMX.Botana.Barcel.Utils.KPIToolBox import BarcelToolBox
+from Projects.HEINEKENMX.Botana.Sabritas.Utils.KPIToolBox import SabritasToolBox
 from Projects.HEINEKENMX.Refresco.Pepsi.Utils.KPIToolBox import PepsiToolBox
 from Projects.HEINEKENMX.Refresco.PJ.Utils.KPIToolBox import PJToolBox
 
@@ -48,8 +49,8 @@ class BotanaToolBox(GlobalSessionToolBox):
         score += barcel_tool_box.main_calculation()
 
         #
-        # pepsi_tool_box = PepsiToolBox(self.data_provider, self.output, self.common)
-        # score += pepsi_tool_box.main_calculation()
+        sabritas_tool_box = SabritasToolBox(self.data_provider, self.output, self.common)
+        score += sabritas_tool_box.main_calculation()
 
 
 

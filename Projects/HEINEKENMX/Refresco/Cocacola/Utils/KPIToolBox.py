@@ -389,16 +389,6 @@ class CocacolaToolBox(GlobalSessionToolBox):
 
         return ratio
 
-    def calculate_acomodo_pass_fail(self, df):
-
-
-
-
-        for sku_row in df_fixed.itertuples():
-            if not pd.isna(sku_row.product_fk):
-                denominator += 1
-                if sku_row.passed:
-                    numerator += 1
 
 
     def calculate_invasion(self):
