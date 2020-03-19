@@ -10,7 +10,7 @@ if __name__ == '__main__':
     Config.init()
     project_name = 'straussil-sand'
     data_provider = KEngineDataProvider(project_name)
-    session_list = ['6f6575e9-c5f3-41cd-a11a-15a454b72260']
+    session_list = ['85ed1059-8ad9-4830-ab43-318b84cda6a0']
     for session in session_list:
         data_provider.load_session_data(session)
         output = Output()
