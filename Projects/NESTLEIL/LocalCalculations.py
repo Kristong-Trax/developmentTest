@@ -10,7 +10,7 @@ if __name__ == '__main__':
     Config.init()
     project_name = 'nestleil'
     data_provider = KEngineDataProvider(project_name)
-    session = 'ad083ee9-71b6-4b62-8168-8e4015635799'
+    session = 'd4fe5efd-19b9-457a-a8c3-4bb4a6b72c88'
     data_provider.load_session_data(session)
     output = Output()
     Calculations(data_provider, output).run_project_calculations()
