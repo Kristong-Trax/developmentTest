@@ -12,22 +12,14 @@ import os
 from KPIUtils_v2.DB.Common import Common
 from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
 
-# from KPIUtils_v2.Calculations.AvailabilityCalculations import Availability
-# from KPIUtils_v2.Calculations.NumberOfScenesCalculations import NumberOfScenes
-# from KPIUtils_v2.Calculations.PositionGraphsCalculations import PositionGraphs
-# from KPIUtils_v2.Calculations.SOSCalculations import SOS
-# from KPIUtils_v2.Calculations.SequenceCalculations import Sequence
-# from KPIUtils_v2.Calculations.SurveyCalculations import Survey
-
-# from KPIUtils_v2.Calculations.CalculationsUtils import GENERALToolBoxCalculations
-
 __author__ = 'krishnat'
 
 TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data',
                              'Nestle Creamers Template V1.1.xlsx')
 
 SHEETS = [Consts.KPIS, Consts.SHELF_COUNT, Consts.SOS, Consts.DISTRIBUTION, Consts.DISTRIBUTION,
-          Consts.BASE_MEASUREMENT, Consts.SHELF_POSITION]
+          Consts.BASE_MEASUREMENT, Consts.SHELF_POSITION, Consts.XREF_SCENE_TYPE_TO_CATEGORY,
+          Consts.SHELF_POSITION_TEMPLATE]
 
 
 class NESTLEBAKINGUSToolBox(GlobalSessionToolBox):
@@ -39,10 +31,13 @@ class NESTLEBAKINGUSToolBox(GlobalSessionToolBox):
         GlobalSessionToolBox.__init__(self, data_provider, output)
         self.templates = {}
         self.parse_template()
+        self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         self.match_product_in_scene = self.data_provider[Data.MATCHES]
+        self.match_display_in_scene = self.data_provider.match_display_in_scene
         self.match_scene_item_facts = pd.merge(self.scif, self.match_product_in_scene, how='right',
                                                left_on=['item_id', 'scene_id'], right_on=['product_fk',
                                                                                           'scene_fk'])  # Merges scif with mpis on product_fk
+        self.match_scene_item_facts.rename(columns={'product_fk_x': 'product_fk'}, inplace=True)
         self._filter_scif_and_mpis_by_template_name_scene_type_and_category_name()
         # self.own_manufacturer_fk = int(self.data_provider.own_manufacturer.param_value.values[0])
         self.results_df = pd.DataFrame(columns=['kpi_name', 'kpi_fk', 'numerator_id', 'numerator_result', 'context_id',
@@ -52,24 +47,8 @@ class NESTLEBAKINGUSToolBox(GlobalSessionToolBox):
         for sheet in SHEETS:
             self.templates[sheet] = pd.read_excel(TEMPLATE_PATH, sheet_name=sheet)
 
-        self.templates[Consts.XREF_SCENE_TYPE_TO_CATEGORY] = pd.read_excel(TEMPLATE_PATH,
-                                                                           sheet_name=Consts.XREF_SCENE_TYPE_TO_CATEGORY)
-
-    def _filter_scif_and_mpis_by_template_name_scene_type_and_category_name(self):
-        ''' Logic of this project
-        Have to filter the scif by only taking in products with category fks that match the template fk (scene type).
-        Using self.templates[Consts.XREF_SCENE_TYPE_TO_CATEGORY] as the refrence.'''
-
-        current_category_and_template = self.match_scene_item_facts[['template_fk', 'category_fk']].to_numpy()
-        relevant_selftemplate_by_category_fk_and_template_fk = self.templates[Consts.XREF_SCENE_TYPE_TO_CATEGORY][
-            ['template_fk', 'category_fk']].to_numpy()
-        filter_scif_by_relevant_selftemplate_by_category_fk_and_template_fk = (
-                current_category_and_template[:, None] == relevant_selftemplate_by_category_fk_and_template_fk).all(
-            -1).any(
-            -1)  # gets the index of scif where the category fk and template  fk match that derived from self.templates[Consts.XREF_SCENE_TYPE_TO_CATEGORY]
-
-        self.match_scene_item_facts = self.match_scene_item_facts[
-            filter_scif_by_relevant_selftemplate_by_category_fk_and_template_fk]
+        # self.templates[Consts.XREF_SCENE_TYPE_TO_CATEGORY] = pd.read_excel(TEMPLATE_PATH,
+        #                                                                    sheet_name=Consts.XREF_SCENE_TYPE_TO_CATEGORY)
 
     def save_results_to_db(self):
         self.results_df.drop(columns=['kpi_name'], inplace=True)
@@ -85,7 +64,8 @@ class NESTLEBAKINGUSToolBox(GlobalSessionToolBox):
         This function calculates the KPI results.
         """
         relevant_kpi_template = self.templates[Consts.KPIS]
-        foundation_kpi_types = [Consts.SHELF_COUNT, Consts.SHELF_POSITION]
+        # ,Consts.SHELF_POSITION,Consts.SOS, Consts.SHELF_COUNT
+        foundation_kpi_types = [Consts.SHELF_POSITION,Consts.SOS, Consts.SHELF_COUNT]
         foundation_kpi_template = relevant_kpi_template[
             relevant_kpi_template[Consts.KPI_TYPE].isin(foundation_kpi_types)]
 
@@ -123,46 +103,173 @@ class NESTLEBAKINGUSToolBox(GlobalSessionToolBox):
             return self._calculate_shelf_count
         elif kpi_type == Consts.SHELF_POSITION:
             return self._calculate_shelf_position
+        elif kpi_type == Consts.SOS:
+            return self._calculate_sos
 
     def _calculate_shelf_count(self, row):
-        '''
+        """
         Logic of KPI: Get the number of shelves per scene per bay
         The kpi should only run if display fk is 1 or 2
-        '''
+        """
+        if not self.match_display_in_scene.empty:  # there are some session that the mdis is not empty
+            kpi_name = row[Consts.KPI_NAME]
+            kpi_fk = self.get_kpi_fk_by_kpi_type(kpi_name)
 
-        # Need to write the logic for display fk
-        # 'numerator_id': numerator_id
+            self._filter_display_in_scene()
+            mdis_merged_mcif = pd.merge(self.match_display_in_scene, self.match_scene_item_facts, how='left',
+                                        left_on='scene_fk', right_on='scene_id')
+            unique_scenefks_in_mdis_merged_mcif = np.unique(mdis_merged_mcif.scene_id)
 
-        kpi_name = row[Consts.KPI_NAME]
-        kpi_fk = self.get_kpi_fk_by_kpi_type(kpi_name)
-
-        result_dict_list = []
-        for unique_scene in set(self.match_scene_item_facts.scene_id):
-            relevant_mcif = self.match_scene_item_facts[self.match_scene_item_facts.scene_id.isin([unique_scene])]
-            for unique_bay in set(relevant_mcif.bay_number):
-                useful_mcif = relevant_mcif[relevant_mcif.bay_number.isin([unique_bay])]
-                highest_shelf_number_in_bay = useful_mcif.bay_number.max()
-                result_dict = {'kpi_fk': kpi_fk,
-                               'denominator_id': unique_bay, 'context_id': unique_scene,
-                               'result': highest_shelf_number_in_bay}
-                result_dict_list.append(result_dict)
-            return result_dict_list
+            # Have to do this as they are scenes with no display fks. So the line of code below filters out any scene
+            # with no display fk
+            filtered_unique_scenefks_in_mdis_merged_mcif = unique_scenefks_in_mdis_merged_mcif[
+                ~ np.isnan(unique_scenefks_in_mdis_merged_mcif)]
+            # this is how the ids are store for display fk in custom entity
+            # The reason we are using custom entity is because there may be a case where a scene has two types of displays
+            # In this case, we have use and save an id of three which represent a scene with both display fks
+            # Because of this we can not refer to the display table in sql
+            display_fk_dictionary = {1: 17, 2: 18, 3: 19}
+            result_dict_list = []
+            for unique_scene in filtered_unique_scenefks_in_mdis_merged_mcif:
+                unique_displayfks_in_scene = np.unique(
+                    mdis_merged_mcif[mdis_merged_mcif.scene_id == unique_scene].display_fk)
+                display_fk_for_scene = unique_displayfks_in_scene[0] if len(unique_displayfks_in_scene) == 1 else 3
+                display_fk_id = display_fk_dictionary[display_fk_for_scene]
+                relevant_mcif = self.match_scene_item_facts[self.match_scene_item_facts.scene_id.isin([unique_scene])]
+                for unique_bay in set(relevant_mcif.bay_number):
+                    useful_mcif = relevant_mcif[relevant_mcif.bay_number.isin([unique_bay])]
+                    highest_shelf_number_in_bay = useful_mcif.bay_number.max()
+                    result_dict = {'kpi_fk': kpi_fk, 'numerator_id': display_fk_id,
+                                   'denominator_id': unique_bay, 'context_id': unique_scene,
+                                   'result': highest_shelf_number_in_bay}
+                    result_dict_list.append(result_dict)
+                return result_dict_list
 
     def _calculate_shelf_position(self, row):
         kpi_name = row[Consts.KPI_NAME]
         kpi_fk = self.get_kpi_fk_by_kpi_type(kpi_name)
 
+        shelf_position_dict = {'Bottom': 13, 'Middle': 14, 'Eye': 15, 'Top': 16}
         result_dict_list = []
         relevant_mcif = self.match_scene_item_facts[
             ~ self.match_scene_item_facts.product_type.isin(['Other'])] if row[Consts.SKU_RELEVANT] == 'Y' else \
-        self.match_scene_item_facts[self.match_scene_item_facts.product_type.isin(['Other'])]
+            self.match_scene_item_facts[self.match_scene_item_facts.product_type.isin(['Other'])]
 
         if relevant_mcif.empty:
             return result_dict_list
 
         for unique_scene in set(relevant_mcif.scene_id):
-            # relevant_mcif = self.match_scene_item_facts[self.match_scene_item_facts.scene_id.isin([unique_scene])]
-            a =1
+            relevant_mcif_filtered = self._filter_df(self.match_scene_item_facts, {Consts.SCENE_ID: unique_scene})
+
+            for unique_item in set(relevant_mcif_filtered[row[
+                Consts.DENOMINATOR_TYPE_FK]]):  # this can be a product_fk or category_fk depending on the kpi
+                item_filtered_mcif = self._filter_df(relevant_mcif_filtered, {row[
+                                                                                  Consts.DENOMINATOR_TYPE_FK]: unique_item})
+                for unique_shelf in set(item_filtered_mcif.shelf_number):
+                    final_mcif = self._filter_df(item_filtered_mcif, {'shelf_number': unique_shelf})
+                    count_of_facings = final_mcif.facings.sum()
+
+                    # this method uses the 'shelf position template' sheet to derive the shelf position id
+                    shelf_position_id = self._get_shelf_position_id(unique_scene, current_shelf=unique_shelf,
+                                                                    shelf_position_dict=shelf_position_dict)
+
+                    result_dict = {'kpi_fk': kpi_fk, 'numerator_id': unique_shelf,
+                                   'denominator_id': unique_item, 'context_id': unique_scene,
+                                   'numerator_result': count_of_facings}
+                    result_dict_list.append(result_dict)
+        return result_dict_list
+
+    def _calculate_sos(self, row):
+        """
+        Have to save sos by scene
+        """
+        kpi_name = row[Consts.KPI_NAME]
+        kpi_fk = self.get_kpi_fk_by_kpi_type(kpi_name)
+
+        result_dict_list = []
+        for unique_scene_fk in set(self.scif.scene_fk):
+            relevant_scif = self._filter_df(self.scif, {Consts.SCENE_FK: unique_scene_fk})
+            if pd.notna(row[Consts.FILTER_DENOMINATOR]):
+                # denominator_result = relevant_scif.net_len_ign_stack.sum() if relevant_scif.empty else 1
+                for unique_category_fk in set(relevant_scif[row[Consts.FILTER_DENOMINATOR]]):
+                    relevant_scif_filtered = self._filter_df(relevant_scif, {Consts.CATEGORY_FK: unique_category_fk})
+                    denominator_result = relevant_scif_filtered[row[Consts.OUTPUT]].sum()
+                    for unique_product_fk in set(relevant_scif_filtered[Consts.PRODUCT_FK]):
+                        final_scif = self._filter_df(relevant_scif_filtered, {Consts.PRODUCT_FK: unique_product_fk})
+                        numerator_result = final_scif[row[Consts.OUTPUT]].sum()
+                        result = (float(numerator_result) / denominator_result) * 100
+                        result_dict = {'kpi_fk': kpi_fk, 'numerator_id': unique_product_fk,
+                                       'denominator_id': unique_category_fk, 'context_id': unique_scene_fk,
+                                       'numerator_result': numerator_result, 'denominator_result': denominator_result,
+                                       'result': result}
+                        result_dict_list.append(result_dict)
+            else:
+                denominator_result = relevant_scif[row[Consts.OUTPUT]].sum()
+                for unique_category_fk in set(relevant_scif[row[Consts.FILTER_DENOMINATOR]]):
+                    relevant_scif_filtered = self._filter_df(relevant_scif, {Consts.CATEGORY_FK: unique_category_fk})
+                    numerator_result = relevant_scif_filtered[row[Consts.OUTPUT]].sum()
+                    result = (float(numerator_result) / denominator_result) * 100
+                    result_dict = {'kpi_fk': kpi_fk, 'numerator_id': unique_category_fk,
+                                   'denominator_id': self.store_id, 'context_id': unique_scene_fk,
+                                   'numerator_result': numerator_result, 'denominator_result': denominator_result,
+                                   'result': result}
+                    result_dict_list.append(result_dict)
+        return result_dict_list
+
+    def _get_shelf_position_id(self, unique_scene, current_shelf, shelf_position_dict):
+        '''
+        :return: Uses the shelf position in the scene and bay and return the id of the shelf based on the shelf_position_dict
+        The dictionary is based on the custom entity table
+        '''
+        max_shelf_position = self.match_scene_item_facts[
+            (self.match_scene_item_facts.scene_id.isin([unique_scene]))].shelf_number.max()
+
+        return shelf_position_dict[self.templates[Consts.SHELF_POSITION_TEMPLATE].loc[
+            self.templates[Consts.SHELF_POSITION_TEMPLATE]['Num Shelves'] == max_shelf_position, current_shelf].iat[0]]
+
+    def _filter_display_in_scene(self):
+        ''''
+        For the shelf count kpi, we need to make sure that we can't take scenes that have a display fk of 3 or 4.
+        '''
+
+        mdis_array = self.match_display_in_scene[['scene_fk', 'display_fk']].to_numpy()
+        filter = ['3', '4']
+
+        index_of_mdis_array_where_display_fk_is_3_or_4 = np.in1d(mdis_array[:, 1], filter)
+        scenes_with_not_relevant_display_fks = mdis_array[index_of_mdis_array_where_display_fk_is_3_or_4][:,
+                                               0]  # gets the scenes that have a display fk of 3 or 4
+
+        if scenes_with_not_relevant_display_fks.size > 0:  # logic: if array is not empty
+            unique_scenes_not_relevant_for_display = np.unique(scenes_with_not_relevant_display_fks)
+            self.match_display_in_scene = self.match_display_in_scene[
+                ~ self.match_display_in_scene.scene_fk.isin(unique_scenes_not_relevant_for_display)]
+
+    def _filter_scif_and_mpis_by_template_name_scene_type_and_category_name(self):
+        ''' Logic of this project
+        Have to filter the scif by only taking in products with category fks that match the template fk (scene type).
+        Using self.templates[Consts.XREF_SCENE_TYPE_TO_CATEGORY] as the refrence.'''
+
+        current_category_and_template = self.match_scene_item_facts[['template_fk', 'category_fk']].to_numpy()
+        relevant_selftemplate_by_category_fk_and_template_fk = self.templates[Consts.XREF_SCENE_TYPE_TO_CATEGORY][
+            ['template_fk', 'category_fk']].to_numpy()
+        filter_scif_by_relevant_selftemplate_by_category_fk_and_template_fk = (
+                current_category_and_template[:, None] == relevant_selftemplate_by_category_fk_and_template_fk).all(
+            -1).any(
+            -1)  # gets the index of scif where the category fk and template  fk match that derived from self.templates[Consts.XREF_SCENE_TYPE_TO_CATEGORY]
+
+        self.match_scene_item_facts = self.match_scene_item_facts[
+            filter_scif_by_relevant_selftemplate_by_category_fk_and_template_fk]
+
+    @staticmethod
+    def _filter_df(df, filters, exclude=0):
+        for key, val in filters.items():
+            if not isinstance(val, list):
+                val = [val]
+            if exclude:
+                df = df[~df[key].isin(val)]
+            else:
+                df = df[df[key].isin(val)]
+        return df
 
 
 '''This code was previously used to for the nestle baking us however we do not use it anymore
