@@ -507,8 +507,10 @@ class HEINZCRToolBox:
                         self.all_products[self.all_products['product_ean_code']
                                           == product_in_session]['product_fk'].iloc[0]
                     # product_in_session_df = self.scif[self.scif['product_ean_code'] == ean_code]
-                    mpisc_df_price = self.match_product_in_scene[self.match_product_in_scene['product_fk'] == product_pk][
-                        'price']
+                    mpisc_df_price = \
+                        self.match_product_in_scene[(self.match_product_in_scene['product_fk'] == product_pk) |
+                                                    (self.match_product_in_scene[
+                                                         'substitution_product_fk'] == product_pk)]['price']
                     try:
                         suggested_price = row['SUGGESTED_PRICE'].values[0]
                     except Exception as e:
