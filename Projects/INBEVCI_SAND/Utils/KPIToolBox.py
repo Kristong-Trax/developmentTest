@@ -15,6 +15,7 @@ from KPIUtils.GeneralToolBox import GENERALToolBox
 from KPIUtils_v2.DB.CommonV2 import Common
 from KPIUtils.Calculations.Assortment import Assortment
 from KPIUtils.GlobalDataProvider.PsDataProvider import PsDataProvider
+from KPIUtils_v2.GlobalDataProvider.PsDataProvider import PsDataProvider as DataProvider_v2
 
 __author__ = 'Elyashiv'
 
@@ -79,9 +80,11 @@ class INBEVCISANDToolBox:
         self.groups_fk = self.get_groups_fk()
         self.own_manuf_fk = self.get_own_manufacturer_fk()
         self.beer_cat_fk = self.get_beer_cat_fk()
+        self.data_provider_v2 = DataProvider_v2(self.data_provider, self.output)
+        self.external_targets = self.data_provider_v2.get_kpi_external_targets(kpi_operation_types=[Const.SECONDARY_SHELF_TARGETS])
 
     def get_own_manufacturer_fk(self):
-        manuf_fk = self.all_products[self.all_products['manufacturer_name']==Const.ABI_INBEV]['manufacturer_fk'].values[0]
+        manuf_fk = self.all_products[self.all_products['manufacturer_name'] == Const.ABI_INBEV]['manufacturer_fk'].values[0]
         return manuf_fk
 
     def get_beer_cat_fk(self):
@@ -99,6 +102,7 @@ class INBEVCISANDToolBox:
         """
         sos_agg_identifier_parent = self.get_sos_vs_target_identifier_parent()
         self.calculate_sos_aggregate_parent(sos_agg_identifier_parent)
+
         for set_name in Const.SET_NAMES:
             if set_name in (Const.BRAND_FACING_TARGET, Const.BRAND_COMPARISON):
                 self.calculate_kpi_level_1(set_name)
@@ -115,7 +119,6 @@ class INBEVCISANDToolBox:
             elif set_name == Const.LINEAR_SOS_CATEGORY_LOCATION_TYPE:
                 self.calculate_sos_sku_out_of_category_per_location()
             else:
-                # return
                 continue
 
     def calculate_sos_aggregate_parent(self, sos_agg_identifier_parent):
@@ -124,7 +127,7 @@ class INBEVCISANDToolBox:
         numerator_filters.update(general_filters)
         numer = self.calculate_sos_by_scif(**numerator_filters)
         denom = self.calculate_sos_by_scif(**general_filters)
-        score = round(float(numer / denom) *100, 2) if denom else 0
+        score = round(float(numer / denom) * 100, 2) if denom else 0
         self.common.write_to_db_result(fk=sos_agg_identifier_parent['kpi_fk'], numerator_id=self.own_manuf_fk,
                                        denominator_id=self.store_id, identifier_result=sos_agg_identifier_parent,
                                        should_enter=True, result=score, score=score)
@@ -189,7 +192,7 @@ class INBEVCISANDToolBox:
                 self.common.write_to_db_result(fk=kpi_level_2_fk, numerator_id=manufacturer,
                                                numerator_result=manufacturer_sos_res, denominator_id=loc_type_fk,
                                                denominator_result=total_res, context_id=self.store_id,
-                                               identifier_result=(kpi_level_2_fk, manufacturer), # ask idan
+                                               identifier_result=(kpi_level_2_fk, manufacturer),
                                                identifier_parent=(parent_set_fk, loc_type_fk), result=sos_score,
                                                score=sos_score, should_enter=True)
 
@@ -201,39 +204,30 @@ class INBEVCISANDToolBox:
                    Const.PRODUCT_TYPE: (Const.EMPTY, Const.EXCLUDE_FILTER)}
         filtered_scif = self.scif[self.tools.get_filter_condition(self.scif, **filters)]
         calculation_scif = filtered_scif.groupby(['product_fk', Const.CATEGORY_FK, Const.LOCATION_TYPE,
-                                                  Const.LOCATION_TYPE_FK], as_index=False).agg({'gross_len_ign_stack': np.sum,
-                                                                                                'gross_len_add_stack': np.sum})
-        # option 1
+                                          Const.LOCATION_TYPE_FK], as_index=False).agg({'gross_len_ign_stack': np.sum,
+                                                                                        'gross_len_add_stack': np.sum})
+
         if not calculation_scif.empty:
-            category_location_df = filtered_scif.groupby([Const.CATEGORY_FK, Const.LOCATION_TYPE_FK], as_index=False).agg({'gross_len_ign_stack': np.sum,
-                                                                                                                           'gross_len_add_stack': np.sum})
+            category_location_df = filtered_scif.groupby([Const.CATEGORY_FK, Const.LOCATION_TYPE_FK],
+                                                         as_index=False).agg({'gross_len_ign_stack': np.sum,
+                                                                              'gross_len_add_stack': np.sum})
             category_location_df.rename(columns={'gross_len_ign_stack': 'gross_len_ign_stack_total_location',
-                                                 'gross_len_add_stack': 'gross_len_add_stack_total_location'}, inplace=True)
-            calculation_scif = calculation_scif.merge(category_location_df, on=[Const.CATEGORY_FK, Const.LOCATION_TYPE_FK], how='left')
-            calculation_scif['numerator_result'] = calculation_scif.apply(self.define_length_based_on_location, args=('numerator',),
-                                                                          axis=1)
+                                                 'gross_len_add_stack': 'gross_len_add_stack_total_location'},
+                                        inplace=True)
+            calculation_scif = calculation_scif.merge(category_location_df, on=[Const.CATEGORY_FK,
+                                                                                Const.LOCATION_TYPE_FK], how='left')
+            calculation_scif['numerator_result'] = calculation_scif.apply(self.define_length_based_on_location,
+                                                                          args=('numerator', ), axis=1)
             calculation_scif['denominator_result'] = calculation_scif.apply(self.define_length_based_on_location,
                                                                             args=('denominator',), axis=1)
             calculation_scif['sos'] = calculation_scif.apply(self.calculate_sos, axis=1)
             for i, row in calculation_scif.iterrows():
                 self.common.write_to_db_result(fk=kpi_fk, numerator_id=row['product_fk'],
-                                               denominator_id=row[Const.LOCATION_TYPE_FK], numerator_result=row['numerator_result'],
+                                               denominator_id=row[Const.LOCATION_TYPE_FK],
+                                               numerator_result=row['numerator_result'],
                                                denominator_result=row['denominator_result'],
-                                               context_id=row[Const.CATEGORY_FK], result=row['sos'], score=row['sos'])
-
-        # #option 2
-        # if not calculation_scif.empty:
-        #     calculation_scif['denom_filters'] = calculation_scif.apply(self.construct_denom_filters_sku_sos, axis=1)
-        #     calculation_scif['num_filters'] = calculation_scif.apply(self.construct_numer_filters_sku_sos, axis=1)
-        #     for i, row in calculation_scif.iterrows():
-        #         denominator_res = self.calculate_length_location_specific(row[Const.LOCATION_TYPE], filtered_scif,
-        #                                                                       row['denom_filters'])
-        #         numerator_res = self.calculate_length_location_specific(row[Const.LOCATION_TYPE], filtered_scif,
-        #                                                                 row['num_filters'])
-        #         score = round(numerator_res / float(denominator_res) * 100, 2) if denominator_res else 0
-        #         self.common.write_to_db_result(fk=kpi_fk, numerator_id=row['product_fk'], denominator_id=row[Const.LOCATION_TYPE_FK],
-        #                                        numerator_result=numerator_res, denominator_result=denominator_res,
-        #                                        context_id=row[Const.CATEGORY_FK], result=score, score=score)
+                                               context_id=row[Const.CATEGORY_FK], result=row['sos'],
+                                               score=row['sos'])
 
     @staticmethod
     def calculate_sos(row):
@@ -255,18 +249,6 @@ class INBEVCISANDToolBox:
         filtered_scif = scif[self.tools.get_filter_condition(scif, **filters)]
         length = filtered_scif[length_field].sum()
         return length
-
-    @staticmethod
-    def construct_denom_filters_sku_sos(row):
-        filters = {Const.LOCATION_TYPE: row[Const.LOCATION_TYPE], Const.CATEGORY_FK: row[Const.CATEGORY_FK],
-                   Const.PRODUCT_TYPE: (Const.EMPTY, Const.EXCLUDE_FILTER)}
-        return filters
-
-    @staticmethod
-    def construct_numer_filters_sku_sos(row):
-        filters = row['denom_filters'].copy()
-        filters.update({'product_fk': row['product_fk']})
-        return filters
 
     def calculate_number_of_inbev_displays(self, relevant_scenes):
         """
@@ -344,8 +326,8 @@ class INBEVCISANDToolBox:
                                    key=sos_per_manufacturer_dict.get) == Const.ABINBEV_MAN_FK) * 100
             numerator_res = sos_per_manufacturer_dict[
                 Const.ABINBEV_MAN_FK] if Const.ABINBEV_MAN_FK in sos_per_manufacturer_dict else 0
-            # Saving to DB
             result = numerator_res / float(total_res) * 100 if total_res else 0
+            # Saving to DB
             self.common.write_to_db_result(fk=sos_set_fk, numerator_id=Const.ABINBEV_MAN_FK,
                                            numerator_result=numerator_res, denominator_id=location_type_fk,
                                            denominator_result=total_res, context_id=self.store_id,
@@ -364,7 +346,6 @@ class INBEVCISANDToolBox:
         """
         kpi_type = 'SOS vs Target Secondary Shelf {} Products Manufacturer out of Category'.format(price_group)
         kpi_level_2_fk = self.common.get_kpi_fk_by_kpi_type(kpi_type)
-        # manufacturer_list = self.get_all_the_manufacturers_by_filters(relevant_scenes)
         manufacturer_list = self.scif.loc[(self.scif[Const.SCENE_FK].isin(relevant_scenes)) &
                                           (~self.scif[Const.PRODUCT_TYPE].isin([Const.EMPTY, Const.IRRELEVANT])) &
                                           (self.scif[Const.PRICE_GROUP] == price_group)][Const.MANUFACTURER_FK].unique().tolist()
@@ -374,13 +355,11 @@ class INBEVCISANDToolBox:
                            Const.PRICE_GROUP: price_group}
 
         # Calculating the total linear space
-        # total_res = self.calculate_sos_by_scif(**general_filters)
         total_res = self.calculate_length_location_specific(Const.SECONDARY_SHELF, self.scif, general_filters)
 
         # Calculating the rest of the manufacturers' linear space
         for manufacturer in manufacturer_list:
             sos_filters = {Const.MANUFACTURER_FK: [manufacturer]}
-            # manufacturer_sos_res = self.calculate_sos_by_scif(**dict(sos_filters, **general_filters))
             manufacturer_sos_res = self.calculate_length_location_specific(Const.SECONDARY_SHELF, self.scif,
                                                                            dict(sos_filters, **general_filters))
             sos_per_manufacturer[manufacturer] = manufacturer_sos_res
@@ -391,7 +370,6 @@ class INBEVCISANDToolBox:
                                            identifier_parent=(parent_set_fk, loc_type_fk), result=sos_score,
                                            score=sos_score, should_enter=True)
         return sos_per_manufacturer
-
 
     def calculate_manufacturer_displays_count(self):
         """
@@ -412,11 +390,12 @@ class INBEVCISANDToolBox:
         sos_vs_target_fk = self.common.get_kpi_fk_by_kpi_type(Const.SOS_VS_TARGET)
         # Coolers
         self.calculate_sos_vs_target_per_location_type(sos_vs_target_fk, Const.COOLER_FK, identifier_parent)
-        # Secondary Displays - commented out as we do not need it
+        # Secondary Displays
         # self.calculate_sos_vs_target_per_location_type(sos_vs_target_fk, Const.SECONDARY_DISPLAY_FK, identifier_parent)
         # Core Products Secondary Displays
         core_kpi_fk = self.common.get_kpi_fk_by_kpi_type(Const.SOS_VS_TARGET_SECONDARY_CORE)
-        self.calculate_sos_vs_target_per_location_type(core_kpi_fk, Const.SECONDARY_DISPLAY_FK, identifier_parent, Const.CORE)
+        self.calculate_sos_vs_target_per_location_type(core_kpi_fk, Const.SECONDARY_DISPLAY_FK, identifier_parent,
+                                                       Const.CORE)
         # High End Products Secondary Displays
         he_kpi_fk = self.common.get_kpi_fk_by_kpi_type(Const.SOS_VS_TARGET_SECONDARY_HIGH_END)
         self.calculate_sos_vs_target_per_location_type(he_kpi_fk, Const.SECONDARY_DISPLAY_FK, identifier_parent,
@@ -431,7 +410,7 @@ class INBEVCISANDToolBox:
             if set_name == Const.BRAND_FACING_TARGET:
                 if self.attr5 not in params[Const.ATTR5].split(', '):
                     continue
-                    # Handling date format issues:
+                # Handling date format issues:
                 try:
                     start_date = datetime.strptime(params["Start date"], '%Y-%m-%d  %H:%M:%S').date()
                 except ValueError:
@@ -699,7 +678,6 @@ class INBEVCISANDToolBox:
                                            numerator_result=numerator_res,
                                            denominator_id=result.assortment_group_fk,
                                            identifier_parent=result.identifier_parent_lvl2, should_enter=True)
-
         must_have_results = lvl3_result[lvl3_result['kpi_fk_lvl3'] == must_have_fk]
         self.calculate_oos(must_have_results)
 
@@ -711,7 +689,6 @@ class INBEVCISANDToolBox:
         lvl2_result['mr_denominator_id'] = lvl2_result.apply(self.get_numerator_or_denominator_mobile_report_kpi_lvl2,
                                                              args=('denominator',), axis=1)
         lvl2_result['identifier_parent_lvl1'] = lvl2_result.apply(self.get_identifier_parent_assortment_lvl1, axis=1)
-
         for result in lvl2_result.itertuples():
             super_group_fk = result.assortment_super_group_fk
             denominator_after_action = None
@@ -762,7 +739,6 @@ class INBEVCISANDToolBox:
                                                identifier_result=result.identifier_parent_lvl2,
                                                identifier_parent=result.identifier_parent_lvl1,
                                                should_enter=True)
-
         if lvl2_result.empty:
             return
         lvl1_result = self.assortment.calculate_lvl1_assortment(lvl2_result)
@@ -770,7 +746,6 @@ class INBEVCISANDToolBox:
             lvl1_result = self.update_targets(lvl1_result)
             lvl1_result['mr_lvl1_parent_fk'] = lvl1_result['kpi_fk_lvl1'].apply(lambda x: \
                                                             self.common.get_kpi_fk_by_kpi_type('{} MR'.format(self.get_kpi_type_by_pk(x))))
-            # lvl1_result['identifier_parent_lvl1'] = lvl1_result['mr_lvl1_parent_fk'].apply(lambda x: {'kpi_fk': x})
             lvl1_result['identifier_parent_lvl1'] = lvl1_result.apply(self.get_identifier_parent_assortment_lvl1, axis=1)
             for result in lvl1_result.itertuples():
                 denominator_res = result.total
@@ -797,14 +772,6 @@ class INBEVCISANDToolBox:
                                                identifier_result=result.identifier_parent_lvl1,
                                                should_enter=True)
 
-    def get_kpi_type_by_pk(self, kpi_fk):
-        try:
-            kpi_fk = int(float(kpi_fk))
-            return self.new_kpi_static_data[self.new_kpi_static_data['pk'] == kpi_fk]['type'].values[0]
-        except IndexError:
-            Log.info("Kpi pk: {} is not equal to any kpi in static table".format(kpi_fk))
-            return None
-
     def update_targets(self, lvl1_result):
         """
         It takes lvl1 and adds the super group target for it, until the generic code will do that
@@ -821,7 +788,8 @@ class INBEVCISANDToolBox:
             lvl1_result.loc[lvl1_result.kpi_fk_lvl1 == assortment_kpi_fk, 'super_group_target'] = super_group_target
             # A very unpretty fix to patch incorrect assortment uploaded
             # TODO: once the infra is developed move to pulling of super_group targets from DB
-            if len(lvl1_result[lvl1_result.kpi_fk_lvl1 == assortment_kpi_fk]) == 0 and assortment_type == 'Brand Variant':
+            if len(lvl1_result[
+                       lvl1_result.kpi_fk_lvl1 == assortment_kpi_fk]) == 0 and assortment_type == 'Brand Variant':
                 assortment_kpi_fk = self.common.get_kpi_fk_by_kpi_type('{} ASSORTMENT GROUP'.format(assortment_type))
                 lvl1_result.loc[lvl1_result.kpi_fk_lvl1 == assortment_kpi_fk, 'super_group_target'] = super_group_target
         return lvl1_result
@@ -835,8 +803,6 @@ class INBEVCISANDToolBox:
         oos_mr_ident_parent = {'kpi_fk': oos_mr_kpi_fk}
 
         oos_fk = self.get_kpi_fk_by_kpi_name(Const.OOS_KPI)
-        # oos_identifier_parent = {'kpi_fk': oos_fk}
-
         oos_sku_fk = self.get_kpi_fk_by_kpi_name(Const.OOS_SKU_KPI)
         for res in must_have_results.itertuples():
             result = 1 if not res.in_store else 0
@@ -852,9 +818,6 @@ class INBEVCISANDToolBox:
         self.common.write_to_db_result(fk=oos_fk, result=oos_res, score=oos_res,
                                        denominator_result=denominator, numerator_result=oos_numerator,
                                        numerator_id=oos_fk)
-                                       #  identifier_parent=oos_mr_ident_parent,
-                                       # identifier_result=oos_identifier_parent,
-                                       # should_enter=True)
         self.common.write_to_db_result(fk=oos_mr_kpi_fk, result=oos_res, score=oos_res,
                                        denominator_result=denominator, numerator_result=oos_numerator,
                                        numerator_id=self.own_manuf_fk, denominator_id=self.store_id,
@@ -887,8 +850,7 @@ class INBEVCISANDToolBox:
                     relevant_stores = relevant_stores.append(stores, ignore_index=True)
         relevant_stores = relevant_stores.drop_duplicates(subset=['kpi', 'sku_name', 'target', 'sos_policy'],
                                                           keep='last')
-        # Using only the relevant primary shelves
-        filtered_scif = self.scif[self.scif[Const.LOCATION_TYPE_FK] == Const.PRIMARY_SHELF_FK]
+        primary_shelves_scif = self.scif.loc[self.scif[Const.LOCATION_TYPE_FK] == Const.PRIMARY_SHELF_FK]
         for row in relevant_stores.itertuples():
             sos_policy = json.loads(row.sos_policy)
             numerator_key = sos_policy[Const.NUMERATOR].keys()[0]
@@ -897,11 +859,13 @@ class INBEVCISANDToolBox:
             denominator_val = sos_policy[Const.DENOMINATOR][denominator_key]
             if numerator_key == 'manufacturer':
                 numerator_key += '_local_name'
-            numerator = filtered_scif[(filtered_scif[numerator_key].str.upper() == numerator_val.upper()) &
-                                      (filtered_scif[denominator_key].str.upper() == denominator_val.upper())][
+            numerator = primary_shelves_scif[
+                (primary_shelves_scif[numerator_key].str.upper() == numerator_val.upper()) & (
+                        primary_shelves_scif[denominator_key].str.upper() == denominator_val.upper())][
                 'gross_len_ign_stack'].sum()
-            denominator = filtered_scif[filtered_scif[denominator_key].str.upper() == denominator_val.upper()][
-                'gross_len_ign_stack'].sum()
+            denominator = \
+                primary_shelves_scif[primary_shelves_scif[denominator_key].str.upper() == denominator_val.upper()][
+                    'gross_len_ign_stack'].sum()
             if self.all_products[
                 self.all_products[numerator_key].str.upper() == numerator_val.upper()].empty and \
                     numerator_val.upper() == "CCC":
@@ -912,12 +876,10 @@ class INBEVCISANDToolBox:
                                           denominator_key].str.upper() == denominator_val.upper()].empty):
                 Log.error("the DB does not match the template of SOS")
                 continue
-
             numerator_id = self.all_products[self.all_products[numerator_key].str.upper() ==
                                              numerator_val.upper()][numerator_key.split('_')[0] + '_fk'].values[0]
             denominator_id = self.all_products[self.all_products[denominator_key].str.upper() ==
                                                denominator_val.upper()][denominator_key + '_fk'].values[0]
-
             identifier_parent_all_manuf = self.get_identifier_parent_sos_all_manufacturers(denominator_key,
                                                                                            denominator_id,
                                                                                            row.kpi)
@@ -933,8 +895,8 @@ class INBEVCISANDToolBox:
                                            should_enter=True, identifier_parent=identifier_parent,
                                            identifier_result=identifier_parent_all_manuf)
             if identifier_parent_all_manuf:
-                self.sos_calculation_all_manufacturers(numerator_key, denominator_key, denominator_val, filtered_scif,
-                                                       identifier_parent_all_manuf)
+                self.sos_calculation_all_manufacturers(numerator_key, denominator_key, denominator_val,
+                                                       primary_shelves_scif, identifier_parent_all_manuf)
 
     @staticmethod
     def get_identifier_parent_sos_all_manufacturers(denominator_key, denominator_id, kpi_fk):
@@ -952,7 +914,9 @@ class INBEVCISANDToolBox:
                 'gross_len_ign_stack'].sum()
             denominator_id = self.all_products[self.all_products[denominator_key].str.upper() ==
                                                denominator_value.upper()][denominator_key + '_fk'].values[0]
-            parent_kpi_name = self.new_kpi_static_data[self.new_kpi_static_data['pk'] == float(identifier_parent['kpi_fk'])]['type'].values[0]
+            parent_kpi_name = \
+                self.new_kpi_static_data[self.new_kpi_static_data['pk'] == float(identifier_parent['kpi_fk'])][
+                                         'type'].values[0]
             kpi = self.common.get_kpi_fk_by_kpi_type('{}_all'.format(parent_kpi_name))
             for manufacturer in all_manufacturers:
                 numerator = filtered_scif[(filtered_scif['manufacturer_fk'] == manufacturer) &
@@ -1079,3 +1043,11 @@ class INBEVCISANDToolBox:
         query = INBEVCISANDQueries.get_match_display(self.session_uid)
         match_display = pd.read_sql_query(query, self.rds_conn.db)
         return match_display
+
+    def get_kpi_type_by_pk(self, kpi_fk):
+        try:
+            kpi_fk = int(float(kpi_fk))
+            return self.new_kpi_static_data[self.new_kpi_static_data['pk'] == kpi_fk]['type'].values[0]
+        except IndexError:
+            Log.info("Kpi pk: {} is not equal to any kpi in static table".format(kpi_fk))
+            return None

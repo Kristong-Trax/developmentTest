@@ -107,3 +107,5 @@ class INBEVCISANDConst(object):
     SOS_SKU_LOCATIONS = [PRIMARY_SHELF, SECONDARY_SHELF, COOLER]
     STACK_PER_LOCATION_TOTAL = {PRIMARY_SHELF: 'gross_len_ign_stack_total_location', SECONDARY_SHELF: 'gross_len_add_stack_total_location',
                                 COOLER: 'gross_len_ign_stack_total_location'}
+
+    SECONDARY_SHELF_TARGETS = 'secondary_shelf_targets'
