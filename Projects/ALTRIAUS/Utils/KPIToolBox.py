@@ -244,17 +244,21 @@ class ALTRIAUSToolBox:
                                           result=result)
 
     def calculate_age_verification(self):
+        kpi_fk = self.common_v2.get_kpi_fk_by_kpi_type('Age Verification')
         relevant_scif = self.scif[self.scif['brand_name'].isin(['Age Verification'])]
+
         if relevant_scif.empty:
             result = 0
             product_fk = 0
+
+            self.common_v2.write_to_db_result(kpi_fk, numerator_id=product_fk, denominator_id=self.store_id,
+                                              result=result)
         else:
             result = 1
-            product_fk = relevant_scif['product_fk'].iloc[0]
-
-        kpi_fk = self.common_v2.get_kpi_fk_by_kpi_type('Age Verification')
-        self.common_v2.write_to_db_result(kpi_fk, numerator_id=product_fk, denominator_id=self.store_id,
-                                          result=result)
+            for product_fk in relevant_scif['product_fk'].unique().tolist():
+                self.common_v2.write_to_db_result(kpi_fk, numerator_id=product_fk, denominator_id=self.store_id,
+                                                  result=result)
+        return
 
     def calculate_empty_brand(self):
         product_type = ['Empty']
