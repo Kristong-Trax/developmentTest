@@ -235,9 +235,9 @@ class CocacolaToolBox(GlobalSessionToolBox):
 
                             if found_sku_df.empty:
                                 score = 0
-                                found_ean += 1
 
                             else:
+                                found_ean += 1
                                 score = 100
 
                         except:

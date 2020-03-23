@@ -47,15 +47,15 @@ class Const(object):
 
     KPI_WEIGHTS = {
         'Refrescos Pepsi': 4,
-        'Mercadeo - Pepsi': 1.6,
-        'Huecos - Pepsi': 0.272,
-        'Frentes - Pepsi': 0.272,
-        'Acomodo - Pepsi': 0.528,
-        'Invasion - Pepsi': 0.528,
-        'Surtido - Pepsi': 2.4, }
+        'Mercadeo - Pepsi': 40,
+        'Huecos - Pepsi': 17,
+        'Frentes - Pepsi': 17,
+        'Acomodo - Pepsi': 33,
+        'Invasion - Pepsi': 33,
+        'Surtido - Pepsi': 60, }
 
     KPI_POINTS = {'Refrescos': 7,
-                   'Refrescos Pepsi': 2,
+                   'Refrescos Pepsi': 4,
                    'Mercadeo - Pepsi': 0.8,
                    'Huecos - Pepsi': 0.136,
                    'Frentes - Pepsi': 0.136,

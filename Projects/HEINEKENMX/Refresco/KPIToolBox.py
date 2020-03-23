@@ -48,8 +48,8 @@ class RefrescoToolBox(GlobalSessionToolBox):
         score += cocacola_tool_box.main_calculation()
 
         #
-        # pepsi_tool_box = PepsiToolBox(self.data_provider, self.output, self.common)
-        # score += pepsi_tool_box.main_calculation()
+        pepsi_tool_box = PepsiToolBox(self.data_provider, self.output, self.common)
+        score += pepsi_tool_box.main_calculation()
 
 
         # pj_tool_box = PJToolBox(self.data_provider, self.output, self.common)

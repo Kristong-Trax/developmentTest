@@ -28,7 +28,7 @@ class Const(object):
         'Acomodo Scene - Botana Barcel': 'Acomodo - Botana Barcel',
         'Acomodo - Botana Barcel - SKU': 'Acomodo Scene - Botana Barcel',
         'Invasion - Botana Barcel': 'Mercadeo - Botana Barcel',
-        'Surtido - Botana Barcel': 'Botana  Barcel',
+        'Surtido - Botana Barcel': 'Botana Barcel',
         'Surtido - Botana Barcel - SKU': 'Surtido - Botana Barcel'}
 
     KPI_EMPTY = 'Huecos - Botana Barcel'
