@@ -15,11 +15,12 @@ from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
 __author__ = 'krishnat'
 
 TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data',
-                             'Nestle Creamers Template V1.1.xlsx')
+                             'Nestle Creamers Template V1.2.xlsx')
 
 SHEETS = [Consts.KPIS, Consts.SHELF_COUNT, Consts.SOS, Consts.DISTRIBUTION, Consts.DISTRIBUTION,
           Consts.BASE_MEASUREMENT, Consts.SHELF_POSITION, Consts.XREF_SCENE_TYPE_TO_CATEGORY,
           Consts.SHELF_POSITION_TEMPLATE]
+CONVERT_MM_TO_INCHES = 0.0393701
 
 
 class NESTLEBAKINGUSToolBox(GlobalSessionToolBox):
@@ -34,6 +35,7 @@ class NESTLEBAKINGUSToolBox(GlobalSessionToolBox):
         self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         self.match_product_in_scene = self.data_provider[Data.MATCHES]
         self.match_display_in_scene = self.data_provider.match_display_in_scene
+        self._filter_display_in_scene()
         self.match_scene_item_facts = pd.merge(self.scif, self.match_product_in_scene, how='right',
                                                left_on=['item_id', 'scene_id'], right_on=['product_fk',
                                                                                           'scene_fk'])  # Merges scif with mpis on product_fk
@@ -64,8 +66,8 @@ class NESTLEBAKINGUSToolBox(GlobalSessionToolBox):
         This function calculates the KPI results.
         """
         relevant_kpi_template = self.templates[Consts.KPIS]
-        # ,Consts.SHELF_POSITION,Consts.SOS, Consts.SHELF_COUNT
-        foundation_kpi_types = [Consts.SHELF_POSITION,Consts.SOS, Consts.SHELF_COUNT]
+        # Consts.BASE_MEASUREMENT, Consts.SHELF_POSITION, Consts.SOS, Consts.SHELF_COUNT,Consts.DISTRIBUTION
+        foundation_kpi_types = [Consts.BASE_MEASUREMENT, Consts.SHELF_POSITION, Consts.SOS, Consts.SHELF_COUNT, Consts.DISTRIBUTION]
         foundation_kpi_template = relevant_kpi_template[
             relevant_kpi_template[Consts.KPI_TYPE].isin(foundation_kpi_types)]
 
@@ -89,22 +91,53 @@ class NESTLEBAKINGUSToolBox(GlobalSessionToolBox):
                         self.results_df.loc[len(self.results_df), result.keys()] = result
 
     def _get_calculation_function_by_kpi_type(self, kpi_type):
-        # if kpi_type == Consts.SOS:
-        #     return self.calculate_sos
-        # elif kpi_type == Consts.DISTRIBUTION:
-        #     return self.calculate_distribution
-        # elif kpi_type == Consts.ADJACENCY_BRAND_WITHIN_BAY:
-        #     return self.calculate_adjacency_brand
-        # elif kpi_type == Consts.ADJACENCY_CATEGORY_WITHIN_BAY:
-        #     return self.calculate_adjacency_category
-        # elif kpi_type == Consts.LEAD_ANCHOR_BY_BAY:
-        #     return self.calculate_lead_anchor
         if kpi_type == Consts.SHELF_COUNT:
             return self._calculate_shelf_count
         elif kpi_type == Consts.SHELF_POSITION:
             return self._calculate_shelf_position
         elif kpi_type == Consts.SOS:
             return self._calculate_sos
+        elif kpi_type == Consts.DISTRIBUTION:
+            return self._calculate_distribution
+        elif kpi_type == Consts.BASE_MEASUREMENT:
+            return self._calculate_base_measurement
+
+    def _calculate_base_measurement(self, row):
+        if not self.match_display_in_scene.empty:  # there are some session that the mdis is not empty
+            kpi_name = row[Consts.KPI_NAME]
+            kpi_fk = self.get_kpi_fk_by_kpi_type(kpi_name)
+            mdis_merged_mpis = pd.merge(self.match_display_in_scene, self.match_product_in_scene, how='left',
+                                        left_on='scene_fk', right_on='scene_fk')
+            mdis_merged_mpis = mdis_merged_mpis[mdis_merged_mpis.stacking_layer == 1]
+            unique_scenefks_in_mdis_merged_mcif = np.unique(mdis_merged_mpis.scene_fk)
+
+            # Have to do this as they are scenes with no display fks. So the line of code below filters out any scene
+            # with no display fk
+            filtered_unique_scenefks_in_mdis_merged_mpis = unique_scenefks_in_mdis_merged_mcif[
+                ~ np.isnan(unique_scenefks_in_mdis_merged_mcif)]
+
+            # this is how the ids are store for display fk in custom entity
+            # The reason we are using custom entity is because there may be a case where a scene has two types of displays
+            # In this case, we have use and save an id of three which represent a scene with both display fks
+            # Because of this we can not refer to the display table in sql
+            display_fk_dictionary = {1: 17, 2: 18, 3: 19}
+            result_dict_list = []
+            for unique_scene in filtered_unique_scenefks_in_mdis_merged_mpis:
+                unique_displayfks_in_scene = np.unique(
+                    mdis_merged_mpis[mdis_merged_mpis.scene_fk == unique_scene].display_fk)
+                display_fk_for_scene = unique_displayfks_in_scene[0] if len(unique_displayfks_in_scene) == 1 else 3
+                display_fk_id = display_fk_dictionary[display_fk_for_scene]
+                relevant_mcif = self.match_scene_item_facts[self.match_scene_item_facts.scene_id.isin([unique_scene])]
+                for unique_bay in set(relevant_mcif.bay_number):
+                    useful_mcif = relevant_mcif[relevant_mcif.bay_number.isin([unique_bay])]
+
+                    max_width = useful_mcif.groupby(by='shelf_number').sum()[
+                                    'width_mm_advance'].max() * CONVERT_MM_TO_INCHES
+                    result_dict = {'kpi_fk': kpi_fk, 'numerator_id': display_fk_id,
+                                   'denominator_id': unique_bay, 'context_id': unique_scene,
+                                   'result': max_width}
+                    result_dict_list.append(result_dict)
+                return result_dict_list
 
     def _calculate_shelf_count(self, row):
         """
@@ -115,7 +148,6 @@ class NESTLEBAKINGUSToolBox(GlobalSessionToolBox):
             kpi_name = row[Consts.KPI_NAME]
             kpi_fk = self.get_kpi_fk_by_kpi_type(kpi_name)
 
-            self._filter_display_in_scene()
             mdis_merged_mcif = pd.merge(self.match_display_in_scene, self.match_scene_item_facts, how='left',
                                         left_on='scene_fk', right_on='scene_id')
             unique_scenefks_in_mdis_merged_mcif = np.unique(mdis_merged_mcif.scene_id)
@@ -144,6 +176,39 @@ class NESTLEBAKINGUSToolBox(GlobalSessionToolBox):
                                    'result': highest_shelf_number_in_bay}
                     result_dict_list.append(result_dict)
                 return result_dict_list
+
+    def _calculate_distribution(self, row):
+        """
+        Logic of the kpi. The kpi check if product exists in the scif.
+        If it exists, Save the facing with stacking in result and 1 in score
+        If not exists, Save 0 in score and result
+        """
+        kpi_name = row[Consts.KPI_NAME]
+        kpi_fk = self.get_kpi_fk_by_kpi_type(kpi_name)
+        relevant_product_fk = self._sanitize_values(row[Consts.NUMERATOR_VALUE_1])
+
+        bool_array_present_products_fk_in_session = pd.np.in1d(relevant_product_fk,
+                                                               self.scif.product_fk.unique().tolist())
+        present_products_fk_in_session_index = pd.np.flatnonzero(bool_array_present_products_fk_in_session)
+        present_products_fk_in_session = pd.np.array(relevant_product_fk).ravel()[present_products_fk_in_session_index]
+        absent_products_fk_in_session_index = pd.np.flatnonzero(~ bool_array_present_products_fk_in_session)
+        absent_products_fk_in_session = pd.np.array(relevant_product_fk).ravel()[absent_products_fk_in_session_index]
+
+        result_dict_list = []
+        for present_product_fk in present_products_fk_in_session:
+            result = self.scif[self.scif.product_fk.isin([present_product_fk])].facings.iat[0]
+            result_dict = {'kpi_name': kpi_name, 'kpi_fk': kpi_fk, 'numerator_id': present_product_fk,
+                           'denominator_id': self.store_id,
+                           'result': result}
+            result_dict_list.append(result_dict)
+
+        for absent_products_fk_in_session in absent_products_fk_in_session:
+            result = 0
+            result_dict = {'kpi_name': kpi_name, 'kpi_fk': kpi_fk, 'numerator_id': absent_products_fk_in_session,
+                           'denominator_id': self.store_id,
+                           'result': result}
+            result_dict_list.append(result_dict)
+        return result_dict_list
 
     def _calculate_shelf_position(self, row):
         kpi_name = row[Consts.KPI_NAME]
@@ -193,10 +258,13 @@ class NESTLEBAKINGUSToolBox(GlobalSessionToolBox):
                 # denominator_result = relevant_scif.net_len_ign_stack.sum() if relevant_scif.empty else 1
                 for unique_category_fk in set(relevant_scif[row[Consts.FILTER_DENOMINATOR]]):
                     relevant_scif_filtered = self._filter_df(relevant_scif, {Consts.CATEGORY_FK: unique_category_fk})
-                    denominator_result = relevant_scif_filtered[row[Consts.OUTPUT]].sum()
+                    denominator_result = relevant_scif_filtered[row[Consts.OUTPUT]].sum() if not row[
+                        Consts.LINEAR_RELEVANT] else relevant_scif_filtered[
+                                                         row[Consts.OUTPUT]].sum() * CONVERT_MM_TO_INCHES
                     for unique_product_fk in set(relevant_scif_filtered[Consts.PRODUCT_FK]):
                         final_scif = self._filter_df(relevant_scif_filtered, {Consts.PRODUCT_FK: unique_product_fk})
-                        numerator_result = final_scif[row[Consts.OUTPUT]].sum()
+                        numerator_result = final_scif[row[Consts.OUTPUT]].sum() if not row[Consts.LINEAR_RELEVANT] else \
+                        final_scif[row[Consts.OUTPUT]].sum() * CONVERT_MM_TO_INCHES
                         result = (float(numerator_result) / denominator_result) * 100
                         result_dict = {'kpi_fk': kpi_fk, 'numerator_id': unique_product_fk,
                                        'denominator_id': unique_category_fk, 'context_id': unique_scene_fk,
@@ -207,7 +275,9 @@ class NESTLEBAKINGUSToolBox(GlobalSessionToolBox):
                 denominator_result = relevant_scif[row[Consts.OUTPUT]].sum()
                 for unique_category_fk in set(relevant_scif[row[Consts.FILTER_DENOMINATOR]]):
                     relevant_scif_filtered = self._filter_df(relevant_scif, {Consts.CATEGORY_FK: unique_category_fk})
-                    numerator_result = relevant_scif_filtered[row[Consts.OUTPUT]].sum()
+                    denominator_result = relevant_scif_filtered[row[Consts.OUTPUT]].sum() if not row[
+                        Consts.LINEAR_RELEVANT] else relevant_scif_filtered[
+                                                         row[Consts.OUTPUT]].sum() * CONVERT_MM_TO_INCHES
                     result = (float(numerator_result) / denominator_result) * 100
                     result_dict = {'kpi_fk': kpi_fk, 'numerator_id': unique_category_fk,
                                    'denominator_id': self.store_id, 'context_id': unique_scene_fk,
@@ -218,6 +288,7 @@ class NESTLEBAKINGUSToolBox(GlobalSessionToolBox):
 
     def _get_shelf_position_id(self, unique_scene, current_shelf, shelf_position_dict):
         '''
+        For the self position kpi
         :return: Uses the shelf position in the scene and bay and return the id of the shelf based on the shelf_position_dict
         The dictionary is based on the custom entity table
         '''
@@ -270,6 +341,14 @@ class NESTLEBAKINGUSToolBox(GlobalSessionToolBox):
             else:
                 df = df[df[key].isin(val)]
         return df
+
+    @staticmethod
+    def _sanitize_values(item):
+        if pd.isna(item):
+            return item
+        else:
+            items = [x.strip() for x in item.split(',')]
+            return items
 
 
 '''This code was previously used to for the nestle baking us however we do not use it anymore

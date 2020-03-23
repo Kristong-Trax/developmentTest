@@ -19,6 +19,7 @@ class Consts(object):
     SKU_RELEVANT = 'SKU Relevant'
     DENOMINATOR_TYPE_FK = 'denominator_type_fk'
     FILTER_DENOMINATOR = 'Filter_Denominator'
+    LINEAR_RELEVANT = 'Linear_Relevant'
 
     #Scif Columns
     BRAND_FK = 'brand_fk'
