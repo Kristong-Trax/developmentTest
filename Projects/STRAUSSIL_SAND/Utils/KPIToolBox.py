@@ -83,11 +83,11 @@ class ToolBox(GlobalSessionToolBox):
         oos_result = 1 - dis_result
         oos_numerator = denominator - dis_numerator
         self.common.write_to_db_result(fk=oos_store_kpi_fk, numerator_id=self.own_manufacturer_fk,
-                                       denominator_id=self.store_id, result=oos_result, numerator_result=dis_numerator,
+                                       denominator_id=self.store_id, result=oos_result, numerator_result=oos_numerator,
                                        denominator_result=denominator, score=total_facings,
                                        identifier_result=assortment_type + "_OOS")
         self.common.write_to_db_result(fk=dis_store_kpi_fk, numerator_id=self.own_manufacturer_fk,
-                                       denominator_id=self.store_id, result=dis_result, numerator_result=oos_numerator,
+                                       denominator_id=self.store_id, result=dis_result, numerator_result=dis_numerator,
                                        denominator_result=denominator, score=total_facings,
                                        identifier_result=assortment_type + "_DIS")
 
