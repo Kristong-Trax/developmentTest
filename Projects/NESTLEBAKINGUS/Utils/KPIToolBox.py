@@ -199,14 +199,14 @@ class NESTLEBAKINGUSToolBox(GlobalSessionToolBox):
             result = self.scif[self.scif.product_fk.isin([present_product_fk])].facings.iat[0]
             result_dict = {'kpi_name': kpi_name, 'kpi_fk': kpi_fk, 'numerator_id': present_product_fk,
                            'denominator_id': self.store_id,
-                           'result': result}
+                           'result': result, 'score': 1}
             result_dict_list.append(result_dict)
 
         for absent_products_fk_in_session in absent_products_fk_in_session:
             result = 0
             result_dict = {'kpi_name': kpi_name, 'kpi_fk': kpi_fk, 'numerator_id': absent_products_fk_in_session,
                            'denominator_id': self.store_id,
-                           'result': result}
+                           'result': result, 'score': 0}
             result_dict_list.append(result_dict)
         return result_dict_list
 
