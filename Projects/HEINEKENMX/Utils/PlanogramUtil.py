@@ -12,7 +12,8 @@ TEMPLATE_FACINGS_COUNT = 'Frentes'
 class HeinekenRealogram(object):
     def __init__(self, scene_mpis, scene_type, template_fk, planogram_template_data, products_to_filter_by=None):
         self.scene_fk = self._get_scene_fk(scene_mpis)
-        self.mpis = scene_mpis[scene_mpis['scene_fk'] == self.scene_fk]
+        self.mpis = scene_mpis[(scene_mpis['scene_fk'] == self.scene_fk) &
+                               (scene_mpis['stacking_layer'] == 1)]
         self._check_mpis_for_leading_product_fk()
         self.template_fk = template_fk
         self.scene_type = scene_type
