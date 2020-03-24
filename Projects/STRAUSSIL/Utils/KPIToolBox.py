@@ -209,6 +209,7 @@ class ToolBox(GlobalSessionToolBox):
                     self.common.write_to_db_result(fk=sku_kpi_fk, numerator_id=sku, denominator_id=brand_fk,
                                                    result=sku_result, numerator_result=sku_facings, should_enter=True,
                                                    denominator_result=brand_num, score=sku_facings,
+                                                   context_id=category_fk,
                                                    identifier_parent="{}_SOS_cat_{}_brand_{}".format(calculation_type,
                                                                                                      str(category_fk),
                                                                                                      str(brand_fk)))
