@@ -4,7 +4,6 @@ import json
 from mock import MagicMock
 from pandas.util.testing import assert_frame_equal
 from Trax.Apps.Core.Testing.BaseCase import TestFunctionalCase
-# from Trax.Algo.Calculations.Core.DataProvider import Data
 from Projects.CCRU.Tests.Data.data_test_ccru_unit import DataTestUnitCCRU
 from Projects.CCRU.Utils.ToolBox import CCRUKPIToolBox
 
@@ -458,16 +457,19 @@ class TestCCRU(TestFunctionalCase):
         self.assertEquals(check_result, test_result)
 
     def test_calculate_top_sku(self):
-        test_case = 'test_calculate_top_sku'
         self.mock_data_provider()
         self.mock_tool_box()
         tool_box = CCRUKPIToolBox(self.data_provider, self.output)
         tool_box.set_kpi_set(self.data.top_sku_kpi_set_name, self.data.top_sku_kpi_set_type)
         tool_box.kpi_name_to_id[self.data.pos_kpi_set_type] = self.data.kpi_name_to_id
         tool_box.kpi_scores_and_results[self.data.pos_kpi_set_type] = self.data.kpi_scores_and_results
-        # params, check_result = self.get_pos_test_case(test_case)
         tool_box.calculate_top_sku(False, self.data.top_sku_kpi_set_name)
-        # self.assertEquals(check_result, test_result)
+        check_result = tool_box.top_sku_queries
+        test_result = self.data.top_sku_queries
+        self.assertEquals(check_result, test_result)
+        check_result = tool_box.common.kpi_results
+        test_result = self.data.osa_kpi_results
+        assert_frame_equal(check_result, test_result, check_dtype=False)
 
 
 # writer = pd.ExcelWriter('./results.xlsx', engine='xlsxwriter')

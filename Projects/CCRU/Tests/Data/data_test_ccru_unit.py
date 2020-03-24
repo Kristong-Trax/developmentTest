@@ -1,4 +1,5 @@
 import os
+import json
 import datetime
 import pandas as pd
 
@@ -109,7 +110,13 @@ class DataTestUnitCCRU(object):
         self._kpi_result_values = pd.read_excel(data_file, sheet_name='kpi_result_values')
         self._kpi_entity_types = pd.read_excel(data_file, sheet_name='kpi_entity_types')
         self._group_names = pd.read_excel(data_file, sheet_name='group_names')
-        self._osa_kpi_results = pd.read_excel(data_file, sheet_name='osa_kpi_results')
+
+        df = pd.read_excel(data_file, sheet_name='osa_kpi_results')
+        df['identifier_parent'] = \
+            df['identifier_parent'].apply(lambda x: json.loads(x) if isinstance(x, (str, unicode)) else None)
+        df['identifier_result'] = \
+            df['identifier_result'].apply(lambda x: json.loads(x) if isinstance(x, (str, unicode)) else None)
+        self._osa_kpi_results = df
 
     @property
     def pos_data(self):
