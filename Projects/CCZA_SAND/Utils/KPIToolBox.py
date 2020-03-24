@@ -9,7 +9,7 @@ from Trax.Utils.Logging.Logger import Log
 from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Projects.CCZA.Utils.Fetcher import CCZAQueries
 from Projects.CCZA.Utils.ParseTemplates import parse_template
-from Projects.CCZA.Utils.Const import Const
+from Projects.CCZA_SAND.Utils.Const import Const
 from Projects.CCZA.Utils.Converters import Converters
 from KPIUtils.GeneralToolBox import GENERALToolBox
 from KPIUtils.DB.Common import Common
