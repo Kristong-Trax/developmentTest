@@ -183,6 +183,7 @@ class ToolBox(GlobalSessionToolBox):
                 cat_num = category_df[calculation_param].sum()
                 cat_res, cat_num, cat_den = self.calculate_sos_res(cat_num, cat_den)
                 self.common.write_to_db_result(fk=brand_category_kpi_fk, numerator_id=brand_fk,
+                                               context_id=self.own_manufacturer_fk,
                                                denominator_id=category_fk, result=cat_res, numerator_result=cat_num,
                                                should_enter=True, denominator_result=cat_den, score=cat_res,
                                                identifier_parent="{}_SOS_brand_{}".format(calculation_type,
