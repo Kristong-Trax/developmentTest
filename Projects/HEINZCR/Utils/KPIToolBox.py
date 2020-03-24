@@ -63,6 +63,8 @@ class HEINZCRToolBox:
         self.current_date = datetime.now()
         self.extra_spaces_template = pd.read_excel(Const.EXTRA_SPACES_RELEVANT_SUB_CATEGORIES_PATH)
         self.store_targets = pd.read_excel(Const.STORE_TARGETS_PATH)
+        self.sub_category_targets = pd.read_excel(Const.SUB_CATEGORY_TARGET_PATH, sheetname='category_score')
+        self.sub_category_weights = pd.read_excel(Const.SUB_CATEGORY_TARGET_PATH, sheetname='max_weight')
         self.store_assortment = PSAssortmentDataProvider(
             self.data_provider).execute(policy_name=None)
         try:
@@ -195,20 +197,27 @@ class HEINZCRToolBox:
                                               denominator_id=sku.sub_category_fk,
                                               result=result, identifier_parent=parent_dict, should_enter=True)
         # save PowerSKU results at sub_category level
+        weight = float(
+            self.sub_category_weights['Score'][self.sub_category_weights['KPIs'] == Const.KPI_WEIGHTS['POWERSKU']].iloc[
+                0])
         aggregated_results = self.sub_category_assortment.groupby('sub_category_fk').agg(
             {'in_session': 'sum', 'product_fk': 'count'}).reset_index().rename(
             columns={'product_fk': 'product_count'})
         aggregated_results['percent_complete'] = \
             aggregated_results.loc[:, 'in_session'] / aggregated_results.loc[:, 'product_count']
-        aggregated_results['result'] = aggregated_results['percent_complete'] * (3.0 / len(aggregated_results))
+        aggregated_results['result'] = aggregated_results['percent_complete'] * (weight / len(aggregated_results))
         for sub_category in aggregated_results.itertuples():
             parent_dict = self.common_v2.get_dictionary(kpi_fk=total_kpi_fk)
             identifier_dict = self.common_v2.get_dictionary(kpi_fk=sub_category_kpi_fk,
                                                             sub_category_fk=sub_category.sub_category_fk)
             result = sub_category.result
+
+            score = result * weight
+
             self.common_v2.write_to_db_result(sub_category_kpi_fk, numerator_id=sub_category.sub_category_fk,
-                                              denominator_id=self.store_id, identifier_parent=parent_dict,
-                                              identifier_result=identifier_dict, result=result,
+                                              denominator_id=self.store_id, identifier_parent=sub_category_kpi_fk,
+                                              weight=weight,
+                                              identifier_result=identifier_dict, result=result, score=score,
                                               should_enter=True)
         # save PowerSKU total score
         total_score = aggregated_results['result'].sum()
@@ -232,9 +241,9 @@ class HEINZCRToolBox:
             if not df_1.empty:
                 stores = self.store_sos_policies[(self.store_sos_policies['store_policy'] == row.store_policy)
                                                  & (
-                                                     self.store_sos_policies[
-                                                         'target_validity_start_date'] <= datetime.date(
-                                                         self.current_date))]
+                                                         self.store_sos_policies[
+                                                             'target_validity_start_date'] <= datetime.date(
+                                                     self.current_date))]
                 if stores.empty:
                     relevant_stores = stores
                 else:
@@ -288,9 +297,9 @@ class HEINZCRToolBox:
             if not df1.empty:
                 stores = self.store_sos_policies[(self.store_sos_policies['store_policy'] == row.store_policy)
                                                  & (
-                                                     self.store_sos_policies[
-                                                         'target_validity_start_date'] <= datetime.date(
-                                                         self.current_date))]
+                                                         self.store_sos_policies[
+                                                             'target_validity_start_date'] <= datetime.date(
+                                                     self.current_date))]
                 if stores.empty:
                     relevant_stores = stores
                 else:
@@ -602,7 +611,8 @@ class HEINZCRToolBox:
 
         self.extra_spaces_results = pd.merge(self.extra_spaces_results,
                                              self.all_products.loc[:, [
-                                                 'sub_category_fk', 'sub_category']].dropna().drop_duplicates(),
+                                                                          'sub_category_fk',
+                                                                          'sub_category']].dropna().drop_duplicates(),
                                              how='left', on='sub_category_fk')
 
         relevant_extra_spaces = \
@@ -688,3 +698,14 @@ class HEINZCRToolBox:
 
     def commit_results_data(self):
         self.common_v2.commit_results_data()
+
+    def check_bonus_question(self):
+        # bonus_question_exist = self.survey
+        # if bonus_question_exist:
+        #     status = True
+        #
+        # else:
+        #     status = False
+        #
+        # self.bonus_question = status
+        pass
