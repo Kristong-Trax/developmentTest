@@ -7,10 +7,10 @@ from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Utils.Conf.Keys import DbUsers
 from Trax.Utils.Logging.Logger import Log
 from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
-from Projects.CCZA_SAND.Utils.Fetcher import CCZAQueries
-from Projects.CCZA_SAND.Utils.ParseTemplates import parse_template
-from Projects.CCZA_SAND.Utils.Const import Const
-from Projects.CCZA_SAND.Utils.Converters import Converters
+from Projects.CCZA.Utils.Fetcher import CCZAQueries
+from Projects.CCZA.Utils.ParseTemplates import parse_template
+from Projects.CCZA.Utils.Const import Const
+from Projects.CCZA.Utils.Converters import Converters
 from KPIUtils.GeneralToolBox import GENERALToolBox
 from KPIUtils.DB.Common import Common
 from KPIUtils.Calculations.Survey import Survey
@@ -62,15 +62,14 @@ class CCZAToolBox:
 
     def get_own_manufacturer_fk(self):
         own_manufacturer_fk = self.data_provider.own_manufacturer.param_value.values[0]
-        # own_manufacturer_fk = self.all_products[self.all_products['manufacturer_name'] ==
-        #                                         'MARS GCC']['manufacturer_fk'].values[0]
         return int(float(own_manufacturer_fk))
 
     def sos_main_calculation(self):
         store_sos_ident_par, store_facings = self.calculate_own_manufacturer_out_of_store()
         category_df = self.calculate_sos_category_out_of_store(store_sos_ident_par, store_facings)
-        manufacturer_cat_df = self.calculate_sos_manufacturer_out_of_category(category_df)
-        self.calculate_sos_brand_out_of_manufacturer(manufacturer_cat_df)
+        if not category_df.empty:
+            manufacturer_cat_df = self.calculate_sos_manufacturer_out_of_category(category_df)
+            self.calculate_sos_brand_out_of_manufacturer(manufacturer_cat_df)
 
     def calculate_own_manufacturer_out_of_store(self):
         manuf_out_of_store_fk = self.common_v2.get_kpi_fk_by_kpi_type(Const.SOS_OWN_MANUF_OUT_OF_STORE)
@@ -79,11 +78,6 @@ class CCZAToolBox:
                                                                 [ScifConsts.FACINGS_IGN_STACK].sum()
         denom_result = float(self.scif_match_react[ScifConsts.FACINGS_IGN_STACK].sum())
         sos_result = num_result / denom_result if denom_result else 0
-        # num_filters, denom_filters = self.construct_sos_filters(('manufacturer', self.own_manuf_fk), ('', ''))
-        # num_filters = {ScifConsts.MANUFACTURER_FK: self.own_manuf_fk}
-        # denom_filters = {}
-        # num_result, denom_result, sos_result = self.calculate_sos_custom(num_filters, denom_filters,
-        #                                                                  Const.IGNORE_STACKING)
         self.common_v2.write_to_db_result(fk=manuf_out_of_store_fk, numerator_id=self.own_manuf_fk,
                                           denominator_id=self.store_id, numerator_result=num_result,
                                           denominator_result=denom_result, score=sos_result * 100, result=sos_result,
@@ -154,32 +148,6 @@ class CCZAToolBox:
         cat_df = cat_df[[ScifConsts.CATEGORY_FK, 'category_facings', 'cat_id_parent']]
         return cat_df
 
-    # def calculate_sos_custom(self, num_filters_input, denom_filters_input, ignore_stacking):
-    #     num_filters_input.update(denom_filters_input)
-    #     num_filters = {'population': {'include': [num_filters_input]}}
-    #     denom_filters = {'population': {'include': [denom_filters_input]}}
-    #     num_result = self.calculate_facings_space(num_filters, ignore_stacking)
-    #     denom_result = self.calculate_facings_space(denom_filters, ignore_stacking)
-    #     sos_result = num_result / denom_result if denom_result else 0
-    #     return num_result, denom_result, sos_result
-    #
-    # def calculate_facings_space(self, filters, ignore_stack_flag):
-    #     filtered_scif = filter_df(filters, self.scif)
-    #     length_field = ScifConsts.FACINGS_IGN_STACK if ignore_stack_flag else ScifConsts.FACINGS
-    #     space_length = filtered_scif[length_field].sum()
-    #     return float(space_length)
-
-    # @staticmethod
-    # def construct_sos_filters((num_entity, num_value), (denom_entity, denom_value)):
-    #     num_filter_key = '{}_fk'.format(num_entity) if num_entity else None
-    #     denom_filter_key = '{}_fk'.format(denom_entity) if denom_entity else None
-    #
-    #     num_filters = {num_filter_key: num_value} if num_filter_key is not None else {}
-    #     denom_filters = {denom_filter_key: denom_value} if denom_filter_key is not None else {}
-    #
-    #     num_filters.update(denom_filters)
-    #     return num_filters, denom_filters
-
     def main_calculation_red_score(self):
         set_score = 0
         try:
@@ -213,7 +181,7 @@ class CCZAToolBox:
             Log.error('Exception in the kpi-set calculating: {}'.format(exception.message))
             pass
 
-    def main_calculation_lvl_2(self, identifier_parent,  *args, **kwargs):
+    def main_calculation_lvl_2(self, identifier_parent, *args, **kwargs):
         """
             :param kwargs: dict - kpi line from the template.
             the function gets the kpi (level 2) row, and calculates its children.
@@ -253,9 +221,6 @@ class CCZAToolBox:
             atomic_row = self.kpi_sheets[target].iloc[0]
             atomic_params = atomic_row.to_dict()
             atomic_params.update({Const.ATOMIC_NAME: kpi_name, Const.KPI_NAME: kpi_name, Const.type: kpi_name})
-            # kpi_score = self.calculate_atomic({Const.ATOMIC_NAME: kpi_name,
-            #                                    Const.KPI_NAME: kpi_name,
-            #                                    Const.type: kpi_name}, set_name, lvl_2_identifier_par)
             kpi_score = self.calculate_atomic(atomic_params, set_name, lvl_2_identifier_par)
         kpi_names = {Const.column_name1: set_name, Const.column_name2: kpi_name}
         kpi_fk = self.get_kpi_fk_by_kpi_path(self.common.LEVEL2, kpi_names)
@@ -375,6 +340,7 @@ class CCZAToolBox:
             count = self.calculate_scene_count(atomic_params)
             atomic_score = 100.0 * (count >= float(accepted_answer))
         elif atomic_type == Const.PLANOGRAM:
+            # atomic_score = self.calculate_planogram(atomic_params)
             atomic_score = self.calculate_planogram_new(atomic_params)
         else:
             Log.warning('The type "{}" is not recognized'.format(atomic_type))
@@ -458,10 +424,6 @@ class CCZAToolBox:
             if len(incor_tags) == 0:
                 scenes_passing += 1
         score = 100 if scenes_passing >= wanted_answer else 0
-        # p_matches = self.match_product_in_scene[self.match_product_in_scene[ScifConsts.SCENE_FK].isin(filtered_scenes)]
-        # planogram_matches_passing = p_matches[~(p_matches[MatchesConsts.COMPLIANCE_STATUS_FK] == 3)]
-        # scenes_passing = len(planogram_matches_passing[ScifConsts.SCENE_FK].unique())
-        # score = 100 if scenes_passing >= wanted_answer else 0
         return score
 
     def calculate_scene_count(self, atomic_params):
@@ -531,33 +493,33 @@ class CCZAToolBox:
             checking if the shelf is sorted like the brands list.
             :return: 100 if it's fine, 0 otherwise.
         """
-
-        # progression_list = ['COCA-COLA', 'COCA COLA PLUS COFFEE', 'COKE ZERO', 'COKE LIGHT',
-        #                     'COCA COLA NO SUGAR NO CAFFEINE', 'TAB', 'SPRITE', 'SPRITE ZERO', 'FANTA ORANGE',
-        #                     'Fanta Mango', 'FANTA Pinapple', 'FANTA Grape', 'STONEY']
         population_entity_type = Converters.convert_type(atomic_params[Const.ENTITY_TYPE])
         progression_list = map(lambda x: x.strip(), atomic_params[Const.ENTITY_VAL].split(','))
         location_entity_type = Converters.convert_type(atomic_params[Const.TYPE_FILTER])
         location_values = map(lambda x: x.strip(), atomic_params[Const.VALUE_FILTER].split(','))
+        is_in_param = False if atomic_params[Const.IN_NOT_IN] == u'Not in' else True
+        filter_loc_param = self.scif[location_entity_type].isin(location_values) if is_in_param else\
+            ~self.scif[location_entity_type].isin(location_values)
 
         filtered_scif = self.scif[
-            (~self.scif[location_entity_type].isin(location_values)) &
+            filter_loc_param &
             (self.scif['tagged'] >= 1) &
             (self.scif[population_entity_type].isin(progression_list))]
+
         join_on = ['scene_fk', 'product_fk']
         match_product_join_scif = pd.merge(filtered_scif, self.match_product_in_scene, on=join_on, how='left',
                                            suffixes=('_x', '_matches'))
         progression_field = 'brand_name'
         group_column = 'scene_fk'
-
-        progression_cross_shelves_true = self.tool_box_for_flow.progression(
+        l2r_param = False if atomic_params.get(Const.L_TO_R, '').upper() == 'NO' else True
+        progression_cross_shelves_true = (self.tool_box_for_flow.progression(
             df=match_product_join_scif, progression_list=progression_list, progression_field=progression_field,
-            at_least_one=False, left_to_right=True, cross_bays=True, cross_shelves=True,
-            include_stacking=False, group_by=group_column)
-        progression_cross_shelves_false = self.tool_box_for_flow.progression(
+            at_least_one=False, left_to_right=l2r_param, cross_bays=True, cross_shelves=True,
+            include_stacking=False, group_by=group_column))
+        progression_cross_shelves_false = (self.tool_box_for_flow.progression(
             df=match_product_join_scif, progression_list=progression_list, progression_field=progression_field,
-            at_least_one=False, left_to_right=True, cross_bays=True, cross_shelves=False,
-            include_stacking=False, group_by=group_column)
+            at_least_one=False, left_to_right=l2r_param, cross_bays=True, cross_shelves=False,
+            include_stacking=False, group_by=group_column))
 
         return 100.0 * (progression_cross_shelves_true or
                         progression_cross_shelves_false)
@@ -612,8 +574,6 @@ class CCZAToolBox:
                     filters[Converters.convert_type(types[i])] = values[i]
         else:
             filters = {Converters.convert_type(type_name): map(lambda x: x.strip(), value_name.split(','))}
-        # list_of_negative = list(self.scif[self.scif['rlv_sos_sc'] != 0]['rlv_sos_sc'].unique())
-        # filters['rlv_sos_sc'] = list_of_negative # perhaps we don't need it - if we need, to enter it to the initializer
         return filters
 
     @staticmethod
@@ -631,3 +591,4 @@ class CCZAToolBox:
             return ans
         except ValueError:
             return 0.0
+
