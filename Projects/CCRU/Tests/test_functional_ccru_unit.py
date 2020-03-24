@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import json
+import pandas as pd
 
 from mock import MagicMock
 from pandas.util.testing import assert_frame_equal
@@ -36,13 +37,15 @@ class TestCCRU(TestFunctionalCase):
 
         self.data_provider.__getitem__.side_effect = get_item
 
-    def mock_tool_box(self):
+    def mock_tool_box(self, mock_kpis_to_db=True):
 
         self.mock_object('CCRUKPIToolBox.rds_connection')
         self.mock_object('CCRUKPIToolBox.write_to_kpi_results_old')
         self.mock_object('CCRUKPIToolBox.write_to_kpi_facts_hidden')
         self.mock_object('CCRUKPIToolBox.get_pos_kpi_set_name')\
             .return_value = self.data.pos_kpi_set_name
+        self.mock_object('CCRUKPIToolBox.retrieve_and_unpack_cooler_assortment_list') \
+            .return_value = pd.DataFrame()
 
         # self.mock_object('Common')
         self.mock_object('PSProjectConnector', path='KPIUtils_v2.DB.CommonV2')
@@ -79,6 +82,9 @@ class TestCCRU(TestFunctionalCase):
             .return_value = self.data.kpi_entity_types
         self.mock_object('CCRUCCHKPIFetcher.get_kpi_entity') \
             .side_effect = self.fetcher_get_kpi_entity
+
+        self.mock_object('CCRUCCHKPIFetcher.get_kpi_fk')
+        self.mock_object('CCRUCCHKPIFetcher.get_atomic_kpi_fk')
 
     def fetcher_get_kpi_entity(self, entity, entity_type_fk, entity_table_name, entity_uid_field):
         if entity_table_name == 'pservice.group_names':
