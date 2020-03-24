@@ -29,42 +29,11 @@ class Generator:
         if self.tool_box.scif.empty:
             Log.warning('Scene item facts is empty for this session')
 
-        df_scif = self.tool_box.scif
         fk_template_water_aisle = 2
         fk_template_water_display = 7
 
-        fk_kpi_level_2 = {
-            'facings': 909,
-            'facings_ign_stack': 910,
-            'net_len_split_stack': 911,
-            'net_len_ign_stack': 912
-        }
-
-        def calculate_facing_count_and_linear_feet(id_scene_type):
-            df_scene = df_scif[df_scif['template_fk'] == id_scene_type]
-            sums = {key: df_scene[key].sum() for key, _ in fk_kpi_level_2.items()}
-
-            for row in df_scene.itertuples():
-                for key, fk in fk_kpi_level_2.items():
-                    numerator = getattr(row, key) # row[key] #row.get(key) # this seems awkward
-                    denominator = sums.get(key)
-                    result = numerator / denominator
-
-                    self.common.write_to_db_result(
-                        fk=row.pk,
-                        level="",
-                        score=result,
-                        kpi_level_2_fk=fk,
-                        session_fk=row.session_id,
-                        numerator_id=row.item_id,
-                        numerator_result=numerator,
-                        denominator_id=row.store_id,
-                        denominator_result=denominator,
-                        result=result
-                    )
-
-        calculate_facing_count_and_linear_feet(id_scene_type=fk_template_water_aisle)
-        calculate_facing_count_and_linear_feet(id_scene_type=fk_template_water_display)
+        self.tool_box.calculate_facing_count_and_linear_feet(id_scene_type=fk_template_water_aisle)
+        self.tool_box.calculate_facing_count_and_linear_feet(id_scene_type=fk_template_water_display)
 
         # for kpi_set_fk in self.tool_box.new_kpi_static_data['pk'].unique().tolist():
         #     print("kpi_set")
