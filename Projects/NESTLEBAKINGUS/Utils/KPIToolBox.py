@@ -170,7 +170,7 @@ class NESTLEBAKINGUSToolBox(GlobalSessionToolBox):
                 relevant_mcif = self.match_scene_item_facts[self.match_scene_item_facts.scene_id.isin([unique_scene])]
                 for unique_bay in set(relevant_mcif.bay_number):
                     useful_mcif = relevant_mcif[relevant_mcif.bay_number.isin([unique_bay])]
-                    highest_shelf_number_in_bay = useful_mcif.bay_number.max()
+                    highest_shelf_number_in_bay = useful_mcif.shelf_number.max()
                     result_dict = {'kpi_fk': kpi_fk, 'numerator_id': display_fk_id,
                                    'denominator_id': unique_bay, 'context_id': unique_scene,
                                    'result': highest_shelf_number_in_bay}
@@ -272,12 +272,15 @@ class NESTLEBAKINGUSToolBox(GlobalSessionToolBox):
                                        'result': result}
                         result_dict_list.append(result_dict)
             else:
-                denominator_result = relevant_scif[row[Consts.OUTPUT]].sum()
-                for unique_category_fk in set(relevant_scif[row[Consts.FILTER_DENOMINATOR]]):
+                denominator_result = relevant_scif[row[Consts.OUTPUT]].sum() if not row[
+                    Consts.LINEAR_RELEVANT] else relevant_scif[
+                                                     row[Consts.OUTPUT]].sum() * CONVERT_MM_TO_INCHES
+
+                for unique_category_fk in set(relevant_scif['category_fk']):
                     relevant_scif_filtered = self._filter_df(relevant_scif, {Consts.CATEGORY_FK: unique_category_fk})
-                    denominator_result = relevant_scif_filtered[row[Consts.OUTPUT]].sum() if not row[
-                        Consts.LINEAR_RELEVANT] else relevant_scif_filtered[
-                                                         row[Consts.OUTPUT]].sum() * CONVERT_MM_TO_INCHES
+                    numerator_result = relevant_scif_filtered[row[Consts.OUTPUT]].sum() if not row[
+                    Consts.LINEAR_RELEVANT] else relevant_scif_filtered[
+                                                     row[Consts.OUTPUT]].sum() * CONVERT_MM_TO_INCHES
                     result = (float(numerator_result) / denominator_result) * 100
                     result_dict = {'kpi_fk': kpi_fk, 'numerator_id': unique_category_fk,
                                    'denominator_id': self.store_id, 'context_id': unique_scene_fk,
