@@ -1,7 +1,7 @@
 
 from Trax.Utils.Conf.Configuration import Config
 from Trax.Utils.Testing.Case import TestCase
-from mock import MagicMock, mock
+from mock import MagicMock, patch
 import pandas as pd
 from Projects.GSKAU.Utils.KPIToolBox import GSKAUToolBox
 
@@ -11,7 +11,7 @@ __author__ = 'limorc'
 
 class TestGSKAU(TestCase):
 
-    @mock.patch('Projects.GSKAU.Utils.KPIToolBox.ProjectConnector')
+    @patch('Projects.GSKAU.Utils.KPIToolBox.ProjectConnector')
     def setUp(self, x):
         Config.init('')
         self.data_provider_mock = MagicMock()

@@ -1,8 +1,7 @@
 
 from Trax.Utils.Conf.Configuration import Config
 from Trax.Utils.Testing.Case import TestCase
-from mock import MagicMock, mock
-import pandas as pd
+from mock import MagicMock, patch
 from Projects.LIONNZ.Utils.KPIToolBox import LIONNZToolBox
 
 
@@ -11,7 +10,7 @@ __author__ = 'nidhin'
 
 class TestLIONNZ(TestCase):
 
-    @mock.patch('Projects.LIONNZ.Utils.KPIToolBox.ProjectConnector')
+    @patch('Projects.LIONNZ.Utils.KPIToolBox.ProjectConnector')
     def setUp(self, x):
         Config.init('')
         self.data_provider_mock = MagicMock()

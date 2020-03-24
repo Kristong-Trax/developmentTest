@@ -34,24 +34,20 @@ class DIAGEORUToolBox:
         log_runtime('Updating templates')
         self.template_handler.update_templates()
 
-        # Global assortment kpis - v2 for API use
-        assortment_res_dict_v2 = self.diageo_generator.diageo_global_assortment_function_v2()
-        self.commonV2.save_json_to_new_tables(assortment_res_dict_v2)
-
-        # Global assortment kpis - v3 for NEW MOBILE REPORTS use
-        assortment_res_dict_v3 = self.diageo_generator.diageo_global_assortment_function_v3()
-        self.commonV2.save_json_to_new_tables(assortment_res_dict_v3)
+        # Global assortment kpis
+        assortment_res = self.diageo_generator.diageo_global_grouping_assortment_calculation()
+        self.commonV2.save_json_to_new_tables(assortment_res)
 
         # Global Menu kpis
-        menus_res_dict = self.diageo_generator.diageo_global_share_of_menu_cocktail_function(
-            cocktail_product_level=True)
-        self.commonV2.save_json_to_new_tables(menus_res_dict)
+        menus_res = self.diageo_generator.diageo_global_new_share_of_menu_function()
+        self.commonV2.save_json_to_new_tables(menus_res)
 
         # Global Secondary Displays function
         res_json = self.diageo_generator.diageo_global_secondary_display_secondary_function()
         if res_json:
             self.commonV2.write_to_db_result(fk=res_json['fk'], numerator_id=1, denominator_id=self.store_id,
                                              result=res_json['result'])
+
         # Brand Blocking Global function
         template_data = self.template_handler.download_template(DiageoKpiNames.BRAND_BLOCKING)
         res_dict = self.diageo_generator.diageo_global_block_together(
@@ -69,7 +65,6 @@ class DIAGEORUToolBox:
         template_data = self.template_handler.download_template(DiageoKpiNames.VERTICAL_SHELF_PLACEMENT)
         res_dict = self.diageo_generator.diageo_global_vertical_placement(template_data)
         self.commonV2.save_json_to_new_tables(res_dict)
-
         # committing to the new tables
         self.commonV2.commit_results_data()
         # committing to the old tables

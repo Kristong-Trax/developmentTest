@@ -12,8 +12,9 @@ if __name__ == '__main__':
     data_provider = KEngineDataProvider(project_name)
 
     sessions = [
-        "348CBAC0-0995-475B-B84A-E8C8D3229295"
-    ]
+        '89AA44E0-A864-4DCA-8EAC-3B5D5AB89CDE',
+        '73589EF1-3EE6-4151-911F-AD0A5B90A593'
+        ]
 
     for session in sessions:
         print "Running for {}".format(session)

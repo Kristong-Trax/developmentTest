@@ -161,14 +161,16 @@ class CCMYToolBox:
                 continue
 
             if score is not None:
-                total_score += score
-                kpi_fk = self.kpi_static_data[self.kpi_static_data['kpi_name'] == group].iloc[0]['kpi_fk']
-                self.write_to_db_result(kpi_fk, score, level=self.LEVEL2)
-                identifier_result = self.common.get_dictionary(kpi_name=group)
-                # insert db results to new tables
-                self.insert_db_new_results(kpi_data.iloc[0][CCMYConsts.KPI_GROUP], score, numerator, score, 1,
-                                           identifier_result=identifier_result, identifier_parent=identifier_parent,
-                                           numerator_id=numerator_id)
+                if kpi_type != CCMYConsts.SHELF_PURITY:
+                    total_score += score
+                    kpi_fk = self.kpi_static_data[self.kpi_static_data['kpi_name'] == group].iloc[0]['kpi_fk']
+                    self.write_to_db_result(kpi_fk, score, level=self.LEVEL2)
+                    identifier_result = self.common.get_dictionary(kpi_name=group)
+                    # insert db results to new tables
+                    self.insert_db_new_results(kpi_data.iloc[0][CCMYConsts.KPI_GROUP], score, numerator, score, 1,
+                                               identifier_result=identifier_result,
+                                               identifier_parent=identifier_parent,
+                                               numerator_id=numerator_id)
 
         if self.kpi_static_data.empty:
             return
@@ -330,7 +332,6 @@ class CCMYToolBox:
                             (row_data_y[CCMYConsts.MANUFACTURER_FK] == CCMYConsts.GENERAL_MANUFACTURER) &
                             (row_data_y[CCMYConsts.PRODUCT_FK] == CCMYConsts.IRRELEVANT) &
                             (row_data_x[CCMYConsts.IS_PURE] == CCMYConsts.PURE)):
-
                         row_data_x[CCMYConsts.IS_PURE] = CCMYConsts.IMPURE
                         print "Impure Shelf={}".format(row_data_y[CCMYConsts.SHELF_NUMBER])
                         continue

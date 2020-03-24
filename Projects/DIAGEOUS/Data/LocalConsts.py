@@ -4,7 +4,7 @@ __author__ = 'Elyashiv'
 class Consts(object):
 
     OFF, ON, INDEPENDENT, OPEN, NATIONAL_STORE = "off_premise", "on_premise", "Independent", "Open", "National"
-    NOT_INDEPENDENT_STORES = [OPEN, NATIONAL_STORE]
+    NOT_INDEPENDENT_STORES = [OPEN, NATIONAL_STORE, INDEPENDENT]
     # sheets:
     ON_TRADE_OPEN, OFF_TRADE_OPEN = "open - on_trade", "open - off_trade"
     ON_TRADE_INDEPENDENT, OFF_TRADE_INDEPENDENT = "independent - on_trade", "independent - off_trade"
@@ -14,7 +14,8 @@ class Consts(object):
     SHEETS = {
         OPEN: {ON: [ON_TRADE_OPEN], OFF: [OFF_TRADE_OPEN, MINIMUM_SHELF_SHEET, SHELF_GROUPS_SHEET]},
         NATIONAL_STORE: {ON: [ON_TRADE_NATIONAL], OFF: [OFF_TRADE_NATIONAL]},
-        INDEPENDENT: {ON: [ON_TRADE_INDEPENDENT], OFF: [OFF_TRADE_INDEPENDENT]}}
+        INDEPENDENT: {ON: [ON_TRADE_INDEPENDENT], OFF: [
+            OFF_TRADE_INDEPENDENT, MINIMUM_SHELF_SHEET, SHELF_GROUPS_SHEET]}}
     # KPIs columns:
     KPI_NAME, KPI_GROUP, TARGET, WEIGHT = "KPI Name", "KPI Group", "Target", "Weight"
     PREVIOUS_WEIGHT, SWITCH_DATE = "Previous Weight", "Switch Date"
@@ -117,3 +118,13 @@ class Consts(object):
     ALL = "ALL"
 
     MENU_EXCLUDE_SUB_CATEGORIES = ["SPIRIT DRINK", "COCKTAIL", "LIQUEUR"]
+
+
+class CaseCountConsts(object):
+
+    TOTAL_CASES_KPI = 'TOTAL CASES'
+    TOTAL_FACINGS_KPI = 'CASE COUNT TOTAL FACINGS BRAND LEVEL'
+    CASE_COUNT_KPI = 'CASE COUNTER PER BRAND'
+    IMPLIED_SHOPPABLE_CASES_KPI = 'IMPLIED SHOPPABLE CASES PER BRAND'
+    NON_SHOPPABLE_CASES_KPI = 'NON SHOPPABLE CASE PER BRAND'
+    FACINGS_SKU_TYPES = ['Bottle', 'Carton', 'Pouch', 'VAP']

@@ -13,10 +13,8 @@ __author__ = 'nidhin'
 OWN_MAN_NAME = 'Lion'  # case insensitive
 TEMPLATE_PARENT_FOLDER = 'Data'
 TEMPLATE_NAME = 'Template.xlsx'
-ASSORTMENT_TEMPLATE_NAME = 'Assortments.xlsx'
 
 KPI_NAMES_SHEET = 'kpis'
-ASSORTMENT_SHEET = 'assortment'
 KPI_DETAILS_SHEET = 'details'
 KPI_INC_EXC_SHEET = 'exclude_include'
 # Column Name
@@ -99,9 +97,6 @@ class LIONNZToolBox:
         self.kpi_template_path = os.path.join(os.path.dirname(os.path.realpath(__file__)),
                                               '..', TEMPLATE_PARENT_FOLDER,
                                               TEMPLATE_NAME)
-        self.assortment_template_path = os.path.join(os.path.dirname(os.path.realpath(__file__)),
-                                                     '..', TEMPLATE_PARENT_FOLDER,
-                                                     ASSORTMENT_TEMPLATE_NAME)
         self.own_man_fk = self.all_products[
             self.all_products['manufacturer_name'].str.lower() == OWN_MAN_NAME.lower()
         ]['manufacturer_fk'].values[0]
@@ -323,6 +318,10 @@ class LIONNZToolBox:
             name=kpi.kpi_name.iloc[0],
             sess=self.session_uid
         ))
+        prod_empty_sub_cat = dataframe_to_process[
+            dataframe_to_process['sub_category_fk'].isnull()]['product_fk'].tolist()
+        Log.info('Remove products with empty sub category fk: {}'.format(prod_empty_sub_cat))
+        dataframe_to_process.dropna(subset=['sub_category_fk'], inplace=True)
         dataframe_to_process = dataframe_to_process.astype({'sub_category_fk': 'int64'}, errors='ignore')
         if query_string:
             grouped_data_frame = dataframe_to_process.query(query_string).groupby(groupers)

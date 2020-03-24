@@ -37,22 +37,33 @@ class TestNestleilSand(TestFunctionalCase):
         self.data_provider_mock.project_name = 'Test_Project_1'
         self.data_provider_mock.rds_conn = MagicMock()
         self.mock_db_users()
+        self.mock_various_project_connectors()
         self.mock_common_project_connector_mock = self.mock_common_project_connector()
         self.static_kpi_mock = self.mock_static_kpi()
         self.session_info_mock = self.mock_session_info()
+        self.mock_kpi_external_targets()
         # self.mock_lvl3_ass()
         self.output = MagicMock()
         self.session_info_mock = self.mock_session_info()
         self.kpi_result_values_mock = self.mock_kpi_result_value_table()
-        self.mock_all_products()
-        self.mock_various_project_connectors()
+        self.all_products_mock = self.mock_all_products()
         self.mock_position_graph()
+        self.mock_kpi_external_targets()
+        self.mock_products_trax_cat()
 
     # def mock_lvl3_ass_result(self):
     #     ass_res = self.mock_object('Assortment.calculate_lvl3_assortment',
     #                                path='KPIUtils_v2.Calculations.AssortmentCalculations')
     #     ass_res.return_value = DataTestUnitMarsuae.test_case_1_ass_result
     #     return ass_res.return_value
+
+    def mock_kpi_external_targets(self):
+        et = self.mock_object('NESTLEILToolBox._get_kpi_external_targets')
+        et.return_value = pd.read_excel(DataTestUnitNestleil.external_target)
+
+    def mock_products_trax_cat(self):
+        prod_cat = self.mock_object('NESTLEILToolBox._get_trax_category_for_products')
+        prod_cat.return_value = self.all_products_mock[['product_fk', 'trax_category_fk']]
 
     def mock_position_graph_block(self):
         self.mock_object('PositionGraphs', path='KPIUtils_v2.Calculations.BlockCalculations_v2')
@@ -101,8 +112,9 @@ class TestNestleilSand(TestFunctionalCase):
         return static_kpi.return_value
 
     def mock_all_products(self):
-        self.data_provider_data_mock['all_products'] = pd.read_excel(self.TEST_CASE,
-                                                                     sheetname='all_products')
+        all_products_df = pd.read_excel(self.TEST_CASE, sheetname='all_products')
+        self.data_provider_data_mock['all_products'] = all_products_df
+        return all_products_df
 
     def mock_scene_item_facts(self, data):
         self.data_provider_data_mock['scene_item_facts'] = data.where(data.notnull(), None)
@@ -121,9 +133,11 @@ class TestNestleilSand(TestFunctionalCase):
 
     def test_calculate_assortment_hierarchy_and_results(self):
         self.mock_lvl3_ass(DataTestUnitNestleil.assortment_res)
+        self.create_scif_matches_stitch_groups_data_mocks([1, 2])
         tool_box = NESTLEILToolBox(self.data_provider_mock, self.output)
         tool_box.common_v2.write_to_db_result = MagicMock()
         tool_box.own_manufacturer_fk = 3
+        tool_box._determine_collection_completeness_for_product_groups()
         tool_box._calculate_assortment()
 
         calls = tool_box.common_v2.write_to_db_result.mock_calls

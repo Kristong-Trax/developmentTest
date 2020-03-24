@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*
 
 from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
 from Trax.Utils.Conf.Configuration import Config
@@ -21,10 +19,18 @@ if __name__ == '__main__':
     project_name = 'pngcn-sand'
     data_provider = KEngineDataProvider(project_name)
     output = Output()
-    sessions = {'6AC1E27A-B2C7-4389-8522-7F1D29642CA4': ['17901923'],
-                '0D9C3FAE-E62D-4467-B279-2FB8FC32A2DD': ['17886164'],
-                '6e4dc935-ab56-45ef-9408-caaddb963874': ['17888505'],
-                'C544B5DB-B61F-4B02-B03A-6D8748B3B636': ['17874115']}
+    sessions = {
+
+        'EE913E9B-71E7-4A39-A66F-2A9B8DA9B2BB': ['27846171', '27846517', '27848213', '27848280'],
+        '9be106d4-24a3-4876-bfe1-b096510770fd': ['27860731', '27860735', '27860737', '27860729', '27860772', '27860775',
+                                                 '27860790', '27860727', '27860784', '27860789'],
+        'ee91e5a6-f2c6-41f5-b9ad-e1ba865980cc': ['27886925', '27886943'],
+        '31829C7D-C7D7-453A-BF54-1163EDC0C4DE': ['27800831', '27800963', '27800980', '27800995', '27801020',
+                                                 '27801122'],
+        '75D1AB6C-5A7F-4DBD-B220-0938CAB0B2FC': ['27802705', '27802765', '27802775', '27802791', '27802804', '27802814',
+                                                 '27802819', '27802825', '27802845', '27802909'],
+        'e8c67437-814e-48cb-bc66-fb8bbf7bf7f9': ['25728621'],
+    }
     for session in sessions.keys():
         print "Running for {}".format(str(session))
         for scene in sessions[session]:

@@ -1257,7 +1257,7 @@ class ToolBox(GlobalSessionToolBox):
         return result
 
     def calculate_relevant_availability_survey_result(self, relevant_question_fk):
-        result = 0
+        final_result = 0
         survey_response_df = self.get_scene_survey_response()
         if survey_response_df.empty:
             return 0
@@ -1266,10 +1266,12 @@ class ToolBox(GlobalSessionToolBox):
         for question_fk in relevant_question_fk:
             relevant_survey_response = survey_response_df[survey_response_df['question_fk'].isin([question_fk])]
             if not relevant_survey_response.empty:
-                if relevant_survey_response.iloc[0, 2] in accepted_results:
-                    result = result + 1
+                survey_answer = relevant_survey_response.iloc[0, 2]
+                if survey_answer in accepted_results:
+                    result = 1 if survey_answer == 'Si' else int(survey_answer)
+                    final_result = final_result + result
 
-        return result
+        return final_result
 
     @staticmethod
     def calculate_targets_for_availability_kpi(store_size):

@@ -8,7 +8,7 @@ from Projects.MARSRU_PROD.Tests.Data.kpi_results import MARSRU_PRODKpiResults
 # import os
 # import json
 
-__author__ = 'ilays'
+__author__ = 'sergey'
 
 
 class TestKEnginePsCode(PsSanityTestsFuncs):
@@ -29,8 +29,8 @@ class TestKEnginePsCode(PsSanityTestsFuncs):
         self.add_mocks()
         project_name = ProjectsSanityData.project_name
         data_provider = KEngineDataProvider(project_name)
-        sessions = {'ffed4592-47f6-427f-a7e6-29cebafe05af': [],
-                    '5b062170-373c-4363-819b-03104e31af11': []}
+        sessions = {'fffe707c-55f6-4f57-b8d1-67c76638f654': [],
+                    'ffcd785d-c621-4f15-b202-581b8f73c13f': []}
         kpi_results = MARSRU_PRODKpiResults().get_kpi_results()
         for session in sessions.keys():
             data_provider.load_session_data(str(session))
