@@ -284,7 +284,7 @@ class ToolBox(GlobalSessionToolBox):
                 count_of_bays_in_template = count_of_bays_in_template + bay_count
 
             self.common.write_to_db_result(fk=kpi_fk, numerator_id=relevant_template_fk,
-                                           denominator_id=self.store_id, context_id= relevant_template_fk,
+                                           denominator_id=self.store_id,
                                            result=count_of_bays_in_template)
 
     def calculate_platformas_scoring(self, row):
