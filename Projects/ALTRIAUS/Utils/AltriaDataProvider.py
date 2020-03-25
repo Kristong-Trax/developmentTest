@@ -31,6 +31,23 @@ class AltriaDataProvider:
             self._mdis = self.get_match_display_in_scene()
         return self._mdis
 
+    def get_match_product_in_probe_state_values(self, probe_match_fks):
+        query = """select mpipsv.match_product_in_probe_fk as 'probe_match_fk', 
+                    mpips.name as 'match_product_in_probe_state_value',
+                    mpips.pk as 'match_product_in_probe_state_fk'
+                    from probedata.match_product_in_probe_state_value mpipsv
+                    left join static.match_product_in_probe_state mpips on mpipsv.match_product_in_probe_state_fk = mpips.pk
+                    where mpipsv.match_product_in_probe_fk in ({});""".format(
+            ','.join([str(x) for x in probe_match_fks]))
+
+        cur = self.rds_conn.db.cursor()
+        cur.execute(query)
+        res = cur.fetchall()
+        df = pd.DataFrame(list(res), columns=['probe_match_fk', 'match_product_in_probe_state_value',
+                                              'match_product_in_probe_state_fk'])
+        df.drop_duplicates(subset=['probe_match_fk'], keep='first', inplace=True)
+        return df
+
     def get_match_display_in_scene(self):
         query = """select mdis.scene_fk, mdis.display_fk, d.display_name, mdis.rect_x, mdis.rect_y, 
                 d.display_brand_fk from probedata.match_display_in_scene mdis
