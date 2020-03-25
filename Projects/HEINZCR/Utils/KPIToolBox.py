@@ -75,6 +75,10 @@ class HEINZCRToolBox:
             self.sub_category_assortment = \
                 self.sub_category_assortment[~self.sub_category_assortment['assortment_name'].str.contains(
                     'ASSORTMENT')]
+            self.sub_category_assortment = pd.merge(self.sub_category_assortment, self.sub_category_weight, how='left',
+                                                    left_on='sub_category',
+                                                    right_on='Category')
+
         except KeyError:
             self.sub_category_assortment = pd.DataFrame()
 
@@ -88,6 +92,8 @@ class HEINZCRToolBox:
                                                        'suggested_price', 'into_interval', 'min_target', 'max_target'])
         self.extra_spaces_results = pd.DataFrame(
             columns=['sub_category_fk', 'template_fk', 'count'])
+
+        self.powersku_scores = {}
 
     def main_calculation(self, *args, **kwargs):
         """
@@ -105,7 +111,7 @@ class HEINZCRToolBox:
         self.calculate_assortment()
 
         perfect_store_score = 0
-        perfect_store_score += self.calculate_powersku_assortment()
+        self.calculate_powersku_assortment()
         perfect_store_score += self.main_sos_calculation()
         perfect_store_score += self.calculate_powersku_price_adherence()
         perfect_store_score += self.calculate_perfect_store_extra_spaces()
@@ -186,20 +192,29 @@ class HEINZCRToolBox:
         total_kpi_fk = self.common_v2.get_kpi_fk_by_kpi_type(Const.POWER_SKU_TOTAL)
         sub_category_kpi_fk = self.common_v2.get_kpi_fk_by_kpi_type(Const.POWER_SKU_SUB_CATEGORY)
         sku_kpi_fk = self.common_v2.get_kpi_fk_by_kpi_type(Const.POWER_SKU)
-        weight = float(
-            self.sub_category_weights['Score'][self.sub_category_weights['KPIs'] == Const.KPI_WEIGHTS['POWERSKU']].iloc[
+        target_kpi_weight = float(
+            self.kpi_weights['Score'][self.kpi_weights['KPIs'] == Const.KPI_WEIGHTS['POWERSKU']].iloc[
                 0])
 
         products_in_session = self.scif[self.scif['facings'] > 0]['product_fk'].unique().tolist()
         self.sub_category_assortment['in_session'] = \
             self.sub_category_assortment.loc[:, 'product_fk'].isin(products_in_session)
+
         # save PowerSKU results at SKU level
-        for sku in self.sub_category_assortment[['product_fk', 'sub_category_fk', 'in_session']].itertuples():
+        for sku in self.sub_category_assortment[
+            ['product_fk', 'sub_category_fk', 'in_session', 'sub_category']].itertuples():
             parent_dict = self.common_v2.get_dictionary(
                 parent_kpi_fk=parent_kpi_fk, sub_category_fk=sku.sub_category_fk)
+            relevant_sub_category_df = self.sub_category_assortment[
+                self.sub_category_assortment['sub_category'] == sku.sub_category]
+            if relevant_sub_category_df.empty:
+                sub_category_count = 0
+            else:
+                sub_category_count = len(relevant_sub_category_df)
+
             result = 1 if sku.in_session else 0
-            total_presense_sku += 1  if result == 1 else 0
-            score = result * (weight / len(self.sub_category_assortment))
+
+            score = result * (target_kpi_weight / float(sub_category_count))
             self.common_v2.write_to_db_result(sku_kpi_fk, numerator_id=sku.product_fk,
                                               denominator_id=sku.sub_category_fk, score=score,
                                               result=result, identifier_parent=parent_dict, should_enter=True)
@@ -210,21 +225,27 @@ class HEINZCRToolBox:
             columns={'product_fk': 'product_count'})
         aggregated_results['percent_complete'] = \
             aggregated_results.loc[:, 'in_session'] / aggregated_results.loc[:, 'product_count']
-        aggregated_results['result'] = aggregated_results['percent_complete'] * (weight)
+        aggregated_results['result'] = aggregated_results['percent_complete']
         for sub_category in aggregated_results.itertuples():
-            parent_dict = self.common_v2.get_dictionary(kpi_fk=total_kpi_fk)
+            # parent_dict = self.common_v2.get_dictionary(kpi_fk=total_kpi_fk)
             identifier_dict = self.common_v2.get_dictionary(kpi_fk=sub_category_kpi_fk,
                                                             sub_category_fk=sub_category.sub_category_fk)
-            result = total_presense_sku / float(len(self.sub_category_assortment))
+            weight_percent = 0
+            if self.country in self.sub_category_assortment.columns.to_list():
+                weight_value = self.sub_category_assortment[self.country][
+                    (self.sub_category_assortment.sub_category_fk == sub_category.sub_category_fk)].iloc[0]
+                if not pd.isna(weight_value):
+                    weight_percent = weight_value * .01
 
-            score = result * weight
+            result = sub_category.result * 100
+            score = result * weight_percent
 
+            self.powersku_scores[sub_category.sub_category_fk] = score
             self.common_v2.write_to_db_result(sub_category_kpi_fk, numerator_id=sub_category.sub_category_fk,
                                               denominator_id=self.store_id, identifier_parent=sub_category_kpi_fk,
                                               identifier_result=identifier_dict, result=result, score=score,
+                                              weight=target_kpi_weight, target=target_kpi_weight,
                                               should_enter=True)
-
-
 
     def heinz_global_distribution_per_category(self):
         relevant_stores = pd.DataFrame(columns=self.store_sos_policies.columns)
@@ -697,13 +718,13 @@ class HEINZCRToolBox:
     def commit_results_data(self):
         self.common_v2.commit_results_data()
 
-    def check_bonus_question(self):
-        # bonus_question_exist = self.survey
-        # if bonus_question_exist:
-        #     status = True
-        #
-        # else:
-        #     status = False
-        #
-        # self.bonus_question = status
-        pass
+    # def check_bonus_question(self):
+    #     # bonus_question_exist = self.survey
+    #     # if bonus_question_exist:
+    #     #     status = True
+    #     #
+    #     # else:
+    #     #     status = False
+    #     #
+    #     # self.bonus_question = status
+    #     pass

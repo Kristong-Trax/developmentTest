@@ -21,6 +21,7 @@ class Const(object):
     BONUS_QUESTION_FK = 56
 
     PERFECT_STORE = 'Perfect Store Score'
+    PERFECT_STORE_SUB_CATEGORY = 'Perfect Store Score - Sub Category'
 
     POWER_SKU = 'PowerSKU'
     POWER_SKU_SUB_CATEGORY = 'PowerSKU - Sub-Category'
