@@ -170,6 +170,8 @@ class ToolBox(GlobalSessionToolBox):
                 continue
             manufacturer_fk = brand_df['manufacturer_fk'].values[0]
             brand_num = brand_df[calculation_param].sum()
+            if brand_num == 0:
+                continue
             brand_res, brand_num, brand_den = self.calculate_sos_res(brand_num, brand_den)
             self.common.write_to_db_result(fk=brand_kpi_fk, numerator_id=brand_fk,
                                            denominator_id=manufacturer_fk,
@@ -185,6 +187,8 @@ class ToolBox(GlobalSessionToolBox):
                 filters['category_fk'] = category_fk
                 category_df = self.parser.filter_df(conditions=filters, data_frame_to_filter=sos_df)
                 cat_num = category_df[calculation_param].sum()
+                if cat_num == 0:
+                    continue
                 cat_res, cat_num, cat_den = self.calculate_sos_res(cat_num, cat_den)
                 self.common.write_to_db_result(fk=brand_category_kpi_fk, numerator_id=brand_fk,
                                                context_id=manufacturer_fk,
@@ -200,6 +204,8 @@ class ToolBox(GlobalSessionToolBox):
                     filters['product_fk'] = sku
                     product_df = self.parser.filter_df(conditions=filters, data_frame_to_filter=sos_df)
                     sku_num = product_df[calculation_param].sum()
+                    if sku_num == 0:
+                        continue
                     sku_result, sku_num, sku_den = self.calculate_sos_res(sku_num, cat_num)
                     self.common.write_to_db_result(fk=sku_kpi_fk, numerator_id=sku, denominator_id=brand_fk,
                                                    result=sku_result, numerator_result=sku_num, should_enter=True,
