@@ -154,27 +154,31 @@ class ToolBox(GlobalSessionToolBox):
 
     def calculate_hierarchy_sos(self, calculation_type):
         brand_kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_type=(calculation_type + Consts.SOS_BY_BRAND))
-        brand_category_kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_type=(calculation_type + Consts.SOS_BY_CAT_BRAND))
+        brand_category_kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_type=(calculation_type +
+                                                                             Consts.SOS_BY_CAT_BRAND))
         sku_kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_type=(calculation_type + Consts.SOS_BY_CAT_BRAND_SKU))
         calculation_param = "facings_ign_stack" if calculation_type == 'FACINGS' else "gross_len_ign_stack"
-        sos_df = self.scif[self.scif['rlv_sos_sc'] == 1]
-
+        sos_df = self.parser.filter_df(conditions={'rlv_sos_sc': 1, 'product_type': ['SKU', 'Empty']},
+                                       data_frame_to_filter=self.scif)
         # brand level sos
-        session_brands = set(self.parser.filter_df(conditions={'manufacturer_fk': self.own_manufacturer_fk},
-                                                   data_frame_to_filter=self.scif)['brand_fk'])
+        session_brands = set(sos_df['brand_fk'])
         brand_den = sos_df[calculation_param].sum()
         for brand_fk in session_brands:
             filters = {'brand_fk': brand_fk}
-            brand_num = self.parser.filter_df(conditions=filters, data_frame_to_filter=sos_df)[calculation_param].sum()
+            brand_df = self.parser.filter_df(conditions=filters, data_frame_to_filter=sos_df)
+            if brand_df.empty:
+                continue
+            manufacturer_fk = brand_df['manufacturer_fk'].values[0]
+            brand_num = brand_df[calculation_param].sum()
             brand_res, brand_num, brand_den = self.calculate_sos_res(brand_num, brand_den)
             self.common.write_to_db_result(fk=brand_kpi_fk, numerator_id=brand_fk,
-                                           denominator_id=self.own_manufacturer_fk,
+                                           denominator_id=manufacturer_fk,
                                            result=brand_res, numerator_result=brand_num, denominator_result=brand_den,
                                            score=brand_res,
                                            identifier_result="{}_SOS_brand_{}".format(calculation_type, str(brand_fk)))
             # brand-category level sos
-            filters['manufacturer_fk'] = self.own_manufacturer_fk
-            brand_categories = set(self.parser.filter_df(conditions=filters, data_frame_to_filter=sos_df)['category_fk'])
+            brand_categories = set(self.parser.filter_df(conditions=filters,
+                                                         data_frame_to_filter=sos_df)['category_fk'])
             for category_fk in brand_categories:
                 cat_den = self.parser.filter_df(conditions={'category_fk': category_fk},
                                                 data_frame_to_filter=sos_df)[calculation_param].sum()
@@ -183,7 +187,7 @@ class ToolBox(GlobalSessionToolBox):
                 cat_num = category_df[calculation_param].sum()
                 cat_res, cat_num, cat_den = self.calculate_sos_res(cat_num, cat_den)
                 self.common.write_to_db_result(fk=brand_category_kpi_fk, numerator_id=brand_fk,
-                                               context_id=self.own_manufacturer_fk,
+                                               context_id=manufacturer_fk,
                                                denominator_id=category_fk, result=cat_res, numerator_result=cat_num,
                                                should_enter=True, denominator_result=cat_den, score=cat_res,
                                                identifier_parent="{}_SOS_brand_{}".format(calculation_type,
@@ -200,10 +204,9 @@ class ToolBox(GlobalSessionToolBox):
                     self.common.write_to_db_result(fk=sku_kpi_fk, numerator_id=sku, denominator_id=brand_fk,
                                                    result=sku_result, numerator_result=sku_num, should_enter=True,
                                                    denominator_result=cat_num, score=sku_num,
-                                                   context_id=category_fk,
+                                                   context_id=category_fk, weight=manufacturer_fk,
                                                    identifier_parent="{}_SOS_cat_{}_brand_{}".format(calculation_type,
                                                                                                      str(category_fk),
                                                                                                      str(brand_fk)))
                 del filters['product_fk']
             del filters['category_fk']
-
