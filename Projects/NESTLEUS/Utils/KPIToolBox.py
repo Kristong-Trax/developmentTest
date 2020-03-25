@@ -78,6 +78,14 @@ class NESTLEUSToolBox:
         kpi_set_fk = kwargs['kpi_set_fk']
         self.calculate_facing_count_and_linear_feet(kpi_set_fk=kpi_set_fk)
 
+    def get_numerator_denominator_ids(self, kpi_id):
+        static = self.kpi_static_data
+        static_kpi = static[static['pk'] == kpi_id]
+        numerator_id = static_kpi['numerator_type_fk'].iloc[0]
+        denominator_id = static_kpi['denominator_type_fk'].iloc[0]
+
+        return (numerator_id, denominator_id)
+
     def calculate_facing_count_and_linear_feet(self, id_scene_type):
         fk_kpi_level_2 = {
             'facings': 909,
@@ -96,10 +104,9 @@ class NESTLEUSToolBox:
                 result = numerator / denominator
 
                 self.common.write_to_db_result(
-                    fk=row.pk,
-                    level="",
+                    fk=fk,
+                    level=None,
                     score=result,
-                    kpi_level_2_fk=fk,
                     session_fk=row.session_id,
                     numerator_id=row.item_id,
                     numerator_result=numerator,
@@ -158,6 +165,30 @@ class NESTLEUSToolBox:
 
         return numerator_width
 
+    def calculate_base_footage(self):
+        water_aisle_base_footage_kpi_fk = 913
+
+        numerator_id, denominator_id = self.get_numerator_denominator_ids(water_aisle_base_footage_kpi_fk)
+
+        scif = self.scif
+        water_aisle = scif[scif['template_fk'] == 2]
+        water_aisle_ids = water_aisle['pk'].unique()
+
+        mpis = self.match_product_in_scene
+        bottom_shelves = mpis[mpis['shelf_number_from_bottom'] == 1]
+        water_aisle_bottom_shelves = bottom_shelves[bottom_shelves['scene_fk'].isin(water_aisle_ids)]
+        base_footage = bottom_shelves['width_mm_advance'].sum()
+
+        self.common.write_to_db_result(
+            fk=water_aisle_base_footage_kpi_fk,
+            session_fk=self.session_uid,
+            numerator_result=base_footage,
+            numerator_id=numerator_id,
+            denominator_result=1,
+            denominator_id=denominator_id
+        )
+
+
     def calculate_share_space_length(self, **filters):
         """
         :param filters: These are the parameters which the data frame is filtered by.
@@ -167,6 +198,11 @@ class NESTLEUSToolBox:
             self.match_product_in_scene[self.get_filter_condition(self.match_product_in_scene, **filters)]
         space_length = filtered_matches['width_mm_advance'].sum()
         return space_length
+
+    def calculate_facings_per_shelf_level(self):
+
+        mpis = self.match_product_in_scene
+
 
     def calculate_assortment(self):
         # filter scif to get rid of scene types other than 'Waters'
