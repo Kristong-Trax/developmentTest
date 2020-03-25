@@ -116,6 +116,8 @@ class ALTRIAUSToolBox:
             Log.warning('MPIS cannot be generated!')
             return
         self.adp = AltriaDataProvider(self.data_provider)
+        self.active_kpis = self._get_active_kpis()
+        self.external_targets = self.ps_data_provider.get_kpi_external_targets()
 
     def main_calculation(self, *args, **kwargs):
         """
@@ -130,6 +132,7 @@ class ALTRIAUSToolBox:
         self.calculate_assortment()
         self.calculate_vapor_kpis()
         self.calculate_empty_brand()
+        self.calculate_facings_by_scene_type()
 
         kpi_set_fk = 2
         set_name = \
@@ -164,6 +167,13 @@ class ALTRIAUSToolBox:
                 Log.info('KPI {} calculation failed due to {}'.format(kpi_name.encode('utf-8'), e))
                 continue
         return
+
+    def _get_active_kpis(self):
+        active_kpis = self.kpi_new_static_data[(self.kpi_new_static_data['kpi_calculation_stage_fk'] == 3) &
+                                           (self.kpi_new_static_data['valid_from'] <= self.visit_date) &
+                                           ((self.kpi_new_static_data['valid_until']).isnull() |
+                                            (self.kpi_new_static_data['valid_until'] >= self.visit_date))]
+        return active_kpis
 
     def calculate_vapor_kpis(self):
         category = 'Vapor'
@@ -228,6 +238,37 @@ class ALTRIAUSToolBox:
                                           denominator_result=len(assortment_with_facings),
                                           result=number_of_skus_present,
                                           score=score)
+
+    def calculate_facings_by_scene_type(self):
+        kpi_name = 'FACINGS_BY_SCENE_TYPE'
+        kpi_fk = self.common_v2.get_kpi_fk_by_kpi_type(kpi_name)
+        if kpi_name not in self.active_kpis['type'].unique().tolist():
+            return
+
+        config = self.get_external_target_data_by_kpi_fk(kpi_fk)
+
+        product_types = config.product_type
+        template_names = config.template_name
+
+        relevant_mpis = self.mpis[(self.mpis['product_type'].isin(product_types)) &
+                                  (self.mpis['template_name'].isin(template_names))]
+        smart_attribute_data = \
+            self.adp.get_match_product_in_probe_state_values(relevant_mpis['probe_match_fk'].unique().tolist())
+
+        relevant_mpis = pd.merge(relevant_mpis, smart_attribute_data, on='probe_match_fk', how='left')
+        relevant_mpis['match_product_in_probe_state_fk'].fillna(0, inplace=True)
+
+        relevant_mpis = relevant_mpis.groupby(['product_fk',
+                                               'template_fk',
+                                               'match_product_in_probe_state_fk'],
+                                              as_index=False)['scene_match_fk'].count()
+        relevant_mpis.rename(columns={'scene_match_fk': 'facings'}, inplace=True)
+
+        for row in relevant_mpis.itertuples():
+            self.common_v2.write_to_db_result(kpi_fk, numerator_id=row.product_fk, denominator_id=row.template_fk,
+                                              context_id=row.match_product_in_probe_state_fk, result=row.facings)
+
+        return
 
     def calculate_register_type(self):
         relevant_scif = self.scif[(self.scif['product_type'].isin(['POS', 'Other'])) &
@@ -785,6 +826,9 @@ class ALTRIAUSToolBox:
         except IndexError:
             relevant_scene_id = 0
         return relevant_scene_id
+
+    def get_external_target_data_by_kpi_fk(self, kpi_fk):
+        return self.external_targets[self.external_targets['kpi_fk'] == kpi_fk].iloc[0]
 
     def commit(self):
         self.common_v2.commit_results_data()
