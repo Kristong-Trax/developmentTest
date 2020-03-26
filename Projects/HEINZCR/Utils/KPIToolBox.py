@@ -692,11 +692,11 @@ class HEINZCRToolBox:
         return results_df
 
     def check_bonus_question(self):
-        bonus_kpi_fk = self.common_v2.get_kpi_fk_by_kpi_type(Const.BONUS_QUESTION)
+        bonus_kpi_fk = self.common_v2.get_kpi_fk_by_kpi_type(Const.BONUS_QUESTION_SUB_CATEGORY)
         bonus_weight = self.kpi_weights['Score'][self.kpi_weights['KPIs'] == Const.KPI_WEIGHTS['Bonus']].iloc[0]
         sub_category_fks = self.sub_category_assortment.sub_category_fk.unique().tolist()
 
-        if self.survey.check_survey_answer(('question_fk', Const.BONUS_QUESTION), 'Yes,yes,si,Si'):
+        if self.survey.check_survey_answer(('question_fk', Const.BONUS_QUESTION_SUB_CATEGORY), 'Yes,yes,si,Si'):
             result = 1
         else:
             result = 0
