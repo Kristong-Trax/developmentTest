@@ -70,3 +70,25 @@ class INBEVCISANDQueries(object):
                    pservice.policy p
                    where ktp.sku_name = p.policy_name;
                 """
+
+    @staticmethod
+    def kpi_external_targets_query(operation_types, visit_date):
+        if len(operation_types) == 1:
+            query = """SELECT ext.*, kpi.type, ot.operation_type from static.kpi_external_targets ext
+                          LEFT JOIN static.kpi_operation_type ot on ext.kpi_operation_type_fk=ot.pk
+                          LEFT JOIN static.kpi_level_2 kpi on ext.kpi_level_2_fk = kpi.pk
+                          WHERE
+                          ((ext.start_date<='{}' and ext.end_date is null) or 
+                          (ext.start_date<='{}' and ext.end_date>='{}'))
+                          AND ot.operation_type='{}' order by ext.pk
+                       """.format(visit_date, visit_date, visit_date, operation_types[0])
+        else:
+            query = """SELECT ext.*, kpi.type, ot.operation_type from static.kpi_external_targets ext
+                                      LEFT JOIN static.kpi_operation_type ot on ext.kpi_operation_type_fk=ot.pk 
+                                      LEFT JOIN static.kpi_level_2 kpi on ext.kpi_level_2_fk = kpi.pk
+                                      WHERE
+                                      ((ext.start_date<='{}' and ext.end_date is null) or 
+                                      (ext.start_date<='{}' and ext.end_date>='{}'))
+                                      AND ot.operation_type in {} order by ext.pk
+                                   """.format(visit_date, visit_date, visit_date, tuple(operation_types))
+        return query
