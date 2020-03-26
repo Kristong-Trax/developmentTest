@@ -118,13 +118,17 @@ class PngcnSceneKpis(object):
         self.common = common
         self.matches_from_data_provider = self.data_provider[Data.MATCHES]
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
+        if not self.scif.empty and self.scif.iloc[0]['location_type'] == 'Primary Shelf':
+            self.eye_level_df = self.get_eye_level_shelves(self.matches_from_data_provider)
+            eye_level_shelves = self.eye_level_df[['scene_match_fk', 'shelf_number']].copy()
+            eye_level_shelves = eye_level_shelves.rename(columns={"shelf_number": "eye_level_shelf_number"})
+            self.matches_from_data_provider = pd.merge(self.matches_from_data_provider, eye_level_shelves,
+                                                       on='scene_match_fk', how="left")
         self.store_id = self.data_provider[Data.SESSION_INFO].store_fk.values[0]
         self.all_products = self.data_provider[Data.ALL_PRODUCTS]
         self.png_manufacturer_fk = self.get_png_manufacturer_fk()
         self.psdataprovider = PsDataProvider(data_provider=self.data_provider)
         self.parser = Parser
-        # self.match_probe_in_scene = self.get_product_special_attribute_data(self.scene_id)
-        # self.match_product_in_probe_state_reporting = self.psdataprovider.get_match_product_in_probe_state_reporting()
         self.sub_brand_entities = self.psdataprovider.get_custom_entities_df('sub_brand').drop_duplicates(
             subset=['entity_name'], keep='first')
         self.att3_entities = self.psdataprovider.get_custom_entities_df('att3').drop_duplicates(subset=['entity_name'],
@@ -281,13 +285,6 @@ class PngcnSceneKpis(object):
         if len(shelves) < row_in_template[MIN_LAYER_NUMBER]:
             return
 
-
-
-        # Add eye level shelves!!!!
-
-
-
-
         block_flag = False
         for shelf in shelves:
             shelf_df = block_df[block_df['shelf_number'] == shelf]
@@ -297,13 +294,18 @@ class PngcnSceneKpis(object):
                 block_flag = True
                 break
 
+        num_of_eye_level_shelves = len(set(block_df[~block_df['eye_level_shelf_number'].isnull()][
+                                               'eye_level_shelf_number']))
+        row['num_of_eye_level_shelves'] = num_of_eye_level_shelves
         # Add relevant blocks the following info: x,y coordinates and number of facings
         if block_flag:
 
             # get bottoom left facings
-
-            point = node_data['polygon'].centroid
-            row['x'], row['y'] = point.x, point.y
+            horizontal_location = block_df['shelf_number'].min()
+            vertical_location = block_df[block_df['shelf_number'] ==
+                                         horizontal_location]['facing_sequence_number'].min()
+            # point = node_data['polygon'].centroid
+            row['x'], row['y'] = horizontal_location, vertical_location
 
             block_facing_include_stacking = self.calculate_block_facing_include_stacking(block_df, block_filters)
             row['number_of_facings'] = len(block_facing_include_stacking)
@@ -396,8 +398,7 @@ class PngcnSceneKpis(object):
         if self.matches_from_data_provider.empty or self.scif.empty or \
                 self.scif.iloc[0]['location_type'] != 'Primary Shelf':
             return
-        eye_level_df = self.get_eye_level_shelves(self.matches_from_data_provider)
-        full_eye_level_df = pd.merge(eye_level_df, self.all_products, on="product_fk")
+        full_eye_level_df = pd.merge(self.eye_level_df, self.all_products, on="product_fk")
         max_shelf_count = self.matches_from_data_provider["shelf_number"].max()
         self.calculate_facing_eye_level(full_eye_level_df, max_shelf_count)
         self.calculate_sequence_eye_level(max_shelf_count, full_eye_level_df)
