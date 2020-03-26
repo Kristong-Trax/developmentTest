@@ -60,6 +60,8 @@ PLATFORMAS = 'Platformas'
 PLATFORMAS_SCORING = 'Platformas Scoring'
 AVAILABILITY_COMBO = 'Availability Combo'
 NUMERO_DE_PUERTAS = 'Numero De Puertas'
+ASSORTMENTS = 'Assortment'
+
 
 POS_OPTIONS = 'POS Options'
 TARGETS_AND_CONSTRAINTS = 'Targets and Constraints'
@@ -91,6 +93,7 @@ SHEETS = [SOS, BLOCK_TOGETHER, SHARE_OF_EMPTY, BAY_COUNT, PER_BAY_SOS, SURVEY, A
           COMBO, SCORING, PLATFORMAS, PLATFORMAS_SCORING, KPIS, AVAILABILITY_COMBO, NUMERO_DE_PUERTAS]
 POS_OPTIONS_SHEETS = [POS_OPTIONS, TARGETS_AND_CONSTRAINTS]
 ASSORTMENT_SHEETS = [GRANULAR_GROUPS, GRANULAR_GROUPS_LINK_TO_STORES]
+PORTAFOLIO_SHEETS = [ASSORTMENTS]
 
 TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'CCNayarTemplatev0.8.9.xlsx')
 POS_OPTIONS_TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data',
@@ -98,6 +101,8 @@ POS_OPTIONS_TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file
 
 ASSORTMENT_TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data',
                                         'TemplateAssortmentCCNAYARMX_V4.xlsx')
+PORTAFOLIO_Y_PRECIOUS_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data',
+                                        'CCNayar_Portafolios_y_Precios.xlsx')
 
 
 def log_runtime(description, log_start=False):
@@ -132,6 +137,7 @@ class ToolBox(GlobalSessionToolBox):
         self.platformas_data = self.generate_platformas_data()
         self.assortment = Assortment(self.data_provider, common=self.common)
         self.store_assortment = self.assortment.store_assortment
+        self.att2 = self.store_info['additional_attribute_2'].iloc[0]
         self.ps_data = PsDataProvider(self.data_provider, self.output)
         self.match_product_in_probe_state_reporting = self.ps_data.get_match_product_in_probe_state_reporting()
         self.updated_store_assortment = self.store_assortment.merge(
@@ -148,6 +154,8 @@ class ToolBox(GlobalSessionToolBox):
             self.templates[sheet] = pd.read_excel(POS_OPTIONS_TEMPLATE_PATH, sheet_name=sheet)
         for sheet in ASSORTMENT_SHEETS:
             self.templates[sheet] = pd.read_excel(ASSORTMENT_TEMPLATE_PATH, sheet_name=sheet)
+        for sheet in PORTAFOLIO_SHEETS:
+            self.templates[sheet] = pd.read_excel(PORTAFOLIO_Y_PRECIOUS_PATH, sheet_name=sheet)
 
     def main_calculation(self):
         relevant_kpi_template = self.templates[KPIS]
@@ -561,79 +569,120 @@ class ToolBox(GlobalSessionToolBox):
     def calculate_assortment(self, row):
         kpi_name = row[KPI_NAME]
         kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_name)
-        template_group = self.sanitize_values(row[TASK_TEMPLATE_GROUP])
-        numerator_entity = row[NUMERATOR_ENTITY]
-        check_possible_sku = row['check_possible_sku']
-        result_dict_list = []
+        portafolio_y_precious_data = self.templates[ASSORTMENTS]
+        portafolio_y_precious_data = portafolio_y_precious_data[
+            portafolio_y_precious_data[KPI_NAME].isin([kpi_name]) & portafolio_y_precious_data[
+                STORE_ADDITIONAL_ATTRIBUTE_2].str.contains(self.att2)].iloc[0]
 
-        relevant_scif = self.scif[self.scif[TEMPLATE_GROUP].isin(template_group)]
-        self.assortment.scif = relevant_scif
+        relevant_required_assortments = np.array(self._get_groups(portafolio_y_precious_data, 'assortment'))
+        all_products_needed = self.sanitize_values(portafolio_y_precious_data.all_products_needed) if pd.notna(
+            portafolio_y_precious_data.all_products_needed) else None
 
-        if check_possible_sku is not np.nan and check_possible_sku == 'Y':
-            relevant_assortment_template = self.updated_store_assortment[
-                self.updated_store_assortment.assortment_name.str.contains(kpi_name.replace(" ", "_"))]
-            assortment_ean_code_from_template = relevant_assortment_template['product_fk'].unique().astype(str)
-            relevant_products = relevant_scif[relevant_scif.product_fk.isin(assortment_ean_code_from_template)]
+        two_unique_products_needed = portafolio_y_precious_data.two_unique_products_needed if pd.notna(
+            portafolio_y_precious_data.two_unique_products_needed) else None
 
-            numerator_id = relevant_products[numerator_entity].iloc[
-                0] if not relevant_products.empty else np.nan
-            denominator_id = self.scif['sub_category_fk'].iloc[0] if not relevant_products.empty else np.nan
-            result = 1 if relevant_products.product_fk.count() >= 1 else 0
-            result_dict = {'kpi_name': kpi_name, 'kpi_fk': kpi_fk, 'numerator_id': numerator_id,
-                           'denominator_id': denominator_id,
-                           'result': result}
-            result_dict_list.append(result_dict)
-
-            # Calculation of the Child KPIs
-            kpi_sku_name = kpi_name + " - SKU"
-            kpi_id = self.common.get_kpi_fk_by_kpi_type(kpi_sku_name)
-            for assortment_row in relevant_assortment_template.itertuples():
-                numerator_id = assortment_row.product_fk
-                denominator_id = assortment_row.assortment_fk
-                result = 1 if assortment_row.product_fk in relevant_products.product_fk.values else 0
-                result_dict = {'kpi_name': kpi_sku_name, 'kpi_fk': kpi_id, 'numerator_id': numerator_id,
-                               'denominator_id': denominator_id,
-                               'result': result}
-                result_dict_list.append(result_dict)
-
-        elif check_possible_sku is np.nan:
-            lvl3_result = self.assortment.calculate_lvl3_assortment()
-            if not lvl3_result.empty:
-                numerator_id = lvl3_result[lvl3_result[KPI_FK_LEVEL2].isin([kpi_fk])][numerator_entity].mode()[0]
-                lvl2_result = self.assortment.calculate_lvl2_assortment(lvl3_result)
-                lvl2_kpi_result = lvl2_result[lvl2_result[KPI_FK_LEVEL2].isin([kpi_fk])]
-                denominator_id = self.scif['sub_category_fk'].mode()[0] if not self.scif[
-                    'sub_category_fk'].mode().empty else 0
-                result = float(lvl2_kpi_result['passes'] / lvl2_kpi_result['total'])
-                result_dict = {'kpi_name': kpi_name, 'kpi_fk': kpi_fk, 'numerator_id': numerator_id,
-                               'denominator_id': denominator_id,
-                               'result': result}
-                result_dict_list.append(result_dict)
+        result_dictionary = {}
+        for i in range(len(relevant_required_assortments)):
+            result_of_current_assortment = sum(np.in1d(relevant_required_assortments[i], self.scif.product_short_name))
+            if all_products_needed and 'assortment{}'.format(i + 1) in all_products_needed:
+                result_dictionary['assortment{}'.format(i + 1)] = result_of_current_assortment
+            elif two_unique_products_needed and 'assortment{}'.format(i + 1) in two_unique_products_needed:
+                if result_of_current_assortment >= 2:
+                    restricted_result = 2
+                elif result_of_current_assortment == 1:
+                    restricted_result = 1
+                else:
+                    restricted_result = 0
+                result_dictionary['assortment{}'.format(i + 1)] = restricted_result
             else:
-                result = pd.np.nan
-                numerator_id = 0
-                denominator_id = 0
+                result_dictionary['assortment{}'.format(i + 1)] = 1 if result_of_current_assortment >= 1 else 0
 
-                result_dict = {'kpi_name': kpi_name, 'kpi_fk': kpi_fk, 'numerator_id': numerator_id,
-                               'denominator_id': denominator_id,
-                               'result': result}
-                result_dict_list.append(result_dict)
+        numerator_id = self.scif[PRODUCT_FK].iat[0]
+        denominator_id = self.store_assortment.assortment_fk.iat[0]
+        result = float(np.sum(result_dictionary.values())) / portafolio_y_precious_data.unique_facings_target
 
-            if not lvl3_result.empty:
-                kpi_sku_name = kpi_name + " - SKU"
-                kpi_id = self.common.get_kpi_fk_by_kpi_type(kpi_sku_name)
-                relevant_df = lvl3_result[lvl3_result['kpi_fk_lvl3'].isin([kpi_id])]
-                for lvl3_row in relevant_df.itertuples():
-                    numerator_id = lvl3_row.product_fk
-                    denominator_id = lvl3_row.assortment_fk
-                    result = lvl3_row.in_store
+        result_dict = {'kpi_name': kpi_name, 'kpi_fk': kpi_fk, 'numerator_id': numerator_id,
+                       'denominator_id': denominator_id,
+                       'result': result}
 
-                    result_dict = {'kpi_name': kpi_sku_name, 'kpi_fk': kpi_id, 'numerator_id': numerator_id,
-                                   'denominator_id': denominator_id,
-                                   'result': result}
-                    result_dict_list.append(result_dict)
+        return result_dict
 
-        return result_dict_list
+
+        # kpi_name = row[KPI_NAME]
+        # kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_name)
+        # template_group = self.sanitize_values(row[TASK_TEMPLATE_GROUP])
+        # numerator_entity = row[NUMERATOR_ENTITY]
+        # check_possible_sku = row['check_possible_sku']
+        # result_dict_list = []
+        #
+        # relevant_scif = self.scif[self.scif[TEMPLATE_GROUP].isin(template_group)]
+        # self.assortment.scif = relevant_scif
+        #
+        # if check_possible_sku is not np.nan and check_possible_sku == 'Y':
+        #     relevant_assortment_template = self.updated_store_assortment[
+        #         self.updated_store_assortment.assortment_name.str.contains(kpi_name.replace(" ", "_"))]
+        #     assortment_ean_code_from_template = relevant_assortment_template['product_fk'].unique().astype(str)
+        #     relevant_products = relevant_scif[relevant_scif.product_fk.isin(assortment_ean_code_from_template)]
+        #
+        #     numerator_id = relevant_products[numerator_entity].iloc[
+        #         0] if not relevant_products.empty else np.nan
+        #     denominator_id = self.scif['sub_category_fk'].iloc[0] if not relevant_products.empty else np.nan
+        #     result = 1 if relevant_products.product_fk.count() >= 1 else 0
+        #     result_dict = {'kpi_name': kpi_name, 'kpi_fk': kpi_fk, 'numerator_id': numerator_id,
+        #                    'denominator_id': denominator_id,
+        #                    'result': result}
+        #     result_dict_list.append(result_dict)
+        #
+        #     # Calculation of the Child KPIs
+        #     kpi_sku_name = kpi_name + " - SKU"
+        #     kpi_id = self.common.get_kpi_fk_by_kpi_type(kpi_sku_name)
+        #     for assortment_row in relevant_assortment_template.itertuples():
+        #         numerator_id = assortment_row.product_fk
+        #         denominator_id = assortment_row.assortment_fk
+        #         result = 1 if assortment_row.product_fk in relevant_products.product_fk.values else 0
+        #         result_dict = {'kpi_name': kpi_sku_name, 'kpi_fk': kpi_id, 'numerator_id': numerator_id,
+        #                        'denominator_id': denominator_id,
+        #                        'result': result}
+        #         result_dict_list.append(result_dict)
+        #
+        # elif check_possible_sku is np.nan:
+        #     lvl3_result = self.assortment.calculate_lvl3_assortment()
+        #     if not lvl3_result.empty:
+        #         numerator_id = lvl3_result[lvl3_result[KPI_FK_LEVEL2].isin([kpi_fk])][numerator_entity].mode()[0]
+        #         lvl2_result = self.assortment.calculate_lvl2_assortment(lvl3_result)
+        #         lvl2_kpi_result = lvl2_result[lvl2_result[KPI_FK_LEVEL2].isin([kpi_fk])]
+        #         denominator_id = self.scif['sub_category_fk'].mode()[0] if not self.scif[
+        #             'sub_category_fk'].mode().empty else 0
+        #         result = float(lvl2_kpi_result['passes'] / lvl2_kpi_result['total'])
+        #         result_dict = {'kpi_name': kpi_name, 'kpi_fk': kpi_fk, 'numerator_id': numerator_id,
+        #                        'denominator_id': denominator_id,
+        #                        'result': result}
+        #         result_dict_list.append(result_dict)
+        #     else:
+        #         result = pd.np.nan
+        #         numerator_id = 0
+        #         denominator_id = 0
+        #
+        #         result_dict = {'kpi_name': kpi_name, 'kpi_fk': kpi_fk, 'numerator_id': numerator_id,
+        #                        'denominator_id': denominator_id,
+        #                        'result': result}
+        #         result_dict_list.append(result_dict)
+        #
+        #     if not lvl3_result.empty:
+        #         kpi_sku_name = kpi_name + " - SKU"
+        #         kpi_id = self.common.get_kpi_fk_by_kpi_type(kpi_sku_name)
+        #         relevant_df = lvl3_result[lvl3_result['kpi_fk_lvl3'].isin([kpi_id])]
+        #         for lvl3_row in relevant_df.itertuples():
+        #             numerator_id = lvl3_row.product_fk
+        #             denominator_id = lvl3_row.assortment_fk
+        #             result = lvl3_row.in_store
+        #
+        #             result_dict = {'kpi_name': kpi_sku_name, 'kpi_fk': kpi_id, 'numerator_id': numerator_id,
+        #                            'denominator_id': denominator_id,
+        #                            'result': result}
+        #             result_dict_list.append(result_dict)
+        #
+        # return result_dict_list
 
     def calculate_sos(self, row):
         '''
