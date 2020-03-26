@@ -199,9 +199,49 @@ class NESTLEUSToolBox:
         space_length = filtered_matches['width_mm_advance'].sum()
         return space_length
 
+    # a tad messy
     def calculate_facings_per_shelf_level(self):
-
         mpis = self.match_product_in_scene
+        scif = self.scif
+
+        mpis_scene_bays = mpis.groupby(by=['scene_fk', 'bay_number'])['shelf_number'].max().reset_index(name='total_number_of_shelves')
+        # mpis_scene_bays = mpis.groupby(by=['scene_fk', 'bay_number'])['shelf_number'].value_counts().reset_index(name='total_number_of_shelves')
+
+        num_shelves_by_bay = {(row.scene_fk, row.bay_number): row.total_number_of_shelves for row in mpis_scene_bays.itertuples()}
+        shelf_position = {
+
+        }
+
+        mpis['number_of_shelves'] = mpis.apply(lambda row: num_shelves_by_bay.get((row.scene_fk, row.bay_number)), axis=1)
+
+        shelf_map = self.get_shelf_map()
+        shelf_position_labels = ["Bottom", "Middle", "Eye", "Top"]
+
+        def get_shelf_position(row):
+            shelf_number_from_bottom = int(row.shelf_number_from_bottom)
+            number_of_shelves = int(row.number_of_shelves)
+            shelf_position = shelf_map.get((shelf_number_from_bottom, number_of_shelves))
+            shelf_position_id = shelf_position_labels.index(shelf_position)+1
+
+            return shelf_position_id
+
+        mpis['shelf_position'] = mpis.apply(get_shelf_position, axis=1)
+        #mpis['shelf_position'] = mpis.apply(lambda row: shelf_position_labels.index(shelf_map.get((int(row.shelf_number_from_bottom), int(row.number_of_shelves))))+1, axis=1)
+
+        # what am I doing again?
+        huh = mpis[mpis['stacking_layer'] == 1]
+        erm = huh.groupby(['product_fk', 'shelf_position'])
+        # this is not quite it
+
+        # for product in .itertuples():
+        #     self.common.write_to_db_result(
+        #         fk="",
+        #         session_fk="",
+        #         numerator_result="",
+        #         numerator_id="",
+        #         denominator_result=1,
+        #         denominator_id=""
+        #     )
 
 
     def calculate_assortment(self):
@@ -218,6 +258,85 @@ class NESTLEUSToolBox:
 
     def commit_assortment_results(self):
         self.common_v1.commit_results_data_to_new_tables()
+
+    # this could probably be moved elsewhere
+    @staticmethod
+    def get_shelf_map():
+        mapping = """7,3,Middle
+            9,1,Bottom
+            6,6,Top
+            9,8,Eye
+            10,6,Eye
+            5,4,Eye
+            2,1,Bottom
+            6,2,Middle
+            9,4,Middle
+            5,1,Bottom
+            8,5,Eye
+            7,2,Middle
+            10,4,Middle
+            10,8,Eye
+            3,3,Eye
+            8,1,Bottom
+            10,3,Middle
+            7,6,Eye
+            4,4,Top
+            6,3,Middle
+            2,2,Eye
+            10,1,Bottom
+            8,6,Eye
+            5,3,Middle
+            4,1,Bottom
+            10,9,Top
+            9,7,Eye
+            6,4,Eye
+            3,2,Middle
+            8,2,Middle
+            7,1,Bottom
+            9,3,Middle
+            10,5,Middle
+            7,7,Top
+            7,5,Eye
+            8,7,Eye
+            4,2,Middle
+            9,6,Eye
+            6,5,Eye
+            5,5,Top
+            8,3,Middle
+            10,10,Top
+            9,2,Bottom
+            6,1,Bottom
+            3,1,Bottom
+            9,9,Top
+            7,4,Eye
+            10,7,Eye
+            8,8,Top
+            4,3,Eye
+            9,5,Middle
+            10,2,Bottom
+            5,2,Middle
+            8,4,Middle
+            """
+
+        shelf_map = """Bottom
+Bottom	Eye								
+Bottom	Middle	Eye							
+Bottom	Middle	Eye	Top						
+Bottom	Middle	Middle	Eye	Top					
+Bottom	Middle	Middle	Eye	Eye	Top				
+Bottom	Middle	Middle	Eye	Eye	Eye	Top			
+Bottom	Middle	Middle	Middle	Eye	Eye	Eye	Top		
+Bottom	Bottom	Middle	Middle	Middle	Eye	Eye	Eye	Top	
+Bottom	Bottom	Middle	Middle	Middle	Eye	Eye	Eye	Top	Top
+"""
+
+        shelf_map = shelf_map.split('\n')
+        shelf_map = [shelf.split('\t') for shelf in shelf_map]
+        shelf_map = [shelf for shelf in shelf_map if len(shelf) > 1]
+        shelf_map = {(x+1, y+1): col for y, row in enumerate(shelf_map) for x, col in enumerate(row) if col}
+
+        return shelf_map
+
 
     def get_filter_condition(self, df, **filters):
         """

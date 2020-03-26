@@ -39,6 +39,8 @@ class Generator:
 
         self.tool_box.calculate_base_footage()
 
+        self.tool_box.calculate_facings_per_shelf_level()
+
         # for kpi_set_fk in self.tool_box.new_kpi_static_data['pk'].unique().tolist():
         #     print("kpi_set")
         #     score = self.tool_box.main_calculation(kpi_set_fk=kpi_set_fk)
