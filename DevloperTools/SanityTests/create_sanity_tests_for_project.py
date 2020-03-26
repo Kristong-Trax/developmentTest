@@ -266,7 +266,7 @@ class ProjectsSanityData(BaseSeedData):
 """.format(self.user, self.project.replace('-', '_'), seed_data, "{", mongo_data)
         project_name = self.project.upper().replace("-", "_")
         data_class_directory_path = '/home/{0}/dev/kpi_factory/Projects/{1}/Tests/Data'.format(self.user, project_name)
-        file_name = 'data_test_{0}_sanity.py'.format(self.project)
+        file_name = 'data_test_{0}_sanity.py'.format(self.project.replace('-', '_'))
         if not os.path.exists(data_class_directory_path):
             os.makedirs(data_class_directory_path)
         if not os.path.exists(os.path.join(data_class_directory_path, '__init__.py')):
@@ -431,7 +431,8 @@ if __name__ == '__main__':
     replace_configurations_file = True
     copy_configuration_file_to_traxexport(replace_configurations_file)
     projects = {
-        'carlsbrghk': {'CC70B248-8C82-42F7-B3C5-C6A61B2B06AE': []},
+        'marsru-prod': {'fffe707c-55f6-4f57-b8d1-67c76638f654': [],
+                        'ffcd785d-c621-4f15-b202-581b8f73c13f': []}
                 }
     for project in projects:
         try:
