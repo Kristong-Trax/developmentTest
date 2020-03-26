@@ -29,15 +29,11 @@ class Generator:
         if self.tool_box.scif.empty:
             Log.warning('Scene item facts is empty for this session')
 
-        fk_template_water_aisle = 2
-        fk_template_water_display = 7
 
 
 
-        self.tool_box.calculate_facing_count_and_linear_feet(id_scene_type=fk_template_water_aisle)
-        self.tool_box.calculate_facing_count_and_linear_feet(id_scene_type=fk_template_water_display)
 
-        self.tool_box.calculate_base_footage()
+        self.tool_box.main_calculation()
 
         # for kpi_set_fk in self.tool_box.new_kpi_static_data['pk'].unique().tolist():
         #     print("kpi_set")
