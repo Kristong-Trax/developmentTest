@@ -487,6 +487,8 @@ class HEINZCRToolBox:
 
         results = pd.merge(self.sub_category_assortment,
                            self.adherence_results, how='left', on='product_fk')
+        results['into_interval'].fillna(0, inplace=True)
+
         for row in results.itertuples():
             parent_dict = self.common_v2.get_dictionary(kpi_fk=adherence_sub_category_kpi_fk,
                                                         sub_category_fk=row.sub_category_fk)
