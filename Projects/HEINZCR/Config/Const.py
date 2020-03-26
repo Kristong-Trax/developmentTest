@@ -38,6 +38,7 @@ class Const(object):
     PERFECT_STORE_EXTRA_SPACES_TOTAL = 'Perfect Store Extra Spaces - Total Score'
 
     BONUS_QUESTION = 'Bonus Question'
+    BONUS_QUESTION_SUB_CATEGORY = 'Bonus Question - Sub-Category'
 
     KPI_WEIGHTS ={
         "POWERSKU" : "D",

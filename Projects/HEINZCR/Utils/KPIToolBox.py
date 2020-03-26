@@ -94,6 +94,9 @@ class HEINZCRToolBox:
             columns=['sub_category_fk', 'template_fk', 'count'])
 
         self.powersku_scores = {}
+        self.powersku_empty = {}
+        self.powersku_price = {}
+        self.powersku_bonus = {}
 
     def main_calculation(self, *args, **kwargs):
         """
@@ -114,8 +117,8 @@ class HEINZCRToolBox:
         self.calculate_powersku_assortment()
         perfect_store_score += self.main_sos_calculation()
         perfect_store_score += self.calculate_powersku_price_adherence()
-        perfect_store_score += self.calculate_perfect_store_extra_spaces()
-        perfect_store_score += self.check_bonus_question()
+        self.calculate_perfect_store_extra_spaces()
+        self.check_bonus_question()
 
         relevant_target_df = \
             self.store_targets[self.store_targets['Country'].str.encode('utf-8') == self.country.encode('utf-8')]
@@ -612,11 +615,7 @@ class HEINZCRToolBox:
         total_dict = self.common_v2.get_dictionary(kpi_fk=extra_spaces_total_kpi_fk)
 
         if self.extra_spaces_results.empty:
-            self.common_v2.write_to_db_result(extra_spaces_total_kpi_fk, numerator_id=Const.OWN_MANUFACTURER_FK,
-                                              denominator_id=self.store_id, result=0, score=0,
-                                              identifier_parent=Const.PERFECT_STORE,
-                                              identifier_result=total_dict, should_enter=True)
-            return 0
+            pass
 
         try:
             relevant_sub_categories = [x.strip() for x in self.extra_spaces_template[
@@ -626,7 +625,7 @@ class HEINZCRToolBox:
             Log.warning(
                 'No relevant sub_categories for the Extra Spaces KPI found for the following country: {}'.format(
                     self.country))
-            return 0
+
 
         self.extra_spaces_results = pd.merge(self.extra_spaces_results,
                                              self.all_products.loc[:, [
@@ -639,24 +638,15 @@ class HEINZCRToolBox:
                 relevant_sub_categories)]
 
         for row in relevant_extra_spaces.itertuples():
+            weight = self.get_weight(row.sub_category_fk)
+            self.powersku_empty[row.sub_category_fk] = 1 * weight
+
             self.common_v2.write_to_db_result(extra_spaces_kpi_fk, numerator_id=row.sub_category_fk,
-                                              denominator_id=row.template_fk, result=1, identifier_parent=total_dict,
-                                              should_enter=True)
+                                              denominator_id=row.template_fk, result=1, score=1, dentifier_parent=row.sub_category_fk,
+                                              target=1, should_enter=True)
 
-        number_of_extra_spaces = relevant_extra_spaces['sub_category_fk'].nunique()
-        score = 1 if number_of_extra_spaces >= 2 else 0
 
-        if score == 0:
-            if self.survey.check_survey_answer(('question_fk', Const.EXTRA_SPACES_SURVEY_QUESTION_FK), 'Yes,yes,si,Si'):
-                score = 1
 
-        self.common_v2.write_to_db_result(extra_spaces_total_kpi_fk, numerator_id=Const.OWN_MANUFACTURER_FK,
-                                          denominator_id=self.store_id,
-                                          result=number_of_extra_spaces, score=score,
-                                          identifier_parent=Const.PERFECT_STORE,
-                                          identifier_result=total_dict, should_enter=True)
-
-        return score
 
     def heinz_global_extra_spaces(self):
         try:
@@ -702,29 +692,43 @@ class HEINZCRToolBox:
         return results_df
 
     def check_bonus_question(self):
-        if self.survey.check_survey_answer(('question_fk', Const.BONUS_QUESTION_FK), 'Yes,yes,si,Si'):
+        bonus_kpi_fk = self.common_v2.get_kpi_fk_by_kpi_type(Const.BONUS_QUESTION)
+        bonus_weight = self.kpi_weights['Score'][self.kpi_weights['KPIs'] == Const.KPI_WEIGHTS['Bonus']].iloc[0]
+        sub_category_fks = self.sub_category_assortment.sub_category_fk.unique().tolist()
+
+        if self.survey.check_survey_answer(('question_fk', Const.BONUS_QUESTION), 'Yes,yes,si,Si'):
             result = 1
         else:
             result = 0
 
-        bonus_kpi_fk = self.common_v2.get_kpi_fk_by_kpi_type(
-            Const.BONUS_QUESTION)
-        self.common_v2.write_to_db_result(bonus_kpi_fk, numerator_id=Const.OWN_MANUFACTURER_FK,
-                                          denominator_id=self.store_id,
-                                          result=result, score=result, identifier_parent=Const.PERFECT_STORE,
-                                          should_enter=True)
-        return result
+        for sub_cat_fk in sub_category_fks:
+            # sub_cat = self.sub_category_assortment['CATEGORY'][ self.sub_category_assortment['sub_category_fk']== sub_cat_fk].iloc[0]
+            sub_cat_weight = self.get_weight(sub_cat_fk)
+
+            score = result * sub_cat_weight
+            target_weight = bonus_weight * sub_cat_weight
+            self.powersku_bonus[sub_cat_fk] = score
+
+            self.common_v2.write_to_db_result(bonus_kpi_fk, numerator_id=Const.OWN_MANUFACTURER_FK,
+                                              denominator_id=self.store_id,
+                                              result=result, score=score, identifier_parent=sub_cat_fk,
+                                              weight=target_weight, target=target_weight,
+                                              should_enter=True)
+
 
     def commit_results_data(self):
         self.common_v2.commit_results_data()
 
-    # def check_bonus_question(self):
-    #     # bonus_question_exist = self.survey
-    #     # if bonus_question_exist:
-    #     #     status = True
-    #     #
-    #     # else:
-    #     #     status = False
-    #     #
-    #     # self.bonus_question = status
-    #     pass
+    def get_weight(self, sub_category_fk):
+        weight_value = 0
+
+        if self.country in self.sub_category_assortment.columns.to_list():
+            weight_value = self.sub_category_assortment[self.country][
+                (self.sub_category_assortment.sub_category_fk == sub_category_fk)].iloc[0]
+
+            if pd.isna(weight_value):
+              weight_value = 0
+
+        weight = weight_value * 0.01
+        return weight
+
