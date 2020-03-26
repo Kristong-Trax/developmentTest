@@ -1,7 +1,7 @@
 import os
 import pandas as pd
 import numpy as np
- 
+
 from Trax.Algo.Calculations.Core.Utils import ToolBox
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Utils.Conf.Keys import DbUsers
@@ -511,14 +511,14 @@ class CCZAToolBox:
                                            suffixes=('_x', '_matches'))
         progression_field = 'brand_name'
         group_column = 'scene_fk'
-        l2r_param = False if atomic_params.get(Const.L_TO_R, '').upper() == 'NO' else True
+
         progression_cross_shelves_true = (self.tool_box_for_flow.progression(
             df=match_product_join_scif, progression_list=progression_list, progression_field=progression_field,
-            at_least_one=False, left_to_right=l2r_param, cross_bays=True, cross_shelves=True,
+            at_least_one=False, left_to_right=False, cross_bays=True, cross_shelves=True,
             include_stacking=False, group_by=group_column))
         progression_cross_shelves_false = (self.tool_box_for_flow.progression(
             df=match_product_join_scif, progression_list=progression_list, progression_field=progression_field,
-            at_least_one=False, left_to_right=l2r_param, cross_bays=True, cross_shelves=False,
+            at_least_one=False, left_to_right=False, cross_bays=True, cross_shelves=False,
             include_stacking=False, group_by=group_column))
 
         return 100.0 * (progression_cross_shelves_true or
