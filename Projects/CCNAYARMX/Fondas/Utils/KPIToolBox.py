@@ -381,10 +381,10 @@ class FONDASToolBox(GlobalSessionToolBox):
                 np.take(relevant_assortment, np.where(lst_result_of_assortment_exists))[0]
             for assortment in relevant_assortment:
                 result = 1 if assortment in existing_prod_in_required_assortment else 0
-                product_fk = self.all_products.loc[self.all_products.product_name == assortment, 'product_fk'].iat[
+                product_fk = self.all_products.loc[self.all_products.product_short_name == assortment, 'product_fk'].iat[
                     0]
                 sub_category_fk = \
-                    self.all_products.loc[self.all_products.product_name == assortment, 'sub_category_fk'].iat[0]
+                    self.all_products.loc[self.all_products.product_short_name == assortment, 'sub_category_fk'].iat[0]
                 result_dict = {'kpi_name': kpi_sku_name, 'kpi_fk': kpi_id, 'numerator_id': product_fk,
                                'denominator_id': sub_category_fk,
                                'result': result, 'identifier_parent': kpi_name}
