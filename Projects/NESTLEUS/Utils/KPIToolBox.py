@@ -87,6 +87,7 @@ class NESTLEUSToolBox:
         self.calculate_base_footage()
         self.calculate_facings_per_shelf_level()
         self.num_display_type(fk_template_water_aisle)
+        self.num_display_type(fk_template_water_aisle, "NESTLE HOLDINGS INC")
 
 
     def get_numerator_denominator_ids(self, kpi_id):
@@ -330,11 +331,15 @@ Bottom	Bottom	Middle	Middle	Middle	Eye	Eye	Eye	Top	Top
 
         return shelf_map
 
-    def num_display_type(self, display_type_id):
-        kpi_fk = 914
+    def num_display_type(self, display_type_id, manufacturer_name=None):
+        kpi_fk = 915 if manufacturer_name else 914
 
         scif = self.scif
         display = scif[scif['template_fk'] == display_type_id]
+
+        if manufacturer_name:
+            display = display[display['manufacturer_local_name'] == manufacturer_name]
+
         count = len(display['scene_id'].unique())
 
         numerator_id, denominator_id = self.get_numerator_denominator_ids(kpi_fk)
