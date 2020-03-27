@@ -86,6 +86,7 @@ class NESTLEUSToolBox:
         self.calculate_facing_count_and_linear_feet(id_scene_type=fk_template_water_display)
         self.calculate_base_footage()
         self.calculate_facings_per_shelf_level()
+        self.num_display_type(fk_template_water_aisle)
 
 
     def get_numerator_denominator_ids(self, kpi_id):
@@ -329,6 +330,24 @@ Bottom	Bottom	Middle	Middle	Middle	Eye	Eye	Eye	Top	Top
 
         return shelf_map
 
+    def num_display_type(self, display_type_id):
+        kpi_fk = 914
+
+        scif = self.scif
+        display = scif[scif['template_fk'] == display_type_id]
+        count = len(display['scene_id'].unique())
+
+        numerator_id, denominator_id = self.get_numerator_denominator_ids(kpi_fk)
+
+        self.common.write_to_db_result(
+            fk=kpi_fk,
+            session_fk=self.session_uid,
+            numerator_result=count,
+            numerator_id=numerator_id,
+            denominator_result=1,
+            denominator_id=denominator_id
+        )
+
     def calculate_assortment(self):
         # filter scif to get rid of scene types other than 'Waters'
         self.scif = self.scif[self.scif['template_name'] == 'Water Aisle']
@@ -343,9 +362,6 @@ Bottom	Bottom	Middle	Middle	Middle	Eye	Eye	Eye	Top	Top
 
     def commit_assortment_results(self):
         self.common_v1.commit_results_data_to_new_tables()
-
-
-
 
     def get_filter_condition(self, df, **filters):
         """
