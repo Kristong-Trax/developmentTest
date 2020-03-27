@@ -1,14 +1,14 @@
 
 
 from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
-from Projects.LIONNZ_SAND.Tests.Data.data_test_lionnz_sand_sanity import ProjectsSanityData
-from Projects.LIONNZ_SAND.Calculations import Calculations
+from Projects.MARSIN.Tests.Data.data_test_marsin_sanity import ProjectsSanityData
+from Projects.MARSIN.Calculations import MARSINCalculations
 from DevloperTools.SanityTests.PsSanityTests import PsSanityTestsFuncs
-from Projects.LIONNZ_SAND.Tests.Data.kpi_results import LIONNZ_SANDKpiResults
+from Projects.MARSIN.Tests.Data.kpi_results import MARSINKpiResults
 # import os
 # import json
 
-__author__ = 'nidhin'
+__author__ = 'sathiyanarayanan'
 
 
 class TestKEnginePsCode(PsSanityTestsFuncs):
@@ -24,17 +24,17 @@ class TestKEnginePsCode(PsSanityTestsFuncs):
         #     relative_position_template
         return
 
-    @PsSanityTestsFuncs.seeder.seed(["lionnz_sand_seed", "mongodb_products_and_brands_seed"], ProjectsSanityData())
-    def test_lionnz_sand_sanity(self):
+    @PsSanityTestsFuncs.seeder.seed(["marsin_seed", "mongodb_products_and_brands_seed"], ProjectsSanityData())
+    def test_marsin_sanity(self):
         self.add_mocks()
         project_name = ProjectsSanityData.project_name
         data_provider = KEngineDataProvider(project_name)
-        sessions = {'944A33D9-125B-4B6C-A628-DF3630C3FE19': []}
-        kpi_results = LIONNZ_SANDKpiResults().get_kpi_results()
+        sessions = {'ffd24994-11f1-4a37-a127-9ecdb271490e': []}
+        kpi_results = MARSINKpiResults().get_kpi_results()
         for session in sessions.keys():
             data_provider.load_session_data(str(session))
             output = Output()
-            Calculations(data_provider, output).run_project_calculations()
+            MARSINCalculations(data_provider, output).run_project_calculations()
             # for scene in sessions[session]:
             # data_provider.load_scene_data(str(session), scene_id=scene)
             # SceneCalculations(data_provider).calculate_kpis()

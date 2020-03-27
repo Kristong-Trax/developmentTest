@@ -44,7 +44,7 @@ DENOMINATOR_PARAM_1 = 'denominator param 1'
 DENOMINATOR_VALUE_1 = 'denominator value 1'
 NUMERATOR_ENTITY = 'Numerator Entity'
 DENOMINATOR_ENTITY = 'Denominator Entity'
-UNIQUE_PRODUCTS_TARGETS = 'Unique Products Targets'
+UNIQUE_PRODUCTS_TARGETS = 'Product Facings Target'
 
 # Sheet names
 KPIS = 'KPIs'
@@ -550,7 +550,7 @@ class NationalToolBox(GlobalSessionToolBox):
 
         result_dict = {}
         for i in range(len(relevant_required_assortments)):
-            result_of_current_assortment = sum(np.in1d(relevant_required_assortments[i], self.scif.product_name))
+            result_of_current_assortment = sum(np.in1d(relevant_required_assortments[i], self.scif.product_short_name))
             if all_products_needed and 'assortment{}'.format(i + 1) in all_products_needed:
                 result_dict['assortment{}'.format(i + 1)] = result_of_current_assortment
             elif two_unique_products_needed and 'assortment{}'.format(i + 1) in two_unique_products_needed:

@@ -7,15 +7,15 @@ from Trax.Data.Testing.TestProjects import TestProjectsNames
 from Trax.Utils.Environments.DockerGlobal import PROJECT_NAME
 from bson import ObjectId
 
-__author__ = 'nidhin'
+__author__ = 'sathiyanarayanan'
 
 
 class ProjectsSanityData(BaseSeedData):
     project_name = TestProjectsNames().TEST_PROJECT_1
-    lionnz_sand_seed = {DATA_TYPE: BaseSeedData.MYSQL,
-                        FILES_RELATIVE_PATH: ['Data/Seeds/lionnz_sand_seed.sql.gz'],
-                        PROJECT_NAME: project_name
-                        }
+    marsin_seed = {DATA_TYPE: BaseSeedData.MYSQL,
+                   FILES_RELATIVE_PATH: ['Data/Seeds/marsin_seed.sql.gz'],
+                   PROJECT_NAME: project_name
+                   }
     mongodb_products_and_brands_seed = {DATA_TYPE: BaseSeedData.MONGO,
                                         DATABASE_NAME: MongoConnector.SMART,
                                         COLLECTION_NAME: 'projects_project',
