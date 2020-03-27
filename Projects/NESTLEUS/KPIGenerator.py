@@ -29,10 +29,6 @@ class Generator:
         if self.tool_box.scif.empty:
             Log.warning('Scene item facts is empty for this session')
 
-
-
-
-
         self.tool_box.main_calculation()
 
         # for kpi_set_fk in self.tool_box.new_kpi_static_data['pk'].unique().tolist():
