@@ -104,8 +104,6 @@ class CocacolaToolBox(GlobalSessionToolBox):
 
         return score_sum
 
-
-
     def calculate_empty_exist(self):
         kpi_name = Const.KPI_EMPTY
         kpi_fk = self.get_kpi_fk_by_kpi_type(kpi_name)
@@ -165,15 +163,16 @@ class CocacolaToolBox(GlobalSessionToolBox):
         count_of_passing_skus = relevant_target_skus['meets_target'].sum()
 
         self._calculate_frentes_sku(relevant_target_skus)
-
-        result = count_of_passing_skus / float(len(relevant_target_skus))
+        if len(relevant_target_skus) == 0:
+            result = 0
+        else:
+            result = count_of_passing_skus / float(len(relevant_target_skus))
         score = result * max_kpi_points
         self.write_to_db(fk=kpi_fk, numerator_id=self.manufacturer_fk, denominator_id=self.store_id,
                          numerator_result=count_of_passing_skus, denominator_result=len(relevant_target_skus),
                          result=result * 100, score=score, weight=weight, target=max_kpi_points,
                          identifier_parent=parent_fk, identifier_result=kpi_fk, should_enter=True)
         return score
-
 
     def _calculate_frentes_sku(self, relevant_target_skus):
         kpi_fk = self.get_kpi_fk_by_kpi_type(Const.KPI_FRENTES_SKU)
@@ -266,8 +265,6 @@ class CocacolaToolBox(GlobalSessionToolBox):
                          identifier_parent=grand_parent_fk, identifier_result=parent_fk, should_enter=True)
         return score
 
-
-
     def calculate_acamodo(self):
         kpi_name = Const.KPI_ACAMODO
         kpi_fk = self.get_kpi_fk_by_kpi_type(kpi_name)
@@ -289,7 +286,6 @@ class CocacolaToolBox(GlobalSessionToolBox):
                              identifier_result=kpi_fk,
                              should_enter=True)
         return score
-
 
     def calculate_acamodo_scene(self):
         kpi_name = Const.KPI_ACAMODO_SCENE

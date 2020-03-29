@@ -258,9 +258,12 @@ class LIONNZToolBox:
                         join pservice.assortment_to_assortment_group atag on atp.assortment_fk = atag.assortment_fk 
                         join pservice.assortment a on a.pk = atag.assortment_group_fk
                         join pservice.policy p on p.pk = a.store_policy_group_fk
-                    where a.kpi_fk={kpi_fk};
+                    where a.kpi_fk={kpi_fk}
+                    AND '{sess_date}' between atp.start_date AND atp.end_date;
                     """
-        policies = pd.read_sql_query(query.format(kpi_fk=kpi_fk), self.rds_conn.db)
+        policies = pd.read_sql_query(query.format(kpi_fk=kpi_fk,
+                                                  sess_date=self.session_info.iloc[0].visit_date),
+                                     self.rds_conn.db)
         return policies
 
     def filter_and_send_kpi_to_calc(self):
