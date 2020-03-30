@@ -86,8 +86,8 @@ class NESTLEUSToolBox:
         self.calculate_facing_count_and_linear_feet(id_scene_type=fk_template_water_display)
         self.calculate_base_footage()
         self.calculate_facings_per_shelf_level()
-        self.num_display_type(fk_template_water_aisle)
-        self.num_display_type(fk_template_water_aisle, "NESTLE HOLDINGS INC")
+        self.calculate_display_type(fk_template_water_aisle)
+        self.calculate_display_type(fk_template_water_aisle, "NESTLE HOLDINGS INC")
 
 
     def get_numerator_denominator_ids(self, kpi_id):
@@ -256,82 +256,17 @@ class NESTLEUSToolBox:
     # this could probably be moved elsewhere
     @staticmethod
     def get_shelf_map():
-        mapping = """7,3,Middle
-            9,1,Bottom
-            6,6,Top
-            9,8,Eye
-            10,6,Eye
-            5,4,Eye
-            2,1,Bottom
-            6,2,Middle
-            9,4,Middle
-            5,1,Bottom
-            8,5,Eye
-            7,2,Middle
-            10,4,Middle
-            10,8,Eye
-            3,3,Eye
-            8,1,Bottom
-            10,3,Middle
-            7,6,Eye
-            4,4,Top
-            6,3,Middle
-            2,2,Eye
-            10,1,Bottom
-            8,6,Eye
-            5,3,Middle
-            4,1,Bottom
-            10,9,Top
-            9,7,Eye
-            6,4,Eye
-            3,2,Middle
-            8,2,Middle
-            7,1,Bottom
-            9,3,Middle
-            10,5,Middle
-            7,7,Top
-            7,5,Eye
-            8,7,Eye
-            4,2,Middle
-            9,6,Eye
-            6,5,Eye
-            5,5,Top
-            8,3,Middle
-            10,10,Top
-            9,2,Bottom
-            6,1,Bottom
-            3,1,Bottom
-            9,9,Top
-            7,4,Eye
-            10,7,Eye
-            8,8,Top
-            4,3,Eye
-            9,5,Middle
-            10,2,Bottom
-            5,2,Middle
-            8,4,Middle
-            """
+        """
+        :return A dict representing (shelf_number_from_bottom, number_of_shelves): shelf_position
+        """
+        with open("Data/ShelfMap.xlsx") as f:
+            shelf_map = pd.read_excel(f, header=None)
 
-        shelf_map = """Bottom
-Bottom	Eye								
-Bottom	Middle	Eye							
-Bottom	Middle	Eye	Top						
-Bottom	Middle	Middle	Eye	Top					
-Bottom	Middle	Middle	Eye	Eye	Top				
-Bottom	Middle	Middle	Eye	Eye	Eye	Top			
-Bottom	Middle	Middle	Middle	Eye	Eye	Eye	Top		
-Bottom	Bottom	Middle	Middle	Middle	Eye	Eye	Eye	Top	
-Bottom	Bottom	Middle	Middle	Middle	Eye	Eye	Eye	Top	Top
-"""
-
-        shelf_map = shelf_map.split('\n')
-        shelf_map = [shelf.split('\t') for shelf in shelf_map]
-        shelf_map = [shelf for shelf in shelf_map if len(shelf) > 1]
-        shelf_map = {(x + 1, y + 1): col for y, row in enumerate(shelf_map) for x, col in enumerate(row) if col}
+        shelf_map = {(x + 1, y + 1): col for y, row in shelf_map.iterrows() for x, col in enumerate(row) if pd.notna(col)}
 
         return shelf_map
 
-    def num_display_type(self, display_type_id, manufacturer_name=None):
+    def calculate_display_type(self, display_type_id, manufacturer_name=None):
         kpi_fk = 915 if manufacturer_name else 914
 
         scif = self.scif
