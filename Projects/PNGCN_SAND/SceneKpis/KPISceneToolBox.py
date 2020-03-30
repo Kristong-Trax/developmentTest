@@ -88,7 +88,7 @@ BLOCK_GROUP_ATTRIBUTES = {
     BLOCK_BR_SC_FL_KPI: {'group_level': ['brand_name', 'sub_category', 'att3'],
                          'num_den_cont': ['att3_fk', 'sub_category_fk', 'brand_fk']},
     BLOCK_BR_SC_SB_FL_KPI: {'group_level': ['brand_name', 'sub_brand', 'sub_category', 'att3'],
-                            'num_den_cont': ['att3_fk', 'sub_brand_fk', 'sub_category_fk']},
+                            'num_den_cont': ['att3_fk', 'sub_brand_fk', 'sub_category_fk', 'brand_fk']},
 }
 BLOCK_FIELDS = ['brand_name', 'sub_brand', 'sub_category', 'att3']
 BLOCK_ATTRIBUTES = ['brand_fk', 'att3_fk', 'sub_brand_fk', 'sub_category_fk']
@@ -232,6 +232,8 @@ class PngcnSceneKpis(object):
                 brand_fk = sku_attributes.get("brand_fk")
                 numerator_id, denominator_id, context_id = self.get_kpi_attributes(kpi_attributes, sku_attributes)
                 block_variant_kpi_fk = row['kpi_level_2_fk']
+                identifier_result = str(sku_attributes) + "{}_{}_{}".format(row['bay_number'], row['vertical_location'],
+                                                                            row['horizontal_location'])
                 self.common.write_to_db_result(fk=block_variant_kpi_fk,
                                                numerator_id=numerator_id,
                                                denominator_id=denominator_id,
@@ -242,7 +244,7 @@ class PngcnSceneKpis(object):
                                                score=row['block_facings'],
                                                weight=row['shelf_count'],
                                                target=row['bay_number'],
-                                               by_scene=True, identifier_result=str(sku_attributes))
+                                               by_scene=True, identifier_result=identifier_result)
                 products_data = row['SKU_DATA']
                 for i, product_row in products_data.iterrows():
                     product_fk = product_row['product_fk']
@@ -253,7 +255,7 @@ class PngcnSceneKpis(object):
                                                    numerator_id=product_fk, context_id=brand_fk,
                                                    result=facings_per_sku, target=facings_ignore_stacking,
                                                    score=number_of_eye_level_shelves, should_enter=True,
-                                                   by_scene=True, identifier_parent=str(sku_attributes))
+                                                   by_scene=True, identifier_parent=identifier_result)
         print("--- %s seconds ---to save" % (time.time() - start_time)) ###################################################
 
     @staticmethod
