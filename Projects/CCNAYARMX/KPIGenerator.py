@@ -5,6 +5,9 @@ from Projects.CCNAYARMX.National.Utils.KPIToolBox import NationalToolBox
 from Projects.CCNAYARMX.Especializado.Utils.KPIToolBox import EspecializadoToolBox
 from Projects.CCNAYARMX.Fondas.Utils.KPIToolBox import FONDASToolBox
 
+
+# from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
+
 from KPIUtils_v2.DB.CommonV2 import Common
 __author__ = 'krishnat'
 
@@ -16,7 +19,7 @@ class Generator:
         self.output = output
         self.project_name = data_provider.project_name
         self.session_uid = self.data_provider.session_uid
-        # self.tool_box = ToolBox(self.data_provider, self.output)
+        # self.tool_box = ToolBox(self.data_provider, self.output, self.common)
 
     @log_runtime('Total Calculations', log_start=True)
     def main_function(self):
@@ -29,19 +32,26 @@ class Generator:
         # self.tool_box.main_calculation()
         # self.tool_box.commit_results()
         common = Common(self.data_provider)
-        especializado_tool_box = EspecializadoToolBox(self.data_provider,self.output, common)
-        especializado_tool_box.main_calculation()
-
-        fondas_tool_box = FONDASToolBox(self.data_provider, self.output, common)
-        fondas_tool_box.main_calculation()
-        # fondas_tool_box.commit_results()
-
+        # assortment = Assortment(self.data_provider, common=common)
+        # if assortment.store_assortment.empty:
+        #     Log.warning('Scene item facts is empty for this session')
         tool_box = ToolBox(self.data_provider, self.output, common)
-        tool_box.main_calculation()
 
-        nayar_tool_box = NationalToolBox(self.data_provider, self.output, common)
-        nayar_tool_box.main_calculation()
-        nayar_tool_box.commit_results()
+        if tool_box.scif.empty:
+            Log.warning('Scene item facts is empty for this session')
+        else:
+            especializado_tool_box = EspecializadoToolBox(self.data_provider,self.output, common)
+            especializado_tool_box.main_calculation()
+
+            fondas_tool_box = FONDASToolBox(self.data_provider, self.output,common)
+            fondas_tool_box.main_calculation()
+
+            tool_box = ToolBox(self.data_provider, self.output, common)
+            tool_box.main_calculation()
+
+            nayar_tool_box = NationalToolBox(self.data_provider, self.output, common)
+            nayar_tool_box.main_calculation()
+            nayar_tool_box.commit_results()
 
     # @log_runtime('Original Nayar Calculations')
     # def caculate_original_nayar(self):
