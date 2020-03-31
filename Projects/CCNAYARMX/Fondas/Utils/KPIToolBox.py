@@ -82,6 +82,7 @@ class FONDASToolBox(GlobalSessionToolBox):
         self.survey_response = self.data_provider[Data.SURVEY_RESPONSES]
         self.assortment_template = self.templates[ASSORTMENT]
         self.match_product_in_scene = self.data_provider['matches']
+        self.important_survey = self.survey_response[self.survey_response.question_fk.isin([22])]
         # self.survey = Survey(self.data_provider, output=output, ps_data_provider=self.ps_data_provider,
         #                      common=self.common_v2)
         self.results_df = pd.DataFrame(columns=['kpi_name', 'kpi_fk', 'numerator_id', 'numerator_result',
@@ -101,7 +102,8 @@ class FONDASToolBox(GlobalSessionToolBox):
         store_additional_attribute = self.sanitize_values(
             'FONDA / LONCHERÍA / MERENDERO,RSR COMIDA MEXICANA / TACOS,RSR ASIAN,RSR SEAFOOD,RSR LOCAL FOOD,RSR PIZZAS,RSR SANDWICHES / TORTERIA,RSR POLLO,RSR HAMBURGUESAS,RSR OTROS ALIMENTOS')
         store_additional_attribute = [unicode(value, 'utf-8') for value in store_additional_attribute]
-        if self.store_info.additional_attribute_5.isin(store_additional_attribute)[0] and \
+
+        if not(self.important_survey.empty) and self.store_info.additional_attribute_5.isin(store_additional_attribute)[0] and \
                 self.store_info.store_type.isin([store_type])[0]:
             relevant_kpi_template = self.templates[KPIS]
             foundation_kpi_types = [SOS, SHARE_OF_EMPTY, DISTRIBUTION, SURVEY, AVALIABILITY]
