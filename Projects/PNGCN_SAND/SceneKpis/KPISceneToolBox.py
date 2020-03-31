@@ -77,18 +77,18 @@ BLOCK_SKU = 'Block_Variant_SKU'
 
 BLOCK_GROUP_ATTRIBUTES = {
     BLOCK_BR_KPI: {'group_level': ['brand_name'], 'num_den_cont': ['brand_fk', 'store_fk', 'store_fk']},
-    BLOCK_BR_SB_KPI: {'group_level': ['brand_name', 'sub_brand'],
-                      'num_den_cont': ['sub_brand_fk', 'brand_fk', 'store_fk']},
-    BLOCK_BR_SC_KPI: {'group_level': ['brand_name', 'sub_category'],
-                      'num_den_cont': ['sub_category_fk', 'brand_fk', 'store_fk']},
-    BLOCK_BR_SC_SB_KPI: {'group_level': ['brand_name', 'sub_brand', 'sub_category'],
-                         'num_den_cont': ['sub_brand_fk', 'sub_category_fk', 'brand_fk']},
-    BLOCK_BR_SB_FL_KPI: {'group_level': ['brand_name', 'sub_brand', 'att3'],
-                         'num_den_cont': ['att3_fk', 'sub_brand_fk', 'brand_fk']},
-    BLOCK_BR_SC_FL_KPI: {'group_level': ['brand_name', 'sub_category', 'att3'],
-                         'num_den_cont': ['att3_fk', 'sub_category_fk', 'brand_fk']},
-    BLOCK_BR_SC_SB_FL_KPI: {'group_level': ['brand_name', 'sub_brand', 'sub_category', 'att3'],
-                            'num_den_cont': ['att3_fk', 'sub_brand_fk', 'sub_category_fk', 'brand_fk']},
+    # BLOCK_BR_SB_KPI: {'group_level': ['brand_name', 'sub_brand'],
+    #                   'num_den_cont': ['sub_brand_fk', 'brand_fk', 'store_fk']},
+    # BLOCK_BR_SC_KPI: {'group_level': ['brand_name', 'sub_category'],
+    #                   'num_den_cont': ['sub_category_fk', 'brand_fk', 'store_fk']},
+    # BLOCK_BR_SC_SB_KPI: {'group_level': ['brand_name', 'sub_brand', 'sub_category'],
+    #                      'num_den_cont': ['sub_brand_fk', 'sub_category_fk', 'brand_fk']},
+    # BLOCK_BR_SB_FL_KPI: {'group_level': ['brand_name', 'sub_brand', 'att3'],
+    #                      'num_den_cont': ['att3_fk', 'sub_brand_fk', 'brand_fk']},
+    # BLOCK_BR_SC_FL_KPI: {'group_level': ['brand_name', 'sub_category', 'att3'],
+    #                      'num_den_cont': ['att3_fk', 'sub_category_fk', 'brand_fk']},
+    # BLOCK_BR_SC_SB_FL_KPI: {'group_level': ['brand_name', 'sub_brand', 'sub_category', 'att3'],
+    #                         'num_den_cont': ['att3_fk', 'sub_brand_fk', 'sub_category_fk', 'brand_fk']},
 }
 BLOCK_FIELDS = ['brand_name', 'sub_brand', 'sub_category', 'att3']
 BLOCK_ATTRIBUTES = ['brand_fk', 'att3_fk', 'sub_brand_fk', 'sub_category_fk']
@@ -176,6 +176,7 @@ class PngcnSceneKpis(object):
         if self.matches_from_data_provider.empty or self.scif.empty or \
                 self.scif.iloc[0]['location_type'] != 'Primary Shelf':
             return
+        total_bays = self.matches_from_data_provider['bay_number'].max()
         block_results = {}
         kpi_aggrigations = {}
         full_df, custom_matches, products_df = self.get_full_df_and_products_df()
@@ -232,6 +233,7 @@ class PngcnSceneKpis(object):
                 brand_fk = sku_attributes.get("brand_fk")
                 numerator_id, denominator_id, context_id = self.get_kpi_attributes(kpi_attributes, sku_attributes)
                 block_variant_kpi_fk = row['kpi_level_2_fk']
+                block_eye_level_shelves = row['block_eye_level_shelves']
                 identifier_result = str(sku_attributes) + "{}_{}_{}".format(row['bay_number'], row['vertical_location'],
                                                                             row['horizontal_location'])
                 self.common.write_to_db_result(fk=block_variant_kpi_fk,
@@ -254,8 +256,10 @@ class PngcnSceneKpis(object):
                     self.common.write_to_db_result(fk=block_sku_kpi, denominator_id=block_variant_kpi_fk,
                                                    numerator_id=product_fk, context_id=brand_fk,
                                                    result=facings_per_sku, target=facings_ignore_stacking,
-                                                   score=number_of_eye_level_shelves, should_enter=True,
-                                                   by_scene=True, identifier_parent=identifier_result)
+                                                   weight=total_bays, numerator_result=number_of_eye_level_shelves,
+                                                   denominator_result=block_eye_level_shelves,
+                                                   by_scene=True, identifier_parent=identifier_result,
+                                                   should_enter=True)
         print("--- %s seconds ---to save" % (time.time() - start_time)) ###################################################
 
     @staticmethod
@@ -387,15 +391,19 @@ class PngcnSceneKpis(object):
             # if row['number_of_facings_non_stacking'] < 2:
             #     return
             # Handling SKUs
+            block_eye_level_values = set(block_df['eye_level_shelf_number'])
+            row['block_eye_level_shelves'] = sum(x in block_eye_level_values for x in [1.0, 2.0])
             row['SKU_DATA'] = self.get_skus_data_from_block(block_df, custom_matches)
 
-            # get bottoom left facings
+            # get bottom left facings
             horizontal_location = block_df['shelf_number'].min()
-            vertical_df = block_df[block_df['shelf_number'] == horizontal_location]
-            vertical_location = vertical_df['facing_sequence_number'].min()
-            bay_number = vertical_df['bay_number'].min()
-            row['horizontal_location'], row['vertical_location'] = horizontal_location, vertical_location
+            row['horizontal_location'] = horizontal_location
+            shelf_df = block_df[block_df['shelf_number'] == horizontal_location]
+            bay_number = shelf_df['bay_number'].min()
             row['bay_number'] = bay_number
+            bay_df = shelf_df[shelf_df['bay_number'] == bay_number]
+            vertical_location = bay_df['facing_sequence_number'].min()
+            row['vertical_location'] = vertical_location
             row['shelf_count'] = len(shelves)
             filter_results.append(row)
 
