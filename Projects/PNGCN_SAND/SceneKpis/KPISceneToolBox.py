@@ -77,18 +77,18 @@ BLOCK_SKU = 'Block_Variant_SKU'
 
 BLOCK_GROUP_ATTRIBUTES = {
     BLOCK_BR_KPI: {'group_level': ['brand_name'], 'num_den_cont': ['brand_fk', 'store_fk', 'store_fk']},
-    # BLOCK_BR_SB_KPI: {'group_level': ['brand_name', 'sub_brand'],
-    #                   'num_den_cont': ['sub_brand_fk', 'brand_fk', 'store_fk']},
-    # BLOCK_BR_SC_KPI: {'group_level': ['brand_name', 'sub_category'],
-    #                   'num_den_cont': ['sub_category_fk', 'brand_fk', 'store_fk']},
-    # BLOCK_BR_SC_SB_KPI: {'group_level': ['brand_name', 'sub_brand', 'sub_category'],
-    #                      'num_den_cont': ['sub_brand_fk', 'sub_category_fk', 'brand_fk']},
-    # BLOCK_BR_SB_FL_KPI: {'group_level': ['brand_name', 'sub_brand', 'att3'],
-    #                      'num_den_cont': ['att3_fk', 'sub_brand_fk', 'brand_fk']},
-    # BLOCK_BR_SC_FL_KPI: {'group_level': ['brand_name', 'sub_category', 'att3'],
-    #                      'num_den_cont': ['att3_fk', 'sub_category_fk', 'brand_fk']},
-    # BLOCK_BR_SC_SB_FL_KPI: {'group_level': ['brand_name', 'sub_brand', 'sub_category', 'att3'],
-    #                         'num_den_cont': ['att3_fk', 'sub_brand_fk', 'sub_category_fk', 'brand_fk']},
+    BLOCK_BR_SB_KPI: {'group_level': ['brand_name', 'sub_brand'],
+                      'num_den_cont': ['sub_brand_fk', 'brand_fk', 'store_fk']},
+    BLOCK_BR_SC_KPI: {'group_level': ['brand_name', 'sub_category'],
+                      'num_den_cont': ['sub_category_fk', 'brand_fk', 'store_fk']},
+    BLOCK_BR_SC_SB_KPI: {'group_level': ['brand_name', 'sub_brand', 'sub_category'],
+                         'num_den_cont': ['sub_brand_fk', 'sub_category_fk', 'brand_fk']},
+    BLOCK_BR_SB_FL_KPI: {'group_level': ['brand_name', 'sub_brand', 'att3'],
+                         'num_den_cont': ['att3_fk', 'sub_brand_fk', 'brand_fk']},
+    BLOCK_BR_SC_FL_KPI: {'group_level': ['brand_name', 'sub_category', 'att3'],
+                         'num_den_cont': ['att3_fk', 'sub_category_fk', 'brand_fk']},
+    BLOCK_BR_SC_SB_FL_KPI: {'group_level': ['brand_name', 'sub_brand', 'sub_category', 'att3'],
+                            'num_den_cont': ['att3_fk', 'sub_brand_fk', 'sub_category_fk', 'brand_fk']},
 }
 BLOCK_FIELDS = ['brand_name', 'sub_brand', 'sub_category', 'att3']
 BLOCK_ATTRIBUTES = ['brand_fk', 'att3_fk', 'sub_brand_fk', 'sub_category_fk']
@@ -339,11 +339,7 @@ class PngcnSceneKpis(object):
                 [tuple(x) for x in relevant_columns_block_df.values]]
         complete_df = pd.merge(block_df_all_stacking_layers,
                                self.scif, on='product_fk', how="left")
-        # try:
         filtered_block_df_all_stacking_layers = self.parser.filter_df(block_filters, complete_df)
-        # except:
-        #     block_filters = self.encode_dict(block_filters)
-        #     filtered_block_df_all_stacking_layers = self.parser.filter_df(block_filters, complete_df)
         return filtered_block_df_all_stacking_layers
 
     def encode_dict(self, block_filters):
@@ -371,25 +367,7 @@ class PngcnSceneKpis(object):
             if len(shelf_df) >= row_in_template[MIN_FACINGS_ON_SAME_LAYER]:
                 block_flag = True
                 break
-
-        # num_of_eye_level_shelves = len(set(block_df[~block_df['eye_level_shelf_number'].isnull()][
-        #                                        'eye_level_shelf_number']))
-        # row['num_of_eye_level_shelves'] = num_of_eye_level_shelves
-
-
-
-
-
-        # Add relevant blocks the following info: x,y coordinates and number of facings
         if block_flag:
-            # block_facing_include_stacking = self.calculate_block_facing_include_stacking(block_df, block_filters,
-            #                                                                              custom_matches)
-            # row['number_of_facings'] = len(block_facing_include_stacking)
-            # row['number_of_facings_non_stacking'] = len(block_facing_include_stacking
-            #                                             [block_facing_include_stacking
-            #                                              [MatchesConsts.STACKING_LAYER] == 1])
-            # if row['number_of_facings_non_stacking'] < 2:
-            #     return
             # Handling SKUs
             block_eye_level_values = set(block_df['eye_level_shelf_number'])
             row['block_eye_level_shelves'] = sum(x in block_eye_level_values for x in [1.0, 2.0])
