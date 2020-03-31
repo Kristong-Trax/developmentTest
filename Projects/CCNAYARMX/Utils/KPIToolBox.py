@@ -1037,6 +1037,9 @@ class ToolBox(GlobalSessionToolBox):
         relevant_scif = relevant_scif[relevant_scif[PRODUCT_TYPE].isin(product_type)]
         relevant_scif = relevant_scif[relevant_scif.product_short_name != 'Soda Other']
 
+        relevant_scif = relevant_scif[[PRODUCT_FK,SCENE_FK,denominator_entity,numerator_entity,FACINGS_IGN_STACK, MANUFACTURER_NAME]]
+
+
         if relevant_scif.empty:
             result = pd.np.nan
             denominator_id = 0
@@ -1059,6 +1062,7 @@ class ToolBox(GlobalSessionToolBox):
             result_dict = {'kpi_name': kpi_name, 'kpi_fk': kpi_fk, 'numerator_id': numerator_id,
                            'denominator_id': denominator_id, 'result': result}
             return result_dict
+
 
         group_by_bay_number_scif = bay_count_scif.groupby('bay_number').nunique()[MANUFACTURER_NAME]
 
