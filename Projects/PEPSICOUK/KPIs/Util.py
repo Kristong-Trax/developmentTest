@@ -80,6 +80,12 @@ class PepsicoUtil(UnifiedKPISingleton):
     HERO_SKU_AVAILABILITY_SKU = 'Hero SKU Availability - SKU'
     HERO_SKU_PLACEMENT_BY_SHELF_NUMBERS = 'Hero SKU Placement by shelf numbers'
 
+    HERO_SKU_AVAILABILITY_BY_HERO_TYPE = 'Hero SKU Availability by Hero Type'
+    SHARE_OF_ASSORTMENT_BY_HERO_TYPE = 'Share of Assortment by Hero Type'
+    HERO_SKU_LABEL = 'Hero SKU'
+    HERO_TYPE = 'hero_type'
+    HERO_SKU_SOS_OF_CAT_BY_HERO_TYPE = 'Hero SKU SOS of Category by Hero Type'
+
     def __init__(self, output, data_provider):
         super(PepsicoUtil, self).__init__(data_provider)
         self.output = output
@@ -128,6 +134,7 @@ class PepsicoUtil(UnifiedKPISingleton):
 
         self.all_targets_unpacked = self.commontools.all_targets_unpacked.copy()
         self.block_results = pd.DataFrame(columns=['Group Name', 'Score'])
+        self.hero_type_custom_entity_df = self.get_hero_type_custom_entity_df()
 
     def get_probe_group(self):
         query = PEPSICOUK_Queries.get_probe_group(self.session_uid)
@@ -272,3 +279,8 @@ class PepsicoUtil(UnifiedKPISingleton):
         hero_list = dependencies_df[(dependencies_df['kpi_type'] == self.HERO_SKU_AVAILABILITY_SKU) &
                                     (dependencies_df['numerator_result'] == 1)]['numerator_id'].unique().tolist()
         return hero_list
+
+    def get_hero_type_custom_entity_df(self):
+        hero_type_df = self.custom_entities[self.custom_entities['name'] == self.HERO_TYPE]
+        hero_type_df.rename(columns={'pk', 'entity_fk'}, inplace=True)
+        return hero_type_df
