@@ -63,7 +63,12 @@ class ToolBox(GlobalSessionToolBox):
             self.relevant_template['English SKU Name'])]  # Fix the logic in the future
         template_fk = self.templates.template_fk.iloc[0] if not self.templates.empty else 0
 
+        # final mpis has repeated product_fks based on because of this we need the sum of facings for each product fk.
+        # Facings is unique across each row
+        # Besides facings, all the relevant info can generated based on a single row per product_fk
+        actual_facings_per_product_fk = final_mpis.groupby('product_fk').sum()['facings']
 
+        final_mpis.drop_duplicates(['product_fk'],inplace=True)
         for i, row in final_mpis.iterrows():
             recognized_price = row['price'] if row.price and row['Target Price'] != 0 else 0
             target_price = row['Target Price']
@@ -73,9 +78,9 @@ class ToolBox(GlobalSessionToolBox):
                 score = 1
             else:
                 score = 0
-
+            result = actual_facings_per_product_fk[row.product_fk]
             self.write_to_db(kpi_fk, numerator_id=row.product_fk, denominator_id=row.brand_fk,
-                             numerator_result=recognized_price, denominator_result=target_price, result=row.facings,
+                             numerator_result=recognized_price, denominator_result=target_price, result=result,
                              score=score, identifier_parent=self.store_id, should_enter=True)
 
         parent_kpi_relevant_df = final_mpis[final_mpis['Target Price'] != 0]

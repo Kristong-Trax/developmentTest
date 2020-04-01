@@ -231,9 +231,12 @@ class CigarrosToolBox(GlobalSessionToolBox):
 
         relevant_scene_types = self.relevant_targets[Consts.TEMPLATE_SCENE_TYPE].unique().tolist()
 
-        empty_scif = self.scif[(self.scif['product_type'] == 'Empty') &
-                               (self.scif['template_name'].isin(relevant_scene_types))]
-        result = 1 if empty_scif.empty else 0
+        relevant_scif = self.scif[self.scif['template_name'].isin(relevant_scene_types)]
+        if relevant_scif.empty:
+            result = 0
+        else:
+            empty_scif = relevant_scif[relevant_scif['product_type'] == 'Empty']
+            result = 1 if empty_scif.empty else 0
 
         score = result * max_kpi_points
 
