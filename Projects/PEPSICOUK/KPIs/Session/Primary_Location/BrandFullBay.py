@@ -17,10 +17,10 @@ class BrandFullBayKpi(UnifiedCalculationsScript):
         self.util.filtered_scif, self.util.filtered_matches = \
             self.util.commontools.set_filtered_scif_and_matches_for_specific_kpi(self.util.filtered_scif,
                                                                                  self.util.filtered_matches,
-                                                                                 self._config_params['kpi_type'])
-        brand_full_bay_kpi_fks = [self.util.common.get_kpi_fk_by_kpi_type(kpi) for kpi in self.util.BRAND_FULL_BAY_KPIS]
+                                                                                 self.util.BRAND_FULL_BAY)
+        kpi_fk = self.util.common.get_kpi_fk_by_kpi_type(self.util.BRAND_FULL_BAY)
         external_kpi_targets = self.util.commontools.all_targets_unpacked[
-            self.util.commontools.all_targets_unpacked['kpi_level_2_fk'].isin(brand_full_bay_kpi_fks)]
+            self.util.commontools.all_targets_unpacked['kpi_level_2_fk'] == kpi_fk]
         external_kpi_targets = external_kpi_targets.reset_index(drop=True)
         if not external_kpi_targets.empty:
             external_kpi_targets['group_fk'] = external_kpi_targets['Group Name'].apply(lambda x:
@@ -44,16 +44,10 @@ class BrandFullBayKpi(UnifiedCalculationsScript):
                     result_df = result_df.merge(scene_bay, on=['scene_fk', 'bay_number'], how='left')
                     result_df['ratio'] = result_df['count'] / result_df['total_facings']
                     target_ratio = int(float(self._config_params['ratio'])*100)
-                    if target_ratio == 100:
-                        result = len(result_df[result_df['ratio'] >= 1])
-                        self.write_to_db_result(fk=row['kpi_level_2_fk'], numerator_id=row['group_fk'],
-                                                score=result)
-                        self.util.add_kpi_result_to_kpi_results_df(
-                            [row['kpi_level_2_fk'], row['group_fk'], None, None, result])
-                    else:
-                        result = len(result_df[result_df['ratio'] >= (target_ratio/100.00)])
-                        kpi_fk = self.util.common.get_kpi_fk_by_kpi_type('Brand Full Bay_{}'.format(target_ratio))
-                        self.write_to_db_result(fk=kpi_fk, numerator_id=row['group_fk'], score=result)
-                        self.util.add_kpi_result_to_kpi_results_df([kpi_fk, row['group_fk'], None, None, result])
+                    result = len(result_df[result_df['ratio'] >= 1])
+                    self.write_to_db_result(fk=row['kpi_level_2_fk'], numerator_id=row['group_fk'],
+                                            score=result, target=target_ratio)
+                    self.util.add_kpi_result_to_kpi_results_df(
+                        [row['kpi_level_2_fk'], row['group_fk'], None, None, result])
 
         self.util.reset_filtered_scif_and_matches_to_exclusion_all_state()

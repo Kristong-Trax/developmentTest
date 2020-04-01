@@ -43,6 +43,7 @@ class PepsicoUtil(UnifiedKPISingleton):
     HERO_SKU_PRICE = 'Hero SKU Price'
     HERO_SKU_PROMO_PRICE = 'Hero SKU Promo Price'
     BRAND_FULL_BAY_KPIS = ['Brand Full Bay_90', 'Brand Full Bay']
+    BRAND_FULL_BAY = 'Brand Full Bay'
     HERO_PREFIX = 'Hero SKU'
     ALL = 'ALL'
     HERO_SKU_OOS_SKU = 'Hero SKU OOS - SKU'
@@ -85,6 +86,8 @@ class PepsicoUtil(UnifiedKPISingleton):
     HERO_SKU_LABEL = 'Hero SKU'
     HERO_TYPE = 'hero_type'
     HERO_SKU_SOS_OF_CAT_BY_HERO_TYPE = 'Hero SKU SOS of Category by Hero Type'
+    CATEGORY_FULL_BAY = 'Category Full Bay'
+    CSN = 'CSN'
 
     def __init__(self, output, data_provider):
         super(PepsicoUtil, self).__init__(data_provider)
