@@ -2,6 +2,7 @@
 from Trax.Utils.Conf.Configuration import Config
 from Trax.Utils.Testing.Case import TestCase
 from mock import MagicMock, patch
+import pandas as pd
 from Projects.LIONNZ.Utils.KPIToolBox import LIONNZToolBox
 
 

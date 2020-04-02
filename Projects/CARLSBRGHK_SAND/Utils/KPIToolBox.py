@@ -173,6 +173,7 @@ class CARLSBERGToolBox:
             Log.info(
                 "No data to calculate COUNT_SKU_FACINGS_IN_FLOOR_STACK for {} - {}".format(
                     self.project_name, self.session_uid))
+            return True
         floor_stack_template_fk = int(dataframe_to_process['template_fk'].unique()[0])
         for each_prod_fk, prod_group in dataframe_to_process.groupby('product_fk'):
             # get manufacturer
