@@ -48,3 +48,6 @@ class Const(object):
         "Bonus": "B",
 
     }
+
+    PERFECT_STORE_KPI_WEIGHT = 'SCORE EXECUTION'
+
