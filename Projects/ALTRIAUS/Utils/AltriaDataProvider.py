@@ -14,16 +14,22 @@ BOTTOM_RIGHT_CORNER = 'Bottom Right Corner'
 
 class AltriaDataProvider:
 
-    def __init__(self, data_provider):
+    def __init__(self, data_provider=None, mpis=None, project_name=None):
         self.data_provider = data_provider
-        self.project_name = data_provider.project_name
-        self.session_uid = self.data_provider.session_uid
-        self.session_fk = self.data_provider.session_id
+        if project_name:
+            self.project_name = project_name
+        else:
+            self.project_name = data_provider.project_name
+        if self.data_provider:
+            self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
+            self.scene_fks = self.scif['scene_fk'].unique().tolist()
+            self.match_product_in_scene = self.data_provider[Data.MATCHES]
+        else:
+            self.match_product_in_scene = mpis
+            self.scene_fks = mpis['scene_fk'].unique().tolist()
+
         self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
-        self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
-        self.scene_fks = self.scif['scene_fk'].unique().tolist()
         self._mdis = pd.DataFrame()
-        self.match_product_in_scene = self.data_provider[Data.MATCHES]
 
     @property
     def mdis(self):
@@ -114,6 +120,45 @@ class AltriaDataProvider:
         if dropna:
             # get rid of any results that didn't fall into a polygon
             match_product_in_scene_df.dropna(subset=polygon_mask_df.columns.tolist(), inplace=True)
+
+        return match_product_in_scene_df
+
+    def get_masking_data(self, match_product_in_scene_df, y_axis_threshold=40, x_axis_threshold=75, dropna=True):
+            # build a dataframe with all polygon masks that match the display names provided
+        polygon_mask_df = self.generate_polygon_masks(TOP_LEFT_CORNER, BOTTOM_RIGHT_CORNER,
+                                                      y_axis_threshold, x_axis_threshold)
+
+        # add the columns from the polygon dataframe to MPIS
+        match_product_in_scene_df = \
+            match_product_in_scene_df.reindex(
+                columns=match_product_in_scene_df.columns.tolist() + polygon_mask_df.columns.tolist())
+
+        # this isn't very efficient, but it conditionally merges rows from the polygon dataframe
+        # to any applicable products/POS items that are inside the polygon
+        for item in match_product_in_scene_df.itertuples():
+            relevant_polygon_mask_df = polygon_mask_df[(polygon_mask_df['left_bound'] < item.rect_x) &
+                                                       (polygon_mask_df['right_bound'] > item.rect_x) &
+                                                       (polygon_mask_df['top_bound'] < item.rect_y) &
+                                                       (polygon_mask_df['bottom_bound'] > item.rect_y) &
+                                                       (polygon_mask_df['scene_fk'] == item.scene_fk)]
+            # if the dataframe is empty, there wasn't a match
+            if not relevant_polygon_mask_df.empty:
+                match_product_in_scene_df.loc[item.Index, polygon_mask_df.columns.tolist()] = \
+                    relevant_polygon_mask_df.iloc[0]
+
+        if dropna:
+            # get rid of any results that didn't fall into a polygon
+            match_product_in_scene_df.dropna(subset=polygon_mask_df.columns.tolist(), inplace=True)
+
+        match_product_in_scene_df.rename(columns={'left_bound': 'x_top',
+                                                  'right_bound': 'x_right',
+                                                  'top_bound': 'y_top',
+                                                  'bottom_bound': 'y_right'}, inplace=True)
+
+        match_product_in_scene_df = \
+            match_product_in_scene_df[['probe_match_fk', 'x_top', 'y_top', 'x_right', 'y_right']]
+
+        match_product_in_scene_df = match_product_in_scene_df.apply(pd.to_numeric)
 
         return match_product_in_scene_df
 
