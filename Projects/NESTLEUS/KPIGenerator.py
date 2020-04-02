@@ -32,8 +32,8 @@ class Generator:
         #     print("kpi_set")
         #     score = self.tool_box.main_calculation(kpi_set_fk=kpi_set_fk)
         #     # self.common.write_to_db_result(kpi_set_fk, self.tool_box.LEVEL1, score)
-        # self.tool_box.common.commit_results_data()
+        self.tool_box.common.commit_results_data()
         self.tool_box.calculate_assortment()
-        # self.tool_box.commit_assortment_results_without_delete()
-        self.tool_box.commit_assortment_results()
+        self.tool_box.commit_assortment_results_without_delete()
+        # self.tool_box.commit_assortment_results()
 
