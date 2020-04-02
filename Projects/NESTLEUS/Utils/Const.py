@@ -57,3 +57,5 @@ TEMPLATES = {
     'water_aisle': 2,
     'water_display': 7
 }
+
+def mm_to_feet(n): return n / 1000 * 3.28084

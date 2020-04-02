@@ -88,12 +88,12 @@ class NESTLEUSToolBox:
         fk_template_water_aisle = 2
         fk_template_water_display = 7
 
-        self.calculate_facing_count_and_linear_feet(id_scene_type=fk_template_water_aisle)
-        self.calculate_facing_count_and_linear_feet(id_scene_type=fk_template_water_display)
+        # self.calculate_facing_count_and_linear_feet(id_scene_type=fk_template_water_aisle)
+        # self.calculate_facing_count_and_linear_feet(id_scene_type=fk_template_water_display)
         self.calculate_base_footage()
-        self.calculate_facings_per_shelf_level()
-        self.calculate_display_type(fk_template_water_aisle)
-        self.calculate_display_type(fk_template_water_aisle, "NESTLE HOLDINGS INC")
+        # self.calculate_facings_per_shelf_level()
+        # self.calculate_display_type(fk_template_water_aisle)
+        # self.calculate_display_type(fk_template_water_aisle, "NESTLE HOLDINGS INC")
 
     def get_numerator_denominator_ids(self, kpi_id):
         """
@@ -184,14 +184,13 @@ class NESTLEUSToolBox:
 
         numerator_id, denominator_id = self.get_numerator_denominator_ids(water_aisle_base_footage_kpi_fk)
 
-        scif = self.scif
-        water_aisle = scif[scif['template_fk'] == 2]
-        water_aisle_ids = water_aisle['pk'].unique()
+        mpis = self.match_product_in_scene.merge(self.scene_info, how="left", on="scene_fk", suffixes=('', '_info'))
+        water_aisle = mpis[mpis['template_fk'] == 2]
+        water_aisle_bottom_shelf = water_aisle[water_aisle['shelf_number_from_bottom'] == 1]
+        water_aisle_bottom_shelf_ign_stacking = water_aisle_bottom_shelf[water_aisle_bottom_shelf['stacking_layer'] == 1]
 
-        mpis = self.match_product_in_scene
-        bottom_shelves = mpis[mpis['shelf_number_from_bottom'] == 1]
-        water_aisle_bottom_shelves = bottom_shelves[bottom_shelves['scene_fk'].isin(water_aisle_ids)]
-        base_footage = bottom_shelves['width_mm_advance'].sum()
+        base_footage = water_aisle_bottom_shelf_ign_stacking['width_mm_advance'].sum()
+        base_footage = Const.mm_to_feet(base_footage)
 
         self.common.write_to_db_result(
             fk=water_aisle_base_footage_kpi_fk,
