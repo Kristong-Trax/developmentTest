@@ -374,7 +374,7 @@ class PngcnSceneKpis(object):
             row['SKU_DATA'] = self.get_skus_data_from_block(block_df, custom_matches)
 
             # get bottom left facings
-            horizontal_location = block_df['shelf_number'].min()
+            horizontal_location = block_df['shelf_number'].max()
             row['horizontal_location'] = horizontal_location
             shelf_df = block_df[block_df['shelf_number'] == horizontal_location]
             bay_number = shelf_df['bay_number'].min()
