@@ -10,14 +10,23 @@ class ProductBlockingKpi(UnifiedCalculationsScript):
     def __init__(self, data_provider, config_params=None, **kwargs):
         super(ProductBlockingKpi, self).__init__(data_provider, config_params=config_params, **kwargs)
         self.util = PepsicoUtil(None, data_provider)
-        self.block = Block(self.data_provider, custom_scif=self.util.filtered_scif, custom_matches=self.util.filtered_matches)
+        self.block = Block(self.data_provider, custom_scif=self.util.filtered_scif,
+                           custom_matches=self.util.filtered_matches)
 
     def kpi_type(self):
         pass
 
     def calculate(self):
         if not self.util.filtered_matches.empty:
-            self.calculate_product_blocking()
+            self.util.filtered_scif, self.util.filtered_matches = \
+                self.util.commontools.set_filtered_scif_and_matches_for_specific_kpi(self.util.filtered_scif,
+                                                                                     self.util.filtered_matches,
+                                                                                     self.util.PRODUCT_BLOCKING)
+            self.block = Block(self.data_provider, custom_scif=self.util.filtered_scif,
+                               custom_matches=self.util.filtered_matches)
+            if not self.util.filtered_matches.empty:
+                self.calculate_product_blocking()
+            self.util.reset_filtered_scif_and_matches_to_exclusion_all_state()
 
     def calculate_product_blocking(self):
         external_targets = self.util.all_targets_unpacked[self.util.all_targets_unpacked['type'] == self.util.PRODUCT_BLOCKING]
@@ -47,8 +56,3 @@ class ProductBlockingKpi(UnifiedCalculationsScript):
             self.write_to_db_result(fk=kpi_fk, numerator_id=group_fk, denominator_id=self.util.store_id,
                                     numerator_result=max_ratio * 100,
                                     score=score, result=result, target=target, by_scene=True)
-
-            # connection with adjacency kpi
-            # TODO: setup the dependency
-            self.util.block_results = self.util.block_results.append(pd.DataFrame([{'Group Name': row['Group Name'],
-                                                                     'Score': result_df['is_block'].values[0] if not result_df.empty else False}]))

@@ -88,6 +88,12 @@ class PepsicoUtil(UnifiedKPISingleton):
     HERO_SKU_SOS_OF_CAT_BY_HERO_TYPE = 'Hero SKU SOS of Category by Hero Type'
     CATEGORY_FULL_BAY = 'Category Full Bay'
     CSN = 'CSN'
+    PRICE = 'Price'
+    PROMO_PRICE = 'Promo Price'
+    LINEAR_SPACE_PER_PRODUCT = 'Linear Space Per Product'
+    FACINGS_PER_PRODUCT = 'Facings per Product'
+    PRICE_SCENE = 'Price Scene'
+    PROMO_PRICE_SCENE = 'Promo Price Scene'
 
     def __init__(self, output, data_provider):
         super(PepsicoUtil, self).__init__(data_provider)
