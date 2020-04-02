@@ -141,8 +141,8 @@ class PngcnSceneKpis(object):
 
     def process_scene(self):
         self.calculate_variant_block()
+        self.calculate_eye_level_kpi()
         # self.save_nlsos_to_custom_scif()
-        # self.calculate_eye_level_kpi()
         # self.calculate_linear_length()
         # self.calculate_presize_linear_length()
         # Log.debug(self.log_prefix + ' Retrieving data')
