@@ -22,3 +22,5 @@ if __name__ == '__main__':
         data_provider.load_session_data(session.Session_uid)
         output = Output()
         Calculations(data_provider, output).run_project_calculations()
+
+    print("Done")

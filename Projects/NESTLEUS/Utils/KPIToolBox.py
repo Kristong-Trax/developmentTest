@@ -184,14 +184,12 @@ class NESTLEUSToolBox:
 
         numerator_id, denominator_id = self.get_numerator_denominator_ids(water_aisle_base_footage_kpi_fk)
 
-        scif = self.scif
-        water_aisle = scif[scif['template_fk'] == 2]
-        water_aisle_ids = water_aisle['pk'].unique()
 
-        mpis = self.match_product_in_scene
-        bottom_shelves = mpis[mpis['shelf_number_from_bottom'] == 1]
-        water_aisle_bottom_shelves = bottom_shelves[bottom_shelves['scene_fk'].isin(water_aisle_ids)]
-        base_footage = bottom_shelves['width_mm_advance'].sum()
+        scene_info = self.scene_info
+        mpis = self.match_product_in_scene.merge(self.scene_info, how="left", on="scene_fk", suffixes=('', '_info'))
+        water_aisle = mpis[mpis['template_fk'] == 2]
+        water_aisle_bottom_shelf = water_aisle[water_aisle['shelf_number_from_bottom'] == 1]
+        base_footage = water_aisle_bottom_shelf['width_mm_advance'].sum()
 
         self.common.write_to_db_result(
             fk=water_aisle_base_footage_kpi_fk,
