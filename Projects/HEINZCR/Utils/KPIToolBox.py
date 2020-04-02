@@ -124,7 +124,6 @@ class HEINZCRToolBox:
 
         self.calculate_perfect_sub_category()
 
-
         # relevant_target_df = \
         #     self.store_targets[self.store_targets['Country'].str.encode('utf-8') == self.country.encode('utf-8')]
         # if not relevant_target_df.empty:
@@ -248,11 +247,12 @@ class HEINZCRToolBox:
                     weight_percent = weight_value * .01
 
             result = sub_category.result * 100
-            score = (result *.01) * kpi_weight
+            score = (result * .01) * kpi_weight
 
             self.powersku_scores[sub_category.sub_category_fk] = score
             self.common_v2.write_to_db_result(sub_category_kpi_fk, numerator_id=sub_category.sub_category_fk,
-                                              denominator_id=self.store_id, identifier_parent=sub_category.sub_category_fk,
+                                              denominator_id=self.store_id,
+                                              identifier_parent=sub_category.sub_category_fk,
                                               identifier_result=identifier_dict, result=result, score=score,
                                               weight=target_kpi_weight, target=target_kpi_weight,
                                               should_enter=True)
@@ -322,36 +322,38 @@ class HEINZCRToolBox:
         sub_category_fk_list = []
         kpi_type_dict_scores = [self.powersku_scores, self.powersku_empty, self.powersku_price,
                                 self.powersku_sos]
+
         for kpi_dict in kpi_type_dict_scores:
             sub_category_fk_list.extend(kpi_dict.keys())
 
         unique_sub_cat_fks = list(dict.fromkeys(sub_category_fk_list))
-
+        relevant_sub_cat_list = self.sub_category_assortment['sub_category_fk'][
+            self.sub_category_assortment['Category'] != pd.np.nan].unique().tolist()
         for sub_cat_fk in unique_sub_cat_fks:
-            bonus_score = 0
-            try:
-                bonus_score = self.powersku_bonus[sub_cat_fk]
-            except:
-                pass
+            if sub_cat_fk in relevant_sub_cat_list:
+                bonus_score = 0
+                try:
+                    bonus_score = self.powersku_bonus[sub_cat_fk]
+                except:
+                    pass
 
-            sub_cat_weight = self.get_weight(sub_cat_fk)
-            sub_cat_score = self.calculate_sub_category_sum(kpi_type_dict_scores, sub_cat_fk)
-            kpi_weight_perfect_store = self.sub_category_weight[self.country][self.sub_category_weight['Category'] == Const.PERFECT_STORE_KPI_WEIGHT].iloc[0]
+                sub_cat_weight = self.get_weight(sub_cat_fk)
+                sub_cat_score = self.calculate_sub_category_sum(kpi_type_dict_scores, sub_cat_fk)
+                kpi_weight_perfect_store = self.sub_category_weight[self.country][
+                    self.sub_category_weight['Category'] == Const.PERFECT_STORE_KPI_WEIGHT].iloc[0]
 
+                result = sub_cat_score
 
-            result = sub_cat_score
+                score = (result * sub_cat_weight) + bonus_score
+                total_score += score
 
-
-            score = (result * sub_cat_weight) + bonus_score
-            total_score += score
-
-            self.common_v2.write_to_db_result(kpi_fk, numerator_id=sub_cat_fk,
-                                              denominator_id=self.store_id,
-                                              result=result, score=score,
-                                              identifier_parent=parent_kpi,
-                                              identifier_result=sub_cat_fk,
-                                              should_enter=True)
-
+                self.common_v2.write_to_db_result(kpi_fk, numerator_id=sub_cat_fk,
+                                                  denominator_id=self.store_id,
+                                                  result=result, score=score,
+                                                  identifier_parent=parent_kpi,
+                                                  identifier_result=sub_cat_fk,
+                                                  weight=sub_cat_weight,
+                                                  should_enter=True)
 
         self.common_v2.write_to_db_result(parent_kpi, numerator_id=Const.OWN_MANUFACTURER_FK,
                                           denominator_id=self.store_id,
@@ -572,7 +574,8 @@ class HEINZCRToolBox:
             self.common_v2.write_to_db_result(adherence_sub_category_kpi_fk, numerator_id=row.sub_category_fk,
                                               denominator_id=self.store_id, result=result, score=score,
                                               numerator_result=row.into_interval, denominator_result=row.product_count,
-                                              identifier_parent=row.sub_category_fk, identifier_result=identifier_result,
+                                              identifier_parent=row.sub_category_fk,
+                                              identifier_result=identifier_result,
                                               weight=kpi_weight, target=kpi_weight,
                                               should_enter=True)
 
