@@ -79,9 +79,10 @@ class HEINZCRToolBox:
                                                     left_on='sub_category',
                                                     right_on='Category')
 
+
         except KeyError:
             self.sub_category_assortment = pd.DataFrame()
-
+        self.update_score_sub_category_weights()
         try:
             self.store_assortment_without_powerskus = \
                 self.store_assortment[self.store_assortment['assortment_name'].str.contains('ASSORTMENT')]
@@ -246,8 +247,8 @@ class HEINZCRToolBox:
                 if not pd.isna(weight_value):
                     weight_percent = weight_value * .01
 
-            result = sub_category.result * 100
-            score = (result * .01) * kpi_weight
+            result = sub_category.result
+            score = result * kpi_weight
 
             self.powersku_scores[sub_category.sub_category_fk] = score
             self.common_v2.write_to_db_result(sub_category_kpi_fk, numerator_id=sub_category.sub_category_fk,
@@ -326,9 +327,21 @@ class HEINZCRToolBox:
         for kpi_dict in kpi_type_dict_scores:
             sub_category_fk_list.extend(kpi_dict.keys())
 
+        kpi_weight_perfect_store = 0
+        if self.country in self.sub_category_assortment.columns.to_list():
+            kpi_weight_perfect_store = self.sub_category_weight[self.country][
+                self.sub_category_weight['Category'] == Const.PERFECT_STORE_KPI_WEIGHT]
+
+            if not kpi_weight_perfect_store.empty:
+                kpi_weight_perfect_store = kpi_weight_perfect_store.iloc[0]
+
         unique_sub_cat_fks = list(dict.fromkeys(sub_category_fk_list))
-        relevant_sub_cat_list = self.sub_category_assortment['sub_category_fk'][
-            self.sub_category_assortment['Category'] != pd.np.nan].unique().tolist()
+
+        sub_category_fks = self.sub_category_weight.sub_category_fk.unique().tolist()
+        relevant_sub_cat_list = [x for x in sub_category_fks if str(x) != 'nan']
+
+        # relevant_sub_cat_list = self.sub_category_assortment['sub_category_fk'][
+        #     self.sub_category_assortment['Category'] != pd.np.nan].unique().tolist()
         for sub_cat_fk in unique_sub_cat_fks:
             if sub_cat_fk in relevant_sub_cat_list:
                 bonus_score = 0
@@ -339,8 +352,7 @@ class HEINZCRToolBox:
 
                 sub_cat_weight = self.get_weight(sub_cat_fk)
                 sub_cat_score = self.calculate_sub_category_sum(kpi_type_dict_scores, sub_cat_fk)
-                kpi_weight_perfect_store = self.sub_category_weight[self.country][
-                    self.sub_category_weight['Category'] == Const.PERFECT_STORE_KPI_WEIGHT].iloc[0]
+
 
                 result = sub_cat_score
 
@@ -352,7 +364,7 @@ class HEINZCRToolBox:
                                                   result=result, score=score,
                                                   identifier_parent=parent_kpi,
                                                   identifier_result=sub_cat_fk,
-                                                  weight=sub_cat_weight,
+                                                  weight=sub_cat_weight * 100,
                                                   should_enter=True)
 
         self.common_v2.write_to_db_result(parent_kpi, numerator_id=Const.OWN_MANUFACTURER_FK,
@@ -752,8 +764,12 @@ class HEINZCRToolBox:
     def check_bonus_question(self):
         bonus_kpi_fk = self.common_v2.get_kpi_fk_by_kpi_type(Const.BONUS_QUESTION_SUB_CATEGORY)
         bonus_weight = self.kpi_weights['Score'][self.kpi_weights['KPIs'] == Const.KPI_WEIGHTS['Bonus']].iloc[0]
-        sub_category_fks = self.sub_category_assortment.sub_category_fk.unique().tolist()
 
+
+
+
+        sub_category_fks = self.sub_category_weight.sub_category_fk.unique().tolist()
+        sub_category_fks = [x for x in sub_category_fks if str(x) != 'nan']
         if self.survey.check_survey_answer(('question_fk', Const.BONUS_QUESTION_FK), 'Yes,yes,si,Si'):
             result = 1
         else:
@@ -767,7 +783,7 @@ class HEINZCRToolBox:
             target_weight = bonus_weight * sub_cat_weight
             self.powersku_bonus[sub_cat_fk] = score
 
-            self.common_v2.write_to_db_result(bonus_kpi_fk, numerator_id=Const.OWN_MANUFACTURER_FK,
+            self.common_v2.write_to_db_result(bonus_kpi_fk, numerator_id=sub_cat_fk,
                                               denominator_id=self.store_id,
                                               result=result, score=score, identifier_parent=sub_cat_fk,
                                               weight=target_weight, target=target_weight,
@@ -776,12 +792,18 @@ class HEINZCRToolBox:
     def commit_results_data(self):
         self.common_v2.commit_results_data()
 
+    def update_score_sub_category_weights(self):
+        all_sub_category_fks = self.all_products[['sub_category', 'sub_category_fk']].drop_duplicates()
+        self.sub_category_weight = pd.merge(self.sub_category_weight, all_sub_category_fks, left_on='Category', right_on='sub_category',
+                     how='left')
+
+
     def get_weight(self, sub_category_fk):
         weight_value = 0
 
-        if self.country in self.sub_category_assortment.columns.to_list():
-            weight_df = self.sub_category_assortment[self.country][
-                (self.sub_category_assortment.sub_category_fk == sub_category_fk)]
+        if self.country in self.sub_category_weight.columns.to_list():
+            weight_df = self.sub_category_weight[self.country][
+                (self.sub_category_weight.sub_category_fk == sub_category_fk)]
             if weight_df.empty:
                 return 0
 
