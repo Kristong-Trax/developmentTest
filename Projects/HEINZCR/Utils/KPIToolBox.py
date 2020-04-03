@@ -353,7 +353,6 @@ class HEINZCRToolBox:
                 sub_cat_weight = self.get_weight(sub_cat_fk)
                 sub_cat_score = self.calculate_sub_category_sum(kpi_type_dict_scores, sub_cat_fk)
 
-
                 result = sub_cat_score
 
                 score = (result * sub_cat_weight) + bonus_score
@@ -765,9 +764,6 @@ class HEINZCRToolBox:
         bonus_kpi_fk = self.common_v2.get_kpi_fk_by_kpi_type(Const.BONUS_QUESTION_SUB_CATEGORY)
         bonus_weight = self.kpi_weights['Score'][self.kpi_weights['KPIs'] == Const.KPI_WEIGHTS['Bonus']].iloc[0]
 
-
-
-
         sub_category_fks = self.sub_category_weight.sub_category_fk.unique().tolist()
         sub_category_fks = [x for x in sub_category_fks if str(x) != 'nan']
         if self.survey.check_survey_answer(('question_fk', Const.BONUS_QUESTION_FK), 'Yes,yes,si,Si'):
@@ -794,9 +790,9 @@ class HEINZCRToolBox:
 
     def update_score_sub_category_weights(self):
         all_sub_category_fks = self.all_products[['sub_category', 'sub_category_fk']].drop_duplicates()
-        self.sub_category_weight = pd.merge(self.sub_category_weight, all_sub_category_fks, left_on='Category', right_on='sub_category',
-                     how='left')
-
+        self.sub_category_weight = pd.merge(self.sub_category_weight, all_sub_category_fks, left_on='Category',
+                                            right_on='sub_category',
+                                            how='left')
 
     def get_weight(self, sub_category_fk):
         weight_value = 0
