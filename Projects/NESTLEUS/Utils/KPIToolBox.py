@@ -91,9 +91,9 @@ class NESTLEUSToolBox:
         # self.calculate_facing_count_and_linear_feet(id_scene_type=fk_template_water_aisle)
         # self.calculate_facing_count_and_linear_feet(id_scene_type=fk_template_water_display)
         self.calculate_base_footage()
-        # self.calculate_facings_per_shelf_level()
-        # self.calculate_display_type(fk_template_water_aisle)
-        # self.calculate_display_type(fk_template_water_aisle, "NESTLE HOLDINGS INC")
+        self.calculate_facings_per_shelf_level()
+        self.calculate_display_type(fk_template_water_aisle)
+        self.calculate_display_type(fk_template_water_aisle, "NESTLE HOLDINGS INC")
 
     def get_numerator_denominator_ids(self, kpi_id):
         """
