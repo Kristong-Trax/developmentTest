@@ -184,8 +184,10 @@ class NESTLEUSToolBox:
 
         numerator_id, denominator_id = self.get_numerator_denominator_ids(water_aisle_base_footage_kpi_fk)
 
-        mpis = self.match_product_in_scene.merge(self.scene_info, how="left", on="scene_fk", suffixes=('', '_info'))
-        water_aisle = mpis[mpis['template_fk'] == 2]
+        mpis = self.match_product_in_scene.merge(self.products, how="left", on="product_fk", suffixes=('', '_products')) \
+            .merge(self.scene_info, how="left", on="scene_fk", suffixes=('', '_info'))
+        water_category = mpis[mpis['category_fk'] == 29]
+        water_aisle = water_category[water_category['template_fk'] == 2]
         water_aisle_bottom_shelf = water_aisle[water_aisle['shelf_number_from_bottom'] == 1]
         water_aisle_bottom_shelf_ign_stacking = water_aisle_bottom_shelf[water_aisle_bottom_shelf['stacking_layer'] == 1]
 
@@ -242,8 +244,6 @@ class NESTLEUSToolBox:
                 denominator_result=1,
                 denominator_id=denominator_id
             )
-
-    # a tad messy
     def calculate_display_type(self, display_type_id, manufacturer_name=None):
         """
         :param display_type_id: ID of template/display type
