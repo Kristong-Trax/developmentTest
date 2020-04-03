@@ -1,10 +1,11 @@
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Cloud.Services.Connector.Keys import DbUsers
 from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
-import numpy as np
-from Trax.Utils.Logging.Logger import Log
+# import numpy as np
+# from Trax.Utils.Logging.Logger import Log
 import pandas as pd
-import os
+# import os
+from Projects.NESTLEUS.Utils import Const
 
 from KPIUtils_v2.DB.CommonV2 import Common
 from KPIUtils_v2.DB.Common import Common as CommonV1
@@ -75,43 +76,211 @@ class NESTLEUSToolBox:
         """
         This function calculates the KPI results.
         """
-        kpi_set_fk = kwargs['kpi_set_fk']
-        self.calculate_facing_count_and_linear_feet(kpi_set_fk=kpi_set_fk)
 
-    def calculate_facing_count_and_linear_feet(self, kpi_set_fk=None):
-        kpi_name_facing_count = 'FACING_COUNT'
-        kpi_name_linear_feet = 'LINEAR_FEET'
+        # kpi_set_fk = kwargs['kpi_set_fk']
+        # self.calculate_facing_count_and_linear_feet(kpi_set_fk=kpi_set_fk)
 
-        kpi_fk_facing_count = self.common.get_kpi_fk_by_kpi_name(kpi_name_facing_count)
-        kpi_fk_linear_feet = self.common.get_kpi_fk_by_kpi_name(kpi_name_linear_feet)
-        if kpi_set_fk == kpi_fk_facing_count:
+        # maybe
+        kpi_ids = {
+            'COUNT_OF_NESTLE_DISPLAYS': 916
+        }
 
-            product_fks = self.all_products['product_fk'][
-                (self.all_products['category_fk'] == 32) | (self.all_products['category_fk'] == 5)]
-            for product_fk in product_fks:
+        fk_template_water_aisle = 2
+        fk_template_water_display = 7
 
-                sos_filter = {'product_fk': product_fk}
+        self.calculate_facing_count_and_linear_feet(id_scene_type=fk_template_water_aisle)
+        self.calculate_facing_count_and_linear_feet(id_scene_type=fk_template_water_display)
+        self.calculate_base_footage()
+        self.calculate_facings_per_shelf_level()
+        self.calculate_display_type(fk_template_water_aisle)
+        self.calculate_display_type(fk_template_water_aisle, "NESTLE HOLDINGS INC")
 
-                facing_count = self.availability.calculate_availability(**sos_filter)
+    def get_numerator_denominator_ids(self, kpi_id):
+        """
+        :param kpi_id: The ID of the KPI stored in kpi_static_data
+        :return: The ID's of the KPI entity type used as the numerator and denominator of the KPI
+        """
+        static = self.kpi_static_data
+        static_kpi = static[static['pk'] == kpi_id]
+        numerator_id = static_kpi['numerator_type_fk'].iloc[0]
+        denominator_id = static_kpi['denominator_type_fk'].iloc[0]
 
-                if facing_count > 0:
+        return (numerator_id, denominator_id)
 
-                    self.common.write_to_db_result(fk=kpi_fk_facing_count, numerator_id=product_fk,
-                                                   numerator_result=facing_count,
-                                                   denominator_id=product_fk,
-                                                   result=facing_count, score=facing_count)
+    @staticmethod
+    def get_shelf_map():
+        """
+        :return A dict representing (shelf_number_from_bottom, number_of_shelves): shelf_position
+        """
+        with open(Const.SHELF_MAP_PATH) as f:
+            shelf_map = pd.read_excel(f, header=None)
 
-                    general_filter = {'category_fk': [32, 5]}
+        shelf_map = {(x + 1, y + 1): col for y, row in shelf_map.iterrows() for x, col in enumerate(row) if pd.notna(col)}
 
-                    numerator_length = self.calculate_linear_share_of_shelf_with_numerator_denominator(
-                        sos_filter, **general_filter)
+        return shelf_map
 
-                    numerator_length = int(np.ceil(numerator_length * self.MM_TO_FEET_CONVERSION))
-                    if numerator_length > 0:
-                        self.common.write_to_db_result(fk=kpi_fk_linear_feet, numerator_id=product_fk,
-                                                       numerator_result=numerator_length,
-                                                       denominator_id=product_fk,
-                                                       result=numerator_length, score=numerator_length)
+    # def calculate_facing_count_and_linear_feet(self, kpi_set_fk=None):
+    #     kpi_name_facing_count = 'FACING_COUNT'
+    #     kpi_name_linear_feet = 'LINEAR_FEET'
+    #
+    #     kpi_fk_facing_count = self.common.get_kpi_fk_by_kpi_name(kpi_name_facing_count)
+    #     kpi_fk_linear_feet = self.common.get_kpi_fk_by_kpi_name(kpi_name_linear_feet)
+    #     if kpi_set_fk == kpi_fk_facing_count:
+    #
+    #         product_fks = self.all_products['product_fk'][
+    #             (self.all_products['category_fk'] == 32) | (self.all_products['category_fk'] == 5)]
+    #         for product_fk in product_fks:
+    #
+    #             sos_filter = {'product_fk': product_fk}
+    #
+    #             facing_count = self.availability.calculate_availability(**sos_filter)
+    #
+    #             if facing_count > 0:
+    #
+    #                 self.common.write_to_db_result(fk=kpi_fk_facing_count, numerator_id=product_fk,
+    #                                                numerator_result=facing_count,
+    #                                                denominator_id=product_fk,
+    #                                                result=facing_count, score=facing_count)
+    #
+    #                 general_filter = {'category_fk': [32, 5]}
+    #
+    #                 numerator_length = self.calculate_linear_share_of_shelf_with_numerator_denominator(
+    #                     sos_filter, **general_filter)
+    #
+    #                 numerator_length = int(np.ceil(numerator_length * self.MM_TO_FEET_CONVERSION))
+    #                 if numerator_length > 0:
+    #                     self.common.write_to_db_result(fk=kpi_fk_linear_feet, numerator_id=product_fk,
+    #                                                    numerator_result=numerator_length,
+    #                                                    denominator_id=product_fk,
+    #                                                    result=numerator_length, score=numerator_length)
+
+    def calculate_facing_count_and_linear_feet(self, id_scene_type):
+        fk_kpi_level_2 = {
+            'facings': 909,
+            'facings_ign_stack': 910,
+            'net_len_add_stack': 911,
+            'net_len_ign_stack': 912
+        }
+
+        df_scene = self.scif[self.scif['template_fk'] == id_scene_type]
+        sums = {key: df_scene[key].sum() for key, _ in fk_kpi_level_2.items()}
+
+        for row in df_scene.itertuples():
+            for key, fk in fk_kpi_level_2.items():
+                numerator = getattr(row, key)
+                denominator = sums.get(key)
+                result = numerator / denominator
+
+                self.common.write_to_db_result(
+                    fk=fk,
+                    numerator_id=row.item_id,
+                    numerator_result=numerator,
+                    denominator_id=row.store_id,
+                    denominator_result=denominator,
+                )
+
+    def calculate_base_footage(self):
+        water_aisle_base_footage_kpi_fk = 913
+
+        numerator_id, denominator_id = self.get_numerator_denominator_ids(water_aisle_base_footage_kpi_fk)
+
+        mpis = self.match_product_in_scene.merge(self.products, how="left", on="product_fk", suffixes=('', '_products')) \
+            .merge(self.scene_info, how="left", on="scene_fk", suffixes=('', '_info'))
+        water_category = mpis[mpis['category_fk'] == 29]
+        water_aisle = water_category[water_category['template_fk'] == 2]
+        water_aisle_bottom_shelf = water_aisle[water_aisle['shelf_number_from_bottom'] == 1]
+        water_aisle_bottom_shelf_ign_stacking = water_aisle_bottom_shelf[water_aisle_bottom_shelf['stacking_layer'] == 1]
+
+        base_footage = water_aisle_bottom_shelf_ign_stacking['width_mm_advance'].sum()
+        base_footage = Const.mm_to_feet(base_footage)
+
+        self.common.write_to_db_result(
+            fk=water_aisle_base_footage_kpi_fk,
+            numerator_result=base_footage,
+            numerator_id=numerator_id,
+            denominator_result=1,
+            denominator_id=denominator_id
+        )
+
+
+    def calculate_facings_per_shelf_level(self):
+        kpi_fk = 914
+        mpis = self.match_product_in_scene
+        scif = self.scif
+
+        mpis_scene_bays = mpis.groupby(by=['scene_fk', 'bay_number'])['shelf_number'].max().reset_index(name='total_number_of_shelves')
+        # mpis_scene_bays = mpis.groupby(by=['scene_fk', 'bay_number'])['shelf_number'].value_counts().reset_index(name='total_number_of_shelves')
+
+        num_shelves_by_bay = {(row.scene_fk, row.bay_number): row.total_number_of_shelves for row in mpis_scene_bays.itertuples()}
+
+        mpis['number_of_shelves'] = mpis.apply(lambda row: num_shelves_by_bay.get((row.scene_fk, row.bay_number)), axis=1)
+
+        shelf_map = self.get_shelf_map()
+        shelf_position_labels = ["Bottom", "Middle", "Eye", "Top"]
+
+        def get_shelf_position(row):
+            shelf_number_from_bottom = int(row.shelf_number_from_bottom)
+            number_of_shelves = int(row.number_of_shelves)
+
+            # needs to account for bays with 11 shelves
+            shelf_position = shelf_map.get((shelf_number_from_bottom, number_of_shelves)) or "Bottom"
+            shelf_position_id = shelf_position_labels.index(shelf_position)+1
+
+            return shelf_position_id
+
+        mpis['shelf_position'] = mpis.apply(get_shelf_position, axis=1)
+        # mpis['shelf_position'] = mpis.apply(lambda row: shelf_position_labels.index(shelf_map.get((int(row.shelf_number_from_bottom), int(row.number_of_shelves))))+1, axis=1)
+
+        bottom_later = mpis[mpis['stacking_layer'] == 1]
+
+        num_product_facings_by_shelf_position = bottom_later.groupby(['product_fk', 'shelf_position']).sum()
+        numerator_id, denominator_id = self.get_numerator_denominator_ids(kpi_fk)
+
+        for product in num_product_facings_by_shelf_position.itertuples():
+            self.common.write_to_db_result(
+                fk=kpi_fk,
+                numerator_result=product.number_of_shelves,
+                numerator_id=numerator_id,
+                denominator_result=1,
+                denominator_id=denominator_id
+            )
+    def calculate_display_type(self, display_type_id, manufacturer_name=None):
+        """
+        :param display_type_id: ID of template/display type
+        :param manufacturer_name: Name of Manufacturer
+        """
+
+        static_data = self.kpi_static_data
+
+        kpi_fk = 916 if manufacturer_name else 915
+
+        scif = self.scif
+        display = scif[scif['template_fk'] == display_type_id]
+
+        if manufacturer_name:
+            display = display[display['manufacturer_local_name'] == manufacturer_name]
+
+        count = len(display['scene_id'].unique())
+
+        numerator_id, denominator_id = self.get_numerator_denominator_ids(kpi_fk)
+
+        self.common.write_to_db_result(
+            fk=kpi_fk,
+            numerator_result=count,
+            numerator_id=numerator_id,
+            denominator_result=1,
+            denominator_id=denominator_id
+        )
+
+    def calculate_share_space_length(self, **filters):
+        """
+        :param filters: These are the parameters which the data frame is filtered by.
+        :return: The total shelf width (in mm) the relevant facings occupy.
+        """
+        filtered_matches = \
+            self.match_product_in_scene[self.get_filter_condition(self.match_product_in_scene, **filters)]
+        space_length = filtered_matches['width_mm_advance'].sum()
+        return space_length
 
     def calculate_linear_share_of_shelf_with_numerator_denominator(self, sos_filters, include_empty=EXCLUDE_EMPTY,
                                                                    **general_filters):
@@ -127,16 +296,6 @@ class NESTLEUSToolBox:
         numerator_width = self.calculate_share_space_length(**dict(sos_filters, **general_filters))
 
         return numerator_width
-
-    def calculate_share_space_length(self, **filters):
-        """
-        :param filters: These are the parameters which the data frame is filtered by.
-        :return: The total shelf width (in mm) the relevant facings occupy.
-        """
-        filtered_matches = \
-            self.match_product_in_scene[self.get_filter_condition(self.match_product_in_scene, **filters)]
-        space_length = filtered_matches['width_mm_advance'].sum()
-        return space_length
 
     def calculate_assortment(self):
         # filter scif to get rid of scene types other than 'Waters'
@@ -197,3 +356,26 @@ class NESTLEUSToolBox:
                 pass
 
         return filter_condition
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
