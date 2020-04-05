@@ -1,7 +1,7 @@
 from Projects.PEPSICOUK.KPIs.Util import PepsicoUtil
 from Trax.Algo.Calculations.Core.KPI.UnifiedKPICalculation import UnifiedCalculationsScript
-from KPIUtils_v2.Calculations.BlockCalculations import Block
-
+# from KPIUtils_v2.Calculations.BlockCalculations import Block
+from KPIUtils_v2.Calculations.BlockCalculations_v2 import Block
 import pandas as pd
 
 
@@ -37,7 +37,8 @@ class ProductBlockingKpi(UnifiedCalculationsScript):
 
         for i, row in external_targets.iterrows():
             group_fk = self.util.custom_entities[self.util.custom_entities['name'] == row['Group Name']]['pk'].values[0]
-            filters = self.util.get_block_and_adjacency_filters(row)
+            # filters = self.util.get_block_and_adjacency_filters(row)
+            filters = self.util.get_block_filters(row)
             target = row['Target']
             additional_block_params.update({'minimum_block_ratio': float(target)/100})
 

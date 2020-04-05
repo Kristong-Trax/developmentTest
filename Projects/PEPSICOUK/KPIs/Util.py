@@ -275,9 +275,30 @@ class PepsicoUtil(UnifiedKPISingleton):
     def get_block_and_adjacency_filters(target_series):
         filters = {target_series['Parameter 1']: target_series['Value 1']}
         if target_series['Parameter 2']:
-            filters.update({target_series['Parameter 2']: target_series['Value 2']})
+           filters.update({target_series['Parameter 2']: target_series['Value 2']})
+
         if target_series['Parameter 3']:
             filters.update({target_series['Parameter 3']: target_series['Value 3']})
+        return filters
+
+    @staticmethod
+    def get_block_filters(target_series):
+        if isinstance(target_series['Value 1'], list):
+            filters = {target_series['Parameter 1']: target_series['Value 1']}
+        else:
+            filters = {target_series['Parameter 1']: [target_series['Value 1']]}
+
+        if target_series['Parameter 2']:
+            if isinstance(target_series['Value 2'], list):
+                filters.update({target_series['Parameter 2']: target_series['Value 2']})
+            else:
+                filters.update({target_series['Parameter 2']: [target_series['Value 2']]})
+
+        if target_series['Parameter 3']:
+            if isinstance(target_series['Value 2'], list):
+                filters.update({target_series['Parameter 3']: target_series['Value 3']})
+            else:
+                filters.update({target_series['Parameter 3']: [target_series['Value 3']]})
         return filters
 
     def reset_filtered_scif_and_matches_to_exclusion_all_state(self):
