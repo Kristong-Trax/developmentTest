@@ -171,8 +171,6 @@ class PngcnSceneKpis(object):
     def calculate_variant_block(self):
         Log.info("Starting variant block KPI calculation")
         block_sku_kpi = self.common.get_kpi_fk_by_kpi_type(BLOCK_SKU)
-        # import time ###################################################
-        # start_time = original_time = time.time() ######################################################
         if self.matches_from_data_provider.empty or self.scif.empty or \
                 self.scif.iloc[0]['location_type'] != 'Primary Shelf':
             return
@@ -181,8 +179,10 @@ class PngcnSceneKpis(object):
         kpi_aggrigations = {}
         full_df, custom_matches, products_df = self.get_full_df_and_products_df()
         self.save_eye_light_products(custom_matches, kpi_level_2_type=BLOCK_BR_SB_KPI)
-        self.data_provider.all_products['product_type'] = self.data_provider.all_products['product_type'].replace(
-            'Irrelevant', 'temporary_Irrelevant')
+        irrelevant_products_fks = set(self.data_provider.all_products[self.data_provider.all_products['product_type']
+                                                                      == 'Irrelevant']['product_fk'])
+        self.data_provider.all_products.loc[self.data_provider.all_products['product_fk'].isin(
+            irrelevant_products_fks), ['product_type']] = 'SKU'
         block_class = Block(self.data_provider, custom_matches=custom_matches)
         for grouping_kpi in BLOCK_GROUP_ATTRIBUTES.keys():
             grouping_field = grouping_kpi.replace('Block_Variant_', "")
@@ -221,13 +221,9 @@ class PngcnSceneKpis(object):
                     self.handle_node_in_variant_block(conditions, row, scene_matches_fks, filter_results, block_filters,
                                                       custom_matches)
             block_results[kpi_level] = filter_results
-            # print("--- %s seconds ---{}".format(kpi_level) % (time.time() - start_time)) ###################################################
-            # start_time = time.time() #######################################################
-        # print("--- %s seconds ---TOTAL" % (time.time() - original_time)) ###################################################
-        # start_time = time.time() ###################################################
-
-        self.data_provider.all_products['product_type'] = self.data_provider.all_products['product_type'].replace(
-            'temporary_Irrelevant', 'Irrelevant')
+        # Restore the original data provider
+        self.data_provider.all_products.loc[self.data_provider.all_products['product_fk'].isin(
+            irrelevant_products_fks), ['product_type']] = 'Irrelevant'
 
         # Save all blocks results
         for kpi in block_results.keys():
@@ -262,7 +258,6 @@ class PngcnSceneKpis(object):
                                                    denominator_result=block_eye_level_shelves,
                                                    by_scene=True, identifier_parent=identifier_result,
                                                    should_enter=True)
-        # print("--- %s seconds ---to save" % (time.time() - start_time)) ################################################
 
     @staticmethod
     def get_kpi_attributes(kpi_attributes, sku_attributes):
