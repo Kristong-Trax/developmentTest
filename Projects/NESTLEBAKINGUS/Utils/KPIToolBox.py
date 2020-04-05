@@ -258,7 +258,8 @@ class NESTLEBAKINGUSToolBox(GlobalSessionToolBox):
                                                                                       Consts.DENOMINATOR_TYPE_FK]: unique_item})
                     for unique_shelf in set(item_filtered_mcif.shelf_number):
                         final_mcif = self._filter_df(item_filtered_mcif, {'shelf_number': unique_shelf})
-                        numerator_result = round(final_mcif[row[Consts.OUTPUT]].sum() * CONVERT_MM_TO_INCHES) if pd.notna(
+                        numerator_result = round(
+                            final_mcif[row[Consts.OUTPUT]].sum() * CONVERT_MM_TO_INCHES) if pd.notna(
                             row[Consts.OUTPUT]) else final_mcif.facings.count()
 
                         # this method uses the 'shelf position template' sheet to derive the shelf position id
