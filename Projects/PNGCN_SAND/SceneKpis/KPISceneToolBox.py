@@ -181,6 +181,8 @@ class PngcnSceneKpis(object):
         kpi_aggrigations = {}
         full_df, custom_matches, products_df = self.get_full_df_and_products_df()
         self.save_eye_light_products(custom_matches, kpi_level_2_type=BLOCK_BR_SB_KPI)
+        self.data_provider.all_products['product_type'] = self.data_provider.all_products['product_type'].replace(
+            'Irrelevant', 'temporary_Irrelevant')
         block_class = Block(self.data_provider, custom_matches=custom_matches)
         for grouping_kpi in BLOCK_GROUP_ATTRIBUTES.keys():
             grouping_field = grouping_kpi.replace('Block_Variant_', "")
@@ -223,6 +225,9 @@ class PngcnSceneKpis(object):
             # start_time = time.time() #######################################################
         # print("--- %s seconds ---TOTAL" % (time.time() - original_time)) ###################################################
         # start_time = time.time() ###################################################
+
+        self.data_provider.all_products['product_type'] = self.data_provider.all_products['product_type'].replace(
+            'temporary_Irrelevant', 'Irrelevant')
 
         # Save all blocks results
         for kpi in block_results.keys():
