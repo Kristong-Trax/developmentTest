@@ -374,18 +374,19 @@ class PngcnSceneKpis(object):
             row['SKU_DATA'] = self.get_skus_data_from_block(block_df, custom_matches)
 
             # get bottom left facings
-            horizontal_location = block_df['shelf_number'].max()
-            row['horizontal_location'] = horizontal_location
-            shelf_df = block_df[block_df['shelf_number'] == horizontal_location]
+            vertical_location = block_df['shelf_number'].max()
+            row['vertical_location'] = vertical_location
+            shelf_df = block_df[block_df['shelf_number'] == vertical_location]
             bay_number = shelf_df['bay_number'].min()
             row['bay_number'] = bay_number
             bay_df = shelf_df[shelf_df['bay_number'] == bay_number]
-            vertical_location = bay_df['facing_sequence_number'].min()
-            row['vertical_location'] = vertical_location
+            horizontal_location = bay_df['facing_sequence_number'].min()
+            row['horizontal_location'] = horizontal_location
             row['shelf_count'] = len(shelves)
 
             # Adding left bottom corner category for client
-            row['category_fk'] = bay_df[bay_df['facing_sequence_number'] == vertical_location]['category_fk'].values[0]
+            row['category_fk'] = bay_df[bay_df['facing_sequence_number'] ==
+                                        horizontal_location]['category_fk'].values[0]
             filter_results.append(row)
 
     def get_skus_data_from_block(self, block_df, custom_matches):
