@@ -2429,7 +2429,7 @@ class BATRUToolBox:
 
         parent_fk = self.common.get_kpi_fk_by_kpi_type(SHARE_OF)
         identifier_parent = self.common.get_dictionary(kpi_fk=parent_fk)
-        for i in xrange(len(kpi_template)):
+        for i in range(len(kpi_template)):
             row = kpi_template.iloc[i]
             kpi_name = row['KPI Name(scene type attribute 1)']
 
