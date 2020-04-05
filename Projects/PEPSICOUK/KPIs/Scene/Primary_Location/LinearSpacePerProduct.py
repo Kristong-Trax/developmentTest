@@ -27,8 +27,8 @@ class LinearSpacePerProductKpi(UnifiedCalculationsScript):
             result_df = filtered_matches.groupby([MatchesConsts.PRODUCT_FK, MatchesConsts.SHELF_NUMBER,
                                                   MatchesConsts.BAY_NUMBER]).agg({MatchesConsts.WIDTH_MM_ADVANCE: np.sum})
 
-            shelves_cust_entity = self.util.custom_entities[self.util.custom_entities['name'] == 'shelf_number']
-            bays_cust_entity = self.util.custom_entities[self.util.custom_entities['name'] == 'bay_number']
+            shelves_cust_entity = self.util.custom_entities[self.util.custom_entities['entity_type'] == 'shelf_number']
+            bays_cust_entity = self.util.custom_entities[self.util.custom_entities['entity_type'] == 'bay_number']
 
             result_df = result_df.merge(shelves_cust_entity, left_on=MatchesConsts.SHELF_NUMBER, right_on='name',
                                         how='left')

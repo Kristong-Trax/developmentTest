@@ -290,6 +290,6 @@ class PepsicoUtil(UnifiedKPISingleton):
         return hero_list
 
     def get_hero_type_custom_entity_df(self):
-        hero_type_df = self.custom_entities[self.custom_entities['name'] == self.HERO_TYPE]
-        hero_type_df.rename(columns={'pk', 'entity_fk'}, inplace=True)
+        hero_type_df = self.custom_entities[self.custom_entities['entity_type'] == self.HERO_TYPE]
+        hero_type_df.rename(columns={'pk': 'entity_fk'}, inplace=True)
         return hero_type_df
