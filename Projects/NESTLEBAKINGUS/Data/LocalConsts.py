@@ -20,6 +20,7 @@ class Consts(object):
     DENOMINATOR_TYPE_FK = 'denominator_type_fk'
     FILTER_DENOMINATOR = 'Filter_Denominator'
     LINEAR_RELEVANT = 'Linear_Relevant'
+    IGNORE_STACKING = 'Ignore Stacking'
 
     #Scif Columns
     BRAND_FK = 'brand_fk'
@@ -29,6 +30,7 @@ class Consts(object):
     SCENE_ID = 'scene_id'
     CATEGORY_FK = 'category_fk'
     PRODUCT_FK = 'product_fk'
+
 
     #Miscellaneous
     MATCH_PRODUCT_IN_PROBE_FK = 'match_product_in_probe_fk'
