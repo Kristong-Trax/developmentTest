@@ -91,7 +91,7 @@ BLOCK_GROUP_ATTRIBUTES = {
                             'num_den_cont': ['att3_fk', 'sub_brand_fk', 'sub_category_fk', 'brand_fk']},
 }
 BLOCK_FIELDS = ['brand_name', 'sub_brand', 'sub_category', 'att3']
-BLOCK_ATTRIBUTES = ['brand_fk', 'att3_fk', 'sub_brand_fk', 'sub_category_fk']
+BLOCK_ATTRIBUTES = ['brand_fk', 'att3_fk', 'sub_brand_fk', 'sub_category_fk', 'category_fk']
 BLOCK_DUMMY_VALUE = ['brand_name', 'brand_name', 'brand_name']
 MIN_FACINGS_ON_SAME_LAYER = 'Min_facing_on_same_layer'
 MIN_LAYER_NUMBER = 'Min_layer_#'
@@ -171,8 +171,6 @@ class PngcnSceneKpis(object):
     def calculate_variant_block(self):
         Log.info("Starting variant block KPI calculation")
         block_sku_kpi = self.common.get_kpi_fk_by_kpi_type(BLOCK_SKU)
-        import time ###################################################
-        start_time = original_time = time.time()
         if self.matches_from_data_provider.empty or self.scif.empty or \
                 self.scif.iloc[0]['location_type'] != 'Primary Shelf':
             return
@@ -181,6 +179,10 @@ class PngcnSceneKpis(object):
         kpi_aggrigations = {}
         full_df, custom_matches, products_df = self.get_full_df_and_products_df()
         self.save_eye_light_products(custom_matches, kpi_level_2_type=BLOCK_BR_SB_KPI)
+        irrelevant_products_fks = set(self.data_provider.all_products[self.data_provider.all_products['product_type']
+                                                                      == 'Irrelevant']['product_fk'])
+        self.data_provider.all_products.loc[self.data_provider.all_products['product_fk'].isin(
+            irrelevant_products_fks), ['product_type']] = 'SKU'
         block_class = Block(self.data_provider, custom_matches=custom_matches)
         for grouping_kpi in BLOCK_GROUP_ATTRIBUTES.keys():
             grouping_field = grouping_kpi.replace('Block_Variant_', "")
@@ -219,11 +221,9 @@ class PngcnSceneKpis(object):
                     self.handle_node_in_variant_block(conditions, row, scene_matches_fks, filter_results, block_filters,
                                                       custom_matches)
             block_results[kpi_level] = filter_results
-            print("--- %s seconds ---{}".format(kpi_level) % (time.time() - start_time)) ###################################################
-            start_time = time.time()
-        print("--- %s seconds ---TOTAL" % (time.time() - original_time)) ###################################################
-        # all_blocks_no_duplicates = self.reorder_all_blocks_results(legal_blocks)
-        start_time = time.time() ###################################################
+        # Restore the original data provider
+        self.data_provider.all_products.loc[self.data_provider.all_products['product_fk'].isin(
+            irrelevant_products_fks), ['product_type']] = 'Irrelevant'
 
         # Save all blocks results
         for kpi in block_results.keys():
@@ -231,36 +231,33 @@ class PngcnSceneKpis(object):
             for row in block_results[kpi]:
                 sku_attributes = row['SKU_ATTRIBUTES']
                 brand_fk = sku_attributes.get("brand_fk")
+                category_fk = row["category_fk"]
+                number_of_max_level_facings = row['number_of_max_level_facings']
                 numerator_id, denominator_id, context_id = self.get_kpi_attributes(kpi_attributes, sku_attributes)
                 block_variant_kpi_fk = row['kpi_level_2_fk']
                 block_eye_level_shelves = row['block_eye_level_shelves']
                 identifier_result = str(sku_attributes) + "{}_{}_{}".format(row['bay_number'], row['vertical_location'],
                                                                             row['horizontal_location'])
-                self.common.write_to_db_result(fk=block_variant_kpi_fk,
-                                               numerator_id=numerator_id,
-                                               denominator_id=denominator_id,
-                                               context_id=context_id,
+                self.common.write_to_db_result(fk=block_variant_kpi_fk, numerator_id=numerator_id,
+                                               denominator_id=denominator_id, context_id=context_id,
                                                numerator_result=row['horizontal_location'],
                                                denominator_result=row['vertical_location'],
-                                               result=row['facing_percentage'],
-                                               score=row['block_facings'],
-                                               weight=row['shelf_count'],
-                                               target=row['bay_number'],
+                                               result=row['facing_percentage'], score=row['block_facings'],
+                                               weight=row['shelf_count'], target=row['bay_number'],
                                                by_scene=True, identifier_result=identifier_result)
                 products_data = row['SKU_DATA']
                 for i, product_row in products_data.iterrows():
                     product_fk = product_row['product_fk']
                     facings_per_sku = product_row['facings_per_sku']
                     facings_ignore_stacking = product_row['facings_per_sku_ign_stack']
-                    number_of_eye_level_shelves = product_row['number_of_eye_level_shelves']
                     self.common.write_to_db_result(fk=block_sku_kpi, denominator_id=block_variant_kpi_fk,
                                                    numerator_id=product_fk, context_id=brand_fk,
                                                    result=facings_per_sku, target=facings_ignore_stacking,
-                                                   weight=total_bays, numerator_result=number_of_eye_level_shelves,
+                                                   score=category_fk, weight=total_bays,
+                                                   numerator_result=number_of_max_level_facings,
                                                    denominator_result=block_eye_level_shelves,
                                                    by_scene=True, identifier_parent=identifier_result,
                                                    should_enter=True)
-        print("--- %s seconds ---to save" % (time.time() - start_time)) ###################################################
 
     @staticmethod
     def get_kpi_attributes(kpi_attributes, sku_attributes):
@@ -369,34 +366,41 @@ class PngcnSceneKpis(object):
                 break
         if block_flag:
             # Handling SKUs
+            number_of_max_level_facings = block_df["shelf_number"].value_counts().iloc[0]
+            row['number_of_max_level_facings'] = number_of_max_level_facings
+
             block_eye_level_values = set(block_df['eye_level_shelf_number'])
             row['block_eye_level_shelves'] = sum(x in block_eye_level_values for x in [1.0, 2.0])
             row['SKU_DATA'] = self.get_skus_data_from_block(block_df, custom_matches)
 
             # get bottom left facings
-            horizontal_location = block_df['shelf_number'].max()
-            row['horizontal_location'] = horizontal_location
-            shelf_df = block_df[block_df['shelf_number'] == horizontal_location]
+            vertical_location = block_df['shelf_number'].max()
+            row['vertical_location'] = vertical_location
+            shelf_df = block_df[block_df['shelf_number'] == vertical_location]
             bay_number = shelf_df['bay_number'].min()
             row['bay_number'] = bay_number
             bay_df = shelf_df[shelf_df['bay_number'] == bay_number]
-            vertical_location = bay_df['facing_sequence_number'].min()
-            row['vertical_location'] = vertical_location
+            horizontal_location = bay_df['facing_sequence_number'].min()
+            row['horizontal_location'] = horizontal_location
             row['shelf_count'] = len(shelves)
+
+            # Adding left bottom corner category for client
+            row['category_fk'] = bay_df[bay_df['facing_sequence_number'] ==
+                                        horizontal_location]['category_fk'].values[0]
             filter_results.append(row)
 
     def get_skus_data_from_block(self, block_df, custom_matches):
-        eye_level_shelves_per_sku_df = block_df[['product_fk', 'eye_level_shelf_number']].groupby("product_fk").apply(
-            lambda row: sum(x in row['eye_level_shelf_number'].unique() for x in [1.0, 2.0])).reset_index()
-        eye_level_shelves_per_sku_df.columns = ['product_fk', 'number_of_eye_level_shelves']
+        # eye_level_shelves_per_sku_df = block_df[['product_fk', 'eye_level_shelf_number']].groupby("product_fk").apply(
+        #     lambda row: sum(x in row['eye_level_shelf_number'].unique() for x in [1.0, 2.0])).reset_index()
+        # eye_level_shelves_per_sku_df.columns = ['product_fk', 'number_of_eye_level_shelves']
         facings_ign_stack_per_sku_df = block_df['product_fk'].reset_index().groupby("product_fk").count().reset_index()
         facings_ign_stack_per_sku_df.columns = ['product_fk', 'facings_per_sku_ign_stack']
-        sku_df = pd.merge(eye_level_shelves_per_sku_df, facings_ign_stack_per_sku_df, on="product_fk")
+        # sku_df = pd.merge(eye_level_shelves_per_sku_df, facings_ign_stack_per_sku_df, on="product_fk")
         fields_to_filter_by = ['scene_fk', 'bay_number', 'shelf_number', 'facing_sequence_number']
         complete_df = custom_matches[fields_to_filter_by].merge(block_df, on=fields_to_filter_by)
         facings_per_sku_df = complete_df['product_fk'].reset_index().groupby("product_fk").count().reset_index()
         facings_per_sku_df.columns = ['product_fk', 'facings_per_sku']
-        sku_df = pd.merge(sku_df, facings_per_sku_df, on="product_fk")
+        sku_df = pd.merge(facings_ign_stack_per_sku_df, facings_per_sku_df, on="product_fk")
         return sku_df
 
     def reorder_all_blocks_results(self, legal_blocks):
