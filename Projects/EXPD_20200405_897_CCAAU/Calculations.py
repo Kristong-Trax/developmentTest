@@ -1,7 +1,7 @@
 
 from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScript
 
-from Projects.CCAAU_SAND.KPIGenerator import Generator
+from Projects.EXPD_20200405_897_CCAAU.KPIGenerator import Generator
 
 __author__ = 'limorc'
 

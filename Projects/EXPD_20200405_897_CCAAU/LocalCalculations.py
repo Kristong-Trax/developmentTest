@@ -3,11 +3,11 @@
 from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
 from Trax.Utils.Conf.Configuration import Config
 from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
-from Projects.CCAAU_SAND.Calculations import Calculations
+from Projects.EXPD_20200405_897_CCAAU.Calculations import Calculations
 
 
 if __name__ == '__main__':
-    LoggerInitializer.init('ccaau-sand calculations')
+    LoggerInitializer.init('EXPD_20200405_897_CCAAU INTEG ENV calculations')
     Config.init()
     project_name = 'expd-20200405-897-ccaau'
     data_provider = KEngineDataProvider(project_name)
@@ -23,7 +23,7 @@ if __name__ == '__main__':
         "8ab44317-3dbc-4170-bc0b-f389bd407902",  # prev of 3FB714EDDEFE
         "08CDAE94-6765-4F60-B295-E851801E92FC",
         "730BE6BE-FBE5-41C9-8E34-5C79C70D5E85",
-        # # # # # excluded '05DB1C22-AD3B-49E1-A004-6EFE70A1E519', '2633487', 'CCA-Standard checkout cooler'
+        '05DB1C22-AD3B-49E1-A004-6EFE70A1E519', #  '2633487', 'CCA-Standard checkout cooler'
         "05DB1C22-AD3B-49E1-A004-6EFE70A1E519",
     ]
     # "A8BC5873-311B-4D92-813D-F58888374BD5" this needs tmeplate v2
