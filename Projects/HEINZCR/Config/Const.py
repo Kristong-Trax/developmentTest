@@ -7,17 +7,21 @@ __author__ = 'Hunter'
 class Const(object):
     OWN_MANUFACTURER_FK = 1
     PRICE_ADHERENCE_TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)),
-                                                 'Price Adherence Targets 19Feb2020.xlsx')
+                                                 'Price Adherence Targets 01Apr2020.xlsx')
     EXTRA_SPACES_RELEVANT_SUB_CATEGORIES_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)),
                                                              'Extra_spaces_relevant_sub_categories_2019_11_25.xlsx')
     STORE_TARGETS_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)),
                                       'Targets Store Excecution Score_ 24 Jun 2019.xlsx')
+
+    SUB_CATEGORY_TARGET_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)),
+                                      'sub_category_scores_v1.xlsx')
 
     # had to do this because of weird encoding problems
     EXTRA_SPACES_SURVEY_QUESTION_FK = 54
     BONUS_QUESTION_FK = 56
 
     PERFECT_STORE = 'Perfect Store Score'
+    PERFECT_STORE_SUB_CATEGORY = 'Perfect Store Score - Sub Category'
 
     POWER_SKU = 'PowerSKU'
     POWER_SKU_SUB_CATEGORY = 'PowerSKU - Sub-Category'
@@ -34,3 +38,16 @@ class Const(object):
     PERFECT_STORE_EXTRA_SPACES_TOTAL = 'Perfect Store Extra Spaces - Total Score'
 
     BONUS_QUESTION = 'Bonus Question'
+    BONUS_QUESTION_SUB_CATEGORY = 'Bonus Question - Sub Category'
+
+    KPI_WEIGHTS ={
+        "POWERSKU" : "D",
+        "SOS": "G",
+        "EXTRA": "M",
+        "PRICE": "P",
+        "Bonus": "B",
+
+    }
+
+    PERFECT_STORE_KPI_WEIGHT = 'SCORE EXECUTION'
+
