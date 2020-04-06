@@ -25,26 +25,7 @@ if __name__ == '__main__':
     project_name = 'ccjp'
     data_provider = KEngineDataProvider(project_name)
     # leave empty for all scenes
-    session_list = {"1F30CAA2-8AE0-474D-A211-674C13B2DE0D": []}
-    # num = 0
-    # for session in session_list:
-    #     num = num+1
-    #     scenes = session_list[session]
-    #     if len(scenes) == 0:
-    #         data_provider = KEngineDataProvider(project_name)
-    #         data_provider.load_session_data(session)
-    #         scif = data_provider['scene_item_facts']
-    #         scenes = scif['scene_id'].unique().tolist()
-    #     for scene in scenes:
-    #         print('scene={}'.format(scene))
-    #         data_provider = KEngineDataProvider(project_name)
-    #         data_provider.load_scene_data(session, scene)
-    #         output = VanillaOutput()
-    #         SceneVanillaCalculations(data_provider, output).run_project_calculations()
-    #         save_scene_item_facts_to_data_provider(data_provider, output)
-    #         SceneCalculations(data_provider).calculate_kpis()
-    #     print("Session_uid:{}, num:{} ".format(session, num))
-    session = "C099EE18-5449-4EAC-94F0-C91556C63F29"
+    session = 'E731D801-244D-4956-A209-DC83A8AB9053'
     data_provider.load_session_data(session)
     output = Output()
     Calculations(data_provider, output).run_project_calculations()
