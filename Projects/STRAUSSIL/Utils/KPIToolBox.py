@@ -49,7 +49,7 @@ class ToolBox(GlobalSessionToolBox):
             product_df = self.scif[self.scif['product_fk'] == sku]
             if product_df.empty:
                 categories_dict[category_fk] = map(sum, zip(categories_dict[category_fk], [0, 1]))
-                result = 1
+                result = 0
                 facings = 0
                 # Saving OOS only if product wasn't in store
                 self.common.write_to_db_result(fk=oos_sku_kpi_fk, numerator_id=sku, denominator_id=category_fk,
@@ -58,7 +58,7 @@ class ToolBox(GlobalSessionToolBox):
                                                should_enter=True)
             else:
                 categories_dict[category_fk] = map(sum, zip(categories_dict[category_fk], [1, 1]))
-                result = 2
+                result = 1
                 facings = product_df['facings'].values[0]
                 dis_numerator += 1
                 total_facings += facings
