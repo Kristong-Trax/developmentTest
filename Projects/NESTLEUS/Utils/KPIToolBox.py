@@ -91,18 +91,6 @@ class NESTLEUSToolBox:
         self.calculate_display_type(fk_template_water_aisle)
         self.calculate_display_type(fk_template_water_aisle, "NESTLE HOLDINGS INC")
 
-    def get_numerator_denominator_ids(self, kpi_id):
-        """
-        :param kpi_id: The ID of the KPI stored in kpi_static_data
-        :return: The ID's of the KPI entity type used as the numerator and denominator of the KPI
-        """
-        static = self.kpi_static_data
-        static_kpi = static[static['pk'] == kpi_id]
-        numerator_id = static_kpi['numerator_type_fk'].iloc[0]
-        denominator_id = static_kpi['denominator_type_fk'].iloc[0]
-
-        return (numerator_id, denominator_id)
-
     @staticmethod
     def get_shelf_map():
         """
