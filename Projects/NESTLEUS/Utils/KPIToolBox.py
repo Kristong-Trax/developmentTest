@@ -71,6 +71,7 @@ class NESTLEUSToolBox:
         self.MM_TO_FEET_CONVERSION = 0.0032808399
         self.match_product_in_scene = self.match_product_in_scene[self.match_product_in_scene['stacking_layer'] == 1]
         self.assortment = Assortment(self.data_provider, common=self.common_v1)
+        self.own_manufacturer_fk = int(self.data_provider.own_manufacturer.param_value.values[0])
 
     def main_calculation(self, *args, **kwargs):
         """
@@ -79,11 +80,6 @@ class NESTLEUSToolBox:
 
         # kpi_set_fk = kwargs['kpi_set_fk']
         # self.calculate_facing_count_and_linear_feet(kpi_set_fk=kpi_set_fk)
-
-        # maybe
-        kpi_ids = {
-            'COUNT_OF_NESTLE_DISPLAYS': 916
-        }
 
         fk_template_water_aisle = 2
         fk_template_water_display = 7
@@ -177,12 +173,15 @@ class NESTLEUSToolBox:
                     numerator_result=numerator,
                     denominator_id=row.store_id,
                     denominator_result=denominator,
+                    result=numerator
                 )
 
     def calculate_base_footage(self):
         water_aisle_base_footage_kpi_fk = 913
+        category = 'Water'
+        template = 'Water Aisle'
 
-        numerator_id, denominator_id = self.get_numerator_denominator_ids(water_aisle_base_footage_kpi_fk)
+        store_id = self.session_info.get_value(0, 'store_fk')
 
         mpis = self.match_product_in_scene.merge(self.products, how="left", on="product_fk", suffixes=('', '_products')) \
             .merge(self.scene_info, how="left", on="scene_fk", suffixes=('', '_info'))
@@ -197,14 +196,14 @@ class NESTLEUSToolBox:
         self.common.write_to_db_result(
             fk=water_aisle_base_footage_kpi_fk,
             numerator_result=base_footage,
-            numerator_id=numerator_id,
+            numerator_id=29,
             denominator_result=1,
-            denominator_id=denominator_id
+            denominator_id=store_id,
+            result=base_footage
         )
 
-
     def calculate_facings_per_shelf_level(self):
-        kpi_fk = 914
+        kpi_id = 914
         mpis = self.match_product_in_scene
         scif = self.scif
 
@@ -229,28 +228,27 @@ class NESTLEUSToolBox:
             return shelf_position_id
 
         mpis['shelf_position'] = mpis.apply(get_shelf_position, axis=1)
-        # mpis['shelf_position'] = mpis.apply(lambda row: shelf_position_labels.index(shelf_map.get((int(row.shelf_number_from_bottom), int(row.number_of_shelves))))+1, axis=1)
 
-        bottom_later = mpis[mpis['stacking_layer'] == 1]
+        bottom_layer = mpis[mpis['stacking_layer'] == 1]
 
-        num_product_facings_by_shelf_position = bottom_later.groupby(['product_fk', 'shelf_position']).sum()
-        numerator_id, denominator_id = self.get_numerator_denominator_ids(kpi_fk)
+        num_product_facings_by_shelf_position = bottom_layer.groupby(['product_fk', 'shelf_position'])['product_fk'].count().reset_index(name='product_count_per_shelf_position')
 
         for product in num_product_facings_by_shelf_position.itertuples():
             self.common.write_to_db_result(
-                fk=kpi_fk,
-                numerator_result=product.number_of_shelves,
-                numerator_id=numerator_id,
+                fk=kpi_id,
+                numerator_result=product.product_count_per_shelf_position,
+                numerator_id=product.product_fk,
                 denominator_result=1,
-                denominator_id=denominator_id
+                denominator_id=product.shelf_position,
+                result=product.product_count_per_shelf_position
             )
+
     def calculate_display_type(self, display_type_id, manufacturer_name=None):
         """
         :param display_type_id: ID of template/display type
         :param manufacturer_name: Name of Manufacturer
         """
-
-        static_data = self.kpi_static_data
+        store_id = self.session_info.get_value(0, 'store_fk')
 
         kpi_fk = 916 if manufacturer_name else 915
 
@@ -262,14 +260,13 @@ class NESTLEUSToolBox:
 
         count = len(display['scene_id'].unique())
 
-        numerator_id, denominator_id = self.get_numerator_denominator_ids(kpi_fk)
-
         self.common.write_to_db_result(
             fk=kpi_fk,
             numerator_result=count,
-            numerator_id=numerator_id,
+            numerator_id=self.own_manufacturer_fk,
             denominator_result=1,
-            denominator_id=denominator_id
+            denominator_id=store_id,
+            result=count
         )
 
     def calculate_share_space_length(self, **filters):
