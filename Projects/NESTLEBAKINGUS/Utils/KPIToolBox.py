@@ -111,14 +111,10 @@ class NESTLEBAKINGUSToolBox(GlobalSessionToolBox):
             kpi_name = row[Consts.KPI_NAME]
             kpi_fk = self.get_kpi_fk_by_kpi_type(kpi_name)
 
-            scif = self.data_provider[Data.SCENE_ITEM_FACTS]
             mpis = self.data_provider[Data.MATCHES]
-            merged_mpis = pd.merge(scif, mpis, how='right',
-                                   left_on=['item_id', 'scene_id'], right_on=['product_fk',
-                                                                              'scene_fk'])
-            mdis_merged_mcif = pd.merge(self.match_display_in_scene, merged_mpis, how='left',
-                                        left_on='scene_fk', right_on='scene_id')
-            mdis_merged_mcif = mdis_merged_mcif[mdis_merged_mcif.stacking_layer == 1]
+            mpis = mpis[mpis.stacking_layer == 1]
+            mdis_merged_mcif = pd.merge(self.match_display_in_scene, mpis, how='left',
+                                        left_on='scene_fk', right_on='scene_fk')
             unique_scenefks_in_mdis_merged_mcif = np.unique(mdis_merged_mcif.scene_fk)
 
             # Have to do this as they are scenes with no display fks. So the line of code below filters out any scene
@@ -137,15 +133,15 @@ class NESTLEBAKINGUSToolBox(GlobalSessionToolBox):
                     mdis_merged_mcif[mdis_merged_mcif.scene_fk == unique_scene].display_fk)
                 display_fk_for_scene = unique_displayfks_in_scene[0] if len(unique_displayfks_in_scene) == 1 else 3
                 display_fk_id = display_fk_dictionary[display_fk_for_scene]
-                relevant_mcif = mdis_merged_mcif[mdis_merged_mcif.scene_id.isin([unique_scene])]
-                for unique_bay in set(relevant_mcif.bay_number_x):
-                    useful_mcif = relevant_mcif[relevant_mcif.bay_number_x.isin([unique_bay])]
 
+                relevant_mpis = mpis[mpis.scene_fk.isin([unique_scene])]
+                for unique_bay in set(relevant_mpis.bay_number):
+                    useful_mcif = relevant_mpis[relevant_mpis.bay_number.isin([unique_bay])]
                     max_width = useful_mcif.groupby(by='shelf_number').sum()[
                                     'width_mm_advance'].max() * CONVERT_MM_TO_INCHES
                     result_dict = {'kpi_fk': kpi_fk, 'numerator_id': display_fk_id,
                                    'denominator_id': unique_bay, 'context_id': unique_scene,
-                                   'result': max_width}
+                                   'result': int(max_width)}
                     result_dict_list.append(result_dict)
             return result_dict_list
 
