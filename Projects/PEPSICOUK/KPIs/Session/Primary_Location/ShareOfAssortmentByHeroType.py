@@ -25,7 +25,7 @@ class ShareOfAssortmentByHeroTypeKpi(UnifiedCalculationsScript):
                                                     right_on=ScifConsts.PRODUCT_FK,
                                                     how='left')
             lvl3_ass_res_df = lvl3_ass_res_df.merge(self.util.hero_type_custom_entity_df,
-                                                    left_on= self.util.HERO_SKU_LABEL, right_on='name')
+                                                    left_on= self.util.HERO_SKU_LABEL, right_on='name', how='left')
 
             kpi_res_df = lvl3_ass_res_df.groupby([self.util.HERO_SKU_LABEL, 'entity_fk'],
                                                  as_index=False).agg({'numerator_result': np.sum})

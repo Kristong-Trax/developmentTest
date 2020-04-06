@@ -15,7 +15,7 @@ class HeroAvailabilitySkuKpi(UnifiedCalculationsScript):
         self.util.filtered_scif, self.util.filtered_matches = \
             self.util.commontools.set_filtered_scif_and_matches_for_specific_kpi(self.util.filtered_scif,
                                                                                  self.util.filtered_matches,
-                                                                                 self.kpi_type) # checkout with Eli re kpi type
+                                                                                 self.util.HERO_SKU_AVAILABILITY_SKU)
         self.calculate_kpi_for_main_shelf()
         self.util.reset_filtered_scif_and_matches_to_exclusion_all_state()
 
