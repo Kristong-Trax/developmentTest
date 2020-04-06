@@ -21,7 +21,7 @@ pipeline {
     environment {
         CONDA_BIN = "/root/miniconda/bin"
         FAILED_STAGE = "Init"
-        owenr_mail = 'ilanp@traxretail.com'
+        owenr_mail = 'yoava@traxretail.com'
         TEAM = 'kif@Trax-Tech.com'
         mail_from = 'TraxReports@traxretail.com'
 
@@ -53,7 +53,7 @@ pipeline {
                 }
 
                dir(path: 'theGarage') {
-                      git(url: 'https://ilanpinto@bitbucket.org/traxtechnology/trax_dev_garage.git', branch: 'master', changelog: true, poll: true, credentialsId: 'ilanp')
+                      git(url: 'https://ilanpinto@bitbucket.org/traxtechnology/trax_dev_garage.git', branch: 'k-engine-prod', changelog: true, poll: true, credentialsId: 'ilanp')
                 }
 
                 sh '''#!/bin/bash
