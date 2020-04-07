@@ -257,30 +257,30 @@ class NESTLEUSToolBox:
             result=count
         )
 
-    def calculate_share_space_length(self, **filters):
-        """
-        :param filters: These are the parameters which the data frame is filtered by.
-        :return: The total shelf width (in mm) the relevant facings occupy.
-        """
-        filtered_matches = \
-            self.match_product_in_scene[self.get_filter_condition(self.match_product_in_scene, **filters)]
-        space_length = filtered_matches['width_mm_advance'].sum()
-        return space_length
+    # def calculate_share_space_length(self, **filters):
+    #     """
+    #     :param filters: These are the parameters which the data frame is filtered by.
+    #     :return: The total shelf width (in mm) the relevant facings occupy.
+    #     """
+    #     filtered_matches = \
+    #         self.match_product_in_scene[self.get_filter_condition(self.match_product_in_scene, **filters)]
+    #     space_length = filtered_matches['width_mm_advance'].sum()
+    #     return space_length
 
-    def calculate_linear_share_of_shelf_with_numerator_denominator(self, sos_filters, include_empty=EXCLUDE_EMPTY,
-                                                                   **general_filters):
-        """
-        :param sos_filters: These are the parameters on which ths SOS is calculated (out of the general DF).
-        :param include_empty: This dictates whether Empty-typed SKUs are included in the calculation.
-        :param general_filters: These are the parameters which the general data frame is filtered by.
-        :return: The Linear SOS ratio.
-        """
-        if include_empty == self.EXCLUDE_EMPTY:
-            general_filters['product_type'] = (self.EMPTY, self.EXCLUDE_FILTER)
-
-        numerator_width = self.calculate_share_space_length(**dict(sos_filters, **general_filters))
-
-        return numerator_width
+    # def calculate_linear_share_of_shelf_with_numerator_denominator(self, sos_filters, include_empty=EXCLUDE_EMPTY,
+    #                                                                **general_filters):
+    #     """
+    #     :param sos_filters: These are the parameters on which ths SOS is calculated (out of the general DF).
+    #     :param include_empty: This dictates whether Empty-typed SKUs are included in the calculation.
+    #     :param general_filters: These are the parameters which the general data frame is filtered by.
+    #     :return: The Linear SOS ratio.
+    #     """
+    #     if include_empty == self.EXCLUDE_EMPTY:
+    #         general_filters['product_type'] = (self.EMPTY, self.EXCLUDE_FILTER)
+    #
+    #     numerator_width = self.calculate_share_space_length(**dict(sos_filters, **general_filters))
+    #
+    #     return numerator_width
 
     def calculate_assortment(self):
         # filter scif to get rid of scene types other than 'Waters'
@@ -297,50 +297,50 @@ class NESTLEUSToolBox:
     def commit_assortment_results(self):
         self.common_v1.commit_results_data_to_new_tables()
 
-    def get_filter_condition(self, df, **filters):
-        """
-        :param df: The data frame to be filters.
-        :param filters: These are the parameters which the data frame is filtered by.
-                       Every parameter would be a tuple of the value and an include/exclude flag.
-                       INPUT EXAMPLE (1):   manufacturer_name = ('Diageo', DIAGEOAUGENERALToolBox.INCLUDE_FILTER)
-                       INPUT EXAMPLE (2):   manufacturer_name = 'Diageo'
-        :return: a filtered Scene Item Facts data frame.
-        """
-        if not filters:
-            return df['pk'].apply(bool)
-        if self.facings_field in df.keys():
-            filter_condition = (df[self.facings_field] > 0)
-        else:
-            filter_condition = None
-        for field in filters.keys():
-            if field in df.keys():
-                if isinstance(filters[field], tuple):
-                    value, exclude_or_include = filters[field]
-                else:
-                    value, exclude_or_include = filters[field], self.INCLUDE_FILTER
-                if not value:
-                    continue
-                if not isinstance(value, list):
-                    value = [value]
-                if exclude_or_include == self.INCLUDE_FILTER:
-                    condition = (df[field].isin(value))
-                elif exclude_or_include == self.EXCLUDE_FILTER:
-                    condition = (~df[field].isin(value))
-                elif exclude_or_include == self.CONTAIN_FILTER:
-                    condition = (df[field].str.contains(value[0], regex=False))
-                    for v in value[1:]:
-                        condition |= df[field].str.contains(v, regex=False)
-                else:
-                    continue
-                if filter_condition is None:
-                    filter_condition = condition
-                else:
-                    filter_condition &= condition
-            else:
-                # Log.warning('field {} is not in the Data Frame'.format(field))
-                pass
-
-        return filter_condition
+    # def get_filter_condition(self, df, **filters):
+    #     """
+    #     :param df: The data frame to be filters.
+    #     :param filters: These are the parameters which the data frame is filtered by.
+    #                    Every parameter would be a tuple of the value and an include/exclude flag.
+    #                    INPUT EXAMPLE (1):   manufacturer_name = ('Diageo', DIAGEOAUGENERALToolBox.INCLUDE_FILTER)
+    #                    INPUT EXAMPLE (2):   manufacturer_name = 'Diageo'
+    #     :return: a filtered Scene Item Facts data frame.
+    #     """
+    #     if not filters:
+    #         return df['pk'].apply(bool)
+    #     if self.facings_field in df.keys():
+    #         filter_condition = (df[self.facings_field] > 0)
+    #     else:
+    #         filter_condition = None
+    #     for field in filters.keys():
+    #         if field in df.keys():
+    #             if isinstance(filters[field], tuple):
+    #                 value, exclude_or_include = filters[field]
+    #             else:
+    #                 value, exclude_or_include = filters[field], self.INCLUDE_FILTER
+    #             if not value:
+    #                 continue
+    #             if not isinstance(value, list):
+    #                 value = [value]
+    #             if exclude_or_include == self.INCLUDE_FILTER:
+    #                 condition = (df[field].isin(value))
+    #             elif exclude_or_include == self.EXCLUDE_FILTER:
+    #                 condition = (~df[field].isin(value))
+    #             elif exclude_or_include == self.CONTAIN_FILTER:
+    #                 condition = (df[field].str.contains(value[0], regex=False))
+    #                 for v in value[1:]:
+    #                     condition |= df[field].str.contains(v, regex=False)
+    #             else:
+    #                 continue
+    #             if filter_condition is None:
+    #                 filter_condition = condition
+    #             else:
+    #                 filter_condition &= condition
+    #         else:
+    #             # Log.warning('field {} is not in the Data Frame'.format(field))
+    #             pass
+    #
+    #     return filter_condition
 
 
 
