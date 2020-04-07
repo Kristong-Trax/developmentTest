@@ -4,10 +4,10 @@ from KPIUtils_v2.Utils.Consts.DataProvider import ScifConsts, ProductsConsts, Ma
 import numpy as np
 
 
-class BrandFullBayKpi(UnifiedCalculationsScript):
+class CategoryFullBayKpi(UnifiedCalculationsScript):
 
     def __init__(self, data_provider, config_params=None, **kwargs):
-        super(BrandFullBayKpi, self).__init__(data_provider, config_params=config_params, **kwargs)
+        super(CategoryFullBayKpi, self).__init__(data_provider, config_params=config_params, **kwargs)
         self.util = PepsicoUtil(None, data_provider)
 
     def kpi_type(self):

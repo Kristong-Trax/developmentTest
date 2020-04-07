@@ -18,8 +18,8 @@ class HeroSOSofCategoryByHeroTypeKpi(UnifiedCalculationsScript):
         hero_sos_kpi_results = self.dependencies_data
         kpi_fk = self.util.common.get_kpi_fk_by_kpi_type(self.util.HERO_SKU_AVAILABILITY_BY_HERO_TYPE)
         if not hero_sos_kpi_results.empty:
-            category_len_df = hero_sos_kpi_results.drop_duplicates(subset=['denoominator_id'])\
-                ['denominator_id', 'denominator_result']
+            category_len_df = hero_sos_kpi_results.drop_duplicates(subset=['denominator_id'])
+            category_len_df = category_len_df[['denominator_id', 'denominator_result']]
 
             location_type_fk = self.util.scif[self.util.scif[ScifConsts.LOCATION_TYPE] == 'Primary Shelf'] \
                 [ScifConsts.LOCATION_TYPE_FK].values[0]
@@ -28,7 +28,8 @@ class HeroSOSofCategoryByHeroTypeKpi(UnifiedCalculationsScript):
                                                               right_on=ScifConsts.PRODUCT_FK,
                                                               how='left')
             hero_sos_kpi_results = hero_sos_kpi_results.merge(self.util.hero_type_custom_entity_df,
-                                                              left_on=self.util.HERO_SKU_LABEL, right_on='name')
+                                                              left_on=self.util.HERO_SKU_LABEL, right_on='name',
+                                                              how='left')
 
             hero_type_by_cat = hero_sos_kpi_results.groupby([self.util.HERO_SKU_LABEL, 'entity_fk',
                                                              'denominator_id'], as_index=False).\

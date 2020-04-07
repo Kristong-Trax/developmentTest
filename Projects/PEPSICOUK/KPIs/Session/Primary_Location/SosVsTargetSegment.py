@@ -31,13 +31,13 @@ class SosVsTargetSegmentKpi(UnifiedCalculationsScript):
         filtered_scif = self.util.filtered_scif
         filtered_scif = filtered_scif[filtered_scif[ScifConsts.MANUFACTURER_FK] == self.util.own_manuf_fk]
         if not filtered_scif.empty:
-            sub_cat_df = filtered_scif.groupby([ScifConsts.CATEGORY_FK],
+            sub_cat_df = filtered_scif.groupby([ScifConsts.SUB_CATEGORY_FK],
                                                as_index=False).agg({'updated_gross_length': np.sum})
             sub_cat_df.rename(columns={'updated_gross_length': 'sub_cat_len'}, inplace=True)
             man_sub_cat_df = filtered_scif.groupby([ScifConsts.MANUFACTURER_FK, ScifConsts.SUB_CATEGORY_FK],
                                                    as_index=False).agg({'updated_gross_length': np.sum})
             if not man_sub_cat_df.empty:
-                man_sub_cat_df.merge(sub_cat_df, on=ScifConsts.SUB_CATEGORY_FK, how='left')
+                man_sub_cat_df = man_sub_cat_df.merge(sub_cat_df, on=ScifConsts.SUB_CATEGORY_FK, how='left')
                 man_sub_cat_df['sos'] = man_sub_cat_df['updated_gross_length'] / man_sub_cat_df['sub_cat_len']
                 for i, row in man_sub_cat_df.iterrows():
                     self.write_to_db_result(fk=kpi_fk, numerator_id=row[ScifConsts.MANUFACTURER_FK],

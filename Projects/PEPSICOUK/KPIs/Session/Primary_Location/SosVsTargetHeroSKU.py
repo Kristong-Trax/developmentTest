@@ -29,15 +29,17 @@ class SosVsTargetHeroSkuKpi(UnifiedCalculationsScript):
     def calculate_hero_sku_sos(self):
         kpi_fk = self.util.common.get_kpi_fk_by_kpi_type(self.util.HERO_SKU_SPACE_TO_SALES_INDEX)
         filtered_scif = self.util.filtered_scif
+        category_df = filtered_scif.groupby([ScifConsts.CATEGORY_FK],
+                                            as_index=False).agg({'updated_gross_length': np.sum})
+        category_df.rename(columns={'updated_gross_length': 'cat_len'}, inplace=True)
+
         hero_list = self.util.get_available_hero_sku_list(self.dependencies_data)
         filtered_scif = filtered_scif[filtered_scif[ScifConsts.PRODUCT_FK].isin(hero_list)]
         if not filtered_scif.empty:
-            category_df = filtered_scif.groupby([ScifConsts.CATEGORY_FK],
-                                                as_index=False).agg({'updated_gross_length': np.sum})
-            category_df.rename(columns={'updated_gross_length': 'cat_len'}, inplace=True)
+
             hero_cat_df = filtered_scif.groupby([ScifConsts.PRODUCT_FK, ScifConsts.CATEGORY_FK],
                                                 as_index=False).agg({'updated_gross_length': np.sum})
-            hero_cat_df.merge(category_df, on=ScifConsts.CATEGORY_FK, how='left')
+            hero_cat_df = hero_cat_df.merge(category_df, on=ScifConsts.CATEGORY_FK, how='left')
             hero_cat_df['sos'] = hero_cat_df['updated_gross_length'] / hero_cat_df['cat_len']
             for i, row in hero_cat_df.iterrows():
                 self.write_to_db_result(fk=kpi_fk, numerator_id=row[ScifConsts.PRODUCT_FK],

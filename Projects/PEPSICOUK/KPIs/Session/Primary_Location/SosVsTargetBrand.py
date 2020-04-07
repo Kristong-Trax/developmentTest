@@ -33,7 +33,7 @@ class SosVsTargetBrandKpi(UnifiedCalculationsScript):
         category_df.rename(columns={'updated_gross_length': 'cat_len'}, inplace=True)
         brand_cat_df = filtered_scif.groupby([ScifConsts.BRAND_FK, ScifConsts.CATEGORY_FK],
                                              as_index=False).agg({'updated_gross_length': np.sum})
-        brand_cat_df.merge(category_df, on=ScifConsts.CATEGORY_FK, how='left')
+        brand_cat_df = brand_cat_df.merge(category_df, on=ScifConsts.CATEGORY_FK, how='left')
         brand_cat_df['sos'] = brand_cat_df['updated_gross_length'] / brand_cat_df['cat_len']
         for i, row in brand_cat_df.iterrows():
             self.write_to_db_result(fk=kpi_fk, numerator_id=row[ScifConsts.BRAND_FK],
