@@ -71,7 +71,7 @@ FACINGS_IGN_STACK = 'facings_ign_stack'
 FINAL_FACINGS = 'final_facings'
 MANUFACTURER_FK = 'manufacturer_fk'
 PK = 'pk'
-PRODUCT_NAME = 'product_name'
+PRODUCT_NAME = 'product_short_name'
 ADDITIONAL_ATTRIBUTE_2 = 'additional_attribute_2'
 SESSION_ID = 'session_id'
 SCENE_ID = 'scene_id'
@@ -128,11 +128,6 @@ class EspecializadoToolBox(GlobalSessionToolBox):
         self.ps_data_provider = PsDataProvider(self.data_provider, self.output)
         self.att2 = self.store_info['additional_attribute_2'].iloc[0]
         self.platformas_data = self.generate_platformas_data()
-        self.assortment = Assortment(self.data_provider, common=self.common)
-        self.store_assortment = self.assortment.store_assortment
-        self.updated_store_assortment = self.store_assortment.merge(
-            self.data_provider[Data.PRODUCTS][[PRODUCT_NAME, 'product_ean_code']], left_on='ean_code',
-            right_on='product_ean_code', how='left')
         self.results_df = pd.DataFrame(columns=['kpi_name', 'kpi_fk', 'numerator_id', 'numerator_result',
                                                 'denominator_id', 'denominator_result', 'result', 'score',
                                                 'identifier_result', 'identifier_parent', 'should_enter'])
@@ -436,7 +431,7 @@ class EspecializadoToolBox(GlobalSessionToolBox):
         for scene in self.scif[['scene_id', 'template_name']].drop_duplicates().itertuples():
             scene_scif = self.scif[self.scif['scene_id'] == scene.scene_id]
             product_names_in_scene = \
-                set(scene_scif['product_name'].unique().tolist())
+                set(scene_scif['product_short_name'].unique().tolist())
 
             relevant_pos_template = self.templates[POS_OPTIONS]
             relevant_pos_template = relevant_pos_template[
@@ -474,20 +469,20 @@ class EspecializadoToolBox(GlobalSessionToolBox):
                     break
             limited_product = self.sanitize_values(targets_and_constraints['max_facings_product_local_name'].iloc[0])
             if limited_product and limited_product is not np.nan:
-                if scene_scif[scene_scif['product_name'].isin(limited_product)]['facings'].sum() > \
+                if scene_scif[scene_scif['product_short_name'].isin(limited_product)]['facings'].sum() > \
                         targets_and_constraints['max_facings'].iloc[0]:
                     mandatory_skus_found = 0
             # this should be refactored to be more programmatic
             if targets_and_constraints['Assortment_Facings_Constraints'].iloc[0] == 'Assortment_2>Assortment_1':
                 assortment_1_facings = \
-                    scene_scif[scene_scif['product_name'].isin(assortment_groups[0])]['facings'].sum()
+                    scene_scif[scene_scif['product_short_name'].isin(assortment_groups[0])]['facings'].sum()
                 assortment_2_facings = \
-                    scene_scif[scene_scif['product_name'].isin(assortment_groups[1])]['facings'].sum()
+                    scene_scif[scene_scif['product_short_name'].isin(assortment_groups[1])]['facings'].sum()
                 if assortment_1_facings >= assortment_2_facings:
                     mandatory_skus_found = 0
 
             # calculate the 'botellas' data
-            total_facings = scene_scif[scene_scif['product_name'].isin(
+            total_facings = scene_scif[scene_scif['product_short_name'].isin(
                 [product for sublist in assortment_groups for product in sublist])]['facings'].sum()
             if total_facings >= targets_and_constraints['Facings_target'].iloc[0]:
                 minimum_facings_met = 1  # True
@@ -514,7 +509,7 @@ class EspecializadoToolBox(GlobalSessionToolBox):
         other_scif = scene_scif[scene_scif['product_type'].isin(['Other']) &
                                 scene_scif['manufacturer_fk'] == self.own_manuf_fk]
         relevant_scif = pd.concat([sku_scif, other_scif])
-        scene_products = relevant_scif['product_name'].unique().tolist()
+        scene_products = relevant_scif['product_short_name'].unique().tolist()
         flat_assortment = [product for subgroup in assortment_groups for product in subgroup]
         if any(product not in flat_assortment for product in scene_products):
             return 0
@@ -549,7 +544,7 @@ class EspecializadoToolBox(GlobalSessionToolBox):
             result_dict = {'kpi_name': kpi_name, 'kpi_fk': kpi_fk, 'result': pd.np.nan}
             return result_dict
 
-        relevant_product_names = set(relevant_scif['product_name'].unique().tolist())
+        relevant_product_names = set(relevant_scif['product_short_name'].unique().tolist())
 
         # check the 'POS Option' activation
         result = 1  # start as passing
@@ -567,7 +562,7 @@ class EspecializadoToolBox(GlobalSessionToolBox):
 
             for sub_category, target in sub_category_targets.iteritems():
                 unique_skus_by_category = \
-                    len(relevant_scif[relevant_scif['sub_category'] == sub_category]['product_name'].unique().tolist())
+                    len(relevant_scif[relevant_scif['sub_category'] == sub_category]['product_short_name'].unique().tolist())
                 if unique_skus_by_category < target:
                     result = 0
 
@@ -601,11 +596,11 @@ class EspecializadoToolBox(GlobalSessionToolBox):
         result_dict = {}
         for i in range(len(relevant_required_assortments)):
             result_of_current_assortment = sum(
-                np.in1d(relevant_required_assortments[i], self.scif.product_name))
+                np.in1d(relevant_required_assortments[i], self.scif.product_short_name))
             result_dict['assortment{}'.format(i + 1)] = 1 if result_of_current_assortment >= 1 else 0
 
         numerator_id = self.scif[PRODUCT_FK].iat[0]
-        denominator_id = self.store_assortment.assortment_fk.iat[0]
+        denominator_id = self.scif.sub_category_fk.iat[0]
 
         result = float(np.sum(result_dict.values())) / portafolio_data.unique_facings_target
         result_dict = {'kpi_name': kpi_name, 'kpi_fk': kpi_fk, 'numerator_id': numerator_id,
@@ -823,7 +818,7 @@ class EspecializadoToolBox(GlobalSessionToolBox):
         if pd.notna(tamano_del_producto):
             bay_count_scif = bay_count_scif[bay_count_scif[TAMANDO_DEL_PRODUCTO].str.contains(tamano_del_producto)]
 
-        relevant_product_names = list(set(bay_count_scif['product_name']))
+        relevant_product_names = list(set(bay_count_scif['product_short_name']))
 
         if bay_count_scif.empty:
             result = pd.np.nan
@@ -955,7 +950,7 @@ class EspecializadoToolBox(GlobalSessionToolBox):
         relevant_scif = self.scif[relevant_scif_columns]
         relevant_scif = relevant_scif[relevant_scif[TEMPLATE_NAME].isin(template_group)]
         relevant_scif = relevant_scif[relevant_scif[PRODUCT_TYPE].isin(product_type)]
-        relevant_scif = relevant_scif[relevant_scif.product_name != 'Soda Other']
+        relevant_scif = relevant_scif[relevant_scif.product_short_name != 'Soda Other']
 
         if relevant_scif.empty:
             result = pd.np.nan
@@ -1034,7 +1029,7 @@ class EspecializadoToolBox(GlobalSessionToolBox):
         relevant_scif = relevant_scif[relevant_scif[TEMPLATE_GROUP].isin([template_group])]
         relevant_scif = relevant_scif[relevant_scif[TEMPLATE_NAME].isin([template_name])]
         relevant_scif = relevant_scif[relevant_scif[PRODUCT_TYPE].isin(product_type)]
-        relevant_scif = relevant_scif[relevant_scif.product_name != 'Soda Other']
+        relevant_scif = relevant_scif[relevant_scif.product_short_name != 'Soda Other']
         if relevant_scif.empty:
             result = pd.np.nan
             denominator_id = 0

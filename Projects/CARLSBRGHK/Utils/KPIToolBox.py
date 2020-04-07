@@ -146,8 +146,8 @@ class CARLSBERGToolBox:
             if only_stock_calc:
                 self.calculate_sku_count_in_stock()
             else:
-                self.calculate_assortment_kpis()
                 self.calculate_fsos_kpis()
+                self.calculate_assortment_kpis()
                 self.calculate_sku_facings_in_floor_stack()
                 self.calculate_sku_count_in_stock()
                 self.calculate_fsos_sku()
@@ -173,6 +173,7 @@ class CARLSBERGToolBox:
             Log.info(
                 "No data to calculate COUNT_SKU_FACINGS_IN_FLOOR_STACK for {} - {}".format(
                     self.project_name, self.session_uid))
+            return True
         floor_stack_template_fk = int(dataframe_to_process['template_fk'].unique()[0])
         for each_prod_fk, prod_group in dataframe_to_process.groupby('product_fk'):
             # get manufacturer
@@ -403,10 +404,10 @@ class CARLSBERGToolBox:
         # but we have the products and hence no need to filter out denominator
         Log.info("Calculate {} - SKU for {}".format(distribution_kpi_name, self.session_uid))
         total_products_in_scene = valid_scif["item_id"].unique()
-        # EXTRA is based on own products
-        total_own_products_in_scene = valid_scif[valid_scif['manufacturer_fk']==self.own_man_fk]["item_id"].unique()
+        # EXTRA is NOT based on own products
+        # total_own_products_in_scene = valid_scif[valid_scif['manufacturer_fk']==self.own_man_fk]["item_id"].unique()
         present_products = np.intersect1d(total_products_in_scene, assortment_product_fks)
-        extra_products = np.setdiff1d(total_own_products_in_scene, present_products)
+        extra_products = np.setdiff1d(total_products_in_scene, present_products)
         oos_products = np.setdiff1d(assortment_product_fks, present_products)
         product_map = {
             OOS_CODE: oos_products,
@@ -500,16 +501,17 @@ class CARLSBERGToolBox:
         categories_to_save_zero = list(set(categories_in_assortment) - set(categories_in_scif))
         scene_category_group = valid_scif.groupby('category_fk')
         for category_fk, each_scif_data in scene_category_group:
-            # EXTRA is based on own products
-            total_own_products_in_scene_for_cat = each_scif_data[each_scif_data['manufacturer_fk'] == self.own_man_fk][
-                "item_id"].unique()
+            # EXTRA is NOT based on own products
+            # total_own_products_in_scene_for_cat = each_scif_data[each_scif_data['manufacturer_fk'] ==
+            # self.own_man_fk][
+            #     "item_id"].unique()
             total_products_in_scene_for_cat = each_scif_data["item_id"].unique()
             curr_category_products_in_assortment_df = self.all_products[
                 (self.all_products.product_fk.isin(assortment_product_fks))
                 & (self.all_products.category_fk == category_fk)]
             curr_category_products_in_assortment = curr_category_products_in_assortment_df['product_fk'].unique()
             present_products = np.intersect1d(total_products_in_scene_for_cat, curr_category_products_in_assortment)
-            extra_products = np.setdiff1d(total_own_products_in_scene_for_cat, present_products)
+            extra_products = np.setdiff1d(total_products_in_scene_for_cat, present_products)
             oos_products = np.setdiff1d(curr_category_products_in_assortment, present_products)
             product_map = {
                 OOS_CODE: oos_products,
@@ -754,6 +756,10 @@ class CARLSBERGToolBox:
                 context_denominator_df = dataframe_to_process.query('{key} == {value}'.format(
                     key=groupers[1],
                     value=get_parameter_id(key_value=groupers[1], param_id_map=param_id_map)))
+                if 'category_fk' in groupers and 'template_fk' in groupers:
+                    context_denominator_df = context_denominator_df.query('{key} == {value}'.format(
+                        key='template_fk',
+                        value=param_id_map.get('template_fk')))
             result = len(group_data) / float(len(context_denominator_df))
             cat_fk = param_id_map.get('category_fk', '')
             if not is_nan(kpi[KPI_PARENT_COL].iloc[0]):

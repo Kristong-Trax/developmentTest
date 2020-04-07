@@ -82,6 +82,7 @@ class FONDASToolBox(GlobalSessionToolBox):
         self.survey_response = self.data_provider[Data.SURVEY_RESPONSES]
         self.assortment_template = self.templates[ASSORTMENT]
         self.match_product_in_scene = self.data_provider['matches']
+        self.important_survey = self.survey_response[self.survey_response.question_fk.isin([22])]
         # self.survey = Survey(self.data_provider, output=output, ps_data_provider=self.ps_data_provider,
         #                      common=self.common_v2)
         self.results_df = pd.DataFrame(columns=['kpi_name', 'kpi_fk', 'numerator_id', 'numerator_result',
@@ -101,7 +102,8 @@ class FONDASToolBox(GlobalSessionToolBox):
         store_additional_attribute = self.sanitize_values(
             'FONDA / LONCHERÍA / MERENDERO,RSR COMIDA MEXICANA / TACOS,RSR ASIAN,RSR SEAFOOD,RSR LOCAL FOOD,RSR PIZZAS,RSR SANDWICHES / TORTERIA,RSR POLLO,RSR HAMBURGUESAS,RSR OTROS ALIMENTOS')
         store_additional_attribute = [unicode(value, 'utf-8') for value in store_additional_attribute]
-        if self.store_info.additional_attribute_5.isin(store_additional_attribute)[0] and \
+
+        if not(self.important_survey.empty) and self.store_info.additional_attribute_5.isin(store_additional_attribute)[0] and \
                 self.store_info.store_type.isin([store_type])[0]:
             relevant_kpi_template = self.templates[KPIS]
             foundation_kpi_types = [SOS, SHARE_OF_EMPTY, DISTRIBUTION, SURVEY, AVALIABILITY]
@@ -381,10 +383,10 @@ class FONDASToolBox(GlobalSessionToolBox):
                 np.take(relevant_assortment, np.where(lst_result_of_assortment_exists))[0]
             for assortment in relevant_assortment:
                 result = 1 if assortment in existing_prod_in_required_assortment else 0
-                product_fk = self.all_products.loc[self.all_products.product_name == assortment, 'product_fk'].iat[
+                product_fk = self.all_products.loc[self.all_products.product_short_name == assortment, 'product_fk'].iat[
                     0]
                 sub_category_fk = \
-                    self.all_products.loc[self.all_products.product_name == assortment, 'sub_category_fk'].iat[0]
+                    self.all_products.loc[self.all_products.product_short_name == assortment, 'sub_category_fk'].iat[0]
                 result_dict = {'kpi_name': kpi_sku_name, 'kpi_fk': kpi_id, 'numerator_id': product_fk,
                                'denominator_id': sub_category_fk,
                                'result': result, 'identifier_parent': kpi_name}
