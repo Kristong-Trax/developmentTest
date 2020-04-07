@@ -3,19 +3,16 @@ from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Cloud.Services.Connector.Keys import DbUsers
 from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from KPIUtils_v2.Utils.GlobalScripts.Scripts import GlobalSessionToolBox
-from Trax.Utils.Logging.Logger import Log
 import pandas as pd
 import numpy as np
 import simplejson
 import os
 
-from KPIUtils_v2.DB.Common import Common
-from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
 
 __author__ = 'krishnat'
 
 TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data',
-                             'Nestle Creamers Template V1.6.xlsx')
+                             'Nestle Creamers Template V1.7.xlsx')
 
 SHEETS = [Consts.KPIS, Consts.SHELF_COUNT, Consts.SOS, Consts.DISTRIBUTION, Consts.DISTRIBUTION,
           Consts.BASE_MEASUREMENT, Consts.SHELF_POSITION, Consts.XREF_SCENE_TYPE_TO_CATEGORY,
@@ -90,7 +87,7 @@ class NESTLEBAKINGUSToolBox(GlobalSessionToolBox):
                 pass
             for index, kpi_row in kpi_rows.iterrows():
                 result_data = calculation_function(kpi_row)
-                if result_data:
+                if result_data and isinstance(result_data,list):
                     for result in result_data:
                         self.results_df.loc[len(self.results_df), result.keys()] = result
 
@@ -132,9 +129,7 @@ class NESTLEBAKINGUSToolBox(GlobalSessionToolBox):
                 unique_displayfks_in_scene = np.unique(
                     mdis_merged_mcif[mdis_merged_mcif.scene_fk == unique_scene].display_fk)
                 display_fk_for_scene = unique_displayfks_in_scene[0] if len(unique_displayfks_in_scene) == 1 else 3
-                display_fk_id = display_fk_dictionary.get(display_fk_for_scene, 0)  # todo: Take care of this case!
-                if not display_fk_id:  # todo: Take care of this case!
-                    continue  # todo: Take care of this case!
+                display_fk_id = display_fk_dictionary.get(display_fk_for_scene, 3)
                 relevant_mpis = mpis[mpis.scene_fk.isin([unique_scene])]
                 for unique_bay in set(relevant_mpis.bay_number):
                     useful_mcif = relevant_mpis[relevant_mpis.bay_number.isin([unique_bay])]
@@ -181,9 +176,7 @@ class NESTLEBAKINGUSToolBox(GlobalSessionToolBox):
                 unique_displayfks_in_scene = np.unique(
                     mdis_merged_mcif[mdis_merged_mcif.scene_id == unique_scene].display_fk)
                 display_fk_for_scene = unique_displayfks_in_scene[0] if len(unique_displayfks_in_scene) == 1 else 3
-                display_fk_id = display_fk_dictionary.get(display_fk_for_scene, 0)  # todo: Take care of this case!
-                if not display_fk_id: # todo: Take care of this case!
-                    continue # todo: Take care of this case!
+                display_fk_id = display_fk_dictionary.get(display_fk_for_scene, 3)
                 relevant_mcif = mdis_merged_mcif[mdis_merged_mcif.scene_id.isin([unique_scene])]
                 for unique_bay in set(relevant_mcif.bay_number_x):
                     useful_mcif = relevant_mcif[relevant_mcif.bay_number_x.isin([unique_bay])]
