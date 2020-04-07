@@ -132,8 +132,9 @@ class NESTLEBAKINGUSToolBox(GlobalSessionToolBox):
                 unique_displayfks_in_scene = np.unique(
                     mdis_merged_mcif[mdis_merged_mcif.scene_fk == unique_scene].display_fk)
                 display_fk_for_scene = unique_displayfks_in_scene[0] if len(unique_displayfks_in_scene) == 1 else 3
-                display_fk_id = display_fk_dictionary[display_fk_for_scene]
-
+                display_fk_id = display_fk_dictionary.get(display_fk_for_scene, 0)  # todo: Take care of this case!
+                if not display_fk_id:  # todo: Take care of this case!
+                    continue  # todo: Take care of this case!
                 relevant_mpis = mpis[mpis.scene_fk.isin([unique_scene])]
                 for unique_bay in set(relevant_mpis.bay_number):
                     useful_mcif = relevant_mpis[relevant_mpis.bay_number.isin([unique_bay])]
@@ -180,7 +181,9 @@ class NESTLEBAKINGUSToolBox(GlobalSessionToolBox):
                 unique_displayfks_in_scene = np.unique(
                     mdis_merged_mcif[mdis_merged_mcif.scene_id == unique_scene].display_fk)
                 display_fk_for_scene = unique_displayfks_in_scene[0] if len(unique_displayfks_in_scene) == 1 else 3
-                display_fk_id = display_fk_dictionary[display_fk_for_scene]
+                display_fk_id = display_fk_dictionary.get(display_fk_for_scene, 0)  # todo: Take care of this case!
+                if not display_fk_id: # todo: Take care of this case!
+                    continue # todo: Take care of this case!
                 relevant_mcif = mdis_merged_mcif[mdis_merged_mcif.scene_id.isin([unique_scene])]
                 for unique_bay in set(relevant_mcif.bay_number_x):
                     useful_mcif = relevant_mcif[relevant_mcif.bay_number_x.isin([unique_bay])]
