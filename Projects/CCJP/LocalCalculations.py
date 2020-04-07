@@ -36,9 +36,11 @@ if __name__ == '__main__':
     # Calculations(data_provider, output).run_project_calculations()
 
     # For scene leve kpis
-    project_name = 'JRIJP_LOCAL'
+    project_name = 'jrijp-local'
     # RUN for scene level KPIs
     session_scene_map = OrderedDict([
+        ('F3CD965D-1A3B-4E51-9266-08995030B5D8', ['024D9DD8-0A83-4AF9-ADCC-2B473EB6C5A3',
+                                                  ]),
         ('0C1CE6BC-6A1C-4BC7-882F-F98DBD5D8FC5', ['A860F4F1-8666-4779-88F2-42E4DD5D4D99']),
         ('FB9CA65B-4AE1-429B-8ABA-FDA440EF4407', ['7096DB40-D7A9-4B4E-B6B8-DBFDF276F560',
                                                   'B1FB3273-81B9-4243-92B8-92778D82BEF5']),
@@ -46,8 +48,6 @@ if __name__ == '__main__':
                                                   '7CA2A00E-1773-4F3F-9E0B-C54CF3A12DBF']),
         ('FA2ED7DE-84C0-4842-B9D3-CC3292EC1293', ['BA2D0EA7-7507-4091-ADBC-06CCB6738CA7',
                                                   'F692BE92-AF27-4272-B4FA-4CFFB914EC55']),
-        ('F3CD965D-1A3B-4E51-9266-08995030B5D8', ['024D9DD8-0A83-4AF9-ADCC-2B473EB6C5A3',
-                                                  '024D9DD8-0A83-4AF9-ADCC-2B473EB6C5A3'])
 
     ])
 

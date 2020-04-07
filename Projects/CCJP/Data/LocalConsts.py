@@ -130,8 +130,9 @@ class Consts(object):
 
                          }
 
-    # Scene Level KPI to calculate POSM facings in cell - including session level and probelevel
-    FACINGS_OF_POSM_IN_CELL = 'FACINGS_OF_POSM_IN_CELL'
+    # Scene Level KPIs to calculate POSM facings in cell
+    FACINGS_OF_SKU_POSM_IN_CELL = 'FACINGS_OF_SKU_POSM_IN_CELL'
+    FACINGS_OF_DISPLAY_POSM_IN_CELL = 'FACINGS_OF_DISPLAY_POSM_IN_CELL'
 
     def __init__(self):
         pass
