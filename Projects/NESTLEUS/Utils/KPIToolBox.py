@@ -153,15 +153,15 @@ class NESTLEUSToolBox:
             for key, fk in fk_kpi_level_2.items():
                 numerator = getattr(row, key)
                 denominator = sums.get(key)
-                result = numerator / denominator
+                result = numerator / float(denominator)
 
                 self.common.write_to_db_result(
                     fk=fk,
                     numerator_id=row.item_id,
                     numerator_result=numerator,
-                    denominator_id=row.store_id,
+                    denominator_id=row.template_fk,
                     denominator_result=denominator,
-                    result=numerator
+                    result=result
                 )
 
     def calculate_base_footage(self):
