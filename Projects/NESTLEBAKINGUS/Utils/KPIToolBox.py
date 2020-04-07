@@ -129,7 +129,7 @@ class NESTLEBAKINGUSToolBox(GlobalSessionToolBox):
                 unique_displayfks_in_scene = np.unique(
                     mdis_merged_mcif[mdis_merged_mcif.scene_fk == unique_scene].display_fk)
                 display_fk_for_scene = unique_displayfks_in_scene[0] if len(unique_displayfks_in_scene) == 1 else 3
-                display_fk_id = display_fk_dictionary.get(display_fk_for_scene, 3)
+                display_fk_id = self.get_display_fk_id(display_fk_dictionary,display_fk_for_scene)
                 relevant_mpis = mpis[mpis.scene_fk.isin([unique_scene])]
                 for unique_bay in set(relevant_mpis.bay_number):
                     useful_mcif = relevant_mpis[relevant_mpis.bay_number.isin([unique_bay])]
@@ -176,7 +176,7 @@ class NESTLEBAKINGUSToolBox(GlobalSessionToolBox):
                 unique_displayfks_in_scene = np.unique(
                     mdis_merged_mcif[mdis_merged_mcif.scene_id == unique_scene].display_fk)
                 display_fk_for_scene = unique_displayfks_in_scene[0] if len(unique_displayfks_in_scene) == 1 else 3
-                display_fk_id = display_fk_dictionary.get(display_fk_for_scene, 3)
+                display_fk_id = self.get_display_fk_id(display_fk_dictionary,display_fk_for_scene)
                 relevant_mcif = mdis_merged_mcif[mdis_merged_mcif.scene_id.isin([unique_scene])]
                 for unique_bay in set(relevant_mcif.bay_number_x):
                     useful_mcif = relevant_mcif[relevant_mcif.bay_number_x.isin([unique_bay])]
@@ -367,6 +367,12 @@ class NESTLEBAKINGUSToolBox(GlobalSessionToolBox):
             -1).any(
             -1)  # gets the index of scif where the category fk and template  fk match that derived from self.templates[Consts.XREF_SCENE_TYPE_TO_CATEGORY]
         self.scif = self.scif[filter_scif_by_relevant_selftemplate_by_category_fk_and_template_fk]
+
+    @staticmethod
+    def get_display_fk_id(display_fk_dictionary, display_fk_for_scene):
+        ''''The display_fk is saved a part of custom entity because of this '''
+        relevant_display_fk_to_save = display_fk_dictionary.get(display_fk_for_scene, 3)
+        relevant_display_fk_to_save
 
     @staticmethod
     def _filter_df(df, filters, exclude=0):
