@@ -372,7 +372,7 @@ class NESTLEBAKINGUSToolBox(GlobalSessionToolBox):
     def get_display_fk_id(display_fk_dictionary, display_fk_for_scene):
         ''''The display_fk is saved a part of custom entity because of this '''
         relevant_display_fk_to_save = display_fk_dictionary.get(display_fk_for_scene, 3)
-        relevant_display_fk_to_save
+        return relevant_display_fk_to_save
 
     @staticmethod
     def _filter_df(df, filters, exclude=0):
