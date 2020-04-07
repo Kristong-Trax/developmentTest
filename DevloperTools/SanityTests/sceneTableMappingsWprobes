@@ -105,6 +105,7 @@ report	live_scene_kpi_results	scene_uid
 report	live_session_kpi_result_version	session_uid
 report	live_session_kpi_results	session_uid
 report	general_empty_value	match_product_in_scene_recognition_fk
+report	scene_kpi_results	scene_fk
 reporting	calculation	all
 reporting	scene_item_facts	session_fk	session_id
 reporting	session_item_facts	session_fk	session_id
