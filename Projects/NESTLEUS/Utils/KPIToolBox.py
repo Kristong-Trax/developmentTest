@@ -99,7 +99,7 @@ class NESTLEUSToolBox:
         with open(Const.SHELF_MAP_PATH) as f:
             shelf_map = pd.read_excel(f, header=None)
 
-        shelf_map = {(x + 1, y + 1): col for y, row in shelf_map.iterrows() for x, col in enumerate(row) if pd.notna(col)}
+        shelf_map = {(x+1, y+1): col for y, row in shelf_map.iterrows() for x, col in enumerate(row) if pd.notna(col)}
 
         return shelf_map
 
@@ -151,7 +151,7 @@ class NESTLEUSToolBox:
 
         for row in df_scene.itertuples():
             for key, fk in fk_kpi_level_2.items():
-                numerator = getattr(row, key)
+                numerator = Const.mm_to_feet(getattr(row, key)) if fk in (911, 912) else getattr(row, key)
                 denominator = sums.get(key)
                 result = numerator / float(denominator)
 
@@ -193,14 +193,17 @@ class NESTLEUSToolBox:
     def calculate_facings_per_shelf_level(self):
         kpi_id = 914
         mpis = self.match_product_in_scene
-        scif = self.scif
 
-        mpis_scene_bays = mpis.groupby(by=['scene_fk', 'bay_number'])['shelf_number'].max().reset_index(name='total_number_of_shelves')
-        # mpis_scene_bays = mpis.groupby(by=['scene_fk', 'bay_number'])['shelf_number'].value_counts().reset_index(name='total_number_of_shelves')
+        mpis_scene_bays = mpis.groupby(by=['scene_fk', 'bay_number'])['shelf_number'].max()\
+            .reset_index(name='total_number_of_shelves')
 
-        num_shelves_by_bay = {(row.scene_fk, row.bay_number): row.total_number_of_shelves for row in mpis_scene_bays.itertuples()}
+        num_shelves_by_bay = {
+            (row.scene_fk, row.bay_number): row.total_number_of_shelves for row in mpis_scene_bays.itertuples()
+        }
 
-        mpis['number_of_shelves'] = mpis.apply(lambda row: num_shelves_by_bay.get((row.scene_fk, row.bay_number)), axis=1)
+        mpis['number_of_shelves'] = mpis.apply(
+            lambda row: num_shelves_by_bay.get((row.scene_fk, row.bay_number)), axis=1
+        )
 
         shelf_map = self.get_shelf_map()
         shelf_position_labels = ["Bottom", "Middle", "Eye", "Top"]
@@ -219,7 +222,8 @@ class NESTLEUSToolBox:
 
         bottom_layer = mpis[mpis['stacking_layer'] == 1]
 
-        num_product_facings_by_shelf_position = bottom_layer.groupby(['product_fk', 'shelf_position'])['product_fk'].count().reset_index(name='product_count_per_shelf_position')
+        num_product_facings_by_shelf_position = bottom_layer.groupby(['product_fk', 'shelf_position'])['product_fk']\
+            .count().reset_index(name='product_count_per_shelf_position')
 
         for product in num_product_facings_by_shelf_position.itertuples():
             self.common.write_to_db_result(
@@ -341,26 +345,3 @@ class NESTLEUSToolBox:
     #             pass
     #
     #     return filter_condition
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
