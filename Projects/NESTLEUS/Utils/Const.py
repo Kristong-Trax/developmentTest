@@ -58,4 +58,11 @@ TEMPLATES = {
     'water_display': 7
 }
 
+SHELF_POSITION = {
+    'BOTTOM': 1,
+    'MIDDLE': 2,
+    'EYE': 3,
+    'TOP': 4
+}
+
 def mm_to_feet(n): return n / 1000 * 3.28084
