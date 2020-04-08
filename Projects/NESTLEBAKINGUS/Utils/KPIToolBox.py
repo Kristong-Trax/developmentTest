@@ -3,19 +3,16 @@ from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Cloud.Services.Connector.Keys import DbUsers
 from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from KPIUtils_v2.Utils.GlobalScripts.Scripts import GlobalSessionToolBox
-from Trax.Utils.Logging.Logger import Log
 import pandas as pd
 import numpy as np
 import simplejson
 import os
 
-from KPIUtils_v2.DB.Common import Common
-from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
 
 __author__ = 'krishnat'
 
 TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data',
-                             'Nestle Creamers Template V1.6.xlsx')
+                             'Nestle Creamers Template V1.7.xlsx')
 
 SHEETS = [Consts.KPIS, Consts.SHELF_COUNT, Consts.SOS, Consts.DISTRIBUTION, Consts.DISTRIBUTION,
           Consts.BASE_MEASUREMENT, Consts.SHELF_POSITION, Consts.XREF_SCENE_TYPE_TO_CATEGORY,
@@ -90,7 +87,7 @@ class NESTLEBAKINGUSToolBox(GlobalSessionToolBox):
                 pass
             for index, kpi_row in kpi_rows.iterrows():
                 result_data = calculation_function(kpi_row)
-                if result_data:
+                if result_data and isinstance(result_data,list):
                     for result in result_data:
                         self.results_df.loc[len(self.results_df), result.keys()] = result
 
@@ -132,8 +129,7 @@ class NESTLEBAKINGUSToolBox(GlobalSessionToolBox):
                 unique_displayfks_in_scene = np.unique(
                     mdis_merged_mcif[mdis_merged_mcif.scene_fk == unique_scene].display_fk)
                 display_fk_for_scene = unique_displayfks_in_scene[0] if len(unique_displayfks_in_scene) == 1 else 3
-                display_fk_id = display_fk_dictionary[display_fk_for_scene]
-
+                display_fk_id = self.get_display_fk_id(display_fk_dictionary,display_fk_for_scene)
                 relevant_mpis = mpis[mpis.scene_fk.isin([unique_scene])]
                 for unique_bay in set(relevant_mpis.bay_number):
                     useful_mcif = relevant_mpis[relevant_mpis.bay_number.isin([unique_bay])]
@@ -157,18 +153,14 @@ class NESTLEBAKINGUSToolBox(GlobalSessionToolBox):
             kpi_name = row[Consts.KPI_NAME]
             kpi_fk = self.get_kpi_fk_by_kpi_type(kpi_name)
 
-            scif = self.data_provider[Data.SCENE_ITEM_FACTS]
             mpis = self.data_provider[Data.MATCHES]
-            merged_mpis = pd.merge(scif, mpis, how='right',
-                                   left_on=['item_id', 'scene_id'], right_on=['product_fk',
-                                                                              'scene_fk'])
-            mdis_merged_mcif = pd.merge(self.match_display_in_scene, merged_mpis, how='left',
-                                        left_on='scene_fk', right_on='scene_id')
-            unique_scenefks_in_mdis_merged_mcif = np.unique(mdis_merged_mcif.scene_id)
+            mdis_merged_mcif = pd.merge(self.match_display_in_scene, mpis, how='left',
+                                        left_on='scene_fk', right_on='scene_fk')
+            unique_scenefks_in_mdis_merged_mcif = np.unique(mdis_merged_mcif.scene_fk)
 
             # Have to do this as they are scenes with no display fks. So the line of code below filters out any scene
             # with no display fk
-            filtered_unique_scenefks_in_mdis_merged_mcif = unique_scenefks_in_mdis_merged_mcif[
+            filtered_unique_scenefks_in_mdis_merged_mpis = unique_scenefks_in_mdis_merged_mcif[
                 ~ np.isnan(unique_scenefks_in_mdis_merged_mcif)]
             # this is how the ids are store for display fk in custom entity
             # The reason we are using custom entity is because there may be a case where a scene has two types of displays
@@ -176,14 +168,14 @@ class NESTLEBAKINGUSToolBox(GlobalSessionToolBox):
             # Because of this we can not refer to the display table in sql
             display_fk_dictionary = {1: 17, 2: 18, 3: 19}
             result_dict_list = []
-            for unique_scene in filtered_unique_scenefks_in_mdis_merged_mcif:
+            for unique_scene in filtered_unique_scenefks_in_mdis_merged_mpis:
                 unique_displayfks_in_scene = np.unique(
-                    mdis_merged_mcif[mdis_merged_mcif.scene_id == unique_scene].display_fk)
+                    mdis_merged_mcif[mdis_merged_mcif.scene_fk == unique_scene].display_fk)
                 display_fk_for_scene = unique_displayfks_in_scene[0] if len(unique_displayfks_in_scene) == 1 else 3
-                display_fk_id = display_fk_dictionary[display_fk_for_scene]
-                relevant_mcif = mdis_merged_mcif[mdis_merged_mcif.scene_id.isin([unique_scene])]
-                for unique_bay in set(relevant_mcif.bay_number_x):
-                    useful_mcif = relevant_mcif[relevant_mcif.bay_number_x.isin([unique_bay])]
+                display_fk_id = self.get_display_fk_id(display_fk_dictionary,display_fk_for_scene)
+                relevant_mcif = mpis[mpis.scene_fk.isin([unique_scene])]
+                for unique_bay in set(relevant_mcif.bay_number):
+                    useful_mcif = relevant_mcif[relevant_mcif.bay_number.isin([unique_bay])]
                     highest_shelf_number_in_bay = useful_mcif.shelf_number.max()
                     result_dict = {'kpi_fk': kpi_fk, 'numerator_id': display_fk_id,
                                    'denominator_id': unique_bay, 'context_id': unique_scene,
@@ -247,7 +239,6 @@ class NESTLEBAKINGUSToolBox(GlobalSessionToolBox):
 
             for unique_scene in set(relevant_mcif.scene_id):
                 relevant_mcif_filtered = self._filter_df(self.match_scene_item_facts, {Consts.SCENE_ID: unique_scene})
-
                 for unique_item in set(relevant_mcif_filtered[row[
                     Consts.DENOMINATOR_TYPE_FK]]):  # this can be a product_fk or category_fk depending on the kpi
                     item_filtered_mcif = self._filter_df(relevant_mcif_filtered, {row[
@@ -371,6 +362,12 @@ class NESTLEBAKINGUSToolBox(GlobalSessionToolBox):
             -1).any(
             -1)  # gets the index of scif where the category fk and template  fk match that derived from self.templates[Consts.XREF_SCENE_TYPE_TO_CATEGORY]
         self.scif = self.scif[filter_scif_by_relevant_selftemplate_by_category_fk_and_template_fk]
+
+    @staticmethod
+    def get_display_fk_id(display_fk_dictionary, display_fk_for_scene):
+        ''''The display_fk is saved a part of custom entity because of this '''
+        relevant_display_fk_to_save = display_fk_dictionary.get(display_fk_for_scene, 3)
+        return relevant_display_fk_to_save
 
     @staticmethod
     def _filter_df(df, filters, exclude=0):
