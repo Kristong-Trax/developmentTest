@@ -170,8 +170,8 @@ class PngcnSceneKpis(object):
 
     def calculate_variant_block(self):
         Log.info("Starting variant block KPI calculation")
-        import time
-        start = time.time()
+        # import time
+        # start = time.time()
         block_sku_kpi = self.common.get_kpi_fk_by_kpi_type(BLOCK_SKU)
         if self.matches_from_data_provider.empty or self.scif.empty or \
                 self.scif.iloc[0]['location_type'] != 'Primary Shelf':
@@ -234,8 +234,8 @@ class PngcnSceneKpis(object):
         self.data_provider.all_products.loc[self.data_provider.all_products['product_fk'].isin(
             irrelevant_products_fks), ['product_type']] = 'Irrelevant'
 
-        end = time.time()
-        print(str(end - start))
+        # end = time.time()
+        # print(str(end - start))
         # Save all blocks results
         for kpi in block_results.keys():
             kpi_attributes = BLOCK_GROUP_ATTRIBUTES[kpi]['num_den_cont']
