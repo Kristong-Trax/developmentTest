@@ -111,6 +111,7 @@ class HEINZCRToolBox:
         self.adherence_results = self.heinz_global_price_adherence(pd.read_excel(Const.PRICE_ADHERENCE_TEMPLATE_PATH,
                                                                                  sheetname="Price Adherence"))
         self.extra_spaces_results = self.heinz_global_extra_spaces()
+        self.set_relevant_sub_categories()
 
         # this isn't relevant to the 'Perfect Score' calculation
         self.heinz_global_distribution_per_category()
@@ -254,7 +255,7 @@ class HEINZCRToolBox:
             self.common_v2.write_to_db_result(sub_category_kpi_fk, numerator_id=sub_category.sub_category_fk,
                                               denominator_id=self.store_id,
                                               identifier_parent=sub_category.sub_category_fk,
-                                              identifier_result=identifier_dict, result=result, score=score,
+                                              identifier_result=identifier_dict, result=result * 100, score=score,
                                               weight=target_kpi_weight, target=target_kpi_weight,
                                               should_enter=True)
 
@@ -686,6 +687,8 @@ class HEINZCRToolBox:
             Const.PERFECT_STORE_EXTRA_SPACES_TOTAL)
         total_dict = self.common_v2.get_dictionary(kpi_fk=extra_spaces_total_kpi_fk)
 
+        sub_cats_for_store = self.relevant_sub_categories
+
         if self.extra_spaces_results.empty:
             pass
 
@@ -711,10 +714,21 @@ class HEINZCRToolBox:
         for row in relevant_extra_spaces.itertuples():
             weight = self.get_weight(row.sub_category_fk)
             self.powersku_empty[row.sub_category_fk] = 1 * kpi_weight
+            score = result = 1
+
+            sub_cats_for_store.remove(row.sub_category_fk)
 
             self.common_v2.write_to_db_result(extra_spaces_kpi_fk, numerator_id=row.sub_category_fk,
-                                              denominator_id=row.template_fk, result=1, score=1,
+                                              denominator_id=row.template_fk, result=result, score=score,
                                               identifier_parent=row.sub_category_fk,
+                                              target=1, should_enter=True)
+
+        for sub_cat_fk in sub_cats_for_store:
+            result = score = 0
+            self.powersku_empty[sub_cat_fk] = 0
+            self.common_v2.write_to_db_result(extra_spaces_kpi_fk, numerator_id=sub_cat_fk,
+                                              denominator_id=0, result=result, score=score,
+                                              identifier_parent=sub_cat_fk,
                                               target=1, should_enter=True)
 
     def heinz_global_extra_spaces(self):
@@ -824,3 +838,7 @@ class HEINZCRToolBox:
                 pass
 
         return total_score
+
+    def set_relevant_sub_categories(self):
+        df = self.sub_category_weight[['Category', 'sub_category_fk', self.country]].dropna()
+        self.relevant_sub_categories = df.sub_category_fk.to_list()

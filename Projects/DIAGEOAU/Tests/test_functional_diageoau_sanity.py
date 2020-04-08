@@ -8,7 +8,7 @@ from Projects.DIAGEOAU.Tests.Data.kpi_results import DIAGEOAUKpiResults
 # import os
 # import json
 
-__author__ = 'ilays'
+__author__ = 'prasanna'
 
 
 class TestKEnginePsCode(PsSanityTestsFuncs):
@@ -29,7 +29,7 @@ class TestKEnginePsCode(PsSanityTestsFuncs):
         self.add_mocks()
         project_name = ProjectsSanityData.project_name
         data_provider = KEngineDataProvider(project_name)
-        sessions = {'7AD9790F-E0B2-4518-8567-005A5ABA92E8': []}
+        sessions = {'5820A26E-35B0-46D7-ACEE-E83425549963': []}
         kpi_results = DIAGEOAUKpiResults().get_kpi_results()
         for session in sessions.keys():
             data_provider.load_session_data(str(session))

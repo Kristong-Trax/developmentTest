@@ -248,6 +248,7 @@ class BATRUToolBox:
         self.kpi_entity = self.get_kpi_entity_type()
         self.custom_entity = self.get_and_update_custom_entity()
         self.assortment = Assortment(self.data_provider, self.output)
+        self.scenes_in_session = None
 
 # init functions
 
@@ -2141,17 +2142,22 @@ class BATRUToolBox:
         posm_template = posm_template.loc[posm_template['store_attribute_11'].isin(['ALL', attribute_11])]
         posm_template = posm_template.loc[posm_template['Product Name'] != '']
         score = 0
-        self.posm_in_session = self.tools.get_posm_availability()
+        # self.posm_in_session = self.tools.get_posm_availability()
+        self.posm_in_session, self.scenes_in_session = self.get_all_posm_in_session()
         equipment_in_store = 0
         equipments = posm_template['KPI Display Name'].unique().tolist()
         posm_status_fk = self.common.get_kpi_fk_by_kpi_type(POSM_AVAILABILITY)
         identif_parent_posm_status = self.common.get_dictionary(kpi_fk=posm_status_fk)
         for equipment in equipments:
-            if equipment in self.scif['additional_attribute_1'].unique().tolist():
+            # if equipment in self.scif['additional_attribute_1'].unique().tolist():
+            if equipment in self.scenes_in_session['additional_attribute_1'].unique().tolist():
                 equipment_template = posm_template.loc[posm_template['KPI Display Name'] == equipment]
                 scene_type = equipment_template['Template Group'].values[0]
-                scenes = self.scif.loc[(self.scif['additional_attribute_1'] == equipment) &
-                                       (self.scif['template_group'] == scene_type)]['scene_id'].unique()
+                # scenes = self.scif.loc[(self.scif['additional_attribute_1'] == equipment) &
+                #                        (self.scif['template_group'] == scene_type)]['scene_id'].unique()
+                scenes = self.scenes_in_session.loc[(self.scenes_in_session['additional_attribute_1'] == equipment) &
+                                                    (self.scenes_in_session['template_group'] == scene_type)][
+                                                                                                    'scene_id'].unique()
                 for scene in scenes:
                     equipment_in_store += 1
                     # this will change the display name for the db according to instances:
@@ -2227,15 +2233,16 @@ class BATRUToolBox:
                                            should_enter=True)
 
     def add_posms_not_assigned_to_scenes_in_template(self):
-        scenes_in_session = self.data_provider.scenes_info[['scene_fk', 'template_fk']]
-        scenes_in_session = scenes_in_session.merge(self.data_provider.all_templates, on='template_fk', how='left')
-        posm_in_session = self.match_display_in_scene.merge(scenes_in_session, on='scene_fk', how='left')
+        # scenes_in_session = self.data_provider.scenes_info[['scene_fk', 'template_fk']]
+        # scenes_in_session = scenes_in_session.merge(self.data_provider.all_templates, on='template_fk', how='left')
+        # posm_in_session = self.match_display_in_scene.merge(scenes_in_session, on='scene_fk', how='left')
         # posm_in_session['additional_attribute_1'] = self.encode_column_in_df(posm_in_session, 'additional_attribute_1')
+        posm_in_session = self.posm_in_session
         add_posms = posm_in_session[
             (~(posm_in_session['additional_attribute_1'].isin(self.p4_display_count.keys()))) &
             (~(posm_in_session['display_name'].isnull())) &
             (~(posm_in_session['additional_attribute_1'].isnull())) &
-            (posm_in_session['template_group'].str.encode('utf8') == EXIT_TEMPLATE_GROUP.encode('utf8'))]
+            (posm_in_session['template_group'] == EXIT_TEMPLATE_GROUP.encode('utf8'))]
         add_posms = add_posms[['additional_attribute_1', 'display_name']].drop_duplicates()
         for i, row in add_posms.iterrows():
             try:
@@ -2245,6 +2252,15 @@ class BATRUToolBox:
                 name = '{};{};{};{}'.format(row['additional_attribute_1'], DEFAULT_GROUP_NAME,
                                             DEFAULT_ATOMIC_NAME, row['display_name'].encode('utf8'))
             self.p4_posm_to_api[name] = 1
+
+    def get_all_posm_in_session(self):
+        scenes_in_session = self.data_provider.scenes_info[['scene_fk', 'template_fk']]
+        scenes_in_session['scene_id'] = scenes_in_session['scene_fk']
+        scenes_in_session = scenes_in_session.merge(self.templates, on='template_fk', how='left')
+        scenes_in_session['template_group'] = scenes_in_session['template_group'].apply(
+                                                                    lambda x: x.encode('utf-8'))
+        posm_in_session = self.match_display_in_scene.merge(scenes_in_session, on='scene_fk', how='left')
+        return posm_in_session, scenes_in_session
 
     def calculate_passed_equipments(self, equipment_template, equipment_name, scene_fk, identifier_parent_posm_status):
         """
@@ -2282,7 +2298,8 @@ class BATRUToolBox:
         threshold = len(groups)
         self.write_to_db_result(kpi_fk, result=group_counter, score_2=score, score_3=threshold, level=self.LEVEL2)
         # new tables - lvl2
-        template_fk = self.scif[self.scif['scene_fk'] == scene_fk]['template_fk'].values[0]
+        # template_fk = self.scif[self.scif['scene_fk'] == scene_fk]['template_fk'].values[0]
+        template_fk = self.scenes_in_session[self.scenes_in_session['scene_fk'] == scene_fk]['template_fk'].values[0]
         custom_result = self.kpi_result_values[self.PRESENCE][self.DISTRIBUTED] if score == 1 else \
             self.kpi_result_values[self.PRESENCE][self.OOS]
         self.common.write_to_db_result(fk=equipm_in_scene_kpi_fk, numerator_id=template_fk, denominator_id=scene_fk,
@@ -2308,7 +2325,7 @@ class BATRUToolBox:
         for atomic in all_atomics:
             atomic_in_group[atomic] = 0
 
-        for i in xrange(len(group_template)):
+        for i in range(len(group_template)):
             row = group_template.iloc[i]
             if row['Product Name']:
                 result = self.calculate_specific_posm(row, equipment_name, group_name, scene_fk)
@@ -2334,7 +2351,8 @@ class BATRUToolBox:
                                 threshold=len(group_template), level=self.LEVEL3)
         # new tables - lvl 3
         group_fk = self.get_custom_entity_pk_by_value(group_name)
-        template_fk = self.scif[self.scif['scene_fk'] == scene_fk]['template_fk'].values[0]
+        template_fk = self.scenes_in_session[self.scenes_in_session['scene_fk'] == scene_fk]['template_fk'].values[0]
+        # template_fk = self.scif[self.scif['scene_fk'] == scene_fk]['template_fk'].values[0]
         custom_result = self.kpi_result_values[self.PRESENCE][self.DISTRIBUTED] if score == 1 else \
             self.kpi_result_values[self.PRESENCE][self.OOS]
         self.common.write_to_db_result(fk=group_kpi_fk, numerator_id=group_fk, denominator_id=template_fk,
@@ -2411,7 +2429,7 @@ class BATRUToolBox:
 
         parent_fk = self.common.get_kpi_fk_by_kpi_type(SHARE_OF)
         identifier_parent = self.common.get_dictionary(kpi_fk=parent_fk)
-        for i in xrange(len(kpi_template)):
+        for i in range(len(kpi_template)):
             row = kpi_template.iloc[i]
             kpi_name = row['KPI Name(scene type attribute 1)']
 
