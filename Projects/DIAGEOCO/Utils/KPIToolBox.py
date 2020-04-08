@@ -43,8 +43,8 @@ class DIAGEOCOToolBox:
         assortment_res_dict_v3 = self.diageo_generator.diageo_global_assortment_function_v3()
         self.common_v2.save_json_to_new_tables(assortment_res_dict_v3)
 
-        # Menu kpis
-        menus_res_dict = self.diageo_generator.diageo_global_share_of_menu_cocktail_function()
+        # Global Share of Menu kpis
+        menus_res_dict = self.diageo_generator.diageo_global_new_share_of_menu_function()
         self.common_v2.save_json_to_new_tables(menus_res_dict)
 
         # Global Secondary Displays KPI

@@ -65,8 +65,8 @@ class RefrescoToolBox(GlobalSessionToolBox):
                          identifier_parent=parent_fk, identifier_result=kpi_fk, should_enter=True)
         return score
 
-
-    def calculate_average_ratio(self, ratio_list):
+    @staticmethod
+    def calculate_average_ratio(ratio_list):
         ratio_sum = 0
         list_count = len(ratio_list)
         for ratio in ratio_list:
@@ -78,13 +78,13 @@ class RefrescoToolBox(GlobalSessionToolBox):
             final_ratio = 0
         return final_ratio
 
-
     def get_parent_fk(self, kpi_name):
         parent_kpi_name = Const.KPIS_HIERACHY[kpi_name]
         parent_fk = self.get_kpi_fk_by_kpi_type(parent_kpi_name)
         return parent_fk
 
-    def calculate_sum_scores(self, score_list):
+    @staticmethod
+    def calculate_sum_scores(score_list):
         score_sum = 0
 
         for score in score_list:
