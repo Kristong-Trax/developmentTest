@@ -687,7 +687,6 @@ class HEINZCRToolBox:
             Const.PERFECT_STORE_EXTRA_SPACES_TOTAL)
         total_dict = self.common_v2.get_dictionary(kpi_fk=extra_spaces_total_kpi_fk)
 
-
         sub_cats_for_store = self.relevant_sub_categories
 
         if self.extra_spaces_results.empty:
@@ -728,7 +727,7 @@ class HEINZCRToolBox:
             result = score = 0
             self.powersku_empty[sub_cat_fk] = 0
             self.common_v2.write_to_db_result(extra_spaces_kpi_fk, numerator_id=sub_cat_fk,
-                                              denominator_id=self.store_id, result=result, score=score,
+                                              denominator_id=0, result=result, score=score,
                                               identifier_parent=sub_cat_fk,
                                               target=1, should_enter=True)
 
