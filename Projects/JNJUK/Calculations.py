@@ -47,11 +47,10 @@ class JNJUKCalculations(BaseCalculationsScript):
         return eye_hand_lvl_template, exclusion_template, survey_template
 
     def get_exclusion_template(self):
-        return 'KPI_Exclusions_Template_until_April2020.xlsx'
-        # if str(self.data_provider.visit_date) >= '2019-04-01':
-        #     pass
-        # else:
-        #     return 'KPI_Exclusions_Template_until_April2020.xlsx'
+        if str(self.data_provider.visit_date) >= '2019-04-01':
+            return 'JNJ_UK_KPI_Exclusion_Template_current.xlsx'
+        else:
+            return 'KPI_Exclusions_Template_until_April2020.xlsx'
 
 
 # if __name__ == '__main__':
