@@ -170,8 +170,6 @@ class PngcnSceneKpis(object):
 
     def calculate_variant_block(self):
         Log.info("Starting variant block KPI calculation")
-        # import time
-        # start = time.time()
         block_sku_kpi = self.common.get_kpi_fk_by_kpi_type(BLOCK_SKU)
         if self.matches_from_data_provider.empty or self.scif.empty or \
                 self.scif.iloc[0]['location_type'] != 'Primary Shelf':
@@ -202,12 +200,9 @@ class PngcnSceneKpis(object):
                 block_attributes = self.build_block_attribute_dict(block_filters)
                 filters = {k: [v] for k, v in block_filters.iteritems()}
                 shelves = self.parser.filter_df(filters, custom_matches)
-                # list_of_shelves = self.get_list_of_shelves(shelves)
                 relevant_shelves = list(shelves['shelf_number'].value_counts()[shelves['shelf_number'].value_counts()
                                                                                >= 2].index)
                 filters['shelf_number'] = relevant_shelves
-                # for shelves_lst in list_of_shelves:
-                #     filters['shelf_number'] = shelves_lst
                 filter_block_result = block_class.network_x_block_together(
                     population=filters,
                     additional={'allowed_products_filters': {'product_type': ['Empty']},
@@ -233,9 +228,6 @@ class PngcnSceneKpis(object):
         # Restore the original data provider
         self.data_provider.all_products.loc[self.data_provider.all_products['product_fk'].isin(
             irrelevant_products_fks), ['product_type']] = 'Irrelevant'
-
-        # end = time.time()
-        # print(str(end - start))
         # Save all blocks results
         for kpi in block_results.keys():
             kpi_attributes = BLOCK_GROUP_ATTRIBUTES[kpi]['num_den_cont']
@@ -269,32 +261,6 @@ class PngcnSceneKpis(object):
                                                    denominator_result=block_eye_level_shelves,
                                                    by_scene=True, identifier_parent=identifier_result,
                                                    should_enter=True)
-
-    def get_list_of_shelves(self, shelves):
-        df = shelves['shelf_number'].value_counts()
-        df = df.reset_index()
-        df.columns = ['shelf_number', 'facings']
-        df.sort_values('shelf_number', ascending=True, inplace=True)
-        verify_df = df[df['facings'] >= 2]
-        if verify_df.empty:
-            return []
-        elif len(verify_df) == 1:
-            return [[df.iloc[0]['shelf_number']]]
-        first = df.iloc[0]['facings']
-        shelves_dict = {0: []}
-        counter = 0
-        for i, row in df.iterrows():
-            if row['facings'] <= 1:
-                first = row['facings']
-                continue
-            if (abs(row['facings'] - first) / float(max(first, row['facings']))) <= 0.5:
-                shelves_dict[counter].append(row['shelf_number'])
-            else:
-                counter += 1
-                shelves_dict[counter] = [row['shelf_number']]
-            first = row['facings']
-        return shelves_dict.values()
-
 
     @staticmethod
     def get_kpi_attributes(kpi_attributes, sku_attributes):
