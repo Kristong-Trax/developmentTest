@@ -351,20 +351,6 @@ class PngcnSceneKpis(object):
         # Creating a custom attributes field on matches
         custom_matches = self.matches_from_data_provider.copy().fillna("No Value")
         custom_matches = pd.merge(custom_matches, products_df, on="product_fk", how="left")
-        custom_matches['shelf_number_str'] = custom_matches['shelf_number'].apply(str)
-        custom_matches['brand'] = custom_matches['brand_name'].str.cat(custom_matches['shelf_number_str'], sep="_")
-        custom_matches['brand_subbrand'] = custom_matches['brand_name'].str.cat(custom_matches['sub_brand'], sep="_").str.cat(custom_matches['shelf_number_str'], sep="_")
-        custom_matches['brand_subcategory'] = custom_matches['brand_name'].str.cat(
-            custom_matches['sub_category'], sep="_").str.cat(custom_matches['shelf_number_str'], sep="_")
-        custom_matches['brand_subcategory_subbrand'] = custom_matches['brand_name'].str.cat(
-            custom_matches['sub_category'], sep="_").str.cat(custom_matches['sub_brand'], sep="_").str.cat(custom_matches['shelf_number_str'], sep="_")
-        custom_matches['brand_subbrand_flavor'] = custom_matches['brand_name'].str.cat(
-            custom_matches['sub_brand'], sep="_").str.cat(custom_matches['att3'], sep="_").str.cat(custom_matches['shelf_number_str'], sep="_")
-        custom_matches['brand_subcategory_flavor'] = custom_matches['brand_name'].str.cat(
-            custom_matches['sub_category'], sep="_").str.cat(custom_matches['att3'], sep="_").str.cat(custom_matches['shelf_number_str'], sep="_")
-        custom_matches['brand_subcategory_subbrand_flavor'] = custom_matches['brand_name'].str.cat(
-            custom_matches['sub_category'], sep="_").str.cat(custom_matches['sub_brand'], sep="_"
-                                                      ).str.cat(custom_matches['att3'], sep="_").str.cat(custom_matches['shelf_number_str'], sep="_")
         custom_matches['brand'] = custom_matches['brand_name']
         custom_matches['brand_subbrand'] = custom_matches['brand_name'].str.cat(custom_matches['sub_brand'], sep="_")
         custom_matches['brand_subcategory'] = custom_matches['brand_name'].str.cat(
