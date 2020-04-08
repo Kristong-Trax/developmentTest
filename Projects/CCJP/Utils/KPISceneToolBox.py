@@ -26,22 +26,19 @@ class SceneToolBox(GlobalSceneToolBox):
         self.current_scene_fk = self.scene_info.iloc[0].scene_fk
         self.store_info = self.data_provider[Data.STORE_INFO]
         self.store_id = self.store_info.iloc[0].store_fk
-        self.store_type = self.data_provider.store_type
-        self.kpi_static_data = self.common.get_kpi_static_data()
         self.match_display_in_scene = self.data_provider.match_display_in_scene
-        self.scene_template_info = self.scif[['scene_fk',
-                                              'template_fk', 'template_name']].drop_duplicates()
 
     def main_function(self):
         sku_pos_kpi_fk = self.common.get_kpi_fk_by_kpi_type(Consts.FACINGS_OF_SKU_POSM_IN_CELL)
         display_pos_kpi_fk = self.common.get_kpi_fk_by_kpi_type(Consts.FACINGS_OF_DISPLAY_POSM_IN_CELL)
-        self.calculate_facings_in_cell_per_product(kpi_fk=display_pos_kpi_fk)
-        self.calculate_count_posm_per_scene(kpi_fk=sku_pos_kpi_fk)
+        self.calculate_facings_in_cell_per_product(kpi_fk=sku_pos_kpi_fk)
+        self.calculate_count_posm_per_scene(kpi_fk=display_pos_kpi_fk)
 
     def calculate_count_posm_per_scene(self, kpi_fk):
-        Log.info("No POSM detected at scene level for session: {}".format(self.session_uid))
+        Log.info("Calculate scene level POSM facings count at scene level for session: {}".format(self.session_uid))
         if self.match_display_in_scene.empty:
-            Log.info("No POSM detected at scene level for session: {}".format(self.session_uid))
+            Log.info("No POSM detected at scene level for session: {} scene: {}".format(self.session_uid,
+                                                                                        self.current_scene_fk))
             return False
         grouped_data = self.match_display_in_scene.groupby(['display_fk'])
         for display_fk, scene_data_df in grouped_data:
@@ -54,6 +51,11 @@ class SceneToolBox(GlobalSceneToolBox):
                     project=self.project_name,
                     scene=self.current_scene_fk))
                 continue
+            Log.info("Scene Level POSM pk {posm} has count {count} for session: {sess} scene: {scene}".format(
+                posm=display_fk,
+                count=posm_count,
+                sess=self.session_uid,
+                scene=self.current_scene_fk))
             self.common.write_to_db_result(fk=kpi_fk,
                                            numerator_id=display_fk,
                                            denominator_id=self.store_id,
@@ -63,20 +65,31 @@ class SceneToolBox(GlobalSceneToolBox):
                                            )
 
     def calculate_facings_in_cell_per_product(self, kpi_fk):
-        match_prod_scene_data = self.match_product_in_scene.merge(
-            self.all_products, how='left', on='product_fk', suffixes=('', '_prod'))
-        grouped_data = match_prod_scene_data.query(
-            '(stacking_layer==1) or (product_type=="POS")'
-        ).groupby(
+        Log.info("Calculate product level POSM facings count at scene level for session: {}".format(self.session_uid))
+        pos_products = self.products.query(
+            '(product_type=="POS")'
+        )
+        if pos_products.empty:
+            Log.info("No POSM detected at session level for session: {} scene: {}".format(self.session_uid,
+                                                                                          self.current_scene_fk))
+            return False
+        match_prod_scene_data = pos_products.merge(
+            self.match_product_in_scene, how='left', on='product_fk', suffixes=('', '_mpis'))
+        # .query('(stacking_layer==1))
+
+        grouped_data = match_prod_scene_data.groupby(
             ['bay_number', 'shelf_number', 'product_fk']
         )
         for data_tup, scene_data_df in grouped_data:
-            print "************"
-            print scene_data_df.fillna(value=0).manufacturer_fk.iloc[0]
             bay_number, shelf_number, product_fk = data_tup
             facings_count_in_cell = len(scene_data_df)
             cur_template_fk = int(self.scene_info[
                                       self.scene_info['scene_fk'] == self.current_scene_fk].get('template_fk'))
+            Log.info("Session Level POSM pk {posm} has count {count} for session: {sess} scene: {scene}".format(
+                posm=product_fk,
+                count=facings_count_in_cell,
+                sess=self.session_uid,
+                scene=self.current_scene_fk))
             self.common.write_to_db_result(fk=kpi_fk,
                                            numerator_id=product_fk,
                                            denominator_id=scene_data_df.fillna(value=0).manufacturer_fk.iloc[0],
