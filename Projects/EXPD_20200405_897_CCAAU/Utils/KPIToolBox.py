@@ -430,7 +430,7 @@ class CCAAUToolBox:
                                                   numerator_result=assortment_code,
                                                   denominator_result=1,
                                                   result=assortment_code,
-                                                  score=assortment_code * 100.00
+                                                  score=assortment_code
                                                   )
             if assortment_code == OOS_CODE:
                 # save OOS products; with OOS % kpi as parent
