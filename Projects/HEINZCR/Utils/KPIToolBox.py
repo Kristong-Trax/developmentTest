@@ -716,7 +716,8 @@ class HEINZCRToolBox:
             self.powersku_empty[row.sub_category_fk] = 1 * kpi_weight
             score = result = 1
 
-            sub_cats_for_store.remove(row.sub_category_fk)
+            if row.sub_category_fk in sub_cats_for_store:
+                sub_cats_for_store.remove(row.sub_category_fk)
 
             self.common_v2.write_to_db_result(extra_spaces_kpi_fk, numerator_id=row.sub_category_fk,
                                               denominator_id=row.template_fk, result=result, score=score,
