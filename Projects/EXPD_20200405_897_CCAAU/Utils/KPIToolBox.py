@@ -17,7 +17,7 @@ KPI_TYPE_COL = 'type'
 OOS_CODE = 1
 PRESENT_CODE = 2
 EXTRA_CODE = 3
-PRODUCT_PRESENCE_KPI = 'PRODUCT_PRESENCE_IN_WHOLE_STORE_RE'
+PRODUCT_PRESENCE_KPI = 'PRODUCT_PRESENCE_IN_WHOLE_STORE'
 # Assortment KPI Names
 DST_MAN_BY_STORE_PERC = 'DST_MAN_BY_STORE_PERC'
 OOS_MAN_BY_STORE_PERC = 'OOS_MAN_BY_STORE_PERC'
@@ -430,7 +430,7 @@ class CCAAUToolBox:
                                                   numerator_result=assortment_code,
                                                   denominator_result=1,
                                                   result=assortment_code,
-                                                  score=assortment_code * 100.00
+                                                  score=assortment_code
                                                   )
             if assortment_code == OOS_CODE:
                 # save OOS products; with OOS % kpi as parent
