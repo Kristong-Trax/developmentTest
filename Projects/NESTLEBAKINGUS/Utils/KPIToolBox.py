@@ -225,10 +225,14 @@ class NESTLEBAKINGUSToolBox(GlobalSessionToolBox):
             result_dict_list = []
             mdis_merged_mcif = pd.merge(self.match_display_in_scene, self.match_scene_item_facts, how='left',
                                         left_on='scene_fk', right_on='scene_id')
-            mdis_merged_mcif.dropna(subset=['scene_id'], inplace=True)
-            relevant_mcif = mdis_merged_mcif[
-                ~ mdis_merged_mcif.product_type.isin(['Other'])] if row[Consts.SKU_RELEVANT] == 'Y' else \
-                mdis_merged_mcif[mdis_merged_mcif.product_type.isin(['Other'])]
+            # mdis_merged_mcif.dropna(subset=['scene_id'], inplace=True)
+            unique_scenefks_in_mdis_merged_mcif = np.unique(mdis_merged_mcif.scene_fk_x)
+            filtered_unique_scenefks_in_mdis_merged_mpis = unique_scenefks_in_mdis_merged_mcif[
+                ~ np.isnan(unique_scenefks_in_mdis_merged_mcif)]
+
+            relevant_mcif = self.match_scene_item_facts[
+                ~ self.match_scene_item_facts.brand_name.isin(['General'])] if row[Consts.SKU_RELEVANT] == 'Y' else \
+                self.match_scene_item_facts[self.match_scene_item_facts.brand_name.isin(['General'])]
 
             if relevant_mcif.empty:
                 return result_dict_list
@@ -236,7 +240,7 @@ class NESTLEBAKINGUSToolBox(GlobalSessionToolBox):
             if row[Consts.IGNORE_STACKING]:
                 relevant_mcif = relevant_mcif[relevant_mcif.stacking_layer == 1]
 
-            for unique_scene in set(relevant_mcif.scene_id):
+            for unique_scene in set(filtered_unique_scenefks_in_mdis_merged_mpis):
                 relevant_mcif_filtered = self._filter_df(relevant_mcif, {Consts.SCENE_ID: unique_scene})
                 for unique_item in set(relevant_mcif_filtered[row[
                     Consts.DENOMINATOR_TYPE_FK]]):  # this can be a product_fk or category_fk depending on the kpi
@@ -270,8 +274,13 @@ class NESTLEBAKINGUSToolBox(GlobalSessionToolBox):
         kpi_name = row[Consts.KPI_NAME]
         kpi_fk = self.get_kpi_fk_by_kpi_type(kpi_name)
 
+        relevant_scif = self.scif[
+            ~ self.scif.brand_name.isin(['General'])] if row[Consts.SKU_RELEVANT] == 'Y' else \
+            self.scif[
+                 self.scif.brand_name.isin(['General'])]
+
         result_dict_list = []
-        for unique_scene_fk in set(self.scif.scene_fk):
+        for unique_scene_fk in set(relevant_scif.scene_fk):
             relevant_scif = self._filter_df(self.scif, {Consts.SCENE_FK: unique_scene_fk})
             if pd.notna(row[Consts.FILTER_DENOMINATOR]):
                 # denominator_result = relevant_scif.net_len_ign_stack.sum() if relevant_scif.empty else 1
