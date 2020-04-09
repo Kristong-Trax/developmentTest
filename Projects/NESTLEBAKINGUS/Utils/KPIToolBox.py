@@ -1,13 +1,14 @@
-from Projects.NESTLEBAKINGUS.Data.LocalConsts import Consts
-from Trax.Algo.Calculations.Core.DataProvider import Data
-from Trax.Cloud.Services.Connector.Keys import DbUsers
-from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
-from KPIUtils_v2.Utils.GlobalScripts.Scripts import GlobalSessionToolBox
-import pandas as pd
-import numpy as np
-import simplejson
 import os
 
+import numpy as np
+import pandas as pd
+import simplejson
+from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
+from KPIUtils_v2.Utils.GlobalScripts.Scripts import GlobalSessionToolBox
+from Trax.Algo.Calculations.Core.DataProvider import Data
+from Trax.Cloud.Services.Connector.Keys import DbUsers
+
+from Projects.NESTLEBAKINGUS.Data.LocalConsts import Consts
 
 __author__ = 'krishnat'
 
@@ -87,7 +88,7 @@ class NESTLEBAKINGUSToolBox(GlobalSessionToolBox):
                 pass
             for index, kpi_row in kpi_rows.iterrows():
                 result_data = calculation_function(kpi_row)
-                if result_data and isinstance(result_data,list):
+                if result_data and isinstance(result_data, list):
                     for result in result_data:
                         self.results_df.loc[len(self.results_df), result.keys()] = result
 
@@ -129,7 +130,7 @@ class NESTLEBAKINGUSToolBox(GlobalSessionToolBox):
                 unique_displayfks_in_scene = np.unique(
                     mdis_merged_mcif[mdis_merged_mcif.scene_fk == unique_scene].display_fk)
                 display_fk_for_scene = unique_displayfks_in_scene[0] if len(unique_displayfks_in_scene) == 1 else 3
-                display_fk_id = self.get_display_fk_id(display_fk_dictionary,display_fk_for_scene)
+                display_fk_id = self.get_display_fk_id(display_fk_dictionary, display_fk_for_scene)
                 relevant_mpis = mpis[mpis.scene_fk.isin([unique_scene])]
                 for unique_bay in set(relevant_mpis.bay_number):
                     useful_mcif = relevant_mpis[relevant_mpis.bay_number.isin([unique_bay])]
@@ -152,7 +153,6 @@ class NESTLEBAKINGUSToolBox(GlobalSessionToolBox):
         if not self.match_display_in_scene.empty:  # there are some session that the mdis is not empty
             kpi_name = row[Consts.KPI_NAME]
             kpi_fk = self.get_kpi_fk_by_kpi_type(kpi_name)
-
             mpis = self.data_provider[Data.MATCHES]
             mdis_merged_mcif = pd.merge(self.match_display_in_scene, mpis, how='left',
                                         left_on='scene_fk', right_on='scene_fk')
@@ -172,7 +172,7 @@ class NESTLEBAKINGUSToolBox(GlobalSessionToolBox):
                 unique_displayfks_in_scene = np.unique(
                     mdis_merged_mcif[mdis_merged_mcif.scene_fk == unique_scene].display_fk)
                 display_fk_for_scene = unique_displayfks_in_scene[0] if len(unique_displayfks_in_scene) == 1 else 3
-                display_fk_id = self.get_display_fk_id(display_fk_dictionary,display_fk_for_scene)
+                display_fk_id = self.get_display_fk_id(display_fk_dictionary, display_fk_for_scene)
                 relevant_mcif = mpis[mpis.scene_fk.isin([unique_scene])]
                 for unique_bay in set(relevant_mcif.bay_number):
                     useful_mcif = relevant_mcif[relevant_mcif.bay_number.isin([unique_bay])]
@@ -223,7 +223,6 @@ class NESTLEBAKINGUSToolBox(GlobalSessionToolBox):
 
             shelf_position_dict = {'Bottom': 13, 'Middle': 14, 'Eye': 15, 'Top': 16}
             result_dict_list = []
-
             mdis_merged_mcif = pd.merge(self.match_display_in_scene, self.match_scene_item_facts, how='left',
                                         left_on='scene_fk', right_on='scene_id')
             mdis_merged_mcif.dropna(subset=['scene_id'], inplace=True)
@@ -238,22 +237,27 @@ class NESTLEBAKINGUSToolBox(GlobalSessionToolBox):
                 relevant_mcif = relevant_mcif[relevant_mcif.stacking_layer == 1]
 
             for unique_scene in set(relevant_mcif.scene_id):
-                relevant_mcif_filtered = self._filter_df(self.match_scene_item_facts, {Consts.SCENE_ID: unique_scene})
+                relevant_mcif_filtered = self._filter_df(relevant_mcif, {Consts.SCENE_ID: unique_scene})
                 for unique_item in set(relevant_mcif_filtered[row[
                     Consts.DENOMINATOR_TYPE_FK]]):  # this can be a product_fk or category_fk depending on the kpi
                     item_filtered_mcif = self._filter_df(relevant_mcif_filtered, {row[
                                                                                       Consts.DENOMINATOR_TYPE_FK]: unique_item})
-                    for unique_shelf in set(item_filtered_mcif.shelf_number):
-                        final_mcif = self._filter_df(item_filtered_mcif, {'shelf_number': unique_shelf})
+
+                    for relevant_shelf in set(
+                            item_filtered_mcif.shelf_number):  ## HAD TO DO LAST MINUTE. VERY INEFFICENT.CHANGE
+                        # this method uses the 'shelf position template' sheet to derive the shelf position id
+                        shelf_position_id = self._get_shelf_position_id(unique_scene, current_shelf=relevant_shelf,
+                                                                        shelf_position_dict=shelf_position_dict)
+                        item_filtered_mcif.loc[
+                            item_filtered_mcif.shelf_number == relevant_shelf, 'display_fk'] = shelf_position_id
+
+                    for unique_display in set(item_filtered_mcif.display_fk):
+                        final_mcif = self._filter_df(item_filtered_mcif, {'display_fk': unique_display})
                         numerator_result = round(
                             final_mcif[row[Consts.OUTPUT]].sum() * CONVERT_MM_TO_INCHES) if pd.notna(
                             row[Consts.OUTPUT]) else final_mcif.facings.count()
 
-                        # this method uses the 'shelf position template' sheet to derive the shelf position id
-                        shelf_position_id = self._get_shelf_position_id(unique_scene, current_shelf=unique_shelf,
-                                                                        shelf_position_dict=shelf_position_dict)
-
-                        result_dict = {'kpi_fk': kpi_fk, 'numerator_id': shelf_position_id,
+                        result_dict = {'kpi_fk': kpi_fk, 'numerator_id': unique_display,
                                        'denominator_id': unique_item, 'context_id': unique_scene,
                                        'numerator_result': numerator_result}
                         result_dict_list.append(result_dict)
@@ -268,7 +272,7 @@ class NESTLEBAKINGUSToolBox(GlobalSessionToolBox):
 
         result_dict_list = []
         for unique_scene_fk in set(self.scif.scene_fk):
-            relevant_scif = self._filter_df(self.match_scene_item_facts, {Consts.SCENE_FK: unique_scene_fk})
+            relevant_scif = self._filter_df(self.scif, {Consts.SCENE_FK: unique_scene_fk})
             if pd.notna(row[Consts.FILTER_DENOMINATOR]):
                 # denominator_result = relevant_scif.net_len_ign_stack.sum() if relevant_scif.empty else 1
                 for unique_category_fk in set(relevant_scif[row[Consts.FILTER_DENOMINATOR]]):
@@ -315,7 +319,8 @@ class NESTLEBAKINGUSToolBox(GlobalSessionToolBox):
             (self.match_scene_item_facts.scene_id.isin([unique_scene]))].shelf_number.max()
 
         return shelf_position_dict[self.templates[Consts.SHELF_POSITION_TEMPLATE].loc[
-            self.templates[Consts.SHELF_POSITION_TEMPLATE]['Num Shelves'] == max_shelf_position, current_shelf].iat[0]]
+            self.templates[Consts.SHELF_POSITION_TEMPLATE]['Num Shelves'] == max_shelf_position, int(
+                current_shelf)].iat[0]]
 
     def _filter_display_in_scene(self):
         ''''
