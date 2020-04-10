@@ -538,7 +538,7 @@ class BATRUToolBox:
                 dnp_score += dnp_result
 
         set_fk = self.kpi_static_data[self.kpi_static_data['kpi_set_name'] == self.DNP]['kpi_set_fk'].iloc[0]
-        self.write_to_db_result(set_fk, dnp_score, self.LEVEL1)
+        self.write_to_db_result(set_fk, format(dnp_score, '.2f'), self.LEVEL1)
         # kpi_fk = self.kpi_static_data[self.kpi_static_data['kpi_name'] == self.DNP]['kpi_fk'].iloc[0]
         # self.write_to_db_result(kpi_fk, dnp_score, self.LEVEL2)
 
