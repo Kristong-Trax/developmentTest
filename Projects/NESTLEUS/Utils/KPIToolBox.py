@@ -84,8 +84,7 @@ class NESTLEUSToolBox:
         fk_template_water_aisle = 2
         fk_template_water_display = 7
 
-        self.calculate_facing_count_and_linear_feet(id_scene_type=fk_template_water_aisle)
-        self.calculate_facing_count_and_linear_feet(id_scene_type=fk_template_water_display)
+        self.calculate_facing_count_and_linear_feet()
         self.calculate_base_footage()
         self.calculate_facings_per_shelf_level()
         self.calculate_display_type(fk_template_water_aisle)
@@ -133,31 +132,30 @@ class NESTLEUSToolBox:
     #
     #                 numerator_length = int(np.ceil(numerator_length * self.MM_TO_FEET_CONVERSION))
     #                 if numerator_length > 0:
-    #                     self.common.write_to_db_result(fk=kpi_fk_linear_feet, numerator_id=product_fk,
-    #                                                    numerator_result=numerator_length,
-    #                                                    denominator_id=product_fk,
-    #                                                    result=numerator_length, score=numerator_length)
+    #                     self.common.write_to_db_res
 
-    def calculate_facing_count_and_linear_feet(self, id_scene_type):
-        fk_kpi_level_2 = {
+    def calculate_facing_count_and_linear_feet(self):
+        kpis = {
             'facings': 909,
             'facings_ign_stack': 910,
             'net_len_add_stack': 911,
             'net_len_ign_stack': 912
         }
 
-        df_scene = self.scif[self.scif['template_fk'] == id_scene_type]
-        sums = {key: df_scene[key].sum() for key, _ in fk_kpi_level_2.items()}
+        water_scif = self.scif[self.scif['template_fk'].isin(Const.WATER_TEMPLATES.values())]
+        water_scif = water_scif[water_scif['category_fk'].isin(Const.WATER_CATEGORY.values())]
 
-        for row in df_scene.itertuples():
-            for key, fk in fk_kpi_level_2.items():
+        sums = {key: water_scif[key].sum() for key in kpis.keys()}
+
+        for row in water_scif.itertuples():
+            for key, fk in kpis.items():
                 numerator = Const.mm_to_feet(getattr(row, key)) if fk in (911, 912) else getattr(row, key)
                 denominator = sums.get(key)
                 result = numerator / float(denominator)
 
                 self.common.write_to_db_result(
                     fk=fk,
-                    numerator_id=row.item_id,
+                    numerator_id=row.product_fk,
                     numerator_result=numerator,
                     denominator_id=row.template_fk,
                     denominator_result=denominator,
