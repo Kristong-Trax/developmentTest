@@ -155,7 +155,7 @@ class NESTLEUSToolBox:
 
                 self.common.write_to_db_result(
                     fk=fk,
-                    numerator_id=row.item_id,
+                    numerator_id=row.product_fk,
                     numerator_result=numerator,
                     denominator_id=row.template_fk,
                     denominator_result=denominator,
