@@ -540,7 +540,9 @@ class ToolBox:
         elif assort_template == 'Adjacencies':
             result = self.safe_divide(total, den)
 
-        results.append({'score': result, 'result': result, 'numerator_result': total, 'denominator_result': den,
+        score = self.result_values_dict['Pass'] if result == 1 else self.result_values_dict[
+            'Fail']
+        results.append({'score': score, 'result': score, 'numerator_result': total, 'denominator_result': den,
                         'numerator_id': self.manufacturer_fk,
                         'denominator_id': self.store_id,
                         'kpi_name': self.lvl_name(kpi_name, 'Session'),
