@@ -205,6 +205,8 @@ class PngcnSceneKpis(object):
                     shelves = self.parser.filter_df(filters, custom_matches)
                     relevant_shelves = list(shelves['shelf_number'].value_counts()[shelves['shelf_number'
                                                                                    ].value_counts() >= 2].index)
+                    if len(relevant_shelves) == 0:
+                        continue
                     filters['shelf_number'] = relevant_shelves
                 filter_block_result = block_class.network_x_block_together(
                     population=filters,
