@@ -94,6 +94,10 @@ class PepsicoUtil(UnifiedKPISingleton):
     FACINGS_PER_PRODUCT = 'Facings per Product'
     PRICE_SCENE = 'Price Scene'
     PROMO_PRICE_SCENE = 'Promo Price Scene'
+    HERO_SKU_SOS = 'Hero SKU SOS'
+    BRAND_SOS = 'Brand SOS'
+    SUB_BRAND_SOS = 'Sub Brand SOS'
+    PEPSICO_SEGMENT_SOS = 'PepsiCo Segment SOS'
 
     def __init__(self, output, data_provider):
         super(PepsicoUtil, self).__init__(data_provider)

@@ -25,17 +25,20 @@ class LinearSpacePerProductKpi(UnifiedCalculationsScript):
                                                       how='left')
 
             result_df = filtered_matches.groupby([MatchesConsts.PRODUCT_FK, MatchesConsts.SHELF_NUMBER,
-                                                  MatchesConsts.BAY_NUMBER]).agg({MatchesConsts.WIDTH_MM_ADVANCE: np.sum})
+                                                  MatchesConsts.BAY_NUMBER], as_index=False).agg({MatchesConsts.WIDTH_MM_ADVANCE: np.sum})
 
             shelves_cust_entity = self.util.custom_entities[self.util.custom_entities['entity_type'] == 'shelf_number']
+            shelves_cust_entity['name'] = shelves_cust_entity['name'].astype(int)
             bays_cust_entity = self.util.custom_entities[self.util.custom_entities['entity_type'] == 'bay_number']
+            bays_cust_entity['name'] = bays_cust_entity['name'].astype(int)
 
             result_df = result_df.merge(shelves_cust_entity, left_on=MatchesConsts.SHELF_NUMBER, right_on='name',
                                         how='left')
-            result_df.rename(columns={'entity_fk': 'shelf_fk'}, inplace=True)
+
+            result_df.rename(columns={'pk': 'shelf_fk'}, inplace=True)
             result_df = result_df.merge(bays_cust_entity, left_on=MatchesConsts.BAY_NUMBER, right_on='name',
                                         how='left')
-            result_df.rename(columns={'entity_fk': 'bay_fk'}, inplace=True)
+            result_df.rename(columns={'pk': 'bay_fk'}, inplace=True)
 
             for i, row in result_df.iterrows():
                 self.write_to_db_result(fk=kpi_fk, numerator_result=row[MatchesConsts.SHELF_NUMBER],

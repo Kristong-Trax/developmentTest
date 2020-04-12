@@ -20,13 +20,13 @@ class SosVsTargetBrandKpi(UnifiedCalculationsScript):
         self.util.filtered_scif, self.util.filtered_matches = \
             self.util.commontools.set_filtered_scif_and_matches_for_specific_kpi(self.util.filtered_scif,
                                                                                  self.util.filtered_matches,
-                                                                                 self.util.BRAND_SPACE_TO_SALES_INDEX)
+                                                                                 self.util.BRAND_SOS)
         # self.calculate_brand_out_of_category_sos_vs_target(sos_targets)
         self.calculate_brand_out_of_category_sos()
         self.util.reset_filtered_scif_and_matches_to_exclusion_all_state()
 
     def calculate_brand_out_of_category_sos(self):
-        kpi_fk = self.util.common.get_kpi_fk_by_kpi_type(self.util.BRAND_SPACE_TO_SALES_INDEX)
+        kpi_fk = self.util.common.get_kpi_fk_by_kpi_type(self.util.BRAND_SOS)
         filtered_scif = self.util.filtered_scif
         category_df = filtered_scif.groupby([ScifConsts.CATEGORY_FK],
                                             as_index=False).agg({'updated_gross_length': np.sum})

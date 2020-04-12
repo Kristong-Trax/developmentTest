@@ -21,13 +21,13 @@ class SosVsTargetSegmentKpi(UnifiedCalculationsScript):
         self.util.filtered_scif, self.util.filtered_matches = \
             self.util.commontools.set_filtered_scif_and_matches_for_specific_kpi(self.util.filtered_scif,
                                                                                  self.util.filtered_matches,
-                                                                                 self.util.PEPSICO_SEGMENT_SPACE_TO_SALES_INDEX)
+                                                                                 self.util.PEPSICO_SEGMENT_SOS)
         # self.calculate_pepsico_segment_space_sos_vs_target(sos_targets)
         self.calculate_pepsico_segment_space_sos()
         self.util.reset_filtered_scif_and_matches_to_exclusion_all_state()
 
     def calculate_pepsico_segment_space_sos(self):
-        kpi_fk = self.util.common.get_kpi_fk_by_kpi_type(self.util.PEPSICO_SEGMENT_SPACE_TO_SALES_INDEX)
+        kpi_fk = self.util.common.get_kpi_fk_by_kpi_type(self.util.PEPSICO_SEGMENT_SOS)
         filtered_scif = self.util.filtered_scif
         filtered_scif = filtered_scif[filtered_scif[ScifConsts.MANUFACTURER_FK] == self.util.own_manuf_fk]
         if not filtered_scif.empty:

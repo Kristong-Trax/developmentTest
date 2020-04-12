@@ -35,7 +35,8 @@ class CategoryFullBayKpi(UnifiedCalculationsScript):
                                                 as_index=False).agg({'count': np.sum})
             result_df = result_df.merge(scene_bay, on=[MatchesConsts.SCENE_FK, MatchesConsts.BAY_NUMBER], how='left')
             result_df['ratio'] = result_df['count'] / result_df['total_facings']
-            result = len(result_df[result_df['ratio'] >= 0.9])
+            target_ratio = int(float(self._config_params['ratio']))
+            result = len(result_df[result_df['ratio'] >= target_ratio])
             self.write_to_db_result(fk=kpi_fk, numerator_id=category_fk, denominator_id=self.util.store_id,
                                     score=result, result=result)
             self.util.add_kpi_result_to_kpi_results_df([kpi_fk, category_fk, self.util.store_id, result, result])
