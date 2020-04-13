@@ -131,6 +131,7 @@ class BATRUToolBox:
     SK_SKU_PRESENCE_NOT_IN_LIST_SKU = 'SK SKU Presence NOT in List - SKU'
     PRESENCE = 'PRESENCE'
     OOS = 'OOS'
+    DNP = 'DNP'
     DISTRIBUTED = 'DISTRIBUTED'
     POSM_REST = 'POSM Rest'
     POSM_REST_DISPLAY = 'POSM Rest Display'
@@ -248,6 +249,7 @@ class BATRUToolBox:
         self.kpi_entity = self.get_kpi_entity_type()
         self.custom_entity = self.get_and_update_custom_entity()
         self.assortment = Assortment(self.data_provider, self.output)
+        self.assortment_lvl3_result = self.assortment.calculate_lvl3_assortment()
         self.scenes_in_session = None
 
 # init functions
@@ -385,6 +387,7 @@ class BATRUToolBox:
         self.handle_priority_4()
         self.handle_priority_5()
         self.handle_oos()
+        self.handle_dnp()
 
 # general functions:
 
@@ -470,13 +473,12 @@ class BATRUToolBox:
             df[column_name] = df[column_name].str.decode('utf-8')
             return df[column_name].str.encode('utf-8')
 
-    #OOS kpi
+    # OOS kpi
     def handle_oos(self):
-        lvl3_result = self.assortment.calculate_lvl3_assortment()
-        if not lvl3_result.empty:
+        if not self.assortment_lvl3_result.empty:
             oos_kpi_fk = self.common.get_kpi_fk_by_kpi_type(self.OOS)
             identifier_parent = self.common.get_dictionary(kpi_fk=oos_kpi_fk)
-            lvl3_result = lvl3_result[lvl3_result['kpi_fk_lvl2'] == oos_kpi_fk]
+            lvl3_result = self.assortment_lvl3_result[self.assortment_lvl3_result['kpi_fk_lvl2'] == oos_kpi_fk]
             for result_row in lvl3_result.itertuples():
                 res = 1 - result_row.in_store
                 if res == 1:
@@ -499,7 +501,46 @@ class BATRUToolBox:
                     self.common.write_to_db_result(fk=row.kpi_fk_lvl2, numerator_id=self.own_manufacturer_fk,
                                                    numerator_result=denominator_res - row.passes, result=oos_result * 100,
                                                    denominator_id=self.store_id, denominator_result=denominator_res,
-                                                   score=oos_score, identifier_result=identifier_parent, should_enter=True)
+                                                   score=oos_score, identifier_result=identifier_parent,
+                                                   should_enter=True)
+
+    # DNP kpi
+    def handle_dnp(self):
+        dnp_score = 0
+        lvl3_result = pd.DataFrame()
+        dnp_kpi_fk = self.common.get_kpi_fk_by_kpi_type(self.DNP)
+        identifier_parent = self.common.get_dictionary(kpi_fk=dnp_kpi_fk)
+        if not self.assortment_lvl3_result.empty:
+            lvl3_result = self.assortment_lvl3_result[self.assortment_lvl3_result['kpi_fk_lvl2'] == dnp_kpi_fk]
+            for result_row in lvl3_result.itertuples():
+                result = result_row.in_store
+                if result == 0:
+                    result = self.kpi_result_values[self.PRESENCE][self.OOS]
+                    score = 0
+                else:
+                    result = self.kpi_result_values[self.PRESENCE][self.DISTRIBUTED]
+                    score = 0
+
+                self.common.write_to_db_result(fk=result_row.kpi_fk_lvl3, numerator_id=result_row.product_fk,
+                                               denominator_id=self.store_id, numerator_result=result,
+                                               denominator_result=1, result=result, score=score,
+                                               identifier_parent=identifier_parent, should_enter=True)
+
+        if not lvl3_result.empty:
+            lvl2_result = self.assortment.calculate_lvl2_assortment(lvl3_result)
+            for row in lvl2_result.itertuples():
+                dnp_result = round((float(row.passes) / float(row.total) if row.total else 0) * 100, 2)
+                self.common.write_to_db_result(fk=row.kpi_fk_lvl2, numerator_id=self.own_manufacturer_fk,
+                                               numerator_result=row.passes, result=dnp_result, target=0.001,
+                                               denominator_id=self.store_id, denominator_result=row.total,
+                                               score=dnp_result, identifier_result=identifier_parent,
+                                               should_enter=True)
+                dnp_score += dnp_result
+
+        set_fk = self.kpi_static_data[self.kpi_static_data['kpi_set_name'] == self.DNP]['kpi_set_fk'].iloc[0]
+        self.write_to_db_result(set_fk, format(dnp_score, '.2f'), self.LEVEL1)
+        # kpi_fk = self.kpi_static_data[self.kpi_static_data['kpi_name'] == self.DNP]['kpi_fk'].iloc[0]
+        # self.write_to_db_result(kpi_fk, dnp_score, self.LEVEL2)
 
     # P1 KPI
     @kpi_runtime()

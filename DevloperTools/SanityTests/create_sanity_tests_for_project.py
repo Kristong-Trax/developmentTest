@@ -431,8 +431,7 @@ if __name__ == '__main__':
     replace_configurations_file = True
     copy_configuration_file_to_traxexport(replace_configurations_file)
     projects = {
-        'jnjanz': {'CE9BD14E-DBF1-4F82-BEE4-E1D61F0B211F': []},
-        'straussil': {}
+        'batru': {'AF410EF7-90D8-431A-AF12-60DE6ED7438B': []}
                 }
     for project in projects:
         try:
@@ -447,7 +446,7 @@ if __name__ == '__main__':
 
             # # Create both the script and kpi test results
             create_sanity_test(project=project, sessions_to_use=sessions, kpi_results=kpi_results,
-                               create_test_script=True, create_test_results=True)
+                               create_test_script=False, create_test_results=True)
 
             # Create kpi test results only
             # create_sanity_test(project=project, sessions_to_use=sessions, kpi_results=kpi_results,

@@ -53,9 +53,13 @@ KPIs = {
     }
 }
 
-TEMPLATES = {
+WATER_TEMPLATES = {
     'water_aisle': 2,
     'water_display': 7
+}
+
+WATER_CATEGORY = {
+    'water': 29
 }
 
 SHELF_POSITION = {
