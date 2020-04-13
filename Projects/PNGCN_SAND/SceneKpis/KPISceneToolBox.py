@@ -226,8 +226,8 @@ class PngcnSceneKpis(object):
                     shelves_df_over_two_facings = block_df['shelf_number'].value_counts()[block_df['shelf_number'
                                                                                           ].value_counts() >= 2]
                     if enable_single_shelf_exclusion and (len(shelves_df) != len(shelves_df_over_two_facings)):
-                        block_df = block_df[block_df['shelf_number'].isin(shelves_df_over_two_facings.index)]
-                        relevant_scene_match_fks = block_df['scene_match_fk'].tolist()
+                        block_df_wo_stk = block_df[block_df['shelf_number'].isin(shelves_df_over_two_facings.index)]
+                        relevant_scene_match_fks = block_df_wo_stk['scene_match_fk'].tolist()
                         scene_filters = {'scene_match_fk': relevant_scene_match_fks}
                         filter_block_result_new = block_class.network_x_block_together(
                             population=scene_filters,
@@ -241,7 +241,11 @@ class PngcnSceneKpis(object):
                         for k, row_new in filter_block_result_new.iterrows():
                             if not row_new['is_block']:
                                 continue
-                            scene_matches_fks = self.get_scene_match_fk(row)
+                            scene_matches_fks = self.get_scene_match_fk(row_new)
+                            numerator_block = row_new['block_facings']
+                            denominator_block = len(self.parser.filter_df(filters, custom_matches))
+                            result_block = 0 if (denominator_block == 0) else numerator_block/float(denominator_block)
+                            row_new['facing_percentage'] = result_block
                             row_new['SKU_ATTRIBUTES'] = block_attributes
                             row_new['kpi_level_2_fk'] = kpi_block_fk
                             self.handle_node_in_variant_block(conditions, row_new, scene_matches_fks, filter_results,
