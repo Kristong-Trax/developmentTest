@@ -1,7 +1,10 @@
-from Trax.Algo.Calculations.Core.DataProvider import Data
-from KPIUtils_v2.Utils.GlobalScripts.Scripts import GlobalSceneToolBox
+import os
+import pandas as pd
+
 from Trax.Utils.Logging.Logger import Log
 from Projects.CCJP_SAND.Data.LocalConsts import Consts
+from Trax.Algo.Calculations.Core.DataProvider import Data
+from KPIUtils_v2.Utils.GlobalScripts.Scripts import GlobalSceneToolBox
 
 __author__ = 'nidhin'
 
@@ -27,6 +30,8 @@ class SceneToolBox(GlobalSceneToolBox):
         self.store_info = self.data_provider[Data.STORE_INFO]
         self.store_id = self.store_info.iloc[0].store_fk
         self.match_display_in_scene = self.data_provider.match_display_in_scene
+        set_up_file_name = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..',  'Data', 'setup.xlsx')
+        self.set_up_file = pd.read_excel(set_up_file_name, sheet_name='Functional KPIs', keep_default_na=False)
 
     def main_function(self):
         sku_pos_kpi_fk = self.common.get_kpi_fk_by_kpi_type(Consts.FACINGS_OF_SKU_POSM_IN_CELL)
@@ -40,28 +45,33 @@ class SceneToolBox(GlobalSceneToolBox):
             Log.info("No POSM detected at scene level for session: {} scene: {}".format(self.session_uid,
                                                                                         self.current_scene_fk))
             return False
-        grouped_data = self.match_display_in_scene.groupby(['display_fk'])
-        for display_fk, scene_data_df in grouped_data:
+        grouped_data = self.match_display_in_scene.groupby(['bay_number', 'display_fk'])
+        for data_tup, scene_data_df in grouped_data:
+            bay_number, display_fk = data_tup
             posm_count = len(scene_data_df)
-            template_fk = self.scene_info[self.scene_info['scene_fk'] == self.current_scene_fk].get('template_fk')
+            template_fk = self.scene_info['template_fk']
             if not template_fk.empty:
-                cur_template_fk = int(template_fk)
+                cur_template_fk = int(self.scene_info['template_fk'])
             else:
-                Log.info("{project}: Scene ID {scene} is not complete and not found in scene Info.".format(
+                Log.error("{project}: Scene ID {scene} is not complete and not found in scene Info.".format(
                     project=self.project_name,
                     scene=self.current_scene_fk))
                 continue
-            Log.info("Scene Level POSM pk {posm} has count {count} for session: {sess} scene: {scene}".format(
-                posm=display_fk,
-                count=posm_count,
-                sess=self.session_uid,
-                scene=self.current_scene_fk))
+            Log.info(
+                "Scene Level POSM pk {posm} has count {count} in bay {bay} for session: {sess} scene: {scene}".format(
+                    posm=display_fk,
+                    count=posm_count,
+                    bay=bay_number,
+                    sess=self.session_uid,
+                    scene=self.current_scene_fk))
             self.common.write_to_db_result(fk=kpi_fk,
                                            numerator_id=display_fk,
                                            denominator_id=self.store_id,
                                            context_id=cur_template_fk,
+                                           numerator_result=bay_number,
                                            result=posm_count,
-                                           score=posm_count
+                                           score=posm_count,
+                                           by_scene=True,
                                            )
 
     def calculate_facings_in_cell_per_product(self, kpi_fk):
@@ -73,18 +83,29 @@ class SceneToolBox(GlobalSceneToolBox):
             Log.info("No POSM detected at session level for session: {} scene: {}".format(self.session_uid,
                                                                                           self.current_scene_fk))
             return False
+        set_up_info = self.set_up_file[self.set_up_file[Consts.KPI_TYPE_COLUMN] == Consts.FACINGS_OF_SKU_POSM_IN_CELL]
+        # Currently only stacking config is taken from config file
+        stacking_str = set_up_info['Include Stacking'].iloc[0]
         match_prod_scene_data = pos_products.merge(
             self.match_product_in_scene, how='left', on='product_fk', suffixes=('', '_mpis'))
-        # .query('(stacking_layer==1))
-
+        if stacking_str.strip().lower() != 'include':
+            # should exclude all stacked products - layer > 1. Layers negative are not stacked.
+            Log.info(" **** Exclude stacked POS. Negatives are included. ****")
+            match_prod_scene_data = match_prod_scene_data.query('stacking_layer<=1')
         grouped_data = match_prod_scene_data.groupby(
             ['bay_number', 'shelf_number', 'product_fk']
         )
         for data_tup, scene_data_df in grouped_data:
             bay_number, shelf_number, product_fk = data_tup
             facings_count_in_cell = len(scene_data_df)
-            cur_template_fk = int(self.scene_info[
-                                      self.scene_info['scene_fk'] == self.current_scene_fk].get('template_fk'))
+            template_fk = self.scene_info['template_fk']
+            if not template_fk.empty:
+                cur_template_fk = int(self.scene_info['template_fk'])
+            else:
+                Log.error("{project}: Scene ID {scene} is not complete and not found in scene Info.".format(
+                    project=self.project_name,
+                    scene=self.current_scene_fk))
+                continue
             Log.info("Session Level POSM pk {posm} has count {count} for session: {sess} scene: {scene}".format(
                 posm=product_fk,
                 count=facings_count_in_cell,
@@ -97,4 +118,5 @@ class SceneToolBox(GlobalSceneToolBox):
                                            numerator_result=bay_number,
                                            denominator_result=shelf_number,
                                            result=facings_count_in_cell,
-                                           score=facings_count_in_cell)
+                                           score=facings_count_in_cell,
+                                           by_scene=True,)

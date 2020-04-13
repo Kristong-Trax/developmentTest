@@ -97,13 +97,13 @@ class ToolBox(GlobalSessionToolBox):
                 facings_sos_by_category_dict = self.facings_sos_by_category_function()
             elif kpi_name == Consts.FACINGS_SOS_SCENE_TYPE:
                 kpi = row_data[Consts.KPI_NAME]
-                if kpi == 'CCJP_SAND.FSOS_MANUF_BY_ALL_MANUF_IN_SCENE_TYPE':
+                if kpi == 'CCJP_FSOS_MANUF_BY_ALL_MANUF_IN_SCENE_TYPE':
                     facings_manuf_by_all_manuf = self.fsos_by_scene_type_function(row_data)
-                elif kpi == 'CCJP_SAND.FSOS_MANUF_CAT_BY_ALL_MANUF_CAT_IN_SCENE_TYPE':
+                elif kpi == 'CCJP_FSOS_MANUF_CAT_BY_ALL_MANUF_CAT_IN_SCENE_TYPE':
                     facings_manuf_cat_by_all_manuf_cat = self.fsos_by_scene_type_function(row_data)
-            elif kpi_name == "CCJP_SAND.POC_COUNT_BY_STORE_AREA" and self.visit_date < datetime.strptime(self.new_kpi_date, '%Y-%m-%d').date():
+            elif kpi_name == "CCJP_POC_COUNT_BY_STORE_AREA" and self.visit_date < datetime.strptime(self.new_kpi_date, '%Y-%m-%d').date():
                 point_of_store_dict = self.point_of_connection()
-            elif kpi_name == "CCJP_SAND.POC_COUNT_BY_TASK" and self.visit_date >= datetime.strptime(self.new_kpi_date, '%Y-%m-%d').date():
+            elif kpi_name == "CCJP_POC_COUNT_BY_TASK" and self.visit_date >= datetime.strptime(self.new_kpi_date, '%Y-%m-%d').date():
                 point_of_store_dict = self.point_of_connection()
 
         # Added additional loop because poc count is required for red score calculation.
@@ -111,11 +111,11 @@ class ToolBox(GlobalSessionToolBox):
 
         for row_num, row_data in kpi_names.iterrows():
             kpi_name = row_data[Consts.KPI_TYPE_COLUMN]
-            if kpi_name == "CCJP_SAND.RED_SCORE":
+            if kpi_name == "CCJP_RED_SCORE":
                 red_score_dict = self.calculate_red_score(facings_sos_whole_store_dict,
                                                           point_of_store_dict,
                                                           assortment_store_dict, row_data)
-            elif kpi_name == "CCJP_SAND.UNIQUE_DIST_OWN_MANU":
+            elif kpi_name == "CCJP_UNIQUE_DIST_OWN_MANU":
                 unique_sku_sos = self.calculate_unique_sku_sos(row_data)
 
         self.common.save_json_to_new_tables(assortment_store_dict)
@@ -838,9 +838,9 @@ class ToolBox(GlobalSessionToolBox):
     def calculate_red_score(self, facings_sos_whole_store_dict, point_of_store_dict, assortment_store_dict, kpi_data):
         dict_list = []
 
-        sovi_kpi_fk = self.common.get_kpi_fk_by_kpi_type("CCJP_SAND.FSOS_Own_Manufacturer_In_Whole_Store")
-        dist_kpi_fk = self.common.get_kpi_fk_by_kpi_type("CCJP_SAND.Dst_Manufacturer_in_Whole_Store")
-        poc_kpi_fk = self.common.get_kpi_fk_by_kpi_type("CCJP_SAND.POC_SCORE_BY_TARGET")
+        sovi_kpi_fk = self.common.get_kpi_fk_by_kpi_type("CCJP_FSOS_Own_Manufacturer_In_Whole_Store")
+        dist_kpi_fk = self.common.get_kpi_fk_by_kpi_type("CCJP_Dst_Manufacturer_in_Whole_Store")
+        poc_kpi_fk = self.common.get_kpi_fk_by_kpi_type("CCJP_POC_SCORE_BY_TARGET")
 
         weights = ast.literal_eval(str(kpi_data['additional_kpi_attributes']))
 
@@ -1111,7 +1111,7 @@ class ToolBox(GlobalSessionToolBox):
         dict_list = []
 
         if kpi_data.empty:
-            Log.warning('CCJP_SAND.UNIQUE_DIST_OWN_MANU not found in template/db')
+            Log.warning('CCJP_UNIQUE_DIST_OWN_MANU not found in template/db')
 
         kpi_unique_dist_fk = self.common.get_kpi_fk_by_kpi_type(kpi_data[Consts.KPI_TYPE_COLUMN])
 
@@ -1198,13 +1198,13 @@ class ToolBox(GlobalSessionToolBox):
     def point_of_connection_calc(self, scene_types_count, scene_types_score, store_locations, target):
         dict_list = []
         if self.visit_date < datetime.strptime(self.new_kpi_date, '%Y-%m-%d').date():
-            kpi_poc_count_fk = self.common.get_kpi_fk_by_kpi_type('CCJP_SAND.POC_COUNT_BY_STORE_AREA')
+            kpi_poc_count_fk = self.common.get_kpi_fk_by_kpi_type('CCJP_POC_COUNT_BY_STORE_AREA')
             store_area_data = self.get_store_area_data(scene_types_count)
         else:
-            kpi_poc_count_fk = self.common.get_kpi_fk_by_kpi_type('CCJP_SAND.POC_COUNT_BY_TASK')
+            kpi_poc_count_fk = self.common.get_kpi_fk_by_kpi_type('CCJP_POC_COUNT_BY_TASK')
             store_area_data = self.get_store_area_data(scene_types_count)
 
-        kpi_poc_score_fk = self.common.get_kpi_fk_by_kpi_type('CCJP_SAND.POC_SCORE_BY_TARGET')
+        kpi_poc_score_fk = self.common.get_kpi_fk_by_kpi_type('CCJP_POC_SCORE_BY_TARGET')
         store_area_score_data = self.get_store_area_score_data(scene_types_score, store_locations, target)
 
         for row_num, row_data in store_area_data.iterrows():
