@@ -11,7 +11,10 @@ if __name__ == '__main__':
 
     project_name = 'batru'
     data_provider = KEngineDataProvider(project_name)
-    sessions = ['94b1e561-a9c3-4d1a-a271-5d2da268e0d1']
+    sessions = [
+        'AF410EF7-90D8-431A-AF12-60DE6ED7438B',
+        # 'ffe79c33-ca54-40c1-854b-535458ce567b'
+    ]
     for session in sessions:
         data_provider.load_session_data(session)
         output = Output()
