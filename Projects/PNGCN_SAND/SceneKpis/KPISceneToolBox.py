@@ -230,7 +230,7 @@ class PngcnSceneKpis(object):
                     shelves_df = block_df['shelf_number'].value_counts()
                     shelves_df_over_two_facings = block_df['shelf_number'].value_counts()[block_df['shelf_number'
                                                                                           ].value_counts() >= 2]
-                    if len(shelves_df) != len(shelves_df_over_two_facings):
+                    if enable_single_shelf_exclusion and (len(shelves_df) != len(shelves_df_over_two_facings)):
                         block_df = block_df[block_df['shelf_number'].isin(shelves_df_over_two_facings.index)]
                         relevant_scene_match_fks = block_df['scene_match_fk'].tolist()
                         scene_filters = {'scene_match_fk': relevant_scene_match_fks}
