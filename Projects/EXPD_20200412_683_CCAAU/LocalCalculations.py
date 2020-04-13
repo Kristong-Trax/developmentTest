@@ -3,13 +3,13 @@
 from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
 from Trax.Utils.Conf.Configuration import Config
 from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
-from Projects.EXPD_20200405_897_CCAAU.Calculations import Calculations
+from Projects.EXPD_20200412_683_CCAAU.Calculations import Calculations
 
 
 if __name__ == '__main__':
-    LoggerInitializer.init('EXPD_20200405_897_CCAAU INTEG ENV calculations')
+    LoggerInitializer.init('EXPD_20200412_683_CCAAU INTEG ENV calculations')
     Config.init()
-    project_name = 'expd-20200405-897-ccaau'
+    project_name = 'expd-20200412-683-ccaau'
     data_provider = KEngineDataProvider(project_name)
     # DST_Group_NW_SI -- '012C162C-B252-4F09-A5C0-3FB714EDDEFE'
     # DST_Group_FS_SI -- '05DB1C22-AD3B-49E1-A004-6EFE70A1E519'
