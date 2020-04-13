@@ -180,7 +180,7 @@ class PngcnSceneKpis(object):
         block_results = {}
         kpi_aggrigations = {}
         full_df, custom_matches, products_df = self.get_full_df_and_products_df()
-        self.save_eye_light_products(custom_matches, kpi_level_2_type=BLOCK_BR_SB_KPI)
+        self.save_highlight_products(custom_matches, kpi_level_2_type=BLOCK_BR_SB_KPI)
         irrelevant_products_fks = set(self.data_provider.all_products[self.data_provider.all_products['product_type']
                                                                       == 'Irrelevant']['product_fk'])
         self.data_provider.all_products.loc[self.data_provider.all_products['product_fk'].isin(
@@ -443,17 +443,20 @@ class PngcnSceneKpis(object):
         sku_df = pd.merge(facings_ign_stack_per_sku_df, facings_per_sku_df, on="product_fk")
         return sku_df
 
-    def save_eye_light_products(self, custom_matches, kpi_level_2_type):
+    def save_highlight_products(self, custom_matches, kpi_level_2_type):
         kpi_block_fk = self.common.get_kpi_fk_by_kpi_type(kpi_level_2_type)
+        match_product_in_probe_state_reporting = self.match_product_in_probe_state_reporting[
+            self.match_product_in_probe_state_reporting['kpi_level_2_fk']==kpi_block_fk]
         sub_brands = set(custom_matches['sub_brand'])
         try:
             for sub_brand in sub_brands:
-                if sub_brand.encode("utf8") not in \
-                        self.match_product_in_probe_state_reporting['name'].str.encode("utf8").to_list():
+                if sub_brand.encode("utf8") not in match_product_in_probe_state_reporting['name'
+                ].str.encode("utf8").to_list():
                             self.insert_sub_brand_into_probe_state_reporting(sub_brand.encode("utf8"), kpi_block_fk)
                 sub_brand_pk = self.match_product_in_probe_state_reporting[
-                    self.match_product_in_probe_state_reporting['name'].str.encode("utf8") ==
-                    sub_brand.encode("utf8")]['match_product_in_probe_state_reporting_fk'].values[0]
+                    (self.match_product_in_probe_state_reporting['kpi_level_2_fk'] == kpi_block_fk) &
+                    (self.match_product_in_probe_state_reporting['name'].str.encode("utf8") ==
+                    sub_brand.encode("utf8"))]['match_product_in_probe_state_reporting_fk'].values[0]
                 df_to_append = pd.DataFrame(
                     columns=[MATCH_PRODUCT_IN_PROBE_FK, MATCH_PRODUCT_IN_PROBE_STATE_REPORTING_FK])
                 df_to_append[MATCH_PRODUCT_IN_PROBE_FK] = custom_matches['probe_match_fk'].drop_duplicates()
