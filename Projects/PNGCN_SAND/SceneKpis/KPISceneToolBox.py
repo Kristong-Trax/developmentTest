@@ -243,7 +243,7 @@ class PngcnSceneKpis(object):
                                 continue
                             scene_matches_fks = self.get_scene_match_fk(row_new)
                             numerator_block = row_new['block_facings']
-                            denominator_block = len(block_df)
+                            denominator_block = len(self.parser.filter_df(filters, custom_matches))
                             result_block = 0 if (denominator_block == 0) else numerator_block/float(denominator_block)
                             row_new['facing_percentage'] = result_block
                             row_new['SKU_ATTRIBUTES'] = block_attributes
