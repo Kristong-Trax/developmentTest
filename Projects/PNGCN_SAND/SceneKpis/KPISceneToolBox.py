@@ -220,15 +220,37 @@ class PngcnSceneKpis(object):
                 for j, row in filter_block_result.iterrows():
                     if not row['is_block']:
                         continue
-                    # Iterate all nodes, verify and filter "not blocks" and add info to dictionary
-                    cluster = row['cluster']
-                    scene_matches_fks = []
-                    for node in cluster.nodes.data():
-                        scene_matches_fks += (list(node[1]['scene_match_fk']))
-                    row['SKU_ATTRIBUTES'] = block_attributes
-                    row['kpi_level_2_fk'] = kpi_block_fk
-                    self.handle_node_in_variant_block(conditions, row, scene_matches_fks, filter_results, block_filters,
-                                                      custom_matches)
+                    scene_matches_fks = self.get_scene_match_fk(row)
+                    block_df = self.parser.filter_df({"scene_match_fk": scene_matches_fks}, custom_matches)
+                    shelves_df = block_df['shelf_number'].value_counts()
+                    shelves_df_over_two_facings = block_df['shelf_number'].value_counts()[block_df['shelf_number'
+                                                                                          ].value_counts() >= 2]
+                    if enable_single_shelf_exclusion and (len(shelves_df) != len(shelves_df_over_two_facings)):
+                        block_df = block_df[block_df['shelf_number'].isin(shelves_df_over_two_facings.index)]
+                        relevant_scene_match_fks = block_df['scene_match_fk'].tolist()
+                        scene_filters = {'scene_match_fk': relevant_scene_match_fks}
+                        filter_block_result_new = block_class.network_x_block_together(
+                            population=scene_filters,
+                            additional={'allowed_products_filters': {'product_type': ['Empty']},
+                                        'minimum_block_ratio': 0.0,
+                                        'minimum_facing_for_block': 2,
+                                        'include_stacking': False,
+                                        'check_vertical_horizontal': False})
+                        if filter_block_result_new.empty:
+                            continue
+                        for k, row_new in filter_block_result_new.iterrows():
+                            if not row_new['is_block']:
+                                continue
+                            scene_matches_fks = self.get_scene_match_fk(row)
+                            row_new['SKU_ATTRIBUTES'] = block_attributes
+                            row_new['kpi_level_2_fk'] = kpi_block_fk
+                            self.handle_node_in_variant_block(conditions, row_new, scene_matches_fks, filter_results,
+                                                              block_filters, custom_matches)
+                    else:
+                        row['SKU_ATTRIBUTES'] = block_attributes
+                        row['kpi_level_2_fk'] = kpi_block_fk
+                        self.handle_node_in_variant_block(conditions, row, scene_matches_fks, filter_results,
+                                                          block_filters, custom_matches)
             block_results[kpi_level] = filter_results
         # Restore the original data provider
         self.data_provider.all_products.loc[self.data_provider.all_products['product_fk'].isin(
@@ -269,6 +291,14 @@ class PngcnSceneKpis(object):
                                                    should_enter=True)
         # end_time = time.time()
         # print ("it took {} seconds".format(str(end_time - start_time)))
+
+    def get_scene_match_fk(self, row):
+        cluster = row['cluster']
+        scene_matches_fks = []
+        # Iterate all nodes, verify and filter "not blocks" and add info to dictionary
+        for node in cluster.nodes.data():
+            scene_matches_fks += (list(node[1]['scene_match_fk']))
+        return scene_matches_fks
 
     @staticmethod
     def get_kpi_attributes(kpi_attributes, sku_attributes):
@@ -377,10 +407,10 @@ class PngcnSceneKpis(object):
                 break
         if block_flag:
             # Handling SKUs
-            number_of_max_level_facings = block_df["shelf_number"].value_counts().iloc[-1]
+            number_of_max_level_facings = block_df["shelf_number"].value_counts().iloc[0]
             row['number_of_max_level_facings'] = number_of_max_level_facings
 
-            number_of_min_level_facings = block_df["shelf_number"].value_counts().iloc[0]
+            number_of_min_level_facings = block_df["shelf_number"].value_counts().iloc[-1]
             row['number_of_min_level_facings'] = number_of_min_level_facings
 
             block_eye_level_values = set(block_df['eye_level_shelf_number'])
