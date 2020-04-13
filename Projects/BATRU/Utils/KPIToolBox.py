@@ -539,8 +539,10 @@ class BATRUToolBox:
 
         set_fk = self.kpi_static_data[self.kpi_static_data['kpi_set_name'] == self.DNP]['kpi_set_fk'].iloc[0]
         self.write_to_db_result(set_fk, format(dnp_score, '.2f'), self.LEVEL1)
-        # kpi_fk = self.kpi_static_data[self.kpi_static_data['kpi_name'] == self.DNP]['kpi_fk'].iloc[0]
-        # self.write_to_db_result(kpi_fk, dnp_score, self.LEVEL2)
+        kpi_fk = self.kpi_static_data[self.kpi_static_data['kpi_name'] == self.DNP]['kpi_fk'].iloc[0]
+        self.write_to_db_result(kpi_fk, format(dnp_score, '.2f'), self.LEVEL2)
+        atomic_fk = self.kpi_static_data[self.kpi_static_data['atomic_kpi_name'] == self.DNP]['atomic_kpi_fk'].iloc[0]
+        self.write_to_db_result(atomic_fk, format(dnp_score, '.2f'), level=self.LEVEL3)
 
     # P1 KPI
     @kpi_runtime()
