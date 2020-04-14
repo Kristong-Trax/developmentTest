@@ -221,14 +221,15 @@ class PngcnSceneKpis(object):
                     if enable_single_shelf_exclusion and (len(shelves_df) != len(shelves_df_over_two_facings)):
                         block_df_wo_stk = block_df[block_df['shelf_number'].isin(shelves_df_over_two_facings.index)]
                         relevant_scene_match_fks = block_df_wo_stk['scene_match_fk'].tolist()
-                        scene_filters = {'scene_match_fk': relevant_scene_match_fks}
+                        filters['scene_match_fk'] = relevant_scene_match_fks
                         filter_block_result_new = block_class.network_x_block_together(
-                            population=scene_filters,
+                            population=filters,
                             additional={'allowed_products_filters': {'product_type': ['Empty']},
                                         'minimum_block_ratio': 0.0,
                                         'minimum_facing_for_block': 2,
                                         'include_stacking': False,
                                         'check_vertical_horizontal': False})
+                        del filters['scene_match_fk']
                         if filter_block_result_new.empty:
                             continue
                         for k, row_new in filter_block_result_new.iterrows():
@@ -236,7 +237,9 @@ class PngcnSceneKpis(object):
                                 continue
                             scene_matches_fks = self.get_scene_match_fk(row_new)
                             numerator_block = row_new['block_facings']
+                            filters['stacking_layer'] = [1]
                             denominator_block = len(self.parser.filter_df(filters, custom_matches))
+                            del filters['stacking_layer']
                             result_block = 0 if (denominator_block == 0) else numerator_block/float(denominator_block)
                             row_new['facing_percentage'] = result_block
                             row_new['SKU_ATTRIBUTES'] = block_attributes
@@ -412,7 +415,7 @@ class PngcnSceneKpis(object):
 
             block_eye_level_values = set(block_df['eye_level_shelf_number'])
             row['block_eye_level_shelves'] = sum(x in block_eye_level_values for x in [1.0, 2.0])
-            row['SKU_DATA'] = self.get_skus_data_from_block(block_df, custom_matches)
+            row['SKU_DATA'] = self.get_skus_data_from_block(block_df, custom_matches, block_filters)
 
             # get bottom left facings
             vertical_location = block_df['shelf_number'].max()
@@ -430,11 +433,12 @@ class PngcnSceneKpis(object):
                                         horizontal_location]['category_fk'].values[0]
             filter_results.append(row)
 
-    def get_skus_data_from_block(self, block_df, custom_matches):
+    def get_skus_data_from_block(self, block_df, custom_matches, block_filters):
         facings_ign_stack_per_sku_df = block_df['product_fk'].reset_index().groupby("product_fk").count().reset_index()
         facings_ign_stack_per_sku_df.columns = ['product_fk', 'facings_per_sku_ign_stack']
         fields_to_filter_by = ['scene_fk', 'bay_number', 'shelf_number', 'facing_sequence_number']
-        complete_df = custom_matches[fields_to_filter_by].merge(block_df, on=fields_to_filter_by)
+        complete_df = block_df[fields_to_filter_by].merge(custom_matches, on=fields_to_filter_by)
+        complete_df = self.parser.filter_df(block_filters, complete_df)
         facings_per_sku_df = complete_df['product_fk'].reset_index().groupby("product_fk").count().reset_index()
         facings_per_sku_df.columns = ['product_fk', 'facings_per_sku']
         sku_df = pd.merge(facings_ign_stack_per_sku_df, facings_per_sku_df, on="product_fk")
