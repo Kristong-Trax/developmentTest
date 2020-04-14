@@ -37,7 +37,7 @@ class HeinekenRealogram(object):
     def _filter_realogram_and_planogram(self, products_to_filter_by):
         if products_to_filter_by:
             self.realogram = \
-                self.realogram[(self.realogram['product_fk'].isin(products_to_filter_by)) |
+                self.realogram[(self.realogram['leading_product_fk'].isin(products_to_filter_by)) |
                                (self.realogram['target_product_fk'].isin(products_to_filter_by))]
             for door_id in self.planograms.keys():
                 filtered_planogram = self.planograms[door_id]
@@ -88,8 +88,11 @@ class HeinekenRealogram(object):
         return self.realogram[(self.realogram['leading_product_fk'] == self.realogram['target_product_fk'])]
 
     def _calculate_incorrectly_placed_tags(self):
-        return self.realogram[(self.realogram['leading_product_fk'] != self.realogram['target_product_fk']) |
-                              (self.realogram['leading_product_fk']).isna()]
+        incorrectly_placed_tags = \
+            self.realogram[(self.realogram['leading_product_fk'] != self.realogram['target_product_fk']) |
+                           (self.realogram['leading_product_fk']).isna()]
+        incorrectly_placed_tags = incorrectly_placed_tags[incorrectly_placed_tags['target_product_fk'].notna()]
+        return incorrectly_placed_tags
 
     def _calculate_extra_tags(self):
         return self.realogram[(self.realogram['sku_in_planogram'].notna()) &

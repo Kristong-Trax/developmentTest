@@ -135,14 +135,9 @@ class ToolBox(GlobalSessionToolBox):
                              common=self.common)
         self.ps_data_provider = PsDataProvider(self.data_provider, self.output)
         self.platformas_data = self.generate_platformas_data()
-        self.assortment = Assortment(self.data_provider, common=self.common)
-        self.store_assortment = self.assortment.store_assortment
         self.att2 = self.store_info['additional_attribute_2'].iloc[0]
         self.ps_data = PsDataProvider(self.data_provider, self.output)
         self.match_product_in_probe_state_reporting = self.ps_data.get_match_product_in_probe_state_reporting()
-        self.updated_store_assortment = self.store_assortment.merge(
-            self.data_provider[Data.PRODUCTS][[PRODUCT_NAME, 'product_ean_code']], left_on='ean_code',
-            right_on='product_ean_code', how='left')
         self.results_df = pd.DataFrame(columns=['kpi_name', 'kpi_fk', 'numerator_id', 'numerator_result',
                                                 'denominator_id', 'denominator_result', 'result', 'score',
                                                 'identifier_result', 'identifier_parent', 'should_enter'])
@@ -598,7 +593,8 @@ class ToolBox(GlobalSessionToolBox):
                 result_dictionary['assortment{}'.format(i + 1)] = 1 if result_of_current_assortment >= 1 else 0
 
         numerator_id = self.scif[PRODUCT_FK].iat[0]
-        denominator_id = self.store_assortment.assortment_fk.iat[0]
+        denominator_id = self.scif.sub_category_fk.iat[0]
+
         result = float(np.sum(result_dictionary.values())) / portafolio_y_precious_data.unique_facings_target
 
         result_dict = {'kpi_name': kpi_name, 'kpi_fk': kpi_fk, 'numerator_id': numerator_id,
@@ -1041,6 +1037,9 @@ class ToolBox(GlobalSessionToolBox):
         relevant_scif = relevant_scif[relevant_scif[PRODUCT_TYPE].isin(product_type)]
         relevant_scif = relevant_scif[relevant_scif.product_short_name != 'Soda Other']
 
+        relevant_scif = relevant_scif[[PRODUCT_FK,SCENE_FK,denominator_entity,numerator_entity,FACINGS_IGN_STACK, MANUFACTURER_NAME]]
+
+
         if relevant_scif.empty:
             result = pd.np.nan
             denominator_id = 0
@@ -1063,6 +1062,7 @@ class ToolBox(GlobalSessionToolBox):
             result_dict = {'kpi_name': kpi_name, 'kpi_fk': kpi_fk, 'numerator_id': numerator_id,
                            'denominator_id': denominator_id, 'result': result}
             return result_dict
+
 
         group_by_bay_number_scif = bay_count_scif.groupby('bay_number').nunique()[MANUFACTURER_NAME]
 

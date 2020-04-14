@@ -431,8 +431,7 @@ if __name__ == '__main__':
     replace_configurations_file = True
     copy_configuration_file_to_traxexport(replace_configurations_file)
     projects = {
-        'marsru-prod': {'fffe707c-55f6-4f57-b8d1-67c76638f654': [],
-                        'ffcd785d-c621-4f15-b202-581b8f73c13f': []}
+        'batru': {'AF410EF7-90D8-431A-AF12-60DE6ED7438B': []}
                 }
     for project in projects:
         try:
@@ -446,12 +445,12 @@ if __name__ == '__main__':
             sessions = get_sessions_in_correct_format(sessions)
 
             # # Create both the script and kpi test results
-            # create_sanity_test(project=project, sessions_to_use=sessions, kpi_results=kpi_results,
-            #                    create_test_script=True, create_test_results=True)
+            create_sanity_test(project=project, sessions_to_use=sessions, kpi_results=kpi_results,
+                               create_test_script=False, create_test_results=True)
 
             # Create kpi test results only
-            create_sanity_test(project=project, sessions_to_use=sessions, kpi_results=kpi_results,
-                               create_test_script=True, create_test_results=True)
+            # create_sanity_test(project=project, sessions_to_use=sessions, kpi_results=kpi_results,
+            #                    create_test_script=True, create_test_results=True)
 
         except Exception as e:
             Log.error("Project {} failed to create sanity test with error {}".format(project, e))

@@ -63,6 +63,8 @@ class HEINZCRToolBox:
         self.current_date = datetime.now()
         self.extra_spaces_template = pd.read_excel(Const.EXTRA_SPACES_RELEVANT_SUB_CATEGORIES_PATH)
         self.store_targets = pd.read_excel(Const.STORE_TARGETS_PATH)
+        self.sub_category_weight = pd.read_excel(Const.SUB_CATEGORY_TARGET_PATH, sheetname='category_score')
+        self.kpi_weights = pd.read_excel(Const.SUB_CATEGORY_TARGET_PATH, sheetname='max_weight')
         self.store_assortment = PSAssortmentDataProvider(
             self.data_provider).execute(policy_name=None)
         try:
@@ -73,9 +75,14 @@ class HEINZCRToolBox:
             self.sub_category_assortment = \
                 self.sub_category_assortment[~self.sub_category_assortment['assortment_name'].str.contains(
                     'ASSORTMENT')]
+            self.sub_category_assortment = pd.merge(self.sub_category_assortment, self.sub_category_weight, how='left',
+                                                    left_on='sub_category',
+                                                    right_on='Category')
+
+
         except KeyError:
             self.sub_category_assortment = pd.DataFrame()
-
+        self.update_score_sub_category_weights()
         try:
             self.store_assortment_without_powerskus = \
                 self.store_assortment[self.store_assortment['assortment_name'].str.contains('ASSORTMENT')]
@@ -87,6 +94,13 @@ class HEINZCRToolBox:
         self.extra_spaces_results = pd.DataFrame(
             columns=['sub_category_fk', 'template_fk', 'count'])
 
+        self.powersku_scores = {}
+        self.powersku_empty = {}
+
+        self.powersku_bonus = {}
+        self.powersku_price = {}
+        self.powersku_sos = {}
+
     def main_calculation(self, *args, **kwargs):
         """
         This function calculates the KPI results.
@@ -97,33 +111,36 @@ class HEINZCRToolBox:
         self.adherence_results = self.heinz_global_price_adherence(pd.read_excel(Const.PRICE_ADHERENCE_TEMPLATE_PATH,
                                                                                  sheetname="Price Adherence"))
         self.extra_spaces_results = self.heinz_global_extra_spaces()
+        self.set_relevant_sub_categories()
 
         # this isn't relevant to the 'Perfect Score' calculation
         self.heinz_global_distribution_per_category()
         self.calculate_assortment()
 
         perfect_store_score = 0
-        perfect_store_score += self.calculate_powersku_assortment()
-        perfect_store_score += self.main_sos_calculation()
-        perfect_store_score += self.calculate_powersku_price_adherence()
-        perfect_store_score += self.calculate_perfect_store_extra_spaces()
-        perfect_store_score += self.check_bonus_question()
+        self.calculate_powersku_assortment()
+        self.main_sos_calculation()
+        self.calculate_powersku_price_adherence()
+        self.calculate_perfect_store_extra_spaces()
+        self.check_bonus_question()
 
-        relevant_target_df = \
-            self.store_targets[self.store_targets['Country'].str.encode('utf-8') == self.country.encode('utf-8')]
-        if not relevant_target_df.empty:
-            target = relevant_target_df['Store Execution Score'].iloc[0]
-        else:
-            target = 0
+        self.calculate_perfect_sub_category()
 
-        result = 1 if perfect_store_score >= target else 0
-
-        perfect_store_kpi_fk = self.common_v2.get_kpi_fk_by_kpi_type(Const.PERFECT_STORE)
-        self.common_v2.write_to_db_result(perfect_store_kpi_fk, numerator_id=Const.OWN_MANUFACTURER_FK,
-                                          denominator_id=self.store_id,
-                                          result=result, target=target,
-                                          score=perfect_store_score, identifier_result=Const.PERFECT_STORE)
-        return
+        # relevant_target_df = \
+        #     self.store_targets[self.store_targets['Country'].str.encode('utf-8') == self.country.encode('utf-8')]
+        # if not relevant_target_df.empty:
+        #     target = relevant_target_df['Store Execution Score'].iloc[0]
+        # else:
+        #     target = 0
+        #
+        # result = 1 if perfect_store_score >= target else 0
+        #
+        # perfect_store_kpi_fk = self.common_v2.get_kpi_fk_by_kpi_type(Const.PERFECT_STORE)
+        # self.common_v2.write_to_db_result(perfect_store_kpi_fk, numerator_id=Const.OWN_MANUFACTURER_FK,
+        #                                   denominator_id=self.store_id,
+        #                                   result=result, target=target,
+        #                                   score=perfect_store_score, identifier_result=Const.PERFECT_STORE)
+        # return
 
     def calculate_assortment(self):
         if self.store_assortment_without_powerskus.empty:
@@ -179,45 +196,68 @@ class HEINZCRToolBox:
         if self.sub_category_assortment.empty:
             return 0
 
+        total_presense_sku = 0
+        parent_kpi_fk = self.common_v2.get_kpi_fk_by_kpi_type(Const.PERFECT_STORE_SUB_CATEGORY)
         total_kpi_fk = self.common_v2.get_kpi_fk_by_kpi_type(Const.POWER_SKU_TOTAL)
         sub_category_kpi_fk = self.common_v2.get_kpi_fk_by_kpi_type(Const.POWER_SKU_SUB_CATEGORY)
         sku_kpi_fk = self.common_v2.get_kpi_fk_by_kpi_type(Const.POWER_SKU)
+        target_kpi_weight = float(
+            self.kpi_weights['Score'][self.kpi_weights['KPIs'] == Const.KPI_WEIGHTS['POWERSKU']].iloc[
+                0])
+
+        kpi_weight = self.get_kpi_weight('POWERSKU')
 
         products_in_session = self.scif[self.scif['facings'] > 0]['product_fk'].unique().tolist()
         self.sub_category_assortment['in_session'] = \
             self.sub_category_assortment.loc[:, 'product_fk'].isin(products_in_session)
+
         # save PowerSKU results at SKU level
-        for sku in self.sub_category_assortment[['product_fk', 'sub_category_fk', 'in_session']].itertuples():
+        for sku in self.sub_category_assortment[
+            ['product_fk', 'sub_category_fk', 'in_session', 'sub_category']].itertuples():
             parent_dict = self.common_v2.get_dictionary(
                 kpi_fk=sub_category_kpi_fk, sub_category_fk=sku.sub_category_fk)
+            relevant_sub_category_df = self.sub_category_assortment[
+                self.sub_category_assortment['sub_category'] == sku.sub_category]
+            if relevant_sub_category_df.empty:
+                sub_category_count = 0
+            else:
+                sub_category_count = len(relevant_sub_category_df)
+
             result = 1 if sku.in_session else 0
+
+            score = result * (target_kpi_weight / float(sub_category_count))
             self.common_v2.write_to_db_result(sku_kpi_fk, numerator_id=sku.product_fk,
-                                              denominator_id=sku.sub_category_fk,
+                                              denominator_id=sku.sub_category_fk, score=score,
                                               result=result, identifier_parent=parent_dict, should_enter=True)
         # save PowerSKU results at sub_category level
+
         aggregated_results = self.sub_category_assortment.groupby('sub_category_fk').agg(
             {'in_session': 'sum', 'product_fk': 'count'}).reset_index().rename(
             columns={'product_fk': 'product_count'})
         aggregated_results['percent_complete'] = \
             aggregated_results.loc[:, 'in_session'] / aggregated_results.loc[:, 'product_count']
-        aggregated_results['result'] = aggregated_results['percent_complete'] * (3.0 / len(aggregated_results))
+        aggregated_results['result'] = aggregated_results['percent_complete']
         for sub_category in aggregated_results.itertuples():
-            parent_dict = self.common_v2.get_dictionary(kpi_fk=total_kpi_fk)
+            # parent_dict = self.common_v2.get_dictionary(kpi_fk=total_kpi_fk)
             identifier_dict = self.common_v2.get_dictionary(kpi_fk=sub_category_kpi_fk,
                                                             sub_category_fk=sub_category.sub_category_fk)
+            weight_percent = 0
+            if self.country in self.sub_category_assortment.columns.to_list():
+                weight_value = self.sub_category_assortment[self.country][
+                    (self.sub_category_assortment.sub_category_fk == sub_category.sub_category_fk)].iloc[0]
+                if not pd.isna(weight_value):
+                    weight_percent = weight_value * .01
+
             result = sub_category.result
+            score = result * kpi_weight
+
+            self.powersku_scores[sub_category.sub_category_fk] = score
             self.common_v2.write_to_db_result(sub_category_kpi_fk, numerator_id=sub_category.sub_category_fk,
-                                              denominator_id=self.store_id, identifier_parent=parent_dict,
-                                              identifier_result=identifier_dict, result=result,
+                                              denominator_id=self.store_id,
+                                              identifier_parent=sub_category.sub_category_fk,
+                                              identifier_result=identifier_dict, result=result * 100, score=score,
+                                              weight=target_kpi_weight, target=target_kpi_weight,
                                               should_enter=True)
-        # save PowerSKU total score
-        total_score = aggregated_results['result'].sum()
-        total_dict = self.common_v2.get_dictionary(kpi_fk=total_kpi_fk)
-        self.common_v2.write_to_db_result(total_kpi_fk, numerator_id=Const.OWN_MANUFACTURER_FK,
-                                          denominator_id=self.store_id,
-                                          result=total_score, score=total_score, identifier_parent=Const.PERFECT_STORE,
-                                          identifier_result=total_dict, should_enter=True)
-        return total_score
 
     def heinz_global_distribution_per_category(self):
         relevant_stores = pd.DataFrame(columns=self.store_sos_policies.columns)
@@ -232,9 +272,9 @@ class HEINZCRToolBox:
             if not df_1.empty:
                 stores = self.store_sos_policies[(self.store_sos_policies['store_policy'] == row.store_policy)
                                                  & (
-                                                     self.store_sos_policies[
-                                                         'target_validity_start_date'] <= datetime.date(
-                                                         self.current_date))]
+                                                         self.store_sos_policies[
+                                                             'target_validity_start_date'] <= datetime.date(
+                                                     self.current_date))]
                 if stores.empty:
                     relevant_stores = stores
                 else:
@@ -273,6 +313,67 @@ class HEINZCRToolBox:
                 except Exception as e:
                     Log.warning(denominator_key + ' - - ' + denominator_val)
 
+    def calculate_perfect_store(self):
+        pass
+
+    def calculate_perfect_sub_category(self):
+        kpi_fk = self.common_v2.get_kpi_fk_by_kpi_type(Const.PERFECT_STORE_SUB_CATEGORY)
+        parent_kpi = self.common_v2.get_kpi_fk_by_kpi_type(Const.PERFECT_STORE)
+
+        total_score = 0
+        sub_category_fk_list = []
+        kpi_type_dict_scores = [self.powersku_scores, self.powersku_empty, self.powersku_price,
+                                self.powersku_sos]
+
+        for kpi_dict in kpi_type_dict_scores:
+            sub_category_fk_list.extend(kpi_dict.keys())
+
+        kpi_weight_perfect_store = 0
+        if self.country in self.sub_category_assortment.columns.to_list():
+            kpi_weight_perfect_store = self.sub_category_weight[self.country][
+                self.sub_category_weight['Category'] == Const.PERFECT_STORE_KPI_WEIGHT]
+
+            if not kpi_weight_perfect_store.empty:
+                kpi_weight_perfect_store = kpi_weight_perfect_store.iloc[0]
+
+        unique_sub_cat_fks = list(dict.fromkeys(sub_category_fk_list))
+
+        sub_category_fks = self.sub_category_weight.sub_category_fk.unique().tolist()
+        relevant_sub_cat_list = [x for x in sub_category_fks if str(x) != 'nan']
+
+        # relevant_sub_cat_list = self.sub_category_assortment['sub_category_fk'][
+        #     self.sub_category_assortment['Category'] != pd.np.nan].unique().tolist()
+        for sub_cat_fk in unique_sub_cat_fks:
+            if sub_cat_fk in relevant_sub_cat_list:
+                bonus_score = 0
+                try:
+                    bonus_score = self.powersku_bonus[sub_cat_fk]
+                except:
+                    pass
+
+                sub_cat_weight = self.get_weight(sub_cat_fk)
+                sub_cat_score = self.calculate_sub_category_sum(kpi_type_dict_scores, sub_cat_fk)
+
+                result = sub_cat_score
+
+                score = (result * sub_cat_weight) + bonus_score
+                total_score += score
+
+                self.common_v2.write_to_db_result(kpi_fk, numerator_id=sub_cat_fk,
+                                                  denominator_id=self.store_id,
+                                                  result=result, score=score,
+                                                  identifier_parent=parent_kpi,
+                                                  identifier_result=sub_cat_fk,
+                                                  weight=sub_cat_weight * 100,
+                                                  should_enter=True)
+
+        self.common_v2.write_to_db_result(parent_kpi, numerator_id=Const.OWN_MANUFACTURER_FK,
+                                          denominator_id=self.store_id,
+                                          result=total_score, score=total_score,
+                                          identifier_result=parent_kpi,
+                                          target=kpi_weight_perfect_store,
+                                          should_enter=True)
+
     def main_sos_calculation(self):
         number_of_passing_sub_categories = 0
         relevant_stores = pd.DataFrame(columns=self.store_sos_policies.columns)
@@ -288,9 +389,9 @@ class HEINZCRToolBox:
             if not df1.empty:
                 stores = self.store_sos_policies[(self.store_sos_policies['store_policy'] == row.store_policy)
                                                  & (
-                                                     self.store_sos_policies[
-                                                         'target_validity_start_date'] <= datetime.date(
-                                                         self.current_date))]
+                                                         self.store_sos_policies[
+                                                             'target_validity_start_date'] <= datetime.date(
+                                                     self.current_date))]
                 if stores.empty:
                     relevant_stores = stores
                 else:
@@ -400,37 +501,46 @@ class HEINZCRToolBox:
 
         # save aggregated results for each sub category
         total_dict = self.common_v2.get_dictionary(kpi_fk=total_sos_sub_category_kpi_fk)
+        kpi_weight = self.get_kpi_weight('SOS')
         for row in results_df.itertuples():
             identifier_result = \
                 self.common_v2.get_dictionary(kpi_fk=sos_sub_category_kpi_fk,
                                               sub_category_fk=row.sub_category_fk)
+
+            # sub_cat_weight = self.get_weight(row.sub_category_fk)
+            result = row.score
+            score = result * kpi_weight
+
+            self.powersku_sos[row.sub_category_fk] = score
             # limit results so that aggregated results can only add up to 3
             self.common_v2.write_to_db_result(sos_sub_category_kpi_fk,
                                               numerator_id=row.sub_category_fk,
                                               denominator_id=self.store_id,
-                                              result=row.score * (3 / float(len(results_df))),
-                                              identifier_parent=total_dict,
+                                              result=row.score, score=score,
+                                              identifier_parent=row.sub_category_fk,
                                               identifier_result=identifier_result,
+                                              weight=kpi_weight,
+                                              target=kpi_weight,
                                               should_enter=True)
-
-        # save total score for sos sub_category
-        number_of_passing_sub_categories = results_df['score'].sum()
-        number_of_possible_sub_categories = len(results_df)
-
-        # this ensures that this KPI doesn't return more than 3 possible points max for stores that have
-        # multiple sub category policies
-        store_result = (number_of_passing_sub_categories / float(number_of_possible_sub_categories)) * 3
-
-        self.common_v2.write_to_db_result(total_sos_sub_category_kpi_fk, numerator_id=Const.OWN_MANUFACTURER_FK,
-                                          denominator_id=self.store_id,
-                                          numerator_result=number_of_passing_sub_categories,
-                                          denominator_result=number_of_possible_sub_categories,
-                                          result=store_result,
-                                          score=store_result,
-                                          identifier_result=total_dict, identifier_parent=Const.PERFECT_STORE,
-                                          should_enter=True)
-
-        return store_result
+        #
+        # # save total score for sos sub_category
+        # number_of_passing_sub_categories = results_df['score'].sum()
+        # number_of_possible_sub_categories = len(results_df)
+        #
+        # # this ensures that this KPI doesn't return more than 3 possible points max for stores that have
+        # # multiple sub category policies
+        # store_result = (number_of_passing_sub_categories / float(number_of_possible_sub_categories)) * 3
+        #
+        # self.common_v2.write_to_db_result(total_sos_sub_category_kpi_fk, numerator_id=Const.OWN_MANUFACTURER_FK,
+        #                                   denominator_id=self.store_id,
+        #                                   numerator_result=number_of_passing_sub_categories,
+        #                                   denominator_result=number_of_possible_sub_categories,
+        #                                   result=store_result,
+        #                                   score=store_result,
+        #                                   identifier_result=total_dict, identifier_parent=Const.PERFECT_STORE,
+        #                                   should_enter=True)
+        #
+        # return store_result
 
     def calculate_powersku_price_adherence(self):
         adherence_kpi_fk = self.common_v2.get_kpi_fk_by_kpi_type(Const.POWER_SKU_PRICE_ADHERENCE)
@@ -441,12 +551,7 @@ class HEINZCRToolBox:
         total_dict = self.common_v2.get_dictionary(kpi_fk=adherence_total_kpi_fk)
 
         if self.sub_category_assortment.empty:
-            self.common_v2.write_to_db_result(adherence_total_kpi_fk, numerator_id=Const.OWN_MANUFACTURER_FK,
-                                              denominator_id=self.store_id,
-                                              result=0, identifier_result=total_dict,
-                                              identifier_parent=Const.PERFECT_STORE,
-                                              should_enter=True)
-            return 0
+            return False
 
         results = pd.merge(self.sub_category_assortment,
                            self.adherence_results, how='left', on='product_fk')
@@ -471,23 +576,20 @@ class HEINZCRToolBox:
         for row in aggregated_results.itertuples():
             identifier_result = self.common_v2.get_dictionary(kpi_fk=adherence_sub_category_kpi_fk,
                                                               sub_category_fk=row.sub_category_fk)
+            kpi_weight = self.get_kpi_weight('PRICE')
+            sub_cat_weight = self.get_weight(row.sub_category_fk)
             result = row.percent_complete
+            score = result * kpi_weight
+
+            self.powersku_price[row.sub_category_fk] = score
+
             self.common_v2.write_to_db_result(adherence_sub_category_kpi_fk, numerator_id=row.sub_category_fk,
-                                              denominator_id=self.store_id, result=result, score=result,
-                                              identifier_parent=total_dict, identifier_result=identifier_result,
+                                              denominator_id=self.store_id, result=result, score=score,
+                                              numerator_result=row.into_interval, denominator_result=row.product_count,
+                                              identifier_parent=row.sub_category_fk,
+                                              identifier_result=identifier_result,
+                                              weight=kpi_weight, target=kpi_weight,
                                               should_enter=True)
-        # this value is not necessarily a whole number
-        number_of_categories_meeting_price_adherence = aggregated_results['percent_complete'].sum()
-        number_of_possible_categories = len(aggregated_results)
-        self.common_v2.write_to_db_result(adherence_total_kpi_fk, numerator_id=Const.OWN_MANUFACTURER_FK,
-                                          denominator_id=self.store_id,
-                                          numerator_result=number_of_categories_meeting_price_adherence,
-                                          denominator_result=number_of_possible_categories,
-                                          result=number_of_categories_meeting_price_adherence,
-                                          score=number_of_categories_meeting_price_adherence,
-                                          identifier_result=total_dict, identifier_parent=Const.PERFECT_STORE,
-                                          should_enter=True)
-        return number_of_categories_meeting_price_adherence
 
     def heinz_global_price_adherence(self, config_df):
         # =============== remove after updating logic to support promotional pricing ===============
@@ -585,12 +687,10 @@ class HEINZCRToolBox:
             Const.PERFECT_STORE_EXTRA_SPACES_TOTAL)
         total_dict = self.common_v2.get_dictionary(kpi_fk=extra_spaces_total_kpi_fk)
 
+        sub_cats_for_store = self.relevant_sub_categories
+
         if self.extra_spaces_results.empty:
-            self.common_v2.write_to_db_result(extra_spaces_total_kpi_fk, numerator_id=Const.OWN_MANUFACTURER_FK,
-                                              denominator_id=self.store_id, result=0, score=0,
-                                              identifier_parent=Const.PERFECT_STORE,
-                                              identifier_result=total_dict, should_enter=True)
-            return 0
+            pass
 
         try:
             relevant_sub_categories = [x.strip() for x in self.extra_spaces_template[
@@ -600,36 +700,37 @@ class HEINZCRToolBox:
             Log.warning(
                 'No relevant sub_categories for the Extra Spaces KPI found for the following country: {}'.format(
                     self.country))
-            return 0
 
         self.extra_spaces_results = pd.merge(self.extra_spaces_results,
                                              self.all_products.loc[:, [
-                                                 'sub_category_fk', 'sub_category']].dropna().drop_duplicates(),
+                                                                          'sub_category_fk',
+                                                                          'sub_category']].dropna().drop_duplicates(),
                                              how='left', on='sub_category_fk')
 
         relevant_extra_spaces = \
             self.extra_spaces_results[self.extra_spaces_results['sub_category'].isin(
                 relevant_sub_categories)]
-
+        kpi_weight = self.get_kpi_weight('EXTRA')
         for row in relevant_extra_spaces.itertuples():
+            weight = self.get_weight(row.sub_category_fk)
+            self.powersku_empty[row.sub_category_fk] = 1 * kpi_weight
+            score = result = 1
+
+            if row.sub_category_fk in sub_cats_for_store:
+                sub_cats_for_store.remove(row.sub_category_fk)
+
             self.common_v2.write_to_db_result(extra_spaces_kpi_fk, numerator_id=row.sub_category_fk,
-                                              denominator_id=row.template_fk, result=1, identifier_parent=total_dict,
-                                              should_enter=True)
+                                              denominator_id=row.template_fk, result=result, score=score,
+                                              identifier_parent=row.sub_category_fk,
+                                              target=1, should_enter=True)
 
-        number_of_extra_spaces = relevant_extra_spaces['sub_category_fk'].nunique()
-        score = 1 if number_of_extra_spaces >= 2 else 0
-
-        if score == 0:
-            if self.survey.check_survey_answer(('question_fk', Const.EXTRA_SPACES_SURVEY_QUESTION_FK), 'Yes,yes,si,Si'):
-                score = 1
-
-        self.common_v2.write_to_db_result(extra_spaces_total_kpi_fk, numerator_id=Const.OWN_MANUFACTURER_FK,
-                                          denominator_id=self.store_id,
-                                          result=number_of_extra_spaces, score=score,
-                                          identifier_parent=Const.PERFECT_STORE,
-                                          identifier_result=total_dict, should_enter=True)
-
-        return score
+        for sub_cat_fk in sub_cats_for_store:
+            result = score = 0
+            self.powersku_empty[sub_cat_fk] = 0
+            self.common_v2.write_to_db_result(extra_spaces_kpi_fk, numerator_id=sub_cat_fk,
+                                              denominator_id=0, result=result, score=score,
+                                              identifier_parent=sub_cat_fk,
+                                              target=1, should_enter=True)
 
     def heinz_global_extra_spaces(self):
         try:
@@ -675,18 +776,70 @@ class HEINZCRToolBox:
         return results_df
 
     def check_bonus_question(self):
+        bonus_kpi_fk = self.common_v2.get_kpi_fk_by_kpi_type(Const.BONUS_QUESTION_SUB_CATEGORY)
+        bonus_weight = self.kpi_weights['Score'][self.kpi_weights['KPIs'] == Const.KPI_WEIGHTS['Bonus']].iloc[0]
+
+        sub_category_fks = self.sub_category_weight.sub_category_fk.unique().tolist()
+        sub_category_fks = [x for x in sub_category_fks if str(x) != 'nan']
         if self.survey.check_survey_answer(('question_fk', Const.BONUS_QUESTION_FK), 'Yes,yes,si,Si'):
             result = 1
         else:
             result = 0
 
-        bonus_kpi_fk = self.common_v2.get_kpi_fk_by_kpi_type(
-            Const.BONUS_QUESTION)
-        self.common_v2.write_to_db_result(bonus_kpi_fk, numerator_id=Const.OWN_MANUFACTURER_FK,
-                                          denominator_id=self.store_id,
-                                          result=result, score=result, identifier_parent=Const.PERFECT_STORE,
-                                          should_enter=True)
-        return result
+        for sub_cat_fk in sub_category_fks:
+            # sub_cat = self.sub_category_assortment['CATEGORY'][ self.sub_category_assortment['sub_category_fk']== sub_cat_fk].iloc[0]
+            sub_cat_weight = self.get_weight(sub_cat_fk)
+
+            score = result * sub_cat_weight
+            target_weight = bonus_weight * sub_cat_weight
+            self.powersku_bonus[sub_cat_fk] = score
+
+            self.common_v2.write_to_db_result(bonus_kpi_fk, numerator_id=sub_cat_fk,
+                                              denominator_id=self.store_id,
+                                              result=result, score=score, identifier_parent=sub_cat_fk,
+                                              weight=target_weight, target=target_weight,
+                                              should_enter=True)
 
     def commit_results_data(self):
         self.common_v2.commit_results_data()
+
+    def update_score_sub_category_weights(self):
+        all_sub_category_fks = self.all_products[['sub_category', 'sub_category_fk']].drop_duplicates()
+        self.sub_category_weight = pd.merge(self.sub_category_weight, all_sub_category_fks, left_on='Category',
+                                            right_on='sub_category',
+                                            how='left')
+
+    def get_weight(self, sub_category_fk):
+        weight_value = 0
+
+        if self.country in self.sub_category_weight.columns.to_list():
+            weight_df = self.sub_category_weight[self.country][
+                (self.sub_category_weight.sub_category_fk == sub_category_fk)]
+            if weight_df.empty:
+                return 0
+
+            weight_value = weight_df.iloc[0]
+
+            if pd.isna(weight_value):
+                weight_value = 0
+
+        weight = weight_value * 0.01
+        return weight
+
+    def get_kpi_weight(self, kpi_name):
+        weight = self.kpi_weights['Score'][self.kpi_weights['KPIs'] == Const.KPI_WEIGHTS[kpi_name]].iloc[0]
+        return weight
+
+    def calculate_sub_category_sum(self, dict_list, sub_cat_fk):
+        total_score = 0
+        for item in dict_list:
+            try:
+                total_score += item[sub_cat_fk]
+            except:
+                pass
+
+        return total_score
+
+    def set_relevant_sub_categories(self):
+        df = self.sub_category_weight[['Category', 'sub_category_fk', self.country]].dropna()
+        self.relevant_sub_categories = df.sub_category_fk.to_list()
