@@ -2,7 +2,7 @@
 from Trax.Utils.Logging.Logger import Log
 from KPIUtils_v2.Utils.Decorators.Decorators import log_runtime
 from KPIUtils_v2.DB.CommonV2 import Common
-from Projects.CCJP.Utils.KPISceneToolBox import SceneToolBox
+from Projects.CCJP_SAND.Utils.KPISceneToolBox import SceneToolBox
 
 __author__ = 'nidhin'
 

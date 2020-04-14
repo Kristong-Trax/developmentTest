@@ -1,6 +1,6 @@
 
 from Trax.Apps.Services.KEngine.Handlers.Utils.Scripts import SceneBaseClass
-from Projects.CCJP.KPISceneGenerator import SceneGenerator
+from Projects.CCJP_SAND.KPISceneGenerator import SceneGenerator
 
 __author__ = 'nidhin'
 

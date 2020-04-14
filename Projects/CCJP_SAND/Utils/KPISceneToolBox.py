@@ -2,7 +2,7 @@ import os
 import pandas as pd
 
 from Trax.Utils.Logging.Logger import Log
-from Projects.CCJP.Data.LocalConsts import Consts
+from Projects.CCJP_SAND.Data.LocalConsts import Consts
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from KPIUtils_v2.Utils.GlobalScripts.Scripts import GlobalSceneToolBox
 
