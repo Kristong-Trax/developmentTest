@@ -473,27 +473,17 @@ class Test_PEPSICOUK(TestFunctionalCase):
             test_result_list.append(self.check_kpi_results(kpi_result, expected_result) == 1)
         self.assertTrue(all(test_result_list))
 
-    def test_whatever(self):
-        self.mock_scene_item_facts(pd.read_excel(DataTestUnitPEPSICOUK.test_case_1, sheetname='scif'))
-        self.mock_match_product_in_scene(pd.read_excel(DataTestUnitPEPSICOUK.test_case_1, sheetname='matches'))
-        self.mock_scene_info(DataTestUnitPEPSICOUK.scene_info)
-        self.mock_scene_kpi_results(DataTestUnitPEPSICOUK.scene_kpi_results_test_case_1)
-        tool_box = PepsicoUtil(self.output, self.data_provider_mock)
-        # print tool_box.exclusion_template
-        # print tool_box.probe_groups
-        # print tool_box.lvl3_ass_result[['product_fk', 'in_store']]
-        f = FacingsPerProductKpi(self.data_provider_mock, config_params={})
-        f.calculate()
-        # print av.util
-        facings_res = pd.DataFrame(f.kpi_results)[['numerator_id', 'numerator_result', 'denominator_result', 'result']]
-        print facings_res
-        # print facings_res[['kpi_fk', 'numerator_id', , 'numerator_result']]
-        # aval_res['kpi_type'] = tool_box.HERO_SKU_AVAILABILITY_SKU
-        # av_all = HeroAvailabilityKpi(self.data_provider_mock, config_params={}, dependencies_data=aval_res)
-        # av_all.calculate()
-        # print av_all.util
-        # # print pd.DataFrame(av_all.kpi_results)[['numerator_id', 'result']]
-        # # print tool_box.kpi_results_check
-        # print av.util is av_all.util
-        # #     print tool_box.scene_kpi_results
-        # #     print tool_box.scene_info
+    # def test_whatever(self):
+    #     self.mock_scene_item_facts(pd.read_excel(DataTestUnitPEPSICOUK.test_case_1, sheetname='scif'))
+    #     self.mock_match_product_in_scene(pd.read_excel(DataTestUnitPEPSICOUK.test_case_1, sheetname='matches'))
+    #     self.mock_scene_info(DataTestUnitPEPSICOUK.scene_info)
+    #     self.mock_scene_kpi_results(DataTestUnitPEPSICOUK.scene_kpi_results_test_case_1)
+    #     tool_box = PepsicoUtil(self.output, self.data_provider_mock)
+    #     # print tool_box.exclusion_template
+    #     # print tool_box.probe_groups
+    #     # print tool_box.lvl3_ass_result[['product_fk', 'in_store']]
+    #     f = FacingsPerProductKpi(self.data_provider_mock, config_params={})
+    #     f.calculate()
+    #     # print av.util
+    #     facings_res = pd.DataFrame(f.kpi_results)[['numerator_id', 'numerator_result', 'denominator_result', 'result']]
+    #     print facings_res
