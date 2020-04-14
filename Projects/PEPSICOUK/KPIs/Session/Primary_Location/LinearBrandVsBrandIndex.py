@@ -42,6 +42,6 @@ class LinearBrandVsBrandIndexKpi(UnifiedCalculationsScript):
                                     numerator_result=num_num_linear, denominator_id=row.denominator_id,
                                     denominator_result=denom_num_linear, result=index, score=index)
             self.util.add_kpi_result_to_kpi_results_df([row.kpi_level_2_fk, row.numerator_id, row.denominator_id, index,
-                                                   index])
+                                                        index, None])
 
         self.util.reset_filtered_scif_and_matches_to_exclusion_all_state()

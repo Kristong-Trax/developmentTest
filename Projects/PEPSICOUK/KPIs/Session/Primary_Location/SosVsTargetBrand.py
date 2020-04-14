@@ -41,7 +41,8 @@ class SosVsTargetBrandKpi(UnifiedCalculationsScript):
                                     denominator_id=row[ScifConsts.CATEGORY_FK],
                                     denominator_result=row['cat_len'], result=row['sos'] * 100)
             self.util.add_kpi_result_to_kpi_results_df(
-                        [kpi_fk, row[ScifConsts.BRAND_FK], row[ScifConsts.CATEGORY_FK], row['sos'] * 100, None])
+                        [kpi_fk, row[ScifConsts.BRAND_FK], row[ScifConsts.CATEGORY_FK], row['sos'] * 100, None,
+                         None])
 
 
     # def calculate_brand_out_of_category_sos_vs_target(self, sos_targets):

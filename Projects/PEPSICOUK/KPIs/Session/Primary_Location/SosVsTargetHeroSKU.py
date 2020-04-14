@@ -36,7 +36,6 @@ class SosVsTargetHeroSkuKpi(UnifiedCalculationsScript):
         hero_list = self.util.get_available_hero_sku_list(self.dependencies_data)
         filtered_scif = filtered_scif[filtered_scif[ScifConsts.PRODUCT_FK].isin(hero_list)]
         if not filtered_scif.empty:
-
             hero_cat_df = filtered_scif.groupby([ScifConsts.PRODUCT_FK, ScifConsts.CATEGORY_FK],
                                                 as_index=False).agg({'updated_gross_length': np.sum})
             hero_cat_df = hero_cat_df.merge(category_df, on=ScifConsts.CATEGORY_FK, how='left')
@@ -47,7 +46,7 @@ class SosVsTargetHeroSkuKpi(UnifiedCalculationsScript):
                                         denominator_id=row[ScifConsts.CATEGORY_FK],
                                         denominator_result=row['cat_len'], result=row['sos'] * 100)
                 self.util.add_kpi_result_to_kpi_results_df(
-                    [kpi_fk, row[ScifConsts.PRODUCT_FK], row[ScifConsts.CATEGORY_FK], row['sos'] * 100, None])
+                    [kpi_fk, row[ScifConsts.PRODUCT_FK], row[ScifConsts.CATEGORY_FK], row['sos'] * 100, None, None])
 
     # def calculate_hero_sku_sos_vs_target(self, sos_targets):
     #     kpi_filtered_products = self.util.filtered_scif['product_fk'].unique().tolist()

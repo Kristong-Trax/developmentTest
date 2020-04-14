@@ -24,7 +24,7 @@ class HeroAvailabilityKpi(UnifiedCalculationsScript):
                                     denominator_id=self.util.store_id, denominator_result=total_skus_in_ass,
                                     score=score)
             self.util.add_kpi_result_to_kpi_results_df(
-                [distribution_kpi_fk, self.util.own_manuf_fk, self.util.store_id, res, score])
+                [distribution_kpi_fk, self.util.own_manuf_fk, self.util.store_id, res, score, None])
 
     def kpi_type(self):
         pass

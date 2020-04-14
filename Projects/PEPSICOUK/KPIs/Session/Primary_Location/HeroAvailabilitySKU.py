@@ -28,7 +28,7 @@ class HeroAvailabilitySkuKpi(UnifiedCalculationsScript):
             custom_res = self.util.commontools.get_yes_no_result(score)
             self.write_to_db_result(fk=result.kpi_fk_lvl3, numerator_id=result.product_fk,
                                     numerator_result=result.in_store, result=custom_res,
-                                    denominator_id=self.util.store_id, denominator_result=1, score=score)
+                                    denominator_id=self.util.own_manuf_fk, denominator_result=1, score=score)
             self.util.add_kpi_result_to_kpi_results_df(
                 [result['kpi_fk_lvl3'], result['product_fk'], self.util.store_id, custom_res,
-                 score])
+                 score, None])

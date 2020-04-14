@@ -16,13 +16,10 @@ class SosVsTargetSubBrandKpi(UnifiedCalculationsScript):
         pass
 
     def calculate(self):
-        # sos_targets = self.util.sos_vs_target_targets.copy()
-        # sos_targets = sos_targets[sos_targets['type'] == self._config_params['kpi_type']]
         self.util.filtered_scif, self.util.filtered_matches = \
             self.util.commontools.set_filtered_scif_and_matches_for_specific_kpi(self.util.filtered_scif,
                                                                                  self.util.filtered_matches,
                                                                                  self.util.SUB_BRAND_SOS)
-        # self.calculate_sub_brand_sos_vs_target(sos_targets)
         self.calculate_sub_brand_out_of_category_sos()
         self.util.reset_filtered_scif_and_matches_to_exclusion_all_state()
 
@@ -36,13 +33,16 @@ class SosVsTargetSubBrandKpi(UnifiedCalculationsScript):
                                              as_index=False).agg({'updated_gross_length': np.sum})
         sub_brand_cat_df = sub_brand_cat_df.merge(category_df, on=ScifConsts.CATEGORY_FK, how='left')
         sub_brand_cat_df['sos'] = sub_brand_cat_df['updated_gross_length'] / sub_brand_cat_df['cat_len']
+        sub_brand_cust_entity = self.util.custom_entities[self.util.custom_entities['entity_type'] == 'sub_brand']
+        sub_brand_cat_df = sub_brand_cat_df.merge(sub_brand_cust_entity, left_on= 'sub_brand', right_on='name',
+                                                  how='left')
         for i, row in sub_brand_cat_df.iterrows():
-            self.write_to_db_result(fk=kpi_fk, numerator_id=row["sub_brand"],
+            self.write_to_db_result(fk=kpi_fk, numerator_id=row["pk"],
                                     numerator_result=row['updated_gross_length'],
                                     denominator_id=row[ScifConsts.CATEGORY_FK],
                                     denominator_result=row['cat_len'], result=row['sos'] * 100)
             self.util.add_kpi_result_to_kpi_results_df(
-                [kpi_fk, row["sub_brand"], row[ScifConsts.CATEGORY_FK], row['sos'] * 100, None])
+                [kpi_fk, row["sub_brand"], row[ScifConsts.CATEGORY_FK], row['sos'] * 100, None, None])
 
     # def calculate_sub_brand_sos_vs_target(self, sos_targets):
     #     sos_targets = sos_targets[sos_targets['type'] == self.util.SUB_BRAND_SPACE_TO_SALES_INDEX]

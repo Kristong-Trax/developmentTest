@@ -37,4 +37,4 @@ class PriceKpi(UnifiedCalculationsScript):
             if prices_list:
                 price = max(prices_list)
         self.write_to_db_result(fk=kpi_fk, numerator_id=sku, result=price)
-        self.util.add_kpi_result_to_kpi_results_df([kpi_fk, sku, None, price, None])
+        self.util.add_kpi_result_to_kpi_results_df([kpi_fk, sku, None, price, None, None])

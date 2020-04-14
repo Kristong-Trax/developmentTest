@@ -142,7 +142,8 @@ class PepsicoUtil(UnifiedKPISingleton):
         self.own_manuf_fk = self.all_products[self.all_products['manufacturer_name'] == self.PEPSICO]['manufacturer_fk'].values[0]
 
         self.scene_kpi_results = self.get_results_of_scene_level_kpis()
-        self.kpi_results_check = pd.DataFrame(columns=['kpi_fk', 'numerator', 'denominator', 'result', 'score'])
+        self.kpi_results_check = pd.DataFrame(columns=['kpi_fk', 'numerator', 'denominator', 'result', 'score',
+                                                       'context'])
         self.sos_vs_target_targets = self.construct_sos_vs_target_base_df()
 
         self.all_targets_unpacked = self.commontools.all_targets_unpacked.copy()

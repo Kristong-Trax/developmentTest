@@ -35,7 +35,7 @@ class ProductBlockingKpi(UnifiedCalculationsScript):
         kpi_fk = self.util.common.get_kpi_fk_by_kpi_type(self.util.PRODUCT_BLOCKING)
 
         for i, row in external_targets.iterrows():
-            print row['Group Name']
+            # print row['Group Name']
             group_fk = self.util.custom_entities[self.util.custom_entities['name'] == row['Group Name']]['pk'].values[0]
             # filters = self.util.get_block_and_adjacency_filters(row)
             filters = self.util.get_block_filters(row)
@@ -54,7 +54,11 @@ class ProductBlockingKpi(UnifiedCalculationsScript):
                     result = self.util.commontools.get_yes_no_result(1)
                     orientation = result_df['orientation'].values[0]
                     score = self.util.commontools.get_kpi_result_value_pk_by_value(orientation.upper())
-            print score
+            # print score
             self.write_to_db_result(fk=kpi_fk, numerator_id=group_fk, denominator_id=self.util.store_id,
                                     numerator_result=max_ratio * 100,
                                     score=score, result=result, target=target, by_scene=True)
+            self.util.block_results = self.util.block_results.append(pd.DataFrame([{'Group Name': row['Group Name'],
+                                                                                    'Score':
+                                                                                        result_df['is_block'].values[
+                                                                                            0] if not result_df.empty else False}]))

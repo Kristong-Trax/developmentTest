@@ -18,7 +18,7 @@ class HeroSKUAvailabilityByHeroTypeKpi(UnifiedCalculationsScript):
         if not lvl3_ass_res_df.empty:
             location_type_fk = self.util.scif[self.util.scif[ScifConsts.LOCATION_TYPE] == 'Primary Shelf']\
                 [ScifConsts.LOCATION_TYPE_FK].values[0]
-            product_hero_df = self.util.products[[ScifConsts.PRODUCT_FK, self.util.HERO_SKU_LABEL]]
+            product_hero_df = self.util.all_products[[ScifConsts.PRODUCT_FK, self.util.HERO_SKU_LABEL]]
             lvl3_ass_res_df = lvl3_ass_res_df.merge(product_hero_df, left_on='numerator_id',
                                                     right_on=ScifConsts.PRODUCT_FK,
                                                     how='left')
@@ -35,7 +35,7 @@ class HeroSKUAvailabilityByHeroTypeKpi(UnifiedCalculationsScript):
                                         denominator_id=res['entity_fk'], denominator_result=res['count'],
                                         score=res['score'], context_id=location_type_fk)
                 self.util.add_kpi_result_to_kpi_results_df(
-                    [kpi_fk, res['entity_fk'], res['entity_fk'], res['result'], res['score']])
+                    [kpi_fk, res['entity_fk'], res['entity_fk'], res['result'], res['score'], location_type_fk])
 
     def kpi_type(self):
         pass

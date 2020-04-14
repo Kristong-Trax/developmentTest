@@ -42,11 +42,12 @@ class LinearSpacePerProductKpi(UnifiedCalculationsScript):
 
             for i, row in result_df.iterrows():
                 self.write_to_db_result(fk=kpi_fk, numerator_result=row[MatchesConsts.SHELF_NUMBER],
-                                        result=MatchesConsts.WIDTH_MM_ADVANCE,
+                                        result=row[MatchesConsts.WIDTH_MM_ADVANCE],
                                         numerator_id=row[MatchesConsts.PRODUCT_FK], denominator_id=row['bay_fk'],
                                         denominator_result=row[MatchesConsts.BAY_NUMBER], context_id=row['shelf_fk'],
                                         by_scene=True)
                 self.util.add_kpi_result_to_kpi_results_df(
-                    [kpi_fk, row[MatchesConsts.PRODUCT_FK], row['bay_fk'], MatchesConsts.WIDTH_MM_ADVANCE, None])
+                    [kpi_fk, row[MatchesConsts.PRODUCT_FK], row['bay_fk'], row[MatchesConsts.WIDTH_MM_ADVANCE], None,
+                     row['shelf_fk']])
 
         self.util.reset_filtered_scif_and_matches_to_exclusion_all_state()

@@ -47,7 +47,7 @@ class FacingsPerProductKpi(UnifiedCalculationsScript):
                                         context_id=row['shelf_fk'],
                                         by_scene=True)
                 self.util.add_kpi_result_to_kpi_results_df(
-                    [kpi_fk, row[MatchesConsts.PRODUCT_FK], row['bay_fk'], row['count'], None])
+                    [kpi_fk, row[MatchesConsts.PRODUCT_FK], row['bay_fk'], row['count'], None, row['shelf_fk']])
 
         self.util.reset_filtered_scif_and_matches_to_exclusion_all_state()
 
