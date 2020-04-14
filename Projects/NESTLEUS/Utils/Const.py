@@ -58,8 +58,9 @@ WATER_TEMPLATES = {
     'water_display': 7
 }
 
-WATER_CATEGORY = {
-    'water': 29
+CATEGORIES = {
+    'water': 29,
+    'general': 0
 }
 
 SHELF_POSITION = {
@@ -68,5 +69,3 @@ SHELF_POSITION = {
     'EYE': 3,
     'TOP': 4
 }
-
-def mm_to_feet(n): return n / 1000.0 * 3.28084

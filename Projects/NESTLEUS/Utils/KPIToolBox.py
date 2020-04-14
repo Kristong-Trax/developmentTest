@@ -25,6 +25,7 @@ __author__ = 'nicolaske'
 KPI_RESULT = 'report.kpi_results'
 KPK_RESULT = 'report.kpk_results'
 KPS_RESULT = 'report.kps_results'
+IRRELEVANT = 'Irrelevant'
 
 
 class NESTLEUSToolBox:
@@ -72,6 +73,9 @@ class NESTLEUSToolBox:
         self.match_product_in_scene = self.match_product_in_scene[self.match_product_in_scene['stacking_layer'] == 1]
         self.assortment = Assortment(self.data_provider, common=self.common_v1)
         self.own_manufacturer_fk = int(self.data_provider.own_manufacturer.param_value.values[0])
+        self.mpis = self.match_product_in_scene\
+            .merge(self.products, how="left", on="product_fk", suffixes=('', '_products')) \
+            .merge(self.scene_info, how="left", on="scene_fk", suffixes=('', '_info'))
 
     def main_calculation(self, *args, **kwargs):
         """
@@ -81,14 +85,12 @@ class NESTLEUSToolBox:
         # kpi_set_fk = kwargs['kpi_set_fk']
         # self.calculate_facing_count_and_linear_feet(kpi_set_fk=kpi_set_fk)
 
-        fk_template_water_aisle = 2
-        fk_template_water_display = 7
-
-        self.calculate_facing_count_and_linear_feet()
+        self.calculate_facing_count_and_linear_feet(Const.WATER_TEMPLATES['water_display'])
+        self.calculate_facing_count_and_linear_feet(Const.WATER_TEMPLATES['water_aisle'])
         self.calculate_base_footage()
         self.calculate_facings_per_shelf_level()
-        self.calculate_display_type(fk_template_water_aisle)
-        self.calculate_display_type(fk_template_water_aisle, "NESTLE HOLDINGS INC")
+        self.calculate_display_type(Const.WATER_TEMPLATES['water_display'])
+        self.calculate_display_type(Const.WATER_TEMPLATES['water_display'], "NESTLE HOLDINGS INC")
 
     @staticmethod
     def get_shelf_map():
@@ -101,6 +103,10 @@ class NESTLEUSToolBox:
         shelf_map = {(x+1, y+1): col for y, row in shelf_map.iterrows() for x, col in enumerate(row) if pd.notna(col)}
 
         return shelf_map
+
+    @staticmethod
+    def mm_to_feet(n):
+        return n / 1000.0 * 3.28084
 
     # def calculate_facing_count_and_linear_feet(self, kpi_set_fk=None):
     #     kpi_name_facing_count = 'FACING_COUNT'
@@ -134,7 +140,7 @@ class NESTLEUSToolBox:
     #                 if numerator_length > 0:
     #                     self.common.write_to_db_res
 
-    def calculate_facing_count_and_linear_feet(self):
+    def calculate_facing_count_and_linear_feet(self, template):
         kpis = {
             'facings': 909,
             'facings_ign_stack': 910,
@@ -142,42 +148,37 @@ class NESTLEUSToolBox:
             'net_len_ign_stack': 912
         }
 
-        water_scif = self.scif[self.scif['template_fk'].isin(Const.WATER_TEMPLATES.values())]
-        water_scif = water_scif[water_scif['category_fk'].isin(Const.WATER_CATEGORY.values())]
-
-        sums = {key: water_scif[key].sum() for key in kpis.keys()}
+        water_scif = self.scif[self.scif['category_fk'].isin(Const.CATEGORIES)]
+        water_scif = water_scif[water_scif['template_fk'] == template]
+        water_scif = water_scif[water_scif['product_name'] != IRRELEVANT]
+        sums = {kpi: water_scif[kpi].sum() for kpi in kpis.keys()}
 
         for row in water_scif.itertuples():
             for key, fk in kpis.items():
-                numerator = Const.mm_to_feet(getattr(row, key)) if fk in (911, 912) else getattr(row, key)
-                denominator = sums.get(key)
-                result = numerator / float(denominator)
+                numerator = self.mm_to_feet(getattr(row, key)) if fk in (911, 912) else getattr(row, key)
 
                 self.common.write_to_db_result(
                     fk=fk,
                     numerator_id=row.product_fk,
                     numerator_result=numerator,
                     denominator_id=row.template_fk,
-                    denominator_result=denominator,
-                    result=result
+                    denominator_result=sums.get(key),
+                    result=numerator
                 )
 
     def calculate_base_footage(self):
         water_aisle_base_footage_kpi_fk = 913
-        category = 'Water'
-        template = 'Water Aisle'
 
         store_id = self.session_info.get_value(0, 'store_fk')
 
-        mpis = self.match_product_in_scene.merge(self.products, how="left", on="product_fk", suffixes=('', '_products')) \
-            .merge(self.scene_info, how="left", on="scene_fk", suffixes=('', '_info'))
-        water_category = mpis[mpis['category_fk'] == 29]
+        water_category = self.mpis[self.mpis['category_fk'].isin(Const.CATEGORIES)]
         water_aisle = water_category[water_category['template_fk'] == 2]
+        water_aisle = water_aisle[water_aisle['product_name'] != IRRELEVANT]
         water_aisle_bottom_shelf = water_aisle[water_aisle['shelf_number_from_bottom'] == 1]
         water_aisle_bottom_shelf_ign_stacking = water_aisle_bottom_shelf[water_aisle_bottom_shelf['stacking_layer'] == 1]
 
         base_footage = water_aisle_bottom_shelf_ign_stacking['width_mm_advance'].sum()
-        base_footage = Const.mm_to_feet(base_footage)
+        base_footage = self.mm_to_feet(base_footage)
 
         self.common.write_to_db_result(
             fk=water_aisle_base_footage_kpi_fk,
@@ -190,16 +191,15 @@ class NESTLEUSToolBox:
 
     def calculate_facings_per_shelf_level(self):
         kpi_id = 914
-        mpis = self.match_product_in_scene
 
-        mpis_scene_bays = mpis.groupby(by=['scene_fk', 'bay_number'])['shelf_number'].max()\
+        mpis_scene_bays = self.mpis.groupby(by=['scene_fk', 'bay_number'])['shelf_number'].max() \
             .reset_index(name='total_number_of_shelves')
 
         num_shelves_by_bay = {
             (row.scene_fk, row.bay_number): row.total_number_of_shelves for row in mpis_scene_bays.itertuples()
         }
 
-        mpis['number_of_shelves'] = mpis.apply(
+        self.mpis['number_of_shelves'] = self.mpis.apply(
             lambda row: num_shelves_by_bay.get((row.scene_fk, row.bay_number)), axis=1
         )
 
@@ -216,9 +216,10 @@ class NESTLEUSToolBox:
 
             return shelf_position_id
 
-        mpis['shelf_position'] = mpis.apply(get_shelf_position, axis=1)
+        self.mpis['shelf_position'] = self.mpis.apply(get_shelf_position, axis=1)
 
-        bottom_layer = mpis[mpis['stacking_layer'] == 1]
+        bottom_layer = self.mpis[self.mpis['stacking_layer'] == 1]
+        bottom_layer = bottom_layer[bottom_layer['product_name'] != IRRELEVANT]
 
         num_product_facings_by_shelf_position = bottom_layer.groupby(['product_fk', 'shelf_position'])['product_fk']\
             .count().reset_index(name='product_count_per_shelf_position')
@@ -244,6 +245,7 @@ class NESTLEUSToolBox:
 
         scif = self.scif
         display = scif[scif['template_fk'] == display_type_id]
+        display = display[display['product_name'] != IRRELEVANT]
 
         if manufacturer_name:
             display = display[display['manufacturer_local_name'] == manufacturer_name]
