@@ -1,13 +1,8 @@
 # from Trax.Utils.Testing.Case import TestCase, MockingTestCase
 from Trax.Apps.Core.Testing.BaseCase import TestFunctionalCase
-from Trax.Data.Testing.SeedNew import Seeder
-from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from mock import MagicMock
 from Projects.PEPSICOUK.KPIs.Util import PepsicoUtil
 from Projects.PEPSICOUK.Tests.data_test_unit_pepsicouk import DataTestUnitPEPSICOUK, DataScores
-from Trax.Algo.Calculations.Core.DataProvider import Output
-from mock import patch
-import os
 import pandas as pd
 from pandas.util.testing import assert_frame_equal
 from Projects.PEPSICOUK.KPIs.Session.Primary_Location.HeroAvailabilitySKU import HeroAvailabilitySkuKpi
@@ -35,7 +30,6 @@ def get_exclusion_template_df_all_tests():
     return template_df
 
 
-# @skip('in development')
 class Test_PEPSICOUK(TestFunctionalCase):
     # template_df_mock = get_exclusion_template_df_all_tests()
 
