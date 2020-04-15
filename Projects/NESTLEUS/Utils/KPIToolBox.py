@@ -148,7 +148,7 @@ class NESTLEUSToolBox:
             'net_len_ign_stack': 912
         }
 
-        water_scif = self.scif[self.scif['category_fk'].isin(Const.CATEGORIES)]
+        water_scif = self.scif[self.scif['category_fk'].isin(Const.CATEGORIES.values())]
         water_scif = water_scif[water_scif['template_fk'] == template]
         water_scif = water_scif[water_scif['product_name'] != IRRELEVANT]
         sums = {kpi: water_scif[kpi].sum() for kpi in kpis.keys()}
@@ -168,7 +168,6 @@ class NESTLEUSToolBox:
 
     def calculate_base_footage(self):
         water_aisle_base_footage_kpi_fk = 913
-
         store_id = self.session_info.get_value(0, 'store_fk')
 
         water_category = self.mpis[self.mpis['category_fk'].isin(Const.CATEGORIES)]
