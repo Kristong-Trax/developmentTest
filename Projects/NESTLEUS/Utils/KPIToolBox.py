@@ -120,15 +120,17 @@ class NESTLEUSToolBox:
         # calculates the sum of the values for each kpi for each template
         template_sums = water_scif.groupby(by=['template_fk']).sum()
 
-        water_scif[['facings_sum', 'facings_ign_stack_sum', 'net_len_add_stack_sum', 'net_len_ign_stack_sum']] = \
+        water_scif[[kpi+"_sum" for kpi in relevant_kpis.keys()]] = \
             water_scif['template_fk'].apply(
                 lambda template: pd.Series([template_sums.get_value(template, kpi) for kpi in relevant_kpis.keys()])
             )
 
         for row in water_scif.itertuples():
             for kpi, fk in relevant_kpis.items():
-                numerator = self.mm_to_feet(getattr(row, kpi)) if fk in (911, 912) else getattr(row, kpi)
-                denominator = self.mm_to_feet(getattr(row, kpi+"_sum")) if fk in (911, 912) else getattr(row, kpi)
+                numerator = getattr(row, kpi)
+                denominator = getattr(row, kpi+"_sum")
+
+                assert denominator >= numerator, "`denominator`: {} is not greater than `numerator`: {}".format(denominator, numerator)
 
                 if numerator > 0:
                     self.common.write_to_db_result(
@@ -137,7 +139,7 @@ class NESTLEUSToolBox:
                         numerator_result=numerator,
                         denominator_id=row.template_fk,
                         denominator_result=denominator,
-                        result=numerator
+                        result=numerator / denominator
                     )
 
     def calculate_base_footage(self):
