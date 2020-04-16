@@ -4,7 +4,7 @@ import collections
 
 from Projects.PEPSICOUK.Utils.Fetcher import PEPSICOUK_Queries
 from Trax.Algo.Calculations.Core.KPI.UnifiedKpiSingleton import UnifiedKPISingleton
-from Projects.PEPSICOUK.Utils.CommonToolBox import PEPSICOUKCommonToolBox
+from Projects.PEPSICOUK.Utils.CommonToolBoxRollout import PEPSICOUKCommonToolBox
 from KPIUtils_v2.GlobalDataProvider.PsDataProvider import PsDataProvider
 # from KPIUtils_v2.DB.Common import Common as CommonV1
 from KPIUtils_v2.DB.CommonV2 import Common
@@ -25,7 +25,7 @@ class PepsicoUtil(UnifiedKPISingleton):
     LEVEL3 = 3
 
     EXCLUSION_TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data',
-                                           'Inclusion_Exclusion_Template.xlsx')
+                                           'Inclusion_Exclusion_Template_Rollout.xlsx')
     ADDITIONAL_DISPLAY = 'additional display'
     INCLUDE_EMPTY = True
     EXCLUDE_EMPTY = False

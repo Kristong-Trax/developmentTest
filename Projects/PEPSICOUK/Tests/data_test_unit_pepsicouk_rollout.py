@@ -16,11 +16,11 @@ class DataScores(object):
 class DataTestUnitPEPSICOUK(object):
 
     kpi_static_data = pd.DataFrame.from_records(
-        [{'pk': 287, 'type': 'Hero SKU Space to Sales Index'}, {'pk': 288, 'type': 'Hero SKU SOS vs Target'},
+        [{'pk': 287, 'type': 'Hero SKU SOS'}, {'pk': 288, 'type': 'Hero SKU SOS vs Target'},
          {'pk': 289, 'type': 'Hero SKU Availability'}, {'pk': 290, 'type': 'Hero SKU Availability - SKU'},
          {'pk': 291, 'type': 'Hero SKU OOS'}, {'pk': 292, 'type': 'Hero SKU OOS - SKU'},
-         {'pk': 293, 'type': 'Brand Space to Sales Index'}, {'pk': 294, 'type': 'Sub Brand Space to Sales Index'},
-         {'pk': 295, 'type': 'PepsiCo Segment Space to Sales Index'}, {'pk': 296, 'type': 'PepsiCo Sub Segment Space to Sales Index'},
+         {'pk': 293, 'type': 'Brand SOS'}, {'pk': 294, 'type': 'Sub Brand SOS'},
+         {'pk': 295, 'type': 'PepsiCo Segment SOS'}, {'pk': 296, 'type': 'PepsiCo Sub Segment Space to Sales Index'},
          {'pk': 297, 'type': 'PepsiCo Sub Segment SOS vs Target'}, {'pk': 298, 'type': 'PepsiCo Segment SOS vs Target'},
          {'pk': 299, 'type': 'Sub Brand Space SOS vs Target'}, {'pk': 300, 'type': 'Brand Space SOS vs Target'},
          {'pk': 301, 'type': 'Sensations Greater Linear Space vs Kettle'}, {'pk': 302, 'type': 'Doritos Greater Linear space vs Pringles'},
@@ -100,7 +100,7 @@ class DataTestUnitPEPSICOUK(object):
                                     'external_targets.xlsx')
 
     exclusion_template_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'Data',
-                                           'Inclusion_Exclusion_Template.xlsx')
+                                           'Inclusion_Exclusion_Template_Rollout.xlsx')
     # exclusion_template_path ='{}/Data/Template_L&T_test_updated.xlsx'.format(os.path.dirname(os.path.realpath(__file__)))
 
     test_case_1 = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'Data', 'test_case_1.xlsx')
