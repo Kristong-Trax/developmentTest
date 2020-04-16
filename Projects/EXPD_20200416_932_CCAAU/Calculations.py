@@ -1,7 +1,7 @@
 
 from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScript
 
-from Projects.EXPD_20200412_683_CCAAU.KPIGenerator import Generator
+from Projects.EXPD_20200416_932_CCAAU.KPIGenerator import Generator
 
 __author__ = 'nidhin'
 
