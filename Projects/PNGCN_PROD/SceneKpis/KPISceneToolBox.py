@@ -1315,7 +1315,6 @@ class PngcnSceneKpis(object):
         df = pd.read_sql_query(query, local_con)
         return df
 
-    @kpi_runtime()
     def calculate_display_size(self):
         """
         calculate P&G manufacture percentage
