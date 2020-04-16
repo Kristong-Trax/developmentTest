@@ -1,5 +1,4 @@
 import os
-import MySQLdb
 import pandas as pd
 from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Trax.Data.Testing.SeedNew import Seeder
@@ -31,7 +30,8 @@ class PsSanityTestsFuncs(TestFunctionalCase):
 
     def _assert_custom_scif_table_filled(self):
         connector = PSProjectConnector(TestProjectsNames().TEST_PROJECT_1, DbUsers.Docker)
-        cursor = connector.db.cursor(MySQLdb.cursors.DictCursor)
+        cursor = connector.db.cursor()
+        #cursor = connector.db.cursor(MySQLdb.cursors.DictCursor)
         cursor.execute('''
            SELECT * FROM pservice.custom_scene_item_facts
            ''')
@@ -41,7 +41,9 @@ class PsSanityTestsFuncs(TestFunctionalCase):
 
     def _assert_old_tables_kpi_results_filled(self):
         connector = PSProjectConnector(TestProjectsNames().TEST_PROJECT_1, DbUsers.Docker)
-        cursor = connector.db.cursor(MySQLdb.cursors.DictCursor)
+
+        cursor = connector.db.cursor()
+        #cursor = connector.db.cursor(MySQLdb.cursors.DictCursor)
         cursor.execute('''
            SELECT * FROM report.kpi_results
            ''')
@@ -51,14 +53,15 @@ class PsSanityTestsFuncs(TestFunctionalCase):
 
     def _assert_new_tables_kpi_results_filled(self, distinct_kpis_num=None, list_of_kpi_names=None):
         connector = PSProjectConnector(TestProjectsNames().TEST_PROJECT_1, DbUsers.Docker)
-        cursor = connector.db.cursor(MySQLdb.cursors.DictCursor)
+        cursor = connector.db.cursor()
+        #cursor = connector.db.cursor(MySQLdb.cursors.DictCursor)
         cursor.execute('''
            SELECT kl2.pk, kl2.client_name, kl2r.kpi_level_2_fk, kl2r.result 
            FROM report.kpi_level_2_results kl2r left join static.kpi_level_2 kl2 
            on kpi_level_2_fk = kl2.pk
            ''')
         kpi_results = cursor.fetchall()
-        df = pd.DataFrame(kpi_results)
+        df = pd.DataFrame(list(kpi_results), columns=[col[0] for col in cursor.description])
         if distinct_kpis_num:
             self.assertEquals(df['kpi_level_2_fk'].unique().__len__(), distinct_kpis_num)
         else:
@@ -71,13 +74,14 @@ class PsSanityTestsFuncs(TestFunctionalCase):
 
     def _assert_scene_tables_kpi_results_filled(self, distinct_kpis_num=None):
         connector = PSProjectConnector(TestProjectsNames().TEST_PROJECT_1, DbUsers.Docker)
-        cursor = connector.db.cursor(MySQLdb.cursors.DictCursor)
+        cursor = connector.db.cursor()
+        #cursor = connector.db.cursor(MySQLdb.cursors.DictCursor)
         cursor.execute('''
                SELECT * FROM report.scene_kpi_results
                ''')
         kpi_results = cursor.fetchall()
         if distinct_kpis_num:
-            df = pd.DataFrame(kpi_results)
+            df = pd.DataFrame(list(kpi_results), columns=[col[0] for col in cursor.description])
             self.assertEquals(df['kpi_level_2_fk'].unique().__len__(), distinct_kpis_num)
         else:
             self.assertNotEquals(len(kpi_results), 0)
@@ -88,7 +92,8 @@ class PsSanityTestsFuncs(TestFunctionalCase):
         if ignore_kpis:
             real_results = real_results[~real_results['client_name'].isin(ignore_kpis)]
         connector = PSProjectConnector(TestProjectsNames().TEST_PROJECT_1, DbUsers.Docker)
-        cursor = connector.db.cursor(MySQLdb.cursors.DictCursor)
+        cursor = connector.db.cursor()
+        #cursor = connector.db.cursor(MySQLdb.cursors.DictCursor)
         cursor.execute("""
                         SELECT 
                         distinct kpi.type, kpi.client_name, res.session_fk, res.kpi_level_2_fk, numerator_id, 
@@ -102,7 +107,7 @@ class PsSanityTestsFuncs(TestFunctionalCase):
            """)
         kpi_results = cursor.fetchall()
         self.assertFalse(len(kpi_results) == 0)
-        kpi_results = pd.DataFrame(kpi_results)
+        kpi_results = pd.DataFrame(list(kpi_results), columns=[col[0] for col in cursor.description])
         merged_results = pd.merge(real_results, kpi_results, on=['session_fk', 'kpi_level_2_fk', 'numerator_id',
                                                                  'denominator_id', 'context_id'], how="left")
         merged_results = merged_results.fillna(0)

@@ -90,7 +90,8 @@ class HEINZCRToolBox:
             self.store_assortment_without_powerskus = pd.DataFrame()
 
         self.adherence_results = pd.DataFrame(columns=['product_fk', 'trax_average',
-                                                       'suggested_price', 'into_interval', 'min_target', 'max_target'])
+                                                       'suggested_price', 'into_interval', 'min_target', 'max_target',
+                                                       'percent_range'])
         self.extra_spaces_results = pd.DataFrame(
             columns=['sub_category_fk', 'template_fk', 'count'])
 
@@ -565,6 +566,7 @@ class HEINZCRToolBox:
                                               denominator_id=row.sub_category_fk, result=row.trax_average,
                                               score=score, target=row.suggested_price, numerator_result=row.min_target,
                                               denominator_result=row.max_target,
+                                              weight=row.percent_range,
                                               identifier_parent=parent_dict, should_enter=True)
 
         aggregated_results = results.groupby('sub_category_fk').agg(
@@ -572,6 +574,7 @@ class HEINZCRToolBox:
             columns={'product_fk': 'product_count'})
         aggregated_results['percent_complete'] = \
             aggregated_results.loc[:, 'into_interval'] / aggregated_results.loc[:, 'product_count']
+
 
         for row in aggregated_results.itertuples():
             identifier_result = self.common_v2.get_dictionary(kpi_fk=adherence_sub_category_kpi_fk,
@@ -625,6 +628,7 @@ class HEINZCRToolBox:
                     lower_percentage = (100 - row['PERCENTAGE'].values[0]) / float(100)
                     min_price = suggested_price * lower_percentage
                     max_price = suggested_price * upper_percentage
+                    percentage_sku = row['PERCENTAGE'].values[0]
                     into_interval = 0
                     prices_sum = 0
                     count = 0
@@ -643,7 +647,7 @@ class HEINZCRToolBox:
                             into_interval = 100
 
                     results_df.loc[len(results_df)] = [product_pk, trax_average,
-                                                       suggested_price, into_interval / 100, min_price, max_price]
+                                                       suggested_price, into_interval / 100, min_price, max_price, percentage_sku ]
 
                     # self.common.write_to_db_result_new_tables(fk=10,
                     #                                           numerator_id=product_pk,
@@ -716,7 +720,8 @@ class HEINZCRToolBox:
             self.powersku_empty[row.sub_category_fk] = 1 * kpi_weight
             score = result = 1
 
-            sub_cats_for_store.remove(row.sub_category_fk)
+            if row.sub_category_fk in sub_cats_for_store:
+                sub_cats_for_store.remove(row.sub_category_fk)
 
             self.common_v2.write_to_db_result(extra_spaces_kpi_fk, numerator_id=row.sub_category_fk,
                                               denominator_id=row.template_fk, result=result, score=score,
@@ -840,5 +845,9 @@ class HEINZCRToolBox:
         return total_score
 
     def set_relevant_sub_categories(self):
-        df = self.sub_category_weight[['Category', 'sub_category_fk', self.country]].dropna()
-        self.relevant_sub_categories = df.sub_category_fk.to_list()
+        if self.country in self.sub_category_weight.columns.to_list():
+
+            df = self.sub_category_weight[['Category', 'sub_category_fk', self.country]].dropna()
+            self.relevant_sub_categories = df.sub_category_fk.to_list()
+        else:
+            self.relevant_sub_categories = []
