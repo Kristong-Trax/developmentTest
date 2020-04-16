@@ -21,12 +21,12 @@ KPIs = {
         'DF': 'facings_ign_stack',
         'ID': 910
     },
-    '': {
+    'net_len_add_stack': {
         'DB': 'LINEAR_FEET_SKU_STACKING_OUT_OF_TEMPLATE',
         'DF': 'net_len_add_stack',
         'ID': 911
     },
-    '': {
+    'net_len_ign_stack': {
         'DB': 'LINEAR_FEET_SKU_IGN_STACKING_OUT_OF_TEMPLATE',
         'DF': 'net_len_ign_stack',
         'ID': 912
