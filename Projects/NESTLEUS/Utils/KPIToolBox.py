@@ -2,7 +2,7 @@ from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Cloud.Services.Connector.Keys import DbUsers
 from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 # import numpy as np
-# from Trax.Utils.Logging.Logger import Log
+from Trax.Utils.Logging.Logger import Log
 import pandas as pd
 # import os
 from Projects.NESTLEUS.Utils import Const
@@ -130,17 +130,17 @@ class NESTLEUSToolBox:
                 numerator = getattr(row, kpi)
                 denominator = getattr(row, kpi+"_sum")
 
-                assert denominator >= numerator, "`denominator`: {} is not greater than `numerator`: {}".format(denominator, numerator)
+                if denominator < numerator:
+                    Log.error("`denominator`: {} is not greater than `numerator`: {}".format(denominator, numerator))
 
-                if numerator > 0:
-                    self.common.write_to_db_result(
-                        fk=fk,
-                        numerator_id=row.product_fk,
-                        numerator_result=numerator,
-                        denominator_id=row.template_fk,
-                        denominator_result=denominator,
-                        result=numerator / denominator
-                    )
+                self.common.write_to_db_result(
+                    fk=fk,
+                    numerator_id=row.product_fk,
+                    numerator_result=numerator,
+                    denominator_id=row.template_fk,
+                    denominator_result=denominator,
+                    result=numerator / denominator
+                )
 
     def calculate_base_footage(self):
         water_aisle_base_footage_kpi_fk = 913
@@ -157,15 +157,14 @@ class NESTLEUSToolBox:
 
         numerator_id = self.get_category_fk('Water')
 
-        if base_footage > 0:
-            self.common.write_to_db_result(
-                fk=water_aisle_base_footage_kpi_fk,
-                numerator_result=base_footage,
-                numerator_id=numerator_id,
-                denominator_result=1,
-                denominator_id=store_id,
-                result=base_footage
-            )
+        self.common.write_to_db_result(
+            fk=water_aisle_base_footage_kpi_fk,
+            numerator_result=base_footage,
+            numerator_id=numerator_id,
+            denominator_result=1,
+            denominator_id=store_id,
+            result=base_footage
+        )
 
     def calculate_facings_per_shelf_level(self):
         """
@@ -204,15 +203,14 @@ class NESTLEUSToolBox:
         for product in num_product_facings_by_shelf_position.itertuples():
             numerator = product.product_count_per_shelf_position
 
-            if numerator > 0:
-                self.common.write_to_db_result(
-                    fk=relevant_kpi_fk,
-                    numerator_result=numerator,
-                    numerator_id=product.product_fk,
-                    denominator_result=1,
-                    denominator_id=product.shelf_position,
-                    result=product.product_count_per_shelf_position
-                )
+            self.common.write_to_db_result(
+                fk=relevant_kpi_fk,
+                numerator_result=numerator,
+                numerator_id=product.product_fk,
+                denominator_result=1,
+                denominator_id=product.shelf_position,
+                result=product.product_count_per_shelf_position
+            )
 
     def calculate_display_type(self, display_type_id, manufacturer_name=None):
         """
