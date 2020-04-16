@@ -1,9 +1,9 @@
 
 from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScript
 
-from Projects.GSKAU.KPIGenerator import Generator
+from Projects.PSAPAC_SAND3.KPIGenerator import Generator
 
-__author__ = 'limorc'
+__author__ = 'nidhin'
 
 
 class Calculations(BaseCalculationsScript):

@@ -5,7 +5,7 @@ from Trax.Utils.Logging.Logger import Log
 from Trax.Utils.Conf.Configuration import Config
 from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
 from Trax.Algo.Calculations.Core.Vanilla.Output import VanillaOutput
-from Projects.CCJP.SceneKpis.SceneCalculations import SceneCalculations
+from Projects.PSAPAC_SAND3.SceneKpis.SceneCalculations import SceneCalculations
 from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
 from Trax.Algo.Calculations.Core.Vanilla.Calculations import SceneVanillaCalculations
 from Trax.Algo.Calculations.Core.Constants import Keys, Fields, SCENE_ITEM_FACTS_COLUMNS
@@ -28,8 +28,8 @@ if __name__ == '__main__':
     project_name = 'psapac-sand3'
     # RUN for scene level KPIs
     session_scene_map = OrderedDict([
-        ('FE599C8E-C3A5-485C-8F8E-DCB9ED382523', ['B4E46525-84E3-44D8-9383-E30FD8234AA4',
-                                                  '72C6933A-8D3A-4A06-A600-5DE6B5843541'])
+        ('F42129E2-A2C1-453F-9CD7-9BD555AC2CD5', ['B179395E-8895-4B27-8CE8-A498ACA3D7A0',
+                                                  '35C7902A-6485-4414-A000-AD880F1D1BDE'])
     ])
 
     for session, scenes in session_scene_map.iteritems():

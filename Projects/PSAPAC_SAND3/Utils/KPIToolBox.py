@@ -1,33 +1,22 @@
-
-from Trax.Algo.Calculations.Core.DataProvider import Data
-from Trax.Cloud.Services.Connector.Keys import DbUsers
-from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
-# from Trax.Utils.Logging.Logger import Log
-import pandas as pd
 import os
+import pandas as pd
 
-from KPIUtils_v2.DB.Common import Common
-# from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
-# from KPIUtils_v2.Calculations.AvailabilityCalculations import Availability
-# from KPIUtils_v2.Calculations.NumberOfScenesCalculations import NumberOfScenes
-# from KPIUtils_v2.Calculations.PositionGraphsCalculations import PositionGraphs
-# from KPIUtils_v2.Calculations.SOSCalculations import SOS
-# from KPIUtils_v2.Calculations.SequenceCalculations import Sequence
-# from KPIUtils_v2.Calculations.SurveyCalculations import Survey
+from Trax.Cloud.Services.Connector.Keys import DbUsers
+from Trax.Algo.Calculations.Core.DataProvider import Data
+from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 
-# from KPIUtils_v2.Calculations.CalculationsUtils import GENERALToolBoxCalculations
 from KPIUtils_v2.DB.CommonV2 import Common
 from KPIUtils.GlobalProjects.GSK.KPIGenerator import GSKGenerator
-from Trax.Utils.Logging.Logger import Log
 
-__author__ = 'limorc'
+
+__author__ = 'nidhin'
 
 KPI_RESULT = 'report.kpi_results'
 KPK_RESULT = 'report.kpk_results'
 KPS_RESULT = 'report.kps_results'
 
 
-class GSKAUToolBox:
+class PsApacGSKAUToolBox:
     LEVEL1 = 1
     LEVEL2 = 2
     LEVEL3 = 3

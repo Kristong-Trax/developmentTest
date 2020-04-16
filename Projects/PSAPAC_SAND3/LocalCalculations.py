@@ -2,7 +2,7 @@
 from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
 from Trax.Utils.Conf.Configuration import Config
 from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
-from Projects.GSKAU.Calculations import Calculations
+from Projects.PSAPAC_SAND3.Calculations import Calculations
 
 
 if __name__ == '__main__':
