@@ -41,7 +41,7 @@ POLICY_STORE_MAP = {
 }
 # assortment KPI endss
 
-__author__ = 'limorc'
+__author__ = 'nidhin'
 
 KPI_RESULT = 'report.kpi_results'
 KPK_RESULT = 'report.kpk_results'
