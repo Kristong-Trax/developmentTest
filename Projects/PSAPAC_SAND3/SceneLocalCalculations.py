@@ -28,8 +28,18 @@ if __name__ == '__main__':
     project_name = 'psapac-sand3'
     # RUN for scene level KPIs
     session_scene_map = OrderedDict([
-        ('F42129E2-A2C1-453F-9CD7-9BD555AC2CD5', ['B179395E-8895-4B27-8CE8-A498ACA3D7A0',
-                                                  '35C7902A-6485-4414-A000-AD880F1D1BDE'])
+        ('004B6908-191C-46AC-BDAD-184CEFD8D37A', ['1C7F0538-C61A-457D-AF66-196ABC966520',   # '2020-03-18', 'Wellness Main Shelf'
+                                                  'B564227A-C5D4-4224-BD9A-4BAE464CB0D2',   # '2020-03-18', 'Pain Main Shelf'
+                                                  '0F93BD58-F7A1-4ED2-A982-542457362B7D',   # '2020-03-18', 'Pain Main Shelf'
+                                                  '10E5FEB2-9611-446A-8768-0BCD7283CDC4']), # '2020-03-18', 'Pain Main Shelf'
+        ('0AE386E9-8BE4-4DEC-9D99-CB96999FB92A', ['78B6AFC3-4676-4C7E-9620-FBAF4A5E1785',   # '2020-03-18', 'Wellness Main Shelf'
+                                                  'CB5BE93D-7BB6-4763-AB6C-7D004E06025D',   # '2020-03-18', 'Pain Main Shelf'
+                                                  '9833BE9A-1CEA-4AD1-8A06-6139F4B7DE4B',   # '2020-03-18', 'Pain Main Shelf'
+                                                  'CF86831A-DAD4-47FA-B461-B387CED6FBA3']), # '2020-03-18', 'Pain Main Shelf'
+        ('1B0750F4-EBC1-4692-97C3-9C0291F3F485', ['1FE9A8EB-60F0-4558-8CCA-8347303F58E6',   # '2020-03-18', 'Wellness Main Shelf'
+                                                  '797E8F23-F7AA-4EA4-94B7-406A0E3016E1',   # '2020-03-18', 'Pain Main Shelf'
+                                                  'CFF314D7-5346-4FF7-A69C-1FAF05EE1481',   # '2020-03-18', 'Pain Main Shelf'
+                                                  '63364D4F-F8C7-4525-838A-24FF4C3526A9'])  # '2020-03-18', 'Pain Main Shelf'
     ])
 
     for session, scenes in session_scene_map.iteritems():
@@ -44,17 +54,3 @@ if __name__ == '__main__':
             SceneVanillaCalculations(data_provider, output).run_project_calculations()
             save_scene_item_facts_to_data_provider(data_provider, output)
             SceneCalculations(data_provider).calculate_kpis()
-#     sessions = [
-#         '6DF2E0C8-8AE0-432A-AD3B-C2BE8F086E3B',
-#         '6520B138-780D-4AD1-95CF-8DA1727C4580',
-#         '6944F6F5-79D7-43FB-BE32-E3FAE237FA63',
-#         '6FDB6757-E3DA-4297-941A-8C1A40DD2E90',
-#         '9DC66118-F981-4D01-A6DD-1E181FA05507',
-#         'E0BE9853-B6C8-4B36-919C-5293BF52EF5B'
-#     ]
-#     # RUN FOR Session level KPIs
-#     for sess in sessions:
-#         Log.info("[Session level] Running for session: {}".format(sess))
-#         data_provider.load_session_data(sess)
-#         output = Output()
-#         Calculations(data_provider, output).run_project_calculations()

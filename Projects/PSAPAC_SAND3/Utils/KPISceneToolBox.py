@@ -3,13 +3,14 @@ import pandas as pd
 
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Cloud.Services.Connector.Keys import DbUsers
+from Projects.PSAPAC_SAND3.Utils.KPISceneLayoutComplianceCalculations import SceneLayoutComplianceCalc
 from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from KPIUtils_v2.GlobalDataProvider.PsDataProvider import PsDataProvider
 
 from Trax.Utils.Logging.Logger import Log
 
 __author__ = 'nidhinb'
-# The KPIs
+# The KPIs for Secondary Display
 GSK_DISPLAY_PRESENCE = 'GSK_DISPLAY_PRESENCE'
 GSK_DISPLAY_PRESENCE_SKU = 'GSK_DISPLAY_PRESENCE_SKU'
 GSK_DISPLAYS_ALL_IN_SCENE = 'GSK_DISPLAYS_ALL_IN_SCENE'
@@ -271,6 +272,13 @@ class PsApacGSKAUSceneToolBox:
                         display_per_sku_per_scene_calculated = self.save_display_presence_per_sku(
                             kpi=kpi_display_presence_sku,
                             numerator_result=0)  # 0--posm not recognized
+
+    def calculate_layout_compliance(self):
+        current_scene_fk = self.scene_info.iloc[0].scene_fk
+        Log.info('Calculate Layout Compliance for session: {sess} - scene: {scene}'
+                 .format(sess=self.session_uid, scene=current_scene_fk))
+        scene_layout_calc_obj = SceneLayoutComplianceCalc(scene_toolbox_obj=self)
+        scene_layout_calc_obj.calculate_all()
 
     def get_ean_presence_rate(self, ean_list):
         """
