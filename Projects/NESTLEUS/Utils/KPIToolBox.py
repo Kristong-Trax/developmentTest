@@ -85,7 +85,7 @@ class NESTLEUSToolBox:
         # kpi_set_fk = kwargs['kpi_set_fk']
         # self.calculate_facing_count_and_linear_feet(kpi_set_fk=kpi_set_fk)
 
-        water_display_template_fk = self.get_template_fk('water_display')
+        water_display_template_fk = self.get_template_fk('Water Display')
 
         self.calculate_facing_count_and_linear_feet()
         self.calculate_base_footage()
@@ -116,6 +116,7 @@ class NESTLEUSToolBox:
         water_scif = self.scif[self.scif['category_fk'].isin(Const.CATEGORIES.values())]
         water_scif = water_scif[water_scif['template_fk'].isin(Const.WATER_TEMPLATES.values())]
         water_scif = water_scif[water_scif['product_name'] != IRRELEVANT]
+        water_scif = water_scif.groupby(by=['template_fk', 'product_fk'], as_index=False).sum()
 
         # calculates the sum of the values for each kpi for each template
         template_sums = water_scif.groupby(by=['template_fk']).sum()
@@ -218,11 +219,9 @@ class NESTLEUSToolBox:
         :param manufacturer_name: Name of Manufacturer
         """
         store_id = self.session_info.get_value(0, 'store_fk')
-
         kpi_fk = 916 if manufacturer_name else 915
 
-        scif = self.scif
-        display = scif[scif['template_fk'] == display_type_id]
+        display = self.scif[self.scif['template_fk'] == display_type_id]
         display = display[display['product_name'] != IRRELEVANT]
 
         if manufacturer_name:
