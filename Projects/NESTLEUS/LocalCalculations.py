@@ -23,9 +23,12 @@ if __name__ == '__main__':
 
     test_sessions = pd.read_excel(Const.TEST_SESSIONS_PATH)
 
+    i = 0
     for session in test_sessions.itertuples():
         data_provider.load_session_data(session.Session_uid)
         output = Output()
         Calculations(data_provider, output).run_project_calculations()
+        i += 1
+        print("Completed {}% of sessions".format(1/len(test_sessions)*100))
 
     print("Done")
