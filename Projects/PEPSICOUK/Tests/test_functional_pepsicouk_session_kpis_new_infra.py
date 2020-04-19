@@ -365,12 +365,14 @@ class Test_PEPSICOUK(TestFunctionalCase):
         sos_vs_target_hero.calculate()
         kpi_results = pd.DataFrame(sos_vs_target_hero.kpi_results)
         kpi_results['result'] = kpi_results['result'].apply(lambda x: round(x, 5))
-        self.assertEquals(len(kpi_results), 2)
+        self.assertEquals(len(kpi_results), 3)
         expected_list = list()
         expected_list.append({'kpi_level_2_fk': 287, 'numerator_id': 1, 'denominator_id': 2, 'numerator_result': 120,
                               'denominator_result': 435, 'result': round((float(120) / 435) * 100, 5)})
         expected_list.append({'kpi_level_2_fk': 287, 'numerator_id': 2, 'denominator_id': 2, 'numerator_result': 60,
                               'denominator_result': 435, 'result': round((float(60) / 435) * 100, 5)})
+        expected_list.append({'kpi_level_2_fk': 287, 'numerator_id': 5, 'denominator_id': 2, 'numerator_result': 0,
+                              'denominator_result': 435, 'result': 0})
         test_result_list = []
         for expected_result in expected_list:
             test_result_list.append(self.check_kpi_results(kpi_results, expected_result) == 1)
@@ -396,6 +398,8 @@ class Test_PEPSICOUK(TestFunctionalCase):
                               'denominator_result': 435, 'result': round((float(120) / 435) * 100, 5)})
         expected_list.append({'kpi_level_2_fk': 404, 'numerator_id': 559, 'denominator_id': 2, 'numerator_result': 60,
                               'denominator_result': 435, 'result': round((float(60) / 435) * 100, 5)})
+        expected_list.append({'kpi_level_2_fk': 404, 'numerator_id': 561, 'denominator_id': 2, 'numerator_result': 0,
+                              'denominator_result': 435, 'result': 0})
         test_result_list = []
         for expected_result in expected_list:
             test_result_list.append(self.check_kpi_results(kpi_result, expected_result) == 1)
