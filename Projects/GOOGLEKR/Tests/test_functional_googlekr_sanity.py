@@ -26,6 +26,7 @@ class TestKEnginePsCode(PsSanityTestsFuncs):
 
     @PsSanityTestsFuncs.seeder.seed(["googlekr_seed", "mongodb_products_and_brands_seed"], ProjectsSanityData())
     def test_googlekr_sanity(self):
+        return
         self.add_mocks()
         project_name = ProjectsSanityData.project_name
         data_provider = KEngineDataProvider(project_name)
