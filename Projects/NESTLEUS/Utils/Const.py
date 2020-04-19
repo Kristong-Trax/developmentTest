@@ -21,12 +21,12 @@ KPIs = {
         'DF': 'facings_ign_stack',
         'ID': 910
     },
-    '': {
+    'net_len_add_stack': {
         'DB': 'LINEAR_FEET_SKU_STACKING_OUT_OF_TEMPLATE',
         'DF': 'net_len_add_stack',
         'ID': 911
     },
-    '': {
+    'net_len_ign_stack': {
         'DB': 'LINEAR_FEET_SKU_IGN_STACKING_OUT_OF_TEMPLATE',
         'DF': 'net_len_ign_stack',
         'ID': 912
@@ -58,8 +58,9 @@ WATER_TEMPLATES = {
     'water_display': 7
 }
 
-WATER_CATEGORY = {
-    'water': 29
+CATEGORIES = {
+    'water': 29,
+    'general': 0
 }
 
 SHELF_POSITION = {
@@ -68,5 +69,3 @@ SHELF_POSITION = {
     'EYE': 3,
     'TOP': 4
 }
-
-def mm_to_feet(n): return n / 1000.0 * 3.28084
