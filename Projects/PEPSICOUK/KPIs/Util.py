@@ -126,6 +126,7 @@ class PepsicoUtil(UnifiedKPISingleton):
         self.toolbox = GENERALToolBox(self.data_provider)
         self.commontools = PEPSICOUKCommonToolBox(self.data_provider, self.rds_conn)
 
+        self.all_templates = self.commontools.all_templates
         self.custom_entities = self.commontools.custom_entities
         self.on_display_products = self.commontools.on_display_products
         self.exclusion_template = self.commontools.exclusion_template
@@ -313,6 +314,11 @@ class PepsicoUtil(UnifiedKPISingleton):
     def get_available_hero_sku_list(self, dependencies_df):
         hero_list = dependencies_df[(dependencies_df['kpi_type'] == self.HERO_SKU_AVAILABILITY_SKU) &
                                     (dependencies_df['numerator_result'] == 1)]['numerator_id'].unique().tolist()
+        return hero_list
+
+    def get_unavailable_hero_sku_list(self, dependencies_df):
+        hero_list = dependencies_df[(dependencies_df['kpi_type'] == self.HERO_SKU_AVAILABILITY_SKU) &
+                                    (dependencies_df['numerator_result'] == 0)]['numerator_id'].unique().tolist()
         return hero_list
 
     def get_hero_type_custom_entity_df(self):

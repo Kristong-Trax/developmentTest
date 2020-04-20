@@ -29,67 +29,42 @@ class SosVsTargetHeroSkuKpi(UnifiedCalculationsScript):
     def calculate_hero_sku_sos(self):
         kpi_fk = self.util.common.get_kpi_fk_by_kpi_type(self.util.HERO_SKU_SOS)
         filtered_scif = self.util.filtered_scif
-        category_df = filtered_scif.groupby([ScifConsts.CATEGORY_FK],
-                                            as_index=False).agg({'updated_gross_length': np.sum})
-        category_df.rename(columns={'updated_gross_length': 'cat_len'}, inplace=True)
+        # category_df = filtered_scif.groupby([ScifConsts.CATEGORY_FK],
+        #                                     as_index=False).agg({'updated_gross_length': np.sum})
+        # category_df.rename(columns={'updated_gross_length': 'cat_len'}, inplace=True)
+        # av_hero_list = self.util.get_available_hero_sku_list(self.dependencies_data)
 
-        hero_list = self.util.get_available_hero_sku_list(self.dependencies_data)
-        filtered_scif = filtered_scif[filtered_scif[ScifConsts.PRODUCT_FK].isin(hero_list)]
-        if not filtered_scif.empty:
+        # filtered_scif = filtered_scif[filtered_scif[ScifConsts.PRODUCT_FK].isin(av_hero_list)]
+        if (not filtered_scif.empty) and (not self.dependencies_data.empty):
+            category_df = filtered_scif.groupby([ScifConsts.CATEGORY_FK],
+                                                as_index=False).agg({'updated_gross_length': np.sum})
+            category_df.rename(columns={'updated_gross_length': 'cat_len'}, inplace=True)
+
+            av_hero_list = self.util.get_available_hero_sku_list(self.dependencies_data)
+            filtered_scif = filtered_scif[filtered_scif[ScifConsts.PRODUCT_FK].isin(av_hero_list)]
+
+            unav_hero_list = self.util.get_unavailable_hero_sku_list(self.dependencies_data)
+            unav_hero_df = self.util.all_products[self.util.all_products[ScifConsts.PRODUCT_FK].isin(unav_hero_list)] \
+                [[ScifConsts.PRODUCT_FK, ScifConsts.CATEGORY_FK]]
+            unav_hero_df['updated_gross_length'] = 0
+            filtered_scif = filtered_scif.append(unav_hero_df)
+
             hero_cat_df = filtered_scif.groupby([ScifConsts.PRODUCT_FK, ScifConsts.CATEGORY_FK],
                                                 as_index=False).agg({'updated_gross_length': np.sum})
             hero_cat_df = hero_cat_df.merge(category_df, on=ScifConsts.CATEGORY_FK, how='left')
-            hero_cat_df['sos'] = hero_cat_df['updated_gross_length'] / hero_cat_df['cat_len']
+            hero_cat_df['cat_len'] = hero_cat_df['cat_len'].fillna(0)
+            hero_cat_df['sos'] = hero_cat_df.apply(self.calculate_sos, axis=1)
             for i, row in hero_cat_df.iterrows():
                 self.write_to_db_result(fk=kpi_fk, numerator_id=row[ScifConsts.PRODUCT_FK],
                                         numerator_result=row['updated_gross_length'],
                                         denominator_id=row[ScifConsts.CATEGORY_FK],
-                                        denominator_result=row['cat_len'], result=row['sos'] * 100)
+                                        denominator_result=row['cat_len'], result=row['sos'])
                 self.util.add_kpi_result_to_kpi_results_df(
-                    [kpi_fk, row[ScifConsts.PRODUCT_FK], row[ScifConsts.CATEGORY_FK], row['sos'] * 100, None, None])
+                    [kpi_fk, row[ScifConsts.PRODUCT_FK], row[ScifConsts.CATEGORY_FK], row['sos'], None, None])
 
-    # def calculate_hero_sku_sos_vs_target(self, sos_targets):
-    #     kpi_filtered_products = self.util.filtered_scif['product_fk'].unique().tolist()
-    #     # hero_list = self.util.lvl3_ass_result[self.util.lvl3_ass_result['in_store'] == 1]['product_fk'].unique().tolist()
-    #     hero_list = self.util.get_available_hero_sku_list(self.dependencies_data)
-    #     hero_list = filter(lambda x: x in kpi_filtered_products, hero_list)
-    #
-    #     sos_targets = sos_targets[sos_targets['type'] == self.util.HERO_SKU_SPACE_TO_SALES_INDEX]
-    #     sos_targets_hero_list = sos_targets['numerator_value'].values.tolist()
-    #     additional_skus = list(set(hero_list) - set(sos_targets_hero_list))
-    #     category_fk = self.util.all_products[self.util.all_products['category'] == 'CSN']['category_fk'].values[0]
-    #     hero_kpi_fk = self.util.common.get_kpi_fk_by_kpi_type(self.util.HERO_SKU_SPACE_TO_SALES_INDEX)
-    #     kpi_hero_parent = self.util.common.get_kpi_fk_by_kpi_type(self.util.HERO_SKU_SOS_VS_TARGET)
-    #     additional_rows = []
-    #     for sku in additional_skus:
-    #         values_to_append = {'numerator_id': sku, 'numerator_type': 'product_fk', 'numerator_value': sku, 'denominator_type': 'category_fk',
-    #                             'denominator_value': category_fk, 'Target': None, 'denominator_id': category_fk,
-    #                             'kpi_level_2_fk': hero_kpi_fk, 'KPI Parent': kpi_hero_parent,
-    #                             'identifier_parent': self.util.common.get_dictionary(kpi_fk=int(float(kpi_hero_parent)))}
-    #         additional_rows.append(values_to_append)
-    #     df_to_append = pd.DataFrame.from_records(additional_rows)
-    #     sos_targets = sos_targets.append(df_to_append)
-    #
-    #     sos_targets = sos_targets[sos_targets['numerator_value'].isin(hero_list)]
-    #     self.calculate_and_write_to_db_sos_vs_target_kpi_results(sos_targets)
-    #
-    # def calculate_and_write_to_db_sos_vs_target_kpi_results(self, sos_targets):
-    #     for i, row in sos_targets.iterrows():
-    #         general_filters = {row['denominator_type']: row['denominator_value']}
-    #         sos_filters = {row['numerator_type']: row['numerator_value']}
-    #         numerator_linear, denominator_linear = self.util.calculate_sos(sos_filters, **general_filters)
-    #
-    #         result = numerator_linear / denominator_linear if denominator_linear != 0 else 0
-    #         score = result / row['Target'] if row['Target'] else 0
-    #         if row['Target']:
-    #             self.write_to_db_result(fk=row.kpi_level_2_fk, numerator_id=row.numerator_id,
-    #                                     numerator_result=numerator_linear, denominator_id=row.denominator_id,
-    #                                     denominator_result=denominator_linear, result=result * 100, score=score,
-    #                                     target=row['Target'] * 100)
-    #         else:
-    #             self.write_to_db_result(fk=row.kpi_level_2_fk, numerator_id=row.numerator_id,
-    #                                     numerator_result=numerator_linear, denominator_id=row.denominator_id,
-    #                                     denominator_result=denominator_linear, result=result * 100)
-    #         self.util.add_kpi_result_to_kpi_results_df(
-    #             [row.kpi_level_2_fk, row.numerator_id, row.denominator_id, result * 100,
-    #              score])
+    @staticmethod
+    def calculate_sos(row):
+        sos = 0
+        if row['cat_len'] != 0:
+            sos = float(row['updated_gross_length']) / row['cat_len'] * 100
+        return sos
