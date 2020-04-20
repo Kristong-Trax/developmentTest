@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from KPIUtils.GlobalProjects.GOOGLE_V2.CommonV2 import DbUsers
+from Trax.Cloud.Services.Connector.Keys import DbUsers
 from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Projects.PNGCN_PROD.ShareOfDisplay.ExcludeDataProvider import Fields
