@@ -120,7 +120,8 @@ class PngcnSceneKpis(object):
         self.common = common
         self.matches_from_data_provider = self.data_provider[Data.MATCHES]
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
-        if not self.scif.empty and self.scif.iloc[0]['location_type'] == 'Primary Shelf':
+        self.location_type = "" if self.scif.empty else self.scif.iloc[0]['location_type']
+        if self.location_type == 'Primary Shelf':
             self.eye_level_df = self.get_eye_level_shelves(self.matches_from_data_provider)
             eye_level_shelves = self.eye_level_df[['scene_match_fk', 'shelf_number']].copy()
             eye_level_shelves = eye_level_shelves.rename(columns={"shelf_number": "eye_level_shelf_number"})
@@ -140,37 +141,36 @@ class PngcnSceneKpis(object):
         self.own_manufacturer_fk = int(self.data_provider.own_manufacturer.param_value.values[0])
 
     def process_scene(self):
-        self.calculate_variant_block()
-        self.calculate_eye_level_kpi()
-        # self.save_nlsos_to_custom_scif()
-        # self.calculate_linear_length()
-        # self.calculate_presize_linear_length()
-        # Log.debug(self.log_prefix + ' Retrieving data')
-        # self.match_display_in_scene = self._get_match_display_in_scene_data()
-        # # if there are no display tags there's no need to retrieve the rest of the data.
-        # if self.match_display_in_scene.empty:
-        #     Log.debug(self.log_prefix + ' No display tags')
-        #     self._delete_previous_data()
-        #     self.calculate_display_size()
-        #     self.common.commit_results_data(result_entity='scene')
-        # else:
-        #     self.displays = self._get_displays_data()
-        #     self.match_product_in_scene = self._get_match_product_in_scene_data()
-        #     self._delete_previous_data()
-        #     self._handle_promotion_wall_display()
-        #     self._handle_cube_or_4_sided_display()
-        #     self._handle_table_display()
-        #     self._handle_rest_display()
-        #     self.calculate_display_size()
-        self.common.commit_results_data(result_entity='scene')
-        #     if self.on_ace:
-        #         Log.debug(self.log_prefix + ' Committing share of display calculations')
-        #         self.project_connector.db.commit()
-        #     Log.info(self.log_prefix + ' Finished calculation')
+        if self.location_type == 'Primary Shelf':
+            self.calculate_variant_block()
+            self.save_nlsos_to_custom_scif()
+            self.calculate_eye_level_kpi()
+        self.calculate_linear_length()
+        self.calculate_presize_linear_length()
+        Log.debug(self.log_prefix + ' Retrieving data')
+        self.match_display_in_scene = self._get_match_display_in_scene_data()
+        # if there are no display tags there's no need to retrieve the rest of the data.
+        if self.match_display_in_scene.empty:
+            Log.debug(self.log_prefix + ' No display tags')
+            self._delete_previous_data()
+            self.calculate_display_size()
+            self.common.commit_results_data(result_entity='scene')
+        else:
+            self.displays = self._get_displays_data()
+            self.match_product_in_scene = self._get_match_product_in_scene_data()
+            self._delete_previous_data()
+            self._handle_promotion_wall_display()
+            self._handle_cube_or_4_sided_display()
+            self._handle_table_display()
+            self._handle_rest_display()
+            self.calculate_display_size()
+            self.common.commit_results_data(result_entity='scene')
+            if self.on_ace:
+                Log.debug(self.log_prefix + ' Committing share of display calculations')
+                self.project_connector.db.commit()
+            Log.info(self.log_prefix + ' Finished calculation')
 
     def calculate_variant_block(self, enable_single_shelf_exclusion=True):
-        # import time
-        # start_time = time.time()
         Log.info("Starting variant block KPI calculation")
         block_sku_kpi = self.common.get_kpi_fk_by_kpi_type(BLOCK_SKU)
         if self.matches_from_data_provider.empty or self.scif.empty or \
@@ -289,8 +289,6 @@ class PngcnSceneKpis(object):
                                                    denominator_result=number_of_min_level_facings,
                                                    by_scene=True, identifier_parent=identifier_result,
                                                    should_enter=True)
-        # end_time = time.time()
-        # print ("it took {} seconds".format(str(end_time - start_time)))
 
     def get_scene_match_fk(self, row):
         cluster = row['cluster']
