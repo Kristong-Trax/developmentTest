@@ -118,7 +118,8 @@ class PngcnSceneKpis(object):
         self.common = common
         self.matches_from_data_provider = self.data_provider[Data.MATCHES]
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
-        if not self.scif.empty and self.scif.iloc[0]['location_type'] == 'Primary Shelf':
+        self.location_type = "" if self.scif.empty else self.scif.iloc[0]['location_type']
+        if self.location_type == 'Primary Shelf':
             self.eye_level_df = self.get_eye_level_shelves(self.matches_from_data_provider)
             eye_level_shelves = self.eye_level_df[['scene_match_fk', 'shelf_number']].copy()
             eye_level_shelves = eye_level_shelves.rename(columns={"shelf_number": "eye_level_shelf_number"})
@@ -139,9 +140,10 @@ class PngcnSceneKpis(object):
         self.own_manufacturer_fk = int(self.data_provider.own_manufacturer.param_value.values[0])
 
     def process_scene(self):
-        self.calculate_variant_block()
-        self.save_nlsos_to_custom_scif()
-        self.calculate_eye_level_kpi()
+        if self.location_type == 'Primary Shelf':
+            self.calculate_variant_block()
+            self.save_nlsos_to_custom_scif()
+            self.calculate_eye_level_kpi()
         self.calculate_linear_length()
         self.calculate_presize_linear_length()
         Log.debug(self.log_prefix + ' Retrieving data')
