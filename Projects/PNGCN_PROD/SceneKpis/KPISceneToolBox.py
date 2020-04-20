@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+from KPIUtils.GlobalProjects.GOOGLE_V2.CommonV2 import DbUsers
+from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Projects.PNGCN_PROD.ShareOfDisplay.ExcludeDataProvider import Fields
 from Trax.Utils.Logging.Logger import Log
@@ -101,6 +103,7 @@ class PngcnSceneKpis(object):
 
     def __init__(self, project_connector, common, scene_id, data_provider=None):
         self.scene_id = scene_id
+        self.project_name = project_connector.project_name
         self.project_connector = project_connector
         if data_provider is not None:
             self.data_provider = data_provider
@@ -817,8 +820,8 @@ class PngcnSceneKpis(object):
                 select p.pk as product_fk,b.name as brand_name from static_new.product p
                 join static_new.brand b on b.pk = p.brand_fk;
                 """
-        self.project_connector.disconnect_rds()
-        self.project_connector.connect_rds()
+        if not self.project_connector.is_connected:
+            self.project_connector = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         res = pd.read_sql_query(query, self.project_connector.db)
         return res
 
@@ -1067,8 +1070,8 @@ class PngcnSceneKpis(object):
                     on report.display_item_facts.display_surface_fk = probedata.display_surface.pk;""",
             drop_temp_table_query
         ]
-        self.project_connector.disconnect_rds()
-        self.project_connector.connect_rds()
+        if not self.project_connector.is_connected:
+            self.project_connector = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         self.cur = self.project_connector.db.cursor()
         for query in queries:
             self.cur.execute(query)
@@ -1117,8 +1120,8 @@ class PngcnSceneKpis(object):
         return '({0}, {1}, {2})'.format(display['scene_fk'], display['display_fk'], display['display_size'])
 
     def _get_match_display_in_scene_data(self):
-        self.project_connector.disconnect_rds()
-        self.project_connector.connect_rds()
+        if not self.project_connector.is_connected:
+            self.project_connector = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         local_con = self.project_connector.db
         query = ''' select
                         mds.display_fk
@@ -1482,8 +1485,8 @@ class PngcnSceneKpis(object):
             LEFT JOIN static_new.category ON product_category_fk = category.pk
             WHERE scene.pk = {};""".format(scene_pk)
 
-        # Explicit connect db, otherwise db gone error will be thrown
-        self.project_connector.connect_rds()
+        if not self.project_connector.is_connected:
+            self.project_connector = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         df = pd.read_sql_query(query, self.project_connector.db)
         return None if df is None else df['scene_category'][0]
 
