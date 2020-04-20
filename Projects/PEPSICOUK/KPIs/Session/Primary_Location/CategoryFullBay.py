@@ -38,7 +38,7 @@ class CategoryFullBayKpi(UnifiedCalculationsScript):
             target_ratio = float(self._config_params['ratio'])
             result = len(result_df[result_df['ratio'] >= target_ratio])
             self.write_to_db_result(fk=kpi_fk, numerator_id=category_fk, denominator_id=self.util.store_id,
-                                    score=result, result=result)
+                                    score=result, result=result, target=float(self._config_params['ratio'])*100)
             self.util.add_kpi_result_to_kpi_results_df([kpi_fk, category_fk, self.util.store_id, result, result, None])
 
         self.util.reset_filtered_scif_and_matches_to_exclusion_all_state()

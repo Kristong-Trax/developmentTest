@@ -33,6 +33,8 @@ class SosVsTargetSegmentKpi(UnifiedCalculationsScript):
                                        as_index=False).agg({'updated_gross_length': np.sum})
         cat_df.rename(columns={'updated_gross_length': 'cat_len'}, inplace=True)
         filtered_scif = filtered_scif[filtered_scif[ScifConsts.MANUFACTURER_FK] == self.util.own_manuf_fk]
+        location_type_fk = self.util.all_templates[self.util.all_templates[ScifConsts.LOCATION_TYPE] == 'Primary Shelf'] \
+            [ScifConsts.LOCATION_TYPE_FK].values[0]
         if not filtered_scif.empty:
             man_cat_df = filtered_scif.groupby([ScifConsts.MANUFACTURER_FK, ScifConsts.CATEGORY_FK],
                                                 as_index=False).agg({'updated_gross_length': np.sum})
@@ -43,7 +45,8 @@ class SosVsTargetSegmentKpi(UnifiedCalculationsScript):
                     self.write_to_db_result(fk=kpi_fk, numerator_id=row[ScifConsts.MANUFACTURER_FK],
                                             numerator_result=row['updated_gross_length'],
                                             denominator_id=row[ScifConsts.CATEGORY_FK],
-                                            denominator_result=row['cat_len'], result=row['sos'] * 100)
+                                            denominator_result=row['cat_len'], result=row['sos'] * 100,
+                                            context_id=location_type_fk)
                     self.util.add_kpi_result_to_kpi_results_df(
                         [kpi_fk, row[ScifConsts.MANUFACTURER_FK], row[ScifConsts.CATEGORY_FK], row['sos'] * 100,
                          None, None])
