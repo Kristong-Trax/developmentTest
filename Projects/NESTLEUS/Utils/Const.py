@@ -9,6 +9,7 @@ DATA_PATH = os.path.join(get_parent_dir(__file__, 2), 'Data')
 TEST_SESSIONS_PATH = os.path.join(DATA_PATH, 'Nestle Waters Test Sessions.xlsx')
 SHELF_MAP_PATH = os.path.join(DATA_PATH, 'ShelfMap.xlsx')
 
+IRRELEVANT = 'Irrelevant'
 
 KPIs = {
     'facings': {
@@ -31,7 +32,7 @@ KPIs = {
         'DF': 'net_len_ign_stack',
         'ID': 912
     },
-    '': {
+    'water_aisle_base_footage': {
         'DB': 'WATER_AISLE_BASE_FOOTAGE',
         'DF': None,
         'ID': 913
@@ -53,15 +54,17 @@ KPIs = {
     }
 }
 
-WATER_TEMPLATES = {
-    'water_aisle': 2,
-    'water_display': 7
-}
+WATER_TEMPLATES = ['Water Aisle', 'Water Display']
+# WATER_TEMPLATES = {
+#     'water_aisle': 2,
+#     'water_display': 7
+# }
 
-CATEGORIES = {
-    'water': 29,
-    'general': 0
-}
+CATEGORIES = ['Water', 'General']
+# CATEGORIES = {
+#     'water': 29,
+#     'general': 0
+# }
 
 SHELF_POSITION = {
     'BOTTOM': 1,
