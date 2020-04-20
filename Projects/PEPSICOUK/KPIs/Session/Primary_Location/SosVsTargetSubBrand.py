@@ -36,11 +36,14 @@ class SosVsTargetSubBrandKpi(UnifiedCalculationsScript):
         sub_brand_cust_entity = self.util.custom_entities[self.util.custom_entities['entity_type'] == 'sub_brand']
         sub_brand_cat_df = sub_brand_cat_df.merge(sub_brand_cust_entity, left_on= 'sub_brand', right_on='name',
                                                   how='left')
+        location_type_fk = self.util.all_templates[self.util.all_templates[ScifConsts.LOCATION_TYPE] == 'Primary Shelf'] \
+            [ScifConsts.LOCATION_TYPE_FK].values[0]
         for i, row in sub_brand_cat_df.iterrows():
             self.write_to_db_result(fk=kpi_fk, numerator_id=row["pk"],
                                     numerator_result=row['updated_gross_length'],
                                     denominator_id=row[ScifConsts.CATEGORY_FK],
-                                    denominator_result=row['cat_len'], result=row['sos'] * 100)
+                                    denominator_result=row['cat_len'], result=row['sos'] * 100,
+                                    context_id=location_type_fk)
             self.util.add_kpi_result_to_kpi_results_df(
                 [kpi_fk, row["sub_brand"], row[ScifConsts.CATEGORY_FK], row['sos'] * 100, None, None])
 

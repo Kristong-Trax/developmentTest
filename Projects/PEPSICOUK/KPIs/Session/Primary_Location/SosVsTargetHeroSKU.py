@@ -29,12 +29,8 @@ class SosVsTargetHeroSkuKpi(UnifiedCalculationsScript):
     def calculate_hero_sku_sos(self):
         kpi_fk = self.util.common.get_kpi_fk_by_kpi_type(self.util.HERO_SKU_SOS)
         filtered_scif = self.util.filtered_scif
-        # category_df = filtered_scif.groupby([ScifConsts.CATEGORY_FK],
-        #                                     as_index=False).agg({'updated_gross_length': np.sum})
-        # category_df.rename(columns={'updated_gross_length': 'cat_len'}, inplace=True)
-        # av_hero_list = self.util.get_available_hero_sku_list(self.dependencies_data)
-
-        # filtered_scif = filtered_scif[filtered_scif[ScifConsts.PRODUCT_FK].isin(av_hero_list)]
+        location_type_fk = self.util.all_templates[self.util.all_templates[ScifConsts.LOCATION_TYPE] == 'Primary Shelf'] \
+            [ScifConsts.LOCATION_TYPE_FK].values[0]
         if (not filtered_scif.empty) and (not self.dependencies_data.empty):
             category_df = filtered_scif.groupby([ScifConsts.CATEGORY_FK],
                                                 as_index=False).agg({'updated_gross_length': np.sum})
@@ -58,7 +54,8 @@ class SosVsTargetHeroSkuKpi(UnifiedCalculationsScript):
                 self.write_to_db_result(fk=kpi_fk, numerator_id=row[ScifConsts.PRODUCT_FK],
                                         numerator_result=row['updated_gross_length'],
                                         denominator_id=row[ScifConsts.CATEGORY_FK],
-                                        denominator_result=row['cat_len'], result=row['sos'])
+                                        denominator_result=row['cat_len'], result=row['sos'],
+                                        context_id=location_type_fk)
                 self.util.add_kpi_result_to_kpi_results_df(
                     [kpi_fk, row[ScifConsts.PRODUCT_FK], row[ScifConsts.CATEGORY_FK], row['sos'], None, None])
 
