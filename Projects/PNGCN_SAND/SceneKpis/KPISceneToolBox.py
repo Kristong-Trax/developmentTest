@@ -1,13 +1,15 @@
 # -*- coding: utf-8 -*-
-import os
+
+from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Projects.PNGCN_SAND.ShareOfDisplay.ExcludeDataProvider import Fields
+from Trax.Cloud.Services.Connector.Keys import DbUsers
 from Trax.Utils.Logging.Logger import Log
 import pandas as pd
 import KPIUtils_v2.Utils.Parsers.ParseInputKPI as Parser
 from KPIUtils_v2.GlobalDataProvider.PsDataProvider import PsDataProvider
 from KPIUtils_v2.Calculations.BlockCalculations_v2 import Block as Block
-from KPIUtils_v2.Utils.Consts.DataProvider import MatchesConsts
+from KPIUtils_v2.Utils.Decorators.Decorators import kpi_runtime
 
 __Author__ = 'Dudi_s and ilays'
 
@@ -33,8 +35,8 @@ DISPLAY_SIZE_PER_SCENE = 'DISPLAY_SIZE_PER_SCENE'
 LINEAR_SOS_MANUFACTURER_IN_SCENE = 'LINEAR_SOS_MANUFACTURER_IN_SCENE'
 PRESIZE_LINEAR_SOS_MANUFACTURER_IN_SCENE = 'PRESIZE_LINEAR_SOS_MANUFACTURER_IN_SCENE'
 
-
 # EYE LEVEL KPIs
+Eye_level_kpi_FACINGS = "Eye_level_kpi_FACINGS"
 EYE_LEVEL_SE_BR_KPI = 'Eye_level_SEQUENCE_brand'
 EYE_LEVEL_SE_BR_SB_KPI = 'Eye_level_SEQUENCE_brand_subbrand'
 EYE_LEVEL_SE_BR_SC_KPI = 'Eye_level_SEQUENCE_brand_subcategory'
@@ -42,7 +44,6 @@ EYE_LEVEL_SE_BR_SC_SB_KPI = 'Eye_level_SEQUENCE_brand_subcategory_subbrand'
 EYE_LEVEL_SE_BR_SB_FL_KPI = 'Eye_level_SEQUENCE_brand_subbrand_flavor'
 EYE_LEVEL_SE_BR_SC_FL_KPI = 'Eye_level_SEQUENCE_brand_subcategory_flavor'
 EYE_LEVEL_SE_BR_SC_SB_FL_KPI = 'Eye_level_SEQUENCE_brand_subcategory_subbrand_flavor'
-Eye_level_kpi_FACINGS = "Eye_level_kpi_FACINGS"
 
 EYE_LEVEL_GROUP_ATTRIBUTES = {
     EYE_LEVEL_SE_BR_KPI: {'group_level': ['brand_fk'], 'num_den_cont': ['brand_fk', 'store_fk', 'store_fk']},
@@ -59,7 +60,6 @@ EYE_LEVEL_GROUP_ATTRIBUTES = {
     EYE_LEVEL_SE_BR_SC_SB_FL_KPI: {'group_level': ['brand_fk', 'sub_brand', 'sub_category_fk', 'att3'],
                                    'num_den_cont': ['att3_fk', 'sub_brand_fk', 'sub_category_fk']},
 }
-
 EYE_LEVEL_DUMMY_VALUE = ['brand_fk', 'brand_fk', 'brand_fk']
 
 EYELEVEL_COLUMNS_TO_USE = ['bay_number', 'shelf_number', 'facing_sequence_number', 'stacking_layer',
@@ -95,14 +95,16 @@ BLOCK_ATTRIBUTES = ['brand_fk', 'att3_fk', 'sub_brand_fk', 'sub_category_fk', 'c
 BLOCK_DUMMY_VALUE = ['brand_name', 'brand_name', 'brand_name']
 MIN_FACINGS_ON_SAME_LAYER = 'Min_facing_on_same_layer'
 MIN_LAYER_NUMBER = 'Min_layer_#'
-MISSING_VALUE_FK = 999
 MATCH_PRODUCT_IN_PROBE_FK = 'match_product_in_probe_fk'
 MATCH_PRODUCT_IN_PROBE_STATE_REPORTING_FK = 'match_product_in_probe_state_reporting_fk'
+MISSING_VALUE_FK = 999
 
 
 class PngcnSceneKpis(object):
+
     def __init__(self, project_connector, common, scene_id, data_provider=None):
         self.scene_id = scene_id
+        self.project_name = project_connector.project_name
         self.project_connector = project_connector
         if data_provider is not None:
             self.data_provider = data_provider
@@ -110,7 +112,7 @@ class PngcnSceneKpis(object):
         else:
             self.on_ace = False
         self.cur = self.project_connector.db.cursor()
-        self.log_prefix = 'Pngcn scene calculation for scene: {}, project {}'.format(self.scene_id,
+        self.log_prefix = 'Share_of_display for scene: {}, project {}'.format(self.scene_id,
                                                                               self.project_connector.project_name)
         Log.info(self.log_prefix + ' Starting calculation')
         self.match_display_in_scene = pd.DataFrame({})
@@ -131,8 +133,9 @@ class PngcnSceneKpis(object):
         self.all_products = self.data_provider[Data.ALL_PRODUCTS]
         self.png_manufacturer_fk = self.get_png_manufacturer_fk()
         self.psdataprovider = PsDataProvider(data_provider=self.data_provider)
-        self.match_product_in_probe_state_reporting = self.psdataprovider.get_match_product_in_probe_state_reporting()
         self.parser = Parser
+        self.match_probe_in_scene = self.get_product_special_attribute_data(self.scene_id)
+        self.match_product_in_probe_state_reporting = self.psdataprovider.get_match_product_in_probe_state_reporting()
         self.sub_brand_entities = self.psdataprovider.get_custom_entities_df('sub_brand').drop_duplicates(
             subset=['entity_name'], keep='first')
         self.att3_entities = self.psdataprovider.get_custom_entities_df('att3').drop_duplicates(subset=['entity_name'],
@@ -170,6 +173,7 @@ class PngcnSceneKpis(object):
                 self.project_connector.db.commit()
             Log.info(self.log_prefix + ' Finished calculation')
 
+    @kpi_runtime()
     def calculate_variant_block(self, enable_single_shelf_exclusion=True):
         Log.info("Starting variant block KPI calculation")
         block_sku_kpi = self.common.get_kpi_fk_by_kpi_type(BLOCK_SKU)
@@ -191,8 +195,8 @@ class PngcnSceneKpis(object):
             grouping_data = BLOCK_GROUP_ATTRIBUTES[grouping_kpi]
             group_attributes = grouping_data['num_den_cont']
             grouping_level = [grouping_field] + group_attributes
-            grouping_level_df = full_df.drop_duplicates(subset=grouping_level)[grouping_level].to_dict(orient='records')
-            kpi_aggrigations[grouping_kpi] = grouping_level_df
+            kpi_aggrigations[grouping_kpi] = full_df.drop_duplicates(subset=set(grouping_level))[
+                set(grouping_level)].to_dict(orient='records')
         for kpi_level in kpi_aggrigations.keys():
             filter_results = []
             kpi_block_fk = self.common.get_kpi_fk_by_kpi_type(kpi_level)
@@ -240,7 +244,7 @@ class PngcnSceneKpis(object):
                             filters['stacking_layer'] = [1]
                             denominator_block = len(self.parser.filter_df(filters, custom_matches))
                             del filters['stacking_layer']
-                            result_block = 0 if (denominator_block == 0) else numerator_block/float(denominator_block)
+                            result_block = 0 if (denominator_block == 0) else numerator_block / float(denominator_block)
                             row_new['facing_percentage'] = result_block
                             row_new['SKU_ATTRIBUTES'] = block_attributes
                             row_new['kpi_level_2_fk'] = kpi_block_fk
@@ -252,9 +256,11 @@ class PngcnSceneKpis(object):
                         self.handle_node_in_variant_block(conditions, row, scene_matches_fks, filter_results,
                                                           block_filters, custom_matches)
             block_results[kpi_level] = filter_results
+
         # Restore the original data provider
         self.data_provider.all_products.loc[self.data_provider.all_products['product_fk'].isin(
             irrelevant_products_fks), ['product_type']] = 'Irrelevant'
+
         # Save all blocks results
         for kpi in block_results.keys():
             kpi_attributes = BLOCK_GROUP_ATTRIBUTES[kpi]['num_den_cont']
@@ -276,6 +282,7 @@ class PngcnSceneKpis(object):
                                                result=row['facing_percentage'], score=total_bays,
                                                weight=row['shelf_count'], target=row['bay_number'],
                                                by_scene=True, identifier_result=identifier_result)
+                # Save all SKUs atomics per block
                 products_data = row['SKU_DATA']
                 for i, product_row in products_data.iterrows():
                     product_fk = product_row['product_fk']
@@ -290,10 +297,10 @@ class PngcnSceneKpis(object):
                                                    by_scene=True, identifier_parent=identifier_result,
                                                    should_enter=True)
 
-    def get_scene_match_fk(self, row):
+    @staticmethod
+    def get_scene_match_fk(row):
         cluster = row['cluster']
         scene_matches_fks = []
-        # Iterate all nodes, verify and filter "not blocks" and add info to dictionary
         for node in cluster.nodes.data():
             scene_matches_fks += (list(node[1]['scene_match_fk']))
         return scene_matches_fks
@@ -365,21 +372,11 @@ class PngcnSceneKpis(object):
             custom_matches['sub_category'], sep="_").str.cat(custom_matches['att3'], sep="_")
         custom_matches['brand_subcategory_subbrand_flavor'] = custom_matches['brand_name'].str.cat(
             custom_matches['sub_category'], sep="_").str.cat(custom_matches['sub_brand'], sep="_"
-                                                      ).str.cat(custom_matches['att3'], sep="_")
+                                                             ).str.cat(custom_matches['att3'], sep="_")
         return full_df, custom_matches, products_df
 
-    def calculate_block_facing_include_stacking(self, block_df, block_filters, custom_matches):
-        relevant_columns_block_df = block_df[['scene_fk', 'bay_number', 'shelf_number', 'facing_sequence_number']]
-        block_df_all_stacking_layers = custom_matches.set_index(
-                ['scene_fk', 'bay_number', 'shelf_number', 'facing_sequence_number']).sort_index().loc[
-                [tuple(x) for x in relevant_columns_block_df.values]]
-        complete_df = pd.merge(block_df_all_stacking_layers,
-                               self.scif, on='product_fk', how="left")
-        filtered_block_df_all_stacking_layers = self.parser.filter_df(block_filters, complete_df)
-        return filtered_block_df_all_stacking_layers
-
     def encode_dict(self, block_filters):
-        block_filters = {k: unicode(v).encode("utf-8") for k,v in block_filters.iteritems()}
+        block_filters = {k: unicode(v).encode("utf-8") for k, v in block_filters.iteritems()}
         return block_filters
 
     def handle_node_in_variant_block(self, row_in_template, row, scene_matches_fks, filter_results, block_filters,
@@ -445,17 +442,17 @@ class PngcnSceneKpis(object):
     def save_highlight_products(self, custom_matches, kpi_level_2_type):
         kpi_block_fk = self.common.get_kpi_fk_by_kpi_type(kpi_level_2_type)
         match_product_in_probe_state_reporting = self.match_product_in_probe_state_reporting[
-            self.match_product_in_probe_state_reporting['kpi_level_2_fk']==kpi_block_fk]
+            self.match_product_in_probe_state_reporting['kpi_level_2_fk'] == kpi_block_fk]
         sub_brands = set(custom_matches['sub_brand'])
         try:
             for sub_brand in sub_brands:
                 if sub_brand.encode("utf8") not in match_product_in_probe_state_reporting['name'
                 ].str.encode("utf8").to_list():
-                            self.insert_sub_brand_into_probe_state_reporting(sub_brand.encode("utf8"), kpi_block_fk)
+                    self.insert_sub_brand_into_probe_state_reporting(sub_brand.encode("utf8"), kpi_block_fk)
                 sub_brand_pk = self.match_product_in_probe_state_reporting[
                     (self.match_product_in_probe_state_reporting['kpi_level_2_fk'] == kpi_block_fk) &
                     (self.match_product_in_probe_state_reporting['name'].str.encode("utf8") ==
-                    sub_brand.encode("utf8"))]['match_product_in_probe_state_reporting_fk'].values[0]
+                     sub_brand.encode("utf8"))]['match_product_in_probe_state_reporting_fk'].values[0]
                 df_to_append = pd.DataFrame(
                     columns=[MATCH_PRODUCT_IN_PROBE_FK, MATCH_PRODUCT_IN_PROBE_STATE_REPORTING_FK])
                 df_to_append[MATCH_PRODUCT_IN_PROBE_FK] = custom_matches['probe_match_fk'].drop_duplicates()
@@ -504,6 +501,7 @@ class PngcnSceneKpis(object):
             item["seq_" + field] = seq
             seq += 1
 
+    @kpi_runtime()
     def calculate_eye_level_kpi(self):
         """
         calls the filter eyelevel shelves function, calls both eye_level_sequence and eye_level_facings KPIs
@@ -511,7 +509,8 @@ class PngcnSceneKpis(object):
         if self.matches_from_data_provider.empty or self.scif.empty or \
                 self.scif.iloc[0]['location_type'] != 'Primary Shelf':
             return
-        full_eye_level_df = pd.merge(self.eye_level_df, self.all_products, on="product_fk")
+        eye_level_df = self.get_eye_level_shelves(self.matches_from_data_provider)
+        full_eye_level_df = pd.merge(eye_level_df, self.all_products, on="product_fk")
         max_shelf_count = self.matches_from_data_provider["shelf_number"].max()
         self.calculate_facing_eye_level(full_eye_level_df, max_shelf_count)
         self.calculate_sequence_eye_level(max_shelf_count, full_eye_level_df)
@@ -822,8 +821,8 @@ class PngcnSceneKpis(object):
                 select p.pk as product_fk,b.name as brand_name from static_new.product p
                 join static_new.brand b on b.pk = p.brand_fk;
                 """
-        self.project_connector.disconnect_rds()
-        self.project_connector.connect_rds()
+        if not self.project_connector.is_connected:
+            self.project_connector = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         res = pd.read_sql_query(query, self.project_connector.db)
         return res
 
@@ -1072,8 +1071,8 @@ class PngcnSceneKpis(object):
                     on report.display_item_facts.display_surface_fk = probedata.display_surface.pk;""",
             drop_temp_table_query
         ]
-        self.project_connector.disconnect_rds()
-        self.project_connector.connect_rds()
+        if not self.project_connector.is_connected:
+            self.project_connector = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         self.cur = self.project_connector.db.cursor()
         for query in queries:
             self.cur.execute(query)
@@ -1122,8 +1121,8 @@ class PngcnSceneKpis(object):
         return '({0}, {1}, {2})'.format(display['scene_fk'], display['display_fk'], display['display_size'])
 
     def _get_match_display_in_scene_data(self):
-        self.project_connector.disconnect_rds()
-        self.project_connector.connect_rds()
+        if not self.project_connector.is_connected:
+            self.project_connector = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         local_con = self.project_connector.db
         query = ''' select
                         mds.display_fk
@@ -1196,6 +1195,7 @@ class PngcnSceneKpis(object):
                                                result=row['product_size'], score=row['facings'], by_scene=True)
         return
 
+    @kpi_runtime()
     def save_nlsos_to_custom_scif(self):
         """
         copied the same calculation as 'gross_len_split_stack' field in scif, used 'width_mm_advance' \
@@ -1437,6 +1437,7 @@ class PngcnSceneKpis(object):
                                        score=score, by_scene=True)
         return 0
 
+    @kpi_runtime()
     def calculate_linear_length(self):
         """
         calculate P&G manufacture linear length percentage using 'width_mm'
@@ -1444,6 +1445,7 @@ class PngcnSceneKpis(object):
         self.calculate_linear_or_presize_linear_length('width_mm')
         return 0
 
+    @kpi_runtime()
     def calculate_presize_linear_length(self):
         """
         calculate P&G manufacture linear length percentage using 'width_mm_advance'
@@ -1484,23 +1486,8 @@ class PngcnSceneKpis(object):
             LEFT JOIN static_new.category ON product_category_fk = category.pk
             WHERE scene.pk = {};""".format(scene_pk)
 
-        # Explicit connect db, otherwise db gone error will be thrown
-        self.project_connector.connect_rds()
+        if not self.project_connector.is_connected:
+            self.project_connector = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         df = pd.read_sql_query(query, self.project_connector.db)
         return None if df is None else df['scene_category'][0]
 
-# if __name__ == '__main__':
-#     # Config.init()
-#     LoggerInitializer.init('TREX')
-#     conn = PSProjectConnector('integ3', DbUsers.CalculationEng)
-#     # session = 'd4b46e1d-b4ed-406d-a20b-8ec9b64f5c5e'
-#     # session = '14f71194-e843-4a3c-94f0-f712775e8ea2'
-#     # session = '9f0244de-66c3-4378-8b46-16c9f79dc978'
-#     # # session = 'a6785107-4a59-4aec-943e-8f710c2aa46d'
-#     # session = 'ff0a6857-52c8-4bbf-8f4b-697b141fcb9a'
-#     session = '26a1aea8-39a0-4d6c-af49-10a20ba4a885'
-#     data_provider = ACEDataProvider('integ3')
-#     data_provider.load_session_data(session)
-#     calculate(conn, session, data_provider)
-
-# get the filtered df,
