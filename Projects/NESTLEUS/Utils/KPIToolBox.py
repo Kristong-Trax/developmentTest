@@ -80,6 +80,7 @@ class NESTLEUSToolBox:
             .merge(self.products, how="left", on="product_fk", suffixes=('', '_products')) \
             .merge(self.scene_info, how="left", on="scene_fk", suffixes=('', '_info'))
         self.mpis = self.mpis[self.mpis['product_name'] != Const.IRRELEVANT]
+        self.mpis = self.mpis[self.mpis['category_fk'].isin(self.categories.values())]
 
     def main_calculation(self, *args, **kwargs):
         """
@@ -89,8 +90,7 @@ class NESTLEUSToolBox:
         # kpi_set_fk = kwargs['kpi_set_fk']
         # self.calculate_facing_count_and_linear_feet(kpi_set_fk=kpi_set_fk)
 
-        self.mpis = self.mpis[self.mpis['category_fk'].isin(self.categories.values())]
-        if self.mpis.empty:
+        if self.mpis[self.mpis['template_fk'].isin(self.water_templates.values())].empty:
             Log.info("Session: {} contains no water products.".format(self.session_uid))
             return
 
