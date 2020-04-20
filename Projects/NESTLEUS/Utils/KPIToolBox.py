@@ -76,6 +76,8 @@ class NESTLEUSToolBox:
         self.categories = {category: self.get_category_fk(category) for category in Const.CATEGORIES}
         self.water_templates = {template: self.get_template_fk(template) for template in Const.WATER_TEMPLATES}
 
+        self.scif = self.scif[self.scif['product_name'] != Const.IRRELEVANT]
+
         self.mpis = self.match_product_in_scene \
             .merge(self.products, how="left", on="product_fk", suffixes=('', '_products')) \
             .merge(self.scene_info, how="left", on="scene_fk", suffixes=('', '_info'))
@@ -213,7 +215,6 @@ class NESTLEUSToolBox:
         kpi_fk = 916 if manufacturer_name else 915
 
         display = self.scif[self.scif['template_fk'] == display_type_id]
-        display = display[display['product_name'] != Const.IRRELEVANT]
 
         if manufacturer_name:
             display = display[display['manufacturer_local_name'] == manufacturer_name]
