@@ -26,6 +26,8 @@ class SosVsTargetBrandKpi(UnifiedCalculationsScript):
         self.util.reset_filtered_scif_and_matches_to_exclusion_all_state()
 
     def calculate_brand_out_of_category_sos(self):
+        location_type_fk = self.util.all_templates[self.util.all_templates[ScifConsts.LOCATION_TYPE] == 'Primary Shelf'] \
+            [ScifConsts.LOCATION_TYPE_FK].values[0]
         kpi_fk = self.util.common.get_kpi_fk_by_kpi_type(self.util.BRAND_SOS)
         filtered_scif = self.util.filtered_scif
         category_df = filtered_scif.groupby([ScifConsts.CATEGORY_FK],
@@ -39,7 +41,8 @@ class SosVsTargetBrandKpi(UnifiedCalculationsScript):
             self.write_to_db_result(fk=kpi_fk, numerator_id=row[ScifConsts.BRAND_FK],
                                     numerator_result=row['updated_gross_length'],
                                     denominator_id=row[ScifConsts.CATEGORY_FK],
-                                    denominator_result=row['cat_len'], result=row['sos'] * 100)
+                                    denominator_result=row['cat_len'], result=row['sos'] * 100,
+                                    context_id=location_type_fk)
             self.util.add_kpi_result_to_kpi_results_df(
                         [kpi_fk, row[ScifConsts.BRAND_FK], row[ScifConsts.CATEGORY_FK], row['sos'] * 100, None,
                          None])

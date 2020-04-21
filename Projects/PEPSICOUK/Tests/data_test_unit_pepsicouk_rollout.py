@@ -136,8 +136,8 @@ class DataTestUnitPEPSICOUK(object):
     ])
 
     all_templates = pd.DataFrame.from_records(
-        [{'template_fk': 1, 'template_name': 'Template 1', 'location_type': 'Primary Shelf'},
-         {'template_fk': 2, 'template_name': 'Template 2', 'location_type': 'Secondary Shelf'}]
+        [{'template_fk': 1, 'template_name': 'Template 1', 'location_type': 'Primary Shelf', 'location_type_fk': 1},
+         {'template_fk': 2, 'template_name': 'Template 2', 'location_type': 'Secondary Shelf', 'location_type_fk': 2}]
     )
 
     empty_exclusion_template = pd.DataFrame(columns=['KPI', 'Action', 'Type', 'Value'])
