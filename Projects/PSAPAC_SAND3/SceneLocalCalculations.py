@@ -28,18 +28,24 @@ if __name__ == '__main__':
     project_name = 'psapac-sand3'
     # RUN for scene level KPIs
     session_scene_map = OrderedDict([
-        ('004B6908-191C-46AC-BDAD-184CEFD8D37A', ['1C7F0538-C61A-457D-AF66-196ABC966520',   # '2020-03-18', 'Wellness Main Shelf'
-                                                  'B564227A-C5D4-4224-BD9A-4BAE464CB0D2',   # '2020-03-18', 'Pain Main Shelf'
+        ('004B6908-191C-46AC-BDAD-184CEFD8D37A', [
                                                   '0F93BD58-F7A1-4ED2-A982-542457362B7D',   # '2020-03-18', 'Pain Main Shelf'
-                                                  '10E5FEB2-9611-446A-8768-0BCD7283CDC4']), # '2020-03-18', 'Pain Main Shelf'
-        ('0AE386E9-8BE4-4DEC-9D99-CB96999FB92A', ['78B6AFC3-4676-4C7E-9620-FBAF4A5E1785',   # '2020-03-18', 'Wellness Main Shelf'
+                                                  '1C7F0538-C61A-457D-AF66-196ABC966520',   # '2020-03-18', 'Wellness Main Shelf'
+                                                  'B564227A-C5D4-4224-BD9A-4BAE464CB0D2',   # '2020-03-18', 'Pain Main Shelf'
+                                                  '10E5FEB2-9611-446A-8768-0BCD7283CDC4'
+                                                ]),  # '2020-03-18', 'Pain Main Shelf'
+        ('0AE386E9-8BE4-4DEC-9D99-CB96999FB92A', [
+                                                  '78B6AFC3-4676-4C7E-9620-FBAF4A5E1785',   # '2020-03-18', 'Wellness Main Shelf'
                                                   'CB5BE93D-7BB6-4763-AB6C-7D004E06025D',   # '2020-03-18', 'Pain Main Shelf'
                                                   '9833BE9A-1CEA-4AD1-8A06-6139F4B7DE4B',   # '2020-03-18', 'Pain Main Shelf'
-                                                  'CF86831A-DAD4-47FA-B461-B387CED6FBA3']), # '2020-03-18', 'Pain Main Shelf'
-        ('1B0750F4-EBC1-4692-97C3-9C0291F3F485', ['1FE9A8EB-60F0-4558-8CCA-8347303F58E6',   # '2020-03-18', 'Wellness Main Shelf'
+                                                  'CF86831A-DAD4-47FA-B461-B387CED6FBA3'
+                                                ]),  # '2020-03-18', 'Pain Main Shelf'
+        ('1B0750F4-EBC1-4692-97C3-9C0291F3F485', [
+                                                  '1FE9A8EB-60F0-4558-8CCA-8347303F58E6',   # '2020-03-18', 'Wellness Main Shelf'
                                                   '797E8F23-F7AA-4EA4-94B7-406A0E3016E1',   # '2020-03-18', 'Pain Main Shelf'
                                                   'CFF314D7-5346-4FF7-A69C-1FAF05EE1481',   # '2020-03-18', 'Pain Main Shelf'
-                                                  '63364D4F-F8C7-4525-838A-24FF4C3526A9'])  # '2020-03-18', 'Pain Main Shelf'
+                                                  '63364D4F-F8C7-4525-838A-24FF4C3526A9'
+                                                ])  # '2020-03-18', 'Pain Main Shelf'
     ])
 
     for session, scenes in session_scene_map.iteritems():
