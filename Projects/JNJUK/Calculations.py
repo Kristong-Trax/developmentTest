@@ -34,26 +34,32 @@ class JNJUKCalculations(BaseCalculationsScript):
         jnj_generator.tool_box.commit_osa_queries()
         self.timer.stop('KPIGenerator.run_project_calculations')
 
-    @staticmethod
-    def _parse_templates_for_calculations():
+    def _parse_templates_for_calculations(self):
         """ This method parse the local relevant template for the global code calculation"""
         data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'Data')
         eye_hand_lvl_template_path = os.path.join(data_path, 'eye_level_jnjuk.xlsx')
-        exclusive_template_path = os.path.join(data_path, 'KPI Exclusions Template.xlsx')
+        kpi_exclusion_template_path = self.get_exclusion_template()
+        exclusive_template_path = os.path.join(data_path, kpi_exclusion_template_path)
         survey_template_path = os.path.join(data_path, 'SurveyTemplate.xlsx')
         eye_hand_lvl_template = pd.read_excel(eye_hand_lvl_template_path)
         exclusion_template = pd.read_excel(exclusive_template_path)
         survey_template = pd.read_excel(survey_template_path, sheetname='Sheet1')
         return eye_hand_lvl_template, exclusion_template, survey_template
 
+    def get_exclusion_template(self):
+        if str(self.data_provider.visit_date) >= '2019-04-01':
+            return 'JNJ_UK_KPI_Exclusion_Template_current.xlsx'
+        else:
+            return 'KPI_Exclusions_Template_until_April2020.xlsx'
 
-if __name__ == '__main__':
-    LoggerInitializer.init('jnjuk calculations')
-    Config.init()
-    project_name = 'jnjuk'
-    data_provider = KEngineDataProvider(project_name)
-    session = 'ca9b70f5-c59e-44c8-8c1c-da36b9992363'
-    # session = 'f850397b-6b79-47e9-897b-9edb2632efda' # 60 sec for promocalc
-    data_provider.load_session_data(session)
-    output = Output()
-    JNJUKCalculations(data_provider, output).run_project_calculations()
+
+# if __name__ == '__main__':
+#     LoggerInitializer.init('jnjuk calculations')
+#     Config.init()
+#     project_name = 'jnjuk'
+#     data_provider = KEngineDataProvider(project_name)
+#     session = 'ca9b70f5-c59e-44c8-8c1c-da36b9992363'
+#     # session = 'f850397b-6b79-47e9-897b-9edb2632efda' # 60 sec for promocalc
+#     data_provider.load_session_data(session)
+#     output = Output()
+#     JNJUKCalculations(data_provider, output).run_project_calculations()

@@ -17,7 +17,7 @@ KPI_TYPE_COL = 'type'
 OOS_CODE = 1
 PRESENT_CODE = 2
 EXTRA_CODE = 3
-PRODUCT_PRESENCE_KPI = 'PRODUCT_PRESENCE_IN_WHOLE_STORE_RE'
+PRODUCT_PRESENCE_KPI = 'PRODUCT_PRESENCE_IN_WHOLE_STORE'
 # Assortment KPI Names
 DST_MAN_BY_STORE_PERC = 'DST_MAN_BY_STORE_PERC'
 OOS_MAN_BY_STORE_PERC = 'OOS_MAN_BY_STORE_PERC'
@@ -430,7 +430,7 @@ class CCAAUToolBox:
                                                   numerator_result=assortment_code,
                                                   denominator_result=1,
                                                   result=assortment_code,
-                                                  score=assortment_code * 100.00
+                                                  score=assortment_code
                                                   )
             if assortment_code == OOS_CODE:
                 # save OOS products; with OOS % kpi as parent
@@ -642,13 +642,16 @@ class CCAAUToolBox:
     def get_policies(self, kpi_fk):
         query = """ select a.kpi_fk, p.policy_name, p.policy, atag.assortment_group_fk,
                         atp.assortment_fk, atp.product_fk, atp.start_date, atp.end_date
-                    from pservice.assortment_to_product atp
-                        join pservice.assortment_to_assortment_group atag on atp.assortment_fk = atag.assortment_fk
+                    from pservice.assortment_to_product atp 
+                        join pservice.assortment_to_assortment_group atag on atp.assortment_fk = atag.assortment_fk 
                         join pservice.assortment a on a.pk = atag.assortment_group_fk
                         join pservice.policy p on p.pk = a.store_policy_group_fk
-                    where a.kpi_fk={kpi_fk};
+                    where a.kpi_fk={kpi_fk}
+                    AND '{sess_date}' between atp.start_date AND atp.end_date;
                     """
-        policies = pd.read_sql_query(query.format(kpi_fk=kpi_fk), self.rds_conn.db)
+        policies = pd.read_sql_query(query.format(kpi_fk=kpi_fk,
+                                                  sess_date=self.session_info.iloc[0].visit_date),
+                                     self.rds_conn.db)
         return policies
 
     def get_previous_session(self):

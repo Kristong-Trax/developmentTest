@@ -270,7 +270,7 @@ class PepsiUSV2ToolBox(GlobalSessionToolBox):
         own_manufacturer_scif = filtered_scif.loc[filtered_scif.manufacturer_fk == self.manufacturer_fk]
         store_target = self._get_store_target()
         own_manu_sos = own_manufacturer_scif[Lc.SOS_LINEAR_LEN_ATTR].sum()
-        score, result = self._calculate_sos_vs_target_score_and_result(own_manu_sos, total_store_sos, store_target)
+        result, score = self._calculate_sos_vs_target_score_and_result(own_manu_sos, total_store_sos, store_target)
         kpi_fk = self._get_sos_kpi_fk_by_category_and_lvl(category_name, Lc.SOS_OWN_MANU_LVL, Lc.LINEAR_ID_SUFFIX)
         kpi_identifier = '_'.join([str(category_fk),  Lc.LINEAR_ID_SUFFIX])
         self.write_to_db(fk=kpi_fk, numerator_id=self.manufacturer_fk, denominator_id=self.store_id,

@@ -24,7 +24,7 @@ def save_scene_item_facts_to_data_provider(data_provider, output):
 if __name__ == '__main__':
     LoggerInitializer.init('pepsicouk calculations')
     Config.init()
-    project_name = 'pepsicouk-sand'
+    project_name = 'pepsicouk'
     data_provider = KEngineDataProvider(project_name)
     # session = '470e2eb1-9031-46c1-8699-c47e18c58b9c'
     # session = 'e6bf953a-1d8c-4dd1-b558-f88ef1cb13e5'# results in DB
@@ -34,12 +34,12 @@ if __name__ == '__main__':
     # session = '58272289-5f9a-4fb6-b8e0-a7f3bfa2e07c' # session with DF error on _set_scif
     # session = '8699c793-8a71-4a18-b24c-3785146075c4'
     # session = 'aa9d2ad8-61d5-4167-a4f1-e753ef366b39'
-    session = '56d070bb-36ad-4590-bf83-4161d68cdb3c'
+    session = '478fc2d0-a025-471f-a3f5-7002bc47b529'
     data_provider.load_session_data(session)
     # output = Output()
     # PEPSICOUKCalculations(data_provider, output).run_project_calculations()
     # # scenes = data_provider.scenes_info.scene_fk.tolist()
-    scenes = [64294]
+    scenes = [241790]
     for scene in scenes:
         data_provider.load_scene_data(session, scene)
         output = VanillaOutput()
