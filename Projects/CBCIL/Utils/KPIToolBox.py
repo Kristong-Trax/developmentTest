@@ -790,7 +790,7 @@ class CBCILCBCIL_ToolBox(object):
             return "{}/{}/{}".format(TEMPLATE_PATH, PREVIOUS_TEMPLATES, TEMPLATE_NAME_BETWEEN_2019_01_15_TO_2019_03_01)
         elif self.visit_date <= datetime.date(datetime(2019, 12, 31)):
             return "{}/{}/{}".format(TEMPLATE_PATH, PREVIOUS_TEMPLATES, TEMPLATE_NAME_BETWEEN_2019_03_01_TO_2019_12_31)
-        elif self.visit_date <= datetime.date(datetime(2020, 04, 21)):
+        elif self.visit_date <= datetime.date(datetime(2020, 04, 20)):
             return "{}/{}/{}".format(TEMPLATE_PATH, PREVIOUS_TEMPLATES, TEMPLATE_NAME_BETWEEN_2019_12_31_TO_2020_04_21)
         else:
             return "{}/{}".format(TEMPLATE_PATH, CURRENT_TEMPLATE)
