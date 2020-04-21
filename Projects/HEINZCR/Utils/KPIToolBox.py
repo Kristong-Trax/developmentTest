@@ -65,6 +65,7 @@ class HEINZCRToolBox:
         self.store_targets = pd.read_excel(Const.STORE_TARGETS_PATH)
         self.sub_category_weight = pd.read_excel(Const.SUB_CATEGORY_TARGET_PATH, sheetname='category_score')
         self.kpi_weights = pd.read_excel(Const.SUB_CATEGORY_TARGET_PATH, sheetname='max_weight')
+        self.targets = self.ps_data_provider.get_kpi_external_targets()
         self.store_assortment = PSAssortmentDataProvider(
             self.data_provider).execute(policy_name=None)
         try:
@@ -109,8 +110,10 @@ class HEINZCRToolBox:
         if self.scif.empty:
             return
         # these function must run first
-        self.adherence_results = self.heinz_global_price_adherence(pd.read_excel(Const.PRICE_ADHERENCE_TEMPLATE_PATH,
-                                                                                 sheetname="Price Adherence"))
+        #  self.adherence_results = self.heinz_global_price_adherence(pd.read_excel(Const.PRICE_ADHERENCE_TEMPLATE_PATH,
+        #                                                                          sheetname="Price Adherence"))
+        compare_df_test = pd.read_excel(Const.PRICE_ADHERENCE_TEMPLATE_PATH, sheetname="Price Adherence")
+        self.adherence_results = self.heinz_global_price_adherence(self.targets)
         self.extra_spaces_results = self.heinz_global_extra_spaces()
         self.set_relevant_sub_categories()
 
@@ -595,40 +598,45 @@ class HEINZCRToolBox:
                                               should_enter=True)
 
     def heinz_global_price_adherence(self, config_df):
-        # =============== remove after updating logic to support promotional pricing ===============
+
+        config_df = config_df.sort_values(by=["received_time"], ascending=False).drop_duplicates(
+            subset=['start_date', 'end_date', 'ean_code', 'store_type'], keep="first")
+
         self.match_product_in_scene.loc[self.match_product_in_scene['price'].isna(), 'price'] = \
             self.match_product_in_scene.loc[self.match_product_in_scene['price'].isna(), 'promotion_price']
         # =============== remove after updating logic to support promotional pricing ===============
         results_df = self.adherence_results
         my_config_df = \
-            config_df[config_df['STORETYPE'].str.encode('utf-8') == self.store_info.store_type[0].encode('utf-8')]
+            config_df[config_df['store_type'].str.encode('utf-8') == self.store_info.store_type[0].encode('utf-8')]
         products_in_session = self.scif.drop_duplicates(subset=['product_ean_code'], keep='last')[
             'product_ean_code'].tolist()
         for product_in_session in products_in_session:
             if product_in_session:
-                row = my_config_df[my_config_df['EAN CODE'] == int(product_in_session)]
+                row = my_config_df[my_config_df['ean_code'] == int(product_in_session)]
                 if not row.empty:
                     # ean_code = row['EAN CODE'].values[0]
                     # product_pk = self.labels[self.labels['ean_code'] == product_in_session]['pk'].values[0]
                     product_pk = \
                         self.all_products[self.all_products['product_ean_code']
                                           == product_in_session]['product_fk'].iloc[0]
+
+                    print(product_pk)
                     # product_in_session_df = self.scif[self.scif['product_ean_code'] == ean_code]
                     mpisc_df_price = \
                         self.match_product_in_scene[(self.match_product_in_scene['product_fk'] == product_pk) |
                                                     (self.match_product_in_scene[
                                                          'substitution_product_fk'] == product_pk)]['price']
                     try:
-                        suggested_price = row['SUGGESTED_PRICE'].values[0]
+                        suggested_price = row['suggested_price'].values[0]
                     except Exception as e:
                         Log.error("Product with ean_code {} is not in the configuration file for customer type {}"
                                   .format(product_in_session, self.store_info.store_type[0].encode('utf-8')))
                         break
-                    upper_percentage = (100 + row['PERCENTAGE'].values[0]) / float(100)
-                    lower_percentage = (100 - row['PERCENTAGE'].values[0]) / float(100)
+                    upper_percentage = (100 + row['percentage_weight'].values[0]) / float(100)
+                    lower_percentage = (100 - row['percentage_weight'].values[0]) / float(100)
                     min_price = suggested_price * lower_percentage
                     max_price = suggested_price * upper_percentage
-                    percentage_sku = row['PERCENTAGE'].values[0]
+                    percentage_sku = row['percentage_weight'].values[0]
                     into_interval = 0
                     prices_sum = 0
                     count = 0
@@ -660,7 +668,7 @@ class HEINZCRToolBox:
                                                       numerator_result=suggested_price,
                                                       denominator_id=product_pk,
                                                       denominator_result=trax_average,
-                                                      result=row['PERCENTAGE'].values[0],
+                                                      result=row['percentage_weight'].values[0],
                                                       score=into_interval)
                     if trax_average:
                         mark_up = (np.divide(np.divide(float(trax_average), float(1.13)),
@@ -682,7 +690,19 @@ class HEINZCRToolBox:
                     continue
                     # Log.warning("Product with ean_code {} is not in the configuration file for customer type {}"
                     #             .format(product_in_session, self.store_info.store_type[0].encode('utf-8')))
+
+        results_df = self.keep_latest_targets(results_df)
         return results_df
+
+    def keep_latest_targets(self, df):
+
+        if df.empty:
+            pass
+        else:
+            pass
+
+
+        return df
 
     def calculate_perfect_store_extra_spaces(self):
         extra_spaces_kpi_fk = self.common_v2.get_kpi_fk_by_kpi_type(
