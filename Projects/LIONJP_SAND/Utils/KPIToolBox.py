@@ -12,6 +12,7 @@ from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Utils.Logging.Logger import Log
 from Projects.LIONJP_SAND.Data.Consts import Consts
 
+
 __author__ = 'satya'
 
 
@@ -85,8 +86,7 @@ class LIONJP_SANDToolBox:
                 else:
                     Log.warning("KPI_TYPE:{kt} not found in setup=>kpi_list sheet.".format(kt=kpi_type))
                     continue
-
-                self.common.commit_results_data()
+            self.common.commit_results_data()
             return
         except Exception as err:
             Log.error("LionJP KPI calculation failed due to the following error: {}".format(err))
@@ -139,7 +139,8 @@ class LIONJP_SANDToolBox:
     def prepare_data_adjacency(kpi_config):
         adj_config_list = []
         for row_number, row_data in kpi_config.iterrows():
-            adj_config = {"template_fks": row_data['template_fks'],
+            adj_config = {"custom_entity_fk": row_data['custom_entity_fk'],
+                          "template_fks": row_data['template_fks'],
                           "group_entity": row_data['group_entity'],
                           "orientation": row_data['orientation'],
                           "minimum_tagging": row_data['minimum_tagging'],
@@ -199,6 +200,8 @@ class LIONJP_SANDToolBox:
     def build_ean_groups(self, adj_config):
         group_entities = adj_config['group_entity']
         entity_values = adj_config['entity_values']
+        if group_entities.upper() == "Y":
+            entity_values = [[u"{}".format(g) for g in group] for group in entity_values]
         entities = {}
         df_entities = pd.DataFrame()
         if group_entities.upper() == "Y":
@@ -226,7 +229,15 @@ class LIONJP_SANDToolBox:
         population = {'entity': entities.keys()}
         exclude_filter, allowed_products_filter = self.exclude_and_include_filter(adj_config)
 
-        sequence_params = {AdditionalAttr.DIRECTION: adj_config['orientation'].upper(),
+        if adj_config['orientation'].upper() == "VERTICALLY":
+            direction = "DOWN"
+        elif adj_config['orientation'].upper() == "HORIZONTALLY":
+            direction = "RIGHT"
+        else:
+            Log.warning("Invalid direction:{}. Resetting to default orientation RIGHT".format(adj_config['orientation']))
+            direction = "RIGHT"
+
+        sequence_params = {AdditionalAttr.DIRECTION: direction,
                            AdditionalAttr.EXCLUDE_FILTER: exclude_filter,
                            AdditionalAttr.CHECK_ALL_SEQUENCES: False,
                            AdditionalAttr.STRICT_MODE: True if adj_config['sequence_mode'] == 1 else False,
@@ -246,27 +257,33 @@ class LIONJP_SANDToolBox:
             Log.warning(message)
             return
 
-        adj_configs = self.prepare_data_adjacency(kpi_config)
-
-        for adj_config in adj_configs:
-            scene_fks = self.scif['scene_fk'][self.scif['template_fk'].isin(adj_config['template_fks'])].unique()
-            for scene_fk in scene_fks:
+        for idx, adj_config in kpi_config.iterrows():
+            df_scene_template = self.scif[['scene_fk', 'template_fk']][self.scif['template_fk'].isin(adj_config['template_fks'])]
+            df_scene_template = df_scene_template.drop_duplicates()
+            for row_num, row_data in df_scene_template.iterrows():
+                scene_fk = row_data['scene_fk']
+                template_fk = row_data['template_fk']
                 if adj_config['entity'] == "ean_code":
                     location = {"scene_fk": scene_fk}
+
                     population, sequence_params, custom_matches = self.build_ean_groups(adj_config)
 
                     if custom_matches.empty:
-                        print("scene_fk:{}, Custom Entities are empty. Please check the ean_codes".format(scene_fk))
+                        print("scene_fk:{}, Custom Entities are not found in the scene.".format(scene_fk))
                         continue
 
-                    sequence_res = Sequence(self.data_provider, custom_matches).calculate_sequence(population, location,
-                                                                                                   sequence_params)
-                    if sequence_res.empty:
-                        Log.warning("scene_fk:{}, No matches available for the given entities".format(scene_fk))
-                        continue
-
-                    for row_num, row_data in sequence_res.iterrows():
-                        for column, data in row_data.items():
-                            print ("{} {}".format(column, data))
+                    seq = Sequence(self.data_provider, custom_matches)
+                    sequence_res = seq.calculate_sequence(population, location, sequence_params)
+                    result_count = len(sequence_res)
+                    result = 1 if result_count > 0 else 0
+                    score = result
+                    self.common.write_to_db_result(fk=kpi_level_2_fk,
+                                                   numerator_id=adj_config['custom_entity_fk'],
+                                                   denominator_id=template_fk,
+                                                   context_id=scene_fk,
+                                                   numerator_result=result_count,
+                                                   denominator_result=0,
+                                                   result=result,
+                                                   score=score)
                 else:
-                    pass
+                    Log.warning("Invalid entity:{}".format(adj_config['entity']))
