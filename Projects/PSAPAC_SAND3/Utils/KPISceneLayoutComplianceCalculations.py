@@ -48,15 +48,50 @@ class SceneLayoutComplianceCalc(object):
         gsk_layout_compliance_sequence = self.kpi_static_data[
             (self.kpi_static_data[KPI_TYPE_COL] == GSK_LAYOUT_COMPLIANCE_SEQUENCE)
             & (self.kpi_static_data['delete_time'].isnull())]
-        # TODO
         gsk_layout_compliance_block = self.kpi_static_data[
             (self.kpi_static_data[KPI_TYPE_COL] == GSK_LAYOUT_COMPLIANCE_BLOCK)
             & (self.kpi_static_data['delete_time'].isnull())]
 
+        self.calculate_gsk_layout_compliance_block(kpi_details=gsk_layout_compliance_block)
         self.calculate_gsk_layout_compliance_sequence(kpi_details=gsk_layout_compliance_sequence)
         self.calculate_gsk_layout_compliance_super_brand_fsos(kpi_details=gsk_layout_compliance_sbrand_fsos)
         self.calculate_gsk_layout_compliance_position(kpi_details=gsk_layout_compliance_position)
         self.calculate_gsk_layout_compliance_brand_fsos(kpi_details=gsk_layout_compliance_brand_fsos)
+
+    def calculate_gsk_layout_compliance_block(self, kpi_details):
+        Log.info("Calculating {kpi} for session: {sess} and scene: {scene}".format(
+            kpi=kpi_details.iloc[0][KPI_TYPE_COL],
+            sess=self.session_uid,
+            scene=self.current_scene_fk,
+        ))
+        blocal_targets = self.targets[
+            self.targets['kpi_fk'] == kpi_details['pk'].iloc[0]]
+        # if no targets return
+        if blocal_targets.empty:
+            Log.warning('There is no target policy for calculating {}'.format(
+                kpi_details.iloc[0][KPI_TYPE_COL]
+            ))
+            return False
+        else:
+            for idx, each_target in blocal_targets.iterrows():
+                # check for banner and template match in target
+                target_banner_name = self.custom_entity_data[
+                    self.custom_entity_data['pk'] == each_target.store_banner_pk].name.iloc[0]
+                if self.templates.iloc[0].template_fk not in each_target.template_fks or \
+                        target_banner_name == self.store_banner_name:
+                    Log.info("""Session: {sess}; Scene:{scene}. Scene Type not matching [{k} not in {v}] 
+                    or banner of current store -> {store_b} != target banner -> {targ_b}
+                    target for calculating {kpi}."""
+                             .format(sess=self.session_uid,
+                                     scene=self.current_scene_fk,
+                                     kpi=kpi_details.iloc[0][KPI_TYPE_COL],
+                                     store_b=self.store_banner_name,
+                                     targ_b=target_banner_name,
+                                     k=self.templates.iloc[0].template_fk,
+                                     v=each_target.template_fks,
+                                     ))
+                    continue
+                result = score = 0
 
     def calculate_gsk_layout_compliance_sequence(self, kpi_details):
         Log.info("Calculating {kpi} for session: {sess} and scene: {scene}".format(
@@ -97,6 +132,10 @@ class SceneLayoutComplianceCalc(object):
                 sub_category_pk = each_target.sub_category_fk
                 exclude_stacked_products = bool(int(each_target.stacking_exclude))
                 stack_filtered_mpis = self.match_product_data
+                Log.info("Checking if brand: {br} is present {condition} as in sequence : {seq}.".
+                         format(br=brand_pk_to_check,
+                                condition=condition,
+                                seq=sequence_brand_pks))
                 if brand_pk_to_check not in sequence_brand_pks:
                     Log.error(
                         """ KPI:{kpi}. Session: {sess}; Scene:{scene}. brand to check {brand} not in list {br_lst}."""
@@ -111,8 +150,9 @@ class SceneLayoutComplianceCalc(object):
                     # consider only stacking layer 1 products
                     stack_filtered_mpis = self.match_product_data[self.match_product_data['stacking_layer'] == 1]
                 interested_brand_prod_data = stack_filtered_mpis[
-                    (stack_filtered_mpis['brand_fk'] == brand_pk_to_check) &
-                    (stack_filtered_mpis['sub_category_fk'] == sub_category_pk)]
+                    (stack_filtered_mpis['brand_fk'] == brand_pk_to_check)
+                    & (stack_filtered_mpis['sub_category_fk'] == sub_category_pk)
+                    ]
                 if interested_brand_prod_data.empty:
                     Log.error(
                         """ KPI:{kpi}. Session: {sess}; Scene:{scene}. brand to check {brand} is not present.""".format(
@@ -122,48 +162,57 @@ class SceneLayoutComplianceCalc(object):
                             brand=brand_pk_to_check,
                         ))
                     continue
-
                 # Check only in predecessor brands
                 predecessor_brands = sequence_brand_pks[:sequence_brand_pks.index(brand_pk_to_check)]
                 predecessor_brand_shelf_sorted = stack_filtered_mpis[
-                    (stack_filtered_mpis['brand_fk'].isin(predecessor_brands)) &
-                    (stack_filtered_mpis['sub_category_fk'] == sub_category_pk)
+                    (stack_filtered_mpis['brand_fk'].isin(predecessor_brands))
+                    & (stack_filtered_mpis['sub_category_fk'] == sub_category_pk)
                     ][['brand_fk', 'shelf_number']].sort_values(['shelf_number'])
+                result = 0  # initialize as fail
                 if predecessor_brand_shelf_sorted.empty:
                     # predecessor brands are not present; PASS
                     Log.info("No Predecessor Brands {} are present. PASS".format(
                         predecessor_brands))
-
-                min_shelf_of_brand = stack_filtered_mpis[
-                    stack_filtered_mpis['brand_fk'] == brand_pk_to_check]['shelf_number'].min()
-                idx_brand_start_check = sequence_brand_pks.index(brand_pk_to_check) - 1
-                result = 0  # initialize as fail
-                while idx_brand_start_check >= 0:
-                    predecessor_brand_to_check = sequence_brand_pks[idx_brand_start_check]
-                    Log.info("Checking if brand: {} is present.".format(predecessor_brand_to_check))
-                    if predecessor_brand_shelf_sorted[predecessor_brand_shelf_sorted['brand_fk']
-                                                      == predecessor_brand_to_check].empty:
-                        # This is the logic to reduce index and continue while loop
-                        Log.info("Brand {} is not present. Check next brand in predecessor".format(
-                            predecessor_brand_to_check))
-                        result = 1  # PASS unless proved otherwise.
-                        idx_brand_start_check -= 1
-                        continue
-                    # check for `predecessor_brand_to_check` present below the level of every brand_pk_to_check
-                    max_shelf_of_predecessor_brand = predecessor_brand_shelf_sorted[
-                        predecessor_brand_shelf_sorted['brand_fk'] == predecessor_brand_to_check]['shelf_number'].max()
-                    if min_shelf_of_brand >= max_shelf_of_predecessor_brand:
-                        Log.info("PASS: brand: {brand} is below or same level as {predecessor}.".format(
-                            brand=brand_pk_to_check,
-                            predecessor=predecessor_brand_to_check
-                        ))
-                        result = 1
-                        break
-                    else:
-                        result = 0
-                        break
-                    # end of check
-
+                    result = 1
+                else:
+                    Log.info("Starting to checking> brand: {br} is present below or same level as in sequence : {seq}.".
+                             format(br=brand_pk_to_check,
+                                    seq=sequence_brand_pks))
+                    min_shelf_of_brand = stack_filtered_mpis[
+                        stack_filtered_mpis['brand_fk'] == brand_pk_to_check]['shelf_number'].min()
+                    idx_brand_start_check = sequence_brand_pks.index(brand_pk_to_check) - 1
+                    while idx_brand_start_check >= 0:
+                        predecessor_brand_to_check = sequence_brand_pks[idx_brand_start_check]
+                        Log.info("Checking if predecessor brand: {} is present.".format(predecessor_brand_to_check))
+                        if predecessor_brand_shelf_sorted[predecessor_brand_shelf_sorted['brand_fk']
+                                                          == predecessor_brand_to_check].empty:
+                            # This is the logic to reduce index and continue while loop
+                            Log.info("Brand {} is not present. Check next brand in predecessor".format(
+                                predecessor_brand_to_check))
+                            result = 1  # PASS unless proved otherwise.
+                            idx_brand_start_check -= 1
+                            continue
+                        # check for `predecessor_brand_to_check` present below the level of every brand_pk_to_check
+                        Log.info("Check if Brand to check {br_c} is present below the level of brand in sequence {seq}".
+                                 format(br_c=brand_pk_to_check, seq=predecessor_brand_to_check))
+                        max_shelf_of_predecessor_brand = predecessor_brand_shelf_sorted[
+                            predecessor_brand_shelf_sorted['brand_fk'] == predecessor_brand_to_check][
+                            'shelf_number'].max()
+                        if min_shelf_of_brand >= max_shelf_of_predecessor_brand:
+                            Log.info("PASS: brand: {brand} is below or same level as brand: {predecessor}.".format(
+                                brand=brand_pk_to_check,
+                                predecessor=predecessor_brand_to_check
+                            ))
+                            result = 1
+                            break
+                        else:
+                            Log.info("FAIL: brand: {brand} is above level of brand: {predecessor}.".format(
+                                brand=brand_pk_to_check,
+                                predecessor=predecessor_brand_to_check
+                            ))
+                            result = 0
+                            break
+                        # end of check
                 self.common.write_to_db_result(
                     fk=kpi_details.iloc[0].pk,
                     numerator_id=store_banner_pk,
