@@ -150,7 +150,7 @@ class ToolBox(GlobalSessionToolBox):
         if denominator == 0:
             return 0
         else:
-            return round(numerator / float(denominator), 4)
+            return round(numerator / float(denominator), 2)
 
     def calculate_hierarchy_sos(self, calculation_type):
         brand_kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_type=(calculation_type + Consts.SOS_BY_BRAND))
