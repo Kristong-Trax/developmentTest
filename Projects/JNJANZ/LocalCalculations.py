@@ -9,7 +9,7 @@ if __name__ == '__main__':
     Config.init()
     project_name = 'jnjanz'
     data_provider = KEngineDataProvider(project_name)
-    sessions = ['1F113395-8F4D-48E2-953F-0DE401734D31']
+    sessions = ['CE9BD14E-DBF1-4F82-BEE4-E1D61F0B211F']
     for session in sessions:
         data_provider.load_session_data(session)
         output = Output()

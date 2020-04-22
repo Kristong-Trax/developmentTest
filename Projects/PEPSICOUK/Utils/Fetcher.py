@@ -75,7 +75,9 @@ class PEPSICOUK_Queries(object):
 
     @staticmethod
     def get_custom_entities_query():
-        query = """SELECT * from static.custom_entity"""
+        query = """SELECT ce.*, ent.name as entity_type from static.custom_entity ce
+                   LEFT JOIN static.kpi_entity_type ent on ce.entity_type_fk = ent.pk
+                   """
         return query
 
     @staticmethod

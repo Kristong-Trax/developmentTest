@@ -4,7 +4,7 @@ import collections
 
 from Projects.PEPSICOUK.Utils.Fetcher import PEPSICOUK_Queries
 from Trax.Algo.Calculations.Core.KPI.UnifiedKpiSingleton import UnifiedKPISingleton
-from Projects.PEPSICOUK.Utils.CommonToolBox import PEPSICOUKCommonToolBox
+from Projects.PEPSICOUK.Utils.CommonToolBoxRollout import PEPSICOUKCommonToolBox
 from KPIUtils_v2.GlobalDataProvider.PsDataProvider import PsDataProvider
 # from KPIUtils_v2.DB.Common import Common as CommonV1
 from KPIUtils_v2.DB.CommonV2 import Common
@@ -25,7 +25,7 @@ class PepsicoUtil(UnifiedKPISingleton):
     LEVEL3 = 3
 
     EXCLUSION_TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data',
-                                           'Inclusion_Exclusion_Template.xlsx')
+                                           'Inclusion_Exclusion_Template_Rollout.xlsx')
     ADDITIONAL_DISPLAY = 'additional display'
     INCLUDE_EMPTY = True
     EXCLUDE_EMPTY = False
@@ -43,6 +43,7 @@ class PepsicoUtil(UnifiedKPISingleton):
     HERO_SKU_PRICE = 'Hero SKU Price'
     HERO_SKU_PROMO_PRICE = 'Hero SKU Promo Price'
     BRAND_FULL_BAY_KPIS = ['Brand Full Bay_90', 'Brand Full Bay']
+    BRAND_FULL_BAY = 'Brand Full Bay'
     HERO_PREFIX = 'Hero SKU'
     ALL = 'ALL'
     HERO_SKU_OOS_SKU = 'Hero SKU OOS - SKU'
@@ -80,6 +81,24 @@ class PepsicoUtil(UnifiedKPISingleton):
     HERO_SKU_AVAILABILITY_SKU = 'Hero SKU Availability - SKU'
     HERO_SKU_PLACEMENT_BY_SHELF_NUMBERS = 'Hero SKU Placement by shelf numbers'
 
+    HERO_SKU_AVAILABILITY_BY_HERO_TYPE = 'Hero SKU Availability by Hero Type'
+    SHARE_OF_ASSORTMENT_BY_HERO_TYPE = 'Share of Assortment by Hero Type'
+    HERO_SKU_LABEL = 'Hero SKU'
+    HERO_TYPE = 'hero_type'
+    HERO_SKU_SOS_OF_CAT_BY_HERO_TYPE = 'Hero SKU SOS of Category by Hero Type'
+    CATEGORY_FULL_BAY = 'Category Full Bay'
+    CSN = 'CSN'
+    PRICE = 'Price'
+    PROMO_PRICE = 'Promo Price'
+    LINEAR_SPACE_PER_PRODUCT = 'Linear Space Per Product'
+    FACINGS_PER_PRODUCT = 'Facings per Product'
+    PRICE_SCENE = 'Price Scene'
+    PROMO_PRICE_SCENE = 'Promo Price Scene'
+    HERO_SKU_SOS = 'Hero SKU SOS'
+    BRAND_SOS = 'Brand SOS'
+    SUB_BRAND_SOS = 'Sub Brand SOS'
+    PEPSICO_SEGMENT_SOS = 'PepsiCo Segment SOS'
+
     def __init__(self, output, data_provider):
         super(PepsicoUtil, self).__init__(data_provider)
         self.output = output
@@ -107,6 +126,7 @@ class PepsicoUtil(UnifiedKPISingleton):
         self.toolbox = GENERALToolBox(self.data_provider)
         self.commontools = PEPSICOUKCommonToolBox(self.data_provider, self.rds_conn)
 
+        self.all_templates = self.commontools.all_templates
         self.custom_entities = self.commontools.custom_entities
         self.on_display_products = self.commontools.on_display_products
         self.exclusion_template = self.commontools.exclusion_template
@@ -123,11 +143,13 @@ class PepsicoUtil(UnifiedKPISingleton):
         self.own_manuf_fk = self.all_products[self.all_products['manufacturer_name'] == self.PEPSICO]['manufacturer_fk'].values[0]
 
         self.scene_kpi_results = self.get_results_of_scene_level_kpis()
-        self.kpi_results_check = pd.DataFrame(columns=['kpi_fk', 'numerator', 'denominator', 'result', 'score'])
+        self.kpi_results_check = pd.DataFrame(columns=['kpi_fk', 'numerator', 'denominator', 'result', 'score',
+                                                       'context'])
         self.sos_vs_target_targets = self.construct_sos_vs_target_base_df()
 
         self.all_targets_unpacked = self.commontools.all_targets_unpacked.copy()
         self.block_results = pd.DataFrame(columns=['Group Name', 'Score'])
+        self.hero_type_custom_entity_df = self.get_hero_type_custom_entity_df()
 
     def get_probe_group(self):
         query = PEPSICOUK_Queries.get_probe_group(self.session_uid)
@@ -259,9 +281,30 @@ class PepsicoUtil(UnifiedKPISingleton):
     def get_block_and_adjacency_filters(target_series):
         filters = {target_series['Parameter 1']: target_series['Value 1']}
         if target_series['Parameter 2']:
-            filters.update({target_series['Parameter 2']: target_series['Value 2']})
+           filters.update({target_series['Parameter 2']: target_series['Value 2']})
+
         if target_series['Parameter 3']:
             filters.update({target_series['Parameter 3']: target_series['Value 3']})
+        return filters
+
+    @staticmethod
+    def get_block_filters(target_series):
+        if isinstance(target_series['Value 1'], list):
+            filters = {target_series['Parameter 1']: target_series['Value 1']}
+        else:
+            filters = {target_series['Parameter 1']: [target_series['Value 1']]}
+
+        if target_series['Parameter 2']:
+            if isinstance(target_series['Value 2'], list):
+                filters.update({target_series['Parameter 2']: target_series['Value 2']})
+            else:
+                filters.update({target_series['Parameter 2']: [target_series['Value 2']]})
+
+        if target_series['Parameter 3']:
+            if isinstance(target_series['Value 2'], list):
+                filters.update({target_series['Parameter 3']: target_series['Value 3']})
+            else:
+                filters.update({target_series['Parameter 3']: [target_series['Value 3']]})
         return filters
 
     def reset_filtered_scif_and_matches_to_exclusion_all_state(self):
@@ -272,3 +315,13 @@ class PepsicoUtil(UnifiedKPISingleton):
         hero_list = dependencies_df[(dependencies_df['kpi_type'] == self.HERO_SKU_AVAILABILITY_SKU) &
                                     (dependencies_df['numerator_result'] == 1)]['numerator_id'].unique().tolist()
         return hero_list
+
+    def get_unavailable_hero_sku_list(self, dependencies_df):
+        hero_list = dependencies_df[(dependencies_df['kpi_type'] == self.HERO_SKU_AVAILABILITY_SKU) &
+                                    (dependencies_df['numerator_result'] == 0)]['numerator_id'].unique().tolist()
+        return hero_list
+
+    def get_hero_type_custom_entity_df(self):
+        hero_type_df = self.custom_entities[self.custom_entities['entity_type'] == self.HERO_TYPE]
+        hero_type_df.rename(columns={'pk': 'entity_fk'}, inplace=True)
+        return hero_type_df

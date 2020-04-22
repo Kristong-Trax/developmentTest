@@ -133,10 +133,6 @@ class NationalToolBox(GlobalSessionToolBox):
         self.platformas_data = self.generate_platformas_data()
         self.assortment = Assortment(self.data_provider, common=self.common)
         self.att2 = self.store_info['additional_attribute_2'].iloc[0]
-        self.store_assortment = self.assortment.store_assortment
-        self.updated_store_assortment = self.store_assortment.merge(
-            self.data_provider[Data.PRODUCTS][[PRODUCT_NAME, 'product_ean_code']], left_on='ean_code',
-            right_on='product_ean_code', how='left')
         self.results_df = pd.DataFrame(columns=['kpi_name', 'kpi_fk', 'numerator_id', 'numerator_result',
                                                 'denominator_id', 'denominator_result', 'result', 'score',
                                                 'identifier_result', 'identifier_parent', 'should_enter'])
@@ -565,7 +561,9 @@ class NationalToolBox(GlobalSessionToolBox):
                 result_dict['assortment{}'.format(i + 1)] = 1 if result_of_current_assortment >= 1 else 0
 
         numerator_id = self.scif[PRODUCT_FK].iat[0]
-        denominator_id = self.store_assortment.assortment_fk.iat[0]
+        denominator_id = self.scif.sub_category_fk.iat[0]
+
+
         result = float(np.sum(result_dict.values())) / portafolio_y_precious_data.unique_facings_target
 
         result_dict = {'kpi_name': kpi_name, 'kpi_fk': kpi_fk, 'numerator_id': numerator_id,

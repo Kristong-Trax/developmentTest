@@ -651,15 +651,17 @@ class CARLSBERGToolBox:
                 '_whole_store' not in kpi['kpi_name'].iloc[0].lower():
             self.scif['store_fk'] = self.store_id
             dataframe_to_process['store_fk'] = self.store_id
-            scif_with_den_context = self.scif[[PARAM_DB_MAP[kpi['denominator'].iloc[0]]['key'],
-                                               PARAM_DB_MAP[kpi['context'].iloc[0]]['key']]].drop_duplicates()
+            scif_with_den_context = dataframe_to_process[
+                [PARAM_DB_MAP[kpi['denominator'].iloc[0]]['key'],
+                 PARAM_DB_MAP[kpi['context'].iloc[0]]['key']]].drop_duplicates()
             df_with_den_context = dataframe_to_process.query(query_string)[[
                 PARAM_DB_MAP[kpi['denominator'].iloc[0]]['key'],
                 PARAM_DB_MAP[kpi['context'].iloc[0]]['key']
             ]].drop_duplicates()
-            denominators_df_to_save_zero = scif_with_den_context[(~scif_with_den_context[
-                PARAM_DB_MAP[kpi['denominator'].iloc[0]]['key']
-            ].isin(df_with_den_context[PARAM_DB_MAP[kpi['denominator'].iloc[0]]['key']]))]
+            _denominators_df_to_save_zero = pd.merge(scif_with_den_context, df_with_den_context,
+                                                     how='outer', suffixes=('', '_y'), indicator=True)
+            denominators_df_to_save_zero = _denominators_df_to_save_zero[
+                _denominators_df_to_save_zero['_merge'] == 'left_only'][scif_with_den_context.columns]
             identifier_parent = None
             numerator_fk = self.own_man_fk
             result = numerator_result = 0  # SAVE ALL RESULTS AS ZERO
@@ -694,15 +696,15 @@ class CARLSBERGToolBox:
                         self.session_uid
                     )
                 context_id = each_row[PARAM_DB_MAP[kpi['context'].iloc[0]]['key']]
-                # query out empty product IDs since FSOS is not interested in them.
                 each_den_fk = each_row[PARAM_DB_MAP[kpi['denominator'].iloc[0]]['key']]
-                _query = "{key}=='{value_id}' and product_fk not in {exc_prod_ids}".format(
-                    key=PARAM_DB_MAP[kpi['denominator'].iloc[0]]['key'],
-                    value_id=each_den_fk,
-                    exc_prod_ids=self.empty_prod_ids.tolist() + self.irrelevant_prod_ids.tolist()
-                )
+                # generate query string
+                query_string = ''
+                for each_key in {PARAM_DB_MAP[kpi['denominator'].iloc[0]]['key'],
+                                 PARAM_DB_MAP[kpi['context'].iloc[0]]['key']}:
+                    each_value = each_row[each_key]
+                    query_string += '{key}=={value} and '.format(key=each_key, value=each_value)
                 # find number of products in that context
-                denominator_result = len(dataframe_to_process.query(_query))
+                denominator_result = len(dataframe_to_process.query(query_string.rstrip(" and ")))
                 if not denominator_result:
                     continue
                 self.common.write_to_db_result(fk=kpi['pk'].iloc[0],
