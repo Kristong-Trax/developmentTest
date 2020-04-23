@@ -101,3 +101,14 @@ class PEPSICOUK_Queries(object):
                 WHERE ssi.delete_time is null
                 AND sc.session_uid = '{}';
             """.format(session_uid)
+
+    @staticmethod
+    def get_match_display(session_uid):
+        return """
+            select sdb.name, m.scene_fk, d.display_name, d.pk as display_fk, m.bay_number, m.rect_x, m.rect_y
+            from probedata.match_display_in_scene m
+            join probedata.scene s on s.pk = m.scene_fk
+            join static.display d on d.pk = m.display_fk
+            join static.display_brand sdb on sdb.pk=d.display_brand_fk
+            where s.session_uid = '{}'
+        """.format(session_uid)

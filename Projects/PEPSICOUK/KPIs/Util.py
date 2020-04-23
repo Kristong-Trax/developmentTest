@@ -116,6 +116,7 @@ class PepsicoUtil(UnifiedKPISingleton):
                                                             else self.session_info['store_fk'].values[0]
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
         self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
+        self.display_scene = self.get_match_display_in_scene()
         self.kpi_static_data = self.common.get_kpi_static_data()
         self.kpi_results_queries = []
 
@@ -150,6 +151,11 @@ class PepsicoUtil(UnifiedKPISingleton):
         self.all_targets_unpacked = self.commontools.all_targets_unpacked.copy()
         self.block_results = pd.DataFrame(columns=['Group Name', 'Score'])
         self.hero_type_custom_entity_df = self.get_hero_type_custom_entity_df()
+
+    def get_match_display_in_scene(self):
+        query = PEPSICOUK_Queries.get_match_display(self.session_uid)
+        match_display = pd.read_sql_query(query, self.rds_conn.db)
+        return match_display
 
     def get_probe_group(self):
         query = PEPSICOUK_Queries.get_probe_group(self.session_uid)
