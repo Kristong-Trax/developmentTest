@@ -27,8 +27,8 @@ class HeroAvailabilitySkuKpi(UnifiedCalculationsScript):
         return self._config_params['kpi_type']
 
     def calculate_kpi_for_secondary_shelf(self):
-        # location_type_fk = self.util.all_templates[self.util.all_templates[ScifConsts.LOCATION_TYPE] == 'Primary Shelf'] \
-        #     [ScifConsts.LOCATION_TYPE_FK].values[0]
+        location_type_fk = self.util.all_templates[self.util.all_templates[ScifConsts.LOCATION_TYPE] == self.location] \
+            [ScifConsts.LOCATION_TYPE_FK].values[0]
         for i, result in self.util.lvl3_ass_result.iterrows():
             score = result.in_store * 100
             custom_res = self.util.commontools.get_yes_no_result(score)
