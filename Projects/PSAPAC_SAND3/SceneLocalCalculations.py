@@ -28,6 +28,7 @@ if __name__ == '__main__':
     project_name = 'psapac-sand3'
     # RUN for scene level KPIs
     session_scene_map = OrderedDict([
+        ('FF240BF7-8FDE-4C20-A0EE-0F2382651045', ['2181A72D-8EA2-4AED-A6FD-27D30AC52E37']),
         ('004B6908-191C-46AC-BDAD-184CEFD8D37A', [
                                                   '0F93BD58-F7A1-4ED2-A982-542457362B7D',   # '2020-03-18', 'Pain Main Shelf'
                                                   '1C7F0538-C61A-457D-AF66-196ABC966520',   # '2020-03-18', 'Wellness Main Shelf'

@@ -2,6 +2,7 @@ import numpy as np
 import pandas as pd
 
 from Trax.Utils.Logging.Logger import Log
+from KPIUtils_v2.Calculations.BlockCalculations_v2 import Block
 
 __author__ = 'nidhinb'
 
@@ -25,6 +26,7 @@ class SceneLayoutComplianceCalc(object):
         self.template_name = self.templates.iloc[0].template_name
         self.custom_entity_data = self.get_relevant_custom_entity_data()
         self.match_product_data = self.match_product_in_scene.merge(self.products, on='product_fk', how='left')
+        self.block = Block(self.data_provider, self.output)
 
     def get_relevant_custom_entity_data(self):
         Log.info("Getting custom entity data for the present super brands and store banner...")
@@ -64,21 +66,21 @@ class SceneLayoutComplianceCalc(object):
             sess=self.session_uid,
             scene=self.current_scene_fk,
         ))
-        blocal_targets = self.targets[
+        block_targets = self.targets[
             self.targets['kpi_fk'] == kpi_details['pk'].iloc[0]]
         # if no targets return
-        if blocal_targets.empty:
+        if block_targets.empty:
             Log.warning('There is no target policy for calculating {}'.format(
                 kpi_details.iloc[0][KPI_TYPE_COL]
             ))
             return False
         else:
-            for idx, each_target in blocal_targets.iterrows():
+            for idx, each_target in block_targets.iterrows():
                 # check for banner and template match in target
                 target_banner_name = self.custom_entity_data[
                     self.custom_entity_data['pk'] == each_target.store_banner_pk].name.iloc[0]
                 if self.templates.iloc[0].template_fk not in each_target.template_fks or \
-                        target_banner_name == self.store_banner_name:
+                        target_banner_name != self.store_banner_name:
                     Log.info("""Session: {sess}; Scene:{scene}. Scene Type not matching [{k} not in {v}] 
                     or banner of current store -> {store_b} != target banner -> {targ_b}
                     target for calculating {kpi}."""
@@ -91,7 +93,72 @@ class SceneLayoutComplianceCalc(object):
                                      v=each_target.template_fks,
                                      ))
                     continue
-                result = score = 0
+                else:
+                    result = score = 0
+                    total_facings_count = biggest_block_facings_count = 0
+                    block_threshold_perc = each_target.block_threshold_perc
+                    super_brand_pk = each_target.super_brand_pk
+                    store_banner_pk = each_target.store_banner_pk
+                    super_brand_custom_entity = self.custom_entity_data[
+                        self.custom_entity_data['pk'] == super_brand_pk]
+                    sub_category_pk = each_target.sub_category_fk
+                    Log.info(
+                        "Calculating brand blocked for super brand: {super_b} [super_id] & sub category: {scat}".format(
+                            super_b=super_brand_custom_entity.name.iloc[0],
+                            super_id=super_brand_pk,
+                            scat=sub_category_pk,
+                        ))
+                    exclude_stacked_products = bool(int(each_target.stacking_exclude))
+                    # able to pass sub cat and super brand[?] // or get the prods and pass
+                    block_filters = {'sub_category_fk': [sub_category_pk],
+                                     'Super Brand': [super_brand_custom_entity.name.iloc[0]]
+                                     }
+                    location_filters = {'scene_fk': [self.current_scene_fk]}
+                    additional_filters = {
+                        'minimum_facing_for_block': 1,
+                        'minimum_block_ratio': 0,
+                        'include_stacking': not exclude_stacked_products,
+                        'check_vertical_horizontal': True,
+                    }
+                    block_res = self.block.network_x_block_together(
+                        block_filters, location_filters, additional_filters
+                    )
+                    block_res.dropna(subset=['total_facings'], inplace=True)
+                    block_res = block_res.query('is_block==True')
+                    if block_res.empty:
+                        Log.info(
+                            "Fail: Cannot find brand blocked for super brand: {super_b} "
+                            "[super_id] & sub category: {scat}. Save as a Fail.".format(
+                                super_b=super_brand_custom_entity.name.iloc[0],
+                                super_id=super_brand_pk,
+                                scat=sub_category_pk,
+                            ))
+                    else:
+                        Log.info(
+                            "Found brand blocked for super brand: {super_b} "
+                            "[super_id] & sub category: {scat}. Check and save.".format(
+                                super_b=super_brand_custom_entity.name.iloc[0],
+                                super_id=super_brand_pk,
+                                scat=sub_category_pk,
+                            ))
+                        biggest_cluster = block_res.sort_values(by='block_facings', ascending=False).head(1)
+                        biggest_block_facings_count = float(biggest_cluster['block_facings'])
+                        total_facings_count = float(biggest_cluster['total_facings'])
+                        if total_facings_count:
+                            result = round((biggest_block_facings_count / total_facings_count) * 100, 2)
+                        if result >= block_threshold_perc:
+                            score = 1
+                    self.common.write_to_db_result(
+                        fk=kpi_details.iloc[0].pk,
+                        numerator_id=store_banner_pk,
+                        denominator_id=super_brand_pk,
+                        context_id=sub_category_pk,
+                        numerator_result=biggest_block_facings_count,
+                        denominator_result=total_facings_count,
+                        target=result,
+                        score=score,
+                        by_scene=True,
+                    )
 
     def calculate_gsk_layout_compliance_sequence(self, kpi_details):
         Log.info("Calculating {kpi} for session: {sess} and scene: {scene}".format(
@@ -338,7 +405,7 @@ class SceneLayoutComplianceCalc(object):
                 target_banner_name = self.custom_entity_data[
                     self.custom_entity_data['pk'] == each_target.store_banner_pk].name.iloc[0]
                 if self.templates.iloc[0].template_fk not in each_target.template_fks or \
-                        target_banner_name == self.store_banner_name:
+                        target_banner_name != self.store_banner_name:
                     Log.info("""Session: {sess}; Scene:{scene}. Scene Type not matching [{k} not in {v}] 
                                                 or banner of current store -> {store_b} != target banner -> {targ_b}
                                              target for calculating {kpi}."""
@@ -447,7 +514,7 @@ class SceneLayoutComplianceCalc(object):
                 target_banner_name = self.custom_entity_data[
                     self.custom_entity_data['pk'] == each_target.store_banner_pk].name.iloc[0]
                 if self.templates.iloc[0].template_fk not in each_target.template_fks or \
-                        target_banner_name == self.store_banner_name:
+                        target_banner_name != self.store_banner_name:
                     Log.info("""Session: {sess}; Scene:{scene}. Scene Type not matching [{k} not in {v}] 
                                                 or banner of current store -> {store_b} != target banner -> {targ_b}
                                              target for calculating {kpi}."""
