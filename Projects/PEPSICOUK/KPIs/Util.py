@@ -272,10 +272,10 @@ class PepsicoUtil(UnifiedKPISingleton):
 
     def get_lvl3_relevant_assortment_result(self):
         assortment_result = self.assortment.get_lvl3_relevant_ass()
-        if assortment_result.empty:
-            return assortment_result
-        products_in_session = self.filtered_scif.loc[self.filtered_scif['facings'] > 0]['product_fk'].values
-        assortment_result.loc[assortment_result['product_fk'].isin(products_in_session), 'in_store'] = 1
+        # if assortment_result.empty:
+        #     return assortment_result
+        # products_in_session = self.filtered_scif.loc[self.filtered_scif['facings'] > 0]['product_fk'].values
+        # assortment_result.loc[assortment_result['product_fk'].isin(products_in_session), 'in_store'] = 1
         return assortment_result
 
     @staticmethod
