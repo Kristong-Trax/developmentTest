@@ -589,6 +589,7 @@ class CBCILCBCIL_ToolBox(object):
     @kpi_runtime()
     def calculate_availability_by_sequence(self, **general_filters):
         params = general_filters['filters']
+        target = general_filters.get('Target', 0)
         if params['All']['scene_id']:
             filters = params['1'].copy()
             filters.update(params['2'])
@@ -598,10 +599,13 @@ class CBCILCBCIL_ToolBox(object):
             if not result.empty:
                 result = result['shelf_number'].unique().tolist()
                 result.sort()
-            if len(result) >= 4:
-                for i in range(len(result) - 3):
-                    if result[i] == result[i + 1] - 1 == result[i + 2] - 2 == result[i + 3] - 3:
-                        return 100
+            if len(result) >= target:
+                # checks if the shelves are by order (in a row without gaps)
+                is_by_order = result == range(min(result), max(result)+1)
+
+                if is_by_order:
+                    return 100
+
         return 0
 
     @kpi_runtime()
