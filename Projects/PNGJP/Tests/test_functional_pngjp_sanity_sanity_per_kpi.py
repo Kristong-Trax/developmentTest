@@ -73,7 +73,7 @@ class TestPngjpSanityPerKPI(TestFunctionalCase):
         cursor.execute('''SELECT * FROM report.kpi_results''')
         temp = cursor.fetchall()
         # save results to df
-        df = pd.DataFrame(temp)
+        df = pd.DataFrame(list(temp), columns=[col[0] for col in cursor.description])
         # filter unneeded columns
         df_filtered = df[['kps_name', 'kpi_fk', 'result']]
         # copy kpi_fk in-order to count the fks
