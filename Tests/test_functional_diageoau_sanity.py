@@ -1,5 +1,4 @@
 import os
-import MySQLdb
 
 from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Trax.Data.Testing.SeedNew import Seeder
