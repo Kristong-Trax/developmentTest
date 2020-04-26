@@ -1,6 +1,5 @@
 
 import os
-import MySQLdb
 import pandas as pd
 from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Trax.Data.Testing.SeedNew import Seeder
@@ -35,7 +34,7 @@ class TestKEngineOutOfTheBox(TestFunctionalCase):
     
     def _assert_old_tables_kpi_results_filled(self, distinct_kpis_num=None):
         connector = PSProjectConnector(TestProjectsNames().TEST_PROJECT_1, DbUsers.Docker)
-        cursor = connector.db.cursor(MySQLdb.cursors.DictCursor)
+        cursor = connector.db.cursor()
         cursor.execute('''
            SELECT * FROM report.kpi_results
            ''')
@@ -49,7 +48,7 @@ class TestKEngineOutOfTheBox(TestFunctionalCase):
 
     def _assert_new_tables_kpi_results_filled(self, distinct_kpis_num=None, list_of_kpi_names=None):
         connector = PSProjectConnector(TestProjectsNames().TEST_PROJECT_1, DbUsers.Docker)
-        cursor = connector.db.cursor(MySQLdb.cursors.DictCursor)
+        cursor = connector.db.cursor()
         cursor.execute('''
            SELECT kl2.pk, kl2.client_name, kl2r.kpi_level_2_fk, kl2r.result 
            FROM report.kpi_level_2_results kl2r left join static.kpi_level_2 kl2 
@@ -69,7 +68,7 @@ class TestKEngineOutOfTheBox(TestFunctionalCase):
 
     def _assert_scene_tables_kpi_results_filled(self, distinct_kpis_num=None):
         connector = PSProjectConnector(TestProjectsNames().TEST_PROJECT_1, DbUsers.Docker)
-        cursor = connector.db.cursor(MySQLdb.cursors.DictCursor)
+        cursor = connector.db.cursor()
         cursor.execute('''
            SELECT * FROM report.scene_kpi_results
            ''')
