@@ -1,6 +1,5 @@
 
 import os
-import MySQLdb
 
 from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Trax.Data.Testing.SeedNew import Seeder
@@ -37,7 +36,7 @@ class TestKEngineOutOfTheBox(TestFunctionalCase):
     
     def _assert_kpi_results_filled(self):
         connector = PSProjectConnector(TestProjectsNames().TEST_PROJECT_1, DbUsers.Docker)
-        cursor = connector.db.cursor(MySQLdb.cursors.DictCursor)
+        cursor = connector.db.cursor()
         cursor.execute('''
         SELECT * FROM report.kpi_results
         ''')
