@@ -1,51 +1,81 @@
+import os
+import pandas as pd
 from Trax.Algo.Calculations.Core.DataProvider import Data
+from Trax.Utils.Conf.Keys import DbUsers
 from KPIUtils.GlobalProjects.DIAGEO.KPIGenerator import DIAGEOGenerator
-from KPIUtils.GlobalProjects.DIAGEO.Utils.Consts import DiageoKpiNames
 from KPIUtils.DB.Common import Common
 from KPIUtils_v2.DB.CommonV2 import Common as CommonV2
-from KPIUtils_v2.Utils.Decorators.Decorators import log_runtime
-from KPIUtils.GlobalProjects.DIAGEO.Utils.TemplatesUtil import TemplateHandler
+from KPIUtils_v2.GlobalDataProvider.PsDataProvider import PsDataProvider
+from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 
 
-class PS1SandToolBox:
+class PS1SANDToolBox:
 
     def __init__(self, data_provider, output):
         self.data_provider = data_provider
         self.project_name = self.data_provider.project_name
+        self.ps_data_provider = PsDataProvider(data_provider)
         self.store_id = self.data_provider[Data.STORE_FK]
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
         self.output = output
         self.common = Common(self.data_provider)
         self.commonV2 = CommonV2(self.data_provider)
-        self.diageo_generator = DIAGEOGenerator(self.data_provider, self.output, self.common, menu=True)
-        self.template_handler = TemplateHandler(self.project_name)
+        self.diageo_generator = DIAGEOGenerator(self.data_provider, self.output, self.common)
+        self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
+        self.session_uid = self.data_provider.session_uid
 
     def main_calculation(self):
-        """
-        This function calculates the KPI results.
-        """
-         # SOS Out Of The Box kpis
-        self.diageo_generator.activate_ootb_kpis(self.commonV2)
+        if not self.exists_survey_resposnse():
+            """ This function calculates the KPI results """
+            # SOS Out Of The Box kpis
+            sos_res = self.diageo_generator.global_sos_calculation()
+            self.commonV2.save_json_to_new_tables(sos_res)
 
-        # sos by scene type
-        self.diageo_generator.sos_by_scene_type(self.commonV2)
+            # sos by scene type
+            self.diageo_generator.sos_by_scene_type(self.commonV2)
 
-        # Global assortment kpis
-        assortment_res = self.diageo_generator.diageo_global_grouping_assortment_calculation()
-        self.commonV2.save_json_to_new_tables(assortment_res)
+            # Global assortment kpis
+            assortment_res_dict = self.diageo_generator.diageo_global_assortment_function_v2()
+            self.commonV2.save_json_to_new_tables(assortment_res_dict)
 
-        # Global Menu kpis
-        menus_res = self.diageo_generator.diageo_global_new_share_of_menu_function()
-        self.commonV2.save_json_to_new_tables(menus_res)
+            # Global assortment kpis - v3 for NEW MOBILE REPORTS use
+            assortment_res_dict_v3 = self.diageo_generator.diageo_global_assortment_function_v3()
+            self.commonV2.save_json_to_new_tables(assortment_res_dict_v3)
 
-        # Global Secondary Displays function
-        res_json = self.diageo_generator.diageo_global_secondary_display_secondary_function()
-        if res_json:
-            self.commonV2.write_to_db_result(fk=res_json['fk'], numerator_id=1, denominator_id=self.store_id,
-                                             result=res_json['result'])
+            # global SOS kpi
+            res_dict = self.diageo_generator.diageo_global_share_of_shelf_function()
+            self.commonV2.save_json_to_new_tables(res_dict)
 
-        # committing to new tables
-        self.commonV2.commit_results_data()
-        # committing to the old tables
-        self.common.commit_results_data()
+            # global touch point kpi
+            template_path = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), 'Data',
+                                         'TOUCH POINT (template) MARZO 2020.xlsx')
+            res_dict = self.diageo_generator.diageo_global_touch_point_function(template_path)
+            self.commonV2.save_json_to_new_tables(res_dict)
 
+            # committing to the old tables
+            self.common.commit_results_data()  # commit to old tables
+            # committing to new tables
+            self.commonV2.commit_results_data()
+
+    def exists_survey_resposnse(self):
+        # Method is used to check in the db to if survey question_fk 98 is answered
+        # If answered, the kpi should not run
+
+        query = """SELECT session_uid,sr.question_fk, sr.selected_option_fk
+                    FROM probedata.survey_response sr
+                    Left Join static.survey_question_answer qa on sr.selected_option_text = qa.pk
+                    where sr.question_fk = 98 and session_uid = '{}';""".format(self.session_uid)
+        cur = self.rds_conn.db.cursor()
+        cur.execute(query)
+        res = cur.fetchall()
+
+        if res:
+            relevant_response_df = pd.DataFrame(list(res))
+
+            try:
+                survey_response = relevant_response_df.iloc[0, 2]
+            except IndexError:
+                survey_response = None
+        else:
+            survey_response = None
+        return survey_response

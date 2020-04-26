@@ -98,6 +98,7 @@ class PepsicoUtil(UnifiedKPISingleton):
     BRAND_SOS = 'Brand SOS'
     SUB_BRAND_SOS = 'Sub Brand SOS'
     PEPSICO_SEGMENT_SOS = 'PepsiCo Segment SOS'
+    BRAND_SOS_OF_SEGMENT = 'Brand SOS of Segment'
 
     def __init__(self, output, data_provider):
         super(PepsicoUtil, self).__init__(data_provider)
@@ -277,10 +278,10 @@ class PepsicoUtil(UnifiedKPISingleton):
 
     def get_lvl3_relevant_assortment_result(self):
         assortment_result = self.assortment.get_lvl3_relevant_ass()
-        if assortment_result.empty:
-            return assortment_result
-        products_in_session = self.filtered_scif.loc[self.filtered_scif['facings'] > 0]['product_fk'].values
-        assortment_result.loc[assortment_result['product_fk'].isin(products_in_session), 'in_store'] = 1
+        # if assortment_result.empty:
+        #     return assortment_result
+        # products_in_session = self.filtered_scif.loc[self.filtered_scif['facings'] > 0]['product_fk'].values
+        # assortment_result.loc[assortment_result['product_fk'].isin(products_in_session), 'in_store'] = 1
         return assortment_result
 
     @staticmethod
