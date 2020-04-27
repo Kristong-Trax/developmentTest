@@ -11,6 +11,7 @@ from KPIUtils_v2.DB.Common import Common as CommonV1
 from KPIUtils_v2.DB.CommonV2 import Common
 from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
 from Projects.PEPSICOUK.Utils.Fetcher import PEPSICOUK_Queries
+from KPIUtils_v2.Utils.Consts.DataProvider import ScifConsts, MatchesConsts
 from KPIUtils_v2.GlobalDataProvider.PsDataProvider import PsDataProvider
 # from KPIUtils_v2.Calculations.AvailabilityCalculations import Availability
 # from KPIUtils_v2.Calculations.NumberOfScenesCalculations import NumberOfScenes
@@ -35,6 +36,8 @@ class PEPSICOUKCommonToolBox:
 
     EXCLUSION_TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data',
                                            'Inclusion_Exclusion_Template_Rollout.xlsx')
+    DISPLAY_TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data',
+                                         'display_template.xlsx')
     ADDITIONAL_DISPLAY = 'additional display'
     STOCK = 'stock'
     INCLUDE_EMPTY = True
@@ -54,6 +57,11 @@ class PEPSICOUKCommonToolBox:
     HERO_SKU_PROMO_PRICE = 'Hero SKU Promo Price'
     BRAND_FULL_BAY_KPIS = ['Brand Full Bay 90', 'Brand Full Bay 100']
     ALL = 'ALL'
+    DISPLAY_NAME_TEMPL = 'Display Name'
+    KPI_LOGIC = 'KPI Logic'
+    SHELF_LEN_DISPL = 'Shelf Length, m'
+    BAY_TO_SEPARATE = 'use bay to separate display'
+    BIN_TO_SEPARATE = 'use bin to separate display'
 
     def __init__(self, data_provider, rds_conn=None):
         self.data_provider = data_provider
@@ -70,6 +78,7 @@ class PEPSICOUKCommonToolBox:
         self.all_templates = self.data_provider[Data.ALL_TEMPLATES]
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS] # initial scif
         self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng) if rds_conn is None else rds_conn
+        self.complete_templates_and_scif_data()
         self.kpi_static_data = self.common.get_kpi_static_data()
         self.kpi_results_queries = []
 
@@ -90,6 +99,85 @@ class PEPSICOUKCommonToolBox:
         self.all_targets_unpacked = self.unpack_all_external_targets()
         self.kpi_result_values = self.get_kpi_result_values_df()
         self.kpi_score_values = self.get_kpi_score_values_df()
+
+        self.displays_template = self.get_display_parameters()
+        self.filtered_scif_secondary = self.get_initial_secondary_scif()
+        self.filtered_matches_secondary = self.get_initial_secondary_matches()
+        self.set_filtered_scif_and_matches_for_all_kpis_secondary(self.filtered_scif_secondary,
+                                                                  self.filtered_matches_secondary)
+
+    def get_display_parameters(self):
+        display_templ = pd.read_excel(self.DISPLAY_TEMPLATE_PATH)
+        display_templ = display_templ.fillna('')
+        display_templ[self.SHELF_LEN_DISPL] = display_templ[self.SHELF_LEN_DISPL].apply(lambda x: x*1000 if x!='N/A'
+                                                                                                  else 0)
+        return display_templ
+
+    def recalculate_display_product_length(self, scif, matches):
+        scene_template = scif[[ScifConsts.SCENE_FK, ScifConsts.TEMPLATE_NAME]].drop_duplicates()
+        matches = matches.merge(scene_template, on=ScifConsts.SCENE_FK, how='left')
+        scif = scif.merge(self.displays_template, left_on=ScifConsts.TEMPLATE_NAME, right_on=self.DISPLAY_NAME_TEMPL,
+                          how='left')
+        matches = matches.merge(self.displays_template, left_on=ScifConsts.TEMPLATE_NAME, right_on=self.DISPLAY_NAME_TEMPL,
+                          how='left')
+
+        bin_bay_scif, bin_bay_matches = self.calculate_displays_by_bin_bay_logic(scif, matches)
+
+        return scif, matches
+
+    #start here
+    def calculate_displays_by_bin_bay_logic(self, scif, matches):
+        bin_bay_displays = self.displays_template[(self.displays_template[self.KPI_LOGIC] == 'Bin') &
+                                                  (self.displays_template[self.BAY_TO_SEPARATE] == 'Yes')] \
+            [self.DISPLAY_NAME_TEMPL].unique()
+        scif = scif[scif[ScifConsts.TEMPLATE_NAME].isin(bin_bay_displays)]
+        matches = matches[matches[ScifConsts.TEMPLATE_NAME].isin(bin_bay_displays)]
+        bin_bay_scif = scif
+        bin_bay_matches = matches
+        if not matches.empty:
+            product_bay = matches.drop_duplicates(subset=[MatchesConsts.PRODUCT_FK, MatchesConsts.BAY_NUMBER],
+                                                  keep='last')
+
+        return bin_bay_scif, bin_bay_matches
+
+    def get_unique_skus(self, df):
+        unique_skus = df[ScifConsts.PRODUCT_FK].unique()
+        return unique_skus
+
+    def set_filtered_scif_and_matches_for_all_kpis_secondary(self, scif, matches):
+        if self.do_exclusion_rules_apply_to_store('ALL'):
+            excl_template_all_kpis = self.exclusion_template[self.exclusion_template['KPI'].str.upper() == 'ALL']
+            if not excl_template_all_kpis.empty:
+                template_filters = self.get_filters_dictionary(excl_template_all_kpis)
+                scif, matches = self.filter_scif_and_matches_for_scene_and_product_filters(template_filters, scif,
+                                                                                           matches)
+                scif, matches = self.update_scif_and_matches_for_smart_attributes(scif, matches)
+                scif, matches = self.recalculate_display_product_length(scif, matches)
+                self.filtered_scif_secondary = scif
+                self.filtered_matches_secondary = matches
+
+    def get_initial_secondary_scif(self):
+        scif = self.scif
+        if not self.scif.empty:
+            scif = self.scif[self.scif[ScifConsts.LOCATION_TYPE] == 'Secondary Shelf']
+        return scif
+
+    def get_initial_secondary_matches(self):
+        matches = self.match_product_in_scene
+        if not self.match_product_in_scene.empty:
+            secondary_scenes = self.filtered_scif_secondary[ScifConsts.SCENE_FK].unique()
+            matches = self.match_product_in_scene[self.match_product_in_scene[ScifConsts.SCENE_FK].isin(secondary_scenes)]
+        return matches
+
+    def get_template_to_store_area_map(self):
+        query = PEPSICOUK_Queries.get_template_store_area()
+        query_result = pd.read_sql_query(query, self.rds_conn.db)
+        return query_result
+
+    def complete_templates_and_scif_data(self):
+        template_store_area = self.get_template_to_store_area_map()
+        self.all_templates = self.all_templates.merge(template_store_area, on=ScifConsts.TEMPLATE_FK, how='left')
+        self.scif = self.scif.merge(template_store_area, on=ScifConsts.TEMPLATE_FK, how='left')
 
     @staticmethod
     def split_and_strip(value):

@@ -112,3 +112,8 @@ class PEPSICOUK_Queries(object):
             join static.display_brand sdb on sdb.pk=d.display_brand_fk
             where s.session_uid = '{}'
         """.format(session_uid)
+
+    @staticmethod
+    def get_template_store_area():
+        return """select st.*, sa.name as store_area from static.template_store_area st
+                  JOIN static.store_task_area_group_items sa on st.store_area_fk = sa.pk"""
