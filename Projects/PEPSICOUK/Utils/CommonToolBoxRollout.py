@@ -135,9 +135,21 @@ class PEPSICOUKCommonToolBox:
         bin_bay_scif = scif
         bin_bay_matches = matches
         if not matches.empty:
-            product_bay = matches.drop_duplicates(subset=[MatchesConsts.PRODUCT_FK, MatchesConsts.BAY_NUMBER],
-                                                  keep='last')
+            unique_sku_matches = matches.drop_duplicates(subset=[MatchesConsts.PRODUCT_FK, MatchesConsts.BAY_NUMBER],
+                                                         keep='last')
+            bay_sku = unique_sku_matches.groupby([MatchesConsts.SCENE_FK, MatchesConsts.BAY_NUMBER],
+                                                 as_index=False).agg({'facings_matches': np.sum})
+            bay_sku.rename(columns={'facings_matches': 'unique_skus'}, inplace=True)
+            unique_sku_matches = unique_sku_matches.merge(bay_sku, on=[MatchesConsts.SCENE_FK,
+                                                                       MatchesConsts.BAY_NUMBER], how='left')
+            unique_sku_matches[MatchesConsts.WIDTH_MM_ADVANCE] = unique_sku_matches[self.SHELF_LEN_DISPL] / \
+                                                                 unique_sku_matches['unique_skus']
 
+            aggregated_matches = unique_sku_matches.groupby([MatchesConsts.PRODUCT_FK, MatchesConsts.SCENE_FK]).\
+                agg({'unique_skus': np.sum, MatchesConsts.WIDTH_MM_ADVANCE: np.sum})
+            scif = scif.merge(aggregated_matches, on=[MatchesConsts.PRODUCT_FK, MatchesConsts.SCENE_FK])
+            scif['facings'] = scif['updated_facings'] = scif['unique_skus']
+            scif[ScifConsts.GROSS_LEN_ADD_STACK] = scif['updated_gross_len'] = scif[MatchesConsts.WIDTH_MM_ADVANCE]
         return bin_bay_scif, bin_bay_matches
 
     def get_unique_skus(self, df):
