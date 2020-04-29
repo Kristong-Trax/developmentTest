@@ -455,7 +455,9 @@ class PngcnSceneKpis(object):
                      sub_brand.encode("utf8"))]['match_product_in_probe_state_reporting_fk'].values[0]
                 df_to_append = pd.DataFrame(
                     columns=[MATCH_PRODUCT_IN_PROBE_FK, MATCH_PRODUCT_IN_PROBE_STATE_REPORTING_FK])
-                df_to_append[MATCH_PRODUCT_IN_PROBE_FK] = custom_matches['probe_match_fk'].drop_duplicates()
+                sub_brand_df = custom_matches[custom_matches['sub_brand'].str.encode("utf8") ==
+                                              sub_brand.encode("utf8")]
+                df_to_append[MATCH_PRODUCT_IN_PROBE_FK] = sub_brand_df['probe_match_fk'].drop_duplicates()
                 df_to_append[MATCH_PRODUCT_IN_PROBE_STATE_REPORTING_FK] = sub_brand_pk
                 self.common.match_product_in_probe_state_values = \
                     self.common.match_product_in_probe_state_values.append(df_to_append)

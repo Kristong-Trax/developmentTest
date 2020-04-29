@@ -14,7 +14,7 @@ class Const(object):
                                       'Targets Store Excecution Score_ 24 Jun 2019.xlsx')
 
     SUB_CATEGORY_TARGET_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)),
-                                      'sub_category_scores_v1.xlsx')
+                                            'sub_category_scores_v1.xlsx')
 
     # had to do this because of weird encoding problems
     EXTRA_SPACES_SURVEY_QUESTION_FK = 54
@@ -40,8 +40,8 @@ class Const(object):
     BONUS_QUESTION = 'Bonus Question'
     BONUS_QUESTION_SUB_CATEGORY = 'Bonus Question - Sub Category'
 
-    KPI_WEIGHTS ={
-        "POWERSKU" : "D",
+    KPI_WEIGHTS = {
+        "POWERSKU": "D",
         "SOS": "G",
         "EXTRA": "M",
         "PRICE": "P",
@@ -51,3 +51,9 @@ class Const(object):
 
     PERFECT_STORE_KPI_WEIGHT = 'SCORE EXECUTION'
 
+    PRESENCE_PRICE_VALUES = {
+        "No Price": 4,
+        "Not Present": 5,
+        "Pass": 6,
+        "Fail": 7
+    }
